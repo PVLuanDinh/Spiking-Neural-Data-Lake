@@ -2461,7 +2461,116 @@ class Brain:
         RISES as more coherent neurons are grown (GrowingLearner units + sleep-grown NG-SNN) and
         bound. Co-active neurons of one percept share a prototype, so the assembly is COHERENT and
         ignites; the index saturates at the global-availability ceiling. ACCESS consciousness only
-        -- it is NOT and never claims phenomenal/subjective experience (see respond())."""
+        -- it is NOT and never claims phenomenal/subjective experience (see respond()).
+
+        "ACCESS CAN FAIL" IS TRUE FOR THE FIRST TIME (2026-08-06), and until it was, this method's
+        own comment below was describing behaviour the bus could not produce. `AccessConsciousness`
+        posted a FROZEN content key, so its `(source, content)` pool never changed, `_defended`'s
+        withdrawal branch was unreachable, and the pool drew `self_boost + hysteresis` for the life
+        of the process. MEASURED on `make_brain(seed=0, refit_every=10, persist=False)` with
+        `clock.phase = 0.25` over 120 ticks (56 awake): `_access_state["ignited"]` was True on
+        56 of 56 -- ONE distinct value, with no reachable False on the live wake path -- while the
+        posted salience ranged 0.5207..0.7500 across the rheobase. TEN live readers consumed that
+        readout; every one was reading a constant. `cortex/access_consciousness.py::content_key` keys
+        the pool on the BUNDLE, and the same run now reads 44 of 56, of which 8 of the 12 lapses
+        post STRICTLY BELOW the 0.55 rheobase -- the repetition-suppression failure the paragraph
+        below has always claimed, actually happening. `cortex/live_brain.py::thought` is
+        BYTE-IDENTICAL across that change (crc 0f0938d6, 4 distinct values, 55 changes, naming the
+        submitted percept on 56 of 56); `_access_ema` moves 0.488958 -> 0.287282, and that is the
+        fiat leaving, not a signal collapsing.
+
+        THE COST, disclosed: a rotating key opens a NEW pool per bundle, so this faculty's private
+        bus goes from 1 live pool to 40 (max 55 over 300 ticks, plateauing at ~25 -- `decay` 0.85
+        reaches the 1e-6 prune in ~85 steps, the same bound `reasoning/rpm_solver.py::_solve_tag`
+        already pays for its per-question token). Wake-tick cost is unchanged within noise: median
+        29.75 ms frozen against 28.93 ms rotating over the same 120 ticks.
+
+        WHAT THE READERS OF `_access_state` ACTUALLY DO WITH IT (P8 burden 3 -- per-item neuter,
+        not the total moving). Each site was pinned INDIVIDUALLY back to a constant by a dict
+        subclass that answers differently only for that caller's line number, leaving the others on
+        the real readout, and the brain was re-run for 56 awake ticks. Both directions, because a
+        null in one direction is not a null.
+
+        THE PIN GOES ON `AccessConsciousness.state`, NOT ON `_update_access`'s ASSIGNMENT, and that
+        is load-bearing rather than tidy: two of the readers are INSIDE `_update_access`, so a
+        wrapper applied after the assignment cannot reach them and reports both as inert. That is a
+        harness false negative of exactly the shape this tree keeps finding, and it is how the
+        earlier eight-row version of this table was produced:
+
+        THE CENSUS IS TEN LINES, NOT EIGHT, and it is DERIVED from this file rather than quoted --
+        an earlier version of this table listed eight, at line numbers that its own 70-line
+        insertion had already shifted. Both corrections are from an adversarial re-run, 2026-08-06,
+        which also re-derived the census from the file. The two missing rows are the two INSIDE
+        `_update_access` itself, and they are the ones that own the `_access_ema` move this whole
+        block is about, so leaving them out made the disclosure describe everything except its own
+        cause. Channel set = EVERY key of `state()` (self_state flattened) + `thought` + the EMA:
+        121 channels, of which 72 vary in the baseline and 49 are constant and can report nothing.
+        The counts below are the LARGEST per-channel disagreement, over 56 awake ticks:
+
+            reader (method, and the line at the time of writing)   pinT     pinF    channels
+            _route_percept_to_action :1577  elig['ignition']       24/56    55/56   21, see below
+            _wake_tick               :2055  _regions_live entry    12/56    44/56   regions_live
+            _c1_tick                 :2266  cand['gwt']             0/56     1/56   connectome_prop
+            _observe_self_wake       :2408  self-model ignited=     0/56     0/56   NONE
+            _self_surprise           :2438  self-signal element    32/56    55/56   surprise, reliab
+            _update_access           :2628  idx = access_index     56/56    56/56   ema, index, +7
+            _update_access           :2631  -> _access_hold        33/56    56/56   ema, index, +7
+            state                    :3338  access_ignited         12/56    44/56   access_ignited
+            state                    :3345  n_bound                55/56    44/56   n_bound
+            respond                  :3435  SecondOrderAccess       0/56     0/56   NONE
+
+        THE METHOD NAME IS THE STABLE HANDLE AND THE LINE IS A HINT, deliberately in that order:
+        the previous version of this table carried line numbers only, and its own insertion moved
+        every reader below it by 70 lines, so the table shipped pointing at the wrong code. Re-derive
+        with `grep -n "self\._access_state" | grep -v "_access_state = "` rather than trusting the
+        column.
+
+        THREE FINDINGS, and the first is a correction of this table's own earlier reading.
+        (1) THE FLAG DOES REACH THE AFFECTIVE AND SPATIAL CHANNELS. An earlier version of this
+        paragraph said "no reader reaches `action`, `valence`, `reward` or `thought`". Only the
+        `thought` half survives re-measurement: pinning :1577 False moves `rpe` on 49 of 56 ticks,
+        `self_state.valence` on 47, `acc_conflict` on 55, `region_coherence` on 48,
+        `map_position`/`grid_can_xy` on 50, `curiosity_mag` on 46 and `neuromod_acetylcholine` on
+        45. `action` and `reward` are NOT `state()` keys at all, so a channel list containing them
+        reads a constant `None` and reports a null about the harness -- which is how the earlier
+        reading was produced. What IS true, and is the useful half: `thought` never moves under any
+        of the ten pins in either direction.
+        (2) TWO OF THE TEN ARE INERT IN BOTH DIRECTIONS -- :2408 and :3396 change nothing on any of
+        the 121 channels whether the flag is pinned True or False. They are imported, called, and
+        in the snapshot, and they change no outcome: P3's presence-is-not-participation, in the
+        consumers of the tree's consciousness-relevant flag. :2266 is NOT one of them: pinned False
+        it moves `connectome_propagation` on exactly 1 of 56 ticks, reproducibly, on a harness whose
+        baseline is byte-identical across runs. One tick is not nothing, and calling it nothing is
+        the same rounding-to-zero this file exists to refuse. Recorded rather than acted on; their
+        disposition is its own pass.
+        (3) `state`'s SECOND ROW READS `n_bound`, NOT THE FLAG. It is a reader of `_access_state`
+        and belongs in the census, but pinning the ignition flag cannot reach it; its row measures a
+        pin applied to whatever key that line asks for, which is why its True column reads 55/56
+        rather than 12/56. Read it as "this line consumes the readout", not "this line consumes the
+        flag".
+
+        WHY THIS FACULTY IS STILL ON A PRIVATE BUS, and it is a MEASURED NULL rather than an
+        oversight. Repointing it onto `self.brain.arm.workspace` is what would put a second content
+        in the live workspace, and it was built and swept rather than argued. Sweeping this
+        faculty's claim ceiling across the whole compliant band [0.55, 0.75] in steps of 0.0025,
+        120 ticks each, there is NO setting at which it co-exists with the percept:
+
+            ceiling 0.5500..0.6800  -> admitted on  0 of 56 ticks (silenced by the shared
+                                       inhibition, with THREE slots free); `thought` untouched
+            ceiling 0.6825..0.7175  -> admitted on 36 of 56 and the HEAD on every one of them;
+                                       `thought` goes 4 distinct values -> 28
+            ceiling 0.7200..0.7500  -> admitted on 41 of 56, co-existing beneath the percept on
+                                       exactly 1; `_access_ema` 0.488958 -> 0.112158
+
+        The transition is a hard step between 0.6800 and 0.6825 -- excluded, then dominant, with a
+        co-existence window ONE TICK of 56 wide at its widest. That is `thalamus/
+        global_workspace.py`'s own LIMIT 1 ("co-existence on the live bus is one step wide") reached
+        from the consumer side, and it is NOT the arbiter: the rank key was repaired in the same
+        pass and the live brain is byte-identical under both keys (crc 0f0938d6 / `_access_ema`
+        0.488958 identical to 6 dp, in BOTH key regimes). What blocks the repoint is the shared
+        lateral inhibition against two producers whose claim ranges overlap by ~0.08 of a 0.20-wide
+        band. Fixing that is a change to the competition, not to this call site, and it is not made
+        on a criterion's say-so."""
         p = self._wake_ticks % self._percepts
         grown = self.neuro.grown_units if self.neuro is not None else 0
         n_total = (

@@ -75,27 +75,60 @@ faculty is admitted-but-not-head every tap held somebody else's content, `global
 reach. So the BUS now delivers its admitted SET on the one channel it already had, and this file's
 tap scan asks the question that channel can answer.
 
-WHAT CLAIM (10) MEASURES, all run: with the peer neutered this faculty has ACCESS and FOCUS on 12
-of 12 ticks; with a 0.95 peer sorting before it, ACCESS WITHOUT FOCUS on 12 of 12 with the
-`access_index` UNCHANGED on 12 of 12; renaming that peer to sort after it moves FOCUS on 11 of 12
-and the ACCESS readout on 0 of 12. Two REDs run beside it -- a ONE-slot bus never separates the two
-(0 of 12), and the retired head-only delivery keeps membership at 12 of 12 while zeroing the index
-on all of them.
+WHAT CLAIM (10) MEASURES, all run, and RE-DERIVED 2026-08-06 when the arbiter stopped deciding the
+head by name. THE LEVER IS THE PEER'S VOLUME: with the peer neutered (0.00) this faculty has ACCESS
+and FOCUS on 12 of 12 ticks; against a 0.95 peer it holds a slot on 12 of 12 and the head on 0 of 12
+-- ACCESS WITHOUT FOCUS on every tick -- with the `access_index` BIT-IDENTICAL across the entire
+volume sweep from 0.00 to 0.95. Renaming that peer to sort after this faculty now moves NOTHING, on
+either readout (FOCUS 0 of 12, ACCESS 0 of 12), which is the two-sided form of the string test.
+FOUR REDs run beside it -- a ONE-slot bus never separates access from focus (0 of 12), the retired
+head-only delivery keeps membership at 12 of 12 while zeroing the index on all of them, the RETIRED
+RANK KEY reconstructed on the same bus moves FOCUS on 11 of 12 under that same rename, and (added
+2026-08-06 by an adversarial re-run) THE HEAD MUST BE THE PEER'S CONTENT, whose red is this faculty
+admitted BENEATH ITS OWN RETRACTED CONTENT with no peer on the bus at all -- a two-step window found
+by sweeping, at claim 0.635. Without that conjunct "admitted and not the head" is equally true of a
+faculty out-ranked by its own history, which is hysteresis and not a dissociation; the arm avoided it
+only by re-posting ONE content, which was an unasserted property of the harness until now.
 
-IS THE DEFECT FIRING ON THE LIVE BRAIN TODAY? NO -- ARMED AND LATENT, in BOTH configurations, and
-saying so is the point of measuring it. A/B'd on the canonical brain against a shim that restores
-the retired contract exactly (head-only delivery AND `_ignited` reading the head): un-repointed, 120
-wake ticks, `thought` names the percept on 120/120 and the crc32 of the thought sequence, of the
-workspace-set sequence and of the whole legacy `state()` readout are IDENTICAL between the two
-contracts, `_access_ema` = 0.488958 in both -- because `cortex/brain.py::_update_access` builds this
-faculty with no `ws=`, so its bus has ONE submitter and the workspace is a 1-tuple on every tick.
-REPOINTED onto the arm's own bus, 60 ticks: this faculty is in the workspace on 60/60 and is ALSO
-the head on 60/60, so the two contracts are byte-identical there too. So this fix buys nothing
-measurable on either bus this tree can currently build, and it is shipped anyway for the reason the
-audit gave: the dissociation appears the moment two producers CO-EXIST with one out-ranking the
-other, that is the shared-instance construction P6 names as the next step, and fixing the readout
-before the bus is shared is fixing it in the only window where it is free. Credit is claimed for
-the criterion, never for a live gain that was measured at zero.
+THE CRITERION'S GREEN STATE USED TO REQUIRE THE DEFECT, which is why it was re-derived rather than
+kept. It asserted `focus_moved >= 1` with the peer RENAME as its lever, so it passed only on an
+arbiter that settles a consciousness-relevant flag lexicographically: there is no arbiter that is
+both correct and green on it. P8/F11 -- the PROPERTY (access and focus are two facts, and neither
+may be decided by a name) is real, the PROXY was pathology-shaped.
+
+IS THE DEFECT FIRING ON THE LIVE BRAIN TODAY? NO -- ARMED AND LATENT, and saying so is the point of
+measuring it. A/B'd on the canonical brain against a shim that restores the retired contract exactly
+(head-only delivery AND `_ignited` reading the head): un-repointed, 120 ticks / 56 awake, `thought`
+names the submitted percept on 56 of 56 and the crc32 of the thought sequence, of the workspace-set
+sequence and of the whole legacy `state()` readout are IDENTICAL between the two contracts -- because
+`cortex/brain.py::_update_access` builds this faculty with no `ws=`, so its bus has ONE submitter and
+the workspace is a 1-tuple on every tick. The 2026-08-06 ARBITER repair is byte-identical there too,
+re-measured in BOTH content-key regimes. So this fix buys nothing measurable on any bus this tree can
+currently build; the REPOINT that would build one is a measured null recorded at
+`cortex/brain.py::_update_access` -- swept across the whole compliant band, this faculty is admitted
+on 0 of 56 ticks below a 0.6825 ceiling and is the HEAD on every tick it is admitted above it, with a
+co-existence window ONE TICK of 56 wide. Credit is claimed for the criterion, never for a live gain
+that was measured at zero.
+
+WHAT DID MOVE ON THE LIVE BRAIN, and it is the other half of this pass. This faculty posted a FROZEN
+content key, so `thalamus/global_workspace.py::_defended` could never withdraw its tenancy subsidy
+and its pool was PERMANENTLY SELF-DEFENDED -- the same defect that file closed for perception, still
+live here. `content_key` keys the pool on the BUNDLE instead. Consequence over 56 live wake ticks:
+`ignited` goes 56 of 56 -- ONE distinct value, a flag with no reachable False, read by TEN
+consumers -- to 44 of 56, with 8 of the 12 new lapses posting STRICTLY BELOW the rheobase. `thought`
+is unchanged to the byte. `_access_ema` moves 0.488958 -> 0.287282, which is a fiat leaving rather
+than a signal collapsing, and the per-reader attribution of that move is tabulated at
+`cortex/brain.py::_update_access` (two of the ten readers are inert in BOTH directions; a prior
+version of that table said three of eight, and both figures were wrong -- see there).
+
+WHAT THE BRAIN SAYS ABOUT ITSELF MOVED WITH IT, traced end to end rather than assumed:
+`reasoning/consciousness_probe.py::probe_access` puts `brain._access_ema` into its detail string at
+three decimals, and `reasoning/spike_chat_lake.py::_consciousness` renders that detail verbatim into
+the reply to "are you conscious". Run on the live brain, the reply's own number goes "live access EMA
+0.489" -> "0.287". The measurement that moved is `_access_ema` and NOTHING else on that chain: the
+same trace under the retired rank key is byte-identical, so the arbiter repair changes nothing the
+brain says. The one thing that reaches a human is therefore reporting the content-key change, and it
+is reporting a measurement rather than a verdict, which is the only reason that is acceptable.
 
 WHICH BUS THIS RUNS ON (P6), and the MEASURED NULL that goes with it
 ====================================================================
@@ -151,16 +184,19 @@ are recorded here, because a route that carries nothing is the force-wiring P6 f
     ("THE CAPACITY IS NOT THE BINDING CONSTRAINT ON THAT BUS TODAY; THE PRODUCER POPULATION IS"),
     reached independently from the consumer side here.
 
-Consequence of repointing, RE-MEASURED 2026-08-06 on the same 150-tick replay because the arbiter
-change could have removed it and did not: this faculty posts a novelty-gated 0.507583..0.75 (135
-distinct) through `cortex/brain.py::_update_access`, takes the head, and the arm's percept holds a
-slot beside it on only **1 of 150** ticks, so `cortex/live_brain.py::thought` reads 'GLOBAL' on
-150/150 where the un-repointed brain reads the percept id on 150/150. Multi-slot did NOT make the
-repoint free -- it made it survivable in principle (the arbiter measures the percept staying in on
-40/40 against a faculty pinned at a compliant 0.65) while this faculty's own live claim is high
-enough in the band to push it out anyway. `_max_claim` is what keeps the consequence bounded: a
-joining faculty may not make itself indisplaceable, and with it a 0.95 proximity threat still
-seizes the top slot where uncapped it cannot (self-check claim 9).
+Consequence of repointing, RE-MEASURED 2026-08-06 AFTER the rank repair and the content-key
+rotation, because both could have removed it and neither did: this faculty posts a novelty-gated
+0.5207..0.7500 (43 distinct) through `cortex/brain.py::_update_access` and takes the head on 40 of
+56 wake ticks, so `cortex/live_brain.py::thought` carries this faculty's content key on 40 of 56
+and 28 distinct values where the un-repointed brain names the submitted percept on 56 of 56 with 4.
+The percept co-exists beside it on **1 of 56** ticks. Multi-slot did NOT make the repoint free -- it
+made it survivable in principle (the arbiter measures the percept staying in on 40/40 against a
+faculty pinned at a compliant 0.65) while this faculty's own live claim is high enough in the band
+to push it out anyway. THE FULL BAND SWEEP IS AT `cortex/brain.py::_update_access` and it is a hard
+step rather than a gradient: excluded on 0 of 56 up to a 0.6800 ceiling, HEAD on every admitted tick
+from 0.6825. `_max_claim` is what keeps the consequence bounded: a joining faculty may not make
+itself indisplaceable, and with it a 0.95 proximity threat still seizes the top slot where uncapped
+it cannot (self-check claim 9).
 
 Determinism: per-instance random.Random(seed) for the workspace; neuron spike codes are
 crc32-seeded (no module-level / time seeding). ASCII output.
@@ -191,7 +227,7 @@ class AccessConsciousness:
     integration -- and makes NO phenomenal / subjective-experience claim (see module docstring).
     """
 
-    _LABEL = "GLOBAL"  # hashable workspace handle for this faculty's conscious-content candidate
+    _LABEL = "GLOBAL"  # NAMESPACE tag on this faculty's contents -- see `content_key`
     _SRC = "coalition"  # workspace source name for the grown assembly coalition
 
     def __init__(
@@ -273,6 +309,7 @@ class AccessConsciousness:
         self._members = deque(maxlen=self._max_members)
         self._n_assemblies = 0
         self._content_hv = None  # the bundled conscious-content spike code
+        self._key = None  # the workspace key of the CURRENT bundle (see `content_key`)
         # last-step functional readout.
         self._ignited = False  # ACCESS: this content held a workspace slot
         self._focus = False  # FOCUS: this content was the RANKED HEAD of the workspace
@@ -435,9 +472,46 @@ class AccessConsciousness:
         else:
             sal = max(0.0, min(1.0, float(salience)))
         sal = min(sal, self._max_claim())  # stay DISPLACEABLE on the bus -- see _max_claim
-        self._ws.submit(self._SRC, self._LABEL, sal)  # post the candidate for ignition
+        # POST THE BUNDLE'S OWN KEY, not this faculty's name (see `content_key`): a source that can
+        # never change its content key can never be superseded and is subsidised forever.
+        self._key = self.content_key()
+        self._ws.submit(self._SRC, self._key, sal)  # post the candidate for ignition
         self._last_claim = sal
-        return self._LABEL
+        return self._key
+
+    def content_key(self):
+        """The workspace key of the CURRENT bundle -- `(_LABEL, crc32 of the content code)`, or None
+        before anything has been bound.
+
+        IT IDENTIFIES THE CONTENT, NOT THE FACULTY, AND THAT IS THE WHOLE POINT (2026-08-06). This
+        faculty used to post the frozen string `_LABEL` on every tick. `thalamus/global_workspace.py`
+        keys its pools on `(source, content)` and `_defended` withholds the tenancy subsidy from a
+        held pool exactly when its SOURCE is posting a DIFFERENT content -- so a source whose content
+        key can never change is PERMANENTLY SELF-DEFENDED. It re-asserts the identical
+        `('coalition', 'GLOBAL')` every tick, the withdrawal branch is unreachable, and the pool
+        draws `self_boost + hysteresis` for the life of the process no matter how much the bundle
+        underneath it has changed.
+
+        THAT IS THE SAME DEFECT `_defended` WAS BUILT TO CLOSE, one file over. Perception's key
+        rotates over the percept ids, so its pool is never defended; this faculty's never rotated, so
+        its pool always was. MEASURED at the arm step with both on one bus: the coalition is SILENT
+        (it does not post every tick) and therefore DEFENDED, drive 0.8875, against perception's
+        0.590 -- so perception is EXCLUDED BY THE SUBSIDY, not out-ranked by a louder claim. A
+        faculty that cannot retract cannot be displaced.
+
+        crc32 over the +-1 spike code, one byte per line, per the house determinism rule -- the
+        builtin `hash()` is salted per process and a namespace that changes between processes is not
+        a namespace. The key is a TUPLE so `_LABEL` stays a real namespace: `broadcast_all()` returns
+        contents, and a bare string could collide by SUBSTRING with another faculty's content in a
+        membership scan.
+
+        RE-BINDING THE SAME ASSEMBLY GIVES THE SAME KEY, which is not a weakness of the rotation but
+        the correct branch of `_defended`: a specialist still asserting the identical content is
+        re-asserting its tenancy and keeps its grip. What ends is the grip on content it has moved
+        on from."""
+        if self._content_hv is None:
+            return None
+        return (self._LABEL, zlib.crc32(bytes(1 if x == 1 else 0 for x in self._content_hv)))
 
     def content_vector(self):
         """The bundled spike code of the current conscious-content candidate (or None)."""
@@ -462,10 +536,12 @@ class AccessConsciousness:
         readout.
 
         ACCESS IS MEMBERSHIP, FOCUS IS HEADSHIP, AND THIS METHOD MEASURES BOTH SEPARATELY
-        (2026-08-06). `_ignited` is `_LABEL in _ws.broadcast_all()` -- "is my content in the
+        (2026-08-06). `_ignited` is `content_key() in _ws.broadcast_all()` -- "is my content in the
         limited-capacity workspace at all", which is exactly Dehaene's global availability and
         exactly what this module's name, docstring and `access_index` have always said they meant.
-        `_focus` is `_ws.step() == _LABEL` -- "am I what the brain is currently thinking about".
+        `_focus` is `_ws.step() == content_key()` -- "am I what the brain is currently thinking
+        about". Both ask about the key POSTED THIS TICK; `content_key` carries why that matters and
+        what a frozen key cost.
 
         THE DEBT THIS PAYS, and it is recorded rather than deleted because the defect is the whole
         argument for the change. Between the workspace going multi-slot and this fix, `_ignited`
@@ -501,14 +577,21 @@ class AccessConsciousness:
         (60/60 ticks byte-identical, its bus having one admissible producer).
 
         The tap test is a membership test on the delivered TUPLE, and that the delivered value IS
-        the workspace tuple is pinned by claim (3) rather than assumed: a bare string delivered in
-        its place would make `'GLOBAL' in 'GLOBAL'` true by substring and this scan would report
-        reach it never had."""
+        the workspace tuple is pinned by claim (3) rather than assumed: a bare content delivered in
+        its place would make the scan a substring or an identity test rather than a membership one,
+        and it would report reach that never happened. Since `content_key` made the key a TUPLE that
+        failure is now loud rather than silent -- `key in "some string"` raises -- which is why the
+        namespace tag is kept and the key is not a bare int."""
         head = self._ws.step()  # advance the bus; it broadcasts the admitted SET to every tap
         admitted = self._ws.broadcast_all()
-        self._ignited = self._LABEL in admitted  # ACCESS -- in the workspace
-        self._focus = head is not None and head == self._LABEL  # FOCUS -- on top of it
-        received = sum(1 for tap in self._taps if tap and self._LABEL in tap[-1])
+        # THE KEY POSTED THIS TICK, never the class label: `content_key` rotates with the bundle, so
+        # "is my content in the workspace" has to be asked about the content this faculty is
+        # currently asserting. Asking about a frozen label would report a STALE pool -- a bundle this
+        # faculty has already moved on from -- as its own current global availability.
+        mine = self._key
+        self._ignited = mine is not None and mine in admitted  # ACCESS -- in the workspace
+        self._focus = mine is not None and head == mine  # FOCUS -- on top of it
+        received = sum(1 for tap in self._taps if tap and mine is not None and mine in tap[-1])
         # The `if self._ignited` gate is MEASURED INERT under the current delivery contract, and is
         # KEPT rather than deleted. Why inert: `:507` steps the bus, which broadcasts the admitted
         # SET to every tap, and `:508` reads that same set back -- so `tap[-1]` and `admitted` come
@@ -690,7 +773,7 @@ def _contended_run(n_peers, ws, n=12, shared=True):
         # about THIS faculty's own content is asking whether this faculty got access. Read off
         # `ac.workspace` rather than off `ws` so the private-bus RED arm asks the same question of
         # the bus this faculty is actually on, instead of trivially reporting False.
-        admitted.append(AccessConsciousness._LABEL in ac.workspace.broadcast_all())
+        admitted.append(ac.content_key() in ac.workspace.broadcast_all())
     return own, admitted
 
 
@@ -715,11 +798,16 @@ def _slot_after_threat(claim, threat=0.95, warm=8, psal=0.6):
     threat. Returns what the slot holds afterwards -- 'threat' iff the bus is still displaceable."""
     ws = _bus()
     ac = AccessConsciousness(seed=0, ws=ws)
+    ac.bind_assembly(_coherent("cat", 3))  # establish this faculty's real content key ONCE...
+    key = ac.content_key()
     for _ in range(warm):
         _post(ws, [("perception", "unit0", psal), ("salience", "threat", 0.0)])
         ws.step()
-        # posted RAW, bypassing bind_assembly's cap, so capped and uncapped arms are comparable
-        _post(ws, [(ac._SRC, ac._LABEL, claim)])
+        # ...then post it RAW, bypassing bind_assembly's cap, so capped and uncapped arms are
+        # comparable. The key is CONSTANT across the warm loop on purpose: a faculty re-asserting
+        # one content is the branch `_defended` subsidises, which is the HARDEST case for
+        # displaceability and therefore the right one for this criterion.
+        _post(ws, [(ac._SRC, key, claim)])
         ac.step()
     _post(ws, [("perception", "unit0", psal), ("salience", "threat", threat)])
     return ws.step()
@@ -739,7 +827,39 @@ def _peer_names():
     return chr(ord(c) - 1) * 3, chr(ord(c) + 1) * 3
 
 
-def _focus_run(peer_claim, peer_src=None, ws=None, n=12):
+def _own_stale_head(lo=0.55, hi=0.75, step=0.0025, warm=6, tenant=0.75):
+    """The state claim (10)'s head conjunct forbids, SWEPT rather than hardcoded (P1).
+
+    This faculty warms ONE content, then asserts a DIFFERENT one at a lower claim while the first
+    is still charged. Both wear this faculty's own source, so `_defended` withholds the subsidy
+    from the superseded pool -- but it is still decaying from a high charge, so there is a band
+    where the fresh content wins a SLOT and the faculty's OWN retracted content holds the HEAD.
+    That reads `ignited and not focused` on every accessor this module has, with no peer anywhere
+    in the workspace. It is not a dissociation between access and focus; it is one content of this
+    faculty's out-ranking another.
+
+    Returns `(claim, head, mine)` for the lowest claim in the band that reaches it, or `(None, ...)`
+    -- so the criterion's red is a measured window and not a constant somebody chose."""
+    s = lo
+    while s <= hi + 1e-9:
+        ws = _bus()
+        ac = AccessConsciousness(seed=0, ws=ws)
+        ac.bind_assembly(_coherent("cat", 3))
+        old = ac.content_key()
+        fresh = (AccessConsciousness._LABEL, 0)  # a content this faculty has never bundled
+        for _ in range(warm):
+            _post(ws, [(ac._SRC, old, tenant)])
+            ws.step()
+        _post(ws, [(ac._SRC, fresh, round(s, 4))])
+        ac._key = fresh  # what this faculty is asserting NOW
+        ac.step()
+        if ac.ignited() and not ac.focused() and ws.broadcast() == old:
+            return round(s, 4), old, fresh
+        s += step
+    return None, None, None
+
+
+def _focus_run(peer_claim, peer_src=None, ws=None, n=12, who=None):
     """Replay the live two-step cadence with ONE peer faculty posting `peer_claim` every tick, and
     record ACCESS, FOCUS, the index and the reach SEPARATELY on every tick.
 
@@ -773,6 +893,15 @@ def _focus_run(peer_claim, peer_src=None, ws=None, n=12):
         ws.step()
         ac.bind_assembly(_coherent("cat", 3), salience=claim)
         ac.step()
+        if who is not None:
+            # WHAT HOLDS THE HEAD, and this faculty's own key, recorded per tick. Claim (10) asserts
+            # only "admitted and NOT the head", and that sentence is also true of a faculty
+            # out-ranked by its OWN previous bundle with the peer absent entirely -- which is a
+            # different fact and not a dissociation. Nothing in the loop above forbids it: the
+            # branch is closed only because this arm re-posts ONE content, and an unasserted
+            # invariant is one edit from being untrue. Handed out rather than folded into `out` so
+            # the existing 4-tuple unpacks stay put.
+            who.append((ws.broadcast(), ac.content_key()))
         out.append(
             (
                 ac.ignited(),
@@ -782,6 +911,28 @@ def _focus_run(peer_claim, peer_src=None, ws=None, n=12):
             )
         )
     return out
+
+
+def _name_ranked(ws):
+    """THE RETIRED RANK KEY, re-expressed on the CURRENT bus: `(-late, -total, k)` instead of
+    `(-late, -total, -_last_v, k)`.
+
+    `thalamus/global_workspace.py::_rank_key` is the single place that arbiter decides who out-ranks
+    whom, so restoring the retired ordering is a one-method override and NOT a second arbiter --
+    same pools, same drives, same settle, same capacity, same delivery. That is what makes it the
+    RED for claim (10)'s string test rather than a different experiment: the ONLY variable is
+    whether the clipped spike counts fall through to the SOURCE NAME.
+
+    Why it is the red this claim needs. Two compliant pools SATURATE their sustained-firing counts,
+    so under the retired key the head was settled lexicographically -- and this file's FOCUS readout
+    read that head. Renaming a peer therefore moved a consciousness-relevant flag while changing no
+    claim, no content and no competition. Returns the bus."""
+
+    def rank(k):
+        return (-ws._last_late[k], -ws._last_total[k], k)
+
+    ws._rank_key = rank
+    return ws
 
 
 def _head_only(ws):
@@ -811,7 +962,7 @@ def main():
     strong.step()
     # A tap now holds the DELIVERED WORKSPACE (a ranked tuple), so reach is a membership test --
     # `is not None` would be true on every tick including the empty ones, because `()` is not None.
-    strong_reach = sum(1 for tap in strong._taps if tap and AccessConsciousness._LABEL in tap[-1])
+    strong_reach = sum(1 for tap in strong._taps if tap and strong.content_key() in tap[-1])
     # ...and what a tap receives must BE the workspace tuple, checked rather than assumed: a bare
     # string delivered instead would satisfy the membership scan above by SUBSTRING ('GLOBAL' in
     # 'GLOBAL'), which is a silently wrong reach reading rather than a loud one.
@@ -921,43 +1072,74 @@ def main():
     # both tap sets were registered on the one object.
     inj_a.bind_assembly(_coherent("cat", 5))
     inj_a.step()
-    cross_tap = bool(inj_b._taps[0]) and AccessConsciousness._LABEL in inj_b._taps[0][-1]
+    cross_tap = bool(inj_b._taps[0]) and inj_a.content_key() in inj_b._taps[0][-1]
     # the rheobase is read OFF the bus, so the anchor cortex/brain.py uses is the pool's own. RED by
     # construction: the constructor argument says 0.55 and the bus says 0.42.
     odd_ws = _bus(ignition_threshold=0.42)
     odd_ac = AccessConsciousness(seed=0, ignition_threshold=0.55, ws=odd_ws)
     threshold_readthrough = odd_ac.ignition_threshold == 0.42
 
-    # ---- (7) THE HEAD TEST IS BEHAVIOUR-NEUTRAL ON A PRIVATE BUS. --------------------------------
-    # `content is not None` and `content == _LABEL` are the same test when this faculty is the only
-    # submitter, and a DIFFERENT test the moment it is not. Both halves are counted: agreement on
-    # the private bus, and at least one DISAGREEMENT on a shared one -- without which the first
-    # assert is vacuous (the `_fused_calls` lesson, applied to a second claim in this file).
+    # ---- (7) WHAT MAKES ACCESS AND FOCUS THE SAME QUESTION IS ONE CONTENT, NOT ONE SOURCE. --------
+    # RE-DERIVED 2026-08-06, and the re-derivation is the finding. This claim asserted that on a
+    # PRIVATE bus "the slot is non-empty" and "the slot is MINE" agree on every step, with a shared
+    # bus as the disagreement arm. That was true only because this faculty posted a FROZEN content
+    # key, so its bus could never hold more than one of its pools; `content_key` now rotates with the
+    # bundle (see there for why a frozen key is permanently self-defended), and the old sentence
+    # became false on a private bus: measured, alternating two assemblies, the two tests disagree on
+    # 1 of 10 steps because THE FACULTY IS OUT-RANKED BY ITS OWN PREVIOUS BUNDLE, which is still
+    # charged and is a different content. Re-derived rather than weakened: the property claim (10)
+    # actually leans on is that a workspace holding ONE content cannot tell ACCESS from FOCUS, and
+    # "one submitter" was a proxy for "one content" that stopped holding.
     #
-    # WHAT THIS CLAIM IS NOW FOR, since `_ignited` no longer reads the head at all (see `step()`).
-    # It is the control claim (10) leans on: it is the reason a single-submitter bus cannot tell
-    # ACCESS from FOCUS, and therefore the reason the dissociation had to be built on a bus with a
-    # second producer. It also pins the live brain's own regime -- `cortex/brain.py::_update_access`
-    # constructs this faculty with no `ws=`, so its bus has exactly one submitter and the two
-    # readouts agree there on every tick, which is why the delivery change moves NOTHING on the
-    # live path (measured: 60 of 60 wake ticks byte-identical on thought, workspace set and index).
+    # THREE ARMS, ONE VARIABLE EACH -- how many CONTENTS are in the competition:
+    #   * ONE content, re-asserted every tick on a private bus  -> the two tests must AGREE 10/10.
+    #   * TWO contents, both this faculty's (a rotating bundle) -> they must COME APART. This arm is
+    #     new and it is a disclosure: a specialist can lose the focus to what it was saying a moment
+    #     ago. That is the attractor's hysteresis, not a defect -- `_defended` withholds the subsidy
+    #     from the retracted bundle, so it decays at `decay` and is out-ranked as soon as the fresh
+    #     bundle out-drives it.
+    #   * TWO contents, one a louder PEER on a shared bus     -> they must COME APART.
+    # Without the second and third arms the first is vacuous (the `_fused_calls` lesson, applied to
+    # a second claim in this file).
     priv_seen = []
     priv_ac = _fresh()
     _record_slot(priv_ac, priv_seen)
-    for t in range(10):
-        priv_ac.bind_assembly(_coherent("cat", 3) if t % 2 == 0 else _scrambled(3))
+    priv_keys = []
+    for _t in range(10):
+        priv_ac.bind_assembly(_coherent("cat", 3))  # ONE content, re-asserted: the key is constant
+        priv_keys.append(priv_ac.content_key())
         priv_ac.step()
-    priv_agree = sum(1 for c in priv_seen if (c is not None) == (c == AccessConsciousness._LABEL))
+    priv_agree = sum(1 for c, k in zip(priv_seen, priv_keys) if (c is not None) == (c == k))
+    assert len(set(priv_keys)) == 1, (
+        f"the one-content arm must actually post ONE content -- if the key moves here the arm is "
+        f"the two-content case and proves nothing about the collapse: {len(set(priv_keys))} keys"
+    )
+    # ...the SAME replay with the bundle alternating, so the faculty competes with its own history.
+    own_seen = []
+    own_ac = _fresh()
+    _record_slot(own_ac, own_seen)
+    own_keys = []
+    for t in range(10):
+        own_ac.bind_assembly(_coherent("cat", 3) if t % 2 == 0 else _scrambled(3))
+        own_keys.append(own_ac.content_key())
+        own_ac.step()
+    own_disagree = sum(1 for c, k in zip(own_seen, own_keys) if (c is not None) != (c == k))
     sh_seen = []
     sh_ws = _bus()
     sh_ac = AccessConsciousness(seed=0, ws=sh_ws)
     _record_slot(sh_ac, sh_seen)
+    sh_keys = []
     for _ in range(10):
         _post(sh_ws, [("perception", "unit0", 0.95)])  # a louder faculty takes the one slot
         sh_ws.step()
         sh_ac.bind_assembly(_coherent("cat", 3), salience=0.60)
+        sh_keys.append(sh_ac.content_key())
         sh_ac.step()
-    sh_disagree = sum(1 for c in sh_seen if (c is not None) != (c == AccessConsciousness._LABEL))
+    # `_record_slot` spies the BUS, and this arm steps it TWICE per tick (the peer's step, then this
+    # faculty's). The odd entries are this faculty's own steps, which are the ones its key belongs
+    # to; pairing them off by position would compare a key against the peer's tick.
+    sh_own = sh_seen[1::2]
+    sh_disagree = sum(1 for c, k in zip(sh_own, sh_keys) if (c is not None) != (c == k))
 
     # ---- (8) THE OTHER FACULTIES ON A SHARED BUS DECIDE THIS ONE'S OWN ACCESS TO IT. -------------
     # RE-DERIVED 2026-08-06, after `thalamus/global_workspace.py` replaced single-slot winner-take-
@@ -1089,18 +1271,33 @@ def main():
     # each, and every number below was RUN:
     #
     #   peer NEUTERED (0.00, sub-rheobase) -> IN the workspace and ON TOP of it   access+focus
-    #   peer LOUD, sorting BEFORE this faculty -> IN the workspace, NOT on top    ACCESS, no focus
-    #   the SAME loud peer RENAMED to sort after -> IN, and on top again          access+focus
+    #   peer LOUD (0.95, out-driving this faculty's cap) -> IN, NOT on top        ACCESS, no focus
+    #   the SAME loud peer RENAMED to sort after -> IDENTICAL on BOTH readouts    name-blind
     #
-    # THE RENAME IS THE LEVER, and choosing it is the whole point rather than a convenience. Among
-    # co-admitted contents that both saturate their sustained-firing counts -- which two compliant
-    # pools on this bus do -- the arbiter's rank key falls through to the source string, so the HEAD
-    # is decided by a name. That was this file's defect wearing its most embarrassing form: with
-    # `_ignited` reading the head, a consciousness-relevant flag and the `access_index` behind it
-    # were settled by a lexicographic comparison. So the criterion is stated ON that lever: the
-    # ACCESS readout -- flag, reach and index together -- must be BYTE-IDENTICAL across the rename,
-    # while the FOCUS readout must actually move, or the rename is not a lever and the invariance
-    # is vacuous. Both halves are counted.
+    # THE LEVER IS THE PEER'S VOLUME, AND THAT IS A RE-DERIVATION (2026-08-06). It used to be the
+    # peer's NAME: among co-admitted contents that both saturate their sustained-firing counts --
+    # which two compliant pools on this bus do -- the arbiter's rank key fell through to the source
+    # string, so the HEAD was decided by a letter and renaming the peer moved FOCUS on 11 of 12
+    # ticks. That criterion asserted `focus_moved >= 1`, so ITS GREEN STATE REQUIRED THE DEFECT: the
+    # only arbiter it passed on was one that decides a consciousness-relevant flag by alphabet.
+    # `thalamus/global_workspace.py::_rank_key` now ranks co-saturating pools on their final
+    # MEMBRANE, and the rename moves nothing. Per P8 the criterion is RE-DERIVED rather than
+    # weakened -- the PROPERTY (access and focus are two facts, and neither may be settled by a
+    # name) is real, the PROXY was pathology-shaped.
+    #
+    # SO THE STRING TEST IS NOW TWO-SIDED AND STRICTER, not dropped: the rename must move NEITHER
+    # readout. Its red is `_name_ranked`, the retired rank key reconstructed on this same bus and
+    # RUN below -- under it the rename moves FOCUS, which is what "green only on the defect" looks
+    # like when you can finally see it from both directions.
+    #
+    # THE DISSOCIATION ITSELF MOVED ONTO THE VOLUME LEVER, and the sweep is what justifies 0.95
+    # rather than a taste for it. Measured, one peer, 12 ticks each: at 0.00-0.55 this faculty has
+    # ACCESS and FOCUS 12/12; from 0.60 to 0.85 it loses the head on exactly the first tick (1/12);
+    # at 0.90 and 0.95 it holds a slot on 12/12 and the head on 0/12 -- ACCESS WITHOUT FOCUS on
+    # every tick; at 1.00, above every specialist's `_max_claim`, it is excluded entirely (0/12) and
+    # there is nothing to dissociate. The index is BIT-IDENTICAL across that whole sweep from 0.00
+    # to 0.95, which is the property, and it is the reason the lever is legitimate: the peer is
+    # changing this faculty's FOCUS and provably not its ACCESS.
     #
     # The load-bearing number is the index. It must be the SAME in the access-without-focus arm as
     # in the access-with-focus arm: it is an ACCESS index, so losing the head to a louder peer may
@@ -1111,10 +1308,34 @@ def main():
     peer_lo, peer_hi = _peer_names()
     peer_straddle = peer_lo < AccessConsciousness._SRC < peer_hi
     diss_quiet = _focus_run(0.0, peer_src=peer_lo)
-    diss_lo = _focus_run(0.95, peer_src=peer_lo)
+    diss_who = []
+    diss_lo = _focus_run(0.95, peer_src=peer_lo, who=diss_who)
     diss_hi = _focus_run(0.95, peer_src=peer_hi)
+    # THE RED for the string test: the same rename, on the same bus, under the RETIRED rank key.
+    diss_red_lo = _focus_run(0.95, peer_src=peer_lo, ws=_name_ranked(_bus()))
+    diss_red_hi = _focus_run(0.95, peer_src=peer_hi, ws=_name_ranked(_bus()))
+    red_focus_moved = sum(1 for x, y in zip(diss_red_lo, diss_red_hi) if x[1] != y[1])
     n_both = sum(1 for a, f, _i, _v in diss_quiet if a and f)
     n_access_only = sum(1 for a, f, _i, _v in diss_lo if a and not f)
+    # THE THIRD CONJUNCT: on every access-without-focus tick the head must be the PEER'S content,
+    # and this arm must post ONE content of its own. Without both, "admitted and not the head" is
+    # equally true of a faculty out-ranked by its own retracted bundle with no peer in the
+    # workspace at all -- which claim (7)'s middle arm measures at 1 of 10 and which is NOT a
+    # dissociation between access and focus. Claim (7) already guards its one-content arm this way;
+    # this one did not, and the guard is the difference between a criterion that holds because of
+    # the mechanism and one that holds because of how the harness happens to be written.
+    own_keys_lo = {k for _h, k in diss_who}
+    head_is_peer = sum(
+        1
+        for (h, k), (a, f, _i, _v) in zip(diss_who, diss_lo)
+        if a and not f and h == "peer" and h != k
+    )
+    # ITS RED, CONSTRUCTED AND RUN AND SWEPT: `_own_stale_head` finds a claim at which this
+    # faculty is ADMITTED, is NOT the head, and the head is its OWN retracted content -- with no
+    # peer anywhere in the workspace. That is the state the conjunct-free form of the assert scores
+    # as a dissociation, and it is a two-step-wide window, which is why it has to be swept rather
+    # than named.
+    red_claim, red_head, red_mine = _own_stale_head()
     idx_access_only = min(i for _a, _f, i, _v in diss_lo)
     idx_invariant = sum(1 for x, y in zip(diss_quiet, diss_lo) if x[2] == y[2])
     # the rename A/B: ACCESS (flag, index, reach) must not see it; FOCUS must.
@@ -1226,9 +1447,9 @@ def main():
         f"({odd_ac.ignition_threshold})"
     )
     print(
-        f"winner-identity ignition: private bus agrees with 'slot non-empty' on "
-        f"{priv_agree}/{len(priv_seen)} steps; on a shared bus they DISAGREE on "
-        f"{sh_disagree}/{len(sh_seen)}"
+        f"one content vs two: ONE content re-asserted agrees with 'slot non-empty' on "
+        f"{priv_agree}/{len(priv_seen)} steps; they DISAGREE on {own_disagree}/{len(own_keys)} when "
+        f"the SAME faculty rotates its bundle, and on {sh_disagree}/{len(sh_own)} against a peer"
     )
     print(
         f"load decisive: a {shipped_bus.capacity}-slot bus admits this faculty below {k_out} peer "
@@ -1247,12 +1468,19 @@ def main():
         f"named {peer_lo!r} -> ACCESS WITHOUT FOCUS {n_access_only}/{len(diss_lo)}, access_index "
         f"unchanged on {idx_invariant}/{len(diss_lo)} (>= {idx_access_only:.6f}); renaming it "
         f"{peer_hi!r} moves FOCUS on {focus_moved}/{len(diss_hi)} and ACCESS on "
-        f"{len(diss_hi) - access_same}/{len(diss_hi)}"
+        f"{len(diss_hi) - access_same}/{len(diss_hi)} -- the arbiter is name-blind"
+    )
+    print(
+        f"   and the head is the PEER on {head_is_peer}/{n_access_only} of those ticks, with this "
+        f"faculty posting {len(own_keys_lo)} distinct content(s); its RED -- NO peer, this faculty "
+        f"behind its OWN retracted content at claim {red_claim} -- reaches access-without-focus "
+        f"with the head being its own"
     )
     print(
         f"   REDs: a 1-slot bus never separates them ({n_one_apart}/{len(diss_one)} apart); "
         f"head-only delivery keeps access {n_ho_access}/{len(diss_head_only)} and zeroes the index "
-        f"(max {idx_ho})"
+        f"(max {idx_ho}); the RETIRED rank key moves FOCUS on {red_focus_moved}/{len(diss_red_lo)} "
+        f"under the same rename"
     )
     print(
         "MEASURES ACCESS (global availability / ignition), NOT phenomenal experience "
@@ -1334,12 +1562,19 @@ def main():
     )
     # (7) the ignition test changed meaning without changing behaviour on the private path.
     assert priv_agree == len(priv_seen) and len(priv_seen) == 10, (
-        f"on a private bus 'slot non-empty' and 'the slot is MINE' must agree on every step: "
-        f"{priv_agree}/{len(priv_seen)}"
+        f"with ONE content in the competition, 'slot non-empty' and 'the slot is MINE' must agree "
+        f"on every step: {priv_agree}/{len(priv_seen)}"
+    )
+    assert own_disagree >= 1, (
+        f"...and TWO contents must break that, EVEN WHEN BOTH ARE THIS FACULTY'S OWN. A rotating "
+        f"bundle means the faculty competes with what it was asserting a moment ago, so the head "
+        f"can be its own retracted content while its current one holds a slot beneath. If this is "
+        f"0 the key has stopped rotating and `content_key`'s whole argument is dead: "
+        f"{own_disagree}/{len(own_keys)}"
     )
     assert sh_disagree >= 1, (
-        f"the two tests must actually COME APART on a shared bus, or the equivalence asserted "
-        f"above is vacuous and the winner-identity test is untested: {sh_disagree}/{len(sh_seen)}"
+        f"...and so must a louder PEER on a shared bus, or the equivalence asserted above is "
+        f"vacuous and the winner-identity test is untested: {sh_disagree}/{len(sh_own)}"
     )
     # (8) the other faculties on the shared bus decide this one's ACCESS -- with its own null and
     #     its own RED, both run.
@@ -1407,17 +1642,41 @@ def main():
         f"focus have re-collapsed and this module is back to reporting headship where it means "
         f"access: {n_access_only}/{len(diss_lo)} (raw {diss_lo[:3]})"
     )
+    assert len(own_keys_lo) == 1 and head_is_peer == n_access_only, (
+        f"...AND THE HEAD MUST BE THE PEER'S CONTENT (added 2026-08-06 by an adversarial re-run). "
+        f"'admitted and not the head' is equally true of a faculty out-ranked by its OWN retracted "
+        f"bundle with no peer in the workspace at all -- claim (7)'s middle arm measures exactly "
+        f"that at 1 of 10, and it is a fact about hysteresis, not a dissociation between access and "
+        f"focus. This arm avoids it only by re-posting ONE content, which was an unasserted "
+        f"property of the harness until now: {len(own_keys_lo)} distinct own key(s), head was the "
+        f"peer on {head_is_peer} of the {n_access_only} access-without-focus ticks"
+    )
+    assert red_claim is not None and red_head != red_mine, (
+        f"...and that conjunct must be reachable-red, so the forbidden state is CONSTRUCTED, SWEPT "
+        f"and RUN: with NO peer on the bus, this faculty asserting a fresh content behind its own "
+        f"still-charged retracted one is ADMITTED and NOT the head, and the head is its own. Found "
+        f"at claim {red_claim} (head {red_head!r} vs asserting {red_mine!r}). If this is None the "
+        f"conjunct is asserting something that was true anyway and P8 says DELETE it, not keep it"
+    )
     assert idx_access_only > 0.0 and idx_invariant == len(diss_lo), (
         f"an ACCESS index must not depend on holding the FOCUS -- losing the head to a louder peer "
         f"must leave it exactly where it was: unchanged on {idx_invariant}/{len(diss_lo)} ticks, "
         f"minimum {idx_access_only}"
     )
-    assert access_same == len(diss_lo) and focus_moved >= 1, (
-        f"THE STRING TEST, and it is the defect this claim exists to close. Renaming the peer "
-        f"{peer_lo!r} -> {peer_hi!r} changes nothing about any competition, so the ACCESS readout "
-        f"(flag, index, reach) must be identical on every tick -- got {access_same}/{len(diss_lo)}. "
-        f"FOCUS must move on at least one tick ({focus_moved}), or the rename is not a lever and "
-        f"the invariance above is vacuous"
+    assert access_same == len(diss_lo) and focus_moved == 0, (
+        f"THE STRING TEST, two-sided since 2026-08-06. Renaming the peer {peer_lo!r} -> {peer_hi!r} "
+        f"changes no claim, no content and no competition, so BOTH readouts must be identical on "
+        f"every tick: ACCESS (flag, index, reach) {access_same}/{len(diss_lo)}, FOCUS moved on "
+        f"{focus_moved}. This asserted `focus_moved >= 1` until the arbiter's rank key stopped "
+        f"falling through to the source name -- i.e. its green state REQUIRED a consciousness-"
+        f"relevant flag to be decided by a letter. Re-derived, not weakened (P8/F11)"
+    )
+    assert red_focus_moved >= 1, (
+        f"...and that criterion must be reachable-red, so the RETIRED RANK KEY is reconstructed on "
+        f"this same bus (`_name_ranked`, a one-method override -- same pools, same drives, same "
+        f"settle) and RUN: under `(-late, -total, k)` the identical rename must MOVE this faculty's "
+        f"FOCUS on at least one tick, or the name-blindness asserted above was true anyway and this "
+        f"claim is measuring nothing. Got {red_focus_moved}/{len(diss_red_lo)}"
     )
     assert n_one_apart == 0, (
         f"RED (i): on a ONE-slot workspace 'in the workspace' and 'is the head' are the SAME "

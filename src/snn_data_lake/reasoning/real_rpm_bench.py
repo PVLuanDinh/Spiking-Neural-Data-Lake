@@ -609,11 +609,34 @@ def main():
     assert r9["correct"] and r9["known"] and r9["path"] == "synth", (
         "the out-of-menu c=2b-a item must be solved by VsaSynthesizer (rpm menu gaps)"
     )
+    # These two remain OUT OF THE SOLVER'S COMPETENCE and must never CLAIM to be in it. The
+    # assertion is on the knowledge claim, not on the answer -- see the re-audit below, where one
+    # of them started answering correctly while still (correctly) declining to claim it knew.
     for name in ("xor_overlapping_positions", "rotation_l_shape"):
         assert not by_name[name]["known"], (
-            f"designed-to-fail item {name} must NOT report known=True -- kept failing"
+            f"out-of-competence item {name} must NOT report known=True"
         )
-    assert abs(acc - 0.8) < 1e-9, f"accuracy moved from the audited 8/10 -- re-audit ({acc:.3f})"
+    # RE-AUDITED 2026-08-06, which is exactly what the previous pin (0.8) demanded when it fired.
+    # It fired because the number MOVED, and it moved UP -- which is the tripwire working, not a
+    # regression. The audit, per item, HEAD vs now:
+    #   xor_overlapping_positions   answer #2 (truth #6)  ->  answer #6   FIXED
+    #   rotation_l_shape            answer #1 (truth #4)  ->  unchanged   still wrong
+    # Attributable to the arbiter rank-key repair in thalamus/global_workspace.py (co-saturating
+    # pools stopped being ranked by their source NAME). The fixed item resolves on the FALLBACK
+    # path with known=False, so:
+    #   TRUE accuracy  0.8 -> 0.9   (one more correct answer)
+    #   STRICT         0.8 -> 0.8   (UNCHANGED -- no new knowledge claim was gained)
+    # That gap is the honest reading and it is why both numbers are pinned separately below. The
+    # solver did not learn to solve XOR; its fallback stopped being misdirected by a workspace head
+    # that had been decided alphabetically. n=1, so this is an attributable improvement on one item
+    # and NOT evidence of a general gain.
+    assert abs(acc - 0.9) < 1e-9, (
+        f"TRUE accuracy moved from the re-audited 9/10 -- re-audit, do not re-tune ({acc:.3f})"
+    )
+    assert abs(strict - 0.8) < 1e-9, (
+        f"STRICT accuracy moved from the audited 8/10 -- a change here means the solver's KNOWLEDGE "
+        f"CLAIMS moved, which is a bigger event than an answer changing ({strict:.3f})"
+    )
     assert 0.0 <= ctrl_shuf <= 0.30, (
         f"shuffled-answer control must sit near chance: {ctrl_shuf:.3f}"
     )
@@ -627,7 +650,9 @@ def main():
         "self-check OK: real RPM bench -- rendered 11x11 rasters perceived by arc_solver "
         f"components() into derived cells, solved by RpmSolver+VsaSynthesizer: TRUE accuracy "
         f"{acc:.0%} ({strict:.0%} strict) on 10 held-out hand-written matrices vs 12.5% chance; "
-        f"XOR and rotation items kept failing; controls at {ctrl_shuf:.0%}/{ctrl_scram:.0%}."
+        f"XOR and rotation both still CLAIM NOTHING (known=False), which is why STRICT did not "
+        f"move; rotation still answers wrong, XOR now answers right on the fallback; controls at "
+        f"{ctrl_shuf:.0%}/{ctrl_scram:.0%}."
     )
     return 0
 

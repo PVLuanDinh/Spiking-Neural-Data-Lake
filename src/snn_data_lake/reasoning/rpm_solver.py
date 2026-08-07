@@ -674,57 +674,69 @@ def main():
     #     contamination the old criterion existed to catch is real, reachable, and was NOT what the
     #     old criterion was catching.
     #
-    # So the discriminating variable is OUR OWN PRESENCE IN THE WORKSPACE, and the four cases below
-    # drive it in both directions against a foreign content that is present in all four.
+    # So the discriminating variable is OUR OWN PRESENCE IN THE WORKSPACE, and the three cases below
+    # drive it in both directions against a foreign content that is present in all three.
     #
     # PER-CONJUNCT REACHABLE RED, mutated on a copy of this file and RUN rather than argued (P8
-    # burdens 1 and 3 -- which conjunct catches what, by mutation, not by the total going red):
+    # burdens 1 and 3 -- which conjunct catches what, by mutation, not by the total going red).
     #
-    # RE-DERIVED by running THIS `main()` on each mutant rather than a replica of it, so the table
-    # reports the shipped criterion and not a transcription of it:
+    # RE-DERIVED 2026-08-06 by running THIS `main()` on each mutant AFTER `thalamus/
+    # global_workspace.py::_rank_key` stopped falling through to the source name. FOUR rows of the
+    # previous table (M4, M7, M8, M10) do not reproduce, and an adversarial re-run corrected the
+    # ATTRIBUTION: the arbiter explains NONE of the four. Re-measured against the genuinely retired
+    # code -- the committed `global_workspace.py` at 4c71742a loaded and bound to these same mutants
+    # -- all four already read differently THERE. They were transcription errors in the old table,
+    # not consequences of the repair, and "the previous table was measured on the name-decided
+    # arbiter" is not a defence any of them needs. The `(ii)` column is dropped because the case
+    # itself was deleted (see its block); under the SHIPPED arbiter it read RED on every row
+    # INCLUDING the unmutated file.
     #
-    #     mutation of _solve's workspace read        (i)coex (ii)stale (iii)excl (iv)impostor
-    #     M1 shape-only match, no token               ok      RED       ok        RED
-    #     M2 head-identity read, token kept           RED     RED       ok        ok
-    #     M3 the retired form: head + shape           RED     RED       ok        RED
-    #     M4 untagged contents                        RED     RED       ok        RED
-    #     M5 claim only if the bus is EXCLUSIVELY     RED     RED       ok        ok
+    #     mutation of _solve's workspace read        (i)coex (iii)excl (iv)impostor
+    #     M1 shape-only match, no token               ok      ok        RED
+    #     M2 head-identity read, token kept           RED     ok        ok
+    #     M3 the retired form: head + shape           RED     ok        RED
+    #     M4 untagged contents                        ok      ok        RED
+    #     M5 claim only if the bus is EXCLUSIVELY     RED     ok        ok
     #        ours -- the LAZY FIX, single-slot
     #        exclusion re-imposed under the new
     #        arbiter
-    #     M6 step() called, its output DISCARDED,     ok      ok        RED       RED
+    #     M6 step() called, its output DISCARDED,     ok      RED       RED
     #        `known` from the rule match alone
-    #     M7 the RETIRED c2 DEFECT, in the only       ok      ok        RED       ok
-    #        shape that reaches a live path: the
-    #        private path is byte-identical and
-    #        ONLY the excluded case falls back to
-    #        the workspace head
-    #     M8 shape guard dropped from the read,       RED     ok        RED       RED
+    #     M7 the RETIRED c2 DEFECT, in the only       ok      RED       RED
+    #        shape that reaches a live path
+    #     M8 shape guard dropped from the read,       ok      ok        ok      <- EQUIVALENT
     #        token kept
-    #     M10 token present but CONSTANT              RED     RED       ok        ok
+    #     M10 token present but CONSTANT              ok      ok        RED
+    #     M11 `mine[-1]` instead of `mine[0]`         ok      ok        ok      <- EQUIVALENT
     #
-    # Every conjunct has a reachable red. Three readings are owed honestly rather than left for the
-    # next reader to find.
+    # Every surviving conjunct has a reachable red, and four readings are owed honestly rather than
+    # left for the next reader to find.
     #
     # (a) M5 is the mutation this whole pass exists to refuse -- it keeps the token AND the access
-    #     read and still throws away what the multi-slot arbiter bought, and ONLY (i) and (ii) see
-    #     it; a criterion built from (iii) and (iv) alone would have rubber-stamped it.
+    #     read and still throws away what the multi-slot arbiter bought. ONLY (i) sees it now, where
+    #     (i) and (ii) saw it before, so (i) went from redundant to uniquely load-bearing for it.
     # (b) M7 is why (iii)'s tenants are BARE INTS and is the correction this criterion needed most.
     #     As first written this case filled the capacity with `("percept", j)` TUPLES, and against
     #     that shape M7 -- which returns the live percept as the RPM answer whenever nothing of
     #     ours is admitted, i.e. verbatim the thing the RETIRED assert message forbade -- PASSED
-    #     ALL FOUR CASES. With the live shape it is RED on (iii) and on nothing else. So the row
-    #     that used to read "(iii) has no independent red, it is shared with (iv), and is NOT
-    #     credited as independently falsifiable" was not a property of the case; it was a symptom
-    #     of testing exclusion with a content shape the bus does not carry.
-    # (c) EXACTLY ONE case is uniquely load-bearing, and saying so is more useful than claiming all
-    #     four are. Deleting (iii) loses M7 outright; deleting any of (i), (ii) or (iv) loses no
-    #     mutant, because every mutant they catch is also caught elsewhere. They are kept for
-    #     per-conjunct ATTRIBUTION (P8 burden 3 -- which half of the read failed, not merely that
-    #     one did), which is a different job from adding a catch, and they are not credited as one.
-    #     Recorded rather than pruned: an equivalent mutant, reading `mine[-1]` instead of
-    #     `mine[0]`, is caught by nothing here and is not a gap -- `|mine|` is 1 on every reachable
-    #     input measured (private bus and shared bus alike), so the two forms are the same program.
+    #     ALL FOUR CASES. With the live shape it is RED on (iii).
+    # (c) TWO cases are now uniquely load-bearing rather than one, and that is a consequence of the
+    #     arbiter repair rather than of anything done here: deleting (i) loses M2 and M5, deleting
+    #     (iv) loses M1, M4 and M10, and deleting (iii) loses nothing that (iv) does not also catch.
+    #     (iii) is KEPT anyway, for per-conjunct ATTRIBUTION (P8 burden 3 -- which half of the read
+    #     failed, not merely that one did) and because it is the only case that drives the exclusion
+    #     branch at all; it is not credited as adding a catch.
+    # (d) M8 AND M11 ARE EQUIVALENT MUTANTS, not gaps. `M8` drops `len(c) == 3` while keeping
+    #     `c[:2] == (_ANSWER, tag)`, so it differs only on a 2-tuple wearing this solve's own token,
+    #     which nothing posts; `M11` reads `mine[-1]`, and `|mine|` is 1 on every reachable input
+    #     (private bus and shared bus alike). Both are the same program as the shipped read, and the
+    #     equivalence is ARBITER-INDEPENDENT: run against the committed retired code they are green
+    #     on all four cases there too, case (ii) included. An earlier version of this note said each
+    #     "was caught by case (ii) under the retired arbiter" and that NO mutant's sole red was
+    #     anything else; both are false. Under the retired arbiter (ii)'s reds were M1, M2, M3, M4,
+    #     M5 and M10, every one of which ALSO reddened another case -- so no mutant ever had (ii) as
+    #     its sole red, and M8/M11 had no red at all. The conclusion below is unaffected and is the
+    #     one that was actually checked; the reasoning offered for it was not.
     shared = GlobalWorkspace(seed=0)
     ctx_s, cand_s, idx_s, _a = _build_task("progression", random.Random(7))
     shared_solver = RpmSolver(seed=0, workspace=shared)
@@ -763,28 +775,48 @@ def main():
         and coexist == private_same  # ... and it cost us nothing, `known` included
     )
 
-    # (ii) IMPERSONATION UNDER A FOREIGN HEAD, WITH NO ADVERSARY AT ALL -- two ordinary solves on
-    #      one bus. The previous matrix's winner is still holding charge, wears the identical
-    #      content SHAPE, and RANKS ABOVE this matrix's candidate. Shape alone cannot tell it from
-    #      one of ours and the ranked HEAD is not ours, so this single case is the reachable red
-    #      for both halves of the read: a head-identity read reports a false gap here, and a
-    #      shape-only match returns the PREVIOUS matrix's answer as this one's.
+    # (ii) DELETED 2026-08-06 UNDER F11 -- "a criterion with no reachable red is deleted, not
+    #      weakened." It read: two ordinary consecutive solves on one bus, the PREVIOUS matrix's
+    #      winner still charged and wearing the identical content shape, RANKING ABOVE this
+    #      matrix's candidate, and it asserted `ws_seq.broadcast() == stale` as its own non-vacuity
+    #      check. That precondition was manufactured by `thalamus/global_workspace.py`'s rank key
+    #      falling through to the SOURCE STRING: measured on the exact configuration this case
+    #      built, the stale pool held the head on `_g` 0.850000 / final membrane 0.613777 against
+    #      this solve's own candidate at 1.000000 / 0.916325 -- IDENTICAL MEMBRANES UNDER BOTH
+    #      ARBITERS, only the order differing, because 'c0' sorts before 'c3'.
     #
-    #      The head assertion is the case's non-vacuity check, not decoration: if our own candidate
-    #      took the head, a head-identity read would pass too and the case would prove nothing.
+    #      Three measurements, and each was run:
+    #
+    #      1. THE PRECONDITION IS UNREACHABLE, not merely unmet. Swept all 2,304 ordinary
+    #         two-solve configurations (4 regimes x 12 seeds, squared, keeping the pairs whose
+    #         answers differ): the stale answer holds the head on ZERO of them under a name-blind
+    #         arbiter. The fresher candidate out-drives its own decayed predecessor by construction
+    #         -- `_defended` withholds the tenancy subsidy from the superseded content and it
+    #         decays at `decay` -- so there is no pair of ordinary solves that reaches the state
+    #         this case is about.
+    #      2. UNDER THE SHIPPED ARBITER IT HAS NO GREEN STATE: re-running this `main()` against ten
+    #         mutants of `_solve`'s workspace read, case (ii) is RED on the correct code AND on all
+    #         ten. A column that is red everywhere discriminates nothing. STATED PRECISELY, because
+    #         an earlier version of this line read "AS IT STOOD IT HAD NO GREEN STATE AT ALL" and
+    #         that is not what was measured: run against the genuinely retired code, case (ii) was
+    #         GREEN on the correct file and RED on six of the ten (M1, M2, M3, M4, M5, M10). It was
+    #         a working criterion on the arbiter it was written for. What the repair removed is its
+    #         PRECONDITION, and a criterion whose precondition became unreachable is a criterion
+    #         with no green state FROM NOW ON -- which is the F11 case, and it is a smaller and
+    #         truer claim than "it never worked".
+    #      3. DELETING IT LOSES NO MUTANT, and this is the conjunct that had to be checked rather
+    #         than argued, because (2) alone would permit losing every catch (ii) used to have.
+    #         Run: all six mutants (ii) reddened under the retired arbiter are reddened under the
+    #         shipped one by a SURVIVING case -- M1 by (iv), M2 by (i), M3 by (i) and (iv), M4 by
+    #         (iv), M5 by (i), M10 by (iv). The re-run table is below; M8 and M11 are EQUIVALENT
+    #         PROGRAMS on every reachable input and were never caught by anything, (ii) included.
+    #
+    #      The PROPERTY it named is not gone and is not orphaned: "a foreign content must not
+    #      become this solve's answer" is asserted by (i) for a co-admitted foreign content and by
+    #      (iv) for a content wearing this solver's OWN namespace with a DIFFERENT question token,
+    #      which is exactly a previous matrix's answer. What is gone is a precondition the arbiter
+    #      can no longer produce.
     ctx_o, cand_o, idx_o, _a = _build_task("distribute3", random.Random(5))
-    ws_seq = GlobalWorkspace(seed=0)
-    seq_solver = RpmSolver(seed=0, workspace=ws_seq)
-    first = seq_solver.solve(ctx_o, cand_o)
-    stale = (_ANSWER, _solve_tag(ctx_o, cand_o), first["answer_idx"])
-    second = seq_solver.solve(ctx_s, cand_s)
-    stale_ok = (
-        idx_o != idx_s  # the two matrices disagree, so inheriting is DETECTABLE
-        and first["answer_idx"] == idx_o
-        and ws_seq.broadcast() == stale  # the previous answer is the HEAD this solve reads past
-        and ours in ws_seq.broadcast_all()  # ours won access beneath it
-        and second == private_same  # ... and the stale head changed nothing
-    )
 
     # (iii) EXCLUSION -- the honest gap, now forced by the mechanism that actually forces it. The
     #       capacity is FULL of foreign contents, so no candidate of ours is admitted. With nothing
@@ -840,12 +872,12 @@ def main():
         and not impersonated["known"]  # and nothing may be claimed as known
     )
 
-    collide_ok = coexist_ok and stale_ok and exclude_ok and impostor_ok
+    collide_ok = coexist_ok and exclude_ok and impostor_ok
     print(
         "  [%s] shared bus    -> adopted=%s; empty bus reproduces the private answer #%d; a "
-        "foreign percept %r co-resident leaves known=%s answer #%d; a previous matrix's answer #%d "
-        "holding the HEAD leaves this one at #%d known=%s; capacity full of foreign -> known=%s; a "
-        "look-alike naming #%d with nothing of ours admitted -> known=%s"
+        "foreign percept %r co-resident leaves known=%s answer #%d; capacity full of foreign -> "
+        "known=%s; a look-alike wearing our namespace and naming #%d with nothing of ours admitted "
+        "-> known=%s"
         % (
             "PASS" if (adopt_ok and collide_ok) else "FAIL",
             adopt_ok,
@@ -853,9 +885,6 @@ def main():
             foreign,
             coexist["known"],
             coexist["answer_idx"],
-            first["answer_idx"],
-            second["answer_idx"],
-            second["known"],
             excluded["known"],
             impostor[2],
             impersonated["known"],
@@ -884,18 +913,18 @@ def main():
     )
     assert collide_ok, (
         "this solver's answer and its `known` flag must be produced by ITS OWN candidate winning "
-        "access on THIS solve, never by a foreign content sharing the bus. Four cases, and the "
+        "access on THIS solve, never by a foreign content sharing the bus. Three cases, and the "
         "message names the condition each one actually drives, because the retired single-slot "
         "form named conditions that could not fail: (i) co-existence -- a percept-shaped int holds "
         "the HEAD on a bus we have never posted to and our candidate wins a slot beneath it, which "
-        "must not turn our won access into a gap; (ii) impersonation -- a previous matrix's "
-        "answer, still charged and identically shaped, must not become this matrix's answer; "
-        "(iii) exclusion -- with the capacity full of live-shaped percepts and nothing of ours "
-        "admitted, the answer must be the private one and `known` must be False; (iv) "
-        "impersonation UNDER exclusion -- a foreign content shaped like our candidate and naming "
-        "our own index must not produce `known`, nor the answer, while nothing of ours is in the "
-        "workspace. coexist=%s stale=%s exclude=%s impostor=%s"
-        % (coexist_ok, stale_ok, exclude_ok, impostor_ok)
+        "must not turn our won access into a gap; (iii) exclusion -- with the capacity full of "
+        "live-shaped percepts and nothing of ours admitted, the answer must be the private one and "
+        "`known` must be False; (iv) impersonation UNDER exclusion -- a foreign content wearing "
+        "this solver's namespace with a DIFFERENT question token, naming our own index, must not "
+        "produce `known` nor the answer while nothing of ours is in the workspace. A fourth case "
+        "(ii) was DELETED under F11 -- see its block for the 2,304-configuration sweep showing its "
+        "precondition unreachable and the mutation table showing the deletion loses no mutant. "
+        "coexist=%s exclude=%s impostor=%s" % (coexist_ok, exclude_ok, impostor_ok)
     )
 
     print("=" * 78)

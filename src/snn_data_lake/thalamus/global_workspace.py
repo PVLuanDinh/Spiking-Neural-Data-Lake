@@ -125,11 +125,12 @@ and NAMES THE CONTENT SUBMITTED THIS TICK on 56 of 56 posting ticks (holding the
 19 of 56.
 
 NOTHING PUBLISHED BY THIS MODULE MOVED, re-run rather than argued: winning a SLOT is still a flat
-[0.72, 0.72, 0.72, 0.72, 0.72] and becoming the HEAD still [0.72, 0.825, 0.825, 0.825, 0.825] across
-the same five tenant claims; a 40-content flood still admits 4; a silent source still holds 7 ticks
-then releases; churn is still 9 against the argmax control's 54. Every one of those harnesses has
-its tenant RE-POSTING THE SAME CONTENT, which is the branch this change leaves untouched -- that is
-why they are unchanged, and it is the reason the change is safe rather than a coincidence.
+[0.72, 0.72, 0.72, 0.72, 0.72] across the same five tenant claims; a 40-content flood still admits 4;
+a silent source still holds 7 ticks then releases; churn is still 9 against the argmax control's 54.
+Every one of those harnesses has its tenant RE-POSTING THE SAME CONTENT, which is the branch this
+change leaves untouched -- that is why they are unchanged, and it is the reason the change is safe
+rather than a coincidence. (The HEAD row read [0.72, 0.825 x4] here and moved to [0.805, 0.835,
+0.910, 0.955, None] when the rank key was repaired below; it was not `_defended` that moved it.)
 
 WHAT IT COSTS, disclosed rather than found later. The workspace no longer damps a source's own
 content changes -- it damps competition BETWEEN sources, which is what `count_churn` measures and
@@ -146,38 +147,36 @@ content this stream had already retracted; given an 8-tick budget instead, the s
 thoughts against 7. (CORRECTED 2026-08-06 by an adversarial re-run -- this read "managed 6", which
 is neither the same-budget figure nor the same-chain figure.)
 
-THE RANK TIE-BREAK: MEASURED IN FULL, REPAIR FOUND, AND NOT SHIPPED. Every number below was RUN.
-`(-late[k], -total[k], k)` falls through to the source string when two pools tie on both spike
+THE RANK TIE-BREAK: THE NAME IS OUT OF THE ARBITER (SHIPPED 2026-08-06). Every number was RUN.
+`(-late[k], -total[k], k)` fell through to the source string when two pools tied on both spike
 counts. The census is re-derived rather than quoted -- exhaustive two-producer grid, warmups
 {0,1,2,3} x 51 x 51 salience pairs on a 0.01 grid over [0.50, 1.00], scoring the tick AFTER the
-warmup: 3,576 co-admissions of which 1,941 -- 54.3% -- are settled lexicographically. `_defended`
-did not move this census at all, because it changes which pools are subsidised and not how ties
+warmup: 3,576 co-admissions of which 1,941 -- 54.28% -- were settled lexicographically. `_defended`
+did not move that census at all, because it changes which pools are subsidised and not how ties
 among them are broken.
 
-IT IS NOT CONFINED TO THE HEAD, and that is the half every prior pass of this header got wrong.
+IT WAS NOT CONFINED TO THE HEAD, and that is the half every prior pass of this header got wrong.
 `step()` admits `fired[:cap]`, and `_defended` then grants every ADMITTED occupant `self_boost +
 hysteresis` on the NEXT tick -- so whatever settles the rank on tick t settles who is SUBSIDISED on
 tick t+1, and a subsidised pool silences an unsubsidised one through the shared inhibition. The
-string therefore decides ACCESS, not merely order. MEASURED, and the construction is spelled out
+string therefore decided ACCESS, not merely order. MEASURED, and the construction is spelled out
 because the METRIC has a trap in it: six co-saturating producers into a capacity of 4 over 20
 ticks, arm A naming them in loudness order and arm B in reverse, comparing the set of admitted
 CLAIMS -- never the set of admitted NAMES, which differs between the arms whatever the arbiter does
-and so reports a finding that is not there. Swept over 21 top claims x 7 spacings, keeping the 123
-loads whose weakest claim stays >= 0.55:
+and so reports a finding that is not there. Swept over 21 top claims x 7 spacings, keeping the 96
+loads whose weakest claim stays >= 0.55 (COUNTS ARE PROPERTIES OF THE GRID, the phenomenon is the
+finding -- a prior pass quoted 123/24/13 off a different grid and it is not re-derivable from this
+one):
 
-    loads where the NAME changes the admitted CLAIM set   SHIPPED   -`_g`   -`_last_v`
-    all 123                                                  24        0         0
-    of those fully compliant (top claim <= 0.75)             13        0         0
-    control: the same six producers spread at 0.04            0        0         0
+    loads where the NAME changes the admitted CLAIM set   retired   -`_g`   -`_last_v` (SHIPPED)
+    all 96                                                  15        0         0
+    of those fully compliant (top claim <= 0.75)            15        0         0
+    control: the same six producers spread at 0.04           0        0         0
 
-At top 0.650 / spacing 0.005 -- every claim compliant -- the LOUDEST producer holds a slot on 20 of
-20 ticks under one naming and 0 of 20 under the other, having changed nothing but its name. This is
-the entrenchment shape `_defended` closed for retracted content, one level up, the alphabet
-choosing who is subsidised. (CORRECTED 2026-08-06 by an adversarial re-run: this block first
-carried a two-row table of name TUPLES and the counts "28 loads / SEVEN compliant" with no grid
-stated. The phenomenon reproduces and is the finding; those counts do not, because they are
-properties of a sweep grid rather than of the arbiter, and a name-tuple comparison cannot tell the
-finding apart from the rename itself.)
+At top 0.650 / spacing 0.005 -- every claim compliant -- the LOUDEST producer held a slot on 20 of
+20 ticks under one naming and 0 of 20 under the other, having changed nothing but its name. That
+was the entrenchment shape `_defended` closed for retracted content, one level up, the alphabet
+choosing who is subsidised. It is 0 of 96 under the shipped key.
 
 THE PRECONDITION, stated so the finding is not overstated: it needs MORE co-saturating pools than
 slots -- at least `capacity + 1` producers whose claims sit within roughly 0.005..0.02 of each
@@ -214,76 +213,97 @@ counted on the same 3,576-pair grid.
       "the head went to the pool with the higher `drives`", stated because an earlier scoring
       counted the 176 EXACTLY-EQUAL-claim configs as MISSES, where neither pool out-drives the other
       and the half has no content to test:
-        -`_g[k]`      (attractor charge) 1,941 -> 176 name-flips (4.9%), out-drive-head 75.2% ->
-                      100%, ACCESS arm 24 -> 0 loads. PARTIAL: a previous version of this header
-                      called it "the repair", and it is not -- `_g` still ties on 9.1% of the tied
-                      set (176 of 1,941), and those 176 are exactly the equal-claim configs. It
-                      leaves this module's head-capture TABLE byte-identical; it does NOT leave the
-                      module's figures byte-identical, and the earlier wording generalised a true
-                      narrow claim into a false broad one -- the 48-tick head trace moves and "the
-                      HEAD changed on 17 ticks" becomes 14.
-        -`_last_v[k]` (final membrane) 1,941 -> 0 name-flips, out-drive-head 100%, ACCESS arm 0.
-                      Already stored, already policed by the determinism check, and the right
-                      quantity on the physics: a pool firing every micro-step settles to a residual
-                      of `2 * (cur - v_th)` after the subtract-threshold reset, so the membrane
-                      carries LINEARLY the drive excess that the clipped integer count discards.
+        -`_g[k]`      (attractor charge) 1,941 -> 176 name-flips (4.92%), out-drive-head
+                      2,514/3,400 (73.9%) -> 3,400/3,400 (100%), ACCESS arm 15 -> 0 loads.
+                      PARTIAL, and it is the LOSER: `_g` still ties on 9.1% of the tied set
+                      (176 of 1,941, separating 1,765), and those 176 are exactly the equal-claim
+                      configs.
+        -`_last_v[k]` (final membrane) 1,941 -> 0 name-flips, separates 1,941 of 1,941,
+                      out-drive-head 100%, ACCESS arm 0. THIS IS THE SHIPPED KEY.
       Ranking on the raw drive scores identically (0 name-flips / 100%) and is REJECTED: `drives` is
       the INPUT to the competition and carries `_jitter_for`, so it never ties because the
       SYMMETRY-BREAK NOISE never ties. That swaps one arbitrary tie-break for another and stops the
       settle deciding anything. `_last_v` is the network's OUTPUT, after the inhibition and the
-      self-excitation have run -- BUT ONLY PARTLY, and the limit is measured rather than argued:
-      two pools claiming exactly 0.70 settle to membranes 3.46e-03 apart with the jitter live and
-      EXACTLY 0.0 apart under `_JITTER = 0`. So on the 176 equal-claim configs `-_last_v` is the
-      same symmetry-break noise laundered through the LIF, and its "never ties" is inherited rather
-      than earned. It beats `-drives` on the other 3,400, where the claims genuinely differ and the
-      settle has something to amplify -- which is the whole of the case for it.
+      self-excitation have run.
 
-WHAT THE REPAIR WOULD COST, which is why it is recorded here instead of shipped. The tick cost is
-nil (0.1340 -> 0.1321 ms per 5-pool step -- one dict lookup inside a sort key), determinism holds (1
-digest over 24 same-seed runs hashing the membrane FLOATS), and the live brain is BYTE-IDENTICAL:
-`thought` 4 distinct values / 55 changes / names the submitted percept on 56 of 56 posting ticks
-under both arbiters, on `make_brain(seed=0, refit_every=10, persist=False)` with `clock.phase =
-0.25` over 120 ticks, `_access_state` and `_access_ema` (0.488958) identical to 6 dp. (A bare
-"crc32 eb70d8f5" stood here until 2026-08-06 and was REMOVED rather than re-quoted: it never said
-what had been hashed, so it could not be re-derived, and an unre-derivable digest is decoration.)
-Slot winnability stays [0.72 x5], the capacity still binds (40
-at 0.70 -> 4), the silent-source hold still releases after 7, `_defended` is untouched. THREE things
-do move, and all three are recorded with the exact assert that fires:
+WHY `-_g` LOST, weighed rather than asserted, because its case is real and it is the one direction
+that leaves this module's own head table alone. Three measurements decided it:
 
-  1. `cortex/access_consciousness.py` claim (10): `focus_moved >= 1` goes to 0. Its FOCUS lever IS a
-     peer rename, so its green state REQUIRES the head to be name-decided and there is no arbiter
-     that is both correct and green on it. Its ACCESS half is untouched (`access_same` 12 of 12
-     under both), and claim (8) reads identically under both. Re-derive (10) onto the peer VOLUME
-     lever it already runs in its own quiet-peer arm.
-  2. `reasoning/rpm_solver.py` `collide_ok` case (ii): `ws_seq.broadcast() == stale` goes False.
-     THIS BLOCKER WAS NOT PREVIOUSLY RECORDED. The precondition -- "the previous matrix's answer
-     holds the HEAD" -- is itself manufactured by the string compare: measured, the stale pool holds
-     the head on `_g` 0.850000 and membrane 0.613777 against this solve's own candidate at 1.000000
-     and 0.904735, purely because source 'c0' sorts before 'c7'. Under the repair the fresher pool
-     correctly takes the head and the case's own non-vacuity check fails. Its LOAD-BEARING half is
-     unchanged (answer #7, known=True under both), so this is a precondition to reconstruct, not a
-     behaviour to restore.
+  * `-_g` IS A STRICT SUBSET OF `-_last_v`, not an alternative to it. Under `_JITTER = 0` the two
+    produce the IDENTICAL flip SET -- 184 configs each of 3,160 co-admissions, compared as sets and
+    equal, not merely equal in count. So there is no input on which `-_g` separates a pair
+    `-_last_v` does not, and choosing `-_g` can never buy discrimination `-_last_v` lacks. What
+    `-_last_v` adds on top is exactly the jitter-amplified 176.
+  * `-_last_v` IS THE MORE STABLE FOCUS, on this module's own 48-tick stream: HEAD switches
+    17 (retired) -> 14 (`-_g`) -> 10 (`-_last_v`), with churn 9, retention 47/47, the 40-content
+    flood admitting 4 and the silent-source hold releasing after 7 IDENTICAL across all three. Head
+    hysteresis is the property this module exists to have over the flickering argmax control, and
+    `-_g` gives the rank away to whichever pool currently holds the most charge regardless of
+    tenancy.
+  * IT DOES NOT BUY A CHEAPER MIGRATION. Run against every consumer self-check in the tree, `-_g`
+    and `-_last_v` redden the SAME TWO criteria and nothing else, so the "leaves the head table
+    byte-identical" credit does not translate into one fewer file to re-derive.
+
+WHAT IT RESTS ON, disclosed rather than found later: 9.1% OF THE SEPARATION IS JITTER, NOT PHYSICS.
+Two pools claiming exactly 0.70 settle to membranes 3.458698e-03 apart with the jitter live and
+EXACTLY 0.0 apart under `_JITTER = 0` -- the same figure at 0.60 and 0.80, so it is the jitter draw
+and not the claim. On the 176 equal-claim configs `-_last_v` is therefore the symmetry-break noise
+laundered through the LIF, and its "never ties" is inherited there rather than earned. Its case
+rests on the other 1,765 of 1,941, where the claims genuinely differ and the settle has something to
+amplify. That is a WEAKER objection than the one that kills `-drives`, and the difference is
+measurable rather than rhetorical: `-drives` puts the jitter AHEAD of the settle, so it never ties on
+ANY of the 3,576 and the network decides nothing; `-_last_v` puts it after, so the settle decides
+90.9% of the tied set on its own and the noise surfaces only where there is no fact of the matter --
+two pools asserting the identical claim, which neither key can rank on merit because neither
+out-drives the other.
+
+WHAT THE REPAIR COSTS. The tick cost is one dict lookup inside a sort key. Determinism holds. The
+live brain is BYTE-IDENTICAL on `thought` and `_access_ema`; see the live block below for the
+numbers and for the honest reading of that (it is worth ZERO on today's bus, because occupancy there
+is 1 of 4). Slot winnability stays a flat [0.72 x5], the capacity still binds (40 at 0.90 -> 4), the
+silent-source hold still releases after 7, `_defended` is untouched. THREE things moved:
+
+  1. `cortex/access_consciousness.py` claim (10): `focus_moved >= 1` went to 0. Its FOCUS lever WAS
+     a peer rename, so its green state REQUIRED the head to be name-decided and no arbiter is both
+     correct and green on it. RE-DERIVED at the claim onto the peer VOLUME lever -- the property is
+     real, the proxy was pathology-shaped. Its ACCESS half was untouched (`access_same` 12 of 12
+     under both keys) and claim (8) reads identically under both.
+  2. `reasoning/rpm_solver.py` `collide_ok` case (ii): `ws_seq.broadcast() == stale` went False. The
+     precondition -- "the previous matrix's answer holds the HEAD" -- was itself manufactured by the
+     string compare: measured, the stale pool held the head on `_g` 0.850000 / membrane 0.613777
+     against this solve's own candidate at 1.000000 / 0.916325, purely because source 'c0' sorts
+     before 'c3'. Under this key the fresher pool correctly takes the head. The case was DELETED at
+     the claim under F11 -- not re-derived -- because its precondition is UNREACHABLE (0 of the 1,856
+     answer-differing two-solve configurations on a 4-regime x 12-seed grid squared); its
+     LOAD-BEARING half (answer #3, known=True) is unchanged under both keys.
+     (CORRECTED 2026-08-06 by an adversarial re-run. This item read "'c7'", "0.904735", "answer #7"
+     and "RE-DERIVED". None of the three numbers reproduces, all three contradicted `rpm_solver.py`'s
+     own block inside the same change, and the disposition was the wrong one -- which is exactly the
+     unre-derivable-figure failure this header removed a bare crc32 for two paragraphs above.)
   3. THIS MODULE'S OWN head-capture table, [0.72, 0.825, 0.825, 0.825, 0.825] -> [0.805, 0.835,
      0.910, 0.955, None]. That is not a regression the repair introduces; it is the repair
-     WITHDRAWING a credit this header was taking for the alphabet. The flat 0.825 is the challenger
-     'chal' sorting before the tenant 't0'. Once the head is dynamic, becoming the FOCUS costs what
-     out-driving a defended tenant actually costs, and against a tenant at the band ceiling (drive
-     1.00) it is impossible -- LIMIT 3's ceiling, one level deeper. The self-check cannot see this:
-     it asserts only `any(h is None or h > band_hi)`, which BOTH tables satisfy, so that table is
-     printed evidence and only weakly asserted.
-
-NOT SHIPPED, deliberately and not silently. The repair buys nothing measurable on any bus that
-exists today -- live occupancy is 1 of 4 and `thought` is byte-identical -- and it reddens two
-self-checks in files this pass does not own, one of them under a concurrent lane. Both of those
-criteria have their green state only on the defect, which P8 answers by DELETING and re-deriving
-them, never by loosening a bound; doing that is work for their owners. What is NOT yet measured, and
-is the honest gap in this block: whether any repair exists that leaves the head-capture table where
-it is, since item 3 above is a consequence of correctness rather than of the particular key chosen.
+     WITHDRAWING a credit this header was taking for the alphabet. The flat 0.825 was the challenger
+     'chal' sorting before the tenant 't0'. See LIMIT 3 for why the new row is defended rather than
+     apologised for, and for the criterion that now pins it (a RENAME must not move the sweep --
+     which the retired key fails, run as the red).
 
 =====================================================================================================
 WHAT THIS BUYS ON THE LIVE BRAIN, AND WHAT IT DOES NOT. Measured, 2026-08-06, on the canonical
 `LiveBrain` composition -- 60 wake ticks, `.venv-lake`.
 =====================================================================================================
+THE 2026-08-06 RANK REPAIR IS WORTH EXACTLY ZERO HERE, and it is measured rather than assumed. On
+`make_brain(seed=0, refit_every=10, persist=False)` with `clock.phase = 0.25` over 120 ticks (56
+awake), the live brain is BYTE-IDENTICAL under the retired key and the shipped one: `thought` crc32
+0f0938d6, 4 distinct values, 55 changes, naming the submitted percept on 56 of 56 posting ticks;
+`_access_state["ignited"]` identical; `_access_ema` 0.488958 to 6 dp under both. Re-run in BOTH
+`cortex/access_consciousness.py` content-key regimes (frozen and rotating) so the null is not an
+artefact of the other change landing in the same pass -- 0.488958/0.488958 frozen, 0.287282/0.287282
+rotating, the rank key moving nothing in either. THE REASON IS OCCUPANCY: 1 of 4 on 56 of 56 ticks,
+so no tick ranks two contents and there is nothing for a rank key to decide. What the repair buys is
+that a name-decided ACCESS path is gone and the dissociation is reachable from the consumer side; it
+is not that today's broadcast changed. (A prior pass's figure for `_access_ema` on this run was
+quoted as 0.492479 in one place and 0.488958 in another. Re-measured: 0.488958.)
+
 WITH THE TREE AS IT STANDS: NOTHING, and that is the honest result. The arm bus has exactly ONE
 admissible producer. Spied over 60 live ticks, `perception` posts in [0.55, 0.65] every tick and
 `salience`/threat posts a structural 0.000000 every tick (the amygdala is never paired on the wake
@@ -345,26 +365,76 @@ different question from access. Swept the same way as the winnability table abov
 
     tenant claim      0.550   0.5797   0.6573   0.700   0.750     compliant ceiling 0.75
     win a SLOT at     0.720    0.720    0.720   0.720   0.720     <- inside the band, every tenant
-    become HEAD at    0.720    0.825    0.825   0.825   0.825     <- ABOVE the band from 0.5797 up
-    (retired arbiter) 0.735    0.735    0.895   0.950   0.955     <- slot and head were one thing
+    become HEAD at    0.805    0.835    0.910   0.955    None     <- ABOVE the band at every point
+    1-slot control    0.805    0.835    0.910   0.955    None     <- slot and head are one thing
+    (name-decided)    0.720    0.825    0.825   0.825   0.825     <- what the alphabet was paying
 
-So a compliant specialist can always get ACCESS and cannot always become the FOCUS. Two things
-follow and both are honest rather than convenient. The head row LOOKS like an improvement too
-(0.895-0.955 down to a flat 0.825, flat instead of compounding with the tenant's claim) -- but that
-credit is WITHDRAWN as of 2026-08-06 and the reason is measured, not argued: the flat 0.825 is the
-challenger source 'chal' sorting before the tenant 't0' at the rank line, not the challenger
-out-driving it. On a name-blind arbiter the same sweep reads [0.805, 0.835, 0.910, 0.955, None] --
-AT OR ABOVE the retired arbiter's head row [0.735, 0.735, 0.895, 0.950, 0.955] at every one of the
-five points, so the multi-slot head is not cheaper than the one it replaced once the alphabet stops
-paying for it. See the tie-break block above; the number to quote about the head is that it is
-currently decided by a string. It is
-still outside the band, so `broadcast()` alone remains a poor place to look for faculty-to-faculty
-influence -- `broadcast_all()` is where the change lives, and since 2026-08-06 so does the
-SUBSCRIBE channel (see the delivery section below; a consumer no longer has to reach for a second
-accessor to ask whether it got in). It is also arguably the CORRECT behaviour
-rather than residual defect: a focus that flips whenever a marginally louder specialist posts is
-the flickering argmax control this module exists to beat. Recorded as a limit and not defended as a
-feature, because the next reader will otherwise assume "winnable" covered both.
+READ THE THIRD ROW CAREFULLY, because it is a re-derivation and not a drift. `_SingleSlotControl`
+reconstructs the RETIRED CAPACITY as a configuration of THIS arbiter, so it now carries the repaired
+rank key too and its numbers moved with it: run on THIS sweep the genuinely retired CODE measures
+[0.735, 0.735, 0.895, 0.950, 0.955]. (The [0.734, 0.734, 0.892, 0.948, 0.952] at the top of this
+header is a DIFFERENT grid -- step 0.002, incumbent claims 0.550/0.600/0.667/0.700/0.750, warmed 5 --
+and is kept as the historical record of the deleted mechanism, not as this sweep's control. Quoting
+it here as though it were was corrected 2026-08-06; the same-grid figure above is re-derivable by
+checking out the retired file and running its own `_lowest_win`.) The row above is the one-variable
+control -- capacity 1, everything else
+shipped -- and it is now IDENTICAL to the multi-slot HEAD row at all five points. That is the honest
+statement of what multi-slot bought and it is narrower than this header used to imply: THE GAIN IS
+ENTIRELY IN ACCESS (a flat 0.72 against 0.805..None), and NOT ONE POINT OF IT IS IN FOCUS. The
+apparent focus gain was the alphabet.
+
+So a compliant specialist can always get ACCESS and can never become the FOCUS by volume. THE HEAD
+ROW IS AT OR ABOVE THE RETIRED SINGLE-SLOT ROW AT ALL FIVE POINTS, and the `None` at the ceiling
+means a tenant claiming the maximum a compliant specialist may claim cannot be out-ranked by
+ANYTHING up to 1.00. That is disclosed and DEFENDED rather than apologised for, on four measured
+grounds:
+
+  1. It is not a cost the repair introduced; it is a credit this header was TAKING for the alphabet.
+     The flat 0.825 row is the challenger source 'chal' sorting before the tenant 't0' at the rank
+     line, and it is printed above so the withdrawal is visible rather than quietly absent.
+  2. THE SLOT ROW DID NOT MOVE. What this workspace asserts, in `win_new` below, is that a compliant
+     specialist wins ACCESS against every compliant tenant -- a flat [0.72 x5], unchanged. Being
+     admitted is being broadcast to every subscriber and being visible in `broadcast_all()`; the
+     head is one further question. Making the FOCUS cheap is not what a bottleneck is for.
+  3. THE FOCUS IS MEASURABLY MORE STABLE FOR IT: head switches on this module's 48-tick stream go
+     17 -> 10, with churn, retention, the flood and the silent-source hold all unchanged. A focus
+     that flips whenever a marginally louder specialist posts is the flickering argmax control this
+     module exists to beat.
+  4. NOTHING SAFETY-SHAPED IN THE TREE READS THE HEAD THROUGH THIS ROW, checked rather than assumed:
+     the 0.95 proximity threat still ignites and still takes the head on the live contract, on the
+     stream's threat burst (which now holds the head 7 ticks rather than 5), and on
+     `access_consciousness` claim (9)'s displaceability criterion -- all three run green.
+
+WHAT THE `None` IS NOT, and this qualifies ground 1 rather than replacing it (added 2026-08-06 by an
+adversarial re-derivation of this row). It is NOT a structural ceiling. At the band ceiling the
+tenant is DEFENDED, so its drive is `0.75 + 0.25 + jitter` and a challenger at the `_g` clamp of 1.00
+has `1.00 + 0 + jitter`: the two are equal to within ONE JITTER DRAW. Measured at seed 0, tenant
+1.016888 against challenger 1.015159 -- a margin of 1.7e-03 -- and the membranes 0.913777 against
+0.910318, which is the same 3.46e-03 gap (c1b) reports at exactly-equal claims, because it IS that
+gap. So the last cell of this row is decided by the jitter, not by the physics, and the honest
+statement is that the shipped key declines to hand the tie to the ALPHABET rather than that the
+tenant genuinely out-drives. Swept over 12 seeds the cell is `None` on 6 and a finite 0.990..1.000 on
+the other 6, and the sign of `jit(tenant) - jit(challenger)` predicts which on 12 of 12. Two things
+follow and both are load-bearing for a reader: (a) "cannot be out-ranked by ANYTHING up to 1.00" is a
+seed-0 fact about this harness, not a property of the arbiter -- the other four cells of the row are
+genuine and move only +-0.015 across those seeds, and the SLOT row is 0.715..0.735 across all of
+them, inside the band on every seed; (b) it is nevertheless a real narrowing against the deleted
+single-slot CODE, which took the head at 0.955 here. The criterion this module asserts is the SLOT
+row, which did not move; nothing asserts the last head cell in either direction, and it should not
+be quoted as though something did.
+
+THE ROW IS NOW PINNED BY A CRITERION AND NOT ONLY PRINTED. The old assert was `any(h is None or h >
+band_hi)`, which BOTH tables satisfy, so it could not see the alphabet at all. The criterion added
+below is the one the repair actually owes: RENAMING THE CHALLENGER MUST NOT MOVE THE SWEEP. Its red
+is the retired key, constructed and run -- under it the same rename moves the row from
+[0.720, 0.825, 0.825, 0.825, 0.825] (challenger 'aaa', sorting BEFORE the tenant 't0') to
+[0.825, None, None, None, None] (challenger 'zzz', sorting after it). Same claim, same content, same
+competition; four of the five points become unwinnable at any salience because of a letter.
+
+The head is still outside the band, so `broadcast()` alone remains a poor place to look for
+faculty-to-faculty influence -- `broadcast_all()` is where the change lives, and since 2026-08-06 so
+does the SUBSCRIBE channel (see the delivery section below; a consumer no longer has to reach for a
+second accessor to ask whether it got in).
 
 =====================================================================================================
 WHAT SUBSCRIBERS RECEIVE: THE SET, not the head (2026-08-06). The design question multi-slot CREATED.
@@ -375,14 +445,17 @@ and it was wrong in the tree. GWT's claim is that the workspace BROADCASTS ITS C
 broadcast IS global availability; a bottleneck that admits four contents and announces one has a
 capacity of four and an availability of one.
 
-WHAT IT COST, measured on this bus rather than reasoned about. Two contents at identical salience,
-capacity 4, varying NOTHING but the peer's source name: the second content is in `broadcast_all()`
-on 12 of 12 ticks under every name, while a head-only subscriber saw it on 0 of 12 against a peer
-named 'aaa' and 12 of 12 against 'mmm'. Two compliant pools both SATURATE their sustained-firing
-counts, so the rank key falls through `-late` and `-total` to the source string, and the head is
-settled lexicographically. `cortex/access_consciousness.py` read its own ignition off that head, so
-a consciousness-relevant flag -- and the `access_index` behind it -- were being decided by a string
-comparison. Delivering the set removes that channel; it does not soften it.
+WHAT IT COST, measured on this bus rather than reasoned about, AND MEASURED ON THE ARBITER AS IT
+THEN STOOD. Two contents at identical salience, capacity 4, varying NOTHING but the peer's source
+name: the second content is in `broadcast_all()` on 12 of 12 ticks under every name, while a
+head-only subscriber saw it on 0 of 12 against a peer named 'aaa' and 12 of 12 against 'mmm'. Two
+compliant pools both SATURATE their sustained-firing counts, so the rank key FELL THROUGH `-late`
+and `-total` to the source string and the head was settled lexicographically -- the defect the
+tie-break block above closes at the rank line. `cortex/access_consciousness.py` read its own
+ignition off that head, so a consciousness-relevant flag -- and the `access_index` behind it -- were
+being decided by a string comparison. TWO INDEPENDENT FIXES, and keeping both is not additive: the
+delivery change removes the channel by which a subscriber has to infer membership from rank at all,
+and the rank repair removes the name from the rank. Either alone leaves one of the two halves.
 
 THE CHANGE IS ONE LINE OF MECHANISM: `_deliver` is handed `broadcast_all()` instead of
 `self.current`, on BOTH the ignition path and the argmax control, so there is one delivery contract
@@ -826,13 +899,15 @@ class GlobalWorkspace:
         Multi-slot separated them and the delivery channel kept carrying only the top, which made
         every subscriber's membership question unanswerable: a faculty admitted beside a louder peer
         received that peer's content and could only conclude that its own had not got in. MEASURED
-        on this bus, two contents at identical salience 0.65 and capacity 4, varying NOTHING but the
-        peer's source name: the second content is in `broadcast_all()` on 12 of 12 ticks under every
-        name, while a head-only subscriber sees it on 0 of 12 with a peer named 'aaa' and 12 of 12
-        with a peer named 'mmm' -- because a `late`/`total` tie is broken lexicographically on the
-        source key at the rank line in `step()`. A subscriber's view of its own global availability
-        was being settled by a string comparison. Delivering the set removes that channel entirely;
-        it does not soften it.
+        on this bus AND ON THE ARBITER AS IT THEN STOOD, two contents at identical salience 0.65 and
+        capacity 4, varying NOTHING but the peer's source name: the second content is in
+        `broadcast_all()` on 12 of 12 ticks under every name, while a head-only subscriber saw it on
+        0 of 12 with a peer named 'aaa' and 12 of 12 with a peer named 'mmm' -- because a
+        `late`/`total` tie WAS broken lexicographically on the source key at the rank line in
+        `step()`. A subscriber's view of its own global availability was being settled by a string
+        comparison. That rank-line defect is now closed too (see the header's tie-break block); this
+        change is the independent half, and it is the half that stops a subscriber having to infer
+        membership from a rank it cannot see at all.
 
         It is also what the theory says. GWT's claim is that the workspace BROADCASTS ITS CONTENTS,
         and global availability IS that broadcast; a bottleneck that admits four contents and
@@ -1119,6 +1194,33 @@ class GlobalWorkspace:
         self._last_v = last_v
         return total, late
 
+    def _rank_key(self, k):
+        """THE competition rank order, and the ONLY place this workspace decides who out-ranks whom.
+
+        Read after `_simulate` has run, so every term is that settle's own output: sustained
+        (second-half) spikes first, total spikes next, then the FINAL MEMBRANE, then the pool key.
+
+        WHY THE MEMBRANE IS IN HERE, and it is the whole reason this method exists as a method. The
+        two spike counts SATURATE -- a pool in the high-firing attractor fires on every micro-step of
+        the second half -- so co-saturating pools tie on both and the key used to fall straight
+        through to `k`, which is a lexicographic compare of the SOURCE NAME. That settled 1,941 of
+        3,576 co-admissions on the exhaustive two-producer grid, and because `step()` admits
+        `fired[:cap]` and `_defended` subsidises every admitted occupant on the NEXT tick, the name
+        was deciding ACCESS and not merely display order. `_last_v` is the same settle's residual
+        membrane: after the subtract-threshold reset a pool firing every micro-step carries
+        `2 * (cur - v_th)`, so the float holds LINEARLY the drive excess the clipped integer count
+        threw away. Name-flips over that grid go 1,941 -> 0 and the head goes to the higher-drive
+        pool on 3,400 of 3,400 configs where one exists.
+
+        IT IS A METHOD SO THE RETIRED KEY CAN BE RECONSTRUCTED AS A CONTROL, not so the key can be
+        configured (P2 -- there is exactly one rank order on every live path, no flag and no second
+        setting). `main()` subclasses this to restore `(-late, -total, k)` and RUNS it as the red for
+        the rename criterion, exactly as `_SingleSlotControl` restores the retired capacity.
+
+        `k` stays as the final term: it costs nothing, it is unreachable whenever the membranes
+        differ, and it keeps the order total if a future readout ever ties on all three."""
+        return (-self._last_late[k], -self._last_total[k], -self._last_v[k], k)
+
     def _defended(self, submitted):
         """The slot occupants that still carry the tenancy defence this tick.
 
@@ -1140,8 +1242,9 @@ class GlobalWorkspace:
             Every winnability figure this module publishes is measured on a tenant that re-posts the
             same content every tick, so this branch is the one they all run through and none of them
             moves. Re-run after the change: the challenger still wins a slot at a flat 0.720 against
-            tenants at 0.550/0.5797/0.6573/0.700/0.750, and still becomes the head at 0.720/0.825/
-            0.825/0.825/0.825. Byte-identical to the table in the module header.
+            tenants at 0.550/0.5797/0.6573/0.700/0.750, which is the row the module header prints.
+            (The HEAD row read 0.720/0.825/0.825/0.825/0.825 across that change too; it moved later,
+            when the RANK KEY was repaired, and that is a different mechanism -- see `_rank_key`.)
           * `src` submitted NOTHING this tick -> silent, not superseding -> DEFENDED. This is the
             hysteresis-across-a-quiet-tick that "ignited content is HELD across ticks, not rebuilt
             from scratch each tick" names, and the persist/release criterion measures it (7 held
@@ -1263,23 +1366,18 @@ class GlobalWorkspace:
         #    them in competition rank order up to `capacity`. Nothing sustaining -> the workspace
         #    empties (release).
         #
-        #    The rank key is the one this module always used, with the full key as its final
-        #    tie-break instead of the source alone. THE FALL-THROUGH TO `k` IS A LIVE DEFECT and the
-        #    module header carries the whole measurement: `late` saturates, so 1,941 of 3,576
-        #    co-admissions are settled by the SOURCE STRING, and because `fired[:cap]` decides who
-        #    `_defended` subsidises next tick, that string decides ACCESS and not just order.
-        #    Ranking on `-self._last_v[k]` before `k` takes both counts to 0 at no tick cost; it is
-        #    not applied here because it reddens two self-checks in files this pass does not own.
-        #    HONEST STATUS of the `k`-vs-source part alone, measured rather than argued:
-        #    that is hardening with NO reachable red, and the "determinism hole" it was written to
-        #    close does not exist. `late` is keyed in `sorted(drives)` order on BOTH settle paths
-        #    and `sorted` is stable, so the source-only key already resolved every tie identically
-        #    -- 0 disagreements over four tie-heavy loads (one source with 4, 8 and 40 identical
-        #    contents; two sources x 4) x six seeds, and a mutation reverting it passes this whole
-        #    self-check. Kept because it costs nothing and does not depend on the settle paths
-        #    continuing to hand back sorted keys; recorded as criterion-less per P8 rather than
-        #    credited as a fix.
-        fired = sorted((k for k in late if late[k] > 0), key=lambda k: (-late[k], -total[k], k))
+        #    THE RANK KEY CARRIES A FINER READOUT THAN THE CLIPPED COUNTS (2026-08-06). `late` and
+        #    `total` SATURATE -- a pool in the high-firing attractor fires on every micro-step of the
+        #    second half -- so two co-saturating pools tie on both and the key used to fall through to
+        #    `k`, A LEXICOGRAPHIC COMPARE OF THE SOURCE NAME. That decided ACCESS and not merely
+        #    order, because `fired[:cap]` below picks who `_defended` subsidises on the NEXT tick.
+        #    `_last_v` is the SAME settle's final membrane, already stored and already policed by the
+        #    determinism check: a pool firing every micro-step settles to a residual of
+        #    `2 * (cur - v_th)` after the subtract-threshold reset, so the membrane carries LINEARLY
+        #    the drive excess the clipped integer count discards. It is read BEFORE `k`, so the counts
+        #    still decide wherever they can and the name decides nothing that the physics can.
+        #    Re-derive the census with the header's grid rather than quoting it.
+        fired = sorted((k for k in late if late[k] > 0), key=self._rank_key)
         self._slots = tuple((k[0], k[1], self._g[k]) for k in fired[:cap])
 
         content = self.current
@@ -1339,12 +1437,14 @@ def count_churn(sets):
     THIS REPLACES `count_switches` ON THE HEAD AS THE STABILITY MEASURE, and the replacement is
     forced rather than convenient. Under one slot the two coincide exactly -- the head changing IS
     a content leaving. Under multiple slots they come apart, and measured on this module's own
-    48-tick stream they come apart completely: the head changed on 17 ticks and the previous head
-    was STILL IN THE WORKSPACE on 47 of 47 of them. Not one of those 17 was a content losing
+    48-tick stream they come apart completely: the head changed on 10 ticks and the previous head
+    was STILL IN THE WORKSPACE on 47 of 47 of them. Not one of those 10 was a content losing
     access; every one was a rank swap inside a stable set. So `count_switches(heads)` no longer
     measures flicker on this arbiter, and keeping it as the stability criterion would have meant
-    loosening its bound from 6 to something that admits 17 -- which is the weakening P8 forbids
+    loosening its bound from 6 to something that admits 10 -- which is the weakening P8 forbids
     ("if a criterion turns out not to measure the right thing it is deleted, not weakened").
+    (That count read 17 while the head was name-decided; repairing `_rank_key` took it to 10 with
+    churn, retention and the flood all unchanged, which is the same finding from the other side.)
 
     Symmetric difference, not a boolean "did the set change": a workspace that swaps one of four
     contents has churned less than one that empties, and the criterion should be able to say so."""
@@ -1635,14 +1735,35 @@ def main():
     # tick (head + full set + hold) rather than the head alone -- a reordering inside the set would
     # be invisible to a head-only comparison, and reordering is the failure mode multiple slots
     # introduce. Byte-identical means one distinct repr across every run.
-    det_runs = []
-    for _ in range(24):
-        h2, s2 = run_stream(build_stream(n_ticks, seed=0), use_ignition=True, seed=0)
-        det_runs.append(repr([(a, b) for a, b in zip(h2, s2)]))
+    # THE MEMBRANE FLOATS ARE IN THE DIGEST, and since 2026-08-06 that is a requirement rather than
+    # thoroughness: `_rank_key` reads `_last_v`, so a float that moves in its last bits can now
+    # change ADMISSION and not merely a printed number. A digest over contents alone would report
+    # byte-identical while the arbiter was ranking on a different quantity.
+    def _det_run():
+        """One full stream, digested as (head, admitted set, EVERY pool's final membrane) per tick."""
+        ws = GlobalWorkspace(use_ignition=True, seed=0)
+        rows, heads = [], []
+        for tick in build_stream(n_ticks, seed=0):
+            for region, salience in tick.items():
+                ws.submit(region, region, salience)
+            heads.append(ws.step())
+            rows.append((heads[-1], ws.broadcast_all(), tuple(sorted(ws._last_v.items()))))
+        return repr(rows), heads
+
+    det_digests, det_heads = zip(*(_det_run() for _ in range(24)))
+    # NON-VACUITY: the digest has to CONTAIN floats that vary, or "24 identical digests" is a
+    # statement about a constant. Counted rather than assumed.
+    det_probe = GlobalWorkspace(seed=0)
+    det_probe.submit("a", "A", 0.90)
+    det_probe.submit("b", "B", 0.72)
+    det_probe.step()
+    det_membranes = sorted(set(det_probe._last_v.values()))
     deterministic = (
-        len(set(det_runs)) == 1
-        and det_runs[0] == repr([(a, b) for a, b in zip(with_ig, set_ig)])
+        len(set(det_digests)) == 1
+        and list(det_heads[0]) == with_ig
         and count_switches(with_ig) == sw_with
+        and len(det_membranes) >= 2
+        and all(v not in (0.0, 1.0) for v in det_membranes)
     )
 
     print(
@@ -1788,11 +1909,15 @@ def main():
     def _is_head(w):
         return w.current == "CHAL"
 
-    def _lowest_win(cls, tenant_claim, ceiling, warm=6, tenants=1, test=None):
+    def _lowest_win(cls, tenant_claim, ceiling, warm=6, tenants=1, test=None, chal_src="chal"):
         """Lowest salience a challenger must post to WIN A SLOT beside warmed tenant(s).
 
         Returns None if no salience at or below `ceiling` gets in. Sweeps in steps of 0.005; the
-        tenants keep posting on the challenge tick, so this is a live incumbent, not a stale one."""
+        tenants keep posting on the challenge tick, so this is a live incumbent, not a stale one.
+
+        `chal_src` renames the CHALLENGER'S SOURCE and changes nothing else -- same content, same
+        claim, same competition. It exists for the rename criterion below: a correct arbiter must
+        return the identical sweep whatever the challenger is called."""
         s = band_lo
         while s <= ceiling + 1e-9:
             w = cls(seed=0)
@@ -1802,7 +1927,7 @@ def main():
                 w.step()
             for i in range(tenants):
                 w.submit(f"t{i}", f"T{i}", tenant_claim)
-            w.submit("chal", "CHAL", s)
+            w.submit(chal_src, "CHAL", s)
             w.step()
             if (test or _in_slot)(w):
                 return round(s, 3)
@@ -1883,6 +2008,54 @@ def main():
         f"the dissociation must be reachable-red -- on the retired single-slot arbiter 'in the "
         f"workspace' and 'is the head' are the SAME question and must give the SAME sweep: "
         f"slot {win_old} vs head {head_old}"
+    )
+
+    # (a2b) THE ARBITER IS NAME-BLIND -- the criterion the rank repair owes, with its red run. ------
+    # The assert above (`any(h is None or h > band_hi)`) is satisfied by BOTH the repaired sweep and
+    # the name-decided one it replaced, so it could never see the defect. This is the one that can:
+    # RENAMING THE CHALLENGER'S SOURCE, changing nothing else, must leave both sweeps identical.
+    #
+    # THE RED IS THE RETIRED RANK KEY, reconstructed as a CONFIGURATION of this arbiter rather than
+    # as a memory of one -- `_rank_key` is the single place the order is decided, so restoring
+    # `(-late, -total, k)` IS the retired behaviour and nothing else about the module changes. Under
+    # it two co-saturating pools tie on both clipped counts and the SOURCE STRING settles the head,
+    # so a challenger that sorts AFTER the tenant needs a strictly higher claim than one that sorts
+    # before it -- which is a specialist's global availability being decided by what it is called.
+    class _NameRanked(GlobalWorkspace):
+        """The retired rank key: the clipped spike counts, then the source name."""
+
+        def _rank_key(self, k):
+            return (-self._last_late[k], -self._last_total[k], k)
+
+    lo_src, hi_src = "aaa", "zzz"  # sort BEFORE and AFTER the tenants' "t0"
+    head_lo = [
+        _lowest_win(GlobalWorkspace, c, 1.0, test=_is_head, chal_src=lo_src) for c in win_claims
+    ]
+    head_hi = [
+        _lowest_win(GlobalWorkspace, c, 1.0, test=_is_head, chal_src=hi_src) for c in win_claims
+    ]
+    red_lo = [_lowest_win(_NameRanked, c, 1.0, test=_is_head, chal_src=lo_src) for c in win_claims]
+    red_hi = [_lowest_win(_NameRanked, c, 1.0, test=_is_head, chal_src=hi_src) for c in win_claims]
+    slot_lo = [_lowest_win(GlobalWorkspace, c, 1.0, chal_src=lo_src) for c in win_claims]
+    slot_hi = [_lowest_win(GlobalWorkspace, c, 1.0, chal_src=hi_src) for c in win_claims]
+    print(f"   name-blind   : HEAD {lo_src!r} {head_lo} == {hi_src!r} {head_hi}")
+    print(f"                  retired rank key {red_lo} vs {red_hi}  <- the RED")
+    assert head_lo == head_hi and slot_lo == slot_hi, (
+        f"THE ARBITER MUST BE NAME-BLIND. Renaming the challenger's SOURCE changes no claim, no "
+        f"content and no competition, so both sweeps must be identical: HEAD {head_lo} vs "
+        f"{head_hi}, SLOT {slot_lo} vs {slot_hi}. A difference means the rank key has fallen back "
+        f"through to `k` and a specialist's access is decided by what it is called"
+    )
+    assert red_lo != red_hi, (
+        f"the name-blindness criterion must be reachable-red, and its red is the RETIRED RANK KEY "
+        f"reconstructed here rather than described: under `(-late, -total, k)` the same rename must "
+        f"MOVE the head sweep, or this criterion is asserting something that was true anyway. Got "
+        f"{red_lo} vs {red_hi}"
+    )
+    # ...and the repaired sweep is the one printed in LIMIT 3. Pinned so the header cannot go stale.
+    assert win_head == head_lo, (
+        f"the head sweep must not depend on the challenger's default name either: {win_head} vs "
+        f"{head_lo}"
     )
     coex_claim = max(win_new)
     coex_new = _coexist(GlobalWorkspace, 0.6573, coex_claim)
@@ -1988,7 +2161,106 @@ def main():
     )
 
     # (c) DETERMINISM --------------------------------------------------------------------------
-    assert deterministic, "same seed must reproduce identical broadcasts and switch counts"
+    assert deterministic, (
+        f"same seed must reproduce identical broadcasts, switch counts AND membrane floats over 24 "
+        f"runs: {len(set(det_digests))} distinct digests, {len(det_membranes)} distinct membranes "
+        f"in the non-vacuity probe ({det_membranes})"
+    )
+
+    # (c1) THE PARALLEL SETTLE THROUGH ITS OWN GATE -- forced by the EMA, and ASSERTED to have run.
+    # (c2) below drives `_simulate_parallel` DIRECTLY, which proves the kernel agrees but bypasses
+    # the gate that decides whether it is ever reached. That gap became load-bearing the day
+    # `_rank_key` started reading `_last_v`: a membrane that differs between the paths in its last
+    # bits no longer merely fails a float comparison, it can change WHICH CONTENTS ARE ADMITTED. So
+    # the gate is driven to the parallel branch by the one thing that legitimately drives it -- a
+    # populated per-pool cost EMA -- and the branch is OBSERVED rather than hoped for.
+    def _ranked(ws, tot, late, v):
+        """The admission order `step()` would produce from this settle -- one `_rank_key`, no copy."""
+        ws._last_total, ws._last_late, ws._last_v = tot, late, v
+        return sorted((k for k in late if late[k] > 0), key=ws._rank_key)
+
+    gate_calls = []
+    g_ws = GlobalWorkspace(seed=0)
+    g_real = g_ws._simulate_parallel
+
+    def _spy(keys, drives, nt, rw):
+        gate_calls.append(nt)
+        return g_real(keys, drives, nt, rw)
+
+    g_ws._simulate_parallel = _spy
+    grng = random.Random(99)
+    g_drives = {(f"s{i:03d}", f"c{i:03d}"): grng.uniform(0.6, 1.1) for i in range(240)}
+    g_ws._sim_per_pool_s = 1e-3  # a POPULATED EMA: 240 pools x 1 ms is far past the crossover
+    g_par_tot, g_par_late = g_ws._simulate(g_drives)
+    g_par_v = dict(g_ws._last_v)
+    g_ranked_par = _ranked(g_ws, g_par_tot, g_par_late, g_par_v)
+    g_ws._simulate_parallel = g_real
+    g_ws._sim_per_pool_s = 0.0  # cold EMA -> the gate must refuse to guess and run SERIAL
+    g_ser_tot, g_ser_late = g_ws._simulate(g_drives)
+    g_ser_v = dict(g_ws._last_v)
+    g_ranked_ser = _ranked(g_ws, g_ser_tot, g_ser_late, g_ser_v)
+    # The thread COUNT is not printed and that is deliberate: `pick_thread_count` reads this
+    # machine's measured barrier and dispatch floors, so it legitimately differs between processes
+    # (16 and 8 observed on the same box, same seed). Printing it would make this module's own
+    # output non-reproducible across runs while proving nothing the boolean does not. The count is
+    # in the assert message, where it is only read on a failure.
+    print(
+        f"parallel gate: a populated cost EMA sent 240 pools down the PARALLEL branch "
+        f"({len(gate_calls)} dispatch); the ranked admission order matches the serial settle on "
+        f"{len(g_ranked_ser)} ignited pools"
+    )
+    assert gate_calls and gate_calls[0] >= 2, (
+        f"the EMA-driven gate must ACTUALLY have taken the parallel branch -- a determinism claim "
+        f"about a path that never ran is vacuous, and this is the failure mode the direct call in "
+        f"(c2) cannot see. `pick_thread_count` returned {gate_calls}"
+    )
+    assert g_par_v == g_ser_v and (g_par_tot, g_par_late) == (g_ser_tot, g_ser_late), (
+        "the gate-selected parallel settle must reproduce the serial MEMBRANE FLOATS bit for bit"
+    )
+    assert g_ranked_par == g_ranked_ser and len(g_ranked_ser) > cap, (
+        f"...and therefore the RANK must be identical, which is what the membranes now decide: "
+        f"{len(g_ranked_ser)} ignited pools ranked, first {cap} admitted"
+    )
+
+    # (c1b) WHAT `_rank_key` RESTS ON AT EXACTLY-EQUAL CLAIMS -- disclosed and RUN, not argued.
+    # `_last_v` separates two co-saturating pools because the settle amplifies the difference in
+    # their drives. When the drives are EXACTLY equal the settle has nothing to amplify and the only
+    # thing left is `_JITTER`, this module's declared symmetry break. So the honest statement of the
+    # repair is: it is name-blind at every claim, and at IDENTICAL claims its answer is the jitter's,
+    # not the physics'. Both halves are measured here so neither can be over-read.
+    #
+    # THE FLOOR MATTERS AS MUCH AS THE HEADLINE. At `_JITTER = 0` two identical claims settle to
+    # EXACTLY the same membrane, so `_rank_key` falls through to `k` and the name decides again --
+    # on precisely the configs where nothing else can decide anything. That is a property of the
+    # INPUT (two specialists asserting the identical claim), not a residual defect: no key over this
+    # settle's outputs can separate two pools whose every output is bit-identical.
+    def _equal_claim_gap(jitter, claim=0.70):
+        w = GlobalWorkspace(seed=0)
+        w._JITTER = jitter
+        w.submit("aaa", "A", claim)
+        w.submit("zzz", "B", claim)
+        w.step()
+        vs = list(w._last_v.values())
+        gs = list(w._g.values())
+        return abs(vs[0] - vs[1]), abs(gs[0] - gs[1]), w.current
+
+    jit_dv, jit_dg, jit_head = _equal_claim_gap(GlobalWorkspace._JITTER)
+    nojit_dv, nojit_dg, nojit_head = _equal_claim_gap(0.0)
+    print(
+        f"tie floor    : two pools at an IDENTICAL 0.70 settle {jit_dv:.3e} apart with the jitter "
+        f"live (head {jit_head!r}) and {nojit_dv:.3e} apart at _JITTER=0 (head {nojit_head!r}); "
+        f"their attractor charges are {jit_dg:.3e} apart in both"
+    )
+    assert jit_dv > 0.0 and jit_dg == 0.0, (
+        f"the membrane must separate identical claims where the attractor charge cannot -- that is "
+        f"the whole reason `_rank_key` reads `_last_v` and not `_g` (dv {jit_dv:.3e}, dg {jit_dg:.3e})"
+    )
+    assert nojit_dv == 0.0 and nojit_head is not None, (
+        f"...and it must be DISCLOSED that at _JITTER=0 it cannot: identical claims settle to "
+        f"identical membranes ({nojit_dv:.3e}), the key falls through to `k`, and the workspace "
+        f"still admits a content rather than raising. If this ever stops being 0.0 the header's "
+        f"'9.1% of the separation is jitter' paragraph is wrong and must be re-derived"
+    )
 
     # (c2) PARALLEL SETTLING is BYTE-IDENTICAL to serial settling ------------------------------
     # The gate is measured, so force both paths explicitly here rather than hoping to land on one.
