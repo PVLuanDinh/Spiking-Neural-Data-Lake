@@ -9,6 +9,17 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- the 16 RETIRE class is fully resolved (2026-08-07k)
+
+The last undecided holdout got its owner mandate: **`snn_mnist_stdp_genn` is a MANDATED BUILD --
+finish the GeNN port** (owner, 2026-08-07, asked directly rather than decided by a lane). The 16
+RETIRE classifications of 2026-08-06 now resolve completely: **11 retired** (9 at `f299b631`,
+`eth_mnist_bindsnet` and `deep_stdp_2stage_svm` today), **3 reclassified** (`readout_boost`,
+`readout_ensemble`, `ensemble_rbf` -- each on a measured wrong-direction or wrong-question
+finding), **1 kept as a live A/B control** (`autonomous_brain`), **1 mandated build** (the GeNN
+port; the ledger row carries what finishing owes so the lane starts from the ledger, not
+archaeology). Zero rows remain assigned-but-unmeasured in the RETIRE class.
+
 ## [Unreleased] -- gwt_deep's binding half passes the test that killed the workspace family (2026-08-07j)
 
 The ledger's `gwt_deep` row owed a K-pair binding benchmark; the honest scorer built at the
