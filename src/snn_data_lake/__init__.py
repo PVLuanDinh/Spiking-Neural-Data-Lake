@@ -291,6 +291,12 @@ REGIONS = {
         "lifelong_consolidation",
         "homeostatic_plasticity_stack",
         "plasticity_rule_stack",
+        # PROMOTED from reasoning/ 2026-08-07 as specs/012's MANDATED BUILD (owner call: finish
+        # the GeNN port). The tree's only GPU plasticity codegen: the CPU-verified v0.17
+        # burst+x_tar rule as GeNN C++. Governance lands BEFORE the finish so the port's
+        # completion happens inside the gates; dormancy disposition = EXEMPT (opt-in GPU
+        # training harness, see dormancy_gate).
+        "snn_mnist_stdp_genn",
     ],
     "substrate": [
         # PROMOTED 2026-08-04: P2 merge of training/device.py (GPU-first, measured) with the

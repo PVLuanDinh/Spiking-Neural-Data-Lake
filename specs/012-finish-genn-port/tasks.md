@@ -72,20 +72,20 @@ so the finish lands inside the gates.
 **Independent Test**: All three gates green with the module registered (spec US4-AS1/AS2)
 while it is still a stub â€” governance is proven independent of the port being finished.
 
-- [ ] T006 [US4] `git mv src/snn_data_lake/reasoning/snn_mnist_stdp_genn.py
+- [X] T006 [US4] `git mv src/snn_data_lake/reasoning/snn_mnist_stdp_genn.py
       src/snn_data_lake/plasticity/snn_mnist_stdp_genn.py` (zero code importers exist â€”
       verified 2026-08-07; research.md R7)
-- [ ] T007 [US4] Register the module: REGIONS entry under `plasticity` in
+- [X] T007 [US4] Register the module: REGIONS entry under `plasticity` in
       `src/snn_data_lake/__init__.py`; self-check registration in `run_selfchecks.py`;
       `dormancy_gate.EXEMPT` entry in `src/snn_data_lake/substrate/dormancy_gate.py` with the
       R7 reason string
-- [ ] T008 [US4] Add `substrate/import_manifest.py` entries for the cross-tier reaches
+- [X] T008 [US4] Add `substrate/import_manifest.py` entries for the cross-tier reaches
       `plasticity/snn_mnist_stdp_genn -> reasoning/snn_mnist_stdp` and
       `-> reasoning/snn_mnist_stdp_fast` (existing pattern in that file)
-- [ ] T009 [US4] Check `substrate/method_dormancy_gate.py` against the module's public
+- [X] T009 [US4] Check `substrate/method_dormancy_gate.py` against the module's public
       functions; add `EXEMPT_METHOD` entries with dispositions ONLY if the learning-verb
       heuristic matches (research.md R7)
-- [ ] T010 [US4] Run all three gates (module now INSIDE ruff coverage â€” fix any lint);
+- [X] T010 [US4] Run all three gates (module now INSIDE ruff coverage â€” fix any lint);
       commit as "P4c: snn_mnist_stdp_genn enters governance (still a stub)"
 
 **Checkpoint**: gates green, module governed, diff so far contains no behavior change.

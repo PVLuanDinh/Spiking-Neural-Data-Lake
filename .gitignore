@@ -166,3 +166,6 @@ research/*.zip
 # Durable working-memory data lake (chat --web / web_server.py) — persists locally, never committed
 brain_data/
 scratchpad/
+
+# GeNN runtime codegen/build directories (nvcc-compiled model artifacts, one per GeNNModel name)
+*_CODE/

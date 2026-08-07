@@ -98,6 +98,12 @@ EXEMPT = {
     # feedback_alignment/sensor_demo/coordinated_growth) were DELETED in the Policy-2/3 retirement wave --
     # they are gone from REGIONS, so they are no longer brain modules and need no exemption.
     # ---- "permanent": legitimately not a tick faculty, each with the evidence that settled it ----
+    "snn_mnist_stdp_genn": (
+        "permanent",
+        "TRAIN-TIER HARNESS (specs/012, MANDATED BUILD 2026-08-07): opt-in GPU training run via "
+        "__main__ + GENN_RUN=1 on a GeNN box; nothing on the live tick trains MNIST. The gate "
+        "self-check covers its codegen integrity on every box, toolchain or not",
+    ),
     "heterogeneous_microcircuit": (
         "permanent",
         "PALETTE EXAMPLE: a worked demo of the basic_components composition palette (itself permanent). "

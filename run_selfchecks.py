@@ -227,6 +227,7 @@ CORE = [
     "plasticity.benna_fusi",
     "plasticity.homeostatic_plasticity_stack",
     "plasticity.plasticity_rule_stack",
+    "plasticity.snn_mnist_stdp_genn",  # specs/012 GeNN port: codegen-integrity check every box; GPU train is GENN_RUN-gated
     # substrate â€” the spiking data-lake, telemetry, and infra (not a brain region)
     "substrate._mathutils",
     "substrate.spike_stream_sketch",

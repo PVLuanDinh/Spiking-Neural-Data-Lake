@@ -21,14 +21,16 @@ field, check your GeNN 5 `create_weight_update_model` signature; the C++ bodies 
 are the part that matters and are version-stable.
 """
 
+import os
+
 try:
     import numpy as np
-    from pygenn import GeNNModel, init_weight_update, init_postsynaptic, create_weight_update_model
+    from pygenn import GeNNModel, create_weight_update_model, init_postsynaptic, init_weight_update
 
     # data + the exact (CPU-verified) deterministic burst encoder (need torch) — only
     # importable on the GeNN box where torch is also installed:
     from snn_data_lake.reasoning.snn_mnist_stdp import M, T
-    from snn_data_lake.reasoning.snn_mnist_stdp_fast import FAST_LR, FAST_XTAR, WMAX, PRE_DECAY
+    from snn_data_lake.reasoning.snn_mnist_stdp_fast import FAST_LR, FAST_XTAR, PRE_DECAY, WMAX
 
     _HAVE_GENN = True
 except Exception as _e:  # noqa: BLE001 — any missing dep -> stub
@@ -107,6 +109,11 @@ def main():
         print(f"  import failed: {type(_IMPORT_ERR).__name__}: {_IMPORT_ERR}")
         print("  Needs CUDA 12.8+ (RTX 5070), a C++ compiler, GeNN 5 + pygenn.")
         print("  Rule + encoding are CPU-verified in: python snn_mnist_stdp_fast.py")
+        return
+    if os.environ.get("GENN_RUN") != "1":
+        # Gate safety: model.build() is an nvcc compile taking minutes and needing CUDA_PATH;
+        # it must NEVER run inside run_selfchecks. The GPU path is an explicit opt-in.
+        print("GeNN toolchain present (pygenn importable). GPU build/run is opt-in: set GENN_RUN=1.")
         return
     # On a GeNN box: load MNIST, encode deterministically (burst latency), upload the
     # exact timestamps to the SpikeSourceArray, build()/load(), train, assign, evaluate.
