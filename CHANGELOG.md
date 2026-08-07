@@ -9,6 +9,27 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- P4c: the 10th RETIRE lands, and its dependency goes with it (2026-08-07g)
+
+`reasoning/eth_mnist_bindsnet.py` was RETIRE-classified on 2026-08-06 and kept only because
+deleting it alone reds a CI gate: it is the SOLE `bindsnet` importer in `src/`, and
+`dependency_ledger --assert` goes UNUSED 0 -> 1 (measured then, on a sandbox copy). The co-edit
+is the whole fix: module and the `[gpu]` extra's `bindsnet` entry retire together -- a declared
+distribution whose only importer is RETIRE-classified is not a capability (P7's honesty guard).
+
+- Port-before-delete, the fix-is-not-a-capability check: one unique correction lived only in this
+  file -- the `torch._six` compat shim (BindsNET <= 0.3 imports `torch._six`, removed in
+  torch >= 2.0). Preserved as prose in `RUNNING.md` section 5, beside the retired runner's
+  measured numbers (~95% literature ladder; 400/20k ~ 86% CPU), which also survive in this file's
+  own v0.9 history.
+- Co-edits: `RUNNING.md` section 5 re-headlined onto a covered script (its runnable command named
+  the deleted module -- `doc_command_guard` would red); `PERFORMANCE.md` flag mention + Covered
+  scripts; `snn_mnist_stdp_genn.py`'s comment pointer; `install.py`'s `[gpu]` description, which
+  was ALREADY stale (still named `snntorch`, removed from that extra 2026-08-06) and now states
+  the actual contents.
+- Zero registrations existed; symbol-level zero-importer holds (module name in no `.py` outside
+  the one co-edited comment). `reasoning/` p4c count 150 -> 149.
+
 ## [Unreleased] -- the harnesses now run the clock the brain runs (2026-08-07f)
 
 `cortex/access_consciousness.py`'s self-check harnesses ran a TWO-competition cadence -- peers

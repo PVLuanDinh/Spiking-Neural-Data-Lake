@@ -114,15 +114,21 @@ python -m venv .venv-nmnist
 ```
 
 ### 5. GPU training (optional, needs CUDA + torch)
-For the literature ~95% run (6400 neurons). RTX 50-series (Blackwell) needs CUDA 12.8:
+RTX 50-series (Blackwell) needs CUDA 12.8:
 ```bash
 python -m venv .venv
 .venv/bin/pip install --index-url https://download.pytorch.org/whl/cu128 torch torchvision
-.venv/bin/pip install -e . snntorch==1.0.0 bindsnet numpy
-NORD_M=1600 NORD_INH=60 NORD_THETA_PLUS=0.20 \
-  .venv/bin/python -m snn_data_lake.reasoning.eth_mnist_bindsnet --gpu
-# CPU fallback works automatically (slower); 400/20k ~ 86% in minutes
+.venv/bin/pip install -e ".[gpu]"
+NORD_GPU=1 .venv/bin/python -m snn_data_lake.reasoning.snn_mnist_stdp_fast
 ```
+
+> The BindsNET Diehl & Cook runner that headlined this section (the literature ~95% at 6400
+> neurons; 400/20k ~ 86% on CPU in minutes) was RETIRED 2026-08-07 with the `bindsnet`
+> dependency -- it was the sole importer, and its numbers survive in the CHANGELOG. One piece of
+> knowledge lived only in that file and is kept here: BindsNET <= 0.3 imports `torch._six`,
+> removed in torch >= 2.0; the runner shimmed it with a `types.ModuleType("torch._six")` carrying
+> `container_abcs = collections.abc`, `string_classes = (str, bytes)`, `int_classes = int`,
+> installed in `sys.modules` before the bindsnet imports.
 
 ### 6. Browse the knowledge graph (optional)
 ```bash

@@ -196,7 +196,10 @@ lake = ["polars", "pyarrow", "deltalake"]                               # lakeho
 # snntorch REMOVED from both extras 2026-08-06: it is a CORE dependency now (see the header block).
 # It was declared here twice with DIFFERENT specs (`==1.0.0` here, `>=0.9` in [train]); keeping
 # either beside the core declaration is P2's additive failure, so both are retired, not softened.
-gpu = ["torch", "torchvision", "bindsnet", "numpy", "scikit-learn"]   # research/ GPU training
+# bindsnet REMOVED from [gpu] 2026-08-07 with its sole importer (reasoning/eth_mnist_bindsnet.py,
+# RETIRE-classified 2026-08-06; the NO-GO was exactly this co-edit). A declared distribution whose
+# only importer is retired is not a capability (P7's own honesty guard names the shape).
+gpu = ["torch", "torchvision", "numpy", "scikit-learn"]                # research/ GPU training
 train = ["torch", "torchvision", "numpy", "scikit-learn"]              # GPU trainers (snn-train; training/surrogate_snn.py hybrid N-MNIST perception encoder, +[nmnist] for tonic) -> export weights to the Brain's OPTIONAL torch perception tier; the default install never imports it
 # scikit-learn ADDED 2026-08-04 (specs/010, finding C07). It was imported UNGUARDED at module top in
 # four `reasoning/` modules -- deep_stdp_2stage_svm.py:80-81, developmental_loop_lake99.py:28-29,

@@ -94,7 +94,8 @@ def build(n_inpt, n_exc, w_norm=78.0, thresh=2.0, theta_plus=0.8):
         init_postsynaptic("DeltaCurr"),
     )
     # lateral inhibition for WTA competition (all-but-self); full Diehl&Cook would use a
-    # separate inhibitory population — see eth_mnist_bindsnet.py for that variant
+    # separate inhibitory population — the BindsNET runner that carried that variant
+    # (eth_mnist_bindsnet.py) was retired 2026-08-07; Diehl & Cook 2015 is the reference
     return model, ssa, exc
 
 

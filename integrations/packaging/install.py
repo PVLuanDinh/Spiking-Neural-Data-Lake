@@ -34,7 +34,7 @@ STAGES = [
     ("nmnist", "N-MNIST event-camera data (tonic)",                       False),
     ("llm",    "on-device NL command backend (airllm)",                   False),
     ("exe",    "build the standalone Windows exe (pyinstaller)",          False),
-    ("gpu",    "GPU / torch research (torch, snntorch, bindsnet, numpy)", False),
+    ("gpu",    "GPU / torch research (torch, torchvision, numpy, scikit-learn)", False),
     ("genn",   "GeNN GPU port (pygenn -- needs a C++ compiler + CUDA)",   False),
 ]
 

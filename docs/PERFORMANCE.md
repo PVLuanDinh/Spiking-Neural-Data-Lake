@@ -21,8 +21,7 @@ as a literal citation long after the zero-dependency contract was removed).
 ## Using the GPU for training
 
 The torch training scripts are **opt-in** GPU, defaulting to CPU so a plain run reproduces the
-numbers of record exactly. Request the GPU with an environment variable (or the `--gpu` /
-`--device` flags on `eth_mnist_bindsnet.py`):
+numbers of record exactly. Request the GPU with an environment variable:
 
 ```bash
 # recent NVIDIA cards need the matching CUDA wheel FIRST (the extras pin bare `torch`).
@@ -43,8 +42,9 @@ GPU. Scripts that construct an explicit `torch.Generator()` bind it to the resol
 RNG matches the tensors.
 
 Covered scripts: `snn_mnist_stdp`, `snn_mnist_stdp_fast`, `snn_motor_control`,
-`snn_world_model_rl`, `snn_dreamer_6dof`, `snn_ssm_shd` (via the shared helper), and
-`eth_mnist_bindsnet` (its own `--gpu` flag).
+`snn_world_model_rl`, `snn_dreamer_6dof`, `snn_ssm_shd` (via the shared helper).
+(`eth_mnist_bindsnet`, which carried its own `--gpu` flag, was RETIRED 2026-08-07 together with
+the `bindsnet` dependency it was the sole importer of.)
 
 > Three names left this list on 2026-08-06 -- `snn_mnist_dc`, `snn_moe_stdp_mnist` and
 > `snn_storage_core_snntorch` were RETIRED under P2 (superseded respectively by the surviving
