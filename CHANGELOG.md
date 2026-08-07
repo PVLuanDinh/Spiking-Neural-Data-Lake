@@ -9,6 +9,73 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- the inhibitory pool gets the threshold every other unit has (2026-08-07b)
+
+`thalamus/global_workspace.py` derives `capacity = floor(1/defence) = 4`, and **on the live brain it
+never bound**: over 120 wake ticks the occupancy histogram read `{1: 117, 2: 3}` -- one content held
+with three slots free while both producers posted every tick. The cause is the settle, not the
+admission: the shared inhibitory pool was the ONLY unit in the network with no threshold, so `a_inh`
+drove lateral inhibition linearly from its first spike, one saturated incumbent subtracted
+`_W_SELF * _si_sat = 0.36` from every rival, and live claims in [0.51, 0.75] against `_v_th = 1.1`
+were annihilated before `fired` was built -- `fired[:cap]` was a no-op on the production path. Two
+mechanisms limited the held count (implicit inhibition, derived capacity); **P2 says exactly one
+survives, and the one that survives is the derived one.**
+
+- **The change is one kernel term and two derived properties.** The pool now ignores an allowance of
+  `_inh_free = (capacity - 1) * _si_sat`, where `_si_sat = _K_INH / _LEAK_INH` is the fixed point of
+  its own update under sustained firing -- the activity `capacity` saturated slots produce among
+  themselves. `lateral = glat * max(0, (a_inh - si[i]) - free)`. No new constant: both factors
+  already exist and already arbitrate. At capacity 1 the allowance is EXACTLY 0.0, so
+  `_SingleSlotControl` is the retired kernel byte-for-byte and every criterion built on it is
+  untouched. The retired kernel itself is kept as `NoAllowanceArbiter`, the running red for the
+  re-pointed criteria.
+- **Measured, same seeds, this module's own harnesses:** churn on the 48-tick stream **9 -> 4**
+  (argmax control 54), retention 47/47; the flood still ignites 40 and admits 4; the SLOT row
+  collapses `[0.72 x5] -> [0.55 x5]` (flat at the band floor); the HEAD row moves
+  `[0.72, 0.72, 0.725, 0.765, 0.815] -> [0.615, 0.645, 0.725, 0.765, 0.815]`, still 3 of 5
+  displaceable in-band. **Disclosed cost:** head switches on that stream go 12 -> 21 -- rank churn
+  among co-admitted contents, not flicker (the previous head stays in the workspace on 47/47 of
+  them). Consumer side (`cortex/access_consciousness.py`): `k_out` **2 -> 4 and now EQUALS
+  capacity at 1/2/3/4/6** where the old kernel read 1/1/1/2/3 -- denial is the capacity bound, not
+  the silencing; `k_co` 1 -> 3; the defect-injection null table re-measured (a +-0.02 posted-claim
+  jitter is now invisible to every arm -- its old visibility WAS the annihilation margin).
+- **Criteria re-pointed, retired, and added -- P8 dispositions, not weakenings.** The
+  spiking-competition criterion asserted ONE admitted with three slots free ("a free slot is NOT a
+  free pass") -- the pathology as design intent; re-pointed: below capacity all three candidates
+  admitted in strength order, above capacity exactly `capacity` with the weakest excluded, red =
+  `NoAllowanceArbiter` -> `('strong',)`. The winnability sweep's asserts and its `over_band` red
+  RETIRED (trivially green / unreachably green under the rheobase) into the full-workspace pair
+  `full_compliant is None` / `full_strong = 0.905`, strictly stronger on the same axis. **New P2
+  close-out criterion:** capacity decides the admitted set (`min(capacity, load)` at 1/2/3/4/6,
+  sets nesting strictly), the gain does not (set IDENTITY pinned across a 12x gain sweep), and the
+  gain is not dead (sigma-total 349 -> 215 on that sweep; without this conjunct the first two are
+  green on `_g_lat = 0`) -- red fails the first two on the identical load. `_si_sat` gets the
+  `_grips`-shaped P1 guard (moves with `_K_INH`/`_LEAK_INH`; allowance 0.0 exactly at capacity 1).
+  The (e2) entrenchment red went green-for-the-wrong-reason on BOTH the shipped and the one-subsidy
+  arbiters (unconditional tenancy is symmetric; the enforcement was always the annihilation) and is
+  re-pointed onto `NoAllowanceArbiter` -- the `_NameRanked` lesson met from the other side.
+  `_reference_settle` mirrors the allowance LONGHAND (if/else vs `max()`, verified bit-identical on
+  +-0.0), never pasted. The (c2) determinism load's drive ceiling moves 1.2 -> 1.6: at 1.2 the
+  synchronized burst-crush cycle lands micro-step 60 with every final membrane floored at 0.0 and
+  the float comparison compares nothing (0/240 -> 102/240 nonzero finals, measured). And ONE
+  consumer criterion re-derived: `reasoning/train_of_thought.py`'s yield arm warmed a foreign
+  incumbent and then fell SILENT, so its yields were the annihilation -- under the rheobase a
+  fresh thought takes the head from a stale incumbent on tick one, which is attention capture
+  working, not the criterion failing. The foreign faculty is now modelled LIVE through the
+  subscribe/deliver cycle (posts on three deliveries, then stops): 3 yield ticks while it posts,
+  the full 7-thought chain after, the foreign content never chained.
+- **A record corrected by the re-measurement:** the split entry below quotes the post-split head row
+  as `[0.720, 0.720, 0.725, 0.765, None]`; re-run on the byte-exact retired kernel the last cell is
+  **0.815** (LIMIT 3 had it right) -- a ceiling tenant is displaceable at `hi + grip` plus one sweep
+  step, above the band but finite.
+- **Owned, not smoothed:** at or below capacity the lateral term is identically 0.0. Inhibition no
+  longer decides the SET; it shapes the RATE above the allowance. The biology comes last because it
+  is the account and not the licence: every excitatory pool here is a spiking LIF with a threshold,
+  and this change gives the one thresholdless unit the threshold every other unit has.
+- Gates: ruff clean, **280/280** self-checks, pytest **93.09%**, and the five asserting CI tools
+  (`p4c_ratchet` 248 with tools 30/30, `p6_gate` five ratchets, `dependency_ledger` 0/0/0,
+  `red_reachability` 12 criteria 0 NO_RED, `citation_guard` 0) exit 0.
+
 ## [Unreleased] -- one subsidy was doing two jobs, so attention could not be captured (2026-08-07)
 
 Defect #16, the last open item from the P6 arc: **no compliant specialist anywhere in the band could
@@ -32,7 +99,9 @@ first tenant to arrive held what the brain was attending to, permanently.
   the full HOLD (`_rank_key`), so churn, retention, capacity, lateral gain and the entire SLOT row
   `[0.72 x5]` are byte-unchanged. The head is ordered over the admitted set by `_focus_key` carrying
   only `grip = hold / capacity` -- this module's own division-across-capacity principle, no new
-  constant. Head row `[0.805, 0.835, 0.910, 0.955, None]` -> `[0.720, 0.720, 0.725, 0.765, None]`,
+  constant. Head row `[0.805, 0.835, 0.910, 0.955, None]` -> `[0.720, 0.720, 0.725, 0.765, 0.815]`
+  (the last cell was recorded as `None` here; corrected 2026-08-07b against the byte-exact retired
+  kernel -- see the rheobase entry above),
   **0 of 5 tenants displaceable -> 3 of 5**, at a cost of two head switches (10 -> 12) on the
   48-tick stream. The biology it answers to: recurrent excitation sustains a cortical assembly, but
   which one DOMINATES is set by afferent drive under biased competition.

@@ -83,10 +83,14 @@ volume sweep from 0.00 to 0.95. Renaming that peer to sort after this faculty no
 either readout (FOCUS 0 of 12, ACCESS 0 of 12), which is the two-sided form of the string test.
 FOUR REDs run beside it -- a ONE-slot bus never separates access from focus (0 of 12), the retired
 head-only delivery keeps membership at 12 of 12 while zeroing the index on all of them, the RETIRED
-RANK KEY reconstructed on the same bus moves FOCUS on 11 of 12 under that same rename, and (added
-2026-08-06 by an adversarial re-run) THE HEAD MUST BE THE PEER'S CONTENT, whose red is this faculty
-admitted BENEATH ITS OWN RETRACTED CONTENT with no peer on the bus at all -- a two-step window found
-by sweeping, at claim 0.635. Without that conjunct "admitted and not the head" is equally true of a
+RANK KEY reconstructed on the same bus moves FOCUS on 12 of 12 under that same rename (11 of 12
+before the bus's inhibitory rheobase -- the co-admitted pools now co-saturate on every tick, so the
+retired key falls through to the name on all 12), and (added 2026-08-06 by an adversarial re-run)
+THE HEAD MUST BE THE PEER'S CONTENT, whose red is this faculty admitted BENEATH ITS OWN RETRACTED
+CONTENT with no peer on the bus at all -- a two-step window found by sweeping, at claim 0.55, which
+is the cap FLOOR exactly: the rheobase left that window zero slack, so if the floor ever moves this
+red must be re-swept rather than assumed. Without that conjunct "admitted and not the head" is
+equally true of a
 faculty out-ranked by its own history, which is hysteresis and not a dissociation; the arm avoided it
 only by re-posting ONE content, which was an unasserted property of the harness until now.
 
@@ -796,14 +800,16 @@ def _contended_run(n_peers, ws, n=12, shared=True):
         #
         # NOT CHANGED TO ONE COMPETITION, deliberately, and the reason is worth recording. Making
         # the peers and this faculty settle TOGETHER is the cadence the live brain now runs, and it
-        # was tried here: `k_out` moves 2 -> 5 and the admission profile over 0..8 peers becomes
-        # `# # # # # . # . .` -- not monotone, because every peer posts EXACTLY `_max_claim()` and
-        # so does this faculty, and `_jitter_for` draws in first-encounter order, so adding a peer
-        # re-draws this faculty's tie-break instead of only raising the load. Claim (10)'s
-        # name-blindness RED also goes unreachable, because a peer and this faculty in ONE
-        # competition no longer co-saturate. Re-deriving three criteria of this module at once, in
-        # the same pass that changes the mechanism they judge, is the failure mode where one author
-        # writes both the code and its criterion. It is left as separate, named work.
+        # was tried here: `k_out` moves 4 -> 5 (2 -> 5 before the bus's inhibitory rheobase; the
+        # one-competition numbers are bit-identical under both kernels) and the admission profile
+        # over 0..8 peers becomes `# # # # # . # . .` -- not monotone, because every peer posts
+        # EXACTLY `_max_claim()` and so does this faculty, and `_jitter_for` draws in
+        # first-encounter order, so adding a peer re-draws this faculty's tie-break instead of
+        # only raising the load. Claim (10)'s name-blindness RED also goes unreachable, because a
+        # peer and this faculty in ONE competition no longer co-saturate. Re-deriving three
+        # criteria of this module at once, in the same pass that changes the mechanism they judge,
+        # is the failure mode where one author writes both the code and its criterion. It is left
+        # as separate, named work.
         ws.step()
         own.append((ac.step(), round(ac.access_index(), 6), round(ac.global_availability(), 6)))
         # ADMISSION, not head identity: `broadcast_all()` is the multi-slot read, and asking it
@@ -1273,14 +1279,18 @@ def main():
     # preserved -- on a one-slot bus a SINGLE other faculty must deny this one access, which is
     # exactly the eviction 12/12 measured before.
     #
-    # HOW CAPACITY REACHES THIS THRESHOLD, measured because the assert below used to say capacity
-    # IS the threshold and that is not what the bus does. At the shipped `k_out` the workspace holds
-    # TWO contents with TWO SLOTS FREE -- this faculty is denied by the shared lateral inhibition
-    # silencing its pool, not by the capacity bound being reached. Capacity is still what sets the
-    # threshold, because the inhibition each pool applies is `_G_INH / capacity`: swept over legal
-    # defences, capacity 1/2/3 -> k_out 1, capacity 4 -> 2, capacity 6 -> 3, capacity 8 -> never
-    # denied inside the scan. So the relation is causal and monotone, and it is NOT equality --
-    # a criterion asserting `k_out == capacity` would be red on a correct bus.
+    # HOW CAPACITY REACHES THIS THRESHOLD -- RE-MEASURED 2026-08-07 when the bus's shared
+    # inhibitory pool acquired its rheobase, because the paragraph that stood here had become a
+    # transcript of the removed pathology. It recorded denial-by-silencing: at the then-shipped
+    # `k_out` of 2 the workspace held TWO contents with TWO SLOTS FREE, the faculty's pool
+    # annihilated by lateral inhibition before the capacity bound was consulted, and its swept
+    # table (capacity 1/2/3 -> k_out 1, 4 -> 2, 6 -> 3, 8 -> never denied) was that defect
+    # measured five ways -- it even warned that "a criterion asserting `k_out == capacity` would
+    # be red on a correct bus", and it cited the since-retired `_G_INH / capacity` as the
+    # mechanism. Under the rheobase kernel that equality is exactly what the bus does: denial is
+    # `fired[:cap]` truncation on a FULL workspace, so the faculty is admitted below `capacity`
+    # peers and denied from `capacity` up. Swept over the same legal defences: capacity 1/2/3/4/6
+    # -> k_out 1/2/3/4/6, equality at every point.
     _defence = shipped_bus.self_boost + shipped_bus.hysteresis
     one_slot = {
         "self_boost": shipped_bus.self_boost / _defence,
@@ -1298,21 +1308,26 @@ def main():
     #
     # The arms are EMPTY (k=0), CO-OCCUPIED (`k_co` -- the largest load at which this faculty is
     # still admitted, derived from the SEARCHED `k_out` and not chosen) and CROWDED (`k_use`).
-    # Three re-runs of each, against two nondeterminism defects injected into `bind_assembly`
-    # (per-tick disagreements with the first run; 0 is a clean null):
+    # RE-MEASURED 2026-08-07 (the rheobase kernel moved `k_co` 1 -> 3, so the co-occupied regime
+    # is a different one and the old table was its predecessor's): per arm, the MAX per-tick
+    # disagreement across three re-runs against the first, two nondeterminism defects injected
+    # into `bind_assembly` (posted-claim jitter: +-0.02 per tick on the posted salience;
+    # coalition-size jitter: coalition of 2..5 drawn per tick instead of 3). 0 is a clean null:
     #
-    #     defect                  retired null   EMPTY   CO-OCCUPIED   CROWDED
-    #     posted-claim jitter          10          0          4           0
-    #     coalition-size jitter        33         36         32           0
+    #     defect                  EMPTY   CO-OCCUPIED(3)   CROWDED
+    #     posted-claim jitter        0          0             0
+    #     coalition-size jitter     12         12             0
     #
-    # The CROWDED arm is vacuous on both, and it is KEPT and labelled rather than deleted: an
-    # excluded faculty emits the same (False, 0.0, 0.0) on every tick, so it reproduces itself under
-    # almost any perturbation, and that is a disclosure (P8 guard 4) rather than a reason to drop a
-    # control. The EMPTY arm sees the coalition defect and NOT the claim defect -- with nothing else
-    # competing this faculty holds the head at ANY audible claim, so its own output cannot depend on
-    # how loudly it posted. Only the CO-OCCUPIED arm sees both. That is also exactly why the retired
-    # null was sensitive: it re-ran an arm with a competitor PRESENT, and empty+crowded dropped the
-    # only regime this faculty shares the workspace in.
+    # TWO of the old table's findings did not survive the kernel, and both changes are the kernel
+    # working: the posted-claim defect is now INVISIBLE to every arm, because admission below
+    # capacity no longer rides the claim margin (any supra-rheobase claim is admitted; the old
+    # sensitivity at co-occupancy WAS the annihilation margin). And the EMPTY and CO-OCCUPIED
+    # arms now show the same sensitivity under these two defects -- the co-occupied arm is kept
+    # NOT for a sensitivity these injections no longer separate, but because it is the one regime
+    # in which this faculty SHARES the workspace, i.e. the only arm in which a peer-interaction
+    # nondeterminism could express at all. The CROWDED arm stays vacuous and stays kept, labelled:
+    # an excluded faculty emits the same (False, 0.0, 0.0) on every tick, so it reproduces itself
+    # under almost any perturbation -- a disclosure (P8 guard 4), not a reason to drop a control.
     k_co = max(0, k_use - 1)
     load_null = (
         sum(1 for a, b in zip(alone_own, _contended_run(0, _bus())[0]) if a != b)
@@ -1331,14 +1346,16 @@ def main():
     # in on EVERY tick below the threshold (the search only proves ONE tick), out on every tick from
     # it to the end of the scan (the search proves nothing above it at all).
     #
-    # KNOWN AND NOT CLOSED HERE (2026-08-07): this step holds on THIS harness's two-competition
-    # cadence, in which the peers settle and then this faculty settles alone. Run with ONE
-    # competition -- the cadence the live brain now uses -- `k_out` moves 2 -> 5 and the profile
-    # over 0..8 peers becomes `# # # # # . # . .`, which is not monotone, because every peer and
-    # this faculty all post EXACTLY `_max_claim()` and `_jitter_for` draws in first-encounter order,
-    # so adding a peer re-draws this faculty's tie-break rather than only raising the load. The
-    # criterion is left as it is rather than re-derived in the pass that changed the mechanism it
-    # judges. See the note in `_contended_run`.
+    # KNOWN AND NOT CLOSED HERE (2026-08-07, re-verified the day the bus gained its inhibitory
+    # rheobase): this step holds on THIS harness's two-competition cadence, in which the peers
+    # settle and then this faculty settles alone. Run with ONE competition -- the cadence the live
+    # brain now uses -- `k_out` moves 4 -> 5 and the profile over 0..8 peers becomes
+    # `# # # # # . # . .`, which is not monotone, because every peer and this faculty all post
+    # EXACTLY `_max_claim()` and `_jitter_for` draws in first-encounter order, so adding a peer
+    # re-draws this faculty's tie-break rather than only raising the load. The rheobase did NOT
+    # close this: the one-competition profile is bit-identical under both kernels, which pins the
+    # cause on the tie-break draw and not on the inhibition. The criterion is left as it is rather
+    # than re-derived in the pass that changed the mechanism it judges. See `_contended_run`.
     in_below = all(all(load_runs[k][1]) for k in range(k_use))
     out_above = all(not any(load_runs[k][1]) for k in range(k_use, k_scan + 1))
 
@@ -1723,11 +1740,12 @@ def main():
     )
     assert k_out_one == 1 and k_out_one < k_out, (
         f"CAPACITY is what this faculty gets from the shared bus, so it must be what MOVES the "
-        f"threshold (it does not equal it -- see above): on a ONE-slot workspace a SINGLE other "
-        f"faculty must deny this one access "
+        f"threshold (under the rheobase kernel it EQUALS it -- see above): on a ONE-slot "
+        f"workspace a SINGLE other faculty must deny this one access "
         f"(got {k_out_one} -- that IS the eviction the retired single-slot criterion measured), "
         f"and the shipped {shipped_bus.capacity}-slot bus must tolerate STRICTLY more before "
-        f"denying it (got {k_out}). Equality means multi-slot bought this faculty nothing"
+        f"denying it (got {k_out}). Equality of the two means multi-slot bought this faculty "
+        f"nothing"
     )
     # (9) joining a shared bus must not silence it -- the uncapped arm is the reachable RED.
     assert capped_after_threat == "threat", (

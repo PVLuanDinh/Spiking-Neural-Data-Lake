@@ -203,8 +203,10 @@ together they are what the corollary above means in practice.
   `defence < (1 - lo)/2`; the same quantity is what `capacity = floor(1/defence)` divides, so every
   value satisfying it widens the workspace past the point where the bottleneck binds. Swept: the
   admissible window `(0.2000, 0.2250)` costs churn 9 → 15 and retention 47/47 → 45/47 at EVERY value
-  in it, and the rheobase axis has no admissible value at all. **Churn-clean and displaceable are
-  disjoint.** The blocking constraint was the bug exactly as this policy says: ONE subsidy was doing
+  in it, and the ignition-threshold axis has no admissible value at all. **Churn-clean and
+  displaceable are disjoint.** (The sweep's baselines are the pre-inhibitory-rheobase kernel's, its
+  own date; the same day's later change gave the shared inhibitory pool a rheobase and the stream's
+  churn baseline is 4 since — the window argument stands, its absolute figures are that morning's.) The blocking constraint was the bug exactly as this policy says: ONE subsidy was doing
   two jobs (sustaining an assembly, and deciding which assembly is broadcast), which want opposite
   magnitudes. Splitting them cost nothing on either side. A constant that resists every value is not
   a tuning problem, and sweeping it is how you prove that rather than assume it.

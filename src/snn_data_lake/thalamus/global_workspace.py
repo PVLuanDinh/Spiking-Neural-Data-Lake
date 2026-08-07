@@ -19,9 +19,11 @@ Here that bottleneck is implemented with GENUINE SPIKING neurons -- not scalar t
   * RECURRENT SELF-EXCITATION: an active pool feeds its own spikes back as excitatory current
     (a within-tick synaptic trace) and carries a cross-tick attractor memory `g` -- this is the
     attractor that SUSTAINS an ignited content and gives a slot occupant its hysteresis.
-  * A SHARED INHIBITORY POOL: every excitatory spike drives one global inhibitory pool whose
-    output subtracts from EVERY content pool (global lateral inhibition). This is the
-    competition: strong pools keep firing while they silence the rest.
+  * A SHARED INHIBITORY POOL WITH A RHEOBASE: every excitatory spike drives one global
+    inhibitory pool whose output subtracts from EVERY content pool (global lateral inhibition)
+    -- but only PAST an allowance of `capacity` slots' worth of activity (`_inh_free`). At or
+    below capacity the pool is silent and nothing is silenced; above it, the competition binds
+    and strong pools keep firing while the excess is suppressed.
   * IGNITION = SUSTAINED FIRING: a content ignites (is eligible for a slot) only if it is
     still spiking in the SECOND HALF of the settling window -- i.e. it survived the competition
     and is in the high-firing attractor. A pool that fires a few transient spikes and is then
@@ -30,13 +32,64 @@ Here that bottleneck is implemented with GENUINE SPIKING neurons -- not scalar t
     Everything past the capacity is ignited-but-not-accessed: it keeps its attractor charge and
     competes again next tick, but it is not broadcast and it earns no hold.
 
-So: weak input -> the pool never crosses v_th (or is inhibited to silence) -> stays local, no
-broadcast. Strong input -> the pool ignites into sustained firing, recruits its self-excitation,
-suppresses competitors through the shared inhibitory pool, and -- if it ranks inside the capacity
--- is broadcast globally. That all-or-none ignition is the un-riggable anchor, checked against a
+So: weak input -> the pool never crosses v_th (or, past the allowance, is inhibited to silence)
+-> stays local, no broadcast. Strong input -> the pool ignites into sustained firing, recruits its
+self-excitation, and -- if it ranks inside the capacity -- is broadcast globally, suppressing
+what the workspace has no room for through the shared inhibitory pool. That all-or-none ignition is the un-riggable anchor, checked against a
 FAIR CONTROL (`use_ignition=False`) that is a pure per-tick argmax with no spiking, no attractor,
 no inhibition: the control FLICKERS on noise; the spiking workspace is STABLE and only a
 genuinely stronger, supra-threshold signal takes a slot.
+
+=====================================================================================================
+THE SHARED INHIBITORY POOL HAS A RHEOBASE (2026-08-07b): inhibition begins PAST `capacity` slots.
+=====================================================================================================
+Every excitatory pool in this network is a spiking LIF with a threshold; the shared inhibitory pool
+was the ONLY unit without one -- `a_inh` drove lateral inhibition linearly from its first spike --
+and the measured consequence was that the derived, Cowan-corroborated `capacity` never bound on the
+live path. Over 120 wake ticks the occupancy histogram was {1: 117, 2: 3}: one content held with
+THREE SLOTS FREE while both producers posted every tick, because one saturated incumbent subtracts
+`_W_SELF * _si_sat = 0.36` from a rival whose claim sits in [0.51, 0.75] against a v_th of 1.1 --
+annihilated before `fired` is built, so `fired[:cap]` was a no-op. TWO mechanisms limited the held
+count; P2 says exactly one survives, and the one that survives is the derived one.
+
+THE CHANGE IS ONE KERNEL TERM AND TWO DERIVED PROPERTIES (see `_si_sat` / `_inh_free`): the pool
+now ignores `(capacity - 1) * _si_sat` of activity -- what `capacity` saturated slots produce among
+themselves -- and inhibits only the excess. At capacity 1 the allowance is EXACTLY 0.0, so the
+single-slot control is the retired kernel byte-for-byte. The reachable red throughout is
+`NoAllowanceArbiter` (the retired kernel, module scope). Re-measured on this module's own
+harnesses, same seeds:
+
+    churn on the 48-tick stream         9 -> 4        (argmax control: 54; retention 47/47 both)
+    head switches, same stream          12 -> 21      <- the disclosed cost: rank churn among
+                                                         co-admitted contents; retention says no
+                                                         content is dropped by it
+    flood (40 identical at 0.90)        40 ignited -> 4 admitted, unchanged
+    win a SLOT (5 tenant claims)        [0.72 x5] -> [0.55 x5], flat at the band floor
+    become HEAD, same sweep             [0.72, 0.72, 0.725, 0.765, 0.815]
+                                        -> [0.615, 0.645, 0.725, 0.765, 0.815]  (3 of 5 in-band
+                                        under both; the two floor tenants got cheaper to displace)
+    consumer k_out (access_consciousness)  2 -> 4, and k_out == capacity at 1/2/3/4/6, where the
+                                        old kernel read 1/1/1/2/3 -- denial is now the capacity
+                                        bound, not the silencing
+
+The flat SLOT row is the winnability criterion going TRIVIALLY green -- any supra-rheobase claim
+joins a below-capacity workspace -- so that criterion and its `over_band` red RETIRED into the
+full-workspace pair (`full_compliant` None / `full_strong` 0.905), which is strictly stronger on
+the same axis. What replaced them is the P2 close-out criterion: capacity decides the admitted set
+(min(capacity, load) at 1/2/3/4/6, sets nesting), the gain does not (set identity pinned across a
+12x gain sweep), and the gain is not dead (sigma-total 349 -> 215 across that sweep). Inhibition no
+longer decides the SET; it shapes the RATE.
+
+TWO RECORDS BELOW THIS BANNER WERE CORRECTED BY THE RE-MEASUREMENT, disclosed rather than patched
+silently: the split block's head row quoted `None` at the ceiling where LIMIT 3 quoted 0.815 for
+the same arbiter -- re-run on the byte-exact retired kernel it is 0.815, LIMIT 3 was right, and the
+row below is fixed. And the (e2) entrenchment red went green-for-the-wrong-reason: unconditional
+tenancy alone no longer entrenches ANYTHING (the enforcement was always the annihilation), so that
+red now runs on `NoAllowanceArbiter`. Every other `churn 9` / `[0.72 x5]` / `k_out 2` figure in the
+dated blocks below is that block's own pre-rheobase record and is left standing as history; LIMIT
+(1)'s one-step co-existence window on the live arm bus (evict at 0.66 with three slots free) was
+the annihilation itself and is expected to have dissolved -- the live-bus re-measurement belongs to
+the occupancy harness, not to this header.
 
 =====================================================================================================
 THE INCUMBENT'S SUBSIDY IS SPLIT IN TWO (2026-08-07): a HOLD on the slot, a GRIP on the head.
@@ -60,8 +113,11 @@ which is why churn, retention, the capacity, the lateral gain and the whole SLOT
 BYTE-UNCHANGED; the head is ordered over the admitted set by `_focus_key`, carrying only
 `grip = hold / capacity`. Measured, same five tenants, same 0.75 ceiling:
 
-    become HEAD at    0.805  0.835  0.910  0.955  None     <- one subsidy: outside the band, 0 of 5
-    become HEAD at    0.720  0.720  0.725  0.765  None     <- split: inside the band, 3 of 5
+    become HEAD at    0.805  0.835  0.910  0.955  None      <- one subsidy: outside the band, 0 of 5
+    become HEAD at    0.720  0.720  0.725  0.765  0.815     <- split: inside the band, 3 of 5
+    (CORRECTED 2026-08-07b: the last cell was recorded here as `None`, contradicting LIMIT 3's
+    0.815 for the same arbiter. Re-measured on the byte-exact retired kernel: 0.815 -- the ceiling
+    tenant is displaceable at `hi + grip` + one sweep step, which is above the band but finite.)
 
 Its reachable red is `OneSubsidyArbiter`, the pre-split arbiter kept as a running control. The
 biology it answers to: recurrent excitation is what sustains a cortical assembly, but which
@@ -98,7 +154,9 @@ the blocking constraint is the bug). Two changes, both inside the one arbiter:
 
   1. `step()` KEEPS the ignited set instead of argmaxing it. This required no new mechanism --
      `late[k] > 0` was already computed per pool and discarded.
-  2. The shared lateral inhibition is DIVIDED ACROSS THE CAPACITY: `_G_INH / capacity`. The old
+  2. The shared lateral inhibition is DIVIDED ACROSS THE CAPACITY -- written `_G_INH / capacity`
+     at the time; the typed `_G_INH` was later retired as `_W_SELF * capacity` exactly (see
+     `_lateral_gain`), and the 2026-08-07b banner above gave the pool its rheobase. The old
      dynamics gave the incumbent's defence a second, hidden effect -- more drive meant more
      spikes, which meant more drive into the SHARED inhibitory pool, which suppressed everyone
      else. Stability and winnability were therefore coupled through `_G_INH` and were provably
@@ -699,6 +757,7 @@ class GlobalWorkspace:
         self._rng = random.Random(seed)  # per-instance RNG (deterministic symmetry-break jitter)
         self._slots = ()  # ranked tuple of (source, content, hold) occupying the workspace
         self._g_lat = self._lateral_gain  # per-slot inhibition, E/I balanced (see `_lateral_gain`)
+        self._g_free = self._inh_free  # the shared inhibitory pool's rheobase (see `_inh_free`)
         self._last_focus = {}  # (source, content) -> this tick's FOCUS drive (claim + grip)
         self._buffer = []  # this tick's submitted candidates
         self._subscribers = []  # module callbacks receiving each broadcast
@@ -729,8 +788,63 @@ class GlobalWorkspace:
         The division-across-capacity property the multi-slot repair was built on is unchanged and
         is now structural rather than arithmetic: each slot gets one unit of inhibition against one
         unit of self-excitation, so holding a slot costs A SLOT and not the silence of every
-        competitor."""
+        competitor.
+
+        A CAPACITY-DERIVED QUANTITY IS BACK IN THE KERNEL, and the reconciliation is worth being
+        exact about because this docstring used to read as if removing one was the achievement.
+        What was removed here was a capacity dependence in the GAIN's arithmetic (the `_G_INH`
+        round trip). What `_inh_free` adds is a capacity-derived RHEOBASE on the shared inhibitory
+        pool -- a property of the WORKSPACE, exactly like `capacity` itself, and NOT of the load,
+        which is why the refusal recorded in `capacity`'s docstring (making the gain track the
+        competitor count destroyed winnability, 0.72 -> None) is preserved, not contradicted: the
+        gain still never moves with how many pools happen to be posting."""
         return self._W_SELF
+
+    # -- the shared inhibitory pool's rheobase ---------------------------------------------------
+    # distinct-from: episode_consolidation.py -- that `_kwta` is a hard top-K cardinality cut over
+    #   hippocampal attractor units; THIS workspace's top-K is `fired[:cap]`, which already exists
+    #   and is untouched here. What is added is a firing threshold on a dynamical shared inhibitory
+    #   pool, a mechanism neither module has.
+    # distinct-from: inhibitory_stdp.py -- per-synapse PLASTIC inhibitory weights onto one neuron
+    #   (Vogels 2011); this is ONE shared diffuse pool with a DERIVED, non-learned threshold.
+    @property
+    def _si_sat(self):
+        """A SATURATED pool's contribution to the shared inhibitory pool: the fixed point of the
+        `si += _K_INH * sp - _LEAK_INH * si` update under sustained every-micro-step firing, i.e.
+        `_K_INH / _LEAK_INH`. DERIVED, never written as a literal: typing the 0.6 with this
+        derivation in a comment beside it is the exact failure `_G_INH = 2.4` was retired for --
+        a constant that only ever agrees with its own derivation cannot be caught drifting. The
+        self-check asserts this MOVES when `_K_INH` or `_LEAK_INH` move."""
+        return self._K_INH / self._LEAK_INH
+
+    @property
+    def _inh_free(self):
+        """The shared inhibitory pool's RHEOBASE: the activity it ignores before it starts to
+        inhibit, set at what `capacity` saturated slots produce.
+
+        Every excitatory pool in this network is a spiking LIF with a threshold (`_v_th`); until
+        this property existed the shared inhibitory pool was the ONLY unit with none -- `a_inh`
+        drove lateral inhibition linearly from its first spike. The consequence, measured live
+        over 120 wake ticks, was a 4-slot workspace running 1-slot: occupancy `{1: 117, 2: 3}`,
+        because a saturated incumbent's `si` contribution alone subtracted `_W_SELF * _si_sat =
+        0.36` from every rival's drive, and live claims in [0.51, 0.75] against `_v_th = 1.1`
+        cannot survive that. The weaker pool was annihilated BEFORE `fired` was built, so
+        `fired[:cap]` -- the explicit, derived, Cowan-corroborated bound -- was a no-op on the
+        production path. Two mechanisms limited the held count; P2 says exactly one survives, and
+        the one that survives is the one that is derived.
+
+        THE VALUE. Pool i feels `a_inh - si[i]`; among N mutually-saturated pools that is
+        `(N - 1) * _si_sat`. Silent through N == capacity therefore means a threshold of
+        `(capacity - 1) * _si_sat` -- 1.8 at the shipped capacity 4, and EXACTLY 0.0 at capacity
+        1, which is why the single-slot control (`_SingleSlotControl`, capacity pinned at 1) is
+        byte-identical to the pre-rheobase kernel and every criterion built on it is untouched.
+
+        OWNED, NOT SMOOTHED: at or below capacity the lateral term is identically 0.0. Inhibition
+        no longer decides the SET -- `fired[:cap]` does -- it shapes the RATE above the allowance
+        (measured: sigma-total 348 -> 198 across a 50x gain sweep on which the admitted set is
+        pinned; the new criterion's third conjunct asserts the gain stays load-bearing so this
+        cannot silently become a dead parameter)."""
+        return (self.capacity - 1) * self._si_sat
 
     @property
     def grip(self):
@@ -753,7 +867,8 @@ class GlobalWorkspace:
           * Lowering `hold` to satisfy that bound was BUILT AND MEASURED AND REJECTED. The hold is
             also what `capacity` divides the unit budget by, so lowering it widens the workspace,
             and past capacity 4 the bottleneck stops binding: at capacity 5 an above-band tenant
-            becomes joinable by a compliant challenger (the `over_band` criterion loses its red)
+            became joinable by a compliant challenger (the winnability red of that era lost its
+            reach; a FULL workspace's exclusion of a compliant challenger carries the red today)
             and at capacity 6 a FULL workspace admits one. The candidate `(1 - lo)/3 = 0.15` --
             the value making exactly half the band displaceable -- reddens five criteria across
             three modules. Inside the window that leaves, `(0.2000, 0.2250)`, EVERY value costs
@@ -1263,10 +1378,13 @@ class GlobalWorkspace:
         late = [0] * m
         half = self._T // 2
         glat = self._g_lat  # this workspace's PER-SLOT share of the lateral budget (see `capacity`)
+        free = self._g_free  # the inhibitory pool's rheobase (see `_inh_free`); hoisted like _g_lat
         a_inh = sync(si, -1)  # register this chunk; shared pool starts silent
         for t in range(self._T):
             for i in range(m):
-                lateral = glat * max(0.0, a_inh - si[i])  # inhibition from OTHER pools
+                lateral = glat * max(
+                    0.0, (a_inh - si[i]) - free
+                )  # OTHER pools' drive past the inh rheobase
                 cur = dr[i] + self._W_SELF * trace[i] - lateral  # LIF input current
                 v[i] = v[i] + (cur - self._LEAK * v[i])  # leaky integration
                 if v[i] < 0.0:
@@ -1295,10 +1413,11 @@ class GlobalWorkspace:
         own recurrent self-excitation (within-tick trace), MINUS the shared inhibitory pool's
         feedback. The shared inhibitory pool `a_inh` sums EVERY excitatory spike; each content pool
         `self_k` tracks only its OWN contribution to it, so the inhibition actually applied to pool
-        k is `g_lat * (a_inh - self_k)` -- the drive from every OTHER pool. That is the global
-        lateral inhibition (each pool inhibits the others through the shared pool): a lone pool
-        inhibits only itself so it is barely damped and ignites, but among competitors the strongest
-        pools' spikes suppress the rest to silence.
+        k is `g_lat * max(0, (a_inh - self_k) - _inh_free)` -- the drive from every OTHER pool,
+        PAST the pool's rheobase allowance of `capacity` slots' worth of saturation. That is the
+        global lateral inhibition (each pool inhibits the others through the shared pool): at or
+        below `capacity` competitors the pool is silent and every supra-rheobase claimant ignites,
+        while past it the strongest pools' spikes suppress the excess to silence.
 
         `g_lat` is `_lateral_gain` -- one unit of inhibition per slot against one unit of recurrent
         self-excitation, E/I balanced. It read `_G_INH / capacity` until that typed total was shown
@@ -1659,6 +1778,7 @@ class GlobalWorkspace:
         #    the unit budget by, so granting it to C occupants is exactly the budget being spent.
         cap = self.capacity
         self._g_lat = self._lateral_gain  # read by _settle_chunk; set before any thread fans out
+        self._g_free = self._inh_free  # read by _settle_chunk; set before any thread fans out
         held = self._defended(submitted)
         grip = self.grip
         drives = {}
@@ -1726,6 +1846,27 @@ class OneSubsidyArbiter(GlobalWorkspace):
 
     def _focus_key(self, k):
         return self._rank_key(k)
+
+
+# distinct-from: action_gating.py -- `kwta` there is the canonical top-K selection primitive for
+#   the brain's selection circuits; this class selects nothing. It is an A/B CONTROL: the shipped
+#   arbiter with its inhibitory rheobase pinned back at zero, i.e. the retired kernel.
+class NoAllowanceArbiter(GlobalWorkspace):
+    """THE PRE-RHEOBASE KERNEL, kept as a running control: lateral inhibition with no allowance.
+
+    `_inh_free` is pinned at 0.0, so the shared inhibitory pool inhibits linearly from its first
+    spike -- the retired kernel exactly, byte for byte. Nothing else changes (same gain, same
+    band, same capacity, same hold), so an A/B against this isolates the rheobase and not the
+    parameters.
+
+    MODULE-SCOPE FOR THE SAME REASON AS `OneSubsidyArbiter` (P2 -- one definition of "the retired
+    kernel", not one per consumer): the re-pointed spiking-competition criterion and the
+    capacity-decides criterion in `main()` both run it as their reachable red, and a control that
+    each consumer reconstructs differently is two controls."""
+
+    @property
+    def _inh_free(self):
+        return 0.0
 
 
 def build_stream(n_ticks, seed=0):
@@ -1981,11 +2122,16 @@ def main():
         f"-- {b_beyond_head} beyond the head"
     )
 
-    # ---- SPIKING COMPETITION: distinct-strength competitors -> the shared inhibitory pool
-    #      SILENCES the weaker ones (0 sustained spikes) and only the strongest ignites. Note this
-    #      is UNDER the capacity (3 candidates, 4 slots), so a free slot is NOT a free pass: the
-    #      spiking competition still excludes them. Capacity bounds the workspace; competition
-    #      fills it. Both have to be real or the mechanism is gone.
+    # ---- SPIKING COMPETITION under the inhibitory rheobase. This block used to assert the
+    #      OPPOSITE -- "a free slot is NOT a free pass: the spiking competition still excludes
+    #      them", three candidates in four slots with ONE admitted -- and that comment stated the
+    #      P2 violation as design intent: two mechanisms limited the held count, and the implicit
+    #      one (lateral inhibition) overrode the derived one (`capacity`) on every live tick.
+    #      RE-POINTED, not weakened: BELOW capacity nothing is excluded (3 candidates, 4 slots ->
+    #      all three admitted, ordered by strength); ABOVE capacity the competition binds and the
+    #      weakest is excluded (5 candidates -> exactly `capacity` admitted). The red is
+    #      `NoAllowanceArbiter`, the retired kernel, admitting ('strong',) ALONE on the identical
+    #      under-capacity load -- inhibition deciding the set with three slots free.
     g_ws = GlobalWorkspace(seed=0)
     g_ws.submit("strong", "strong", 0.90)
     g_ws.submit("mid", "mid", 0.68)
@@ -1996,9 +2142,24 @@ def main():
     wta_ok = (
         g_content == "strong"
         and wta_winner_late > 0
-        and wta_losers_late == 0
-        and g_ws.broadcast_all() == ("strong",)  # 3 candidates, 4 slots, ONE admitted
+        and wta_losers_late > 0  # the sub-capacity rivals now SUSTAIN -- nobody is annihilated
+        and g_ws.broadcast_all() == ("strong", "mid", "weak")  # ALL admitted, strength order
     )
+    over_ws = GlobalWorkspace(seed=0)
+    for _src, _sal in (
+        ("strong", 0.90),
+        ("mid2", 0.80),
+        ("weak2", 0.72),
+        ("mid", 0.68),
+        ("weak", 0.62),
+    ):
+        over_ws.submit(_src, _src, _sal)
+    over_ws.step()
+    wta_red_ws = NoAllowanceArbiter(seed=0)
+    wta_red_ws.submit("strong", "strong", 0.90)
+    wta_red_ws.submit("mid", "mid", 0.68)
+    wta_red_ws.submit("weak", "weak", 0.62)
+    wta_red_ws.step()
 
     # ---- ANCHOR (ii) ALL-OR-NONE IGNITION: sub-threshold stays local, supra-threshold ignites --
     w_ws = GlobalWorkspace(seed=0)
@@ -2113,8 +2274,11 @@ def main():
         f"proximity threat ignites {contract_danger!r}"
     )
     print(
-        f"spiking WTA   : competitors 0.90/0.68/0.62 -> winner {g_content!r} keeps firing "
-        f"(late spikes {wta_winner_late}); losers silenced (late spikes {wta_losers_late})"
+        f"spiking comp  : competitors 0.90/0.68/0.62 (below capacity) -> head {g_content!r} "
+        f"(late spikes {wta_winner_late}), rivals SUSTAIN (late spikes {wta_losers_late}), all "
+        f"admitted {g_ws.broadcast_all()}; 5 candidates (above capacity) -> "
+        f"{len(over_ws.broadcast_all())} admitted, weakest excluded; retired-kernel red "
+        f"{wta_red_ws.broadcast_all()}"
     )
     print(
         f"spiking readout: weak@0.40 spikes={weak_spikes}, strong@0.80 spikes={strong_spikes} "
@@ -2194,7 +2358,10 @@ def main():
     # ...and THAT criterion is falsifiable by an input this module accepts rather than only by
     # breaking the accessor: a workspace whose defence is below the tie-break noise floor has a
     # capacity wider than this flood, so nothing is excluded and the bottleneck assert goes red.
-    # Run, not argued.
+    # Run, not argued. (Under the inhibitory rheobase this arm is unchanged for a second reason
+    # worth recording: at capacity 49 the allowance is 48 saturated slots' worth of activity,
+    # which exceeds any `a_inh` this flood can produce, so the lateral term is identically zero
+    # here with or without the excess clause.)
     nocap = GlobalWorkspace(seed=0, self_boost=0.0, hysteresis=1e-9)
     for i in range(n_flood):
         nocap.submit(f"src{i:02d}", f"cand{i:02d}", 0.90)
@@ -2203,12 +2370,23 @@ def main():
         f"the bottleneck criterion must be reachable-red: at a sub-jitter defence the capacity is "
         f"{nocap.capacity} and all {len(nocap.broadcast_all())} candidates broadcast"
     )
-    # genuine spiking competition: among distinct-strength pools, the shared inhibitory pool leaves
-    # only the strongest in sustained firing; the weaker pools are silenced (not merely out-ranked)
-    # and are excluded even though THREE free slots remain.
+    # genuine spiking competition, on the side of the allowance where it belongs: BELOW capacity
+    # every distinct-strength pool sustains and is admitted in strength order; the competition is
+    # allowed to bind only where the capacity says the workspace is full.
     assert wta_ok, (
-        "the shared inhibitory pool must silence weaker pools so only the strongest ignites, even "
-        f"with {cap - 1} slots free (got {g_ws.broadcast_all()})"
+        f"below capacity NOTHING may be excluded and the head order must follow strength: "
+        f"expected all of strong/mid/weak admitted with 'strong' the head, got "
+        f"{g_ws.broadcast_all()} (late winner {wta_winner_late}, late rivals {wta_losers_late})"
+    )
+    assert len(over_ws.broadcast_all()) == cap and "weak" not in over_ws.broadcast_all(), (
+        f"ABOVE capacity the competition must bind at exactly `capacity` and exclude the weakest: "
+        f"5 distinct-strength candidates into {cap} slots gave {over_ws.broadcast_all()}"
+    )
+    assert wta_red_ws.broadcast_all() == ("strong",), (
+        f"the sub-capacity criterion must be reachable-red, and its red is the RETIRED KERNEL "
+        f"(`NoAllowanceArbiter`): with no inhibitory rheobase the same three candidates collapse "
+        f"to the strongest alone -- inhibition deciding the set with {cap - 1} slots free. Got "
+        f"{wta_red_ws.broadcast_all()}"
     )
     # all-or-none ignition non-linearity: sub-threshold excluded, supra admitted, no summation.
     assert sub is None, f"a sub-threshold candidate must NOT ignite the workspace (got {sub!r})"
@@ -2292,29 +2470,19 @@ def main():
             f"{'' if (nw is not None and nw <= band_hi) else '   <- OUTSIDE BAND'}"
         )
 
-    # THE CRITERION: a compliant specialist must be able to win a slot against ANY compliant
-    # tenant. `<= band_hi` is not a number chosen here -- it is the ceiling every producer in this
-    # tree already derives from these same two attributes (`autonomous_loop::_percept_salience`,
-    # `access_consciousness::_max_claim`), so a challenger above it is not a compliant specialist.
-    assert all(w is not None and w <= band_hi + 1e-9 for w in win_new), (
-        f"a compliant specialist must win a slot against every compliant tenant, inside the band "
-        f"ceiling {band_hi:.2f}: needed {win_new} for tenants {[round(c, 4) for c in win_claims]}"
-    )
-    # ...and the OLD arbiter must FAIL it, or this change bought nothing and should be reverted.
-    # This is the A/B P2 demands before retiring a mechanism, run rather than argued.
-    assert any(w is None or w > band_hi + 1e-9 for w in win_old), (
-        f"the retired single-slot arbiter must be measurably WORSE on this criterion -- if it "
-        f"passes, the multi-slot replacement is unjustified. Got {win_old}"
-    )
-    # REACHABLE RED for the winnability criterion itself, by an input this module accepts rather
-    # than by breaking the accessor: a tenant claiming ABOVE the band monopolises the workspace,
-    # exactly as `access_consciousness::_max_claim` says it would. That is what the band is FOR,
-    # and it is why this criterion cannot be satisfied by simply widening the capacity.
-    over_band = _lowest_win(GlobalWorkspace, 1.0, band_hi)
-    assert over_band is None, (
-        f"the winnability criterion must be reachable-red: a tenant claiming 1.00 (above the "
-        f"{band_hi:.2f} ceiling) must NOT be joinable by a compliant challenger, got {over_band}"
-    )
+    # THE SWEEP'S TWO ASSERTS AND ITS `over_band` RED ARE RETIRED, and the retirement is the
+    # inhibitory rheobase working rather than a loss of coverage. Under the rheobase any
+    # supra-rheobase challenger joins a below-capacity workspace, so `win_new` collapses flat to
+    # the band floor and "a compliant specialist can win a slot" is TRIVIALLY green -- a criterion
+    # that cannot fail is deleted, not kept for its message (P8 burden 1). Its red, `over_band`
+    # (an above-band tenant must not be joinable), is likewise unreachable-green now: joinability
+    # below capacity no longer depends on the tenant at all, which was confirmed unavoidable at 15
+    # points across 3 mechanism families before retiring it. WHERE THE QUESTION STILL BITES is a
+    # FULL workspace, and the `full_compliant` / `full_strong` pair below inherits it there --
+    # strictly stronger on `over_band`'s own stated axis, because its tenant count IS the capacity,
+    # so widening the workspace cannot cheat it. The sweep itself is still RUN and PRINTED: it
+    # feeds the head-dissociation criteria below, and the flat row is the disclosure of what the
+    # rheobase did to slot winnability.
 
     # WINNING A SLOT MUST NOT MEAN EVICTING THE TENANT -- that would be single-slot with extra
     # steps, and it is the specific regression a prior pass declined to ship: repointing a second
@@ -2353,12 +2521,16 @@ def main():
     )
 
     # (a2c) DEFECT #16 -- THE FOCUS MUST BE CAPTURABLE, and the assert above cannot see it. --------
-    # That one is an `any()` over the sweep, and the point at the band CEILING is unwinnable by
-    # construction at every setting this module can take, because `hi` is DEFINED as `1 - hold`, so
-    # `hi + hold == 1.0` identically. It was therefore GREEN throughout the period when NO point of
-    # the band was winnable, and stays green now that three of five are: it can only ever police the
-    # ceiling. This is its complement and the pair is the honest statement -- the ceiling is
-    # undisplaceable, the rest of the band must not be.
+    # That one is an `any()` over the sweep, and the point at the band CEILING satisfies it by
+    # construction at every setting this module can take: displacing the head costs the tenant's
+    # claim plus the GRIP, so a ceiling tenant is displaceable only above `hi + grip` -- outside
+    # the band, and measured at 0.815 against the 0.75 ceiling. (Under the pre-split arbiter the
+    # bound was `hi + hold == 1.0` identically, i.e. unwinnable outright; the split narrowed it to
+    # merely non-compliant, and the assert is satisfied either way.) It was therefore GREEN
+    # throughout the period when NO point of the band was winnable, and stays green now that three
+    # of five are: it can only ever police the top of the band. This is its complement and the
+    # pair is the honest statement -- the ceiling is undisplaceable by any COMPLIANT challenger,
+    # the rest of the band must not be.
     #
     # THE RED IS ONE SUBSIDY DOING BOTH JOBS, which is the pre-split arbiter exactly: restore
     # `_focus_key` to `_rank_key` and the head is ranked on `claim + hold` again. Nothing else about
@@ -2405,6 +2577,28 @@ def main():
     assert len(set(_grips)) == len(_grips), (
         f"the grip derivation must move with the hold it is derived from -- if it does not it is a "
         f"typed constant wearing a derivation's clothes and should be deleted. Got {_grips}"
+    )
+    # THE INHIBITORY ALLOWANCE IS DERIVED, NOT TYPED (P1), same discipline as the grip: `_si_sat`
+    # must move when the LIF constants it is derived from move -- that is what stops it decaying
+    # back into a hardcoded 0.6 with its derivation written beside it, the exact failure
+    # `_G_INH = 2.4` was retired for -- and `_inh_free` must move with the capacity it multiplies.
+    _sat_ws = GlobalWorkspace(seed=0)
+    _sats = [_sat_ws._si_sat]
+    _sat_ws._K_INH = _sat_ws._K_INH * 1.5
+    _sats.append(_sat_ws._si_sat)
+    _sat_ws._LEAK_INH = _sat_ws._LEAK_INH * 0.5
+    _sats.append(_sat_ws._si_sat)
+    assert len(set(_sats)) == len(_sats), (
+        f"the saturation derivation must move with `_K_INH` and `_LEAK_INH` -- if it does not it "
+        f"is a typed constant wearing a derivation's clothes and should be deleted. Got {_sats}"
+    )
+    _frees = [
+        GlobalWorkspace(seed=0, self_boost=0.0, hysteresis=h)._inh_free
+        for h in (0.20, 0.33, 0.5, 1.0)
+    ]
+    assert len(set(_frees)) == len(_frees) and _frees[-1] == 0.0, (
+        f"the allowance must move with the capacity it is derived from, and at capacity 1 it must "
+        f"be EXACTLY 0.0 -- the single-slot workspace IS the retired kernel -- got {_frees}"
     )
 
     # (a2b) THE ARBITER IS NAME-BLIND -- the criterion the rank repair owes, with its red run. ------
@@ -2463,7 +2657,12 @@ def main():
         f"the head sweep must not depend on the challenger's default name either: {win_head} vs "
         f"{head_lo}"
     )
-    coex_claim = max(win_new)
+    # A FIXED in-band claim, no longer `max(win_new)`: that anchor was the top of a sweep that
+    # meant something when winnability was graded, and under the rheobase the sweep sits flat at
+    # the band floor -- an anchor that silently drifted to the weakest legal challenger. 0.72 is
+    # the historical anchor value, kept as a fixed test input so the co-existence arms stay on the
+    # claim they have always been measured at.
+    coex_claim = 0.72
     coex_new = _coexist(GlobalWorkspace, 0.6573, coex_claim)
     coex_old = _coexist(_SingleSlotControl, 0.6573, coex_claim)
     print(f"   co-existence at {coex_claim}: NEW {coex_new} | retired arbiter {coex_old}")
@@ -2478,6 +2677,10 @@ def main():
     # A FULL workspace is FULL -- capacity is a real constraint, not a formality. With every slot
     # held by a compliant tenant, a compliant challenger cannot get in; admission then costs a
     # genuinely exceptional claim, which is the 0.95 proximity threat the live contract posts.
+    # THIS PAIR NOW CARRIES THE WINNABILITY RED retired above: `full_compliant is None` is the
+    # exclusion `over_band` asserted, restated where it is still true, and it is strictly stronger
+    # on that criterion's own axis because the tenant count here IS the capacity -- widening the
+    # workspace recruits more tenants instead of opening a side door.
     full_compliant = _lowest_win(GlobalWorkspace, 0.6573, band_hi, tenants=cap)
     full_strong = _lowest_win(GlobalWorkspace, 0.6573, 1.0, tenants=cap)
     print(
@@ -2487,6 +2690,118 @@ def main():
     assert full_compliant is None and full_strong is not None, (
         f"a FULL workspace must exclude a compliant challenger and admit an exceptional one: "
         f"compliant {full_compliant}, exceptional {full_strong}"
+    )
+
+    # (a2d) THE P2 CLOSE-OUT FOR THE INHIBITORY RHEOBASE: capacity decides the set, the gain does
+    # not, AND the gain is not dead. Before the rheobase, two mechanisms limited the held count --
+    # lateral inhibition (implicit, growing with the competitor count) and `capacity` (explicit,
+    # derived, Cowan-corroborated) -- and the implicit one won: measured live over 120 wake ticks,
+    # occupancy {1: 117, 2: 3} with three slots free, `fired[:cap]` a no-op on the production
+    # path. Exactly one mechanism may survive (P2). Three conjuncts on one 8-producer load at
+    # live-shaped claims, each producer verified independently ignitable first, with the retired
+    # kernel (`NoAllowanceArbiter`) run as the red on the identical load.
+    p2_claims = (0.5797, 0.60, 0.62, 0.6573, 0.68, 0.70, 0.72, 0.75)
+
+    def _p2_load(cls, **kw):
+        w = cls(seed=0, **kw)
+        for i, c in enumerate(p2_claims):
+            w.submit(f"p{i}", f"C{i}", c)
+        w.step()
+        return w
+
+    # PRE-GUARD: every producer ignites ALONE, so the counts below are about the capacity and
+    # never about a claimant that could not have ignited anyway.
+    for _i, _c in enumerate(p2_claims):
+        _w_alone = GlobalWorkspace(seed=0)
+        _w_alone.submit(f"p{_i}", f"C{_i}", _c)
+        _w_alone.step()
+        assert len(_w_alone.broadcast_all()) == 1, (
+            f"pre-guard: producer p{_i} at {_c} must be independently ignitable, got "
+            f"{_w_alone.broadcast_all()}"
+        )
+
+    # (1) CAPACITY DECIDES. The same defences the capacity table sweeps; the admitted count is
+    # exactly `min(capacity, load)` -- `min`, never bare `capacity`, or this asserts something
+    # about the load -- and the admitted sets NEST as the workspace widens.
+    p2_sets = {}
+    for _sb, _hy in ((0.10, 0.90), (0.05, 0.45), (0.05, 0.28), (0.05, 0.20), (0.05, 0.10)):
+        _w = _p2_load(GlobalWorkspace, self_boost=_sb, hysteresis=_hy)
+        assert len(_w.broadcast_all()) == min(_w.capacity, len(p2_claims)), (
+            f"CAPACITY must decide the admitted count: capacity {_w.capacity} on {len(p2_claims)} "
+            f"ignitable producers admitted {len(_w.broadcast_all())}, want "
+            f"{min(_w.capacity, len(p2_claims))}"
+        )
+        p2_sets[_w.capacity] = set(_w.broadcast_all())
+    p2_caps = sorted(p2_sets)
+    assert len(p2_caps) >= 3, (
+        f"the capacity conjunct must be non-vacuous -- fewer than three distinct occupancies "
+        f"cannot show a bound moving (got capacities {p2_caps})"
+    )
+    assert all(p2_sets[a] < p2_sets[b] for a, b in zip(p2_caps, p2_caps[1:])), (
+        f"widening the workspace must ADD contents, never swap them -- the admitted sets must "
+        f"nest strictly as capacity grows: {[sorted(p2_sets[c]) for c in p2_caps]}"
+    )
+
+    # (2) THE GAIN DOES NOT. Across a gain sweep from a quarter of the shipped `_W_SELF` balance
+    # to three times it, the admitted SET -- its identity, not its cardinality, which is the
+    # weaker claim jitter could satisfy by swapping members -- is pinned.
+    def _gained(gain, base=GlobalWorkspace):
+        class _Gained(base):
+            @property
+            def _lateral_gain(self):
+                return gain
+
+        return _Gained
+
+    p2_gains = [GlobalWorkspace._W_SELF * (0.25 + 2.75 * i / 9) for i in range(10)]
+    p2_rows = []
+    for _g in p2_gains:
+        _w = _p2_load(_gained(_g))
+        p2_rows.append(
+            (
+                frozenset(_w.broadcast_all()),
+                sum(_w._last_total.values()),
+                sum(_w._last_v.values()),
+            )
+        )
+    assert len({r[0] for r in p2_rows}) == 1, (
+        f"the GAIN must not decide the admitted set: across gains "
+        f"{[round(g, 3) for g in p2_gains]} the sets were "
+        f"{sorted(len(s) for s, _t, _v in p2_rows)} -- identity must be constant"
+    )
+
+    # (3) AND THE GAIN IS NOT DEAD. Without this conjunct, (1) and (2) are green on `_g_lat = 0`
+    # -- a deleted mechanism satisfies "does not decide the set" perfectly. The gain must still
+    # shape the RATE: the summed spike counts and summed final membranes move across the sweep.
+    assert len({t for _s, t, _v in p2_rows}) >= 2 and len({v for _s, _t, v in p2_rows}) >= 2, (
+        f"the lateral gain must remain load-bearing on the RATE while the set is pinned: "
+        f"sigma-totals {sorted({t for _s, t, _v in p2_rows})}, distinct membrane sums "
+        f"{len({v for _s, _t, v in p2_rows})}"
+    )
+
+    # THE RED, run on the identical load: the retired kernel fails (1) -- occupancy stops
+    # following the capacity -- and fails (2) -- the admitted set moves with the gain.
+    p2_red_follow = []
+    for _sb, _hy in ((0.05, 0.28), (0.05, 0.20), (0.05, 0.10)):
+        _w = _p2_load(NoAllowanceArbiter, self_boost=_sb, hysteresis=_hy)
+        p2_red_follow.append(len(_w.broadcast_all()) == min(_w.capacity, len(p2_claims)))
+    assert not any(p2_red_follow), (
+        f"the close-out must be reachable-red, and its red is the RETIRED KERNEL: with no "
+        f"allowance the occupancy must stop following the capacity at 3/4/6, or this criterion "
+        f"asserts nothing the old kernel lacked (followed: {p2_red_follow})"
+    )
+    p2_red_sets = {
+        frozenset(_p2_load(_gained(_g, NoAllowanceArbiter)).broadcast_all()) for _g in p2_gains
+    }
+    assert len(p2_red_sets) > 1, (
+        f"...and on the retired kernel the GAIN must decide the set -- the defect itself, run: "
+        f"{sorted(len(s) for s in p2_red_sets)} distinct admitted sets expected > 1"
+    )
+    print(
+        f"   P2 close-out : capacity {p2_caps} -> occupancy "
+        f"{[len(p2_sets[c]) for c in p2_caps]} (nested), gain x12 sweep set-pinned with "
+        f"sigma-total {min(t for _s, t, _v in p2_rows)}..{max(t for _s, t, _v in p2_rows)}; "
+        f"retired kernel: occupancy stuck, {len(p2_red_sets)} gain-decided sets"
     )
 
     # (a3) THE CAPACITY IS DERIVED, NOT PICKED (P1) ----------------------------------------------
@@ -2557,13 +2872,13 @@ def main():
     assert strong_spikes > 0, (
         f"a supra-threshold (0.80) pool must emit discrete spikes, got {strong_spikes}"
     )
-    # winner by SUSTAINED firing: the ignited pool is still spiking in the second half of the window,
-    # having silenced its competitors through the shared inhibitory pool.
+    # winner by SUSTAINED firing: the ignited pool is still spiking in the second half of the
+    # window. (The duplicate "sustained firing must belong to ONE pool (WTA)" assert that stood
+    # here was DELETED with the inhibitory rheobase: below capacity rivals now sustain by design,
+    # and the re-pointed competition criterion in (a) owns both sides of that. Section (b)'s
+    # spiking evidence stands on its remaining asserts.)
     assert s_ws._last_late["perception", "strong"] > 0, (
         "the ignited winner must show sustained (2nd-half) firing"
-    )
-    assert wta_winner_late > 0 and wta_losers_late == 0, (
-        "sustained firing must belong to ONE pool (WTA)"
     )
 
     # (c) DETERMINISM --------------------------------------------------------------------------
@@ -2725,7 +3040,13 @@ def main():
     # The gate is measured, so force both paths explicitly here rather than hoping to land on one.
     p_ws = GlobalWorkspace(seed=0)
     prng = random.Random(4242)
-    p_drives = {(f"s{i}", f"c{i}"): prng.uniform(0.3, 1.2) for i in range(240)}
+    # The drive ceiling is 1.6, not the 1.2 it was before the inhibitory rheobase, and the reason
+    # is the NON-VACUITY guard below: 240 near-identical pools under the rheobase burst and crush
+    # in near-synchrony, and at a 1.2 ceiling micro-step 60 happens to land on the crushed phase
+    # with EVERY final membrane floored at 0.0 -- which would make the float comparison this
+    # section exists for compare nothing. Measured: ceiling 1.2 -> 0/240 nonzero finals,
+    # 1.6 -> 102/240 (89 pools sustained). The comparison itself is range-agnostic.
+    p_drives = {(f"s{i}", f"c{i}"): prng.uniform(0.3, 1.6) for i in range(240)}
     p_ws._sim_per_pool_s = 0.0  # cold EMA -> the gate must refuse to guess and run SERIAL
     ser_tot, ser_late = p_ws._simulate(p_drives)
     assert p_ws._sim_per_pool_s > 0.0, "a serial settle must record its own per-pool cost (P1)"
@@ -2793,7 +3114,13 @@ def main():
         for t in range(ws._T):
             spikes = {}
             for k in keys:
-                lateral = ws._g_lat * max(0.0, a_inh - self_i[k])
+                # mirrored LONGHAND, deliberately not pasted from `_settle_chunk`: this reference
+                # is the only check that can see a change to the shared kernel, and a copy-paste
+                # would retire it. `if/else` here vs `max()` there -- verified bit-identical on
+                # +0.0, -0.0 and negatives.
+                others = a_inh - self_i[k]
+                excess = others - ws._inh_free
+                lateral = ws._g_lat * excess if excess > 0.0 else 0.0
                 cur = drives[k] + ws._W_SELF * trace[k] - lateral
                 v[k] += cur - ws._LEAK * v[k]
                 if v[k] < 0.0:
@@ -3007,10 +3334,17 @@ def main():
         f"over {sorted(set(e2_seq))}"
     )
     # ITS RED, CONSTRUCTED AND RUN: the same 120 ticks with the pre-fix tenancy restored, where
-    # EVERY occupant is defended unconditionally. This is the arbiter that produced the live
-    # measurement in `_defended`'s docstring, so the red here is the defect itself and not a
-    # sabotage of the accessor.
-    e2_red_ws = GlobalWorkspace(seed=0)
+    # EVERY occupant is defended unconditionally -- ON THE PRE-RHEOBASE KERNEL, and the kernel is
+    # not decoration. Measured when the rheobase landed: unconditional tenancy on the SHIPPED
+    # kernel no longer entrenches anything (119 changes -- the subsidy is symmetric across
+    # occupants, so g-recency still decides the head), and neither does it on the one-subsidy
+    # arbiter (118). The entrenchment's ENFORCEMENT was always the annihilation: the defended
+    # incumbent's inhibition held the fresh claim below ignition, and only `NoAllowanceArbiter`
+    # restores that route. So the red is the arbiter that actually produced the live measurement
+    # in `_defended`'s docstring -- retired tenancy on the retired kernel -- and a red that
+    # reconstructs the retired behaviour on only ONE of the two paths it ran through is green for
+    # the wrong reason (the lesson `_NameRanked` records, met again from the other side).
+    e2_red_ws = NoAllowanceArbiter(seed=0)
     e2_red_ws._defended = lambda submitted: {(s, c) for s, c, _h in e2_red_ws._slots}
     e2_red = []
     for t in range(120):

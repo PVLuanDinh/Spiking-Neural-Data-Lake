@@ -320,9 +320,30 @@ def main():
     # counts every construction in a FACULTY module as one more private bus (it exempts only the
     # bus modules' own self-checks), so a check that demonstrates sharing by building two more
     # workspaces makes the number it is trying to improve worse.
+    #
+    # RE-DERIVED 2026-08-07 when the bus's shared inhibitory pool acquired its rheobase. This arm
+    # used to warm the foreign content three ticks and then fall SILENT, and the yields it
+    # measured were the annihilation holding this stream's thoughts under ignition while a STALE
+    # incumbent decayed. Under the rheobase a fresh thought takes the head from a silent
+    # incumbent on the first tick -- which is not a regression of this criterion, it is the
+    # attention-capture property the subsidy split exists to buy, reached from the consumer side.
+    # "Holding the slot" therefore has to mean what it means on the live brain: a faculty that is
+    # STILL POSTING. The foreign faculty is modelled live through the one channel a real one
+    # uses -- the subscribe/deliver cycle -- re-asserting its content on the next three
+    # deliveries; the yield ticks occur exactly while it posts, and the chain resumes once it
+    # stops. Both halves of the criterion are now measured against a live incumbent, where the
+    # old arm conflated "holding" with "posted once, long ago".
     for _ in range(3):
         shared.submit("other_faculty", "NOT_A_THOUGHT", 1.0)
         shared.step()  # a foreign content now holds the slot with a maximal attractor
+    _foreign_posts = [3]  # the foreign faculty stays LIVE for three more deliveries, then stops
+
+    def _foreign_faculty(_admitted):
+        if _foreign_posts[0] > 0:
+            _foreign_posts[0] -= 1
+            shared.submit("other_faculty", "NOT_A_THOUGHT", 1.0)
+
+    shared.subscribe(_foreign_faculty)
     busy_chain = adopt.think("sun", associate, max_steps=20)
     busy_yields = sum(1 for _b, ev in adopt.last_trace if ev == "yield")
     busy_ok = busy_yields > 0 and "NOT_A_THOUGHT" not in busy_chain and adopt.ws is shared
