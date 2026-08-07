@@ -83,9 +83,13 @@ volume sweep from 0.00 to 0.95. Renaming that peer to sort after this faculty no
 either readout (FOCUS 0 of 12, ACCESS 0 of 12), which is the two-sided form of the string test.
 FOUR REDs run beside it -- a ONE-slot bus never separates access from focus (0 of 12), the retired
 head-only delivery keeps membership at 12 of 12 while zeroing the index on all of them, the RETIRED
-RANK KEY reconstructed on the same bus moves FOCUS on 12 of 12 under that same rename (11 of 12
-before the bus's inhibitory rheobase -- the co-admitted pools now co-saturate on every tick, so the
-retired key falls through to the name on all 12), and (added 2026-08-06 by an adversarial re-run)
+RANK KEY reconstructed on the same bus moves FOCUS on 1 of 12 under that same rename (the number has
+tracked every mechanism change and each value is that arrangement's honest tie count: 11 of 12
+before the inhibitory rheobase, 12 of 12 on the rheobase under the retired two-competition harness
+cadence, and 1 of 12 since the harness converted to the live one-competition clock -- settling
+TOGETHER, the 0.95 peer and this 0.75 faculty tie on the clipped counts only on the first tick,
+before their defences diverge; one tick is one reachable red, disclosed as thin rather than
+padded), and (added 2026-08-06 by an adversarial re-run)
 THE HEAD MUST BE THE PEER'S CONTENT, whose red is this faculty admitted BENEATH ITS OWN RETRACTED
 CONTENT with no peer on the bus at all -- a two-step window found by sweeping, at claim 0.55, which
 is the cap FLOOR exactly: the rheobase left that window zero slack, so if the floor ever moves this
@@ -764,11 +768,15 @@ def _post(ws, posts):
         ws.submit(source, content, salience)
 
 
+# distinct-from: sleep_replay.py -- `_batch_states` there is a fused array pass over recall
+#   trials; this is the SAME harness function it always was, its cadence converted to the live
+#   brain's one-competition clock. No new mechanism is introduced by this edit.
 def _contended_run(n_peers, ws, n=12, shared=True):
-    """Replay the LIVE two-step cadence with `n_peers` OTHER faculties competing on ONE bus: the
-    peers submit and the bus arbitrates (the arm's step), then this faculty binds and steps
-    (`cortex/brain.py::_update_access`). Returns (own, admitted) -- this faculty's OWN per-tick
-    output tuple, and whether its content held a workspace slot on that tick.
+    """Replay the LIVE cadence with `n_peers` OTHER faculties competing on ONE bus: every
+    submitter -- the peers and this faculty -- posts into the SAME competition, and the owner
+    clocks it ONCE per tick (`cortex/brain.py::_update_access` since the one-clock repoint).
+    Returns (own, admitted) -- this faculty's OWN per-tick output tuple, and whether its content
+    held a workspace slot on that tick.
 
     THE SWEPT VARIABLE IS THE LOAD, NOT ONE COMPETITOR'S VOLUME, and choosing that is the whole
     re-derivation of claim (8) -- the measurements that forced it are recorded at the claim. A peer
@@ -790,26 +798,18 @@ def _contended_run(n_peers, ws, n=12, shared=True):
     claim = ac._max_claim()
     own, admitted = [], []
     for _ in range(n):
+        # ONE competition per tick -- the peers and this faculty settle TOGETHER, and the owner
+        # supplies the single clock. CONVERTED 2026-08-07, deliberately in its OWN pass: the
+        # mechanism changes this cadence judges (the subsidy split, the one-clock repoint, the
+        # inhibitory rheobase) all landed and were gated first, so re-deriving the harness's
+        # criteria here is not the same author writing code and criterion in one pass. The
+        # two-competition cadence this replaced had the peers settle and THEN this faculty settle
+        # against their defended remains -- a cadence the live brain stopped running at the
+        # one-clock repoint, and one whose defence-broken ties made `k_out` look like a clean
+        # equality with the capacity (see the doc block at the claim for what the live cadence
+        # actually does at exact ties).
         _post(ws, [(f"peer{b}", f"peer{b}", claim) for b in range(n_peers)])
-        ws.step()
         ac.bind_assembly(_coherent("cat", 3), salience=claim)
-        # `ac.step()` no longer clocks a bus it does not own (see `AccessConsciousness.step`), so
-        # the clock it used to supply is now EXPLICIT here. Behaviour is unchanged -- this is the
-        # same two-competition cadence this harness has always run, with the second competition
-        # spelled out instead of hidden inside a faculty's readout.
-        #
-        # NOT CHANGED TO ONE COMPETITION, deliberately, and the reason is worth recording. Making
-        # the peers and this faculty settle TOGETHER is the cadence the live brain now runs, and it
-        # was tried here: `k_out` moves 4 -> 5 (2 -> 5 before the bus's inhibitory rheobase; the
-        # one-competition numbers are bit-identical under both kernels) and the admission profile
-        # over 0..8 peers becomes `# # # # # . # . .` -- not monotone, because every peer posts
-        # EXACTLY `_max_claim()` and so does this faculty, and `_jitter_for` draws in
-        # first-encounter order, so adding a peer re-draws this faculty's tie-break instead of
-        # only raising the load. Claim (10)'s name-blindness RED also goes unreachable, because a
-        # peer and this faculty in ONE competition no longer co-saturate. Re-deriving three
-        # criteria of this module at once, in the same pass that changes the mechanism they judge,
-        # is the failure mode where one author writes both the code and its criterion. It is left
-        # as separate, named work.
         ws.step()
         own.append((ac.step(), round(ac.access_index(), 6), round(ac.global_availability(), 6)))
         # ADMISSION, not head identity: `broadcast_all()` is the multi-slot read, and asking it
@@ -851,11 +851,14 @@ def _slot_after_threat(claim, threat=0.95, warm=8, psal=0.6, bus=None):
         # ...then post it RAW, bypassing bind_assembly's cap, so capped and uncapped arms are
         # comparable. The key is CONSTANT across the warm loop on purpose: a faculty re-asserting
         # one content is the branch `_defended` subsidises, which is the HARDEST case for
-        # displaceability and therefore the right one for this criterion.
-        _post(ws, [("perception", "unit0", psal), ("salience", "threat", 0.0)])
+        # displaceability and therefore the right one for this criterion. ONE competition per
+        # tick (converted 2026-08-07 with the rest of the harness cadence): perception, the
+        # silent threat channel and this faculty all settle together under the owner's one clock.
+        _post(
+            ws,
+            [("perception", "unit0", psal), ("salience", "threat", 0.0), (ac._SRC, key, claim)],
+        )
         ws.step()
-        _post(ws, [(ac._SRC, key, claim)])
-        ws.step()  # the clock `ac.step()` used to supply, now explicit -- behaviour unchanged
         ac.step()
     _post(ws, [("perception", "unit0", psal), ("salience", "threat", threat)])
     return ws.step()
@@ -908,9 +911,12 @@ def _own_stale_head(lo=0.55, hi=0.75, step=0.0025, warm=6, tenant=0.75):
     return None, None, None
 
 
+# distinct-from: experience_replay.py -- `replay` there consolidates sampled transitions into a
+#   value table; this is the SAME dissociation harness it always was, its cadence converted to
+#   the live one-competition clock. No new mechanism is introduced by this edit.
 def _focus_run(peer_claim, peer_src=None, ws=None, n=12, who=None):
-    """Replay the live two-step cadence with ONE peer faculty posting `peer_claim` every tick, and
-    record ACCESS, FOCUS, the index and the reach SEPARATELY on every tick.
+    """Replay the live ONE-competition cadence with ONE peer faculty posting `peer_claim` every
+    tick, and record ACCESS, FOCUS, the index and the reach SEPARATELY on every tick.
 
     Deliberately not a variant of `_contended_run`, because the two claims pull the two different
     levers this bus has. Claim (8) sweeps the peer POPULATION at a compliant claim, and measured
@@ -938,10 +944,11 @@ def _focus_run(peer_claim, peer_src=None, ws=None, n=12, who=None):
     src = _peer_names()[0] if peer_src is None else peer_src
     out = []
     for _ in range(n):
+        # ONE competition per tick: the peer and this faculty settle together, the owner clocks
+        # once (converted 2026-08-07 with the rest of the harness cadence).
         _post(ws, [(src, "peer", peer_claim)])
-        ws.step()
         ac.bind_assembly(_coherent("cat", 3), salience=claim)
-        ws.step()  # the clock `ac.step()` used to supply, now explicit -- behaviour unchanged
+        ws.step()
         ac.step()
         if who is not None:
             # WHAT HOLDS THE HEAD, and this faculty's own key, recorded per tick. Claim (10) asserts
@@ -1222,15 +1229,20 @@ def main():
     _record_slot(sh_ac, sh_seen)
     sh_keys = []
     for _ in range(10):
-        _post(sh_ws, [("perception", "unit0", 0.95)])  # a louder faculty takes the one slot
-        sh_ws.step()
+        # ONE competition per tick (cadence converted 2026-08-07): the louder peer and this
+        # faculty settle together under the one clock, so `_record_slot`'s spy fires ONCE per
+        # tick and `sh_seen[t]` is exactly the competition `sh_keys[t]` entered. THE CONVERSION
+        # ALSO CLOSED A LATENT MISALIGNMENT: the `sh_seen[1::2]` slicing that stood here was
+        # written for the double-clock era ("the peer's step, then this faculty's") and had been
+        # silently comparing every SECOND TICK against the wrong key index since the one-clock
+        # repoint made the guest's `ac.step()` stop clocking -- green throughout, because the
+        # assert below needs only one disagreement. Alignment is now positional and exact.
+        _post(sh_ws, [("perception", "unit0", 0.95)])  # a louder faculty out-claims this one
         sh_ac.bind_assembly(_coherent("cat", 3), salience=0.60)
         sh_keys.append(sh_ac.content_key())
+        sh_ws.step()
         sh_ac.step()
-    # `_record_slot` spies the BUS, and this arm steps it TWICE per tick (the peer's step, then this
-    # faculty's). The odd entries are this faculty's own steps, which are the ones its key belongs
-    # to; pairing them off by position would compare a key against the peer's tick.
-    sh_own = sh_seen[1::2]
+    sh_own = sh_seen
     sh_disagree = sum(1 for c, k in zip(sh_own, sh_keys) if (c is not None) != (c == k))
 
     # ---- (8) THE OTHER FACULTIES ON A SHARED BUS DECIDE THIS ONE'S OWN ACCESS TO IT. -------------
@@ -1265,7 +1277,9 @@ def main():
     #
     # SO THE LEVER IS THE LOAD AND THE OBSERVABLE IS ADMISSION. `_first_denied` SEARCHES for the
     # smallest peer population that denies this faculty the workspace; nothing here is a chosen
-    # number. The scan runs to twice the capacity so "denied" has to STAY denied, and the two arms
+    # number. The scan runs to twice the capacity ("STAY denied" was the two-competition cadence's
+    # property and retired with it -- on the live clock, loads past the first denial can re-admit
+    # under the tie draw, disclosed below), and the two arms
     # of the neuter-A/B are the empty bus and that population. Its NULL re-runs THREE arms and the
     # third one is load-bearing -- see `k_co` below, where the arm-by-arm measurement is recorded.
     shipped_bus = _bus()
@@ -1287,10 +1301,18 @@ def main():
     # table (capacity 1/2/3 -> k_out 1, 4 -> 2, 6 -> 3, 8 -> never denied) was that defect
     # measured five ways -- it even warned that "a criterion asserting `k_out == capacity` would
     # be red on a correct bus", and it cited the since-retired `_G_INH / capacity` as the
-    # mechanism. Under the rheobase kernel that equality is exactly what the bus does: denial is
-    # `fired[:cap]` truncation on a FULL workspace, so the faculty is admitted below `capacity`
-    # peers and denied from `capacity` up. Swept over the same legal defences: capacity 1/2/3/4/6
-    # -> k_out 1/2/3/4/6, equality at every point.
+    # mechanism. Under the rheobase kernel, ON THE TWO-COMPETITION CADENCE this harness then ran,
+    # that equality was exactly what the bus did: swept over the legal defences, capacity
+    # 1/2/3/4/6 -> k_out 1/2/3/4/6. THE EQUALITY RETIRED WITH THE CADENCE (2026-08-07, harness
+    # converted to the live one-competition clock): it was the DEFENCE breaking ties -- this
+    # faculty settled its own competition against already-defended incumbents, so rank was
+    # deterministic in the load. On the live cadence every claimant posts EXACTLY `_max_claim()`
+    # into ONE competition and ties exactly; below `capacity` denial is impossible (all admitted,
+    # deterministically), and at or above it the population is truncated to exactly `capacity`
+    # every tick while WHICH exact-tie claimant is cut is `_jitter_for`'s declared symmetry break
+    # -- the (c1b) tie floor of `thalamus/global_workspace.py`, surfacing at the faculty level.
+    # Measured: smallest fully-denying load per capacity 1/2/3/4/6 -> 1/2/3/5/7 on this seed --
+    # at or one above the capacity, never a clean equality and never below it.
     _defence = shipped_bus.self_boost + shipped_bus.hysteresis
     one_slot = {
         "self_boost": shipped_bus.self_boost / _defence,
@@ -1308,26 +1330,26 @@ def main():
     #
     # The arms are EMPTY (k=0), CO-OCCUPIED (`k_co` -- the largest load at which this faculty is
     # still admitted, derived from the SEARCHED `k_out` and not chosen) and CROWDED (`k_use`).
-    # RE-MEASURED 2026-08-07 (the rheobase kernel moved `k_co` 1 -> 3, so the co-occupied regime
-    # is a different one and the old table was its predecessor's): per arm, the MAX per-tick
-    # disagreement across three re-runs against the first, two nondeterminism defects injected
-    # into `bind_assembly` (posted-claim jitter: +-0.02 per tick on the posted salience;
-    # coalition-size jitter: coalition of 2..5 drawn per tick instead of 3). 0 is a clean null:
+    # RE-MEASURED 2026-08-07 FOR THE THIRD TIME IN ONE DAY, and the trajectory is worth keeping
+    # whole: at the original k_co=1 (old kernel) the claim defect read 4 at co-occupancy; under
+    # the rheobase on the two-competition cadence (k_co=3, everyone below capacity) it went
+    # invisible to every arm; and under the LIVE one-competition cadence (k_co=4 -- five
+    # exact-tie claimants at the capacity boundary) it is maximally visible again, because a
+    # +-0.02 claim jitter moves WHO wins the tie-break. Injections: posted-claim jitter +-0.02
+    # per tick; coalition-size jitter 2..5 per tick instead of 3. MAX per-tick disagreement
+    # across three re-runs against the first; 0 is a clean null:
     #
-    #     defect                  EMPTY   CO-OCCUPIED(3)   CROWDED
-    #     posted-claim jitter        0          0             0
+    #     defect                  EMPTY   CO-OCCUPIED(4)   CROWDED(5)
+    #     posted-claim jitter        0         12             0
     #     coalition-size jitter     12         12             0
     #
-    # TWO of the old table's findings did not survive the kernel, and both changes are the kernel
-    # working: the posted-claim defect is now INVISIBLE to every arm, because admission below
-    # capacity no longer rides the claim margin (any supra-rheobase claim is admitted; the old
-    # sensitivity at co-occupancy WAS the annihilation margin). And the EMPTY and CO-OCCUPIED
-    # arms now show the same sensitivity under these two defects -- the co-occupied arm is kept
-    # NOT for a sensitivity these injections no longer separate, but because it is the one regime
-    # in which this faculty SHARES the workspace, i.e. the only arm in which a peer-interaction
-    # nondeterminism could express at all. The CROWDED arm stays vacuous and stays kept, labelled:
-    # an excluded faculty emits the same (False, 0.0, 0.0) on every tick, so it reproduces itself
-    # under almost any perturbation -- a disclosure (P8 guard 4), not a reason to drop a control.
+    # Only the CO-OCCUPIED arm sees BOTH defects -- the live cadence RESTORES the original
+    # three-arm rationale the two-competition interlude had erased: it is the one regime in which
+    # this faculty genuinely shares the workspace, and the boundary regime where nondeterminism of
+    # any kind has an admission outcome to move. The CROWDED arm stays vacuous and stays kept,
+    # labelled: an excluded faculty emits the same (False, 0.0, 0.0) on every tick, so it
+    # reproduces itself under almost any perturbation -- a disclosure (P8 guard 4), not a reason
+    # to drop a control.
     k_co = max(0, k_use - 1)
     load_null = (
         sum(1 for a, b in zip(alone_own, _contended_run(0, _bus())[0]) if a != b)
@@ -1342,22 +1364,27 @@ def main():
         )
         if a != b
     )
-    # Admission must be a monotone STEP in the load, not a count that happens to land at one point:
-    # in on EVERY tick below the threshold (the search only proves ONE tick), out on every tick from
-    # it to the end of the scan (the search proves nothing above it at all).
-    #
-    # KNOWN AND NOT CLOSED HERE (2026-08-07, re-verified the day the bus gained its inhibitory
-    # rheobase): this step holds on THIS harness's two-competition cadence, in which the peers
-    # settle and then this faculty settles alone. Run with ONE competition -- the cadence the live
-    # brain now uses -- `k_out` moves 4 -> 5 and the profile over 0..8 peers becomes
-    # `# # # # # . # . .`, which is not monotone, because every peer and this faculty all post
-    # EXACTLY `_max_claim()` and `_jitter_for` draws in first-encounter order, so adding a peer
-    # re-draws this faculty's tie-break rather than only raising the load. The rheobase did NOT
-    # close this: the one-competition profile is bit-identical under both kernels, which pins the
-    # cause on the tie-break draw and not on the inhibition. The criterion is left as it is rather
-    # than re-derived in the pass that changed the mechanism it judges. See `_contended_run`.
-    in_below = all(all(load_runs[k][1]) for k in range(k_use))
-    out_above = all(not any(load_runs[k][1]) for k in range(k_use, k_scan + 1))
+    # THE MONOTONE-STEP CRITERION IS DELETED WITH THE CADENCE THAT PRODUCED IT (2026-08-07, the
+    # item the previous pass left as named work -- closed now, in its own pass, after the
+    # mechanisms it judges all landed and gated). It asserted admission in on EVERY tick below
+    # `k_out` and out on every tick from it to the scan's end, and that step was a property of
+    # the retired two-competition cadence: this faculty settled AGAINST defended incumbents, so
+    # the defence broke every tie and the load was a clean lever. On the live one-competition
+    # cadence every claimant posts EXACTLY `_max_claim()` and ties exactly, and the profile over
+    # 0..8 peers reads `# # # # # . # . .` -- k=6 re-admits after k=5 denies, because
+    # `_jitter_for` draws in first-encounter order and adding a peer re-draws this faculty's
+    # tie-break. Bit-identical under both kernels (measured), which pins the cause on the
+    # tie-break draw, not the inhibition. What replaces the assert is a MEASURED DISCLOSURE, not
+    # a weaker assert, because no candidate replacement has a demonstrable red (F11 cuts both
+    # ways): per-load the outcome is CONSTANT (every load reads 12/12 or 0/12 -- 9/9 loads
+    # all-or-none), and the POPULATION admitted is exactly `min(claimants, capacity)` on every
+    # tick of every load -- a bound `NoAllowanceArbiter` also satisfies on this input, because
+    # exact ties are symmetric and even annihilation cannot separate them; an assert that is
+    # green on the retired kernel too would be a criterion with no reachable red, so it is
+    # recorded here instead of asserted. Claim (8)'s decisiveness survives on the asserts that
+    # kept their reds: `k_out` exists (private-bus red: None), the one-slot bus denies at 1
+    # (capacity moves the denial point), and the load moves this faculty's own output 12/12
+    # (private red: 0).
 
     # ---- (9) A FACULTY JOINING A SHARED BUS MUST NOT BE ABLE TO SILENCE IT. ----------------------
     # `_max_claim` caps this faculty's post at the bus's own displaceability bound. The RED is the
@@ -1415,13 +1442,17 @@ def main():
     # like when you can finally see it from both directions.
     #
     # THE DISSOCIATION ITSELF MOVED ONTO THE VOLUME LEVER, and the sweep is what justifies 0.95
-    # rather than a taste for it. Measured, one peer, 12 ticks each: at 0.00-0.55 this faculty has
-    # ACCESS and FOCUS 12/12; from 0.60 to 0.85 it loses the head on exactly the first tick (1/12);
-    # at 0.90 and 0.95 it holds a slot on 12/12 and the head on 0/12 -- ACCESS WITHOUT FOCUS on
-    # every tick; at 1.00, above every specialist's `_max_claim`, it is excluded entirely (0/12) and
-    # there is nothing to dissociate. The index is BIT-IDENTICAL across that whole sweep from 0.00
-    # to 0.95, which is the property, and it is the reason the lever is legitimate: the peer is
-    # changing this faculty's FOCUS and provably not its ACCESS.
+    # rather than a taste for it. RE-SWEPT 2026-08-07 on the converted one-competition cadence,
+    # one peer, 12 ticks each: at 0.00-0.70 this faculty has ACCESS and FOCUS 12/12; from 0.85
+    # through 1.00 it holds a slot on 12/12 and the head on 0/12 -- ACCESS WITHOUT FOCUS on every
+    # tick. Two rows moved with the cadence and kernel, both in the direction the mechanisms
+    # bought: the focus boundary sits between 0.70 and 0.85 (it was 0.55/0.60 on the two-step
+    # cadence), and at 1.00 the faculty is NO LONGER excluded -- below capacity nobody is
+    # annihilated, so even a non-compliant peer costs it only the head, and the dissociation
+    # reaches all the way up. 0.95 stays the lever value: comfortably inside the
+    # access-without-focus regime on both cadences. The index is BIT-IDENTICAL between the quiet
+    # arm and the 0.95 arm (12/12 by float.hex), which is the property and the reason the lever
+    # is legitimate: the peer is changing this faculty's FOCUS and provably not its ACCESS.
     #
     # The load-bearing number is the index. It must be the SAME in the access-without-focus arm as
     # in the access-with-focus arm: it is an ACCESS index, so losing the head to a louder peer may
@@ -1494,10 +1525,10 @@ def main():
     st_claim = st_ac._max_claim()
     st_rows = []
     for _ in range(12):
+        # ONE competition per tick (cadence converted 2026-08-07 with the rest of the harness).
         _post(st_ws, [(peer_lo, "peer", 0.95)])
-        st_ws.step()
         st_ac.bind_assembly(_coherent("cat", 3), salience=st_claim)
-        st_ws.step()  # the clock `st_ac.step()` used to supply, now explicit -- behaviour unchanged
+        st_ws.step()
         st_ac.step()
         st_rows.append((st_ac.state(), st_ac.ignited(), st_ac.focused()))
     # `"focused" in s` is tested BEFORE it is read so a DELETED key fails this criterion by its own
@@ -1578,11 +1609,12 @@ def main():
         f"the SAME faculty rotates its bundle, and on {sh_disagree}/{len(sh_own)} against a peer"
     )
     print(
-        f"load decisive: a {shipped_bus.capacity}-slot bus admits this faculty below {k_out} peer "
-        f"faculties and denies it from {k_out} through {k_scan}; own output differs "
-        f"{load_diff}/{len(alone_own)} ticks (unchanged load, 3 arms incl. co-occupancy at {k_co} "
-        f"-> {load_null}); a ONE-slot bus denies at {k_out_one}; on a PRIVATE bus no load ever "
-        f"does ({k_out_priv}, own diff {priv_diff})"
+        f"load decisive: a {shipped_bus.capacity}-slot bus admits this faculty at every load "
+        f"below {k_out} peers and first fully denies it at {k_out} (per-load all-or-none; the "
+        f"across-load order at exact ties is the jitter's -- see the disclosure at the claim); "
+        f"own output differs {load_diff}/{len(alone_own)} ticks (unchanged load, 3 arms incl. "
+        f"co-occupancy at {k_co} -> {load_null}); a ONE-slot bus denies at {k_out_one}; on a "
+        f"PRIVATE bus no load ever does ({k_out_priv}, own diff {priv_diff})"
     )
     print(
         f"displaceable: cap={cap} -> a 0.95 threat takes the head ({capped_after_threat!r}); "
@@ -1718,11 +1750,9 @@ def main():
         f"workspace: no load from 0 to {k_scan} peers did, so nothing on this bus is decisive for "
         f"it and it is a private workspace wearing a shared one's name"
     )
-    assert in_below and out_above, (
-        f"admission must be a MONOTONE STEP in the load, or the threshold is a coincidence of one "
-        f"configuration rather than the bottleneck binding: admitted on every tick below {k_out} "
-        f"peers = {in_below}; denied on every tick from {k_out} through {k_scan} = {out_above}"
-    )
+    # (The monotone-step assert that stood here was DELETED with the two-competition cadence --
+    # see the disclosure at the `load_runs` measurement for the profile, the cause, and why no
+    # replacement assert earned a place.)
     assert load_diff == len(alone_own), (
         f"filling the shared workspace with other faculties must change this faculty's OWN output "
         f"on EVERY tick against an empty one, got {load_diff}/{len(alone_own)}"

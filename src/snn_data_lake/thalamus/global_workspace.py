@@ -70,7 +70,11 @@ harnesses, same seeds:
                                         under both; the two floor tenants got cheaper to displace)
     consumer k_out (access_consciousness)  2 -> 4, and k_out == capacity at 1/2/3/4/6, where the
                                         old kernel read 1/1/1/2/3 -- denial is now the capacity
-                                        bound, not the silencing
+                                        bound, not the silencing. (Measured on the consumer's
+                                        then-current two-competition harness; when that harness
+                                        later converted to the live one-competition clock the
+                                        equality gave way to the exact-tie draw regime -- smallest
+                                        denying load 1/2/3/5/7 -- see the claim's own doc block.)
 
 The flat SLOT row is the winnability criterion going TRIVIALLY green -- any supra-rheobase claim
 joins a below-capacity workspace -- so that criterion and its `over_band` red RETIRED into the

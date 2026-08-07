@@ -9,6 +9,47 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- the harnesses now run the clock the brain runs (2026-08-07f)
+
+`cortex/access_consciousness.py`'s self-check harnesses ran a TWO-competition cadence -- peers
+settle, then this faculty settles against their defended remains -- which the live brain stopped
+running at the one-clock repoint. Converting them was deliberately left as separate, named work so
+the criteria would not be re-derived in the same pass that changed the mechanisms they judge. That
+pass is this one: `_contended_run`, `_slot_after_threat`, `_focus_run`, the claim (7) shared arm
+and the state-mirror arm all post every submitter into ONE competition under the owner's one clock
+(`_own_stale_head` already did). Every number below was measured before any assert was touched.
+
+- **The monotone-step criterion is DELETED with the cadence that produced it.** Its step was the
+  DEFENCE breaking ties; on the live clock every claimant posts exactly `_max_claim()` and ties
+  exactly, and the profile over 0..8 peers reads `# # # # # . # . .` (k=6 re-admits after k=5
+  denies -- `_jitter_for` draws in first-encounter order; bit-identical under both kernels, so the
+  cause is the tie draw, not the inhibition). What replaces it is a measured DISCLOSURE, not a
+  weaker assert, because no candidate replacement has a demonstrable red: per-load the outcome is
+  all-or-none (9/9 loads), and the population admitted is exactly `min(claimants, capacity)` on
+  every tick -- a bound the RETIRED kernel also satisfies on this input, since exact ties are
+  symmetric and even annihilation cannot separate them. Claim (8)'s decisiveness survives on the
+  asserts that kept reds: `k_out` exists (5; private-bus red None), one-slot denies at 1,
+  load_diff 12/12 (private red 0), the three-arm null 0. The two-competition equality
+  `k_out == capacity` retired with its cadence: smallest denying load per capacity 1/2/3/4/6 is
+  now 1/2/3/5/7 -- at or one above capacity, never below.
+- **The defect-injection table, third form in one day, and the trajectory is the finding**: claim
+  jitter at co-occupancy read 4 (old kernel, k_co=1), then 0 everywhere (rheobase on the two-step
+  cadence, k_co=3 -- everyone below capacity), and now 12 (live clock, k_co=4 -- five exact-tie
+  claimants at the capacity boundary, where +-0.02 moves who wins the draw). The live cadence
+  RESTORES the original three-arm rationale: only CO-OCCUPIED sees both defects.
+- **Claim (9) unchanged in every disposition** (capped threat, uncapped threat, one-subsidy red);
+  **claim (10) arms all hold** (quiet 12/12, AWF vs a 0.95 peer 12/12, index bit-identical,
+  rename moves nothing) with its retired-rank-key red now reachable at **1/12** -- settling
+  together, the peer and faculty tie on clipped counts only on the first tick, before defences
+  diverge; one tick is one reachable red, disclosed as thin. The volume sweep re-derived: focus
+  boundary between 0.70 and 0.85, and at 1.00 the faculty is NO LONGER excluded (the rheobase
+  reaches here too -- the dissociation extends to non-compliant peers).
+- **A latent misalignment closed by the conversion**: the claim (7) shared arm's
+  `sh_seen[1::2]` slicing was written for the double-clock era and had compared every second
+  TICK against the wrong key index since the one-clock repoint (green throughout -- the assert
+  needs only one disagreement). Alignment is now positional; the arm reads 10/10 disagreements.
+- Gates: ruff clean, 280/280 self-checks, pytest 93.08%, five asserting CI tools exit 0.
+
 ## [Unreleased] -- the live occupancy harness, and the trigger it stands guard on (2026-08-07e)
 
 `tests/test_workspace_occupancy.py` -- the runnable source the workspace docstrings' live figures
