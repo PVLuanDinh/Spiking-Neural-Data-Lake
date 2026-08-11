@@ -84,7 +84,7 @@ import numpy as np
 
 # --- spiking substrate: VSA algebra, world KB (both stdlib by measurement, see the header) ---------
 from snn_data_lake.cortex.vsa_reasoning import D, bind, bundle, cleanup, hv, permute
-from snn_data_lake.reasoning.world_kb_stream import load_kb
+from snn_data_lake.cortex.world_kb_stream import load_kb
 
 # syntactic roles (beim Graben et al. 2020 role-filler slots) -> each a spike-polarity role code via hv
 ROLE_HEAD, ROLE_COMP, ROLE_SPEC, ROLE_MOD = "HEAD", "COMP", "SPEC", "MOD"

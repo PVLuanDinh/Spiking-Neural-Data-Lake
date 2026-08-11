@@ -20,9 +20,15 @@ currencies, planet order, class-level properties (for multi-hop), numeric parity
 are added by `_extra_facts()`. `load_kb(url=...)` parses a real "head<TAB>relation<TAB>tail" triples
 file if given, else uses the bundled facts (so the self-check is deterministic offline).
 
-  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.world_kb_stream
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.cortex.world_kb_stream
 Deps: numpy (+ stdlib) for the masked-slot demo ONLY (imported inside main()). `load_kb` /
 `_bundled` / `_extra_facts` do not import numpy at module scope -- the two-world reasoning bridge imports them without pulling numpy.
+
+PROMOTED reasoning/ -> cortex/ 2026-08-11 (#10 family settlement C2b; measured row in
+docs/P4C_BACKLOG.md), the KB-completion lane's second half beside kb_ranking. DISCLOSED at the
+move: main() lazily imports reasoning.language_readout_slda + reasoning.language_self_build --
+two governed->reasoning reaches import_manifest derives; both import clean in the gate env and
+both are family members whose own promotions (C5, C6) close the reaches.
 """
 
 import os
@@ -749,7 +755,7 @@ def tail_vocab(triples):
 
 def _most_frequent_tail_baseline(pairs, vocab):
     """Baseline: per-relation most-frequent tail (the relation is context[0]). A strong KB baseline."""
-    from collections import defaultdict, Counter
+    from collections import Counter, defaultdict
 
     rset = set(vocab)
     cut = int(len(pairs) * 0.8)

@@ -9,6 +9,16 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- family settlement C2b: world_kb_stream -> cortex/ (2026-08-11l)
+
+The KB-completion lane's two halves are both governed: world_kb_stream (605 curated real
+triples + the masked-slot adapter) joins kb_ranking in cortex/. kb_ranking's
+governed->reasoning lazy reach CLOSES (now governed->governed); world_kb_stream's own main()
+brings two disclosed new reaches into the language modules (manifest 15 -> 16, all import),
+each closed by that module's own upcoming promotion (C5/C6). Self-check 0.4s with one real
+assert against the per-relation most-frequent baseline (the P8 control shape): 50.0% vs 38.9%
+measured at the move. Four importers repointed; REGIONS + run_selfchecks CORE; dormancy green.
+
 ## [Unreleased] -- family settlement C2a: corpus_stream -> cortex/ (2026-08-11k)
 
 The language loop's ingestion hub moves to cortex/ at the full bar, verified at REAL scale at

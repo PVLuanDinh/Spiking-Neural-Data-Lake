@@ -23,11 +23,11 @@ random ranking decisively, at open-vocab scale a classifier cannot touch.
 Deps: numpy (+ stdlib). Reuses world_kb_stream bundled facts as the offline fallback.
 
 PROMOTED reasoning/ -> cortex/ 2026-08-11 (#10 batch-1, measured row in docs/P4C_BACKLOG.md).
-The offline fallback is a deliberate governed->reasoning LAZY reach (`load_dataset` imports
-`reasoning.world_kb_stream`), the shape substrate/import_manifest derives and asserts; it moves
-again only when world_kb_stream's own row settles. Self-check measured at promotion: 12.5s with
-cached FB15k-237 (Hits@10 0.297, 431x random); offline fallback keeps it deterministic without
-network.
+The offline fallback lazily imports `world_kb_stream` -- a governed->reasoning reach when this
+landed, CLOSED the same day by world_kb_stream's own promotion to cortex/ (family C2b): the
+lazy import is now governed->governed and stays lazy only to keep load_dataset's numpy-free
+callers light. Self-check measured at promotion: 12.5s with cached FB15k-237 (Hits@10 0.297,
+431x random); offline fallback keeps it deterministic without network.
 """
 
 import os
@@ -89,7 +89,7 @@ def load_dataset():
             return tr, te, False
     except Exception:
         pass
-    from snn_data_lake.reasoning.world_kb_stream import load_kb
+    from snn_data_lake.cortex.world_kb_stream import load_kb
 
     triples, _ = load_kb()
     import random

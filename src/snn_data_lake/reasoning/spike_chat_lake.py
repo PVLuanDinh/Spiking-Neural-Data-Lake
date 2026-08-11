@@ -56,7 +56,7 @@ from snn_data_lake.hippocampus.content_signature import (
 )
 from snn_data_lake.reasoning.lake_reason import Reasoner
 from snn_data_lake.reasoning.train_of_thought import TrainOfThought
-from snn_data_lake.reasoning.world_kb_stream import load_kb
+from snn_data_lake.cortex.world_kb_stream import load_kb
 from snn_data_lake.substrate.home import KnowledgeLog, banner, home
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 
