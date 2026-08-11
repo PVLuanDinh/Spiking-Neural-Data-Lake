@@ -25,7 +25,7 @@ import sys
 import numpy as np
 
 from snn_data_lake.cortex.kb_ranking import DistMult, load_dataset
-from snn_data_lake.reasoning.nightly_skills import _NightKB
+from snn_data_lake.cortex.nightly_skills import _NightKB
 
 
 def _hits10(model, te, known, rng, eval_n=250):
@@ -90,7 +90,7 @@ def main():
     # claim, "the same head" is.)
     assert sur_traj[-1] >= ref_traj[-1] - 0.05, (
         f"the surviving _NightKB head is measurably worse at equal exposure "
-        f"({sur_traj[-1]:.3f} vs {ref_traj[-1]:.3f}) -- the RankingDomain retirement is NOT licensed"
+        f"({sur_traj[-1]:.3f} vs {ref_traj[-1]:.3f}) -- RankingDomain retirement NOT licensed"
     )
     print(
         "A/B OK: the adopted head is not measurably worse at equal exposure; retirement licensed."

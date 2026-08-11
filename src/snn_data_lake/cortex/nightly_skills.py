@@ -113,13 +113,12 @@ from snn_data_lake.cortex.autotelic_goals import (
     _reach_rate,
     collect_labels,
 )
-from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
-from snn_data_lake.hippocampus.proximity_replay import LakeMemory
-from snn_data_lake.hippocampus.content_signature import SIG as _SIG_DIM
 from snn_data_lake.cortex.corpus_stream import ARPABET, load_cmudict, load_text, phoneme_stream
 from snn_data_lake.cortex.kb_ranking import DistMult, load_dataset
 from snn_data_lake.cortex.language_readout_slda import SLDA_RFF_np
 from snn_data_lake.cortex.language_self_build import _bigram_baseline, _positional_code
+from snn_data_lake.hippocampus.content_signature import SIG as _SIG_DIM
+from snn_data_lake.hippocampus.proximity_replay import LakeMemory
 
 # open_world_loop is imported LAZILY at its two use sites (_ensure_ow, the discovery feed):
 # it imports physics_stream from THIS module since meta_skill_loop's 2026-08-11 retirement
@@ -132,6 +131,7 @@ from snn_data_lake.hippocampus.skill_builder import (
     math_stream,
     signature,
 )
+from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
 from snn_data_lake.substrate.home import home, lake_path, load_state, save_state
 
 _SKILL_IDS = {"language": 0, "math": 1, "physics": 2, "world-kb": 3}

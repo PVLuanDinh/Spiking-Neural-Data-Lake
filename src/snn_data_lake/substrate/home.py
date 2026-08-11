@@ -202,7 +202,7 @@ def state_path(name):
 
     (1) `_migrate_sidecar` reads it, once, to import a pre-2026-08-05 blob into the one lake.
     (2) Binary blobs the JSON facade cannot carry are still written here by their own writers:
-        `cortex/brain.py` -> `language_acq.npz` (numpy) and `reasoning/nightly_skills.py`
+        `cortex/brain.py` -> `language_acq.npz` (numpy) and `cortex/nightly_skills.py (promoted 2026-08-11)`
         -> `skills*.spkl`. Those are OPEN P4b debt, named in `save_state`'s docstring; the carrier
         they need is `save_named_state`, which takes raw bytes.
 
@@ -628,7 +628,7 @@ def save_state(name, obj):
     and this decides where it lives: `cortex/brain.py` (reasoning_curriculum.json),
     `brainstem/closed_loop.py` (valence.json), `hippocampus/lake_consolidation.py`
     (recall_trace.json), `cortex/time_cells.py` (time_cells.json), `reasoning/gf.py`
-    (gf_library.json, active_library.json), `reasoning/nightly_skills.py`. Not one of them changed a
+    (gf_library.json, active_library.json), `cortex/nightly_skills.py (promoted 2026-08-11)`. Not one of them changed a
     line to move, and none of them can drift back.
 
     STILL OPEN, and named so it stays countable: `language_acq.npz` and the `skills*.spkl` blobs do

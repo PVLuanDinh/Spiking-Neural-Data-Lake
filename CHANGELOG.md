@@ -9,6 +9,15 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- family settlement C9a: nightly_skills -> cortex/ (2026-08-11s)
+
+The ONE standing skills loop -- post-merge carrier of the Domain/physics_stream library, the
+open frontier, and every family criterion -- promotes to cortex/. brain.py's lazy sleep-tick
+import repoints, which CLOSES the bare-except silent-kill hazard recorded at C2a: the reach is
+governed->governed now. The state blob and module path self-derive (their design intent,
+realized at the move: nothing drifted). RESEARCH -> CORE registration; the lazy
+open_world_loop spawn reaches close at C7 next.
+
 ## [Unreleased] -- family settlement C8-2: open_meta_loop's open frontier lands in nightly_skills; the merge completes (2026-08-11r)
 
 The family's one merge, second half. The open-frontier capability -- a discovered cluster past

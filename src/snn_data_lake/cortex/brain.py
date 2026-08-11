@@ -3066,7 +3066,7 @@ class Brain:
         if self._persist:  # NIGHTLY SKILL FORMATION (bounded): one small env-budgeted
             try:  # slice/night into persistent per-domain readouts across
                 if self._skills is None:  # language/math/physics/world-kb (+open-world discovery +
-                    from snn_data_lake.reasoning.nightly_skills import (
+                    from snn_data_lake.cortex.nightly_skills import (
                         NightlySkills,  # autotelic goal-babbling).
                     )
 

@@ -120,6 +120,7 @@ CORE = [
     "cortex.world_kb_stream",  # PROMOTED 2026-08-11 (#10 family C2b): masked-slot fact completion vs per-relation baseline (0.4s)
     "cortex.language_self_build",  # PROMOTED 2026-08-11 (#10 family C6): real corpus + controls; NORD_EVAL_N bounds only the eval sample
     "cortex.language_readout_slda",  # PROMOTED 2026-08-11 (#10 family C5): equal-budget n-gram bar (fair_compare's port) + full-train bar
+    "cortex.nightly_skills",  # PROMOTED 2026-08-11 (#10 family C9a, from the RESEARCH list): the ONE standing skills loop, sleep-tick entry
     # hippocampus â€” memory formation, spatial coding, replay
     "hippocampus.grid_cells",
     "hippocampus.experience_replay",
@@ -390,7 +391,6 @@ TORCH_GATED = [
     "cortex.brain",
     "cortex.neurogenesis_engine",
     "cortex.language_acquisition",
-    "reasoning.nightly_skills",
     "reasoning.schema_induction",
 ]
 # NENGO-GATED -- the Nengo bridge (substrate.nengo_bridge) exposes the NEF/LIF/spiking substrate to
