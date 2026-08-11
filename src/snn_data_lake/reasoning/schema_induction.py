@@ -324,7 +324,7 @@ class SchemaInducer:
         comparison False, so every candidate ranks 1st and is accepted, `rejected` stays 0, and the
         caller wrote unchecked schemas to the durable lake believing the evidence was good."""
         try:
-            from snn_data_lake.reasoning.kb_ranking import DistMult
+            from snn_data_lake.cortex.kb_ranking import DistMult
         except Exception:
             return None, None, None, None, None
         ent, rel = {}, {}
@@ -518,7 +518,7 @@ def _selfcheck():
     #     was untested in both directions. Force the governed -> ungoverned import to fail and read it.
     import sys
 
-    _KB = "snn_data_lake.reasoning.kb_ranking"
+    _KB = "snn_data_lake.cortex.kb_ranking"  # repointed 2026-08-11 with the promotion; the neuter must block the path the code READS
     _saved, _had = sys.modules.get(_KB), _KB in sys.modules
     sys.modules[_KB] = None  # None makes `from ... import DistMult` raise ImportError
     try:

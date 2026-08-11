@@ -115,6 +115,7 @@ CORE = [
     "cortex.second_order_access",  # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
     "cortex.heterogeneous_microcircuit",  # Brain-Cog-adopted: LIF+Izhikevich+AdEx composed live under a local rule
     "cortex.percept_surprise",  # loop C2: online unsupervised Oja-PCA reconstruction-residual surprise (orienting drive)
+    "cortex.kb_ranking",  # PROMOTED 2026-08-11 (#10 batch-1): DistMult KB completion; offline fallback keeps it deterministic
     # hippocampus â€” memory formation, spatial coding, replay
     "hippocampus.grid_cells",
     "hippocampus.experience_replay",

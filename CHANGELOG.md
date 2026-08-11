@@ -9,6 +9,24 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- kb_ranking PROMOTED to cortex/ (2026-08-11f)
+
+The ledger's "executable next" single, executed. `reasoning/kb_ranking.py` -> `cortex/kb_ranking.py`
+at the full bar: REGIONS + run_selfchecks CORE (offline fallback keeps the check deterministic;
+measured 12.5s with cached FB15k-237, Hits@10 0.297 = 431x random), dormancy gate green with no
+exemption (208 modules, 0 dormant), four reasoning-internal consumers repointed, one B007 fix at
+the governed lint bar. The pre-flight caught the disclosed hazard: the offline fallback lazily
+imports reasoning.world_kb_stream, a governed->reasoning reach import_manifest now derives and
+asserts (15 cross-tier targets, all import). world_kb_stream's future row inherits a governed
+consumer. reasoning/ 144 -> 143.
+
+Caught by the gate, disclosed: the first full run failed 281/283 -- control-must-follow-the-
+read-path, the recorded lesson, firing live a third time. schema_induction's gate-off neuter
+blocks the module by DOTTED STRING (`_KB`), and reasoning_cortex asserts its lazy contract on
+`sys.modules` strings plus a second import SHAPE (`from ...reasoning import kb_ranking as`)
+that an import-statement regex does not match. All four string sites repointed with the move;
+symbol-level sweep confirms zero old-path strings remain in .py files.
+
 ## [Unreleased] -- #10 bulk batch-1: eight measured dispositions enter the ledger (2026-08-11e)
 
 The other eight batch-1 verdicts land as ledger rows (docs/P4C_BACKLOG.md, Deferred table), each

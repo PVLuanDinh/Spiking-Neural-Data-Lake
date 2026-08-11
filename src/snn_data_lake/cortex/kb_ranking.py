@@ -17,10 +17,17 @@ HONEST SCOPE: a compact numpy DistMult over a few epochs will not hit published 
 for tuned models); the claim is that a real ranking head learns real relational structure and beats
 random ranking decisively, at open-vocab scale a classifier cannot touch.
 
-  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.kb_ranking
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.cortex.kb_ranking
   Knobs: NORD_DIM(50) NORD_EPOCHS(8) NORD_BATCH(1024) NORD_LR(0.1) NORD_EVAL(1500)
          NORD_FB_TRAIN(url) NORD_FB_TEST(url)
 Deps: numpy (+ stdlib). Reuses world_kb_stream bundled facts as the offline fallback.
+
+PROMOTED reasoning/ -> cortex/ 2026-08-11 (#10 batch-1, measured row in docs/P4C_BACKLOG.md).
+The offline fallback is a deliberate governed->reasoning LAZY reach (`load_dataset` imports
+`reasoning.world_kb_stream`), the shape substrate/import_manifest derives and asserts; it moves
+again only when world_kb_stream's own row settles. Self-check measured at promotion: 12.5s with
+cached FB15k-237 (Hits@10 0.297, 431x random); offline fallback keeps it deterministic without
+network.
 """
 
 import os
@@ -168,7 +175,7 @@ def main():
         known.setdefault((int(h), int(r)), set()).add(int(t))
 
     model = DistMult(n_ent, n_rel, dim=DIM, seed=0)
-    for ep in range(EPOCHS):
+    for _ep in range(EPOCHS):
         model.train_epoch(tr, LR, BATCH)
 
     # evaluate filtered Hits@k / MRR on a sample of test
