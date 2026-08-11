@@ -149,6 +149,7 @@ REGIONS = {
         "kb_ranking",  # PROMOTED from reasoning/ 2026-08-11 (#10 batch-1): open-vocab DistMult KB completion head
         "corpus_stream",  # PROMOTED 2026-08-11 (#10 family C2): real-scale corpus/CMUdict ingestion for the language loop
         "world_kb_stream",  # PROMOTED 2026-08-11 (#10 family C2b): the curated world-KB (605 real triples) + masked-slot adapter
+        "language_self_build",  # PROMOTED 2026-08-11 (#10 family C6): autonomous R-STDP language assemblies; LIVE on the sleep tick
         # torch-trained tiers with a zero-dep serve/integration path (import cleanly without torch)
         "pc_cortex_serve",
         "brain",

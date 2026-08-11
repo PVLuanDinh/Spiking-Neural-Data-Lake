@@ -26,9 +26,9 @@ Deps: numpy (+ stdlib) for the masked-slot demo ONLY (imported inside main()). `
 
 PROMOTED reasoning/ -> cortex/ 2026-08-11 (#10 family settlement C2b; measured row in
 docs/P4C_BACKLOG.md), the KB-completion lane's second half beside kb_ranking. DISCLOSED at the
-move: main() lazily imports reasoning.language_readout_slda + reasoning.language_self_build --
-two governed->reasoning reaches import_manifest derives; both import clean in the gate env and
-both are family members whose own promotions (C5, C6) close the reaches.
+move: main() lazily imports language_readout_slda + language_self_build. The self_build reach
+CLOSED same-day (C6 promoted it to cortex/); the language_readout_slda reach remains
+governed->reasoning until C5 lands, derived and asserted by import_manifest.
 """
 
 import os
@@ -775,8 +775,8 @@ def _most_frequent_tail_baseline(pairs, vocab):
 def main():
     import numpy as np  # demo-only deps, kept out of the import path
 
+    from snn_data_lake.cortex.language_self_build import _positional_code
     from snn_data_lake.reasoning.language_readout_slda import SLDA_RFF_np
-    from snn_data_lake.reasoning.language_self_build import _positional_code
 
     all_triples, offline = load_kb()  # the FULL broad KB (bounded + extra facts)
     triples = _bundled()  # masked-slot demo: the BOUNDED-tail relations only

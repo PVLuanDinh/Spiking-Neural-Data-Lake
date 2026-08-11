@@ -472,7 +472,7 @@ class RoseLanguage:
         self._readout = None  # a failed build stays failed; the fit costs ~100 ms (measured)
         try:
             from snn_data_lake.reasoning.language_readout_slda import SLDA_RFF_np
-            from snn_data_lake.reasoning.language_self_build import _positional_code
+            from snn_data_lake.cortex.language_self_build import _positional_code
 
             relations = self._learnable_relations()
             # sort BEFORE splitting: self._triples is a set -> its iteration order varies per process

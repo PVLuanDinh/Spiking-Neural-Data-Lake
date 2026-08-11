@@ -9,6 +9,18 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- family settlement C6: language_self_build -> cortex/ (2026-08-11n)
+
+Executed OUT of the recorded order because the order was wrong and the imports said so:
+skill_builder imports this module (and language_readout_slda) at module top, so C6 goes before
+C4/C5, corrected in the ledger. The live-sleep-tick module (py-spy-proven) promotes with its
+corpus, mechanism, controls and asserts UNCHANGED at real scale; the one addition is
+NORD_EVAL_N (default 2000) bounding only the held-out eval SAMPLE -- 324s -> 17.7s measured,
+with every reported figure matching the recorded full-tail values (separations 56.9/52.1,
+phonetics 7.4% vs shuffle 1.9% vs bigram 20.5%; the honest below-n-grams ceiling stays printed).
+The Windows-only TEMP cache-path defect fixed in passing (the lake99 fix, same comment). Seven
+importers repointed; world_kb_stream's disclosed self_build reach CLOSED (manifest 16 -> 15).
+
 ## [Unreleased] -- family settlement C3: lake_memory -> hippocampus/proximity_replay (2026-08-11m)
 
 The durable proximity-addressable replay memory promotes, RENAMED (brain_atlas asserts basename

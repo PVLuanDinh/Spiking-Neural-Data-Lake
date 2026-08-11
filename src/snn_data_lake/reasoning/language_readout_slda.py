@@ -1,7 +1,7 @@
 r"""
 LANGUAGE READOUT (STRONG) -- close the n-gram gap the pure-spiking readout could not.
 
-reasoning/language_self_build.py honestly showed the single-layer spike-timing R-STDP readout forms
+cortex/language_self_build.py (promoted 2026-08-11) honestly showed the single-layer spike-timing R-STDP readout forms
 separated assemblies but scores BELOW n-gram counts (phonetics 7.1% vs bigram 20.5%, both RE-RUN and
 reproduced 2026-08-04 at the shipped defaults, so the two figures below are measured not inherited) -- the
 readout-is-the-lever ceiling seen all across this project. This file applies the SAME fix that won
@@ -35,7 +35,7 @@ from snn_data_lake.cortex.corpus_stream import (
     phoneme_stream,
     word_stream,
 )
-from snn_data_lake.reasoning.language_self_build import (
+from snn_data_lake.cortex.language_self_build import (
     _positional_code,
     _frequent,
     _bigram_baseline,

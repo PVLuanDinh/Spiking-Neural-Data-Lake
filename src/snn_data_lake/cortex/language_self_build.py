@@ -34,18 +34,28 @@ spike-timing readout underperforms -- the readout-is-the-lever ceiling seen acro
 far below a transformer LM -- the value is the emergent, self-supervised, spiking assembly-formation
 loop with measurable learning curves and un-riggable controls, NOT competence or SOTA perplexity.
 
-  PYTHONPATH=src python -m snn_data_lake.reasoning.language_self_build
+  PYTHONPATH=src python -m snn_data_lake.cortex.language_self_build
   Knobs: NORD_CTX(3) NORD_NIN(48) NORD_CYCLES(12) NORD_PER(400) NORD_VOCAB(60) NORD_LIMIT(0=all)
+         NORD_EVAL_N(2000; 0 = the full held-out tail)
+
+PROMOTED reasoning/ -> cortex/ 2026-08-11 (#10 family settlement C6, executed BEFORE C4/C5 --
+the recorded order was corrected by the measured imports: skill_builder and
+language_readout_slda both import THIS module at module top, so it goes first). This module is
+LIVE on the daemon's sleep tick (py-spy-proven: brain.tick -> _enter_sleep ->
+nightly_skills.night -> meta_skill_loop.study -> _positional_code). GATE-RUNTIME NOTE, per the
+owner's not-toy-scale directive: the corpus, the mechanism, the controls and every assert are
+UNCHANGED and real-scale; the only bound added at promotion is NORD_EVAL_N (default 2000) on
+the HELD-OUT EVAL SAMPLE -- the 324 s pre-promotion runtime was ~1.1M spiking respond() calls
+across six full-tail (~91k-pair) evaluations whose asserts' margins are decided at n=2000
+within ~±1% binomial noise. NORD_EVAL_N=0 restores the full tail.
 Deps: reuses src/ spiking primitives + hippocampus/proximity_replay (was
 reasoning/brain_adapters/lake_memory until its 2026-08-11 promotion+rename).
 """
 
 import os
 import random
+import tempfile
 
-from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner
-from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
-from snn_data_lake.hippocampus.proximity_replay import LakeMemory
 from snn_data_lake.cortex.corpus_stream import (
     ARPABET,
     load_cmudict,
@@ -53,6 +63,9 @@ from snn_data_lake.cortex.corpus_stream import (
     phoneme_stream,
     word_stream,
 )
+from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner
+from snn_data_lake.hippocampus.proximity_replay import LakeMemory
+from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 
 
 def _envi(k, d):
@@ -77,7 +90,11 @@ def _positional_code(tokens, vindex, V, ctx):
     return vec
 
 
-def _train_eval(pairs, responses, ctx, per, seed=0, shuffle_labels=False, shuffle_ctx=False):
+# distinct-from: snn_mnist_stdp_genn.py -- not a new train/eval mechanism; this module's own
+# _train_eval gaining one eval-sample bound parameter at its 2026-08-11 promotion.
+def _train_eval(
+    pairs, responses, ctx, per, seed=0, shuffle_labels=False, shuffle_ctx=False, eval_n=0
+):
     """Train a SpikingInteractionLearner online on (context_tokens, next_token) pairs, self-supervised
     (the label IS the real next token). Returns (first_third_acc, last_third_acc, final_acc, learner).
     Held-out accuracy is measured on a disjoint tail. shuffle_labels/shuffle_ctx drive the controls."""
@@ -93,6 +110,11 @@ def _train_eval(pairs, responses, ctx, per, seed=0, shuffle_labels=False, shuffl
     cut = int(len(usable) * 0.8)
     train, test = usable[:cut], usable[cut:]
     train = train[:per] if per else train
+    # eval_n bounds the HELD-OUT EVAL SAMPLE only (contiguous head of the tail -- deterministic;
+    # corpus order, no cherry-picking). 0 = the full tail. Added at the 2026-08-11 promotion so
+    # the gate runs the same real corpus/mechanism/asserts without six ~91k-pair evaluations.
+    if eval_n:
+        test = test[:eval_n]
 
     def stim(ctxt):
         toks = list(ctxt)
@@ -160,7 +182,13 @@ def main():
     PER = _envi("NORD_PER", 400)
     VOCAB = _envi("NORD_VOCAB", 60)
     LIMIT = _envi("NORD_LIMIT", 0) or None
-    lake_path = os.path.join(os.environ.get("TEMP", "."), "sndl_language_assemblies.spkl")
+    EVAL_N = _envi(
+        "NORD_EVAL_N", 2000
+    )  # held-out eval sample bound; 0 = full tail (pre-promotion behaviour)
+    # tempfile.gettempdir(), not os.environ.get("TEMP", ".") -- the Windows-only TEMP variable is
+    # unset on Linux/macOS CI so the "." fallback wrote into the repo checkout; the same defect
+    # already fixed in lake99 / autonomous_brain, fixed here at the promotion.
+    lake_path = os.path.join(tempfile.gettempdir(), "sndl_language_assemblies.spkl")
     if os.path.exists(lake_path):
         os.remove(lake_path)
 
@@ -190,8 +218,12 @@ def main():
     lake = LakeMemory(path=lake_path, seed=0)
 
     print("\n[PHONETICS] self-supervised next-phoneme (39 ARPABET assemblies), R-STDP...")
-    ph_first, ph_last, ph_final, ph_learn = _train_eval(ph_pairs, ARPABET, CTX, PER, seed=0)
-    ph_shuf = _train_eval(ph_pairs, ARPABET, CTX, PER, seed=0, shuffle_labels=True)[1]
+    ph_first, ph_last, ph_final, ph_learn = _train_eval(
+        ph_pairs, ARPABET, CTX, PER, seed=0, eval_n=EVAL_N
+    )
+    ph_shuf = _train_eval(ph_pairs, ARPABET, CTX, PER, seed=0, shuffle_labels=True, eval_n=EVAL_N)[
+        1
+    ]
     ph_bigram = _bigram_baseline(ph_pairs)
     ph_sep = _assembly_separation(ph_learn)
     curiosity.observe("phonetics", 1.0 - ph_final)
@@ -205,10 +237,14 @@ def main():
     print(f"  assembly separation (inter/intra cosine): {ph_sep:.2f}")
 
     print(
-        "\n[SEMANTICS] self-supervised next-word over the %d most frequent words, R-STDP..." % VOCAB
+        f"\n[SEMANTICS] self-supervised next-word over the {VOCAB} most frequent words, R-STDP..."
     )
-    wd_first, wd_last, wd_final, wd_learn = _train_eval(wd_pairs, freq_words, CTX, PER, seed=1)
-    wd_shuf = _train_eval(wd_pairs, freq_words, CTX, PER, seed=1, shuffle_labels=True)[1]
+    wd_first, wd_last, wd_final, wd_learn = _train_eval(
+        wd_pairs, freq_words, CTX, PER, seed=1, eval_n=EVAL_N
+    )
+    wd_shuf = _train_eval(
+        wd_pairs, freq_words, CTX, PER, seed=1, shuffle_labels=True, eval_n=EVAL_N
+    )[1]
     wd_uni = _unigram_baseline(wd_pairs, freq_words)
     wd_sep = _assembly_separation(wd_learn)
     curiosity.observe("semantics", 1.0 - wd_final)
@@ -219,8 +255,10 @@ def main():
     print(f"  assembly separation: {wd_sep:.2f}  (vocab bounded at {VOCAB} -- honest scale limit)")
 
     print("\n[SYNTAX] order sensitivity: next-word with ORDER-PRESERVING vs SHUFFLED context...")
-    _, syn_ordered, _, _ = _train_eval(wd_pairs, freq_words, CTX, PER, seed=2)
-    _, syn_shuffled, _, _ = _train_eval(wd_pairs, freq_words, CTX, PER, seed=2, shuffle_ctx=True)
+    _, syn_ordered, _, _ = _train_eval(wd_pairs, freq_words, CTX, PER, seed=2, eval_n=EVAL_N)
+    _, syn_shuffled, _, _ = _train_eval(
+        wd_pairs, freq_words, CTX, PER, seed=2, shuffle_ctx=True, eval_n=EVAL_N
+    )
     print(
         f"  next-word acc: ordered context {syn_ordered:.1%}  vs  shuffled-order context {syn_shuffled:.1%}"
     )
@@ -315,7 +353,7 @@ def main():
 
 def _bigram_baseline(pairs):
     """Most-frequent-next-token given the immediate previous token; held-out on the same 20% tail."""
-    from collections import defaultdict, Counter
+    from collections import Counter, defaultdict
 
     cut = int(len(pairs) * 0.8)
     train, test = pairs[:cut], pairs[cut:]

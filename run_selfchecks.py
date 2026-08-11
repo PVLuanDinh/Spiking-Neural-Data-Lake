@@ -118,6 +118,7 @@ CORE = [
     "cortex.kb_ranking",  # PROMOTED 2026-08-11 (#10 batch-1): DistMult KB completion; offline fallback keeps it deterministic
     "cortex.corpus_stream",  # PROMOTED 2026-08-11 (#10 family C2): real corpus + CMUdict ingestion; offline fallback deterministic
     "cortex.world_kb_stream",  # PROMOTED 2026-08-11 (#10 family C2b): masked-slot fact completion vs per-relation baseline (0.4s)
+    "cortex.language_self_build",  # PROMOTED 2026-08-11 (#10 family C6): real corpus + controls; NORD_EVAL_N bounds only the eval sample
     # hippocampus â€” memory formation, spatial coding, replay
     "hippocampus.grid_cells",
     "hippocampus.experience_replay",
