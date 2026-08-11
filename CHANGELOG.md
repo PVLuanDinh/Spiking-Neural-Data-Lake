@@ -9,6 +9,20 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- family settlement C8-1: meta_skill_loop merges into nightly_skills and retires (2026-08-11q)
+
+The first half of the family's one merge. nightly_skills is the adopted mechanism (specs/010's
+adjudication; its _select already replicated the retired loop's selection "verbatim in
+spirit"): Domain + physics_stream are absorbed as its library section, both consumers repoint,
+and meta_skill_loop -- standing loop, RankingDomain and all -- is deleted. The A/B the
+_NightKB debt note owed since it was written was RUN FIRST, at real scale: the retired
+RankingDomain's training semantics reconstructed (the gwt_deep_split_ab pattern, so the licence
+survives the deletion) vs the live _NightKB at equal exposure on FB15k-237 -- final filtered
+Hits@10 identical at 0.236, delta +0.000. The port introduced one cycle (open_world_loop now
+imports physics_stream from nightly_skills) -- broken by making nightly_skills' two
+open_world_loop uses lazy, the optional-discovery side of the edge. All three affected
+self-checks re-run green.
+
 ## [Unreleased] -- family settlement C4: skill_builder -> hippocampus/ (2026-08-11p)
 
 The domain-agnostic skill former + proximity router promotes with every module-top import

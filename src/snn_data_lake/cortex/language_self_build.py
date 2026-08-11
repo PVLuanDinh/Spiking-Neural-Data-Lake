@@ -42,7 +42,9 @@ PROMOTED reasoning/ -> cortex/ 2026-08-11 (#10 family settlement C6, executed BE
 the recorded order was corrected by the measured imports: skill_builder and
 language_readout_slda both import THIS module at module top, so it goes first). This module is
 LIVE on the daemon's sleep tick (py-spy-proven: brain.tick -> _enter_sleep ->
-nightly_skills.night -> meta_skill_loop.study -> _positional_code). GATE-RUNTIME NOTE, per the
+nightly_skills.night -> Domain.study -> _positional_code; the study frame lived in
+meta_skill_loop when spied, absorbed into nightly_skills at its 2026-08-11 retirement).
+GATE-RUNTIME NOTE, per the
 owner's not-toy-scale directive: the corpus, the mechanism, the controls and every assert are
 UNCHANGED and real-scale; the only bound added at promotion is NORD_EVAL_N (default 2000) on
 the HELD-OUT EVAL SAMPLE -- the 324 s pre-promotion runtime was ~1.1M spiking respond() calls

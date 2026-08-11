@@ -1,14 +1,14 @@
 r"""
 NIGHTLY SKILLS -- one bounded night of autonomous cross-domain skill formation for the sleep loop.
 
-The autonomous skill-building machinery already exists in this repo (meta_skill_loop's standing
+The autonomous skill-building machinery already exists in this repo (formerly meta_skill_loop's standing
 language/math/physics/world-kb loop, skill_builder's proximity-routed SkillRegistry, open_world_loop's
 unsupervised domain discovery, autotelic_goals' goal-babbling) -- but only as standalone `__main__`
 studies that never tick. This module wraps that machinery into a PERSISTENT, BOUNDED "one night of
 skill formation" step the canonical brain's circadian sleep loop calls once per night:
 
   night() = pick ONE frontier domain (coverage-first, staleness-guarded, else spiking-curiosity
-            learning-progress -- exactly meta_skill_loop.main()'s selection), study ONE small
+            learning-progress -- exactly the selection of the retired meta_skill_loop.main()), study ONE small
             env-budgeted slice of it into that domain's persistent readout, register/refresh the
             skill in the durable proximity router, then run one guarded bounded open-world
             discovery sub-step and one guarded bounded autotelic goal-babbling sub-step, and
@@ -90,7 +90,8 @@ E-PROP: this module is on a live LEARNING path (the sleep tick) and names no `.b
 and no backprop anywhere in itself or its transitive imports. Nothing here is a temporal
 credit-assignment rule, so the e-prop invariant has nothing to bite on.
 
-Reuses meta_skill_loop, skill_builder, content_signature, corpus_stream, language_readout_slda (via
+Reuses skill_builder, content_signature, corpus_stream, language_readout_slda (Domain +
+physics_stream absorbed HERE at meta_skill_loop's 2026-08-11 retirement) (via
 Domain), kb_ranking, lake_memory, spiking_curiosity, open_world_loop, autotelic_goals,
 substrate.home. Deterministic: per-instance random.Random(seed) / np.random.RandomState(seed); no
 wall-clock; crc32 signatures only.
@@ -117,8 +118,14 @@ from snn_data_lake.hippocampus.proximity_replay import LakeMemory
 from snn_data_lake.hippocampus.content_signature import SIG as _SIG_DIM
 from snn_data_lake.cortex.corpus_stream import ARPABET, load_cmudict, load_text, phoneme_stream
 from snn_data_lake.cortex.kb_ranking import DistMult, load_dataset
-from snn_data_lake.reasoning.meta_skill_loop import Domain, physics_stream
-from snn_data_lake.reasoning.open_world_loop import OpenWorldController, dna_stream
+from snn_data_lake.cortex.language_readout_slda import SLDA_RFF_np
+from snn_data_lake.cortex.language_self_build import _bigram_baseline, _positional_code
+
+# open_world_loop is imported LAZILY at its two use sites (_ensure_ow, the discovery feed):
+# it imports physics_stream from THIS module since meta_skill_loop's 2026-08-11 retirement
+# moved the library here, so a module-top import in both directions is a cycle. The lazy side
+# belongs here (the discovery path is optional per night; physics_stream is load-bearing for
+# open_world_loop's module top).
 from snn_data_lake.hippocampus.skill_builder import (
     MATH_VOCAB,
     SkillRegistry,
@@ -188,6 +195,90 @@ def _envf(k, d):
     return float(v) if v else d
 
 
+# consolidates: meta_skill_loop.py (retire)
+# The library half (physics_stream + Domain, below, verbatim-in-substance) moves HERE -- the ONE
+# standing loop -- and meta_skill_loop's main() standing loop (a duplicate of this module's own
+# night mechanism, its _select "verbatim in spirit" per the note at _select) is deleted with the
+# file. Its RankingDomain half retires on the A/B the _NightKB debt note owed, RUN 2026-08-11 at
+# real scale (tests/instruments/rankingdomain_nightkb_ab.py, FB15k-237, equal exposure): final
+# filtered Hits@10 IDENTICAL at 0.236, delta +0.000 -- the adopted head is the same head.
+def physics_stream(n_traj=400, ctx=3, seed=0, bins=20, steps=60):
+    """A REAL 1-D bouncing-ball ODE (gravity + damped bounce, Euler-integrated), discretized into
+    `bins` height tokens -> a (prev ctx state-tokens, next state-token) stream. Deterministic, real
+    dynamics, unlimited data. (Ported verbatim from meta_skill_loop at its retirement.)"""
+    rng = random.Random(seed)
+    g, dt, restitution, top = 9.8, 0.08, 0.75, 12.0
+    seq = []
+    for _ in range(n_traj):
+        y = rng.uniform(3.0, top)
+        v = rng.uniform(-3.0, 3.0)
+        for _ in range(steps):
+            v -= g * dt
+            y += v * dt
+            if y <= 0.0:  # floor bounce (damped)
+                y = 0.0
+                v = -v * restitution
+            b = min(bins - 1, max(0, int(y / top * bins)))
+            seq.append(str(b))
+        seq.append(" ")  # trajectory separator token
+    pairs = []
+    for i in range(1, len(seq)):
+        lo = max(0, i - ctx)
+        pairs.append((seq[lo:i], seq[i]))
+    return pairs
+
+
+class Domain:
+    """One skill under construction: a real stream, a PERSISTENT order-invariant SLDA-RFF readout
+    that accumulates across visits, and the running competence used by the meta-controller.
+    (Ported verbatim from meta_skill_loop at its retirement; the duck-typed sibling is _NightKB.)"""
+
+    def __init__(self, name, pairs, vocab, ctx, rff, gamma, input_vocab=None, baseline=None):
+        self.name = name
+        self.vocab = vocab  # TARGET vocab (the classes)
+        self.ridx = {r: i for i, r in enumerate(vocab)}
+        self.ivocab = input_vocab or vocab  # INPUT vocab (context tokens); differs for world-KB
+        self.iidx = {r: i for i, r in enumerate(self.ivocab)}
+        self.inV = len(self.ivocab)
+        self.ctx = ctx
+        self.V = len(vocab)
+        usable = [(c, nx) for c, nx in pairs if nx in self.ridx]
+        cut = int(len(usable) * 0.8)
+        self.train, self.test = usable[:cut], usable[cut:]
+        self.baseline = _bigram_baseline(pairs) if baseline is None else baseline
+        self.slda = SLDA_RFF_np(self.inV * ctx, self.V, rff=rff, gamma=gamma, shrink=0.1, seed=0)
+        self.pos = 0
+        self.competence = 0.0
+        self.visits = 0
+        self.registered = False
+
+    def _X(self, rows):
+        return np.array(
+            [_positional_code(c, self.iidx, self.inV, self.ctx) for c, _ in rows], dtype=np.float64
+        )
+
+    def study(self, slice_n):
+        """Stream the next slice of this domain into the persistent readout (order-invariant
+        accumulation -> no forgetting), re-evaluate held-out competence. Returns the competence."""
+        if not self.train:
+            return 0.0
+        sl = []
+        for _ in range(slice_n):
+            sl.append(self.train[self.pos % len(self.train)])
+            self.pos += 1
+        y = np.array([self.ridx[nx] for _, nx in sl])
+        self.slda.observe(self._X(sl), y)
+        self.visits += 1
+        test = self.test[:3000]
+        yte = np.array([self.ridx[nx] for _, nx in test])
+        self.competence = float((self.slda.predict(self._X(test)) == yte).mean())
+        return self.competence
+
+    def signature_exemplars(self, n=150):
+        step = max(1, len(self.train) // n)
+        return [signature(c) for c, _ in self.train[::step][:n]]
+
+
 def _rng_state_arrays(rng):
     """(keys[624] uint32, pos, has_gauss, cached_gaussian) of a np.random.RandomState -- npz-storable."""
     st = rng.get_state()
@@ -207,19 +298,15 @@ class _NightKB:
     so the lazy construction stays bounded, (b) study() trains a budget-sized ROLLING slice instead
     of a full epoch -- one bounded night, accumulation across nights.
 
-    OPEN P2 DEBT, named here rather than left for a reader to discover. This class and
-    meta_skill_loop.RankingDomain are two live implementations of ONE job, and P2 says exactly one
-    survives. RankingDomain is reachable only from its own module's main() (verified by AST: its
-    single construction site is inside `meta_skill_loop.main`, and there is no other reference to
-    the name tree-wide), so the resolution is ADOPT-this / RETIRE-that, not a merge.
-
-    It is NOT done here, and the port is NOT purely mechanical -- an earlier draft of this note said
-    "set max_triples=0 and slice_n=len(tr) and it computes what RankingDomain computes", which is
-    false in three places and is the kind of claim that turns a P2 port into a silent regression:
-    `train_epoch` batch is 256 here against RankingDomain's 1024, `test` is te[:500] here against
-    te[:2000], and the too-few-evaluable-test carve-out below has no counterpart there. Those are
-    the differences a port owes an A/B on, per P2's honesty guard. meta_skill_loop.py is also
-    outside this module's edit scope. Recorded so the duplicate is countable instead of silent."""
+    P2 DEBT RESOLVED 2026-08-11 (family C8-1): RankingDomain is RETIRED with meta_skill_loop, and
+    the A/B this note said the resolution owed was RUN, at real scale, before the deletion --
+    tests/instruments/rankingdomain_nightkb_ab.py reconstructs RankingDomain's training semantics
+    (full epoch, batch 1024) against this live class at EQUAL exposure on FB15k-237 (272k train):
+    final filtered Hits@10 IDENTICAL at 0.236, delta +0.000. Of the three recorded differences,
+    the batch size is measured to not matter at equal exposure, the te[:500]-vs-[:2000] `test`
+    list is a bounded-night ROUTER-sample budget (not head math), and the carve-out below was
+    already measured (2026-08-04 sweep, comment above) to fire at neither shipped config. The
+    instrument re-runs the licence on demand; the pre-registered bar is in its assert."""
 
     def __init__(self, name, dim=50, seed=0, eval_n=250, max_triples=0):
         tr_s, te_s, self.offline = load_dataset()
@@ -464,6 +551,8 @@ class NightlySkills:
 
     def _ensure_ow(self):
         if self._ow is None:
+            from snn_data_lake.reasoning.open_world_loop import OpenWorldController
+
             self._ow = OpenWorldController(
                 lam=_envf("NORD_NIGHT_LAM", 1.7),
                 harvest=_envi("NORD_NIGHT_HARVEST", 60),
@@ -546,6 +635,8 @@ class NightlySkills:
         if "world-kb" in self._domains:
             for c, nx in self._domains["world-kb"].test[:200]:
                 pool.append((c, nx, "world-kb"))
+        from snn_data_lake.reasoning.open_world_loop import dna_stream
+
         take(dna_stream(n=800, ctx=self.ctx, seed=self.seed), "dna")
         random.Random(self.seed).shuffle(pool)
         self._ow_pool = pool
