@@ -10,7 +10,8 @@ shared softmax head forgets earlier digits via recency bias -- growable_readout.
 (section 4) shows hidden-only freeze recovers only a few points and the class-IL "afterALL" number
 stays low for every freeze mode. So the 47.4% is the READOUT, not a broken faculty: the exact same
 frozen unsupervised conv1 features score 94.9-95.4% under an ORDER-INVARIANT readout
-(developmental_loop_lake_slda.py) and 98.2% under a static RBF ensemble.
+(developmental_loop_lake_slda.py, RETIRED 2026-08-11 -- verdict in CHANGELOG v3.75, the
+mechanism live here via developmental_core) and 98.2% under a static RBF ensemble.
 
 THE RECOVERY -- every faculty stays genuinely active
 ----------------------------------------------------

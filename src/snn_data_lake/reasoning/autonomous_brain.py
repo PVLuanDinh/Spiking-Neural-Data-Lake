@@ -25,7 +25,8 @@ every faculty genuinely active and measurable on MNIST digits (WM 18/18, 10x neu
 exemplars durable, self-directed curriculum). Understanding lands ~47% here, NOT because the loop is
 broken but because ONLINE single-pass grow-and-freeze is a genuinely weak readout: the frozen-hidden /
 plastic-output MLP still forgets earlier classes, and curiosity fixates on one hard digit late. The
-accuracy-optimal enclosed loop is reasoning/developmental_loop_lake_slda.py (SLDA-RFF readout, ~94.9%),
+accuracy-optimal enclosed loop was developmental_loop_lake_slda.py (SLDA-RFF readout, ~94.9%;
+RETIRED 2026-08-11, verdict in CHANGELOG v3.75, mechanism absorbed by developmental_core),
 which is order-invariant so it does NOT forget -- but it does not grow neurons. That tension (genuine
 online neurogenesis vs. forgetting-free accuracy) is the honest finding, not a bug to paper over.
 Feature learning is unsupervised; only the readout is supervised.

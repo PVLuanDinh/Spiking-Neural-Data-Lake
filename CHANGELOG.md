@@ -9,6 +9,20 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- #10 bulk batch-2: four retirements, one port executed first (2026-08-11g)
+
+`readout_boost`, `readout_ensemble`, `developmental_loop_unsupervised` and
+`developmental_loop_lake_slda` are DELETED -- measured by the same two-stage adversarial pass as
+batch-1, hand-verified, and the readout pair retires on NEW grounds that explicitly do NOT
+re-assert the reasons struck at f299b631 (the completed-experiment precedent instead; both
+verdicts durably in CHANGELOG, boost's mandated Tier-3 encoder built and governed as
+cortex/rsnn_encoder). Port-before-delete executed for lake_slda: LINEAR_LAKE_REF = 0.902 and its
+hardened provenance moved to developmental_loop_lake99 as ONE named constant, replacing that
+file's four scattered 90.2%/0.902 literals -- the exact disagreeing-literals defect the retired
+file's own comment documented. Recorded honestly: lake_slda's NORD_PROTO lever retires with NO
+measured answer (never had one), and unsupervised's _nmi() (the tree's only clustering-NMI) is
+recorded port-on-demand rather than force-wired. reasoning/ 143 -> 139.
+
 ## [Unreleased] -- kb_ranking PROMOTED to cortex/ (2026-08-11f)
 
 The ledger's "executable next" single, executed. `reasoning/kb_ranking.py` -> `cortex/kb_ranking.py`

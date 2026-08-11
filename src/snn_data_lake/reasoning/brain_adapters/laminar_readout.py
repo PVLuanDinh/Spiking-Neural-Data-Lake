@@ -70,8 +70,9 @@ of the brain. OPEN DEBT, stated rather than wired: it is registered in neither `
 `run_selfchecks.py`, so no gate sees it; and P2 owes a decision between this BACKPROP readout
 and `laminar_local_readout.LaminarLocalReadout`, which was built as its no-backprop drop-in
 (same public interface) and is the one on the live wake tick (`cortex/brain.py`). Two
-mechanisms for one job is the P2 defect; retiring this one needs its three importers
-(`developmental_loop_brain`, `ensemble_rbf`, `readout_ensemble`) repointed first.
+mechanisms for one job is the P2 defect; retiring this one needs its importers
+(`developmental_loop_brain`, `ensemble_rbf`; `readout_ensemble` stood here too until its
+2026-08-11 retirement) repointed first.
 
 Determinism (2026-08-04): `torch.manual_seed(seed)` used to run inside BOTH constructors,
 re-seeding the PROCESS-GLOBAL torch RNG for every module built afterwards. It was redundant --

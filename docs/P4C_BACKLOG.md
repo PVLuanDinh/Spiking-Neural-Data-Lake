@@ -114,6 +114,42 @@ test covers the integrated checkpoint-loaded perception path (zero test hits for
 `perceive_event`/`_pc_cortex`/`grown_units`); if that integration smoke is ever wanted it must be
 rebuilt as an ASSERTING governed self-check, not preserved from this file.
 
+### Retired 2026-08-11 — batch-2 of the bulk lane: `readout_boost`, `readout_ensemble`, `developmental_loop_unsupervised`, `developmental_loop_lake_slda`
+
+Same method as batch-1 (two-stage adversarial pass, then hand-verified); all four zero-importer
+(dynamic routes swept) and zero-registration.
+
+**`readout_boost` and `readout_ensemble` — RETIRED on NEW grounds, not the struck ones.** Both
+were reclassified OUT of RETIRE 2026-08-07 because their then-claimed supersessions were wrong
+(different-question / inferior-imports-superior; rows above stand). These retirements rest on the
+`deep_stdp_2stage_svm` precedent instead: COMPLETED experiments with verdicts durably recorded —
+boost: CHANGELOG (ensemble +0.3, MLP −0.7, readout at ceiling, "next gain is the encoder" — and
+that mandated Tier-3 encoder is BUILT and governed, `cortex/rsnn_encoder.py`); ensemble:
+CHANGELOG v3.61/v3.62 (ensemble −1.9% vs best single, oracle ceiling 92.2%, "Accuracy
+investigation CLOSED"). Port lists verified empty: boost's MLPHead measured NEGATIVE and its
+`_softmax_scores` was a per-site copy of `language_readout_slda.scores` discriminant math
+(deletion REMOVES a P2 duplicate); ensemble's reusable pieces are behavior-identically superseded
+by `_loop_common` (LinearReadout / envi / batched cache_features). `laminar_readout:74`'s
+importer note co-edited.
+
+**`developmental_loop_unsupervised`** — completed experiment (CHANGELOG v3.67: 88.3% purity, NMI
+0.614, intrinsic error 1.000→0.148); every mechanism it exercises is governed and live elsewhere
+(spiking_curiosity, growing_learner, similarity_sized_growth, competitive_learning,
+percept_surprise). Unconsumed residue recorded, port-on-demand: `_nmi()` (~15 stdlib lines) was
+the tree's only clustering-NMI; if an NMI scorer is ever wanted, port it next to
+`competitive_learning.purity` — wiring it to nothing today would be the fake consumer.
+
+**`developmental_loop_lake_slda`** — verdict preserved (CHANGELOG v3.75: the 94.9%/95.4%
+durable-lake SLDA loop), mechanism absorbed near-verbatim by `developmental_core:170-196`
+(consumed with its own asserts by `autonomous_brain_recovered`). PORTED BEFORE DELETING, in the
+retiring commit: `LINEAR_LAKE_REF = 0.902` + its hardened provenance block moved to
+`developmental_loop_lake99.py` as ONE named constant, replacing the four scattered literals that
+file carried (the exact disagreeing-literals defect lake_slda's own comment documented).
+RECORDED AS NEVER-ANSWERED: its LEVER 3 (`NORD_PROTO` prototype-vs-raw replay) has no measured
+answer anywhere in-tree — the question retires unanswered with the harness; re-open it as a
+fresh measurement if the sign ever matters. Its two docstring citations in `autonomous_brain` /
+`autonomous_brain_recovered` annotated with the retirement rather than left naming a dead path.
+
 ### P2 governed-twin settlements 2026-08-06 — 2 pairs
 
 | retired | survivor | what ported first |

@@ -2,7 +2,8 @@ r"""
 LAKE LOOP -> toward 99%: fix the proximity KEY + add an RBF SLEEP-REFIT on the lake replay.
 
 developmental_loop_lake.py (RETIRED 2026-08-06; superseded by this file and by
-developmental_loop_lake_slda.py, which carries its 90.2% as LINEAR_LAKE_REF) hit 90.2% because
+developmental_loop_lake_slda.py, itself RETIRED 2026-08-11 -- THIS file now carries the 90.2%
+as LINEAR_LAKE_REF, the last place it is written) hit 90.2% because
 (a) it keyed proximity retrieval on a COARSE 30-dim
 global feature (contaminated replay, -3.1%) and (b) it used a continual LINEAR head (the 93->98
 linear-vs-RBF gap). This file closes both, on the same durable lake:
@@ -28,6 +29,16 @@ import os
 import tempfile
 
 import torch
+
+#: The baseline this loop reports its deltas against, and (since 2026-08-11) the ONLY place the
+#: number is written. A REFERENCE MEASUREMENT, not a tuned threshold: the accuracy the retired
+#: `developmental_loop_lake.py` (continual LINEAR head, crude key, same durable lake) reported.
+#: PROVENANCE (ported verbatim-in-substance from developmental_loop_lake_slda.py:71-85 at its
+#: 2026-08-11 retirement, which had hardened it 2026-08-06): the producing module was RETIRED
+#: under P2, so the number is NOT re-derivable in-tree -- a RECORDED RESULT, quoted as a
+#: citation, not a measurement made here. It was previously four scattered literals in this
+#: file's report block, the exact disagreeing-literals defect lake_slda's comment documented.
+LINEAR_LAKE_REF = 0.902
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
@@ -175,10 +186,12 @@ def main():
     print(f"  continual LINEAR head (fast, proximity replay)   : {lin_final:.1%}")
     print(f"  RBF SLEEP-REFIT head (consolidated, {n_used} exemplars) : {rbf_acc:.1%}")
     print("-" * 88)
-    print(f"  baseline lake loop (crude key, linear only)      : 90.2%")
+    print(f"  baseline lake loop (crude key, linear only)      : {LINEAR_LAKE_REF:.1%}")
     print(f"  static ceiling (RBF ensemble, 30k)               : 98.2%")
-    print(f"  richer-key linear delta vs 90.2%                 : {lin_final - 0.902:+.1%}")
-    print(f"  RBF sleep-refit delta vs baseline 90.2%          : {rbf_acc - 0.902:+.1%}")
+    print(
+        f"  richer-key linear delta vs baseline              : {lin_final - LINEAR_LAKE_REF:+.1%}"
+    )
+    print(f"  RBF sleep-refit delta vs baseline                : {rbf_acc - LINEAR_LAKE_REF:+.1%}")
     print(f"  DURABILITY (lake survives close+reopen)          : {durable.get('ok')}")
     print("=" * 88)
     assert lin_final > 0.85 and rbf_acc > 0.85, (
@@ -187,7 +200,7 @@ def main():
     assert durable.get("ok"), "lake memory did not survive reopen"
     print(
         f"self-check OK: richer-key linear {lin_final:.1%}, RBF sleep-refit {rbf_acc:.1%} "
-        f"(baseline 90.2%); {n_used} exemplars durable in the lake."
+        f"(baseline {LINEAR_LAKE_REF:.1%}); {n_used} exemplars durable in the lake."
     )
     return 0
 
