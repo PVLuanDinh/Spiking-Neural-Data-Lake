@@ -9,6 +9,15 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- family settlement C4: skill_builder -> hippocampus/ (2026-08-11p)
+
+The domain-agnostic skill former + proximity router promotes with every module-top import
+already governed (the corrected C6->C5->C4 order paying off). The C9 retirement's prerequisite
+is verified and recorded at the move: SkillRegistry here is the live routing home, constructed
+at nightly_skills:432 on the brain sleep-tick path. Third instance of the Windows-only TEMP
+cache-path defect fixed. Five importers repointed; 11.6s check into CORE (2 domains, competence
+>= baseline, router 99% vs 50% chance, 300 signatures durable).
+
 ## [Unreleased] -- family settlement C5: language_readout_slda -> cortex/, fair_compare retires with its ports paid (2026-08-11o)
 
 The competence head promotes and ABSORBS the retired harness's discipline: _ngram_acc ported,

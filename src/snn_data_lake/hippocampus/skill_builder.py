@@ -26,24 +26,30 @@ is below n-gram, as language_self_build showed). It does NOT solve math or langu
 measurable, reusable, honestly-scoped skills and a router over them. Physics (JEPA latent next-state)
 and proofs (verifier-reward) are the next adapters, not built here.
 
-  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.skill_builder
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.hippocampus.skill_builder
   Knobs: NORD_CTX(3) NORD_PER(6000) NORD_RFF(1500) NORD_GAMMA(0.15) NORD_MATHN(4000)
-Deps: numpy (+ stdlib). Reuses corpus_stream, language_self_build, language_readout_slda, lake_memory.
+Deps: numpy (+ stdlib). Reuses corpus_stream, language_self_build, language_readout_slda,
+proximity_replay (each promoted 2026-08-11).
+
+PROMOTED reasoning/ -> hippocampus/ 2026-08-11 (#10 family settlement C4, after C5/C6 by the
+corrected order -- its module-top imports of the two language modules made the recorded
+skill-builder-first order a governed->reasoning hazard). SkillRegistry here is the live routing
+home the C9 lake_skill_library retirement rests on: constructed at nightly_skills:432 on the
+brain.py:3069 sleep-tick path, verified at this move.
 """
 
 import os
 import random
-
+import tempfile
 
 from snn_data_lake.cortex.corpus_stream import ARPABET, load_cmudict, load_text, phoneme_stream
-from snn_data_lake.cortex.language_self_build import _bigram_baseline
 from snn_data_lake.cortex.language_readout_slda import _slda_acc
-from snn_data_lake.hippocampus.proximity_replay import LakeMemory
-from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
-
+from snn_data_lake.cortex.language_self_build import _bigram_baseline
 from snn_data_lake.hippocampus.content_signature import (
     signature,
 )  # extracted to a stdlib module; re-exported for back-compat
+from snn_data_lake.hippocampus.proximity_replay import LakeMemory
+from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
 
 MATH_VOCAB = list("0123456789+-*= ")  # the arithmetic domain's token inventory
 
@@ -127,7 +133,9 @@ def main():
     RFF = _envi("NORD_RFF", 1500)
     GAMMA = _envf("NORD_GAMMA", 0.15)
     MATHN = _envi("NORD_MATHN", 4000)
-    lake_path = os.path.join(os.environ.get("TEMP", "."), "sndl_skills.spkl")
+    # tempfile.gettempdir(), not os.environ.get("TEMP", ".") -- the Windows-only TEMP fallback
+    # wrote into the repo checkout on Linux/macOS CI; same fix as lake99 / language_self_build.
+    lake_path = os.path.join(tempfile.gettempdir(), "sndl_skills.spkl")
     if os.path.exists(lake_path):
         os.remove(lake_path)
 
@@ -213,7 +221,7 @@ def main():
     print("=" * 96)
 
     # ---- un-riggable self-checks ----
-    for did, (nm, comp, c0, base) in results.items():
+    for _did, (nm, comp, _c0, base) in results.items():
         assert comp >= base - 0.02, (
             f"{nm}: strong readout below its domain baseline ({comp:.3f} vs {base:.3f})"
         )

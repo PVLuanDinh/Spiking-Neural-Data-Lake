@@ -119,7 +119,12 @@ from snn_data_lake.cortex.corpus_stream import ARPABET, load_cmudict, load_text,
 from snn_data_lake.cortex.kb_ranking import DistMult, load_dataset
 from snn_data_lake.reasoning.meta_skill_loop import Domain, physics_stream
 from snn_data_lake.reasoning.open_world_loop import OpenWorldController, dna_stream
-from snn_data_lake.reasoning.skill_builder import MATH_VOCAB, SkillRegistry, math_stream, signature
+from snn_data_lake.hippocampus.skill_builder import (
+    MATH_VOCAB,
+    SkillRegistry,
+    math_stream,
+    signature,
+)
 from snn_data_lake.substrate.home import home, lake_path, load_state, save_state
 
 _SKILL_IDS = {"language": 0, "math": 1, "physics": 2, "world-kb": 3}

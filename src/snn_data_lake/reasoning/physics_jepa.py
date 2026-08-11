@@ -40,7 +40,7 @@ import numpy as np
 
 from snn_data_lake.cerebellum.jepa_world_model import JepaWorldModel
 from snn_data_lake.hippocampus.proximity_replay import LakeMemory
-from snn_data_lake.reasoning.skill_builder import signature
+from snn_data_lake.hippocampus.skill_builder import signature
 
 ACTIONS = ("coast", "up", "down", "left", "right")
 _THRUST = {

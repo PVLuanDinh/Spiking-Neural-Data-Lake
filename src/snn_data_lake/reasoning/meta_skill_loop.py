@@ -2,7 +2,7 @@ r"""
 META SKILL LOOP -- a STANDING, open-ended multi-domain loop where the brain builds its own skills
 across LANGUAGE, MATH, and PHYSICS, choosing which to work on next by cross-domain learning-progress.
 
-This is the standing version of reasoning/skill_builder.py. Instead of building each skill once, a
+This is the standing version of hippocampus/skill_builder.py (promoted 2026-08-11). Instead of building each skill once, a
 top-level SpikingCuriosityDrive keyed on DOMAIN id runs an open-ended loop: every cycle it picks the
 domain with the highest learning-progress (the frontier), streams ONE MORE slice of that domain into
 that skill's PERSISTENT order-invariant readout (SLDA-RFF -- continual == joint, so accumulation
@@ -37,7 +37,12 @@ import numpy as np
 from snn_data_lake.cortex.corpus_stream import ARPABET, load_cmudict, load_text, phoneme_stream
 from snn_data_lake.cortex.language_self_build import _positional_code, _bigram_baseline
 from snn_data_lake.cortex.language_readout_slda import SLDA_RFF_np
-from snn_data_lake.reasoning.skill_builder import signature, SkillRegistry, math_stream, MATH_VOCAB
+from snn_data_lake.hippocampus.skill_builder import (
+    signature,
+    SkillRegistry,
+    math_stream,
+    MATH_VOCAB,
+)
 from snn_data_lake.cortex.kb_ranking import DistMult, load_dataset
 from snn_data_lake.hippocampus.proximity_replay import LakeMemory
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
