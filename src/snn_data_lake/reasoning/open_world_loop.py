@@ -45,7 +45,7 @@ from snn_data_lake.cortex.corpus_stream import load_cmudict, load_text, phoneme_
 from snn_data_lake.reasoning.skill_builder import signature, math_stream
 from snn_data_lake.reasoning.meta_skill_loop import physics_stream
 from snn_data_lake.cortex.language_self_build import _positional_code
-from snn_data_lake.reasoning.language_readout_slda import SLDA_RFF_np
+from snn_data_lake.cortex.language_readout_slda import SLDA_RFF_np
 from snn_data_lake.hippocampus.proximity_replay import LakeMemory
 
 

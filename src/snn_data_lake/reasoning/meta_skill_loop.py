@@ -36,7 +36,7 @@ import numpy as np
 
 from snn_data_lake.cortex.corpus_stream import ARPABET, load_cmudict, load_text, phoneme_stream
 from snn_data_lake.cortex.language_self_build import _positional_code, _bigram_baseline
-from snn_data_lake.reasoning.language_readout_slda import SLDA_RFF_np
+from snn_data_lake.cortex.language_readout_slda import SLDA_RFF_np
 from snn_data_lake.reasoning.skill_builder import signature, SkillRegistry, math_stream, MATH_VOCAB
 from snn_data_lake.cortex.kb_ranking import DistMult, load_dataset
 from snn_data_lake.hippocampus.proximity_replay import LakeMemory

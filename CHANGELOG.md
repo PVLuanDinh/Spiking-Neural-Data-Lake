@@ -9,6 +9,17 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- family settlement C5: language_readout_slda -> cortex/, fair_compare retires with its ports paid (2026-08-11o)
+
+The competence head promotes and ABSORBS the retired harness's discipline: _ngram_acc ported,
+one shared _split makes the equal-budget comparison equal by construction, and the headline
+assert now runs at the SAME budget (measured 22.1% vs equal-budget bigram 19.6%; the stronger
+uncapped bar stays asserted at 20.5%; the honest ~tie vs equal-budget trigram 21.8% is printed
+with provenance -- the decisive-win reading was the 15x confound, exactly as the retired
+harness measured). rstdp_degrades deliberately NOT ported. readout_fair_compare deleted, verdict
+preserved; world_kb_stream's second disclosed cross-tier reach closes (manifest 14). 5.8s check
+in CORE. reasoning/ falls again.
+
 ## [Unreleased] -- family settlement C6: language_self_build -> cortex/ (2026-08-11n)
 
 Executed OUT of the recorded order because the order was wrong and the imports said so:

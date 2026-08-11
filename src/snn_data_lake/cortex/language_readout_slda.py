@@ -19,9 +19,19 @@ The torch SLDA_RFF in developmental_loop_slda is hardcoded to 10 classes; langua
 K words, so this ports the identical math to numpy with a general class count (research tier -- numpy
 is allowed; CORE untouched).
 
-  PYTHONPATH=src python -m snn_data_lake.reasoning.language_readout_slda
+  PYTHONPATH=src python -m snn_data_lake.cortex.language_readout_slda
   Knobs: NORD_CTX(3) NORD_PER(6000) NORD_VOCAB(60) NORD_RFF(1500) NORD_GAMMA(0.15) NORD_SHRINK(0.1)
 Deps: numpy (+ stdlib). Reuses corpus_stream + language_self_build's positional code + baselines.
+
+PROMOTED reasoning/ -> cortex/ 2026-08-11 (#10 family settlement C5), and it INHERITS
+readout_fair_compare's corrections at that module's same-commit retirement (its verdict lives in
+the CHANGELOG "READOUT STUDIES" record): `_ngram_acc` is ported verbatim (n-grams fit on the
+SAME capped budget as the readout), the headline assert now runs in the EQUAL-BUDGET form the
+retired harness proved necessary (the old form compared a per-capped SLDA against an UNCAPPED
+full-train bigram), and fair_compare's measured honest finding is printed with the result: at
+equal data the SLDA-RFF roughly TIES the best n-gram -- the "decisive win" reading was a 15x
+data confound. NOT ported, deliberately: `rstdp_degrades` (it pins a pathology of governed
+interaction_learning; the finding stays in the CHANGELOG record, not as a standing assert).
 """
 
 import os
@@ -36,9 +46,9 @@ from snn_data_lake.cortex.corpus_stream import (
     word_stream,
 )
 from snn_data_lake.cortex.language_self_build import (
-    _positional_code,
-    _frequent,
     _bigram_baseline,
+    _frequent,
+    _positional_code,
     _unigram_baseline,
 )
 
@@ -108,16 +118,49 @@ class SLDA_RFF_np:
         return self.scores(F).argmax(1)
 
 
-def _slda_acc(pairs, responses, ctx, per, rff, gamma, shrink, seed=0):
-    """Train SLDA-RFF on (positional context code, next-token index); held-out accuracy on the tail."""
+# consolidates: readout_fair_compare.py (retire)
+# Its equal-budget baseline (_ngram_acc) and split discipline move here, the surviving language
+# readout; the original is deleted in this same commit, verdict preserved in CHANGELOG.
+def _split(pairs, responses, per):
+    """The ONE train/test split every readout AND baseline in this file shares. Extracted at the
+    2026-08-11 promotion so the equal-budget comparison is equal by CONSTRUCTION -- the retired
+    readout_fair_compare proved the old arrangement (readout capped at `per`, baselines fit on
+    the full train split elsewhere) conflated a 15x data difference with the decoder effect."""
     ridx = {r: i for i, r in enumerate(responses)}
-    V = len(responses)
     usable = [(c, nx) for c, nx in pairs if nx in ridx]
     if len(usable) < 60:
-        return 0.0, 0
+        return [], [], ridx
     cut = int(len(usable) * 0.8)
     train, test = usable[:cut], usable[cut:]
-    train = train[:per] if per else train
+    return (train[:per] if per else train), test, ridx
+
+
+def _ngram_acc(train, test, k):
+    """Ported verbatim-in-substance from readout_fair_compare.py at its retirement: most-frequent
+    next-token given the last k context tokens, fit on `train` -- the SAME budget the readouts
+    get -- scored on `test`."""
+    from collections import Counter, defaultdict
+
+    tbl = defaultdict(Counter)
+    for c, nx in train:
+        key = tuple(c[-k:]) if k else ()
+        tbl[key][nx] += 1
+    if not test:
+        return 0.0
+    ok = 0
+    for c, nx in test:
+        key = tuple(c[-k:]) if k else ()
+        if tbl[key]:
+            ok += tbl[key].most_common(1)[0][0] == nx
+    return ok / len(test)
+
+
+def _slda_acc(pairs, responses, ctx, per, rff, gamma, shrink, seed=0):
+    """Train SLDA-RFF on (positional context code, next-token index); held-out accuracy on the tail."""
+    train, test, ridx = _split(pairs, responses, per)
+    if not train:
+        return 0.0, 0
+    V = len(responses)
 
     def X(rows):
         return np.array([_positional_code(c, ridx, V, ctx) for c, _ in rows], dtype=np.float64)
@@ -156,7 +199,11 @@ def main():
     freq_words = _frequent([nx for _, nx in wd_pairs], VOCAB)
 
     ph_slda, ph_n = _slda_acc(ph_pairs, ARPABET, CTX, PER, RFF, GAMMA, SHRINK, seed=0)
-    ph_bigram = _bigram_baseline(ph_pairs)
+    ph_bigram = _bigram_baseline(ph_pairs)  # UNCAPPED full-train bigram (the stronger baseline)
+    # EQUAL-BUDGET baselines on the SAME split/cap the readout used (the fair_compare discipline)
+    ph_train, ph_test, _ = _split(ph_pairs, ARPABET, PER)
+    ph_bigram_eq = _ngram_acc(ph_train, ph_test, 1)
+    ph_trigram_eq = _ngram_acc(ph_train, ph_test, 2)
     wd_slda, wd_n = _slda_acc(wd_pairs, freq_words, CTX, PER, RFF, GAMMA, SHRINK, seed=1)
     wd_uni = _unigram_baseline(wd_pairs, freq_words)
 
@@ -181,6 +228,19 @@ def main():
     )
     print("=" * 92)
 
+    print(
+        f"  EQUAL-BUDGET (per={PER}, the fair_compare discipline): SLDA-RFF {ph_slda:.1%} vs "
+        f"bigram {ph_bigram_eq:.1%} / trigram {ph_trigram_eq:.1%} -- at equal data the decoder "
+        f"about TIES the best n-gram; the decisive-win reading was the 15x confound (retired "
+        f"harness's measured finding, preserved)."
+    )
+    # CORRECTED 2026-08-11 (readout_fair_compare's port): the headline assert now compares at the
+    # SAME budget -- the old form put a per-capped SLDA against the UNCAPPED full-train bigram,
+    # which is the exact unequal comparison the retired harness was built to expose. The stronger
+    # uncapped comparison stays asserted too (it holds today and losing it would be a regression).
+    assert ph_slda > ph_bigram_eq, (
+        f"readout must beat the bigram AT EQUAL BUDGET: SLDA-RFF {ph_slda:.3f} vs {ph_bigram_eq:.3f}"
+    )
     assert ph_slda > ph_bigram, (
         f"strong readout must CLOSE the n-gram gap: SLDA-RFF {ph_slda:.3f} vs bigram {ph_bigram:.3f}"
     )

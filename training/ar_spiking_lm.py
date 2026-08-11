@@ -1,7 +1,7 @@
 r"""training/ar_spiking_lm.py -- offline [train] tier for the SpikeGPT-style Spiking-RWKV language model.
 
 WHY (the gap). Fluent open-domain LANGUAGE is stuck ~chance on BLiMP because the ROSE E-stage head
-(reasoning/language_readout_slda.SLDA_RFF_np) is ORDER-INVARIANT and structurally blind to BLiMP's
+(cortex/language_readout_slda.SLDA_RFF_np, promoted 2026-08-11) is ORDER-INVARIANT and structurally blind to BLiMP's
 order / agreement minimal-pair contrasts. The fix is a genuinely AUTOREGRESSIVE, ORDER-SENSITIVE
 spiking sequence model scored by full-sentence log-probability. This file TRAINS that model; the frozen
 weights it exports are served forward-only, in numpy, by reasoning/ar_spiking_lm_serve.py.

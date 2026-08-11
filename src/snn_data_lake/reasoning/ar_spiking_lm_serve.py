@@ -1,7 +1,7 @@
 r"""ar_spiking_lm_serve -- forward-only (stdlib + numpy) server for a frozen Spiking-RWKV language model.
 
 WHY THIS EXISTS (the gap it closes). The ROSE E-stage language head
-(reasoning/language_readout_slda.SLDA_RFF_np) is ORDER-INVARIANT by construction (its own docstring:
+(cortex/language_readout_slda.SLDA_RFF_np, promoted 2026-08-11) is ORDER-INVARIANT by construction (its own docstring:
 "order-invariant continual==joint"): it decodes a fixed positional context code, so it is structurally
 blind to BLiMP's order / agreement minimal-pair contrasts and caps ~57% decoupled from perplexity.
 The fix is a genuinely AUTOREGRESSIVE, ORDER-SENSITIVE sequence model scored by FULL-SENTENCE
