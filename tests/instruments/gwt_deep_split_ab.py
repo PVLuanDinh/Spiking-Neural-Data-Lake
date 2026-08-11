@@ -8,14 +8,16 @@ Run AFTER: the numbers must be UNCHANGED (the surgery touched ignition/re-entry,
 binding). Tolerates both the pre-surgery (ignited, raster) and post-surgery (raster)
 return shapes so the same instrument runs on both sides of the diff.
 
-  PYTHONPATH=src python docs/coverage/artifacts/gwt_deep_split_ab.py
+  PYTHONPATH=src python tests/instruments/gwt_deep_split_ab.py
+(Lived at docs/coverage/artifacts/ until 2026-08-11; moved because a docs .py is a build the
+p4c ratchet counts, while tests/** is the instrument category it excludes.)
 """
 
 import random
 import statistics
 import sys
 
-from snn_data_lake.reasoning.gwt_deep import (
+from snn_data_lake.thalamus.gwt_deep import (
     _objects,
     rate_broadcast,
     rate_decode,

@@ -98,6 +98,15 @@ EXEMPT = {
     # feedback_alignment/sensor_demo/coordinated_growth) were DELETED in the Policy-2/3 retirement wave --
     # they are gone from REGIONS, so they are no longer brain modules and need no exemption.
     # ---- "permanent": legitimately not a tick faculty, each with the evidence that settled it ----
+    "gwt_deep": (
+        "permanent",
+        "BENCHMARK DEMONSTRATION (promoted reasoning/ -> thalamus/ 2026-08-11): the tree's "
+        "phase-binding spiking-vs-rate control, credited 2026-08-07 on the benchmark that killed "
+        "the workspace bind_* family. Nothing on the live tick binds K (color,shape) objects; its "
+        "consumers are its __main__ self-check (4 reachable reds) and "
+        "tests/instruments/gwt_deep_split_ab.py. Wiring it to the tick would be the fake "
+        "consumer P3 names",
+    ),
     "snn_mnist_stdp_genn": (
         "permanent",
         "TRAIN-TIER HARNESS (specs/012, MANDATED BUILD 2026-08-07): opt-in GPU training run via "

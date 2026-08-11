@@ -12,7 +12,7 @@ already absorbed `reasoning/gwt_reentry.py`'s predictive-completion (2026-08-06,
 their two demos and their two self-check asserts. What remains is the BINDING half,
 CREDITED 2026-08-07 on the exact benchmark that killed the workspace `bind_*` family
 (Jaccard, 120 trials/K, all-fired-pairs strawman; ledger row + CHANGELOG at `66b6168a`),
-and `docs/coverage/artifacts/gwt_deep_split_ab.py` re-runs that form on BOTH sides of this
+and `tests/instruments/gwt_deep_split_ab.py` re-runs that form on BOTH sides of this
 surgery: spiking Jaccard 1.0000 at every K, strawman 0.5000/0.2500 at K=2/4 -- unchanged.
 The sub-threshold-ignition red in `_reds()` became a sub-RHEOBASE red (drive 0.2 <
 LEAK*V_TH = 0.25): the same two criteria go red deterministically with no ignition gate.
@@ -42,9 +42,12 @@ LEAK*V_TH = 0.25): the same two criteria go red deterministically with no igniti
       that it is what distinguishes the spiking workspace from the rate one on this task.
 
   This is a step of the consciousness program (GWT re-entry + binding), built honestly, not a claim of
-  phenomenal consciousness. LIF loops, deterministic, core-promotable.
+  phenomenal consciousness. LIF loops, deterministic. PROMOTED reasoning/ -> thalamus/ 2026-08-11
+  (P4c, the split's recorded follow-on): registered in REGIONS + run_selfchecks, dormancy-EXEMPT
+  "permanent" as a benchmark demonstration -- nothing on the live tick binds K objects; the
+  consumer is `tests/instruments/gwt_deep_split_ab.py` plus this __main__.
 
-  PYTHONPATH=src python -m snn_data_lake.reasoning.gwt_deep
+  PYTHONPATH=src python -m snn_data_lake.thalamus.gwt_deep
 """
 
 import random

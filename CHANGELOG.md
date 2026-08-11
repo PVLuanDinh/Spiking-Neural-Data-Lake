@@ -9,6 +9,34 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- gwt_deep PROMOTED: the first PROMOTE-lane row settles (2026-08-11c)
+
+The split's recorded follow-on. `reasoning/gwt_deep.py` -> `thalamus/gwt_deep.py` (the workspace
+family's region), registered in REGIONS + `run_selfchecks.py` CORE, dormancy-EXEMPT "permanent"
+as a benchmark demonstration -- nothing on the live tick binds K (color,shape) objects, and wiring
+it there would be the fake consumer P3 names. Both real consumers repointed in the same commit
+(the split A/B instrument's import; the `global_workspace.py` verified-unaffected prose list,
+pre-promotion path noted). Verified at the new path: `__main__` self-check green with all 4
+reachable reds firing, and the A/B instrument reproduces the credited binding figures (spiking
+Jaccard 1.0000 at every K, strawman 0.5000/0.2500 at K=2/4). Known side effect, disclosed:
+`substrate/brain_geometry.py` globs `reasoning/*.py` into an RNG draw order, so the cockpit's 3D
+coordinates for reasoning modules shift by one draw. reasoning/ count 147 -> 146; the #10 PROMOTE
+lane is now 1 settled / 106 open.
+
+Co-committed, deliberately and disclosed (the fbce10ec precedent): THREE instrument .py files
+move into `tests/instruments/` -- `gwt_deep_split_ab.py` (was docs/coverage/artifacts/, landed
+a56a77ea) and `genn_equivalence.py` + `genn_smoke.py` (were specs/012-finish-genn-port/, landed
+the specs/012 arc). All three are instruments that measure builds, which is the category
+`p4c_ratchet` excludes as `tests/**`; where they sat, the ratchet counted them as new ungoverned
+builds (docs 16 -> 17, specs a NEW zone at 2) and `p4c_ratchet --assert` has been RED since they
+landed. Nobody saw it because **remote CI has not executed a single job since `7e3e6d11`
+(2026-08-07): every run dies at startup with a GitHub Actions BILLING failure** ("recent account
+payments have failed or your spending limit needs to be increased") -- 8-12s "runs", all five
+jobs refused. The last CI that actually ran anything was `fbce10ec`. Local gates are the only
+gates until the billing is fixed; that is an account setting, not a repo fix. Live path pointers
+repointed (snn_mnist_stdp_genn docstring, evidence.md annotated in place); spec task records kept
+as history.
+
 ## [Unreleased] -- gwt_deep split: the ignition/re-entry half retires (2026-08-11b)
 
 The 2026-08-07 split verdict's MERGE half is executed. `reasoning/gwt_deep.py` carried its

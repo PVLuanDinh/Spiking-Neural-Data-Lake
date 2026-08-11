@@ -1,4 +1,4 @@
-﻿"""
+"""
 v0.50 â€” single canonical runner for every module self-check.
 
 (Said "every pure-stdlib self-check" until 2026-07-29, contradicting its own paragraph four lines
@@ -180,6 +180,7 @@ CORE = [
     "thalamus.reticular_gate",
     "thalamus.reentrant_workspace",  # W8: de-saturated competitive ignition + re-entry
     "thalamus.connectome_router",  # C1 batch-3: live signed/delayed spike propagation over the connectome graph
+    "thalamus.gwt_deep",  # phase-binding demonstration (spiking-vs-rate control); promoted 2026-08-11
     # hypothalamus â€” homeostatic timing (the SCN circadian clock)
     "hypothalamus.circadian_clock",
     "hypothalamus.set_points",

@@ -4,7 +4,9 @@ Proves on THIS box, in .venv-lake: pygenn imports; GeNN's code generator, the ho
 compiler and CUDA agree; a compiled model steps and records spikes. Output is the evidence
 (specs/012-finish-genn-port/evidence.md #preflight). ASCII only.
 
-Run:  .venv-lake\\Scripts\\python specs\\012-finish-genn-port\\genn_smoke.py
+Run:  .venv-lake\\Scripts\\python tests\\instruments\\genn_smoke.py
+(Lived at specs/012-finish-genn-port/ until 2026-08-11; moved because a spec-bundle .py is a
+build the p4c ratchet counts, while tests/** is the instrument category it excludes.)
 """
 
 import sys

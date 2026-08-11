@@ -11,7 +11,9 @@ parameterised over dims (the oracle class bakes module-global M/N_IN/T). ASCII o
 
 Run (GeNN box):
   set CUDA_PATH=D:\\AI-project\\cuda-local  (+ its bin on PATH, vcvars active)
-  .venv-lake\\Scripts\\python specs\\012-finish-genn-port\\genn_equivalence.py
+  .venv-lake\\Scripts\\python tests\\instruments\\genn_equivalence.py
+(Lived at specs/012-finish-genn-port/ until 2026-08-11; moved because a spec-bundle .py is a
+build the p4c ratchet counts, while tests/** is the instrument category it excludes.)
 """
 
 import sys

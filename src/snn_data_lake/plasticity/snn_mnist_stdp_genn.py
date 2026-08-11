@@ -30,7 +30,8 @@ its GPU mirror, EXACT by construction:
      pipeline runs input delivery one kernel-step behind the CPU loop and the winner spike
      two behind, so the LTP reads `prevTrace2` — a two-step pre-trace history kept in
      pre_dynamics — which IS the oracle's x_pre(t) at the decision step, exactly (verified
-     empirically by specs/012-finish-genn-port/genn_equivalence.py: winner sequences and
+     empirically by tests/instruments/genn_equivalence.py (at specs/012-finish-genn-port/
+     until 2026-08-11): winner sequences and
      weights match a numpy replica of the oracle at float32 tolerance).
   4. theta homeostasis: bump folded through one decay (thetaPlusEff = THETA_PLUS *
      THETA_DECAY) so the GPU recurrence equals the CPU's bump-then-decay ordering exactly
@@ -95,8 +96,7 @@ GENN_CU_PICK_FLAG = (
 GENN_NEURON_SIM = "V = V * beta + Isyn; if (learnFlag > 0.5) { theta *= thetaDecay; }"
 GENN_NEURON_THRESHOLD = "winnerFlag > 0.5"
 GENN_NEURON_RESET = (
-    "winnerFlag = 0.0; SpikeCount += 1.0;"
-    " if (learnFlag > 0.5) { theta += thetaPlusEff; }"
+    "winnerFlag = 0.0; SpikeCount += 1.0; if (learnFlag > 0.5) { theta += thetaPlusEff; }"
 )
 
 _ORACLE_CACHE = None
@@ -455,7 +455,9 @@ def run_mnist():
     print("=" * 64)
     print("GeNN STDP-MNIST (custom burst+x_tar plasticity) - specs/012")
     print("=" * 64)
-    print(f"M={o.M}  T={o.T}  train={o.TRAIN_N}  test={o.TEST_N}  thresh={o.FAST_THRESH}  lr0={lr0}")
+    print(
+        f"M={o.M}  T={o.T}  train={o.TRAIN_N}  test={o.TEST_N}  thresh={o.FAST_THRESH}  lr0={lr0}"
+    )
 
     Xtr, Ytr, Xte, Yte = o.load_mnist(o.TRAIN_N, o.TEST_N)
     n_asg = min(o.TRAIN_N, 6000)
@@ -490,8 +492,18 @@ def run_mnist():
     _phase_knobs(exc, syn, 0.0 if lr0 else o.FAST_LR, learn=not lr0)
     t0 = time.perf_counter()
     _run_pass(
-        model, ssa, exc, syn, starts, ends, range(n_tr), o.M, o.N_IN, steps,
-        learn=not lr0, w_norm=o.W_NORM,
+        model,
+        ssa,
+        exc,
+        syn,
+        starts,
+        ends,
+        range(n_tr),
+        o.M,
+        o.N_IN,
+        steps,
+        learn=not lr0,
+        w_norm=o.W_NORM,
     )
     train_s = time.perf_counter() - t0
     print(f"train={train_s:.1f}s")
@@ -499,8 +511,18 @@ def run_mnist():
     _phase_knobs(exc, syn, 0.0, learn=False)
     t0 = time.perf_counter()
     resp = _run_pass(
-        model, ssa, exc, syn, starts, ends, range(n_tr, n_tr + n_asg), o.M, o.N_IN, steps,
-        learn=False, w_norm=o.W_NORM,
+        model,
+        ssa,
+        exc,
+        syn,
+        starts,
+        ends,
+        range(n_tr, n_tr + n_asg),
+        o.M,
+        o.N_IN,
+        steps,
+        learn=False,
+        w_norm=o.W_NORM,
     )
     per_class = np.zeros((o.M, 10), dtype=np.float32)
     for row in range(n_asg):
@@ -508,8 +530,18 @@ def run_mnist():
     assignment = per_class.argmax(axis=1)
 
     counts_te = _run_pass(
-        model, ssa, exc, syn, starts, ends, range(n_tr + n_asg, n_tr + n_asg + n_te),
-        o.M, o.N_IN, steps, learn=False, w_norm=o.W_NORM,
+        model,
+        ssa,
+        exc,
+        syn,
+        starts,
+        ends,
+        range(n_tr + n_asg, n_tr + n_asg + n_te),
+        o.M,
+        o.N_IN,
+        steps,
+        learn=False,
+        w_norm=o.W_NORM,
     )
     correct = 0
     for row in range(n_te):
@@ -555,14 +587,18 @@ def main():
         print("=" * 60)
         print("GeNN STDP-MNIST (custom plasticity) - toolchain not present here")
         print("=" * 60)
-        print("  pygenn not installed. Needs the [genn] extra (source install), C++ compiler, CUDA.")
+        print(
+            "  pygenn not installed. Needs the [genn] extra (source install), C++ compiler, CUDA."
+        )
         print("  Rule + encoding are CPU-verified in: python snn_mnist_stdp_fast.py")
         _selfcheck_codegen()
         return
     if os.environ.get("GENN_RUN") != "1":
         # Gate safety: model.build() is an nvcc compile taking minutes and needing CUDA_PATH;
         # it must NEVER run inside run_selfchecks. The GPU path is an explicit opt-in.
-        print("GeNN toolchain present (pygenn importable). GPU build/run is opt-in: set GENN_RUN=1.")
+        print(
+            "GeNN toolchain present (pygenn importable). GPU build/run is opt-in: set GENN_RUN=1."
+        )
         _selfcheck_codegen()
         try:
             oracle()

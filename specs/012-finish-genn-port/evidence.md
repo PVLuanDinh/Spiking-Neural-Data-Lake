@@ -48,7 +48,7 @@ Successfully installed ... ml-genn-2.3.1 pygenn-5.4.0 ...
    FREE-THREADED ABI)
 ```
 
-**Smoke (specs/012-finish-genn-port/genn_smoke.py): PASS, exit 0.**
+**Smoke (genn_smoke.py, then at specs/012-finish-genn-port/, since 2026-08-11 at tests/instruments/): PASS, exit 0.**
 
 ```
 pygenn version: 5.4.0
@@ -88,7 +88,7 @@ SAME-BOX figure is the parity anchor (research.md R7).
 
 ## equivalence (toy-scale exact-mirror proof, 2026-08-10)
 
-`specs/012-finish-genn-port/genn_equivalence.py` — GPU port vs a float32 numpy replica of
+`genn_equivalence.py` (then at specs/012-finish-genn-port/, since 2026-08-11 at tests/instruments/) — GPU port vs a float32 numpy replica of
 `FastStdpNetwork.run()` (statement-for-statement, dims-parameterised), 4 random toy images,
 M=8 N=16 T=10, sequential learning with per-image normalisation:
 

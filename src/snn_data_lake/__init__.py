@@ -233,7 +233,13 @@ REGIONS = {
         "signal_loop",
         "cpg_oscillator",
     ],
-    "thalamus": ["global_workspace", "reticular_gate", "reentrant_workspace", "connectome_router"],
+    "thalamus": [
+        "global_workspace",
+        "reticular_gate",
+        "reentrant_workspace",
+        "connectome_router",
+        "gwt_deep",
+    ],
     "hypothalamus": ["circadian_clock", "set_points", "homeostatic_drives"],
     "midbrain": [
         "dopamine_nuclei",
