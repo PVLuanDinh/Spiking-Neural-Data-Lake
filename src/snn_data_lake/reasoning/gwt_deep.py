@@ -1,24 +1,27 @@
 r"""
-GWT DEEP -- a deepened Global Neuronal Workspace with the SPIKING-vs-RATE control that the
-consciousness-concepts review named the single most important test for this project.
+GWT DEEP -- the tree's honest PHASE-BINDING demonstration: theta-gamma multiplexed binding
+with the SPIKING-vs-RATE control that the consciousness-concepts review named the single
+most important test for this project.
 
-The shipped core `thalamus/global_workspace.py` is a real but THIN GNW: single-unit "pools", a string
-"broadcast", no true re-entry, and its headline 4-vs-27 demo strips discrete spikes AND cross-tick
-memory AND lateral inhibition at once -- so it proves "stateful competition beats argmax", NOT that
-SPIKES (vs a rate integrator with the same hysteresis) are load-bearing. This module fixes both:
+THE IGNITION / RE-ENTRY HALF IS RETIRED (2026-08-11, P2 -- one mechanism per job). This
+module carried its own all-or-none workspace ignition (an IGNITE_TH gate on every
+broadcast) and re-entrant sustain (extra theta cycles at `_REENTRY * drive` reverberation)
+BESIDE `thalamus/reentrant_workspace`, which is THE ignition/re-entry mechanism -- it
+already absorbed `reasoning/gwt_reentry.py`'s predictive-completion (2026-08-06, ported to
+`::expect`, neuter-A/B verified). The duplicated half is deleted: the gate, the cycles,
+their two demos and their two self-check asserts. What remains is the BINDING half,
+CREDITED 2026-08-07 on the exact benchmark that killed the workspace `bind_*` family
+(Jaccard, 120 trials/K, all-fired-pairs strawman; ledger row + CHANGELOG at `66b6168a`),
+and `docs/coverage/artifacts/gwt_deep_split_ab.py` re-runs that form on BOTH sides of this
+surgery: spiking Jaccard 1.0000 at every K, strawman 0.5000/0.2500 at K=2/4 -- unchanged.
+The sub-threshold-ignition red in `_reds()` became a sub-RHEOBASE red (drive 0.2 <
+LEAK*V_TH = 0.25): the same two criteria go red deterministically with no ignition gate.
 
   SCORING (read this before the claim below). Pair recovery is scored by F1 -- precision AND recall.
   It was recall-only until 2026-08-04, which made the spiking side unfalsifiable (a reader emitting
   the whole KxK cross product scores 1.000 under recall), and the broadcast was in fact superposing:
   every object was driven from t=0, so "phase multiplexing" never ran. Both are fixed; see
   `spiking_broadcast` and `_pair_accuracy` for the measured before/after.
-
-  DEEPENING (the real GNW mechanisms the core lacks):
-    * POPULATIONS: each specialist is a population of LIF neurons, not one membrane.
-    * IGNITION: an all-or-none workspace threshold -- strong input IGNITES (global broadcast),
-      sub-threshold input stays SUBLIMINAL (no broadcast). The Dehaene-Changeux signature.
-    * RE-ENTRY: the broadcast feeds BACK as excitatory current, SUSTAINING the winning assembly
-      after the input is removed (persistent activity) -- the defining GNW loop the core never runs.
 
   THE SPIKING-vs-RATE CONTROL (the honest question: what do spikes BUY here?):
     The workspace must BIND K objects, each a (color, shape) pair, and BROADCAST the pairings. The
@@ -49,7 +52,6 @@ import random
 T_SLOT = 6  # time steps per gamma slot (one bound object)
 LEAK = 0.25  # LIF leak per step
 V_TH = 1.0  # LIF threshold
-IGNITE_TH = 0.6  # workspace ignition threshold (all-or-none)
 
 
 class LIF:
@@ -77,21 +79,22 @@ def _objects(n_color, n_shape, k, rng):
 
 
 # ----------------------------------------------------------------------------------------------------
-# SPIKING workspace: ignition + re-entry + theta-gamma phase-multiplexed broadcast (binds by synchrony)
+# SPIKING workspace: theta-gamma phase-multiplexed broadcast (binds by synchrony)
+# distinct-from: cortex/theta_gamma_code.py -- that is a working-memory BUFFER (store/recall API,
+#   its own dormancy lane, P4C_BACKLOG row on theta_gamma_code); this is the measured
+#   spiking-vs-rate CONTROL demonstration. Their merge question was examined at the bind_*
+#   retirement and the three-way merge REFUTED on a pre-registered null (P4C_BACKLOG); this
+#   module's binding half PASSED the same-form benchmark. One demo, one buffer, no shared job.
 # ----------------------------------------------------------------------------------------------------
-_REENTRY = 0.55  # re-entrant current as a fraction of drive (weaker top-down amplification)
+def spiking_broadcast(objs, n_color, n_shape, drive=1.0):
+    """Broadcast the K objects PHASE-MULTIPLEXED on the theta-gamma clock (Lisman-Jensen): one THETA
+    cycle holds K gamma slots of T_SLOT ticks, object k owns gamma slot k. Within a slot the object's
+    color and shape LIFs see the SAME current, so they spike together (bound); across slots no two
+    objects are ever driven at once, which is what "each object in its own gamma slot" has to mean.
 
-
-def spiking_broadcast(objs, n_color, n_shape, drive=1.0, cycles=3):
-    """Ignite (if drive clears the threshold), then broadcast the K objects PHASE-MULTIPLEXED on the
-    theta-gamma clock (Lisman-Jensen): one THETA cycle holds K gamma slots of T_SLOT ticks, object k
-    owns gamma slot k, and the whole cycle repeats. Cycle 0 is bottom-up IGNITION (full `drive`);
-    cycles 1.. are the RE-ENTRANT reverberation (weaker `_REENTRY*drive`) that keeps each assembly
-    alive after its own bottom-up slot has passed. Within a slot the object's color and shape LIFs see
-    the SAME current, so they spike together (bound); across slots no two objects are ever driven at
-    once, which is what "each object in its own gamma slot" has to mean.
-
-    Returns (ignited, raster), raster[t] = (fired_colors, fired_shapes).
+    Returns raster, raster[t] = (fired_colors, fired_shapes). (Until 2026-08-11 this also carried an
+    all-or-none ignition gate and re-entrant sustain cycles -- retired, see the module docstring;
+    `thalamus/reentrant_workspace` is the one ignition/re-entry mechanism.)
 
     CORRECTED 2026-08-04, and the correction is the point. The previous version put EVERY object into
     an `active` list at t=0 and gave the out-of-slot ones `drive*0.55`, which is 2.2x the LIF rheobase
@@ -100,24 +103,20 @@ def spiking_broadcast(objs, n_color, n_shape, drive=1.0, cycles=3):
     cross-product pairs for 3 true objects, precision 0.333. It scored 1.000 anyway because
     _pair_accuracy was recall-only; see the note there. Both halves had to be fixed -- a decoder that
     emits everything and a metric that only counts hits are the same defect seen from two sides."""
-    if drive < IGNITE_TH:
-        return False, []  # subliminal: no global broadcast
     col = [LIF() for _ in range(n_color)]
     shp = [LIF() for _ in range(n_shape)]
     raster = []
     k_obj = len(objs)
-    for t in range(cycles * k_obj * T_SLOT):
-        slot = (t // T_SLOT) % k_obj  # which object owns this gamma slot
-        cycle = t // (k_obj * T_SLOT)  # 0 = bottom-up ignition, >=1 = re-entrant sustain
+    for t in range(k_obj * T_SLOT):
+        slot = t // T_SLOT  # which object owns this gamma slot
         c, s = objs[slot]
-        cur = drive if cycle == 0 else drive * _REENTRY
         fc, fs = [], []
-        if col[c].step(cur):
+        if col[c].step(drive):
             fc.append(c)
-        if shp[s].step(cur):
+        if shp[s].step(drive):
             fs.append(s)
         raster.append((fc, fs))
-    return True, raster
+    return raster
 
 
 def spiking_decode(raster):
@@ -132,20 +131,19 @@ def spiking_decode(raster):
 
 
 # ----------------------------------------------------------------------------------------------------
-# RATE workspace: SAME topology + ignition + hysteresis, but continuous activation, NO spike timing
+# RATE workspace: SAME topology, but continuous activation, NO spike timing
 # ----------------------------------------------------------------------------------------------------
 def rate_broadcast(objs, n_color, n_shape, drive=1.0):
-    """Rate control: ignite (same all-or-none threshold), then broadcast a SUPERPOSED activation vector
-    -- every object's color and shape channel is 'on' with the same magnitude. No timing, so which color
-    binds which shape is not represented. Returns (ignited, color_act, shape_act)."""
-    if drive < IGNITE_TH:
-        return False, [], []
+    """Rate control: broadcast a SUPERPOSED activation vector -- every object's color and shape
+    channel is 'on' with the same magnitude. No timing, so which color binds which shape is not
+    represented. Returns (color_act, shape_act). (Its ignition gate retired 2026-08-11 with the
+    spiking arm's, keeping the two arms topology-matched -- the control isolates SPIKE TIMING.)"""
     color_act = [0.0] * n_color
     shape_act = [0.0] * n_shape
     for c, s in objs:  # superposition: all channels summed, no pairing
         color_act[c] += drive
         shape_act[s] += drive
-    return True, color_act, shape_act
+    return color_act, shape_act
 
 
 def rate_decode(color_act, shape_act, k, rng):
@@ -200,9 +198,9 @@ def _superposing_broadcast(objs, n_color, n_shape, drive=1.0, sustain_ticks=4):
     2.2x the LIF rheobase (LEAK*V_TH = 0.25), so all K objects fire on nearly every tick and the
     reader returns the whole KxK cross product. This is NOT a second broadcast mechanism competing
     with `spiking_broadcast` (P2): nothing outside `_reds()` may call it, it is the negative
-    control, and it is what makes the positive one falsifiable."""
-    if drive < IGNITE_TH:
-        return False, []
+    control, and it is what makes the positive one falsifiable. (Its ignition-gate line left with
+    the ignition retirement 2026-08-11; the reconstructed DEFECT -- the superposing drive pattern
+    below -- is byte-unchanged.)"""
     col = [LIF() for _ in range(n_color)]
     shp = [LIF() for _ in range(n_shape)]
     raster = []
@@ -221,7 +219,7 @@ def _superposing_broadcast(objs, n_color, n_shape, drive=1.0, sustain_ticks=4):
                 fs.append(s)
             a[2] -= 1
         raster.append((fc, fs))
-    return True, raster
+    return raster
 
 
 def _reds(n_color, n_shape, trials):
@@ -241,34 +239,37 @@ def _reds(n_color, n_shape, trials):
     trials. That is recorded rather than repaired, because the repair would be re-tuning 0.15 until
     it says what we want, which is the failure P1 and P8 both name. The K=4 floor is the criterion
     that actually distinguishes the two readers, and it is the one driven by the superposing
-    control here. The K=2 row is instead driven by a sub-threshold `drive` -- a plain input to
-    `spiking_broadcast` -- which reddens it deterministically (spiking 0.000 vs rate ~0.495)."""
+    control here. The K=2 row is instead driven by a sub-RHEOBASE `drive` -- a plain input to
+    `spiking_broadcast` -- which reddens it deterministically (spiking 0.000 vs rate ~0.495).
+    (Until the 2026-08-11 ignition retirement that input was sub-IGNITION-threshold; drive 0.2 <
+    LEAK*V_TH = 0.25 pins every membrane at a 0.8 fixed point, so the raster is empty the same
+    deterministic way and the same two criteria go red.)"""
     rows = []
     rng = random.Random(99)
 
     # (1) EXACT-SET: the superposing reader returns the KxK cross product, not the presented pairs.
     objs = _objects(n_color, n_shape, 3, rng)
-    _, r = _superposing_broadcast(objs, n_color, n_shape, drive=1.0)
+    r = _superposing_broadcast(objs, n_color, n_shape, drive=1.0)
     rows.append(("exact-set recovery (vs superposing reader)", spiking_decode(r) != set(objs)))
 
     # (2) K=4 binding floor, driven by the superposing reader and scored the way main() scores it.
     sp = 0.0
     for _ in range(trials):
         o = _objects(n_color, n_shape, 4, rng)
-        _, rr = _superposing_broadcast(o, n_color, n_shape, drive=1.0)
+        rr = _superposing_broadcast(o, n_color, n_shape, drive=1.0)
         sp += _pair_accuracy(o, spiking_decode(rr))
     rows.append(("K=4 binding floor (vs superposing reader)", not (sp / trials > 0.9)))
 
-    # (3)+(4) a sub-threshold drive leaves the spiking arm with an empty raster (F1 0.0) while the
+    # (3)+(4) a sub-rheobase drive leaves the spiking arm with an empty raster (F1 0.0) while the
     #         rate arm still reads its superposition, so both the K=2 margin and the K=1 tie break.
     sub = {}
     for k in (1, 2):
         sp = rt = 0.0
         for _ in range(trials):
             o = _objects(n_color, n_shape, k, rng)
-            _, rr = spiking_broadcast(o, n_color, n_shape, drive=IGNITE_TH - 0.01)
+            rr = spiking_broadcast(o, n_color, n_shape, drive=0.2)
             sp += _pair_accuracy(o, spiking_decode(rr))
-            _, ca, sa = rate_broadcast(o, n_color, n_shape, drive=1.0)
+            ca, sa = rate_broadcast(o, n_color, n_shape, drive=1.0)
             rt += _pair_accuracy(o, rate_decode(ca, sa, k, rng))
         sub[k] = (sp / trials, rt / trials)
     rows.append(("K=2 spiking-beats-rate margin", not (sub[2][0] > sub[2][1] + 0.15)))
@@ -289,26 +290,15 @@ def main():
     TRIALS = 200
     print("=" * 90)
     print(
-        "GWT DEEP -- ignition + re-entry + binding; the SPIKING-vs-RATE control (what do spikes buy?)"
+        "GWT DEEP -- phase-multiplexed BINDING; the SPIKING-vs-RATE control (what do spikes buy?)"
     )
     print("=" * 90)
-
-    # ---- (1) IGNITION is all-or-none: strong input broadcasts, sub-threshold stays subliminal ----
-    objs1 = _objects(N_COLOR, N_SHAPE, 2, rng)
-    ig_strong, _ = spiking_broadcast(objs1, N_COLOR, N_SHAPE, drive=1.0)
-    ig_weak, _ = spiking_broadcast(objs1, N_COLOR, N_SHAPE, drive=0.4)
     print(
-        f"(1) ignition all-or-none: strong drive -> broadcast={ig_strong}, sub-threshold -> broadcast={ig_weak}"
+        "  (ignition + re-entry demos retired 2026-08-11 -- thalamus/reentrant_workspace is the one"
     )
+    print("   mechanism for both; this module is the tree's phase-binding demonstration)")
 
-    # ---- (2) RE-ENTRY sustains the assembly after its bottom-up slot (persistent activity) ----
-    _, raster = spiking_broadcast([(3, 5)], N_COLOR, N_SHAPE, drive=1.0, cycles=3)
-    fired_after_slot = sum(1 for t in range(T_SLOT, len(raster)) if raster[t][0] or raster[t][1])
-    print(
-        f"(2) re-entry sustains: object still firing {fired_after_slot} steps AFTER its input slot ended"
-    )
-
-    # ---- (3+4) BINDING: spiking vs rate across K, over many trials ----
+    # ---- BINDING: spiking vs rate across K, over many trials ----
     print("-" * 90)
     print(
         f"{'K objects':>9} | {'spiking pair-F1':>16} | {'rate pair-F1':>13} | spikes load-bearing?"
@@ -319,9 +309,9 @@ def main():
         sp_acc = rt_acc = 0.0
         for _ in range(TRIALS):
             objs = _objects(N_COLOR, N_SHAPE, k, rng)
-            _, r = spiking_broadcast(objs, N_COLOR, N_SHAPE, drive=1.0)
+            r = spiking_broadcast(objs, N_COLOR, N_SHAPE, drive=1.0)
             sp_acc += _pair_accuracy(objs, spiking_decode(r))
-            _, ca, sa = rate_broadcast(objs, N_COLOR, N_SHAPE, drive=1.0)
+            ca, sa = rate_broadcast(objs, N_COLOR, N_SHAPE, drive=1.0)
             rt_acc += _pair_accuracy(objs, rate_decode(ca, sa, k, rng))
         sp_acc /= TRIALS
         rt_acc /= TRIALS
@@ -347,15 +337,13 @@ def main():
     # asserts below rode on a recall-only score that a cross-product reader satisfies perfectly, so
     # neither could go red for a binding failure. They can now -- see _pair_accuracy -- and the red
     # is the pre-fix broadcast itself, which `_reds()` rebuilds and RUNS at the end of this
-    # function rather than asserting in prose. ----
-    assert ig_strong and not ig_weak, (
-        "ignition is not all-or-none (strong must broadcast, weak must not)"
-    )
-    assert fired_after_slot > 0, "re-entry did not sustain the assembly after its input slot"
+    # function rather than asserting in prose. (The ignition-all-or-none and re-entry-sustains
+    # asserts that stood here retired 2026-08-11 with their mechanism -- those properties are
+    # asserted where the one mechanism lives, thalamus/reentrant_workspace.) ----
     # PRECISION is the half the old metric could not see: a multiplexed reader must not emit pairs
     # that were never presented. Without this, K>=2 below is satisfiable by emitting everything.
     _objs_p = _objects(N_COLOR, N_SHAPE, 3, random.Random(99))
-    _, _r_p = spiking_broadcast(_objs_p, N_COLOR, N_SHAPE, drive=1.0)
+    _r_p = spiking_broadcast(_objs_p, N_COLOR, N_SHAPE, drive=1.0)
     _got_p = spiking_decode(_r_p)
     assert _got_p == set(_objs_p), (
         f"the spiking reader must recover EXACTLY the presented pairs, not a superposition: "
@@ -386,9 +374,9 @@ def main():
     for name, _ in reds:
         print(f"    [RED OK] {name}")
     print(
-        f"self-check OK: deepened GWT ignites all-or-none + re-entry sustains; spiking-vs-rate control is "
-        f"HONEST -- ties at K=1 (spikes not needed), spiking binds {results[2][0]:.0%} vs rate {results[2][1]:.0%} "
-        f"at K=2 (spikes load-bearing for multi-item binding via synchrony)."
+        f"self-check OK: spiking-vs-rate control is HONEST -- ties at K=1 (spikes not needed), "
+        f"spiking binds {results[2][0]:.0%} vs rate {results[2][1]:.0%} at K=2 (spikes load-bearing "
+        f"for multi-item binding via synchrony)."
     )
     return 0
 

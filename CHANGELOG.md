@@ -9,6 +9,24 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- gwt_deep split: the ignition/re-entry half retires (2026-08-11b)
+
+The 2026-08-07 split verdict's MERGE half is executed. `reasoning/gwt_deep.py` carried its
+own workspace ignition (IGNITE_TH gate) and re-entrant sustain (_REENTRY cycles) beside
+`thalamus/reentrant_workspace` — the P2 duplication the ledger row named. Retired: the
+gate, the cycles, their two demos and their two asserts; those properties are asserted
+where the one mechanism lives (reentrant_workspace, which already absorbed gwt_reentry's
+predictive-completion 2026-08-06). Kept: the CREDITED binding half — theta-gamma
+phase-multiplexed binding + the spiking-vs-rate control + the F1 scorer + all four
+reachable reds (the two sub-threshold-ignition reds became sub-rheobase reds, drive 0.2 <
+LEAK*V_TH, same deterministic failures).
+
+The pass is measured on both sides of the diff: a tracked A/B instrument
+(docs/coverage/artifacts/gwt_deep_split_ab.py) re-runs the exact credited benchmark form
+(Jaccard, 120 trials/K, seed 0, all-fired-pairs strawman) — spiking 1.0000 at every K,
+strawman 0.5000/0.2500 at K=2/4, every row identical to the digit before and after. The
+surgery moved the binding benchmark by ZERO.
+
 ## [Unreleased] -- the GeNN port is FINISHED and MEASURED (2026-08-11)
 
 The 2026-08-07 mandated build (specs/012) is done: `snn_mnist_stdp_genn` moved
