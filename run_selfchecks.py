@@ -341,7 +341,6 @@ RESEARCH = [
     "reasoning.train_of_thought",
     "reasoning.concept_reflection",
     "reasoning.open_world_loop",
-    "reasoning.open_meta_loop",
     "reasoning.model_builder",
     # the 5 Gf inducers COMBINED (not merged) into one file: reasoning.gf
     "reasoning.gf",

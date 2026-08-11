@@ -450,6 +450,13 @@ class NightlySkills:
         self._kbeval = _envi("NORD_NIGHT_KBEVAL", 250)
         self._kbcap = _envi("NORD_NIGHT_KBTRIPLES", 0)
         self._ow_batch = _envi("NORD_NIGHT_OW", 120)
+        # FRONTIER-SPAWN threshold (ported from open_meta_loop at its 2026-08-11 retirement): a
+        # discovered cluster becomes a studied Domain once it holds this many items. Clamped to
+        # _OW_ITEM_CAP because the per-cluster item lists are capped per boot -- a threshold above
+        # the cap is unreachable by construction (the specs/010 MUST-FIX this port owed).
+        self._ow_minbuild = min(_envi("NORD_NIGHT_MINBUILD", 120), _OW_ITEM_CAP)
+        self._skill_ids = dict(_SKILL_IDS)  # name -> router id; GROWS as skills spawn (persisted)
+        self._spawned_dids = set()  # controller cluster ids already built into Domains (persisted)
         self._goal_eps = _envi("NORD_NIGHT_GOALS", 6)
         # state
         self._domains = None  # name -> Domain/_NightKB (lazy, built ONCE per instance)
@@ -523,7 +530,7 @@ class NightlySkills:
             self._lake = LakeMemory(path=sp, seed=self.seed)
             self._registry = SkillRegistry(self._lake)
             for n in self._router_order:
-                self._registry.names[_SKILL_IDS[n]] = n
+                self._registry.names[self._skill_ids[n]] = n
         return self._lake
 
     def _sweep_orphan_scratch(self):
@@ -766,6 +773,10 @@ class NightlySkills:
                     else int(self._summary.get("open_world", {}).get("n_domains", 0))
                 ),
             },
+            # the frontier-spawn port's persisted state: the grown name->id map and the cluster
+            # ids already built, so a skill keeps its router id and a cluster spawns once.
+            "skill_ids": {k: int(v) for k, v in self._skill_ids.items()},
+            "spawned_dids": sorted(int(x) for x in self._spawned_dids),
         }
         self._summary = summary
         save_state(_STATE_JSON, summary)
@@ -809,18 +820,30 @@ class NightlySkills:
         self._auto_visited = set(int(v) for v in auto.get("visited", []))
         self._auto_reach = auto.get("heldout_reach")
         self._ow_pos = int(st.get("open_world", {}).get("pos", 0))
+        self._skill_ids = dict(_SKILL_IDS)
+        self._skill_ids.update({k: int(v) for k, v in st.get("skill_ids", {}).items()})
+        self._spawned_dids = set(int(x) for x in st.get("spawned_dids", []))
         sk = os.path.join(home(), "skills")
         self._pending = {}
-        for name in _SKILL_IDS:
+        # iterate the npz files ON DISK, not the fixed seed roster -- a discovered-N skill's
+        # persisted readout would be invisible to a roster loop (the frontier-spawn port).
+        try:
+            npz_names = sorted(
+                fn[:-4]
+                for fn in os.listdir(sk)
+                if fn.endswith(".npz") and fn != "open_world.npz" and not fn.endswith(".tmp.npz")
+            )
+        except OSError:
+            npz_names = []
+        for name in npz_names:
             p = os.path.join(sk, name + ".npz")
-            if os.path.exists(p):
-                with np.load(p, allow_pickle=False) as z:
-                    self._pending[name] = {k: z[k] for k in z.files}
-                ex = self._pending[name].get("exemplars")
-                if ex is not None and ex.size:
-                    # ndarray.tolist(), not a per-element float() loop over a (150, 64) array (P7).
-                    # float64 -> python float is exact, so this is the identical nested list.
-                    self._exemplars[name] = ex.tolist()
+            with np.load(p, allow_pickle=False) as z:
+                self._pending[name] = {k: z[k] for k in z.files}
+            ex = self._pending[name].get("exemplars")
+            if ex is not None and ex.size:
+                # ndarray.tolist(), not a per-element float() loop over a (150, 64) array (P7).
+                # float64 -> python float is exact, so this is the identical nested list.
+                self._exemplars[name] = ex.tolist()
         owp = os.path.join(sk, "open_world.npz")
         if os.path.exists(owp):
             with np.load(owp, allow_pickle=False) as z:
@@ -832,19 +855,20 @@ class NightlySkills:
                 self.close()  # below cannot append onto exemplars that are already in it
             lake = self._ensure_lake()  # empties skills.spkl, so the index is always empty here
             for n in order:
-                lake.consolidate(
-                    self._exemplars[n], payloads=[_SKILL_IDS[n]] * len(self._exemplars[n])
-                )
-                self._registry.names[_SKILL_IDS[n]] = n
-                self._registry.experts[_SKILL_IDS[n]] = {"ctx": self.ctx}
+                sid = self._skill_ids.setdefault(n, max(self._skill_ids.values(), default=-1) + 1)
+                lake.consolidate(self._exemplars[n], payloads=[sid] * len(self._exemplars[n]))
+                self._registry.names[sid] = n
+                self._registry.experts[sid] = {"ctx": self.ctx}
 
     # ------------------------------------------------------------------ the night
     def _register(self, name, d):
         ex = d.signature_exemplars(_EXEMPLAR_CAP)
         self._ensure_lake()
-        self._registry.register(
-            _SKILL_IDS[name], name, ex, {"vocab": list(d.vocab), "ctx": self.ctx}
-        )
+        # id allocation is DYNAMIC since the 2026-08-11 frontier-spawn port: seed skills keep the
+        # module-level ids, a discovered skill takes the next free one (the fixed-roster KeyError
+        # this line used to raise on a discovered-N name was the recorded blocker).
+        sid = self._skill_ids.setdefault(name, max(self._skill_ids.values(), default=-1) + 1)
+        self._registry.register(sid, name, ex, {"vocab": list(d.vocab), "ctx": self.ctx})
         d.registered = True
         # signature() already returns python floats (content_signature is stdlib/crc32), so this is a
         # defensive COPY, not a numeric conversion -- spelled as one so it does not read as a demotion.
@@ -863,9 +887,42 @@ class NightlySkills:
             return min(stale, key=lambda x: self._last.get(x, 0))
         return self.meta.most_curious(sorted(names))
 
+    # consolidates: open_meta_loop.py (retire)
+    # The open-frontier capability (its ONLY capability not already here) moves in: a discovered
+    # cluster past the spawn threshold is built into a Domain and joins the studied roster. The
+    # original file -- whose seed loop, selection and registry composition duplicated this
+    # module's own night mechanism -- is deleted in this same change; its three criteria move
+    # into this module's self-check.
+    def _spawn_from_cluster(self, did, items):
+        """Build a real order-invariant SLDA skill (a Domain) over a DISCOVERED cluster's items.
+        Ported verbatim-in-substance from open_meta_loop._domain_from_cluster at its 2026-08-11
+        retirement. Returns None for a degenerate cluster (fewer than 2 distinct targets -- an
+        SLDA over one class classifies nothing)."""
+        pairs = [(c, nx) for c, nx, _ in items]
+        vocab = sorted({nx for _, nx in pairs})
+        if len(vocab) < 2:
+            return None
+        ivocab = sorted({t for c, _ in pairs for t in c})
+        dom = Domain(
+            f"discovered-{did}", pairs, vocab, self.ctx, self._rff, self._gamma, input_vocab=ivocab
+        )
+        labs = [x[2] for x in items]
+        # majority hidden label -> a human-readable tag for the report (NEVER used to route)
+        dom.discovered_as = max(set(labs), key=labs.count) if labs else "?"
+        z = self._pending.pop(dom.name, None)
+        if z is not None:  # a persisted readout for this skill exists -> restore, shape-guarded
+            try:
+                self._restore_domain(dom.name, dom, z)
+            except Exception as exc:
+                _say(f"[nightly-skills] restore of '{dom.name}' skipped ({exc!r})")
+        return dom
+
     def _ow_step(self):
         """One bounded open-world discovery sub-step: feed the next batch of the mixed unlabeled
-        pool to the persistent controller; new coherent signature clusters SPAWN discovered domains."""
+        pool to the persistent controller; a coherent cluster that accumulates past the spawn
+        threshold is BUILT into a Domain and JOINS the studied frontier (the open-frontier
+        capability ported from open_meta_loop -- discovery now feeds the roster instead of only
+        counting clusters)."""
         if self._ow_batch <= 0 or not self._ow_pool:
             return None
         ow = self._ensure_ow()
@@ -877,10 +934,24 @@ class NightlySkills:
         self._ow_pos += n
         for did in list(ow.items):  # bounded item lists (never unbounded RAM)
             ow.items[did] = ow.items[did][-_OW_ITEM_CAP:]
+        spawned = []
+        if self._domains is not None:
+            for did in sorted(ow.cents):
+                if int(did) in self._spawned_dids:
+                    continue
+                items = ow.items.get(did, [])
+                if len(items) >= self._ow_minbuild:
+                    dom = self._spawn_from_cluster(did, items)
+                    self._spawned_dids.add(int(did))  # degenerate clusters are settled, not retried
+                    if dom is not None:
+                        self._domains[dom.name] = dom
+                        self._register(dom.name, dom)
+                        spawned.append(dom.name)
         return {
             "domains": len(ow.cents),
             "new_domains": len(ow.cents) - before,
             "seen": int(self._ow_pos),
+            "spawned": spawned,
         }
 
     def _autotelic_step(self):
@@ -969,7 +1040,9 @@ class NightlySkills:
             if self._registry is None:
                 self._ensure_lake()
             got = self._registry.route(list(tokens))
-            return _ID_NAMES.get(got, got)
+            # instance reverse map, not the module-level seed table: a discovered skill's dynamic
+            # id must resolve to its name too (the frontier-spawn port).
+            return {v: k for k, v in self._skill_ids.items()}.get(got, got)
         except Exception:
             return -1
 
@@ -1029,11 +1102,13 @@ def main():
         "NORD_NIGHT_OW": "90",
         "NORD_NIGHT_GOALS": "4",
         "NORD_NIGHT_BUDGET": "300",
+        "NORD_NIGHT_MINBUILD": "40",  # spawn threshold small enough to cross in a bounded check
     }
     saved_env = {k: os.environ.get(k) for k in list(small) + ["NORD_HOME"]}
     work = tempfile.mkdtemp(prefix="sndl_night_")
     work2 = tempfile.mkdtemp(prefix="sndl_night2_")
     work3 = tempfile.mkdtemp(prefix="sndl_night3_")
+    work4 = tempfile.mkdtemp(prefix="sndl_night4_")
 
     def say(msg):
         """Every line this self-check AUTHORS, asserted ASCII at the point it is emitted. Promotion
@@ -1135,6 +1210,37 @@ def main():
         # ALSO DELETED here (P8): `assert st["_scale"]`. _SCALE_NOTE is a non-empty module-level string
         # literal, so no input reaches a state where state()["_scale"] is falsy. It asserted that a
         # constant is a constant. The honest-scope note is still emitted below, where it is read.
+
+        # ---- FRONTIER-SPAWN criteria, ported from open_meta_loop at its 2026-08-11 retirement ----
+        # (1) the frontier GROWS: a discovered cluster past the threshold becomes a studied Domain.
+        sp_extra = 0
+        while sp_extra < 10 and not any(n.startswith("discovered-") for n in b._domains):
+            rs = b.night()
+            assert "errors" not in rs, f"spawn-drive night had guarded errors: {rs.get('errors')}"
+            sp_extra += 1
+        disc = {n: d for n, d in b._domains.items() if n.startswith("discovered-")}
+        assert disc, "the open frontier never spawned a discovered skill"
+        # (2) every spawned skill is STUDIED (coverage-first makes an unvisited domain next).
+        st_extra = 0
+        while st_extra < 6 and any(d.visits == 0 for d in disc.values()):
+            rx = b.night()
+            assert "errors" not in rx, f"study-drive night had guarded errors: {rx.get('errors')}"
+            st_extra += 1
+        assert all(d.visits >= 1 for d in disc.values()), (
+            f"a spawned skill was never studied: {[(n, d.visits) for n, d in disc.items()]}"
+        )
+        # (3) the MAJORITY of discovered skills beat their own next-token baseline -- DP-means can
+        # over-segment one source into shards (lambda-sensitive count, open_world_loop's documented
+        # caveat), so majority, not all.
+        beat = [n for n, d in disc.items() if d.competence >= d.baseline - 0.03]
+        assert len(beat) >= (len(disc) + 1) // 2, (
+            f"most discovered skills must beat their baseline; only {len(beat)}/{len(disc)} did"
+        )
+        say(
+            f"  frontier: {len(disc)} skill(s) SPAWNED from unlabeled discovery "
+            f"({', '.join(sorted(n + '~' + getattr(d, 'discovered_as', '?') for n, d in disc.items()))}); "
+            f"all studied; {len(beat)}/{len(disc)} beat their baseline"
+        )
         b.close()
 
         # ---- determinism: a fresh home + same seed reproduces night 1 exactly --------------
@@ -1145,6 +1251,22 @@ def main():
         assert rc["domain"] == r1["domain"] and abs(rc["competence"] - r1["competence"]) < 1e-9, (
             f"nondeterministic night 1: {rc['domain']}/{rc['competence']} vs {r1['domain']}/{r1['competence']}"
         )
+
+        # ---- CONTROL (ported with the frontier-spawn): NO discovery stream -> the frontier
+        # CANNOT grow. This is the family's data-driven-growth falsifier -- with the discovery
+        # sub-step off, no discovered-* domain may appear no matter how many nights run.
+        os.environ["NORD_NIGHT_OW"] = "0"
+        os.environ["NORD_HOME"] = work4
+        g = NightlySkills(seed=0)
+        for _ in range(4):
+            rg = g.night()
+            assert "errors" not in rg, f"control night had guarded errors: {rg.get('errors')}"
+        assert not any(n.startswith("discovered-") for n in (g._domains or {})), (
+            "the frontier grew with NO discovery stream -- spawning is not data-driven"
+        )
+        g.close()
+        os.environ["NORD_NIGHT_OW"] = small["NORD_NIGHT_OW"]
+        say("  control : 4 nights with discovery OFF spawned nothing (growth is data-driven)")
 
         # ---- TWO LIVE INSTANCES OVER ONE HOME: the shape cortex/brain.py builds ------------
         # The fallback + sweep in _ensure_lake changed live behaviour and shipped with no criterion,
@@ -1197,6 +1319,7 @@ def main():
         shutil.rmtree(work, ignore_errors=True)
         shutil.rmtree(work2, ignore_errors=True)
         shutil.rmtree(work3, ignore_errors=True)
+        shutil.rmtree(work4, ignore_errors=True)
 
 
 if __name__ == "__main__":

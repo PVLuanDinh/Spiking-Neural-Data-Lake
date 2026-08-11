@@ -9,6 +9,20 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- family settlement C8-2: open_meta_loop's open frontier lands in nightly_skills; the merge completes (2026-08-11r)
+
+The family's one merge, second half. The open-frontier capability -- a discovered cluster past
+the spawn threshold becomes a real Domain that JOINS the studied roster -- is ported into
+nightly_skills with the redesign the specs/010 record demanded: dynamic skill ids (persisted
+name->id map + spawned_dids; the fixed roster's KeyError on discovered-N was the blocker),
+disk-driven npz reload, dynamic route() resolution, spawn threshold clamped to the per-boot
+item cap. Measured on the first full run: discovered-0~dna spawned from the unlabeled mixed
+stream, was studied by coverage-first selection, and beat its own next-token baseline. All
+three of open_meta_loop's criteria now run in this module's self-check -- the empty-discovery
+control (discovery OFF, four nights, zero spawns), every-spawned-studied, and
+majority-beat-baseline. open_meta_loop is deleted; the meta_skill_loop + open_meta_loop +
+nightly_skills triple is now ONE mechanism, which is what P2 said it had to become.
+
 ## [Unreleased] -- family settlement C8-1: meta_skill_loop merges into nightly_skills and retires (2026-08-11q)
 
 The first half of the family's one merge. nightly_skills is the adopted mechanism (specs/010's

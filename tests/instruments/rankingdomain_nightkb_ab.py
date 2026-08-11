@@ -79,8 +79,8 @@ def main():
     print("RankingDomain (reconstructed) vs _NightKB (live) -- equal exposure, filtered Hits@10")
     src = "bundled facts" if offline else "FB15k-237"
     print(f"dataset: {src}; train {len(tr):,} / test {len(te):,}")
-    print(f"  reference (full epoch, batch 1024): {['%.3f' % x for x in ref_traj]}")
-    print(f"  survivor  (rolling pass, batch 256): {['%.3f' % x for x in sur_traj]}")
+    print(f"  reference (full epoch, batch 1024): {[f'{x:.3f}' for x in ref_traj]}")
+    print(f"  survivor  (rolling pass, batch 256): {[f'{x:.3f}' for x in sur_traj]}")
     d = sur_traj[-1] - ref_traj[-1]
     print(f"  final delta (survivor - reference): {d:+.3f}")
     print("=" * 88)
