@@ -28,7 +28,7 @@ import os
 
 import numpy as np
 
-from snn_data_lake.reasoning.corpus_stream import (
+from snn_data_lake.cortex.corpus_stream import (
     ARPABET,
     load_cmudict,
     load_text,

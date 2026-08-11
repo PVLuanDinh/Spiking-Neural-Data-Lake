@@ -32,7 +32,7 @@ Deps: numpy (+ stdlib). Reuses meta_skill_loop (Domain/physics_stream), open_wor
 
 import os
 
-from snn_data_lake.reasoning.corpus_stream import ARPABET, load_cmudict, load_text, phoneme_stream
+from snn_data_lake.cortex.corpus_stream import ARPABET, load_cmudict, load_text, phoneme_stream
 from snn_data_lake.reasoning.skill_builder import SkillRegistry, math_stream, MATH_VOCAB
 from snn_data_lake.reasoning.meta_skill_loop import Domain, physics_stream, _envi, _envf
 from snn_data_lake.reasoning.open_world_loop import OpenWorldController, dna_stream

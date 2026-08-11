@@ -17,7 +17,11 @@ SAME code path scales to millions of tokens when pointed at a real corpus URL.
 This is NOT toy scale: default targets are the full CMUdict and a multi-megabyte plain-text corpus
 (Project Gutenberg / text8-derived). The bundled fallback exists only so the offline self-check runs.
 
-  python -m snn_data_lake.reasoning.corpus_stream        # self-check (offline sample or cached real corpus)
+  python -m snn_data_lake.cortex.corpus_stream        # self-check (offline sample or cached real corpus)
+
+PROMOTED reasoning/ -> cortex/ 2026-08-11 (#10 family settlement C2; measured row in
+docs/P4C_BACKLOG.md) -- language-specific sensing/ingestion, cortex's lane. Verified at real
+scale at the move: 126,052 CMUdict entries, 128,577 corpus tokens, 458,529 phoneme pairs.
 """
 
 import os
@@ -301,13 +305,14 @@ def main():
         ctx, nxt = ph_pairs[len(ph_pairs) // 2]
         print(f"example phoneme pair: {ctx} -> {nxt}")
     print("=" * 78)
-    # self-checks: the streams are real, non-empty, and every emitted phoneme is a known ARPABET phone
+    # self-checks: the streams are real and non-empty. TWO asserts DELETED at promotion
+    # (2026-08-11, F11 -- no reachable red, delete rather than weaken): "every emitted phoneme
+    # is ARPABET" was true by construction (load_cmudict filters to ARPABET at :223, and
+    # phoneme_stream emits only dict values), and "context <= k" was the slice arithmetic
+    # `seq[max(0, i-k):i]` asserting itself -- derivations that round-trip, red-unreachable
+    # from ANY input, exactly the shape specs/012 deleted from the GeNN port.
     assert len(ph_pairs) > 100, "phoneme stream too short -- ingestion failed"
     assert len(wd_pairs) > 100, "word stream too short -- ingestion failed"
-    assert all(nxt in ARPABET for _, nxt in ph_pairs), (
-        "a streamed phoneme is not a valid ARPABET phone"
-    )
-    assert all(len(c) <= 3 for c, _ in ph_pairs), "context window exceeded k"
     print(
         f"self-check OK: {len(ph_pairs):,} phoneme + {len(wd_pairs):,} word (context,next) pairs "
         f"stream from real data (labels never faked; offline falls back to a bundled real sample)."

@@ -45,7 +45,7 @@ import random
 from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory
-from snn_data_lake.reasoning.corpus_stream import (
+from snn_data_lake.cortex.corpus_stream import (
     ARPABET,
     load_cmudict,
     load_text,

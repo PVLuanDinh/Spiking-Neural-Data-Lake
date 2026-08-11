@@ -24,7 +24,7 @@ from collections import Counter, defaultdict
 
 import numpy as np
 
-from snn_data_lake.reasoning.corpus_stream import ARPABET, load_cmudict, load_text, phoneme_stream
+from snn_data_lake.cortex.corpus_stream import ARPABET, load_cmudict, load_text, phoneme_stream
 from snn_data_lake.reasoning.language_self_build import _positional_code
 from snn_data_lake.reasoning.language_readout_slda import SLDA_RFF_np
 from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner

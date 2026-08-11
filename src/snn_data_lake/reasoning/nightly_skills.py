@@ -115,7 +115,7 @@ from snn_data_lake.cortex.autotelic_goals import (
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
 from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory
 from snn_data_lake.hippocampus.content_signature import SIG as _SIG_DIM
-from snn_data_lake.reasoning.corpus_stream import ARPABET, load_cmudict, load_text, phoneme_stream
+from snn_data_lake.cortex.corpus_stream import ARPABET, load_cmudict, load_text, phoneme_stream
 from snn_data_lake.cortex.kb_ranking import DistMult, load_dataset
 from snn_data_lake.reasoning.meta_skill_loop import Domain, physics_stream
 from snn_data_lake.reasoning.open_world_loop import OpenWorldController, dna_stream

@@ -9,6 +9,16 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- family settlement C2a: corpus_stream -> cortex/ (2026-08-11k)
+
+The language loop's ingestion hub moves to cortex/ at the full bar, verified at REAL scale at
+the move (126k CMUdict entries, 128k corpus tokens, 458k phoneme pairs -- the module's own
+"NOT toy scale" contract held on the promoted path). Two asserts deleted per F11 after
+hand-verifying both are true by construction (ARPABET filtered at source; context bound = the
+slice arithmetic asserting itself) -- derivations that round-trip, the shape specs/012 already
+deleted once. Nine importers repointed including training/ar_spiking_lm's lazy load_text,
+REGIONS + run_selfchecks CORE, dormancy green with no exemption, import_manifest 15/15.
+
 ## [Unreleased] -- family settlement C1: content_signature -> hippocampus/ (2026-08-11j)
 
 The family's ordered execution begins at its root: the stdlib 64-dim crc32 content key moves to

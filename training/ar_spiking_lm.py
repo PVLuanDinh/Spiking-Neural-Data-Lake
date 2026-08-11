@@ -357,7 +357,7 @@ def _char_corpus_from_stream(max_chars=200000):
     src = os.path.join(_ROOT, "src")
     if src not in sys.path:
         sys.path.insert(0, src)
-    from snn_data_lake.reasoning.corpus_stream import load_text
+    from snn_data_lake.cortex.corpus_stream import load_text
     words, offline = load_text()
     text = " ".join(words)
     return text[:max_chars], offline
