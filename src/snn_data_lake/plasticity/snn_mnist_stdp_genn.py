@@ -527,9 +527,16 @@ def run_mnist():
 
 
 def _selfcheck_codegen():
-    """The falsifiable no-toolchain check: the codegen text carries the oracle's rule, and
-    (oracle importable) the params fed to it are byte-equal to the oracle's constants.
-    Reachable red: mutate either side and this fails (demonstrated in evidence.md)."""
+    # distinct-from: reasoning/web_ingest_gate.py -- that gates WEB FETCHES (host allowlist);
+    #   this asserts C++ codegen string integrity. Sole overlap is the word "check".
+    """The falsifiable no-toolchain check: the codegen text carries the oracle's rule. All 7
+    asserts have a REACHABLE red — mutate any constant and the matching assert fires
+    (demonstrated verbatim in evidence.md #red-demo).
+
+    A previous 8th assert compared rule_params() to the oracle constants it is BUILT FROM —
+    a derivation that round-trips, red unreachable, so per P8 it is DELETED, not weakened.
+    The hazard it pretended to cover (build_model feeding GeNN different values) is closed
+    structurally: rule_params() is the ONE source init_weight_update consumes."""
     assert "lr * (prevTrace2 - xtar)" in GENN_POST_SPIKE, "LTP form lost from codegen"
     assert "fmin(fmax(g, 0.0), wmax)" in GENN_POST_SPIKE, "weight clamp lost from codegen"
     assert "preTrace *= preDecay" in GENN_PRE_DYNAMICS, "trace decay lost from codegen"
@@ -539,19 +546,7 @@ def _selfcheck_codegen():
     assert "preTrace += 1.0" in GENN_PRE_SPIKE, "trace bump lost from codegen"
     assert "addToPost(g)" in GENN_PRE_SPIKE_SYN, "synaptic delivery lost — a silent network"
     assert "V = V * beta + Isyn" in GENN_NEURON_SIM, "oracle membrane update lost"
-    checks = 7
-    have_oracle = True
-    try:
-        o = oracle()
-    except Exception:  # noqa: BLE001 — stdlib tier (NORD_TORCH=0): text checks only
-        have_oracle = False
-    if have_oracle:
-        p = rule_params()
-        assert p["xtar"] == o.FAST_XTAR and p["wmax"] == o.WMAX and p["preDecay"] == o.PRE_DECAY
-        checks += 1
-    print(
-        f"self-check OK: codegen integrity ({checks} asserts, oracle={'yes' if have_oracle else 'no'})"
-    )
+    print("self-check OK: codegen integrity (7 asserts, every red reachable)")
 
 
 def main():

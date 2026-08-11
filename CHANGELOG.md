@@ -9,7 +9,32 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
-## [Unreleased] -- the 16 RETIRE class is fully resolved (2026-08-07k)
+## [Unreleased] -- the GeNN port is FINISHED and MEASURED (2026-08-11)
+
+The 2026-08-07 mandated build (specs/012) is done: `snn_mnist_stdp_genn` moved
+`reasoning/ -> plasticity/`, entered all gates, and the v0.17 burst+x_tar rule now runs
+complete on the RTX 5070 as GeNN 5 C++ codegen — custom WTA neuron (two REDUCE_MAX custom
+updates + lowest-index tie-break, full-population V reset, winner emits a true spike),
+event-driven LTP, dataset-wide SpikeSourceArray schedule, one nvcc compile shared by
+train/assign/eval via dynamic params. The `[genn]` extra installs from GitHub tag archives
+(neither pygenn nor ml_genn exists on PyPI; the extra was FICTION) against a local CUDA
+toolkit at `D:\AI-project\cuda-local` assembled from NVIDIA wheels because the box's CUDA
+13.3 install ships without crt/, nvvm/cicc, or cudart (measured: even a trivial nvcc
+compile fails on it). pygenn 5.4.0 built for the free-threaded ABI (cp314t).
+
+Measured (evidence.md): toy-scale mirror EXACT — winner counts, weights (1e-4), theta
+(1e-5), two runs bitwise. Parity inside the pre-registered ±3pp at every config:
+79.7 vs 79.0 (M=300/6k), 54.8 vs 53.1 (M=300/60k), **84.6 vs 83.9 (M=1600/60k — the rule
+family's best full-MNIST figure in this tree)**. GPU train 3.5-4.2x CPU, margin growing
+with M. Untrained control 32.7 vs 79.7 trained. Honest findings kept: at M=300 both sides
+COLLAPSE on full MNIST (single-epoch theta accumulation — the rule's problem, faithfully
+mirrored); M=1600 fixes it; the old "~95%" docstring aspiration stays unmet and is now
+labelled as theta-hyperparameter work. The equivalence harness caught three
+invisible-in-review defects (a WU model with no addToPost delivers nothing; LTP trace depth
+settled by per-synapse dW ratios; the t=T-1 winner's LTP landing one kernel past the loop
+end), and a round-tripping self-check assert was deleted per P8 rather than demonstrated.
+
+## [Prior] -- the 16 RETIRE class is fully resolved (2026-08-07k)
 
 The last undecided holdout got its owner mandate: **`snn_mnist_stdp_genn` is a MANDATED BUILD --
 finish the GeNN port** (owner, 2026-08-07, asked directly rather than decided by a lane). The 16

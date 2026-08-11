@@ -131,17 +131,17 @@ recorded.
 - [X] T017 [US2] Run the three gates; verify the self-check ALSO passes with pygenn absent
       (quickstart.md Â§1 stub-path check â€” run the module's self-check subprocess with the
       import forced off); commit as "the GeNN port is finished (unmeasured)"
-- [ ] T018 [US2] Parity run (quickstart.md Â§3): NORD_M=300 NORD_TRAIN=6000 NORD_TEST=1000
+- [X] T018 [US2] Parity run (quickstart.md Â§3): NORD_M=300 NORD_TRAIN=6000 NORD_TEST=1000
       GENN_RUN=1, seed 0; record acc + wall-clock + delta vs Â§cpu-baseline in evidence.md
       Â§parity. Bar: <= 3 pp. If outside the band: debug the port, NOT the band â€” the band
       moves only with an owner decision.
-- [ ] T019 [US2] Untrained control (quickstart.md Â§4): GENN_LR0=1, same config; record in
+- [X] T019 [US2] Untrained control (quickstart.md Â§4): GENN_LR0=1, same config; record in
       evidence.md Â§control. Bar: < 20%.
-- [ ] T020 [US2] Determinism check: encode one image twice + run it twice; assert identical
+- [X] T020 [US2] Determinism check: encode one image twice + run it twice; assert identical
       spike trains both times; record in evidence.md Â§determinism (spec US2-AS3)
-- [ ] T021 [US2] Constructed red (quickstart.md Â§6): temporarily mutate one rule constant ->
+- [X] T021 [US2] Constructed red (quickstart.md Â§6): temporarily mutate one rule constant ->
       self-check FAILS -> revert; record the demonstration in evidence.md Â§red-demo
-- [ ] T022 [US2] Gates green; commit evidence.md + any fixes as "the GeNN port is measured:
+- [X] T022 [US2] Gates green; commit evidence.md + any fixes as "the GeNN port is measured:
       parity/control/determinism/red"
 
 **Checkpoint**: the mandated build is BUILT and MEASURED at reference scale.
@@ -155,12 +155,12 @@ measurably bought.
 
 **Independent Test**: quickstart.md Â§5.
 
-- [ ] T023 [US3] Payoff run 1: NORD_TRAIN=60000 NORD_TEST=10000 NORD_M=300 GENN_RUN=1; record
+- [X] T023 [US3] Payoff run 1: NORD_TRAIN=60000 NORD_TEST=10000 NORD_M=300 GENN_RUN=1; record
       acc + wall-clock in evidence.md Â§payoff-300
-- [ ] T024 [US3] Payoff run 2: same with NORD_M=1600; record in evidence.md Â§payoff-1600
+- [X] T024 [US3] Payoff run 2: same with NORD_M=1600; record in evidence.md Â§payoff-1600
       (VRAM sanity per spec Assumptions: ~5 MB weights â€” completion at recorded cost IS the
       measurement)
-- [ ] T025 [US3] Write the honest comparison paragraph in evidence.md: GPU vs the CPU loop's
+- [X] T025 [US3] Write the honest comparison paragraph in evidence.md: GPU vs the CPU loop's
       measured wall-clock, where the crossover sits, whether the port beat the CPU at which
       widths (P5: a number, not a doctrine); commit as "the payoff is measured"
 
@@ -170,14 +170,14 @@ measurably bought.
 
 ## Phase 7: Polish & Close-out
 
-- [ ] T026 Update the `snn_mnist_stdp_genn` row in `docs/P4C_BACKLOG.md`: MANDATED BUILD ->
+- [X] T026 Update the `snn_mnist_stdp_genn` row in `docs/P4C_BACKLOG.md`: MANDATED BUILD ->
       BUILT+MEASURED with evidence pointers (or the BLOCKED record from T005 stands); include
       the R8 non-duplication record so the P2 question is answered IN the ledger
-- [ ] T027 [P] Add the CHANGELOG.md entry (accuracy figures, wall-clock, the extra fix, the
+- [X] T027 [P] Add the CHANGELOG.md entry (accuracy figures, wall-clock, the extra fix, the
       promotion) per project convention
-- [ ] T028 Run `graphify update .` from repo root (AST-only) so the graph reflects the move +
+- [X] T028 Run `graphify update .` from repo root (AST-only) so the graph reflects the move +
       finish
-- [ ] T029 Final full-gate run (all three, quickstart.md Â§1); commit remaining docs as
+- [X] T029 Final full-gate run (all three, quickstart.md Â§1); commit remaining docs as
       "specs/012 close-out"; push to origin/main per the project's arc-end convention
 
 ---
