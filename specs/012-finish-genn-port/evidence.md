@@ -87,6 +87,45 @@ PENDING
 
 PENDING
 
+## equivalence (toy-scale exact-mirror proof, 2026-08-10)
+
+`specs/012-finish-genn-port/genn_equivalence.py` — GPU port vs a float32 numpy replica of
+`FastStdpNetwork.run()` (statement-for-statement, dims-parameterised), 4 random toy images,
+M=8 N=16 T=10, sequential learning with per-image normalisation:
+
+```
+EQUIVALENCE OK: 4 images, counts exact, dW<=1e-4, theta<=1e-5, 2x bitwise
+```
+
+Winner-count vectors EXACT per image, weight matrices to 1e-4 (float32 GPU vs float64-free
+numpy), theta to 1e-5, and two GPU runs bitwise identical (cross-run determinism).
+
+**Three defects the harness caught on the way — each was invisible from the code and loud in
+the measurement:**
+
+1. **A silent network.** The custom weight-update model had the trace bump in
+   `pre_spike_code` but no `addToPost(g)` anywhere: GeNN delivery is explicit, and a WU
+   model without it delivers NOTHING (V flat 0, zero spikes, all 12 steps). Fix:
+   `pre_spike_syn_code = "addToPost(g);"`, LTP moved to `post_spike_syn_code` (the per-
+   synapse string with `g` access; the per-neuron `post_spike_code` cannot touch weights).
+2. **The trace-depth lag, settled by measurement.** Per-synapse dW ratios named it: with
+   `prevTrace1` the GPU trace was `d * x_pre(t)` uniformly (ratio 0.948 = one extra decay)
+   plus a t+1 bump leak; with `prevTrace2` every ratio is 1.0000. The winner's post-learn
+   executes at the start of kernel t+3 and reads `prevTrace2` = state after kernel t =
+   x_pre(t) EXACTLY.
+3. **The last-step winner's LTP never landed.** A t=T-1 winner spikes at kernel T+1 and its
+   post-learn runs at the start of kernel T+2 — one kernel past the old T+2-step loop. Its
+   SpikeCount and theta bump DID land (reset_code, kernel T+1), so the state was HALF-applied
+   and normalisation reshaped the whole row. Fix: T+3 kernels per image, WTA gated to
+   boundaries 2..T+1, kernel T+2 a bare flush. The tell in the data: only t=T-1 winners
+   diverged.
+
+Also measured and REPRESENTATIONALLY REFUSED: a duplicate (pixel, time) spike pair bumps the
+oracle's trace once but delivers weight twice (fancy-index `+=`), and the SpikeSourceArray
+cannot express that — it would smear the duplicate to the next kernel (measured 1+d trace).
+`encode_latency` never emits duplicates (consecutive distinct burst times), so `pack_schedule`
+now raises ValueError on one rather than silently mis-running a future encoder.
+
 ## payoff-300
 
 PENDING

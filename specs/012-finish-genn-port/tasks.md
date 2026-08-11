@@ -99,36 +99,36 @@ recorded.
 
 **Independent Test**: quickstart.md Â§2-Â§4 + Â§6.
 
-- [ ] T011 [P] [US2] CPU oracle baseline (independent of the port): run
+- [X] T011 [P] [US2] CPU oracle baseline (independent of the port): run
       `reasoning/snn_mnist_stdp_fast` with NORD_M=300 NORD_TRAIN=6000 NORD_TEST=1000
       SKIP_RATE=1, seed 0 (quickstart.md Â§2); record acc + wall-clock in evidence.md
       Â§cpu-baseline. [P] with T012-T015 â€” different files, no dependency.
-- [ ] T012 [US2] In `src/snn_data_lake/plasticity/snn_mnist_stdp_genn.py`: extract the C++
+- [X] T012 [US2] In `src/snn_data_lake/plasticity/snn_mnist_stdp_genn.py`: extract the C++
       rule bodies (pre_dynamics/pre_spike/post_spike) to module-level string constants
       importable without pygenn; `burst_xtar_rule()` consumes them unchanged (contract:
       module-contract.md; research.md R6)
-- [ ] T013 [US2] Same file: custom NEURON model â€” vars V/theta/winnerFlag, params
+- [X] T013 [US2] Same file: custom NEURON model â€” vars V/theta/winnerFlag, params
       beta/thetaPlus/thetaDecay/thresh/learn; sim_code `V = V*beta + Isyn` (+ theta decay when
       learn); threshold_condition = flagged winner; reset = winner's theta bump; plus the
       three custom updates: WTA argmax(V - theta) reduction writing winnerFlag + fired flag,
       global V reset after a fired step, per-image state reset (V, preTrace, spike counts)
       (research.md R5; data-model.md E2 ordering contract)
-- [ ] T014 [US2] Same file: encoding upload â€” reuse
+- [X] T014 [US2] Same file: encoding upload â€” reuse
       `reasoning.snn_mnist_stdp_fast.encode_latency` verbatim, pack per-neuron sorted
       timestamps into SpikeSourceArray startSpike/endSpike/spikeTimes (data-model.md E1);
       per-image re-upload path
-- [ ] T015 [US2] Same file: row-normalization custom update (per-row g sum -> scale to
+- [X] T015 [US2] Same file: row-normalization custom update (per-row g sum -> scale to
       W_NORM); host train loop (`custom_update("wta"); step_time(); reset-if-fired` x T=30,
       per data-model.md E2); assign/eval host math mirroring fast_assign/fast_eval; env
       contract GENN_RUN/GENN_LR0/GENN_SEED + shared NORD_*/FAST_* names; ASCII output with
       final `acc=` / `train=` lines (contract: module-contract.md)
-- [ ] T016 [US2] Same file: self-check per contract â€” no-toolchain path asserts codegen
+- [X] T016 [US2] Same file: self-check per contract â€” no-toolchain path asserts codegen
       integrity (rule text carries `lr * (preTrace - xtar)`, clamp [0, wmax], params byte-equal
       to FAST_LR/FAST_XTAR/WMAX/PRE_DECAY), toolchain path additionally constructs the model
       objects (no nvcc, no training); `GENN_RUN` gating so the gate NEVER trains; stub print
       preserved; docstring's stale "cannot run on the dev box" replaced by the measured
       environment facts (FR-009)
-- [ ] T017 [US2] Run the three gates; verify the self-check ALSO passes with pygenn absent
+- [X] T017 [US2] Run the three gates; verify the self-check ALSO passes with pygenn absent
       (quickstart.md Â§1 stub-path check â€” run the module's self-check subprocess with the
       import forced off); commit as "the GeNN port is finished (unmeasured)"
 - [ ] T018 [US2] Parity run (quickstart.md Â§3): NORD_M=300 NORD_TRAIN=6000 NORD_TEST=1000
