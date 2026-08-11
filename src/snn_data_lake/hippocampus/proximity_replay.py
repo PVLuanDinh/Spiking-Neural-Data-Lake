@@ -56,7 +56,17 @@ is the direction P4b's guard is about. Two reachable REDs ship with it and both 
 self-check: a TRUNCATED copy of the lake, and one exemplar in `_patterns` that never reached the
 hub -- P4b's own motivating shape.
 
-Run:  PYTHONPATH=src python -m snn_data_lake.reasoning.brain_adapters.lake_memory
+Run:  PYTHONPATH=src python -m snn_data_lake.hippocampus.proximity_replay
+
+PROMOTED reasoning/brain_adapters/lake_memory.py -> hippocampus/proximity_replay.py 2026-08-11
+(#10 family settlement C3; measured row in docs/P4C_BACKLOG.md). RENAMED at the move because
+brain_atlas asserts basename uniqueness across REGIONS and `substrate/lake_memory.py` (SHY
+prune-and-reconstruct -- a different question, see the ledger's STRUCK list) already holds the
+name; the class stays `LakeMemory`. Two fixes landed with the move: the P4b cross-process
+child now targets `type(self).__module__` (the hardcoded old dotted path was the
+control-must-follow-the-read-path defect, caught BEFORE it fired this time), and the dead
+`durable=` sink + `rebuild_from_durable()` were deleted per P3 (zero callers ever;
+writer retired 2026-07-29).
 """
 
 import os
@@ -69,6 +79,12 @@ import zlib
 from snn_data_lake.cortex.spike_preprocessing import N, T, encode_latency
 from snn_data_lake.substrate.proximity_index import ProximityIndex
 from snn_data_lake.substrate.streaming_hub import StreamingHub
+
+# This module's own dotted path, derived not hardcoded (control follows the read path): under
+# `python -m` the class's __module__ is "__main__", but runpy still sets __spec__.name to the
+# real dotted path, so this is correct both imported and run as a script. The P4b cross-process
+# child re-runs THIS module by this name.
+_SELF_MODULE = __spec__.name if __spec__ is not None else __name__
 
 
 def _patterns_digest(patterns):
@@ -123,7 +139,7 @@ class LakeMemory:
     durability_check(): close+reopen the `.spkl` and confirm every consolidated exemplar survives.
     """
 
-    def __init__(self, path=None, seed=0, band=T, q=1.0, probe=3, packed=True, durable=None):
+    def __init__(self, path=None, seed=0, band=T, q=1.0, probe=3, packed=True):
         """Create/open the durable lake store and the proximity index.
 
         `path` None -> a unique temp `.spkl` is created; else the given path is used (resume if it
@@ -156,11 +172,13 @@ class LakeMemory:
         self._payloads = []  # parallel replay ids (row index and/or label)
         self._features = []  # raw feature vectors (for class-representative queries)
         self.index = None  # rebuilt on each consolidate()
-        # OPTIONAL durable sink = home.SpikeLake over the ONE brain lake. When set, consolidate() also
-        # writes each exemplar (feature vector + payload) DURABLY, and rebuild_from_durable() re-populates
-        # the in-RAM index from it at boot -- so AER memory is durable + boot-reconstructable (the payload
-        # otherwise lives only in RAM and the index resets on restart: durable bytes, but not durable memory).
-        self._durable = durable
+        # The OPTIONAL `durable=` SpikeLake sink and rebuild_from_durable() were DELETED at the
+        # 2026-08-11 promotion (P3): zero of the 14 constructor sites ever passed durable=, and
+        # its writer half was already retired 2026-07-29 (home.py names this parameter as the
+        # orphan that justified it). The gap they addressed is still true and still RECORDED:
+        # the payload map + index live in RAM and reset on restart -- durable bytes, not durable
+        # MEMORY. Rebuilding that capability starts from the one lake (P4b), not from resurrecting
+        # an unconsumed parameter.
 
     # ---- encode one feature vector into the lake/index pattern format --------
     def _encode(self, vec):
@@ -202,32 +220,7 @@ class LakeMemory:
             self._patterns.append(pattern)
             self._payloads.append(pay)
             self._features.append(vec)
-            if self._durable is not None:
-                self._durable.append(
-                    vec, pay
-                )  # DURABLE: exemplar vector+payload in the ONE brain lake
         self._dirty = True  # mark the index stale; build once on the next retrieve
-        return self
-
-    def rebuild_from_durable(self):
-        """Re-populate the in-RAM proximity index + payload map from the DURABLE SpikeLake at boot, so
-        retrieve() works immediately after a restart. Fixes the AER durability gap: the payload map + index
-        otherwise live only in RAM and reset on boot (the .spkl holds spikes but not the MEMORY). No-op
-        without a durable sink; re-ingests into RAM only (does not re-write the durable records)."""
-        if self._durable is None:
-            return self
-        for vec, pay in self._durable.replay():
-            e = len(self._patterns)
-            pattern = self._encode(vec)
-            base = e * self.band
-            for t, feat in pattern:
-                self.hub.append(
-                    feat, base + t
-                )  # rebuild the scratch spike lake + patterns from durable
-            self._patterns.append(pattern)
-            self._payloads.append(pay)
-            self._features.append(_to_floats(vec))
-        self._dirty = True
         return self
 
     def _ensure_index(self):
@@ -349,7 +342,10 @@ class LakeMemory:
                 [
                     sys.executable,
                     "-m",
-                    "snn_data_lake.reasoning.brain_adapters.lake_memory",
+                    # the child must run THIS module wherever it lives -- a hardcoded dotted
+                    # path here is the control-must-follow-the-read-path defect (a promotion
+                    # would leave the P4b check testing the OLD path via the alias layer).
+                    _SELF_MODULE,
                     "--readback",
                     target,
                     str(self.n_stored),

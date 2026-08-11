@@ -36,7 +36,8 @@ loop with measurable learning curves and un-riggable controls, NOT competence or
 
   PYTHONPATH=src python -m snn_data_lake.reasoning.language_self_build
   Knobs: NORD_CTX(3) NORD_NIN(48) NORD_CYCLES(12) NORD_PER(400) NORD_VOCAB(60) NORD_LIMIT(0=all)
-Deps: reuses src/ spiking primitives + reasoning/brain_adapters/lake_memory.
+Deps: reuses src/ spiking primitives + hippocampus/proximity_replay (was
+reasoning/brain_adapters/lake_memory until its 2026-08-11 promotion+rename).
 """
 
 import os
@@ -44,7 +45,7 @@ import random
 
 from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
-from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory
+from snn_data_lake.hippocampus.proximity_replay import LakeMemory
 from snn_data_lake.cortex.corpus_stream import (
     ARPABET,
     load_cmudict,

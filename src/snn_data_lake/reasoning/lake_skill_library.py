@@ -51,7 +51,7 @@ CPU (byte-identical logic, slower, needs the [train] extra for torch):
 import os
 import random
 
-from snn_data_lake.reasoning.brain_adapters.lake_memory import (
+from snn_data_lake.hippocampus.proximity_replay import (
     LakeMemory,
 )  # durable proximity router + skill store
 from snn_data_lake.hippocampus.sleep_consolidation import (

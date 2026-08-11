@@ -45,7 +45,7 @@ from sklearn.svm import SVC
 from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
 from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp, _train
-from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory
+from snn_data_lake.hippocampus.proximity_replay import LakeMemory
 from snn_data_lake.reasoning._loop_common import (
     envi as _envi,
     LinearReadout,

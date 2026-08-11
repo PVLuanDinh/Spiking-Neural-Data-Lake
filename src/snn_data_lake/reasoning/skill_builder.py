@@ -38,7 +38,7 @@ import random
 from snn_data_lake.cortex.corpus_stream import ARPABET, load_cmudict, load_text, phoneme_stream
 from snn_data_lake.reasoning.language_self_build import _bigram_baseline
 from snn_data_lake.reasoning.language_readout_slda import _slda_acc
-from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory
+from snn_data_lake.hippocampus.proximity_replay import LakeMemory
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
 
 from snn_data_lake.hippocampus.content_signature import (

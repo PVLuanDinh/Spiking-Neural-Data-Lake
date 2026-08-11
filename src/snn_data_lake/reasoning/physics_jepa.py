@@ -39,7 +39,7 @@ import random
 import numpy as np
 
 from snn_data_lake.cerebellum.jepa_world_model import JepaWorldModel
-from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory
+from snn_data_lake.hippocampus.proximity_replay import LakeMemory
 from snn_data_lake.reasoning.skill_builder import signature
 
 ACTIONS = ("coast", "up", "down", "left", "right")

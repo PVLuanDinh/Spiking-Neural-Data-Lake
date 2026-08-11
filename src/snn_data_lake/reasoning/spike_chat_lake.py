@@ -46,7 +46,7 @@ import subprocess
 import sys
 import tempfile
 
-from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory
+from snn_data_lake.hippocampus.proximity_replay import LakeMemory
 from snn_data_lake.reasoning.consciousness_probe import (
     probe_access,
     probe_integration,

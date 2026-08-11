@@ -61,7 +61,10 @@ from snn_data_lake.substrate.binlog import (
 # AER-exemplar view (record = _T_SPIKE [u32 plen][payload][pack_array(vec)]) -- was measured that day
 # at: 19,775 _T_FACT / 0 _T_SPIKE records in the production lake, zero constructors in the tree outside
 # this module's own self-check, zero samples in 45 s of live-daemon profiling, and its only designed
-# consumer (`reasoning/brain_adapters/lake_memory.py` `durable=`) a reasoning/ orphan off the live path.
+# consumer (then reasoning/brain_adapters/lake_memory.py's `durable=`) a reasoning/ orphan off the
+# live path. CLOSED 2026-08-11: that orphan parameter and its rebuild_from_durable() were DELETED
+# when the module promoted to hippocampus/proximity_replay.py -- the retirement this comment
+# started is complete, no consumer of the retired writer shape remains.
 # Backlog H4/#10 named the missing prerequisite: a live producer of AER exemplars worth keeping across a
 # restart. Until one exists there is nothing to store, so the dead write path is retired instead of kept
 # as a format nobody writes. The tag stays reserved, every view SKIPS foreign records and consolidate()

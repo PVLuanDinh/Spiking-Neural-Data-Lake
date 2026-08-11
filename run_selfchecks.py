@@ -133,6 +133,7 @@ CORE = [
     "hippocampus.episodic_recall",  # W8: reconstructive pattern-completion autobiographical recall
     "hippocampus.spiking_grid_can",  # C1: continuous-attractor SPIKING grid network (bump path integration)
     "hippocampus.content_signature",  # PROMOTED 2026-08-11 (#10 family C1): moved here from the RESEARCH list
+    "hippocampus.proximity_replay",  # PROMOTED+RENAMED 2026-08-11 (#10 family C3): P4b cross-process readback + 2 constructed reds (0.5s)
     "hippocampus.episode_consolidation",  # C1 batch-4: systems-consolidation of real episodes (sparse attractor + sleep replay)
     "hippocampus.lake_consolidation",  # sleep-time PRUNE of the symbolic durable lake (cap re-derivable bulk, keep learned) -> live + bounded
     "hippocampus.spiking_storage_prototype",  # factored associative memory; criteria judged vs a do-nothing cue control + permutation null, each with an executed red

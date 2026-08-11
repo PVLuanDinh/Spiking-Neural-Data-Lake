@@ -9,6 +9,18 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- family settlement C3: lake_memory -> hippocampus/proximity_replay (2026-08-11m)
+
+The durable proximity-addressable replay memory promotes, RENAMED (brain_atlas asserts basename
+uniqueness and substrate/lake_memory -- a different question -- holds the name; the class stays
+LakeMemory). Three fixes with the move: the P4b cross-process child now derives its -m target
+from __spec__.name (the hardcoded dotted path was the control-follows-the-read-path defect,
+and the first fix attempt -- type(self).__module__ -- was itself wrong under -m, reading
+"__main__"; the check caught it before commit); the never-consumed durable= sink and
+rebuild_from_durable() are DELETED per P3, closing the orphan note home.py has carried since
+2026-07-29; 12 importers repointed. Self-check 0.5s in CORE: 100% recall vs 25% chance,
+durability, cross-process readback, both constructed reds firing.
+
 ## [Unreleased] -- family settlement C2b: world_kb_stream -> cortex/ (2026-08-11l)
 
 The KB-completion lane's two halves are both governed: world_kb_stream (605 curated real

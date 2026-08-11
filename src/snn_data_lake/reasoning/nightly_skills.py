@@ -113,7 +113,7 @@ from snn_data_lake.cortex.autotelic_goals import (
     collect_labels,
 )
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
-from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory
+from snn_data_lake.hippocampus.proximity_replay import LakeMemory
 from snn_data_lake.hippocampus.content_signature import SIG as _SIG_DIM
 from snn_data_lake.cortex.corpus_stream import ARPABET, load_cmudict, load_text, phoneme_stream
 from snn_data_lake.cortex.kb_ranking import DistMult, load_dataset
