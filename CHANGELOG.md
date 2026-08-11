@@ -9,6 +9,22 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- #10 bulk batch-1: two retirements, measured twice (2026-08-11d)
+
+`reasoning/lake_skills.py` and `reasoning/full_brain_experience.py` are DELETED -- the first rows
+of the #10 bulk lane, each measured by a two-stage adversarial pass (independent analyst +
+refute-by-default skeptic, both upholding RETIRE) and then hand-verified at every load-bearing
+claim before deletion. lake_skills: zero importers, both capabilities live-superseded
+(SkillRegistry lake routing; concept_reflection's identical Hebbian pair-counter), three
+unconsumed additions recorded at the ledger row rather than silently lost. full_brain_experience:
+a print-only integration demo whose SpikeGPT third can never run again (organ scrapped v3.77),
+zero asserts, exit 0 on total failure by design; its make_brain() correction survives in
+make_brain. Full deletion-hazard sweep clean on both (p6_gate KNOWN_*, brain_geometry shift
+disclosed, dependency_ledger unmoved, doc_command_guard green -- the documented run commands
+live only in CHANGELOG history, which the guard does not read as live). reasoning/ 146 -> 144.
+The ledger carries the full rows, including the honest gap full_brain_experience leaves: no
+asserting test covers the checkpoint-loaded perception path.
+
 ## [Unreleased] -- gwt_deep PROMOTED: the first PROMOTE-lane row settles (2026-08-11c)
 
 The split's recorded follow-on. `reasoning/gwt_deep.py` -> `thalamus/gwt_deep.py` (the workspace

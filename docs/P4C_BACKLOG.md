@@ -80,6 +80,40 @@ imports `torch._six`, removed in torch >= 2.0; shim = `types.ModuleType` with `c
 `string_classes`, `int_classes` in `sys.modules`) — preserved as prose in `RUNNING.md` §5. Its
 measured numbers (literature ladder to ~95%, 400/20k ~ 86% CPU) survive in the CHANGELOG history.
 
+### Retired 2026-08-11 — `lake_skills`, `full_brain_experience` (batch-1 of the bulk lane)
+
+Both measured by a two-stage adversarial pass (analyze + refute-by-default) and hand-verified
+before deletion; the first rows of the #10 bulk settlement.
+
+**`lake_skills`** — zero importers tree-wide (dynamic routes swept: importlib / `__import__` /
+getattr / string dispatch / `_AliasFinder` / blimp_bench SERVES list, all clear), zero
+registrations, and its own docstring recorded the disposition owed since 2026-08-04. Both halves
+superseded ON LIVE PATHS: routing by `skill_builder.SkillRegistry.route()` over the durable lake
+(P4b-correct where lake_skills was RAM-only; live via `nightly_skills` <- `cortex/brain.py:3069`,
+gate-registered) and the symmetric Hebbian pair-counter by `concept_reflection.py:120-122` (live
+via `developmental_core`). Fix-check: corrects nothing a survivor needs. Unique residue recorded
+here, unconsumed, port-on-demand: (1) connected-component skill extraction over the pair-weight
+graph (concept_reflection builds the identical graph, exposes only association_graph /
+strongest_link); (2) the WIRED/AUTOMATIC dual-threshold effortful-to-automatic distinction; (3)
+the design argument that raw 64-d crc32 signatures route by direct cosine, NOT through
+encode_latency into ProximityIndex's Victor-Purpura metric (unmeasured claim, licenses nothing).
+Its docstring's P2 question (this ↔ `lake_skill_library`, "exactly one survives") is settled by
+this deletion; `lake_skill_library`'s own row is unwritten and unaffected.
+
+**`full_brain_experience`** — the completed-experiment shape. Written v3.39 (2026-07-15) to
+demonstrate "all torch tiers engage on real inputs"; a third of its subject no longer exists
+(`cortex/language_center.SpikeGPTServe` — the SpikeGPT organ was SCRAPPED at v3.77, and the
+module's bare `except` misreported the missing module as missing weights); the remaining two
+tiers are exercised WITH asserts by governed code (growth `brain.py:3780`/`:2723`, respond
+`brain.py` `__main__`, perceive_event `brain.py:1360`, `pc_cortex_serve.py:304`). The script
+itself asserts NOTHING — `main()` returns 0 unconditionally with every tier wrapped in
+`except Exception` — so it is un-promotable by the P8 bar (no reachable red) and proves nothing
+where it stands. Port list EMPTY, verified: its one correction (direct `Brain()` -> `make_brain()`,
+AUDIT_BACKLOG M22) survives in `make_brain` itself. Honest gap recorded, not papered over: NO
+test covers the integrated checkpoint-loaded perception path (zero test hits for
+`perceive_event`/`_pc_cortex`/`grown_units`); if that integration smoke is ever wanted it must be
+rebuilt as an ASSERTING governed self-check, not preserved from this file.
+
 ### P2 governed-twin settlements 2026-08-06 — 2 pairs
 
 | retired | survivor | what ported first |
