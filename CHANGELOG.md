@@ -9,6 +9,18 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- #10 bulk batch-1: eight measured dispositions enter the ledger (2026-08-11e)
+
+The other eight batch-1 verdicts land as ledger rows (docs/P4C_BACKLOG.md, Deferred table), each
+measured by the same two-stage adversarial pass and hand-verified at the import claims: the
+deep_stdp lineage (three PROMOTEs, dependency-ordered, snn_mnist_stdp the 15-importer hub with a
+governed lazy consumer already reaching into it), the physics-JEPA trio (merge the winner first,
+then two retires -- the ladder shape blocks any other order), the skills family (settles together
+or not at all; its P2 half was already recorded in specs/010), and kb_ranking (PROMOTE ->
+cortex/, executable next). Also recorded: specs/010's promotion-plans.json is TRUNCATED at
+exactly 400,000 bytes with repeated content -- the PROMOTE lane's prior art needs regeneration
+before it is leaned on. No code changes in this commit; rows only.
+
 ## [Unreleased] -- #10 bulk batch-1: two retirements, measured twice (2026-08-11d)
 
 `reasoning/lake_skills.py` and `reasoning/full_brain_experience.py` are DELETED -- the first rows
