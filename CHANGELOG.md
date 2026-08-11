@@ -9,6 +9,19 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- family settlement C1: content_signature -> hippocampus/ (2026-08-11j)
+
+The family's ordered execution begins at its root: the stdlib 64-dim crc32 content key moves to
+hippocampus/ (it indexes memory/skill routing over the durable lake). Both obligations its row
+recorded are paid: the persistence-stability headline now has a REACHABLE red -- pinned bins
+(dog->61, cat->40, computed then pinned) that go red the moment the hash function or SIG
+changes, where the old same-process determinism compare stayed green under a builtin-hash swap
+-- and SIG=64 carries its persistence-format comment (P1 exception 3: changing it orphans every
+stored key). Sibling debt recorded rather than silently adopted: the tree has NO single named
+authority for its N=64 channel width (multimodal_encoder bands, streaming_hub pack contract,
+esp32 path -- all literals); consolidating that is its own P1 pass. Three importers repointed,
+smoke-gate entry moved RESEARCH -> CORE, REGIONS registered, dormancy green with no exemption.
+
 ## [Unreleased] -- #10 bulk batch-3: the language/skills family is fully measured (2026-08-11i)
 
 Batch-3 (nine modules, same two-stage adversarial pass, all upheld) closes the family's

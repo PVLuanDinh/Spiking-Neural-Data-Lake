@@ -51,7 +51,7 @@ from snn_data_lake.reasoning.consciousness_probe import (
     probe_access,
     probe_integration,
 )
-from snn_data_lake.reasoning.content_signature import (
+from snn_data_lake.hippocampus.content_signature import (
     signature,  # 64-wide crc32 bag-of-tokens; stdlib on the merits (see the P7 note above)
 )
 from snn_data_lake.reasoning.lake_reason import Reasoner

@@ -130,6 +130,7 @@ CORE = [
     "hippocampus.grid_place_map",  # W6: live grid + place cells binding a percept to an allocentric location
     "hippocampus.episodic_recall",  # W8: reconstructive pattern-completion autobiographical recall
     "hippocampus.spiking_grid_can",  # C1: continuous-attractor SPIKING grid network (bump path integration)
+    "hippocampus.content_signature",  # PROMOTED 2026-08-11 (#10 family C1): moved here from the RESEARCH list
     "hippocampus.episode_consolidation",  # C1 batch-4: systems-consolidation of real episodes (sparse attractor + sleep replay)
     "hippocampus.lake_consolidation",  # sleep-time PRUNE of the symbolic durable lake (cap re-derivable bulk, keep learned) -> live + bounded
     "hippocampus.spiking_storage_prototype",  # factored associative memory; criteria judged vs a do-nothing cue control + permutation null, each with an executed red
@@ -360,7 +361,6 @@ RESEARCH = [
     "reasoning.eprop_lm_alif_serve",  # deep-ALIF e-prop LM serve: adaptive-threshold long-range, order-sensitive logprob
     "reasoning.self_improve",
     "reasoning.godel_machine",
-    "reasoning.content_signature",
     # the two OUTSIDE yardsticks the depth ceilings are measured against. Both SKIP-with-notice when
     # their dataset is not downloaded (data/ is gitignored), so CI stays green either way -- which is
     # also why neither can be treated as a regression test for the ceilings it measures.

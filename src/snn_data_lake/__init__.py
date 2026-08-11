@@ -167,6 +167,7 @@ REGIONS = {
         "episodic_recall",
         "spiking_grid_can",  # C1: continuous-attractor SPIKING grid network (bump path integration)
         "episode_consolidation",  # C1 batch-4: systems-consolidation of real episodes (sparse attractor + sleep replay)
+        "content_signature",  # PROMOTED 2026-08-11 (#10 family C1): the 64-dim crc32 content key for lake/skill routing
         "lake_consolidation",  # sleep-time prune of the symbolic durable lake (cap re-derivable bulk, keep learned)
         # Promoted from reasoning/ 2026-08-04 after an in-place P7/P1/P8 redesign. FACTORED
         # k-WTA associative memory: the P sparse patterns ARE the memory (O(P*k)), so there is

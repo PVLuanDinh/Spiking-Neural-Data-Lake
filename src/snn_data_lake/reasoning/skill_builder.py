@@ -41,7 +41,7 @@ from snn_data_lake.reasoning.language_readout_slda import _slda_acc
 from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
 
-from snn_data_lake.reasoning.content_signature import (
+from snn_data_lake.hippocampus.content_signature import (
     signature,
 )  # extracted to a stdlib module; re-exported for back-compat
 
