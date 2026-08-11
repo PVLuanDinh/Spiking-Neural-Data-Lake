@@ -175,6 +175,7 @@ REGIONS = {
         "content_signature",  # PROMOTED 2026-08-11 (#10 family C1): the 64-dim crc32 content key for lake/skill routing
         "proximity_replay",  # PROMOTED+RENAMED 2026-08-11 (#10 family C3, was reasoning lake_memory): durable proximity-addressable replay
         "skill_builder",  # PROMOTED 2026-08-11 (#10 family C4): domain-agnostic skill formation + SkillRegistry proximity router
+        "open_world_loop",  # PROMOTED 2026-08-11 (#10 family C7): DP-means signature discovery (feeds nightly_skills' open frontier)
         "lake_consolidation",  # sleep-time prune of the symbolic durable lake (cap re-derivable bulk, keep learned)
         # Promoted from reasoning/ 2026-08-04 after an in-place P7/P1/P8 redesign. FACTORED
         # k-WTA associative memory: the P sparse patterns ARE the memory (O(P*k)), so there is

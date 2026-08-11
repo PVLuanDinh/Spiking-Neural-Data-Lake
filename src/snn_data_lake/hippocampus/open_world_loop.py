@@ -30,23 +30,25 @@ DRIFT is invisible (it silently corrupts an expert); the count is sensitive to l
 domain" is a region of signature space, not a clean human domain, so purity is structurally < 100%.
 This discovers, routes, and grows domains; it does not "understand" any of them.
 
-  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.open_world_loop
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.hippocampus.open_world_loop
   Knobs: NORD_CTX(3) NORD_LAM(1.7) NORD_HARVEST(240) NORD_MINEV(25) NORD_CAP(10) NORD_PERSRC(1200)
 Deps: numpy (+ stdlib). Reuses corpus_stream, skill_builder, meta_skill_loop, language_readout_slda, lake_memory.
 """
 
 import os
 import random
+import tempfile
 import zlib
 
 import numpy as np
 
 from snn_data_lake.cortex.corpus_stream import load_cmudict, load_text, phoneme_stream
-from snn_data_lake.hippocampus.skill_builder import signature, math_stream
-from snn_data_lake.cortex.nightly_skills import physics_stream
-from snn_data_lake.cortex.language_self_build import _positional_code
 from snn_data_lake.cortex.language_readout_slda import SLDA_RFF_np
+from snn_data_lake.cortex.language_self_build import _positional_code
+from snn_data_lake.cortex.nightly_skills import physics_stream
+from snn_data_lake.hippocampus.content_signature import SIG
 from snn_data_lake.hippocampus.proximity_replay import LakeMemory
+from snn_data_lake.hippocampus.skill_builder import math_stream, signature
 
 
 def _envi(k, d):
@@ -201,7 +203,7 @@ def _purity_and_competence(ctrl, held, uni_vocab, ctx):
             labs = [x[2] for x in items]
             maj[did] = max(set(labs), key=labs.count)
     ok = tot = 0
-    for c, nx, lbl in held:
+    for c, _nx, lbl in held:
         did = ctrl.route(c)
         if did in maj:
             ok += maj[did] == lbl
@@ -242,7 +244,10 @@ def _run(streams, lam, harvest, min_ev, cap, ctx, shuffled_sig=False):
     for pos, (c, nx, lbl) in enumerate(data):
         cc = c
         if shuffled_sig:  # control: destroy token identity in the signature
-            cc = [f"{perm[zlib.crc32(str(t).encode()) % 64]}" for t in c]
+            # SIG imported, not a re-implemented literal 64 -- this control permutes the SAME
+            # bins content_signature produces, so it must bin the same way (fixed 2026-08-11 at
+            # promotion; the inline copy was the per-site duplication its batch-3 row flagged).
+            cc = [f"{perm[zlib.crc32(str(t).encode()) % SIG]}" for t in c]
         ctrl.observe(cc, nx, lbl, pos)
     ctrl.finalize(len(data))
     return ctrl, held, data
@@ -255,7 +260,9 @@ def main():
     MINEV = _envi("NORD_MINEV", 25)
     CAP = _envi("NORD_CAP", 10)
     PER = _envi("NORD_PERSRC", 1200)
-    lake_path = os.path.join(os.environ.get("TEMP", "."), "sndl_openworld.spkl")
+    # tempfile.gettempdir(), not TEMP -- the Windows-only fallback wrote into the repo checkout
+    # on Linux/macOS CI; fourth instance of the same defect, same fix (lake99 precedent).
+    lake_path = os.path.join(tempfile.gettempdir(), "sndl_openworld.spkl")
     if os.path.exists(lake_path):
         os.remove(lake_path)
 
@@ -307,7 +314,7 @@ def main():
             f"    domain {did}: {ctrl.counts.get(did, 0):5d} items, majority true-label = {maj.get(did, '?')}"
         )
     print(f"  routing purity vs hidden labels: {purity:.1%}  (chance {1 / true_k:.0%})")
-    print(f"  per-discovered-domain competence (SLDA vs majority baseline):")
+    print("  per-discovered-domain competence (SLDA vs majority baseline):")
     for did, lb, n, acc, b in comps:
         print(f"    domain {did} [{lb}]: {acc:.1%} vs baseline {b:.1%}  ({n} items)")
     print(

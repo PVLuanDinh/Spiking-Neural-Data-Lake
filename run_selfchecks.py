@@ -341,7 +341,7 @@ RESEARCH = [
     "reasoning.spike_chat_lake",
     "reasoning.train_of_thought",
     "reasoning.concept_reflection",
-    "reasoning.open_world_loop",
+    "hippocampus.open_world_loop",  # PROMOTED 2026-08-11 (#10 family C7): discovery controller; inline %64 -> SIG import
     "reasoning.model_builder",
     # the 5 Gf inducers COMBINED (not merged) into one file: reasoning.gf
     "reasoning.gf",

@@ -558,7 +558,7 @@ class NightlySkills:
 
     def _ensure_ow(self):
         if self._ow is None:
-            from snn_data_lake.reasoning.open_world_loop import OpenWorldController
+            from snn_data_lake.hippocampus.open_world_loop import OpenWorldController
 
             self._ow = OpenWorldController(
                 lam=_envf("NORD_NIGHT_LAM", 1.7),
@@ -642,7 +642,7 @@ class NightlySkills:
         if "world-kb" in self._domains:
             for c, nx in self._domains["world-kb"].test[:200]:
                 pool.append((c, nx, "world-kb"))
-        from snn_data_lake.reasoning.open_world_loop import dna_stream
+        from snn_data_lake.hippocampus.open_world_loop import dna_stream
 
         take(dna_stream(n=800, ctx=self.ctx, seed=self.seed), "dna")
         random.Random(self.seed).shuffle(pool)

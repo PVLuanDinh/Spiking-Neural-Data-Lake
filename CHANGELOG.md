@@ -9,6 +9,15 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- family settlement C7: open_world_loop -> hippocampus/ (2026-08-11t)
+
+The discovery controller joins the governed tree beside the router it feeds. Its inline %64
+re-binning now imports content_signature.SIG (the shuffle control must permute the SAME bins
+the signature produces); fourth TEMP cache-path fix; nightly_skills' lazy spawn reaches into it
+are governed->governed now (manifest 13). Self-check green at the new path: 3 domains
+discovered from 4 hidden sources, 60% routing purity vs 25% chance, vigilance-inf and
+shuffled-signature controls both fail the right way, growth decelerates once covered.
+
 ## [Unreleased] -- family settlement C9a: nightly_skills -> cortex/ (2026-08-11s)
 
 The ONE standing skills loop -- post-merge carrier of the Domain/physics_stream library, the
