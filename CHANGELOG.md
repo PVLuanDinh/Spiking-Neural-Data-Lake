@@ -9,6 +9,17 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- #10 bulk batch-3: the language/skills family is fully measured (2026-08-11i)
+
+Batch-3 (nine modules, same two-stage adversarial pass, all upheld) closes the family's
+measurement: content_signature, corpus_stream, world_kb_stream, lake_memory, skill_builder-era
+rows, language_readout_slda, open_world_loop, nightly_skills all PROMOTE (regions recorded);
+meta_skill_loop + open_meta_loop resolve as ONE merge (the specs/010 "additive" P2 pair);
+lake_skill_library RETIREs (the lake_skills "exactly one survives" pair resolves to neither --
+the live routing home is skill_builder.SkillRegistry, to be verified at execution).
+world_kb_stream's promotion will close the one governed->reasoning reach kb_ranking's move
+created. The ledger now carries the full ordered settlement pass. Rows only, no code.
+
 ## [Unreleased] -- #10 bulk batch-2: six measured dispositions enter the ledger (2026-08-11h)
 
 The remaining batch-2 verdicts land as rows: brain_decision (PROMOTE conditional on a live

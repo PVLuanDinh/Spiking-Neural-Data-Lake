@@ -199,6 +199,34 @@ next-phoneme language, sole overlap the string "SLDA-RFF") and **inferior-import
 | `language_self_build` (measured 2026-08-11, batch-2) | **PROMOTE -> `cortex/` — LIVE ON THE DAEMON'S SLEEP TICK, runtime-proven**: py-spy of the live daemon shows `_positional_code` on the stack via brain.tick -> _enter_sleep -> nightly_skills.night -> meta_skill_loop.study. Seven reasoning-tier importers + `rose_language:475` lazy-imports it on a path `cortex/brain.py` reaches; specs/010's rose_language pre-flight already records that rose's promotion gives this file its first governed importer. RETIRE structurally impossible. Frictions, measured: `__main__` takes 324 s (needs a toy-scale smoke path before CORE registration — specs/012 precedent); module-top imports of `corpus_stream` + `brain_adapters/lake_memory` mean those promote first/same lane. **This row merges into the skills/language family settlement above** — the family keeps growing: corpus_stream, lake_memory, language_readout_slda, readout_fair_compare's ports all converge there. |
 | `readout_fair_compare` (measured 2026-08-11, batch-2) | **RETIRE with PORT-FIRST obligations — defers to the language-family settlement.** Completed experiment (CHANGELOG "READOUT STUDIES"), zero importers, harness-over-governed (shape 2: measures SpikingInteractionLearner + SLDA_RFF_np as subjects). What must port before deletion: (1) `_ngram_acc(train, test, k)` — the equal-budget n-gram baseline; `language_self_build._bigram_baseline` fits uncapped and has no trigram; (2) the equal-budget assert discipline — `language_readout_slda:184` compares SLDA capped at per=6000 against an UNCAPPED bigram, and the corrected same-budget comparison exists ONLY in this file; (3) do NOT port `rstdp_degrades` (it pins a pathology of governed interaction_learning — keep as the CHANGELOG finding only). |
 
+### The language/skills FAMILY — fully measured 2026-08-11 (batch-3 closes the set); ONE settlement pass
+
+Batch-3 measured the nine remaining members (two-stage adversarial pass, all upheld). With the
+batch-1/2 rows above, every member now has a verdict; the settlement is one ordered pass:
+
+| member | verdict (batch) |
+|---|---|
+| `content_signature` | PROMOTE -> hippocampus/ FIRST — stdlib-only 64-dim crc32 key, live via `nightly_skills:117` <- `brain.py:3069`; already in the smoke gate (RESEARCH list). At promotion: pin a known-good vector assert (the persistence-stable red is unreachable in-process today) and cross-check `SIG=64` against the lake channel width (P1). (3) |
+| `corpus_stream` | PROMOTE -> cortex/ (3) |
+| `world_kb_stream` | PROMOTE -> cortex/ — kb_ranking's offline fallback target; its promotion closes the one governed->reasoning reach kb_ranking's move created. (3) |
+| `brain_adapters/lake_memory` | PROMOTE -> hippocampus/ — carries the P4b cross-process durability check the governed `substrate/lake_memory` lacks (STRUCK-list row above: porting that INTO substrate is a new capability, its own question). (3) |
+| `skill_builder` | PROMOTE -> hippocampus/ after content_signature (1) |
+| `language_readout_slda` | PROMOTE -> cortex/ — inherits readout_fair_compare's equal-budget assert port. (3) |
+| `language_self_build` | PROMOTE -> cortex/ — live on the daemon sleep tick; needs its toy-scale smoke path; after corpus_stream + lake_memory. (2) |
+| `open_world_loop` | PROMOTE -> hippocampus/ — fix its inline `% 64` duplication of content_signature's binning at the move. (3) |
+| `nightly_skills` | PROMOTE -> cortex/ — the sleep-tick entry `brain.py:3069` reaches; last of the promotes (imports half the family). (3) |
+| `meta_skill_loop` | MERGE-THEN-RETIRE (1) — merge partner is the open_meta_loop/nightly_skills mechanism |
+| `open_meta_loop` | MERGE-THEN-RETIRE (3) — the specs/010 "P2 UNSETTLED, additive" pair resolves in the same merge |
+| `readout_fair_compare` | RETIRE after its three ports (2) |
+| `lake_skill_library` | RETIRE (3) — with `lake_skills` already deleted, the "exactly one survives" pair resolves to NEITHER: the routing capability's live home is `skill_builder.SkillRegistry` over the durable lake; verify that claim at execution before deleting. |
+
+Order: content_signature -> {corpus_stream, world_kb_stream, lake_memory} -> skill_builder ->
+{language_readout_slda + fair_compare ports} -> language_self_build -> open_world_loop ->
+{meta_skill_loop + open_meta_loop merge} -> nightly_skills -> lake_skill_library retire.
+Each step at the full entry bar, gates green per commit; the family's row details live in the
+batch-1/2 rows above and the batch-3 digests (session scratchpad, superseded by execution rows
+as each lands).
+
 **Instrument defect, recorded 2026-08-11:** `specs/010-policy-compliance-audit/promotion-plans.json`
 is TRUNCATED at exactly 400,000 bytes — unparseable JSON, the last entry cut mid-string, and the
 17-module blocked-promotion record it carries is this lane's prior art. Its content also repeats
