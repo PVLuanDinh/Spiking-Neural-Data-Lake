@@ -9,6 +9,17 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- #10 bulk batch-2: six measured dispositions enter the ledger (2026-08-11h)
+
+The remaining batch-2 verdicts land as rows: brain_decision (PROMOTE conditional on a live
+path; closes the open LatentQ.update wire-it item), growable_readout (PROMOTE; doubles as the
+specs/007 T022 consolidation origin), hippocampal_memory (PROMOTE; lane shared with its
+p6_gate-pinned consumer), laminar_readout (MERGE-THEN-RETIRE into the live no-backprop
+drop-in; e-prop invariant rules out promote-as-is), language_self_build (PROMOTE -- LIVE on
+the daemon sleep tick, py-spy-proven, so RETIRE was structurally impossible; merges into the
+language-family settlement), readout_fair_compare (RETIRE with three port-first obligations,
+deferred to that same family settlement). Rows only, no code.
+
 ## [Unreleased] -- #10 bulk batch-2: four retirements, one port executed first (2026-08-11g)
 
 `readout_boost`, `readout_ensemble`, `developmental_loop_unsupervised` and
