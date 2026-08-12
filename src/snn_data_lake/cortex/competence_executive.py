@@ -450,12 +450,8 @@ def main():
     tied_cands = [4, 8]
     tied_weakest = min(tied_cands, key=lambda d: tied[d])
     n_seeds = 40
-    tied_miss = sum(
-        _plan(tied, tied_cands, seed=s)[0] != tied_weakest for s in range(n_seeds)
-    )
-    clear_miss = sum(
-        _plan(competence, candidates, seed=s)[0] != weakest for s in range(n_seeds)
-    )
+    tied_miss = sum(_plan(tied, tied_cands, seed=s)[0] != tied_weakest for s in range(n_seeds))
+    clear_miss = sum(_plan(competence, candidates, seed=s)[0] != weakest for s in range(n_seeds))
     print(
         f"    sensitivity control over {n_seeds} seeds: near-tied landscape misses {tied_miss}, "
         f"clear landscape misses {clear_miss}"

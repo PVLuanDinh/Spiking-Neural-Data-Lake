@@ -368,7 +368,9 @@ class LiveBrain:
             )  # abstract plant s' = s + 0.2*(-0.5 s + u)
         if self._planner is None or self._planner.n_options != len(options):
             self._planner = PrefrontalExecutive(n_options=len(options), seed=self._seed)
-        return self._planner.plan(state, options, predictor, goal_value, horizon=horizon, write=write)
+        return self._planner.plan(
+            state, options, predictor, goal_value, horizon=horizon, write=write
+        )
 
     @property
     def plan_goals(self):
