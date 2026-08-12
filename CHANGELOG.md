@@ -9,6 +9,18 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- lane 3: the physics-JEPA trio settles; the probe survives as an instrument (2026-08-11y)
+
+physics_jepa_highdim, read whole, held no mechanism -- it was a benchmark over the governed
+cerebellum/jepa_world_model -- so its merge target is the instrument category:
+tests/instruments/jepa_highdim_probe.py, self-contained (the retiring physics_jepa's
+dynamics absorbed verbatim, the licence-survives-deletion pattern). The owed A/B ran BEFORE
+the deletions: +51.8% learned-over-random probe, loss 2.06->1.47, no collapse -- the honest
+positive, all three asserts intact in the new home; double_pendulum_jepa's final reproduction
+also ran green (+39% on chaos, matching its record). All three files deleted, zero references
+remain; the trio's verdict triple (near-linear negative / high-dim positive / chaotic
+positive) is durable in CHANGELOG and the standing instrument.
+
 ## [Unreleased] -- lane 2c: deep_stdp_latency -> cortex/; THE DEEP-STDP LINEAGE IS SETTLED (2026-08-11x)
 
 The lineage's working half joins the perception cortex -- the region call the ledger left open
