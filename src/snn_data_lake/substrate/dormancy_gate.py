@@ -107,6 +107,15 @@ EXEMPT = {
         "tests/instruments/gwt_deep_split_ab.py. Wiring it to the tick would be the fake "
         "consumer P3 names",
     ),
+    "snn_mnist_stdp": (
+        "permanent",
+        "TRAIN-TIER HARNESS (promoted 2026-08-11, #10 lane 2a): the Diehl-Cook rule-family hub; "
+        "nothing on the live tick trains MNIST. Its constants ARE the GeNN port's oracle source "
+        "of truth (snn_mnist_stdp_genn.oracle() lazy-imports them -- a function-level import "
+        "inside an EXEMPT module, which the reachability walk does not traverse). Its full real "
+        "self-check (58.8s GPU train) runs in the run_selfchecks TRAIN_GATED tier wherever "
+        "torchvision is importable",
+    ),
     "snn_mnist_stdp_genn": (
         "permanent",
         "TRAIN-TIER HARNESS (specs/012, MANDATED BUILD 2026-08-07): opt-in GPU training run via "

@@ -17,7 +17,16 @@ How it embodies the project's storage method:
     only when an input pixel fires. Reported against the dense same-architecture
     cost (T * 784 * M), which the sparse version beats by ~1/spike_rate.
 
-Run (after deps):  .venv-lake/Scripts/python -m snn_data_lake.reasoning.snn_mnist_stdp
+Run (after deps):  .venv-lake/Scripts/python -m snn_data_lake.plasticity.snn_mnist_stdp
+
+PROMOTED reasoning/ -> plasticity/ 2026-08-11 (#10 lane 2a; measured row in docs/P4C_BACKLOG.md):
+the rule-family hub (its constants are the GeNN port's oracle source of truth via
+plasticity/snn_mnist_stdp_genn.oracle()). Registered in the NEW run_selfchecks TRAIN_GATED tier
+-- runs where torchvision is importable (the gate env carries torchvision 0.26.0+cu128, matched
+to the cu128 torch, which is how the module IS importable here; the module's own torchvision
+adjudication below still stands for pyproject/CI), skipped-with-notice elsewhere. Its 14
+reasoning-tier importers repointed at the move; snn_mnist_stdp_fast (the oracle's fast kernel)
+stays in reasoning/ as its own later rung.
 Deps, and the two tiers are NOT the same (corrected 2026-08-06 -- this line read
 "numpy torch torchvision snntorch" flat, which hid which one actually blocks the module):
   CORE, always installed : numpy, torch, snntorch  (snntorch promoted to core 2026-08-06 under P7;
@@ -46,11 +55,12 @@ the paper's 95% (which needs the full machinery + all 60k images).
 """
 
 import os
-import torch
-import snntorch as snn
-from torchvision import datasets, transforms
-from snn_data_lake.substrate.device import resolve_device, enable
 
+import snntorch as snn
+import torch
+from torchvision import datasets, transforms
+
+from snn_data_lake.substrate.device import enable, resolve_device
 
 # Determinism: `torch.manual_seed(0)` used to run HERE, at MODULE SCOPE. This module IS imported
 # for its `load_mnist` / `StdpNetwork` by `reasoning/deep_stdp.py` and `reasoning/autonomous_brain.py`,
@@ -227,7 +237,7 @@ def main():
     print()
     print("STORAGE:")
     print(f"  prototypes in W : {M} x {N_IN} = {M * N_IN:,} weights (the stored data)")
-    print(f"  activations     : 1-bit spikes vs 32-bit floats (32x)")
+    print("  activations     : 1-bit spikes vs 32-bit floats (32x)")
     print("=" * 58)
 
     # self-check: unsupervised STDP must beat chance by a wide margin

@@ -9,6 +9,18 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- lane 2a: snn_mnist_stdp (the rule-family hub) -> plasticity/ (2026-08-11v)
+
+The deep_stdp lineage opens at its root: the Diehl-Cook hub whose constants are the GeNN
+port's oracle source of truth moves to plasticity/. A NEW run_selfchecks availability tier,
+TRAIN_GATED (the NENGO_GATED pattern, probing torchvision), carries its FULL real self-check
+where the [train] deps exist -- measured 58.8s at defaults on the GPU, acc>=55% green, nothing
+shrunk -- and skips with notice where they do not (CI's torch-tier job). Found at execution:
+the gate env carries torchvision 0.26.0+cu128 matched to the cu128 torch, so the 2026-08-06
+torchvision-blocked record describes fresh envs, not this box; the pyproject adjudication
+stands unchanged. 14 reasoning importers repointed; the genn oracle's lazy reach is
+governed->governed now (manifest 13, snn_mnist_stdp_fast the remaining lineage target).
+
 ## [Unreleased] -- family settlement C9b: lake_skill_library retires; THE FAMILY IS SETTLED (2026-08-11u)
 
 The last step. lake_skill_library was a completed experiment (v3.68 verdict durable) whose

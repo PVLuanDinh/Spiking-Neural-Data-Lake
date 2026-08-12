@@ -313,6 +313,11 @@ REGIONS = {
         # completion happens inside the gates; dormancy disposition = EXEMPT (opt-in GPU
         # training harness, see dormancy_gate).
         "snn_mnist_stdp_genn",
+        # PROMOTED from reasoning/ 2026-08-11 (#10 lane 2a): the Diehl-Cook rule-family HUB --
+        # its constants are the GeNN port's oracle source of truth (oracle() imports them).
+        # run_selfchecks tier: TRAIN_GATED (torchvision at module top, the recorded P7
+        # adjudication; runs where torchvision is importable, 58.8s full real train on the GPU).
+        "snn_mnist_stdp",
     ],
     "substrate": [
         # PROMOTED 2026-08-04: P2 merge of training/device.py (GPU-first, measured) with the

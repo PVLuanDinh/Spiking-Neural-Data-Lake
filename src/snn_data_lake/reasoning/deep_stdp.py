@@ -68,7 +68,7 @@ import torch.nn.functional as F
 import snntorch as snn
 
 from snn_data_lake.substrate.device import resolve_device, enable
-from snn_data_lake.reasoning.snn_mnist_stdp import (
+from snn_data_lake.plasticity.snn_mnist_stdp import (
     BETA,
     LR,
     MAX_RATE,

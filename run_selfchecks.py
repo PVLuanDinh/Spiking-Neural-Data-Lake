@@ -398,6 +398,16 @@ TORCH_GATED = [
 # importable, SKIPPED-with-notice otherwise (its own __main__ also self-SKIPs). Zero-dep core unaffected.
 NENGO_GATED = ["substrate.nengo_bridge"]
 
+# [train]-extra modules (torchvision at module top, the recorded P7 adjudication: torchvision is
+# REJECTED for core because a bare pip resolve replaces the cu128 torch with the CPU build -- see
+# plasticity/snn_mnist_stdp.py's docstring). Run only where torchvision is importable (the gate
+# env carries torchvision+cu128), SKIPPED-with-notice otherwise (CI's torch-tier job installs no
+# extras, so these skip there -- same contract as NENGO_GATED). Added 2026-08-11 with the
+# deep_stdp-lineage promotions (#10 lane 2).
+TRAIN_GATED = [
+    "plasticity.snn_mnist_stdp",  # PROMOTED 2026-08-11 (lane 2a): the Diehl-Cook rule hub (full real train, GPU)
+]
+
 # The repo root, for resolving ARTIFACT_GATED paths regardless of the cwd the runner was invoked from.
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -443,9 +453,27 @@ def _nengo_ok():
         return False
 
 
+def _train_ok():
+    # torchvision is the [train]-extra discriminator (snntorch is core); where it is absent the
+    # TRAIN_GATED modules cannot even import (module-top import, the recorded deliberate shape).
+    try:
+        import torchvision  # noqa: F401
+
+        return True
+    except Exception:
+        return False
+
+
 _TORCH = _torch_ok()
 _NENGO = _nengo_ok()
-MODULES = CORE + (TORCH_GATED if _TORCH else []) + (NENGO_GATED if _NENGO else []) + RESEARCH
+_TRAIN = _train_ok()
+MODULES = (
+    CORE
+    + (TORCH_GATED if _TORCH else [])
+    + (NENGO_GATED if _NENGO else [])
+    + (TRAIN_GATED if _TRAIN else [])
+    + RESEARCH
+)
 
 
 def run_all():

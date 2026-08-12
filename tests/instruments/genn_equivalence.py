@@ -21,8 +21,8 @@ import sys
 import numpy as np
 import torch
 
+from snn_data_lake.plasticity.snn_mnist_stdp import BETA, THETA_DECAY, THETA_PLUS
 from snn_data_lake.plasticity.snn_mnist_stdp_genn import build_model, pack_schedule
-from snn_data_lake.reasoning.snn_mnist_stdp import BETA, THETA_DECAY, THETA_PLUS
 from snn_data_lake.reasoning.snn_mnist_stdp_fast import FAST_LR, FAST_XTAR, PRE_DECAY
 
 M_TOY = 8
