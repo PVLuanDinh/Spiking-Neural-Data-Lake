@@ -194,23 +194,24 @@ import sys
 from collections import defaultdict
 
 # --------------------------------------------------------------------------------------------------
-# What counts as "the workspace". Two bus classes plus the one wrapper that owns a bus instance and
-# re-exports it under a different verb -- omitting the wrapper is how a prior reading turned three
-# writes into one read.
+# What counts as "the workspace". Two bus classes. (Until 2026-08-12 this set also carried
+# WorkspaceBroadcast, the one wrapper that owned a bus instance and re-exported it under a different
+# verb -- omitting it is how a prior reading turned three writes into one read. The wrapper was
+# RETIRED that day, cortex/competence_executive's retirement record; its 3-arg `broadcast` arity
+# entry left the API table with it.)
 # --------------------------------------------------------------------------------------------------
-WORKSPACE_CLASSES = {"GlobalWorkspace", "ReentrantWorkspace", "WorkspaceBroadcast"}
+WORKSPACE_CLASSES = {"GlobalWorkspace", "ReentrantWorkspace"}
 
 # (method, total argument count) -> kind. Arity is load-bearing, not decoration: `broadcast` with
-# zero arguments is GlobalWorkspace's reader and `broadcast` with three is WorkspaceBroadcast's
-# writer. Any other arity is some other class's method that merely shares a name (Claustrum.broadcast
-# takes two; the cockpit's chat queue has a one-argument submit) and is correctly not matched.
+# zero arguments is GlobalWorkspace's reader; other arities are other classes' methods that merely
+# share a name (Claustrum.broadcast takes two; the cockpit's chat queue has a one-argument submit)
+# and are correctly not matched.
 #
 # THIS TABLE IS A CLOSED ALLOWLIST AND THAT IS ITS KNOWN WEAKNESS. A new accessor is invisible until
 # it is added here by hand, which is exactly how `broadcast_all` hid 33 reads. When adding a name,
 # print the delta under INSTRUMENT CHANGE and do not let it read as progress.
 API = {
     ("submit", 3): "WRITE",
-    ("broadcast", 3): "WRITE",
     ("broadcast", 0): "READ",
     ("broadcast_all", 0): "READ",  # added 2026-08-06; see the docstring's instrument-change note
     ("broadcast_to", 1): "READ",
@@ -268,9 +269,10 @@ KNOWN_WRITERS = {
     "reasoning/train_of_thought.py": 4,
     "brainstem/autonomous_loop.py": 3,
     "cortex/brain.py": 3,
-    # relpath co-edited 2026-08-12 with the module's promotion+rename (#10 lane 4f) -- the key is
-    # a POSIX relpath under src/snn_data_lake/, so the move alone makes `missing` fire.
-    "cortex/competence_executive.py": 3,
+    # cortex/competence_executive.py LEFT this table 2026-08-12: WorkspaceBroadcast was retired
+    # (its retirement record in that module) and the module now performs ZERO workspace writes --
+    # a floor of 3 would have fired "produced ZERO writes" on a correct deletion, the exact
+    # failure mode :258-259 warns a liveness floor must not manufacture.
     "cortex/access_consciousness.py": 1,
     "reasoning/rpm_solver.py": 1,
     "reasoning/spike_chat_lake.py": 1,
@@ -305,8 +307,13 @@ KNOWN_READERS = {
 # which faculty it added without a consumer and why that was the cheapest honest option.
 # --------------------------------------------------------------------------------------------------
 BASELINE = {
-    "private_instance_modules": 7,
-    "unread_writer_modules": 7,
+    # Both ceilings ratcheted DOWN 7 -> 6 on 2026-08-12: WorkspaceBroadcast's retirement removed
+    # cortex/competence_executive from both censuses (it no longer constructs or writes into any
+    # workspace instance). A ratchet keeps ground it gains -- left at 7, the self-check's
+    # one-mutant regression control could no longer cross the ceiling, i.e. the criterion would
+    # have had no reachable red (measured: 0-of-3 controls + two dead mutations before this edit).
+    "private_instance_modules": 6,
+    "unread_writer_modules": 6,
     "cross_module_reads": 1,
     "undeclared_import_pairs": 11,
     "unimplemented_declared_pairs": 21,
@@ -1383,14 +1390,11 @@ def liveness(root, res):
         )
     lines.append(f"  classes built: {len(built)} of {len(WORKSPACE_CLASSES)} tracked classes")
 
-    wb = per.get("cortex/competence_executive.py", {}).get("WRITE", [])
-    if not any(m == "broadcast" for _k, _l, m, _r, _n in wb):
-        problems.append(
-            "the 3-argument WorkspaceBroadcast.broadcast() is no longer classified as a WRITE -- the "
-            "arity split has broken, and a submit wearing a reader's name is what made an earlier "
-            "reading report 2 reads where there was 1"
-        )
-    lines.append("  arity split  : 3-arg broadcast still WRITE, 0-arg still READ")
+    # (The dedicated 3-arg-broadcast-still-WRITE criterion left with WorkspaceBroadcast's
+    # retirement 2026-08-12: its subject class no longer exists, and the arity split it guarded
+    # now has one broadcast arity. The KNOWN_WRITERS floors above remain the liveness check on
+    # submit-detection.)
+    lines.append("  arity split  : 0-arg broadcast still READ (3-arg WRITE retired with its class)")
 
     role_problems = verify_roles(root)
     if role_problems:

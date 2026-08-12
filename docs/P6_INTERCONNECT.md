@@ -54,11 +54,13 @@ are **instrument defects, not tree movement** -- `git blame` dates every affecte
 2. **`cortex/brain.py:1610` is a real, consuming read.** `self._reentrant.broadcast_to("action")`
    feeds `elig["reroute"]` into the three-factor drive-weight update. "2 reads" was really 3.
 3. **`reasoning/developmental_loop_brain.py:295` is a WRITE, not one of the two reads.**
-   The receiver is `WorkspaceBroadcast` (now `cortex/competence_executive.py`; at this
-   reading it lived at `reasoning/brain_adapters/executive_control.py`),
-   whose `broadcast(source, content, salience)` calls `_ws.submit()` then `_ws.step()`.
-   `GlobalWorkspace.broadcast()` takes zero args, so a 3-arg `.broadcast(` is a submit
-   wearing a reader's name. The gate splits them on arity.
+   The receiver is `WorkspaceBroadcast` (RETIRED 2026-08-12 -- retirement record in
+   `cortex/competence_executive.py`; at this reading it lived at
+   `reasoning/brain_adapters/executive_control.py`),
+   whose `broadcast(source, content, salience)` called `_ws.submit()` then `_ws.step()`.
+   `GlobalWorkspace.broadcast()` takes zero args, so a 3-arg `.broadcast(` was a submit
+   wearing a reader's name. The gate split them on arity while the class lived; dlb now
+   calls `submit()` under its own name.
 4. **Two more writes of that same wrapper shape** inside the adapter module itself (cited at
    this reading as `executive_control.py:231`/`:234`; that bare basename now resolves to the
    OTHER module, cortex/executive_control -- the adapter is cortex/competence_executive since
@@ -71,7 +73,10 @@ but one is a module reading an instance it constructed itself, and the one cross
 read is the tick driver.
 
 **One fact the ratio hides, and it is larger than the ratio.** 11 private workspace objects
-across 8 modules. `train_of_thought.self.ws`, `access_consciousness.self._ws`, `rpm_solver`
+across 8 modules *(a dated snapshot; the 2026-08-12 WorkspaceBroadcast retirement removed the
+two `WorkspaceBroadcast.self._ws` entries below and ratcheted p6_gate's
+private_instance_modules ceiling 7 -> 6 -- re-derive with the gate, not this list)*.
+`train_of_thought.self.ws`, `access_consciousness.self._ws`, `rpm_solver`
 a function-local `ws`, `spike_chat_lake` a function-local `ws`, `WorkspaceBroadcast.self._ws`
 twice, `brain.self._reentrant`, `autonomous_loop.self.workspace`. Faculty A's `submit()` is
 not merely unread by faculty B -- it is **invisible** to it.

@@ -9,6 +9,36 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- WorkspaceBroadcast + ExecutivePlanner RETIRED: the wrappers die, the substance survives public (2026-08-12k)
+
+Both classes deleted from cortex/competence_executive per specs/010 P2, after every
+owed port landed (2026-08-12h the tenant contract fix, 2026-08-12j the live-tier
+ports). CompetenceDynamics + goal_value are PUBLIC (were _-prefixed); the planning
+criteria re-ran BIT-IDENTICAL through the direct PrefrontalExecutive.plan
+composition (planned digit 3, rt 11.0, 31/40 near-tied misses, identical gain
+sweep) -- the wrapper held no behaviour. developmental_loop_brain rewritten:
+_plan_objective composes plan(write=False) over the public domain objects; the
+goal broadcast is a GlobalWorkspace the loop OWNS (submit + step + verdict inline
+-- owner semantics; the fixed tenant contract does not apply to a bus's own
+clock); mechanics check green (pooled 0.739 > 0.30, replay live, ASSERT 4 still
+splits exec 1 != fused 5).
+
+tools/p6_gate.py co-edited in the same commit: WORKSPACE_CLASSES 3 -> 2, the
+(broadcast, 3) arity entry deleted, the KNOWN_WRITERS competence_executive entry
+removed (the module now performs ZERO workspace writes -- a floor of 3 would have
+fired on a correct deletion), the dedicated 3-arg-broadcast criterion deleted with
+its subject. The retirement RATCHETED two ceilings DOWN 7 -> 6
+(private_instance_modules, unread_writer_modules): left at 7, the self-check's
+one-mutant regression control could no longer cross them -- measured 0-of-3
+controls green and two dead mutations before the ratchet; after it, 3-of-3 green
+and every mutation fires. The dlb GlobalWorkspace import surfaced an undeclared
+hippocampus<->thalamus pair -- the detector working exactly as at lane 4e --
+resolved by DECLARING the real route (sub -> gwt, the Papez limb into the
+broadcast hub); undeclared 12 -> 11, unimplemented flat at 21 (the new
+declaration is implemented by the import that forced it). P6_INTERCONNECT's dated
+snapshots annotated. This closes the last recorded deferral from #10 lane 4f and
+unblocks the reasoning/ drain's PROMOTE lane.
+
 ## [Unreleased] -- the live-tier half of the four owed ports: ignition verdict + stateless planning (2026-08-12j)
 
 Two of the four ports WorkspaceBroadcast's docstring owes before retirement land

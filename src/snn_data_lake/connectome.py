@@ -354,6 +354,19 @@ EDGES = [
         "exc",
         "relay",
     ),
+    # hippocampus -> thalamic broadcast hub (fornix -> anterior thalamus, the Papez limb that
+    # reaches the broadcast system): the memory loop posts its current goal into the global
+    # workspace. DECLARED 2026-08-12 when hippocampus/developmental_loop_brain began constructing
+    # its GlobalWorkspace directly (the WorkspaceBroadcast wrapper's retirement) -- the p6 gate's
+    # undeclared-pair detector caught the missing declaration, the same detector working the same
+    # way as the sub->nacc row above: the import existed, the connectome had not recorded it.
+    _e(
+        "sub",
+        "gwt",
+        "hippocampus -> thalamic broadcast hub (goal posted into the global workspace)",
+        "exc",
+        "relay",
+    ),
     # olivo-cerebellar climbing-fibre teaching loop: the error signal cerebellar learning is premised on
     _e(
         "io",

@@ -9,9 +9,11 @@ hand-rolled parts replaced by the brain's REAL subsystems, wired through thin ad
                   monitors -- the planner SELECTS since the 2026-08-12 EXEC-bypass adjudication below) [basal_ganglia/]
   neurogenesis  : readout.grow() fired by the MetacognitiveMonitor grow_trigger  [the brain grows its own readout neurons]
   neuromod      : LocusCoeruleus (readout lr gain)                    [neuromodulation]
-  executive     : ExecutivePlanner + DopamineModulator + WorkspaceBroadcast     [cortex/competence_executive,
-                  promoted+renamed 2026-08-12 (#10 lane 4f, was reasoning/brain_adapters/executive_control);
-                  imported lazily inside main() and _mechanics_check().]
+  executive     : PrefrontalExecutive.plan over CompetenceDynamics + goal_value (the competence-domain
+                  objects public in cortex/competence_executive since the 2026-08-12 retirement of the
+                  ExecutivePlanner/WorkspaceBroadcast wrappers) + DopamineModulator; the goal broadcast
+                  is a GlobalWorkspace this loop OWNS (private offline bus: submit + step + verdict).
+                  All imported lazily inside main() and _mechanics_check().
 
 vs v3.54 (developmental_loop_deep.py, RETIRED 2026-08-06 -- superseded by this file, which carries
 its control flow; its reference number survives as DEEP_LOOP_REF below): the loop's AUTONOMY + accuracy path is now driven by the actual
@@ -115,13 +117,34 @@ from snn_data_lake.neuromodulation.spiking_curiosity import (
 from snn_data_lake.plasticity.snn_mnist_stdp import load_mnist
 from snn_data_lake.substrate.device import enable, resolve_device
 
-# competence_executive (ExecutivePlanner / DopamineModulator / WorkspaceBroadcast) is imported
-# LAZILY inside main() and _mechanics_check() -- the kb_ranking shape: all three symbols are
-# used exclusively inside those functions and the relocation is behaviour-free. Its own lane
-# (#10 lane 4f, 2026-08-12) settled the promotion this comment used to defer: renamed
-# reasoning/brain_adapters/executive_control -> cortex/competence_executive, p6 keys co-edited,
-# P1 adjudicated in-file. Deferring it out of the 4e move was specs/010's call ("turns a
-# 30-line move into three red gates") and it was right.
+# competence_executive symbols (DopamineModulator, CompetenceDynamics, goal_value) plus
+# PrefrontalExecutive and GlobalWorkspace are imported LAZILY inside main() and
+# _mechanics_check() -- the kb_ranking shape: used exclusively inside those functions. The
+# 2026-08-12 retirement pass replaced the ExecutivePlanner/WorkspaceBroadcast wrappers with
+# direct composition: _plan_objective below injects the public domain objects into
+# PrefrontalExecutive.plan (write=False -- an offline planning query never writes the
+# executive's working-memory goal), and the goal broadcast submits to a GlobalWorkspace this
+# loop constructs and OWNS (private offline bus, so stepping it is owner semantics -- the
+# tenant contract fixed at 4b24c1da does not apply to a bus's own clock).
+
+
+def _plan_objective(comp_vec, candidates, seed=0):
+    """PLAN the next study objective: a fresh PrefrontalExecutive per call (n_options must equal
+    len(candidates)), the competence-domain forward model + objective injected, write=False.
+    The composition the retired ExecutivePlanner wrapper held, now owned by its one consumer."""
+    from snn_data_lake.cortex.competence_executive import CompetenceDynamics, goal_value
+    from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
+
+    executive = PrefrontalExecutive(n_options=len(candidates), seed=seed)
+    idx, _rt = executive.plan(
+        tuple(float(x) for x in comp_vec),
+        list(candidates),
+        CompetenceDynamics(),
+        goal_value,
+        horizon=1,
+        write=False,
+    )
+    return list(candidates)[idx]
 
 
 class _LinearReadout:
@@ -214,11 +237,8 @@ def _mechanics_check():
     NORD_TRAIN the full loop's replay store slice runs past the per-digit index and every
     cycle silently reports '+ 0 hippocampal-replay feats'. Here PER + REPLAY is asserted
     under the per-digit row count, and ASSERT 1 makes an empty replay a hard red."""
-    from snn_data_lake.cortex.competence_executive import (
-        DopamineModulator,
-        ExecutivePlanner,
-        WorkspaceBroadcast,
-    )
+    from snn_data_lake.cortex.competence_executive import DopamineModulator
+    from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 
     enable(resolve_device())
     dev = resolve_device()
@@ -251,9 +271,8 @@ def _mechanics_check():
     decision = BrainDecision(n_actions=10, state_dim=10, seed=0)
     curiosity = SpikingCuriosityDrive(seed=0)
     lc = LocusCoeruleus()
-    planner = ExecutivePlanner(seed=0)
     dopamine = DopamineModulator(seed=0)
-    workspace = WorkspaceBroadcast(seed=0)
+    workspace = GlobalWorkspace(seed=0)  # this check OWNS this private bus: submit + step below
 
     # sizing guard: replay slice must be NON-EMPTY by construction (the silent-trap dodge).
     for d in range(10):
@@ -271,7 +290,7 @@ def _mechanics_check():
     comp_c = [0.9, 0.1, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9]
     cands_c = list(range(10))
     cur_c = [1.0 if d == 5 else 0.01 for d in cands_c]  # curiosity screams digit 5
-    pick_exec = planner.plan_objective(comp_c, cands_c)
+    pick_exec = _plan_objective(comp_c, cands_c)
     pick_fused = decision.choose(cands_c, comp_c, cur_c)
     assert pick_exec != pick_fused, (
         f"the planner and the fused chooser picked the same objective ({pick_exec}) on a "
@@ -285,9 +304,10 @@ def _mechanics_check():
         unseen = [d for d in range(10) if d not in learned]
         cands = unseen if unseen else list(range(10))
         comp_vec = [competence[d] for d in range(10)]
-        objective = planner.plan_objective(comp_vec, cands)
+        objective = _plan_objective(comp_vec, cands)
         is_new = objective not in learned
-        workspace.broadcast("executive", f"study_digit_{objective}", 1.0 - competence[objective])
+        workspace.submit("executive", f"study_digit_{objective}", 1.0 - competence[objective])
+        workspace.step()  # owner tick of the check's private bus (the one competition per cycle)
         na = lc.step(1.0 if is_new else (1.0 - competence[objective]))
         gain = (1.0 + 0.5 * na) * da_gain
         gains.append(gain)
@@ -357,11 +377,8 @@ def main():
     if os.environ.get("DLB_RUN") != "1":
         return _mechanics_check()
     # lazy, governed-to-governed since the 2026-08-12 lane-4f promotion (see the module-top note).
-    from snn_data_lake.cortex.competence_executive import (
-        DopamineModulator,
-        ExecutivePlanner,
-        WorkspaceBroadcast,
-    )
+    from snn_data_lake.cortex.competence_executive import DopamineModulator
+    from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 
     enable(resolve_device())
     dev = resolve_device()
@@ -478,9 +495,8 @@ def main():
     # IS the selection path -- no flag, no fused fallback.
     DOPA = _envi("NORD_DOPA", 1)  # dopamine RPE modulates the readout lr alongside LC
     WS = _envi("NORD_WS", 1)  # global_workspace broadcasts the current goal (coordination)
-    planner = ExecutivePlanner(seed=0)
     dopamine = DopamineModulator(seed=0)
-    workspace = WorkspaceBroadcast(seed=0)
+    workspace = GlobalWorkspace(seed=0)  # the loop OWNS this private offline bus
     da_gain = 1.0  # dopamine lr multiplier (from the previous cycle's RPE)
 
     learned = []
@@ -501,17 +517,17 @@ def main():
         # EXECUTIVE: prefrontal_executive plans the objective by lookahead over competence dynamics
         # (goal_value = mean + min competence, predictor raises headroom-proportionally). The ONE
         # selection mechanism since the 2026-08-12 EXEC-bypass adjudication.
-        objective = planner.plan_objective(comp_vec, candidates)
+        objective = _plan_objective(comp_vec, candidates)
         consec = {d: (consec[d] + 1 if d == objective else 0) for d in range(10)}
         is_new = objective not in learned
         # GLOBAL WORKSPACE: broadcast the current goal (salience = how far from mastered). Coordination/faithfulness.
-        ws_ignited = (
-            workspace.broadcast(
-                "executive", f"study_digit_{objective}", 1.0 - competence[objective]
-            )
-            if WS
-            else None
-        )
+        # This loop constructed the bus, so stepping it is OWNER semantics (the one competition per cycle).
+        if WS:
+            goal_content = f"study_digit_{objective}"
+            workspace.submit("executive", goal_content, 1.0 - competence[objective])
+            ws_ignited = workspace.step() == goal_content
+        else:
+            ws_ignited = None
         print(
             f"\nCYCLE {cyc}  ->  OBJECTIVE: digit {objective}  "
             f"[{'explore (novel)' if is_new else 'revisit'}; planner-selected, "
