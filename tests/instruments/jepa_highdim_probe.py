@@ -105,7 +105,7 @@ def main():
     trans = gen_dynamics(n_traj=300, steps=40, seed=0)
     nrng = random.Random(123)
     obs_trans = [(_lift(s, N_NOISE, nrng), a, _lift(ns, N_NOISE, nrng)) for s, a, ns in trans]
-    probe_pairs = [(o, ns) for (o, _, _), (_, _, ns) in zip(obs_trans, trans)]
+    probe_pairs = [(o, ns) for (o, _, _), (_, _, ns) in zip(obs_trans, trans, strict=True)]
 
     jepa = JepaWorldModel(ACTIONS, in_dim=n_in, latent_dim=LAT, seed=0)
     rng = random.Random(1)
@@ -118,7 +118,7 @@ def main():
     std_full = jepa.latent_std()
 
     abl = JepaWorldModel(ACTIONS, in_dim=n_in, latent_dim=LAT, seed=0, anti_collapse=False)
-    for i in range(STEPS):
+    for _i in range(STEPS):
         o, a, on = obs_trans[rng.randrange(len(obs_trans))]
         abl.train_step(o, a, on)
     std_abl = abl.latent_std()
