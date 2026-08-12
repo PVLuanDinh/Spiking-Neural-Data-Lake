@@ -21,7 +21,7 @@ trailing "root on PYTHONPATH", which was true of `research.` and is false of the
 `src` is what has to be on PYTHONPATH now. Corrected 2026-08-05, verified by running it.)
 """
 
-from snn_data_lake.reasoning.nef_compute import NEFEnsemble
+from snn_data_lake.cortex.nef_compute import NEFEnsemble
 
 
 def _say(msg):

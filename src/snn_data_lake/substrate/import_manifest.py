@@ -261,7 +261,13 @@ def main():
     # promoted+renamed to cortex/competence_executive, so its one target (the dlb lazy reach,
     # two call sites) legitimately left the manifest -- same shrink-by-promotion case, and the
     # floor keeps its one-target slack rather than parking on the new count of 12.
-    assert len(man) >= 11, f"manifest collapsed to {len(man)} targets -- scan regression?"
+    # Floor lowered 11 -> 10 on 2026-08-12 (PROMOTE lane, nef_compute -> cortex/): its one
+    # target (the nengo_bridge:470 function-level reach) legitimately left the manifest -- same
+    # shrink-by-promotion case, one-target slack kept. Three more READY promotions in this lane
+    # (vsa_structure_mapping, rose_language, eprop_nmnist) each remove one target; each lowers
+    # this floor by one IN ITS OWN COMMIT, per the batch discipline the regenerated
+    # promotion-plans.json records (a second removal without its lowering reds this line).
+    assert len(man) >= 10, f"manifest collapsed to {len(man)} targets -- scan regression?"
 
     # ROOT-TIER COVERAGE, asserted STRUCTURALLY so that no COUNT arbitrates it. The comment above
     # used to claim the floor of 13 was "also the value that makes root-tier blindness itself red".

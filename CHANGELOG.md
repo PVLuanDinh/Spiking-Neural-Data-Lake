@@ -9,6 +9,28 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- PROMOTE lane 1/4: nef_compute -> cortex/, the NEF reference implementation governed (2026-08-12m)
+
+First of the four READY promotions the regenerated promotion-plans.json licenses,
+executed to its skeptic-verified co-edit list. reasoning/nef_compute.py ->
+cortex/nef_compute.py: REGIONS + run_selfchecks RESEARCH -> CORE (numpy-only,
+0.2s; enters the coverage denominator at 98% self-covered); the nengo_bridge:470
+ground-truth reach retargeted plus its three stale research/ prose cites;
+nef_integrator's module-top import retargeted; import_manifest floor 11 -> 10
+(the one-slack convention -- the entry's skeptic caught this co-edit the analyst
+denied; three more promotions in this lane each lower it again in their own
+commits). The zero-consumer `lif_rate` wrapper DELETED per the entry (zero call
+sites tree-wide, its body one of the two never-executed statements; the P2
+one-definition property lives in _lif_rates, which every real caller uses) --
+the docstring paragraph that defended keeping it now records the deletion.
+POLICIES.md's P7 three-solvers row marked historical (nef's _solve is long gone;
+the row read as current). P3 disposition recorded in the REGIONS comment, the
+polychronization pattern: REFERENCE IMPLEMENTATION / cross-engine ground truth
+for the gated [nengo] tier -- reachable via nengo_bridge, but that import
+executes only when nengo is installed, which no gate env carries; "reachable" is
+not "charged", no EXEMPT entry, no force-wire. Self-check bit-identical at the
+new path (RMSE 0.012 / 0.030, 12-neuron control 0.070, permutation null 12x).
+
 ## [Unreleased] -- adversarial review over the session range: 18 evidenced findings, all applied (2026-08-12l)
 
 Three independent review lenses (retirement surgery / gate integrity /

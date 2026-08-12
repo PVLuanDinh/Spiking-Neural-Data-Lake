@@ -24,9 +24,11 @@ matrix. A/B'd on this tree at the widths that actually occur (mean of repeated c
 additionally better conditioned than a hand-rolled Gauss-Jordan on the normal equations. Numerics moved only
 at float64 round-off: rates are BIT-IDENTICAL, decoders differ by <= 3.1e-13 relative, and every consumer
 number (both nengo_bridge zero-dep RMSEs, the whole nef_integrator trajectory) by <= 5.2e-13 relative --
-measured at full precision, not to four decimals. The scalar `lif_rate` entry point is KEPT (one neuron, one
-current, correctly scalar) but delegates to the same vectorised kernel, so there is one definition of the
-rate law, not two (P2).
+measured at full precision, not to four decimals. The scalar `lif_rate` entry point was DELETED at the
+2026-08-12 promotion: it had ZERO call sites tree-wide (measured, importlib/string dispatch included) and
+its body was one of the two statements the self-check never executed -- a wrapper with no consumer is
+presence, not participation (P3), and the P2 one-definition property it claimed to protect lives in
+`_lif_rates` itself, which every real caller already uses.
 
 RE-MEASURED 2026-08-05 (.venv-lake, median of 15 calls), because a timing in a comment is a claim and this
 file argues that everywhere else. Two of the three post-fix numbers reproduce and ONE DOES NOT:
@@ -93,11 +95,6 @@ def _lif_rates(current):
     above = j > 1.0
     safe = np.where(above, j, 2.0)  # keeps log() in-domain where the result is masked out anyway
     return np.where(above, 1.0 / (T_REF - TAU_RC * np.log(1.0 - 1.0 / safe)), 0.0)
-
-
-def lif_rate(current):
-    """Scalar entry to the same rate law (P2: delegates, does not re-derive). Returns a float."""
-    return float(_lif_rates(current))
 
 
 class NEFEnsemble:
