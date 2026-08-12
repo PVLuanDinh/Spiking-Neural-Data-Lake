@@ -34,7 +34,7 @@ become reachable (retire the exemption) so the list shrinks honestly as waves la
 import ast
 import os
 
-from snn_data_lake import REGIONS, TORCH_TIER
+from snn_data_lake import REGIONS, TORCH_TIER, TRAIN_TIER
 
 _PKG = "snn_data_lake"
 _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../snn_data_lake
@@ -44,9 +44,10 @@ _CANON = {}
 for _region, _mods in REGIONS.items():
     for _m in _mods:
         _CANON[_m] = f"{_PKG}.{_region}.{_m}" if _m != _region else f"{_PKG}.{_region}.{_region}"
-for _region, _mods in TORCH_TIER.items():
-    for _m in _mods:
-        _CANON[_m] = f"{_PKG}.{_region}.{_m}"
+for _tier in (TORCH_TIER, TRAIN_TIER):  # both annexes are brain modules (2026-08-11: +TRAIN_TIER)
+    for _region, _mods in _tier.items():
+        for _m in _mods:
+            _CANON[_m] = f"{_PKG}.{_region}.{_m}"
 BRAIN_MODULES = set(_CANON.values())
 
 # The live-behaviour roots (the autonomous brain) + the shipped console-script entrypoints. A brain

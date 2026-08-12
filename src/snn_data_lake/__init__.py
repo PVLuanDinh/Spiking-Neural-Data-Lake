@@ -152,7 +152,6 @@ REGIONS = {
         "language_self_build",  # PROMOTED 2026-08-11 (#10 family C6): autonomous R-STDP language assemblies; LIVE on the sleep tick
         "language_readout_slda",  # PROMOTED 2026-08-11 (#10 family C5): SLDA-RFF competence head; absorbed fair_compare's equal-budget bar
         "nightly_skills",  # PROMOTED 2026-08-11 (#10 family C9a): the ONE standing skills loop (absorbed meta_skill_loop + open_meta_loop)
-        "deep_stdp_latency",  # PROMOTED 2026-08-11 (#10 lane 2c): the WORKING perception feature learner (DoG+latency+first-spike WTA)
         # torch-trained tiers with a zero-dep serve/integration path (import cleanly without torch)
         "pc_cortex_serve",
         "brain",
@@ -316,15 +315,10 @@ REGIONS = {
         # completion happens inside the gates; dormancy disposition = EXEMPT (opt-in GPU
         # training harness, see dormancy_gate).
         "snn_mnist_stdp_genn",
-        # PROMOTED from reasoning/ 2026-08-11 (#10 lane 2a): the Diehl-Cook rule-family HUB --
-        # its constants are the GeNN port's oracle source of truth (oracle() imports them).
-        # run_selfchecks tier: TRAIN_GATED (torchvision at module top, the recorded P7
-        # adjudication; runs where torchvision is importable, 58.8s full real train on the GPU).
-        "snn_mnist_stdp",
-        # PROMOTED from reasoning/ 2026-08-11 (#10 lane 2b): the deep-STDP lineage's shared
-        # LIBRARY (FcStdp/OneLayerNet/assign_labels/evaluate -- its superseders import them
-        # verbatim) + the recorded ConvStdp honest negative (filter collapse, CHANGELOG v3.49).
-        "deep_stdp",
+        # snn_mnist_stdp + deep_stdp (lane 2a/2b promotions) moved to the TRAIN_TIER annex
+        # below on 2026-08-11 -- their module-top torchvision imports fail the alias-layer
+        # round-trip wherever the [train] extra is absent (the first post-promotion CI run
+        # proved it), which is exactly what the annex tier exists for.
     ],
     "substrate": [
         # PROMOTED 2026-08-04: P2 merge of training/device.py (GPU-first, measured) with the
@@ -401,6 +395,18 @@ REGIONS = {
 TORCH_TIER = {
     "cortex": ["neurogenesis_engine", "language_acquisition"],
     "hippocampus": ["ng_snn"],
+}
+
+# TRAIN-TIER ANNEX (added 2026-08-11, #10 lane-2 CI regression fix) -- region -> modules that
+# import TORCHVISION at module load (the [train] extra; torch alone is not enough). Same
+# contract as TORCH_TIER: part of the anatomical map (region_of + atlas counts), NOT aliased
+# into the back-compat layer, and import-verified only where torchvision is present (the gate
+# env carries torchvision+cu128; CI's torch-tier job installs no extras and skips with notice).
+# The first CI run after these modules entered REGIONS failed exactly as the hub's own
+# docstring predicted -- the alias round-trip imported them on a box with no torchvision.
+TRAIN_TIER = {
+    "plasticity": ["snn_mnist_stdp", "deep_stdp"],
+    "cortex": ["deep_stdp_latency"],
 }
 
 # old flat name -> "region.module". The `m != r` guard used to exempt the same-named hippocampus module

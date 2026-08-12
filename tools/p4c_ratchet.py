@@ -190,7 +190,10 @@ def _governed(root=None):
         if not isinstance(node, ast.Assign):
             continue
         for tgt in node.targets:
-            if not (isinstance(tgt, ast.Name) and tgt.id in ("REGIONS", "TORCH_TIER")):
+            # TRAIN_TIER added 2026-08-11 with the annex itself (lane-2 CI regression fix): a
+            # third registration table with the same shape; a registered train-tier module is
+            # governed exactly as a torch-tier one is.
+            if not (isinstance(tgt, ast.Name) and tgt.id in ("REGIONS", "TORCH_TIER", "TRAIN_TIER")):
                 continue
             try:
                 table = ast.literal_eval(node.value)

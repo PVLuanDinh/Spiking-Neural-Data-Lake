@@ -182,11 +182,12 @@ def _reasoning_modules():
 def _region_modules():
     """region -> [modules], covering the FULL package: REGIONS + the torch tier + the reasoning tier.
     The ITERATION ORDER of the returned dict is the RNG draw order -- do not sort or restructure it."""
-    from snn_data_lake import REGIONS, TORCH_TIER  # lazy: keeps this module import-cycle free
+    from snn_data_lake import REGIONS, TORCH_TIER, TRAIN_TIER  # lazy: keeps this cycle-free
 
     rm = {r: list(mods) for r, mods in REGIONS.items()}
-    for r, mods in TORCH_TIER.items():  # torch-gated organs append to their own region's list
-        rm.setdefault(r, []).extend(mods)
+    for tier in (TORCH_TIER, TRAIN_TIER):  # gated organs append to their own region's list
+        for r, mods in tier.items():
+            rm.setdefault(r, []).extend(mods)
     rm["reasoning"] = _reasoning_modules()
     return rm
 
@@ -401,12 +402,13 @@ def main():
     lay = layout()
     mods, regions, edges = lay["modules"], lay["regions"], lay["edges"]
 
-    # (a) the census must cover EVERY module: REGIONS + TORCH_TIER + the reasoning tier.
-    from snn_data_lake import REGIONS, TORCH_TIER
+    # (a) the census must cover EVERY module: REGIONS + both annex tiers + the reasoning tier.
+    from snn_data_lake import REGIONS, TORCH_TIER, TRAIN_TIER
 
     expected = (
         sum(len(m) for m in REGIONS.values())
         + sum(len(m) for m in TORCH_TIER.values())
+        + sum(len(m) for m in TRAIN_TIER.values())
         + len(_reasoning_modules())
     )
     assert len(mods) == expected, f"layout must place every module ({len(mods)} != {expected})"

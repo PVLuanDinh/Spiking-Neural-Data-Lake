@@ -11,18 +11,18 @@ path (`snn_data_lake.<region>.<module>`), so old code keeps working after the mo
 import importlib
 import os
 
-from snn_data_lake import _MOVED, REGIONS, TORCH_TIER
+from snn_data_lake import _MOVED, REGIONS, TORCH_TIER, TRAIN_TIER
 
 
+# distinct-from: brain_geometry.py -- not a new region resolver; this module's OWN region_of
+# gaining the TRAIN_TIER annex (2026-08-11), same shape as when TORCH_TIER was added.
 def region_of(module):
     """Return the brain region a module belongs to, or None if unknown (checks the core REGIONS map
-    and the TORCH_TIER annex)."""
-    for region, mods in REGIONS.items():
-        if module in mods:
-            return region
-    for region, mods in TORCH_TIER.items():
-        if module in mods:
-            return region
+    and the TORCH_TIER / TRAIN_TIER annexes)."""
+    for tier in (REGIONS, TORCH_TIER, TRAIN_TIER):
+        for region, mods in tier.items():
+            if module in mods:
+                return region
     return None
 
 
@@ -42,7 +42,8 @@ def _region_files(region):
 def main():
     region_total = sum(len(m) for m in REGIONS.values())
     torch_total = sum(len(m) for m in TORCH_TIER.values())
-    total = region_total + torch_total
+    train_total = sum(len(m) for m in TRAIN_TIER.values())
+    total = region_total + torch_total + train_total
     print("=" * 66)
     print("BRAIN ATLAS -- snn_data_lake organized by anatomical region")
     print("=" * 66)
@@ -62,7 +63,9 @@ def main():
     # a file. This replaces the old hard-coded count assert, which masked unmapped modules.
     for region in REGIONS:
         files = _region_files(region)
-        mapped = set(REGIONS[region]) | set(TORCH_TIER.get(region, []))
+        mapped = (
+            set(REGIONS[region]) | set(TORCH_TIER.get(region, [])) | set(TRAIN_TIER.get(region, []))
+        )
         unmapped = files - mapped
         phantom = mapped - files
         assert not unmapped, (
@@ -72,7 +75,7 @@ def main():
 
     # regions are disjoint (no module in two regions, nor in both REGIONS and the torch annex)
     seen = {}
-    for tier in (REGIONS, TORCH_TIER):
+    for tier in (REGIONS, TORCH_TIER, TRAIN_TIER):
         for region, mods in tier.items():
             for m in mods:
                 assert m not in seen, f"module {m} listed in both {seen[m]} and {region}"
@@ -110,6 +113,25 @@ def main():
             else:
                 print(
                     f"SKIP  torch-tier {region}.{m}  (torch absent -- torch-free matrix stays green)"
+                )
+
+    # train-tier annex (2026-08-11): same contract, gated on TORCHVISION (the [train] extra --
+    # torch alone is not enough; the first post-promotion CI run proved it: torch-tier CI has
+    # torch but no torchvision, and the alias round-trip failed on these three).
+    try:
+        import torchvision  # noqa: F401
+
+        _train = True
+    except Exception:
+        _train = False
+    for region, mods in TRAIN_TIER.items():
+        for m in mods:
+            assert region_of(m) == region, f"train-tier {m} must region-resolve to {region}"
+            if _train:
+                importlib.import_module(f"snn_data_lake.{region}.{m}")
+            else:
+                print(
+                    f"SKIP  train-tier {region}.{m}  (torchvision absent -- [train]-free envs stay green)"
                 )
 
     print(
