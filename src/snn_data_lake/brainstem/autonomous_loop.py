@@ -2157,9 +2157,20 @@ def main():
     # 8. WORKSPACE: an opt-in Global Workspace runs live in the loop -- regions compete + broadcast.
     wsa = AutonomousArm(seed=0, workspace=True)
     ws_safe = wsa.step(**a)["workspace"]  # safe tick: perception holds the slot
+    ws_safe_ign = wsa._ws_percept_ignited  # the ported verdict: percept seized the slot
     ws_danger = wsa.step(**_ctx(0.5, 0.5, 0.5, danger_d))[
         "workspace"
     ]  # danger: threat ignites + broadcasts
+    ws_danger_ign = wsa._ws_percept_ignited  # reflex tick submits NO percept -> verdict False
+    # The percept-seizure verdict (ported 2026-08-12 from the retired WorkspaceBroadcast) must
+    # DISCRIMINATE: True on the safe tick (perception holds the slot -- ws_safe above IS the
+    # percept), False on the reflex tick (percept is None there by construction). Reds: invert the
+    # verdict expression, or pin it to either constant -- one of the two halves fires.
+    assert ws_safe_ign and not ws_danger_ign, (
+        f"the percept-seizure verdict must be True on the safe tick and False on the reflex tick "
+        f"(got safe={ws_safe_ign}, danger={ws_danger_ign}) -- the ported ignition verdict is dead "
+        "or inverted"
+    )
     ws_frozen = wsa.arm.state()["stopped"]
     ws_off = AutonomousArm(seed=0).step(**a)[
         "workspace"

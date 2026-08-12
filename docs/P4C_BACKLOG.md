@@ -269,9 +269,12 @@ re-derived per-module by analyst + refute-by-default skeptic pairs (the lane-4f 
 blockers (schema_induction, snn_moe_classifier, spike_chat_lake, eprop_shd, surrogate_snn). Every
 entry carries its skeptic's overturned-claims audit trail; `_meta` records tree, method, and what
 it supersedes. Standing caution the regeneration re-proved: skeptics corrected 6-11 claims per
-module, including a READY entry whose co-edit list missed `import_manifest.py:264`'s floor assert
-sitting at ZERO slack (11 targets vs `>= 11`) — any promotion that removes a manifest target must
-lower the floor in the same commit, and a BATCH of them must count first.
+module, including a READY entry whose co-edit list missed `import_manifest.py:264`'s floor assert:
+12 targets today vs `>= 11` (ONE-target slack); the first manifest-target promotion consumes the
+slack and, by the manifest's own recorded convention, lowers the floor 11 -> 10 in its own commit —
+and a BATCH of manifest-target promotions must count first. *(Corrected at the 2026-08-12 review
+pass: an earlier wording here said "ZERO slack (11 vs >= 11)", which is the POST-move state the
+skeptic computed, not today's tree; promotion-plans.json states it precisely.)*
 
 ---
 

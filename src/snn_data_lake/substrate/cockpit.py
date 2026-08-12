@@ -869,9 +869,9 @@ function paint(d){
    (dv.valence===undefined?EM:fmt(dv.valence,2))+' / '+(dv.arousal===undefined?EM:fmt(dv.arousal,2)));
  drawVA(dv.valence,dv.arousal);
  $('bAcc').innerHTML=big(s.access_index,3)+sub('global access index')
-   +row('ignitions',dv.ignitions,0)
+   +row('ignitions',dv.ignitions,0)+row('percept holds bus',dv.ws_percept_ignited,0)
    +row('PCI',s.pci,3,'pci')+row('integration',s.integration_competence,3,'integration_competence')
-   +`<div class="note">ignitions = broadcast changed hands; the others can hold high on one content.</div>`;
+   +`<div class="note">ignitions = broadcast changed hands; percept holds bus = this tick's percept seized the slot (1/0); the others can hold high on one content.</div>`;
  $('bLife').innerHTML=big(s.nights_elapsed,0)+sub('nights slept')
    +row('grown units',s.grown_units)+row('reasoning acc',s.reasoning_accuracy)
    +row('reliability',s.reliability);

@@ -116,6 +116,9 @@ DASHBOARD_KEYS = (
     "displacement",
     "td_flipped",
     "ignitions",
+    # per-tick percept-seizure verdict (the 2026-08-12 WorkspaceBroadcast retirement port);
+    # rendered beside `ignitions` so the pair separates "the bus moved" from "perception holds it"
+    "ws_percept_ignited",
 )
 
 # Keys outside `cognition | derived` that the cockpit reads. Split out because they live in their own

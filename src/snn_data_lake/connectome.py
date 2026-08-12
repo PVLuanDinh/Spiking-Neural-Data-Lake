@@ -354,12 +354,20 @@ EDGES = [
         "exc",
         "relay",
     ),
-    # hippocampus -> thalamic broadcast hub (fornix -> anterior thalamus, the Papez limb that
-    # reaches the broadcast system): the memory loop posts its current goal into the global
-    # workspace. DECLARED 2026-08-12 when hippocampus/developmental_loop_brain began constructing
-    # its GlobalWorkspace directly (the WorkspaceBroadcast wrapper's retirement) -- the p6 gate's
-    # undeclared-pair detector caught the missing declaration, the same detector working the same
-    # way as the sub->nacc row above: the import existed, the connectome had not recorded it.
+    # hippocampus -> thalamic broadcast hub: hippocampus/developmental_loop_brain constructs and
+    # drives an instance of the thalamic GWT hub CLASS (GlobalWorkspace) for its offline
+    # developmental loop -- two lazy imports (main() / _mechanics_check()), the tree's only
+    # hippocampus->thalamus reach. DECLARED 2026-08-12 when the WorkspaceBroadcast retirement made
+    # dlb construct the bus directly; the p6 undeclared-pair detector fired, the same detector
+    # working the same way as the sub->nacc row above (the import existed, the connectome had not
+    # recorded it). HONEST SCOPE, corrected at the same day's review pass: this declares a REACH,
+    # not live traffic -- the loop's bus is private and offline (p6's unread-writers census lists
+    # it), it is NOT the Papez limb (that is the sub->hypothal fornix row + LOOPS["papez"]), and
+    # wiring the loop's goal broadcast into THE shared hub remains open P6 work. Structural
+    # consequence disclosed rather than implied: EDGES feeds thalamus/connectome_router, so this
+    # row adds one exc/relay projection constructed per Brain -- measured on the live brain
+    # (60 ticks, seed 0, with vs without the row) the per-tick (broadcast, hold) sequence is
+    # IDENTICAL 60/60: the projection exists, nothing live consumes it yet.
     _e(
         "sub",
         "gwt",

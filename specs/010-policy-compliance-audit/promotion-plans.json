@@ -1,7 +1,7 @@
 {
  "_meta": {
   "regenerated": "2026-08-12",
-  "tree": "e8623202 plus the same-session uncommitted contract-fix + live-port edits (CHANGELOG 2026-08-12h..) -- the nef_compute skeptic verified none touches that module's importer set; other entries were measured against the same working tree and say so where it matters",
+  "tree": "the 2026-08-12 session working tree: base e8623202, contract fix ALREADY COMMITTED as 4b24c1da while agents ran, live-port edits (later d0984e3b) present uncommitted in the worktree -- the nef_compute skeptic recorded the exact dirty state and verified none of it touches that module's importer set; other entries measured the same tree (wording corrected at the 2026-08-12l review pass: an earlier _meta called the contract fix uncommitted)",
   "method": "per-module analyst + refute-by-default skeptic (9 modules x 2 agents, #10 lane-4f method); every blocker re-verified against the current tree with runtime probes where cheap; skeptic corrections recorded per entry under 'skeptic'",
   "supersedes": "the 2026-08-04/05 record: TRUNCATED at exactly 400,000 bytes (unparseable, last entry cut mid-string), entries duplicated 2-3x, premises measured stale at execution (#10 lane 4f) -- defect recorded in docs/P4C_BACKLOG.md"
  },

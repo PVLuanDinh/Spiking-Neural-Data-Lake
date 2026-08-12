@@ -169,7 +169,8 @@ of `unread_writer_modules`: a faculty handed its bus by dependency injection (`d
 ws)`) writes through a receiver this walk cannot attribute and is counted as unread. Strict was
 chosen over lenient because excluding unknowns lets any new writer evade the ceiling by taking its
 bus as a parameter; the count of modules in that position is PRINTED under the unread list so it is
-never mistaken for a finding about the tree (1 of the 7 today: `reasoning/spike_chat_lake.py`).
+never mistaken for a finding about the tree (1 of the 6 today: `reasoning/spike_chat_lake.py`;
+re-derived 2026-08-12 at the WorkspaceBroadcast retirement, which took the unread census 7 -> 6).
 
 IT IS A PURE AST WALK, SO UNREACHABLE SYNTAX COUNTS. Measured: a module that is never imported,
 containing an `if False:` block whose class is never instantiated, manufactures a cross-module read,
@@ -310,8 +311,11 @@ BASELINE = {
     # Both ceilings ratcheted DOWN 7 -> 6 on 2026-08-12: WorkspaceBroadcast's retirement removed
     # cortex/competence_executive from both censuses (it no longer constructs or writes into any
     # workspace instance). A ratchet keeps ground it gains -- left at 7, the self-check's
-    # one-mutant regression control could no longer cross the ceiling, i.e. the criterion would
-    # have had no reachable red (measured: 0-of-3 controls + two dead mutations before this edit).
+    # one-mutant regression could no longer cross the ceiling, i.e. the criterion would have had
+    # no reachable red (measured before this edit: BOTH mutations dead, 6 -> 7 does not cross 7;
+    # the three green controls were green at either ceiling -- an earlier 0-of-3-controls reading
+    # was caused by the then-undeclared hippocampus<->thalamus import pair, a different red, and
+    # is NOT evidence for this ratchet; corrected at the same day's review pass).
     "private_instance_modules": 6,
     "unread_writer_modules": 6,
     "cross_module_reads": 1,

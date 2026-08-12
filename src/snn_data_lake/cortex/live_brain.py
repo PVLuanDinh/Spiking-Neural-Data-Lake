@@ -705,19 +705,33 @@ def main():
     )
     # write=False STATELESS planning (the 2026-08-12 port from competence_executive.ExecutivePlanner
     # at its retirement): a lookahead QUERY must leave the held goal hierarchy untouched, while the
-    # gate-write above committed it. Red: drop the pass-through (plan() defaults write=True) and the
-    # query overwrites the held plan.
+    # gate-write above committed it. THE QUERY MUST WANT A DIFFERENT GOAL THAN THE HELD ONE, or the
+    # criterion is vacuous -- constructed before trusting (the adversarial review's blocker): a
+    # same-value query re-runs the identical deterministic race, and a leaked write re-writes the
+    # SAME goal, so `plan_goals` cannot move and the mutation named below survives. With the
+    # INVERTED goal value the query picks the trap (option 1) against the held [0], and the red is
+    # reachable: drop the pass-through (plan() defaults write=True) and _gate_primary overwrites
+    # the held frame with 1 -- measured, the assert fires.
     held_goals = list(brain.plan_goals)
+
+    def inverse_value(s):
+        return abs(s - target)  # the INVERSE objective: reward ending far from the goal
+
     query_pick, _rt_q = brain.deliberate_ahead(
-        0.0, trap_options, to_target, horizon=40, write=False
+        0.0, trap_options, inverse_value, horizon=40, write=False
     )
-    print(f"deliberate : stateless query picks {query_pick}; held plan unchanged {brain.plan_goals}")
+    print(
+        f"deliberate : stateless INVERSE query picks {query_pick} (wants the trap); "
+        f"held plan unchanged {brain.plan_goals}"
+    )
+    assert query_pick == 1, (
+        f"the inverse-objective query must prefer the trap option ({query_pick}) -- if this reds, "
+        "the query harness lost its discriminating landscape"
+    )
     assert brain.plan_goals == held_goals, (
-        f"write=False planning must NOT move the held goal hierarchy ({held_goals} -> {brain.plan_goals})"
-    )
-    assert query_pick == planned_pick, (
-        f"the stateless query over the same clear landscape must reach the same plan "
-        f"({query_pick} vs {planned_pick})"
+        f"write=False planning must NOT move the held goal hierarchy ({held_goals} -> "
+        f"{brain.plan_goals}) -- red reachable: dropping the write= pass-through gate-writes the "
+        "query's DIFFERENT goal over the held one"
     )
 
     # the brain runs LIVE with the JEPA latent world model: it learns a latent world model ONLINE from the

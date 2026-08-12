@@ -1069,9 +1069,13 @@ class GlobalWorkspace:
 
         ZERO-ARG AND STAYING THAT WAY. This is the tree's ONE genuine cross-module workspace read
         (`cortex/live_brain.py::thought` -> `self.arm.workspace.broadcast()`), and `tools/p6_gate.py`
-        classifies `broadcast` BY ARITY -- 0 arguments is this reader, 3 is a submit wearing a
-        reader's name. Its return type is a single content, and every `is not None` test in the tree
-        is written against that. Widening it to return the whole workspace would break both."""
+        classifies the zero-arg `broadcast` as THE reader. (Until 2026-08-12 the gate also
+        classified a 3-arg `broadcast` as a WRITE -- the retired WorkspaceBroadcast's submit
+        wearing a reader's name; that arity entry left the gate's API table with the class, so a
+        future 3-arg method named `broadcast` would be INVISIBLE to the gate until added to its
+        closed allowlist by hand.) Its return type is a single content, and every `is not None`
+        test in the tree is written against that. Widening it to return the whole workspace would
+        break both."""
         return self.current
 
     def broadcast_all(self):

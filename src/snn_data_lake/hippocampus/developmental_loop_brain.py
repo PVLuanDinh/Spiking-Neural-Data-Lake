@@ -522,6 +522,11 @@ def main():
         is_new = objective not in learned
         # GLOBAL WORKSPACE: broadcast the current goal (salience = how far from mastered). Coordination/faithfulness.
         # This loop constructed the bus, so stepping it is OWNER semantics (the one competition per cycle).
+        # PREDICATE CHANGE disclosed (2026-08-12 review pass): the retired wrapper's broadcast()
+        # returned the bus's top CONTENT -- truthy even when a STALE earlier cycle's goal still
+        # held the slot -- while ws_ignited below reports whether THIS cycle's goal seized it,
+        # which is what the variable's name and the cycle print always claimed. The two diverge
+        # exactly on stale-hold cycles (low-salience revisits after a strong earlier goal).
         if WS:
             goal_content = f"study_digit_{objective}"
             workspace.submit("executive", goal_content, 1.0 - competence[objective])

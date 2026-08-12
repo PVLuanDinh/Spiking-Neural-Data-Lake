@@ -43,8 +43,10 @@ P2 -- what already exists, checked before proposing promotion rather than after:
     plus ONE expression (`ignited = current == content`), and constructing its own workspace made
     it one of the private, mutually invisible instances `tools/p6_gate.py` counts. Everything it
     owed was ported FIRST: the ignition VERDICT lives on
-    `brainstem/autonomous_loop._workspace_broadcast` as `_ws_percept_ignited` (consumed by
-    `substrate/brain_telemetry`, the same surface that reads `_ignitions`); the tenant contract
+    `brainstem/autonomous_loop._workspace_broadcast` as `_ws_percept_ignited` (asserted in that
+    module's own self-check -- safe-tick True / reflex-tick False, both halves reddenable --
+    exported by `substrate/brain_telemetry` and rendered by the cockpit beside `ignitions`); the
+    tenant contract
     was fixed at 4b24c1da (submit-and-read -- a tenant of the one bus must not drive its clock;
     the measured 20/20 (content, hold) divergence, the sub-threshold 3/20, and the criterion's
     own 4/20 reachable red are all recorded in that commit and CHANGELOG 2026-08-12h);
@@ -54,9 +56,13 @@ P2 -- what already exists, checked before proposing promotion rather than after:
     arm's producer is neutered; harness and neuter-sensitivity control in the 4b24c1da history)
     stays credited to the CHANNEL -- ws= injection -- and the channel survives as
     `GlobalWorkspace` itself plus `live_brain.workspace`, the handle a faculty is given instead
-    of building a private bus. Nothing measured was lost in the deletion.
-  * DopamineModulator is NOT a duplicate, but half of it is. `brainstem/autonomous_loop.py:1800-
-    1826` already runs RPE -> `DopamineNuclei.da_level` on the live tick -- and stores the result as
+    of building a private bus. What the deletion DID cost, named rather than rounded to zero
+    (same-day review pass): the class's own rheobase-boundary asserts and the 4b24c1da clock
+    criterion died with their subject -- their licences live in git history, not in a running
+    check -- and the ported verdict's criterion now lives in autonomous_loop's self-check.
+  * DopamineModulator is NOT a duplicate, but half of it is. `brainstem/autonomous_loop.py:1807-
+    1833` (re-cited 2026-08-12: this session's own +7 line insertion above the range shifted it;
+    grep `_da_level`) already runs RPE -> `DopamineNuclei.da_level` on the live tick -- and stores the result as
     TELEMETRY (`self._da_level`) while the learning rate is scaled by `cort.learn_rate_scale(r)`
     (cortisol), not by dopamine. So "dopamine level -> bounded learning-rate multiplier" is done
     nowhere governed. Honest inferiority to record: the governed path derives its RPE from a LEARNED
@@ -206,8 +212,9 @@ class DopamineModulator:
 
     def __init__(self, seed=0, nucleus=None):
         """`nucleus` accepts an ALREADY-LIVE DopamineNuclei (P6: the live tick owns one at
-        `brainstem/autonomous_loop.py:1802`). Default None keeps the previous private construction,
-        so this is a new port, not a behaviour change."""
+        `brainstem/autonomous_loop.py:1809`; re-cited 2026-08-12 after this session's +7 shift).
+        Default None keeps the previous private construction, so this is a new port, not a
+        behaviour change."""
         self.seed = seed
         self._nuc = DopamineNuclei(seed=seed) if nucleus is None else nucleus
         self.shared_nucleus = nucleus is not None

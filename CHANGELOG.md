@@ -9,6 +9,37 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- adversarial review over the session range: 18 evidenced findings, all applied (2026-08-12l)
+
+Three independent review lenses (retirement surgery / gate integrity /
+claims-vs-tree) ran over e8623202..e86f11fb BEFORE push and returned 18 evidenced
+findings -- two of them the SAME blocker found independently: the write=False
+self-check pin was VACUOUS. A same-value stateless query re-runs the identical
+deterministic race, so a leaked write re-writes the SAME goal and plan_goals
+cannot move; the mutation the criterion itself named SURVIVED (measured). FIX:
+the query now runs an INVERTED goal value that wants the trap against the held
+goal, and the named mutation fires ([0] -> [1], measured both directions).
+
+The ported percept-seizure verdict was presence-not-participation (zero criteria,
+zero consumers tree-wide): now ASSERTED in autonomous_loop's own self-check
+(safe-tick True / reflex-tick False, both halves reddenable) and RENDERED by the
+cockpit beside `ignitions` (dashboard-contract tuple + row + note -- P4c: the
+surface reports what the brain measures). The sub->gwt connectome row
+over-claimed: not the Papez limb, a REACH rather than live traffic, and it
+silently added a router projection -- comment rewritten to the honest scope with
+the re-measured live null (60/60 identical per-tick (broadcast, hold), seed 0).
+The fabricated-figure class: the "0-of-3 controls" clause justifying the 7 -> 6
+baseline ratchet was caused by a different concurrent red (the then-undeclared
+import pair), not the ceilings -- corrected in the gate's comment and entry (k);
+the "zero slack" import_manifest compression in entry (i) / P4C_BACKLOG corrected
+to today's one-target slack (12 vs >= 11). Cite rot this session itself
+introduced (+7 line shift over autonomous_loop :1800-1826 / :1802) re-derived to
+:1807-1833 / :1809; global_workspace's arity-contract docstring updated for the
+deleted (broadcast, 3) table entry; entry (h) annotated (its clock criterion was
+deleted at (k) with its subject class; the licence lives in 4b24c1da); dlb's
+ws_ignited predicate change disclosed (stale-hold divergence); promotion-plans
+_meta.tree wording corrected. Full gates re-run green after the fixes.
+
 ## [Unreleased] -- WorkspaceBroadcast + ExecutivePlanner RETIRED: the wrappers die, the substance survives public (2026-08-12k)
 
 Both classes deleted from cortex/competence_executive per specs/010 P2, after every
@@ -21,7 +52,12 @@ _plan_objective composes plan(write=False) over the public domain objects; the
 goal broadcast is a GlobalWorkspace the loop OWNS (submit + step + verdict inline
 -- owner semantics; the fixed tenant contract does not apply to a bus's own
 clock); mechanics check green (pooled 0.739 > 0.30, replay live, ASSERT 4 still
-splits exec 1 != fused 5).
+splits exec 1 != fused 5). One semantic delta DISCLOSED at the review pass
+(2026-08-12l): dlb's printed ws_ignited verdict changed predicate -- the retired
+wrapper returned the bus's top CONTENT, truthy even when a STALE earlier cycle's
+goal still held the slot, while the owner rewrite reports whether THIS cycle's
+goal seized it (what the name and the print always claimed); the two diverge
+exactly on stale-hold cycles.
 
 tools/p6_gate.py co-edited in the same commit: WORKSPACE_CLASSES 3 -> 2, the
 (broadcast, 3) arity entry deleted, the KNOWN_WRITERS competence_executive entry
@@ -29,13 +65,17 @@ removed (the module now performs ZERO workspace writes -- a floor of 3 would hav
 fired on a correct deletion), the dedicated 3-arg-broadcast criterion deleted with
 its subject. The retirement RATCHETED two ceilings DOWN 7 -> 6
 (private_instance_modules, unread_writer_modules): left at 7, the self-check's
-one-mutant regression control could no longer cross them -- measured 0-of-3
-controls green and two dead mutations before the ratchet; after it, 3-of-3 green
-and every mutation fires. The dlb GlobalWorkspace import surfaced an undeclared
-hippocampus<->thalamus pair -- the detector working exactly as at lane 4e --
-resolved by DECLARING the real route (sub -> gwt, the Papez limb into the
-broadcast hub); undeclared 12 -> 11, unimplemented flat at 21 (the new
-declaration is implemented by the import that forced it). P6_INTERCONNECT's dated
+one-mutant regression could no longer cross them -- measured: both mutations dead
+at ceiling 7 (6 -> 7 does not cross); after the ratchet every mutation fires and
+3-of-3 controls stay green. [Corrected 2026-08-12l: an earlier wording blamed
+0-of-3 controls on the ceilings; that reading came from the then-undeclared
+import pair, a different red.] The dlb GlobalWorkspace import surfaced an
+undeclared hippocampus<->thalamus pair -- the detector working exactly as at
+lane 4e -- resolved by DECLARING the route (sub -> gwt); undeclared 12 -> 11,
+unimplemented flat at 21. [Scope corrected 2026-08-12l: the declaration records a
+REACH implemented by dlb's lazy OFFLINE imports, not live traffic, and it is not
+the Papez limb -- the row's own comment carries the honest scope + the measured
+60/60-identical live null.] P6_INTERCONNECT's dated
 snapshots annotated. This closes the last recorded deferral from #10 lane 4f and
 unblocks the reasoning/ drain's PROMOTE lane.
 
@@ -69,8 +109,11 @@ go stale at execution. Regenerated against the current tree, user-set agenda ite
 the 9 surviving modules re-derived by per-module analyst + refute-by-default skeptic
 pairs (the lane-4f method; skeptics again overturned or corrected 6-11 claims PER
 MODULE -- among them a READY entry's co-edit list that missed import_manifest's
-floor assert sitting at zero slack, the exact class of miss that turns a correct
-promotion into a red gate). Verdicts: 4 READY (nef_compute, rose_language,
+floor assert entirely: 12 targets today vs a floor of 11, so the FIRST
+manifest-target promotion consumes the one-target slack and lowers the floor in
+its own commit, the exact class of miss that turns a correct promotion into a red
+gate. [Corrected 2026-08-12l: this entry first compressed that to "zero slack",
+which is the post-move state, not today's tree.]). Verdicts: 4 READY (nef_compute, rose_language,
 vsa_structure_mapping, eprop_nmnist), 5 BLOCKED on concrete re-verified blockers
 (schema_induction, snn_moe_classifier, spike_chat_lake at risk=high, eprop_shd,
 surrogate_snn), 8 SETTLED recorded with their execution commits. 186,738 bytes of
@@ -101,7 +144,11 @@ cannot ignite anything BY ITSELF (pre-owner-step read is None; red = stepping a
 shared clock again). p6_gate is untouched: the 3-argument `broadcast()` still submits
 and stays classified WRITE; all 5 ratchets re-measured green. This closes the
 precondition for the WB/ExecutivePlanner retirement (next); the four owed ports
-follow.
+follow. [Annotation 2026-08-12l: the clock criterion and the shared-block asserts
+described above were DELETED at 2026-08-12k together with their subject class --
+the shipping tree no longer runs them; their licence (the 4/20 measured red) lives
+in commit 4b24c1da. Recorded so this entry does not advertise a criterion that no
+longer executes.]
 
 ## [Unreleased] -- the EXEC bypass deleted: the planner IS the selection path (2026-08-12g)
 
