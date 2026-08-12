@@ -9,6 +9,27 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- the live-tier half of the four owed ports: ignition verdict + stateless planning (2026-08-12j)
+
+Two of the four ports WorkspaceBroadcast's docstring owes before retirement land
+on their live owners. (1) `ignited` -> brainstem/autonomous_loop's
+_workspace_broadcast: the wrapper's one expression (did MY submission seize the
+slot) becomes `_ws_percept_ignited` -- the per-tick percept-seizure verdict,
+distinct from `_ignitions`' content-change counter -- consumed by
+substrate/brain_telemetry ("ws_percept_ignited"), the same surface that reads
+`_ignitions`, so the pair separates "the bus moved" from "perception holds the
+bus". (2) ExecutivePlanner's write=False stateless planning ->
+cortex/live_brain.deliberate_ahead(write=): a pass-through to
+PrefrontalExecutive.plan's own parameter; the default write=True gate-writes the
+committed goal exactly as before, write=False runs the race and returns the pick
+with the held goal hierarchy untouched -- pinned in live_brain's self-check
+(stateless query reaches the same plan on the clear landscape; plan_goals
+bit-unchanged; red = dropping the pass-through). The remaining half of the owed
+ports (CompetenceDynamics/goal_value made public + the dlb rewrite) lands with
+the retirement commit, which they license. Gates: covered by the 297/297 +
+pytest 91.12% + ruff run at 4b24c1da (the mixed tree included these edits);
+module self-checks re-run individually green.
+
 ## [Unreleased] -- promotion-plans.json REGENERATED: the truncated instrument replaced (2026-08-12i)
 
 The specs/010 blocked-promotion record was truncated at exactly 400,000 bytes

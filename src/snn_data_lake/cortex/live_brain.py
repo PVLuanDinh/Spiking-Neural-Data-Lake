@@ -342,12 +342,20 @@ class LiveBrain:
             predictor=self.arm.jepa,
         )
 
-    def deliberate_ahead(self, state, options, goal_value, horizon=8, predictor=None):
+    # distinct-from: cortex/counterfactual_sim.py -- imagine() rolls ONE held-fixed action into a
+    # trajectory and decides nothing; this races OPTIONS through the spiking WTA and commits a goal.
+    def deliberate_ahead(self, state, options, goal_value, horizon=8, predictor=None, write=True):
         """The brain's DELIBERATIVE (planning) faculty: look `horizon` steps ahead over a forward
         model and commit the option whose predicted terminal state best serves `goal_value`, via the
         prefrontal executive's drift-diffusion race (reuses PrefrontalExecutive.plan). horizon=1 is
         reactive (immediate consequence), horizon>=2 is planned -- so it can reject a high-immediate
         -value TRAP that rolls into a bad state.
+
+        `write=False` is a STATELESS query (ported 2026-08-12 from
+        cortex/competence_executive.ExecutivePlanner ahead of that wrapper's retirement -- the one
+        planning capability it held that no governed caller of plan() exposed): the race runs, the
+        pick returns, and the planner's held working-memory goal is untouched. The default
+        write=True gate-writes the committed goal exactly as before (plan()'s own default).
 
         SAFETY: this holds a goal by lookahead; it does NOT drive the arm. Motor selection stays
         reactive and GATED (the reflex/E-STOP and the ArmSim gate are untouched); planning only biases
@@ -360,7 +368,7 @@ class LiveBrain:
             )  # abstract plant s' = s + 0.2*(-0.5 s + u)
         if self._planner is None or self._planner.n_options != len(options):
             self._planner = PrefrontalExecutive(n_options=len(options), seed=self._seed)
-        return self._planner.plan(state, options, predictor, goal_value, horizon=horizon)
+        return self._planner.plan(state, options, predictor, goal_value, horizon=horizon, write=write)
 
     @property
     def plan_goals(self):
@@ -694,6 +702,22 @@ def main():
     )
     assert arm_still_gated, (
         "deliberation must not touch the arm gate (planning biases a goal, never drives the arm)"
+    )
+    # write=False STATELESS planning (the 2026-08-12 port from competence_executive.ExecutivePlanner
+    # at its retirement): a lookahead QUERY must leave the held goal hierarchy untouched, while the
+    # gate-write above committed it. Red: drop the pass-through (plan() defaults write=True) and the
+    # query overwrites the held plan.
+    held_goals = list(brain.plan_goals)
+    query_pick, _rt_q = brain.deliberate_ahead(
+        0.0, trap_options, to_target, horizon=40, write=False
+    )
+    print(f"deliberate : stateless query picks {query_pick}; held plan unchanged {brain.plan_goals}")
+    assert brain.plan_goals == held_goals, (
+        f"write=False planning must NOT move the held goal hierarchy ({held_goals} -> {brain.plan_goals})"
+    )
+    assert query_pick == planned_pick, (
+        f"the stateless query over the same clear landscape must reach the same plan "
+        f"({query_pick} vs {planned_pick})"
     )
 
     # the brain runs LIVE with the JEPA latent world model: it learns a latent world model ONLINE from the

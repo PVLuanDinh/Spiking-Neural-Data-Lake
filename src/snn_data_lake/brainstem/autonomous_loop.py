@@ -230,6 +230,7 @@ class AutonomousArm:
         # wake ticks where `_workspace_broadcast` runs, and the first increment is the transition out
         # of None. A count taken on a different tick population is a different count.
         self._ignitions = 0
+        self._ws_percept_ignited = False  # per-tick: did the percept seize the slot (the 4f port)
         self._prev_thought = None
         self._allo_last_ee = None  # previous end-effector pose, for _self_motion's dead reckoning
         self._last_disp = 0.0  # how far the end effector actually travelled on the last scored tick
@@ -1371,6 +1372,12 @@ class AutonomousArm:
                 "salience", "novelty", self._novelty
             )  # bottom-up stimulus salience competes
         content = self.workspace.step()
+        # The ignition VERDICT, ported 2026-08-12 from cortex/competence_executive.WorkspaceBroadcast
+        # ahead of that wrapper's retirement -- the one expression the wrapper added over the bus:
+        # did THIS loop's own percept submission seize the slot this tick. Distinct from
+        # `_ignitions` below, which counts content CHANGES across ticks. Consumed by
+        # substrate/brain_telemetry ("ws_percept_ignited"), the same surface that reads `_ignitions`.
+        self._ws_percept_ignited = percept is not None and content == percept
         # Purely observational: count a change of broadcast content. This used to be tallied by the
         # tkinter live-brain tab, which meant the number only existed while a window was open and
         # reset when it closed. It is a fact about the brain, so it lives on the brain.

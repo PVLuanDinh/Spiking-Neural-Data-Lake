@@ -311,6 +311,11 @@ def snapshot(brain):
             ("cpg_spread_max", "_cpg_spread_max"),
             ("td_flipped", "_td_flipped"),
             ("ignitions", "_ignitions"),
+            # Per-tick ignition VERDICT (2026-08-12, the WorkspaceBroadcast retirement port): did
+            # the loop's own percept seize the workspace slot this tick. `ignitions` above counts
+            # content CHANGES; this reports the current tick's seizure, so the pair separates "the
+            # bus moved" from "perception holds the bus".
+            ("ws_percept_ignited", "_ws_percept_ignited"),
             # Displacement, deliberately NOT called speed: ArmSim has no dt, no mass and no dynamics
             # (arm_hardware.SIM_GAP.sim_has_dynamics is False), so dividing by a timestep would invent
             # a velocity the simulator cannot support. This is the chord length of the last scored
