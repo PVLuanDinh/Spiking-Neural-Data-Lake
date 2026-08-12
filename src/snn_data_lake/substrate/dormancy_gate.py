@@ -123,14 +123,18 @@ EXEMPT = {
     ),
     "brain_decision": (
         "permanent",
-        "SELECTION stage over basal_ganglia/latent_q's value table (promoted 2026-08-12, #10 "
-        "lane 4d): fuses value + metacognition on the loop's curiosity; composition-only. Its "
-        "ONE consumer (hippocampus/developmental_loop_brain, which also BYPASSES choose() "
-        "under NORD_EXEC=1 default -- the recorded P2 vs ExecutivePlanner) is itself "
-        "EXEMPT-permanent TRAIN-TIER, and reachable() seeds only from live roots/entrypoints "
-        "-- MEASURED 2026-08-12: the consumer's promotion converts NOTHING to reachable, so "
-        "the earlier 'converts to reachable' clause here was a promise the gate's own "
-        "mechanics cannot keep. Wiring anything else would be the fake consumer P3 names",
+        "SELECTION-turned-CONTROL stage over basal_ganglia/latent_q's value table (promoted "
+        "2026-08-12, #10 lane 4d): fuses value + metacognition on the loop's curiosity; "
+        "composition-only. The EXEC-bypass P2 this entry used to record was ADJUDICATED "
+        "2026-08-12: the consumer (hippocampus/developmental_loop_brain) deleted NORD_EXEC "
+        "and the fused choose() branch on a measured tie plus this module's recorded fusion "
+        "null -- choose() keeps exactly ONE external call site, the consumer's "
+        "mechanics-check split criterion, executed by gate command #1. On that consumer's "
+        "default path observe() trains a table nothing reads (bit-identical A/B, 3 seeds) "
+        "-- presence-not-participation, recorded plainly with NO conversion clause: the "
+        "consumer is itself EXEMPT-permanent TRAIN-TIER and reachable() seeds only from "
+        "live roots/entrypoints (measured 2026-08-12: its promotion converts NOTHING to "
+        "reachable). Wiring anything else would be the fake consumer P3 names",
     ),
     "hippocampal_memory": (
         "permanent",

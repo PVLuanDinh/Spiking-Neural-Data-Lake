@@ -5,7 +5,8 @@ hand-rolled parts replaced by the brain's REAL subsystems, wired through thin ad
   perception    : conv1 latency-STDP (unsupervised, frozen)          [cortex/deep_stdp_latency, promoted 2026-08-11]
   memory        : HippocampalMemory  = real ReplayBuffer + SleepConsolidator   [hippocampus/, promoted 2026-08-11]
   readout       : GrowableReadout    = MLP grown function-preservingly (Net2Net) [hippocampus/, promoted 2026-08-11]
-  decision      : SpikingCuriosity + SpikingCurriculum + BrainDecision (LatentQ value + Metacog) [basal_ganglia/, promoted 2026-08-12]
+  decision      : SpikingCuriosity + SpikingCurriculum + BrainDecision (LatentQ value + Metacog; trains and
+                  monitors -- the planner SELECTS since the 2026-08-12 EXEC-bypass adjudication below) [basal_ganglia/]
   neurogenesis  : readout.grow() fired by the MetacognitiveMonitor grow_trigger  [the brain grows its own readout neurons]
   neuromod      : LocusCoeruleus (readout lr gain)                    [neuromodulation]
   executive     : ExecutivePlanner + DopamineModulator + WorkspaceBroadcast     [cortex/competence_executive,
@@ -61,6 +62,24 @@ never be wired to a live LEARNING consumer; if it ever is, that consumer takes t
 governed `lr_scale` three-factor parameter (basal_ganglia/valence_stdp.py,
 neuromodulation/cortisol.py), never Adam -- and making this module reachable converts the
 permitted offline trainer into an e-prop violation that nothing would announce.
+
+EXEC-BYPASS P2 ADJUDICATED 2026-08-12 (#10 lane 4f follow-up): the PLANNER is the one
+selection mechanism, and the NORD_EXEC flag + the fused decision.choose() branch are
+DELETED, not gated. Measured before deletion (independent harness, positive control in
+the same runs): at the shipped config (15 cycles, 30 seeds) planner vs fused chooser is
+a genuine tie (0.5917 vs 0.5894, higher on 12/30 vs 13/30) while the same harness
+separates a worse policy at 29/30 (curiosity-only, -2.1pp) -- a real null, not a dead
+harness. Settled on MECHANISM: the planner duplicates no governed mechanism, while the
+chooser's value channel carries basal_ganglia/brain_decision's recorded fusion null,
+re-confirmed here by a permutation null (structure preserved, content destroyed:
+-0.11pp, 7/15; the constant-pin null alone is confounded and was not relied on).
+BrainDecision stays constructed: observe()/reliability()/grow_trigger() keep their
+sites, and on the default path observe() trains a table nothing reads (bit-identical
+A/B over 3 seeds -- suppressing all 15 observe() calls changes no output while the
+table's |W|+|b| moves 0.469 -> 1.099). That is presence-not-participation, named here
+and in this module's dormancy EXEMPT entry rather than laundered; choose() keeps
+exactly ONE external call site, the mechanics-check split criterion (ASSERT 4), which
+gate command #1 executes on every smoke run.
 
 Self-check shape (the deep_stdp DEEPSTDP_RUN precedent): the bare __main__ is a bounded
 MECHANICS check (~10-30 s: wiring asserts with reachable reds, NO accuracy claims -- any
@@ -244,16 +263,19 @@ def _mechanics_check():
         )
 
     # ASSERT 4 -- the planner SELECTS rather than decorates: on a constructed state where
-    # lookahead and fused-curiosity disagree, the EXEC path and the EXEC=0 path must pick
+    # lookahead and fused-curiosity disagree, the planner and the fused chooser must pick
     # DIFFERENT objectives. Red: make plan_objective return a constant / the fused pick.
+    # Since the 2026-08-12 EXEC-bypass adjudication this is the ONLY external choose() call
+    # site tree-wide, and gate command #1 executes it on every smoke run -- the fused chooser
+    # survives as this criterion's control, not as a selection path.
     comp_c = [0.9, 0.1, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9]
     cands_c = list(range(10))
     cur_c = [1.0 if d == 5 else 0.01 for d in cands_c]  # curiosity screams digit 5
     pick_exec = planner.plan_objective(comp_c, cands_c)
     pick_fused = decision.choose(cands_c, comp_c, cur_c)
     assert pick_exec != pick_fused, (
-        f"EXEC and EXEC=0 picked the same objective ({pick_exec}) on a state constructed "
-        f"to split them -- the planner is decorative, not selecting"
+        f"the planner and the fused chooser picked the same objective ({pick_exec}) on a "
+        f"state constructed to split them -- the planner is decorative, not selecting"
     )
 
     w0 = readout.clf.weight.detach().clone()
@@ -451,10 +473,9 @@ def main():
     curiosity = SpikingCuriosityDrive(seed=0)
     curriculum = SpikingCurriculum(n_stages=10, patience=2, seed=0)
     lc = LocusCoeruleus()
-    # ---- Slice 2: executive planning + dopamine RPE neuromod + global-workspace broadcast (opt-in, default on) ----
-    EXEC = _envi(
-        "NORD_EXEC", 1
-    )  # prefrontal_executive plans the objective (lookahead over competence)
+    # ---- Slice 2: executive planning + dopamine RPE neuromod + global-workspace broadcast ----
+    # NORD_EXEC deleted 2026-08-12 (EXEC-bypass P2 adjudication, module docstring): the planner
+    # IS the selection path -- no flag, no fused fallback.
     DOPA = _envi("NORD_DOPA", 1)  # dopamine RPE modulates the readout lr alongside LC
     WS = _envi("NORD_WS", 1)  # global_workspace broadcasts the current goal (coordination)
     planner = ExecutivePlanner(seed=0)
@@ -477,14 +498,10 @@ def main():
             allowed = [d for d in candidates if consec[d] < CAP]
             candidates = allowed or candidates
         comp_vec = [competence[d] for d in range(10)]
-        cur_scores = [curiosity.curiosity_value(d) for d in candidates]
-        # EXECUTIVE: prefrontal_executive plans the objective by lookahead over competence dynamics (goal_value =
-        # mean + min competence, predictor raises headroom-proportionally). Falls back to BrainDecision otherwise.
-        objective = (
-            planner.plan_objective(comp_vec, candidates)
-            if EXEC
-            else decision.choose(candidates, comp_vec, cur_scores)
-        )
+        # EXECUTIVE: prefrontal_executive plans the objective by lookahead over competence dynamics
+        # (goal_value = mean + min competence, predictor raises headroom-proportionally). The ONE
+        # selection mechanism since the 2026-08-12 EXEC-bypass adjudication.
+        objective = planner.plan_objective(comp_vec, candidates)
         consec = {d: (consec[d] + 1 if d == objective else 0) for d in range(10)}
         is_new = objective not in learned
         # GLOBAL WORKSPACE: broadcast the current goal (salience = how far from mastered). Coordination/faithfulness.
@@ -497,7 +514,7 @@ def main():
         )
         print(
             f"\nCYCLE {cyc}  ->  OBJECTIVE: digit {objective}  "
-            f"[{'explore (novel)' if is_new else 'revisit'}; {'EXEC-planned' if EXEC else 'metacog ' + ('EXPLORE' if decision.explore() else 'exploit')}, "
+            f"[{'explore (novel)' if is_new else 'revisit'}; planner-selected, "
             f"reliability={decision.reliability():.2f}, novelty={curiosity.novelty(objective):.2f}"
             f"{'; workspace IGNITED' if ws_ignited else ''}]"
         )

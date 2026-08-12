@@ -9,6 +9,35 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- the EXEC bypass deleted: the planner IS the selection path (2026-08-12g)
+
+The recorded P2 from lane 4d ("dlb BYPASSES choose() at NORD_EXEC=1 default while
+observe() trains unconditionally -- two mechanisms for one job") ADJUDICATED: option
+(i), the planner survives and the bypass is DELETED, not gated. NORD_EXEC, the fused
+decision.choose() branch, the cur_scores feed and the EXEC-conditional print label all
+go; developmental_loop_brain's selection is planner.plan_objective, unconditionally.
+
+Decided on measurement, not taste: at the shipped config (15 cycles, 30 seeds,
+independent harness) planner vs fused chooser is a genuine TIE (0.5917 vs 0.5894,
+12/30 vs 13/30) -- and the tie is a real null because the SAME harness separates a
+worse policy at 29/30 (curiosity-only, -2.1pp) and a deliberately bad one at 15/15
+(40 cycles). With outcome tied, P2 settles on MECHANISM: the planner duplicates no
+governed mechanism; the chooser's value channel carries brain_decision's recorded
+fusion null, re-confirmed by a PERMUTATION null on this workload (-0.11pp, 7/15 --
+the constant-pin null alone is confounded by tie-break variety and was not relied
+on). A first 3-seed read said FUSED +2.78pp on 3/3; at 30 seeds it inverted -- n=3
+would have lied, recorded so nobody re-runs it short.
+
+Kept, and named honestly: BrainDecision stays constructed
+(observe()/reliability()/grow_trigger()); on the default path observe() trains a
+table nothing reads (bit-identical A/B over 3 seeds while |W|+|b| moves 0.469 ->
+1.099) -- presence-not-participation, recorded in the consumer's docstring and the
+dormancy EXEMPT entry with no conversion clause. choose() keeps exactly ONE external
+call site: the mechanics-check split criterion (ASSERT 4), executed by gate command
+#1 -- the fused rule survives as that criterion's CONTROL, not as a selection path.
+brain_decision's consumer-bypass bullet and the brain_decision EXEMPT entry
+co-edited to the adjudicated state.
+
 ## [Unreleased] -- lane 4f: executive_control -> cortex/competence_executive, brain_adapters CLOSES (2026-08-12f)
 
 The LAST brain_adapters module promotes, RENAMED: the basename `executive_control` is

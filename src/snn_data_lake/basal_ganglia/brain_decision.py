@@ -55,17 +55,22 @@ independently reproduced with a second workload construction before landing):
     r_explore=0.30 on this workload), so the former alpha_exploit=0.2 was a value with
     no reachable state -- DELETED per P8 rather than kept as documentation of a state
     that cannot occur. Behaviour is unchanged: alpha was 0.8 on every measured cycle.
-  * THE SOLE CONSUMER BYPASSES choose() BY DEFAULT: developmental_loop_brain.py routes
-    objective selection through ExecutivePlanner.plan_objective when NORD_EXEC=1 (the
-    default), while decision.observe() trains unconditionally -- computed-but-not-
-    consumed. That is a P2 question (two mechanisms for one job) OWNED BY the
-    executive_control lane (p6-pinned, specs/010: its retirements are a separate
-    change); recorded here so the promotion cannot be read as "the fusion is live".
+  * THE SOLE CONSUMER'S BYPASS WAS ADJUDICATED 2026-08-12 (the P2 this bullet used to
+    record as open): developmental_loop_brain DELETED its NORD_EXEC flag and the fused
+    choose() branch -- the planner is the one selection mechanism, decided on a
+    measured tie (planner vs fused 0.5917 vs 0.5894 over 30 seeds at the shipped
+    config, with a positive control separating a worse policy 29/30 in the same runs)
+    plus this module's own recorded fusion null, re-confirmed by a permutation null on
+    that workload. choose() keeps exactly ONE external call site: the consumer's
+    mechanics-check split criterion (its ASSERT 4), executed by gate command #1.
+    observe() still trains on the consumer's default path while nothing reads the
+    table there -- recorded as presence-not-participation in the consumer's docstring
+    and in this module's dormancy EXEMPT entry, not laundered.
 
-  Disposition of the fusion rule itself (rank fusion, learned alpha, or retirement of
-  the value channel on the standing null) belongs to that same adjudication -- under P8
-  the null is recorded, not asserted-around, and per the criteria-measure-the-pathology
-  lesson NO assert pins the dead zone (a fix would red it looking like a regression).
+  Disposition of the fusion rule itself, settled at that adjudication: the rule stays
+  as the mechanics-check CONTROL (the split criterion needs a fused pick to disagree
+  with), the null stays recorded, and per the criteria-measure-the-pathology lesson NO
+  assert pins the dead zone (a fix would red it looking like a regression).
 
 Mappings (competence -> module inputs), stated once and used everywhere below:
   z   (LatentQ latent state)  = the length-`state_dim` competence vector, as-is.
