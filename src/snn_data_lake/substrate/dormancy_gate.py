@@ -107,6 +107,15 @@ EXEMPT = {
         "tests/instruments/gwt_deep_split_ab.py. Wiring it to the tick would be the fake "
         "consumer P3 names",
     ),
+    "hippocampal_memory": (
+        "wire",
+        "ADAPTER over this region's own governed mechanisms (promoted 2026-08-11, #10 lane 4a): "
+        "per-digit ReplayBuffers + a SleepConsolidator pass for the developmental training loop. "
+        "Its ONE consumer (reasoning/developmental_loop_brain, all three methods on its main "
+        "path) is p6_gate-pinned and its own promotion is specs/010-blocked -- this exemption "
+        "converts to reachable the commit that loop promotes; wiring anything else to satisfy "
+        "the gate would be the fake consumer P3 names",
+    ),
     "deep_stdp_latency": (
         "permanent",
         "TRAIN-TIER perception feature learner (promoted 2026-08-11, #10 lane 2c, region "

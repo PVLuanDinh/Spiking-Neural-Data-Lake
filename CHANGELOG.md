@@ -9,6 +9,15 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- lane 4a: hippocampal_memory -> hippocampus/ (2026-08-11z)
+
+The replay adapter joins the region whose governed mechanisms it composes (per-digit
+ReplayBuffers + a SleepConsolidator pass for the developmental loop). All four assert families
+green at the new path; CORE registration; the method gate needed no new exemption. Dormancy
+EXEMPT-wire, honestly scoped: its one consumer is the p6_gate-pinned, specs/010-blocked
+developmental_loop_brain -- the exemption converts to reachable when that loop's own lane
+opens, and any other wiring would be a fake consumer.
+
 ## [Unreleased] -- lane 3: the physics-JEPA trio settles; the probe survives as an instrument (2026-08-11y)
 
 physics_jepa_highdim, read whole, held no mechanism -- it was a benchmark over the governed

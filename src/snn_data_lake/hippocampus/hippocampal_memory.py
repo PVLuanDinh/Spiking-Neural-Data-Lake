@@ -1,5 +1,8 @@
 """
-snn_data_lake/reasoning/brain_adapters/hippocampal_memory.py
+snn_data_lake/hippocampus/hippocampal_memory.py
+(PROMOTED reasoning/brain_adapters/ -> hippocampus/ 2026-08-11, #10 lane 4a; measured row in
+docs/P4C_BACKLOG.md -- the adapter composes its own region's governed mechanisms, the intended
+direction, so it lives beside them.)
 
 WHAT THIS IS. A thin, faithful adapter that lets the developmental / NG-SNN training loop
 REPLACE its hand-rolled python replay buffer with the brain's ACTUAL hippocampus. The loop
@@ -46,7 +49,7 @@ CONSOLIDATE -- how the sleep pass rides SleepConsolidator:
   retention level (the module itself flags that as seed-dependent).
 --------------------------------------------------------------------------------------------
 
-  PYTHONPATH=src python -m snn_data_lake.reasoning.brain_adapters.hippocampal_memory
+  PYTHONPATH=src python -m snn_data_lake.hippocampus.hippocampal_memory
 
 (the path the module is at TODAY; the previous command named `research/brain_adapters/...`,
 which has not existed since v3.78 -- a documented command that cannot run is the same
@@ -58,9 +61,13 @@ import random
 from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
 from snn_data_lake.hippocampus.sleep_consolidation import SleepConsolidator
 from snn_data_lake.hippocampus.sleep_replay import (
-    K as ASSEMBLY_SIZE,  # neurons per stored cell assembly (K=6)
-    N as ATTRACTOR_UNITS,  # attractor-net size (N=24)
     STORE_REPS_A,  # storage repetitions per assembly during wake
+)
+from snn_data_lake.hippocampus.sleep_replay import (
+    K as ASSEMBLY_SIZE,  # neurons per stored cell assembly (K=6)
+)
+from snn_data_lake.hippocampus.sleep_replay import (
+    N as ATTRACTOR_UNITS,  # attractor-net size (N=24)
 )
 
 # reward field is unused for identity (we never call ReplayBuffer.replay); pin it to a marker.
