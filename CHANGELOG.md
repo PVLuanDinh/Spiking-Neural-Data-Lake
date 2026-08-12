@@ -9,6 +9,19 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- ensemble_rbf settles as an instrument: the 98.2% harness, all subjects governed (2026-08-12d)
+
+The RETIRE-class holdout that was reclassified 2026-08-07 finds its category:
+tests/instruments/ensemble_rbf_ab.py (the jepa_highdim_probe pattern -- a harness over
+governed subjects holding no mechanism of its own). The laminar merge made the clean
+outcome available: LaminarColumns now has a governed home, so the 3-member table keeps
+its operand and every import is governed. Bounded mechanics check by default; the
+credited beats-best-member claim lives behind ENSEMBLE_RUN=1 because it is MEASURED
+FALSE below ~10k labelled examples (79.5% < 81.5% at 1200/400) -- the data-lever
+finding, disclosed rather than smoothed. The bare run asserts what survives shrinking:
+pipeline integrity + the decorrelation ORDERING (lin-vs-RBF < lin-vs-col both-wrong,
+14.2% < 18.2% reduced / 1.3% < 1.7% credited). _envi copy deleted for the hub's _env.
+
 ## [Unreleased] -- lane 4c completes: laminar_local_readout -> cortex/, the live-tick readout governed (2026-08-12c)
 
 The promote half. The ONE live-tick percept readout (feedback alignment + fixed-random L6,

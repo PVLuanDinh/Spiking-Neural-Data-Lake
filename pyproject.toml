@@ -210,6 +210,9 @@ train = ["torch", "torchvision", "numpy", "scikit-learn"]              # GPU tra
 # already sit beside snntorch/torchvision imports, so an extra matches the tier they actually live
 # in, and core placement would not have made them importable anyway (they fail earlier on snntorch).
 # Per P7 this needs no justification beyond what it buys: SVC/StandardScaler for the SVM readouts.
+# 2026-08-12 status of those four sites: deep_stdp_2stage_svm RETIRED (2026-08-07);
+# ensemble_rbf settled as tests/instruments/ensemble_rbf_ab.py; lake99 + ng_snn/validate_uci
+# remain reasoning-tier. The gate env carries scikit-learn 1.9.0 (cp314t wheel, measured).
 nmnist = ["tonic"]                                                       # research/nmnist_ingest real data
 nengo = ["nengo"]                                                       # substrate/nengo_bridge: run the brain's NEF/LIF substrate on Nengo (sim + NengoLoihi deploy); nengo-gated, the default install never imports it
 nir = ["nir", "numpy"]                                                   # substrate/nir_export.to_nir_graph -> canonical NIR HDF5 for Loihi 2 / SpiNNaker 2 / Speck / Xylo. ADDED 2026-08-04 (specs/010, P7): the import at nir_export.py:121 is lazy and raises a helpful ImportError, but it was declared NOWHERE, so `pip install ".[all]"` could not produce a tree where the export path runs. Distribution name confirmed from the module's own install hint ("pip install nir numpy"), not guessed.
