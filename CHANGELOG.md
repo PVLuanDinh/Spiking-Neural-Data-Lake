@@ -9,6 +9,21 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- family settlement C9b: lake_skill_library retires; THE FAMILY IS SETTLED (2026-08-11u)
+
+The last step. lake_skill_library was a completed experiment (v3.68 verdict durable) whose
+every capability lives elsewhere on live paths -- the routing home is skill_builder's
+SkillRegistry, verified on the brain's sleep tick at C4. With lake_skills already gone, the
+"exactly one survives" pair resolved to NEITHER: the one mechanism is SkillRegistry.
+
+THE LANGUAGE/SKILLS FAMILY SETTLEMENT IS COMPLETE: 14 modules -- content_signature,
+corpus_stream, world_kb_stream, proximity_replay (renamed), skill_builder,
+language_readout_slda, language_self_build, open_world_loop, nightly_skills promoted;
+meta_skill_loop + open_meta_loop merged into nightly_skills as ONE mechanism (A/B-licensed,
+open frontier live); readout_fair_compare (ports paid), lake_skills, lake_skill_library
+retired. Every step at the full entry bar, gates green per commit; the sleep tick's whole
+skills machinery is governed end to end.
+
 ## [Unreleased] -- family settlement C7: open_world_loop -> hippocampus/ (2026-08-11t)
 
 The discovery controller joins the governed tree beside the router it feeds. Its inline %64

@@ -19,7 +19,9 @@ It BUILDS ON the growth signals we already compute -- it does NOT reinvent them:
     kernel) rather than recompute cosine. (For spike-EVENT signatures a caller can swap in
     substrate.proximity_index's Victor-Purpura metric NN; here the signatures are [0,1]^D centroids,
     so the cosine developmental match is the right sibling.)
-  * ROUTING = the same content-addressable idea as `lake_skill_library.route` (nearest consolidated
+  * ROUTING = the same content-addressable idea as the retired `lake_skill_library.route`
+    (RETIRED 2026-08-11, verdict in CHANGELOG v3.68; the live home is skill_builder.SkillRegistry)
+    (nearest consolidated
     key -> payload = which frozen expert). We keep the STDLIB GrowingLearner as the in-advisor router
     (lr=0.0 -> its prototypes are frozen keys) instead of pulling the torch+lake LakeMemory stack into
     a stdlib advisor; a main-agent that wants durability can back the same route_or_grow with
