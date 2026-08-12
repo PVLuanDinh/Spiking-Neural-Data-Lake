@@ -9,6 +9,23 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- promotion-plans.json REGENERATED: the truncated instrument replaced (2026-08-12i)
+
+The specs/010 blocked-promotion record was truncated at exactly 400,000 bytes
+(unparseable, last entry cut mid-string, modules repeated 2-3x -- the instrument
+defect recorded 2026-08-11 in docs/P4C_BACKLOG.md), and lane 4f proved its entries
+go stale at execution. Regenerated against the current tree, user-set agenda item 1:
+the 9 surviving modules re-derived by per-module analyst + refute-by-default skeptic
+pairs (the lane-4f method; skeptics again overturned or corrected 6-11 claims PER
+MODULE -- among them a READY entry's co-edit list that missed import_manifest's
+floor assert sitting at zero slack, the exact class of miss that turns a correct
+promotion into a red gate). Verdicts: 4 READY (nef_compute, rose_language,
+vsa_structure_mapping, eprop_nmnist), 5 BLOCKED on concrete re-verified blockers
+(schema_induction, snn_moe_classifier, spike_chat_lake at risk=high, eprop_shd,
+surrogate_snn), 8 SETTLED recorded with their execution commits. 186,738 bytes of
+valid ASCII JSON; every entry carries its skeptic's overturned-claims audit trail;
+_meta records the tree, the method, and what the file supersedes.
+
 ## [Unreleased] -- broadcast() is submit-and-read: the tenant stops driving the bus clock (2026-08-12h)
 
 The contract defect the 2026-08-06 shared-bus measurement named (recorded on

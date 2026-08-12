@@ -260,6 +260,18 @@ is TRUNCATED at exactly 400,000 bytes — unparseable JSON, the last entry cut m
 17-module blocked-promotion record it carries is this lane's prior art. Its content also repeats
 (the same modules appear 2-3x, some with empty blocker arrays). Regenerate or repair before the
 PROMOTE lane leans on it; until then it is quotable only via lenient text extraction.
+**REGENERATED 2026-08-12 (user-set agenda item 1):** valid JSON, ASCII, round-trip-parsed. Of the
+old record's 17 distinct modules, only 9 still exist ungoverned — 5 were promoted at `bcad89ea`
+(2026-08-05), plus nightly_skills (C9a), laminar_local_readout (4c), executive_control (4f); all 8
+recorded in the file's `settled` array with their execution commits. The 9 survivors were
+re-derived per-module by analyst + refute-by-default skeptic pairs (the lane-4f method): 4 READY
+(nef_compute, rose_language, vsa_structure_mapping, eprop_nmnist), 5 BLOCKED with re-verified
+blockers (schema_induction, snn_moe_classifier, spike_chat_lake, eprop_shd, surrogate_snn). Every
+entry carries its skeptic's overturned-claims audit trail; `_meta` records tree, method, and what
+it supersedes. Standing caution the regeneration re-proved: skeptics corrected 6-11 claims per
+module, including a READY entry whose co-edit list missed `import_manifest.py:264`'s floor assert
+sitting at ZERO slack (11 targets vs `>= 11`) — any promotion that removes a manifest target must
+lower the floor in the same commit, and a BATCH of them must count first.
 
 ---
 
