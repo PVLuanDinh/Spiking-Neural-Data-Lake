@@ -208,7 +208,7 @@ def main():
         assert idx in truth[d], f"index {idx} attributed to digit {d} but not in its pool"
     # and the per-digit buffers never share an index (disjoint by construction / by real storage).
     seen = set()
-    for d, rows in truth.items():
+    for _d, rows in truth.items():
         for idx in rows:
             assert idx not in seen, "an index appears under two digits -- cross-class leak"
             seen.add(idx)
