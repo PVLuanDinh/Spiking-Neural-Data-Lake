@@ -272,7 +272,10 @@ KNOWN_WRITERS = {
     "cortex/access_consciousness.py": 1,
     "reasoning/rpm_solver.py": 1,
     "reasoning/spike_chat_lake.py": 1,
-    "reasoning/developmental_loop_brain.py": 1,
+    # relpath co-edited 2026-08-12 with the module's promotion (#10 lane 4e) -- the key is a
+    # POSIX relpath under src/snn_data_lake/, so the move alone would have made `missing` fire
+    # with "known writer module(s) produced ZERO writes".
+    "hippocampus/developmental_loop_brain.py": 1,
 }
 KNOWN_READERS = {
     "thalamus/global_workspace.py": 3,

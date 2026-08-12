@@ -54,6 +54,9 @@ Approved immediately, needing no survivor decision -- these are dead code, not c
 
 1. `reasoning/readout_ensemble.py:63` `grow` -- body is a bare `return`.
 2. `reasoning/developmental_loop_brain.py:101` `grow` -- body is `return  # linear: no hidden layer to grow`.
+   [RESOLVED 2026-08-12, T021: KEPT as duck-typed interface (deletion breaks the loop's readout
+   contract); the real defect was the signature mismatch, fixed with `freeze_old=False`. The
+   module is now `hippocampus/developmental_loop_brain.py`.]
 3. Four duplicated `(1,0)` readout splits (`growable_readout.py:176`, `laminar_readout.py:205`
    and `:483`, `laminar_local_readout.py:149`) which the source documents as "REUSED verbatim" from
    one another. Collapse to one. [RESOLVED 2026-08-12, T022: collapsed 4 -> 2 -- the one torch

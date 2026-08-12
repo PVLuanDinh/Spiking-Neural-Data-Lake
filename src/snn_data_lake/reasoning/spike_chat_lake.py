@@ -1018,7 +1018,8 @@ class LakeChat:
         mechanical: the resolver walks one hop through `self.<attr> = SomeClass(...)`, and
         `self.brain` is assigned `None` here (a slot a host fills, by design), so it falls back to
         matching the bare token `workspace` -- which `brainstem/autonomous_loop.py` and
-        `reasoning/developmental_loop_brain.py` BOTH bind, leaving it ambiguous and unattributed. At
+        `hippocampus/developmental_loop_brain.py` (reasoning/ until 2026-08-12) BOTH bind,
+        leaving it ambiguous and unattributed. At
         RUNTIME the object is provably the arm's (`brain.workspace is live_brain.workspace is
         arm.workspace` -> True, asserted by identity and by `id()`), so the read is cross-module in
         fact and self-read only in the census.

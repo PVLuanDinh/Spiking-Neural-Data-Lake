@@ -34,9 +34,10 @@ P2 -- what already exists, checked before proposing promotion rather than after:
   * WorkspaceBroadcast IS a duplicate. `GlobalWorkspace.submit()/step()/current` is the entire
     mechanism; this wrapper adds one expression (`ignited = current == content`). It also creates a
     PRIVATE workspace, which is the defect `tools/p6_gate.py:50` names by file and line. It is kept
-    only because `reasoning/developmental_loop_brain.py:70` imports the name and this wave may not
-    edit consumers; it is redesigned here to ACCEPT an injected shared workspace so it no longer
-    MANDATES a private one. Retire it once that import is repointed.
+    only because `hippocampus/developmental_loop_brain.py` imports the name (LAZILY inside main()
+    since its 2026-08-12 promotion) and this wave may not edit consumers; it is redesigned here to
+    ACCEPT an injected shared workspace so it no longer MANDATES a private one. Retire it once
+    that import is repointed.
     THE COST OF THAT REDESIGN, DISCLOSED BECAUSE IT MOVED THE INSTRUMENT THE WRONG WAY. P6's census
     is RE-DERIVED here rather than quoted, which is what `docs/POLICIES.md` instructs
     ("Re-derive with it rather than quoting a figure"). **The tree-wide totals this paragraph used
@@ -183,9 +184,12 @@ class DopamineModulator:
     P1: LR_MIN / LR_MAX are dimensionless bounds on a NORMALIZED [0, 1] input, which LOOKS like P1's
     exception (a) -- but (a) is not what carries them, and claiming it overstates the case. The
     returned multiplier is consumed AS a learning rate by the one importer
-    (`reasoning/developmental_loop_brain.py:311-313` multiplies its readout lr by this value), so how
-    far a positive surprise may amplify learning is decided by LR_MAX. What actually holds today is
-    exception (c) -- INERT: zero GOVERNED callers, so a learned form would never charge. Promoting
+    (`hippocampus/developmental_loop_brain.py`'s gain fold multiplies its readout lr by this value),
+    so how far a positive surprise may amplify learning is decided by LR_MAX. What actually holds
+    today is exception (c) -- INERT -- BUT ITS PREMISE CHANGED 2026-08-12: the importer is now a
+    GOVERNED train-tier module (still offline, no live root reaches it), so "zero GOVERNED callers"
+    is no longer literally true; the exception now rests on "no LIVE-path caller", and the caller's
+    own gain fold carries its own stated P1 exception with the x0.75-x3.00 measurement. Promoting
     this onto a live path does not carry that exception with it: the pair would then have to become
     learned or running-baseline-relative, alongside the P2 swap to `ValenceLearner` noted above. The
     RPE itself is already running-baseline-relative (competence_gain minus a running mean of realised
@@ -289,8 +293,9 @@ class WorkspaceBroadcast:
 
     NOTHING CONSTRUCTS THIS CLASS ON A PRODUCTION PATH, re-derived 2026-08-06 rather than inferred
     from the gate's census. Tree-wide, `WorkspaceBroadcast(` appears at nine sites: eight in this
-    module's own `main()` and one at `reasoning/developmental_loop_brain.py:262`, which sits inside
-    that module's `main()` too (`def main` at `:138`, `if __name__` at `:444`). So there is no live
+    module's own `main()` and one in `hippocampus/developmental_loop_brain.py` (promoted
+    2026-08-12; its construction sits inside main() behind a lazy import, plus a second in its
+    bounded _mechanics_check -- both offline). So there is no live
     caller to hand the shared handle to, and manufacturing one would be the force-wire P6 forbids.
     The disposition is unchanged and now rests on a measurement: the channel is real, it charges,
     its live use needs the `step()` contract fixed first, and the class is a retire candidate."""

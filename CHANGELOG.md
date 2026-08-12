@@ -9,6 +9,41 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- lane 4e: developmental_loop_brain -> hippocampus/, and the dormancy promise corrected (2026-08-12e)
+
+The p6-pinned loop promotes -- the arc's keystone: its promotion was the recorded
+condition on brain_decision (4d), hippocampal_memory (4a) and growable_readout (4b).
+KNOWN_WRITERS relpath co-edited in the same commit (the key is a POSIX relpath; the move
+alone would have made `missing` fire). TRAIN_TIER annex + TRAIN_GATED (torchvision at
+module top via the load_mnist hub -- REGIONS would repeat the lane-2 CI regression). The
+executive_control imports went LAZY inside main() (the kb_ranking shape; import_manifest
+derives the edge automatically): promoting executive_control is its own lane -- rename
+owed, p6 floor 3, live P1 debt.
+
+THE HONEST HEADLINE: this promotion converts ZERO dormancy exemptions. The
+"converts to reachable the commit that loop promotes" clause in the hippocampal_memory /
+growable_readout / brain_decision EXEMPT entries was MEASURED FALSE at execution --
+reachable() seeds only from live roots/entrypoints, and the promoted loop is itself
+EXEMPT-permanent train-tier. All three entries corrected wire->permanent with the
+measurements (growable_readout's default path never constructs it: the full run printed
+"readout grew 0x"); the exemption list grows 31 -> 33 and the list is honest.
+
+The bare __main__ is now a 5s WIRING mechanics check (replay real + batch composition;
+weights move; the LC*DA lr fold non-constant -- measured x0.75-x3.0; planner SELECTS,
+split from the fused path on a constructed state, exec 1 != fused 5; feature cache wired;
+pooled 0.739 vs a 0.30 wiring bar with a ~0.10 neutered red) -- accuracy claims live
+behind DLB_RUN=1 with the scale that earns them (any reduction reds the 0.85 bar,
+measured 0.220 at NORD_TRAIN=1000). Full run reproduced AT THE NEW PATH before landing.
+Frictions paid: 4 ruff findings (I001/E402 x2/F541); the 0.5 NA-amplitude owned as a
+stated P1 exception with its measurement; T021 disposition recorded (stub kept as
+interface, freeze_old signature fixed); the SleepConsolidator retention print labeled a
+fixed-configuration readout (bit-identical under a 10x scale change -- not a measurement);
+M21 recorded as owed by _loop_common's lane; the e-prop adjudication carried verbatim
+with its binding constraint. P6 BONUS: the promotion surfaced an undeclared
+hippocampus->basal_ganglia import pair -- resolved by DECLARING the real route
+(subiculum -> nucleus accumbens: context informs value selection), not by raising the
+baseline; the detector caught a missing declaration and got a true edge.
+
 ## [Unreleased] -- ensemble_rbf settles as an instrument: the 98.2% harness, all subjects governed (2026-08-12d)
 
 The RETIRE-class holdout that was reclassified 2026-08-07 finds its category:

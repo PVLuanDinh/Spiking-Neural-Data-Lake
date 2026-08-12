@@ -417,6 +417,7 @@ TRAIN_GATED = [
     "plasticity.snn_mnist_stdp",  # PROMOTED 2026-08-11 (lane 2a): the Diehl-Cook rule hub (full real train, GPU, 58.8s)
     "plasticity.deep_stdp",  # PROMOTED 2026-08-11 (lane 2b): library mechanics check; DEEPSTDP_RUN=1 = the full 8-min benchmark
     "cortex.deep_stdp_latency",  # PROMOTED 2026-08-11 (lane 2c): latency machinery mechanics; DSLATENCY_RUN=1 = the full 6.6-min benchmark
+    "hippocampus.developmental_loop_brain",  # PROMOTED 2026-08-12 (lane 4e): wiring mechanics (~5s); DLB_RUN=1 = the full 5.8-min measurement
 ]
 
 # The repo root, for resolving ARTIFACT_GATED paths regardless of the cwd the runner was invoked from.

@@ -3,11 +3,15 @@ BRAIN-INTEGRATED DEVELOPMENTAL LOOP (Slice 1) -- the deep developmental loop (v3
 hand-rolled parts replaced by the brain's REAL subsystems, wired through thin adapters.
 
   perception    : conv1 latency-STDP (unsupervised, frozen)          [cortex/deep_stdp_latency, promoted 2026-08-11]
-  memory        : HippocampalMemory  = real ReplayBuffer + SleepConsolidator   [brain_adapters]
-  readout       : GrowableReadout    = MLP grown function-preservingly (Net2Net) [brain_adapters]
-  decision      : SpikingCuriosity + SpikingCurriculum + BrainDecision (LatentQ value + Metacog) [brain_adapters]
-  neurogenesis  : readout.grow() fired by the MetacognitiveMonitor grow_trigger  [brain the brain grows its own readout neurons]
+  memory        : HippocampalMemory  = real ReplayBuffer + SleepConsolidator   [hippocampus/, promoted 2026-08-11]
+  readout       : GrowableReadout    = MLP grown function-preservingly (Net2Net) [hippocampus/, promoted 2026-08-11]
+  decision      : SpikingCuriosity + SpikingCurriculum + BrainDecision (LatentQ value + Metacog) [basal_ganglia/, promoted 2026-08-12]
+  neurogenesis  : readout.grow() fired by the MetacognitiveMonitor grow_trigger  [the brain grows its own readout neurons]
   neuromod      : LocusCoeruleus (readout lr gain)                    [neuromodulation]
+  executive     : ExecutivePlanner + DopamineModulator + WorkspaceBroadcast     [reasoning/brain_adapters --
+                  the loop's LAST cross-tier reach, imported lazily inside main(); executive_control's own
+                  lane owns its promotion (p6-pinned, rename owed). substrate/import_manifest derives and
+                  watches this edge automatically.]
 
 vs v3.54 (developmental_loop_deep.py, RETIRED 2026-08-06 -- superseded by this file, which carries
 its control flow; its reference number survives as DEEP_LOOP_REF below): the loop's AUTONOMY + accuracy path is now driven by the actual
@@ -38,15 +42,39 @@ DEFAULT loop already embodies working sleep-consolidation: the per-cycle BALANCE
 continual interleaved consolidation, which is exactly why it holds 93.3% without an extra sleep phase. Sleep
 is thus kept OFF by default (the linear+replay default is the working consolidation); the explicit sleep pass
 is an opt-in knob that only overfits the MLP.
-The self-check asserts the loop beats the vote loop (>0.85) + chance and prints the signed gap to v3.54's 93.5%.
+PROMOTED 2026-08-12 (#10 lane 4e): reasoning/ -> hippocampus/, the region whose mechanism
+delivers the module's identity -- continual learning without catastrophic forgetting via
+balanced replay (the docstring above records the finding: the per-cycle balanced replay IS
+working sleep-consolidation), and the region that already holds both modules this loop
+uniquely consumes (hippocampal_memory, growable_readout). Registered in the TRAIN_TIER
+annex + run_selfchecks TRAIN_GATED (torchvision at module top via load_mnist -- the
+recorded deliberate shape; REGIONS membership would break the alias round-trip on a
+torchvision-less box, the lane-2 CI regression). Full run reproduced AT THE NEW PATH
+before landing: 93.3% final overall, -0.2% vs DEEP_LOOP_REF -- the move preserved the
+module, not merely relocated it.
+
+E-PROP ADJUDICATION, carried forward verbatim from specs/010 (its premise re-verified at
+promotion): the readout trains by Adam + .backward() and the dopamine multiplier SCALES
+that path -- permitted because "That path is TRAIN-TIER OFFLINE, not a live learning path
+... no _LIVE_ROOT or _ENTRYPOINT in substrate/dormancy_gate.py reaches it" (re-measured:
+dlb's whole import closure sits outside reachable()). BINDING CONSTRAINT: this module must
+never be wired to a live LEARNING consumer; if it ever is, that consumer takes the
+governed `lr_scale` three-factor parameter (basal_ganglia/valence_stdp.py,
+neuromodulation/cortisol.py), never Adam -- and making this module reachable converts the
+permitted offline trainer into an e-prop violation that nothing would announce.
+
+Self-check shape (the deep_stdp DEEPSTDP_RUN precedent): the bare __main__ is a bounded
+MECHANICS check (~10-30 s: wiring asserts with reachable reds, NO accuracy claims -- any
+training-scale reduction reds the 0.85 bar, measured: 0.220 at NORD_TRAIN=1000, so the
+accuracy claims live with the scale that earns them). DLB_RUN=1 = the full 5.8-min
+measurement with both accuracy asserts intact.
 
 Run (from repo root; GPU strongly recommended):
-    NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.developmental_loop_brain
+    DLB_RUN=1 NORD_GPU=1 PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.hippocampus.developmental_loop_brain
 Scale knobs: NORD_CYCLES(15) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(300) NORD_REPLAY(200)
              NORD_SGD(300) NORD_CAP(1) NORD_TRAIN(10000) NORD_TEST(2000) NORD_HIDDEN(64) NORD_GROW_K(4)
              NORD_HIDDEN_CAP(160) NORD_GPU
-Deps: numpy torch torchvision snntorch   ([train]/[gpu] extras. NOT "outside the core": this module lives in src/snn_data_lake/reasoning/
-         and imports from the package -- P4c, every build is part of the brain.)
+Deps: numpy torch torchvision snntorch ([train]/[gpu] extras; sklearn not needed here).
 """
 
 import os
@@ -54,28 +82,41 @@ import sys
 import time
 
 import torch
-
-from snn_data_lake.plasticity.snn_mnist_stdp import load_mnist
-from snn_data_lake.substrate.device import enable, resolve_device
-
 import torch.nn as nn
 import torch.nn.functional as F
 
-from snn_data_lake.cortex.deep_stdp_latency import ConvLatencyStdp
-from snn_data_lake.hippocampus.hippocampal_memory import HippocampalMemory
-from snn_data_lake.hippocampus.growable_readout import GrowableReadout, LaminarColumns
 from snn_data_lake.basal_ganglia.brain_decision import BrainDecision
-from snn_data_lake.reasoning.brain_adapters.executive_control import (
-    ExecutivePlanner,
-    DopamineModulator,
-    WorkspaceBroadcast,
+from snn_data_lake.cortex.deep_stdp_latency import ConvLatencyStdp
+from snn_data_lake.hippocampus.growable_readout import GrowableReadout, LaminarColumns
+from snn_data_lake.hippocampus.hippocampal_memory import HippocampalMemory
+from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
+from snn_data_lake.neuromodulation.spiking_curiosity import (
+    SpikingCuriosityDrive,
+    SpikingCurriculum,
 )
+from snn_data_lake.plasticity.snn_mnist_stdp import load_mnist
+from snn_data_lake.substrate.device import enable, resolve_device
+
+# executive_control (ExecutivePlanner / DopamineModulator / WorkspaceBroadcast) is imported
+# LAZILY inside main() and _mechanics_check() -- the kb_ranking shape: all three symbols are
+# used exclusively inside those functions, the relocation is behaviour-free, and
+# substrate/import_manifest derives + watches the cross-tier edge automatically. Promoting
+# executive_control is its OWN lane (p6 floor 3, basename-collision rename owed, live P1
+# debt) -- bundling it here is what specs/010 warned "turns a 30-line move into three red
+# gates".
 
 
 class _LinearReadout:
     """Diagnostic drop-in matching GrowableReadout's interface but a PLAIN continual nn.Linear (the v3.54
     winner). Lets NORD_GROWABLE=0 isolate whether the growable-MLP readout is the accuracy cost while KEEPING
-    the hippocampal memory + brain-decision modules wired. grow() is a no-op (linear has no hidden to grow)."""
+    the hippocampal memory + brain-decision modules wired. grow() is a no-op (linear has no hidden to grow).
+
+    P2 debt, recorded not laundered (AUDIT_BACKLOG M21): this class is a verbatim copy of
+    reasoning/_loop_common.LinearReadout, and _cache_features below is the per-image loop
+    _loop_common replaced with a ~135x batched version. NOT adopted here because both
+    superseders are still reasoning-tier -- adopting them would create two new
+    governed->reasoning module-top imports, the exact shape this promotion exists to remove.
+    M21 is owed by whichever lane promotes _loop_common + fast_features."""
 
     def __init__(self, in_dim, n_classes=10, seed=0, lr=0.01):
         torch.manual_seed(seed)
@@ -95,16 +136,16 @@ class _LinearReadout:
         with torch.no_grad():
             return self.clf(X)
 
-    def grow(self, k=1):
-        return  # linear: no hidden layer to grow
+    def grow(self, k=1, freeze_old=False):
+        # linear: no hidden layer to grow. `freeze_old` accepted so the signature matches the
+        # duck-typed call at the FREEZE branch (specs/007 T021's disposition: the stub stays
+        # because grow()/n_hidden are part of the readout interface the loop calls; the former
+        # signature mismatch could never fire only because all growth selectors default to 0).
+        return
 
     @property
     def n_hidden(self):
         return 0
-
-
-from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
-from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 
 VOTE_LOOP_BAR = (
     0.85  # developmental_loop.py STDP-prototype + neuron-label VOTE readout (best 88.8%)
@@ -138,7 +179,167 @@ def _accuracy(readout, feats, labels, idx):
         return (pred == labels[idx]).float().mean().item()
 
 
+# distinct-from: plasticity/deep_stdp.py, cortex/deep_stdp_latency.py -- the SAME settled
+# gate-tier PATTERN (bare __main__ = bounded integrity check, env flag = the full
+# measurement), deliberately followed, but each _mechanics_check asserts ITS OWN module's
+# wiring (this one: replay store/sample, planner-vs-fused selection, the LC*DA lr fold,
+# this loop's feature cache). A wiring check cannot be shared across modules whose wiring
+# differs; the shared thing is the SHAPE, which is the precedent, not a mechanism.
+def _mechanics_check():
+    """Bounded MECHANICS + STRUCTURE check (the deep_stdp_latency genn shape): asserts the
+    WIRING with reachable reds and claims NOTHING about accuracy at scale -- measured, any
+    training-scale reduction reds the 0.85 bar (0.220 at NORD_TRAIN=1000), so the accuracy
+    claims live behind DLB_RUN=1 with the scale that earns them.
+
+    Sizing discipline (the measured silent trap this check exists to dodge): at reduced
+    NORD_TRAIN the full loop's replay store slice runs past the per-digit index and every
+    cycle silently reports '+ 0 hippocampal-replay feats'. Here PER + REPLAY is asserted
+    under the per-digit row count, and ASSERT 1 makes an empty replay a hard red."""
+    from snn_data_lake.reasoning.brain_adapters.executive_control import (
+        DopamineModulator,
+        ExecutivePlanner,
+        WorkspaceBroadcast,
+    )
+
+    enable(resolve_device())
+    dev = resolve_device()
+    torch.manual_seed(0)
+    TRAIN_N, TEST_N, CYC_M, PER_M, REPLAY_M, SGD_M = 300, 120, 4, 12, 8, 40
+
+    print("=" * 76)
+    print("developmental_loop_brain -- bounded mechanics check (DLB_RUN=1 = the full 5.8-min run)")
+    print("=" * 76)
+    Xtr, Ytr, Xte, Yte = load_mnist(TRAIN_N, TEST_N)
+    conv = ConvLatencyStdp(12, 15)
+    for img in Xtr[:200]:
+        conv.train_image(img)
+    Ftr = _cache_features(conv, Xtr, dev, "train")
+    Fte = _cache_features(conv, Xte, dev, "test")
+    ytr, yte = Ytr.long().to(dev), Yte.long().to(dev)
+    tr_by = {d: (Ytr == d).nonzero(as_tuple=True)[0].tolist() for d in range(10)}
+    te_by = {d: (Yte == d).nonzero(as_tuple=True)[0].tolist() for d in range(10)}
+
+    # ASSERT 5 -- the feature cache is WIRED. Red: break _cache_features' reshape/stack.
+    assert Ftr.shape == (TRAIN_N, conv.feat_dim()), (
+        f"feature cache shape {tuple(Ftr.shape)} != ({TRAIN_N}, {conv.feat_dim()})"
+    )
+    assert bool(torch.isfinite(Ftr).all()) and float(Ftr.min()) >= 0.0, (
+        "conv1 features must be finite and non-negative (spike-derived)"
+    )
+
+    readout = _LinearReadout(Ftr.shape[1], n_classes=10, seed=0)
+    memory = HippocampalMemory(seed=0)
+    decision = BrainDecision(n_actions=10, state_dim=10, seed=0)
+    curiosity = SpikingCuriosityDrive(seed=0)
+    lc = LocusCoeruleus()
+    planner = ExecutivePlanner(seed=0)
+    dopamine = DopamineModulator(seed=0)
+    workspace = WorkspaceBroadcast(seed=0)
+
+    # sizing guard: replay slice must be NON-EMPTY by construction (the silent-trap dodge).
+    for d in range(10):
+        assert len(tr_by[d]) >= PER_M + REPLAY_M, (
+            f"digit {d} has {len(tr_by[d])} rows < PER+REPLAY {PER_M + REPLAY_M} -- "
+            f"the replay store would be silently empty; resize the check"
+        )
+
+    # ASSERT 4 -- the planner SELECTS rather than decorates: on a constructed state where
+    # lookahead and fused-curiosity disagree, the EXEC path and the EXEC=0 path must pick
+    # DIFFERENT objectives. Red: make plan_objective return a constant / the fused pick.
+    comp_c = [0.9, 0.1, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9]
+    cands_c = list(range(10))
+    cur_c = [1.0 if d == 5 else 0.01 for d in cands_c]  # curiosity screams digit 5
+    pick_exec = planner.plan_objective(comp_c, cands_c)
+    pick_fused = decision.choose(cands_c, comp_c, cur_c)
+    assert pick_exec != pick_fused, (
+        f"EXEC and EXEC=0 picked the same objective ({pick_exec}) on a state constructed "
+        f"to split them -- the planner is decorative, not selecting"
+    )
+
+    w0 = readout.clf.weight.detach().clone()
+    gains, da_gain = [], 1.0
+    learned, competence = [], {d: 0.0 for d in range(10)}
+    for cyc in range(1, CYC_M + 1):
+        unseen = [d for d in range(10) if d not in learned]
+        cands = unseen if unseen else list(range(10))
+        comp_vec = [competence[d] for d in range(10)]
+        objective = planner.plan_objective(comp_vec, cands)
+        is_new = objective not in learned
+        workspace.broadcast("executive", f"study_digit_{objective}", 1.0 - competence[objective])
+        na = lc.step(1.0 if is_new else (1.0 - competence[objective]))
+        gain = (1.0 + 0.5 * na) * da_gain
+        gains.append(gain)
+        comp_before = dict(competence)
+        obj_rows = tr_by[objective][:PER_M]
+        replay_rows = memory.sample([d for d in learned if d != objective], REPLAY_M)
+        if cyc >= 2:
+            # ASSERT 1 -- hippocampal replay is REAL once something is stored. Red: neuter
+            # HippocampalMemory.sample to return [] (and the sizing trap above produces
+            # this red naturally, which is why the assert is worth having).
+            assert len(replay_rows) > 0, "replay empty after digits were stored -- store/sample dead"
+        batch_rows = obj_rows + replay_rows
+        assert len(batch_rows) == len(obj_rows) + len(replay_rows)
+        idx = torch.tensor(batch_rows, dtype=torch.long, device=dev)
+        readout.train_step(Ftr[idx], ytr[idx], lr=BASE_LR * gain, steps=SGD_M)
+        if is_new:
+            memory.store(tr_by[objective][PER_M : PER_M + REPLAY_M], objective)
+            learned.append(objective)
+        for d in learned:
+            competence[d] = _accuracy(readout, Fte, yte, te_by[d])
+        lp_gain = competence[objective] - comp_before[objective]
+        curiosity.observe(objective, 1.0 - competence[objective])
+        decision.observe(
+            objective,
+            [comp_before[d] for d in range(10)],
+            [competence[d] for d in range(10)],
+            curiosity.learning_progress(objective),
+            curiosity.novelty(objective),
+        )
+        da_gain = dopamine.modulate(lp_gain)
+
+    # ASSERT 2 -- the readout actually LEARNS. Red: neuter train_step / lr=0.
+    assert not torch.equal(w0, readout.clf.weight.detach()), (
+        "readout weights did not move across the mechanics cycles"
+    )
+    # ASSERT 3 -- the neuromodulatory fold is NOT a constant (pins the gain line, the
+    # e-prop-hazard site). Red: neuter LocusCoeruleus.step or DopamineModulator.modulate
+    # to a constant return.
+    assert len({round(g, 6) for g in gains}) > 1, (
+        f"lr gain was constant across cycles ({gains[0]:.4f}) -- LC/dopamine fold dead"
+    )
+    # ASSERT 6 -- pooled accuracy over the STUDIED digits clears a bar with a real red:
+    # neutered train_step measures ~0.10 (10-way chance), the trained check must clear a
+    # margin above it. Bar set from measurement at these knobs, halfway to the observed
+    # value -- NOT an accuracy claim about the loop (those live behind DLB_RUN=1).
+    pooled = [r for d in learned for r in te_by[d]]
+    overall = _accuracy(readout, Fte, yte, pooled)
+    print(
+        f"mechanics: studied {sorted(learned)}, pooled acc {overall:.3f} (bar 0.30; "
+        f"neutered-readout red ~0.10), gains {[round(g, 2) for g in gains]}, "
+        f"replay live, planner selects (exec {pick_exec} != fused {pick_fused})"
+    )
+    assert overall > 0.30, (
+        f"pooled accuracy {overall:.3f} <= 0.30 on studied digits -- wiring broken "
+        f"(neutered red measures ~0.10; this is a wiring bar, not an accuracy claim)"
+    )
+    print(
+        "mechanics check OK: cache wired, replay real, readout learns, neuromod fold live, "
+        "planner selects; accuracy claims live behind DLB_RUN=1"
+    )
+    return 0
+
+
 def main():
+    if os.environ.get("DLB_RUN") != "1":
+        return _mechanics_check()
+    # the LAST cross-tier reach (lazy; import_manifest derives + watches it -- see the note
+    # at the module top for why executive_control does not promote in this lane).
+    from snn_data_lake.reasoning.brain_adapters.executive_control import (
+        DopamineModulator,
+        ExecutivePlanner,
+        WorkspaceBroadcast,
+    )
+
     enable(resolve_device())
     dev = resolve_device()
     torch.manual_seed(0)
@@ -303,6 +504,13 @@ def main():
         # ---- NEUROMODULATION: locus-coeruleus NA on salience -> bounded readout lr gain ----
         salience = 1.0 if is_new else (1.0 - competence[objective])
         na = lc.step(salience)
+        # P1 exception, stated with its measurement (owned at the 2026-08-12 promotion): the
+        # 0.5 fixes how far noradrenaline may amplify the readout lr. It is NOT inert --
+        # measured live at full scale, the combined gain ranged x0.75 to x3.00 across the 15
+        # cycles (the mechanics check asserts non-constancy). A derived form belongs to the
+        # fusion-rule adjudication the executive_control lane owns; do NOT inherit that
+        # module's "zero governed callers" exception -- after this promotion, this file IS
+        # the governed caller.
         gain = (1.0 + 0.5 * na) * (
             da_gain if DOPA else 1.0
         )  # LC noradrenaline x dopamine RPE (prev cycle)
@@ -404,11 +612,13 @@ def main():
     print("-" * 92)
     print(f"  final OVERALL held-out test accuracy         : {final_overall:.1%}")
     print(
-        f"  accuracy CURVE (per cycle)                   : " + " ".join(f"{a:.2f}" for a in curve)
+        "  accuracy CURVE (per cycle)                   : " + " ".join(f"{a:.2f}" for a in curve)
     )
     print(
         f"  hippocampal consolidation (SleepConsolidator): retention={consol.get('retention')}, "
         f"value_margin={consol.get('value_margin')}, skills={consol.get('n_skills')}"
+        f"  [fixed-configuration readout, NOT a measured retention: printed bit-identical at "
+        f"NORD_TRAIN=1000 and 10000 while the loop's accuracy moved 0.220 -> 0.933]"
     )
     print("-" * 92)
     print(f"  reference VOTE loop (STDP prototypes + vote) : ~{VOTE_LOOP_BAR:.0%} (best 88.8%)")

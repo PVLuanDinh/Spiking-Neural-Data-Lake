@@ -109,32 +109,51 @@ EXEMPT = {
         "consumer P3 names",
     ),
     "growable_readout": (
-        "wire",
+        "permanent",
         "TORCH-TIER growable readout (promoted 2026-08-11, #10 lane 4b): function-preserving "
         "Net2Net (1,0) growth + bit-exact freeze. T022 DISCHARGED HERE 2026-08-12: the one "
         "torch (1,0)-split helper lives in this file, and LaminarColumns (per-task isolated "
-        "columns) was ported in at the laminar merge (laminar_readout.py deleted). Consumers "
-        "are reasoning-tier (autonomous_brain the kept A/B control at :50 unconditional; "
-        "developmental_loop_brain + ensemble_rbf opt-in) until their own lanes; same "
-        "conversion condition as hippocampal_memory",
+        "columns) was ported in at the laminar merge (laminar_readout.py deleted). The old "
+        "'converts to reachable when its consumers promote' clause was MEASURED FALSE at the "
+        "dlb promotion (2026-08-12): its importers are reasoning/autonomous_brain (the kept "
+        "A/B control) and the now-governed TRAIN-TIER developmental_loop_brain -- whose "
+        "DEFAULT path never constructs it (NORD_GROWABLE/NORD_COLUMNS opt-in; the full 348.8s "
+        "run printed 'readout grew 0x'). Honest disposition: permanent train-tier library "
+        "+ the instrument tests/instruments/ensemble_rbf_ab.py",
     ),
     "brain_decision": (
-        "wire",
+        "permanent",
         "SELECTION stage over basal_ganglia/latent_q's value table (promoted 2026-08-12, #10 "
         "lane 4d): fuses value + metacognition on the loop's curiosity; composition-only. Its "
-        "ONE consumer (reasoning/developmental_loop_brain, which also BYPASSES choose() under "
-        "NORD_EXEC=1 default -- the recorded P2 vs ExecutivePlanner) is p6_gate-pinned -- this "
-        "exemption converts to reachable the commit that loop promotes; wiring anything else "
-        "to satisfy the gate would be the fake consumer P3 names",
+        "ONE consumer (hippocampus/developmental_loop_brain, which also BYPASSES choose() "
+        "under NORD_EXEC=1 default -- the recorded P2 vs ExecutivePlanner) is itself "
+        "EXEMPT-permanent TRAIN-TIER, and reachable() seeds only from live roots/entrypoints "
+        "-- MEASURED 2026-08-12: the consumer's promotion converts NOTHING to reachable, so "
+        "the earlier 'converts to reachable' clause here was a promise the gate's own "
+        "mechanics cannot keep. Wiring anything else would be the fake consumer P3 names",
     ),
     "hippocampal_memory": (
-        "wire",
+        "permanent",
         "ADAPTER over this region's own governed mechanisms (promoted 2026-08-11, #10 lane 4a): "
         "per-digit ReplayBuffers + a SleepConsolidator pass for the developmental training loop. "
-        "Its ONE consumer (reasoning/developmental_loop_brain, all three methods on its main "
-        "path) is p6_gate-pinned and its own promotion is specs/010-blocked -- this exemption "
-        "converts to reachable the commit that loop promotes; wiring anything else to satisfy "
-        "the gate would be the fake consumer P3 names",
+        "Its ONE consumer (hippocampus/developmental_loop_brain, all three methods on its main "
+        "path) promoted 2026-08-12 -- and the 'converts to reachable the commit that loop "
+        "promotes' clause this entry used to carry was MEASURED FALSE at that commit: "
+        "reachable() seeds only from _LIVE_ROOTS/_ENTRYPOINTS/_external_roots, and the "
+        "promoted consumer is EXEMPT-permanent TRAIN-TIER, not a live root. Adding it to the "
+        "roots would launder dormancy for its whole import closure. Honest disposition: "
+        "permanent, same shape as deep_stdp_latency",
+    ),
+    "developmental_loop_brain": (
+        "permanent",
+        "TRAIN-TIER brain-integrated developmental loop (promoted 2026-08-12, #10 lane 4e): "
+        "continual MNIST learning via balanced hippocampal replay, offline by design (Adam "
+        "readout -- the specs/010 e-prop adjudication permits it ONLY while no live root "
+        "reaches it; its docstring carries the binding constraint). Consumers: none by "
+        "design -- it IS the train-tier measurement loop (bare __main__ = 5s wiring "
+        "mechanics, DLB_RUN=1 = the 5.8-min benchmark reproducing 93.3% / -0.2% vs "
+        "DEEP_LOOP_REF). Wiring it to a live root would convert the permitted offline "
+        "trainer into an e-prop violation",
     ),
     "deep_stdp_latency": (
         "permanent",

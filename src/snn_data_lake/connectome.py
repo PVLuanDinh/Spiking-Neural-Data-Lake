@@ -341,6 +341,13 @@ EDGES = [
     _e("cea", "nts_rvlm", "amygdala -> medulla (autonomic fear response)", "exc", "descending"),
     # amygdala -> hippocampus: emotional modulation of memory encoding
     _e("bla", "ca1", "amygdala -> hippocampus (emotional memory modulation)", "exc", "relay"),
+    # hippocampus -> ventral striatum (subiculum -> nucleus accumbens): memory/context state
+    # informs value-based selection. DECLARED 2026-08-12 when the promoted
+    # hippocampus/developmental_loop_brain realized the route in code (its main path feeds
+    # competence state into basal_ganglia/brain_decision's LatentQ every cycle) -- the p6
+    # gate's undeclared-pair detector caught the missing declaration, which is the detector
+    # working: the import existed, the connectome had not recorded it.
+    _e("sub", "nacc", "hippocampus -> ventral striatum (context informs value selection)", "exc", "relay"),
     # olivo-cerebellar climbing-fibre teaching loop: the error signal cerebellar learning is premised on
     _e(
         "io",

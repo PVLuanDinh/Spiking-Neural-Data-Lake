@@ -26,9 +26,11 @@ region whose charter (action selection, reward learning) is this module's identi
 `latent_q.py` is the VALUE table, this file is the SELECTION stage over it. Composition
 verified at promotion: LatentQ and MetacognitiveMonitor are composed, never
 re-implemented (no delta rule, no Q table, no reliability computation is redefined
-here). Registered in REGIONS + run_selfchecks CORE; dormancy EXEMPT-"wire" until its
-one consumer (`reasoning/developmental_loop_brain.py`) promotes -- the same conversion
-condition hippocampal_memory and growable_readout carry.
+here). Registered in REGIONS + run_selfchecks CORE; dormancy EXEMPT-permanent -- the consumer
+(`hippocampus/developmental_loop_brain.py`, promoted the same arc) is itself
+EXEMPT-permanent train-tier, and the old "converts to reachable when the consumer
+promotes" clause was MEASURED FALSE at that promotion (reachable() seeds only from live
+roots; see the dormancy_gate entry).
 
 MEASURED AT PROMOTION, 2026-08-12 (the fusion A/B the ledger row owed; every figure
 below is from the four-arm neuter A/B in this file's self-check, 10-20 seeds, and was

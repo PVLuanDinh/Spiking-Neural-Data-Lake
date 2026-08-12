@@ -220,6 +220,19 @@ batch-1/2 rows above, every member now has a verdict; the settlement is one orde
 | `readout_fair_compare` | RETIRE after its three ports (2) |
 | `lake_skill_library` — **RETIRED 2026-08-11 (C9b, executed — THE FAMILY SETTLEMENT IS COMPLETE)** | DONE. The verify-at-execution obligation was paid at C4: `skill_builder.SkillRegistry` is the live routing home (constructed at nightly_skills' night path, reached from `brain.py`'s sleep tick). Completed experiment, verdict durably in CHANGELOG v3.68 (specialists 0.94, router 1.00 vs 0.20 chance, routed 0.94 vs shared 0.38; the shared-model-wins-on-feature-sharing other half at v3.60); zero importers (dynamic routes swept); every capability owned elsewhere on live paths, mostly better (LakeMemory carries the stronger cross-process proof its check lacked). The `lake_skills` "exactly one survives" pair resolved to NEITHER file — the ONE mechanism is SkillRegistry. `similarity_sized_growth`'s docstring cite annotated. **Family score: 9 promoted (2 renamed/absorbed among them), 2 merged into one mechanism, 3 retired — 14 modules, ONE settlement, every step gate-green.** (3) |
 
+### Lane 4e (2026-08-12): `developmental_loop_brain` -> `hippocampus/` -- the lane-4 residue CLOSES
+
+The p6-pinned loop promoted (KNOWN_WRITERS relpath co-edited same commit; TRAIN_TIER +
+TRAIN_GATED; executive_control imports lazy-in-main, the kb_ranking shape -- that module's own
+lane still owes rename + P1 + p6 floor 3). Full 5.8-min run reproduced at the new path. **The
+dormancy conversion promise carried by three EXEMPT entries was MEASURED FALSE and corrected**
+(wire -> permanent with measurements; zero conversions, 31 -> 33 exemptions, honest). specs/007
+T021 disposed (stub kept as interface, signature fixed). P6 caught an undeclared
+hippocampus->basal_ganglia pair at the move -- resolved by DECLARING the real subiculum->nacc
+route. With 4d + the laminar merge + ensemble_rbf's instrument settlement this closes every row
+the 2026-08-11 "lane 4c/4d recorded" entry left dependency-blocked; the remaining brain_adapters
+census is ONE module (executive_control).
+
 Order: content_signature -> {corpus_stream, world_kb_stream, lake_memory} -> skill_builder ->
 {language_readout_slda + fair_compare ports} -> language_self_build -> open_world_loop ->
 {meta_skill_loop + open_meta_loop merge} -> nightly_skills -> lake_skill_library retire.
@@ -248,7 +261,7 @@ Before deleting any `reasoning/` module, grep it in every one of:
 `reasoning/` paths with writer floors — `KNOWN_WRITERS["reasoning/brain_adapters/executive_control.py"] = 3`
 at `:271`, consumed at `:1328-1345` where a known writer producing zero writes appends a problem, plus
 a dedicated criterion at `:1381`. Same for `train_of_thought` (4), `rpm_solver` (1),
-`spike_chat_lake` (1), `developmental_loop_brain` (1), and `KNOWN_READERS` for two of them. **Deleting
+`spike_chat_lake` (1), `developmental_loop_brain` (1 -- key now `hippocampus/developmental_loop_brain.py`, co-edited at its 2026-08-12 promotion), and `KNOWN_READERS` for two of them. **Deleting
 one of those files without editing `p6_gate.py` in the same commit reds the build.**
 
 Also non-obvious, and each has actually fired: `substrate/brain_geometry.py:170-179` globs

@@ -978,7 +978,7 @@ The breakdown is the finding, not the ratio: **25 of the 36 writes are inside th
 themselves** (`global_workspace` 14, `reentrant_workspace` 11), so real faculty broadcast is **11 writes
 from 6 faculties** — `train_of_thought`, `autonomous_loop`, `access_consciousness`, `rpm_solver`,
 `spike_chat_lake`, `executive_control`. The two readers are `cortex/live_brain.py:287` and
-`reasoning/developmental_loop_brain.py:295`, and **`live_brain` is the tick driver** — the action path.
+`reasoning/developmental_loop_brain.py:295` (the module is `hippocampus/developmental_loop_brain.py` since 2026-08-12; the cited site is a 3-arg WRITE per P6_INTERCONNECT's correction), and **`live_brain` is the tick driver** — the action path.
 
 So the bus exists and is used as a **broadcast sink whose only live consumer is the action path**: the
 single action gate wearing a bus's clothes. Not one faculty reads another faculty's contribution, which

@@ -416,6 +416,10 @@ TORCH_TIER = {
 TRAIN_TIER = {
     "plasticity": ["snn_mnist_stdp", "deep_stdp"],
     "cortex": ["deep_stdp_latency"],
+    # PROMOTED 2026-08-12 (#10 lane 4e): the brain-integrated developmental loop -- continual
+    # learning via balanced hippocampal replay (its identity mechanism). torchvision at module
+    # load via the load_mnist hub import, hence this annex and not REGIONS.
+    "hippocampus": ["developmental_loop_brain"],
 }
 
 # old flat name -> "region.module". The `m != r` guard used to exempt the same-named hippocampus module
