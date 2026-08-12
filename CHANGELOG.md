@@ -9,6 +9,22 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- lane 4c/4d recorded; THE #10 BULK WORK ORDER CLOSES AT ITS EXECUTABLE FRONTIER (2026-08-11ab)
+
+Lane 4's two remaining rows are measured, verified, and DEPENDENCY-BLOCKED -- recorded rather
+than forced: the laminar merge cannot delete its target while both importers are themselves
+blocked modules (ensemble_rbf is sklearn-blocked with a pending P7 adjudication;
+developmental_loop_brain is p6_gate-pinned and specs/010-blocked), and brain_decision's
+live-path condition needs that same loop's lane. Both rows carry their exact execution
+conditions and the specs/010 blocker inventory the future lane owns.
+
+THE FOUR-LANE ORDER, closed: the language/skills family (14 modules, 12 commits), the
+deep_stdp lineage (3 rungs), the physics-JEPA trio (instrument + 2 retires), and lane 4's
+executable half (2 promotes) -- 20 gate-green commits this arc. reasoning/ 161-baseline ->
+119 live; every settlement measured before execution, every heavy check kept at real scale
+(TRAIN_GATED / opt-in full runs), every deletion licensed by a run-first A/B or a preserved
+verdict, and every remaining blocker named, measured, and owned by a recorded lane.
+
 ## [Unreleased] -- lane 4b: growable_readout -> hippocampus/ (2026-08-11aa)
 
 The function-preserving growth origin joins the governed tree: Net2Net (1,0) fan-out split
