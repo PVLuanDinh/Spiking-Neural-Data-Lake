@@ -63,14 +63,13 @@ import torch.nn.functional as F
 
 from snn_data_lake.cortex.deep_stdp_latency import ConvLatencyStdp
 from snn_data_lake.hippocampus.hippocampal_memory import HippocampalMemory
-from snn_data_lake.hippocampus.growable_readout import GrowableReadout
+from snn_data_lake.hippocampus.growable_readout import GrowableReadout, LaminarColumns
 from snn_data_lake.basal_ganglia.brain_decision import BrainDecision
 from snn_data_lake.reasoning.brain_adapters.executive_control import (
     ExecutivePlanner,
     DopamineModulator,
     WorkspaceBroadcast,
 )
-from snn_data_lake.reasoning.brain_adapters.laminar_readout import LaminarReadout, LaminarColumns
 
 
 class _LinearReadout:
@@ -219,11 +218,10 @@ def main():
     # 78.6% at ~7 classes) where the linear readout does not. The neurogenesis mechanism is sound; MLP-continual-
     # forgetting is the cost. Kept opt-in for reproducibility.
     GROWABLE = _envi("NORD_GROWABLE", 0)
-    LAMINAR = _envi(
-        "NORD_LAMINAR", 0
-    )  # readout as the 6-layer NEOCORTICAL motif (L4->L2/3->L5->L6) with
-    #                                        NEUROGENESIS (grow+freeze) in the L2/3 feature layer (v3.59: partial
-    #                                        freeze insufficient -> 63.7%).
+    # NORD_LAMINAR deleted 2026-08-12 at the laminar merge: LaminarReadout was RETIRED with
+    # its file (the v3.59 failure mode -- partial L2/3 freeze under a drifting shared L4,
+    # 63.7% -- and an e-prop violator; record kept in hippocampus/growable_readout's merge
+    # note). LaminarColumns (the fix) stays available below under NORD_COLUMNS.
     COLUMNS = _envi(
         "NORD_COLUMNS", 0
     )  # per-digit ISOLATED cortical columns (progressive nets): each new digit
@@ -231,15 +229,11 @@ def main():
     #                                        features always see stable (their own) input. Fixes v3.59's L4 drift.
     FREEZE = _envi(
         "NORD_FREEZE", 1
-    )  # (with GROWABLE/LAMINAR/COLUMNS=1) grow-and-FREEZE progressive neurogenesis.
+    )  # (with GROWABLE/COLUMNS=1) grow-and-FREEZE progressive neurogenesis.
     if COLUMNS:
         readout = LaminarColumns(
             D, n_classes=10, n23=HIDDEN, seed=0
         )  # per-digit isolated columns + shared L5
-    elif LAMINAR:
-        readout = LaminarReadout(
-            D, n_classes=10, n23=HIDDEN, seed=0
-        )  # cortical-column readout + L2/3 neurogenesis
     elif GROWABLE:
         readout = GrowableReadout(
             D, n_classes=10, hidden=HIDDEN, seed=0
@@ -378,7 +372,7 @@ def main():
         if DOPA:
             da_gain = dopamine.modulate(competence[objective] - comp_before[objective])
         grew = ""
-        if (GROWABLE or LAMINAR or COLUMNS) and FREEZE:
+        if (GROWABLE or COLUMNS) and FREEZE:
             # PROGRESSIVE NEUROGENESIS + FREEZE: after learning this new digit, freeze its units and grow a fresh
             # block for the NEXT digit -> each digit owns a protected sub-network, new cannot overwrite old.
             if is_new and readout.n_hidden < HIDDEN_CAP:

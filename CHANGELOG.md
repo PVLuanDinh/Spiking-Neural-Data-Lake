@@ -9,6 +9,29 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- the LAMINAR MERGE: laminar_readout deleted, LaminarColumns governed, T022 discharged (2026-08-12b)
+
+The MERGE-THEN-RETIRE half of lane 4c executes. `LaminarReadout` -- the backprop L6-gated
+single-column readout -- survives NOWHERE: it was the recorded v3.59 failure mode (L2/3-only
+freeze under a drifting shared L4 -> 63.7% catastrophic forgetting), its `.backward()` ran
+through a LEARNED L6 feedback matrix (weight transport, the e-prop violation that ruled out
+promote-as-is), and both its capabilities are owned better elsewhere (L6 gain by the
+fixed-random L6 in laminar_local_readout; freeze by LaminarColumns). Its file is deleted;
+the v3.59 negative that LICENSES its replacement is re-recorded in the survivor's docstring
+before the deletion, per the retiree-carries-the-failure rule.
+
+`LaminarColumns` (per-task isolated columns, Rusu 2016) PORTS to hippocampus/
+growable_readout.py -- a distinct mechanism beside GrowableReadout (whole-column vs
+hidden-unit freeze; per-column name-keyed vs per-tensor Adam bookkeeping), not a fake
+merge. All eight of its criteria moved with it and reproduce exactly (frozen L4/L2/3
+diffs 0.000e+00, retention 1.000 -> 1.000, acc_B 1.000). specs/007 T022 discharged with
+honest arithmetic: 4 (1,0)-split sites -> 2 (the one torch helper `_extend_zero_fanout`
++ the numpy mirror in laminar_local_readout, cross-cited), not 4 -> 1. Consumers
+repointed: ensemble_rbf and developmental_loop_brain now import LaminarColumns from the
+governed home; dlb's dead NORD_LAMINAR branch deleted with its class. The inherited
+e-prop debt (both classes train by backward+Adam, offline TORCH_GATED, not on the live
+tick) is restated in the merged docstring, not laundered.
+
 ## [Unreleased] -- lane 4d executes: brain_decision -> basal_ganglia/, and the owed fusion A/B returns a NULL (2026-08-12a)
 
 The dependency block lifted this arc on both ends: sklearn's P7 adjudication was already

@@ -111,10 +111,12 @@ EXEMPT = {
     "growable_readout": (
         "wire",
         "TORCH-TIER growable readout (promoted 2026-08-11, #10 lane 4b): function-preserving "
-        "Net2Net (1,0) growth + bit-exact freeze -- the ORIGIN copy the specs/007 T022 "
-        "consolidation collapses the laminar duplicates into. Consumers are reasoning-tier "
-        "(autonomous_brain the kept A/B control at :50 unconditional; developmental_loop_brain "
-        "opt-in) until their own lanes; same conversion condition as hippocampal_memory",
+        "Net2Net (1,0) growth + bit-exact freeze. T022 DISCHARGED HERE 2026-08-12: the one "
+        "torch (1,0)-split helper lives in this file, and LaminarColumns (per-task isolated "
+        "columns) was ported in at the laminar merge (laminar_readout.py deleted). Consumers "
+        "are reasoning-tier (autonomous_brain the kept A/B control at :50 unconditional; "
+        "developmental_loop_brain + ensemble_rbf opt-in) until their own lanes; same "
+        "conversion condition as hippocampal_memory",
     ),
     "brain_decision": (
         "wire",

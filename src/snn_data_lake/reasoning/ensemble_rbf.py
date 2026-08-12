@@ -30,7 +30,7 @@ from sklearn.svm import SVC
 from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.plasticity.snn_mnist_stdp import load_mnist
 from snn_data_lake.cortex.deep_stdp_latency import ConvLatencyStdp, _train
-from snn_data_lake.reasoning.brain_adapters.laminar_readout import LaminarColumns
+from snn_data_lake.hippocampus.growable_readout import LaminarColumns
 
 
 def _envi(k, d):

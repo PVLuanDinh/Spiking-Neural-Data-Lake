@@ -56,7 +56,9 @@ Approved immediately, needing no survivor decision -- these are dead code, not c
 2. `reasoning/developmental_loop_brain.py:101` `grow` -- body is `return  # linear: no hidden layer to grow`.
 3. Four duplicated `(1,0)` readout splits (`growable_readout.py:176`, `laminar_readout.py:205`
    and `:483`, `laminar_local_readout.py:149`) which the source documents as "REUSED verbatim" from
-   one another. Collapse to one.
+   one another. Collapse to one. [RESOLVED 2026-08-12, T022: collapsed 4 -> 2 -- the one torch
+   helper `_extend_zero_fanout` in hippocampus/growable_readout.py plus the numpy mirror in
+   laminar_local_readout.py; laminar_readout.py's two sites died with the file at the laminar merge.]
 
 **The decision gate**: register the two seams that already grow (`growing_learner.py:112`,
 `multimodal_encoder.py:198`), wire ONE real producer/consumer pair across a module boundary, and A/B

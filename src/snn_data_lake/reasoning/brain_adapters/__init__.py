@@ -8,7 +8,14 @@ live wake tick (`cortex/brain.py`).
 P4c: these are PART OF THE BRAIN, not "research code beside it". This docstring used to open
 "research/brain_adapters" and assert "Zero-dep CORE is never edited from here" -- the path moved
 into the package in v3.78 and the zero-dependency rule was abolished 2026-07-20 (P7), so both
-clauses were stale. Open debt, stated because P4c makes it countable: only
-`laminar_local_readout` has a live consumer; none of the eight modules here is registered in
-`REGIONS` or `run_selfchecks.py`, so the three P3 gates cannot see them.
+clauses were stale. The census here has been DRAINING by promotion/retirement (#10 lanes):
+brain_decision -> basal_ganglia/ (2026-08-12), hippocampal_memory + growable_readout ->
+hippocampus/ (2026-08-11), gwt_deep -> thalamus/ (2026-08-11), lake_memory -> hippocampus/
+proximity_replay (2026-08-11), laminar_readout DELETED (2026-08-12 -- the LaminarReadout-vs-
+laminar_local_readout P2 this docstring long owed is RESOLVED: the no-transport local readout
+is the one live-tick mechanism, LaminarColumns ported to hippocampus/growable_readout, the
+backprop L6 readout retired as the recorded v3.59 failure). TWO modules remain:
+`executive_control` (p6_gate-pinned, its own lane -- carrying the recorded P2 vs
+brain_decision.choose(), see that module's docstring) and `laminar_local_readout` (promotion
+to cortex/ owned by the same 2026-08-12 lane).
 """
