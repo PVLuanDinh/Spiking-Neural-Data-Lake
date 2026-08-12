@@ -96,7 +96,7 @@ import torch.nn.functional as F
 
 from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.plasticity.snn_mnist_stdp import load_mnist
-from snn_data_lake.reasoning.deep_stdp import FcStdp, OneLayerNet, assign_labels, evaluate
+from snn_data_lake.plasticity.deep_stdp import FcStdp, OneLayerNet, assign_labels, evaluate
 
 K = 5  # conv kernel size (2 input channels, valid conv, stride 1)
 A_PLUS = 0.004  # multiplicative STDP potentiation rate (pre-before-post)

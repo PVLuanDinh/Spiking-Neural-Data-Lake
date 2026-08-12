@@ -9,6 +9,17 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- lane 2b: deep_stdp -> plasticity/ (2026-08-11w)
+
+The lineage's shared library (FcStdp/OneLayerNet/assign_labels/evaluate, imported verbatim by
+its superseders) and its recorded ConvStdp honest negative join the governed tree. The
+gate-runtime question resolved by the genn shape, not a toy path: the full benchmark --
+measured 493.9s on the GPU -- keeps every claim and runs behind DEEPSTDP_RUN=1; the bare
+__main__ is a 3s mechanics integrity check (STDP moves weights, normalise holds, k-WTA fires,
+assign/evaluate round-trips) on a real-MNIST slice, claiming nothing about accuracy, with
+reachable reds for each mechanic. The _env/_envf copy deleted (imported from the hub); the
+retired-env run command corrected; TRAIN_GATED + dormancy EXEMPT (library shape).
+
 ## [Unreleased] -- lane 2a: snn_mnist_stdp (the rule-family hub) -> plasticity/ (2026-08-11v)
 
 The deep_stdp lineage opens at its root: the Diehl-Cook hub whose constants are the GeNN

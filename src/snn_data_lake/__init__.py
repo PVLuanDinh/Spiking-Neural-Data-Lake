@@ -318,6 +318,10 @@ REGIONS = {
         # run_selfchecks tier: TRAIN_GATED (torchvision at module top, the recorded P7
         # adjudication; runs where torchvision is importable, 58.8s full real train on the GPU).
         "snn_mnist_stdp",
+        # PROMOTED from reasoning/ 2026-08-11 (#10 lane 2b): the deep-STDP lineage's shared
+        # LIBRARY (FcStdp/OneLayerNet/assign_labels/evaluate -- its superseders import them
+        # verbatim) + the recorded ConvStdp honest negative (filter collapse, CHANGELOG v3.49).
+        "deep_stdp",
     ],
     "substrate": [
         # PROMOTED 2026-08-04: P2 merge of training/device.py (GPU-first, measured) with the

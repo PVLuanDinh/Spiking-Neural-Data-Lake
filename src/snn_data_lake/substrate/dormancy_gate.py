@@ -107,6 +107,14 @@ EXEMPT = {
         "tests/instruments/gwt_deep_split_ab.py. Wiring it to the tick would be the fake "
         "consumer P3 names",
     ),
+    "deep_stdp": (
+        "permanent",
+        "TRAIN-TIER LIBRARY + recorded honest negative (promoted 2026-08-11, #10 lane 2b): "
+        "FcStdp/OneLayerNet/assign_labels/evaluate are imported verbatim by the lineage's "
+        "superseders (deep_stdp_latency, deep_stdp_2stage -- reasoning-tier until their own "
+        "rungs); nothing on the live tick trains it. Full real self-check in TRAIN_GATED "
+        "wherever torchvision imports",
+    ),
     "snn_mnist_stdp": (
         "permanent",
         "TRAIN-TIER HARNESS (promoted 2026-08-11, #10 lane 2a): the Diehl-Cook rule-family hub; "

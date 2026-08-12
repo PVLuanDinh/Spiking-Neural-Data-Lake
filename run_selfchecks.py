@@ -405,7 +405,8 @@ NENGO_GATED = ["substrate.nengo_bridge"]
 # extras, so these skip there -- same contract as NENGO_GATED). Added 2026-08-11 with the
 # deep_stdp-lineage promotions (#10 lane 2).
 TRAIN_GATED = [
-    "plasticity.snn_mnist_stdp",  # PROMOTED 2026-08-11 (lane 2a): the Diehl-Cook rule hub (full real train, GPU)
+    "plasticity.snn_mnist_stdp",  # PROMOTED 2026-08-11 (lane 2a): the Diehl-Cook rule hub (full real train, GPU, 58.8s)
+    "plasticity.deep_stdp",  # PROMOTED 2026-08-11 (lane 2b): library mechanics check; DEEPSTDP_RUN=1 = the full 8-min benchmark
 ]
 
 # The repo root, for resolving ARTIFACT_GATED paths regardless of the cwd the runner was invoked from.

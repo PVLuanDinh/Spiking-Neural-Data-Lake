@@ -55,7 +55,9 @@ scaffold for that future work. The developmental loop keeps its single-layer
 STDP learner (accuracy lever = neuron SCALE, ~88% -> ~95% at 6400).
 
 Run (defaults finish a smoke run in a few minutes on GPU):
-    NORD_GPU=1 PYTHONPATH=src ../.venv-cu128/Scripts/python -m snn_data_lake.reasoning.deep_stdp
+    NORD_GPU=1 PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.plasticity.deep_stdp
+    (command corrected 2026-08-11 at promotion: it named the retired .venv-cu128 env and the
+    pre-promotion path)
 Scale knobs: NORD_C NORD_M NORD_TRAIN NORD_TEST NORD_GPU NORD_CTHRESH
 Deps: numpy torch torchvision snntorch   ([train]/[gpu] extras. NOT "outside the core": this module lives in src/snn_data_lake/reasoning/
          and imports from the package -- P4c, every build is part of the brain.)
@@ -63,37 +65,31 @@ Deps: numpy torch torchvision snntorch   ([train]/[gpu] extras. NOT "outside the
 
 import os
 
+import snntorch as snn
 import torch
 import torch.nn.functional as F
-import snntorch as snn
 
-from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.plasticity.snn_mnist_stdp import (
     BETA,
     LR,
     MAX_RATE,
     N_IN,
-    T,
     TAU_PRE,
     THETA_DECAY,
     THETA_PLUS,
     THRESH,
     W_NORM,
     WMAX,
+    T,
     load_mnist,
 )
+from snn_data_lake.substrate.device import enable, resolve_device
 
 K = 5  # conv kernel size (single input channel, valid conv, stride 1)
 
-
-def _env(key, default):
-    v = os.environ.get(key)
-    return int(v) if v else default
-
-
-def _envf(key, default):
-    v = os.environ.get(key)
-    return float(v) if v else default
+# _env/_envf were a line-for-line second copy of the hub's own helpers until the 2026-08-11
+# promotion (the P2-shape duplication its ledger row flagged); imported from the one home now.
+from snn_data_lake.plasticity.snn_mnist_stdp import _env, _envf  # noqa: E402
 
 
 class FcStdp:
@@ -288,7 +284,40 @@ def _train(net, X, tag):
             print(f"  {tag}: {i + 1}/{len(X)} images")
 
 
+def _mechanics_check():
+    """The GATE-TIER integrity check (genn precedent: the bare __main__ never runs the 8-minute
+    benchmark; DEEPSTDP_RUN=1 opts into it). Asserts the lineage LIBRARY's mechanics on a small
+    REAL-MNIST slice and claims NOTHING about accuracy -- the benchmark's measured claims (the
+    1-layer >=55% bar and the ConvStdp collapse negative) belong exclusively to the full run.
+    Reachable reds: neuter the STDP update and the weights-moved assert fails; drop _normalise
+    and the row-sum assert fails; raise THRESH to 1e9 and the fires assert fails."""
+    torch.manual_seed(0)
+    X, Y, Xte, Yte = load_mnist(64, 32)
+    net = OneLayerNet(16)
+    w0 = net.fc.W.clone()
+    for img in X:
+        net.run(img, learn=True)
+    assert not torch.equal(w0, net.fc.W), "STDP moved no weight (learning neutered)"
+    s = net.fc.W.sum(dim=1)
+    assert torch.allclose(s, torch.full_like(s, W_NORM), rtol=1e-3), (
+        f"homeostatic normalise broken (row sums {s.min():.2f}..{s.max():.2f} vs {W_NORM})"
+    )
+    counts = net.run(X[0], learn=False)
+    assert counts.sum() > 0, "no prototype fires on a trained image"
+    a = assign_labels(net, X, Y, 16)
+    acc = evaluate(net, Xte, Yte, a, 16)
+    assert 0.0 <= acc <= 1.0, f"evaluate returned a non-probability ({acc})"
+    print(
+        f"mechanics OK: STDP moves weights, normalise holds ({W_NORM}), k-WTA fires, "
+        f"assign/evaluate round-trip (slice acc {acc:.2f} -- NOT the benchmark; "
+        f"DEEPSTDP_RUN=1 runs the full 6000/2000 measurement, ~8 min GPU)"
+    )
+    return 0
+
+
 def main():
+    if os.environ.get("DEEPSTDP_RUN") != "1":
+        return _mechanics_check()
     enable(resolve_device())
     C = _env("NORD_C", 16)
     M = _env("NORD_M", 100)
