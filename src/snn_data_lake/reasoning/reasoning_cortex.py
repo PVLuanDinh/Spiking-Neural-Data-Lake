@@ -702,7 +702,7 @@ class StructureMappingSolver:
                 False,
             )
         if self._Mapper is None:
-            from snn_data_lake.reasoning.vsa_structure_mapping import StructureMapper
+            from snn_data_lake.cortex.vsa_structure_mapping import StructureMapper
 
             self._Mapper = StructureMapper
         mapper = self._Mapper(dim=self.DIM, seed=self.seed)  # FRESH: map() advances its own rng

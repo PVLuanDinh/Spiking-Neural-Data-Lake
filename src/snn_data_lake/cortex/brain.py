@@ -921,11 +921,11 @@ class Brain:
         self._episode_retained = 0.0
         try:
             from snn_data_lake.cortex.learned_evc import LearnedEVC
+            from snn_data_lake.cortex.vsa_structure_mapping import StructureMapper
             from snn_data_lake.hippocampus.episode_consolidation import (
                 EpisodeConsolidator,
                 capacity_for,
             )
-            from snn_data_lake.reasoning.vsa_structure_mapping import StructureMapper
 
             self._learned_evc = LearnedEVC(seed=self._seed)
             # CAPACITY TRACKS PRODUCTION, and dim tracks capacity. Neither is a slot count any more.

@@ -267,7 +267,9 @@ def main():
     # (vsa_structure_mapping, rose_language, eprop_nmnist) each remove one target; each lowers
     # this floor by one IN ITS OWN COMMIT, per the batch discipline the regenerated
     # promotion-plans.json records (a second removal without its lowering reds this line).
-    assert len(man) >= 10, f"manifest collapsed to {len(man)} targets -- scan regression?"
+    # Floor lowered 10 -> 9 on 2026-08-12 (PROMOTE lane 2/4, vsa_structure_mapping -> cortex/):
+    # its one target (the brain.py:928 lazy reach) left the manifest; same convention.
+    assert len(man) >= 9, f"manifest collapsed to {len(man)} targets -- scan regression?"
 
     # ROOT-TIER COVERAGE, asserted STRUCTURALLY so that no COUNT arbitrates it. The comment above
     # used to claim the floor of 13 was "also the value that makes root-tier blindness itself red".

@@ -93,7 +93,7 @@ def _patch_method(modname, cls, meth, stub):
 
 _GF = "snn_data_lake.reasoning.gf"
 _ARC = "snn_data_lake.reasoning.arc_solver"
-_SMAP = "snn_data_lake.reasoning.vsa_structure_mapping"
+_SMAP = "snn_data_lake.cortex.vsa_structure_mapping"  # retargeted at the 2026-08-12 promotion (string-name dispatch: no import-graph tool sees this site)
 _RPM = "snn_data_lake.reasoning.rpm_solver"
 _VSYN = "snn_data_lake.reasoning.vsa_synthesize"
 _CHAT = "snn_data_lake.reasoning.spike_chat_lake"

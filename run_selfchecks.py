@@ -110,6 +110,7 @@ CORE = [
     "cortex.executive_control",  # W8: ACC conflict + EVC + tree/sequence planning
     "cortex.competence_executive",  # PROMOTED+RENAMED 2026-08-12 (#10 lane 4f): dopamine-RPE lr gate + public competence-planning objects (wrappers retired same day); stdlib-only, ~1s
     "cortex.nef_compute",  # PROMOTED 2026-08-12 (PROMOTE lane): NEF reference implementation / nengo_bridge ground truth; numpy-only, ~0.2s
+    "cortex.vsa_structure_mapping",  # PROMOTED 2026-08-12 (PROMOTE lane): Gentner structure-mapping analogy (VSA/resonator); stdlib, ~0.1s
     "cortex.time_cells",
     "cortex.task_set",
     "cortex.generative_self_model",  # C1: spiking clock / task-set-shift / learned generative self-model
@@ -359,7 +360,6 @@ RESEARCH = [
     # (reasoning.arc_diagnostic is deliberately NOT here -- a ~27 s offline instrument, covered by
     # tests/test_arc_diagnostic.py; the smoke gate stays fast.)
     "reasoning.real_rpm_bench",
-    "reasoning.vsa_structure_mapping",  # C1 batch-4: Gentner relational structure-mapping analogy (VSA/resonator)
     "reasoning.reasoning_cortex",  # MoE router: ~8 dead reasoning studies made live on the converse path
     "reasoning.derivation",  # multi-hop transitive DEDUCTION (proof-carrying BFS over taught facts)
     "reasoning.reasoning_compose",  # MULTI-STEP composition over the MoE router (bounded expert grammar)

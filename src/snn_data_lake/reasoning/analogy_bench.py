@@ -38,7 +38,7 @@ would drift across calls). ASCII output only.
   Run: python -m snn_data_lake.reasoning.analogy_bench     # prints the honest score, then asserts
 """
 
-from snn_data_lake.reasoning.vsa_structure_mapping import StructureMapper
+from snn_data_lake.cortex.vsa_structure_mapping import StructureMapper
 
 DIM, SEED = 1024, 0
 

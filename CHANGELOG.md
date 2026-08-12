@@ -9,6 +9,29 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- PROMOTE lane 2/4: vsa_structure_mapping -> cortex/, the analogy faculty governed (2026-08-12n)
+
+Second READY promotion, to its skeptic-verified co-edit list. reasoning/ ->
+cortex/ (identity: the Gentner structure-mapping solver reasoning_cortex's
+structure-map route consumes; DIM 1024 tracks the live consumer). REGIONS +
+run_selfchecks RESEARCH -> CORE (stdlib, 0.1s; 190 statements enter the
+coverage denominator at 77% from its 8 existing tests plus the in-process
+main()); import_manifest floor 10 -> 9 (the brain.py:928 lazy reach left the
+manifest). FIVE retargets + the one no-import-graph-tool-sees site: brain.py
+:928 (ruff I001 import-sort fallout fixed same commit), reasoning_cortex:705,
+analogy_bench:41 (module-top), tests/test_vsa_structure_mapping.py:3, and
+docs/coverage/artifacts/gf_reply_ab.py:96's _SMAP STRING-NAME dispatch.
+In-file stale cites re-derived (:43-47 run_selfchecks tier paragraph completed
+by the move it argued for; :279 brain.py:927 -> :967). P2 direction RECORDED,
+not executed: the dim-parameterised _cleanup_project is THE mechanism;
+reasoning/resonator_network's vsa.D-hardcoded copy (measured 300/300
+bit-identical at dim=512) delegates or retires when its lane arrives. P3 debt
+carried visibly, deliberately NOT fixed here (one change per commit):
+brain.py:967's _structure_mapper is write-only (AUDIT_BACKLOG M11) --
+retire-or-read is its own commit, and the dormancy closure does not depend on
+that edge. Self-check green at the new path; atlas 228 modules parity exact;
+manifest 10 targets all import; dormancy green.
+
 ## [Unreleased] -- PROMOTE lane 1/4: nef_compute -> cortex/, the NEF reference implementation governed (2026-08-12m)
 
 First of the four READY promotions the regenerated promotion-plans.json licenses,

@@ -40,13 +40,13 @@ P7 -- the retired zero-dependency rule left one artefact here, `assert "torch" n
   named as live residue by both `CLAUDE.md` and `docs/POLICIES.md`. It is DELETED, and the reason is
   stronger than tidiness: promotion moves this self-check from an isolated subprocess into
   `tests/test_selfchecks.py`, which runs every module's `__main__` in ONE interpreter and whose own
-  line 32 does `from run_selfchecks import _TORCH, ...` -- and `run_selfchecks.py:438` evaluates
+  line 32 does `from run_selfchecks import _TORCH, ...` -- and `run_selfchecks.py:480` evaluates
   `_TORCH = _torch_ok()` at module scope, importing torch before any parametrized case runs. (That
-  citation read `:430` until adversarial verification resolved it: `:430` is a `try:` inside
-  `_nengo_ok()`, and the real assignment is 8 lines later. The registration this module currently
-  holds is `run_selfchecks.py:343`, inside `RESEARCH` -- the list `test_selfchecks.py:18-19`
-  deliberately excludes -- so promotion into a governed region is exactly the move that puts it
-  in-process.) The
+  citation read `:430`, then `:438`, until re-derivations resolved it -- line cites into
+  run_selfchecks drift as tiers grow, which is why the self-check derives its own run hint. The
+  RESEARCH registration this paragraph used to describe is GONE: the 2026-08-12 promotion moved
+  this module into CORE, which is exactly the move that puts this self-check in-process --
+  the argument this paragraph makes completed the day the move landed.) The
   assert was therefore a GUARANTEED red on promotion, for a reason that says nothing about this
   module (measured: the self-check passes standalone and fails with exactly this AssertionError once
   `run_selfchecks` has been imported into the same process). Its own comment already conceded it
@@ -276,7 +276,8 @@ class StructureMapper:
         FRESH mapper per use -- `reasoning_cortex` per answered query (its rng advances inside
         `map()`, so reuse would drift anyway), `analogy_bench` per item -- so the caches die with the
         call. A long-lived instance fed unboundedly many distinct propositions would grow; the one
-        long-lived instance in the tree, `cortex/brain.py:927`'s, is never read from and so never
+        long-lived instance in the tree, `cortex/brain.py:967`'s (re-cited at the 2026-08-12
+        promotion; the lazy import is :928), is never read from and so never
         fills them. (Measured: 20 `map()` calls on one reused instance leave 20 / 20 / 44 entries in
         `_prop_cache` / `_target_cache` / `_cache`.)
 
