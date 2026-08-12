@@ -35,7 +35,7 @@ import torch
 
 from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.plasticity.snn_mnist_stdp import load_mnist
-from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp, _train
+from snn_data_lake.cortex.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.reasoning.fast_features import batched_features_and_keys
 from snn_data_lake.reasoning._loop_common import envi, envf
 from snn_data_lake.hippocampus.proximity_replay import LakeMemory

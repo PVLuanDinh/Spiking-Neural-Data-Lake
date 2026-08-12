@@ -5,7 +5,7 @@ hierarchy (Kheradpisheh-2018 SDNN style, pool-between-conv-layers), and an hones
 
 WHY THIS FILE EXISTS
 --------------------
-reasoning/deep_stdp_latency.py built the WORKING single conv-STDP stage (the
+cortex/deep_stdp_latency.py (promoted 2026-08-11) built the WORKING single conv-STDP stage (the
 diversity-creating DoG + latency + first-spike two-axis WTA + multiplicative
 soft-bound STDP machinery). It is a 2-layer network (one conv stage + FC). This
 file STACKS a SECOND latency conv-STDP stage on top of that frozen first stage,
@@ -93,7 +93,7 @@ import torch.nn.functional as F
 from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.plasticity.snn_mnist_stdp import load_mnist
 from snn_data_lake.plasticity.deep_stdp import FcStdp, OneLayerNet, assign_labels, evaluate
-from snn_data_lake.reasoning.deep_stdp_latency import (
+from snn_data_lake.cortex.deep_stdp_latency import (
     ConvLatencyStdp,
     TwoLayerNet,
     _train,

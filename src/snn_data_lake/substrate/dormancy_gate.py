@@ -107,6 +107,14 @@ EXEMPT = {
         "tests/instruments/gwt_deep_split_ab.py. Wiring it to the tick would be the fake "
         "consumer P3 names",
     ),
+    "deep_stdp_latency": (
+        "permanent",
+        "TRAIN-TIER perception feature learner (promoted 2026-08-11, #10 lane 2c, region "
+        "settled cortex/ -- its consumer set IS the perception tier): ConvLatencyStdp is "
+        "consumed by the reasoning-tier loops (autonomous_brain, developmental_*, "
+        "fast_features) until their own rungs; nothing governed reaches it yet. Mechanics "
+        "check in TRAIN_GATED; DSLATENCY_RUN=1 = the full benchmark with both measured bars",
+    ),
     "deep_stdp": (
         "permanent",
         "TRAIN-TIER LIBRARY + recorded honest negative (promoted 2026-08-11, #10 lane 2b): "

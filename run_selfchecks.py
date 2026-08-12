@@ -407,6 +407,7 @@ NENGO_GATED = ["substrate.nengo_bridge"]
 TRAIN_GATED = [
     "plasticity.snn_mnist_stdp",  # PROMOTED 2026-08-11 (lane 2a): the Diehl-Cook rule hub (full real train, GPU, 58.8s)
     "plasticity.deep_stdp",  # PROMOTED 2026-08-11 (lane 2b): library mechanics check; DEEPSTDP_RUN=1 = the full 8-min benchmark
+    "cortex.deep_stdp_latency",  # PROMOTED 2026-08-11 (lane 2c): latency machinery mechanics; DSLATENCY_RUN=1 = the full 6.6-min benchmark
 ]
 
 # The repo root, for resolving ARTIFACT_GATED paths regardless of the cwd the runner was invoked from.

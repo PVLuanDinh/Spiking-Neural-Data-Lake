@@ -81,7 +81,7 @@ sane baseline on a small subset -- the mechanisms, not paper-scale numbers, are
 the deliverable.
 
 Run (defaults finish a smoke run in a few minutes on GPU):
-    NORD_GPU=1 PYTHONPATH=src ../.venv-cu128/Scripts/python -m snn_data_lake.reasoning.deep_stdp_latency
+    NORD_GPU=1 PYTHONPATH=src ../.venv-cu128/Scripts/python -m snn_data_lake.cortex.deep_stdp_latency
 Scale knobs: NORD_C NORD_M NORD_TRAIN NORD_TEST NORD_GPU NORD_T
 Calibration knobs (optional): NORD_L1_EPOCHS NORD_CTHRESH NORD_KWINNER NORD_RINH
                               NORD_APLUS NORD_AMINUS
@@ -94,9 +94,9 @@ import os
 import torch
 import torch.nn.functional as F
 
-from snn_data_lake.substrate.device import resolve_device, enable
-from snn_data_lake.plasticity.snn_mnist_stdp import load_mnist
 from snn_data_lake.plasticity.deep_stdp import FcStdp, OneLayerNet, assign_labels, evaluate
+from snn_data_lake.plasticity.snn_mnist_stdp import load_mnist
+from snn_data_lake.substrate.device import enable, resolve_device
 
 K = 5  # conv kernel size (2 input channels, valid conv, stride 1)
 A_PLUS = 0.004  # multiplicative STDP potentiation rate (pre-before-post)
@@ -300,7 +300,40 @@ def _train(net, X, tag):
             print(f"  {tag}: {i + 1}/{len(X)} images")
 
 
+# distinct-from: deep_stdp.py -- the same GATE-TIER pattern by design (the genn shape both
+# lineage modules adopt at promotion), checking a DIFFERENT mechanism: DoG+latency first-spike
+# conv-STDP here vs FC-STDP prototype mechanics there. Pattern reuse, not a second mechanism.
+def _mechanics_check():
+    """Gate-tier integrity check: the full 6.6-minute benchmark is opt-in via DSLATENCY_RUN=1
+    and keeps BOTH measured asserts (the 1-layer >=50% bar and the kernel-diversity < 0.6
+    acceptance criterion); THIS asserts the latency machinery's mechanics on a small REAL-MNIST
+    slice and asserts NOTHING about accuracy or slice-scale diversity (diversity is REPORTED --
+    its claim belongs to the full run). Reachable reds: neuter _stdp and the kernels-moved
+    assert fails; break _dog_latency's time range and the features bound assert fails."""
+    torch.manual_seed(0)
+    enable(resolve_device())
+    X, _, _, _ = load_mnist(48, 8)
+    conv = ConvLatencyStdp(8, 15)
+    w0 = conv.Wc.clone()
+    for img in X:
+        conv.train_image(img)
+    assert not torch.equal(w0, conv.Wc), "latency STDP moved no kernel weight (neutered)"
+    f = conv.features(X[0])
+    assert f.shape[0] == conv.feat_dim(), f"feature dim {f.shape[0]} != {conv.feat_dim()}"
+    assert float(f.min()) >= 0.0 and float(f.max()) <= 1.0, "features left [0,1]"
+    div = conv.kernel_diversity()
+    assert div == div, "kernel diversity is NaN"
+    print(
+        f"mechanics OK: DoG+latency encode, first-spike WTA, multiplicative STDP moves kernels, "
+        f"features bounded (slice diversity {div:.3f} REPORTED, not asserted -- DSLATENCY_RUN=1 "
+        f"runs the full 6000/2000 measurement with both bars, ~6.6 min GPU)"
+    )
+    return 0
+
+
 def main():
+    if os.environ.get("DSLATENCY_RUN") != "1":
+        return _mechanics_check()
     enable(resolve_device())
     C = _env("NORD_C", 30)
     M = _env("NORD_M", 100)

@@ -152,6 +152,7 @@ REGIONS = {
         "language_self_build",  # PROMOTED 2026-08-11 (#10 family C6): autonomous R-STDP language assemblies; LIVE on the sleep tick
         "language_readout_slda",  # PROMOTED 2026-08-11 (#10 family C5): SLDA-RFF competence head; absorbed fair_compare's equal-budget bar
         "nightly_skills",  # PROMOTED 2026-08-11 (#10 family C9a): the ONE standing skills loop (absorbed meta_skill_loop + open_meta_loop)
+        "deep_stdp_latency",  # PROMOTED 2026-08-11 (#10 lane 2c): the WORKING perception feature learner (DoG+latency+first-spike WTA)
         # torch-trained tiers with a zero-dep serve/integration path (import cleanly without torch)
         "pc_cortex_serve",
         "brain",

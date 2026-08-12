@@ -2,7 +2,7 @@ r"""
 BRAIN-INTEGRATED DEVELOPMENTAL LOOP (Slice 1) -- the deep developmental loop (v3.54) with its
 hand-rolled parts replaced by the brain's REAL subsystems, wired through thin adapters.
 
-  perception    : conv1 latency-STDP (unsupervised, frozen)          [reasoning/deep_stdp_latency]
+  perception    : conv1 latency-STDP (unsupervised, frozen)          [cortex/deep_stdp_latency, promoted 2026-08-11]
   memory        : HippocampalMemory  = real ReplayBuffer + SleepConsolidator   [brain_adapters]
   readout       : GrowableReadout    = MLP grown function-preservingly (Net2Net) [brain_adapters]
   decision      : SpikingCuriosity + SpikingCurriculum + BrainDecision (LatentQ value + Metacog) [brain_adapters]
@@ -61,7 +61,7 @@ from snn_data_lake.substrate.device import enable, resolve_device
 import torch.nn as nn
 import torch.nn.functional as F
 
-from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp
+from snn_data_lake.cortex.deep_stdp_latency import ConvLatencyStdp
 from snn_data_lake.reasoning.brain_adapters.hippocampal_memory import HippocampalMemory
 from snn_data_lake.reasoning.brain_adapters.growable_readout import GrowableReadout
 from snn_data_lake.reasoning.brain_adapters.brain_decision import BrainDecision

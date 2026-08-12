@@ -9,6 +9,18 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- lane 2c: deep_stdp_latency -> cortex/; THE DEEP-STDP LINEAGE IS SETTLED (2026-08-11x)
+
+The lineage's working half joins the perception cortex -- the region call the ledger left open
+settles on the consumer set (the perception-tier loops perceive THROUGH this module). Full
+benchmark measured 396.5s GPU: 1-layer 66.0%, kernel diversity 0.358 < 0.6 (the acceptance
+criterion the naive build failed at 0.96), 2-layer delta -1.1% reported honestly. Genn shape:
+DSLATENCY_RUN=1 runs the full measurement with both bars; the bare __main__ is a 2.5s
+mechanics check. Nine importers repointed. Lane 2 complete: snn_mnist_stdp (hub) ->
+plasticity/, deep_stdp (library) -> plasticity/, deep_stdp_latency (the working learner) ->
+cortex/ -- three rungs, three gate-green commits, full real measurements preserved at every
+step.
+
 ## [Unreleased] -- lane 2b: deep_stdp -> plasticity/ (2026-08-11w)
 
 The lineage's shared library (FcStdp/OneLayerNet/assign_labels/evaluate, imported verbatim by
