@@ -9,6 +9,32 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- broadcast() is submit-and-read: the tenant stops driving the bus clock (2026-08-12h)
+
+The contract defect the 2026-08-06 shared-bus measurement named (recorded on
+`WorkspaceBroadcast` itself, escalated not smuggled) is FIXED: `broadcast()` no longer
+calls `step()` on a workspace it was handed. `step()` is the tick operation the bus
+OWNER runs; measured before the fix, a tenant writing every 5th tick diverged the
+arm's own (content, hold) on 20/20 ticks at thr*1.6 and 3/20 even sub-threshold,
+purely because the out-of-band step() decays every attractor. Now: submit into the
+current tick's competition, read via the zero-arg `GlobalWorkspace.broadcast()`
+reader; `step()` fires ONLY on a private workspace (ws=None), where the wrapper is
+that bus's sole clock owner -- so every prior private-path assert is green unchanged.
+On a shared bus the ignition verdict comes from the new `read()` AFTER the owner's
+step, never at submit time.
+
+The self-check pins the fix with a CLOCK CRITERION: tenant-wrapped vs direct-submit
+owner buses must produce a bit-identical per-tick (content, hold) sequence. The pair,
+not content alone -- the P8 red-probe found the old contract leaves CONTENT identical
+on this harness (0/20) while (content, hold) diverges 4/20 (the step decays the
+attractor CHARGE first, exactly how the live-bus measurement saw it). A content-only
+criterion would have had no reachable red and was not shipped. Also pinned: a tenant
+cannot ignite anything BY ITSELF (pre-owner-step read is None; red = stepping a
+shared clock again). p6_gate is untouched: the 3-argument `broadcast()` still submits
+and stays classified WRITE; all 5 ratchets re-measured green. This closes the
+precondition for the WB/ExecutivePlanner retirement (next); the four owed ports
+follow.
+
 ## [Unreleased] -- the EXEC bypass deleted: the planner IS the selection path (2026-08-12g)
 
 The recorded P2 from lane 4d ("dlb BYPASSES choose() at NORD_EXEC=1 default while

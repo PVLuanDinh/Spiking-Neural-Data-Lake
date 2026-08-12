@@ -73,8 +73,10 @@ P2 -- what already exists, checked before proposing promotion rather than after:
     belong in the promotion decision -- and a THIRD half was added 2026-08-06: the channel was
     finally driven against the LIVE shared bus and its CHARGE measured (the wrapper's own ignition
     verdict flips at the rheobase when the arm's producer is neutered), together with the reason it
-    is still not shipped live (`broadcast()` steps a clock it does not own). Both measurements, with
-    their harnesses and their control, are recorded on `WorkspaceBroadcast` itself rather than here.
+    was then not yet shipped live (`broadcast()` stepped a clock it did not own -- the contract
+    defect FIXED 2026-08-12: submit-and-read, step only on the private bus the wrapper owns). Both
+    measurements, with their harnesses and their control, are recorded on `WorkspaceBroadcast`
+    itself rather than here.
   * DopamineModulator is NOT a duplicate, but half of it is. `brainstem/autonomous_loop.py:1800-
     1826` already runs RPE -> `DopamineNuclei.da_level` on the live tick -- and stores the result as
     TELEMETRY (`self._da_level`) while the learning rate is scaled by `cort.learn_rate_scale(r)`
@@ -265,11 +267,14 @@ class WorkspaceBroadcast:
     """Wrap the spiking global workspace to broadcast the loop's current objective / competence summary.
 
     broadcast(source, content, salience) submits the content into this tick's competition at the given
-    salience (the external drive current on that content's LIF pool), runs ONE settle-to-ignition cycle
-    with step(), and returns the globally-available content (GlobalWorkspace.current). A supra-threshold
-    salience ignites into sustained firing and is broadcast; a sub-threshold one stays local (returns
-    None). This is coordination + logging (the "conscious" broadcast of the current goal), NOT an
-    accuracy lever. self.ignited records whether the submitted content actually seized the slot.
+    salience (the external drive current on that content's LIF pool) and returns the bus's current
+    broadcast (submit-and-READ, the contract fixed 2026-08-12). On a PRIVATE workspace (ws=None) it
+    also runs the one settle-to-ignition cycle itself -- this wrapper owns that bus's clock -- so a
+    supra-threshold salience ignites into sustained firing and is broadcast while a sub-threshold one
+    stays local (returns None). On a SHARED workspace it NEVER steps: the owner's tick decides, and
+    read() reports the verdict after it. This is coordination + logging (the "conscious" broadcast of
+    the current goal), NOT an accuracy lever. self.ignited records whether the last submitted content
+    actually seized the slot.
 
     P2/P6, stated plainly because it decides this class's future: this is a duplicate of
     `GlobalWorkspace` itself plus one expression, and constructing its own workspace makes it one of
@@ -304,17 +309,23 @@ class WorkspaceBroadcast:
     `broadcast()=None hold=0.0` against the live bus's `broadcast()=0 hold=0.476...`, so the neuter
     demonstrably lands.
 
-    AND THE SAME MEASUREMENT FOUND WHY THE LIVE REPOINT IS NOT SHIPPED HERE. `broadcast()` calls
-    `self._ws.step()`, and `step()` is the tick operation `brainstem/autonomous_loop.py` owns. On a
-    private workspace that is the whole mechanism; on the SHARED one it advances a competition the
-    wrapper does not drive. Measured over 20 arm ticks with the wrapper writing every 5th tick,
-    against an identical control that writes nothing: at `thr * 1.6` the arm's own
-    (content, hold) differs on 20 of 20 ticks -- its percept never regains the slot -- and even at a
-    SUB-threshold `thr * 0.5`, which cannot ignite anything, it still differs on 3 of 20 purely
-    because the out-of-band `step()` decays every attractor. A tenant of the one bus must not drive
-    its clock, and fixing that is a contract change to `broadcast()` (submit-and-read rather than
-    submit-and-step) that this file's own self-check pins -- so it is named here and escalated, not
-    smuggled in.
+    AND THE SAME MEASUREMENT FOUND THE CONTRACT DEFECT, WHICH IS NOW FIXED (2026-08-12).
+    `broadcast()` used to call `self._ws.step()` unconditionally, and `step()` is the tick
+    operation the bus OWNER runs (`brainstem/autonomous_loop.py` on the live bus). On a private
+    workspace that was legitimate -- the wrapper IS that bus's only clock. On the SHARED one it
+    advanced a competition the wrapper does not drive. Measured over 20 arm ticks with the wrapper
+    writing every 5th tick, against an identical control that writes nothing: at `thr * 1.6` the
+    arm's own (content, hold) differed on 20 of 20 ticks -- its percept never regained the slot --
+    and even at a SUB-threshold `thr * 0.5`, which cannot ignite anything, it still differed on
+    3 of 20 purely because the out-of-band `step()` decays every attractor. THE FIX: `broadcast()`
+    is now SUBMIT-AND-READ -- it submits into the current tick's competition and reads the bus via
+    the zero-arg `GlobalWorkspace.broadcast()` reader; it steps ONLY a private workspace (ws=None),
+    where this wrapper is the clock's owner rather than a tenant, so the private semantics every
+    prior assert pins are unchanged. On a shared bus the ignition verdict is therefore available
+    from `read()` AFTER the owner's step, never at submit time. The self-check pins the tenant
+    discipline with the criterion this measurement licensed: a tenant wrapper must add NOTHING to
+    the bus beyond its submission (its owner's tick sequence is bit-identical to direct submits);
+    reintroducing the step reds it deterministically -- the 20/20 divergence above IS that red.
 
     NOTHING CONSTRUCTS THIS CLASS ON A PRODUCTION PATH -- re-derived at the 2026-08-12 promotion
     rather than carried over. Tree-wide, `WorkspaceBroadcast(` appears at TEN construction sites:
@@ -330,8 +341,9 @@ class WorkspaceBroadcast:
     invisible to it. Cite the gate for the module count it asserts on, not for a
     construction-site count. So there is still no live caller to hand the shared handle to, and
     manufacturing one would be the force-wire P6 forbids. The disposition is unchanged and rests
-    on a measurement: the channel is real, it charges, its live use needs the `step()` contract
-    fixed first, and the class is a retire candidate. RETIREMENT IS A SEPARATE CHANGE, and
+    on a measurement: the channel is real, it charges, its live use needed the `step()` contract
+    fixed first (done 2026-08-12, this file), and the class is a retire candidate. RETIREMENT IS A
+    SEPARATE CHANGE, and
     specs/010 names what it owes before the class may go (this module's promotion-plan entry,
     MINIMUM SAFE PLAN): port `ignited` into brainstem/autonomous_loop's _workspace_broadcast;
     port ExecutivePlanner's write=False stateless planning (cortex/live_brain's deliberate_ahead
@@ -345,6 +357,7 @@ class WorkspaceBroadcast:
         self._ws = GlobalWorkspace(seed=seed) if ws is None else ws
         self.shared = ws is not None  # False = a private workspace (the P6 defect), True = shared
         self.ignited = False  # did the last submission ignite + get broadcast?
+        self._last_content = None  # what read() judges ignition against
 
     @property
     def ignition_threshold(self):
@@ -355,15 +368,34 @@ class WorkspaceBroadcast:
         'clearly above' / 'clearly below' if the workspace is retuned (P1)."""
         return self._ws.ignition_threshold
 
+    # distinct-from: thalamus/global_workspace.py -- no mechanism lives here: pure delegation to
+    # the ONE bus (submit + the zero-arg broadcast reader + step only on a bus this wrapper OWNS);
+    # the wrapper itself is the recorded P2 retire candidate, kept only until its importer repoints.
     def broadcast(self, source, content, salience):
-        """Submit content at `salience`, step the workspace once, return the broadcast content (or None).
+        """Submit content at `salience` into the current tick's competition, then READ the bus.
 
-        Sets self.ignited to whether THIS content ignited (won the single slot). Sub-threshold salience
-        (below the workspace rheobase / ignition_threshold) never fires, so it returns None and does not
-        ignite; a supra-threshold salience ignites and is globally broadcast."""
+        SUBMIT-AND-READ (contract fixed 2026-08-12; it was submit-and-STEP): a tenant of the one
+        shared bus must not drive its clock, so on a SHARED workspace this NEVER calls step() --
+        the owner's tick decides the competition, the return value here is the bus's PRE-step
+        content, and read() reports the verdict after the owner steps. On a PRIVATE workspace
+        (ws=None) this wrapper is the bus's only clock owner, so it still runs the one
+        settle-to-ignition cycle itself -- the previous semantics, unchanged: sub-threshold
+        salience (below ignition_threshold) returns None and does not ignite; a supra-threshold
+        salience ignites and is globally broadcast."""
         self._ws.submit(source, content, salience)
-        current = self._ws.step()  # runs one LIF settle-to-ignition cycle; returns current
-        self.ignited = current is not None and current == content
+        self._last_content = content
+        if not self.shared:
+            self._ws.step()  # private bus only: the wrapper IS the owner of this clock
+        return self.read()
+
+    def read(self):
+        """Read the bus WITHOUT advancing it (GlobalWorkspace's zero-arg reader); update ignited.
+
+        On a shared bus, call this after the OWNER's step to learn whether the last submission
+        seized the slot; ignition can never be observed at submit time there, because the
+        competition has not run yet."""
+        current = self._ws.broadcast()
+        self.ignited = current is not None and current == self._last_content
         return current
 
 
@@ -589,24 +621,69 @@ def main():
         f"(got {wb_at.ignited} / {wb_under.ignited})"
     )
 
-    # P6 channel: two adapters over ONE workspace instead of two private ones. This is the
-    # construction-path change, not a wire -- no live path shares an instance today.
+    # P6 channel: two adapters over ONE workspace instead of two private ones -- under the FIXED
+    # contract (submit-and-read, 2026-08-12): tenants submit and read; only the bus's OWNER steps.
     shared_ws = GlobalWorkspace(seed=0)
     share_a = WorkspaceBroadcast(seed=0, ws=shared_ws)
     share_b = WorkspaceBroadcast(seed=0, ws=shared_ws)
-    share_a.broadcast("executive", "study_digit_7", salience=sal_hi)
+    pre = share_a.broadcast("executive", "study_digit_7", salience=sal_hi)
+    assert pre is None and not share_a.ignited, (
+        "a tenant must not be able to ignite anything BY ITSELF: before the owner's step the shared "
+        f"bus must still be empty (got {pre!r}, ignited={share_a.ignited}) -- red here means "
+        "broadcast() is stepping a shared clock again"
+    )
+    shared_ws.step()  # the OWNER's tick -- the one competition this cycle
+    seen_by_a = share_a.read()
     seen_by_b = share_b.broadcast("monitor", "competence_report", salience=sal_lo)
     print(
-        f"    shared instance: A ignited {share_a.ignited}; B (sub-threshold) sees A's content "
-        f"{seen_by_b!r} -- shared={share_b.shared}"
+        f"    shared instance: A ignited {share_a.ignited} (after the OWNER's step; pre-step read "
+        f"{pre!r}); B (sub-threshold) sees A's content {seen_by_b!r} -- shared={share_b.shared}"
     )
     assert share_a.shared and share_b.shared, "an injected workspace must report shared=True"
+    assert seen_by_a == "study_digit_7" and share_a.ignited, (
+        "after the owner's step the tenant's supra-threshold submission must have ignited "
+        f"(got {seen_by_a!r}, ignited={share_a.ignited})"
+    )
     assert seen_by_b == "study_digit_7", (
         "on a SHARED workspace B must see the content A ignited; on a private one it would see None "
         f"(got {seen_by_b!r})"
     )
     assert WorkspaceBroadcast(seed=0).broadcast("monitor", "competence_report", sal_lo) is None, (
         "control: the same sub-threshold submission on a PRIVATE workspace must see nothing"
+    )
+
+    # THE CLOCK CRITERION (pins the 2026-08-12 contract fix; the measured defect is its red): a
+    # tenant wrapper must add NOTHING to the bus beyond its submission. Two identical owner buses,
+    # one written through the wrapper every 5th tick, one given the SAME submissions directly --
+    # the owner's per-tick (content, hold) sequence must be BIT-IDENTICAL. The pair, NOT content
+    # alone: constructed before trusting (the P8 probe), the old submit-and-step contract leaves
+    # CONTENT identical on this harness (0/20) while (content, hold) diverges 4/20 -- the
+    # out-of-band step() decays the attractor CHARGE first, which is exactly how the live-bus
+    # measurement in the class docstring saw it (hold moved on every divergent tick). A
+    # content-only criterion here would have NO reachable red and would be deleted, not kept.
+    def _owner_run(through_wrapper):
+        bus = GlobalWorkspace(seed=0)
+        tenant = WorkspaceBroadcast(seed=0, ws=bus)
+        seq = []
+        for t in range(20):
+            bus.submit("perception", "percept", sal_hi)
+            if t % 5 == 0:
+                if through_wrapper:
+                    tenant.broadcast("executive", "study_digit_7", sal_hi)
+                else:
+                    bus.submit("executive", "study_digit_7", sal_hi)
+            seq.append((bus.step(), bus.broadcast_hold))
+        return seq
+
+    wrapped_seq, direct_seq = _owner_run(True), _owner_run(False)
+    assert wrapped_seq == direct_seq, (
+        "the tenant wrapper perturbed the owner's bus beyond its submission -- broadcast() is "
+        "driving a clock it does not own again (reachable red: the old submit-and-step contract "
+        "diverges this (content, hold) sequence on 4 of 20 ticks)"
+    )
+    print(
+        f"    clock criterion: tenant-wrapped vs direct-submit owner (content, hold) sequences "
+        f"identical over 20 ticks ({sum(1 for c, _h in wrapped_seq if c is not None)} non-empty)"
     )
 
     # ---- (c) ExecutivePlanner: plans to study the weakest-but-learnable digit ----------------------
