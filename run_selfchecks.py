@@ -149,6 +149,10 @@ CORE = [
     "basal_ganglia.action_gating",
     "basal_ganglia.latent_q",
     "basal_ganglia.mlp_q",
+    # PROMOTED from reasoning/ 2026-08-12 (#10 lane 4d): selection stage over latent_q. Pure
+    # stdlib composition (no torch), sub-second; carries the four-arm fusion A/B whose
+    # value-channel verdict is a recorded NULL at the shipped rule (printed, not asserted).
+    "basal_ganglia.brain_decision",
     # PROMOTED from RESEARCH 2026-08-04. Reward-modulated action selection over its own candidate
     # set: the three-factor RSTDP weights are driven by the GATE verdict (kept +1 / rolled_back -1).
     # Reachable on the live sleep path but only under NORD_SELFMOD=1, so charge is UNMEASURED here.

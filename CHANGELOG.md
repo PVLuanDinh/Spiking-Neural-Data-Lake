@@ -9,6 +9,29 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- lane 4d executes: brain_decision -> basal_ganglia/, and the owed fusion A/B returns a NULL (2026-08-12a)
+
+The dependency block lifted this arc on both ends: sklearn's P7 adjudication was already
+half-done (declared in the [gpu]/[train] extras 2026-08-04, C07 -- the ledger row's "absent
+from pyproject" was stale) and the gate env now carries scikit-learn 1.9.0 (cp314t wheels
+exist; measured benefit: exactly 3 modules unblocked -- ensemble_rbf,
+developmental_loop_lake99, ng_snn/validate_uci). brain_decision moves first because its
+consumer imports it (the content_signature-before-skill_builder ordering).
+
+THE MEASURED CENTERPIECE: the fusion A/B the row owed came back a RECORDED NULL. Four-arm
+neuter (pinned-READ value neuter -- update() keeps running, nothing can read it; oracle /
+round-robin brackets; curiosity-neuter positive control), 10-20 seeds, independently
+reproduced with a second workload construction before landing: under the min-max rule the
+value channel captures 0.0% of measured headroom at every alpha in [0.6, 1.0] -- real and
+value-DEAD arms BIT-IDENTICAL per seed -- with only a ~0.5 knife-edge (19-27%, tuning) and
+catastrophe below 0.45. The exploit branch was unreachable (explore() True 20/20 x 5 seeds),
+so alpha_exploit=0.2 is DELETED per P8; lr=0.1 dropped (latent_q's own default restated);
+the docstring's falsified "both signals always contribute" now states the measurement. The
+null is printed with its controls, never asserted in either direction (a fix must not red
+as a regression). Recorded for the executive_control lane: the sole consumer bypasses
+choose() at NORD_EXEC=1 default while observe() trains unconditionally -- two mechanisms
+for one job, and the trained output is discarded. Self-check CORE, stdlib-only, sub-second.
+
 ## [Unreleased] -- lane 4c/4d recorded; THE #10 BULK WORK ORDER CLOSES AT ITS EXECUTABLE FRONTIER (2026-08-11ab)
 
 Lane 4's two remaining rows are measured, verified, and DEPENDENCY-BLOCKED -- recorded rather

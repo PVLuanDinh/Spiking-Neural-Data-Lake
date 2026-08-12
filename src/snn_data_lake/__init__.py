@@ -196,6 +196,11 @@ REGIONS = {
         "action_gating",
         "latent_q",
         "mlp_q",
+        # PROMOTED from reasoning/ 2026-08-12 (#10 lane 4d): the SELECTION stage over latent_q's
+        # VALUE table (fuses value + metacognition on the loop's curiosity). Composition-only;
+        # the fusion A/B verdict at promotion is a recorded NULL at the shipped rule -- see the
+        # module docstring. EXEMPT-"wire" until developmental_loop_brain promotes.
+        "brain_decision",
         # Promoted from reasoning/ 2026-08-04. Both belong in basal_ganglia because both LEARN FROM
         # OUTCOME: self_build_loop is the correctness-gated apply/rollback path, and
         # brain_native_selfbuild picks WHICH candidate to propose using the brain's own three-factor

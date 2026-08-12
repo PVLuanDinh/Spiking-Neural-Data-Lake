@@ -116,6 +116,15 @@ EXEMPT = {
         "(autonomous_brain the kept A/B control at :50 unconditional; developmental_loop_brain "
         "opt-in) until their own lanes; same conversion condition as hippocampal_memory",
     ),
+    "brain_decision": (
+        "wire",
+        "SELECTION stage over basal_ganglia/latent_q's value table (promoted 2026-08-12, #10 "
+        "lane 4d): fuses value + metacognition on the loop's curiosity; composition-only. Its "
+        "ONE consumer (reasoning/developmental_loop_brain, which also BYPASSES choose() under "
+        "NORD_EXEC=1 default -- the recorded P2 vs ExecutivePlanner) is p6_gate-pinned -- this "
+        "exemption converts to reachable the commit that loop promotes; wiring anything else "
+        "to satisfy the gate would be the fake consumer P3 names",
+    ),
     "hippocampal_memory": (
         "wire",
         "ADAPTER over this region's own governed mechanisms (promoted 2026-08-11, #10 lane 4a): "
