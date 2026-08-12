@@ -9,6 +9,15 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- lane 4b: growable_readout -> hippocampus/ (2026-08-11aa)
+
+The function-preserving growth origin joins the governed tree: Net2Net (1,0) fan-out split
+with Adam moments extended in lockstep, plus bit-exact freeze-isolation -- measured at the
+move: grow preserves logits to 1.9e-06, freeze holds Task-A retention at 1.000 vs 0.811
+without it, frozen rows exactly fixed. TORCH_GATED (8.4s); EXEMPT-wire with the same
+conversion condition as its lane sibling. The specs/007 T022 consolidation's origin copy is
+now governed -- the laminar duplicates collapse into it at the 4c merge.
+
 ## [Unreleased] -- lane 4a: hippocampal_memory -> hippocampus/ (2026-08-11z)
 
 The replay adapter joins the region whose governed mechanisms it composes (per-digit

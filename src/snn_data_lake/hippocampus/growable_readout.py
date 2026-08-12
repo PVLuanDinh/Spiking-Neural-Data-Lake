@@ -61,7 +61,7 @@ reaching outside itself. It was also redundant: every random draw in this class 
 passes `generator=self._init_gen` / `self._grow_gen`. Removed; the self-check output is
 byte-identical before and after (verified by A/B on the full main()).
 
-  PYTHONPATH=src python -m snn_data_lake.reasoning.brain_adapters.growable_readout
+  PYTHONPATH=src python -m snn_data_lake.hippocampus.growable_readout
 """
 
 import torch

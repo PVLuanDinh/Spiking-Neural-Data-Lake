@@ -63,7 +63,7 @@ import torch.nn.functional as F
 
 from snn_data_lake.cortex.deep_stdp_latency import ConvLatencyStdp
 from snn_data_lake.hippocampus.hippocampal_memory import HippocampalMemory
-from snn_data_lake.reasoning.brain_adapters.growable_readout import GrowableReadout
+from snn_data_lake.hippocampus.growable_readout import GrowableReadout
 from snn_data_lake.reasoning.brain_adapters.brain_decision import BrainDecision
 from snn_data_lake.reasoning.brain_adapters.executive_control import (
     ExecutivePlanner,

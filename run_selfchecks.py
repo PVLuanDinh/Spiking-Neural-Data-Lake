@@ -389,6 +389,7 @@ RESEARCH = [
 # (numpy predictive-coding + local plasticity, gated here so it never pollutes the pure in-process test).
 TORCH_GATED = [
     "hippocampus.ng_snn",
+    "hippocampus.growable_readout",  # PROMOTED 2026-08-11 (#10 lane 4b): grow-preservation 1.9e-06, freeze retention delta (8.4s)
     "cortex.brain",
     "cortex.neurogenesis_engine",
     "cortex.language_acquisition",

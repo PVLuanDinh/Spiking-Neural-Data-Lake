@@ -107,6 +107,14 @@ EXEMPT = {
         "tests/instruments/gwt_deep_split_ab.py. Wiring it to the tick would be the fake "
         "consumer P3 names",
     ),
+    "growable_readout": (
+        "wire",
+        "TORCH-TIER growable readout (promoted 2026-08-11, #10 lane 4b): function-preserving "
+        "Net2Net (1,0) growth + bit-exact freeze -- the ORIGIN copy the specs/007 T022 "
+        "consolidation collapses the laminar duplicates into. Consumers are reasoning-tier "
+        "(autonomous_brain the kept A/B control at :50 unconditional; developmental_loop_brain "
+        "opt-in) until their own lanes; same conversion condition as hippocampal_memory",
+    ),
     "hippocampal_memory": (
         "wire",
         "ADAPTER over this region's own governed mechanisms (promoted 2026-08-11, #10 lane 4a): "
