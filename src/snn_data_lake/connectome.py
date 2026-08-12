@@ -347,7 +347,13 @@ EDGES = [
     # competence state into basal_ganglia/brain_decision's LatentQ every cycle) -- the p6
     # gate's undeclared-pair detector caught the missing declaration, which is the detector
     # working: the import existed, the connectome had not recorded it.
-    _e("sub", "nacc", "hippocampus -> ventral striatum (context informs value selection)", "exc", "relay"),
+    _e(
+        "sub",
+        "nacc",
+        "hippocampus -> ventral striatum (context informs value selection)",
+        "exc",
+        "relay",
+    ),
     # olivo-cerebellar climbing-fibre teaching loop: the error signal cerebellar learning is premised on
     _e(
         "io",

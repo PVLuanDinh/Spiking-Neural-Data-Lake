@@ -32,7 +32,7 @@ instantiation sites: 26 across 10 modules; 11 of 26 outside the bus self-checks,
 | thalamus/reentrant_workspace.py | BUS | 11 | 2 | 4 |
 | reasoning/train_of_thought.py | FACULTY | 4 | 2 | 0 |
 | cortex/brain.py | FACULTY | 3 | 1 | 1 |
-| reasoning/brain_adapters/executive_control.py | FACULTY | 3 | 0 | 0 |
+| cortex/competence_executive.py (reasoning/brain_adapters/executive_control.py until 2026-08-12) | FACULTY | 3 | 0 | 0 |
 | brainstem/autonomous_loop.py | ACTION | 3 | 0 | 0 |
 | cortex/access_consciousness.py | FACULTY | 1 | 0 | 1 |
 | reasoning/rpm_solver.py | FACULTY | 1 | 0 | 0 |
@@ -54,11 +54,15 @@ are **instrument defects, not tree movement** -- `git blame` dates every affecte
 2. **`cortex/brain.py:1610` is a real, consuming read.** `self._reentrant.broadcast_to("action")`
    feeds `elig["reroute"]` into the three-factor drive-weight update. "2 reads" was really 3.
 3. **`reasoning/developmental_loop_brain.py:295` is a WRITE, not one of the two reads.**
-   The receiver is `WorkspaceBroadcast` (`reasoning/brain_adapters/executive_control.py:90`),
+   The receiver is `WorkspaceBroadcast` (now `cortex/competence_executive.py`; at this
+   reading it lived at `reasoning/brain_adapters/executive_control.py`),
    whose `broadcast(source, content, salience)` calls `_ws.submit()` then `_ws.step()`.
    `GlobalWorkspace.broadcast()` takes zero args, so a 3-arg `.broadcast(` is a submit
    wearing a reader's name. The gate splits them on arity.
-4. **`executive_control.py:231` and `:234`** are two more writes of that same wrapper shape.
+4. **Two more writes of that same wrapper shape** inside the adapter module itself (cited at
+   this reading as `executive_control.py:231`/`:234`; that bare basename now resolves to the
+   OTHER module, cortex/executive_control -- the adapter is cortex/competence_executive since
+   2026-08-12, and the line numbers are a dated snapshot).
 
 Net: the prior headline was low on both sides -- it lost a writer module and a read, and
 counted a write as a read. Two errors in opposite directions netting to a small number is

@@ -108,6 +108,7 @@ CORE = [
     "cortex.affect_core",
     "cortex.crossmodal_binder",  # W6: categorical emotion + 2nd-order ToM; cross-modal super-additive binding
     "cortex.executive_control",  # W8: ACC conflict + EVC + tree/sequence planning
+    "cortex.competence_executive",  # PROMOTED+RENAMED 2026-08-12 (#10 lane 4f): dopamine-RPE lr gate + workspace broadcast + PFC competence planning; stdlib-only, ~1s
     "cortex.time_cells",
     "cortex.task_set",
     "cortex.generative_self_model",  # C1: spiking clock / task-set-shift / learned generative self-model

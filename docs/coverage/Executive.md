@@ -216,13 +216,16 @@ B2 `conflict=0`, C both -- which is the B1-against-B2 comparison neither two-arm
   branch, `autonomous_loop.py:1418` is the `_n_ovr >= 10 and _n_hab >= 10` guard on the `pfc_gain`
   update. No drift found.
   *(Disambiguation CORRECTED 2026-08-05, and it had been made worse before it was made better.
-  `executive_control.py` names two different modules — `cortex/executive_control.py` (428 lines)
-  and `reasoning/brain_adapters/executive_control.py` (645). A 2026-08-04 pass qualified this cite
-  to the `reasoning/brain_adapters/` one; re-resolved, that file's `:80` is a numpy timing comment
-  and its `:149` is `directory = os.path.dirname(directory)`. **`def conflict` is at
-  `cortex/executive_control.py:80` and `def plan_sequence` at `:149`** — both exact. The bare cite
-  was ambiguous-but-right; qualifying it to the wrong module made it unambiguous-and-wrong, which
-  is the worse failure, because the next reader stops checking once a path looks specific.)*
+  `executive_control.py` then named two different modules — `cortex/executive_control.py` and
+  `reasoning/brain_adapters/executive_control.py` (line counts this note used to carry had
+  drifted twice and are dropped; the ambiguity itself is the record). A 2026-08-04 pass qualified
+  this cite to the `reasoning/brain_adapters/` one; re-resolved, that file's `:80` was a numpy
+  timing comment and its `:149` was `directory = os.path.dirname(directory)`. **`def conflict` is
+  at `cortex/executive_control.py:80` and `def plan_sequence` at `:149`** — both exact. The bare
+  cite was ambiguous-but-right; qualifying it to the wrong module made it unambiguous-and-wrong,
+  which is the worse failure, because the next reader stops checking once a path looks specific.
+  The ambiguity was RETIRED 2026-08-12: the adapter module was promoted+renamed to
+  `cortex/competence_executive.py`, so the bare basename now resolves to exactly one module.)*
 - **The rule-4 zero (`task_set_shifting`) and the three sub-40 rows are the audit's, re-read but not
   re-measured.** A refuter's mandate is the band-41+ claims; re-deriving conservative low bands would
   spend the budget in the direction that cannot inflate a score. If any of them is wrong it is wrong

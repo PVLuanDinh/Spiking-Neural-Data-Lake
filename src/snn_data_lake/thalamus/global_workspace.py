@@ -633,7 +633,9 @@ Verified UNAFFECTED, RE-RUN 2026-08-06 after the delivery change rather than car
 `thalamus/reentrant_workspace.py`, `cortex/self_model.py`, `cortex/executive_control.py`,
 `reasoning/rpm_solver.py`, `reasoning/spike_chat_lake.py`, `reasoning/consciousness_probe.py`,
 `reasoning/train_of_thought.py`, `reasoning/concept_reflection.py`,
-`reasoning/brain_adapters/executive_control.py`, `thalamus/gwt_deep.py` (verified at its pre-promotion
+`cortex/competence_executive.py` (verified at its pre-promotion path
+`reasoning/brain_adapters/executive_control.py`; PROMOTED+RENAMED 2026-08-12, same file),
+`thalamus/gwt_deep.py` (verified at its pre-promotion
 path `reasoning/gwt_deep.py`; PROMOTED 2026-08-11, same file). (`reasoning/gwt_reentry.py`
 stood here and was RETIRED 2026-08-06 under P2 -- its predictive-completion capability ported into
 `thalamus/reentrant_workspace.py::expect` first, verified by a neuter-A/B that flips the ported claim

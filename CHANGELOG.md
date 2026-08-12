@@ -9,6 +9,45 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- lane 4f: executive_control -> cortex/competence_executive, brain_adapters CLOSES (2026-08-12f)
+
+The LAST brain_adapters module promotes, RENAMED: the basename `executive_control` is
+taken by cortex/executive_control (a different faculty; brain_atlas.py:81 asserts
+uniqueness across the tiers, loudly -- specs/010 defect C corrected the earlier
+"silent drop" claim). Landing region is a DELIBERATE DEVIATION from specs/010's
+`neuromodulation/dopamine_modulator.py` split, decided by measurement, not taste:
+whole-file at neuromodulation/ reds the p6 ratchet (undeclared_import_pairs 11 -> 12,
+new midbrain<->neuromodulation pair from the module-top DopamineNuclei import), while
+cortex/ is bit-identical on all five p6 criteria -- and the split would have rewritten
+the governed, p6-pinned consumer, the exact bundling specs/010's own MINIMUM SAFE PLAN
+forbids ("turns a 30-line move into three red gates"). Re-derived independently by a
+refute-by-default pass before landing.
+
+P1 on LR_MIN/LR_MAX adjudicated IN-FILE: the pair stays fixed and NO documented
+exception carries it -- exception (c) measured false twice (NORD_DOPA defaults ON;
+the pair sits AT a bound on 3 of the consumer's 4 default-path calls, so a learned
+form would charge). Conversion DECLINED on two named constraints: every constructible
+running-baseline form builds on the hand-rolled running-mean RPE that specs/010
+finding G flags as a THIRD RPE mechanism (discharging P1 by deepening an open P2 is
+not a discharge), and five asserts + the closing print read the pair as class
+attributes and would go green-but-vacuous under a fallback-keeping conversion. No
+conversion promise written. The saturation asserts keep a reachable red (un-clipped
+nucleus via the `nucleus=` port drives lr_sat_hi to ~1.2e6).
+
+Mechanics paid in the same commit: KNOWN_WRITERS re-key + the :1384 arity-split lookup
+(both proven independently load-bearing AND jointly sufficient against the overlay);
+import_manifest floor 12 -> 11 (shrink-by-promotion keeps one-target slack); REGIONS +
+run_selfchecks CORE registration (stdlib-only, ~0.7s, self-check covers 200/206
+statements so the >=70% floor rises); EXEMPT-permanent entry with NO conversion clause
+-- provably unwritable, the consumer has zero importers tree-wide; the emptied
+reasoning/brain_adapters/ package DELETED (first lane to empty one); five dlb
+path-bearing sites repointed; the WorkspaceBroadcast tree-wide construction census
+corrected 9 -> 10 (the bare call in a control assert is invisible to p6's
+_BindVisitor -- disclosed in-file, two different censuses now named as such). The
+WorkspaceBroadcast/ExecutivePlanner retirements stay a SEPARATE change (broadcast()
+steps a clock it does not own; the four owed ports are recorded on the class).
+brain_adapters census: ZERO.
+
 ## [Unreleased] -- lane 4e: developmental_loop_brain -> hippocampus/, and the dormancy promise corrected (2026-08-12e)
 
 The p6-pinned loop promotes -- the arc's keystone: its promotion was the recorded

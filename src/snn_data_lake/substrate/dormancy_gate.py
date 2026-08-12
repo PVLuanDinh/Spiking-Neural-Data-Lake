@@ -155,6 +155,30 @@ EXEMPT = {
         "DEEP_LOOP_REF). Wiring it to a live root would convert the permitted offline "
         "trainer into an e-prop violation",
     ),
+    "competence_executive": (
+        "permanent",
+        "EXECUTIVE ADAPTERS over a developmental COMPETENCE vector (promoted+RENAMED "
+        "reasoning/brain_adapters/executive_control.py -> cortex/competence_executive.py "
+        "2026-08-12, #10 lane 4f -- the LAST brain_adapters module; renamed because "
+        "cortex/executive_control holds the basename and brain_atlas.py:81 asserts "
+        "uniqueness). Three stdlib wrappers over governed mechanisms: dopamine RPE -> "
+        "bounded lr multiplier (midbrain/dopamine_nuclei), objective broadcast "
+        "(thalamus/global_workspace), competence planning (cortex/prefrontal_executive). "
+        "Its ONE consumer is hippocampus/developmental_loop_brain, lazily inside main() "
+        "and _mechanics_check(), and that consumer is itself EXEMPT-permanent TRAIN-TIER "
+        "and offline. NO CONVERSION CLAUSE IS WRITTEN HERE, and that is a measurement, "
+        "not caution: reachable() seeds only from _LIVE_ROOTS/_ENTRYPOINTS/_external_roots, "
+        "and the consumer has ZERO importers tree-wide (measured at promotion against the "
+        "unfiltered graph walk -- neither this module nor its consumer is in the raw "
+        "closure), so there is no downstream promotion that could ever convert this entry. "
+        "The three 'converts to reachable' clauses corrected wire->permanent on 2026-08-12 "
+        "are the precedent. DO NOT force-wire: the lr multiplier feeds an OFFLINE Adam "
+        "readout (no live consumer asks for one), and the workspace wrapper's live repoint "
+        "is blocked on a contract fix -- broadcast() steps a clock it does not own, "
+        "measured to perturb the arm's own (content, hold) on 20 of 20 ticks at thr*1.6 "
+        "and 3 of 20 even sub-threshold. A wire built to green this gate is exactly the "
+        "fake consumer P3 names",
+    ),
     "deep_stdp_latency": (
         "permanent",
         "TRAIN-TIER perception feature learner (promoted 2026-08-11, #10 lane 2c, region "

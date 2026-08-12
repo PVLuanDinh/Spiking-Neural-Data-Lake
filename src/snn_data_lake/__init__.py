@@ -156,6 +156,7 @@ REGIONS = {
         "language_self_build",  # PROMOTED 2026-08-11 (#10 family C6): autonomous R-STDP language assemblies; LIVE on the sleep tick
         "language_readout_slda",  # PROMOTED 2026-08-11 (#10 family C5): SLDA-RFF competence head; absorbed fair_compare's equal-budget bar
         "nightly_skills",  # PROMOTED 2026-08-11 (#10 family C9a): the ONE standing skills loop (absorbed meta_skill_loop + open_meta_loop)
+        "competence_executive",  # PROMOTED+RENAMED 2026-08-12 (#10 lane 4f, was reasoning/brain_adapters/executive_control -- the LAST brain_adapters module): dopamine-RPE lr gate + workspace broadcast + PFC competence planning; renamed because the basename is taken by cortex/executive_control (brain_atlas.py:81 asserts uniqueness)
         # torch-trained tiers with a zero-dep serve/integration path (import cleanly without torch)
         "pc_cortex_serve",
         "brain",

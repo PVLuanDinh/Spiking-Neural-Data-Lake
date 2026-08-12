@@ -268,7 +268,9 @@ KNOWN_WRITERS = {
     "reasoning/train_of_thought.py": 4,
     "brainstem/autonomous_loop.py": 3,
     "cortex/brain.py": 3,
-    "reasoning/brain_adapters/executive_control.py": 3,
+    # relpath co-edited 2026-08-12 with the module's promotion+rename (#10 lane 4f) -- the key is
+    # a POSIX relpath under src/snn_data_lake/, so the move alone makes `missing` fire.
+    "cortex/competence_executive.py": 3,
     "cortex/access_consciousness.py": 1,
     "reasoning/rpm_solver.py": 1,
     "reasoning/spike_chat_lake.py": 1,
@@ -1381,7 +1383,7 @@ def liveness(root, res):
         )
     lines.append(f"  classes built: {len(built)} of {len(WORKSPACE_CLASSES)} tracked classes")
 
-    wb = per.get("reasoning/brain_adapters/executive_control.py", {}).get("WRITE", [])
+    wb = per.get("cortex/competence_executive.py", {}).get("WRITE", [])
     if not any(m == "broadcast" for _k, _l, m, _r, _n in wb):
         problems.append(
             "the 3-argument WorkspaceBroadcast.broadcast() is no longer classified as a WRITE -- the "

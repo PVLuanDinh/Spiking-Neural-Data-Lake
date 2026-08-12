@@ -8,10 +8,9 @@ hand-rolled parts replaced by the brain's REAL subsystems, wired through thin ad
   decision      : SpikingCuriosity + SpikingCurriculum + BrainDecision (LatentQ value + Metacog) [basal_ganglia/, promoted 2026-08-12]
   neurogenesis  : readout.grow() fired by the MetacognitiveMonitor grow_trigger  [the brain grows its own readout neurons]
   neuromod      : LocusCoeruleus (readout lr gain)                    [neuromodulation]
-  executive     : ExecutivePlanner + DopamineModulator + WorkspaceBroadcast     [reasoning/brain_adapters --
-                  the loop's LAST cross-tier reach, imported lazily inside main(); executive_control's own
-                  lane owns its promotion (p6-pinned, rename owed). substrate/import_manifest derives and
-                  watches this edge automatically.]
+  executive     : ExecutivePlanner + DopamineModulator + WorkspaceBroadcast     [cortex/competence_executive,
+                  promoted+renamed 2026-08-12 (#10 lane 4f, was reasoning/brain_adapters/executive_control);
+                  imported lazily inside main() and _mechanics_check().]
 
 vs v3.54 (developmental_loop_deep.py, RETIRED 2026-08-06 -- superseded by this file, which carries
 its control flow; its reference number survives as DEEP_LOOP_REF below): the loop's AUTONOMY + accuracy path is now driven by the actual
@@ -97,13 +96,13 @@ from snn_data_lake.neuromodulation.spiking_curiosity import (
 from snn_data_lake.plasticity.snn_mnist_stdp import load_mnist
 from snn_data_lake.substrate.device import enable, resolve_device
 
-# executive_control (ExecutivePlanner / DopamineModulator / WorkspaceBroadcast) is imported
+# competence_executive (ExecutivePlanner / DopamineModulator / WorkspaceBroadcast) is imported
 # LAZILY inside main() and _mechanics_check() -- the kb_ranking shape: all three symbols are
-# used exclusively inside those functions, the relocation is behaviour-free, and
-# substrate/import_manifest derives + watches the cross-tier edge automatically. Promoting
-# executive_control is its OWN lane (p6 floor 3, basename-collision rename owed, live P1
-# debt) -- bundling it here is what specs/010 warned "turns a 30-line move into three red
-# gates".
+# used exclusively inside those functions and the relocation is behaviour-free. Its own lane
+# (#10 lane 4f, 2026-08-12) settled the promotion this comment used to defer: renamed
+# reasoning/brain_adapters/executive_control -> cortex/competence_executive, p6 keys co-edited,
+# P1 adjudicated in-file. Deferring it out of the 4e move was specs/010's call ("turns a
+# 30-line move into three red gates") and it was right.
 
 
 class _LinearReadout:
@@ -146,6 +145,7 @@ class _LinearReadout:
     @property
     def n_hidden(self):
         return 0
+
 
 VOTE_LOOP_BAR = (
     0.85  # developmental_loop.py STDP-prototype + neuron-label VOTE readout (best 88.8%)
@@ -195,7 +195,7 @@ def _mechanics_check():
     NORD_TRAIN the full loop's replay store slice runs past the per-digit index and every
     cycle silently reports '+ 0 hippocampal-replay feats'. Here PER + REPLAY is asserted
     under the per-digit row count, and ASSERT 1 makes an empty replay a hard red."""
-    from snn_data_lake.reasoning.brain_adapters.executive_control import (
+    from snn_data_lake.cortex.competence_executive import (
         DopamineModulator,
         ExecutivePlanner,
         WorkspaceBroadcast,
@@ -276,7 +276,9 @@ def _mechanics_check():
             # ASSERT 1 -- hippocampal replay is REAL once something is stored. Red: neuter
             # HippocampalMemory.sample to return [] (and the sizing trap above produces
             # this red naturally, which is why the assert is worth having).
-            assert len(replay_rows) > 0, "replay empty after digits were stored -- store/sample dead"
+            assert len(replay_rows) > 0, (
+                "replay empty after digits were stored -- store/sample dead"
+            )
         batch_rows = obj_rows + replay_rows
         assert len(batch_rows) == len(obj_rows) + len(replay_rows)
         idx = torch.tensor(batch_rows, dtype=torch.long, device=dev)
@@ -332,9 +334,8 @@ def _mechanics_check():
 def main():
     if os.environ.get("DLB_RUN") != "1":
         return _mechanics_check()
-    # the LAST cross-tier reach (lazy; import_manifest derives + watches it -- see the note
-    # at the module top for why executive_control does not promote in this lane).
-    from snn_data_lake.reasoning.brain_adapters.executive_control import (
+    # lazy, governed-to-governed since the 2026-08-12 lane-4f promotion (see the module-top note).
+    from snn_data_lake.cortex.competence_executive import (
         DopamineModulator,
         ExecutivePlanner,
         WorkspaceBroadcast,
@@ -507,10 +508,11 @@ def main():
         # P1 exception, stated with its measurement (owned at the 2026-08-12 promotion): the
         # 0.5 fixes how far noradrenaline may amplify the readout lr. It is NOT inert --
         # measured live at full scale, the combined gain ranged x0.75 to x3.00 across the 15
-        # cycles (the mechanics check asserts non-constancy). A derived form belongs to the
-        # fusion-rule adjudication the executive_control lane owns; do NOT inherit that
-        # module's "zero governed callers" exception -- after this promotion, this file IS
-        # the governed caller.
+        # cycles (the mechanics check asserts non-constancy). The lane-4f adjudication
+        # (2026-08-12, in cortex/competence_executive's own P1 paragraph) settled the
+        # LR_MIN/LR_MAX side: kept fixed, NO exception claimed, conversion declined on P2
+        # grounds. This file is the governed caller of that pair; both P1 records now sit in
+        # the governed tier.
         gain = (1.0 + 0.5 * na) * (
             da_gain if DOPA else 1.0
         )  # LC noradrenaline x dopamine RPE (prev cycle)
@@ -611,9 +613,7 @@ def main():
     )
     print("-" * 92)
     print(f"  final OVERALL held-out test accuracy         : {final_overall:.1%}")
-    print(
-        "  accuracy CURVE (per cycle)                   : " + " ".join(f"{a:.2f}" for a in curve)
-    )
+    print("  accuracy CURVE (per cycle)                   : " + " ".join(f"{a:.2f}" for a in curve))
     print(
         f"  hippocampal consolidation (SleepConsolidator): retention={consol.get('retention')}, "
         f"value_margin={consol.get('value_margin')}, skills={consol.get('n_skills')}"

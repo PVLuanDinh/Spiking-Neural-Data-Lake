@@ -18,22 +18,30 @@ Deterministic (per-instance seeds; each wrapped module is seeded from the same s
 Stdlib only -- no torch, no GPU, so it is REGIONS tier, not TORCH_TIER (P5: the suite stays
 runnable without a card).
 
-BASENAME COLLISION -- READ BEFORE PROMOTING (P3).
-  `substrate/dormancy_gate.py:37-43` builds `_CANON` keyed by module BASENAME, and
-  `substrate/dormancy_gate.py:71` keys `EXEMPT` the same way; `__init__.py:316` builds the flat
-  back-compat alias map `_MOVED` by basename too. `executive_control` is ALREADY registered as
-  `cortex.executive_control` (`__init__.py:79`, `run_selfchecks.py:107`) -- a completely different
-  faculty (ACC conflict monitoring + EVC + a sequence/tree planner). Promoting THIS file under its
-  current basename would overwrite `_CANON["executive_control"]`, silently dropping one of the two
-  from `BRAIN_MODULES` -- the census would then report a module that is never checked. This file
-  must therefore be RENAMED on promotion; the proposed name is `competence_executive` (free
-  tree-wide, and it names the actual job: executive control over a competence vector).
+BASENAME COLLISION -- WHY THIS FILE IS NAMED WHAT IT IS (resolved at the 2026-08-12 promotion,
+#10 lane 4f, promoted+renamed from `reasoning/brain_adapters/executive_control.py`).
+  `substrate/dormancy_gate.py:43-50` builds `_CANON` keyed by module BASENAME, and
+  `substrate/dormancy_gate.py:79` keys `EXEMPT` the same way; `__init__.py:428` builds the flat
+  back-compat alias map `_MOVED` by basename too. `executive_control` was ALREADY registered as
+  `cortex.executive_control` (`__init__.py:142`, `run_selfchecks.py:110`) -- a completely different
+  faculty (ACC conflict monitoring + EVC + a sequence/tree planner). Promoting this file under
+  that basename would have collided in `_CANON` -- LOUDLY, not silently: `brain_atlas.py:81`
+  asserts basename uniqueness across the tiers and brain_atlas runs in gate command #1 (an
+  earlier draft here claimed the drop would be silent; specs/010 defect C corrected that). The
+  file was therefore RENAMED at promotion: `competence_executive`, free tree-wide, and it names
+  the actual job -- executive control over a competence vector. specs/010's own region mandate
+  (`neuromodulation/dopamine_modulator.py`) was scoped to a DopamineModulator-ONLY split; landing
+  the WHOLE file diverges from it deliberately, on a measurement: at neuromodulation/ the p6
+  ratchet reds (undeclared_import_pairs 11 -> 12, new pair midbrain<->neuromodulation), while at
+  cortex/ all five p6 criteria are bit-identical to baseline, and the split would have rewritten
+  the governed, p6-pinned consumer -- the exact bundling specs/010's own correction forbids.
   Nothing in this file hardcodes its own path or name -- see `_self_dotted()`.
 
 P2 -- what already exists, checked before proposing promotion rather than after:
   * WorkspaceBroadcast IS a duplicate. `GlobalWorkspace.submit()/step()/current` is the entire
     mechanism; this wrapper adds one expression (`ignited = current == content`). It also creates a
-    PRIVATE workspace, which is the defect `tools/p6_gate.py:50` names by file and line. It is kept
+    PRIVATE workspace, which is the defect `tools/p6_gate.py`'s private_instance_modules criterion
+    counts (de-lined 2026-08-12: the old `:50` cite had drifted, this file's own argument). It is kept
     only because `hippocampus/developmental_loop_brain.py` imports the name (LAZILY inside main()
     since its 2026-08-12 promotion) and this wave may not edit consumers; it is redesigned here to
     ACCEPT an injected shared workspace so it no longer MANDATES a private one. Retire it once
@@ -67,8 +75,8 @@ P2 -- what already exists, checked before proposing promotion rather than after:
     verdict flips at the rheobase when the arm's producer is neutered), together with the reason it
     is still not shipped live (`broadcast()` steps a clock it does not own). Both measurements, with
     their harnesses and their control, are recorded on `WorkspaceBroadcast` itself rather than here.
-  * DopamineModulator is NOT a duplicate, but half of it is. `brainstem/autonomous_loop.py:1585-
-    1617` already runs RPE -> `DopamineNuclei.da_level` on the live tick -- and stores the result as
+  * DopamineModulator is NOT a duplicate, but half of it is. `brainstem/autonomous_loop.py:1800-
+    1826` already runs RPE -> `DopamineNuclei.da_level` on the live tick -- and stores the result as
     TELEMETRY (`self._da_level`) while the learning rate is scaled by `cort.learn_rate_scale(r)`
     (cortisol), not by dopamine. So "dopamine level -> bounded learning-rate multiplier" is done
     nowhere governed. Honest inferiority to record: the governed path derives its RPE from a LEARNED
@@ -77,7 +85,8 @@ P2 -- what already exists, checked before proposing promotion rather than after:
   * ExecutivePlanner is NOT a duplicate. `PrefrontalExecutive.plan` is the mechanism; the unique
     part here is the competence-domain forward model + goal_value injected into it.
     `cortex/executive_control.plan_sequence` searches action SEQUENCES over developer-supplied
-    value/transition estimates -- a deeper search over a different domain, not this job.
+    value/transition estimates -- a deeper search over a different domain, not this job (the
+    2026-08-12 rename retired the basename ambiguity between that module and this one).
 
 P7 (dependencies): nothing here was compromised by the retired zero-dependency rule, and the
 docstring boast that claimed otherwise ("RESEARCH-tier code: it lives outside src/") was deleted --
@@ -181,27 +190,41 @@ class DopamineModulator:
     the resting value, which was arithmetically wrong -- 0.5 + 1.5*0.2 = 0.8. The self-check now
     derives that number from the nucleus's own tonic_baseline so it cannot drift again.)
 
-    P1: LR_MIN / LR_MAX are dimensionless bounds on a NORMALIZED [0, 1] input, which LOOKS like P1's
-    exception (a) -- but (a) is not what carries them, and claiming it overstates the case. The
-    returned multiplier is consumed AS a learning rate by the one importer
-    (`hippocampus/developmental_loop_brain.py`'s gain fold multiplies its readout lr by this value),
-    so how far a positive surprise may amplify learning is decided by LR_MAX. What actually holds
-    today is exception (c) -- INERT -- BUT ITS PREMISE CHANGED 2026-08-12: the importer is now a
-    GOVERNED train-tier module (still offline, no live root reaches it), so "zero GOVERNED callers"
-    is no longer literally true; the exception now rests on "no LIVE-path caller", and the caller's
-    own gain fold carries its own stated P1 exception with the x0.75-x3.00 measurement. Promoting
-    this onto a live path does not carry that exception with it: the pair would then have to become
-    learned or running-baseline-relative, alongside the P2 swap to `ValenceLearner` noted above. The
-    RPE itself is already running-baseline-relative (competence_gain minus a running mean of realised
-    gains). An earlier draft of this paragraph claimed the pair "does not decide anything", which the
-    consumer at :311-313 refutes."""
+    P1 -- ADJUDICATED AT THE 2026-08-12 PROMOTION (#10 lane 4f): the pair stays FIXED, and NO
+    documented P1 exception carries it. The exception-(c) claim an earlier draft made here was
+    measured false twice over: (c) requires default-off with zero live callers, and the consumer's
+    dopamine fold defaults ON (dlb's NORD_DOPA=1) -- and the pair is not inert: on the consumer's
+    default path (which executes inside `python run_selfchecks.py` via its TRAIN_GATED entry)
+    modulate() returns exactly LR_MAX, exactly tonic_lr, exactly LR_MIN and one interior value
+    across its four calls, so the pair sits AT a bound on three calls of four and a learned form
+    would charge. Conversion is nevertheless DECLINED, on two constraints nameable today (neither
+    is a promise about tomorrow): (1) P2, not P1 -- every constructible running-baseline form for
+    this pair is built on `_gain_sum`/`_gain_n`, the hand-rolled running-mean RPE baseline
+    specs/010 finding G already flags as a THIRD RPE mechanism entering the governed tier beside
+    autonomous_loop's ValenceLearner RPE and DopamineNuclei's own TD critic; discharging P1 by
+    deepening an open P2 finding is not a discharge. (2) The conversion would vacate criteria
+    silently: the self-check reads LR_MIN/LR_MAX as CLASS attributes in five asserts plus the
+    closing print, and a conversion keeping them as fallbacks leaves those reads green against
+    numbers the mechanism no longer uses (control must follow the read path); all six read sites
+    must be rewritten in the same commit as any future conversion. They are not vacuous today:
+    removing the nucleus's clip through the `nucleus=` port drives lr_sat_hi to ~1.2e6, so the
+    saturation asserts carry a reachable red on the composition WITH the clip. Disclosed, not
+    defended: LR_MAX*LR_MIN == 1.0 exactly (one quantity, an octave either side of no-modulation),
+    but the affine map never uses that symmetry -- zero RPE rests on 0.8, not 1.0. Also disclosed:
+    the exact ceiling hit is a property of the consumer's 4-cycle mechanics check (a freshly
+    studied digit scores 12/12 on its per-digit slice against a zero baseline, rpe exactly 1.0);
+    at DLB_RUN=1 scale it need not recur, and the x0.75-x3.00 figure in the consumer's own
+    annotation has not been reproduced by anyone. The consumer's fold multiplies its readout lr by
+    this value (`_mechanics_check`'s `(1.0 + 0.5*na) * da_gain` on the default path; `main()`'s
+    DOPA-guarded fold behind DLB_RUN=1), so how far a positive surprise may amplify learning is
+    decided by LR_MAX."""
 
     LR_MIN = 0.5
     LR_MAX = 2.0
 
     def __init__(self, seed=0, nucleus=None):
         """`nucleus` accepts an ALREADY-LIVE DopamineNuclei (P6: the live tick owns one at
-        `brainstem/autonomous_loop.py:1592`). Default None keeps the previous private construction,
+        `brainstem/autonomous_loop.py:1802`). Default None keeps the previous private construction,
         so this is a new port, not a behaviour change."""
         self.seed = seed
         self._nuc = DopamineNuclei(seed=seed) if nucleus is None else nucleus
@@ -253,7 +276,9 @@ class WorkspaceBroadcast:
     the private, mutually invisible instances `tools/p6_gate.py` counts. Passing `ws` shares an
     existing workspace instead -- that is the construction-path change P6 says must come before any
     faculty can read another's broadcast. It is a channel, not yet a wire, and this class should be
-    retired outright once its one importer is repointed at `GlobalWorkspace`.
+    retired outright once its one importer is repointed at `GlobalWorkspace`. Retirement is
+    deferred, not forgotten: see the last paragraph of this docstring for the four ports it owes
+    first.
 
     THE CHANNEL CHARGES -- MEASURED 2026-08-06 ON THE LIVE SHARED BUS, not asserted. Until now the
     paragraph above said only that the channel existed; P6's honesty guard asks for the other half
@@ -291,14 +316,29 @@ class WorkspaceBroadcast:
     submit-and-step) that this file's own self-check pins -- so it is named here and escalated, not
     smuggled in.
 
-    NOTHING CONSTRUCTS THIS CLASS ON A PRODUCTION PATH, re-derived 2026-08-06 rather than inferred
-    from the gate's census. Tree-wide, `WorkspaceBroadcast(` appears at nine sites: eight in this
-    module's own `main()` and one in `hippocampus/developmental_loop_brain.py` (promoted
-    2026-08-12; its construction sits inside main() behind a lazy import, plus a second in its
-    bounded _mechanics_check -- both offline). So there is no live
-    caller to hand the shared handle to, and manufacturing one would be the force-wire P6 forbids.
-    The disposition is unchanged and now rests on a measurement: the channel is real, it charges,
-    its live use needs the `step()` contract fixed first, and the class is a retire candidate."""
+    NOTHING CONSTRUCTS THIS CLASS ON A PRODUCTION PATH -- re-derived at the 2026-08-12 promotion
+    rather than carried over. Tree-wide, `WorkspaceBroadcast(` appears at TEN construction sites:
+    eight in this module's own `main()` (seven assigned plus one bare call inside a control
+    assert) and two in `hippocampus/developmental_loop_brain.py` -- one in its main() behind a
+    lazy import and one in its bounded _mechanics_check, both offline (dlb is EXEMPT-permanent
+    train-tier, not a live root, so neither site is on the tick). The previous text said "nine
+    sites: eight here and one in dlb"; the total was one short and the split predated dlb's
+    second site. A separate NINE is also correct and is a DIFFERENT census: `python
+    tools/p6_gate.py` prints nine workspace-class INSTANTIATION sites for this file
+    (GlobalWorkspace + WorkspaceBroadcast, bound assignments only) -- its _BindVisitor records a
+    construction only from an assignment target, so the bare call in the control assert is
+    invisible to it. Cite the gate for the module count it asserts on, not for a
+    construction-site count. So there is still no live caller to hand the shared handle to, and
+    manufacturing one would be the force-wire P6 forbids. The disposition is unchanged and rests
+    on a measurement: the channel is real, it charges, its live use needs the `step()` contract
+    fixed first, and the class is a retire candidate. RETIREMENT IS A SEPARATE CHANGE, and
+    specs/010 names what it owes before the class may go (this module's promotion-plan entry,
+    MINIMUM SAFE PLAN): port `ignited` into brainstem/autonomous_loop's _workspace_broadcast;
+    port ExecutivePlanner's write=False stateless planning (cortex/live_brain's deliberate_ahead
+    gate-writes the persistent working-memory goal; PrefrontalExecutive.plan defaults
+    write=True); port _CompetenceDynamics and _goal_value; and rewrite developmental_loop_brain,
+    which constructs all three classes. Bundling any of that into a move is what turns a rename
+    into red gates."""
 
     def __init__(self, seed=0, ws=None):
         self.seed = seed

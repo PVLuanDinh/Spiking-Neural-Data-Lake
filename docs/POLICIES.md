@@ -907,7 +907,9 @@ spiking-update kernels, eager torch-CUDA on this card beats numpy-on-CPU only be
 
 **Where the GPU therefore pays today, and should be used without hesitation:** the `[train]` / `[gpu]`
 tiers — surrogate-gradient training, `hippocampus/ng_snn.py`, `cortex/neurogenesis_engine.py`, the
-torch readout studies under `reasoning/brain_adapters/`, and any offline sweep over a real dataset.
+torch readout studies (promoted out of `reasoning/brain_adapters/` across the 2026-08-11/12 lanes;
+now `hippocampus/growable_readout.py` and `hippocampus/developmental_loop_brain.py` — the
+directory itself was deleted 2026-08-12), and any offline sweep over a real dataset.
 These are wide, batched, and repeated, which is exactly the regime the crossover favours. The daemon
 already sets `NORD_GPU=1` and runs under `.venv-cu128` so this tier lands on the card by default.
 

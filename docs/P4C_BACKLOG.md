@@ -165,7 +165,7 @@ Each was named as a governed-twin duplicate and is not one. Recorded so the pair
 
 | pair | why it is not a P2 debt |
 |---|---|
-| `brain_adapters/executive_control` ↔ `cortex/executive_control` | **Basename collision only**, and the file says so at its own `:22-32`. The governed module is ACC conflict monitoring + EVC + a tree planner; the reasoning file is three adapters over a developmental competence vector. |
+| `brain_adapters/executive_control` ↔ `cortex/executive_control` | **Basename collision only** — RESOLVED-BY-RENAME 2026-08-12 (#10 lane 4f): the adapter file promoted as `cortex/competence_executive.py`, so the collision no longer exists. Row kept so the pair is not re-proposed as a P2 debt: the governed module is ACC conflict monitoring + EVC + a tree planner; the adapter is three wrappers over a developmental competence vector. |
 | `brain_adapters/lake_memory` ↔ `substrate/lake_memory` | Different classes answering different questions (proximity-addressable replay vs SHY prune-and-reconstruct). **And the direction is inverted**: the reasoning copy carries a P4b cross-process durability check the governed one lacks (`cross_process` 7 / `subprocess` 2 / `sys.executable` 3 against 0 / 0 / 0). Porting that INTO `substrate/lake_memory.py` is a new capability, not a settlement. |
 | `fly_hash` ↔ `generalizing_novelty` + `minhash` | **Both governed modules disclaim the relationship in their own docstrings.** `generalizing_novelty.py:15-19` and `minhash.py:22-24` each say they answer a different question. P2 requires a benchmark that exists to call one better; none shows the governed pair better, so there is no deletion to make. |
 
@@ -224,7 +224,8 @@ batch-1/2 rows above, every member now has a verdict; the settlement is one orde
 
 The p6-pinned loop promoted (KNOWN_WRITERS relpath co-edited same commit; TRAIN_TIER +
 TRAIN_GATED; executive_control imports lazy-in-main, the kb_ranking shape -- that module's own
-lane still owes rename + P1 + p6 floor 3). Full 5.8-min run reproduced at the new path. **The
+lane [4f, settled 2026-08-12] owed rename + P1 + p6 floor 3, all discharged). Full 5.8-min run
+reproduced at the new path. **The
 dormancy conversion promise carried by three EXEMPT entries was MEASURED FALSE and corrected**
 (wire -> permanent with measurements; zero conversions, 31 -> 33 exemptions, honest). specs/007
 T021 disposed (stub kept as interface, signature fixed). P6 caught an undeclared
@@ -232,6 +233,20 @@ hippocampus->basal_ganglia pair at the move -- resolved by DECLARING the real su
 route. With 4d + the laminar merge + ensemble_rbf's instrument settlement this closes every row
 the 2026-08-11 "lane 4c/4d recorded" entry left dependency-blocked; the remaining brain_adapters
 census is ONE module (executive_control).
+
+### Lane 4f (2026-08-12): `executive_control` -> `cortex/competence_executive` -- brain_adapters CLOSES
+
+The LAST brain_adapters module promoted+RENAMED (basename collision with cortex/executive_control;
+brain_atlas.py:81 asserts uniqueness). Deliberate deviation from specs/010's
+`neuromodulation/dopamine_modulator.py` split, on a measurement: whole-file at neuromodulation/
+reds the p6 ratchet (undeclared_import_pairs 11 -> 12, new midbrain<->neuromodulation pair);
+cortex/ is bit-identical on all five criteria, and the split would have rewritten the governed
+p6-pinned consumer. P1 LR_MIN/LR_MAX adjudicated in-file: kept fixed, NO exception claimed
+(exception (c) measured false -- NORD_DOPA defaults ON and the pair sits at a bound on 3 of the
+consumer's 4 default-path calls), conversion declined on P2 grounds (the running-mean baseline is
+specs/010 finding G's contested third RPE mechanism). KNOWN_WRITERS + the :1384 lookup re-keyed
+same commit; import_manifest floor 12 -> 11 (shrink-by-promotion slack); the emptied
+`reasoning/brain_adapters/` package deleted. The brain_adapters census is ZERO.
 
 Order: content_signature -> {corpus_stream, world_kb_stream, lake_memory} -> skill_builder ->
 {language_readout_slda + fair_compare ports} -> language_self_build -> open_world_loop ->
@@ -258,9 +273,10 @@ Before deleting any `reasoning/` module, grep it in every one of:
 `docs/` command blocks
 
 **`tools/p6_gate.py` is the one the obvious checklist misses, and it ASSERTS IN CI.** It hard-codes
-`reasoning/` paths with writer floors — `KNOWN_WRITERS["reasoning/brain_adapters/executive_control.py"] = 3`
-at `:271`, consumed at `:1328-1345` where a known writer producing zero writes appends a problem, plus
-a dedicated criterion at `:1381`. Same for `train_of_thought` (4), `rpm_solver` (1),
+relpaths with writer floors — `KNOWN_WRITERS["cortex/competence_executive.py"] = 3` (key was
+`reasoning/brain_adapters/executive_control.py` until the 2026-08-12 lane-4f promotion, co-edited
+same commit), consumed at `:1339-1356` where a known writer producing zero writes appends a problem, plus
+a dedicated criterion at `:1384`. Same for `train_of_thought` (4), `rpm_solver` (1),
 `spike_chat_lake` (1), `developmental_loop_brain` (1 -- key now `hippocampus/developmental_loop_brain.py`, co-edited at its 2026-08-12 promotion), and `KNOWN_READERS` for two of them. **Deleting
 one of those files without editing `p6_gate.py` in the same commit reds the build.**
 

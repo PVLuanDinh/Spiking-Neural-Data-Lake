@@ -257,7 +257,11 @@ def main():
     # exactly the shrink-by-promotion case the comment above licenses. The count floor and the
     # root-tier blindness detector are two separate lines (see below) precisely so this edit
     # cannot silently delete the detector.
-    assert len(man) >= 12, f"manifest collapsed to {len(man)} targets -- scan regression?"
+    # Floor lowered 12 -> 11 on 2026-08-12 (#10 lane 4f): brain_adapters/executive_control
+    # promoted+renamed to cortex/competence_executive, so its one target (the dlb lazy reach,
+    # two call sites) legitimately left the manifest -- same shrink-by-promotion case, and the
+    # floor keeps its one-target slack rather than parking on the new count of 12.
+    assert len(man) >= 11, f"manifest collapsed to {len(man)} targets -- scan regression?"
 
     # ROOT-TIER COVERAGE, asserted STRUCTURALLY so that no COUNT arbitrates it. The comment above
     # used to claim the floor of 13 was "also the value that makes root-tier blindness itself red".
