@@ -146,7 +146,7 @@ class _NoveltyBaseline:
 
 def _load_latents():
     """Real N-MNIST latents: models/nmnist_pack.npz rate-coded (sum spikes over time) + flattened,
-    mirroring reasoning/brain_adapters/laminar_local_readout._load_nmnist_split. Returns (X, y) or
+    mirroring cortex/laminar_local_readout._load_nmnist_split (promoted 2026-08-12). Returns (X, y) or
     None if the pack is absent."""
     import pathlib
 
@@ -196,7 +196,7 @@ def main():
         #     `reservoir_eprop.py` reads models/**shd_pack**.npz, a DIFFERENT artifact. Its ":43
         #     calls it 'the committed pack'" quote is about that other pack. Actual nmnist_pack
         #     readers: THIS module, `cortex/brain.py` (SNN_PERCEPTION_PACK) and
-        #     `reasoning/brain_adapters/laminar_local_readout.py` (_PACK_REL) -- three, not five.
+        #     `cortex/laminar_local_readout.py` (_PACK_REL) -- three, not five.
         #   * "NO producer anywhere in the tree" -- `training/make_packs.py` produces BOTH packs
         #     from tonic and is referenced by `run_selfchecks.py` for exactly this check. The claim
         #     was true when written and went stale when make_packs landed.

@@ -252,7 +252,12 @@ def main():
     #     `reasoning.*` count, not a property: this floor is a collapse detector, and the assert
     #     below is what actually watches the root tier. Leaving the floor at 10 would have let a
     #     collapse recur silently.
-    assert len(man) >= 13, f"manifest collapsed to {len(man)} targets -- scan regression?"
+    # Floor lowered 13 -> 12 on 2026-08-12: laminar_local_readout promoted to cortex/, so its
+    # single manifest entry (the brain.py:1382 lazy reach) legitimately left the manifest --
+    # exactly the shrink-by-promotion case the comment above licenses. The count floor and the
+    # root-tier blindness detector are two separate lines (see below) precisely so this edit
+    # cannot silently delete the detector.
+    assert len(man) >= 12, f"manifest collapsed to {len(man)} targets -- scan regression?"
 
     # ROOT-TIER COVERAGE, asserted STRUCTURALLY so that no COUNT arbitrates it. The comment above
     # used to claim the floor of 13 was "also the value that makes root-tier blindness itself red".

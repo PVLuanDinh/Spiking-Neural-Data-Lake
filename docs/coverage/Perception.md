@@ -23,7 +23,7 @@ and the fix are below. Bands are capped at 40 accordingly; see rubric rule 2.
 | predictive_coding_prediction_error | 40 | src/snn_data_lake/cortex/live_brain.py:169#tick; src/snn_data_lake/cortex/brain.py:1836#_wake_tick; src/snn_data_lake/cortex/brain.py:1723#_w8_tick | - | opus-5 live-brain census, 40 ticks, seed 0 | 2026-07-30 |
 | crossmodal_superadditive_binding | 30 | src/snn_data_lake/cortex/crossmodal_binder.py:153#bind; src/snn_data_lake/cortex/brain.py:1346#_consume_perception; src/snn_data_lake/cortex/brain.py:2809#state | - | opus-5 live-brain census, daemon import shape | 2026-07-30 |
 | percept_class_to_action_drive | 30 | src/snn_data_lake/cortex/brain.py:1497#_route_percept_to_action; src/snn_data_lake/cortex/brain.py:1617#_route_percept_to_action | percept_60.txt | opus-5 charge_probe percept 60 and 120 | 2026-07-30 |
-| perceptual_confidence_gate | 25 | src/snn_data_lake/reasoning/brain_adapters/laminar_local_readout.py:172#observe; src/snn_data_lake/cortex/brain.py:1236#_perceive_real | - | opus-5 live-brain census, daemon import shape | 2026-07-30 |
+| perceptual_confidence_gate | 25 | src/snn_data_lake/cortex/laminar_local_readout.py#observe (promoted 2026-08-12); src/snn_data_lake/cortex/brain.py:1348#_perceive_real | - | opus-5 live-brain census, daemon import shape; repoint runtime-proven at the promotion (_percept_conf moved 40/40 stubbed-encoder ticks) | 2026-08-12 |
 | percept_surprise_orienting | 25 | src/snn_data_lake/cortex/percept_surprise.py:125; src/snn_data_lake/cortex/brain.py:1261#_perceive_real; src/snn_data_lake/cortex/brain.py:1441#_route_percept_to_action | surprise_60.txt | opus-5 charge_probe surprise 60 and 120 | 2026-07-30 |
 | percept_to_place_binding | 25 | src/snn_data_lake/hippocampus/grid_place_map.py:161#observe; src/snn_data_lake/cortex/brain.py:1365#_consume_perception | - | opus-5 live-brain census, daemon import shape | 2026-07-30 |
 | covert_attention_trn_gain | 21 | src/snn_data_lake/brainstem/autonomous_loop.py:898#_attend; src/snn_data_lake/brainstem/autonomous_loop.py:1340#step | - | opus-5 neuter-A/B 0 of 40 on unit action threat pos | 2026-07-30 |
@@ -203,7 +203,7 @@ Format: `capability` -- provider -- liveness.
 - online unsupervised percept surprise (Oja/Sanger) -- `cortex/percept_surprise.py` -- daemon shape
   only, fires on 2/60 ticks.
 - no-backprop laminar readout -> perceptual confidence --
-  `reasoning/brain_adapters/laminar_local_readout.py` -- daemon shape only, range 0.169-1.0.
+  `cortex/laminar_local_readout.py` (promoted 2026-08-12) -- daemon shape only, range 0.169-1.0.
 - real-sensor (ESP32) transduction adapter -- `substrate/esp32_encoder_path.py` -- EXEMPT, awaiting
   hardware.
 - orienting/saccade WTA map -- `superior_colliculus` and `sc_deep_layers` -- EXEMPT, no gaze effector.

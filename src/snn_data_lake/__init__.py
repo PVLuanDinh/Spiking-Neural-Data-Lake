@@ -94,6 +94,10 @@ REGIONS = {
         "hodgkin_huxley",
         "alif_neuron",
         "divisive_normalization",
+        # PROMOTED from reasoning/brain_adapters/ 2026-08-12 (#10 lane 4c): the ONE live-tick
+        # percept readout (feedback alignment + fixed-random L6, no weight transport) --
+        # cortex/brain.py constructs it lazily on every real percept; numpy-only, CORE tier.
+        "laminar_local_readout",
         "neuronal_avalanches",
         "cortical_microcircuit",
         "lca_sparse_coding",

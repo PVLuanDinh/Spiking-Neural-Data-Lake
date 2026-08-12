@@ -9,6 +9,22 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- lane 4c completes: laminar_local_readout -> cortex/, the live-tick readout governed (2026-08-12c)
+
+The promote half. The ONE live-tick percept readout (feedback alignment + fixed-random L6,
+zero weight transport) moves to the region whose tick consumes it; REGIONS + run_selfchecks
+CORE (numpy-only, the real git-tracked N-MNIST pack, six red controls all firing). The
+swallowed-import hazard was closed the only way it can be: cortex/brain.py:1382's lazy
+import repointed AND runtime-proven -- _percept_conf moved on 40/40 stubbed-encoder ticks
+(0.126-0.303; the except-pass at :1403 makes any static green a fake). import_manifest's
+floor lowered 13 -> 12 in the same commit (the promotion deletes the manifest's only watch
+on that edge; the root-tier blindness detector is a separate line and untouched). P8 paid
+at the move: the determinism assert (same-seed accuracy == itself, a pure function of seed,
+no reachable red) CONVERTED to the two-sided birth-weight form. Three of the four specs/010
+blockers turned out ALREADY PAID in code (purity asserts deleted 2026-08-04, _repo_root
+depth-derived, _lr baseline-relative) -- only the DOCS were stale, now corrected
+(CLAUDE.md's purity-assert residue list, AUDIT_BACKLOG M15 closed, Perception.md repointed).
+
 ## [Unreleased] -- the LAMINAR MERGE: laminar_readout deleted, LaminarColumns governed, T022 discharged (2026-08-12b)
 
 The MERGE-THEN-RETIRE half of lane 4c executes. `LaminarReadout` -- the backprop L6-gated

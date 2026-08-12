@@ -96,6 +96,9 @@ CORE = [
     "cortex.resonate_and_fire",
     "cortex.srm_neuron",
     "cortex.metacognitive_monitor",
+    # PROMOTED from reasoning/brain_adapters/ 2026-08-12 (#10 lane 4c): live-tick percept
+    # readout; numpy-only, real cached N-MNIST pack, measured ~2-5s. CORE, not TORCH_GATED.
+    "cortex.laminar_local_readout",
     "cortex.wholistic_loop",
     "cortex.autotelic_goals",
     "cortex.quality_diversity",

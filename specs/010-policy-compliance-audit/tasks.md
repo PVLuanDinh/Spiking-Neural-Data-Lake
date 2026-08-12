@@ -148,6 +148,9 @@ system says it cannot measure.
 - [x] T022 [DONE 2026-08-04: proxy asserts NAMED as proxies rather than deleted - they defend an architectural property, not a dependency rule] [P] [US2] Remove the three surviving `assert "torch" not in sys.modules` purity asserts at
       `reasoning/brain_adapters/laminar_local_readout.py:314`, `:336` and
       `reasoning/vsa_structure_mapping.py:294`. Residue of the abolished rule.
+      [2026-08-12 annex: all three are since FULLY DELETED from the code (the laminar pair
+      with an in-file removal note; vsa:294 is ordinary code), and the laminar module is now
+      `cortex/laminar_local_readout.py`. The paths above are the historical record.]
 - [x] T023 [DONE 2026-08-04: __init__.py:1 'zero-dependency' corrected] [P] [US2] Correct `src/snn_data_lake/__init__.py:1`, which still opens *"a zero-dependency
       neuromorphic library"* — a property the project abolished on 2026-07-20.
 - [x] T024 [DONE 2026-08-04: pyproject.toml:1 and description corrected to torch+numpy+mujoco] [P] [US2] Correct `pyproject.toml:1` and `:27`, both of which say *"torch + numpy"* while

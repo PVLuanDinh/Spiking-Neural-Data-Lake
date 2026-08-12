@@ -1379,7 +1379,7 @@ class Brain:
             # never raise it or reach the reflex/E-STOP path.
             try:
                 if self._percept_readout is None:
-                    from snn_data_lake.reasoning.brain_adapters.laminar_local_readout import (
+                    from snn_data_lake.cortex.laminar_local_readout import (
                         LaminarLocalReadout,
                     )
 

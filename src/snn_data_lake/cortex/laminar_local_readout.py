@@ -54,11 +54,12 @@ Refs: Lillicrap, Cownden, Tweed & Akerman, "Random synaptic feedback weights sup
 backpropagation for deep learning", Nat. Commun. 7 (2016) (feedback alignment). The mechanism
 this ports: the variant-B' LaminarLocalReadout (L4 -> L2/3 -> L5 -> L6, local learning only).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.reasoning.brain_adapters.laminar_local_readout
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.laminar_local_readout
 
-(that is the path the module is at TODAY and the command verified to run; the promotion into
-cortex/ rewrites it. An earlier draft already named the post-promotion path, which does not
-import yet -- a documented command that fails is the same fail-green shape as a stale citation.)
+(PROMOTED 2026-08-12, #10 lane 4c: reasoning/brain_adapters/ -> cortex/, the region whose
+live tick consumes it -- cortex/brain.py constructs it lazily on every real percept and its
+confidence gates the percept drive. The command above was rewritten AT the move and verified
+to run at the new path, per this docstring's own earlier warning about pre-naming a path.)
 """
 
 import math
@@ -552,10 +553,21 @@ def main():
     # gradient-free sanity check: the batched local rule actually descends the loss.
     assert r1["losses"][-1] < r1["losses"][0], "mean cross-entropy loss did not decrease"
 
-    # (f) deterministic: a second fresh run with the same seed reproduces the SAME accuracy.
-    r2 = _run_once(seed=7)
-    assert r1["accuracy"] == r2["accuracy"], (
-        f"non-deterministic: run1 acc={r1['accuracy']:.6f} vs run2 acc={r2['accuracy']:.6f}"
+    # (f) deterministic -- CONVERTED 2026-08-12 (P8/F11) from the old same-seed accuracy
+    # comparison, which had NO reachable red: _run_once is a pure function of its seed, so
+    # no input could ever fail it (the concession below recorded exactly that). The
+    # two-sided form has a real red on each side: a constructor that ignores `seed` fails
+    # the second half, and unseeded construction jitter fails the first. Birth weights,
+    # not 51-sample accuracy, so no coincidence flake.
+    _d7a = LaminarLocalReadout(in_dim=8, n_classes=4, n4=16, n23=8, seed=7)
+    _d7b = LaminarLocalReadout(in_dim=8, n_classes=4, n4=16, n23=8, seed=7)
+    _d8 = LaminarLocalReadout(in_dim=8, n_classes=4, n4=16, n23=8, seed=8)
+    assert np.array_equal(_d7a._W1_init, _d7b._W1_init), (
+        "same-seed constructions must produce identical birth weights"
+    )
+    assert not np.array_equal(_d7a._W1_init, _d8._W1_init), (
+        "different-seed constructions must produce different birth weights "
+        "(a constructor that ignores seed would pass the first half and fail here)"
     )
 
     # (g) P8 reachable-red controls, with their coverage stated EXACTLY. Each re-runs the SAME
@@ -565,16 +577,15 @@ def main():
     #   the loss-descent assert, and the P1 running-baseline step claim.
     #   NOT COVERED, stated because the earlier wording here was "every criterion above is now
     #   shown to have a REACHABLE RED" and that was an overclaim:
-    #     - (a) DATA PROVENANCE and (f) DETERMINISM ship no control at all.
+    #     - (a) DATA PROVENANCE ships no in-process control. ((f) DETERMINISM was converted
+    #       2026-08-12 to the two-sided birth-weight form above, which carries its own red.)
     #     - (e) "beats chance" is NOT redded by control 2. Control 2 is a trained-vs-untrained
     #       CONTRAST; the untrained twin's own accuracy is printed below precisely because it
     #       BEATS blob chance (measured 0.1889 vs 1/6 = 0.1667), so it cannot demonstrate that the
     #       chance assert is able to fail.
-    #   All three reds ARE reachable -- constructed and run out-of-band during verification:
+    #   The remaining reds ARE reachable -- constructed and run out-of-band during verification:
     #   make np.load raise on an existing pack -> the run falls back to synthetic and (a) fires;
-    #   add UNSEEDED construction jitter -> the two runs return different accuracies and (f) fires
-    #   (no number quoted: an unseeded red is not reproducible by definition, and quoting one
-    #   would be the very defect this block is correcting); neuter train_step -> untrained
+    #   neuter train_step -> untrained
     #   N-MNIST accuracy 0.0784 < chance 0.1000 and (e) fires. They are
     #   deliberately NOT asserted in-process (each needs a monkeypatch of this module's own
     #   internals, and an in-process untrained-vs-chance assert would be one seed away from a

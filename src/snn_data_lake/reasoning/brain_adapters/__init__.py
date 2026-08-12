@@ -14,8 +14,9 @@ hippocampus/ (2026-08-11), gwt_deep -> thalamus/ (2026-08-11), lake_memory -> hi
 proximity_replay (2026-08-11), laminar_readout DELETED (2026-08-12 -- the LaminarReadout-vs-
 laminar_local_readout P2 this docstring long owed is RESOLVED: the no-transport local readout
 is the one live-tick mechanism, LaminarColumns ported to hippocampus/growable_readout, the
-backprop L6 readout retired as the recorded v3.59 failure). TWO modules remain:
+backprop L6 readout retired as the recorded v3.59 failure). laminar_local_readout -> cortex/ (2026-08-12,
+runtime-proven live on the wake tick at the move). ONE module remains:
 `executive_control` (p6_gate-pinned, its own lane -- carrying the recorded P2 vs
-brain_decision.choose(), see that module's docstring) and `laminar_local_readout` (promotion
-to cortex/ owned by the same 2026-08-12 lane).
+brain_decision.choose(), see that module's docstring, plus its owed rename for the
+basename collision with cortex/executive_control).
 """
