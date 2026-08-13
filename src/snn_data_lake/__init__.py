@@ -105,6 +105,12 @@ REGIONS = {
         "is_snn_forward",
         "neural_sampling",
         "snn_classifier",
+        # PROMOTED 2026-08-13 (was reasoning/snn_moe_classifier.py): firing-rate ROUTED
+        # mixture-of-experts over snn_classifier's spiking experts. CORE, not TORCH_TIER -- it
+        # imports only math/random/numpy plus cortex.snn_classifier and substrate._mathutils.
+        # Reached from cortex/recognizer_bank.py. Its blocker was an UNRESTORED process-global
+        # `random.seed(0)`, fixed with substrate/brain_bundle.py's snapshot-seed-restore pattern.
+        "snn_moe_classifier",
         "trained_brain",
         "learned_matcher",
         "tempotron",

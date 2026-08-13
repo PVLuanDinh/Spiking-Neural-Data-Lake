@@ -283,84 +283,107 @@ def _fmt_share(share):
 
 
 def main():
-    random.seed(0)  # deterministic self-check; scoped to main() so importing is side-effect free
-    temps = templates()
-    C = len(temps)
-    train_data = dataset(TRAIN_PER_CLASS, temps)
-    test_data = dataset(TEST_PER_CLASS, temps)
-    dotted = __spec__.name if __spec__ else __name__  # derived: cannot go stale when re-homed
+    # SAVE/RESTORE THE PROCESS-GLOBAL RNG around this self-check. `random.seed(0)` below is not a
+    # local act: it clobbers whatever stream the importer was using, and `run_selfchecks.py` runs
+    # every module in ONE process, so a later module's "deterministic" run would silently inherit
+    # this one's seed. MEASURED before the fix, with substrate/brain_bundle.py's own probe: after
+    # `random.seed(4242)` + two draws the next three values are [0.028451, 0.390264, 0.320989];
+    # running this module in between made them [0.022726, 0.733753, 0.019201]. LEAKED.
+    #
+    # The seed is NOT deleted, and that was measured too: without it the self-check's `acc >= 0.85`
+    # becomes a stochastic gate (four trials, four distinct outcomes). This module genuinely uses the
+    # global `random` API, which the note at the top of the file already recorded. So the fix is the
+    # one substrate/brain_bundle.py established -- snapshot, seed, restore -- not deletion.
+    #
+    # try/finally, not a trailing restore: the two asserts below can raise, and a self-check that
+    # FAILS must still leave the process RNG as it found it. A leak on the failure path is the same
+    # defect wearing a different hat.
+    _rng_state = random.getstate()
+    random.seed(0)
+    try:
+        temps = templates()
+        C = len(temps)
+        train_data = dataset(TRAIN_PER_CLASS, temps)
+        test_data = dataset(TEST_PER_CLASS, temps)
+        dotted = __spec__.name if __spec__ else __name__  # derived: cannot go stale when re-homed
 
-    print("=" * 60)
-    print("SPIKE-DRIVEN MoE CLASSIFIER  (Nord firing-rate routing, ported)")
-    print(f"module: {dotted}")
-    print("=" * 60)
-    print(f"experts={N_EXPERTS}  top_k={TOP_K}  clusters={N_CLUSTERS}  classes={C}  inputs N={N}")
-    print("routing: firing-rate (NO learned router net)\n")
+        print("=" * 60)
+        print("SPIKE-DRIVEN MoE CLASSIFIER  (Nord firing-rate routing, ported)")
+        print(f"module: {dotted}")
+        print("=" * 60)
+        print(
+            f"experts={N_EXPERTS}  top_k={TOP_K}  clusters={N_CLUSTERS}  classes={C}  inputs N={N}"
+        )
+        print("routing: firing-rate (NO learned router net)\n")
 
-    # The homeostat-OFF control shares this RNG state so the ONLY difference between the two
-    # runs is lb_rate. Without the snapshot the control would also see different spikes and
-    # the comparison below would not be a control at all.
-    train_state = random.getstate()
-    experts, expert_bias, _usage, _ = train(train_data, C)
-    random.setstate(train_state)
-    ctl_experts, ctl_bias, _cu, _cs = train(train_data, C, lb_rate=0.0, report=False)
+        # The homeostat-OFF control shares this RNG state so the ONLY difference between the two
+        # runs is lb_rate. Without the snapshot the control would also see different spikes and
+        # the comparison below would not be a control at all.
+        train_state = random.getstate()
+        experts, expert_bias, _usage, _ = train(train_data, C)
+        random.setstate(train_state)
+        ctl_experts, ctl_bias, _cu, _cs = train(train_data, C, lb_rate=0.0, report=False)
 
-    eval_state = random.getstate()
-    acc, moe_synops, used = evaluate(experts, expert_bias, test_data, C)
-    random.setstate(eval_state)
-    _ctl_acc, _ctl_syn, ctl_used = evaluate(ctl_experts, ctl_bias, test_data, C)
+        eval_state = random.getstate()
+        acc, moe_synops, used = evaluate(experts, expert_bias, test_data, C)
+        random.setstate(eval_state)
+        _ctl_acc, _ctl_syn, ctl_used = evaluate(ctl_experts, ctl_bias, test_data, C)
 
-    print()
-    print(f"TEST ACCURACY : {acc:.1%}   (chance = {1 / C:.0%})\n")
+        print()
+        print(f"TEST ACCURACY : {acc:.1%}   (chance = {1 / C:.0%})\n")
 
-    # --- compute: top-k sparse vs running ALL experts -------------------------------------
-    # Both figures are exact spike counts (spikes x classes x experts-that-ran); an expert's
-    # cost does not depend on WHICH expert it is, so the all-experts number is arithmetic on
-    # the measured one. Reported, never asserted: `moe < moe * N_EXPERTS // TOP_K` has no
-    # reachable red, and P8 says such a criterion is DELETED rather than weakened.
-    dense_all_synops = moe_synops * N_EXPERTS // TOP_K
-    print("COMPUTE on test set (lower = less power):")
-    print(f"  MoE SynOps (top-{TOP_K})   : {moe_synops:,}")
-    print(f"  all-{N_EXPERTS}-experts SynOps : {dense_all_synops:,}")
-    print(f"  reduction              : {N_EXPERTS / TOP_K:.1f}x  (= n_experts/top_k)")
-    print()
+        # --- compute: top-k sparse vs running ALL experts -------------------------------------
+        # Both figures are exact spike counts (spikes x classes x experts-that-ran); an expert's
+        # cost does not depend on WHICH expert it is, so the all-experts number is arithmetic on
+        # the measured one. Reported, never asserted: `moe < moe * N_EXPERTS // TOP_K` has no
+        # reachable red, and P8 says such a criterion is DELETED rather than weakened.
+        dense_all_synops = moe_synops * N_EXPERTS // TOP_K
+        print("COMPUTE on test set (lower = less power):")
+        print(f"  MoE SynOps (top-{TOP_K})   : {moe_synops:,}")
+        print(f"  all-{N_EXPERTS}-experts SynOps : {dense_all_synops:,}")
+        print(f"  reduction              : {N_EXPERTS / TOP_K:.1f}x  (= n_experts/top_k)")
+        print()
 
-    # --- storage: firing-rate router vs a learned router network --------------------------
-    # Two parameter counts over module constants. Also reported, never asserted, for the same
-    # P8 reason: 8 < 512 cannot go red for any input.
-    fr_router = N_EXPERTS  # just the per-expert biases
-    learned_router = N * N_EXPERTS  # a real router: N -> n_experts
-    print("ROUTER STORAGE (lower = less space):")
-    print(f"  firing-rate router : {fr_router} params (biases only)")
-    print(f"  learned router     : {learned_router} params (N x n_experts)")
-    print(f"  reduction          : {learned_router / fr_router:.0f}x  (no router net)")
-    print()
+        # --- storage: firing-rate router vs a learned router network --------------------------
+        # Two parameter counts over module constants. Also reported, never asserted, for the same
+        # P8 reason: 8 < 512 cannot go red for any input.
+        fr_router = N_EXPERTS  # just the per-expert biases
+        learned_router = N * N_EXPERTS  # a real router: N -> n_experts
+        print("ROUTER STORAGE (lower = less space):")
+        print(f"  firing-rate router : {fr_router} params (biases only)")
+        print(f"  learned router     : {learned_router} params (N x n_experts)")
+        print(f"  reduction          : {learned_router / fr_router:.0f}x  (no router net)")
+        print()
 
-    # --- load balance, against its own OFF control (P8: a control that is not the method) --
-    share, ctl_share = _share(used), _share(ctl_used)
-    h_on, h_off = usage_entropy(share), usage_entropy(ctl_share)
-    print("LOAD BALANCE (expert usage share on test set):")
-    print(f"  homeostat ON  : {_fmt_share(share)}")
-    print(f"  homeostat OFF : {_fmt_share(ctl_share)}   <- control, lb_rate=0")
-    print(f"  usage entropy : ON={h_on:.4f}  OFF={h_off:.4f}  (1.0 = perfectly even)")
-    print("=" * 60)
+        # --- load balance, against its own OFF control (P8: a control that is not the method) --
+        share, ctl_share = _share(used), _share(ctl_used)
+        h_on, h_off = usage_entropy(share), usage_entropy(ctl_share)
+        print("LOAD BALANCE (expert usage share on test set):")
+        print(f"  homeostat ON  : {_fmt_share(share)}")
+        print(f"  homeostat OFF : {_fmt_share(ctl_share)}   <- control, lb_rate=0")
+        print(f"  usage entropy : ON={h_on:.4f}  OFF={h_off:.4f}  (1.0 = perfectly even)")
+        print("=" * 60)
 
-    # ---- self-check --------------------------------------------------------------------
-    # P8 pass, 2026-08-04: three of the four former asserts had NO reachable red and were
-    # DELETED rather than weakened --
-    #   moe_synops < dense_all_synops   : arithmetic on a single measured number
-    #   fr_router  < learned_router     : 8 < 512, two module constants
-    #   distinct experts used >= TOP_K  : route() returns exactly TOP_K experts, always
-    # The two that survive have a red something can actually reach: shuffle the labels and
-    # accuracy collapses to chance; set lb_rate=0 in BOTH runs and the entropy gap closes.
-    # acc floor: P1 exception (a) -- a fixed point on a normalized output (accuracy in [0,1],
-    # chance 1/C = 25%), inside a self-check that no consumer reaches.
-    assert acc >= 0.85, f"MoE did not learn: acc={acc:.2f}"
-    assert h_on > h_off, (
-        "homeostatic load balance did not spread expert usage further than its own "
-        f"homeostat-OFF control (usage entropy ON={h_on:.4f} vs OFF={h_off:.4f})"
-    )
-    print("self-check OK: acc>=85%; load balance beats its homeostat-OFF control on usage entropy")
+        # ---- self-check --------------------------------------------------------------------
+        # P8 pass, 2026-08-04: three of the four former asserts had NO reachable red and were
+        # DELETED rather than weakened --
+        #   moe_synops < dense_all_synops   : arithmetic on a single measured number
+        #   fr_router  < learned_router     : 8 < 512, two module constants
+        #   distinct experts used >= TOP_K  : route() returns exactly TOP_K experts, always
+        # The two that survive have a red something can actually reach: shuffle the labels and
+        # accuracy collapses to chance; set lb_rate=0 in BOTH runs and the entropy gap closes.
+        # acc floor: P1 exception (a) -- a fixed point on a normalized output (accuracy in [0,1],
+        # chance 1/C = 25%), inside a self-check that no consumer reaches.
+        assert acc >= 0.85, f"MoE did not learn: acc={acc:.2f}"
+        assert h_on > h_off, (
+            "homeostatic load balance did not spread expert usage further than its own "
+            f"homeostat-OFF control (usage entropy ON={h_on:.4f} vs OFF={h_off:.4f})"
+        )
+        print(
+            "self-check OK: acc>=85%; load balance beats its homeostat-OFF control on usage entropy"
+        )
+    finally:
+        random.setstate(_rng_state)  # leave the process RNG exactly as found
 
 
 if __name__ == "__main__":

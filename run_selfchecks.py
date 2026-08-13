@@ -73,6 +73,11 @@ CORE = [
     "cortex.is_snn_forward",
     "cortex.neural_sampling",
     "cortex.snn_classifier",
+    # PROMOTED 2026-08-13 from reasoning/ -- and moved RESEARCH -> CORE with it. It had been
+    # registered in RESEARCH, which runs out-of-process with root on PYTHONPATH; leaving a governed
+    # cortex/ module there would register it without holding it to the CORE bar (in-process under
+    # pytest), which is the bar the promotion exists to impose.
+    "cortex.snn_moe_classifier",
     "cortex.trained_brain",
     "cortex.learned_matcher",
     "cortex.tempotron",
@@ -313,7 +318,6 @@ RESEARCH = [
     "reasoning.sparse_distributed_memory",
     "reasoning.fly_hash",
     "reasoning.spiking_som",
-    "reasoning.snn_moe_classifier",
     "reasoning.temporal_coding_storage",
     "reasoning.spike_compression",
     "reasoning.event_quadtree_compression",
