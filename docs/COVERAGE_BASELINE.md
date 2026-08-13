@@ -16,11 +16,22 @@
 > Everything below is kept as the record of what was claimed and how it was reasoned, which is still
 > the best available inventory of where the gaps are.
 
-**Equal-weighted total: 26.4%** — the current, re-derivable number. Run `python tools/coverage_score.py
+**Equal-weighted total: 26.3%** — the current, re-derivable number. Run `python tools/coverage_score.py
 score` to reproduce it from the tracked ledger; `--check` parses the line above and refuses if this file
 and the evidence disagree. It is a FIRST MEASUREMENT, not a fall from 37.5%: the 37.5% is withdrawn as
 unreproducible (see the banner), so the two do not sit on a common scale and no delta between them means
 anything. The withdrawn table is kept below as history.
+
+> **26.4% -> 26.3% on 2026-08-13, and the 0.1 is the honest part.** For an unknown stretch before
+> this date the ledger could not produce a number AT ALL: 175 citations had drifted out of
+> resolution, and `--check` refuses to print a total while any claim is unsupported. So the 26.4%
+> above was a stored headline that the evidence had stopped being able to confirm or deny. The
+> anchors were repaired (151 by `--repin`'s blame walk, 19 by unique-symbol AST lookup, 5 by hand),
+> `--check` computed a total again, and it disagreed with the stored one. The delta is ONE row:
+> `Consciousness.binding_of_broadcast_content` moved band 10 -> UNSCORED, because its own citation
+> column had been arguing since 2026-08-07 that "the capability is honestly ABSENT, not low-band"
+> while the band column still scored it 10. UNSCORED counts 0, so the mean fell. Nothing about the
+> brain changed on 2026-08-13; what changed is that the number can be checked again.
 
 Scored against [`COVERAGE_RUBRIC.md`](COVERAGE_RUBRIC.md) by eleven independent read-only auditors, one
 per category. Every category scoring above 40 was then handed to a separate agent whose only job was to
@@ -64,7 +75,8 @@ Those were scored against a rubric that was never committed, with a different de
 different evidence standard. Any delta against them would be arithmetic across incompatible scales.
 **The next re-sweep compares to 37.5%, and to nothing before it.** ~~Struck 2026-07-30~~: 37.5% was
 withdrawn as unreproducible, so nothing compares to it either. The comparison base is the re-derived
-26.4% at the top of this file.
+26.3% at the top of this file (26.4% until 2026-08-13; see the note there -- the anchors were repaired
+so the ledger could compute a total again, and one row moved to UNSCORED).
 
 ## The artifact caveat
 
