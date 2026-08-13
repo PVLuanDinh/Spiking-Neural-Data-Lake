@@ -49,7 +49,7 @@ except ImportError:
 def _energy_py():
     """<repo>/src/snn_data_lake/substrate/energy.py, located by walking UP to the repo marker.
 
-    Same reasoning as training/surrogate_snn._repo_root: a fixed `..` count encodes this file's own
+    Same reasoning as cortex/eprop_nmnist._ng_snn_dir: a fixed `..` count encodes this file's own
     directory depth and retargets silently if the file moves, and a `sys.path.insert` of a path that
     does not exist raises nothing at all. The walk has no hop count to get wrong.
     """

@@ -44,8 +44,8 @@ performs it.
 - [X] T007 Write the comparator `tests/pin/compare.py` using `torch.equal` (exact). **Do NOT use `allclose`** — a tolerance wide enough to survive a build difference is wide enough to hide the reshape error this exists to catch (research.md D-3)
 - [X] T008 Capture the BEFORE side: run `capture.py` producing `tests/pin/nmnist-before.pt` and `tests/pin/shd-before.pt`
 - [X] T009 Verify the harness is SENSITIVE before trusting it: perturb one input element, confirm `compare.py` reports a difference, then discard the perturbed capture. A comparator that has never reported a difference is not a control
-- [ ] T010 Run the GATE BATCH; confirm unchanged from HEAD baseline (p4c 205, manifest 8 targets, p6 5/5, self-checks 298, pytest 91.00%)
-- [ ] T011 Re-derive every `file:line` cite in the C0 artifacts after the last edit (FR-020), then commit C0
+- [X] T010 Run the GATE BATCH; confirm unchanged from HEAD baseline (p4c 205, manifest 8 targets, p6 5/5, self-checks 298, pytest 91.00%)
+- [X] T011 Re-derive every `file:line` cite in the C0 artifacts after the last edit (FR-020), then commit C0
 
 **Checkpoint**: if T003 or T004 returned BLOCKED, the lane stops and the spec's DELETE ruling is
 revisited. That is a legitimate outcome, not a failure.
@@ -61,34 +61,34 @@ exists, zero live references remain, gates green.
 
 ### Pre-commit measurements
 
-- [ ] T012 [P] [US1] Sweep `tests/` for `models/surrogate_nmnist.pth` as a PATH STRING (prior sweeps covered class names only) per [quickstart.md](quickstart.md) C1
-- [ ] T013 [P] [US1] Re-verify the `models/surrogate_nmnist.pth` checkpoint holds only `['model','config']`, so `surro_acc` in `src/snn_data_lake/reasoning/pc_cortex_torch.py` is always `None` and the `:481` branch never fires — i.e. that block was never an A/B
+- [X] T012 [P] [US1] Sweep `tests/` for `models/surrogate_nmnist.pth` as a PATH STRING (prior sweeps covered class names only) per [quickstart.md](quickstart.md) C1
+- [X] T013 [P] [US1] Re-verify the `models/surrogate_nmnist.pth` checkpoint holds only `['model','config']`, so `surro_acc` in `src/snn_data_lake/reasoning/pc_cortex_torch.py` is always `None` and the `:481` branch never fires — i.e. that block was never an A/B
 
 ### Deletions
 
-- [ ] T014 [US1] Delete `training/surrogate_snn.py`
-- [ ] T015 [US1] Delete the `else:` fallback branch at `src/snn_data_lake/cortex/brain.py:638-649` (the `SurrogateEncoder` import, the `_load_enc` call, and the `perception_tier = "torch-snn"` assignment)
-- [ ] T016 [US1] Delete the dead surrogate-ceiling block at `src/snn_data_lake/reasoning/pc_cortex_torch.py:427-446` and `:481-490`
+- [X] T014 [US1] Delete `training/surrogate_snn.py`
+- [X] T015 [US1] Delete the `else:` fallback branch at `src/snn_data_lake/cortex/brain.py:638-649` (the `SurrogateEncoder` import, the `_load_enc` call, and the `perception_tier = "torch-snn"` assignment)
+- [X] T016 [US1] Delete the dead surrogate-ceiling block at `src/snn_data_lake/reasoning/pc_cortex_torch.py:427-446` and `:481-490`
 
 ### Co-edits — ALL in this same commit
 
-- [ ] T017 [US1] Lower the manifest floor at `src/snn_data_lake/substrate/import_manifest.py:287` from `>= 7` to `>= 6`. **This step is licensed by T014's target removal landing in the same commit** — a floor lowered without its removal is silencing a check (Standing Invariant 2)
-- [ ] T018 [US1] Update the stale comment at `src/snn_data_lake/substrate/import_manifest.py:109` and `:111-113` which names `training.surrogate_snn` as a live root target
-- [ ] T019 [US1] Fix the now-false telemetry comment at `src/snn_data_lake/cortex/brain.py:3301` (`"torch-snn" (hybrid surrogate-SNN encoder loaded) or "stdlib"`) and the tier description at `:563`
-- [ ] T020 [US1] Remove `models/surrogate_nmnist.pth` from the checkpoint-probe tuple at `src/snn_data_lake/cortex/brain.py:641` (it also names `models/nmnist_encoder.pt` — keep that one)
-- [ ] T021 [US1] Update the `[train]` extra comment at `pyproject.toml:203`, which names `training/surrogate_snn.py` as the hybrid N-MNIST perception encoder
-- [ ] T022 [US1] Remove the four stale references in the governed twin `src/snn_data_lake/cortex/eprop_nmnist.py:6`, `:411`, `:424`, `:434`
-- [ ] T023 [US1] Update `training/eprop_shd.py:417` ("the sibling `training/surrogate_snn.py` already pins this") and `training/ar_spiking_lm.py:23` ("CONTRACT (mirrors `training/surrogate_snn.py`)")
-- [ ] T024 [P] [US1] Update `research/ng_snn/data.py:19`, `research/README.md:54`, `research/neuromorphic_torch/neuro_chip_gpu.py:52`
-- [ ] T025 [P] [US1] Update `docs/coverage/Perception.md:195`, `docs/coverage/SpatialTemporal.md:27`, `docs/COVERAGE_TO_100.md:68`, `docs/AUDIT_BACKLOG.md` (3 sites), `docs/P4C_BACKLOG.md:269`
-- [ ] T026 [US1] Regenerate `tools/p4c_ungoverned_baseline.json` (it lists `training/surrogate_snn.py` at `:242`); confirm total 205 → 204 and `training` zone 6 → 5
+- [X] T017 [US1] Lower the manifest floor at `src/snn_data_lake/substrate/import_manifest.py:287` from `>= 7` to `>= 6`. **This step is licensed by T014's target removal landing in the same commit** — a floor lowered without its removal is silencing a check (Standing Invariant 2)
+- [X] T018 [US1] Update the stale comment at `src/snn_data_lake/substrate/import_manifest.py:109` and `:111-113` which names `training.surrogate_snn` as a live root target
+- [X] T019 [US1] Fix the now-false telemetry comment at `src/snn_data_lake/cortex/brain.py:3301` (`"torch-snn" (hybrid surrogate-SNN encoder loaded) or "stdlib"`) and the tier description at `:563`
+- [X] T020 [US1] ~~Remove `models/surrogate_nmnist.pth` from the checkpoint-probe tuple at `brain.py:641`~~ **SUBSUMED by T015** — that tuple sat *inside* the `else:` block T015 deleted, so it went with the block (and `models/nmnist_encoder.pt` with it, correctly: it was a second checkpoint name for the same retired `SurrogateEncoder`). Recorded rather than ticked as separate work.
+- [X] T021 [US1] Update the `[train]` extra comment at `pyproject.toml:203`, which names `training/surrogate_snn.py` as the hybrid N-MNIST perception encoder
+- [X] T022 [US1] Remove the four stale references in the governed twin `src/snn_data_lake/cortex/eprop_nmnist.py:6`, `:411`, `:424`, `:434`
+- [X] T023 [US1] Update `training/eprop_shd.py:417` ("the sibling `training/surrogate_snn.py` already pins this") and `training/ar_spiking_lm.py:23` ("CONTRACT (mirrors `training/surrogate_snn.py`)")
+- [X] T024 [P] [US1] Update `research/ng_snn/data.py:19`, `research/README.md:54`, `research/neuromorphic_torch/neuro_chip_gpu.py:52`
+- [X] T025 [P] [US1] Update `docs/coverage/Perception.md:195`, `docs/coverage/SpatialTemporal.md:27`, `docs/COVERAGE_TO_100.md:68`, `docs/AUDIT_BACKLOG.md` (3 sites), `docs/P4C_BACKLOG.md:269`
+- [X] T026 [US1] Regenerate `tools/p4c_ungoverned_baseline.json` (it lists `training/surrogate_snn.py` at `:242`); confirm total 205 → 204 and `training` zone 6 → 5
 
 ### Verification
 
-- [ ] T027 [US1] Confirm zero live references outside `CHANGELOG.md` (SC-006) with the sweep in [quickstart.md](quickstart.md) C1
-- [ ] T028 [US1] Confirm `python -m snn_data_lake.substrate.import_manifest` reports **7** targets and passes
-- [ ] T029 [US1] Run the GATE BATCH
-- [ ] T030 [US1] Re-derive every `file:line` cite AFTER the last edit above (FR-020); read the self-check count from output rather than inferring it; then commit C1
+- [X] T027 [US1] Confirm zero live references outside `CHANGELOG.md` (SC-006) with the sweep in [quickstart.md](quickstart.md) C1
+- [X] T028 [US1] Confirm `python -m snn_data_lake.substrate.import_manifest` reports **7** targets and passes
+- [X] T029 [US1] Run the GATE BATCH
+- [X] T030 [US1] Re-derive every `file:line` cite AFTER the last edit above (FR-020); read the self-check count from output rather than inferring it; then commit C1
 
 **Commit body MUST NOT claim**: that e-prop is more accurate (p=1.0000 is a tie); that the surrogate
 path was unreachable on a fresh clone (neither checkpoint ships); or that this costs nothing (a

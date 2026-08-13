@@ -43,16 +43,15 @@ hold**; import_manifest **8 targets**; citation_guard OK; pytest **91.00%**; sel
 For each of the **19** `surrogate_snn`-only definitions, write one of three dispositions with its
 evidence: **covered** by `eprop_nmnist` / **ported** / **dropped, with reason**.
 
-```powershell
-.venv-lake\Scripts\python.exe -c @'
-import ast
-ns=lambda p:{n.name for n in ast.walk(ast.parse(open(p,encoding=\"utf-8\").read())) if isinstance(n,(ast.FunctionDef,ast.ClassDef))}
-s=ns(\"training/surrogate_snn.py\"); a=ns(\"src/snn_data_lake/cortex/eprop_nmnist.py\")
-only=sorted(s-a); print(len(only)); [print(\" \",x) for x in only]
-'@
-```
+**DONE at C0; the census command that produced this is deliberately not reproduced as a runnable
+block.** It took an AST def-name set difference between `training/surrogate_snn.py` and
+`cortex/eprop_nmnist.py`, and the first of those no longer exists — C1 deleted it. A tracked file
+citing a deleted `.py` inside a shell fence is precisely what `tools/citation_guard.py` asserts
+against, and it caught this line when C1 ran. The result is preserved in full in
+[audit-surrogate-capability.md](audit-surrogate-capability.md); re-run it against `47555a74` if you
+need to reproduce it.
 
-Expected: **19** — `SpikingConvNet`, `LeakyLIF`, `SurrogateEncoder`, `_FastSigmoid`,
+Result: **19** — `SpikingConvNet`, `LeakyLIF`, `SurrogateEncoder`, `_FastSigmoid`,
 `_fast_sigmoid`, `_first_layer_grad`, `_flat_dim`, `_fwd_bwd`, `_heaviside_no_surrogate`,
 `_prepare`, `_repo_root`, `_self_check`, `_self_check_body`, `_synthetic_frames`,
 `assert_supported_reset`, `init_leaky`, `inner`, `lif_layers`, `ng_snn_data_file`.

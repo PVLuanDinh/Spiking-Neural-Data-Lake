@@ -192,8 +192,11 @@ Format: `capability` -- provider -- liveness.
   `cortex/brain.py:564` -- daemon shape only.
 - real event-audio transduction (e-prop) -- `training/eprop_shd.py` via `cortex/brain.py:670` --
   daemon shape only.
-- surrogate-BPTT vision encoder (fallback tier) -- `training/surrogate_snn.py` via
-  `cortex/brain.py:648` -- shadowed whenever the e-prop checkpoint exists, so never live here.
+- surrogate-BPTT vision encoder (fallback tier) -- **RETIRED 2026-08-13 (specs/013)**, module and
+  its `brain.py` branch both deleted. The row is kept rather than removed because the ledger's rule
+  is that a row is not deleted to raise a score; it scores 0 as a retired mechanism, not as an
+  unmeasured one. It was never live here in any case -- it was shadowed whenever the e-prop
+  checkpoint existed.
 - generative spiking predictive-coding cortex, settle-to-percept -- `cortex/pc_cortex_serve.py` via
   `Brain.perceive_pc` -- checkpoint loads, no live-tick caller.
 - live predictive-coding prediction error over the sensory pattern -- `cortex/predictive_coding.py`

@@ -3,7 +3,8 @@ eprop_nmnist -- BRAIN-NATIVE (e-prop) spiking N-MNIST classifier / encoder for t
 Data Lake, and the brain's FIRST-CHOICE vision transducer: `cortex/brain.py` loads `EpropEncoder`
 from `models/eprop_nmnist.pt` and sets `_perception_tier = "eprop-snn"` when that checkpoint exists
 (measured live 2026-08-04: tier=eprop-snn, encoder loaded, device=cpu). It is the e-prop counterpart
-of training/surrogate_snn.py: same perception-tier ROLE (event frame -> latent + class), same encoder
+of the RETIRED training/surrogate_snn.py (deleted 2026-08-13, specs/013 -- this module is now the
+ONE vision perception encoder): same perception-tier ROLE (event frame -> latent + class), same encoder
 interface, but a fundamentally different LEARNING RULE.
 
 WHAT THIS IS (honest framing). A REAL recurrent spiking network -- input frame -> input weights ->
@@ -408,11 +409,12 @@ def _chance_bound(n_classes, n_test, sigmas=CHANCE_SIGMAS):
 
 
 # ----------------------------------------------------------------------------
-# The perception interface the brain's hook calls -- mirrors training/surrogate_snn.SurrogateEncoder.
+# The perception interface the brain's hook calls. It once mirrored SurrogateEncoder; that module
+# was retired 2026-08-13 (specs/013) and this is now the only implementation of the interface.
 # Lazy: constructing/loading an encoder does NOT train and needs only torch + the saved weights.
 # ----------------------------------------------------------------------------
 class EpropEncoder:
-    """Wraps a trained EpropNet as a perception encoder (same interface as SurrogateEncoder).
+    """Wraps a trained EpropNet as a perception encoder (`load` / `encode` / `classify`).
 
     encode(event_frame) -> latent vector (the recurrent hidden layer's spike-COUNT activity over T):
       * event_frame [T, C, H, W]      -> latent [hidden]        (single sample; brain-hook path)
@@ -421,7 +423,7 @@ class EpropEncoder:
     Accepts a numpy array or a torch tensor. Latent values are spike counts over the T window (>= 0).
 
     load(path, device=...) rebuilds the net from the checkpoint's saved config + weights -- no training,
-    no dataset needed. Checkpoint format matches surrogate_snn: {"model": state_dict, "config": cfg}."""
+    no dataset needed. Checkpoint format: {"model": state_dict, "config": cfg}."""
 
     def __init__(self, net, device="cpu"):
         self.net = net.to(device).eval()
@@ -431,7 +433,7 @@ class EpropEncoder:
     def load(cls, path, device="cpu"):
         # weights_only=True, stated explicitly rather than inherited from the torch default: this
         # path reaches here from the SNN_EPROP_CKPT environment variable on the BRAIN's construction
-        # path, so a checkpoint is DATA and must never be executable. training/surrogate_snn.py --
+        # path, so a checkpoint is DATA and must never be executable. The now-retired surrogate_snn --
         # the FALLBACK tier -- already pins this and explains why; this loader, which the brain
         # prefers FIRST, did not, so the hardened loader sat on the path the brain takes second.
         # The flag is a no-op on torch >= 2.6 (verified: torch 2.13.0+cpu already defaults True and

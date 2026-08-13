@@ -24,11 +24,11 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 
 `tools/charge_probe.py:39` puts exactly one directory on `sys.path`: `<root>/src`. `coverage_score.py
 record` pins `PYTHONPATH=<root>/src` too. Neither adds the repo ROOT, so the top-level `training/`
-package is unimportable, the root-tier perception imports (`training.surrogate_snn` at
-`cortex/brain.py:646`, `training.eprop_shd` at `:668`; the vision import became in-package
-`cortex/eprop_nmnist` at `:634` on 2026-08-12 -- and RE-MEASURED that day, the observable is
-UNCHANGED, because the audio import still raises in the same try and the rollback takes the tier
-with it)
+package is unimportable, the root-tier perception import (`training.eprop_shd`; the vision import
+became in-package `cortex/eprop_nmnist` on 2026-08-12, and the `training.surrogate_snn` fallback was
+RETIRED 2026-08-13 per specs/013, so ONE root-tier import remains -- and RE-MEASURED, the observable
+is UNCHANGED, because that surviving audio import still raises in the same try and the rollback
+takes the tier with it)
 raise, and the handler at `:679-683` silently sets `_perception_tier="stdlib"` and
 `_perceiving_real=False`. **Under the sanctioned probe harness this brain is blind**, even though
 `models/eprop_nmnist.pt` and `models/nmnist_pack.npz` are both present. `learn_daemon.py` sits at the

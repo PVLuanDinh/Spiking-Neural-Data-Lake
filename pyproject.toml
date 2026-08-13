@@ -200,7 +200,7 @@ lake = ["polars", "pyarrow", "deltalake"]                               # lakeho
 # RETIRE-classified 2026-08-06; the NO-GO was exactly this co-edit). A declared distribution whose
 # only importer is retired is not a capability (P7's own honesty guard names the shape).
 gpu = ["torch", "torchvision", "numpy", "scikit-learn"]                # research/ GPU training
-train = ["torch", "torchvision", "numpy", "scikit-learn"]              # GPU trainers (snn-train; training/surrogate_snn.py hybrid N-MNIST perception encoder, +[nmnist] for tonic) -> export weights to the Brain's OPTIONAL torch perception tier; the default install never imports it
+train = ["torch", "torchvision", "numpy", "scikit-learn"]              # GPU trainers (snn-train; cortex/eprop_nmnist.py e-prop N-MNIST perception encoder, +[nmnist] for tonic) -> export weights to the Brain's OPTIONAL torch perception tier; the default install never imports it
 # scikit-learn ADDED 2026-08-04 (specs/010, finding C07). It was imported UNGUARDED at module top in
 # four `reasoning/` modules -- deep_stdp_2stage_svm.py:80-81, developmental_loop_lake99.py:28-29,
 # ensemble_rbf.py:27-28, ng_snn/validate_uci.py:18-19 -- and declared NOWHERE, so `pip install .`

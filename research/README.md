@@ -51,7 +51,8 @@ PYTHONPATH=src .venv-lake/Scripts/python research/arc_agi/run_arc.py           #
   DRIVER sets in both directories.** Not settled here because it needs its own measured pass, and
   because deletion is not free in either direction — see the next bullet.
 - **`research/ng_snn/data.py` has two consumers outside this directory** —
-  `training/surrogate_snn.py::ng_snn_data_file` and `training/eprop_nmnist.py::_ng_snn_dir`, both of
+  `cortex/eprop_nmnist.py::_ng_snn_dir` (the `surrogate_snn.py::ng_snn_data_file` twin was retired
+  2026-08-13, specs/013; `eprop_nmnist` moved out of `training/` at the 2026-08-12 PROMOTE lane), which is
   which locate it by walking up from `__file__`. Those are the two encoders `cortex/brain.py` loads
   on the live construction path, so this directory is load-bearing for the brain's perception tier,
   not an archive.

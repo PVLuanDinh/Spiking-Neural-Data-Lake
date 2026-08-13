@@ -559,9 +559,9 @@ class Brain:
         # SpikeGPT-216M organ was SCRAPPED (v3.77). SAFETY: display-only -- its text is NEVER parsed as
         # a motor command; arm commands stay on the NL firewall + gated-arm path in respond().
 
-        # ---- HYBRID PERCEPTION TIER (optional torch): a surrogate-gradient deep SNN trained on N-MNIST
-        # (training/surrogate_snn.py, the [train] tier) exposed as an OPTIONAL high-fidelity perception
-        # encoder. torch- AND weights-GATED: if torch/snntorch + a checkpoint are present it loads; else
+        # ---- PERCEPTION TIER (optional torch): the e-prop-trained deep SNN on N-MNIST
+        # (cortex/eprop_nmnist.py, TORCH_TIER) exposed as an OPTIONAL high-fidelity perception
+        # encoder. torch- AND weights-GATED: if torch + a checkpoint are present it loads; else
         # the brain degrades to its stdlib perception. The live circadian loop is UNCHANGED either way
         # (the toy safe-stimuli are not event frames). ONE-DIRECTIONAL: the zero-dep core never imports
         # the tier. Value/representation-only -- an encoder, no actuator route. state()["perception_tier"].
@@ -628,25 +628,17 @@ class Brain:
                     return loader(path, device="cpu")
 
             _eprop = os.environ.get("SNN_EPROP_CKPT", "models/eprop_nmnist.pt")
-            if os.path.exists(
-                _eprop
-            ):  # BRAIN-NATIVE first: the e-prop-trained encoder (no backprop)
+            # The ONE vision perception encoder. The surrogate-BPTT fallback that used to sit in an
+            # `else:` here was RETIRED 2026-08-13 (specs/013): two encoders selected by checkpoint
+            # existence is the "both paths behind a flag" shape P2 calls additive with extra steps,
+            # and the surviving one is the brain-native (e-prop, no backprop) half. Honest cost: a
+            # machine holding only the surrogate checkpoint now gets NO encoder rather than a
+            # working one, and the tier falls to stdlib.
+            if os.path.exists(_eprop):
                 from snn_data_lake.cortex.eprop_nmnist import EpropEncoder
 
                 self._perception_enc = _load_enc(EpropEncoder.load, _eprop)
                 self._perception_tier = "eprop-snn"
-            else:  # fallback: the surrogate-BPTT encoder (NOT brain-native)
-                _ckpt = os.environ.get("SNN_PERCEPTION_CKPT")
-                if not _ckpt:
-                    for _c in ("models/nmnist_encoder.pt", "models/surrogate_nmnist.pth"):
-                        if os.path.exists(_c):
-                            _ckpt = _c
-                            break
-                if _ckpt and os.path.exists(_ckpt):
-                    from training.surrogate_snn import SurrogateEncoder
-
-                    self._perception_enc = _load_enc(SurrogateEncoder.load, _ckpt)
-                    self._perception_tier = "torch-snn"
             if (
                 self._perception_enc is not None
             ):  # load the REAL event-frame pack (numpy only at runtime)
@@ -3298,7 +3290,7 @@ class Brain:
             "integration_ok": self._integration_ok,  # L13: whole>sum AND non-regressing AND substrate in-band
             "rungs": self._rungs,  # birth DIAGNOSTIC census of all rungs (reduced-scale; _scale/_note tagged); full proof = each module's self-check
             "novelty_live": self._novelty_live,  # L5 PROMOTED to the live wake loop: generalizing pseudo-count over the current raster (habituates)
-            "perception_tier": self._perception_tier,  # "torch-snn" (hybrid surrogate-SNN encoder loaded) or "stdlib" (fallback)
+            "perception_tier": self._perception_tier,  # "eprop-snn" (e-prop encoder loaded) or "stdlib" (no checkpoint)
             "perceiving_real": bool(
                 self._perceiving_real
             ),  # W3b: perceiving REAL N-MNIST event-vision on the live tick

@@ -108,11 +108,14 @@ UNGOVERNED = ("reasoning", "training")
 # top-level name and the prefixed test above can never match. ADDED 2026-08-05: `cortex/brain.py`
 # built the perception tier from `training.eprop_nmnist`, `training.surrogate_snn` and
 # `training.eprop_shd` -- all three invisible to the one gate built for exactly this failure.
-# Re-resolved 2026-08-12 at the PROMOTE lane: `eprop_nmnist` is IN-PACKAGE now
-# (`snn_data_lake.cortex.eprop_nmnist`, brain.py:634), so the ROOT shape carries the remaining two,
-# `training.surrogate_snn` (:646) and `training.eprop_shd` (:668), both in the body of the ONE
-# `try` at brain.py:597-683 (span re-derived by AST at the 2026-08-12 review pass -- the old
-# :557-643 predated insertions above it and had itself rotted, exactly the failure :18 names).
+# Re-resolved 2026-08-13 (specs/013 C1): `eprop_nmnist` went IN-PACKAGE at the PROMOTE lane and
+# `training.surrogate_snn` was RETIRED with the surrogate-BPTT perception tier, so the ROOT shape
+# now carries exactly ONE target -- `training.eprop_shd`, in the body of the ONE `try` at
+# brain.py:597. That last one leaves at specs/013 C3, and `UNGOVERNED_ROOT` becomes `()` in the
+# same commit (the empty tuple is pre-authorised below).
+# Line cites here are deliberately coarse: the 2026-08-12 review pass found this very comment
+# quoting a `try` span (:557-643) that insertions above it had rotted -- exactly the failure :18
+# names -- so it no longer pins interior line numbers it cannot keep current.
 # Widening the scan is what made them visible; it does NOT make brain.py's own import CWD-proof
 # (see broken()).
 # The four-gates-green list above holds for them VERBATIM: coverage `omit` is
@@ -284,7 +287,12 @@ def main():
     # its root-shape target (brain.py's perception-tier construction reach) became in-package.
     # The lane is complete; the next lowering belongs to whichever future promotion removes a
     # target, same convention.
-    assert len(man) >= 7, f"manifest collapsed to {len(man)} targets -- scan regression?"
+    # Floor lowered 7 -> 6 on 2026-08-13 (specs/013 C1, surrogate_snn RETIRED): its root-shape
+    # target (brain.py's surrogate-BPTT fallback branch) left the manifest because the branch and
+    # the module were DELETED, not promoted -- the first lowering in this file licensed by a
+    # retirement rather than a move. The removal lands in THIS commit; a floor lowered without its
+    # removal is silencing a check, which is the one thing this line must never become.
+    assert len(man) >= 6, f"manifest collapsed to {len(man)} targets -- scan regression?"
 
     # ROOT-TIER COVERAGE, asserted STRUCTURALLY so that no COUNT arbitrates it. The comment above
     # used to claim the floor of 13 was "also the value that makes root-tier blindness itself red".

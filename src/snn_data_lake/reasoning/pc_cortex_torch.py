@@ -424,26 +424,11 @@ def main():
     W_r, b_r = train_ridge_readout(Rtr_r, ytr, n_classes, lam=1.0)
     acc_rand = readout_acc(Rte_r, yte, W_r, b_r)
 
-    # ---- (3) BASELINE (ii): surrogate-grad backprop SNN ceiling (reference) ----
-    surro = "models/surrogate_nmnist.pth"
-    surro_acc = None
-    if os.path.exists(surro):
-        try:
-            # weights_only=True (was False, 2026-08-04): this branch reads only scalar accuracy
-            # fields out of the checkpoint, so it needs no arbitrary-object unpickling, and
-            # weights_only=False executes whatever the pickle names. If a checkpoint genuinely
-            # needs the permissive loader it raises here and the existing except-branch below
-            # already degrades to "unlabeled reference" -- the honest outcome either way.
-            obj = torch.load(surro, map_location="cpu", weights_only=True)
-            if isinstance(obj, dict):
-                for k in ("test_acc", "acc", "accuracy", "best_acc"):
-                    if k in obj and isinstance(obj[k], (int, float)):
-                        surro_acc = float(obj[k])
-                        break
-        except Exception as e:  # noqa: BLE001
-            print(
-                f"NOTE: could not read {surro} ({type(e).__name__}); treating as unlabeled reference."
-            )
+    # A third baseline -- "surrogate-grad backprop SNN ceiling" -- was DELETED here 2026-08-13
+    # (specs/013) together with training/surrogate_snn.py. It was never an A/B: it read only a
+    # scalar accuracy field out of models/surrogate_nmnist.pth, and that checkpoint carries exactly
+    # ['config', 'model'] (measured), so `surro_acc` was ALWAYS None and the comparison branch
+    # never once fired. What it printed was that it had nothing to print.
 
     # ---- export + fidelity check against the zero-dep server ----
     gen_weights = net.export_weights()
@@ -478,18 +463,8 @@ def main():
         f"[2] BASE(i)  random-gen + trained readout acc : {acc_rand:.4f}  "
         f"(PC-learning gain: {acc_pc - acc_rand:+.4f})"
     )
-    if surro_acc is not None:
-        print(
-            f"[3] BASE(ii) surrogate-backprop SNN ceiling   : {surro_acc:.4f}  "
-            f"(local-PC -> backprop gap: {surro_acc - acc_pc:+.4f})"
-        )
-    else:
-        print(
-            f"[3] BASE(ii) surrogate-backprop reference     : models/surrogate_nmnist.pth present="
-            f"{os.path.exists(surro)} (no acc field found; backprop reference, gap not auto-readable)"
-        )
     print(
-        f"[4] DEPTH    XOR-over-pooled toy: 3-level PC={acc3:.3f}  2-level PC={acc2:.3f}  "
+        f"[3] DEPTH    XOR-over-pooled toy: 3-level PC={acc3:.3f}  2-level PC={acc2:.3f}  "
         f"raw-avg={acc_avg:.3f}"
     )
     depth_helps = acc3 > max(acc2, acc_avg) + 0.05

@@ -266,7 +266,8 @@ old record's 17 distinct modules, only 9 still exist ungoverned — 5 were promo
 recorded in the file's `settled` array with their execution commits. The 9 survivors were
 re-derived per-module by analyst + refute-by-default skeptic pairs (the lane-4f method): 4 READY
 (nef_compute, rose_language, vsa_structure_mapping, eprop_nmnist), 5 BLOCKED with re-verified
-blockers (schema_induction, snn_moe_classifier, spike_chat_lake, eprop_shd, surrogate_snn). Every
+blockers (schema_induction, snn_moe_classifier, spike_chat_lake, eprop_shd; surrogate_snn left this
+list 2026-08-13 at specs/013 -- RETIRED, not promoted, which is the other legitimate exit). Every
 entry carries its skeptic's overturned-claims audit trail; `_meta` records tree, method, and what
 it supersedes. Standing caution the regeneration re-proved: skeptics corrected 6-11 claims per
 module, including a READY entry whose co-edit list missed `import_manifest.py:264`'s floor assert:

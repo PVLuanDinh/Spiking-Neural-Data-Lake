@@ -20,7 +20,7 @@ parity) over the Gutenberg char stream from reasoning/corpus_stream.py (load_tex
 into a char stream). Exports FROZEN weights + metadata to a numpy .npz (models/ar_spiking_lm.npz --
 the SAME path reasoning/ar_spiking_lm_serve.DEFAULT_ARTIFACT loads; the two MUST stay equal).
 
-CONTRACT (mirrors training/surrogate_snn.py). Lazy imports of the corpus (no network at import time),
+CONTRACT (mirrors cortex/eprop_nmnist.py). Lazy imports of the corpus (no network at import time),
 NO import from brainstem/ or the zero-dep core, NO import-time side effects (training runs only under an
 explicit call / __main__), exports a forward-servable frozen artifact. GPU training is stochastic
 (expected for the torch tier); the SERVE path over the frozen weights is deterministic. ASCII-only
