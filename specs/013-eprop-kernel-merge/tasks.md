@@ -105,20 +105,20 @@ import in C3 fails loudly.
 
 ### Pre-commit measurements
 
-- [ ] T031 [US2] Record the CURRENT recorder observable at **>= 12 ticks** (never 0 — a 0-tick comparison is vacuous; at 12 ticks a rollback collapses `/cognition/attention_real` from a 3-key dict to a scalar, 237 → 235 leaf paths)
-- [ ] T032 [US2] Run `tools\p6_gate.py --assert` and record the 5 ratchet values, so the post-split delta is measured rather than inferred
+- [X] T031 [US2] Record the CURRENT recorder observable at **>= 12 ticks** (never 0 — a 0-tick comparison is vacuous; at 12 ticks a rollback collapses `/cognition/attention_real` from a 3-key dict to a scalar, 237 → 235 leaf paths)
+- [X] T032 [US2] Run `tools\p6_gate.py --assert` and record the 5 ratchet values, so the post-split delta is measured rather than inferred
 
 ### Implementation
 
-- [ ] T033 [US2] Split the single `try` at `src/snn_data_lake/cortex/brain.py:597` (closed by the blanket `except Exception:` at `:679`) into an independent vision `try` covering `:630-663` and an audio `try` covering `:664-678`, each with its own handler and its own tier rollback
+- [X] T033 [US2] Split the single `try` at `src/snn_data_lake/cortex/brain.py:597` (closed by the blanket `except Exception:` at `:679`) into an independent vision `try` covering `:630-663` and an audio `try` covering `:664-678`, each with its own handler and its own tier rollback
 
 ### Verification
 
-- [ ] T034 [US2] With the audio encoder blocked at import via a `meta_path` blocker, confirm the vision tier survives and `perception_tier != "stdlib"` (SC-008)
-- [ ] T035 [US2] Re-measure the recorder observable at >= 12 ticks; confirm the leaf-path count is unchanged from T031 (SC-007)
-- [ ] T036 [US2] Re-run `tools\p6_gate.py --assert`; confirm zero delta against T032
-- [ ] T037 [US2] Run the GATE BATCH
-- [ ] T038 [US2] Re-derive cites after the last edit (FR-020); commit C2
+- [X] T034 [US2] With the audio encoder blocked at import via a `meta_path` blocker, confirm the vision tier survives and `perception_tier != "stdlib"` (SC-008)
+- [X] T035 [US2] Re-measure the recorder observable at >= 12 ticks; confirm the leaf-path count is unchanged from T031 (SC-007)
+- [X] T036 [US2] Re-run `tools\p6_gate.py --assert`; confirm zero delta against T032
+- [X] T037 [US2] Run the GATE BATCH
+- [X] T038 [US2] Re-derive cites after the last edit (FR-020); commit C2
 
 **Commit body MUST NOT claim** this fixes the off-root/CWD shape — off-root, the relative checkpoint
 paths at `brain.py:630`/`:664` fail their `os.path.exists` guards and the imports are never

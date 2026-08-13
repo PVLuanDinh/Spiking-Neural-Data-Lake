@@ -627,48 +627,66 @@ class Brain:
                     self._perception_device = "cpu"
                     return loader(path, device="cpu")
 
-            _eprop = os.environ.get("SNN_EPROP_CKPT", "models/eprop_nmnist.pt")
-            # The ONE vision perception encoder. The surrogate-BPTT fallback that used to sit in an
-            # `else:` here was RETIRED 2026-08-13 (specs/013): two encoders selected by checkpoint
-            # existence is the "both paths behind a flag" shape P2 calls additive with extra steps,
-            # and the surviving one is the brain-native (e-prop, no backprop) half. Honest cost: a
-            # machine holding only the surrogate checkpoint now gets NO encoder rather than a
-            # working one, and the tier falls to stdlib.
-            if os.path.exists(_eprop):
-                from snn_data_lake.cortex.eprop_nmnist import EpropEncoder
+            # VISION and AUDIO get SEPARATE handlers (split 2026-08-13, specs/013 C2). They used to
+            # share this one `try`, so a failure in EITHER rolled back BOTH -- MEASURED at 12 ticks
+            # before the split: making `training.eprop_shd` unimportable took perception_tier from
+            # "eprop-snn" to "stdlib", the state leaf-path count 134 -> 132, and collapsed
+            # /attention_real from a 3-key dict to a scalar. The AUDIO import destroyed the VISION
+            # tier. Two independent faculties must fail independently. The OUTER try still wraps the
+            # SHARED setup above (os, the device probe, _load_enc): if that fails neither tier can
+            # load, and rolling back both is then correct rather than collateral.
+            try:
+                _eprop = os.environ.get("SNN_EPROP_CKPT", "models/eprop_nmnist.pt")
+                # The ONE vision perception encoder. The surrogate-BPTT fallback that used to sit in
+                # an `else:` here was RETIRED 2026-08-13 (specs/013): two encoders selected by
+                # checkpoint existence is the "both paths behind a flag" shape P2 calls additive with
+                # extra steps, and the surviving one is the brain-native (e-prop, no backprop) half.
+                # Honest cost: a machine holding only the surrogate checkpoint now gets NO encoder
+                # rather than a working one, and the tier falls to stdlib.
+                if os.path.exists(_eprop):
+                    from snn_data_lake.cortex.eprop_nmnist import EpropEncoder
 
-                self._perception_enc = _load_enc(EpropEncoder.load, _eprop)
-                self._perception_tier = "eprop-snn"
-            if (
-                self._perception_enc is not None
-            ):  # load the REAL event-frame pack (numpy only at runtime)
-                import numpy as _np
+                    self._perception_enc = _load_enc(EpropEncoder.load, _eprop)
+                    self._perception_tier = "eprop-snn"
+                if (
+                    self._perception_enc is not None
+                ):  # load the REAL event-frame pack (numpy only at runtime)
+                    import numpy as _np
 
-                _pack = os.environ.get("SNN_PERCEPTION_PACK", "models/nmnist_pack.npz")
-                if os.path.exists(_pack):
-                    _d = _np.load(_pack)
-                    self._real_frames, self._real_labels = _d["frames"], _d["labels"]
-                    # a pack that LOADS is not a pack that carries rows. An empty .npz used to set this
-                    # flag, and the first index into it landed in the blanket except below -- so the
-                    # brain reported perceiving real event-vision while holding zero frames. The claim
-                    # now rests on a counted value.
-                    self._perceiving_real = bool(self._real_frames.size)
-            _audio = os.environ.get("SNN_EPROP_AUDIO_CKPT", "models/eprop_shd.pt")
-            if os.path.exists(
-                _audio
-            ):  # AUDITORY tier (brain-native): e-prop SHD encoder, parallel to vision
-                from training.eprop_shd import EpropAudioEncoder
+                    _pack = os.environ.get("SNN_PERCEPTION_PACK", "models/nmnist_pack.npz")
+                    if os.path.exists(_pack):
+                        _d = _np.load(_pack)
+                        self._real_frames, self._real_labels = _d["frames"], _d["labels"]
+                        # a pack that LOADS is not a pack that carries rows. An empty .npz used to
+                        # set this flag, and the first index into it landed in the blanket except
+                        # below -- so the brain reported perceiving real event-vision while holding
+                        # zero frames. The claim now rests on a counted value.
+                        self._perceiving_real = bool(self._real_frames.size)
+            except Exception:  # VISION only. The auditory tier below is untouched by this.
+                self._perception_enc = None
+                self._perception_tier = "stdlib"
+                self._perceiving_real = False
 
-                self._audio_enc = _load_enc(EpropAudioEncoder.load, _audio)
-                import numpy as _np2
+            try:
+                _audio = os.environ.get("SNN_EPROP_AUDIO_CKPT", "models/eprop_shd.pt")
+                if os.path.exists(
+                    _audio
+                ):  # AUDITORY tier (brain-native): e-prop SHD encoder, parallel to vision
+                    from training.eprop_shd import EpropAudioEncoder
 
-                _apack = os.environ.get("SNN_SHD_PACK", "models/shd_pack.npz")
-                if os.path.exists(_apack):
-                    _ad = _np2.load(_apack)
-                    self._audio_frames, self._audio_labels = _ad["frames"], _ad["labels"]
-                    # same counted claim as vision above: loadable != carries rows.
-                    self._perceiving_audio = bool(self._audio_frames.size)
-        except Exception:
+                    self._audio_enc = _load_enc(EpropAudioEncoder.load, _audio)
+                    import numpy as _np2
+
+                    _apack = os.environ.get("SNN_SHD_PACK", "models/shd_pack.npz")
+                    if os.path.exists(_apack):
+                        _ad = _np2.load(_apack)
+                        self._audio_frames, self._audio_labels = _ad["frames"], _ad["labels"]
+                        # same counted claim as vision above: loadable != carries rows.
+                        self._perceiving_audio = bool(self._audio_frames.size)
+            except Exception:  # AUDIO only. The vision tier above keeps whatever it loaded.
+                self._audio_enc = None
+                self._perceiving_audio = False
+        except Exception:  # SHARED setup failed -> neither tier can exist. Both roll back.
             self._perception_enc = None
             self._perception_tier = "stdlib"
             self._perceiving_real = False
