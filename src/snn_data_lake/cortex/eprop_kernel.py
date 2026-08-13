@@ -344,19 +344,46 @@ def _self_check():
     print(f"e-prop~BPTT cosine {cos:.4f} (floor {EPROP_BPTT_COSINE_FLOOR})")
     assert cos > EPROP_BPTT_COSINE_FLOOR, f"cosine {cos} <= {EPROP_BPTT_COSINE_FLOOR}"
 
-    # (b) REACHABLE RED #1 (FR-019): a sign-flipped learning signal must drive it below the floor.
-    # A criterion with no reachable red is deleted, not weakened -- so the red is DEMONSTRATED here
-    # rather than asserted to exist.
-    flipped = {k: -v for k, v in ge.items()}
+    # (b) REACHABLE RED #1 (FR-019): a CONFIGURATION in which the eligibility factorization genuinely
+    # stops tracking the true gradient. Strong recurrence + weak drive + long T is the regime where
+    # the recurrent-error path e-prop TRUNCATES dominates the one it keeps, so the cosine collapses
+    # while the network stays healthily active -- not a dead-network artifact.
+    #
+    # THIS REPLACED A VACUOUS ASSERT, and the replacement is the point rather than an embarrassment
+    # to bury. The first version negated the already-computed gradient dict
+    # (`flipped = {k: -v for k, v in ge.items()}`). `_cosine` is ODD in its first argument and its
+    # norm is negation-invariant, so cos_bad == -cos BIT-EXACTLY (measured: worst
+    # |cos_bad - (-cos)| = 0.000e+00 over 12 seeds). With `assert cos > FLOOR` on the line above,
+    # `cos_bad <= FLOOR` was ENTAILED -- an assert that could not fail, which is exactly what P8
+    # guard (1) says must be deleted rather than weakened. Worse, the mutation that version NAMED
+    # (negating the broadcast learning signal INSIDE eprop_grads) measures cosine 0.5859 and does
+    # NOT redden the check at all, because b_out and W_out do not depend on it.
+    # `cortex/eprop_shd.py` had already made this exact correction for this exact defect on
+    # 2026-08-05; the kernel now follows the precedent instead of re-introducing what it rejected.
+    red_net = _TinyNet(n_in=12, hidden=8, num_classes=3, seed=3)
+    red_net.alpha = 0.99
+    with torch.no_grad():
+        red_net.W_rec.mul_(30.0)  # strong recurrence: the path e-prop truncates
+        red_net.W_in.mul_(0.05)  # weak drive
+    rx = (torch.rand(4, 96, 12, generator=torch.Generator().manual_seed(5)) < 0.3).float()
+    ry = torch.tensor([0, 1, 2, 0])
+    ge_bad, _ = red_net.eprop_grads(rx, ry)
+    gb_bad = bptt_grads(red_net, rx, ry)
     cos_bad = _cosine(
-        torch.cat([flipped[k].reshape(-1) for k in sorted(flipped)]),
-        torch.cat([gb[k].reshape(-1) for k in sorted(gb)]),
+        torch.cat([ge_bad[k].reshape(-1) for k in sorted(ge_bad)]),
+        torch.cat([gb_bad[k].reshape(-1) for k in sorted(gb_bad)]),
     )
+    rate = float((red_net.forward(rx)[1].sum() / (4 * 96 * 8)).item())
     print(
-        f"RED  sign-flipped learning signal -> cosine {cos_bad:.4f} (<= floor: {cos_bad <= EPROP_BPTT_COSINE_FLOOR})"
+        f"RED  alpha=0.99 g_rec=30 g_in=0.05 T=96 -> cosine {cos_bad:.4f} "
+        f"(<= floor: {cos_bad <= EPROP_BPTT_COSINE_FLOOR}) at a HEALTHY spike rate {rate:.3f}"
     )
     assert cos_bad <= EPROP_BPTT_COSINE_FLOOR, (
         "no reachable red -- DELETE the criterion, do not weaken it"
+    )
+    assert rate > 0.05, (
+        f"the red must not be a dead-network artifact: spike rate {rate:.3f} -- a silent net "
+        "reddens the cosine for the wrong reason and would make this red meaningless"
     )
 
     # (c) REACHABLE RED #2, on a DIFFERENT axis: the surrogate-OFF control ported from the retired
@@ -372,9 +399,9 @@ def _self_check():
 
     print(
         "SMOKE OK: one governed e-prop kernel; cosine asserted against an INDEPENDENT reverse-mode\n"
-        "reference, with TWO demonstrated reds (sign-flip, surrogate-off). The cosine CANNOT see a\n"
-        "defect upstream of the forward/gradient fork -- see the module docstring; the bit-exact pin\n"
-        "at tests/pin/ is the verifier for that."
+        "reference, with TWO demonstrated reds (a truncation-regime configuration, and surrogate-off).\n"
+        "The cosine CANNOT see a defect upstream of the forward/gradient fork -- see the module\n"
+        "docstring; the bit-exact pin at tests/pin/ is the verifier for that."
     )
 
 

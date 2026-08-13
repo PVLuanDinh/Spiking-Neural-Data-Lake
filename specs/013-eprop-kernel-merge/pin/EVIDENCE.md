@@ -60,14 +60,28 @@ The comparator catches the defect it exists to catch, on every pinned tensor.
 
 Same reshape defect, measured against the criterion the lane would otherwise have trusted:
 
-| module | cosine CLEAN | cosine WITH the reshape defect | floor | does the cosine catch it? |
-|---|---|---|---|---|
-| nmnist | 0.995375 | **0.997168** | 0.5 | **NO** |
-| shd | 0.994357 | 0.993720 | 0.5 | **NO** |
+**CORRECTED 2026-08-13 at the pre-push review.** This table originally quoted only the
+**all-parameter** cosine (`W_in+W_rec+W_out+b_out`). That is a SUPERSET of the quantity the
+consumers actually assert: both assert `cos_hidden` = `cat(W_in, W_rec[offdiag])`, and both label
+the readout cosine "report only ... NOT a criterion". Proving blindness about a superset of the
+asserted quantity is weaker than proving it about the asserted quantity, so both are given now and
+the asserted one leads.
 
-**Both stay far above the floor while every one of the 12 pinned tensors changed**, one of them by
-538. On `nmnist` the cosine did not merely fail to fall — it **rose**, so a reader watching only
-that number would conclude the defect had made things slightly *better*.
+| module | quantity | CLEAN | WITH the reshape defect | floor | caught? |
+|---|---|---|---|---|---|
+| nmnist | **`cos_hidden`** (the asserted criterion) | 0.995453 | **0.996408** | 0.5 | **NO** |
+| nmnist | all-parameter (report only) | 0.995375 | 0.997168 | 0.5 | **NO** |
+| shd | **`cos_hidden`** (the asserted criterion) | 0.994306 | 0.992852 | 0.5 | **NO** |
+| shd | all-parameter (report only) | 0.994357 | 0.993720 | 0.5 | **NO** |
+
+**All four stay far above the floor while every one of the 12 pinned tensors changed**, one of them
+by 538. The conclusion is unchanged and now rests on the asserted quantity.
+
+Second correction from the same review: **the rise is `nmnist` only.** On `shd` the cosine *falls*
+slightly (0.994306 -> 0.992852) — it simply does not fall anywhere near the floor. Any sentence
+saying "the cosine ROSE" without naming the module is over-general; what holds for both is that the
+cosine stays far above its floor while the outputs move arbitrarily. On `nmnist` it additionally
+rose, so a reader watching only that number would conclude the defect had made things *better*.
 
 **Mechanism**: `bptt_grads` computes its reference through the same `forward`, therefore the same
 `flatten_frames`. The defect moves both sides of the comparison together, and a cosine between two

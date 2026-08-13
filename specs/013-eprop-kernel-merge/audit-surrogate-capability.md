@@ -16,9 +16,19 @@ Census (T001): `surrogate_snn.py` holds **19** definitions absent from
 
 | disposition | count |
 |---|---|
-| COVERED by the surviving mechanism | 9 |
+| COVERED by the surviving mechanism | 10 |
 | **PORT** (must land before deletion) | **3** |
-| DROP with stated loss | 7 |
+| DROP with stated loss | 6 |
+
+> **CORRECTED 2026-08-13 at the pre-push review.** This summary read 9 / 3 / 7 and contradicted
+> the disposition table 95 lines below it, which mechanically parses to 10 / 3 / 6. The total (19)
+> and PORT (3) were right; exactly one item was misfiled. Cause: when row 14 (`_synthetic_frames`)
+> was corrected PORT -> COVERED during T006, the tally was adjusted BY INCREMENT -- PORT decremented
+> and **DROP** incremented -- instead of being re-derived from the table, so the item was credited
+> to the wrong bucket. Had it merely gone un-re-derived it would read 9/4/6; 9/3/7 matches no
+> consistent state. That is precisely the "numbers written by increment, not read from output"
+> failure this lane was built to avoid, committed inside the lane. **The table is authoritative;
+> re-derive from it, never from this box.**
 
 **LANE STATUS: CLEAR — conditional on the 3 PORTs landing in or before Commit 1.**
 No BLOCKED verdict. One DROP carries a real, stated capability loss (T003).
@@ -139,7 +149,7 @@ Neither is an import edge, so neither blocks. Both are citation-rot sites that F
 
 ## What this audit changes in the lane
 
-1. **Commit 1 acquires a prerequisite.** The 4 PORTs (#11–#14) must exist before
+1. **Commit 1 acquires a prerequisite.** The 3 PORTs (#11–#13) must exist before
    `training/surrogate_snn.py` is deleted. Options: land them in Commit 0's pin harness (#14) and
    carry #11–#13 forward into Commit 4's kernel, **or** stage them into a holding module. The
    simplest honest route: **#14 into the pin harness now; #11–#13 into the kernel at Commit 4, and

@@ -22,18 +22,31 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 
 ## The one finding that changes how every single-source verdict in this ledger should be read
 
+> **CLOSED 2026-08-13 by specs/013, and this section states the OPPOSITE of what it once did.**
+> It is kept because the reasoning is what generalises, not the verdict. What follows describes the
+> defect; the measurement that closed it is at the end.
+
 `tools/charge_probe.py:39` puts exactly one directory on `sys.path`: `<root>/src`. `coverage_score.py
 record` pins `PYTHONPATH=<root>/src` too. Neither adds the repo ROOT, so the top-level `training/`
-package is unimportable, the root-tier perception import (`training.eprop_shd`; the vision import
-became in-package `cortex/eprop_nmnist` on 2026-08-12, and the `training.surrogate_snn` fallback was
-RETIRED 2026-08-13 per specs/013, so ONE root-tier import remains -- and RE-MEASURED, the observable
-is UNCHANGED, because that surviving audio import still raises in the same try and the rollback
-takes the tier with it)
-raise, and the handler at `:679-683` silently sets `_perception_tier="stdlib"` and
-`_perceiving_real=False`. **Under the sanctioned probe harness this brain is blind**, even though
-`models/eprop_nmnist.pt` and `models/nmnist_pack.npz` are both present. `learn_daemon.py` sits at the
-repo root, so the always-on daemon -- the live path the coverage question is about -- has the root
-importable and perceives real N-MNIST frames.
+package was unimportable and the perception tier's bare-root imports raised, whereupon a single
+shared `except Exception` in `cortex/brain.py::Brain.__init__` set `_perception_tier="stdlib"` and
+`_perceiving_real=False`. **Under the sanctioned probe harness this brain was blind**, even though
+`models/eprop_nmnist.pt` and `models/nmnist_pack.npz` were both present. `learn_daemon.py` sits at
+the repo root, so the always-on daemon -- the live path the coverage question is about -- had the
+root importable and perceived real N-MNIST frames; the ledger and the daemon disagreed.
+
+**RE-MEASURED 2026-08-13 at the tip, under that same sanctioned harness (`PYTHONPATH=<root>/src`,
+repo root NOT on `sys.path`): `perception_tier = "eprop-snn"`, `_perceiving_real = True`,
+`_perceiving_audio = True`.** The caveat is discharged, by two independent halves of specs/013:
+the last bare-root perception import went in-package (`UNGOVERNED_ROOT` is now `()`), so nothing
+raises; and the shared handler was SPLIT, so vision and audio no longer share a fate even if one
+day something does. A single-source verdict recorded under this harness before 2026-08-13 was
+measuring the harness; one recorded after is measuring the brain.
+
+*(A prior revision of this paragraph, written mid-lane at C1, claimed the observable was UNCHANGED
+because "that surviving audio import still raises in the same try". That was true when written and
+was falsified two commits later by C2 and C3 -- the lane's own later work invalidated its own
+coverage prose, and no gate saw it. Caught by the specs/013 pre-push review.)*
 
 Measured, same seed, 60 ticks, `.venv-lake`:
 

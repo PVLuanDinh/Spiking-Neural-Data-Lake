@@ -62,8 +62,14 @@ def _snap(v):
     """Detach/clone whatever shape a gradient carrier arrives in.
 
     `eprop_grads` returns (grads, loss, spikes) and `bptt_grads` returns a DICT keyed W_in/W_rec/
-    W_out/b_out -- verified at eprop_nmnist.py:343 and :387. Handling both rather than assuming a
-    list is what keeps this harness working across the merge, which is the point of pinning.
+    W_out/b_out -- see `eprop_grads` in each consumer and `bptt_grads` in
+    `snn_data_lake.cortex.eprop_kernel`. Handling both rather than assuming a list is what keeps
+    this harness working across the merge, which is the point of pinning.
+
+    Cited by SYMBOL, not by line: this docstring named `eprop_nmnist.py:343` and `:387`, exact when
+    written at C0 and both rotted by C4 -- which moved `bptt_grads` out of that file entirely. The
+    rot went unnoticed through three ticked FR-020 re-derivation passes because those swept the
+    commits' cites, not the harness's own. Caught by the specs/013 pre-push review.
     """
     if isinstance(v, dict):
         return {k: _snap(x) for k, x in v.items()}

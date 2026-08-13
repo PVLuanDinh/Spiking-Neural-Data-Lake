@@ -12,7 +12,9 @@ Usage:
     .venv-lake/Scripts/python.exe tests/pin/compare.py
     .venv-lake/Scripts/python.exe tests/pin/compare.py --b reshape
 
-Exit code 0 = every tensor bit-identical. Exit code 1 = a difference (blocks the lane, SC-003).
+Exit code 0 = every tensor bit-identical AND at least one was compared. Exit code 1 = a difference
+(blocks the lane, SC-003) OR nothing was compared -- a run that checks zero tensors is a failure,
+not a pass.
 """
 
 import argparse
@@ -107,7 +109,12 @@ def compare(tag_a, tag_b):
                 print(f"  DIFFERS   {k}  {why}")
 
     print(f"\n{checked} tensors checked, {failures} differ")
-    return 1 if failures else 0
+    # A run that compared NOTHING must not exit 0. Both capture files can be missing -- a typo in
+    # --a/--b, a tag never captured, a cleaned directory -- and the loop above `continue`s past each
+    # one, so without this the harness reports success for having done no work. That is this
+    # project's own harness-false-negative shape, and it would land in the ONE instrument the merge
+    # was accepted on. Found by the pre-push review, not by the harness itself.
+    return 1 if (failures or checked == 0) else 0
 
 
 if __name__ == "__main__":

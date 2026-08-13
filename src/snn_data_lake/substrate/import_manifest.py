@@ -8,21 +8,24 @@ into the UNGOVERNED tiers (reasoning/, training/) through LAZY imports that sit 
 Those imports come in TWO SHAPES and until 2026-08-05 this gate could only see one. The in-package
 shape is prefixed (`snn_data_lake.reasoning.schema_induction`; the example here was `rose_language`
 until its 2026-08-12 promotion took it out of the manifest). The ROOT shape is a bare top-level name,
-because the root tier is not inside the package at all: `from training.eprop_shd import
-EpropAudioEncoder` (cortex/brain.py:668; the example was `training.eprop_nmnist` until its
-2026-08-12 promotion made that import in-package). `UNGOVERNED_ROOT` below is that second shape,
-and it is not a minor omission -- the modules it makes visible carry the brain's perception tier
-(two of the original three remain), reached on the CONSTRUCTION path.
+because the root tier is not inside the package at all. `UNGOVERNED_ROOT` below is that second shape.
 
-All three sit in the body of ONE `try` inside `cortex/brain.py::Brain.__init__` (the try spans
-:597-683; the SYMBOL is given first because POLICIES.md records brain.py line cites rotting twice
-within a day, and `ast` puts the enclosing symbol beyond doubt -- it is also why "reached on the
-CONSTRUCTION path" above is a measurement and not a guess) under a single `except Exception`
-with no `as name` -- a swallow by this module's own definition, VERIFIED by `ast` rather than by
-reading, after a first draft of this paragraph guessed "each inside its own" and was wrong. One
-shared handler is the worse arrangement, not the milder one: the vision import at :594 is the first
-of the three, so breaking it aborts the whole block and takes the AUDIO tier at :628 with it, in
+**HISTORICAL, and the reason the ROOT shape exists at all.** It was added 2026-08-05 because
+`cortex/brain.py::Brain.__init__` built its perception tier from THREE bare-root imports --
+`training.eprop_nmnist`, `training.surrogate_snn`, `training.eprop_shd` -- every one invisible to
+the one gate built for exactly that failure. All three sat in the body of ONE `try` under a single
+`except Exception` with no `as name`, and one shared handler is the worse arrangement, not the
+milder one: breaking the vision import aborted the whole block and took the AUDIO tier with it, in
 silence.
+
+**NONE OF THAT IS STILL TRUE, and the tuple below is now empty.** `eprop_nmnist` went in-package at
+the 2026-08-12 PROMOTE lane; `surrogate_snn` was RETIRED and `eprop_shd` PROMOTED at specs/013
+(2026-08-13), which also SPLIT that one `try` so vision and audio now carry their own handlers and
+fail independently. Read the paragraph above as the record of a defect that has been fixed, not as a
+description of the tree. Deliberately no interior line cites: this very block once quoted a `try`
+span (`:557-643`) that insertions above it had rotted, which is the failure the paragraph below
+names -- and it rotted a SECOND time across specs/013, caught only by that lane's pre-push review.
+Name the enclosing SYMBOL and let `ast` find it.
 
 RE-COUNTED 2026-08-04, WITH THE DEFINITION STATED, because the figure here was unreproducible. This
 said "`cortex/brain.py` alone holds 67 such swallows" and a paragraph below said "nine swallows" --
@@ -52,8 +55,10 @@ Delete or break one of those targets and:
 after that runs without it, and a static reader still credits the faculty as wired. Three of the
 targets (`reasoning.godel_machine` and `reasoning.self_improve`, both from `substrate/self_mod_harness`,
 plus `reasoning.impact_analysis` from `basal_ganglia/brain_native_selfbuild`) ARE Policy 0's
-self-building-code avenue, so the whole avenue can be deleted with every gate green. THREE are the
-perception tier (see `UNGOVERNED_ROOT`). (A fourth named here until 2026-08-12, `rose_language` the
+self-building-code avenue, so the whole avenue can be deleted with every gate green. (THREE were the
+perception tier via `UNGOVERNED_ROOT` until specs/013 on 2026-08-13 promoted or retired all of them;
+that tuple is empty now and the perception tier no longer appears in this manifest at all.)
+(A fourth named here until 2026-08-12, `rose_language` the
 language faculty, left the manifest when its promotion made the brain.py reach governed->governed.)
 (This said "Two of the targets (`self_build_loop`, `self_mod_harness`)" until 2026-08-05 and named the
 wrong side of the edge: both are governed IMPORTERS -- `self_build_loop` was promoted into
@@ -218,13 +223,15 @@ def broken(man=None):
     deliberately no module-scope sys.path mutation, because run_selfchecks runs part of the suite in
     one process.
 
-    NOT COVERED, and it is a real defect in a file this gate does not own: the LIVE
-    `from training....` in `cortex/brain.py::Brain.__init__` (:646/:668 since the 2026-08-12
-    eprop_nmnist promotion made :634 in-package) resolves only if the REPO ROOT is on
+    NOT COVERED -- and this was a real defect in a file this gate does not own, CLOSED 2026-08-13 by
+    specs/013 and kept here because the shape recurs. A bare `from training....` import in
+    `cortex/brain.py::Brain.__init__` resolves only if the REPO ROOT is on
     sys.path, which `PYTHONPATH=src` alone does not put there -- it arrives as sys.path[0], set from
     the start directory at interpreter start. A brain whose process did not start in the repo root
-    therefore drops its whole perception tier into the single `except Exception` at brain.py:597-683
-    and ticks on at the fallback tier. MEASURED, and the invocation form decides it, so do not
+    therefore dropped its whole perception tier into a shared `except Exception` and ticked on at the
+    fallback tier. BOTH halves are gone now: specs/013 promoted the last such import in-package and
+    SPLIT that handler, so vision and audio fail independently. What survives is the LESSON -- the
+    next bare-root import re-creates it. MEASURED then, and the invocation form decides it, so do not
     generalise either way: under `-m` or `script.py` sys.path[0] is an ABSOLUTE path fixed at
     interpreter start, and a later `os.chdir` to the repo root does NOT repair the import (printed
     `sys.path unchanged by chdir: True`, then `ModuleNotFoundError: No module named 'training'`);

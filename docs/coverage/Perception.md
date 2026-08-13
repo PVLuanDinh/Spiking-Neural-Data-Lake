@@ -8,22 +8,29 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 that is an instrument limit rather than a brain limit.** A runtime neuter-A/B I ran shows the learned
 attention gate over the real percept stream changing the arm trajectory on **46/60 ticks** and the
 perceptual-novelty drive on **8/120 ticks** (exit-0 verdicts). Neither can be recorded as an artifact,
-because `tools/coverage_score.py record` forces `PYTHONPATH=<root>/src`, which makes `training.*`
-unimportable, which drops the brain to `perception_tier="stdlib"` -- so **every artifact this
-instrument can record for Perception measures a brain whose perception tier is switched off.** Details
-and the fix are below. Bands are capped at 40 accordingly; see rubric rule 2.
+because `tools/coverage_score.py record` forced `PYTHONPATH=<root>/src`, which made `training.*`
+unimportable, which dropped the brain to `perception_tier="stdlib"` -- so **every artifact this
+instrument could record for Perception measured a brain whose perception tier was switched off.**
+
+> **THAT CONSTRAINT IS GONE as of 2026-08-13 (specs/013).** Re-measured under the identical recorder
+> harness: `perception_tier="eprop-snn"`, `_perceiving_real=True`, `_perceiving_audio=True`. The
+> perception tier no longer reaches outside the package, and vision/audio no longer share a failure
+> handler, so the recorder shape and the daemon shape finally agree. **The bands below were capped
+> at 40 by the old instrument limit and have NOT been re-scored** -- re-recording them is real work
+> this lane did not do, and raising a band without re-running the artifact would be exactly the
+> unearned score this ledger forbids. Details below.
 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
 | multimodal_rate_encoding | 40 | src/snn_data_lake/cortex/multimodal_encoder.py:62#encode_multimodal; src/snn_data_lake/brainstem/autonomous_loop.py:1323#step | - | opus-5 live-brain census, 40 ticks, seed 0 | 2026-07-30 |
-| eprop_event_vision_tier | 40 | src/snn_data_lake/cortex/brain.py:623#_load_enc; src/snn_data_lake/cortex/brain.py:1348#_perceive_real | - | opus-5 live-brain census, daemon import shape (lines re-derived 2026-08-12) | 2026-07-30 |
-| eprop_event_audio_tier | 40 | src/snn_data_lake/cortex/brain.py:670#_load_enc; src/snn_data_lake/cortex/brain.py:1422#_perceive_audio | - | opus-5 live-brain census, daemon import shape (lines re-derived 2026-08-12) | 2026-07-30 |
+| eprop_event_vision_tier | 40 | src/snn_data_lake/cortex/brain.py:623#_load_enc; src/snn_data_lake/cortex/brain.py:1358#_perceive_real | - | opus-5 live-brain census, daemon import shape (lines re-derived 2026-08-12) | 2026-07-30 |
+| eprop_event_audio_tier | 40 | src/snn_data_lake/cortex/brain.py:677#_load_enc; src/snn_data_lake/cortex/brain.py:1432#_perceive_audio | - | opus-5 live-brain census, daemon import shape (lines re-derived 2026-08-12) | 2026-07-30 |
 | learned_attention_real_stream | 40 | src/snn_data_lake/cortex/learned_attention.py:136#attend; src/snn_data_lake/cortex/brain.py:1138#_attend_real_stream; src/snn_data_lake/cortex/brain.py:1149#_attend_real_stream | - | opus-5 neuter-A/B 46 of 60 ticks, NOT recordable | 2026-07-30 |
 | perceptual_novelty_salience | 40 | src/snn_data_lake/cortex/brain.py:1309#_consume_perception; src/snn_data_lake/cortex/brain.py:1422#_route_percept_to_action; src/snn_data_lake/cortex/brain.py:1167#_safe_ctx | novelty_120.txt | opus-5 charge_probe novelty 120, both import shapes | 2026-07-30 |
 | predictive_coding_prediction_error | 40 | src/snn_data_lake/cortex/live_brain.py:169#tick; src/snn_data_lake/cortex/brain.py:1836#_wake_tick; src/snn_data_lake/cortex/brain.py:1723#_w8_tick | - | opus-5 live-brain census, 40 ticks, seed 0 | 2026-07-30 |
 | crossmodal_superadditive_binding | 30 | src/snn_data_lake/cortex/crossmodal_binder.py:153#bind; src/snn_data_lake/cortex/brain.py:1346#_consume_perception; src/snn_data_lake/cortex/brain.py:2809#state | - | opus-5 live-brain census, daemon import shape | 2026-07-30 |
 | percept_class_to_action_drive | 30 | src/snn_data_lake/cortex/brain.py:1497#_route_percept_to_action; src/snn_data_lake/cortex/brain.py:1617#_route_percept_to_action | percept_60.txt | opus-5 charge_probe percept 60 and 120 | 2026-07-30 |
-| perceptual_confidence_gate | 25 | src/snn_data_lake/cortex/laminar_local_readout.py#observe (promoted 2026-08-12); src/snn_data_lake/cortex/brain.py:1348#_perceive_real | - | opus-5 live-brain census, daemon import shape; repoint runtime-proven at the promotion (_percept_conf moved 40/40 stubbed-encoder ticks) | 2026-08-12 |
+| perceptual_confidence_gate | 25 | src/snn_data_lake/cortex/laminar_local_readout.py#observe (promoted 2026-08-12); src/snn_data_lake/cortex/brain.py:1358#_perceive_real | - | opus-5 live-brain census, daemon import shape; repoint runtime-proven at the promotion (_percept_conf moved 40/40 stubbed-encoder ticks) | 2026-08-12 |
 | percept_surprise_orienting | 25 | src/snn_data_lake/cortex/percept_surprise.py:125; src/snn_data_lake/cortex/brain.py:1261#_perceive_real; src/snn_data_lake/cortex/brain.py:1441#_route_percept_to_action | surprise_60.txt | opus-5 charge_probe surprise 60 and 120 | 2026-07-30 |
 | percept_to_place_binding | 25 | src/snn_data_lake/hippocampus/grid_place_map.py:161#observe; src/snn_data_lake/cortex/brain.py:1365#_consume_perception | - | opus-5 live-brain census, daemon import shape | 2026-07-30 |
 | covert_attention_trn_gain | 21 | src/snn_data_lake/brainstem/autonomous_loop.py:898#_attend; src/snn_data_lake/brainstem/autonomous_loop.py:1340#step | - | opus-5 neuter-A/B 0 of 40 on unit action threat pos | 2026-07-30 |
@@ -45,16 +52,23 @@ configurations were used, and the difference between the first two is the single
 in this file:
 
 1. **Recorder shape** -- `PYTHONPATH=<root>/src`, probe launched from `tools/`. This is exactly what
-   `coverage_score.py record` (`tools/coverage_score.py:312`) sets. `training` is **not importable**,
-   so the root-tier perception imports raise inside the guard try at `brain.py:597-683` *(measured
-   2026-08-05 against the then-root-tier vision import; RE-MEASURED 2026-08-12 at the eprop_nmnist
-   promotion review, and the observable is UNCHANGED: the now-in-package `cortex.eprop_nmnist`
-   import at :634 succeeds, but `from training.eprop_shd import ...` at :668 still raises in the
-   SAME try and the blanket `except` at :679-683 rolls the WHOLE tier back -- probed: tier
-   `stdlib`, `_perceiving_real=False`, with `cortex.eprop_nmnist` confirmed imported during
-   construction. Promoting siblings cannot move this observable while any root-tier import shares
-   the one try)*, the handler sets `perception_tier="stdlib"`, and `_perceiving_real` /
-   `_perceiving_audio` are both `False`. Measured: `perceived_digit=None`, `perception_unified=False`,
+   `coverage_score.py record` (`tools/coverage_score.py:312`) sets.
+
+   > **INVERTED 2026-08-13 by specs/013. The rows below were measured under the OLD behaviour and
+   > are retained as the dated record; the current observable is the opposite.** `training` is not
+   > importable under this harness, so the perception tier's bare-root imports used to raise inside
+   > one shared guard `try` in `Brain.__init__`, whose blanket `except` rolled the WHOLE tier back --
+   > probed then: tier `stdlib`, `_perceiving_real=False`, and the note "promoting siblings cannot
+   > move this observable while any root-tier import shares the one try". specs/013 removed BOTH
+   > preconditions: the last bare-root import went in-package (`UNGOVERNED_ROOT = ()`) and the shared
+   > handler was SPLIT into independent vision and audio handlers. **RE-MEASURED at the tip under the
+   > identical harness: `perception_tier="eprop-snn"`, `_perceiving_real=True`,
+   > `_perceiving_audio=True`.** Any row below sourced from this shape needs re-recording before it
+   > is cited again.
+
+   Under the OLD behaviour the handler set `perception_tier="stdlib"` and `_perceiving_real` /
+   `_perceiving_audio` were both `False`. Measured then: `perceived_digit=None`,
+   `perception_unified=False`,
    `attention_real=None`, `real_perception_units=0`, `crossmodal_objects=0`, `_percept_value` empty.
 2. **Daemon shape** -- repo root *and* `src` importable, which is what `python learn_daemon.py` from
    the repo root actually produces (`substrate/learn_daemon.py` inserts `"src"`; the interpreter has already
