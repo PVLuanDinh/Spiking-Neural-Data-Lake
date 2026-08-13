@@ -403,6 +403,7 @@ TORCH_GATED = [
     "cortex.language_acquisition",
     "cortex.eprop_nmnist",  # PROMOTED 2026-08-12 (PROMOTE lane 4/4): N-MNIST e-prop perception encoder; bare check ~6s CPU incl torch import
     "cortex.eprop_shd",  # PROMOTED 2026-08-13 (specs/013 C3): SHD e-prop audio perception encoder, the auditory twin
+    "cortex.eprop_kernel",  # NEW 2026-08-13 (specs/013 C4): the ONE e-prop engine both encoders import; two demonstrated reds
     "reasoning.schema_induction",
 ]
 # NENGO-GATED -- the Nengo bridge (substrate.nengo_bridge) exposes the NEF/LIF/spiking substrate to

@@ -128,6 +128,21 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from snn_data_lake.cortex.eprop_kernel import (  # the ONE e-prop engine (specs/013 C4)
+    DEFAULT_ALPHA,
+    DEFAULT_DAMP,
+    DEFAULT_GAMMA,
+    DEFAULT_KAPPA,
+    DEFAULT_V_TH,
+    EPROP_BPTT_COSINE_FLOOR,
+    EpropEncoderBase,
+    EpropLIFBase,
+    _apply_grads,
+    _cosine,
+    bptt_grads,
+    evaluate,
+)
+
 # N-MNIST event geometry (matches research/ng_snn/data.py SENSOR = (34, 34, 2)).
 SENSOR_H = 34
 SENSOR_W = 34
@@ -147,16 +162,10 @@ DEFAULT_HIDDEN = 64  # recurrent LIF width == latent dim the encoder emits (matc
 # encoder carries the values it was trained under rather than inheriting whatever this module's
 # defaults happen to be today. The self-check builds its net with values DIFFERENT from all five, so
 # the checkpoint round-trip criterion has a reachable red (see the P8 block in the module docstring).
-DEFAULT_ALPHA = 0.90  # membrane decay exp(-dt/tau_m): the diagonal of the recurrent Jacobian
-DEFAULT_V_TH = 0.60  # spike threshold (soft reset subtracts V_TH)
-DEFAULT_GAMMA = 0.50  # pseudo-derivative half-width: psi = DAMP*max(0, 1 - |v-V_TH|/GAMMA)
-DEFAULT_DAMP = 0.30  # pseudo-derivative dampening factor
-DEFAULT_KAPPA = 0.90  # leaky-readout decay (also the eligibility-trace output filter)
 
 # The project's e-prop invariant, not a tunable of this module: "verified cosine > 0.5 against an
 # INDEPENDENT BPTT gradient" is the cross-cutting rule every learning path in this tree owes
 # (docs/POLICIES.md). Named here so the self-check reads the bar from the policy, not from a literal.
-EPROP_BPTT_COSINE_FLOOR = 0.5
 
 # Significance level for the accuracy bar: how many standard deviations above chance a result must
 # sit before it counts as learning. Dimensionless (P1 exception (a)) -- the BAR ITSELF is not a
@@ -171,7 +180,7 @@ CHANCE_SIGMAS = 3.0
 # nn.Module purely to hold parameters + a serving forward; TRAINING gradients are computed by hand
 # (eprop_grads), NOT by autograd -- see the module docstring.
 # ----------------------------------------------------------------------------
-class EpropNet(nn.Module):
+class EpropNet(EpropLIFBase):
     def __init__(
         self,
         in_ch=IN_CH,
@@ -220,40 +229,6 @@ class EpropNet(nn.Module):
 
     # -- shared helpers (the ONE forward math; the three code paths -- serving, e-prop, BPTT -- each
     #    re-run these equations in their own loop, sharing constants but not gradient logic) --
-    def psi(self, v):
-        """Surrogate pseudo-derivative of the spike: DAMP * max(0, 1 - |v - V_TH| / GAMMA)."""
-        return self.damp * torch.clamp(1.0 - (v - self.v_th).abs() / self.gamma, min=0.0)
-
-    def flatten_frames(self, x):
-        """[..., C, H, W] event frames -> [..., n_in] per-timestep input vectors."""
-        return x.reshape(*x.shape[:-3], self.n_in)
-
-    def offdiag_mask(self, device):
-        return 1.0 - torch.eye(self.hidden, device=device)
-
-    @torch.no_grad()
-    def forward(self, x):
-        """Serve: x [B, T, C, H, W] event frames -> (logits_sum [B, num_classes], latent_sum [B, hidden]).
-        logits_sum is the time-summed leaky readout (the class scores); latent_sum is the hidden
-        spike-COUNT activity over the T window (the encoder latent). Manual LIF recurrence, no autograd,
-        no dataset/tonic needed -- torch-only-to-serve."""
-        x = self.flatten_frames(x.float())  # [B, T, n_in]
-        b, t = x.shape[0], x.shape[1]
-        dev = x.device
-        v = torch.zeros(b, self.hidden, device=dev)
-        z = torch.zeros(b, self.hidden, device=dev)
-        y = torch.zeros(b, self.num_classes, device=dev)  # leaky readout integrator
-        logits_sum = torch.zeros(b, self.num_classes, device=dev)
-        latent_sum = torch.zeros(b, self.hidden, device=dev)
-        w_rec = self.W_rec * self.offdiag_mask(dev)
-        for step in range(t):
-            cur = x[:, step] @ self.W_in.t() + z @ w_rec.t()
-            v = self.alpha * v - self.v_th * z + cur  # soft reset: subtract V_TH on last spike
-            z = (v >= self.v_th).float()
-            y = self.kappa * y + z @ self.W_out.t()
-            logits_sum = logits_sum + (y + self.b_out)
-            latent_sum = latent_sum + z
-        return logits_sum, latent_sum
 
     def config(self):
         return dict(
@@ -350,50 +325,6 @@ def eprop_grads(net, x, y):
 # then torch autograd. Autograd keeps the recurrent off-diagonal and soft-reset (-V_TH*z_prev) paths that
 # e-prop truncates -> this is the TRUE gradient the eligibility gradient is measured against.
 # ----------------------------------------------------------------------------
-class _SpikeFn(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, v, v_th, gamma, damp):
-        ctx.save_for_backward(v)
-        ctx.v_th, ctx.gamma, ctx.damp = v_th, gamma, damp
-        return (v >= v_th).float()
-
-    @staticmethod
-    def backward(ctx, grad_out):
-        (v,) = ctx.saved_tensors
-        psi = ctx.damp * torch.clamp(1.0 - (v - ctx.v_th).abs() / ctx.gamma, min=0.0)
-        return grad_out * psi, None, None, None  # SAME surrogate as net.psi / eprop.py
-
-
-def bptt_grads(net, x, y):
-    """True reverse-mode BPTT of the SAME summed-per-timestep softmax-CE loss through a differentiable
-    rebuild of the SAME unrolled net, via autograd. Returns a dict of grads for W_in, W_rec, W_out,
-    b_out. Does NOT touch net.*.grad (uses torch.autograd.grad)."""
-    x = net.flatten_frames(x.float())
-    b, t = x.shape[0], x.shape[1]
-    dev = x.device
-    mask = net.offdiag_mask(dev)
-    w_rec = net.W_rec * mask
-    v = torch.zeros(b, net.hidden, device=dev)
-    z = torch.zeros(b, net.hidden, device=dev)
-    yint = torch.zeros(b, net.num_classes, device=dev)
-    loss = torch.zeros((), device=dev)
-    for step in range(t):
-        cur = x[:, step] @ net.W_in.t() + z @ w_rec.t()
-        v = net.alpha * v - net.v_th * z + cur
-        z = _SpikeFn.apply(v, net.v_th, net.gamma, net.damp)
-        yint = net.kappa * yint + z @ net.W_out.t()
-        logits = yint + net.b_out
-        loss = loss + F.cross_entropy(logits, y.long(), reduction="sum")
-    g_in, g_rec, g_out, g_b = torch.autograd.grad(loss, (net.W_in, net.W_rec, net.W_out, net.b_out))
-    return {"W_in": g_in, "W_rec": g_rec * mask, "W_out": g_out, "b_out": g_b}
-
-
-def _cosine(a, b):
-    a, b = a.reshape(-1), b.reshape(-1)
-    na, nb = a.norm(), b.norm()
-    if float(na) == 0.0 or float(nb) == 0.0:
-        return 0.0
-    return float((a @ b) / (na * nb))
 
 
 def _chance_bound(n_classes, n_test, sigmas=CHANCE_SIGMAS):
@@ -413,7 +344,7 @@ def _chance_bound(n_classes, n_test, sigmas=CHANCE_SIGMAS):
 # was retired 2026-08-13 (specs/013) and this is now the only implementation of the interface.
 # Lazy: constructing/loading an encoder does NOT train and needs only torch + the saved weights.
 # ----------------------------------------------------------------------------
-class EpropEncoder:
+class EpropEncoder(EpropEncoderBase):
     """Wraps a trained EpropNet as a perception encoder (`load` / `encode` / `classify`).
 
     encode(event_frame) -> latent vector (the recurrent hidden layer's spike-COUNT activity over T):
@@ -424,10 +355,6 @@ class EpropEncoder:
 
     load(path, device=...) rebuilds the net from the checkpoint's saved config + weights -- no training,
     no dataset needed. Checkpoint format: {"model": state_dict, "config": cfg}."""
-
-    def __init__(self, net, device="cpu"):
-        self.net = net.to(device).eval()
-        self.device = device
 
     @classmethod
     def load(cls, path, device="cpu"):
@@ -523,36 +450,6 @@ def _load_data_module():
             "train against an unknown dataset module"
         )
     return nmnist_data
-
-
-def _apply_grads(net, grads, opt):
-    """Load the e-prop-computed grads into .grad and take one optimizer step (Adam on the e-prop grads).
-    No loss.backward() anywhere -- the hidden grads are the eligibility factorization."""
-    opt.zero_grad(set_to_none=True)
-    net.W_in.grad = grads["W_in"]
-    net.W_rec.grad = grads["W_rec"]
-    net.W_out.grad = grads["W_out"]
-    net.b_out.grad = grads["b_out"]
-    opt.step()
-    with torch.no_grad():
-        net.W_rec.copy_(net.W_rec * net.offdiag_mask(net.W_rec.device))  # keep the diagonal at zero
-
-
-def evaluate(net, loader, device, max_samples=None):
-    """Test accuracy = argmax of the time-summed leaky readout. Caps at max_samples for quick runs."""
-    net.eval()
-    correct = 0
-    seen = 0
-    with torch.no_grad():
-        for x, yb in loader:
-            x = x.to(device, non_blocking=True).float()
-            yb = yb.to(device, non_blocking=True).long()
-            logits, _ = net(x)
-            correct += int((logits.argmax(1) == yb).sum().item())
-            seen += int(yb.shape[0])
-            if max_samples is not None and seen >= max_samples:
-                break
-    return (100.0 * correct / seen) if seen else 0.0, seen
 
 
 def train_and_eval(args):

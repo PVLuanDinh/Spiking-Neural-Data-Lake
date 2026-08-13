@@ -174,29 +174,29 @@ governed tree; it does not retire it.
 
 ### Pre-commit measurements
 
-- [ ] T054 [US4] Re-run the `flatten_frames` subsumption A/B: prove `eprop_shd`'s body reproduces `eprop_nmnist`'s outputs bit-exactly on every shape `eprop_nmnist` receives, and that `eprop_nmnist`'s body raises on 3-D audio input. **If subsumption fails on any shape, STOP — the collapse is wrong and the kernel design changes**
-- [ ] T055 [US4] Re-capture the BEFORE pin at the current HEAD (C3 moved the file; the C0 capture predates the move)
+- [X] T054 [US4] Re-run the `flatten_frames` subsumption A/B: prove `eprop_shd`'s body reproduces `eprop_nmnist`'s outputs bit-exactly on every shape `eprop_nmnist` receives, and that `eprop_nmnist`'s body raises on 3-D audio input. **If subsumption fails on any shape, STOP — the collapse is wrong and the kernel design changes**
+- [X] T055 [US4] Re-capture the BEFORE pin at the current HEAD (C3 moved the file; the C0 capture predates the move)
 
 ### Implementation
 
-- [ ] T056 [US4] Create `src/snn_data_lake/cortex/eprop_kernel.py` per [contracts/eprop_kernel.md](contracts/eprop_kernel.md): the 5 byte-identical module-scope definitions, `EpropLIFBase` (`psi`, `offdiag_mask`, `forward`, one concrete `flatten_frames`), `EpropEncoderBase` (`__init__`), the 5 same-valued LIF constants, and `EPROP_BPTT_COSINE_FLOOR = 0.5`
-- [ ] T057 [US4] Write the merged `forward` docstring describing BOTH input shapes (FR-008) — do not silently adopt one modality's wording
-- [ ] T058 [US4] Write the kernel `__main__` self-check: build a minimal concrete subclass INLINE (importing a consumer is a cycle, FR-005), assert `_cosine(...) > EPROP_BPTT_COSINE_FLOOR`, print the actual cosine, ASCII-only, `random.Random(seed)` per instance
-- [ ] T059 [US4] Delete the 9 duplicated definitions from `src/snn_data_lake/cortex/eprop_nmnist.py` and import them from the kernel
-- [ ] T060 [US4] Delete the 9 duplicated definitions from `src/snn_data_lake/cortex/eprop_shd.py` and import them from the kernel
-- [ ] T061 [US4] Replace the hand-written bare `0.5` at `src/snn_data_lake/cortex/eprop_shd.py:830` with the imported `EPROP_BPTT_COSINE_FLOOR` (FR-003)
-- [ ] T062 [US4] Register `"eprop_kernel"` in `TORCH_TIER["cortex"]` (`src/snn_data_lake/__init__.py`) and `"cortex.eprop_kernel"` in `run_selfchecks.py` TORCH_GATED
-- [ ] T063 [US4] **DELETE** the P2 debt note at `src/snn_data_lake/__init__.py:415-417` — delete, not amend (FR-015); a surviving debt marker for discharged debt is a false claim
+- [X] T056 [US4] Create `src/snn_data_lake/cortex/eprop_kernel.py` per [contracts/eprop_kernel.md](contracts/eprop_kernel.md): the 5 byte-identical module-scope definitions, `EpropLIFBase` (`psi`, `offdiag_mask`, `forward`, one concrete `flatten_frames`), `EpropEncoderBase` (`__init__`), the 5 same-valued LIF constants, and `EPROP_BPTT_COSINE_FLOOR = 0.5`
+- [X] T057 [US4] Write the merged `forward` docstring describing BOTH input shapes (FR-008) — do not silently adopt one modality's wording
+- [X] T058 [US4] Write the kernel `__main__` self-check: build a minimal concrete subclass INLINE (importing a consumer is a cycle, FR-005), assert `_cosine(...) > EPROP_BPTT_COSINE_FLOOR`, print the actual cosine, ASCII-only, `random.Random(seed)` per instance
+- [X] T059 [US4] Delete the 9 duplicated definitions from `src/snn_data_lake/cortex/eprop_nmnist.py` and import them from the kernel
+- [X] T060 [US4] Delete the 9 duplicated definitions from `src/snn_data_lake/cortex/eprop_shd.py` and import them from the kernel
+- [X] T061 [US4] Replace the hand-written bare `0.5` at `src/snn_data_lake/cortex/eprop_shd.py:830` with the imported `EPROP_BPTT_COSINE_FLOOR` (FR-003)
+- [X] T062 [US4] Register `"eprop_kernel"` in `TORCH_TIER["cortex"]` (`src/snn_data_lake/__init__.py`) and `"cortex.eprop_kernel"` in `run_selfchecks.py` TORCH_GATED
+- [X] T063 [US4] **DELETE** the P2 debt note at `src/snn_data_lake/__init__.py:415-417` — delete, not amend (FR-015); a surviving debt marker for discharged debt is a false claim
 
 ### Verification — the pin is the acceptance step, NOT the cosine assert
 
-- [ ] T064 [US4] Run `tests/pin/compare.py`; every tensor must be BIT-IDENTICAL via `torch.equal`. Any difference blocks the lane (SC-003). **Do not substitute the cosine assert** — `bptt_grads` computes its reference through the same `forward`, so a `flatten_frames` defect moves both sides together and the cosine stays high (Standing Invariant 5)
-- [ ] T065 [US4] Demonstrate the kernel self-check's reachable RED (FR-019, SC-010): negate the broadcast error term feeding the eligibility product, confirm the cosine falls below the floor, record the observed value. **If nothing reddens it, REMOVE the assert rather than softening it**, and report that outcome
-- [ ] T066 [US4] Demonstrate P3 charge: with `snn_data_lake.cortex.eprop_kernel` neutered in `sys.modules`, confirm BOTH consumers fail to import (per [contracts/eprop_kernel.md](contracts/eprop_kernel.md))
-- [ ] T067 [US4] Re-run the AST survivor census (SC-001): every symbol in [data-model.md](data-model.md) §1 has exactly ONE definition site tree-wide
-- [ ] T068 [US4] Confirm the geometry constants remain at TWO sites with DISTINCT values — `NUM_CLASSES` 10/20, `DEFAULT_T` 15/100, `DEFAULT_HIDDEN` 64/128. Merging them is a defect, not an improvement
-- [ ] T069 [US4] Run the GATE BATCH
-- [ ] T070 [US4] Re-derive cites after the last edit (FR-020); commit C4
+- [X] T064 [US4] Run `tests/pin/compare.py`; every tensor must be BIT-IDENTICAL via `torch.equal`. Any difference blocks the lane (SC-003). **Do not substitute the cosine assert** — `bptt_grads` computes its reference through the same `forward`, so a `flatten_frames` defect moves both sides together and the cosine stays high (Standing Invariant 5)
+- [X] T065 [US4] Demonstrate the kernel self-check's reachable RED (FR-019, SC-010): negate the broadcast error term feeding the eligibility product, confirm the cosine falls below the floor, record the observed value. **If nothing reddens it, REMOVE the assert rather than softening it**, and report that outcome
+- [X] T066 [US4] Demonstrate P3 charge: with `snn_data_lake.cortex.eprop_kernel` neutered in `sys.modules`, confirm BOTH consumers fail to import (per [contracts/eprop_kernel.md](contracts/eprop_kernel.md))
+- [X] T067 [US4] Re-run the AST survivor census (SC-001): every symbol in [data-model.md](data-model.md) §1 has exactly ONE definition site tree-wide. **Result: 8/9 report one site; the 9th (`forward`) reports two, and BOTH are inside the kernel** (`_SpikeFn.forward` and `EpropLIFBase.forward` -- two distinct methods on different classes that share a bare name). A bare-name census conflates them; zero copies remain in either consumer, so SC-001 holds. Recorded because it is the same denominator error a C0 skeptic caught (a ClassDef counted in a def set).
+- [X] T068 [US4] Confirm the geometry constants remain at TWO sites with DISTINCT values — `NUM_CLASSES` 10/20, `DEFAULT_T` 15/100, `DEFAULT_HIDDEN` 64/128. Merging them is a defect, not an improvement
+- [X] T069 [US4] Run the GATE BATCH
+- [X] T070 [US4] Re-derive cites after the last edit (FR-020); commit C4
 
 ---
 

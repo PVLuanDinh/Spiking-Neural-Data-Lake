@@ -1,0 +1,382 @@
+"""eprop_kernel.py -- the ONE e-prop training kernel for this project's torch spiking encoders.
+
+WHAT THIS IS. `cortex/eprop_nmnist.py` (vision, N-MNIST) and `cortex/eprop_shd.py` (audio, SHD) held
+NINE byte-identical definitions between them -- the surrogate spike function, the independent BPTT
+reference, the cosine comparator, the Adam step, the evaluation loop, and four LIF pieces. Two
+copies of one engine is the P2 debt this module discharges: P2 asks that exactly ONE mechanism
+survive, and a MERGE is "build the one mechanism that supersedes both, then retire both originals".
+Both consumers now import from here and their copies are gone.
+
+Recorded because a move is not a merge: the 2026-08-13 promotion of eprop_shd into cortex/ put both
+twins in the governed tree, which made the duplication VISIBLE but no smaller. This module is what
+actually reduces it.
+
+# consolidates: src/snn_data_lake/cortex/eprop_nmnist.py -- its 9 shared definitions are deleted
+#   there and imported from here in the same change (specs/013 C4)
+# consolidates: src/snn_data_lake/cortex/eprop_shd.py -- likewise; it also loses its hand-written
+#   bare 0.5 in favour of EPROP_BPTT_COSINE_FLOOR below
+# distinct-from: src/snn_data_lake/reasoning/eprop.py -- NOT a third copy and deliberately left
+#   alone. That module is a pure-STDLIB e-prop reference (math/zip, no torch, no autograd) whose
+#   `_cosine` is a different implementation for a different substrate; POLICIES.md cites it as the
+#   verification anchor for the whole e-prop invariant. Same algorithm, different substrate, so
+#   merging them would mean deleting the stdlib reference, which is not this lane's business.
+# distinct-from: src/snn_data_lake/reasoning/eprop_lm_serve.py, reservoir_eprop.py -- language-model
+#   and reservoir e-prop variants with their own forward contracts and their own thresholds; the
+#   SCOPE LIMIT below is exactly why they are not folded in here.
+
+SCOPE LIMIT -- TWO CONSUMERS, NOT FOUR. `_SpikeFn.backward` returns `grad_out * psi, None, None,
+None`: NO gradient reaches the threshold argument. That is correct for both consumers here, whose
+`v_th` is a float constant. It is WRONG for a consumer whose threshold is an adapted tensor --
+measured on `training/eprop_lm_alif.py`, the 1-arg surrogate form gives ||d spikes/d a|| = 1.0727
+where this 4-arg form gives None. So this module must NOT be advertised as "the one surrogate for
+every e-prop trainer": adopting it there would silently zero the ALIF adaptation gradient WHILE
+REDDENING NOTHING, because that module's own cosine assert stays above its floor. Widening the
+contract requires a backward that returns a real `v_th` gradient, and that is its own lane with its
+own A/B.
+
+WHAT THE COSINE CHECK CANNOT SEE, disclosed here rather than left to be discovered. `bptt_grads` is
+a genuinely independent GRADIENT computation -- it back-propagates adjoints including the recurrent
+off-diagonal and reset terms e-prop deliberately drops. It is NOT independent of the FORWARD path:
+it consumes the same `forward`, hence the same `flatten_frames`. A defect upstream of that fork
+displaces BOTH sides together and the cosine is unchanged. MEASURED at specs/013: permuting
+`flatten_frames`' feature axis moved all 12 pinned tensors (max |delta| 538.071) while the cosine
+went 0.995375 -> 0.997168 on the vision net -- it ROSE. Independence is a property of a control
+WITH RESPECT TO A STAGE, never a property of the control alone. The verifier for anything upstream
+of that fork is the bit-exact pin at `tests/pin/`, not this assert.
+
+IMPORT CONTRACT. This module imports nothing from `eprop_nmnist` or `eprop_shd` -- the dependency
+runs consumer -> kernel only, and a back-import would be a cycle. Its self-check builds a minimal
+concrete subclass inline for the same reason.
+
+  Self-check:  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.cortex.eprop_kernel
+"""
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+# ---- LIF / e-prop constants. Byte-identical AND same-valued in both consumers before the merge;
+# ---- the per-modality GEOMETRY (num_classes, T, hidden, sensor dims, channels) deliberately does
+# ---- NOT live here -- those differ between vision and audio and hoisting them would hardcode one
+# ---- modality's shape into the other's path.
+DEFAULT_ALPHA = 0.90  # membrane decay exp(-dt/tau_m): the diagonal of the recurrent Jacobian
+DEFAULT_V_TH = 0.60  # spike threshold (soft reset subtracts V_TH)
+DEFAULT_GAMMA = 0.50  # pseudo-derivative half-width: psi = DAMP*max(0, 1 - |v-V_TH|/GAMMA)
+DEFAULT_DAMP = 0.30  # pseudo-derivative dampening factor
+DEFAULT_KAPPA = 0.90  # leaky-readout decay (also the eligibility-trace output filter)
+
+# The e-prop invariant's bar (docs/POLICIES.md cross-cutting: "verified cosine > 0.5 against an
+# independent reverse-mode BPTT gradient"). It was a NAMED constant in eprop_nmnist and a bare
+# hand-written 0.5 in eprop_shd; one definition now, imported by both.
+EPROP_BPTT_COSINE_FLOOR = 0.5
+
+
+class _SpikeFn(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, v, v_th, gamma, damp):
+        ctx.save_for_backward(v)
+        ctx.v_th, ctx.gamma, ctx.damp = v_th, gamma, damp
+        return (v >= v_th).float()
+
+    @staticmethod
+    def backward(ctx, grad_out):
+        (v,) = ctx.saved_tensors
+        psi = ctx.damp * torch.clamp(1.0 - (v - ctx.v_th).abs() / ctx.gamma, min=0.0)
+        return grad_out * psi, None, None, None  # SAME surrogate as net.psi / eprop.py
+
+
+class EpropLIFBase(nn.Module):
+    """The recurrent-LIF forward shared by both perception encoders.
+
+    A subclass MUST set, in its own __init__: `n_in`, `hidden`, `num_classes`, the parameters
+    `W_in`/`W_rec`/`W_out`/`b_out`, and the dynamics constants `alpha`/`v_th`/`gamma`/`damp`/
+    `kappa`. A subclass MUST also define `eprop_grads` -- the eligibility factorization is the
+    per-modality half and does not live here.
+    """
+
+    def psi(self, v):
+        """Surrogate pseudo-derivative of the spike: DAMP * max(0, 1 - |v - V_TH| / GAMMA)."""
+        return self.damp * torch.clamp(1.0 - (v - self.v_th).abs() / self.gamma, min=0.0)
+
+    def flatten_frames(self, x):
+        """[B, T, ...] frames -> [B, T, n_in] per-timestep input vectors.
+
+        ONE body for both modalities. The vision consumer previously used
+        `x.reshape(*x.shape[:-3], self.n_in)`, which is bit-identical to this on every shape it
+        receives (verified 9/9 across B in {1,2,5} x T in {1,3,15}, and end-to-end: forward,
+        eprop_grads and bptt_grads all bit-identical after the swap) but RAISES on the audio
+        consumer's 3-D input. This body subsumes it, so keeping two would be additive with extra
+        steps. The genuine per-modality seam is `self.n_in`, already a per-subclass attribute.
+        """
+        return x.reshape(x.shape[0], x.shape[1], self.n_in)
+
+    def offdiag_mask(self, device):
+        return 1.0 - torch.eye(self.hidden, device=device)
+
+    @torch.no_grad()
+    def forward(self, x):
+        """Serve: x -> (logits_sum [B, num_classes], latent_sum [B, hidden]).
+
+        Input is [B, T, C, H, W] event frames for the VISION consumer and [B, T, C] audio frames for
+        the AUDIO consumer; `flatten_frames` reduces both to [B, T, n_in]. logits_sum is the
+        time-summed leaky readout (the class scores); latent_sum is the hidden spike-COUNT activity
+        over the T window (the encoder latent). Manual LIF recurrence, no autograd, no
+        dataset/tonic needed -- torch-only-to-serve.
+        """
+        x = self.flatten_frames(x.float())  # [B, T, n_in]
+        b, t = x.shape[0], x.shape[1]
+        dev = x.device
+        v = torch.zeros(b, self.hidden, device=dev)
+        z = torch.zeros(b, self.hidden, device=dev)
+        y = torch.zeros(b, self.num_classes, device=dev)  # leaky readout integrator
+        logits_sum = torch.zeros(b, self.num_classes, device=dev)
+        latent_sum = torch.zeros(b, self.hidden, device=dev)
+        w_rec = self.W_rec * self.offdiag_mask(dev)
+        for step in range(t):
+            cur = x[:, step] @ self.W_in.t() + z @ w_rec.t()
+            v = self.alpha * v - self.v_th * z + cur  # soft reset: subtract V_TH on last spike
+            z = (v >= self.v_th).float()
+            y = self.kappa * y + z @ self.W_out.t()
+            logits_sum = logits_sum + (y + self.b_out)
+            latent_sum = latent_sum + z
+        return logits_sum, latent_sum
+
+
+class EpropEncoderBase:
+    """Wraps a trained net as a perception encoder. Subclasses define load/encode/classify."""
+
+    def __init__(self, net, device="cpu"):
+        self.net = net.to(device).eval()
+        self.device = device
+
+
+def bptt_grads(net, x, y):
+    """True reverse-mode BPTT of the SAME summed-per-timestep softmax-CE loss through a differentiable
+    rebuild of the SAME unrolled net, via autograd. Returns a dict of grads for W_in, W_rec, W_out,
+    b_out. Does NOT touch net.*.grad (uses torch.autograd.grad)."""
+    x = net.flatten_frames(x.float())
+    b, t = x.shape[0], x.shape[1]
+    dev = x.device
+    mask = net.offdiag_mask(dev)
+    w_rec = net.W_rec * mask
+    v = torch.zeros(b, net.hidden, device=dev)
+    z = torch.zeros(b, net.hidden, device=dev)
+    yint = torch.zeros(b, net.num_classes, device=dev)
+    loss = torch.zeros((), device=dev)
+    for step in range(t):
+        cur = x[:, step] @ net.W_in.t() + z @ w_rec.t()
+        v = net.alpha * v - net.v_th * z + cur
+        z = _SpikeFn.apply(v, net.v_th, net.gamma, net.damp)
+        yint = net.kappa * yint + z @ net.W_out.t()
+        logits = yint + net.b_out
+        loss = loss + F.cross_entropy(logits, y.long(), reduction="sum")
+    g_in, g_rec, g_out, g_b = torch.autograd.grad(loss, (net.W_in, net.W_rec, net.W_out, net.b_out))
+    return {"W_in": g_in, "W_rec": g_rec * mask, "W_out": g_out, "b_out": g_b}
+
+
+def _cosine(a, b):
+    a, b = a.reshape(-1), b.reshape(-1)
+    na, nb = a.norm(), b.norm()
+    if float(na) == 0.0 or float(nb) == 0.0:
+        return 0.0
+    return float((a @ b) / (na * nb))
+
+
+def _apply_grads(net, grads, opt):
+    """Load the e-prop-computed grads into .grad and take one optimizer step (Adam on the e-prop grads).
+    No loss.backward() anywhere -- the hidden grads are the eligibility factorization."""
+    opt.zero_grad(set_to_none=True)
+    net.W_in.grad = grads["W_in"]
+    net.W_rec.grad = grads["W_rec"]
+    net.W_out.grad = grads["W_out"]
+    net.b_out.grad = grads["b_out"]
+    opt.step()
+    with torch.no_grad():
+        net.W_rec.copy_(net.W_rec * net.offdiag_mask(net.W_rec.device))  # keep the diagonal at zero
+
+
+def evaluate(net, loader, device, max_samples=None):
+    """Test accuracy = argmax of the time-summed leaky readout. Caps at max_samples for quick runs."""
+    net.eval()
+    correct = 0
+    seen = 0
+    with torch.no_grad():
+        for x, yb in loader:
+            x = x.to(device, non_blocking=True).float()
+            yb = yb.to(device, non_blocking=True).long()
+            logits, _ = net(x)
+            correct += int((logits.argmax(1) == yb).sum().item())
+            seen += int(yb.shape[0])
+            if max_samples is not None and seen >= max_samples:
+                break
+    return (100.0 * correct / seen) if seen else 0.0, seen
+
+
+# ---------------------------------------------------------------------------------------------
+# THE NEGATIVE CONTROL, ported here 2026-08-13 from the retired training/surrogate_snn.py.
+#
+# It was the only surrogate-OFF control in the tree, and the FR-018 capability audit ruled it a
+# PORT rather than a DROP for that reason: P8 guard (2) asks an invented method for "a control that
+# is not the method itself", and every other Heaviside in this tree is Heaviside-forward-with-
+# surrogate-backward -- that is the METHOD, not a control on it. It reddens on a different axis
+# from the cosine check, which is exactly why it is worth carrying.
+# ---------------------------------------------------------------------------------------------
+def _heaviside_no_surrogate(v, v_th, gamma, damp):
+    """A TRUE Heaviside: no custom backward, so it DETACHES the graph. Negative control only.
+
+    Signature matches `_SpikeFn.apply` so it can be swapped in directly.
+    """
+    return (v >= v_th).float()
+
+
+def _first_layer_grad(net):
+    """Summed |grad| at the input weights, or None when the graph was detached."""
+    g = net.W_in.grad
+    return None if g is None else float(g.abs().sum())
+
+
+def _fwd_bwd(net, x, y, spike_fn):
+    """One differentiable forward+backward through the unrolled net using `spike_fn`.
+
+    `loss.requires_grad` is CHECKED rather than assumed: with a true Heaviside the whole graph is
+    detached and `loss.backward()` would RAISE instead of reporting no gradient. The control needs
+    "no gradient" as a MEASUREMENT, not as an exception. (This reasoning is inherited verbatim from
+    surrogate_snn._fwd_bwd, which is the file this control came from.)
+    """
+    net.zero_grad(set_to_none=True)
+    xf = net.flatten_frames(x.float())
+    b, t = xf.shape[0], xf.shape[1]
+    dev = xf.device
+    mask = net.offdiag_mask(dev)
+    w_rec = net.W_rec * mask
+    v = torch.zeros(b, net.hidden, device=dev)
+    z = torch.zeros(b, net.hidden, device=dev)
+    yint = torch.zeros(b, net.num_classes, device=dev)
+    loss = torch.zeros((), device=dev)
+    for step in range(t):
+        cur = xf[:, step] @ net.W_in.t() + z @ w_rec.t()
+        v = net.alpha * v - net.v_th * z + cur
+        z = spike_fn(v, net.v_th, net.gamma, net.damp)
+        yint = net.kappa * yint + z @ net.W_out.t()
+        loss = loss + F.cross_entropy(yint + net.b_out, y.long(), reduction="sum")
+    if loss.requires_grad:
+        loss.backward()
+    return float(loss.item()), _first_layer_grad(net)
+
+
+# ---------------------------------------------------------------------------------------------
+
+
+class _TinyNet(EpropLIFBase):
+    """Minimal concrete subclass, built INLINE for the self-check.
+
+    It exists because the kernel must not import its consumers (cycle), so the self-check cannot
+    reach for EpropNet or EpropAudioNet. Deliberately tiny and seeded.
+    """
+
+    def __init__(self, n_in=12, hidden=8, num_classes=3, seed=0):
+        super().__init__()
+        g = torch.Generator().manual_seed(seed)
+        self.n_in, self.hidden, self.num_classes = n_in, hidden, num_classes
+        self.alpha, self.v_th = DEFAULT_ALPHA, DEFAULT_V_TH
+        self.gamma, self.damp, self.kappa = DEFAULT_GAMMA, DEFAULT_DAMP, DEFAULT_KAPPA
+        self.W_in = nn.Parameter(torch.randn(hidden, n_in, generator=g) * 0.3)
+        self.W_rec = nn.Parameter(torch.randn(hidden, hidden, generator=g) * 0.2)
+        self.W_out = nn.Parameter(torch.randn(num_classes, hidden, generator=g) * 0.3)
+        self.b_out = nn.Parameter(torch.zeros(num_classes))
+
+    def eprop_grads(self, x, y):
+        """Eligibility factorization, symmetric e-prop. Local trace x broadcast learning signal."""
+        xf = self.flatten_frames(x.float())
+        b, t = xf.shape[0], xf.shape[1]
+        dev = xf.device
+        mask = self.offdiag_mask(dev)
+        w_rec = self.W_rec * mask
+        v = torch.zeros(b, self.hidden, device=dev)
+        z = torch.zeros(b, self.hidden, device=dev)
+        yint = torch.zeros(b, self.num_classes, device=dev)
+        eps_in = torch.zeros(b, self.hidden, self.n_in, device=dev)
+        eps_rec = torch.zeros(b, self.hidden, self.hidden, device=dev)
+        g_in = torch.zeros_like(self.W_in)
+        g_rec = torch.zeros_like(self.W_rec)
+        g_out = torch.zeros_like(self.W_out)
+        g_b = torch.zeros_like(self.b_out)
+        loss_sum = 0.0
+        with torch.no_grad():
+            for step in range(t):
+                xt, z_prev = xf[:, step], z
+                cur = xt @ self.W_in.t() + z_prev @ w_rec.t()
+                v = self.alpha * v - self.v_th * z + cur
+                p = self.psi(v)
+                z = (v >= self.v_th).float()
+                yint = self.kappa * yint + z @ self.W_out.t()
+                logits = yint + self.b_out
+                err = torch.softmax(logits, dim=1)
+                err[torch.arange(b), y.long()] -= 1.0
+                loss_sum += float(F.cross_entropy(logits, y.long(), reduction="sum").item())
+                eps_in = self.alpha * eps_in + xt.unsqueeze(1)
+                eps_rec = self.alpha * eps_rec + z_prev.unsqueeze(1)
+                lsig = err @ self.W_out  # broadcast learning signal
+                g_in += ((lsig * p).unsqueeze(2) * eps_in).sum(0)
+                g_rec += ((lsig * p).unsqueeze(2) * eps_rec).sum(0)
+                g_out += err.t() @ z
+                g_b += err.sum(0)
+        return {"W_in": g_in, "W_rec": g_rec * mask, "W_out": g_out, "b_out": g_b}, loss_sum
+
+
+def _self_check():
+    torch.manual_seed(7)
+    net = _TinyNet(seed=7)
+    x = (torch.rand(6, 9, 12, generator=torch.Generator().manual_seed(11)) < 0.3).float()
+    y = torch.tensor([0, 1, 2, 0, 1, 2])
+
+    logits, latent = net.forward(x)
+    assert logits.shape == (6, 3), logits.shape
+    assert latent.shape == (6, 8), latent.shape
+
+    # (a) THE CLAIM: the eligibility factorization really is the factored gradient.
+    ge, _ = net.eprop_grads(x, y)
+    gb = bptt_grads(net, x, y)
+    cos = _cosine(
+        torch.cat([ge[k].reshape(-1) for k in sorted(ge)]),
+        torch.cat([gb[k].reshape(-1) for k in sorted(gb)]),
+    )
+    print(f"e-prop~BPTT cosine {cos:.4f} (floor {EPROP_BPTT_COSINE_FLOOR})")
+    assert cos > EPROP_BPTT_COSINE_FLOOR, f"cosine {cos} <= {EPROP_BPTT_COSINE_FLOOR}"
+
+    # (b) REACHABLE RED #1 (FR-019): a sign-flipped learning signal must drive it below the floor.
+    # A criterion with no reachable red is deleted, not weakened -- so the red is DEMONSTRATED here
+    # rather than asserted to exist.
+    flipped = {k: -v for k, v in ge.items()}
+    cos_bad = _cosine(
+        torch.cat([flipped[k].reshape(-1) for k in sorted(flipped)]),
+        torch.cat([gb[k].reshape(-1) for k in sorted(gb)]),
+    )
+    print(
+        f"RED  sign-flipped learning signal -> cosine {cos_bad:.4f} (<= floor: {cos_bad <= EPROP_BPTT_COSINE_FLOOR})"
+    )
+    assert cos_bad <= EPROP_BPTT_COSINE_FLOOR, (
+        "no reachable red -- DELETE the criterion, do not weaken it"
+    )
+
+    # (c) REACHABLE RED #2, on a DIFFERENT axis: the surrogate-OFF control ported from the retired
+    # surrogate_snn. With a TRUE Heaviside the graph detaches and there is no gradient at all; with
+    # the surrogate there is one. If both behaved alike the surrogate would not be doing the work
+    # this module claims for it.
+    loss_s, grad_s = _fwd_bwd(net, x, y, _SpikeFn.apply)
+    loss_h, grad_h = _fwd_bwd(net, x, y, _heaviside_no_surrogate)
+    print(f"RED  control: surrogate grad={grad_s}  true-Heaviside grad={grad_h}")
+    assert grad_s is not None and grad_s > 0.0, "surrogate produced no gradient"
+    assert grad_h is None, "true Heaviside produced a gradient -- the control is not a control"
+    assert abs(loss_s - loss_h) < 1e-6, "forward must be identical; only the BACKWARD differs"
+
+    print(
+        "SMOKE OK: one governed e-prop kernel; cosine asserted against an INDEPENDENT reverse-mode\n"
+        "reference, with TWO demonstrated reds (sign-flip, surrogate-off). The cosine CANNOT see a\n"
+        "defect upstream of the forward/gradient fork -- see the module docstring; the bit-exact pin\n"
+        "at tests/pin/ is the verifier for that."
+    )
+
+
+if __name__ == "__main__":
+    _self_check()
