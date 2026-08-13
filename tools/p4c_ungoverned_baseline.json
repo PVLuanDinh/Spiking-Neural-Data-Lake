@@ -2,7 +2,7 @@
   "_generated_by": "tools/p4c_ratchet.py --update-baseline",
   "_policy": "P4c -- every build is part of the brain",
   "_contract": "counts may only go DOWN; 'paths' is DIAGNOSTICS ONLY, never asserted on",
-  "total": 204,
+  "total": 203,
   "zones": {
     "<repo root>": 2,
     "docs": 16,
@@ -13,7 +13,7 @@
     "src/snn_data_lake/reasoning": 109,
     "src/snn_data_lake/training": 6,
     "tools": 30,
-    "training": 5
+    "training": 4
   },
   "paths": {
     "<repo root>": [
@@ -237,7 +237,6 @@
       "training/ar_spiking_lm.py",
       "training/eprop_lm.py",
       "training/eprop_lm_alif.py",
-      "training/eprop_shd.py",
       "training/make_packs.py"
     ]
   }

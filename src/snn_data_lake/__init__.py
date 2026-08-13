@@ -413,9 +413,16 @@ TORCH_TIER = {
         # N-MNIST perception encoder (e-prop, cosine>0.5 vs BPTT asserted in-check). TORCH_TIER
         # because torch is imported at module top; reached on Brain's CONSTRUCTION path
         # (brain.py's perception-tier try block). P2 debt recorded at the promotion: FIVE
-        # top-level defs byte-identical with training/eprop_shd.py -- the MERGE (one shared
-        # governed e-prop kernel) belongs to eprop_shd's own blocked lane.
+        # top-level defs byte-identical with eprop_shd.py -- the MERGE (one shared governed
+        # e-prop kernel) is specs/013 C4. Both twins are now in this list, so the duplication
+        # is INSIDE the governed tree until C4 retires it; a move relocates duplication, it does
+        # not discharge it. (The count is FIVE module-scope defs; nine definitions in total once
+        # the LIF-base methods and the encoder __init__ are counted -- re-measured at specs/013.)
         "eprop_nmnist",
+        # PROMOTED 2026-08-13 (specs/013 C3, was training/eprop_shd.py): the brain's SHD audio
+        # perception encoder, the auditory twin of eprop_nmnist. TORCH_TIER for the same reason
+        # (torch at module top), reached on the same construction path via brain.py's audio try.
+        "eprop_shd",
     ],
     "hippocampus": ["ng_snn"],
 }

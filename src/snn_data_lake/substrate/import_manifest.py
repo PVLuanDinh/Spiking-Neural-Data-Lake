@@ -105,28 +105,31 @@ GOVERNED = (
 UNGOVERNED = ("reasoning", "training")
 
 # ROOT shape: tiers that live OUTSIDE the package, so a governed module names them by their BARE
-# top-level name and the prefixed test above can never match. ADDED 2026-08-05: `cortex/brain.py`
-# built the perception tier from `training.eprop_nmnist`, `training.surrogate_snn` and
-# `training.eprop_shd` -- all three invisible to the one gate built for exactly this failure.
-# Re-resolved 2026-08-13 (specs/013 C1): `eprop_nmnist` went IN-PACKAGE at the PROMOTE lane and
-# `training.surrogate_snn` was RETIRED with the surrogate-BPTT perception tier, so the ROOT shape
-# now carries exactly ONE target -- `training.eprop_shd`, in the body of the ONE `try` at
-# brain.py:597. That last one leaves at specs/013 C3, and `UNGOVERNED_ROOT` becomes `()` in the
-# same commit (the empty tuple is pre-authorised below).
-# Line cites here are deliberately coarse: the 2026-08-12 review pass found this very comment
-# quoting a `try` span (:557-643) that insertions above it had rotted -- exactly the failure :18
-# names -- so it no longer pins interior line numbers it cannot keep current.
-# Widening the scan is what made them visible; it does NOT make brain.py's own import CWD-proof
-# (see broken()).
-# The four-gates-green list above holds for them VERBATIM: coverage `omit` is
-# the glob `*/training/*`, and ruff `extend-exclude` names the root `"training"` entry explicitly.
+# top-level name and the prefixed test above can never match. ADDED 2026-08-05 because
+# `cortex/brain.py` built its perception tier from three such imports -- `training.eprop_nmnist`,
+# `training.surrogate_snn`, `training.eprop_shd` -- all invisible to the one gate built for exactly
+# that failure. Widening the scan is what made them visible; it did NOT make brain.py's own import
+# CWD-proof (see broken()).
 #
-# MEASURED, not listed by hope. An AST survey of EVERY import in the governed tier found `training`
-# to be the only root tier imported by bare name; re-running the widened scan with
-# ("training", "research", "integrations") produced the IDENTICAL 14 targets / 15 sites, so the other
-# two would be allowlist entries that can never match -- and an entry that cannot match is a gate
-# claiming coverage it does not have. Add a name here only when a bare-name import of it is measured.
-UNGOVERNED_ROOT = ("training",)
+# ALL THREE ARE NOW GONE, and the tuple is empty as of specs/013 C3 (2026-08-13): eprop_nmnist went
+# in-package at the 2026-08-12 PROMOTE lane, surrogate_snn was RETIRED at C1, eprop_shd was promoted
+# at C3. The shape is kept, with its zero case pre-authorised at the `unmatched` assert, because the
+# NEXT bare-root import is the one it exists to catch -- add a name here the day one is measured.
+#
+# Line cites in this block are deliberately coarse: the 2026-08-12 review pass caught this very
+# comment quoting a `try` span (:557-643) that insertions above it had rotted -- exactly the failure
+# :18 names -- so it no longer pins interior line numbers it cannot keep current.
+UNGOVERNED_ROOT = ()
+# EMPTIED 2026-08-13 (specs/013 C3): `training.eprop_shd` was the LAST bare-root import from the
+# governed tier, and it became in-package (`snn_data_lake.cortex.eprop_shd`) at that commit. The
+# empty tuple is the pre-authorised terminal state -- see the note at the `unmatched` assert below,
+# which says in so many words that removing the name is the correct edit once `training/` is
+# promoted INTO the package, and must not leave an assert that can never again be satisfied.
+#
+# HONEST LIMIT, because the name invites over-reading: this records "no AST-VISIBLE root-shape
+# imports", NOT "no governed -> training/ edges". A surviving invisible one, measured at specs/013:
+# `reasoning/eprop_lm_serve.py` does `sys.path.insert` on <root>/training and then
+# `import eprop_lm as trainer` -- a bare-NAME import that `_targets()` cannot see by construction.
 
 _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # <repo>, the parent of `src/`. Pure path arithmetic evaluated at import -- no side effect (nothing is
@@ -292,7 +295,11 @@ def main():
     # the module were DELETED, not promoted -- the first lowering in this file licensed by a
     # retirement rather than a move. The removal lands in THIS commit; a floor lowered without its
     # removal is silencing a check, which is the one thing this line must never become.
-    assert len(man) >= 6, f"manifest collapsed to {len(man)} targets -- scan regression?"
+    # Floor lowered 6 -> 5 on 2026-08-13 (specs/013 C3, eprop_shd -> cortex/): its root-shape
+    # target became in-package, the same shrink-by-promotion case, one-target slack kept. This
+    # removal empties UNGOVERNED_ROOT, so BOTH edits land in this commit -- lowering the floor
+    # without the removal, or emptying the tuple without the floor, reds this file either way.
+    assert len(man) >= 5, f"manifest collapsed to {len(man)} targets -- scan regression?"
 
     # ROOT-TIER COVERAGE, asserted STRUCTURALLY so that no COUNT arbitrates it. The comment above
     # used to claim the floor of 13 was "also the value that makes root-tier blindness itself red".

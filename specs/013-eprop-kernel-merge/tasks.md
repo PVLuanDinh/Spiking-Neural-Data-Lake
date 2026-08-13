@@ -134,27 +134,27 @@ attempted at all. That is NG-004.
 
 ### Pre-commit measurements
 
-- [ ] T039 [US3] Sweep `training/eprop_shd.py` for depth-counted path logic a move would silently retarget (`training/surrogate_snn.py:337-366` had exactly that shape; eprop_shd's post-move path behaviour was measured by nobody)
-- [ ] T040 [US3] Confirm the self-check gate at `training/eprop_shd.py:920` (`smoke = args.smoke or len(sys.argv) == 1`) will still fire under `-m` invocation
+- [X] T039 [US3] Sweep `training/eprop_shd.py` for depth-counted path logic a move would silently retarget (`training/surrogate_snn.py:337-366` had exactly that shape; eprop_shd's post-move path behaviour was measured by nobody)
+- [X] T040 [US3] Confirm the self-check gate at `training/eprop_shd.py:920` (`smoke = args.smoke or len(sys.argv) == 1`) will still fire under `-m` invocation
 
 ### The move — ALL SEVEN co-edits in this same commit
 
-- [ ] T041 [US3] `git mv training/eprop_shd.py src/snn_data_lake/cortex/eprop_shd.py`
-- [ ] T042 [US3] Register `"eprop_shd"` in `TORCH_TIER["cortex"]` in `src/snn_data_lake/__init__.py` — without this, `cortex` becomes a new p4c zone with implicit allowance 0 and goes RED
-- [ ] T043 [US3] Register `"cortex.eprop_shd"` in `run_selfchecks.py` TORCH_GATED, near the existing `cortex.eprop_nmnist` entry
-- [ ] T044 [US3] Rewrite `src/snn_data_lake/cortex/brain.py:668` to `from snn_data_lake.cortex.eprop_shd import EpropAudioEncoder` — the `_PKG` guard at `substrate/dormancy_gate.py:353` gives a bare-root `training.*` import no graph edge, so the dormancy gate goes RED without this
-- [ ] T045 [US3] Rewrite `docs/TRAINING.md:23` from `.venv-lake/Scripts/python training/eprop_shd.py` to the dotted `-m` form matching its sibling at `:22` — it is a STRICT `citation_guard` line and goes RED on the move
-- [ ] T046 [US3] Set `UNGOVERNED_ROOT = ()` at `src/snn_data_lake/substrate/import_manifest.py:126` and lower the floor at `:287` from `>= 6` to `>= 5`; both are required or `:306` fires on `unmatched=['training']`
-- [ ] T047 [US3] Delete the stale comment at `src/snn_data_lake/substrate/import_manifest.py:111-113` naming the two root targets
-- [ ] T048 [US3] Regenerate `tools/p4c_ungoverned_baseline.json`; confirm total 204 → 203 and `training` zone 5 → 4
+- [X] T041 [US3] `git mv training/eprop_shd.py src/snn_data_lake/cortex/eprop_shd.py`
+- [X] T042 [US3] Register `"eprop_shd"` in `TORCH_TIER["cortex"]` in `src/snn_data_lake/__init__.py` — without this, `cortex` becomes a new p4c zone with implicit allowance 0 and goes RED
+- [X] T043 [US3] Register `"cortex.eprop_shd"` in `run_selfchecks.py` TORCH_GATED, near the existing `cortex.eprop_nmnist` entry
+- [X] T044 [US3] Rewrite `src/snn_data_lake/cortex/brain.py:668` to `from snn_data_lake.cortex.eprop_shd import EpropAudioEncoder` — the `_PKG` guard at `substrate/dormancy_gate.py:353` gives a bare-root `training.*` import no graph edge, so the dormancy gate goes RED without this
+- [X] T045 [US3] Rewrite `docs/TRAINING.md:23` from `.venv-lake/Scripts/python training/eprop_shd.py` to the dotted `-m` form matching its sibling at `:22` — it is a STRICT `citation_guard` line and goes RED on the move
+- [X] T046 [US3] Set `UNGOVERNED_ROOT = ()` at `src/snn_data_lake/substrate/import_manifest.py:126` and lower the floor at `:287` from `>= 6` to `>= 5`; both are required or `:306` fires on `unmatched=['training']`
+- [X] T047 [US3] Delete the stale comment at `src/snn_data_lake/substrate/import_manifest.py:111-113` naming the two root targets
+- [X] T048 [US3] Regenerate `tools/p4c_ungoverned_baseline.json`; confirm total 204 → 203 and `training` zone 5 → 4
 
 ### Verification
 
-- [ ] T049 [US3] Confirm `.venv-lake\Scripts\python.exe -m snn_data_lake.cortex.eprop_shd` reaches its self-check and exits 0
-- [ ] T050 [US3] Confirm the dormancy gate sees the module as reachable
-- [ ] T051 [US3] Confirm `python -m snn_data_lake.substrate.import_manifest` reports **6** targets and passes
-- [ ] T052 [US3] Run the GATE BATCH
-- [ ] T053 [US3] Re-derive cites after the last edit (FR-020); commit C3
+- [X] T049 [US3] Confirm `.venv-lake\Scripts\python.exe -m snn_data_lake.cortex.eprop_shd` reaches its self-check and exits 0
+- [X] T050 [US3] Confirm the dormancy gate sees the module as reachable
+- [X] T051 [US3] Confirm `python -m snn_data_lake.substrate.import_manifest` reports **6** targets and passes
+- [X] T052 [US3] Run the GATE BATCH
+- [X] T053 [US3] Re-derive cites after the last edit (FR-020); commit C3
 
 **Commit body MUST carry** the `UNGOVERNED_ROOT = ()` caveat: it records "no AST-visible root-shape
 imports", not "no governed → `training/` edges". A surviving invisible one:

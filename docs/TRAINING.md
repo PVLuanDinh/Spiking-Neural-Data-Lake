@@ -20,7 +20,7 @@ tier an unreproducible claim. Perception needs **two kinds of artifact**, and bo
 
 ```bash
 PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.cortex.eprop_nmnist --train --save models/eprop_nmnist.pt   # (vision; --save is required for the checkpoint -- the old arrow-comment implied --train alone wrote it, which was never true)
-.venv-lake/Scripts/python training/eprop_shd.py       # -> models/eprop_shd.pt     (audio, SHD)
+PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.cortex.eprop_shd --train --save models/eprop_shd.pt   # (audio, SHD; promoted out of training/ 2026-08-13, specs/013)
 ```
 
 **2. The event-frame packs** (`.npz`) — what gets perceived. The encoders alone are not enough:

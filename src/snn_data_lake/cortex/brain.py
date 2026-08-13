@@ -672,7 +672,7 @@ class Brain:
                 if os.path.exists(
                     _audio
                 ):  # AUDITORY tier (brain-native): e-prop SHD encoder, parallel to vision
-                    from training.eprop_shd import EpropAudioEncoder
+                    from snn_data_lake.cortex.eprop_shd import EpropAudioEncoder
 
                     self._audio_enc = _load_enc(EpropAudioEncoder.load, _audio)
                     import numpy as _np2
