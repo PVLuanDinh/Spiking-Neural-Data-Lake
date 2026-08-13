@@ -202,11 +202,11 @@ governed tree; it does not retire it.
 
 ## Phase C5 — Polish & cross-cutting
 
-- [ ] T071 Verify the SAFETY ENVELOPE is untouched: `git diff 47555a74..HEAD --name-only -- src/snn_data_lake/brainstem/` returns **zero lines**. Any file there changing is a plan error, not an acceptable side effect
-- [ ] T072 Append the lane's CHANGELOG entry, quoting only figures read from output — never written by increment. A prior arc shipped four commit messages whose self-check counts were incremented rather than read
-- [ ] T073 Update `docs/P4C_BACKLOG.md`: the blocked tier loses `eprop_shd` and `surrogate_snn`; 3 blocked entries remain (`schema_induction`, `snn_moe_classifier`, `spike_chat_lake`)
-- [ ] T074 Run `graphify update .` to keep the knowledge graph current after the moves
-- [ ] T075 Final full GATE BATCH on the complete lane; record the closing figures (expected p4c 203, manifest 6 targets, `UNGOVERNED_ROOT = ()`)
+- [X] T071 Verify the SAFETY ENVELOPE is untouched: `git diff 47555a74..HEAD --name-only -- src/snn_data_lake/brainstem/` returns **zero lines**. Any file there changing is a plan error, not an acceptable side effect
+- [X] T072 Append the lane's CHANGELOG entry, quoting only figures read from output — never written by increment. A prior arc shipped four commit messages whose self-check counts were incremented rather than read
+- [X] T073 Update `docs/P4C_BACKLOG.md`: the blocked tier loses `eprop_shd` and `surrogate_snn`; 3 blocked entries remain (`schema_induction`, `snn_moe_classifier`, `spike_chat_lake`)
+- [X] T074 Run `graphify update .` to keep the knowledge graph current after the moves
+- [X] T075 Final full GATE BATCH on the complete lane; record the closing figures (expected p4c 203, manifest 6 targets, `UNGOVERNED_ROOT = ()`)
 
 ---
 

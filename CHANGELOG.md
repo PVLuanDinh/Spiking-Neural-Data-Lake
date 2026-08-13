@@ -9,6 +9,48 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- specs/013: the e-prop kernel MERGE, one engine and one perception tier (2026-08-13)
+
+Five commits, `47555a74..4ef52107`, each independently gate-green. P2 asks that exactly ONE
+mechanism survive per job; this lane had two violations of that in one code path and closed both.
+
+- **C0 `dbc9037f` -- evidence only, no source change.** The FR-018 unique-capability audit of all 19
+  `surrogate_snn`-only definitions (9 COVERED / 3 PORT / 7 DROP) plus the bit-exact pin harness at
+  `tests/pin/`. Evidence that licenses a deletion must not ride in the commit that performs it.
+- **C1 `a79ffeab` -- the surrogate-BPTT perception tier RETIRED.** `training/surrogate_snn.py`
+  deleted (764 lines) with its only importer and the dead `pc_cortex_torch` "ceiling" block, which
+  was never an A/B: it read an accuracy field out of a checkpoint carrying only `['config','model']`,
+  so its comparison branch never once fired.
+- **C2 `e73c5d5d` -- the perception `try` SPLIT.** One blanket `except Exception:` had covered both
+  perception halves, so an AUDIO failure rolled back the VISION tier. Measured at 12 ticks before
+  the fix: tier `eprop-snn` -> `stdlib`, state leaf paths 134 -> 132, `/attention_real` from a 3-key
+  dict to a scalar. After: all three hold with audio still blocked.
+- **C3 `20632980` -- `eprop_shd` PROMOTED to `cortex/`.** Seven co-edits in one commit; the last
+  bare-root import from the governed tier is gone and `UNGOVERNED_ROOT` is now `()`.
+- **C4 `4ef52107` -- `cortex/eprop_kernel.py`, the ONE e-prop engine.** Both encoders import it;
+  neither keeps a copy.
+
+**The measurement this lane turns on.** The cosine assert that guards e-prop cannot see the class of
+defect the merge could introduce. `bptt_grads` is independent in its GRADIENT but shares the FORWARD,
+so a defect upstream of that fork moves both sides together: with `flatten_frames`' feature axis
+permuted, all 12 pinned tensors changed (max |delta| 538.071) while the cosine went 0.995375 ->
+0.997168 -- it ROSE. Standing Invariant 5 ("a green gate that structurally cannot see the thing it
+checks manufactures confidence"), measured rather than argued. The merge was therefore accepted on a
+bit-exact pin (12/12 `torch.equal`), never on the cosine.
+
+**Recorded honestly, because both cut against the lane.** (1) The tree LOST a capability: after C1
+there is no surrogate-gradient convolutional spiking network at all -- `SpikingConvNet` went with
+the module, adjudicated and owner-confirmed rather than discovered later. (2) The line count ROSE
+143 lines (duplicated code fell 182; the kernel adds a gated self-check with two reachable reds, the
+negative control ported out of `surrogate_snn`, and the cosine-blindness disclosure). The plan
+predicted "roughly 100 lines net reduction" and was wrong. P2 counts surviving MECHANISMS, and that
+went 2 -> 1.
+
+Gates at the tip: 300/300 self-checks, pytest 90.91%, ruff check + format clean (476 files), p4c
+**203** (from 205) on a regenerated baseline, p6 5/5 ratchets, import_manifest 6 targets with
+`UNGOVERNED_ROOT = ()`, citation/red/dependency green. `brainstem/` untouched across all five
+commits.
+
 ## [Unreleased] -- adversarial review over the PROMOTE lane: 24 evidenced findings, all applied (2026-08-12q)
 
 Three lenses over the five unpushed lane commits. The sharpest cuts, owned
