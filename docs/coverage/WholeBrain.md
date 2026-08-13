@@ -314,7 +314,7 @@ has drifted; the call is at `:1561`.
 ## A lead that was wrong, and the correction is the point
 
 I nearly filed `theta_gamma_code` as a dormant oscillatory-coordination faculty on the strength of a
-grep showing its only importer to be `reasoning/rose_language.py`, plus a second grep showing
+grep showing its only importer to be `reasoning/rose_language.py` (cortex/ since 2026-08-12), plus a second grep showing
 `rose_language` had no callers. **The second grep was wrong.** `cortex/brain.py:3419` imports
 `RoseLanguage`, via `_rose_serve()`, which is called on two live paths: the sleep tick's nightly refit
 (`brain.py:2450`) and `respond()` when a message starts with `parse` or `diagram` (`brain.py:2899`). So

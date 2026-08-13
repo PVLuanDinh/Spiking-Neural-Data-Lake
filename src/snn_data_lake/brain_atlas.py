@@ -52,9 +52,12 @@ def main():
         tag = f" (+{extra} torch-tier)" if extra else ""
         print(f"{region:<16} {len(REGIONS[region]):>2} modules{tag}")
     print("-" * 66)
+    # All three tiers in the breakdown: until 2026-08-12 this line omitted the train tier, so the
+    # printed sum did not close (222 + 4 != 230) -- an arithmetic self-contradiction the parity
+    # assert below could never catch because it checks the SET union, not the printed prose.
     print(
         f"{'TOTAL':<16} {total:>2} modules across {len(REGIONS)} regions "
-        f"({region_total} core + {torch_total} torch-tier)"
+        f"({region_total} core + {torch_total} torch-tier + {train_total} train-tier)"
     )
     print("=" * 66)
 
@@ -136,7 +139,8 @@ def main():
 
     print(
         f"self-check OK: {total} modules mapped to {len(REGIONS)} regions "
-        f"({region_total} core + {torch_total} torch-tier); all {len(_MOVED)} legacy import paths "
+        f"({region_total} core + {torch_total} torch-tier + {train_total} train-tier); "
+        f"all {len(_MOVED)} legacy import paths "
         f"still resolve to the moved module; map matches the filesystem exactly"
     )
 

@@ -54,7 +54,9 @@ two disagree the probe exits 2 rather than reporting noise as charge.
 import os
 import sys
 
-_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 sys.path.insert(0, os.path.join(_ROOT, "src"))
 
 from snn_data_lake.cortex.brain import make_brain  # noqa: E402
@@ -130,8 +132,10 @@ def main():
     bB.close()
 
     print(f"source                                        : {source}")
-    print(f"neuter                                        : "
-          f"{'_reentrant_strength pinned to 1.0 (the documented no-workspace default)' if source == 'strength' else 'SecondOrderAccess.hold() pinned False'}")
+    print(
+        f"neuter                                        : "
+        f"{'_reentrant_strength pinned to 1.0 (the documented no-workspace default)' if source == 'strength' else 'SecondOrderAccess.hold() pinned False'}"
+    )
     print(f"ticks / chat turns                            : {n} / {len(rA)}")
     print(f"distinct observable values in arm A           : {n_distinct}")
     print(f"self_model.confidence() changed by the signal  : {conf_flips}/{n} ticks")

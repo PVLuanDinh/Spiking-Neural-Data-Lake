@@ -61,7 +61,7 @@ import numpy as np
 # P1 -- MODEL-DEFINING PHYSICAL CONSTANTS, fixed on purpose and labelled rather than carried silently across
 # the tier boundary. These are the LIF refractory period and membrane time constant, in SECONDS. They are not
 # behaviour thresholds a running baseline could replace: they ARE the neuron model, and this module's job is
-# to be the ground truth a second engine is checked against. `substrate/nengo_bridge.py:55-56` pins the
+# to be the ground truth a second engine is checked against. `substrate/nengo_bridge.py:56-57` pins the
 # identical pair (they are also Nengo's own defaults) and `:570` asserts that Nengo's decode error is
 # COMPARABLE to the numbers produced here. Letting these drift would not make the model more brain-native; it
 # would delete the comparison. Closest documented exception: the fourth (a raw physical value that stays fixed
@@ -70,7 +70,7 @@ T_REF, TAU_RC = 0.002, 0.02
 
 # P1 exception (a) -- a fixed point on a NORMALISED output. x is represented over [-1, 1], so an RMSE
 # tolerance of 0.05 is 2.5% of the represented range: dimensionless, not a unit-bearing magic number. It is
-# named once here because `substrate/nengo_bridge.py:568` asserts the same 0.05 against these decoders, and a
+# named once here because `substrate/nengo_bridge.py:569` asserts the same 0.05 against these decoders, and a
 # single name is what stops the two drifting apart.
 RMSE_TOL = 0.05
 
@@ -80,7 +80,7 @@ NULL_MARGIN = 5.0
 
 # The reference tuning-curve distribution: intercepts (the x at which a neuron starts firing) and maximum
 # rates. Not fixed -- they are constructor parameters, so any caller may choose another population. These
-# DEFAULTS are a contract: `substrate/nengo_bridge.py:84` documents that its Nengo ensemble is configured to
+# DEFAULTS are a contract: `substrate/nengo_bridge.py:85` documents that its Nengo ensemble is configured to
 # match "intercepts in [-0.95, 0.95]", so changing the defaults silently would break a cross-engine check.
 X_INT_RANGE = (-0.95, 0.95)
 R_MAX_RANGE = (100.0, 300.0)

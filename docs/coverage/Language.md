@@ -86,7 +86,9 @@ template with VSA role-filler bindings behind it, not a constituency analysis.
 for 3/3 of `'the cat sat on the mat'`, `'cat the mat sat on the'`, `'the robot moved the block'` --
 reproducing `DEPTH_CEILINGS.md:135-138`. The only callers of `.comprehend(` in the tree are
 `rose_language.py:626` (inside its own `generate`, itself self-check-only; line re-derived at the 2026-08-12 promotion) and its self-check at
-`:566-568`. `Brain` calls `rose.parse` and never `rose.comprehend`.
+`:734-736` / `:766-767`, inside `main()` (re-derived at the same pass; the old `:566-568` had
+drifted into `_build_readout`'s SLDA block). `Brain` calls `rose.parse` and never
+`rose.comprehend`; the one out-of-tree caller is `tools/blimp_baseline.py:82`.
 
 **R6 -- pragmatics is live-wired and I neuter-A/B'd it. The stale claim was the "zero callers" one.**
 `LiveBrain._reasoning_bridge` is `True` (the default at `live_brain.py:81`; the docstring at `:441`

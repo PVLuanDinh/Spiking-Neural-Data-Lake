@@ -9,6 +9,47 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- adversarial review over the PROMOTE lane: 24 evidenced findings, all applied (2026-08-12q)
+
+Three lenses over the five unpushed lane commits. The sharpest cuts, owned
+plainly. (1) FABRICATED-BY-ASSUMPTION COUNTS: the four lane commit messages
+quote self-check totals 297 -> 298 -> 299 -> 300; the true series is
+297/297/297/298 -- a RESEARCH -> CORE move does not grow MODULES, only the
+TORCH_GATED addition did. The numbers were written by increment, not read
+from gate output; the messages are already authored, this entry is their
+correction. (2) OVERSTATED SUPERSESSION: the recorder-shape annotations said
+the eprop_nmnist promotion partially relieved the src-only probe blindness
+and deferred the measurement; the review RAN it -- the observable is
+bit-identical (tier stdlib, real False), because the still-root-tier
+eprop_shd import raises in the SAME try (:597) and the blanket except
+(:679-683) rolls the whole tier back, with cortex.eprop_nmnist confirmed
+imported during construction. Both annotations rewritten to the measured
+fact: promoting siblings cannot move this observable while any root-tier
+import shares the one try. (3) SELF-INFLICTED CITE ROT: the lane's own edits
+shifted lines it went on to quote -- nengo_bridge +1 (five cites),
+brain.py's I001 sort moved the vsa lazy import :928 -> :924 (three cites,
+one inside a commit message that names the sort), and the brain.py try-span
+:557-643 was repeated three times in import_manifest while the same
+sentences re-derived the imports INSIDE it (actual span :597-683, AST).
+All re-derived. Also applied: AUDIT_BACKLOG H7/M11 rows the lane's own
+REGIONS comments cite by ID (paths+lines re-derived), M37's location column
+annotated historical; Perception.md ledger rows :19/:20 and neighbours
+re-derived (:623/:670/:648/:1348/:1422); Language.md's comprehend self-check
+cite re-derived (:734-736/:766-767 + the blimp_baseline caller); Gf.md /
+WholeBrain.md / research/ng_snn/data.py (the deletion-guard note) /
+surrogate_snn's runtime print de-rosed; TRAINING.md's regeneration command
+gains the --save it always needed (the arrow-comment promised a checkpoint
+--train alone never wrote); brain_atlas's printed census now CLOSES
+(222 core + 4 torch + 4 train = 230 -- the train tier was omitted from both
+breakdown prints while the total included it); docs/coverage/artifacts
+ruff-formatted (4 files -- unscoped format --check is now clean tree-wide,
+not only on the CI-scoped dirs); p4c baseline REGENERATED per the tool's
+own documented post-promotion step (zones tightened to live counts, total
+205, --self-check 7/7; two transient untracked probe-residue files that
+briefly redded the local gate were confirmed gone). NOT fixed, recorded:
+training/eprop_shd.py's nine prose references to the old sibling path stay
+with its blocked MERGE lane.
+
 ## [Unreleased] -- PROMOTE lane 4/4: eprop_nmnist -> cortex/ TORCH_TIER -- the vision encoder in-package, the lane closes (2026-08-12p)
 
 Fourth and last READY promotion. training/eprop_nmnist.py ->

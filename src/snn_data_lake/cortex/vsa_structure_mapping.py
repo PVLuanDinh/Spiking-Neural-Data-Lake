@@ -277,8 +277,8 @@ class StructureMapper:
         `map()`, so reuse would drift anyway), `analogy_bench` per item -- so the caches die with the
         call. A long-lived instance fed unboundedly many distinct propositions would grow; the one
         long-lived instance in the tree, `cortex/brain.py:967`'s (re-cited at the 2026-08-12
-        promotion; the lazy import is :928), is never read from and so never
-        fills them. (Measured: 20 `map()` calls on one reused instance leave 20 / 20 / 44 entries in
+        promotion; the lazy import is :924 after the same lane's I001 sort), is never read from
+        and so never fills them. (Measured: 20 `map()` calls on one reused instance leave 20 / 20 / 44 entries in
         `_prop_cache` / `_target_cache` / `_cache`.)
 
         Second disclosure, added by adversarial verification 2026-08-04 because the memoization

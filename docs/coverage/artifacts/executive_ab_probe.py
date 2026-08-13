@@ -42,7 +42,9 @@ positive verdict needs no eligibility argument -- divergence proves the signal m
 import os
 import sys
 
-_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 sys.path.insert(0, os.path.join(_ROOT, "src"))
 
 from snn_data_lake.basal_ganglia.action_gating import BasalGangliaGate  # noqa: E402

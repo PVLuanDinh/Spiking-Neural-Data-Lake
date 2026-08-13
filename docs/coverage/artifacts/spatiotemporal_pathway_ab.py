@@ -114,7 +114,9 @@ def main():
     print(f"CONTROL  act/hold A vs B                      : {_flips(sA, sB)}/{n} ticks")
     print(f"leave-one-in  C({source} only) vs B(none)     : {_flips(pC, pB)}/{n} ticks")
     print(f"leave-one-in  act/hold C vs B                 : {_flips(sC, sB)}/{n} ticks")
-    print(f"distinct trajectories A / B / C               : {len(set(pA))} / {len(set(pB))} / {len(set(pC))}")
+    print(
+        f"distinct trajectories A / B / C               : {len(set(pA))} / {len(set(pB))} / {len(set(pC))}"
+    )
     if _flips(pA, pB) or _flips(sA, sB):
         print(
             "HARNESS SENSITIVE: removing the whole top-down drive pathway moves the arm, so a "

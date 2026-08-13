@@ -16,8 +16,8 @@ and the fix are below. Bands are capped at 40 accordingly; see rubric rule 2.
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
 | multimodal_rate_encoding | 40 | src/snn_data_lake/cortex/multimodal_encoder.py:62#encode_multimodal; src/snn_data_lake/brainstem/autonomous_loop.py:1323#step | - | opus-5 live-brain census, 40 ticks, seed 0 | 2026-07-30 |
-| eprop_event_vision_tier | 40 | src/snn_data_lake/cortex/brain.py:564#_load_enc; src/snn_data_lake/cortex/brain.py:1207#_perceive_real | - | opus-5 live-brain census, daemon import shape | 2026-07-30 |
-| eprop_event_audio_tier | 40 | src/snn_data_lake/cortex/brain.py:598#_load_enc; src/snn_data_lake/cortex/brain.py:1281#_perceive_audio | - | opus-5 live-brain census, daemon import shape | 2026-07-30 |
+| eprop_event_vision_tier | 40 | src/snn_data_lake/cortex/brain.py:623#_load_enc; src/snn_data_lake/cortex/brain.py:1348#_perceive_real | - | opus-5 live-brain census, daemon import shape (lines re-derived 2026-08-12) | 2026-07-30 |
+| eprop_event_audio_tier | 40 | src/snn_data_lake/cortex/brain.py:670#_load_enc; src/snn_data_lake/cortex/brain.py:1422#_perceive_audio | - | opus-5 live-brain census, daemon import shape (lines re-derived 2026-08-12) | 2026-07-30 |
 | learned_attention_real_stream | 40 | src/snn_data_lake/cortex/learned_attention.py:136#attend; src/snn_data_lake/cortex/brain.py:1138#_attend_real_stream; src/snn_data_lake/cortex/brain.py:1149#_attend_real_stream | - | opus-5 neuter-A/B 46 of 60 ticks, NOT recordable | 2026-07-30 |
 | perceptual_novelty_salience | 40 | src/snn_data_lake/cortex/brain.py:1309#_consume_perception; src/snn_data_lake/cortex/brain.py:1422#_route_percept_to_action; src/snn_data_lake/cortex/brain.py:1167#_safe_ctx | novelty_120.txt | opus-5 charge_probe novelty 120, both import shapes | 2026-07-30 |
 | predictive_coding_prediction_error | 40 | src/snn_data_lake/cortex/live_brain.py:169#tick; src/snn_data_lake/cortex/brain.py:1836#_wake_tick; src/snn_data_lake/cortex/brain.py:1723#_w8_tick | - | opus-5 live-brain census, 40 ticks, seed 0 | 2026-07-30 |
@@ -46,11 +46,14 @@ in this file:
 
 1. **Recorder shape** -- `PYTHONPATH=<root>/src`, probe launched from `tools/`. This is exactly what
    `coverage_score.py record` (`tools/coverage_score.py:312`) sets. `training` is **not importable**,
-   so `brain.py:562`'s `from training.eprop_nmnist import EpropEncoder` raises inside the guard at
-   `brain.py:525-610` *(measured 2026-08-05; PARTIALLY SUPERSEDED 2026-08-12 -- eprop_nmnist is
-   in-package `cortex/` now so ITS import resolves under this shape, while surrogate_snn/eprop_shd
-   remain root-tier; the tier's recorder-shape behavior owes a re-measure at the next sweep)*,
-   the handler sets `perception_tier="stdlib"`, and `_perceiving_real` /
+   so the root-tier perception imports raise inside the guard try at `brain.py:597-683` *(measured
+   2026-08-05 against the then-root-tier vision import; RE-MEASURED 2026-08-12 at the eprop_nmnist
+   promotion review, and the observable is UNCHANGED: the now-in-package `cortex.eprop_nmnist`
+   import at :634 succeeds, but `from training.eprop_shd import ...` at :668 still raises in the
+   SAME try and the blanket `except` at :679-683 rolls the WHOLE tier back -- probed: tier
+   `stdlib`, `_perceiving_real=False`, with `cortex.eprop_nmnist` confirmed imported during
+   construction. Promoting siblings cannot move this observable while any root-tier import shares
+   the one try)*, the handler sets `perception_tier="stdlib"`, and `_perceiving_real` /
    `_perceiving_audio` are both `False`. Measured: `perceived_digit=None`, `perception_unified=False`,
    `attention_real=None`, `real_perception_units=0`, `crossmodal_objects=0`, `_percept_value` empty.
 2. **Daemon shape** -- repo root *and* `src` importable, which is what `python learn_daemon.py` from
@@ -185,12 +188,12 @@ Format: `capability` -- provider -- liveness.
   no live caller (the fixed `encode_multimodal` is what runs).
 - rate -> time-to-first-spike code, van Rossum / Victor-Purpura distances --
   `cortex/spike_preprocessing.py` -- called on the live tick through the amygdala only, output constant.
-- real event-vision transduction (e-prop, no backprop) -- `cortex/eprop_nmnist.py` (promoted from training/ 2026-08-12) via
+- real event-vision transduction (e-prop, no backprop) -- `cortex/eprop_nmnist.py` (promoted from training/ 2026-08-12) via `cortex/brain.py:634` --
   `cortex/brain.py:564` -- daemon shape only.
-- real event-audio transduction (e-prop) -- `training/eprop_shd.py` via `cortex/brain.py:596` --
+- real event-audio transduction (e-prop) -- `training/eprop_shd.py` via `cortex/brain.py:670` --
   daemon shape only.
 - surrogate-BPTT vision encoder (fallback tier) -- `training/surrogate_snn.py` via
-  `cortex/brain.py:576` -- shadowed whenever the e-prop checkpoint exists, so never live here.
+  `cortex/brain.py:648` -- shadowed whenever the e-prop checkpoint exists, so never live here.
 - generative spiking predictive-coding cortex, settle-to-percept -- `cortex/pc_cortex_serve.py` via
   `Brain.perceive_pc` -- checkpoint loads, no live-tick caller.
 - live predictive-coding prediction error over the sensory pattern -- `cortex/predictive_coding.py`

@@ -136,8 +136,10 @@ def main():
     print(f"arms: A wired / B1 jepa_prediction=0 / B2 conflict=0 / C both,  seed 0, n={n}")
     print(f"prediction_error calls on the wired run (A)   : {sum(fA)}")
     print(f"wake ticks on the wired run (A)               : {phA.count('awake')}/{n}")
-    print(f"distinct A values act/action/traj             : {len(set(aA))} / {len(set(cA))} / "
-          f"{len({repr(x) for x in pA})}")
+    print(
+        f"distinct A values act/action/traj             : {len(set(aA))} / {len(set(cA))} / "
+        f"{len({repr(x) for x in pA})}"
+    )
     # Printed one observable per line in charge_probe's canonical `n/N ticks` form, NOT as a compact
     # triple, and the reason is the hole documented above `coverage_score._fingerprint`: that regex
     # matches only `(\d+)/(\d+) ticks`, so a probe reporting `0/60 23/60 47/60` fingerprints as the
@@ -167,27 +169,39 @@ def main():
     ctl = set(d["A-D (novelty ctl)"][1])
     tgt = set(d["A-B1 (jepa)"][1])
     print(f"control tick set == the two under test        : {ctl == tgt}")
-    print(f"control shares {len(ctl & tgt)} of the {len(tgt)} flip ticks     "
-          f"      : jaccard {len(ctl & tgt) / max(1, len(ctl | tgt)):.3f}")
-    print(f"onset tick action/traj, jepa   (1-indexed)    : "
-          f"{(d['A-B1 (jepa)'][1] or [None])[0]} / {(d['A-B1 (jepa)'][2] or [None])[0]}")
-    print(f"onset tick action/traj, conflict (1-indexed)  : "
-          f"{(d['A-B2 (conflict)'][1] or [None])[0]} / {(d['A-B2 (conflict)'][2] or [None])[0]}")
+    print(
+        f"control shares {len(ctl & tgt)} of the {len(tgt)} flip ticks     "
+        f"      : jaccard {len(ctl & tgt) / max(1, len(ctl | tgt)):.3f}"
+    )
+    print(
+        f"onset tick action/traj, jepa   (1-indexed)    : "
+        f"{(d['A-B1 (jepa)'][1] or [None])[0]} / {(d['A-B1 (jepa)'][2] or [None])[0]}"
+    )
+    print(
+        f"onset tick action/traj, conflict (1-indexed)  : "
+        f"{(d['A-B2 (conflict)'][1] or [None])[0]} / {(d['A-B2 (conflict)'][2] or [None])[0]}"
+    )
     onset = (d["A-B1 (jepa)"][1] or [None])[0]
     if onset:
         pre = sum(fA[: onset - 1])
         print(f"--- both signals were LIVE before the shared onset tick {onset} ---")
         print(f"prediction_error calls on ticks 1..{onset - 1:<24}: {pre}")
-        print(f"wired _conflict was nonzero on ticks 1..{onset - 1:<19}: "
-              f"{sum(1 for x in kA[: onset - 1] if x)}")
-        print("so neither neuter's onset is that signal's FIRST FIRING; it is the first tick on "
-              "which a perturbation propagated to the gate's winner.")
+        print(
+            f"wired _conflict was nonzero on ticks 1..{onset - 1:<19}: "
+            f"{sum(1 for x in kA[: onset - 1] if x)}"
+        )
+        print(
+            "so neither neuter's onset is that signal's FIRST FIRING; it is the first tick on "
+            "which a perturbation propagated to the gate's winner."
+        )
     print("--- what the arms actually chose at the first shared divergent ticks ---")
     shown = sorted(set(d["A-B1 (jepa)"][1][:6]) | set(d["A-B2 (conflict)"][1][:6]))
     for t in shown:
         i = t - 1
-        print(f"  tick {t:>3} {phA[i]:<6} perr_calls={fA[i]} conflict={kA[i]}"
-              f"  A={cA[i]} B1={cB1[i]} B2={cB2[i]} C={cC[i]}")
+        print(
+            f"  tick {t:>3} {phA[i]:<6} perr_calls={fA[i]} conflict={kA[i]}"
+            f"  A={cA[i]} B1={cB1[i]} B2={cB2[i]} C={cC[i]}"
+        )
 
     if sum(fA) == 0:
         print("NOT-ELIGIBLE: prediction_error never fired -- no verdict")

@@ -15,7 +15,7 @@ and it is not a minor omission -- the modules it makes visible carry the brain's
 (two of the original three remain), reached on the CONSTRUCTION path.
 
 All three sit in the body of ONE `try` inside `cortex/brain.py::Brain.__init__` (the try spans
-:557-643; the SYMBOL is given first because POLICIES.md records brain.py line cites rotting twice
+:597-683; the SYMBOL is given first because POLICIES.md records brain.py line cites rotting twice
 within a day, and `ast` puts the enclosing symbol beyond doubt -- it is also why "reached on the
 CONSTRUCTION path" above is a measurement and not a guess) under a single `except Exception`
 with no `as name` -- a swallow by this module's own definition, VERIFIED by `ast` rather than by
@@ -111,8 +111,10 @@ UNGOVERNED = ("reasoning", "training")
 # Re-resolved 2026-08-12 at the PROMOTE lane: `eprop_nmnist` is IN-PACKAGE now
 # (`snn_data_lake.cortex.eprop_nmnist`, brain.py:634), so the ROOT shape carries the remaining two,
 # `training.surrogate_snn` (:646) and `training.eprop_shd` (:668), both in the body of the ONE
-# `try` at brain.py:557-643. Widening the scan is what made them visible; it does NOT make
-# brain.py's own import CWD-proof (see broken()).
+# `try` at brain.py:597-683 (span re-derived by AST at the 2026-08-12 review pass -- the old
+# :557-643 predated insertions above it and had itself rotted, exactly the failure :18 names).
+# Widening the scan is what made them visible; it does NOT make brain.py's own import CWD-proof
+# (see broken()).
 # The four-gates-green list above holds for them VERBATIM: coverage `omit` is
 # the glob `*/training/*`, and ruff `extend-exclude` names the root `"training"` entry explicitly.
 #
@@ -215,7 +217,7 @@ def broken(man=None):
     eprop_nmnist promotion made :634 in-package) resolves only if the REPO ROOT is on
     sys.path, which `PYTHONPATH=src` alone does not put there -- it arrives as sys.path[0], set from
     the start directory at interpreter start. A brain whose process did not start in the repo root
-    therefore drops its whole perception tier into the single `except Exception` at brain.py:557-643
+    therefore drops its whole perception tier into the single `except Exception` at brain.py:597-683
     and ticks on at the fallback tier. MEASURED, and the invocation form decides it, so do not
     generalise either way: under `-m` or `script.py` sys.path[0] is an ABSOLUTE path fixed at
     interpreter start, and a later `os.chdir` to the repo root does NOT repair the import (printed
@@ -269,13 +271,13 @@ def main():
     # two call sites) legitimately left the manifest -- same shrink-by-promotion case, and the
     # floor keeps its one-target slack rather than parking on the new count of 12.
     # Floor lowered 11 -> 10 on 2026-08-12 (PROMOTE lane, nef_compute -> cortex/): its one
-    # target (the nengo_bridge:470 function-level reach) legitimately left the manifest -- same
+    # target (the nengo_bridge:471 function-level reach) legitimately left the manifest -- same
     # shrink-by-promotion case, one-target slack kept. Three more READY promotions in this lane
     # (vsa_structure_mapping, rose_language, eprop_nmnist) each remove one target; each lowers
     # this floor by one IN ITS OWN COMMIT, per the batch discipline the regenerated
     # promotion-plans.json records (a second removal without its lowering reds this line).
     # Floor lowered 10 -> 9 on 2026-08-12 (PROMOTE lane 2/4, vsa_structure_mapping -> cortex/):
-    # its one target (the brain.py:928 lazy reach) left the manifest; same convention.
+    # its one target (the brain.py:924 lazy reach) left the manifest; same convention.
     # Floor lowered 9 -> 8 on 2026-08-12 (PROMOTE lane 3/4, rose_language -> cortex/): its one
     # target (the brain.py _rose_serve lazy reach; tools/ is not scanned) left the manifest.
     # Floor lowered 8 -> 7 on 2026-08-12 (PROMOTE lane 4/4, eprop_nmnist -> cortex/ TORCH_TIER):

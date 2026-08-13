@@ -16,7 +16,7 @@ TWO CLAIMS IN THIS PARAGRAPH WERE WRONG AND ARE CORRECTED 2026-08-04. It said "N
 "the zero-dep core NEVER imports this". (1) There is no zero-dep core: the zero-dependency rule was
 abolished project-wide on 2026-07-20 and P7 replaced it, so "not zero-dep" is not a caveat about
 anything. (2) The no-importers claim is FALSE and matters, because it is what makes this file look
-detachable: `training/surrogate_snn.py::ng_snn_data_file` and `training/eprop_nmnist.py::_ng_snn_dir`
+detachable: `training/surrogate_snn.py::ng_snn_data_file` and `cortex/eprop_nmnist.py::_ng_snn_dir` (governed since 2026-08-12; the walk survives the move, re-verified 3 hops)
 both locate THIS FILE by walking up from their own `__file__`, and those two modules are the vision
 encoders `cortex/brain.py` loads on the live construction path (`SNN_EPROP_CKPT` first,
 `SNN_PERCEPTION_CKPT` as the fallback). Deleting or renaming this file breaks the brain's perception

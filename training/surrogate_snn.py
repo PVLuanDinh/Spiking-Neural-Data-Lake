@@ -477,7 +477,7 @@ def train_and_eval(args, device):
         f"(T={args.T}, {min(args.limit or 10**12, 60000)} train samples, {args.epochs} epoch(s))"
     )
     print("HONEST: small-scale number, not SOTA and not extrapolated. The brain-native e-prop")
-    print("encoder (training/eprop_nmnist.py) is PREFERRED; this is the fallback tier, and the")
+    print("encoder (cortex/eprop_nmnist.py, governed since 2026-08-12) is PREFERRED; this is the fallback tier, and the")
     print(f"brain uses stdlib perception when no checkpoint exists. Latent dim = {args.hidden}.")
     print("=" * 72)
 
