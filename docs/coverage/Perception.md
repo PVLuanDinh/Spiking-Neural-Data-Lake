@@ -47,7 +47,10 @@ in this file:
 1. **Recorder shape** -- `PYTHONPATH=<root>/src`, probe launched from `tools/`. This is exactly what
    `coverage_score.py record` (`tools/coverage_score.py:312`) sets. `training` is **not importable**,
    so `brain.py:562`'s `from training.eprop_nmnist import EpropEncoder` raises inside the guard at
-   `brain.py:525-610`, the handler sets `perception_tier="stdlib"`, and `_perceiving_real` /
+   `brain.py:525-610` *(measured 2026-08-05; PARTIALLY SUPERSEDED 2026-08-12 -- eprop_nmnist is
+   in-package `cortex/` now so ITS import resolves under this shape, while surrogate_snn/eprop_shd
+   remain root-tier; the tier's recorder-shape behavior owes a re-measure at the next sweep)*,
+   the handler sets `perception_tier="stdlib"`, and `_perceiving_real` /
    `_perceiving_audio` are both `False`. Measured: `perceived_digit=None`, `perception_unified=False`,
    `attention_real=None`, `real_perception_units=0`, `crossmodal_objects=0`, `_percept_value` empty.
 2. **Daemon shape** -- repo root *and* `src` importable, which is what `python learn_daemon.py` from
@@ -182,7 +185,7 @@ Format: `capability` -- provider -- liveness.
   no live caller (the fixed `encode_multimodal` is what runs).
 - rate -> time-to-first-spike code, van Rossum / Victor-Purpura distances --
   `cortex/spike_preprocessing.py` -- called on the live tick through the amygdala only, output constant.
-- real event-vision transduction (e-prop, no backprop) -- `training/eprop_nmnist.py` via
+- real event-vision transduction (e-prop, no backprop) -- `cortex/eprop_nmnist.py` (promoted from training/ 2026-08-12) via
   `cortex/brain.py:564` -- daemon shape only.
 - real event-audio transduction (e-prop) -- `training/eprop_shd.py` via `cortex/brain.py:596` --
   daemon shape only.

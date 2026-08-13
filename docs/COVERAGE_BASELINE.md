@@ -76,7 +76,7 @@ returns nothing. Verified empirically by redirecting `SNN_EPROP_CKPT` / `SNN_EPR
 `LearnedAttention.attend` is never called at all. The 92.97% figure is measured on the same 256 frames
 cycled forever.
 
-The weights are gitignored for good reason — they are large binaries — and `training/eprop_nmnist.py`
+The weights are gitignored for good reason — they are large binaries — and `cortex/eprop_nmnist.py` (promoted from training/ 2026-08-12)
 and `training/eprop_shd.py` regenerate them. That is now written down in
 [`TRAINING.md`](TRAINING.md); until this baseline it was not, anywhere, which made the perception tier
 exactly the kind of unreproducible claim the rubric exists to prevent.

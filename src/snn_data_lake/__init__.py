@@ -406,7 +406,17 @@ REGIONS = {
 # is present. Every OTHER torch-trained organ (pc_cortex_serve, brain, jepa/hjepa serve,
 # neurogenesis) imports lazily and lives in REGIONS above. See brain_atlas for the gated verification.
 TORCH_TIER = {
-    "cortex": ["neurogenesis_engine", "language_acquisition"],
+    "cortex": [
+        "neurogenesis_engine",
+        "language_acquisition",
+        # PROMOTED 2026-08-12 (PROMOTE lane 4/4, was training/eprop_nmnist.py): the brain's
+        # N-MNIST perception encoder (e-prop, cosine>0.5 vs BPTT asserted in-check). TORCH_TIER
+        # because torch is imported at module top; reached on Brain's CONSTRUCTION path
+        # (brain.py's perception-tier try block). P2 debt recorded at the promotion: FIVE
+        # top-level defs byte-identical with training/eprop_shd.py -- the MERGE (one shared
+        # governed e-prop kernel) belongs to eprop_shd's own blocked lane.
+        "eprop_nmnist",
+    ],
     "hippocampus": ["ng_snn"],
 }
 

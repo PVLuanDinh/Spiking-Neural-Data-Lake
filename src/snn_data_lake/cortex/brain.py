@@ -631,7 +631,7 @@ class Brain:
             if os.path.exists(
                 _eprop
             ):  # BRAIN-NATIVE first: the e-prop-trained encoder (no backprop)
-                from training.eprop_nmnist import EpropEncoder
+                from snn_data_lake.cortex.eprop_nmnist import EpropEncoder
 
                 self._perception_enc = _load_enc(EpropEncoder.load, _eprop)
                 self._perception_tier = "eprop-snn"

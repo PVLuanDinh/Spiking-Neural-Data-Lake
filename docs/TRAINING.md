@@ -19,7 +19,7 @@ tier an unreproducible claim. Perception needs **two kinds of artifact**, and bo
 **1. The encoder weights** (`.pt`) — what does the perceiving:
 
 ```bash
-.venv-lake/Scripts/python training/eprop_nmnist.py    # -> models/eprop_nmnist.pt  (vision, N-MNIST)
+PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.cortex.eprop_nmnist --train   # -> models/eprop_nmnist.pt  (vision; promoted from training/ 2026-08-12)
 .venv-lake/Scripts/python training/eprop_shd.py       # -> models/eprop_shd.pt     (audio, SHD)
 ```
 

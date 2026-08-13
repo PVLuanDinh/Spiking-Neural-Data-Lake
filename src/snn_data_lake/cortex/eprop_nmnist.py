@@ -103,11 +103,13 @@ between tiers cannot silently repoint or mis-bind it. That reach happens only on
   --train --epochs 1 --limit 4000 --save models/eprop_nmnist.pt
                                        short real N-MNIST e-prop train -> test accuracy (needs tonic
                                        + the dataset). Add --device cuda for the RTX 5070.
-  e.g.  PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python training/eprop_nmnist.py
-  (This line read `python -m snn_data_lake.cortex.eprop_nmnist` until 2026-08-04. That module does
-  not exist -- the promotion it anticipated has not happened, this file is still `training/`. RUN,
-  not read: it exits 1 with "No module named snn_data_lake.cortex.eprop_nmnist". The docstring below
-  still describes the promotion as pending, which is correct; the runnable line was not.)
+  e.g.  PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.cortex.eprop_nmnist
+  (This line has now come TRUE twice over: it read `python -m snn_data_lake.cortex.eprop_nmnist`
+  until 2026-08-04, when that module did not exist and the line was corrected to the training/
+  path with a note that the promotion it anticipated had not happened. On 2026-08-12 the PROMOTE
+  lane executed exactly that promotion -- this file IS `cortex/eprop_nmnist.py`, registered in the
+  TORCH_TIER annex (torch at module top) and run_selfchecks TORCH_GATED. RUN, not read, both
+  times: the pre-promotion exit-1 was executed then, and the post-promotion run is the gate now.)
 
 ASCII-only output (Windows cp1252-safe -- the promoted self-check runs in-process under pytest).
 Every RNG is per-instance seeded; this module sets no global torch seed (verified not load-bearing:

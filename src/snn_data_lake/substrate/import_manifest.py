@@ -8,10 +8,11 @@ into the UNGOVERNED tiers (reasoning/, training/) through LAZY imports that sit 
 Those imports come in TWO SHAPES and until 2026-08-05 this gate could only see one. The in-package
 shape is prefixed (`snn_data_lake.reasoning.schema_induction`; the example here was `rose_language`
 until its 2026-08-12 promotion took it out of the manifest). The ROOT shape is a bare top-level name,
-because the root tier is not inside the package at all: `from training.eprop_nmnist import
-EpropEncoder` (cortex/brain.py:594). `UNGOVERNED_ROOT` below is that second shape, and it is not a
-minor omission -- the three modules it makes visible carry the brain's ENTIRE perception tier, and
-they are reached on the CONSTRUCTION path.
+because the root tier is not inside the package at all: `from training.eprop_shd import
+EpropAudioEncoder` (cortex/brain.py:668; the example was `training.eprop_nmnist` until its
+2026-08-12 promotion made that import in-package). `UNGOVERNED_ROOT` below is that second shape,
+and it is not a minor omission -- the modules it makes visible carry the brain's perception tier
+(two of the original three remain), reached on the CONSTRUCTION path.
 
 All three sit in the body of ONE `try` inside `cortex/brain.py::Brain.__init__` (the try spans
 :557-643; the SYMBOL is given first because POLICIES.md records brain.py line cites rotting twice
@@ -105,11 +106,13 @@ UNGOVERNED = ("reasoning", "training")
 
 # ROOT shape: tiers that live OUTSIDE the package, so a governed module names them by their BARE
 # top-level name and the prefixed test above can never match. ADDED 2026-08-05: `cortex/brain.py`
-# builds the perception tier from `training.eprop_nmnist` (:594), `training.surrogate_snn` (:606) and
-# `training.eprop_shd` (:628) -- all three line citations re-resolved against the file today, all
-# three in the body of the ONE `try` at brain.py:557-643 (`ast`-verified) -- and all three were
-# invisible to the one gate built for exactly this failure. Widening the scan is what makes them
-# visible; it does NOT make brain.py's own import CWD-proof (see broken()).
+# built the perception tier from `training.eprop_nmnist`, `training.surrogate_snn` and
+# `training.eprop_shd` -- all three invisible to the one gate built for exactly this failure.
+# Re-resolved 2026-08-12 at the PROMOTE lane: `eprop_nmnist` is IN-PACKAGE now
+# (`snn_data_lake.cortex.eprop_nmnist`, brain.py:634), so the ROOT shape carries the remaining two,
+# `training.surrogate_snn` (:646) and `training.eprop_shd` (:668), both in the body of the ONE
+# `try` at brain.py:557-643. Widening the scan is what made them visible; it does NOT make
+# brain.py's own import CWD-proof (see broken()).
 # The four-gates-green list above holds for them VERBATIM: coverage `omit` is
 # the glob `*/training/*`, and ruff `extend-exclude` names the root `"training"` entry explicitly.
 #
@@ -197,17 +200,19 @@ def broken(man=None):
     dependency, so if it is ever absent these three targets correctly report BROKEN.
 
     The ROOT tier is resolved against `_ROOT_DIR`, never against the CWD. MEASURED 2026-08-05 with
-    `PYTHONPATH=src`: `training.eprop_nmnist` imports when the process starts in the repo root
+    `PYTHONPATH=src` (on `training.eprop_nmnist`, then still root-tier; `training.eprop_shd` carries
+    the same shape today): the root module imports when the process starts in the repo root
     (`python -m` puts the CWD at sys.path[0] -- printed 'D:\\AI-project\\spiking-neural-data-lake')
     and raises `ModuleNotFoundError: No module named 'training'` from any other directory. A
-    CWD-resolved gate would therefore report all three perception modules BROKEN whenever it ran from
+    CWD-resolved gate would therefore report the root-tier perception modules BROKEN whenever it ran from
     elsewhere: a red about the caller, not about the tree, and a gate whose colour depends on the CWD
     is not an instrument. The insert is function-scoped and undone in `finally` -- there is
     deliberately no module-scope sys.path mutation, because run_selfchecks runs part of the suite in
     one process.
 
     NOT COVERED, and it is a real defect in a file this gate does not own: the LIVE
-    `from training....` in `cortex/brain.py::Brain.__init__` (:594/:606/:628) resolves only if the REPO ROOT is on
+    `from training....` in `cortex/brain.py::Brain.__init__` (:646/:668 since the 2026-08-12
+    eprop_nmnist promotion made :634 in-package) resolves only if the REPO ROOT is on
     sys.path, which `PYTHONPATH=src` alone does not put there -- it arrives as sys.path[0], set from
     the start directory at interpreter start. A brain whose process did not start in the repo root
     therefore drops its whole perception tier into the single `except Exception` at brain.py:557-643
@@ -273,7 +278,11 @@ def main():
     # its one target (the brain.py:928 lazy reach) left the manifest; same convention.
     # Floor lowered 9 -> 8 on 2026-08-12 (PROMOTE lane 3/4, rose_language -> cortex/): its one
     # target (the brain.py _rose_serve lazy reach; tools/ is not scanned) left the manifest.
-    assert len(man) >= 8, f"manifest collapsed to {len(man)} targets -- scan regression?"
+    # Floor lowered 8 -> 7 on 2026-08-12 (PROMOTE lane 4/4, eprop_nmnist -> cortex/ TORCH_TIER):
+    # its root-shape target (brain.py's perception-tier construction reach) became in-package.
+    # The lane is complete; the next lowering belongs to whichever future promotion removes a
+    # target, same convention.
+    assert len(man) >= 7, f"manifest collapsed to {len(man)} targets -- scan regression?"
 
     # ROOT-TIER COVERAGE, asserted STRUCTURALLY so that no COUNT arbitrates it. The comment above
     # used to claim the floor of 13 was "also the value that makes root-tier blindness itself red".

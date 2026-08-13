@@ -9,6 +9,33 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- PROMOTE lane 4/4: eprop_nmnist -> cortex/ TORCH_TIER -- the vision encoder in-package, the lane closes (2026-08-12p)
+
+Fourth and last READY promotion. training/eprop_nmnist.py ->
+cortex/eprop_nmnist.py in the TORCH_TIER annex (torch at module top;
+run_selfchecks TORCH_GATED, bare check ~6s CPU). The load-bearing co-edit,
+verified at RUNTIME not by import success: brain.py:634's perception-tier
+reach retargeted, and a constructed brain reports perception_tier=eprop-snn /
+perceiving_real=True through the new path -- the silent drop into the
+:557-643 blanket except that three asserting gates hinge on did not happen.
+import_manifest floor 8 -> 7 (the lane's last lowering; the ROOT-shape
+example and perception-tier prose re-derived -- two of the original three
+root targets remain); docs/TRAINING.md:22's runnable line now the -m form;
+the module docstring's remarkable history inverted a second time (the line
+that anticipated `python -m snn_data_lake.cortex.eprop_nmnist` in 2026-08-04,
+was corrected to training/ with a promotion-pending note, is now simply
+true). AUDIT_BACKLOG M37: the eprop_nmnist half CLOSED on measurement (the
+upward walk + bind assert close it by number; re-run from the new home, 3
+hops, resolves) -- the surrogate_snn half stays open with its blocked lane.
+Perception.md / SpatialTemporal.md recorder-shape paragraphs annotated
+(measured 2026-08-05, partially superseded: the vision import now resolves
+in-package under PYTHONPATH=src; re-measure owed at the next sweep).
+P2 debt recorded at the TORCH_TIER entry: FIVE top-level defs byte-identical
+with training/eprop_shd.py -- the one-shared-kernel MERGE belongs to
+eprop_shd's blocked lane, and a half-merge is the shape import_manifest
+cannot see (ungoverned importing governed). Atlas 230 (4 torch-tier);
+manifest 8 targets; dormancy green.
+
 ## [Unreleased] -- PROMOTE lane 3/4: rose_language -> cortex/, the language faculty governed (2026-08-12o)
 
 Third READY promotion, to its skeptic-verified co-edit list. reasoning/ ->
