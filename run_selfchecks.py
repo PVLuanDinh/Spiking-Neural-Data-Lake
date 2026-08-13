@@ -111,6 +111,7 @@ CORE = [
     "cortex.competence_executive",  # PROMOTED+RENAMED 2026-08-12 (#10 lane 4f): dopamine-RPE lr gate + public competence-planning objects (wrappers retired same day); stdlib-only, ~1s
     "cortex.nef_compute",  # PROMOTED 2026-08-12 (PROMOTE lane): NEF reference implementation / nengo_bridge ground truth; numpy-only, ~0.2s
     "cortex.vsa_structure_mapping",  # PROMOTED 2026-08-12 (PROMOTE lane): Gentner structure-mapping analogy (VSA/resonator); stdlib, ~0.1s
+    "cortex.rose_language",  # PROMOTED 2026-08-12 (PROMOTE lane): ROSE fluent-language pipeline (VSA constituency + grounded semantics + SLDA competence); ~0.5s
     "cortex.time_cells",
     "cortex.task_set",
     "cortex.generative_self_model",  # C1: spiking clock / task-set-shift / learned generative self-model
@@ -364,7 +365,6 @@ RESEARCH = [
     "reasoning.derivation",  # multi-hop transitive DEDUCTION (proof-carrying BFS over taught facts)
     "reasoning.reasoning_compose",  # MULTI-STEP composition over the MoE router (bounded expert grammar)
     "reasoning.pc_abduction",  # ABDUCTION (min-free-energy cause selection) + Pearl 3-step counterfactual
-    "reasoning.rose_language",  # ROSE fluent-language pipeline: VSA constituency + grounded semantics + SLDA competence
     "reasoning.rpm_solver",  # spiking NVSA Raven's-matrix solver: role-filler + example->rule induction (Gf)
     "reasoning.raven_bench",  # honest RPM benchmark (synthetic tasks + failing random control)
     "reasoning.vsa_synthesize",  # OUT-OF-GRAMMAR Gf: synthesizes novel rules as VSA spike-op programs (no fixed menu)

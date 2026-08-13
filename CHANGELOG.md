@@ -9,6 +9,30 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- PROMOTE lane 3/4: rose_language -> cortex/, the language faculty governed (2026-08-12o)
+
+Third READY promotion, to its skeptic-verified co-edit list. reasoning/ ->
+cortex/: REGIONS + run_selfchecks RESEARCH -> CORE (the move the module's own
+docstring argued for -- it puts the self-check in-process and 365 statements
+into the coverage denominator at 86% self-covered); import_manifest floor
+9 -> 8 (the brain.py _rose_serve lazy reach left the manifest; the gate's own
+:9 prose example and :54 faculty roster de-rosed with dated notes). Retargets:
+brain.py:4077, tools/blimp_baseline.py:76 (linted; a stale path reds the lint
+job) + its :9 prose. Docs re-derived, more than the analyst's list: five
+Language.md cites (parse :274, comprehend :585, generate :626, the runnable
+-m command doc_command_guard scans), SpatialTemporal.md :19/:211 (also fixes
+the stale reasoning/polychronization path -- cerebellum/ today),
+TRAINING.md:213, DEPTH_CEILINGS.md:176. P3/P4b debt carried visibly in the
+REGIONS comment, NOT discharged by the move (AUDIT_BACKLOG H7,
+runtime-reproduced at the promotion audit): nightly_refit moves the SLDA
+statistics while competence() returns the build-time cache byte-identical;
+the refit filter accepts a novel HEAD coded OOV-zero; _readout reaches
+brain_lake.bin nowhere. P2 direction recorded: rose's derived
+parameterisation is THE mechanism, world_kb_stream main()'s four-literal demo
+copy consumes it or retires at the family's next lane. Self-check green at
+the new path; atlas 229 parity exact; manifest 9 targets; dormancy green
+(live via _rose_serve).
+
 ## [Unreleased] -- PROMOTE lane 2/4: vsa_structure_mapping -> cortex/, the analogy faculty governed (2026-08-12n)
 
 Second READY promotion, to its skeptic-verified co-edit list. reasoning/ ->

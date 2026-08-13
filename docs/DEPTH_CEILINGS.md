@@ -173,7 +173,7 @@ update during evaluation, or the benchmark would teach the model its own test.
 |---|---|
 | char-bigram fitted on the same exposure text | **52.8%** |
 | acquired-LM — `cortex/language_acquisition.py`, the online locally-plastic learner | **51.0%** |
-| ROSE `comprehend` — `reasoning/rose_language.py` | **no signal** |
+| ROSE `comprehend` — `cortex/rose_language.py` (promoted 2026-08-12) | **no signal** |
 
 Three findings, all worse than the release-note framing:
 

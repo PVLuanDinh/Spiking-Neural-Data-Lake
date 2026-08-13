@@ -10,12 +10,12 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 | comprehension_intent_firewall | 40 | src/snn_data_lake/cortex/brain.py:2978#respond | - | opus-5 language-auditor / live respond() route census, seed 0 | 2026-07-30 |
 | generation_narrator | 35 | src/snn_data_lake/cortex/self_model.py:411#introspect; src/snn_data_lake/cortex/brain.py:3063#respond | - | opus-5 language-auditor / live respond() route census + benevolence turn, seed 0 | 2026-07-30 |
 | pragmatics_implicature | 32 | src/snn_data_lake/reasoning/spike_chat_lake.py:1000#converse; src/snn_data_lake/reasoning/pragmatics.py:356#implicature | - | opus-5 language-auditor / live neuter-A/B on LakeChat._pragmatics, seed 0 | 2026-07-30 |
-| constituency_parse_rose | 28 | src/snn_data_lake/cortex/brain.py:3029#respond; src/snn_data_lake/reasoning/rose_language.py:222#parse | - | opus-5 language-auditor / live respond('parse ...') + shuffled-input control | 2026-07-30 |
+| constituency_parse_rose | 28 | src/snn_data_lake/cortex/brain.py:3029#respond; src/snn_data_lake/cortex/rose_language.py:274#parse | - | opus-5 language-auditor / live respond('parse ...') + shuffled-input control (path+line re-derived at the 2026-08-12 promotion) | 2026-07-30 |
 | nightly_language_skill | 25 | src/snn_data_lake/reasoning/nightly_skills.py:299#_ensure_domains; src/snn_data_lake/cortex/brain.py:2576#_enter_sleep | - | opus-5 language-auditor / static read of the sleep-tick consumer, NOT runtime | 2026-07-30 |
 | comprehension_learned_intent_router | 22 | src/snn_data_lake/cortex/live_brain.py:532#chat; src/snn_data_lake/cortex/live_brain.py:515#route | - | opus-5 language-auditor / caller search for the route() readout, static | 2026-07-30 |
 | grammar_competence_blimp | 12 | src/snn_data_lake/reasoning/blimp_bench.py:170#module; src/snn_data_lake/reasoning/ar_spiking_lm_serve.py:356#logprob | lang_blimp_bench_67x25.txt | opus-5 language-auditor / blimp_bench.py self-check, 67x25 pairs | 2026-07-30 |
 | core_spiking_lm_serve | 5 | src/snn_data_lake/cortex/spiking_lm_serve.py:96#generate | - | opus-5 language-auditor / weight-file search + caller search | 2026-07-30 |
-| rose_grounded_comprehension | 5 | src/snn_data_lake/reasoning/rose_language.py:443#comprehend | - | opus-5 language-auditor / live comprehend() on 3 ordinary sentences | 2026-07-30 |
+| rose_grounded_comprehension | 5 | src/snn_data_lake/cortex/rose_language.py:585#comprehend | - | opus-5 language-auditor / live comprehend() on 3 ordinary sentences (path+line re-derived at the 2026-08-12 promotion) | 2026-07-30 |
 | discourse_model | 0 | - | - | opus-5 language-auditor / tree-wide search, nothing implements it | 2026-07-30 |
 
 **Mean over the eleven rows: 244 / 11 = 22.2.** Zero rows are `UNSCORED`. Zero rows are above 40, so
@@ -85,7 +85,7 @@ template with VSA role-filler bindings behind it, not a constituency analysis.
 `comprehend` returned `{'known': False, 'answer': None, 'proposition': None, 'reason': 'ungrounded'}`
 for 3/3 of `'the cat sat on the mat'`, `'cat the mat sat on the'`, `'the robot moved the block'` --
 reproducing `DEPTH_CEILINGS.md:135-138`. The only callers of `.comprehend(` in the tree are
-`rose_language.py:492` (inside its own `generate`, itself self-check-only) and its self-check at
+`rose_language.py:626` (inside its own `generate`, itself self-check-only; line re-derived at the 2026-08-12 promotion) and its self-check at
 `:566-568`. `Brain` calls `rose.parse` and never `rose.comprehend`.
 
 **R6 -- pragmatics is live-wired and I neuter-A/B'd it. The stale claim was the "zero callers" one.**
@@ -200,7 +200,7 @@ Format: `file` -- unique capability -- **live consumer**.
   (`brain.py:3384,3426`).**
 - `cortex/self_model.py::SelfNarrator` -- deterministic state-grounded sentence generation; the only
   always-coherent generator in the stack. **`brain.py:2932,2951,2961`.**
-- `reasoning/rose_language.py` -- VSA role-filler parse string, KB-grounded `comprehend`, SLDA
+- `cortex/rose_language.py` (promoted from reasoning/ 2026-08-12) -- VSA role-filler parse string, KB-grounded `comprehend`, SLDA
   competence head. **`parse` only, via `brain.py:2898`.**
 - `reasoning/pragmatics.py` -- speech-act taxonomy, Gricean implicature, indirect-request detection,
   VSA-Hebbian learner. **`implicature` only, via `spike_chat_lake.py:1000`.**
@@ -261,7 +261,7 @@ python tools/coverage_score.py --rerun lang_no_ab_source          # exit 2, no l
 python tools/coverage_score.py --rerun lang_blimp_bench_67x25     # needs data/lang/blimp + models/ (gitignored)
 
 # the runtime readings above, in order (R1-R7); all read-only, none writes state
-PYTHONPATH=src PYTHONUTF8=1 .venv-lake/Scripts/python.exe -m snn_data_lake.reasoning.rose_language
+PYTHONPATH=src PYTHONUTF8=1 .venv-lake/Scripts/python.exe -m snn_data_lake.cortex.rose_language
 PYTHONPATH=src PYTHONUTF8=1 .venv-lake/Scripts/python.exe -m snn_data_lake.reasoning.pragmatics
 PYTHONPATH=src PYTHONUTF8=1 .venv-lake/Scripts/python.exe -m snn_data_lake.cortex.spiking_lm_serve
 ```

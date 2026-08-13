@@ -210,7 +210,7 @@ gradients larger than VRAM). AirLLM has no backward pass, so it is not a trainer
 > `ModuleNotFoundError` for anyone who tried it. What follows is the path that actually exists.
 
 The brain's language layer is `reasoning/spike_chat_lake.py::LakeChat`, reached live from
-`cortex/live_brain.py:450`, with `reasoning/rose_language.py` (`cortex/brain.py:3349`) behind it. It
+`cortex/live_brain.py:450`, with `cortex/rose_language.py` (`cortex/brain.py:4077`; promoted from reasoning/ 2026-08-12) behind it. It
 answers from the brain's own durable lake — learned facts, not a language model — and it is honest
 about gaps rather than fabricating: a query with no supporting fact returns `known=False`.
 

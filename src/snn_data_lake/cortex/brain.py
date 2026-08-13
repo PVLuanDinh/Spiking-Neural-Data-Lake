@@ -4074,7 +4074,7 @@ class Brain:
         MECHANISM, not fluent GPT-level generation."""
         if getattr(self, "_rose", "unset") == "unset":
             try:
-                from snn_data_lake.reasoning.rose_language import RoseLanguage
+                from snn_data_lake.cortex.rose_language import RoseLanguage
 
                 self._rose = RoseLanguage(seed=self._seed)
             except Exception:

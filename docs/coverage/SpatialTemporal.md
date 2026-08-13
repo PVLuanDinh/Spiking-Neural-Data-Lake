@@ -16,7 +16,7 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 | place_coding | 21 | src/snn_data_lake/hippocampus/grid_place_map.py:182#observe; src/snn_data_lake/cortex/brain.py:1365#_consume_perception | st_place_60.txt | opus-5 auditor / call instrumentation + spatiotemporal_probe.py place 60; band UNCHANGED but its rationale is superseded, see "The freeze is fixed" | 2026-07-30 |
 | grid_coding | 21 | src/snn_data_lake/hippocampus/grid_place_map.py:122#grid_code; src/snn_data_lake/hippocampus/grid_cells.py:71 | - | opus-5 auditor / call instrumentation, 60 ticks seed 0, daemon sys.path; band UNCHANGED, see "The freeze is fixed" | 2026-07-30 |
 | landmark_drift_correction | 21 | src/snn_data_lake/hippocampus/spiking_grid_can.py:250#observe_landmark; src/snn_data_lake/cortex/brain.py:1377#_consume_perception | - | opus-5 auditor / return-value instrumentation, 60 ticks seed 0 | 2026-07-30 |
-| sequence_memory_polychronous | 15 | src/snn_data_lake/reasoning/polychronization.py:23#DelayNetwork; src/snn_data_lake/reasoning/rose_language.py:306#dependency_order_ok | - | opus-5 auditor / static importer trace (STATIC ONLY, not runtime) | 2026-07-30 |
+| sequence_memory_polychronous | 15 | src/snn_data_lake/cerebellum/polychronization.py:23#DelayNetwork; src/snn_data_lake/cortex/rose_language.py:358#dependency_order_ok | - | opus-5 auditor / static importer trace (STATIC ONLY, not runtime; paths+line re-derived at the 2026-08-12 promotion) | 2026-07-30 |
 | sequence_prediction_sorn | 10 | src/snn_data_lake/reasoning/sorn.py:197#self_organize | - | opus-5 auditor / static importer trace (STATIC ONLY, not runtime) | 2026-07-30 |
 | heading_integration_ring_attractor | 10 | src/snn_data_lake/hippocampus/ring_attractor.py:101#ProprioceptiveEstimator; src/snn_data_lake/brainstem/live_arm.py:67#_make_observer | - | opus-5 auditor / static importer trace (STATIC ONLY, not runtime) | 2026-07-30 |
 
@@ -208,7 +208,7 @@ honest band for a static-only claim is low and saying which evidence it rests on
 
 - **sequence_memory_polychronous** -- `polychronization.py`'s `DelayNetwork` stores memory in spike
   timing (Izhikevich PGs), the closest thing in the repo to a real sequence code. Its only importer in
-  `src/` is `rose_language.py:306`, reached through `brain._rose_serve()` (`brain.py:3412-3424`), a
+  `src/` is `rose_language.py:358` (cortex/ since 2026-08-12), reached through `brain._rose_serve()` (`brain.py:4070-4082`), a
   lazily-built chat-path accessor. Live path, but not the wake tick: 15.
 - **sequence_prediction_sorn** -- `sorn.py` self-organises a recurrent net that beats a static
   reservoir on sequence prediction. No importer anywhere in `src/`; referenced only by

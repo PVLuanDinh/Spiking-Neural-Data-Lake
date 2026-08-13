@@ -6,7 +6,7 @@ Scorers, weakest to strongest existing mechanism:
                      (the "learn like a human, no backprop" learner). Sentence score = total
                      log-likelihood, computed READ-ONLY (no weight update during scoring, or the
                      benchmark would teach the model its own test).
-  2. rose         -- reasoning/rose_language.py comprehend(): accept/reject/gap over grounded structure.
+  2. rose         -- cortex/rose_language.py comprehend(): accept/reject/gap over grounded structure.
   3. char-bigram  -- a plain bigram model fitted on the same exposure text. Reference point: if the
                      spiking learner cannot beat a bigram table, its language knowledge is n-gram or less.
 
@@ -73,7 +73,7 @@ def build_acquired_lm():
 
 
 def build_rose_scorer():
-    from snn_data_lake.reasoning.rose_language import RoseLanguage
+    from snn_data_lake.cortex.rose_language import RoseLanguage
 
     rose = RoseLanguage(seed=0)
 

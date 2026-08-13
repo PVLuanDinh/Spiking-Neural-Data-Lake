@@ -6,7 +6,8 @@ into the UNGOVERNED tiers (reasoning/, training/) through LAZY imports that sit 
 `except Exception:` swallows.
 
 Those imports come in TWO SHAPES and until 2026-08-05 this gate could only see one. The in-package
-shape is prefixed (`snn_data_lake.reasoning.rose_language`). The ROOT shape is a bare top-level name,
+shape is prefixed (`snn_data_lake.reasoning.schema_induction`; the example here was `rose_language`
+until its 2026-08-12 promotion took it out of the manifest). The ROOT shape is a bare top-level name,
 because the root tier is not inside the package at all: `from training.eprop_nmnist import
 EpropEncoder` (cortex/brain.py:594). `UNGOVERNED_ROOT` below is that second shape, and it is not a
 minor omission -- the three modules it makes visible carry the brain's ENTIRE perception tier, and
@@ -50,8 +51,9 @@ Delete or break one of those targets and:
 after that runs without it, and a static reader still credits the faculty as wired. Three of the
 targets (`reasoning.godel_machine` and `reasoning.self_improve`, both from `substrate/self_mod_harness`,
 plus `reasoning.impact_analysis` from `basal_ganglia/brain_native_selfbuild`) ARE Policy 0's
-self-building-code avenue, so the whole avenue can be deleted with every gate green. One
-(`rose_language`) is the language faculty, and THREE are the perception tier (see `UNGOVERNED_ROOT`).
+self-building-code avenue, so the whole avenue can be deleted with every gate green. THREE are the
+perception tier (see `UNGOVERNED_ROOT`). (A fourth named here until 2026-08-12, `rose_language` the
+language faculty, left the manifest when its promotion made the brain.py reach governed->governed.)
 (This said "Two of the targets (`self_build_loop`, `self_mod_harness`)" until 2026-08-05 and named the
 wrong side of the edge: both are governed IMPORTERS -- `self_build_loop` was promoted into
 `basal_ganglia/` and is not a target at all, and `self_mod_harness` is the substrate module doing the
@@ -269,7 +271,9 @@ def main():
     # promotion-plans.json records (a second removal without its lowering reds this line).
     # Floor lowered 10 -> 9 on 2026-08-12 (PROMOTE lane 2/4, vsa_structure_mapping -> cortex/):
     # its one target (the brain.py:928 lazy reach) left the manifest; same convention.
-    assert len(man) >= 9, f"manifest collapsed to {len(man)} targets -- scan regression?"
+    # Floor lowered 9 -> 8 on 2026-08-12 (PROMOTE lane 3/4, rose_language -> cortex/): its one
+    # target (the brain.py _rose_serve lazy reach; tools/ is not scanned) left the manifest.
+    assert len(man) >= 8, f"manifest collapsed to {len(man)} targets -- scan regression?"
 
     # ROOT-TIER COVERAGE, asserted STRUCTURALLY so that no COUNT arbitrates it. The comment above
     # used to claim the floor of 13 was "also the value that makes root-tier blindness itself red".
