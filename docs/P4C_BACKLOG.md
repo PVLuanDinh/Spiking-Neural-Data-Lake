@@ -266,10 +266,12 @@ old record's 17 distinct modules, only 9 still exist ungoverned — 5 were promo
 recorded in the file's `settled` array with their execution commits. The 9 survivors were
 re-derived per-module by analyst + refute-by-default skeptic pairs (the lane-4f method): 4 READY
 (nef_compute, rose_language, vsa_structure_mapping, eprop_nmnist), 5 BLOCKED with re-verified
-blockers (schema_induction, snn_moe_classifier, spike_chat_lake). The e-prop pair BOTH left this
-list on 2026-08-13 at specs/013, by the two different legitimate exits: `surrogate_snn` RETIRED
-(deleted, not promoted) and `eprop_shd` PROMOTED to `cortex/`, with their shared engine merged into
-`cortex/eprop_kernel.py`. THREE blocked entries remain. Every
+blockers (schema_induction, spike_chat_lake). Three modules left this list on 2026-08-13. The e-prop
+pair went by the two different legitimate exits at specs/013 -- `surrogate_snn` RETIRED (deleted, not
+promoted) and `eprop_shd` PROMOTED to `cortex/`, with their shared engine merged into
+`cortex/eprop_kernel.py`. `snn_moe_classifier` then PROMOTED to `cortex/` once its one blocker (an
+unrestored process-global `random.seed(0)`, measured leaking) was fixed with brain_bundle's
+snapshot-seed-restore pattern. TWO blocked entries remain. Every
 entry carries its skeptic's overturned-claims audit trail; `_meta` records tree, method, and what
 it supersedes. Standing caution the regeneration re-proved: skeptics corrected 6-11 claims per
 module, including a READY entry whose co-edit list missed `import_manifest.py:264`'s floor assert:
