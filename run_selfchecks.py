@@ -135,6 +135,13 @@ CORE = [
     "cortex.nightly_skills",  # PROMOTED 2026-08-11 (#10 family C9a, from the RESEARCH list): the ONE standing skills loop, sleep-tick entry
     # hippocampus â€” memory formation, spatial coding, replay
     "hippocampus.grid_cells",
+    # MOVED RESEARCH -> CORE 2026-08-13. It was PROMOTED into hippocampus/ on 2026-08-11 (#10 family
+    # C7) and registered in REGIONS, but its run_selfchecks entry stayed in RESEARCH -- so for two
+    # days it was a GOVERNED module running out-of-process, outside the in-process pytest set, while
+    # every surface said it was governed. Found by census, not by eye: the identical defect had just
+    # been fixed for snn_moe_classifier by accident, so the class got mechanized (see the note at
+    # RESEARCH's head). Runs in 2.84 s, in line with its CORE neighbours.
+    "hippocampus.open_world_loop",
     "hippocampus.experience_replay",
     "hippocampus.sleep_replay",
     "hippocampus.ring_attractor",
@@ -356,7 +363,6 @@ RESEARCH = [
     "reasoning.spike_chat_lake",
     "reasoning.train_of_thought",
     "reasoning.concept_reflection",
-    "hippocampus.open_world_loop",  # PROMOTED 2026-08-11 (#10 family C7): discovery controller; inline %64 -> SIG import
     "reasoning.model_builder",
     # the 5 Gf inducers COMBINED (not merged) into one file: reasoning.gf
     "reasoning.gf",
@@ -494,6 +500,51 @@ MODULES = (
     + (TRAIN_GATED if _TRAIN else [])
     + RESEARCH
 )
+
+
+def _assert_tiers_agree_with_regions():
+    """A GOVERNED module may not sit in RESEARCH, and every governed module must be registered.
+
+    RESEARCH runs out-of-process and is excluded from the in-process pytest set
+    (`tests/test_selfchecks.py`: `_IN_PROCESS = CORE + TORCH_GATED`). So a module that is in
+    `REGIONS`/`TORCH_TIER` but listed in RESEARCH *looks* governed at every surface -- right
+    directory, REGIONS entry, p4c count falling -- while never being held to the CORE bar. Nothing
+    detected that, because each half is individually correct.
+
+    WHY THIS EXISTS, and the count that earned it. Two promotions landed this defect:
+    `hippocampus.open_world_loop` (2026-08-11) and `reasoning.snn_moe_classifier` -> cortex/
+    (2026-08-13). The second was caught only because someone happened to read which list the entry
+    was in; the first had sat governed-but-out-of-process for two days. A census over REGIONS x the
+    tier lists then found exactly ONE remaining (open_world_loop) -- so the class is real, recurring,
+    and small enough to close. Output when this check landed: 1, now 0.
+
+    Reachable red: move any REGIONS entry into RESEARCH, or delete a governed module's tier entry.
+    Both raise here. (The census that produced this first reported a SECOND finding,
+    `substrate.nengo_bridge` "registered nowhere" -- a FALSE POSITIVE from its own incomplete tier
+    list, which did not know NENGO_GATED existed. Hence `_ALL_TIERS` below is built from every tier,
+    not an enumerated guess: a checker with an incomplete denominator manufactures findings.)
+    """
+    try:
+        from snn_data_lake import REGIONS, TORCH_TIER
+    except Exception:  # pragma: no cover - import guard raises on a GIL build; not this check's job
+        return
+
+    governed = {f"{r}.{m}" for r, mods in REGIONS.items() for m in mods}
+    governed |= {f"{r}.{m}" for r, mods in TORCH_TIER.items() for m in mods}
+    _ALL_TIERS = set(CORE) | set(TORCH_GATED) | set(NENGO_GATED) | set(TRAIN_GATED) | set(RESEARCH)
+
+    in_research = sorted(governed & set(RESEARCH))
+    assert not in_research, (
+        "GOVERNED modules registered in RESEARCH -- they run out-of-process and escape the "
+        f"in-process pytest set while every other surface calls them governed: {in_research}"
+    )
+    unregistered = sorted(governed - _ALL_TIERS)
+    assert not unregistered, (
+        f"governed modules in NO run_selfchecks tier -- they are never self-checked: {unregistered}"
+    )
+
+
+_assert_tiers_agree_with_regions()
 
 
 def run_all():
