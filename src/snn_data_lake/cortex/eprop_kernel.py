@@ -335,14 +335,39 @@ def _self_check():
     assert latent.shape == (6, 8), latent.shape
 
     # (a) THE CLAIM: the eligibility factorization really is the factored gradient.
+    #
+    # ASSERTED ON THE HIDDEN WEIGHTS ONLY -- W_in and the off-diagonal W_rec -- which is what both
+    # consumers assert (`cos_hidden`) and what the claim is actually about. The readout gradients are
+    # computed as `err.t() @ z` and `err.sum(0)`: they never touch the eligibility machinery, so they
+    # are IDENTICAL between e-prop and BPTT by construction and can only dilute.
+    #
+    # This was measured, not assumed. The first version of this check asserted the cosine over all
+    # four gradient keys, and W_out+b_out carry 90.7% of that vector's squared norm -- so a defect in
+    # the hidden path barely moves it. Four seeded mechanism defects, all-4 assert vs hidden-only:
+    #     sign-flipped learning signal   all4 0.5859 GREEN | hidden -0.9714 RED
+    #     zeroed input eligibility trace all4 0.7465 GREEN | hidden  0.2563 RED
+    #     zeroed surrogate derivative    all4 0.7398 GREEN | hidden  0.0000 RED
+    # THREE OF FOUR real defects passed the all-4 assert while reddening both consumers. A criterion
+    # that is 90% a quantity which cannot differ is not measuring the mechanism it names.
+    #
+    # The all-4 value is still PRINTED, as a report. It is not a bar (P8: a number reported is not a
+    # number asserted), and it uniquely catches a CE-target sign flip, which is worth seeing.
     ge, _ = net.eprop_grads(x, y)
     gb = bptt_grads(net, x, y)
+    hid = net.offdiag_mask(ge["W_rec"].device).bool()
     cos = _cosine(
+        torch.cat([ge["W_in"].reshape(-1), ge["W_rec"][hid].reshape(-1)]),
+        torch.cat([gb["W_in"].reshape(-1), gb["W_rec"][hid].reshape(-1)]),
+    )
+    cos_all = _cosine(
         torch.cat([ge[k].reshape(-1) for k in sorted(ge)]),
         torch.cat([gb[k].reshape(-1) for k in sorted(gb)]),
     )
-    print(f"e-prop~BPTT cosine {cos:.4f} (floor {EPROP_BPTT_COSINE_FLOOR})")
-    assert cos > EPROP_BPTT_COSINE_FLOOR, f"cosine {cos} <= {EPROP_BPTT_COSINE_FLOOR}"
+    print(
+        f"e-prop~BPTT cosine_hidden {cos:.4f} (floor {EPROP_BPTT_COSINE_FLOOR}); "
+        f"all-parameter {cos_all:.4f} (report only, NOT a criterion)"
+    )
+    assert cos > EPROP_BPTT_COSINE_FLOOR, f"cos_hidden {cos} <= {EPROP_BPTT_COSINE_FLOOR}"
 
     # (b) REACHABLE RED #1 (FR-019): a CONFIGURATION in which the eligibility factorization genuinely
     # stops tracking the true gradient. Strong recurrence + weak drive + long T is the regime where
@@ -369,9 +394,10 @@ def _self_check():
     ry = torch.tensor([0, 1, 2, 0])
     ge_bad, _ = red_net.eprop_grads(rx, ry)
     gb_bad = bptt_grads(red_net, rx, ry)
-    cos_bad = _cosine(
-        torch.cat([ge_bad[k].reshape(-1) for k in sorted(ge_bad)]),
-        torch.cat([gb_bad[k].reshape(-1) for k in sorted(gb_bad)]),
+    hid_bad = red_net.offdiag_mask(ge_bad["W_rec"].device).bool()
+    cos_bad = _cosine(  # same scope as the assert above -- a red must redden the ACTUAL criterion
+        torch.cat([ge_bad["W_in"].reshape(-1), ge_bad["W_rec"][hid_bad].reshape(-1)]),
+        torch.cat([gb_bad["W_in"].reshape(-1), gb_bad["W_rec"][hid_bad].reshape(-1)]),
     )
     rate = float((red_net.forward(rx)[1].sum() / (4 * 96 * 8)).item())
     print(
