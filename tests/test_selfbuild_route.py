@@ -13,7 +13,16 @@ Cost, stated rather than hidden: `test_selfbuild_route_fires` runs 190 ticks (~2
 cadence is `nights % SELFBUILD_EVERY == 0` and night 8 is the first hit -- reaching it any faster
 would mean faking the constant, which is the thing being pinned. It spawns NO subprocess: verified
 that `SelfBuildLoop.run([])` returns `[]` without invoking `gate_fn` (the gate shells out to
-`run_selfchecks.py`, which would be multi-minute), and it writes no lake file.
+`run_selfchecks.py`, which would be multi-minute).
+
+IT DOES WRITE A LAKE, and an earlier revision of this docstring said it did not. Measured: 8 files
+/ 19,291,290 B -- `brain_lake.bin` at 48,607 B plus the skill `.npz` set -- written into the
+per-test `NORD_HOME` that `tests/conftest.py`'s autouse fixture isolates. `make_brain(seed=0)`
+passes no `persist=`, so persistence resolves from the ambient environment, and conftest sets
+`NORD_HOME` only (its own docstring: "deliberately NOT NORD_PERSIST=0"). The false claim was
+produced by checking `./brain_lake.bin` in the repo root with `NORD_HOME` unset -- the wrong
+location, so a miss was read as an absence. Recorded because it shipped inside the paragraph headed
+"stated rather than hidden", which is the one place a false measurement must not sit.
 """
 
 from snn_data_lake.cortex.brain import SELFBUILD_EVERY, make_brain
