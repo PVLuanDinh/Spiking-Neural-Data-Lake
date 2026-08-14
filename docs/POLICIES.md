@@ -1561,6 +1561,15 @@ The instrument half of the claim stands; the line does not.)*
   **Verdict on both, since "review-enforced" had so far meant "unadjudicated" (2026-07-28), with the
   first now CLOSED (2026-08-04):**
 
+  **SCOPE CORRECTED 2026-08-13 — "both" was itself the defect.** This verdict has only ever covered
+  the two sites below, but it reads as a survey of the tree, and that is how it has been used: with
+  the first site CLOSED, the natural conclusion is that the invariant holds. It does not follow. Two
+  further sites carry the same shape and **neither has ever been adjudicated here**; they are recorded
+  below as OPEN QUESTIONS, deliberately WITHOUT a verdict. Deciding them is a policy call — this pass
+  is a scope correction, not a decision, and an invariant is the one thing no lane may relax in
+  passing. The transferable rule: **a verdict that enumerates is read as a verdict that surveys**, so
+  a closed row inside it silently discharges sites it never examined.
+
   - ~~`cerebellum/jepa_world_model.py` is a **real violation of the locality principle, on the live
     wake tick.**~~ **CLOSED 2026-08-04.** The transport half is gone: `_feedback_gz()` is now the ONE
     backward definition for both the encoder path and the rollout path (P2 — one mechanism, not two),
@@ -1581,6 +1590,37 @@ The instrument half of the claim stands; the line does not.)*
     weight is transported. It IS non-local, and the policy should say so distinctly rather than
     lumping it in — "non-local" and "backprop" are different claims, and only the second is what this
     rule forbids. Disposition: keep, and stop citing it as a pending violation.
+  - **OPEN QUESTION, added 2026-08-13, NOT adjudicated: `basal_ganglia/mlp_q.py:190`.** `dh = [err *
+    w2i[j] ...]` reads the FORWARD read-out weights `W2[a]` transposed to carry error backward into
+    the shared hidden layer. The module **self-declares this** at `:31-37` as an open e-prop violation
+    and names this policy — yet `mlp_q` appears **nowhere in this file**, so the site has been
+    disclosed in the code and invisible in the policy record since it was written. It is **not on the
+    live tick** (`AutonomousArm` defaults `mlp_q=False`) but is one constructor argument from it, and
+    it executes on every gate run via self-check 19, so it is latent rather than absent. **The
+    measurements already exist** (`mlp_q.py:39-71`, re-run by `main()` on every gate): feedback
+    alignment clears both of the module's shipped gates on all 8 draws and *gains* 1.0 point on the
+    linear rule, but its hidden-gradient cosine sweeps to **[-0.472, +0.279] with |cos| > 0.5 in 0 of
+    8** — so swapping trades one failed clause of this invariant for another, which is not a fix. The
+    two honest resolutions the module states: **(a)** accept FA and amend what "cosine > 0.5" means
+    for a non-gradient *alignment* rule, or **(b)** retire the head under P2 for the linear `LatentQ`,
+    which has no hidden layer and therefore no backward pass at all — at a measured cost of the
+    non-linear capability (**0.467 vs 0.993 on XOR**), which P2's honesty guard requires be ported
+    first. Recorded here so the decision is made against the measurements rather than rediscovered.
+  - **OPEN QUESTION, added 2026-08-13, NOT adjudicated, and the LIVE one: `cortex/predictive_coding.py:200-201`.**
+    `g1 = self.w1.T @ s_e0` / `g2 = self.w2.T @ s_e1` — the forward weight array, transposed, carrying
+    error backward. Unlike `mlp_q` this **runs on every wake tick** (`cortex/brain.py:235` constructs
+    the brain with `predictive_coding=True`), which is the exact property that made the jepa site a
+    violation. It is **undisclosed in its own module**: the nearest thing is `:245-248`, "everything it
+    reads is local", which describes the *Hebbian weight step* (an outer product — genuinely local),
+    not the inference transpose. **The question is real in both directions and must not be settled by
+    analogy.** For: exact weight symmetry by construction — the same array, transposed — is the
+    objection this invariant exists to name. Against: in Rao-Ballard, `W1` is the GENERATIVE weight
+    (`x_hat = W1 @ r1`), so `W1^T @ s_e0` is one matrix in its two structural roles rather than a
+    separate forward pathway being copied, which is the standard locality argument for predictive
+    coding. `specs/010-policy-compliance-audit/findings.md:826` already reached this site, called it
+    *"an undisclosed VIOLATION SITE, not concealed code"*, and observed that this verdict "covers
+    exactly two sites" with `predictive_coding.py` appearing in neither — **that finding was never
+    carried into this file, which is how a live site stayed unadjudicated for nine days.**
 
   *(Line citations in this bullet — `jepa_world_model.py:275-278`/`:277` and `ng_snn.py:137` — were
   dropped 2026-08-04 after all three failed to resolve to what they claimed. `ng_snn.py:137` is
