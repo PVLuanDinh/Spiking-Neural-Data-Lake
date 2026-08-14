@@ -1610,9 +1610,8 @@ The instrument half of the claim stands; the line does not.)*
     `g1 = self.w1.T @ s_e0` / `g2 = self.w2.T @ s_e1` — the forward weight array, transposed, carrying
     error backward. Unlike `mlp_q` this **runs on every wake tick** (`cortex/brain.py:235` constructs
     the brain with `predictive_coding=True`), which is the exact property that made the jepa site a
-    violation. It is **undisclosed in its own module**: the nearest thing is `:245-248`, "everything it
-    reads is local", which describes the *Hebbian weight step* (an outer product — genuinely local),
-    not the inference transpose. **The question is real in both directions and must not be settled by
+    violation. **CORRECTED 2026-08-14: it is NOT undisclosed in its own module, and this entry said it was.** `cortex/predictive_coding.py` writes the transpose out in its own prose FOUR times -- the module docstring (`r1 += lr * ( W1^T @ s_e0 - s_e1 )`), `infer_step`'s docstring, the inline comments on the two cited lines themselves, and again in the batch path. What was undisclosed is the POLICY RECORD, not the code -- which is precisely what the finding cited below concludes: its own heading reads "TITLE OVERSTATES CONCEALMENT". This entry cited that finding approvingly while asserting the framing it retracts. Half-quoting a source to support the claim it corrects is the same defect the P0 row above records against `findings.md:370`.
+    **The question is real in both directions and must not be settled by
     analogy.** For: exact weight symmetry by construction — the same array, transposed — is the
     objection this invariant exists to name. Against: in Rao-Ballard, `W1` is the GENERATIVE weight
     (`x_hat = W1 @ r1`), so `W1^T @ s_e0` is one matrix in its two structural roles rather than a
