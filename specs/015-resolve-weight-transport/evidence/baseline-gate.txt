@@ -1,0 +1,660 @@
+﻿gate
+SKIP  substrate.nengo_bridge  (nengo not importable -- optional [nengo] extra not installed)
+PASS  brain_atlas
+PASS  connectome
+PASS  cortex.rank_order_coding
+PASS  cortex.population_encoding
+PASS  cortex.multimodal_encoder
+PASS  cortex.spike_preprocessing
+PASS  cortex.theta_gamma_code
+PASS  cortex.rsnn_encoder
+PASS  cortex.lif_neuron
+PASS  cortex.dendritic_neuron
+PASS  cortex.izhikevich_neuron
+PASS  cortex.hodgkin_huxley
+PASS  cortex.alif_neuron
+PASS  cortex.divisive_normalization
+PASS  cortex.neuronal_avalanches
+PASS  cortex.cortical_microcircuit
+PASS  cortex.lca_sparse_coding
+PASS  cortex.predictive_coding
+PASS  cortex.pc_cortex_serve
+PASS  cortex.is_snn_forward
+PASS  cortex.neural_sampling
+PASS  cortex.snn_classifier
+PASS  cortex.snn_moe_classifier
+PASS  cortex.trained_brain
+PASS  cortex.learned_matcher
+PASS  cortex.tempotron
+PASS  cortex.paradigm_b_matcher
+PASS  cortex.paradigm_b_engine
+PASS  cortex.gesture_recognition
+PASS  cortex.nl_interface
+PASS  cortex.spiking_lm_serve
+PASS  cortex.vsa_reasoning
+PASS  cortex.prefrontal_executive
+PASS  cortex.live_brain
+PASS  cortex.interaction_learning
+PASS  cortex.recognizer_bank
+PASS  cortex.neuron_zoo
+PASS  cortex.access_consciousness
+PASS  cortex.integration_measure
+PASS  cortex.self_model
+PASS  cortex.reasoning_curriculum
+PASS  cortex.autapse_neuron
+PASS  cortex.adex_neuron
+PASS  cortex.resonate_and_fire
+PASS  cortex.srm_neuron
+PASS  cortex.metacognitive_monitor
+PASS  cortex.laminar_local_readout
+PASS  cortex.wholistic_loop
+PASS  cortex.autotelic_goals
+PASS  cortex.quality_diversity
+PASS  cortex.self_improvement_suite
+PASS  cortex.theory_of_mind
+PASS  cortex.agency_monitor
+PASS  cortex.affect_core
+PASS  cortex.crossmodal_binder
+PASS  cortex.executive_control
+PASS  cortex.competence_executive
+PASS  cortex.nef_compute
+PASS  cortex.vsa_structure_mapping
+PASS  cortex.rose_language
+PASS  cortex.time_cells
+PASS  cortex.task_set
+PASS  cortex.generative_self_model
+PASS  cortex.recursive_tom
+PASS  cortex.counterfactual_sim
+PASS  cortex.learned_attention
+PASS  cortex.learned_evc
+PASS  cortex.second_order_access
+PASS  cortex.heterogeneous_microcircuit
+PASS  cortex.percept_surprise
+PASS  cortex.kb_ranking
+PASS  cortex.corpus_stream
+PASS  cortex.world_kb_stream
+PASS  cortex.language_self_build
+PASS  cortex.language_readout_slda
+PASS  cortex.nightly_skills
+PASS  hippocampus.grid_cells
+PASS  hippocampus.experience_replay
+PASS  hippocampus.sleep_replay
+PASS  hippocampus.ring_attractor
+PASS  hippocampus.growing_learner
+PASS  hippocampus.function_preserving_growth
+PASS  hippocampus.sleep_consolidation
+PASS  hippocampus.affective_memory
+PASS  hippocampus.contrastive_episode_analysis
+PASS  hippocampus.allocentric_map
+PASS  hippocampus.grid_place_map
+PASS  hippocampus.episodic_recall
+PASS  hippocampus.spiking_grid_can
+PASS  hippocampus.content_signature
+PASS  hippocampus.proximity_replay
+PASS  hippocampus.skill_builder
+PASS  hippocampus.hippocampal_memory
+PASS  hippocampus.episode_consolidation
+PASS  hippocampus.lake_consolidation
+PASS  hippocampus.spiking_storage_prototype
+PASS  basal_ganglia.evidence_accumulation
+PASS  basal_ganglia.r_stdp
+PASS  basal_ganglia.valence_stdp
+PASS  basal_ganglia.action_gating
+PASS  basal_ganglia.latent_q
+PASS  basal_ganglia.mlp_q
+PASS  basal_ganglia.brain_decision
+PASS  basal_ganglia.self_build_loop
+PASS  basal_ganglia.brain_native_selfbuild
+PASS  amygdala.fear_conditioning
+PASS  amygdala.affective_appraisal
+PASS  cerebellum.forward_model
+PASS  cerebellum.spiking_pid
+PASS  cerebellum.synfire_chain
+PASS  cerebellum.wavefront_planner
+PASS  cerebellum.jepa_world_model
+PASS  cerebellum.hjepa_serve
+PASS  cerebellum.spiking_jepa
+PASS  cerebellum.gain_adaptation
+PASS  cerebellum.polychronization
+PASS  brainstem.reflex
+PASS  brainstem.serial_arm
+PASS  brainstem.so101_arm
+PASS  brainstem.arm_hardware
+PASS  brainstem.arm_config
+PASS  brainstem.interpreter
+PASS  brainstem.live_arm
+PASS  brainstem.arm_bridge
+PASS  brainstem.closed_loop
+PASS  brainstem.autonomous_loop
+PASS  brainstem.signal_loop
+PASS  brainstem.cpg_oscillator
+PASS  thalamus.global_workspace
+PASS  thalamus.reticular_gate
+PASS  thalamus.reentrant_workspace
+PASS  thalamus.connectome_router
+PASS  thalamus.gwt_deep
+PASS  hypothalamus.circadian_clock
+PASS  hypothalamus.set_points
+PASS  hypothalamus.homeostatic_drives
+PASS  midbrain.dopamine_nuclei
+PASS  midbrain.superior_colliculus
+PASS  midbrain.sc_deep_layers
+PASS  midbrain.multisensory_integration
+PASS  medulla.vital_nuclei
+PASS  medulla.interoceptive_arousal
+PASS  epithalamus.habenula
+PASS  claustrum.claustrum
+PASS  neuromodulation.acetylcholine
+PASS  neuromodulation.astrocyte_modulation
+PASS  neuromodulation.cortisol
+PASS  neuromodulation.locus_coeruleus
+PASS  neuromodulation.raphe_serotonin
+PASS  neuromodulation.intrinsic_motivation
+PASS  neuromodulation.spiking_curiosity
+PASS  neuromodulation.generalizing_novelty
+PASS  neuromodulation.drive_reduction
+PASS  neuromodulation.naca
+PASS  neuromodulation.empowerment
+PASS  neuromodulation.developmental_envelope
+PASS  neuromodulation.affect_integrator
+PASS  plasticity.bcm_plasticity
+PASS  plasticity.oja_pca
+PASS  plasticity.homeostatic_scaling
+PASS  plasticity.inhibitory_stdp
+PASS  plasticity.intrinsic_plasticity
+PASS  plasticity.short_term_plasticity
+PASS  plasticity.developmental_pruning
+PASS  plasticity.competitive_learning
+PASS  plasticity.lifelong_consolidation
+PASS  plasticity.criticality_regulator
+PASS  plasticity.meta_plasticity
+PASS  plasticity.benna_fusi
+PASS  plasticity.homeostatic_plasticity_stack
+PASS  plasticity.plasticity_rule_stack
+PASS  plasticity.snn_mnist_stdp_genn
+PASS  substrate._mathutils
+PASS  substrate.spike_stream_sketch
+PASS  substrate.spike_cardinality
+PASS  substrate.reservoir_sampling
+PASS  substrate.lake_memory
+PASS  substrate.stream_sketch_panel
+PASS  substrate.sliding_window_count
+PASS  substrate.frequency_moment
+PASS  substrate.streaming_quantile
+PASS  substrate.minhash
+PASS  substrate.morris_counter
+PASS  substrate.proximity_index
+PASS  substrate.energy
+PASS  substrate.data_quality
+PASS  substrate.drift_monitor
+PASS  substrate.spike_telemetry_hub
+PASS  substrate.streaming_hub
+PASS  substrate.neuro_chip
+PASS  substrate.neuro_chip_stream
+PASS  substrate.nir_export
+PASS  substrate.sensor_csv_ingest
+PASS  substrate.esp32_encoder_path
+PASS  substrate.make_sensor_dataset
+PASS  substrate.demo
+PASS  substrate.brain_bundle
+PASS  substrate.web_ingest
+PASS  substrate.lake_working_memory
+PASS  substrate.chat_memory
+PASS  substrate.signal_calibrator
+PASS  substrate.device
+PASS  substrate.self_mod_harness
+PASS  substrate.home
+PASS  substrate.binlog
+PASS  substrate.growable
+PASS  substrate.region_wiring
+PASS  substrate.arm_view
+PASS  substrate.brain_telemetry
+PASS  substrate.brain_geometry
+PASS  substrate.cockpit
+PASS  substrate.learn_daemon
+PASS  substrate.dormancy_gate
+PASS  substrate.replication_guard
+PASS  substrate.import_manifest
+PASS  substrate.method_dormancy_gate
+PASS  substrate.ingest_guard
+PASS  substrate.hf_stream
+PASS  substrate.region_coherence
+PASS  substrate.basic_components
+PASS  substrate.similarity_sized_growth
+PASS  hippocampus.ng_snn
+PASS  hippocampus.growable_readout
+PASS  cortex.brain
+PASS  cortex.neurogenesis_engine
+PASS  cortex.language_acquisition
+PASS  cortex.eprop_nmnist
+PASS  cortex.eprop_shd
+PASS  cortex.eprop_kernel
+PASS  reasoning.schema_induction
+PASS  plasticity.snn_mnist_stdp
+PASS  plasticity.deep_stdp
+PASS  cortex.deep_stdp_latency
+PASS  hippocampus.developmental_loop_brain
+PASS  reasoning.test_prototype
+PASS  reasoning.hopfield_baseline
+PASS  reasoning.dense_associative_memory
+PASS  reasoning.sparse_distributed_memory
+PASS  reasoning.fly_hash
+PASS  reasoning.spiking_som
+PASS  reasoning.temporal_coding_storage
+PASS  reasoning.spike_compression
+PASS  reasoning.event_quadtree_compression
+PASS  reasoning.index_compression
+PASS  reasoning.spike_bloom
+PASS  reasoning.spiking_ssm
+PASS  reasoning.spike_kg
+PASS  reasoning.resonator_network
+PASS  reasoning.mcr_hdc
+PASS  reasoning.bayesian_snn
+PASS  reasoning.nmnist_ingest
+PASS  reasoning.nef_integrator
+PASS  reasoning.stats_bounds
+PASS  reasoning.loop_latency
+PASS  reasoning.delay_learning
+PASS  reasoning.eprop
+PASS  reasoning.sn_p_system
+PASS  reasoning.free_energy_control
+PASS  reasoning.pc_active_inference
+PASS  reasoning.dishbrain_learning
+PASS  reasoning.triplet_stdp
+PASS  reasoning.cellular_neural_network
+PASS  reasoning.random_boolean_network
+PASS  reasoning.neural_heterogeneity
+PASS  reasoning.burst_multiplexing
+PASS  reasoning.stdp_wta_bayes
+PASS  reasoning.sorn
+PASS  reasoning.resume_learning
+PASS  reasoning.weight_perturbation
+PASS  reasoning.make_results_plot
+PASS  reasoning.lake_reason
+PASS  reasoning.autonomous_enrich
+PASS  reasoning.spike_chat_lake
+PASS  reasoning.train_of_thought
+PASS  reasoning.concept_reflection
+PASS  hippocampus.open_world_loop
+PASS  reasoning.model_builder
+PASS  reasoning.gf
+PASS  reasoning.real_rpm_bench
+PASS  reasoning.reasoning_cortex
+PASS  reasoning.derivation
+PASS  reasoning.reasoning_compose
+PASS  reasoning.pc_abduction
+PASS  reasoning.rpm_solver
+PASS  reasoning.raven_bench
+PASS  reasoning.vsa_synthesize
+PASS  reasoning.semantic_memory
+PASS  reasoning.pragmatics
+PASS  reasoning.impact_analysis
+PASS  reasoning.ar_spiking_lm_serve
+PASS  reasoning.eprop_lm_serve
+PASS  reasoning.eprop_lm_alif_serve
+PASS  reasoning.self_improve
+PASS  reasoning.godel_machine
+PASS  reasoning.arc_bench
+PASS  reasoning.blimp_bench
+PASS  reasoning.arc_solver
+PASS  reasoning.arc_scene
+PASS  reasoning.arc_mint
+PASS  reasoning.arc_residual
+========================================================
+300/300 self-checks passed
+SELFCHECKS_EXIT=0
+........................................................................ [  9%]
+........................................................................ [ 18%]
+........................................................................ [ 27%]
+........................................................................ [ 37%]
+........................................................................ [ 46%]
+........................................................................ [ 55%]
+........................................................................ [ 64%]
+........................................................................ [ 74%]
+........................................................................ [ 83%]
+........................................................................ [ 92%]
+python.exe : <unknown>:2535: SyntaxWarning: "\." is an invalid escape sequence. Such sequences will not work in the 
+future. Did you mean "\\."? A raw string is also an option.
+At line:14 char:1
++ & $P -m pytest -q 2>&1 | Tee-Object -FilePath $log -Append | Select-O ...
++ ~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (<unknown>:2535:...also an option.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+D:\AI-project\spiking-neural-data-lake\src\snn_data_lake\cortex\brain.py:2535: SyntaxWarning: "\." is an invalid 
+escape sequence. Such sequences will not work in the future. Did you mean "\\."? A raw string is also an option.
+  with `grep -n "self\._access_state" | grep -v "_access_state = "` rather than trusting the
+<unknown>:2535: SyntaxWarning: "\." is an invalid escape sequence. Such sequences will not work in the future. Did you 
+mean "\\."? A raw string is also an option.
+D:\AI-project\spiking-neural-data-lake\src\snn_data_lake\cortex\brain.py:2535: SyntaxWarning: "\." is an invalid 
+escape sequence. Such sequences will not work in the future. Did you mean "\\."? A raw string is also an option.
+  with `grep -n "self\._access_state" | grep -v "_access_state = "` rather than trusting the
+........................................................                 [100%]
+============================== warnings summary ===============================
+tests/test_arm_vocabulary.py: 1 warning
+tests/test_dependency_ledger.py: 4 warnings
+tests/test_method_dormancy_keys.py: 21 warnings
+tests/test_red_reachability.py: 2 warnings
+tests/test_selfchecks.py: 12 warnings
+tests/test_so101_arm.py: 1 warning
+  <unknown>:2535: SyntaxWarning: "\." is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\."? A raw string is also an option.
+
+tests/test_selfchecks.py::test_core_selfcheck_in_process[reasoning.schema_induction]
+  D:\AI-project\spiking-neural-data-lake\src\snn_data_lake\cortex\kb_ranking.py:119: RuntimeWarning: overflow encountered in multiply
+    sp = np.sum(eh * wr * et, axis=1)  # positive scores
+
+tests/test_selfchecks.py::test_core_selfcheck_in_process[reasoning.schema_induction]
+  D:\AI-project\spiking-neural-data-lake\src\snn_data_lake\cortex\kb_ranking.py:120: RuntimeWarning: overflow encountered in multiply
+    sn = np.sum(eh * wr * en, axis=1)  # negative scores
+
+tests/test_selfchecks.py::test_core_selfcheck_in_process[reasoning.schema_induction]
+  D:\AI-project\spiking-neural-data-lake\src\snn_data_lake\cortex\kb_ranking.py:124: RuntimeWarning: overflow encountered in multiply
+    gEh = gp * (wr * et) + gn * (wr * en)
+
+tests/test_selfchecks.py::test_core_selfcheck_in_process[reasoning.schema_induction]
+  D:\AI-project\spiking-neural-data-lake\src\snn_data_lake\cortex\kb_ranking.py:124: RuntimeWarning: invalid value encountered in add
+    gEh = gp * (wr * et) + gn * (wr * en)
+
+tests/test_selfchecks.py::test_core_selfcheck_in_process[reasoning.schema_induction]
+  D:\AI-project\spiking-neural-data-lake\src\snn_data_lake\cortex\kb_ranking.py:125: RuntimeWarning: overflow encountered in multiply
+    gEt = gp * (eh * wr)
+
+tests/test_selfchecks.py::test_core_selfcheck_in_process[reasoning.schema_induction]
+  D:\AI-project\spiking-neural-data-lake\src\snn_data_lake\cortex\kb_ranking.py:126: RuntimeWarning: overflow encountered in multiply
+    gEn = gn * (eh * wr)
+
+tests/test_selfchecks.py::test_core_selfcheck_in_process[reasoning.schema_induction]
+  D:\AI-project\spiking-neural-data-lake\src\snn_data_lake\cortex\kb_ranking.py:127: RuntimeWarning: overflow encountered in multiply
+    gR = gp * (eh * et) + gn * (eh * en)
+
+tests/test_selfchecks.py::test_core_selfcheck_in_process[reasoning.schema_induction]
+  D:\AI-project\spiking-neural-data-lake\src\snn_data_lake\cortex\kb_ranking.py:127: RuntimeWarning: invalid value encountered in add
+    gR = gp * (eh * et) + gn * (eh * en)
+
+tests/test_selfchecks.py::test_core_selfcheck_in_process[reasoning.schema_induction]
+  D:\AI-project\spiking-neural-data-lake\src\snn_data_lake\cortex\kb_ranking.py:128: RuntimeWarning: invalid value encountered in at
+    np.add.at(self.E, h, -lr * gEh)
+
+tests/test_selfchecks.py::test_core_selfcheck_in_process[reasoning.schema_induction]
+  D:\AI-project\spiking-neural-data-lake\src\snn_data_lake\cortex\kb_ranking.py:129: RuntimeWarning: invalid value encountered in at
+    np.add.at(self.E, t, -lr * gEt)
+
+tests/test_selfchecks.py::test_core_selfcheck_in_process[reasoning.schema_induction]
+  D:\AI-project\spiking-neural-data-lake\src\snn_data_lake\cortex\kb_ranking.py:130: RuntimeWarning: invalid value encountered in at
+    np.add.at(self.E, tn, -lr * gEn)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.14.6-final-0 _______________
+
+Name                                                            Stmts   Miss  Cover   Missing
+---------------------------------------------------------------------------------------------
+src\snn_data_lake\__init__.py                                      45      5    89%   61-78
+src\snn_data_lake\amygdala\__init__.py                              0      0   100%
+src\snn_data_lake\amygdala\affective_appraisal.py                 133      3    98%   147, 155, 159
+src\snn_data_lake\amygdala\fear_conditioning.py                   165      2    99%   167, 184
+src\snn_data_lake\basal_ganglia\__init__.py                         0      0   100%
+src\snn_data_lake\basal_ganglia\action_gating.py                  102      1    99%   124
+src\snn_data_lake\basal_ganglia\brain_decision.py                 216      8    96%   142, 169, 172, 266, 282, 285, 334, 363
+src\snn_data_lake\basal_ganglia\brain_native_selfbuild.py         483     35    93%   157, 159, 163, 195, 236, 242, 313, 316-318, 493-494, 498-499, 527, 530-536, 548-549, 556, 575, 578-579, 610-611, 647, 656, 718, 857, 1151
+src\snn_data_lake\basal_ganglia\evidence_accumulation.py          198     19    90%   156-161, 263, 270, 278-283, 288-292
+src\snn_data_lake\basal_ganglia\latent_q.py                       141      1    99%   176
+src\snn_data_lake\basal_ganglia\mlp_q.py                          166      3    98%   159-161
+src\snn_data_lake\basal_ganglia\r_stdp.py                         365      8    98%   344, 371, 418, 465, 660, 747, 753, 803
+src\snn_data_lake\basal_ganglia\self_build_loop.py                216     29    87%   107-111, 140-142, 174, 211-213, 235-248, 269, 288, 391
+src\snn_data_lake\basal_ganglia\valence_stdp.py                    82      0   100%
+src\snn_data_lake\brain_atlas.py                                   74      8    89%   26, 32, 109-110, 117, 128-129, 136
+src\snn_data_lake\brainstem\__init__.py                             0      0   100%
+src\snn_data_lake\brainstem\arm_bridge.py                          83      5    94%   41, 44-45, 78-79
+src\snn_data_lake\brainstem\arm_config.py                         136      1    99%   285
+src\snn_data_lake\brainstem\arm_hardware.py                       174      7    96%   209-210, 215-216, 288-289, 356
+src\snn_data_lake\brainstem\autonomous_loop.py                   1170     37    97%   490-492, 541, 704-705, 710, 736, 886-887, 891-892, 1013-1014, 1027, 1113-1114, 1167-1168, 1195-1196, 1328, 1410, 1609-1615, 1630, 1834-1835, 1945-1951, 1969-1972, 2120
+src\snn_data_lake\brainstem\closed_loop.py                        103     10    90%   51, 58, 102, 131-139, 242
+src\snn_data_lake\brainstem\cpg_oscillator.py                      87      2    98%   91-92
+src\snn_data_lake\brainstem\interpreter.py                         86     23    73%   74-96, 155-156
+src\snn_data_lake\brainstem\live_arm.py                           239     82    66%   67-69, 75-88, 95-101, 105-106, 163-164, 170-171, 179-187, 191-198, 208-237, 240-265, 269-277, 285-289, 348
+src\snn_data_lake\brainstem\reflex.py                              86      0   100%
+src\snn_data_lake\brainstem\serial_arm.py                         105      9    91%   88, 94-96, 130-131, 150, 179, 185, 193
+src\snn_data_lake\brainstem\signal_loop.py                        381     82    78%   187-197, 202-204, 377-393, 472-473, 478-484, 506-508, 522, 536, 555-564, 568-581, 595-596, 599, 603-617, 620-632, 635-642, 660, 670-671
+src\snn_data_lake\brainstem\so101_arm.py                          203      5    98%   135, 212, 226, 370, 400
+src\snn_data_lake\cerebellum\__init__.py                            0      0   100%
+src\snn_data_lake\cerebellum\forward_model.py                     129      0   100%
+src\snn_data_lake\cerebellum\gain_adaptation.py                    85      2    98%   88, 90
+src\snn_data_lake\cerebellum\hjepa_serve.py                       248     16    94%   76, 86, 93, 96, 103, 109, 179, 187, 249, 254, 264, 275, 285, 296, 305, 457
+src\snn_data_lake\cerebellum\jepa_world_model.py                  543     12    98%   514, 588, 604, 608, 613, 615, 617, 622, 633, 635, 639, 853
+src\snn_data_lake\cerebellum\polychronization.py                   64      0   100%
+src\snn_data_lake\cerebellum\spiking_jepa.py                      788     41    95%   248, 256, 455-458, 482-489, 537-541, 573-576, 671-676, 683, 697, 714, 758, 762, 767, 780, 795, 797, 799, 810, 819, 828, 1144
+src\snn_data_lake\cerebellum\spiking_pid.py                       190      1    99%   75
+src\snn_data_lake\cerebellum\synfire_chain.py                     115      2    98%   114, 143
+src\snn_data_lake\cerebellum\wavefront_planner.py                 202     12    94%   95, 153, 164, 193-194, 245, 253-258
+src\snn_data_lake\claustrum\__init__.py                             0      0   100%
+src\snn_data_lake\claustrum\claustrum.py                          141      1    99%   156
+src\snn_data_lake\connectome.py                                   102      4    96%   505, 529-530, 533
+src\snn_data_lake\cortex\__init__.py                                0      0   100%
+src\snn_data_lake\cortex\access_consciousness.py                  499      8    98%   403-405, 521, 526, 691, 910-911
+src\snn_data_lake\cortex\adex_neuron.py                            64      1    98%   73
+src\snn_data_lake\cortex\affect_core.py                           272      3    99%   161, 186, 301
+src\snn_data_lake\cortex\agency_monitor.py                        214     13    94%   100, 102, 134, 214, 216, 220, 227, 234, 241, 285, 305, 346, 399
+src\snn_data_lake\cortex\alif_neuron.py                            78      4    95%   63, 69-71
+src\snn_data_lake\cortex\autapse_neuron.py                        118      2    98%   65, 72
+src\snn_data_lake\cortex\autotelic_goals.py                       255      4    98%   139, 163, 313, 317
+src\snn_data_lake\cortex\brain.py                                1824    490    73%   136, 139-140, 311-312, 337-338, 408-410, 442-446, 468-469, 479-480, 504-505, 542-543, 620-621, 626-628, 665-668, 686-693, 764-765, 812-813, 844-845, 873-876, 897-898, 923-924, 978-979, 1003-1005, 1018, 1057-1059, 1137-1138, 1155, 1177-1178, 1180-1181, 1212-1213, 1220-1221, 1235-1236, 1241-1242, 1247-1248, 1255-1256, 1264, 1269-1270, 1276-1277, 1298, 1329-1330, 1352, 1355-1356, 1372, 1413-1414, 1426-1427, 1429-1430, 1445, 1455-1456, 1488-1489, 1513-1514, 1543-1558, 1688-1689, 1721-1722, 1768-1769, 1777-1778, 1869-1870, 1890-1891, 1915-1916, 1930-1931, 1938-1939, 1952-1953, 1964-1973, 1983-1986, 2020, 2034-2035, 2040-2041, 2054-2055, 2125-2126, 2161-2162, 2164-2165, 2177-2178, 2191-2192, 2207-2208, 2225-2226, 2252-2253, 2264-2265, 2308-2309, 2349-2350, 2370-2371, 2440, 2465-2466, 2724-2725, 2734-2735, 2741-2742, 2749-2750, 2760-2761, 2763-2764, 2843-2844, 2847-2848, 2929-2930, 2945, 2948-2949, 2958-2959, 2981-2982, 3003-3004, 3011-3012, 3027-3053, 3074-3075, 3089-3090, 3102-3103, 3115-3116, 3122-3126, 3135, 3156-3195, 3249-3250, 3516-3517, 3522-3523, 3526-3530, 3552-3561, 3567-3575, 3597-3598, 3603-3604, 3608-3609, 3617-3632, 3645-3719, 3733-3752, 3768, 3784, 3794, 3802-3807, 3813-3814, 3820-3821, 3858, 3864, 3885, 3890-3943, 3948-3973, 3984-3986, 4001, 4028-4050, 4066-4077, 4085-4092, 4099-4124, 4131-4132, 4138-4143, 4153-4171, 4183-4191, 4197, 4203-4204, 4207-4211, 4223-4224, 4228-4229, 4260, 4313-4315, 4414-4415, 4462-4466, 4532
+src\snn_data_lake\cortex\competence_executive.py                  149      6    96%   145-150
+src\snn_data_lake\cortex\corpus_stream.py                         100     16    84%   205-211, 217, 220, 230-231, 233, 241-245, 249-250, 253
+src\snn_data_lake\cortex\cortical_microcircuit.py                 253      5    98%   133, 386, 413-415, 552
+src\snn_data_lake\cortex\counterfactual_sim.py                    137      1    99%   129
+src\snn_data_lake\cortex\crossmodal_binder.py                     219      5    98%   114, 230, 241, 245, 251
+src\snn_data_lake\cortex\deep_stdp_latency.py                     212    178    16%   111-112, 116-117, 123-131, 140-160, 167-181, 189-202, 209-234, 241-245, 248-251, 257-266, 269-270, 275-279, 286-287, 290, 293, 297-300, 313-331, 335-416, 423
+src\snn_data_lake\cortex\dendritic_neuron.py                       89      4    96%   102-104, 117
+src\snn_data_lake\cortex\divisive_normalization.py                 60      0   100%
+src\snn_data_lake\cortex\eprop_kernel.py                          209      2    99%   181, 211
+src\snn_data_lake\cortex\eprop_nmnist.py                          303     71    77%   385, 417-428, 441-452, 456-533, 788-789, 793
+src\snn_data_lake\cortex\eprop_shd.py                             293     76    74%   113-116, 363, 365, 370, 395-401, 412-438, 442-529, 821-822, 826
+src\snn_data_lake\cortex\executive_control.py                     184      2    99%   139, 204
+src\snn_data_lake\cortex\generative_self_model.py                 138      3    98%   100, 133, 149
+src\snn_data_lake\cortex\gesture_recognition.py                    76     20    74%   51-52, 56-66, 70, 85-90
+src\snn_data_lake\cortex\heterogeneous_microcircuit.py            158      0   100%
+src\snn_data_lake\cortex\hodgkin_huxley.py                        121      2    98%   40, 51
+src\snn_data_lake\cortex\integration_measure.py                   200      3    98%   121, 154, 176
+src\snn_data_lake\cortex\interaction_learning.py                  328     16    95%   147, 165-180, 245, 251, 257, 773
+src\snn_data_lake\cortex\is_snn_forward.py                        160      4    98%   41, 43, 45, 60
+src\snn_data_lake\cortex\izhikevich_neuron.py                      37      1    97%   33
+src\snn_data_lake\cortex\kb_ranking.py                            122      9    93%   66, 90-99
+src\snn_data_lake\cortex\laminar_local_readout.py                 261      7    97%   151, 310, 319, 322, 327-328, 386
+src\snn_data_lake\cortex\language_acquisition.py                  161     12    93%   165, 233-234, 237-241, 268, 270-271, 279
+src\snn_data_lake\cortex\language_readout_slda.py                 123      3    98%   132, 149, 162
+src\snn_data_lake\cortex\language_self_build.py                   171      5    97%   111, 130, 150, 366, 383
+src\snn_data_lake\cortex\lca_sparse_coding.py                      82      0   100%
+src\snn_data_lake\cortex\learned_attention.py                     143      6    96%   53, 95-97, 99, 122
+src\snn_data_lake\cortex\learned_evc.py                           113      0   100%
+src\snn_data_lake\cortex\learned_matcher.py                        92      0   100%
+src\snn_data_lake\cortex\lif_neuron.py                             57      0   100%
+src\snn_data_lake\cortex\live_brain.py                            403     30    93%   38, 40, 42, 44, 186-187, 193, 232-233, 236-237, 332, 389, 428, 437, 455-456, 475, 478-479, 484, 501, 526, 528-529, 539, 548, 564, 841, 1029
+src\snn_data_lake\cortex\metacognitive_monitor.py                 373      6    98%   142, 332, 369, 410, 517, 771
+src\snn_data_lake\cortex\multimodal_encoder.py                    119      5    96%   107, 109, 121, 125, 250
+src\snn_data_lake\cortex\nef_compute.py                            84      1    99%   174
+src\snn_data_lake\cortex\neural_sampling.py                       151     11    93%   53, 56, 59, 82-83, 92, 99-101, 106, 149
+src\snn_data_lake\cortex\neurogenesis_engine.py                   295     27    91%   150, 160-161, 175, 244, 284, 291, 323, 327-328, 330, 332, 334, 363, 366, 404, 417-422, 498, 520, 749-753
+src\snn_data_lake\cortex\neuron_zoo.py                            420     20    95%   118, 138, 188-191, 228-229, 239-241, 307-308, 318, 320, 496, 664, 673, 755, 808
+src\snn_data_lake\cortex\neuronal_avalanches.py                   139      5    96%   72, 74, 186-187, 209
+src\snn_data_lake\cortex\nightly_skills.py                        660     60    91%   157, 264, 339-341, 383, 484-485, 548-549, 555-556, 570-576, 615-616, 622-623, 657, 666, 836-837, 855, 888, 904, 914-917, 963, 998-1000, 1017-1018, 1021-1022, 1025-1026, 1029-1030, 1032, 1041, 1046-1047, 1077-1078, 1082-1086, 1190-1192
+src\snn_data_lake\cortex\nl_interface.py                           89      5    94%   116, 167, 169, 171, 207
+src\snn_data_lake\cortex\paradigm_b_engine.py                      76      1    99%   53
+src\snn_data_lake\cortex\paradigm_b_matcher.py                    108      4    96%   37, 70, 93, 96
+src\snn_data_lake\cortex\pc_cortex_serve.py                       377     15    96%   74, 87, 89, 145, 164, 170, 177, 181, 188, 196, 198, 244, 308, 332, 567
+src\snn_data_lake\cortex\percept_surprise.py                      124      5    96%   139, 155, 208, 236, 250
+src\snn_data_lake\cortex\population_encoding.py                    52      1    98%   30
+src\snn_data_lake\cortex\predictive_coding.py                     201     20    90%   131, 225-242, 263
+src\snn_data_lake\cortex\prefrontal_executive.py                  337      1    99%   307
+src\snn_data_lake\cortex\quality_diversity.py                     231      2    99%   257, 291
+src\snn_data_lake\cortex\rank_order_coding.py                      64      0   100%
+src\snn_data_lake\cortex\reasoning_curriculum.py                  297      4    99%   214, 306, 393, 395
+src\snn_data_lake\cortex\recognizer_bank.py                       328     13    96%   76, 146, 174, 282-283, 293, 328-329, 350, 380, 424, 429, 441
+src\snn_data_lake\cortex\recursive_tom.py                         148      4    97%   74, 94, 96, 139
+src\snn_data_lake\cortex\resonate_and_fire.py                      50      0   100%
+src\snn_data_lake\cortex\rose_language.py                         365     50    86%   141, 155-156, 197-198, 200, 205-206, 214, 237, 240, 284-286, 297-298, 311, 313-314, 355-356, 390-391, 423, 491, 522-523, 535, 556, 566, 581-582, 602-605, 622-624, 647-657, 664-665
+src\snn_data_lake\cortex\rsnn_encoder.py                          151      8    95%   88, 90, 96, 100, 105, 152, 166, 190
+src\snn_data_lake\cortex\second_order_access.py                   188      1    99%   341
+src\snn_data_lake\cortex\self_improvement_suite.py                145      4    97%   243-244, 253, 257
+src\snn_data_lake\cortex\self_model.py                            313     14    96%   173, 175, 180, 184-189, 299, 363, 376, 378, 457
+src\snn_data_lake\cortex\snn_classifier.py                        199     41    79%   187, 190, 192, 200-212, 216-218, 224-244, 318
+src\snn_data_lake\cortex\snn_moe_classifier.py                    149      1    99%   159
+src\snn_data_lake\cortex\spike_preprocessing.py                   221      2    99%   89, 118
+src\snn_data_lake\cortex\spiking_lm_serve.py                      127     15    88%   92-93, 107-116, 146, 148, 223
+src\snn_data_lake\cortex\srm_neuron.py                             66      1    98%   48
+src\snn_data_lake\cortex\task_set.py                              167      1    99%   227
+src\snn_data_lake\cortex\tempotron.py                              87      1    99%   32
+src\snn_data_lake\cortex\theory_of_mind.py                        130      5    96%   65, 77, 86, 92, 180
+src\snn_data_lake\cortex\theta_gamma_code.py                      155      6    96%   172, 177, 192, 196-197, 209
+src\snn_data_lake\cortex\time_cells.py                            263     16    94%   118, 126, 304, 339-340, 353-354, 387, 394, 408, 415, 425, 461-462, 542, 682
+src\snn_data_lake\cortex\trained_brain.py                         119      5    96%   57, 126, 130, 132, 135
+src\snn_data_lake\cortex\vsa_reasoning.py                          93      0   100%
+src\snn_data_lake\cortex\vsa_structure_mapping.py                 190      6    97%   346, 358, 364, 419, 431, 443
+src\snn_data_lake\cortex\wholistic_loop.py                        323     26    92%   154, 370-372, 430, 437, 447-450, 457-469, 480-484, 494-497, 558
+src\snn_data_lake\cortex\world_kb_stream.py                       130     19    85%   712-733, 767
+src\snn_data_lake\epithalamus\__init__.py                           0      0   100%
+src\snn_data_lake\epithalamus\habenula.py                          92      1    99%   104
+src\snn_data_lake\hippocampus\__init__.py                           0      0   100%
+src\snn_data_lake\hippocampus\affective_memory.py                 117     12    90%   79, 107-113, 121, 147, 181, 185
+src\snn_data_lake\hippocampus\allocentric_map.py                  109      0   100%
+src\snn_data_lake\hippocampus\content_signature.py                 17      0   100%
+src\snn_data_lake\hippocampus\contrastive_episode_analysis.py     135      3    98%   155, 171, 192
+src\snn_data_lake\hippocampus\developmental_loop_brain.py         293    262    11%   135-147, 163-166, 169-174, 177-178, 185, 189, 203-204, 208-213, 217-221, 240-373, 377-687, 691
+src\snn_data_lake\hippocampus\episode_consolidation.py            291      9    97%   172, 250-254, 298, 446, 488
+src\snn_data_lake\hippocampus\episodic_recall.py                  400      7    98%   176, 402, 417, 431, 469, 491, 566
+src\snn_data_lake\hippocampus\experience_replay.py                 86      1    99%   126
+src\snn_data_lake\hippocampus\function_preserving_growth.py       152      1    99%   156
+src\snn_data_lake\hippocampus\grid_cells.py                       133      5    96%   67, 106-108, 112
+src\snn_data_lake\hippocampus\grid_place_map.py                   195      5    97%   57, 253, 258, 265, 290
+src\snn_data_lake\hippocampus\growable_readout.py                 444      5    99%   344, 347, 632, 636, 790
+src\snn_data_lake\hippocampus\growing_learner.py                  108      3    97%   49, 74, 111
+src\snn_data_lake\hippocampus\hippocampal_memory.py               101      0   100%
+src\snn_data_lake\hippocampus\lake_consolidation.py               136      1    99%   333
+src\snn_data_lake\hippocampus\ng_snn.py                           315      5    98%   261, 277, 352, 447, 559
+src\snn_data_lake\hippocampus\open_world_loop.py                  220    121    45%   55-56, 60-61, 128, 143, 173-182, 185-186, 190-194, 200-232, 236-253, 257-372, 376
+src\snn_data_lake\hippocampus\proximity_replay.py                 220     19    91%   109-118, 127, 154, 191, 209, 243, 261, 363, 582-586
+src\snn_data_lake\hippocampus\ring_attractor.py                   100      0   100%
+src\snn_data_lake\hippocampus\skill_builder.py                    122      0   100%
+src\snn_data_lake\hippocampus\sleep_consolidation.py              144      2    99%   193, 209
+src\snn_data_lake\hippocampus\sleep_replay.py                     284     11    96%   214-223, 369
+src\snn_data_lake\hippocampus\spiking_grid_can.py                 266      4    98%   263, 320-322
+src\snn_data_lake\hippocampus\spiking_storage_prototype.py        138      1    99%   104
+src\snn_data_lake\hypothalamus\__init__.py                          0      0   100%
+src\snn_data_lake\hypothalamus\circadian_clock.py                 127      0   100%
+src\snn_data_lake\hypothalamus\homeostatic_drives.py              182      4    98%   171, 174, 211, 231
+src\snn_data_lake\hypothalamus\set_points.py                      124      0   100%
+src\snn_data_lake\lakehouse\__init__.py                             0      0   100%
+src\snn_data_lake\lakehouse\delta_demo.py                          46     46     0%   23-91
+src\snn_data_lake\lakehouse\medallion.py                           90     90     0%   25-175
+src\snn_data_lake\medulla\__init__.py                               0      0   100%
+src\snn_data_lake\medulla\interoceptive_arousal.py                 96      0   100%
+src\snn_data_lake\medulla\vital_nuclei.py                         129      0   100%
+src\snn_data_lake\midbrain\__init__.py                              0      0   100%
+src\snn_data_lake\midbrain\dopamine_nuclei.py                     105      0   100%
+src\snn_data_lake\midbrain\multisensory_integration.py             97      1    99%   128
+src\snn_data_lake\midbrain\sc_deep_layers.py                      143      2    99%   122-123
+src\snn_data_lake\midbrain\superior_colliculus.py                 128      0   100%
+src\snn_data_lake\neuromodulation\__init__.py                       0      0   100%
+src\snn_data_lake\neuromodulation\acetylcholine.py                157      0   100%
+src\snn_data_lake\neuromodulation\affect_integrator.py            141      2    99%   186, 198
+src\snn_data_lake\neuromodulation\astrocyte_modulation.py          96      2    98%   85, 89
+src\snn_data_lake\neuromodulation\cortisol.py                      65      0   100%
+src\snn_data_lake\neuromodulation\developmental_envelope.py        78      0   100%
+src\snn_data_lake\neuromodulation\drive_reduction.py              157      0   100%
+src\snn_data_lake\neuromodulation\empowerment.py                   74      0   100%
+src\snn_data_lake\neuromodulation\generalizing_novelty.py         153      0   100%
+src\snn_data_lake\neuromodulation\intrinsic_motivation.py         132      0   100%
+src\snn_data_lake\neuromodulation\locus_coeruleus.py              135      2    99%   177, 179
+src\snn_data_lake\neuromodulation\naca.py                         168      2    99%   82, 88
+src\snn_data_lake\neuromodulation\raphe_serotonin.py               70      0   100%
+src\snn_data_lake\neuromodulation\spiking_curiosity.py            288      2    99%   356, 364
+src\snn_data_lake\olfactory\__init__.py                             0      0   100%
+src\snn_data_lake\plasticity\__init__.py                            0      0   100%
+src\snn_data_lake\plasticity\bcm_plasticity.py                     62      0   100%
+src\snn_data_lake\plasticity\benna_fusi.py                        132      1    99%   142
+src\snn_data_lake\plasticity\competitive_learning.py              185      1    99%   127
+src\snn_data_lake\plasticity\criticality_regulator.py             163      0   100%
+src\snn_data_lake\plasticity\deep_stdp.py                         216    183    15%   101-109, 112-113, 118-142, 150-163, 167-168, 173-188, 194-212, 217-220, 223-224, 231, 234, 237, 244-245, 248, 251, 257-263, 267-277, 281-284, 294-315, 319-386, 390
+src\snn_data_lake\plasticity\developmental_pruning.py             113      0   100%
+src\snn_data_lake\plasticity\homeostatic_plasticity_stack.py      212      2    99%   140-141
+src\snn_data_lake\plasticity\homeostatic_scaling.py                55      0   100%
+src\snn_data_lake\plasticity\inhibitory_stdp.py                    81      0   100%
+src\snn_data_lake\plasticity\intrinsic_plasticity.py               60      0   100%
+src\snn_data_lake\plasticity\lifelong_consolidation.py            178      0   100%
+src\snn_data_lake\plasticity\meta_plasticity.py                   181      0   100%
+src\snn_data_lake\plasticity\oja_pca.py                            62      0   100%
+src\snn_data_lake\plasticity\plasticity_rule_stack.py             300      1    99%   309
+src\snn_data_lake\plasticity\short_term_plasticity.py              48      0   100%
+src\snn_data_lake\plasticity\snn_mnist_stdp.py                    137    102    26%   107-114, 122-128, 132-133, 138-171, 177-184, 188-200, 204-246, 250
+src\snn_data_lake\plasticity\snn_mnist_stdp_genn.py               206    155    25%   114-136, 141-142, 149-151, 164-166, 187-363, 370-401, 407-437, 443-444, 450-558, 587-595, 605, 609-613, 615
+src\snn_data_lake\pons\__init__.py                                  0      0   100%
+src\snn_data_lake\substrate\__init__.py                             0      0   100%
+src\snn_data_lake\substrate\_mathutils.py                          45      0   100%
+src\snn_data_lake\substrate\arm_view.py                           161     10    94%   165-175, 208-209, 282-283
+src\snn_data_lake\substrate\basic_components.py                   136      5    96%   82, 84, 98, 106, 113
+src\snn_data_lake\substrate\binlog.py                             293     10    97%   45, 73-74, 130, 237, 280, 283, 290, 293, 672
+src\snn_data_lake\substrate\brain_bundle.py                       145      2    99%   46, 90
+src\snn_data_lake\substrate\brain_geometry.py                     182      0   100%
+src\snn_data_lake\substrate\brain_telemetry.py                    289     33    89%   211-212, 242-244, 248-249, 263-264, 271-272, 288-289, 340-341, 354-355, 475-476, 480, 487, 506, 511-513, 525-526, 530-533, 556-557, 615-616
+src\snn_data_lake\substrate\chat_memory.py                        168     42    75%   147, 189, 196, 205, 208, 211, 232, 248, 255-297, 376
+src\snn_data_lake\substrate\cockpit.py                            345     58    83%   141-142, 155-157, 195, 217-218, 228, 304, 317-330, 332-334, 341, 343, 346-356, 365, 371, 373-374, 376, 385, 387-388, 414-418, 421-424, 446-452, 1039-1040, 1322
+src\snn_data_lake\substrate\data_quality.py                        93      2    98%   54, 155
+src\snn_data_lake\substrate\demo.py                               108     15    86%   82-83, 129-138, 182-185
+src\snn_data_lake\substrate\device.py                             157     24    85%   121-122, 130-131, 176-177, 186-189, 215, 219, 225, 343, 354, 368-374, 415-417, 471
+src\snn_data_lake\substrate\dormancy_gate.py                      140     13    91%   371-372, 381-385, 424-425, 474-475, 514, 524-526
+src\snn_data_lake\substrate\drift_monitor.py                       85      2    98%   81, 93
+src\snn_data_lake\substrate\energy.py                              86      1    99%   112
+src\snn_data_lake\substrate\esp32_encoder_path.py                 151     17    89%   62-63, 98, 144-159
+src\snn_data_lake\substrate\frequency_moment.py                   141      3    98%   50, 61, 73
+src\snn_data_lake\substrate\growable.py                           127     10    92%   98-101, 111, 145, 153, 161, 163, 173, 218
+src\snn_data_lake\substrate\hf_stream.py                           99     42    58%   64-73, 77, 107-108, 112-150, 189, 197, 207-214
+src\snn_data_lake\substrate\home.py                               369     21    94%   314, 336-343, 354-355, 604, 658-659, 679, 691, 706-707, 723, 1170, 1278
+src\snn_data_lake\substrate\import_manifest.py                     76      7    91%   174, 182-183, 245, 250-251, 254
+src\snn_data_lake\substrate\ingest_guard.py                        65      3    95%   113, 125, 183
+src\snn_data_lake\substrate\lake_memory.py                        288     43    85%   125, 153, 177-179, 203, 211, 224, 229-230, 235, 242-243, 290-295, 324, 341, 343, 346, 348, 355-362, 367-374, 415-416, 425, 431-435
+src\snn_data_lake\substrate\lake_working_memory.py                124      4    97%   66, 99, 116, 119
+src\snn_data_lake\substrate\learn_daemon.py                       248    159    36%   92-97, 112-127, 132-149, 154-165, 174-187, 207-222, 226-396, 484, 538-539, 601
+src\snn_data_lake\substrate\make_sensor_dataset.py                 72      1    99%   72
+src\snn_data_lake\substrate\method_dormancy_gate.py               109      3    97%   166-167, 328
+src\snn_data_lake\substrate\minhash.py                             93      6    94%   44, 56, 58, 79, 81, 95
+src\snn_data_lake\substrate\morris_counter.py                     103      3    97%   54, 56, 79
+src\snn_data_lake\substrate\nengo_bridge.py                       300    265    12%   38-48, 66-67, 101-110, 113, 124-125, 129, 135-136, 140-165, 183-190, 194, 200-203, 208-225, 232-233, 259-283, 288-295, 307-317, 333-357, 363-372, 377-383, 401-443, 450, 454-628, 632
+src\snn_data_lake\substrate\neuro_chip.py                         140      0   100%
+src\snn_data_lake\substrate\neuro_chip_stream.py                  221      9    96%   64, 67, 98, 139, 265-269
+src\snn_data_lake\substrate\nir_export.py                         110     17    85%   40, 66-67, 70, 80, 84, 88, 97, 120-144
+src\snn_data_lake\substrate\proximity_index.py                    286      2    99%   65-66
+src\snn_data_lake\substrate\region_coherence.py                   181      5    97%   179, 181, 218, 225, 241
+src\snn_data_lake\substrate\region_wiring.py                      374     15    96%   106, 242-245, 362-363, 369, 406, 409-410, 447, 478, 535-536
+src\snn_data_lake\substrate\replication_guard.py                   58      8    86%   66-67, 81, 85-86, 100-102
+src\snn_data_lake\substrate\reservoir_sampling.py                  93      1    99%   45
+src\snn_data_lake\substrate\self_mod_harness.py                   280     30    89%   115, 117, 132-133, 273-274, 296, 321-322, 336-356, 407-408, 416-417, 442, 466, 468, 498-500, 740, 745, 771
+src\snn_data_lake\substrate\sensor_csv_ingest.py                   59      6    90%   49-50, 60, 72-74
+src\snn_data_lake\substrate\signal_calibrator.py                  140      7    95%   145-146, 151-152, 180-181, 310
+src\snn_data_lake\substrate\similarity_sized_growth.py            208      7    97%   89, 99, 122, 141, 214, 236-237
+src\snn_data_lake\substrate\sliding_window_count.py               116      2    98%   52, 54
+src\snn_data_lake\substrate\spike_cardinality.py                  128      9    93%   55, 63, 70, 72, 74, 83, 121, 126, 128
+src\snn_data_lake\substrate\spike_stream_sketch.py                 85      0   100%
+src\snn_data_lake\substrate\spike_telemetry_hub.py                251     51    80%   47, 55, 91, 104-109, 123-124, 138, 142, 180, 202, 208, 366-407
+src\snn_data_lake\substrate\stream_sketch_panel.py                209     11    95%   61, 149-158, 162, 170, 220, 225, 232
+src\snn_data_lake\substrate\streaming_hub.py                      449     23    95%   70-71, 73, 103, 106, 119, 123, 156, 158, 160, 197, 257, 281, 318, 354, 373, 376-377, 396, 414, 444, 498, 623
+src\snn_data_lake\substrate\streaming_quantile.py                 179      6    97%   53, 88, 168, 208-210
+src\snn_data_lake\substrate\web_ingest.py                         125     53    58%   62-63, 80, 84, 93-94, 97-100, 107-120, 162-172, 176-209
+src\snn_data_lake\thalamus\__init__.py                              0      0   100%
+src\snn_data_lake\thalamus\connectome_router.py                   231      2    99%   81, 391
+src\snn_data_lake\thalamus\global_workspace.py                    967      9    99%   1423, 1609-1610, 2079-2080, 3084, 3115, 3473, 3507
+src\snn_data_lake\thalamus\gwt_deep.py                            155      0   100%
+src\snn_data_lake\thalamus\reentrant_workspace.py                 402      7    98%   207, 252, 512-513, 525-526, 656
+src\snn_data_lake\thalamus\reticular_gate.py                      150      0   100%
+---------------------------------------------------------------------------------------------
+TOTAL                                                           45013   4080    91%
+Required test coverage of 70% reached. Total coverage: 90.94%
+PYTEST_EXIT=0
+All checks passed!
+476 files already formatted
+p4c_ratchet EXIT=0
+p6_gate EXIT=0
+citation_guard EXIT=0
+red_reachability EXIT=0
+dependency_ledger EXIT=0
+doc_command_guard EXIT=0
+import_manifest EXIT=0
