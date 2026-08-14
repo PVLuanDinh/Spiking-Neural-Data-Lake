@@ -77,13 +77,13 @@ why no alignment rule could pass it.
 
 **This phase must complete before Phase 4. A criterion that has not qualified cannot judge.**
 
-- [ ] T010 [US1] Implement the repaired criterion per [contracts/criterion.md](contracts/criterion.md) — `cos(dh_rule, dh_transport)` on the same input and same pre-update weights — in `tests/probe_015/criterion.py`, stdlib only
-- [ ] T011 [US1] Implement the permutation null in `tests/probe_015/criterion.py`: `dh_transport` with coordinates shuffled by a **per-instance** `random.Random(seed)` — identical magnitude, identical element multiset, different direction. Never module-level seeding
-- [ ] T012 [US1] Qualification check 1 (identity): transport against itself scores **1.0**. If not, the harness is wrong and nothing downstream means anything — stop and report. Record to `evidence/criterion-identity.txt`
-- [ ] T013 [US1] Qualification check 2 (control): the permutation null scores LOW. **If it does not, the criterion measures magnitude and is DELETED, not weakened** (FR-002) — record that outcome and stop. Record to `evidence/criterion-permutation.txt`
-- [ ] T014 [US1] Qualification check 3: construct the input that makes the criterion FAIL and **record the actual output** to `evidence/criterion-red.txt`. A criterion with no reachable red is deleted (P8 guard 1)
-- [ ] T015 [US1] Write the disclosed degeneracy into `tests/probe_015/criterion.py`'s own docstring: the new quantity remains a **monotone function of `cos(W2[a], B[a])`** under this module's arithmetic; the repair is NOT a new formula but (a) per-epoch readout and (b) a feedback that can MOVE. A reader must be able to predict that fixed-random still scores near zero and know that is correct, not a residual bug
-- [ ] T016 [US1] Run the gate batch, assert 9 exit codes, and confirm `p4c_ratchet` is unchanged against T004. **The probe lives in `tests/probe_015/`, NOT under `specs/`**: a `.py` under `specs/` opens a NEW ZONE and p4c refuses a rise by design (measured 2026-08-14: `specs: 1 > baseline 0`). `tests/**` is already excluded as "the instrument that measures a build, not a build", which is exactly what this probe is
+- [X] T010 [US1] Implement the repaired criterion per [contracts/criterion.md](contracts/criterion.md) — `cos(dh_rule, dh_transport)` on the same input and same pre-update weights — in `tests/probe_015/criterion.py`, stdlib only
+- [X] T011 [US1] Implement the permutation null in `tests/probe_015/criterion.py`: `dh_transport` with coordinates shuffled by a **per-instance** `random.Random(seed)` — identical magnitude, identical element multiset, different direction. Never module-level seeding
+- [X] T012 [US1] Qualification check 1 (identity): transport against itself scores **1.0**. If not, the harness is wrong and nothing downstream means anything — stop and report. Record to `evidence/criterion-identity.txt`
+- [X] T013 [US1] Qualification check 2 (control): the permutation null scores LOW. **If it does not, the criterion measures magnitude and is DELETED, not weakened** (FR-002) — record that outcome and stop. Record to `evidence/criterion-permutation.txt`
+- [X] T014 [US1] Qualification check 3: construct the input that makes the criterion FAIL and **record the actual output** to `evidence/criterion-red.txt`. A criterion with no reachable red is deleted (P8 guard 1)
+- [X] T015 [US1] Write the disclosed degeneracy into `tests/probe_015/criterion.py`'s own docstring: the new quantity remains a **monotone function of `cos(W2[a], B[a])`** under this module's arithmetic; the repair is NOT a new formula but (a) per-epoch readout and (b) a feedback that can MOVE. A reader must be able to predict that fixed-random still scores near zero and know that is correct, not a residual bug
+- [X] T016 [US1] Run the gate batch, assert 9 exit codes, and confirm `p4c_ratchet` is unchanged against T004. **The probe lives in `tests/probe_015/`, NOT under `specs/`**: a `.py` under `specs/` opens a NEW ZONE and p4c refuses a rise by design (measured 2026-08-14: `specs: 1 > baseline 0`). `tests/**` is already excluded as "the instrument that measures a build, not a build", which is exactly what this probe is
 
 **Checkpoint**: criterion qualified on all three checks, degeneracy disclosed. **COMMIT C2.**
 
@@ -96,14 +96,14 @@ why no alignment rule could pass it.
 **Independent test**: the table distinguishes the two feedback variants, or explicitly reports that
 it could not — a null is a complete result.
 
-- [ ] T017 [US2] Implement the Kolen-Pollack converging feedback in `tests/probe_015/sweep.py`: `B[a][j] += lr * err * h[j]`, the SAME increment the read-out step already applies, so `B` tracks `W2` without ever reading it. `err` and `h[j]` are already local to that synapse
-- [ ] T018 [US2] Implement the decay decision as a measured comparison in `tests/probe_015/sweep.py` — decay derived from `lr` vs decay-free from a small init (P1: no new bare constant). **Measure which, do not assume**
-- [ ] T019 [US2] Build the sweep matrix in `tests/probe_015/sweep.py`: `{transport, fixed_random, converging, permutation_null}` × `bseed 1..8` × `epoch 1..30`, using the module's own fixtures (400 train / 300 held-out, hidden=32, lr=0.1, 30 passes, model seed 0, `B` from `random.Random(bseed)` as `uniform(-1,1)/sqrt(hidden)`)
-- [ ] T020 [US2] Record cosine AND held-out accuracy on BOTH fixtures for every row, so *aligns-but-stops-learning* and *learns-but-does-not-align* are both visible (FR-005)
-- [ ] T021 [US2] Assert the row count is exactly **960** (4 × 8 × 30) and that the transport variant reads **1.0 at every epoch** — if either fails the probe is broken and no verdict may be read from it
-- [ ] T022 [US2] Write the trajectory table to `specs/015-resolve-weight-transport/evidence/trajectory.md`, reporting 8 draws as a **RANGE** not a mean (FR-006) — the module already records this quantity "is a property of the DRAW"
-- [ ] T023 [US2] Confirm the probe is in `tests/probe_015/`, NOT under `specs/` (a `.py` there opens a p4c zone the ratchet refuses), and is NOT registered in `__init__.py` or `run_selfchecks.py`; it must never be promoted to `src/`
-- [ ] T024 [US2] Run the gate batch, assert 9 exit codes
+- [X] T017 [US2] Implement the Kolen-Pollack converging feedback in `tests/probe_015/sweep.py`: `B[a][j] += lr * err * h[j]`, the SAME increment the read-out step already applies, so `B` tracks `W2` without ever reading it. `err` and `h[j]` are already local to that synapse
+- [X] T018 [US2] Implement the decay decision as a measured comparison in `tests/probe_015/sweep.py` — decay derived from `lr` vs decay-free from a small init (P1: no new bare constant). **Measure which, do not assume**
+- [X] T019 [US2] Build the sweep matrix in `tests/probe_015/sweep.py`: `{transport, fixed_random, converging, permutation_null}` × `bseed 1..8` × `epoch 1..30`, using the module's own fixtures (400 train / 300 held-out, hidden=32, lr=0.1, 30 passes, model seed 0, `B` from `random.Random(bseed)` as `uniform(-1,1)/sqrt(hidden)`)
+- [X] T020 [US2] Record cosine AND held-out accuracy on BOTH fixtures for every row, so *aligns-but-stops-learning* and *learns-but-does-not-align* are both visible (FR-005)
+- [X] T021 [US2] Assert the row count is exactly **960** (4 × 8 × 30) and that the transport variant reads **1.0 at every epoch** — if either fails the probe is broken and no verdict may be read from it
+- [X] T022 [US2] Write the trajectory table to `specs/015-resolve-weight-transport/evidence/trajectory.md`, reporting 8 draws as a **RANGE** not a mean (FR-006) — the module already records this quantity "is a property of the DRAW"
+- [X] T023 [US2] Confirm the probe is in `tests/probe_015/`, NOT under `specs/` (a `.py` there opens a p4c zone the ratchet refuses), and is NOT registered in `__init__.py` or `run_selfchecks.py`; it must never be promoted to `src/`
+- [X] T024 [US2] Run the gate batch, assert 9 exit codes
 
 **Checkpoint**: 960-row trajectory recorded, probe unpromoted. **COMMIT C3.**
 
@@ -114,9 +114,9 @@ it could not — a null is a complete result.
 **No code in this phase.** It reads [research.md](research.md) D-3 and decides which of Phase 6a or
 6b executes. The bar and epoch count come from D-3 and **are not renegotiated here.**
 
-- [ ] T025 [US3] Compare the trajectory against research.md D-3 **as written**, not a revised version, and record the comparison to `specs/015-resolve-weight-transport/evidence/decision.md`
-- [ ] T026 [US3] Apply the bar: converging `B` reaches `|cos| > 0.5` on **≥ 6 of 8** draws by pass 30 **AND** holds the shipped accuracy gates (> 0.85 held-out non-linear, > 0.30 over the linear control) on every draw
-- [ ] T027 [US3] Record per-item attribution — which draws cleared, which did not, and the accuracy beside each (P8 guard 3). "It worked" is not attribution
+- [X] T025 [US3] Compare the trajectory against research.md D-3 **as written**, not a revised version, and record the comparison to `specs/015-resolve-weight-transport/evidence/decision.md`
+- [X] T026 [US3] Apply the bar: converging `B` reaches `|cos| > 0.5` on **≥ 6 of 8** draws by pass 30 **AND** holds the shipped accuracy gates (> 0.85 held-out non-linear, > 0.30 over the linear control) on every draw
+- [X] T027 [US3] Record per-item attribution — which draws cleared, which did not, and the accuracy beside each (P8 guard 3). "It worked" is not attribution
 
 **Checkpoint**: **GO → Phase 6a. NO-GO → Phase 6b.** Exactly one executes.
 
@@ -126,20 +126,23 @@ it could not — a null is a complete result.
 
 **Goal**: one credit-assignment path, and it is the converging one.
 
-- [ ] T028 [US3] Replace the feedback vector inside the existing `dh` step in `src/snn_data_lake/basal_ganglia/mlp_q.py` with the converging `B`, and **DELETE the transport line**
-- [ ] T029 [US3] Cite the mechanism as **Kolen-Pollack** in `src/snn_data_lake/basal_ganglia/mlp_q.py`, NOT as SFDFA. SFDFA is defined over spikes and this module has none; calling it SFDFA would be the citation defect this lane exists to remove (research.md D-1)
-- [ ] T030 [US3] Count survivors in `src/snn_data_lake/basal_ganglia/mlp_q.py`: grep for the retired transport form and assert **zero** hits, with a positive control proving the grep can match (FR-008). A flag selecting between transport and `B` fails this
-- [ ] T031 [US3] Re-run the module's shipped gates on every draw and record to `evidence/post-adoption-gates.txt` — > 0.85 held-out non-linear, > 0.30 over the linear control
-- [ ] T032 [US3] Name and quantify any capability lost (FR-009) in `src/snn_data_lake/basal_ganglia/mlp_q.py`'s docstring — measured, not asserted
-- [ ] T033 [US3] Settle the decay term with the measurement that decided it (P1), recorded in the docstring beside the rule
-- [ ] T034 [US3] Land the repaired criterion permanently in the module's `main()` for the shipped rule only — one rule, one criterion, re-derived every gate run (research.md D-4)
-- [ ] T035 [US3] Re-derive every cite AFTER the last edit, then run the gate batch and assert 9 exit codes
+- [X] T028 [US3] Replace the feedback vector inside the existing `dh` step in `src/snn_data_lake/basal_ganglia/mlp_q.py` with the converging `B`, and **DELETE the transport line**
+- [X] T029 [US3] Cite the mechanism as **Kolen-Pollack** in `src/snn_data_lake/basal_ganglia/mlp_q.py`, NOT as SFDFA. SFDFA is defined over spikes and this module has none; calling it SFDFA would be the citation defect this lane exists to remove (research.md D-1)
+- [X] T030 [US3] Count survivors in `src/snn_data_lake/basal_ganglia/mlp_q.py`: grep for the retired transport form and assert **zero** hits, with a positive control proving the grep can match (FR-008). A flag selecting between transport and `B` fails this
+- [X] T031 [US3] Re-run the module's shipped gates on every draw and record to `evidence/post-adoption-gates.txt` — > 0.85 held-out non-linear, > 0.30 over the linear control
+- [X] T032 [US3] Name and quantify any capability lost (FR-009) in `src/snn_data_lake/basal_ganglia/mlp_q.py`'s docstring — measured, not asserted
+- [X] T033 [US3] Settle the decay term with the measurement that decided it (P1), recorded in the docstring beside the rule
+- [X] T034 [US3] Land the repaired criterion permanently in the module's `main()` for the shipped rule only — one rule, one criterion, re-derived every gate run (research.md D-4)
+- [X] T035 [US3] Re-derive every cite AFTER the last edit, then run the gate batch and assert 9 exit codes
 
 **Checkpoint**: one mechanism, transport deleted, gates green. **COMMIT C4-adopt.**
 
 ---
 
-## Phase 6b: User Story 3 — NULL (P1) — COMMIT C4-null *(only on NO-GO)*
+## Phase 6b: User Story 3 — NULL (P1) — **DID NOT EXECUTE**
+
+**The decision was GO** (evidence/decision.md). Phase 6a ran instead. Tasks T036-T039 are
+not applicable and are left unchecked deliberately -- an unexecuted branch is not an unfinished one.
 
 **The null is a deliverable, not a failure** (FR-007, pre-committed in research.md D-3 before any
 number existed). **The lane stops after Phase 7.**
@@ -153,7 +156,36 @@ number existed). **The lane stops after Phase 7.**
 
 ---
 
-## Phase 7: Update the adjudication (P1) — COMMIT C5
+## BLOCKED: Phases 7 and 8 need branch 017 merged first
+
+**Discovered during implementation, 2026-08-14.** Phases 7 and 8 amend the e-prop adjudication in
+`docs/POLICIES.md`. That adjudication's 4-site SCOPE CORRECTION, its `mlp_q` OPEN QUESTION entry and
+its `predictive_coding` OPEN QUESTION entry were all added by lane **017-tier0-invariant-and-p0**.
+
+This branch was created off `main`, and 017 is **not** an ancestor of it. Measured on this branch:
+`docs/POLICIES.md` is main's 1705-line version, with **0 hits** for "SCOPE CORRECTED", 0 for
+"OPEN QUESTION, added 2026-08-13" and **0 for `mlp_q`**. There is nothing here to amend, and writing
+the entries fresh would collide with 017 on merge rather than update them.
+
+**The plan missed this dependency.** 015 resolves a site that 017 scoped, so 015 genuinely depends
+on 017 — that should have been in plan.md's Technical Context and was not.
+
+**A merge was attempted and ABORTED**: `src/snn_data_lake/basal_ganglia/mlp_q.py` conflicts, because
+both lanes edited the same docstring region (017 fixed its stale cross-reference; 015 recorded the
+degeneracy and the adoption). Resolving a cross-lane source conflict is a decision, not a mechanical
+step, so it is surfaced rather than taken unilaterally.
+
+**Options, for the owner:**
+1. Merge 017 into 015, hand-resolve the `mlp_q.py` docstring conflict, then run Phases 7-8 here.
+2. Merge both into `main` first, then run Phases 7-8 as a follow-up lane.
+3. Run Phases 7-8 on branch 017 instead, where the adjudication already lives.
+
+Everything in Phases 1-6a and 9 is complete and gated. **The code change that closes Tier 0 item #2
+has landed**; what remains is recording it in the policy text.
+
+---
+
+## Phase 7: Update the adjudication (P1) — COMMIT C5 *(BLOCKED — see above)*
 
 - [ ] T040 [US3] Update the e-prop adjudication in `docs/POLICIES.md` with what was decided — adoption OR null. Cite by MARKER, not line number: this lane's predecessor rotted its own cites three times
 - [ ] T041 [US3] Confirm all four sites in the adjudication carry either a verdict or an explicit "open, and why", with none left implied (SC-007)
@@ -180,12 +212,12 @@ different mechanism on a different objective, in either direction (R-004).
 
 ## Phase 9: Polish & scope verification
 
-- [ ] T048 [P] Verify `git diff --name-only main..HEAD -- src/snn_data_lake/brainstem/` is **EMPTY** — this lane carries no envelope approval
-- [ ] T049 [P] Verify `git diff --name-only main..HEAD -- src/` lists `mlp_q.py` and **nothing else**
-- [ ] T050 [P] Verify `tools/dependency_ledger.py --assert` shows no new entry, and that `mlp_q.py` imports no torch, autograd or numpy in the update path
-- [ ] T051 [P] Verify the probe remains in `tests/probe_015/`, is not under `specs/`, and appears in no gate registration
-- [ ] T052 [P] Verify every criterion added by this lane has a RECORDED red under `specs/015-resolve-weight-transport/evidence/` — enumerate them and confirm none is missing (P8 guard 1)
-- [ ] T053 [P] Sweep the lane's own diff for module-level `random.seed(` or `torch.manual_seed(` — determinism invariant
+- [X] T048 [P] Verify `git diff --name-only main..HEAD -- src/snn_data_lake/brainstem/` is **EMPTY** — this lane carries no envelope approval
+- [X] T049 [P] Verify `git diff --name-only main..HEAD -- src/` lists `mlp_q.py` and **nothing else**
+- [X] T050 [P] Verify `tools/dependency_ledger.py --assert` shows no new entry, and that `mlp_q.py` imports no torch, autograd or numpy in the update path
+- [X] T051 [P] Verify the probe remains in `tests/probe_015/`, is not under `specs/`, and appears in no gate registration
+- [X] T052 [P] Verify every criterion added by this lane has a RECORDED red under `specs/015-resolve-weight-transport/evidence/` — enumerate them and confirm none is missing (P8 guard 1)
+- [X] T053 [P] Sweep the lane's own diff for module-level `random.seed(` or `torch.manual_seed(` — determinism invariant
 - [ ] T054 Run `graphify update .` to keep the knowledge graph current
 - [ ] T055 Final full gate batch from a clean checkout, asserting 9 exit codes, plus the `brainstem/` diff one last time before push
 
