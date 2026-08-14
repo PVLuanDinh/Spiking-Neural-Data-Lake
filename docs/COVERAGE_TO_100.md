@@ -84,11 +84,10 @@ A policy file that describes a codebase which no longer exists is the failure it
 names. Three claims were checked and were false:
 
 - **`godel_machine` was listed among the self-build modules that "fire every 8 nights."** Its
-  `attempt_on_repo` (`godel_machine.py:159`) has **zero call sites** tree-wide, and the only reference
+  `reasoning/godel_machine.py::attempt_on_repo` has **zero call sites** tree-wide, and the only reference
   to the module outside itself is its *filename as a string* in the self-build's protected-paths list
-  (`brain_native_selfbuild.py:73`). What does fire: `brain_native_selfbuild` (`brain.py:1708`) and
-  `self_build_loop` (`brain.py:2520`), with `self_mod_harness` reached via `Brain.self_improve`
-  (`brain.py:3485`). Wiring the Gödel-machine adapter is now explicit open P0 work.
+  (`basal_ganglia/brain_native_selfbuild.py`). What does fire, CORRECTED 2026-08-13: the `self_build_loop` route reaches its recorder but is MEASURED EMPTY -- 190 ticks under `NORD_SELFMOD=1` leave `Brain._selfbuild_last == {'night': 8, 'proposed': 0, 'kept': 0}`, so `self_mod_harness` is NEVER CONSTRUCTED. The claim that it is `reached via Brain.self_improve`
+  is FALSE: that method has ZERO call sites tree-wide (its def is `Brain.self_improve`, and `docs/POLICIES.md`'s own P0 row records the same). CITED BY SYMBOL because all five line numbers in this paragraph were re-derived 2026-08-13 and every one had rotted -- `godel_machine.py:159` lands on a path string (the def is `attempt_on_repo`), `brain.py:1708` on an R-STDP comment, `:2520` on a table row, `:3485` on `"kill",`, and `brain_native_selfbuild.py:73` on a `__spec__` comment. The route is `cortex/brain.py::Brain._enter_wake` -> `Brain._maybe_autonomous_self_build` -> `basal_ganglia/self_build_loop.SelfBuildLoop.run`. Wiring the Godel-machine adapter is open P0 work, and so is FILLING THE PROPOSER: a call-site wire into a loop that proposes nothing satisfies a grep and changes no outcome.
 - **"67 such swallows in `cortex/brain.py` alone"** did not reproduce, and neither did the audit's
   correction of it ("112 / 203"), because neither said what it counted. Re-counted by `ast` with the
   definition stated: `brain.py` has **111** bare `except Exception:` handlers, **39** of which wrap a
