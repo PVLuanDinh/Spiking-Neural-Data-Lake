@@ -30,8 +30,14 @@ structural change from LatentQ, and the API is identical so it drops into the sa
 
 OPEN e-PROP VIOLATION, NAMED HERE BECAUSE THIS MODULE PERFORMS IT (audit 2026-08-04). The `dh` line
 below reads the FORWARD read-out weights `W2[a]` transposed to carry error backward into the shared
-hidden layer. That is WEIGHT TRANSPORT -- structurally the same defect `docs/POLICIES.md` records at
-`cerebellum/jepa_world_model.py:275-278`, and hand-writing it in stdlib rather than calling autograd
+hidden layer. That is WEIGHT TRANSPORT -- structurally the same SHAPE `docs/POLICIES.md` once ruled a
+real violation at `cerebellum/jepa_world_model.py`. **That site is CLOSED (2026-08-04) and is carried
+STRUCK THROUGH in that file's e-prop adjudication (search the `~~`-wrapped row, not a line number --
+this pass first wrote `POLICIES.md:1564` and that cite was already stale when written, because the
+same lane's earlier commit had inserted ten lines above it). So this sentence borrows the site's
+SHAPE, not its open status -- it was left reading "records at" until 2026-08-13, which pointed a
+reader at a closed row as if it were corroboration.** THIS site is now recorded in that same adjudication, as an OPEN QUESTION with
+no verdict rather than as a ruling. Hand-writing it in stdlib rather than calling autograd
 changes nothing about that ("absence of `.backward()` is NOT evidence of locality"). It is not on the
 live tick today -- `AutonomousArm` defaults `mlp_q=False` -- but it is one constructor argument away,
 so it is a latent violation, not a non-issue.
