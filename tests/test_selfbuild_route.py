@@ -4,10 +4,15 @@
 DOES fire and it proposes ZERO candidates, so `SelfModHarness` is never constructed. That gap is
 recorded in the policy text; these tests exist so the ROUTE cannot break silently underneath it.
 
-WHAT THESE TESTS DELIBERATELY DO NOT ASSERT: that `proposed == 0`. Filling the proposer IS the open
-P0 work, so an assert on the empty payload would go RED on the change it exists to encourage -- the
-"criteria measure the pathology" failure this project has hit before. The payload is free to grow;
-what is pinned is that the route still fires and that the opt-in still gates it.
+WHAT THESE TESTS ASSERT ABOUT THE PAYLOAD, and why it changed. The route assertions deliberately
+check KEYS, not counts -- filling the proposer IS the open P0 work, and a criterion that reddens on
+the change it exists to encourage is the "criteria measure the pathology" failure this project has
+hit before. But `proposed == 0` IS asserted, for a different reason: as a SAFETY tripwire. This test
+runs the real `SelfBuildLoop` against the LIVE repository, and `promote()` writes before it gates,
+so "nothing was kept" does not mean "nothing was written". The tripwire message says what
+to do when it fires -- inject a scratch repo_root -- so it directs the fix, not blocks the work.
+Distinguishing those two roles is the whole point: one assert would be pathology-measuring, the
+other is the only bound that actually holds.
 
 Cost, stated rather than hidden: `test_selfbuild_route_fires` runs 190 ticks because the cadence is
 `nights % SELFBUILD_EVERY == 0` and night 8 is the first hit -- reaching it any faster would mean
@@ -19,13 +24,13 @@ load-dependent rather than either number as wrong. It spawns NO subprocess: veri
 `run_selfchecks.py`, which would be multi-minute).
 
 WHAT THIS FILE DOES NOT PIN, disclosed because the gap is easy to mistake for coverage: the PROPOSER
-leg is near-vacuous here, and MORE so than an earlier revision of this docstring admitted. A proposer
-that RAISES still leaves these tests green: `Brain.propose_improvements` has its OWN
+leg is near-vacuous here, and MORE so than an earlier revision of this docstring admitted. A
+proposer that RAISES still leaves these tests green: `Brain.propose_improvements` has its OWN
 `except Exception: return []`, so the raise never reaches `_maybe_autonomous_self_build`'s handler
 and `_selfbuild_last` is written normally. Measured -- patching the proposer to raise yields
-`{'night': 8, 'proposed': 0, 'kept': 0}`, not None. The load-bearing assert catches only a raise from
-`propose_improvements` ITSELF, which is what red 3 below patches. A proposer that merely returns
-nothing is likewise indistinguishable from a healthy one that found nothing. That is
+`{'night': 8, 'proposed': 0, 'kept': 0}`, not None. The load-bearing assert catches only a raise
+from `propose_improvements` ITSELF, which is what red 3 patches. A proposer that merely
+returns nothing is likewise indistinguishable from a healthy one that found nothing. That is
 deliberate: the empty payload is the open P0 work, so this file pins the ROUTE only. Anything
 asserting the proposer's health belongs in a test of the proposer.
 
@@ -36,8 +41,8 @@ REACHABLE REDS, all three demonstrated by patching `src/` and reverting with `gi
                  `Brain._maybe_autonomous_self_build` swallows it  ->  fires the LOAD-BEARING assert
                  with `assert None is not None`
 The third was added after an audit found the first two never exercised the assert this file exists
-for. Precisely: red 1 fires the tick-count guard one line ABOVE it, and red 2 fires the CONTROL test,
-which has no tick-count guard at all and cannot affect the positive test (that test sets
+for. Precisely: red 1 fires the tick-count guard one line ABOVE it, and red 2 fires the CONTROL
+test, which has no tick-count guard at all and cannot affect the positive test (that test sets
 `NORD_SELFMOD=1` itself). An earlier revision of this docstring said "they both fire one line
 earlier", which is true of red 1 only. Two reds on a criterion is not the same as a red on THE
 criterion -- and describing where a red lands is itself a claim that has to be checked.
@@ -88,12 +93,26 @@ def test_selfbuild_route_fires(monkeypatch):
     # `self_build_loop.py` resolves to `_repo_root()` -- the REAL repository -- and
     # `promote()` writes source edits into it. Nothing is applied today only because
     # the proposer returns nothing, and FILLING THE PROPOSER IS THIS LANE'S STATED
-    # OPEN P0 WORK. So `proposed` is free to grow; `kept` is not. Without this line
-    # the first commit that fills the proposer silently converts this unit test into
-    # a self-modifying run against the developer's tree, with nothing turning red.
+    # OPEN P0 WORK. `kept` must stay 0 -- and see the tripwire below for why `kept`
+    # alone is not enough. Without these the first commit that fills the proposer
+    # silently turns this unit test into a self-modifying run against the real tree.
     assert b._selfbuild_last.get("kept", 0) == 0, (
         f"a unit test APPLIED {b._selfbuild_last.get('kept')} self-modification(s) to the "
         f"live repository: SelfBuildLoop resolves a None repo_root to the real tree"
+    )
+    # `kept` alone is NOT sufficient and saying so is the point. `promote()` APPLIES to the
+    # real tree (`edit_fn(self.root)`) BEFORE it runs the gate, and rolls back after a
+    # failure -- so a proposal that is applied and reverted never reaches status "kept",
+    # and the assert above cannot see the write that happened in between. The only state
+    # in which this test provably touches nothing is one where no proposal is processed at
+    # all. That is a SAFETY tripwire, not an assertion about the payload: when the proposer
+    # is filled -- this lane's own open P0 work -- this SHOULD go red, and the correct
+    # response is to inject a scratch repo_root here, NOT to relax the bound.
+    assert b._selfbuild_last.get("proposed", 0) == 0, (
+        f"{b._selfbuild_last.get('proposed')} proposal(s) were processed against the LIVE "
+        f"repository by a unit test. promote() writes before it gates, so 'kept == 0' does "
+        f"not mean nothing was written. Give this test its own scratch repo_root before "
+        f"filling the proposer -- do not weaken this assert"
     )
 
     # The recorder is written by TWO branches and only the circuit-breaker one adds
