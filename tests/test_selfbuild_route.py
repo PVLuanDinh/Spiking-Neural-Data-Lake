@@ -71,11 +71,31 @@ def test_selfbuild_route_fires(monkeypatch):
     # not the first. At 190 ticks night 8 is the only crossing, so the two coincide -- if the tick
     # count ever grows past night 16 this assert changes meaning and must be revisited.
     assert b._selfbuild_last["night"] == SELFBUILD_EVERY, (
-        f"recorded night {b._selfbuild_last['night']!r}, expected the only cadence hit reachable in "
-        f"190 ticks, at {SELFBUILD_EVERY}"
+        f"recorded night {b._selfbuild_last['night']!r}, expected the only cadence hit "
+        f"reachable in 190 ticks, at {SELFBUILD_EVERY}"
     )
     # Keys, not values: the counts are free to move when the proposer is filled.
     assert "proposed" in b._selfbuild_last and "kept" in b._selfbuild_last
+
+    # SAFETY, and it deliberately does NOT depend on the payload being empty.
+    # `brain.py` constructs `SelfBuildLoop` with no `repo_root`, which
+    # `self_build_loop.py` resolves to `_repo_root()` -- the REAL repository -- and
+    # `promote()` writes source edits into it. Nothing is applied today only because
+    # the proposer returns nothing, and FILLING THE PROPOSER IS THIS LANE'S STATED
+    # OPEN P0 WORK. So `proposed` is free to grow; `kept` is not. Without this line
+    # the first commit that fills the proposer silently converts this unit test into
+    # a self-modifying run against the developer's tree, with nothing turning red.
+    assert b._selfbuild_last.get("kept", 0) == 0, (
+        f"a unit test APPLIED {b._selfbuild_last.get('kept')} self-modification(s) to the "
+        f"live repository: SelfBuildLoop resolves a None repo_root to the real tree"
+    )
+
+    # The recorder is written by TWO branches and only the circuit-breaker one adds
+    # this key. Without it the test passes on a run where SelfBuildLoop.run was never
+    # called at all -- measurable today by forcing should_skip True.
+    assert "skipped" not in b._selfbuild_last, (
+        f"the cadence short-circuited instead of running the loop: {b._selfbuild_last!r}"
+    )
 
 
 def test_selfbuild_is_gated_off_by_default(monkeypatch):
