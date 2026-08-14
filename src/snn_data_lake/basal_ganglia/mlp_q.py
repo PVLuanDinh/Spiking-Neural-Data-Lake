@@ -70,6 +70,30 @@ honest resolutions are (a) accept FA and amend what the cosine clause means for 
 alignment rule, or (b) retire this head under P2 in favour of the linear `LatentQ`, which has no
 hidden layer and therefore no backward pass at all. Deciding that is a policy call, not an edit.
 
+THAT COSINE CANNOT DISCRIMINATE, AND THE REFUTATION ABOVE THEREFORE DOES NOT STAND ON IT
+(recorded 2026-08-14, specs/015-resolve-weight-transport, BEFORE any repair so the repair cannot be
+retro-justified). The paragraph above already states the quantity: "essentially cos(W2[a], B[a])
+under the relu mask (`err` cancels)". `err` is a scalar multiplying both sides, so it divides out,
+and what remains is the angle between a FORWARD WEIGHT VECTOR and a FEEDBACK VECTOR. For a FIXED
+RANDOM `B` that is near zero BY CONSTRUCTION at any reasonable width -- two independent vectors in
+R^32 are near-orthogonal in expectation. So the criterion asks "is the feedback parallel to the
+forward weights", which is the WEIGHT SYMMETRY feedback alignment exists to deny. It never looks at
+what either rule DOES. An instrument that no alignment rule could ever pass is not evidence against
+alignment rules.
+
+THE CONTRAST THAT PROVES IT, and it is in this project's own record: at the jepa site the
+same-NAMED criterion measured 0.971 -- far ABOVE the 0.5 bar -- because there both sides were
+computed through one shared forward pass, so the identity/skip term dominated both. One criterion
+name, two different quantities, opposite verdicts. Establishing what a cosine is computed OVER is
+the question, not what it is called. (Same defect class the eprop_kernel lane found, where 90.7% of
+an all-parameter cosine came from terms that were identical by construction.)
+
+WHAT THIS PARAGRAPH DOES NOT CLAIM: that feedback alignment works here. It claims only that the
+number above does not settle it, in either direction. What the shipped gates DID show is separate
+and stands: FA cleared both of them on every draw. The measurement that could settle it -- reading
+alignment across training rather than at the end, against a feedback that can MOVE -- is the subject
+of the spec named above, and the transport line below is unchanged until it reports.
+
 The learning rule is the same semi-gradient delta step toward a scalar `target` that the arm and
 LatentQ use (q += lr*(r - q)), backpropagated BY HAND (no autograd / torch) through the hidden layer:
 
