@@ -36,7 +36,6 @@ from snn_data_lake.basal_ganglia.mlp_q import (
     _make_contexts,
     _xor_action,
 )
-
 from tests.probe_015.criterion import COSINE_BAR, cosine, dh
 
 # The module's own fixture constants -- read from main()'s body, not re-chosen here.
@@ -186,15 +185,26 @@ def _report(rows, decay):
             f"  {v:<18}[{min(cs):.4f}, {max(cs):.4f}]{'':<8}{over} of 8{'':<5}"
             f"[{min(an):.3f}, {max(an):.3f}]  [{min(al):.3f}, {max(al):.3f}]"
         )
-        verdict[v] = {"over": over, "cos": (min(cs), max(cs)), "acc_nl": (min(an), max(an)),
-                      "acc_li": (min(al), max(al)), "per_draw": cs, "an": an, "al": al}
+        verdict[v] = {
+            "over": over,
+            "cos": (min(cs), max(cs)),
+            "acc_nl": (min(an), max(an)),
+            "acc_li": (min(al), max(al)),
+            "per_draw": cs,
+            "an": an,
+            "al": al,
+        }
 
     # TREND: does the converging variant RISE? Compare first third against last third.
     for v in ("fixed_random", "converging"):
         early = [abs(r["cosine"]) for r in rows if r["variant"] == v and r["epoch"] <= PASSES // 3]
-        late = [abs(r["cosine"]) for r in rows if r["variant"] == v and r["epoch"] > 2 * PASSES // 3]
-        print(f"  {v:<18}trend: early mean {sum(early) / len(early):.4f} -> "
-              f"late mean {sum(late) / len(late):.4f}")
+        late = [
+            abs(r["cosine"]) for r in rows if r["variant"] == v and r["epoch"] > 2 * PASSES // 3
+        ]
+        print(
+            f"  {v:<18}trend: early mean {sum(early) / len(early):.4f} -> "
+            f"late mean {sum(late) / len(late):.4f}"
+        )
     return verdict
 
 
