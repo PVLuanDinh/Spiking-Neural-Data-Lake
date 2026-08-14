@@ -19,10 +19,13 @@ load-dependent rather than either number as wrong. It spawns NO subprocess: veri
 `run_selfchecks.py`, which would be multi-minute).
 
 WHAT THIS FILE DOES NOT PIN, disclosed because the gap is easy to mistake for coverage: the PROPOSER
-leg is near-vacuous here. A proposer that raises, or one deleted outright, still leaves these tests
-green -- `Brain._maybe_autonomous_self_build`'s bare `except Exception: return None` converts the
-first into a None result, which the load-bearing assert below DOES catch, but a proposer that merely
-returns nothing is indistinguishable from a healthy one that found nothing. That is
+leg is near-vacuous here, and MORE so than an earlier revision of this docstring admitted. A proposer
+that RAISES still leaves these tests green: `Brain.propose_improvements` has its OWN
+`except Exception: return []`, so the raise never reaches `_maybe_autonomous_self_build`'s handler
+and `_selfbuild_last` is written normally. Measured -- patching the proposer to raise yields
+`{'night': 8, 'proposed': 0, 'kept': 0}`, not None. The load-bearing assert catches only a raise from
+`propose_improvements` ITSELF, which is what red 3 below patches. A proposer that merely returns
+nothing is likewise indistinguishable from a healthy one that found nothing. That is
 deliberate: the empty payload is the open P0 work, so this file pins the ROUTE only. Anything
 asserting the proposer's health belongs in a test of the proposer.
 
@@ -33,8 +36,11 @@ REACHABLE REDS, all three demonstrated by patching `src/` and reverting with `gi
                  `Brain._maybe_autonomous_self_build` swallows it  ->  fires the LOAD-BEARING assert
                  with `assert None is not None`
 The third was added after an audit found the first two never exercised the assert this file exists
-for: they both fire one line earlier, on the tick-count guard. Two reds on a criterion is not the
-same as a red on THE criterion.
+for. Precisely: red 1 fires the tick-count guard one line ABOVE it, and red 2 fires the CONTROL test,
+which has no tick-count guard at all and cannot affect the positive test (that test sets
+`NORD_SELFMOD=1` itself). An earlier revision of this docstring said "they both fire one line
+earlier", which is true of red 1 only. Two reds on a criterion is not the same as a red on THE
+criterion -- and describing where a red lands is itself a claim that has to be checked.
 
 IT DOES WRITE A LAKE, and an earlier revision of this docstring said it did not. Measured: 8 files
 / 19,291,290 B -- `brain_lake.bin` at 48,607 B plus the skill `.npz` set -- written into the
