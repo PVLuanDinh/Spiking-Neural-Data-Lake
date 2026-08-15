@@ -1606,6 +1606,43 @@ The instrument half of the claim stands; the line does not.)*
     which has no hidden layer and therefore no backward pass at all — at a measured cost of the
     non-linear capability (**0.467 vs 0.993 on XOR**), which P2's honesty guard requires be ported
     first. Recorded here so the decision is made against the measurements rather than rediscovered.
+
+    **RESOLVED 2026-08-14 (specs/015-resolve-weight-transport) — and by NEITHER of those two
+    routes.** The transport is RETIRED. `dh` now reads a separate feedback matrix `B` that receives
+    the SAME increment as the forward read-out (`B[a][j] += lr*err*h[j]`), so `B` TRACKS `W2`
+    without ever reading it — `err` and `h[j]` are already local to that synapse. This is
+    **Kolen-Pollack** (Kolen & Pollack 1994), NOT the Spiking Forward DFA that prompted the lane:
+    SFDFA estimates its feedback by propagating directional derivatives as SPIKE GRADES, and `MlpQ`
+    is a rate MLP with no membrane, threshold, spike or time index, so SFDFA's actual contribution
+    has nothing here to attach to. What transferred is its ESSENTIAL property — feedback ESTIMATED
+    and CONVERGING rather than transported or frozen. Naming the shipped rule "SFDFA" would have
+    been a citation defect.
+
+    **WHY BOTH STATED RESOLUTIONS WERE WRONG TO CHOOSE FROM, and this is the transferable part.**
+    Route (a) was framed as necessary because the FA cosine "misses the bar in both directions". That
+    cosine **could not discriminate**: the module's own docstring records it as *"essentially
+    `cos(W2[a], B[a])` under the relu mask (`err` cancels)"*, and for a FIXED RANDOM `B` that is near
+    zero **by construction** — it asked whether the feedback is PARALLEL to the forward weights,
+    which is the weight symmetry feedback alignment exists to deny. An instrument no alignment rule
+    could ever pass is not evidence against alignment rules, so it never justified amending the
+    invariant. Route (b) was never needed: nothing had to be retired and no capability paid for.
+
+    **MEASURED** (evidence/trajectory.md — 960 rows, 4 variants x 8 draws x 30 epochs, with the
+    transport control reading 1.000000000000 at every epoch or the probe is void): converging `B`
+    reaches `|cos|` in **[0.8785, 0.9121] on 8 of 8** draws against a pre-registered bar of ≥ 6 of 8,
+    while the frozen random feedback reaches [0.1604, 0.3379] on **0 of 8** and a permutation null
+    reads 0.0000. **No capability lost** — XOR held-out 0.993, identical to the transport incumbent;
+    linear 0.983 vs LatentQ 0.993, the same no-regression margin; determinism unchanged. **No new
+    constant** (P1): textbook Kolen-Pollack pairs the shared increment with weight decay, and the
+    sweep killed it — decay-free 8 of 8, decay = lr/10 7 of 8, decay = lr **0 of 8**. Omitted on
+    measurement.
+
+    **The invariant was NOT amended, and did not need to be.** `main()`'s check (5) now separates
+    three ways on every gate run: transport identity 1.000, shipped learned `B` **+0.9031**, frozen
+    control 0 of 8. **One prediction was wrong and is recorded rather than smoothed**: the spec
+    predicted `B` would "rise monotonically from ~0"; it is at 0.92 after ONE epoch and drifts
+    slightly DOWN. Alignment is established almost immediately and then tracked, not developed over
+    training — the direction was right, the mechanism model was not.
   - **OPEN QUESTION, added 2026-08-13, NOT adjudicated, and the LIVE one: `cortex/predictive_coding.py:200-201`.**
     `g1 = self.w1.T @ s_e0` / `g2 = self.w2.T @ s_e1` — the forward weight array, transposed, carrying
     error backward. Unlike `mlp_q` this **runs on every wake tick** (`cortex/brain.py:235` constructs
@@ -1620,6 +1657,38 @@ The instrument half of the claim stands; the line does not.)*
     *"an undisclosed VIOLATION SITE, not concealed code"*, and observed that this verdict "covers
     exactly two sites" with `predictive_coding.py` appearing in neither — **that finding was never
     carried into this file, which is how a live site stayed unadjudicated for nine days.**
+
+    **ADJUDICATED 2026-08-14, at the owner's instruction: NOT a violation of this invariant.** The
+    verdict rests on a mechanism read out of the module, not on the Rao-Ballard analogy, and not on
+    the Predictive E-prop preprint — which addresses BPTT and has **0** full-text hits for weight
+    transport / weight symmetry / feedback alignment, so its silence is silence.
+
+    **THE DISTINGUISHING TEST IS WHAT THE TRANSPOSE FEEDS.** In both sites this verdict ruled
+    violations, a transposed forward weight fed a WEIGHT update — jepa's `Wz^T gp` entered the
+    predictor's gradient, and `mlp_q`'s `W2^T` produced `dh`, which updated `W1`. That is credit
+    assignment to weights through a transported weight, which is exactly what "e-prop, not backprop"
+    forbids. `predictive_coding` does not do it:
+
+    - `g1 = self.w1.T @ s_e0` feeds `self.r1 = self.r1 + lr * (g1 - s_e1)` — an **ACTIVATION**.
+      It is INFERENCE, settling a transient latent state, not credit assignment.
+    - the **weight** update is `self.w1 += lr_w * np.outer(self.cum_e0 / self.n_steps, self.r1)` —
+      a **local Hebbian outer product** of a local error rate and a local cause. **No transposed
+      weight appears in the learning rule at all.**
+
+    The invariant as this file states it governs LEARNING RULES — "local eligibility trace ×
+    broadcast learning signal, verified cosine > 0.5 against an independent BPTT gradient". There is
+    no gradient propagated through a network here and no weight transported into an update, so there
+    is nothing for the cosine clause to be measured against. Same disposition as `ng_snn::fit`, and
+    for the same structural reason.
+
+    **WHAT THIS VERDICT DOES NOT SAY, stated so it is not read as broader than it is.** `self.w1.T`
+    IS exact weight symmetry, on every wake tick, and a physical synapse is unidirectional — so
+    realising that transpose still requires a symmetric backward pathway. That is a real
+    biological-plausibility question. **It is simply not the question this invariant asks**, and
+    widening an invariant is an owner decision, not something an adjudication may do on its own
+    authority. Recorded here as OPEN SCOPE, distinct from the closed violation question: if the
+    invariant is ever extended from learning rules to inference pathways, this site is the first
+    thing it catches.
 
   *(Line citations in this bullet — `jepa_world_model.py:275-278`/`:277` and `ng_snn.py:137` — were
   dropped 2026-08-04 after all three failed to resolve to what they claimed. `ng_snn.py:137` is
