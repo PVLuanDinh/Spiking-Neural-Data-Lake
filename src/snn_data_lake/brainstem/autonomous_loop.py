@@ -1472,7 +1472,16 @@ class AutonomousArm:
         # 1. SAFETY FIRST: an object at the sensor trips the reflex -> gated EMERGENCY_STOP, no action
         if distance is not None and (not math.isfinite(distance) or distance < CONTACT):
             self.cort.step(1.0)  # danger -> stress up (sharpens future response)
-            if math.isfinite(distance):  # real contact (not a NaN fail-closed):
+            # A NEGATIVE distance is a MISSING reading, not contact. The ESP32 firmware sends a
+            # -1 idle sentinel when nothing is within range (substrate/esp32_encoder_path.py
+            # documents it), and -1.0 is finite and below CONTACT -- so before this guard the
+            # split below was two-way (NaN = fail-closed, finite = real contact) with no case for
+            # a sentinel, and it landed on the wrong side: every idle sample bound a fear
+            # association to a context in which nothing was there. The E-STOP above is NOT
+            # conditioned on this -- a reading we cannot trust still stops the arm, because
+            # "no object" and "sensor said nothing" are not the same claim -- but a fabricated
+            # US must never reach the amygdala.
+            if math.isfinite(distance) and distance >= 0.0:  # real contact (not a NaN, not idle):
                 pat = self._context_pattern(visual, temperature, audio, distance)
                 am = self._amygdala_for(pat)
                 if am is not None:
