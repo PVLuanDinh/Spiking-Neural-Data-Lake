@@ -91,16 +91,14 @@ import math
 import random
 import zlib
 
+from snn_data_lake.substrate._mathutils import clamp01
+
 __version__ = "0.1.0"
 
 
-def _clamp01(x):
-    """Clamp a scalar into [0,1]."""
-    if x < 0.0:
-        return 0.0
-    if x > 1.0:
-        return 1.0
-    return x
+#: MERGED 2026-08-15 into `substrate/_mathutils.clamp01` (8 copies -> 1). Alias keeps the local
+#: spelling so no call site changes; the MECHANISM is singular.
+_clamp01 = clamp01
 
 
 class AgencyMonitor:

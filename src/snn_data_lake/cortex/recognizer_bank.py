@@ -38,6 +38,8 @@ import io
 import random
 import zlib
 
+from snn_data_lake.substrate._mathutils import clamp01
+
 FEATURES = 64  # feature-vector length (== spike_preprocessing.N == snn_classifier.N)
 _EPS = 1e-9
 
@@ -45,12 +47,9 @@ _EPS = 1e-9
 # ------------------------------------------------------------- helpers --------------------------------
 
 
-def _clamp01(x):
-    if x < 0.0:
-        return 0.0
-    if x > 1.0:
-        return 1.0
-    return float(x)
+#: MERGED 2026-08-15 into `substrate/_mathutils.clamp01` (8 copies -> 1). This file held one of the
+#: THREE float-coercing copies, which is the form that survived. Alias keeps the local spelling.
+_clamp01 = clamp01
 
 
 @contextlib.contextmanager

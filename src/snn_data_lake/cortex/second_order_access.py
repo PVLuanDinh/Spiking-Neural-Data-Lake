@@ -63,19 +63,16 @@ monitors ACCESS reliability). Deterministic, ASCII-only, per-instance RNG.
 import random
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.substrate._mathutils import clamp01
 
 # phenomenal vocabulary that MUST NEVER appear in the functional readout (claim 5).
 _BANNED = ("conscious", "sentient", "phenomenal", "subjective", "aware", "feels", "qualia")
 
 
-def _clamp01(x):
-    """Clamp a scalar into [0,1]."""
-    x = float(x)
-    if x < 0.0:
-        return 0.0
-    if x > 1.0:
-        return 1.0
-    return x
+#: MERGED 2026-08-15 into `substrate/_mathutils.clamp01` (8 copies -> 1). This file's copy WAS the
+#: canonical form -- it coerced up front, and that is the behaviour that survived. Alias kept so no
+#: call site changes; the MECHANISM is singular.
+_clamp01 = clamp01
 
 
 class SecondOrderAccess:

@@ -132,17 +132,12 @@ import math
 
 from snn_data_lake.cortex.executive_control import ExecutiveControl
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
-from snn_data_lake.substrate._mathutils import sigmoid
+from snn_data_lake.substrate._mathutils import clamp01, sigmoid
 from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
 
-
-def _clamp01(x):
-    """Clamp a scalar into [0,1]."""
-    if x < 0.0:
-        return 0.0
-    if x > 1.0:
-        return 1.0
-    return x
+#: MERGED 2026-08-15 into `substrate/_mathutils.clamp01` (8 copies -> 1). Alias keeps the local
+#: spelling so no call site changes; the MECHANISM is singular.
+_clamp01 = clamp01
 
 
 class MetacognitiveMonitor:
