@@ -213,7 +213,7 @@ different mechanism on a different objective, in either direction (R-004).
 ## Phase 9: Polish & scope verification
 
 - [X] T048 [P] Verify `git diff --name-only main..HEAD -- src/snn_data_lake/brainstem/` is **EMPTY** — this lane carries no envelope approval
-- [X] T049 [P] Verify `git diff --name-only main..HEAD -- src/` lists `mlp_q.py` and **nothing else**
+- [X] T049 [P] Verify `git diff --name-only main..HEAD -- src/` — **CORRECTED after the 017 merge**: it lists TWO files, `mlp_q.py` and `self_mod_harness.py`. The second arrived with 017's "It IS constructed" docstring fix, which post-dates this task's "nothing else" wording. Both accounted for; nothing unexpected in the diff
 - [X] T050 [P] Verify `tools/dependency_ledger.py --assert` shows no new entry, and that `mlp_q.py` imports no torch, autograd or numpy in the update path
 - [X] T051 [P] Verify the probe remains in `tests/probe_015/`, is not under `specs/`, and appears in no gate registration
 - [X] T052 [P] Verify every criterion added by this lane has a RECORDED red under `specs/015-resolve-weight-transport/evidence/` — enumerate them and confirm none is missing (P8 guard 1)
