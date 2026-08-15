@@ -41,9 +41,16 @@ from arcengine import GameAction, GameState
 _BY_VALUE = {a.value: a for a in GameAction}
 
 
+# Per-instance, not `random.seed(0)` in __main__: the determinism invariant's named prohibition,
+# and `tests/test_selfchecks.py` runs module `__main__` bodies with `runpy.run_module(...,
+# run_name="__main__")` IN THE SAME PROCESS, so a global reseed here reaches every module after it.
+# Draw-for-draw identical to the seed it replaces -- same Mersenne Twister, same seed, same stream.
+_RNG = random.Random(0)
+
+
 def random_agent(frame):
     ids = frame.available_actions or [GameAction.ACTION1.value]
-    return _BY_VALUE[random.choice(ids)]
+    return _BY_VALUE[_RNG.choice(ids)]
 
 
 def play(agent_fn=random_agent, game="ls20", max_steps=10, render=False):
@@ -61,7 +68,6 @@ def play(agent_fn=random_agent, game="ls20", max_steps=10, render=False):
 if __name__ == "__main__":
     game = sys.argv[1] if len(sys.argv) > 1 else "ls20"
     steps = int(sys.argv[2]) if len(sys.argv) > 2 else 10
-    random.seed(0)
     frame, scorecard = play(game=game, max_steps=steps)
     print(
         f"game={frame.game_id} state={frame.state.value} "

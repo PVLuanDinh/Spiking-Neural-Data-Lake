@@ -89,6 +89,118 @@ def test_module_scope_global_seeding_fires(tmp_path, monkeypatch):
     assert [v[2] for v in viol] == ["MODULE-SCOPE-MUTATION"], viol
 
 
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import torch\ntorch.manual_seed(0)\n",
+        "import torch\ntorch.cuda.manual_seed(0)\n",
+        "import torch\ntorch.cuda.manual_seed_all(0)\n",
+        "import torch\ntorch.random.manual_seed(0)\n",
+    ],
+)
+def test_torch_seeding_fires(tmp_path, monkeypatch, source):
+    """Torch seeding was uncovered in EVERY tier until 2026-08-14, while the incident the rule is
+    cited to prevent (`growable_readout.py`'s Determinism note) is a torch seed. The gate could not
+    see the one RNG the train tier actually uses."""
+    viol = _scan_fixture(tmp_path, monkeypatch, source)
+    assert [v[2] for v in viol] == ["MODULE-SCOPE-MUTATION"], viol
+
+
+@pytest.mark.parametrize(
+    "spelling,source",
+    [
+        ("alias", "import numpy.random as npr\nnpr.seed(0)\n"),
+        ("from-import", "from random import seed\nseed(0)\n"),
+        ("from-import as", "from torch import manual_seed as ms\nms(0)\n"),
+        ("sys alias", 'import sys as s\ns.path.insert(0, "src")\n'),
+    ],
+)
+def test_an_import_style_cannot_evade_the_rule(tmp_path, monkeypatch, spelling, source):
+    """Rule 1's 2026-08-05 lesson, applied to rules 2-4.
+
+    The banned names were matched AS WRITTEN, so every one of these spellings walked past a gate
+    that fired on the canonical form in the same run. Call targets are canonicalized through the
+    module's own import table now. Nothing in the tree used these spellings -- a latent hole, closed
+    on a measurement rather than on a hunch.
+    """
+    viol = _scan_fixture(tmp_path, monkeypatch, source)
+    assert len(viol) == 1, f"{spelling} produced {viol}"
+    assert viol[0][2] in ("MODULE-SCOPE-MUTATION", "CWD-DEPENDENT-PATH"), viol
+
+
+def test_a_class_body_is_import_time(tmp_path, monkeypatch):
+    """`_module_scope_nodes` skipped `ClassDef` outright, so the one construct that LOOKS like a
+    container and is really a running statement list was the blind spot. A `def` nested in a class
+    is still a function body: the second half asserts the exclusion did not become a whole-tree
+    walk, or rule 4 would swallow rule 5's scope and the 79-finding census with it."""
+    viol = _scan_fixture(tmp_path, monkeypatch, "import random\n\n\nclass C:\n    random.seed(0)\n")
+    assert [v[2] for v in viol] == ["MODULE-SCOPE-MUTATION"], viol
+
+    viol = _scan_fixture(
+        tmp_path,
+        monkeypatch,
+        "import random\n\n\nclass C:\n    def go(self):\n        random.seed(0)\n",
+    )
+    assert viol == [], "a method body is not import time"
+
+
+# --------------------------------------------------------------------- rule 5: the constructor
+def test_a_constructor_may_not_reseed_the_process(tmp_path, monkeypatch):
+    """THE INCIDENT, reconstructed. `hippocampus/growable_readout.py` ran `torch.manual_seed(seed)`
+    in `__init__` for the life of that feature: constructing one re-seeded the process-global torch
+    RNG for every module built afterwards, and both harnesses run modules in ONE process
+    (`tests/test_selfchecks.py` via `runpy.run_module(..., run_name="__main__")`). It was removed by
+    HAND on 2026-08-04 -- no gate could see it, because a constructor body is not import time.
+
+    MEASURED when this rule landed: three more live instances of the same shape were sitting in
+    `src/` (`hippocampus/developmental_loop_brain.py`, `reasoning/_loop_common.py`, plus the
+    already-bracketed `cortex/recognizer_bank.py`). The defect recurred and nothing caught it.
+    """
+    viol = _scan_fixture(
+        tmp_path,
+        monkeypatch,
+        "import torch\n\n\nclass R:\n    def __init__(self, seed=0):\n"
+        "        torch.manual_seed(seed)\n        self.w = torch.rand(3)\n",
+    )
+    assert [v[2] for v in viol] == ["CONSTRUCTOR-SEED"], viol
+    assert "__init__" in viol[0][3], "the finding must name where it fires"
+
+
+@pytest.mark.parametrize(
+    "remedy,source",
+    [
+        (
+            "fork_rng",
+            "import torch\n\n\nclass R:\n    def __init__(self, seed=0):\n"
+            "        with torch.random.fork_rng(devices=[]):\n"
+            "            torch.manual_seed(seed)\n            self.w = torch.rand(3)\n",
+        ),
+        (
+            "getstate/setstate",
+            "import random\n\n\nclass R:\n    def __init__(self, seed=0):\n"
+            "        state = random.getstate()\n        random.seed(seed)\n        try:\n"
+            "            self.v = random.random()\n        finally:\n"
+            "            random.setstate(state)\n",
+        ),
+        (
+            "per-instance",
+            "import random\nimport torch\n\n\nclass R:\n    def __init__(self, seed=0):\n"
+            "        self.rng = random.Random(seed)\n"
+            "        self.gen = torch.Generator().manual_seed(seed)\n",
+        ),
+    ],
+)
+def test_a_restored_seed_is_not_a_violation(tmp_path, monkeypatch, remedy, source):
+    """A gate that reddens on its own remedy teaches the next reader to stop applying it.
+
+    All three are shapes the FIX takes in this tree: `cortex/recognizer_bank.py` brackets with
+    getstate/setstate because the MoE trainer it calls draws from the module-global `random`, the
+    two `_LinearReadout` copies fork because `nn.Linear` takes no `generator=`, and per-instance is
+    what the determinism invariant asks for outright.
+    """
+    assert _scan_fixture(tmp_path, monkeypatch, source) == [], remedy
+
+
 def test_the_tests_tier_is_scanned_too(tmp_path, monkeypatch):
     """`tests/` carried two of the five cwd-dependent entries, and it is the worse tier for them:
     the suite runs in ONE process and legitimately chdirs mid-run."""
@@ -97,6 +209,33 @@ def test_the_tests_tier_is_scanned_too(tmp_path, monkeypatch):
     )
     assert [v[2] for v in viol] == ["CWD-DEPENDENT-PATH"], viol
     assert viol[0][0].startswith("tests/"), viol
+
+
+def test_the_src_tier_is_scanned_too(tmp_path, monkeypatch):
+    """`src/` is the GOVERNED tier and it was outside this gate entirely until 2026-08-14 --
+    governed for dormancy by the three P3 gates, and by nothing for determinism, which is the axis
+    these rules measure. All four live findings the extension produced were in `src/`."""
+    assert "src" in instrument_guard.TIERS
+    viol = _scan_fixture(tmp_path, monkeypatch, "import random\nrandom.seed(0)\n", tier="src")
+    assert [v[2] for v in viol] == ["MODULE-SCOPE-MUTATION"], viol
+    assert viol[0][0].startswith("src/"), viol
+
+
+def test_the_defining_module_may_construct_its_own_class(tmp_path, monkeypatch):
+    """`make_brain()` lives in the module that defines `Brain` and must call it, or there is no
+    sanctioned path to BE the sanctioned path.
+
+    THE RED IS THE OTHER HALF, and it is what makes this a scope rather than an allowlist: the same
+    call in a module that does NOT define the class still fires. All six `src/` hits on the first
+    counted run were `cortex/brain.py` constructing its own class -- exclude them by file and the
+    rule becomes an allowlist; exclude them by DEFINITION and it becomes what P4's clause says.
+    """
+    defining = "class Brain:\n    pass\n\n\ndef make_brain(**kw):\n    return Brain(**kw)\n"
+    assert _scan_fixture(tmp_path, monkeypatch, defining, name="brain.py") == []
+
+    consumer = "from snn_data_lake.cortex.brain import Brain\n\n\ndef go():\n    return Brain()\n"
+    viol = _scan_fixture(tmp_path, monkeypatch, consumer, name="consumer.py")
+    assert [v[2] for v in viol] == ["P4-CONSTRUCTION"], viol
 
 
 # --------------------------------------------------------------------------- the fix stays green
@@ -134,7 +273,13 @@ def test_an_absolute_syspath_entry_is_not_flagged(tmp_path, monkeypatch):
 # --------------------------------------------------------------------------- the real tree
 def test_the_live_tier_has_no_violations():
     """The gate that this whole feature exists to hold. If it goes red, an instrument stopped being
-    governed -- and the failure message names the file, the line and the rule."""
+    governed -- and the failure message names the file, the line and the rule.
+
+    Covers `src/` since 2026-08-14, so this is 471 modules rather than 97. It was green on the
+    working tree the moment the four findings were cleared; the A/B that proves it can still SEE
+    them ran the same `scan()` over the pre-fix files at HEAD and returned 3 (the fourth,
+    `cortex/recognizer_bank.py`, was already bracketed and is clean in both arms).
+    """
     viol, _census = instrument_guard.scan()
     unexempt = [v for v in viol if f"{v[0]} -> {v[2]}" not in instrument_guard.EXEMPT]
     assert not unexempt, "\n".join(f"{v[0]}:{v[1]} {v[2]} -- {v[3]}" for v in unexempt)
