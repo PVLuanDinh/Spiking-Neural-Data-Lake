@@ -497,6 +497,58 @@ one-line documentation strikes sit above large builds.
 - **source** specs/014-live-sensor-transduction/tasks.md T035 + T067
 - **evidence** COLLAPSED 2 rows; all four cites re-derive correct (esp32_encoder_path.py:33/:66/:91/:120) and `git diff --name-only main` on that file is empty, so T067 asserts nothing until the feed lands - carry it as a commit-time rule, not a task.
 
+### ADDED 2026-08-15 -- the benchmarks the BLOCKED half of P2 is waiting on
+
+> Hand-authored, not generated (FR-001 covers the 173 inventory items above). Added after the P2
+> merge program split its work in two by measurement: LITERAL DUPLICATES are decidable now and two
+> are already landed (`[B4.17]` `_Rng` 2->1 at `53ffa064`; `[B4.15]`'s `_clamp01` 8->1 at
+> `8f3f93f3`), while COMPETING MECHANISMS -- `[B4.03]`, `[B4.05]`, `[B4.06]`, `[B4.07]` -- are
+> blocked by P2's own bar: *"better requires a measurement that exists"*, and for most of them it
+> does not. **The answer POLICIES.md gives is BUILD THE BENCHMARK FIRST, never pick the more
+> fashionable or the more biologically faithful one** -- fidelity is ruled non-evidence at
+> `docs/POLICIES.md` P2, and the Thousand Brains proposal to replace the Global Workspace with
+> columnar voting was REFUSED on exactly this ground.
+>
+> Every criterion below is an INVENTED measurement and therefore owes P8's burden in full: a
+> reachable RED constructed and recorded, a control that is not the method itself, per-item
+> attribution, unprompted disclosure, and DELETION ON A NULL. Two repo-specific traps are named at
+> each site because this tree has already been caught by both: `not_an_oracle`
+> (`specs/009/data-model.md` -- assembly-derived wiring scored 1.000 untrained because the
+> co-activity mask IS the ground-truth partition) and `can_degrade` (a metric that improves
+> monotonically with parameter count is arithmetic, not function).
+
+### [B4.27] Build the consensus benchmark that settles the two Global Workspaces - POLICIES specifies its shape and has carried it as open debt since 2026-07-28
+
+- **status** OPEN &nbsp;|&nbsp; **policy** P2 + P8 &nbsp;|&nbsp; **effort** large &nbsp;|&nbsp; **blocks** `two-global-workspaces-additive`
+- **key** `consensus-benchmark-absent`
+- **source** docs/POLICIES.md P2 ("The benchmark that would settle it"); specs/019 [B4.07]
+- **evidence** Re-derived at HEAD: POLICIES.md:305-307 states the design verbatim -- *"a set of ambiguous multi-source inputs with a known correct winner, scored on which workspace's ignited content matches it. Until that exists, both stay and this entry is the honest record of why."* Both workspaces are live and fed every tick (72 submits each over 40 wake ticks); importer counts re-derive at GlobalWorkspace 8 / ReentrantWorkspace 2.
+- **owed** (a) the ambiguous multi-source set with a KNOWN winner, built so the winner is not recoverable from the input encoding -- the `not_an_oracle` trap; (b) a scorer reading IGNITED CONTENT from each workspace on the identical input, not a proxy; (c) a permutation/shuffled-ground-truth null, since a scorer that cannot score chance cannot score either workspace; (d) a constructed RED -- an input set on which the benchmark must report NO separation; (e) DELETE the criterion if the two workspaces are indistinguishable on it, and record that both survive with the reason. A null here is a real result: it means the P2 debt stays open honestly rather than being resolved by preference.
+
+### [B4.28] Build the decision benchmark that discriminates the two Wang-2002 attractors - accuracy AND reaction time under graded evidence, or it discriminates nothing
+
+- **status** OPEN &nbsp;|&nbsp; **policy** P2 + P8 &nbsp;|&nbsp; **effort** large &nbsp;|&nbsp; **blocks** `wang-attractor-duplicated`
+- **key** `decision-benchmark-absent`
+- **source** specs/019 [B4.06]; specs/010-policy-compliance-audit T045 (C19)
+- **evidence** Two independent implementations at HEAD -- `basal_ganglia/evidence_accumulation.py` and `cortex/prefrontal_executive.py`, the second hand-rolling its own pool sizes, weights and threshold and importing only `random`, so it does not delegate. Neither has ever been scored against the other.
+- **owed** Both driven from the IDENTICAL evidence stream at several coherence levels, scored on the two observables the Wang-2002 model exists to produce -- choice accuracy and decision TIME. Accuracy alone cannot separate two attractors that both eventually decide correctly; the speed-accuracy relationship is the discriminating shape. Control: at ZERO coherence both must fall to chance, and a benchmark whose zero-coherence arm is above chance is leaking the answer. Per-item attribution: report which of pool size / weights / threshold accounts for any gap, by neutering each, rather than declaring one implementation better wholesale.
+
+### [B4.29] Build the growth A/B that SC-007 already demands - 7+ mechanisms live, and the criterion says exactly ONE survives
+
+- **status** OPEN &nbsp;|&nbsp; **policy** P2 + P8 &nbsp;|&nbsp; **effort** large &nbsp;|&nbsp; **blocks** `multiple-growth-mechanisms-p2`
+- **key** `growth-benchmark-absent`
+- **source** specs/019 [B4.03]; specs/007-whole-brain-neurogenesis T025
+- **evidence** At least SEVEN live at HEAD (time_cells, growable_readout, developmental_loop_brain, laminar_local_readout, growing_learner, multimodal_encoder, neurogenesis_engine). SC-007 requires exactly 1 survivor and no A/B has ever been run, so the count is the finding and the selection is unjustified either way.
+- **owed** A task where growth MATTERS (capacity must be the binding constraint, or every mechanism ties and the benchmark is vacuous), scored on capacity-vs-data monotonicity AND retention across a restart -- P4b's guard, since a grower whose units die with the process has not grown. `hippocampus/ng_snn.py`'s earn-your-place stop is the template (capacity monotone in data, 4,512 units at 24,000 rows). `can_degrade` applies directly here: a score that rises with unit count is measuring the manipulation, not the function. Expect several to be RETIRED rather than compared -- P2's honesty guard requires porting any unique capability first.
+
+### [B4.30] RE-SCOPE [B4.05]: its benchmark ALREADY EXISTS, so it is not blocked - and the measurement says MERGE, not adopt
+
+- **status** OPEN &nbsp;|&nbsp; **policy** P2 &nbsp;|&nbsp; **effort** medium
+- **key** `action-value-benchmark-exists`
+- **source** specs/019 [B4.05]; src/snn_data_lake/basal_ganglia/mlp_q.py
+- **evidence** RE-DERIVED at HEAD, and this corrects the assumption that every competing-mechanism item waits on a benchmark. `mlp_q`'s module docstring carries a per-arm held-out table that `main()` RE-DERIVES on every gate run: XOR (non-linear) **MlpQ 0.993 vs LatentQ 0.467 (~chance)**; linearly-separable **MlpQ 0.983 vs LatentQ 0.993**. So P2's bar -- *"better requires a measurement that exists"* -- is already MET for the action-value pair.
+- **owed** What the measurement says is that **NEITHER DOMINATES**: MlpQ wins decisively where the rule is non-linear and loses slightly where a linear map is already exact. P2's two routes are co-equal and this is the MERGE case, not the ADOPT case -- build the ONE mechanism superseding both, then retire both originals. The `latent_q` / `mlp_q` / `tabular` selection flag at `brainstem/autonomous_loop.py` is precisely the *"flag that selects between mechanisms is additive with extra steps"* failure, and a merge that keeps it has not merged. The curiosity-drive half of [B4.05] is a separate question and does NOT inherit this evidence.
+
 ## Band 5 -- P3 no dormancy
 
 23 item(s).
