@@ -530,6 +530,23 @@ def main():
         f"or entrypoint) and not in EXEMPT -- wire them, retire them, or add an EXEMPT reason: "
         f"{cov['dormant']}"
     )
+    # ASSERTED 2026-08-15, having been COMPUTED and merely NOTE-printed since this gate was written.
+    # An exemption that has stopped being true is not a harmless leftover: several EXEMPT reasons in
+    # this table are the ONLY thing recording why a rule is being waived, and `growable_readout` /
+    # `developmental_loop_brain` say in so many words that their Adam trainers are permitted "ONLY
+    # while no live root reaches" them. Wiring one flips its exemption stale -- and the assert above
+    # cannot see it, because becoming reachable makes `dormant` SMALLER, never larger. MEASURED by
+    # adding one edge from cortex.brain to developmental_loop_brain: reachable 199 -> 207,
+    # stale_exempt 0 -> 8, dormant 0 -> 0. The gate was green through all of it.
+    # Currently 0, so this is a work list of length zero rather than an allowlist. The reachable red
+    # is constructed in tests/test_eprop_train_tier_unreachable.py, which also holds the e-prop half
+    # directly (this assert catches the CLASS; that one names the constraint).
+    assert not cov["stale_exempt"], (
+        f"Policy 3: {len(cov['stale_exempt'])} stale EXEMPT entry/entries -- now REACHABLE, so their "
+        f"stated reason no longer holds -- retire the entry, or revert the wire that made it "
+        f"reachable. Check the reason before deleting it: an exemption may be the only record of a "
+        f"waived invariant. {cov['stale_exempt']}"
+    )
     print("dormancy gate OK: every brain module is reachable from a live path or explicitly exempt")
 
 
