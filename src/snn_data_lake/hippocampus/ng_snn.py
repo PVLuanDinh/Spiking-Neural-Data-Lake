@@ -166,7 +166,16 @@ class NGSNN:
         self.eps_tol, self.reg_eps = float(eps_tol), float(reg_eps)
         self.patience = int(patience)
         self.device = device if (torch.cuda.is_available() or device == "cpu") else "cpu"
-        self.g = torch.Generator(device=self.device).manual_seed(seed)
+        # THE RNG IS CPU-BOUND ON PURPOSE, WHATEVER `self.device` IS. torch's CPU and CUDA
+        # generators produce DIFFERENT streams from the same seed -- measured, seed 7:
+        # cpu [0.534923, 0.198803, 0.659212, ...] vs cuda [0.954597, 0.495040, 0.941953, ...].
+        # Binding the generator to `self.device` therefore made "same seed -> same brain" false
+        # across hardware: this box has a card and defaults to cuda, CI has none and gets cpu, so
+        # the grown weights differed between them by construction. The determinism invariant is a
+        # property of the SEED, not of the machine. Every draw below is taken on the CPU stream and
+        # moved to `self.device`, which costs one small host-to-device copy per candidate block and
+        # buys a brain that is reproducible off this machine.
+        self.g = torch.Generator(device="cpu").manual_seed(seed)
         self.W = None  # (L, d_in) grown hidden input weights
         self.b = None  # (L,)      grown hidden biases
         self.beta = None  # (L, m)    analytical output weights
@@ -317,7 +326,7 @@ class NGSNN:
         # columns and the growth solve always use the full set of TRAINING rows.
         use_sub = score_subsample is not None and int(score_subsample) < n_tr
         sel = (
-            torch.randperm(n_tr, generator=self.g, device=self.device)[: int(score_subsample)]
+            torch.randperm(n_tr, generator=self.g)[: int(score_subsample)].to(self.device)
             if use_sub
             else None
         )
@@ -418,8 +427,9 @@ class NGSNN:
             poolW, poolb, poolscore, poolpass = [], [], [], []
             for Lam in self.lambdas:  # multi-scale candidate search (Alg. 1)
                 P = self.t_cand
-                Wp = (torch.rand(P, d, generator=self.g, device=self.device) * 2 - 1) * Lam  # (P,d)
-                bp = (torch.rand(P, generator=self.g, device=self.device) * 2 - 1) * Lam  # (P,)
+                # drawn on the CPU stream (see __init__), then moved -- seed decides, hardware does not
+                Wp = ((torch.rand(P, d, generator=self.g) * 2 - 1) * Lam).to(self.device)  # (P,d)
+                bp = ((torch.rand(P, generator=self.g) * 2 - 1) * Lam).to(self.device)  # (P,)
                 Sp = self._rates(Xsel, Wp, bp)  # (Nsel, P) candidate responses
                 proj = Sp.t() @ Esel  # (P, m) <e_q, s_p>
                 spn = (Sp * Sp).sum(dim=0)  # (P,)   ||s_p||^2
@@ -539,8 +549,8 @@ def _novelty_control(base, X, y):
         best_s, best_w, best_b, best_sc = None, None, None, 0.0
         for Lam in base.lambdas:
             P = base.t_cand
-            Wp = (torch.rand(P, d, generator=base.g, device=dev) * 2 - 1) * Lam
-            bp = (torch.rand(P, generator=base.g, device=dev) * 2 - 1) * Lam
+            Wp = ((torch.rand(P, d, generator=base.g) * 2 - 1) * Lam).to(dev)
+            bp = ((torch.rand(P, generator=base.g) * 2 - 1) * Lam).to(dev)
             Sp = base._rates(X, Wp, bp)  # (N, P)
             proj = Sp.t() @ Rin  # (P, d) response vs INPUT residual
             spn = (Sp * Sp).sum(dim=0)  # (P,)
