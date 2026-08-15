@@ -1,0 +1,3 @@
+TOTAL ungoverned                            202       202
+  FACULTY-to-FACULTY reads (BOTH endpoints FACULTY): 0
+  NOT ASSERTED, deliberately: faculty-to-faculty reads = 0. A 'must not FALL'

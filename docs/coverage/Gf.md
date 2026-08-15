@@ -242,7 +242,7 @@ this brain does not have; what was falsified is one attempt at it. The measureme
 attempt was a **null** -- library ON and OFF returned byte-identical solved-ID sets on both splits
 while the library learned 4 composites, re-confirmed independently before anything was deleted. That
 null is the P2 case for retiring it, and it is why "the library learns composites" was never evidence
-that the library helps. `docs/COVERAGE_TO_100.md:167` still records the phase-6 null; that reference
+that the library helps. `docs/COVERAGE_TO_100.md`'s phase-6 row ("Capability -- SATISFIED AS A NULL") still records the phase-6 null (cited by MARKER: the line cite `:167` was correct at `462da205` and was shifted to `:166` on 2026-08-14 by an unrelated edit to that file, landing on the phase-7 row); that reference
 is history and stays.
 
 ## Prior claims this audit REFUTES

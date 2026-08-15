@@ -1,0 +1,22 @@
+﻿============================================================================================
+criterion qualification -- specs/015-resolve-weight-transport
+============================================================================================
+  fixture: hidden=32, live relu units=20, err=+0.688844
+  dh_transport: 32 coords, 20 non-zero  (must be > 0)
+
+  (1) IDENTITY      cos(dh_transport, dh_transport) = +1.000000000000   expect 1.0
+  (2) CONTROL       permutation null, 2000 shuffles: median=0.1431 p95=0.3825 max=0.6062
+                    magnitudes identical? True (0.323499 vs 0.323499)
+  (3) REACHABLE RED anti-aligned (-W2): cos = -1.000000 -> fails > 0.5
+
+  NOISE FLOOR over 2000 shuffles: p95=0.4760 p99=0.6059 max=0.6861
+             |cos| > 0.5 in 76 of 2000 (3.80%)
+
+  DISCLOSED: fixed-random feedback over 8 draws: [-0.3819, +0.2196], |cos| > 0.5 in 0 of 8
+             This is EXPECTED. A frozen draw cannot align; the repair is that the
+             candidate's feedback can MOVE, and that alignment is read per-epoch.
+  CONSEQUENCE: single draw over the bar by chance = 0.0380; 6-of-8 by chance = 7.891e-08
+             The spec's 6-of-8 bar is robust to this floor. A SINGLE draw is not,
+             and must not be read as evidence on its own.
+
+  qualification OK: identity exact, control separates on median, red reachable

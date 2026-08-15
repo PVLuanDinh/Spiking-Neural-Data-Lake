@@ -28,13 +28,41 @@ features a linear Q lacks. This is textbook NONLINEAR value-function approximati
 ch. 9-10: a nonlinear function approximator for the action-value); the hidden layer is the ONLY
 structural change from LatentQ, and the API is identical so it drops into the same wiring.
 
-OPEN e-PROP VIOLATION, NAMED HERE BECAUSE THIS MODULE PERFORMS IT (audit 2026-08-04). The `dh` line
-below reads the FORWARD read-out weights `W2[a]` transposed to carry error backward into the shared
-hidden layer. That is WEIGHT TRANSPORT -- structurally the same defect `docs/POLICIES.md` records at
-`cerebellum/jepa_world_model.py:275-278`, and hand-writing it in stdlib rather than calling autograd
-changes nothing about that ("absence of `.backward()` is NOT evidence of locality"). It is not on the
-live tick today -- `AutonomousArm` defaults `mlp_q=False` -- but it is one constructor argument away,
-so it is a latent violation, not a non-issue.
+e-PROP WEIGHT TRANSPORT: **RESOLVED 2026-08-14** (specs/015-resolve-weight-transport). The history
+below is kept because the WAY it was resolved is the useful part. (Merge note: lane 017 recorded
+this site as an OPEN QUESTION in the policy adjudication and corrected a stale citation here; lane
+015 then resolved it. Both contributions are kept below -- the 017 half is the citation paragraph,
+the 015 half is the resolution.)
+
+THE VIOLATION, as it stood (audit 2026-08-04). The `dh` line read the FORWARD read-out weights
+`W2[a]` transposed to carry error backward into the shared hidden layer. That is WEIGHT TRANSPORT --
+structurally the same SHAPE `docs/POLICIES.md` once ruled a real violation at
+`cerebellum/jepa_world_model.py`. Hand-writing it in stdlib rather than calling autograd changed
+nothing about that ("absence of `.backward()` is NOT evidence of locality"). It was not on the live
+tick -- `AutonomousArm` defaults `mlp_q=False` -- but it was one constructor argument away, so it
+was latent, not a non-issue.
+
+**THE JEPA SITE IS CLOSED (2026-08-04) and is carried STRUCK THROUGH in that file's e-prop
+adjudication -- search the `~~`-wrapped row, NOT a line number.** An earlier pass here wrote
+`POLICIES.md:1564` for it and that cite was ALREADY STALE WHEN WRITTEN, because the same lane's
+earlier commit had inserted ten lines above it. So the sentence above borrows that site's SHAPE, not
+its open status; until 2026-08-13 it read "records at", which pointed a reader at a closed row as if
+it were corroboration.
+
+THE RESOLUTION: KOLEN-POLLACK converging feedback (Kolen & Pollack 1994). A separate matrix `B`
+carries the error, and `B` receives the SAME increment as the forward read-out, so it TRACKS `W2`
+without ever reading it. `err` and `h[j]` are already local to the synapse the read-out step
+updates, so nothing is transported. Measured over 8 draws x 30 passes: the learned `B` aligns to
+`|cos| in [0.8785, 0.9121]` against the transport gradient on **8 of 8** draws, while the FROZEN
+random feedback the earlier analysis tested reaches only [0.1604, 0.3379] and clears the bar on
+**0 of 8**. Held-out accuracy is unchanged (XOR 0.993, linear 0.983) -- **no capability was lost**.
+
+NOT SFDFA, and the distinction matters. The owner-proposed Spiking Forward DFA (Bacho & Chu 2024)
+estimates output->hidden weights by propagating directional derivatives as SPIKE GRADES during
+inference. `MlpQ` is a RATE MLP -- no membrane, no threshold, no spike, no time index in `update` --
+so SFDFA's actual contribution has nothing here to attach to. What transferred is its ESSENTIAL
+property: feedback that is ESTIMATED and CONVERGES rather than transported or frozen. Naming the
+adopted rule "SFDFA" would be a citation defect; it is Kolen-Pollack.
 
 MEASURED, so the fix is a decision rather than a guess. POLICIES prescribes FEEDBACK ALIGNMENT
 (Lillicrap 2016) for exactly this shape: replace `W2[a][j]` in `dh` with a FIXED RANDOM feedback
@@ -69,6 +97,42 @@ trade one failed clause of the invariant for another, which is not a fix. Record
 honest resolutions are (a) accept FA and amend what the cosine clause means for a non-gradient
 alignment rule, or (b) retire this head under P2 in favour of the linear `LatentQ`, which has no
 hidden layer and therefore no backward pass at all. Deciding that is a policy call, not an edit.
+
+THAT COSINE CANNOT DISCRIMINATE, AND THE REFUTATION ABOVE THEREFORE DOES NOT STAND ON IT
+(recorded 2026-08-14, specs/015-resolve-weight-transport, BEFORE any repair so the repair cannot be
+retro-justified). The paragraph above already states the quantity: "essentially cos(W2[a], B[a])
+under the relu mask (`err` cancels)". `err` is a scalar multiplying both sides, so it divides out,
+and what remains is the angle between a FORWARD WEIGHT VECTOR and a FEEDBACK VECTOR. For a FIXED
+RANDOM `B` that is near zero BY CONSTRUCTION at any reasonable width -- two independent vectors in
+R^32 are near-orthogonal in expectation. So the criterion asks "is the feedback parallel to the
+forward weights", which is the WEIGHT SYMMETRY feedback alignment exists to deny. It never looks at
+what either rule DOES. An instrument that no alignment rule could ever pass is not evidence against
+alignment rules.
+
+THE CONTRAST THAT PROVES IT, and it is in this project's own record: at the jepa site the
+same-NAMED criterion measured 0.971 -- far ABOVE the 0.5 bar -- because there both sides were
+computed through one shared forward pass, so the identity/skip term dominated both. One criterion
+name, two different quantities, opposite verdicts. Establishing what a cosine is computed OVER is
+the question, not what it is called. (Same defect class the eprop_kernel lane found, where 90.7% of
+an all-parameter cosine came from terms that were identical by construction.)
+
+WHAT THAT PARAGRAPH DID NOT CLAIM: that feedback alignment works here. Only that the number did not
+settle it, in either direction. What the shipped gates DID show stands: FA cleared both on every
+draw. The measurement that settled it -- alignment read ACROSS TRAINING against a feedback that can
+MOVE -- is now done, and check (5) below re-derives it on every gate run.
+
+ONE PREDICTION WAS WRONG AND IS RECORDED AS SUCH. The spec predicted the converging feedback would
+"rise monotonically in trend from ~0". It does not: `B` is at 0.92 after ONE epoch and drifts
+slightly DOWN thereafter (0.9231 -> 0.8985 over 30 passes). It starts from the same random draw as
+the frozen control (~0.18) and aligns within the first pass, because epoch 1 applies `lr*err*h[j]`
+to `B` on every one of 800 updates while `W2` takes the identical increment. Alignment is
+ESTABLISHED almost immediately and then TRACKED -- not developed over training. The direction of the
+prediction was right; the model of the mechanism was not.
+
+NO DECAY TERM, and that is a MEASURED choice. Textbook Kolen-Pollack pairs the shared increment with
+weight decay, which would be a new constant (P1). Swept: decay-free scored 8 of 8, decay = lr/10
+scored 7 of 8 with a far wider spread, and decay = lr destroyed alignment outright at 0 of 8. So P1
+is satisfied by OMISSION rather than derivation -- this rule adds no constant at all.
 
 The learning rule is the same semi-gradient delta step toward a scalar `target` that the arm and
 LatentQ use (q += lr*(r - q)), backpropagated BY HAND (no autograd / torch) through the hidden layer:
@@ -136,6 +200,13 @@ class MlpQ:
             [self.rng.uniform(-1.0, 1.0) * s2 for _ in range(self.hidden)] for _ in range(self.n)
         ]
         self.b2 = [0.0] * self.n
+        # FEEDBACK matrix B (n_actions x hidden), same shape and same init scale as W2. It carries
+        # error back into the shared hidden layer INSTEAD of the transposed forward weights, and it
+        # is LEARNED from strictly local quantities -- see `update`. Drawn from the same per-instance
+        # rng, so a fixed seed still gives byte-identical weights.
+        self.B = [
+            [self.rng.uniform(-1.0, 1.0) * s2 for _ in range(self.hidden)] for _ in range(self.n)
+        ]
 
     def _idx(self, a):
         """Map an action name or an integer index to an action index (duck-typed, like LatentQ / the JEPA)."""
@@ -183,15 +254,23 @@ class MlpQ:
         err = target - (dot(self.W2[i], h) + self.b2[i])
         lr = self.lr
         w2i = self.W2[i]
-        # hidden-activation gradient dh[j] from the PRE-update read-out weights (relu' gates dead units to 0).
-        # THIS LINE IS THE WEIGHT TRANSPORT the module docstring names as an open e-prop violation:
-        # w2i is the FORWARD weight vector, read transposed to carry error backward. See the docstring
-        # for the measured feedback-alignment alternative and why it is not simply swapped in.
-        dh = [err * w2i[j] if pre[j] > 0.0 else 0.0 for j in range(self.hidden)]
+        bi = self.B[i]
+        # hidden-activation gradient dh[j] from the FEEDBACK weights B (relu' gates dead units to 0).
+        # NOT the transposed forward weights: B is a separate matrix that never reads W2. The weight
+        # transport this line used to perform was RETIRED 2026-08-14 (specs/015).
+        dh = [err * bi[j] if pre[j] > 0.0 else 0.0 for j in range(self.hidden)]
         # read-out update (taken action only): b2[a] += lr*err ; W2[a][j] += lr*err*h[j]
         self.b2[i] += lr * err
         for j in range(self.hidden):
             w2i[j] += lr * err * h[j]
+            # KOLEN-POLLACK (Kolen & Pollack 1994): the feedback receives the SAME increment as the
+            # forward read-out, so B TRACKS W2 without ever reading it. `err` and `h[j]` are already
+            # local to this synapse -- the line above computes both -- so nothing is transported.
+            # NO DECAY TERM, and that is a MEASURED choice, not an omission: decay-free scored
+            # |cos| in [0.8785, 0.9121] on 8 of 8 draws, decay=lr/10 scored 7 of 8 with a far wider
+            # spread, and decay=lr destroyed alignment outright at 0 of 8. P1 is satisfied by
+            # OMISSION -- this rule introduces no new constant at all.
+            bi[j] += lr * err * h[j]
         # shared hidden-layer update: b1[j] += lr*dh[j] ; W1[j][k] += lr*dh[j]*z[k]
         for j in range(self.hidden):
             g = lr * dh[j]
@@ -391,21 +470,33 @@ def main():
         B = [[brng.uniform(-1.0, 1.0) * s2 for _ in range(HIDDEN)] for _ in range(len(ACTIONS))]
         fa_cos.append(_mean_cos(lambda i, B=B: B[i]))
     worst = max(abs(c) for c in fa_cos)
-    # REACHABLE RED, constructed and run: make the feedback BE the forward weight (i.e. weight
-    # transport, the rule this module actually ships) and the same criterion reads 1.0 and fires.
+    # POSITIVE CONTROL: feedback == the forward weight IS the transport gradient, so the harness
+    # must read exactly 1.0. If it does not, nothing else here measures what it claims.
     transport_cos = _mean_cos(lambda i: mlp.W2[i])
     assert abs(transport_cos - 1.0) < 1e-12, (
         f"positive control: feedback == the forward weight IS the transport gradient, so this must "
         f"read 1.0 -- got {transport_cos!r}; the cosine harness is not measuring what it claims"
     )
-    assert transport_cos >= 0.5 > worst, (
-        f"the FA cosine criterion must be able to FAIL: transport scores {transport_cos:.3f} (>=0.5) "
-        f"while the random-feedback draws top out at {worst:.4f}"
+    # THE SHIPPED RULE's alignment. `mlp.B` has been trained by _train above, so this is the
+    # Kolen-Pollack feedback AFTER convergence -- the quantity the e-prop invariant actually asks
+    # about. The FROZEN draws above are the control that is not the method itself: they use the
+    # same harness, the same init scale and the same inputs, and differ ONLY in being unable to
+    # move. Three-way separation is the point -- transport 1.0, shipped ~0.9, frozen ~0.2.
+    shipped_cos = _mean_cos(lambda i: mlp.B[i])
+    assert abs(shipped_cos) > 0.5, (
+        f"the shipped feedback must clear the e-prop cosine bar: got {shipped_cos:.4f}. Measured "
+        f"2026-08-14 over 8 draws x 30 passes it lands in [0.8785, 0.9121] on 8 of 8 "
+        f"(specs/015-resolve-weight-transport/evidence/trajectory.md)"
+    )
+    assert abs(shipped_cos) > worst, (
+        f"a LEARNED feedback must beat a FROZEN one on this criterion, else convergence bought "
+        f"nothing: shipped {shipped_cos:.4f} vs frozen worst {worst:.4f}"
     )
     print(
-        f"(5) e-prop cosine vs the transport gradient over 8 feedback draws x 200 held-out inputs: "
-        f"[{min(fa_cos):+.4f}, {max(fa_cos):+.4f}], |cos| > 0.5 in {sum(1 for c in fa_cos if abs(c) > 0.5)} of 8 "
-        f"-> FA misses the >0.5 bar (red reachable: transport feedback reads {transport_cos:.3f})"
+        f"(5) e-prop cosine vs the transport gradient over 200 held-out inputs: SHIPPED "
+        f"(Kolen-Pollack, learned B) {shipped_cos:+.4f} -> clears the >0.5 bar; FROZEN control over "
+        f"8 draws [{min(fa_cos):+.4f}, {max(fa_cos):+.4f}], |cos| > 0.5 in "
+        f"{sum(1 for c in fa_cos if abs(c) > 0.5)} of 8; transport identity {transport_cos:.3f}"
     )
 
     print(

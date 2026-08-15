@@ -1,0 +1,15 @@
+﻿==============================================================================
+MLP Q -- shared NONLINEAR one-hidden-layer action-value over the JEPA latent (vs linear LatentQ)
+==============================================================================
+latent_dim=2 | actions=('A0', 'A1') | hidden=32 | train=400 test=300 | passes=30 lr=0.1
+rule (1/2): NON-LINEAR XOR of the sign pattern of two latent dims (no hyperplane separates it)
+(1) MlpQ    held-out accuracy : 0.993   (train 0.988) -> LEARNS the XOR rule
+(2) LatentQ held-out accuracy : 0.467   (linear -> stuck near chance 0.500)
+    => nonlinear head recovers structure the linear Q cannot (0.993 >> 0.467)
+rule (3): LINEARLY-separable (which side of z0 = z1) -- MlpQ must NOT regress vs LatentQ
+(3) linear  rule held-out     : MlpQ 0.983  vs  LatentQ 0.993 (delta -0.010) -> NO REGRESSION (gate: within 0.05), not a strict upgrade
+(4) determin: two seed=11 MlpQ identical weights=True, identical greedy=True
+==============================================================================
+(5) e-prop cosine vs the transport gradient over 8 feedback draws x 200 held-out inputs: [-0.4722, +0.2785], |cos| > 0.5 in 0 of 8 -> FA misses the >0.5 bar (red reachable: transport feedback reads 1.000)
+self-check OK: MlpQ learns the XOR rule on held-out latents (0.993) while the linear LatentQ cannot (0.467 ~ chance);
+  no regression on the linear rule (MlpQ 0.983 vs LatentQ 0.993, delta -0.010, gated within 0.05 -- a capacity TRADEOFF, not a strict upgrade); identical seed => byte-identical weights + greedy

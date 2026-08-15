@@ -20,9 +20,17 @@ WHERE IT IS WIRED (corrected 2026-08-04. The previous text here read "it is not 
      correcting false documentation, and they drifted again during the 2026-08-04 promotion work.
      `tools/citation_guard.py` does not catch this class -- it gates untracked citations, not stale
      line numbers -- so a symbol name is the honest granularity for a hand-maintained reference.)
-  It IS constructed and driven on the live sleep path, once every SELFBUILD_EVERY=8 nights
-  (brain.py:89) -- but ONLY when the operator has set NORD_SELFMOD=1 (learn_daemon.bat:14 sets it;
-  with it unset _maybe_autonomous_self_build returns before this module is even imported). What is
+  It is REACHED on the live sleep path once every SELFBUILD_EVERY=8 nights (brain.py:89), and ONLY
+  when the operator has set NORD_SELFMOD=1 (learn_daemon.bat:14 sets it; with it unset
+  _maybe_autonomous_self_build returns before this module is even imported). **It is NOT actually
+  CONSTRUCTED, and this docstring said it was until 2026-08-13.** Measured with an __init__ spy over
+  190 ticks at seed 0 under NORD_SELFMOD=1: SelfModHarness constructions = 0, because the cadence
+  reaches `SelfBuildLoop.run(props)` with props EMPTY (`Brain._selfbuild_last` reads
+  {'night': 8, 'proposed': 0, 'kept': 0}) and `run([])` returns before building a harness. Reached
+  is not constructed -- the same "presence is not participation" distinction P3 draws, applied to
+  this module's own claim about itself. Filling the proposer is what would make the old sentence
+  true; until then it is a capability reported without measurement, which is what P0's honesty guard
+  forbids. What is
   still true is the BOUND, not the inertness: even auto-running, it only ever writes into a temp
   sandbox and hands back a proposal. Applying one to the real tree is SelfBuildLoop.promote()'s
   separate step, gated the same way and rolled back byte-exact on any gate failure. Not an
