@@ -7,6 +7,28 @@ Sources: 8 `specs/*/tasks.md` files with unchecked tasks, plus the 66 open rows 
 
 **173 items.** 120 open, 53 blocked, 0 closed at HEAD but kept here because a live document still asserts them.
 
+> **BAND 1 CLOSED 2026-08-15 -- all 6.** Status is hand-applied here; the item list below is still
+> the GENERATED artifact (FR-001) and was not re-rendered, so treat this block as the authority on
+> Band 1 and the entries below as the original inventory.
+>
+> | item | disposition |
+> |---|---|
+> | `[B1.01]` | DONE, and UNCOMMITTABLE -- `CLAUDE.md` is gitignored (`.gitignore:135`), the documented P4c exception, so no commit or gate can carry it |
+> | `[B1.02]` | ADJUDICATED `326c8f68` (transport CONFIRMED, NOT a violation -- `MLP` is a CONTROL) + control exemption GRANTED by the owner `d880a7b0`. **ARC promotion cluster unblocked** |
+> | `[B1.03]` | FIXED `2f9eba7b` -- idle sentinel is a MISSING reading, not contact |
+> | `[B1.04]` | PINNED `4a2ae912` -- **and this task's stated DIRECTION was wrong, see the correction on its entry below** |
+> | `[B1.05]` | PINNED `6e506235` -- values AND meanings, with a demonstrated layout-shift red |
+> | `[B1.06]` | FIXED `0afafd40` -- grown weights drawn from the CPU stream |
+>
+> **Open work these created, recorded rather than left implicit:** (a) `eprop_transport_gate` has a
+> SECOND disclosed blind spot -- it keys on an array-library `.T`, so `reasoning/eprop.py`'s
+> pure-loop hand-rolled BPTT is invisible to it entirely, and a module spelling backprop in Python
+> loops passes silently on promotion; widening the rule is an owner decision and the wider W5 rule
+> was already built and rejected at 59 findings. (b) Three module-level helpers in `ng_snn.py`
+> (`_toy`'s dataset draw, the random-beta control, the poisson encoder) still build device-bound
+> generators; they seed the SELF-CHECK's data rather than the brain's weights, so they were out of
+> `[B1.06]`'s scope, but they carry the same cross-hardware hazard for the self-check's numbers.
+
 Effort: 70 medium, 66 small, 36 large, 1 unknown
 
 ---
@@ -76,6 +98,7 @@ one-line documentation strikes sit above large builds.
 - **key** `raw-metres-vs-normalized-distance`
 - **source** specs/014-live-sensor-transduction/tasks.md T032,T033
 - **evidence** Arithmetic re-derived: arm_config.py:27 CONTACT=0.04 m against esp32_encoder_path.py:78 distance_m/3.0, so a normalized value fed to the metres threshold moves the trip point to 0.12 m; same two files and same commit as B1.03, and equally not blocked on the unbuilt feed.
+- **CORRECTION 2026-08-15 (`4a2ae912`) -- THIS ROW'S TITLE IS WRONG AND THE ROW IS KEPT SO THE ERROR IS NOT SILENTLY REBRANDED.** The 3x is exact and reproduced. "Loosens" is not: `normalized < CONTACT` is `raw < 0.12 m`, a WIDER stop radius, so the arm trips at three times the distance and stops MORE often. Swept 0.005-2.9 m at runtime through `AutonomousArm.step`, there is **no reading where the raw path trips and the normalized path does not** -- the substitution is strictly MORE conservative. So this is a CAPABILITY defect (a 3x false-stop radius), **not a safety loosening, and the envelope is not breached by it** -- which also means the row was banded into B1 on the strength of a word that did not survive measurement, and it probably belongs in a lower band. Pinned anyway, direction included, because a silent 3x move in a safety threshold is a defect whichever way it points.
 
 ### [B1.05] Pin DEFAULT_RULES[6]/[7] values AND meanings in a test with a demonstrated layout-shift red - nothing in the tree pins them today
 
