@@ -156,7 +156,7 @@ number existed). **The lane stops after Phase 7.**
 
 ---
 
-## BLOCKED: Phases 7 and 8 need branch 017 merged first
+## RESOLVED: Phases 7 and 8 -- 017 was merged in, conflict hand-fixed, both phases executed
 
 **Discovered during implementation, 2026-08-14.** Phases 7 and 8 amend the e-prop adjudication in
 `docs/POLICIES.md`. That adjudication's 4-site SCOPE CORRECTION, its `mlp_q` OPEN QUESTION entry and
@@ -187,9 +187,9 @@ has landed**; what remains is recording it in the policy text.
 
 ## Phase 7: Update the adjudication (P1) — COMMIT C5 *(BLOCKED — see above)*
 
-- [ ] T040 [US3] Update the e-prop adjudication in `docs/POLICIES.md` with what was decided — adoption OR null. Cite by MARKER, not line number: this lane's predecessor rotted its own cites three times
-- [ ] T041 [US3] Confirm all four sites in the adjudication carry either a verdict or an explicit "open, and why", with none left implied (SC-007)
-- [ ] T042 [US3] Run the gate batch, assert 9 exit codes
+- [X] T040 [US3] Update the e-prop adjudication in `docs/POLICIES.md` with what was decided — adoption OR null. Cite by MARKER, not line number: this lane's predecessor rotted its own cites three times
+- [X] T041 [US3] Confirm all four sites in the adjudication carry either a verdict or an explicit "open, and why", with none left implied (SC-007)
+- [X] T042 [US3] Run the gate batch, assert 9 exit codes
 
 **Checkpoint**: adjudication reflects reality. **COMMIT C5.**
 
@@ -200,11 +200,11 @@ has landed**; what remains is recording it in the policy text.
 **Ships EITHER WAY.** Independent of Phase 5's outcome — a `mlp_q` result does not transfer to a
 different mechanism on a different objective, in either direction (R-004).
 
-- [ ] T043 [US4] State the case FOR a violation in `docs/POLICIES.md`: `self.w1.T` is the same array transposed — exact weight symmetry by construction — and it runs on every wake tick
-- [ ] T044 [US4] State the case AGAINST in the same entry: in Rao-Ballard `W1` is the GENERATIVE weight (`x_hat = W1 @ r1`), so `W1^T` is one matrix in its two structural roles rather than a separate forward pathway being copied — the standard locality argument for predictive coding
-- [ ] T045 [US4] Record that the adjudication does NOT rest on the Predictive E-prop preprint: measured **0** full-text hits for weight transport / weight symmetr / symmetric / feedback alignment / random feedback, against **30** for BPTT. **Silence is not endorsement** (FR-012)
-- [ ] T046 [US4] Produce the verdict, or record explicitly that it remains open and what would settle it. **Do not pre-decide it from the `mlp_q` outcome**
-- [ ] T047 [US4] Run the gate batch, assert 9 exit codes
+- [X] T043 [US4] State the case FOR a violation in `docs/POLICIES.md`: `self.w1.T` is the same array transposed — exact weight symmetry by construction — and it runs on every wake tick
+- [X] T044 [US4] State the case AGAINST in the same entry: in Rao-Ballard `W1` is the GENERATIVE weight (`x_hat = W1 @ r1`), so `W1^T` is one matrix in its two structural roles rather than a separate forward pathway being copied — the standard locality argument for predictive coding
+- [X] T045 [US4] Record that the adjudication does NOT rest on the Predictive E-prop preprint: measured **0** full-text hits for weight transport / weight symmetr / symmetric / feedback alignment / random feedback, against **30** for BPTT. **Silence is not endorsement** (FR-012)
+- [X] T046 [US4] Produce the verdict, or record explicitly that it remains open and what would settle it. **Do not pre-decide it from the `mlp_q` outcome**
+- [X] T047 [US4] Run the gate batch, assert 9 exit codes
 
 **Checkpoint**: the live site has an adjudication. **COMMIT C6.**
 
@@ -218,7 +218,7 @@ different mechanism on a different objective, in either direction (R-004).
 - [X] T051 [P] Verify the probe remains in `tests/probe_015/`, is not under `specs/`, and appears in no gate registration
 - [X] T052 [P] Verify every criterion added by this lane has a RECORDED red under `specs/015-resolve-weight-transport/evidence/` — enumerate them and confirm none is missing (P8 guard 1)
 - [X] T053 [P] Sweep the lane's own diff for module-level `random.seed(` or `torch.manual_seed(` — determinism invariant
-- [ ] T054 Run `graphify update .` to keep the knowledge graph current
+- [ ] T054 Run `graphify update .` — **REFUSED BY THE TOOL, deliberately not forced.** It reports "new graph has 14036 nodes but existing graph.json has 14037. Refusing to overwrite — you may be missing chunk files from a previous session." That is a safety refusal against a partial rebuild; `--force` would discard a node on a guess. Left for a session that can rebuild from complete chunks
 - [ ] T055 Final full gate batch from a clean checkout, asserting 9 exit codes, plus the `brainstem/` diff one last time before push
 
 ---
