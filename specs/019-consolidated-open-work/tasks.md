@@ -73,28 +73,28 @@ one-line documentation strikes sit above large builds.
 
 ### [B1.01] Strike CLAUDE.md's cross-cutting-invariants paragraph: it calls the e-prop rule 'all review-enforced' and names mlp_q + predictive_coding UNADJUDICATED, both false since the 015/018 lanes
 
-- **status** OPEN &nbsp;|&nbsp; **policy** invariant: e-prop &nbsp;|&nbsp; **effort** small
+- **status** DONE (uncommittable -- CLAUDE.md is gitignored) &nbsp;|&nbsp; **policy** invariant: e-prop &nbsp;|&nbsp; **effort** small
 - **key** `claude-md-eprop-invariant-para-stale`
 - **source** NEW - not in inventory; CLAUDE.md:50 vs docs/POLICIES.md:1548,:1635,:1686
 - **evidence** Re-derived at HEAD myself: CLAUDE.md:50 still reads 'Two more are UNADJUDICATED ... (1) the dh step in basal_ganglia/mlp_q.py::MlpQ.update (2) cortex/predictive_coding.py:200-201' while POLICIES.md:1635 says RESOLVED 2026-08-14 and :1686 ADJUDICATED 2026-08-14 NOT a violation, and POLICIES.md:1548 now reads 'PARTIALLY mechanized since 2026-08-15' - a false claim about the one thing no lane may relax, and it is the first text every session reads.
 
 ### [B1.02] Adjudicate or port reasoning/gf.py::MLP's hand-written backprop - the tree's one ungoverned weight-transport finding, and the gate that reports it landed today
 
-- **status** OPEN &nbsp;|&nbsp; **policy** invariant: e-prop &nbsp;|&nbsp; **effort** medium
+- **status** DONE (`326c8f68` adjudicated + `d880a7b0` exemption granted) &nbsp;|&nbsp; **policy** invariant: e-prop &nbsp;|&nbsp; **effort** medium
 - **key** `gf-mlp-handwritten-backprop`
 - **source** specs/BACKLOG_RANKED.md rows 40-precondition x2 + 40-PRE; src/snn_data_lake/substrate/eprop_transport_gate.py
 - **evidence** COLLAPSED 3 rows; three auditors independently ran eprop_transport_gate at HEAD -> GOVERNED 0 / UNGOVERNED 1 = reasoning.gf.train:1795, and POLICIES.md:1581-1584 (read at HEAD) records the same one report plus 'it becomes a governed violation the day gf.py is promoted'; MLP is a baseline with one construction site (gf.py:1814) and zero refs outside the file.
 
 ### [B1.03] Guard the idle sentinel in the consumer: a negative distance is a MISSING reading, and today it binds a fear association as real contact
 
-- **status** OPEN &nbsp;|&nbsp; **policy** invariant: safety envelope &nbsp;|&nbsp; **effort** small
+- **status** DONE (`2f9eba7b`) &nbsp;|&nbsp; **policy** invariant: safety envelope &nbsp;|&nbsp; **effort** small
 - **key** `idle-sentinel-minus-one`
 - **source** specs/014-live-sensor-transduction/tasks.md T029,T030,T031
 - **evidence** RE-DERIVED LIVE at HEAD (and the auditor's blocked_by is wrong - see F.03): substrate/esp32_encoder_path.py:78 clamps distance_m with no sentinel while :81 special-cases temp_k<=0, and brainstem/autonomous_loop.py:1473 `distance < CONTACT` reaches `am.pair(pat)` at :1479 for a finite -1.0; the file is in substrate/, not cortex/ as several cites imply.
 
 ### [B1.04] Assert the safety path receives RAW METRES and the spike path the normalized feats - substituting one loosens the trip point 3x
 
-- **status** OPEN &nbsp;|&nbsp; **policy** invariant: safety envelope &nbsp;|&nbsp; **effort** small
+- **status** DONE (`4a2ae912`) -- **MIS-BANDED, see the correction below: measured, this is a capability defect, not an envelope breach** &nbsp;|&nbsp; **policy** invariant: safety envelope &nbsp;|&nbsp; **effort** small
 - **key** `raw-metres-vs-normalized-distance`
 - **source** specs/014-live-sensor-transduction/tasks.md T032,T033
 - **evidence** Arithmetic re-derived: arm_config.py:27 CONTACT=0.04 m against esp32_encoder_path.py:78 distance_m/3.0, so a normalized value fed to the metres threshold moves the trip point to 0.12 m; same two files and same commit as B1.03, and equally not blocked on the unbuilt feed.
@@ -102,14 +102,14 @@ one-line documentation strikes sit above large builds.
 
 ### [B1.05] Pin DEFAULT_RULES[6]/[7] values AND meanings in a test with a demonstrated layout-shift red - nothing in the tree pins them today
 
-- **status** OPEN &nbsp;|&nbsp; **policy** invariant: safety envelope &nbsp;|&nbsp; **effort** small
+- **status** DONE (`6e506235`) &nbsp;|&nbsp; **policy** invariant: safety envelope &nbsp;|&nbsp; **effort** small
 - **key** `reflex-channel-6-7-unpinned`
 - **source** specs/014-live-sensor-transduction/tasks.md T049,T050
 - **evidence** VERIFIED myself at HEAD: brainstem/reflex.py:22-25 defines ch6 (-50,800,'STOP') and ch7 (-300,300,'WITHDRAW'), and `grep -c DEFAULT_RULES tests/test_reflex.py` = 0 against a positive control of a file that does exercise Reflex - a channel renumber changes what STOP means with every gate green.
 
 ### [B1.06] Draw grown weights from a CPU generator - same seed must give the same brain on any hardware; the breach is masked, not fixed
 
-- **status** OPEN &nbsp;|&nbsp; **policy** invariant: determinism &nbsp;|&nbsp; **effort** medium
+- **status** DONE (`0afafd40`) -- three module-level `ng_snn` helpers remain device-bound, disclosed and out of scope &nbsp;|&nbsp; **policy** invariant: determinism &nbsp;|&nbsp; **effort** medium
 - **key** `device-bound-rng-nondeterminism`
 - **source** specs/010-policy-compliance-audit/tasks.md T048 (C24)
 - **evidence** Cite RE-DERIVED exact: hippocampus/ng_snn.py:169 `torch.Generator(device=self.device).manual_seed(seed)` consumed by randperm at :320; auditor filed it P5 but CLAUDE.md's determinism block makes it an invariant, and neurogenesis_engine.py:198-199's select() routing flips on its own as width crosses 262,144.
