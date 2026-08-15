@@ -309,6 +309,13 @@ EXEMPT = {
         "permanent",
         "the Policy-4 guard itself -- a CI self-check, not a tick faculty",
     ),
+    "eprop_transport_gate": (
+        "permanent",
+        "the e-prop invariant's tree-level gate -- a CI self-check, not a tick faculty. Asserts no "
+        "GOVERNED module reads a weight transposed into a weight update; reports the ungoverned "
+        "tier without asserting on it (1 finding at reasoning/gf.py::train, hand-written backprop "
+        "with no .backward() anywhere, which is why promotion_sweep's marker grep cannot see it)",
+    ),
     "hf_stream": (
         "permanent",
         "TOOL: offline data-prep CLI -- streams a licensed HF dataset into feature rows for a "

@@ -18,7 +18,7 @@ the rule that stops the policy from being satisfied by theater.
 | **P6 mutual reach + use** | **BUILT AND ASSERTING** — `tools/p6_gate.py --assert` **and** `--self-check` (two steps in the `lint` CI job, both added 2026-08-06; the connectome-diff half is now built too). Ships as a **RATCHET**: `faculty-to-faculty > 0` is red today, so five ±1 baselines assert the structure never gets WORSE. This row said "HALF BUILT / manual and NON-asserting, not in CI", and before that "NOT built" while the tool existed | yes (provisional; a ratchet says the count did not worsen, never that P6 is satisfied — 0 faculty-to-faculty reads stands) |
 | **P7 any dependency that helps** | **BUILT AND ASSERTING** — `tools/dependency_ledger.py --assert` **and** `--self-check` (two steps in the `lint` CI job, both added 2026-08-05; this row read "BUILT, REPORT-ONLY" and the step it described ran the tool BARE, which `main()` makes incapable of a non-zero exit) | yes (the judgement half; see P7 guard (b)) |
 | **P8 invent the method** | **BUILT AND ASSERTING** — `tools/red_reachability.py --assert` (step in the `lint` CI job) | yes (whether a criterion measures the RIGHT thing; no instrument can replace it) |
-| e-prop not backprop | — | yes |
+| e-prop not backprop | **PARTIALLY — `substrate/eprop_transport_gate.py` (CORE, 2026-08-15)** asserts no GOVERNED module reads a weight transposed into a weight update, and reports the ungoverned tier without asserting on it. It is NOT a `.backward()` tripwire and the argument against building one is unchanged. It catches the EXPLICIT-transpose spelling only — the `mlp_q` transport was spelled by INDEXING and this gate would not have caught it, which it prints on every run | yes (everything the static rule cannot reach: whether a second matrix is a transported weight or an independently-maintained feedback matrix is semantic, and the cosine bar itself) |
 | *(not a policy — repo hygiene)* citations resolve | `tools/citation_guard.py` (step in the `lint` CI job, asserting since 2026-07-30) | — |
 | *(not a policy — repo hygiene)* documented `python -m` commands run | **BUILT AND CLEAN, but NOT IN CI** — `tools/doc_command_guard.py --assert` (2026-08-04) | — (see the correction directly below: this row said "step in the `lint` CI job" and the step does not exist) |
 
@@ -1545,18 +1545,43 @@ The instrument half of the claim stands; the line does not.)*
   `so101_arm.py`, `arm_config.py`, `interpreter.py` — are modified only with explicit approval; the reflex E-STOP and
   cortisol/safety paths are never relaxed. Every wired drive enters selection **after** the E-STOP
   early-return, so it is safe by construction (proven: max drive + distance 0 → EMERGENCY_STOP).
-- **E-prop, not backprop (review-enforced, NO GATE).** Any backprop consideration pivots to **e-prop**
+- **E-prop, not backprop (review-enforced; PARTIALLY mechanized since 2026-08-15).** Any backprop consideration pivots to **e-prop**
   (Bellec 2020) — a local eligibility trace times a broadcast learning signal; no BPTT, no weight
   transport — verified **cosine > 0.5** against an independent reverse-mode BPTT gradient. Verification
   anchor: `reasoning/eprop.py:38-40`, with the independent gradient at `:191-192`.
   This rule governed the project before it was written down (it is why v3.79 pivoted all learning to
   e-prop on measured evidence: 73.14% vs the repo's backprop SSM at ~32%), which was the gap — a rule
   enforced only by whoever remembered it.
-  **It is NOT mechanized, and a `.backward()` tripwire would be theatre:** it passed green while
+  **A `.backward()` tripwire would be theatre:** it passed green while
   `cerebellum/jepa_world_model.py` performed explicit weight transport on every wake tick, and
   `hippocampus/ng_snn.py::fit` still runs a closed-form batch solve over its whole buffer each sleep
   tick. Neither uses autograd; both are non-local. Absence of `.backward()` is not evidence of
-  locality — that argument is unchanged and is why the tripwire is still not built.
+  locality — **that argument is unchanged and the tripwire is still not built.**
+
+  **What IS built, 2026-08-15: `substrate/eprop_transport_gate.py` (CORE), which gates the
+  TRANSPORT rather than the autograd call.** This row read *"It is NOT mechanized"* until then, and
+  that half is now false while the tripwire half above is not — they were one sentence and are
+  separated here deliberately. The gate asserts that no **governed** module reads a weight
+  transposed into a weight update, encoding this file's own adjudication test (*"THE DISTINGUISHING
+  TEST IS WHAT THE TRANSPOSE FEEDS"*) rather than a proxy for it: the reconstructed pre-fix jepa
+  site fires, and `predictive_coding`'s live `w1.T` — which feeds an **activation** — does not.
+  Counted before adopting, on the governed tier: any transpose **82**, transpose of a weight **36**,
+  transposed weight reaching a weight update **0**. It lands green, so per the rule below it ships
+  the reconstruction of the defect it was built for.
+
+  **Three limits, stated because a green here is easy to over-read, and the gate prints all three:**
+  (a) it keys on an EXPLICIT transpose, so the `mlp_q` violation — spelled `w2i = W2[a]` then
+  `dh = err * w2i[j]`, with no `.T` in the source — **would not have been caught**; of the two
+  violations this tree has had it catches one. (b) The wider rule that catches both **was built and
+  rejected on its own output**: "updates weight A while reading a different weight B" scored 6 of 6
+  on the reconstructions and **59** on this tree, including `mlp_q::update` itself — the module whose
+  transport was *retired* — because every local rule reads its own forward weights, and whether a
+  second matrix is transported or independently maintained (Kolen-Pollack's `B` takes the read-out's
+  increment and never reads it) is semantic, not syntactic. (c) It asserts only on the governed
+  tier; it **reports** the rest, and reports **1** today — `reasoning/gf.py::train`, where
+  `gh = (g @ self.w2.T) * (1 - h**2)` carries error into `self.w1 -= lr * gw1`. That is hand-written
+  backprop with no autograd anywhere, so `tools/promotion_sweep.py`'s marker grep cannot see it, and
+  it becomes a governed violation the day `gf.py` is promoted.
 
   **Verdict on both, since "review-enforced" had so far meant "unadjudicated" (2026-07-28), with the
   first now CLOSED (2026-08-04):**
