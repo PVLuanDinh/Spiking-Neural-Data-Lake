@@ -29,14 +29,25 @@ ch. 9-10: a nonlinear function approximator for the action-value); the hidden la
 structural change from LatentQ, and the API is identical so it drops into the same wiring.
 
 e-PROP WEIGHT TRANSPORT: **RESOLVED 2026-08-14** (specs/015-resolve-weight-transport). The history
-below is kept because the WAY it was resolved is the useful part.
+below is kept because the WAY it was resolved is the useful part. (Merge note: lane 017 recorded
+this site as an OPEN QUESTION in the policy adjudication and corrected a stale citation here; lane
+015 then resolved it. Both contributions are kept below -- the 017 half is the citation paragraph,
+the 015 half is the resolution.)
 
 THE VIOLATION, as it stood (audit 2026-08-04). The `dh` line read the FORWARD read-out weights
 `W2[a]` transposed to carry error backward into the shared hidden layer. That is WEIGHT TRANSPORT --
-structurally the same defect `docs/POLICIES.md` recorded at the jepa site (since CLOSED), and
-hand-writing it in stdlib rather than calling autograd changed nothing about that ("absence of
-`.backward()` is NOT evidence of locality"). It was not on the live tick -- `AutonomousArm` defaults
-`mlp_q=False` -- but it was one constructor argument away, so it was latent, not a non-issue.
+structurally the same SHAPE `docs/POLICIES.md` once ruled a real violation at
+`cerebellum/jepa_world_model.py`. Hand-writing it in stdlib rather than calling autograd changed
+nothing about that ("absence of `.backward()` is NOT evidence of locality"). It was not on the live
+tick -- `AutonomousArm` defaults `mlp_q=False` -- but it was one constructor argument away, so it
+was latent, not a non-issue.
+
+**THE JEPA SITE IS CLOSED (2026-08-04) and is carried STRUCK THROUGH in that file's e-prop
+adjudication -- search the `~~`-wrapped row, NOT a line number.** An earlier pass here wrote
+`POLICIES.md:1564` for it and that cite was ALREADY STALE WHEN WRITTEN, because the same lane's
+earlier commit had inserted ten lines above it. So the sentence above borrows that site's SHAPE, not
+its open status; until 2026-08-13 it read "records at", which pointed a reader at a closed row as if
+it were corroboration.
 
 THE RESOLUTION: KOLEN-POLLACK converging feedback (Kolen & Pollack 1994). A separate matrix `B`
 carries the error, and `B` receives the SAME increment as the forward read-out, so it TRACKS `W2`
