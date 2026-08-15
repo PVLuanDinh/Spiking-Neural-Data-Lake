@@ -1715,6 +1715,45 @@ The instrument half of the claim stands; the line does not.)*
     invariant is ever extended from learning rules to inference pathways, this site is the first
     thing it catches.
 
+  - **ADJUDICATED 2026-08-15, at the owner's instruction: `reasoning/gf.py::MLP.train` performs
+    weight transport, and is NOT a violation of this invariant — it is a CONTROL.** This is the one
+    finding `substrate/eprop_transport_gate.py` reports (re-run at HEAD: GOVERNED 0, UNGOVERNED 1).
+
+    **The transport is real, not arguable.** `gh = (g @ self.w2.T) * (1 - h**2)` carries error
+    through the transposed forward read-out into `gw1 = xb.T @ gh`, then `self.w1 -= lr * gw1`, so
+    **the transpose feeds a WEIGHT update** — the jepa/`mlp_q` shape, the opposite of
+    `predictive_coding`, under the distinguishing test above. Hand-written reverse-mode with no
+    autograd, which is why `tools/promotion_sweep.py`'s marker grep cannot see it. **Scope
+    MEASURED, so this verdict does not enumerate where it appears to survey:** `gf.py` contains
+    exactly THREE transposes, all inside `MLP.train`; `h.T` and `xb.T` transpose an ACTIVATION and
+    an INPUT, and exactly ONE (`self.w2.T`) transposes a weight. There is no second site in the file.
+
+    **Why it is nonetheless not a violation — on the invariant's own scope, not by analogy.** This
+    rule governs how the BRAIN learns, and its verification clause *requires* "an independent
+    reverse-mode BPTT gradient" — so the invariant already obliges backprop to exist in this tree as
+    an INSTRUMENT. `MLP` is that category: **zero references outside `gf.py`** (measured over `src/`,
+    `tests/`, `tools/`), ONE construction site (`main_sl()`), and `main_sl` is a self-check reached
+    only from `main()` under `__main__`. No faculty consumes it; it is on no tick.
+
+    **What it is FOR is the load-bearing half: it exists to LOSE.** `main_sl()` asserts
+    `mdl_ok < ind_ok` — the learned model MUST fail the held-out family the program-inducer solves —
+    beside `in_acc >= 0.5`, which requires it to genuinely learn. It is the Gc arm of a Gc-vs-Gf
+    dissociation. **Porting it to e-prop would VOID the experiment, and that structural argument is
+    what this rejection ships in place of a measurement (P7 guard (b)):** a weakened learner would
+    satisfy `mdl_ok < ind_ok` because it learns worse, not because learning is not synthesis — P8's
+    contaminated control, the same failure as the `mlp_q` FA cosine that no alignment rule could
+    ever pass.
+
+    **TWO THINGS THIS VERDICT DOES NOT DISCHARGE.** (1) The module did not self-declare: its
+    docstring said "every weight comes from gradient descent" — true, and naming neither the
+    transport nor this invariant, where `mlp_q` named both. Disclosure added at the site 2026-08-15
+    (P8 clause 4). (2) **The gate consequence is OPEN and is an OWNER decision.**
+    `eprop_transport_gate` asserts on the GOVERNED tier, so promoting `gf.py` — backlog row 40 calls
+    it the "pure leaf" that moves FIRST — converts this report into a governed RED. A control
+    exemption carrying this reason is the disposition this verdict implies, but adding one NARROWS
+    what a mechanized gate asserts, and that is not something an adjudication may do on its own
+    authority. Until it is decided, `gf.py` must not be promoted.
+
   *(Line citations in this bullet — `jepa_world_model.py:275-278`/`:277` and `ng_snn.py:137` — were
   dropped 2026-08-04 after all three failed to resolve to what they claimed. `ng_snn.py:137` is
   `mu = S.mean(dim=0)`. Worse, the jepa file was edited BETWEEN two reads in the same audit session,
