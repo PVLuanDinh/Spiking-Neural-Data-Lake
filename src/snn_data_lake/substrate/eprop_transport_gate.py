@@ -95,6 +95,55 @@ def _is_weight(name):
     return bool(name) and not name.isupper() and bool(_WEIGHTISH.search(name))
 
 
+# distinct-from: cortex/second_order_access.py -- that module's "key" is a TELEMETRY key in a
+# per-tick state() dict (its "NO phenomenal key, ever" is a P8 honesty constraint about what the
+# brain may report). The "key" below is a lookup string into this gate's static EXEMPT allowlist.
+# Same English word, unrelated jobs; nothing to reuse or consolidate in either direction.
+
+#: `module.function` -> why this transport is not a violation of "e-prop, not backprop".
+#:
+#: OWNER-GRANTED ONLY. Narrowing what a mechanized gate asserts is an owner decision, never something
+#: an adjudication may do on its own authority (`docs/POLICIES.md`, e-prop invariant block), so an
+#: entry here records a decision that was TAKEN rather than a finding somebody found inconvenient.
+#: The bar is the one the invariant sets for itself: it governs how the BRAIN learns, and its own
+#: verification clause REQUIRES "an independent reverse-mode BPTT gradient" -- so backprop is obliged
+#: to exist in this tree as an INSTRUMENT. A control is that instrument. A faculty is not, however
+#: far off the live tick it sits: `mlp_q` was exactly one constructor argument from the tick and its
+#: transport was RETIRED, not exempted.
+#:
+#: Follows `dormancy_gate.EXEMPT`'s pattern, including the half that makes it honest: every entry is
+#: asserted to still match a REAL finding, so an exemption that blesses nothing fails loudly instead
+#: of reading as coverage.
+EXEMPT = {
+    "reasoning.gf.train": (
+        "CONTROL, not a learning rule -- adjudicated 2026-08-15, granted by the owner. `MLP` is the "
+        "Gc arm of the Gc-vs-Gf dissociation in `main_sl()`, which asserts `mdl_ok < ind_ok` beside "
+        "`in_acc >= 0.5`: it must genuinely learn AND must still fail the held-out family the "
+        "program-inducer solves. Measured at HEAD -- in-distribution 100%, OOD model 25% vs inducer "
+        "100%. Zero references outside gf.py, one construction site in main_sl(), on no tick, no "
+        "faculty consumes it. PORTING IT TO E-PROP WOULD VOID THE EXPERIMENT: a weaker learner "
+        "satisfies `mdl_ok < ind_ok` because it learns worse, not because learning is not "
+        "synthesis, which is a contaminated control (P8). Full verdict in docs/POLICIES.md."
+    ),
+}
+
+
+def _exempt_key(rel, fn):
+    """The EXEMPT lookup string for a finding: module path plus the function it was found in."""
+    return f"{rel}.{fn}"
+
+
+def stale_exempt(violations):
+    """EXEMPT entries matching NO finding in the tree -- an allowlist row that blesses nothing.
+
+    Deliberately matched against ALL findings rather than governed ones: an exemption may be granted
+    BEFORE the module is promoted (which is exactly `gf.py`'s case -- the grant is what unblocks the
+    promotion), and requiring a governed match would make such an entry read STALE on the day it is
+    correctly written. What it still cannot do is bless nothing at all."""
+    seen = {_exempt_key(v[0], v[1]) for v in violations}
+    return sorted(k for k in EXEMPT if k not in seen)
+
+
 def _base(node):
     """`self.w1` -> 'w1'; `W2[a]` -> 'W2'; `w` -> 'w'; anything else -> None."""
     while isinstance(node, ast.Subscript):
@@ -187,8 +236,10 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     do_assert = "--assert" in argv
     violations, census = scan()
-    gov = [v for v in violations if v[5]]
-    ungov = [v for v in violations if not v[5]]
+    exempt = [v for v in violations if _exempt_key(v[0], v[1]) in EXEMPT]
+    gov = [v for v in violations if v[5] and _exempt_key(v[0], v[1]) not in EXEMPT]
+    ungov = [v for v in violations if not v[5] and _exempt_key(v[0], v[1]) not in EXEMPT]
+    stale = stale_exempt(violations)
 
     print("=" * 78)
     print("E-PROP TRANSPORT GATE -- a transposed weight may not reach a weight update")
@@ -207,7 +258,20 @@ def main(argv=None):
     if not ungov:
         print("  (none)")
     print()
-    print(f"GOVERNED: {len(gov)}   UNGOVERNED: {len(ungov)}")
+    print("--- EXEMPT (owner-granted; NOT asserted, and each must still match a real finding) ---")
+    for rel, fn, lineno, src, tgt, g in exempt:
+        tier = "governed" if g else "ungoverned"
+        print(f"  {rel}.{fn}:{lineno}   {src} transposed -> updates {tgt}   [{tier}]")
+        print(f"      {EXEMPT[_exempt_key(rel, fn)]}")
+    if not exempt:
+        print("  (none)")
+    print()
+    if stale:
+        print("--- STALE EXEMPT (asserted) ---")
+        for k in stale:
+            print(f"  {k}   blesses NOTHING -- no finding in the tree matches this key")
+        print()
+    print(f"GOVERNED: {len(gov)}   UNGOVERNED: {len(ungov)}   EXEMPT: {len(exempt)}")
     print()
     # Printed on EVERY run, not buried in the docstring: a gate that reports 0 and does not say what
     # it cannot see gets read as a proof of compliance, which this is not.
@@ -218,8 +282,25 @@ def main(argv=None):
     print("  wider rule that catches both was built, scored 59 findings including mlp_q's own")
     print("  SHIPPED fix, and was rejected -- see this module's docstring.")
     print()
-    failed = bool(gov)
-    print("gate FAIL: weight transport on a governed module" if failed else "gate OK")
+    print("  SECOND BLIND SPOT, found 2026-08-15 by a reader asking a question this gate could")
+    print("  not answer: an explicit transpose is an ARRAY-LIBRARY spelling. reasoning/eprop.py")
+    print("  hand-rolls reverse-mode BPTT in pure math/random loops with NO numpy and NO '.T'")
+    print("  anywhere, so this walk cannot see it AT ALL -- not as a finding, not as a census")
+    print("  entry. That is not a missed violation today (Net.grad_bptt is the independent")
+    print("  gradient the invariant's own cosine clause REQUIRES), but the capability gap is")
+    print("  real: a module that hand-rolls backprop in loops passes this gate silently on the")
+    print("  day it is promoted into the governed tier.")
+    print()
+    failed = bool(gov) or bool(stale)
+    if gov:
+        print("gate FAIL: weight transport on a governed module")
+    elif stale:
+        # A stale row is a failure in its own right, not a nit. An allowlist entry that matches
+        # nothing reads as coverage of a risk nobody is carrying, and it is how an exemption
+        # outlives the decision that justified it.
+        print("gate FAIL: an EXEMPT entry blesses nothing -- re-derive it or delete it")
+    else:
+        print("gate OK")
     return 1 if (do_assert and failed) else 0
 
 
@@ -311,7 +392,29 @@ def _selfcheck():
         print("      does NOT -- update them in this commit, then delete this branch.")
 
     violations, census = scan()
-    gov = [v for v in violations if v[5]]
+
+    # The EXEMPT allowlist, proven BOTH ways. An exemption nobody can see fail is the shape this
+    # gate exists to refuse, so its red is constructed here rather than asserted into existence.
+    assert not stale_exempt(violations), (
+        f"EXEMPT entries blessing nothing: {stale_exempt(violations)} -- each must still match a "
+        "real finding, or it is coverage of a risk nobody is carrying"
+    )
+    print(f"  green  EXEMPT: {len(EXEMPT)} entry(ies), every one still matching a real finding")
+
+    _real = EXEMPT.copy()
+    try:
+        EXEMPT["nonexistent.module.function"] = "a row that blesses nothing"
+        planted = stale_exempt(violations)
+        assert planted == ["nonexistent.module.function"], (
+            f"the STALE-EXEMPT red did not fire: expected the planted key, got {planted}. An "
+            "allowlist whose staleness check cannot fire is an allowlist that never expires"
+        )
+    finally:
+        EXEMPT.clear()
+        EXEMPT.update(_real)
+    print("  RED    a planted EXEMPT key matching no finding -- staleness check fires")
+
+    gov = [v for v in violations if v[5] and _exempt_key(v[0], v[1]) not in EXEMPT]
     assert not gov, f"governed weight-transport findings: {gov}"
     print(f"self-check OK: {len(_CASES)} constructed cases, {census} modules scanned, 0 governed")
 

@@ -1729,9 +1729,16 @@ The instrument half of the claim stands; the line does not.)*
     an INPUT, and exactly ONE (`self.w2.T`) transposes a weight. There is no second site in the file.
 
     **Why it is nonetheless not a violation — on the invariant's own scope, not by analogy.** This
-    rule governs how the BRAIN learns, and its verification clause *requires* "an independent
-    reverse-mode BPTT gradient" — so the invariant already obliges backprop to exist in this tree as
-    an INSTRUMENT. `MLP` is that category: **zero references outside `gf.py`** (measured over `src/`,
+    rule governs how the BRAIN learns; code whose JOB is to be measured against is not one of the
+    brain's learning rules. The invariant concedes the category itself: its verification clause
+    *requires* "an independent reverse-mode BPTT gradient", so backprop is obliged to exist in this
+    tree as an instrument. **CORRECTED 2026-08-15, same day, because the first version of this
+    sentence overstated and was challenged:** it read *"`MLP` is that category"*, which conflates two
+    different things. The instrument the invariant NAMES is `reasoning/eprop.py::Net.grad_bptt`, it
+    already exists, and it shares no code with `grad_eprop` — `MLP` is NOT that instrument. It is a
+    control of a different kind: a Gc BASELINE, not a gradient reference. The general principle
+    carries the verdict; the specific claim did not, and reading it as "MLP is the gradient the
+    invariant requires" would have been false. What `MLP` has is: **zero references outside `gf.py`** (measured over `src/`,
     `tests/`, `tools/`), ONE construction site (`main_sl()`), and `main_sl` is a self-check reached
     only from `main()` under `__main__`. No faculty consumes it; it is on no tick.
 
@@ -1747,12 +1754,27 @@ The instrument half of the claim stands; the line does not.)*
     **TWO THINGS THIS VERDICT DOES NOT DISCHARGE.** (1) The module did not self-declare: its
     docstring said "every weight comes from gradient descent" — true, and naming neither the
     transport nor this invariant, where `mlp_q` named both. Disclosure added at the site 2026-08-15
-    (P8 clause 4). (2) **The gate consequence is OPEN and is an OWNER decision.**
+    (P8 clause 4). (2) The gate consequence — **CLOSED 2026-08-15: the control exemption is GRANTED
+    by the owner**, recorded below.
+
+    **THE EXEMPTION, GRANTED 2026-08-15, and what was built so that it cannot rot.**
     `eprop_transport_gate` asserts on the GOVERNED tier, so promoting `gf.py` — backlog row 40 calls
-    it the "pure leaf" that moves FIRST — converts this report into a governed RED. A control
-    exemption carrying this reason is the disposition this verdict implies, but adding one NARROWS
-    what a mechanized gate asserts, and that is not something an adjudication may do on its own
-    authority. Until it is decided, `gf.py` must not be promoted.
+    it the "pure leaf" that moves FIRST — would have converted this report into a governed RED.
+    `substrate/eprop_transport_gate.EXEMPT` now carries `reasoning.gf.train` with the verdict above
+    as its reason, so the ARC promotion cluster is unblocked. **Adding it NARROWED what a mechanized
+    gate asserts, which is why it required the owner and not an adjudication.**
+
+    It follows `dormancy_gate.EXEMPT`'s pattern including the half that makes an allowlist honest:
+    **every entry is asserted to still match a REAL finding**, so a row that blesses nothing fails
+    the gate loudly instead of reading as coverage. Matched against ALL findings rather than governed
+    ones, deliberately — this grant PRECEDES the promotion it unblocks, and a governed-only match
+    would read STALE on the day it was correctly written. **Both directions were proven by making
+    them fire, not asserted into existence:** `main(["--assert"])` returns **0** with the real
+    allowlist and **1** with a planted key matching nothing, printing `gate FAIL: an EXEMPT entry
+    blesses nothing`. The bar for a future entry is stated at the site: a CONTROL is the instrument
+    this invariant's own verification clause requires; **a faculty is not, however far off the tick
+    it sits** — `mlp_q` was one constructor argument from the live tick and its transport was
+    RETIRED, not exempted.
 
   *(Line citations in this bullet — `jepa_world_model.py:275-278`/`:277` and `ng_snn.py:137` — were
   dropped 2026-08-04 after all three failed to resolve to what they claimed. `ng_snn.py:137` is
