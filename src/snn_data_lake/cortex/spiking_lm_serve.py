@@ -25,6 +25,8 @@ inference, not a large LLM.
 import json
 import math
 
+from snn_data_lake.substrate._mathutils import Rng
+
 LM_FORMAT = "snn_lm/1"
 
 
@@ -82,15 +84,11 @@ def _forward_logits(lm, ids):
     return logits
 
 
-class _Rng:
-    """Deterministic stdlib LCG for temperature sampling (no global RNG)."""
-
-    def __init__(self, seed):
-        self.s = (seed ^ 0x2545F4914F6CDD1D) & 0xFFFFFFFFFFFFFFFF
-
-    def random(self):
-        self.s = (self.s * 6364136223846793005 + 1442695040888963407) & 0xFFFFFFFFFFFFFFFF
-        return (self.s >> 11) / float(1 << 53)
+#: Deterministic stdlib LCG for temperature sampling (no global RNG).
+#: MERGED 2026-08-15 into `substrate/_mathutils.Rng` -- this module and `cortex/trained_brain.py`
+#: held byte-equivalent copies, proven identical over 5 seeds x 500 draws before either was deleted.
+#: The alias keeps the local spelling so no call site changes; the MECHANISM is now singular.
+_Rng = Rng
 
 
 def generate(lm, prompt, n=80, seq_len=None, temperature=0.0, seed=0):
