@@ -94,7 +94,14 @@ import os
 import torch
 import torch.nn.functional as F
 
-from snn_data_lake.plasticity.deep_stdp import FcStdp, OneLayerNet, assign_labels, evaluate
+from snn_data_lake.plasticity.deep_stdp import (
+    OneLayerNet,
+    assign_labels,
+    evaluate,
+)
+from snn_data_lake.plasticity.deep_stdp import (
+    TwoLayerNet as _DeepTwoLayerNet,  # merged 2026-08-16; aliased at the old name below
+)
 from snn_data_lake.plasticity.snn_mnist_stdp import load_mnist
 from snn_data_lake.substrate.device import enable, resolve_device
 
@@ -279,18 +286,12 @@ class ConvLatencyStdp:
         return float(off.item())
 
 
-class TwoLayerNet:
-    """Deep: frozen conv-latency-STDP layer 1 -> pooled features -> FC-STDP prototypes."""
-
-    def __init__(self, conv, m):
-        self.conv = conv  # already trained + frozen
-        self.fc = FcStdp(conv.feat_dim(), m)
-
-    def train_image(self, image):
-        self.fc.run(self.conv.features(image), learn=True)
-
-    def run(self, image, learn=False):
-        return self.fc.run(self.conv.features(image), learn)
+#: Deep: frozen conv-latency-STDP layer 1 -> pooled features -> FC-STDP prototypes.
+#: MERGED 2026-08-16 into `plasticity/deep_stdp.TwoLayerNet` (2 copies -> 1). The two bodies were
+#: AST-identical, and this module ALREADY imported four names from that exact module, so the merge
+#: adds a name to an existing import: no new module, no new dependency, no cycle. The alias keeps
+#: the local spelling so no call site changes; the MECHANISM is singular.
+TwoLayerNet = _DeepTwoLayerNet
 
 
 def _train(net, X, tag):
