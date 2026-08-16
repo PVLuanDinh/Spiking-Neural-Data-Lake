@@ -1937,6 +1937,36 @@ The instrument half of the claim stands; the line does not.)*
   demands counting before adopting.
 - **Gated + reversible:** one change per commit, full gate green (`run_selfchecks` + `pytest` + `ruff`),
   commit + tag locally; a regression is isolated to its own change.
+
+  **AMENDED 2026-08-16, owner: the local full-suite requirement is DELEGABLE TO CI — but only while
+  CI is DEMONSTRABLY EXECUTING, and that is a measurement, not an assumption.** Adopted from
+  DeepSeek Harness's *"never default to the full suite locally; CI owns exhaustive coverage and the
+  platform matrix"*. The reasoning is sound and the saving is real: `run_selfchecks` takes ~16
+  minutes and `pytest` ~14 on this machine, and rehearsing the platform matrix locally is
+  impossible anyway — CI is the only place `ubuntu`/`windows` and the CPU torch build are exercised
+  together.
+
+  **THE PRECONDITION IS LOAD-BEARING AND IT WAS FALSE ON THE DAY THIS WAS ADOPTED.** When the
+  amendment was proposed, GitHub Actions was executing **ZERO JOBS** — *"the job was not started
+  because recent account payments have failed"* — across all five jobs of two consecutive runs on
+  `main`. Adopting the delegation in that state would have meant the full suite ran NOWHERE: not
+  locally by rule, not in CI by billing. Two commits (`4e7bfb8b`, `0b9ada6e`) reached `main` verified
+  by the local gate alone. Billing was fixed and CI re-verified executing before this text landed.
+
+  **HOW TO CHECK IT, because a status badge cannot tell you.** A billing-blocked run reports
+  `completed / failure` exactly like a real test failure. The distinguishing signal is DURATION and
+  JOB COUNT: this repo's real runs take **34-36 minutes**; the blocked ones took **5 seconds** and
+  started 0 of 5 jobs. So the check is `gh run list` for the duration and `gh run view <id>` for
+  jobs that actually ran — never the pass/fail word alone. This is the second time this project has
+  been bitten by exactly that (see the standing note on a gate that never ran), which is why the
+  amendment carries the method rather than the conclusion.
+
+  **What does NOT change.** The full local gate is still required whenever CI is not demonstrably
+  green on the change: before a merge to `main`, on any change to the safety envelope, and any time
+  the CI/local skew this file already records could bite — CI runs a DIFFERENT torch build, so a
+  build-sensitive numeric assert can be green in one and red in the other. "CI will catch it" is a
+  claim about a run that has EXECUTED, in the same way *"it persists"* is a claim about a new
+  process and *"it is pushed"* is a claim about a branch.
 - **A `file.py:NNN` citation is a claim, and it is the least durable claim this project makes.**
   Added 2026-08-04 after a docs-wide audit resolved **every** `path.py:LINE` citation in `docs/`,
   `specs/`, `README.md`, `SECURITY.md` and `AGENTS.md` against the tree. Measured: **2,714 resolved,
