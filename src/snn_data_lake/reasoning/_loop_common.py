@@ -37,9 +37,17 @@ class LinearReadout:
     was duplicated in the lake / lake99 / wm / slda / readout_ensemble loops."""
 
     def __init__(self, in_dim, n_classes=10, seed=0, lr=0.01):
-        torch.manual_seed(seed)
-        self.dev = resolve_device()
-        self.clf = nn.Linear(in_dim, n_classes).to(self.dev)
+        # A constructor may not re-seed the process-global RNG -- see the identical note on
+        # hippocampus/developmental_loop_brain._LinearReadout, which is a verbatim copy of this
+        # class (AUDIT_BACKLOG M21). The duplication is NOT collapsed here: adopting either into
+        # the other needs the promotion lane M21 is owed by, and this fix must not create a new
+        # governed->reasoning import. Fixed twice, on purpose, and recorded rather than laundered.
+        # `nn.Linear` takes no `generator=`, so the RNG is forked instead: identical weights, no
+        # global side effect. `devices=[]` forks CPU only; the draw below is a CPU draw.
+        with torch.random.fork_rng(devices=[]):
+            torch.manual_seed(seed)
+            self.dev = resolve_device()
+            self.clf = nn.Linear(in_dim, n_classes).to(self.dev)
         self.opt = torch.optim.Adam(self.clf.parameters(), lr=lr, weight_decay=1e-4)
 
     def train_step(self, X, y, lr, steps=1):

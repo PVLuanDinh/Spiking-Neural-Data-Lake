@@ -81,7 +81,7 @@ from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor
 from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.plasticity.criticality_regulator import CriticalityRegulator
 from snn_data_lake.plasticity.lifelong_consolidation import LifelongConsolidator
-from snn_data_lake.substrate._mathutils import mean
+from snn_data_lake.substrate._mathutils import clamp01, mean
 
 # --- task / stream geometry (disjoint separable classes, each with a frequent PRIMARY +
 #     a rare, prune-able SECONDARY mode, interleaved with an unlearnable noise phase) ----
@@ -138,9 +138,9 @@ HARD_STRIDE = 3  # class-to-class shift (< WIN -> windows OVERLAP -> confusable)
 SIGMA_HARD = 0.16  # moderate sample noise -> real nearest-prototype errors (sub-ceiling)
 
 
-def _clamp01(x):
-    """Clamp a scalar into [0,1]."""
-    return 0.0 if x < 0.0 else (1.0 if x > 1.0 else x)
+#: MERGED 2026-08-15 into `substrate/_mathutils.clamp01` (8 copies -> 1). Alias keeps the local
+#: spelling so no call site changes; the MECHANISM is singular.
+_clamp01 = clamp01
 
 
 def _cosine(a, b):

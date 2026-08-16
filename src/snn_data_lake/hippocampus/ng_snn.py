@@ -103,7 +103,12 @@ def poisson_encode(feats, T, generator=None):
     is a deterministic rate approximation of it."""
     N, d = feats.shape
     p = feats.clamp(0, 1).unsqueeze(1).expand(N, T, d)
-    return torch.bernoulli(p, generator=generator)
+    if generator is None:
+        return torch.bernoulli(p)
+    # The generator is CPU-bound by design (see NGSNN.__init__: torch's cpu and cuda streams differ
+    # at the same seed, so binding one to the device makes "same seed -> same spikes" false across
+    # hardware). Draw on the GENERATOR's device, then move the result to the features'.
+    return torch.bernoulli(p.to(generator.device), generator=generator).to(feats.device)
 
 
 def current_encode(feats, T):
@@ -166,7 +171,16 @@ class NGSNN:
         self.eps_tol, self.reg_eps = float(eps_tol), float(reg_eps)
         self.patience = int(patience)
         self.device = device if (torch.cuda.is_available() or device == "cpu") else "cpu"
-        self.g = torch.Generator(device=self.device).manual_seed(seed)
+        # THE RNG IS CPU-BOUND ON PURPOSE, WHATEVER `self.device` IS. torch's CPU and CUDA
+        # generators produce DIFFERENT streams from the same seed -- measured, seed 7:
+        # cpu [0.534923, 0.198803, 0.659212, ...] vs cuda [0.954597, 0.495040, 0.941953, ...].
+        # Binding the generator to `self.device` therefore made "same seed -> same brain" false
+        # across hardware: this box has a card and defaults to cuda, CI has none and gets cpu, so
+        # the grown weights differed between them by construction. The determinism invariant is a
+        # property of the SEED, not of the machine. Every draw below is taken on the CPU stream and
+        # moved to `self.device`, which costs one small host-to-device copy per candidate block and
+        # buys a brain that is reproducible off this machine.
+        self.g = torch.Generator(device="cpu").manual_seed(seed)
         self.W = None  # (L, d_in) grown hidden input weights
         self.b = None  # (L,)      grown hidden biases
         self.beta = None  # (L, m)    analytical output weights
@@ -317,7 +331,7 @@ class NGSNN:
         # columns and the growth solve always use the full set of TRAINING rows.
         use_sub = score_subsample is not None and int(score_subsample) < n_tr
         sel = (
-            torch.randperm(n_tr, generator=self.g, device=self.device)[: int(score_subsample)]
+            torch.randperm(n_tr, generator=self.g)[: int(score_subsample)].to(self.device)
             if use_sub
             else None
         )
@@ -418,8 +432,9 @@ class NGSNN:
             poolW, poolb, poolscore, poolpass = [], [], [], []
             for Lam in self.lambdas:  # multi-scale candidate search (Alg. 1)
                 P = self.t_cand
-                Wp = (torch.rand(P, d, generator=self.g, device=self.device) * 2 - 1) * Lam  # (P,d)
-                bp = (torch.rand(P, generator=self.g, device=self.device) * 2 - 1) * Lam  # (P,)
+                # drawn on the CPU stream (see __init__), then moved -- seed decides, hardware does not
+                Wp = ((torch.rand(P, d, generator=self.g) * 2 - 1) * Lam).to(self.device)  # (P,d)
+                bp = ((torch.rand(P, generator=self.g) * 2 - 1) * Lam).to(self.device)  # (P,)
                 Sp = self._rates(Xsel, Wp, bp)  # (Nsel, P) candidate responses
                 proj = Sp.t() @ Esel  # (P, m) <e_q, s_p>
                 spn = (Sp * Sp).sum(dim=0)  # (P,)   ||s_p||^2
@@ -505,13 +520,17 @@ def _make_task(dev, seed=0):
     8 further dims are label-INDEPENDENT noise. A contribution learner targets the 2 relevant dims
     (few neurons); a novelty learner that covers input variance wastes capacity on the 8 noise dims
     (many neurons). Deterministic via torch.Generator."""
-    g = torch.Generator(device=dev).manual_seed(seed)
+    # CPU-bound generator and CPU draws, then ONE move at the end: this task's rows are the
+    # self-check's evidence, and a dataset that differs between a box with a card and CI is a
+    # benchmark whose numbers cannot be compared across machines. Same reason as NGSNN.__init__.
+    g = torch.Generator(device="cpu").manual_seed(seed)
     N, d_noise, m = 520, 8, 4
-    centers = torch.tensor([[0.2, 0.2], [0.2, 0.8], [0.8, 0.2], [0.8, 0.8]], device=dev)  # 4 blobs
-    y = torch.randint(0, m, (N,), generator=g, device=dev)
-    rel = (centers[y] + 0.06 * torch.randn(N, 2, generator=g, device=dev)).clamp(0, 1)  # (N,2)
-    noise = torch.rand(N, d_noise, generator=g, device=dev)  # (N,8) label-free
-    X = torch.cat([rel, noise], dim=1)  # (N,10) in [0,1]
+    centers = torch.tensor([[0.2, 0.2], [0.2, 0.8], [0.8, 0.2], [0.8, 0.8]])  # 4 blobs, on cpu
+    y = torch.randint(0, m, (N,), generator=g)
+    rel = (centers[y] + 0.06 * torch.randn(N, 2, generator=g)).clamp(0, 1)  # (N,2)
+    noise = torch.rand(N, d_noise, generator=g)  # (N,8) label-free
+    X = torch.cat([rel, noise], dim=1).to(dev)  # (N,10) in [0,1]
+    y = y.to(dev)
     ntr = 360
     return X[:ntr], y[:ntr], X[ntr:], y[ntr:]
 
@@ -539,8 +558,8 @@ def _novelty_control(base, X, y):
         best_s, best_w, best_b, best_sc = None, None, None, 0.0
         for Lam in base.lambdas:
             P = base.t_cand
-            Wp = (torch.rand(P, d, generator=base.g, device=dev) * 2 - 1) * Lam
-            bp = (torch.rand(P, generator=base.g, device=dev) * 2 - 1) * Lam
+            Wp = ((torch.rand(P, d, generator=base.g) * 2 - 1) * Lam).to(dev)
+            bp = ((torch.rand(P, generator=base.g) * 2 - 1) * Lam).to(dev)
             Sp = base._rates(X, Wp, bp)  # (N, P)
             proj = Sp.t() @ Rin  # (P, d) response vs INPUT residual
             spn = (Sp * Sp).sum(dim=0)  # (P,)
@@ -594,8 +613,10 @@ def main():
     # ---- claim 2: SINGLE-SHOT analytical beats RANDOM output weights (zero iterations) --------------
     S_te = contrib._rates(Xte.to(dev).float(), contrib.W, contrib.b)
     ana_acc = (S_te @ contrib.beta).argmax(dim=1).eq(yte.to(dev)).float().mean().item()
-    rg = torch.Generator(device=dev).manual_seed(123)
-    rand_beta = torch.randn(contrib.n_units, contrib.m, generator=rg, device=dev)
+    rg = torch.Generator(device="cpu").manual_seed(
+        123
+    )  # CPU stream: the control must not vary by box
+    rand_beta = torch.randn(contrib.n_units, contrib.m, generator=rg).to(dev)
     rnd_acc = (S_te @ rand_beta).argmax(dim=1).eq(yte.to(dev)).float().mean().item()
     c2_pass = (ana_acc > 0.85) and (rnd_acc < 0.55) and (ana_acc - rnd_acc > 0.35)
 
@@ -634,7 +655,9 @@ def main():
     # Poisson is the genuinely spiking encoder (binary events, seeded); current_encode is its
     # noise-free control. CONTROL that must FAIL: the same pipeline on a CONSTANT input carries no
     # label information, so it cannot beat the majority class.
-    seq_g = torch.Generator(device=dev).manual_seed(11)
+    seq_g = torch.Generator(device="cpu").manual_seed(
+        11
+    )  # CPU stream; poisson_encode moves the draw
     Str_p = poisson_encode(Xtr, 15, generator=seq_g)  # (ntr, 15, d) binary spike trains
     Ste_p = poisson_encode(Xte, 15, generator=seq_g)
     Str_c = current_encode(Xtr, 15)  # (ntr, 15, d) constant-current control

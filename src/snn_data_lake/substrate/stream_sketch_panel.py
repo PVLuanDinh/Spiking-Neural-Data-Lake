@@ -44,6 +44,7 @@ it can never introduce motion, and the brainstem reflex / E-STOP remains the dom
 
 from collections import deque
 
+from snn_data_lake.substrate._mathutils import clamp01
 from snn_data_lake.substrate.drift_monitor import DriftMonitor
 from snn_data_lake.substrate.frequency_moment import AMSSketch, exact_f2
 from snn_data_lake.substrate.minhash import MinHash
@@ -54,14 +55,10 @@ from snn_data_lake.substrate.spike_cardinality import HyperLogLog
 from snn_data_lake.substrate.spike_stream_sketch import HeavyHitters
 from snn_data_lake.substrate.streaming_quantile import StreamingQuantiles
 
-
-def _clamp01(x):
-    """Squeeze a float into [0,1] (bounds the drift blend and every component that feeds it)."""
-    if x < 0.0:
-        return 0.0
-    if x > 1.0:
-        return 1.0
-    return float(x)
+#: Squeeze a float into [0,1] (bounds the drift blend and every component that feeds it).
+#: MERGED 2026-08-15 into `substrate/_mathutils.clamp01` (8 copies -> 1). Alias keeps the local
+#: spelling so no call site changes; the MECHANISM is singular.
+_clamp01 = clamp01
 
 
 def _is_index_set(m):

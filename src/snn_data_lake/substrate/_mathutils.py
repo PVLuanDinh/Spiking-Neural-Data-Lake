@@ -12,6 +12,9 @@ Canonical sources:
   sigmoid  <- neural_sampling._sigmoid         (numerically stable logistic)
   dot      <- oja_pca._dot / lca_sparse_coding._dot
   unit     <- oja_pca._unit                    (L2-normalize, math.sqrt form)
+  Rng      <- trained_brain._Rng / spiking_lm_serve._Rng   (64-bit LCG; the two were byte-equivalent
+              in formula and differed only in docstring, so this is the first case above rather than
+              the second -- merged 2026-08-15, both originals now import it)
 
 Copies whose formula DIFFERS were deliberately left in place (not merged):
   - adaptive_spiking keeps the public name `correlation` (thin wrapper here).
@@ -64,6 +67,51 @@ def dot(a, b):
 def unit(v):
     n = math.sqrt(sum(c * c for c in v)) or 1.0
     return [c / n for c in v]
+
+
+# consolidates: src/snn_data_lake/cortex/self_model.py (merge), src/snn_data_lake/cortex/wholistic_loop.py (merge), src/snn_data_lake/neuromodulation/affect_integrator.py (merge), src/snn_data_lake/cortex/agency_monitor.py (merge), src/snn_data_lake/cortex/metacognitive_monitor.py (merge), src/snn_data_lake/cortex/recognizer_bank.py (merge), src/snn_data_lake/substrate/stream_sketch_panel.py (merge), src/snn_data_lake/cortex/second_order_access.py (merge)
+def clamp01(x):
+    """Clamp a scalar into [0,1], always returning a float.
+
+    MERGED 2026-08-15 from EIGHT copies across cortex/, neuromodulation/ and substrate/. A static
+    AST comparison called them four different formulas; running them showed only TWO behavioural
+    mechanisms -- a type-preserving pass-through (5 copies) and this float-coercing one (3) --
+    identical on every float input and differing ONLY when handed an int or a bool.
+
+    Which is why the merge needed no aesthetic tiebreak: instrumented over the eight modules' own
+    self-checks plus 40 brain ticks, `_clamp01` took **160,460 arguments and every one was already
+    a float** (0 int, 0 bool). The two mechanisms are indistinguishable in this tree, so exactly one
+    survives and nothing changes. The coercing form is the survivor because it is strictly the more
+    defined of the two for a caller that does not exist yet.
+
+    (An AST pass can only ever prove "certainly the same"; its "differs" is a hypothesis to read.
+    `min(1,max(0,x))` and `max(0,min(1,x))` have different trees and agree on every input.)"""
+    x = float(x)
+    if x < 0.0:
+        return 0.0
+    if x > 1.0:
+        return 1.0
+    return x
+
+
+# consolidates: src/snn_data_lake/cortex/trained_brain.py (merge), src/snn_data_lake/cortex/spiking_lm_serve.py (merge)
+# Both originals lose their local `_Rng` in this same change and import this one instead. A merge
+# that leaves both paths reachable is additive with extra steps -- the failure P2 exists to prevent.
+class Rng:
+    """Deterministic 64-bit LCG. Self-contained, so a caller never touches `random`'s global state.
+
+    Merged 2026-08-15 from two byte-equivalent `_Rng` copies in CORE cortex modules. Proven
+    equivalent BEFORE either was deleted, per P2's honesty guard: 5 seeds x 500 draws identical
+    between the two copies, with a negative control confirming a different seed moves the stream.
+    The XOR constant, multiplier, increment and 53-bit shift are reproduced exactly -- any edit to
+    them changes every consumer's stream, which is a determinism change, not a refactor."""
+
+    def __init__(self, seed):
+        self.s = (seed ^ 0x2545F4914F6CDD1D) & 0xFFFFFFFFFFFFFFFF
+
+    def random(self):
+        self.s = (self.s * 6364136223846793005 + 1442695040888963407) & 0xFFFFFFFFFFFFFFFF
+        return (self.s >> 11) / float(1 << 53)
 
 
 def main():

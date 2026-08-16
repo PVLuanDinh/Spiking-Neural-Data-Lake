@@ -30,8 +30,45 @@ Six findings is a work list, not an allowlist, so the rule is adoptable in this 
 cleared in the same pass; the gate asserts clean today and its own self-check constructs the RED for
 every rule, so "0 findings" is a measurement rather than a mirror.
 
+EXTENDED TO `src/` 2026-08-14, AND COUNTED FIRST AGAIN. The gate shipped with
+`TIERS = ("tools", "tests")`, so the 374 files of `src/` -- the governed tier -- were never scanned,
+and torch seeding was uncovered in every tier. Both halves matter: `src/` is governed for DORMANCY
+by the three P3 gates and by nothing at all for DETERMINISM, which is the axis these rules measure.
+The counted run over `src/`, before any of it landed:
+
+    P4-CONSTRUCTION        6  -> ALL SIX are `cortex/brain.py` constructing its own class
+    CWD-DEPENDENT PATH     0
+    MODULE-SCOPE CHDIR     0
+    MODULE-SCOPE SEED      1  -> reasoning/arc_agi/play.py, `random.seed(0)` under `__main__`
+    CONSTRUCTOR SEED       3  -> cortex/recognizer_bank.py, hippocampus/developmental_loop_brain.py,
+                                 reasoning/_loop_common.py
+
+The 6 are why `src/` could not simply be appended to `TIERS`: `make_brain()` lives in the module that
+DEFINES `Brain` and must call it, or there is no sanctioned path to be the sanctioned path. Rule 1
+now skips the defining module, which is what P4's clause actually says rather than an allowlist.
+
+THE NARROWING IS THE MEASUREMENT, and it is recorded because the naive rule was unadoptable.
+A seeding rule that fires ANYWHERE in a function body scores **79** across the tree (73 `src/`,
+6 `tests/`) -- the allowlist shape this repo has killed two proposals at. Split by enclosing scope:
+
+    ENTRYPOINT-BODY (main/_selfcheck)   40   a leaf entrypoint seeding its own run
+    OTHER-FUNCTION                      35   set_seed() helpers, train_model(), bench runners
+    CONSTRUCTOR (__init__)               3   <- the incident
+    MODULE-SCOPE                         1
+    CLASS-BODY                           0
+
+So the rule is scoped to import-time scope plus CONSTRUCTORS: 4 findings, a work list. The three
+constructor hits are the SAME DEFECT `hippocampus/growable_readout.py`'s Determinism note records
+being removed by hand on 2026-08-04 -- it recurred three times over and nothing in the tree could
+see it, which is exactly what regression protection is for.
+
 The CENSUS half of the same run: 29 tools/ modules, 15 with a self-check, an assert, or a pytest
 guard, and 14 with none of the three. That number is REPORTED, never asserted -- see below.
+**RE-DERIVED 2026-08-14: 30 / 17 / 13.** The 2026-08-04 figures above are kept as what that run
+measured, not as a description of this tree -- a census sentence that outlives its run is the defect
+this file is one level up from. The census is `tools/`-only and did NOT widen with `TIERS`: it asks
+whether an INSTRUMENT can tell you it is broken, and `src/` has three P3 gates asking its version of
+that question already.
 
 It is registered in `tests/test_instrument_guard.py` rather than in `run_selfchecks.py` or
 `.github/workflows/ci.yml`, so it asserts on every `pytest` run without editing a shared file. That
@@ -39,10 +76,10 @@ test file also fires each rule against a fixture, and it is what caught this gat
 `pathlib.PurePath("/opt/x").is_absolute()` is FALSE on Windows, so rule 2 reported a POSIX absolute
 path as cwd-dependent and the gate's verdict depended on which CI runner executed it.
 
-THE FOUR RULES, and each one is a defect this tree actually produced:
+THE FIVE RULES, and each one is a defect this tree actually produced:
 
-  1. P4 CONSTRUCTION. A file under tools/ or tests/ may not call `Brain(...)`; the one sanctioned
-     path is `cortex.brain.make_brain()`. `tools/charge_probe.py` records fixing exactly this in
+  1. P4 CONSTRUCTION. A file in any scanned tier may not call `Brain(...)` unless it DEFINES the
+     class; the one sanctioned path is `cortex.brain.make_brain()`. `tools/charge_probe.py` records fixing exactly this in
      itself -- *"the instrument that enforced P3 was quietly violating P4"* -- and
      `tools/arc_baseline.py` was still doing it on 2026-08-04, in the tool that produces the
      published ARC "before" number. `substrate/replication_guard.py` cannot see this: it asserts
@@ -64,10 +101,35 @@ THE FOUR RULES, and each one is a defect this tree actually produced:
   3. MODULE-SCOPE `os.chdir`. P4c's own worked example. `run_selfchecks.py` runs part of the suite
      in ONE process, so a module-scope chdir moves the working directory for every module after it.
 
-  4. MODULE-SCOPE GLOBAL SEEDING. `random.seed(...)` / `np.random.seed(...)` at import time is the
-     determinism invariant's named prohibition -- *"use `random.Random(seed)` (per-instance). Never
-     module-level import-time seeding"* -- and in a shared pytest process it silently re-seeds
-     whatever ran before it.
+  4. IMPORT-TIME GLOBAL SEEDING. `random.seed(...)` / `np.random.seed(...)` / `torch.manual_seed(...)`
+     at import time is the determinism invariant's named prohibition -- *"use `random.Random(seed)`
+     (per-instance). Never module-level import-time seeding"* -- and in a shared pytest process it
+     silently re-seeds whatever ran before it.
+     **CLASS BODIES ARE IMPORT TIME, since 2026-08-14.** `_module_scope_nodes` skipped `ClassDef`
+     outright, so `class C:` + `random.seed(0)` in its body walked past -- the one construct that
+     looks like a container and is really a running statement list. A `def` nested in a class is
+     still a function body and is still skipped.
+     **ALL SPELLINGS, since 2026-08-14.** The banned names were matched as WRITTEN, so
+     `import numpy.random as npr` + `npr.seed(0)` and `from torch import manual_seed` +
+     `manual_seed(0)` were the same defect spelled two ways the gate could not read. Call targets
+     are now canonicalized through the module's own import table (`_aliases` / `_canon`) before the
+     lookup, which is rule 1's 2026-08-05 lesson applied to rules 2-4: *a rule that can be evaded by
+     an import style is not a rule*. Nothing in the tree used those spellings, so this closed a
+     latent hole rather than a live finding -- measured, not assumed.
+
+  5. GLOBAL SEEDING INSIDE A CONSTRUCTOR. `hippocampus/growable_readout.py` ran
+     `torch.manual_seed(seed)` inside `__init__`, so CONSTRUCTING one re-seeded the process-global
+     torch RNG for every module built after it. Both harnesses that run this tree do so in ONE
+     process -- `run_selfchecks.py` for part of the suite, and `tests/test_selfchecks.py` via
+     `runpy.run_module(..., run_name="__main__")` for every CORE module. It was found and removed by
+     hand on 2026-08-04, its Determinism note is the record, and NO GATE COULD SEE IT: rule 4 walks
+     import-time scope only, and a constructor body is not import time. Three more live instances of
+     the same shape were sitting in `src/` when this rule was counted.
+     **A restored seed is not a violation.** A seeder inside `with torch.random.fork_rng(...)`, or
+     one bracketed by an explicit save/restore in the same function (`random.getstate` /
+     `random.setstate`), is NOT flagged -- `cortex/recognizer_bank.py` does exactly that because the
+     MoE trainer it calls draws from the module-global `random`, and a gate that reddens on its own
+     remedy teaches the next reader to stop applying the remedy.
 
 `os.environ.setdefault(...)` at module scope is deliberately NOT a rule. Six tools use it for
 `NORD_PERSIST`, and for a leaf ENTRYPOINT that nothing imports it is the correct way to state a
@@ -93,8 +155,10 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
-#: The instrument tiers. Both are ungoverned by the three P3 gates and both are part of the brain.
-TIERS = ("tools", "tests")
+#: The instrument tiers. `tools`/`tests` are ungoverned by the three P3 gates; `src` is governed by
+#: them for DORMANCY and by nothing at all for DETERMINISM, which is the axis these rules measure.
+#: All three are part of the brain (P4c), so all three are scanned.
+TIERS = ("tools", "tests", "src")
 
 #: Stack classes that must be obtained through their sanctioned constructor rather than called.
 #: `AutonomousArm` is deliberately ABSENT: it is the arm, not the brain, and several arm tests
@@ -103,17 +167,44 @@ TIERS = ("tools", "tests")
 #: that clause actually says.
 CONSTRUCTED_VIA_FACTORY = {"Brain": "cortex.brain.make_brain()"}
 
-#: Module-scope calls that mutate state shared by every module imported after them.
+#: Module-scope calls that mutate state shared by every module imported after them. Keys are
+#: CANONICAL dotted paths -- call targets are resolved through the module's own import table first,
+#: so `np.random.seed` needs no separate entry and `npr.seed` cannot slip past for lack of one.
 BANNED_MODULE_SCOPE = {
     "os.chdir": "moves the working directory for every module after it in a shared process",
-    "random.seed": "module-level import-time seeding; use random.Random(seed) per instance",
-    "np.random.seed": "module-level import-time seeding; use np.random.default_rng(seed)",
-    "numpy.random.seed": "module-level import-time seeding; use np.random.default_rng(seed)",
+    "random.seed": "process-global seeding; use random.Random(seed) per instance",
+    "numpy.random.seed": "process-global seeding; use np.random.default_rng(seed)",
+    "torch.manual_seed": "process-global seeding; use torch.Generator().manual_seed(seed)",
+    "torch.random.manual_seed": "process-global seeding; use torch.Generator().manual_seed(seed)",
+    "torch.cuda.manual_seed": "process-global seeding; use torch.Generator().manual_seed(seed)",
+    "torch.cuda.manual_seed_all": "process-global seeding; use torch.Generator().manual_seed(seed)",
 }
+
+#: seeder -> the call that puts back what it took. A seeder bracketed by its own restorer in the
+#: same function is not a violation; see rule 5. `torch.random.fork_rng` restores ALL of them and is
+#: matched by name rather than through this table.
+RESTORERS = {
+    "random.seed": "random.setstate",
+    "numpy.random.seed": "numpy.random.set_state",
+    "torch.manual_seed": "torch.set_rng_state",
+    "torch.random.manual_seed": "torch.set_rng_state",
+    "torch.cuda.manual_seed": "torch.cuda.set_rng_state",
+    "torch.cuda.manual_seed_all": "torch.cuda.set_rng_state_all",
+}
+
+#: The subset of BANNED_MODULE_SCOPE that is process-global RNG state. Derived, never re-typed: a
+#: seeder added to one list and forgotten in the other is the drift this file exists to catch.
+GLOBAL_SEEDERS = frozenset(RESTORERS)
 
 #: Every tag this gate can report. Named once so the self-check can state what fraction of the tags
 #: it actually fired a red for, rather than counting its own fixture table against itself.
-RULE_NAMES = ("P4-CONSTRUCTION", "CWD-DEPENDENT-PATH", "MODULE-SCOPE-MUTATION", "SYNTAX")
+RULE_NAMES = (
+    "P4-CONSTRUCTION",
+    "CWD-DEPENDENT-PATH",
+    "MODULE-SCOPE-MUTATION",
+    "CONSTRUCTOR-SEED",
+    "SYNTAX",
+)
 
 #: key: "relpath -> rule", value: why this site legitimately stays. Follows dormancy_gate.EXEMPT's
 #: pattern -- a disposition AND a reason -- and every entry must still match a real violation, so an
@@ -134,19 +225,67 @@ def _dotted(node):
     return ".".join(reversed(parts))
 
 
+def _aliases(tree):
+    """Name bound in this module -> the dotted path it actually refers to.
+
+    Closes the alias and from-import spellings. `import numpy.random as npr` + `npr.seed(0)`, and
+    `from torch import manual_seed` + `manual_seed(0)`, are the same defect as the canonical form,
+    and matching the name AS WRITTEN let both walk straight past rules 2-4. This is rule 1's
+    2026-08-05 lesson generalized: a rule that an import style can evade is not a rule.
+
+    Relative `from . import x` is skipped -- resolving it needs the package path, and none of the
+    banned names is reachable that way (they are all stdlib/torch/numpy). A rebinding that is not an
+    import (`random = something_else`) is a known floor, stated rather than claimed away.
+    """
+    tbl = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for a in node.names:
+                tbl[a.asname or a.name.split(".")[0]] = a.name if a.asname else a.name.split(".")[0]
+        elif isinstance(node, ast.ImportFrom) and not node.level:
+            mod = node.module or ""
+            for a in node.names:
+                if a.name != "*":
+                    tbl[a.asname or a.name] = f"{mod}.{a.name}" if mod else a.name
+    return tbl
+
+
+def _canon(dotted, tbl):
+    """`npr.seed` -> `numpy.random.seed` under one module's import table."""
+    if dotted is None:
+        return None
+    head, _, rest = dotted.partition(".")
+    base = tbl.get(head)
+    if base is None:
+        return dotted
+    return f"{base}.{rest}" if rest else base
+
+
+def _calls_in(node, tbl):
+    """Every canonical call target anywhere under `node`. Used to spot a seeder's own restorer."""
+    return {_canon(_dotted(n.func), tbl) for n in ast.walk(node) if isinstance(n, ast.Call)}
+
+
 def _module_scope_nodes(tree):
-    """Every node that executes at IMPORT time: module body, minus function and class bodies.
+    """Every node that executes at IMPORT time: module body AND class bodies, minus function bodies.
 
     A call inside a `def` runs when the function is called, which is the caller's problem, not the
     importer's. A call inside `if __name__ == "__main__":` is deliberately INCLUDED as module scope
-    -- it does not run on import, but keeping it out would need a second traversal for no benefit,
-    and none of the four banned calls is acceptable there either.
+    -- it does not run on plain import, but `tests/test_selfchecks.py` executes every CORE module's
+    `__main__` with `runpy.run_module(..., run_name="__main__")` IN THE SAME PROCESS, so a banned
+    call there reaches every module the suite touches afterwards. That stance shipped untested (both
+    tiers were clean); scanning `src/` produced its first finding and its first mechanism.
+
+    CLASS BODIES were skipped outright until 2026-08-14, which was a real hole rather than a
+    simplification: a class body is a statement list that RUNS on import, so `class C:` +
+    `random.seed(0)` in its body is a module-scope seed wearing a container's clothes. A `def`
+    nested inside a class is still a function body and is still skipped.
     """
     out = []
     stack = list(tree.body)
     while stack:
         node = stack.pop()
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
         out.append(node)
         for child in ast.iter_child_nodes(node):
@@ -154,15 +293,48 @@ def _module_scope_nodes(tree):
     return out
 
 
-def _relative_syspath_literal(node):
+def _constructor_seeds(tree, tbl):
+    """(lineno, canonical) for every process-global seeder called inside an `__init__`. Rule 5.
+
+    A constructor body is not import time, so rule 4 structurally cannot reach it -- which is how
+    `hippocampus/growable_readout.py` re-seeded the process-global torch RNG from `__init__` for the
+    life of that feature, and how three more instances of the same shape were live in `src/` when
+    this rule was counted.
+
+    NOT flagged when the scope puts back what it took: a `with torch.random.fork_rng(...)` block, or
+    the seeder's own restorer called in the same function. The exclusion is scoped to the function,
+    which is a floor -- it does not prove the restore is on every path -- and it is deliberate:
+    flagging `cortex/recognizer_bank.py`'s getstate/setstate bracket would have been a false finding
+    against correct code, and a gate that reddens on its own remedy teaches the reader to drop it.
+    """
+    out = []
+    for fn in ast.walk(tree):
+        if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)) or fn.name != "__init__":
+            continue
+        present = _calls_in(fn, tbl)
+        if any(c and c.rsplit(".", 1)[-1] == "fork_rng" for c in present):
+            continue
+        for node in ast.walk(fn):
+            if not isinstance(node, ast.Call):
+                continue
+            called = _canon(_dotted(node.func), tbl)
+            if called in GLOBAL_SEEDERS and RESTORERS[called] not in present:
+                out.append((node.lineno, called))
+    return out
+
+
+def _relative_syspath_literal(node, tbl):
     """`sys.path.insert(0, "src")` / `sys.path.append("tools")` with a RELATIVE literal -> the arg.
 
     A joined or `__file__`-derived expression is not a Constant, so it never matches -- which is the
     whole point: the fix for this rule is to derive the path from `__file__`.
+
+    Canonicalized through `tbl` since 2026-08-14, so `import sys as s` + `s.path.insert(0, "src")`
+    is the same finding as the plain spelling.
     """
     if not isinstance(node, ast.Call):
         return None
-    name = _dotted(node.func)
+    name = _canon(_dotted(node.func), tbl)
     if name not in ("sys.path.insert", "sys.path.append"):
         return None
     for arg in node.args:
@@ -206,11 +378,13 @@ def scan():
                 violations.append((rel, exc.lineno or 0, "SYNTAX", str(exc)))
                 continue
 
+            tbl = _aliases(tree)
             names = {
                 n.name
                 for n in ast.walk(tree)
                 if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
             }
+            defined_here = {n.name for n in ast.walk(tree) if isinstance(n, ast.ClassDef)}
             census.append(
                 {
                     "file": rel,
@@ -228,14 +402,20 @@ def scan():
             # too. A call on an expression (`factory().Brain()`) still escapes -- `_dotted`
             # needs a Name at the base -- which is a known and deliberate floor, not a claim of
             # completeness.
+            # THE DEFINING MODULE IS EXCLUDED (2026-08-14, with `src/` in scope): `make_brain()`
+            # lives in the module that defines `Brain` and must call it, or there is no sanctioned
+            # path to be the sanctioned path. All SIX `src/` hits on the first counted run were
+            # `cortex/brain.py` constructing its own class. P4's clause is about CONSUMERS, so this
+            # is the rule reading what the policy says -- not an allowlist for one file.
             for node in ast.walk(tree):
                 if not isinstance(node, ast.Call):
                     continue
                 called = _dotted(node.func)
                 if called is None:
                     continue
-                factory = CONSTRUCTED_VIA_FACTORY.get(called.rsplit(".", 1)[-1])
-                if factory:
+                stem = called.rsplit(".", 1)[-1]
+                factory = CONSTRUCTED_VIA_FACTORY.get(stem)
+                if factory and stem not in defined_here:
                     violations.append(
                         (
                             rel,
@@ -247,7 +427,7 @@ def scan():
 
             # rules 2-4 -- import-time process state
             for node in _module_scope_nodes(tree):
-                literal = _relative_syspath_literal(node)
+                literal = _relative_syspath_literal(node, tbl)
                 if literal is not None:
                     violations.append(
                         (
@@ -259,12 +439,26 @@ def scan():
                         )
                     )
                 if isinstance(node, ast.Call):
-                    called = _dotted(node.func)
+                    called = _canon(_dotted(node.func), tbl)
                     why = BANNED_MODULE_SCOPE.get(called)
                     if why:
                         violations.append(
                             (rel, node.lineno, "MODULE-SCOPE-MUTATION", f"{called}(): {why}")
                         )
+
+            # rule 5 -- a constructor may not re-seed the process
+            for lineno, called in _constructor_seeds(tree, tbl):
+                violations.append(
+                    (
+                        rel,
+                        lineno,
+                        "CONSTRUCTOR-SEED",
+                        f"{called}() runs in __init__ -- CONSTRUCTING this re-seeds the "
+                        "process-global RNG for every module built after it, and both harnesses "
+                        "run modules in ONE process; draw from a per-instance generator, or "
+                        "bracket it with torch.random.fork_rng / getstate+setstate",
+                    )
+                )
     return violations, census
 
 
@@ -406,6 +600,34 @@ _RED = {
         "import numpy as np\nnp.random.seed(0)\n",
         "MODULE-SCOPE-MUTATION",
     ),
+    "MODULE-SCOPE-MUTATION (torch.manual_seed)": (
+        "import torch\ntorch.manual_seed(0)\n",
+        "MODULE-SCOPE-MUTATION",
+    ),
+    "MODULE-SCOPE-MUTATION (torch.cuda.manual_seed_all)": (
+        "import torch\ntorch.cuda.manual_seed_all(0)\n",
+        "MODULE-SCOPE-MUTATION",
+    ),
+    # The two spellings that used to walk past because the name was matched as WRITTEN.
+    "MODULE-SCOPE-MUTATION (alias spelling)": (
+        "import numpy.random as npr\nnpr.seed(0)\n",
+        "MODULE-SCOPE-MUTATION",
+    ),
+    "MODULE-SCOPE-MUTATION (from-import spelling)": (
+        "from torch import manual_seed as ms\nms(0)\n",
+        "MODULE-SCOPE-MUTATION",
+    ),
+    # A class body is a statement list that RUNS on import.
+    "MODULE-SCOPE-MUTATION (class body)": (
+        "import random\n\n\nclass C:\n    random.seed(0)\n",
+        "MODULE-SCOPE-MUTATION",
+    ),
+    # Rule 5's incident, reconstructed: the shape growable_readout carried and no gate could see.
+    "CONSTRUCTOR-SEED": (
+        "import torch\n\n\nclass R:\n    def __init__(self, seed=0):\n"
+        "        torch.manual_seed(seed)\n",
+        "CONSTRUCTOR-SEED",
+    ),
     # An unparseable instrument is reported, never skipped: `ast.parse` failing is the one way a
     # file can carry every defect above and be counted clean, which is the silent-pass shape.
     "SYNTAX": ("def broken(\n", "SYNTAX"),
@@ -419,9 +641,15 @@ _RED = {
 # fired. It should: `tools/arc_baseline.py`'s violation was inside `live_brain_solver()`, and a
 # lazily-constructed second brain is still a second brain. Rule 1 walks the whole tree ON PURPOSE,
 # and this comment records the fixture being wrong rather than the rule.
+#
+# THREE MORE REMEDIES were added 2026-08-14 with rules 4-5: the two BRACKETED seeds (fork_rng and
+# getstate/setstate) and a DEFINING module constructing its own class. Each is the shape the fix
+# for a real finding takes, so each must stay green or the fix reads as the defect.
 _GREEN = (
     "import os\n"
+    "import random\n"
     "import sys\n"
+    "import torch\n"
     "_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src')\n"
     "sys.path.insert(0, _SRC)\n"
     "os.environ.setdefault('NORD_PERSIST', '0')\n"
@@ -430,6 +658,27 @@ _GREEN = (
     "    os.chdir('/tmp')\n"
     "    from snn_data_lake.cortex.brain import make_brain\n"
     "    return make_brain(seed=0, persist=False)\n"
+    "class Forked:\n"
+    "    def __init__(self, seed=0):\n"
+    "        with torch.random.fork_rng(devices=[]):\n"
+    "            torch.manual_seed(seed)\n"
+    "            self.w = torch.rand(3)\n"
+    "class Bracketed:\n"
+    "    def __init__(self, seed=0):\n"
+    "        state = random.getstate()\n"
+    "        random.seed(seed)\n"
+    "        try:\n"
+    "            self.v = random.random()\n"
+    "        finally:\n"
+    "            random.setstate(state)\n"
+    "class PerInstance:\n"
+    "    def __init__(self, seed=0):\n"
+    "        self.rng = random.Random(seed)\n"
+    "        self.gen = torch.Generator().manual_seed(seed)\n"
+    "class Brain:\n"
+    "    pass\n"
+    "def make_brain(**kw):\n"
+    "    return Brain(**kw)\n"
 )
 
 
@@ -438,6 +687,13 @@ def _selfcheck():
 
     global ROOT
     print("INSTRUMENT GUARD self-check")
+
+    # The two seeder tables are written separately and must agree, or a seeder banned at module
+    # scope is silently unbannable in a constructor (or the reverse). Checked here rather than
+    # trusted, because "derived, never re-typed" is a comment and this is the measurement.
+    missing = sorted(GLOBAL_SEEDERS - set(BANNED_MODULE_SCOPE))
+    assert not missing, f"RESTORERS names a seeder BANNED_MODULE_SCOPE does not: {missing}"
+
     real_root = ROOT
     try:
         for label, (source, rule) in sorted(_RED.items()):

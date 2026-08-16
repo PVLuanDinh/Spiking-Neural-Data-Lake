@@ -53,14 +53,16 @@ import zlib
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.cortex.population_encoding import PopulationEncoder
 from snn_data_lake.hippocampus.growing_learner import GrowingLearner
+from snn_data_lake.substrate._mathutils import clamp01
 
 
 def _clamp(x, lo, hi):
     return lo if x < lo else (hi if x > hi else x)
 
 
-def _clamp01(x):
-    return 0.0 if x < 0.0 else (1.0 if x > 1.0 else x)
+#: MERGED 2026-08-15 into `substrate/_mathutils.clamp01` (8 copies -> 1). Alias keeps the local
+#: spelling so no call site changes; the MECHANISM is singular.
+_clamp01 = clamp01
 
 
 class AffectIntegrator:

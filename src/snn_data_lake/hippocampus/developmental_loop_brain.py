@@ -160,9 +160,20 @@ class _LinearReadout:
     M21 is owed by whichever lane promotes _loop_common + fast_features."""
 
     def __init__(self, in_dim, n_classes=10, seed=0, lr=0.01):
-        torch.manual_seed(seed)
-        dev = resolve_device()
-        self.clf = nn.Linear(in_dim, n_classes).to(dev)
+        # A constructor may not re-seed the process-global RNG: `run_selfchecks.py` runs part of the
+        # suite in ONE process and `tests/test_selfchecks.py` runs every CORE `__main__` in the
+        # pytest process, so a bare `torch.manual_seed(seed)` here shifted the stream for every
+        # module built afterwards. Same defect the Determinism note in this region's own
+        # `growable_readout.py` records removing on 2026-08-04 -- it survived here because no gate
+        # could see a constructor, and this module module-top-imports that very file at :110.
+        # `nn.Linear` has no `generator=` parameter, so the seed stays and the RNG is FORKED
+        # instead: `self.clf`'s weights are byte-identical to the unbracketed form, and the global
+        # stream is unchanged. `devices=[]` forks CPU only -- the draw below is a CPU draw, and
+        # forking CUDA state would force CUDA initialization at construction time.
+        with torch.random.fork_rng(devices=[]):
+            torch.manual_seed(seed)
+            dev = resolve_device()
+            self.clf = nn.Linear(in_dim, n_classes).to(dev)
         self.opt = torch.optim.Adam(self.clf.parameters(), lr=lr, weight_decay=1e-4)
 
     def train_step(self, X, y, lr, steps=1):

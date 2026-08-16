@@ -45,6 +45,7 @@ import random
 import tempfile
 from types import SimpleNamespace
 
+from snn_data_lake.substrate._mathutils import clamp01
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
 
 # ---- tracked signals (order fixes the dominant-signal channel index) ---------
@@ -140,8 +141,9 @@ N_CHANNELS = 64  # reserved-channel layout for the durable autobiographical trac
 # growth 32-39, confidence 40-47, dominant-signal 48-63.
 
 
-def _clamp01(x):
-    return 0.0 if x < 0.0 else (1.0 if x > 1.0 else x)
+#: MERGED 2026-08-15 into `substrate/_mathutils.clamp01` (8 copies -> 1). Alias keeps the local
+#: spelling so no call site changes; the MECHANISM is singular.
+_clamp01 = clamp01
 
 
 def _phase_bucket(p):

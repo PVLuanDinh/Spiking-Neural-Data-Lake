@@ -1764,7 +1764,35 @@ def _corpus(rng, n):
 
 class MLP:
     """A plain one-hidden-layer tanh regressor trained by SGD. Small on purpose (the OOD claim does
-    not depend on size); genuinely learned -- every weight comes from gradient descent on the data."""
+    not depend on size); genuinely learned -- every weight comes from gradient descent on the data.
+
+    WEIGHT TRANSPORT, DECLARED HERE BECAUSE THIS CLASS PERFORMS IT. `train` is hand-written
+    reverse-mode: `gh = (g @ self.w2.T) * (1 - h**2)` reads the FORWARD read-out weight, transposed,
+    to carry error back into `self.w1`. Under the "e-prop, not backprop" invariant's distinguishing
+    test -- what does the transpose FEED -- that is a weight update, which is the shape the rule
+    forbids on the brain's own learning paths.
+
+    ADJUDICATED 2026-08-15 (docs/POLICIES.md, e-prop invariant block): NOT a violation, because this
+    is a CONTROL rather than one of the brain's learning rules -- code whose job is to be measured
+    AGAINST is not a rule by which the brain learns. This class has zero references outside this
+    file, one construction site in `main_sl()`, and reaches no tick and no faculty.
+
+    NOT to be confused with the instrument the invariant NAMES, which is a different control that
+    already exists: `reasoning/eprop.py::Net.grad_bptt`, the independent reverse-mode gradient the
+    "cosine > 0.5" clause is measured against. `MLP` is a Gc BASELINE, not a gradient reference.
+    (This distinction is recorded because the first draft of the adjudication blurred it.)
+
+    DO NOT "FIX" THIS TO E-PROP. `main_sl()` asserts `mdl_ok < ind_ok` beside `in_acc >= 0.5`: the
+    model must genuinely learn AND must still fail the held-out family the inducer solves. A weaker
+    learner passes that comparison for the wrong reason -- it would fail OOD because it learns
+    worse, not because learning is not synthesis -- which converts the measurement into a
+    contaminated control and voids the Gc-vs-Gf claim this self-check exists to make.
+
+    EXEMPTION GRANTED 2026-08-15 by the owner: `substrate/eprop_transport_gate.EXEMPT` carries
+    `reasoning.gf.train` with this verdict as its reason, so promoting `gf.py` no longer reds that
+    gate. The entry is asserted to keep matching a real finding -- if this transport is ever removed
+    or re-spelled, the exemption stops blessing anything and the gate FAILS on the stale row rather
+    than going quietly green."""
 
     def __init__(self, rng, hidden=32):
         self.w1 = rng.standard_normal((WINDOW, hidden)) * 0.3
