@@ -261,6 +261,7 @@ class NGSNN:
         fixed point costs O(L^2) solves; the upgrade path is to loop this until it removes nothing.
         The final re-solve below means the returned model is always self-consistent whatever is cut.
         """
+        self.last_keep = None  # set to the survivor column list only when a prune actually happens
         if self.W is None or self.beta is None or int(self.W.shape[0]) <= 1:
             return 0
         X = X.to(self.device).float()
@@ -294,6 +295,12 @@ class NGSNN:
         if not drop or len(drop) >= L:
             return 0  # never prune to nothing: an empty substrate is not a pruned one
         keep = [c for c in allc if c not in set(drop)]
+        # THE SURVIVOR MASK, published so a caller can follow a unit's IDENTITY across a prune.
+        # `return len(drop)` alone says how many went, never WHICH -- and anything keyed per unit
+        # (a placement, a layer, a Dale sign assigned at birth) silently re-associates to a
+        # different neuron the first time this fires. Additive: the return value is unchanged and
+        # no existing caller is affected. `None` elsewhere means "identity unchanged".
+        self.last_keep = list(keep)
         self.W = self.W[keep]
         self.b = self.b[keep]
         self.beta = self._solve_beta(S[:n_tr][:, keep], Y[:n_tr])  # re-solve: beta must match W

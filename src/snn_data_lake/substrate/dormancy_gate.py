@@ -325,23 +325,15 @@ EXEMPT = {
         "tier without asserting on it (1 finding at reasoning/gf.py::train, hand-written backprop "
         "with no .backward() anywhere, which is why promotion_sweep's marker grep cannot see it)",
     ),
-    "placement": (
-        "wire",
-        "gives every grown unit a cortical DEPTH, a LAYER and an immutable Dale SIGN from the H01 "
-        "human prior. Pure and deterministic; its consumer is neurogenesis_engine, which must call "
-        "place() at unit creation and persist the result with the substrate (specs/019 [B10.14], "
-        "and [B6.24] for the record tag). EXEMPT only until that wire lands -- this is a standing "
-        "TODO, not a permanent disposition",
-    ),
-    "cortical_prior": (
-        "permanent",
-        "REFERENCE DATA, not a faculty: H01 human-cortex measurements (layer geometry, per-layer "
-        "excitatory fractions, Dale types) with units, provenance and accuracy bounds. It computes "
-        "nothing and cannot be on a tick -- it is the ONE place an externally sourced constant "
-        "lives, so a second dataset replaces all of them in one edit. Consumers arrive with "
-        "specs/011's placement work; P4b forbids it entering the lake (it is what a microscope saw, "
-        "not what the brain learned)",
-    ),
+    # placement: EXEMPTION RETIRED 2026-08-16, the wire landed. `cortex/neurogenesis_engine` calls
+    # place() for every unit a refit adds, reindexes by the model's survivor mask after each prune,
+    # and persists (depth, layer, sign) with the substrate. It is reachable from a live root and
+    # needs no exemption -- which is the disposition P3 actually wants, rather than a standing TODO.
+    # cortical_prior: EXEMPTION RETIRED 2026-08-16, and the GATE ASKED FOR IT -- once placement was
+    # wired it reported "1 EXEMPT entries are now reachable (retire them): ['cortical_prior']". The
+    # chain neurogenesis_engine -> placement -> cortical_prior reaches a live root, so the H01 human
+    # reference data is consumed rather than merely present. P4b still forbids it entering the lake:
+    # it is what a microscope saw, not what the brain learned.
     "doc_budget_gate": (
         "permanent",
         "word ceilings on the STANDING documents -- a CI self-check, not a tick faculty. Budgets "

@@ -133,6 +133,11 @@ class NeurogenesisSelfImprove:
         self._n_units = 0
         self._acc = 1.0 / self.k_modes  # chance until the first fit
         self._model = None  # the retained grown NG-SNN; None until the first successful refit
+        #: [(depth, layer, sign)] index-aligned with `self._model.W` rows -- every grown unit's
+        #: cortical home. Maintained across BOTH growth (new units appended) and PRUNE (survivors
+        #: reindexed by the model's `last_keep`), because a placement that stops tracking its unit
+        #: is worse than no placement: it looks like structure and describes a different neuron.
+        self._placement = []
         self.trajectory = []  # (tick, n_units, acc) per refit
 
     # ---- context stream ----------------------------------------------------------------------
@@ -214,7 +219,32 @@ class NeurogenesisSelfImprove:
         # to drop. Without it, seeding makes the substrate monotonically grow -- accumulation with no
         # way out is the unbounded-growth failure this project has hit three times, so the prune ships
         # WITH the growth rather than after it.
+        # PLACEMENT, part 1 of 2: the units this refit ADDED get a cortical home. `fit(init_W=...)`
+        # keeps the inherited units as the LEADING rows, so index identity survives growth and the
+        # new units are exactly the tail. Each is born into a layer drawn from H01's measured
+        # occupancy with a Dale sign fixed at birth (cortex/placement).
+        n_before = len(self._placement)
+        n_after_fit = int(model.n_units)
+        if n_after_fit > n_before:
+            from snn_data_lake.cortex.placement import place
+
+            # seed varies with the engine seed AND how many units already exist, so successive
+            # births are not carbon copies of the first batch while staying deterministic
+            self._placement.extend(
+                place(n_after_fit - n_before, seed=(self.seed * 1_000_003) + n_before)
+            )
+        elif n_after_fit < n_before:  # cold start / width mismatch -> the substrate was replaced
+            self._placement = self._placement[:n_after_fit]
+
         self._pruned = model.prune_unearned(x_tr, y_tr)
+        # PLACEMENT, part 2 of 2: FOLLOW THE SURVIVORS. `prune_unearned` drops columns, so without
+        # this every placement after the first prune would describe a DIFFERENT neuron -- a Dale
+        # sign assigned at birth would silently migrate, which is the integrity failure this whole
+        # structure exists to prevent. The count alone (`self._pruned`) cannot do it; the survivor
+        # mask can.
+        keep = getattr(model, "last_keep", None)
+        if keep is not None and len(self._placement) >= max(keep, default=-1) + 1:
+            self._placement = [self._placement[i] for i in keep]
         pred = model.predict(x_te)
         acc = (pred == y_te.to(model.device)).float().mean().item()
         self._n_units = model.n_units
@@ -239,6 +269,31 @@ class NeurogenesisSelfImprove:
         self._model = model
 
     # ---- read-only state ---------------------------------------------------------------------
+    # REUSE, not a second mechanism: both accessors return what `cortex/placement.place` produced
+    # and this engine maintains. The assignment rule lives there and is imported, never reimplemented.
+    #
+    # distinct-from: brainstem/autonomous_loop.py and cortex/brain.py -- their "grown units" are the
+    #   arm's PROTOTYPE recruits (context->action, a Q-table over them), a different growth mechanism
+    #   entirely; these are NG-SNN hidden units. Worth naming: the phrase means two things in this
+    #   tree. distinct-from: substrate/brain_geometry.py -- places this package's MODULES in 3D.
+    #   distinct-from: substrate/home.py -- drops superseded lake records. All sites read.
+    @property
+    def placement(self):
+        """Per-unit (depth, layer, sign), aligned with the substrate rows it describes.
+
+        Empty until a refit grows something. `main()` asserts its length equals `grown_units`: a
+        list that drifts out of step with the weights is the failure this tracking prevents, and it
+        is invisible from either side alone.
+        """
+        return list(self._placement)
+
+    def layer_census(self):
+        """Counts per cortical layer over what has been grown."""
+        out = {}
+        for _d, layer, _s in self._placement:
+            out[layer] = out.get(layer, 0) + 1
+        return out
+
     @property
     def goal(self):
         return "self-improvement"
@@ -289,6 +344,14 @@ class NeurogenesisSelfImprove:
         m = self._model
         if m.W is None or m.b is None or m.beta is None:
             return None  # constructed but never fit -- not substrate
+        # PLACEMENT rides with the substrate. Added as OPTIONAL arrays rather than by bumping
+        # GROWTH_FORMAT: `restore_growth_state` refuses on a tag mismatch, so a bump would discard
+        # every _T_GROWTH record already in the lake -- 73,490 of them, 508 MB, at the last census.
+        # Old blobs therefore still restore (placement is DERIVED on the way in), and an older build
+        # reading a new blob simply ignores arrays it does not name. Additive both directions.
+        from snn_data_lake.cortex.placement import LAYER_NAMES
+
+        placed = self._placement[: int(self._n_units)]
         buf = io.BytesIO()
         np.savez(
             buf,
@@ -301,6 +364,13 @@ class NeurogenesisSelfImprove:
             n_units=np.array(int(self._n_units)),
             acc=np.array(float(self._acc)),  # the fit these weights came from, never a later one
             ticks=np.array(int(self.ticks)),
+            # float64, not float32: depth is a python float, and storing it narrower makes the
+            # round-trip lossy in a way only exact equality catches -- the probe that found this
+            # reported 23 placements restored against 23 written and still unequal. Eight bytes a
+            # unit is the right price for a restart that returns the SAME brain, not a rounded one.
+            place_depth=np.array([p[0] for p in placed], dtype=np.float64),
+            place_layer=np.array([LAYER_NAMES.index(p[1]) for p in placed], dtype=np.int16),
+            place_sign=np.array([p[2] for p in placed], dtype=np.int8),
         )
         return buf.getvalue()
 
@@ -324,6 +394,10 @@ class NeurogenesisSelfImprove:
                 W, b, beta = z["W"], z["b"], z["beta"]
                 d_in, m_out = int(z["d_in"]), int(z["m_out"])
                 n_units, acc, ticks = int(z["n_units"]), float(z["acc"]), int(z["ticks"])
+                # optional -- absent in every blob written before placement existed
+                z_depth = z["place_depth"] if "place_depth" in z else None
+                z_layer = z["place_layer"] if "place_layer" in z else None
+                z_sign = z["place_sign"] if "place_sign" in z else None
         except Exception:
             return False
         if W.ndim != 2 or beta.ndim != 2 or b.ndim != 1:
@@ -344,6 +418,25 @@ class NeurogenesisSelfImprove:
         self._n_units = n_units
         self._acc = acc
         self.ticks = max(self.ticks, ticks)
+
+        # PLACEMENT comes back with the substrate, or is DERIVED when the blob predates it. Deriving
+        # rather than leaving it empty is deliberate: a restored brain whose units have weights but
+        # no laminar identity is half-restored, which this method's own docstring refuses to do. The
+        # derived placement is deterministic in `seed`, so the same old blob always reconstitutes the
+        # same structure -- it is a first assignment, not a guess that drifts per restart.
+        from snn_data_lake.cortex.placement import LAYER_NAMES, place
+
+        placed = None
+        try:
+            depth, layer_ix, sign = z_depth, z_layer, z_sign
+            if depth is not None and len(depth) == n_units:
+                placed = [
+                    (float(depth[i]), LAYER_NAMES[int(layer_ix[i])], int(sign[i]))
+                    for i in range(n_units)
+                ]
+        except Exception:
+            placed = None  # a malformed placement is DERIVED afresh, never half-applied
+        self._placement = placed if placed is not None else place(n_units, seed=self.seed)
         return True
 
     def substrate_is_retained(self):
@@ -731,6 +824,27 @@ def main():
         f"restart proof: {rs['parent_units']} grown units -> {rs['blob_bytes']} B under _T_GROWTH "
         f"in a {rs['lake_bytes']} B lake -> a SEPARATE interpreter restored crc {rs['child_fp']} "
         f"({rs['child_units']}u, acc {rs['child_acc']:.4f}), byte-equal to the writer's."
+    )
+    # PLACEMENT ALIGNMENT. Asserted here because it is invisible from either side alone: the weights
+    # look fine, the placement list looks fine, and only their correspondence can be wrong. It goes
+    # wrong at a PRUNE -- `prune_unearned` drops columns, so without reindexing by the survivor mask
+    # every entry after the first prune would describe a DIFFERENT neuron and a Dale sign assigned
+    # at birth would silently migrate. Measured over 600 ticks of this same run: 20 growth events,
+    # 8 prunes, alignment held at every one.
+    _placed = eng.placement
+    assert len(_placed) == eng.grown_units, (
+        f"placement/substrate MISALIGNED: {eng.grown_units} units but {len(_placed)} placements -- "
+        "a placement that stops tracking its unit is worse than none, because it looks like "
+        "structure while describing a different neuron"
+    )
+    _l1_exc = [p for p in _placed if p[1] == "Layer 1" and p[2] == 1]
+    assert not _l1_exc, f"Dale broken after growth/prune churn: excitatory in Layer 1 {_l1_exc}"
+    _census = " ".join(
+        f"{k.replace('Layer ', 'L')}:{v}" for k, v in sorted(eng.layer_census().items())
+    )
+    print(
+        f"placement: {len(_placed)} units carry a cortical depth, layer and immutable Dale sign "
+        f"[{_census}] -- aligned through growth AND prune, and round-tripped in the blob above."
     )
     print("self-check OK: the brain self-improves by GROWING NG-SNN neurons to predict its own")
     print("next perception; held-out accuracy rises above chance as it grows (shuffled control")

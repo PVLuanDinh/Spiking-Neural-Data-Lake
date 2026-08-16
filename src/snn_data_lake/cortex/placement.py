@@ -58,7 +58,10 @@ from snn_data_lake.cortex.cortical_prior import (
 EXCITATORY = 1
 INHIBITORY = -1
 
-_LAYER_NAMES = ("Layer 1", "Layer 2", "Layer 3", "Layer 4", "Layer 5", "Layer 6")
+#: Public: consumers persist a layer by its INDEX here, so the stored form is compact and a rename
+#: cannot silently re-map an already-written record to a different layer.
+LAYER_NAMES = ("Layer 1", "Layer 2", "Layer 3", "Layer 4", "Layer 5", "Layer 6")
+_LAYER_NAMES = LAYER_NAMES  # internal alias kept so existing references stay valid
 WHITE_MATTER = "White matter"
 
 #: Agreement between `layer_of` and H01's OWN published `cortical layer` labels, measured over all
