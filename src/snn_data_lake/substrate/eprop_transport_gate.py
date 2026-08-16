@@ -85,14 +85,25 @@ _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _PKG = "snn_data_lake"
 
 #: A name that plausibly holds a weight matrix. WIDE on purpose -- it only decides what is worth
-#: following, and the update-target test below is what makes a finding. Constants (ALL-CAPS) are
-#: excluded: `W_MAX` is a bound, not a weight, and treating it as one is most of what made W5 score
-#: 59 instead of 0.
-_WEIGHTISH = re.compile(r"(^_?[wW]($|[\d_])|weight|^_?[wW][a-z]?$|^W_)")
+#: following, and the update-target test below is what makes a finding.
+#:
+#: WIDENED 2026-08-15, after this predicate was measured MISSING the names it most needed. It read
+#: `^_?[wW][a-z]?$` (at most ONE trailing lowercase letter) and excluded anything `.isupper()`, so:
+#:   * `Wrec` / `Win` / `Wout` -- reasoning/eprop.py's ACTUAL weights -- were not weight-ish at all;
+#:   * `W2` was rejected as a CONSTANT, because "W2".isupper() is True. `W2` is the name in
+#:     `mlp_q`'s retired transport, i.e. the exact case this module's own docstring cites as its
+#:     miss. The gate was blind to it twice over.
+#: The constant exclusion still has to exist -- dropping it is most of what made W5 score 59 -- so
+#: it is NARROWED rather than removed: a real constant is caps-and-underscores with two or more
+#: trailing caps (`W_MAX`, `WEIGHT_MAX`). `W2`, `Wz`, `Win` are not. RE-COUNTED before adopting:
+#: the shipped rule scores GOVERNED 0 / UNGOVERNED 1 under both predicates -- widening cost zero
+#: findings and bought the names above.
+_WEIGHTISH = re.compile(r"(^_?[wW]($|[\d_])|weight|^_?[wW][a-z]{0,4}$|^W_)", re.I)
+_CONSTANTISH = re.compile(r"^[A-Z][A-Z_]{2,}$")  # W_MAX / WEIGHT_MAX -- not W2, Wz, Win
 
 
 def _is_weight(name):
-    return bool(name) and not name.isupper() and bool(_WEIGHTISH.search(name))
+    return bool(name) and not _CONSTANTISH.match(name) and bool(_WEIGHTISH.search(name))
 
 
 # distinct-from: cortex/second_order_access.py -- that module's "key" is a TELEMETRY key in a
@@ -202,13 +213,82 @@ def _findings_in(fn):
     return out
 
 
+# distinct-from: cerebellum/spiking_jepa.py -- serializes weight VALUES to JSON; this reads a
+#   SOURCE TREE and never touches a live weight. distinct-from: cortex/snn_moe_classifier.py -- its
+#   "gate weights" are softmax scores over experts, not a matrix. distinct-from:
+#   plasticity/developmental_pruning.py -- its (class, index) pairs enumerate LIVE synapses; these
+#   are AST index EXPRESSIONS as source text. distinct-from: substrate/signal_calibrator.py --
+#   reads persisted calibration records. All four were read; none extracts subscript index order or
+#   detects a transpose, and there is nothing to reuse in either direction.
+def _index_pair(node):
+    """`X[a][b]` -> ('X', 'a', 'b'), else None. `X` may be `self.X` or a bare name."""
+    if not isinstance(node, ast.Subscript) or not isinstance(node.value, ast.Subscript):
+        return None
+    inner = node.value
+    base = inner.value
+    name = base.attr if isinstance(base, ast.Attribute) else getattr(base, "id", None)
+    if not name:
+        return None
+    try:
+        return name, ast.unparse(inner.slice), ast.unparse(node.slice)
+    except Exception:
+        return None
+
+
+def index_swaps_in(tree):
+    """(lineno, weight, detail) for weights READ with their index order REVERSED.
+
+    THE SECOND TRANSPOSE SPELLING. `_transposed` above keys on an array-library transpose -- `.T`,
+    `.t()`, `transpose(...)`. A pure-python loop has none of those and writes the transpose as an
+    index swap instead: `reasoning/eprop.py::Net.grad_bptt` reads `self.Wrec[k][j]` to carry error
+    backward while the module stores and updates `self.Wrec[j][k]`. No `.T` exists anywhere in that
+    file, so the shipped rule could not see it AT ALL -- not as a finding, not as a census entry.
+
+    THE FORWARD ORDER IS THE ONE THE MODULE ASSIGNS TO, which is what makes this narrow enough to
+    adopt. A weight's storage layout is whatever `self.W[j][k] -= ...` uses; a READ in the reversed
+    order is then a transpose. A module that only ever COMPARES the two orders establishes no
+    forward order and cannot fire -- so `cortex/neural_sampling.py`, which raises unless
+    `weights[i][j] == weights[j][i]` to ENFORCE symmetric coupling, drops out by construction
+    rather than by an allowlist entry. An earlier draft keyed on "both orders appear anywhere" and
+    scored 2, with that validator as the false positive.
+
+    Deliberately NOT gated on `_findings_in`'s terminal test (the transport must reach a weight
+    update in the SAME function): `grad_bptt` RETURNS gradients and `apply()` performs the update,
+    so that test would miss the one case this rule exists for.
+
+    Counted before adopting: 1 finding on this tree.
+    """
+    writes, targets, out = {}, set(), []
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Assign, ast.AugAssign)):
+            for t in node.targets if isinstance(node, ast.Assign) else [node.target]:
+                got = _index_pair(t)
+                if got and _is_weight(got[0]):
+                    writes.setdefault(got[0], set()).add((got[1], got[2]))
+                    targets.add(id(t))
+    for node in ast.walk(tree):
+        got = _index_pair(node)
+        if not got or id(node) in targets or not _is_weight(got[0]):
+            continue
+        name, i, j = got
+        if i != j and (j, i) in writes.get(name, ()):
+            out.append((node.lineno, name, f"writes [{j}][{i}], reads [{i}][{j}]"))
+    return out
+
+
 def scan(brain_modules=None):
-    """(violations, census). A violation is (module, function, lineno, source, target, governed)."""
+    """(violations, census, swaps).
+
+    A violation is (module, function, lineno, source, target, governed) -- the array-library
+    transpose reaching a weight update. A swap is (module, lineno, weight, detail, governed) -- the
+    SAME offence spelled by index order, from `index_swaps_in`. Both are collected in ONE walk of
+    the package rather than by a second traversal.
+    """
     if brain_modules is None:
         from snn_data_lake.substrate.dormancy_gate import BRAIN_MODULES
 
         brain_modules = BRAIN_MODULES
-    violations, census = [], 0
+    violations, census, swaps = [], 0, []
     for dirpath, _dirs, files in os.walk(_PKG_DIR):
         if "__pycache__" in dirpath:
             continue
@@ -229,13 +309,17 @@ def scan(brain_modules=None):
                     continue
                 for lineno, src, tgt in _findings_in(node):
                     violations.append((rel, node.name, lineno, src, tgt, governed))
-    return violations, census
+            for lineno, name, detail in index_swaps_in(tree):
+                swaps.append((rel, lineno, name, detail, governed))
+    return violations, census, swaps
 
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     do_assert = "--assert" in argv
-    violations, census = scan()
+    violations, census, swaps = scan()
+    gov_swaps = [s for s in swaps if s[4]]
+    ung_swaps = [s for s in swaps if not s[4]]
     exempt = [v for v in violations if _exempt_key(v[0], v[1]) in EXEMPT]
     gov = [v for v in violations if v[5] and _exempt_key(v[0], v[1]) not in EXEMPT]
     ungov = [v for v in violations if not v[5] and _exempt_key(v[0], v[1]) not in EXEMPT]
@@ -271,29 +355,39 @@ def main(argv=None):
         for k in stale:
             print(f"  {k}   blesses NOTHING -- no finding in the tree matches this key")
         print()
-    print(f"GOVERNED: {len(gov)}   UNGOVERNED: {len(ungov)}   EXEMPT: {len(exempt)}")
+    print("--- INDEX-SWAP TRANSPOSE (the loop spelling; governed half asserted) ---")
+    for rel, lineno, name, detail, g in swaps:
+        print(f"  {'GOVERNED  ' if g else 'ungoverned'} {rel}:{lineno}   {name}: {detail}")
+    if not swaps:
+        print("  (none)")
+    print()
+    print(
+        f"GOVERNED: {len(gov)}   UNGOVERNED: {len(ungov)}   EXEMPT: {len(exempt)}   "
+        f"SWAP gov/ung: {len(gov_swaps)}/{len(ung_swaps)}"
+    )
     print()
     # Printed on EVERY run, not buried in the docstring: a gate that reports 0 and does not say what
     # it cannot see gets read as a proof of compliance, which this is not.
-    print("  BLIND SPOT, stated so a green is not over-read: this keys on an EXPLICIT transpose.")
-    print("  The transport retired from basal_ganglia/mlp_q.py was spelled by INDEXING --")
-    print("  'w2i = W2[a]' then 'dh = err * w2i[j]' -- with no '.T' anywhere, and this gate would")
-    print("  NOT have caught it. Of the two violations this tree has had, it catches one. The")
-    print("  wider rule that catches both was built, scored 59 findings including mlp_q's own")
-    print("  SHIPPED fix, and was rejected -- see this module's docstring.")
+    print("  BLIND SPOT, stated so a green is not over-read. The FIRST rule keys on an EXPLICIT")
+    print("  transpose, and the transport retired from basal_ganglia/mlp_q.py was spelled by")
+    print("  SINGLE-ROW INDEXING -- 'w2i = W2[a]' then 'dh = err * w2i[j]' -- with no '.T' and no")
+    print("  reversed index PAIR, so neither rule here catches that spelling. The wider rule that")
+    print("  would was built, scored 59 findings including mlp_q's own SHIPPED fix, and was")
+    print("  rejected -- see this module's docstring.")
     print()
-    print("  SECOND BLIND SPOT, found 2026-08-15 by a reader asking a question this gate could")
-    print("  not answer: an explicit transpose is an ARRAY-LIBRARY spelling. reasoning/eprop.py")
-    print("  hand-rolls reverse-mode BPTT in pure math/random loops with NO numpy and NO '.T'")
-    print("  anywhere, so this walk cannot see it AT ALL -- not as a finding, not as a census")
-    print("  entry. That is not a missed violation today (Net.grad_bptt is the independent")
-    print("  gradient the invariant's own cosine clause REQUIRES), but the capability gap is")
-    print("  real: a module that hand-rolls backprop in loops passes this gate silently on the")
-    print("  day it is promoted into the governed tier.")
+    print("  WHAT THE SECOND RULE CLOSED, 2026-08-15: an explicit transpose is an ARRAY-LIBRARY")
+    print("  spelling, and reasoning/eprop.py hand-rolls reverse-mode BPTT in pure math/random")
+    print("  loops with NO numpy and NO '.T' anywhere. That file was invisible to this walk")
+    print("  entirely -- not a finding, not a census entry. INDEX-SWAP now sees it. It is not a")
+    print("  violation (Net.grad_bptt is the independent gradient the invariant's own cosine")
+    print("  clause REQUIRES) and it is ungoverned, so it REPORTS; but a module hand-rolling")
+    print("  backprop in loops no longer passes this gate silently on the day it is promoted.")
     print()
-    failed = bool(gov) or bool(stale)
+    failed = bool(gov) or bool(stale) or bool(gov_swaps)
     if gov:
         print("gate FAIL: weight transport on a governed module")
+    elif gov_swaps:
+        print("gate FAIL: index-swap weight transport on a governed module")
     elif stale:
         # A stale row is a failure in its own right, not a nit. An allowlist entry that matches
         # nothing reads as coverage of a risk nobody is carrying, and it is how an exemption
@@ -391,7 +485,36 @@ def _selfcheck():
         print("    ^ this now FIRES. The docstring and main()'s printed disclosure both say it")
         print("      does NOT -- update them in this commit, then delete this branch.")
 
-    violations, census = scan()
+    # INDEX-SWAP, proven both ways on constructed sources -- the rule ships with the reconstruction
+    # of the defect it was built for, and with the false positive an earlier draft produced.
+    _swap_red = (
+        "class N:\n"
+        "    def apply(self, d, lr):\n"
+        "        self.Wrec[j][k] -= lr * d[j][k]\n"
+        "    def back(self, dv):\n"
+        "        s = self.Wrec[k][j] * dv[k]\n"
+        "        return s\n"
+    )
+    _swap_green = (  # cortex/neural_sampling.py's symmetry VALIDATOR, reconstructed
+        "def check(weights, n):\n"
+        "    for i in range(n):\n"
+        "        for j in range(i + 1, n):\n"
+        "            if weights[i][j] != weights[j][i]:\n"
+        "                raise ValueError('weights must be symmetric')\n"
+    )
+    assert index_swaps_in(ast.parse(_swap_red)), (
+        "the INDEX-SWAP red did not fire: a weight written [j][k] and read [k][j] is the loop "
+        "spelling of a transpose, and it is the whole reason this rule exists"
+    )
+    print("  RED    a weight written [j][k] and read [k][j] -- the loop-spelled transpose")
+    assert not index_swaps_in(ast.parse(_swap_green)), (
+        "the INDEX-SWAP rule fired on a SYMMETRY VALIDATOR. Comparing both orders to ENFORCE "
+        "W[i][j] == W[j][i] is a modelling requirement, not transport; an earlier draft keyed on "
+        "'both orders appear' and scored this as a false positive"
+    )
+    print("  green  a symmetry validator comparing both orders -- enforces, never transports")
+
+    violations, census, _swaps = scan()
 
     # The EXEMPT allowlist, proven BOTH ways. An exemption nobody can see fail is the shape this
     # gate exists to refuse, so its red is constructed here rather than asserted into existence.

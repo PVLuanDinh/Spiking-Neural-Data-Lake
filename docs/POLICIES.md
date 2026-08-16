@@ -1569,6 +1569,31 @@ The instrument half of the claim stands; the line does not.)*
   transposed weight reaching a weight update **0**. It lands green, so per the rule below it ships
   the reconstruction of the defect it was built for.
 
+  **WIDENED 2026-08-15, at the owner's instruction, and limit (a) below is now PARTLY closed.** Two
+  defects were found in the gate itself, both by asking what it could not see rather than by reading
+  it. **(1) Its weight-name predicate missed the names it most needed:** `Wrec` / `Win` / `Wout` --
+  `reasoning/eprop.py`'s actual weights -- were not weight-ish at all, and **`W2` was rejected as a
+  CONSTANT** because `"W2".isupper()` is True, `W2` being the exact name in `mlp_q`'s retired
+  transport that this row cites as the gate's miss. The constant exclusion is NARROWED rather than
+  removed (a real constant is caps-and-underscores with two or more trailing caps, so `W_MAX` still
+  excludes and `W2` no longer does); **re-counted before adopting, the shipped rule scores GOVERNED
+  0 / UNGOVERNED 1 under both predicates, so widening cost zero findings.** **(2) A SECOND RULE,
+  INDEX-SWAP, now catches the loop spelling:** an explicit transpose is an ARRAY-LIBRARY idiom, and
+  `reasoning/eprop.py` hand-rolls reverse-mode BPTT in pure `math`/`random` loops with no numpy and
+  no `.T` anywhere, so that file was invisible to the walk **entirely** -- not a finding, not a
+  census entry. The rule keys on the forward order being the one the module ASSIGNS to, so a read in
+  the reversed order is a transpose, and a module that only COMPARES both orders (`neural_sampling`
+  raises unless `W[i][j] == W[j][i]`, ENFORCING symmetric coupling) establishes no forward order and
+  drops out by construction rather than by an allowlist. **Counted before adopting: 1 finding**,
+  `reasoning/eprop.py`'s `Wrec`, which is NOT a violation -- `Net.grad_bptt` is the independent
+  reverse-mode gradient this invariant's own cosine clause REQUIRES -- and is ungoverned, so it
+  reports. The governed half asserts, so a module hand-rolling backprop in loops no longer passes
+  silently on the day it is promoted. **Two earlier drafts were discarded at this bar and the
+  discards are the useful part:** "both index orders appear anywhere" scored 2 with the symmetry
+  validator as a false positive AND missed its own motivating case; bolting the new rule onto the
+  existing terminal test ("the transport must reach a weight update in the SAME function") was
+  rejected on design, because `grad_bptt` RETURNS gradients and `apply()` performs the update.
+
   **Three limits, stated because a green here is easy to over-read, and the gate prints all three:**
   (a) it keys on an EXPLICIT transpose, so the `mlp_q` violation — spelled `w2i = W2[a]` then
   `dh = err * w2i[j]`, with no `.T` in the source — **would not have been caught**; of the two
