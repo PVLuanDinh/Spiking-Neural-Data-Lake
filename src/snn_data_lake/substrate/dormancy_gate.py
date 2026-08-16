@@ -221,8 +221,17 @@ EXEMPT = {
     ),
     "cortical_microcircuit": (
         "permanent",
-        "REFERENCE MODEL: Potjans-Diesmann 2014 validation dynamics with no input port -- its output is a "
-        "deterministic constant given its build parameters, so it can drive nothing",
+        "REFERENCE MODEL: Potjans-Diesmann 2014 validation dynamics. CORRECTED 2026-08-16 -- this "
+        "reason read 'with no input port' and that was FALSE: `thalamic_drive(thalamic_hz)` IS an "
+        "input port, added 2026-08-04, and `simulate(..., thalamic_hz=)` carries a caller's drive "
+        "into it. It is anatomically targeted (CONN_PROB_TH is nonzero for L4e/L4i/L6e/L6i ONLY, so "
+        "a caller cannot inject into L2/3 or L5 -- the stimulus must travel the intracortical "
+        "route), it contributes EXACTLY 0.0 at 0 Hz so an undriven run stays bit-identical, and it "
+        "refuses a negative rate. The TRUE reason for the exemption is that NOTHING DRIVES IT: zero "
+        "references to `thalamic_drive` or `CorticalMicrocircuit` exist outside this module. The "
+        "port carries a SCALAR rate, so a caller can modulate drive intensity but not inject a "
+        "spatial pattern -- that, not the port, is what specs/011 Phase A should be scoped against. "
+        "Wiring a live driver is specs/019 [B2.08], and this exemption is retired the day it lands",
     ),
     # NOTE: plasticity_rule_stack + homeostatic_plasticity_stack + bcm_plasticity + inhibitory_stdp +
     # homeostatic_scaling + intrinsic_plasticity + short_term_plasticity are WIRED (Brain.__init__ attaches
