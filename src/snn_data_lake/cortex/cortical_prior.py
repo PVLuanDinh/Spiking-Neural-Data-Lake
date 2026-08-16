@@ -185,10 +185,42 @@ SOURCE_VOLUME_NM = entry(
     "factor on a learned quantity.",
 )
 
+# --------------------------------------------------------------------------------------------------
+# PER-LAYER NEURON OCCUPANCY -- the share of CORTICAL NEURONS each layer holds.
+#
+# NEURONS ONLY, and the number that forces it: white matter holds 12,872 CELLS but only 498 NEURONS
+# (3.5%), because it is mostly myelinating glia. Placing new units by ALL-CELL density would have put
+# 28% of them in white matter, which is anatomically absurd. Glia are two thirds of this dataset.
+#
+# Used instead of re-deriving occupancy from LAYER_CIRCLES, because Layer 1 is defined as the
+# REMAINDER outside every circle: uniform sampling in a bounding box over-produces it (the corners
+# are all "Layer 1"), and choosing a tissue outer radius to correct that would be an invented
+# constant. Occupancy is a measurement; use the measurement.
+# --------------------------------------------------------------------------------------------------
+LAYER_OCCUPANCY = entry(
+    value={
+        "Layer 1": 0.0390,
+        "Layer 2": 0.3231,
+        "Layer 3": 0.2061,
+        "Layer 4": 0.2167,
+        "Layer 5": 0.1512,
+        "Layer 6": 0.0638,
+    },
+    units="dimensionless share of CORTICAL NEURONS (white matter excluded), sums to 1.0",
+    provenance="goog14r0s5c3_e_i_ratios_feb_2023.csv, `cell type` restricted to the four neuronal "
+    "types, grouped by `cortical layer`. 13,833 cortical neurons of 14,331 total "
+    "(498 in white matter, excluded) out of 45,994 cells.",
+    accuracy_bound="counting is exact; the LAYER ASSIGNMENT behind it is H01's own. An independent "
+    "re-derivation of that assignment from LAYER_CIRCLES agrees on 45,404/49,377 = "
+    "91.95% of somata, every disagreement an ADJACENT layer, so treat per-layer shares "
+    "as +/- that boundary error rather than exact.",
+)
+
 #: Every entry in this module, for `validate` and for consumers that want to iterate.
 ENTRIES = {
     "LAYER_CIRCLES": LAYER_CIRCLES,
     "LAYER_E_FRACTION": LAYER_E_FRACTION,
+    "LAYER_OCCUPANCY": LAYER_OCCUPANCY,
     "SIGNED_TYPES": SIGNED_TYPES,
     "UNSIGNED_TYPES": UNSIGNED_TYPES,
     "SOURCE_VOLUME_NM": SOURCE_VOLUME_NM,

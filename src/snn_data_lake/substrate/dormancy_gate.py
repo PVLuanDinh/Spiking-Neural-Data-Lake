@@ -325,6 +325,14 @@ EXEMPT = {
         "tier without asserting on it (1 finding at reasoning/gf.py::train, hand-written backprop "
         "with no .backward() anywhere, which is why promotion_sweep's marker grep cannot see it)",
     ),
+    "placement": (
+        "wire",
+        "gives every grown unit a cortical DEPTH, a LAYER and an immutable Dale SIGN from the H01 "
+        "human prior. Pure and deterministic; its consumer is neurogenesis_engine, which must call "
+        "place() at unit creation and persist the result with the substrate (specs/019 [B10.14], "
+        "and [B6.24] for the record tag). EXEMPT only until that wire lands -- this is a standing "
+        "TODO, not a permanent disposition",
+    ),
     "cortical_prior": (
         "permanent",
         "REFERENCE DATA, not a faculty: H01 human-cortex measurements (layer geometry, per-layer "

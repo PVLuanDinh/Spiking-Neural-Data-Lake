@@ -68,6 +68,7 @@ CORE = [
     "cortex.neuronal_avalanches",
     "cortex.cortical_microcircuit",
     "cortex.cortical_prior",  # H01 human reference data: every entry carries its four attributes
+    "cortex.placement",  # grown units ordered into cortical layers by measured H01 occupancy
     "cortex.lca_sparse_coding",
     "cortex.predictive_coding",
     "cortex.pc_cortex_serve",

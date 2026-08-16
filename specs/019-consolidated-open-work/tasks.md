@@ -138,14 +138,14 @@ one-line documentation strikes sit above large builds.
 
 ### [B2.01] Correct the two P0 rows still calling growth retention unmeasured - they point P0 effort at work that shipped
 
-- **status** OPEN &nbsp;|&nbsp; **policy** P0 + P4b honesty &nbsp;|&nbsp; **effort** small
+- **status** DONE -- both rows corrected; the ENGINE restart is proven, the BRAIN restart is not (that is [B2.09]) &nbsp;|&nbsp; **policy** P0 + P4b honesty &nbsp;|&nbsp; **effort** small
 - **key** `growth-retention-denial-vs-shipped-proof`
 - **source** specs/BACKLOG_RANKED.md row 9
 - **evidence** VERIFIED in the CLAUDE.md text at HEAD: 'no cross-process restart has been demonstrated ... That measurement is the open P0 work here', with POLICIES.md:117 carrying the twin, against neurogenesis_engine.py:691/:700 which assert exactly that restart; a false claim sitting on the P0 build list outranks every capability item in this band.
 
 ### [B2.02] Retire the false 'no input port' reason at all 4 sites - it justifies a permanent EXEMPT and sizes a P0 avenue against a port that has existed since 2026-08-04
 
-- **status** OPEN &nbsp;|&nbsp; **policy** P0 avenue + P3 &nbsp;|&nbsp; **effort** small
+- **status** DONE (`3107dcec`) -- corrected at all 4 sites; the port EXISTS, the true reason is that nothing drives it &nbsp;|&nbsp; **policy** P0 avenue + P3 &nbsp;|&nbsp; **effort** small
 - **key** `cortical-microcircuit-no-input-port-false`
 - **source** specs/BACKLOG_RANKED.md row 8; specs/011-h01-neurogenesis-prior/tasks.md T041
 - **evidence** COLLAPSED 2 rows; VERIFIED in CLAUDE.md at HEAD ('.simulate(t_ms) take no input signal anywhere ... EXEMPT-permanent at dormancy_gate.py:100-104 because it has no input port'), plus POLICIES.md:118, dormancy_gate.py:222-226 and specs/011 tasks.md:124, while the port is real at cortical_microcircuit.py:241 and consumed at :287 - and the CLAUDE.md cite :100-104 has itself rotted onto gwt_deep.
@@ -187,8 +187,10 @@ one-line documentation strikes sit above large builds.
 
 ### [B2.08] Drive cortical_microcircuit.thalamic_drive from a live path
 
-- **status** BLOCKED &nbsp;|&nbsp; **policy** P0 avenue &nbsp;|&nbsp; **effort** medium
-- **key** `cortical-microcircuit-unwired-port` &nbsp;|&nbsp; **blocked by** `cortical-microcircuit-no-input-port-false`
+- **status** UNBLOCKED; drive MEASURED, consumer deliberately NOT wired &nbsp;|&nbsp; **policy** P0 avenue &nbsp;|&nbsp; **effort** medium
+- **key** `cortical-microcircuit-unwired-port` &nbsp;|&nbsp; ~~blocked by `cortical-microcircuit-no-input-port-false`~~ -- discharged `3107dcec`
+- **MEASURED 2026-08-16** Paired A/B, 12 seeds, driven vs undriven at the SAME seed, with a NULL control (`driven(0.0)` vs undriven = exactly 0.0, so the pairing is real). At the paper's 15 Hz: **L4e t=3.1 (10/12 seeds), L4i t=3.0 (9/12)** -- the direct thalamo-recipients -- **plus L2/3i t=3.0**, which has ZERO thalamic in-degree and can only have responded through the INTRACORTICAL route. At 50 Hz all four recipients respond (L4e t=8.8, 12/12) plus L5e. Dose-response monotone: L4e +1.1 -> +2.0 -> +6.1 across 1/15/50 Hz. **The drive charges the circuit.** COST: the port is 0.125 ms, but `simulate(t_ms=5)` is 10.5 ms against a ~27.8 ms tick, so the circuit cannot run per-wake-tick and belongs where the brain already does expensive work.
+- **a FIRST harness produced a FALSE NULL, recorded rather than deleted.** It compared a WITHIN-seed delta against the BETWEEN-seed range and reported 0/8 beyond noise at EVERY rate. Those are different quantities: at 771 neurons some populations hold ~10 cells, so that band is 6-23 Hz wide and swallows a real effect. Caught only because every delta was positive, which noise does not do. Had it shipped, this item would have been DELETED under P8 clause 5 on a measurement error.
 - **source** specs/BACKLOG_RANKED.md row 10
 - **evidence** Every construction is inside its own file (:460,:468,:518,:546,:551) and thalamic_drive is called only at :287/:546/:551; __init__.py:102 is a REGIONS name-string and run_selfchecks.py:69 a registration - zero external drivers, and the backlog says fix row 8 first so the lane is sized against a true reason.
 
@@ -1114,7 +1116,8 @@ one-line documentation strikes sit above large builds.
 
 ### [B10.11] Re-derive the four H01 source figures and record byte-count + SHA-256 of the five source files
 
-- **status** OPEN &nbsp;|&nbsp; **policy** P8 &nbsp;|&nbsp; **effort** medium
+- **status** DONE (`7b61f9ba`) &nbsp;|&nbsp; **policy** P8 &nbsp;|&nbsp; **effort** medium
+- **result** All five files fetched from `github.com/ashapsoncoe/h01` at commit `db223b8d769d8ae046f0026f12b251103f1dbab0`, 13,202,522 bytes, each recorded with byte count AND sha256 in `cortex/cortical_prior.py::SOURCES`. All four figures RE-DERIVED and every one reproduced the Phase 0 reading exactly: 49,377 soma records, 45,994/45,994 = 100% join coverage on `agglo_seg`, 7 cortical layer values, 6 layer circles (11 cell types too). Raw sources deliberately NOT vendored -- regenerating is an offline step per specs/011 quickstart, and 13 MB of upstream data does not belong in this tree. Also closes specs/011 US1 (`cortical_prior.py` built, registered in REGIONS + run_selfchecks + dormancy_gate EXEMPT). **GP_STRENGTH_E/I remain UNDERIVED and are named as such** -- they need the AIS-exclusion caveat in provenance, and a half-derived distribution with a missing caveat is worse than an absent one ([B10.19]).
 - **key** `h01-source-figures-unverified`
 - **source** specs/011-h01-neurogenesis-prior/tasks.md T000b + T002
 - **evidence** COLLAPSED 2 rows (both need the same external fetch); no baseline.md exists and no SHA-256 or byte count for agglo_20200916c3_cell_data.json appears anywhere under specs/011 - every H01 figure in spec.md is quoted, never checked.
