@@ -651,6 +651,48 @@ This is a BUILD LIST in P0's sense: every item is work that will be done, never 
   policy's own honesty guard: *a build the gates cannot see is not a build the project can claim*,
   and it was written into three documents as a CI step before it was one.
 
+### P4c amendment — A BUILD THAT HAS NOT REACHED `main` IS NOT A BUILD THIS PROJECT CAN CLAIM
+
+**Owner directive, 2026-08-16. Review-enforced, PROVISIONAL — the gate is specified below and NOT
+built, per the route this file already allows for an owner-adopted rule.**
+
+P4c says every build lands inside the governed tree **from the start**. This is the other half of the
+same sentence: it must also land on **`main`**. A lane that ends with its work correct, registered,
+gated and sitting on an unmerged branch has not delivered it. The governed tree it landed in is a
+tree nobody else has.
+
+**The measurement that produced this amendment, and it is this policy's own honesty guard failing in
+a new direction.** On 2026-08-16, `origin/main` was **18 commits behind** a branch that had been
+fully pushed for days. Every commit was green — `run_selfchecks` 301/301, `pytest` clean, ruff clean.
+What `main` was missing: **two safety-path fixes** (the ESP32 idle sentinel binding a fear
+association to a context where nothing was there, on every idle sample; a 3x units-contract gap on
+the distance threshold), **a determinism-invariant fix** (`torch.Generator(device=...)` meant the
+same seed grew a DIFFERENT brain on a machine with a card than on CI), and
+`substrate/eprop_transport_gate.py` — **the only mechanization the e-prop invariant has ever had.**
+Anyone cutting from `main` got none of it, and nothing in this file said that was a defect.
+
+**Why the existing guard did not catch it.** P4c's guard is *"a build the gates cannot see is not a
+build the project can claim"*, and every gate COULD see this work — on the branch. The gates run
+where the work is. Being invisible to `main` is a different failure from being invisible to the
+gates, and it is the one that decides what the project actually has.
+
+**GATE SPECIFICATION, so the debt is actionable rather than perpetual.** At lane close, compute
+`git rev-list --count origin/main..HEAD` and report, partitioned by what the unmerged commits TOUCH:
+`src/**` and especially `brainstem/**` are the rows that matter; `docs/**` and `specs/**` are not the
+same risk. It must NOT be a CI gate that fires on any unmerged branch — that would redden ordinary
+work, which is the shape this file has already killed two proposals for. It is a lane-CLOSE check,
+and the honest form is a ratchet on *how long* and *what kind* of work sits unmerged, not on whether
+any does. **Build it and count its output before promoting this to mechanized**; if it reports a
+rubber-stamp-sized list, that result kills the gate, not the tree.
+
+**Honesty guard:** "it is pushed" is a claim about a BRANCH, not about the project — the same shape
+as P4b's *"'it persists' is a claim about a NEW process"*. Prove it by reading the artifact back out
+of `origin/main` after the merge, not by inspecting the branch you merged from. The merge that
+closed this incident was verified that way: the guard, the CPU-bound generators and the gate file
+each confirmed present ON `origin/main`, with a negative control (the temporary `RED PROOF` marker
+used to prove a test's red) confirmed ABSENT, so the check could distinguish a real merge from a
+grep that would have matched anything.
+
 **Honesty guard:** the brain is not only the part that computes. Asking "is the Brain object correct?"
 while the process that runs it, the surface it acts through, and two hundred modules beside it go
 unexamined is how a system passes every gate it has and still cannot act. **Verify the whole

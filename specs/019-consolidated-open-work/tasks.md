@@ -7,6 +7,22 @@ Sources: 8 `specs/*/tasks.md` files with unchecked tasks, plus the 66 open rows 
 
 **173 items.** 120 open, 53 blocked, 0 closed at HEAD but kept here because a live document still asserts them.
 
+> # START HERE: BAND 2. Band 1 is CLOSED and MERGED TO MAIN.
+>
+> **`origin/main` = `4db316e7`** (was `f362cb52`). The 018 lane -- 18 commits, eight lanes -- is
+> merged; every Band 1 fix is on main, verified per artifact rather than inferred. The next open
+> band is **Band 2 (P0, the purpose, which outranks P1-P8 explicitly)**, 15 items.
+>
+> **STANDING RULE, owner 2026-08-16: EVERY BUILD MUST REACH `main`, not merely the governed tree.**
+> P4c says a build lands inside the governed tree from the start; this adds the other half. A lane
+> that ends with its work correct, gated and sitting on an unmerged branch has not delivered it --
+> anyone cutting from `main` gets none of it. This rule exists because it happened: 18 commits sat
+> unmerged while `main` was missing TWO safety-path fixes (a fabricated fear association on every
+> idle sensor sample; a 3x units-contract gap), a DETERMINISM breach fix (the same seed grew a
+> different brain on a GPU box than on CI), and the only mechanization the e-prop invariant has ever
+> had. Every one was green, committed and pushed. None of it was on main. See `docs/POLICIES.md`
+> P4c for the amendment and its gate specification.
+>
 > **BAND 1 CLOSED 2026-08-15 -- all 6.** Status is hand-applied here; the item list below is still
 > the GENERATED artifact (FR-001) and was not re-rendered, so treat this block as the authority on
 > Band 1 and the entries below as the original inventory.
