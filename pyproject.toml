@@ -314,6 +314,11 @@ addopts = "-q -p no:nengo --cov=snn_data_lake --cov-report=term-missing --cov-fa
 # test_selfchecks runs each module via runpy after the package is already imported; that emits a
 # benign "found in sys.modules" RuntimeWarning. Silence only that one.
 filterwarnings = ["ignore:.*found in sys.modules.*:RuntimeWarning"]
+# `slow`: a test that spawns real interpreters and drives hundreds of ticks. It is NOT deselected by
+# default -- registering the marker only stops PytestUnknownMarkWarning, which is a real hazard here:
+# an unregistered marker is a silent typo, and a typo'd `pytest.mark.slwo` would mark nothing while
+# reading exactly like it did. Deselect locally with `-m "not slow"`.
+markers = ["slow: spawns subprocesses and drives many ticks (minutes, not seconds)"]
 
 [tool.coverage.run]
 source = ["snn_data_lake"]

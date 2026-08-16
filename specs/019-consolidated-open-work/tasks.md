@@ -196,10 +196,10 @@ one-line documentation strikes sit above large builds.
 
 ### [B2.09] Prove growth survives a BRAIN restart, not only an engine restart
 
-- **status** OPEN &nbsp;|&nbsp; **policy** P0 + P4b &nbsp;|&nbsp; **effort** medium
+- **status** DONE &nbsp;|&nbsp; **policy** P0 + P4b &nbsp;|&nbsp; **effort** medium
 - **key** `growth-restart-proven-only-at-engine-level`
 - **source** specs/BACKLOG_RANKED.md row 11
-- **evidence** neurogenesis_engine.py has zero occurrences of 'Brain(' or 'make_brain' across 756 lines; _cross_process_restart :428 driven at :607, live paths brain.py:3101 save_growth and :1176 restore both resolve, and brain.py:4193 def close() has no growth flush.
+- **evidence** The suspected flush was REAL, so this closed as a defect fix and not as a test. MEASURED, seed 7, two processes: a brain ticked until `grown_units` rose and then exited kept 0 of 2 units and wrote ZERO lake records; a brain given 200 further ticks exited holding 3 and restored 5, because the last sleep-tick save caught a PRE-PRUNE snapshot. Growth reached the lake only on the sleep cadence and that save LAGS the growth, so the lake held a different brain than the one that exited -- both too little and too much. FIXED by `cortex/brain.py::Brain._flush_growth`, one mechanism with two callers (sleep tick + `close()`), keeping the `substrate_is_retained()` gate rather than `grown_units > 0`. After: 2/2 and 3/3 kept. Pinned by `tests/test_brain_growth_restart.py`, whose 260-tick case PASSED against the live defect (that many ticks always lands a save after the last growth) -- `test_growth_survives_an_immediate_exit` is the one with the reachable red. Both tests open with a positive control, because the first failure chased here was the test helper reading `lake_path()` (lake.spkl) instead of `knowledge_path()` (brain_lake.bin) and reporting 0 for a brain that had persisted correctly.
 
 ### [B2.10] Promote reasoning/godel_machine.py + reasoning/self_improve.py into the governed tier - and fix the gate that punishes the fix
 

@@ -3089,18 +3089,7 @@ class Brain:
             except Exception:  # numpy absent / import failure -> stay silent, keep sleeping
                 self._skills_state = None
         if self._persist:  # DURABLE: fold the night's growth to disk (never-forget)
-            try:
-                # The grown neural SUBSTRATE, into the one durable lake. Gated on
-                # substrate_is_retained() and NEVER on grown_units > 0: those two came apart for the
-                # whole life of this feature -- the counter read 8..120 while the model behind it was
-                # collected at the end of every refit -- so gating on the count is exactly how a
-                # counter gets written and an empty engine restored.
-                if self.neuro is not None and self.neuro.substrate_is_retained():
-                    from snn_data_lake.substrate.home import save_growth
-
-                    save_growth(self.neuro.growth_state_bytes())
-            except Exception:  # persistence must never take the sleep tick down
-                pass
+            self._flush_growth()
             try:
                 from snn_data_lake.substrate.home import save_state
 
@@ -4190,12 +4179,51 @@ class Brain:
         except Exception as e:
             return {"status": "error", "reason": f"{type(e).__name__}: {e}"}
 
+    def _flush_growth(self):
+        """Write the grown neural substrate into the ONE durable lake. True if a record was written.
+
+        ONE mechanism, TWO callers -- the sleep tick and `close()`. It is a method rather than a
+        second copy of the save because the two callers want the identical gate, and a duplicated
+        persistence path is how the two ends drift until only one of them is correct (P2).
+
+        Gated on `substrate_is_retained()` and NEVER on `grown_units > 0`: those two came apart for
+        the whole life of this feature -- the counter read 8..120 while the model behind it was
+        collected at the end of every refit -- so gating on the count is exactly how a counter gets
+        written and an empty engine restored.
+
+        WHY close() NEEDS THIS, measured 2026-08-16. Before this existed, growth reached the lake
+        ONLY on a sleep tick, and the save LAGS the growth that caused it. Two processes, same seed:
+        a brain ticked until `grown_units` rose and then exited kept **0 of 2 units** and wrote ZERO
+        records; a brain given 200 further ticks exited holding 3 units and restored **5**, because
+        the last sleep-tick save had caught a PRE-PRUNE snapshot. So the lake did not hold the brain
+        that exited -- it held whichever moment the cadence happened to catch, which is the P4b
+        failure ("a restart is not amnesia") in both directions at once: too little and too much.
+
+        The bare `except` is deliberate and matches the sleep tick's contract -- persistence must
+        never take down the caller -- but note it makes every failure here SILENT, so the only
+        honest proof this fires is a record counted on disk from another process.
+        """
+        if not self._persist or self.neuro is None:
+            return False
+        try:
+            if not self.neuro.substrate_is_retained():
+                return False
+            from snn_data_lake.substrate.home import save_growth
+
+            save_growth(self.neuro.growth_state_bytes())
+            return True
+        except Exception:
+            return False
+
     def close(self):
-        """Release the brain's lake working memory, durably save the acquired language organ, and
-        release the self-model handle. Idempotent guard."""
+        """Release the brain's lake working memory, durably save the acquired language organ, flush
+        the grown substrate, and release the self-model handle. Idempotent guard."""
         if self._closed:
             return
         self._closed = True
+        # BEFORE the other saves: this is the one that was missing entirely, and a later failure in
+        # this method must not be what decides whether the brain keeps what it grew.
+        self._flush_growth()
         try:
             wm = self.brain.arm.lake_wm
             if wm is not None:
