@@ -325,6 +325,15 @@ EXEMPT = {
         "tier without asserting on it (1 finding at reasoning/gf.py::train, hand-written backprop "
         "with no .backward() anywhere, which is why promotion_sweep's marker grep cannot see it)",
     ),
+    "cortical_prior": (
+        "permanent",
+        "REFERENCE DATA, not a faculty: H01 human-cortex measurements (layer geometry, per-layer "
+        "excitatory fractions, Dale types) with units, provenance and accuracy bounds. It computes "
+        "nothing and cannot be on a tick -- it is the ONE place an externally sourced constant "
+        "lives, so a second dataset replaces all of them in one edit. Consumers arrive with "
+        "specs/011's placement work; P4b forbids it entering the lake (it is what a microscope saw, "
+        "not what the brain learned)",
+    ),
     "doc_budget_gate": (
         "permanent",
         "word ceilings on the STANDING documents -- a CI self-check, not a tick faculty. Budgets "

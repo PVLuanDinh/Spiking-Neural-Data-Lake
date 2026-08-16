@@ -67,6 +67,7 @@ CORE = [
     "cortex.divisive_normalization",
     "cortex.neuronal_avalanches",
     "cortex.cortical_microcircuit",
+    "cortex.cortical_prior",  # H01 human reference data: every entry carries its four attributes
     "cortex.lca_sparse_coding",
     "cortex.predictive_coding",
     "cortex.pc_cortex_serve",

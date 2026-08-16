@@ -100,6 +100,7 @@ REGIONS = {
         "laminar_local_readout",
         "neuronal_avalanches",
         "cortical_microcircuit",
+        "cortical_prior",  # H01 HUMAN cortex reference data: value + units + provenance + bound
         "lca_sparse_coding",
         "predictive_coding",
         "is_snn_forward",
