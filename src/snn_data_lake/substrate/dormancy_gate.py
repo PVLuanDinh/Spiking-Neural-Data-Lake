@@ -316,6 +316,13 @@ EXEMPT = {
         "tier without asserting on it (1 finding at reasoning/gf.py::train, hand-written backprop "
         "with no .backward() anywhere, which is why promotion_sweep's marker grep cannot see it)",
     ),
+    "doc_budget_gate": (
+        "permanent",
+        "word ceilings on the STANDING documents -- a CI self-check, not a tick faculty. Budgets "
+        "five docs read every session; deliberately does NOT budget the historical records "
+        "(CHANGELOG, specs/, docs/coverage/, vendored papers) where growth is CORRECT, nor "
+        "CLAUDE.md, which is untracked and would report MISSING in every clone",
+    ),
     "hf_stream": (
         "permanent",
         "TOOL: offline data-prep CLI -- streams a licensed HF dataset into feature rows for a "

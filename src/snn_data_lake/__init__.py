@@ -400,6 +400,7 @@ REGIONS = {
         "import_manifest",  # Policy 3: the cross-tier canary (governed -> ungoverned lazy imports)
         "method_dormancy_gate",  # Policy 3 amendment: per-METHOD dormancy (update rules with no live caller)
         "eprop_transport_gate",  # e-prop invariant: a transposed weight may not reach a weight update
+        "doc_budget_gate",  # word ceilings on the standing documents: prose growth stays visible
         "ingest_guard",  # content boundary for outside data: licence deny-by-default + injection flagging
         "hf_stream",  # streamed HF datasets -> brain-consumable features (licence-gated, bounded)
         "basic_components",  # Brain-Cog-adopted composition interface: node + local-rule + connection palette
