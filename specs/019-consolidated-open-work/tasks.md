@@ -92,13 +92,15 @@ one-line documentation strikes sit above large builds.
 - **source** specs/014-live-sensor-transduction/tasks.md T029,T030,T031
 - **evidence** RE-DERIVED LIVE at HEAD (and the auditor's blocked_by is wrong - see F.03): substrate/esp32_encoder_path.py:78 clamps distance_m with no sentinel while :81 special-cases temp_k<=0, and brainstem/autonomous_loop.py:1473 `distance < CONTACT` reaches `am.pair(pat)` at :1479 for a finite -1.0; the file is in substrate/, not cortex/ as several cites imply.
 
-### [B1.04] Assert the safety path receives RAW METRES and the spike path the normalized feats - substituting one loosens the trip point 3x
+### [B1.04] RE-BANDED to [B10.42] -- it was never an invariant breach
 
-- **status** DONE (`4a2ae912`) -- **MIS-BANDED, see the correction below: measured, this is a capability defect, not an envelope breach** &nbsp;|&nbsp; **policy** invariant: safety envelope &nbsp;|&nbsp; **effort** small
-- **key** `raw-metres-vs-normalized-distance`
-- **source** specs/014-live-sensor-transduction/tasks.md T032,T033
-- **evidence** Arithmetic re-derived: arm_config.py:27 CONTACT=0.04 m against esp32_encoder_path.py:78 distance_m/3.0, so a normalized value fed to the metres threshold moves the trip point to 0.12 m; same two files and same commit as B1.03, and equally not blocked on the unbuilt feed.
-- **CORRECTION 2026-08-15 (`4a2ae912`) -- THIS ROW'S TITLE IS WRONG AND THE ROW IS KEPT SO THE ERROR IS NOT SILENTLY REBRANDED.** The 3x is exact and reproduced. "Loosens" is not: `normalized < CONTACT` is `raw < 0.12 m`, a WIDER stop radius, so the arm trips at three times the distance and stops MORE often. Swept 0.005-2.9 m at runtime through `AutonomousArm.step`, there is **no reading where the raw path trips and the normalized path does not** -- the substitution is strictly MORE conservative. So this is a CAPABILITY defect (a 3x false-stop radius), **not a safety loosening, and the envelope is not breached by it** -- which also means the row was banded into B1 on the strength of a word that did not survive measurement, and it probably belongs in a lower band. Pinned anyway, direction included, because a silent 3x move in a safety threshold is a defect whichever way it points.
+- **status** MOVED 2026-08-15, work DONE (`4a2ae912`) &nbsp;|&nbsp; **key** `raw-metres-vs-normalized-distance`
+- **why** The row entered Band 1 on the word "loosens", and measurement refuted that word. Banding is
+  DERIVED from policy, so a row whose evidence changes must be RE-DERIVED, not annotated in place --
+  the earlier pass flagged it here and left it, which meant the highest-priority band carried an item
+  that no invariant covers. Corrected evidence, corrected band. The full entry, its correction and
+  its commit now live at **[B10.42]** in Band 10; the stub stays so the id resolves and so the
+  mis-banding is part of the record rather than erased.
 
 ### [B1.05] Pin DEFAULT_RULES[6]/[7] values AND meanings in a test with a demonstrated layout-shift red - nothing in the tree pins them today
 
@@ -1310,6 +1312,15 @@ one-line documentation strikes sit above large builds.
 - **key** `p4b-durability-suite-order-failure`
 - **source** specs/010-policy-compliance-audit/tasks.md T061 (listed twice; auditor filed it closed_or_stale)
 - **evidence** COLLAPSED 2 duplicate rows; the symptom does not reproduce at HEAD (isolation 6/6, the full alphabetical prefix of 248 tests in one process 100% green, full pytest -x reached the coverage report with no FAILURES) but no diagnosis was ever recorded, so the order-dependence may still be latent.
+
+### [B10.42] Assert the safety path receives RAW METRES and the spike path the normalized feats - substituting one moves the trip point 3x
+
+- **status** DONE (`4a2ae912`) &nbsp;|&nbsp; **policy** P8 (a criterion with a constructed reachable red) &nbsp;|&nbsp; **effort** small
+- **key** `raw-metres-vs-normalized-distance`
+- **source** specs/014-live-sensor-transduction/tasks.md T032,T033; RE-BANDED from [B1.04] 2026-08-15
+- **evidence** Arithmetic re-derived: `arm_config.CONTACT` = 0.04 m against `esp32_encoder_path.normalize`'s `distance_m / 3.0`, so a normalized value fed to the metres threshold moves the trip point to 0.12 m. Same two files as [B1.03] and equally not blocked on the unbuilt feed.
+- **WHY IT MOVED OUT OF BAND 1, and the title was wrong before it was re-banded.** It was filed as *"loosens the trip point 3x"*. The 3x is exact and reproduces; "loosens" does not. `normalized < CONTACT` is `raw < 0.12 m` -- a WIDER stop radius, so the arm trips at three times the distance and stops MORE often. Swept 0.005-2.9 m at runtime through `AutonomousArm.step`: **there is no reading where the raw path trips and the normalized path does not.** The substitution is strictly MORE conservative, so it is a CAPABILITY defect (a 3x false-stop radius) and **the safety envelope is not breached by it**. Band 1 holds only genuine open breaches of a never-relaxed invariant; this is not one. It lands in Band 10 because what shipped is a criterion carrying a constructed reachable red, which is what P8 governs.
+- **still worth having.** A silent 3x move in a safety threshold is a defect whichever way it points, the units contract was asserted nowhere, and the direction is now pinned by its own test so the record cannot drift back to "loosens".
 
 ## Band 11 -- repo hygiene (not a policy)
 
