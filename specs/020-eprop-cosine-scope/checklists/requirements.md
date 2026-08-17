@@ -67,6 +67,32 @@ into the spec rather than left implicit:
 
 All checklist items now pass. Spec is ready for `/speckit-plan`.
 
+### Validation round 3 — 2026-08-17, after `/speckit-clarify`
+
+Four clarifications asked and integrated; all 16 items re-checked against the updated spec and all
+16 still pass (16/16 → 16/16, no regressions). Requirements grew 12 → 23, success criteria 7 → 13.
+
+What the clarification session changed, beyond recording answers:
+
+- **Claim detection** is now dual-signal (declaration AND structural inference, cross-checked) with
+  disagreement as a reportable third state — chosen because a missing marker and a genuine
+  no-claim are otherwise indistinguishable, which is the silent under-count FR-006 exists to stop.
+- **Run location** split by cost: the static census asserts in CI, the numeric cosine work is an
+  on-demand instrument. Driven by the project's own recorded hazard that CI and the local gate run
+  different torch builds, so a build-sensitive numeric assert can be green in one and red in the
+  other. This also forced FR-013's requirement that the CI half must NOT need the module to import.
+- **Enforcement** split: absolute on "zero unclassified", ratchet on disagreements — plus FR-018,
+  which requires the baseline be machine-written and refuse a rise, because one existing gate in
+  this tree keeps its baseline as a source-level dict that can be raised by a one-line edit.
+- **The bar is explicitly frozen** for this feature (FR-009b). Reconciling the instrument may already
+  move measured cosines; moving the threshold at the same time would leave any flipped verdict with
+  two candidate causes and no way to attribute it.
+
+**One gap found by reading the constitution, not by a question**: Standing Invariant 8 restates the
+`cosine > 0.5` clause verbatim, so the amendment has TWO surfaces. FR-008a now requires both to move
+together — a one-surface amendment would create exactly the divergence the constitution's Governance
+section names, where the constitution becomes "the defect".
+
 **Note on two items that were reviewed carefully rather than ticked by default:**
 
 - *"No implementation details"* — the spec names specific modules (`cortex/eprop_kernel`,

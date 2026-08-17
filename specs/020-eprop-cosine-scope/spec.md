@@ -49,6 +49,15 @@ bar. Therefore **no POLICIES.md wording may change until the checks below exist 
 been counted against the real tree.** That ordering is a requirement of this feature, not a
 suggestion, and it is what makes User Story 1 the MVP.
 
+## Clarifications
+
+### Session 2026-08-17
+
+- Q: How should the checker decide whether a given learning rule "claims to approximate a gradient" and therefore owes a cosine? → A: D — declaration AND structural inference, cross-checked, with any disagreement reported as a finding rather than resolved silently.
+- Q: Where should these checks run — as a gate that fails the build in CI, or as an instrument you run on demand? → A: D — split by cost: the census and cross-check assert in CI (static, deterministic); the cosine measurement and discriminating-power check run as an on-demand instrument.
+- Q: Should the CI half assert that the classification is correct today (and stay that way), or only that it never gets worse than today's baseline? → A: C — split: ABSOLUTE on "every rule is classified" (zero unclassified, always), RATCHET on declaration/inference disagreements (may fall, never rise).
+- Q: Should this feature derive the 0.5 bar from a measurement, or measure only to check whether 0.5 is defensible and leave the number alone? → A: C — derive to VALIDATE, do not move. Measure the aligned-vs-null separation and report whether 0.5 sits in the separating region; if it does not, that is a recorded finding for a separate decision. Moving the bar and fixing the instrument in one feature would destroy attribution on any flipped verdict.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Tell me which rules the bar even applies to, and count them (Priority: P1)
@@ -136,23 +145,28 @@ cannot substitute for -- two factorizations can look equivalent and score differ
 
 ---
 
-### User Story 4 - Say plainly what the number is (Priority: P4)
+### User Story 4 - Say plainly what the number is, without moving it (Priority: P4)
 
-The `0.5` figure is either derived from a measured separation between aligned and null gradients, or
-recorded as an undeived convention with its P1 case-(a) justification stated in the same place. It is
-not left implicit.
+The aligned-vs-null separation is measured and `0.5`'s position relative to it is reported, alongside
+its P1 case-(a) justification. **The bar itself is NOT changed by this feature** (owner decision
+2026-08-17): if the measurement shows `0.5` is poorly placed, that is a recorded finding handed to a
+separate decision.
 
-**Why this priority**: Lowest because it changes no verdict today -- but leaving an unexplained
+**Why this priority**: Lowest because it changes no verdict -- by design. Leaving an unexplained
 number on an admission bar is how the next reviewer re-opens the P1 question from scratch, which is
-exactly what happened to produce this spec.
+exactly what produced this spec; but moving the bar here would collide with the instrument
+reconciliation in Story 3 and leave any flipped verdict unattributable.
 
-**Independent Test**: A reader of the invariant can state where `0.5` came from without reading code.
+**Independent Test**: A reader of the invariant can state where `0.5` came from, and what the
+measured separation was, without reading code.
 
 **Acceptance Scenarios**:
 
-1. **Given** the invariant text, **When** a reviewer asks why the bar is `0.5`, **Then** either a
-   measured separation or an explicit "convention, permitted under P1(a), not derived" answer is
-   present.
+1. **Given** the invariant text, **When** a reviewer asks why the bar is `0.5`, **Then** the measured
+   aligned-vs-null separation and `0.5`'s position within it are present, along with the P1 case-(a)
+   justification for a fixed point on a normalized output.
+2. **Given** a measurement showing `0.5` is outside the separating region, **When** this feature
+   completes, **Then** the bar is UNCHANGED and the finding is recorded for a separate decision.
 
 ---
 
@@ -165,10 +179,24 @@ exactly what happened to produce this spec.
   it cannot charge -- but it must not vanish from the census either, or the count understates.
 - A rule whose reference gradient **cannot be computed in the gate environment** (no GPU, missing
   optional dependency). Reporting "no cosine available" must be distinguishable from "cosine measured
-  and failed" -- collapsing those two is the failure this project has hit before.
+  and failed" -- collapsing those two is the failure this project has hit before. This is also why
+  the numeric half is on-demand rather than CI-asserting.
+- A rule whose **module does not import** in the gate environment. It must still be classified by the
+  CI half, which therefore cannot rely on importing the module to inspect it.
 - The census finds **zero** rules owing a cosine. That must be reported as a suspicious result and
   fail loudly, because an empty census and a broken walk look identical.
-- A rule claims gradient approximation in prose but its code performs no gradient-like update at all.
+- The disagreement count reaches zero and the ratchet becomes a bound that can never fire again. That
+  is the success state, but it must be recognisable as such rather than sitting indefinitely as a
+  green check nobody can distinguish from an unexercised one.
+- A rule claims gradient approximation in prose but its code performs no gradient-like update at all
+  -- the declaration and the structural inference disagree, which is a reportable finding rather than
+  a classification.
+- A rule performs a gradient-like update but carries no declaration. This is the case a
+  declaration-only scheme would silently miss, and it must surface as a disagreement, not as
+  "owes nothing".
+- The two signals agree on every rule in the tree. That is the expected healthy state, but it must be
+  reported as a count rather than as silence, or a cross-check that stopped running looks identical
+  to one that found nothing.
 
 ## Requirements *(mandatory)*
 
@@ -180,6 +208,14 @@ exactly what happened to produce this spec.
 - **FR-002**: System MUST base "owes a cosine" on whether the rule CLAIMS to approximate a gradient,
   because that is the claim the measurement can check. A purely local rule making no such claim owes
   no cosine and MUST NOT be reported as a violation.
+- **FR-002a**: The claim MUST be determined from TWO independent signals -- an explicit declaration
+  carried by the rule itself, and a structural inference derived from its code -- and the two MUST be
+  cross-checked. Neither signal alone is sufficient: a declaration-only scheme cannot distinguish a
+  missing marker from a genuine absence of claim, and an inference-only scheme fails silently when
+  the inference is wrong.
+- **FR-002b**: Where the declaration and the structural inference DISAGREE, the system MUST report
+  the disagreement as a finding and MUST NOT silently prefer either signal. A rule in disagreement is
+  reported as unresolved, not classified by default.
 - **FR-003**: System MUST, for any rule the bar is applied to, produce a discriminating-power result
   consisting of BOTH an aligned measurement and a non-aligned measurement, and MUST record both.
 - **FR-004**: System MUST report INSTRUMENT-FALSIFIED (and leave the rule unjudged) when no
@@ -190,11 +226,23 @@ exactly what happened to produce this spec.
   when its walk cannot enumerate the tree.
 - **FR-007**: System MUST print its counts and MUST be runnable against the real tree before any
   governing-document wording is changed.
-- **FR-008**: The governing document MUST state the scope of the cosine clause explicitly, and MUST
+- **FR-008**: The governing documents MUST state the scope of the cosine clause explicitly, and MUST
   state that a rule which cannot pass the criterion by construction has falsified the instrument
   rather than itself.
-- **FR-009**: The governing document MUST record the provenance of the numeric bar -- derived, or
-  convention-with-justification.
+- **FR-008a**: BOTH governing surfaces MUST be amended together: `docs/POLICIES.md` (authoritative)
+  and the constitution's Standing Invariant 8, which restates the same clause verbatim. Amending only
+  one leaves the other contradicting it, and the constitution's own Governance section states that
+  where the two disagree the constitution is the defect. A scope fix that lands in one surface only
+  has created the divergence it was written to prevent.
+- **FR-009**: The governing document MUST record the provenance of the numeric bar, including the
+  measured aligned-vs-null separation and whether `0.5` falls inside the separating region.
+- **FR-009a**: The system MUST measure the separation between aligned gradients and a null (permuted
+  or shuffled) control, and MUST report where `0.5` sits relative to it.
+- **FR-009b**: This feature MUST NOT change the value of the bar. If the measurement shows `0.5` is
+  poorly placed, that is recorded as a finding for a separate decision. Rationale, recorded so a
+  later reader does not mistake it for timidity: SC-008 already accepts that reconciling the
+  reference gradient may move measured cosines, and moving the BAR in the same feature would leave
+  any flipped verdict with two candidate causes and no way to attribute it.
 - **FR-010**: System MUST NOT change any learning rule's implementation, MUST NOT relax the
   backprop/weight-transport prohibition, and MUST NOT touch the safety envelope.
 - **FR-011**: The reference gradient used by the criterion MUST be RECONCILED with the factorization
@@ -205,6 +253,27 @@ exactly what happened to produce this spec.
 - **FR-012**: The reconciliation MUST be demonstrated by measurement, not by inspection: perturbing a
   shipped encoder's update rule MUST move the criterion's output. A reconciliation that changes no
   measured value has not been shown to attach the criterion to the shipped rule.
+- **FR-013**: The census and the declaration/inference cross-check MUST assert in CI. They MUST be
+  static and deterministic, MUST NOT require a GPU, and MUST NOT require the rule's module to be
+  importable -- roughly 30% of the ungoverned subtree does not import in the gate environment, and a
+  classifier that skips what it cannot import silently under-counts.
+- **FR-014**: The cosine measurement and the discriminating-power check MUST run as an on-demand
+  instrument and MUST NOT assert in CI. Rationale recorded so it is not mistaken for laxity: CI runs
+  a different torch build from the local environment, and this project has already documented that a
+  build-sensitive numeric assertion can be green in one and red in the other.
+- **FR-015**: The on-demand instrument MUST record its output in a form a later reader can find and
+  re-run, so that "nobody has run it lately" is visible rather than indistinguishable from "it passed".
+- **FR-016**: The CI half MUST assert ABSOLUTELY that the number of unclassified learning rules is
+  zero. This bound does not move: a rule the system cannot classify is a hole in the census, and a
+  census with a hole cannot support any claim about scope.
+- **FR-017**: The CI half MUST assert the count of declaration/inference disagreements as a RATCHET
+  -- it may fall, it MUST NOT rise. Green on this bound means "no worse", never "the scope is
+  correct", and the reported output MUST say so in those terms so a reader does not over-read it.
+- **FR-018**: The ratchet baseline MUST be machine-generated, and the writer MUST REFUSE to record a
+  baseline higher than the current count. A baseline that can be raised by hand-editing a literal is
+  not a ratchet -- one existing gate in this tree keeps its baseline as a source-level dict with no
+  mechanical refusal, so raising its ceiling is a one-line edit, and this feature MUST NOT repeat
+  that shape.
 
 ### Key Entities
 
@@ -212,7 +281,9 @@ exactly what happened to produce this spec.
   module it lives in, whether it claims gradient approximation, whether it is reachable from a live
   path.
 - **Gradient claim**: a rule's assertion that its update approximates a gradient. This is what makes
-  the cosine measurable; its absence is a legitimate state, not a gap.
+  the cosine measurable; its absence is a legitimate state, not a gap. Carried by TWO signals -- a
+  declaration on the rule and a structural inference from its code -- which are cross-checked; their
+  disagreement is a reportable state in its own right, distinct from claim and no-claim.
 - **Discriminating-power result**: the aligned/non-aligned measurement pair for one rule, plus the
   verdict -- rule-judged, or instrument-falsified.
 - **Census**: the counted classification of every learning rule at a point in time, re-derived per
@@ -238,6 +309,17 @@ exactly what happened to produce this spec.
   case.
 - **SC-008**: Any change in a shipped encoder's measured cosine caused by reconciling the reference
   gradient is reported with its before and after values. Zero silently-absorbed movements.
+- **SC-009**: The CI-asserting half completes without a GPU and produces an identical classification
+  on two consecutive runs of the same tree.
+- **SC-010**: The CI-asserting half classifies 100% of learning rules including those whose modules
+  do not import in the gate environment -- verified by confirming at least one known non-importing
+  module appears in the census.
+- **SC-011**: Attempting to record a ratchet baseline worse than the current count is REFUSED,
+  demonstrated by a constructed attempt rather than asserted in prose.
+- **SC-012**: The disagreement count falls to zero, or every remaining disagreement is named with the
+  reason it is unresolved. A number with no accompanying list is not an acceptable end state.
+- **SC-013**: The aligned-vs-null separation is measured and published, and the numeric bar is
+  unchanged from its pre-feature value -- verifiable by diff.
 
 ## Assumptions
 
@@ -251,7 +333,7 @@ exactly what happened to produce this spec.
 - `specs/019 [B2.04]` depends on this landing first, because its defence is a cosine measured by the
   instrument Story 3 reconciles. Reconciliation being IN SCOPE here (owner, 2026-08-17) means B2.04
   gains a trustworthy instrument as part of this feature rather than inheriting a suspect one.
-- **SC-008 is the risk this decision accepts**: reconciling the reference gradient may MOVE the
+- **The risk this decision accepts** (measured by SC-008): reconciling the reference gradient may MOVE the
   reported cosine for the shipped encoders. If a rule that measured above the bar now measures below
   it, that is a real finding about the rule and must be reported as such -- not absorbed, and not
   treated as a reason to abandon the reconciliation. This spec does not predict the direction.
@@ -259,3 +341,7 @@ exactly what happened to produce this spec.
   compliance in this feature.
 - The gate environment has no GPU, so any measurement must be reproducible on CPU or must report
   itself unavailable rather than failing the build.
+- The clause appears on TWO governing surfaces -- `docs/POLICIES.md` and the constitution's Standing
+  Invariant 8 -- and both are in scope. This was not in the original draft and was found by reading
+  the constitution during clarification; it is recorded here because a one-surface amendment is the
+  precise failure mode the constitution's Governance section warns about.
