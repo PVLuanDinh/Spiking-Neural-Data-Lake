@@ -148,7 +148,81 @@ way.
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| **P2 — a second gate over the e-prop invariant** (`eprop_transport_gate` already scans the tree on e-prop concerns) | UNRESOLVED at Phase 0 entry. The two jobs may be genuinely distinct: the incumbent detects weight TRANSPORT (a forbidden mechanism), while this feature CLASSIFIES which rules owe a cosine (a scope question) and measures whether the criterion discriminates. Different inputs, different verdicts, different failure modes. | **Not yet rejected — that is the point.** Extending the incumbent is the P2-preferred route and has not been ruled out. Phase 0 research must report whether the incumbent's walk and predicate can carry the classification, and Phase 1 must either adopt that or record the structural argument for separation. Shipping a second module without that adjudication would be the additive failure P2 names. |
+| ~~**P2 — a second gate over the e-prop invariant**~~ | **RESOLVED 2026-08-17. See the adjudication below. The answer is NEITHER option as posed: a separate module for the QUESTION, and a MERGE of the disposition DATA.** | — |
+
+## P2 adjudication — `eprop_transport_gate`: extend, or new module?
+
+**Verdict: a NEW module for the question, AND a MERGE that retires a duplicate the feature would
+otherwise create. Both halves are required; doing only the first ships a P2 violation.**
+
+### The tree has already adjudicated this exact family, and its test is QUESTION, not TECHNIQUE
+
+`eprop_transport_gate.py:63-77` carries three `# distinct-from:` blocks settling precisely this
+argument for its own siblings. Its stated basis, verbatim: *"same TECHNIQUE (an AST pass over src/),
+different QUESTION"*. Under that test the tree already runs three coexisting checkers on this
+invariant, each answering a different question:
+
+| module | question it answers |
+|---|---|
+| `cortex/eprop_kernel` | "is **this** rule local?" (runtime, numeric, on a rule it is HANDED) |
+| `substrate/eprop_transport_gate` | "is there a rule **nobody checked**?" (static, whole tree) |
+| `substrate/method_dormancy_gate` | "does this learning method have a **live call site**?" |
+
+This feature asks a **fourth**: *"does this rule OWE a cosine at all?"* By the precedent the tree
+itself set and accepted, a fourth question earns a fourth module. Adopting the incumbent's own test
+rather than inventing one is the point — a different test chosen here would be reasoning backwards
+from the answer.
+
+### Measured facts that support separation
+
+- **Different verdict semantics.** The incumbent asserts an ABSOLUTE bound (zero governed findings).
+  This feature ships two ratchets, a third state, and an `UNDETERMINABLE` class. Merging them means
+  one `main()` reconciling two incompatible failure contracts.
+
+**ARGUMENT STRUCK 2026-08-17, owner correction.** This section previously carried a third argument:
+that the incumbent imports only `ast, os, re, sys`, so folding in the torch-dependent numeric half
+would "change the dependency profile of a gate that currently runs everywhere". **That is precisely
+the reasoning P7 forbids** — *"it would be another dependency" is NOT a valid reason to reject
+anything*, and a rejection must cite a measurement on the real workload or a structural argument
+about this architecture. A dependency-profile objection is neither. It is struck rather than
+rewritten, and recorded here because the verdict must be seen to rest on what actually survives:
+the tree's own QUESTION-not-TECHNIQUE precedent, and the incompatible failure contracts above. The
+verdict is UNCHANGED; one of its three legs was invalid and is gone.
+
+### The genuine P2 violation this feature WOULD have created, and the merge that prevents it
+
+`eprop_transport_gate.EXEMPT` contains exactly one entry:
+
+```
+"reasoning.gf.train": ("CONTROL, not a learning rule -- adjudicated 2026-08-15, granted by the owner. ...")
+```
+
+**That is a disposition record.** `CONTROL` is one of the four dispositions the new declaration
+registry carries (data-model.md). Shipping the registry without touching this leaves **two
+hand-maintained records of one symbol's disposition** — and a change to `gf.py`'s status would have
+to land in both. That is the drift P2 forbids and the shape this project has been burned by
+repeatedly: *a claim living in two places gets corrected in one.*
+
+**Required (P2 MERGE route, port-before-retire):**
+
+1. Build the `GRADIENT_CLAIM` registry; `reasoning/gf.py` declares `MLP.train` as `CONTROL`, carrying
+   the owner's full adjudication text — which belongs beside the code it describes, not in a central
+   list that drifts from the tree.
+2. `eprop_transport_gate` ADOPTS the registry: it resolves a finding's disposition by reading the
+   owning module's declaration instead of its own dict.
+3. Its `EXEMPT` is then RETIRED, **with `stale_exempt`'s honesty property ported first** — every
+   exemption must still match a REAL finding, so a blessing that blesses nothing fails loudly. That
+   property is the reason the dict is trustworthy today and must not be lost in the move.
+4. A/B before deleting: the incumbent's findings and census must be byte-identical before and after
+   the swap, on the real tree.
+
+**Keying detail that will bite** (recorded so it is priced, not discovered): `_exempt_key(rel, fn)`
+builds `f"{rel}.{fn}"` from the **enclosing function name**, so the incumbent's key is
+`reasoning.gf.train` — a bare `train`. The registry is keyed per **qualified** symbol (`MLP.train`).
+The adoption must resolve one to the other, and a naive match will silently miss.
+
+**Sequencing**: the merge lands LAST, after the registry exists and its census is counted. Retiring a
+working exemption before its replacement is proven would be the inverse error.
 
 ## Open questions — RESOLVED by Phase 0 (see [research.md](./research.md))
 

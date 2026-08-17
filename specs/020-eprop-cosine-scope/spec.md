@@ -312,6 +312,19 @@ measured separation was, without reading code.
   modules -- all of them load-bearing.
 - **FR-016a**: `UNDETERMINABLE` MUST itself be ratcheted DOWNWARD: it may fall, never rise. Otherwise
   the state added to preserve honesty becomes the drawer everything difficult is swept into.
+- **FR-019**: `substrate/eprop_transport_gate.EXEMPT` MUST be RETIRED and its one entry
+  (`reasoning.gf.train`, dispositioned "CONTROL, not a learning rule") MUST move into the declaration
+  registry as a `CONTROL` disposition on `reasoning/gf.py`. Without this the feature SHIPS a P2
+  violation of its own making: two hand-maintained records of one symbol's disposition, which a later
+  change to `gf.py`'s status would have to land in both. P2 adjudication in plan.md.
+- **FR-019a**: The retirement MUST port `stale_exempt`'s honesty property FIRST -- every exemption is
+  asserted to still match a REAL finding, so a blessing that blesses nothing fails loudly rather than
+  reading as coverage. That property is what makes the incumbent's dict trustworthy and MUST survive
+  the move. Port before retire, per P2.
+- **FR-019b**: The adoption MUST be verified by an A/B on the real tree: the incumbent's findings and
+  census MUST be byte-identical before and after the swap. Note the keying hazard -- `_exempt_key`
+  builds its key from the ENCLOSING FUNCTION name (`reasoning.gf.train`, a bare `train`) while the
+  registry is keyed per QUALIFIED symbol (`MLP.train`); a naive match silently misses.
 - **FR-017**: The CI half MUST assert the count of declaration/inference disagreements as a RATCHET
   -- it may fall, it MUST NOT rise. Green on this bound means "no worse", never "the scope is
   correct", and the reported output MUST say so in those terms so a reader does not over-read it.
@@ -366,6 +379,11 @@ measured separation was, without reading code.
   reason it is unresolved. A number with no accompanying list is not an acceptable end state.
 - **SC-013**: The aligned-vs-null separation is measured and published, and the numeric bar is
   unchanged from its pre-feature value -- verifiable by diff.
+- **SC-014**: Exactly ONE hand-maintained record of any symbol's gradient disposition exists in the
+  tree when this feature completes. Verifiable: `eprop_transport_gate.EXEMPT` is gone and its content
+  is reachable only through the declaration registry.
+- **SC-015**: The incumbent transport gate's findings and census are byte-identical before and after
+  it adopts the registry -- zero behaviour change from a pure data merge.
 
 ## Assumptions
 
