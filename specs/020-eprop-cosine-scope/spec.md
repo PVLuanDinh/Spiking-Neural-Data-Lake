@@ -31,11 +31,25 @@ were measured against HEAD on 2026-08-17, not recalled.
    *"An instrument no alignment rule could ever pass is not evidence against alignment rules."* It
    came within one decision of amending the invariant for the wrong reason.
 
-3. **The instrument that would certify any of this is currently suspect.** `cortex/eprop_kernel` has
-   ZERO occurrences of `ebar`/`zbar` and computes its readout gradient as `g_out += err.t() @ z` on
-   raw `z`, while BOTH shipped encoders (`cortex/eprop_shd`, `cortex/eprop_nmnist`) use the
-   kappa-filtered form (15 occurrences each). The only mechanization the e-prop invariant has
-   validates a factorization neither shipped encoder runs.
+3. **A reference instrument disagrees with the rule it sits beside — but this row overstated it, and
+   the correction is recorded rather than edited away.** `cortex/eprop_kernel` has ZERO occurrences of
+   `ebar`/`zbar` and computes its readout gradient as `g_out += err.t() @ z` on raw `z`, while BOTH
+   shipped encoders (`cortex/eprop_shd`, `cortex/eprop_nmnist`) use the kappa-filtered form (15
+   occurrences each). That much is confirmed.
+
+   **What this row originally concluded was MEASURABLY FALSE** (Phase 0, see research.md R0). It said
+   *"the only mechanization the e-prop invariant has validates a factorization neither shipped encoder
+   runs."* There are **three** mechanizations, all registered TORCH_GATED in `run_selfchecks.py` and
+   all running in the CI torch job: `eprop_shd::run_smoke` asserts against its OWN shipped rule
+   (measured cos 0.9992), `eprop_nmnist::run_smoke` likewise (0.9997), and `eprop_kernel::_self_check`
+   against `_TinyNet` (0.9714). **Each encoder already guards itself on its own form.** The kernel's
+   `_TinyNet` is an inline test fixture, not the encoders' guard.
+
+   The reconciliation is still worth doing and is still FR-011, on a narrower and honest basis: it
+   costs 13 insertions / 7 deletions with every gate green, and it turns a **currently false in-file
+   claim into a true one** -- `_self_check` asserts the readout gradients are "IDENTICAL between
+   e-prop and BPTT by construction", which is false for the present form (cos_readout 0.986830,
+   relative L2 7.423e-01) and exactly true under the filtered form (cos 1.000000).
 
 4. **The number is undeived.** `0.5` is *permitted* under P1's honesty guard case (a) -- a fixed point
    on a normalized, dimensionless output, cosine being bounded in `[-1,1]`. **This is NOT a P1
@@ -208,14 +222,29 @@ measured separation was, without reading code.
 - **FR-002**: System MUST base "owes a cosine" on whether the rule CLAIMS to approximate a gradient,
   because that is the claim the measurement can check. A purely local rule making no such claim owes
   no cosine and MUST NOT be reported as a violation.
-- **FR-002a**: The claim MUST be determined from TWO independent signals -- an explicit declaration
-  carried by the rule itself, and a structural inference derived from its code -- and the two MUST be
-  cross-checked. Neither signal alone is sufficient: a declaration-only scheme cannot distinguish a
-  missing marker from a genuine absence of claim, and an inference-only scheme fails silently when
-  the inference is wrong.
-- **FR-002b**: Where the declaration and the structural inference DISAGREE, the system MUST report
-  the disagreement as a finding and MUST NOT silently prefer either signal. A rule in disagreement is
-  reported as unresolved, not classified by default.
+- **FR-002a**: The claim MUST be determined from TWO signals -- an explicit declaration carried by the
+  rule itself, and a structural inference derived from its code -- which are cross-checked. **AMENDED
+  after Phase 0 measurement (research.md R1):** the two are NOT co-equal. Structural inference
+  measured **~31% error in both directions**, with false negatives on exactly the load-bearing cases
+  (`mlp_q`, `jepa_world_model`, `gf.MLP`, `predictive_coding`), because this tree hand-rolls backprop
+  (no token to key on), keeps P8 controls beside the rules they control, and computes the gradient in
+  a different function from the one that applies it. The **DECLARATION is authoritative**; the
+  inference is a **recall net that may answer only CLAIM or UNKNOWN, never NO-CLAIM.** Its job is to
+  catch a rule with no declaration, never to overrule one that has it.
+- **FR-002b**: Where the inference says CLAIM and no declaration exists, the system MUST report that
+  as a finding -- a missing declaration -- and MUST NOT classify the rule by default. The inference
+  MUST NOT be able to produce a NO-CLAIM verdict at all, because a confident negative from a signal
+  with measured 31% error is the dangerous verdict Standing Invariant 3 forbids.
+- **FR-002c**: The declaration MUST be a module-scope constant readable by `ast.literal_eval` without
+  importing the module, keyed by qualified symbol, carrying FOUR dispositions -- `LOCAL`,
+  `APPROXIMATES_GRADIENT`, `EXACT_GRADIENT`, `CONTROL`. Per-symbol is required, not stylistic:
+  `cortex/eprop_kernel.py` holds the rule, its BPTT control and a surrogate `autograd.Function` in one
+  file, so a per-module verdict cannot describe it. Two dispositions are insufficient for the same
+  reason -- `reasoning/gf.py::MLP` is an owner-EXEMPT CONTROL, and a two-value classifier condemns it.
+- **FR-002d**: The declaration MUST NOT be a method, and MUST avoid names containing any
+  `method_dormancy_gate.LEARN_VERBS` substring. Measured traps: `declare_constraint` (con-TRAIN-t),
+  `get_adapter` (ADAPT-er), `plasticity_claim` (PLAST), `recalibrate`, `fit_claim`, `update_claim`.
+  Measured clean: `GRADIENT_CLAIM`, `EPROP_GRADIENT_CLAIM`, `classify`, `verify_claim`.
 - **FR-003**: System MUST, for any rule the bar is applied to, produce a discriminating-power result
   consisting of BOTH an aligned measurement and a non-aligned measurement, and MUST record both.
 - **FR-004**: System MUST report INSTRUMENT-FALSIFIED (and leave the rule unjudged) when no
@@ -236,8 +265,19 @@ measured separation was, without reading code.
   has created the divergence it was written to prevent.
 - **FR-009**: The governing document MUST record the provenance of the numeric bar, including the
   measured aligned-vs-null separation and whether `0.5` falls inside the separating region.
-- **FR-009a**: The system MUST measure the separation between aligned gradients and a null (permuted
-  or shuffled) control, and MUST report where `0.5` sits relative to it.
+- **FR-009a**: The system MUST measure the separation between aligned gradients and a null control,
+  and MUST report where `0.5` sits relative to it. **The null is named exactly: a WITHIN-MATRIX
+  PERMUTATION of the candidate gradient** (permute `W_in` coordinates among themselves and
+  off-diagonal `W_rec` among themselves, then cosine against the UNCHANGED reference). "Permuted or
+  shuffled" was under-specified and Phase 0 measured that the two give OPPOSITE verdicts on the same
+  gradients: against a permutation null `0.5` sits +4.5 to +63 sd ABOVE it (P(null>0.5) <= 3e-5);
+  against a shuffled-label null it sits 0.32 to 2.55 sd BELOW the null mean (P = 0.65 to 0.98). Either
+  satisfied the requirement as previously worded, which let the implementer choose the answer.
+- **FR-009c**: Three further nulls -- isotropic matched-norm, within-UNIT permutation, and random
+  relabel -- MUST be REPORTED and MUST NOT be asserted on. Each answers a different question and one
+  of them reverses the verdict; publishing them pre-empts the reader who recomputes the bar mentally.
+  The untrained twin is REJECTED as a control: it moves the net, the forward path and the reference
+  at once and cannot be interpreted.
 - **FR-009b**: This feature MUST NOT change the value of the bar. If the measurement shows `0.5` is
   poorly placed, that is recorded as a finding for a separate decision. Rationale, recorded so a
   later reader does not mistake it for timidity: SC-008 already accepts that reconciling the
@@ -265,7 +305,13 @@ measured separation was, without reading code.
   re-run, so that "nobody has run it lately" is visible rather than indistinguishable from "it passed".
 - **FR-016**: The CI half MUST assert ABSOLUTELY that the number of unclassified learning rules is
   zero. This bound does not move: a rule the system cannot classify is a hole in the census, and a
-  census with a hole cannot support any claim about scope.
+  census with a hole cannot support any claim about scope. **"Classified" INCLUDES the state
+  `UNDETERMINABLE`** -- classified must not be read as decided. Phase 0 found that without this,
+  "zero unclassified, always" forces an undecidable rule out as NO-CLAIM, which is the confident
+  negative Standing Invariant 3 forbids, and which is measurably wrong on at least five governed
+  modules -- all of them load-bearing.
+- **FR-016a**: `UNDETERMINABLE` MUST itself be ratcheted DOWNWARD: it may fall, never rise. Otherwise
+  the state added to preserve honesty becomes the drawer everything difficult is swept into.
 - **FR-017**: The CI half MUST assert the count of declaration/inference disagreements as a RATCHET
   -- it may fall, it MUST NOT rise. Green on this bound means "no worse", never "the scope is
   correct", and the reported output MUST say so in those terms so a reader does not over-read it.
