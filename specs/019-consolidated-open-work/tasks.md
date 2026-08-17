@@ -138,7 +138,7 @@ one-line documentation strikes sit above large builds.
 
 ### [B2.01] Correct the two P0 rows still calling growth retention unmeasured - they point P0 effort at work that shipped
 
-- **status** DONE -- both rows corrected; the ENGINE restart is proven, the BRAIN restart is not (that is [B2.09]) &nbsp;|&nbsp; **policy** P0 + P4b honesty &nbsp;|&nbsp; **effort** small
+- **status** DONE -- both rows corrected. At the time this landed the ENGINE restart was proven and the BRAIN restart was not; [B2.09] has since proven the BRAIN restart too and fixed the missing `close()` flush it suspected, so both rows were corrected again on 2026-08-16 &nbsp;|&nbsp; **policy** P0 + P4b honesty &nbsp;|&nbsp; **effort** small
 - **key** `growth-retention-denial-vs-shipped-proof`
 - **source** specs/BACKLOG_RANKED.md row 9
 - **evidence** VERIFIED in the CLAUDE.md text at HEAD: 'no cross-process restart has been demonstrated ... That measurement is the open P0 work here', with POLICIES.md:117 carrying the twin, against neurogenesis_engine.py:691/:700 which assert exactly that restart; a false claim sitting on the P0 build list outranks every capability item in this band.
