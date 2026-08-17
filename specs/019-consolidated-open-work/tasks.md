@@ -152,10 +152,10 @@ one-line documentation strikes sit above large builds.
 
 ### [B2.03] Fill the self-build proposer - the route fires and proposes ZERO candidates, and CLAUDE.md itself says this is the open P0 work, not a call-site wire
 
-- **status** OPEN &nbsp;|&nbsp; **policy** P0 &nbsp;|&nbsp; **effort** large
+- **status** DONE &nbsp;|&nbsp; **policy** P0 &nbsp;|&nbsp; **effort** large
 - **key** `selfbuild-proposer-empty`
 - **source** NEW - named as a blocker by backlog-13 but absent from the inventory; CLAUDE.md P0 block, tests/test_selfbuild_route.py
-- **evidence** Read at HEAD in CLAUDE.md's P0 row: 190 ticks under NORD_SELFMOD=1 leave _selfbuild_last {'night':8,'proposed':0,'kept':0} so SelfModHarness is never constructed; every auditor cited this key as backlog-13's blocker and no auditor filed the node, leaving the P0 critical path headless.
+- **evidence** WAS: 190 ticks under NORD_SELFMOD=1 left `_selfbuild_last {'night':8,'proposed':0,'kept':0}`. NOW, same 190 ticks, same seed: `{'night':8,'proposed':1,'kept':0}`. Eight candidate transforms were authored and measured in isolated worktrees; ONE survived its module self-check and the full gate (`metacog_r_explore`, retiring the absolute `r_explore = 0.30` reliability cut in `cortex/metacognitive_monitor` for a parameter-free `RunningBaseline` of the pool's own windowed rate). SEVEN were REJECTED by their own module self-checks -- that is the honest-null `DehardcodeSource` was designed to produce, not a shortfall; e.g. `acetylcholine.MODE_TH` fails structurally because 0.5 is a fact about the bounded [0,1] ACh SCALE and a per-instance baseline sees only one regime, so mean+sigma overshoots on a saturating EMA. The run carried a KNOWN-RED CONTROL (`locus_coeruleus.SALIENCE_TH`, whose module docstring records this same swap already being rejected) and it held RED, so the single green is not a rubber stamp. The transform is deliberately NOT pre-applied: `DehardcodeSource.candidates` drains any transform whose marker is already present, so hand-applying it would empty the registry again -- the BRAIN applies this one. Two defects were found and fixed in the process: the workflow's gate stage was not worktree-isolated and patched the live tree (contained, reverted, never committed), and the authored regex spec was UNUSABLE IN PRODUCTION because `_patch_edit_fn` reads with `newline=""` against a CRLF tree so `^...$` anchors match nothing -- it would have raised `matched 0 times` on the first real proposal, rolling back and re-reporting a filled proposer as empty. The shipped spec was re-derived from the real diff and proven byte-identical through the production apply path, then re-proven after `ruff format` rewrote the file holding it. Gate: ruff 0/0, 304/304 self-checks, pytest 0 at 91.03%.
 
 ### [B2.04] Couple growth to the learning path (e-prop only) so grown units stop emitting zero - and strike the stale BLOCKED annotation that hides it
 
@@ -210,8 +210,8 @@ one-line documentation strikes sit above large builds.
 
 ### [B2.11] Wire godel_machine.attempt_on_repo to a caller - after the proposer proposes something
 
-- **status** BLOCKED &nbsp;|&nbsp; **policy** P0 &nbsp;|&nbsp; **effort** medium
-- **key** `godel-attempt-on-repo-never-invoked` &nbsp;|&nbsp; **blocked by** `selfbuild-proposer-empty`
+- **status** OPEN &nbsp;|&nbsp; **policy** P0 &nbsp;|&nbsp; **effort** medium
+- **key** `godel-attempt-on-repo-never-invoked` &nbsp;|&nbsp; **was blocked by** `selfbuild-proposer-empty`, UNBLOCKED 2026-08-17 -- the proposer now proposes 1 (see [B2.03]), so POLICIES.md's bar on force-wiring a route "while the route proposes ZERO" no longer applies
 - **source** specs/BACKLOG_RANKED.md row 13
 - **evidence** Zero call sites tree-wide (only godel_machine.py:172 def plus docstrings); POLICIES.md:115 forbids the force-wire while the route proposes ZERO, and the sub-cite self_mod_harness.py:94 is STALE (that line is `import shutil`, the import is :102).
 

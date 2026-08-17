@@ -422,9 +422,67 @@ class ThresholdRecalibrationSource(SelfBuildSource):
 # behaviour-arbitrating threshold; the LIVE gate is the arbiter of which are safe (a transform whose
 # absolute cut encodes un-reconstructable global calibration rolls back and is learned-avoided). The
 # stable ID order below fixes the RSTDPNeuron synapse index of each transform across restarts.
-DEHARDCODE_TRANSFORMS = ()  # seeded empty: the toy self-check proves the mechanism; real transforms are
-#                             added only once verified gate-green (grows in later loop cycles). Honest-null
-#                             until then -- never a fake change. See the module docstring's finding.
+# ONE authored transform today. It is deliberately NOT pre-applied to the target: DehardcodeSource
+# drains any transform whose marker is already present, so applying it by hand would empty the
+# registry again and the proposer would go back to proposing zero. The BRAIN applies this one.
+# Seven sibling candidates were authored and measured alongside it and every one was REJECTED by
+# its own module self-check -- that is the honest-null this source was designed to produce, not a
+# shortfall. The rejections are recorded in specs/019 [B2.03].
+DEHARDCODE_TRANSFORMS = (
+    {
+        "id": "metacog_r_explore",
+        "target": "src/snn_data_lake/cortex/metacognitive_monitor.py",
+        "const": "r_explore",
+        "current": 0.30,
+        "rationale": (
+            "retire the absolute `r_explore = 0.30` reliability cut for a parameter-free RunningBaseline of "
+            "this pool's OWN windowed rate. Measured before authoring: at the live consumer "
+            "basal_ganglia/brain_decision the low-side branch fired 100/100 (5 seeds x 20 cycles, reliability "
+            "mean 0.1238, max 0.1849) -- the pool's rate NEVER clears 0.30 on that workload, so the exploit "
+            "branch was structurally unreachable and 0.30 arbitrated nothing. Under the baseline it fires "
+            "10/100. Precedent is in the same file: `r_hold` was already retired this way for `_rel_floor`."
+        ),
+        "marker": "selfbuild:dehardcode:metacog_r_explore",
+        "patches": (
+            (
+                "\\ \\ \\*\\ explore\\(\\)\\ \\ \\ \\ \\ \\ \\->\\ bool:\\ explore\\ when\\ reliability\\ is\\ LOW\\ or\\ learnable\\-novelty\\ is\\\r\\\n\\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ high;\\ exploit\\ when\\ reliability\\ is\\ high\\ and\\ the\\ context\\ familiar\\.\\\r\\\n",
+                "  * explore()      -> bool: explore when reliability is UNUSUALLY LOW for this pool (one\r\n                      sample std below its OWN running mean) or learnable-novelty is high;\r\n                      exploit when reliability is ordinary and the context familiar. The bar\r\n                      is a running baseline, not a value: see __init__ for the measurement\r\n                      that retired the previous absolute `r_explore = 0.30` cut.\r\n",
+                1,
+            ),
+            (
+                "import\\ math\\\r\\\n\\\r\\\n",
+                "import math\r\n\r\nfrom snn_data_lake.basal_ganglia.brain_native_selfbuild import RunningBaseline\r\n",
+                1,
+            ),
+            ("\\ \\ \\ \\ \\ \\ \\ \\ r_explore=0\\.30,\\\r\\\n", "", 1),
+            (
+                "\\ \\ \\ \\ \\ \\ \\ \\ self\\.r_explore\\ =\\ float\\(r_explore\\)\\ \\ \\#\\ reliability\\ below\\ this\\ \\->\\ explore\\\r\\\n",
+                "        # (r_explore retired: the EXPLORE bar is now `_rel_lo`, a running baseline of this pool's rate)\r\n",
+                1,
+            ),
+            (
+                '\\ \\ \\ \\ \\ \\ \\ \\ self\\._rel_q\\ =\\ SignalCalibrator\\("metacog_reliability",\\ p=self\\.hold_p\\)\\\r\\\n',
+                '        self._rel_q = SignalCalibrator("metacog_reliability", p=self.hold_p)\r\n        # DERIVED EXPLORE BAR -- retires the absolute `r_explore = 0.30` cut, which arbitrated on the\r\n        # VERY SAME reliability scale the HOLD bar above already abandoned, for the same reason and with\r\n        # a second, independent measurement behind it: `basal_ganglia/brain_decision.py` records that\r\n        # `monitor.explore()` returned True on EVERY measured cycle (20/20 x 5 seeds) because this pool\'s\r\n        # windowed rate never clears 0.30 on that workload. The exploit branch was UNREACHABLE and 0.30\r\n        # was arbitrating nothing there -- the same structural-saturation failure the no-evidence HOLD\r\n        # floor had, one sign flipped.\r\n        #\r\n        # `basal_ganglia/brain_native_selfbuild.RunningBaseline` is parameter-free by construction:\r\n        # threshold() = running mean + ONE sample std, with no tuned k to smuggle a constant back in. It\r\n        # is an UPPER bar, so the low-side cut is taken by observing the NEGATED rate: -rel above\r\n        # threshold(-rel) is exactly rel more than one sample-std BELOW its own running mean, i.e.\r\n        # "unusually unreliable FOR THIS POOL". Scale-free like the HOLD quantile -- rescaling upstream\r\n        # confidence moves the samples and the bar together. threshold() is None below two samples and\r\n        # that is honoured as "do not fire on this baseline yet"; there is NO fallback to the retired\r\n        # literal, because a fallback would re-introduce the magic number through the back door.\r\n        self._rel_lo = RunningBaseline()\r\n',
+                1,
+            ),
+            (
+                "\\ \\ \\ \\ \\ \\ \\ \\ self\\._rel_q\\.observe\\(self\\._rel\\)\\ \\ \\#\\ fold\\ into\\ the\\ pool's\\ own\\ rate\\ distribution\\ \\(the\\ HOLD\\ bar\\)\\\r\\\n",
+                "        self._rel_q.observe(self._rel)  # fold into the pool's own rate distribution (the HOLD bar)\r\n        self._rel_lo.observe(-self._rel)  # NEGATED rate -> the low-side EXPLORE bar (see __init__)\r\n",
+                1,
+            ),
+            (
+                '\\ \\ \\ \\ \\ \\ \\ \\ """Explore\\ when\\ reliability\\ is\\ LOW\\ or\\ learnable\\-novelty\\ is\\ high;\\ exploit\\ \\(False\\)\\\r\\\n\\ \\ \\ \\ \\ \\ \\ \\ when\\ reliability\\ is\\ high\\ and\\ the\\ context\\ is\\ familiar\\.\\ lesion\\ \\->\\ False\\ \\(ungated\\)\\."""\\\r\\\n',
+                '        """Explore when reliability is UNUSUALLY LOW **for this pool** -- more than one sample\r\n        std below its own running mean -- or when learnable-novelty is high; exploit (False)\r\n        when reliability is ordinary and the context is familiar. The bar is `_rel_lo`, a\r\n        parameter-free RunningBaseline over the negated rate (see __init__ for why the absolute\r\n        0.30 cut it replaces was measured unreachable-in-one-direction). Below two samples the\r\n        baseline returns None and this branch does NOT fire -- never a fallback to the retired\r\n        literal. lesion -> False (ungated)."""\r\n',
+                1,
+            ),
+            (
+                "\\ \\ \\ \\ \\ \\ \\ \\ if\\ self\\._rel\\ <\\ self\\.r_explore:\\\r\\\n",
+                "        lo = self._rel_lo.threshold()  # selfbuild:dehardcode:metacog_r_explore\r\n        if lo is not None and -self._rel > lo:\r\n",
+                1,
+            ),
+        ),
+    },
+)
 
 # All candidate IDs the learner has a synapse for (stable order == synapse index). Extend as the registry
 # grows; existing persisted weights keep their index. A tiny fixed capacity avoids resizing the bank.

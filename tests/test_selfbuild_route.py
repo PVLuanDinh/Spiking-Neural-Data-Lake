@@ -57,14 +57,57 @@ location, so a miss was read as an absence. Recorded because it shipped inside t
 "stated rather than hidden", which is the one place a false measurement must not sit.
 """
 
+import hashlib
+import os
+
+import snn_data_lake.basal_ganglia.self_build_loop as _sbl
 from snn_data_lake.cortex.brain import SELFBUILD_EVERY, make_brain
 
+# Every file the one authored transform can reach. Digested before and after the run: this is what
+# replaced `proposed == 0` as the safety bound (see the tripwire block below).
+_REACHABLE = ("src/snn_data_lake/cortex/metacognitive_monitor.py",)
 
-def test_selfbuild_route_fires(monkeypatch):
+
+def _digest(root):
+    """Content digest of every file a promote could legally rewrite in `root`."""
+    h = hashlib.sha256()
+    for rel in _REACHABLE:
+        path = os.path.join(root, *rel.split("/"))
+        with open(path, "rb") as f:
+            h.update(f.read())
+    return h.hexdigest()
+
+
+def test_selfbuild_route_fires(monkeypatch, tmp_path):
     """The night-8 cadence reaches the recorder. Pins the route, not the payload."""
     # monkeypatch.setenv restores on teardown -- this module's siblings have been bitten by a
     # leaked NORD_SELFMOD leaving every later in-process test running under a different gate.
     monkeypatch.setenv("NORD_SELFMOD", "1")
+
+    # SCRATCH repo_root -- this is the injection the retired `proposed == 0` tripwire asked for by
+    # name ("give this test its own scratch repo_root before filling the proposer"). `brain.py`
+    # imports SelfBuildLoop LAZILY inside _maybe_autonomous_self_build, so it resolves through this
+    # module attribute at call time and patching here reaches it. The root is empty, so `promote()`
+    # refuses every target as missing BEFORE it writes -- the live tree is unreachable by
+    # construction rather than by the payload happening to be empty.
+    from snn_data_lake.substrate.self_mod_harness import _repo_root
+
+    live_root = _repo_root()
+    real_loop = _sbl.SelfBuildLoop
+    seen = {}
+
+    def _scratch_rooted(*a, **kw):
+        kw["repo_root"] = str(tmp_path)
+        seen["root"] = str(tmp_path)
+        return real_loop(*a, **kw)
+
+    monkeypatch.setattr(_sbl, "SelfBuildLoop", _scratch_rooted)
+
+    # POSITIVE CONTROL for the digest itself, run BEFORE the brain does anything. A digest that
+    # cannot tell two different byte-strings apart would make the "live tree untouched" assert below
+    # vacuous, and vacuously-untouched is exactly what the retired assert was criticised for.
+    before = _digest(live_root)
+    assert before != hashlib.sha256(b"different").hexdigest(), "the digest is not content-sensitive"
 
     b = make_brain(seed=0)
     for _ in range(190):
@@ -89,30 +132,34 @@ def test_selfbuild_route_fires(monkeypatch):
     assert "proposed" in b._selfbuild_last and "kept" in b._selfbuild_last
 
     # SAFETY, and it deliberately does NOT depend on the payload being empty.
-    # `brain.py` constructs `SelfBuildLoop` with no `repo_root`, which
-    # `self_build_loop.py` resolves to `_repo_root()` -- the REAL repository -- and
-    # `promote()` writes source edits into it. Nothing is applied today only because
-    # the proposer returns nothing, and FILLING THE PROPOSER IS THIS LANE'S STATED
-    # OPEN P0 WORK. `kept` must stay 0 -- and see the tripwire below for why `kept`
-    # alone is not enough. Without these the first commit that fills the proposer
-    # silently turns this unit test into a self-modifying run against the real tree.
     assert b._selfbuild_last.get("kept", 0) == 0, (
-        f"a unit test APPLIED {b._selfbuild_last.get('kept')} self-modification(s) to the "
-        f"live repository: SelfBuildLoop resolves a None repo_root to the real tree"
+        f"a unit test APPLIED {b._selfbuild_last.get('kept')} self-modification(s): the scratch "
+        f"repo_root injection above is not reaching SelfBuildLoop"
     )
-    # `kept` alone is NOT sufficient and saying so is the point. `promote()` APPLIES to the
-    # real tree (`edit_fn(self.root)`) BEFORE it runs the gate, and rolls back after a
-    # failure -- so a proposal that is applied and reverted never reaches status "kept",
-    # and the assert above cannot see the write that happened in between. The only state
-    # in which this test provably touches nothing is one where no proposal is processed at
-    # all. That is a SAFETY tripwire, not an assertion about the payload: when the proposer
-    # is filled -- this lane's own open P0 work -- this SHOULD go red, and the correct
-    # response is to inject a scratch repo_root here, NOT to relax the bound.
-    assert b._selfbuild_last.get("proposed", 0) == 0, (
-        f"{b._selfbuild_last.get('proposed')} proposal(s) were processed against the LIVE "
-        f"repository by a unit test. promote() writes before it gates, so 'kept == 0' does "
-        f"not mean nothing was written. Give this test its own scratch repo_root before "
-        f"filling the proposer -- do not weaken this assert"
+
+    # THE TRIPWIRE, DISCHARGED AND REPLACED BY A STRICTLY STRONGER ONE -- 2026-08-17, specs/019
+    # [B2.03]. What stood here was `proposed == 0`, with its own comment saying it SHOULD go red the
+    # day the proposer was filled and that the correct response was to inject a scratch repo_root
+    # rather than relax the bound. The proposer is now filled (one authored transform), so that day
+    # arrived and the injection is above.
+    #
+    # The retired assert proved "nothing was written" only by proving NOTHING RAN, which is the
+    # weakest form of the claim -- and it stops being available the moment the route does real work.
+    # This replaces it with the claim it was standing in for: the live tree is BYTE-IDENTICAL after
+    # a run in which the proposer really did propose. That is strictly stronger, because it survives
+    # `promote()`'s apply-before-gate window: promote writes to `self.root` and rolls back on a
+    # failure, so a proposal can be applied and reverted without ever reaching status "kept". With
+    # `self.root` pointed at an empty scratch dir, the live tree is not merely unwritten -- it is
+    # unreachable, and this digest is what proves it rather than assuming it.
+    assert _digest(live_root) == before, (
+        "the LIVE repository changed during a unit test: every file the authored transform can "
+        "reach must be byte-identical after the run. promote() writes before it gates, so "
+        "'kept == 0' does not mean nothing was written -- that is why this is a digest and not a "
+        "count. Do not weaken this assert; fix the repo_root injection instead"
+    )
+    assert seen.get("root") == str(tmp_path), (
+        "SelfBuildLoop was never constructed through the patched name, so the scratch root never "
+        "took effect and the digest above proved nothing about a route that ran unrooted"
     )
 
     # The recorder is written by TWO branches and only the circuit-breaker one adds
