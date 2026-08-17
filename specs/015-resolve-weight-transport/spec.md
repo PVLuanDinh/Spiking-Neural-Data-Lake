@@ -186,7 +186,13 @@ say which was chosen and why.
   both directions. This feature MUST NOT pre-decide it, and MUST NOT rest it on the preprint's
   silence about transport.
 - **FR-013** *(safety)*: The five `brainstem/` safety-envelope files MUST NOT be modified.
-- **FR-014**: No dependency may be introduced. The module is stdlib with hand-written backprop.
+- **FR-014** *(STRUCK 2026-08-17 under P7 -- recorded, not deleted)*: this required *"No dependency
+  may be introduced."* That is a **PROHIBITION**, and P7 forbids it outright: *"it would be another
+  dependency" is NOT a valid reason to reject anything* -- a rejection must cite a measurement on the
+  real workload or a structural argument about this architecture, and a blanket ban cites neither.
+  The factual half survives and was always fine: this module is stdlib with hand-written backprop.
+  What is struck is treating that fact as a REQUIREMENT. Had this lane needed a library, FR-014 as
+  written would have refused it on the one ground the project does not accept.
 - **FR-015** *(determinism)*: Any randomness MUST come from a per-instance generator seeded
   explicitly. No module-level seeding.
 - **FR-016** *(measurement discipline)*: Every measurement command MUST carry a positive control in
@@ -226,7 +232,12 @@ say which was chosen and why.
 - **SC-007**: The e-prop adjudication's four sites each carry either a verdict or an explicit
   "open, and why", with no site left implied.
 - **SC-008**: The `brainstem/` diff across the whole feature is empty.
-- **SC-009**: No new dependency appears in the dependency ledger.
+- **SC-009** *(STRUCK 2026-08-17 under P7 -- recorded, not deleted)*: this read *"No new dependency
+  appears in the dependency ledger."* A success criterion is OPERATIVE, so this one would have failed
+  a legitimate adoption -- the strongest form of the certification the constitution voids ("a
+  Constitution Check certifying 'no new dependency' is **no longer evidence of anything**"). The
+  outcome it described is still true and is now stated as a fact in FR-014's note rather than as a bar
+  the work had to clear.
 
 ---
 
