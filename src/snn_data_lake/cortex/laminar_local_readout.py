@@ -66,6 +66,16 @@ import math
 
 import numpy as np
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "LaminarLocalReadout.train_step": (
+        "LOCAL",
+        "local-update passes over the minibatch, each layer trained on its own signal with the "
+        "caller-supplied lr -- which is what the module is named for. No error crosses a layer "
+        "boundary, so there is no gradient for a cosine to compare against",
+    ),
+}
+
 
 def _softmax_rows(z):
     z = z - z.max(axis=1, keepdims=True)

@@ -44,6 +44,15 @@ from snn_data_lake.substrate.binlog import (
     unpack_fact,
 )
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "KnowledgeLog.consolidate": (
+        "NOT_A_RULE",
+        "replaces durable FACT records with the survivors. Durable-store compaction (P4b), caught on "
+        "the verb",
+    ),
+}
+
 # The ONE brain lake is RAW BINARY (symbolic facts + chat turns ride as compact pack_fact byte-records).
 # Each record carries a 1-byte TYPE tag so the symbolic view (KnowledgeLog) reads only its own records
 # from the one file. FACT = pack_fact({cue,answer,triple?,src?}).

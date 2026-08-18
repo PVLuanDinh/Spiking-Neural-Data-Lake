@@ -61,6 +61,25 @@ from snn_data_lake.plasticity.benna_fusi import BennaFusiSynapse
 from snn_data_lake.plasticity.homeostatic_plasticity_stack import HomeostaticPlasticityStack
 from snn_data_lake.plasticity.inhibitory_stdp import InhibitorySTDP
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "PlasticityRuleStack.learning_step": (
+        "LOCAL",
+        "applies the metaplastic gate then the stacked local rules for one neuron. Every rule in the "
+        "stack is local; the gate scales them",
+    ),
+    "_BennaFusiConsolidation.consolidate": (
+        "LOCAL",
+        "deposits this step per-synapse weight change into the fast beakers and diffuses once across "
+        "the cascade. Per-synapse consolidation dynamics",
+    ),
+    "_adaptive_lr_selfcheck": (
+        "NOT_A_RULE",
+        "demonstrates that the metaplastic BCM gate lowers the effective learning rate for a recently "
+        "over-active neuron. A self-check",
+    ),
+}
+
 
 # --------------------------------------------------------------------------------------------------
 # (0) PRE -- metaplastic BCM learning-rate gate. REUSES bcm_plasticity.BCMNeuron.

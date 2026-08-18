@@ -39,6 +39,15 @@ import numpy as np
 
 from snn_data_lake.cortex.predictive_coding import PredictiveCodingNetwork
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "LanguageAcquisition._learn_step": (
+        "LOCAL",
+        "one online acquisition step: encode context by predictive coding, predict the next "
+        "character, apply a local update. Layer-local, with no backward pass across the stack",
+    ),
+}
+
 # a fixed innate phoneme/grapheme inventory (lowercased English + core punctuation). Characters
 # outside it fold to a space -- like a learner who only distinguishes the sounds of its language.
 VOCAB = "abcdefghijklmnopqrstuvwxyz .,'!?-\n"

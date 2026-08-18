@@ -45,6 +45,20 @@ import random
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.substrate._mathutils import dot, sigmoid
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "_LinearReadout.train": (
+        "LOCAL",
+        "single-layer logistic delta rule: g = sigmoid(w.x + b) - y, then w[k] -= lr * g * x[k]. No "
+        "hidden layer, so no backward pass exists to have a gradient propagated through; this module "
+        "imports no torch at all. It shares the NAME _LinearReadout with the autograd readouts in "
+        "hippocampus/developmental_loop_brain and reasoning/_loop_common and nothing else -- a name "
+        "collision that was briefly mistaken for a third copy of them (spec FR-002h records the "
+        "correction). Unlike those two this module IS reachable from a live path, which is exactly "
+        "why classifying it correctly matters",
+    ),
+}
+
 
 class AutapseNeuron:
     """A single LIF neuron with a bank of time-delayed self-connections (autapses).

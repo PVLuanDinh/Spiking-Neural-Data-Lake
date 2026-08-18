@@ -42,6 +42,16 @@ import math
 import random
 import zlib
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "CounterfactualSim.learn": (
+        "LOCAL",
+        "one local three-factor update -- eligibility (pre-synaptic activity) times a broadcast "
+        "per-output error. That is the e-prop SHAPE without the gradient claim: nothing is "
+        "back-propagated, so there is no gradient for a cosine to compare against",
+    ),
+}
+
 # ---- defaults (small, deterministic; the self-check tunes nothing at runtime) ----
 W_INIT_SCALE = 0.05  # init half-range of the residual weight W (near-identity persistence prior)
 LR_DEFAULT = 0.05  # local three-factor learning rate (eligibility x broadcast error)

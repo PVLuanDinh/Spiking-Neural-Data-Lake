@@ -1,4 +1,4 @@
-# Phase 1 Quickstart — validating this feature
+﻿# Phase 1 Quickstart — validating this feature
 
 **Feature**: 020-eprop-cosine-scope | **Date**: 2026-08-17
 
@@ -19,7 +19,7 @@ half needs no GPU and no torch. The `--measure` half needs torch and runs on CPU
 ## Scenario 1 — the census reports, and the counts reconcile (US1)
 
 ```bash
-.venv-lake\Scripts\python.exe -m snn_data_lake.substrate.<module>
+.venv-lake\Scripts\python.exe -m snn_data_lake.substrate.gradient_claim_gate
 ```
 
 **Expect**: a census whose per-state counts sum to `rules seen`, `unclassified == 0`, and a non-zero
@@ -34,10 +34,10 @@ identical, which is why the floor exists.
 ## Scenario 2 — the gate asserts, and its self-check constructs real reds (US1, Invariant 5)
 
 ```bash
-.venv-lake\Scripts\python.exe -m snn_data_lake.substrate.<module> --assert
+.venv-lake\Scripts\python.exe -m snn_data_lake.substrate.gradient_claim_gate --assert
 ```
 ```bash
-.venv-lake\Scripts\python.exe -m snn_data_lake.substrate.<module> --self-check
+.venv-lake\Scripts\python.exe -m snn_data_lake.substrate.gradient_claim_gate --self-check
 ```
 
 **Expect**: `--assert` exits 0 on a clean tree. `--self-check` exits 0 having CONSTRUCTED each red
@@ -52,7 +52,7 @@ verifies nothing — this repo has four gates that pass that way today.
 ## Scenario 3 — the baseline refuses to launder a regression (FR-018)
 
 ```bash
-.venv-lake\Scripts\python.exe -m snn_data_lake.substrate.<module> --update-baseline
+.venv-lake\Scripts\python.exe -m snn_data_lake.substrate.gradient_claim_gate --update-baseline
 ```
 
 **Expect**: refuses with exit 1 when the current count is worse than the recorded baseline, naming
@@ -67,7 +67,7 @@ is the scenario that separates a ratchet from a rubber stamp.
 ## Scenario 4 — a rule is never condemned by an instrument that cannot judge it (US2, SC-003)
 
 ```bash
-.venv-lake\Scripts\python.exe -m snn_data_lake.substrate.<module> --measure
+.venv-lake\Scripts\python.exe -m snn_data_lake.substrate.gradient_claim_gate --measure
 ```
 
 **Expect**: every judged rule reports a PAIR (aligned + null), never a lone number. Reconstructing the
@@ -117,6 +117,17 @@ carries a second copy of the 90.7% figure** — co-edit, or the claim lives in t
 corrected in one.
 
 ---
+
+## Fast loop — between tasks (72s measured)
+
+```bash
+.venv-lake\Scripts\python.exe -m ruff check . ; .venv-lake\Scripts\python.exe -m snn_data_lake.substrate.gradient_claim_gate --assert ; .venv-lake\Scripts\python.exe -m snn_data_lake.substrate.gradient_claim_gate --self-check ; .venv-lake\Scripts\python.exe -m pytest tests/test_gradient_claim_gate.py --no-cov -q
+```
+
+**Expect**: four exit codes, all 0. Measured 72s against the full gate's ~1795s — **25x cheaper**, and
+it covers everything one task can plausibly break. What it does NOT see is a cross-module regression
+or the coverage floor, which is why the full gate below still runs at every PHASE boundary and before
+any commit touching `src/`.
 
 ## Full gate before commit
 

@@ -57,8 +57,18 @@ required, or the claim lives in two places and gets corrected in one.
 
 **Decision**:
 - **Declaration**: a module-scope constant read by `ast.literal_eval` on an `ast.Assign`, never
-  imported. Shape `LEARNING_RULES = {"<Class>.<method>": ("<disposition>", "<reason>")}` with **FOUR**
+  imported. Shape `GRADIENT_CLAIM = {"<Class>.<method>": ("<disposition>", "<reason>")}` with **FOUR**
   dispositions: `LOCAL` / `APPROXIMATES_GRADIENT` / `EXACT_GRADIENT` / `CONTROL`.
+  **RENAMED 2026-08-17 from `LEARNING_RULES`**, which this block carried while spec FR-002c/FR-002d,
+  plan.md and `contracts/cli.md` all said `GRADIENT_CLAIM` -- 7 occurrences to 1. The spec is
+  authoritative over a Phase 0 note, so the note moves. Neither name was taken in code (0 hits each),
+  so nothing else had to change. **A SECOND rationale was offered for this rename and is STRUCK:**
+  that `LEARNING_RULES` contains the `learn` substring and so trips R3's LEARN_VERBS trap. Measured
+  FALSE -- `method_dormancy_gate.py:239-247` walks `ClassDef` bodies and skips every node that is not
+  a `FunctionDef`/`AsyncFunctionDef`, so a module-scope `ast.Assign` never reaches the predicate. R3
+  is precisely worded ("Any as a **METHOD on a class**") and was correct; the paraphrase that
+  generalised it was not. Recorded rather than deleted, because a rename shipped on a rationale a
+  two-line grep refutes is the defect class this feature exists to catch.
 - **Inference**: DEMOTED from independent second opinion to a **recall net that may answer only CLAIM
   or UNKNOWN, never NO-CLAIM**.
 - **UNDETERMINABLE** becomes a first-class classified state, ratcheted DOWN. *"Classified" must not
@@ -126,10 +136,25 @@ LEVEL of indirection into `main()`'s body (marking only the literal block report
 motivating case sat dead); a function used as a VALUE is used (inspecting only `ast.Call` gave 5 false
 positives of 12).
 
-**BLOCKER — `tools/` has ZERO headroom.** `p4c_ratchet` reports `tools 30 / baseline 30 / +0`
-(measured). A new file under `tools/` reddens CI **on its own commit**, and `--update-baseline`
-REFUSES to absorb it. The gate must be a registered package module under
-`src/snn_data_lake/substrate/` — the route all five sibling policy gates take.
+**BLOCKER — `tools/` has ZERO headroom, and the bound is on `.py` files ONLY.** `p4c_ratchet` reports
+`tools 30 / baseline 30 / +0` (re-measured 2026-08-17). A new **`.py`** file under `tools/` reddens CI
+**on its own commit**, and `--update-baseline` REFUSES to absorb it. The gate must therefore be a
+registered package module under `src/snn_data_lake/substrate/` — the route all five sibling policy
+gates take.
+
+**SCOPED 2026-08-17.** This paragraph said "a new FILE", and that over-reads the gate: the corpus is
+`git ls-files --cached --others --exclude-standard -- *.py` (`p4c_ratchet.py:114`, pathspec literal at
+`:171`), so a non-`.py` artifact is never enumerated and cannot move any zone. The control needs no
+construction — `tools/p4c_ungoverned_baseline.json` sits in that zone TODAY while it reads 30, which
+is the `.py` count. **Consequence: the gate MODULE is forced into `substrate/` and the machine-written
+BASELINE is free to live in `tools/`.** Two different files; one sentence had been binding both.
+
+**SECOND CONSEQUENCE, measured and easy to miss:** `src/snn_data_lake/substrate` is **absent from the
+baseline zones entirely** (verified against `tools/p4c_ungoverned_baseline.json`, with `reasoning` as
+the positive control), because every substrate `.py` is registered in REGIONS and skipped as governed.
+`compare()` treats an absent zone as allowing **0**. So an UNREGISTERED new module there manufactures
+a brand-new zone at implicit baseline 0 and reddens the gate on its own commit — a failure caused by
+skipping registration, not by where the baseline lives.
 
 **The p6_gate anti-pattern is WORSE than reported**: not only is there no mechanical refusal, but a
 ceiling raised *together with the regression it excuses* passes BOTH the `--assert` and the
@@ -192,6 +217,24 @@ gradients:**
 |---|---|---|
 | within-matrix permutation | **+4.5 to +63 sd ABOVE** the null | ≤ 3e-5 |
 | shuffled-label | **−0.32 to −2.55 sd BELOW** the null mean | 0.65 to 0.98 |
+
+**BOTH ROWS OF THIS TABLE WERE RE-MEASURED 2026-08-17 AND THE FIRST ONE DOES NOT HOLD.** Built
+exactly as FR-009a now words it, on `reasoning/eprop::Net.grad_eprop` vs `::Net.grad_bptt` — the one
+fixture that runs in every environment — `0.5` sits at **+3.06 sd**, BELOW the `+4.5` floor this row
+claims, with P(null>0.5) = 0.0000 and the aligned cosine at +5.93 sd. Across five seeds at 400 draws
+the figure moves between **+2.97 and +3.27 sd** and never reaches +4.5. The range is not re-derivable
+from anything recorded here, so it cannot be reconciled — it is marked UNRELIABLE, and FR-009a now
+carries the measured figure instead.
+
+**The larger finding this re-measurement produced is not in this table at all.** The within-matrix
+permutation preserves the per-coordinate-family MEAN, so it is only a null for a near-zero-mean
+gradient. On a constructed sign-coherent pair (coherence 0.99) the null mean is **+0.980**,
+P(null>0.5) is **1.0000**, and the aligned cosine sits **1.75 sd BELOW** the null — the separation
+statistic inverts, blessing a shuffled rule and condemning an aligned one. The real fixture is safe
+(coherence 0.117 / 0.199), which is what makes this dangerous rather than academic: **the mandated
+null works on the case in front of us and fails silently on a case not yet added.** FR-009d now
+requires coherence be measured and the separation REFUSED above a ceiling. Standing Invariant 3 — the
+confident negative is the dangerous verdict — applied to the instrument rather than the rule.
 
 Whichever the implementer picks satisfies FR-009a as worded, and SC-013 accepts a single scalar that
 hides which null produced it. **FR-009a must name the null exactly.** This does not touch the frozen

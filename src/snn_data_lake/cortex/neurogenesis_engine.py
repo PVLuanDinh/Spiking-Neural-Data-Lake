@@ -50,6 +50,18 @@ from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
 from snn_data_lake.hippocampus.ng_snn import NGSNN
 from snn_data_lake.substrate.device import crossover, decisions, select
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "NeurogenesisSelfImprove._refit": (
+        "DIRECT_SOLVE",
+        "grows a fresh NG-SNN on the buffer and measures next-mode prediction accuracy. It drives "
+        "hippocampus/ng_snn::fit, whose greedy matching pursuit with an analytical beta per block "
+        "POLICIES.md adjudicates as a DIRECT SOLVE -- non-local, but propagating no gradient and "
+        "transporting no weight. It inherits that disposition rather than LOCAL, because LOCAL would "
+        "assert a locality the adjudication explicitly denies",
+    ),
+}
+
 SAFE_DISTANCE = CONTACT * 3.0  # 0.12 m -- perception-only channel, never in a reflex/danger band
 
 

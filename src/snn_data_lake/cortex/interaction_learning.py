@@ -71,6 +71,24 @@ import zlib
 from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
 from snn_data_lake.cortex.rank_order_coding import rank_code
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "SpikingInteractionLearner._deposit": (
+        "LOCAL",
+        "one R-STDP deposit onto a response neuron: present the stimulus train, fire the post spike "
+        "AFTER it so pre-before-post pairings build a spike-timing trace, then gate it. Synapse-local",
+    ),
+    "SpikingInteractionLearner.learn_turn": (
+        "LOCAL",
+        "improves the router from ONE conversational turn via reward-modulated spike-timing "
+        "plasticity. The module states it outright: R-STDP, NOT a gradient",
+    ),
+    "_train": (
+        "LOCAL",
+        "the harness that drives _deposit across visits; carries the same claim as the rule it applies",
+    ),
+}
+
 
 class SpikingInteractionLearner:
     """A reward-modulated spike-timing associative learner over a small fixed set of responses.

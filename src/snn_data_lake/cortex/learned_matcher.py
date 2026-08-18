@@ -21,6 +21,25 @@ from snn_data_lake import snn_classifier as C  # train/forward/softmax + globals
 from snn_data_lake.brainstem.signal_loop import build_default_library
 from snn_data_lake.cortex.spike_preprocessing import encode_latency, van_rossum_distance
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "train_learned": (
+        "LOCAL",
+        "builds the training set and delegates to snn_classifier.train, a single-layer spiking delta "
+        "rule. A harness carrying the claim of the rule it drives",
+    ),
+    "calibrate_gate": (
+        "NOT_A_RULE",
+        "computes a THRESHOLD separating known from novel, set at a midpoint. A decision boundary "
+        "derived once from measurements; it trains nothing",
+    ),
+    "learned_label": (
+        "NOT_A_RULE",
+        "returns the raw learned prediction with no rejection. A read-out of an already-trained "
+        "matcher",
+    ),
+}
+
 N = C.N  # 64 features — matches the signal window
 THR = 0.5  # binarize a [0,1] window for the rate-coder
 K_PER = 30  # exemplars enrolled per command (multi-shot)

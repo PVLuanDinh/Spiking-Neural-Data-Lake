@@ -112,6 +112,20 @@ import math
 
 import numpy as np
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "SpikingGridCAN._calibrate": (
+        "NOT_A_RULE",
+        "self-calibrates the shift gain by comparing decoded displacement against the commanded "
+        "velocity integral. A one-off measurement of this network own transfer",
+    ),
+    "_graded_probe": (
+        "NOT_A_RULE",
+        "walks the attractor and corrects with a given gain so gains are directly comparable. A "
+        "deterministic probe",
+    ),
+}
+
 
 def _circ_diff(a, b, period):
     """Signed smallest difference a - b on a ring of circumference `period`, in (-period/2, period/2]."""

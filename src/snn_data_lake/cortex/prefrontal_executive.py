@@ -72,6 +72,20 @@ below threshold (which is what pops a stale sub-goal); the firing itself is real
 
 import random
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "PrefrontalExecutive.top_down_bias": (
+        "NOT_A_RULE",
+        "returns a length-n_options preference vector summed over held goals. A read of current goal "
+        "state, computing no update at all",
+    ),
+    "PrefrontalExecutive.update": (
+        "NOT_A_RULE",
+        "decides over evidence and GATES the write into working memory. Control flow over a memory "
+        "slot, caught on the verb `update`",
+    ),
+}
+
 
 class PrefrontalExecutive:
     """Central executive over n_options goals: a persistent-activity SPIKING working memory, gated

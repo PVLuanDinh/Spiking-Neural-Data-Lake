@@ -97,6 +97,21 @@ from snn_data_lake.cortex.eprop_kernel import (  # the ONE e-prop engine (specs/
     evaluate,
 )
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "eprop_grads": (
+        "APPROXIMATES_GRADIENT",
+        "the e-prop-factored hidden grads plus exact readout grads, in the kappa-filtered form this "
+        "encoder actually ships. Owes the cosine, and already guards itself on its OWN form -- "
+        "run_smoke asserts it at a measured 0.9992, which is why FR-011's reconciliation of the "
+        "kernel fixture does not change this encoder's guard",
+    ),
+    "train_and_eval": (
+        "APPROXIMATES_GRADIENT",
+        "the harness that applies eprop_grads; carries the same claim as the rule it drives",
+    ),
+}
+
 
 def _self_ref():
     """This module's own identity, DERIVED -- never a hardcoded self-path.

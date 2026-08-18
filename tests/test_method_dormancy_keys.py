@@ -3,9 +3,13 @@
 Two defects motivated this, both measured on 2026-07-31:
 
 1. `defs` was keyed (module, name), so `basal_ganglia/latent_q.py` -- which defines `update` on BOTH
-   `LatentQ` (:102, genuinely dormant open work) and `_TabularQ` (:165, the self-check's control,
-   correctly dead) -- collapsed to ONE entry whose surviving lineno named whichever class came last.
-   The finding was therefore reported against the wrong class.
+   `LatentQ` (genuinely dormant open work) and `_TabularQ` (the self-check's control, correctly
+   dead) -- collapsed to ONE entry whose surviving lineno named whichever class came last. The
+   finding was therefore reported against the wrong class.
+
+   (This paragraph cited `:102` and `:165` until 2026-08-17, when a ten-line module-scope constant
+   in `latent_q.py` moved both symbols and made the citations wrong. Same defect the note above
+   `_DORMANT_A` already records; the lines are now DERIVED in `_def_line` and named by symbol here.)
 
 2. `EXEMPT_METHOD` was keyed by bare method name, so the only way to exempt the control was the key
    `"update"`, which would have exempted that verb across all 194 modules -- hiding the very defect
@@ -23,13 +27,48 @@ import pytest
 gate = importlib.import_module("snn_data_lake.substrate.method_dormancy_gate")
 
 
+def _def_line(module_rel, cls_name, meth):
+    """The ACTUAL def line of `<cls>.<meth>`, DERIVED from the source at test time.
+
+    This test used to pin the literals `:102` and `:165`. On 2026-08-17 a ten-line module-scope
+    `GRADIENT_CLAIM` constant was added to `latent_q.py`, both methods moved to :112 and :175, and
+    the test went RED for a gate whose behaviour had not changed at all -- it still reported two
+    distinct entries against the right classes.
+
+    `docs/POLICIES.md:1990` states the rule this violated: **"cite the SYMBOL, not the line."** A
+    test that hard-codes a line number is that defect in executable form, and it fails on ordinary
+    edits above the symbol. Deriving the line keeps the assertion EXACT -- attribution is still
+    checked to the line -- while making it immune to insertions, so it is strictly stronger than the
+    literal it replaces rather than a relaxation of it.
+    """
+    import os
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    path = os.path.join(root, "src", "snn_data_lake", *module_rel.split("/"))
+    with open(path, encoding="utf-8") as fh:
+        tree = ast.parse(fh.read(), filename=path)
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef) and node.name == cls_name:
+            for sub in node.body:
+                if isinstance(sub, (ast.FunctionDef, ast.AsyncFunctionDef)) and sub.name == meth:
+                    return sub.lineno
+    raise AssertionError(
+        f"{cls_name}.{meth} not found in {module_rel} -- the test's premise is gone"
+    )
+
+
 def test_two_same_named_methods_in_one_module_stay_distinct():
     """The regression that reported a finding against the wrong class."""
     r = gate.audit()
     latent = [u for u in r["uncertain"] + r["dormant"] if "basal_ganglia.latent_q" in u]
     assert len(latent) == 2, f"expected LatentQ.update AND _TabularQ.update, got {latent}"
-    assert any("LatentQ.update()" in u and ":102" in u for u in latent), latent
-    assert any("_TabularQ.update()" in u and ":165" in u for u in latent), latent
+    for cls, meth in (("LatentQ", "update"), ("_TabularQ", "update")):
+        line = _def_line("basal_ganglia/latent_q.py", cls, meth)
+        assert any(f"{cls}.{meth}()" in u and f":{line}" in u for u in latent), (
+            f"expected {cls}.{meth}() reported at its real def line :{line}, got {latent}"
+        )
+    # They must not collapse onto ONE lineno -- that collapse IS the defect this test exists for.
+    assert len({u.split(" ", 1)[0] for u in latent}) == 2, latent
 
 
 def test_entries_name_their_class():

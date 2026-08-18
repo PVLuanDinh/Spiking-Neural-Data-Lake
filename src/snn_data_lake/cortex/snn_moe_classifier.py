@@ -93,6 +93,15 @@ from snn_data_lake.cortex.snn_classifier import (
 )
 from snn_data_lake.substrate._mathutils import softmax
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "train": (
+        "LOCAL",
+        "local three-factor delta rule on the SELECTED experts plus a homeostatic load balance. "
+        "Routing picks who learns; the rule each expert runs is local",
+    ),
+}
+
 # random.seed(0) MOVED into main() 2026-08-04 (specs/010, C33). It was an IMPORT-TIME global
 # reseed: importing this module silently clobbered the importer's RNG stream. Unlike the ten
 # vestigial cases, this file DOES use the global random API, so the seed could not simply be

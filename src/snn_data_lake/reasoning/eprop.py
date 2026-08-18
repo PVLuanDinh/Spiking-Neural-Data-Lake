@@ -50,6 +50,40 @@ module; touches no core or safety-envelope file.
 import math
 import random
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it. This module is
+#: UNGOVERNED (reasoning/), so the census REPORTS these and asserts nothing on them -- declaring them
+#: anyway is what makes the report meaningful rather than a wall of UNDETERMINABLE.
+#:
+#: `_batch_grad` is NOT_A_RULE: it sums a per-trial gradient over a batch and is used BOTH to train
+#: by e-prop AND to snapshot the two gradients for the cosine check. It is a COMBINATOR over whatever
+#: `grad_fn` it is handed, so it carries no claim of its own -- APPROXIMATES_GRADIENT would be false
+#: on the BPTT call and EXACT_GRADIENT false on the e-prop call. The claim belongs to the argument.
+GRADIENT_CLAIM = {
+    "Net.grad_bptt": (
+        "EXACT_GRADIENT",
+        "genuine INDEPENDENT reverse-mode BPTT of the same loss through the same unrolled net, "
+        "sharing NO code with grad_eprop -- this is the independent gradient the cosine clause "
+        "REQUIRES, so it owes no cosine of its own. The transport gate reports it as a finding and "
+        "it is NOT a violation for exactly this reason",
+    ),
+    "Net.grad_eprop": (
+        "APPROXIMATES_GRADIENT",
+        "e-prop: online, forward-only, memory O(neurons+synapses) rather than O(T). Owes the cosine "
+        "against grad_bptt above",
+    ),
+    "Net.apply": (
+        "APPROXIMATES_GRADIENT",
+        "applies what grad_eprop computed; the update half of the same rule. Byte-identical in shape "
+        "to a local rule's update, which is why a mutation-site scan alone cannot classify it",
+    ),
+    "_batch_grad": (
+        "NOT_A_RULE",
+        "a COMBINATOR: sums a per-trial gradient over the batch for whatever grad_fn it is handed, "
+        "both grad_eprop and grad_bptt. It updates nothing and carries no claim of its own -- the "
+        "claim belongs to the function passed in",
+    ),
+}
+
 # ---- network / neuron constants (discrete-time LIF) ----
 N_IN = 3  # input channels: [0]=store cue (early), [1]=recall cue (late), [2]=background
 N_REC = 8  # recurrent LIF units

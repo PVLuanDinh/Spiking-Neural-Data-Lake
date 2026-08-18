@@ -47,6 +47,18 @@ import random
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.substrate._mathutils import dot, unit
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "SpikingGrowthLayer.add_unit_gradmax": (
+        "NOT_A_RULE",
+        "STRUCTURAL GROWTH, not a learning rule: it INSERTS a hidden unit with outgoing weights "
+        "exactly 0.0 (function-preserving at insertion) and incoming weights from an "
+        "eligibility-directed seed. It creates a unit rather than updating existing ones from "
+        "experience, and the method's own docstring disclaims any learning claim -- 'the seed is an "
+        "UNPROVEN heuristic. No learning-speed claim is made'. Enumerated on the 'grad' in its name",
+    ),
+}
+
 
 class SpikingGrowthLayer:
     """A tiny feed-forward spiking net: n_in inputs -> n_hidden LIF units -> n_out

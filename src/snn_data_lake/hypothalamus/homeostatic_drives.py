@@ -67,6 +67,15 @@ Per-instance random.Random(seed), ASCII-only, deterministic, no import-time side
 import math
 import random
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "_train_values": (
+        "LOCAL",
+        "uniform-exploration training of the value rule so every activity is visited. It drives the "
+        "three-factor value learner; the exploration policy is not itself a gradient",
+    ),
+}
+
 # ---- default drive specification (name -> servicing activity, dynamics, priority) --------------------
 # set_point is the fully-satisfied level; deficit = set_point - level. drift grows the deficit each tick
 # (the passive loss the agent must oppose); replenish is how much the matching activity restores; priority

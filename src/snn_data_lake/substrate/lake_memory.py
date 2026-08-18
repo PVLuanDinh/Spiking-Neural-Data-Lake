@@ -76,6 +76,18 @@ from snn_data_lake.plasticity.benna_fusi import BennaFusiSynapse
 from snn_data_lake.substrate.reservoir_sampling import Reservoir
 from snn_data_lake.substrate.streaming_hub import StreamingHub
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "MemoryLake.consolidate": (
+        "NOT_A_RULE",
+        "one offline pass keeping the STORE bounded. A retention policy over records, not weights",
+    ),
+    "_Trace.consolidated": (
+        "NOT_A_RULE",
+        "reports how much of this memory has seeped into the slow deep-beaker store. An accessor",
+    ),
+}
+
 # ---- consolidation dynamics (deterministic; a single SHY-style offline pass) ----
 DOWNSCALE = 0.5  # homeostatic global synaptic downscale applied to every trace (SHY)
 REPLAY_GAIN = 0.30  # per-replay reinforcement deposited into a replayed trace's fast beaker

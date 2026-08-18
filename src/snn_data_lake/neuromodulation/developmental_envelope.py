@@ -35,6 +35,15 @@ HOW IT WOULD WIRE (documented here; no other file is edited by this module):
 import math
 import random
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "DevelopmentalEnvelope.update": (
+        "NOT_A_RULE",
+        "EMAs a competence signal into a scalar `maturity` in [0,1] and returns it. One running "
+        "average over one number, caught on the verb `update`",
+    ),
+}
+
 
 class DevelopmentalEnvelope:
     """Competence -> maturity -> (exploration DOWN, forward-model gain UP).

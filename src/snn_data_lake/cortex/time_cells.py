@@ -71,6 +71,15 @@ import bisect as _bisect
 import math
 import random
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "TimeCellClock.learn_interval": (
+        "LOCAL",
+        "reward-modulated STDP: the target interval plays the role of a teacher 'post' event and the "
+        "nearest cell is retuned by spike timing. No gradient is formed anywhere",
+    ),
+}
+
 # The held-out interval grid, and the split ratio ported from `hippocampus/ng_snn.py`'s
 # `NGSNN.prune_unearned` (`n_val = max(8, int(0.2 * N))`) -- the cite read `reasoning/ng_snn.py:178`,
 # a path with no file behind it since the promotion into hippocampus/. The

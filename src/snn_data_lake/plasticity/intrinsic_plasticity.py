@@ -24,6 +24,15 @@ import random
 
 import snn_data_lake.cortex.snn_classifier as C
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "IntrinsicPlasticity.adapt": (
+        "LOCAL",
+        "intrinsic plasticity retunes the neuron's OWN excitability toward a target firing rate. It "
+        "moves a threshold, not a synapse, and reads only this neuron's activity",
+    ),
+}
+
 
 class IntrinsicPlasticity:
     """Sigmoid neuron whose gain a and bias b adapt toward an exponential output target (mean mu)."""

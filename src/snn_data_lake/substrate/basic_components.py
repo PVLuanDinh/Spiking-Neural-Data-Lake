@@ -32,6 +32,16 @@ from typing import Protocol, runtime_checkable
 
 import numpy as np
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "Connection.update": (
+        "NOT_A_RULE",
+        "applies a SUPPLIED dw in place, masks and clips. A primitive carrying out whatever change it "
+        "is handed -- the claim belongs to whichever rule computed dw, exactly like "
+        "reasoning/eprop::_batch_grad",
+    ),
+}
+
 
 # --------------------------------------------------------------------------------------------------
 # Protocols -- the composition contract. These are documentation + optional runtime isinstance checks;

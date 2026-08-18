@@ -48,6 +48,14 @@ from types import SimpleNamespace
 from snn_data_lake.substrate._mathutils import clamp01
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "_trace_low_surprise_rising_learning": (
+        "NOT_A_RULE",
+        "constructs a scripted observation trace for the self-check. A fixture, not a rule",
+    ),
+}
+
 # ---- tracked signals (order fixes the dominant-signal channel index) ---------
 TRACKED = (
     "goal",

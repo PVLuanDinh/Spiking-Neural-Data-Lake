@@ -69,6 +69,15 @@ from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner
 from snn_data_lake.hippocampus.proximity_replay import LakeMemory
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "_train_eval": (
+        "LOCAL",
+        "trains a SpikingInteractionLearner online on (context, next-token) pairs, self-supervised. "
+        "The underlying rule is R-STDP, declared LOCAL at its own site",
+    ),
+}
+
 
 def _envi(k, d):
     v = os.environ.get(k)

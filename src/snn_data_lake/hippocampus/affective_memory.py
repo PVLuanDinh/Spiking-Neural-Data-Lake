@@ -47,6 +47,15 @@ import math
 import random
 import zlib
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "AffectiveEpisodicStore.consolidate": (
+        "NOT_A_RULE",
+        "amygdala-weighted replay SAMPLING: draws episodes with replacement by importance. It selects "
+        "what to replay; the plasticity happens in whatever consumes the sample",
+    ),
+}
+
 # Immutable episode record. `key` is a zlib.crc32 fingerprint of the raw fragment bytes;
 # `fragment_mean` is the pooled content vector used for cosine recall; valence/arousal/reward
 # are the affective tags; `tick` is the store-order counter (recency, used only to PROVE that

@@ -24,6 +24,15 @@ shown to change the OUTCOME here -- only the state the outcome is read from.
 
 import snn_data_lake.cortex.snn_classifier as C
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "HomeostaticNeuron.hebb": (
+        "LOCAL",
+        "Hebbian coincidence on this neuron's own pre/post pair, with homeostatic scaling holding the "
+        "incoming budget. Both halves are synapse-local",
+    ),
+}
+
 
 class HomeostaticNeuron:
     """Hebbian potentiation + multiplicative synaptic scaling toward a rate set-point."""

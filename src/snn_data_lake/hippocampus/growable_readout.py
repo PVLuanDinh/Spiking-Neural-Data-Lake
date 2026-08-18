@@ -96,6 +96,20 @@ import torch.nn.functional as F
 
 from snn_data_lake.substrate.device import resolve_device
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "GrowableReadout.train_step": (
+        "APPROXIMATES_GRADIENT",
+        "Adam cross-entropy step(s) on a feature batch -- autograd through the readout, so it owes "
+        "the cosine",
+    ),
+    "LaminarColumns.train_step": (
+        "APPROXIMATES_GRADIENT",
+        "Adam cross-entropy step(s) with FROZEN columns' L4+L2/3 gradients zeroed every step. "
+        "Freezing part of the graph does not change that the rest is trained by a gradient",
+    ),
+}
+
 
 # consolidates: reasoning/brain_adapters/laminar_readout.py (retire)
 # specs/007 T022: the four recorded (1,0)-split sites collapse to this ONE torch helper

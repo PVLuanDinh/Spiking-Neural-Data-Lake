@@ -403,6 +403,7 @@ REGIONS = {
         "method_dormancy_gate",  # Policy 3 amendment: per-METHOD dormancy (update rules with no live caller)
         "eprop_transport_gate",  # e-prop invariant: a transposed weight may not reach a weight update
         "doc_budget_gate",  # word ceilings on the standing documents: prose growth stays visible
+        "gradient_claim_gate",  # e-prop SCOPE: which rules OWE a cosine at all (census asserts on the governed tier)
         "ingest_guard",  # content boundary for outside data: licence deny-by-default + injection flagging
         "hf_stream",  # streamed HF datasets -> brain-consumable features (licence-gated, bounded)
         "basic_components",  # Brain-Cog-adopted composition interface: node + local-rule + connection palette

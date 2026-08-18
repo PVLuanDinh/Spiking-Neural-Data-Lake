@@ -105,6 +105,36 @@ from collections import deque
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.substrate._mathutils import mean
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "_learner_step": (
+        "APPROXIMATES_GRADIENT",
+        "one frontier-gated gradient step of the shared competence w toward `target`, with the "
+        "effective gain decaying as exp(-(gap/_REACH)**2). It is a gradient step and says so",
+    ),
+    "_run_curriculum_learner": (
+        "APPROXIMATES_GRADIENT",
+        "the self-paced curriculum harness that drives _learner_step stage by stage; carries the "
+        "same claim as the step it applies",
+    ),
+    "_run_jump_learner": (
+        "CONTROL",
+        "the jump-to-hardest CONTROL: the SAME learner and SAME budget spent entirely on the hardest "
+        "target with no curriculum. It exists to LOSE to the curriculum arm, which is what makes the "
+        "comparison mean anything",
+    ),
+    "SpikingCuriosityDrive._calibrate": (
+        "NOT_A_RULE",
+        "measures a pool mean spike count at the reference error, then resets. A calibration "
+        "measurement",
+    ),
+    "SpikingCuriosityDrive.learning_progress": (
+        "NOT_A_RULE",
+        "returns rectified spiking learning progress, max(0, slow_rate - fast_rate). A MEASUREMENT of "
+        "how fast learning is going",
+    ),
+}
+
 # ---- SPIKING learning-progress pool constants (tuned so a decaying error yields clearly positive ----
 # ---- accumulated LP while a constant-high-mean+jitter stream yields near-zero LP; NON-saturated,  ----
 # ---- NON-mode-locked -- an honest finite anti-noisy-TV margin, not a saturation/mode-lock zero).  ----

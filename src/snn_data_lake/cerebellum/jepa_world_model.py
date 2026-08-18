@@ -66,6 +66,22 @@ import random
 
 from snn_data_lake.substrate._mathutils import dot, mean, unit
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "JepaWorldModel.train_step": (
+        "APPROXIMATES_GRADIENT",
+        "one online JEPA update minimising invariance + variance + covariance terms; owes the "
+        "cosine. Its weight-TRANSPORT half was retired 2026-08-04 -- `_feedback_gz()` is now the ONE "
+        "backward definition and returns the identity/skip half alone, a broadcast error signal of "
+        "the shape e-prop asks for",
+    ),
+    "_fit_linear": (
+        "LOCAL",
+        "plain LMS with no matrix inverse: a delta rule on its own inputs and targets. No gradient "
+        "is propagated through a network and no weight is transported, so it claims none",
+    ),
+}
+
 
 def _clamp(x, lo, hi):
     """Scalar clamp to [lo, hi] -- the final bounded squash on predicted latents."""

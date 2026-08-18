@@ -70,6 +70,22 @@ import random
 
 import numpy as np
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "PredictiveCodingNetwork.learn_step": (
+        "LOCAL",
+        "one local weight step correlating each error neuron's spike RATE over the settle window "
+        "with the post-inference state. No gradient is propagated through a network; the `w1.T` "
+        "here feeds an ACTIVATION, not a weight update, which is the distinguishing test the "
+        "transport gate encodes",
+    ),
+    "PredictiveCodingNetwork.learn": (
+        "LOCAL",
+        "the offline path: settle, then ONE learn_step -- the same rule the live per-tick path "
+        "applies, so it inherits LOCAL rather than making a claim of its own",
+    ),
+}
+
 
 class PredictiveCodingNetwork:
     """2-level SPIKING Rao-Ballard predictive coder. dims = (input, r1, r2).

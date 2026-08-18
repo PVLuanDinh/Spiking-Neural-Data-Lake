@@ -33,9 +33,15 @@ anything on its own, so stated positively: nothing here needs a library the tree
 static half deliberately uses `ast` rather than an import-based reflection so it can classify modules
 that do not load.
 
-**Storage**: one machine-generated ratchet baseline artifact, and a recorded output for the on-demand
-instrument. Neither is brain state. Precedent: `tools/p4c_ungoverned_baseline.json` is exactly this
-shape, so no new storage pattern is introduced and P4b is not engaged (see Constitution Check).
+**Storage**: one machine-generated ratchet baseline artifact at **`tools/gradient_claim_baseline.json`**,
+and a recorded output for the on-demand instrument. Neither is brain state. Precedent:
+`tools/p4c_ungoverned_baseline.json` is exactly this shape, so no new storage pattern is introduced and
+P4b is not engaged (see Constitution Check). **The precedent was VERIFIED to transfer, 2026-08-17,
+rather than assumed**: the p4c corpus is `*.py` only (`p4c_ratchet.py:114`, `:171`), so a `.json` costs
+the `tools` zone nothing — and the incumbent baseline already sits in that zone while it reads 30/30
+green. The artifact is tracked and un-ignored (`git check-ignore` empty; control: `graphify-out/graph.json`
+IS ignored), and staying outside `src/snn_data_lake/` keeps it out of the wheel, which
+`[tool.hatch.build.targets.wheel] packages = ["src/snn_data_lake"]` would otherwise ship.
 
 **Testing**: `pytest` (>=70% line coverage floor), each new module's own `__main__` self-check
 registered in `run_selfchecks.py`, and `ruff check` + `ruff format --check`.
@@ -121,7 +127,7 @@ src/snn_data_lake/
 │   ├── eprop_transport_gate.py     # INCUMBENT — P2 adjudication target, may absorb the new work
 │   ├── dormancy_gate.py            # AST-walk template: classifies without importing
 │   ├── method_dormancy_gate.py     # per-METHOD AST precedent
-│   └── <new classifier>            # IF a new module is justified over extending the incumbent
+│   └── gradient_claim_gate.py      # BUILT 2026-08-17 — the fourth question, both halves in one module
 ├── cortex/
 │   ├── eprop_kernel.py             # the reference gradient — reconciliation target (US3)
 │   ├── eprop_shd.py                # shipped encoder
@@ -131,7 +137,10 @@ src/snn_data_lake/
 tools/
 ├── p4c_ratchet.py                  # machine-written baseline + refuse-a-rise precedent
 ├── p6_gate.py                      # ANTI-pattern: source-dict baseline, raisable by one-line edit
-└── <on-demand instrument>          # cosine + discriminating-power + null-separation
+└── gradient_claim_baseline.json    # the machine-written ratchet baseline (DATA, not a .py — the
+                                    # p4c corpus is *.py only, so it costs the 30/30 zone nothing)
+# NOTE: the on-demand instrument is NOT a tools/ file. It is `--measure`, a flag path of the
+# substrate module above, per contracts/cli.md and research.md R2's zero-headroom finding.
 
 tests/
 └── test_<checker>.py               # constructed reds per rule, per Standing Invariant 5
@@ -197,8 +206,9 @@ verdict is UNCHANGED; one of its three legs was invalid and is gone.
 "reasoning.gf.train": ("CONTROL, not a learning rule -- adjudicated 2026-08-15, granted by the owner. ...")
 ```
 
-**That is a disposition record.** `CONTROL` is one of the four dispositions the new declaration
-registry carries (data-model.md). Shipping the registry without touching this leaves **two
+**That is a disposition record.** `CONTROL` is one of the dispositions the new declaration registry
+carries (data-model.md — FIVE since 2026-08-17, when the first real declaration pass measured four
+insufficient and `NOT_A_RULE` was added under FR-002e/FR-002f). Shipping the registry without touching this leaves **two
 hand-maintained records of one symbol's disposition** — and a change to `gf.py`'s status would have
 to land in both. That is the drift P2 forbids and the shape this project has been burned by
 repeatedly: *a claim living in two places gets corrected in one.*
@@ -230,9 +240,13 @@ working exemption before its replacement is proven would be the inverse error.
    risk; but structural INFERENCE measured **~31% error both directions** and cannot adjudicate.
    Resolved by making the declaration authoritative and demoting inference to a CLAIM-or-UNKNOWN
    recall net, plus a first-class `UNDETERMINABLE` state. Spec amended (FR-002a–d, FR-016/016a).
-2. **Does `eprop_transport_gate` absorb this work?** **STILL OPEN** — see Complexity Tracking. Phase 0
-   settled the HOME (`substrate/`, registered) and the SHAPE (one module, `--flag` for the on-demand
-   half), but did not adjudicate extend-vs-new. Must be decided before tasks are written.
+2. **Does `eprop_transport_gate` absorb this work?** **RESOLVED 2026-08-17 (`92ee4fcd`), see the P2
+   adjudication above.** Phase 0 settled the HOME (`substrate/`, registered) and the SHAPE (one module,
+   `--flag` for the on-demand half); the adjudication settled extend-vs-new as **NEITHER as posed** — a
+   separate module for the fourth QUESTION, plus a MERGE that retires `eprop_transport_gate.EXEMPT`
+   into the declaration registry (FR-019/019a/019b). This entry read "STILL OPEN ... must be decided
+   before tasks are written" until 2026-08-17; it was written by `59655356`, one commit BEFORE the
+   adjudication landed, and was not updated with it.
 3. **What does the reconciliation MOVE?** Measured: no verdict moves — but that is a statement about
    SLACK (healthy cells sit 0.26–0.50 above the bar), not about the change being unimportant. In the
    truncation regime the forms DO separate verdicts (0.7376 GREEN vs 0.4105 RED). **The spec's premise
@@ -246,7 +260,7 @@ working exemption before its replacement is proven would be the inverse error.
 
 | Item | Post-design assessment |
 |---|---|
-| **P2** | **STILL AT RISK, unchanged.** Phase 0 removed the directory question but not the adjudication. Carried into Complexity Tracking as a blocking item for `/speckit-tasks`. |
+| **P2** | **RESOLVED 2026-08-17 (`92ee4fcd`).** Phase 0 removed the directory question; the adjudication above removed the rest. Verdict: a separate module for the fourth QUESTION (on the incumbent's own QUESTION-not-TECHNIQUE test), PLUS a merge retiring `eprop_transport_gate.EXEMPT` into the registry — port `stale_exempt`'s honesty property first, A/B byte-identical before deleting. This row said "STILL AT RISK ... blocking `/speckit-tasks`" until 2026-08-17; it predates the adjudication by one commit. |
 | **P1** | **HOLDS, and the risk named pre-design materialised.** The inference half would have needed its own tuned thresholds; demoting it to a recall net removes that surface rather than tuning it. `0.5` stays fixed under exception (a), now with a measured placement to record. |
 | **P3** | **HOLDS with a measured cost of zero.** A declaration constant moves none of the three P3 gates (+0/+0/+0), each verified against a positive control that DID move. |
 | **P4c** | **NEW CONSTRAINT, decisive.** `tools/` is at zero ratchet headroom (30/30), so a tool-tier file reddens CI on its own commit. The Structure Decision is now forced, not preferred. |
@@ -254,4 +268,9 @@ working exemption before its replacement is proven would be the inverse error.
 | **Invariant 3** | **Was violated by FR-016 as originally written**; found by measurement, fixed by defining "classified" to include `UNDETERMINABLE`. |
 | **Invariant 5** | **Sharpened by evidence**: an existing gate launders a regression past both `--assert` and `--self-check`. FR-018 is load-bearing, not polish. |
 
-**Gate result post-design: PASS, with P2 unresolved and blocking `/speckit-tasks`.**
+**Gate result post-design: PASS. P2 resolved 2026-08-17 (`92ee4fcd`); no item blocks `/speckit-tasks`.**
+
+*(This line read "PASS, with P2 unresolved and blocking `/speckit-tasks`" until 2026-08-17. It, the
+Open-questions entry 2, and the P2 row above were all written by `59655356` and left unamended when
+`92ee4fcd` landed the adjudication one commit later — three copies of one stale claim, corrected
+per-site because copies of a refuted claim read as corroboration for it.)*

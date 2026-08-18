@@ -29,6 +29,15 @@ import numpy as np
 
 from snn_data_lake import connectome
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "ConnectomeRouter._lif_update": (
+        "NOT_A_RULE",
+        "the LIF pool update: leak toward rest, integrate, spike and reset. Membrane dynamics for one "
+        "tick; no synapse is modified and nothing is learned",
+    ),
+}
+
 _SIGN_EXC = "exc"
 _SIGN_INH = "inh"
 _NEUROMOD = ("da", "ne", "5ht", "ach")  # diffuse chemical classes -> scale target gain

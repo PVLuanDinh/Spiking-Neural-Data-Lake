@@ -105,6 +105,19 @@ from snn_data_lake.plasticity.deep_stdp import (
 from snn_data_lake.plasticity.snn_mnist_stdp import load_mnist
 from snn_data_lake.substrate.device import enable, resolve_device
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "ConvLatencyStdp.train_image": (
+        "LOCAL",
+        "latency-coded convolutional STDP with lateral competition: the winning locations incoming "
+        "weights move by spike timing. Unsupervised and synapse-local",
+    ),
+    "_train": (
+        "LOCAL",
+        "drives train_image over the image set; carries the same claim as the rule it applies",
+    ),
+}
+
 K = 5  # conv kernel size (2 input channels, valid conv, stride 1)
 A_PLUS = 0.004  # multiplicative STDP potentiation rate (pre-before-post)
 A_MINUS = 0.003  # multiplicative STDP depression rate (pre-after / never)

@@ -88,6 +88,35 @@ from snn_data_lake.cortex.is_snn_forward import SPARSITY, STABLE_GAIN
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.substrate._mathutils import dot, mean
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "SpikingJEPA._readout_grad": (
+        "APPROXIMATES_GRADIENT",
+        "backprops dL/dz through z = unit(tanh(Wr@s_bar+br)) to (dWr, dbr, dL/ds_bar_top). It carries "
+        "error backward across a nonlinearity, so it owes the cosine",
+    ),
+    "SpikingJEPA.train_step": (
+        "APPROXIMATES_GRADIENT",
+        "one online JEPA update minimising invariance + variance + covariance against a frozen "
+        "(stop-gradient) echo; applies what _readout_grad computed, so it carries the same claim",
+    ),
+    "main": (
+        "NOT_A_RULE",
+        "the module entrypoint that runs the demo and prints results. Enumerated only because the "
+        "recall-biased walk sees a weight-shaped assignment in it; it updates nothing of its own",
+    ),
+    "SpikingJEPA._update_stats": (
+        "NOT_A_RULE",
+        "EMA-updates per-layer running mean, variance and covariance. Bookkeeping statistics over "
+        "activations; no weight moves",
+    ),
+    "_probe_acc": (
+        "NOT_A_RULE",
+        "fits a linear identity PROBE on z-scored features to measure representation quality. A "
+        "measurement instrument over a frozen encoder",
+    ),
+}
+
 # Feed-forward / recurrent init gain. The IS-SNN dense-drive fixed point (STABLE_GAIN=2.5) assumes ~k inputs
 # active EVERY step; a latency EVENT code delivers only a few spikes across the whole window, so the sparse
 # projection is scaled UP from that fixed point to make the LIF backbone fire on genuinely sparse events.

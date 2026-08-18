@@ -23,6 +23,16 @@ import random
 
 import snn_data_lake.cortex.snn_classifier as C
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "BCMNeuron.update": (
+        "LOCAL",
+        "BCM: a sliding-threshold Hebbian rule on this neuron's own pre/post activity. The threshold "
+        "is the neuron's OWN running average, which is what makes it metaplastic rather than "
+        "gradient-driven",
+    ),
+}
+
 
 class BCMNeuron:
     """Rate neuron with the BCM rule: dw = lr * x * y * (y - theta), theta tracks <y^2>."""

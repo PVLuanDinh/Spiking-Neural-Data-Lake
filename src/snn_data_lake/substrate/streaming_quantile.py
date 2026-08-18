@@ -45,6 +45,15 @@ implementation, not cognition.
 import math
 import random
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "P2Quantile._update": (
+        "NOT_A_RULE",
+        "folds one observation into the five P2 markers. Streaming-quantile bookkeeping, caught on "
+        "the verb `update`",
+    ),
+}
+
 
 def _exact_quantile(sorted_vals, p):
     """Exact p-quantile of an already-sorted list (linear interpolation between ranks). Oracle / <5 fallback only."""

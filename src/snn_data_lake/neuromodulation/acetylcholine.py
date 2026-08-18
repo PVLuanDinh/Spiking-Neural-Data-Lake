@@ -34,6 +34,25 @@ Neurobiol 2006; encode/retrieve scheduling, J Neurosci 33:8689, 2013).
 import math
 import random
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "RecurrentStore.encode": (
+        "LOCAL",
+        "the HIGH-ACh write: feedforward clamps the pattern while the recurrent path is suppressed, "
+        "then the local Hebbian write lands. ACh gates WHEN it writes, not what error it follows",
+    ),
+    "Acetylcholine.plasticity_scale": (
+        "NOT_A_RULE",
+        "returns a learning GATE that rises with ACh. It is a scalar a rule may multiply by -- a "
+        "modulator, not a rule; nothing here updates a weight",
+    ),
+    "_learn_expect": (
+        "NOT_A_RULE",
+        "EMAs an expectation vector toward each observation. A running average over observations, "
+        "caught on the name",
+    ),
+}
+
 TAU = 10.0  # ACh time constant (steps) -- how fast it tracks the novelty drive
 MODE_TH = 0.5  # ACh >= this -> ENCODE, else RETRIEVE
 FF_MIN, FF_MAX = 0.2, 1.0  # feedforward (afferent) gain range: attenuated when ACh is low

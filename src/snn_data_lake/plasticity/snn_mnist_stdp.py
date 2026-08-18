@@ -62,6 +62,20 @@ from torchvision import datasets, transforms
 
 from snn_data_lake.substrate.device import enable, resolve_device
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "StdpNetwork.run": (
+        "LOCAL",
+        "simulates one image and applies unsupervised STDP over the resulting spikes. Pairwise, "
+        "synapse-local, and no label enters the weight update",
+    ),
+    "StdpNetwork._normalise": (
+        "LOCAL",
+        "synaptic scaling: rescales each neuron's incoming weights to a fixed budget. Homeostatic "
+        "plasticity, computed from that neuron's own weights",
+    ),
+}
+
 # Determinism: `torch.manual_seed(0)` used to run HERE, at MODULE SCOPE. This module IS imported
 # for its `load_mnist` / `StdpNetwork` by `reasoning/deep_stdp.py` and `reasoning/autonomous_brain.py`,
 # so the import silently re-seeded the process-global torch RNG in whatever process reached it.

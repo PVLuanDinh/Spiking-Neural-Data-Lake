@@ -315,6 +315,7 @@ CORE = [
     "substrate.method_dormancy_gate",  # Policy 3 amendment: assert no update rule on a live module lacks a live caller
     "substrate.eprop_transport_gate",  # e-prop invariant: assert no governed module transposes a weight into a weight update
     "substrate.doc_budget_gate",  # word ceilings on the standing docs: a document may not grow unnoticed
+    "substrate.gradient_claim_gate",  # e-prop SCOPE: assert every governed learning rule is classified as owing a cosine or not
     "substrate.ingest_guard",  # outside-data content boundary: licence deny-by-default + injection flagging
     "substrate.hf_stream",  # streamed HF datasets -> features; offline self-check (no network, no datasets dep)
     "substrate.region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> ignition bias

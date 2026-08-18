@@ -65,6 +65,21 @@ import os
 import time
 from types import SimpleNamespace
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "run_mnist": (
+        "LOCAL",
+        "the full unsupervised STDP pipeline -- encode, build, train, assign, evaluate -- mirroring "
+        "the FAST arm. The learning is spike-timing-dependent plasticity: pairwise, synapse-local, "
+        "with no labels entering the weight update and no gradient anywhere",
+    ),
+    "_run_pass": (
+        "NOT_A_RULE",
+        "one forward pass over an image range returning the per-image spike-count matrix. Inference, "
+        "not learning",
+    ),
+}
+
 # ---- The rule's C++ (the codegen), importable on EVERY box (no pygenn needed) -------------
 # post_spike is event-driven on the winner's true spike. prevTrace2 is x_pre(t) at the
 # CPU decision step t (two-step history; derivation in the module docstring, verified by

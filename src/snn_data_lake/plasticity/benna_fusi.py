@@ -69,6 +69,15 @@ import zlib
 from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
 from snn_data_lake.substrate._mathutils import mean
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "BennaFusiLearner.train_tick": (
+        "LOCAL",
+        "one tick: spiking deltas deposit into the fast beakers, then ONE diffusion step across the "
+        "cascade. A synapse-local consolidation dynamic -- nothing is propagated backward",
+    ),
+}
+
 # ---- experiment constants (deterministic; sequential-interference protocol A -> B -> A) ----
 N_SYN = 24  # synapses carrying the mapping
 N_LEVELS = 6  # beakers per cascade (fast u_1 .. slow u_6)

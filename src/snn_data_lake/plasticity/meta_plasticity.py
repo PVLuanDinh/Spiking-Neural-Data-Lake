@@ -57,6 +57,15 @@ from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
 from snn_data_lake.substrate._mathutils import mean
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "_Unit.learn": (
+        "LOCAL",
+        "one reward-gated R-STDP update on the single active synapse, forming a fresh causal "
+        "(pre-before-post) eligibility for THIS pairing. Three-factor and synapse-local",
+    ),
+}
+
 # ---- task / mechanism constants (tuned so the flip creates a clear over-active vs quiet asymmetry, ----
 # ---- the BCM yield is directional and bounded, and the LP gate ramps lr as recovery progresses).   ----
 _CUE_GAIN = 0.5  # cue current per synapse = weight * _CUE_GAIN (sets the LIF operating point)

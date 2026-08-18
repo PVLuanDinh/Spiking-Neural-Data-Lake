@@ -45,6 +45,15 @@ rate in a toy LIF pool, nothing more.
 
 import random
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "_train": (
+        "LOCAL",
+        "runs n acquisition trials of the same chain. A harness over the dopaminergic "
+        "prediction-error rule it repeats",
+    ),
+}
+
 # A trial is a chain of (state, reward-on-entry). Reward is delivered when entering REWARD.
 CUED_REWARD = [("ITI", 0.0), ("CUE", 0.0), ("TRACE", 0.0), ("REWARD", 1.0)]
 CUED_OMIT = [("ITI", 0.0), ("CUE", 0.0), ("TRACE", 0.0), ("REWARD", 0.0)]

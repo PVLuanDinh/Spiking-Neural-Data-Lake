@@ -25,6 +25,15 @@ import random
 
 from snn_data_lake.substrate._mathutils import softmax
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "train": (
+        "LOCAL",
+        "single-layer spiking delta rule: the class weight row moves by the output error on its own "
+        "inputs. No hidden layer, so no backward pass exists",
+    ),
+}
+
 # NOTE: no import-time random.seed() — that is a process-global side effect. forward() below is
 # deterministic per sample (seeded from the sample), and main() seeds the module RNG locally for
 # its own data generation. So importing this module never perturbs the global RNG.

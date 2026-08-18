@@ -51,6 +51,17 @@ import zlib
 
 import numpy as np
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "RegionCoherence.update": (
+        "NOT_A_RULE",
+        "consumes {region: window|rate} and returns {coherence, phase_order, n_regions, integration, "
+        "integration_lz}. A METRIC computed deterministically from its inputs -- no weight, "
+        "threshold or trace is updated, so there is nothing a cosine could measure. Enumerated only "
+        "because the walk keys on the verb 'update'",
+    ),
+}
+
 # Reuse the tractable integration primitive from the PCI module (Casali normalized Lempel-Ziv complexity).
 try:
     from snn_data_lake.cortex.integration_measure import normalized_lz

@@ -29,6 +29,16 @@ import random
 
 from snn_data_lake.cortex.spike_preprocessing import N, encode_latency
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "ValenceLearner.learn": (
+        "LOCAL",
+        "three-factor plasticity driven by the RPE rather than raw reward: w += lr * eligibility * "
+        "dopamine. The dopamine term is a scalar broadcast, not an error carried back through a "
+        "network",
+    ),
+}
+
 LR = 0.05
 THETA = 0.30  # |valence| above this -> act
 

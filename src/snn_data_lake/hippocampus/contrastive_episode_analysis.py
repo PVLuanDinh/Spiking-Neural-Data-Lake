@@ -62,6 +62,14 @@ import collections
 import math
 import random
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "_fit": (
+        "NOT_A_RULE",
+        "records episodes into the analyzer and returns it. A constructor over observations",
+    ),
+}
+
 # ---- tunables (hand-set; see self-check anchors) ----------------------------
 EPS = 1e-9  # denominator floor: keeps the effect size finite when pooled_std -> 0
 MIN_PER_GROUP = 2  # need >= this many values in BOTH pools to score a feature (variance needs 2)

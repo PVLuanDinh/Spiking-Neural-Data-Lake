@@ -19,6 +19,15 @@ the fast/slow neuromodulator pair the brain actually uses.
 
 import math
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "Cortisol.learn_rate_scale": (
+        "NOT_A_RULE",
+        "returns a MULTIPLIER (>1 for aversive under stress, ~1 for appetitive). A neuromodulatory "
+        "scale a real rule consumes; it updates nothing itself",
+    ),
+}
+
 TAU = 200.0  # slow decay (steps) — the "minutes" scale
 GAIN = 0.30  # how much one aversive event raises stress
 MAXMOD = 0.60  # cap on how strongly stress modulates

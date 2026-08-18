@@ -143,6 +143,20 @@ from snn_data_lake.cortex.eprop_kernel import (  # the ONE e-prop engine (specs/
     evaluate,
 )
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "eprop_grads": (
+        "APPROXIMATES_GRADIENT",
+        "the e-prop-factored hidden grads plus exact readout grads, in the kappa-filtered form this "
+        "encoder actually ships. Owes the cosine, and already guards itself on its OWN form -- "
+        "run_smoke asserts it at a measured 0.9997",
+    ),
+    "train_and_eval": (
+        "APPROXIMATES_GRADIENT",
+        "the harness that applies eprop_grads; carries the same claim as the rule it drives",
+    ),
+}
+
 # N-MNIST event geometry (matches research/ng_snn/data.py SENSOR = (34, 34, 2)).
 SENSOR_H = 34
 SENSOR_W = 34

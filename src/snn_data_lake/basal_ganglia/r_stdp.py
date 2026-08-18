@@ -45,6 +45,24 @@ import threading
 import time
 from typing import NamedTuple
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#:
+GRADIENT_CLAIM = {
+    "calibrate": (
+        "NOT_A_RULE",
+        "TIMES this host -- the fork/join floor and the serial and parallel per-synapse rates on a "
+        "throwaway population. A benchmark, not a learning rule. It was left UNDECLARED until "
+        "NOT_A_RULE existed, because none of the original four dispositions described it and any "
+        "choice would have been false",
+    ),
+    "RSTDPNeuron.reward": (
+        "LOCAL",
+        "a delayed dopamine signal gates the STORED eligibility into the weights: w += lr * d * e "
+        "per synapse. Three-factor R-STDP -- the eligibility is formed locally from pre-before-post "
+        "timing and nothing is propagated backward, so it owes no cosine",
+    ),
+}
+
 LR = 0.1
 A_PLUS = 1.0
 A_MINUS = 1.0

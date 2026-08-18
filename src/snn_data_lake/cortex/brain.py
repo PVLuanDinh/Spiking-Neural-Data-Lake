@@ -68,6 +68,25 @@ from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
 from snn_data_lake.neuromodulation.raphe_serotonin import DorsalRaphe
 from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "Brain._tom_update": (
+        "NOT_A_RULE",
+        "updates the user-BELIEF model from this turn statement. It maintains a symbolic model of "
+        "what the user believes; no synapse, threshold or trace is trained",
+    ),
+    "Brain._update_access": (
+        "NOT_A_RULE",
+        "bundles this percept assembly into the global workspace and ignites it. A workspace state "
+        "transition, not plasticity",
+    ),
+    "Brain._update_metacog": (
+        "NOT_A_RULE",
+        "feeds self-model reliability signals into the metacognitive monitor so confidence can gate. "
+        "Signal routing between two components",
+    ),
+}
+
 SAFE_DISTANCE = CONTACT * 3.0  # perception-only distance band; never in a reflex/danger zone
 STORE_EVERY = 3  # store one sleep-replay assembly every STORE_EVERY wake ticks
 

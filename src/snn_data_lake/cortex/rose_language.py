@@ -86,6 +86,21 @@ import numpy as np
 from snn_data_lake.cortex.vsa_reasoning import D, bind, bundle, cleanup, hv, permute
 from snn_data_lake.cortex.world_kb_stream import load_kb
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "RoseLanguage.nightly_refit": (
+        "LOCAL",
+        "a Forward-Forward / CSDP-style update -- a POSITIVE pass on the true (context->target) pair "
+        "against a negative pass, each layer improving its own goodness. Forward-Forward exists "
+        "precisely to avoid a backward pass, so there is no gradient to compare a cosine against",
+    ),
+    "RoseLanguage._learnable_relations": (
+        "NOT_A_RULE",
+        "DERIVES which KB relations the competence head is fitted on. A selector over what is "
+        "learnable, deciding scope rather than performing an update",
+    ),
+}
+
 # syntactic roles (beim Graben et al. 2020 role-filler slots) -> each a spike-polarity role code via hv
 ROLE_HEAD, ROLE_COMP, ROLE_SPEC, ROLE_MOD = "HEAD", "COMP", "SPEC", "MOD"
 _ROLE_NAMES = (ROLE_HEAD, ROLE_COMP, ROLE_SPEC, ROLE_MOD)

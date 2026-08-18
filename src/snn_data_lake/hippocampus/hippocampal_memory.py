@@ -70,6 +70,15 @@ from snn_data_lake.hippocampus.sleep_replay import (
     N as ATTRACTOR_UNITS,  # attractor-net size (N=24)
 )
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "HippocampalMemory.consolidate": (
+        "LOCAL",
+        "runs one wake to quiescent SleepConsolidator pass over the learned digits. It drives real "
+        "replay-driven plasticity, so it carries that rule claim",
+    ),
+}
+
 # reward field is unused for identity (we never call ReplayBuffer.replay); pin it to a marker.
 _EXEMPLAR_REWARD = 1.0
 # faithful sleep depth; the self-check overrides this with a small value to stay light.

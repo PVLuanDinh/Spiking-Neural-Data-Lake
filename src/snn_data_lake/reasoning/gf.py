@@ -1736,6 +1736,40 @@ dependency in pyproject.toml regardless.
 
 import numpy as np
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it. UNGOVERNED tier, so
+#: these are REPORTED and asserted on nothing.
+#:
+#: Three symbols here are NOT_A_RULE. They grow a SYMBOLIC GRAMMAR or search over one; none updates a
+#: weight, so no cosine could ever be computed for them. They were left UNDECLARED at first because
+#: the four original dispositions had no value for "not a learning rule", which reported them as
+#: UNDETERMINABLE -- true, but that state is ratcheted DOWN as debt, and these are not debt. They are
+#: a permanent and correct answer.
+GRADIENT_CLAIM = {
+    "MLP.train": (
+        "CONTROL",
+        "not a learning rule this project is trying to make good -- it is the Gc arm that main_sl() "
+        "requires to LOSE (in-dist 100%, OOD 25% against the inducer's 100%). Owner-adjudicated "
+        "2026-08-15 and exempted in eprop_transport_gate.EXEMPT, which FR-019 retires INTO this "
+        "registry so exactly one hand-maintained record of the disposition survives. Do NOT port it "
+        "to e-prop: a weaker learner would satisfy mdl_ok < ind_ok for the wrong reason",
+    ),
+    "ActiveLearner.learn": (
+        "NOT_A_RULE",
+        "adds an identified rule to the library as a reusable primitive -- the GRAMMAR grows. No "
+        "weight, threshold or trace is updated, so there is nothing for a gradient to approximate",
+    ),
+    "OpenGf._learn": (
+        "NOT_A_RULE",
+        "promotes a solved rule to a NAMED PRIMITIVE when it COMPRESSES. A symbolic library "
+        "operation gated on description length, not a weight update",
+    ),
+    "OpenGf.solve_unbounded": (
+        "NOT_A_RULE",
+        "iterative-deepening SEARCH: raises the node budget in a loop until a compressing program "
+        "fits. Enumerated because the walk keys on 'solve'/'learn'-adjacent names; it learns nothing",
+    ),
+}
+
 WINDOW = 4  # the model sees 4 consecutive terms, predicts the 5th
 
 

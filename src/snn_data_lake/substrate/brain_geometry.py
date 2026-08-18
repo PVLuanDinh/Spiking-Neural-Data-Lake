@@ -58,6 +58,15 @@ import math
 import os
 import random
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "_plasticity_point": (
+        "NOT_A_RULE",
+        "scatters points across cortex and hippocampus for the geometry rendering. It draws where "
+        "plasticity LIVES; it performs none",
+    ),
+}
+
 SEED = 1605  # fixed -> deterministic jitter (a per-instance random.Random, never the global RNG)
 
 # ------------------------------------------------------------------------------------------------

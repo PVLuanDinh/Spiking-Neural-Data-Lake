@@ -32,6 +32,15 @@ Determinism (CLAUDE.md): pure function; no random, no wall-clock, no hash(); ASC
 
 import zlib
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "LakeConsolidation.consolidate": (
+        "NOT_A_RULE",
+        "returns the kept subset of fact records in order. RECORD pruning against the durable store "
+        "-- P4b storage, not plasticity",
+    ),
+}
+
 # re-derivable ingest sources: bulk knowledge the boot rebuilds (world-KB seed + dictionary gates), so it
 # need not be hoarded durably. A src is matched by its prefix before ':' (e.g. "wordnet:dog" -> "wordnet").
 RE_DERIVABLE_SRC = frozenset({"wordnet", "conceptnet", "worldkb", "world-kb"})

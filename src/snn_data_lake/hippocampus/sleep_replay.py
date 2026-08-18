@@ -71,6 +71,25 @@ import random
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "AttractorNet.store": (
+        "LOCAL",
+        "stores an assembly by clamping it ON and applying covariance Hebbian plasticity to co-active "
+        "pairs. Pairwise and local",
+    ),
+    "AttractorNet.sleep": (
+        "LOCAL",
+        "noise-driven spontaneous replay: seed a few neurons, run the attractor, let the same Hebbian "
+        "rule consolidate. Offline application of a local rule",
+    ),
+    "AttractorNet._normalize": (
+        "LOCAL",
+        "synaptic scaling: rescales each neuron's incoming weights to a fixed budget. Homeostatic "
+        "plasticity computed from that neuron's own weights",
+    ),
+}
+
 # ---- network ----
 N = 24  # LIF neurons (one recurrent layer)
 K = 6  # neurons per stored assembly (pattern size)

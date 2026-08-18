@@ -66,6 +66,16 @@ from snn_data_lake.neuromodulation.drive_reduction import REWARD_SCALE
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
 from snn_data_lake.substrate._mathutils import mean
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "GoalConditionedReadout.train": (
+        "LOCAL",
+        "trains on hindsight labels by delegating to two Tempotrons, one per direction, one-vs-rest. "
+        "The tempotron rule is spike-timing-local and declared LOCAL at its own site; this is the "
+        "harness over it",
+    ),
+}
+
 # ---- the toy goal world: a 1-D track. Positions 0..REACH_HI are reachable during training (a wall at ----
 # ---- REACH_HI). The afferent/goal axis runs 0..AXIS-1 and EXTENDS past the wall so a genuinely-novel  ----
 # ---- goal (position NOVEL_GOAL) lands on afferents that NEVER fire in training -- the no-transfer probe.--

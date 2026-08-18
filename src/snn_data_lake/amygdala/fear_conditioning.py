@@ -84,6 +84,20 @@ import random
 
 from snn_data_lake.cortex.spike_preprocessing import N, T, encode_latency
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "Amygdala.pair": (
+        "LOCAL",
+        "paired CS-US trial applying a three-factor association on co-active features. The US is a "
+        "broadcast teaching signal, not a gradient carried back through a network",
+    ),
+    "Amygdala.extinguish": (
+        "LOCAL",
+        "CS presented with the US OMITTED -- the suppression half of the same association rule, and "
+        "the one that makes the pairing falsifiable",
+    ),
+}
+
 # ---- LIF / plasticity constants (hand-tuned; see self-check anchors) ---------
 LEAK = 0.90  # BLA membrane leak per step
 TH_BLA = 1.0  # BLA firing threshold (subtractive reset)

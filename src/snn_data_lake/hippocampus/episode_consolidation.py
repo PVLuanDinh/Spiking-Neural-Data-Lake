@@ -79,6 +79,30 @@ import zlib
 
 import numpy as np
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "EpisodeConsolidator.store": (
+        "LOCAL",
+        "stores a cell assembly by covariance Hebbian learning, W += (x-a)(x-a)^T with a zero "
+        "diagonal. Outer-product Hebbian: every term is a product of two local activities",
+    ),
+    "EpisodeConsolidator.replay": (
+        "LOCAL",
+        "one quiescent sleep consolidation pass reactivating stored assemblies from a noise seed. "
+        "Replay of a local rule is still that local rule",
+    ),
+    "EpisodeConsolidator._zero_offmask": (
+        "NOT_A_RULE",
+        "zeroes the diagonal and, when wired sparsely, every absent connection. A masking helper "
+        "enforcing the connectivity pattern -- it removes weights rather than learning them",
+    ),
+    "EpisodeConsolidator._replay_unbalanced_control": (
+        "CONTROL",
+        "the module names it itself: NEGATIVE CONTROL, self-check only, unbalanced blank-noise "
+        "replay. It exists to establish what the real replay must beat",
+    ),
+}
+
 # ---- assembly / network ----
 ACTIVE_FRAC = 0.08  # sparsity: K active units per assembly = round(dim*ACTIVE_FRAC)
 MIN_ACTIVE = 8  # floor on K for very small dims

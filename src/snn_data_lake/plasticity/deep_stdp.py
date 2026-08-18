@@ -91,6 +91,38 @@ K = 5  # conv kernel size (single input channel, valid conv, stride 1)
 # promotion (the P2-shape duplication its ledger row flagged); imported from the one home now.
 from snn_data_lake.plasticity.snn_mnist_stdp import _env, _envf  # noqa: E402
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "ConvStdp.train_image": (
+        "LOCAL",
+        "unsupervised WTA-STDP: each map's most-active above-threshold location wins and its weights "
+        "move by spike timing. Unsupervised and local",
+    ),
+    "OneLayerNet.train_image": (
+        "LOCAL",
+        "drives the STDP layer over one image; inherits the claim of the rule it applies",
+    ),
+    "TwoLayerNet.train_image": (
+        "LOCAL",
+        "drives the stacked STDP layers over one image; each layer learns by its own local rule, "
+        "never by an error passed between them",
+    ),
+    "_train": (
+        "LOCAL",
+        "the harness that runs train_image across the set; carries the same claim as the rule it "
+        "drives",
+    ),
+    "FcStdp.run": (
+        "LOCAL",
+        "rate-codes the input and simulates T steps, applying STDP on the resulting spikes",
+    ),
+    "FcStdp._normalise": (
+        "LOCAL",
+        "synaptic scaling to a fixed incoming budget -- homeostatic, computed per neuron from its own "
+        "weights",
+    ),
+}
+
 
 class FcStdp:
     """Fully-connected STDP prototype layer (mirrors snn_mnist_stdp.StdpNetwork,

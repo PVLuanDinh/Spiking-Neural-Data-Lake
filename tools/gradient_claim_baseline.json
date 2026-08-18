@@ -1,0 +1,10 @@
+{
+  "_bootstrap_reason": "ENUMERATION TIGHTENED 2026-08-17: dropped the verbs calibrate and plast, measured 0 percent precision (0 true rules / 5 and 0/3) against 157 hand-reviewed declarations. Verified before landing: 0 real rules lost, recall control green. rules_seen 150 -> 149 -- the single symbol removed is brainstem/serial_arm::assert_calibrated, a safety precondition check that was a false positive of the calibrate substring.",
+  "_contract": "counts may only go DOWN; rules_seen_floor is a LIVENESS bound, not a target",
+  "_generated_by": "python -m snn_data_lake.substrate.gradient_claim_gate --update-baseline",
+  "counts": {
+    "MISSING_DECLARATION": 0,
+    "UNDETERMINABLE": 0
+  },
+  "rules_seen_floor": 149
+}

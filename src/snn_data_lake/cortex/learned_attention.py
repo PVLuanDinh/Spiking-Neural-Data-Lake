@@ -35,6 +35,15 @@ import zlib
 
 import numpy as np
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "LearnedAttention.learn": (
+        "LOCAL",
+        "the module states it outright: LOCAL three-factor update, dw[b] = lr * reward * (elig[b] - "
+        "mean_elig). Eligibility times a scalar reward, baseline-subtracted",
+    ),
+}
+
 
 def _cos(a, b):
     """Cosine similarity clipped to [0,1]; a zero vector on either side yields 0 (no bias)."""

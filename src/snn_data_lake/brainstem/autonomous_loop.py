@@ -57,6 +57,20 @@ from snn_data_lake.substrate.brain_bundle import BrainBundle, load_bundle
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "AutonomousArm._adapt_actuation": (
+        "NOT_A_RULE",
+        "adjusts how long a motor command may act, from whether it arrived. A timing PARAMETER of the "
+        "body, not a synapse",
+    ),
+    "AutonomousArm._pfc_bias": (
+        "NOT_A_RULE",
+        "returns the prefrontal top-down bias vector over actions (all-zeros when opt-out). A read of "
+        "executive state",
+    ),
+}
+
 # Action-space granularity, NOT a tuned threshold (Policy 1): it defines the vocabulary, it does
 # not arbitrate a decision. Sized small on purpose so a single exploratory move is always
 # recoverable. The incumbent justified the size by what one step could NOT do on the old body

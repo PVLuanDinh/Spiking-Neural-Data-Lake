@@ -76,6 +76,35 @@ from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCurriculum
 from snn_data_lake.substrate._mathutils import sigmoid
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "ReasoningLearner._train_units": (
+        "LOCAL",
+        "one error-scaled Bradley-Terry nudge for 'unit ua is before unit ub', with weight decay. A "
+        "pairwise rank update applied directly to the two units involved -- nothing crosses a layer",
+    ),
+    "ReasoningLearner.train_premise": (
+        "LOCAL",
+        "routes/recruits both items and applies the same rank nudge for one premise; inherits the "
+        "claim of the rule it applies",
+    ),
+    "ReasoningLearner.replay_consolidate": (
+        "LOCAL",
+        "SLEEP: re-applies the rank nudge to a sampled batch of STORED premises. Offline replay of a "
+        "local rule is still that local rule",
+    ),
+    "MemorizationLearner.train_premise": (
+        "CONTROL",
+        "the rote memoriser whole training step is a single dict assignment marking the pair seen. It "
+        "exists to LOSE: storing exact adjacent pairs scores about 0.5 on held-out non-adjacent ones, "
+        "which is what makes the real learner generalisation meaningful",
+    ),
+    "ReasoningEnv.train_pairs": (
+        "NOT_A_RULE",
+        "returns the unordered SET of pairs training may touch. A property describing the split",
+    ),
+}
+
 # ---- learner / decision constants ----------------------------------------------------------------
 _VIGILANCE = 0.30  # spike-coincidence sim below this -> a novel item code -> recruit (neurogenesis)
 _LR = 0.35  # Bradley-Terry / Elo rank step (fraction of the prediction error applied)

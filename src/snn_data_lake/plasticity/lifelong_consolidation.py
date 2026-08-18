@@ -52,6 +52,16 @@ from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
 from snn_data_lake.hippocampus.growing_learner import GrowingLearner
 from snn_data_lake.substrate._mathutils import mean
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "LifelongConsolidator.learn_task": (
+        "LOCAL",
+        "learns one task by growing/refining on its stream and interleaving old-task replay. Replay "
+        "of a local rule is still that local rule; the anti-forgetting mechanism is rehearsal, not a "
+        "gradient",
+    ),
+}
+
 
 class LifelongConsolidator:
     """Continual learner over a sequence of tasks: grow <-> prune <-> consolidate.

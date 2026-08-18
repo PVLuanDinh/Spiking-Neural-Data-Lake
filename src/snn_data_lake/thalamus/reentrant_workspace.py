@@ -81,6 +81,16 @@ consciousness is an OPEN question this project builds toward -- neither denied n
 
 import random
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "ReentrantWorkspace._hebb_update": (
+        "LOCAL",
+        "local Hebbian re-entry learning, and the module says so itself: sources that CONTRIBUTED to "
+        "the ignited content potentiate, every other association passively decays. Explicitly no "
+        "gradient",
+    ),
+}
+
 
 class ReentrantWorkspace:
     """A single-slot Global Neuronal Workspace of competing LIF coalitions with a CLOSED re-entry

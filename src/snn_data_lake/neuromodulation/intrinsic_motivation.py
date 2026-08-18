@@ -61,6 +61,15 @@ import random
 
 from snn_data_lake.substrate._mathutils import mean
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "CuriosityDrive.learning_progress": (
+        "NOT_A_RULE",
+        "returns rectified learning progress, max(0, slow_EMA - fast_EMA), in the units of prediction "
+        "error. A MEASUREMENT of how fast learning is going, not learning",
+    ),
+}
+
 
 class CuriosityDrive:
     """A learning-progress curiosity / intrinsic-motivation drive.

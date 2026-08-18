@@ -80,6 +80,15 @@ from snn_data_lake.cortex.spike_preprocessing import N, T, encode_latency
 from snn_data_lake.substrate.proximity_index import ProximityIndex
 from snn_data_lake.substrate.streaming_hub import StreamingHub
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "LakeMemory.consolidate": (
+        "NOT_A_RULE",
+        "persists exemplars to the durable lake and rebuilds the proximity index. Storage and "
+        "indexing",
+    ),
+}
+
 # This module's own dotted path, derived not hardcoded (control follows the read path): under
 # `python -m` the class's __module__ is "__main__", but runpy still sets __spec__.name to the
 # real dotted path, so this is correct both imported and run as a script. The P4b cross-process

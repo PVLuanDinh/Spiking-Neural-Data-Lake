@@ -40,6 +40,15 @@ from snn_data_lake.brainstem import arm_config
 from snn_data_lake.brainstem.so101_arm import So101Arm
 from snn_data_lake.cortex.population_encoding import PopulationEncoder
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "SpikingPID._calibrate": (
+        "NOT_A_RULE",
+        "measures this controller's gain against a reference response. A calibration measurement, not "
+        "a rule that learns from experience",
+    ),
+}
+
 
 class _LIFPopulation:
     """A population of leaky integrate-and-fire neurons sharing one input drive `d`.

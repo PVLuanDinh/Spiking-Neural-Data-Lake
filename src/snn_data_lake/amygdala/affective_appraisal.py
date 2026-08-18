@@ -54,6 +54,31 @@ import random
 
 from snn_data_lake.cortex.spike_preprocessing import T, encode_latency
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "AffectiveAppraisal.learn": (
+        "LOCAL",
+        "three-factor update: a teaching signal (target - current appraisal) that is an RPE, gated "
+        "by a diffuse neuromodulator. Nothing is propagated backward through a network, so it owes "
+        "no cosine",
+    ),
+    "AffectiveAppraisal._potentiate": (
+        "LOCAL",
+        "bounded Hebbian potentiation on the ACTIVE features only, the rate already folding in the "
+        "three-factor gate. Coincidence-driven and synapse-local",
+    ),
+    "AffectiveAppraisal._decay": (
+        "LOCAL",
+        "bounded ANTI-Hebbian decay toward 0 on the active features only. The mirror half of the same "
+        "local rule -- depression is plasticity, not its absence",
+    ),
+    "AffectiveAppraisal.step": (
+        "LOCAL",
+        "slow homeostatic forgetting: every weight relaxes toward 0 by a fixed factor. Each weight's "
+        "own value decides its change",
+    ),
+}
+
 # ---- LIF / plasticity constants (hand-tuned; same style as fear_conditioning.py) --------------
 LEAK = 0.90  # LIF membrane leak per step (matches fear_conditioning's BLA)
 TH = 1.0  # LIF firing threshold (subtractive reset)

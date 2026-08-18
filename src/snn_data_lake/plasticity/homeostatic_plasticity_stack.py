@@ -48,6 +48,25 @@ from snn_data_lake.plasticity.homeostatic_scaling import HomeostaticNeuron
 from snn_data_lake.plasticity.intrinsic_plasticity import IntrinsicPlasticity
 from snn_data_lake.plasticity.short_term_plasticity import DynamicSynapse
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "HomeostaticPlasticityStack.learning_step": (
+        "LOCAL",
+        "runs the whole fixed-order sandwich of local rules once and logs the order it touched each. "
+        "Orchestration over R-STDP, BCM and synaptic scaling -- every member is local",
+    ),
+    "_rstdp_update_fn": (
+        "LOCAL",
+        "a closure performing ONE real R-STDP deposit on the neuron and returning its delta. "
+        "Three-factor and synapse-local",
+    ),
+    "_learner_off_on_selfcheck": (
+        "NOT_A_RULE",
+        "wire check asserting the learner with the stack OFF is byte-identical to today. A self-check "
+        "fixture",
+    ),
+}
+
 
 # --------------------------------------------------------------------------------------------------
 # Thin adapters -- each wraps ONE real rule module behind a common `.stabilize(ctx) -> ctx` contract.

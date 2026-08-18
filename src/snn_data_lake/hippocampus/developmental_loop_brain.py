@@ -117,6 +117,23 @@ from snn_data_lake.neuromodulation.spiking_curiosity import (
 from snn_data_lake.plasticity.snn_mnist_stdp import load_mnist
 from snn_data_lake.substrate.device import enable, resolve_device
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "_LinearReadout.train_step": (
+        "APPROXIMATES_GRADIENT",
+        "explicit autograd: `F.cross_entropy(self.clf(X), y).backward()` then `self.opt.step()`. It "
+        "has no docstring, so this was read off the BODY rather than a claim. PROVISIONAL, and the "
+        "criterion it turns on is spec FR-002h -- LIVE-PATH REACHABILITY, which THIS MODULE's own "
+        "docstring already adjudicates from specs/010: the Adam path is permitted because it is "
+        "TRAIN-TIER OFFLINE and no _LIVE_ROOT or _ENTRYPOINT reaches it. Re-measured 2026-08-17 with "
+        "controls: this module is UNREACHABLE, so the permission holds today. Kept OVER-flagged as "
+        "APPROXIMATES_GRADIENT until the amendment states that criterion as a general clause, "
+        "because the same docstring warns that becoming reachable converts this into a violation "
+        "'that nothing would announce' -- and Standing Invariant 3 makes the confident NEGATIVE the "
+        "dangerous verdict",
+    ),
+}
+
 # competence_executive symbols (DopamineModulator, CompetenceDynamics, goal_value) plus
 # PrefrontalExecutive and GlobalWorkspace are imported LAZILY inside main() and
 # _mechanics_check() -- the kb_ranking shape: used exclusively inside those functions. The

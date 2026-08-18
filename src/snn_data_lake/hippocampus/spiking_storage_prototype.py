@@ -66,6 +66,15 @@ cannot leave a stale path behind that still passes green.
 
 import random
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "train": (
+        "LOCAL",
+        "stores patterns in FACTORED form -- a rank-P Hopfield memory is the patterns themselves. "
+        "Storage by outer product, with no error signal anywhere",
+    ),
+}
+
 # random.seed(0) REMOVED 2026-08-04 (promotion redesign). It was moved out of module
 # scope into main() earlier the same day (specs/010, C33), which fixed the import-time
 # clobber but NOT the in-process one: run_selfchecks.run_all_in_process() and pytest

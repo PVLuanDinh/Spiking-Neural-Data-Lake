@@ -47,6 +47,15 @@ import random
 
 from snn_data_lake.substrate._mathutils import mean
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "ForwardModel.update": (
+        "LOCAL",
+        "one online delta / LMS step on the one-step plant error. A delta rule on its own inputs and "
+        "targets: no gradient crosses a layer boundary, so it owes no cosine",
+    ),
+}
+
 
 class Plant:
     """The TRUE 1-D linear dynamics (unknown to the model): a leaky state driven by the command,

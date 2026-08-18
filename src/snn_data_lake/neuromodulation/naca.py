@@ -42,6 +42,22 @@ Refs: Zhang, Zeng et al., Sci. Adv. 2023 (adi2947); Izhikevich 2007 (the R-STDP 
 import math
 import random
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "_deposit": (
+        "LOCAL",
+        "one R-STDP deposit REUSING RSTDPNeuron's eligibility as the local delta source: present the "
+        "stimulus train, fire the post spike after it, gate the trace. The NACA broadcast reshapes a "
+        "LOCAL delta; it does not carry error backward through a network",
+    ),
+    "_off_path_byte_identity": (
+        "CONTROL",
+        "proves the off path: an R-STDP local delta with NACA at lambda=0 reduces EXACTLY to the "
+        "unmodulated local rule, two identical RSTDPNeurons compared byte-for-byte. It exists to "
+        "establish a null, not to learn -- and a null that could not fail would prove nothing",
+    ),
+}
+
 ETA = 0.5  # neuromodulatory correction gain (how strongly the broadcast reshapes the local delta)
 LAM_INV = 0.5  # inversion threshold: below it the gate is positive (damp), above it it flips sign
 THETA_MAX = 1.2  # peak height of the metaplasticity gate

@@ -92,6 +92,20 @@ from snn_data_lake.neuromodulation.cortisol import (
     Cortisol,  # slow tonic stress (leaf: only os/math)
 )
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "build_learned_matcher": (
+        "NOT_A_RULE",
+        "BUILDS the matcher: a supervised spiking classifier plus a Van Rossum distance veto. A "
+        "factory; the training it wraps lives in the classifier",
+    ),
+    "learn_unknowns": (
+        "NOT_A_RULE",
+        "clusters recorded unknowns and promotes recurring ones into the signature LIBRARY. It grows "
+        "a symbolic library, touching no weight",
+    ),
+}
+
 # SIG_PATH / LAKE_PATH / UNK_PATH -- three `./data/...` module constants, RETIRED 2026-08-05. They
 # were CWD-relative, so the brain's learned gestures lived wherever the daemon happened to be
 # started from rather than under NORD_HOME. Successors: the learned library is a `_T_STATE` record

@@ -65,6 +65,25 @@ from snn_data_lake.cortex.spike_preprocessing import N as N_FEATURES
 from snn_data_lake.hypothalamus.set_points import Homeostat
 from snn_data_lake.substrate._mathutils import mean
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "DriveReductionLearner.train_step": (
+        "LOCAL",
+        "observes the state, acts, computes the INTERNAL reward and gates the spiking eligibility "
+        "with it. Three-factor: local trace times a scalar broadcast, no backward pass",
+    ),
+    "DriveReductionLearner.train": (
+        "LOCAL",
+        "runs train_step over episodes from fresh random drive vectors so every most-deficient-drive "
+        "state is visited; inherits the claim of the step it repeats",
+    ),
+    "DriveReductionLearner.learned_map": (
+        "NOT_A_RULE",
+        "READS OUT the learned state->action map for inspection (it should be the identity). An "
+        "accessor over what train_step learned; it performs no update",
+    ),
+}
+
 K = 3  # number of homeostatic drives (metaphorical accumulators, all set-point 0)
 DRIFT = 0.15  # per-step passive deficit accumulation on EVERY drive (the loss the agent opposes)
 REWARD_SCALE = 0.4  # scales the drive reward into the valence learner's tanh-friendly range

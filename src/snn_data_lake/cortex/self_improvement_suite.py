@@ -83,6 +83,15 @@ from snn_data_lake.neuromodulation.generalizing_novelty import GeneralizingNovel
 from snn_data_lake.plasticity.benna_fusi import BennaFusiLearner
 from snn_data_lake.plasticity.meta_plasticity import MetaPlasticLearner
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "_rung_metaplast": (
+        "NOT_A_RULE",
+        "runs one experiment rung -- the non-stationary reach at a small budget with both metaplastic "
+        "mechanisms on. An experiment harness reporting a number",
+    ),
+}
+
 # The failure sentinel: chosen OUT of the legitimate range of every rung metric (distinct
 # buckets 1..8, gains/gaps in [-1,1], retentions/rates in [0,1], drive >= 0, coverage >= 0),
 # so a real value can never be mistaken for a failure and vice-versa.

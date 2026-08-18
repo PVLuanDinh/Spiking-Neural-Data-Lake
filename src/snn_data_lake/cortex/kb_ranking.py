@@ -34,6 +34,18 @@ import os
 
 import numpy as np
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "DistMult.train_epoch": (
+        "APPROXIMATES_GRADIENT",
+        "hand-computes the symmetric trilinear GRADIENTS and applies them to the embeddings -- the "
+        "module own comment says gradients. No torch is imported and there is no hidden layer to "
+        "propagate through, so whether a shallow closed-form gradient sits inside the cosine clause "
+        "scope is exactly the FR-002h question. Over-flagged until that lands: Standing Invariant 3 "
+        "makes the confident negative the dangerous verdict",
+    ),
+}
+
 _FB_TRAIN = os.environ.get(
     "NORD_FB_TRAIN",
     "https://raw.githubusercontent.com/villmow/datasets_knowledge_embedding/master/FB15k-237/train.txt",

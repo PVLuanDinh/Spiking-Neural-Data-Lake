@@ -20,6 +20,16 @@ import random
 from snn_data_lake.brainstem.signal_loop import build_default_library
 from snn_data_lake.cortex.spike_preprocessing import N, T, encode_latency
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "Tempotron.train": (
+        "LOCAL",
+        "the tempotron rule: on an error, move weights by the pre-synaptic contribution at the "
+        "membrane PEAK time. Spike-timing-local, driven by a binary teacher, never by a propagated "
+        "gradient",
+    ),
+}
+
 TAU_M = 8.0  # membrane time constant (steps), tuned to the T=32 latency window
 TAU_S = 2.0
 DT = 1.0

@@ -313,6 +313,43 @@ jobs:
       - name: P6 gate criteria can fail (--self-check)
         run: python tools/p6_gate.py --self-check
 
+      # The e-prop invariant's SCOPE gate: which learning rules OWE a gradient cosine at all. A
+      # FOURTH question, distinct from the three gates above it -- eprop_transport_gate asks "is there
+      # a rule NOBODY CHECKED?", dormancy_gate asks "is this module reachable?", method_dormancy_gate
+      # asks "does this learning method have a live caller?". None of them can answer whether a given
+      # rule owes the bar, which is why ~22 local rules shipped for months under a nickname
+      # ("e-prop only") that no policy text ever said.
+      #
+      # It is REGISTERED in run_selfchecks too, and that registration was DECORATIVE for one commit:
+      # run_selfchecks invokes each module through `runpy.run_module(run_name="__main__")` with NO
+      # argv, and this module's default path was pure report, exiting 0 regardless of findings. That
+      # is the failure this file already records three times. Fixed by making the bare path assert
+      # like every sibling (dormancy_gate and method_dormancy_gate carry no --assert flag at all);
+      # verified by planting a real finding, after which runpy raises SystemExit=1 and SystemExit=0
+      # without it. The step below is kept ANYWAY: the lint job is where a scope regression should be
+      # named explicitly rather than inferred from a self-check line.
+      #
+      # ast-only over the package; it never imports the modules it CLASSIFIES, which is required
+      # rather than stylistic -- ~25.7% of the ungoverned subtree does not import in the gate env, and
+      # a classifier that skips what it cannot import silently UNDER-COUNTS. It does lazily import two
+      # SIBLING modules (dormancy_gate for the governed set, self_mod_harness for the repo root);
+      # torch is NOT loaded. No GPU, no Brain. Measured wall time in .venv-lake: 1.4s for --assert.
+      - name: Gradient-claim census (e-prop scope; every governed rule classified)
+        run: python -m snn_data_lake.substrate.gradient_claim_gate --assert
+
+      # ...and its criteria must be falsifiable. --self-check CONSTRUCTS six reds against the REAL
+      # tree through an in-memory overlay (nothing on disk is touched -- the same string-copy
+      # discipline p6_gate and the dependency ledger use) and then runs two GREEN CONTROLS: the
+      # repaired shape must NOT fire, and two runs must be byte-identical. Measured 2026-08-17: 6 of 6
+      # constructed mutations fired, both controls held, exit 0, 13.3s.
+      #
+      # Worth naming because it was found the hard way: the reds are re-verified by MUTATING THE
+      # MODULE and confirming each test goes red. One escapee that survived was a guard test whose
+      # probe symbol was never enumerated at all, so it asserted over an empty list -- a vacuous check
+      # that read as a passing one until the mutation exposed it.
+      - name: Gradient-claim census criteria can fail (--self-check)
+        run: python -m snn_data_lake.substrate.gradient_claim_gate --self-check
+
   test:
     name: tests + coverage
     runs-on: ubuntu-latest

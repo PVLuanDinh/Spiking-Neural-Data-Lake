@@ -1,0 +1,25 @@
+{
+  "_asserts": "NOTHING. This mode never gates CI (FR-014).",
+  "_generated_by": "python -m snn_data_lake.substrate.gradient_claim_gate --measure",
+  "_staleness": "Compare tree_digest with a fresh run. A MISMATCH means this file predates the current declarations and its verdicts describe a tree that no longer exists.",
+  "draws": 400,
+  "freshness": "CURRENT",
+  "null_kind": "within_matrix_permutation",
+  "results": [
+    {
+      "aligned": 0.9481210701978392,
+      "aligned_sd_above_null": 5.933932248206881,
+      "bar_sd_above_null": 3.064444049162972,
+      "coherence": [
+        0.11728673387659547,
+        0.19858014604013965
+      ],
+      "p_null_exceeds_bar": 0.0,
+      "qualname": "probe::ok",
+      "reason": "",
+      "verdict": "RULE_JUDGED"
+    }
+  ],
+  "seed": 1,
+  "tree_digest": "crc32:311814d2"
+}

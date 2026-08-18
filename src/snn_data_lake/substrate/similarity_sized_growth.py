@@ -60,6 +60,15 @@ import numpy as np
 # REUSE the developmental match we already compute (ART cosine to nearest prototype) + its kernel.
 from snn_data_lake.hippocampus.growing_learner import GrowingLearner, _cosine
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "FrozenExpert.learn": (
+        "LOCAL",
+        "the module says it itself: LOCAL error-modulated Hebbian training on (X, y), refusing to run "
+        "once frozen. Error-modulated Hebbian is three-factor, not back-propagated",
+    ),
+}
+
 # The decision route_or_grow hands back to the caller (the main agent wires on it).
 GrowthDecision = namedtuple(
     "GrowthDecision", ["action", "expert_id", "novelty", "recruit_cap", "grew", "n_experts"]

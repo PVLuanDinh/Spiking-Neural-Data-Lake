@@ -113,8 +113,12 @@ THE CONTRAST THAT PROVES IT, and it is in this project's own record: at the jepa
 same-NAMED criterion measured 0.971 -- far ABOVE the 0.5 bar -- because there both sides were
 computed through one shared forward pass, so the identity/skip term dominated both. One criterion
 name, two different quantities, opposite verdicts. Establishing what a cosine is computed OVER is
-the question, not what it is called. (Same defect class the eprop_kernel lane found, where 90.7% of
-an all-parameter cosine came from terms that were identical by construction.)
+the question, not what it is called. (Same defect class the eprop_kernel lane found, where 81.2% of
+an all-parameter cosine comes from the readout block. CORRECTED 2026-08-18 in the same change as
+the eprop_kernel site, because a figure living in two places gets fixed in one: the share was 90.7%
+before specs/020 T048, and those terms were NOT 'identical by construction' -- that claim was
+measurably false (W_out cosine 0.986830, allclose False) and only became true once the reference
+was reconciled to the kappa-filtered form the shipped encoders run.)
 
 WHAT THAT PARAGRAPH DID NOT CLAIM: that feedback alignment works here. Only that the number did not
 settle it, in either direction. What the shipped gates DID show stands: FA cleared both on every
@@ -168,6 +172,23 @@ import math
 import random
 
 from snn_data_lake.substrate._mathutils import dot
+
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "MlpQ.update": (
+        "APPROXIMATES_GRADIENT",
+        "semi-gradient delta step backpropped BY HAND through the shared hidden layer -- it owes the "
+        "cosine, and it is the case SC-003 turns on: its hidden-gradient cosine swept to "
+        "[-0.472, +0.279] with |cos| > 0.5 in 0 of 8 draws, which falsified the INSTRUMENT rather "
+        "than the rule (the measurement reduced to asking whether feedback is parallel to the "
+        "forward weights, which is the weight symmetry feedback alignment exists to deny)",
+    ),
+    "_train": (
+        "APPROXIMATES_GRADIENT",
+        "the harness that drives MlpQ.update over (z, opt) contexts; carries the same claim as the "
+        "rule it applies",
+    ),
+}
 
 
 class MlpQ:

@@ -125,18 +125,11 @@ def _is_weight(name):
 #: Follows `dormancy_gate.EXEMPT`'s pattern, including the half that makes it honest: every entry is
 #: asserted to still match a REAL finding, so an exemption that blesses nothing fails loudly instead
 #: of reading as coverage.
-EXEMPT = {
-    "reasoning.gf.train": (
-        "CONTROL, not a learning rule -- adjudicated 2026-08-15, granted by the owner. `MLP` is the "
-        "Gc arm of the Gc-vs-Gf dissociation in `main_sl()`, which asserts `mdl_ok < ind_ok` beside "
-        "`in_acc >= 0.5`: it must genuinely learn AND must still fail the held-out family the "
-        "program-inducer solves. Measured at HEAD -- in-distribution 100%, OOD model 25% vs inducer "
-        "100%. Zero references outside gf.py, one construction site in main_sl(), on no tick, no "
-        "faculty consumes it. PORTING IT TO E-PROP WOULD VOID THE EXPERIMENT: a weaker learner "
-        "satisfies `mdl_ok < ind_ok` because it learns worse, not because learning is not "
-        "synthesis, which is a contaminated control (P8). Full verdict in docs/POLICIES.md."
-    ),
-}
+# EXEMPT IS RETIRED (FR-019 / specs/020 T070). Its one owner-granted entry now lives in
+# `reasoning/gf.py::GRADIENT_CLAIM["MLP.train"]`, beside the code it describes, and is read via
+# `resolve_disposition`. P2: exactly ONE hand-maintained record of a symbol's gradient
+# disposition survives. The honesty property came WITH it -- see `stale_exemptions`, which keeps
+# a reachable red rather than becoming vacuous once exemption is derived per-finding.
 
 
 def _exempt_key(rel, fn):
@@ -144,15 +137,118 @@ def _exempt_key(rel, fn):
     return f"{rel}.{fn}"
 
 
-def stale_exempt(violations):
-    """EXEMPT entries matching NO finding in the tree -- an allowlist row that blesses nothing.
+class AmbiguousDisposition(Exception):
+    """A finding's key matches several declared symbols that DISAGREE about the disposition.
 
-    Deliberately matched against ALL findings rather than governed ones: an exemption may be granted
-    BEFORE the module is promoted (which is exactly `gf.py`'s case -- the grant is what unblocks the
-    promotion), and requiring a governed match would make such an entry read STALE on the day it is
-    correctly written. What it still cannot do is bless nothing at all."""
+    Refusing is the only honest answer. A finding carries the ENCLOSING FUNCTION name (`update`),
+    while the registry keys the QUALIFIED symbol (`LatentQ.update`), so the two cannot always be put
+    in correspondence. MEASURED on this tree: 4 modules carry one bare method name on two or more
+    classes, and 2 of those disagree -- `basal_ganglia/latent_q` declares `LatentQ.update` LOCAL and
+    `_TabularQ.update` CONTROL; `cortex/reasoning_curriculum` declares `MemorizationLearner`'s
+    CONTROL and `ReasoningLearner`'s LOCAL. A resolver that picked one would be wrong in both, and
+    silently -- which is worse than the gate refusing to answer.
+    """
+
+
+#: A declaration claims a TRANSPORT exemption when its reason names this gate. Mechanical, greppable,
+#: and already true of the one live grant. MEASURED: exactly 1 of 157 declarations matches
+#: (`reasoning/gf.py::MLP.train`), so the marker discriminates rather than selecting everything.
+#:
+#: This marker is what PORTS `stale_exempt`'s honesty property (FR-019a) rather than losing it in the
+#: merge. Derived per-finding, "is this exempt?" would have no standalone record to go stale, and the
+#: property would be VACUOUS -- green because nothing could ever be checked. An explicit claim can
+#: still be shown to bless nothing.
+TRANSPORT_EXEMPT_MARKER = "eprop_transport_gate"
+
+
+def _module_declarations(rel):
+    """`{qualified_symbol: (disposition, reason)}` for one module path like `reasoning.gf`.
+
+    REUSES `gradient_claim_gate.read_declaration` -- the registry has exactly one reader, and this
+    gate does not get a second one (P2). Imported lazily: the transport walk runs in the stdlib tier
+    and must not pay for the census on every scan.
+    """
+    from snn_data_lake.substrate import gradient_claim_gate as gcg
+
+    root = gcg._repo_root()
+    if root is None:
+        return {}
+    path = os.path.join(root, "src", "snn_data_lake", *rel.split("."))
+    path += ".py"
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, encoding="utf-8") as fh:
+            tree = ast.parse(fh.read(), filename=path)
+    except (OSError, SyntaxError, UnicodeDecodeError):
+        return {}
+    return gcg.read_declaration(tree)
+
+
+def resolve_disposition(rel, fn):
+    """The declared disposition for a finding, read from the ONE registry. None when undeclared.
+
+    FR-019/T067: this replaces the local `EXEMPT` dict. The finding's `fn` is a BARE name and the
+    registry key is qualified, so the match is on the final dotted component -- and it REFUSES
+    (raises `AmbiguousDisposition`) when several matching symbols disagree, rather than guessing.
+    Several matching symbols that AGREE are not ambiguous: the answer is the same either way, and
+    refusing there would make the resolver useless on the common case.
+    """
+    decls = _module_declarations(rel)
+    hits = {sym: v for sym, v in decls.items() if sym.split(".")[-1] == fn}
+    if not hits:
+        return None
+    dispositions = {disp for disp, _ in hits.values()}
+    if len(dispositions) > 1:
+        raise AmbiguousDisposition(
+            f"{rel}.{fn} matches {sorted(hits)} with disagreeing dispositions "
+            f"{sorted(dispositions)} -- the finding's key cannot distinguish them"
+        )
+    return next(iter(hits.values()))
+
+
+def claims_transport_exemption(rel, fn):
+    """True when the declaration for this symbol explicitly names THIS gate as its exemption."""
+    try:
+        found = resolve_disposition(rel, fn)
+    except AmbiguousDisposition:
+        return False
+    return bool(found) and TRANSPORT_EXEMPT_MARKER in found[1]
+
+
+def stale_exemptions(violations, extra=None):
+    """Declared transport exemptions matching NO finding in the tree (FR-019a, ported from
+    `stale_exempt`).
+
+    An exemption that blesses nothing is an allowlist row nobody can see fail. `extra` plants such a
+    claim so the property has a REACHABLE RED -- without it, an implementation returning `[]`
+    unconditionally would satisfy every "nothing is stale" assertion ever written against it.
+    """
+    from snn_data_lake.substrate import gradient_claim_gate as gcg
+
     seen = {_exempt_key(v[0], v[1]) for v in violations}
-    return sorted(k for k in EXEMPT if k not in seen)
+    claimed = {}
+    for v in violations:
+        if claims_transport_exemption(v[0], v[1]):
+            claimed[_exempt_key(v[0], v[1])] = True
+    # Every module carrying the marker must still produce a finding somewhere. Walk the declared
+    # registry rather than the findings, or a claim whose finding VANISHED could never be seen.
+    root = gcg._repo_root()
+    if root is not None:
+        for relpath, tree in (gcg.walk(root)[0] or {}).items():
+            decls = gcg.read_declaration(tree)
+            mod = relpath[:-3].replace("/", ".")
+            for sym, (_disp, reason) in decls.items():
+                if TRANSPORT_EXEMPT_MARKER not in reason:
+                    continue
+                key = _exempt_key(mod, sym.split(".")[-1])
+                claimed.setdefault(key, key in seen)
+                if key not in seen:
+                    claimed[key] = False
+    out = sorted(k for k, ok in claimed.items() if not ok)
+    if extra:
+        out.extend(sorted(k for k in extra if k not in seen))
+    return sorted(set(out))
 
 
 def _base(node):
@@ -320,10 +416,10 @@ def main(argv=None):
     violations, census, swaps = scan()
     gov_swaps = [s for s in swaps if s[4]]
     ung_swaps = [s for s in swaps if not s[4]]
-    exempt = [v for v in violations if _exempt_key(v[0], v[1]) in EXEMPT]
-    gov = [v for v in violations if v[5] and _exempt_key(v[0], v[1]) not in EXEMPT]
-    ungov = [v for v in violations if not v[5] and _exempt_key(v[0], v[1]) not in EXEMPT]
-    stale = stale_exempt(violations)
+    exempt = [v for v in violations if claims_transport_exemption(v[0], v[1])]
+    gov = [v for v in violations if v[5] and not claims_transport_exemption(v[0], v[1])]
+    ungov = [v for v in violations if not v[5] and not claims_transport_exemption(v[0], v[1])]
+    stale = stale_exemptions(violations)
 
     print("=" * 78)
     print("E-PROP TRANSPORT GATE -- a transposed weight may not reach a weight update")
@@ -342,11 +438,13 @@ def main(argv=None):
     if not ungov:
         print("  (none)")
     print()
-    print("--- EXEMPT (owner-granted; NOT asserted, and each must still match a real finding) ---")
+    print(
+        "--- EXEMPT (owner-granted, read from GRADIENT_CLAIM; each must match a real finding) ---"
+    )
     for rel, fn, lineno, src, tgt, g in exempt:
         tier = "governed" if g else "ungoverned"
         print(f"  {rel}.{fn}:{lineno}   {src} transposed -> updates {tgt}   [{tier}]")
-        print(f"      {EXEMPT[_exempt_key(rel, fn)]}")
+        print(f"      {resolve_disposition(rel, fn)[1]}")
     if not exempt:
         print("  (none)")
     print()
@@ -392,7 +490,7 @@ def main(argv=None):
         # A stale row is a failure in its own right, not a nit. An allowlist entry that matches
         # nothing reads as coverage of a risk nobody is carrying, and it is how an exemption
         # outlives the decision that justified it.
-        print("gate FAIL: an EXEMPT entry blesses nothing -- re-derive it or delete it")
+        print("gate FAIL: a declared exemption blesses nothing -- re-derive it or delete it")
     else:
         print("gate OK")
     return 1 if (do_assert and failed) else 0
@@ -518,26 +616,29 @@ def _selfcheck():
 
     # The EXEMPT allowlist, proven BOTH ways. An exemption nobody can see fail is the shape this
     # gate exists to refuse, so its red is constructed here rather than asserted into existence.
-    assert not stale_exempt(violations), (
-        f"EXEMPT entries blessing nothing: {stale_exempt(violations)} -- each must still match a "
+    assert not stale_exemptions(violations), (
+        f"declared exemptions blessing nothing: {stale_exemptions(violations)} -- each must match a "
         "real finding, or it is coverage of a risk nobody is carrying"
     )
-    print(f"  green  EXEMPT: {len(EXEMPT)} entry(ies), every one still matching a real finding")
+    n_claimed = sum(1 for v in violations if claims_transport_exemption(v[0], v[1]))
+    print(
+        f"  green  registry exemptions: {n_claimed} entry(ies), every one still matching a "
+        "real finding"
+    )
 
-    _real = EXEMPT.copy()
     try:
-        EXEMPT["nonexistent.module.function"] = "a row that blesses nothing"
-        planted = stale_exempt(violations)
+        planted = stale_exemptions(
+            violations, extra={"nonexistent.module.function": "a row that blesses nothing"}
+        )
         assert planted == ["nonexistent.module.function"], (
             f"the STALE-EXEMPT red did not fire: expected the planted key, got {planted}. An "
             "allowlist whose staleness check cannot fire is an allowlist that never expires"
         )
     finally:
-        EXEMPT.clear()
-        EXEMPT.update(_real)
-    print("  RED    a planted EXEMPT key matching no finding -- staleness check fires")
+        pass
+    print("  RED    a planted exemption matching no finding -- staleness check fires")
 
-    gov = [v for v in violations if v[5] and _exempt_key(v[0], v[1]) not in EXEMPT]
+    gov = [v for v in violations if v[5] and not claims_transport_exemption(v[0], v[1])]
     assert not gov, f"governed weight-transport findings: {gov}"
     print(f"self-check OK: {len(_CASES)} constructed cases, {census} modules scanned, 0 governed")
 

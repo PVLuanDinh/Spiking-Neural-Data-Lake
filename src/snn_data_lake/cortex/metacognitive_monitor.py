@@ -135,6 +135,20 @@ from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.substrate._mathutils import clamp01, sigmoid
 from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "MetacognitiveMonitor.learn_gate": (
+        "NOT_A_RULE",
+        "returns a learning-rate multiplier in [0,1], high when reliable and learnable. A gate other "
+        "rules consume, not a rule",
+    ),
+    "MetacognitiveMonitor.update": (
+        "NOT_A_RULE",
+        "fuses reliability signals into a spike-count reliability state. It maintains a monitor's own "
+        "state; no synapse, threshold or trace is trained",
+    ),
+}
+
 #: MERGED 2026-08-15 into `substrate/_mathutils.clamp01` (8 copies -> 1). Alias keeps the local
 #: spelling so no call site changes; the MECHANISM is singular.
 _clamp01 = clamp01

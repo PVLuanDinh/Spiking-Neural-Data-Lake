@@ -59,6 +59,15 @@ import random
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "train": (
+        "LOCAL",
+        "competitive learning with a short supervised symmetry-breaking init: the winning unit moves "
+        "toward the input. Winner-take-all is local by construction",
+    ),
+}
+
 
 class CompetitiveLearner:
     """A spiking layer trained by competitive activity maximization (FEELING; Demin & Nekhaev 2018).

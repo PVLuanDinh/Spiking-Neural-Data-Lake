@@ -20,6 +20,15 @@ import numpy as np
 
 from snn_data_lake.substrate._mathutils import dot, unit
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "OjaNeuron.learn": (
+        "LOCAL",
+        "Oja's rule: Hebbian product minus a decay proportional to the squared output, which "
+        "normalises the weight vector locally. No error is propagated from anywhere",
+    ),
+}
+
 
 class OjaNeuron:
     """Linear neuron whose weight converges to the top principal component via Oja's local rule.

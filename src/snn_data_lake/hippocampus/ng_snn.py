@@ -49,6 +49,20 @@ stdlib core never imports this.
 
 import torch
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "NGSNN.fit": (
+        "DIRECT_SOLVE",
+        "greedy matching pursuit with an analytical beta per block -- a closed-form batch solve over "
+        "the whole buffer each sleep tick. docs/POLICIES.md adjudicates it: NOT a violation, because "
+        "no gradient is propagated through a network and no weight is transported, so there is "
+        "nothing for the cosine clause to measure. It IS NON-LOCAL, and that same adjudication says "
+        "the policy should record this DISTINCTLY rather than lumping it in -- 'non-local' and "
+        "'backprop' are different claims and only the second is forbidden. LOCAL would be the "
+        "lumping-in it warns against; this value exists so the distinction survives in the census",
+    ),
+}
+
 
 # ---------------------------------------------------------------------------------------------------
 # INPUT ENCODERS -- ported 2026-08-06 from `reasoning/ng_snn/model.py`, which is DELETED (P2).

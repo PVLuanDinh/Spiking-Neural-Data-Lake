@@ -36,6 +36,15 @@ core magnitude-vs-random comparison is what must stay honest.
 import math
 import random
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "_train_epoch": (
+        "LOCAL",
+        "one online softmax delta-rule pass touching only surviving synapses. A single-layer delta "
+        "rule: the error is the output error itself, not a signal carried back across a layer",
+    ),
+}
+
 # ---- fixed hyperparameters (chosen once; not tuned per seed) ----------------
 K = 5  # classes
 D = 64  # input dimension (firing-rate vector)

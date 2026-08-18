@@ -34,6 +34,16 @@ was removed is the BOAST, not the design.
 
 import math
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "AdEx.step": (
+        "NOT_A_RULE",
+        "advances AdEx membrane dynamics one timestep. Caught by the walk because it "
+        "augmented-assigns `w` -- which here is the ADAPTATION CURRENT, not a synapse. research.md R1 "
+        "predicted this exact false positive by name",
+    ),
+}
+
 # ---- exp-argument cap: the spike upswing diverges by design; cap the exponent so forward Euler cannot
 #      raise OverflowError before the V >= V_peak cutoff fires on the same or next step (exp(30) ~ 1e13). ----
 _MAX_EXP_ARG = 30.0

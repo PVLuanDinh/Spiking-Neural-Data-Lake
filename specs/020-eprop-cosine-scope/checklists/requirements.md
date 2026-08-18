@@ -103,3 +103,46 @@ section names, where the constitution becomes "the defect".
   criterion, so some domain vocabulary (gradient, cosine, local learning rule) is irreducible. The
   WHY of each story is stated in plain language and the Success Criteria avoid jargon. Marked pass
   with that qualification recorded here rather than silently.
+
+### Validation round 4 — 2026-08-17, second `/speckit-clarify` (run POST-plan and POST-tasks)
+
+Five clarifications asked and integrated; all 16 items re-checked and all 16 still pass
+(**16/16 → 16/16, no regressions, no newly-passing items**). Requirements grew 30 → 35, success
+criteria 15 → 19.
+
+Unusual and worth stating: this round ran AFTER `/speckit-plan` and `/speckit-tasks`, not before.
+Three of the five findings were only visible because plan.md and tasks.md existed — a scope
+contradiction, a requirement cited by zero tasks, and two properties stated without a mechanism.
+
+- **Census scope was contradictory** and is now split (FR-001a): the census walks the WHOLE tree, the
+  bounds assert on the GOVERNED tier only, ungoverned is reported. FR-001 had said "the governed
+  tree" while FR-013, SC-010 and the ungoverned assumption all required otherwise. Measured stake:
+  `reasoning/` alone is ~108 modules against ~22 governed local rules.
+- **FR-010 contradicted FR-011** — a blanket "change no learning rule" against a required edit to the
+  reference gradient — and was cited by ZERO tasks. FR-011's target is now the SINGLE named
+  exception; FR-010a requires the prohibition be VERIFIED from the diff with a positive control,
+  which is the only thing separating "we did not intend to touch the safety envelope" from "we did
+  not touch it".
+- **FR-015 stated a property with no mechanism.** Staleness is now a content digest of the measured
+  inputs (FR-015), owing a reachable red (FR-015a). A commit-SHA comparison and a timestamp threshold
+  were both rejected with reasons recorded.
+- **The CI cost was unquantified** ("cannot be expensive"). FR-013a now requires it MEASURED and
+  PRINTED and explicitly NOT asserted — wall-clock on shared runners is not deterministic, and a
+  fixed second-count would be a P1 magic constant.
+- **A ratchet at its floor was indistinguishable from one that never ran.** FR-017a requires SATISFIED
+  vs GREEN reported distinctly, for both ratchets. Retiring the ratchets for an absolute `== 0` was
+  offered and DECLINED by the owner: it would redden CI on any new undeclared rule, tightening the
+  gate against unrelated work rather than describing the state honestly.
+
+Two items re-examined rather than ticked by default, both holding on round 3's recorded basis:
+*"no implementation details"* — the new FR-001a and FR-010 name `substrate/eprop_transport_gate` and
+`cortex/eprop_kernel.py::_TinyNet.eprop_grads`, but as the SCOPE of a prohibition's exception and as
+the precedent for a verdict contract, not as build prescriptions. *"success criteria are
+measurable"* — SC-004's "under one minute without reading source" remains human-timed and is still
+the weakest criterion here; it has no verifying task and is recorded as a known gap rather than
+tightened, because changing it was outside what any of the five questions asked.
+
+**Note on this file's own convention.** The skill instructs that only changed checkbox markers be
+edited, to keep diffs quiet. This round changed no marker, so strictly nothing needed writing — but
+rounds 1–3 are all recorded here, and a fourth round that left no trace would make the checklist's own
+history misleading. Recorded deliberately, and the reasoning stated so the departure is visible.

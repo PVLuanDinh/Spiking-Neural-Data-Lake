@@ -49,6 +49,23 @@ import random
 
 from snn_data_lake.substrate._mathutils import dot, unit
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "LatentQ.update": (
+        "LOCAL",
+        "semi-gradient Widrow-Hoff step on a LINEAR head: W[a][i] += lr*err*z[i]. There is no hidden "
+        "layer and therefore no backward pass at all -- this is the arm P2 weighs against mlp_q, at "
+        "a measured cost of the non-linear capability (XOR 0.467 vs 0.993)",
+    ),
+    "_TabularQ.update": (
+        "CONTROL",
+        "a tabular TD step, q[k] += lr * (target - q[k]), and the tree names its ROLE: "
+        "method_dormancy_gate records it as the self-check control, correctly dead, sitting beside "
+        "the live LatentQ.update it exists to be compared against. The mechanism owes no cosine "
+        "either way -- a table entry moves toward a target with no network in between",
+    ),
+}
+
 
 class LatentQ:
     """Shared linear action-value Q(z, a) = dot(W[a], z) + b[a] over the JEPA latent z.

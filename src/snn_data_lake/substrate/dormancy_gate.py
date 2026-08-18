@@ -351,6 +351,15 @@ EXEMPT = {
         "permanent",
         "the Policy-3 per-METHOD amendment's gate -- a CI self-check, not a tick faculty",
     ),
+    "gradient_claim_gate": (
+        "permanent",
+        "the e-prop invariant's SCOPE gate -- a CI self-check, not a tick faculty. Answers a "
+        "question none of its siblings asks: does a given learning rule OWE a gradient cosine at "
+        "all? Censuses the WHOLE package and ASSERTS on the governed tier only, reporting the "
+        "ungoverned half, which is the verdict contract eprop_transport_gate already ships. Same "
+        "disposition and the same reason as the four gates above: reachable from run_selfchecks "
+        "and CI, never from a tick",
+    ),
     "import_manifest": (
         "permanent",
         "the cross-tier canary -- a CI self-check covering the governed -> ungoverned lazy imports "

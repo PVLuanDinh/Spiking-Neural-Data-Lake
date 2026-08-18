@@ -61,6 +61,15 @@ from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.cortex.resonate_and_fire import ResonateFire
 from snn_data_lake.cortex.srm_neuron import SRMNeuron
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "_train": (
+        "NOT_A_RULE",
+        "drives ONE neuron with a current stream from rest and returns its 0/1 spike train. A "
+        "simulation of membrane dynamics; no weight exists to update. Caught purely on the name",
+    ),
+}
+
 # --- input-scale constants: the zoo presents ONE "current" in LIF units (thresholds ~1.0). Models that
 #     work in other native units (pA for AdEx, arbitrary drive for the resonator, uA/cm^2 for HH, the
 #     Izhikevich current scale) get that common current mapped into their operating range by a fixed

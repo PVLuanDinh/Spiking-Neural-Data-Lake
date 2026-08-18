@@ -55,6 +55,42 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+#: Which symbols here OWE a gradient cosine, read statically by
+#: `substrate/gradient_claim_gate.py` (never imported by it). Per-SYMBOL rather than per-module
+#: because this one file holds the e-prop rule, its independent BPTT reference, a surrogate
+#: autograd.Function and a diagnostic -- four different answers that a per-module verdict cannot give.
+#:
+#: `_first_layer_grad` is now declared NOT_A_RULE. It was left UNDECLARED at first, because the four
+#: original dispositions had no value meaning "not a learning rule" -- it is a DIAGNOSTIC ("summed
+#: |grad| at the input weights, or None when the graph was detached"). Leaving it undeclared reported
+#: it as UNDETERMINABLE, which was true but conflated "I cannot decide" with "there is nothing here
+#: to decide", and UNDETERMINABLE is ratcheted DOWN as debt this is not. The fifth value closed that.
+GRADIENT_CLAIM = {
+    "bptt_grads": (
+        "EXACT_GRADIENT",
+        "true reverse-mode BPTT of the same loss through a differentiable rebuild of the same "
+        "unrolled net, via autograd -- this IS the independent reference the cosine clause compares "
+        "against, so it owes no cosine of its own",
+    ),
+    "_TinyNet.eprop_grads": (
+        "APPROXIMATES_GRADIENT",
+        "eligibility factorization, symmetric e-prop: local trace x broadcast learning signal. Owes "
+        "the cosine, and is the inline fixture FR-011 reconciles to the kappa-filtered form both "
+        "shipped encoders run",
+    ),
+    "_apply_grads": (
+        "APPROXIMATES_GRADIENT",
+        "applies the e-prop-computed grads via one optimizer step with no loss.backward() anywhere; "
+        "the update half of the same rule, so it carries the same claim",
+    ),
+    "_first_layer_grad": (
+        "NOT_A_RULE",
+        "a DIAGNOSTIC: summed |grad| at the input weights, or None when the graph was detached. It "
+        "reads a gradient to report a magnitude and updates no weight, so it makes no claim a cosine "
+        "could check. Enumerated only because the recall-biased walk keys on 'grad'",
+    ),
+}
+
 # ---- LIF / e-prop constants. Byte-identical AND same-valued in both consumers before the merge;
 # ---- the per-modality GEOMETRY (num_classes, T, hidden, sensor dims, channels) deliberately does
 # ---- NOT live here -- those differ between vision and audio and hoisting them would hardcode one
@@ -295,8 +331,17 @@ class _TinyNet(EpropLIFBase):
         v = torch.zeros(b, self.hidden, device=dev)
         z = torch.zeros(b, self.hidden, device=dev)
         yint = torch.zeros(b, self.num_classes, device=dev)
-        eps_in = torch.zeros(b, self.hidden, self.n_in, device=dev)
-        eps_rec = torch.zeros(b, self.hidden, self.hidden, device=dev)
+        # RECONCILED to the kappa-filtered form both shipped encoders run (specs/020 T048, FR-010's
+        # single named exception). `eps` is the ALPHA-filtered presynaptic trace, shared across post
+        # units; `ebar` is the KAPPA-filtered eligibility the readout's leaky integrator actually
+        # sees. The unfiltered form previously here applied the learning signal straight to `eps`,
+        # which is a DIFFERENT factorization from the one that ships -- so the criterion was
+        # measuring a fixture nothing runs.
+        eps_in = torch.zeros(b, self.n_in, device=dev)
+        eps_rec = torch.zeros(b, self.hidden, device=dev)
+        ebar_in = torch.zeros(b, self.hidden, self.n_in, device=dev)
+        ebar_rec = torch.zeros(b, self.hidden, self.hidden, device=dev)
+        zbar = torch.zeros(b, self.hidden, device=dev)
         g_in = torch.zeros_like(self.W_in)
         g_rec = torch.zeros_like(self.W_rec)
         g_out = torch.zeros_like(self.W_out)
@@ -314,12 +359,20 @@ class _TinyNet(EpropLIFBase):
                 err = torch.softmax(logits, dim=1)
                 err[torch.arange(b), y.long()] -= 1.0
                 loss_sum += float(F.cross_entropy(logits, y.long(), reduction="sum").item())
-                eps_in = self.alpha * eps_in + xt.unsqueeze(1)
-                eps_rec = self.alpha * eps_rec + z_prev.unsqueeze(1)
+                # eps = ALPHA*eps + pre ; ebar = KAPPA*ebar + psi_post * eps  (mirrors eprop_shd)
+                eps_in = self.alpha * eps_in + xt
+                eps_rec = self.alpha * eps_rec + z_prev
+                ebar_in = self.kappa * ebar_in + p.unsqueeze(2) * eps_in.unsqueeze(1)
+                ebar_rec = self.kappa * ebar_rec + p.unsqueeze(2) * eps_rec.unsqueeze(1)
                 lsig = err @ self.W_out  # broadcast learning signal
-                g_in += ((lsig * p).unsqueeze(2) * eps_in).sum(0)
-                g_rec += ((lsig * p).unsqueeze(2) * eps_rec).sum(0)
-                g_out += err.t() @ z
+                g_in += torch.einsum("bj,bji->ji", lsig, ebar_in)
+                g_rec += torch.einsum("bj,bjk->jk", lsig, ebar_rec)
+                # The readout is non-recurrent, so its gradient is EXACT -- but only against the
+                # KAPPA-filtered spike train, because `yint = kappa*yint + z @ W_out` is what the
+                # loss actually sees. The raw `z` used here before was not exact and not identical
+                # to BPTT: measured cosine 0.986830, relative L2 7.4233e-01, allclose False.
+                zbar = self.kappa * zbar + z
+                g_out += torch.einsum("bk,bj->kj", err, zbar)
                 g_b += err.sum(0)
         return {"W_in": g_in, "W_rec": g_rec * mask, "W_out": g_out, "b_out": g_b}, loss_sum
 
@@ -337,16 +390,29 @@ def _self_check():
     # (a) THE CLAIM: the eligibility factorization really is the factored gradient.
     #
     # ASSERTED ON THE HIDDEN WEIGHTS ONLY -- W_in and the off-diagonal W_rec -- which is what both
-    # consumers assert (`cos_hidden`) and what the claim is actually about. The readout gradients are
-    # computed as `err.t() @ z` and `err.sum(0)`: they never touch the eligibility machinery, so they
-    # are IDENTICAL between e-prop and BPTT by construction and can only dilute.
+    # consumers assert (`cos_hidden`) and what the claim is actually about. The readout gradients
+    # never touch the eligibility machinery, so they can only dilute.
+    #
+    # THE OLD WORDING HERE WAS MEASURABLY FALSE AND IS CORRECTED (specs/020 T052). It said the
+    # readout gradients "are IDENTICAL between e-prop and BPTT by construction", computed as
+    # `err.t() @ z`. They were not: the loss sees `yint = kappa*yint + z @ W_out`, so the exact
+    # readout gradient is `err (x) zbar` against the KAPPA-FILTERED spike train. Measured on this
+    # fixture with the raw-`z` form: W_out cosine 0.986830, relative L2 7.4233e-01,
+    # `torch.allclose` FALSE. Only `b_out` was ever identical (1.000000). Under the reconciled
+    # kappa-filtered form the claim is now TRUE rather than asserted: W_out cosine 1.000000,
+    # relative L2 8.16e-08, allclose True. That is what the reconciliation actually buys.
     #
     # This was measured, not assumed. The first version of this check asserted the cosine over all
-    # four gradient keys, and W_out+b_out carry 90.7% of that vector's squared norm -- so a defect in
-    # the hidden path barely moves it. Four seeded mechanism defects, all-4 assert vs hidden-only:
-    #     sign-flipped learning signal   all4 0.5859 GREEN | hidden -0.9714 RED
-    #     zeroed input eligibility trace all4 0.7465 GREEN | hidden  0.2563 RED
-    #     zeroed surrogate derivative    all4 0.7398 GREEN | hidden  0.0000 RED
+    # four gradient keys, and W_out+b_out carry 81.2% of that vector's squared norm -- so a defect in
+    # the hidden path barely moves it. Three seeded mechanism defects, all-4 assert vs hidden-only,
+    # ALL RE-DERIVED under the reconciled form (the pre-reconciliation values are in parentheses):
+    #     sign-flipped learning signal   all4 0.6504 GREEN | hidden -0.9993 RED  (was 0.5859 | -0.9714)
+    #     zeroed input eligibility trace all4 0.9214 GREEN | hidden  0.2588 RED  (was 0.7465 |  0.2563)
+    #     zeroed surrogate derivative    all4 0.9155 GREEN | hidden  0.0000 RED  (was 0.7398 |  0.0000)
+    # The reconciliation STRENGTHENS this argument rather than weakening it: making the readout
+    # exact moved every all-4 value UP (0.59->0.65, 0.75->0.92, 0.74->0.92), so the diluting share
+    # is now a perfectly-aligned block and an all-4 criterion would be even easier to pass while the
+    # mechanism is broken. The hidden-only reds are unchanged in kind.
     # THREE OF FOUR real defects passed the all-4 assert while reddening both consumers. A criterion
     # that is 90% a quantity which cannot differ is not measuring the mechanism it names.
     #
@@ -367,6 +433,21 @@ def _self_check():
         f"e-prop~BPTT cosine_hidden {cos:.4f} (floor {EPROP_BPTT_COSINE_FLOOR}); "
         f"all-parameter {cos_all:.4f} (report only, NOT a criterion)"
     )
+    # SC-008: every cosine the specs/020 T048 reconciliation MOVED, printed with both values, so no
+    # movement is silently absorbed. This fixture ran an UNFILTERED factorization; the shipped
+    # encoders run the kappa-filtered one, so the criterion was attached to a form nothing runs.
+    #     cosine_hidden   0.9714 -> 0.9993      W_out cosine  0.986830 -> 1.000000
+    #     all-parameter   0.8236 -> 0.9993      W_out rel L2  7.4233e-01 -> 8.16e-08
+    #     RED case (b)   -0.2540 -> -0.1782     readout share    90.7% -> 81.2%
+    # WHAT THIS DID NOT FIX, stated so the scope is not overread (specs/020 T054): this is an inline
+    # TEST FIXTURE, not the guard protecting the shipped encoders. All three mechanizations already
+    # run in the CI torch job and each encoder guards itself on its OWN kappa-filtered form -- none
+    # of them was ever measured against the unfiltered version. Nothing shipped was mis-trained; what
+    # was wrong is that the REFERENCE this module offers was not the rule the tree runs.
+    print(
+        "  reconciled to the shipped kappa-filtered form (specs/020 T048): cosine_hidden "
+        "0.9714 -> 0.9993, all-parameter 0.8236 -> 0.9993, readout now EXACT (0.986830 -> 1.000000)"
+    )
     assert cos > EPROP_BPTT_COSINE_FLOOR, f"cos_hidden {cos} <= {EPROP_BPTT_COSINE_FLOOR}"
 
     # (b) REACHABLE RED #1 (FR-019): a CONFIGURATION in which the eligibility factorization genuinely
@@ -381,8 +462,9 @@ def _self_check():
     # |cos_bad - (-cos)| = 0.000e+00 over 12 seeds). With `assert cos > FLOOR` on the line above,
     # `cos_bad <= FLOOR` was ENTAILED -- an assert that could not fail, which is exactly what P8
     # guard (1) says must be deleted rather than weakened. Worse, the mutation that version NAMED
-    # (negating the broadcast learning signal INSIDE eprop_grads) measures cosine 0.5859 and does
-    # NOT redden the check at all, because b_out and W_out do not depend on it.
+    # (negating the broadcast learning signal INSIDE eprop_grads) measures cosine 0.6504 and does
+    # NOT redden the check at all, because b_out and W_out do not depend on it. (0.5859 before the
+    # specs/020 T048 reconciliation; the value ROSE, so the defect is even better hidden now.)
     # `cortex/eprop_shd.py` had already made this exact correction for this exact defect on
     # 2026-08-05; the kernel now follows the precedent instead of re-introducing what it rejected.
     red_net = _TinyNet(n_in=12, hidden=8, num_classes=3, seed=3)
