@@ -469,9 +469,14 @@ measured separation was, without reading code.
   census MUST be byte-identical before and after the swap. Note the keying hazard -- `_exempt_key`
   builds its key from the ENCLOSING FUNCTION name (`reasoning.gf.train`, a bare `train`) while the
   registry is keyed per QUALIFIED symbol (`MLP.train`); a naive match silently misses.
-- **FR-017**: The CI half MUST assert the count of declaration/inference disagreements **in the
-  GOVERNED tier** (FR-001a) as a RATCHET -- it may fall, it MUST NOT rise. The ungoverned count is
-  reported alongside it and gates nothing.
+- **FR-017**: ~~The CI half MUST assert the count of declaration/inference disagreements **in
+  the GOVERNED tier** (FR-001a) as a RATCHET~~ **NOT IMPLEMENTED AS WRITTEN — superseded by the
+  SC-012 adjudication (census-baseline.md), recorded 2026-08-18 after an adversarial review
+  found the spec and tree silently divergent.** The shipped gate ratchets MISSING_DECLARATION
+  and UNDETERMINABLE instead. Reason: disagreement is the DESIGNED state for every correctly
+  declared local rule (72 of the 97 — `infer()` can only answer CLAIM or UNKNOWN), so ratcheting
+  it would red the build on each new correctly-declared rule while measuring nothing. The
+  census stores both signals per rule; no disagreement report is emitted.
 - **FR-017a**: **Every ratchet MUST report which of two distinct states it is in** (clarified
   2026-08-17), and this applies to BOTH ratchets -- disagreements (FR-017) and `UNDETERMINABLE`
   (FR-016a):

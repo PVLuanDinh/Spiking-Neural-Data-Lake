@@ -311,13 +311,13 @@ amendment in `docs/POLICIES.md`, with the measurement or worked case that motiva
 
 Enforcement surface, stated plainly because it is easy to assume a gate exists:
 
+<!-- Every row below is a SUMMARY that can lag; docs/POLICIES.md is authoritative for each
+     (this file's own header: where the two disagree, this file is the defect). Only the
+     e-prop row has been converted to a pure pointer so far. -->
 | principle | mechanized in CI | review-enforced |
 |---|---|---|
 | P0, P1, P2, P5 | — | yes |
 | P3 | `dormancy_gate.py`, `method_dormancy_gate.py`, `import_manifest.py` | the charge tier |
-<!-- Every row below is a SUMMARY that can lag; docs/POLICIES.md is authoritative for each
-     (this file's own header: where the two disagree, this file is the defect). Only the
-     e-prop row has been converted to a pure pointer so far. -->
 | P4 / P4b | `replication_guard.py` (P4 only; **P4b is NOT mechanized**) | P4b |
 | P6 | **HALF** — `tools/p6_gate.py` (topology; manual, NON-asserting, not in CI) | yes, PROVISIONAL; connectome-diff half unbuilt |
 | P7, P8 | — | yes, **both PROVISIONAL, gates specified but NOT built** |
