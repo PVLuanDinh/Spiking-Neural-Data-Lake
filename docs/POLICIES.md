@@ -1600,6 +1600,39 @@ The instrument half of the claim stands; the line does not.)*
   tick. Neither uses autograd; both are non-local. Absence of `.backward()` is not evidence of
   locality — **that argument is unchanged and the tripwire is still not built.**
 
+  **SCOPE — a PIVOT rule, not a census of every rule (amended 2026-08-18, specs/020).** This clause
+  governs work that was about to use backprop. It is NOT a requirement that every learning rule
+  carry a gradient cosine. MEASURED by `substrate/gradient_claim_gate.py`: of **97** real governed
+  learning rules, **17 owe a cosine and 79 do not** — 72 local, 5 controls, 2 direct solves. Read as
+  a blanket rule it would demand a gradient comparison from four rules in five that have no gradient
+  to compare against. Re-derive with the gate; do not quote these counts.
+
+  A rule that CANNOT pass the criterion by construction has falsified the **instrument**, not
+  itself. `basal_ganglia/mlp_q.py`'s frozen feedback-alignment arm is the worked case: it misses the
+  bar on every draw while the shipped Kolen-Pollack path clears it. The verdict there is
+  INSTRUMENT_FALSIFIED and the rule is left **UNJUDGED** — never condemned.
+
+  **Which autograd trainers are in scope: LIVE-PATH REACHABILITY.** An autograd trainer is inside
+  this clause when a `_LIVE_ROOT` or `_ENTRYPOINT` reaches it; train-tier offline code nothing live
+  reaches is permitted. **This is a standing condition, not a one-time grant.** The day a wiring
+  change puts such a trainer on a live path it enters scope and owes the cosine — and **nothing in
+  the tree announces that flip today**, so the two genuine copies
+  (`hippocampus/developmental_loop_brain::_LinearReadout.train_step`,
+  `reasoning/_loop_common::LinearReadout.train_step`) are declared APPROXIMATES_GRADIENT:
+  over-flagged deliberately, because Standing Invariant 3 makes the confident negative the dangerous
+  verdict.
+
+  **Provenance of `0.5`, recorded rather than moved.** The null is a **within-matrix permutation** of
+  the candidate gradient, cosined against the unchanged reference. On the stdlib anchor
+  (`reasoning/eprop.py::Net.grad_eprop` vs `::Net.grad_bptt`) the aligned cosine is **+0.9481** and
+  `0.5` sits **+3.06 sd** above the null with **P(null > 0.5) = 0.0000** — inside the separating
+  region. P1 case (a): a fixed point on a normalized dimensionless output. **Two disclosures the
+  number does not survive without.** Against a *shuffled-label* null the reference scores **+0.6500
+  and clears the bar on every draw**, so which null is chosen decides whether `0.5` discriminates at
+  all. And the permutation is a null only for a near-zero-mean gradient: above a coherence of
+  `sqrt(bar)` it sits ABOVE the bar and the separation statistic INVERTS, which is why the
+  instrument refuses rather than reports there. **The bar is UNCHANGED by this amendment.**
+
   **What IS built, 2026-08-15: `substrate/eprop_transport_gate.py` (CORE), which gates the
   TRANSPORT rather than the autograd call.** This row read *"It is NOT mechanized"* until then, and
   that half is now false while the tripwire half above is not — they were one sentence and are

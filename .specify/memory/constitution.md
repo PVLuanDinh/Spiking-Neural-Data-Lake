@@ -274,6 +274,12 @@ PROVISIONAL and review-enforced: its gate is specified but not built.
    authorizes a dependency or an invented method inside it.
 8. **E-prop, not backprop.** Any backprop consideration pivots to e-prop, verified cosine > 0.5
    against an independent BPTT gradient. Absence of `.backward()` is NOT evidence of locality.
+   **SCOPE (amended 2026-08-18, specs/020):** this is a PIVOT rule governing work that was about to
+   use backprop — NOT a requirement on every learning rule. Measured, **79 of 97** governed learning
+   rules owe no cosine. A rule that cannot pass the criterion by construction has falsified the
+   INSTRUMENT and is left UNJUDGED, never condemned. An autograd trainer is in scope when a live
+   path reaches it, and enters scope if that reachability ever changes. `docs/POLICIES.md` is the
+   authority and carries the bar's provenance; the value of the bar is unchanged.
 
 ## Development Workflow and Quality Gates
 
