@@ -15,7 +15,7 @@
         0.19858014604013965
       ],
       "p_null_exceeds_bar": 0.0,
-      "qualname": "probe::ok",
+      "qualname": "reasoning/eprop.py::Net.grad_eprop",
       "reason": "",
       "verdict": "RULE_JUDGED"
     }

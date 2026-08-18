@@ -171,7 +171,7 @@ def test_the_gate_imports_no_rule_module_in_any_mode():
     )
 
 
-def test_exit_two_is_reachable_and_is_not_returned_unconditionally():
+def test_exit_two_is_reachable_and_is_not_returned_unconditionally(monkeypatch):
     """FR-005 / T044. An exit code nothing can produce carries no information.
 
     Exit 2 means NOT-ELIGIBLE: nothing could be measured here. The construction is a fixture whose
@@ -180,6 +180,12 @@ def test_exit_two_is_reachable_and_is_not_returned_unconditionally():
     `_measure()` that returned 2 unconditionally cannot pass.
     """
     saved = gate._FIXTURES
+    # `_measure()` WRITES the tracked FR-015 artifact as a side effect, so a test driving it with
+    # planted fixtures silently republishes `tools/gradient_claim_measure.json` full of probe names.
+    # Not hypothetical -- it is how `"qualname": "probe::ok"` reached a commit. The writer is
+    # neutered here because this test is about EXIT CODES; the artifact has its own test below.
+    written = []
+    monkeypatch.setattr(gate, "_write_measure_artifact", lambda *a, **k: written.append(a) or None)
     try:
         gate._FIXTURES = {"probe::cannot_import": ("import zz_no_such_module_zz", "n/a")}
         assert gate._measure() == 2, "an unimportable fixture must be NOT-ELIGIBLE"
@@ -187,6 +193,7 @@ def test_exit_two_is_reachable_and_is_not_returned_unconditionally():
         assert gate._measure() == 0, "a working fixture must exit 0 through the same path"
     finally:
         gate._FIXTURES = saved
+    assert written, "the writer was never called -- the neuter above is guarding nothing"
 
 
 def test_the_measurement_is_reproducible_on_an_unchanged_tree():
@@ -442,3 +449,29 @@ def test_update_baseline_refuses_to_lower_the_liveness_floor_silently(
     # not about the floor moving. Without this, a writer that refused everything would pass above.
     assert gate.main(["--update-baseline", "--bootstrap", "walk deliberately narrowed"]) == 0
     assert target.exists(), "the bootstrapped write did not happen"
+
+
+def test_the_recorded_artifact_describes_the_REAL_fixtures_not_a_test_probe():
+    """The artifact is TRACKED, and `_measure()` writes it. A test that drives `_measure()` with
+    planted fixtures therefore republishes it -- which happened: `probe::ok` reached a commit.
+
+    This is the guard. Reachable red: run the exit-2 test without neutering the writer and the
+    artifact fills with `probe::` names, which this refuses.
+    """
+    import json as _json
+    import os as _os
+
+    root = gate._repo_root()
+    if root is None:
+        return
+    path = _os.path.join(root, gate.MEASURE_ARTIFACT)
+    if not _os.path.exists(path):
+        return
+    payload = _json.load(open(path, encoding="utf-8-sig"))
+    names = [r["qualname"] for r in payload["results"]]
+    assert names, "the artifact records no results at all"
+    unknown = [n for n in names if n not in gate._FIXTURES]
+    assert not unknown, (
+        f"the recorded artifact names symbols that are not registered fixtures: {unknown}. "
+        "A test almost certainly wrote it -- regenerate with `--measure`."
+    )
