@@ -1598,7 +1598,8 @@ The instrument half of the claim stands; the line does not.)*
 - **E-prop, not backprop (review-enforced; PARTIALLY mechanized since 2026-08-15).** Any backprop consideration pivots to **e-prop**
   (Bellec 2020) — a local eligibility trace times a broadcast learning signal; no BPTT, no weight
   transport — verified **cosine > 0.5** against an independent reverse-mode BPTT gradient. Verification
-  anchor: `reasoning/eprop.py::Net.grad_eprop`, with the independent reverse-mode gradient at
+  anchor: `reasoning/eprop.py::Net.grad_eprop`, with the STDLIB tier's independent
+  reverse-mode gradient at
   `::Net.grad_bptt` (cited by SYMBOL: the line cites here had rotted onto the CANDIDATE).
   This rule governed the project before it was written down (it is why v3.79 pivoted all learning to
   e-prop on measured evidence: 73.14% vs the repo's backprop SSM at ~32%), which was the gap — a rule
@@ -1614,16 +1615,17 @@ The instrument half of the claim stands; the line does not.)*
   governs work that was about to use backprop. It is NOT a requirement that every learning rule
   carry a gradient cosine. MEASURED by `substrate/gradient_claim_gate.py`, which prints GOVERNED 149 of which 52 are
   NOT-A-RULE (enumeration imprecision), leaving **97** real governed learning rules: **17 owe a cosine and 80 do not** — 72 local, 5 controls, 2 direct solves, and 1
-  REFERENCE (`cortex/eprop_kernel.py::bptt_grads`, the independent gradient the others are compared
-  *against*, so it owes none of its own — but `EXACT_GRADIENT` is SELF-DECLARED, so the
-  exemption holds only while the symbol RETURNS a gradient for comparison and never steps an
-  optimizer; `tests/test_eprop_train_tier_unreachable.py::_trains_by_backprop` draws that line). Read as a blanket rule the clause would demand a gradient
-  comparison from four rules in five that have no gradient to compare against. **Re-derive with the
-  gate before relying on any of these figures**; the copy in `specs/020` rots, and this one is
-  authoritative (constitution SI 8 deliberately restates none of them). **Scope
+  REFERENCE (`cortex/eprop_kernel.py::bptt_grads`, the TORCH tier's independent gradient the
+  others are compared *against*, owing none of its own — but `EXACT_GRADIENT` is SELF-DECLARED:
+  the exemption holds only while the symbol RETURNS a gradient and never steps an optimizer;
+  `tests/test_eprop_train_tier_unreachable.py::_trains_by_backprop` draws that line). Read as a blanket rule the clause would demand a gradient
+  comparison from four rules in five that have no gradient to compare against. **Re-derive with the gate
+  before relying on these figures**; the `specs/020` copy rots, this one is authoritative
+  (constitution SI 8 restates none). **Scope
   classification rests on SELF-DECLARED `GRADIENT_CLAIM` entries**: a false declaration is
-  caught only by the census's declared-vs-inferred disagreement report and by review — no
-  gate verifies a declaration against what the code does.
+  caught only by REVIEW — the census stores declaration and inference per rule but emits no
+  disagreement report (one-time enumeration: census-baseline.md SC-012), and no gate verifies
+  a declaration against the code.
 
   **INSTRUMENT_FALSIFIED is triggered by HIGH COHERENCE invalidating the null — NEVER by a rule
   scoring below the bar.** `verdict_for` keys it solely on the coherence PRODUCT `c_a * c_b`
@@ -1640,33 +1642,33 @@ The instrument half of the claim stands; the line does not.)*
   asserts only on `dormancy_gate.BRAIN_MODULES` and REPORTS `reasoning/`/`training/` — so an
   in-scope trainer there has REVIEW as its only enforcement; neither gate can fail on it.
 
-  **This said the OPPOSITE until 2026-08-18**; refutation in
-  `specs/020-eprop-cosine-scope/census-baseline.md`.
+  **This said the OPPOSITE until 2026-08-18** (refutation: census-baseline.md).
 
   **Which autograd trainers are in scope: LIVE-PATH REACHABILITY.** A trainer is inside this clause
   when the UNMASKED transitive closure of `dormancy_gate._LIVE_ROOTS + _ENTRYPOINTS +
   _external_roots()` reaches its module — the transitive closure FROM
-  `dormancy_gate::reachable`'s seed set, computed WITHOUT its `& BRAIN_MODULES` mask (`_external_roots()` covers repo-root scripts and `integrations/`,
-  where `substrate.learn_daemon` enters). **There is NO train-tier exemption**: `snn_data_lake.training.cli` is itself an
-  `_ENTRYPOINT` (measured 2026-08-18), so the `training/` tier is REACHED and IN SCOPE. An earlier
-  wording here granted that tier a blanket permission and was false when written.
+  `dormancy_gate::reachable`'s seed set, computed WITHOUT its mask (`_external_roots()` covers
+  repo-root scripts and `integrations/`, where `substrate.learn_daemon` enters). **There is NO train-tier exemption**: `snn_data_lake.training.cli` is itself an
+  `_ENTRYPOINT` (measured 2026-08-18), so the `training/` tier is REACHED and IN SCOPE. An earlier blanket
+  permission here was false when written. (This is the COSINE clause's reach — distinct from
+  the transport gate's per-symbol exemption bucket, which shares the word.)
 
   **`dormancy_gate.reachable()` CANNOT be used to decide this** — it ends `return seen &
   BRAIN_MODULES`, masking to the governed tier, so it is structurally silent about `reasoning/` and
-  `training/`, which is where most autograd trainers live. Until an unmasked predicate exists, scope
-  here is a REVIEW JUDGMENT against the closure above, not a value any gate computes. "Live
+  `training/`, which is where most autograd trainers live. Until an unmasked predicate exists, scope here is a REVIEW
+  JUDGMENT against the closure above — no gate computes it. "Live
   path" in THIS paragraph means that entrypoint closure — strictly WIDER than "on the live
   tick" as the site verdicts below use it; no site verdict is reopened by the wider reading.
 
-  **Reachability is a RATCHET**: becoming reachable puts a trainer IN scope; becoming unreachable
-  does NOT take it out without a fresh adjudication recorded here — exiting is the unreviewed
-  direction, so the ratchet lives in this file.
+  **Reachability is a RATCHET**: reachable puts a trainer IN scope; unreachable does NOT take it
+  out without a fresh adjudication here — exiting is the unreviewed direction.
 
   **OPEN HOLE.** On the GOVERNED tier a flip IS detected for the HAZARD SHAPE
   `tests/test_eprop_train_tier_unreachable.py` keys on — `.backward()` plus optimizer `.step()`
   in ONE function — reds when such a trainer becomes reachable (`reachable()` 199 -> 207 there);
   a trainer split across functions is outside that
-  detector's shape. On the UNGOVERNED tiers — `reasoning/`,
+  detector's shape. Closure lane: an unmasked predicate in `dormancy_gate` plus a wider hazard
+  shape in that test — neither exists yet. On the UNGOVERNED tiers — `reasoning/`,
   `training/`, where most autograd trainers live — **nothing detects a flip**: a wiring edit can
   move a trainer into scope with no gate, test or report firing. Blast radius: every ungoverned
   symbol declared on reachability grounds; the over-flagging (Standing Invariant 3) is a
@@ -1780,8 +1782,8 @@ The instrument half of the claim stands; the line does not.)*
     alignment clears both of the module's shipped gates on all 8 draws and *gains* 1.0 point on the
     linear rule, but its hidden-gradient cosine sweeps to **[-0.4366, +0.1844] with |cos| > 0.5 in 0
     of 8** — so swapping trades one failed clause of this invariant for another, which is not a fix.
-    (**Interval corrected 2026-08-18** — drift record in census-baseline.md. The PROPERTY, 0 of 8
-    clearing the bar, is what the argument rests on; the test asserts it and pins no interval.) The
+    (**Interval corrected 2026-08-18**; census-baseline.md. The PROPERTY — 0 of 8 clear — is what
+    the argument rests on; the test asserts it, pins no interval.) The
     two honest resolutions the module states: **(a)** accept FA and amend what "cosine > 0.5" means
     for a non-gradient *alignment* rule, or **(b)** retire the head under P2 for the linear `LatentQ`,
     which has no hidden layer and therefore no backward pass at all — at a measured cost of the
@@ -1878,9 +1880,8 @@ The instrument half of the claim stands; the line does not.)*
     thing it catches.
 
   - **ADJUDICATED 2026-08-15, at the owner's instruction: `reasoning/gf.py::MLP.train` performs
-    weight transport, and is NOT a violation of this invariant — it is a CONTROL.** For where this finding
-    surfaces in `substrate/eprop_transport_gate.py`'s output, RE-RUN THE GATE — this file stops
-    restating instrument tallies, which rotted here twice.
+    weight transport, and is NOT a violation of this invariant — it is a CONTROL.** For where this finding surfaces
+    in the gate's output, RE-RUN IT — restated tallies rotted here twice.
 
     **The transport is real, not arguable.** `gh = (g @ self.w2.T) * (1 - h**2)` carries error
     through the transposed forward read-out into `gw1 = xb.T @ gh`, then `self.w1 -= lr * gw1`, so
@@ -1924,18 +1925,17 @@ The instrument half of the claim stands; the line does not.)*
     `eprop_transport_gate` asserts on the GOVERNED tier, so promoting `gf.py` — backlog row 40 calls
     it the "pure leaf" that moves FIRST — would have converted this report into a governed RED.
     The exemption carries the verdict above as its reason and — since specs/020 Phase 7 retired
-    the gate's `EXEMPT` dict — lives in `reasoning/gf.py::GRADIENT_CLAIM["MLP.train"]`, read by
-    the gate through the registry, so the ARC promotion cluster is unblocked. **Adding it NARROWED what a mechanized
+    the gate's `EXEMPT` dict — lives in `reasoning/gf.py::GRADIENT_CLAIM["MLP.train"]`, read
+    through the registry, so the ARC promotion cluster is unblocked. **Disclosed: this DECENTRALIZES the
+    channel** — a module can self-grant by naming the gate in its declaration's reason.
+    `stale_exemptions` catches a grant blessing nothing; one blessing a REAL finding is caught
+    only by review. The owner grant remains the rule, mechanized only as the marker. **Adding it NARROWED what a mechanized
     gate asserts, which is why it required the owner and not an adjudication.**
 
-    It follows `dormancy_gate.EXEMPT`'s pattern including the half that makes an allowlist honest:
-    **every entry is asserted to still match a REAL finding**, so a row that blesses nothing fails
-    the gate loudly instead of reading as coverage. Matched against ALL findings rather than governed
-    ones, deliberately — this grant PRECEDES the promotion it unblocks, and a governed-only match
-    would read STALE on the day it was correctly written. **Both directions were proven by making
-    them fire, not asserted into existence:** `main(["--assert"])` returns **0** with the real
-    allowlist and **1** with a planted key matching nothing, printing `gate FAIL: an EXEMPT entry
-    blesses nothing`. The bar for a future entry is stated at the site: a CONTROL is the instrument
+    Staleness is asserted BOTH ways, matched against ALL findings — the grant PRECEDES the
+    promotion it unblocks, so a governed-only match would read STALE the day it was correctly
+    written — and both directions were PROVEN by making them fire: a planted exemption matching
+    nothing reds the gate (re-run it for the exact wording; a verbatim quote rotted here once). The bar for a future entry is stated at the site: a CONTROL is the instrument
     this invariant's own verification clause requires; **a faculty is not, however far off the tick
     it sits** — `mlp_q` was one constructor argument from the live tick and its transport was
     RETIRED, not exempted.
