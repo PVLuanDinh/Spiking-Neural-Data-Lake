@@ -1724,8 +1724,13 @@ The instrument half of the claim stands; the line does not.)*
     it executes on every gate run via self-check 19, so it is latent rather than absent. **The
     measurements already exist** (the module docstring's "MEASURED, so the fix is a decision rather than a guess" block). `main()` RE-DERIVES the transport and LatentQ columns and the cosine sweep on every gate run; the FEEDBACK-ALIGNMENT ACCURACY row is NOT re-derived -- that twin is a SCRATCH benchmark the module deliberately does not ship, and says so in the same block: feedback
     alignment clears both of the module's shipped gates on all 8 draws and *gains* 1.0 point on the
-    linear rule, but its hidden-gradient cosine sweeps to **[-0.472, +0.279] with |cos| > 0.5 in 0 of
-    8** — so swapping trades one failed clause of this invariant for another, which is not a fix. The
+    linear rule, but its hidden-gradient cosine sweeps to **[-0.4366, +0.1844] with |cos| > 0.5 in 0
+    of 8** — so swapping trades one failed clause of this invariant for another, which is not a fix.
+    (**Interval corrected 2026-08-18.** This read `[-0.472, +0.279]` — the figure from
+    `specs/015/evidence/baseline-mlpq.txt`, which the module no longer produces. What is STABLE, and
+    what the argument above actually rests on, is the PROPERTY: 0 of 8 draws clear the bar while the
+    shipped path does. `tests/test_gradient_claim_measure.py` therefore asserts that property and
+    deliberately pins no interval, so this cannot rot a third time.) The
     two honest resolutions the module states: **(a)** accept FA and amend what "cosine > 0.5" means
     for a non-gradient *alignment* rule, or **(b)** retire the head under P2 for the linear `LatentQ`,
     which has no hidden layer and therefore no backward pass at all — at a measured cost of the
