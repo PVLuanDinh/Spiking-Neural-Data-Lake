@@ -72,7 +72,14 @@ BUDGETS = {
     # ~200 were condensed away and the trainer enumeration RELOCATED to the spec record first;
     # the remainder is operative rule text, and deleting it to fit would trade correctness for
     # word count -- the trade this ceiling exists to prevent, not to force.
-    "docs/POLICIES.md": 29500,  # 27,710 measured -- the document that actually binds
+    # RAISED A THIRD TIME 29500 -> 29750 on 2026-08-18 (fourth adversarial round, 20 findings,
+    # 4 BLOCKERs -- among them: a test DOES detect governed-tier reachability flips, the 22 was
+    # 21, limit (c) had rotted, and the constitution restated its way into two contradictions).
+    # THREE raises in one day means this ceiling is not ratcheting for POLICIES.md; the standing
+    # remedy, recorded here so it is not lost: the e-prop invariant block now carries FOUR
+    # generations of amendment text and owes a CONSOLIDATION pass -- one statement per rule,
+    # correction narratives moved to the spec record -- after which this ceiling comes back DOWN.
+    "docs/POLICIES.md": 29750,  # 27,710 measured -- the document that actually binds
     "README.md": 2264,  # 2,156
     "docs/ANATOMY.md": 1968,  # 1,874
     "AGENTS.md": 1065,  # 1,014

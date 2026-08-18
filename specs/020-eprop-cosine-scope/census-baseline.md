@@ -390,7 +390,28 @@ is an argument about a specific rule, made in prose, not a verdict the instrumen
 `docs/POLICIES.md` states the SCOPE RULE; this is the enumeration behind it, kept here because a
 closed list in governing text rots the moment a trainer is added.
 
-**MEASURED:** 22 symbols in `src/` call both `.backward()` and an optimizer `.step()`. The census
+**MEASURED (re-derived 2026-08-18, `src/` only, ast.walk over functions containing both a `.backward()` call and a `.step()` call): 21 symbols** — an earlier 22 did not reproduce; method-variant range 18-21, never 22. The list:
+
+```
+hippocampus/developmental_loop_brain.py::train_step
+hippocampus/growable_readout.py::train_step (x2: GrowableReadout, LaminarColumns)
+reasoning/_loop_common.py::train_step
+reasoning/hjepa_arm_torch.py::train_step
+reasoning/hjepa_torch.py::train_step
+reasoning/jepa_scaffold_torch.py::train_step
+reasoning/ng_snn/train_softhebb.py::sanity_linear
+reasoning/rsnn_delays_torch.py::train_model
+reasoning/snn_dreamer_6dof.py::update_world_model, ::update_actor_critic
+reasoning/snn_motor_control.py::train_forward_model, ::model_based_reach, ::main
+reasoning/snn_ssm_shd.py::run
+reasoning/snn_world_model_rl.py::train_world_model, ::improve_policy
+training/mnist.py::train_model
+training/offload.py::train_with_offload
+training/spiking_lm.py::train
+training/trainer.py::train_model
+```
+
+The census
 declares **17 governed claimants**. An earlier amendment named "the two genuine copies" as though
 the set were closed; it is not, and the two it named are not the reached ones.
 
@@ -411,6 +432,6 @@ the over-flagging of affected symbols is a mitigation, not a fix.
 
 - The `~22 local rules` estimate in T032 was low by **3.3×**; the census found 72. Membership came
   from the census, which is why the task said to take it from there and not from a prose list.
-- 26 ungoverned `MISSING_DECLARATION` and 48 ungoverned `UNDETERMINABLE` remain in `reasoning/`.
+- 25 ungoverned `MISSING_DECLARATION` (26 until 2026-08-18, when `reasoning/_loop_common.py` gained its declaration) and 48 ungoverned `UNDETERMINABLE` remain in `reasoning/`.
   These are reported and deliberately not asserted — `reasoning/` is outside the ratchet scope.
 - The wall-clock figure is printed on every run and gates nothing (FR-013a, SC-019 verified by T034).

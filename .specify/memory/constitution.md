@@ -274,17 +274,11 @@ PROVISIONAL and review-enforced: its gate is specified but not built.
    authorizes a dependency or an invented method inside it.
 8. **E-prop, not backprop.** Any backprop consideration pivots to e-prop, verified cosine > 0.5
    against an independent BPTT gradient. Absence of `.backward()` is NOT evidence of locality.
-   **SCOPE (amended 2026-08-18, specs/020):** this is a PIVOT rule governing work that was about to
-   use backprop — NOT a requirement on every learning rule. Measured, **80 of 97** governed learning
-   rules owe no cosine (72 local, 5 controls, 2 direct solves, 1 reference). **These counts rot --
-   re-derive with `substrate/gradient_claim_gate.py`; `docs/POLICIES.md` is authoritative.** INSTRUMENT_FALSIFIED is
-   triggered by HIGH COHERENCE invalidating the null, NEVER by a rule scoring below the bar — a low
-   cosine at ordinary coherence means the RULE failed, and is judged. It NEVER disposes of weight
-   transport, which `substrate/eprop_transport_gate.py` adjudicates separately. An autograd
-   trainer is in scope when a live path reaches it; becoming reachable puts it IN scope, becoming
-   unreachable does not take it out without a fresh adjudication.
-   `docs/POLICIES.md` is the authority and carries the bar's provenance; the bar's value is
-   unchanged.
+   **Scope, verdict semantics, reachability (including its one-way ratchet) and every count live in
+   `docs/POLICIES.md`'s SCOPE paragraph, which this invariant deliberately restates NONE of** — a
+   restated adjudication here drifted from the authority twice in one day (2026-08-18, G07/G08),
+   because every fix applied to one surface manufactures a mismatch on the other. The bar's value is
+   unchanged; that is the only figure this file asserts.
 
 ## Development Workflow and Quality Gates
 
@@ -324,7 +318,7 @@ Enforcement surface, stated plainly because it is easy to assume a gate exists:
 | P4 / P4b | `replication_guard.py` (P4 only; **P4b is NOT mechanized**) | P4b |
 | P6 | **HALF** — `tools/p6_gate.py` (topology; manual, NON-asserting, not in CI) | yes, PROVISIONAL; connectome-diff half unbuilt |
 | P7, P8 | — | yes, **both PROVISIONAL, gates specified but NOT built** |
-| e-prop not backprop (see `docs/POLICIES.md`, authoritative; PARTIALLY mechanized -- `eprop_transport_gate` for transport, `gradient_claim_gate` for scope) | — | yes |
+| e-prop not backprop -- mechanization status: see `docs/POLICIES.md`'s enforcement row, authoritative; this table deliberately does not restate it | — | yes |
 
 Three provisional principles is the MAXIMUM this file should carry before "provisional" stops
 meaning anything. Each carries a gate specification; P8's is the cheapest to build and the one

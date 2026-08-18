@@ -31,8 +31,12 @@ def _sub(code):
     return subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=600)
 
 
-def test_the_feedback_alignment_case_falsifies_the_instrument_not_the_rule():
+def test_the_frozen_feedback_alignment_arm_misses_the_bar_on_every_draw():
     """SC-003, driven through the SHIPPED module rather than a reconstruction.
+
+    RENAMED 2026-08-18: the old name asserted the arm 'falsifies the instrument, not the rule'
+    -- the framing POLICIES retracted (RULE_JUDGED is a coherence-keyed token; this arm's product
+    is ~0.0001). The body always asserted only the PROPERTY, and is unchanged.
 
     `basal_ganglia/mlp_q.py` already computes this sweep and prints it. Reconstructing the
     configuration here would build a second copy of a mechanism that exists (P2), and the
