@@ -276,7 +276,7 @@ PROVISIONAL and review-enforced: its gate is specified but not built.
    against an independent BPTT gradient. Absence of `.backward()` is NOT evidence of locality.
    **Scope, verdict semantics, reachability (including its one-way ratchet) and every count live in
    `docs/POLICIES.md`'s SCOPE paragraph, which this invariant deliberately restates NONE of** — a
-   restated adjudication here drifted from the authority twice in one day (2026-08-18, G07/G08),
+   restated adjudication here drifted from the authority twice in one day (2026-08-18, commit a6eb7a5f),
    because every fix applied to one surface manufactures a mismatch on the other. The bar's value is
    unchanged; that is the only figure this file asserts.
 
@@ -315,10 +315,13 @@ Enforcement surface, stated plainly because it is easy to assume a gate exists:
 |---|---|---|
 | P0, P1, P2, P5 | — | yes |
 | P3 | `dormancy_gate.py`, `method_dormancy_gate.py`, `import_manifest.py` | the charge tier |
+<!-- Every row below is a SUMMARY that can lag; docs/POLICIES.md is authoritative for each
+     (this file's own header: where the two disagree, this file is the defect). Only the
+     e-prop row has been converted to a pure pointer so far. -->
 | P4 / P4b | `replication_guard.py` (P4 only; **P4b is NOT mechanized**) | P4b |
 | P6 | **HALF** — `tools/p6_gate.py` (topology; manual, NON-asserting, not in CI) | yes, PROVISIONAL; connectome-diff half unbuilt |
 | P7, P8 | — | yes, **both PROVISIONAL, gates specified but NOT built** |
-| e-prop not backprop -- mechanization status: see `docs/POLICIES.md`'s enforcement row, authoritative; this table deliberately does not restate it | — | yes |
+| e-prop not backprop | see `docs/POLICIES.md`'s enforcement row (authoritative; this table deliberately does not restate it, including the CI column) | see POLICIES |
 
 Three provisional principles is the MAXIMUM this file should carry before "provisional" stops
 meaning anything. Each carries a gate specification; P8's is the cheapest to build and the one

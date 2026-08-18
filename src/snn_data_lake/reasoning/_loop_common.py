@@ -24,8 +24,8 @@ from snn_data_lake.reasoning.fast_features import batched_features
 #: Which symbols here OWE a gradient cosine, read statically by
 #: `substrate/gradient_claim_gate.py`; never imported by it.
 #:
-#: ADDED 2026-08-18 by the specs/020 audit. `docs/POLICIES.md` already NAMED this symbol as one of
-#: the two genuine autograd copies "declared APPROXIMATES_GRADIENT" -- and it carried no declaration
+#: ADDED 2026-08-18 by the specs/020 audit, which (see census-baseline.md) had found this symbol
+#: named in governing text as "declared APPROXIMATES_GRADIENT" while carrying no declaration
 #: at all, so the governing document asserted a state the tree did not have. It slipped because
 #: `reasoning/` is UNGOVERNED: the census reports MISSING_DECLARATION there and never asserts on it,
 #: which is exactly the tier where a claim can outlive what it describes.
