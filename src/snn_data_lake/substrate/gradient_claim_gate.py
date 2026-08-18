@@ -79,6 +79,9 @@ import random
 import sys
 import time
 
+# THE safety envelope. Imported rather than retyped -- see the `_SAFETY_ENVELOPE` note below.
+from snn_data_lake.substrate.safety_envelope import ENVELOPE as _SAFETY_ENVELOPE
+
 _HERE = os.path.abspath(__file__)
 _PKG_DIR = os.path.dirname(_HERE)
 _PKG = "snn_data_lake"
@@ -194,13 +197,12 @@ _STATE_OF = {
 #: Invariant 7). Found by measurement, not by review: the first census enumerated
 #: `brainstem/reflex.py::Reflex.step` as a learning rule, so a gate demanding declarations would have
 #: demanded one inside the E-STOP path.
-_SAFETY_ENVELOPE = (
-    "brainstem/reflex.py",
-    "brainstem/serial_arm.py",
-    "brainstem/so101_arm.py",
-    "brainstem/arm_config.py",
-    "brainstem/interpreter.py",
-)
+#:
+#: IMPORTED at the top of this module, not retyped here (P2, 2026-08-18) -- this was the THIRD
+#: hand-maintained copy, and the P2 NOTE further down recorded it as latent debt this feature's own
+#: FR-010 made it the wrong lane to fix. The name is kept as an alias of
+#: `substrate/safety_envelope.ENVELOPE`, so both use sites here and the two tests naming it are
+#: unchanged. This gate adds NOTHING to the envelope: it protects the five and only the five.
 
 
 #: ADDED to the borrowed learn-verbs, not a competing copy of them. `method_dormancy_gate` asks "does
@@ -1326,12 +1328,15 @@ FR010_ALLOWED_RULE_EDITS = (
 #   daemon does not start its drive loop under run_selfchecks. Also a self-check, also returns a
 #   list; it examines the daemon's own behaviour, never a set of changed paths.
 #
-# P2 NOTE, recorded rather than quietly added to: `_SAFETY_ENVELOPE` above is the THIRD
-# hand-maintained copy of the envelope path list in src/ -- `reasoning/godel_machine.py` and
-# `reasoning/self_improve.py` carry the other two, in two different path spellings. MEASURED
-# 2026-08-18: all three AGREE and match SECURITY.md's five, so there is no active defect. It is a
-# latent one, and consolidating it is NOT done here: this feature's own FR-010 forbids touching the
-# envelope, which makes it the wrong lane from which to refactor the envelope's guards.
+# P2 NOTE -- CLOSED 2026-08-18, in its own change, which is what it asked for. `_SAFETY_ENVELOPE`
+# above WAS the THIRD hand-maintained copy of the envelope path list in src/, alongside
+# `reasoning/godel_machine.py` and `reasoning/self_improve.py`, in two different path spellings. All
+# three agreed when measured, so this was a latent defect rather than an active one. The note said
+# consolidating it here would be the wrong lane, because this feature's FR-010 forbids touching the
+# envelope; that reasoning stands and is why it was done separately instead of not at all. There is
+# now ONE definition, `substrate/safety_envelope.ENVELOPE`, which all three import, and it carries a
+# self-check asserting the list still matches SECURITY.md's table -- so code cannot drift from the
+# document that authorises it either. Nothing in the envelope itself was touched.
 
 
 def fr010_findings(changed_paths):

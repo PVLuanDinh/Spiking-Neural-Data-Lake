@@ -54,6 +54,10 @@ import subprocess
 import sys
 import tempfile
 
+# THE safety envelope, imported rather than retyped -- see `_SAFETY_KERNEL` below. Aliased on import
+# so the kernel's construction reads as "the envelope, plus the verifier" at its own definition.
+from snn_data_lake.substrate.safety_envelope import repo_relative as _envelope_repo_relative
+
 _GIT_ID = ["-c", "user.email=godel@sndl.local", "-c", "user.name=godel-machine"]
 # no .pyc in worktrees -- else `git add -A` commits __pycache__ and the merge collides with main's
 _ENV = {**os.environ, "PYTHONUTF8": "1", "PYTHONDONTWRITEBYTECODE": "1"}
@@ -155,15 +159,13 @@ class GodelMachine:
 # commit with safety silently removed. Everything ELSE stays rewritable; only this minimal core is fixed
 # (so the "proof obligation preserves safety" claim actually holds -- it holds because the checker and
 # the safety envelope cannot be co-rewritten out of existence).
+#
+# The envelope half is IMPORTED, not retyped (P2, 2026-08-18). It was one of three hand-maintained
+# copies in src/, in two spellings; `substrate/safety_envelope` is now the one definition and this
+# kernel adds only what is genuinely its own -- the two VERIFIER files. That addition is the unique
+# capability of this list and is why the list still exists after the consolidation.
 _SAFETY_KERNEL = (
-    "src/snn_data_lake/brainstem/reflex.py",
-    "src/snn_data_lake/brainstem/serial_arm.py",
-    # The incoming gate. Added BEFORE it goes live, deliberately: the window between "so101_arm
-    # is the live gate" and "so101_arm is protected" is a window in which the self-rewrite
-    # harness may rewrite the arm's E-STOP, and there is no acceptable length for that window.
-    "src/snn_data_lake/brainstem/so101_arm.py",
-    "src/snn_data_lake/brainstem/arm_config.py",
-    "src/snn_data_lake/brainstem/interpreter.py",
+    *_envelope_repo_relative(),
     "run_selfchecks.py",
     "src/snn_data_lake/reasoning/godel_machine.py",
 )

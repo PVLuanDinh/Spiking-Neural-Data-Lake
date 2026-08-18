@@ -44,6 +44,21 @@ import json
 import os
 import sys
 
+from snn_data_lake.substrate.safety_envelope import ENVELOPE as _ENVELOPE
+
+#: Files this self-improver refuses to touch. The five-file safety envelope is IMPORTED, not retyped
+#: (P2, 2026-08-18) -- it was one of three hand-maintained copies in src/, in two spellings, and
+#: `substrate/safety_envelope` is now the one definition. What this set adds is its own: THIS
+#: module, the proposer, so the brain cannot rewrite the thing that decides what it may rewrite.
+#:
+#: MOVED TO MODULE SCOPE in the same change, and that is not cosmetic. It was a local inside main(),
+#: so `tests/test_self_mod_safety.py` had to PARSE it out of the source with a regex over
+#: `PROTECTED = \{(.*?)\}` -- the test's own docstring called the parser "the price of checking it
+#: at all". It is importable now, so the parser is deleted rather than kept beside it (P2: a merge
+#: must reduce). The staleness check in main() that this set exists for is unchanged and still
+#: derives its own side from the filesystem.
+PROTECTED = frozenset((*_ENVELOPE, "reasoning/self_improve.py"))
+
 
 class Change:
     """A proposed self-modification. `targets` are the files it would touch (checked against the
@@ -179,23 +194,6 @@ def main():
 
     def fitness(state):
         return round(state["accuracy"], 6)
-
-    PROTECTED = {
-        "brainstem/reflex.py",
-        "brainstem/serial_arm.py",
-        "brainstem/so101_arm.py",
-        "brainstem/arm_config.py",
-        "brainstem/interpreter.py",
-        # Was research/self_improve.py (no such file) -- the self-modifier was not in fact
-        # protecting its own proposer. Package-relative now, like every other entry.
-        # Found 2026-08-01 by tests/test_self_mod_safety.py, which parses this block out of the
-        # source (the set is a function local and cannot be imported). That parser now STRIPS
-        # comments before extracting entries, so a quoted path in a comment here is no longer read
-        # as a real one -- the warning that used to sit on this line said the opposite and was
-        # stale. What still matters: keep the block a single flat `{...}` with one quoted path per
-        # entry, because `PROTECTED = \{(.*?)\}` is how it is found.
-        "reasoning/self_improve.py",
-    }
 
     imp = SelfImprover(base, verify, fitness, PROTECTED)
     start_fit = imp.fitness

@@ -364,21 +364,29 @@ def test_effector_stays_within_zero_and_one():
 
 def test_the_live_gate_is_in_both_safety_kernels():
     """so101_arm is the ONLY mutation path to the arm, so the self-rewrite harness must not be
-    able to rewrite it. tests/test_self_mod_safety.py only asserts the two kernels agree with
-    EACH OTHER, so "neither was updated" passes there silently -- this closes that.
-    """
-    import pathlib
-    import re as _re
+    able to rewrite it.
 
+    Its original reason was that `tests/test_self_mod_safety.py` asserted only that the two kernels
+    agreed with EACH OTHER, so "neither was updated" passed there silently. Since 2026-08-18 both
+    kernels derive from ONE definition, `substrate/safety_envelope.ENVELOPE`, which closes that hole
+    structurally rather than by comparison. This test is KEPT anyway, and the reason is the point:
+    it names the live arm gate as a LITERAL, so it is an anchor that does not depend on the
+    consolidation being right. If the one definition ever loses `so101_arm`, every derived list
+    loses it together and agrees perfectly -- and this is the check that still fails.
+
+    It read `PROTECTED` by regex-parsing the `{...}` literal out of `self_improve.py`, which is why
+    it is edited here: that set is module scope now, so it is imported. The regex was the only thing
+    that broke; the assertion is unchanged.
+    """
     from snn_data_lake.reasoning.godel_machine import _SAFETY_KERNEL
+    from snn_data_lake.reasoning.self_improve import PROTECTED
 
     assert any("so101_arm" in p for p in _SAFETY_KERNEL), (
         "the live arm gate is absent from godel_machine._SAFETY_KERNEL"
     )
-    si = pathlib.Path(sa.__file__).parent.parent / "reasoning" / "self_improve.py"
-    block = _re.search(r"PROTECTED = \{(.*?)\}", si.read_text(encoding="utf-8"), _re.S).group(1)
-    body = "\n".join(line.split("#", 1)[0] for line in block.splitlines())
-    assert "so101_arm" in body, "the live arm gate is absent from self_improve's PROTECTED"
+    assert any("so101_arm" in p for p in PROTECTED), (
+        "the live arm gate is absent from self_improve's PROTECTED"
+    )
 
 
 # ---- the arm and the brain work together -----------------------------------------------
