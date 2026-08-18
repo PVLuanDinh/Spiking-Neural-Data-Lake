@@ -1329,8 +1329,11 @@ so P7 is self-contained rather than a trapdoor:
   brain keeps what it learns. "One brain, one lake" survives P7 intact.
 - **E-prop, not backprop — adopt the library, not its training rule.** `snntorch`, `spikingjelly`,
   `norse` and friends default to BPTT and weight transport, which the cross-cutting invariant forbids.
-  Their layers, encoders, datasets and kernels are fair game; their trainers are not, and anything
-  used to learn still owes cosine > 0.5 against an independent gradient.
+  Their layers, encoders, datasets and kernels are fair game; their trainers are not: an adopted
+  trainer that PROPAGATES A GRADIENT is squarely inside the cosine clause and owes > 0.5 against an
+  independent one. **Scoped 2026-08-18**: it read "anything used to learn still owes cosine >
+  0.5", contradicting the SCOPE paragraph below, and blanket is
+  exactly the misreading that paragraph corrects (80 of 97 governed rules owe no cosine).
 - **P2 still binds: adopting a library means retiring what it supersedes.** A dependency added
   *beside* the hand-rolled mechanism it replaces is the additive failure P2 exists to prevent, and it
   is the most likely way P7 goes wrong — the incidents above become a hand-rolled solver AND a numpy
@@ -1603,14 +1606,22 @@ The instrument half of the claim stands; the line does not.)*
   **SCOPE — a PIVOT rule, not a census of every rule (amended 2026-08-18, specs/020).** This clause
   governs work that was about to use backprop. It is NOT a requirement that every learning rule
   carry a gradient cosine. MEASURED by `substrate/gradient_claim_gate.py`: of **97** real governed
-  learning rules, **17 owe a cosine and 79 do not** — 72 local, 5 controls, 2 direct solves. Read as
-  a blanket rule it would demand a gradient comparison from four rules in five that have no gradient
-  to compare against. Re-derive with the gate; do not quote these counts.
+  learning rules, **17 owe a cosine and 80 do not** — 72 local, 5 controls, 2 direct solves, and 1
+  REFERENCE (`cortex/eprop_kernel.py::bptt_grads`, the independent gradient the others are compared
+  *against*, so it owes none of its own). Read as a blanket rule the clause would demand a gradient
+  comparison from four rules in five that have no gradient to compare against. Re-derive with the
+  gate; do not quote these counts.
 
-  A rule that CANNOT pass the criterion by construction has falsified the **instrument**, not
-  itself. `basal_ganglia/mlp_q.py`'s frozen feedback-alignment arm is the worked case: it misses the
-  bar on every draw while the shipped Kolen-Pollack path clears it. The verdict there is
-  INSTRUMENT_FALSIFIED and the rule is left **UNJUDGED** — never condemned.
+  **INSTRUMENT_FALSIFIED is triggered by HIGH COHERENCE invalidating the null — NEVER by a rule
+  scoring below the bar.** `verdict_for` keys it solely on the coherence product reaching the bar,
+  where a within-matrix permutation stops being a null and the statistic inverts. A low cosine at
+  ordinary coherence is `RULE_JUDGED`: the RULE failed, not the instrument.
+
+  **This paragraph said the opposite until 2026-08-18.** It offered `mlp_q`'s frozen
+  feedback-alignment arm as the worked case *because it misses the bar*. Measured, that arm's
+  coherence product is ~0.0001 and the gate returns `RULE_JUDGED` on 8 of 8 draws. As written it
+  licensed "instrument falsified, left UNJUDGED" for ANY rule that merely FAILS — the
+  condemnation-avoidance this two-stage verdict exists to prevent.
 
   **Which autograd trainers are in scope: LIVE-PATH REACHABILITY.** An autograd trainer is inside
   this clause when a `_LIVE_ROOT` or `_ENTRYPOINT` reaches it; train-tier offline code nothing live
@@ -1627,11 +1638,11 @@ The instrument half of the claim stands; the line does not.)*
   (`reasoning/eprop.py::Net.grad_eprop` vs `::Net.grad_bptt`) the aligned cosine is **+0.9481** and
   `0.5` sits **+3.06 sd** above the null with **P(null > 0.5) = 0.0000** — inside the separating
   region. P1 case (a): a fixed point on a normalized dimensionless output. **Two disclosures the
-  number does not survive without.** Against a *shuffled-label* null the reference scores **+0.6500
-  and clears the bar on every draw**, so which null is chosen decides whether `0.5` discriminates at
-  all. And the permutation is a null only for a near-zero-mean gradient: above a coherence of
-  `sqrt(bar)` it sits ABOVE the bar and the separation statistic INVERTS, which is why the
-  instrument refuses rather than reports there. **The bar is UNCHANGED by this amendment.**
+  number does not survive without.** Against a *shuffled-label* null the reference scores **+0.6500,
+  clearing the bar on every draw** — which null is chosen decides whether `0.5` discriminates at
+  all. And the permutation is a null only near zero mean: above coherence `sqrt(bar)` it sits ABOVE
+  the bar and the statistic INVERTS, which is why the instrument refuses there.
+  **The bar is UNCHANGED by this amendment.**
 
   **What IS built, 2026-08-15: `substrate/eprop_transport_gate.py` (CORE), which gates the
   TRANSPORT rather than the autograd call.** This row read *"It is NOT mechanized"* until then, and

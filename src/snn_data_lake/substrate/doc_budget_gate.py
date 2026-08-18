@@ -54,7 +54,15 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(_HERE)))
 #: its ceiling, lower it in the same change -- the TIGHTENABLE report exists to make that visible.
 #: Raising one is allowed and must say WHY in the commit, never as a reflex to clear a red.
 BUDGETS = {
-    "docs/POLICIES.md": 29100,  # 27,710 measured -- the document that actually binds
+    # RAISED 29100 -> 29250 on 2026-08-18, in the SAME commit as the growth, with the reason here
+    # because a ceiling raised quietly is a ratchet that has stopped ratcheting. specs/020's Phase 8
+    # amendment had to CORRECT ITSELF in place: it stated INSTRUMENT_FALSIFIED is triggered by a rule
+    # missing the bar, when `gradient_claim_gate::verdict_for` keys it solely on high coherence
+    # invalidating the null -- an inversion that licensed "left UNJUDGED" for any rule that merely
+    # FAILS. Carrying both the corrected rule AND the measured refutation costs words, and ~90 were
+    # already condensed away first. Cutting the remaining 18 would have deleted a measurement, which
+    # is the trade this ceiling exists to prevent, not to force.
+    "docs/POLICIES.md": 29250,  # 27,710 measured -- the document that actually binds
     "README.md": 2264,  # 2,156
     "docs/ANATOMY.md": 1968,  # 1,874
     "AGENTS.md": 1065,  # 1,014
