@@ -310,6 +310,50 @@ Every one is inferred `CLAIM` because it touches something weight-shaped; every 
 otherwise because a human read what it does. That is the intended division of labour, and the list
 above is what SC-012 asked for in place of a bare number.
 
+## Requirement traceability, and the four defects the audit found (2026-08-18)
+
+Tasks reached 91/91 before this audit ran. **A task checkbox is not a requirement**, and the audit
+found four things wrong with a feature already declared complete. Three were shipped in commits.
+
+| # | defect | where |
+|---|---|---|
+| 1 | The stale interval `[-0.472, +0.279]` — **deferred to the Phase 8 amendment by this very document, then not fixed** | `docs/POLICIES.md` |
+| 2 | The amendment claimed BOTH autograd copies were `declared APPROXIMATES_GRADIENT`; `reasoning/_loop_common::LinearReadout.train_step` **carried no declaration at all** | `docs/POLICIES.md` + T074a marked done |
+| 3 | `coherence_ceiling()` — the function documenting the derivation — had **no production caller** | `gradient_claim_gate.py` |
+| 4 | **`test_this_feature_touched_no_safety_envelope_file` would have REDDENED CI**: its positive control asserted the live change set is non-empty, and a clean checkout is empty | `tests/test_gradient_claim_gate.py` |
+
+Defect 4 is the one worth re-reading. The control was aimed at the wrong thing: an empty change set
+does not make the pass *vacuous*, it makes it **true and uninteresting**. What must not be vacuous is
+the CHECK, and that is `test_the_fr010_check_fires_on_a_constructed_violation`'s job. Verified across
+all four change-set states (empty / dirty / no-git / envelope-path-planted) after the fix.
+
+Defect 2 slipped for a structural reason worth naming: **`reasoning/` is UNGOVERNED**, so the census
+REPORTS `MISSING_DECLARATION` there and never asserts on it. A governing document can therefore
+assert a disposition for an ungoverned symbol that the tree does not carry, and no gate objects.
+
+### FR/SC ids with no trace in code
+
+Of 66 ids in `spec.md`, 11 had no textual trace in code or record. `FR-002a`, `FR-002c` and
+`FR-002d` are now tagged at the symbols implementing them (`resolve`, `read_declaration`,
+`DECL_NAME`). The remainder are satisfied but not code-taggable, and are recorded here instead:
+
+| id | where it is satisfied |
+|---|---|
+| FR-002e / FR-002f | `NOT_A_RULE` + its two drawer guards; pinned by `test_not_a_rule_is_reachable_only_by_declaration` |
+| FR-008a | both governing surfaces amended in ONE commit — `06c6461a` |
+| SC-013 | separation published above; bar value unchanged (`git diff` on both governing docs empty at Phase 8) |
+| SC-014 | exactly one hand-maintained record — verified with a control: `EXEMPT` dict 0, `stale_exempt` 0, `stale_exemptions` 1 |
+| SC-020 | the classifier cannot emit `NOT_A_RULE` without a declaration (constructed case) |
+| SC-021 | the live-path-reachability clause is in `docs/POLICIES.md`; both autograd copies now share the disposition (defect 2) |
+| **SC-004** | **not mechanizable** — "a reviewer can answer in under a minute" has no gate. Stated rather than silently counted as met |
+
+### Known and deliberately not changed
+
+`fr010_findings` / `fr010_changed_paths` are exercised only by tests. Those run in CI, so the check
+is charged — but **`--assert` does not run FR-010**, and it should not: the envelope *may* be
+modified with explicit approval, so a gate that refuses every envelope change would block approved
+work. The constructed test is the guarantee; this is a scope statement, not a gap.
+
 ## Honesty notes
 
 - The `~22 local rules` estimate in T032 was low by **3.3×**; the census found 72. Membership came

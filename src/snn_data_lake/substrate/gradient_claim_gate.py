@@ -118,7 +118,7 @@ BASELINE_NAME = os.path.join("tools", "gradient_claim_baseline.json")
 #: The declaration a rule module carries. Module-scope, `ast.literal_eval`-able, NEVER imported.
 #: Keyed per QUALIFIED symbol because `cortex/eprop_kernel.py` holds a rule, its BPTT control and a
 #: surrogate autograd.Function in ONE file -- a per-module verdict cannot describe it.
-DECL_NAME = "GRADIENT_CLAIM"
+DECL_NAME = "GRADIENT_CLAIM"  # FR-002d: module-scope, not a method, no LEARN_VERBS substring
 
 #: FIVE dispositions. Two are insufficient: `reasoning/gf.py::MLP` is an owner-EXEMPT CONTROL, and a
 #: two-value classifier condemns it. FOUR were insufficient too, and that was found by USE rather
@@ -347,6 +347,8 @@ def walk(root=None, overlay=None):
 def read_declaration(tree):
     """The module's GRADIENT_CLAIM dict, or {} -- read by `ast.literal_eval`, never imported.
 
+    Implements FR-002c: a module-scope constant readable WITHOUT importing the module.
+
     Returns {qualified_symbol: (disposition, reason)}. A malformed entry is DROPPED rather than
     guessed at, so a typo surfaces as a missing declaration (a reportable finding) instead of as a
     silently wrong disposition.
@@ -504,7 +506,7 @@ def infer(tree, qual):
     return "UNKNOWN"
 
 
-def resolve(declared_disp, inferred):
+def resolve(declared_disp, inferred):  # FR-002a: TWO signals -- declaration + inference
     """The single ClassificationState for one rule. Declaration AUTHORITATIVE."""
     if declared_disp is not None:
         return _STATE_OF[declared_disp]
@@ -1413,9 +1415,17 @@ def _measure(root=None):
     make the exit code carry no information about the rest.
     """
     results = measure_all(root)
+    # `coherence_ceiling()` is PRINTED here, not merely defined. It had no production caller at all
+    # (`verdict_for` re-expresses the rule inline as the exact product test), which made the function
+    # documenting the derivation dormant -- P3, found by the specs/020 audit. Surfacing it is also
+    # the more useful half: a reader sees WHERE the instrument refuses, not just that it can.
+    try:
+        ceiling = f"{coherence_ceiling(root):.4f}"
+    except RuntimeError:
+        ceiling = "--"
     print(
         f"DISCRIMINATING POWER   null=within_matrix_permutation  "
-        f"draws={MEASURE_DRAWS}  seed={MEASURE_SEED}"
+        f"draws={MEASURE_DRAWS}  seed={MEASURE_SEED}  coherence ceiling={ceiling}"
     )
     for result, report in results:
         print(render_discrimination(result, report))

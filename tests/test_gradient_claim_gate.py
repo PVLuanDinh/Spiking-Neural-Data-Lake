@@ -592,11 +592,30 @@ def test_the_fr010_check_fires_on_a_constructed_violation():
 
 
 def test_this_feature_touched_no_safety_envelope_file():
-    """SC-016, run against the LIVE change set rather than against a remembered intention."""
+    """SC-016, run against the LIVE change set rather than against a remembered intention.
+
+    **The first version of this test would have REDDENED CI, and the reason is worth keeping.** It
+    ended with `assert changed, "an empty change set proved nothing"` as a positive control. On a
+    clean checkout -- which is precisely what CI has -- `git status --porcelain` is EMPTY, so that
+    assertion fails on a tree with nothing wrong with it. Verified by cloning this repo into a temp
+    directory: 0 porcelain lines.
+
+    The control was aimed at the wrong thing. An empty change set does not make the pass vacuous; it
+    makes it TRUE and uninteresting -- nothing changed, so nothing touched the envelope. What must
+    not be vacuous is the CHECK, and that is proven by
+    `test_the_fr010_check_fires_on_a_constructed_violation`, which constructs a finding for all five
+    envelope files in both path spellings. This test carries the LIVE half only.
+    """
     changed = gate.fr010_changed_paths()
     if changed is None:
         return  # no git here; the constructed test above still pins the check itself
     findings = gate.fr010_findings(changed)
     assert not findings, f"this change set touches the safety envelope: {findings}"
-    # POSITIVE CONTROL: the live set must be NON-EMPTY, or the clean result above is vacuous.
-    assert changed, "git reported an empty change set -- the SC-016 check proved nothing"
+    # When there IS something to look at, confirm the check actually looked: run it against the
+    # live set plus a planted envelope path and require it to fire. That keeps a real assertion on
+    # every run WITHOUT depending on the tree being dirty.
+    planted = gate.fr010_findings([*changed, "src/snn_data_lake/brainstem/reflex.py"])
+    assert len(planted) == 1, (
+        f"the check did not fire on a planted envelope path among {len(changed)} live paths: "
+        f"{planted}"
+    )
