@@ -428,6 +428,45 @@ where most of these live. So scope is a REVIEW JUDGMENT against the unmasked clo
 edit can move a trainer into scope with no gate, test or report firing. That is an OPEN HOLE, and
 the over-flagging of affected symbols is a mitigation, not a fix.
 
+## Phase 8 CLOSED (2026-08-18): the verification round's residue, recorded not fixed
+
+Phase 8 ran NINE adversarial review rounds (three critics each: factual accuracy, internal
+contradiction, overreach). Findings 20 -> 14 -> 20 -> 14 -> 13 -> 10 -> 11 -> 12 -> 11 -> 9;
+BLOCKERs 5 -> 4 -> 4 -> 1 -> 1 -> 0 -> 1 -> 1 -> 1 -> **0**. From round 6 onward every worst
+finding was a defect introduced by the PREVIOUS round's fixes -- the loop had become
+self-referential (round 8's budget trim deleted the full path round 7 added; round 9 flagged it).
+
+The exit condition, owner-set: a HANDS-OFF verification round against the frozen tree at
+`f8554467` -- fix nothing unless a BLOCKER appears. It returned **9 findings, 0 BLOCKERs**, and
+every figure in the amendment reproduced byte-exact for the FIFTH consecutive round. Per the rule,
+the residue below is RECORDED, not fixed -- editing it would restart the oscillation this round
+existed to break.
+
+| # | sev | lens | finding (verbatim problem, abridged) |
+|---|---|---|---|
+| N01 | MINOR | FACTUAL ACCURACY | The amended supersession note in docs/POLICIES.md (the 'implement the gate before adopting the rule' bullet) says 'the P7/P8 gates ASSERT since 2026-08-05, per the enforcement rows' — but the P8 enforcement row carries NO date at all; only P7's row says 'both added 2026-08-05'. The constit |
+| N02 | SERIOUS | INTERNAL CONTRADICTION | The constitution still asserts, twice, that the P7 and P8 gates are 'specified but not built', directly contradicting docs/POLICIES.md's enforcement rows — which the same amendment commit (f8554467) made the sole authority — and the amendment REMOVED the constitution's only in-file correct |
+| N03 | SERIOUS | INTERNAL CONTRADICTION | The amendment's new P7 carve-out — 'an adopted trainer that PROPAGATES A GRADIENT ... owes > 0.5 ... (unless classified REFERENCE — see the SCOPE paragraph's self-declaration caveat)' — extends the REFERENCE classification to adopted-dependency trainers, but the SCOPE paragraph's validity  |
+| N04 | MINOR | INTERNAL CONTRADICTION | POLICIES.md's amended GPU paragraph says offline-sweep 'gradient trainers there stay inside the e-prop SCOPE', naming hippocampus/growable_readout.py and hippocampus/developmental_loop_brain.py — but the SCOPE paragraph the sentence points at defines being 'inside this clause' by live-path |
+| N05 | MINOR | INTERNAL CONTRADICTION | CLAUDE.md's P7 paragraph restates the adopted-trainer cosine clause WITHOUT the amendment's new REFERENCE carve-out — 'an adopted trainer that PROPAGATES A GRADIENT owes cosine > 0.5 against an independent one (SCOPED 2026-08-18 ...)' — so the gitignored surface now states a strictly broad |
+| N06 | MINOR | INTERNAL CONTRADICTION | The constitution's amended 'Three provisional principles' paragraph keeps the claim 'P8's was the cheapest and the one with a named expected output, so it is the first that SHOULD stop being provisional' — but the SAME commit superseded-in-place the parallel sentence in POLICIES.md as stal |
+| N07 | SERIOUS | overreach-and-underspeci | The wave-through channel the lens asks about is real, but it is not INSTRUMENT_FALSIFIED — it is false SELF-DECLARATION, and the amendment names it only in a parenthetical while giving the parallel reachability hole a bold OPEN HOLE header, blast radius, and closure lane. Scope classificat |
+| N08 | SERIOUS | overreach-and-underspeci | LIVE-PATH REACHABILITY is defined tightly enough to act on, but nothing computes it, and the OPEN HOLE's recorded revisit trigger — 'the next promotion of a hazard-holding reasoning//training/ module' — does not cover the event class the hole is about. Promotion into the governed tier is t |
+| N09 | MINOR | overreach-and-underspeci | The OPEN HOLE's closure is recorded as 'UNSCHEDULED (2026-08-18, deferred without an owner decision; no measurement says the risk is tolerable)'. By the repo's own standing rules an untaken owner decision is open work; the text is admirably honest about the deferral but records it as if di |
+
+Full text (problems, evidence, fixes) is in the round-10 review output; the prescribed fixes are
+retained there for whichever lane next touches these files. The known open residue in one line
+each:
+
+- The constitution's P7/P8 per-principle status lines still say "specified but not built" (a THIRD
+  and FOURTH copy of the claim the amendment superseded twice elsewhere) -- the drift-class poster
+  child, left for a consolidation lane rather than a tenth whack.
+- The REFERENCE carve-out for ADOPTED trainers is review-only: no test or gate walks dependency
+  source, so the "returns a gradient / never steps" line is mechanically drawn only in-repo.
+- The self-declaration wave-through disclosure lives in a parenthetical; the promotion_sweep
+  reminder is a print, not a gate.
+- The OPEN HOLE's closure remains deliberately UNSCHEDULED with its reason and trigger recorded.
+
 ## Honesty notes
 
 - The `~22 local rules` estimate in T032 was low by **3.3×**; the census found 72. Membership came
