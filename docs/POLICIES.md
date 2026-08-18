@@ -954,8 +954,9 @@ spiking-update kernels, eager torch-CUDA on this card beats numpy-on-CPU only be
 tiers — surrogate-gradient training, `hippocampus/ng_snn.py`, `cortex/neurogenesis_engine.py`, the
 torch readout studies (promoted out of `reasoning/brain_adapters/` across the 2026-08-11/12 lanes;
 now `hippocampus/growable_readout.py` and `hippocampus/developmental_loop_brain.py` — the
-directory itself was deleted 2026-08-12), and any offline sweep over a real dataset.
-These are wide, batched, and repeated, which is exactly the regime the crossover favours. The daemon
+directory itself was deleted 2026-08-12), and any offline sweep over a real dataset
+(a COMPUTE regime endorsement; gradient trainers there stay inside the e-prop SCOPE).
+Wide, batched, repeated — the regime the crossover favours. The daemon
 already sets `NORD_GPU=1` and runs under `.venv-cu128` so this tier lands on the card by default.
 
 **Where it does not pay today:** the live wake/sleep tick, at current population widths. That is a
@@ -1332,12 +1333,12 @@ so P7 is self-contained rather than a trapdoor:
   brain keeps what it learns. "One brain, one lake" survives P7 intact.
 - **E-prop, not backprop — adopt the library, not its training rule.** `snntorch`, `spikingjelly`,
   `norse` and friends default to BPTT and weight transport, which the cross-cutting invariant forbids.
-  Their layers, encoders, datasets and kernels are fair game; their trainers are not: an adopted
-  trainer that PROPAGATES A GRADIENT is squarely inside the cosine clause and owes > 0.5 against an
-  independent one; an adopted NON-gradient, non-local trainer (a closed-form / FORCE-style
-  solve) is `DIRECT_SOLVE` — no cosine owed; the transport PROHIBITION binds IN FULL — mechanized in
-  the spellings `eprop_transport_gate` sees, review the floor for the rest — and P4b via
-  review.
+  Their layers, encoders, datasets and kernels are fair game; their trainers are not: an adopted trainer
+  that PROPAGATES A GRADIENT is inside the cosine clause and owes > 0.5 against an independent
+  one (unless classified REFERENCE — see the SCOPE paragraph's self-declaration caveat); an adopted NON-gradient, non-local trainer (a closed-form / FORCE-style
+  solve) is `DIRECT_SOLVE` — no cosine owed; the transport PROHIBITION binds IN FULL — mechanized only where the gate
+  ASSERTS (governed tier, two spellings); review is the floor everywhere else, incl. the
+  adopted dependency's own source, which the gate never walks — P4b likewise.
   **Scoped 2026-08-18** from a blanket wording the SCOPE paragraph corrects.
 - **P2 still binds: adopting a library means retiring what it supersedes.** A dependency added
   *beside* the hand-rolled mechanism it replaces is the additive failure P2 exists to prevent, and it
@@ -1658,12 +1659,11 @@ The instrument half of the claim stands; the line does not.)*
   gate's per-symbol exemption bucket).
 
   **`dormancy_gate.reachable()` CANNOT decide this** — it ends `return seen & BRAIN_MODULES`,
-  masking to the governed tier, structurally silent about `reasoning/` and `training/`, where
-  most autograd trainers live. Until an unmasked predicate exists, scope here is a REVIEW
+  masked to the governed tier, silent about `reasoning/`/`training/`, where most trainers live. Until an unmasked predicate exists, scope here is a REVIEW
   JUDGMENT against the closure above — no gate computes it, and the closure follows STATIC
-  imports only: `importlib`/`__import__`/string-dispatch reaches are invisible to it. "Live
-  path" in THIS paragraph means that entrypoint closure — strictly WIDER than "on the live
-  tick" as the site verdicts below use it; no site verdict is reopened by the wider reading.
+  imports only: `importlib`/`__import__`/string-dispatch reaches are invisible to it. "Live path" HERE
+  means that entrypoint closure — strictly WIDER than "on the live tick" in the site verdicts
+  below; no site verdict is reopened by the wider reading.
 
   **Reachability is a RATCHET**: reachable puts a trainer IN scope; unreachable does NOT take
   it out without a fresh adjudication in THIS file — exiting is the unreviewed direction.
@@ -1682,7 +1682,7 @@ The instrument half of the claim stands; the line does not.)*
   symbol declared on reachability grounds; the over-flagging (Standing Invariant 3) is a
   mitigation, not a fix. MEASURED 2026-08-18 (`src/` only, `.backward()` + `.step()`, one
   function): **21 symbols**; 17 governed claimants declared. Enumeration:
-  census-baseline.md — this clause states the rule, never a list.
+  `specs/020-eprop-cosine-scope/census-baseline.md` — this clause states the rule, no list.
 
   **Provenance of `0.5`, recorded rather than moved.** The null is a **within-matrix permutation** of
   the candidate gradient, cosined against the unchanged reference. On the stdlib anchor
@@ -1883,8 +1883,8 @@ The instrument half of the claim stands; the line does not.)*
     thing it catches.
 
   - **ADJUDICATED 2026-08-15, at the owner's instruction: `reasoning/gf.py::MLP.train` performs
-    weight transport, and is NOT a violation of this invariant — it is a CONTROL.** For where this finding surfaces
-    in the gate's output, RE-RUN IT — restated tallies rotted here twice.
+    weight transport, and is NOT a violation of this invariant — it is a CONTROL.** For where this finding surfaces in the
+    gate's output, RE-RUN IT — restated tallies rotted here twice.
 
     **The transport is real, not arguable.** `gh = (g @ self.w2.T) * (1 - h**2)` carries error
     through the transposed forward read-out into `gw1 = xb.T @ gh`, then `self.w1 -= lr * gw1`, so
@@ -1929,11 +1929,11 @@ The instrument half of the claim stands; the line does not.)*
     it the "pure leaf" that moves FIRST — would have converted this report into a governed RED.
     The exemption carries the verdict above as its reason and — Phase 7 having retired the
     gate's `EXEMPT` dict — lives in `reasoning/gf.py::GRADIENT_CLAIM["MLP.train"]`, read
-    through the registry, so the ARC promotion cluster is unblocked. **Disclosed: this DECENTRALIZES the
-    channel** — a module can self-grant by naming the gate in its declaration's reason.
-    `stale_exemptions` catches a grant blessing nothing; one blessing a REAL finding is caught
-    only by review. The owner grant remains the rule, mechanized only as the marker (closure lane: an
-    exemption-count ratchet, baseline 1, unbuilt). **Adding it NARROWED what a mechanized
+    through the registry, so the ARC promotion cluster is unblocked. **Disclosed: this DECENTRALIZES the channel**
+    — a module can self-grant by naming the gate in its declaration reason. `stale_exemptions`
+    catches a grant blessing nothing; one blessing a REAL finding, only review catches. The owner
+    grant remains the rule, mechanized as the marker (closure lane: an exemption-count
+    ratchet, unbuilt). **Adding it NARROWED what a mechanized
     gate asserts, which is why it required the owner and not an adjudication.**
 
     Staleness is asserted BOTH ways, matched against ALL findings — the grant PRECEDES the
@@ -1983,10 +1983,10 @@ The instrument half of the claim stands; the line does not.)*
   and that outcome — "the gate we built kills the rule" — remains the point of building it first.
   **Three entries have now used the provisional route — P6 (2026-07-29), P7 and P8 (both 2026-08-04) —
   and each says so in its own text.** That is a count worth watching rather than a precedent worth
-  spending: "provisional" is a debt, not a category, and three unmechanized policies is the most this
-  file can carry before the word stops meaning anything. Each of the three carries a gate
-  specification, and P8's is the cheapest to build and the one with a named expected output, so it is
-  the first that should stop being provisional. **What the route does NOT relax is the evidence:** all
+  spending: "provisional" is a debt, not a category. (**Superseded in place 2026-08-18**: this said
+  three gates were unbuilt and P8's cheapest to build first — the P7/P8 gates ASSERT since
+  2026-08-05, per the enforcement rows; PROVISIONAL stays because a ratchet asserts "no worse",
+  never "satisfied".) **What the route does NOT relax is the evidence:** all
   three met the quoted-source-line and named-incident requirements in full, and P7 and P8 were each
   written from a sweep whose findings were adversarially re-verified against the tree before any of
   them entered this file — five of sixteen candidate claims were refuted at that step and are not

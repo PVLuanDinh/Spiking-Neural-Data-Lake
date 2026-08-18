@@ -424,7 +424,7 @@ false when written.
 **Why no gate decides this.** `dormancy_gate.reachable()` ends `return seen & BRAIN_MODULES` — it
 masks to the governed tier and is structurally silent about `reasoning/` and `training/`, which is
 where most of these live. So scope is a REVIEW JUDGMENT against the unmasked closure of
-`_LIVE_ROOTS + _ENTRYPOINTS`, not a computed value. **Nothing detects a change in it**: a wiring
+`_LIVE_ROOTS + _ENTRYPOINTS + _external_roots()` (POLICIES.md's SCOPE paragraph is authoritative for the definition), not a computed value. **Nothing detects a change in it**: a wiring
 edit can move a trainer into scope with no gate, test or report firing. That is an OPEN HOLE, and
 the over-flagging of affected symbols is a mitigation, not a fix.
 

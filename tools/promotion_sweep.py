@@ -240,6 +240,10 @@ def main(argv=None):
     for r in rows:
         by_where[r["where"]] = by_where.get(r["where"], 0) + 1
     print(f"total out-of-gate modules: {len(rows)}")
+    print(
+        "REMINDER (docs/POLICIES.md, e-prop SCOPE): promoting a module holding a "
+        ".backward()+.step() hazard symbol triggers the reachability-hole revisit."
+    )
     for k in sorted(by_where):
         print(f"    {k:<16} {by_where[k]}")
     print()

@@ -328,7 +328,7 @@ measured separation was, without reading code.
   when its walk cannot enumerate the tree.
 - **FR-007**: System MUST print its counts and MUST be runnable against the real tree before any
   governing-document wording is changed.
-- **FR-008**: The governing documents MUST state the scope of the cosine clause explicitly, and MUST
+- **FR-008**: The governing documents MUST state the scope of the cosine clause explicitly, and MUST *(Wording note, 2026-08-18: where this FR says a rule that cannot pass "by construction" falsifies the instrument, the SHIPPED trigger is coherence-keyed — see docs/POLICIES.md's SCOPE paragraph, which supersedes this phrasing.)*
   state that a rule which cannot pass the criterion by construction has falsified the instrument
   rather than itself.
 - **FR-008a**: BOTH governing surfaces MUST be amended together: `docs/POLICIES.md` (authoritative)
