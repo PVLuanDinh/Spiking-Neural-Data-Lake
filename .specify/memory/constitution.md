@@ -320,11 +320,13 @@ Enforcement surface, stated plainly because it is easy to assume a gate exists:
 | P3 | `dormancy_gate.py`, `method_dormancy_gate.py`, `import_manifest.py` | the charge tier |
 | P4 / P4b | `replication_guard.py` (P4 only; **P4b is NOT mechanized**) | P4b |
 | P6 | **HALF** — `tools/p6_gate.py` (topology; manual, NON-asserting, not in CI) | yes, PROVISIONAL; connectome-diff half unbuilt |
-| P7, P8 | — | yes, **both PROVISIONAL, gates specified but NOT built** |
+| P7, P8 | see `docs/POLICIES.md`'s enforcement rows (both BUILT AND ASSERTING in the lint CI job; this table does not restate the details) | yes, both PROVISIONAL |
 | e-prop not backprop | see `docs/POLICIES.md`'s enforcement row (authoritative; this table deliberately does not restate it, including the CI column) | see POLICIES |
 
 Three provisional principles is the MAXIMUM this file should carry before "provisional" stops
-meaning anything. Each carries a gate specification; P8's is the cheapest to build and the one
+meaning anything. Both gates are BUILT and asserting since 2026-08-04 (`red_reachability`,
+`dependency_ledger`); PROVISIONAL is kept because a ratchet asserts "no worse", never
+"satisfied" — superseding the stale sentence that stood here; P8's was the cheapest and the one
 with a named expected output, so it is the first that SHOULD stop being provisional.
 
 Versioning: MAJOR for a backward-incompatible principle removal or redefinition, MINOR for a new

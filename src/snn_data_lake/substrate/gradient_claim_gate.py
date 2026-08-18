@@ -1083,7 +1083,10 @@ def render_discrimination(result, report=None):
             if isinstance(val, list) and val and isinstance(val[0], float):
                 mu = math.fsum(val) / len(val)
                 p = sum(1 for c in val if c > report.bar) / len(val)
-                lines.append(f"      {key:<24} mean {mu:+.4f}   P(> bar) {p:.4f}")
+                # n= printed per null: a 1-element list rendered like a 400-draw one invites
+                # reading P(> bar) as a per-draw property when it is 1 of 1 (round-8 L02).
+                tag = "n=1 (single re-run)" if len(val) == 1 else f"n={len(val)}"
+                lines.append(f"      {key:<24} mean {mu:+.4f}   P(> bar) {p:.4f}   {tag}")
             else:
                 lines.append(f"      {key:<24} {val}")
     return "\n".join(lines)

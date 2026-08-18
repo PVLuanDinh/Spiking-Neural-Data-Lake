@@ -1335,8 +1335,9 @@ so P7 is self-contained rather than a trapdoor:
   Their layers, encoders, datasets and kernels are fair game; their trainers are not: an adopted
   trainer that PROPAGATES A GRADIENT is squarely inside the cosine clause and owes > 0.5 against an
   independent one; an adopted NON-gradient, non-local trainer (a closed-form / FORCE-style
-  solve) is `DIRECT_SOLVE` — no cosine owed; the transport rule binds it only in the spellings its gate
-  sees, P4b via review.
+  solve) is `DIRECT_SOLVE` — no cosine owed; the transport PROHIBITION binds IN FULL — mechanized in
+  the spellings `eprop_transport_gate` sees, review the floor for the rest — and P4b via
+  review.
   **Scoped 2026-08-18** from a blanket wording the SCOPE paragraph corrects.
 - **P2 still binds: adopting a library means retiring what it supersedes.** A dependency added
   *beside* the hand-rolled mechanism it replaces is the additive failure P2 exists to prevent, and it
@@ -1624,15 +1625,14 @@ The instrument half of the claim stands; the line does not.)*
   before relying on these figures**; the `specs/020` copy rots, this one is authoritative
   (constitution SI 8 restates none). **Scope
   classification rests on SELF-DECLARED `GRADIENT_CLAIM` entries**: a false declaration is
-  caught only by REVIEW — the census stores declaration and inference per rule but emits no
-  disagreement report (one-time enumeration: census-baseline.md SC-012), and no gate verifies
-  a declaration against the code.
+  caught only by REVIEW — the census stores both signals per rule, emits no disagreement report
+  (one-time enumeration: SC-012), and no gate checks a declaration against the code.
 
   **INSTRUMENT_FALSIFIED is triggered by HIGH COHERENCE invalidating the null — NEVER by a rule
   scoring below the bar.** `verdict_for` keys it solely on the coherence PRODUCT `c_a * c_b`
   reaching the bar, where a within-matrix permutation stops being a null and the statistic inverts.
-  A low cosine at ordinary coherence is `RULE_JUDGED`. An UNJUDGED claimant owes an owner
-  adjudication here — UNJUDGED is a state, not an exit. **`RULE_JUDGED` is a
+  A low cosine at ordinary coherence is `RULE_JUDGED`; an UNJUDGED claimant owes an owner
+  adjudication here (a state, not an exit). **`RULE_JUDGED` is a
   COHERENCE-KEYED
   TOKEN, not a finding that the cosine is informative about that rule** -- it says only that the
   null survived. For a frozen-feedback alignment arm the 2026-08-14 non-discrimination argument
@@ -1643,9 +1643,8 @@ The instrument half of the claim stands; the line does not.)*
   constructed red, asserting ZERO governed findings (no ratchet, no baseline); its green never
   means "compliant" and it prints the spelling it cannot see. **Composition**: that gate
   asserts only on `dormancy_gate.BRAIN_MODULES` and REPORTS `reasoning/`/`training/` — so an
-  in-scope trainer there has REVIEW as its only enforcement; neither gate can fail on it. The same holds ON the
-  governed tier for a false declaration plus a spelling neither transport rule sees — review is
-  the floor everywhere.
+  in-scope trainer there has REVIEW as its only enforcement; neither gate can fail on it; likewise ON the governed tier
+  for a false declaration plus an unseen spelling — review is the floor everywhere.
 
   **This said the OPPOSITE until 2026-08-18** (refutation: census-baseline.md).
 
@@ -1658,38 +1657,39 @@ The instrument half of the claim stands; the line does not.)*
   here was false when written (this is the COSINE clause's reach, distinct from the transport
   gate's per-symbol exemption bucket).
 
-  **`dormancy_gate.reachable()` CANNOT be used to decide this** — it ends `return seen &
-  BRAIN_MODULES`, masking to the governed tier, so it is structurally silent about `reasoning/` and
-  `training/`, which is where most autograd trainers live. Until an unmasked predicate exists, scope here is a REVIEW
+  **`dormancy_gate.reachable()` CANNOT decide this** — it ends `return seen & BRAIN_MODULES`,
+  masking to the governed tier, structurally silent about `reasoning/` and `training/`, where
+  most autograd trainers live. Until an unmasked predicate exists, scope here is a REVIEW
   JUDGMENT against the closure above — no gate computes it, and the closure follows STATIC
   imports only: `importlib`/`__import__`/string-dispatch reaches are invisible to it. "Live
   path" in THIS paragraph means that entrypoint closure — strictly WIDER than "on the live
   tick" as the site verdicts below use it; no site verdict is reopened by the wider reading.
 
   **Reachability is a RATCHET**: reachable puts a trainer IN scope; unreachable does NOT take
-  it out without a fresh adjudication — exiting is the unreviewed direction.
+  it out without a fresh adjudication in THIS file — exiting is the unreviewed direction.
 
   **OPEN HOLE.** On the GOVERNED tier a flip IS detected for the hazard shape
-  `tests/test_eprop_train_tier_unreachable.py` keys on (`.backward()` + optimizer `.step()`, one
-  function) — reds when such a trainer becomes reachable (the test asserts the PROPERTY; the one-time
-  numbers live in its docstring and drift);
+  `tests/test_eprop_train_tier_unreachable.py` keys on (`.backward()` + `.step()`, one function)
+  — reds when such a trainer becomes reachable (the test asserts the PROPERTY; its one-time
+  docstring numbers drift);
   a trainer split across functions is outside that
   detector's shape. Closure lane: an unmasked predicate in `dormancy_gate` plus a wider hazard
-  shape in that test — neither exists yet; closure deliberately UNSCHEDULED (2026-08-18). On the UNGOVERNED tiers — `reasoning/`,
+  shape in that test — neither exists yet. Closure UNSCHEDULED (2026-08-18, deferred without an owner decision; no
+  measurement says the risk is tolerable); revisit at the next promotion of a hazard-holding
+  `reasoning/`/`training/` module. On the UNGOVERNED tiers — `reasoning/`,
   `training/`, where most autograd trainers live — **nothing detects a flip**: a wiring edit can
   move a trainer into scope with no gate, test or report firing. Blast radius: every ungoverned
   symbol declared on reachability grounds; the over-flagging (Standing Invariant 3) is a
-  mitigation, not a fix. MEASURED 2026-08-18 (`src/` only, `.backward()` + `.step()` in one
-  function): **21 symbols**; the census declares 17 governed claimants. The enumeration lives in
-  `specs/020-eprop-cosine-scope/census-baseline.md` — this clause states the rule, never a list.
+  mitigation, not a fix. MEASURED 2026-08-18 (`src/` only, `.backward()` + `.step()`, one
+  function): **21 symbols**; 17 governed claimants declared. Enumeration:
+  census-baseline.md — this clause states the rule, never a list.
 
   **Provenance of `0.5`, recorded rather than moved.** The null is a **within-matrix permutation** of
   the candidate gradient, cosined against the unchanged reference. On the stdlib anchor
   (`reasoning/eprop.py::Net.grad_eprop` vs `::Net.grad_bptt`) the aligned cosine is **+0.9481** and
   `0.5` sits **+3.06 sd** above the null with **P(null > 0.5) = 0.0000** — inside the separating
-  region. P1 case (a): a fixed point on a normalized dimensionless output. **Two disclosures:** The reference recomputed ONCE against shuffled labels scores **+0.6500,
-  above the bar** (one re-run, not a distribution) — the null chosen decides whether `0.5`
-  discriminates at all.
+  region. P1 case (a): a fixed point on a normalized dimensionless output. **Two disclosures:** The reference recomputed ONCE against shuffled labels scores **+0.6500, above
+  the bar** (N=1) — the null chosen decides whether `0.5` discriminates at all.
   And the permutation is a null only near zero mean: once the coherence PRODUCT `c_a * c_b` reaches
   the bar, the null sits ABOVE it and the statistic INVERTS.
   **The bar is UNCHANGED by this amendment.**
@@ -1731,7 +1731,8 @@ The instrument half of the claim stands; the line does not.)*
   rejected on design, because `grad_bptt` RETURNS gradients and `apply()` performs the update.
 
   **Three limits, stated because a green here is easy to over-read, and the gate prints all three:**
-  (a) it keys on an EXPLICIT transpose, so the `mlp_q` violation — spelled `w2i = W2[a]` then
+  (a) its rules key on an EXPLICIT transpose or a reversed index PAIR, so the `mlp_q`
+  violation — spelled `w2i = W2[a]` then
   `dh = err * w2i[j]`, with no `.T` in the source — **would not have been caught**; of the two
   violations this tree has had it catches one. (b) The wider rule that catches both **was built and
   rejected on its own output**: "updates weight A while reading a different weight B" scored 6 of 6
@@ -1817,11 +1818,11 @@ The instrument half of the claim stands; the line does not.)*
     could ever pass is not evidence against alignment rules, so it never justified amending the
     invariant. Route (b) was never needed: nothing had to be retired and no capability paid for.
 
-    **MEASURED** (evidence/trajectory.md, 960 rows, per-epoch transport control 1.0 or the probe
-    is void): converging `B` clears on **8 of 8** draws against a pre-registered >= 6-of-8 bar;
+    **MEASURED** (`specs/015-resolve-weight-transport/evidence/trajectory.md`, 960 rows,
+    per-epoch transport control 1.0 or void): converging `B` clears on **8 of 8** draws against a pre-registered >= 6-of-8 bar;
     frozen random feedback **0 of 8**; permutation null 0.0000. **No capability lost** (XOR and
     linear margins unchanged) and **no new constant** (P1) — the weight-decay pairing was swept
-    and killed on measurement. Full numbers live in trajectory.md, not here.
+    and killed on measurement. Full numbers: trajectory.md, not here.
 
     **The invariant was NOT amended TO RETIRE THIS TRANSPORT, and did not need to be** -- route
     (a) was unnecessary because Kolen-Pollack clears the bar. **Scoped 2026-08-18:** the SCOPE
@@ -1926,13 +1927,13 @@ The instrument half of the claim stands; the line does not.)*
     **THE EXEMPTION, GRANTED 2026-08-15, and what was built so that it cannot rot.**
     `eprop_transport_gate` asserts on the GOVERNED tier, so promoting `gf.py` — backlog row 40 calls
     it the "pure leaf" that moves FIRST — would have converted this report into a governed RED.
-    The exemption carries the verdict above as its reason and — since specs/020 Phase 7 retired
-    the gate's `EXEMPT` dict — lives in `reasoning/gf.py::GRADIENT_CLAIM["MLP.train"]`, read
+    The exemption carries the verdict above as its reason and — Phase 7 having retired the
+    gate's `EXEMPT` dict — lives in `reasoning/gf.py::GRADIENT_CLAIM["MLP.train"]`, read
     through the registry, so the ARC promotion cluster is unblocked. **Disclosed: this DECENTRALIZES the
     channel** — a module can self-grant by naming the gate in its declaration's reason.
     `stale_exemptions` catches a grant blessing nothing; one blessing a REAL finding is caught
-    only by review. The owner grant remains the rule, mechanized only as the marker; closure lane: an
-    exemption-count ratchet (baseline 1), unbuilt. **Adding it NARROWED what a mechanized
+    only by review. The owner grant remains the rule, mechanized only as the marker (closure lane: an
+    exemption-count ratchet, baseline 1, unbuilt). **Adding it NARROWED what a mechanized
     gate asserts, which is why it required the owner and not an adjudication.**
 
     Staleness is asserted BOTH ways, matched against ALL findings — the grant PRECEDES the

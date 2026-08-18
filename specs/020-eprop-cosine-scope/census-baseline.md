@@ -246,7 +246,7 @@ Measured on the anchor fixture, asserted on by nothing:
 | **asserted**: within-matrix permutation | +0.0214 | **0.0000** |
 | isotropic matched-norm | +0.0012 | 0.0000 |
 | within-**unit** permutation | +0.1020 | **0.1000** |
-| **random relabel** (reference recomputed on shuffled targets) | **+0.6500** | **1.0000** |
+| **random relabel** (reference recomputed on shuffled targets; **N=1**, a single re-run, not a sampled null) | **+0.6500** | **1.0000** |
 
 The untrained twin stays REJECTED as a control: it moves the net, the forward path and the reference
 at once, so a movement cannot be attributed to any of them.
@@ -423,7 +423,7 @@ false when written.
 
 **Why no gate decides this.** `dormancy_gate.reachable()` ends `return seen & BRAIN_MODULES` — it
 masks to the governed tier and is structurally silent about `reasoning/` and `training/`, which is
-where most of the 22 live. So scope is a REVIEW JUDGMENT against the unmasked closure of
+where most of these live. So scope is a REVIEW JUDGMENT against the unmasked closure of
 `_LIVE_ROOTS + _ENTRYPOINTS`, not a computed value. **Nothing detects a change in it**: a wiring
 edit can move a trainer into scope with no gate, test or report firing. That is an OPEN HOLE, and
 the over-flagging of affected symbols is a mitigation, not a fix.
