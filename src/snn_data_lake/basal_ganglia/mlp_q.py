@@ -89,8 +89,10 @@ So feedback alignment CLEARS both of this module's shipped gates (>0.85 held-out
 linear control) on every draw -- it costs ~0.3 points on XOR and GAINS 1.0 on the linear rule. It is
 NOT adopted here, and the reason is a measurement rather than caution: the cross-cutting invariant
 asks for **cosine > 0.5** against an independent gradient, and the FA hidden-gradient direction misses
-that bar in BOTH directions -- swept over the same eight draws it lands in **[-0.472, +0.279], and
-|cosine| exceeds 0.5 in 0 of 8**. That sweep is re-run live in main() rather than quoted, because the
+that bar in BOTH directions -- swept over the same eight draws, **|cosine| exceeds 0.5 in 0 of 8**.
+(The INTERVAL this line used to quote, [-0.472, +0.279], is from specs/015 and the module no longer
+produces it; today it prints [-0.4366, +0.1844]. The PROPERTY -- 0 of 8 -- is what the argument
+rests on and is what main() re-runs live, so the interval is not restated here.) That sweep is re-run live in main() rather than quoted, because the
 quantity is essentially cos(W2[a], B[a]) under the relu mask (`err` cancels), so it is a property of
 the DRAW and a single value reported as "the" mean cosine is unreproducible. Swapping would therefore
 trade one failed clause of the invariant for another, which is not a fix. Recorded as OPEN work -- the
@@ -178,10 +180,14 @@ GRADIENT_CLAIM = {
     "MlpQ.update": (
         "APPROXIMATES_GRADIENT",
         "semi-gradient delta step backpropped BY HAND through the shared hidden layer -- it owes the "
-        "cosine, and it is the case SC-003 turns on: its hidden-gradient cosine swept to "
-        "[-0.472, +0.279] with |cos| > 0.5 in 0 of 8 draws, which falsified the INSTRUMENT rather "
-        "than the rule (the measurement reduced to asking whether feedback is parallel to the "
-        "forward weights, which is the weight symmetry feedback alignment exists to deny)",
+        "cosine, and it is the case SC-003 turns on: the FROZEN feedback-alignment control misses "
+        "the bar on 0 of 8 draws while the shipped Kolen-Pollack path clears it at +0.9031. "
+        "CORRECTED 2026-08-18: this read 'falsified the INSTRUMENT rather than the rule', which "
+        "inverts the verdict -- gradient_claim_gate::verdict_for keys INSTRUMENT_FALSIFIED solely "
+        "on the coherence PRODUCT reaching the bar, and this arm's product is ~0.0001, so it is "
+        "RULE_JUDGED. The measurement IS degenerate here (it reduces to asking whether feedback is "
+        "parallel to the forward weights, which feedback alignment exists to deny) -- but that is a "
+        "PROSE adjudication, not a gate verdict",
     ),
     "_train": (
         "APPROXIMATES_GRADIENT",

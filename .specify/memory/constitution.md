@@ -278,8 +278,10 @@ PROVISIONAL and review-enforced: its gate is specified but not built.
    use backprop — NOT a requirement on every learning rule. Measured, **80 of 97** governed learning
    rules owe no cosine (72 local, 5 controls, 2 direct solves, 1 reference). INSTRUMENT_FALSIFIED is
    triggered by HIGH COHERENCE invalidating the null, NEVER by a rule scoring below the bar — a low
-   cosine at ordinary coherence means the RULE failed, and is judged. An autograd trainer is in
-   scope when a live path reaches it, and enters scope if that reachability ever changes.
+   cosine at ordinary coherence means the RULE failed, and is judged. It NEVER disposes of weight
+   transport, which `substrate/eprop_transport_gate.py` adjudicates separately. An autograd
+   trainer is in scope when a live path reaches it; becoming reachable puts it IN scope, becoming
+   unreachable does not take it out without a fresh adjudication.
    `docs/POLICIES.md` is the authority and carries the bar's provenance; the bar's value is
    unchanged.
 

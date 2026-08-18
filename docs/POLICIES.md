@@ -1332,8 +1332,7 @@ so P7 is self-contained rather than a trapdoor:
   Their layers, encoders, datasets and kernels are fair game; their trainers are not: an adopted
   trainer that PROPAGATES A GRADIENT is squarely inside the cosine clause and owes > 0.5 against an
   independent one. **Scoped 2026-08-18**: it read "anything used to learn still owes cosine >
-  0.5", contradicting the SCOPE paragraph below, and blanket is
-  exactly the misreading that paragraph corrects (80 of 97 governed rules owe no cosine).
+  0.5", the blanket reading the SCOPE paragraph corrects.
 - **P2 still binds: adopting a library means retiring what it supersedes.** A dependency added
   *beside* the hand-rolled mechanism it replaces is the additive failure P2 exists to prevent, and it
   is the most likely way P7 goes wrong — the incidents above become a hand-rolled solver AND a numpy
@@ -1539,7 +1538,9 @@ two mean anything:
   makes aggressive self-improvement possible, not what limits it.
 - **P2 stays non-additive** — an invented mechanism that duplicates an existing one must retire it, and
   "mine is new" is not evidence of better.
-- **P3, P4b, e-prop, determinism and the gates are unchanged.** An invention is wired+charged or
+- **P3, P4b, e-prop, determinism and the gates are unchanged** -- e-prop in the sense the SCOPE
+  paragraph now states, which NARROWED which rules the cosine clause reaches on 2026-08-18
+  without weakening it for any rule inside that scope. An invention is wired+charged or
   retired; it does not open a second durable store; it does not import a BPTT trainer; and it lands
   with `run_selfchecks` + `pytest` + `ruff` green like everything else.
 
@@ -1603,35 +1604,39 @@ The instrument half of the claim stands; the line does not.)*
   tick. Neither uses autograd; both are non-local. Absence of `.backward()` is not evidence of
   locality — **that argument is unchanged and the tripwire is still not built.**
 
-  **SCOPE — a PIVOT rule, not a census of every rule (amended 2026-08-18, specs/020).** This clause
+  **SCOPE — a PIVOT rule, not a census (amended 2026-08-18, specs/020, owner-directed; it NARROWS
+  what this invariant asserts, which this file reserves to the owner).** This clause
   governs work that was about to use backprop. It is NOT a requirement that every learning rule
   carry a gradient cosine. MEASURED by `substrate/gradient_claim_gate.py`: of **97** real governed
   learning rules, **17 owe a cosine and 80 do not** — 72 local, 5 controls, 2 direct solves, and 1
   REFERENCE (`cortex/eprop_kernel.py::bptt_grads`, the independent gradient the others are compared
   *against*, so it owes none of its own). Read as a blanket rule the clause would demand a gradient
-  comparison from four rules in five that have no gradient to compare against. Re-derive with the
-  gate; do not quote these counts.
+  comparison from four rules in five that have no gradient to compare against. **Re-derive with the
+  gate before relying on any of these figures**; where they are restated elsewhere (constitution SI
+  8, `specs/020`) those copies rot and this one is authoritative.
 
   **INSTRUMENT_FALSIFIED is triggered by HIGH COHERENCE invalidating the null — NEVER by a rule
-  scoring below the bar.** `verdict_for` keys it solely on the coherence product reaching the bar,
-  where a within-matrix permutation stops being a null and the statistic inverts. A low cosine at
-  ordinary coherence is `RULE_JUDGED`: the RULE failed, not the instrument.
+  scoring below the bar.** `verdict_for` keys it solely on the coherence PRODUCT `c_a * c_b`
+  reaching the bar, where a within-matrix permutation stops being a null and the statistic inverts.
+  A low cosine at ordinary coherence is `RULE_JUDGED`: the RULE failed, not the instrument.
+  **It never disposes of WEIGHT TRANSPORT**, which is adjudicated separately by
+  `substrate/eprop_transport_gate.py` — that gate carries two rules, explicit-transpose and
+  index-swap, each with a constructed red, prints its own blind spot on every run, and is a RATCHET:
+  green means "no worse", never "compliant".
 
-  **This paragraph said the opposite until 2026-08-18.** It offered `mlp_q`'s frozen
-  feedback-alignment arm as the worked case *because it misses the bar*. Measured, that arm's
-  coherence product is ~0.0001 and the gate returns `RULE_JUDGED` on 8 of 8 draws. As written it
-  licensed "instrument falsified, left UNJUDGED" for ANY rule that merely FAILS — the
-  condemnation-avoidance this two-stage verdict exists to prevent.
+  **This said the OPPOSITE until 2026-08-18**, citing `mlp_q`'s FA arm *because it misses the bar*.
+  The refuting measurements are in `specs/020-eprop-cosine-scope/census-baseline.md`.
 
   **Which autograd trainers are in scope: LIVE-PATH REACHABILITY.** An autograd trainer is inside
-  this clause when a `_LIVE_ROOT` or `_ENTRYPOINT` reaches it; train-tier offline code nothing live
-  reaches is permitted. **This is a standing condition, not a one-time grant.** The day a wiring
-  change puts such a trainer on a live path it enters scope and owes the cosine — and **nothing in
-  the tree announces that flip today**, so the two genuine copies
-  (`hippocampus/developmental_loop_brain::_LinearReadout.train_step`,
-  `reasoning/_loop_common::LinearReadout.train_step`) are declared APPROXIMATES_GRADIENT:
-  over-flagged deliberately, because Standing Invariant 3 makes the confident negative the dangerous
-  verdict.
+  this clause when a `dormancy_gate._LIVE_ROOTS` / `_ENTRYPOINTS` path reaches it; train-tier
+  offline code nothing live reaches is permitted. **This is a standing condition, not a one-time
+  grant**, and it is ONE-WAY: becoming reachable puts a trainer IN scope; becoming unreachable does
+  not take it out without a fresh adjudication. **Nothing in the tree announces that flip**, so both
+  copies are over-flagged APPROXIMATES_GRADIENT (Standing Invariant 3: the confident negative is the
+  dangerous verdict):
+  `hippocampus/developmental_loop_brain::_LinearReadout.train_step` (GOVERNED — the census asserts
+  on it) and `reasoning/_loop_common::LinearReadout.train_step` (**UNGOVERNED** — classified and
+  reported, never asserted, so its declaration has no gate behind it).
 
   **Provenance of `0.5`, recorded rather than moved.** The null is a **within-matrix permutation** of
   the candidate gradient, cosined against the unchanged reference. On the stdlib anchor
@@ -1639,9 +1644,9 @@ The instrument half of the claim stands; the line does not.)*
   `0.5` sits **+3.06 sd** above the null with **P(null > 0.5) = 0.0000** — inside the separating
   region. P1 case (a): a fixed point on a normalized dimensionless output. **Two disclosures the
   number does not survive without.** Against a *shuffled-label* null the reference scores **+0.6500,
-  clearing the bar on every draw** — which null is chosen decides whether `0.5` discriminates at
-  all. And the permutation is a null only near zero mean: above coherence `sqrt(bar)` it sits ABOVE
-  the bar and the statistic INVERTS, which is why the instrument refuses there.
+  clearing the bar on every draw** — the choice of null decides whether `0.5` discriminates at all.
+  And the permutation is a null only near zero mean: once the coherence PRODUCT `c_a * c_b` reaches
+  the bar, the null sits ABOVE it and the statistic INVERTS.
   **The bar is UNCHANGED by this amendment.**
 
   **What IS built, 2026-08-15: `substrate/eprop_transport_gate.py` (CORE), which gates the
@@ -1778,7 +1783,11 @@ The instrument half of the claim stands; the line does not.)*
     sweep killed it — decay-free 8 of 8, decay = lr/10 7 of 8, decay = lr **0 of 8**. Omitted on
     measurement.
 
-    **The invariant was NOT amended, and did not need to be.** `main()`'s check (5) now separates
+    **The invariant was NOT amended TO RETIRE THIS TRANSPORT, and did not need to be** -- route
+    (a) was unnecessary because Kolen-Pollack clears the bar. **Scoped 2026-08-18:** the SCOPE
+    paragraph DID later amend this clause, on the different question of which rules owe a cosine
+    at all; it cites this arm as a RULE_JUDGED failure, not an instrument failure.
+    `main()`'s check (5) now separates
     three ways on every gate run: transport identity 1.000, shipped learned `B` **+0.9031**, frozen
     control 0 of 8. **One prediction was wrong and is recorded rather than smoothed**: the spec
     predicted `B` would "rise monotonically from ~0"; it is at 0.92 after ONE epoch and drifts

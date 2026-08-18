@@ -126,8 +126,9 @@ GRADIENT_CLAIM = {
         "criterion it turns on is spec FR-002h -- LIVE-PATH REACHABILITY, which THIS MODULE's own "
         "docstring already adjudicates from specs/010: the Adam path is permitted because it is "
         "TRAIN-TIER OFFLINE and no _LIVE_ROOT or _ENTRYPOINT reaches it. Re-measured 2026-08-17 with "
-        "controls: this module is UNREACHABLE, so the permission holds today. Kept OVER-flagged as "
-        "APPROXIMATES_GRADIENT until the amendment states that criterion as a general clause, "
+        "controls: this module is UNREACHABLE, so the permission holds today. The amendment LANDED "
+        "2026-08-18 and states that criterion as a general clause, so this exit condition is met -- "
+        "the over-flag is KEPT anyway, deliberately, and no longer waits on anything, "
         "because the same docstring warns that becoming reachable converts this into a violation "
         "'that nothing would announce' -- and Standing Invariant 3 makes the confident NEGATIVE the "
         "dangerous verdict",

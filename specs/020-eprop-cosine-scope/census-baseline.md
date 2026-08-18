@@ -24,8 +24,11 @@ reported and never asserted.
 | — the **REFERENCE** they are measured against (`EXACT_GRADIENT`) | **1** |
 | — **MIS-SCOPED**: real rules the clause would sweep in that owe no cosine | **79** |
 
-**79 of 97 — 81% — of this tree's real governed learning rules owe no cosine.** That is the
-mis-scoped count FR-007 asks for. It is not an argument that the invariant is wrong; it is the
+**79 of 97 real governed learning rules are MIS-SCOPED** — rules the clause would sweep in and
+wrongly condemn. That is the count FR-007 asks for. Distinct from **80 owe no cosine**, which
+additionally counts the REFERENCE (`bptt_grads`): it owes none either, but the clause does not
+wrongly condemn it — it is the thing the others are measured against. Conflating the two is how
+`docs/POLICIES.md` came to state a partition that did not sum (17 + 79 = 96, not 97). It is not an argument that the invariant is wrong; it is the
 measurement that the clause, read as a blanket requirement on anything that learns, would demand a
 gradient comparison from four rules in five that have no gradient to compare against.
 
@@ -353,6 +356,34 @@ Of 66 ids in `spec.md`, 11 had no textual trace in code or record. `FR-002a`, `F
 is charged — but **`--assert` does not run FR-010**, and it should not: the envelope *may* be
 modified with explicit approval, so a gate that refuses every envelope change would block approved
 work. The constructed test is the guarantee; this is a scope statement, not a gap.
+
+## The INSTRUMENT_FALSIFIED inversion, relocated here from docs/POLICIES.md
+
+The Phase 8 amendment stated that `mlp_q`'s frozen feedback-alignment arm is the worked
+`INSTRUMENT_FALSIFIED` case **because it misses the bar on every draw**. That is not what produces
+that verdict, and as written it licensed "instrument falsified, rule left UNJUDGED" for **any** rule
+that merely FAILS the cosine — the condemnation-avoidance the two-stage verdict exists to prevent.
+
+**What actually triggers it**, measured against `gradient_claim_gate::verdict_for`:
+
+| construction | coherence product | verdict |
+|---|---|---|
+| `(0.99, 0.99)`, aligned 0.9 | 0.980 | **INSTRUMENT_FALSIFIED** |
+| `(0.10, 0.10)`, aligned −0.4366 (mlp_q FA worst draw) | 0.010 | `RULE_JUDGED` |
+| mlp_q FA, all 8 draws, from `main()`'s own vectors | **~0.0001** | `RULE_JUDGED` **8 of 8** |
+
+`verdict_for` keys the token **solely** on the coherence product reaching the bar — the condition
+under which a within-matrix permutation stops being a null and the separation statistic inverts. A
+low cosine at ordinary coherence is `RULE_JUDGED`: the RULE failed, not the instrument.
+
+**`mlp_q` is not a registered fixture at all** (`_FIXTURES` holds one entry, the stdlib e-prop
+anchor), so the gate emits no verdict for it in any mode. The `mlp_q` row in POLICIES.md is a PROSE
+adjudication and the machine-read `GRADIENT_CLAIM["MlpQ.update"]` disposition is unchanged — that
+declaration carried the same inversion in its reason string and was corrected in the same change.
+
+The measurement IS degenerate for that arm — it reduces to asking whether the feedback is parallel
+to the forward weights, which is the weight symmetry feedback alignment exists to deny — but that
+is an argument about a specific rule, made in prose, not a verdict the instrument produced.
 
 ## Honesty notes
 
