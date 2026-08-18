@@ -668,7 +668,10 @@ What `main` was missing: **two safety-path fixes** (the ESP32 idle sentinel bind
 association to a context where nothing was there, on every idle sample; a 3x units-contract gap on
 the distance threshold), **a determinism-invariant fix** (`torch.Generator(device=...)` meant the
 same seed grew a DIFFERENT brain on a machine with a card than on CI), and
-`substrate/eprop_transport_gate.py` — **the only mechanization the e-prop invariant has ever had.**
+`substrate/eprop_transport_gate.py` — **the only mechanization the invariant had until 2026-08-18**,
+when `substrate/gradient_claim_gate.py` joined it: a second CI-asserting e-prop gate that
+classifies every governed learning rule as owing a cosine or not, ratcheting MISSING_DECLARATION
+and UNDETERMINABLE (`--assert` + `--self-check` in the lint job).
 Anyone cutting from `main` got none of it, and nothing in this file said that was a defect.
 
 **Why the existing guard did not catch it.** P4c's guard is *"a build the gates cannot see is not a
@@ -1594,7 +1597,8 @@ The instrument half of the claim stands; the line does not.)*
 - **E-prop, not backprop (review-enforced; PARTIALLY mechanized since 2026-08-15).** Any backprop consideration pivots to **e-prop**
   (Bellec 2020) — a local eligibility trace times a broadcast learning signal; no BPTT, no weight
   transport — verified **cosine > 0.5** against an independent reverse-mode BPTT gradient. Verification
-  anchor: `reasoning/eprop.py:38-40`, with the independent gradient at `:191-192`.
+  anchor: `reasoning/eprop.py::Net.grad_eprop`, with the independent reverse-mode gradient at
+  `::Net.grad_bptt` (cited by SYMBOL: the line cites here had rotted onto the CANDIDATE).
   This rule governed the project before it was written down (it is why v3.79 pivoted all learning to
   e-prop on measured evidence: 73.14% vs the repo's backprop SSM at ~32%), which was the gap — a rule
   enforced only by whoever remembered it.
@@ -1607,8 +1611,8 @@ The instrument half of the claim stands; the line does not.)*
   **SCOPE — a PIVOT rule, not a census (amended 2026-08-18, specs/020, owner-directed; it NARROWS
   what this invariant asserts, which this file reserves to the owner).** This clause
   governs work that was about to use backprop. It is NOT a requirement that every learning rule
-  carry a gradient cosine. MEASURED by `substrate/gradient_claim_gate.py`: of **97** real governed
-  learning rules, **17 owe a cosine and 80 do not** — 72 local, 5 controls, 2 direct solves, and 1
+  carry a gradient cosine. MEASURED by `substrate/gradient_claim_gate.py`, which prints GOVERNED 149 of which 52 are
+  NOT-A-RULE (enumeration imprecision), leaving **97** real governed learning rules: **17 owe a cosine and 80 do not** — 72 local, 5 controls, 2 direct solves, and 1
   REFERENCE (`cortex/eprop_kernel.py::bptt_grads`, the independent gradient the others are compared
   *against*, so it owes none of its own). Read as a blanket rule the clause would demand a gradient
   comparison from four rules in five that have no gradient to compare against. **Re-derive with the
@@ -1618,25 +1622,39 @@ The instrument half of the claim stands; the line does not.)*
   **INSTRUMENT_FALSIFIED is triggered by HIGH COHERENCE invalidating the null — NEVER by a rule
   scoring below the bar.** `verdict_for` keys it solely on the coherence PRODUCT `c_a * c_b`
   reaching the bar, where a within-matrix permutation stops being a null and the statistic inverts.
-  A low cosine at ordinary coherence is `RULE_JUDGED`: the RULE failed, not the instrument.
+  A low cosine at ordinary coherence is `RULE_JUDGED`. **`RULE_JUDGED` is a COHERENCE-KEYED
+  TOKEN, not a finding that the cosine is informative about that rule** -- it says only that the
+  null survived. For a frozen-feedback alignment arm the 2026-08-14 non-discrimination argument
+  (the statistic reduces to `cos(W2[a], B[a])`, near zero BY CONSTRUCTION) still stands
+  unamended, and route (a)'s rejection with it. The two verdicts are about different things.
   **It never disposes of WEIGHT TRANSPORT**, which is adjudicated separately by
   `substrate/eprop_transport_gate.py` — that gate carries two rules, explicit-transpose and
-  index-swap, each with a constructed red, prints its own blind spot on every run, and is a RATCHET:
-  green means "no worse", never "compliant".
+  index-swap, each with a constructed red, and asserts ZERO governed findings (it has no ratchet
+  and no baseline). Its green still never means "compliant": it prints on every run the spelling
+  it cannot see.
 
   **This said the OPPOSITE until 2026-08-18**, citing `mlp_q`'s FA arm *because it misses the bar*.
   The refuting measurements are in `specs/020-eprop-cosine-scope/census-baseline.md`.
 
-  **Which autograd trainers are in scope: LIVE-PATH REACHABILITY.** An autograd trainer is inside
-  this clause when a `dormancy_gate._LIVE_ROOTS` / `_ENTRYPOINTS` path reaches it; train-tier
-  offline code nothing live reaches is permitted. **This is a standing condition, not a one-time
-  grant**, and it is ONE-WAY: becoming reachable puts a trainer IN scope; becoming unreachable does
-  not take it out without a fresh adjudication. **Nothing in the tree announces that flip**, so both
-  copies are over-flagged APPROXIMATES_GRADIENT (Standing Invariant 3: the confident negative is the
-  dangerous verdict):
-  `hippocampus/developmental_loop_brain::_LinearReadout.train_step` (GOVERNED — the census asserts
-  on it) and `reasoning/_loop_common::LinearReadout.train_step` (**UNGOVERNED** — classified and
-  reported, never asserted, so its declaration has no gate behind it).
+  **Which autograd trainers are in scope: LIVE-PATH REACHABILITY.** A trainer is inside this clause
+  when the UNMASKED transitive closure of `dormancy_gate._LIVE_ROOTS + _ENTRYPOINTS` reaches its
+  module. **There is NO train-tier exemption**: `snn_data_lake.training.cli` is itself an
+  `_ENTRYPOINT` (measured 2026-08-18), so the `training/` tier is REACHED and IN SCOPE. An earlier
+  wording here granted that tier a blanket permission and was false when written.
+
+  **`dormancy_gate.reachable()` CANNOT be used to decide this** — it ends `return seen &
+  BRAIN_MODULES`, masking to the governed tier, so it is structurally silent about `reasoning/` and
+  `training/`, which is where most autograd trainers live. Until an unmasked predicate exists, scope
+  here is a REVIEW JUDGMENT against the closure above, not a value any gate computes.
+
+  **OPEN HOLE, named as one rather than used as a justification.** Reachability is the load-bearing
+  predicate and **nothing detects a change in it**: a wiring edit can put a trainer in scope with no
+  gate, test or report firing. Blast radius: every symbol declared on reachability grounds. Until it
+  is closed, such symbols are over-flagged APPROXIMATES_GRADIENT (Standing Invariant 3: the
+  confident negative is the dangerous verdict), which is a mitigation, not a fix. The tree carries
+  **22 symbols calling both `.backward()` and an optimizer `.step()`**; the census declares 17
+  governed claimants. Enumerated in `specs/020-eprop-cosine-scope/census-baseline.md` — this clause
+  states the rule, not a closed list.
 
   **Provenance of `0.5`, recorded rather than moved.** The null is a **within-matrix permutation** of
   the candidate gradient, cosined against the unchanged reference. On the stdlib anchor
@@ -1694,7 +1712,7 @@ The instrument half of the claim stands; the line does not.)*
   transport was *retired* — because every local rule reads its own forward weights, and whether a
   second matrix is transported or independently maintained (Kolen-Pollack's `B` takes the read-out's
   increment and never reads it) is semantic, not syntactic. (c) It asserts only on the governed
-  tier; it **reports** the rest, and reports **1** today — `reasoning/gf.py::train`, where
+  tier; it **reports** the rest, and reports **1** today — `reasoning/gf.py::MLP.train`, where
   `gh = (g @ self.w2.T) * (1 - h**2)` carries error into `self.w1 -= lr * gw1`. That is hand-written
   backprop with no autograd anywhere, so `tools/promotion_sweep.py`'s marker grep cannot see it, and
   it becomes a governed violation the day `gf.py` is promoted.

@@ -276,7 +276,8 @@ PROVISIONAL and review-enforced: its gate is specified but not built.
    against an independent BPTT gradient. Absence of `.backward()` is NOT evidence of locality.
    **SCOPE (amended 2026-08-18, specs/020):** this is a PIVOT rule governing work that was about to
    use backprop — NOT a requirement on every learning rule. Measured, **80 of 97** governed learning
-   rules owe no cosine (72 local, 5 controls, 2 direct solves, 1 reference). INSTRUMENT_FALSIFIED is
+   rules owe no cosine (72 local, 5 controls, 2 direct solves, 1 reference). **These counts rot --
+   re-derive with `substrate/gradient_claim_gate.py`; `docs/POLICIES.md` is authoritative.** INSTRUMENT_FALSIFIED is
    triggered by HIGH COHERENCE invalidating the null, NEVER by a rule scoring below the bar — a low
    cosine at ordinary coherence means the RULE failed, and is judged. It NEVER disposes of weight
    transport, which `substrate/eprop_transport_gate.py` adjudicates separately. An autograd
@@ -323,7 +324,7 @@ Enforcement surface, stated plainly because it is easy to assume a gate exists:
 | P4 / P4b | `replication_guard.py` (P4 only; **P4b is NOT mechanized**) | P4b |
 | P6 | **HALF** — `tools/p6_gate.py` (topology; manual, NON-asserting, not in CI) | yes, PROVISIONAL; connectome-diff half unbuilt |
 | P7, P8 | — | yes, **both PROVISIONAL, gates specified but NOT built** |
-| e-prop not backprop | — | yes |
+| e-prop not backprop (see `docs/POLICIES.md`, authoritative; PARTIALLY mechanized -- `eprop_transport_gate` for transport, `gradient_claim_gate` for scope) | — | yes |
 
 Three provisional principles is the MAXIMUM this file should carry before "provisional" stops
 meaning anything. Each carries a gate specification; P8's is the cheapest to build and the one

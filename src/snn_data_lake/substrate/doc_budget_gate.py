@@ -62,7 +62,17 @@ BUDGETS = {
     # FAILS. Carrying both the corrected rule AND the measured refutation costs words, and ~90 were
     # already condensed away first. Cutting the remaining 18 would have deleted a measurement, which
     # is the trade this ceiling exists to prevent, not to force.
-    "docs/POLICIES.md": 29250,  # 27,710 measured -- the document that actually binds
+    # RAISED AGAIN 29250 -> 29500 on 2026-08-18, same commit as the growth. A third adversarial
+    # review of the specs/020 amendment returned 14 findings, FOUR of them BLOCKERs, and every
+    # one replaced a FALSE statement in the authoritative file: that INSTRUMENT_FALSIFIED could
+    # be read as a token about the RULE; that the transport gate is a ratchet (it asserts ZERO);
+    # that a train-tier exemption existed (`training.cli` is an `_ENTRYPOINT`, so the tier is
+    # REACHED); and that `dormancy_gate.reachable()` could decide scope (it masks to
+    # BRAIN_MODULES). Carrying the corrected rules plus the OPEN HOLE they expose costs words.
+    # ~200 were condensed away and the trainer enumeration RELOCATED to the spec record first;
+    # the remainder is operative rule text, and deleting it to fit would trade correctness for
+    # word count -- the trade this ceiling exists to prevent, not to force.
+    "docs/POLICIES.md": 29500,  # 27,710 measured -- the document that actually binds
     "README.md": 2264,  # 2,156
     "docs/ANATOMY.md": 1968,  # 1,874
     "AGENTS.md": 1065,  # 1,014

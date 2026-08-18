@@ -146,7 +146,7 @@ Found while writing the Phase 4 tests, by running the module instead of reading 
 |---|---|
 | `specs/015-resolve-weight-transport/evidence/baseline-mlpq.txt` | `[-0.4722, +0.2785]` (the original measurement) |
 | `basal_ganglia/mlp_q.py` (two sites, `:92` and `:178`) | `[-0.472, +0.279]` |
-| **`docs/POLICIES.md`** e-prop invariant block | `[-0.472, +0.279]` |
+| **`docs/POLICIES.md`** e-prop invariant block | `[-0.472, +0.279]` -- **CORRECTED 2026-08-18**, now carries `[-0.4366, +0.1844]` with an inline note |
 | **what `python -m snn_data_lake.basal_ganglia.mlp_q` prints today** | **`[-0.4366, +0.1844]`** |
 
 Three sites carry an interval the code no longer produces. The **property** those sites are actually
@@ -384,6 +384,28 @@ declaration carried the same inversion in its reason string and was corrected in
 The measurement IS degenerate for that arm — it reduces to asking whether the feedback is parallel
 to the forward weights, which is the weight symmetry feedback alignment exists to deny — but that
 is an argument about a specific rule, made in prose, not a verdict the instrument produced.
+
+## Autograd trainers and the reachability hole (F09/F10, 2026-08-18)
+
+`docs/POLICIES.md` states the SCOPE RULE; this is the enumeration behind it, kept here because a
+closed list in governing text rots the moment a trainer is added.
+
+**MEASURED:** 22 symbols in `src/` call both `.backward()` and an optimizer `.step()`. The census
+declares **17 governed claimants**. An earlier amendment named "the two genuine copies" as though
+the set were closed; it is not, and the two it named are not the reached ones.
+
+**There is NO train-tier exemption.** `snn_data_lake.training.cli` is an `_ENTRYPOINT` (one of
+eight, alongside `substrate.demo`, `brainstem.live_arm`, `brainstem.closed_loop`,
+`substrate.cockpit`, `substrate.web_ingest`, `substrate.nengo_bridge`, `substrate.region_wiring`),
+so the `training/` tier is REACHED. The prior wording granted that tier a blanket permission and was
+false when written.
+
+**Why no gate decides this.** `dormancy_gate.reachable()` ends `return seen & BRAIN_MODULES` — it
+masks to the governed tier and is structurally silent about `reasoning/` and `training/`, which is
+where most of the 22 live. So scope is a REVIEW JUDGMENT against the unmasked closure of
+`_LIVE_ROOTS + _ENTRYPOINTS`, not a computed value. **Nothing detects a change in it**: a wiring
+edit can move a trainer into scope with no gate, test or report firing. That is an OPEN HOLE, and
+the over-flagging of affected symbols is a mitigation, not a fix.
 
 ## Honesty notes
 
