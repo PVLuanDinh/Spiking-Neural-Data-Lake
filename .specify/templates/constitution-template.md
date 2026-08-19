@@ -1,4 +1,6 @@
 # [PROJECT_NAME] Constitution
+
+> Policy authority: `docs/POLICIES.md` (run `python -m snn_data_lake.substrate.policy_manifest --audit` for the enforcement manifest).
 <!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
 
 ## Core Principles

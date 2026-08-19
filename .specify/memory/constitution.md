@@ -215,7 +215,7 @@ durable store**; **e-prop — adopt the library, not its BPTT trainer**; P2 — 
 means RETIRING what it supersedes, not running both; P3 gives no dormancy pass for being
 third-party; and the suite stays runnable without a GPU.
 
-PROVISIONAL and review-enforced: its gate is specified but not built.
+PROVISIONAL; mechanization status lives in `docs/POLICIES.md`'s enforcement rows (authoritative -- this file restated it, was false for 13 days, and now points instead; re-derive with `python -m snn_data_lake.substrate.policy_manifest --manifest`).
 
 ### P8. Invent the method; the literature is a starting point, not a boundary
 
@@ -247,7 +247,7 @@ A passing criterion is evidence about a MECHANISM, never a verdict about EXPERIE
 authorizes the system to assert its own sentience. **The brain may report what it measures; it
 MUST NOT report what it cannot measure.** The safety envelope is NEVER a target of invention.
 
-PROVISIONAL and review-enforced: its gate is specified but not built.
+PROVISIONAL; mechanization status lives in `docs/POLICIES.md`'s enforcement rows (authoritative -- this file restated it, was false for 13 days, and now points instead; re-derive with `python -m snn_data_lake.substrate.policy_manifest --manifest`).
 
 ## Standing Invariants (never relaxed by any policy)
 

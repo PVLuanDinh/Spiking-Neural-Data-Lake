@@ -40,6 +40,13 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
+`docs/POLICIES.md` is the authoritative policy text. Run the policy audit and read its
+manifest before evaluating gates -- pointer + command only, nothing restated here:
+
+```bash
+python -m snn_data_lake.substrate.policy_manifest --audit
+```
+
 [Gates determined based on constitution file]
 
 ## Project Structure

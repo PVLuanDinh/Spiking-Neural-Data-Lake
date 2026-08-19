@@ -360,6 +360,13 @@ EXEMPT = {
         "disposition and the same reason as the four gates above: reachable from run_selfchecks "
         "and CI, never from a tick",
     ),
+    "policy_manifest": (
+        "permanent",
+        "the POLICIES.md manifest + release-audit instrument (specs/021) -- a CI self-check, not "
+        "a tick faculty. Derives the per-policy enforcement manifest from the governing document, "
+        "audits gate commands, certifies releases. Same disposition as gradient_claim_gate above: "
+        "reachable from run_selfchecks and CI, never from a tick",
+    ),
     "import_manifest": (
         "permanent",
         "the cross-tier canary -- a CI self-check covering the governed -> ungoverned lazy imports "

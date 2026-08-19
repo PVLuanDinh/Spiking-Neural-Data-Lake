@@ -1,5 +1,7 @@
 # Feature Specification: [FEATURE NAME]
 
+> Policy authority: `docs/POLICIES.md` (run `python -m snn_data_lake.substrate.policy_manifest --audit` for the enforcement manifest).
+
 **Feature Branch**: `[###-feature-name]`
 
 **Created**: [DATE]

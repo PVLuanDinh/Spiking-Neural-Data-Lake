@@ -79,7 +79,13 @@ BUDGETS = {
     # remedy, recorded here so it is not lost: the e-prop invariant block now carries FOUR
     # generations of amendment text and owes a CONSOLIDATION pass -- one statement per rule,
     # correction narratives moved to the spec record -- after which this ceiling comes back DOWN.
-    "docs/POLICIES.md": 29750,  # 27,710 measured -- the document that actually binds
+    "docs/POLICIES.md": 28083,  # LOWERED from 29750 on 2026-08-18 (specs/021 US4):
+    # the two "Real past incidents" forensics sections (P7 + P8, 1,853 words by this gate's
+    # own counter) relocated BYTE-EXACT to docs/POLICIES_EVIDENCE.md with pointers left in
+    # place; ceiling re-anchored to measured + 100. HONEST RESIDUE: the e-prop invariant
+    # block's own consolidation (the debt named above) remains OPEN -- the T024 count showed
+    # the SC-006 target reachable without touching freshly-stabilized text, so it was not.
+    "docs/POLICIES_EVIDENCE.md": 2002,  # relocated forensics; ceiling = measured + 60
     "README.md": 2264,  # 2,156
     "docs/ANATOMY.md": 1968,  # 1,874
     "AGENTS.md": 1065,  # 1,014

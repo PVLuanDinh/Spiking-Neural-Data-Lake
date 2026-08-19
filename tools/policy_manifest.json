@@ -1,0 +1,207 @@
+{
+  "_derived_from": "docs/POLICIES.md -- regenerate with: python -m snn_data_lake.substrate.policy_manifest --manifest --write",
+  "drift": {
+    "not_in_ci": [],
+    "self_disposition": "self-disposition: policy_manifest (this instrument) is EXCLUDED from its own unclaimed-gate census -- it is the census taker, not a policy gate; its liveness is asserted by the CI step and run_selfchecks entry that run it. Printed on every report so the exclusion is never silent.",
+    "unclaimed_gates": []
+  },
+  "policies": [
+    {
+      "commands": [],
+      "id": "P0",
+      "kind": "review-only",
+      "subclause_of": null,
+      "table_only": false,
+      "title": "The brain must autonomously improve itself, by every available avenue"
+    },
+    {
+      "commands": [],
+      "id": "P1",
+      "kind": "review-only",
+      "subclause_of": null,
+      "table_only": false,
+      "title": "Brain-native / no-hardcode"
+    },
+    {
+      "commands": [],
+      "id": "P2",
+      "kind": "review-only",
+      "subclause_of": null,
+      "table_only": false,
+      "title": "Adopt-better **or merge**, then retire the inferior (non-additive)"
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "-m",
+            "snn_data_lake.substrate.dormancy_gate"
+          ],
+          "source": "substrate/dormancy_gate.py"
+        },
+        {
+          "argv": [
+            "-m",
+            "snn_data_lake.substrate.method_dormancy_gate"
+          ],
+          "source": "substrate/method_dormancy_gate.py"
+        },
+        {
+          "argv": [
+            "-m",
+            "snn_data_lake.substrate.import_manifest"
+          ],
+          "source": "substrate/import_manifest.py"
+        }
+      ],
+      "id": "P3",
+      "kind": "absolute",
+      "subclause_of": null,
+      "table_only": false,
+      "title": "No dormancy"
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "-m",
+            "snn_data_lake.substrate.replication_guard"
+          ],
+          "source": "substrate/replication_guard.py"
+        }
+      ],
+      "id": "P4",
+      "kind": "absolute",
+      "subclause_of": null,
+      "table_only": false,
+      "title": "One brain / no replication"
+    },
+    {
+      "commands": [],
+      "id": "P5",
+      "kind": "review-only",
+      "subclause_of": null,
+      "table_only": false,
+      "title": "Use the GPU for everything it actually speeds up"
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "tools/p6_gate.py",
+            "--assert"
+          ],
+          "source": "tools/p6_gate.py --assert"
+        }
+      ],
+      "id": "P6",
+      "kind": "ratchet",
+      "subclause_of": null,
+      "table_only": false,
+      "title": "Every build must be able to reach every other, and actually use it"
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "tools/dependency_ledger.py",
+            "--assert"
+          ],
+          "source": "tools/dependency_ledger.py --assert"
+        }
+      ],
+      "id": "P7",
+      "kind": "absolute",
+      "subclause_of": null,
+      "table_only": false,
+      "title": "Any dependency that helps this become a phenomenal brain is accepted"
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "tools/red_reachability.py",
+            "--assert"
+          ],
+          "source": "tools/red_reachability.py --assert"
+        }
+      ],
+      "id": "P8",
+      "kind": "absolute",
+      "subclause_of": null,
+      "table_only": false,
+      "title": "Invent the method. The literature is a starting point, not a boundary"
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "-m",
+            "snn_data_lake.substrate.eprop_transport_gate"
+          ],
+          "source": "substrate/eprop_transport_gate.py"
+        },
+        {
+          "argv": [
+            "-m",
+            "snn_data_lake.substrate.gradient_claim_gate"
+          ],
+          "source": "substrate/gradient_claim_gate.py"
+        }
+      ],
+      "id": "e-prop",
+      "kind": "partial",
+      "subclause_of": null,
+      "table_only": true,
+      "title": "e-prop not backprop"
+    },
+    {
+      "commands": [],
+      "id": "P3 amendment",
+      "kind": "review-only",
+      "subclause_of": "P3",
+      "table_only": false,
+      "title": "dormancy is per-METHOD, not per-module"
+    },
+    {
+      "commands": [],
+      "id": "P4b",
+      "kind": "review-only",
+      "subclause_of": "P4",
+      "table_only": false,
+      "title": "THE DURABLE LAKE IS PART OF THE BRAIN"
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "tools/p4c_ratchet.py",
+            "--assert"
+          ],
+          "source": "tools/p4c_ratchet.py --assert"
+        }
+      ],
+      "id": "P4c",
+      "kind": "ratchet",
+      "subclause_of": "P4",
+      "table_only": false,
+      "title": "EVERY BUILD IS PART OF THE BRAIN"
+    },
+    {
+      "commands": [],
+      "id": "P4c amendment",
+      "kind": "review-only",
+      "subclause_of": "P4",
+      "table_only": false,
+      "title": "A BUILD THAT HAS NOT REACHED `main` IS NOT A BUILD THIS PROJECT CAN CLAIM"
+    },
+    {
+      "commands": [],
+      "id": "P5a",
+      "kind": "review-only",
+      "subclause_of": "P5",
+      "table_only": false,
+      "title": "TWO AXES, NEITHER SUBSTITUTES FOR THE OTHER (owner directive, 2026-08-05)"
+    }
+  ]
+}

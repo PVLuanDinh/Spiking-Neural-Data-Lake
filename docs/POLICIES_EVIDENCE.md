@@ -1,0 +1,95 @@
+# POLICIES evidence -- relocated incident forensics
+
+`docs/POLICIES.md` is the authoritative policy text; this file holds worked cases and
+incident forensics RELOCATED from it byte-exact (specs/021 US4). Entries are moves, never
+rewrites: each body below appears exactly as it stood in POLICIES.md at relocation time,
+and a pointer remains at the original site. Budgeted in `doc_budget_gate.BUDGETS` from its
+first commit.
+
+## P7 — Any dependency that helps this become a phenomenal brain is accepted
+
+### Real past incidents, each re-verified against the tree 2026-08-04
+
+The bar requires these, and requires them re-checked rather than inherited. Every line below was read
+from the file on the date stated. The 2026-07-20 abolition is what makes them evidence rather than
+history: **the rule is gone and the tree is still producing this code.**
+
+| incident | evidence |
+|---|---|
+| **Dependency-aversion manufactured a P2 violation in the safety envelope — the sharpest one, and it is CLOSED, which is what makes it good evidence.** A private 2-link arm carried *"a third implementation of the safety gate, with a second E-STOP that no test ever exercised"* | `substrate/demo.py:74-88`, whose retirement marker states the cause in the project's own words: *"It existed so this demo could run without dependencies; the zero-dependency rule was removed project-wide in 2026-07 and mujoco is a core dependency now, so that reason no longer describes anything."* Retired under specs/004 |
+| **Three independent hand-rolled linear solvers**, none importing numpy *(historical incident, all three since fixed: nef_compute's `_solve` DELETED — the module is `cortex/nef_compute.py` since 2026-08-12 and solves via `np.linalg.solve`; the other two are thin numpy wrappers with the incident recorded in-file)* | at the time: `reasoning/nef_compute.py:32` (Gaussian elimination, partial pivoting), `reasoning/pc_active_inference.py:85` (Gauss-Jordan, partial pivoting), `reasoning/sorn.py:263` (Gaussian elimination, partial pivoting) — against `cerebellum/wavefront_planner.py:212`, which solves the same shape of problem in **one line**: `dq = jac.T @ np.linalg.solve(jac @ jac.T + (damping**2) * np.eye(3), err)` |
+| **The duplication the rule forced has DIVERGED and can no longer be merged** | `substrate/_mathutils.py:16-23` — *"Copies whose formula DIFFERS were deliberately left in place (not merged)"*, listing seven, including that `burst_multiplexing._pearson` / `stdp_wta_bayes.pearson` *"use zero-denominator guards, so they are NOT byte-equivalent"*. A correctness difference, not a style one |
+| **A hand-written PNG encoder, while the library that does it is already a declared dependency nothing imports** | `substrate/arm_view.py::encode_png` — IHDR/IDAT/IEND chunking, CRC, filter-type-0 scanlines, docstring *"Stdlib only."* Meanwhile `pillow` is declared in the `[hf]` extra and imported **nowhere** in `src/`, `tests/` or `tools/`. **STILL OPEN 2026-08-04, and now tracked** — `tools/dependency_ledger.py` carries `pillow` as an EXEMPT (it is a genuine transitive pin for `datasets`' image decoding) whose reason names this exact incident and specs/010 T021 as the owner. Adopting pillow here and DELETING the hand-rolled encoder is the P7+P2 move, and it needs the measurement of what it buys. *(Cites converted to symbols: `arm_view.py:46-74` had drifted — `encode_png` is at `:55` — and `pyproject.toml:73` is now a comment about the `[gpu]`/`[train]` extras.)* |
+| **Nengo was never permissible for the core loop under the old rule**, so population coding was re-implemented | `docs/PITCH.md:275-277` — the arm loop *"borrows the NEF idea of population-coded representations for the spiking PID controller, but implements it directly rather than depending on Nengo"*; the `[nengo]` bridge exists only as an opt-in extra |
+| **P0's open cortical-column avenue IS a hand-rolled dependency incident.** `cortex/cortical_microcircuit.py` reimplements Potjans-Diesmann 2014 from scratch — the Table 5 connection-probability matrix, the fixed-in-degree connectivity draw, the variance-preserving `w/sqrt(scale)` correction, ring-buffer delays, clock-driven per-neuron integration — and its **only imports are `math` and `random`** | `cortical_microcircuit.py:47-48` (imports), `:58-67` (CONN_PROB), `:160-191` (`_build_connectivity`), `:193-246` (`simulate`). This is the same file P0 lists as its clearest open avenue, and NEST/Brian2/GeNN each ship this exact model |
+
+**Residue status, RE-MEASURED 2026-08-04. Two of the three items this paragraph named are now
+CLOSED, and it was still asserting all three.** The rule was abolished on 2026-07-20; here is what
+the tree actually holds today, each line re-derived rather than inherited:
+
+- **CLOSED — the purity asserts are GONE.** This said *"Three `assert "torch" not in sys.modules`
+  purity asserts survive"* at three sites. Grep for the statement across `src/`: **zero live
+  occurrences.** The only remaining hit is `reasoning/vsa_structure_mapping.py:39`, which is *prose
+  describing the retired artefact*, and `laminar_local_readout.py` carries its own removal note
+  ("Two `assert "torch" not in sys.modules` purity asserts were [removed]... P7 supersedes it").
+- **CLOSED — the package docstring.** This said `src/snn_data_lake/__init__.py:1` *"still opens 'a
+  zero-dependency neuromorphic library'"*. It now opens *"snn_data_lake -- a neuromorphic library
+  organized by brain anatomy."*
+- **CLOSED — `scikit-learn`.** The gate specification below said the ledger *"fails today on
+  scikit-learn... absent from `pyproject.toml` entirely"*. It is now declared in the `[gpu]` and
+  `[train]` extras with a dated note. **CLOSED FURTHER, re-run 2026-08-05:** this line then read
+  *"`tools/dependency_ledger.py` reports **UNDECLARED: 1**, and it is `arcengine` (two unguarded
+  imports under `reasoning/arc_agi/`)"*, which was overtaken by the `[arc]` declaration in the same
+  day's floor-raise pass. Re-derived, the tool reports **UNDECLARED: 0** — `arcengine` is declared
+  and its marker is gone. The two unguarded imports are unchanged and still real
+  (`reasoning/arc_agi/play.py` and `play_brain.py`, `from arcengine import GameAction, GameState` at
+  module top in both); what changed is that pyproject now names the distribution they need.
+- **OPEN — the spec-plan certifications, and there are EIGHT, not six.** Re-counted by grep for
+  "no new depend" across `specs/`: `001/plan.md` (**twice**), `003/plan.md`, `006/plan.md`,
+  `007/plan.md`, `009/plan.md` — **plus the two this paragraph missed**, `005/shared-edits.md`
+  and `008/spec.md`. None evaluated a library, so the scoring habit is running on nothing.
+  `specs/010/plan.md` is the one that gets it right and says so explicitly. Each of the eight now
+  carries a P7 void-notice at the site (added 2026-08-04) rather than only being counted here —
+  **verified 2026-08-05: eight `P7 VOID` notices, one per certification, and the certification text
+  is left in place beneath each.** *(Line numbers dropped in the same check. The pass that inserted
+  the notices wrote `001/plan.md:19` and `:61` — and inserting a notice at `:22` pushed the second
+  certification to `:63`, so the citation was invalidated by the edit that accompanied it. A cite
+  into a file you are editing in the same pass is stale before the pass ends.)*
+- **OPEN — the hand-rolled incidents themselves** (the solvers, the PNG encoder, the microcircuit)
+  are all still in the tree. Those are P2 work items, not residue of the rule.
+
+**The lesson this paragraph is now itself an instance of:** it was the section arguing "the rule is
+gone and the tree is still producing this code", and it went on asserting three cleanups that had
+already landed. A residue list has to be re-derived on every edit or it becomes a list of work
+someone already did — which discredits the items that are still real.
+
+**Two honest counter-examples, recorded so this policy is not read as a blank cheque.** Both are
+rejections that P7 would **not** overturn, and both are the correct shape:
+
+- **spikingjelly and cupy** were rejected *"on a structural reason rather than a benchmark — their
+  fused multi-step kernels collapse the **time** axis `T`, and the live tick has `T=1` by
+  construction"* (P5, above). Category (b). It stands. **And the record needs a correction that an
+  audit produced on 2026-08-04:** spikingjelly was not "rejected twice" — it was *adopted* on
+  2026-07-02 into `research/neuromorphic_torch/`, and the later structural finding is about the live
+  tick, not about the library's admissibility.
+- **numba** won its benchmark decisively — *"for fused LIF at our real widths numba beats a CUDA graph
+  by ~16×"* — and was still not adopted, because no live population reaches the width at which the win
+  exists. A measured win on a workload the brain does not run is not a reason to adopt. Note the
+  reason for this one has itself been re-measured once (P5's `0.00%` amendment), which is why it is
+  stated here in its durable form rather than by quoting the retracted number.
+
+## P8 — Invent the method. The literature is a starting point, not a boundary
+
+### Real past incidents, each re-verified against the tree 2026-08-04
+
+| incident | evidence |
+|---|---|
+| ~~**LIVE DEFECT, and the sharpest justification for this policy: the brain answers "are you conscious" from a probe that never reads the brain.**~~ **CLOSED 2026-08-04 (specs/010 C08+C09) — struck through, not deleted, because this file keeps the record of what it claimed.** `reasoning/spike_chat_lake.py` still routes the literal strings `("are you conscious", "are you aware", "do you have experience")` to `self._consciousness()`, but the probe behind it was REBUILT | `reasoning/consciousness_probe.py` — its own header now records the fix. **BINDING and RE-ENTRY were DELETED, not re-thresholded**, per falsifier F11: BINDING scored exactly 1.000 across 300 random object sets against a rate control whose docstring conceded the pairing was *"right only by luck"*, and RE-ENTRY was arithmetic over three literals (0.40 < 0.55 < 0.70) with no brain input and no RNG. What survives: **GWT ACCESS now reads the brain** (`probe_access(brain)` drives `Brain._access` and returns UNKNOWN, not a verdict, without one), and **INTEGRATION reports the DISTRIBUTION across seeds** instead of the one hardcoded `seed=0` that passed. Verified 2026-08-04: `tools/red_reachability.py --assert` lists both surviving probes under READS_SYSTEM and reports **NO_RED 0**. *(Line cites `:925` / `:929` / `:84` / `:90-95` all dropped — every one had drifted; `spike_chat_lake.py:925` now resolves to an unrelated `return` inside the ignition helper.)* |
+| **A metric rejected for being arithmetic rather than function** | `specs/009/data-model.md:55` — `can_degrade`: *"MUST be able to get WORSE. Any metric that improves monotonically with parameter count is arithmetic, not function."* `mean_assembly_coupling()` was rejected on it: it sums surviving weights, so thinning moves it whether or not recall degrades — it measures the **manipulation**, not the function |
+| **An oracle metric — the score leaked the answer** | `specs/009/data-model.md:57` — `not_an_oracle`: assembly-derived wiring on `AttractorNet` is an ORACLE, because *"with two disjoint assemblies the co-activity mask IS the ground-truth partition"*. It scored 1.000 untrained. Recorded UNRESOLVED pending a clean metric, not closed |
+| **A null through a rounding instrument is not a null** | `specs/008/research.md:100-108` — the deep unrounded fingerprint found A/B differing at **1,713 of 98,320**, while the same three runs read through `Brain.state()` gave **0 of 149**. The tree's own wording is *"A null measured through `Brain.state()` is not a null"* (`specs/007/spec.md:595`) |
+| **A saturated success signal, banned and never lifted** | `probe_fluid.py` is recorded SATURATED and BANNED as a Gf signal in five files across `docs/` and `specs/`, with the honest replacement being a held-out ARC-eval number: `specs/006/verdict.md:16` — **18 of 400 = 4.50%** eval, 53 of 400 = 13.25% train |
+| **An invention that measured NULL and was DELETED rather than parked — P8 working exactly as intended** | the fixed-point combinator. `specs/006/verdict.md:13` — combinator-only scored *"12 of 400 -- byte-identical ID set"*; `:61` — *"The combinator's only measured effect was negative: 2 of 400 training solves starved"*; `:67` — *"null result; feature stops here"* |
+| **The same invention, load-bearing twice, validated once — the debt-is-proportional-to-load rule, violated** | the `(a·b)/D` fusion identity. In `cortex/vsa_reasoning.py` it carries its algebra and a live check. Reused in `cortex/access_consciousness.py::_coherence`, it claims *"FUSED, bit-exactly (v4.80)"* (`:154`) and *"bit-exact: `_coherence` is a pure function of `codes`"* (`:205`) with **no assertion anywhere comparing the fused branch against the scalar one** — the bit-exactness rests on a prose algebra argument, in the module that feeds the consciousness telemetry |
+| **Killing your own proposal before building it is the licence succeeding** | `docs/INVENTION.md:6-7` — of four proposals, three *"were killed by a property of a file that anybody could have opened, and one was killed by the algebra of its own headline metric"* |
+

@@ -404,6 +404,7 @@ REGIONS = {
         "eprop_transport_gate",  # e-prop invariant: a transposed weight may not reach a weight update
         "doc_budget_gate",  # word ceilings on the standing documents: prose growth stays visible
         "gradient_claim_gate",  # e-prop SCOPE: which rules OWE a cosine at all (census asserts on the governed tier)
+        "policy_manifest",  # POLICIES.md manifest + release audit: derive rows, audit gates, certify (bare == --assert)
         "safety_envelope",  # THE five approval-gated brainstem files, one definition + a SECURITY.md agreement check
         "ingest_guard",  # content boundary for outside data: licence deny-by-default + injection flagging
         "hf_stream",  # streamed HF datasets -> brain-consumable features (licence-gated, bounded)

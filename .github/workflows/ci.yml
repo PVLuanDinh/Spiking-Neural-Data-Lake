@@ -350,6 +350,20 @@ jobs:
       - name: Gradient-claim census criteria can fail (--self-check)
         run: python -m snn_data_lake.substrate.gradient_claim_gate --self-check
 
+      # Policy manifest (specs/021): the MAP must be honest before the territory is judged --
+      # derivation reconciles (parents + table_only == table rows), the committed
+      # tools/policy_manifest.json byte-matches a fresh derivation, and the unclaimed-gate census
+      # never grows past the counted baseline (it may shrink to empty as US4 claims rows).
+      # Executes NO gate commands: this job already runs them; asserting the map twice buys nothing.
+      # Measured wall time in .venv-lake: <1s.
+      - name: Policy manifest assert (derivation + committed-copy sync + drift ratchet)
+        run: python -m snn_data_lake.substrate.policy_manifest --assert
+
+      # ...and its verdicts must be falsifiable: FAIL, CANNOT_RUN, NO_GATE, empty-walk,
+      # reconciliation-mismatch and the certify-refusal red are each CONSTRUCTED and must fire.
+      - name: Policy manifest verdicts can fail (--self-check)
+        run: python -m snn_data_lake.substrate.policy_manifest --self-check
+
   test:
     name: tests + coverage
     runs-on: ubuntu-latest
@@ -364,3 +378,36 @@ jobs:
           cache: pip
       - run: python -m pip install -e ".[dev]"
       - run: pytest   # addopts in pyproject run --cov with a >=70% gate
+
+  # Release audit (specs/021, FR-014): every push to main gets audited -- --certify runs every
+  # manifest row's real gate command and refuses while any policy is FAIL / CANNOT_RUN / NO_GATE
+  # or an unclaimed gate exists. NON-BLOCKING initially (continue-on-error): main is not gated on
+  # the census rows landing; flipping this job to required once it goes green is a recorded owner
+  # decision, not a CI edit that happens by accident. The refusal is loud in the job summary and
+  # the certification record is published as an artifact either way.
+  certify:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install (CPU torch tier)
+        run: pip install -e ".[dev]"
+      - name: Release audit (--certify; refusal is honest, not fatal to main)
+        run: |
+          python -m snn_data_lake.substrate.policy_manifest --certify | tee certify.out
+          rc=${PIPESTATUS[0]}
+          echo "## Policy certification" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          tail -n 30 certify.out >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit $rc
+      - name: Publish certification record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: policy-certification
+          path: tools/policy_certification.json

@@ -1,0 +1,178 @@
+{
+  "certified": true,
+  "commands_run": [
+    {
+      "argv": [
+        "-m",
+        "snn_data_lake.substrate.dormancy_gate"
+      ],
+      "seconds": 2.54,
+      "verdict": "PASS"
+    },
+    {
+      "argv": [
+        "-m",
+        "snn_data_lake.substrate.method_dormancy_gate"
+      ],
+      "seconds": 5.12,
+      "verdict": "PASS"
+    },
+    {
+      "argv": [
+        "-m",
+        "snn_data_lake.substrate.import_manifest"
+      ],
+      "seconds": 1.05,
+      "verdict": "PASS"
+    },
+    {
+      "argv": [
+        "-m",
+        "snn_data_lake.substrate.replication_guard"
+      ],
+      "seconds": 1.22,
+      "verdict": "PASS"
+    },
+    {
+      "argv": [
+        "tools/p6_gate.py",
+        "--assert"
+      ],
+      "seconds": 4.09,
+      "verdict": "PASS"
+    },
+    {
+      "argv": [
+        "tools/dependency_ledger.py",
+        "--assert"
+      ],
+      "seconds": 5.15,
+      "verdict": "PASS"
+    },
+    {
+      "argv": [
+        "tools/red_reachability.py",
+        "--assert"
+      ],
+      "seconds": 1.41,
+      "verdict": "PASS"
+    },
+    {
+      "argv": [
+        "-m",
+        "snn_data_lake.substrate.eprop_transport_gate"
+      ],
+      "seconds": 13.83,
+      "verdict": "PASS"
+    },
+    {
+      "argv": [
+        "-m",
+        "snn_data_lake.substrate.gradient_claim_gate"
+      ],
+      "seconds": 1.62,
+      "verdict": "PASS"
+    },
+    {
+      "argv": [
+        "tools/p4c_ratchet.py",
+        "--assert"
+      ],
+      "seconds": 0.12,
+      "verdict": "PASS"
+    }
+  ],
+  "full": false,
+  "refusal_reasons": [],
+  "results": [
+    {
+      "detail": "no machine decides this policy",
+      "policy": "P0",
+      "verdict": "REVIEW_ONLY"
+    },
+    {
+      "detail": "no machine decides this policy",
+      "policy": "P1",
+      "verdict": "REVIEW_ONLY"
+    },
+    {
+      "detail": "no machine decides this policy",
+      "policy": "P2",
+      "verdict": "REVIEW_ONLY"
+    },
+    {
+      "detail": "",
+      "policy": "P3",
+      "verdict": "PASS"
+    },
+    {
+      "detail": "",
+      "policy": "P4",
+      "verdict": "PASS"
+    },
+    {
+      "detail": "no machine decides this policy",
+      "policy": "P5",
+      "verdict": "REVIEW_ONLY"
+    },
+    {
+      "detail": "",
+      "policy": "P6",
+      "verdict": "PASS"
+    },
+    {
+      "detail": "",
+      "policy": "P7",
+      "verdict": "PASS"
+    },
+    {
+      "detail": "",
+      "policy": "P8",
+      "verdict": "PASS"
+    },
+    {
+      "detail": "",
+      "policy": "e-prop",
+      "verdict": "PASS"
+    },
+    {
+      "detail": "no machine decides this policy",
+      "policy": "P3 amendment",
+      "verdict": "REVIEW_ONLY"
+    },
+    {
+      "detail": "no machine decides this policy",
+      "policy": "P4b",
+      "verdict": "REVIEW_ONLY"
+    },
+    {
+      "detail": "",
+      "policy": "P4c",
+      "verdict": "PASS"
+    },
+    {
+      "detail": "no machine decides this policy",
+      "policy": "P4c amendment",
+      "verdict": "REVIEW_ONLY"
+    },
+    {
+      "detail": "no machine decides this policy",
+      "policy": "P5a",
+      "verdict": "REVIEW_ONLY"
+    }
+  ],
+  "review_only": [
+    "P0",
+    "P1",
+    "P2",
+    "P5",
+    "P3 amendment",
+    "P4b",
+    "P4c amendment",
+    "P5a"
+  ],
+  "tree": {
+    "commit": "07bc35a9ac9d5acf499ce41bc1870d977af793d4",
+    "dirty": true
+  }
+}
