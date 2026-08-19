@@ -3,7 +3,9 @@
   "drift": {
     "not_in_ci": [],
     "self_disposition": "self-disposition: policy_manifest (this instrument) is EXCLUDED from its own unclaimed-gate census -- it is the census taker, not a policy gate; its liveness is asserted by the CI step and run_selfchecks entry that run it. Printed on every report so the exclusion is never silent.",
-    "unclaimed_gates": []
+    "unclaimed_gates": [
+      "lake_rebuild_gate"
+    ]
   },
   "policies": [
     {
