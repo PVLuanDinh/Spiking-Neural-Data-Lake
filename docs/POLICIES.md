@@ -360,11 +360,11 @@ faked with a dead consumer. (History: a coverage-audit once flagged PFC / amygda
 synfire as dormant; every one was REFUTED on runtime A/B. Static grep proves import-absence, not
 behavioural inertness — mark unproven cases UNCERTAIN, not dormant.)
 
-### The dormancy family — six observed shapes of "live but inert"
+### The dormancy family — seven observed shapes of "live but inert"
 
 The module gate asks one question: *is this module imported from a live root?* Every defect below
 answered **yes** and was still dead. They are the same failure wearing different clothes, and naming
-them is most of what makes the next one findable. All six are real, all were found by audit rather
+them is most of what makes the next one findable. All seven are real, all were found by audit rather
 than CI, and all are cited from this tree:
 
 | # | shape | worked example |
