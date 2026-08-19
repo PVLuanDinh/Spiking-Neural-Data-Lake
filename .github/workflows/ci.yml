@@ -115,6 +115,10 @@ jobs:
       - name: Performance trend row (report-only, never asserts here)
         if: matrix.os == 'ubuntu-latest'
         run: python -m snn_data_lake.substrate.perf_baseline --report
+      # specs/022 T008: the index is DERIVED state -- delete -> rebuild -> logical equality,
+      # with the planted-divergence red and the lake-tracking control proven in the same run.
+      - name: Lake index rebuild gate (equality + divergence red + tracking control)
+        run: python -m snn_data_lake.substrate.lake_rebuild_gate
 
   wheel:
     name: wheel packages the vendored model

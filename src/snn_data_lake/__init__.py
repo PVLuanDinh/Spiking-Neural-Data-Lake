@@ -409,6 +409,7 @@ REGIONS = {
         "lake_bridge",  # specs/022 T005b: read-old/write-new format bridge; bare == constructed round-trip red
         "lake_segments",  # specs/022 T005: WAL(BinLog) + sealed Arrow IPC segments; bare == round-trip + CRC red
         "lake_index",  # specs/022 T007: derived pointer index (sqlite WAL); bare == round-trip + divergence red
+        "lake_rebuild_gate",  # specs/022 T008: delete->rebuild->logical-equality from the lake alone; bare == self-check
         "safety_envelope",  # THE five approval-gated brainstem files, one definition + a SECURITY.md agreement check
         "ingest_guard",  # content boundary for outside data: licence deny-by-default + injection flagging
         "hf_stream",  # streamed HF datasets -> brain-consumable features (licence-gated, bounded)

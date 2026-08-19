@@ -321,6 +321,7 @@ CORE = [
     "substrate.lake_bridge",  # 022 T005b: bridge round-trip red on a constructed temp lake (never the real home)
     "substrate.lake_segments",  # 022 T005: seal round-trip + CRC red on a constructed temp store (never the real home)
     "substrate.lake_index",  # 022 T007: pointer-index round-trip + watermark persistence + divergence red (temp db)
+    "substrate.lake_rebuild_gate",  # 022 T008: rebuild equality + planted-divergence red + lake-tracking control (temp)
     "substrate.safety_envelope",  # THE five approval-gated brainstem files: assert code and SECURITY.md still name the same five
     "substrate.ingest_guard",  # outside-data content boundary: licence deny-by-default + injection flagging
     "substrate.hf_stream",  # streamed HF datasets -> features; offline self-check (no network, no datasets dep)
