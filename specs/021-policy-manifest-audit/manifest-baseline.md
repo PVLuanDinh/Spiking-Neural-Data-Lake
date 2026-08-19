@@ -187,6 +187,16 @@ restatements (:195 is P6's accurate corrected status; :317 is the table header).
   pending an OWNER action (GitHub Billing & plans -- payment method / spending limit). Re-run
   this check after billing is restored: the certify job must show nonzero duration AND a
   published policy-certification artifact.
+  **RESOLVED 2026-08-19 (run 32212496578, commit c98e7573, after billing restored + two fixes):**
+  the first real run failed two ways, both this feature's own -- the certify job pinned "3.14"
+  (GIL build; the import guard refused, the exact trap ci.yml's own comment documents) and
+  policy_manifest.py drifted from `ruff format` (the local gate ran `check`, not
+  `format --check`). Fixed in c98e7573. Result: ALL SIX JOBS SUCCESS -- certify ran
+  **3m01s** (nonzero duration), job log verbatim: "CERTIFIED (full=False) -- record:
+  tools/policy_certification.json / not machine-decided (disclosed, never green): P0, P1, P2,
+  P5, P3 amendment, P4b, P4c amendment, P5a / UNCLAIMED_GATE: none", and the
+  `policy-certification` artifact PUBLISHED (728 bytes zipped, expires 2026-11-17).
+  FR-014 verified end to end: a landing build cannot avoid being audited.
 
 ## POLICIES.md audit of the completed feature (T033, 2026-08-19)
 
