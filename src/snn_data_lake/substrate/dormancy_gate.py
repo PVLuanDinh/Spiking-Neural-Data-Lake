@@ -374,6 +374,11 @@ EXEMPT = {
         "backwards). Consumed by the per-tag migrator (T009) and home.py's engine adoption "
         "(T010); EXPIRES when either lands -- a bridge nothing reads by S0 exit is a defect",
     ),
+    "lake_engine": (
+        "wire",
+        "specs/022 T010-i: retention registry + append budget. Live consumer is the daemon's "
+        "tick accounting + home.py adoption (T010-ii); EXPIRES when that lands",
+    ),
     "lake_migrate": (
         "wire",
         "specs/022 T009: per-tag dispositions + identity migration. Its live consumer is "

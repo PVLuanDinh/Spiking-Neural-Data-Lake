@@ -1,0 +1,11 @@
+{
+  "method": "BinLog.append wrap over make_brain(seed=0) x120 ticks, NORD_HOME scratch; p95 over nonzero per-tick byte sums",
+  "host": "LUAN_AND_ANNIE",
+  "utc": "2026-08-19T18:47:37Z",
+  "n_ticks": 120,
+  "per_tag_p95_bytes": {
+    "3": 4205.0,
+    "4": 117.0,
+    "7": 12389.0
+  }
+}

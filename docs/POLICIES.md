@@ -565,6 +565,16 @@ somewhere ungoverned to be promoted later. `reasoning/` is not a parking lot. "B
 integrate it properly later" is how a tree accumulates capability it cannot account for, and every
 one of the defects this policy set exists to catch was found in exactly that residue.
 
+**THE RETENTION RULE (specs/022 T010, landing WITH its counted gate per the gate-before-rule
+invariant).** Every record class in the lake is labeled IMMORTAL or COMPACTABLE at introduction
+(`substrate/lake_engine.RETENTION`); "remember everything" means an appended record is retained or
+provably reconstructible BEFORE any compaction reclaims it — COMPACTABLE is a claim about
+reconstruction, never permission to forget, and `_T_GROWTH`'s label carries `reclaimable=False`
+until the delta chain proves it. IMMORTAL classes carry a measured bytes/tick ceiling
+(`lake_engine.AppendBudget`, baseline `tools/lake_append_baseline.json`) whose red is a
+constructed FLOOD — counted at landing: 7 classes labeled, registries agree, flood red fired;
+the pathology it polices is measured (97.64% of the live lake is repeated growth snapshots).
+
 P4 says there is one cognition. P4b says the durable lake is part of that brain, not storage beside
 it. P4c says the same of *everything else*, and names the two parts that made the gap visible:
 
