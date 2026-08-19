@@ -90,6 +90,14 @@ class SegmentStore:
     def append(self, payload: bytes) -> None:
         self._wal.append(wrap(payload))
 
+    # distinct-from: binlog.py -- NOT a second bulk mechanism: a one-line DELEGATE to
+    # BinLog.extend (the incumbent's own bulk path) that only adds this store's CRC envelope.
+    def append_many(self, payloads) -> int:
+        """Bulk append with ONE fsync via BinLog.extend (measured there at 21x-1341x over
+        per-record fsync). The migrator's path: 156k records, one fsync each, would be the
+        wrong tool."""
+        return self._wal.extend([wrap(p) for p in payloads])
+
     def seal(self) -> Path | None:
         """Seal the active WAL into the next seg-NNNNNNNN.lake. Returns the sealed path,
         or None when the WAL holds no records (an empty seal is a no-op, not an error)."""

@@ -374,6 +374,12 @@ EXEMPT = {
         "backwards). Consumed by the per-tag migrator (T009) and home.py's engine adoption "
         "(T010); EXPIRES when either lands -- a bridge nothing reads by S0 exit is a defect",
     ),
+    "lake_migrate": (
+        "wire",
+        "specs/022 T009: per-tag dispositions + identity migration. Its live consumer is "
+        "home.py's engine adoption (T010); EXPIRES when T010 lands. The full-scale identity "
+        "proof ran against the backup at landing (evidence/s0-lake-migrate.md)",
+    ),
     "lake_rebuild_gate": (
         "permanent",
         "specs/022 T008: the index-is-derived gate (delete -> rebuild -> logical equality, "
