@@ -42,14 +42,34 @@ def test_torn_tail_does_not_diverge_the_bridge(tmp_path):
     assert len(list(lake_bridge.iter_records(tmp_path))) == 5
 
 
-def test_premature_segment_refused_loudly(tmp_path):
-    # A segment existing before its writer (T005) is a defect, not data.
+def test_invalid_segment_refused_loudly(tmp_path):
+    # T005 un-stubbed the segment arm: garbage where a sealed segment should be is
+    # corruption and the bridge refuses the whole segment, never skip-and-continue.
+    from snn_data_lake.substrate.lake_segments import SegmentCorruption
+
     _mklake(tmp_path, 2)
     seg = tmp_path / lake_bridge.SEGMENT_DIR
     seg.mkdir()
     (seg / "seg-00000001.lake").write_bytes(b"not-a-real-segment")
-    with pytest.raises(NotImplementedError, match="before its writer"):
+    with pytest.raises(SegmentCorruption, match="not a valid sealed segment"):
         list(lake_bridge.iter_records(tmp_path))
+
+
+def test_bridge_reads_binlog_then_sealed_then_wal(tmp_path):
+    # The one reader path, end to end: incumbent lake -> sealed segment -> active WAL.
+    from snn_data_lake.substrate.lake_segments import SegmentStore
+
+    _mklake(tmp_path, 2)  # rec-0, rec-1 in brain_lake.bin
+    store = SegmentStore(tmp_path)
+    store.append(b"sealed-0")
+    store.seal()
+    store.append(b"wal-0")
+    got = list(lake_bridge.iter_records(tmp_path))
+    assert got[:2] == [b"rec-0", b"rec-1"]
+    assert got[2:3] == [b"sealed-0"]
+    # The active WAL is the store's to read (bridge covers sealed files; the WAL arm
+    # joins the bridge when home.py adopts the store at T009/T010).
+    assert list(store.iter_payloads()) == [b"sealed-0", b"wal-0"]
 
 
 def test_digest_is_boundary_sensitive():

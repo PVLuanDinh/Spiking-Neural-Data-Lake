@@ -56,12 +56,11 @@ def iter_records(root: str | os.PathLike) -> Iterator[bytes]:
 
 
 def _iter_segment(path: Path) -> Iterator[bytes]:
-    """Segment reading lands with the segment WRITER (T005). Until a writer exists, any
-    seg-*.lake file is unexplainable and the bridge refuses loudly rather than guessing."""
-    raise NotImplementedError(
-        f"segment file {path.name} found but the segment reader lands with the writer "
-        "(specs/022 T005); a segment existing before its writer is a defect, not data"
-    )
+    """Sealed-segment reading, delegated to the writer's own verified reader (T005) --
+    CRC-checked per record; a mismatch refuses the segment loudly (SegmentCorruption)."""
+    from snn_data_lake.substrate.lake_segments import read_segment  # noqa: PLC0415
+
+    yield from read_segment(path)
 
 
 def stream_digest(records: Iterator[bytes]) -> str:

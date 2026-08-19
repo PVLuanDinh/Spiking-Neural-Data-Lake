@@ -1,4 +1,4 @@
-# Installable src/ package (snn_data_lake). torch + numpy + mujoco are UNCONDITIONAL core dependencies, so
+# Installable src/ package (snn_data_lake). torch + numpy + mujoco + pyarrow are UNCONDITIONAL core dependencies, so
 # `pip install .` gives the full brain tier out of the box. `pip install ".[all]"` adds every addon
 # (arm+lake+gpu+nmnist+train); training is a first-class GPU tier (.[train] -> snn-train).
 #
@@ -87,7 +87,7 @@ build-backend = "hatchling.build"
 [project]
 name = "spiking-neural-data-lake"
 version = "4.80.0"
-description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. torch, numpy and mujoco are core dependencies. snntorch joined them on 2026-08-06."
+description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. torch, numpy and mujoco are core dependencies. snntorch joined them on 2026-08-06; pyarrow on 2026-08-19 (sealed lake segments, specs/022)."
 readme = "README.md"
 # FLOOR RAISED 3.12 -> 3.14, 2026-08-05 (owner decision), and this floor is NOT the whole
 # requirement. The project requires the FREE-THREADED (PEP 703) build, and `requires-python` cannot
@@ -154,6 +154,13 @@ classifiers = [
 dependencies = [
     "torch",
     "numpy",
+    # PROMOTED from the [lake] extra 2026-08-19 (specs/022 T005): pyarrow is the sealed-segment
+    # container of the ONE durable lake (substrate/lake_segments.py -- Arrow IPC files, footer-
+    # indexed). The lake engine is core, so its container is core (P7). Until this promotion the
+    # declaration sat in an extra with ZERO importers -- the exact declared-but-never-imported
+    # shape P7's honesty guard names; the import now exists and is governed. Verified installing
+    # and running with the GIL disabled on cp314t (25.0.1).
+    "pyarrow",
     # THE BODY. Owner directive 2026-08-01: the MuJoCo SO-101 replaces the 2-DOF kinematic
     # ArmSim as the arm, so the physics engine is core rather than an extra.
     # EXACT PIN, not a floor, on this file's own recorded precedent for ruff ("a formatter's
@@ -192,7 +199,7 @@ dependencies = [
 # instruction that no longer described the install.
 [project.optional-dependencies]
 arm = ["pyserial"]                                                       # live_arm --serial / --actuate
-lake = ["polars", "pyarrow", "deltalake"]                               # lakehouse/medallion + delta_demo
+lake = ["polars", "deltalake"]  # lakehouse/medallion + delta_demo (pyarrow PROMOTED to core, 022 T005)
 # snntorch REMOVED from both extras 2026-08-06: it is a CORE dependency now (see the header block).
 # It was declared here twice with DIFFERENT specs (`==1.0.0` here, `>=0.9` in [train]); keeping
 # either beside the core declaration is P2's additive failure, so both are retired, not softened.

@@ -369,9 +369,16 @@ EXEMPT = {
     ),
     "lake_bridge": (
         "wire",
-        "specs/022 T005b: the read-old/write-new format bridge. Consumed by the segment writer "
-        "(T005) and the per-tag migrator (T009); this exemption EXPIRES when either lands and "
-        "imports it -- a bridge nothing reads by S0 exit is a defect, not infrastructure",
+        "specs/022 T005b: the read-old/write-new format bridge (imports lake_segments for the "
+        "sealed arm -- reason corrected 2026-08-19: the first wording had the import direction "
+        "backwards). Consumed by the per-tag migrator (T009) and home.py's engine adoption "
+        "(T010); EXPIRES when either lands -- a bridge nothing reads by S0 exit is a defect",
+    ),
+    "lake_segments": (
+        "wire",
+        "specs/022 T005: the segment writer (WAL + sealed Arrow IPC). Reached today only via "
+        "lake_bridge's sealed arm; its live consumer is home.py's engine adoption (T010) and "
+        "the migrator (T009); EXPIRES when either lands",
     ),
     "perf_baseline": (
         "permanent",

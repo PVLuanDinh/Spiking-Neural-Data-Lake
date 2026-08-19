@@ -141,12 +141,10 @@ TOOL_DISTS = {
 #: and the gate asserts every entry still matches a real violation, so an exemption that blesses
 #: nothing fails loudly instead of reading as coverage.
 EXEMPT = {
-    "pyarrow": (
-        "TRANSITIVE, declared explicitly on purpose. `[lake] = polars, pyarrow, deltalake` -- both "
-        "polars and deltalake require pyarrow for the Arrow interchange the lakehouse tier reads "
-        "and writes, so pinning it here is a deliberate statement of the tier's contract rather "
-        "than a leftover. No src/ module imports it directly because the tier talks to polars."
-    ),
+    # pyarrow's exemption DELETED 2026-08-19 (specs/022 T005): the staleness assert below caught
+    # it blessing nothing the moment pyarrow was promoted to core with a real importer
+    # (substrate/lake_segments.py, the sealed-segment container). An exemption that matches no
+    # violation is deleted, not kept as decoration -- that is this gate's own rule working.
     "pillow": (
         "TRANSITIVE, declared explicitly on purpose. `[hf] = datasets, huggingface-hub, pillow` -- "
         "`datasets` needs pillow to decode Image features, which substrate/hf_stream.py streams. "
@@ -529,10 +527,13 @@ _REDS = [
     (
         "CORE-PROSE",
         "drop mujoco from the header comment block",
-        lambda t: t.replace(
-            "torch + numpy + mujoco are UNCONDITIONAL core dependencies",
-            "torch + numpy are UNCONDITIONAL core dependencies",
-        ),
+        # ANCHOR REWRITTEN 2026-08-19, by the same incident class the STALE-EXCLUDE comment
+        # below records: promoting pyarrow appended it to the header's member list, the old
+        # full-list anchor ("torch + numpy + mujoco are UNCONDITIONAL...") stopped matching,
+        # and --self-check reported this criterion red-less -- the vacuous-red guard catching
+        # its editor again. Anchor on the STABLE PREFIX ("torch + numpy + mujoco"), which
+        # survives any future promotion appended after mujoco.
+        lambda t: t.replace("torch + numpy + mujoco", "torch + numpy"),
     ),
     (
         "CORE-ONLY",
