@@ -371,19 +371,29 @@ EXEMPT = {
         "wire",
         "specs/022 T005b: the read-old/write-new format bridge (imports lake_segments for the "
         "sealed arm -- reason corrected 2026-08-19: the first wording had the import direction "
-        "backwards). Consumed by the per-tag migrator (T009) and home.py's engine adoption "
-        "(T010); EXPIRES when either lands -- a bridge nothing reads by S0 exit is a defect",
+        "backwards). EXPIRY CORRECTED after T010-ii landed: this reason promised expiry at "
+        "T009/T010, T009 landed and consumes it (lake_migrate.iter_records) -- but as an "
+        "INSTRUMENT, not a tick path, and T010-ii landed INSIDE home.py without importing this "
+        "module, so the promise did not fire. Live-path consumer is the daemon under the new "
+        "engine; EXPIRES at T012 (lake-block close-out) -- a bridge nothing reads by S0 exit "
+        "is a defect",
     ),
     "lake_engine": (
         "wire",
-        "specs/022 T010-i: retention registry + append budget. Live consumer is the daemon's "
-        "tick accounting + home.py adoption (T010-ii); EXPIRES when that lands",
+        "specs/022 T010-i: retention registry + append budget. EXPIRY CORRECTED after T010-ii "
+        "landed: the promised consumer (home.py adoption) shipped WITHOUT importing this module "
+        "-- the delta chain lives in home.py on stdlib alone, deliberately, so home keeps its "
+        "zero-dep contract. The live consumer remains the daemon's tick accounting "
+        "(AppendBudget.on_append/end_tick), wired with the ring journaller; EXPIRES at "
+        "T011/T012",
     ),
     "lake_migrate": (
         "wire",
-        "specs/022 T009: per-tag dispositions + identity migration. Its live consumer is "
-        "home.py's engine adoption (T010); EXPIRES when T010 lands. The full-scale identity "
-        "proof ran against the backup at landing (evidence/s0-lake-migrate.md)",
+        "specs/022 T009: per-tag dispositions + identity migration. EXPIRY CORRECTED after "
+        "T010-ii landed: home.py's adoption shipped without importing this module. Consumed "
+        "today by lake_engine's registry-consistency assert and the T009 full-scale proof "
+        "(evidence/s0-lake-migrate.md) -- instruments, not the tick. Live-path consumer is the "
+        "T012 cutover migration; EXPIRES at T012",
     ),
     "lake_rebuild_gate": (
         "permanent",
@@ -393,14 +403,17 @@ EXEMPT = {
     ),
     "lake_index": (
         "wire",
-        "specs/022 T007: the derived pointer index (sqlite WAL, stdlib). Consumers: the "
-        "rebuild gate (T008) and home.py's engine adoption (T010); EXPIRES when either lands",
+        "specs/022 T007: the derived pointer index (sqlite WAL, stdlib). EXPIRY CORRECTED "
+        "after T010-ii landed: the rebuild gate (T008) consumes it, but as a CI instrument, "
+        "and home.py's adoption shipped without it. Live-path consumer is the engine cutover; "
+        "EXPIRES at T012",
     ),
     "lake_segments": (
         "wire",
-        "specs/022 T005: the segment writer (WAL + sealed Arrow IPC). Reached today only via "
-        "lake_bridge's sealed arm; its live consumer is home.py's engine adoption (T010) and "
-        "the migrator (T009); EXPIRES when either lands",
+        "specs/022 T005: the segment writer (WAL + sealed Arrow IPC). EXPIRY CORRECTED after "
+        "T010-ii landed: the migrator (T009) consumes it (SegmentStore) and the bridge reads "
+        "its sealed arm -- instruments, not the tick -- and home.py's adoption shipped without "
+        "it. Live-path consumer is the daemon under the new engine; EXPIRES at T012",
     ),
     "perf_baseline": (
         "permanent",
