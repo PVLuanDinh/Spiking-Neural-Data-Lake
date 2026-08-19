@@ -31,8 +31,10 @@ boot. Zero runtime deps (stdlib json + os); the data lake never touches torch. A
   python -m snn_data_lake.substrate.home   # self-check incl. a REAL cross-process never-forget proof
 """
 
+import hashlib
 import json
 import os
+import struct
 import sys
 import threading
 
@@ -185,6 +187,142 @@ _T_CALIB = b"\x06"
 # and `_state_index` both take the last record under the name. "Latest-wins on read" is what makes
 # the prune lossless here and is exactly what does not hold for the other two.
 _T_STATE = b"\x07"
+
+# _T_GROWTH_DELTA -- the reconstructible growth CHAIN (specs/022 T010-ii). A NEW record class, not a
+# rewrite of _T_GROWTH: the legacy tag is CLOSED to npz writes from this commit (raw non-npz blobs
+# still take it -- see save_growth) and every whole-substrate npz save lands here as a FULL record or
+# a DELTA against the previous one. The measured pathology this exists to kill: 97.64% of the live
+# lake was repeated whole-substrate _T_GROWTH snapshots (83,405 records) whose bytes differed ONLY in
+# their `ticks`/`acc` members, so BinLog's byte dedup never fired and nothing could ever reclaim them.
+# A DELTA carries the changed .npy members verbatim plus a sha256 manifest of the unchanged ones, so
+# the chain is verified link by link on replay -- a tampered or missing link REFUSES (the reader holds
+# the last verified state) rather than reconstructing a substrate nobody wrote.
+#
+# distinct-from: basal_ganglia/self_build_loop.py -- its _firewalled_bytes snapshots the safety
+#   envelope's FILES for byte-exact restore; no record framing, no chain. distinct-from:
+#   brainstem/arm_bridge.py -- parses UDP reward packets. distinct-from: substrate/lake_engine.py --
+#   AppendBudget counts bytes/tick; it labels this class, it does not encode it. All sites read.
+_T_GROWTH_DELTA = b"\x08"
+
+# FULL cadence: a fresh FULL every 64 deltas bounds a cold reconstruction to <= 64 delta applies
+# after the newest FULL. A storage-layer engineering constant (same class as lake_migrate's
+# seal_every), not brain behaviour -- P1's infrastructure exception.
+_GROWTH_CHAIN_EVERY = 64
+
+#: resolved lake path -> {"hashes": {member: sha256}, "since_full": int} -- the writer's view of the
+#: chain TAIL (the lake's last verified state, regardless of which object wrote it). Populated by
+#: load_growth when the chain is the newest growth record; absent -> the next save writes a FULL,
+#: which is the safe cutover (a chain must START with a FULL the reader can verify from).
+_GROWTH_CHAIN = {}
+
+_GC_FULL, _GC_DELTA = 0, 1
+
+
+def _growth_members(blob):
+    """The npz member census of `blob` as an ordered [(name, bytes)] list, or None when the blob is
+    not an npz archive. np.savez writes a STORED zip of .npy members with epoch timestamps, so the
+    chain never needs numpy -- stdlib zipfile decomposes and reassembles it byte-for-byte, keeping
+    this module's zero-dep contract. Raw legacy blobs (and the tests' probe records) return None and
+    take the whole-blob _T_GROWTH path."""
+    import io
+    import zipfile
+
+    try:
+        with zipfile.ZipFile(io.BytesIO(bytes(blob))) as z:
+            names = z.namelist()
+            if not names or any(not n.endswith(".npy") for n in names):
+                return None
+            return [(n, z.read(n)) for n in names]
+    except Exception:
+        return None
+
+
+def _growth_hash(name, data):
+    return hashlib.sha256(name.encode("utf-8") + b"\x00" + data).digest()
+
+
+def _growth_pack(kind, members, changed):
+    """One chain record: [ver u8][kind u8][n u16] then per member
+    [nlen u8][name][sha256 32B][changed u8][len u32 + bytes, changed only]."""
+    out = [struct.pack("<BBH", 1, kind, len(members))]
+    for name, data in members:
+        raw = name.encode("utf-8")
+        out.append(struct.pack("<B", len(raw)) + raw + _growth_hash(name, data))
+        if name in changed:
+            out.append(struct.pack("<BI", 1, len(data)) + data)
+        else:
+            out.append(struct.pack("<B", 0))
+    return b"".join(out)
+
+
+def _growth_unpack(payload):
+    """-> (kind, [(name, hash, data_or_None)]), or None on ANY malformed byte -- a record this
+    parser cannot fully account for (wrong version, short field, trailing bytes) is refused whole,
+    never half-read; the _unpack_state incident in main() is why that is a rule here."""
+    try:
+        ver, kind, n = struct.unpack_from("<BBH", payload, 0)
+        if ver != 1 or kind not in (_GC_FULL, _GC_DELTA):
+            return None
+        off, entries = 4, []
+        for _ in range(n):
+            nlen = payload[off]
+            off += 1
+            name = payload[off : off + nlen].decode("utf-8")
+            off += nlen
+            h = payload[off : off + 32]
+            off += 32
+            if len(h) != 32:
+                return None
+            changed = payload[off]
+            off += 1
+            data = None
+            if changed:
+                (size,) = struct.unpack_from("<I", payload, off)
+                off += 4
+                data = payload[off : off + size]
+                off += size
+                if len(data) != size:
+                    return None
+            entries.append((name, h, data))
+        if off != len(payload):
+            return None
+        return kind, entries
+    except Exception:
+        return None
+
+
+def _growth_apply(state, kind, entries):
+    """Apply one chain record to `state` ({name: (hash, bytes)}, insertion-ordered). Returns the new
+    state, or None when any hash refuses -- the caller then HOLDS the last verified state (the tamper
+    red): a changed member whose bytes do not match its own manifest, a delta whose base is not what
+    the chain holds, or a FULL missing a member's bytes all refuse the whole record."""
+    new = {}
+    for name, h, data in entries:
+        if data is not None:
+            if _growth_hash(name, data) != h:
+                return None
+            new[name] = (h, data)
+        else:
+            if kind == _GC_FULL:
+                return None
+            prev = None if state is None else state.get(name)
+            if prev is None or prev[0] != h:
+                return None
+            new[name] = prev
+    return new
+
+
+def _growth_zip(state):
+    """Reassemble a chain state into npz bytes -- the same container np.savez writes (STORED zip of
+    .npy members, epoch timestamps), so `restore_growth_state` reads it unchanged."""
+    import io
+    import zipfile
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED, allowZip64=True) as z:
+        for name, (_h, data) in state.items():
+            z.writestr(zipfile.ZipInfo(name), data)
+    return buf.getvalue()
 
 
 def home():
@@ -683,10 +821,40 @@ def save_growth(blob, path=None):
     Refuses a falsy blob. `neurogenesis_engine.growth_state_bytes()` returns None (never an empty
     blob) when nothing is grown, and this is the second half of that contract -- together they make it
     impossible to persist "no substrate" as though it were substrate, which is the failure that would
-    otherwise restore an empty engine with a confident accuracy beside it."""
+    otherwise restore an empty engine with a confident accuracy beside it.
+
+    THE CHAIN (specs/022 T010-ii). An npz blob no longer lands whole: it is decomposed into its .npy
+    members and appended under _T_GROWTH_DELTA as a FULL record (chain start, or every
+    _GROWTH_CHAIN_EVERY deltas) or a DELTA carrying only the members whose bytes changed plus a hash
+    manifest of the rest. A byte-identical substrate writes NOTHING (returns 0) -- that is the
+    97.64%-repeated-snapshot pathology being refused at the door rather than compacted later. The
+    surgery lives HERE, in the one persistence mechanism, so both live callers
+    (`Brain._flush_growth`, `Brain._make_neuro`) and the engine's real-interpreter restart proof
+    inherit the chain without an edit -- P2: one mechanism, not a delta path beside a whole-blob
+    path. A blob that is NOT an npz archive (the tests' raw probe records) keeps the legacy
+    whole-blob _T_GROWTH contract unchanged."""
     if not blob:
         return 0
-    return _log(path).append(_T_GROWTH + bytes(blob))
+    members = _growth_members(blob)
+    if members is None:
+        return _log(path).append(_T_GROWTH + bytes(blob))
+    key = os.path.abspath(path or knowledge_path())
+    st = _GROWTH_CHAIN.get(key)
+    hashes = {name: _growth_hash(name, data) for name, data in members}
+    if st is None or st["since_full"] >= _GROWTH_CHAIN_EVERY:
+        kind, changed = _GC_FULL, set(hashes)
+    else:
+        changed = {name for name in hashes if st["hashes"].get(name) != hashes[name]}
+        if not changed and set(st["hashes"]) == set(hashes):
+            return 0  # byte-identical substrate: nothing to write, nothing to reclaim later
+        kind = _GC_DELTA  # a census change with no changed bytes still writes (all-manifest delta)
+    wrote = _log(path).append(_T_GROWTH_DELTA + _growth_pack(kind, members, changed))
+    if wrote:
+        _GROWTH_CHAIN[key] = {
+            "hashes": hashes,
+            "since_full": 0 if kind == _GC_FULL else st["since_full"] + 1,
+        }
+    return wrote
 
 
 def save_episode(episode, path=None):
@@ -754,17 +922,54 @@ def load_selfbuild(path=None):
 # and the second of those also imports the existing 950 B `<home>/signal_calib.json` on first read.
 
 
+# THE one growth loader, edited in place for the chain -- not a second mechanism.
+# distinct-from: cortex/neurogenesis_engine.py -- growth_state_bytes PRODUCES the blob this returns.
+# distinct-from: substrate/lake_memory.py -- channel-range reads of the .spkl store, a different lake.
+# distinct-from: substrate/lake_working_memory.py -- same .spkl channel reads, in-memory half.
+# distinct-from: substrate/similarity_sized_growth.py -- routes to a frozen expert, no lake records.
+# distinct-from: substrate/lake_bridge.py -- iter_records yields raw payloads with no tag semantics.
+# All sites read.
 def load_growth(path=None):
     """The most recent grown-substrate blob, or None if the lake holds none.
 
     None is the honest answer for a lake written before this record type existed, and the caller
     (`Brain._make_neuro`) treats it as "start ungrown" -- so an old lake behaves exactly as it did
-    before, which is the backward-compatibility requirement."""
-    latest = None
+    before, which is the backward-compatibility requirement.
+
+    LATEST-WINS ACROSS BOTH CLASSES (specs/022 T010-ii): the replay tracks the newest legacy
+    _T_GROWTH blob AND the _T_GROWTH_DELTA chain state side by side, and whichever holds the LATER
+    lake position is the substrate returned -- so a pre-chain lake restores exactly as before, a
+    post-cutover lake restores from the chain, and a raw record written after the chain still
+    shadows it (the same latest-wins contract the legacy tag always had). Chain records are
+    verified link by link: a record whose hashes refuse is SKIPPED and the state holds at the last
+    verified link -- the tamper red -- and a verified FULL always resets the chain, so one bad link
+    costs at most the deltas up to the next FULL, never the substrate. A chain win also primes the
+    writer's tail cache so the next save is a DELTA rather than a redundant FULL."""
+    latest_legacy, legacy_pos = None, -1
+    state, chain_pos, since_full = None, -1, 0
+    pos = 0
     for payload in _log(path).replay():
-        if payload[:1] == _T_GROWTH:
-            latest = payload[1:]
-    return latest
+        pos += 1
+        tag = payload[:1]
+        if tag == _T_GROWTH:
+            latest_legacy, legacy_pos = payload[1:], pos
+        elif tag == _T_GROWTH_DELTA:
+            parsed = _growth_unpack(payload[1:])
+            if parsed is None:
+                continue  # a record we cannot read must not stop the ones after it
+            kind, entries = parsed
+            new = _growth_apply(state if kind == _GC_DELTA else None, kind, entries)
+            if new is None:
+                continue  # hash refused: hold the last VERIFIED state, never guess
+            state, chain_pos = new, pos
+            since_full = 0 if kind == _GC_FULL else since_full + 1
+    if chain_pos > legacy_pos and state is not None:
+        _GROWTH_CHAIN[os.path.abspath(path or knowledge_path())] = {
+            "hashes": {name: h for name, (h, _data) in state.items()},
+            "since_full": since_full,
+        }
+        return _growth_zip(state)
+    return latest_legacy
 
 
 def banner(part, lake=True, knowledge=True):
@@ -1266,6 +1471,46 @@ def main():
         rc_m = subprocess.run([sys.executable, "-c", child_read]).returncode
         assert rc_m == 0, (
             f"a migrated state was not readable from the lake in a NEW process (rc={rc_m})"
+        )
+
+        # ---- the growth DELTA CHAIN (_T_GROWTH_DELTA, specs/022 T010-ii) ----
+        # A fake-but-valid npz: the chain parses zip MEMBERS, never .npy internals, so plain bytes
+        # exercise the whole path without numpy (this module's zero-dep contract). Runs LAST so the
+        # legacy latest-wins assert above ("grown-substrate v2") sees the lake it always saw.
+        import io as _io
+        import zipfile as _zf
+
+        def _fake_npz(**kv):
+            b = _io.BytesIO()
+            with _zf.ZipFile(b, "w", _zf.ZIP_STORED) as z:
+                for k, v in kv.items():
+                    z.writestr(_zf.ZipInfo(k + ".npy"), v)
+            return b.getvalue()
+
+        first = _fake_npz(W=b"WEIGHTS-v1", ticks=b"t=1")
+        assert save_growth(first), "chain cutover: the first npz save must write a FULL record"
+        second = _fake_npz(W=b"WEIGHTS-v1", ticks=b"t=2")
+        assert save_growth(second), "chain: a changed member must write a DELTA record"
+        assert save_growth(second) == 0, (
+            "chain: a byte-identical substrate must write NOTHING -- this refusal IS the "
+            "97.64%-repeated-snapshot pathology being killed at the door"
+        )
+        got = load_growth()
+        assert _growth_members(got) == _growth_members(second), (
+            "chain reconstruction must return the newest substrate's exact members"
+        )
+        chain_census = _tag_census(kpath)
+        assert chain_census.get(_T_GROWTH_DELTA, 0) == 2 and chain_census.get(_T_GROWTH, 0) == 2, (
+            "the chain must be a NEW tenant beside the legacy tag (2 chain + 2 legacy), got "
+            f"{chain_census.get(_T_GROWTH_DELTA, 0)} chain / {chain_census.get(_T_GROWTH, 0)} legacy"
+        )
+        chain_recs = [p[1:] for p in BinLog(kpath).replay() if p[:1] == _T_GROWTH_DELTA]
+        k0, _e0 = _growth_unpack(chain_recs[0])
+        k1, e1 = _growth_unpack(chain_recs[1])
+        assert k0 == _GC_FULL and k1 == _GC_DELTA, f"expected FULL then DELTA, got {k0} then {k1}"
+        assert [n for n, _h, d in e1 if d is not None] == ["ticks.npy"], (
+            "the DELTA must carry ONLY the changed member's bytes (ticks.npy), got "
+            f"{[n for n, _h, d in e1 if d is not None]}"
         )
 
         print(

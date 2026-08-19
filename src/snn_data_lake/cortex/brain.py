@@ -1176,7 +1176,8 @@ class Brain:
             # RESTORE the grown substrate from the one durable lake. Before this the engine was
             # rebuilt empty on every start, and the daemon relaunches on every new commit (~20 times
             # in a working session), so nothing the brain grew ever compounded. A lake with no
-            # _T_GROWTH record returns None and the engine starts ungrown -- exactly today's
+            # growth record (neither a legacy _T_GROWTH blob nor a _T_GROWTH_DELTA chain, since
+            # specs/022 T010-ii) returns None and the engine starts ungrown -- exactly today's
             # behaviour, so an existing lake is unaffected.
             # GATED ON PERSIST, mirroring the save at `if self._persist:` further down. Unconditional,
             # this made `Brain.__init__` read a file that a live daemon is concurrently appending to,

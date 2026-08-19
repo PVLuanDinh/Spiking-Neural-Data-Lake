@@ -45,6 +45,12 @@ TAG_DISPOSITIONS: dict[int, tuple[str, str]] = {
     0x05: ("read-as-is", "_T_SELFBUILD; byte-identity"),
     0x06: ("read-as-is", "_T_CALIB (zero records in the backup; constant exists); byte-identity"),
     0x07: ("read-as-is", "_T_STATE name-keyed frames; byte-identity"),
+    0x08: (
+        "read-as-is",
+        "_T_GROWTH_DELTA reconstructible growth chain (FULL/DELTA, specs/022 T010-ii); "
+        "byte-identity -- the upcaster is IDENTITY because chain semantics live in the reader "
+        "(home.load_growth verifies link hashes on replay), so migrating the bytes migrates the chain",
+    ),
 }
 # Anything else is UNKNOWN and refuses -- a record class nobody decided about.
 _OBSERVED_EXTRA: dict[int, str] = {}

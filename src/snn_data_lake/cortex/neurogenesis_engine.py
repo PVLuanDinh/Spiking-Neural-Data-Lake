@@ -338,8 +338,10 @@ class NeurogenesisSelfImprove:
     #
     # numpy .npz is the container: self-describing, tolerant of a missing key, and already how this
     # repo stores weights (models/*.npz). The bytes are opaque to the lake, which only needs a tag and
-    # a length -- so this stays decoupled from binlog framing and can be wrapped by a `_T_GROWTH`
-    # record without either side knowing the other's format.
+    # a length -- so this stays decoupled from binlog framing and can be carried by the lake's
+    # growth records (since specs/022 T010-ii, home.save_growth decomposes the npz into a
+    # `_T_GROWTH_DELTA` chain; the opaque-blob contract at THIS boundary is unchanged) without
+    # either side knowing the other's format.
     GROWTH_FORMAT = "ngsnn.growth.v1"
 
     def growth_state_bytes(self):
@@ -555,6 +557,15 @@ def _cross_process_restart(seed, cfg, ticks=140):
         parent_units, parent_acc = eng.grown_units, eng.predict_accuracy
         wrote = bool(save_growth(blob))
         lake_bytes = os.path.getsize(knowledge_path()) if os.path.exists(knowledge_path()) else 0
+        # WHICH TAG the save landed under, measured off the isolated lake rather than asserted from
+        # knowledge of save_growth's internals: since specs/022 T010-ii an npz blob lands as a
+        # _T_GROWTH_DELTA chain record (FULL here -- fresh lake), and this count is what keeps the
+        # printed claim below from outliving the encoding the way its "_T_GROWTH" wording did.
+        from snn_data_lake.substrate.home import _T_GROWTH_DELTA, BinLog
+
+        chain_records = sum(
+            1 for p in BinLog(knowledge_path()).replay() if p[:1] == _T_GROWTH_DELTA
+        )
         del eng  # the writer is gone before anything reads the lake back
 
         # A GENUINELY SEPARATE INTERPRETER. Same NORD_HOME, nothing else shared -- no module state,
@@ -610,6 +621,7 @@ def _cross_process_restart(seed, cfg, ticks=140):
             "blob_bytes": len(blob) if blob else 0,
             "wrote": wrote,
             "lake_bytes": lake_bytes,
+            "chain_records": chain_records,
             "parent_fp": parent_fp,
             "parent_units": parent_units,
             "parent_acc": parent_acc,
@@ -793,6 +805,10 @@ def main():
         f"the grown substrate must reach the ONE lake on disk (wrote={rs['wrote']}, "
         f"lake={rs['lake_bytes']} B)"
     )
+    assert rs["chain_records"] > 0, (
+        "the save landed under NO _T_GROWTH_DELTA record -- the T010-ii chain cutover did not "
+        "reach this path (a legacy fallback firing here would pass every other assert)"
+    )
     assert rs["child_rc"] == 0 and rs["child_ok"], (
         f"a NEW PROCESS must restore the grown substrate from the lake "
         f"(rc={rs['child_rc']}, line={rs['child_line']!r})"
@@ -833,8 +849,10 @@ def main():
     )
 
     print(
-        f"restart proof: {rs['parent_units']} grown units -> {rs['blob_bytes']} B under _T_GROWTH "
-        f"in a {rs['lake_bytes']} B lake -> a SEPARATE interpreter restored crc {rs['child_fp']} "
+        f"restart proof: {rs['parent_units']} grown units -> {rs['blob_bytes']} B npz -> "
+        f"{rs['chain_records']} _T_GROWTH_DELTA chain record(s) in a {rs['lake_bytes']} B lake "
+        f"(measured, not assumed -- the lake can be SMALLER than the blob because the chain sheds "
+        f"the zip container) -> a SEPARATE interpreter restored crc {rs['child_fp']} "
         f"({rs['child_units']}u, acc {rs['child_acc']:.4f}), byte-equal to the writer's."
     )
     # PLACEMENT ALIGNMENT. Asserted here because it is invisible from either side alone: the weights

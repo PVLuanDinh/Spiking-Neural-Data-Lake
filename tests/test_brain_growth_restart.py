@@ -62,23 +62,34 @@ def _run_child(home):
 
 
 def _lake_growth_records(home):
-    """How many _T_GROWTH records the lake on disk holds. Reads the FILE, not a live object.
+    """Per-class growth-record counts on disk: {"legacy": _T_GROWTH, "chain": _T_GROWTH_DELTA}.
+    Reads the FILE, not a live object.
 
     `knowledge_path()` -> <home>/brain_lake.bin is THE ONE durable lake. NOT `lake_path()`, which
     is <home>/lake.spkl -- a different store. The first draft of this helper used `lake_path` and
     reported 0 records for a brain that had persisted 3,618 bytes perfectly well, which read as a
     P4b violation in the brain. It was a false negative from the instrument. `_assert_probe_sees`
     below is the positive control that would have caught it in one line, and is why it exists.
-    """
-    from snn_data_lake.substrate.home import _T_GROWTH, BinLog, knowledge_path
+
+    BOTH classes counted since specs/022 T010-ii: the brain's flush writes chain records now, so a
+    legacy-only counter would report 0 for a perfectly persisted brain -- the same instrument false
+    negative as the lake_path draft, one abstraction up. Split rather than summed so the tests can
+    assert the CUTOVER (chain written, legacy not) instead of just presence."""
+    from snn_data_lake.substrate.home import _T_GROWTH, _T_GROWTH_DELTA, BinLog, knowledge_path
 
     saved = os.environ.get("NORD_HOME")
     os.environ["NORD_HOME"] = home
     try:
         path = knowledge_path()
+        counts = {"legacy": 0, "chain": 0}
         if not os.path.exists(path):
-            return 0
-        return sum(1 for p in BinLog(path).replay() if p[:1] == _T_GROWTH)
+            return counts
+        for p in BinLog(path).replay():
+            if p[:1] == _T_GROWTH:
+                counts["legacy"] += 1
+            elif p[:1] == _T_GROWTH_DELTA:
+                counts["chain"] += 1
+        return counts
     finally:
         if saved is None:
             os.environ.pop("NORD_HOME", None)
@@ -87,27 +98,44 @@ def _lake_growth_records(home):
 
 
 def _assert_probe_sees(home):
-    """POSITIVE CONTROL: write one _T_GROWTH record and confirm the counter above SEES it.
+    """POSITIVE CONTROL: write one record of EACH growth class and confirm the counter SEES both.
 
     Without this the whole test can only produce false negatives -- a helper reading the wrong file
-    returns 0 forever, and 0 is exactly what a real persistence failure looks like.
+    returns 0 forever, and 0 is exactly what a real persistence failure looks like. Both halves are
+    controlled because both are asserted on below: a raw blob takes the legacy _T_GROWTH path, and a
+    minimal zip-of-.npy blob takes the _T_GROWTH_DELTA chain path (the chain parses zip members,
+    never .npy internals, so plain bytes suffice).
     """
+    import io
+    import zipfile
+
     from snn_data_lake.substrate.home import save_growth
+
+    npz_probe = io.BytesIO()
+    with zipfile.ZipFile(npz_probe, "w", zipfile.ZIP_STORED) as z:
+        z.writestr(zipfile.ZipInfo("probe.npy"), b"chain-probe")
 
     saved = os.environ.get("NORD_HOME")
     os.environ["NORD_HOME"] = home
     try:
         before = _lake_growth_records(home)
         save_growth(b"positive-control-probe")
+        save_growth(npz_probe.getvalue())
         after = _lake_growth_records(home)
     finally:
         if saved is None:
             os.environ.pop("NORD_HOME", None)
         else:
             os.environ["NORD_HOME"] = saved
-    assert after == before + 1, (
-        f"the growth-record counter is BLIND: wrote one record and it went {before} -> {after}. "
-        "Every assertion in this file would be a false negative."
+    assert after["legacy"] == before["legacy"] + 1, (
+        f"the LEGACY growth counter is BLIND: wrote one raw record and it went "
+        f"{before['legacy']} -> {after['legacy']}. Every legacy assertion here would be a false "
+        "negative."
+    )
+    assert after["chain"] == before["chain"] + 1, (
+        f"the CHAIN growth counter is BLIND: wrote one npz record and it went "
+        f"{before['chain']} -> {after['chain']}. Every chain assertion here would be a false "
+        "negative."
     )
 
 
@@ -157,9 +185,17 @@ def test_growth_survives_an_immediate_exit():
     if parent["units"] <= 0:
         pytest.skip("the parent never grew inside the tick budget -- nothing to flush")
 
-    assert _lake_growth_records(home) > 0, (
+    recs = _lake_growth_records(home)
+    assert sum(recs.values()) > 0, (
         f"parent grew {parent['units']} units at tick {parent['grew_at']} and exited, and the lake "
         "holds NO growth record -- close() did not flush"
+    )
+    # CUTOVER CHARGE PROOF (T010-ii): the brain's own flush must land on the chain, not the legacy
+    # tag. Without this the chain could sit dormant behind a fallback that always fires -- presence
+    # is not participation, and this is the assert that separates the two.
+    assert recs["chain"] > 0 and recs["legacy"] == 0, (
+        f"the live flush path did not cut over to the chain: {recs['chain']} chain records, "
+        f"{recs['legacy']} legacy records (expected >0 and 0)"
     )
     child = _run_child(home)
     assert child["units"] == parent["units"], (
@@ -187,7 +223,9 @@ def test_a_brain_that_grew_comes_back_grown():
         f"a brain over an EMPTY lake reported {empty['units']} grown units -- then agreement later "
         "proves nothing, because a fresh brain already looks restored"
     )
-    assert _lake_growth_records(home) == 0, "the empty lake already held a growth record"
+    assert sum(_lake_growth_records(home).values()) == 0, (
+        "the empty lake already held a growth record"
+    )
 
     # --- PARENT: grow in one process, then let it exit.
     grow = r"""
@@ -221,9 +259,15 @@ print("RESULT " + json.dumps(out))
         )
 
     # The lake must actually hold it. `retained()` once read 1.000 against 0 records.
-    assert _lake_growth_records(home) > 0, (
-        f"parent reports {parent['units']} grown units but the lake on disk holds NO _T_GROWTH "
+    recs = _lake_growth_records(home)
+    assert sum(recs.values()) > 0, (
+        f"parent reports {parent['units']} grown units but the lake on disk holds NO growth "
         "record -- the substrate died with the process"
+    )
+    # CUTOVER CHARGE PROOF (T010-ii), same as the flush test: chain written, legacy untouched.
+    assert recs["chain"] > 0 and recs["legacy"] == 0, (
+        f"the live flush path did not cut over to the chain: {recs['chain']} chain records, "
+        f"{recs['legacy']} legacy records (expected >0 and 0)"
     )
 
     # --- CHILD: a NEW interpreter over the same lake.

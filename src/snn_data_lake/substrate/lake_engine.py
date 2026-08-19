@@ -13,12 +13,14 @@ trip the assert BEFORE disk pressure becomes the detector. The measured patholog
 instrument exists to prevent: 97.64% of the live lake is repeated whole-substrate _T_GROWTH
 snapshots (83,405 records) that nothing ever reclaims.
 
-Legacy-tag labels (keyed to home.py's _T_* constants BY SYMBOL, same census as
+Tag labels (keyed to home.py's _T_* constants BY SYMBOL, same census as
 lake_migrate.TAG_DISPOSITIONS):
   IMMORTAL     _T_FACT, _T_EPISODE, _T_SELFBUILD, _T_SPIKE, _T_CALIB, _T_STATE
-  COMPACTABLE  _T_GROWTH -- *conditionally*: reclaim is FORBIDDEN until the delta-chain
-               replacement (T010-ii) proves reconstruction; the label records intent, the
-               `reclaimable` flag records proof, and today it is False.
+  COMPACTABLE  _T_GROWTH (legacy snapshots, closed to npz writes since T010-ii) and
+               _T_GROWTH_DELTA (the chain) -- both `reclaimable=True` since the T010-ii
+               reconstruction proof landed (tests/test_growth_delta_chain.py: chain replay
+               reconstructs the substrate and REFUSES tampered links); the flag records
+               that proof, and each row's reason records what a reclaimer still owes.
 
 Bare invocation (run_selfchecks): registry completeness vs lake_migrate's disposition table
 (every dispositioned tag owns a retention label -- one census, two views, never divergent),
@@ -43,15 +45,28 @@ RETENTION: dict[int, tuple[str, bool, str]] = {
     0x02: ("IMMORTAL", False, "_T_SPIKE: AER exemplars are evidence"),
     0x03: (
         "COMPACTABLE",
-        False,
-        "_T_GROWTH whole-substrate snapshots: 97.64% of the lake, the measured pathology. "
-        "Reclaim FORBIDDEN (reclaimable=False) until the T010-ii delta chain PROVES "
-        "reconstruction -- the label is intent, the flag is proof",
+        True,
+        "_T_GROWTH whole-substrate snapshots: 97.64% of the lake, the measured pathology. The "
+        "LEGACY class -- closed to npz writes since T010-ii (new saves land under 0x08). "
+        "reclaimable flipped True by the landed reconstruction proof "
+        "(tests/test_growth_delta_chain.py); a reclaimer still owes per-record proof of "
+        "state-identity with a retained neighbor (the chain writer's member-hash census is "
+        "that instrument) before dropping anything -- the flag licenses reclaim, it never "
+        "performs it",
     ),
     0x04: ("IMMORTAL", False, "_T_EPISODE: lived experience is never reclaimed"),
     0x05: ("IMMORTAL", False, "_T_SELFBUILD: the self-modification archive is the rollback"),
     0x06: ("IMMORTAL", False, "_T_CALIB: calibration provenance"),
     0x07: ("IMMORTAL", False, "_T_STATE: name-keyed config frames (tiny, upserted by replay)"),
+    0x08: (
+        "COMPACTABLE",
+        True,
+        "_T_GROWTH_DELTA chain records (specs/022 T010-ii): a prefix ending BEFORE the newest "
+        "FULL is reconstructible from that FULL (replay resets there), so whole prefixes may be "
+        "reclaimed -- never a link inside a chain, which the reader would REFUSE by hash. "
+        "Append budget: unbaselined at introduction (never trips, reported only); its measured "
+        "per-tick baseline lands at the T012 lake-block close-out",
+    ),
 }
 
 

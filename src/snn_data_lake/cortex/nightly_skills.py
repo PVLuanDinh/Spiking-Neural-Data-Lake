@@ -48,7 +48,8 @@ that route: <home>/skills/*.npz is written with np.savez_compressed directly, so
 not cover them, and the earlier draft's wording implied it did. That third fact is unchanged from
 before this module's redesign and is left for the owner rather than settled here, because the tree
 settles the same question the other way for grown substrate -- neurogenesis persists fitted weights
-INTO the one lake under _T_GROWTH -- and choosing between "readout weights are STATE" and "readout
+INTO the one lake under the growth tags (the _T_GROWTH_DELTA chain since specs/022 T010-ii) -- and
+choosing between "readout weights are STATE" and "readout
 weights are grown substrate" is a P4b adjudication, not an edit to this file. It is named here so the
 promotion decision is made with it visible.
 
