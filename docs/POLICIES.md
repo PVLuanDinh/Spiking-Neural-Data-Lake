@@ -13,7 +13,7 @@ the rule that stops the policy from being satisfied by theater.
 | P1 no-hardcode | — | yes |
 | P2 adopt-or-merge | — | yes |
 | P3 no dormancy | `substrate/dormancy_gate.py` (per-MODULE), `substrate/method_dormancy_gate.py` (per-METHOD), `substrate/import_manifest.py` (cross-tier) | the charge tier |
-| P4 one brain | `substrate/replication_guard.py` | — |
+| P4 one brain (+ P4b partial) | `substrate/replication_guard.py`; **`substrate/lake_rebuild_gate.py` (2026-08-19, specs/022 T008)** mechanizes P4b's index-is-derived clause: delete → rebuild from a lake scan → logical-dump equality, planted-divergence red + lake-tracking control — built and its output counted (156,327 rows, equality held) BEFORE this row claimed it | P4b's remaining prose (one-lake, restart-is-not-amnesia) |
 | P5 use the GPU where it helps | — | yes |
 | **P6 mutual reach + use** | **BUILT AND ASSERTING** — `tools/p6_gate.py --assert` **and** `--self-check` (two steps in the `lint` CI job, both added 2026-08-06; the connectome-diff half is now built too). Ships as a **RATCHET**: `faculty-to-faculty > 0` is red today, so five ±1 baselines assert the structure never gets WORSE. This row said "HALF BUILT / manual and NON-asserting, not in CI", and before that "NOT built" while the tool existed | yes (provisional; a ratchet says the count did not worsen, never that P6 is satisfied — 0 faculty-to-faculty reads stands) |
 | **P7 any dependency that helps** | **BUILT AND ASSERTING** — `tools/dependency_ledger.py --assert` **and** `--self-check` (two steps in the `lint` CI job, both added 2026-08-05; this row read "BUILT, REPORT-ONLY" and the step it described ran the tool BARE, which `main()` makes incapable of a non-zero exit) | yes (the judgement half; see P7 guard (b)) |

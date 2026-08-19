@@ -3,9 +3,7 @@
   "drift": {
     "not_in_ci": [],
     "self_disposition": "self-disposition: policy_manifest (this instrument) is EXCLUDED from its own unclaimed-gate census -- it is the census taker, not a policy gate; its liveness is asserted by the CI step and run_selfchecks entry that run it. Printed on every report so the exclusion is never silent.",
-    "unclaimed_gates": [
-      "lake_rebuild_gate"
-    ]
+    "unclaimed_gates": []
   },
   "policies": [
     {
@@ -70,6 +68,13 @@
             "snn_data_lake.substrate.replication_guard"
           ],
           "source": "substrate/replication_guard.py"
+        },
+        {
+          "argv": [
+            "-m",
+            "snn_data_lake.substrate.lake_rebuild_gate"
+          ],
+          "source": "substrate/lake_rebuild_gate.py"
         }
       ],
       "id": "P4",
