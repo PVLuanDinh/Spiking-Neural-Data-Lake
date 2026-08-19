@@ -318,6 +318,7 @@ CORE = [
     "substrate.gradient_claim_gate",  # e-prop SCOPE: assert every governed learning rule is classified as owing a cosine or not
     "substrate.policy_manifest",  # POLICIES.md manifest: derivation reconciles, committed copy in sync, drift never worsens
     "substrate.perf_baseline",  # 022 T001 wiring check: baseline parses + scorer discriminates (cheap; never measures)
+    "substrate.lake_bridge",  # 022 T005b: bridge round-trip red on a constructed temp lake (never the real home)
     "substrate.safety_envelope",  # THE five approval-gated brainstem files: assert code and SECURITY.md still name the same five
     "substrate.ingest_guard",  # outside-data content boundary: licence deny-by-default + injection flagging
     "substrate.hf_stream",  # streamed HF datasets -> features; offline self-check (no network, no datasets dep)

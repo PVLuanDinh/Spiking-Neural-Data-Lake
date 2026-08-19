@@ -406,6 +406,7 @@ REGIONS = {
         "gradient_claim_gate",  # e-prop SCOPE: which rules OWE a cosine at all (census asserts on the governed tier)
         "policy_manifest",  # POLICIES.md manifest + release audit: derive rows, audit gates, certify (bare == --assert)
         "perf_baseline",  # specs/022 T001: pinned-host perf ratchet; bare == cheap wiring check, never a measurement
+        "lake_bridge",  # specs/022 T005b: read-old/write-new format bridge; bare == constructed round-trip red
         "safety_envelope",  # THE five approval-gated brainstem files, one definition + a SECURITY.md agreement check
         "ingest_guard",  # content boundary for outside data: licence deny-by-default + injection flagging
         "hf_stream",  # streamed HF datasets -> brain-consumable features (licence-gated, bounded)

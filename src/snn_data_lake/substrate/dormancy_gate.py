@@ -367,6 +367,12 @@ EXEMPT = {
         "audits gate commands, certifies releases. Same disposition as gradient_claim_gate above: "
         "reachable from run_selfchecks and CI, never from a tick",
     ),
+    "lake_bridge": (
+        "wire",
+        "specs/022 T005b: the read-old/write-new format bridge. Consumed by the segment writer "
+        "(T005) and the per-tag migrator (T009); this exemption EXPIRES when either lands and "
+        "imports it -- a bridge nothing reads by S0 exit is a defect, not infrastructure",
+    ),
     "perf_baseline": (
         "permanent",
         "the pinned-host performance ratchet (specs/022 T001) -- a measurement instrument, not a "
