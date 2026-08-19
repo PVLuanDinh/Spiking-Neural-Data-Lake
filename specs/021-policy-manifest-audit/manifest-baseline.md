@@ -177,9 +177,16 @@ restatements (:195 is P6's accurate corrected status; :317 is the table header).
 - `policy_manifest --assert` -> exit 0 (re-verified directly; a -1 seen in the batch log was a
   PowerShell pipeline artifact, not the tool)
 - `git diff --stat -- src/snn_data_lake/brainstem/` -> **0 lines** across the whole feature (FR-013)
-- Certify-job ran-check (post-push half of T032): OPEN until the feature's first push to main
-  lands; verify the `certify` job ran (nonzero duration) and published its artifact, then quote
-  the job summary here.
+- Certify-job ran-check (post-push half of T032): **CHECKED 2026-08-19, and the check CAUGHT
+  EXACTLY WHAT IT EXISTS TO CATCH.** Run 32210198212 (fd2c527e) concluded "failure" with every
+  job completing in 1-3 SECONDS -- nothing executed. GitHub's annotation, verbatim: "The job was
+  not started because recent account payments have failed or your spending limit needs to be
+  increased." The SAME zero-execution failure applies to the runs for 07bc35a9 and f61e4a94 --
+  no CI job has actually run since before 2026-08-18 23:14Z. All three commits were verified
+  green LOCALLY (full battery, recorded above), so the work stands; CI re-verification is
+  pending an OWNER action (GitHub Billing & plans -- payment method / spending limit). Re-run
+  this check after billing is restored: the certify job must show nonzero duration AND a
+  published policy-certification artifact.
 
 ## POLICIES.md audit of the completed feature (T033, 2026-08-19)
 
