@@ -85,7 +85,11 @@ BUDGETS = {
     # place; ceiling re-anchored to measured + 100. HONEST RESIDUE: the e-prop invariant
     # block's own consolidation (the debt named above) remains OPEN -- the T024 count showed
     # the SC-006 target reachable without touching freshly-stabilized text, so it was not.
-    "docs/POLICIES_EVIDENCE.md": 2002,  # relocated forensics; ceiling = measured + 60
+    # RAISED 2002 -> 2650 on 2026-08-19 (specs/022 T003), in the SAME commit as the growth: the
+    # e-prop consolidation debt (named OPEN at the 021 lowering above) is paid by relocating the
+    # mlp_q route-rejection + gf.py adjudication narratives here byte-exact. The raise is the
+    # relocation's other half -- POLICIES.md's ceiling stays LOWERED and gains real headroom.
+    "docs/POLICIES_EVIDENCE.md": 2650,
     "docs/INVENTION_REGISTER.md": 950,  # specs/022 T002: the eight P8 invention debt packages
     # (index only -- measurements live in specs/022 evidence/). Measured 844 at landing; ceiling
     # = measured + ~106 so a ninth invention forces a deliberate ceiling raise with its reason here.

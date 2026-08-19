@@ -1741,20 +1741,12 @@ The instrument half of the claim stands; the line does not.)*
     and CONVERGING rather than transported or frozen. Naming the shipped rule "SFDFA" would have
     been a citation defect.
 
-    **WHY BOTH STATED RESOLUTIONS WERE WRONG TO CHOOSE FROM, and this is the transferable part.**
-    Route (a) was framed as necessary because the FA cosine "misses the bar in both directions". That
-    cosine **could not discriminate**: the module's own docstring records it as *"essentially
-    `cos(W2[a], B[a])` under the relu mask (`err` cancels)"*, and for a FIXED RANDOM `B` that is near
-    zero **by construction** — it asked whether the feedback is PARALLEL to the forward weights,
-    which is the weight symmetry feedback alignment exists to deny. An instrument no alignment rule
-    could ever pass is not evidence against alignment rules, so it never justified amending the
-    invariant. Route (b) was never needed: nothing had to be retired and no capability paid for.
-
-    **MEASURED** (`specs/015-resolve-weight-transport/evidence/trajectory.md`, 960 rows,
-    per-epoch transport control 1.0 or void): converging `B` clears on **8 of 8** draws against a pre-registered >= 6-of-8 bar;
-    frozen random feedback **0 of 8**; permutation null 0.0000. **No capability lost** (XOR and
-    linear margins unchanged) and **no new constant** (P1) — the weight-decay pairing was swept
-    and killed on measurement. Full numbers: trajectory.md, not here.
+    **The transferable rule survives here; the full route-rejection narrative and the 015
+    measurements are relocated BYTE-EXACT to `docs/POLICIES_EVIDENCE.md` (specs/022 T003):** an
+    instrument no alignment rule could ever pass is not evidence against alignment rules (the FA
+    cosine reduced to `cos(W2[a], B[a])`, near zero BY CONSTRUCTION), and route (b) was never
+    needed. Headline numbers only: converging `B` 8/8 vs frozen 0/8, permutation null 0.0000, no
+    capability lost, no new constant.
 
     **The invariant was NOT amended TO RETIRE THIS TRANSPORT, and did not need to be** -- route
     (a) was unnecessary because Kolen-Pollack clears the bar. **Scoped 2026-08-18:** the SCOPE
@@ -1827,34 +1819,13 @@ The instrument half of the claim stands; the line does not.)*
     exactly THREE transposes, all inside `MLP.train`; `h.T` and `xb.T` transpose an ACTIVATION and
     an INPUT, and exactly ONE (`self.w2.T`) transposes a weight. There is no second site in the file.
 
-    **Why it is nonetheless not a violation — on the invariant's own scope, not by analogy.** This
-    rule governs how the BRAIN learns; code whose JOB is to be measured against is not one of the
-    brain's learning rules. The invariant concedes the category itself: its verification clause
-    *requires* "an independent reverse-mode BPTT gradient", so backprop is obliged to exist in this
-    tree as an instrument. **CORRECTED 2026-08-15, same day, because the first version of this
-    sentence overstated and was challenged:** it read *"`MLP` is that category"*, which conflates two
-    different things. The instrument the invariant NAMES is `reasoning/eprop.py::Net.grad_bptt`, it
-    already exists, and it shares no code with `grad_eprop` — `MLP` is NOT that instrument. It is a
-    control of a different kind: a Gc BASELINE, not a gradient reference. The general principle
-    carries the verdict; the specific claim did not, and reading it as "MLP is the gradient the
-    invariant requires" would have been false. What `MLP` has is: **zero references outside `gf.py`** (measured over `src/`,
-    `tests/`, `tools/`), ONE construction site (`main_sl()`), and `main_sl` is a self-check reached
-    only from `main()` under `__main__`. No faculty consumes it; it is on no tick.
-
-    **What it is FOR is the load-bearing half: it exists to LOSE.** `main_sl()` asserts
-    `mdl_ok < ind_ok` — the learned model MUST fail the held-out family the program-inducer solves —
-    beside `in_acc >= 0.5`, which requires it to genuinely learn. It is the Gc arm of a Gc-vs-Gf
-    dissociation. **Porting it to e-prop would VOID the experiment, and that structural argument is
-    what this rejection ships in place of a measurement (P7 guard (b)):** a weakened learner would
-    satisfy `mdl_ok < ind_ok` because it learns worse, not because learning is not synthesis — P8's
-    contaminated control, the same failure as the `mlp_q` FA cosine that no alignment rule could
-    ever pass.
-
-    **TWO THINGS THIS VERDICT DOES NOT DISCHARGE.** (1) The module did not self-declare: its
-    docstring said "every weight comes from gradient descent" — true, and naming neither the
-    transport nor this invariant, where `mlp_q` named both. Disclosure added at the site 2026-08-15
-    (P8 clause 4). (2) The gate consequence — **CLOSED 2026-08-15: the control exemption is GRANTED
-    by the owner**, recorded below.
+    **The verdict's kernel survives here; the full reasoning is relocated BYTE-EXACT to
+    `docs/POLICIES_EVIDENCE.md` (specs/022 T003):** not a violation on the invariant's own scope —
+    code whose JOB is to be measured against is not one of the brain's learning rules; `MLP` is a
+    Gc BASELINE (not the gradient instrument, which is `reasoning/eprop.py::Net.grad_bptt`) that
+    **exists to LOSE** (`mdl_ok < ind_ok`), and porting it to e-prop would VOID the experiment —
+    P8's contaminated control. Zero references outside `gf.py`, on no tick. Its missing
+    self-declaration was corrected 2026-08-15 (P8 clause 4).
 
     **THE EXEMPTION, GRANTED 2026-08-15, and what was built so that it cannot rot.**
     `eprop_transport_gate` asserts on the GOVERNED tier, so promoting `gf.py` — backlog row 40 calls
