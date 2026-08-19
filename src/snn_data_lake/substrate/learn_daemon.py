@@ -149,6 +149,82 @@ def _collect_turn(line, out):
         out.append((role, text))
 
 
+def _watermark_path():
+    from snn_data_lake.substrate.home import home  # noqa: PLC0415
+
+    return os.path.join(home(), "daemon.watermark")
+
+
+def _write_watermark():
+    """Publish the shutdown barrier's durable watermark (specs/022 T005a).
+
+    Written AFTER the brain and chat lake are persisted, via tmp+rename so the marker is
+    itself atomic. `clean: true` + the lake's byte length at barrier time let the next boot
+    distinguish three states: clean handoff (length == watermark), crash window (length >
+    watermark -- records landed after the last barrier; BinLog's own tail-repair covers a torn
+    final frame), and the ALARM direction (length < watermark -- the one durable lake SHRANK,
+    which no legitimate path does; boot refuses, P4b)."""
+    from snn_data_lake.substrate.home import home  # noqa: PLC0415
+
+    lake = os.path.join(home(), "brain_lake.bin")
+    mark = {
+        "lake_bytes": os.path.getsize(lake) if os.path.exists(lake) else 0,
+        "head": _head()[:40],
+        "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "clean": True,
+    }
+    # PLAIN TEXT (key=value lines), deliberately NOT json: this daemon's own _selfcheck asserts
+    # zero json.dump calls here (P4b -- brain state never leaks into JSON sidecars), and it
+    # CAUGHT this function's first draft at boot. The marker is lake METADATA (the lake's clean
+    # length cannot live inside the lake it describes -- the final record cannot record the
+    # length that includes itself), sidecar like learn_daemon.lock; the format keeps the guard
+    # untouched and meaningful rather than widening it to permit this caller.
+    path = _watermark_path()
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        for k, v in mark.items():
+            f.write(f"{k}={v}\n")
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
+    return mark
+
+
+def _validate_watermark():
+    """Boot-side half of the barrier. Returns (ok, message). ok=False is the SHRUNK-LAKE alarm
+    and the daemon must refuse to start rather than run a brain on a lake that lost bytes."""
+    from snn_data_lake.substrate.home import home  # noqa: PLC0415
+
+    path = _watermark_path()
+    lake = os.path.join(home(), "brain_lake.bin")
+    if not os.path.exists(path):
+        return True, "no watermark (first boot under the barrier, or pre-022 home)"
+    try:
+        mark = {}
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                if "=" in line:
+                    k, _, v = line.strip().partition("=")
+                    mark[k] = v
+    except OSError as e:
+        return True, f"watermark unreadable ({e}); treating as crash-window boot"
+    size = os.path.getsize(lake) if os.path.exists(lake) else 0
+    if size < int(mark.get("lake_bytes", 0)):
+        return (
+            False,
+            f"ALARM: lake is {size} bytes but the last clean barrier recorded "
+            f"{mark['lake_bytes']} (head {mark.get('head', '?')[:8]}, {mark.get('utc')}). "
+            "The one durable lake SHRANK; refusing to start. Restore from backup or "
+            "adjudicate before deleting daemon.watermark.json (P4b).",
+        )
+    if size > int(mark.get("lake_bytes", 0)):
+        return True, (
+            f"crash-window boot: lake grew {size - int(mark['lake_bytes'])} bytes past the last "
+            "barrier; BinLog tail-repair covers any torn final frame"
+        )
+    return True, "clean handoff: lake length matches the last barrier"
+
+
 def _shutdown(b, mem):
     global _shutdown_done
     if _shutdown_done:
@@ -162,6 +238,17 @@ def _shutdown(b, mem):
         b.close()
     except Exception:
         pass
+    try:
+        mark = _write_watermark()
+        print(
+            f"[learn-daemon] barrier watermark published ({mark['lake_bytes']} bytes).",
+            flush=True,
+        )
+    except Exception as e:
+        print(
+            f"[learn-daemon] WATERMARK WRITE FAILED ({e}) -- next boot is a crash-window boot.",
+            flush=True,
+        )
     print("[learn-daemon] persisted (brain durable save + chat lake flushed).", flush=True)
 
 
@@ -245,6 +332,11 @@ def main():
             flush=True,
         )
         return
+
+    ok, wm_msg = _validate_watermark()  # specs/022 T005a: the barrier's boot-side half
+    print(f"[learn-daemon] watermark: {wm_msg}", flush=True)
+    if not ok:
+        return  # SHRUNK-LAKE alarm: never run a brain on a lake that lost bytes (P4b)
 
     b = make_brain(
         seed=0
