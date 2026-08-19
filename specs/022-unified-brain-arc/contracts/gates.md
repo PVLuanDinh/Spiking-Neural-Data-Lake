@@ -22,5 +22,6 @@ Every gate lands WITH `--self-check` (proven able to fail) in its own commit, re
 | Metacognition floors | refuses calibration below derived label-entropy floor; double dissociation | relay construction must FAIL it |
 | Evaluator integrity | hash-pins on evaluator/invariants/surface/envelope; harness-only evidence | candidate-emitted score ignored; evaluator-byte diff routed to owner |
 | Cutover barrier | quiesce/join/watermark before exit | kill mid-batch → clean watermark recovery |
+| Envelope-hash gate | the five envelope files' hashes changed only in owner-approved commits (allowlist) | unapproved envelope-byte change reds the build |
 
 Self-disposition: these gates are census-covered by `policy_manifest` once registered; none lands bare (a tool wired in bare cannot redden the build).

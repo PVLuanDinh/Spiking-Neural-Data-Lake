@@ -121,8 +121,8 @@ The proposer/evaluator loop runs: candidate diffs against declared mutation surf
 - **FR-012**: Every inter-faculty signal MUST flow through a TypedPort (name, shape, dtype, precision, unit, encoding, kind, region) in a lake-committed wiring manifest with CI type-checking; `port.region` MUST equal `brain_atlas.region_of(declaring_module)`.
 - **FR-013**: Every input port MUST declare a JoinPolicy and every output port a DeliveryPolicy; silent fan-in summation is a manifest red.
 - **FR-014**: Port consumption MUST be mechanically charge-measurable: pinned-payload neuters per port, cleanup-margin records per consumption, and replay-based A/B as the standing harness.
-- **FR-015**: The region charge gate MUST source from live reachability PLUS port-edge charge attribution (registration alone can never green it); exemptions carry date+owner+expiry with a ratcheting count ceiling; the S0 exit is an integer floor of regions charged.
-- **FR-016**: The workspace MUST be resolved to one instance (or one declared composite) before any ignition number is reported; coalition records carry proposer ids, two-component activation, and typed channels whose producers are declared.
+- **FR-015**: The region charge gate MUST source from live reachability PLUS port-edge charge attribution (registration alone can never green it); exemptions carry date+owner+expiry with a ratcheting count ceiling. The S0 exit is an integer floor of regions charged whose IDENTITY is pinned now (floor := the count of regions charged by T025–T038's enumerated registrants — at minimum neuromodulation, medulla, hypothalamus, midbrain, thalamus, insula) and whose integer is written into this requirement by the commit that lands T022's day-one count. The gate's denominator is REGIONS−{substrate, plasticity}+insula; `neuromodulation` is dispositioned CHARGED-NEVER-GROWN (a third category — in the charge denominator, outside both the growable and scaffold sets).
+- **FR-016**: The workspace MUST be resolved to one instance (or one declared composite) across ALL live instantiations — enumerated at implementation by measurement, not assumed (three at HEAD: the autonomous loop's, the chat path's, gwt_deep's) — before any ignition number is reported; coalition records carry proposer ids, two-component activation, and typed channels whose producers are declared.
 - **FR-017**: Recall MUST satisfy `recall(cue) → k episodes with margins`, beating a scrambled-cue control from a degraded cue (margin derived from measured similarity distributions).
 
 **L4 — Composed learning**
@@ -145,6 +145,12 @@ The proposer/evaluator loop runs: candidate diffs against declared mutation surf
 - **FR-028**: Every consciousness mechanism MUST carry a dissociation instrument with a reachable red: ignition (actuator landed whole, subject resolved, dual-derived gate, published-band checks — a 100% ignition rate is a saturated detector), metacognition (derived floors, relay-proof double dissociation), integration (ported perturb-and-compress, staged on G5, never called Phi), attention schema (G3/G4 preconditions, train-without protocol), agency (efference-copy mismatch), binding (membership-matched primary null), report-order (perturbed-intermediate red).
 - **FR-029**: The system MUST report only what it measures: access structure claimed and measured; phenomenal experience never claimed from a passing criterion (P8 sentience clause).
 
+**Added by analyze-remediation (2026-08-19) — requirements for previously unmapped buildable work**
+- **FR-032**: Every `connectome.NODES` entry MUST resolve to ≥1 referencing module in its region or carry a dated EXEMPT (the atlas-node gate; day-one phantoms recorded, not hidden).
+- **FR-033**: Grown units MUST receive initial weights from the genomic-bottleneck map and pre-experience structure from the spontaneous-activity bootstrap — no grown unit starts from an undeclared initializer.
+- **FR-034**: The executive (task-set FiLM gain/threshold) and social cognition (recursive theory-of-mind) faculties MUST be composed onto the typed bus as declared ports with charge verification.
+- **FR-035**: Substrate state MUST live in struct-of-arrays layout outside Python objects on the hot path, with layout changes carrying §3.5 migration dispositions; the human-scale trajectory derivation is maintained per tissue as a disclosed evidence artifact.
+
 **Cross-cutting**
 - **FR-030**: Every module lands in governed `src/snn_data_lake/` registration-complete in its own commit; every commit reaches `main` with the full gate green; cutover follows §3.5 of SYNTHESIS.md (shutdown barrier, watermark handoff, per-record-tag migration dispositions with round-trip reds over live records).
 - **FR-031**: The eight P8 inventions live in `docs/INVENTION_REGISTER.md` (new budgeted file), each with RED, external control, per-item attribution, unprompted disclosure, deletion-on-null, and clause-6 anti-rigging; governance text lands only in named budgeted homes.
@@ -152,7 +158,8 @@ The proposer/evaluator loop runs: candidate diffs against declared mutation surf
 ### Key Entities
 
 - **TypedPort / WiringManifest**: the named, typed, region-tagged signal surface; the manifest is the anatomical inventory and a lake-committed artifact.
-- **Lake record classes**: unit blocks, synapse deltas, episodes, coalitions, goals, proposals, snapshots — each IMMORTAL or COMPACTABLE, versioned, CRC-framed.
+- **Lake record classes**: unit blocks, synapse deltas, episodes, coalitions, goals, proposals, snapshots, provenance rows, and derived read-models — each IMMORTAL or COMPACTABLE, versioned, CRC-framed.
+- **SignalRing** (canonical name for "the ring"/"journaller ring"): single-writer multicast ring; the lake writer is one of its consumers.
 - **Region label (neuromere, zone)**: the prosomeric coordinate emitted by growth and consumed by placement and the connection policy.
 - **Goal**: (embedding, achievement-function) pair with |LP| history in the lake.
 - **Proposal**: diff + parent pointer + score dict + artifact hash, archived in the lake.
@@ -171,7 +178,7 @@ The proposer/evaluator loop runs: candidate diffs against declared mutation surf
 - **SC-007** (S2): At the derived binding width, paging meets its integer rounds budget and beats forced-total residency — or the layer is deleted and the deletion recorded (both outcomes satisfy this criterion; silence satisfies nothing).
 - **SC-008** (S3): The proposer proposes >1 candidate per cadence with the circuit-breaker surfaced; a surface-violating diff is refused and routed to the owner; ANNECS + time-to-master reported jointly.
 - **SC-009** (S3): Every L7 instrument has fired its constructed red at least once (the reds are reachable in fact, not in prose), and the cockpit's consciousness rows report only measured quantities.
-- **SC-010** (always): Every commit on `main` is full-gate green; the anatomical charge gate never regresses (exemption ceiling only tightens); the safety envelope hash is unchanged except by owner-approved commits.
+- **SC-010** (always): Every commit on `main` is full-gate green; the region charge gate never regresses (exemption ceiling only tightens); the safety envelope hash is unchanged except by owner-approved commits — asserted per commit by the envelope-hash gate (T021b), not by discipline alone.
 
 ## Assumptions
 
@@ -186,4 +193,5 @@ The proposer/evaluator loop runs: candidate diffs against declared mutation surf
 
 - **OD-1 — RESOLVED (owner, 2026-08-19)**: the absorbed sensor hardware lane is RE-AUTHORIZED with specs/014's two conditions carried verbatim as GO/NO-GO gates before the hardware lane activates (the SIMULATED feed needed no new authorization).
 - **OD-2**: Promotion of any self-modification diff touching the evaluator, invariants, mutation-surface declaration, or safety envelope requires per-instance owner approval (FR-025).
-- **OD-3**: The POLICIES.md text additions (determinism contract, retention rule, region charge gate) land only after the e-prop consolidation debt is paid to free doc-budget headroom — sequenced as this feature's first governance commit.
+- **OD-3**: The POLICIES.md text additions (determinism contract, retention rule, region charge gate) land only after the e-prop consolidation debt is paid to free doc-budget headroom — and each text lands in the SAME commit as its gate's counted day-one output (gate-before-rule).
+- **OD-4 — REQUESTED (analyze finding, 2026-08-19)**: the E-STOP latch (`So101Arm.stopped`) is process-local and does not survive restart; making it durable is an ENVELOPE change requiring owner approval. Until granted, FR-009's latch-persistence claim is scoped to in-process phase transitions and DISCLOSED on PROVENANCE.

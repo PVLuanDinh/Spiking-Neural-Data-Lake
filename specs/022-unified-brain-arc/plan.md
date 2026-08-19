@@ -88,17 +88,19 @@ src/snn_data_lake/
 ├── basal_ganglia/       # proposer/evaluator surfaces (L6, composing SelfModHarness path)
 ├── brainstem/           # SAFETY ENVELOPE — untouched except owner-approved; effector port wiring AROUND it
 ├── medulla/             # interoceptive producers (valence/arousal ports)
-├── insula/              # NEW region (opened per §0.5, with atlas + connectome registration)
+├── midbrain/            # RPE third-factor producer (dopamine_nuclei port)
+├── pons/                # gains its first module: the pn mossy relay (L4 cerebellar input)
+├── insula/              # NEW region — opened by T021a (atlas + connectome registration)
 ├── hypothalamus/        # sleep clock (L5.5 pacer)
 ├── plasticity/          # L4 palette: LPL spine, STP/WM, composition arbitration, structural two-clock
-├── neuromodulation/     # third-factor producers (RPE port, |LP| port); serotonin/glia first registrants
+├── neuromodulation/     # serotonin/glia first registrants (RPE lives in midbrain/, |LP| in basal_ganglia/)
 └── connectome.py        # pulvinar/MD nodes; atlas gate (NODES→module resolution)
 
 tests/                   # per-commit: unit + the new gates' self-checks + G5/determinism/torn-write reds
 docs/INVENTION_REGISTER.md   # NEW budgeted file (registered in doc_budget_gate.BUDGETS same commit)
 ```
 
-**Structure Decision**: anatomical-region layout preserved (P4c: the directory is a fact about the filesystem; governance comes from registration + gates). All L0–L3 infrastructure lands in `substrate/` beside the existing lake/gates it extends or replaces via the port register. The only new package is `insula/` (region opened with full registration). No `reasoning/` or `research/` additions — governed tree from the first commit.
+**Structure Decision**: anatomical-region layout preserved (P4c: the directory is a fact about the filesystem; governance comes from registration + gates). All L0–L3 infrastructure lands in `substrate/` beside the existing lake/gates it extends or replaces via the port register. The only NEW package is `insula/` (opened by T021a with full registration); `pons/` (existing, empty) gains its first module. No `reasoning/` or `research/` additions — governed tree from the first commit.
 
 ## Complexity Tracking
 

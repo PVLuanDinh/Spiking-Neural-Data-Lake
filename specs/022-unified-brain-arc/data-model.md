@@ -27,7 +27,7 @@ Lake-committed, versioned, NIR-HDF5-serialized (spec FR-012, contracts/manifest.
 - Migration: one disposition per persisted tag (read-as-is / upcast-on-read / one-time-rewrite), each with a round-trip red over live records.
 
 ### UnitBlock (IMMORTAL-as-current + delta chain)
-- `unit_id: u64`, `region: (neuromere: u8, zone: enum)`, `cell_type`, `position (nm-scale ints, unit-gated)`, `sign (Dale)`, `state fields (SoA layout mirrored)`, `out_edge_ids`, `weights`.
+- `unit_id: u64`, `region_label: (neuromere: u8, zone: enum)` (the prosomeric coordinate — distinct from TypedPort's `region: str`, which is the REGIONS-map key), `cell_type`, `position (nm-scale ints, unit-gated)`, `sign (Dale)`, `state fields (SoA layout mirrored)`, `out_edge_ids`, `weights`.
 - Block-aligned: one activation hop = one block read (paging contract).
 - Validation: region label from the growth program's stage-1 emission; refuses fixed-scaffold regions.
 
