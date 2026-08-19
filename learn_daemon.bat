@@ -37,10 +37,14 @@ REM   they never set this. Restore refuses and records rather than half-restorin
 REM   lineage (seed/drive/noise_sd) mismatch; see time_cells.restored().
 
 :loop
-REM GPU-prioritized, always-on: run the live brain under the CUDA venv (.venv-cu128 = torch+cu128, RTX).
-REM The torch/perception/neurogenesis tier then runs on the GPU; NORD_GPU=1 is set inside learn_daemon.py.
-REM (The CPU gate env .venv-lake stays for run_selfchecks/pytest -- deterministic; not this always-on path.)
-".venv-cu128\Scripts\python.exe" learn_daemon.py >> chat_learn.log 2>&1
+REM GPU-prioritized, always-on: run the live brain under .venv-lake (cp314t free-threaded,
+REM torch 2.11.0+cu128, RTX 5070 verified). REPOINTED 2026-08-19: the previous target
+REM .venv-cu128 was DELETED from disk at some point, and because this loop swallows the
+REM launch failure into chat_learn.log, the daemon silently crash-looped (cmd code 3,
+REM "cannot find the path") with NOBODY noticing -- the brain was down while the log grew.
+REM Sharing the gate env does not break gate determinism: the NORD_* env vars are set only
+REM in this launcher, never by run_selfchecks/pytest.
+".venv-lake\Scripts\python.exe" learn_daemon.py >> chat_learn.log 2>&1
 echo [%date% %time%] learn-daemon exited (code %errorlevel%); relaunching in 8s >> chat_learn.log
 timeout /t 8 /nobreak >nul
 goto loop
