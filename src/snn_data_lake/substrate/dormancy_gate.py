@@ -415,6 +415,15 @@ EXEMPT = {
         "its sealed arm -- instruments, not the tick -- and home.py's adoption shipped without "
         "it. Live-path consumer is the daemon under the new engine; EXPIRES at T012",
     ),
+    "signal_ring": (
+        "wire",
+        "specs/022 T011: the ONE-writer multicast faculty ring + LakeJournaller (the durable-lake "
+        "writer as a ring consumer). Nothing on the tick publishes to it TODAY, stated plainly; "
+        "the live producer is the two-phase kernel tick (T013+) with the daemon journaller "
+        "cadence at T012. EXPIRES at T013 -- and if the kernel lands without adopting it, this "
+        "reason gets the same correction the five lake_* reasons got at 0d0a7745, not a quiet "
+        "extension",
+    ),
     "perf_baseline": (
         "permanent",
         "the pinned-host performance ratchet (specs/022 T001) -- a measurement instrument, not a "

@@ -412,6 +412,7 @@ REGIONS = {
         "lake_rebuild_gate",  # specs/022 T008: delete->rebuild->logical-equality from the lake alone; bare == self-check
         "lake_migrate",  # specs/022 T009: per-tag dispositions + identity migration; bare == identity + unknown-tag red
         "lake_engine",  # specs/022 T010-i: retention registry + IMMORTAL append budget; bare == consistency + flood red
+        "signal_ring",  # specs/022 T011: ONE-writer multicast ring + lake journaller; bare == replay A/B + overrun red
         "safety_envelope",  # THE five approval-gated brainstem files, one definition + a SECURITY.md agreement check
         "ingest_guard",  # content boundary for outside data: licence deny-by-default + injection flagging
         "hf_stream",  # streamed HF datasets -> brain-consumable features (licence-gated, bounded)
