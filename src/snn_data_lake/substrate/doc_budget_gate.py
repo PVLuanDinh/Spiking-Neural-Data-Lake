@@ -86,6 +86,9 @@ BUDGETS = {
     # block's own consolidation (the debt named above) remains OPEN -- the T024 count showed
     # the SC-006 target reachable without touching freshly-stabilized text, so it was not.
     "docs/POLICIES_EVIDENCE.md": 2002,  # relocated forensics; ceiling = measured + 60
+    "docs/INVENTION_REGISTER.md": 950,  # specs/022 T002: the eight P8 invention debt packages
+    # (index only -- measurements live in specs/022 evidence/). Measured 844 at landing; ceiling
+    # = measured + ~106 so a ninth invention forces a deliberate ceiling raise with its reason here.
     "README.md": 2264,  # 2,156
     "docs/ANATOMY.md": 1968,  # 1,874
     "AGENTS.md": 1065,  # 1,014
