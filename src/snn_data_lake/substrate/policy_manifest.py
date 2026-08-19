@@ -338,18 +338,20 @@ def render(policies: list[Policy]) -> str:
         "POLICY MANIFEST -- derived from docs/POLICIES.md (regeneration is the only edit path)",
         "",
     ]
-    lines.append(f"{'id':<16} {'kind':<22} command(s)")
+    lines.append(f"{'id':<16} {'kind':<22} {'binds':<42} command(s)")
     for p in policies:
         if p.subclause_of:
             continue
         kind = "NOT MACHINE-DECIDED" if p.kind == "review-only" else p.kind
         cmds = "; ".join(c.source_token for c in p.commands) or "NONE"
-        lines.append(f"{p.id:<16} {kind:<22} {cmds}")
+        binds = (p.title[:38] + "..") if len(p.title) > 40 else p.title
+        lines.append(f"{p.id:<16} {kind:<22} {binds:<42} {cmds}")
         for s in policies:
             if s.subclause_of == p.id:
                 skind = "NOT MACHINE-DECIDED" if s.kind == "review-only" else s.kind
                 scmds = "; ".join(c.source_token for c in s.commands) or "NONE"
-                lines.append(f"  {s.id:<14} {skind:<22} {scmds}")
+                sbinds = (s.title[:38] + "..") if len(s.title) > 40 else s.title
+                lines.append(f"  {s.id:<14} {skind:<22} {sbinds:<42} {scmds}")
     n_top = sum(1 for p in policies if not p.subclause_of)
     n_sub = sum(1 for p in policies if p.subclause_of)
     lines.append("")
@@ -694,7 +696,22 @@ def main(argv: list[str] | None = None) -> int:
             return certify(policies, full=args.full)
         drift = census(policies)
         results, _ = run_audit(policies)
-        print(render_audit(results, drift))
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "results": [
+                            {"policy": r.policy_id, "verdict": r.verdict, "detail": r.detail}
+                            for r in results
+                        ],
+                        "drift": drift,
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+        else:
+            print(render_audit(results, drift))
         # --audit reds on FAIL/CANNOT_RUN only; NO_GATE and REVIEW_ONLY print
         # honest and redden --certify instead (contract).
         return 1 if any(r.verdict in {"FAIL", "CANNOT_RUN"} for r in results) else 0

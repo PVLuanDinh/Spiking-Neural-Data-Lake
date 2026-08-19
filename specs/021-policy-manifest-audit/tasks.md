@@ -153,3 +153,11 @@ MVP = Phase 1 + 2 + US1 (T001–T012): the honest enforcement map, standalone va
 counted output banked. Then US2 (certification), US3 (generation surfaces), US4 (consolidation)
 as separately committable increments — one change per commit, full gate green each time, every
 increment reaching main per the standing rule.
+
+---
+
+## Phase 8: Convergence
+
+- [X] T034 Resolve the SC-008 commit-order deviation per SC-008 (contradicts): SC-008 requires the counted output published in a commit PRECEDING any policy-text edit, verifiable from commit order; fd2c527e bundled instrument + counts + POLICIES.md edits in one commit, so commit order cannot verify it, though EXECUTION order held (T012's counted run recorded in specs/021-policy-manifest-audit/manifest-baseline.md before T028's edits). Append the deviation record + evidence to manifest-baseline.md and put the adjudication to the OWNER via AskUserQuestion: (a) supersede SC-008 in place in specs/021-policy-manifest-audit/spec.md (execution order + recorded evidence satisfies the intent; commit-order verifiability was the letter, not the point) or (b) keep SC-008 and bind all FUTURE policy-text edits to split-commit shape. Do not silently pick.
+- [X] T035 Implement `--audit --json` in src/snn_data_lake/substrate/policy_manifest.py per contracts/cli.md `--audit [--json]` (partial): one JSON object mirroring data-model.md (results + drift + self_disposition), stdout only, no file written; extend tests/test_policy_manifest.py with a schema assertion on the constructed-fixture audit.
+- [X] T036 Add the binds-what attribute to the text render in src/snn_data_lake/substrate/policy_manifest.py per FR-001 (partial): the committed JSON carries `title` but `render()` drops it -- add a truncated title column so the reviewer-facing table carries every FR-001 attribute; keep lines ASCII and re-run `--manifest --write` + `--assert` (render change does not touch the committed payload, verify rather than assume).

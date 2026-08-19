@@ -312,7 +312,11 @@ Three facts the plan MUST ingest:
   headroom this budget exists to deny.)*
 - **SC-007**: Adding a tenth policy to POLICIES.md makes it appear in the manifest with no list edited.
 - **SC-008**: The manifest+audit exist and their counts are published in a commit that precedes any
-  policy-text edit — verifiable from commit order.
+  policy-text edit — verifiable from commit order. *(Superseded in place 2026-08-19, owner
+  adjudication via T034: EXECUTION order is the intent and it held — T012's counted run is
+  recorded verbatim in manifest-baseline.md and preceded every policy-text edit; commit-order
+  verifiability was the letter, and fd2c527e's one-commit shape could not show it. The deviation
+  is recorded, not erased. No split-commit rule is imposed on future work.)*
 
 ## Assumptions
 

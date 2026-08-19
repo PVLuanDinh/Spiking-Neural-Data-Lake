@@ -221,3 +221,18 @@ restatements (:195 is P6's accurate corrected status; :317 is the table header).
 - **Cross-cutting** PASS -- safety envelope untouched (0 lines, measured); count-first held
   (T012's counted run precedes every policy-text edit); full gate green at commit time; symbols
   cited over line numbers throughout.
+
+## SC-008 commit-order deviation (T034, 2026-08-19 -- surfaced by /speckit-converge)
+
+SC-008: "The manifest+audit exist and their counts are published in a commit that precedes any
+policy-text edit -- verifiable from commit order." EXECUTION order held: T012's first counted run
+(recorded verbatim above, including the census of 3) preceded T028's POLICIES.md edits, and the
+FR-012 sequencing gate was honored. COMMIT order does not show it: fd2c527e bundled the
+instrument, the counted records and the policy-text edits in one commit, so SC-008's stated
+verification method (commit archaeology) cannot confirm what actually happened. Deviation
+recorded here with the evidence; the adjudication is the OWNER'S, taken via the question asked at
+implementation time -- resolution appended below when answered.
+
+**T034 RESOLUTION (owner, 2026-08-19): SUPERSEDE IN PLACE.** SC-008 amended in spec.md —
+execution order + this file's verbatim counted record satisfies the count-first intent; the
+one-commit deviation stays recorded; no split-commit rule imposed on future work.

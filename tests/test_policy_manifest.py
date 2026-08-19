@@ -101,7 +101,7 @@ def test_p4b_is_not_machine_decided_the_overclaim_control():
     assert p4b.kind == "review-only"
     assert p4b.commands == []
     rendered = pm.render(pm.parse(REAL))
-    assert re.search(r"^\s+P4b\s+NOT MACHINE-DECIDED\s+NONE", rendered, re.M)
+    assert re.search(r"^\s+P4b\s+NOT MACHINE-DECIDED\s+.*\sNONE$", rendered, re.M)
 
 
 def test_p4c_command_comes_from_the_gate_output_table():
@@ -287,3 +287,32 @@ def test_refusing_certificate_is_recorded_not_just_printed(monkeypatch, tmp_path
     record = _json.loads((tmp_path / "cert.json").read_text(encoding="utf-8"))
     assert record["certified"] is False
     assert any("PF" in r for r in record["refusal_reasons"])
+
+
+# ------------------------------------------------ Phase 8 convergence: T035/T036
+
+
+def test_audit_json_mode_mirrors_the_schema():
+    # T035: --audit --json emits one object (results + drift), per contracts/cli.md.
+    import json as _json
+    import subprocess as _sp
+    import sys as _sys
+
+    proc = _sp.run(
+        [_sys.executable, "-m", "snn_data_lake.substrate.policy_manifest", "--audit", "--json"],
+        capture_output=True,
+        text=True,
+        cwd=str(pm.REPO),
+        timeout=600,
+    )
+    obj = _json.loads(proc.stdout)
+    assert set(obj) == {"results", "drift"}
+    assert all({"policy", "verdict", "detail"} <= set(r) for r in obj["results"])
+    assert {"unclaimed_gates", "not_in_ci", "self_disposition"} <= set(obj["drift"])
+
+
+def test_text_render_carries_binds_what():
+    # T036: FR-001's "what it binds" appears in the reviewer-facing table too.
+    rendered = pm.render(pm.parse(REAL))
+    assert "binds" in rendered.splitlines()[2]
+    assert "Brain-native" in rendered  # P1's title text visible in the table
