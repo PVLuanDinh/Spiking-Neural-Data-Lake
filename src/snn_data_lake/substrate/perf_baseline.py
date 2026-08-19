@@ -243,9 +243,36 @@ def main(argv: list[str] | None = None) -> int:
     baseline = json.loads(BASELINE.read_text())
 
     if args.report or args.assert_:
-        ticks = _measure_ticks()
-        ok, msg = _score({**ticks}, baseline)
-        print(f"perf_baseline [{'assert' if args.assert_ else 'report'}] {msg}")
+        # THE ASSERT DECLINES JURISDICTION OFF THE PINNED HOST (specs/022 T012, the pre-push
+        # flip). A cross-host comparison is noise judging noise -- a slower laptop would red
+        # every push and a faster box would wave regressions through -- so this exit-0 is a
+        # SKIPPED notice, never a verdict. CI stays report-only for the same reason
+        # ("CI never hosts performance claims", plan.md); the binding assert runs only where
+        # the baseline was recorded.
+        here = os.environ.get("COMPUTERNAME", "?")
+        if args.assert_ and baseline.get("host") != here:
+            print(
+                f"perf_baseline [assert] SKIPPED, not a verdict: host {here!r} is not the "
+                f"pinned baseline host {baseline.get('host')!r} -- the ratchet binds on the "
+                "pinned host only"
+            )
+            return 0
+        # TIMING NOISE IS ONE-SIDED (interference only ever ADDS time), so the assert takes
+        # the best of up to 3 runs: pass on the first green, red only when EVERY attempt
+        # regresses. Measured at the T012 flip, same binary, three back-to-back runs beside
+        # the live daemon: p95 118 -> 131 -> 205 ms -- a single-run assert would block pushes
+        # at random, and a flaky gate trains overrides (this gate's own first assert was
+        # exactly such a false red). A real regression moves every run, so the red stays
+        # reachable; --self-check's halved-baseline arm constructs it.
+        ok, msgs = False, []
+        for _ in range(3 if args.assert_ else 1):
+            ticks = _measure_ticks()
+            ok, msg = _score({**ticks}, baseline)
+            msgs.append(msg)
+            if ok:
+                break
+        tail = f" (best of {len(msgs)} attempts)" if args.assert_ and len(msgs) > 1 else ""
+        print(f"perf_baseline [{'assert' if args.assert_ else 'report'}] {msgs[-1]}{tail}")
         return (0 if ok else 1) if args.assert_ else 0
 
     # --self-check: red against a halved baseline, green against the real one, ONE command.

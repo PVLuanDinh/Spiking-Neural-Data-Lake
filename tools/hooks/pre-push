@@ -1,0 +1,28 @@
+#!/bin/sh
+# specs/022 T012: the pinned-host performance ratchet as a pre-push gate.
+#
+# CANONICAL TRACKED COPY. Installed per-host by copying to .git/hooks/pre-push (NOT via
+# core.hooksPath, which would silently disable the graphify post-commit/post-checkout hooks
+# already living in .git/hooks). The tree carries this copy so the gate is visible to review
+# (P4c: a build the gates cannot see is not a build the project can claim); the .git/hooks
+# copy is per-host installation state, like the venv.
+#
+# Jurisdiction: perf_baseline --assert itself declines on any host that is not the pinned
+# baseline host (exit 0 with a SKIPPED notice, never a verdict), and this script exits 0
+# when the gate env is absent -- so a foreign clone is never blocked by a measurement that
+# means nothing there. CI stays report-only permanently ("CI never hosts performance
+# claims", specs/022 plan.md).
+repo_root="$(git rev-parse --show-toplevel)" || exit 1
+py="$repo_root/.venv-lake/Scripts/python.exe"
+[ -x "$py" ] || py=python
+if ! "$py" -c "import snn_data_lake" 2>/dev/null; then
+    echo "pre-push: perf ratchet skipped (no gate env on this host -- pinned-host gate)"
+    exit 0
+fi
+if ! "$py" -m snn_data_lake.substrate.perf_baseline --assert; then
+    echo "pre-push: REFUSED -- wake-tick performance regressed vs the pinned baseline"
+    echo "          (tools/perf_baseline.json). Investigate before pushing; re-baselining"
+    echo "          needs a NEW --stage name, which is an owner-visible act."
+    exit 1
+fi
+exit 0

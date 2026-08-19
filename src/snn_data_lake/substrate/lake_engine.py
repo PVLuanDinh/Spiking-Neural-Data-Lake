@@ -67,8 +67,10 @@ RETENTION: dict[int, tuple[str, bool, str]] = {
         "_T_GROWTH_DELTA chain records (specs/022 T010-ii): a prefix ending BEFORE the newest "
         "FULL is reconstructible from that FULL (replay resets there), so whole prefixes may be "
         "reclaimed -- never a link inside a chain, which the reader would REFUSE by hash. "
-        "Append budget: unbaselined at introduction (never trips, reported only); its measured "
-        "per-tick baseline lands at the T012 lake-block close-out",
+        "Append budget: baselined at T012 as promised (2,902 B/tick p95, scratch-brain method "
+        "in tools/lake_append_baseline.json; 31% under the legacy 4,205 -- live refits "
+        "genuinely rewrite W/b/beta, so member-granularity keeps them; per-synapse granularity "
+        "is 0x09's job at the kernel block)",
     ),
     0x09: (
         "IMMORTAL",

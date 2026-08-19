@@ -371,29 +371,30 @@ EXEMPT = {
         "wire",
         "specs/022 T005b: the read-old/write-new format bridge (imports lake_segments for the "
         "sealed arm -- reason corrected 2026-08-19: the first wording had the import direction "
-        "backwards). EXPIRY CORRECTED after T010-ii landed: this reason promised expiry at "
-        "T009/T010, T009 landed and consumes it (lake_migrate.iter_records) -- but as an "
-        "INSTRUMENT, not a tick path, and T010-ii landed INSIDE home.py without importing this "
-        "module, so the promise did not fire. Live-path consumer is the daemon under the new "
-        "engine; EXPIRES at T012 (lake-block close-out) -- a bridge nothing reads by S0 exit "
-        "is a defect",
+        "backwards). EXPIRY RE-EVALUATED AT T012 (the close-out this reason previously named): "
+        "T012 landed as verify+flip -- the live lake deliberately stays BinLog-resident, so the "
+        "bridge's consumers remain instruments (lake_migrate.iter_records, T009). The live-path "
+        "consumer is the kernel block's paging tier (T013+), where sealed segments become the "
+        "read path; a bridge nothing reads by S0 EXIT (T039) is a defect, and that bound does "
+        "not move again",
     ),
     "lake_engine": (
         "wire",
-        "specs/022 T010-i: retention registry + append budget. EXPIRY CORRECTED after T010-ii "
-        "landed: the promised consumer (home.py adoption) shipped WITHOUT importing this module "
-        "-- the delta chain lives in home.py on stdlib alone, deliberately, so home keeps its "
-        "zero-dep contract. The live consumer remains the daemon's tick accounting "
-        "(AppendBudget.on_append/end_tick), wired with the ring journaller; EXPIRES at "
-        "T011/T012",
+        "specs/022 T010-i: retention registry + append budget. EXPIRY RE-EVALUATED AT T012: "
+        "T011 landed the ring and T012 measured the 0x08 baseline into "
+        "tools/lake_append_baseline.json, but neither wired AppendBudget onto a tick -- the "
+        "delta chain lives in home.py on stdlib alone (zero-dep contract), and the daemon's "
+        "tick accounting arrives with the kernel block's two-phase tick (T013+), which is now "
+        "the ONE named consumer. Bound by S0 exit (T039), not movable again",
     ),
     "lake_migrate": (
         "wire",
-        "specs/022 T009: per-tag dispositions + identity migration. EXPIRY CORRECTED after "
-        "T010-ii landed: home.py's adoption shipped without importing this module. Consumed "
-        "today by lake_engine's registry-consistency assert and the T009 full-scale proof "
-        "(evidence/s0-lake-migrate.md) -- instruments, not the tick. Live-path consumer is the "
-        "T012 cutover migration; EXPIRES at T012",
+        "specs/022 T009: per-tag dispositions + identity migration. EXPIRY RE-EVALUATED AT "
+        "T012: the close-out deliberately did NOT migrate the live lake (it stays "
+        "BinLog-resident; verify+flip only), so the consumers remain instruments "
+        "(lake_engine's registry-consistency assert, the T009 full-scale proof). The live "
+        "cutover migration belongs to the kernel block's paging tier (T013+). Bound by S0 "
+        "exit (T039), not movable again",
     ),
     "lake_rebuild_gate": (
         "permanent",
@@ -403,26 +404,26 @@ EXEMPT = {
     ),
     "lake_index": (
         "wire",
-        "specs/022 T007: the derived pointer index (sqlite WAL, stdlib). EXPIRY CORRECTED "
-        "after T010-ii landed: the rebuild gate (T008) consumes it, but as a CI instrument, "
-        "and home.py's adoption shipped without it. Live-path consumer is the engine cutover; "
-        "EXPIRES at T012",
+        "specs/022 T007: the derived pointer index (sqlite WAL, stdlib). EXPIRY RE-EVALUATED "
+        "AT T012: the rebuild gate (T008) consumes it as a CI instrument and the close-out "
+        "did not cut the live lake over, so the live-path consumer is the kernel block's "
+        "paged reads (T013+). Bound by S0 exit (T039), not movable again",
     ),
     "lake_segments": (
         "wire",
-        "specs/022 T005: the segment writer (WAL + sealed Arrow IPC). EXPIRY CORRECTED after "
-        "T010-ii landed: the migrator (T009) consumes it (SegmentStore) and the bridge reads "
-        "its sealed arm -- instruments, not the tick -- and home.py's adoption shipped without "
-        "it. Live-path consumer is the daemon under the new engine; EXPIRES at T012",
+        "specs/022 T005: the segment writer (WAL + sealed Arrow IPC). EXPIRY RE-EVALUATED AT "
+        "T012: the migrator (T009) consumes it (SegmentStore) and the bridge reads its sealed "
+        "arm -- instruments, not the tick -- and the close-out kept the live lake "
+        "BinLog-resident on purpose. Live-path consumer is the kernel block's paging tier "
+        "(T013+). Bound by S0 exit (T039), not movable again",
     ),
     "signal_ring": (
         "wire",
         "specs/022 T011: the ONE-writer multicast faculty ring + LakeJournaller (the durable-lake "
         "writer as a ring consumer). Nothing on the tick publishes to it TODAY, stated plainly; "
-        "the live producer is the two-phase kernel tick (T013+) with the daemon journaller "
-        "cadence at T012. EXPIRES at T013 -- and if the kernel lands without adopting it, this "
-        "reason gets the same correction the five lake_* reasons got at 0d0a7745, not a quiet "
-        "extension",
+        "T012 landed as verify+flip (no journaller cadence wired, the correction this reason "
+        "promised), so the ONE named live producer is the two-phase kernel tick (T013+). "
+        "Bound by S0 exit (T039), not movable again",
     ),
     "perf_baseline": (
         "permanent",
