@@ -367,6 +367,13 @@ EXEMPT = {
         "audits gate commands, certifies releases. Same disposition as gradient_claim_gate above: "
         "reachable from run_selfchecks and CI, never from a tick",
     ),
+    "perf_baseline": (
+        "permanent",
+        "the pinned-host performance ratchet (specs/022 T001) -- a measurement instrument, not a "
+        "tick faculty. Records/asserts wake-tick p50/p95 + D: IOPS against tools/perf_baseline.json; "
+        "bare invocation is a cheap wiring check. Same disposition as policy_manifest above: "
+        "reachable from run_selfchecks and CI, never from a tick",
+    ),
     "import_manifest": (
         "permanent",
         "the cross-tier canary -- a CI self-check covering the governed -> ungoverned lazy imports "

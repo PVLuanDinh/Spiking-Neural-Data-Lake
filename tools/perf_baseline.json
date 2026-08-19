@@ -1,0 +1,26 @@
+{
+  "stage": "S0-pre",
+  "recorded_utc": "2026-08-19T15:54:59Z",
+  "host": "LUAN_AND_ANNIE",
+  "ticks": {
+    "wake": {
+      "p50_ms": 107.596,
+      "p95_ms": 120.957,
+      "n": 61
+    },
+    "sleep": {
+      "p50_ms": 9.327,
+      "p95_ms": 775.463,
+      "n": 59
+    },
+    "duty_wake_fraction": 0.508,
+    "n_ticks": 120,
+    "n_units": null
+  },
+  "iops": {
+    "random_read_iops_4k_unbuffered": 11028,
+    "reads": 1500,
+    "file_mb": 256,
+    "target_dir": "D:\\"
+  }
+}

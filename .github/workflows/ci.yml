@@ -109,6 +109,12 @@ jobs:
           python -c "import torch, snntorch as snn; lif = snn.Leaky(beta=0.9); mem = lif.init_leaky(); cur = torch.ones(4); _, m1 = lif(cur, mem); _, m2 = lif(cur, m1); assert m1.device.type == 'cpu', m1.device; assert not torch.equal(m1, m2), 'membrane did not integrate'; print('snntorch', snn.__version__, 'Leaky CPU step OK', m1.tolist(), m2.tolist())"
       - name: Run every self-check with the full dependency set
         run: python run_selfchecks.py       # canonical module list lives in run_selfchecks.py
+      # specs/022 T001: PERMANENTLY report-only on CI ("CI never hosts performance claims",
+      # plan.md). The numbers a runner prints are trend/debug info against the pinned-host
+      # baseline; the ASSERT runs only on the pinned measurement host (pre-push, from T012).
+      - name: Performance trend row (report-only, never asserts here)
+        if: matrix.os == 'ubuntu-latest'
+        run: python -m snn_data_lake.substrate.perf_baseline --report
 
   wheel:
     name: wheel packages the vendored model
