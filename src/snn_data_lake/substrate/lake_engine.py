@@ -15,7 +15,9 @@ snapshots (83,405 records) that nothing ever reclaims.
 
 Tag labels (keyed to home.py's _T_* constants BY SYMBOL, same census as
 lake_migrate.TAG_DISPOSITIONS):
-  IMMORTAL     _T_FACT, _T_EPISODE, _T_SELFBUILD, _T_SPIKE, _T_CALIB, _T_STATE
+  IMMORTAL     _T_FACT, _T_EPISODE, _T_SELFBUILD, _T_SPIKE, _T_CALIB, _T_STATE, and
+               _T_SYNDELTA (0x09, SynapseDelta below -- every record load-bearing by
+               construction, no FULL kind to compact against yet; T010a)
   COMPACTABLE  _T_GROWTH (legacy snapshots, closed to npz writes since T010-ii) and
                _T_GROWTH_DELTA (the chain) -- both `reclaimable=True` since the T010-ii
                reconstruction proof landed (tests/test_growth_delta_chain.py: chain replay
@@ -30,6 +32,7 @@ budget wiring on a constructed store, and the FLOOD red with its calm positive c
 from __future__ import annotations
 
 import json
+import struct
 import sys
 from pathlib import Path
 
@@ -67,6 +70,15 @@ RETENTION: dict[int, tuple[str, bool, str]] = {
         "Append budget: unbaselined at introduction (never trips, reported only); its measured "
         "per-tick baseline lands at the T012 lake-block close-out",
     ),
+    0x09: (
+        "IMMORTAL",
+        False,
+        "_T_SYNDELTA spike-derived synapse deltas (SynapseDelta, specs/022 T010a): compare-drop "
+        "means every record is load-bearing -- there are no redundant snapshots to reclaim, by "
+        "construction -- and no FULL-snapshot kind exists yet, so there is no base to compact a "
+        "prefix against. The label revisits with the kernel block's own proof (T013+). Append "
+        "budget: unbaselined (reported, never trips) until a live writer exists to measure",
+    ),
 }
 
 
@@ -82,6 +94,110 @@ def registry_consistent() -> tuple[bool, str]:
     if disp != ret:
         return False, f"registry divergence: dispositions {sorted(disp)} vs retention {sorted(ret)}"
     return True, f"{len(ret)} classes labeled, dispositions and retention agree"
+
+
+# distinct-from: substrate/basic_components.py -- its Rule protocol COMPUTES a weight change dw
+#   from local activity; this class PERSISTS already-computed weights as lake records.
+# distinct-from: substrate/home.py -- the _T_GROWTH_DELTA chain diffs whole npz MEMBERS of the
+#   grown-substrate blob; this diffs individual synapses inside a weight matrix, keyed by spikes.
+# distinct-from: claustrum/claustrum.py -- detects cross-area spike coincidence windows.
+# distinct-from: thalamus/global_workspace.py -- formats an ASCII trace of one tick.
+# distinct-from: basal_ganglia/self_build_loop.py -- snapshots safety-envelope FILES for restore.
+# All sites read.
+class SynapseDelta:
+    """Spike-derived synapse-weight delta records (specs/022 T010a) -- tag 0x09.
+
+    THE DIRTY SET IS SPIKE-DERIVED: only synapses with a fired PRE or fired POST endpoint are
+    candidates this tick, which is the locality every plasticity rule in this tree already obeys
+    (e-prop/STDP move weights only where activity was). Candidates are QUANTIZED to `q_step` and an
+    entry is emitted ONLY when its quantized value differs from what the lake last saw
+    (compare-drop). Two consequences, both deliberate:
+      * a byte-frozen substrate whose endpoints keep firing emits NOTHING -- that is the measured
+        97.64%-repeated-snapshot pathology (83,405 _T_GROWTH records) refused at the door, and the
+        constructed red in main() reproduces exactly that shape;
+      * a synapse that changes while its endpoints are silent is captured LATER, on the first tick
+        an endpoint fires -- deferred, never lost, because the compare is against what was WRITTEN,
+        not against the previous tick.
+
+    `q_step` has NO default (P1): the quantum below which a weight change is noise is a property of
+    the caller's learning rule, derived there, never a constant picked here. Reconstruction replays
+    records onto a ZERO base (`apply`), so the first capture of a synapse carries its full
+    quantized value.
+    """
+
+    TAG = 0x09
+    _VER = 1
+
+    def __init__(self, q_step):
+        if not q_step or q_step <= 0:
+            raise ValueError(
+                "q_step must be a positive weight quantum DERIVED BY THE CALLER from its own "
+                "learning rule (P1: this class refuses to pick one)"
+            )
+        self.q_step = float(q_step)
+        self._last: dict[tuple[int, int], int] = {}
+
+    def collect(self, w, pre_fired, post_fired):
+        """One tick's record: dirty set -> quantize -> compare-drop -> packed bytes, or None when
+        nothing the lake would learn from changed (writing nothing IS the mechanism)."""
+        import numpy as np
+
+        w = np.asarray(w)
+        if w.ndim != 2:
+            raise ValueError("w must be a 2-D [pre, post] weight array")
+        n_pre, n_post = w.shape
+        pre = sorted({int(i) for i in pre_fired})
+        post = sorted({int(j) for j in post_fired})
+        if (pre and (pre[0] < 0 or pre[-1] >= n_pre)) or (
+            post and (post[0] < 0 or post[-1] >= n_post)
+        ):
+            raise ValueError("fired index out of range for w")
+        entries, seen = [], set()
+        for i in pre:
+            row = np.rint(w[i] / self.q_step).astype(np.int64)
+            for j in range(n_post):
+                q = int(row[j])
+                if self._last.get((i, j), 0) != q:
+                    entries.append((i, j, q))
+                    seen.add((i, j))
+        for j in post:
+            col = np.rint(w[:, j] / self.q_step).astype(np.int64)
+            for i in range(n_pre):
+                if (i, j) in seen:
+                    continue
+                q = int(col[i])
+                if self._last.get((i, j), 0) != q:
+                    entries.append((i, j, q))
+        if not entries:
+            return None
+        for i, j, q in entries:
+            self._last[(i, j)] = q
+        out = [struct.pack("<BI", self._VER, len(entries))]
+        out += [struct.pack("<IIq", i, j, q) for i, j, q in entries]
+        return b"".join(out)
+
+    @classmethod
+    def entries(cls, payload):
+        """-> [(pre, post, q)]. Refuses a malformed payload WHOLE (wrong version, short, trailing
+        bytes) -- the same never-half-read rule every lake parser here follows."""
+        try:
+            ver, n = struct.unpack_from("<BI", payload, 0)
+        except struct.error as exc:
+            raise ValueError(f"SynapseDelta payload too short for its header: {exc}") from exc
+        if ver != cls._VER:
+            raise ValueError(f"SynapseDelta version {ver} is not {cls._VER}")
+        if len(payload) != 5 + n * 16:
+            raise ValueError(
+                f"SynapseDelta length mismatch: {len(payload)} B for {n} entries -- refused whole"
+            )
+        return [struct.unpack_from("<IIq", payload, 5 + k * 16) for k in range(n)]
+
+    def apply(self, payload, w):
+        """Apply one record to `w` in place (zero-base reconstruction). Returns the entry count."""
+        got = self.entries(payload)
+        for i, j, q in got:
+            w[i, j] = q * self.q_step
+        return len(got)
 
 
 class AppendBudget:
@@ -129,12 +245,46 @@ def main() -> int:
     if not flood:
         print("lake_engine self-check FAILED: the constructed flood did not trip")
         return 1
+    # SynapseDelta (T010a): dirty-set wiring, compare-drop, the constructed pathology red, and a
+    # zero-base reconstruction -- the cheap halves; full proofs live in tests/test_synapse_delta.py.
+    import numpy as np
+
+    sd = SynapseDelta(q_step=0.01)
+    w = np.zeros((4, 4))
+    w[0, 1] = 0.5
+    w[3, 3] = 0.25
+    recs = [sd.collect(w, [0], [])]
+    touched = [(i, j) for i, j, _q in SynapseDelta.entries(recs[0])]
+    if touched != [(0, 1)]:
+        print(f"lake_engine self-check FAILED: dirty set not spike-derived ({touched})")
+        return 1
+    # The constructed 97.64% red: a frozen substrate whose endpoints keep firing must emit NOTHING
+    # (a naive per-tick snapshot of the same dirty set would emit 50 ticks x 4 entries x 16 B).
+    frozen = sum(len(r) for r in (sd.collect(w, [0], []) for _ in range(50)) if r)
+    if frozen:
+        print(f"lake_engine self-check FAILED: frozen substrate emitted {frozen} B (the pathology)")
+        return 1
+    rec2 = sd.collect(w, [3], [])  # (3,3) changed OUTSIDE the dirty set above -> captured NOW
+    if rec2 is None or SynapseDelta.entries(rec2) != [(3, 3, 25)]:
+        print("lake_engine self-check FAILED: deferred capture lost an out-of-dirty-set change")
+        return 1
+    recs.append(rec2)
+    twin, sd_replay = np.zeros_like(w), SynapseDelta(q_step=0.01)
+    for r in recs:
+        sd_replay.apply(r, twin)
+    if not np.array_equal(twin, np.rint(w / 0.01) * 0.01):
+        print("lake_engine self-check FAILED: zero-base reconstruction diverged")
+        return 1
     baseline_state = (
         "recorded"
         if APPEND_BASELINE.exists()
         else "NOT RECORDED (record on the pinned host before the assert binds)"
     )
-    print(f"lake_engine self-check OK: {msg}; flood red fired; append baseline {baseline_state}")
+    print(
+        f"lake_engine self-check OK: {msg}; flood red fired; append baseline {baseline_state}; "
+        "SynapseDelta dirty-set/compare-drop/deferred-capture/reconstruction OK, frozen-substrate "
+        "red emitted 0 B"
+    )
     return 0
 
 

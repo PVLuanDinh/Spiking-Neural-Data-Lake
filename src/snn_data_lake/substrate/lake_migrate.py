@@ -51,6 +51,11 @@ TAG_DISPOSITIONS: dict[int, tuple[str, str]] = {
         "byte-identity -- the upcaster is IDENTITY because chain semantics live in the reader "
         "(home.load_growth verifies link hashes on replay), so migrating the bytes migrates the chain",
     ),
+    0x09: (
+        "read-as-is",
+        "_T_SYNDELTA spike-derived synapse deltas (lake_engine.SynapseDelta, specs/022 T010a); "
+        "byte-identity -- upcaster is IDENTITY, record semantics live in SynapseDelta.entries",
+    ),
 }
 # Anything else is UNKNOWN and refuses -- a record class nobody decided about.
 _OBSERVED_EXTRA: dict[int, str] = {}
