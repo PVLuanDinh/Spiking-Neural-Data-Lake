@@ -1,0 +1,91 @@
+# SYNTHESIS v3 — the self-constructing, lake-resident brain
+**One unified design, six owner directives (2026-08-19). Input to ONE speckit. Everything in governed `src/snn_data_lake/`; every commit reaches `main`. v3 folds critic round 2 (8 BLOCKER / 23 MAJOR — all addressed below). Evidence: 6 workflows, 44 agents, 0 errors; distilled files beside this one.**
+
+## 0. The goal, unified — each clause measured
+**(a)** Self-construction: seed → H01-ordered structure → beyond — measured by the growth red over the PINNED GROWABLE SET (§0.5) and charge attribution. **(b)** Lake-resident, remember everything — retention rule (§L0) + recall contract with its degraded-cue red (§L3). **(c)** Composed local learning — per-rule neuter attribution (§L4). **(d)** Self-improvement, owner-gated (§L6). **(e)** Full representation — the region CHARGE gate (§0.5) + the L7 instrument battery. **(f)** Eight P8 inventions, full debt + clause-6 anti-rigging (§4).
+**The objective, declared once**: `coverage_reward` is the incumbent global objective, carried forward WITH its two measured properties stated as facts: (1) it SATURATES — its own docstring records the flattening curve; the coverage-cell count at which it flattens is measured and reported, and saturation is exactly WHY it is joined (never silently replaced) by |LP|-derived intrinsic goals at S1; (2) its `_covered` state is process-local today with NO restore path — it gets a lake-persisted restore at S0 (P4b: a restart is not amnesia, for reward state too). Consumers enumerated: dopamine RPE (third factor), curriculum competence, evaluator fitness terms. Any objective change is an owner decision.
+
+## 0.5 The anatomical layer — now a CHARGE gate, one denominator
+- **Gate source**: `region_wiring.live_coverage()` / dormancy-gate reachability (the module's own AUTHORITATIVE path — its `coverage()` declaration counter is explicitly NOT the instrument, per its own docstring), plus per-region port-edge charge attribution. Registration alone can never green it (presence is not participation).
+- **Region field validated mechanically**: manifest check asserts `port.region == brain_atlas.region_of(declaring_module)` — the cross-check function already exists.
+- **Exemptions capped**: each EXEMPT region row carries date + owner + expiry; the exemption COUNT is a ratcheting ceiling (only tightens).
+- **§3 reconciled**: S0 exit = an INTEGER FLOOR of regions charged (pinned in the spec), not "shrinking per plan".
+- **ONE denominator**: the region inventory = REGIONS−{substrate, plasticity} (+insula) everywhere. The **growable set is pinned** and extends the prosomeric grid across it (Puelles' grid covers telencephalic/hippocampal/amygdalar/hypothalamic/midbrain territory): growable = {cortex, hippocampus, thalamus, basal_ganglia, cerebellum, amygdala, hypothalamus, midbrain, epithalamus, claustrum} — **hippocampus is IN** (it holds the tree's one working non-cortical grower: ng_snn + function_preserving_growth). Fixed-scaffold regions are NAMED — {brainstem (safety envelope — deliberately never grown), medulla, pons, olfactory, insula} — disclosed in §0, on PROVENANCE, and on the cockpit. Growth red = regions-grown / growable-set, list pinned.
+- **Insula tract routed through structures that exist**: `interoceptive_arousal → nts_rvlm → thal_relay → insula → {gwt, ctx_pfc}`, each hop a declared node with a DERIVED per-hop delay.
+- **Atlas-gate addition**: every `connectome.NODES` entry must resolve to ≥1 module in its region referencing the node id, or carry a dated EXEMPT — covers the pulvinar/MD nodes this design adds and the pre-existing `cb_ctx`/`pn` phantoms.
+
+## 1. Measured constraints — v2 stands, plus artifact homes
+Wake-tick p50/p95 ratchets on the pinned host; duty cycle reported; disk budget derived (reads/tick vs re-measured IOPS); **governance artifact homes enumerated**: P8 packages → `docs/INVENTION_REGISTER.md` (new budgeted file); cross-cutting invariants added by this build (determinism contract, retention rule, region charge gate) → POLICIES.md, paying the recorded e-prop consolidation debt FIRST to free headroom; everything else → the spec tree. No governance text lands without a named budgeted home.
+
+## 2. Architecture — nine layers
+
+### L0 — Lake engine
+v2 stands, plus: **IMMORTAL class gets a bytes/tick ceiling with a reachable red** in the same paragraph that defines it; a growth delta is immortal as **RECONSTRUCTIBLE** (delta chain replays to the state), never as-appended whole-substrate blobs — the measured 97.6%-snapshot pathology is the constructed red for this clause.
+
+### L1 — Substrate & kernel
+v2 stands (determinism contract; embodiment-on-substrate-tick), plus:
+- **P-vs-growth rule**: P is fixed for the life of a lineage; grown units are assigned to existing partitions; the resulting imbalance is a cockpit row. Renegotiating P = a new lineage with a recorded baseline break.
+- **Replay-from-snapshot (G5) is a named S0 exit gate**: the snapshot record class captures per-instance RNG stream POSITIONS; restore asserts stream-position equality; L7's whole battery consumes this, not just thread-count invariance.
+
+### L1.5 — Afferent/efferent boundary
+- **Modality inventory, explicit**: proprioception (arm joint state — S0, the incumbent afferent); simulated distance/contact sensors (specs/014's simulated feed — S0 incumbent for transduction-in); vision (N-MNIST/DVS path — S1, TORCH_GATED); audition (SHD path — S1); interoception (medulla modules — S0, already charged); chemosensation — out of scope, recorded on PROVENANCE. Each modality: built-at-stage or deliberately-out, no silences.
+- **esp32/csv stay EXEMPT** with their permanent reasons carried into §6 as dispositions (hardware-gated; offline tool). The 014 SIMULATED feed is the incumbent — not the hardware lane.
+- **014 authorizations are REQUESTED, not inherited** (the spec's own scoping forbids carry-over): an explicit owner-decision row gates the absorbed lane, with 014's two conditions carried verbatim as GO/NO-GO.
+- **Efferent half, symmetric treatment**: action-out TypedPort with an explicit efference-copy field; exit gate symmetric to the afferent one (neuter the effector port → downstream forward-model error must measurably change); staged at S0. Envelope semantics verbatim.
+- **Report channel**: v2 stands, plus its red lives in §L7 and the incumbent `consciousness_probe` gets a §6 retirement row.
+- **Stimulus port + EpisodeDriver (owner: L1.5, stage S0/S1)**: a `tick(stimulus=None)` port on the substrate tick, an EpisodeDriver owning the trial schedule (fixation/saccade structure — also ESPP's same/different oracle source), and G5-replayable trials. Every L7 instrument that sweeps or perturbs drives runs THROUGH this object; without it the battery has streams but no trials.
+
+### L2 — Lake-resident paging
+v2 stands (three tiers, rounds budget), plus: **the paging exit width is DERIVED, not picked** — the width at which resident bytes exceed host RAM, computed from the measured state-per-unit and re-measured D: figures; 16k (H01 seed scale) is the ingest milestone, NOT the paging-win regime; the paging red runs at the derived binding width.
+
+### L3 — Typed composition
+v2 stands, plus:
+- **Workspace instance resolution = a named S0 deliverable BEFORE any ignition number**: one surviving workspace (or one declared composite; the other instantiations demoted to views), stated here and in §6.
+- **Recall contract red**: retrieval from a partial/noised cue must beat a scrambled-cue control in the same command; margin DERIVED from measured episode-similarity distributions.
+- Stage assignments for every sub-item: DeliveryPolicy S0; recall contract S1 (needs lake segments); executive faculty S1; forward-model port S0; third-factor ports S0 (RPE) / S1 (|LP|); social cognition S3.
+
+### L4 — Composed learning
+v2 stands, plus:
+- **Cerebellar tissue is BUILD work, named**: granule expansion stage (the fixed basis — procedurally regenerable, priced procedurally under L1's own clause), PF bundle, Purkinje population, and the `pn` mossy relay implemented (the SECOND pons disposition — the first was ARAS). The rule's reds become reachable only when the tissue exists: tissue S1, rule+controls S2. **Sign constraint carried**: Dale-legal weights cannot cross zero — adopt the published MLI opposite-sign pathway as a second sign-legal projection so effective weight can change sign.
+- **WM is a BUILD, not a wire**: the Mongillo selective-population + global-inhibition attractor is an explicit S1 build item with its own charge instrument, SEPARATE from the STP palette entry; K_derived is asserted against THAT population. The `novelty_filter` exemption is restored verbatim (its tau_d/tau_f is correct for novelty; the regime gate applies to WM-feeding populations only) — "shown RED on a WM population candidate, then fixed", never on novelty_filter.
+
+### L5 — Development
+v2 stands (arealization HYBRID, P8 #7), plus: **the stopping criterion gets an arm independent of the executive** — a growth-gate signal that does not route through the FiLM/executive path (separation clause: the executive gates behavior, the growth gate gates structure; one signal serving both is the caller-constrains-its-own-guard shape).
+
+### L5.5 — Sleep
+v2 stands, plus: **staged** — consolidation + Benna-Fusi path S1; compaction/index-merge duty S2. **Per-capability neuters in the same command** (replay-only / Benna-Fusi-only / structural-clock-only) with the phase-level neuter as aggregate control. **Sleep-embodiment contract**: the arm is quiesced and the effector port closed for the sleep phase (matching the incumbent), the E-STOP latch persists across phase boundaries, and the envelope's monotone-tick guarantee holds through phase transitions.
+
+### L6 — Self-improvement
+v2 stands (|LP|+goal store in S1; clause-6 anti-rigging).
+
+### L7 — Consciousness instruments
+v2 stands, plus the round-2 rigor set:
+- **Ignition needs its actuator and subject first — the actuator unblock lands WHOLE**: `set_base_rheobase(theta, provenance)` with range + read-back assert across N ticks (the drive-sweep apparatus, BEFORE the scorer); the bare `except` on the theta path (brain.py:2368 shape) NARROWED so a failed write cannot read as a swept drive; the per-tick coherence rewrite of theta GATED during sweeps; and ONE place states what is allowed to move theta and with what provenance. The workspace-instance resolution (§L3) is the declared subject. Positive control: a sweep that asserts theta actually took each commanded value.
+- **Metacognition guards attached as preconditions, not prose**: degeneracy guard REFUSES to emit calibration below a DERIVED label-entropy floor; per-input information-neuter; the relay-proof double dissociation runs only above these floors.
+- **Invention #8 preconditions**: G3/G4 carried with their stop/void wording intact — no ablation matrix is interpretable below the shuffle floor; a G4 failure VOIDS rather than fails.
+- **Report-order probe red**: perturb one named intermediate → the report must change, scrambled-intermediate control in the same command; `consciousness_probe` retired in §6.
+- **Integration dependency chain staged**: `system` port (step/snapshot/restore) S0 → designated brain raster S1 → G5 S0 → live PCI S2; its reachable red = the four regime arms must separate.
+
+## 3. Staging — L1.5 and L5.5 now first-class
+- **S0**: L0 engine; L3 typed ports + DeliveryPolicy + forward-model & RPE ports; L1 kernel + determinism + **G5 replay-from-snapshot**; **L1.5 afferent (proprioception + simulated sensors) and efferent ports with both neuter exits**; report wire; workspace-instance resolution; ignition actuator + baseline; first registrants. Exits: integer floor of regions CHARGED; P6 > 0 on real signals; p6_gate ported same commit; lake rebuild proof; wake-tick p50/p95 ratchets; G5 green.
+- **S1**: L4 palette + cerebellar TISSUE + WM attractor build + derived K; L5 multi-region seed growth (random-prior arm first) + stopping criterion (executive-independent arm); L5.5 consolidation + Benna-Fusi; recall contract + degraded-cue red; |LP| + goal store; executive faculty. Exits: seed→multi-region micro-brain; growth red moving on the pinned growable set; sleep A/B green with per-capability neuters.
+- **S2**: H01 ingest + drift harness; L2 paging at the DERIVED binding width; cerebellar rule + controls on the built tissue; live PCI; L5.5 compaction duty. Exits: prior separation; paging beats forced-residency at the binding width or dies; region charge gate == floor(all-but-exempt).
+- **S3**: L6 proposer/evaluator/archive; social cognition; open-ended regime — instruments are the exit.
+
+## 3.5 Cutover + persistence continuity
+v2's barrier + daemon-restart discipline stand, plus **two named commits with two reds**: (1) lake format bridge — magic+version, read-old/write-new, red = byte-level round-trip over the LIVE lake; (2) index-bridge commit — the derived index built beside the live lake, red = logical-dump equality after replay — **with record-level scope**: one migration disposition PER PERSISTED RECORD TAG (`_T_GROWTH`, `_T_STATE`, episodes, facts, selfbuild, the new snapshot/delta/goal/proposal classes): read-as-is / upcast-on-read / one-time-rewrite, each with a round-trip red over live records of that tag. Container and index bridges alone do not prove the RECORDS survive. The live brain's lake carries across every stage (P4b is the cutover mechanism); one daemon, one lake, one brain throughout.
+
+## 4. P8 invention register — eight, in `docs/INVENTION_REGISTER.md`
+Unchanged from v2 (paging; JoinPolicy+charge; composition arbitration; stopping criterion; evaluator cascade; consciousness battery; arealization composition; precision-from-schema) — each owing RED, external control, per-item attribution, disclosure, deletion-on-null, clause-6 anti-rigging. Preconditions added this round: #8 gated on G3/G4; #4 on the executive-independent arm; #6 on G5 + actuator + subject resolution.
+
+## 5. Adoption register
+v2 stands. Added rejections (recorded): registration-counting as coverage (the tree's own docstring rejects it); carrying 014 authorizations without re-request (its spec forbids it); 16k as a paging target (below the win regime).
+
+## 6. P2 replacement/port register
+v2 stands, plus: `consciousness_probe` → retired by the report channel + L7 probe (unique capability: none — its markers had no reachable red; recorded); `region_wiring.live_coverage()` is the ported instrument (not `coverage()`); pn second disposition (mossy relay = L4 build); esp32/csv permanent exemptions carried as dispositions; `novelty_filter` exemption restored verbatim.
+
+## 7. Gaps / permanent disclosures
+v2 stands, plus: **human-scale re-derived PER TISSUE** — cerebellar granule layer priced procedurally (regenerable from seed + rule; not paged, not individually learned — and at human scale the granule layer is ~80% of neurons, so this single pricing decision moves the estimate by orders of magnitude), cortex priced at §1's sparse anchors, remaining tissue at anchors; the derivation lives in the spec with its arithmetic shown.
+
+## 8. Cockpit
+v2 stands, plus: partition imbalance; IMMORTAL bytes/tick vs ceiling; region charge gate (per-region, with exempt rows and their expiries); growable-set growth red; sleep per-capability deltas; paging binding-width status.
