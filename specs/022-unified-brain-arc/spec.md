@@ -10,6 +10,14 @@
 
 **Input**: Six owner directives (2026-08-19), unified: (a) the brain builds itself from a single-neuron seed through an H01-ordered multi-region structure toward and past human scale; (b) neurons live in the ONE durable lake, queried on demand, remembering everything; (c) learning is a COMPOSED palette of local rules — the composition, not any single rule, is the brain-replication claim; (d) the brain improves itself through an owner-gated proposer/evaluator loop; (e) the finished system is a full representation of the human brain and consciousness — every region charged, every consciousness mechanism instrumented with a dissociation; (f) where research finds no existing method, the method is INVENTED under P8 with its full debt. The converged design (3 critic rounds + frozen verification, 12→8→4→0 blockers) is `SYNTHESIS.md` in this directory — the evidence base for every requirement below; where this spec and that document disagree, this spec wins and the disagreement is a defect to fix here.
 
+## Clarifications
+
+### Session 2026-08-19
+
+- Q: Which brain regions should the growth system be able to GROW from the seed, versus remain hand-built scaffold? → A: The pinned 10 (cortex, hippocampus, thalamus, basal ganglia, cerebellum, amygdala, hypothalamus, midbrain, epithalamus, claustrum); scaffold = brainstem (envelope), medulla, pons, olfactory, insula. OWNER-RATIFIED.
+- Q: Do you re-authorize the sensor hardware lane absorbed from specs/014, under its original two GO/NO-GO conditions? → A: Re-authorized, 014's two conditions carried verbatim as GO/NO-GO gates. OD-1 RESOLVED.
+- Q: Which engine should generate candidate self-modification proposals in the S3 proposer loop? → A: "The brain should not rely on outside model other than itself" — the proposer is INTERNAL-ONLY: no external LLM, API, or third-party model in the loop. Candidate generation = declared mutation operators + the transform registry + the brain's own faculties as they mature. This supersedes SYNTHESIS.md L6's proposer-model-tiering note (spec wins).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - The brain's parts talk, and the lake can prove what it holds (Priority: P1, stage S0)
@@ -123,13 +131,13 @@ The proposer/evaluator loop runs: candidate diffs against declared mutation surf
 - **FR-020**: WM capacity K MUST be derived (K = T_max/t_s from the built attractor population's own constants), never picked; the frozen-STP null refuses to emit K; nothing in src/ reads the theta/gamma ratio as a K source (permanent static check).
 
 **L5 / L5.5 — Development and sleep**
-- **FR-021**: Growth MUST run from a single-unit seed over the PINNED growable set via one shared per-node program reading only local fields (locality mask raises on non-local access), emitting (region, cell-type) in two stages with two discretization regimes; fixed-scaffold regions are pinned and disclosed.
+- **FR-021**: Growth MUST run from a single-unit seed over the PINNED growable set (10 regions, OWNER-RATIFIED 2026-08-19) via one shared per-node program reading only local fields (locality mask raises on non-local access), emitting (region, cell-type) in two stages with two discretization regimes; fixed-scaffold regions are pinned and disclosed.
 - **FR-022**: The H01 prior MUST be beatable: three-arm harness (seeded/random/wrong) with two reds; c3 pinned; unit gate refuses nm-inversions; layer computed, not read; CC-BY attribution on PROVENANCE.
 - **FR-023**: The growth stopping criterion MUST derive from |LP| and charge, with an arm independent of the executive path, and a reachable red (growth past a measured optimum trips it).
 - **FR-024**: Sleep MUST own consolidation (replay + Benna-Fusi actually reached), the structural slow clock, and lake compaction, with per-capability neuters and a phase-level aggregate control.
 
 **L6 — Self-improvement**
-- **FR-025**: Proposals MUST be diffs against named parents on declared mutation surfaces, evaluated by a staged cascade on harness-only evidence with resource terms, archived with MAP-Elites descriptors; the evaluator, invariant set, surface declaration, and envelope are hash-pinned outside the surface; diffs touching them require owner approval.
+- **FR-025**: Proposals MUST be diffs against named parents on declared mutation surfaces, evaluated by a staged cascade on harness-only evidence with resource terms, archived with MAP-Elites descriptors; the evaluator, invariant set, surface declaration, and envelope are hash-pinned outside the surface; diffs touching them require owner approval. **The proposer is INTERNAL-ONLY (owner, 2026-08-19): no external LLM, API, or third-party model generates candidates — generation is declared mutation operators + the transform registry + the brain's own faculties as they mature (P4: one brain; the brain relies on no model other than itself).**
 - **FR-026**: The curriculum MUST consume curiosity: goals as (embedding, achievement-function), |LP| utility with an exploration floor, the lake as goal history with a vector index; ANNECS reported jointly with per-goal time-to-master; the open-endedness observer frozen in advance.
 - **FR-027**: The incumbent objective `coverage_reward` carries its two measured properties (saturation curve reported; `_covered` lake-persisted at S0) and is joined, never silently replaced, by |LP| goals.
 
@@ -176,6 +184,6 @@ The proposer/evaluator loop runs: candidate diffs against declared mutation surf
 
 ## Dependencies / Owner decisions required
 
-- **OD-1**: specs/014's two owner authorizations do NOT carry over (its own scoping forbids it) — re-authorization of the absorbed sensor lane is REQUESTED, with 014's two conditions as GO/NO-GO gates before the afferent hardware lane activates (the SIMULATED feed needs no new authorization).
+- **OD-1 — RESOLVED (owner, 2026-08-19)**: the absorbed sensor hardware lane is RE-AUTHORIZED with specs/014's two conditions carried verbatim as GO/NO-GO gates before the hardware lane activates (the SIMULATED feed needed no new authorization).
 - **OD-2**: Promotion of any self-modification diff touching the evaluator, invariants, mutation-surface declaration, or safety envelope requires per-instance owner approval (FR-025).
 - **OD-3**: The POLICIES.md text additions (determinism contract, retention rule, region charge gate) land only after the e-prop consolidation debt is paid to free doc-budget headroom — sequenced as this feature's first governance commit.
