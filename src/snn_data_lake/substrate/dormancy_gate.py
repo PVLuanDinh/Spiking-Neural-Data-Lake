@@ -374,6 +374,11 @@ EXEMPT = {
         "backwards). Consumed by the per-tag migrator (T009) and home.py's engine adoption "
         "(T010); EXPIRES when either lands -- a bridge nothing reads by S0 exit is a defect",
     ),
+    "lake_index": (
+        "wire",
+        "specs/022 T007: the derived pointer index (sqlite WAL, stdlib). Consumers: the "
+        "rebuild gate (T008) and home.py's engine adoption (T010); EXPIRES when either lands",
+    ),
     "lake_segments": (
         "wire",
         "specs/022 T005: the segment writer (WAL + sealed Arrow IPC). Reached today only via "
