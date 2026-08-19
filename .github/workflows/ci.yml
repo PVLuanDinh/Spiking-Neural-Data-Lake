@@ -393,7 +393,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          # "3.14t" NOT "3.14": the package's import guard requires the free-threaded build
+          # (cp314t). The first run of this job used "3.14" and failed at import -- the guard
+          # working, exactly as the self-checks matrix comment above predicts.
+          python-version: "3.14t"
+          cache: pip
       - name: Install (CPU torch tier)
         run: pip install -e ".[dev]"
       - name: Release audit (--certify; refusal is honest, not fatal to main)

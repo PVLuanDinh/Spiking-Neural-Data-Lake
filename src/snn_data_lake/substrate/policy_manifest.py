@@ -366,15 +366,18 @@ MANIFEST_JSON = REPO / "tools" / "policy_manifest.json"
 
 
 def committed_payload(policies: list[Policy], drift: dict) -> str:
-    return json.dumps(
-        {
-            "_derived_from": "docs/POLICIES.md -- regenerate with: python -m snn_data_lake.substrate.policy_manifest --manifest --write",
-            "policies": json.loads(to_json(policies)),
-            "drift": drift,
-        },
-        indent=2,
-        sort_keys=True,
-    ) + "\n"
+    return (
+        json.dumps(
+            {
+                "_derived_from": "docs/POLICIES.md -- regenerate with: python -m snn_data_lake.substrate.policy_manifest --manifest --write",
+                "policies": json.loads(to_json(policies)),
+                "drift": drift,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n"
+    )
 
 
 def to_json(policies: list[Policy]) -> str:
@@ -491,7 +494,9 @@ def decide_certified(results: list[AuditResult], drift: dict) -> tuple[bool, lis
 def _tree_state() -> dict:
     def _git(*args: str) -> str:
         try:
-            out = subprocess.run(["git", *args], cwd=REPO, capture_output=True, text=True, timeout=60)
+            out = subprocess.run(
+                ["git", *args], cwd=REPO, capture_output=True, text=True, timeout=60
+            )
             return out.stdout.strip()
         except OSError:
             return "<git unavailable>"
@@ -524,7 +529,9 @@ def certify(policies: list[Policy], full: bool) -> int:
         "tree": _tree_state(),
         "certified": certified,
         "full": full,
-        "results": [{"policy": r.policy_id, "verdict": r.verdict, "detail": r.detail} for r in results],
+        "results": [
+            {"policy": r.policy_id, "verdict": r.verdict, "detail": r.detail} for r in results
+        ],
         "review_only": [r.policy_id for r in results if r.verdict == "REVIEW_ONLY"],
         "commands_run": commands_run,
         "refusal_reasons": reasons,
@@ -576,7 +583,9 @@ def run_assert() -> int:
         )
         return 1
     if drift["not_in_ci"]:
-        print(f"POLICY_MANIFEST ASSERT FAILED: claimed command(s) not CI-reachable: {drift['not_in_ci']}")
+        print(
+            f"POLICY_MANIFEST ASSERT FAILED: claimed command(s) not CI-reachable: {drift['not_in_ci']}"
+        )
         return 1
     print(
         f"policy_manifest assert OK -- rows reconciled, committed copy in sync, "
@@ -602,7 +611,9 @@ def self_check() -> int:
     ghost = Policy(id="PX", title="fixture", kind="absolute")
     results, _ = run_audit([ghost])
     if results[0].verdict != "NO_GATE":
-        failures.append(f"constructed command-less absolute policy -> {results[0].verdict}, wanted NO_GATE")
+        failures.append(
+            f"constructed command-less absolute policy -> {results[0].verdict}, wanted NO_GATE"
+        )
 
     try:
         parse("# empty\n")
@@ -658,7 +669,9 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         drift = census(policies)
         if args.write:
-            MANIFEST_JSON.write_text(committed_payload(policies, drift), encoding="utf-8", newline="\n")
+            MANIFEST_JSON.write_text(
+                committed_payload(policies, drift), encoding="utf-8", newline="\n"
+            )
             print(f"wrote {MANIFEST_JSON.relative_to(REPO)} (regeneration is the only edit path)")
             return 0
         if args.json:
