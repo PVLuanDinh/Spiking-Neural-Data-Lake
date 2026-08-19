@@ -1,0 +1,154 @@
+# Tasks: The Unified Brain Arc — self-constructing, lake-resident substrate
+
+**Input**: spec.md (3 clarifications integrated), plan.md, research.md (16 decisions), data-model.md, contracts/ (manifest, lake-records, 19-gate table), quickstart.md, SYNTHESIS.md
+**Prerequisites**: pinned measurement host; live daemon's lake BACKED UP before any migration task; `.venv-lake` cp314t
+
+**Discipline (every task)**: one commit, registration-complete (REGIONS + run_selfchecks where module-shaped), full gate green, pushed to `main`. Every new gate lands WITH `--self-check` and its output COUNTED against the tree before its rule binds. The safety envelope (5 brainstem files) is NEVER a task target. The self-mod proposer is INTERNAL-ONLY (FR-025 clarified). Tests are integrated per-task (this repo's gate battery), not a separate phase.
+
+**Story labels**: US1 = S0 (parts talk + lake engine), US2 = S1 (seed grows + composed learning), US3 = S2 (H01 + paging), US4 = S3 (self-improvement + instruments).
+
+---
+
+## Phase 1: Setup
+
+- [ ] T001 Record the pinned-host performance baseline: `tools/perf_baseline.py` (`--record`/`--assert` ratchet + `--self-check`), capturing wake-tick p50/p95 with duty cycle, and re-measured D: random-read IOPS; baseline JSON at `tools/perf_baseline.json`; register in ci.yml as report-only until T012 flips it to assert
+- [ ] T002 [P] Create `docs/INVENTION_REGISTER.md` (8 P8 packages, each: RED / external control / attribution / disclosure / deletion-on-null / clause-6) AND register it in `substrate/doc_budget_gate.py::BUDGETS` in the same commit
+- [ ] T003 Pay the e-prop consolidation debt in `docs/POLICIES.md` (relocate per the recorded POLICIES_EVIDENCE.md pattern) to free headroom — OD-3 sequencing; word count re-verified under ceiling by `doc_budget_gate`
+- [ ] T004 Land the three cross-cutting invariant texts in `docs/POLICIES.md` (determinism contract, lake retention rule, region charge gate) INSIDE the freed headroom; `policy_manifest --audit` reconciles
+
+## Phase 2: Foundational (blocks all stories)
+
+**Lake engine (L0)** — contracts/lake-records.md
+- [ ] T005 Segment writer in `substrate/lake_engine.py`: sealed Arrow IPC file segments, record framing (magic+version+length+CRC), durable-watermark commit; NEW module registered; unit tests in `tests/test_lake_engine.py`
+- [ ] T006 Recovery path + torn-write suite: forward-scan truncation to last-good, injected mid-record corruption red WITH clean positive-control arm in the same test, in `tests/test_lake_engine_recovery.py`
+- [ ] T007 Derived index (engine chosen by measured write shape per research.md D3 — record the choice + amplification tradeoff in `specs/022-unified-brain-arc/research.md` D3 addendum): single-writer thread + N readers, applied-watermark persistence, cross-process file lock, in `substrate/lake_index.py`
+- [ ] T008 Index rebuild gate: delete-index → rebuild-from-lake → canonical logical-dump equality, with planted-divergence red; `--self-check`; wired into ci.yml + `run_selfchecks.py`
+- [ ] T009 Per-tag migration dispositions (`_T_GROWTH`, `_T_STATE`, episodes, facts, selfbuild → read-as-is / upcast-on-read / one-time-rewrite) each with a round-trip red over LIVE records, in `substrate/lake_migrate.py`; the live lake is backed up first (task precondition)
+- [ ] T010 Retention classes + IMMORTAL bytes/tick ceiling assert (red via constructed append flood); growth deltas become reconstructible delta-chain records (retires whole-blob `_T_GROWTH` appends), in `substrate/lake_engine.py`
+- [ ] T011 Journaller ring: lake writer as a consumer on the faculty ring (single writer, multicast consumers, pre-allocated slots) in `substrate/signal_ring.py`; charge-verified by replay A/B
+- [ ] T012 Cutover barrier in `substrate/learn_daemon.py`: quiesce/join threads + publish watermark before exit; kill-mid-batch red in `tests/test_cutover.py`; restart-safe watermark handoff under the HEAD-poll restart; flip T001's ratchet to assert
+
+**Kernel (L1)** — plan.md Technical Context
+- [ ] T013 SoA substrate state out of Python objects in `substrate/kernel_state.py` (struct-of-arrays, contiguous within-faculty indices, 128-byte-aligned blocks); ports `_mathutils` determinism invariants (crc32, per-instance seeding); retires pure-Python `dot` on the hot path (measured 585k calls/260 ticks)
+- [ ] T014 Two-phase tick (propagate → deliver → rotate) with fixed partition count P per lineage, delay rings, bundles keyed (pre, partition, delay), in `substrate/kernel_tick.py`; P-vs-growth rule documented in-module; partition-imbalance cockpit row
+- [ ] T015 Determinism gate: integer/fixed-point accumulation (fractional bits MEASURED vs FP64 per research.md D6), byte-identical trains across T∈{1..16} at fixed P with broken-control arm in the same command, V_c/V_ermv reported, in `substrate/determinism_gate.py` (+`--self-check`, ci.yml, run_selfchecks)
+- [ ] T016 [P] Startup GIL hard-assert (`sys._is_gil_enabled()` false or fail-hard) in `substrate/learn_daemon.py` + `cortex/brain.py` construction path
+- [ ] T017 G5 replay gate: snapshot record class captures per-instance RNG stream POSITIONS; restore asserts stream-position equality + identical trains; omit-positions red; in `substrate/replay_gate.py` (+`--self-check`, CI)
+
+**Typed composition core (L3 infra)** — contracts/manifest.md
+- [ ] T018 `TypedPort` + `WiringManifest` in `substrate/wiring_manifest.py`: port schema (incl. required `region`), 4-tuple edges, NIR-HDF5 serialization ([nir] extra), lake-committed artifact
+- [ ] T019 Manifest CI check (validate/infer/check/region/join): `port.region == brain_atlas.region_of(declaring_module)` assert; undeclared-join and region-mismatch reds proven; in `substrate/manifest_gate.py` (+`--self-check`, ci.yml)
+- [ ] T020 JoinPolicy + DeliveryPolicy enforcement in `substrate/signal_ring.py` delivery path (sum/max/concat/typed-merge/arbitrate; graded delivery gated on `reentrant_workspace._assoc`); silent-sum red
+- [ ] T021 Port charge instruments in `tools/port_charge_probe.py`: pinned-payload neuter (read-recording dict subclass), cleanup-margin records, replay-twice A/B; positive control = a known-charged port in the same command
+- [ ] T022 Region charge gate in `substrate/region_charge_gate.py`: live-reachability ∩ region + port-edge charge attribution (registration alone never greens); EXEMPT rows {reason, owner, date, expiry} with ratcheting count ceiling; integer-floor assert; day-one output COUNTED before the rule binds (+`--self-check`, ci.yml, run_selfchecks)
+- [ ] T023 Port `tools/p6_gate.py` to read the wiring manifest (retire the WORKSPACE_CLASSES AST walk) IN THE SAME COMMIT as the first manifest-consuming faculty lands; gate/manifest divergence red; ratchet baselines re-recorded per its own doc
+- [ ] T024 [P] Atlas-node gate: every `connectome.NODES` id resolves to ≥1 referencing module in its region or carries a dated EXEMPT; day-one count includes the `cb_ctx`/`pn` phantoms (recorded, not hidden); in `substrate/atlas_node_gate.py` (+`--self-check`, CI)
+
+## Phase 3: US1 — the parts talk; the lake proves what it holds (S0)
+
+**Independent test**: quickstart.md §S0 — port neuter flips a consumer; kill-mid-batch recovers; region gate counts registration-without-charge as UNWIRED; ignition sweep 100% read-back.
+
+- [ ] T025 [US1] First real registrant: serotonin — a consumer for `raphe_serotonin` patience/discount output via a declared port (candidate consumer: basal_ganglia evidence-accumulation patience bias), neuter-verified; P6 count moves off 0; in `neuromodulation/raphe_serotonin.py` + consumer module
+- [ ] T026 [P] [US1] Interoceptive producers: `medulla/interoceptive_arousal.py` + `hypothalamus/homeostatic_drives.py` declared as the valence/arousal channel producers on the manifest; coalition channels consume them
+- [ ] T027 [P] [US1] Glia registrant: `Astrocyte.modulated_transmission` gains its first live consumer via a VolumeTransmitter-style diffuse channel in `neuromodulation/astrocyte_modulation.py`; neuter-verified
+- [ ] T028 [P] [US1] Forward-model port: `percept_surprise` declared THE predictor port with consumers enumerated (curriculum stub, |LP| stub, paging prefetch hook, novelty factor) in `cortex/` + manifest
+- [ ] T029 [P] [US1] RPE third-factor port from `midbrain/dopamine_nuclei.py` with derived timescale + its own charge instrument
+- [ ] T030 [US1] Workspace instance resolution: ONE declared composite (or one survivor) across the three live instantiations; the other two demoted to views; P6-fixed rank key regression-guard carried; in `thalamus/global_workspace.py` + `thalamus/reentrant_workspace.py` + §6 port register updated
+- [ ] T031 [US1] Coalition records (proposer_ids, base+current activation, typed channels) replacing the 3-tuple, on the ring with the journaller persisting them; in `thalamus/global_workspace.py`
+- [ ] T032 [US1] Ignition actuator landed WHOLE: `set_base_rheobase(theta, provenance)` + range/read-back assert over N ticks; NARROW the bare except on the theta path; gate the per-tick coherence rewrite during sweeps; one-place theta-authority statement; in `thalamus/` + `cortex/brain.py`
+- [ ] T033 [US1] Ignition scorer + baseline: two-peak PSTH window re-derived, antimode + logistic-inflection dual gate (must agree), flanking-slope test, shuffled-label + recurrence-ablation controls, published-band checks, five failure modes distinguishable; in `thalamus/ignition_instrument.py` (+`--self-check`)
+- [ ] T034 [US1] Report channel port carrying workspace content/availability/strength; `reasoning/consciousness_probe.py` RETIRED per §6 (unique capability: none — no reachable red; recorded in the retiring commit); in `substrate/` + `cortex/spike_chat_lake.py` reply path rewired
+- [ ] T035 [US1] Stimulus port + EpisodeDriver in `substrate/episode_driver.py`: `tick(stimulus=None)`, trial schedule (fixation/saccade — ESPP's oracle source), G5-replayable trials
+- [ ] T036 [US1] Afferent lane (simulated): 014's simulated sensor feed as the transduction-in incumbent with per-modality manifest rows (proprioception S0, interoception S0; vision/audition dispositioned S1; chemosensation out-of-scope on PROVENANCE); 014's idle-sentinel fix (`-1` finite < CONTACT) applied at the boundary; esp32/csv EXEMPT reasons carried as §6 dispositions; neuter A/B exit; in `substrate/afferent_boundary.py`
+- [ ] T037 [US1] Efferent port with efference-copy field wired AROUND the envelope (`So101Arm.apply()` untouched); neuter → forward-model error change exit; sleep-phase embodiment contract (arm quiesced, effector closed, E-STOP latch persists) asserted in `tests/test_efferent_boundary.py`; in `substrate/efferent_boundary.py`
+- [ ] T038 [P] [US1] `coverage_reward` hardening: saturation curve measured + reported on PROVENANCE; `_covered` state lake-persisted with a restore path (P4b); in `brainstem/autonomous_loop.py` CALLER-side only if envelope-file changes needed → STOP and request owner approval, else route via a non-envelope wrapper module
+- [ ] T039 [US1] US1 exit certification: integer floor of charged regions met (record the floor in this task's commit), P6 > 0 neuter-verified, wake-tick p50/p95 ratchets green vs T001 baseline, G5 green, lake rebuild proof green — recorded in `specs/022-unified-brain-arc/evidence/s0-exit.md`
+
+## Phase 4: US2 — a seed grows a multi-region learning brain (S1)
+
+**Independent test**: quickstart.md §S1 — seed→multi-region micro-brain with random prior; per-rule attribution isolates contributions; derived K matches retention; sleep A/B separates per-capability.
+
+**Development (composes specs/007 interface + specs/011 placement; exactly one growth mechanism)**
+- [ ] T040 [US2] Organizer fields + repression-GRN readout in `cortex/arealization.py`: decaying scalar fields from organizer nodes, K-gene Boolean GRN to fixed point per node, admissibility reproduced on this substrate (research.md D12 owed measurement)
+- [ ] T041 [US2] Prosomeric label set (neuromere, zone) + two-regime discretization (sharp hindbrain/cerebellum, graded-then-postmitotic cortex) + deferred cell-type emission — P8 invention #7 with its register entry cross-linked; in `cortex/arealization.py`
+- [ ] T042 [US2] Growth-program locality: ONE shared per-node program reading only local fields; locality-mask view object that RAISES on non-local access (its own red); dilution counters (2 floats, halved on division); in `cortex/growth_program.py`
+- [ ] T043 [US2] `placement.place()` generalized to per-region (n,z)-keyed priors (H01 = the cortical arm; GRN output = prior elsewhere, disclosed); hippocampus growers (`ng_snn`, `function_preserving_growth`) composed INTO the growable set through the 007 interface; in `cortex/placement.py`
+- [ ] T044 [P] [US2] g-network initial weights for grown units (tag vectors + one small map (pre_tag, post_tag) → weight) in `cortex/genomic_bottleneck.py`
+- [ ] T045 [P] [US2] Spontaneous-activity bootstrap (learnable OU process drives sensors pre-experience through the SAME plasticity path) in `substrate/spontaneous_activity.py`
+- [ ] T046 [US2] Growth coverage red (regions-grown / pinned growable 10, OWNER-RATIFIED) + boundary-sharpness red (modal-label across ≥7 seeds vs gradient-only control, same command) + scrambled-field spatial null + Allen/prosomeric ARI external control; in `tools/growth_coverage_gate.py` (+`--self-check`, CI; day-one output counted — cortex-only placement reads below floor)
+- [ ] T047 [US2] Stopping criterion — P8 invention #4: |LP|+charge-derived per-region growth gates with an EXECUTIVE-INDEPENDENT arm; red = fixed-step overgrowth trips it; control = fixed schedule; in `cortex/growth_stop.py`
+- [ ] T048 [US2] Prune-and-regenerate pairing + turnover-rate instrument (structural health cockpit row) composing DEEP-R budget + MSP counters on the two-clock design; in `plasticity/structural_rewiring.py`
+
+**Composed learning (L4)**
+- [ ] T049 [US2] LPL spine FROM THE ERRATUM (per-synapse: weight/eligibility/filtered pair; per-neuron mean/variance EMAs; variance anti-collapse term; STDP-window-as-state) with GRADIENT_CLAIM + read/write sets; lake 20ms-delayed replay as the target; in `plasticity/lpl_rule.py`
+- [ ] T050 [US2] Declared+budgeted eligibility algebra (Loihi-style sum-of-products authoring contract for all three-factor rules) in `plasticity/eligibility_algebra.py`
+- [ ] T051 [US2] Composition arbitration — P8 invention #3: N rules/one synapse with typed read/write sets and PER-RULE NEUTER ATTRIBUTION as a standing instrument; red = two composed rules whose naive sum is measurably wrong vs either alone; in `plasticity/rule_composer.py` (+charge probe integration)
+- [ ] T052 [P] [US2] ESPP adoption for temporal streams: rule + EpisodeDriver oracle named + adoption benchmark vs in-tree supervised e-prop on the SHD/N-MNIST packs (P2 measurement); GRADIENT_CLAIM local; in `plasticity/espp_rule.py`
+- [ ] T053 [P] [US2] iSTDP (Vogels-Sprekeler) charged on the tick as the decorrelation arm (its measured absence collapses dimensionality — that IS its neuter control); in `plasticity/inhibitory_stdp.py` wiring
+- [ ] T054 [US2] Cerebellar TISSUE build: granule expansion stage (procedurally regenerable fixed basis), PF bundle, Purkinje population, MLI opposite-sign pathway, `pn` mossy relay implemented (second pons disposition; atlas-gate exemptions retired); in `cerebellum/microcircuit.py` + `pons/mossy_relay.py`
+- [ ] T055 [US2] WM attractor build (Mongillo selective populations + global inhibition) with its own charge instrument, SEPARATE from the STP palette entry; in `plasticity/wm_attractor.py`
+- [ ] T056 [US2] K derivation (K = T_max/t_s) + the five guards: derived==held ±1, monotone tau_f sweep (positive control same command), frozen-STP REFUSES, tau_f>tau_d regime gate shown RED on a WM candidate then fixed (novelty_filter exemption restored verbatim), static no-theta/gamma-as-K check; in `plasticity/wm_capacity.py`
+
+**Memory + sleep + goals**
+- [ ] T057 [US2] Recall contract: `recall(cue) → k episodes with margins` over lake segments (ProximityIndex LAESA ported); degraded-cue red vs scrambled-cue control, margin derived from measured similarity distributions; in `hippocampus/lake_recall.py`
+- [ ] T058 [US2] Sleep ownership (L5.5): consolidation path actually REACHES `PlasticityRuleStack.consolidate()` on sleep ticks (fixing the measured 203-calls-None no-op); per-capability neuters (replay/Benna-Fusi/structural-clock) in one command + phase-level aggregate; in `cortex/brain.py` sleep path + `tests/test_sleep_capabilities.py`
+- [ ] T059 [P] [US2] |LP| signal + goal store: per-region competence EWMA, Goal records (embedding + achievement-function) in the lake with a vector index; |LP| third-factor port declared; in `basal_ganglia/learning_progress.py`
+- [ ] T060 [P] [US2] Executive faculty port: task-set FiLM (per-population gain/threshold) as a declared L3 faculty; `_pfc_bias` semantics preserved, cost measured before/after; in `cortex/competence_executive.py` wiring
+- [ ] T061 [US2] US2 exit certification: seed→multi-region micro-brain evidence (growth red moving on the pinned set, all palette rules attributed, K derived, sleep A/B green) in `specs/022-unified-brain-arc/evidence/s1-exit.md`
+
+## Phase 5: US3 — H01 prior + paging (S2)
+
+**Independent test**: quickstart.md §S2 — three-arm drift separation; paged-out-spike red; rounds budget trips on constructed overload; paging beats forced-residency at the derived width or the layer is deleted.
+
+- [ ] T062 [US3] H01 ingest (cheapest slice <7 GB first): `cortex/h01_ingest.py` with the neuron_id↔agglo_seg join gate (base↔agglo REFUSED), nm-unit gate (inversion REFUSED), layer computed (port classify_layers or volumetric consumption), c3 pinned, CC-BY on PROVENANCE
+- [ ] T063 [US3] Three-arm drift harness (seeded/random/wrong-prior) with SC-005's/011's two reds (never-moves-off-seed AND worse-than-random both fire-able); composes specs/011's DriftRecord design; in `cortex/prior_drift_harness.py`
+- [ ] T064 [US3] Unit blocks + block-aligned lake records ({state, out-edges, weights} one-hop-one-read) in `substrate/lake_engine.py` + `substrate/unit_blocks.py`
+- [ ] T065 [US3] Binding-width derivation (resident bytes > host RAM from measured state-per-unit + re-measured D: figures) recorded in `tools/perf_baseline.py`; the paging exit runs AT this width, 16k stays the ingest milestone only
+- [ ] T066 [US3] Activation-driven paging — P8 invention #1: residency policy (custom, never mmap), pinned hot set, one async batch per tick, integer ROUNDS budget assert (constructed-overload red), two-resolution substrate; paged-out-spike red (no silent drop, bounded staleness) built BEFORE the mechanism; in `substrate/neuron_pager.py`
+- [ ] T067 [US3] Growth delta tier + background merge (FreshDiskANN shape) + locality-preserving lake reorder (bytes-fetched/bytes-used metric); in `substrate/lake_compactor.py` (runs in the sleep phase per L5.5)
+- [ ] T068 [US3] Paging null-clause measurement: paging vs forced-total residency at the binding width on the pinned host; WIN → keep, LOSS → delete the layer and record the deletion (both outcomes close this task); evidence in `specs/022-unified-brain-arc/evidence/s2-paging.md`
+- [ ] T069 [US3] Cerebellar rule ON the built tissue: covariance/LMS form, filtered-trace eligibility bank re-fit to this plant, window IDENTITY pinned to measured channel latency, sign-inversion red (one constant across two channels FAILS), Bouvier GPE/G_E control pair, graded `io` teaching afferent (binary-after-cancellation declared alternative); e-prop transport-freedom MEASURED at adoption; in `cerebellum/cf_ltd_rule.py`
+- [ ] T070 [P] [US3] Live integration instrument: `cortex/integration_measure.py` ported onto the kernel's system port (step/snapshot/restore chain staged on G5); four regime arms must separate (its red); NEVER reported as Phi; cockpit row with provenance
+- [ ] T071 [US3] US3 exit certification: prior separation + paging verdict + region charge gate at floor(all-but-exempt) in `specs/022-unified-brain-arc/evidence/s2-exit.md`
+
+## Phase 6: US4 — self-improvement + instruments (S3)
+
+**Independent test**: quickstart.md §S3 — evaluator-byte diff refused→owner; fabricated score ignored; every L7 red fired once; ANNECS+time-to-master jointly reported.
+
+- [ ] T072 [US4] INTERNAL-ONLY proposer (FR-025 as clarified — no external LLM/API): declared mutation surfaces (growth policy / rule-composition weights / paging heuristic), hand-named mutation operators + the DEHARDCODE_TRANSFORMS registry as generators, diff-vs-parent Proposal records in the lake; composes SelfModHarness sandbox/rollback (ported forward, CRLF anchors fixed, `_TARGET_TIER` widened to the declared surfaces); in `basal_ganglia/proposer.py`
+- [ ] T073 [US4] Evaluator cascade — P8 invention #5: stage-0 (imports/contract/surface-confinement) → stage-1 (seeded short run + invariants) → stage-2 (capability benchmarks + gate battery); fitness dict WITH resource terms; HARNESS-ONLY evidence (candidate-emitted text ignored — the DGM red reproduced as a test); hash-pinned evaluator/invariants/surface/envelope; held-out twin evaluator; owner-routing for pinned-byte diffs (OD-2); in `basal_ganglia/evaluator.py`
+- [ ] T074 [US4] Archive-not-champion + MAP-Elites cells on brain descriptors (resident-vs-paged, page-fault rate, spikes/sec, participation breadth, bytes/tick) with island threads + additions-counter migration; in `basal_ganglia/proposal_archive.py`
+- [ ] T075 [P] [US4] Circuit-breaker + self-build state as cockpit rows (un-latch the silent `_selfbuild_last`); in `substrate/cockpit.py` + `substrate/brain_telemetry.py` PROVENANCE
+- [ ] T076 [US4] Curriculum as the curiosity consumer: `propose()/observe()` interface, |LP| bandit over goal-space regions with a ~20% exploration floor (constant carried with its measured provenance), filter chain, goals conditioning faculties via FiLM; ANNECS instrument + per-goal time-to-master reported JOINTLY; frozen open-endedness observer; in `basal_ganglia/curriculum.py`
+- [ ] T077 [US4] Metacognition instrument: derived label-entropy floor (REFUSES below), per-input information-neuter, relay-proof double dissociation (lesion second-order → first-order preserved + calibration collapses); in `cortex/metacognition_instrument.py`
+- [ ] T078 [US4] Attention schema — adopt + P8 invention #8: ACS vector A_t with the three negative constraints, train-WITHOUT-it protocol (redundancy-controlled) + legibility experiment; precision-from-schema third factor gated on G3/G4 preconditions (stop/void wording intact) with RED-1/2/3 + capacity-matched sham, three arms one command; in `cortex/attention_schema.py`
+- [ ] T079 [P] [US4] Agency instrument: efference-copy mismatch red (perturb one effector channel → agency collapses for that channel, motor control preserved elsewhere); `cortex/agency_monitor.py` becomes consumer-backed (write-only today, measured)
+- [ ] T080 [P] [US4] Temporal-binding instrument: membership-matched pairing at matched K as the PRIMARY preregistered null (scrambled-phase secondary), derived margin; in `thalamus/binding_instrument.py`
+- [ ] T081 [P] [US4] Report-order probe: perturb one named intermediate → report changes; scrambled-intermediate control same command; runs on the T034/T035 report channel + EpisodeDriver; in `cortex/report_order_probe.py`
+- [ ] T082 [P] [US4] Social cognition composed: `recursive_tom` as an L3 faculty with a declared port, representation-level disclosure; in `cortex/recursive_tom.py` wiring
+- [ ] T083 [US4] US4 exit certification: SC-008/SC-009 evidence (every L7 red fired once, enumerated; proposer/evaluator/owner-gate demonstrations) in `specs/022-unified-brain-arc/evidence/s3-exit.md`
+
+## Final Phase: Polish & cross-cutting
+
+- [ ] T084 [P] Cockpit completion sweep: all new instrument/gate rows present with PROVENANCE (per-region participation, rounds-vs-budget, IMMORTAL bytes/tick, growth red, ignition rate+spread, derived-K, recall margins, sleep deltas, partition imbalance, ANNECS) in `substrate/cockpit.py`
+- [ ] T085 [P] Per-tissue human-scale derivation (granule procedural / cortex sparse anchors / rest at anchors, arithmetic shown) appended to `specs/022-unified-brain-arc/SYNTHESIS.md` §7 companion note `evidence/scale-derivation.md`
+- [ ] T086 Consistency sweep: every SYNTHESIS §6 port-register row either executed or carried as a dated disposition; every adopted mechanism's owed measurement locatable in evidence/; re-run `graphify update .`
+- [ ] T087 Full quickstart.md run-through end-to-end on the pinned host; discrepancies fixed or recorded; final full battery + `policy_manifest --certify` green; close-out summary in `specs/022-unified-brain-arc/evidence/close-out.md`
+
+---
+
+## Dependencies
+
+- Phase 1 → Phase 2 → US1 → US2 → US3 → US4 → Polish (stages are strictly ordered; the stories are NOT independent by design — each stage's exit gates are the next stage's preconditions, per spec §3).
+- Within phases: [P]-marked tasks parallelize (different files, no shared state); T023 is pinned to the same commit as the first manifest-consuming faculty (T025).
+- T038 STOPS for owner approval if it cannot avoid touching an envelope file.
+- T068 and T072+ are gated on their stage-exit certifications (T061, T071).
+- OD-2 (owner promotion approvals) is a standing runtime gate inside T073, not a task.
+
+## Parallel example (Phase 3)
+
+T026, T027, T028, T029 (four independent producer/port wirings, different modules) can run as parallel worktree lanes after T025 lands the first manifest consumer + T023's p6_gate port.
+
+## Implementation strategy
+
+MVP = Phase 1 + Phase 2 + US1 (T001–T039): the brain's parts talk over a provable lake — independently valuable, and every later stage's substrate. Then one stage per implement pass, exit-certified before the next. 87 tasks total; expect residue tasks from `/speckit-analyze` (run it BEFORE implementing — the 021 precedent caught two deadlock-CRITICALs at exactly this point).
