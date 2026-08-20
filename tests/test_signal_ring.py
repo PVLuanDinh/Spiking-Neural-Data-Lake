@@ -10,10 +10,20 @@ journaller and not at all through the neutered arm.
 
 import threading
 
+import numpy as np
 import pytest
 
 from snn_data_lake.substrate.binlog import BinLog
-from snn_data_lake.substrate.signal_ring import LakeJournaller, RingOverrun, SignalRing
+from snn_data_lake.substrate.signal_ring import (
+    DeliveringProducer,
+    GradedUnbound,
+    JoinConsumer,
+    LakeJournaller,
+    RingOverrun,
+    SignalRing,
+    UndeclaredJoin,
+)
+from snn_data_lake.substrate.wiring_manifest import Port
 
 
 def _records(n, salt=""):
@@ -120,3 +130,82 @@ def test_construction_and_payload_validation():
     ring = SignalRing(slots=2)
     with pytest.raises(TypeError):
         ring.publish("not-bytes")
+
+
+# ---- T020: JoinPolicy + DeliveryPolicy enforcement (P8 invention #2's enforcement half) ----
+def _in_port(policy, shape=(4,)):
+    return Port(
+        name=f"d_{policy}",
+        region="thalamus",
+        shape=shape,
+        dtype="f4",
+        unit="rate_hz",
+        encoding="VEC_DENSE",
+        kind="IN",
+        declaring_module="global_workspace",
+        join_policy=policy,
+    )
+
+
+def test_all_five_joins_combine_correctly():
+    ring = SignalRing(slots=64)
+    policies = ("sum", "max", "concat", "typed-merge")
+    consumers = {p: JoinConsumer(ring, _in_port(p)) for p in policies}
+    ring.publish(JoinConsumer.frame(1, "alpha", [1.0, 2.0, 3.0, 4.0]))
+    ring.publish(JoinConsumer.frame(1, "beta", [4.0, 3.0, 2.0, 1.0]))
+    ((t, s),) = consumers["sum"].poll_joined()[0]
+    assert t == 1 and np.allclose(s, [5.0, 5.0, 5.0, 5.0])
+    ((_, mx),) = consumers["max"].poll_joined()[0]
+    assert np.allclose(mx, [4.0, 3.0, 3.0, 4.0])
+    ((_, cat),) = consumers["concat"].poll_joined()[0]
+    assert cat.shape == (8,) and np.allclose(cat[:4], [1.0, 2.0, 3.0, 4.0])  # producer-sorted
+    ((_, tm),) = consumers["typed-merge"].poll_joined()[0]
+    assert set(tm) == {"alpha", "beta"} and np.allclose(tm["beta"], [4.0, 3.0, 2.0, 1.0])
+
+
+def test_arbitrate_carries_the_margin_record():
+    ring = SignalRing(slots=16)
+    j = JoinConsumer(ring, _in_port("arbitrate"))
+    ring.publish(JoinConsumer.frame(1, "quiet", [1.0, 0.0, 0.0, 0.0]))
+    ring.publish(JoinConsumer.frame(1, "loud", [5.0, 5.0, 5.0, 5.0]))
+    ((_, winner),) = j.poll_joined()[0]
+    assert np.allclose(winner, [5.0, 5.0, 5.0, 5.0])
+    assert j.last_margin["winner"] == "loud" and j.last_margin["margin_to_runner_up"] > 0
+    # a consumer whose margin never moves is not consuming -- the record must UPDATE
+    ring.publish(JoinConsumer.frame(2, "quiet", [9.0, 9.0, 9.0, 9.0]))
+    ring.publish(JoinConsumer.frame(2, "loud", [1.0, 0.0, 0.0, 0.0]))
+    j.poll_joined()
+    assert j.last_margin["winner"] == "quiet", "the margin record froze"
+
+
+def test_silent_sum_red_policy_stripped_port_refuses():
+    good = _in_port("sum")
+    stripped = object.__new__(Port)
+    for f_name, val in good.__dict__.items():
+        object.__setattr__(stripped, f_name, val)
+    object.__setattr__(stripped, "join_policy", None)
+    with pytest.raises(UndeclaredJoin):
+        JoinConsumer(SignalRing(slots=4), stripped)
+
+
+def test_graded_refuses_unbound_and_scales_bound():
+    out = Port(
+        name="g_out",
+        region="thalamus",
+        shape=(4,),
+        dtype="f4",
+        unit="rate_hz",
+        encoding="VEC_DENSE",
+        kind="OUT",
+        declaring_module="reentrant_workspace",
+        delivery_policy=("graded", "reentrant_workspace._assoc"),
+    )
+    with pytest.raises(GradedUnbound):
+        DeliveringProducer(SignalRing(slots=4), "ws", out).publish(1, [1.0, 1.0, 1.0, 1.0])
+    ring = SignalRing(slots=8)
+    sink = JoinConsumer(ring, _in_port("sum"))
+    DeliveringProducer(ring, "ws", out, association_source=lambda: 0.25).publish(
+        1, [4.0, 4.0, 4.0, 4.0]
+    )
+    ((_, v),) = sink.poll_joined()[0]
+    assert np.allclose(v, [1.0, 1.0, 1.0, 1.0])

@@ -178,6 +178,150 @@ class LakeJournaller:
         return self._log.extend([payload for _seq, payload in records])
 
 
+# ---- T020: JoinPolicy + DeliveryPolicy ENFORCEMENT on the delivery path (P8 invention #2,
+# ---- docs/INVENTION_REGISTER.md row 2 -- the register indexes this, the reds live here) ----
+# distinct-from: substrate/wiring_manifest.py -- DECLARES the policies; this ENFORCES them
+#   where payloads actually combine. distinct-from: thalamus/global_workspace.py -- workspace
+#   COMPETITION among coalitions; this is typed fan-in combination at a port. All sites read.
+class UndeclaredJoin(RuntimeError):
+    """Two producers reached one consumer with no declared join -- the silent-sum defect,
+    REFUSED instead of summed. Both major neuromorphic IRs default to elementwise summation
+    here, and that default is the measured one-scalar collapse mechanism (invention #2's
+    register row); this exception is the enforcement half of the manifest red."""
+
+
+class GradedUnbound(RuntimeError):
+    """A graded OUT port delivered before its association source was bound. The DECLARED
+    incumbent source is `reentrant_workspace._assoc`; the FINAL runtime binding lands with
+    T030's workspace instance resolution -- until then a graded port without a live source
+    REFUSES rather than silently delivering all-or-none (a policy downgrade nobody chose)."""
+
+
+class JoinConsumer:
+    """A ring consumer that enforces a declared IN port's join_policy over same-tick payloads.
+
+    Producers publish framed records ([tick u64][nlen u8][producer utf8][float32 vector]);
+    poll_joined() groups them by tick and combines each group under the port's policy:
+      sum / max     elementwise, accumulated in float64 over PRODUCER-SORTED order (sorted so
+                    the float sum is deterministic; disclosed, not accidental)
+      concat        axis-0 concatenation in producer-sorted order
+      typed-merge   {producer: vector} -- contributions kept apart by name, no arithmetic
+      arbitrate     ONE winner by largest L2 norm (ties break by producer name, deterministic)
+                    and every decision carries the contract's cleanup-margin record
+                    {winner, margin_to_runner_up} via last_margin -- a consumer whose margin
+                    never moves is not consuming (the charge contract's own tell)
+    A port with kind != IN or a policy outside the declared set REFUSES AT CONSTRUCTION
+    (UndeclaredJoin) -- the strict=False deserialization path is the only door such a port
+    can arrive through, and this is the door closing."""
+
+    def __init__(self, ring, port):
+        from snn_data_lake.substrate.wiring_manifest import JOIN_POLICIES
+
+        if (
+            getattr(port, "kind", None) != "IN"
+            or getattr(port, "join_policy", None) not in JOIN_POLICIES
+        ):
+            raise UndeclaredJoin(
+                f"port {getattr(port, 'name', port)!r}: kind={getattr(port, 'kind', None)!r} "
+                f"join_policy={getattr(port, 'join_policy', None)!r} -- a fan-in with no "
+                "declared join is REFUSED, never summed"
+            )
+        self.port = port
+        self._consumer = ring.attach(f"join:{port.name}")
+        self.last_margin = None  # {"winner": str, "margin_to_runner_up": float} after arbitrate
+
+    @staticmethod
+    def frame(tick, producer, vector) -> bytes:
+        import struct as _struct
+
+        import numpy as np
+
+        raw = str(producer).encode("utf-8")
+        return (
+            _struct.pack("<QB", int(tick), len(raw))
+            + raw
+            + np.asarray(vector, dtype=np.float32).tobytes()
+        )
+
+    @staticmethod
+    def _unframe(payload):
+        import struct as _struct
+
+        import numpy as np
+
+        tick, nlen = _struct.unpack_from("<QB", payload, 0)
+        producer = payload[9 : 9 + nlen].decode("utf-8")
+        vec = np.frombuffer(payload[9 + nlen :], dtype=np.float32)
+        return tick, producer, vec
+
+    def poll_joined(self):
+        """-> list of (tick, combined) oldest-first; loss propagates from the underlying
+        consumer as (records, lost) does -- a lost producer contribution is REPORTED, and the
+        join runs over what survived (stated, never silent)."""
+        import numpy as np
+
+        records, lost = self._consumer.poll()
+        by_tick: dict = {}
+        for _seq, payload in records:
+            tick, producer, vec = self._unframe(payload)
+            by_tick.setdefault(tick, []).append((producer, vec))
+        out = []
+        for tick in sorted(by_tick):
+            group = sorted(by_tick[tick], key=lambda pv: pv[0])
+            policy = self.port.join_policy
+            if policy == "sum":
+                combined = sum((v.astype(np.float64) for _p, v in group), start=np.float64(0.0))
+            elif policy == "max":
+                combined = np.max(np.stack([v for _p, v in group]), axis=0)
+            elif policy == "concat":
+                combined = np.concatenate([v for _p, v in group], axis=0)
+            elif policy == "typed-merge":
+                combined = {p: v for p, v in group}
+            else:  # arbitrate
+                norms = sorted(
+                    ((float(np.linalg.norm(v)), p, v) for p, v in group),
+                    key=lambda t: (-t[0], t[1]),
+                )
+                combined = norms[0][2]
+                self.last_margin = {
+                    "winner": norms[0][1],
+                    "margin_to_runner_up": norms[0][0] - (norms[1][0] if len(norms) > 1 else 0.0),
+                }
+            out.append((tick, combined))
+        return out, lost
+
+
+class DeliveringProducer:
+    """The OUT side: applies the declared delivery_policy at publish time.
+
+    all-or-none publishes the whole vector. ('graded', source_name) SCALES the vector by the
+    bound association weight in [0, 1] -- and REFUSES (GradedUnbound) while unbound: the
+    declared incumbent source is `reentrant_workspace._assoc`, final binding at T030, and
+    silently downgrading graded to all-or-none in the meantime would be a policy nobody
+    declared."""
+
+    def __init__(self, ring, faculty, port, association_source=None):
+        if getattr(port, "kind", None) != "OUT":
+            raise ValueError(f"DeliveringProducer needs an OUT port, got {port.kind!r}")
+        self.ring, self.faculty, self.port = ring, str(faculty), port
+        self._assoc = association_source
+
+    def publish(self, tick, vector):
+        import numpy as np
+
+        vec = np.asarray(vector, dtype=np.float32)
+        if self.port.delivery_policy != "all-or-none":
+            if self._assoc is None:
+                raise GradedUnbound(
+                    f"OUT port {self.port.name!r} declares "
+                    f"{self.port.delivery_policy!r} but no association source is bound "
+                    "(incumbent: reentrant_workspace._assoc; final binding = T030)"
+                )
+            w = float(self._assoc())
+            vec = vec * min(1.0, max(0.0, w))
+        return self.ring.publish(JoinConsumer.frame(tick, self.faculty, vec))
+
+
 def main() -> int:
     import tempfile
     from pathlib import Path
@@ -234,6 +378,79 @@ def main() -> int:
         print("signal_ring self-check FAILED: a refused drain still appended something")
         return 1
 
+    # ---- T020: join enforcement, the silent-sum red, graded-unbound red, margin record ----
+    import numpy as np
+
+    from snn_data_lake.substrate.wiring_manifest import Port
+
+    def _in_port(policy):
+        return Port(
+            name=f"d_{policy}",
+            region="thalamus",
+            shape=(4,),
+            dtype="f4",
+            unit="rate_hz",
+            encoding="VEC_DENSE",
+            kind="IN",
+            declaring_module="global_workspace",
+            join_policy=policy,
+        )
+
+    ring_j = SignalRing(slots=64)
+    jsum = JoinConsumer(ring_j, _in_port("sum"))
+    jarb = JoinConsumer(ring_j, _in_port("arbitrate"))
+    ring_j.publish(JoinConsumer.frame(1, "alpha", [1.0, 2.0, 3.0, 4.0]))
+    ring_j.publish(JoinConsumer.frame(1, "beta", [10.0, 20.0, 30.0, 40.0]))
+    joined, lost_j = jsum.poll_joined()
+    if lost_j or len(joined) != 1 or not np.allclose(joined[0][1], [11.0, 22.0, 33.0, 44.0]):
+        print(f"signal_ring self-check FAILED: sum join wrong ({joined})")
+        return 1
+    ring_j.publish(JoinConsumer.frame(2, "alpha", [1.0, 0.0, 0.0, 0.0]))
+    ring_j.publish(JoinConsumer.frame(2, "beta", [9.0, 9.0, 9.0, 9.0]))
+    _ = jarb.poll_joined()  # one poll drains both ticks; last_margin holds tick 2's decision
+    m = jarb.last_margin
+    if not m or m["winner"] != "beta" or m["margin_to_runner_up"] <= 0:
+        print(f"signal_ring self-check FAILED: arbitrate margin record wrong ({m})")
+        return 1
+    # the silent-sum red: a policy-stripped IN port (the strict=False door) REFUSES
+    stripped = object.__new__(Port)
+    for f_name, val in _in_port("sum").__dict__.items():
+        object.__setattr__(stripped, f_name, val)
+    object.__setattr__(stripped, "join_policy", None)
+    try:
+        JoinConsumer(ring_j, stripped)
+        print("signal_ring self-check FAILED: an undeclared join was ACCEPTED (silent sum)")
+        return 1
+    except UndeclaredJoin:
+        pass
+    # graded-unbound red + the bound green control in the same arm
+    out_graded = Port(
+        name="g_out",
+        region="thalamus",
+        shape=(4,),
+        dtype="f4",
+        unit="rate_hz",
+        encoding="VEC_DENSE",
+        kind="OUT",
+        declaring_module="reentrant_workspace",
+        delivery_policy=("graded", "reentrant_workspace._assoc"),
+    )
+    try:
+        DeliveringProducer(SignalRing(slots=4), "ws", out_graded).publish(1, [1, 1, 1, 1])
+        print("signal_ring self-check FAILED: graded delivered while UNBOUND")
+        return 1
+    except GradedUnbound:
+        pass
+    ring_g = SignalRing(slots=8)
+    gsink = JoinConsumer(ring_g, _in_port("sum"))
+    DeliveringProducer(ring_g, "ws", out_graded, association_source=lambda: 0.5).publish(
+        3, [2.0, 2.0, 2.0, 2.0]
+    )
+    gj, _ = gsink.poll_joined()
+    if not np.allclose(gj[0][1], [1.0, 1.0, 1.0, 1.0]):
+        print(f"signal_ring self-check FAILED: graded scaling wrong ({gj})")
+        return 1
+
     # ---- single-writer is enforced, not documented ----
     box = {}
 
@@ -255,7 +472,9 @@ def main() -> int:
         "signal_ring self-check OK: replay A/B charged (16 records byte-equal through the "
         "journaller, ZERO through the neutered arm); multicast twin saw the same stream; "
         "overrun reported 5 lost of 9 and the journaller REFUSED the hole; second-thread "
-        "publish refused (single-writer structural)"
+        "publish refused (single-writer structural); T020 joins ENFORCED -- sum exact, "
+        "arbitrate carried its {winner, margin} record, the policy-stripped port REFUSED "
+        "(silent-sum red), graded refused UNBOUND and scaled correctly bound"
     )
     return 0
 
