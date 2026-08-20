@@ -1,24 +1,34 @@
 {
-  "stage": "S0-pre",
-  "recorded_utc": "2026-08-19T15:54:59Z",
+  "stage": "S0-kernel",
+  "recorded_utc": "2026-08-20T06:21:11Z",
   "host": "LUAN_AND_ANNIE",
   "ticks": {
     "wake": {
-      "p50_ms": 107.596,
-      "p95_ms": 120.957,
+      "p50_ms": 119.598,
+      "p95_ms": 157.262,
       "n": 61
     },
     "sleep": {
-      "p50_ms": 9.327,
-      "p95_ms": 775.463,
+      "p50_ms": 10.986,
+      "p95_ms": 834.815,
       "n": 59
+    },
+    "ref": {
+      "p50_ms": 0.632,
+      "p95_ms": 0.743,
+      "n": 120
+    },
+    "wake_ratio": {
+      "p50": 183.517,
+      "p95": 225.768,
+      "n": 61
     },
     "duty_wake_fraction": 0.508,
     "n_ticks": 120,
     "n_units": null
   },
   "iops": {
-    "random_read_iops_4k_unbuffered": 11028,
+    "random_read_iops_4k_unbuffered": 10240,
     "reads": 1500,
     "file_mb": 256,
     "target_dir": "D:\\"
