@@ -172,8 +172,9 @@ def main() -> int:
     print(
         "port_charge_probe self-check OK: sensitivity control flipped under the pinned "
         f"payload ({live} -> {neut}, 5 reads counted), specificity control held, margin "
-        "surveillance separated varied from frozen. RE-PROOF OBLIGATION: run against the "
-        "first real registrant when T025 lands."
+        "surveillance separated varied from frozen. RE-PROOF DISCHARGED at T025: "
+        "evidence_accumulation's self-check runs both controls against the first real "
+        "registrant (the serotonin patience wire) every battery."
     )
     return 0
 

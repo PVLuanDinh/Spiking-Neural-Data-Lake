@@ -46,6 +46,21 @@ It reproduces the decision-making signatures (psychometric / chronometric / spee
 winner-take-all) in spikes; it is NOT the full conductance-based NMDA/GABA network of Wang 2002,
 not biophysics, not cognition.
 
+SEROTONERGIC PATIENCE BIAS (specs/022 T025 -- the manifest's FIRST real wire): the dorsal
+raphe's tonic 5-HT level arrives on the declared port `patience_in` and sets the decision
+BOUND -- the one knob this attractor already owns whose behavioural meaning IS patience
+(the speed-accuracy tradeoff above: a higher bound waits longer before committing and buys
+accuracy). `patience_bound(level)` maps the level linearly onto this module's own
+demonstrated speed-accuracy operating range [_SA_BOUND_LO, _SA_BOUND_HI] -- the two bounds
+main() has always used to demonstrate the tradeoff, reused not invented; and because the
+raphe's discount rate k is log-interpolated in its level, a bound linear in level is a
+bound linear in log-patience. Charge is MEASURED, never declared: the self-check replays
+recorded 5-HT frames through `port_charge_probe.replay_twice` (live vs pinned payload) and
+the module refuses to call the wire live unless the arms diverge with every frame read --
+`--record-charge` writes that measured attribution to tools/region_charge_evidence.json
+(the region charge gate's evidence; regenerating it is that mode's ONLY caller -- the
+self-check only reads and re-measures, so a battery run can never republish the artifact).
+
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.basal_ganglia.evidence_accumulation
 """
 
@@ -70,9 +85,76 @@ _BOUND_CAP = 0.52  # ceiling on the internal rate bound (the attractor's clamped
 _DT_REF = 0.01  # reference dt; the public `dt` scales the per-step integration
 
 
+_SA_BOUND_LO = 0.5  # the speed-accuracy demo's LOW bound: fast, less accurate (impulsive)
+_SA_BOUND_HI = 1.5  # the speed-accuracy demo's HIGH bound: slow, more accurate (patient)
+
+
 def _rate_bound(bound):
     """Map the public scalar `bound` onto an internal sustained population-rate threshold in (0,1)."""
     return min(_BOUND_CAP, max(0.02, bound * _BOUND_SCALE))
+
+
+def patience_bound(level):
+    """5-HT level in [0,1] -> decision bound, linear across this module's own demonstrated
+    speed-accuracy operating range (see the docstring: linear in level = linear in the
+    raphe's log-patience). level 0 = impulsive commit-fast bound; level 1 = patient
+    wait-for-separation bound."""
+    level = max(0.0, min(1.0, float(level)))
+    return _SA_BOUND_LO + (_SA_BOUND_HI - _SA_BOUND_LO) * level
+
+
+def declare_ports(manifest):
+    """Manifest registrant (specs/022 T025, the consumer half): the `patience_in` port and
+    THE edge from the raphe's `five_ht_out` -- the subscription and its join live with the
+    consumer that chose them. join `sum` over the single declared producer is identity."""
+    from snn_data_lake.substrate.wiring_manifest import Port
+
+    manifest.declare_port(
+        "evidence_accumulation",
+        Port(
+            name="patience_in",
+            region="basal_ganglia",
+            shape=(1,),
+            dtype="f4",
+            unit="level01",
+            encoding="SCALAR_DENSE",
+            kind="IN",
+            declaring_module="evidence_accumulation",
+            join_policy="sum",
+        ),
+    )
+    manifest.declare_edge("raphe_serotonin", "five_ht_out", "evidence_accumulation", "patience_in")
+
+
+#: The declared edge, exactly as the manifest carries it -- the charge evidence cites it.
+PATIENCE_EDGE = ("raphe_serotonin", "five_ht_out", "evidence_accumulation", "patience_in")
+
+
+def _patience_consumer_factory():
+    """Fresh ring + JoinConsumer over the declared IN port, one pair per replay arm."""
+    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+
+    m = WiringManifest()
+    declare_ports(m)
+    port = m.ports[("evidence_accumulation", "patience_in")]
+    ring = SignalRing(slots=64)
+    return ring, JoinConsumer(ring, port)
+
+
+def consume_patience(consumer, drift=2.0, trials=8, seed=0):
+    """The downstream computation under measurement: each joined 5-HT frame sets the bound
+    for a block of decisions at fixed evidence. Returns [(tick, accuracy, mean_rt), ...] --
+    the behaviour the payload is supposed to move. Deterministic per (tick, seed) so the
+    replay arms differ ONLY through the payload."""
+    out = []
+    joined, _lost = consumer.poll_joined()
+    for tick, vec in joined:
+        level = float(vec[0])
+        model = DriftDiffusion(drift, patience_bound(level), seed=seed + tick)
+        block = model.run_trials(trials)
+        out.append((tick, accuracy(block, 1), round(mean_rt(block), 6)))
+    return out
 
 
 def _simulate(currents, bound, noise, dt, leak_e, w_ei, max_steps, rng):
@@ -404,6 +486,124 @@ def main():
         f"strong {strong_rt:.1f} steps; {tr['spikes']} spikes/trial; deterministic"
     )
 
+    # ---- (d) THE SEROTONIN WIRE IS CHARGED, measured (specs/022 T025) -------------------
+    live, pinned_out, reads, spec_holds = _measure_patience_charge()
+    lo_rt_live, hi_rt_live = live[0][2], live[-1][2]
+    assert reads == len(live), f"the neuter must be READ every frame ({reads} vs {len(live)})"
+    assert live != pinned_out, (
+        "pinning the 5-HT payload must change the decision behaviour -- an undiverged wire "
+        "is a declared, not a charged, port"
+    )
+    assert hi_rt_live > lo_rt_live, (
+        f"patience must slow commitment: RT at 5-HT=1 ({hi_rt_live:.1f}) must exceed RT at "
+        f"5-HT=0 ({lo_rt_live:.1f})"
+    )
+    assert spec_holds, (
+        "specificity control broke: a payload-ignoring consumer diverged under the pin -- "
+        "an instrument that fires on everything attributes nothing (probe re-proof, T021)"
+    )
+    _assert_recorded_evidence_live(live, reads)
+    print(
+        f"serotonin wire CHARGED (measured): live vs pinned diverged over {reads} read "
+        f"frames; RT {lo_rt_live:.1f} (impulsive) -> {hi_rt_live:.1f} (patient) steps; "
+        f"specificity control held (probe re-proof discharged against the first real "
+        f"registrant)"
+    )
+
+
+def _measure_patience_charge():
+    """The replay-twice A/B over recorded 5-HT frames: (live_out, pinned_out, reads,
+    specificity_holds). Frames sweep the raphe's own LEVELS so the wire's two ends are the
+    real modules, not stand-ins."""
+    from snn_data_lake.neuromodulation.raphe_serotonin import LEVELS
+    from snn_data_lake.substrate.port_charge_probe import replay_twice
+
+    frames = [(t + 1, "raphe_serotonin", [lvl]) for t, lvl in enumerate(LEVELS)]
+    pinned = [0.5]  # the mid setpoint: a plausible constant, not a degenerate zero
+    live, pinned_out, reads = replay_twice(
+        frames, _patience_consumer_factory, consume_patience, pinned
+    )
+
+    def constant_consumer(consumer):
+        joined, _lost = consumer.poll_joined()
+        return [(tick, 0) for tick, _vec in joined]
+
+    spec_live, spec_pinned, _ = replay_twice(
+        frames, _patience_consumer_factory, constant_consumer, pinned
+    )
+    return live, pinned_out, reads, spec_live == spec_pinned
+
+
+def _evidence_path():
+    from pathlib import Path
+
+    return Path(__file__).resolve().parents[3] / "tools" / "region_charge_evidence.json"
+
+
+# distinct-from: cortex/metacognitive_monitor.py -- that is a live rate-quantile HOLD bar;
+#   this checks a COMMITTED evidence artifact against a fresh in-command measurement. Read.
+def _assert_recorded_evidence_live(live, reads):
+    """The committed attribution must correspond to the measurement THIS run just took --
+    a recorded charge nobody can re-measure is a declaration with a timestamp. As of T025
+    the evidence file is TRACKED, so an absent file is a RED, not a note (review finding:
+    a commit that drops the untracked JSON would otherwise leave every gate green while
+    the census claim silently evaporates). The recorded numbers must REPRODUCE: same read
+    count, same RT endpoints, exactly (the measurement is deterministic). (Read-only: the
+    writer is --record-charge, never the self-check -- a battery run must not republish a
+    tracked artifact.)"""
+    import json
+
+    path = _evidence_path()
+    assert path.exists(), (
+        "tools/region_charge_evidence.json is MISSING -- the T025 attribution is part of "
+        "the tree; regenerate with --record-charge and commit it"
+    )
+    rows = json.loads(path.read_text()).get("attributions", [])
+    mine = [r for r in rows if tuple(r.get("edge", ())) == PATIENCE_EDGE]
+    assert mine and mine[0].get("diverged") is True, (
+        f"committed charge evidence must carry the diverged {PATIENCE_EDGE} attribution"
+    )
+    rec = mine[0].get("measured", {})
+    fresh = {"reads": reads, "lo_rt": live[0][2], "hi_rt": live[-1][2]}
+    assert rec == fresh, (
+        f"recorded charge evidence does not reproduce: recorded {rec} vs fresh {fresh} -- "
+        "the wire changed; regenerate with --record-charge in the same commit"
+    )
+
+
+def record_charge():
+    """Measure the A/B and write the attribution the region charge gate consumes. REFUSES
+    to record a non-diverged run -- evidence is a measurement, never a declaration."""
+    import json
+
+    live, pinned_out, reads, spec_holds = _measure_patience_charge()
+    if live == pinned_out or not spec_holds:
+        print("record_charge REFUSED: the A/B did not diverge (or specificity broke)")
+        return 1
+    path = _evidence_path()
+    payload = {
+        "attributions": [
+            {
+                "edge": list(PATIENCE_EDGE),
+                "diverged": True,
+                "measured": {"reads": reads, "lo_rt": live[0][2], "hi_rt": live[-1][2]},
+                "provenance": (
+                    "port_charge_probe.replay_twice over the raphe LEVELS sweep; the "
+                    "self-check re-measures and requires `measured` to reproduce exactly, "
+                    "so this record cannot outlive the wire it describes; specificity "
+                    "control held (payload-ignoring consumer did not flip)"
+                ),
+            }
+        ]
+    }
+    path.write_text(json.dumps(payload, indent=2) + "\n")
+    print(f"wrote {path} (1 measured attribution; regeneration is the only edit path)")
+    return 0
+
 
 if __name__ == "__main__":
+    import sys as _sys
+
+    if "--record-charge" in _sys.argv[1:]:
+        _sys.exit(record_charge())
     main()

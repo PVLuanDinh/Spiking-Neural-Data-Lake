@@ -1,0 +1,19 @@
+{
+  "attributions": [
+    {
+      "edge": [
+        "raphe_serotonin",
+        "five_ht_out",
+        "evidence_accumulation",
+        "patience_in"
+      ],
+      "diverged": true,
+      "measured": {
+        "reads": 5,
+        "lo_rt": 2.875,
+        "hi_rt": 11.375
+      },
+      "provenance": "port_charge_probe.replay_twice over the raphe LEVELS sweep; the self-check re-measures and requires `measured` to reproduce exactly, so this record cannot outlive the wire it describes; specificity control held (payload-ignoring consumer did not flip)"
+    }
+  ]
+}

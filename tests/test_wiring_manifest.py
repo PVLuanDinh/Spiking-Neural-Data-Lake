@@ -133,9 +133,20 @@ def test_gate_green_on_committed_artifact_and_divergence_red(tmp_path):
 
 
 def test_artifact_is_tracked_and_loadable():
+    # Premise updated at T025 exactly as the day-one message demanded: the first real
+    # registrant pair landed (serotonin patience wire), so the committed anatomy is now
+    # 2 ports + THE edge. A count above this means a registrant landed without updating
+    # this premise again; a count below means a declaration was lost.
     pytest.importorskip("nir")
     m = WiringManifest.load_artifact(ARTIFACT)
-    assert (len(m.ports), len(m.edges)) == (0, 0), (
-        "day-one artifact must be EMPTY; a port here means a registrant landed without "
-        "updating this test's premise (see T025)"
+    assert (len(m.ports), len(m.edges)) == (2, 1), (
+        "the T025 artifact carries the serotonin patience wire (2 ports, 1 edge); a "
+        "different census means a registrant landed without updating this test's premise"
     )
+    assert m.edges[0] == (
+        "raphe_serotonin",
+        "five_ht_out",
+        "evidence_accumulation",
+        "patience_in",
+    ), "the one committed edge must be the declared patience subscription"
+    assert m.all_findings() == [], "the committed artifact must satisfy all five checks"

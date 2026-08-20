@@ -417,22 +417,6 @@ EXEMPT = {
         "BinLog-resident on purpose. Live-path consumer is the kernel block's paging tier "
         "(T013+). Bound by S0 exit (T039), not movable again",
     ),
-    "signal_ring": (
-        "wire",
-        "specs/022 T011: the ONE-writer multicast faculty ring + LakeJournaller (the durable-lake "
-        "writer as a ring consumer). Nothing on the tick publishes to it TODAY, stated plainly; "
-        "T012 landed as verify+flip (no journaller cadence wired, the correction this reason "
-        "promised), so the ONE named live producer is the two-phase kernel tick (T013+). "
-        "Bound by S0 exit (T039), not movable again",
-    ),
-    "wiring_manifest": (
-        "wire",
-        "specs/022 T018: TypedPort + WiringManifest, the declared anatomy. Consumed TODAY by "
-        "manifest_gate and p6_gate's report-only parity walk (instruments); the LIVE consumers "
-        "are the faculty registrants starting with serotonin salience (T025) and the "
-        "JoinPolicy/DeliveryPolicy enforcement in signal_ring (T020). Bound by S0 exit (T039), "
-        "not movable",
-    ),
     "region_charge_gate": (
         "permanent",
         "specs/022 T022: the region-granularity charge verdict (reachable AND measured "
@@ -463,20 +447,6 @@ EXEMPT = {
         "forbids. The p6 unimplemented-pairs ceiling was raised 21->24 for this same "
         "declared-ahead anatomy with the fall-back obligation recorded there. Bound by S0 "
         "exit (T039), not movable",
-    ),
-    "port_charge_probe": (
-        "permanent",
-        "specs/022 T021: the port-granularity charge instruments (pinned-payload neuter with "
-        "read counting, cleanup-margin surveillance, replay-twice A/B) with both external "
-        "controls in-command. A measurement instrument consumed by the region charge gate "
-        "(T022) and re-proven against the first real registrant (T025); never on a tick -- "
-        "the policy_manifest disposition",
-    ),
-    "manifest_gate": (
-        "permanent",
-        "specs/022 T019: the five contract checks + the committed-vs-rebuilt divergence red "
-        "over tools/wiring_manifest.nir. A CI/run_selfchecks instrument, never on a tick -- "
-        "the policy_manifest disposition, same as lake_rebuild_gate",
     ),
     "replay_gate": (
         "permanent",

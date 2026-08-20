@@ -41,8 +41,12 @@ from snn_data_lake.substrate.wiring_manifest import (
 )
 
 #: (module, attr) pairs that declare ports -- the ONLY imports the gate performs.
-#: EMPTY on day one (T018); T025's serotonin registrant is the first entry.
-REGISTRANTS: tuple = ()
+#: First entries: specs/022 T025, the serotonin patience wire (producer, then consumer --
+#: the consumer's declare_ports also declares THE edge, its subscription).
+REGISTRANTS: tuple = (
+    ("snn_data_lake.neuromodulation.raphe_serotonin", "declare_ports"),
+    ("snn_data_lake.basal_ganglia.evidence_accumulation", "declare_ports"),
+)
 
 
 def rebuild_from_registrants() -> WiringManifest:

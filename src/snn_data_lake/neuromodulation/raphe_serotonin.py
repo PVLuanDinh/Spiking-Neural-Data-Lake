@@ -42,6 +42,29 @@ TAU = 50.0  # slow tonic 5-HT time constant (a mood/context setpoint, not a fast
 LEVELS = (0.0, 0.25, 0.5, 0.75, 1.0)  # 5-HT sweep: impulsive -> patient
 
 
+def declare_ports(manifest):
+    """The FIRST real manifest registrant (specs/022 T025). One OUT port: the tonic 5-HT
+    level in [0,1] -- the patience / temporal-discount setpoint -- delivered whole each tick
+    (all-or-none: a tonic setpoint has no graded association source; the level IS the
+    signal). The consumer edge is declared by the consumer (its subscription, its join)."""
+    from snn_data_lake.substrate.wiring_manifest import Port
+
+    manifest.declare_port(
+        "raphe_serotonin",
+        Port(
+            name="five_ht_out",
+            region="neuromodulation",
+            shape=(1,),
+            dtype="f4",
+            unit="level01",
+            encoding="SCALAR_DENSE",
+            kind="OUT",
+            declaring_module="raphe_serotonin",
+            delivery_policy="all-or-none",
+        ),
+    )
+
+
 class DorsalRaphe:
     """Tonic 5-HT level in [0,1] that sets the temporal-discount rate k (hyperbolic). HIGH 5-HT ->
     LOW k -> shallow discounting -> WAIT for the larger-later reward (patient). LOW 5-HT -> HIGH k

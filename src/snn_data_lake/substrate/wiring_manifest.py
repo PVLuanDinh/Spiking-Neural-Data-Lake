@@ -30,10 +30,11 @@ attribute, and the round-trip criterion is on THAT (byte-exact), with the NIR pr
 checked for node/edge count agreement. Where nir is absent the serialization arm SKIPS
 LOUDLY; the five structure checks never depend on it.
 
-DAY-ONE STATE, counted: the committed manifest is EMPTY -- zero ports, zero edges. Nothing
-declares yet; the first registrant is serotonin salience at T025. An empty manifest is
-stated in exactly those words by every reader (the gate prints it), never rendered as a
-green that looks like coverage.
+DAY-ONE STATE, counted (T018): the committed manifest WAS EMPTY -- zero ports, zero edges,
+stated in exactly those words by every reader rather than rendered as a green that looks
+like coverage. The first real registrant pair landed at T025 (the serotonin PATIENCE wire:
+raphe_serotonin.five_ht_out -> evidence_accumulation.patience_in); the committed census now
+lives with the artifact and manifest_gate.REGISTRANTS, and main() reports it from there.
 """
 
 # distinct-from: snn_data_lake/connectome.py -- region->region ANATOMICAL wiring (typed,
@@ -350,12 +351,10 @@ class WiringManifest:
         return cls.from_hdf5_bytes(Path(path).read_bytes(), strict=strict)
 
 
-# ---- the registry faculties declare into (populated at faculty import; empty day one) ------
-_REGISTRY = WiringManifest()
-
-
-def registry() -> WiringManifest:
-    return _REGISTRY
+# The module-global "declare at faculty import" registry that once sat here is RETIRED (P2,
+# T025 review): it had zero callers, and collecting declarations by import side effect is
+# the exact mechanism manifest_gate's curated REGISTRANTS list exists to forbid (the pygenn
+# incident, T016). Exactly one declaration path survives: manifest_gate.REGISTRANTS.
 
 
 def _nir_available() -> bool:
@@ -446,16 +445,20 @@ def main() -> int:
         nir_note = "NIR-HDF5 round-trip byte-exact on the JSON payload"
     else:
         nir_note = "NIR SKIPPED LOUDLY (nir not importable here; structure checks unaffected)"
-    n_ports, n_edges = len(_REGISTRY.ports), len(_REGISTRY.edges)
+    # The declared-anatomy census, reported from the ONE declaration path (REGISTRANTS).
+    from snn_data_lake.substrate.manifest_gate import rebuild_from_registrants
+
+    live = rebuild_from_registrants()
+    n_ports, n_edges = len(live.ports), len(live.edges)
     state = (
-        "EMPTY (nothing declares yet; first registrant lands at T025)"
+        "EMPTY (nothing declares)"
         if n_ports == 0
-        else f"{n_ports} ports, {n_edges} edges"
+        else f"{n_ports} ports, {n_edges} edges (first registrant pair: T025 serotonin patience)"
     )
     print(
         f"wiring_manifest self-check OK: five checks green on the constructed manifest; "
         f"undeclared-join, region-mismatch, type-mismatch, missing-endpoint and duplicate-edge "
-        f"reds all fired; {nir_note}. LIVE REGISTRY: {state}."
+        f"reds all fired; {nir_note}. DECLARED ANATOMY: {state}."
     )
     return 0
 

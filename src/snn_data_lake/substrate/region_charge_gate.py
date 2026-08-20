@@ -27,10 +27,11 @@ writes it (into FR-015's blank, per the spec). Floor absent => the assert states
 never a silent green. Floor present => charged_count >= floor binds.
 
 DAY-ONE COUNT, stated here because this file is where the number was born: 0 of 16 regions
-CHARGED -- every region fails conjunct (b) because the manifest is EMPTY and no charge
-evidence exists yet (first registrant T025). Reachability alone is high; that gap IS the
-message: a tree can be almost fully reachable and 0% charged, which is why registration
-never greens.
+CHARGED -- at landing every region failed conjunct (b) because the manifest WAS empty and
+no charge evidence existed yet. T025's serotonin patience wire recorded the first measured
+attribution and moved the census to 2 of 16 (neuromodulation + basal_ganglia). Reachability
+alone stays high; that gap IS the message: a tree can be almost fully reachable and barely
+charged, which is why registration never greens.
 """
 
 # distinct-from: substrate/dormancy_gate.py -- module-level reachability, REUSED here as
