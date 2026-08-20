@@ -425,6 +425,14 @@ EXEMPT = {
         "promised), so the ONE named live producer is the two-phase kernel tick (T013+). "
         "Bound by S0 exit (T039), not movable again",
     ),
+    "kernel_tick": (
+        "wire",
+        "specs/022 T014: the two-phase deterministic tick over kernel_state (P fixed per "
+        "lineage, integer delivery, delay rings). Consumers in this same kernel block: the "
+        "determinism gate (T015) and replay gate (T017) drive it as instruments; the LIVE "
+        "consumer is the substrate cutover with the EpisodeDriver stimulus port (T033+). "
+        "Bound by S0 exit (T039), not movable",
+    ),
     "kernel_state": (
         "wire",
         "specs/022 T013: SoA substrate state (128B-aligned blocks, contiguous faculty slices, "
