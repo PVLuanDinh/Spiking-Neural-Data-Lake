@@ -1027,6 +1027,20 @@ the same bit-exactness burden as any other P2 swap.
 **communicate with** the others and **utilize** them, the way regions of a real brain are mutually
 reachable and mutually consumed — not a shelf of correct components that never speak.
 
+**THE DECLARED-ANATOMY LAYER (specs/022 T018/T019/T023, 2026-08-20).** The typed route P6's
+condition (a) demands now has a machine-checked home: `substrate/wiring_manifest.py` (TypedPort —
+join_policy mandatory on IN ports, delivery_policy on OUT, REF flagged and audited — plus the
+4-tuple port-to-port edge manifest, NIR-HDF5 serialized to the tracked artifact
+`tools/wiring_manifest.nir`), and `substrate/manifest_gate.py --assert` in CI runs the five
+contract checks (structure / type-inference / type-check / region / join) plus the
+committed-vs-registrant-rebuild DIVERGENCE red. `tools/p6_gate.py` carries the manifest-sourced
+walk REPORT-ONLY beside its AST walk with a parity table (day-one: manifest EMPTY, 0 ports /
+0 edges, stated in those words — the migration baseline); the AST walk retires only after the
+two views converge, in its own commit with re-recorded baselines. Counted at landing,
+2026-08-20: five checks green on a constructed manifest; undeclared-join, region-mismatch,
+type-mismatch, missing-endpoint, duplicate-edge and divergence reds ALL fired; NIR-HDF5
+round-trip byte-exact on the full-fidelity payload.
+
 **Stated as a checkable property, because "be like a real brain" is a research direction and this file
 rejects those** (see the corollary under P2): a faculty satisfies P6 when (a) it is **reachable** from at
 least one other faculty through a typed, declared route rather than only from an entrypoint or a chat

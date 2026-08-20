@@ -1,0 +1,201 @@
+"""Manifest gate (specs/022 T019, FR-012, gates.md 'Manifest type-check' row): the five
+contract checks over the COMMITTED wiring-manifest artifact, plus the divergence red --
+the committed copy must equal what the registrants would rebuild.
+
+WHAT RUNS AT CI (--assert): load tools/wiring_manifest.nir with strict=False -- a defective
+artifact must REACH the checks, not die in a constructor where its findings would be a
+stack trace instead of a verdict -- then validate_structure / check_types / region_check /
+join_check (infer_types feeds check_types), then rebuild the manifest from the REGISTRANTS
+census and require dict-equality with the committed copy. Any finding = exit 1. An EMPTY
+manifest prints exactly that -- "EMPTY: 0 ports, 0 edges" -- because an empty anatomy
+rendered as a plain green is coverage-shaped silence (the day-one state; first registrant
+lands at T025).
+
+WHY REGISTRANTS IS A CURATED LIST AND NOT AN IMPORT SCAN: collecting declarations by
+importing every module is how the GIL got silently re-enabled mid-suite (the pygenn
+incident, T016) -- imports have side effects, so the gate imports EXACTLY the modules that
+declare ports, listed in wiring_manifest.REGISTRANTS, and nothing else. A registrant that
+fails to import is a RED, never a skip.
+
+THE REDS (contract 'Reds this contract must be able to fire', proven in --self-check and in
+tests/test_manifest_gate.py): (1) undeclared-join -- two producers into a policy-stripped IN
+port; (2) region-mismatch -- a port claiming anatomy its module does not hold; (4)
+manifest/gate divergence -- the committed artifact differs from the registrant rebuild.
+Red (3), neuter-insensitivity, is charge measurement and belongs to the charge probe
+(T022) -- a static gate asserting liveness would be presence-as-participation.
+"""
+
+# distinct-from: substrate/wiring_manifest.py -- the MECHANISM this gate runs; the gate owns
+#   the CI verdict and the divergence criterion, the manifest owns the checks.
+# distinct-from: substrate/policy_manifest.py -- POLICIES.md rows vs ci.yml census, a
+#   different manifest entirely. distinct-from: substrate/import_manifest.py -- lazy-import
+#   reachability of ruff-excluded tiers. All sites read.
+
+from __future__ import annotations
+
+import sys
+
+from snn_data_lake.substrate.wiring_manifest import (
+    ARTIFACT,
+    WiringManifest,
+)
+
+#: (module, attr) pairs that declare ports -- the ONLY imports the gate performs.
+#: EMPTY on day one (T018); T025's serotonin registrant is the first entry.
+REGISTRANTS: tuple = ()
+
+
+def rebuild_from_registrants() -> WiringManifest:
+    """The manifest the tree WOULD produce: import exactly the registrant modules, let each
+    declare into a fresh registry, return it. A failing registrant raises -- loudly."""
+    fresh = WiringManifest()
+    for mod_name, attr in REGISTRANTS:
+        import importlib
+
+        mod = importlib.import_module(mod_name)
+        getattr(mod, attr)(fresh)
+    return fresh
+
+
+def run(artifact=ARTIFACT) -> tuple[bool, str]:
+    """-> (ok, report). The CI body: five checks + divergence, census stated."""
+    try:
+        committed = WiringManifest.load_artifact(artifact, strict=False)
+    except Exception as exc:
+        return False, f"manifest artifact unreadable: {exc}"
+    findings = committed.all_findings()
+    rebuilt = rebuild_from_registrants()
+    if rebuilt.to_dict() != committed.to_dict():
+        findings.append(
+            f"DIVERGENCE: committed artifact ({len(committed.ports)} ports, "
+            f"{len(committed.edges)} edges) != registrant rebuild ({len(rebuilt.ports)} ports, "
+            f"{len(rebuilt.edges)} edges) -- regenerate the artifact in this commit"
+        )
+    n_p, n_e = len(committed.ports), len(committed.edges)
+    census = (
+        "EMPTY: 0 ports, 0 edges (nothing declares yet; first registrant = T025)"
+        if n_p == 0 and n_e == 0
+        else f"{n_p} ports, {n_e} edges, {len(committed.refs())} REF escape hatches"
+    )
+    warns = committed.warnings()
+    report = f"manifest {census}; findings={len(findings)}; warnings={len(warns)}"
+    if findings:
+        report += "\n  " + "\n  ".join(findings)
+    return not findings, report
+
+
+def self_check() -> int:
+    """Constructed reds 1, 2 and 4 fired through the GATE's own verdict path, with the clean
+    committed artifact as the in-command positive control."""
+    ok_clean, clean_report = run()
+    if not ok_clean:
+        print(f"manifest_gate self-check FAILED its own positive control:\n{clean_report}")
+        return 1
+    # red 4: divergence -- a committed artifact the registrants would not rebuild
+    import os
+    import tempfile
+    from pathlib import Path
+
+    from snn_data_lake.substrate.wiring_manifest import Port
+
+    diverged = WiringManifest()
+    diverged.declare_port(
+        "ghost",
+        Port(
+            name="phantom_out",
+            region="thalamus",
+            shape=(1,),
+            dtype="f4",
+            unit="rate_hz",
+            encoding="SCALAR_DENSE",
+            kind="OUT",
+            declaring_module="global_workspace",
+            delivery_policy="all-or-none",
+        ),
+    )
+    fd, tmp_name = tempfile.mkstemp(suffix=".nir")
+    os.close(fd)  # Windows: an open descriptor locks the file against its own unlink
+    tmp = Path(tmp_name)
+    try:
+        diverged.commit_artifact(tmp)
+        ok_div, div_report = run(tmp)
+    finally:
+        tmp.unlink(missing_ok=True)
+    if ok_div or "DIVERGENCE" not in div_report:
+        print("manifest_gate self-check FAILED: the divergence red did not fire")
+        return 1
+    # reds 1 + 2 through the artifact path: strip a join, fake a region, RE-LOAD, run checks
+    m = WiringManifest()
+    m.declare_port(
+        "salience",
+        Port(
+            name="s_out",
+            region="neuromodulation",
+            shape=(4,),
+            dtype="f4",
+            unit="rate_hz",
+            encoding="VEC_DENSE",
+            kind="OUT",
+            declaring_module="raphe_serotonin",
+            delivery_policy="all-or-none",
+        ),
+    )
+    m.declare_port(
+        "ws",
+        Port(
+            name="d_in",
+            region="thalamus",
+            shape=(4,),
+            dtype="f4",
+            unit="rate_hz",
+            encoding="VEC_DENSE",
+            kind="IN",
+            declaring_module="global_workspace",
+            join_policy="sum",
+        ),
+    )
+    m.declare_edge("salience", "s_out", "ws", "d_in")
+    m.declare_edge("salience", "s_out", "ws", "d_in")  # second producer edge for the join red
+    d = m.to_dict()
+    d["ports"][1][1]["join_policy"] = None
+    d["ports"][0][1]["region"] = "cerebellum"
+    defective = WiringManifest.from_dict(d, strict=False)
+    join_red = bool(defective.join_check())
+    region_red = bool(defective.region_check())
+    if not join_red or not region_red:
+        print(
+            f"manifest_gate self-check FAILED: undeclared-join fired={join_red}, "
+            f"region-mismatch fired={region_red}"
+        )
+        return 1
+    print(
+        "manifest_gate self-check OK: positive control green on the committed artifact; "
+        "divergence, undeclared-join and region-mismatch reds all fired "
+        "(neuter-insensitivity is T022's charge probe, on purpose)"
+    )
+    return 0
+
+
+def main(argv=None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    mode = argv[0] if argv else ""
+    if mode == "--self-check":
+        return self_check()
+    if mode == "--assert":
+        ok, report = run()
+        print(f"manifest_gate [assert] {report}")
+        return 0 if ok else 1
+    # bare (run_selfchecks): the assert body plus the divergence red -- cheap, never red-free
+    ok, report = run()
+    if not ok:
+        print(f"manifest_gate wiring-check FAILED:\n{report}")
+        return 1
+    rc = self_check()
+    if rc != 0:
+        return rc
+    print(f"manifest_gate wiring-check OK: {report}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

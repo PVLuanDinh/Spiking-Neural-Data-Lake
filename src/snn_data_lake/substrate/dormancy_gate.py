@@ -425,6 +425,20 @@ EXEMPT = {
         "promised), so the ONE named live producer is the two-phase kernel tick (T013+). "
         "Bound by S0 exit (T039), not movable again",
     ),
+    "wiring_manifest": (
+        "wire",
+        "specs/022 T018: TypedPort + WiringManifest, the declared anatomy. Consumed TODAY by "
+        "manifest_gate and p6_gate's report-only parity walk (instruments); the LIVE consumers "
+        "are the faculty registrants starting with serotonin salience (T025) and the "
+        "JoinPolicy/DeliveryPolicy enforcement in signal_ring (T020). Bound by S0 exit (T039), "
+        "not movable",
+    ),
+    "manifest_gate": (
+        "permanent",
+        "specs/022 T019: the five contract checks + the committed-vs-rebuilt divergence red "
+        "over tools/wiring_manifest.nir. A CI/run_selfchecks instrument, never on a tick -- "
+        "the policy_manifest disposition, same as lake_rebuild_gate",
+    ),
     "replay_gate": (
         "permanent",
         "specs/022 T017: the G5 snapshot/replay criterion (RNG stream positions captured, "

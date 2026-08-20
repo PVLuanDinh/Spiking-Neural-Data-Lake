@@ -1551,6 +1551,40 @@ def self_check(root):
 
 
 # --------------------------------------------------------------------------------------------------
+# ---- T023 (specs/022): the manifest-sourced walk, REPORT-ONLY beside the AST walk ----------
+# distinct-from: the AST walk above -- same QUANTITY class (faculty-to-faculty routes), sourced
+#   from the DECLARED anatomy (substrate/wiring_manifest's committed artifact) instead of parsed
+#   code. Two-step retirement per the task: this lands report-only with a parity table; the AST
+#   walk retires and baselines re-record in a SEPARATE commit only after faculties migrate onto
+#   declared ports and the two views converge. The ratchet verdict below NEVER reads this.
+def manifest_parity_lines(res):
+    """The parity table: declared (manifest) vs measured (AST/census), day-one divergence
+    EXPECTED and recorded as the migration baseline -- never a red."""
+    try:
+        from snn_data_lake.substrate.wiring_manifest import ARTIFACT, WiringManifest
+
+        m = WiringManifest.load_artifact(ARTIFACT, strict=False)
+    except Exception as exc:  # noqa: BLE001 - availability is the finding, whatever the cause
+        return [
+            f"  manifest-sourced walk UNAVAILABLE ({type(exc).__name__}: {exc}) -- "
+            "the AST walk remains authoritative"
+        ]
+    declared_edges, declared_ports = len(m.edges), len(m.ports)
+    measured_fac = len(res.get("fac_cross", ()))
+    lines = [
+        "  MANIFEST-SOURCED WALK (T023, report-only -- the ratchet verdict never reads this):",
+        f"    declared port-to-port edges : {declared_edges:>4}   vs measured faculty-to-faculty reads : {measured_fac}",
+        f"    declared typed ports        : {declared_ports:>4}   (no AST analogue -- the declared surface itself)",
+        f"    declared REF escape hatches : {len(m.refs()):>4}   (audited census)",
+    ]
+    if declared_edges == 0 and declared_ports == 0:
+        lines.append(
+            "    parity: EXPECTED-DIVERGENT (manifest EMPTY until T025's first registrant; this "
+            "table is the migration baseline, and the AST walk retires only after convergence)"
+        )
+    return lines
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="P6 gate: workspace topology + connectome diff")
     ap.add_argument("--assert", dest="do_assert", action="store_true", help="exit 1 on any RED")
@@ -1565,6 +1599,22 @@ def main(argv=None):
 
     if args.self_check:
         lines, rows, control_rows = self_check(root)
+        # T023: the manifest-sourced walk's own liveness -- a CONSTRUCTED in-memory manifest
+        # with one edge must move its count 0 -> 1 (the "constructed regression moves BOTH"
+        # arm; the AST side's movement is the mutation rows below). Report-only, so it joins
+        # the liveness print, never the criteria verdict.
+        try:
+            from snn_data_lake.substrate.wiring_manifest import WiringManifest
+
+            probe = WiringManifest()
+            n0 = len(probe.edges)
+            probe.declare_edge("a", "out", "b", "in")
+            lines.append(
+                f"  manifest-sourced walk ALIVE: constructed edge moved the declared count "
+                f"{n0} -> {len(probe.edges)} (report-only beside the AST walk, T023)"
+            )
+        except Exception as exc:  # noqa: BLE001
+            lines.append(f"  manifest-sourced walk DEAD: {type(exc).__name__}: {exc}")
         print("=" * 98)
         print("P6 GATE SELF-CHECK -- is the walk alive, and can every criterion FIRE?")
         print("=" * 98)
@@ -1613,6 +1663,8 @@ def main(argv=None):
 
     res = measure(root)
     report(res, root)
+    for line in manifest_parity_lines(res):
+        print(line)
     failed = report_criteria(res)
     if args.do_assert:
         # LIVENESS FIRST. A dropped file makes every count SMALLER, so a broken walk presents as a

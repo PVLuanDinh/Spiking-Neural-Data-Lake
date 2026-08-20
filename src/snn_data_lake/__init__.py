@@ -445,6 +445,8 @@ REGIONS = {
         "kernel_tick",  # specs/022 T014: two-phase deterministic tick (P fixed, integer delivery); bare == delay + thread-equality reds
         "determinism_gate",  # specs/022 T015: T=1..16 byte-equal trains + measured frac_bits; bare == control arms + thread pair
         "replay_gate",  # specs/022 T017: G5 snapshot/restore with RNG stream positions; bare == all four arms, reduced ticks
+        "wiring_manifest",  # specs/022 T018: TypedPort + WiringManifest (declared anatomy); bare == five checks + five reds + NIR round-trip
+        "manifest_gate",  # specs/022 T019: the five contract checks + divergence red over the committed artifact; bare == assert + reds
         "safety_envelope",  # THE five approval-gated brainstem files, one definition + a SECURITY.md agreement check
         "ingest_guard",  # content boundary for outside data: licence deny-by-default + injection flagging
         "hf_stream",  # streamed HF datasets -> brain-consumable features (licence-gated, bounded)
