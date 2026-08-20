@@ -146,6 +146,11 @@ jobs:
       # is impossible. The exemption ratchet DOES bind already.
       - name: Region charge gate (census; floor binds at T039)
         run: python -m snn_data_lake.substrate.region_charge_gate --assert
+      # specs/022 T024: BINDING from day one -- a NEW phantom (connectome node no module in
+      # its region names) or a stale exemption reds the build; the 23 day-one phantoms are
+      # recorded rows that may only be deleted, never added to.
+      - name: Atlas-node gate (connectome naming census)
+        run: python -m snn_data_lake.substrate.atlas_node_gate --assert
 
   wheel:
     name: wheel packages the vendored model

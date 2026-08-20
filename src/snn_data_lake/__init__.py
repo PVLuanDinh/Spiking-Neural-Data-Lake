@@ -453,6 +453,7 @@ REGIONS = {
         "port_charge_probe",  # specs/022 T021: pinned-payload neuter + margin surveillance + replay-twice A/B; bare == both controls
         "envelope_hash_gate",  # specs/022 T021b: five envelope files' bytes vs approved baseline; bare == positive control + 3 reds
         "region_charge_gate",  # specs/022 T022: reachable AND port-charged per region (report-only until T039); bare == census + reds
+        "atlas_node_gate",  # specs/022 T024: every connectome node id named by its region or dated-EXEMPT; bare == census + probe reds
         "safety_envelope",  # THE five approval-gated brainstem files, one definition + a SECURITY.md agreement check
         "ingest_guard",  # content boundary for outside data: licence deny-by-default + injection flagging
         "hf_stream",  # streamed HF datasets -> brain-consumable features (licence-gated, bounded)

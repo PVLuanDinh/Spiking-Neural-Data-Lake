@@ -339,6 +339,20 @@ landing, 2026-08-20: **0 of 16 anatomical regions CHARGED; 13 REACHABLE-UNCHARGE
 modules yet). The 13-vs-0 gap is the rule's whole message: a tree can be almost fully
 reachable and zero-charged, which is exactly why reachability was never charge.
 
+**THE ATLAS-NODE RULE (specs/022 T024, landing WITH its counted gate).** Beneath charge
+sits NAMING: every `connectome.NODES` id must be named by ≥1 module in its own region
+(quoted id or anatomical prose — the reference rule and its two observed false-positive
+shapes are documented in the gate) or carry a dated EXEMPT row. A connectome node no code
+names is anatomy on paper only — the schematic growing structures the tree never
+implements. Gate: `substrate/atlas_node_gate.py`, BINDING from day one: a NEW phantom or a
+stale exemption reds the build; the recorded day-one rows may only be deleted, never added
+to (the ratchet). Counted at landing, 2026-08-20: **18 of 41 region-owned nodes resolved;
+23 day-one phantoms recorded** (including the `cb_ctx`/`pn` pair the spec predicted;
+effector nodes are outside every region by design and outside the denominator). Distinct
+from the region-charge rule the way P3 is distinct from P6: charge asks whether a wired
+edge measurably participates; this asks whether the declared anatomy is even named — the
+necessary condition below it.
+
 1. **wired + charged** — imported by a live path AND its output routes into behaviour (decision / value
    / learning / reply), proven to change an outcome;
 2. **retired** — superseded / no honest consumer → deleted (this is P2 applied to dormancy);

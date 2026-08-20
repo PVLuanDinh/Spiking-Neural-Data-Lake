@@ -440,6 +440,12 @@ EXEMPT = {
         "the floor; a CI/run_selfchecks instrument, never on a tick -- the policy_manifest "
         "disposition",
     ),
+    "atlas_node_gate": (
+        "permanent",
+        "specs/022 T024: connectome-node naming census (every NODES id named by >=1 module "
+        "in its region or dated-EXEMPT; 23 day-one phantoms recorded, ratchet down only). "
+        "A CI/run_selfchecks instrument, never on a tick -- the policy_manifest disposition",
+    ),
     "envelope_hash_gate": (
         "permanent",
         "specs/022 T021b: the envelope-BYTES gate (five brainstem files vs the approved "
