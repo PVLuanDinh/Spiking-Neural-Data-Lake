@@ -2552,7 +2552,7 @@ class Brain:
         THE METHOD NAME IS THE STABLE HANDLE AND THE LINE IS A HINT, deliberately in that order:
         the previous version of this table carried line numbers only, and its own insertion moved
         every reader below it by 70 lines, so the table shipped pointing at the wrong code. Re-derive
-        with `grep -n "self\._access_state" | grep -v "_access_state = "` rather than trusting the
+        with `grep -n "self\\._access_state" | grep -v "_access_state = "` rather than trusting the
         column.
 
         THREE FINDINGS, and the first is a correction of this table's own earlier reading.
