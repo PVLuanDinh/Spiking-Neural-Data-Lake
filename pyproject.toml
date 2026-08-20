@@ -259,7 +259,7 @@ desktop = ["pywebview"]                                                 # integr
 # spiking_chat). The one frontend is substrate/cockpit.py, which draws the anatomical brain, the
 # region rates and the arm in browser Canvas 2D from stdlib -- no matplotlib, no netplotbrain, and
 # no TemplateFlow download on first render. Nothing in the tree imports those six packages now.
-dev = ["pytest>=7.0", "pytest-cov", "ruff==0.15.20", "pre-commit"]       # tests + lint/format (NOT runtime; ruff PINNED, not floored -- see below)
+dev = ["pytest>=7.0", "pytest-cov", "pytest-xdist", "ruff==0.15.20", "pre-commit"]       # tests + lint/format (NOT runtime; ruff PINNED, not floored -- see below; xdist = the battery-pilot parallel runner, owner-approved 2026-08-20)
 # ruff is PINNED, not floored, as of 2026-07-29. The floor was `>=0.15.20`, matching
 # `.pre-commit-config.yaml`'s `rev: v0.15.20`. But a floor resolves to the newest release, so installing
 # the dev extra into a second environment picked up ruff 0.16.0 and created a THIRD formatting

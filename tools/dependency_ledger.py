@@ -131,6 +131,8 @@ USE_ROOTS = ("src", "integrations", "tools", "tests", "training", "research", "g
 TOOL_DISTS = {
     "pytest",
     "pytest-cov",
+    "pytest-xdist",  # the battery-pilot parallel runner (owner-approved 2026-08-20): a pytest
+    # plugin loaded by -n, correctly never imported by this project's code
     "ruff",
     "pre-commit",
     "pyinstaller",
