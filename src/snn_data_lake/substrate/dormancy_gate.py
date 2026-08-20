@@ -433,6 +433,14 @@ EXEMPT = {
         "JoinPolicy/DeliveryPolicy enforcement in signal_ring (T020). Bound by S0 exit (T039), "
         "not movable",
     ),
+    "port_charge_probe": (
+        "permanent",
+        "specs/022 T021: the port-granularity charge instruments (pinned-payload neuter with "
+        "read counting, cleanup-margin surveillance, replay-twice A/B) with both external "
+        "controls in-command. A measurement instrument consumed by the region charge gate "
+        "(T022) and re-proven against the first real registrant (T025); never on a tick -- "
+        "the policy_manifest disposition",
+    ),
     "manifest_gate": (
         "permanent",
         "specs/022 T019: the five contract checks + the committed-vs-rebuilt divergence red "

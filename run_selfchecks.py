@@ -331,6 +331,7 @@ CORE = [
     "substrate.replay_gate",  # 022 T017: G5 resume byte-identical + omit-positions/mismatch refusals + re-seed divergence control
     "substrate.wiring_manifest",  # 022 T018: five checks + constructed reds + NIR-HDF5 round-trip on a scratch manifest
     "substrate.manifest_gate",  # 022 T019: committed-artifact checks + divergence/join/region reds through the gate's verdict path
+    "substrate.port_charge_probe",  # 022 T021: sensitivity flip + specificity hold + margin varied-vs-frozen separation
     "substrate.safety_envelope",  # THE five approval-gated brainstem files: assert code and SECURITY.md still name the same five
     "substrate.ingest_guard",  # outside-data content boundary: licence deny-by-default + injection flagging
     "substrate.hf_stream",  # streamed HF datasets -> features; offline self-check (no network, no datasets dep)
