@@ -1554,8 +1554,12 @@ The instrument half of the claim stands; the line does not.)*
   unreachable; the float-accumulation broken arm runs IN THE SAME COMMAND (f32 order arms
   must diverge, int64 arms must agree) so the gate is never trusted on a red nobody has seen
   fire. Counted at landing, 2026-08-20: trains BYTE-EQUAL T=1..16 at P=8 (631 spikes per
-  arm), V_c=0.0, V_ermv=0.0, both control arms correct. G5 replay (RNG stream positions) is
-  the companion S0 exit gate (T017), not this row.
+  arm), V_c=0.0, V_ermv=0.0, both control arms correct. G5 replay is the companion S0 exit
+  gate (T017, `substrate/replay_gate.py --assert` in CI): snapshots capture per-instance RNG
+  stream POSITIONS (a seed names a stream, a position names a point on it), restore itself
+  asserts position equality and refuses a positionless or parameter-mismatched snapshot, and
+  the continuation is byte-identical — counted at landing 2026-08-20 with the re-seeded
+  divergence control proving the equality is not vacuous.
 - **Safety envelope untouched:** the five brainstem files — `reflex.py`, `serial_arm.py`,
   `so101_arm.py`, `arm_config.py`, `interpreter.py` — are modified only with explicit approval; the reflex E-STOP and
   cortisol/safety paths are never relaxed. Every wired drive enters selection **after** the E-STOP

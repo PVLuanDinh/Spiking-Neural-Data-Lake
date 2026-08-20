@@ -125,6 +125,11 @@ jobs:
       # the pinned-host measurement recorded in tools/determinism_baseline.json (12).
       - name: Determinism gate (T=1..16 byte-equal at fixed P; broken control in-command)
         run: python -m snn_data_lake.substrate.determinism_gate --assert
+      # specs/022 T017: G5 -- a snapshot resumes THE SAME trajectory (RNG stream positions, not
+      # seeds), with the omit-positions and parameter-mismatch refusals and the re-seeded
+      # divergence control all in the same command. L7's battery replays through this.
+      - name: G5 replay gate (snapshot resume byte-identical; refusal reds in-command)
+        run: python -m snn_data_lake.substrate.replay_gate --assert
 
   wheel:
     name: wheel packages the vendored model

@@ -425,6 +425,13 @@ EXEMPT = {
         "promised), so the ONE named live producer is the two-phase kernel tick (T013+). "
         "Bound by S0 exit (T039), not movable again",
     ),
+    "replay_gate": (
+        "permanent",
+        "specs/022 T017: the G5 snapshot/replay criterion (RNG stream positions captured, "
+        "restore asserts position equality, continuation byte-identical, omit-positions and "
+        "parameter-mismatch refusals). A CI/run_selfchecks instrument that L7's battery will "
+        "consume; never on a tick -- the policy_manifest disposition",
+    ),
     "determinism_gate": (
         "permanent",
         "specs/022 T015: the determinism criterion over kernel_tick (T=1..16 byte-equal at a "

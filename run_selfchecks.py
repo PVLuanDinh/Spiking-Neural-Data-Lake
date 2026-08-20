@@ -328,6 +328,7 @@ CORE = [
     "substrate.kernel_state",  # 022 T013: SoA alignment/contiguity + scratch-lake round-trip + refusal reds
     "substrate.kernel_tick",  # 022 T014: delay-ring arrival + T=1==T=4 train equality + imbalance + refusals
     "substrate.determinism_gate",  # 022 T015: f32-diverges/int64-agrees control arms + a thread pair (full sweep in CI --assert)
+    "substrate.replay_gate",  # 022 T017: G5 resume byte-identical + omit-positions/mismatch refusals + re-seed divergence control
     "substrate.safety_envelope",  # THE five approval-gated brainstem files: assert code and SECURITY.md still name the same five
     "substrate.ingest_guard",  # outside-data content boundary: licence deny-by-default + injection flagging
     "substrate.hf_stream",  # streamed HF datasets -> features; offline self-check (no network, no datasets dep)
