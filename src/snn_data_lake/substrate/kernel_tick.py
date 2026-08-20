@@ -241,6 +241,7 @@ def _bench_kernel(n_units, fan_out, p_parts, threads, n_ticks, seed=7):
     fraction fires per tick (activity, not silence, is what delivery costs)."""
     import numpy as np
 
+    from snn_data_lake.substrate.determinism_gate import binding_frac_bits
     from snn_data_lake.substrate.kernel_state import KernelState
 
     nprng = np.random.default_rng(seed)
@@ -248,7 +249,7 @@ def _bench_kernel(n_units, fan_out, p_parts, threads, n_ticks, seed=7):
     post = nprng.integers(0, n_units, size=n_units * fan_out)
     weight = nprng.normal(0.05, 0.02, size=n_units * fan_out)
     delay = nprng.integers(1, 9, size=n_units * fan_out)
-    frac_bits = 16  # bench-only placeholder; the BINDING value is T015's measurement (D6)
+    frac_bits = binding_frac_bits(default=16)  # T015's MEASURED value once recorded (12)
     state = KernelState([("bench", n_units)])
     state.arrays["thr"][:] = 1.0
     syn = Synapses(pre, post, weight, delay, n_units, p_parts, frac_bits)

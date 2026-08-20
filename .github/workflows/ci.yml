@@ -119,6 +119,12 @@ jobs:
       # with the planted-divergence red and the lake-tracking control proven in the same run.
       - name: Lake index rebuild gate (equality + divergence red + tracking control)
         run: python -m snn_data_lake.substrate.lake_rebuild_gate
+      # specs/022 T015: correctness, not performance, so it DOES assert here -- byte-identical
+      # trains across T=1..16 at the gate's constructed fixed P, V_c/V_ermv both zero, with the
+      # float-accumulation broken arm proving the red fires IN THE SAME COMMAND. frac_bits is
+      # the pinned-host measurement recorded in tools/determinism_baseline.json (12).
+      - name: Determinism gate (T=1..16 byte-equal at fixed P; broken control in-command)
+        run: python -m snn_data_lake.substrate.determinism_gate --assert
 
   wheel:
     name: wheel packages the vendored model

@@ -425,6 +425,13 @@ EXEMPT = {
         "promised), so the ONE named live producer is the two-phase kernel tick (T013+). "
         "Bound by S0 exit (T039), not movable again",
     ),
+    "determinism_gate": (
+        "permanent",
+        "specs/022 T015: the determinism criterion over kernel_tick (T=1..16 byte-equal at a "
+        "constructed fixed P, V_c/V_ermv zero, measured frac_bits, float-accumulation broken "
+        "arm in-command). A CI/run_selfchecks instrument, never on a tick -- the "
+        "policy_manifest disposition, same as lake_rebuild_gate",
+    ),
     "kernel_tick": (
         "wire",
         "specs/022 T014: the two-phase deterministic tick over kernel_state (P fixed per "

@@ -1,0 +1,19 @@
+{
+  "frac_bits": 12,
+  "rule": "smallest candidate whose 40-tick trains equal the FP64 reference (raw weights, T=1)",
+  "bench": "96 LIF units x 768 random edges, delays 1..5, 8 driven, seed 11, P=8",
+  "sweep_train_equals_fp64": {
+    "4": false,
+    "6": false,
+    "8": false,
+    "10": false,
+    "12": true,
+    "14": true,
+    "16": true,
+    "20": true,
+    "24": true
+  },
+  "red_bits_diverged": 1,
+  "host": "LUAN_AND_ANNIE",
+  "utc": "2026-08-20T01:27:16Z"
+}

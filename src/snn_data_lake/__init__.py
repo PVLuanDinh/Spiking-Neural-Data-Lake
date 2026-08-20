@@ -415,6 +415,7 @@ REGIONS = {
         "signal_ring",  # specs/022 T011: ONE-writer multicast ring + lake journaller; bare == replay A/B + overrun red
         "kernel_state",  # specs/022 T013: SoA substrate state, 128B-aligned, lake-backed; bare == alignment + round-trip + refusal reds
         "kernel_tick",  # specs/022 T014: two-phase deterministic tick (P fixed, integer delivery); bare == delay + thread-equality reds
+        "determinism_gate",  # specs/022 T015: T=1..16 byte-equal trains + measured frac_bits; bare == control arms + thread pair
         "safety_envelope",  # THE five approval-gated brainstem files, one definition + a SECURITY.md agreement check
         "ingest_guard",  # content boundary for outside data: licence deny-by-default + injection flagging
         "hf_stream",  # streamed HF datasets -> brain-consumable features (licence-gated, bounded)

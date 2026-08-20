@@ -1541,6 +1541,21 @@ The instrument half of the claim stands; the line does not.)*
 
 ## Cross-cutting invariants (never relaxed by any policy)
 
+- **THE DETERMINISM CONTRACT (specs/022 T015, landing WITH its counted gate per the
+  gate-before-rule invariant).** The substrate tick is deterministic BY MECHANISM, never by
+  luck: fixed partition count P per lineage, partition-owned INTEGER synaptic accumulation
+  (order-invariant outright; fractional bits MEASURED against an FP64 reference, never picked
+  — 12 on the pinned host, `tools/determinism_baseline.json`, with 4–10 bits proven to
+  diverge and the sweep's own red at 1 bit), and spike trains byte-identical across thread
+  counts at fixed P with end-run membranes byte-equal beside them.
+  Gate: `substrate/determinism_gate.py --assert` (CI, self-checks job) — its sweep runs at a
+  CONSTRUCTED fixed P=8 because the lineage's measured P is 1
+  (`tools/kernel_partition_baseline.json`) and at P=1 the thread-invariance red is
+  unreachable; the float-accumulation broken arm runs IN THE SAME COMMAND (f32 order arms
+  must diverge, int64 arms must agree) so the gate is never trusted on a red nobody has seen
+  fire. Counted at landing, 2026-08-20: trains BYTE-EQUAL T=1..16 at P=8 (631 spikes per
+  arm), V_c=0.0, V_ermv=0.0, both control arms correct. G5 replay (RNG stream positions) is
+  the companion S0 exit gate (T017), not this row.
 - **Safety envelope untouched:** the five brainstem files — `reflex.py`, `serial_arm.py`,
   `so101_arm.py`, `arm_config.py`, `interpreter.py` — are modified only with explicit approval; the reflex E-STOP and
   cortisol/safety paths are never relaxed. Every wired drive enters selection **after** the E-STOP
