@@ -39,6 +39,13 @@ NODES = {
     "ctx_pfc": ("cortex", "prefrontal / association cortex"),
     "thal_relay": ("thalamus", "thalamic relay nucleus"),
     "trn": ("thalamus", "thalamic reticular nucleus (TRN, inhibitory gate)"),
+    # specs/022 T021a: the higher-order thalamic nuclei + the insular terminus. pulvinar and
+    # md are HIGHER-ORDER relays (driven BY cortex, projecting back to cortex -- the
+    # transthalamic cortico-pulvinar-cortical route P6's topology needs); insula is the
+    # interoceptive cortical terminus (module: insula/interoceptive_integration).
+    "pulvinar": ("thalamus", "pulvinar (higher-order visual/attentional relay)"),
+    "md": ("thalamus", "mediodorsal nucleus (MD, prefrontal higher-order relay)"),
+    "insula": ("insula", "insular cortex (interoceptive integration)"),
     "striatum": ("basal_ganglia", "striatum (D1 direct / D2 indirect)"),
     "gpe": ("basal_ganglia", "external pallidum (GPe)"),
     "gpi_snr": ("basal_ganglia", "internal pallidum / SNr (BG output)"),
@@ -112,6 +119,31 @@ def _e(source, target, tract, sign, cls, loop=None, weight=1.0, delay=1):
 
 # the directed, typed edge list (canonical long-range projections)
 EDGES = [
+    # specs/022 T021a -- the interoceptive tract terminus + transthalamic routes. DELAYS ARE
+    # DERIVED, not picked, and the arithmetic is shown so the derivation survives review:
+    #   delay_ticks = max(1, round(tract_latency_ms / tick_ms))
+    # tract_latency_ms = conduction + one synaptic delay for a mono-synaptic mammalian tract,
+    # 2-15 ms across every tract below (myelinated central axons 10-80 m/s over <=15 cm paths
+    # + ~1 ms synapse); tick_ms = this substrate's OWN measured wake-tick period, ~107 ms p50
+    # (tools/perf_baseline.json, S0-kernel stage) -- so every mono-synaptic tract derives to
+    # max(1, round(0.02..0.14)) = 1, and multi-hop routes accumulate latency STRUCTURALLY
+    # (the transthalamic route is 2 ticks over its 2 edges, insula ignition 3 over 3). The
+    # per-tract VALUE variation for the pre-existing 83 edges remains the recorded open P1
+    # (see the module note above _e); these eight discharge it for the NEW edges by deriving.
+    _e("nts_rvlm", "thal_relay", "viscerosensory NTS -> thalamus relay", "exc", "relay"),
+    _e("thal_relay", "insula", "interoceptive thalamocortical radiation", "exc", "relay"),
+    _e("insula", "gwt", "insular ignition afferent (interoceptive salience)", "exc", "relay"),
+    _e("insula", "ctx_pfc", "insulo-prefrontal projection", "exc", "relay"),
+    _e(
+        "ctx_sensory",
+        "pulvinar",
+        "cortico-pulvinar driver (transthalamic leg 1)",
+        "exc",
+        "descending",
+    ),
+    _e("pulvinar", "ctx_pfc", "pulvino-cortical projection (transthalamic leg 2)", "exc", "relay"),
+    _e("ctx_pfc", "md", "prefronto-mediodorsal corticothalamic", "exc", "descending"),
+    _e("md", "ctx_pfc", "mediodorsal-prefrontal radiation", "exc", "relay"),
     # thalamocortical loop (+ the TRN inhibitory gate)
     _e("thal_relay", "ctx_sensory", "thalamocortical radiation", "exc", "relay", "thalamocortical"),
     _e(

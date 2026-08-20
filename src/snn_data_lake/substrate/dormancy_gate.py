@@ -433,6 +433,17 @@ EXEMPT = {
         "JoinPolicy/DeliveryPolicy enforcement in signal_ring (T020). Bound by S0 exit (T039), "
         "not movable",
     ),
+    "interoceptive_integration": (
+        "wire",
+        "specs/022 T021a: the insular region's first faculty -- deviation-from-self "
+        "interoceptive salience, terminus of the declared tract "
+        "viscera->nts_rvlm->thal_relay->insula->{gwt, ctx_pfc}. Deliberately NOT wired yet: "
+        "its typed port (the interoception channel producer) lands with US1's registrants "
+        "(T025/T026), and wiring ahead of the declared ports would be the force-wiring P6 "
+        "forbids. The p6 unimplemented-pairs ceiling was raised 21->24 for this same "
+        "declared-ahead anatomy with the fall-back obligation recorded there. Bound by S0 "
+        "exit (T039), not movable",
+    ),
     "port_charge_probe": (
         "permanent",
         "specs/022 T021: the port-granularity charge instruments (pinned-payload neuter with "

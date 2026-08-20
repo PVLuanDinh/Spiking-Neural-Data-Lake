@@ -42,6 +42,15 @@ _SIGN_EXC = "exc"
 _SIGN_INH = "inh"
 _NEUROMOD = ("da", "ne", "5ht", "ach")  # diffuse chemical classes -> scale target gain
 
+#: The HIGHER-ORDER thalamic nuclei (specs/022 T021a): relays whose DRIVING afferent is
+#: cortex, not periphery -- pulvinar (cortico-pulvinar-cortical) and MD (prefronto-
+#: mediodorsal). Routed like every node (one LIF pool each), named here because the
+#: distinction is thalamic anatomy this module owns: a first-order relay lesion silences a
+#: sense; a higher-order lesion degrades cortico-cortical routing. The self-check asserts
+#: these ids exist in connectome.NODES under the thalamus region (parity, so this tuple can
+#: never quietly outlive the map it names).
+HIGHER_ORDER_NUCLEI = ("pulvinar", "md")
+
 
 class ConnectomeRouter:
     """Spike-propagation router over the static connectome.
@@ -447,11 +456,24 @@ def main():
         f"(e) parallel LIF     row-partitioned on {forced_nt} threads == whole-array, byte-identical "
         f"(v + rate); 12 ticks agree end to end"
     )
+    # (f) higher-order nuclei parity (T021a): the tuple this module names must match the map
+    # it names them FROM -- an id here that left connectome.NODES, or drifted out of the
+    # thalamus region, is a stale anatomical claim and fails loudly.
+    from snn_data_lake import connectome as _conn
+
+    for _nid in HIGHER_ORDER_NUCLEI:
+        assert _nid in _conn.NODES and _conn.NODES[_nid][0] == "thalamus", (
+            f"HIGHER_ORDER_NUCLEI id {_nid!r} is not a thalamus node in connectome.NODES"
+        )
+    print(
+        f"(f) higher-order     {', '.join(HIGHER_ORDER_NUCLEI)} present as thalamus nodes (parity)"
+    )
     print("=" * 70)
     print(
         f"self-check OK: driving ec propagates to dg/ca3 (ob/pir isolated); inhibitory edge reduces "
         f"thal_relay {exc_only:.3f}->{exc_plus_inh:.3f}; loop reverberates {rev_loop:.4f} vs no-loop "
-        f"{rev_none:.4f}; deterministic; {n_edges} projections over {r.n} pools"
+        f"{rev_none:.4f}; deterministic; {n_edges} projections over {r.n} pools; higher-order "
+        f"nuclei parity held"
     )
 
 

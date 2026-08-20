@@ -89,13 +89,18 @@ REGION_CENTER = {
     "cerebellum": (0.00, -0.70, -0.45),  # posterior + inferior (behind + below)
     "olfactory": (0.00, 0.60, -0.42),  # anterior-inferior frontal base
     "claustrum": (0.45, 0.10, 0.05),  # lateral (insula/putamen border), bilateral
+    "insula": (
+        0.52,
+        0.15,
+        0.05,
+    ),  # lateral sulcus depth, just superficial to claustrum, bilateral (T021a)
     "neuromodulation": (0.00, -0.10, -0.25),  # diffuse nuclei -- real sub-sources below
     "plasticity": (0.00, 0.00, 0.25),  # distributed (scattered across cortex + hippocampus)
     "substrate": (0.00, -0.35, -1.05),  # NON-anatomical infra cloud, BELOW the brain
     "reasoning": (0.00, 0.70, 0.40),  # folded research/cognition cloud, anterior (prefrontal)
 }
 
-BILATERAL = {"hippocampus", "amygdala", "basal_ganglia", "claustrum"}
+BILATERAL = {"hippocampus", "amygdala", "basal_ganglia", "claustrum", "insula"}
 
 # per-region jitter radius (scalar = isotropic; a 3-tuple = per-axis, for elongated structures)
 _RADIUS = {

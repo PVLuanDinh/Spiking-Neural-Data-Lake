@@ -320,7 +320,18 @@ BASELINE = {
     "unread_writer_modules": 6,
     "cross_module_reads": 1,
     "undeclared_import_pairs": 11,
-    "unimplemented_declared_pairs": 21,
+    # RAISED 21 -> 24 on 2026-08-20 (specs/022 T021a), and per this gate's own rule a raise is
+    # an ADMISSION, so here it is: the insula tract + transthalamic routes (8 new declared
+    # edges: nts_rvlm->thal_relay->insula->{gwt, ctx_pfc}; ctx_sensory->pulvinar->ctx_pfc;
+    # ctx_pfc<->md) add 3 region pairs whose code cannot reach each other YET -- the anatomy
+    # is deliberately declared AHEAD of its wiring, because the wiring is US1's job (the
+    # interoception channel producer at T025+ imports along the tract) and declaring routes
+    # first is what lets the manifest and this gate police that wiring when it lands. The
+    # cheapest honest alternative -- fake imports to keep the number flat -- is the exact
+    # force-wiring this gate's doctrine forbids. The ceiling must fall back to <=21 when US1
+    # wires the tract; leaving it at 24 after T039 is a defect, recorded here so the number
+    # cannot quietly become the new normal.
+    "unimplemented_declared_pairs": 24,
 }
 
 # name -> (kind, human sentence, why this shape and not the obvious neighbour)
