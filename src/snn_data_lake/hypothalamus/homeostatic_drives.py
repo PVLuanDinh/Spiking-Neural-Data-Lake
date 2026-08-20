@@ -67,6 +67,30 @@ Per-instance random.Random(seed), ASCII-only, deterministic, no import-time side
 import math
 import random
 
+
+def declare_ports(manifest):
+    """Manifest registrant (specs/022 T026): the VALENCE half of the interoceptive channel.
+    OUT the three normalized drive deficits (energy, curiosity, social; each deficit /
+    set_point in [0,1] -- unmet need IS the negative-valence body signal), delivered whole
+    each tick. The consumer edge is declared by the insula terminus."""
+    from snn_data_lake.substrate.wiring_manifest import Port
+
+    manifest.declare_port(
+        "homeostatic_drives",
+        Port(
+            name="drive_deficit_out",
+            region="hypothalamus",
+            shape=(3,),
+            dtype="f4",
+            unit="level01",
+            encoding="VEC_DENSE",
+            kind="OUT",
+            declaring_module="homeostatic_drives",
+            delivery_policy="all-or-none",
+        ),
+    )
+
+
 #: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "_train_values": (

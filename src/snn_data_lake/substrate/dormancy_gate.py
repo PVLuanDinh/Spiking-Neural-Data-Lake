@@ -439,13 +439,13 @@ EXEMPT = {
     ),
     "interoceptive_integration": (
         "wire",
-        "specs/022 T021a: the insular region's first faculty -- deviation-from-self "
-        "interoceptive salience, terminus of the declared tract "
-        "viscera->nts_rvlm->thal_relay->insula->{gwt, ctx_pfc}. Deliberately NOT wired yet: "
-        "its typed port (the interoception channel producer) lands with US1's registrants "
-        "(T025/T026), and wiring ahead of the declared ports would be the force-wiring P6 "
-        "forbids. The p6 unimplemented-pairs ceiling was raised 21->24 for this same "
-        "declared-ahead anatomy with the fall-back obligation recorded there. Bound by S0 "
+        "specs/022 T026 (was T021a): ports DECLARED and both body edges CHARGE-MEASURED "
+        "per edge (vary-one-freeze-one replay-twice; attributions in "
+        "tools/region_charge_evidence.json). What remains is the STATIC live-path import: "
+        "manifest_gate reaches this module only via importlib (invisible to this walker), "
+        "and the interoception_out coalition consumer lands with the workspace resolution "
+        "(T030/T031) -- that import retires this row. The p6 fall-back obligation "
+        "(unimplemented-pairs 24 -> <=21) discharges with the same consumer. Bound by S0 "
         "exit (T039), not movable",
     ),
     "replay_gate": (

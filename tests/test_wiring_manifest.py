@@ -133,20 +133,22 @@ def test_gate_green_on_committed_artifact_and_divergence_red(tmp_path):
 
 
 def test_artifact_is_tracked_and_loadable():
-    # Premise updated at T025 exactly as the day-one message demanded: the first real
-    # registrant pair landed (serotonin patience wire), so the committed anatomy is now
-    # 2 ports + THE edge. A count above this means a registrant landed without updating
-    # this premise again; a count below means a declaration was lost.
+    # The premise updates WITH each registrant commit, deliberately (its failure message
+    # demands exactly that): T025 landed the serotonin patience wire (2 ports, 1 edge);
+    # T026 added the interoceptive channel (arousal + drives producers, the insula
+    # body_in concat terminus and its edge-less interoception_out). A count above the pin
+    # means a registrant landed without updating this premise; below means a declaration
+    # was lost.
     pytest.importorskip("nir")
     m = WiringManifest.load_artifact(ARTIFACT)
-    assert (len(m.ports), len(m.edges)) == (2, 1), (
-        "the T025 artifact carries the serotonin patience wire (2 ports, 1 edge); a "
-        "different census means a registrant landed without updating this test's premise"
+    assert (len(m.ports), len(m.edges)) == (6, 3), (
+        "the T026 artifact carries the patience wire + the interoceptive channel "
+        "(6 ports, 3 edges); a different census means a registrant landed without "
+        "updating this test's premise"
     )
-    assert m.edges[0] == (
-        "raphe_serotonin",
-        "five_ht_out",
-        "evidence_accumulation",
-        "patience_in",
-    ), "the one committed edge must be the declared patience subscription"
+    assert set(m.edges) == {
+        ("raphe_serotonin", "five_ht_out", "evidence_accumulation", "patience_in"),
+        ("homeostatic_drives", "drive_deficit_out", "interoceptive_integration", "body_in"),
+        ("interoceptive_arousal", "arousal_out", "interoceptive_integration", "body_in"),
+    }, "the committed edges must be exactly the declared subscriptions"
     assert m.all_findings() == [], "the committed artifact must satisfy all five checks"

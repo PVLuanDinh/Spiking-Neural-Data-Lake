@@ -51,6 +51,29 @@ from snn_data_lake.hypothalamus.set_points import SET_POINT_TEMP, Homeostat
 from snn_data_lake.medulla.vital_nuclei import MedullaVitalNuclei
 
 
+def declare_ports(manifest):
+    """Manifest registrant (specs/022 T026): the AROUSAL half of the interoceptive channel.
+    OUT [stress, caution] in [0,1] -- the ascending NTS->LC map's bounded outputs, delivered
+    whole each tick (tonic modulators, no graded association source). The consumer edge is
+    declared by the insula terminus (its subscription, its join)."""
+    from snn_data_lake.substrate.wiring_manifest import Port
+
+    manifest.declare_port(
+        "interoceptive_arousal",
+        Port(
+            name="arousal_out",
+            region="medulla",
+            shape=(2,),
+            dtype="f4",
+            unit="level01",
+            encoding="VEC_DENSE",
+            kind="OUT",
+            declaring_module="interoceptive_arousal",
+            delivery_policy="all-or-none",
+        ),
+    )
+
+
 class InteroceptiveArousal:
     """Ascending NTS -> LC map: visceral homeostatic error -> bounded caution + arousal gain.
 

@@ -18,10 +18,17 @@ not to raw intensity), and it is the quantity the US1 coalition channels consume
 (`arousal`/`valence` producers, T026): a body far from baseline should find it easier to
 ignite the workspace.
 
-NOT YET WIRED, stated plainly: no live path drives this module today. Its port declaration
-(the interoception channel producer) lands at US1 with the T025+ registrants; the dormancy
-exemption names that consumer and its bound. Wiring it now, ahead of the typed ports it is
-supposed to declare, would be exactly the force-wiring P6's honesty guard forbids.
+WIRED AT T026 (specs/022): this module is now a manifest registrant. IN `body_in` joins the
+two declared interoceptive producers by CONCAT in producer-sorted order --
+homeostatic_drives' three normalized deficits, then interoceptive_arousal's [stress,
+caution] -- so BODY_CHANNELS below IS the concat layout, stated once and asserted in the
+self-check. OUT `interoception_out` (feeling_salience) is the interoception channel the
+dormancy exemption promised; its coalition consumer lands with the workspace resolution
+(T030/T031), so the OUT port is declared edge-less today and this module remains off the
+static live-import graph until that consumer imports it (the exemption row says exactly
+that). Charge is MEASURED per edge: two replay-twice A/Bs, each varying ONE producer's
+payload while the other stays constant, so divergence attributes to THAT edge -- a single
+whole-join neuter could not separate the two producers.
 """
 
 # distinct-from: medulla/interoceptive_arousal.py -- the BRAINSTEM half (arousal drive from
@@ -39,6 +46,108 @@ import sys
 #: must be referenced by >=1 module in its region -- these are those references for insula)
 CONNECTOME_NODES = ("insula",)
 TRACT = ("viscera", "nts_rvlm", "thal_relay", "insula", "gwt")
+
+#: the concat layout of `body_in`, producer-sorted (signal_ring's concat order):
+#: homeostatic_drives (3 normalized deficits) then interoceptive_arousal ([stress, caution])
+BODY_CHANNELS = ("energy_deficit", "curiosity_deficit", "social_deficit", "stress", "caution")
+
+#: the declared edges, exactly as the manifest carries them -- the charge evidence cites them
+AROUSAL_EDGE = ("interoceptive_arousal", "arousal_out", "interoceptive_integration", "body_in")
+DRIVES_EDGE = ("homeostatic_drives", "drive_deficit_out", "interoceptive_integration", "body_in")
+
+
+def declare_ports(manifest):
+    """Manifest registrant (specs/022 T026, the consumer half): `body_in` (concat over the
+    two interoceptive producers) + both edges, and `interoception_out` -- the interoception
+    channel producer the T021a exemption promised (its coalition consumer lands T030/T031,
+    so it carries no edge yet; a declared-ahead OUT is the anatomy, not force-wiring)."""
+    from snn_data_lake.substrate.wiring_manifest import Port
+
+    manifest.declare_port(
+        "interoceptive_integration",
+        Port(
+            name="body_in",
+            region="insula",
+            shape=(len(BODY_CHANNELS),),
+            dtype="f4",
+            unit="level01",
+            encoding="VEC_DENSE",
+            kind="IN",
+            declaring_module="interoceptive_integration",
+            join_policy="concat",
+        ),
+    )
+    manifest.declare_port(
+        "interoceptive_integration",
+        Port(
+            name="interoception_out",
+            region="insula",
+            shape=(1,),
+            dtype="f4",
+            unit="level01",
+            encoding="SCALAR_DENSE",
+            kind="OUT",
+            declaring_module="interoceptive_integration",
+            delivery_policy="all-or-none",
+        ),
+    )
+    manifest.declare_edge(*DRIVES_EDGE)
+    manifest.declare_edge(*AROUSAL_EDGE)
+
+
+def _body_consumer_factory():
+    """Fresh ring + JoinConsumer over the declared `body_in` port, one pair per replay arm.
+    slots=256: the 40-tick schedule publishes 80 frames, and the review's ring-overrun
+    finding proved 64 slots silently dropped ticks 1-8 while every counter still agreed --
+    capacity is now derived-with-headroom, and consume_body treats ANY loss as fatal."""
+    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+
+    m = WiringManifest()
+    declare_ports(m)
+    port = m.ports[("interoceptive_integration", "body_in")]
+    ring = SignalRing(slots=256)
+    return ring, JoinConsumer(ring, port)
+
+
+def consume_body(consumer):
+    """The downstream computation under measurement: each joined body frame feeds observe()
+    and yields that tick's feeling_salience. Returns [(tick, salience), ...]. LOSS IS
+    FATAL here: a measurement over a partial record is not a smaller measurement, it is a
+    different experiment (the review caught 16 of 80 frames silently dropped with every
+    downstream counter still self-consistent)."""
+    ii = InteroceptiveIntegration(channels=BODY_CHANNELS)
+    out = []
+    joined, lost = consumer.poll_joined()
+    assert not lost, f"charge measurement lost {lost} frames -- ring overrun, never smooth this"
+    for tick, vec in joined:
+        sal = ii.observe(**dict(zip(BODY_CHANNELS, (float(x) for x in vec))))
+        out.append((tick, round(sal, 6)))
+    return out
+
+
+# distinct-from: basal_ganglia/evidence_accumulation.py -- serotonin's single-edge A/B;
+#   this is the body wire's per-edge pair over the instrument-layer schedules. Read.
+def _measure_edge_charge(vary):
+    """One per-edge replay-twice A/B: -> (live, pinned_out, reads, responded) where
+    `responded` = the live salience at the challenge exceeds the settled pre-challenge
+    salience (the varying producer moved the insula; the frozen one could not have).
+    The frame schedules live in the INSTRUMENT layer
+    (port_charge_probe.interoceptive_challenge_frames) -- importing the producers from
+    here put two undeclared region pairs on the import graph and the p6 ratchet went red;
+    the declared tract relays through thalamus, and code was not allowed to shortcut it."""
+    from snn_data_lake.substrate.port_charge_probe import (
+        interoceptive_challenge_frames,
+        replay_twice,
+    )
+
+    frames, spike_at = interoceptive_challenge_frames(vary)
+    live, pinned_out, reads = replay_twice(
+        frames, _body_consumer_factory, consume_body, [0.2] * len(BODY_CHANNELS)
+    )
+    pre = max(s for t, s in live if spike_at - 5 <= t < spike_at)
+    post = max(s for t, s in live if t >= spike_at)
+    return live, pinned_out, reads, post > max(pre * 2, 0.05)
 
 
 class InteroceptiveIntegration:
@@ -120,14 +229,79 @@ def main() -> int:
             f"(spike={spike:.4f} -> adapted={adapted:.4f})"
         )
         return 1
+    # ---- THE BODY WIRE IS CHARGED, per edge, measured (specs/022 T026) -----------------
+    from snn_data_lake.substrate.port_charge_probe import read_attribution
+
+    for edge, vary in ((AROUSAL_EDGE, "arousal"), (DRIVES_EDGE, "drives")):
+        live, pinned_out, reads, responded = _measure_edge_charge(vary)
+        if reads != len(live):
+            print(f"interoceptive_integration self-check FAILED: {reads} reads != {len(live)}")
+            return 1
+        if live == pinned_out:
+            print(
+                f"interoceptive_integration self-check FAILED: pinning the joined body "
+                f"payload did not change salience (vary={vary}) -- a declared, not a "
+                f"charged, edge"
+            )
+            return 1
+        if not responded:
+            print(
+                f"interoceptive_integration self-check FAILED: the {vary} challenge did "
+                f"not raise live salience -- divergence without response attributes nothing"
+            )
+            return 1
+        rec = read_attribution(edge)
+        if rec is None or rec.get("diverged") is not True:
+            print(
+                f"interoceptive_integration self-check FAILED: no committed attribution "
+                f"for {edge} -- regenerate with --record-charge and commit it"
+            )
+            return 1
+        fresh = {"reads": reads, "n_frames": len(live)}
+        if rec.get("measured", {}) != fresh:
+            print(
+                f"interoceptive_integration self-check FAILED: recorded {rec.get('measured')} "
+                f"does not reproduce fresh {fresh} -- regenerate with --record-charge"
+            )
+            return 1
     print(
         "interoceptive_integration self-check OK: quiet body -> low salience "
         f"({late_quiet:.4f}); perturbation -> {spike:.4f}; frozen-baseline red fired; "
         f"habituation to the new normal -> {adapted:.4f}. Tract terminus for "
-        f"{' -> '.join(TRACT)}; NOT on a live path yet (US1 declares the port)."
+        f"{' -> '.join(TRACT)}. BODY WIRE CHARGED per edge: arousal and drives challenges "
+        "each diverged live-vs-pinned with every frame read and raised salience; committed "
+        "attributions reproduce."
     )
     return 0
 
 
+# distinct-from: basal_ganglia/evidence_accumulation.py -- its record_charge measures the
+#   SEROTONIN wire's single edge; this measures the BODY wire's TWO edges with per-edge
+#   vary-one-freeze-one schedules. Both delegate to port_charge_probe.record_attribution,
+#   THE one writer. Read.
+def record_charge():
+    """Measure both per-edge A/Bs and record their attributions via THE one writer
+    (port_charge_probe.record_attribution). REFUSES a non-diverged or non-responding run."""
+    from snn_data_lake.substrate.port_charge_probe import record_attribution
+
+    for edge, vary in ((AROUSAL_EDGE, "arousal"), (DRIVES_EDGE, "drives")):
+        live, pinned_out, reads, responded = _measure_edge_charge(vary)
+        if live == pinned_out or not responded:
+            print(f"record_charge REFUSED for {edge}: no divergence or no response")
+            return 1
+        path = record_attribution(
+            edge,
+            {"reads": reads, "n_frames": len(live)},
+            f"per-edge replay_twice: only the {vary} producer varied (the other frozen at "
+            "its quiet vector), live diverged from the pinned join and salience rose at "
+            "the challenge -- divergence attributes to THIS edge; self-check re-measures "
+            "and requires `measured` to reproduce",
+        )
+        print(f"recorded {edge} into {path}")
+    return 0
+
+
 if __name__ == "__main__":
+    if "--record-charge" in sys.argv[1:]:
+        sys.exit(record_charge())
     sys.exit(main())

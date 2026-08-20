@@ -46,6 +46,11 @@ from snn_data_lake.substrate.wiring_manifest import (
 REGISTRANTS: tuple = (
     ("snn_data_lake.neuromodulation.raphe_serotonin", "declare_ports"),
     ("snn_data_lake.basal_ganglia.evidence_accumulation", "declare_ports"),
+    # T026: the interoceptive channel -- two producer halves, then the insula terminus
+    # (whose declare_ports carries both edges and the interoception_out channel)
+    ("snn_data_lake.medulla.interoceptive_arousal", "declare_ports"),
+    ("snn_data_lake.hypothalamus.homeostatic_drives", "declare_ports"),
+    ("snn_data_lake.insula.interoceptive_integration", "declare_ports"),
 )
 
 

@@ -73,6 +73,87 @@ def margin_frozen(margins, tol=0.0) -> bool:
     return len(vals) >= 2 and max(vals) - min(vals) <= tol
 
 
+# consolidates: basal_ganglia/evidence_accumulation.py (merge)
+# Its T025 record_charge wrote the whole evidence file as a single row (the next registrant
+# would have deleted the first's attribution). This read-modify-write per edge supersedes
+# that inline writer; evidence_accumulation's record_charge becomes a caller of THIS
+# function in the same change (merge disposition -- the module stays, its writer delegates).
+def record_attribution(edge, measured, provenance):
+    """THE one writer for tools/region_charge_evidence.json: read-modify-write that
+    replaces this edge's row or appends it, so one registrant's regeneration can never
+    delete another's attribution. Callers must have MEASURED divergence before calling --
+    this records, it never certifies."""
+    import json
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[3] / "tools" / "region_charge_evidence.json"
+    rows = json.loads(path.read_text()).get("attributions", []) if path.exists() else []
+    rows = [r for r in rows if tuple(r.get("edge", ())) != tuple(edge)]
+    rows.append(
+        {"edge": list(edge), "diverged": True, "measured": measured, "provenance": provenance}
+    )
+    rows.sort(key=lambda r: r["edge"])
+    path.write_text(json.dumps({"attributions": rows}, indent=2) + "\n")
+    return path
+
+
+def read_attribution(edge):
+    """The committed row for `edge`, or None. The read half of record_attribution."""
+    import json
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[3] / "tools" / "region_charge_evidence.json"
+    if not path.exists():
+        return None
+    rows = json.loads(path.read_text()).get("attributions", [])
+    mine = [r for r in rows if tuple(r.get("edge", ())) == tuple(edge)]
+    return mine[0] if mine else None
+
+
+# distinct-from: basal_ganglia/evidence_accumulation.py -- its _measure_patience_charge
+#   records SEROTONIN frames from the raphe (a route the connectome declares, so the
+#   consumer may import its producer directly); this builds the T026 INTEROCEPTIVE frames,
+#   which touch two regions whose direct import the connectome does NOT declare -- hence
+#   the instrument-layer home. Read.
+def interoceptive_challenge_frames(vary, n_ticks=40, spike_at=30):
+    """The T026 recorded challenge schedules (moved here from insula at review: a consumer
+    importing its producers DIRECTLY put two region pairs on the import graph that the
+    connectome declares no route for -- the declared tract relays through thalamus -- and
+    the p6 undeclared-pairs ratchet went red exactly as designed. The INSTRUMENT layer is
+    where measurement code that touches multiple regions belongs, the T021 precedent).
+
+    Exactly ONE producer follows its challenge schedule; the other is FROZEN at its quiet
+    vector -- so any live-arm response attributes to the varying producer's edge (per-edge
+    attribution; a whole-join neuter cannot separate two producers). vary in
+    {'arousal', 'drives'}. -> (frames, spike_at). Deterministic."""
+    from snn_data_lake.hypothalamus.homeostatic_drives import SET_POINT, HomeostaticDrives
+    from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
+
+    arousal = InteroceptiveArousal(seed=0)
+    drives = HomeostaticDrives()
+    quiet_a = arousal.sense(0.0)
+    quiet_d = drives.deficit()
+
+    def deficit_vec(deficits):
+        return [min(1.0, deficits[k] / SET_POINT) for k in ("energy", "curiosity", "social")]
+
+    service = ("rest", "explore", "socialize")  # round-robin keeps every deficit near zero
+    frames = []
+    for t in range(1, n_ticks + 1):
+        challenged = t >= spike_at
+        if vary == "arousal":
+            a = arousal.sense(3.0 if challenged else 0.0)
+            frames.append((t, "interoceptive_arousal", [a["stress"], a["caution"]]))
+            frames.append((t, "homeostatic_drives", deficit_vec(quiet_d)))
+        else:
+            # the challenge is TOTAL neglect: servicing stops, every deficit climbs at its
+            # drift rate -- a real discontinuity against the near-zero serviced baseline
+            drives.tick(None if challenged else service[t % 3])
+            frames.append((t, "interoceptive_arousal", [quiet_a["stress"], quiet_a["caution"]]))
+            frames.append((t, "homeostatic_drives", deficit_vec(drives.deficit())))
+    return frames, spike_at
+
+
 def replay_twice(frames, consumer_factory, consume, pinned):
     """The A/B: drive the SAME recorded frames through a fresh consumer twice -- live, then
     with the payload pinned -- and return (live_out, pinned_out, reads). Divergence between

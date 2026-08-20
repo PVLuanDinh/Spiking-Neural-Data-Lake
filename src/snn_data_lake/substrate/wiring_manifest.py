@@ -306,17 +306,39 @@ class WiringManifest:
         import nir
         import numpy as np
 
+        # A concat IN port fans in producers of DIFFERENT shapes; NIR has no concat
+        # primitive and its own infer_types demands shape equality along every edge, so the
+        # projection represents such a port as per-source input TAPS ({dst}@{src}, each with
+        # its source's shape). The join itself rides only in the JSON payload -- exactly the
+        # declared-lossy contract above (same bucket as join/delivery policies and units);
+        # the round-trip criterion was always on the JSON, byte-exact.
         nodes, nir_edges = {}, []
+        concat_ins = {
+            k for k, p in self.ports.items() if p.kind == "IN" and p.join_policy == "concat"
+        }
+        incoming: dict = {}
+        for src_f, src_p, dst_f, dst_p in self.edges:
+            incoming.setdefault((dst_f, dst_p), []).append((src_f, src_p))
         for (fac, name), p in sorted(self.ports.items()):
             nid = f"{fac}.{name}"
             arr = np.array(p.shape, dtype=np.int64)
-            nodes[nid] = (
-                nir.Output(output_type={"output": arr})
-                if p.kind == "OUT"
-                else nir.Input(input_type={"input": arr})
-            )
+            if p.kind == "OUT":
+                nodes[nid] = nir.Output(output_type={"output": arr})
+            elif (fac, name) in concat_ins and incoming.get((fac, name)):
+                # tap keyed on the full SOURCE PORT, not the faculty alone -- two OUT
+                # ports of one faculty into one concat IN is a legal manifest, and a
+                # faculty-keyed tap collapsed both onto one node (review-constructed red)
+                for src_f, src_p in sorted(incoming[(fac, name)]):
+                    sp = self.ports.get((src_f, src_p))
+                    tap = np.array((sp.shape if sp else p.shape), dtype=np.int64)
+                    nodes[f"{nid}@{src_f}.{src_p}"] = nir.Input(input_type={"input": tap})
+            else:
+                nodes[nid] = nir.Input(input_type={"input": arr})
         for src_f, src_p, dst_f, dst_p in self.edges:
-            nir_edges.append((f"{src_f}.{src_p}", f"{dst_f}.{dst_p}"))
+            dst_id = f"{dst_f}.{dst_p}"
+            if (dst_f, dst_p) in concat_ins:
+                dst_id = f"{dst_id}@{src_f}.{src_p}"
+            nir_edges.append((f"{src_f}.{src_p}", dst_id))
         graph = nir.NIRGraph(nodes=nodes, edges=nir_edges)
         # nir.write() takes a PATH and opens the file itself (measured: handing it an h5py
         # File raises TypeError in filename_encode) -- so write to a temp file, append the
@@ -442,7 +464,75 @@ def main() -> int:
         if back.to_dict() != m.to_dict():
             print("wiring_manifest self-check FAILED: HDF5 round-trip diverged")
             return 1
-        nir_note = "NIR-HDF5 round-trip byte-exact on the JSON payload"
+        # the concat -> per-source-tap projection arm (review: this branch had no red
+        # anywhere -- the committed artifact exercised it while nothing in the battery
+        # did). Constructed here with the HARDEST legal shape: TWO OUT ports of the SAME
+        # faculty into one concat IN (the case a faculty-keyed tap collapsed and crashed).
+        mc = WiringManifest()
+        for pname, shp in (("a_out", (2,)), ("b_out", (3,))):
+            mc.declare_port(
+                "salience",
+                Port(
+                    name=pname,
+                    region="neuromodulation",
+                    shape=shp,
+                    dtype="f4",
+                    unit="rate_hz",
+                    encoding="VEC_DENSE",
+                    kind="OUT",
+                    declaring_module="raphe_serotonin",
+                    delivery_policy="all-or-none",
+                ),
+            )
+        mc.declare_port(
+            "workspace",
+            Port(
+                name="cat_in",
+                region="thalamus",
+                shape=(5,),
+                dtype="f4",
+                unit="rate_hz",
+                encoding="VEC_DENSE",
+                kind="IN",
+                declaring_module="global_workspace",
+                join_policy="concat",
+            ),
+        )
+        mc.declare_edge("salience", "a_out", "workspace", "cat_in")
+        mc.declare_edge("salience", "b_out", "workspace", "cat_in")
+        if mc.all_findings():
+            print("wiring_manifest self-check FAILED: the concat construction is not legal")
+            return 1
+        cback = WiringManifest.from_hdf5_bytes(mc.to_hdf5_bytes())
+        if cback.to_dict() != mc.to_dict():
+            print("wiring_manifest self-check FAILED: concat-tap round-trip diverged")
+            return 1
+        import os as _os
+        import tempfile as _tempfile
+
+        import h5py as _h5py  # noqa: F401  (nir.read needs the same container)
+        import nir as _nir
+
+        fd, tmp = _tempfile.mkstemp(suffix=".nir")
+        _os.close(fd)
+        try:
+            Path(tmp).write_bytes(mc.to_hdf5_bytes())
+            # nir.write materializes its own input_/output_ wrapper nodes; the taps under
+            # test are OURS, so filter the wrappers before comparing
+            taps = {
+                n
+                for n in _nir.read(tmp).nodes
+                if "@" in n and not n.startswith(("input_", "output_"))
+            }
+        finally:
+            Path(tmp).unlink(missing_ok=True)
+        if taps != {"workspace.cat_in@salience.a_out", "workspace.cat_in@salience.b_out"}:
+            print(f"wiring_manifest self-check FAILED: tap nodes wrong or collapsed ({taps})")
+            return 1
+        nir_note = (
+            "NIR-HDF5 round-trip byte-exact on the JSON payload; concat-tap projection "
+            "arm green (same-faculty two-port fan-in kept two distinct taps)"
+        )
     else:
         nir_note = "NIR SKIPPED LOUDLY (nir not importable here; structure checks unaffected)"
     # The declared-anatomy census, reported from the ONE declaration path (REGISTRANTS).

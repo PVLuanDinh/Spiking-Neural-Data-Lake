@@ -2,6 +2,34 @@
   "attributions": [
     {
       "edge": [
+        "homeostatic_drives",
+        "drive_deficit_out",
+        "interoceptive_integration",
+        "body_in"
+      ],
+      "diverged": true,
+      "measured": {
+        "reads": 40,
+        "n_frames": 40
+      },
+      "provenance": "per-edge replay_twice: only the drives producer varied (the other frozen at its quiet vector), live diverged from the pinned join and salience rose at the challenge -- divergence attributes to THIS edge; self-check re-measures and requires `measured` to reproduce"
+    },
+    {
+      "edge": [
+        "interoceptive_arousal",
+        "arousal_out",
+        "interoceptive_integration",
+        "body_in"
+      ],
+      "diverged": true,
+      "measured": {
+        "reads": 40,
+        "n_frames": 40
+      },
+      "provenance": "per-edge replay_twice: only the arousal producer varied (the other frozen at its quiet vector), live diverged from the pinned join and salience rose at the challenge -- divergence attributes to THIS edge; self-check re-measures and requires `measured` to reproduce"
+    },
+    {
+      "edge": [
         "raphe_serotonin",
         "five_ht_out",
         "evidence_accumulation",

@@ -534,70 +534,51 @@ def _measure_patience_charge():
     return live, pinned_out, reads, spec_live == spec_pinned
 
 
-def _evidence_path():
-    from pathlib import Path
-
-    return Path(__file__).resolve().parents[3] / "tools" / "region_charge_evidence.json"
-
-
 # distinct-from: cortex/metacognitive_monitor.py -- that is a live rate-quantile HOLD bar;
 #   this checks a COMMITTED evidence artifact against a fresh in-command measurement. Read.
 def _assert_recorded_evidence_live(live, reads):
     """The committed attribution must correspond to the measurement THIS run just took --
     a recorded charge nobody can re-measure is a declaration with a timestamp. As of T025
-    the evidence file is TRACKED, so an absent file is a RED, not a note (review finding:
+    the evidence file is TRACKED, so an absent row is a RED, not a note (review finding:
     a commit that drops the untracked JSON would otherwise leave every gate green while
     the census claim silently evaporates). The recorded numbers must REPRODUCE: same read
     count, same RT endpoints, exactly (the measurement is deterministic). (Read-only: the
     writer is --record-charge, never the self-check -- a battery run must not republish a
     tracked artifact.)"""
-    import json
+    from snn_data_lake.substrate.port_charge_probe import read_attribution
 
-    path = _evidence_path()
-    assert path.exists(), (
-        "tools/region_charge_evidence.json is MISSING -- the T025 attribution is part of "
-        "the tree; regenerate with --record-charge and commit it"
+    rec = read_attribution(PATIENCE_EDGE)
+    assert rec is not None and rec.get("diverged") is True, (
+        f"committed charge evidence must carry the diverged {PATIENCE_EDGE} attribution -- "
+        "regenerate with --record-charge and commit it"
     )
-    rows = json.loads(path.read_text()).get("attributions", [])
-    mine = [r for r in rows if tuple(r.get("edge", ())) == PATIENCE_EDGE]
-    assert mine and mine[0].get("diverged") is True, (
-        f"committed charge evidence must carry the diverged {PATIENCE_EDGE} attribution"
-    )
-    rec = mine[0].get("measured", {})
     fresh = {"reads": reads, "lo_rt": live[0][2], "hi_rt": live[-1][2]}
-    assert rec == fresh, (
-        f"recorded charge evidence does not reproduce: recorded {rec} vs fresh {fresh} -- "
-        "the wire changed; regenerate with --record-charge in the same commit"
+    assert rec.get("measured", {}) == fresh, (
+        f"recorded charge evidence does not reproduce: recorded {rec.get('measured')} vs "
+        f"fresh {fresh} -- the wire changed; regenerate with --record-charge in the same commit"
     )
 
 
 def record_charge():
-    """Measure the A/B and write the attribution the region charge gate consumes. REFUSES
-    to record a non-diverged run -- evidence is a measurement, never a declaration."""
-    import json
+    """Measure the A/B and record the attribution via THE one writer
+    (port_charge_probe.record_attribution -- T026 consolidated the T025 inline writer into
+    it). REFUSES to record a non-diverged run -- evidence is a measurement, never a
+    declaration."""
+    from snn_data_lake.substrate.port_charge_probe import record_attribution
 
     live, pinned_out, reads, spec_holds = _measure_patience_charge()
     if live == pinned_out or not spec_holds:
         print("record_charge REFUSED: the A/B did not diverge (or specificity broke)")
         return 1
-    path = _evidence_path()
-    payload = {
-        "attributions": [
-            {
-                "edge": list(PATIENCE_EDGE),
-                "diverged": True,
-                "measured": {"reads": reads, "lo_rt": live[0][2], "hi_rt": live[-1][2]},
-                "provenance": (
-                    "port_charge_probe.replay_twice over the raphe LEVELS sweep; the "
-                    "self-check re-measures and requires `measured` to reproduce exactly, "
-                    "so this record cannot outlive the wire it describes; specificity "
-                    "control held (payload-ignoring consumer did not flip)"
-                ),
-            }
-        ]
-    }
-    path.write_text(json.dumps(payload, indent=2) + "\n")
-    print(f"wrote {path} (1 measured attribution; regeneration is the only edit path)")
+    path = record_attribution(
+        PATIENCE_EDGE,
+        {"reads": reads, "lo_rt": live[0][2], "hi_rt": live[-1][2]},
+        "port_charge_probe.replay_twice over the raphe LEVELS sweep; the self-check "
+        "re-measures and requires `measured` to reproduce exactly, so this record cannot "
+        "outlive the wire it describes; specificity control held (payload-ignoring "
+        "consumer did not flip)",
+    )
+    print(f"recorded {PATIENCE_EDGE} into {path}")
     return 0
 
 
