@@ -334,6 +334,7 @@ CORE = [
     "substrate.port_charge_probe",  # 022 T021: sensitivity flip + specificity hold + margin varied-vs-frozen separation
     "insula.interoceptive_integration",  # 022 T021a: deviation-from-self salience + frozen-baseline red + habituation
     "substrate.envelope_hash_gate",  # 022 T021b: live five-file control + tamper/stale-approval/unbaselined reds
+    "substrate.region_charge_gate",  # 022 T022: registration-never-greens + constructed attribution + non-diverged-charges-nothing
     "substrate.safety_envelope",  # THE five approval-gated brainstem files: assert code and SECURITY.md still name the same five
     "substrate.ingest_guard",  # outside-data content boundary: licence deny-by-default + injection flagging
     "substrate.hf_stream",  # streamed HF datasets -> features; offline self-check (no network, no datasets dep)

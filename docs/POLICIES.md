@@ -324,6 +324,21 @@ proper noun from it leaves nothing, it was a research direction.
 **Every part of the brain must never remain dormant; all present AND future builds must be wired and
 utilized appropriately.** A faculty is not "done" until it is one of three dispositions:
 
+**THE REGION-CHARGE RULE (specs/022 T022, landing WITH its counted gate per the
+gate-before-rule invariant).** At REGION granularity, "charged" is a conjunction:
+REACHABLE (the dormancy gate's one walk, reused — never re-derived) AND ≥1 wiring-manifest
+port edge touching the region carrying a MEASURED charge attribution (a replay-twice
+divergence from `substrate/port_charge_probe`, recorded in
+`tools/region_charge_evidence.json` — never a declaration). **Registration alone never
+greens a region.** Gate: `substrate/region_charge_gate.py` — REPORT-ONLY until the T039
+exit certification writes the integer floor into `tools/region_charge_floor.json` (FR-015's
+blank); its exemption rows carry {region, reason, owner, date, expiry} with a ratcheting
+count ceiling (0 at introduction; raising it is an owner-visible admission). Counted at
+landing, 2026-08-20: **0 of 16 anatomical regions CHARGED; 13 REACHABLE-UNCHARGED;
+3 UNREACHABLE** (insula deliberately unwired until its US1 port; olfactory and pons own no
+modules yet). The 13-vs-0 gap is the rule's whole message: a tree can be almost fully
+reachable and zero-charged, which is exactly why reachability was never charge.
+
 1. **wired + charged** — imported by a live path AND its output routes into behaviour (decision / value
    / learning / reply), proven to change an outcome;
 2. **retired** — superseded / no honest consumer → deleted (this is P2 applied to dormancy);

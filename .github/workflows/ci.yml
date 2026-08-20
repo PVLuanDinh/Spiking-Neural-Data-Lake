@@ -141,6 +141,11 @@ jobs:
       # touches the envelope.
       - name: Envelope-hash gate (five files vs approved baseline)
         run: python -m snn_data_lake.substrate.envelope_hash_gate --assert
+      # specs/022 T022: REPORT-ONLY by construction until T039 writes the integer floor
+      # (tools/region_charge_floor.json); the census prints either way, so an empty green
+      # is impossible. The exemption ratchet DOES bind already.
+      - name: Region charge gate (census; floor binds at T039)
+        run: python -m snn_data_lake.substrate.region_charge_gate --assert
 
   wheel:
     name: wheel packages the vendored model

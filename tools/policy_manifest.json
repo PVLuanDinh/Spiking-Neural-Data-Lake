@@ -55,7 +55,7 @@
         }
       ],
       "id": "P3",
-      "kind": "absolute",
+      "kind": "ratchet",
       "subclause_of": null,
       "table_only": false,
       "title": "No dormancy"

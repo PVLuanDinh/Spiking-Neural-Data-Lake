@@ -433,6 +433,13 @@ EXEMPT = {
         "JoinPolicy/DeliveryPolicy enforcement in signal_ring (T020). Bound by S0 exit (T039), "
         "not movable",
     ),
+    "region_charge_gate": (
+        "permanent",
+        "specs/022 T022: the region-granularity charge verdict (reachable AND measured "
+        "port-edge attribution; registration never greens). Report-only until T039 writes "
+        "the floor; a CI/run_selfchecks instrument, never on a tick -- the policy_manifest "
+        "disposition",
+    ),
     "envelope_hash_gate": (
         "permanent",
         "specs/022 T021b: the envelope-BYTES gate (five brainstem files vs the approved "
