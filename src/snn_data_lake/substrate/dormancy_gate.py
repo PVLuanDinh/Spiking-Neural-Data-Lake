@@ -433,6 +433,13 @@ EXEMPT = {
         "JoinPolicy/DeliveryPolicy enforcement in signal_ring (T020). Bound by S0 exit (T039), "
         "not movable",
     ),
+    "envelope_hash_gate": (
+        "permanent",
+        "specs/022 T021b: the envelope-BYTES gate (five brainstem files vs the approved "
+        "baseline tools/envelope_hashes.json; updating the baseline IS the owner-approval "
+        "act). A CI/run_selfchecks instrument, never on a tick, and the envelope is never "
+        "its target -- it reads and compares. The policy_manifest disposition",
+    ),
     "interoceptive_integration": (
         "wire",
         "specs/022 T021a: the insular region's first faculty -- deviation-from-self "

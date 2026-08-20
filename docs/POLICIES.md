@@ -1574,7 +1574,13 @@ The instrument half of the claim stands; the line does not.)*
   asserts position equality and refuses a positionless or parameter-mismatched snapshot, and
   the continuation is byte-identical — counted at landing 2026-08-20 with the re-seeded
   divergence control proving the equality is not vacuous.
-- **Safety envelope untouched:** the five brainstem files — `reflex.py`, `serial_arm.py`,
+- **Safety envelope untouched — and MECHANIZED since specs/022 T021b:**
+  `substrate/envelope_hash_gate.py --assert` (CI) holds the five files' sha256 against the
+  approved baseline `tools/envelope_hashes.json`; an envelope byte change without its
+  same-commit baseline update (the owner-approval act, reviewable in the diff) reds the
+  build, with no bypass flag on purpose. Counted at landing 2026-08-20: live five-file
+  positive control green; tamper, stale-approval and unbaselined reds all fired. The gate
+  reads and compares — the envelope is never its target. The five brainstem files — `reflex.py`, `serial_arm.py`,
   `so101_arm.py`, `arm_config.py`, `interpreter.py` — are modified only with explicit approval; the reflex E-STOP and
   cortisol/safety paths are never relaxed. Every wired drive enters selection **after** the E-STOP
   early-return, so it is safe by construction (proven: max drive + distance 0 → EMERGENCY_STOP).

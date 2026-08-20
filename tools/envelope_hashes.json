@@ -1,0 +1,25 @@
+{
+  "note": "The envelope-hash baseline: updating this file IS the owner-approval act for an envelope byte change, reviewable in the same commit's diff.",
+  "files": {
+    "brainstem/reflex.py": {
+      "sha256": "5c8afced322033ea204fcce5ab53bf98e02c82da43be7e4302f44361479e7ab4",
+      "approved": "T021b initial baseline: envelope bytes UNCHANGED by this commit (the gate is new, the envelope is not); recorded under the 2026-08-20 autonomous handoff, specs/022"
+    },
+    "brainstem/serial_arm.py": {
+      "sha256": "ec190d43305a7e7eb372d3280f6e27005dc625dfe2bd9f2168655e501d46c6bd",
+      "approved": "T021b initial baseline: envelope bytes UNCHANGED by this commit (the gate is new, the envelope is not); recorded under the 2026-08-20 autonomous handoff, specs/022"
+    },
+    "brainstem/so101_arm.py": {
+      "sha256": "64bd88dfce3ff78205e9925aee19274c93d8614da879ea691afba4ec3cc64a52",
+      "approved": "T021b initial baseline: envelope bytes UNCHANGED by this commit (the gate is new, the envelope is not); recorded under the 2026-08-20 autonomous handoff, specs/022"
+    },
+    "brainstem/arm_config.py": {
+      "sha256": "c06b4435620b803a65461309f7eb473fef681abffc5d5fd996bd352d3e20a38d",
+      "approved": "T021b initial baseline: envelope bytes UNCHANGED by this commit (the gate is new, the envelope is not); recorded under the 2026-08-20 autonomous handoff, specs/022"
+    },
+    "brainstem/interpreter.py": {
+      "sha256": "f742007645c18af9c4d072340ffd8c772303eeea6638450f94d69ea4020a3a60",
+      "approved": "T021b initial baseline: envelope bytes UNCHANGED by this commit (the gate is new, the envelope is not); recorded under the 2026-08-20 autonomous handoff, specs/022"
+    }
+  }
+}

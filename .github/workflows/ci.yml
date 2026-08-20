@@ -136,6 +136,11 @@ jobs:
       # five structure checks never depend on it.
       - name: Manifest gate (five contract checks + divergence red)
         run: python -m snn_data_lake.substrate.manifest_gate --assert
+      # specs/022 T021b: an envelope byte change without its same-commit baseline update
+      # (the owner-approval act) reds the build. The gate reads and compares; it never
+      # touches the envelope.
+      - name: Envelope-hash gate (five files vs approved baseline)
+        run: python -m snn_data_lake.substrate.envelope_hash_gate --assert
 
   wheel:
     name: wheel packages the vendored model

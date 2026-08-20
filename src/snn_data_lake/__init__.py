@@ -451,6 +451,7 @@ REGIONS = {
         "wiring_manifest",  # specs/022 T018: TypedPort + WiringManifest (declared anatomy); bare == five checks + five reds + NIR round-trip
         "manifest_gate",  # specs/022 T019: the five contract checks + divergence red over the committed artifact; bare == assert + reds
         "port_charge_probe",  # specs/022 T021: pinned-payload neuter + margin surveillance + replay-twice A/B; bare == both controls
+        "envelope_hash_gate",  # specs/022 T021b: five envelope files' bytes vs approved baseline; bare == positive control + 3 reds
         "safety_envelope",  # THE five approval-gated brainstem files, one definition + a SECURITY.md agreement check
         "ingest_guard",  # content boundary for outside data: licence deny-by-default + injection flagging
         "hf_stream",  # streamed HF datasets -> brain-consumable features (licence-gated, bounded)
