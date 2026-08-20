@@ -51,6 +51,8 @@ REGISTRANTS: tuple = (
     ("snn_data_lake.medulla.interoceptive_arousal", "declare_ports"),
     ("snn_data_lake.hypothalamus.homeostatic_drives", "declare_ports"),
     ("snn_data_lake.insula.interoceptive_integration", "declare_ports"),
+    # T027: the glia wire -- the astrocyte gain field as a diffuse channel (self-edge)
+    ("snn_data_lake.neuromodulation.astrocyte_modulation", "declare_ports"),
 )
 
 

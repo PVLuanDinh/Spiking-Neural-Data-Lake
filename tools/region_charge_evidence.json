@@ -2,6 +2,20 @@
   "attributions": [
     {
       "edge": [
+        "astrocyte_modulation",
+        "glial_gain_out",
+        "astrocyte_modulation",
+        "synaptic_gain_in"
+      ],
+      "diverged": true,
+      "measured": {
+        "reads": 80,
+        "n_frames": 80
+      },
+      "provenance": "replay_twice: the real astrocyte's engaging gain field vs a pinned unmodulated [1.0, 1.0]; downstream LIF spike counts diverged and rose after Ca crossed threshold -- the diffuse channel, not the schedule, moved transmission; self-check re-measures and requires `measured` to reproduce"
+    },
+    {
+      "edge": [
         "homeostatic_drives",
         "drive_deficit_out",
         "interoceptive_integration",

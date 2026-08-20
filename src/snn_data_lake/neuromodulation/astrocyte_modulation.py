@@ -93,8 +93,168 @@ class Astrocyte:
         return list(self.gains)
 
     def modulated_transmission(self, domain, presynaptic_drive):
-        """Wrapped-synapse output: presynaptic drive scaled by the domain's current glial gain."""
-        return presynaptic_drive * self.gains[domain]
+        """Wrapped-synapse output: presynaptic drive scaled by the domain's current glial
+        gain. Producer-side convenience over THE one transmission mechanism below -- the
+        VolumeTransmitter consumer calls the same function with the gain it RECEIVED on
+        the declared channel (T027 review: the first draft re-implemented `drive * gain`
+        inline, leaving this capability with zero consumers and a P2 second mechanism)."""
+        return modulated_transmission(self.gains[domain], presynaptic_drive)
+
+
+def modulated_transmission(gain, presynaptic_drive):
+    """THE tripartite-synapse transmission mechanism: presynaptic drive scaled by the
+    glial gain -- one definition, called by the Astrocyte producer-side method above and
+    by the VolumeTransmitter channel consumer below (P2: exactly one path)."""
+    return presynaptic_drive * gain
+
+
+def declare_ports(manifest):
+    """Manifest registrant (specs/022 T027, the glia wire): the astrocyte's per-domain
+    gain field as a VolumeTransmitter-style DIFFUSE channel. OUT `glial_gain_out` carries
+    the domain gains; IN `synaptic_gain_in` is the wrapped tissue's receiving surface (the
+    VolumeTransmitter relay below), joined `sum` over its single source. The edge is a
+    SELF-EDGE deliberately: the tripartite synapse's third element modulates transmission
+    in the SAME tissue it wraps -- producer and consumer share the faculty the way glia
+    and synapses share the neuropil. Delivery is all-or-none (the whole gain field each
+    tick); a distance-graded delivery would need T020's graded association binding, which
+    finalizes at T030 -- stated, not smuggled."""
+    from snn_data_lake.substrate.wiring_manifest import Port
+
+    manifest.declare_port(
+        "astrocyte_modulation",
+        Port(
+            name="glial_gain_out",
+            region="neuromodulation",
+            shape=(2,),
+            dtype="f4",
+            unit="gain_x",
+            encoding="VEC_DENSE",
+            kind="OUT",
+            declaring_module="astrocyte_modulation",
+            delivery_policy="all-or-none",
+        ),
+    )
+    manifest.declare_port(
+        "astrocyte_modulation",
+        Port(
+            name="synaptic_gain_in",
+            region="neuromodulation",
+            shape=(2,),
+            dtype="f4",
+            unit="gain_x",
+            encoding="VEC_DENSE",
+            kind="IN",
+            declaring_module="astrocyte_modulation",
+            join_policy="sum",
+        ),
+    )
+    manifest.declare_edge(
+        "astrocyte_modulation", "glial_gain_out", "astrocyte_modulation", "synaptic_gain_in"
+    )
+
+
+#: the declared self-edge, exactly as the manifest carries it -- the charge evidence cites it
+GLIA_EDGE = ("astrocyte_modulation", "glial_gain_out", "astrocyte_modulation", "synaptic_gain_in")
+
+
+class VolumeTransmitter:
+    """The diffuse channel's first live consumer (specs/022 T027): a wrapped-synapse relay
+    that routes a fixed presynaptic drive through the RECEIVED glial gain field and reports
+    the downstream LIF spike count per tick. It owns no astrocyte -- the gain arrives on
+    the declared channel, which is what makes the neuter meaningful: pin the field to 1.0
+    and the relay must fall back to baseline transmission."""
+
+    def __init__(self, domain=0, drive=0.11, window=30):
+        self.domain = domain
+        self.drive = drive
+        self.window = window  # LIF integration window per delivered gain frame
+
+    # distinct-from: brainstem/closed_loop.py -- the arm's signal->command loop; and
+    # distinct-from: substrate/cockpit.py -- an HTTP handler test shim. Neither scales a
+    #   synaptic current by a received glial gain; phrase overlap only. Read.
+    def transmit(self, gain_vec):
+        """Scale the fixed presynaptic current through modulated_transmission() using this
+        domain's RECEIVED gain, run the LIF window, return its spike count."""
+        gain = float(gain_vec[self.domain])
+        current = modulated_transmission(gain, self.drive)
+        return sum(LIFNeuron().run([current] * self.window))
+
+
+def _glia_consumer_factory():
+    """Fresh ring + JoinConsumer over the declared `synaptic_gain_in` port, per replay arm."""
+    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+
+    m = WiringManifest()
+    declare_ports(m)
+    port = m.ports[("astrocyte_modulation", "synaptic_gain_in")]
+    ring = SignalRing(slots=128)
+    return ring, JoinConsumer(ring, port)
+
+
+def consume_gain_field(consumer):
+    """The downstream computation under measurement: each delivered gain frame drives the
+    VolumeTransmitter relay; returns [(tick, spikes), ...]. LOSS IS FATAL (the T026
+    ring-overrun lesson: a measurement over a partial record is a different experiment)."""
+    vt = VolumeTransmitter()
+    out = []
+    joined, lost = consumer.poll_joined()
+    assert not lost, f"charge measurement lost {lost} frames -- ring overrun, never smooth this"
+    for tick, vec in joined:
+        out.append((tick, vt.transmit(vec)))
+    return out
+
+
+def _gain_frames(n_ticks=80, engage_at=10):
+    """Recorded frames from the REAL astrocyte: quiet until `engage_at`, then sustained
+    activity drives Ca past threshold and the gain field engages. n_ticks=80 because the
+    glia are SLOW by construction (tau_ca = 50; the first 40-tick schedule left Ca at
+    ~0.45 < the 0.5 threshold and the measurement honestly REFUSED -- the refusal
+    criterion working). -> (frames, engage_at)."""
+    astro = Astrocyte(n_domains=2)
+    frames = []
+    for t in range(1, n_ticks + 1):
+        gains = astro.step([1.0 if t >= engage_at else 0.0, 0.0])
+        frames.append((t, "astrocyte_modulation", list(gains)))
+    return frames, engage_at
+
+
+def _measure_glia_charge():
+    """The replay-twice A/B: live gain field vs a pinned unmodulated field [1.0, 1.0].
+    -> (live, pinned_out, reads, responded): `responded` = spikes in the settled tail
+    exceed the pre-engagement baseline (the glial field, not the schedule, moved
+    transmission)."""
+    from snn_data_lake.substrate.port_charge_probe import replay_twice
+
+    frames, engage_at = _gain_frames()
+    n = frames[-1][0]
+    live, pinned_out, reads = replay_twice(
+        frames, _glia_consumer_factory, consume_gain_field, [1.0, 1.0]
+    )
+    pre = max(s for t, s in live if t < engage_at)
+    post = max(s for t, s in live if t > n - 15)  # the settled tail, past the slow Ca ramp
+    return live, pinned_out, reads, post > pre
+
+
+def record_charge():
+    """Measure the A/B and record the attribution via THE one writer. REFUSES a
+    non-diverged or non-responding run -- evidence is a measurement, never a declaration."""
+    from snn_data_lake.substrate.port_charge_probe import record_attribution
+
+    live, pinned_out, reads, responded = _measure_glia_charge()
+    if live == pinned_out or not responded:
+        print(f"record_charge REFUSED for {GLIA_EDGE}: no divergence or no response")
+        return 1
+    path = record_attribution(
+        GLIA_EDGE,
+        {"reads": reads, "n_frames": len(live)},
+        "replay_twice: the real astrocyte's engaging gain field vs a pinned unmodulated "
+        "[1.0, 1.0]; downstream LIF spike counts diverged and rose after Ca crossed "
+        "threshold -- the diffuse channel, not the schedule, moved transmission; "
+        "self-check re-measures and requires `measured` to reproduce",
+    )
+    print(f"recorded {GLIA_EDGE} into {path}")
+    return 0
 
 
 def _run(astro, activities):
@@ -196,12 +356,41 @@ def main():
     )
     # 5. determinism
     assert tr1 == tr2, "same seed/inputs must give identical Ca/gain traces"
+    # ---- THE DIFFUSE CHANNEL IS CHARGED, measured (specs/022 T027) ---------------------
+    from snn_data_lake.substrate.port_charge_probe import read_attribution
+
+    live, pinned_out, reads, responded = _measure_glia_charge()
+    assert reads == len(live), f"the neuter must be READ every frame ({reads} vs {len(live)})"
+    assert live != pinned_out, (
+        "pinning the gain field to unmodulated [1.0, 1.0] must change downstream "
+        "transmission -- an undiverged channel is a declared, not a charged, port"
+    )
+    assert responded, (
+        "engagement must RAISE downstream spikes over the pre-engagement baseline -- "
+        "divergence without response attributes nothing"
+    )
+    rec = read_attribution(GLIA_EDGE)
+    assert rec is not None and rec.get("diverged") is True, (
+        f"committed charge evidence must carry the diverged {GLIA_EDGE} attribution -- "
+        "regenerate with --record-charge and commit it"
+    )
+    fresh = {"reads": reads, "n_frames": len(live)}
+    assert rec.get("measured", {}) == fresh, (
+        f"recorded charge evidence does not reproduce: {rec.get('measured')} vs {fresh} -- "
+        "regenerate with --record-charge in the same commit"
+    )
     print(
         f"self-check OK: sustained {sus_peak_g:.2f} engages vs brief {brief_peak_g:.2f} ~ 1; "
         f"persists {persist_g:.2f} +{n_persist}; A {gain_active:.2f} != B {gain_quiet:.2f}; "
-        f"LIF {base_spikes}->{mod_spikes} spikes; deterministic"
+        f"LIF {base_spikes}->{mod_spikes} spikes; deterministic. DIFFUSE CHANNEL CHARGED "
+        f"(measured): live vs pinned diverged over {reads} read frames and engagement "
+        f"raised transmission; committed attribution reproduces."
     )
 
 
 if __name__ == "__main__":
+    import sys as _sys
+
+    if "--record-charge" in _sys.argv[1:]:
+        _sys.exit(record_charge())
     main()
