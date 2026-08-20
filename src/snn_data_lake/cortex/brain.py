@@ -4319,7 +4319,16 @@ def make_brain(**kwargs):
     Pass-through to ``Brain.__init__`` (seed, lake_path, day_period, refit_every, device,
     self_history_path, persist). Returns a fresh Brain -- "one brain" means one canonical CLASS +
     one construction path, not a process-wide singleton (the daemon, a chat session, and a test each
-    legitimately own their own instance)."""
+    legitimately own their own instance).
+
+    FR-006 (specs/022 T016): construction REFUSES under a GIL-enabled interpreter, strictly --
+    the package-root guard's strict tier ignores even NORD_ALLOW_GIL here, because a GIL'd brain
+    would not crash: every partition would silently serialize while every gate stayed green.
+    One mechanism (snn_data_lake.require_free_threaded), two call tiers; the reachable red is a
+    real interpreter under PYTHON_GIL=1 in tests/test_gil_gate.py."""
+    from snn_data_lake import require_free_threaded
+
+    require_free_threaded("make_brain", strict=True)
     return Brain(**kwargs)
 
 

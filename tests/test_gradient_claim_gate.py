@@ -175,22 +175,46 @@ def test_a_non_importing_module_is_still_classified():
     The non-importing set is DERIVED here, not hardcoded: the test imports every module carrying a
     rule and keeps the failures. If that set is ever empty the test fails loudly rather than passing
     vacuously, because then it would be asserting nothing.
+
+    THE IMPORT SWEEP RUNS IN ONE SUBPROCESS, not in-process -- found 2026-08-20 by the T016 GIL
+    assert: one rule-carrying module imports `pygenn._genn`, which has not declared free-threading
+    support, so CPython RE-ENABLES THE GIL for the rest of the interpreter -- and there is no API
+    to disable it again. In-process, this test silently de-parallelized every test that ran after
+    it (each full suite run since the rule landed executed its tail GIL'd, invalidating whatever
+    thread behaviour that tail measured) and, once make_brain refused GIL'd interpreters, it broke
+    eight downstream constructions. The child interpreter absorbs the contamination and reports
+    the same importable/not verdicts over stdout.
     """
-    import contextlib
-    import io
+    import subprocess
+    import sys
 
     rules, _, _ = gate.census()
     mods = sorted({r["module_rel"] for r in rules})
-    not_importable = []
-    for m in mods:
-        try:
-            with (
-                contextlib.redirect_stderr(io.StringIO()),
-                contextlib.redirect_stdout(io.StringIO()),
-            ):
-                importlib.import_module(gate.modname(m))
-        except BaseException:  # noqa: BLE001 - any failure to import is the condition under test
-            not_importable.append(m)
+    probe = (
+        "import importlib, json, sys, contextlib, io\n"
+        "bad = []\n"
+        "for m, name in json.loads(sys.argv[1]):\n"
+        "    try:\n"
+        "        buf = io.StringIO()\n"
+        "        with contextlib.redirect_stderr(buf), contextlib.redirect_stdout(buf):\n"
+        "            importlib.import_module(name)\n"
+        "    except BaseException:\n"
+        "        bad.append(m)\n"
+        "print('NOT_IMPORTABLE ' + json.dumps(bad))\n"
+    )
+    pairs = json.dumps([[m, gate.modname(m)] for m in mods])
+    proc = subprocess.run(
+        [sys.executable, "-c", probe, pairs], capture_output=True, text=True, timeout=1200
+    )
+    line = next(
+        (ln for ln in reversed(proc.stdout.splitlines()) if ln.startswith("NOT_IMPORTABLE ")),
+        None,
+    )
+    assert line is not None, (
+        f"the import-probe child produced no verdict (rc={proc.returncode}).\n"
+        f"stderr tail: {proc.stderr[-400:]}"
+    )
+    not_importable = json.loads(line[len("NOT_IMPORTABLE ") :])
 
     assert not_importable, (
         "no module carrying a rule fails to import, so this test cannot demonstrate SC-010. "

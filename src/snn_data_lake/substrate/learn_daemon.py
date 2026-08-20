@@ -36,6 +36,7 @@ import subprocess
 import sys
 import time
 
+from snn_data_lake import require_free_threaded
 from snn_data_lake.cortex.brain import make_brain
 from snn_data_lake.substrate.brain_telemetry import Recorder
 from snn_data_lake.substrate.chat_memory import DurableChatMemory
@@ -310,6 +311,12 @@ def _acquire_singleton():
 
 
 def main():
+    # FR-006 (specs/022 T016), FIRST -- before the watermark, before the brain: a GIL-enabled
+    # interpreter must refuse at boot with a message the launcher log keeps, not die somewhere
+    # inside construction. The bat's relaunch loop makes a silent early death look alive (the
+    # 38e9145b incident), so the refusal happens where the log line is unmissable. Strict tier:
+    # the daemon IS the brain's drive, so the import-time NORD_ALLOW_GIL escape does not apply.
+    require_free_threaded("learn-daemon boot", strict=True)
     from snn_data_lake.substrate.home import knowledge_path
 
     # The three former module-scope side effects, now scoped to the daemon process (see the header).

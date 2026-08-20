@@ -1,7 +1,7 @@
 """snn_data_lake -- a neuromorphic library organized by brain anatomy.
 
 REQUIRES THE FREE-THREADED (PEP 703) INTERPRETER. Owner decision 2026-08-05: the brain runs on
-CPython 3.14 built with --disable-gil (ABI tag cp314t), and `_require_free_threaded()` below
+CPython 3.14 built with --disable-gil (ABI tag cp314t), and `require_free_threaded()` below
 REFUSES TO IMPORT under a GIL-enabled build. `pyproject.toml` carries `requires-python = ">=3.14"`,
 which is the most the packaging metadata can say -- free-threading is a BUILD, not a language
 level, so there is no marker for it and the check has to be at runtime.
@@ -38,8 +38,13 @@ import sys
 import sysconfig
 
 
-def _require_free_threaded():
-    """Refuse to import under a GIL-enabled interpreter. See the module docstring for WHY loud.
+# distinct-from: cerebellum/wavefront_planner.py, cortex/quality_diversity.py,
+#   hippocampus/sleep_replay.py, hypothalamus/circadian_clock.py,
+#   substrate/gradient_claim_gate.py -- the hook matched shared verbs (run/refuse/free);
+#   none guards the interpreter. This EDIT EXTENDS the incumbent guard in place (one
+#   mechanism, two tiers) -- it does not add a sibling. All sites read.
+def require_free_threaded(where="import", strict=False):
+    """Refuse to run under a GIL-enabled interpreter. See the module docstring for WHY loud.
 
     WHY THIS IS A RUNTIME CHECK AND NOT PACKAGING METADATA: free-threading is a BUILD of CPython
     (PEP 703, `--disable-gil`, ABI tag cp314t), not a language level, so `requires-python` cannot
@@ -53,32 +58,55 @@ def _require_free_threaded():
     to prove the guard itself fires. It is NOT a supported runtime mode: the brain's parallel paths
     fall back to serial under it, so any timing measured with it set is measuring the wrong thing.
 
-    REACHABLE RED, constructed and run 2026-08-05: executing this under the standard (GIL-enabled)
-    3.14 build raises RuntimeError; under the cp314t build it returns silently. Both were observed.
+    TWO DIMENSIONS SINCE specs/022 T016 (FR-006), one mechanism: the BUILD flag
+    (Py_GIL_DISABLED -- is this a cp314t interpreter at all) AND the RUNTIME state
+    (sys._is_gil_enabled() -- is the GIL actually off RIGHT NOW). The build flag alone was the
+    measured gap: on cp314t under PYTHON_GIL=1 the flag still reads 1 while the GIL runs, so
+    the pre-T016 guard passed a de-parallelized interpreter. On builds without
+    `sys._is_gil_enabled` (pre-3.13) the honest answer is "enabled", which the getattr default
+    supplies.
+
+    TWO TIERS, deliberate: plain import keeps the narrow `NORD_ALLOW_GIL=1` escape (downgrades
+    to a stderr warning -- a contributor bisecting an unrelated bug on a GIL build should not
+    be blocked; NOT a supported runtime mode, and any timing measured under it is measuring the
+    wrong thing). `strict=True` -- the daemon boot and `make_brain` construction path -- IGNORES
+    the escape and fails hard always (FR-006: the brain may never run de-parallelized, because
+    nothing would crash; every partition would silently serialize while every gate stayed
+    green).
+
+    REACHABLE REDS, both constructed and run: the GIL-build refusal on standard 3.14
+    (2026-08-05); the RUNTIME refusal under PYTHON_GIL=1 on cp314t incl. strict-ignores-escape
+    (tests/test_gil_gate.py, real interpreters, T016).
     """
-    if sysconfig.get_config_var("Py_GIL_DISABLED"):
+    build_ok = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
+    runtime_gil = getattr(sys, "_is_gil_enabled", lambda: True)()
+    if build_ok and not runtime_gil:
         return
     msg = (
-        "snn_data_lake requires the FREE-THREADED CPython build (PEP 703, ABI tag cp314t).\n"
+        f"[{where}] snn_data_lake requires the FREE-THREADED CPython build (PEP 703, cp314t) "
+        "with the GIL genuinely OFF.\n"
         f"  running: {sys.version.splitlines()[0]}\n"
         f"  Py_GIL_DISABLED={sysconfig.get_config_var('Py_GIL_DISABLED')!r} "
-        f"(1 = free-threaded, 0/None = GIL build)\n"
+        "(1 = free-threaded build, 0/None = GIL build)\n"
+        f"  sys._is_gil_enabled()={runtime_gil!r} (False = genuinely off; PYTHON_GIL=1 or an "
+        "extension without free-threading support re-enables it at runtime)\n"
         "  install:  uv python install 3.14+freethreaded\n"
         "            <that python> -m venv .venv-lake && .venv-lake/Scripts/pip install -e '.[dev]'\n"
-        "  A GIL build imports and passes every self-check with the parallelism silently absent,\n"
-        "  which is why this refuses instead of warning. Set NORD_ALLOW_GIL=1 to downgrade to a\n"
-        "  warning for unrelated work -- never for a timing measurement."
+        "  A GIL'd interpreter imports and passes every self-check with the parallelism silently\n"
+        "  absent, which is why this refuses instead of warning. Set NORD_ALLOW_GIL=1 to downgrade\n"
+        "  to a warning for unrelated work -- never for a timing measurement, and never for the\n"
+        "  brain itself (the construction path is strict and ignores the escape; FR-006)."
     )
-    if os.environ.get("NORD_ALLOW_GIL") == "1":
+    if not strict and os.environ.get("NORD_ALLOW_GIL") == "1":
         print(
-            f"[snn_data_lake] WARNING: GIL build; parallel paths run SERIAL.\n{msg}",
+            f"[snn_data_lake] WARNING: GIL active; parallel paths run SERIAL.\n{msg}",
             file=sys.stderr,
         )
         return
     raise RuntimeError(msg)
 
 
-_require_free_threaded()
+require_free_threaded()
 
 # region -> modules  (single source of truth for the anatomical layout)
 REGIONS = {

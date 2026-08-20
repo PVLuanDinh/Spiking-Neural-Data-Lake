@@ -23,5 +23,6 @@ Every gate lands WITH `--self-check` (proven able to fail) in its own commit, re
 | Evaluator integrity | hash-pins on evaluator/invariants/surface/envelope; harness-only evidence | candidate-emitted score ignored; evaluator-byte diff routed to owner |
 | Cutover barrier | quiesce/join/watermark before exit | kill mid-batch → clean watermark recovery |
 | Envelope-hash gate | the five envelope files' hashes changed only in owner-approved commits (allowlist) | unapproved envelope-byte change reds the build |
+| GIL hard-assert (FR-006, T016) | `sys._is_gil_enabled()` genuinely False at daemon boot + `make_brain` (strict tier of the ONE package guard, ignores `NORD_ALLOW_GIL`; runtime state, not just the build flag — `PYTHON_GIL=1` on cp314t defeated the build-flag-only incumbent) | counted at landing 2026-08-20, real interpreters (tests/test_gil_gate.py): strict red WITH the escape set; construction red under `PYTHON_GIL=1`; import red without escape; import escape warns-and-passes (contributor path intact); `PYTHON_GIL=0` green control |
 
 Self-disposition: these gates are census-covered by `policy_manifest` once registered; none lands bare (a tool wired in bare cannot redden the build).
