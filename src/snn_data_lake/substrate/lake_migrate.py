@@ -44,7 +44,13 @@ TAG_DISPOSITIONS: dict[int, tuple[str, str]] = {
     0x04: ("read-as-is", "_T_EPISODE; byte-identity"),
     0x05: ("read-as-is", "_T_SELFBUILD; byte-identity"),
     0x06: ("read-as-is", "_T_CALIB (zero records in the backup; constant exists); byte-identity"),
-    0x07: ("read-as-is", "_T_STATE name-keyed frames; byte-identity"),
+    0x07: (
+        "read-as-is",
+        "_T_STATE name-keyed frames; byte-identity. The kernel_state.v1 frame (specs/022 T013) "
+        "is ADDITIVE within this class: the layout version lives in the NAME, an old lake lacks "
+        "the name and cold-starts, so no upcaster exists to write -- a future layout ships "
+        "kernel_state.v2 with its own disposition (SYNTHESIS 3.5)",
+    ),
     0x08: (
         "read-as-is",
         "_T_GROWTH_DELTA reconstructible growth chain (FULL/DELTA, specs/022 T010-ii); "

@@ -425,6 +425,14 @@ EXEMPT = {
         "promised), so the ONE named live producer is the two-phase kernel tick (T013+). "
         "Bound by S0 exit (T039), not movable again",
     ),
+    "kernel_state": (
+        "wire",
+        "specs/022 T013: SoA substrate state (128B-aligned blocks, contiguous faculty slices, "
+        "_T_STATE-backed). Consumer is the two-phase tick in the SAME kernel block "
+        "(kernel_tick, T014, the very next task); the P2 retirement of the per-object neuron "
+        "state it supersedes executes at the cutover, faculty by faculty, with parity A/Bs. "
+        "Bound by S0 exit (T039), not movable",
+    ),
     "perf_baseline": (
         "permanent",
         "the pinned-host performance ratchet (specs/022 T001) -- a measurement instrument, not a "
