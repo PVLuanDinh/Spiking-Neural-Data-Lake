@@ -67,9 +67,15 @@ def _envf(k, d):
 
 
 def _fetch_triples(url, name):
+    import tempfile
+
     from snn_data_lake.substrate.web_ingest import fetch_corpus
 
-    path = os.path.join(os.environ.get("TEMP", "."), f"sndl_{name}.txt")
+    # tempfile.gettempdir(), not os.environ.get("TEMP", ".") -- the Windows-only TEMP
+    # variable is unset on Linux/containers, and the "." fallback wrote 22MB of corpus
+    # cache into the REPO ROOT through a container bind mount (measured 2026-08-20; the
+    # same defect class fixed in language_self_build / lake99 / autonomous_brain).
+    path = os.path.join(tempfile.gettempdir(), f"sndl_{name}.txt")
     if not (os.path.exists(path) and os.path.getsize(path) > 0):
         # FB15k-237 derives from Freebase, which was released CC-BY. The redistributing repo
         # (villmow/datasets_knowledge_embedding) states no licence of its own, so this asserts the
