@@ -62,6 +62,30 @@ BASELINE_STATES = frozenset(
 )  # pre-cue baseline: trial onset is unpredictable -> not learned
 
 
+def declare_ports(manifest):
+    """Manifest registrant (specs/022 T029): the RPE THIRD-FACTOR port. OUT `da_out` is
+    the phasic dopamine population rate in [0,1] (tonic baseline at rpe=0; bursts above,
+    dips below), delivered whole each tick -- the diffuse neuromodulatory broadcast. The
+    consumer edge is declared by the three-factor learner that gates eligibility with it
+    (basal_ganglia/r_stdp -- the CBGTC route the connectome declares)."""
+    from snn_data_lake.substrate.wiring_manifest import Port
+
+    manifest.declare_port(
+        "dopamine_nuclei",
+        Port(
+            name="da_out",
+            region="midbrain",
+            shape=(1,),
+            dtype="f4",
+            unit="level01",
+            encoding="SCALAR_DENSE",
+            kind="OUT",
+            declaring_module="dopamine_nuclei",
+            delivery_policy="all-or-none",
+        ),
+    )
+
+
 class DopamineNuclei:
     """VTA/SNc dopamine cells: a TD critic that EMITS an RPE as a spiking population rate.
 

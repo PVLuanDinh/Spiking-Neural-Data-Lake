@@ -16,6 +16,20 @@
     },
     {
       "edge": [
+        "dopamine_nuclei",
+        "da_out",
+        "r_stdp",
+        "dopamine_in"
+      ],
+      "diverged": true,
+      "measured": {
+        "reads": 60,
+        "n_frames": 60
+      },
+      "provenance": "replay_twice: a real DopamineNuclei acquiring a cue->reward chain (burst at unexpected reward, TD transfer to the cue) vs a pinned tonic rpe=0 rate; the three-factor gate moved the live arm's weights while the tonic pin moved ~nothing -- the signed factor derives from the producer's own tonic point; self-check re-measures and requires `measured` to reproduce"
+    },
+    {
+      "edge": [
         "homeostatic_drives",
         "drive_deficit_out",
         "interoceptive_integration",

@@ -134,6 +134,155 @@ class RSTDPNeuron:
         return deltas
 
 
+def declare_ports(manifest):
+    """Manifest registrant (specs/022 T029, the consumer half): `dopamine_in` receives the
+    midbrain's phasic DA rate as the THIRD FACTOR gating stored eligibility into weights
+    (RSTDPNeuron.reward -- w += lr * d * e). The edge is this consumer's subscription; the
+    route is the CBGTC dopamine broadcast the connectome declares. The port's meaningful
+    delivery window is DERIVED, not picked: tau_e (the module's own distal-reward bridge,
+    1000 steps) is how long a delayed burst still finds its eligibility."""
+    from snn_data_lake.substrate.wiring_manifest import Port
+
+    manifest.declare_port(
+        "r_stdp",
+        Port(
+            name="dopamine_in",
+            region="basal_ganglia",
+            shape=(1,),
+            dtype="f4",
+            unit="level01",
+            encoding="SCALAR_DENSE",
+            kind="IN",
+            declaring_module="r_stdp",
+            join_policy="sum",
+        ),
+    )
+    manifest.declare_edge("dopamine_nuclei", "da_out", "r_stdp", "dopamine_in")
+
+
+#: the declared edge, exactly as the manifest carries it -- the charge evidence cites it
+DA_EDGE = ("dopamine_nuclei", "da_out", "r_stdp", "dopamine_in")
+
+
+def _da_consumer_factory():
+    """Fresh ring + JoinConsumer over the declared `dopamine_in` port, one per replay arm."""
+    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+
+    m = WiringManifest()
+    declare_ports(m)
+    port = m.ports[("r_stdp", "dopamine_in")]
+    ring = SignalRing(slots=128)
+    return ring, JoinConsumer(ring, port)
+
+
+def _f4(x):
+    """Round-trip through float32 -- the ring's framing dtype. The tonic reference MUST be
+    quantized to the same grid the frames travel on: with a float64 reference, a frame
+    carrying exactly-tonic came back as float32(tonic) and d was -2e-9 instead of 0, so a
+    DEAD dopamine system 'moved' the weights and charged the port (review-constructed
+    red). Sibling harness pins (0.0, 1.0, 0.2, 0.5) dodged this only by being exactly
+    representable."""
+    import struct
+
+    return struct.unpack("<f", struct.pack("<f", float(x)))[0]
+
+
+def consume_dopamine(consumer, n_synapses=4, seed=0):
+    """The downstream computation under measurement: a fresh RSTDPNeuron forms one causal
+    pairing (eligibility loaded), then each delivered DA frame gates that eligibility via
+    THE reward mechanism, with the SIGNED third factor derived from the producer's own
+    tonic rate (d = rate - tonic; tonic = f4-quantized phasic(0.0), the producer's stated
+    rpe=0 point on the frame grid -- no constant picked here). Returns
+    [(tick, total_weight), ...]. LOSS IS FATAL."""
+    from snn_data_lake.midbrain.dopamine_nuclei import DopamineNuclei
+
+    tonic = _f4(DopamineNuclei(seed=seed).phasic(0.0))
+    nrn = RSTDPNeuron(n_syn=n_synapses, seed=seed)
+    for i in range(n_synapses):
+        nrn.pre_spike(i, t=10.0)
+    nrn.post_spike(t=15.0)  # causal pairing: LTP eligibility on every synapse
+    out = []
+    joined, lost = consumer.poll_joined()
+    assert not lost, f"charge measurement lost {lost} frames -- ring overrun, never smooth this"
+    for tick, vec in joined:
+        nrn.step()  # the eligibility bridge decays between deliveries (tau_e)
+        nrn.reward(float(vec[0]) - tonic)
+        out.append((tick, round(sum(nrn.w), 9)))
+    return out
+
+
+def _da_frames(n_ticks=60, acquire_until=40, seed=0):
+    """Recorded frames from a REAL DopamineNuclei learning a cue->reward chain: early
+    trials emit a big RPE at reward (unexpected), late trials a cue burst and ~tonic at
+    reward (acquired) -- the classic TD transfer, one phasic rate per tick."""
+    from snn_data_lake.midbrain.dopamine_nuclei import DopamineNuclei
+
+    nuc = DopamineNuclei(seed=seed)
+    trial = [("ITI", 0.0), ("CUE", 0.0), ("REWARD", 1.0)]
+    frames = []
+    for t in range(1, n_ticks + 1):
+        rpes = nuc.present(trial, learn=(t <= acquire_until))
+        # the tick's broadcast: the reward-state RPE early, the cue RPE after transfer
+        rpe = rpes["REWARD"] if t <= acquire_until else rpes["CUE"]
+        frames.append((t, "dopamine_nuclei", [nuc.phasic(rpe)]))
+    return frames, acquire_until
+
+
+def _measure_da_charge():
+    """The replay-twice A/B: live phasic DA stream vs a pinned f4-exact TONIC rate (the
+    rpe=0 broadcast -- a dopamine system that never signals an error). -> (live,
+    pinned_out, reads, responded): `responded` = the TD-extinction signature INSIDE the
+    live arm (see the in-body comment; the criterion earned this shape by failing)."""
+    from snn_data_lake.midbrain.dopamine_nuclei import DopamineNuclei
+    from snn_data_lake.substrate.port_charge_probe import replay_twice
+
+    # WITHIN-LIVE-ARM structural predicate (review BLOCKER: the first form compared
+    # against the pin's arithmetically-zero movement, collapsing to `moved > 0` -- a
+    # constant 0.9, a reversed stream and even a dead-tonic stream all greened it): the
+    # IMMEDIATE-GEOMETRIC-EXTINCTION signature of a real TD critic. Consecutive-trial
+    # reward-RPE ratio is (1 - alpha) = 0.7, so the SECOND ten-trial window's mean weight
+    # delta collapses to ~0.7^10 ~ 0.03x the first (measured 13-19x separation across 7
+    # seeds); any constant stream holds ratio ~1.0 (eligibility decay alone,
+    # exp(10/tau_e) ~ 1.01), and the reversed-stream attack -- a plateau first -- holds
+    # ~1.01 too, so it REDs here where an early-vs-late form coincidentally greened it.
+    # Margin 2.0 sits an order of magnitude from both populations. The pin is
+    # f4-quantized so d is EXACTLY zero on the pinned arm and on any genuinely-tonic
+    # live frame (the float32 leak was the second half of the review red: a dead DA
+    # system 'moved' weights by 3.5e-8 and recorded charge).
+    frames, acquire_until = _da_frames()
+    tonic = _f4(DopamineNuclei(seed=0).phasic(0.0))
+    live, pinned_out, reads = replay_twice(frames, _da_consumer_factory, consume_dopamine, [tonic])
+    w = dict(live)
+    deltas = [abs(w[t] - w[t - 1]) for t in range(2, acquire_until + 1)]
+    first = sum(deltas[:10]) / 10.0
+    second = sum(deltas[10:20]) / 10.0
+    responded = first > 2.0 * second
+    return live, pinned_out, reads, responded
+
+
+def record_charge():
+    """Measure the A/B and record the attribution via THE one writer. REFUSES a
+    non-diverged or non-responding run -- evidence is a measurement, never a declaration."""
+    from snn_data_lake.substrate.port_charge_probe import record_attribution
+
+    live, pinned_out, reads, responded = _measure_da_charge()
+    if live == pinned_out or not responded:
+        print(f"record_charge REFUSED for {DA_EDGE}: no divergence or no response")
+        return 1
+    path = record_attribution(
+        DA_EDGE,
+        {"reads": reads, "n_frames": len(live)},
+        "replay_twice: a real DopamineNuclei acquiring a cue->reward chain (burst at "
+        "unexpected reward, TD transfer to the cue) vs a pinned tonic rpe=0 rate; the "
+        "three-factor gate moved the live arm's weights while the tonic pin moved "
+        "~nothing -- the signed factor derives from the producer's own tonic point; "
+        "self-check re-measures and requires `measured` to reproduce",
+    )
+    print(f"recorded {DA_EDGE} into {path}")
+    return 0
+
+
 # ======================================================================================
 # POPULATION BROADCAST -- the parallel surface of the three-factor rule.
 #
@@ -890,6 +1039,39 @@ def main():
         f"deterministically; {len(reds)}/{len(reds)} criteria proven falsifiable"
     )
 
+    # ---- THE THIRD-FACTOR PORT IS CHARGED, measured (specs/022 T029) -------------------
+    from snn_data_lake.substrate.port_charge_probe import read_attribution
+
+    live, pinned_out, reads, responded = _measure_da_charge()
+    assert reads == len(live), f"the neuter must be READ every frame ({reads} vs {len(live)})"
+    assert live != pinned_out, (
+        "pinning the DA payload to its tonic rpe=0 rate must change the weight trajectory "
+        "-- an undiverged third-factor port is a declared, not a charged, port"
+    )
+    assert responded, (
+        "the live phasic stream must MOVE the weights more than the tonic pin -- "
+        "divergence without a moved weight attributes nothing"
+    )
+    rec = read_attribution(DA_EDGE)
+    assert rec is not None and rec.get("diverged") is True, (
+        f"committed charge evidence must carry the diverged {DA_EDGE} attribution -- "
+        "regenerate with --record-charge and commit it"
+    )
+    fresh = {"reads": reads, "n_frames": len(live)}
+    assert rec.get("measured", {}) == fresh, (
+        f"recorded charge evidence does not reproduce: {rec.get('measured')} vs {fresh} -- "
+        "regenerate with --record-charge in the same commit"
+    )
+    print(
+        f"THIRD-FACTOR PORT CHARGED (measured): live phasic DA vs tonic pin diverged over "
+        f"{reads} read frames and the live arm's weights moved; committed attribution "
+        f"reproduces."
+    )
+
 
 if __name__ == "__main__":
+    import sys as _sys
+
+    if "--record-charge" in _sys.argv[1:]:
+        _sys.exit(record_charge())
     main()

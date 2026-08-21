@@ -58,6 +58,9 @@ REGISTRANTS: tuple = (
     # dispositions in SYNTHESIS section 6, discharged at T046a/T066/T076)
     ("snn_data_lake.cortex.percept_surprise", "declare_ports"),
     ("snn_data_lake.cortex.brain", "declare_ports"),
+    # T029: the RPE third-factor port -- phasic DA into the R-STDP eligibility gate
+    ("snn_data_lake.midbrain.dopamine_nuclei", "declare_ports"),
+    ("snn_data_lake.basal_ganglia.r_stdp", "declare_ports"),
 )
 
 

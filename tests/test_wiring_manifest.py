@@ -139,14 +139,17 @@ def test_artifact_is_tracked_and_loadable():
     # body_in concat terminus and its edge-less interoception_out); T027 added the glia
     # diffuse channel (glial_gain_out -> synaptic_gain_in, a deliberate self-edge); T028
     # added THE predictor port (percept_surprise.surprise_out -> the brain's
-    # undirected-salience competition). A count above the pin means a registrant landed
-    # without updating this premise; below means a declaration was lost.
+    # undirected-salience competition); T029 added the RPE third-factor port
+    # (dopamine_nuclei.da_out -> r_stdp's eligibility gate). A count above the pin means
+    # a registrant landed without updating this premise; below means a declaration was
+    # lost.
     pytest.importorskip("nir")
     m = WiringManifest.load_artifact(ARTIFACT)
-    assert (len(m.ports), len(m.edges)) == (10, 5), (
-        "the T028 artifact carries the patience wire + the interoceptive channel + the "
-        "glia self-edge + the predictor port (10 ports, 5 edges); a different census "
-        "means a registrant landed without updating this test's premise"
+    assert (len(m.ports), len(m.edges)) == (12, 6), (
+        "the T029 artifact carries the patience wire + the interoceptive channel + the "
+        "glia self-edge + the predictor port + the third-factor port (12 ports, 6 "
+        "edges); a different census means a registrant landed without updating this "
+        "test's premise"
     )
     assert set(m.edges) == {
         ("raphe_serotonin", "five_ht_out", "evidence_accumulation", "patience_in"),
@@ -154,5 +157,6 @@ def test_artifact_is_tracked_and_loadable():
         ("interoceptive_arousal", "arousal_out", "interoceptive_integration", "body_in"),
         ("astrocyte_modulation", "glial_gain_out", "astrocyte_modulation", "synaptic_gain_in"),
         ("percept_surprise", "surprise_out", "brain", "salience_surprise_in"),
+        ("dopamine_nuclei", "da_out", "r_stdp", "dopamine_in"),
     }, "the committed edges must be exactly the declared subscriptions"
     assert m.all_findings() == [], "the committed artifact must satisfy all five checks"
