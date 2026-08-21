@@ -204,6 +204,19 @@ _T_STATE = b"\x07"
 #   AppendBudget counts bytes/tick; it labels this class, it does not encode it. All sites read.
 _T_GROWTH_DELTA = b"\x08"
 
+# specs/022 T031: COALITION records -- the workspace's settled coalitions (coalition_id,
+# tick, proposer_ids, content_ref, base_level, current, typed channels), an IMMORTAL
+# class per contracts/lake-records.md (the recall contract operates here; Episode
+# consolidation consumes sequences of these). Written by the signal-ring journaller
+# draining global_workspace's per-tick publications -- the ONE lake, one more record kind
+# in it, never a second store. Payload = the Coalition record's own to_bytes framing
+# (global_workspace.Coalition), CRC-covered by the journaller like every record.
+# 0x0A, NOT 0x09: 0x09 is _T_SYNDELTA (lake_engine.SynapseDelta.TAG) -- a first draft of
+# this constant took 0x09 and would have had replay parse coalition JSON as synapse
+# deltas. The retention/disposition registries (lake_engine.RETENTION,
+# lake_migrate.TAG_DISPOSITIONS) are the tag census; check BOTH before minting a tag.
+_T_COALITION = b"\x0a"
+
 # FULL cadence: a fresh FULL every 64 deltas bounds a cold reconstruction to <= 64 delta applies
 # after the newest FULL. A storage-layer engineering constant (same class as lake_migrate's
 # seal_every), not brain behaviour -- P1's infrastructure exception.

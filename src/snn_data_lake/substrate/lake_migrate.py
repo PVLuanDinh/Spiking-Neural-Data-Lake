@@ -62,6 +62,12 @@ TAG_DISPOSITIONS: dict[int, tuple[str, str]] = {
         "_T_SYNDELTA spike-derived synapse deltas (lake_engine.SynapseDelta, specs/022 T010a); "
         "byte-identity -- upcaster is IDENTITY, record semantics live in SynapseDelta.entries",
     ),
+    0x0A: (
+        "read-as-is",
+        "_T_COALITION settled workspace coalitions (global_workspace.Coalition, specs/022 "
+        "T031); byte-identity -- upcaster is IDENTITY, record semantics live in "
+        "Coalition.from_bytes (JSON body; zero records predate this tag)",
+    ),
 }
 # Anything else is UNKNOWN and refuses -- a record class nobody decided about.
 _OBSERVED_EXTRA: dict[int, str] = {}

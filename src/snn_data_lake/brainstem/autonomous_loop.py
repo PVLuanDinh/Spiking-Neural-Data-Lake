@@ -54,7 +54,9 @@ from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.neuromodulation.naca import NACABroadcast
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 from snn_data_lake.substrate.brain_bundle import BrainBundle, load_bundle
+from snn_data_lake.substrate.home import _T_COALITION, _log
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
+from snn_data_lake.substrate.signal_ring import LakeJournaller, SignalRing
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 
 #: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
@@ -271,6 +273,33 @@ class AutonomousArm:
         # opt-in Global Workspace: brain regions compete for one slot + broadcast the winner each tick.
         # ADDITIVE + read-only -- it selects no action and never touches the reflex/E-STOP (see step()).
         self.workspace = GlobalWorkspace(seed=seed) if workspace else None
+        # T031: the bus's settled coalitions persist to the ONE lake -- SignalRing transport +
+        # LakeJournaller drained every broadcast tick (_workspace_broadcast). `_log()` is the
+        # CACHED accessor to the live BinLog, never a second construction over the live lake
+        # (P4b). Capturing the instance for the arm's life matches KnowledgeLog's precedent;
+        # the exposure (an out-of-band writer tearing the file mid-life) requires violating
+        # the one-daemon-one-lake discipline every existing writer already relies on --
+        # disclosed, not defended. Slots: publishes/tick <= the workspace's own capacity and
+        # the drain runs the same tick, so 256 is deep headroom; overrun would mean the drain
+        # stopped -- and overrun is FATAL at the journaller, never journaled around.
+        #
+        # base_ordinal: coalition identity CONTINUES FROM THE LAKE (count of records already
+        # under the tag -- the KnowledgeLog counting precedent), so a restarted arm mints ids
+        # the dedup lake has never seen. Instance-derived identity measurably lost restarted
+        # lives to byte-identical dedup and collided ids across sessions (T031 review).
+        if self.workspace is not None:
+            self._coalition_ring = SignalRing(slots=256)
+            _coalition_log = _log()
+            _n0 = sum(1 for p in _coalition_log.replay() if p[:1] == _T_COALITION)
+            self.workspace.attach_ring(self._coalition_ring, base_ordinal=_n0)
+            self._coalition_journal = LakeJournaller(self._coalition_ring, _coalition_log)
+            self._coalition_drained = 0  # records the lake actually wrote (accounting)
+            self._coalition_deduped = 0  # replica refusals (see the drain site for semantics)
+        else:
+            self._coalition_ring = None
+            self._coalition_journal = None
+            self._coalition_drained = 0
+            self._coalition_deduped = 0
         self._salience_on = bool(
             salience_novelty
         )  # opt-in bottom-up novelty salience -> a GWT competitor
@@ -320,6 +349,7 @@ class AutonomousArm:
         # BG gate's dopamine), exactly like the amygdala threat; it selects no action, gates no motion,
         # introduces no new actuator route, and the reflex/E-STOP still preempts it (see step()).
         self.intero = InteroceptiveArousal(seed=seed) if interoception else None
+        self._last_intero = None  # this tick's full sense() reading (T031 coalition channels)
         # opt-in prefrontal executive: the "centre of thoughts" -- it deliberates over the current
         # action-values (evidence), holds a GOAL in working memory, and emits a TOP-DOWN bias toward it.
         # ADDITIVE + top-down PREFERENCE ONLY -- it raises the goal action's score/drive so behaviour is
@@ -1046,11 +1076,23 @@ class AutonomousArm:
         am = self._amygdala_for(pattern)
         return am.threat(pattern) if am is not None else 0.0
 
+    # distinct-from: medulla/interoceptive_arousal.py -- the ORGAN this method reads (it owns
+    #   sense()); this is the arm's per-tick read of it. distinct-from: hypothalamus/
+    #   homeostatic_drives.py -- the drives producer on the declared insula tract, not read
+    #   here. Both sites read.
     def _interocept(self, load):
         """The interoceptive caution in [0, 1] for the current homeostatic load (0.0 when opt-out).
         The medullary/hypothalamic homeostats map the body's load to a bounded caution that biases
-        selection toward the safe action; it selects no action and gates no motion."""
-        return self.intero.sense(load)["caution"] if self.intero is not None else 0.0
+        selection toward the safe action; it selects no action and gates no motion.
+
+        T031: the FULL reading is cached on `_last_intero` for the same tick's coalition
+        channels (_workspace_broadcast) -- ONE sense() per tick, never a second call, because
+        sense() advances the organ's own noise stream and dynamics (G5: a second draw per
+        tick would fork replay)."""
+        if self.intero is None:
+            return 0.0
+        self._last_intero = self.intero.sense(load)
+        return self._last_intero["caution"]
 
     def _pfc_bias(self, unit, pattern=None, qa=None):
         """The prefrontal top-down bias over ACTIONS for this unit (all-zeros when opt-out). The
@@ -1379,13 +1421,39 @@ class AutonomousArm:
         if self.workspace is None:
             return None
         if percept is not None:
-            self.workspace.submit("perception", percept, self._percept_sal)
+            # T031: the perception coalition carries the tick's REAL interoceptive state as
+            # typed channels -- medulla's declared arousal axes (stress -> arousal, caution),
+            # read from the reading _interocept already took THIS tick (never a second
+            # sense(); see _interocept). Salience-only when interoception is opt-out: absent
+            # channels stay absent, never defaulted (the record contract's honesty rule).
+            ch = {"salience": self._percept_sal}
+            if self._last_intero is not None:
+                ch["arousal"] = float(self._last_intero["stress"])
+                ch["caution"] = float(self._last_intero["caution"])
+            self.workspace.submit_coalition("perception", percept, ch)
         self.workspace.submit("salience", "threat", threat_salience)
         if self._salience_on:
             self.workspace.submit(
                 "salience", "novelty", self._novelty
             )  # bottom-up stimulus salience competes
         content = self.workspace.step()
+        if self._coalition_journal is not None:
+            # T031: settled coalition records -> the ONE lake, same tick they settle. A raise
+            # here (RingOverrun) is the P4b contract working: never journal around a hole.
+            # drain() returns how many the lake ACTUALLY wrote; the shortfall against the
+            # ring head is COUNTED and exposed, not raised -- because under lake-derived ids
+            # a byte-identical refusal is structurally a REPLICA refusal, and refusing a
+            # replica is the lake's P4 one-brain guard working, not loss. Measured in the
+            # brain's own determinism claim: two same-seed lockstep Brains (d1/d2) mint
+            # identical records from the same base and the lake correctly stores ONE -- a
+            # strict published==persisted raise here reddened that legitimate refusal. The
+            # restart-amnesia hole this counter once guarded is closed UPSTREAM by identity
+            # (attach_ring's base_ordinal): a restarted life mints ids the lake has never
+            # held, so its records can never byte-collide -- proven by the workspace
+            # self-check's restart arm and its retired-scheme red.
+            wrote = self._coalition_journal.drain()
+            self._coalition_drained += wrote
+            self._coalition_deduped = self._coalition_ring.head - self._coalition_drained
         # The ignition VERDICT, ported 2026-08-12 from cortex/competence_executive.WorkspaceBroadcast
         # ahead of that wrapper's retirement -- the one expression the wrapper added over the bus:
         # did THIS loop's own percept submission seize the slot this tick. Distinct from
@@ -2087,6 +2155,17 @@ def _tiny_hjepa(path, in_dim, k, l0, l1, actions, seed):
 
 
 def main():
+    # T031: this self-check constructs workspace-enabled arms, and every such arm opens the
+    # lake `home()` resolves and journals IMMORTAL coalition records into it. A bare
+    # `python -m` run inherits the AMBIENT environment -- which is the LIVE lake (measured:
+    # one bare run wrote 254 harness records before this guard). setdefault keeps the gate
+    # runner's isolated NORD_HOME (run_selfchecks.py sets one for the whole run) and
+    # sandboxes only the bare invocation. Inside main() on purpose -- a module-scope env
+    # write is the exact learn_daemon defect P4c records.
+    import os as _os
+    import tempfile as _tempfile
+
+    _os.environ.setdefault("NORD_HOME", _tempfile.mkdtemp(prefix="arm_selfcheck_"))
     safe_d, danger_d = CONTACT * 3.0, CONTACT * 0.5
     a = _ctx(0.9, 0.1, 0.1, safe_d)  # three DISTINCT multimodal contexts (differ per band)
     b = _ctx(0.1, 0.9, 0.1, safe_d)
@@ -2275,14 +2354,17 @@ def main():
     # cannot go red proves nothing, and this control is the constant this pass removed.
     def _bus_salience_trace(bot, n=120):
         seen = []
-        real_submit = bot.workspace.submit
+        # T031 moved perception onto the typed-channel door (submit_coalition); the spy
+        # watches THAT door, reading the salience channel -- spying the 3-arg submit here
+        # would count an empty trace and fail the red-control assert vacuously.
+        real_submit = bot.workspace.submit_coalition
 
-        def spy(source, content, salience):
+        def spy(source, content, channels):
             if source == "perception":
-                seen.append(round(float(salience), 6))
-            return real_submit(source, content, salience)
+                seen.append(round(float(channels["salience"]), 6))
+            return real_submit(source, content, channels)
 
-        bot.workspace.submit = spy
+        bot.workspace.submit_coalition = spy
         srng = random.Random(4)  # per-call instance rng -> both arms see the SAME stream
         for _ in range(n):
             bot.step(
@@ -2292,7 +2374,7 @@ def main():
                 distance=safe_d,
                 reward_fn=bot.coverage_reward,
             )
-        bot.workspace.submit = real_submit
+        bot.workspace.submit_coalition = real_submit
         return seen
 
     sal_live = _bus_salience_trace(AutonomousArm(seed=0, workspace=True))

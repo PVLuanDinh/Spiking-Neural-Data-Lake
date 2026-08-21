@@ -672,6 +672,7 @@ feature binding.
 """
 
 import itertools
+import json
 import random
 import threading
 import time
@@ -701,6 +702,133 @@ def _fold_parts(parts):
     Concatenating and calling the same builtin avoids both: identical elements, identical order,
     identical algorithm."""
     return sum(itertools.chain.from_iterable(parts))
+
+
+# distinct-from: substrate/signal_ring.py -- the ring frames TRANSPORT records; this is
+#   the workspace's COMPETITION record (the ring carries its bytes). distinct-from:
+#   cortex/self_model.py -- self-episode history; this is per-tick coalition identity.
+#   distinct-from: substrate/kernel_tick.py -- the neuron-substrate tick frame. Read.
+class Coalition:
+    """The COALITION RECORD (specs/022 T031, data-model 'Episode / Coalition'):
+    {coalition_id, tick, proposer_ids[], content_ref, base_level, current, channels{...}}.
+
+    Replaces the buffer's (source, content, salience) 3-tuple as the unit of competition
+    WITHOUT touching the kernel: `as_tuple()` is the exact projection the kernel body
+    consumes (same fields, same floats, same iteration order), while the record carries
+    what the tuple could not -- identity (coalition_id, a LAKE-CONTINUED ordinal assigned
+    at settle -- unique across restarts because it continues from the destination lake's
+    own count, never from a process counter), provenance (proposer_ids), TYPED channels
+    from the declared producers (salience always; the arm feeds arousal/caution from its
+    live medullary interoception), and the post-settle `current` the tuple threw away.
+    `tick` and `current` are written back by step(); an unsettled record has tick=None,
+    current=None -- honest, never defaulted. `tick` is the workspace's WITHIN-LIFE settle
+    clock (restarts at 1 with the instance); cross-life ordering is the id ordinal /
+    lake append order, stated here so no consumer joins on tick across sessions.
+
+    Persistence: to_bytes()/from_bytes() frame the record as the lake's _T_COALITION
+    payload (tag registered in substrate/home.py; an IMMORTAL class per
+    contracts/lake-records.md). JSON body -- symbolic content today (T030's disclosed
+    provisional typing); the round-trip is asserted byte-exact in the self-check."""
+
+    __slots__ = (
+        "coalition_id",
+        "tick",
+        "proposer_ids",
+        "content_ref",
+        "base_level",
+        "current",
+        "channels",
+    )
+
+    def __init__(
+        self,
+        proposer_ids,
+        content_ref,
+        base_level,
+        channels,
+        tick=None,
+        current=None,
+        coalition_id=None,
+    ):
+        self.proposer_ids = list(proposer_ids)
+        self.content_ref = content_ref
+        self.base_level = float(base_level)
+        self.channels = dict(channels)
+        self.tick = tick
+        self.current = current
+        self.coalition_id = coalition_id
+
+    def as_tuple(self):
+        """The kernel's view -- exactly the old 3-tuple, nothing more."""
+        return (self.proposer_ids[0], self.content_ref, self.base_level)
+
+    # The record QUACKS like the 3-tuple so every kernel consumer -- `for src, content,
+    # sal in buffer`, `c[2]`, `c[0]` -- reads bit-for-bit what it always read. The kernel
+    # body is untouched by T031; only the record type changed underneath it.
+    def __iter__(self):
+        return iter(self.as_tuple())
+
+    def __getitem__(self, i):
+        return self.as_tuple()[i]
+
+    def __len__(self):
+        return 3
+
+    # distinct-from: substrate/minhash.py -- Jaccard estimation over iterables; no record.
+    # distinct-from: reasoning/arc_agi/play_brain.py -- SimHash occupancy features. Dunder-
+    #   phrase overlap only; these two lines are the Coalition record's tuple-projection
+    #   equality, nothing else defines equality for this record. Both sites read.
+    # Equality is BY PROJECTION, same as everything else the kernel sees: a record equals
+    # the 3-tuple it projects (and another record projecting it). Channels/identity do NOT
+    # enter -- lake identity is to_bytes(), never ==. Hash matches, so either form keys a
+    # dict/set interchangeably.
+    def __eq__(self, other):
+        if isinstance(other, (Coalition, tuple)):
+            return self.as_tuple() == tuple(other)
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.as_tuple())
+
+    # distinct-from: substrate/wiring_manifest.py -- hdf5 artifact codec, not this record.
+    # distinct-from: substrate/envelope_hash_gate.py -- envelope baseline writer.
+    # distinct-from: cortex/neurogenesis_engine.py -- growth-state npz restore.
+    # distinct-from: basal_ganglia/self_build_loop.py -- firewalled-file byte restore.
+    # distinct-from: cortex/trained_brain.py -- crc32 seed derivation. Serializer-phrase
+    #   overlap only; THIS pair is the _T_COALITION lake payload codec and nothing else
+    #   encodes that record. All sites read.
+    def to_bytes(self):
+        # JSON-native content rides AS-IS (str/int/float/bool/None -- today's live tokens),
+        # so serialize(deserialize(b)) == b holds and the self-check asserts it. Anything
+        # else falls to repr() ONE-WAY -- disclosed provisional (T030's symbolic-payload
+        # note), never re-reprred on a round trip because the fallback only fires on
+        # non-native types and a deserialized record's content is always native.
+        content = self.content_ref
+        if not isinstance(content, (str, int, float, bool, type(None))):
+            content = repr(content)
+        payload = {
+            "id": self.coalition_id,
+            "tick": self.tick,
+            "proposers": self.proposer_ids,
+            "content": content,
+            "base": self.base_level,
+            "current": self.current,
+            "channels": self.channels,
+        }
+        return json.dumps(payload, sort_keys=True).encode("utf-8")
+
+    @classmethod
+    def from_bytes(cls, raw):
+        d = json.loads(raw.decode("utf-8"))
+        return cls(
+            proposer_ids=d["proposers"],
+            content_ref=d["content"],
+            base_level=d["base"],
+            channels=d["channels"],
+            tick=d["tick"],
+            current=d["current"],
+            coalition_id=d["id"],
+        )
 
 
 class GlobalWorkspace:
@@ -783,6 +911,10 @@ class GlobalWorkspace:
         self._sim_par_eff = 1.0  # running-EMA fraction of IDEAL parallel savings actually achieved
         self._slot_buf = []  # per-submitter staging buffers for CONCURRENT specialists
         self._last_v = {}  # (source, content) -> final membrane float (determinism self-check)
+        self._cycle = 0  # settles run so far THIS LIFE -- the Coalition record's tick field (T031)
+        self._out_ring = None  # SignalRing this workspace publishes settled records onto
+        self._settled = ()  # last settle's Coalition records, focus order (T031 read surface)
+        self._ordinal = 0  # next coalition_id ordinal; attach_ring() rebases it on LAKE state
 
     # -- the two subsidies an occupant carries, and why they are two ------------------------------
     @property
@@ -978,6 +1110,9 @@ class GlobalWorkspace:
         return max(1, int(1.0 // max(defence, self._JITTER)))
 
     # -- specialist / module interface ----------------------------------------------------------
+    # distinct-from: thalamus/reentrant_workspace.py -- the re-entry stage's own submit
+    #   (different kernel, its own record shape is NOT changed here); this is the shared
+    #   bus's buffer becoming Coalition records. Read.
     def submit(self, source, content, salience):
         """A specialist posts a candidate into this tick's competition buffer.
 
@@ -986,8 +1121,124 @@ class GlobalWorkspace:
         current from the instance RNG in first-encounter order. Two specialists calling this
         concurrently would therefore make the symmetry-break jitter depend on which thread won a
         race, which is exactly the nondeterminism this module's determinism self-check forbids.
-        Concurrent specialists use `open_slots()` + `submit_from()` below instead."""
-        self._buffer.append((str(source), content, float(salience)))
+        Concurrent specialists use `open_slots()` + `submit_from()` below instead.
+
+        T031: the buffer entry is a COALITION RECORD (the 3-tuple is its projection --
+        the kernel's iteration order, keys and float values are bit-for-bit what they
+        always were; the record adds identity, provenance and typed channels without
+        touching the competition). This 3-arg form seeds channels={'salience': s};
+        submit_coalition() below carries the full typed set."""
+        self._buffer.append(
+            Coalition(
+                proposer_ids=[str(source)],
+                content_ref=content,
+                base_level=float(salience),
+                channels={"salience": float(salience)},
+            )
+        )
+
+    def submit_coalition(self, source, content, channels):
+        """T031: post a candidate with TYPED CHANNELS (data-model: channels{salience,
+        valence, arousal, interoception, ...}). 'salience' is MANDATORY -- it is the
+        competition drive; every other channel rides as provenance the record persists
+        and downstream consumers (Episode consolidation, the report channel) read."""
+        ch = {k: float(v) for k, v in dict(channels).items()}
+        if "salience" not in ch:
+            raise ValueError("submit_coalition requires a 'salience' channel (the drive)")
+        self._buffer.append(
+            Coalition(
+                proposer_ids=[str(source)],
+                content_ref=content,
+                base_level=ch["salience"],
+                channels=ch,
+            )
+        )
+
+    # distinct-from: substrate/signal_ring.py -- the ring/journaller TRANSPORT this attaches;
+    #   this method only binds the producer side and rebases identity. Read.
+    def attach_ring(self, ring, base_ordinal=0):
+        """T031: hand this workspace a SignalRing to publish settled Coalition records onto.
+
+        The persistence chain is the EXISTING one, reused whole (P2): workspace frames
+        `_T_COALITION + record.to_bytes()` (framing belongs to the producer -- the ring's own
+        contract), SignalRing transports, and whoever owns the lake drains a LakeJournaller
+        over this ring into the ONE BinLog -- overrun fatal there, per P4b. No ring attached
+        (the default) means records still settle onto `self.settled` for in-process readers;
+        nothing is silently persisted anywhere else.
+
+        `base_ordinal` is the LAKE-DERIVED identity base: the caller passes how many
+        _T_COALITION records the destination lake already holds, and ids continue from
+        there. This is what makes coalition_id an identity in the DURABLE store rather than
+        in one process's memory -- the review that forced it measured the instance-derived
+        scheme losing 16 of 24 restart records to the lake's byte-identical dedup and
+        naming 7-of-10 pairs of DIFFERENT lived records with the same id. Identity from
+        lake state, never from process state. Two workspaces journaling one lake would need
+        disjoint bases; today exactly one ringed workspace exists (the arm bus -- measured,
+        live_brain.py's is the only workspace=True construction) and the single-writer ring
+        binds that down to one thread besides."""
+        self._out_ring = ring
+        self._ordinal = int(base_ordinal)
+
+    @property
+    def settled(self):
+        """Last settle's Coalition records in focus order -- the SUBMISSION-SETTLE stream,
+        NOT the occupancy view. A record exists only for a post that settled THIS tick; a
+        defended incumbent that did not re-post is still in `_slots`/`broadcast_all()` and
+        deliberately absent here, so `len(settled) <= len(broadcast_all())` and the lake
+        stream records when coalitions were POSTED-AND-ADMITTED, never how long they were
+        held. Duration/occupancy is `_slots`' job; a consumer needing release semantics
+        (T035 Episode consolidation) derives them from its own reads of the occupancy view,
+        not from gaps in this stream. (An earlier docstring claimed equivalence to
+        broadcast_all(); the review measured the held-over case and the claim was false --
+        corrected rather than the stream padded with synthesized rows, because a record's
+        provenance is the proposer's ACTUAL post.)"""
+        return self._settled
+
+    def _record_settle(self, admitted_keys):
+        """Close the settle for the record layer: stamp identity onto the buffer records the
+        kernel admitted, retain them on `self.settled`, publish framed bytes to the attached
+        ring. Runs BEFORE the buffer clears, on both kernel paths.
+
+        Held-over occupants that did not re-post this tick have no buffer record and get none
+        -- a record per SUBMISSION-THAT-SETTLED, never a synthesized row (the record's
+        provenance is the proposer's actual post; occupancy across ticks is `_slots` /
+        `broadcast_all()`, a DIFFERENT stream -- see `settled`). Where one (source, content)
+        was posted twice, the max-base_level record wins -- the same dedup rule `submitted`
+        applies; keyed on repr(content) so the fair-control path, which never required
+        hashable content, still never does. `current` is the level the SLOT carries: the
+        attractor `_g` on the ignition path, and the control path's clamped hold where `_g`
+        is empty by construction -- one meaning per accessor, both paths.
+
+        IDENTITY: `coalition_id = c<ordinal>` where the ordinal CONTINUES FROM THE LAKE
+        (attach_ring's base_ordinal) and increments per stamped record. Unique in the
+        durable store across restarts; `tick` is deliberately NOT that -- it is this LIFE'S
+        settle clock, restarting at 1 each construction, honest as a within-life ordering
+        only. The lake's append order (equivalently the id ordinal) is the cross-life
+        sequence. Deterministic under G5 replay: same lake state + same inputs -> same ids
+        (no wall clock, no global RNG)."""
+        self._cycle += 1
+        best = {}
+        for rec in self._buffer:
+            key = (rec.proposer_ids[0], repr(rec.content_ref))
+            if key not in best or rec.base_level > best[key].base_level:
+                best[key] = rec
+        out = []
+        for key in admitted_keys:
+            rec = best.get((key[0], repr(key[1])))
+            if rec is None:
+                continue  # defended incumbent, no fresh post -- no record to stamp
+            rec.tick = self._cycle
+            g = self._g.get(key)
+            rec.current = float(g) if g is not None else min(1.0, max(0.0, rec.base_level))
+            rec.coalition_id = f"c{self._ordinal}"
+            self._ordinal += 1
+            out.append(rec)
+        self._settled = tuple(out)
+        if self._out_ring is not None:
+            from snn_data_lake.substrate.home import _T_COALITION
+
+            for rec in out:
+                self._out_ring.publish(_T_COALITION + rec.to_bytes())
 
     def open_slots(self, n_slots):
         """Allocate `n_slots` DISJOINT staging buffers, one per concurrent specialist, and return the
@@ -1005,8 +1256,18 @@ class GlobalWorkspace:
 
     def submit_from(self, slot, source, content, salience):
         """A CONCURRENT specialist posts a candidate into its own staging buffer. Safe to call from
-        `slot`'s own thread with no lock: no other thread touches `self._slot_buf[slot]`."""
-        self._slot_buf[int(slot)].append((str(source), content, float(salience)))
+        `slot`'s own thread with no lock: no other thread touches `self._slot_buf[slot]`.
+
+        T031: stages the same Coalition record submit() builds -- the buffer holds ONE
+        type whichever door a candidate came through."""
+        self._slot_buf[int(slot)].append(
+            Coalition(
+                proposer_ids=[str(source)],
+                content_ref=content,
+                base_level=float(salience),
+                channels={"salience": float(salience)},
+            )
+        )
 
     def _drain_slots(self):
         """Splice the staged concurrent submissions into the competition buffer, ascending slot order
@@ -1762,6 +2023,7 @@ class GlobalWorkspace:
             # tick, and `sw_without` is unchanged at 27), and one meaning per accessor is the point.
             self._slots = () if top is None else ((top[0], top[1], min(1.0, max(0.0, top[2]))),)
             content = self.current
+            self._record_settle([] if top is None else [(top[0], top[1])])  # T031, pre-clear
             self._buffer = []
             self._deliver(self.broadcast_all())  # ONE delivery contract, both paths (see _deliver)
             return content
@@ -1843,6 +2105,7 @@ class GlobalWorkspace:
         self._slots = tuple((k[0], k[1], self._g[k]) for k in admitted)
 
         content = self.current
+        self._record_settle(admitted)  # T031: stamp + retain + publish, before the buffer clears
         self._buffer = []
         self._deliver(self.broadcast_all())  # BROADCAST the admitted SET to all subscribers
         return content
@@ -3529,6 +3792,117 @@ def main():
         f"{len(e3_red_ws._defended(e3_sub))}"
     )
 
+    # ---- T031 COALITION RECORDS: the record layer over the untouched kernel --------------------
+    # distinct-from: thalamus/reentrant_workspace.py -- its step() groups submissions into
+    #   coalitions for the RE-ENTRY kernel; this block is a SELF-CHECK harness driving THIS
+    #   module's record layer end-to-end. distinct-from: substrate/port_charge_probe.py -- the
+    #   replay-twice charge A/B instrument; nothing here measures charge. distinct-from:
+    #   cortex/pc_cortex_serve.py -- its settle is the predictive-coding hierarchy relaxation.
+    #   distinct-from: cerebellum/spiking_jepa.py and reasoning/arc_agi/brain_player.py --
+    #   phrase overlap only (their drives run retinas/games, not lake framing). All sites read.
+    # Four claims, each with its red reachable IN THIS BLOCK: (a) the record IS the 3-tuple to
+    # every kernel consumer (projection identity -- mutate as_tuple and every assert here goes
+    # red); (b) lake round-trip is byte-exact; (c) ring -> journaller -> lake -> a FRESH BinLog
+    # reader recovers the settled records (P4b: persistence proven on a NEW reader, never the
+    # writer's own memory); (d) refusals: a channel set without 'salience' raises, and identity
+    # stamping is deterministic (two same-seed runs journal identical bytes).
+    import tempfile
+    from pathlib import Path
+
+    from snn_data_lake.substrate.binlog import BinLog
+    from snn_data_lake.substrate.home import _T_COALITION
+    from snn_data_lake.substrate.signal_ring import LakeJournaller, SignalRing
+
+    c_rec = Coalition(["perception"], "scene", 0.7, {"salience": 0.7, "arousal": 0.2})
+    assert tuple(c_rec) == c_rec.as_tuple() == ("perception", "scene", 0.7) and len(c_rec) == 3, (
+        "the record must project EXACTLY the legacy 3-tuple -- the kernel body is unchanged by "
+        "T031 and consumes records only through this projection"
+    )
+    assert c_rec.tick is None and c_rec.current is None and c_rec.coalition_id is None, (
+        "an unsettled record must be honestly unstamped -- None, never a defaulted 0"
+    )
+    c_rt = Coalition.from_bytes(c_rec.to_bytes())
+    assert c_rt.to_bytes() == c_rec.to_bytes(), "lake round-trip must be byte-exact"
+    assert c_rt.channels == {"salience": 0.7, "arousal": 0.2}, (
+        "typed channels must survive the lake"
+    )
+
+    # distinct-from: cortex/access_consciousness.py and cortex/live_brain.py -- their "one
+    #   workspace" is the LIVE composite; this closure is a self-check harness driving a
+    #   scratch lake through restarts. Phrase overlap only; sites read.
+    def _restart_life(base=None):
+        """One workspace LIFETIME against the shared scratch lake: fresh instance, base
+        ordinal derived from the lake exactly as the arm derives it (replay count of the
+        tag), unless the caller FORCES a base to reach the retired scheme's red below."""
+        log = BinLog(str(c_work / "lake.bin"))
+        if base is None:
+            base = sum(1 for p in log.replay() if p[:1] == _T_COALITION)
+        ws = GlobalWorkspace(seed=0)
+        ring = SignalRing(slots=32)
+        ws.attach_ring(ring, base_ordinal=base)
+        journal = LakeJournaller(ring, log)
+        ws.submit("perception", "scene", 0.90)
+        ws.submit_coalition("salience", "threat", {"salience": 0.85, "valence": -0.6})
+        ws.step()
+        return ws, journal.drain()
+
+    c_work = Path(tempfile.mkdtemp(prefix="gw_coalition_"))
+    c_ws, c_wrote = _restart_life()
+    assert c_wrote == 2 and len(c_ws.settled) == 2 and all(r.tick == 1 for r in c_ws.settled), (
+        f"both admitted posts must settle AND persist, got settled={len(c_ws.settled)} wrote={c_wrote}"
+    )
+    assert {r.channels.get("valence") for r in c_ws.settled} == {None, -0.6}, (
+        "submit_coalition's typed channels must reach the settled record"
+    )
+    c_back = [p for p in BinLog(str(c_work / "lake.bin")).replay() if p[:1] == _T_COALITION]
+    assert len(c_back) == 2, f"a FRESH reader must recover 2 journaled records, got {len(c_back)}"
+    c_rec2 = [Coalition.from_bytes(p[1:]) for p in c_back]
+    assert {r.content_ref for r in c_rec2} == {"scene", "threat"} and {
+        r.coalition_id for r in c_rec2
+    } == {r.coalition_id for r in c_ws.settled}, (
+        "the lake's records must be the settle's records -- same identities, same contents"
+    )
+    # RESTART against the SAME lake: a second life's records must ALL land, with identities
+    # the lake has never held. This arm replaced a "two same-seed runs journal identical
+    # bytes" assert that CERTIFIED the defect it should have caught: identical bytes into a
+    # dedup=True lake is precisely what made a restarted life persist NOTHING (review,
+    # measured: 16 of 24 restart records silently dropped under the instance-derived scheme).
+    c_ws_b, c_wrote_b = _restart_life()
+    c_all = [
+        Coalition.from_bytes(p[1:])
+        for p in BinLog(str(c_work / "lake.bin")).replay()
+        if p[:1] == _T_COALITION
+    ]
+    assert c_wrote_b == 2 and len(c_all) == 4, (
+        f"RESTART AMNESIA: the second life wrote {c_wrote_b}, lake holds {len(c_all)} of 4 -- "
+        "a restart is not amnesia (P4b)"
+    )
+    assert [r.coalition_id for r in c_all] == [f"c{i}" for i in range(4)], (
+        f"identity must be the lake-continued ordinal, unique across lives, got "
+        f"{[r.coalition_id for r in c_all]}"
+    )
+    # THE RETIRED SCHEME'S RED, kept reachable: force the process-local base (always 0) for
+    # a third life and the lake drops EVERY record it re-mints -- the measured defect the
+    # lake-derived base retires. If this ever starts writing, the dedup semantics changed
+    # and the identity scheme must be re-derived, loudly.
+    _c_ws_c, c_wrote_c = _restart_life(base=0)
+    assert c_wrote_c == 0, (
+        f"the instance-derived-identity red is no longer reachable (wrote {c_wrote_c}); "
+        "re-derive the identity scheme against the lake's actual dedup semantics"
+    )
+    try:
+        c_ws_b.submit_coalition("x", "y", {"arousal": 1.0})
+        raise AssertionError("submit_coalition without 'salience' must refuse -- red unreachable")
+    except ValueError:
+        pass  # the RED, reached: no drive channel, no competition entry
+
+    print(
+        f"\ncoalition    : record==tuple projection holds; round-trip byte-exact; restart "
+        f"against one lake persists 4/4 with lake-continued ids {[r.coalition_id for r in c_all]}; "
+        f"the retired process-local scheme demonstrably loses its life (wrote 0); salience-less "
+        f"refusal reached"
+    )
+
     print(
         "\nself-check OK: "
         f"capacity {cap} (derived from defence {band_hi and 1.0 - band_hi:.2f}); churn {churn_with} "
@@ -3562,16 +3936,16 @@ def declare_ports(manifest):
     _attended sentence), declared edge-less until the coalition channels (T031) and the
     report channel (T034) land their consumers.
 
-    TYPE HONESTY (review, T030): the live payloads are SYMBOLIC. A coalition submit is a
-    (source, content, salience) triple whose content is a token (an int unit index, the
-    string 'threat'); the broadcast is the winning CONTENT TOKEN itself. The manifest's
-    type row cannot carry symbolic structure, so the (1,) f4 row on coalition ports
-    describes the SALIENCE FIELD ONLY, the EVENT encoding marks the payload symbolic, and
-    broadcast_out's unit is 'workspace_content' -- the winning token, NOT a bid. This is
-    a PROVISIONAL description discharged when T031's typed coalition record replaces the
-    3-tuple; stating it here keeps the artifact from certifying a description the five
-    checks cannot themselves falsify (they compare declarations to declarations, never to
-    runtime)."""
+    TYPE HONESTY (review, T030; T031 DISCHARGED the record half): the buffer entry is now
+    the typed Coalition record -- identity, provenance, typed channels{salience, ...} --
+    persisted under _T_COALITION by the arm's ring journaller, so 'the payload is an
+    untyped 3-tuple' is no longer true anywhere. What REMAINS provisional, deliberately:
+    the manifest's type row still cannot carry symbolic structure, so the (1,) f4 row on
+    coalition ports describes the SALIENCE FIELD ONLY, the EVENT encoding marks the
+    content symbolic (a token: an int unit index, the string 'threat'), and
+    broadcast_out's unit is 'workspace_content' -- the winning token, NOT a bid. Stating
+    it here keeps the artifact from certifying a description the five checks cannot
+    themselves falsify (they compare declarations to declarations, never to runtime)."""
     from snn_data_lake.substrate.wiring_manifest import Port
 
     manifest.declare_port(

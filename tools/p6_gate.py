@@ -213,6 +213,11 @@ WORKSPACE_CLASSES = {"GlobalWorkspace", "ReentrantWorkspace"}
 # print the delta under INSTRUMENT CHANGE and do not let it read as progress.
 API = {
     ("submit", 3): "WRITE",
+    # INSTRUMENT CHANGE 2026-08-21 (T031): perception's write moved doors -- submit ->
+    # submit_coalition (typed channels). Same bus, same WRITE semantics, one site moved;
+    # without this row the walk lost sight of it and the autonomous_loop liveness floor
+    # correctly fired INSTRUMENT DEAD (2 of 3). Not progress -- a rename made visible.
+    ("submit_coalition", 3): "WRITE",
     ("broadcast", 0): "READ",
     ("broadcast_all", 0): "READ",  # added 2026-08-06; see the docstring's instrument-change note
     ("broadcast_to", 1): "READ",

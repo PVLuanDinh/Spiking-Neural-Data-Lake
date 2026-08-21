@@ -81,6 +81,14 @@ RETENTION: dict[int, tuple[str, bool, str]] = {
         "prefix against. The label revisits with the kernel block's own proof (T013+). Append "
         "budget: unbaselined (reported, never trips) until a live writer exists to measure",
     ),
+    0x0A: (
+        "IMMORTAL",
+        False,
+        "_T_COALITION settled workspace coalitions (global_workspace.Coalition, specs/022 "
+        "T031): the recall contract operates here -- Episode consolidation consumes sequences "
+        "of these, so every record is lived experience (same class as _T_EPISODE). Append "
+        "budget: unbaselined (reported, never trips) until the live writer's rate is measured",
+    ),
 }
 
 
