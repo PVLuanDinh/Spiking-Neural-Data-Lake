@@ -56,6 +56,12 @@ envelope bytes are hash-pinned outside the mutation surface; touching them route
 (OD-2). NULL: if archived proposals never beat their parents, the loop reports it and halts.
 
 ## 6. Consciousness dissociation battery (L7, T033 + T077-T081)
+MECHANIZED (first instrument): `thalamus/ignition_instrument.py` (T033, 2026-08-21) — the
+ignition scorer, dual-derived (last-spike-trough window re-derived from rasters; antimode +
+logistic-inflection routes must agree at instrument resolution), driven through the T032
+actuator under sweep hold, with the shuffled-label + recurrence-ablation controls run in the
+same call and all five failure modes (SATURATED/SILENT/UNIMODAL/DISAGREE/CONTROL_FAIL)
+reached on constructed inputs in its `--self-check`; baseline in `tools/ignition_baseline.json`.
 Access-consciousness instruments with dissociations, never markers: ignition (dual-derived
 gate, actuator-whole, published-band checks — 100% ignition = saturated detector), relay-proof
 metacognition (lesion second-order → first-order preserved, calibration collapses), integration

@@ -322,7 +322,17 @@ BASELINE = {
     # was caused by the then-undeclared hippocampus<->thalamus import pair, a different red, and
     # is NOT evidence for this ratchet; corrected at the same day's review pass).
     "private_instance_modules": 6,
-    "unread_writer_modules": 6,
+    # RAISED 6 -> 7 on 2026-08-21 (specs/022 T033), and per this gate's own rule a raise is
+    # an ADMISSION, so here it is: thalamus/ignition_instrument.py constructs private
+    # ReentrantWorkspace SUBJECTS inside its sweep and ablation protocols and nothing else
+    # reads them -- BY DESIGN: it is a measurement instrument (dormancy_gate EXEMPT as
+    # such), and an instrument whose subjects were shared would be measuring traffic it
+    # does not control. This static walk cannot attribute function-local instances (its
+    # own disclosed residual false-red channel), and teaching it a new role machinery for
+    # one module would be a bigger honesty risk than this recorded admission. The ceiling
+    # still traps the NEXT unread writer: a real faculty submitting into a bus nobody
+    # reads lands on 8 and reddens.
+    "unread_writer_modules": 7,
     "cross_module_reads": 1,
     "undeclared_import_pairs": 11,
     # RAISED 21 -> 24 on 2026-08-20 (specs/022 T021a), and per this gate's own rule a raise is

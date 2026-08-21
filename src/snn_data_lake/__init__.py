@@ -300,6 +300,7 @@ REGIONS = {
         "reentrant_workspace",
         "connectome_router",
         "gwt_deep",
+        "ignition_instrument",
     ],
     "hypothalamus": ["circadian_clock", "set_points", "homeostatic_drives"],
     "midbrain": [

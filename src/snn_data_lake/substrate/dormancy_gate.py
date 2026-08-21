@@ -99,6 +99,16 @@ EXEMPT = {
     # feedback_alignment/sensor_demo/coordinated_growth) were DELETED in the Policy-2/3 retirement wave --
     # they are gone from REGIONS, so they are no longer brain modules and need no exemption.
     # ---- "permanent": legitimately not a tick faculty, each with the evidence that settled it ----
+    "ignition_instrument": (
+        "permanent",
+        "MEASUREMENT INSTRUMENT (specs/022 T033, P8 invention #6's ignition scorer): drives "
+        "scratch ReentrantWorkspace subjects through the T032 actuator and scores the "
+        "all-or-none transition (dual-derived gate + external controls). Its consumers are "
+        "its __main__ self-check (five reachable failure-mode reds), tools/"
+        "ignition_baseline.json (drift-checked every self-check run), and T039's exit "
+        "certification. Wiring it into the live tick would make the observer part of the "
+        "observed -- the same reason charge probes are not tick faculties",
+    ),
     "gwt_deep": (
         "permanent",
         "BENCHMARK DEMONSTRATION (promoted reasoning/ -> thalamus/ 2026-08-11): the tree's "

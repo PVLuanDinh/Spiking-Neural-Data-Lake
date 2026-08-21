@@ -1,0 +1,11 @@
+{
+  "method": "ignition_instrument.score(theta=0.55, seed=0): seeded 5-trial ensemble per drive point on fresh ReentrantWorkspace subjects, theta via the T032 actuator under sweep hold; window re-derived from BOTH pools' last-spike times (>=2 distinct early trials required); antimode + logistic dual gate at ONE grid step; permutation-null (real logloss < all 20 shuffles) + recurrence-ablation controls in the same call",
+  "theta": 0.55,
+  "theta_hat_antimode": 0.595,
+  "theta_hat_logistic": 0.585,
+  "window_start": 57,
+  "kernel_half_in_basin": true,
+  "fraction_ignited": 0.5673,
+  "grid_step": 0.03,
+  "verdict": "OK"
+}

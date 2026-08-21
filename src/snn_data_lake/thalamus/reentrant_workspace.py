@@ -171,6 +171,7 @@ class ReentrantWorkspace:
         self._last = {"ignited": False, "winner": None, "availability": 0.0}
         self._last_total = {}  # content -> spikes this tick (spiking readout / tests)
         self._last_late = {}  # content -> 2nd-half spikes this tick (sustained firing)
+        self._last_raster = {}  # content -> micro-step spike times (observational; T033 scorer)
 
     # -- specialist / module interface ------------------------------------------------------------
     def submit(self, source, content, salience):
@@ -339,6 +340,10 @@ class ReentrantWorkspace:
         a_inh = 0.0
         total = {k: 0 for k in keys}
         late = {k: 0 for k in keys}
+        raster = {k: [] for k in keys}  # spike TIMES -- observational only (T033: the
+        # ignition scorer re-derives its PSTH window from these instead of trusting the
+        # `half` split below; same precedent as global_workspace._last_v: a readout the
+        # kernel already computes, surfaced, never a second mechanism)
         half = self._T // 2
         for t in range(self._T):
             spikes = {}
@@ -353,6 +358,7 @@ class ReentrantWorkspace:
                     v[k] -= self._v_th  # subtract-threshold reset
                     s = 1
                     total[k] += 1
+                    raster[k].append(t)
                     if t >= half:
                         late[k] += 1
                     trace[k] += 1.0
@@ -363,6 +369,7 @@ class ReentrantWorkspace:
                 if self_i[k] < 0.0:
                     self_i[k] = 0.0
             a_inh = sum(self_i.values())
+        self._last_raster = raster
         return total, late
 
     def step(self):
@@ -409,6 +416,9 @@ class ReentrantWorkspace:
             total, late = self._simulate(drives)
         else:
             total, late = {}, {}
+            self._last_raster = {}  # a dark tick clears ALL three readouts together --
+            # a stale raster beside cleared counts is the sibling-disagreement trap the
+            # T033 review measured
         self._last_total = total
         self._last_late = late
 
