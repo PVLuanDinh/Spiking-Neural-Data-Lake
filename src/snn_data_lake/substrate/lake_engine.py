@@ -87,7 +87,8 @@ RETENTION: dict[int, tuple[str, bool, str]] = {
         "_T_COALITION settled workspace coalitions (global_workspace.Coalition, specs/022 "
         "T031): the recall contract operates here -- Episode consolidation consumes sequences "
         "of these, so every record is lived experience (same class as _T_EPISODE). Append "
-        "budget: unbaselined (reported, never trips) until the live writer's rate is measured",
+        "budget: BASELINED 2026-08-21 (p95 434 B/tick, the documented instrument over "
+        "make_brain x120; sleep ticks emit nothing) -- the flood assert is live for this tag",
     ),
 }
 
