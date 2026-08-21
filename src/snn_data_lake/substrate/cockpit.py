@@ -328,14 +328,40 @@ def _handler(get_snap, turns, get_view=None, acts=None):
                     cam = look_view.look(_f("az"), _f("el"), _f("d"))
                     look_view.request()  # a drag is also a statement that somebody is watching
                     return self._send(200, json.dumps(cam))
+                # An id-less (or non-digit-id) GET on either queue endpoint is LOUD, never
+                # the pending default. The old shape returned {"pending": true}
+                # UNCONDITIONALLY for a missing id -- a constant wearing a queue-state's
+                # clothes (P4c) -- and it cost a morning of false "30-minute reply stall"
+                # observations against a daemon that was answering in three seconds: an
+                # external poller reading the bare GET could not distinguish "you forgot
+                # the ticket id" from "your ticket is queued". The frontend and the smoke
+                # test always pass ?id=, so only the misleading path changes shape.
                 if path == "/api/act":
                     tid = dict(p.split("=", 1) for p in qs.split("&") if "=" in p).get("id", "")
-                    rec = acts.result(tid) if (acts is not None and tid.isdigit()) else None
-                    return self._send(200, json.dumps(rec or {"pending": True}))
+                    if acts is None or not tid.isdigit():
+                        return self._send(
+                            200,
+                            json.dumps(
+                                {
+                                    "error": "id required (use /api/act?id=<ticket>)",
+                                    "pending_count": acts.pending() if acts is not None else 0,
+                                }
+                            ),
+                        )
+                    return self._send(200, json.dumps(acts.result(tid) or {"pending": True}))
                 if path == "/api/chat":
                     tid = dict(p.split("=", 1) for p in qs.split("&") if "=" in p).get("id", "")
-                    rec = turns.result(tid) if tid.isdigit() else None
-                    return self._send(200, json.dumps(rec or {"pending": True}))
+                    if not tid.isdigit():
+                        return self._send(
+                            200,
+                            json.dumps(
+                                {
+                                    "error": "id required (use /api/chat?id=<ticket>)",
+                                    "pending_count": turns.pending(),
+                                }
+                            ),
+                        )
+                    return self._send(200, json.dumps(turns.result(tid) or {"pending": True}))
                 snap = get_snap()
                 if path == "/api/state":
                     return self._send(200, json.dumps(snap["cognition"]))
