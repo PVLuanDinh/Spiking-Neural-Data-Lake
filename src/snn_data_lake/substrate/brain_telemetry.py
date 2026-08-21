@@ -176,6 +176,22 @@ PROVENANCE = {
     # `_connectome_reverb` and read by state() at :3023). The graded live counterpart is
     # `connectome_propagation` (v4.79).
     "connectome_reverberation": "structural: topology only, computed once, cannot vary",
+    # PROCESS-LIFETIME counters wearing brain-lifetime names (P4b/P8 audit, 2026-08-20):
+    # all three are zeroed in Brain.__init__ (`self._wake_ticks = 0` etc.) and never
+    # restored from the lake, so every push-triggered daemon restart resets them (measured:
+    # nights 281 -> 18 across one restart). The brain's LIFE is in the durable lake; these
+    # count THIS PROCESS. Deriving a lifetime number from lake-record cadence would be an
+    # approximation dressed as a measurement, so the honest fix is the label, not a fake.
+    "wake_ticks": "process-lifetime: zeroed at daemon restart, never lake-restored",
+    "sleep_ticks": "process-lifetime: zeroed at daemon restart, never lake-restored",
+    "nights_elapsed": "process-lifetime: zeroed at daemon restart, never lake-restored",
+    # The growth SUBSTRATE persists in the lake and survives restarts (specs/019 B2.09
+    # proved the cross-process restore); this COUNTER does not read it -- it reports the
+    # engine instance's units and resets with the process (measured 22 -> 6).
+    "grown_units": (
+        "process-lifetime counter over a lake-persisted substrate: the units survive in "
+        "the lake (B2.09); this number resets with the process"
+    ),
 }
 
 
@@ -673,11 +689,27 @@ def main():
         "moving, or the signal is being read from a source already overwritten by the writer"
     )
 
-    # provenance must ship, and must still flag the four signals the audit caught being drawn as live
+    # provenance must ship, and must still flag the four signals the audit caught being drawn as
+    # live -- plus the four process-lifetime counters the 2026-08-20 P4b audit caught wearing
+    # brain-lifetime names (a dropped tag would let a restart-reset counter read as the brain's
+    # life story again)
     prov = snap.get("provenance") or {}
-    for k in ("integration_competence", "pci", "spikes.midbrain", "spikes.substrate"):
+    for k in (
+        "integration_competence",
+        "pci",
+        "spikes.midbrain",
+        "spikes.substrate",
+        "wake_ticks",
+        "sleep_ticks",
+        "nights_elapsed",
+        "grown_units",
+    ):
         assert k in prov, (
             f"provenance lost its tag for {k}; it would render as a live reading again"
+        )
+    for k in ("wake_ticks", "sleep_ticks", "nights_elapsed", "grown_units"):
+        assert "process-lifetime" in prov[k], (
+            f"{k}'s provenance tag must state its PROCESS scope explicitly ({prov[k]!r})"
         )
 
     # recorder round-trips as JSONL. mkstemp, NOT a fixed name: Recorder APPENDS, so a shared path
