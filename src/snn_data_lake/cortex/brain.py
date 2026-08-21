@@ -1812,15 +1812,9 @@ class Brain:
             # equally; the PLACE source is action-specific, so ENGAGE and RELEASE receive DIFFERENT
             # drive and a learned place can actually tip the choice between them. SAFE_ACTION (HOLD)
             # gets none. The reflex/E-STOP still preempts and the gated arm is untouched.
-            undirected = (
-                self._drive_w["novelty"] * elig["novelty"]
-                + self._drive_w["ignition"] * elig["ignition"]
-                + self._drive_w["timing"] * elig["timing"]
-                + self._drive_w["reroute"] * elig["reroute"]
-                + self._drive_w["surprise"] * elig["surprise"]
-                # interoceptive motivation: an urgent need biases ACT over HOLD (undirected salience)
-                + self._drive_w["drive"] * elig["drive"]
-            )
+            # THE undirected-salience competition, extracted to a module function at T028
+            # so the declared predictor port's charge harness runs the GENUINE mechanism
+            undirected = undirected_salience(self._drive_w, elig)
 
             # HELP is action-directional like place: empathy drives the APPROACH/assist action
             # (ENGAGE) specifically, not a scalar over both non-HOLD actions. ACTIONS[0] is ENGAGE.
@@ -4618,6 +4612,47 @@ def main():
         f"(varying, benevolent); deterministic; ASCII. Cognition only -- no new actuator route."
     )
     brain.close()
+
+
+def undirected_salience(weights, elig):
+    """THE undirected-salience competition (specs/022 T028): the learned drive-weight dot
+    product over the sources that say "act" without saying which act -- novelty, ignition,
+    timing, reroute, surprise, drive. Extracted from _act's inline expression so the
+    declared predictor port's charge harness runs the GENUINE mechanism (P2: one path).
+    The `surprise` term IS the percept_surprise predictor port's consumer."""
+    return (
+        weights["novelty"] * elig["novelty"]
+        + weights["ignition"] * elig["ignition"]
+        + weights["timing"] * elig["timing"]
+        + weights["reroute"] * elig["reroute"]
+        + weights["surprise"] * elig["surprise"]
+        # interoceptive motivation: an urgent need biases ACT over HOLD (undirected salience)
+        + weights["drive"] * elig["drive"]
+    )
+
+
+def declare_ports(manifest):
+    """Manifest registrant (specs/022 T028, the consumer half): `salience_surprise_in`
+    receives the predictor port's surprise scalar into the undirected-salience competition
+    above (the salience-source dict entry `surprise` -- loop C2's orienting drive). The
+    edge is declared by this consumer: its subscription, its join."""
+    from snn_data_lake.substrate.wiring_manifest import Port
+
+    manifest.declare_port(
+        "brain",
+        Port(
+            name="salience_surprise_in",
+            region="cortex",
+            shape=(1,),
+            dtype="f4",
+            unit="level01",
+            encoding="SCALAR_DENSE",
+            kind="IN",
+            declaring_module="brain",
+            join_policy="sum",
+        ),
+    )
+    manifest.declare_edge("percept_surprise", "surprise_out", "brain", "salience_surprise_in")
 
 
 if __name__ == "__main__":

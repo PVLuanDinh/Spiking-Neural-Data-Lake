@@ -112,6 +112,143 @@ class PerceptSurprise:
         return s
 
 
+def declare_ports(manifest):
+    """Manifest registrant (specs/022 T028): THE predictor port. OUT `surprise_out` is the
+    bounded off-manifold surprise scalar; its ONE S0-chargeable consumer is the brain's
+    undirected-salience competition (`brain.salience_surprise_in`, loop C2's orienting
+    drive -- the consumer declares the edge). The OTHER intended consumers are DATED
+    FORWARD DISPOSITIONS in SYNTHESIS section 6, each discharged by the task that BUILDS
+    that consumer: |learning-progress| gating -> T046a (learning_progress.py), paging
+    prefetch -> T066 (neuron_pager.py), curriculum difficulty -> T076 (curriculum.py) --
+    the first record of this mapping was a clean 3-cycle scramble, caught by review;
+    declaring their edges today would be anatomy ahead of any consumer, the force-wiring
+    P6 forbids."""
+    from snn_data_lake.substrate.wiring_manifest import Port
+
+    manifest.declare_port(
+        "percept_surprise",
+        Port(
+            name="surprise_out",
+            region="cortex",
+            shape=(1,),
+            dtype="f4",
+            unit="level01",
+            encoding="SCALAR_DENSE",
+            kind="OUT",
+            declaring_module="percept_surprise",
+            delivery_policy="all-or-none",
+        ),
+    )
+
+
+#: the declared edge, exactly as the manifest carries it -- the charge evidence cites it
+SURPRISE_EDGE = ("percept_surprise", "surprise_out", "brain", "salience_surprise_in")
+
+
+def _surprise_consumer_factory():
+    """Fresh ring + JoinConsumer over the declared `salience_surprise_in` port, per arm."""
+    from snn_data_lake.cortex.brain import declare_ports as brain_declare_ports
+    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+
+    m = WiringManifest()
+    brain_declare_ports(m)
+    port = m.ports[("brain", "salience_surprise_in")]
+    ring = SignalRing(slots=128)
+    return ring, JoinConsumer(ring, port)
+
+
+#: fixed co-source eligibilities for the charge harness -- a plausible quiet tick, held
+#: CONSTANT across both replay arms so the only moving input is the surprise payload
+_CO_SOURCES = {"novelty": 0.1, "ignition": 0.0, "timing": 0.2, "reroute": 0.0, "drive": 0.1}
+
+
+def consume_surprise(consumer):
+    """The downstream computation under measurement: each delivered surprise frame enters
+    the brain's GENUINE undirected-salience competition (brain.undirected_salience,
+    extracted at T028 so this harness never re-implements it) under equal starting weights
+    -- the brain's own no-source-privileged initial condition. Returns
+    [(tick, drive), ...]. LOSS IS FATAL (the T026 ring-overrun lesson)."""
+    from snn_data_lake.cortex.brain import undirected_salience
+
+    weights = dict.fromkeys([*_CO_SOURCES, "surprise"], 1.0)
+    out = []
+    joined, lost = consumer.poll_joined()
+    assert not lost, f"charge measurement lost {lost} frames -- ring overrun, never smooth this"
+    for tick, vec in joined:
+        elig = dict(_CO_SOURCES)
+        elig["surprise"] = max(0.0, min(1.0, float(vec[0])))
+        out.append((tick, round(undirected_salience(weights, elig), 6)))
+    return out
+
+
+# distinct-from: neuromodulation/astrocyte_modulation.py -- its _gain_frames records the
+#   glial gain schedule; this records the SURPRISE stream for the predictor port. Same
+#   harness pattern, different wire. Read.
+def _surprise_frames(n_ticks=120, offmanifold_at=100, in_dim=24, seed=0):
+    """Recorded frames from a REAL PerceptSurprise over a stream that lives on a low-rank
+    manifold until `offmanifold_at`, then jumps off it. Burn-in 100 because the review's
+    24-seed sweep showed the subspace needs ~100 on-manifold ticks before the contrast is
+    a property of the MECHANISM rather than of one seed. k=3 matches the synthetic
+    manifold's rank DELIBERATELY (production runs k=8 over the percept latent): the
+    harness proves the PORT moves the competition under a converged subspace -- the
+    port's charge, not the production configuration, is what is being measured."""
+    rng = np.random.default_rng(seed)
+    basis = rng.normal(size=(3, in_dim))  # the stream's true 3-dim manifold
+    ps = PerceptSurprise(in_dim=in_dim, k=3, seed=seed)
+    frames = []
+    for t in range(1, n_ticks + 1):
+        if t < offmanifold_at:
+            x = rng.normal(size=3) @ basis
+        else:
+            x = rng.normal(size=in_dim)  # full-rank: off the learned manifold
+        frames.append((t, "percept_surprise", [float(ps.observe(x))]))
+    return frames, offmanifold_at
+
+
+def _measure_surprise_charge():
+    """The replay-twice A/B: live surprise stream vs a pinned zero-surprise payload.
+    -> (live, pinned_out, reads, responded): `responded` = the orienting drive rises at
+    the off-manifold jump (the predictor port, not the schedule, moved the competition)."""
+    from snn_data_lake.substrate.port_charge_probe import replay_twice
+
+    frames, offmanifold_at = _surprise_frames()
+    live, pinned_out, reads = replay_twice(
+        frames, _surprise_consumer_factory, consume_surprise, [0.0]
+    )
+    # MEAN-based response criterion (review BLOCKER: max(pre) saturates at 1.0 as the
+    # standardized+clipped surprise accumulates on-manifold evidence, so a max-vs-max test
+    # passed on 6/24 seeds and INVERTED to 0/24 at long burn-in; the mean contrast is
+    # 24/24 at burn-in >= 100 -- the statistic now measures the mechanism, not the seed)
+    pre_vals = [d for t, d in live if t < offmanifold_at]
+    post_vals = [d for t, d in live if t >= offmanifold_at]
+    responded = (sum(post_vals) / len(post_vals)) > (sum(pre_vals) / len(pre_vals))
+    return live, pinned_out, reads, responded
+
+
+def record_charge():
+    """Measure the A/B and record the attribution via THE one writer. REFUSES a
+    non-diverged or non-responding run -- evidence is a measurement, never a declaration."""
+    from snn_data_lake.substrate.port_charge_probe import record_attribution
+
+    live, pinned_out, reads, responded = _measure_surprise_charge()
+    if live == pinned_out or not responded:
+        print(f"record_charge REFUSED for {SURPRISE_EDGE}: no divergence or no response")
+        return 1
+    path = record_attribution(
+        SURPRISE_EDGE,
+        {"reads": reads, "n_frames": len(live)},
+        "replay_twice: a real PerceptSurprise stream (on-manifold, then an off-manifold "
+        "jump) vs a pinned zero-surprise payload, consumed by the brain's GENUINE "
+        "undirected_salience competition under equal starting weights; the orienting "
+        "drive diverged and rose at the jump -- the predictor port, not the schedule, "
+        "moved the competition; self-check re-measures and requires `measured` to "
+        "reproduce",
+    )
+    print(f"recorded {SURPRISE_EDGE} into {path}")
+    return 0
+
+
 class _NoveltyBaseline:
     """A DISTINCT familiarity/novelty signal used only by the self-check to test whether surprise
     is a separate faculty. novelty = 1 - max cosine-similarity to a small set of online prototypes
@@ -260,11 +397,41 @@ def main():
     )
     assert deterministic, "two identical runs must produce identical surprise series"
 
+    # ---- THE PREDICTOR PORT IS CHARGED, measured (specs/022 T028) ----------------------
+    from snn_data_lake.substrate.port_charge_probe import read_attribution
+
+    live, pinned_out, reads, responded = _measure_surprise_charge()
+    assert reads == len(live), f"the neuter must be READ every frame ({reads} vs {len(live)})"
+    assert live != pinned_out, (
+        "pinning the surprise payload to zero must change the orienting drive -- an "
+        "undiverged predictor port is a declared, not a charged, port"
+    )
+    assert responded, (
+        "the off-manifold jump must RAISE the orienting drive over the on-manifold "
+        "baseline -- divergence without response attributes nothing"
+    )
+    rec = read_attribution(SURPRISE_EDGE)
+    assert rec is not None and rec.get("diverged") is True, (
+        f"committed charge evidence must carry the diverged {SURPRISE_EDGE} attribution -- "
+        "regenerate with --record-charge and commit it"
+    )
+    fresh = {"reads": reads, "n_frames": len(live)}
+    assert rec.get("measured", {}) == fresh, (
+        f"recorded charge evidence does not reproduce: {rec.get('measured')} vs {fresh} -- "
+        "regenerate with --record-charge in the same commit"
+    )
+
     print(
         f"percept_surprise OK: first20={first20:.4f} last20={last20:.4f} "
-        f"offdist={offdist:.4f} novelty_corr={novelty_corr:.4f}"
+        f"offdist={offdist:.4f} novelty_corr={novelty_corr:.4f}. PREDICTOR PORT CHARGED "
+        f"(measured): live vs pinned diverged over {reads} read frames through the brain's "
+        f"genuine undirected_salience competition; committed attribution reproduces."
     )
 
 
 if __name__ == "__main__":
+    import sys as _sys
+
+    if "--record-charge" in _sys.argv[1:]:
+        _sys.exit(record_charge())
     main()

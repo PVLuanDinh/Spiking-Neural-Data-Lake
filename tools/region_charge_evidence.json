@@ -44,6 +44,20 @@
     },
     {
       "edge": [
+        "percept_surprise",
+        "surprise_out",
+        "brain",
+        "salience_surprise_in"
+      ],
+      "diverged": true,
+      "measured": {
+        "reads": 120,
+        "n_frames": 120
+      },
+      "provenance": "replay_twice: a real PerceptSurprise stream (on-manifold, then an off-manifold jump) vs a pinned zero-surprise payload, consumed by the brain's GENUINE undirected_salience competition under equal starting weights; the orienting drive diverged and rose at the jump -- the predictor port, not the schedule, moved the competition; self-check re-measures and requires `measured` to reproduce"
+    },
+    {
+      "edge": [
         "raphe_serotonin",
         "five_ht_out",
         "evidence_accumulation",

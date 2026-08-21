@@ -53,6 +53,11 @@ REGISTRANTS: tuple = (
     ("snn_data_lake.insula.interoceptive_integration", "declare_ports"),
     # T027: the glia wire -- the astrocyte gain field as a diffuse channel (self-edge)
     ("snn_data_lake.neuromodulation.astrocyte_modulation", "declare_ports"),
+    # T028: THE predictor port -- percept surprise into the brain's undirected-salience
+    # competition (the one S0-chargeable consumer; the other three are dated forward
+    # dispositions in SYNTHESIS section 6, discharged at T046a/T066/T076)
+    ("snn_data_lake.cortex.percept_surprise", "declare_ports"),
+    ("snn_data_lake.cortex.brain", "declare_ports"),
 )
 
 
