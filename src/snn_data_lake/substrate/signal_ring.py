@@ -295,10 +295,13 @@ class DeliveringProducer:
     """The OUT side: applies the declared delivery_policy at publish time.
 
     all-or-none publishes the whole vector. ('graded', source_name) SCALES the vector by the
-    bound association weight in [0, 1] -- and REFUSES (GradedUnbound) while unbound: the
-    declared incumbent source is `reentrant_workspace._assoc`, final binding at T030, and
-    silently downgrading graded to all-or-none in the meantime would be a policy nobody
-    declared."""
+    bound association weight in [0, 1] -- and REFUSES (GradedUnbound) while unbound:
+    silently downgrading graded to all-or-none would be a policy nobody declared. THE
+    binding landed at T030: `reentrant_workspace.association_level` is the incumbent
+    source -- a zero-argument bound method returning the learned association support of
+    the last ignited winner (0.0 while the workspace is dark), satisfying the
+    `w = float(self._assoc())` contract below; the self-check proves the graded scale
+    against that REAL source, not a lambda."""
 
     def __init__(self, ring, faculty, port, association_source=None):
         if getattr(port, "kind", None) != "OUT":
@@ -315,7 +318,7 @@ class DeliveringProducer:
                 raise GradedUnbound(
                     f"OUT port {self.port.name!r} declares "
                     f"{self.port.delivery_policy!r} but no association source is bound "
-                    "(incumbent: reentrant_workspace._assoc; final binding = T030)"
+                    "(THE source: reentrant_workspace.association_level, bound at T030)"
                 )
             w = float(self._assoc())
             vec = vec * min(1.0, max(0.0, w))
@@ -450,6 +453,12 @@ def main() -> int:
     if not np.allclose(gj[0][1], [1.0, 1.0, 1.0, 1.0]):
         print(f"signal_ring self-check FAILED: graded scaling wrong ({gj})")
         return 1
+
+    # (T030: the graded binding against THE REAL SOURCE -- both regimes, dark->0 and
+    # ignited->learned-weight -- is proven in reentrant_workspace's OWN self-check, where
+    # the source lives: a workspace construction here would register this substrate module
+    # as a private faculty bus in the p6 walk, which is exactly the census it must not
+    # pollute. This arm keeps the generic contract reds: unbound refusal + lambda scale.)
 
     # ---- single-writer is enforced, not documented ----
     box = {}

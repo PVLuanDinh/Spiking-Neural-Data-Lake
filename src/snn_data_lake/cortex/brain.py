@@ -4653,6 +4653,23 @@ def declare_ports(manifest):
         ),
     )
     manifest.declare_edge("percept_surprise", "surprise_out", "brain", "salience_surprise_in")
+    # T030: the re-entry stage's top-down re-route bias, read every wake tick
+    # (broadcast_to('action') -> elig['reroute'] in the drive-weight competition)
+    manifest.declare_port(
+        "brain",
+        Port(
+            name="reroute_in",
+            region="cortex",
+            shape=(1,),
+            dtype="f4",
+            unit="level01",
+            encoding="SCALAR_DENSE",
+            kind="IN",
+            declaring_module="brain",
+            join_policy="sum",
+        ),
+    )
+    manifest.declare_edge("reentrant_workspace", "reroute_out", "brain", "reroute_in")
 
 
 if __name__ == "__main__":

@@ -61,6 +61,11 @@ REGISTRANTS: tuple = (
     # T029: the RPE third-factor port -- phasic DA into the R-STDP eligibility gate
     ("snn_data_lake.midbrain.dopamine_nuclei", "declare_ports"),
     ("snn_data_lake.basal_ganglia.r_stdp", "declare_ports"),
+    # T030: the workspace composite -- the arm's bus producer, the shared bus, and the
+    # re-entry stage (brain's reroute_in consumer edge rides in brain.declare_ports)
+    ("snn_data_lake.brainstem.autonomous_loop", "declare_ports"),
+    ("snn_data_lake.thalamus.global_workspace", "declare_ports"),
+    ("snn_data_lake.thalamus.reentrant_workspace", "declare_ports"),
 )
 
 

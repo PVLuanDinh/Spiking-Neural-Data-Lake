@@ -3084,5 +3084,32 @@ def main():
     )
 
 
+def declare_ports(manifest):
+    """Manifest registrant (specs/022 T030, the producer half of the composite's bus):
+    the arm's per-tick coalition bids -- perception, threat, and (when enabled) novelty
+    submits into the shared GlobalWorkspace this loop OWNS and exclusively clocks
+    (_workspace_broadcast is the bus's ONE step() per tick; two clocks would
+    double-settle the competition). The edge is declared by the consumer
+    (global_workspace). NOTE the safety adjacency, unchanged by declaration: workspace
+    output never gates motion directly -- the reflex/E-STOP path preempts before the
+    workspace is consulted, and on a reflex tick only the threat bid is submitted."""
+    from snn_data_lake.substrate.wiring_manifest import Port
+
+    manifest.declare_port(
+        "autonomous_loop",
+        Port(
+            name="coalition_out",
+            region="brainstem",
+            shape=(1,),
+            dtype="f4",
+            unit="coalition_bid",
+            encoding="EVENT",
+            kind="OUT",
+            declaring_module="autonomous_loop",
+            delivery_policy="all-or-none",
+        ),
+    )
+
+
 if __name__ == "__main__":
     main()

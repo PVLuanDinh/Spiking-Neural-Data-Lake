@@ -3543,5 +3543,68 @@ def main():
     )
 
 
+def declare_ports(manifest):
+    """Manifest registrant (specs/022 T030, the workspace instance resolution): THE
+    declared composite. The resolution is a composite WITH ROLES, not one object -- the
+    measured record forbids naive unification (spike_chat_lake's own recorded experiment:
+    repointing its per-turn arena at this bus returned the arm's unit index as a chat
+    reply and destroyed the producer's broadcast):
+      * THE SHARED BUS is the arm-owned instance (autonomous_loop constructs it;
+        Brain.workspace / LiveBrain.workspace are ADOPTING accessors -- views, never
+        second constructions; access_consciousness receives it injected).
+      * the chat's per-turn arena is a declared PRIVATE-ARENA VIEW (its isolation is
+        load-bearing by experiment); it reads THIS bus through broadcast()/broadcast_hold.
+      * the re-entry stage is thalamus/reentrant_workspace (its own registrant).
+    Declared surfaces carry today's REAL traffic: coalition_in receives the arm's per-tick
+    submits under the bus's own ARBITRATE semantics (the P6-fixed rank key -- ranked by
+    final membrane, never by name -- lives in this module's kernel and its self-check);
+    broadcast_out is the one genuine cross-module read (LiveBrain.thought / the chat's
+    _attended sentence), declared edge-less until the coalition channels (T031) and the
+    report channel (T034) land their consumers.
+
+    TYPE HONESTY (review, T030): the live payloads are SYMBOLIC. A coalition submit is a
+    (source, content, salience) triple whose content is a token (an int unit index, the
+    string 'threat'); the broadcast is the winning CONTENT TOKEN itself. The manifest's
+    type row cannot carry symbolic structure, so the (1,) f4 row on coalition ports
+    describes the SALIENCE FIELD ONLY, the EVENT encoding marks the payload symbolic, and
+    broadcast_out's unit is 'workspace_content' -- the winning token, NOT a bid. This is
+    a PROVISIONAL description discharged when T031's typed coalition record replaces the
+    3-tuple; stating it here keeps the artifact from certifying a description the five
+    checks cannot themselves falsify (they compare declarations to declarations, never to
+    runtime)."""
+    from snn_data_lake.substrate.wiring_manifest import Port
+
+    manifest.declare_port(
+        "global_workspace",
+        Port(
+            name="coalition_in",
+            region="thalamus",
+            shape=(1,),
+            dtype="f4",
+            unit="coalition_bid",
+            encoding="EVENT",
+            kind="IN",
+            declaring_module="global_workspace",
+            join_policy="arbitrate",
+        ),
+    )
+    manifest.declare_port(
+        "global_workspace",
+        Port(
+            name="broadcast_out",
+            region="thalamus",
+            shape=(1,),
+            dtype="f4",
+            unit="workspace_content",
+            encoding="EVENT",
+            kind="OUT",
+            declaring_module="global_workspace",
+            delivery_policy="all-or-none",
+        ),
+    )
+    # the consumer declares its subscription: the arm's per-tick coalition bids
+    manifest.declare_edge("autonomous_loop", "coalition_out", "global_workspace", "coalition_in")
+
+
 if __name__ == "__main__":
     main()

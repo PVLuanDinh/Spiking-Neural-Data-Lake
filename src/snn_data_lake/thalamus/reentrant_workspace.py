@@ -347,6 +347,29 @@ class ReentrantWorkspace:
         return dict(self._last)
 
     # -- re-entry plumbing ------------------------------------------------------------------------
+    # distinct-from: substrate/signal_ring.py -- GradedUnbound/DeliveringProducer are the
+    #   DELIVERY mechanism that CONSUMES an association source; these two methods are the
+    #   incumbent SOURCE those docstrings have named since T020 ('final binding = T030').
+    #   Producer of the value, not a second delivery path. Read.
+    def _assoc_support(self, winner):
+        """The learned association support of `winner` in [0,1]: the aggregate over the
+        SOURCES that potentiated it (the v4.78 key-space fix's read, extracted at T030 so
+        _deliver's re-route bias and association_level() bind to ONE expression -- P2)."""
+        if winner is None:
+            return 0.0
+        return max((v for (_src, c), v in self._assoc.items() if c == winner), default=0.0)
+
+    def association_level(self):
+        """THE graded-delivery association source (specs/022 T030, finalizing the binding
+        T020's GradedUnbound machinery declared): a ZERO-ARGUMENT callable returning a
+        float in [0,1] -- exactly the contract signal_ring.DeliveringProducer.publish()
+        evaluates per publish (w = float(self._assoc())). Returns the learned association
+        support of the LAST ignited winner; a dark workspace (no winner this tick) returns
+        0.0 -- an unignited bus delivers nothing graded, which is the semantics the graded
+        policy exists for."""
+        last = getattr(self, "_last", None) or {}
+        return self._assoc_support(last.get("winner"))
+
     def _hebb_update(self, winner, winner_sources):
         """Local Hebbian re-entry learning (no gradient): sources that CONTRIBUTED to the ignited
         content potentiate toward 1; every other association passively decays."""
@@ -380,10 +403,7 @@ class ReentrantWorkspace:
                 # invented a per-subscriber axis that is never learned. Support for the ignited CONTENT
                 # is a property of the content, shared by every subscriber receiving it, so aggregate
                 # over the sources that potentiated it.
-                assoc = max(
-                    (v for (_src, c), v in self._assoc.items() if c == winner),
-                    default=0.0,
-                )
+                assoc = self._assoc_support(winner)
                 # base re-route (immediate) scaled by the learned association (adaptive). Re-entry OFF
                 # cuts the top-down bias entirely (fair control).
                 bias = self._REENTRY_GAIN * (1.0 + assoc) if self.reentry else 0.0
@@ -944,6 +964,71 @@ def main():
     # (8) determinism + agnostic (no phenomenal claim is even representable here).
     assert deterministic, "same seed + stream must reproduce identical availability"
 
+    # (9) T030: THE graded-delivery binding, proven against this module's OWN source in
+    # both regimes. A DeliveringProducer bound to association_level must deliver ZERO
+    # while the workspace is dark (no winner), and scale by the LEARNED association after
+    # ignition + Hebbian potentiation. Lives HERE, not in signal_ring's self-check: a
+    # workspace construction inside a FACULTY-role substrate module would register as a
+    # private bus in the p6 census (measured -- it did, 6 -> 7, and this move is the fix).
+    from snn_data_lake.substrate.signal_ring import DeliveringProducer, JoinConsumer, SignalRing
+    from snn_data_lake.substrate.wiring_manifest import Port
+
+    _gout = Port(
+        name="reroute_out",
+        region="thalamus",
+        shape=(4,),
+        dtype="f4",
+        unit="level01",
+        encoding="VEC_DENSE",
+        kind="OUT",
+        declaring_module="reentrant_workspace",
+        delivery_policy=("graded", "reentrant_workspace.association_level"),
+    )
+    _gin = Port(
+        name="g_in",
+        region="thalamus",
+        shape=(4,),
+        dtype="f4",
+        unit="level01",
+        encoding="VEC_DENSE",
+        kind="IN",
+        declaring_module="global_workspace",
+        join_policy="sum",
+    )
+    # The assertions are properties ONLY the real graded source has (review BLOCKER: the
+    # first form read its expected value off the source under test, so an all-or-none
+    # 1.0/0.0 impostor and a frozen 0.5 both passed): the Hebbian LADDER must be strict --
+    # w grows across potentiations and never reaches 1.0 -- and two publishes at different
+    # learning stages must deliver two DIFFERENT scaled vectors (graded, not binary).
+    _gws = ReentrantWorkspace(seed=0)
+    _ring = SignalRing(slots=8)
+    _sink = JoinConsumer(_ring, _gin)
+    _prod = DeliveringProducer(_ring, "ws", _gout, association_source=_gws.association_level)
+    _prod.publish(1, [2.0, 2.0, 2.0, 2.0])  # dark: no winner yet
+    _dark, _ = _sink.poll_joined()
+    assert list(_dark[0][1]) == [0.0, 0.0, 0.0, 0.0], (
+        f"dark workspace must grade delivery to zero ({_dark})"
+    )
+    _gws.submit("percept", "coalition", 0.9)
+    _gws.step()
+    _w1 = _gws.association_level()  # one potentiation up the Hebbian ladder
+    _prod.publish(2, [2.0, 2.0, 2.0, 2.0])
+    for _ in range(2):
+        _gws.submit("percept", "coalition", 0.9)
+        _gws.step()
+    _w3 = _gws.association_level()  # three potentiations
+    _prod.publish(3, [2.0, 2.0, 2.0, 2.0])
+    _lit, _ = _sink.poll_joined()
+    _v1, _v3 = float(_lit[0][1][0]), float(_lit[1][1][0])
+    assert 0.0 < _w1 < _w3 < 1.0, (
+        f"the Hebbian ladder must be STRICT (0 < w1 < w3 < 1): w1={_w1}, w3={_w3} -- an "
+        "all-or-none impostor pins at 1.0 and a frozen constant cannot climb"
+    )
+    assert abs(_v1 - 2.0 * _w1) < 1e-6 and abs(_v3 - 2.0 * _w3) < 1e-6 and _v1 != _v3, (
+        f"two learning stages must deliver two DIFFERENT graded scales "
+        f"(v1={_v1} w1={_w1}, v3={_v3} w3={_w3}) -- binary delivery cannot produce them"
+    )
+
     # Every claim above is now shown FALSIFIABLE by running the input that breaks it (P8).
     reds = _reds()
     print("-" * 82)
@@ -958,6 +1043,31 @@ def main():
         "fail, long-lag recover, OFF no-blink); subscriber RE-ROUTE (subbed A->B, control A, decided A); "
         f"Hebbian association grew {assoc_traj[0]:.2f}->{assoc_traj[-1]:.2f}; deterministic. "
         "FUNCTIONAL access only -- agnostic, no phenomenal / Phi claim."
+    )
+
+
+def declare_ports(manifest):
+    """Manifest registrant (specs/022 T030, the re-entry stage of the composite):
+    reroute_out carries the top-down re-route bias toward the ignited content, GRADED by
+    THE association source this module now exposes (association_level -- the binding
+    T020's GradedUnbound machinery declared and T030 landed; a dark workspace grades to
+    zero). The consumer is the brain's eligibility competition (broadcast_to('action')
+    read each wake tick); it declares the edge."""
+    from snn_data_lake.substrate.wiring_manifest import Port
+
+    manifest.declare_port(
+        "reentrant_workspace",
+        Port(
+            name="reroute_out",
+            region="thalamus",
+            shape=(1,),
+            dtype="f4",
+            unit="level01",
+            encoding="SCALAR_DENSE",
+            kind="OUT",
+            declaring_module="reentrant_workspace",
+            delivery_policy=("graded", "reentrant_workspace.association_level"),
+        ),
     )
 
 

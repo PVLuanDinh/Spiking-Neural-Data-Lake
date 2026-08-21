@@ -261,7 +261,13 @@ class LakeChat:
         # P1: the ignition current every candidate reply is measured against, read off the SAME
         # workspace `_ignite` competes in -- so the drives below cannot drift out of step with the
         # gate they are compared to. See `_DRIVE_MARGIN`.
-        self._rheobase = self._new_workspace().ignition_threshold
+        # T030 (composite resolution, latent-staleness fix): this was a SNAPSHOT off a
+        # throwaway construction-time instance -- frozen forever while a composite's
+        # threshold is mutable (the brain already modulates its re-entry stage's threshold
+        # per tick from Kuramoto coherence). Now a live read: `_rheobase` is a property
+        # over the SAME per-turn arena factory `_ignite` uses, so the ladder can never
+        # drift from the gate even if a future pass makes the arena's threshold dynamic.
+        # (The per-turn arena stays PRIVATE by measured record -- see _new_workspace.)
         # The RUNNING BRAIN, when a host attaches one (`chat.brain = live_brain`). P8: in the first,
         # UNCOMMITTED pass of this same-day rewrite this was read as `getattr(self, "brain", None)`
         # in `_consciousness()` on a class that never sets a `brain` attribute anywhere -- so the
@@ -882,7 +888,7 @@ class LakeChat:
 
     def _new_workspace(self):
         """The ONE workspace construction this chat thinks through. `_ignite` runs it per turn and
-        `__init__` reads its rheobase, so 'what drive ignites' is asked of the same object that
+        the `_rheobase` property reads its rheobase live (T030), so 'what drive ignites' is asked of the same factory that
         answers it -- there is no second place to keep the threshold in sync with (P1).
 
         THIS INSTANCE STAYS PRIVATE, AND THE REASON IS A MEASUREMENT, NOT A PREFERENCE. The P6
@@ -1089,6 +1095,18 @@ class LakeChat:
             "attending to and how strongly the slot is still holding it, both read off that one "
             "workspace rather than inferred from this turn."
         )
+
+    # distinct-from: substrate/port_charge_probe.py -- its replay_twice drives FRAMES
+    #   through consumers; this is the chat arena's ignition-current accessor. Phrase
+    #   overlap only. Read.
+    @property
+    def _rheobase(self):
+        """LIVE read of the arena's ignition current (T030): the same factory `_ignite`
+        competes in, re-read per access -- a snapshot froze at construction while a
+        composite's threshold is mutable, so the margin ladder could silently drift from
+        the gate it is compared against. One extra construction per read is the price of
+        never being stale; the arena stays private by measured record."""
+        return self._new_workspace().ignition_threshold
 
     def _drive(self, kind, evidence=0.0):
         """The workspace drive current for one candidate reply, as `rheobase + margin (+ evidence)`.
