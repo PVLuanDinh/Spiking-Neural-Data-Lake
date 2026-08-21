@@ -70,6 +70,10 @@ REGISTRANTS: tuple = (
     # T030's edge-less disposition on broadcast_out) + the typed report_out snapshot
     # consumed by brain.report_in (Brain.state()'s workspace_report, the cockpit field)
     ("snn_data_lake.substrate.report_channel", "declare_ports"),
+    # T036: the afferent boundary -- the S0 proprioceptive lane's producer (brain's
+    # proprio_in consumer edge rides in brain.declare_ports); interoception's row is the
+    # T026 tract, vision/audition are S1 dispositions, chemosensation out-of-scope
+    ("snn_data_lake.substrate.afferent_boundary", "declare_ports"),
 )
 
 

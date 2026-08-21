@@ -1345,10 +1345,16 @@ class Brain:
         # `distance` -- the ONLY E-STOP channel -- is deliberately untouched, so the reflex path is
         # byte-identical and the safety envelope is unchanged.
         try:
+            # T036: the fold lives in THE AFFERENT BOUNDARY now (substrate/
+            # afferent_boundary.proprioception -- extracted verbatim, one transduction;
+            # the declared lane proprio_out -> brain.proprio_in and this call are the
+            # same code). None = a body that cannot be read = the modality missing.
+            from snn_data_lake.substrate.afferent_boundary import proprioception
+
             th = (self.brain.arm.arm.state() or {}).get("theta_deg") or []
-            if len(th) >= 2:  # fold both joints into one normalised proprioceptive scalar
-                prop = ((float(th[0]) % 360.0) / 360.0 + (float(th[1]) % 360.0) / 360.0) / 2.0
-                base = dict(base, temperature=[round(min(1.0, max(0.0, prop)), 4)])
+            prop = proprioception(th)
+            if prop is not None:
+                base = dict(base, temperature=[prop])
         except Exception:  # a body that cannot be read must not break perception
             pass
         g = 0.5 * float(self._real_novelty)
@@ -4731,6 +4737,24 @@ def declare_ports(manifest):
         ),
     )
     manifest.declare_edge("report_channel", "report_out", "brain", "report_in")
+    # T036: the proprioceptive afferent lane's consumer -- _safe_ctx writes the folded
+    # joint scalar into the temperature band every wake tick, through the boundary's own
+    # fold (the declared route and the runtime call are one code).
+    manifest.declare_port(
+        "brain",
+        Port(
+            name="proprio_in",
+            region="cortex",
+            shape=(1,),
+            dtype="f4",
+            unit="level01",
+            encoding="SCALAR_DENSE",
+            kind="IN",
+            declaring_module="brain",
+            join_policy="arbitrate",
+        ),
+    )
+    manifest.declare_edge("afferent_boundary", "proprio_out", "brain", "proprio_in")
 
 
 if __name__ == "__main__":

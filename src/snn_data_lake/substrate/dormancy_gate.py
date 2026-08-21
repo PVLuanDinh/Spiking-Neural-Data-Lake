@@ -99,6 +99,10 @@ EXEMPT = {
     # feedback_alignment/sensor_demo/coordinated_growth) were DELETED in the Policy-2/3 retirement wave --
     # they are gone from REGIONS, so they are no longer brain modules and need no exemption.
     # ---- "permanent": legitimately not a tick faculty, each with the evidence that settled it ----
+    # afferent_boundary (T036) needs NO entry: Brain._safe_ctx's import makes it
+    # REACHABLE and the gate proved it (a first draft added an exemption claiming the
+    # walk could not see the lazy import -- the stale-EXEMPT guard fired the same run,
+    # which is that guard earning its keep). Its neuter A/B lives in its self-check.
     "episode_driver": (
         "permanent",
         "TRIAL DRIVER (specs/022 T035): owns the trial-phase schedule and the stimulus "
@@ -283,10 +287,15 @@ EXEMPT = {
         "permanent",
         "TOOL: offline CLI ingest aimed at signal_loop, not the brain tick",
     ),
-    "esp32_encoder_path": (
-        "permanent",
-        "AWAITING HARDWARE: real-sensor adapter; pyserial absent and arm_config SAFETY_CALIBRATED=False",
-    ),
+    # esp32_encoder_path's EXEMPT row retired at T036 on THIS GATE'S OWN BAR ONLY --
+    # import-graph reachability (the afferent boundary imports its `normalize`, and this
+    # gate's stale-EXEMPT check fires on a reachable module with a standing row). Said
+    # exactly, because the first retirement comment overclaimed 'reachable from the live
+    # tick' and the review measured the call level: transduce_temperature has no live
+    # caller yet, so 014's SEPARATE clear-the-exemption bar (SC-008: a live consumer,
+    # decided by FR-010's neuter-A/B) remains OPEN -- the milestone is NOT claimed, and
+    # its dated record plus the awaiting-hardware invariant live in specs/022 SYNTHESIS
+    # section 6. Reachability satisfied the gate; charge still owes its A/B.
     "sc_deep_layers": (
         "permanent",
         "AWAITING EFFECTOR: a gaze MOTOR PLANT (burst pool -> neural integrator -> displacement); the "

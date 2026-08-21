@@ -145,11 +145,12 @@ def test_artifact_is_tracked_and_loadable():
     # lost.
     pytest.importorskip("nir")
     m = WiringManifest.load_artifact(ARTIFACT)
-    assert (len(m.ports), len(m.edges)) == (20, 10), (
-        "the T034 artifact carries the patience wire + the interoceptive channel + the "
+    assert (len(m.ports), len(m.edges)) == (22, 11), (
+        "the T036 artifact carries the patience wire + the interoceptive channel + the "
         "glia self-edge + the predictor port + the third-factor port + the workspace "
-        "composite + the report channel AND its brain consumer (20 ports, 10 edges); a "
-        "different census means a registrant landed without updating this test's premise"
+        "composite + the report channel and its brain consumer + the proprioceptive "
+        "afferent lane (22 ports, 11 edges); a different census means a registrant "
+        "landed without updating this test's premise"
     )
     assert set(m.edges) == {
         ("raphe_serotonin", "five_ht_out", "evidence_accumulation", "patience_in"),
@@ -162,5 +163,6 @@ def test_artifact_is_tracked_and_loadable():
         ("reentrant_workspace", "reroute_out", "brain", "reroute_in"),
         ("global_workspace", "broadcast_out", "report_channel", "report_in"),
         ("report_channel", "report_out", "brain", "report_in"),
+        ("afferent_boundary", "proprio_out", "brain", "proprio_in"),
     }, "the committed edges must be exactly the declared subscriptions"
     assert m.all_findings() == [], "the committed artifact must satisfy all five checks"
