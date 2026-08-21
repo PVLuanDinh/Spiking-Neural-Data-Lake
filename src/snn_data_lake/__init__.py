@@ -457,6 +457,7 @@ REGIONS = {
         "atlas_node_gate",  # specs/022 T024: every connectome node id named by its region or dated-EXEMPT; bare == census + probe reds
         "selfcheck_cache",  # battery carry-forward: closure-hash-verified PASS carries; bare == dependency/poison/envelope/FAIL reds
         "report_channel",  # 022 T034: typed workspace-report snapshot; the broadcast's declared consumer
+        "episode_driver",  # 022 T035: stimulus port + trial schedule (fixation/saccade) + G5-replayable trials
         "safety_envelope",  # THE five approval-gated brainstem files, one definition + a SECURITY.md agreement check
         "ingest_guard",  # content boundary for outside data: licence deny-by-default + injection flagging
         "hf_stream",  # streamed HF datasets -> brain-consumable features (licence-gated, bounded)

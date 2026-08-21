@@ -99,6 +99,18 @@ EXEMPT = {
     # feedback_alignment/sensor_demo/coordinated_growth) were DELETED in the Policy-2/3 retirement wave --
     # they are gone from REGIONS, so they are no longer brain modules and need no exemption.
     # ---- "permanent": legitimately not a tick faculty, each with the evidence that settled it ----
+    "episode_driver": (
+        "permanent",
+        "TRIAL DRIVER (specs/022 T035): owns the trial-phase schedule and the stimulus "
+        "port over scratch KernelTick subjects; the same/different oracle is ESPP's "
+        "supervisory source. Consumers: its __main__ self-check (in-regime charge, "
+        "oracle-truth, G5-restore and refusal reds), T052's ESPP adoption benchmark "
+        "(names this oracle in its task row), and T081's report-order probe windowing "
+        "over its trials -- dated forward clients, each landing WITH its task (an "
+        "earlier draft cited 'T077+', which does not route through this driver -- "
+        "corrected at review). Wiring it into the live tick would make the experiment "
+        "part of the organism it measures",
+    ),
     "ignition_instrument": (
         "permanent",
         "MEASUREMENT INSTRUMENT (specs/022 T033, P8 invention #6's ignition scorer): drives "
