@@ -124,6 +124,12 @@ class ReentrantWorkspace:
         0.80  # per-tick fade of the re-entrant current when NOT re-charged (-> release)
     )
     _COAL_BONUS = 0.06  # extra drive per additional supporting specialist in a coalition (capped)
+    # The cap on the COALITION BASE DRIVE -- the largest value the competition can ever present
+    # to `bottom_up_supported`'s compare. Named once (T032 review): step()'s cap and the theta
+    # actuator's admissible ceiling MUST be the same number, and as two literals they drifted
+    # in prose the day they were born (the actuator's first range cited "[0,1] salience" while
+    # step() compared a [0, 1.2] capped drive -- measured: theta 1.05-1.19 was alive and refused).
+    _COAL_CAP = 1.2
     _REENTRY_GAIN = 0.08  # base top-down bias magnitude broadcast to a subscribed specialist
     _HEBB_LR = 0.25  # local Hebbian potentiation rate for a co-igniting (source, content)
     _HEBB_DECAY = 0.05  # passive decay of associations that did NOT co-ignite this tick
@@ -143,16 +149,16 @@ class ReentrantWorkspace:
     _ACC_HI = 1.90  # highest unit threshold, in drive units (just over the measured max)
 
     def __init__(self, ignition_threshold=0.55, reentry=True, seed=0):
-        self.ignition_threshold = ignition_threshold  # rheobase: a coalition fires iff drive > this
-        # The construction-time rheobase, kept immutable. `ignition_threshold` above is LIVE and may be
-        # modulated per tick by a caller (cortex.brain biases it with cross-region coherence), so the
-        # unmodulated base has to be recorded here -- otherwise callers re-type the 0.55 literal and the
-        # two silently drift apart. Read this, never re-type the default.
-        self.base_ignition_threshold = float(ignition_threshold)
+        self._theta_provenance = "construction"  # who last moved theta (T032 actuator)
+        self._theta_hold = False  # a sweep holds theta -> coherence_theta refuses
+        # DOOR 1 IS DOOR 2 (T032 review): construction seeds base + live + _v_th through the
+        # actuator itself, so the range check is written ONCE and an out-of-range seed
+        # refuses HERE instead of arming a per-tick ValueError on the narrowed brain path
+        # (measured: a 0.0-seeded workspace made coherence_theta raise out of Brain.tick()).
+        # `base_ignition_threshold` is the construction-time rheobase the live value may be
+        # biased away from -- read it, never re-type the 0.55 literal.
+        self.set_base_rheobase(ignition_threshold, provenance="construction")
         self.reentry = reentry
-        self._v_th = (
-            ignition_threshold / self._LEAK
-        )  # membrane threshold s.t. rheobase == threshold
         self._rng = random.Random(seed)  # per-instance RNG (deterministic jitter)
         self._buffer = []  # this tick's submissions: (source, content, salience)
         self._priors = {}  # this tick's top-down expectations: content -> magnitude
@@ -174,6 +180,102 @@ class ReentrantWorkspace:
         if c not in self._order:
             self._order[c] = len(self._order)
         self._buffer.append((str(source), c, float(salience)))
+
+    # distinct-from: thalamus/global_workspace.py -- the shared bus's rheobase is fixed at
+    #   construction and nobody rewrites it; THIS class is the one workspace whose theta is
+    #   moved live (cortex.brain's coherence bias), which is why the actuator lives here. Read.
+    # distinct-from: substrate/perf_baseline.py -- performance ratchet, no rheobase.
+    # distinct-from: substrate/lake_migrate.py -- tag dispositions, no rheobase.
+    # distinct-from: cortex/theta_gamma_code.py -- theta the OSCILLATION, not the rheobase.
+    # distinct-from: cortex/cortical_prior.py -- anatomy fractions, no rheobase.
+    # distinct-from: reasoning/spike_chat_lake.py -- reads a GlobalWorkspace band, writes
+    #   nothing. Phrase overlap only; all sites read.
+    def set_base_rheobase(self, theta, provenance, hold_bias=False):
+        """THE THETA AUTHORITY (specs/022 T032) -- the ONE statement of what may move this
+        workspace's rheobase, kept on the door every mover walks through:
+
+          1. CONSTRUCTION -- `__init__` seeds theta THROUGH THIS METHOD: door 1 and door 2
+             are mechanically one door, one range check, so no construction can hold a
+             theta the actuator would refuse (the review built one at 0.0 and the narrowed
+             brain path turned it into a per-tick raise -- this routing closes that hole).
+          2. THIS ACTUATOR -- moves base + live + `_v_th` COHERENTLY (three names, one
+             quantity), records `provenance`, and optionally takes the SWEEP HOLD
+             (`hold_bias=True`): while held, the per-tick coherence bias is REFUSED so a
+             commanded sweep value cannot be clobbered between command and read-back. THE
+             HOLD IS STICKY: a later command with the default `hold_bias=False` KEEPS a
+             standing hold (the review demonstrated a mid-sweep re-command silently opening
+             the gate); `release_theta_hold` is the ONE release door.
+          3. `coherence_theta()` below -- cortex.brain's per-tick coherence bias. LIVE value
+             only, NEVER the base; records its own provenance on every write; a no-op
+             returning False under the sweep hold.
+
+        Nothing else may write `ignition_threshold` or `_v_th` -- the tree-wide census at
+        T032 (re-derived by the review, setattr forms included) found exactly one external
+        writer, routed through door 3.
+
+        RANGE, derived from the class's OWN cap and corrected by measurement: 0 < theta <=
+        `_COAL_CAP` -- the largest coalition base drive step() can present to the
+        `bottom_up_supported` compare, so above it the re-entry recharge is unsatisfiable
+        by construction (and ignition was measured dead just past it: theta 1.19 ignites,
+        1.21 does not). The first draft claimed "(0, 1] from the salience domain" and the
+        review REFUTED it with this module's own coalition bonus: a 4-source coalition
+        drives 1.18, so theta 1.05-1.19 was alive and refused -- a picked constant wearing
+        a derivation's clothes, exactly what this actuator exists to forbid. theta <= 0
+        dissolves the competition (everything ignites). Both refusals stay loud. NOTE the
+        two mechanisms differ: `bottom_up_supported` gates the RECHARGE only; ignition is
+        the spiking kernel's `_v_th` -- the range keeps both reachable, and claims no more.
+
+        WIRING DISPOSITION (P3, stated not hidden): this actuator's live commanding caller
+        lands at T033 -- the ignition scorer's drive sweep (SYNTHESIS L7: "the drive-sweep
+        apparatus, BEFORE the scorer"). Until then the sweep arm in this module's
+        self-check is the only driver: a channel built ahead of its client, disclosed per
+        the scaffolding rule, never credited as a live capability."""
+        t = float(theta)
+        if not (0.0 < t <= self._COAL_CAP):
+            raise ValueError(
+                f"set_base_rheobase({t}): theta must be in (0, {self._COAL_CAP}] -- above the "
+                "coalition cap no drive can satisfy the recharge compare (structurally dead), "
+                "at or below 0 the competition dissolves"
+            )
+        self.base_ignition_threshold = t
+        self.ignition_threshold = t
+        self._v_th = t / self._LEAK
+        self._theta_provenance = str(provenance)
+        if hold_bias:
+            self._theta_hold = True  # sticky: only release_theta_hold clears (see docstring)
+
+    # distinct-from: brainstem/live_arm.py -- HOLD the motor action, not this sweep hold.
+    # distinct-from: amygdala/fear_conditioning.py -- THETA_CEA threat threshold. Read.
+    def release_theta_hold(self, provenance):
+        """THE one release door for the sweep hold (a re-command with default hold_bias
+        deliberately does NOT release -- see set_base_rheobase). The per-tick coherence
+        bias resumes next tick. Provenance recorded like every theta move."""
+        self._theta_hold = False
+        self._theta_provenance = str(provenance)
+
+    # distinct-from: substrate/region_coherence.py -- COMPUTES the biased value
+    #   (ignition_bias); this door WRITES it under the authority. Read.
+    def coherence_theta(self, thr):
+        """Door 3 of the theta authority (see set_base_rheobase): the per-tick coherence
+        bias write. Moves the LIVE threshold and `_v_th` only -- the base is the actuator's
+        and construction's alone -- and RECORDS ITS PROVENANCE like the other doors (the
+        first draft did not, so a live brain reported 'construction' through sixty theta
+        moves: the exact stale-record shape the cockpit's PROVENANCE discipline forbids).
+        Returns False AND WRITES NOTHING while a sweep holds theta; range-refuses loudly
+        (a bias outside the admissible band is a computation error upstream, never a value
+        to clamp quietly)."""
+        if self._theta_hold:
+            return False
+        t = float(thr)
+        if not (0.0 < t <= self._COAL_CAP):
+            raise ValueError(
+                f"coherence_theta({t}): biased theta left (0, {self._COAL_CAP}] -- the bias "
+                "computation is broken upstream; refusing to write a structurally dead rheobase"
+            )
+        self.ignition_threshold = t
+        self._v_th = t / self._LEAK
+        self._theta_provenance = "coherence-bias"
+        return True
 
     def expect(self, content, magnitude):
         """Post a top-down EXPECTATION (a prior) for `content` into this tick's competition.
@@ -277,7 +379,9 @@ class ReentrantWorkspace:
             base[content] = max(base.get(content, 0.0), sal)
             sources.setdefault(content, set()).add(src)
         for content in list(base):
-            base[content] = min(1.2, base[content] + self._COAL_BONUS * (len(sources[content]) - 1))
+            base[content] = min(
+                self._COAL_CAP, base[content] + self._COAL_BONUS * (len(sources[content]) - 1)
+            )
 
         # 2. build each coalition's drive: bottom-up base + (re-entry ON) the two top-down currents --
         #    the decaying self-sustain on the incumbent, and any exogenous EXPECTATION on a coalition
@@ -1027,6 +1131,87 @@ def main():
     assert abs(_v1 - 2.0 * _w1) < 1e-6 and abs(_v3 - 2.0 * _w3) < 1e-6 and _v1 != _v3, (
         f"two learning stages must deliver two DIFFERENT graded scales "
         f"(v1={_v1} w1={_w1}, v3={_v3} w3={_w3}) -- binary delivery cannot produce them"
+    )
+
+    # ---- T032 IGNITION ACTUATOR: the drive-sweep apparatus + its positive control ----------
+    # spec.md acceptance #4: theta commanded across a sweep, read-back asserts EVERY
+    # commanded value took effect -- while a live coherence-bias ATTACK runs every tick
+    # (the exact per-tick rewrite cortex.brain performs; the sweep hold must refuse it).
+    # Reds run inline: range refusals both sides of the band, and the hold demonstrably
+    # gates (the same attack LANDS once the hold is released -- the gate's liveness
+    # control, so a permanently-stuck hold cannot read as a working gate).
+    swp = ReentrantWorkspace(seed=0)
+    sweep_thetas = [0.20, 0.40, 0.55, 0.75, 1.00, 1.20]  # 1.20 = _COAL_CAP, the admissible edge
+    for cmd in sweep_thetas:
+        swp.set_base_rheobase(cmd, provenance="sweep:selfcheck", hold_bias=True)
+        for _t in range(4):
+            took = swp.coherence_theta(0.33)  # the per-tick rewrite, attacking mid-sweep
+            assert took is False, "the sweep hold must REFUSE the per-tick coherence bias"
+            swp.submit("percept", "probe", 0.9)
+            swp.step()
+            assert swp.ignition_threshold == cmd and swp.base_ignition_threshold == cmd, (
+                f"READ-BACK FAILED mid-sweep: commanded {cmd}, live {swp.ignition_threshold} "
+                f"-- a swept drive that did not take is not a sweep (T032 positive control)"
+            )
+            assert abs(swp._v_th * swp._LEAK - cmd) < 1e-12, (
+                "the membrane threshold must move WITH theta -- three names, one quantity"
+            )
+    assert swp._theta_provenance == "sweep:selfcheck"
+    # STICKY HOLD (review red): a mid-sweep re-command with the DEFAULT hold_bias must keep
+    # the standing hold -- the first draft's unconditional `_theta_hold = bool(hold_bias)`
+    # silently opened the gate here, the exact clobber the hold exists to prevent.
+    swp.set_base_rheobase(0.60, provenance="sweep:recommand")
+    assert swp._theta_hold is True and swp.coherence_theta(0.33) is False, (
+        "a re-command with default hold_bias must KEEP a standing hold -- releasing it "
+        "silently restores the mid-sweep clobber"
+    )
+    swp.release_theta_hold("sweep:selfcheck done")
+    # RELEASE PROVENANCE (review red): asserted AFTER release with a distinct string, so a
+    # release that drops, forges, or hardcodes provenance goes red (three impostors passed
+    # the pre-release-only assert).
+    assert swp._theta_provenance == "sweep:selfcheck done", (
+        f"release must record ITS provenance, got {swp._theta_provenance!r}"
+    )
+    assert swp.coherence_theta(0.33) is True and swp.ignition_threshold == 0.33, (
+        "released, the coherence door must WORK again -- a stuck hold is a dead bias path, "
+        "and this control is what keeps the refusals above from being a frozen gate"
+    )
+    # DOOR-3 PROVENANCE (review red): the busiest door must record itself -- the first
+    # draft left 'construction' standing through sixty live theta moves.
+    assert swp._theta_provenance == "coherence-bias", (
+        f"coherence_theta must record its provenance, got {swp._theta_provenance!r}"
+    )
+    assert swp.base_ignition_threshold == 0.60, "the bias must never move the BASE"
+    # hold_bias FALSE DIRECTION (review red): on a fresh workspace the default must NOT
+    # take a hold -- a mutant that ignores the flag and holds unconditionally passed the
+    # entire old arm (the review's M1 impostor). This is its red.
+    swp2 = ReentrantWorkspace(seed=0)
+    swp2.set_base_rheobase(0.50, provenance="no-hold")
+    assert swp2._theta_hold is False and swp2.coherence_theta(0.40) is True, (
+        "set_base_rheobase without hold_bias must leave the coherence door OPEN -- a "
+        "hold taken unconditionally makes every sweep hold vacuously green"
+    )
+    for bad in (0.0, -0.2, 1.21):
+        try:
+            swp.set_base_rheobase(bad, provenance="red")
+            raise AssertionError(f"set_base_rheobase({bad}) must refuse -- red unreachable")
+        except ValueError:
+            pass  # the RED, reached: structurally dead theta refused
+        try:
+            ReentrantWorkspace(ignition_threshold=bad, seed=0)
+            raise AssertionError(f"construction at {bad} must refuse -- door 1 unguarded")
+        except ValueError:
+            pass  # the RED, reached: door 1 IS door 2 (one range check, no unguarded seed)
+    try:
+        swp.coherence_theta(1.5)
+        raise AssertionError("coherence_theta(1.5) must refuse -- red unreachable")
+    except ValueError:
+        pass  # the RED, reached: broken upstream bias refused loudly
+    print(
+        f"\n(T032) ignition actuator: {len(sweep_thetas)}-point sweep read back exactly under "
+        f"a per-tick bias attack; hold sticky across re-command, refuses/releases with "
+        f"recorded provenance on every door; base immutable to the bias; range reds reached "
+        f"on all three doors"
     )
 
     # Every claim above is now shown FALSIFIABLE by running the input that breaks it (P8).

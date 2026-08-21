@@ -929,6 +929,9 @@ class Brain:
             None  # feedforward synfire chain -> the all-or-none SYNCHRONY-BINDING gate on ignition
         )
         self._bound = False  # True this tick when a coherence volley SURVIVED the synfire chain (reliable binding)
+        self._theta_bias_refused = (
+            0  # coherence->theta writes refused by a sweep hold (T032; audit, cockpit-visible)
+        )
         try:
             from snn_data_lake.cerebellum.synfire_chain import SynfireChain
             from snn_data_lake.cortex.learned_attention import LearnedAttention
@@ -2349,6 +2352,17 @@ class Brain:
                     a0 = self._region_coherence_val * self._synfire.width
                     sigma0 = self._synfire.window * (1.0 - self._region_coherence_val)
                     self._bound = bool(self._synfire.survives(a0, sigma0))
+            except Exception:
+                pass
+            else:
+                # T032: THE THETA WRITE LEAVES THE SWALLOW. It used to sit inside the bare
+                # except above, so a failed write read as a swept drive -- the exact shape
+                # SYNTHESIS L7 names. The coherence COMPUTE keeps its tolerance (a raster
+                # hiccup must not kill the tick); the WRITE goes through the workspace's own
+                # theta authority (reentrant_workspace.set_base_rheobase's docstring is the
+                # one-place statement) and a failure there RAISES. coherence_theta() moves
+                # the LIVE value only, never the base, and refuses (returns False) while a
+                # sweep holds theta -- the actuator's gate, not a silent skip.
                 if (
                     self._reentrant is not None
                 ):  # RELIABLE binding (a survived volley) -> lower rheobase -> easier ignition
@@ -2358,10 +2372,12 @@ class Brain:
                         if self._bound
                         else float(base)
                     )
-                    self._reentrant.ignition_threshold = thr
-                    self._reentrant._v_th = thr / self._reentrant._LEAK
-            except Exception:
-                pass
+                    # The refusal is BOUND AND COUNTED, never dropped: under a sweep hold
+                    # the bias stops taking effect, and a consumer of region_coherence must
+                    # be able to see that its downstream write was gated (the review's
+                    # charge probe measured 24 live writes -- and every return discarded).
+                    if not self._reentrant.coherence_theta(thr):
+                        self._theta_bias_refused += 1
         if (
             self._learned_evc is not None
         ):  # C1 b4: LEARNED expected-value-of-control (cost/value learned online, three-factor)
@@ -3402,6 +3418,18 @@ class Brain:
             "connectome_propagation": self._connectome_propagation,  # LIVE: mean connectome network rate -- graded, 9 distinct values over 120 ticks
             "region_coherence": self._region_coherence_val,  # C1 b3: cross-region Kuramoto coherence (biases workspace ignition)
             "synfire_bound": self._bound,  # all-or-none synfire binding event this tick (gates the coherence->ignition bias)
+            # T032 theta audit surface (P4c: the cockpit reports what the brain MEASURES).
+            # These three give _theta_provenance its consumer and make a sweep hold visible:
+            # a held theta shows a pinned value, its provenance, and a rising refusal count.
+            "workspace_theta": (
+                round(float(self._reentrant.ignition_threshold), 4)
+                if self._reentrant is not None
+                else None
+            ),
+            "workspace_theta_provenance": (
+                self._reentrant._theta_provenance if self._reentrant is not None else None
+            ),
+            "theta_bias_refused": self._theta_bias_refused,
             "evc_cost": self._evc_cost,  # C1 b4: LEARNED cost-of-control (dopamine-gated, replaces fixed 0.1)
             "evc_value": self._evc_value,  # C1 b4: LEARNED value-of-control
             "episode_retained": self._episode_retained,  # C1 b4: durable-episode recall fraction (systems consolidation, no forgetting)
