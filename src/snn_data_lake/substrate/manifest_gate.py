@@ -66,6 +66,10 @@ REGISTRANTS: tuple = (
     ("snn_data_lake.brainstem.autonomous_loop", "declare_ports"),
     ("snn_data_lake.thalamus.global_workspace", "declare_ports"),
     ("snn_data_lake.thalamus.reentrant_workspace", "declare_ports"),
+    # T034: the report channel -- the workspace broadcast's declared consumer (discharges
+    # T030's edge-less disposition on broadcast_out) + the typed report_out snapshot
+    # consumed by brain.report_in (Brain.state()'s workspace_report, the cockpit field)
+    ("snn_data_lake.substrate.report_channel", "declare_ports"),
 )
 
 

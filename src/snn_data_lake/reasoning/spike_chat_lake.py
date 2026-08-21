@@ -977,13 +977,18 @@ class LakeChat:
 
         TWO MEASURED LIMITATIONS, recorded here because both are easy to leave as silent assumptions.
 
-        (1) NOTHING ATTACHES A BRAIN ON THE LIVE PATH TODAY, so in production this returns None on
-        every turn. `cortex/live_brain.py::_reasoning_reply` constructs the LakeChat it converses
-        through and never assigns `lc.brain`; `reasoning/web_ingest_gate.py` does not either. The
-        charge below is therefore measured with a real brain attached by hand -- and the one line
-        that would make it fire in production (`lc.brain = self` beside that constructor) is in a
-        module this pass does not own. Stated as a gap rather than implied: the CONSUMER half is
-        here and proven; the attachment is escalated.
+        (1) THE ATTACHMENT LANDED AT T034 -- `live_brain._reasoning_reply` now assigns
+        `lc.brain = self` at construction -- AND ITS HONEST CHARGE SHAPE WAS MEASURED BY
+        THE T034 REVIEW, so it is stated exactly: the clause below is REAL at this class's
+        own converse() (426-byte vs 156-byte gap replies, A/B reproduced), and LiveBrain
+        DISCARDS precisely those replies -- its bridge returns None unless known/source
+        matches, and the gap turn matches neither, so no production caller sees this
+        clause today (5 of 5 production replies byte-identical with vs without the
+        attachment, measured). The channel's production-visible consumers are elsewhere:
+        `LiveBrain.thought`, the attending-turn reply, and `Brain.state()['workspace_report']`
+        all read `report_channel.snapshot` on the cockpit path. This clause remains the
+        CHAT-side consumer, live for any direct LakeChat caller, its charge disclosed as
+        chat-level rather than claimed as production-level.
 
         HOW BIG THAT GAP IS, MEASURED rather than characterised. RE-RUN 2026-08-06 over 150 wake
         ticks (`make_brain(seed=0, refit_every=10, persist=False)`, clock.phase forced to 0.25, one
@@ -1059,10 +1064,16 @@ class LakeChat:
         content with a neighbouring tick's charge in a REPORTED SENTENCE. It cannot raise (an emptied
         slot yields hold 0.0, never a subscript on None), it mutates nothing, and it reaches no
         decision -- `known`, `ignited` and `source` are untouched by this method."""
+        # T034: the read goes through THE REPORT CHANNEL -- the declared route this
+        # private reach became (substrate/report_channel.snapshot; one mechanism, P2).
+        # Same snapshot discipline, same dark-record honesty; this method is now the
+        # channel's chat-side adapter and nothing more. (The two-line shape keeps the
+        # bus argument ATTRIBUTABLE to p6_gate's walk, as the old body's was.)
+        from snn_data_lake.substrate.report_channel import snapshot
+
         ws = getattr(self.brain, "workspace", None)
-        if ws is None:
-            return (None, 0.0)
-        return (ws.broadcast(), float(ws.broadcast_hold))
+        rec = snapshot(ws)
+        return (rec["content"], rec["strength"])
 
     def _attended_clause(self):
         """The measured one-sentence report of `_attended()`, or '' when nothing is globally

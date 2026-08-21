@@ -3903,6 +3903,39 @@ def main():
         f"refusal reached"
     )
 
+    # ---- T034 REPORT CHANNEL, live-kernel arms (the bus owns its drivers -- the T030
+    # precedent; the channel's own self-check covers the record CONTRACT on stubs, and
+    # constructing buses there registered a FACULTY holding private buses in the p6
+    # census, two ratchets red, measured). ----------------------------------------------
+    from snn_data_lake.substrate.report_channel import snapshot as _rc_snapshot
+
+    rc_ws = GlobalWorkspace(seed=0)
+    assert _rc_snapshot(rc_ws) == {"content": None, "availability": 0.0, "strength": 0.0}, (
+        "an un-ignited REAL bus must report the dark record through the channel"
+    )
+    rc_ws.submit("perception", "scene", 0.9)
+    rc_ws.step()
+    rc_holds = [float(rc_ws.broadcast_hold)]
+    rc_strengths = [_rc_snapshot(rc_ws)["strength"]]
+    for _ in range(3):
+        rc_ws.step()  # no resubmission: the hold decays
+        rc_holds.append(float(rc_ws.broadcast_hold))
+        rc_strengths.append(_rc_snapshot(rc_ws)["strength"])
+    assert rc_strengths == rc_holds and len(set(s for s in rc_strengths if s > 0)) > 1, (
+        f"the channel's strength must BE the decaying hold ELEMENTWISE ({rc_strengths} vs "
+        f"{rc_holds}) -- equality at every tick kills the 1-minus-hold impostor a "
+        "movement-only assert let through (T034 review)"
+    )
+    for _ in range(40):
+        rc_ws.step()
+    assert _rc_snapshot(rc_ws) == {"content": None, "availability": 0.0, "strength": 0.0}, (
+        "a released bus must report DARK through the channel -- no stale content"
+    )
+    print(
+        f"report chan  : dark -> live (strength == hold elementwise {rc_strengths}) -> "
+        f"released dark, all through substrate/report_channel.snapshot on the REAL kernel"
+    )
+
     print(
         "\nself-check OK: "
         f"capacity {cap} (derived from defence {band_hi and 1.0 - band_hi:.2f}); churn {churn_with} "

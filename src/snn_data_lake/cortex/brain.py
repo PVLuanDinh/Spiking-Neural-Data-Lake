@@ -3243,8 +3243,16 @@ class Brain:
         self._was_asleep = asleep
         return "asleep" if asleep else "awake"
 
+    # distinct-from: cerebellum/forward_model.py -- dynamics state, not telemetry.
+    # distinct-from: cortex/generative_self_model.py -- the self-signal forward model.
+    # distinct-from: cortex/self_model.py -- the mood-sentence view this dict embeds.
+    # distinct-from: neuromodulation/empowerment.py -- latent rollout state.
+    # distinct-from: reasoning/pc_active_inference.py -- policy-model state. Phrase
+    #   overlap on 'state' only; this is the ONE /api/state telemetry build. Sites read.
     def state(self):
         """Telemetry for /api/state. Adds a COMPACT self_state view of the evolving self-model."""
+        from snn_data_lake.substrate.report_channel import snapshot as _report_snapshot
+
         grown = self.neuro.grown_units if self.neuro is not None else 0
         acc = self.neuro.predict_accuracy if self.neuro is not None else 0.0
         sm = self.self_model.state()
@@ -3430,6 +3438,11 @@ class Brain:
                 self._reentrant._theta_provenance if self._reentrant is not None else None
             ),
             "theta_bias_refused": self._theta_bias_refused,
+            # T034: the report channel's declared consumer (brain.report_in) -- the typed
+            # workspace-report snapshot on the state the cockpit renders (P4c). THE
+            # runtime read matching the declared edge; the review measured the first
+            # draft's 'consumers' to be prose only.
+            "workspace_report": _report_snapshot(getattr(self, "workspace", None)),
             "evc_cost": self._evc_cost,  # C1 b4: LEARNED cost-of-control (dopamine-gated, replaces fixed 0.1)
             "evc_value": self._evc_value,  # C1 b4: LEARNED value-of-control
             "episode_retained": self._episode_retained,  # C1 b4: durable-episode recall fraction (systems consolidation, no forgetting)
@@ -4698,6 +4711,26 @@ def declare_ports(manifest):
         ),
     )
     manifest.declare_edge("reentrant_workspace", "reroute_out", "brain", "reroute_in")
+    # T034: the report channel's declared consumer -- Brain.state() reads the typed
+    # {content, availability, strength} snapshot through report_channel.snapshot on every
+    # state build, and the cockpit renders those fields (P4c: the cockpit reports what
+    # the brain measures). The consumer declares its subscription, per the registrant
+    # convention.
+    manifest.declare_port(
+        "brain",
+        Port(
+            name="report_in",
+            region="cortex",
+            shape=(3,),
+            dtype="f4",
+            unit="report_snapshot",
+            encoding="EVENT",
+            kind="IN",
+            declaring_module="brain",
+            join_policy="arbitrate",
+        ),
+    )
+    manifest.declare_edge("report_channel", "report_out", "brain", "report_in")
 
 
 if __name__ == "__main__":

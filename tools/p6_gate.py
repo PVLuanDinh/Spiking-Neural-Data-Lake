@@ -218,6 +218,12 @@ API = {
     # without this row the walk lost sight of it and the autonomous_loop liveness floor
     # correctly fired INSTRUMENT DEAD (2 of 3). Not progress -- a rename made visible.
     ("submit_coalition", 3): "WRITE",
+    # INSTRUMENT CHANGE 2026-08-21 (T034): report_channel.snapshot(ws) is the declared
+    # READ route to the bus -- live_brain.thought and spike_chat_lake._attended now read
+    # through it, and without this row the walk reported cross_module_reads 1 -> 0 while
+    # the tree's actual consumption GREW. The resolver attributes snapshot's ARGUMENT
+    # the same way it attributes an accessor's receiver.
+    ("snapshot", 1): "READ",
     ("broadcast", 0): "READ",
     ("broadcast_all", 0): "READ",  # added 2026-08-06; see the docstring's instrument-change note
     ("broadcast_to", 1): "READ",
@@ -292,9 +298,16 @@ KNOWN_READERS = {
     "reasoning/train_of_thought.py": 2,
     "thalamus/reentrant_workspace.py": 2,
     "cortex/brain.py": 1,
-    "cortex/live_brain.py": 1,
     "reasoning/rpm_solver.py": 1,
-    "reasoning/spike_chat_lake.py": 1,
+    # INSTRUMENT CHANGE 2026-08-21 (T034): the counted broadcast() reads of BOTH
+    # reasoning/spike_chat_lake.py (its _attended became the channel's adapter) and
+    # cortex/live_brain.py (its `thought` property routes through the channel) MOVED into
+    # substrate/report_channel.py -- the reads did not stop happening, they changed
+    # modules onto the ONE declared route. The floor follows the read to its new home;
+    # leaving the old rows fired INSTRUMENT DEAD on a correct P2 consolidation, and
+    # dropping the floor entirely would blind the walk to a total loss of the tree's
+    # cross-module workspace consumption.
+    "substrate/report_channel.py": 1,
 }
 
 # --------------------------------------------------------------------------------------------------
@@ -615,6 +628,17 @@ class _SiteVisitor(ast.NodeVisitor):
                     self.sites.append(
                         (kind, node.lineno, node.func.attr, recv[1], self._names(node.args))
                     )
+        elif isinstance(node.func, ast.Name):
+            # T034 (with the ("snapshot", 1) API row): a bare-name accessor whose BUS is
+            # its first ARGUMENT -- the report channel's read shape. The argument is
+            # attributed exactly as a method receiver would be; without this branch the
+            # walk reported cross_module_reads 1 -> 0 on a refactor that GREW consumption.
+            arity = len(node.args) + len(node.keywords)
+            kind = API.get((node.func.id, arity))
+            if kind is not None and node.args:
+                recv = self._receiver(node.args[0])
+                if recv is not None:
+                    self.sites.append((kind, node.lineno, node.func.id, recv[1], ()))
         self.generic_visit(node)
 
     def visit_Attribute(self, node):
@@ -1465,6 +1489,10 @@ def self_check(root):
     live_src = os.path.join(source_dir(root), "cortex", "live_brain.py")
     with open(live_src, encoding="utf-8") as fh:
         live_text = fh.read()
+    with open(
+        os.path.join(source_dir(root), "reasoning", "spike_chat_lake.py"), encoding="utf-8"
+    ) as fh:
+        chat_text = fh.read()  # T034: the second counted read the mutation must delete
     with open(os.path.join(source_dir(root), "connectome.py"), encoding="utf-8") as fh:
         conn_text = fh.read()
 
@@ -1483,14 +1511,29 @@ def self_check(root):
         ),
         (
             "cross_module_reads",
-            "delete the one cross-module read in cortex/live_brain.py",
+            "delete BOTH cross-module reads (live_brain.thought + the chat adapter)",
             {
+                # T034: three counted reads exist now (thought + the attending-branch
+                # composition + the chat adapter, all through the report channel); the
+                # red needs the count BELOW 1, so the mutation deletes every one -- one
+                # anchor was enough only while one read was.
                 "cortex/live_brain.py": _mutate_text(
-                    live_text,
-                    "self.arm.workspace.broadcast()",
-                    "None",
-                    "cross_module_reads",
-                )
+                    _mutate_text(
+                        live_text,
+                        'return snapshot(self.arm.workspace)["content"]',
+                        "return None",
+                        "cross_module_reads (thought)",
+                    ),
+                    "rec = snapshot(self.arm.workspace)",
+                    'rec = {"content": None, "availability": 0.0, "strength": 0.0}',
+                    "cross_module_reads (attending branch)",
+                ),
+                "reasoning/spike_chat_lake.py": _mutate_text(
+                    chat_text,
+                    "rec = snapshot(ws)",
+                    'rec = {"content": None, "strength": 0.0}',
+                    "cross_module_reads (chat half)",
+                ),
             },
             None,
         ),
@@ -1528,12 +1571,12 @@ def self_check(root):
         (
             "no-op refactor: hoist the cross-module read into an attribute",
             "same object, same call, same route -- `self._gw = self.arm.workspace` then "
-            "`self._gw.broadcast()`",
+            "`snapshot(self._gw)`",
             {
                 "cortex/live_brain.py": _mutate_text(
                     live_text,
-                    "return self.arm.workspace.broadcast()",
-                    "self._gw = self.arm.workspace\n        return self._gw.broadcast()",
+                    'return snapshot(self.arm.workspace)["content"]',
+                    'self._gw = self.arm.workspace\n        return snapshot(self._gw)["content"]',
                     "control: attribute-hoist refactor",
                 )
             },

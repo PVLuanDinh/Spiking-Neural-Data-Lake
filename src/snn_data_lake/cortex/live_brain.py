@@ -308,9 +308,23 @@ class LiveBrain:
         return getattr(self.arm, "workspace", None)
 
     @property
+    # distinct-from: reasoning/spike_chat_lake.py -- the CHAT-side adapter of the channel.
+    # distinct-from: thalamus/global_workspace.py -- broadcast() is the bus's own accessor.
+    # distinct-from: thalamus/reentrant_workspace.py -- the re-entry stage's occupant read.
+    # distinct-from: cortex/access_consciousness.py -- criteria over the bus, not a route.
+    # distinct-from: substrate/report_channel.py -- the ROUTE this accessor now reads
+    #   through (snapshot); this stays the cockpit-facing property name. All sites read.
     def thought(self):
-        """The Global Workspace's current broadcast -- what is globally available right now, or None."""
-        return self.arm.workspace.broadcast()
+        """The Global Workspace's current broadcast -- what is globally available right now, or None.
+
+        T034: read THROUGH the report channel (substrate/report_channel.snapshot) -- the
+        declared route from the composite to every reporter. This accessor was the
+        review's named second reporter bypassing the channel; routing it makes ONE
+        reporter mechanism (P2) and gives the channel its cockpit-facing consumer (the
+        cockpit's thought row reads this property)."""
+        from snn_data_lake.substrate.report_channel import snapshot
+
+        return snapshot(self.arm.workspace)["content"]
 
     def recall(self, window=8):
         """The working-memory window read back from the DATA LAKE (empty if lake WM is off / unused yet).
@@ -434,9 +448,22 @@ class LiveBrain:
                 f"window holds {len(wm)} ticks of activity."
             )
         if words & {"think", "thinking", "attention", "workspace", "focus", "notice", "attending"}:
+            # T034: this production reply is composed FROM THE REPORT CHANNEL's full
+            # record -- content, availability, strength -- the consumer the review found
+            # missing (the first attachment charged nothing a production caller could
+            # see; this branch is on the cockpit's live chat path).
+            from snn_data_lake.substrate.report_channel import snapshot
+
+            rec = snapshot(self.arm.workspace)
+            if rec["availability"] > 0.0:
+                return (
+                    f"Right now my global workspace is broadcasting: {rec['content']!r} at hold "
+                    f"{rec['strength']:.2f} -- the single content that won attention this tick, "
+                    "still globally available (a functional broadcast, not a conscious thought)."
+                )
             return (
-                f"Right now my global workspace is broadcasting: {self.thought!r} -- the single content that "
-                "won attention this tick (a functional broadcast, not a conscious thought)."
+                "Right now my global workspace is DARK -- nothing has ignited, so nothing is "
+                "globally available to report (a functional statement, not a conscious one)."
             )
         # STOP IS AN ACTION, NOT A TOPIC -- and it must be checked BEFORE the safety-information
         # branch below. MEASURED before this fix: of 15 stop phrasings, 13 latched the arm and 2 did
@@ -506,6 +533,12 @@ class LiveBrain:
                 from snn_data_lake.reasoning.spike_chat_lake import LakeChat, boot
 
                 lc = LakeChat(seed=getattr(self, "_seed", 0), persist=self._persist)
+                # T034: THE ATTACHMENT -- the one line _attended's own record escalated
+                # ('nothing attaches a brain on the live path today, so in production
+                # this returns None on every turn'; measured gap reply 156 bytes
+                # unattached vs 430 attached). With it, the chat's report clause reads
+                # the REAL composite through the report channel on every production turn.
+                lc.brain = self
                 boot(
                     lc, wordnet=False
                 )  # replay durable log (never-forget) + re-seed world-KB (not re-persisted)

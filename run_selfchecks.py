@@ -332,6 +332,7 @@ CORE = [
     "substrate.replay_gate",  # 022 T017: G5 resume byte-identical + omit-positions/mismatch refusals + re-seed divergence control
     "substrate.wiring_manifest",  # 022 T018: five checks + constructed reds + NIR-HDF5 round-trip on a scratch manifest
     "substrate.manifest_gate",  # 022 T019: committed-artifact checks + divergence/join/region reds through the gate's verdict path
+    "substrate.report_channel",  # 022 T034: dark-record honesty + moving strength + release + determinism
     "substrate.port_charge_probe",  # 022 T021: sensitivity flip + specificity hold + margin varied-vs-frozen separation
     "insula.interoceptive_integration",  # 022 T021a: deviation-from-self salience + frozen-baseline red + habituation
     "substrate.envelope_hash_gate",  # 022 T021b: live five-file control + tamper/stale-approval/unbaselined reds
