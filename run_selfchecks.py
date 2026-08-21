@@ -23,6 +23,7 @@ import os
 import sys
 import subprocess
 import tempfile
+import time
 
 # children print Unicode (Ï†, âˆ’, â€¦); force UTF-8 so a Windows cp1252 console can't crash them.
 # PYTHONPATH="src" so `snn_data_lake` (the package) + research/ modules importing it resolve.
@@ -340,7 +341,7 @@ CORE = [
     "substrate.envelope_hash_gate",  # 022 T021b: live five-file control + tamper/stale-approval/unbaselined reds
     "substrate.region_charge_gate",  # 022 T022: registration-never-greens + constructed attribution + non-diverged-charges-nothing
     "substrate.atlas_node_gate",  # 022 T024: constructed-phantom red + 7 reference-rule probes incl. both landing false-positives
-    "substrate.selfcheck_cache",  # carry-forward cache: dependency-flip + poison-refusal + envelope + FAIL-never-carries reds
+    "substrate.selfcheck_cache",  # carry-forward cache (envelope v3): dependency-flip + poison-refusal + envelope + FAIL-never-carries reds, plus the roster-split / data-input / named-env / tree-scanner precision reds and their key-invariance controls
     "substrate.safety_envelope",  # THE five approval-gated brainstem files: assert code and SECURITY.md still name the same five
     "substrate.ingest_guard",  # outside-data content boundary: licence deny-by-default + injection flagging
     "substrate.hf_stream",  # streamed HF datasets -> features; offline self-check (no network, no datasets dep)
@@ -594,8 +595,9 @@ def run_all(carry=False):
         for m in NENGO_GATED:
             print(f"SKIP  {m}  (nengo not importable -- optional [nengo] extra not installed)")
     # --carry (specs: the owner-authorized carry-forward cache, 2026-08-21): a PASS whose
-    # ENTIRE static import closure + envelope is byte-identical to a prior green on this
-    # host is CARRIED -- a hash verification, never a skip. LOCAL batteries only: nothing
+    # ENTIRE static import closure, the data files / named env vars / root-package roster /
+    # tree surface its closure reads, and the global envelope are byte-identical to a prior
+    # green on this host is CARRIED -- a hash verification, never a skip. LOCAL batteries only: nothing
     # in .github/ passes --carry, and exit-certification batteries must not either. Any
     # FAIL in a carrying run is re-run FULL before diagnosis (the cache's own banner and
     # substrate/selfcheck_cache.py's docstring carry the full blind-spot disclosure).
@@ -627,20 +629,30 @@ def run_all(carry=False):
         if cache is not None:
             hit = cache.consult(m)
             if hit is not None:
-                print(f"CARRY {m}  (closure unchanged; passed {hit['when']})")
-                carried.append(m)
+                saved = float(hit.get("secs", 0.0))
+                print(
+                    f"CARRY {m}  (inputs unchanged; passed {hit['when']}, {saved:.1f}s not re-spent)"
+                )
+                carried.append(saved)
                 continue
+            # the miss is attributed, so a battery log says WHY each module re-ran
+            print(f"RERUN {m}  ({cache.why(m)})")
         cmd = [sys.executable, "-m", f"snn_data_lake.{m}"]  # every module runs as a package module
+        t0 = time.perf_counter()
         r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", env=_ENV)
+        secs = time.perf_counter() - t0
         ok = r.returncode == 0
-        print(f"{'PASS' if ok else 'FAIL'}  {m}")
+        # the wall-clock rides on every line so a battery log IS the per-module histogram
+        # (the battery-speed research needed one and none existed), and the cache stores it
+        # so a later carry can say what it did not spend -- measured, never claimed.
+        print(f"{'PASS' if ok else 'FAIL'}  {m}  [{secs:.1f}s]")
         if not ok:
             failed.append(m)
             sys.stderr.write(r.stdout[-2000:] + r.stderr[-2000:] + "\n")
         elif cache is not None:
             import datetime
 
-            cache.record(m, datetime.datetime.now().isoformat(timespec="seconds"))
+            cache.record(m, datetime.datetime.now().isoformat(timespec="seconds"), secs)
     ran = len(MODULES) - len(artifact_skipped)
     print("=" * 56)
     if carried:
@@ -651,7 +663,8 @@ def run_all(carry=False):
         live = ran - len(carried)
         print(
             f"{ran - len(failed)}/{ran} self-checks passed "
-            f"({len(carried)} CARRIED on hash-verified unchanged closures, "
+            f"({len(carried)} CARRIED on hash-verified unchanged inputs, "
+            f"{sum(carried) / 60:.1f} min of live time not re-spent; "
             f"{live} run live of which {len(failed)} failed)"
         )
     else:
