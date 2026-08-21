@@ -430,6 +430,9 @@ EXEMPT = {
         "in its region or dated-EXEMPT; 23 day-one phantoms recorded, ratchet down only). "
         "A CI/run_selfchecks instrument, never on a tick -- the policy_manifest disposition",
     ),
+    # selfcheck_cache needs NO exemption: run_selfchecks.py is an external root and its
+    # --carry import makes the module live-reachable -- the stale-exemption arm proved it
+    # by refusing the row this comment replaces (the gate working, twice in one spec).
     "envelope_hash_gate": (
         "permanent",
         "specs/022 T021b: the envelope-BYTES gate (five brainstem files vs the approved "
@@ -566,6 +569,16 @@ def _graph():
                 g.setdefault(key, set())
                 g[key] |= _imports(p)
     return g
+
+
+# distinct-from: substrate/method_dormancy_gate.py -- its per-file import list serves the
+#   METHOD gate's own narrow scan; this exposes the whole-package graph _graph() already
+#   builds. Alias, not a second walk. Read.
+def import_graph():
+    """THE static import graph (module -> in-package imports), public. Consumers reuse
+    this ONE walk rather than re-deriving it: selfcheck_cache's closure hashing rides on
+    it (P2 -- one graph)."""
+    return _graph()
 
 
 def _external_roots():

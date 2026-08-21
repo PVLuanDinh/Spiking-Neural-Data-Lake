@@ -336,6 +336,7 @@ CORE = [
     "substrate.envelope_hash_gate",  # 022 T021b: live five-file control + tamper/stale-approval/unbaselined reds
     "substrate.region_charge_gate",  # 022 T022: registration-never-greens + constructed attribution + non-diverged-charges-nothing
     "substrate.atlas_node_gate",  # 022 T024: constructed-phantom red + 7 reference-rule probes incl. both landing false-positives
+    "substrate.selfcheck_cache",  # carry-forward cache: dependency-flip + poison-refusal + envelope + FAIL-never-carries reds
     "substrate.safety_envelope",  # THE five approval-gated brainstem files: assert code and SECURITY.md still name the same five
     "substrate.ingest_guard",  # outside-data content boundary: licence deny-by-default + injection flagging
     "substrate.hf_stream",  # streamed HF datasets -> features; offline self-check (no network, no datasets dep)
@@ -573,7 +574,7 @@ def _assert_tiers_agree_with_regions():
 _assert_tiers_agree_with_regions()
 
 
-def run_all():
+def run_all(carry=False):
     if not _TORCH:
         # torch is a CORE dependency, so this is a BROKEN INSTALL, not a supported configuration.
         # The old message said "zero-dep matrix stays green" and reassured the reader that skipping
@@ -588,6 +589,20 @@ def run_all():
         # nengo genuinely IS optional (the [nengo] extra), so this skip is a supported path.
         for m in NENGO_GATED:
             print(f"SKIP  {m}  (nengo not importable -- optional [nengo] extra not installed)")
+    # --carry (specs: the owner-authorized carry-forward cache, 2026-08-21): a PASS whose
+    # ENTIRE static import closure + envelope is byte-identical to a prior green on this
+    # host is CARRIED -- a hash verification, never a skip. LOCAL batteries only: nothing
+    # in .github/ passes --carry, and exit-certification batteries must not either. Any
+    # FAIL in a carrying run is re-run FULL before diagnosis (the cache's own banner and
+    # substrate/selfcheck_cache.py's docstring carry the full blind-spot disclosure).
+    cache = None
+    carried = []
+    if carry:
+        sys.path.insert(0, "src")
+        from snn_data_lake.substrate.selfcheck_cache import SelfcheckCache
+
+        cache = SelfcheckCache()
+        print(cache.banner())
     failed, artifact_skipped = [], []
     for m in MODULES:
         missing = ARTIFACT_GATED.get(m)
@@ -605,6 +620,12 @@ def run_all():
             print(f"SKIP  {m}  (missing artifact {missing} -- no producer exists in this tree)")
             artifact_skipped.append(m)
             continue
+        if cache is not None:
+            hit = cache.consult(m)
+            if hit is not None:
+                print(f"CARRY {m}  (closure unchanged; passed {hit['when']})")
+                carried.append(m)
+                continue
         cmd = [sys.executable, "-m", f"snn_data_lake.{m}"]  # every module runs as a package module
         r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", env=_ENV)
         ok = r.returncode == 0
@@ -612,14 +633,36 @@ def run_all():
         if not ok:
             failed.append(m)
             sys.stderr.write(r.stdout[-2000:] + r.stderr[-2000:] + "\n")
+        elif cache is not None:
+            import datetime
+
+            cache.record(m, datetime.datetime.now().isoformat(timespec="seconds"))
     ran = len(MODULES) - len(artifact_skipped)
     print("=" * 56)
-    print(f"{ran - len(failed)}/{ran} self-checks passed")
+    if carried:
+        # the split is stated, never folded: "N passed" where some were carried would be
+        # the coverage-shaped silence PROVENANCE exists to prevent. live = everything not
+        # carried, INCLUDING failures (the first form subtracted failed from live and
+        # under-reported live runs by exactly the failure count -- review minor, fixed)
+        live = ran - len(carried)
+        print(
+            f"{ran - len(failed)}/{ran} self-checks passed "
+            f"({len(carried)} CARRIED on hash-verified unchanged closures, "
+            f"{live} run live of which {len(failed)} failed)"
+        )
+    else:
+        print(f"{ran - len(failed)}/{ran} self-checks passed")
     if artifact_skipped:
         # Printed as its own line, not merged into the total, so "277/277" can never quietly mean
         # "276 ran and one was skipped".
         print(f"ARTIFACT-SKIPPED ({len(artifact_skipped)}): " + ", ".join(artifact_skipped))
     if failed:
+        if carried:
+            print(
+                "CARRY-RUN FAIL PROTOCOL: rerun this battery WITHOUT --carry before "
+                "diagnosing -- a carried-run red is not evidence until the full run "
+                "confirms it (shared-home sequence coupling is a disclosed blind spot)."
+            )
         print("FAILED: " + ", ".join(failed))
     return not failed
 
@@ -678,4 +721,4 @@ if __name__ == "__main__":
         sys.exit(0)
     if "--in-process" in sys.argv:
         sys.exit(0 if run_all_in_process() else 1)
-    sys.exit(0 if run_all() else 1)
+    sys.exit(0 if run_all(carry="--carry" in sys.argv) else 1)
