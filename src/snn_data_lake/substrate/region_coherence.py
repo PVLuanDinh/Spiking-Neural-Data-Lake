@@ -155,6 +155,18 @@ class RegionCoherence:
         self.w_phase = float(w_phase)  # weight on synchrony (dominant)
         self.w_integ = float(w_integ)  # weight on the integration/complexity proxy
         self.gain = float(self.IGNITION_GAIN if gain is None else gain)  # see IGNITION_GAIN
+        # THE GAIN'S RANGE IS ENFORCED AT ITS ONE DOOR (the T032 theta-authority pattern):
+        # _adjust's positivity bound derives entirely from gain < 1 (result in
+        # [base*(1-gain), base]), so gain >= 1 makes the adjusted rheobase <= 0 at full
+        # coherence -- the competition dissolves, the structural death set_base_rheobase's
+        # own range names -- and gain < 0 RAISES the threshold with coherence, inverting
+        # the mechanism's stated direction (a sign error upstream, refused not absorbed).
+        if not (0.0 <= self.gain < 1.0):
+            raise ValueError(
+                f"RegionCoherence(gain={self.gain}): gain must be in [0, 1) -- at >= 1 the "
+                "adjusted rheobase reaches <= 0 at full coherence (structurally dead), and "
+                "below 0 coherence would RAISE the threshold (the mechanism inverted)"
+            )
         self._hist = {}  # region -> rolling list of scalar rates
         self._coherence = 0.0
         self._phase_order = 0.0
@@ -301,7 +313,19 @@ class RegionCoherence:
     @staticmethod
     def _adjust(base_threshold, coherence, gain):
         """Map coherence -> adjusted GWT rheobase. Higher coherence LOWERS the threshold (easier
-        ignition), strictly monotone decreasing in coherence, clamped to (0, base].
+        ignition), strictly monotone decreasing in coherence.
+
+        THE BOUND IS A PRECONDITION, NOT A CLAMP, and it is stated exactly (an earlier
+        docstring said 'clamped to (0, base]' while the body clamps nothing -- the same
+        claim-wearing-a-derivation's-clothes shape the T032 review reddened in
+        reentrant_workspace, corrected here the same way). With `c` clamped to [0, 1]
+        below, the result is `base * (1 - gain*c)`, which lies in
+        [base * (1 - gain), base] -- strictly positive IFF gain < 1. That precondition is
+        ENFORCED at the constant's one door (__init__ refuses gain outside [0, 1)), never
+        silently absorbed here: a result that somehow escaped the band would raise loudly
+        downstream, where reentrant_workspace.coherence_theta range-refuses (0, _COAL_CAP]
+        out of Brain.tick() -- the loud path is the guard, a quiet clamp would hide the
+        upstream computation error it exists to expose.
 
         `gain` is REQUIRED -- it has NO default here on purpose. The one definition lives in
         RegionCoherence.IGNITION_GAIN (with its measured justification), so re-calibrating it cannot
@@ -446,6 +470,19 @@ def main():
         assert key in sync_out, f"update() must return '{key}'"
     assert sync_out["n_regions"] == k, "n_regions must equal the number of regions supplied"
     assert 0.0 <= sync_out["coherence"] <= 1.0, "coherence must lie in [0,1]"
+
+    # THE GAIN RANGE'S REDS, both directions (the _adjust bound is a PRECONDITION enforced
+    # at construction, not a clamp -- see _adjust's docstring for the derivation): gain >= 1
+    # dissolves the competition at full coherence; gain < 0 inverts the mechanism.
+    for bad_gain in (1.0, 1.5, -0.1):
+        try:
+            RegionCoherence(seed=0, gain=bad_gain)
+            raise AssertionError(f"RegionCoherence(gain={bad_gain}) must refuse -- red unreachable")
+        except ValueError:
+            pass  # the RED, reached: out-of-band gain refused at the constant's one door
+    assert RegionCoherence(seed=0, gain=0.0).gain == 0.0, (
+        "gain=0.0 (bias OFF, threshold never moves) is inside the band and must construct"
+    )
 
     print("")
     print(
