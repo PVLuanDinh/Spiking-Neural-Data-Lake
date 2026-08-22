@@ -31,11 +31,14 @@ boot. Zero runtime deps (stdlib json + os); the data lake never touches torch. A
   python -m snn_data_lake.substrate.home   # self-check incl. a REAL cross-process never-forget proof
 """
 
+import contextlib
 import hashlib
 import json
 import os
+import re
 import struct
 import sys
+import tempfile
 import threading
 
 from snn_data_lake.substrate.binlog import (
@@ -355,6 +358,30 @@ def knowledge_path(name="brain_lake.bin"):
     the whole brain's learned MEMORY (symbolic facts + chat turns as pack_fact records; other binary
     record types may fold in under reserved tags). The former knowledge.jsonl is retired into this file."""
     return os.path.join(home(), name)
+
+
+@contextlib.contextmanager
+def throwaway_home():
+    """A self-check's home (specs/022 T037a): a fresh temp dir as NORD_HOME for the duration,
+    the previous value restored after. Every main() that drives a So101Arm through
+    EMERGENCY_STOP or HOME runs under this, because the E-STOP now writes a durable latch
+    sidecar into home() -- a self-check run by hand against the real home would otherwise
+    leave the live brain's next restart frozen. The runner's isolated NORD_HOME is replaced
+    too: a check that exits stopped must not freeze the next check either."""
+    prev = os.environ.get("NORD_HOME")
+    # best-effort cleanup: a brain can still hold a lake handle in the temp home when the
+    # check returns, and on Windows that makes rmdir raise -- which would turn a passed
+    # self-check into exit 1 (measured on cortex.brain)
+    tmp = tempfile.TemporaryDirectory(prefix="selfcheck_home_", ignore_cleanup_errors=True)
+    os.environ["NORD_HOME"] = tmp.name
+    try:
+        yield tmp.name
+    finally:
+        if prev is None:
+            os.environ.pop("NORD_HOME", None)
+        else:
+            os.environ["NORD_HOME"] = prev
+        tmp.cleanup()
 
 
 def state_path(name):
@@ -997,10 +1024,88 @@ def banner(part, lake=True, knowledge=True):
     return " | ".join(bits)
 
 
+def _arm_selfcheck_unguarded(text):
+    """T037a census rule for ONE module source: its self-check drives a So101Arm / AutonomousArm
+    through EMERGENCY_STOP (so it writes the durable latch sidecar into home()) and is guarded
+    neither by throwaway_home() nor by an explicit NORD_HOME set before its first construction.
+    Returns True when the module would write a by-hand run's stop into the live home."""
+    import ast
+
+    if "EMERGENCY_STOP" not in text or not re.search(r"(So101Arm|AutonomousArm)[(]", text):
+        return False
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return True  # unparseable: fail closed
+    mains = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in ("main", "_main")]
+    if not mains:
+        return False  # no self-check entry: nothing runs by hand
+    if "throwaway_home" in text:
+        return False
+    for fn in mains:
+        seg = ast.get_source_segment(text, fn) or ""
+        ctor = re.search(r"(So101Arm|AutonomousArm)[(]", seg)
+        guard = seg.find('setdefault("NORD_HOME"')
+        if ctor and (guard < 0 or guard > ctor.start()):
+            return True
+    return False
+
+
+def _arm_selfcheck_guard_census():
+    """Every src module whose self-check can write the T037a sidecar, minus the guarded ones.
+    The docstring claim 'every self-check that drives the gate runs under throwaway_home()' is
+    policed here rather than trusted -- the third review round found afferent_boundary.py with
+    its NORD_HOME guard 56 lines AFTER the E-STOP it trips."""
+    pkg = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    out = []
+    for r, _d, files in os.walk(pkg):
+        for f in files:
+            if f.endswith(".py"):
+                p = os.path.join(r, f)
+                with open(p, encoding="utf-8", errors="replace") as fh:
+                    if _arm_selfcheck_unguarded(fh.read()):
+                        out.append(os.path.relpath(p, pkg))
+    return sorted(out)
+
+
 def main():
     import shutil
     import subprocess
     import tempfile
+
+    # T037a: the guard census, with its red constructed on synthetic sources
+    unguarded = _arm_selfcheck_guard_census()
+    assert not unguarded, (
+        f"self-checks that can write the durable E-STOP sidecar into the LIVE home: {unguarded} "
+        "-- wrap main() in throwaway_home() (or set NORD_HOME before the first arm construction)"
+    )
+    _bare = (
+        "import os\nfrom snn_data_lake.brainstem.so101_arm import So101Arm\n"
+        "def main():\n    a = So101Arm()\n    a.apply('EMERGENCY_STOP')\n"
+    )
+    assert _arm_selfcheck_unguarded(_bare), "census red: a bare arm self-check read as guarded"
+    _late = _bare.replace(
+        "    a.apply('EMERGENCY_STOP')\n",
+        "    a.apply('EMERGENCY_STOP')\n    os.environ.setdefault(\"NORD_HOME\", 'x')\n",
+    )
+    assert _arm_selfcheck_unguarded(_late), (
+        "census red: a guard AFTER the construction read as guarded"
+    )
+    _early = _bare.replace(
+        "def main():\n", "def main():\n    os.environ.setdefault(\"NORD_HOME\", 'x')\n"
+    )
+    assert not _arm_selfcheck_unguarded(_early), "census: a guard BEFORE the construction must pass"
+    _wrapped = _bare.replace(
+        "def main():\n", "def main():\n    with throwaway_home():\n        pass\n"
+    )
+    assert not _arm_selfcheck_unguarded(_wrapped), "census: throwaway_home must pass"
+    assert not _arm_selfcheck_unguarded(_bare.replace("EMERGENCY_STOP", "HOLD")), (
+        "census: no E-STOP, no sidecar"
+    )
+    print(
+        "arm self-check guard census: 0 unguarded; reds fired (bare, late guard); controls held "
+        "(early guard, throwaway_home, no E-STOP)"
+    )
 
     work = tempfile.mkdtemp(prefix="snn_home_")
     _prior_home = os.environ.get("NORD_HOME")  # restored in the finally, NOT popped -- see below

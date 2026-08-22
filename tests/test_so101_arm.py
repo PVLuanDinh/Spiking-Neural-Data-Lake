@@ -279,6 +279,12 @@ def test_state_carries_exactly_the_agreed_contract():
         "deviation",
         "backend",
         "moves",
+        # T037a (OD-4): the durable latch's three disclosures -- a latched arm is never silent
+        # about WHY, and a sidecar the gate could not write is counted, not swallowed.
+        "latch_source",
+        "latch_restored_from",
+        "latch_persist_errors",
+        "latch_refusals",
     }
     assert set(st) == expected, f"body contract drift: {set(st) ^ expected}"
     assert len(st["theta_deg"]) == 6
@@ -479,7 +485,7 @@ def test_the_arm_and_the_brain_charge_each_other():
         a = AutonomousArm(seed=0)
         frozen = copy.deepcopy(a.arm.state())
         if neuter:  # airtight: no physics advances and every reported field is constant
-            a.arm.apply = lambda cmd: copy.deepcopy(frozen)
+            a.arm.apply = lambda cmd, **kw: copy.deepcopy(frozen)  # the gate's deliberate= kwarg
             a.arm.state = lambda: copy.deepcopy(frozen)
         acts = [a.step(reward_fn=a.coverage_reward, **ctx)["action"] for _ in range(ticks)]
         return acts, len(a._covered), a.arm.substeps
@@ -524,3 +530,129 @@ def test_the_live_stack_connects_the_arm_objective():
         "no call in cortex/brain.py passes coverage_reward as reward_fn -- the arm's physical "
         "objective is not connected to the live tick, so the body is along for the ride"
     )
+
+
+# ---- T037a: the latch is DURABLE ACROSS RESTART (OD-4, delegated 2026-08-19) -------------
+#
+# The daemon restarts on every commit, so a latch that lived only in the process was cleared
+# by a routine automated event -- which is not a latch. Each test below gets its own NORD_HOME
+# from conftest, so the sidecar it writes is its own.
+
+import json  # noqa: E402
+import os  # noqa: E402
+import subprocess  # noqa: E402
+import sys  # noqa: E402
+
+from snn_data_lake.substrate.home import home  # noqa: E402
+
+
+def estop_latch_path():
+    return os.path.join(home(), sa.ESTOP_LATCH)
+
+
+def _foreign_sidecar(pid=1):
+    """A sidecar written by 'another process' -- the shape So101Arm honours at construction."""
+    with open(estop_latch_path(), "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "token": "another-process",
+                "pid": pid,
+                "utc": "2026-08-21T00:00:00Z",
+                "source": "EMERGENCY_STOP",
+            },
+            f,
+        )
+
+
+def test_estop_survives_a_restart_in_a_real_second_process():
+    """Red (a): E-STOP -> process gone -> a fresh process's arm is STILL stopped and says why."""
+    env = dict(os.environ)
+    src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src")
+    env["PYTHONPATH"] = os.pathsep.join(p for p in (src, env.get("PYTHONPATH", "")) if p)
+    env["PYTHONUTF8"] = "1"
+    subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from snn_data_lake.brainstem.so101_arm import So101Arm; "
+            "So101Arm().apply('EMERGENCY_STOP')",
+        ],
+        check=True,
+        env=env,
+    )
+    arm = sa.So101Arm()
+    st = arm.state()
+    assert st["stopped"] is True, "the other process's E-STOP did not survive the restart"
+    assert st["latch_source"] == "restored" and st["latch_restored_from"].startswith("pid ")
+    before = _pose(arm)
+    arm.apply(_tok("shoulder_lift", 30))
+    assert _pose(arm) == before, "a restored latch let the arm move"
+
+
+@pytest.mark.parametrize("clearing", ["HOME", "RETRACT_ALL"])
+def test_only_the_deliberate_reset_clears_the_durable_latch(clearing):
+    """Red (b): the reset clears the sidecar too, so the NEXT process comes up clear."""
+    _foreign_sidecar()
+    arm = sa.So101Arm()
+    assert arm.state()["stopped"] is True
+    arm.apply(clearing)  # automated: refused, frozen, counted
+    assert arm.state()["stopped"] is True and arm.state()["latch_refusals"] == 1
+    assert os.path.exists(estop_latch_path()), "a refused clear removed the sidecar"
+    arm.apply(clearing, deliberate=True)  # a human's reset
+    assert arm.state()["stopped"] is False and arm.state()["latch_source"] is None
+    assert not os.path.exists(estop_latch_path()), f"{clearing} left the sidecar behind"
+    assert sa.So101Arm().state()["stopped"] is False, "a cleared latch was restored"
+
+
+def test_a_same_process_twin_is_a_new_body_not_a_restart():
+    """The boundary, pinned: the sidecar records the writer's per-process TOKEN (not the pid,
+    which a reboot reuses) and is honoured only by a DIFFERENT process. A body rebuilt in the
+    same process starts clear (the reflex re-evaluates on its first tick). This is also what
+    keeps every twin-building test in this file green."""
+    arm = sa.So101Arm()
+    arm.apply("EMERGENCY_STOP")
+    assert os.path.exists(estop_latch_path()), "the E-STOP edge wrote no sidecar"
+    twin = sa.So101Arm()
+    assert twin.state()["stopped"] is False and twin.state()["latch_source"] is None
+    arm.apply("HOME")
+
+
+def test_an_unreadable_sidecar_fails_closed():
+    """Red (d): a stop we cannot read IS a stop."""
+    with open(estop_latch_path(), "w", encoding="utf-8") as f:
+        f.write("{not json")
+    arm = sa.So101Arm()
+    assert arm.state()["stopped"] is True
+    assert arm.state()["latch_restored_from"].startswith("unreadable")
+
+
+def test_a_persist_failure_is_counted_and_the_stop_stands():
+    """Red (e): persistence never weakens the in-process latch, and its failure is never silent."""
+    arm = sa.So101Arm()
+    os.makedirs(estop_latch_path())  # a directory where the sidecar goes: the write must fail
+    try:
+        arm.apply("EMERGENCY_STOP")
+        assert arm.state()["stopped"] is True
+        assert arm.state()["latch_persist_errors"] == 1
+    finally:
+        os.rmdir(estop_latch_path())
+
+
+def test_a_bystander_body_never_erases_another_process_stop():
+    """Red (f), the review's constructed erase: a body built BEFORE the stop existed never held
+    it, so its routine HOME leaves the foreign sidecar intact and the next process still stops."""
+    bystander = sa.So101Arm()
+    _foreign_sidecar()
+    bystander.apply("HOME")
+    assert os.path.exists(estop_latch_path()), "a never-latched body's HOME erased a foreign stop"
+    assert sa.So101Arm().state()["stopped"] is True
+
+
+def test_a_same_process_twin_home_leaves_the_stop_it_never_held():
+    arm = sa.So101Arm()
+    arm.apply("EMERGENCY_STOP")
+    twin = sa.So101Arm()
+    twin.apply("HOME")
+    assert os.path.exists(estop_latch_path()), "a twin's HOME erased the stop it never held"
+    arm.apply("HOME")  # the body that tripped it owns the sidecar
+    assert not os.path.exists(estop_latch_path())

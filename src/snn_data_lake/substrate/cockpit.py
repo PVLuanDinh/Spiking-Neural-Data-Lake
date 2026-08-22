@@ -146,8 +146,11 @@ class Acts:
                     # panel proved the direct apply left the cockpit E-STOP invisible to
                     # the efference-copy boundary. Still the one gated path to motion:
                     # apply_observed calls So101Arm.apply() and only adds observation.
-                    st = brain.brain.arm.apply_observed(cmd)
+                    # T037a: the cockpit IS the deliberate reset -- a human's HOME / RETRACT_ALL
+                    # is the one thing that re-arms a latch restored from a previous process.
+                    st = brain.brain.arm.apply_observed(cmd, deliberate=True)
                     self.applied += 1
+                    restored = st.get("latch_source") == "restored"
                     rec = {
                         "command": cmd,
                         "applied": True,
@@ -155,7 +158,15 @@ class Acts:
                         "theta_deg": [round(float(x), 4) for x in (st.get("theta_deg") or [])],
                         # A latched arm accepts the ticket and does not move. Saying so is the
                         # difference between "your command ran" and "your command was ignored".
-                        "note": "E-STOP latched; no motion" if st.get("stopped") else "",
+                        "note": (
+                            (
+                                "E-STOP latched (restored at boot; HOME resets); no motion"
+                                if restored
+                                else "E-STOP latched; no motion"
+                            )
+                            if st.get("stopped")
+                            else ""
+                        ),
                     }
             except Exception as e:  # a malformed command must not stop the daemon's loop
                 self.refused += 1
@@ -212,7 +223,7 @@ class Turns:
             except queue.Empty:
                 break
             try:
-                out = brain.respond(text)
+                out = brain.respond(text, human=True)  # T037a: a person typed this
                 rec = {
                     "reply": out.get("reply", ""),
                     "route": out.get("route", ""),
@@ -895,7 +906,7 @@ function paint(d){
  const gt=dv.ground_ticks;
  $('bStab').innerHTML=big(dv.recoveries,0,gt?'var(--org)':'var(--grn)')+sub('postural recoveries')
    +row('ground ticks',gt)+row('collision',b.collision||'clear')
-   +row('E-STOP',b.stopped?'STOPPED':'clear');
+   +row('E-STOP',b.stopped?('STOPPED'+(b.latch_source==='restored'?' (restored at boot from '+String(b.latch_restored_from||'?').replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))+'; HOME resets)':'')):'clear');
  $('bVA').innerHTML=row('emotion',s.emotion)+row('V / A',
    (dv.valence===undefined?EM:fmt(dv.valence,2))+' / '+(dv.arousal===undefined?EM:fmt(dv.arousal,2)));
  drawVA(dv.valence,dv.arousal);
@@ -1137,8 +1148,12 @@ def main():
             class arm:  # noqa: N801
                 arm = _StubArm
 
+                # distinct-from: brainstem/autonomous_loop.py -- the REAL apply_observed (the
+                #   tapped passage); this mirrors its signature for the eviction test only. Read.
                 @staticmethod
-                def apply_observed(cmd):
+                def apply_observed(
+                    cmd, deliberate=False
+                ):  # T037a: the route passes deliberate=True
                     return _StubArm.apply(cmd)
 
     _bounded = Acts()

@@ -282,6 +282,15 @@ def _disturbed_plant(mode, steps=90, load=2.0, target=30.0, seed=0):
 
 
 def main():
+    # T037a: this self-check drives a So101Arm through EMERGENCY_STOP / HOME, which now writes
+    # the durable latch sidecar -- under a throwaway home, never the live brain's.
+    from snn_data_lake.substrate.home import throwaway_home
+
+    with throwaway_home():
+        _main()
+
+
+def _main():
     # DERIVED from the joint's measured ground-free travel, not transcribed. The incumbent's
     # +30 deg sits within a degree or two of this arm's floor contact (the band tops out at
     # ~37), so a +25 deg shove on top of it would drive the gripper through the ground and the

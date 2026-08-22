@@ -27,6 +27,29 @@ this is the paragraph telling a reader which code is approval-gated.)*
 | `src/snn_data_lake/brainstem/serial_arm.py`  | real-hardware serial interface |
 | `src/snn_data_lake/brainstem/arm_config.py`  | calibration constants and joint limits |
 
+**The E-STOP latch is durable across restarts** (specs/022 T037a; owner decision OD-4, delegated
+2026-08-19). The daemon restarts on every commit, so a latch that lived only in the process was
+cleared by a routine automated event. On the E-STOP edge `So101Arm.apply()` also writes a sidecar
+(`so101_arm.ESTOP_LATCH` in the persistence home -- the name lives in the envelope so an edit
+outside the approval gate cannot move or void it; beside the lake, never in it: safety state must
+be readable when the lake is not). A `So101Arm` built by a later process reads it at construction
+and comes up stopped, reporting `latch_source == "restored"` and the writer
+(`latch_restored_from`) in its state and on the cockpit's E-STOP row. Who may clear what is decided
+at the gate (`apply(cmd, deliberate=...)`) and nowhere else: a stop this process tripped clears on
+`HOME` / `RETRACT_ALL` from anyone, as before; a RESTORED stop clears only on a deliberate reset --
+`deliberate=True`, passed by the cockpit's actuation ticket and by its chat route ONLY when a person
+typed the message (`Brain.respond(text, human=True)`; the daemon's transcript ingest calls the same
+route with the default and an ingested arm intent never actuates at all -- the review found ordinary
+prose such as 'reset the counter' reaching `HOME` through the NL firewall) and by nothing automated --
+so the loop's self-clear, a `SerialArm` mirror's construction `HOME` and the reflex's `RETRACT_ALL`
+are refused on it, the arm stays frozen, and the refusal is counted (`latch_refusals`). The sidecar is owned: a body that never held the stop leaves it untouched.
+Fail-closed: an unreadable home or corrupt sidecar is a stop; a sidecar that cannot be written
+leaves the in-process latch standing and is counted (`latch_persist_errors`). Scope: honoured across
+processes (a per-process random token is recorded -- not the pid, which a reboot reuses); a body
+rebuilt inside the same process is a new body, not a restart. Every self-check that drives the gate
+runs under `substrate.home.throwaway_home()`, so the commands below never write the live brain's
+home.
+
 The real serial interface (`serial_arm.SerialArm`) refuses to drive hardware until
 `arm_config.SAFETY_CALIBRATED` is set `True`, which must only happen after the placeholder
 limits are replaced with the specific arm's measured values. There is no runtime bypass of

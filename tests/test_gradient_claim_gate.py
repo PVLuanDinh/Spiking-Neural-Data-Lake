@@ -633,13 +633,45 @@ def test_this_feature_touched_no_safety_envelope_file():
     changed = gate.fr010_changed_paths()
     if changed is None:
         return  # no git here; the constructed test above still pins the check itself
-    findings = gate.fr010_findings(changed)
+    findings = gate.fr010_findings(changed, approved=gate.fr010_approved(changed))
     assert not findings, f"this change set touches the safety envelope: {findings}"
     # When there IS something to look at, confirm the check actually looked: run it against the
     # live set plus a planted envelope path and require it to fire. That keeps a real assertion on
     # every run WITHOUT depending on the tree being dirty.
-    planted = gate.fr010_findings([*changed, "src/snn_data_lake/brainstem/reflex.py"])
+    # the same approval set: an APPROVED live envelope edit must not count as the planted hit
+    planted = gate.fr010_findings(
+        [*changed, "src/snn_data_lake/brainstem/reflex.py"], approved=gate.fr010_approved(changed)
+    )
     assert len(planted) == 1, (
         f"the check did not fire on a planted envelope path among {len(changed)} live paths: "
         f"{planted}"
     )
+
+
+def test_the_fr010_approval_path_has_its_own_reds(monkeypatch):
+    """specs/022 T037a: the first envelope byte change since SC-016 landed showed this check had no
+    notion of an APPROVED change. Approval is the project's own mechanized act (T021b): the baseline
+    `tools/envelope_hashes.json` in the SAME change set AND `envelope_hash_gate.check()` green on
+    the bytes on disk. Each half is a red on its own."""
+    from snn_data_lake.substrate import envelope_hash_gate as ehg
+
+    env = next(iter(gate._SAFETY_ENVELOPE))
+    planted = f"src/snn_data_lake/{env}"
+    # (1) no baseline in the change set -> nothing is approved, the finding fires
+    assert gate.fr010_approved([planted]) == set()
+    assert gate.fr010_findings([planted], approved=gate.fr010_approved([planted]))
+    # (2) baseline in the set but the bytes do NOT match it -> still a finding
+    monkeypatch.setattr(
+        ehg, "check", lambda baseline=None: (False, ["UNAPPROVED envelope byte change"])
+    )
+    both = [planted, "tools/envelope_hashes.json"]
+    assert gate.fr010_approved(both) == set()
+    assert gate.fr010_findings(both, approved=gate.fr010_approved(both))
+    # (3) baseline in the set AND the gate green -> the envelope path is approved, no finding;
+    #     an ordinary path in the same set is never "approved" (the set is envelope-only)
+    monkeypatch.setattr(ehg, "check", lambda baseline=None: (True, []))
+    approved = gate.fr010_approved(both + ["src/snn_data_lake/substrate/home.py"])
+    assert approved == {planted}
+    assert gate.fr010_findings(both, approved=approved) == []
+    # the constructed red is untouched: the same planted path with NO approval still fires
+    assert gate.fr010_findings([planted])

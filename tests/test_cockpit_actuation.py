@@ -22,6 +22,7 @@ Run: pytest tests/test_cockpit_actuation.py
 """
 
 import json
+import os
 import urllib.error
 import urllib.request
 
@@ -140,3 +141,74 @@ def test_pump_is_bounded(brain):
         acts.submit("HOLD")
     assert acts.pump(brain, budget=1) == 1, "pump drained more than its budget"
     assert acts.pending() == 9, "the rest must stay queued for later ticks"
+
+
+def test_a_restored_latch_is_disclosed_and_only_the_cockpit_reset_clears_it():
+    """T037a (OD-4). Property 5: a latched arm is never silent. The brain's arm, built after a
+    previous process left the sidecar, reports `latch_source == "restored"` -- the snapshot
+    copies `state()` wholesale into `body.*`, which is what the cockpit's E-STOP row reads --
+    and the cockpit's HOME (a human's deliberate reset, `deliberate=True`) is what clears it."""
+    import json
+
+    from snn_data_lake.brainstem.so101_arm import ESTOP_LATCH
+    from snn_data_lake.substrate.home import home
+
+    with open(os.path.join(home(), ESTOP_LATCH), "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "token": "another-process",
+                "pid": 1,
+                "utc": "2026-08-21T00:00:00Z",
+                "source": "EMERGENCY_STOP",
+            },
+            f,
+        )
+    b = make_brain(seed=0, persist=False)
+    try:
+        st = b.brain.arm.arm.state()
+        assert st["stopped"] is True and st["latch_source"] == "restored", st
+        from snn_data_lake.substrate.brain_telemetry import snapshot, verify_contract
+
+        snap = snapshot(b)
+        assert snap["body"]["latch_source"] == "restored", "the cockpit's row reads body.*"
+        assert not [k for k in verify_contract(snap) if k.startswith("body.")], verify_contract(
+            snap
+        )
+        acts = Acts()
+        tid, why = acts.submit("HOME")
+        assert tid is not None, why
+        acts.pump(b, budget=4)
+        after = b.brain.arm.arm.state()
+        assert after["stopped"] is False and after["latch_source"] is None, after
+        assert acts.applied == 1
+    finally:
+        b.close()
+
+
+def test_the_chat_route_is_the_other_deliberate_reset_and_passes_the_tap():
+    """T037a: the NL firewall used the RAW gate (invisible to the efference copy and to the
+    latch policy). It now passes apply_observed(deliberate=True): a human typing 'go home' at
+    the cockpit chat IS a deliberate reset, and the reply says a restored stop was reset."""
+    from snn_data_lake.brainstem.so101_arm import ESTOP_LATCH
+    from snn_data_lake.substrate.home import home
+
+    with open(os.path.join(home(), ESTOP_LATCH), "w", encoding="utf-8") as f:
+        json.dump({"token": "another-process", "pid": 1, "utc": "x", "source": "EMERGENCY_STOP"}, f)
+    b = make_brain(seed=0, persist=False)
+    try:
+        assert b.brain.arm.arm.state()["latch_source"] == "restored"
+        ticks_before = b.brain.arm.efferent.envelope_tick
+        # the daemon's transcript ingest is NOT a human: it never actuates (the re-review found
+        # prose like 'reset the counter' reaching HOME with deliberate=True through this route)
+        ingest = b.respond("Let's reset the counter and re-run the battery.")
+        assert "only from a human" in ingest["reply"], ingest
+        assert b.brain.arm.arm.state()["stopped"] is True, "ingested text actuated the arm"
+        assert b.brain.arm.efferent.envelope_tick == ticks_before, "ingest counted as a passage"
+        reply = b.respond("go home", human=True)["reply"]  # the cockpit's chat: a person
+        assert "restored from a previous process has been reset" in reply, reply
+        assert b.brain.arm.arm.state()["stopped"] is False
+        assert b.brain.arm.efferent.envelope_tick == ticks_before + 1, (
+            "the chat route skipped the tap"
+        )
+    finally:
+        b.close()

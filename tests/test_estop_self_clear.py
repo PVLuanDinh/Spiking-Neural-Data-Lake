@@ -20,6 +20,8 @@ re-arming every few ticks. From a status light those are identical, which is why
 Run: pytest tests/test_estop_self_clear.py
 """
 
+import os
+
 import pytest
 
 from snn_data_lake.brainstem.autonomous_loop import CONTACT, AutonomousArm
@@ -107,3 +109,36 @@ def test_counter_is_exported_from_brain_state():
         assert "arm_stopped" in state, "the counter is only meaningful next to the latch state"
     finally:
         brain.close()
+
+
+def test_the_self_clear_never_re_arms_a_restored_latch():
+    """T037a (OD-4): a latch this process did NOT trip -- restored from the sidecar at boot --
+    is cleared only by a deliberate reset (the cockpit's HOME, `deliberate=True`). The
+    automated self-clear refuses it, counts the refusal, and does not count a clear."""
+    import json
+
+    from snn_data_lake.brainstem.so101_arm import ESTOP_LATCH
+    from snn_data_lake.substrate.home import home
+
+    with open(os.path.join(home(), ESTOP_LATCH), "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "token": "another-process",
+                "pid": 1,
+                "utc": "2026-08-21T00:00:00Z",
+                "source": "EMERGENCY_STOP",
+            },
+            f,
+        )
+    arm = _arm()
+    assert arm.arm.state()["latch_source"] == "restored"
+    for _ in range(4):
+        arm.step(0.5, 0.5, 0.5, distance=FAR)
+    assert arm.arm.state()["stopped"] is True, "the automated self-clear re-armed a restored latch"
+    assert arm._estop_clears == 0, "a refused clear was counted as a clear"
+    assert arm.arm.state()["latch_refusals"] >= 1, "the refusal was silent"
+    refusals = arm.arm.state()["latch_refusals"]
+    arm.apply_observed("HOME", deliberate=True)  # the cockpit's reset
+    assert arm.arm.state()["stopped"] is False and arm.arm.state()["latch_source"] is None
+    arm.step(0.5, 0.5, 0.5, distance=FAR)
+    assert arm.arm.state()["latch_refusals"] == refusals, "a cleared arm kept refusing"

@@ -126,7 +126,20 @@ DASHBOARD_KEYS = (
 # cognition|derived, which meant a panel built on spikes.* or body.* had NO gate behind it at all.
 DASHBOARD_SECTION_KEYS = {
     "spikes": ("cortex", "hippocampus", "amygdala", "basal_ganglia", "thalamus", "brainstem"),
-    "body": ("theta_deg", "ee_mm", "reach_mm", "effector", "collision", "deviation"),
+    "body": (
+        "theta_deg",
+        "ee_mm",
+        "reach_mm",
+        "effector",
+        "collision",
+        "deviation",
+        # T037a: the E-STOP row reads these; a latched arm is never silent about why
+        "stopped",
+        "latch_source",
+        "latch_restored_from",
+        "latch_refusals",
+        "latch_persist_errors",
+    ),
     # The revision counter is part of the CONTRACT, not decoration. A still picture and a live
     # one are pixel-identical to a viewer; without a counter that visibly advances, a frozen
     # renderer looks exactly like a stationary arm. This is the failure PROVENANCE exists for.

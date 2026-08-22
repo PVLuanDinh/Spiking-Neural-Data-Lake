@@ -604,12 +604,24 @@ def run_all(carry=False):
     # substrate/selfcheck_cache.py's docstring carry the full blind-spot disclosure).
     cache = None
     carried = []
+    sys.path.insert(0, "src")
     if carry:
-        sys.path.insert(0, "src")
         from snn_data_lake.substrate.selfcheck_cache import SelfcheckCache
 
         cache = SelfcheckCache()
         print(cache.banner())
+    # T037a hygiene: a self-check that E-STOPs its So101Arm and exits leaves the DURABLE latch
+    # sidecar in this run's SHARED isolated home; the next subprocess (a different pid) would
+    # honour it and come up frozen -- the shared-home sequence coupling, made safety-shaped.
+    # Cleared between checks, and SAID: the check that left it is named, because exiting
+    # stopped is information. The real brain's home is never touched here (NORD_HOME=_HOME).
+    from snn_data_lake.brainstem.so101_arm import ESTOP_LATCH  # the ONE spelling, in the envelope
+
+    latch = os.path.join(_HOME, ESTOP_LATCH)
+    latch_left = []
+    if os.path.exists(latch):
+        os.remove(latch)
+        print("GATE-HOME E-STOP SIDECAR from a previous run cleared before this battery")
     failed, artifact_skipped = [], []
     for m in MODULES:
         missing = ARTIFACT_GATED.get(m)
@@ -647,6 +659,9 @@ def run_all(carry=False):
         # (the battery-speed research needed one and none existed), and the cache stores it
         # so a later carry can say what it did not spend -- measured, never claimed.
         print(f"{'PASS' if ok else 'FAIL'}  {m}  [{secs:.1f}s]")
+        if os.path.exists(latch):
+            os.remove(latch)
+            latch_left.append(m)
         if not ok:
             failed.append(m)
             sys.stderr.write(r.stdout[-2000:] + r.stderr[-2000:] + "\n")
@@ -674,6 +689,12 @@ def run_all(carry=False):
         # Printed as its own line, not merged into the total, so "277/277" can never quietly mean
         # "276 ran and one was skipped".
         print(f"ARTIFACT-SKIPPED ({len(artifact_skipped)}): " + ", ".join(artifact_skipped))
+    if latch_left:
+        print(
+            f"GATE-HOME E-STOP SIDECAR left by {len(latch_left)} check(s) and cleared between "
+            "subprocesses (a check that exits stopped is information, not a defect): "
+            + ", ".join(latch_left)
+        )
     if failed:
         if carried:
             print(

@@ -3477,6 +3477,12 @@ class Brain:
             # ticks, and those are the same picture from a status light. The brain may only clear
             # when the breach predicate reads clear (autonomous_loop.py, step() section 1b).
             "estop_self_clears": int(getattr(self.brain.arm, "_estop_clears", 0)),
+            # T037a: automated HOMEs refused because the latch was RESTORED from a previous
+            # process (only the cockpit's deliberate reset clears it). A climbing count with
+            # arm_stopped True is a restarted-and-frozen arm waiting for a human.
+            "restored_latch_refusals": int(
+                getattr(getattr(self.brain.arm, "arm", None), "latch_refusals", 0)
+            ),
             "reflex_armed": True,
             "pc_surprise": self._pc_surprise,  # live generative-percept prediction-error (Rao-Ballard settle; folds into metacog)
             "da_level": round(
@@ -3538,8 +3544,11 @@ class Brain:
         "intent",
     )
 
-    def respond(self, message):
+    def respond(self, message, *, human=False):
         """Reply as the whole brain, SPEAKING FROM THE SELF-MODEL (no fixed status template).
+
+        `human` (T037a): True only when a person typed `message` at the cockpit; the daemon's
+        transcript ingest leaves the default, and a non-human arm intent never actuates.
 
         brain.chat() still runs every turn: it executes any gated arm command via the NL firewall +
         gated arm, and teaches the spiking intent router. The REPLY text is then chosen by intent:
@@ -3572,10 +3581,10 @@ class Brain:
         except Exception:
             is_command = False
         try:
-            conv = self.brain.chat(message)
+            conv = self.brain.chat(message, human=human)
         except Exception:
             try:
-                conv = self.brain.converse(message)
+                conv = self.brain.converse(message, human=human)
             except Exception:
                 conv = "I am the live brain."
         # The prefrontal executive's goal is necessarily a MOTOR action (ENGAGE/OPEN/HOLD).
@@ -4374,6 +4383,15 @@ def make_brain(**kwargs):
 
 
 def main():
+    # T037a: this self-check drives a So101Arm through EMERGENCY_STOP / HOME, which now writes
+    # the durable latch sidecar -- under a throwaway home, never the live brain's.
+    from snn_data_lake.substrate.home import throwaway_home
+
+    with throwaway_home():
+        _main()
+
+
+def _main():
     from snn_data_lake.brainstem.autonomous_loop import AutonomousArm
 
     rows = []  # (claim#, text, measured, ok)

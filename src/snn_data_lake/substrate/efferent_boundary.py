@@ -148,6 +148,15 @@ def declare_ports(manifest):
 
 
 def main():
+    # T037a: this self-check drives a So101Arm through EMERGENCY_STOP / HOME, which now writes
+    # the durable latch sidecar -- under a throwaway home, never the live brain's.
+    from snn_data_lake.substrate.home import throwaway_home
+
+    with throwaway_home():
+        _main()
+
+
+def _main():
     print("=" * 74)
     print("EFFERENT BOUNDARY -- efference copy around the envelope; forward-model charge")
     print("=" * 74)

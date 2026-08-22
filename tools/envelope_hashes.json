@@ -6,12 +6,12 @@
       "approved": "T021b initial baseline: envelope bytes UNCHANGED by this commit (the gate is new, the envelope is not); recorded under the 2026-08-20 autonomous handoff, specs/022"
     },
     "brainstem/serial_arm.py": {
-      "sha256": "ec190d43305a7e7eb372d3280f6e27005dc625dfe2bd9f2168655e501d46c6bd",
-      "approved": "T021b initial baseline: envelope bytes UNCHANGED by this commit (the gate is new, the envelope is not); recorded under the 2026-08-20 autonomous handoff, specs/022"
+      "sha256": "b81874b063e6cfbe42c499771b508c9a9b78f64e65879b7c03b8d5218607df18",
+      "approved": "specs/022 T037a, same OD-4 authorisation. The touch, enumerated: main() renamed _main() and wrapped by a new main() that runs it under substrate.home.throwaway_home() -- the self-check drives its So101Arm mirror through EMERGENCY_STOP and HOME, which now writes the durable latch sidecar, and a by-hand run must never leave the live brain's next restart frozen. NOTHING ELSE: SerialArm, apply(), is_valid_command, the wire allow-list and the calibration gate are byte-unchanged."
     },
     "brainstem/so101_arm.py": {
-      "sha256": "64bd88dfce3ff78205e9925aee19274c93d8614da879ea691afba4ec3cc64a52",
-      "approved": "T021b initial baseline: envelope bytes UNCHANGED by this commit (the gate is new, the envelope is not); recorded under the 2026-08-20 autonomous handoff, specs/022"
+      "sha256": "5c3fa4b0665bcd4da010b9b904ee42f8e9e735205d2e57f60ce05a45936ae470",
+      "approved": "specs/022 T037a -- the E-STOP latch becomes DURABLE ACROSS RESTART, authorised by owner decision OD-4 (delegated 2026-08-19: 'I authorize any decision made by you'; spec.md OD-4 row). The touch, enumerated: (1) ESTOP_LATCH + _latch_path() (the sidecar's name lives in this envelope file), _PROCESS_TOKEN (per-process identity; not the pid, which a reboot reuses); (2) __init__ adds latch_source / latch_restored_from / latch_persist_errors / latch_refusals and calls _honour_sidecar() -- a sidecar left by a DIFFERENT process comes up stopped, fail-closed on an unreadable one; (3) apply() gains a keyword-only `deliberate=False`: on the E-STOP edge it also writes the sidecar (_persist_latch); in the HOME/RETRACT_ALL branch a RESTORED latch is cleared only when deliberate (an automated clear is refused, frozen, counted) and the sidecar is removed only by a body that held the stop; (4) state() reports the four new keys; (5) main() runs under substrate.home.throwaway_home() and _durable_latch_checks() fires seven reds, one in a real second process; (6) the module docstring's new ruling, and the json/os/time imports. BYTE-UNCHANGED: apply()'s order (type -> latch -> E-STOP edge -> clears -> vocabulary -> clamp -> actuate -> report), the edge guard, _home()'s hard reset, the clamp, probe_contact, inject_disturbance and every other line."
     },
     "brainstem/arm_config.py": {
       "sha256": "c06b4435620b803a65461309f7eb473fef681abffc5d5fd996bd352d3e20a38d",

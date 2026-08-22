@@ -463,8 +463,13 @@ def _brain_intent(reply):
         return "GREET"
     if "neither claim" in r and "experience" in r:  # the agnostic consciousness reply
         return "CONSCIOUS"
-    if reply.startswith("Done") or "the arm is frozen" in r or "e-stop" in r:
-        return "ARM"
+    if (
+        reply.startswith("Done")
+        or "the arm is frozen" in r
+        or "e-stop" in r
+        or "is an arm command" in r
+    ):
+        return "ARM"  # incl. the non-human refusal (T037a): the intent label is what is taught
     if "working-memory goal" in r or "goal is" in r:
         return "GOAL"
     if "working memory lives in the data lake" in r or "recall" in r:

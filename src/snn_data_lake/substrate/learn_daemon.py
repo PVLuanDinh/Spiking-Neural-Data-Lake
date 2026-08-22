@@ -442,7 +442,7 @@ def main():
                     if mem.remember(role, text):  # durable + noise-filtered (real memory only)
                         b.respond(
                             text[:2000]
-                        )  # learn from the real turn (free text -> no arm actuation)
+                        )  # learn from the real turn; human=False: ingested text NEVER actuates the arm (T037a made this comment true -- it was not)
                         remembered += 1
                         budget -= 1
                 except Exception as e:

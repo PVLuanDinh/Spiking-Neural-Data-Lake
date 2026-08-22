@@ -259,6 +259,15 @@ def plan_to_xyz(arm, x_mm, y_mm, z_mm, seed=0, **kw):
 
 
 def main():
+    # T037a: this self-check drives a So101Arm through EMERGENCY_STOP / HOME, which now writes
+    # the durable latch sidecar -- under a throwaway home, never the live brain's.
+    from snn_data_lake.substrate.home import throwaway_home
+
+    with throwaway_home():
+        _main()
+
+
+def _main():
     home = [0.0] * len(JOINTS)
 
     # ---- 1. a clear straight line is answered without search -----------------------------

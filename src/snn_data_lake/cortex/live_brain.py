@@ -40,8 +40,8 @@ def _reply_to_intent(reply):
         return "ATTENTION"
     if "safety is enforced by a reflex" in r:
         return "SAFETY"
-    if reply.startswith("Done") or "the arm is frozen" in r:
-        return "ARM"
+    if reply.startswith("Done") or "the arm is frozen" in r or "is an arm command" in r:
+        return "ARM"  # incl. the non-human refusal (T037a): the INTENT is arm, the motion is not
     if (
         "keep improving myself" in r or "working-memory goal" in r
     ):  # the standing telos (or the legacy wording)
@@ -391,7 +391,7 @@ class LiveBrain:
         """The deliberative planner's held goal hierarchy (base -> top), or [] if it has not planned yet."""
         return list(self._planner.goals) if self._planner is not None else []
 
-    def converse(self, text):
+    def converse(self, text, *, human=False):
         """Answer a line of text, GROUNDED in the brain's real state. This is NOT a general chatbot or
         a language model: it recognises a few intents (greeting, goal, memory, attention, safety, and
         the consciousness question) and answers from the brain's actual state; it routes arm commands
@@ -495,12 +495,31 @@ class LiveBrain:
         # otherwise: try the NL firewall -> a safe arm command (driven through the gated arm) or a lake query.
         intent = self._nl.interpret(text)
         if intent["kind"] == "arm":
-            st = self.arm.arm.apply(
-                intent["command"]
-            )  # gated: ArmSim enforces E-STOP / collision / freeze
+            # T037a: the arm takes commands from a HUMAN only. This route has two producers --
+            # the cockpit's chat (a human, `human=True`) and the daemon's transcript ingest
+            # (automated, the default) -- and the NL firewall maps ordinary prose ('reset the
+            # counter', 'the center of the diff') to HOME, so ingested text could actuate the
+            # arm and, with deliberate=True, clear a stop this process never witnessed (the
+            # review built exactly that). Not a motor path for anything but a person.
+            if not human:
+                return (
+                    f"'{intent['command']}' is an arm command; the arm takes those only from a "
+                    "human at the cockpit, never from ingested text. No motion."
+                )
+            # T037/T037a: the ONE tapped passage (the first draft used the raw gate, invisible
+            # to the efference copy and to the latch policy), and a human typing here IS the
+            # deliberate reset a restored E-STOP requires.
+            was_restored = (self.arm.arm.state() or {}).get("latch_source") == "restored"
+            st = self.arm.apply_observed(intent["command"], deliberate=True)
             if st.get("stopped"):
                 return f"'{intent['command']}' -> the arm is frozen (E-STOP holds); no motion."
-            return f"Done: '{intent['command']}' -> effector {'closed' if st.get('effector') else 'open'}."
+            effector = "closed" if st.get("effector") else "open"
+            if was_restored:
+                return (
+                    f"Done: '{intent['command']}' -> the E-STOP restored from a previous process "
+                    f"has been reset; effector {effector}."
+                )
+            return f"Done: '{intent['command']}' -> effector {effector}."
         if intent["kind"] == "lake":
             wm = self.recall(intent["query"].get("window") or 6)
             return f"Reading working memory from the data lake: {len(wm)} recent ticks held."
@@ -583,7 +602,7 @@ class LiveBrain:
             )
         return self._ixn.respond(text_features(text, self._ixn.n_in))
 
-    def chat(self, text, feedback=None):
+    def chat(self, text, feedback=None, *, human=False):
         """CONVERSE AND LEARN from the exchange, the SPIKING way. Reply to `text` (grounded, via
         converse()), then IMPROVE the brain's spiking intent router (R-STDP spike-timing plasticity) from
         this one turn: the firewall's OWN grounded intent for the reply is a SELF-SUPERVISED teaching
@@ -597,7 +616,7 @@ class LiveBrain:
             raise RuntimeError(
                 "interaction learning is off; build LiveBrain(interaction_learning=True)"
             )
-        reply = self.converse(text)  # grounded reply (arm cmds stay gated in converse)
+        reply = self.converse(text, human=human)  # grounded reply (arm cmds stay gated in converse)
         self._ixn.learn_turn(
             text, _reply_to_intent(reply), feedback=feedback
         )  # spike-timing R-STDP turn
@@ -609,6 +628,15 @@ def _ctx(v, tmp, au, d):
 
 
 def main():
+    # T037a: this self-check drives a So101Arm through EMERGENCY_STOP / HOME, which now writes
+    # the durable latch sidecar -- under a throwaway home, never the live brain's.
+    from snn_data_lake.substrate.home import throwaway_home
+
+    with throwaway_home():
+        _main()
+
+
+def _main():
     from snn_data_lake.brainstem.arm_config import CONTACT
 
     safe_d, danger_d = CONTACT * 3.0, CONTACT * 0.5
@@ -711,8 +739,11 @@ def main():
     assert "neither claim" in conscious_reply and "not a conscious agent" not in conscious_reply, (
         "converse must answer consciousness AGNOSTICALLY (report correlates, neither claim nor deny), not DENY it"
     )
-    assert brain.converse("close the effector").startswith("Done"), (
-        "converse must route a safe arm command through the gate"
+    assert "only from a human" in brain.converse("close the effector"), (
+        "an arm command from a non-human producer (the daemon's ingest) must not actuate"
+    )
+    assert brain.converse("close the effector", human=True).startswith("Done"), (
+        "converse must route a safe arm command from a human through the gate"
     )
     # the brain can DELIBERATE: plan ahead over a forward model and reject a high-immediate-value trap.
     target, trap_options = 2.0, [1.0, 5.0, 0.2]  # cmd 0 -> terminal 2.0 (goal); cmd 1 -> 10 (trap)

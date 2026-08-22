@@ -1342,22 +1342,48 @@ FR010_ALLOWED_RULE_EDITS = (
 # document that authorises it either. Nothing in the envelope itself was touched.
 
 
-def fr010_findings(changed_paths):
+def fr010_findings(changed_paths, approved=()):
     """Paths in a change set that FR-010 forbids: the safety envelope, first and absolutely.
 
     Returns a list of (path, why). PURE -- it is handed paths and reads no git, so a test can plant
     a violation without needing a repository in a particular state. That matters here more than
     usual: a check never shown to produce a finding cannot evidence the absence of one (FR-010a),
     and certifying an absence is this function's entire job.
+
+    `approved` (specs/022 T037a, the first envelope byte change since this check landed): the
+    envelope paths whose modification IS the explicit approval -- computed by `fr010_approved`,
+    never assumed -- are not findings. Handed in explicitly so the constructed red stays reachable:
+    a planted path with no approval still fires.
     """
+    approved = {a.replace("\\", "/").lstrip("./") for a in approved}
     out = []
     for p in changed_paths:
         norm = p.replace("\\", "/").lstrip("./")
+        if norm in approved:
+            continue
         for env in _SAFETY_ENVELOPE:
             if norm.endswith(env):
                 out.append((p, f"SAFETY ENVELOPE: {env} is modified only with explicit approval"))
                 break
     return out
+
+
+def fr010_approved(changed_paths):
+    """The envelope paths in a change set whose modification is APPROVED -- the project's approval
+    act mechanized by specs/022 T021b: `tools/envelope_hashes.json` lands in the SAME change set
+    (so the baseline update is reviewable in the same diff) AND `envelope_hash_gate.check()` holds,
+    i.e. the bytes on disk ARE the approved bytes. Either condition missing approves nothing: a
+    tampered envelope file with a stale baseline, or a baseline edited for a file that does not
+    match it, stays a finding. Returns normalized paths."""
+    norm = {p.replace("\\", "/").lstrip("./") for p in changed_paths}
+    if "tools/envelope_hashes.json" not in norm:
+        return set()
+    from snn_data_lake.substrate import envelope_hash_gate
+
+    ok, _findings = envelope_hash_gate.check()
+    if not ok:
+        return set()
+    return {p for p in norm if any(p.endswith(env) for env in _SAFETY_ENVELOPE)}
 
 
 def fr010_changed_paths(root=None):

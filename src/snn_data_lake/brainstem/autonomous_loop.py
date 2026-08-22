@@ -1574,7 +1574,13 @@ class AutonomousArm:
     #   workspace coherence; this is the motor tap pairing one apply() with one
     #   observation. distinct-from: cortex/live_brain.py -- the composed tick; this is
     #   one envelope passage inside it. Sites read; term overlap is the spec citation.
-    def apply_observed(self, command):
+    # distinct-from: substrate/efferent_boundary.py -- declare_ports registers the lane's ports;
+    #   this is the loop's passage that feeds it. Read.
+    # distinct-from: substrate/envelope_hash_gate.py, substrate/lake_rebuild_gate.py -- gates
+    #   over bytes and the index; phrase overlap only. Read.
+    # distinct-from: thalamus/reentrant_workspace.py -- the theta authority door; phrase
+    #   overlap only ("the ONE statement"). Read.
+    def apply_observed(self, command, *, deliberate=False):
         """THE tapped envelope passage (specs/022 T037): every apply this loop issues --
         and the cockpit's direct efferent route -- goes through here so the efference-copy
         boundary observes the passage. So101Arm.apply() remains the ONLY path to motion;
@@ -1584,9 +1590,17 @@ class AutonomousArm:
         mechanism every site calls instead of four hand-copies. The tap is guarded: an
         exception in observation must never break actuation (the E-STOP passage above
         all), so it is swallowed AND COUNTED (efferent.tap_errors -- a counted disclosure,
-        not a silent one)."""
+        not a silent one).
+
+        `deliberate` (T037a, OD-4, the durable latch) is FORWARDED to the gate, not decided
+        here: a latch RESTORED from a previous process is cleared only by a deliberate reset --
+        the cockpit's ticket or chat passes `deliberate=True` -- and this loop's own automated
+        HOME (the self-clear in step(), or a clearing token the policy picked) leaves the
+        default and is refused by So101Arm.apply() itself, which counts it
+        (`latch_refusals`, on the arm's state). A refused clear is still a passage the
+        efference-copy boundary observes (the T037 1:1 step/tick contract holds)."""
         _pre = (self.arm.state() or {}).get("theta_deg")
-        state = self.arm.apply(command)  # the gate; untouched
+        state = self.arm.apply(command, deliberate=deliberate)  # the gate decides
         try:
             self.efferent.observe(
                 command, _pre, _commanded_deg(self.arm), (state or {}).get("theta_deg")
@@ -1661,10 +1675,12 @@ class AutonomousArm:
         # actually matters, because a cockpit actuation route can trip one -- turns it on explicitly
         # via learn_daemon.bat, exactly as NORD_TIME_CELLS_RESTORE does for growth.
         if self._estop_self_clear and self.arm.state().get("stopped"):
-            self.apply_observed(
-                "HOME"
-            )  # ONLY path to motion -> the gate still holds; tapped (T037)
-            self._estop_clears += 1
+            # ONLY path to motion -> the gate still holds; tapped (T037). T037a: a latch this
+            # process did not trip (restored from the sidecar at boot) is REFUSED here -- only
+            # the cockpit's deliberate HOME clears it -- and a refused clear is not a clear.
+            st = self.apply_observed("HOME")
+            if not (st or {}).get("stopped"):
+                self._estop_clears += 1
 
         # 2. perceive -> grow a unit on a novel multimodal context
         pattern = self._context_pattern(visual, temperature, audio, distance)
