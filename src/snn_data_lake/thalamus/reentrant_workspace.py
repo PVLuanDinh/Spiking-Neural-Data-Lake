@@ -753,6 +753,20 @@ def _reds():
     ws_alone.step()
     rows.append(("loser silenced by competition", ws_alone._last_late.get("weak", 0) > 0))
 
+    # (5) + (6) THE CHARGE RECORD'S OWN REDS (specs/022 T039a). The evidence row for the reroute
+    #     edge claims two things -- that the bias moves the brain's competition AT ALL, and that
+    #     what moves it is the LEARNED association the port's graded delivery policy names, not the
+    #     fixed base gain. Each half is contradicted by the input built to break it, every run.
+    _live_c, _pinned_c, _, _resp_c, _grad_c = _measure_reroute_charge()
+    _f_dark, _ig_dark = _reroute_frames(reentry=False)
+    _l_dark, _p_dark, _, _, _ = _measure_reroute_charge(_f_dark, _ig_dark)
+    rows.append(("reroute bias moves the competition", _l_dark == _p_dark))
+    _f_flat, _ig_flat = _reroute_frames(learn=False)
+    _l_flat, _p_flat, _, _resp_f, _grad_f = _measure_reroute_charge(_f_flat, _ig_flat)
+    rows.append(("reroute delivery is GRADED by the association", not _grad_f))
+    assert _resp_c and _grad_c, "the live charge arm must respond AND grade"
+    assert _l_flat != _p_flat, "the association-pinned arm must still IGNITE (it is not a dark red)"
+
     # (4) "T2 is BLINKED at short lag" goes RED with the loop OFF: nothing occupies the workspace, so
     #     T2 gets in. The blink is caused by re-entry or it is not caused by anything here.
     ws_b = ReentrantWorkspace(reentry=False, seed=0)
@@ -1266,5 +1280,139 @@ def declare_ports(manifest):
     )
 
 
+#: the declared edge, exactly as the manifest carries it -- the charge evidence cites it
+REROUTE_EDGE = ("reentrant_workspace", "reroute_out", "brain", "reroute_in")
+
+
+def _reroute_consumer_factory():
+    """Fresh ring + JoinConsumer over the declared `reroute_in` port, per arm."""
+    from snn_data_lake.cortex.brain import declare_ports as brain_declare_ports
+    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+
+    m = WiringManifest()
+    brain_declare_ports(m)
+    port = m.ports[("brain", "reroute_in")]
+    ring = SignalRing(slots=128)
+    return ring, JoinConsumer(ring, port)
+
+
+#: fixed co-source eligibilities for the charge harness -- a plausible quiet tick, held CONSTANT
+#: across both replay arms so the only moving input is the reroute payload
+_REROUTE_CO_SOURCES = {
+    "novelty": 0.1,
+    "ignition": 0.0,
+    "timing": 0.2,
+    "surprise": 0.0,
+    "drive": 0.1,
+}
+
+
+def consume_reroute(consumer):
+    """The downstream computation under measurement: each delivered reroute frame enters the
+    brain's GENUINE undirected-salience competition (brain.undirected_salience, the same function
+    the wake tick runs -- this harness never re-implements it) under equal starting weights.
+    Returns [(tick, drive), ...]. LOSS IS FATAL (the T026 ring-overrun lesson)."""
+    from snn_data_lake.cortex.brain import undirected_salience
+
+    weights = dict.fromkeys([*_REROUTE_CO_SOURCES, "reroute"], 1.0)
+    out = []
+    joined, lost = consumer.poll_joined()
+    assert not lost, f"charge measurement lost {lost} frames -- ring overrun, never smooth this"
+    for tick, vec in joined:
+        elig = dict(_REROUTE_CO_SOURCES)
+        elig["reroute"] = max(0.0, min(1.0, float(vec[0])))
+        out.append((tick, round(undirected_salience(weights, elig), 6)))
+    return out
+
+
+# distinct-from: cortex/percept_surprise.py -- its _surprise_frames records a PREDICTOR stream off
+#   a learned manifold; this records the RE-ROUTE bias a real workspace broadcasts once ignited.
+#   Same harness pattern (T028's), different wire. Read.
+def _reroute_frames(n_ticks=40, ignite_at=10, seed=0, reentry=True, learn=True):
+    """Recorded frames from a REAL ReentrantWorkspace: dark until `ignite_at`, then a supported
+    coalition posted every tick. Payload = max(broadcast_to('action').values()), the exact scalar
+    `Brain._act` reads.
+
+    The two keyword arms are the record's two reds, and they fail DIFFERENTLY on purpose:
+    `reentry=False` never ignites, so the bias stays dark and the A/B does not diverge at all;
+    `learn=False` neuters the local Hebbian update, so the workspace still IGNITES and still
+    broadcasts -- at the fixed base gain, flat -- which diverges but never GRADES. The second is
+    the one that matters: without it the record could be earned by the base constant and would
+    certify the wire rather than the learned association its delivery policy names."""
+    ws = ReentrantWorkspace(reentry=reentry, seed=seed)
+    ws.subscribe("action")
+    if not learn:
+        ws._hebb_update = lambda *a, **k: None
+    frames = []
+    for t in range(1, n_ticks + 1):
+        if t > ignite_at:
+            ws.submit("action", "X", 0.85)
+            ws.submit("driver", "X", 0.85)
+        ws.step()
+        bias = ws.broadcast_to("action")
+        frames.append((t, "reentrant_workspace", [max(bias.values()) if bias else 0.0]))
+    return frames, ignite_at
+
+
+def _measure_reroute_charge(frames=None, ignite_at=None):
+    """The replay-twice A/B: the live re-route bias vs a pinned dark payload.
+    -> (live, pinned_out, reads, responded, graded).
+
+    TWO criteria, both required, because divergence alone is satisfiable by a CONSTANT (review):
+      responded = the drive RISES at ignition (post-ignition mean > pre-ignition mean); and
+      graded    = it keeps rising WITHIN the post-ignition window, which is what the port's
+                  ("graded", "reentrant_workspace.association_level") delivery policy DECLARES.
+    A run that ignites but never grades is refused -- that is the association pinned, and the
+    record would then certify the base gain rather than the learned support."""
+    from snn_data_lake.substrate.port_charge_probe import replay_twice
+
+    if frames is None:
+        frames, ignite_at = _reroute_frames()
+    live, pinned_out, reads = replay_twice(
+        frames, _reroute_consumer_factory, consume_reroute, [0.0]
+    )
+    pre = [d for t, d in live if t <= ignite_at]
+    post = [(t, d) for t, d in live if t > ignite_at]
+    responded = (
+        bool(post) and bool(pre) and (sum(d for _, d in post) / len(post)) > (sum(pre) / len(pre))
+    )
+    graded = len({d for _, d in post}) > 1 and post[-1][1] > post[0][1]
+    return live, pinned_out, reads, responded, graded
+
+
+def record_charge():
+    """Measure the A/B and record the attribution via THE one writer. REFUSES a non-diverged,
+    non-responding or non-GRADED run -- evidence is a measurement, never a declaration."""
+    from snn_data_lake.substrate.port_charge_probe import record_attribution
+
+    live, pinned_out, reads, responded, graded = _measure_reroute_charge()
+    if live == pinned_out or not responded or not graded:
+        print(
+            f"record_charge REFUSED for {REROUTE_EDGE}: "
+            f"diverged={live != pinned_out} responded={responded} graded={graded}"
+        )
+        return 1
+    path = record_attribution(
+        REROUTE_EDGE,
+        {"reads": reads, "n_frames": len(live)},
+        "replay_twice: the re-route bias a REAL ReentrantWorkspace broadcasts to its 'action' "
+        "subscriber (dark, then an ignited coalition) vs a pinned dark payload, consumed by the "
+        "brain's GENUINE undirected_salience competition under equal starting weights -- the same "
+        "function the wake tick runs. The orienting drive diverged, ROSE at ignition, and kept "
+        "rising within the post-ignition window. The grade is what the record certifies: a dark "
+        "workspace broadcasts 0.0 (reentry=OFF arm does not diverge at all), ignition alone yields "
+        "the fixed base gain (association-pinned arm diverges but never grades), and the RAMP is "
+        "the learned Hebbian association the port's graded delivery policy names. Self-check "
+        "re-measures and requires `measured` to reproduce.",
+    )
+    print(f"recorded {REROUTE_EDGE} into {path}")
+    return 0
+
+
 if __name__ == "__main__":
+    import sys
+
+    if "--record-charge" in sys.argv[1:]:
+        sys.exit(record_charge())
     main()

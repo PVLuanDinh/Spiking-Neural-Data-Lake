@@ -84,6 +84,20 @@
         "hi_rt": 11.375
       },
       "provenance": "port_charge_probe.replay_twice over the raphe LEVELS sweep; the self-check re-measures and requires `measured` to reproduce exactly, so this record cannot outlive the wire it describes; specificity control held (payload-ignoring consumer did not flip)"
+    },
+    {
+      "edge": [
+        "reentrant_workspace",
+        "reroute_out",
+        "brain",
+        "reroute_in"
+      ],
+      "diverged": true,
+      "measured": {
+        "reads": 40,
+        "n_frames": 40
+      },
+      "provenance": "replay_twice: the re-route bias a REAL ReentrantWorkspace broadcasts to its 'action' subscriber (dark, then an ignited coalition) vs a pinned dark payload, consumed by the brain's GENUINE undirected_salience competition under equal starting weights -- the same function the wake tick runs. The orienting drive diverged, ROSE at ignition, and kept rising within the post-ignition window. The grade is what the record certifies: a dark workspace broadcasts 0.0 (reentry=OFF arm does not diverge at all), ignition alone yields the fixed base gain (association-pinned arm diverges but never grades), and the RAMP is the learned Hebbian association the port's graded delivery policy names. Self-check re-measures and requires `measured` to reproduce."
     }
   ]
 }
