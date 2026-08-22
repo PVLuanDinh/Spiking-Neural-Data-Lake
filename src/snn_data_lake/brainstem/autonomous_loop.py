@@ -189,6 +189,22 @@ _COVER_RATE_WINDOW = 200
 # fall. A latency, not a tuned threshold -- the condition itself (ArmSim reports GROUND) is exact.
 _GROUND_RECOVER_TICKS = 3
 SAFE_ACTION = "HOLD"  # what caution biases toward under stress
+#: The reward CONTRACT's bound -- `reward_fn(unit, action) -> [-1, 1]`, enforced where the reward
+#: enters `step` (out-of-contract values are clamped and the clamps counted). Not a tuned rate: it
+#: is the maximum ACHIEVABLE reward, which is what count-based optimism is defined in terms of, and
+#: changing it would change what the objective is allowed to say rather than how boldly the arm
+#: explores. Read only by `_explore_noise`.
+#:
+#: TWO HONEST CONSEQUENCES, both measured while reviewing this choice. (a) Sigma is in CONTRACT
+#: units, not in the units of what an objective actually pays, so a caller paying well under the
+#: contract explores more than its own value margins need: a +-0.25 objective abandons its settled
+#: optimum on 23.4% of ticks against 0.0% under a scale that adapts to it. No in-tree caller pays
+#: that -- coverage_reward pays the full +-1.0 -- so it is disclosed rather than fixed, and it is
+#: the first thing to re-measure if a quieter objective is ever added. (b) The clamp bounds
+#: `r_ext`, not `r = r_ext + r_int`: on a curiosity arm the delivered value reaches 1.65, so ~35%
+#: of rewards exceed this ceiling and their actions are, strictly, under-explored. Unchanged from
+#: the retired scale, whose ceiling was also 1.0 after the same clamp (39.5% exceeded it there).
+_REWARD_MAX = 1.0
 # W4c: self-motion step DERIVED from the chosen action (a real behavioral trajectory), not a constant drift.
 # Representation-only -- this feeds the allocentric MAP readout, never the actuator (the arm gate is separate).
 _ALLO_MOVE = {"ENGAGE": (0.05, 0.0), "RELEASE": (-0.05, 0.0), "HOLD": (0.0, 0.04)}
@@ -513,8 +529,8 @@ class AutonomousArm:
         self._int_elig = (0.0, 0.0)  # last tick's normalised (curiosity, empowerment) contributions
         self._rext_base = {}  # per-unit running mean of EXTERNAL reward (the only honest credit)
         self._rint_base = 0.0  # running mean of POSITIVE intrinsic reward -> the autotelic scale
-        self._r_peak = 0.0  # running PEAK |EXTERNAL reward| = the stake exploration is sized in
         self._reward_clamps = 0  # reward_fn returned outside its documented [-1, 1] contract
+        self._paid = False  # has any external reward been delivered? (gates exploration at all)
         self._visits = {}  # per-unit experience count -> count-based exploration decay 1/sqrt(n)
         # C3 #8: pfc_gain (the goal-directed-vs-habitual arbitration weight) is learned by CONTRAST.
         # Outcomes are accumulated separately for ticks where the top-down goal actually FLIPPED the
@@ -1023,8 +1039,9 @@ class AutonomousArm:
           * R * exp(-spread/R) against the reward scale anneals, but couples the rate to how fast
             values happen to grow, which starved the replay arm entirely (200 ticks vs 24).
         What actually governs how much a decision should be explored is how much EVIDENCE exists for
-        it, so sigma is the reward scale -- the running PEAK |delivered reward|, R-max -- divided by
-        sqrt(1 + times THIS ACTION was taken in THIS unit) -- count-based optimism (Strehl &
+        it, so sigma is the reward scale -- `_REWARD_MAX`, the contract's ceiling, i.e. what the
+        objective COULD pay rather than what it has paid -- divided by sqrt(1 + times THIS ACTION
+        was taken in THIS unit) -- count-based optimism (Strehl &
         Littman), the family the audit itself recommended for
         the sibling explore_bonus. Per STATE-ACTION, not per state: a per-state count was measured
         and is not enough, because once the state is well-visited the noise decays even over actions
@@ -1041,22 +1058,35 @@ class AutonomousArm:
         isolation probes); its magnitude no longer sets any rate."""
         # unit None = a direct query with no context identity, so there are no state-action counts
         # to be optimistic about; answer deterministically rather than at full optimism.
-        if unit is None or not self.explore or self._r_peak <= 1e-9:
-            # No reward experienced yet -- every action scores identically and there is nothing to be
-            # uncertain BETWEEN, so noise buys no information and only destroys the naive tie-break
-            # prior (measured: randomising it broke the learning probe's "before" readout).
+        if unit is None or not self.explore or not self._paid:
+            # Three ways there is nothing to be uncertain BETWEEN. A direct query with no context
+            # identity has no state-action counts to be optimistic about. `explore` off is the
+            # isolation probes' deterministic instrument. And before any reward has been DELIVERED
+            # every action scores identically, so noise buys no information and only destroys the
+            # naive tie-break prior -- measured when this clause was briefly dropped: the module's
+            # own learning probe read RELEASE as its BEFORE action, which is the action it is
+            # supposed to LEARN, collapsing 'learned, not fixed' into a coin that landed right.
             return [0.0] * len(scores)
-        # The scale is the running PEAK |r| (R-max, the optimism's own stake), not the running MEAN of
-        # |r|: that mean converges to whatever the CURRENT action pays, so under any settled action it
-        # annealed exploration to nothing -- the coverage objective's HOLD lock (sigma 0.005 against a
-        # 0.29 value margin after 400 ticks of -0.10; flip probability 0 on every tick, measured).
-        # Where |r_ext| is constant the two scales coincide EXACTLY, so a curiosity-off fixed-reward
-        # probe is byte-identical. With curiosity ON they do not coincide (the retired mean rode
-        # r_ext + r_int): the four affected probes were re-run and their asserts hold -- latent_q
-        # held-out 0.833 -> 1.000, mlp_q latent spread 0.0123 -> 0.0070, reward-shaped encoder
-        # held-out 1.000 unchanged. The `rse_hold >= 0.999` assert is zero-margin; it is covered.
+        # THE SCALE IS WHAT THE OBJECTIVE COULD PAY, NOT WHAT IT HAS PAID. Two OBSERVED scales were
+        # shipped and both starved, each in a regime the other's benchmark did not contain:
+        #   * a running MEAN of |r| converges to whatever the CURRENT action pays, so under any
+        #     settled action it annealed exploration to nothing -- the coverage objective's HOLD lock
+        #     (sigma 0.005 against a 0.29 value margin after 400 ticks of -0.10; flip probability 0);
+        #   * a running PEAK of |r_ext| looks immune to that, and is -- on a COLD body, which is the
+        #     only body the 8-seed benchmark contained. On the LIVE daemon the arm restores its
+        #     coverage ledger, so it never earns the +1.0 for a fresh cell, and near HOME it never
+        #     collides: the only rewards it observes are the -0.10 stillness term and the -0.02
+        #     re-tread, so the peak is starved to 0.10 and the same annealing returns (measured over
+        #     194 arm steps: max |r_ext| = 0.10, never once the 1.0 a fresh cell or a collision
+        #     would have paid). Measured in the daemon's own configuration
+        #     (make_brain against a copy of the real lake, 400 ticks): theta moved on 9 of 400 ticks,
+        #     motion 0.015, ZERO new cells -- against 139 of 400, motion 0.469 and 56 new cells here.
+        # Optimism is defined in terms of the maximum ACHIEVABLE reward (Strehl & Littman, the family
+        # cited above), and the contract bounds that at _REWARD_MAX -- a bound this loop ENFORCES
+        # rather than assumes. An observed scale cannot bootstrap: the arm has to explore to sample
+        # the reward that would license the exploration.
         return [
-            self.rng.gauss(0.0, self._r_peak / math.sqrt(1.0 + self._visits.get((unit, a), 0)))
+            self.rng.gauss(0.0, _REWARD_MAX / math.sqrt(1.0 + self._visits.get((unit, a), 0)))
             for a in ACTIONS
         ]
 
@@ -2105,15 +2135,15 @@ class AutonomousArm:
         if reward_fn is not None or r_int != 0.0:
             r_ext = reward_fn(unit, action) if reward_fn is not None else 0.0
             if r_ext < -1.0 or r_ext > 1.0:
-                # `reward_fn(unit, action) -> [-1, 1]` is this method's documented contract, and it
-                # is load-bearing rather than decorative: the exploration scale below is a running
-                # PEAK, so ONE out-of-contract sample would latch sigma at that magnitude for the
-                # rest of the process (measured: a single r = 50.0 took a maximally-cautious arm
-                # from holding still on 100% of ticks to issuing motor commands on 78.5%). Clamped
-                # rather than raised -- a caller's arithmetic slip must not take the brain down
-                # mid-tick -- and COUNTED, because a silent clamp is a lie about what was asked.
+                # `reward_fn(unit, action) -> [-1, 1]` is this method's documented contract, and
+                # enforcing it here is what lets `_explore_noise` size optimism by `_REWARD_MAX`:
+                # the bound is real because nothing can exceed it, rather than assumed because
+                # every in-tree caller happens to honour it. Clamped rather than raised -- a
+                # caller's arithmetic slip must not take the brain down mid-tick -- and COUNTED,
+                # because a silent clamp is a lie about what the objective asked for.
                 self._reward_clamps += 1
                 r_ext = max(-1.0, min(1.0, r_ext))
+            self._paid = self._paid or reward_fn is not None
             if reward_fn is not None:
                 r_ext_step = (
                     r_ext  # a real task reward this tick -> shape the encoder toward it next update
@@ -2172,15 +2202,6 @@ class AutonomousArm:
                         1.0, max(0.1, self.pfc_gain + self._pfc_lr * (self._r_ovr - self._r_hab))
                     )
             r = r_ext + r_int  # external task reward + intrinsic curiosity reward
-            # C3 #10: the stake exploration is sized in -- the peak of the EXTERNAL reward, which
-            # the clamp above bounds at 1.0, so sigma still decays with experience as this method's
-            # docstring promises. Two rejected forms, both measured: the running MEAN of |r| that
-            # sat here until 2026-08-22 (RETIRED, not kept beside this -- P2) converges to whatever
-            # the current action pays, which annealed exploration to nothing under any settled
-            # action; and a peak over `r` (external + intrinsic) is unbounded from the intrinsic
-            # side, so a transient curiosity spike -- not a task reward at all -- would set the
-            # exploration scale for the rest of the process (measured 5.0 after one spike).
-            self._r_peak = max(self._r_peak, abs(r_ext))
             if qsub is not None and z_lq is not None:
                 qsub.update(
                     z_lq, action, r

@@ -9,8 +9,10 @@
    fires the token the body said climbs. No body swap can re-create the defect.
 2. Exploration noise was sized by a running MEAN of |r|, which converges to whatever the CURRENT
    action pays -- under a settled HOLD (-0.10) sigma fell to 0.005 against a 0.29 value margin and
-   the flip probability was 0 on every tick. It is now the running PEAK of the EXTERNAL reward,
-   bounded by that reward's documented [-1, 1] contract (enforced, and the clamps counted).
+   the flip probability was 0 on every tick. A running PEAK of |r_ext| fixed that on a COLD body
+   and starved on the live one (a restored ledger earns no fresh cell, and near HOME nothing
+   collides, so the peak saw only the stillness term: ZERO new cells in 400 daemon ticks). The
+   scale is now what the objective COULD pay -- the [-1, 1] contract, ENFORCED here and counted.
 3. Cortisol was fed the raw negative reward, so the steady -0.10 stillness term pinned it at its cap
    and the 0.6 caution bias on HOLD became the lock's margin. It is now fed the BODY'S EVENT. The
    intermediate form the first draft shipped -- the baseline-relative `err` -- is pinned here as a
@@ -140,15 +142,14 @@ def test_exploration_does_not_anneal_under_a_settled_action():
         before = len(a._covered)
         a.step(reward_fn=a.coverage_reward, **CTX)
         ema(1.0 if len(a._covered) > before else 0.10)
-    stake = a._r_peak
+    stake = al._REWARD_MAX
     # phase 2: an action SETTLES -- this is the regime where the retired scale collapsed toward
     # whatever that action pays, and where the shipped one must not
     for _ in range(400):
         a.step(reward_fn=lambda u, act: -0.10, **CTX)
         ema(0.10)
-    assert a._r_peak == stake, "the stake must not shrink when the action settles"
-    assert a._r_peak > 5 * retired > 0.0, (
-        f"the scales must diverge once an action settles: peak {a._r_peak} vs retired {retired}"
+    assert stake > 5 * retired > 0.0, (
+        f"the scales must diverge once an action settles: stake {stake} vs retired {retired}"
     )
     unit = 0
     a.q[unit] = {act: -0.40 for act in ACTIONS}
@@ -159,43 +160,58 @@ def test_exploration_does_not_anneal_under_a_settled_action():
     hold = ACTIONS.index("HOLD")
 
     def flips(scale):
-        a._r_peak = scale
+        al._REWARD_MAX = scale
         return sum(
             max(range(len(ACTIONS)), key=lambda i: scores[i] + a._explore_noise(unit, scores)[i])
             != hold
             for _ in range(2000)
         )
 
-    assert flips(retired) == 0, "the control: the retired mechanism could not cross the margin"
-    assert flips(1.0) > 0, "R-max optimism must keep sampling a poisoned action"
+    try:
+        assert flips(retired) == 0, "the control: the retired mechanism could not cross the margin"
+        assert flips(stake) > 0, "R-max optimism must keep sampling a poisoned action"
+    finally:
+        al._REWARD_MAX = stake
 
 
-def test_the_exploration_scale_is_bounded_by_the_reward_contract():
-    """`reward_fn -> [-1, 1]` is enforced where the reward enters, because the scale is a running
-    PEAK: one out-of-contract sample would latch sigma for the rest of the process. Clamped, and
-    COUNTED. An intrinsic spike cannot latch it either -- the peak is over the EXTERNAL reward."""
+def test_the_exploration_scale_is_the_enforced_reward_contract():
+    """Optimism is sized by what the objective COULD pay (`_REWARD_MAX`), not by what it has paid:
+    an OBSERVED scale cannot bootstrap, because the arm must explore to sample the reward that
+    would license the exploration. The contract is ENFORCED here rather than assumed -- an
+    out-of-range reward is clamped and COUNTED -- which is what makes the bound real."""
     a = AutonomousArm(seed=0)
     for _ in range(5):
         a.step(reward_fn=lambda u, act: 50.0, **CTX)
-    assert a._r_peak <= 1.0 and a._reward_clamps == 5, (a._r_peak, a._reward_clamps)
+    assert a._reward_clamps == 5, a._reward_clamps
+    assert not hasattr(a, "_r_peak") and not hasattr(a, "_r_mag"), "superseded scales must retire"
     b = AutonomousArm(seed=0)
     for _ in range(5):
         b.step(reward_fn=lambda u, act: 0.25, **CTX)
-    assert b._r_peak == pytest.approx(0.25) and b._reward_clamps == 0
-    assert not hasattr(b, "_r_mag"), "the superseded scale must be retired, not kept beside it"
+    assert b._reward_clamps == 0
+    # sigma is the contract bound over the state-action count, on both arms alike: a body whose
+    # objective happens to pay small rewards must not explore less than one whose objective is loud
+    unit = next(iter(b.q))
+    b._visits[(unit, "HOLD")] = 0
+    scores = [b.q[unit][act] for act in ACTIONS]
+    draws = [abs(b._explore_noise(unit, scores)[ACTIONS.index("HOLD")]) for _ in range(400)]
+    assert max(draws) > 0.5 * al._REWARD_MAX, (
+        f"an untried action must carry full optimism: {max(draws)}"
+    )
 
 
-def test_the_peak_scale_coincides_with_the_retired_mean_where_the_reward_is_constant():
-    """A curiosity-off fixed-reward probe is byte-identical by construction: with |r_ext| constant
-    the running peak and the RETIRED running mean are the same number. The retired EMA is
-    recomputed here rather than kept on the instance -- a dead field is not a control."""
+def test_the_contract_bound_is_where_the_retired_mean_converges_on_a_loud_objective():
+    """A curiosity-off probe whose objective pays the full stake is unchanged by the swap: the
+    retired running mean of |r| converges to exactly the bound optimism now uses, so the fixed
+    +-1 probes in this module's self-check see the same sigma they always did. The divergence is
+    entirely in the QUIET regimes -- a settled action, or a restored body that earns neither a
+    fresh cell nor a collision -- which is where both observed scales starved."""
     a = AutonomousArm(seed=0)
     retired = 0.0
     for _ in range(30):
         a.step(reward_fn=lambda u, act: 1.0 if act == "RELEASE" else -1.0, **CTX)
         retired = 1.0 if retired <= 0.0 else (1.0 - a._int_tau) * retired + a._int_tau * 1.0
     assert a.curiosity is None, "this coincidence is claimed for the curiosity-OFF probes"
-    assert a._r_peak == pytest.approx(1.0) == pytest.approx(retired)
+    assert retired == pytest.approx(al._REWARD_MAX)
 
 
 # ------------------------------------------------------------------------ 3. the stress signal
