@@ -359,7 +359,22 @@ BASELINE = {
     # force-wiring this gate's doctrine forbids. The ceiling must fall back to <=21 when US1
     # wires the tract; leaving it at 24 after T039 is a defect, recorded here so the number
     # cannot quietly become the new normal.
-    "unimplemented_declared_pairs": 24,
+    #
+    # 24 -> 23 AT T039f: ONE of those three pairs is now wired. `cortex/brain.py` imports the
+    # insula terminus to feed it the declared body_in frame, so (cortex, insula) moved from
+    # declared-but-unreachable to implemented. TWO REMAIN, and they are named so the remaining
+    # debt cannot be read as done: (medulla, thalamus) and (thalamus, insula) -- the tract relays
+    # nts_rvlm -> thal_relay -> insula, and `thal_relay` is a connectome NODE with no module of
+    # its own, so closing those two is an architectural call inside global_workspace.py and is
+    # NOT owed by this commit.
+    #
+    # RATCHETING THIS IS NOT BOOKKEEPING. Left at 24 the criterion has NO REACHABLE RED: the
+    # self-check's constructed mutation raises the count by exactly one, so from 23 it lands ON
+    # the ceiling rather than over it and the mutation stops firing. `--self-check` went red for
+    # precisely that reason and named this criterion. P8: a criterion with no reachable red is
+    # deleted, not weakened -- so the honest move is to lower the ceiling until the red returns,
+    # which is what a ratchet is for.
+    "unimplemented_declared_pairs": 23,
 }
 
 # name -> (kind, human sentence, why this shape and not the obvious neighbour)

@@ -1,12 +1,13 @@
 {
-  "floor": 7,
-  "recorded_by": "specs/022 T039 (US1/S0 exit certification)",
-  "recorded_utc": "2026-08-22T05:05:00Z",
-  "commit_note": "The integer FR-015 left blank. Written from the measured census at the exit, not chosen: region_charge_gate reported 7 of 16 CHARGED. From here the gate asserts charged_count >= 7 on every run, so the count may rise and may never fall.",
+  "floor": 8,
+  "recorded_by": "specs/022 T039f (insula terminus reaches the ignition threshold); floor 7 first recorded at T039 (US1/S0 exit certification)",
+  "recorded_utc": "2026-08-22T15:40:00Z",
+  "commit_note": "RAISED 7 -> 8 by the measured census, never chosen: region_charge_gate reports 8 of 16 CHARGED once cortex/brain.py feeds the insula terminus its declared body_in frame. A floor may rise and may never fall, so this artifact is the ratchet and bumping it to 9 is the reachable red (verified at T039: the gate returns rc=1 with 'REGION CHARGE GATE RED: N charged < floor'). The integer alone was never the point -- see identity_gap.",
   "charged_at_recording": [
     "basal_ganglia",
     "cortex",
     "hypothalamus",
+    "insula",
     "medulla",
     "midbrain",
     "neuromodulation",
@@ -26,15 +27,14 @@
       "medulla",
       "hypothalamus",
       "midbrain",
-      "thalamus"
-    ],
-    "named_and_NOT_charged": [
+      "thalamus",
       "insula"
     ],
+    "named_and_NOT_charged": [],
     "charged_but_not_named": [
       "basal_ganglia",
       "cortex"
     ],
-    "why_this_block_exists": "FR-015 pins the floor's IDENTITY, not only its integer. Recording 7 without this block would let a count stand in for the thing the count is about, which is the failure this gate was built to prevent. Insula is the only region in the tree that is CHARGED-BUT-UNREACHABLE: its two body_in edges already carry diverged measured attributions, so the gap is one static live-path import, not a missing measurement. It is scoped in specs/022-unified-brain-arc/evidence/s0-exit.md and was deliberately NOT force-wired."
+    "why_this_block_exists": "FR-015 pins the floor's IDENTITY, not only its integer. Recording a count without this block would let the count stand in for the thing it is about, which is the failure this gate was built to prevent -- and it nearly did: at T039 the integer read 7 only because two UNNAMED regions charged in place of two NAMED ones, so the identity was 5 of 6 while the count looked complete. CLOSED at T039f: named_and_NOT_charged is now empty and the identity is 6 of 6. What retired the gap was NOT the import that made insula reachable -- that import would have flipped the region on its own, with or without a consumer -- but the measurement that the consumer's own output changes (tests/test_interoceptive_ignition.py). The cheap half and the evidence half are recorded separately here on purpose."
   }
 }

@@ -23,10 +23,26 @@ two declared interoceptive producers by CONCAT in producer-sorted order --
 homeostatic_drives' three normalized deficits, then interoceptive_arousal's [stress,
 caution] -- so BODY_CHANNELS below IS the concat layout, stated once and asserted in the
 self-check. OUT `interoception_out` (feeling_salience) is the interoception channel the
-dormancy exemption promised; its coalition consumer lands with the workspace resolution
-(T030/T031), so the OUT port is declared edge-less today and this module remains off the
-static live-import graph until that consumer imports it (the exemption row says exactly
-that). Charge is MEASURED per edge: two replay-twice A/Bs, each varying ONE producer's
+dormancy exemption promised.
+
+WIRED AND CHARGED AT T039f, AND THE PROMISE THIS PARAGRAPH USED TO CARRY WAS NOT KEPT AS
+WRITTEN. It said the coalition consumer would land with the workspace resolution (T030/T031)
+and that this module would stay off the static live-import graph until it did. T030 and T031
+both closed and it did not land -- because T039b MEASURED that sink out of range: the live bus
+admits on a band whose floor is 0.5505 and `feeling_salience` peaks at 0.2798, so an
+interoceptive bid never competes, and pinning the signal to its own live mean left the brain
+byte-identical on 120/120 ticks. That route is REFUSED, not pending. What landed instead is the
+sink this module's own opening paragraph names -- a body far from baseline finding it EASIER TO
+IGNITE, i.e. THRESHOLD MODULATION: `cortex/brain.py` feeds this terminus the declared
+`body_in` frame every tick and passes the salience into the ONE ignition law
+(`region_coherence._adjust`, joined by noisy-OR so it adds no constant). The module is now on
+the live-import graph and the region is CHARGED.
+
+STILL OPEN, and stated rather than left to be inferred from silence: `interoception_out` is
+STILL DECLARED EDGE-LESS. The salience reaches its consumer by a direct call, not through a
+declared manifest edge, because an edge needs the consumer to carry a typed IN port
+(FR-012/FR-013) and that was not built here. So the anatomy is wired and the MANIFEST does not
+yet say so. Charge is MEASURED per edge: two replay-twice A/Bs, each varying ONE producer's
 payload while the other stays constant, so divergence attributes to THAT edge -- a single
 whole-join neuter could not separate the two producers.
 """

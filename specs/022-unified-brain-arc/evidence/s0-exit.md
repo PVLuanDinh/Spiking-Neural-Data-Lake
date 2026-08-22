@@ -4,6 +4,11 @@ Certified on `main` at the commit that lands this file. Every number below was p
 command printed beside it, on the pinned measurement host (`LUAN_AND_ANNIE`), and re-derivable by
 running that command again. **This file certifies what was measured, including what did not pass.**
 
+> **AMENDED 2026-08-22 by T039f — see §8. The sections below are left EXACTLY as certified**,
+> because a certification's numbers are the record of what was true at the commit that landed it and
+> editing them in place would destroy the only evidence that the gap existed. §8 states what has
+> moved since; where §8 and an earlier section disagree, §8 is current.
+
 ## Verdict
 
 | # | Criterion (spec.md) | Measured | Status |
@@ -232,3 +237,47 @@ It claims: three criteria measured green with their own controls, an integer flo
 measured census with a reachable red, and two criteria measured UNMET with the reason each was not
 forced. It does not claim that US1 is satisfied — a gate asserts that the structure did not get
 worse, never that the policy is met, and two of five criteria are open with named next steps.
+
+## 8. Amendment 2026-08-22 (T039f) — criterion 1's identity gap is CLOSED
+
+| # | Criterion | At certification | Now |
+|---|---|---|---|
+| 1 | charged-region floor + FR-015 identity | 7 charged, identity **5 of 6** (insula missing) | **8 charged, identity 6 of 6** |
+| 2 | SC-001 faculty-to-faculty reads | 0 | 0 — still open, see below |
+
+**§6b's route was taken and it is not a null.** The insula terminus is fed the declared `body_in`
+concat from the two producers already live in `cortex/brain.py`, and its `feeling_salience` joins
+the EXISTING ignition law rather than opening a second one (P2 — the tree already modulates this
+threshold through `region_coherence.ignition_bias`). `tools/region_charge_floor.json` is raised
+7 → 8 and `identity_gap.named_and_NOT_charged` is now empty.
+
+Measured, seed 0: salience mean 0.235 / max 0.355 / 198 distinct over 200 ticks; the live threshold
+moves on 198 of 200 ticks, **135 of them ticks where the synfire binding gate is shut** and the
+coherence term contributes exactly zero. Neuter A/B over 40 ticks: threshold differs on 35, the
+workspace **winner** differs on 21 — and, disclosed, the binary `ignited` flag differs on **0**, so
+what moved is which content wins rather than whether anything ignited at all.
+
+**Two claims THIS DOCUMENT made are refuted by that build, and they are corrected here rather than
+quietly dropped:**
+
+* §6b warned the 120-tick occupancy harness baselines would move. They do not. That harness
+  measures the **arm's GlobalWorkspace**; driving the `ReentrantWorkspace` rheobase 0.55 → 0.40
+  leaves every field of it byte-identical (occupancy, pinned-at-capacity, co-occupancy, both
+  censuses, access-without-focus). The blast radius was smaller than this document priced.
+* The T039 tasks entry recorded that the importer "must be a THALAMUS module … so the only home is
+  `global_workspace.py` at 255 KB", on the grounds that `undeclared_import_pairs` is zero-slack.
+  Measured: cortex is a **declared** connectome partner of insula (`insula → ctx_pfc`), so the
+  import from `cortex/brain.py` held that ratchet at 11 and moved `unimplemented_declared_pairs`
+  **24 → 23**. It implemented a declared route. The architectural cost that entry priced is not owed.
+
+**SC-001 remains 0 and criterion 2 remains UNMET.** §6a's premise — that the re-entrant payload is
+listener-blind — no longer holds after T039c, re-measured here: `broadcast_to("action")` and
+`broadcast_to("language")` now differ on 48 of 60 ticks at seed 0 (18/60, 51/60, 51/60, 55/60 at
+seeds 1–4), and with `report_use` neutered they differ on **0 of 60 at every seed**, reproducing
+this document's original "byte-identical" null exactly. So the payload objection is answered and the
+counter still did not move, for a different and structural reason: the only `broadcast_to` reader is
+`cortex/brain.py` reading **its own** instance, which is a SELF-read and excluded from `cross`.
+`fac_cross` needs a *different* faculty module. Also re-derived and NOT reproducing: this document's
+"the perceived digit won 57 of 60 and `self` never won" — at HEAD, seed 0 gives `self` 27, digits 32,
+None 1 (harness control: `persist=False` vs the default is byte-identical, so that is not the cause).
+The half that DOES reproduce is `salience` winning 0 of 60 on all five seeds.

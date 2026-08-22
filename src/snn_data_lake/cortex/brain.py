@@ -785,6 +785,9 @@ class Brain:
 
         # W8: re-entrant (de-saturated) workspace + reconstructive episodic memory + homeostatic drives
         self._reentrant = self._episodic = self._drives = None
+        self._insula = None  # T039f: the insula terminus; None leaves every threshold as it was
+        self._insula_channels = ()
+        self._feeling_salience = 0.0  # this tick's body-from-own-baseline deviation, in [0, 1]
         self._reroute_bias = (
             0.0  # C2 #11: top-down re-route bias the ignited content sends to the action specialist
         )
@@ -836,8 +839,21 @@ class Brain:
                 self._reentrant.subscribe(_spec)
             self._episodic = EpisodicRecall(seed=self._seed)
             self._drives = HomeostaticDrives(seed=self._seed)
+            # specs/022 T039f: the INSULA TERMINUS of the declared interoceptive tract
+            # (viscera -> nts_rvlm -> thal_relay -> insula -> gwt). Both declared producers are
+            # already live in this class -- `_drives.deficit()` and the arm's cached
+            # {stress, caution} -- so this consumer feeds the exact BODY_CHANNELS concat the
+            # manifest declares, and its salience joins the ONE ignition law in tick().
+            from snn_data_lake.insula.interoceptive_integration import (
+                BODY_CHANNELS,
+                InteroceptiveIntegration,
+            )
+
+            self._insula_channels = BODY_CHANNELS
+            self._insula = InteroceptiveIntegration(channels=BODY_CHANNELS)
         except Exception:
             self._reentrant = self._episodic = self._drives = None
+            self._insula = None
 
         # C1 (batch 1): five NEW brain-native spiking faculties -- pure stdlib/numpy, representation-only,
         # guarded. Spiking clock (Weber timing), learned affective appraisal (three-factor), task-set/
@@ -2379,6 +2395,26 @@ class Brain:
                         )
             except Exception:
                 pass
+        # THE INSULA READS THE BODY (specs/022 T039f). Unconditional and BEFORE the coherence
+        # block on purpose: `observe` advances a running per-channel baseline, so skipping it on
+        # a tick where the coherence compute happened to hiccup would silently change the
+        # baseline every later salience is measured against. It takes NO new reading -- the arm's
+        # accessor returns the draw `_interocept` already took this tick.
+        self._feeling_salience = 0.0
+        if self._insula is not None:
+            try:
+                _def = self._drives.deficit() if self._drives is not None else {}
+                _body = self.brain.arm.interoception()
+                _frame = {
+                    "energy_deficit": float(_def.get("energy", 0.0) or 0.0),
+                    "curiosity_deficit": float(_def.get("curiosity", 0.0) or 0.0),
+                    "social_deficit": float(_def.get("social", 0.0) or 0.0),
+                    "stress": float(_body.get("stress", 0.0) or 0.0),
+                    "caution": float(_body.get("caution", 0.0) or 0.0),
+                }
+                self._feeling_salience = float(self._insula.observe(**_frame))
+            except Exception:
+                self._feeling_salience = 0.0
         if (
             self._region_coherence is not None
         ):  # C1 b3: cross-region Kuramoto coherence -> biases the workspace ignition threshold
@@ -2422,10 +2458,19 @@ class Brain:
                     self._reentrant is not None
                 ):  # RELIABLE binding (a survived volley) -> lower rheobase -> easier ignition
                     base = self._reentrant.base_ignition_threshold
-                    thr = (
-                        float(self._region_coherence.ignition_bias(base))
-                        if self._bound
-                        else float(base)
+                    # TWO REASONS TO IGNITE, ONE WRITE (T039f). The binding gate is UNCHANGED and
+                    # stays here, where the synfire chain is: an unbound volley contributes
+                    # coherence 0.0, exactly as before. What is new is that the insula's
+                    # feeling_salience is passed alongside it, so a body far from its own baseline
+                    # eases ignition on the ticks binding fails -- measured 135 of 200 such ticks,
+                    # ground the coherence term structurally cannot reach. With salience 0 this
+                    # expression is byte-identical to the one it replaces.
+                    thr = float(
+                        self._region_coherence.ignition_bias(
+                            base,
+                            interoceptive=self._feeling_salience,
+                            coherence=(self._region_coherence_val if self._bound else 0.0),
+                        )
                     )
                     # The refusal is BOUND AND COUNTED, never dropped: under a sweep hold
                     # the bias stops taking effect, and a consumer of region_coherence must

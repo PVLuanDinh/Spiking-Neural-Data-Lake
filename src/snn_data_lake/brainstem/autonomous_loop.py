@@ -1334,6 +1334,22 @@ class AutonomousArm:
         self._last_intero = self.intero.sense(load)
         return self._last_intero["caution"]
 
+    # distinct-from: medulla/interoceptive_arousal.sense() -- the ORGAN'S draw, which advances
+    #   its noise stream; this returns the reading ALREADY taken. Both sites read.
+    def interoception(self):
+        """This tick's cached interoceptive reading as a plain dict, or {} when opt-out.
+
+        A READ OF THE CACHE, NEVER A SECOND DRAW. `_interocept` above states the organ's rule:
+        ONE sense() per tick, because sense() advances InteroceptiveArousal's own noise stream
+        and dynamics, so a second call per tick forks replay (G5). This accessor exists so a
+        consumer outside the arm can have the body reading WITHOUT being able to take it --
+        the only safe shape for that, and the reason it returns a COPY: a caller that mutated
+        the cache would corrupt the same tick's coalition channels, which read it too.
+
+        Empty (never None) when interoception is opt-out, so a consumer reads one type.
+        specs/022 T039f: the insula's live feed."""
+        return dict(self._last_intero) if self._last_intero else {}
+
     def _pfc_bias(self, unit, pattern=None, qa=None):
         """The prefrontal top-down bias over ACTIONS for this unit (all-zeros when opt-out). The
         executive deliberates over the current action-values, holds a goal in working memory, and

@@ -311,9 +311,35 @@ class RegionCoherence:
 
     # ---- ignition gating --------------------------------------------------------------------------
     @staticmethod
-    def _adjust(base_threshold, coherence, gain):
+    def _adjust(base_threshold, coherence, gain, interoceptive=0.0):
         """Map coherence -> adjusted GWT rheobase. Higher coherence LOWERS the threshold (easier
         ignition), strictly monotone decreasing in coherence.
+
+        TWO REASONS TO IGNITE, ONE LAW (specs/022 T039f). `interoceptive` is the insula's
+        feeling_salience -- how far the body sits from its OWN running baseline -- and a body far
+        from baseline should find it easier to ignite the workspace, which is that producer's own
+        stated claim. It joins HERE rather than through a second actuator because the tree already
+        modulates this threshold through this expression and P2 forbids a mechanism beside the one
+        that exists.
+
+        THE COMBINATION IS NOISY-OR AND CARRIES NO NEW CONSTANT:
+
+            c_eff = 1 - (1 - c) * (1 - s)
+
+        i.e. the threshold is eased to the degree that AT LEAST ONE independent reason to ignite
+        is present. This is the only form that satisfies all four constraints IGNITION_GAIN's
+        docstring imposes on this yardstick -- bounded, monotone in each input, memoryless,
+        deterministic -- while introducing nothing to calibrate. A weighted sum would have needed a
+        second calibrated weight, and `max()` would have discarded the weaker reason entirely.
+
+        THE BOUND SURVIVES UNCHANGED, which is why this is safe to fold in here: c_eff lies in
+        [0, 1] whenever c and s do, so the result still lies in [base * (1 - gain), base] and is
+        still strictly positive IFF gain < 1 -- the same precondition, enforced at the same one
+        door (__init__). Nothing downstream widens.
+
+        WITH s = 0 THIS IS TODAY'S EXPRESSION EXACTLY (c_eff == c), so an absent or unfed insula
+        leaves every threshold byte-identical -- the term is additive from zero, and that is what
+        makes its attribution measurable rather than argued.
 
         THE BOUND IS A PRECONDITION, NOT A CLAMP, and it is stated exactly (an earlier
         docstring said 'clamped to (0, base]' while the body clamps nothing -- the same
@@ -331,11 +357,23 @@ class RegionCoherence:
         RegionCoherence.IGNITION_GAIN (with its measured justification), so re-calibrating it cannot
         be silently no-opped by a stale second default sitting in this signature."""
         c = min(1.0, max(0.0, float(coherence)))
-        return float(base_threshold * (1.0 - gain * c))
+        s = min(1.0, max(0.0, float(interoceptive)))
+        c_eff = 1.0 - (1.0 - c) * (1.0 - s)
+        return float(base_threshold * (1.0 - gain * c_eff))
 
-    def ignition_bias(self, base_threshold):
-        """Adjusted ignition threshold given the last coherence: higher coherence -> lower threshold."""
-        return self._adjust(base_threshold, self._coherence, self.gain)
+    def ignition_bias(self, base_threshold, interoceptive=0.0, coherence=None):
+        """Adjusted ignition threshold: higher coherence OR a body further from its own baseline
+        -> lower threshold.
+
+        `coherence=None` uses the last measured value, which is every pre-T039f caller unchanged.
+        A caller that has ALREADY GATED coherence passes the gated value explicitly -- cortex.brain
+        does, because its synfire binding gate decides whether a coherence volley was reliable
+        enough to count, and that decision belongs where the synfire chain is, not here. Passing
+        0.0 is how the caller says "coherence contributes nothing this tick", and the
+        interoceptive term is unaffected by it: the body does not stop deviating from baseline
+        because a cross-region volley failed to bind."""
+        c = self._coherence if coherence is None else coherence
+        return self._adjust(base_threshold, c, self.gain, interoceptive)
 
 
 # ======================================================================================================

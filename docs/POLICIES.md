@@ -338,6 +338,13 @@ landing, 2026-08-20: **0 of 16 anatomical regions CHARGED; 13 REACHABLE-UNCHARGE
 3 UNREACHABLE** (insula deliberately unwired until its US1 port; olfactory and pons own no
 modules yet). The 13-vs-0 gap is the rule's whole message: a tree can be almost fully
 reachable and zero-charged, which is exactly why reachability was never charge.
+**UPDATED 2026-08-22 (specs/022 T039f): the count above is the LANDING census and is kept as
+that record; it is no longer the current one. Insula is now REACHABLE AND CHARGED -- its US1
+port landed, `cortex/brain.py` feeds the terminus the declared `body_in` frame and its
+`feeling_salience` joins the ignition law -- so the census reads 8 of 16 CHARGED and the
+UNREACHABLE set is olfactory and pons, both of which still own no modules. The floor artifact
+carries the identity: `tools/region_charge_floor.json` is 8 with `named_and_NOT_charged`
+empty. Re-derive with `region_charge_gate --assert` rather than quoting either number.**
 
 **THE ATLAS-NODE RULE (specs/022 T024, landing WITH its counted gate).** Beneath charge
 sits NAMING: every `connectome.NODES` id must be named by ≥1 module in its own region
