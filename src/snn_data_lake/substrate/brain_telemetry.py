@@ -110,6 +110,11 @@ DASHBOARD_KEYS = (
     "arousal",
     # the closed-loop panel: arm competence signals the cockpit draws as its headline progress row
     "cells_covered",
+    "coverage_rate",
+    "coverage_motion",
+    "coverage_window",
+    "coverage_scale_cells",
+    "coverage_restored",
     "recoveries",
     "ground_ticks",
     "cpg_weight",
@@ -195,6 +200,14 @@ PROVENANCE = {
     # nights 281 -> 18 across one restart). The brain's LIFE is in the durable lake; these
     # count THIS PROCESS. Deriving a lifetime number from lake-record cadence would be an
     # approximation dressed as a measurement, so the honest fix is the label, not a fake.
+    # T038 (FR-027): the coverage ledger, said beside the number -- each row short enough to render
+    # as the cockpit's provenance tag.
+    "cells_covered": "lake-persisted; restored at construction only under NORD_TIME_CELLS_RESTORE=1 (the daemon) -- read the rate + motion beside it",
+    "coverage_rate": "NEW cells per coverage tick over the window; new-since-restore; 0.0 with window 0 = nothing measured yet",
+    "coverage_motion": "coverage ticks whose cell changed, as a fraction; rate 0 + motion > 0 = retrodden ground, motion 0 = a body that stopped (the landing run)",
+    "coverage_window": "coverage ticks in the ledger (max 200); the denominator of rate and motion",
+    "coverage_scale_cells": "P1-derived workspace SCALE (lattice cells in the ball of the sampled horizontal reach); NOT a bound -- 4 of 107 landing cells lie outside it",
+    "coverage_restored": "process-lifetime: cells adopted from the lake at construction (0 = cold start or refused; reason on the arm as coverage_restore_note)",
     "wake_ticks": "process-lifetime: zeroed at daemon restart, never lake-restored",
     "sleep_ticks": "process-lifetime: zeroed at daemon restart, never lake-restored",
     "nights_elapsed": "process-lifetime: zeroed at daemon restart, never lake-restored",
@@ -333,9 +346,20 @@ def snapshot(brain):
         cov = getattr(arm_obj, "_covered", None)
         if cov is not None:
             # NOT also emitting `_cover_new`: it is incremented in the same `if fresh:` block that
-            # adds to `_covered` and is never reset anywhere in src/, so the two are the same number.
-            # Two panels reading one counter would imply an independent measurement that is not there.
+            # adds to `_covered`, never reset in src/, and restore_coverage sets it to the adopted
+            # count, so the two are the same number. Two panels reading one counter would imply an
+            # independent measurement that is not there.
             out["derived"]["cells_covered"] = len(cov)
+            # T038: the count's companions -- the live RATE (new cells), its MOTION (did the body
+            # move), the WINDOW they are read over, the P1-derived SCALE, and what the ledger
+            # restored at construction. Rate and motion together say why a count is flat; the
+            # rate alone cannot (both 'exhausted' and 'stopped' read 0.0 -- the review built both).
+            if hasattr(arm_obj, "coverage_rate"):
+                out["derived"]["coverage_rate"] = _num(arm_obj.coverage_rate())
+                out["derived"]["coverage_motion"] = _num(arm_obj.coverage_motion())
+                out["derived"]["coverage_window"] = int(arm_obj.coverage_window())
+                out["derived"]["coverage_scale_cells"] = int(arm_obj.coverage_scale_cells())
+                out["derived"]["coverage_restored"] = int(getattr(arm_obj, "_cover_restored", 0))
         for key, attr in (
             ("recoveries", "_recoveries"),
             ("ground_ticks", "_ground_ticks"),
@@ -646,6 +670,15 @@ class Recorder:
 
 
 def main():
+    """Self-check under a throwaway home (T037a precedent; T038 parks a lake flush on the sleep
+    tick this check can reach, so a bare run must never touch the live brain's lake)."""
+    from snn_data_lake.substrate.home import throwaway_home
+
+    with throwaway_home():
+        _main()
+
+
+def _main():
     """Self-check: the contract holds against a real brain, the recorder round-trips, HTTP answers."""
     import tempfile
 

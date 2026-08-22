@@ -158,6 +158,32 @@ def _cover_cell():
     return (arm_config.MAX_REACH_MM / 1000.0) / _COVER_CELLS_PER_REACH
 
 
+@_functools.lru_cache(maxsize=4)
+def _lattice_ball_cells(r):
+    """Integer triples (a, b, c) with a^2 + b^2 + c^2 <= r^2 -- the cells a ball of radius r
+    cells can touch, counted exactly. O(r^3) once per resolution, then cached."""
+    rr = int(r) * int(r)
+    return sum(
+        1
+        for a in range(-int(r), int(r) + 1)
+        for b in range(-int(r), int(r) + 1)
+        for c in range(-int(r), int(r) + 1)
+        if a * a + b * b + c * c <= rr
+    )
+
+
+#: specs/022 T038 (FR-027): the coverage ledger is LAKE-PERSISTED -- the name of its record in the
+#: ONE lake (home.save_state / load_state, the P4b carrier time_cells already rides) and the format
+#: tag a restore refuses to mis-read.
+COVERAGE_STATE = "coverage_cells"
+COVERAGE_FMT = 1
+#: RESOLUTION of the live coverage RATE (new cells per tick over the last N coverage ticks) -- a
+#: measurement window like _COVER_CELLS_PER_REACH is a grid, not an arbitrating threshold: the
+#: rate is reported, never compared against a number. 200 ticks is the incumbent's 600-tick
+#: measurement split in thirds.
+_COVER_RATE_WINDOW = 200
+
+
 # Consecutive ground-contact ticks before the postural recovery reflex fires. Small enough that the
 # arm cannot spend a run underground, large enough that a single grazing contact is not treated as a
 # fall. A latency, not a tuned threshold -- the condition itself (ArmSim reports GROUND) is exact.
@@ -241,6 +267,17 @@ class AutonomousArm:
         self._cover_new = (
             0  # newly-reached cells this run -- the honest "is it getting better" line
         )
+        # T038: per-tick freshness AND per-tick motion over the last _COVER_RATE_WINDOW coverage
+        # ticks -> the live RATE and its companion beside the count. The rate alone cannot say WHY
+        # it is zero (the review constructed both: a pre-covered workspace with the body moving and
+        # an E-STOPped body both read rate 0.0); the PAIR can -- motion > 0 with rate 0 is ground
+        # being retrodden, motion 0 is a body that stopped.
+        self._cover_fresh = []
+        self._cover_moved = []
+        self._last_cover_cell = None
+        #: T038: cells restored at construction from the lake (0 = cold start or refused) + why
+        self._cover_restored = 0
+        self.coverage_restore_note = "disabled"
         # Global-Workspace ignitions: how many times the broadcast HEAD changed hands (the workspace
         # holds up to `capacity` contents; this counts the top one). A running count of "something
         # new became globally available", which is a different claim from access_index (how
@@ -610,6 +647,116 @@ class AutonomousArm:
         else:
             self.arm.set_substeps(max(n + 1, n * 2))  # find it fast
 
+    # ---- T038 (FR-027): the coverage ledger's two measured properties -----------------------
+    # distinct-from: cortex/time_cells.py -- save()/restored() persist the CLOCK's thresholds
+    #   with a seed/drive lineage; this persists the coverage CELLS with a cell-size/reach
+    #   lineage. Same carrier (home.save_state), different state, each refusing its own
+    #   mismatch. Read.
+    # distinct-from: cortex/neurogenesis_engine.py -- growth_state_bytes/restore_growth_state is
+    #   the grown SUBSTRATE's own chain-record path. Read.
+    def coverage_rate(self, window=None):
+        """NEW cells per coverage tick over the last `window` coverage ticks (default: the whole
+        _COVER_RATE_WINDOW ledger). 0.0 before any coverage tick -- read `coverage_window()`
+        beside it, an empty window is 'nothing measured yet', not 'saturated'. After a restore the
+        adopted ground is not fresh, so this is new-since-restore: the same exploration reads lower
+        warm than cold (0.69 vs 0.12 at 100 ticks, measured), which is what it should say.
+        Reported, never judged."""
+        hist = self._cover_fresh if window is None else self._cover_fresh[-int(window) :]
+        return float(sum(hist)) / len(hist) if hist else 0.0
+
+    def coverage_motion(self, window=None):
+        """Coverage ticks in the window on which the end effector's CELL changed, as a fraction --
+        the rate's companion. rate 0 with motion > 0 is ground being retrodden (the workspace at
+        this resolution is used up, or the policy circles); rate 0 with motion 0 is a body that
+        stopped, which is what the landing run was (HOLD 100/100 from tick 501). 0.0 before two
+        coverage ticks."""
+        hist = self._cover_moved if window is None else self._cover_moved[-int(window) :]
+        return float(sum(hist)) / len(hist) if hist else 0.0
+
+    def coverage_window(self):
+        """Coverage ticks currently in the ledger (0.._COVER_RATE_WINDOW): the denominator the two
+        fractions above are read over. Served so a 0.0 can be told from an empty window."""
+        return len(self._cover_fresh)
+
+    @staticmethod
+    def coverage_scale_cells():
+        """The workspace SCALE in cells that `cells_covered` is read against, DERIVED (P1) from the
+        body: the lattice points within a ball of radius `_COVER_CELLS_PER_REACH` cells (the
+        sampled horizontal reach at the cell resolution), counted exactly -- the continuous volume
+        undercounts a small-r lattice (r=2 holds 33 points; 4/3*pi*8 = 33.5).
+
+        A SCALE, NOT A BOUND, and named so. The reach is sampled horizontally from the shoulder
+        while cells are indexed from the base frame, and the gripper rises above the horizontal
+        reach (z to 0.516 m against 0.477 m): the landing run reaches 22.3 cells from the origin
+        and 4 of its 107 cells lie outside this ball. `cells / scale` (0.24% at landing) is an
+        order of magnitude, never a plateau someone pinned."""
+        return _lattice_ball_cells(int(_COVER_CELLS_PER_REACH))
+
+    def coverage_state(self):
+        """The ledger as a lake record: cells + lineage (cell size, reach) + the format tag.
+        Nothing else -- a field the restore does not adopt is a claim the lake keeps forever."""
+        return {
+            "fmt": COVERAGE_FMT,
+            "cell_m": float(_cover_cell()),
+            "reach_mm": float(arm_config.MAX_REACH_MM),
+            "cells": sorted([int(a), int(b), int(c)] for a, b, c in self._covered),
+        }
+
+    def save_coverage(self):
+        """Persist the ledger into the ONE lake (P4b). True if a record was written; False when
+        there is nothing to write or nothing changed (home.save_state refuses both -- the lake
+        is append-only). Never raises: persistence must not take down the caller.
+
+        Size: ~14 bytes per cell as JSON (1.5 KB at landing). The record rides _T_STATE, whose
+        per-tick append budget (tools/lake_append_baseline.json, tag 7) trips near ~7,000 cells
+        in one flush; the flush is change-gated so nothing re-appends an unchanged ledger.
+        ponytail: a packed encoding (~6 B/cell) is the upgrade if the body ever covers that much."""
+        if not self._covered:
+            return False
+        try:
+            from snn_data_lake.substrate import home
+
+            return bool(home.save_state(COVERAGE_STATE, self.coverage_state()))
+        except Exception:
+            return False
+
+    def restore_coverage(self, blob):
+        """Adopt a persisted ledger WHOLESALE, or refuse it and say why. Never mutates on refusal.
+        Refuses: nothing persisted, a foreign format, a cell-size or reach lineage mismatch (a
+        cell index under another grid is another body's cell), malformed cells. Returns
+        (adopted_count, reason) and records both on the instance (`coverage_restore_note`)."""
+        if not isinstance(blob, dict):
+            self.coverage_restore_note = "nothing persisted"
+            return 0, self.coverage_restore_note
+        why = None
+        try:  # ONE guard for every field: a record that raises is a record that was not refused
+            if blob.get("fmt") != COVERAGE_FMT:
+                why = f"fmt {blob.get('fmt')!r} != {COVERAGE_FMT}"
+            elif abs(float(blob.get("cell_m", -1.0)) - _cover_cell()) > 1e-12:
+                why = f"cell size {blob.get('cell_m')} != {_cover_cell()} (the grid changed)"
+            elif abs(float(blob.get("reach_mm", -1.0)) - float(arm_config.MAX_REACH_MM)) > 1e-9:
+                why = (
+                    f"reach {blob.get('reach_mm')} != {arm_config.MAX_REACH_MM} (the body changed)"
+                )
+            else:
+                cells = set()
+                for a, b, c in blob.get("cells", []):
+                    if not all(isinstance(v, int) for v in (a, b, c)):
+                        raise ValueError("non-integer cell index")  # int(1.9) is another cell
+                    cells.add((a, b, c))
+        except (TypeError, ValueError) as e:
+            why = f"malformed record ({type(e).__name__}: {e})"
+        if why:
+            self.coverage_restore_note = "refused: " + why
+            return 0, self.coverage_restore_note
+        self._covered = set(cells)
+        self._cover_new = len(
+            cells
+        )  # keeps `_cover_new == len(_covered)`, the invariant telemetry relies on
+        self._cover_restored = len(cells)
+        self.coverage_restore_note = f"restored {len(cells)} cells from the lake"
+        return len(cells), self.coverage_restore_note
+
     def coverage_reward(self, unit, action):
         """The physical objective: reward the end effector for REACHING somewhere it has not been.
 
@@ -652,6 +799,14 @@ class AutonomousArm:
         if fresh:
             self._covered.add(cell)
             self._cover_new += 1
+        self._cover_fresh.append(1 if fresh else 0)  # T038: the rate's ledger ...
+        self._cover_moved.append(  # ... and its motion companion (cell changed since the last coverage tick)
+            1 if (self._last_cover_cell is not None and cell != self._last_cover_cell) else 0
+        )
+        self._last_cover_cell = cell
+        if len(self._cover_fresh) > _COVER_RATE_WINDOW:
+            del self._cover_fresh[0]
+            del self._cover_moved[0]
         # STILLNESS MUST BE STRICTLY WORST OF THE NON-COLLISION OUTCOMES.
         # v4.60 paid -0.05 for BOTH re-treading and standing still, which made them identical. Near
         # the floor that is a losing bet: moving risks -1.0, staying is a guaranteed -0.05, so the

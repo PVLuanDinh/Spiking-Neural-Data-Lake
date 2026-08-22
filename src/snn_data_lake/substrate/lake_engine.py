@@ -60,7 +60,11 @@ RETENTION: dict[int, tuple[str, bool, str]] = {
     0x04: ("IMMORTAL", False, "_T_EPISODE: lived experience is never reclaimed"),
     0x05: ("IMMORTAL", False, "_T_SELFBUILD: the self-modification archive is the rollback"),
     0x06: ("IMMORTAL", False, "_T_CALIB: calibration provenance"),
-    0x07: ("IMMORTAL", False, "_T_STATE: name-keyed config frames (tiny, upserted by replay)"),
+    0x07: (
+        "IMMORTAL",
+        False,
+        "_T_STATE: name-keyed state frames (upserted by replay; small, except the coverage ledger, which scales with the body's workspace -- T038)",
+    ),
     0x08: (
         "COMPACTABLE",
         True,

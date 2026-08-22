@@ -26,6 +26,8 @@ REM   because a cockpit actuation route can trip an E-STOP and nothing on the li
 REM   previously clear one -- a tripped stop deadlocked the arm until restart.
 
 set NORD_TIME_CELLS_RESTORE=1
+REM ^ Since specs/022 T038 this switch restores GROWN STATE generally: the time-cell width AND the
+REM   arm's workspace-coverage ledger (both lake-persisted; both refuse a lineage mismatch).
 REM ^ NEURAL GROWTH SURVIVES RESTART. Growing the time-cell population is on by default everywhere
 REM   (specs/003); RESTORING the grown width is opt-in, and this is the one place it is opted into.
 REM   The split is not decoration: an unconditional restore makes brain construction depend on what

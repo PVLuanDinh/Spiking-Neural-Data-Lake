@@ -898,7 +898,7 @@ function paint(d){
     `<span class="tag"> ${o.computed?'not applied':'NOT COMPUTED'}</span></span></div>`).join('');
 
  /* ---- bottom bar ---- */
- $('bCov').innerHTML=big(dv.cells_covered,0)+sub('workspace cells reached')
+ $('bCov').innerHTML=big(dv.cells_covered,0,undefined,'cells_covered')+sub('workspace cells reached')+row('new cells / cov tick',dv.coverage_rate,3,'coverage_rate')+row('moved / cov tick',dv.coverage_motion,3,'coverage_motion')+row('window',dv.coverage_window,0,'coverage_window')+row('scale',dv.coverage_scale_cells,0,'coverage_scale_cells')+row('restored',dv.coverage_restored,0,'coverage_restored')
    +sub('the one signal that says improving');
  $('bReach').innerHTML=big(dv.distance_from_origin,2)+sub('map distance from origin')
    +row('displacement',dv.displacement)

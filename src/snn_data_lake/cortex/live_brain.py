@@ -486,11 +486,28 @@ class LiveBrain:
                 "is clear again; every self-clear is counted in `estop_self_clears`."
             )
         if words & {"safe", "safety", "danger", "dangerous", "hurt", "emergency"}:
+            # The brain reports what the gate MEASURES (P4c/P8): the post-T037a poll showed this
+            # template could not say whether a stop was restored from a previous process.
             st = self.arm.arm.state()
+            if not st.get("stopped"):
+                arm_now = "free to move"
+            elif st.get("latch_source") == "restored":
+                arm_now = (
+                    f"STOPPED / frozen -- a stop restored from a previous process "
+                    f"({st.get('latch_restored_from')}); only a person's HOME at the cockpit resets it"
+                )
+            else:
+                arm_now = "STOPPED / frozen (tripped in this process)"
+            errs = int(st.get("latch_persist_errors") or 0)
+            durable = (  # durability is READ from the gate's counter, never asserted as a property
+                "an emergency stop survives a daemon restart"
+                if errs == 0
+                else f"the durable stop record could NOT be written ({errs} persist errors) -- a stop would NOT survive a restart"
+            )
             return (
-                "Safety is enforced by a reflex E-STOP and a gated arm. The arm is currently "
-                f"{'STOPPED / frozen' if st.get('stopped') else 'free to move'}; a threat estimate biases me "
-                "toward the safe action, and the reflex preempts every command."
+                f"Safety is enforced by a reflex E-STOP and a gated arm; {durable}. The arm is "
+                f"currently {arm_now}; a threat estimate biases me toward the safe action, and the "
+                "reflex preempts every command."
             )
         # otherwise: try the NL firewall -> a safe arm command (driven through the gated arm) or a lake query.
         intent = self._nl.interpret(text)

@@ -893,6 +893,18 @@ class Brain:
                 self._time_clock, self._time_cells_restore_note = self._time_clock.restored()
             except Exception as _e:
                 self._time_cells_restore_note = f"restore raised: {_e}"
+        # T038 (FR-027): the arm's coverage ledger restores under the SAME switch AND only when this
+        # brain persists -- read and write share one gate (`_flush_coverage` is persist-gated), so a
+        # non-persistent brain built inside the daemon's process (the self-build sandbox is one) stays
+        # a function of its seed and not of what the daemon left on disk. Its OWN try, like the clock's.
+        if self._persist and self._time_cells_restore:
+            try:
+                from snn_data_lake.brainstem.autonomous_loop import COVERAGE_STATE as _CS
+                from snn_data_lake.substrate import home as _home
+
+                self.brain.arm.restore_coverage(_home.load_state(_CS, default=None))
+            except Exception as _e:
+                self.brain.arm.coverage_restore_note = f"restore raised: {_e}"
 
         # C1 batch-2: three MORE brain-native pure-stdlib faculties -- N-agent recursive ToM (social),
         # neuromod-fusion affect integrator with self-organized emotions (affect), counterfactual do()
@@ -3126,6 +3138,7 @@ class Brain:
                 self._skills_state = None
         if self._persist:  # DURABLE: fold the night's growth to disk (never-forget)
             self._flush_growth()
+            self._flush_coverage()  # T038: the coverage ledger rides the same cadence
             try:
                 from snn_data_lake.substrate.home import save_state
 
@@ -4285,6 +4298,18 @@ class Brain:
         except Exception:
             return False
 
+    def _flush_coverage(self):
+        """T038 (FR-027): write the arm's coverage ledger into the ONE lake. Same two callers as
+        `_flush_growth` -- the sleep tick and close() -- for the same reason: a single persistence
+        path. The sleep-tick call is what makes a KILLED daemon keep its ledger (the P4b restart
+        red in tests/test_coverage_persistence.py); close() catches what the cadence missed."""
+        if not self._persist:
+            return False
+        try:
+            return bool(self.brain.arm.save_coverage())
+        except Exception:
+            return False
+
     def close(self):
         """Release the brain's lake working memory, durably save the acquired language organ, flush
         the grown substrate, and release the self-model handle. Idempotent guard."""
@@ -4294,6 +4319,7 @@ class Brain:
         # BEFORE the other saves: this is the one that was missing entirely, and a later failure in
         # this method must not be what decides whether the brain keeps what it grew.
         self._flush_growth()
+        self._flush_coverage()  # T038
         try:
             wm = self.brain.arm.lake_wm
             if wm is not None:
