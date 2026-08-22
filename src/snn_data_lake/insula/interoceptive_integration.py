@@ -184,6 +184,7 @@ class InteroceptiveIntegration:
         self._mean = dict.fromkeys(self.channels, 0.0)
         self._var = dict.fromkeys(self.channels, 1.0)
         self._seen = 0
+        self._last_salience = 0.0  # T039i: this faculty's own last output, for it to report
 
     def attach(self, brain):
         """Hold the brain whose re-entrant workspace this faculty is subscribed to (T039h).
@@ -241,6 +242,7 @@ class InteroceptiveIntegration:
             devs.append(abs(d) / (self._var[ch] ** 0.5 + 1e-9))
         self._seen += 1
         if not devs or self._seen <= 2:
+            self._last_salience = 0.0
             return 0.0  # a baseline two samples old is not a baseline; silence over noise
         z = sum(devs) / len(devs)
         # TOP-DOWN ATTENTION ENTERS BEFORE THE BOUND, NOT AFTER IT (T039h). Scaling z and then
@@ -249,7 +251,14 @@ class InteroceptiveIntegration:
         # clamp here would silently hide an unbounded upstream bias instead of exposing it.
         # attention 0.0 => z unchanged => byte-identical to the pre-T039h salience.
         z = z * (1.0 + self._top_down())
-        return z / (1.0 + z)  # bounded, monotone in deviation
+        self._last_salience = z / (1.0 + z)  # bounded, monotone in deviation
+        return self._last_salience
+
+    def last_salience(self) -> float:
+        """The salience this faculty last computed, for a caller that must REPORT it rather than
+        recompute it. Recomputing would advance the running baseline a second time and quietly
+        make the reported number a different measurement from the one the ignition law used."""
+        return float(self._last_salience)
 
     def state(self) -> dict:
         return {

@@ -858,6 +858,10 @@ class Brain:
             # T039h: hand the terminus the subscriber handle. It reads the broadcast through
             # `Brain.reentrant`; it constructs no workspace and submits to none.
             self._insula.attach(self)
+            # T039i: the sensorimotor surface gets the terminus itself, not a copy of its number.
+            # `LiveBrain` has no back-reference to this class, and duplicating a measured quantity
+            # onto the arm to make it reachable is exactly the second copy P4 forbids.
+            self.brain.insula = self._insula
         except Exception:
             self._reentrant = self._episodic = self._drives = None
             self._insula = None

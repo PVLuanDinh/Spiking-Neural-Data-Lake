@@ -26,6 +26,7 @@ from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 # the brain's conversational intent families -- the labels its spiking interaction learner routes to.
 _IXN_INTENTS = (
     "GREET",
+    "INTEROCEPT",
     "GOAL",
     "MEMORY",
     "ATTENTION",
@@ -49,6 +50,8 @@ def _reply_to_intent(reply):
         return "ATTENTION"
     if "distinct cells" in r:  # the body-exploration report (T039e)
         return "EXPLORE"
+    if "from its own running baseline" in r:  # the interoceptive report (T039i)
+        return "INTEROCEPT"
     if "safety is enforced by a reflex" in r:
         return "SAFETY"
     if reply.startswith("Done") or "the arm is frozen" in r or "is an arm command" in r:
@@ -519,6 +522,61 @@ class LiveBrain:
                 f"Safety is enforced by a reflex E-STOP and a gated arm; {durable}. The arm is "
                 f"currently {arm_now}; a threat estimate biases me toward the safe action, and the "
                 "reflex preempts every command."
+            )
+        if (
+            words & {"feel", "feels", "feeling", "body", "interoception", "interoceptive"}
+        ) and not (words & {"move", "go", "retract", "close", "open", "home", "lift", "rotate"}):
+            # THE BRAIN REPORTS WHAT ITS INSULA MEASURES (P4c). Asked this on the T039h daemon the
+            # brain abstained while /api/all carried both numbers -- the third time the post-task
+            # poll has found a measured signal the brain could not say. Every figure is read from
+            # the faculty that produced it; nothing here is recomputed for the sentence, because
+            # recomputing would advance the running baseline again and report a different
+            # measurement from the one the ignition law actually used.
+            ins = getattr(self, "insula", None)
+            if ins is None:
+                return (
+                    "I cannot read my interoceptive state right now -- the insula is not "
+                    "reporting, so I will not guess how my body is."
+                )
+            try:
+                sal = float(ins.last_salience())
+                attn = float(ins._top_down())
+                body = self.arm.interoception()
+                seen = int(getattr(ins, "_seen", 0))
+            except Exception:
+                return (
+                    "I cannot read my interoceptive state right now -- the insula is not "
+                    "reporting, so I will not guess how my body is."
+                )
+            if seen <= 2:
+                return (
+                    "I have not built an interoceptive baseline yet -- fewer than three body "
+                    "readings so far, and a baseline that new is not a baseline. I will not call "
+                    "that calm."
+                )
+            raw = (
+                f" The raw reading behind it is stress {float(body.get('stress', 0.0)):.3f} and "
+                f"caution {float(body.get('caution', 0.0)):.3f}."
+                if body
+                else " I have no raw body reading to show behind it."
+            )
+            # THE NUMBER IS A DISTANCE, NOT A VERDICT, and the reply says so rather than
+            # translating it into a mood the measurement does not carry.
+            where = (
+                "far from where it usually sits"
+                if sal > 0.5
+                else ("away from its usual place" if sal > 0.2 else "close to its usual place")
+            )
+            att = (
+                f" What is in my workspace is amplifying that by {attn:.2f} right now."
+                if attn > 0.0
+                else " Nothing in my workspace is amplifying it right now."
+            )
+            return (
+                f"My body is {where}: {sal:.3f} from its own running baseline, over the last "
+                f"{seen} readings.{raw}{att} That number is a DISTANCE, not a verdict -- it says "
+                "how unusual my body is for me, not whether it is good or bad, and if this state "
+                "persists it will fall back toward zero as the baseline follows my body there."
             )
         if (
             words & {"explore", "exploring", "explored", "exploration", "coverage", "covered"}

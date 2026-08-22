@@ -344,3 +344,25 @@ language 0.
 **§6a is now closed and §2's verdict is superseded.** Its premise (a listener-blind payload) fell
 at T039c; its structural blocker (the only reader was the owning module) fell here; and its
 instrument blocker — that the gate could only see a private poke — fell at T039g.
+
+### 8c. T039i — the poll found the surface could not say what the insula measures
+
+Not a criterion change; US1's five stay as §8b records them. Recorded here because it is the third
+time the post-task poll has caught the same shape and the pattern is the useful part.
+
+On the daemon running T039h, `how does your body feel right now?` returned an abstain (route `Gf`)
+and an answer about wake phase, while `/api/all` carried `feeling_salience` 0.2114 and
+`interoceptive_attention` 0.1 with PROVENANCE rows on both. The brain measured its body, the
+cockpit drew it, and the brain could not say it — P4c dormancy on a sensorimotor surface, exactly
+what T039e fixed for the coverage pair.
+
+T039i adds the report. It reads the salience from the faculty that produced it rather than
+recomputing (recomputing would advance the running baseline and report a different number than the
+one the ignition law used — verified byte-equal, and the reply is asserted not to advance `_seen`),
+and it refuses to translate the distance into a mood: the number says how unusual the body is for
+itself, carries no valence, and decays toward zero as the baseline follows a persistent state.
+
+**The transferable rule, now three for three: every quantity this project adds to the ignition or
+sensorimotor path needs the brain to be able to SAY it, not only the cockpit to draw it.** T038 →
+T039e for coverage, T039f/T039h → T039i for interoception. The poll is what turns that from a
+principle into a caught defect.
