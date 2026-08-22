@@ -92,15 +92,13 @@ EXEMPT_METHOD = {
     # it. Every one is dead as a METHOD while its CLASS is live, which is the per-method amendment's
     # whole point -- and not one of them can be retired today, because P2 requires porting a unique
     # capability before deletion and each still owns one.
-    "cerebellum.forward_model.ForwardModel.update": (
-        "retire",
-        "ForwardModel.update -- never called on a live path (its UNCERTAIN was a false positive from "
-        "dict.update). PORT CHECK: the class is NOT dead -- jepa_world_model.py:672 imports it as the "
-        "BASELINE its own model is fit against, and gain_adaptation.py:33 documents it as a read-only "
-        "predictor/comparator. So the learning rule is dead while the comparator lives, and P2's "
-        "adopt-better question (JEPA superseding it) is answered for PREDICTION but not for this "
-        "update rule. Retire the method only after confirming the baseline never needs to re-fit",
-    ),
+    # cerebellum.forward_model.ForwardModel.update: row DISCHARGED at specs/022 T037 (2026-08-21).
+    # It read "never called on a live path ... retire after confirming the baseline never needs to
+    # re-fit" -- the efference-copy boundary (substrate/efferent_boundary.py, observe()) now calls
+    # update on EVERY envelope passage of the live loop (AutonomousArm.apply_observed), so the
+    # method resolves through its live call site and the retire question is answered: the baseline
+    # re-fits online. Recorded here so the row is not re-added; the T037 review panel caught the
+    # stale row shipping "never called on a live path" about a method on the live path.
     "neuromodulation.developmental_envelope.DevelopmentalEnvelope.update": (
         "wire",
         "DevelopmentalEnvelope.update -- dormant twice over: never called on any live path, and "

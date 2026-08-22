@@ -74,6 +74,10 @@ REGISTRANTS: tuple = (
     # proprio_in consumer edge rides in brain.declare_ports); interoception's row is the
     # T026 tract, vision/audition are S1 dispositions, chemosensation out-of-scope
     ("snn_data_lake.substrate.afferent_boundary", "declare_ports"),
+    # T037: the efferent lane -- the arm's action token observed by the efference-copy
+    # boundary (autonomous_loop declares action_out; the boundary declares its
+    # subscription and feeds the cerebellar forward model)
+    ("snn_data_lake.substrate.efferent_boundary", "declare_ports"),
 )
 
 

@@ -459,6 +459,7 @@ REGIONS = {
         "report_channel",  # 022 T034: typed workspace-report snapshot; the broadcast's declared consumer
         "episode_driver",  # 022 T035: stimulus port + trial schedule (fixation/saccade) + G5-replayable trials
         "afferent_boundary",  # 022 T036: transduction-in; idle sentinel handled at the door; proprio lane
+        "efferent_boundary",  # 022 T037: efference copy around the envelope; cerebellar forward-model charge
         "safety_envelope",  # THE five approval-gated brainstem files, one definition + a SECURITY.md agreement check
         "ingest_guard",  # content boundary for outside data: licence deny-by-default + injection flagging
         "hf_stream",  # streamed HF datasets -> brain-consumable features (licence-gated, bounded)

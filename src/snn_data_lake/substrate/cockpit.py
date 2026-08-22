@@ -141,7 +141,12 @@ class Acts:
                     self.refused += 1
                     rec = {"command": cmd, "applied": False, "reason": "not allow-listed"}
                 else:
-                    st = brain.brain.arm.arm.apply(cmd)  # the ONE gated path to motion
+                    # T037: the cockpit is the brain's EFFERENT surface (P4c), so its
+                    # motion passes the SAME tapped passage the loop uses -- the review
+                    # panel proved the direct apply left the cockpit E-STOP invisible to
+                    # the efference-copy boundary. Still the one gated path to motion:
+                    # apply_observed calls So101Arm.apply() and only adds observation.
+                    st = brain.brain.arm.apply_observed(cmd)
                     self.applied += 1
                     rec = {
                         "command": cmd,
@@ -1118,7 +1123,10 @@ def main():
     # where "grows forever" is the whole failure mode. P8: every criterion owes a reachable red.
     # RED, CONSTRUCTED AND RUN: delete the three eviction lines in `Acts.pump` and this fires with
     # len(_done)=200; shrink the retention and it fires the other way. It runs BEFORE the brain is
-    # built so a stub arm is enough -- pump() only needs `brain.brain.arm.arm.apply`.
+    # built so a stub arm is enough -- pump() only needs `brain.brain.arm.apply_observed` (T037:
+    # the tapped passage the cockpit route now uses; the stub mirrors the real interface).
+    # distinct-from: brainstem/so101_arm.py -- the REAL apply; this is the self-check's
+    #   inert stand-in for the eviction-bound test, motion-free by construction. Read.
     class _StubArm:
         @staticmethod
         def apply(cmd):
@@ -1128,6 +1136,10 @@ def main():
         class brain:  # noqa: N801 -- mirrors the real attribute chain pump() walks
             class arm:  # noqa: N801
                 arm = _StubArm
+
+                @staticmethod
+                def apply_observed(cmd):
+                    return _StubArm.apply(cmd)
 
     _bounded = Acts()
     for _ in range(_REPLY_KEEP * 3 + 8):

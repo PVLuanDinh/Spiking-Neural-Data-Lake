@@ -127,6 +127,37 @@ def proprioception(theta_deg):
     return round(min(1.0, max(0.0, prop)), 4)
 
 
+# distinct-from: the absolute fold above -- that is T036's SENSORY posture scalar, pinned
+#   verbatim to Brain._safe_ctx and WRAPPED at 0/360, which makes it undifferencable: a
+#   joint at minus float noise folds 0.5 away from the same joint at plus float noise.
+#   T037's efference copy needs joint-space DELTAS, so the delta is wrapped per joint
+#   BEFORE normalising and the seam never enters. Reviewed in the T037 panel: differencing
+#   the absolute fold manufactured 25% phantom half-range commands.
+# distinct-from: reasoning/jepa_scaffold_torch.py -- a latent JEPA trainer; term overlap
+#   only (action-conditioned deltas in LEARNED latent space, not a degree-space fold). Read.
+def proprioception_delta(theta_before, theta_after):
+    """The proprioceptive DELTA fold: per-joint angular change theta_after - theta_before,
+    each wrapped to [-180, 180) degrees, normalised by 180, averaged over the shared
+    joints -> one signed scalar in [-1, 1). Sign is preserved (a negative command folds
+    negative); opposite-moving joints can partially cancel in the mean -- disclosed, and
+    acceptable for a one-scalar copy because the live loop commands one joint per tick.
+    None / short / mismatched input -> None (a body that cannot be read is a missing
+    modality, never a fabricated posture)."""
+    if not theta_before or not theta_after:
+        return None
+    n = min(len(theta_before), len(theta_after))
+    if n < 2:
+        return None
+    try:
+        ds = [
+            (((float(a) - float(b)) + 180.0) % 360.0 - 180.0) / 180.0
+            for b, a in zip(theta_before[:n], theta_after[:n])
+        ]
+    except (TypeError, ValueError):
+        return None
+    return sum(ds) / n
+
+
 def declare_ports(manifest):
     """Manifest registrant (specs/022 T036): the S0 afferent rows. `proprio_out` carries
     the folded joint scalar; the consumer edge is declared by the consumer

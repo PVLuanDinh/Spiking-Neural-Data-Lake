@@ -34,6 +34,7 @@ from snn_data_lake.brainstem import arm_config
 from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.brainstem.cpg_oscillator import MatsuokaCPG
 from snn_data_lake.brainstem.serial_arm import is_valid_command
+from snn_data_lake.brainstem.so101_arm import _DEG as _SO101_DEG
 from snn_data_lake.brainstem.so101_arm import So101Arm
 from snn_data_lake.cerebellum.gain_adaptation import GainAdapter
 from snn_data_lake.cerebellum.hjepa_serve import HJepaServe
@@ -80,6 +81,22 @@ GRADIENT_CLAIM = {
 # of a 2-link arm with reach 2.0 and neither survives the body swap, so the size now comes from
 # arm_config, where it sits next to the measured joint limits it has to stay small against.
 _JOINT_STEP_DEG = arm_config.DEFAULT_STEP_DEG
+
+
+# distinct-from: brainstem/live_arm.py -- _joint_obs_delta parses a command STRING for one
+#   observed joint's delta; this converts the WHOLE servo setpoint vector's units. Read.
+def _commanded_deg(arm):
+    """The servo setpoint in DEGREES, for the efference copy. So101Arm keeps `_commanded`
+    in qpos RADIANS while state()['theta_deg'] is degrees; the copy folds both through the
+    ONE proprioceptive fold, so the unit conversion lives HERE at the tap -- the envelope
+    cannot grow an accessor without an envelope change, and a radians/degrees mix inside
+    one fold is exactly the specs/011 class of defect. None when the body has no setpoint."""
+    cmd = getattr(arm, "_commanded", None)
+    if cmd is None:
+        return None
+    return [float(v) / _SO101_DEG for v in cmd]
+
+
 _MOTOR = tuple(
     arm_config.command_for(n, s * _JOINT_STEP_DEG) for n in arm_config.ROTATABLE for s in (+1, -1)
 )
@@ -350,6 +367,11 @@ class AutonomousArm:
         # introduces no new actuator route, and the reflex/E-STOP still preempts it (see step()).
         self.intero = InteroceptiveArousal(seed=seed) if interoception else None
         self._last_intero = None  # this tick's full sense() reading (T031 coalition channels)
+        # T037: the efference-copy boundary -- unconditional (pure observation + one
+        # LOCAL model update per envelope passage; it issues nothing and gates nothing).
+        from snn_data_lake.substrate.efferent_boundary import EfferentBoundary
+
+        self.efferent = EfferentBoundary(seed=seed)
         # opt-in prefrontal executive: the "centre of thoughts" -- it deliberates over the current
         # action-values (evidence), holds a GOAL in working memory, and emits a TOP-DOWN bias toward it.
         # ADDITIVE + top-down PREFERENCE ONLY -- it raises the goal action's score/drive so behaviour is
@@ -1548,6 +1570,31 @@ class AutonomousArm:
                 break  # stalled on this stage (never mastered) -> stop
         return trace
 
+    # distinct-from: thalamus/reentrant_workspace.py -- that is the theta AUTHORITY over
+    #   workspace coherence; this is the motor tap pairing one apply() with one
+    #   observation. distinct-from: cortex/live_brain.py -- the composed tick; this is
+    #   one envelope passage inside it. Sites read; term overlap is the spec citation.
+    def apply_observed(self, command):
+        """THE tapped envelope passage (specs/022 T037): every apply this loop issues --
+        and the cockpit's direct efferent route -- goes through here so the efference-copy
+        boundary observes the passage. So101Arm.apply() remains the ONLY path to motion;
+        this adds observation, never gating. The T037 review panel found the first draft
+        tapped 2 of step()'s 4 apply sites (the HOME self-clear -- ON in the production
+        daemon -- and the postural recovery passed unobserved), so the tap became the one
+        mechanism every site calls instead of four hand-copies. The tap is guarded: an
+        exception in observation must never break actuation (the E-STOP passage above
+        all), so it is swallowed AND COUNTED (efferent.tap_errors -- a counted disclosure,
+        not a silent one)."""
+        _pre = (self.arm.state() or {}).get("theta_deg")
+        state = self.arm.apply(command)  # the gate; untouched
+        try:
+            self.efferent.observe(
+                command, _pre, _commanded_deg(self.arm), (state or {}).get("theta_deg")
+            )
+        except Exception:
+            self.efferent.tap_errors += 1  # the passage completed; the tap's failure is counted
+        return state
+
     def step(self, visual, temperature, audio, distance, reward_fn=None, homeostatic_load=0.0):
         """One autonomous tick. distance is the proximity scalar; reward_fn(unit, action)->[-1,1].
         homeostatic_load (>=0) is the body's interoceptive load for the opt-in interoception path."""
@@ -1568,7 +1615,8 @@ class AutonomousArm:
                 am = self._amygdala_for(pat)
                 if am is not None:
                     am.pair(pat)  # US present: bind this context to threat
-            estop = self.arm.apply("EMERGENCY_STOP")  # ONLY path to motion -> gate holds
+            # T037: the tapped passage -- a stop is a passage, observed like any other
+            estop = self.apply_observed("EMERGENCY_STOP")  # ONLY path to motion -> gate holds
             return {
                 "unit": None,
                 "action": "EMERGENCY_STOP",
@@ -1613,7 +1661,9 @@ class AutonomousArm:
         # actually matters, because a cockpit actuation route can trip one -- turns it on explicitly
         # via learn_daemon.bat, exactly as NORD_TIME_CELLS_RESTORE does for growth.
         if self._estop_self_clear and self.arm.state().get("stopped"):
-            self.arm.apply("HOME")  # ONLY path to motion -> the gate still holds
+            self.apply_observed(
+                "HOME"
+            )  # ONLY path to motion -> the gate still holds; tapped (T037)
             self._estop_clears += 1
 
         # 2. perceive -> grow a unit on a novel multimodal context
@@ -1719,7 +1769,8 @@ class AutonomousArm:
         # learned policy, a direct caller -- is refused rather than actuated.
         if action not in _UNCHECKED and not is_valid_command(action):
             raise ValueError(f"autonomous action rejected by the wire allow-list: {action!r}")
-        state = self.arm.apply(action)  # gated: frozen after E-STOP, collision-checked
+        # T037: the tapped passage -- around the envelope, never in it (apply_observed)
+        state = self.apply_observed(action)  # gated: frozen after E-STOP, collision-checked
         self._adapt_actuation(state)
         # POSTURAL RECOVERY REFLEX. ArmSim REPORTS ground contact but deliberately does not prevent
         # it -- its self-check asserts a command CAN drive the arm into the floor ("reflex would
@@ -1743,7 +1794,7 @@ class AutonomousArm:
                 # floor should not cost you where you were. One +A step is the minimal motion that
                 # raises the end effector (geometry: from a sunken pose, escape needs consecutive
                 # +A rotations), so the arm climbs out and carries on from where it fell.
-                state = self.arm.apply(_A_POS)
+                state = self.apply_observed(_A_POS)  # tapped (T037): recovery is a passage
                 self._ground_ticks = 0
                 self._recoveries += 1
         else:
@@ -3185,6 +3236,24 @@ def declare_ports(manifest):
             shape=(1,),
             dtype="f4",
             unit="coalition_bid",
+            encoding="EVENT",
+            kind="OUT",
+            declaring_module="autonomous_loop",
+            delivery_policy="all-or-none",
+        ),
+    )
+    # T037: the efferent lane's producer -- the chosen action token, observed at every
+    # envelope passage by the efference-copy boundary (its subscription edge is declared
+    # by the consumer, substrate/efferent_boundary). Symbolic token, EVENT-encoded per
+    # the TYPE HONESTY discipline; So101Arm.apply() remains the only path to motion.
+    manifest.declare_port(
+        "autonomous_loop",
+        Port(
+            name="action_out",
+            region="brainstem",
+            shape=(1,),
+            dtype="f4",
+            unit="action_token",
             encoding="EVENT",
             kind="OUT",
             declaring_module="autonomous_loop",
