@@ -24,7 +24,16 @@ from snn_data_lake.cortex.predictive_coding import PredictiveCodingNetwork
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 
 # the brain's conversational intent families -- the labels its spiking interaction learner routes to.
-_IXN_INTENTS = ("GREET", "GOAL", "MEMORY", "ATTENTION", "SAFETY", "CONSCIOUS", "ARM")
+_IXN_INTENTS = (
+    "GREET",
+    "GOAL",
+    "MEMORY",
+    "ATTENTION",
+    "SAFETY",
+    "CONSCIOUS",
+    "ARM",
+    "EXPLORE",
+)
 
 
 def _reply_to_intent(reply):
@@ -38,6 +47,8 @@ def _reply_to_intent(reply):
         return "GREET"
     if "global workspace is broadcasting" in r:
         return "ATTENTION"
+    if "distinct cells" in r:  # the body-exploration report (T039e)
+        return "EXPLORE"
     if "safety is enforced by a reflex" in r:
         return "SAFETY"
     if reply.startswith("Done") or "the arm is frozen" in r or "is an arm command" in r:
@@ -508,6 +519,79 @@ class LiveBrain:
                 f"Safety is enforced by a reflex E-STOP and a gated arm; {durable}. The arm is "
                 f"currently {arm_now}; a threat estimate biases me toward the safe action, and the "
                 "reflex preempts every command."
+            )
+        if (
+            words & {"explore", "exploring", "explored", "exploration", "coverage", "covered"}
+            or "new places" in t
+            or "new place" in t
+            or "finding new" in t
+        ):
+            # THE BRAIN REPORTS WHAT ITS BODY MEASURES (P4c). Asked this three times across two
+            # tasks, the brain abstained or answered about digits while the cockpit drew the
+            # numbers -- a sensorimotor surface that cannot report a signal is dormancy. Every
+            # figure below is read from the arm; nothing here is computed for the sentence.
+            try:
+                arm = self.arm
+                cells = len(getattr(arm, "_covered", ()) or ())
+                window = int(arm.coverage_window())
+                rate = float(arm.coverage_rate())
+                motion = float(arm.coverage_motion())
+                scale = int(arm.coverage_scale_cells())
+                restored = int(getattr(arm, "_cover_restored", 0) or 0)
+            except Exception:
+                return (
+                    "I cannot read my body's coverage right now -- the arm is not reporting it, "
+                    "so I will not guess a number."
+                )
+            # THE COUNT ALONE CANNOT TELL THESE APART, which is why T038 built the rate and its
+            # motion companion: an empty window is nothing measured YET, not saturation; a flat
+            # count with the body moving is ground already covered; a flat count with the body
+            # still is a body that stopped.
+            if window == 0:
+                trend = (
+                    "I have not measured a coverage tick yet in this process, so I cannot say "
+                    "whether that is going up: an empty window is not the same as being finished."
+                )
+            elif motion == 0.0:
+                # MOTION IS READ FIRST, because it is the only one of the two that says whether
+                # anything is happening NOW. A stale fresh cell can sit in the rate's window long
+                # after the body stopped -- measured while writing this: an E-STOPped arm still
+                # reported 0.017 new cells per tick from a cell found before the stop, and reading
+                # the rate first would have called that body 'still finding new ground'.
+                stale = (
+                    f" The {rate:.3f} new cells per tick still in that window are from before I "
+                    "stopped."
+                    if rate > 0.0
+                    else ""
+                )
+                trend = (
+                    f"I am not moving at all: the body did not move on any of my last {window} "
+                    "coverage ticks, so I have stopped, which is not the same as having "
+                    f"finished.{stale}"
+                )
+            elif rate > 0.0:
+                trend = (
+                    f"I am still finding new ground -- {rate:.3f} new cells per coverage tick over "
+                    f"my last {window}, with the body moving on {motion:.2f} of them."
+                )
+            else:
+                trend = (
+                    f"I have found no new ground in my last {window} coverage ticks, but the body "
+                    f"is still moving on {motion:.2f} of them: I am re-covering places I have been."
+                )
+            if restored:
+                adopted = (
+                    f" {restored} of them I adopted from the lake when this process started, so "
+                    "they are older than this run."
+                )
+            elif cells:
+                adopted = " All of them were reached in this process."
+            else:
+                adopted = ""  # nothing reached yet -- there is nothing to attribute
+            return (
+                f"I have reached {cells} distinct cells of my workspace.{adopted} {trend} For "
+                f"scale that is against roughly {scale} cells derived from my reach -- a scale, "
+                "not a ceiling, since some poses I can reach fall outside it."
             )
         # otherwise: try the NL firewall -> a safe arm command (driven through the gated arm) or a lake query.
         intent = self._nl.interpret(text)
