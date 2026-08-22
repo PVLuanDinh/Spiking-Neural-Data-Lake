@@ -473,14 +473,37 @@ EXEMPT = {
     ),
     "interoceptive_integration": (
         "wire",
-        "specs/022 T026 (was T021a): ports DECLARED and both body edges CHARGE-MEASURED "
-        "per edge (vary-one-freeze-one replay-twice; attributions in "
-        "tools/region_charge_evidence.json). What remains is the STATIC live-path import: "
-        "manifest_gate reaches this module only via importlib (invisible to this walker), "
-        "and the interoception_out coalition consumer lands with the workspace resolution "
-        "(T030/T031) -- that import retires this row. The p6 fall-back obligation "
-        "(unimplemented-pairs 24 -> <=21) discharges with the same consumer. Bound by S0 "
-        "exit (T039), not movable",
+        "specs/022 T026 (was T021a), RE-STATED 2026-08-22 (T039b) AS A MEASUREMENT AFTER THE "
+        "PROMISE IN THIS ROW WAS MEASURED FALSE. Ports DECLARED and both body edges "
+        "CHARGE-MEASURED per edge (attributions in tools/region_charge_evidence.json), so the "
+        "module is CHARGED; it is the only region in the tree that is charged-but-UNREACHABLE, "
+        "and the whole gap is one static live-path import. This row used to predict that the "
+        "`interoception_out` coalition consumer would land with the workspace resolution "
+        "(T030/T031) and retire the row. T030 and T031 are both [X] and it did not land -- and "
+        "the reason is NOT scheduling, which is why the prediction is replaced here rather than "
+        "re-dated a third time. THE COALITION SINK IS OUT OF RANGE, MEASURED: the live bus admits "
+        "on a salience band of [0.55, 0.75] whose FLOOR IS the rheobase (GlobalWorkspace."
+        "band_claim over 30 draws: min 0.5505, max 0.7450, ignition_threshold 0.55), while "
+        "`feeling_salience` peaks at 0.2798 (vary=arousal) and 0.2142 (vary=drives) over the "
+        "tree's own strongest challenge, port_charge_probe.interoceptive_challenge_frames. A bid "
+        "that cannot come within 0.27 of the floor never competes: two independent adversarial "
+        "measurements drove it into the real bus and found `interoception` in ZERO of 120 slot "
+        "and head censuses, and pinning the signal to its own live mean left the brain "
+        "BYTE-IDENTICAL on 120/120 ticks -- reachability without charge, which P3 says is not "
+        "charge. Landing it would move this counter and change nothing, so it is refused. THE "
+        "SINK THAT DOES WORK, and the shape of the discharge when it is taken: the producer's own "
+        "docstring says a body far from baseline should find it EASIER TO IGNITE, which is "
+        "threshold modulation, not drive competition. T032's rheobase actuator "
+        "(reentrant_workspace.set_base_rheobase, range-checked and provenance-recorded) is that "
+        "door, its module is a DECLARED pair with insula, and it is measured graded: a body "
+        "coalition at 0.45-0.52 ignites 0/30 at theta 0.55 and 30/30 once theta reaches its "
+        "level. The feed is live -- live_brain.py constructs the arm with interoception=True and "
+        "the arm caches a real per-tick {stress, caution} -- but `stress` has no public accessor, "
+        "so that build owes one (a read of the CACHED reading; never a second sense(), which "
+        "would fork replay), plus a P1-DERIVED modulation law rather than a tuned gain, and it "
+        "carries P8's full invention burden. Scoped in specs/022-unified-brain-arc/evidence/"
+        "s0-exit.md 6b. NOT bound to a date here: this row is retired by the measurement that "
+        "shows a consumer's own output changing, and by nothing else",
     ),
     "replay_gate": (
         "permanent",

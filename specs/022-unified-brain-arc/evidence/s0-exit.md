@@ -66,10 +66,11 @@ for an identity is exactly the substitution this gate exists to prevent.
 
 **Insula is the one gap, and it is a different KIND of gap.** It is the only region in the tree for
 which `charged − reachable` is non-empty: its two `body_in` edges already carry diverged measured
-attributions, so nothing about it is unmeasured. What is missing is a single static live-path
-import — the `interoception_out` consumer that `dormancy_gate`'s own exemption row promised would
-"land with the workspace resolution (T030/T031)" and bound to "S0 exit (T039), not movable". T030
-and T031 are both `[X]`; the consumer did not land. See §6b.
+attributions, so nothing about it is unmeasured, and the gap is reachability alone. The consumer
+that `dormancy_gate`'s exemption row promised for T030/T031 — both `[X]` — did not land, and §6b
+measures WHY rather than re-dating the promise: **the coalition sink is out of range**, so that
+particular wire is a measured null and was refused. A sink that does work was found and is scoped
+there.
 
 ## 2. SC-001 — P6 faculty-to-faculty reads
 
@@ -175,37 +176,55 @@ bias payload is computed once from the winning content and is therefore listener
 this must be fixed BEFORE a specialist read means anything. That ordering is the honest next step;
 SC-001 becomes satisfiable after it, not before.
 
-### 6b. Insula charge — UNMET, fully scoped, deliberately not forced
+### 6b. Insula charge — UNMET, and the promised route is a MEASURED NULL (T039b)
 
-The obligation is the tree's own: `dormancy_gate.EXEMPT["interoceptive_integration"]` promises the
-`interoception_out` coalition consumer and binds it to "S0 exit (T039), not movable"; the connectome
-declares `insula → gwt` ("insular ignition afferent (interoceptive salience)") and
-`thal_relay → insula`; and the producer's docstring states the want — *a body far from baseline
-should find it easier to ignite the workspace*. T026 declared the OUT port edge-less on the explicit
-understanding that T030/T031 would land the consumer. They did not, and
-`substrate/afferent_boundary.py` records what happened instead: the arm's coalitions read its OWN
-medullary organ, bypassing the declared tract.
+Insula is the only region in the tree that is CHARGED-BUT-UNREACHABLE: its two `body_in` edges
+already carry diverged measured attributions, so nothing about it is unmeasured. The entire gap is
+one static live-path import, which is why `dormancy_gate.EXEMPT` has promised since T021a that the
+`interoception_out` coalition consumer would land with T030/T031 and retire the row. Both are `[X]`
+and it did not land. **This certification measured WHY, rather than re-dating the promise a third
+time.**
 
-**Why it is not in this commit.** The importer must be a THALAMUS module, because
-`undeclared_import_pairs` is a zero-slack ratchet and only thalamus↔insula is a declared pair
-(T026's review already tripped this exact ratchet, 11 → 13, by importing producers from insula).
-`thal_relay` is a connectome NODE, not a module, so the only thalamic homes are
-`global_workspace.py` — 255 KB, the module every other faculty depends on — and the reticular gate,
-which is not the declared terminus. That makes this an architectural decision about which module
-owns the insula instance, taken inside the tree's most load-bearing file, and it deserves its own
-focused pass with its own review and battery rather than the tail of another task.
+**The coalition sink is out of range — the producer cannot reach the consumer's admission floor.**
 
-What it needs, fully scoped: the static import, a declared `interoception_in` port and edge, an
-arbitration change that consumes `feeling_salience`, the `dormancy_gate` row DELETED in the same
-commit (`stale_exempt` reds the moment the module becomes reachable — registration cannot be
-deferred), the `afferent_boundary` and producer docstrings corrected, one new attribution row, and
-the manifest artifact counts plus the test premise that pins them. The neuter is the arbitration
-outcome itself — live and pinned arms must produce DIFFERENT winner sequences at the body
-challenge — with a payload-ignoring consumer as the specificity control and the existing
-frozen-baseline (`alpha=0.0`) variant as the dead-producer red.
+| quantity | measured | command |
+|---|---|---|
+| live bus admission band | **[0.5505, 0.7450]**, floor = the rheobase | `GlobalWorkspace.band_claim` over 30 draws; `ignition_threshold` = 0.55 |
+| `feeling_salience`, vary=arousal | min 0.0000, **max 0.2798** | `port_charge_probe.interoceptive_challenge_frames("arousal")` |
+| `feeling_salience`, vary=drives | min 0.0000, **max 0.2142** | same, `("drives")` |
 
-Landing it moves the census to 8 of 16, completes FR-015's named identity, retires the exemption,
-and discharges part of the p6 fall-back obligation (`unimplemented_declared_pairs` 24 → 23).
+The producer's strongest possible output falls ~0.27 short of the floor the bus admits on, so an
+interoceptive bid never competes. Two independent adversarial measurements drove the real feed into
+the real bus and agree: `interoception` appears in **zero of 120** slot and head censuses, and
+**pinning `feeling_salience` to its own live mean leaves the brain BYTE-IDENTICAL on 120/120 ticks**
+— identical slots, broadcasts, thought, and ignition count. A 12-of-120 difference that looked like
+movement is reproduced exactly by a constant-mean arm and eliminated by a constant-zero arm, so it
+is buffer-order jitter, not consumption.
+
+That is reachability without charge, which P3 says is not charge, and it is the same null SC-001
+hit in §6a. **P8 requires deletion on a null; the route is refused and the measurement recorded so
+it is not re-attempted.** The `EXEMPT` row now states this measurement instead of a prediction.
+
+**The sink that does work, and what it will owe.** The producer's own docstring does not say
+"compete" — it says *a body far from baseline should find it EASIER TO IGNITE the workspace*. That
+is threshold modulation, and the door already exists: T032's `set_base_rheobase` on
+`thalamus/reentrant_workspace.py` (range-checked, provenance-recorded), whose module is a declared
+pair with insula and whose `reroute_out` edge T039a just charged. Measured as graded and sharp — a
+body coalition at 0.45–0.52 ignites **0/30** at θ = 0.55 and **30/30** once θ reaches its level.
+
+The feed is live: `cortex/live_brain.py` constructs the arm with `interoception=True`, and the live
+arm carries a real per-tick `{stress, caution}`. Three obligations that build carries, none of them
+bookkeeping:
+
+1. a public accessor for the arm's CACHED medullary reading — `stress` has none today, and it must
+   never trigger a second `sense()` (that forks the replay stream, per the organ's own rule);
+2. a **P1-derived** modulation law, not a tuned gain — the whole point is that the constant is not
+   picked;
+3. P8's full invention burden on that law: a reachable red, a control that is not the method
+   itself, per-item attribution, and deletion if it nulls.
+
+Its blast radius is the central ignition path, including a tracked 120-tick occupancy harness whose
+baselines would move. It is a task, not a subtask, and it is the honest next one.
 
 ## 7. What this certification does and does not claim
 
