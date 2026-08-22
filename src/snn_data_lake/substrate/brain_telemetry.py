@@ -115,6 +115,12 @@ DASHBOARD_KEYS = (
     "coverage_window",
     "coverage_scale_cells",
     "coverage_restored",
+    # T039f/T039h: the insula pair. The salience is what eases the ignition threshold; the
+    # attention term is what the workspace broadcasts back to that specialist. Reported as a PAIR
+    # for the same reason the coverage rate needed its motion companion -- a salience alone cannot
+    # say whether the body is deviating or whether attention is amplifying it.
+    "feeling_salience",
+    "interoceptive_attention",
     "recoveries",
     "ground_ticks",
     "cpg_weight",
@@ -208,6 +214,8 @@ PROVENANCE = {
     "coverage_window": "coverage ticks in the ledger (max 200); the denominator of rate and motion",
     "coverage_scale_cells": "P1-derived workspace SCALE (lattice cells in the ball of the sampled horizontal reach); NOT a bound -- 4 of 107 landing cells lie outside it",
     "coverage_restored": "process-lifetime: cells adopted from the lake at construction (0 = cold start or refused; reason on the arm as coverage_restore_note)",
+    "feeling_salience": "insula: the body's distance from its OWN running baseline (P1, EMA over a 200-tick horizon), in [0,1); joins the ONE ignition law by noisy-OR, so a deviating body ignites the workspace more easily",
+    "interoceptive_attention": "the top-down bias the re-entrant workspace broadcasts to the insula specialist; 0.0 when nothing ignited or unsubscribed; scales the deviation BEFORE the bound, never after",
     "wake_ticks": "process-lifetime: zeroed at daemon restart, never lake-restored",
     "sleep_ticks": "process-lifetime: zeroed at daemon restart, never lake-restored",
     "nights_elapsed": "process-lifetime: zeroed at daemon restart, never lake-restored",
@@ -360,6 +368,21 @@ def snapshot(brain):
                 out["derived"]["coverage_window"] = int(arm_obj.coverage_window())
                 out["derived"]["coverage_scale_cells"] = int(arm_obj.coverage_scale_cells())
                 out["derived"]["coverage_restored"] = int(getattr(arm_obj, "_cover_restored", 0))
+    # T039f/T039h: the insula pair, read off the Brain rather than the arm. UNCONDITIONAL with a
+    # 0.0 default: these keys are in the contract tuple, so emitting them only when an insula
+    # exists would turn a legitimately absent faculty into a contract failure -- and 0.0 is the
+    # honest reading for a brain whose insula did not construct (it is exactly what the ignition
+    # law receives in that case).
+    out["derived"]["feeling_salience"] = _num(getattr(brain, "_feeling_salience", 0.0) or 0.0)
+    _ins = getattr(brain, "_insula", None)
+    _attn = 0.0
+    if _ins is not None:
+        try:
+            _attn = float(_ins._top_down())
+        except Exception:
+            _attn = 0.0
+    out["derived"]["interoceptive_attention"] = _num(_attn)
+    if arm_obj is not None:
         for key, attr in (
             ("recoveries", "_recoveries"),
             ("ground_ticks", "_ground_ticks"),

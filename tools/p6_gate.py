@@ -345,8 +345,24 @@ BASELINE = {
     # one module would be a bigger honesty risk than this recorded admission. The ceiling
     # still traps the NEXT unread writer: a real faculty submitting into a bus nobody
     # reads lands on 8 and reddens.
-    "unread_writer_modules": 7,
-    "cross_module_reads": 1,
+    #
+    # 7 -> 6 AT T039h, and this is the column P6 actually cares about. `cortex/brain.py` wrote
+    # into a ReentrantWorkspace that no other module read -- a writer talking to itself. The insula
+    # now drains that instance as a subscribed specialist, so brain.py leaves this set. The count
+    # had read 7 across ALL SIX commits swept in this file's header, which is what makes the move
+    # a signal rather than noise. Ratcheted because a ceiling one above the measurement leaves the
+    # constructed mutation landing ON it instead of over it, which costs the criterion its
+    # reachable red -- measured: `--self-check` went exit 1 naming this criterion while `--assert`
+    # stayed exit 0.
+    "unread_writer_modules": 6,
+    #
+    # 1 -> 3 AT T039h. A FLOOR, so it ratchets UP: two live_brain reads of the arm's bus, plus the
+    # insula's read of brain.py's re-entrant bus. Left at 1 the mutation (which removes one cross
+    # read) drops 3 to 2 and never crosses, so the floor stopped being falsifiable. Note this floor
+    # is the one a no-op refactor was measured able to redden before the alias hop existed -- see
+    # INSTRUMENT CHANGE 3 in the header -- so raising it raises that exposure too, and the T039g
+    # accessor hop is what keeps a behaviour-preserving rewrite from tripping it.
+    "cross_module_reads": 3,
     "undeclared_import_pairs": 11,
     # RAISED 21 -> 24 on 2026-08-20 (specs/022 T021a), and per this gate's own rule a raise is
     # an ADMISSION, so here it is: the insula tract + transthalamic routes (8 new declared

@@ -58,6 +58,11 @@ from __future__ import annotations
 
 import sys
 
+#: the name this faculty SUBSCRIBES to the re-entrant workspace under (specs/022 T039h). One
+#: statement, read by the brain when it subscribes and by `_top_down` when it drains, so the two
+#: cannot drift apart into a subscription nobody reads or a read nobody registered.
+SPECIALIST = "interoception"
+
 #: this module's anatomical ids in connectome.NODES (the atlas-node rule, T024: a node id
 #: must be referenced by >=1 module in its region -- these are those references for insula)
 CONNECTOME_NODES = ("insula",)
@@ -180,9 +185,50 @@ class InteroceptiveIntegration:
         self._var = dict.fromkeys(self.channels, 1.0)
         self._seen = 0
 
+    def attach(self, brain):
+        """Hold the brain whose re-entrant workspace this faculty is subscribed to (T039h).
+
+        The handle is the SUBSCRIBER side of a GWT specialist, not ownership: this module
+        constructs no workspace and submits nothing to one. Detached (the default) the top-down
+        term is 0.0 and every salience is what T039f computed, so the module's own self-check,
+        the per-edge charge probes and every offline caller are untouched."""
+        self._brain = brain
+
+    def _top_down(self) -> float:
+        """The bias the workspace is currently broadcasting to THIS specialist, or 0.0.
+
+        `broadcast_to(name)` returns {} when nothing is ignited or the name is not subscribed, so
+        a detached insula, an unsubscribed one, and a quiet workspace all read 0.0 -- one value for
+        three situations that are genuinely the same situation here: no top-down signal.
+
+        The read is deliberately written through `Brain.reentrant`, the PUBLIC accessor, rather
+        than through `brain._reentrant`. Until T039g the p6 walk could only see the private form,
+        which meant its own success criterion rewarded reaching past a class into its state; the
+        accessor is the honest route and is now the visible one."""
+        brain = getattr(self, "_brain", None)
+        if brain is None:
+            return 0.0
+        try:
+            bias = brain.reentrant.broadcast_to(SPECIALIST)
+        except Exception:
+            return 0.0
+        if not bias:
+            return 0.0
+        content, mag = max(bias.items(), key=lambda kv: kv[1])
+        # POST-CONDITION: tell the bus this specialist USED what it was given. T039c's listener
+        # term has a writer only where a faculty reports, and a specialist that consumes without
+        # reporting is exactly the declaration-instead-of-measurement P3 refuses. `language` stays
+        # the never-reporting control.
+        try:
+            brain.reentrant.report_use(SPECIALIST, content)
+        except Exception:
+            pass
+        return max(0.0, float(mag))
+
     def observe(self, **readings) -> float:
         """Feed one tick of body-state readings; returns feeling_salience in [0, 1] -- the
-        normalized deviation of the body from its OWN running baseline."""
+        normalized deviation of the body from its OWN running baseline, scaled by whatever the
+        global workspace is broadcasting to this specialist (T039h; 0.0 when detached)."""
         devs = []
         for ch in self.channels:
             if ch not in readings:
@@ -197,6 +243,12 @@ class InteroceptiveIntegration:
         if not devs or self._seen <= 2:
             return 0.0  # a baseline two samples old is not a baseline; silence over noise
         z = sum(devs) / len(devs)
+        # TOP-DOWN ATTENTION ENTERS BEFORE THE BOUND, NOT AFTER IT (T039h). Scaling z and then
+        # squashing keeps the output in [0, 1) by construction -- the same guarantee the
+        # unattended form had -- whereas scaling the squashed value would need a clamp, and a
+        # clamp here would silently hide an unbounded upstream bias instead of exposing it.
+        # attention 0.0 => z unchanged => byte-identical to the pre-T039h salience.
+        z = z * (1.0 + self._top_down())
         return z / (1.0 + z)  # bounded, monotone in deviation
 
     def state(self) -> dict:

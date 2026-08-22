@@ -835,7 +835,11 @@ class Brain:
             #     identity, so the bus cannot say WHICH faculty spoke; only how much the listener
             #     used what it got. Two subscribers that use it alike get identical dicts.
             #   * F2 -- availability is binary with one subscriber and with ten. Untouched here.
-            for _spec in ("action", "language"):
+            # T039h: `interoception` is the SECOND specialist to actually drain this bus.
+            # `language` stays subscribed and never drains ON PURPOSE -- it is the in-code negative
+            # control for T039c's listener term, which is only measurable against a subscriber that
+            # keeps the base gain.
+            for _spec in ("action", "language", "interoception"):
                 self._reentrant.subscribe(_spec)
             self._episodic = EpisodicRecall(seed=self._seed)
             self._drives = HomeostaticDrives(seed=self._seed)
@@ -851,6 +855,9 @@ class Brain:
 
             self._insula_channels = BODY_CHANNELS
             self._insula = InteroceptiveIntegration(channels=BODY_CHANNELS)
+            # T039h: hand the terminus the subscriber handle. It reads the broadcast through
+            # `Brain.reentrant`; it constructs no workspace and submits to none.
+            self._insula.attach(self)
         except Exception:
             self._reentrant = self._episodic = self._drives = None
             self._insula = None

@@ -300,3 +300,47 @@ faculty-to-faculty reads out of reads of the ACTION-owned shared bus.
 
 **SC-001 is still 0 and this commit claims nothing about it.** What changed is that a consumer can
 now be written the clean way and be seen.
+
+### 8b. T039h — SC-001 is MET, and US1's five criteria are all green
+
+| # | Criterion | At certification | Now |
+|---|---|---|---|
+| 1 | charged-region floor + FR-015 identity | 7 charged, identity 5 of 6 | **8 charged, identity 6 of 6** (T039f) |
+| 2 | SC-001 faculty-to-faculty reads | 0 | **1, neuter-verified** (T039h) |
+| 3 | wake-tick ratchets | GREEN | GREEN |
+| 4 | G5 | GREEN | GREEN |
+| 5 | lake rebuild equality | GREEN | GREEN |
+
+The read: `insula/interoceptive_integration.py::_top_down` draining
+`brain.reentrant.broadcast_to("interoception")`, owner `cortex/brain.py`, both endpoints role
+FACULTY, through the public accessor rather than past it.
+
+**The counter is not the evidence; the neuter A/B is.** Same seed, 40 ticks, the only difference
+being whether the specialist reads the bus: the reading faculty's OWN output differs on **35 of
+40** ticks from tick 5, with the top-down term nonzero on 37 of 40 (max 0.1572) so the comparison
+is not between two identical arms.
+
+**What this does NOT establish, stated because the table above would otherwise be read as more than
+it is:** the workspace **winner differs on 0 of 240 ticks** and `ignited` on 0 of 40. The wire
+changes the reading faculty's output and the ignition threshold it feeds. It does not change which
+content wins. P6's bar is the consumer's own output and that bar is met; the stronger claim is not
+made here.
+
+Two further measurements the build owed rather than assumed:
+
+* **The loop does not run away.** Salience lowers the threshold and ignition raises salience. Over
+  240 ticks salience rose on 87 of 239 ticks (a runaway is ~100%), peaked at 0.3964 against a bar
+  of 0.95, and the top-down term saturates at 0.2261. The saturation is the WINNER settling, not
+  the mechanism failing to grade — by window, 11 distinct winners give 17 distinct term values,
+  2 give 30, 1 gives 11, 1 gives 1.
+* **It cost no workspace diversity.** The detached arm collapses to a single winner in exactly the
+  same windows (11/2/1/1, 12 distinct overall, winner differs 0 of 240), so the settling is the
+  workspace's own behaviour rather than something this loop imposed.
+
+`language` remains subscribed-and-never-drained on purpose: it is the negative control that makes
+T039c's listener term measurable. Measured `_use` after 40 ticks — interoception 9 keys, action 9,
+language 0.
+
+**§6a is now closed and §2's verdict is superseded.** Its premise (a listener-blind payload) fell
+at T039c; its structural blocker (the only reader was the owning module) fell here; and its
+instrument blocker — that the gate could only see a private poke — fell at T039g.
