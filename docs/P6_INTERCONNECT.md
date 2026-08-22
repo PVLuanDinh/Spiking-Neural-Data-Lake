@@ -98,20 +98,57 @@ bias = self._REENTRY_GAIN * (1.0 + assoc) if self.reentry else 0.0
 s["bias"] = {winner: bias} if bias > 0.0 else {}
 ```
 
-`bias` is computed **once per tick** and assigned to every subscriber unchanged. There is
-no name-dependent term anywhere in `_deliver`. The v4.78 key-space fix comment above it says
+`bias` was computed **once per tick** and assigned to every subscriber unchanged. There was
+no name-dependent term anywhere in `_deliver`. The v4.78 key-space fix comment above it said
 so deliberately: *support for the ignited content is a property of the content, shared by
 every subscriber receiving it.* Therefore `broadcast_to("attention")` and
-`broadcast_to("memory")` return dicts **byte-identical to `broadcast_to("action")`**, which
-`brain.py:1610` already drains.
+`broadcast_to("memory")` returned dicts **byte-identical to `broadcast_to("action")`**, which
+`brain.py` already drains -- measured 35 of 35 broadcasts.
 
 And the one live drain collapses it further: `self._reroute_bias = max(rb.values())`. A
 single float. *Which* coalition ignited is discarded at the only read site in the tree.
 
-**Consequence.** Every proposal of the form "subscribe faculty X and drain
-`broadcast_to('X')`" adds a **duplicate reader of one scalar that is already read**. The
-gate counts read *sites*, not distinct payloads, so it scores this as +1 while zero new
-information moves. This kills both wires the prior program named as its gate-movers.
+**Consequence (as written, and it held until 2026-08-22).** Every proposal of the form
+"subscribe faculty X and drain `broadcast_to('X')`" added a **duplicate reader of one scalar
+that is already read**. The gate counts read *sites*, not distinct payloads, so it scored
+this as +1 while zero new information moved. This killed both wires the prior program named
+as its gate-movers, and it is why specs/022 SC-001 had no honest satisfier.
+
+**FIXED IN PART BY specs/022 T039c -- the premise, not the caution.** The payload is no
+longer name-blind: `ReentrantWorkspace.report_use(name, content)` gives the
+`(subscriber, content)` association the writer it never had (v4.78 deleted the *read* because
+nothing wrote the key; this adds the writer instead), and `_deliver` adds that per-listener
+term. Measured on the same 40-tick schedule: with nobody reporting, the two channels stay
+identical on 35/35 and byte-identical to the pre-change value `0.15999660973063193` -- so
+every workspace in the tree that does not report is unchanged; with `action` reporting the
+use it genuinely makes, they differ on 34/35 (action `0.22608` against language `0.15999`),
+and the privilege decays back toward the shared base once the use stops (`0.22601` ->
+`0.17493` thirty ticks later). The listener axis lives in its **own dict** (`_use`), because
+`_assoc_support` aggregates by content alone and a shared dict leaked a listener's use into
+the term every subscriber receives and into `association_level()`, the declared
+graded-delivery source -- constructed at source support `0.10` against listener use `0.90`,
+both returned `0.90`, and `max()` hides it whenever source support is near 1.0.
+
+**THE CAUTION SURVIVES INTACT, and it is the half to keep reading.** A drain that reports no
+use still receives the base gain, so *subscribing a faculty and draining its channel remains
+a duplicate reader unless that faculty actually consumes what it gets and says so*. The
+payload can now carry a listener distinction; it does not do so for free. The gate still
+counts sites rather than payloads, so a wire is still worth exactly the information it
+moves -- which is the sentence this section existed to write down.
+
+**AND THE FIX HAS A MEASURED CEILING, stated here so the next reader does not over-read it.**
+The listener term settles at a fixed **~0.833x** multiple of the shared `(source, content)`
+association, because a broadcast a faculty consumes arrives on the same tick set that
+potentiates that association at the same rate. So the payload separates *a subscriber that
+consumes* from one that does not -- it does **not** grade DEGREE of use, and two subscribers
+that consume alike receive byte-identical dicts again. The graded version was built and
+measured and is a **null**: gating the report on the re-route being material
+(`elig["reroute"] > mean_e`, the loop's own baseline, no new threshold) fires on **0 of 76**
+live winner-ticks, because the re-route is always a below-average source -- the same fact
+`tools/charge_probe.py` reports as 34 of 40 internal reads changed and 0 of 40 decisions.
+Grading this honestly requires the re-route to matter more first; that is a different task
+from giving the key a writer, and F1's SPEAKER half (the payload still carries no submitter
+identity) is untouched by either.
 
 ### F2 -- `_deliver`'s availability is all-or-none by construction, and a live comment claims otherwise
 

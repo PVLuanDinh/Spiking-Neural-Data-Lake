@@ -164,6 +164,15 @@ class ReentrantWorkspace:
         self._priors = {}  # this tick's top-down expectations: content -> magnitude
         self._subs = {}  # name -> {"inbox": [...], "bias": {content: magnitude}}
         self._assoc = {}  # (source, content) -> Hebbian re-entry weight in [0,1]
+        #: T039c: the (subscriber, content) axis -- what each LISTENER has learned by USING
+        #: what it receives. Deliberately NOT in `_assoc`: that dict is aggregated by content
+        #: alone (see _assoc_support), so sharing it would leak a listener's use into the term
+        #: every subscriber shares and into the declared graded-delivery source.
+        self._use = {}
+        #: (subscriber, content) -> the cycle its use was last counted. `report_use` is idempotent
+        #: within a cycle, so the term measures USE and not how often a caller invokes it.
+        self._use_tick = {}
+        self._cycle = 0  # completed step() cycles; the clock report_use's idempotence is keyed on
         self._order = {}  # content -> first-seen index (deterministic tie-break)
         self._incumbent = None  # content currently occupying the slot (or None)
         self._g_reentry = 0.0  # cross-tick re-entrant sustain current for the incumbent
@@ -307,6 +316,38 @@ class ReentrantWorkspace:
         self._subs.setdefault(str(name), {"inbox": [], "bias": {}})
         return str(name)
 
+    def report_use(self, name, content):
+        """A subscribed specialist reports that it CONSUMED the bias it was given for `content`.
+
+        This is the post-condition the (subscriber, content) association was always missing. The
+        v4.78 key-space fix deleted a read of `_assoc[(subscriber, content)]` because nothing wrote
+        that key -- `_hebb_update` potentiates `(submitter, content)` and the namespaces are
+        disjoint live -- and deleting it is what made every subscriber's bias identical (F2). The
+        honest repair is not to restore the read but to give it a writer, and the writer is the
+        specialist itself: pre = this workspace routed `content` to `name`, post = `name` used it.
+        Local, Hebbian, no gradient -- the same rule and the same rate as the submitter axis.
+
+        A specialist that never calls this keeps the base gain forever, which is EXACTLY today's
+        behaviour: the listener term is additive from 0.0, so an unreporting bus is byte-identical.
+        The bias becomes listener-specific only to the degree faculties really use what they get,
+        which is the property `broadcast_to`'s docstring has always claimed and never had.
+        """
+        s = self._subs.get(str(name))
+        if s is None or content is None:
+            return 0.0
+        key = (str(name), content)
+        # IDEMPOTENT WITHIN A CYCLE. The decay runs once per `step()`, so potentiating per CALL would
+        # make this measure how often a caller invokes it rather than whether it used what it got --
+        # measured before this guard, 1 / 5 / 50 calls per tick gave 0.2185 / 0.2303 / 0.2315, i.e. a
+        # faculty could buy a larger re-route by looping. A term recording use must not be inflatable
+        # by the reporter; P3 refuses a declaration standing in for a measurement everywhere else.
+        if self._use_tick.get(key) == self._cycle:
+            return self._use.get(key, 0.0)
+        self._use_tick[key] = self._cycle
+        w = self._use.get(key, 0.0)
+        self._use[key] = w + self._HEBB_LR * (1.0 - w)
+        return self._use[key]
+
     def broadcast_to(self, name):
         """The top-down bias {content: magnitude} currently broadcast to `name` (empty if `name` is
         not subscribed or nothing is ignited). A subscribed specialist ADDS this to its next output --
@@ -378,6 +419,7 @@ class ReentrantWorkspace:
         has bottom-up support), settles the competition, and -- if a coalition sustains firing above
         rheobase -- IGNITES it, broadcasts it, and closes the loop. Returns {ignited, winner,
         availability}; clears the submission buffer AND the expectations."""
+        self._cycle += 1
         # 1. group submissions into coalitions by content; base drive = strongest supporter + a small
         #    bonus per additional supporting specialist (a broader coalition drives harder).
         base = {}
@@ -468,7 +510,16 @@ class ReentrantWorkspace:
     def _assoc_support(self, winner):
         """The learned association support of `winner` in [0,1]: the aggregate over the
         SOURCES that potentiated it (the v4.78 key-space fix's read, extracted at T030 so
-        _deliver's re-route bias and association_level() bind to ONE expression -- P2)."""
+        _deliver's re-route bias and association_level() bind to ONE expression -- P2).
+
+        SOURCES ONLY, which is why T039c's listener axis lives in its own dict rather than
+        beside these keys. This aggregate filters on CONTENT alone, so a (subscriber, content)
+        key sharing the dict would be picked up here and a listener's own use would inflate the
+        SHARED term every subscriber receives -- and `association_level()`, the declared
+        graded-delivery source, with it. Constructed while writing T039c: submitter support 0.10
+        against listener use 0.90 returned 0.90 from both. `max()` hides it whenever source
+        support is near 1.0, so it would have been a silent degradation that only appeared when
+        support was low."""
         if winner is None:
             return 0.0
         return max((v for (_src, c), v in self._assoc.items() if c == winner), default=0.0)
@@ -486,7 +537,12 @@ class ReentrantWorkspace:
 
     def _hebb_update(self, winner, winner_sources):
         """Local Hebbian re-entry learning (no gradient): sources that CONTRIBUTED to the ignited
-        content potentiate toward 1; every other association passively decays."""
+        content potentiate toward 1; every other association passively decays.
+
+        The decay sweeps BOTH axes -- (submitter, content) and the (subscriber, content) keys
+        `report_use` writes -- so a specialist that stops using what it receives loses its
+        privileged re-route at the same rate a source that stops contributing loses its support.
+        A learned term that only ever rises is not learning."""
         winning_keys = {(s, winner) for s in winner_sources} if winner is not None else set()
         for key in list(self._assoc):
             if key in winning_keys:
@@ -497,12 +553,23 @@ class ReentrantWorkspace:
         for key in winning_keys:
             w = self._assoc.get(key, 0.0)
             self._assoc[key] = w + self._HEBB_LR * (1.0 - w)
+        # the listener axis decays on the SAME schedule -- a specialist that stops using what it
+        # receives loses its privileged re-route exactly as a source that stops contributing loses
+        # its support. `report_use` re-potentiates it on the ticks it is actually called.
+        for key in list(self._use):
+            self._use[key] *= 1.0 - self._HEBB_DECAY
+            if self._use[key] < 1e-6:
+                del self._use[key]
+                self._use_tick.pop(key, None)
 
     def _deliver(self, winner, ignited):
         """Broadcast the winner to every subscriber and set its top-down bias toward the ignited
         content. Returns global availability = fraction of subscribers reached (0 if none ignited)."""
         reached = 0
-        for _name, s in self._subs.items():  # _name: the key-space fix removed this loop's only use
+        for (
+            _name,
+            s,
+        ) in self._subs.items():  # _name is read again since T039c (the per-listener term)
             if ignited:
                 s["inbox"].append(winner)
                 # KEY-SPACE FIX (v4.78). This read was `self._assoc.get((name, winner), 0.0)`, where
@@ -518,9 +585,16 @@ class ReentrantWorkspace:
                 # is a property of the content, shared by every subscriber receiving it, so aggregate
                 # over the sources that potentiated it.
                 assoc = self._assoc_support(winner)
+                # ... PLUS what THIS listener has learned about this content by USING it (T039c,
+                # the F2 fix). `_assoc_support` is a property of the CONTENT and is shared by every
+                # subscriber, which is precisely why the payload was byte-identical across
+                # listeners; `report_use` gives the (subscriber, content) key a writer, so this
+                # lookup finally reads something the module learns. It is 0.0 for a specialist that
+                # has never reported use, so a bus whose subscribers do not report is unchanged.
+                listener = self._use.get((_name, winner), 0.0)
                 # base re-route (immediate) scaled by the learned association (adaptive). Re-entry OFF
                 # cuts the top-down bias entirely (fair control).
-                bias = self._REENTRY_GAIN * (1.0 + assoc) if self.reentry else 0.0
+                bias = self._REENTRY_GAIN * (1.0 + assoc + listener) if self.reentry else 0.0
                 s["bias"] = {winner: bias} if bias > 0.0 else {}
                 reached += 1
             else:
@@ -752,6 +826,93 @@ def _reds():
     ws_alone.submit("v", "weak", 0.66)
     ws_alone.step()
     rows.append(("loser silenced by competition", ws_alone._last_late.get("weak", 0) > 0))
+
+    # (7) + (8) THE LISTENER-SPECIFIC PAYLOAD'S REDS (specs/022 T039c, the F2 fix). Two claims:
+    #     that the bias CAN differ between subscribers, and that it does so only because a listener
+    #     LEARNED it -- so an unreporting bus must be identical, and the learning must decay.
+    def _f2_run(report, ticks=40, stop_at=None):
+        w = ReentrantWorkspace(seed=0)
+        for _s in ("action", "language"):
+            w.subscribe(_s)
+        traj = []
+        for _t in range(1, ticks + 1):
+            if _t > 5:
+                w.submit("percept", "X", 0.85)
+                w.submit("driver", "X", 0.85)
+            w.step()
+            _a, _l = w.broadcast_to("action"), w.broadcast_to("language")
+            if report and (stop_at is None or _t <= stop_at):
+                for _c in _a:
+                    w.report_use("action", _c)
+            if _a or _l:
+                traj.append((max(_a.values()) if _a else 0.0, max(_l.values()) if _l else 0.0))
+        return traj
+
+    #     (7) "the payload is listener-specific" goes RED on a bus where NOBODY reports use -- which
+    #         is the pre-T039c behaviour, and the proof the fix is additive from zero rather than a
+    #         change to every workspace in the tree.
+    _quiet = _f2_run(report=False)
+    # LIVENESS CONTROL. `all(...)` over an EMPTY list is True, so without this the row prints
+    # [RED OK] on a bus that never ignited and certifies nothing -- measured: a sub-rheobase harness
+    # yields 0 broadcasts and the expression still returns True. An empty result must never be
+    # indistinguishable from a dead detector, which is what this table exists to prevent.
+    assert len(_quiet) > 5 and _quiet[-1][0] > 0.0, (
+        f"the quiet-bus arm must actually broadcast ({len(_quiet)} rows) -- an unignited harness "
+        "cannot certify anything about the payload"
+    )
+    #     Named for what it MEASURES. Two subscribers reporting at the SAME rate receive
+    #     byte-identical dicts, so this grades USE, not listener identity.
+    rows.append(("payload differs by listener use", all(a == b for a, b in _quiet)))
+
+    #     (8) "the listener term DECAYS without use" -- a term that only ever rises is a ratchet, not
+    #         learning. The breaking input is the decay itself: with _HEBB_DECAY neutered the
+    #         privilege stays LATCHED at its peak after the reporting stops, and the claim fails.
+    #         (Stopping the reporting is not a red -- it DEMONSTRATES the property rather than
+    #         breaking it, which is the distinction P8 draws between a control and a criterion.)
+    def _f2_decay(neuter):
+        w = ReentrantWorkspace(seed=0)
+        w.subscribe("action")
+        if neuter:
+            w._HEBB_DECAY = 0.0
+        traj = []
+        for _t in range(1, 61):
+            if _t > 5:
+                w.submit("percept", "X", 0.85)
+                w.submit("driver", "X", 0.85)
+            w.step()
+            _a = w.broadcast_to("action")
+            if _t <= 30:
+                for _c in _a:
+                    w.report_use("action", _c)
+            if _a:
+                traj.append(max(_a.values()))
+        return max(traj), traj[-1]
+
+    _peak_live, _end_live = _f2_decay(neuter=False)
+    _peak_pin, _end_pin = _f2_decay(neuter=True)
+    rows.append(("listener term decays without use", not (_end_pin < _peak_pin)))
+    assert _end_live < _peak_live, "the live listener term must decay once the use stops"
+    #     (9) "the shared content support is SOURCES ONLY" goes RED when a listener key is written
+    #         into `_assoc` instead of `_use` -- the defect this split exists to prevent, and the one
+    #         `max()` hides whenever source support is near 1.0. Guards the two dicts from being
+    #         merged back together by anyone who reads them as one namespace.
+    _contam = ReentrantWorkspace(seed=0)
+    _contam.subscribe("action")
+    _contam._assoc[("percept", "Z")] = 0.10
+    _contam._assoc[("action", "Z")] = 0.90  # a LISTENER key in the SOURCE dict
+    rows.append(("shared content support is sources only", _contam._assoc_support("Z") > 0.10))
+    _clean = ReentrantWorkspace(seed=0)
+    _clean.subscribe("action")
+    _clean._assoc[("percept", "Z")] = 0.10
+    _clean._use[("action", "Z")] = 0.90
+    assert _clean._assoc_support("Z") == 0.10, "the split must keep the source aggregate clean"
+
+    assert any(a != b for a, b in _f2_run(report=True)), (
+        "a reporting listener must diverge from a silent one -- F2 is not fixed"
+    )
+    assert _end_live >= _f2_run(report=True)[-1][1], (
+        "decay must not push a listener BELOW the shared base every subscriber gets"
+    )
 
     # (5) + (6) THE CHARGE RECORD'S OWN REDS (specs/022 T039a). The evidence row for the reroute
     #     edge claims two things -- that the bias moves the brain's competition AT ALL, and that

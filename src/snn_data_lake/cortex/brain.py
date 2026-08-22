@@ -818,12 +818,20 @@ class Brain:
             # subscriber whenever the coalition ignites, so `reached / len(self._subs)` is 0.0 or 1.0 and
             # nothing else. Availability is binary with one subscriber and binary with ten.
             #
-            # A second defect sits next to it and is worse: the bias handed to each subscriber is
+            # F1's LISTENER HALF IS FIXED AS OF T039c; F1's SPEAKER HALF AND F2 BOTH STAND. The
+            # labels are the ones docs/P6_INTERCONNECT.md uses: F1 is the content-blind payload,
+            # F2 is the all-or-none availability. The bias handed to each subscriber USED to be
             # `{winner: bias}` computed once from the winning CONTENT, so broadcast_to("action") and
-            # broadcast_to("language") are byte-identical. The bus cannot carry which faculty spoke or
-            # which is listening. Both are measured in docs/P6_INTERCONNECT.md (F1, F2); fixing the
-            # content-blind payload has to come BEFORE sharing one workspace instance, because a shared
-            # bus whose reader cannot tell speakers apart connects nothing.
+            # broadcast_to("language") were byte-identical -- measured 35 of 35 broadcasts.
+            # `ReentrantWorkspace.report_use` gives the (subscriber, content) association the writer
+            # it never had (v4.78 deleted the READ because nothing wrote the key; this adds the
+            # writer instead), and `_act` below is its first caller.
+            #
+            # WHAT IS STILL TRUE, because this fix is narrower than the finding it answers:
+            #   * F1 SPEAKER half -- the payload is STILL `{winner: bias}` and carries no submitter
+            #     identity, so the bus cannot say WHICH faculty spoke; only how much the listener
+            #     used what it got. Two subscribers that use it alike get identical dicts.
+            #   * F2 -- availability is binary with one subscriber and with ten. Untouched here.
             for _spec in ("action", "language"):
                 self._reentrant.subscribe(_spec)
             self._episodic = EpisodicRecall(seed=self._seed)
@@ -1809,7 +1817,11 @@ class Brain:
                 except Exception:
                     pass
             # GWT RE-ROUTE: broadcast_to() returns the top-down bias the subscribed action specialist
-            # adds to its next output -- a globally-available coalition CHANGES behaviour.
+            # adds to its next output. Measured band (tools/charge_probe.py, a LIVE brain, 40 ticks,
+            # re-run after T039c, deterministic across runs): it changes an internal read on
+            # 34 of 40 ticks and flips 0 of 40 act/hold decisions or
+            # trajectories -- it changes what the competition WEIGHS, which is the claim this line
+            # supports; it does not yet change what the arm does.
             if self._reentrant is not None:
                 try:
                     rb = self._reentrant.broadcast_to("action")
@@ -1819,6 +1831,31 @@ class Brain:
                     pass
             # three-factor competitive update: dw = lr * dopamine * (eligibility - mean eligibility)
             mean_e = sum(elig.values()) / len(elig)
+            # T039c: tell the workspace what its broadcast did for us -- the POST half of the
+            # (subscriber, content) Hebbian pair, the half that did not exist, which is why every
+            # subscriber's bias was byte-identical (F1's listener half).
+            #
+            # WHAT THIS DISCRIMINATES, MEASURED, AND ITS CEILING. Reporting on consumption makes the
+            # listener term settle at a fixed ~0.833x multiple of the workspace's own (source,
+            # content) association -- because a broadcast this faculty consumes arrives on the same
+            # tick set that potentiates that association, at the same rate. So the payload now
+            # separates A SUBSCRIBER THAT CONSUMES from one that does not (`language` is subscribed,
+            # drains nothing, and keeps the base gain), and it does NOT grade DEGREE of use. The
+            # comment says so rather than implying more, because the fixed ratio is the whole of it.
+            #
+            # THE GRADED VERSION WAS BUILT AND MEASURED AND IS A NULL, recorded so it is not
+            # re-attempted: gating the report on the re-route being MATERIAL (`elig["reroute"] >
+            # mean_e`, the baseline computed directly above -- no new threshold) fires on 0 of 76
+            # live winner-ticks, because the re-route is ALWAYS a below-average source. That is the
+            # same fact tools/charge_probe.py reports as 34 of 40 internal reads changed and 0 of 40
+            # decisions: a degree signal derived from this term's competitive share either always
+            # fires or never fires. Grading it honestly needs the re-route to matter more first.
+            if self._reentrant is not None:
+                try:
+                    for _content in rb:
+                        self._reentrant.report_use("action", _content)
+                except Exception:
+                    pass
             for k, e in elig.items():
                 self._drive_w[k] = min(
                     1.0, max(0.0, self._drive_w[k] + self._drive_lr * da * (e - mean_e))
