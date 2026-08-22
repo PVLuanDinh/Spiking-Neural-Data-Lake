@@ -301,6 +301,7 @@ REGIONS = {
         "connectome_router",
         "gwt_deep",
         "ignition_instrument",
+        "interoceptive_relay",
     ],
     "hypothalamus": ["circadian_clock", "set_points", "homeostatic_drives"],
     "midbrain": [

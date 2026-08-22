@@ -376,6 +376,112 @@ class RegionCoherence:
         return self._adjust(base_threshold, c, self.gain, interoceptive)
 
 
+#: the declared edge this module CONSUMES -- the insula's OUT port, edge-less since T026, lands here
+INTEROCEPTION_EDGE = (
+    "interoceptive_integration",
+    "interoception_out",
+    "region_coherence",
+    "interoception_in",
+)
+
+
+def declare_ports(manifest):
+    """Manifest registrant (specs/022 T039j): the ignition law's interoceptive input.
+
+    This DISCHARGES the edge-less disposition `interoceptive_integration.interoception_out` has
+    carried since T026. The port sits here rather than on the `gwt` node because this is where the
+    salience is READ -- `_adjust` folds it into the threshold by noisy-OR -- and the workspace
+    downstream receives the threshold, never the salience. join_policy is `max`: a single producer
+    today, and if a second interoceptive source is ever declared the strongest body signal should
+    set the discount rather than two sources summing past the bound the law depends on."""
+    from snn_data_lake.substrate.wiring_manifest import Port
+
+    manifest.declare_port(
+        "region_coherence",
+        Port(
+            name="interoception_in",
+            region="substrate",
+            shape=(1,),
+            dtype="f4",
+            unit="level01",
+            encoding="SCALAR_DENSE",
+            kind="IN",
+            declaring_module="region_coherence",
+            join_policy="max",
+        ),
+    )
+    manifest.declare_edge(*INTEROCEPTION_EDGE)
+
+
+def _interoception_consumer_factory():
+    """Fresh ring + JoinConsumer over `interoception_in`, one pair per replay arm."""
+    from snn_data_lake.insula.interoceptive_integration import (
+        declare_ports as _producer_ports,
+    )
+    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+
+    m = WiringManifest()
+    _producer_ports(m)
+    declare_ports(m)
+    port = m.ports[("region_coherence", "interoception_in")]
+    ring = SignalRing(slots=256)
+    return ring, JoinConsumer(ring, port)
+
+
+def consume_interoception(consumer):
+    """The downstream computation under measurement: each joined salience frame is folded into the
+    ignition law and the resulting threshold recorded. Coherence is held at a fixed value across
+    both arms so the ONLY thing that can move the output is the interoceptive payload."""
+    rc = RegionCoherence(seed=0)
+    out = []
+    joined, lost = consumer.poll_joined()
+    assert not lost, f"charge measurement lost {lost} frames -- ring overrun, never smooth this"
+    for tick, vec in joined:
+        thr = rc.ignition_bias(0.55, interoceptive=float(vec[0]), coherence=0.4)
+        out.append((tick, round(thr, 9)))
+    return out
+
+
+def _measure_edge_charge():
+    """The replay-twice A/B for `interoception_out -> interoception_in` -> (live, pinned, reads,
+    responded). `responded` = the threshold FELL at the challenge, which is the direction the
+    producer's own docstring claims (a body far from baseline finds it EASIER to ignite)."""
+    from snn_data_lake.substrate.port_charge_probe import (
+        interoception_challenge_frames,
+        replay_twice,
+    )
+
+    frames, spike_at = interoception_challenge_frames()
+    live, pinned_out, reads = replay_twice(
+        frames, _interoception_consumer_factory, consume_interoception, [0.2]
+    )
+    pre = min(v for t, v in live if spike_at - 5 <= t < spike_at)
+    post = min(v for t, v in live if t >= spike_at)
+    return live, pinned_out, reads, post < pre
+
+
+def record_charge():
+    """Measure the A/B and record its attribution via THE one writer."""
+    from snn_data_lake.substrate.port_charge_probe import record_attribution
+
+    live, pinned_out, reads, responded = _measure_edge_charge()
+    if live == pinned_out or not responded:
+        print(f"record_charge REFUSED for {INTEROCEPTION_EDGE}: no divergence or no response")
+        return 1
+    path = record_attribution(
+        INTEROCEPTION_EDGE,
+        {"reads": reads, "n_frames": len(live)},
+        "replay_twice: a REAL insula salience trace vs a pinned constant, coherence held fixed "
+        "across both arms so only the interoceptive payload can move the output; the live "
+        "threshold diverged and FELL at the challenge -- the direction the producer claims. "
+        "Discharges the edge-less disposition interoception_out carried since T026; self-check "
+        "re-measures and requires `measured` to reproduce",
+    )
+    print(f"recorded {INTEROCEPTION_EDGE} into {path}")
+    return 0
+
+
 # ======================================================================================================
 # self-check
 # ======================================================================================================
@@ -522,7 +628,37 @@ def main():
         "gain=0.0 (bias OFF, threshold never moves) is inside the band and must construct"
     )
 
+    # ---- THE INTEROCEPTIVE EDGE IS CHARGED, measured (specs/022 T039j) -------------------
+    # `interoception_out` carried an edge-less disposition from T026 until this module declared
+    # the consumer end. A declared edge that carries nothing is the defect the disposition was
+    # honest about, so the edge asserts its own attribution here rather than being taken on the
+    # declaration.
+    from snn_data_lake.substrate.port_charge_probe import read_attribution
+
+    live, pinned_out, reads, responded = _measure_edge_charge()
+    assert reads == len(live), f"{reads} reads != {len(live)} frames"
+    assert live != pinned_out, (
+        "pinning the interoceptive payload did not change the ignition threshold -- a declared, "
+        "not a charged, edge"
+    )
+    assert responded, (
+        "the interoceptive challenge did not LOWER the threshold -- divergence without the "
+        "direction the producer claims attributes nothing"
+    )
+    _rec = read_attribution(INTEROCEPTION_EDGE)
+    assert _rec is not None and _rec.get("diverged") is True, (
+        f"no committed attribution for {INTEROCEPTION_EDGE} -- regenerate with --record-charge"
+    )
+    assert _rec.get("measured") == {"reads": reads, "n_frames": len(live)}, (
+        f"committed attribution does not reproduce: {_rec.get('measured')}"
+    )
+
     print("")
+    print(
+        f"interoception edge CHARGED: pinning the insula payload held the threshold while the "
+        f"live arm diverged and FELL at the challenge, over {len(live)} frames; committed "
+        f"attribution reproduces."
+    )
     print(
         f"self-check OK: synchronized phase_order {sync_out['phase_order']:.3f} (coherence "
         f"{sync_out['coherence']:.3f}) >> desynchronized {desync_out['phase_order']:.3f}; silent bank "
@@ -533,4 +669,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys as _sys
+
+    _sys.exit(record_charge() if "--record-charge" in _sys.argv else (main() or 0))

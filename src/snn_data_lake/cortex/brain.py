@@ -785,6 +785,7 @@ class Brain:
 
         # W8: re-entrant (de-saturated) workspace + reconstructive episodic memory + homeostatic drives
         self._reentrant = self._episodic = self._drives = None
+        self._thal_relay = None  # T039j: the thalamic hop; None relays the pair unchanged
         self._insula = None  # T039f: the insula terminus; None leaves every threshold as it was
         self._insula_channels = ()
         self._feeling_salience = 0.0  # this tick's body-from-own-baseline deviation, in [0, 1]
@@ -855,6 +856,13 @@ class Brain:
 
             self._insula_channels = BODY_CHANNELS
             self._insula = InteroceptiveIntegration(channels=BODY_CHANNELS)
+            # T039j: the ascending pair reaches the terminus THROUGH the thalamic relay, which is
+            # the hop `connectome.py` has always declared (nts_rvlm -> thal_relay -> insula) and
+            # the only one that had no module. Constructed here so the tract has one instance on
+            # the live tick rather than one per caller.
+            from snn_data_lake.thalamus.interoceptive_relay import InteroceptiveRelay
+
+            self._thal_relay = InteroceptiveRelay()
             # T039h: hand the terminus the subscriber handle. It reads the broadcast through
             # `Brain.reentrant`; it constructs no workspace and submits to none.
             self._insula.attach(self)
@@ -2448,12 +2456,22 @@ class Brain:
             try:
                 _def = self._drives.deficit() if self._drives is not None else {}
                 _body = self.brain.arm.interoception()
+                # THE THALAMIC HOP (T039j). The ascending pair is transmitted, not forwarded: a
+                # visceral change arriving after quiet is amplified and a persistent one relays
+                # faithfully. A None relay passes the pair through unchanged, so a brain whose W8
+                # block failed computes exactly the salience T039f/T039h computed.
+                _asc = [
+                    float(_body.get("stress", 0.0) or 0.0),
+                    float(_body.get("caution", 0.0) or 0.0),
+                ]
+                if self._thal_relay is not None:
+                    _asc = self._thal_relay.relay(_asc)
                 _frame = {
                     "energy_deficit": float(_def.get("energy", 0.0) or 0.0),
                     "curiosity_deficit": float(_def.get("curiosity", 0.0) or 0.0),
                     "social_deficit": float(_def.get("social", 0.0) or 0.0),
-                    "stress": float(_body.get("stress", 0.0) or 0.0),
-                    "caution": float(_body.get("caution", 0.0) or 0.0),
+                    "stress": float(_asc[0]),
+                    "caution": float(_asc[1]),
                 }
                 self._feeling_salience = float(self._insula.observe(**_frame))
             except Exception:

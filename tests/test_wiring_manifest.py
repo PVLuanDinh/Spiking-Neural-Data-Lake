@@ -140,23 +140,33 @@ def test_artifact_is_tracked_and_loadable():
     # diffuse channel (glial_gain_out -> synaptic_gain_in, a deliberate self-edge); T028
     # added THE predictor port (percept_surprise.surprise_out -> the brain's
     # undirected-salience competition); T029 added the RPE third-factor port
-    # (dopamine_nuclei.da_out -> r_stdp's eligibility gate). A count above the pin means
-    # a registrant landed without updating this premise; below means a declaration was
-    # lost.
+    # (dopamine_nuclei.da_out -> r_stdp's eligibility gate). T039j completed the declared
+    # interoceptive TRACT: the medulla->insula shortcut is RETIRED and the ascending half
+    # now relays through `thal_relay` (arousal_out -> visceral_in -> body_in, +1 net edge,
+    # +2 ports), and `interoception_out` -- which this premise itself called EDGE-LESS
+    # above, and which was the only OUT port in the manifest sourcing no edge -- gained its
+    # declared consumer (region_coherence.interoception_in, +1 port +1 edge). A count above
+    # the pin means a registrant landed without updating this premise; below means a
+    # declaration was lost.
     pytest.importorskip("nir")
     m = WiringManifest.load_artifact(ARTIFACT)
-    assert (len(m.ports), len(m.edges)) == (24, 12), (
-        "the T037 artifact carries the patience wire + the interoceptive channel + the "
-        "glia self-edge + the predictor port + the third-factor port + the workspace "
-        "composite + the report channel and its brain consumer + the proprioceptive "
-        "afferent lane + the efferent lane (action_out -> efferent_in) (24 ports, "
-        "12 edges); a different census means a registrant landed without updating this "
-        "test's premise"
+    assert (len(m.ports), len(m.edges)) == (27, 14), (
+        "the T039j artifact carries the patience wire + the interoceptive TRACT (relayed "
+        "through thal_relay, with interoception_out's consumer) + the glia self-edge + the "
+        "predictor port + the third-factor port + the workspace composite + the report "
+        "channel and its brain consumer + the proprioceptive afferent lane + the efferent "
+        "lane (action_out -> efferent_in) (27 ports, 14 edges); a different census means a "
+        "registrant landed without updating this test's premise"
     )
     assert set(m.edges) == {
         ("raphe_serotonin", "five_ht_out", "evidence_accumulation", "patience_in"),
         ("homeostatic_drives", "drive_deficit_out", "interoceptive_integration", "body_in"),
-        ("interoceptive_arousal", "arousal_out", "interoceptive_integration", "body_in"),
+        # T039j: the ascending half RELAYS. The retired shortcut was
+        # ("interoceptive_arousal", "arousal_out", "interoceptive_integration", "body_in") --
+        # medulla straight to cortex, a route the connectome declares nowhere.
+        ("interoceptive_arousal", "arousal_out", "interoceptive_relay", "visceral_in"),
+        ("interoceptive_relay", "relay_out", "interoceptive_integration", "body_in"),
+        ("interoceptive_integration", "interoception_out", "region_coherence", "interoception_in"),
         ("astrocyte_modulation", "glial_gain_out", "astrocyte_modulation", "synaptic_gain_in"),
         ("percept_surprise", "surprise_out", "brain", "salience_surprise_in"),
         ("dopamine_nuclei", "da_out", "r_stdp", "dopamine_in"),

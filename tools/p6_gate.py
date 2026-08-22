@@ -384,13 +384,22 @@ BASELINE = {
     # its own, so closing those two is an architectural call inside global_workspace.py and is
     # NOT owed by this commit.
     #
+    # 23 -> 21 AT T039j: BOTH REMAINING PAIRS CLOSED. `thalamus/interoceptive_relay` implements
+    # `thal_relay`, the hop the connectome always declared and no module carried. Its self-check
+    # drives the REAL composition -- a medullary InteroceptiveArousal through this hop into a real
+    # insula terminus -- so (medulla, thalamus) and (thalamus, insula) become import paths this
+    # walk can see. Both were DECLARED, which is exactly what made these imports legal where the
+    # insula importing the medulla directly was not: that created (medulla, insula), a pair the
+    # connectome declares no route for, and this gate's undeclared-pairs ratchet reddened as
+    # designed. Measured: undeclared_import_pairs held at 11 across the change.
+    #
     # RATCHETING THIS IS NOT BOOKKEEPING. Left at 24 the criterion has NO REACHABLE RED: the
     # self-check's constructed mutation raises the count by exactly one, so from 23 it lands ON
     # the ceiling rather than over it and the mutation stops firing. `--self-check` went red for
     # precisely that reason and named this criterion. P8: a criterion with no reachable red is
     # deleted, not weakened -- so the honest move is to lower the ceiling until the red returns,
     # which is what a ratchet is for.
-    "unimplemented_declared_pairs": 23,
+    "unimplemented_declared_pairs": 21,
 }
 
 # name -> (kind, human sentence, why this shape and not the obvious neighbour)

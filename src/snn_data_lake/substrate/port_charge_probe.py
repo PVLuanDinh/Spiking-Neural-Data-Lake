@@ -128,9 +128,14 @@ def interoceptive_challenge_frames(vary, n_ticks=40, spike_at=30):
     {'arousal', 'drives'}. -> (frames, spike_at). Deterministic."""
     from snn_data_lake.hypothalamus.homeostatic_drives import SET_POINT, HomeostaticDrives
     from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
+    from snn_data_lake.thalamus.interoceptive_relay import InteroceptiveRelay
 
     arousal = InteroceptiveArousal(seed=0)
     drives = HomeostaticDrives()
+    # T039j: the ascending half now passes through the THALAMIC RELAY, because that is the hop the
+    # connectome declares and the manifest edge is `relay_out -> body_in`. Recording frames from
+    # the medulla and labelling them as the relay would be measuring a path the tree does not run.
+    relay = InteroceptiveRelay()
     quiet_a = arousal.sense(0.0)
     quiet_d = drives.deficit()
 
@@ -143,14 +148,65 @@ def interoceptive_challenge_frames(vary, n_ticks=40, spike_at=30):
         challenged = t >= spike_at
         if vary == "arousal":
             a = arousal.sense(3.0 if challenged else 0.0)
-            frames.append((t, "interoceptive_arousal", [a["stress"], a["caution"]]))
+            frames.append((t, "interoceptive_relay", relay.relay([a["stress"], a["caution"]])))
             frames.append((t, "homeostatic_drives", deficit_vec(quiet_d)))
         else:
             # the challenge is TOTAL neglect: servicing stops, every deficit climbs at its
             # drift rate -- a real discontinuity against the near-zero serviced baseline
             drives.tick(None if challenged else service[t % 3])
-            frames.append((t, "interoceptive_arousal", [quiet_a["stress"], quiet_a["caution"]]))
+            frames.append(
+                (t, "interoceptive_relay", relay.relay([quiet_a["stress"], quiet_a["caution"]]))
+            )
             frames.append((t, "homeostatic_drives", deficit_vec(drives.deficit())))
+    return frames, spike_at
+
+
+def visceral_challenge_frames(n_ticks=40, spike_at=30):
+    """The T039j ascending schedule: the medullary pair as the THALAMIC RELAY receives it.
+
+    Deliberately NOT relayed -- `interoceptive_challenge_frames` above records the tract as the
+    INSULA receives it (post-relay), and this records it as the relay receives it (pre-relay).
+    The two schedules measure two different edges of the same tract and neither can stand in for
+    the other: pinning a relayed frame tells you nothing about whether the relay's own input
+    matters. Deterministic. -> (frames, spike_at)."""
+    from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
+
+    arousal = InteroceptiveArousal(seed=0)
+    frames = []
+    for t in range(1, n_ticks + 1):
+        a = arousal.sense(3.0 if t >= spike_at else 0.0)
+        frames.append((t, "interoceptive_arousal", [a["stress"], a["caution"]]))
+    return frames, spike_at
+
+
+def interoception_challenge_frames(n_ticks=40, spike_at=30):
+    """The T039j descending schedule: `interoception_out` as the ignition law receives it.
+
+    A REAL insula terminus is settled on a quiet body and then challenged, so the frames carry the
+    salience the tract actually produces rather than a synthetic ramp -- the point of the A/B is
+    whether THIS payload moves the threshold, and a made-up payload could not answer that.
+    Deterministic. -> (frames, spike_at)."""
+    from snn_data_lake.insula.interoceptive_integration import (
+        BODY_CHANNELS,
+        InteroceptiveIntegration,
+    )
+    from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
+    from snn_data_lake.thalamus.interoceptive_relay import InteroceptiveRelay
+
+    organ, relay = InteroceptiveArousal(seed=0), InteroceptiveRelay()
+    ii = InteroceptiveIntegration(channels=BODY_CHANNELS)
+    frames = []
+    for t in range(1, n_ticks + 1):
+        a = organ.sense(3.0 if t >= spike_at else 0.0)
+        s, c = relay.relay([a["stress"], a["caution"]])
+        sal = ii.observe(
+            energy_deficit=0.0,
+            curiosity_deficit=0.0,
+            social_deficit=0.0,
+            stress=s,
+            caution=c,
+        )
+        frames.append((t, "interoceptive_integration", [sal]))
     return frames, spike_at
 
 

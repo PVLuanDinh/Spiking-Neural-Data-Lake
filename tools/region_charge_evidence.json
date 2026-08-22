@@ -1,44 +1,44 @@
 {
   "attributions": [
     {
+      "diverged": true,
       "edge": [
         "astrocyte_modulation",
         "glial_gain_out",
         "astrocyte_modulation",
         "synaptic_gain_in"
       ],
-      "diverged": true,
       "measured": {
-        "reads": 80,
-        "n_frames": 80
+        "n_frames": 80,
+        "reads": 80
       },
       "provenance": "replay_twice: the real astrocyte's engaging gain field vs a pinned unmodulated [1.0, 1.0]; downstream LIF spike counts diverged and rose after Ca crossed threshold -- the diffuse channel, not the schedule, moved transmission; self-check re-measures and requires `measured` to reproduce"
     },
     {
+      "diverged": true,
       "edge": [
         "dopamine_nuclei",
         "da_out",
         "r_stdp",
         "dopamine_in"
       ],
-      "diverged": true,
       "measured": {
-        "reads": 60,
-        "n_frames": 60
+        "n_frames": 60,
+        "reads": 60
       },
       "provenance": "replay_twice: a real DopamineNuclei acquiring a cue->reward chain (burst at unexpected reward, TD transfer to the cue) vs a pinned tonic rpe=0 rate; the three-factor gate moved the live arm's weights while the tonic pin moved ~nothing -- the signed factor derives from the producer's own tonic point; self-check re-measures and requires `measured` to reproduce"
     },
     {
+      "diverged": true,
       "edge": [
         "homeostatic_drives",
         "drive_deficit_out",
         "interoceptive_integration",
         "body_in"
       ],
-      "diverged": true,
       "measured": {
-        "reads": 40,
-        "n_frames": 40
+        "n_frames": 40,
+        "reads": 40
       },
       "provenance": "per-edge replay_twice: only the drives producer varied (the other frozen at its quiet vector), live diverged from the pinned join and salience rose at the challenge -- divergence attributes to THIS edge; self-check re-measures and requires `measured` to reproduce"
     },
@@ -46,56 +46,84 @@
       "edge": [
         "interoceptive_arousal",
         "arousal_out",
-        "interoceptive_integration",
-        "body_in"
+        "interoceptive_relay",
+        "visceral_in"
       ],
       "diverged": true,
       "measured": {
         "reads": 40,
         "n_frames": 40
       },
+      "provenance": "replay_twice: the real medullary ascending pair vs a pinned quiet vector; the relayed output diverged and rose at the challenge -- the transmitted signal carries THIS producer's payload, not the schedule. Took over the medulla's charge when T039j moved the ascending edge off the insula and onto this hop; self-check re-measures and requires `measured` to reproduce"
+    },
+    {
+      "edge": [
+        "interoceptive_integration",
+        "interoception_out",
+        "region_coherence",
+        "interoception_in"
+      ],
+      "diverged": true,
+      "measured": {
+        "reads": 40,
+        "n_frames": 40
+      },
+      "provenance": "replay_twice: a REAL insula salience trace vs a pinned constant, coherence held fixed across both arms so only the interoceptive payload can move the output; the live threshold diverged and FELL at the challenge -- the direction the producer claims. Discharges the edge-less disposition interoception_out carried since T026; self-check re-measures and requires `measured` to reproduce"
+    },
+    {
+      "diverged": true,
+      "edge": [
+        "interoceptive_relay",
+        "relay_out",
+        "interoceptive_integration",
+        "body_in"
+      ],
+      "measured": {
+        "n_frames": 40,
+        "reads": 40
+      },
       "provenance": "per-edge replay_twice: only the arousal producer varied (the other frozen at its quiet vector), live diverged from the pinned join and salience rose at the challenge -- divergence attributes to THIS edge; self-check re-measures and requires `measured` to reproduce"
     },
     {
+      "diverged": true,
       "edge": [
         "percept_surprise",
         "surprise_out",
         "brain",
         "salience_surprise_in"
       ],
-      "diverged": true,
       "measured": {
-        "reads": 120,
-        "n_frames": 120
+        "n_frames": 120,
+        "reads": 120
       },
       "provenance": "replay_twice: a real PerceptSurprise stream (on-manifold, then an off-manifold jump) vs a pinned zero-surprise payload, consumed by the brain's GENUINE undirected_salience competition under equal starting weights; the orienting drive diverged and rose at the jump -- the predictor port, not the schedule, moved the competition; self-check re-measures and requires `measured` to reproduce"
     },
     {
+      "diverged": true,
       "edge": [
         "raphe_serotonin",
         "five_ht_out",
         "evidence_accumulation",
         "patience_in"
       ],
-      "diverged": true,
       "measured": {
-        "reads": 5,
+        "hi_rt": 11.375,
         "lo_rt": 2.875,
-        "hi_rt": 11.375
+        "reads": 5
       },
       "provenance": "port_charge_probe.replay_twice over the raphe LEVELS sweep; the self-check re-measures and requires `measured` to reproduce exactly, so this record cannot outlive the wire it describes; specificity control held (payload-ignoring consumer did not flip)"
     },
     {
+      "diverged": true,
       "edge": [
         "reentrant_workspace",
         "reroute_out",
         "brain",
         "reroute_in"
       ],
-      "diverged": true,
       "measured": {
-        "reads": 40,
-        "n_frames": 40
+        "n_frames": 40,
+        "reads": 40
       },
       "provenance": "replay_twice: the re-route bias a REAL ReentrantWorkspace broadcasts to its 'action' subscriber (dark, then an ignited coalition) vs a pinned dark payload, consumed by the brain's GENUINE undirected_salience competition under equal starting weights -- the same function the wake tick runs. The orienting drive diverged, ROSE at ignition, and kept rising within the post-ignition window. The grade is what the record certifies: a dark workspace broadcasts 0.0 (reentry=OFF arm does not diverge at all), ignition alone yields the fixed base gain (association-pinned arm diverges but never grades), and the RAMP is the learned Hebbian association the port's graded delivery policy names. Self-check re-measures and requires `measured` to reproduce."
     }

@@ -366,3 +366,38 @@ itself, carries no valence, and decays toward zero as the baseline follows a per
 sensorimotor path needs the brain to be able to SAY it, not only the cockpit to draw it.** T038 →
 T039e for coverage, T039f/T039h → T039i for interoception. The poll is what turns that from a
 principle into a caught defect.
+
+### 8d. T039j — the three open tract items, and one correction to how they were described
+
+§8b and §8c left three items open in writing. All three are closed, and one of them was described
+wrongly when it was named.
+
+| item | state |
+|---|---|
+| `interoception_out` had no typed manifest edge | **closed** — `region_coherence.interoception_in`, charged |
+| the manifest shortcut medulla → insula | **closed** — the tract now relays through `thal_relay` |
+| `(thalamus, insula)` / `(medulla, thalamus)` "unimplemented" | **the description was wrong** — see below |
+
+**The correction.** Those two pairs were called unimplemented, and the count did move 23 → 21, but
+`specs/BACKLOG_RANKED.md` row 59 had already adjudicated exactly this: *do not "fix" FINDING 1 by
+adding region-to-region imports* — `p6_gate`'s `unimplemented_declared_pairs` measures **import
+topology, not traffic**, and those routes were already load-bearing through
+`thalamus/connectome_router.py`, which turns every declared connectome edge into a delayed LIF
+projection with zero direct imports. So nothing dead was brought to life. The earlier framing
+("a runtime loop closed, the import graph didn't move") implied a gap that the repo had already
+measured away, and this record supersedes it.
+
+**What was genuinely wrong, and is now fixed**, is at the TYPED layer, which is a different layer
+from the anatomy graph and always was: the manifest declared a medulla → insula edge the connectome
+declares nowhere, and one OUT port sourced no edge at all. Both are gone.
+
+**P2 was checked rather than assumed.** `connectome_router` is the incumbent and it is live. It
+propagates abstract graded drive over the anatomy graph and contains zero references to `stress`,
+`caution` or the terminus — measured, and pinned by a test that fails the day it grows into the
+typed path, because on that day these two are one job and must merge rather than sit beside one
+another.
+
+**Moving an edge moves its charge, and the gate said so before I did.** Medulla fell to
+REACHABLE-UNCHARGED and the region count went 8 → 7, red against its own floor, because the
+medulla's charge lived on the edge that moved. The relay now carries that per-edge attribution;
+the record citing the retired edge was deleted rather than left beside the new one.

@@ -72,8 +72,13 @@ TRACT = ("viscera", "nts_rvlm", "thal_relay", "insula", "gwt")
 #: homeostatic_drives (3 normalized deficits) then interoceptive_arousal ([stress, caution])
 BODY_CHANNELS = ("energy_deficit", "curiosity_deficit", "social_deficit", "stress", "caution")
 
-#: the declared edges, exactly as the manifest carries them -- the charge evidence cites them
-AROUSAL_EDGE = ("interoceptive_arousal", "arousal_out", "interoceptive_integration", "body_in")
+#: the declared edges, exactly as the manifest carries them -- the charge evidence cites them.
+#: T039j: the arousal half now arrives RELAYED. The connectome always declared
+#: `nts_rvlm -> thal_relay -> insula`; until the relay existed the manifest short-cut the middle
+#: hop and this constant named the medulla directly. The producer-sorted concat layout is
+#: UNCHANGED -- `homeostatic_drives` still sorts before `interoceptive_relay` exactly as it sorted
+#: before `interoceptive_arousal` -- so BODY_CHANNELS below is the same layout it always was.
+RELAY_EDGE = ("interoceptive_relay", "relay_out", "interoceptive_integration", "body_in")
 DRIVES_EDGE = ("homeostatic_drives", "drive_deficit_out", "interoceptive_integration", "body_in")
 
 
@@ -113,7 +118,7 @@ def declare_ports(manifest):
         ),
     )
     manifest.declare_edge(*DRIVES_EDGE)
-    manifest.declare_edge(*AROUSAL_EDGE)
+    manifest.declare_edge(*RELAY_EDGE)
 
 
 def _body_consumer_factory():
@@ -309,7 +314,7 @@ def main() -> int:
     # ---- THE BODY WIRE IS CHARGED, per edge, measured (specs/022 T026) -----------------
     from snn_data_lake.substrate.port_charge_probe import read_attribution
 
-    for edge, vary in ((AROUSAL_EDGE, "arousal"), (DRIVES_EDGE, "drives")):
+    for edge, vary in ((RELAY_EDGE, "arousal"), (DRIVES_EDGE, "drives")):
         live, pinned_out, reads, responded = _measure_edge_charge(vary)
         if reads != len(live):
             print(f"interoceptive_integration self-check FAILED: {reads} reads != {len(live)}")
@@ -361,7 +366,7 @@ def record_charge():
     (port_charge_probe.record_attribution). REFUSES a non-diverged or non-responding run."""
     from snn_data_lake.substrate.port_charge_probe import record_attribution
 
-    for edge, vary in ((AROUSAL_EDGE, "arousal"), (DRIVES_EDGE, "drives")):
+    for edge, vary in ((RELAY_EDGE, "arousal"), (DRIVES_EDGE, "drives")):
         live, pinned_out, reads, responded = _measure_edge_charge(vary)
         if live == pinned_out or not responded:
             print(f"record_charge REFUSED for {edge}: no divergence or no response")

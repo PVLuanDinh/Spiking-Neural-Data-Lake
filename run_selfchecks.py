@@ -217,6 +217,7 @@ CORE = [
     "thalamus.reentrant_workspace",  # W8: de-saturated competitive ignition + re-entry
     "thalamus.connectome_router",  # C1 batch-3: live signed/delayed spike propagation over the connectome graph
     "thalamus.gwt_deep",  # phase-binding demonstration (spiking-vs-rate control); promoted 2026-08-11
+    "thalamus.interoceptive_relay",  # T039j: thal_relay -- the declared tract hop that had no module
     "thalamus.ignition_instrument",  # T033: dual-derived ignition scorer over the re-entry stage
     # hypothalamus â€” homeostatic timing (the SCN circadian clock)
     "hypothalamus.circadian_clock",
