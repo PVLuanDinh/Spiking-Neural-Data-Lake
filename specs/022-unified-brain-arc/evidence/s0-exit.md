@@ -281,3 +281,22 @@ counter still did not move, for a different and structural reason: the only `bro
 "the perceived digit won 57 of 60 and `self` never won" — at HEAD, seed 0 gives `self` 27, digits 32,
 None 1 (harness control: `persist=False` vs the default is byte-identical, so that is not the cause).
 The half that DOES reproduce is `salience` winning 0 of 60 on all five seeds.
+
+### 8a. T039g — the SC-001 instrument was blind to clean code
+
+Recorded here because it changes what "SC-001 is 0" means. Measured over four overlay arms:
+reading the re-entrant workspace through `brain._reentrant` (the owner's PRIVATE attribute) scored
+a faculty-to-faculty read; reading the SAME object through a public accessor produced **no site at
+all — byte-identical to a negative-control arm reading an attribute nothing constructs.** So the
+only route this gate rewarded was the one that reaches past a class into its private state, and
+§6a's "the route was searched and refused" was true of a search the instrument had narrowed.
+
+T039g fixes the walk (zero delta at HEAD: fac_cross 0, cross 2, unattributable 11, before and
+after) and adds `Brain.reentrant`. Three false attributions had to be closed on the way, each one
+found by the fix breaking something that already worked — the hop is a fallback and never an
+override, it applies only to an attribute access and never a bare name, and it refuses any name
+that is also a construction token somewhere. Without those, the fix manufactured three
+faculty-to-faculty reads out of reads of the ACTION-owned shared bus.
+
+**SC-001 is still 0 and this commit claims nothing about it.** What changed is that a consumer can
+now be written the clean way and be seen.

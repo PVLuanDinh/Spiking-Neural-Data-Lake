@@ -1154,6 +1154,38 @@ class Brain:
         self._last_res = {}
         self._regions_live = set()
 
+    # ---- THE RE-ENTRANT WORKSPACE, REACHABLE WITHOUT REACHING PAST THIS CLASS (specs/022 T039g) --
+    @property
+    def reentrant(self):
+        """THE one ReentrantWorkspace of this brain, for a subscribed specialist to drain.
+
+        ADOPTS AND CONSTRUCTS NOTHING, exactly like `workspace` below it, so it adds no
+        instantiation site to `tools/p6_gate.py`'s census. None before construction succeeds and
+        None when the W8 block failed, so a consumer reads one type and never an exception.
+
+        WHY THIS EXISTS AT ALL, stated because an accessor that only wraps an attribute looks like
+        ceremony. Until T039g the p6 gate could not SEE a read taken through an accessor: measured
+        over four overlay arms, `brain.reentrant.broadcast()` produced NO SITE AT ALL -- byte-
+        identical to a negative-control arm reading an attribute nothing constructs -- while
+        `brain._reentrant.broadcast()` scored. So the only route the instrument rewarded was the one
+        that reaches past this class into its private state, and P6's own success criterion was
+        satisfiable only by writing the worse of two identical routes. The gate was fixed in the
+        same commit; this is the half that makes the fixed gate mean something.
+
+        Distinct from `workspace`: that is the GlobalWorkspace the ARM builds and this brain adopts;
+        this is the ReentrantWorkspace this module builds for itself. The P2 debt between the two
+        (docs/POLICIES.md, two workspaces run additively) is untouched here -- exposing an accessor
+        picks no winner.
+
+        THE BODY IS A PLAIN ATTRIBUTE RETURN AND MUST STAY ONE. The T039g extractor treats ONLY
+        `return self.<attr>` as a rename of an attribute; a `getattr(...)` chain is a computation
+        that may reach a different object, and is deliberately refused (that refusal has its own
+        red -- `Brain.workspace` below is exactly the case it protects, since it returns the ARM's
+        bus rather than this one). Rewriting this body as a getattr would make the accessor
+        invisible to the gate again, silently. `_reentrant` is bound to None before the W8 block
+        runs, so the plain read cannot raise."""
+        return self._reentrant
+
     # ---- THE ONE WORKSPACE (P6 prerequisite) ----------------------------------------------------
     @property
     def workspace(self):

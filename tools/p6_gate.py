@@ -674,6 +674,39 @@ class _SiteVisitor(ast.NodeVisitor):
 # order the filesystem hands them over, and `class_module` / `resolve_owner` both resolve ties by
 # first-seen -- so an unsorted walk is a census that can differ between two machines on one tree.
 # --------------------------------------------------------------------------------------------------
+def _accessors(tree):
+    """{property_name: returned_attribute_token} for every trivial read-only accessor in `tree`.
+
+    A trivial accessor is `def name(self): return self.<attr>` -- optionally decorated (@property
+    is the usual one) and optionally preceded by a docstring. NOTHING ELSE QUALIFIES, deliberately:
+    a body that computes, branches, or walks a getattr chain is not a rename of an attribute and
+    must not be treated as one. `Brain.workspace` is the worked example of what this must NOT
+    match -- it returns `getattr(getattr(self, "brain", None), "workspace", None)`, a DIFFERENT
+    object from `self._reentrant`, and its own docstring says so. Matching it would attribute reads
+    to the wrong owner, which is strictly worse than not seeing them.
+    """
+    out = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef):
+            continue
+        for fn in node.body:
+            if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            if len(fn.args.args) != 1 or fn.args.vararg or fn.args.kwarg or fn.args.kwonlyargs:
+                continue
+            body = [b for b in fn.body if not (isinstance(b, ast.Expr) and _const_str(b.value))]
+            if len(body) != 1 or not isinstance(body[0], ast.Return):
+                continue
+            val = body[0].value
+            if (
+                isinstance(val, ast.Attribute)
+                and isinstance(val.value, ast.Name)
+                and val.value.id == "self"
+            ):
+                out[fn.name] = val.attr
+    return out
+
+
 def walk(root, overlay=None):
     """Return a dict of the raw AST census.
 
@@ -717,6 +750,7 @@ def walk(root, overlay=None):
     instances = defaultdict(list)  # relpath -> [(token, class, lineno)]
     attr_class = {}  # relpath -> {attr: ClassName}
     alias = {}  # relpath -> {local: 'self.brain.workspace'}
+    accessor = {}  # relpath -> {property_name: returned_attribute_token}
     vocab = set()
     for relpath in sorted(trees):
         tree = trees[relpath]
@@ -730,18 +764,32 @@ def walk(root, overlay=None):
             vocab.update(tok for tok, _c, _l in bv.instances)
         attr_class[relpath] = bv.attr_class
         alias[relpath] = bv.alias
+        _acc = _accessors(tree)
+        if _acc:
+            accessor[relpath] = _acc
 
     # An ALIAS TOKEN IS A WORKSPACE RECEIVER. Without this the alias map is inert: `_w = self.arm.
     # workspace` records the expansion, but `_w` was never a CONSTRUCTION target so `_w.broadcast()`
     # never became a site at all. Measured before this line existed: rewriting the one cross-module
     # read as a local alias -- a refactor that removes no route -- dropped `cross_module_reads` from
     # 1 to 0 and would have reddened the build. Fixed-point because an alias may name another alias.
+    #
+    # AN ACCESSOR NAME IS ALSO A WORKSPACE RECEIVER (T039g), for exactly the reason above and
+    # measured the same way: before this, `brain.reentrant.broadcast()` produced NO SITE AT ALL --
+    # byte-identical to the negative-control arm reading an attribute nothing constructs -- while
+    # `brain._reentrant.broadcast()` scored. Folded into the SAME fixed point because an accessor
+    # may return an alias and an alias may name an accessor.
     for _ in range(4):
         grew = False
         for relpath in sorted(alias):
             for tok, src in sorted(alias[relpath].items()):
                 if tok not in vocab and src.split(".")[-1] in vocab:
                     vocab.add(tok)
+                    grew = True
+        for relpath in sorted(accessor):
+            for name, target in sorted(accessor[relpath].items()):
+                if name not in vocab and target in vocab:
+                    vocab.add(name)
                     grew = True
         if not grew:
             break
@@ -754,6 +802,7 @@ def walk(root, overlay=None):
             sites[relpath] = sorted(sv.sites, key=lambda s: (s[1], s[0], s[2], s[3]))
 
     return {
+        "accessor": accessor,
         "sites": sites,
         "instances": instances,
         "attr_class": attr_class,
@@ -796,12 +845,59 @@ def resolve_owner(relpath, receiver_text, w):
         cls = w["attr_class"].get(relpath, {}).get(segs[1])
         if cls is not None and cls in w["class_module"]:
             here = w["class_module"][cls]
-    if any(tok == token for tok, _c, _l in w["instances"].get(here, [])):
-        return here
-    owners = sorted(
-        m for m, inst in w["instances"].items() if any(t == token for t, _c, _l in inst)
-    )
-    return owners[0] if len(owners) == 1 else None
+
+    def _own(scope, tok_):
+        """The pre-T039g resolution, unchanged: the scope's own construction, else a tree-wide
+        UNIQUE construction token. Ambiguity is None, never a guess."""
+        if any(t == tok_ for t, _c, _l in w["instances"].get(scope, [])):
+            return scope
+        owners = sorted(
+            m for m, inst in w["instances"].items() if any(t == tok_ for t, _c, _l in inst)
+        )
+        return owners[0] if len(owners) == 1 else None
+
+    hit = _own(here, token)
+    if hit is not None:
+        return hit
+
+    # PUBLIC ACCESSOR HOP (T039g) -- A FALLBACK, NEVER AN OVERRIDE, and the ordering is the whole
+    # correctness argument. The first draft ran this BEFORE the resolution above and hijacked reads
+    # that already resolved: `self.arm.workspace` in live_brain moved off its true owner
+    # (brainstem/autonomous_loop.py) onto cortex/access_consciousness.py, which merely exposes an
+    # accessor of the same name -- and fac_cross went 0 -> 3, which read like a discovery. Running
+    # it only where the answer was already None means every pre-existing attribution is preserved
+    # bit for bit and this can add resolution, never move it.
+    #
+    # AND IT ONLY APPLIES TO AN ATTRIBUTE ACCESS. A BARE NAME IS NOT ONE, and refusing it is the
+    # second correctness condition this hop needed -- found by reading what the newly-attributed
+    # sites actually were. With bare names admitted, `report_channel.snapshot(workspace)` resolved
+    # to cortex/access_consciousness.py: `workspace` there is a plain FUNCTION PARAMETER whose
+    # docstring says it adopts the bus the CALLER hands it, and it collided by name alone with an
+    # unrelated module's accessor. Two more (`ws` in brain.py and in spike_chat_lake.py) were the
+    # same shape. That is guessing from a name, which this resolver already refuses for ambiguous
+    # construction tokens, and it would have manufactured three faculty-to-faculty reads out of
+    # reads of the ACTION-owned shared bus -- precisely what the both-endpoints filter exists to
+    # prevent. A dotted receiver at least states what the accessor was reached ON.
+    if len(segs) < 2:
+        return None
+    # AND IT REFUSES ANY NAME THAT IS ALSO A CONSTRUCTION TOKEN. This is the condition that keeps
+    # the hop from inventing owners, and it was found the same way as the one above -- by reading
+    # what got attributed. `ws = self.brain.workspace` expands to a DOTTED chain ending in
+    # `workspace`, which is a construction token in two modules (autonomous_loop and
+    # developmental_loop_brain) and therefore correctly ambiguous. Letting the accessor map break
+    # that tie sent the read to cortex/access_consciousness.py -- a third module that merely
+    # exposes a property of the same name -- when the object is really the arm's ACTION-owned bus.
+    # When a name is BOTH a construction token and an accessor, the ambiguity is real and
+    # UNATTRIBUTABLE is the honest answer; this hop exists only for names that no module builds.
+    if any(any(t == token for t, _c, _l in inst) for inst in w["instances"].values()):
+        return None
+    acc = w.get("accessor", {})
+    if token in acc.get(here, {}):
+        return _own(here, acc[here][token])
+    _am = sorted(m for m, d in acc.items() if token in d)
+    if len(_am) == 1:
+        return _own(_am[0], acc[_am[0]][token])
+    return None
 
 
 # --------------------------------------------------------------------------------------------------
