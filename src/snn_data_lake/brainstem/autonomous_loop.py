@@ -307,6 +307,15 @@ class AutonomousArm:
         self._last_ee = None  # previous end-effector pose -> did this tick move the body at all?
         self._ground_ticks = 0  # consecutive ground-contact ticks (postural recovery reflex)
         self._recoveries = 0  # how many times the arm had to stand back up -- a real "falls" metric
+        # Per-command running dz (metres) coincident with issuing it, measured by the tap: the
+        # recovery reflex's compass. Learned, never assumed -- the incumbent's fixed +shoulder_lift
+        # was written for the old 2-link joint A and points DOWN on the SO-101. Measured at the
+        # recovery site itself (seed 2, 600 ticks): its 189 firings moved the end effector by at
+        # most ONE MICRON in either direction (max +1e-6 m, mean -4e-6 m) and not one of them
+        # cleared the GROUND collision on the tick it fired; five of eight seeds spent 456-577 of
+        # 600 ticks in the floor.
+        self._climb = {}
+        self._climb_errors = 0  # passages whose height change could not be read
         # E-STOP SELF-CLEARS. Counted, never inferred: the authorisation to let the brain re-arm
         # itself was granted on condition that a self-clearing LOOP stays visible. A rising count
         # against a flat tick count is a brain tripping and clearing repeatedly, which is a
@@ -504,7 +513,8 @@ class AutonomousArm:
         self._int_elig = (0.0, 0.0)  # last tick's normalised (curiosity, empowerment) contributions
         self._rext_base = {}  # per-unit running mean of EXTERNAL reward (the only honest credit)
         self._rint_base = 0.0  # running mean of POSITIVE intrinsic reward -> the autotelic scale
-        self._r_mag = 0.0  # running mean |delivered reward| = the unit exploration is sized in
+        self._r_peak = 0.0  # running PEAK |EXTERNAL reward| = the stake exploration is sized in
+        self._reward_clamps = 0  # reward_fn returned outside its documented [-1, 1] contract
         self._visits = {}  # per-unit experience count -> count-based exploration decay 1/sqrt(n)
         # C3 #8: pfc_gain (the goal-directed-vs-habitual arbitration weight) is learned by CONTRAST.
         # Outcomes are accumulated separately for ticks where the top-down goal actually FLIPPED the
@@ -1013,8 +1023,9 @@ class AutonomousArm:
           * R * exp(-spread/R) against the reward scale anneals, but couples the rate to how fast
             values happen to grow, which starved the replay arm entirely (200 ticks vs 24).
         What actually governs how much a decision should be explored is how much EVIDENCE exists for
-        it, so sigma is the reward scale divided by sqrt(1 + times THIS ACTION was taken in THIS
-        unit) -- count-based optimism (Strehl & Littman), the family the audit itself recommended for
+        it, so sigma is the reward scale -- the running PEAK |delivered reward|, R-max -- divided by
+        sqrt(1 + times THIS ACTION was taken in THIS unit) -- count-based optimism (Strehl &
+        Littman), the family the audit itself recommended for
         the sibling explore_bonus. Per STATE-ACTION, not per state: a per-state count was measured
         and is not enough, because once the state is well-visited the noise decays even over actions
         that were never tried even once. That silently capped the replay probe's value margin at
@@ -1030,13 +1041,22 @@ class AutonomousArm:
         isolation probes); its magnitude no longer sets any rate."""
         # unit None = a direct query with no context identity, so there are no state-action counts
         # to be optimistic about; answer deterministically rather than at full optimism.
-        if unit is None or not self.explore or self._r_mag <= 1e-9:
+        if unit is None or not self.explore or self._r_peak <= 1e-9:
             # No reward experienced yet -- every action scores identically and there is nothing to be
             # uncertain BETWEEN, so noise buys no information and only destroys the naive tie-break
             # prior (measured: randomising it broke the learning probe's "before" readout).
             return [0.0] * len(scores)
+        # The scale is the running PEAK |r| (R-max, the optimism's own stake), not the running MEAN of
+        # |r|: that mean converges to whatever the CURRENT action pays, so under any settled action it
+        # annealed exploration to nothing -- the coverage objective's HOLD lock (sigma 0.005 against a
+        # 0.29 value margin after 400 ticks of -0.10; flip probability 0 on every tick, measured).
+        # Where |r_ext| is constant the two scales coincide EXACTLY, so a curiosity-off fixed-reward
+        # probe is byte-identical. With curiosity ON they do not coincide (the retired mean rode
+        # r_ext + r_int): the four affected probes were re-run and their asserts hold -- latent_q
+        # held-out 0.833 -> 1.000, mlp_q latent spread 0.0123 -> 0.0070, reward-shaped encoder
+        # held-out 1.000 unchanged. The `rse_hold >= 0.999` assert is zero-margin; it is covered.
         return [
-            self.rng.gauss(0.0, self._r_mag / math.sqrt(1.0 + self._visits.get((unit, a), 0)))
+            self.rng.gauss(0.0, self._r_peak / math.sqrt(1.0 + self._visits.get((unit, a), 0)))
             for a in ACTIONS
         ]
 
@@ -1754,15 +1774,63 @@ class AutonomousArm:
         default and is refused by So101Arm.apply() itself, which counts it
         (`latch_refusals`, on the arm's state). A refused clear is still a passage the
         efference-copy boundary observes (the T037 1:1 step/tick contract holds)."""
-        _pre = (self.arm.state() or {}).get("theta_deg")
+        _pre = self.arm.state() or {}
         state = self.arm.apply(command, deliberate=deliberate)  # the gate decides
         try:
             self.efferent.observe(
-                command, _pre, _commanded_deg(self.arm), (state or {}).get("theta_deg")
+                command,
+                _pre.get("theta_deg"),
+                _commanded_deg(self.arm),
+                (state or {}).get("theta_deg"),
             )
         except Exception:
             self.efferent.tap_errors += 1  # the passage completed; the tap's failure is counted
+        # The reflex's compass: the end effector's height change COINCIDENT with issuing this
+        # command, EMA'd over every issuance. The joints are servos that follow a target over
+        # several ticks, so one sample is lagged (it carries earlier commands' motion too). ONLY
+        # THE ARGMAX IS CONSUMED and only the argmax is trustworthy: against an independent method
+        # (from a sunken pose, repeat one token 12x and total the dz -- only shoulder_lift(-6),
+        # elbow_flex(-6) and wrist_flex(-6) climb) the argmax lands on a genuinely climbing token
+        # on 8 of 8 seeds, while the full RANK ORDER does not survive the lag (seed 3 ranks
+        # shoulder_lift(-6) BELOW shoulder_lift(+6)). Nothing may be built on this map's rank
+        # order without re-measuring it. The alternative -- scoring the reflex's own firings over
+        # its 3-tick window -- was measured worse (2026 -> 1692 cells over 8 seeds): too few
+        # samples, in a window the learner's own moves pollute.
+        # ONLY WHAT THE REFLEX CAN FIRE, AND ONLY WHEN THE BODY COULD MOVE. Restricted to `_MOTOR`
+        # because that is all `_recovery_command` reads, which also bounds the dict at 10 entries
+        # and keeps a human's cockpit jog -- issued at an unrelated pose, through this same tapped
+        # passage -- out of a reflex's evidence. Skipped while the arm is latched: the gate refuses
+        # motion there, so every issuance would fold a dz of 0.0 into the map (the review built a
+        # 300-tick E-STOP episode that shrank every entry toward zero and FLIPPED the pick).
+        if command in _MOTOR and not (_pre.get("stopped") or (state or {}).get("stopped")):
+            try:
+                dz = _ee_m(state or {})[2] - _ee_m(_pre)[2]
+                prev = self._climb.get(command)
+                self._climb[command] = (
+                    dz if prev is None else (1.0 - self._int_tau) * prev + self._int_tau * dz
+                )
+            except Exception:
+                # A body that stops reporting ee_mm freezes the compass while the reflex goes on
+                # firing whatever it last said. Counted, never inferred (the file's own norm): an
+                # empty result must not look like a dead detector.
+                self._climb_errors += 1
         return state
+
+    def _recovery_command(self):
+        """The postural-recovery token, chosen by the BODY'S OWN measured response (P1): the motor
+        token with the highest running dz in `_climb` (the tap's per-issuance statistic, see
+        apply_observed); an untried token first (optimism: unknown beats known-bad, and the map
+        fills within the first ground episodes). The incumbent fired a
+        fixed +shoulder_lift with the comment 'one +A step is the minimal motion that raises the
+        end effector' -- true of the retired 2-link body, false on the SO-101, where +shoulder_lift
+        points DOWN: its 189 firings on seed 2 moved the effector by at most one micron and not one
+        of them cleared the collision, and the floor became an absorbing state on 5 of 8 seeds."""
+        if not _MOTOR:  # a body with no rotatable joint has nothing to climb with
+            return SAFE_ACTION
+        untried = [a for a in _MOTOR if a not in self._climb]
+        if untried:
+            return untried[0]
+        return max(_MOTOR, key=lambda a: self._climb[a])
 
     def step(self, visual, temperature, audio, distance, reward_fn=None, homeostatic_load=0.0):
         """One autonomous tick. distance is the proximity scalar; reward_fn(unit, action)->[-1,1].
@@ -1959,13 +2027,11 @@ class AutonomousArm:
         if state.get("collision") == "GROUND" and not state.get("stopped"):
             self._ground_ticks += 1
             if self._ground_ticks >= _GROUND_RECOVER_TICKS:
-                # LOCAL lift, not HOME. HOME was tried first and measured NET NEGATIVE over 5 seeds
-                # at 600 ticks (84.4 -> 80.2 cells) because it resets theta to [0,0], teleporting the
-                # arm back to the origin and destroying the position it had explored to. Escaping the
-                # floor should not cost you where you were. One +A step is the minimal motion that
-                # raises the end effector (geometry: from a sunken pose, escape needs consecutive
-                # +A rotations), so the arm climbs out and carries on from where it fell.
-                state = self.apply_observed(_A_POS)  # tapped (T037): recovery is a passage
+                # Stand back up WHERE IT FELL (HOME measured net negative for recovery: it destroys
+                # the explored position). Which token climbs is the BODY'S call -- see
+                # _recovery_command: the fixed +A this site fired until 2026-08-22 pointed into the
+                # floor on this body, which is how five of eight seeds ended a run underground.
+                state = self.apply_observed(self._recovery_command())  # tapped (T037): a passage
                 self._ground_ticks = 0
                 self._recoveries += 1
         else:
@@ -2038,6 +2104,16 @@ class AutonomousArm:
                 )
         if reward_fn is not None or r_int != 0.0:
             r_ext = reward_fn(unit, action) if reward_fn is not None else 0.0
+            if r_ext < -1.0 or r_ext > 1.0:
+                # `reward_fn(unit, action) -> [-1, 1]` is this method's documented contract, and it
+                # is load-bearing rather than decorative: the exploration scale below is a running
+                # PEAK, so ONE out-of-contract sample would latch sigma at that magnitude for the
+                # rest of the process (measured: a single r = 50.0 took a maximally-cautious arm
+                # from holding still on 100% of ticks to issuing motor commands on 78.5%). Clamped
+                # rather than raised -- a caller's arithmetic slip must not take the brain down
+                # mid-tick -- and COUNTED, because a silent clamp is a lie about what was asked.
+                self._reward_clamps += 1
+                r_ext = max(-1.0, min(1.0, r_ext))
             if reward_fn is not None:
                 r_ext_step = (
                     r_ext  # a real task reward this tick -> shape the encoder toward it next update
@@ -2096,11 +2172,15 @@ class AutonomousArm:
                         1.0, max(0.1, self.pfc_gain + self._pfc_lr * (self._r_ovr - self._r_hab))
                     )
             r = r_ext + r_int  # external task reward + intrinsic curiosity reward
-            self._r_mag = (  # C3 #10: the reward scale exploration noise is measured against
-                abs(r)
-                if self._r_mag <= 0.0
-                else (1.0 - self._int_tau) * self._r_mag + self._int_tau * abs(r)
-            )
+            # C3 #10: the stake exploration is sized in -- the peak of the EXTERNAL reward, which
+            # the clamp above bounds at 1.0, so sigma still decays with experience as this method's
+            # docstring promises. Two rejected forms, both measured: the running MEAN of |r| that
+            # sat here until 2026-08-22 (RETIRED, not kept beside this -- P2) converges to whatever
+            # the current action pays, which annealed exploration to nothing under any settled
+            # action; and a peak over `r` (external + intrinsic) is unbounded from the intrinsic
+            # side, so a transient curiosity spike -- not a task reward at all -- would set the
+            # exploration scale for the rest of the process (measured 5.0 after one spike).
+            self._r_peak = max(self._r_peak, abs(r_ext))
             if qsub is not None and z_lq is not None:
                 qsub.update(
                     z_lq, action, r
@@ -2109,9 +2189,27 @@ class AutonomousArm:
                 self.q[unit][action] += (
                     self.lr * self.cort.learn_rate_scale(r) * (r - self.q[unit][action])
                 )
-            self.cort.step(
-                max(0.0, -r_ext)
-            )  # stress from EXTERNAL negative reward only (curiosity is not stress)
+            # STRESS IS AN EVENT THE BODY REPORTS, NOT THE OBJECTIVE'S RUNNING OPINION. A collision
+            # is such an event and reads 1.0 -- the same convention as the reflex's own untouched
+            # cort.step(1.0). Four candidate feeds were measured against four regime reds (R1 a
+            # steady shaping cost must not pin it; R2 sustained real danger must not read calm;
+            # R3 an all-positive regime must not read stressed; R4 a constant-bad regime):
+            #   raw -r_ext (the incumbent): R1 FAILS -- the coverage objective's steady -0.10
+            #     stillness term pins it at the cap (0.3 x 0.10 / (1 - exp(-1/40)) = 1.2 > 1.0) for
+            #     400 collision-free ticks, and the 0.6 caution bias on HOLD then IS the HOLD lock;
+            #   -err (baseline-relative): R2 and R4 FAIL. `err` is zero-mean by construction, so
+            #     max(0, -err) measures reward VARIANCE, not adversity: 500 ticks in the floor at
+            #     -1.0 habituated to 0.019 (the brain least cautious where danger is constant)
+            #     while an ALL-POSITIVE varying regime read 0.482;
+            #   this rule: R1 0.082, R2 1.000, R3 0.000, and 8-seed coverage within 1% of the best.
+            # R4 IS A DELIBERATE REFRAMING, NOT A PASS: a task reward that is uniformly bad with no
+            # adverse body event now produces no stress (0.19, and that residue is real collisions).
+            # Cortisol here biases toward HOLD, amplifies aversive learning and lowers the reflex
+            # threshold -- all danger machinery -- and a uniform penalty carries no information
+            # about danger or about what to do differently, so manufacturing caution from it is the
+            # stand-still pathology in miniature. Physical danger keeps two other channels: the
+            # reflex's own cort.step(1.0) and the amygdala's learned threat term.
+            self.cort.step(1.0 if (state or {}).get("collision") else 0.0)
             if self._dopa_on:  # DOPAMINERGIC RPE + opponent anti-reward (representation-only)
                 try:
                     if self._valence is None:  # lazy build of the three spiking source nuclei
