@@ -1128,9 +1128,22 @@ class AutonomousArm:
         """Basal-ganglia Go/NoGo selection over the 3 actions. The action values are the per-channel
         cortical drive; dopamine is the winner's value confidence, DAMPED by stress + learned threat +
         interoceptive load (more caution -> less dopamine -> harder to release). The circuit disinhibits at most one
-        channel; if the tonic GPi is never overcome (no drive / low DA) it releases NOTHING, which
-        falls back to the safe action. Selection only ever picks among the SAME actions -- the gated
-        arm is untouched and the reflex/E-STOP (checked earlier in step) still preempts it."""
+        channel; if the tonic GPi is never overcome it releases NOTHING, which falls back to the safe
+        action. Selection only ever picks among the SAME actions -- the gated arm is untouched and
+        the reflex/E-STOP (checked earlier in step) still preempts it.
+
+        WHAT OVERCOMES THE TONIC GPi, MEASURED (T039d, and this paragraph replaces a claim that was
+        FALSE on the live call shape). This method used to say 'no drive -> releases NOTHING', and
+        the self-check that certified it passed a default `unit=None`, for which `_explore_noise`
+        returns zeros -- so it held at any exploration scale, including 1e6, and could never go red.
+        On the LIVE shape (a real grown unit, zero cortical drive, untried actions) the split is:
+          explore OFF -> the safe action on 200 of 200 seeds  -- the GATE adds no drive of its own;
+          explore ON  -> a non-safe action on 186 of 200 seeds -- COUNT-BASED OPTIMISM releases it.
+        The second half is not spurious motion, it is what optimism is FOR: an untried action carries
+        full optimism until it is tried, and a gate that refused to release without prior value is
+        the cold-start deadlock T038a/T038b measured (a body that will not move cannot learn that
+        moving pays). Safety does not rest on this line -- the reflex/E-STOP preempts earlier in
+        step() and every released command still passes the gated arm."""
         td = pfc_bias or [0.0] * len(
             ACTIONS
         )  # prefrontal top-down preference raises the goal action's drive
@@ -2854,14 +2867,35 @@ def main():
     amy_guard.step(**safe_ctx)
     amy_frozen1 = amy_guard.arm.state()["stopped"]
 
-    # 10. BASAL GANGLIA Go/NoGo gate wired live as the action gate: it releases the learned high-value
-    #     action, or -- with no value drive -- releases NOTHING -> the safe action (no spurious motion).
+    # 10. BASAL GANGLIA Go/NoGo gate wired live as the action gate: it releases the learned
+    #     high-value action; with no value drive the GATE adds nothing of its own, and what does
+    #     release an untried action is count-based OPTIMISM (T039d -- the old claim here said 'no
+    #     spurious motion' and was measured false on the live call shape).
     bg = AutonomousArm(seed=1, bg_gate=True)
     last_bg = None
     for _ in range(90):
         last_bg = bg.step(**a, reward_fn=reward)  # reward RELEASE
     bg_released = bg._bg_select(bg.q[last_bg["unit"]])
-    bg_null = AutonomousArm(seed=3, bg_gate=True)._bg_select(dict.fromkeys(ACTIONS, 0.0))
+
+    # THE LIVE CALL SHAPE, both arms. The retired probe passed the DEFAULT unit=None, for which
+    # `_explore_noise` returns zeros -- so it certified 'HOLD' at any exploration scale (measured:
+    # 0.0, 1.0 and 1e6 all passed) and could never go red. Passing a real grown unit is what makes
+    # each half below capable of failing, and each half is the other's red.
+    def _bg_driveless(explore):
+        rel = 0
+        for _s in range(40):
+            _arm = AutonomousArm(seed=_s, bg_gate=True, explore=explore)
+            _arm.step(**a, reward_fn=reward)
+            _u = next(iter(_arm.q))
+            _arm.q[_u] = dict.fromkeys(ACTIONS, 0.0)  # zero cortical drive
+            _arm._visits = {}  # every action untried -> full optimism where optimism is on
+            if _arm._bg_select(_arm.q[_u], unit=_u) != SAFE_ACTION:
+                rel += 1
+        return rel
+
+    bg_null_releases = _bg_driveless(explore=0.0)  # the gate alone
+    bg_optimism_releases = _bg_driveless(explore=1.0)  # optimism live
+    bg_null = SAFE_ACTION if bg_null_releases == 0 else "(released)"
     bg_guard = AutonomousArm(seed=2, bg_gate=True)  # the safety envelope must hold with it on
     bg_ev = bg_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
     bg_guard.step(**a)
@@ -2876,8 +2910,10 @@ def main():
         f"context {threat_safe:.2f} (discriminated); E-STOP freeze holds with it on ({amy_frozen1})"
     )
     print(
-        f"bg gate     : reward -> the gate releases {bg_released}; no value drive -> releases "
-        f"{bg_null} (no spurious motion); E-STOP freeze holds with it on ({bg_frozen})"
+        f"bg gate     : reward -> the gate releases {bg_released}; with NO value drive the gate "
+        f"alone releases {bg_null} ({bg_null_releases}/40 non-safe), and optimism releases an "
+        f"untried action on {bg_optimism_releases}/40 -- exploration, not spurious motion; "
+        f"E-STOP freeze holds with it on ({bg_frozen})"
     )
     print("=" * 62)
 
@@ -2903,8 +2939,16 @@ def main():
         "a BG-gated arm must still learn the rewarded action"
     )
     assert bg_released == "RELEASE", "the BG gate must release the learned high-value action"
-    assert bg_null == SAFE_ACTION, (
-        "no value drive -> the BG gate releases nothing -> the safe action (HOLD)"
+    # The PAIR, on the live call shape. Each half is the other's reachable red: if optimism ever
+    # stopped releasing, the second assert fires; if the gate itself started manufacturing drive,
+    # the first does. The retired single assert could do neither.
+    assert bg_null_releases == 0, (
+        f"with optimism OFF the BG gate must add no drive of its own -- released "
+        f"{bg_null_releases}/40 non-safe actions at zero cortical drive"
+    )
+    assert bg_optimism_releases > 0, (
+        f"count-based optimism must be able to release an UNTRIED action ({bg_optimism_releases}/40)"
+        " -- a gate that refuses without prior value is the cold-start deadlock T038a/T038b fixed"
     )
     assert bg_ev["action"] == "EMERGENCY_STOP" and bg_ev["reflex"], (
         "danger must E-STOP with the BG gate on"
