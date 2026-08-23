@@ -38,11 +38,14 @@ IGNITE, i.e. THRESHOLD MODULATION: `cortex/brain.py` feeds this terminus the dec
 (`region_coherence._adjust`, joined by noisy-OR so it adds no constant). The module is now on
 the live-import graph and the region is CHARGED.
 
-STILL OPEN, and stated rather than left to be inferred from silence: `interoception_out` is
-STILL DECLARED EDGE-LESS. The salience reaches its consumer by a direct call, not through a
-declared manifest edge, because an edge needs the consumer to carry a typed IN port
-(FR-012/FR-013) and that was not built here. So the anatomy is wired and the MANIFEST does not
-yet say so. Charge is MEASURED per edge: two replay-twice A/Bs, each varying ONE producer's
+CLOSED AT T039j, and this paragraph is corrected rather than deleted because it was WRITTEN
+here at T039f and falsified two commits later by the same session -- the comment-outliving-its-
+body shape, authored in the very module it describes. It said `interoception_out` was STILL
+DECLARED EDGE-LESS and that the manifest did not yet say what the anatomy did. It now does:
+`substrate/region_coherence` declares the typed IN port (FR-012/FR-013) the edge needed, and
+`interoception_out -> region_coherence.interoception_in` is declared and charge-measured. The
+ascending half likewise relays through `thalamus/interoceptive_relay` rather than arriving
+straight from the medulla. Charge is MEASURED per edge: two replay-twice A/Bs, each varying ONE producer's
 payload while the other stays constant, so divergence attributes to THAT edge -- a single
 whole-join neuter could not separate the two producers.
 """

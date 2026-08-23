@@ -16,14 +16,22 @@ THE MODALITY INVENTORY, pinned (each row's stage and disposition stated once, he
     live sentinel protection that runs today remains 014's guard inside
     AutonomousArm.step, untouched. Presence is not participation; these two rules are
     presence, disclosed as such, until their producer arrives.
-  * INTEROCEPTION -- S0 PRODUCER TRACT DECLARED, TERMINUS STILL OPEN, stated exactly:
-    T026 declared medulla arousal_out + hypothalamus drive_deficit_out -> insula
-    body_in, and insula's `interoception_out` remains EDGE-LESS with the insula module's
-    dormancy `wire` row OPEN (its coalition consumer is bound to the S0 exit, T039).
-    The LIVE interoceptive channels the arm's coalitions carry (T031) read the arm's
-    OWN medullary organ, not the insula tract. This boundary declares NO second
-    interoceptive row (P2); an earlier draft of this paragraph claimed the tract
-    terminated at T031's coalition channels, and the review measured that edge absent.
+  * INTEROCEPTION -- S0 TRACT COMPLETE AT THE TYPED LAYER as of T039f/T039j, and this
+    paragraph is rewritten rather than amended because every clause of the previous one
+    described a state that no longer exists (it said the terminus was still open, that
+    `interoception_out` remained EDGE-LESS, that the insula's dormancy `wire` row was
+    OPEN, and that its coalition consumer was bound to the S0 exit). What is true now:
+    the tract runs medulla `arousal_out` -> thalamus `visceral_in`/`relay_out` ->
+    insula `body_in` -> `interoception_out` -> `region_coherence.interoception_in`,
+    every edge carrying a measured replay-twice attribution, and the insula's dormancy
+    row is RETIRED. The coalition consumer that row once promised is NOT pending -- it
+    was measured OUT OF RANGE at T039b (the bus admits on a floor of 0.5505 while
+    `feeling_salience` peaks at 0.2798) and REFUSED; the sink that works is threshold
+    modulation. The LIVE interoceptive channels the arm's coalitions carry (T031) still
+    read the arm's OWN medullary organ, not the insula tract -- that half is unchanged.
+    This boundary declares NO second interoceptive row (P2); an earlier draft claimed the
+    tract terminated at T031's coalition channels, and the review measured that edge
+    absent.
   * VISION / AUDITION -- S1, DISPOSITIONED NOT DECLARED (the T028 precedent: an edge
     lands WITH its consumer): the real-percept attention streams exist
     (Brain._attend_real_stream) but their transduction contract is S1's work; declaring
