@@ -31,9 +31,17 @@ WHAT IS AND IS NOT BUDGETED, decided by COUNTING FIRST (231 tracked .md, 875,704
 Budgeting the records would be the allowlist-shaped failure that killed the broad citation rule at
 475 findings. The budgeted set is FIVE standing documents -- a work list.
 
-  python -m snn_data_lake.substrate.doc_budget_gate            # report
-  python -m snn_data_lake.substrate.doc_budget_gate --assert   # exit 1 over budget or missing
+  python -m snn_data_lake.substrate.doc_budget_gate            # BARE = ASSERT: exit 1 on findings
+  python -m snn_data_lake.substrate.doc_budget_gate --assert   # same (kept for CI-spelling parity)
   python -m snn_data_lake.substrate.doc_budget_gate --self-check
+
+BARE = ASSERT since the US1 policy audit (B7, 2026-08-25). The bare form -- the ONLY form
+anything automated ran (run_selfchecks registers modules with no argv) -- printed `gate FAIL`
+and exited 0, so SECURITY.md sat 63.9% over its ceiling through three green batteries and
+POLICIES.md's enforcement table asserted `bare = assert` about a gate that had never done it.
+The identical defect was found and fixed for dependency_ledger (ci.yml records it: `a gate
+that cannot fail is not a gate; it is a log line`) and for gradient_claim_gate; this module
+never received the fix. Siblings dormancy_gate and method_dormancy_gate carry no flag at all.
 """
 
 import os
@@ -179,7 +187,11 @@ def main(argv=None):
         else:
             print(f"  BAD     {path}: ceiling must be a positive integer, got {ceiling!r}")
     print("gate OK" if not failed else f"gate FAIL: {len(failed)} budget finding(s)")
-    return 1 if (do_assert and failed) else 0
+    # BARE = ASSERT (US1 audit B7): `do_assert` is accepted for CI-spelling parity but the exit
+    # code no longer depends on it -- the registered bare form was structurally incapable of
+    # failing, which is how three OVER findings survived green batteries.
+    del do_assert
+    return 1 if failed else 0
 
 
 def _selfcheck():
