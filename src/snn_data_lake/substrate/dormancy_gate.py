@@ -258,6 +258,18 @@ EXEMPT = {
         "promised; this row prints on the standing-TODO arm every run until T043 lands its "
         "import or the module is retired under P2",
     ),
+    "growth_program": (
+        "wire",
+        "specs/022 T042: the one-shared-program locality layer + scaffold-region refusal "
+        "(P8 invention #7's enforcement infrastructure; its reds run in its own "
+        "self-check). No live-path importer YET by construction -- and, per the T042 "
+        "panel's M3, stated precisely: T046 is the one task row whose TEXT reaches this "
+        "module's content (the pinned growable set its coverage red counts over); T043 "
+        "and T047 are expected composers but their rows do not name this module, so they "
+        "confer nothing yet. Post-B3 discipline: no immovable bound; this row prints on "
+        "the standing-TODO arm every run until a consumer lands or the module is retired "
+        "under P2",
+    ),
     "cortical_microcircuit": (
         "permanent",
         "REFERENCE MODEL: Potjans-Diesmann 2014 validation dynamics. CORRECTED 2026-08-16 -- this "

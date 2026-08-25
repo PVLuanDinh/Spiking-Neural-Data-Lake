@@ -69,7 +69,8 @@ CORE = [
     "cortex.neuronal_avalanches",
     "cortex.cortical_microcircuit",
     "cortex.cortical_prior",  # H01 human reference data: every entry carries its four attributes
-    "cortex.arealization",  # T040: exhaustive GRN admissibility census + necessity dissociation
+    "cortex.arealization",  # T040+T041: exhaustive GRN censuses + prosomeric grid + graded arm
+    "cortex.growth_program",  # T042: sealed view, shared-program counter, dilution, refusal reds
     "cortex.placement",  # grown units ordered into cortical layers by measured H01 occupancy
     "cortex.lca_sparse_coding",
     "cortex.predictive_coding",
