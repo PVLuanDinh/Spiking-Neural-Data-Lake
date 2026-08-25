@@ -312,8 +312,12 @@ now be written the clean way and be seen.
 | 5 | lake rebuild equality | GREEN | GREEN |
 
 The read: `insula/interoceptive_integration.py::_top_down` draining
-`brain.reentrant.broadcast_to("interoception")`, owner `cortex/brain.py`, both endpoints role
-FACULTY, through the public accessor rather than past it.
+`brain.reentrant.broadcast_to(SPECIALIST)` (the module constant, value `"interoception"`), owner
+`cortex/brain.py`, both endpoints role FACULTY, through the public accessor rather than past it.
+*(Quote corrected 2026-08-25, US1 audit M11: this line spelled the argument as a string literal —
+a spelling the tree does not contain, and the difference was load-bearing for the drain census,
+which resolved only literals and printed the wired specialist as NEVER DRAINED until the census
+learned module constants.)*
 
 **The counter is not the evidence; the neuter A/B is.** Same seed, 40 ticks, the only difference
 being whether the specialist reads the bus: the reading faculty's OWN output differs on **35 of

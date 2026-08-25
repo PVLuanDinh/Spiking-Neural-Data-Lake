@@ -316,11 +316,13 @@ KNOWN_READERS = {
 # gate that no realistic regression trips, which is the failure mode this project has named three
 # times. Each entry says what it asserts, why that shape, and what makes it go red.
 #
-# WHY A RATCHET AND NOT AN ARRIVAL. faculty-to-faculty reads are 0 today. An assert of the form "> 0"
-# is RED on arrival -- it fails the tree rather than gating it, and a gate that must be disabled on
-# the day it lands is not a gate. A ratchet asserts the numbers never get WORSE, has a real reachable
-# red (make it worse and it fires), and makes P6 monotone, which is the property that actually drives
-# the tree to zero.
+# WHY A RATCHET AND NOT AN ARRIVAL. faculty-to-faculty reads were 0 when this baseline landed (they
+# moved 0 -> 1 at T039h, 2026-08-22; the floor + identity now live in
+# tests/test_interoceptive_specialist.py -- US1 audit B5 caught this header still saying "are 0
+# today" three days later). An assert of the form "> 0" was RED on arrival -- it fails the tree
+# rather than gating it, and a gate that must be disabled on the day it lands is not a gate. A
+# ratchet asserts the numbers never get WORSE, has a real reachable red (make it worse and it
+# fires), and makes P6 monotone, which is the property that actually drives the tree to zero.
 #
 # RAISING A CEILING IS AN ADMISSION, NOT A FIX. If a change must raise one of these, the commit says
 # which faculty it added without a consumer and why that was the cheapest honest option.
@@ -604,6 +606,41 @@ class _SiteVisitor(ast.NodeVisitor):
         self._cls = []
         self._as_func = set()
         self._loop = {}  # loop var -> the constant strings it takes, for `for s in ("a","b")`
+        # US1 audit M11/M19: module-scope `NAME = "literal"` constants, so a drain spelled
+        # `broadcast_to(SPECIALIST)` resolves exactly like `broadcast_to("interoception")`.
+        # Without this the census printed NEVER DRAINED about the one wired specialist while
+        # the SAME report counted that drain as the one faculty-to-faculty read.
+        self._mod_const = {}
+        self._fn_depth = 0
+        # US1 audit M18: `from x import snapshot as report_record` -- bind asname -> name so a
+        # behaviour-identical rename cannot flip cross_module_reads/unread_writer_modules red.
+        self._import_alias = {}
+
+    def visit_ImportFrom(self, node):
+        for alias in node.names:
+            if alias.asname:
+                self._import_alias[alias.asname] = alias.name
+        self.generic_visit(node)
+
+    def visit_FunctionDef(self, node):
+        self._fn_depth += 1
+        self.generic_visit(node)
+        self._fn_depth -= 1
+
+    visit_AsyncFunctionDef = visit_FunctionDef
+
+    def visit_Assign(self, node):
+        # module scope only: inside a class or function, `NAME = "s"` is state, not a constant.
+        if (
+            self._fn_depth == 0
+            and not self._cls
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and isinstance(node.value, ast.Constant)
+            and isinstance(node.value.value, str)
+        ):
+            self._mod_const[node.targets[0].id] = node.value.value
+        self.generic_visit(node)
 
     def visit_ClassDef(self, node):
         self._cls.append(node.name)
@@ -631,7 +668,10 @@ class _SiteVisitor(ast.NodeVisitor):
             self._loop.pop(bound, None)
 
     def _names(self, args):
-        """The specialist name(s) an API call refers to: a string literal, or a bound loop variable."""
+        """The specialist name(s) an API call refers to: a string literal, a bound loop
+        variable, or a module-scope string constant (US1 audit M11/M19 -- the READ side had
+        only the first two while the REGISTER side's visit_For resolved loops, so a drain
+        through `SPECIALIST` was invisible and printed as NEVER DRAINED)."""
         if not args:
             return ()
         arg = args[0]
@@ -639,6 +679,8 @@ class _SiteVisitor(ast.NodeVisitor):
             return (arg.value,)
         if isinstance(arg, ast.Name) and arg.id in self._loop:
             return self._loop[arg.id]
+        if isinstance(arg, ast.Name) and arg.id in self._mod_const:
+            return (self._mod_const[arg.id],)
         return ()
 
     def _receiver(self, node):
@@ -673,12 +715,16 @@ class _SiteVisitor(ast.NodeVisitor):
             # its first ARGUMENT -- the report channel's read shape. The argument is
             # attributed exactly as a method receiver would be; without this branch the
             # walk reported cross_module_reads 1 -> 0 on a refactor that GREW consumption.
+            # US1 audit M18: resolve `import ... as` aliases first -- keying on the spelled
+            # name let a behaviour-identical rename flip TWO ratchets red, the exact class
+            # the liveness controls exist to exclude (a new arm below now pins it).
+            fname = self._import_alias.get(node.func.id, node.func.id)
             arity = len(node.args) + len(node.keywords)
-            kind = API.get((node.func.id, arity))
+            kind = API.get((fname, arity))
             if kind is not None and node.args:
                 recv = self._receiver(node.args[0])
                 if recv is not None:
-                    self.sites.append((kind, node.lineno, node.func.id, recv[1], ()))
+                    self.sites.append((kind, node.lineno, fname, recv[1], ()))
         self.generic_visit(node)
 
     def visit_Attribute(self, node):
@@ -1132,7 +1178,11 @@ def measure(root, overlay=None, conn_source=None, api=None):
             for nm in names:
                 registered.setdefault(nm, []).append(f"{relpath}:{ln}")
         for _k, _ln, meth, _r, names in per[relpath]["READ"]:
-            if meth in ("broadcast_to", "inbox"):
+            # BUS modules' own reads are self-checks proving the mechanism, not specialists
+            # draining it -- counting them put `language` (the deliberate never-draining
+            # control) in the drained set for the life of this census (US1 audit M11/M19's
+            # corroborating defect: the 3-of-6 figure was wrong in BOTH directions).
+            if meth in ("broadcast_to", "inbox") and role_of(relpath)[0] != "BUS":
                 drained.update(names)
     undrained = sorted(n for n in registered if n not in drained)
 
@@ -1392,12 +1442,26 @@ def report_criteria(res, baseline=None):
             f"  [{'OK ' if ok else 'RED'}] {name:<30} {actual:>3} {op} {base:<3}  {CRITERIA[name][1]}"
         )
     failed = [r for r in rows if not r[4]]
-    print(
-        f"\n  NOT ASSERTED, deliberately: faculty-to-faculty reads = {len(res['fac_cross'])}. "
-        "A 'must not FALL'\n  ratchet on a count that is already 0 has NO reachable red -- nothing "
-        "can drive it below zero. P8:\n  a criterion with no reachable red is DELETED, not weakened. "
-        "It becomes a floor the day it is non-zero."
-    )
+    n_fac = len(res["fac_cross"])
+    if n_fac == 0:
+        print(
+            "\n  NOT ASSERTED, deliberately: faculty-to-faculty reads = 0. A 'must not FALL'\n"
+            "  ratchet on a count that is already 0 has NO reachable red -- nothing can drive it "
+            "below zero. P8:\n  a criterion with no reachable red is DELETED, not weakened. "
+            "It becomes a floor the day it is non-zero."
+        )
+    else:
+        # US1 audit B5: this sentence hard-coded "already 0" and printed it beside a measured 1,
+        # so the gate contradicted itself in its own CI output. The floor the old sentence
+        # promised lives in tests/test_interoceptive_specialist.py, which pins the count AND the
+        # read's identity (module + owner) -- stronger than a bare integer criterion here, whose
+        # role-flip red that test already carries.
+        print(
+            f"\n  faculty-to-faculty reads = {n_fac} (moved off 0 at T039h). FLOOR + IDENTITY "
+            "pinned by\n  tests/test_interoceptive_specialist.py::"
+            "test_the_faculty_to_faculty_count_is_no_longer_zero,\n  which reds if the read "
+            "disappears or re-resolves to a non-faculty owner."
+        )
     print(
         f"  NOT ASSERTED: private instance SITES = {res['priv_sites']}, raw reads = {res['reads']}, "
         f"raw writes = {res['writes']}.\n  The site count fires on the FIX (measured: it rises on 2 "
@@ -1621,6 +1685,25 @@ def self_check(root):
     )
     lines.append("  determinism  : two walks of the same tree gave identical metrics")
 
+    # US1 audit M11/M19: the drain census must SEE the one wired drain (spelled through the
+    # module constant SPECIALIST) and must KEEP printing the deliberate control. The reachable
+    # red for the first is reverting the module-constant resolution in _names (measured: it
+    # printed NEVER DRAINED 'interoception' beside the same report's one faculty-to-faculty
+    # read); for the second, recruiting `language` as a reporter.
+    assert "interoception" not in res["undrained"], (
+        "the drain census reports the wired specialist as NEVER DRAINED -- _names stopped "
+        f"resolving module constants: {res['undrained']}"
+    )
+    assert "language" in res["undrained"], (
+        "the deliberate never-draining control left the undrained set -- either language was "
+        f"recruited (T039c's listener term loses its control) or the census went blind: "
+        f"{res['undrained']}"
+    )
+    lines.append(
+        "  drain census : the wired specialist resolves (interoception drained; language stays"
+        " the printed control)"
+    )
+
     # ---- reachable red, one constructed mutation per asserting criterion -------------------------
     live_src = os.path.join(source_dir(root), "cortex", "live_brain.py")
     with open(live_src, encoding="utf-8") as fh:
@@ -1647,12 +1730,14 @@ def self_check(root):
         ),
         (
             "cross_module_reads",
-            "delete BOTH cross-module reads (live_brain.thought + the chat adapter)",
+            "delete BOTH live_brain reads (thought + the attending-branch composition)",
             {
-                # T034: three counted reads exist now (thought + the attending-branch
-                # composition + the chat adapter, all through the report channel); the
-                # red needs the count BELOW 1, so the mutation deletes every one -- one
-                # anchor was enough only while one read was.
+                # The three counted reads are live_brain's two snapshot() calls plus the
+                # insula's broadcast_to (US1 audit M18 corrected this comment: it named
+                # "the chat adapter", but spike_chat_lake's read is UNATTRIBUTABLE -- its
+                # bus arrives by dependency injection -- and was never in the count); the
+                # red needs the count BELOW the floor, so the mutation deletes the two
+                # live_brain reads -- one anchor was enough only while one read was.
                 "cortex/live_brain.py": _mutate_text(
                     _mutate_text(
                         live_text,
@@ -1734,6 +1819,33 @@ def self_check(root):
                     "            self._p6_control_bus = GlobalWorkspace()\n"
                     "            self._reentrant = ReentrantWorkspace(",
                     "control: extra private site",
+                )
+            },
+        ),
+        (
+            "no-op refactor: `import snapshot as _p6_renamed` at both live_brain sites",
+            "same object, same call, same route -- keying on the SPELLED name flipped "
+            "cross_module_reads 3 -> 1 and unread_writer_modules 6 -> 7 on this exact rename "
+            "before the asname bind (US1 audit M18)",
+            {
+                "cortex/live_brain.py": _mutate_text(
+                    _mutate_text(
+                        live_text,
+                        "        from snn_data_lake.substrate.report_channel import snapshot\n"
+                        "\n"
+                        '        return snapshot(self.arm.workspace)["content"]',
+                        "        from snn_data_lake.substrate.report_channel import snapshot as _p6_renamed\n"
+                        "\n"
+                        '        return _p6_renamed(self.arm.workspace)["content"]',
+                        "control: as-rename (thought)",
+                    ),
+                    "            from snn_data_lake.substrate.report_channel import snapshot\n"
+                    "\n"
+                    "            rec = snapshot(self.arm.workspace)",
+                    "            from snn_data_lake.substrate.report_channel import snapshot as _p6_renamed\n"
+                    "\n"
+                    "            rec = _p6_renamed(self.arm.workspace)",
+                    "control: as-rename (attending branch)",
                 )
             },
         ),
