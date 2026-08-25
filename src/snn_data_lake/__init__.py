@@ -454,7 +454,7 @@ REGIONS = {
         "manifest_gate",  # specs/022 T019: the five contract checks + divergence red over the committed artifact; bare == assert + reds
         "port_charge_probe",  # specs/022 T021: pinned-payload neuter + margin surveillance + replay-twice A/B; bare == both controls
         "envelope_hash_gate",  # specs/022 T021b: five envelope files' bytes vs approved baseline; bare == positive control + 3 reds
-        "region_charge_gate",  # specs/022 T022: reachable AND port-charged per region (report-only until T039); bare == census + reds
+        "region_charge_gate",  # specs/022 T022: reachable AND port-charged per region (BINDING at the T039 floor since 2026-08-22); bare == census + reds
         "atlas_node_gate",  # specs/022 T024: every connectome node id named by its region or dated-EXEMPT; bare == census + probe reds
         "selfcheck_cache",  # battery carry-forward: closure-hash-verified PASS carries; bare == dependency/poison/envelope/FAIL reds
         "report_channel",  # 022 T034: typed workspace-report snapshot; the broadcast's declared consumer

@@ -406,8 +406,10 @@ EXEMPT = {
         "T012 landed as verify+flip -- the live lake deliberately stays BinLog-resident, so the "
         "bridge's consumers remain instruments (lake_migrate.iter_records, T009). The live-path "
         "consumer is the kernel block's paging tier (T013+), where sealed segments become the "
-        "read path; a bridge nothing reads by S0 EXIT (T039) is a defect, and that bound does "
-        "not move again",
+        "read path. BOUND EXPIRED AT T039 UNMET (US1 audit B3, 2026-08-25; recorded, not "
+        "re-dated -- a third extension is a defect per s0-lake-closeout): the spec is strictly "
+        "ordered and the named consumer is the US3 kernel paging tier (T064/T066), structurally "
+        "post-S0. The standing-TODO arm prints this row every run",
     ),
     "lake_engine": (
         "wire",
@@ -415,8 +417,9 @@ EXEMPT = {
         "T011 landed the ring and T012 measured the 0x08 baseline into "
         "tools/lake_append_baseline.json, but neither wired AppendBudget onto a tick -- the "
         "delta chain lives in home.py on stdlib alone (zero-dep contract), and the daemon's "
-        "tick accounting arrives with the kernel block's two-phase tick (T013+), which is now "
-        "the ONE named consumer. Bound by S0 exit (T039), not movable again",
+        "tick accounting arrives with the kernel block's two-phase tick, now scheduled as the "
+        "US3 kernel cutover (T064 names this module). BOUND EXPIRED AT T039 UNMET (US1 audit "
+        "B3, 2026-08-25; recorded, not re-dated). Printed by the standing-TODO arm every run",
     ),
     "lake_migrate": (
         "wire",
@@ -424,8 +427,9 @@ EXEMPT = {
         "T012: the close-out deliberately did NOT migrate the live lake (it stays "
         "BinLog-resident; verify+flip only), so the consumers remain instruments "
         "(lake_engine's registry-consistency assert, the T009 full-scale proof). The live "
-        "cutover migration belongs to the kernel block's paging tier (T013+). Bound by S0 "
-        "exit (T039), not movable again",
+        "cutover migration belongs to the US3 kernel paging tier (T066). BOUND EXPIRED AT "
+        "T039 UNMET (US1 audit B3, 2026-08-25; recorded, not re-dated). Printed by the "
+        "standing-TODO arm every run",
     ),
     "lake_rebuild_gate": (
         "permanent",
@@ -437,23 +441,26 @@ EXEMPT = {
         "wire",
         "specs/022 T007: the derived pointer index (sqlite WAL, stdlib). EXPIRY RE-EVALUATED "
         "AT T012: the rebuild gate (T008) consumes it as a CI instrument and the close-out "
-        "did not cut the live lake over, so the live-path consumer is the kernel block's "
-        "paged reads (T013+). Bound by S0 exit (T039), not movable again",
+        "did not cut the live lake over, so the live-path consumer is the US3 kernel block's "
+        "paged reads (T064/T066). BOUND EXPIRED AT T039 UNMET (US1 audit B3, 2026-08-25; "
+        "recorded, not re-dated). Printed by the standing-TODO arm every run",
     ),
     "lake_segments": (
         "wire",
         "specs/022 T005: the segment writer (WAL + sealed Arrow IPC). EXPIRY RE-EVALUATED AT "
         "T012: the migrator (T009) consumes it (SegmentStore) and the bridge reads its sealed "
         "arm -- instruments, not the tick -- and the close-out kept the live lake "
-        "BinLog-resident on purpose. Live-path consumer is the kernel block's paging tier "
-        "(T013+). Bound by S0 exit (T039), not movable again",
+        "BinLog-resident on purpose. Live-path consumer is the US3 kernel paging tier "
+        "(T066). BOUND EXPIRED AT T039 UNMET (US1 audit B3, 2026-08-25; recorded, not "
+        "re-dated). Printed by the standing-TODO arm every run",
     ),
     "region_charge_gate": (
         "permanent",
         "specs/022 T022: the region-granularity charge verdict (reachable AND measured "
-        "port-edge attribution; registration never greens). Report-only until T039 writes "
-        "the floor; a CI/run_selfchecks instrument, never on a tick -- the policy_manifest "
-        "disposition",
+        "port-edge attribution; registration never greens). BINDING since T039 wrote the "
+        "floor (2026-08-22; asserts charged_count >= tools/region_charge_floor.json -- this "
+        "row said report-only for three days after, US1 audit m4); a CI/run_selfchecks "
+        "instrument, never on a tick -- the policy_manifest disposition",
     ),
     "atlas_node_gate": (
         "permanent",
@@ -498,17 +505,20 @@ EXEMPT = {
         "wire",
         "specs/022 T014: the two-phase deterministic tick over kernel_state (P fixed per "
         "lineage, integer delivery, delay rings). Consumers in this same kernel block: the "
-        "determinism gate (T015) and replay gate (T017) drive it as instruments; the LIVE "
-        "consumer is the substrate cutover with the EpisodeDriver stimulus port (T033+). "
-        "Bound by S0 exit (T039), not movable",
+        "determinism gate (T015) and replay gate (T017) drive it as instruments. THE PROMISED "
+        "T033+ CONSUMER LANDED WITHOUT IMPORTING THIS MODULE -- episode_driver drives the "
+        "brain path and carries only distinct-from prose about KernelTick (measured zero "
+        "imports, US1 audit B3). The live consumer is the US3 kernel cutover (T064/T066/T070). "
+        "BOUND EXPIRED AT T039 UNMET (recorded, not re-dated). Printed by the standing-TODO arm",
     ),
     "kernel_state": (
         "wire",
         "specs/022 T013: SoA substrate state (128B-aligned blocks, contiguous faculty slices, "
         "_T_STATE-backed). Consumer is the two-phase tick in the SAME kernel block "
         "(kernel_tick, T014, the very next task); the P2 retirement of the per-object neuron "
-        "state it supersedes executes at the cutover, faculty by faculty, with parity A/Bs. "
-        "Bound by S0 exit (T039), not movable",
+        "state it supersedes executes at the cutover, faculty by faculty, with parity A/Bs -- "
+        "now the US3 kernel cutover (T064/T066/T070). BOUND EXPIRED AT T039 UNMET (US1 audit "
+        "B3, 2026-08-25; recorded, not re-dated). Printed by the standing-TODO arm every run",
     ),
     "perf_baseline": (
         "permanent",
@@ -706,6 +716,14 @@ def coverage():
         "dormant": [d.replace(_PKG + ".", "") for d in dormant],
         "stale_exempt": stale,
         "conditional_imports": conditional_import_count(),
+        # US1 audit B3: the module gate's STANDING-TODO arm, the method gate's shape. A
+        # non-permanent row is open work; seven of them carried a bound ("S0 exit (T039),
+        # not movable again") that came due with the gate silent -- the docstring's own
+        # contract ("a 'retire'/'wire' entry that outlives its wave is a standing TODO")
+        # had no printer. Report-only, never asserted: 7 rows at landing.
+        "open_dispositions": sorted(
+            (m, EXEMPT[m][0]) for m in EXEMPT if EXEMPT[m][0] != "permanent"
+        ),
     }
 
 
@@ -755,6 +773,13 @@ def main():
         f"reachable. Check the reason before deleting it: an exemption may be the only record of a "
         f"waived invariant. {cov['stale_exempt']}"
     )
+    if cov["open_dispositions"]:
+        print(
+            f"STANDING TODO -- {len(cov['open_dispositions'])} non-permanent exemption(s) still "
+            "open (module-gate arm, US1 audit B3; report-only):"
+        )
+        for m, disp in cov["open_dispositions"]:
+            print(f"    {m} ({disp})")
     print("dormancy gate OK: every brain module is reachable from a live path or explicitly exempt")
 
 
