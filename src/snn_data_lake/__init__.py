@@ -129,6 +129,7 @@ REGIONS = {
         "neuronal_avalanches",
         "cortical_microcircuit",
         "cortical_prior",  # H01 HUMAN cortex reference data: value + units + provenance + bound
+        "arealization",  # specs/022 T040: organizer fields + repression-GRN region emission (P8 #7)
         "placement",  # every grown unit gets a cortical depth, a layer and an immutable Dale sign
         "lca_sparse_coding",
         "predictive_coding",

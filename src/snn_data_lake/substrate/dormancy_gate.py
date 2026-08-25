@@ -245,6 +245,19 @@ EXEMPT = {
         "PALETTE EXAMPLE: a worked demo of the basic_components composition palette (itself permanent). "
         "The REGIONS comment claiming it is 'composed live under a local rule' was FALSE and is corrected",
     ),
+    "arealization": (
+        "wire",
+        "specs/022 T040: organizer fields + Boolean GRN machinery + the census-derived "
+        "emit_regions readout (P8 invention #7's first half; the structure theorem, its "
+        "sensitivity control, and the measured non-discrimination result run in its own "
+        "self-check). No live-path importer YET by construction. THE SPEC-BACKED CONSUMER IS "
+        "T043 (placement priors: tasks.md names GRN output = prior elsewhere); T041 extends "
+        "this same file (a same-file reader confers no reachability) and T042's row does not "
+        "name this module -- corrected per the T040 review panel's M7, which caught the first "
+        "draft of this row claiming all three. Post-B3 discipline: no immovable bound is "
+        "promised; this row prints on the standing-TODO arm every run until T043 lands its "
+        "import or the module is retired under P2",
+    ),
     "cortical_microcircuit": (
         "permanent",
         "REFERENCE MODEL: Potjans-Diesmann 2014 validation dynamics. CORRECTED 2026-08-16 -- this "
