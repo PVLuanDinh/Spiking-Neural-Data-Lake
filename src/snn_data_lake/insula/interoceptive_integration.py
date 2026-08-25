@@ -183,14 +183,23 @@ class InteroceptiveIntegration:
     """Per-channel running baselines + deviation -> one bounded feeling_salience."""
 
     def __init__(self, channels=("cardio", "respiratory", "gut"), alpha=None):
-        # P1: alpha is DERIVED from the horizon the baseline should span, not picked -- the
-        # caller states a horizon in ticks and alpha follows; the default horizon is the
-        # daemon's own day period order (~200 ticks), stated rather than hidden.
+        # P1: alpha is DERIVED from the horizon this baseline spans -- fixed here at the
+        # daemon's own day-period order (~200 ticks), with alpha following from it; a caller
+        # that needs a different timescale overrides alpha directly. (US1 audit M3: this
+        # comment used to describe a `horizon` PARAMETER the constructor never accepted.)
         self.horizon = 200
         self.alpha = (2.0 / (self.horizon + 1.0)) if alpha is None else float(alpha)
         self.channels = tuple(channels)
         self._mean = dict.fromkeys(self.channels, 0.0)
-        self._var = dict.fromkeys(self.channels, 1.0)
+        # P1: the variance prior is DERIVED from the declared port contract, not picked. The
+        # production feed is body_in, unit level01, and the largest variance any [0,1] signal
+        # can have is 0.25 (the 50/50 two-point mass at the ends) -- so the prior is the
+        # declared unit's own upper bound and the EMA can only move it toward the body's real
+        # spread. The retired seed was 1.0: 4x anything the port can produce, ~30x the settled
+        # live variance, and still suppressing salience ~31 percent at a tick-500 challenge
+        # (US1 audit M0; the 0.0 seed was measured WORSE -- a near-maximal ignition subsidy at
+        # tick 3, because the _seen guard covers only two ticks). Self-check carries the red.
+        self._var = dict.fromkeys(self.channels, 0.25)
         self._seen = 0
         self._last_salience = 0.0  # T039i: this faculty's own last output, for it to report
         self._last_top_down = 0.0  # US1 audit B4: the term observe() last APPLIED, for reporters
@@ -331,6 +340,39 @@ def main() -> int:
         print(
             f"interoceptive_integration self-check FAILED: no habituation to the new normal "
             f"(spike={spike:.4f} -> adapted={adapted:.4f})"
+        )
+        return 1
+    # ---- THE PRIOR MUST WASH OUT (US1 audit M0's criterion + its constructed red) ------
+    # After settling on a noisy level01 body, the settled variance must be within an order
+    # of magnitude of the input's own sample variance. The retired 1.0 seed FAILS this at
+    # tick 100 (reconstructed below as the red); the derived 0.25 seed passes at tick 400.
+    import random as _random
+
+    _rng = _random.Random(11)
+    _frames = [max(0.0, min(1.0, 0.3 + _rng.gauss(0.0, 0.05))) for _ in range(400)]
+    _m = sum(_frames) / len(_frames)
+    _sample_var = sum((x - _m) ** 2 for x in _frames) / len(_frames)
+    _calib = InteroceptiveIntegration(channels=("stress",))
+    for _x in _frames:
+        _calib.observe(stress=_x)
+    _settled = _calib.state()["channels"]["stress"]["var"]
+    if not (_sample_var / 10.0 <= _settled <= _sample_var * 10.0):
+        print(
+            f"interoceptive_integration self-check FAILED: settled variance {_settled:.6f} is "
+            f"not within an order of magnitude of the input's sample variance "
+            f"{_sample_var:.6f} -- the prior is arbitrating, not washing out"
+        )
+        return 1
+    _red = InteroceptiveIntegration(channels=("stress",))
+    _red._var["stress"] = 1.0  # the retired prior, reconstructed as the reachable red
+    for _x in _frames[:100]:
+        _red.observe(stress=_x)
+    _red_var = _red.state()["channels"]["stress"]["var"]
+    if _red_var <= _sample_var * 10.0:
+        print(
+            f"interoceptive_integration self-check FAILED: the reconstructed 1.0 seed reads "
+            f"{_red_var:.6f} at tick 100 (sample {_sample_var:.6f}) -- inside the criterion, "
+            f"so the red is unreachable and the criterion measures nothing"
         )
         return 1
     # ---- THE BODY WIRE IS CHARGED, per edge, measured (specs/022 T026) -----------------
