@@ -89,7 +89,13 @@ BUDGETS = {
     # e-prop consolidation debt (named OPEN at the 021 lowering above) is paid by relocating the
     # mlp_q route-rejection + gf.py adjudication narratives here byte-exact. The raise is the
     # relocation's other half -- POLICIES.md's ceiling stays LOWERED and gains real headroom.
-    "docs/POLICIES_EVIDENCE.md": 2650,
+    # RAISED 2650 -> 3550 on 2026-08-25 (US1 policy audit), in the SAME commit as the growth:
+    # POLICIES.md had sat 2.4% OVER its ceiling since T039f with nothing able to say so (the
+    # audit's B7); the discharge relocates the three P5 GPU measurement blocks (crossover
+    # 07-28, target-scale 08-03, CUDA graphs 07-28 -- 911 words by this gate's counter) here
+    # byte-exact with a pointer. Words conserved, moved not grown; POLICIES.md returns under
+    # its LOWERED ceiling with real headroom.
+    "docs/POLICIES_EVIDENCE.md": 3550,
     "docs/INVENTION_REGISTER.md": 950,  # specs/022 T002: the eight P8 invention debt packages
     # (index only -- measurements live in specs/022 evidence/). Measured 844 at landing; ceiling
     # = measured + ~106 so a ninth invention forces a deliberate ceiling raise with its reason here.

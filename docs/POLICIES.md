@@ -15,7 +15,7 @@ the rule that stops the policy from being satisfied by theater.
 | P3 no dormancy | `substrate/dormancy_gate.py` (per-MODULE), `substrate/method_dormancy_gate.py` (per-METHOD), `substrate/import_manifest.py` (cross-tier) | the charge tier |
 | P4 one brain (+ P4b partial) | `substrate/replication_guard.py`; **`substrate/lake_rebuild_gate.py` (2026-08-19, specs/022 T008)** mechanizes P4b's index-is-derived clause: delete → rebuild from a lake scan → logical-dump equality, planted-divergence red + lake-tracking control — built and its output counted (156,327 rows, equality held) BEFORE this row claimed it | P4b's remaining prose (one-lake, restart-is-not-amnesia) |
 | P5 use the GPU where it helps | — | yes |
-| **P6 mutual reach + use** | **BUILT AND ASSERTING** — `tools/p6_gate.py --assert` **and** `--self-check` (two steps in the `lint` CI job, both added 2026-08-06; the connectome-diff half is now built too). Ships as a **RATCHET**: `faculty-to-faculty > 0` is red today, so five ±1 baselines assert the structure never gets WORSE. This row said "HALF BUILT / manual and NON-asserting, not in CI", and before that "NOT built" while the tool existed | yes (provisional; a ratchet says the count did not worsen, never that P6 is satisfied — 0 faculty-to-faculty reads stands) |
+| **P6 mutual reach + use** | **BUILT AND ASSERTING** — `tools/p6_gate.py --assert` **and** `--self-check` (two steps in the `lint` CI job, both added 2026-08-06; the connectome-diff half is now built too). Ships as a **RATCHET**: five ±1 baselines assert the structure never gets WORSE. Faculty-to-faculty reads moved **0 → 1 at T039h** (neuter-verified, s0-exit.md §8b) and the count-plus-identity floor lives in `tests/test_interoceptive_specialist.py`, which reds if the read disappears or re-resolves to a non-faculty owner. This row said "`faculty-to-faculty > 0` is red today / 0 stands" for three days after the gate measured 1 — the US1 audit's B5; re-derive from the gate, never edit this row from memory | yes (provisional; a ratchet says the count did not worsen, never that P6 is satisfied — one faculty-to-faculty read is a floor, not an arrival) |
 | **P7 any dependency that helps** | **BUILT AND ASSERTING** — `tools/dependency_ledger.py --assert` **and** `--self-check` (two steps in the `lint` CI job, both added 2026-08-05; this row read "BUILT, REPORT-ONLY" and the step it described ran the tool BARE, which `main()` makes incapable of a non-zero exit) | yes (the judgement half; see P7 guard (b)) |
 | **P8 invent the method** | **BUILT AND ASSERTING** — `tools/red_reachability.py --assert` (step in the `lint` CI job) | yes (whether a criterion measures the RIGHT thing; no instrument can replace it) |
 | e-prop not backprop | **PARTIALLY — TWO gates since 2026-08-18: `substrate/eprop_transport_gate.py` (CORE, 2026-08-15)** asserts no GOVERNED module reads a weight transposed into a weight update, and reports the ungoverned tier without asserting on it. It is NOT a `.backward()` tripwire and the argument against building one is unchanged. Two rules — explicit-transpose and INDEX-SWAP (the loop spelling, 2026-08-15); `mlp_q`'s single-row-indexing spelling evades BOTH, printed on every run; **and `substrate/gradient_claim_gate.py` (scope/census)** asserts every governed learning rule is classified as owing a cosine or not, ratcheting MISSING_DECLARATION and UNDETERMINABLE (`--assert` + `--self-check`, CI lint job) | yes (everything the static rule cannot reach: whether a second matrix is a transported weight or an independently-maintained feedback matrix is semantic, and the cosine bar itself) |
@@ -383,8 +383,10 @@ counter is `ast`-based and stated here so the next reader can re-derive it rathe
 brain sets the faculty to `None` and ticks on without it — including `self_build_loop` and
 `self_mod_harness`, which *are* P0's self-building-code avenue, and `rose_language`, which is language.
 The canary derives the manifest by AST walk (never hand-maintained — the `_external_roots()` lesson) and
-asserts each target still imports. Current output: **15 ungoverned modules load-bearing for the governed
-tiers across 17 call sites.** It proves import-ability, not charge; that is deliberate, because
+asserts each target still imports. Re-derive the census with
+`python -m snn_data_lake.substrate.import_manifest` rather than quoting it from here — this sentence
+carried "15 modules / 17 call sites" while the gate printed 7 / 9 (US1 audit, M7). It proves
+import-ability, not charge; that is deliberate, because
 import-ability is precisely what a deletion breaks and what the swallows hide.
 
 **Honesty guard (the crux):** reachability proves a module is *imported*, NOT that its output changes
@@ -462,10 +464,12 @@ below was produced by the import-scoped pass described next and has NOT been re-
 predictive-coding fix — treat it as a starting list to verify, not a verdict.
 
 **Mechanization: BUILT — `substrate/method_dormancy_gate.py`, in `run_selfchecks` CORE.** A pure
-static AST pass (~1 s, no runtime cost). Current output on this tree: **56 update rules scanned,
-0 dormant, 16 UNCERTAIN, 5 `EXEMPT_METHOD` entries** (one of them an open `wire` reported as a
-standing TODO). That count is what makes it adoptable — an earlier draft of this same gate produced
-59 failures, which is the rubber-stamp shape that killed a different proposal above.
+static AST pass (~1 s, no runtime cost). Re-derive the census with
+`python -m snn_data_lake.substrate.method_dormancy_gate` rather than quoting a count from here —
+this paragraph carried "56 scanned / 16 UNCERTAIN / 5 exemptions, one standing TODO" for weeks
+while the gate printed 66 / 20 / 9 with three standing TODOs (US1 audit, M7). What made it
+adoptable is the SHAPE, which is stable: dormant asserts at 0, an earlier draft produced
+59 failures — the rubber-stamp shape that killed a different proposal above.
 
 **Three details are load-bearing, each found by implementing the naive version first and watching it
 fail.** The first two were predicted when this section was written; the third and the correction to
@@ -847,86 +851,14 @@ import time), which is precisely why this could sit unnoticed if it were not wri
 assumption.** Ship the GPU path when a benchmark on the real workload shows it faster; do not ship it
 because CUDA is available. This is P2's "better requires a measurement that exists" applied to hardware.
 
-**CROSSOVER RE-MEASURED 2026-07-28, and it MOVED — this policy asked for exactly that ("re-measure
-when populations grow; the crossover is a number, not a doctrine").** The range recorded below was
-optimistic. Measured again on the RTX 5070, torch 2.11.0+cu128, 300 iterations per point:
-
-| N | numpy | torch-CUDA | winner |
-|---:|---:|---:|---|
-| 240 | 0.0022 ms | 0.0627 ms | numpy, 34x |
-| 4,096 | 0.0028 ms | 0.0139 ms | numpy, 5x |
-| **24,576** | 0.0069 ms | 0.0136 ms | **numpy, 2x** |
-| **32,768** | 0.0075 ms | 0.0133 ms | **numpy, 1.8x** |
-| 262,144 | 0.5499 ms | 0.0133 ms | CUDA, 41x |
-
-numpy still wins at BOTH ends of the recorded 24,576-32,768 band, so the true crossover is somewhere
-between 32,768 and 262,144. The run was under machine load, which penalises numpy more than CUDA, so
-this errs in the conservative direction. The practical consequence is unchanged and now has more
-headroom: live populations of 24-240 are nowhere near it.
-
-**RE-MEASURED AT TARGET SCALE 2026-08-03, AND THE PRACTICAL CONSEQUENCE INVERTS.** Every
-measurement above is correct and every one of them is about populations of 24-240. The owner
-corrected the premise on 2026-08-03: **the live tick is meant to grow past 24,576 and far beyond,
-and the neuron population should already be at least 1,000,000.** Under that target the sentence
-"live populations of 24-240 are nowhere near it" describes the DEFECT, not the design. Measured on
-the RTX 5070 (12.8 GB), torch 2.11.0+cu128, elementwise LIF tick (decay, threshold, reset):
-
-| N | numpy CPU | torch CPU | torch CUDA | CUDA vs torch-CPU |
-|---:|---:|---:|---:|---|
-| 240 | 0.003 ms | 0.013 ms | 0.037 ms | 0.3x -- CPU wins, the toy regime |
-| 24,576 | 0.017 ms | 0.055 ms | 0.033 ms | 1.7x |
-| 1,000,000 | 4.761 ms | 0.265 ms | 0.088 ms | 3.0x (and **54x** vs numpy) |
-| 4,000,000 | 18.639 ms | 2.310 ms | 0.189 ms | 12.2x |
-| 16,000,000 | 77.674 ms | 15.711 ms | 1.552 ms | 10.1x |
-
-**SPARSE IS NOT AN OPTIMISATION AT THIS SCALE, IT IS THE ONLY REPRESENTATION THAT FITS.** Synaptic
-connectivity at fanout 100:
-
-| N | dense weight matrix | sparse COO | sparse matvec |
-|---:|---:|---:|---:|
-| 100,000 | 40 GB | 0.120 GB | 13.1 ms |
-| 1,000,000 | **4000 GB** | **1.200 GB** | 11.3 ms |
-
-A dense 1M x 1M matrix is 4000 GB against 12.8 GB of VRAM -- impossible by ~300x. And spike vectors
-at biological firing rates compress hard: at 1 percent firing, COO is 33.3x smaller than dense
-(0.12 MB vs 4.00 MB); at 2 percent, 16.7x.
-
-**What this changes, and what it does not.** The live tick at its DESIGN width is a GPU target, and
-`specs/008-vectorize-scalar-paths` carries that as a requirement rather than an option. What does
-NOT change: the deterministic CPU gate stays authoritative, `run_selfchecks` and `pytest` MUST
-remain runnable without a GPU because CI has none, and GPU reduction order is not deterministic in
-general. If reproducibility at scale and determinism cannot be reconciled, the answer is a CPU gate
-at small width plus a separately-validated GPU path at scale -- never a weakened determinism
-requirement. This entry is the re-measurement this policy asked for, applied to the target
-population rather than the current one.
-
-**CUDA GRAPHS TESTED 2026-07-28 — they move the crossover 6-8x, and the conclusion still holds.**
-The measurements above are EAGER torch, where each tiny op pays a separate kernel launch. CUDA graphs
-capture a whole op sequence and replay it with a single `cudaGraphLaunch`, which is aimed exactly at
-the CPU-dispatch overhead that made the width-38 test read 0.01x. Measured on the RTX 5070, 200
-sequential LIF-shaped ops (`v = v*decay + in; s = v >= theta; v -= theta*s`), best-of-20 after warmup:
-
-| N | numpy | CUDA graph | winner |
-|---:|---:|---:|---|
-| 24 | 0.578 ms | 1.118 ms | numpy 0.52x |
-| 240 | 0.613 ms | 1.127 ms | numpy 0.54x |
-| 1,024 | 0.788 ms | 1.129 ms | numpy 0.70x |
-| 3,072 | 1.088 ms | 1.224 ms | numpy 0.89x |
-| **4,096** | 1.233 ms | 1.225 ms | **graph 1.01x** |
-| 24,576 | 4.010 ms | 1.223 ms | graph 3.28x |
-| 65,536 | 8.975 ms | 1.425 ms | graph 6.30x |
-
-Two results, both worth keeping. **Graphs beat EAGER CUDA everywhere** (2.2 ms vs 7.4-26.6 ms on the
-same sequence) — the launch-overhead hypothesis is confirmed, and any future GPU path here should
-capture rather than dispatch. And **the crossover drops from ~24,576-32,768 to ~4,096**, because
-replay cost is flat in N while numpy's is linear.
-
-But live populations are **24-240**, still ~17x below even the improved crossover, so **the
-conclusion is unchanged: the live tick does not belong on the GPU.** This is the strongest technique
-available tested against the real shape, and it loses by 2x at our widths. Recording it under guard
-(b): "we tried CUDA graphs here and it was 0.54x" is a result, and it should stop this experiment
-being repeated a third time. The number that would change the answer is population WIDTH — at 4,096
-the GPU starts paying, so a genuinely wide population is the thing to look for, not a faster kernel.
+*(Three measurement blocks -- CROSSOVER RE-MEASURED 2026-07-28, RE-MEASURED AT TARGET SCALE
+2026-08-03, and CUDA GRAPHS TESTED 2026-07-28 -- relocated BYTE-EXACT to
+`docs/POLICIES_EVIDENCE.md` (US1 policy audit, 2026-08-25; the specs/021 US4 pattern). Their
+conclusions bind unchanged: the eager crossover sits between 32,768 and 262,144 on this card;
+at the 1M target CUDA is 3.0x torch-CPU and 54x numpy, and SPARSE is the only representation
+that fits (dense 1M x 1M = 4000 GB against 12.8 GB VRAM); CUDA graphs beat eager everywhere
+and move the crossover to ~4,096, still ~17x above live widths. Re-derive with
+`substrate/device.py::crossover()`; never quote a figure.)*
 
 **Update (2026-07-28): that width now exists, on the growth tier.** With the NG-SNN earn-your-place
 stop corrected (it had been scoring rows the solve already fit — see
@@ -1221,10 +1153,11 @@ parts, not one:
    `src/snn_data_lake/`, parses 400 of 400 files, and carries a real self-check ("is this walk still
    alive?": writer/reader modules found, classes constructed, arity split, roles re-derived).
 2. **ASSERTING AND IN CI as of 2026-08-06** — `--assert` (five criteria) and `--self-check` are both
-   CI steps. It ships as a **RATCHET, not an arrival**: `faculty-to-faculty > 0` is RED today, and a
-   gate that must be disabled on the day it lands is not a gate. Baselines are this walk's own output
-   at `4fc5fb1c`, every one ±1 from red: `private_instance_modules <= 7`, `unread_writer_modules <= 7`,
-   `undeclared_import_pairs <= 11`, `unimplemented_declared_pairs <= 21`, `cross_module_reads >= 1`.
+   CI steps. It ships as a **RATCHET, not an arrival**: at landing `faculty-to-faculty > 0` was RED
+   (it moved 0 → 1 at T039h, 2026-08-22 — the floor now lives in
+   `tests/test_interoceptive_specialist.py` with the read's identity pinned), and a gate that must
+   be disabled on the day it lands is not a gate. Baselines were this walk's own output
+   at `4fc5fb1c`, every one ±1 from red; re-derive current values from the gate, never from here.
 3. **BUILT** — the connectome-diff half derives the faculty→faculty consumption graph and diffs it
    against `connectome.py`'s declared edges, in both directions: `undeclared_import_pairs` (traffic on
    no declared route) and `unimplemented_declared_pairs` (a declared route with no traffic).
@@ -1526,11 +1459,13 @@ two mean anything:
   means the system is conscious."* P8 does not relax that, and nothing in this policy authorizes the
   system to assert its own sentience.
 - **The brain may report what it measures; it may not report what it cannot measure.** The live chat
-  path is doing the second today, and that is the first thing P8 obliges us to fix. Note precisely
-  what is wrong with it: not the ambition, and not that the answer is "yes" — but that the number
-  behind the answer is the same number for a brain, for an empty brain, and for no brain at all.
-  Faking the finish line is the one way to guarantee never reaching it, which is why the strictest
-  guard in this file sits under its most permissive policy.
+  path WAS doing the second when this policy landed, and fixing it was the first thing P8 obliged:
+  the number behind the answer was the same number for a brain, for an empty brain, and for no
+  brain at all. That closed 2026-08-04/05 (the F11 deletions recorded below; at HEAD the reply
+  differs across all three states). Open: the incumbent probe's RETIREMENT, deferred to specs/022
+  T081 — this bullet asserted the defect present-tense for three weeks after its closure (US1
+  audit, M26). Faking the finish line is the one way to guarantee never reaching it, which is why
+  the strictest guard in this file sits under its most permissive policy.
 
 ### What P8 does not relax
 

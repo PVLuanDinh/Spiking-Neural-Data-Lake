@@ -143,3 +143,85 @@ rejections that P7 would **not** overturn, and both are the correct shape:
 | **The same invention, load-bearing twice, validated once — the debt-is-proportional-to-load rule, violated** | the `(a·b)/D` fusion identity. In `cortex/vsa_reasoning.py` it carries its algebra and a live check. Reused in `cortex/access_consciousness.py::_coherence`, it claims *"FUSED, bit-exactly (v4.80)"* (`:154`) and *"bit-exact: `_coherence` is a pure function of `codes`"* (`:205`) with **no assertion anywhere comparing the fused branch against the scalar one** — the bit-exactness rests on a prose algebra argument, in the module that feeds the consciousness telemetry |
 | **Killing your own proposal before building it is the licence succeeding** | `docs/INVENTION.md:6-7` — of four proposals, three *"were killed by a property of a file that anybody could have opened, and one was killed by the algebra of its own headline metric"* |
 
+## P5 -- relocated GPU measurement forensics (US1 policy audit, 2026-08-25)
+
+**CROSSOVER RE-MEASURED 2026-07-28, and it MOVED — this policy asked for exactly that ("re-measure
+when populations grow; the crossover is a number, not a doctrine").** The range recorded below was
+optimistic. Measured again on the RTX 5070, torch 2.11.0+cu128, 300 iterations per point:
+
+| N | numpy | torch-CUDA | winner |
+|---:|---:|---:|---|
+| 240 | 0.0022 ms | 0.0627 ms | numpy, 34x |
+| 4,096 | 0.0028 ms | 0.0139 ms | numpy, 5x |
+| **24,576** | 0.0069 ms | 0.0136 ms | **numpy, 2x** |
+| **32,768** | 0.0075 ms | 0.0133 ms | **numpy, 1.8x** |
+| 262,144 | 0.5499 ms | 0.0133 ms | CUDA, 41x |
+
+numpy still wins at BOTH ends of the recorded 24,576-32,768 band, so the true crossover is somewhere
+between 32,768 and 262,144. The run was under machine load, which penalises numpy more than CUDA, so
+this errs in the conservative direction. The practical consequence is unchanged and now has more
+headroom: live populations of 24-240 are nowhere near it.
+
+**RE-MEASURED AT TARGET SCALE 2026-08-03, AND THE PRACTICAL CONSEQUENCE INVERTS.** Every
+measurement above is correct and every one of them is about populations of 24-240. The owner
+corrected the premise on 2026-08-03: **the live tick is meant to grow past 24,576 and far beyond,
+and the neuron population should already be at least 1,000,000.** Under that target the sentence
+"live populations of 24-240 are nowhere near it" describes the DEFECT, not the design. Measured on
+the RTX 5070 (12.8 GB), torch 2.11.0+cu128, elementwise LIF tick (decay, threshold, reset):
+
+| N | numpy CPU | torch CPU | torch CUDA | CUDA vs torch-CPU |
+|---:|---:|---:|---:|---|
+| 240 | 0.003 ms | 0.013 ms | 0.037 ms | 0.3x -- CPU wins, the toy regime |
+| 24,576 | 0.017 ms | 0.055 ms | 0.033 ms | 1.7x |
+| 1,000,000 | 4.761 ms | 0.265 ms | 0.088 ms | 3.0x (and **54x** vs numpy) |
+| 4,000,000 | 18.639 ms | 2.310 ms | 0.189 ms | 12.2x |
+| 16,000,000 | 77.674 ms | 15.711 ms | 1.552 ms | 10.1x |
+
+**SPARSE IS NOT AN OPTIMISATION AT THIS SCALE, IT IS THE ONLY REPRESENTATION THAT FITS.** Synaptic
+connectivity at fanout 100:
+
+| N | dense weight matrix | sparse COO | sparse matvec |
+|---:|---:|---:|---:|
+| 100,000 | 40 GB | 0.120 GB | 13.1 ms |
+| 1,000,000 | **4000 GB** | **1.200 GB** | 11.3 ms |
+
+A dense 1M x 1M matrix is 4000 GB against 12.8 GB of VRAM -- impossible by ~300x. And spike vectors
+at biological firing rates compress hard: at 1 percent firing, COO is 33.3x smaller than dense
+(0.12 MB vs 4.00 MB); at 2 percent, 16.7x.
+
+**What this changes, and what it does not.** The live tick at its DESIGN width is a GPU target, and
+`specs/008-vectorize-scalar-paths` carries that as a requirement rather than an option. What does
+NOT change: the deterministic CPU gate stays authoritative, `run_selfchecks` and `pytest` MUST
+remain runnable without a GPU because CI has none, and GPU reduction order is not deterministic in
+general. If reproducibility at scale and determinism cannot be reconciled, the answer is a CPU gate
+at small width plus a separately-validated GPU path at scale -- never a weakened determinism
+requirement. This entry is the re-measurement this policy asked for, applied to the target
+population rather than the current one.
+
+**CUDA GRAPHS TESTED 2026-07-28 — they move the crossover 6-8x, and the conclusion still holds.**
+The measurements above are EAGER torch, where each tiny op pays a separate kernel launch. CUDA graphs
+capture a whole op sequence and replay it with a single `cudaGraphLaunch`, which is aimed exactly at
+the CPU-dispatch overhead that made the width-38 test read 0.01x. Measured on the RTX 5070, 200
+sequential LIF-shaped ops (`v = v*decay + in; s = v >= theta; v -= theta*s`), best-of-20 after warmup:
+
+| N | numpy | CUDA graph | winner |
+|---:|---:|---:|---|
+| 24 | 0.578 ms | 1.118 ms | numpy 0.52x |
+| 240 | 0.613 ms | 1.127 ms | numpy 0.54x |
+| 1,024 | 0.788 ms | 1.129 ms | numpy 0.70x |
+| 3,072 | 1.088 ms | 1.224 ms | numpy 0.89x |
+| **4,096** | 1.233 ms | 1.225 ms | **graph 1.01x** |
+| 24,576 | 4.010 ms | 1.223 ms | graph 3.28x |
+| 65,536 | 8.975 ms | 1.425 ms | graph 6.30x |
+
+Two results, both worth keeping. **Graphs beat EAGER CUDA everywhere** (2.2 ms vs 7.4-26.6 ms on the
+same sequence) — the launch-overhead hypothesis is confirmed, and any future GPU path here should
+capture rather than dispatch. And **the crossover drops from ~24,576-32,768 to ~4,096**, because
+replay cost is flat in N while numpy's is linear.
+
+But live populations are **24-240**, still ~17x below even the improved crossover, so **the
+conclusion is unchanged: the live tick does not belong on the GPU.** This is the strongest technique
+available tested against the real shape, and it loses by 2x at our widths. Recording it under guard
+(b): "we tried CUDA graphs here and it was 0.54x" is a result, and it should stop this experiment
+being repeated a third time. The number that would change the answer is population WIDTH — at 4,096
+the GPU starts paying, so a genuinely wide population is the thing to look for, not a faster kernel.

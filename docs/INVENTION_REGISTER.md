@@ -1,13 +1,12 @@
 # P8 Invention Register (specs/022)
 
 Every method invented under P8 for the unified brain arc lives here with its full debt. Each
-entry owes SIX things (P8 clauses 1-5 + clause 6, adopted in specs/022): a success criterion
-with a REACHABLE RED (constructed failing input; a criterion with no red is deleted, not
-weakened); an EXTERNAL CONTROL that is not the method itself; PER-ITEM ATTRIBUTION; UNPROMPTED
-DISCLOSURE of contamination or vacuous preconditions; DELETION ON A NULL (recorded, not
-quietly dropped); and ANTI-RIGGING — every neuter enumerates ALL live readers of the neutered
-attribute, reports the isolated single-consumer counterfactual as the headline, and states
-whether the neutered information remains recoverable elsewhere. Evidence lands in
+entry owes SIX things (P8 clauses 1-5 + 6, specs/022): a success criterion with a REACHABLE
+RED (constructed failing input; no reachable red = deleted); an EXTERNAL CONTROL that is not
+the method itself; PER-ITEM ATTRIBUTION; UNPROMPTED DISCLOSURE of contamination or vacuous
+preconditions; DELETION ON A NULL (recorded); and ANTI-RIGGING — every neuter enumerates ALL
+live readers, headlines the isolated single-consumer counterfactual, and states whether the
+neutered information is recoverable elsewhere. Evidence lands in
 `specs/022-unified-brain-arc/evidence/`; this file is the index, never the measurement.
 
 ## 1. Activation-driven paging of a living substrate (L2, T066)
