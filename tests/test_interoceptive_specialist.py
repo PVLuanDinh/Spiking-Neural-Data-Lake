@@ -170,7 +170,10 @@ def _run(detach):
                 "sal": float(getattr(b, "_feeling_salience", 0.0) or 0.0),
                 "thr": float(b._reentrant.ignition_threshold),
                 "win": b._reentrant._last.get("winner"),
-                "td": (0.0 if b._insula is None else b._insula._top_down()),
+                # last_top_down(), not _top_down(): the harness is a REPORTER, and the consuming
+                # read's post-condition writes report_use -- a harness calling it contaminated
+                # the attached arm's _use every tick (US1 policy audit, B4).
+                "td": (0.0 if b._insula is None else b._insula.last_top_down()),
             }
         )
     b.close()
@@ -244,6 +247,57 @@ def test_the_language_control_is_still_intact():
         )
     finally:
         b.close()
+
+
+# ================================================================================================
+# US1 policy audit, finding B4: the instrument must not charge the listener term it reports.
+# ================================================================================================
+def test_last_top_down_reads_without_touching_the_bus():
+    """The reporter accessor is side-effect-free, and it reports something real (liveness: a dead
+    accessor returning a constant 0.0 would pass a pure no-mutation assert vacuously)."""
+    ii = InteroceptiveIntegration(channels=BODY_CHANNELS)
+    fb = _FakeBrain({"X": 0.2})
+    ii.attach(fb)
+    _settled(ii, **FRAME)
+    n_used = len(fb.reentrant.used)
+    td = ii.last_top_down()
+    assert td > 0.0, "the applied term reads 0.0 after 300 attended ticks -- dead accessor"
+    assert len(fb.reentrant.used) == n_used, (
+        "last_top_down() reported use -- the reporter accessor must never write the bus"
+    )
+
+
+def test_the_telemetry_poll_does_not_charge_the_listener_term():
+    """B4's liveness control, with the pre-fix code as the reachable red: snapshot() used to call
+    _top_down(), whose post-condition writes report_use, so the cockpit poll was the largest
+    single writer of the listener-use term (measured 37-40 of ~60 calls over 40 ticks) and the
+    only 'consumer' on every sleep tick. Polled and unpolled runs must now be byte-equal in both
+    the listener-use dict and the salience trace, warm-up window included."""
+    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.substrate.brain_telemetry import snapshot
+
+    def run(poll):
+        b = make_brain(seed=0, persist=False)
+        try:
+            sal = []
+            for _ in range(TICKS):
+                b.tick()
+                if poll:
+                    snapshot(b)
+                sal.append(float(getattr(b, "_feeling_salience", 0.0) or 0.0))
+            return dict(getattr(b._reentrant, "_use", {})), sal
+        finally:
+            b.close()
+
+    use_polled, sal_polled = run(poll=True)
+    use_quiet, sal_quiet = run(poll=False)
+    assert use_polled == use_quiet, (
+        "the telemetry poll wrote the listener-use term -- the instrument is charging the "
+        f"consumption record it reports (B4): polled={use_polled} quiet={use_quiet}"
+    )
+    assert sal_polled == sal_quiet, (
+        "the telemetry poll moved feeling_salience -- the observer changed the measured"
+    )
 
 
 if __name__ == "__main__":

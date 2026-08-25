@@ -540,7 +540,11 @@ class LiveBrain:
                 )
             try:
                 sal = float(ins.last_salience())
-                attn = float(ins._top_down())
+                # last_top_down(), NEVER _top_down(): the reply is a REPORT, and _top_down()'s
+                # post-condition writes the bus's listener-use term -- the sentence two lines up
+                # promises nothing here is recomputed, and until the US1 audit (B4) this line
+                # broke that promise.
+                attn = float(ins.last_top_down())
                 body = self.arm.interoception()
                 seen = int(getattr(ins, "_seen", 0))
             except Exception:

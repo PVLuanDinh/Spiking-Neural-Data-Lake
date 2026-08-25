@@ -215,7 +215,7 @@ PROVENANCE = {
     "coverage_scale_cells": "P1-derived workspace SCALE (lattice cells in the ball of the sampled horizontal reach); NOT a bound -- 4 of 107 landing cells lie outside it",
     "coverage_restored": "process-lifetime: cells adopted from the lake at construction (0 = cold start or refused; reason on the arm as coverage_restore_note)",
     "feeling_salience": "insula: the body's distance from its OWN running baseline (P1, EMA over a 200-tick horizon), in [0,1); joins the ONE ignition law by noisy-OR, so a deviating body ignites the workspace more easily",
-    "interoceptive_attention": "the top-down bias the re-entrant workspace broadcasts to the insula specialist; 0.0 when nothing ignited or unsubscribed; scales the deviation BEFORE the bound, never after",
+    "interoceptive_attention": "the top-down bias the insula's last observe() APPLIED (a cached read -- the live bus is never re-read by a reporter, US1 audit B4); 0.0 when nothing ignited, unsubscribed, or warming up; holds its last wake value across sleep ticks; scales the deviation BEFORE the bound, never after",
     "wake_ticks": "process-lifetime: zeroed at daemon restart, never lake-restored",
     "sleep_ticks": "process-lifetime: zeroed at daemon restart, never lake-restored",
     "nights_elapsed": "process-lifetime: zeroed at daemon restart, never lake-restored",
@@ -378,7 +378,12 @@ def snapshot(brain):
     _attn = 0.0
     if _ins is not None:
         try:
-            _attn = float(_ins._top_down())
+            # last_top_down(), NEVER _top_down(): the latter's post-condition writes the bus's
+            # listener-use term, so a snapshot() caller (the cockpit's 1 Hz poll, the daemon's
+            # Recorder) would charge the consumption record it exists to report -- and report
+            # "use" for sleep ticks the faculty never observed. US1 policy audit, finding B4;
+            # this module's own contract is "it computes no new brain state".
+            _attn = float(_ins.last_top_down())
         except Exception:
             _attn = 0.0
     out["derived"]["interoceptive_attention"] = _num(_attn)

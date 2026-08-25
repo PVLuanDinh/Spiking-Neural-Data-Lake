@@ -193,6 +193,7 @@ class InteroceptiveIntegration:
         self._var = dict.fromkeys(self.channels, 1.0)
         self._seen = 0
         self._last_salience = 0.0  # T039i: this faculty's own last output, for it to report
+        self._last_top_down = 0.0  # US1 audit B4: the term observe() last APPLIED, for reporters
 
     def attach(self, brain):
         """Hold the brain whose re-entrant workspace this faculty is subscribed to (T039h).
@@ -251,6 +252,7 @@ class InteroceptiveIntegration:
         self._seen += 1
         if not devs or self._seen <= 2:
             self._last_salience = 0.0
+            self._last_top_down = 0.0  # no term was applied on a tick that computed nothing
             return 0.0  # a baseline two samples old is not a baseline; silence over noise
         z = sum(devs) / len(devs)
         # TOP-DOWN ATTENTION ENTERS BEFORE THE BOUND, NOT AFTER IT (T039h). Scaling z and then
@@ -258,7 +260,9 @@ class InteroceptiveIntegration:
         # unattended form had -- whereas scaling the squashed value would need a clamp, and a
         # clamp here would silently hide an unbounded upstream bias instead of exposing it.
         # attention 0.0 => z unchanged => byte-identical to the pre-T039h salience.
-        z = z * (1.0 + self._top_down())
+        td = self._top_down()
+        self._last_top_down = td
+        z = z * (1.0 + td)
         self._last_salience = z / (1.0 + z)  # bounded, monotone in deviation
         return self._last_salience
 
@@ -267,6 +271,21 @@ class InteroceptiveIntegration:
         recompute it. Recomputing would advance the running baseline a second time and quietly
         make the reported number a different measurement from the one the ignition law used."""
         return float(self._last_salience)
+
+    # distinct-from: brainstem/autonomous_loop.py -- _pfc_bias COMPUTES a prefrontal action
+    #   preference; this returns a cached term and computes nothing. Read.
+    # distinct-from: cortex/access_consciousness.py -- workspace exposes an identity handle;
+    #   this reports a scalar the last observe() applied. Read.
+    def last_top_down(self) -> float:
+        """The top-down term observe() last APPLIED, for a caller that must REPORT it.
+
+        `_top_down()` is the CONSUMING read: its post-condition writes the bus's listener-use
+        term, which is correct exactly once per observed tick and nowhere else. A reporter
+        calling it re-reads the bus and charges the listener term from the instrument -- the
+        cockpit poll inflating the very consumption record US1 certified, and reporting "use"
+        for sleep ticks the faculty never observed (US1 policy audit, finding B4; the same
+        discipline last_salience() states for the baseline)."""
+        return float(self._last_top_down)
 
     def state(self) -> dict:
         return {
