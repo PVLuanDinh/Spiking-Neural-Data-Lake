@@ -253,13 +253,45 @@ class WiringManifest:
         return out
 
     def warnings(self) -> list[str]:
-        """Non-red findings: declared IN ports no edge references (the contract's warning)."""
+        """Non-red findings: a declared port that no edge connects. TWO ARMS, both directions.
+
+        IN ARM (original): an IN port no edge references -- a consumer wired to nothing.
+
+        OUT ARM (specs/022 T039l): an OUT port that sources no edge -- a producer wired to
+        nothing. It exists because the absence was MEASURED: this method filtered
+        `p.kind == "IN"` and nothing anywhere in the tree fired on a dangling OUT. That is
+        exactly how `interoceptive_integration.interoception_out` sat edge-less from T026 to
+        T039j -- the ONLY edge-less OUT port in a 24-port manifest, and no gate, warning or
+        test said so. It was found by an adversarial read OF this gate, not BY it.
+
+        SEVERITY IS A WARNING AND NOT A FINDING, AND THAT IS A DECISION, NOT AN OVERSIGHT.
+        `manifest_gate.run` returns `not findings`; warnings are reported and never enter the
+        verdict. Promoting a dangling OUT to a finding would REDDEN THE BUILD on a
+        legitimately declared-ahead port, which this repo explicitly permits --
+        interoception_out's own declaration said a declared-ahead OUT is the anatomy, not
+        force-wiring, and declaring anatomy before its consumer lands is how the manifest and
+        p6 police that wiring WHEN it lands. So the honest severity is: say it every run,
+        block nothing. A project that wants a given OUT port edged pins that BEHAVIOURALLY,
+        as tests/test_interoceptive_tract.py does.
+
+        REF ports are deliberately covered by NEITHER arm: they are the audited escape hatch
+        and have their own census, `refs()`, which enumerates every one of them by name.
+
+        MEASURED WHEN THE OUT ARM LANDED: zero edge-less OUT ports, so this arm added no
+        warning to the tree it shipped in. Its value is the next one."""
         referenced = {(e[2], e[3]) for e in self.edges}
-        return [
+        sourced = {(e[0], e[1]) for e in self.edges}
+        out = [
             f"IN port {k} is declared but unreferenced by any edge"
             for k, p in sorted(self.ports.items())
             if p.kind == "IN" and k not in referenced
         ]
+        out += [
+            f"OUT port {k} is declared but sources no edge"
+            for k, p in sorted(self.ports.items())
+            if p.kind == "OUT" and k not in sourced
+        ]
+        return out
 
     def all_findings(self) -> list[str]:
         return (
@@ -535,6 +567,51 @@ def main() -> int:
         )
     else:
         nir_note = "NIR SKIPPED LOUDLY (nir not importable here; structure checks unaffected)"
+    # ---- THE WARNING ARMS, each with its constructed red AND its control (T039l) --------
+    # A warning that cannot fire is worth exactly what a gate that cannot go red is worth.
+    _wm = WiringManifest()
+    _wm.declare_port(
+        "producer",
+        Port(
+            name="lonely_out",
+            region="substrate",
+            shape=(1,),
+            dtype="f4",
+            unit="level01",
+            encoding="SCALAR_DENSE",
+            kind="OUT",
+            declaring_module="wiring_manifest",
+            delivery_policy="all-or-none",
+        ),
+    )
+    _wm.declare_port(
+        "consumer",
+        Port(
+            name="lonely_in",
+            region="substrate",
+            shape=(1,),
+            dtype="f4",
+            unit="level01",
+            encoding="SCALAR_DENSE",
+            kind="IN",
+            declaring_module="wiring_manifest",
+            join_policy="max",
+        ),
+    )
+    _w = _wm.warnings()  # RED, both arms: nothing is edged, so BOTH ports dangle
+    assert any("OUT port" in x and "lonely_out" in x for x in _w), (
+        f"the edge-less OUT arm did not fire -- a dangling producer is invisible again: {_w}"
+    )
+    assert any("IN port" in x and "lonely_in" in x for x in _w), (
+        f"the unreferenced IN arm stopped firing: {_w}"
+    )
+    # CONTROL: edge them together and BOTH warnings must go. Without it the OUT arm could be
+    # satisfied by a method that simply warns about every OUT port it sees.
+    _wm.declare_edge("producer", "lonely_out", "consumer", "lonely_in")
+    assert _wm.warnings() == [], (
+        f"a fully edged pair still warns -- the arms warn unconditionally: {_wm.warnings()}"
+    )
+
     # The declared-anatomy census, reported from the ONE declaration path (REGISTRANTS).
     from snn_data_lake.substrate.manifest_gate import rebuild_from_registrants
 
@@ -548,7 +625,8 @@ def main() -> int:
     print(
         f"wiring_manifest self-check OK: five checks green on the constructed manifest; "
         f"undeclared-join, region-mismatch, type-mismatch, missing-endpoint and duplicate-edge "
-        f"reds all fired; {nir_note}. DECLARED ANATOMY: {state}."
+        f"reds all fired; BOTH warning arms fired on a dangling pair and both cleared once it "
+        f"was edged; {nir_note}. DECLARED ANATOMY: {state}."
     )
     return 0
 

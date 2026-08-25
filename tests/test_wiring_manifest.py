@@ -74,6 +74,68 @@ def test_five_checks_green_on_a_clean_manifest():
     assert m.warnings() == []
 
 
+def test_an_edge_less_OUT_port_warns():
+    """THE REACHABLE RED for the OUT arm (specs/022 T039l).
+
+    Before it, `warnings()` filtered `p.kind == 'IN'` and nothing in the tree fired on a
+    producer wired to nothing -- which is how `interoception_out` sat edge-less from T026 to
+    T039j, the only such port in a 24-port manifest, unremarked by any gate, warning or
+    test."""
+    m = WiringManifest()
+    m.declare_port("salience", _out())
+    w = m.warnings()
+    assert any("OUT port" in x for x in w), f"a dangling OUT port produced no warning: {w}"
+    assert "s_out" in " ".join(w)
+
+
+def test_the_OUT_arm_does_not_warn_about_an_edged_producer():
+    """THE CONTROL. Without it the arm above could be satisfied by warning about
+    EVERY OUT port -- which would fire on the whole manifest and mean nothing."""
+    m = _pair()  # one OUT, one IN, one edge between them
+    assert m.warnings() == []
+
+
+def test_the_two_arms_stay_distinguishable_in_the_text():
+    """A reader triaging a warning list needs to know whether a CONSUMER is unfed or
+    a PRODUCER unheard. They are different defects and must not read alike."""
+    m = WiringManifest()
+    m.declare_port("salience", _out())
+    m.declare_port("ws", _in())
+    w = m.warnings()
+    assert len(w) == 2, w
+    assert sum("OUT port" in x for x in w) == 1
+    assert sum(x.startswith("IN port") for x in w) == 1
+
+
+def test_a_REF_port_is_covered_by_refs_not_by_warnings():
+    """REF is the audited escape hatch with its own census; warnings() deliberately
+    covers neither direction for it, so a REF port appears in neither arm."""
+    m = WiringManifest()
+    m.declare_port(
+        "hatch",
+        Port(
+            name="ref_port",
+            region="substrate",
+            shape=(1,),
+            dtype="f4",
+            unit="level01",
+            encoding="SCALAR_DENSE",
+            kind="REF",
+            declaring_module="wiring_manifest",
+        ),
+    )
+    assert m.warnings() == []
+    assert m.refs() == [("hatch", "ref_port")]
+
+
+def test_the_committed_artifact_has_no_dangling_port_in_either_direction():
+    """The live pin. Measured at T039l: 27 ports (14 OUT, 13 IN, 0 REF), 14 edges,
+    zero danglers either way -- which is why landing the OUT arm added no warning here."""
+    pytest.importorskip("nir")
+    m = WiringManifest.load_artifact(ARTIFACT)
+    assert m.warnings() == [], f"the committed artifact has a dangling port: {m.warnings()}"
+
+
 def test_structure_and_type_reds():
     m = _pair()
     m.declare_edge("ghost", "nope", "ws", "d_in")
