@@ -728,7 +728,17 @@ class Coalition:
     Persistence: to_bytes()/from_bytes() frame the record as the lake's _T_COALITION
     payload (tag registered in substrate/home.py; an IMMORTAL class per
     contracts/lake-records.md). JSON body -- symbolic content today (T030's disclosed
-    provisional typing); the round-trip is asserted byte-exact in the self-check."""
+    provisional typing); the round-trip is asserted byte-exact in the self-check.
+
+    CONSUMER DISPOSITION (dated 2026-08-25, the T028/T037 pattern; US1 audit M10):
+    channels beyond 'salience' (arousal, caution -- live values, 40 distinct in 40 ticks)
+    are computed, journalled IMMORTAL, and consumed by NO faculty today -- the kernel's
+    as_tuple() projection drops them and from_bytes has no caller outside this module's
+    self-check. The underlying medullary signal IS charged (the T039j tract carries
+    per-edge attributions); what is unconsumed is this record's duplicate copy. The named
+    reader is the US2 memory lane -- T057's recall contract over persisted lake records.
+    If that lane lands without reading these channels, the honest P2 move is to RETIRE
+    the duplicate copy, never to invent a reader (P3 forbids the force-wire)."""
 
     __slots__ = (
         "coalition_id",
@@ -1140,8 +1150,10 @@ class GlobalWorkspace:
     def submit_coalition(self, source, content, channels):
         """T031: post a candidate with TYPED CHANNELS (data-model: channels{salience,
         valence, arousal, interoception, ...}). 'salience' is MANDATORY -- it is the
-        competition drive; every other channel rides as provenance the record persists
-        and downstream consumers (Episode consolidation, the report channel) read."""
+        competition drive; every other channel rides as provenance the record persists.
+        NO downstream consumer reads the extra channels today (this line claimed Episode
+        consolidation and the report channel did; measured, neither does -- US1 audit
+        M10; see Coalition's CONSUMER DISPOSITION for the dated named reader)."""
         ch = {k: float(v) for k, v in dict(channels).items()}
         if "salience" not in ch:
             raise ValueError("submit_coalition requires a 'salience' channel (the drive)")
@@ -3966,8 +3978,11 @@ def declare_ports(manifest):
     submits under the bus's own ARBITRATE semantics (the P6-fixed rank key -- ranked by
     final membrane, never by name -- lives in this module's kernel and its self-check);
     broadcast_out is the one genuine cross-module read (LiveBrain.thought / the chat's
-    _attended sentence), declared edge-less until the coalition channels (T031) and the
-    report channel (T034) land their consumers.
+    _attended sentence). Its declared-edge-less disposition is HALF discharged: T034's
+    consumer landed (report_channel records the discharge and names brain.report_in);
+    T031's coalition channels never got one -- their dated disposition lives on the
+    Coalition record itself (US1 audit M10 corrected this sentence, which read as if
+    both were still pending).
 
     TYPE HONESTY (review, T030; T031 DISCHARGED the record half): the buffer entry is now
     the typed Coalition record -- identity, provenance, typed channels{salience, ...} --
