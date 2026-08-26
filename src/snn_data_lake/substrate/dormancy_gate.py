@@ -262,6 +262,21 @@ EXEMPT = {
     # not compose the division machinery (the earlier "until T047 composes it" was a promise
     # at the wrong grain); composition is owed to the task that wires region-wide growth
     # from seed -- the growth-coverage gate's 1-of-10 red is its standing driver.
+    "structural_rewiring": (
+        "wire",
+        "specs/022 T048: the slow-clock structural pass (DEEP-R budget + MSP sign steering + "
+        "turnover instrument), palette element BUILT and panel-hardened; its intended IXN wire "
+        "was MEASURED AND REFUSED the same day (zero sign crossings on both live paths -- 206 "
+        "autonomous cycles + 1500 teaches, all-excitatory birth; the caller's Benna-Fusi relax "
+        "rebinds rows from the deep store above the pass, erasing the trigger; inhibitory "
+        "regens washed positive in 2 fast-clock steps -- the module docstring carries the full "
+        "record). Wiring against those measurements is force-wiring (P6's defect). DATED: the "
+        "live wire lands with T054's cerebellar tissue (the MLI OPPOSITE-SIGN pathway -- "
+        "sign-structured tissue where identity pruning is native vocabulary); the cascade "
+        "composition conflict is T051's red case, cited there. Until then the module's charged "
+        "surface is its own gate-run self-check (A/A, budget conservation past the first "
+        "event, sign steering + coin control, exact turnover, re-adoption, refusals).",
+    ),
     "genomic_bottleneck": (
         "wire",
         "specs/022 T044: the g-network (tag vectors from the T043 placement surface + one "

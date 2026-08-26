@@ -361,6 +361,7 @@ REGIONS = {
         "intrinsic_plasticity",
         "short_term_plasticity",
         "developmental_pruning",
+        "structural_rewiring",  # specs/022 T048: DEEP-R budget + MSP sign steering, slow clock
         "competitive_learning",
         "criticality_regulator",
         "meta_plasticity",

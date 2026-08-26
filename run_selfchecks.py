@@ -264,6 +264,7 @@ CORE = [
     "plasticity.intrinsic_plasticity",
     "plasticity.short_term_plasticity",
     "plasticity.developmental_pruning",
+    "plasticity.structural_rewiring",  # T048: A/A + budget-conservation + MSP sign arms
     "plasticity.competitive_learning",
     "plasticity.lifelong_consolidation",
     "plasticity.criticality_regulator",
