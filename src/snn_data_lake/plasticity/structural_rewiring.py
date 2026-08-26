@@ -21,7 +21,9 @@ builds the MLI OPPOSITE-SIGN pathway -- sign-structured tissue where identity pr
 is native vocabulary -- and lands this pass's live wire with it. The composition
 conflict with _BennaFusiConsolidation (two writers, the deep store re-imposing sign)
 is EXACTLY T051's red case (two composed rules whose naive sum is wrong vs either
-alone) and is cited there as dated, not resolved here.
+alone) -- MODELED at T051b-ii at the COMPONENT grain (rule_composer's harness:
+this module's prune x the bare cascade's diffuse step, composed; the wrapper,
+relax(), and the live wire stay undriven -- the wire is T054's, not resolved here).
 
 WHAT IT DOES. Over a population's weight rows (the harness substrate today; T054's
 tissue when the wire lands):
@@ -71,8 +73,8 @@ READ/WRITE SETS (FR-018): reads the rows' weights + the population's activity ve
 population minimum); writes weight rows ONLY (zeroing pruned slots, seeding
 regenerated ones) -- note the measured caveat: on a substrate governed by a
 consolidation cascade, a weight row is NOT the state of record and a structural write
-must also reach the cascade (the T051-dated conflict above). Neuter attribution per
-FR-018 lands WITH the T054 wire.
+must also reach the cascade (the conflict above, modeled at T051b-ii; the fix
+itself remains T054's). Neuter attribution per FR-018 lands WITH the T054 wire.
 
 WHAT THE ADOPTION OWES (P2/P8 discipline; every arm in main(), driven PAST the first
 event per the T047 lesson -- a harness that breaks at the first firing certifies a
@@ -149,8 +151,11 @@ class StructuralRewiring:
         """One structural cycle over `rows` (list of mutable weight lists). `activity`:
         one scalar per row (the stack's theta), or None (no MSP steering: regen targets
         draw uniformly -- honest degradation, not a fake counter). Returns the report
-        dict {turnover, pruned, regenerated, budget, pairs}; refuses malformed input
-        (non-finite weights, length-mismatched activity) with ValueError."""
+        dict {turnover, pruned, external_vacancies, readopted, regenerated, budget} --
+        COUNTS ONLY, no per-site pairs (this line long promised a "pairs" key the
+        report never carried; caught by T051b-ii's arm consuming the report). Refuses
+        malformed input (non-finite weights, length-mismatched activity) with
+        ValueError."""
         acts_f = None
         if activity is not None:
             if len(activity) != len(rows):

@@ -321,7 +321,10 @@ EXEMPT = {
         "record). Wiring against those measurements is force-wiring (P6's defect). DATED: the "
         "live wire lands with T054's cerebellar tissue (the MLI OPPOSITE-SIGN pathway -- "
         "sign-structured tissue where identity pruning is native vocabulary); the cascade "
-        "composition conflict is T051's red case, cited there. Until then the module's charged "
+        "composition conflict is T051's red case -- MODELED at T051b-ii at the component grain "
+        "(rule_composer harness 1b: prune x bare diffuse step; the wrapper, relax() and the "
+        "live wire stay undriven, so the model adjudicates nothing about the T054 fix). Until "
+        "then the module's charged "
         "surface is its own gate-run self-check (A/A, budget conservation past the first "
         "event, sign steering + coin control, exact turnover, re-adoption, refusals).",
     ),

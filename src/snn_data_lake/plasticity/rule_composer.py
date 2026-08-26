@@ -41,7 +41,10 @@ period-2 orbit, ENTAILED by construction and driven 100 steps to show it does
 not decay) and c=-1.5 (the open-interval red: each rule alone converges, the
 sum genuinely DIVERGES, |w| strictly increasing) with the sequential control
 converging in both. The REAL instance already measured in this tree is T048's
-structural-write x consolidation-cascade conflict, arbitrated at T051b (dated).
+structural-write x consolidation-cascade conflict, MODELED at T051b-ii at the
+COMPONENT grain (harness section 1b: incumbent diffuse-step x incumbent prune,
+composed; the wrapper, relax() -- the actual T048 erasure -- and any live path
+stay undriven; the tissue wire is T054's).
 
 ATTRIBUTION. last_attribution() returns the latest step's per-rule dw
 decomposition, cumulative |dw| totals (cumulative_abs_dw -- TOTALS, not shares),
@@ -401,6 +404,260 @@ def main():
         "converge; c=-0.5 disclosed convergent-and-faster (the sum is only wrong PAST |1+sum c|>=1)"
     )
 
+    # 1b) T051b-ii: T048's two-writer conflict pair MODELED AT THE COMPONENT GRAIN
+    #     (structural_rewiring x the Benna-Fusi cascade), expressed through the kernel.
+    #     Both component rules are AUTHORED from their incumbents and HELD to the
+    #     incumbent COMPONENT DYNAMICS (diffuse()'s fast-beaker step; rewire()'s
+    #     prune), then composed. Said plainly, what this arm does NOT drive (the
+    #     panel's finding -- "the REAL instance" was the first draft's overclaim):
+    #     the _BennaFusiConsolidation wrapper (equilibrium init where the drag term
+    #     is exactly 0, w_max=4.0, delta-vs-prev deposit); relax() -- T048's ACTUAL
+    #     erasure mechanism, which REBINDS rows from the deep store wholesale and
+    #     produces NO sign crossing (measured -0.34 then -0.289); the regen-washed-
+    #     back-in-2-steps case (regens are rng-steered, disclosed out); and any live
+    #     path at all -- StructuralRewiring has ZERO live callers (T048 reverted the
+    #     wire whole; the tissue wire is T054's). What the composition shows at this
+    #     grain: the naive SUM mispredicts the warm bare-cascade post-state by
+    #     exactly k*w and at a pruned excitatory slot drives the weight NEGATIVE
+    #     (the birth-sign violation the structural module exists to prevent), while
+    #     SEQUENTIAL reproduces the bare-cascade component step to the bit. On the
+    #     T048 fix ("a structural write must also reach the cascade"): that write
+    #     touches a SECOND substrate (the cascade state), and kernel v1's single
+    #     write target cannot hold both in one spec -- the existing target guard
+    #     (exercised by the refusal battery below at the theta construction)
+    #     refuses writes != {target}, so the fix is representable only as
+    #     per-substrate composition. A scope statement; the first draft dressed a
+    #     re-exercise of that same guard as "the adjudication record" and the
+    #     panel measured it indistinguishable from the shipped construction --
+    #     deleted, not weakened. No live stack behavior changes here.
+    from snn_data_lake.plasticity.benna_fusi import BennaFusiSynapse
+    from snn_data_lake.plasticity.structural_rewiring import StructuralRewiring
+
+    bf = BennaFusiSynapse()
+    k_drag = bf.dt * bf.g[0] / bf.c[0]  # instance-read, never retyped (T050 discipline)
+    assert 0.0 < k_drag <= 1.0, (
+        f"the drag coefficient must make diffuse a convex step (k={k_drag!r}) -- past 1.0 "
+        "the clip becomes reachable on the drag path and the in-box declaration narrows"
+    )
+    # the bit-equality arm below needs dt EXACTLY a power of two: the reassociation
+    # fl(dt*fl(g0*u1)) vs fl(fl(dt*g0)*u1) is exact only under exact scaling (panel-
+    # measured bit-equal at dt in {0.25, 0.5, 1, 2}, NOT at {0.3, 0.7, 1.3}); c[0]
+    # is STRUCTURALLY 1.0 (1.0 * c_ratio**0) and is not a condition at all -- the
+    # first draft credited "dt=c0=1", half wrong and half vacuous.
+    assert math.frexp(bf.dt)[0] == 0.5, (
+        f"dt={bf.dt!r} is not a power of two -- the sequential==cascade assert below "
+        "is bit-exact only under exact dt scaling; a non-dyadic dt needs a tol arm"
+    )
+    alg_ii = EligibilityAlgebra(term_budget=2)
+    alg_ii.declare_factor("w", "the fast beaker u[0] / the weight row slot (the shared substrate)")
+    alg_ii.declare_factor("u1", "the second beaker's level (the deep anchor's near end)")
+    alg_ii.declare_factor(
+        "s_target", "the structural target: 0.0 for a prune, +-seed-mag for a regen"
+    )
+    drag_rule = alg_ii.author("bf.anchor_drag", [(k_drag, ("u1",)), (-k_drag, ("w",))])
+    struct_rule = alg_ii.author("sr.structural_write", [(1.0, ("s_target",)), (-1.0, ("w",))])
+
+    # anchor-drag equivalence vs the incumbent diffuse(), IN-BOX states: the incumbent
+    # computes u0 + dt*(g0*(u1-u0))/c0-shaped flow from a PRE-STATE snapshot (so u[0]'s
+    # one-step update depends on (u0, u1) only -- panel-verified bit-identical across
+    # u[2] settings); the declaration computes k*u1 - k*w. Different association ->
+    # ulp-scale tol. Clip coverage needs BOTH halves (the first draft asserted only
+    # one): k <= 1 (asserted above) AND endpoints inside [-w_max, w_max] (asserted
+    # per point below) make the update a convex combination, so the clip cannot fire
+    # on the drag path IN-BOX -- and diffuse() does clip (benna_fusi clips inside the
+    # loop; a constructed out-of-box u1=40 drives declared 3.9 vs observed 0.0), but
+    # out-of-box u is unreachable through the module's own API, disclosed. The grid's
+    # u0=1.0 column sits ON the box boundary, not in its interior.
+    import sys as _sys2
+
+    _EPS2 = _sys2.float_info.epsilon
+    worst_drag = 0.0
+    n_drag = 0
+    _drag_obs = []
+    for u0 in (-0.9, -0.3, 0.0, 0.17, 0.5, 1.0):
+        for u1 in (-0.8, -0.1, 0.0, 0.25, 0.9):
+            assert abs(u0) <= bf.w_max and abs(u1) <= bf.w_max, "sweep left the box"
+            bf2 = BennaFusiSynapse()
+            bf2.u[0] = u0
+            bf2.u[1] = u1
+            declared = drag_rule.evaluate(w=u0, u1=u1)
+            bf2.diffuse(1)
+            observed = bf2.u[0] - u0
+            # 8 ulps of the term-magnitude scale: the reassociation depth is 3
+            # roundings; the band's red is measured REACHABLE (a 13-16 ulp
+            # coefficient error reds; the k+16-ulp control below drives it).
+            tol2 = 8.0 * _EPS2 * (abs(k_drag * u1) + abs(k_drag * u0) + abs(u0))
+            d2 = abs(declared - observed)
+            assert d2 <= tol2, (
+                f"anchor-drag declaration diverges from diffuse() at (u0={u0}, u1={u1}): "
+                f"|d|={d2!r} > {tol2:.1e}"
+            )
+            worst_drag = max(worst_drag, d2)
+            n_drag += 1
+            _drag_obs.append((u0, u1, observed, tol2))
+    # in-command POSITIVE CONTROL (the sweep's reachable red): a coefficient
+    # mis-declared by 32 ulps must violate the same band on the same grid.
+    _alg_bad2 = EligibilityAlgebra(term_budget=2)
+    _alg_bad2.declare_factor("w", "control copy (mis-declared drag)")
+    _alg_bad2.declare_factor("u1", "control copy (mis-declared drag)")
+    _k_bad = k_drag * (1.0 + 32.0 * _EPS2)
+    _drag_bad = _alg_bad2.author(
+        "bf.anchor_drag.misdeclared", [(_k_bad, ("u1",)), (-_k_bad, ("w",))]
+    )
+    _ctrl_hit = False
+    for u0, u1, observed, tol2 in _drag_obs:
+        if abs(_drag_bad.evaluate(w=u0, u1=u1) - observed) > tol2:
+            _ctrl_hit = True
+            break
+    assert _ctrl_hit, "the 32-ulp mis-declared drag must violate the band (dead sweep otherwise)"
+
+    # structural-write equivalence vs the incumbent rewire(), REAL prune sites made
+    # observable BY CONSTRUCTION (the panel's fix): alongside each sign flip, a
+    # previously-vacant slot is externally populated -- the module's own documented
+    # ZERO->LIVE re-adoption path -- so live == budget after the prune loop,
+    # deficit == 0, regenerated == 0, and the seeded regen RNG is NEVER CONSULTED.
+    # The first draft diluted the vacancy pool and disclosed "the floor still
+    # binds"; the panel measured that FALSE (7-9% of neighboring seed pairs fell
+    # below the floor, and +14 behavior-neutral RNG draws inside rewire() reddened
+    # it) -- the floor is now structural, not a seed draw. The first-sight prune
+    # count is NOT asserted: first sight derives the signs from these same rows,
+    # so a first-sight prune is structurally impossible (an assert there had no
+    # reachable red and was deleted, not weakened). Regens stay disclosed out of
+    # the arm entirely (regenerated == 0 is asserted).
+    import random as _random2
+
+    _rng2 = _random2.Random(7)
+    rows2 = []
+    for _r in range(4):
+        row_v = []
+        for _c in range(12):
+            if _rng2.random() < 0.5:
+                row_v.append(0.0)  # vacancies: the re-adoption slots below
+            else:
+                row_v.append(_rng2.uniform(0.2, 1.0) * (1 if _rng2.random() < 0.5 else -1))
+        rows2.append(row_v)
+    sr2 = StructuralRewiring(seed=3)
+    sr2.rewire(rows2)  # first sight: birth signs recorded (cannot prune, see above)
+    flipped = []
+    vacant0 = [(r3, c3) for r3, row3 in enumerate(rows2) for c3, v3 in enumerate(row3) if v3 == 0.0]
+    for r2 in range(4):
+        for c2 in range(12):
+            w_old2 = rows2[r2][c2]
+            if w_old2 != 0.0:
+                rows2[r2][c2] = -w_old2  # drift across zero against the birth sign
+                flipped.append((r2, c2, -w_old2))
+                break
+    assert len(flipped) == 4, (
+        f"expected one flip per row, got {len(flipped)} -- an all-zero row changed the substrate"
+    )
+    assert len(vacant0) >= len(flipped), "not enough vacant slots for the re-adoptions"
+    for _i3, (r3, c3) in enumerate(vacant0[: len(flipped)]):
+        rows2[r3][c3] = 0.3 + 0.01 * _i3  # external ZERO->LIVE: re-adopted, fills the budget
+    rep2 = sr2.rewire(rows2)
+    assert (
+        rep2["pruned"] == len(flipped)
+        and rep2["regenerated"] == 0
+        and rep2["readopted"] == len(flipped)
+    ), (
+        f"the deficit-zero construction must hold exactly (pruned={rep2['pruned']}, "
+        f"regenerated={rep2['regenerated']}, readopted={rep2['readopted']}, flips={len(flipped)})"
+    )
+    n_prune = 0
+    for r2, c2, w_flip in flipped:
+        post = rows2[r2][c2]
+        dw2 = struct_rule.evaluate(w=w_flip, s_target=0.0)
+        # the EQUIVALENCE (red reachable: an incumbent prune-target change fails
+        # HERE, correctly named -- the first draft compared w+dw to a constant 0.0,
+        # an IEEE identity true for any w, with the incumbent only filtering sites)
+        assert (w_flip + dw2) == post, (
+            f"declared prune diverges from the incumbent's post-state: {w_flip + dw2!r} vs {post!r}"
+        )
+        assert post == 0.0, f"the incumbent's prune target moved: {post!r}"
+        n_prune += 1
+
+    # THE COMPOSED MEASUREMENT: prune an inhibitory slot (w=-0.4) anchored at a
+    # positive near-deep level (u1=+0.2). The control is the warm BARE cascade
+    # driven through its own API: deposit(-w) vacates, diffuse(1) pulls back
+    # toward the anchor -- the component-grain ANALOG of T048's regen wash-back
+    # (which this arm does not drive; see the section header).
+    w0_ii, u1_ii = -0.4, 0.2
+    bf3 = BennaFusiSynapse()
+    bf3.u[0] = w0_ii
+    bf3.u[1] = u1_ii
+    bf3.deposit(0.0 - w0_ii)  # the structural prune, expressed through the incumbent API
+    _vacated = bf3.u[0]
+    bf3.diffuse(1)
+    live_post = bf3.u[0]
+
+    comp_seq = RuleComposer("sequential", target="w")
+    comp_seq.add(RuleSpec("structural", struct_rule, reads={"s_target", "w"}, writes={"w"}))
+    comp_seq.add(RuleSpec("drag", drag_rule, reads={"u1", "w"}, writes={"w"}))
+    w_seq, _p_seq = comp_seq.step(w0_ii, {"w": w0_ii, "s_target": 0.0, "u1": u1_ii})
+
+    comp_sum = RuleComposer("sum", target="w")
+    comp_sum.add(RuleSpec("structural", struct_rule, reads={"s_target", "w"}, writes={"w"}))
+    comp_sum.add(RuleSpec("drag", drag_rule, reads={"u1", "w"}, writes={"w"}))
+    w_sum, _p_sum = comp_sum.step(w0_ii, {"w": w0_ii, "s_target": 0.0, "u1": u1_ii})
+
+    assert _vacated == 0.0, "the bare-cascade prune must vacate the fast beaker exactly"
+    assert bits(w_seq) == bits(live_post), (
+        f"SEQUENTIAL must reproduce the bare-cascade component step to the bit "
+        f"(dt a power of two, asserted above): {w_seq!r} vs cascade {live_post!r}"
+    )
+    assert w_seq > 0.0 and w0_ii < 0.0, (
+        "the component-grain wash-back crossing must reproduce: an inhibitory prune "
+        "anchored at a positive near-deep level re-crosses positive (the ANALOG of "
+        "T048's regen wash-back, which this arm does not drive)"
+    )
+    _sum_err = abs(w_sum - live_post)
+    _pred_err = abs(k_drag * w0_ii)  # the sum's mispredict is exactly k*w
+    assert _sum_err > 0.0 and abs(_sum_err - _pred_err) <= 8.0 * _EPS2 * _pred_err + 1e-300, (
+        f"the naive sum must mispredict the bare-cascade post-state by exactly |k*w|: "
+        f"err={_sum_err!r} vs k*|w|={_pred_err!r}"
+    )
+
+    # the EXCITATORY instance carries the sign violation (the first draft of this
+    # assert put it on the inhibitory case and was WRONG at its own point -- there
+    # the sum overshoots on the same side; asserted above as the exact k*w
+    # mispredict): pruning w=+1 anchored at u1=+0.25, the naive sum lands at
+    # k*(u1 - w) < 0 -- it drives a pruned excitatory slot NEGATIVE, the violation
+    # the structural module's birth-sign identity exists to prevent, while the
+    # bare cascade (and sequential) stay positive.
+    w0_ex, u1_ex = 1.0, 0.25
+    bf4 = BennaFusiSynapse()
+    bf4.u[0] = w0_ex
+    bf4.u[1] = u1_ex
+    bf4.deposit(0.0 - w0_ex)
+    bf4.diffuse(1)
+    live_ex = bf4.u[0]
+    comp_sum2 = RuleComposer("sum", target="w")
+    comp_sum2.add(RuleSpec("structural", struct_rule, reads={"s_target", "w"}, writes={"w"}))
+    comp_sum2.add(RuleSpec("drag", drag_rule, reads={"u1", "w"}, writes={"w"}))
+    w_sum_ex, _p2 = comp_sum2.step(w0_ex, {"w": w0_ex, "s_target": 0.0, "u1": u1_ex})
+    assert w_sum_ex < 0.0 < live_ex, (
+        f"at a pruned EXCITATORY slot the naive sum must cross negative while the bare "
+        f"cascade stays positive (sum {w_sum_ex!r} vs live {live_ex!r})"
+    )
+    # NO dual-write refusal arm here, deliberately: the first draft dressed the
+    # kernel's generic writes-!=-target guard (already constructed by the refusal
+    # battery below at the theta case) as "the T048 adjudication record", with a
+    # bare "write" substring the panel measured satisfiable by FOUR non-dual
+    # constructions including a single-wrong-target spec -- deleted as duplicative
+    # (one mechanism per claim). The scope FACT stands in the section header: the
+    # T048 fix writes the cascade state too, and kernel v1 holds one write target
+    # per spec, so that fix is representable only as per-substrate composition.
+    print(
+        f"  RED    the T048 pair at COMPONENT grain (T051b-ii): structural x anchor-drag, both "
+        f"authored from their incumbents (drag vs diffuse() worst |d|={worst_drag:.1e} on "
+        f"{n_drag} in-box states, 32-ulp mis-declaration control REDS; structural vs rewire() "
+        f"post-state-equal on {n_prune} REAL prune sites, deficit-zero construction: regen 0, "
+        f"readopted {len(flipped)}) -- SEQUENTIAL reproduces the bare-cascade component step to "
+        f"the bit ({w_seq:.6f}, the inhibitory wash-back ANALOG); the naive SUM mispredicts by "
+        f"exactly |k*w| ({w_sum:.6f} vs cascade {live_post:.6f}) and at the EXCITATORY instance "
+        f"crosses NEGATIVE ({w_sum_ex:.6f} vs {live_ex:.6f}); wrapper/relax()/regen-case/live-"
+        f"path NOT driven (relax rebinds wholesale -- no crossing; zero live callers; T054)"
+    )
+
     # 2) Causal decomposition under sum, and the UNSOUND predictor's reachable red.
     #    The ordered-other-parts predictor is bit-exact (3 rules x 3 ablations,
     #    frozen bindings); the total-minus-part form is float-unsound -- proven by
@@ -622,13 +879,32 @@ def main():
         "composed rule, the SAME date the sibling algebra's exception now carries "
         "(one expiry, one date). The naive-sum claim is SCOPED: wrong only past "
         "|1 + sum c| >= 1 for the decay family; on (-1,0) the sum converges faster "
-        "than either rule alone. The stack MERGE (both incumbent sandwiches as "
-        "RuleSpecs, held to equivalence) is T051b's, named in its row."
+        "than either rule alone -- AND (T051b-ii) measured on the T048 conflict pair "
+        "at the COMPONENT grain: incumbent diffuse-step x incumbent prune, where the "
+        "sum mispredicts the bare-cascade post-state by exactly |k*w| and crosses "
+        "sign at an excitatory prune while sequential reproduces the component step "
+        "to the bit (exact because dt is a POWER OF TWO, asserted; c[0] is "
+        "structurally 1.0 and no condition). NOT driven, said plainly: the "
+        "_BennaFusiConsolidation wrapper, relax() -- T048's actual erasure, a "
+        "wholesale rebind with no crossing -- the regen case, and any live path "
+        "(StructuralRewiring has zero live callers; the wire is T054's). The T048 "
+        "fix writes the cascade state too -- a second substrate; kernel v1 holds "
+        "one write target per spec, so that fix is representable only as "
+        "per-substrate composition (a scope statement; the first draft's "
+        "'adjudication record' refusal arm was the generic target guard and was "
+        "deleted as duplicative). The live stack is UNCHANGED by ii. Harness "
+        "exercise values under P1 exception (c) now also include the prune arm's "
+        "seeds/geometry (7, 3; 4x12 at density 0.5), the probe points (w0/u1 "
+        "pairs), and the 8/32-ulp band factors. The stack MERGE (both incumbent "
+        "sandwiches as RuleSpecs, held to equivalence) is T051b's, named in its row."
     )
     print(
         "self-check OK: boundary-scoped naive-sum reds (orbit + open-interval divergence + "
-        "faster-convergence disclosure) + causal decomposition with the unsound predictor's "
-        "constructed bit-red + swept sequential guarantee + consumed attribution surface + 19 refusals"
+        "faster-convergence disclosure) + the T048 pair at component grain (authored-from-"
+        "incumbent structural x drag; sequential==component step to the bit, sum "
+        "sign-violates at the excitatory prune; wrapper/relax/live-path undriven, said) + "
+        "causal decomposition with the unsound predictor's constructed bit-red + swept "
+        "sequential guarantee + consumed attribution surface + 19 refusals"
     )
     return 0
 
