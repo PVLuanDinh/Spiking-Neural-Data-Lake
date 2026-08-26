@@ -118,11 +118,14 @@ def declare_ports(manifest):
     undirected-salience competition (`brain.salience_surprise_in`, loop C2's orienting
     drive -- the consumer declares the edge). The OTHER intended consumers are DATED
     FORWARD DISPOSITIONS in SYNTHESIS section 6, each discharged by the task that BUILDS
-    that consumer: |learning-progress| gating -> T046a (learning_progress.py), paging
-    prefetch -> T066 (neuron_pager.py), curriculum difficulty -> T076 (curriculum.py) --
-    the first record of this mapping was a clean 3-cycle scramble, caught by review;
-    declaring their edges today would be anatomy ahead of any consumer, the force-wiring
-    P6 forbids."""
+    that consumer: |learning-progress| gating -> T046a (learning_progress.py) --
+    DISCHARGED at T046a: `learning_progress.declare_ports` declares the edge
+    surprise_out -> surprise_in and `Brain._perceive_real` carries the stream (the T034/M10
+    convention: the discharging task annotates the disposition where it was dated) --
+    paging prefetch -> T066 (neuron_pager.py), curriculum difficulty -> T076
+    (curriculum.py) -- the first record of this mapping was a clean 3-cycle scramble,
+    caught by review; declaring a not-yet-built consumer's edge today would be anatomy
+    ahead of any consumer, the force-wiring P6 forbids."""
     from snn_data_lake.substrate.wiring_manifest import Port
 
     manifest.declare_port(

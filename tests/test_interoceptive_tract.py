@@ -71,11 +71,17 @@ def test_the_manifest_no_longer_shortcuts_the_thalamic_hop(manifest):
 
 def test_interoception_out_is_no_longer_edge_less(manifest):
     """It was the ONLY OUT port in the manifest sourcing no edge -- a declared-ahead disposition
-    carried since T026."""
+    carried since T026. The sweep pins the CURRENT declared edge-less set EXACTLY: T046a
+    declared lp_out edge-less with its consumer dated (T047's growth stop -- the T030
+    broadcast_out precedent), so the set is {lp_out} today; any UNDATED dangler still reds,
+    and T047's edge landing turns this pin red demanding the entry's removal."""
     assert INTEROCEPTION_EDGE in set(manifest.edges)
     out_ports = {k for k, p in manifest.ports.items() if p.kind == "OUT"}
     sourced = {(e[0], e[1]) for e in manifest.edges}
-    assert not (out_ports - sourced), f"OUT ports sourcing no edge: {sorted(out_ports - sourced)}"
+    declared_edge_less = {("learning_progress", "lp_out")}  # T046a, dated to T047
+    assert out_ports - sourced == declared_edge_less, (
+        f"OUT ports sourcing no edge != the declared set: {sorted(out_ports - sourced)}"
+    )
 
 
 def test_every_edge_on_the_tract_carries_a_measured_charge():

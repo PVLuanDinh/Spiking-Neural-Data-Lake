@@ -220,6 +220,16 @@ _T_GROWTH_DELTA = b"\x08"
 # lake_migrate.TAG_DISPOSITIONS) are the tag census; check BOTH before minting a tag.
 _T_COALITION = b"\x0a"
 
+# _T_GOAL added 2026-08-26 (specs/022 T046a): goal event rows -- CREATE (embedding +
+# achievement_function_ref) / LP / OUTCOME -- written by basal_ganglia/learning_progress's
+# GoalStore as JSON body rows (the _T_COALITION precedent; pack_fact is the FACT-schema
+# codec and silently drops foreign fields -- the store's round-trip red caught that draft),
+# folded to the materialized view on replay. SYNTHESIS
+# section 3.5 disposition: v1 READ-AS-IS (lake_migrate.TAG_DISPOSITIONS 0x0B; retention
+# lake_engine.RETENTION 0x0B -- IMMORTAL: the brain's own intentions are never reclaimed).
+# Both registries checked before minting, per the 0x09/0x0A lesson above.
+_T_GOAL = b"\x0b"
+
 # FULL cadence: a fresh FULL every 64 deltas bounds a cold reconstruction to <= 64 delta applies
 # after the newest FULL. A storage-layer engineering constant (same class as lake_migrate's
 # seal_every), not brain behaviour -- P1's infrastructure exception.

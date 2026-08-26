@@ -68,6 +68,12 @@ GRADIENT_CLAIM = {
         "returns rectified learning progress, max(0, slow_EMA - fast_EMA), in the units of prediction "
         "error. A MEASUREMENT of how fast learning is going, not learning",
     ),
+    "CuriosityDrive.learning_progress_abs": (
+        "NOT_A_RULE",
+        "returns |slow_EMA - fast_EMA| from the SAME state (specs/022 T046a's third-factor "
+        "readout -- a regression is progress-shaped news to a growth gate). A measurement, "
+        "not learning",
+    ),
 }
 
 
@@ -134,11 +140,33 @@ class CuriosityDrive:
         POSITIVE while the context's prediction error is FALLING (the model is still learning it); ~0 once
         the error is FLAT -- whether mastered-low OR unlearnable-high. That the high-but-flat (noisy) case
         gives ~0 -- not stuck-high -- is the anti-noisy-TV property: it is the DECREASE of a smoothed error,
-        never the raw error."""
+        never the raw error. (MEASURED at T046a and worth stating: the EMA pair converges to a difference
+        of EXACTLY 0.0 on a flat stream at EVERY error level -- the structural property the spiking
+        sibling's threshold pools lack below their calibration reference, which is why T046a's |LP|
+        facade adopts THIS drive.)"""
         st = self._ctx.get(context_key)
         if st is None:
             return 0.0
         return max(0.0, st["slow"] - st["fast"])
+
+    # distinct-from: neuromodulation/spiking_curiosity.py -- the spiking sibling of THIS
+    #   drive's rectified readout (a flag-selected coexisting pair, OPEN P2 debt per its own
+    #   docstring; its flat-error bias below the calibration reference is measured in
+    #   learning_progress.py's adoption record and re-derivable in one probe). This method
+    #   adds the |.| readout to the EMA form ONLY. Site read.
+    # distinct-from: cerebellum/jepa_world_model.py -- BRidge error transport; unrelated. Read.
+    # distinct-from: cortex/learned_evc.py -- a dopamine-gated three-factor UPDATE; this is a
+    #   read-only measurement. Site read.
+    def learning_progress_abs(self, context_key):
+        """|slow_EMA - fast_EMA| from the SAME state (specs/022 T046a): the UNRECTIFIED
+        third-factor readout. A growth gate must see a REGRESSION (error rising: fast EMA
+        above slow) as loudly as an improvement -- the reward-side rectification
+        deliberately zeroes it there, which is right for reward and wrong for a gate.
+        0.0 before any observe."""
+        st = self._ctx.get(context_key)
+        if st is None:
+            return 0.0
+        return abs(st["slow"] - st["fast"])
 
     def intrinsic_reward(self, context_key, pred_error):
         """The curiosity reward the loop ADDS to any extrinsic reward.

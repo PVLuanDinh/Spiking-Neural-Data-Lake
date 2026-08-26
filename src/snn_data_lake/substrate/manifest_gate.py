@@ -65,6 +65,12 @@ REGISTRANTS: tuple = (
     # dispositions in SYNTHESIS section 6, discharged at T046a/T066/T076)
     ("snn_data_lake.cortex.percept_surprise", "declare_ports"),
     ("snn_data_lake.cortex.brain", "declare_ports"),
+    # T046a: the |LP| third factor -- the SECOND of percept_surprise's dated forward
+    # dispositions discharged (the consumer declares the edge surprise_out -> surprise_in);
+    # lp_out is declared EDGE-LESS with T047's growth stopping criterion as the dated
+    # consumer (the T030 broadcast_out precedent). Ordered after percept_surprise, whose
+    # OUT port the edge needs.
+    ("snn_data_lake.basal_ganglia.learning_progress", "declare_ports"),
     # T029: the RPE third-factor port -- phasic DA into the R-STDP eligibility gate
     ("snn_data_lake.midbrain.dopamine_nuclei", "declare_ports"),
     ("snn_data_lake.basal_ganglia.r_stdp", "declare_ports"),
@@ -124,6 +130,11 @@ def run(artifact=ARTIFACT) -> tuple[bool, str]:
     report = f"manifest {census}; findings={len(findings)}; warnings={len(warns)}"
     if findings:
         report += "\n  " + "\n  ".join(findings)
+    # warning TEXTS, not just a count (T046a panel): a warning is a declared honest state
+    # (an edge-less OUT port is the T030 precedent) -- a count that never names its items
+    # is a report nobody can act on.
+    if warns:
+        report += "\n  " + "\n  ".join(f"warn: {w}" for w in warns)
     return not findings, report
 
 

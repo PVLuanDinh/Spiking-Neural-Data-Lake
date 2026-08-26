@@ -94,6 +94,15 @@ RETENTION: dict[int, tuple[str, bool, str]] = {
         "budget: BASELINED 2026-08-21 (p95 434 B/tick, the documented instrument over "
         "make_brain x120; sleep ticks emit nothing) -- the flood assert is live for this tag",
     ),
+    0x0B: (
+        "IMMORTAL",
+        False,
+        "_T_GOAL goal event rows (learning_progress.GoalStore, specs/022 T046a): the brain's "
+        "own intentions and their LP/outcome history are never reclaimed -- the store's "
+        "materialized view folds every row, so each is load-bearing. Append budget: "
+        "unbaselined (goals are LOW-frequency, created deliberately, never per-tick; a "
+        "baseline lands with the first live per-tick writer if one ever exists)",
+    ),
 }
 
 

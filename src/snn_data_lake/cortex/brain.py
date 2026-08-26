@@ -42,6 +42,7 @@ Deterministic: per-instance seeding only (no wall-clock, no global RNG). ASCII-o
   PYTHONUTF8=1 PYTHONPATH=src .venv-cu128/Scripts/python.exe -m snn_data_lake.cortex.brain
 """
 
+import math
 import re
 
 from snn_data_lake.brainstem.arm_config import CONTACT
@@ -728,6 +729,7 @@ class Brain:
         self._percept_readout = None  # Slice B: lazy LIVE no-backprop laminar readout (B') over the real percept latent; learns online, sets _percept_conf
         self._percept_surprise = None  # loop C2: lazy online unsupervised SURPRISE (Oja-PCA reconstruction residual) over the percept latent
         self._spont_bootstrap_steps = None  # T045: None = the wire never ran; 0 = ran and delivered nothing; 1600 = completed (readers need no getattr default)
+        self._lp = None  # T046a: lazy per-region |LP| facade; fed the percept surprise per tick (the discharged T028 consumer)
         self._surprise_signal = 0.0  # loop C2: current-tick predictive surprise (off-manifold), an orienting drive; set in _perceive_real
         self._learned_latency = 0  # C2 #3: learned reward latency -> opens a timed Go window
         # C2 BRAIN-NATIVE: the approach drive's per-source weights are LEARNED (three-factor,
@@ -1560,6 +1562,24 @@ class Brain:
 
                     self._spont_bootstrap_steps = bootstrap_percept_rule(self._percept_surprise)
                 self._surprise_signal = float(self._percept_surprise.observe(percept))
+                # T046a: the |LP| third factor's LIVE feed -- the same surprise scalar,
+                # into the cortex competence channel (the T028 dated disposition's
+                # discharged consumer; the manifest edge surprise_out -> surprise_in is
+                # declared by learning_progress.declare_ports). Surfaced on state()'s
+                # `learning_progress` field (the cockpit-visible consumer);
+                # tests/test_learning_progress_wire.py pins the FEED and the moving
+                # signal. Finiteness-guarded: min/max on a NaN returns the OTHER arg, so
+                # the first draft's clamp converted NaN into a perfect-prediction 0.0 --
+                # the inverse of what a NaN means -- instead of letting observe() refuse.
+                if self._lp is None:
+                    from snn_data_lake.basal_ganglia.learning_progress import (
+                        LearningProgress,
+                    )
+
+                    self._lp = LearningProgress()
+                _s = self._surprise_signal
+                if math.isfinite(_s):
+                    self._lp.consume_surprise(min(1.0, max(0.0, _s)))
             except Exception:
                 pass
             return percept
@@ -3626,6 +3646,10 @@ class Brain:
             # runtime read matching the declared edge; the review measured the first
             # draft's 'consumers' to be prose only.
             "workspace_report": _report_snapshot(getattr(self, "workspace", None)),
+            # T046a: the |LP| facade's fed channels -- a REAL reported output (the panel:
+            # a write-only instance attribute is a sink, not a consumer; P4c puts what the
+            # brain measures on the state the cockpit renders). {} until perception feeds.
+            "learning_progress": (self._lp.lp_all() if self._lp is not None else {}),
             "evc_cost": self._evc_cost,  # C1 b4: LEARNED cost-of-control (dopamine-gated, replaces fixed 0.1)
             "evc_value": self._evc_value,  # C1 b4: LEARNED value-of-control
             "episode_retained": self._episode_retained,  # C1 b4: durable-episode recall fraction (systems consolidation, no forgetting)

@@ -68,6 +68,12 @@ TAG_DISPOSITIONS: dict[int, tuple[str, str]] = {
         "T031); byte-identity -- upcaster is IDENTITY, record semantics live in "
         "Coalition.from_bytes (JSON body; zero records predate this tag)",
     ),
+    0x0B: (
+        "read-as-is",
+        "_T_GOAL goal event rows (learning_progress.GoalStore, specs/022 T046a); v1 "
+        "READ-AS-IS -- JSON body rows folded on replay, zero records predate this tag; "
+        "the round-trip red over live-written records runs in the store's own main()",
+    ),
 }
 # Anything else is UNKNOWN and refuses -- a record class nobody decided about.
 _OBSERVED_EXTRA: dict[int, str] = {}

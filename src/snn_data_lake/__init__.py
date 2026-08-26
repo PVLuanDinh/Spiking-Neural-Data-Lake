@@ -238,6 +238,7 @@ REGIONS = {
     ],
     "basal_ganglia": [
         "evidence_accumulation",
+        "learning_progress",  # specs/022 T046a: |LP| third factor (adopts CuriosityDrive) + the _T_GOAL store
         "r_stdp",
         "valence_stdp",
         "action_gating",

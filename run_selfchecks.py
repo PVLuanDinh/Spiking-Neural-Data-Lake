@@ -169,6 +169,7 @@ CORE = [
     "hippocampus.spiking_storage_prototype",  # factored associative memory; criteria judged vs a do-nothing cue control + permutation null, each with an executed red
     # basal ganglia â€” action selection, reward-modulated learning, decision, Go/NoGo gating
     "basal_ganglia.evidence_accumulation",
+    "basal_ganglia.learning_progress",  # T046a: |LP| four regimes + discharged consumer + goal-store reds
     "basal_ganglia.r_stdp",
     "basal_ganglia.valence_stdp",
     "basal_ganglia.action_gating",
