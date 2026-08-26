@@ -258,9 +258,21 @@ class LiveBrain:
         goal_on = (
             1.0 if self.goal is not None else 0.0
         )  # prefrontal executive holds a working-memory goal
-        pc_err = (
-            n(res.get("pc_error_activity", 0.0)) if self._pc_on else 0.0
-        )  # settled predictive-coding error
+        # Settled predictive-coding error as a POPULATION FRACTION, not a raw count.
+        # `pc_error_activity` is an integer count of error-neuron spikes at settle (population
+        # = input dim + r1 = 80 live), and the first form clipped it with n() directly -- so
+        # the gauge read EXACTLY 1.0 whenever one error neuron anywhere still spiked, which
+        # is every tick: measured over 120 live-path settles (2026-08-26, scratch NORD_HOME),
+        # raw counts varied 2..37 (30 distinct values, stdev 7.5) while the gauge clipped
+        # 120 of 120 to 1.0 -- a live, varying signal wearing a constant's face on the
+        # cockpit. The denominator is the network's OWN error-population size (brain-native,
+        # P1: no magic constant); measured fraction 0.025..0.463, mean 0.174 -- the gauge
+        # discriminates again. Four-regime behavior pinned in tests/test_pc_gauge_regimes.py.
+        if self._pc_on and self._pc is not None:
+            n_err = len(self._pc.s_e0) + len(self._pc.s_e1)
+            pc_err = n(res.get("pc_error_activity", 0.0) / n_err) if n_err else 0.0
+        else:
+            pc_err = 0.0
         # --- map each of the 17 regions to its real (or nearest-real) live signal ---
         return {
             "cortex": n(
