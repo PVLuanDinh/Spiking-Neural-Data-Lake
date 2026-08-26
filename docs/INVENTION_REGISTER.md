@@ -45,6 +45,13 @@ through the executive would let the guard's caller constrain it). RED: a fixed-s
 run must trip it. CONTROL: a fixed growth schedule. ATTRIBUTION: per-region gate decisions.
 DISCLOSURE: both NDP source papers name stopping as unsolved; this is invention, not adoption.
 NULL: if gated growth never beats fixed-schedule growth, the criterion is deleted.
+MECHANIZED: `cortex/growth_stop.py` (T047, 2026-08-26) — STICKY stop (the panel measured the
+first draft re-opening on its own frozen rows, a 1-in-7 duty cycle; now 0 post-stop growth
+refits in 10x100); charge margin = the null SE sigma*sqrt(2/PATIENCE); |LP| arm = edge-
+triggered order-statistic excursion (false-fire 0.83% on the live zero-inflated shape; the
+draft's bare cur>median was a 51.9% coin flip); NULL = the real two-arm engine A/B, asserts
+armed: stops 6/6 seeds, unit deltas sum −27, acc median −0.017 — measured, not tripped;
+evidence tail persisted with the substrate (restart is not amnesia).
 
 ## 5. Brain-change evaluator cascade (L6, T073)
 Staged fitness for INTERNAL-ONLY proposals (FR-025: no external model) on harness-only

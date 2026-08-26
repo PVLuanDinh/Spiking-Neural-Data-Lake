@@ -113,10 +113,13 @@ BUDGETS = {
     # byte-exact with a pointer. Words conserved, moved not grown; POLICIES.md returns under
     # its LOWERED ceiling with real headroom.
     "docs/POLICIES_EVIDENCE.md": 3550,
-    "docs/INVENTION_REGISTER.md": 956,  # RAISED 950 -> 956 on 2026-08-26 (specs/022 T046),
+    "docs/INVENTION_REGISTER.md": 1047,  # RAISED 956 -> 1047 on 2026-08-26 (specs/022 T047),
     # in the SAME commit as the growth: row 6's own convention indexes each row's MECHANIZED
-    # instrument, and T046 mechanizes row 7's four -- one 6-word MECHANIZED line at 0 words
-    # of headroom. Minimum viable raise (measured + 0), matching current practice.
+    # instrument, and T047 mechanizes row 4 -- one 91-word MECHANIZED line, sized by the
+    # panel's requirements (the sticky-stop record, the |LP| false-fire rate, and the REAL
+    # A/B null with its measured numbers all belong in the register, not just the synthetic
+    # figures the first draft carried). Minimum viable raise (measured + 0), the T046
+    # practice (950 -> 956 for row 7's line under the same convention).
     # Previous: specs/022 T002: the eight P8 invention debt packages
     # (index only -- measurements live in specs/022 evidence/). Measured 844 at landing; ceiling
     # = measured + ~106 so a ninth invention forces a deliberate ceiling raise with its reason here.

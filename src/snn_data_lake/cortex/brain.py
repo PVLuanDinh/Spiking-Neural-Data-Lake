@@ -571,6 +571,12 @@ class Brain:
         self._asleep = self._was_asleep
 
         # ---- neurogenesis (torch tier, LAZY): grow neurons to predict own perception ----
+        # T047 (panel: construction-order): the growth gate's attributes exist BEFORE the
+        # engine holds the bound verdict callable -- a refit-during-construction would
+        # otherwise AttributeError inside _make_neuro's except and silently drop the
+        # whole neurogenesis tier to None.
+        self._growth_stop = None  # T047: lazy growth gate; the engine consults it per refit
+        self._growth_feed_refusals = 0  # T047: poisoned trajectory rows refused at the feed
         self.neuro = self._make_neuro(self._seed, device)
 
         # ---- language organ (brain-native, LAZY): the brain's CONVERSATION comes from the ACQUIRED
@@ -1249,6 +1255,46 @@ class Brain:
         except Exception:
             return None
 
+    # distinct-from: neurogenesis_engine.py -- its restore rebuilds the SUBSTRATE from
+    #   lake bytes; this method only relays trajectory rows to the T047 gate. Site read.
+    # distinct-from: spiking_curiosity.py -- its step moves a competence weight; nothing
+    #   here learns. Site read; the matcher fired on generic gate/growth words.
+    def _growth_gate_verdict(self, trajectory):
+        """T047: the growth-gate callable the neurogenesis engine consults at each refit,
+        receiving THE ENGINE'S OWN trajectory (the system under test reaches the
+        criterion through its parameter -- the red_reachability zero-arg shape; it also
+        removes any read of self.neuro, which is unbound while _make_neuro runs). Feeds
+        the gate every row it has not yet seen (the observed() cursor -- restored
+        trajectories from the lake feed here too, so the gate's evidence survives the
+        daemon's routine relaunches), then returns should_grow('cortex').
+
+        A POISONED row is refused by observe_refit, COUNTED, and skipped -- never raised
+        through the engine's tick into the sleep path's exception swallow, where it
+        would silently kill every refit forever (the panel's find); the count is
+        surfaced on state()['growth_gate']. The |LP| route is injected at gate
+        CONSTRUCTION as anatomy: a thin reader bound to this brain's lazy |LP| facade,
+        raising KeyError while the channel is unfed (absence is a fact, T046a)."""
+        if self._growth_stop is None:
+            from snn_data_lake.cortex.growth_stop import GrowthStop
+
+            brain = self
+
+            class _LPRoute:
+                def lp(self, region):
+                    facade = getattr(brain, "_lp", None)
+                    if facade is None:
+                        raise KeyError(region)
+                    return facade.lp(region)
+
+            self._growth_stop = GrowthStop(lp_reader=_LPRoute())
+        gate = self._growth_stop
+        for _t, u, a in list(trajectory)[gate.observed("cortex") :]:
+            try:
+                gate.observe_refit("cortex", int(u), float(a))
+            except (ValueError, TypeError):
+                self._growth_feed_refusals += 1
+        return gate.should_grow("cortex")
+
     def _make_neuro(self, seed, device):
         """Lazily build the torch neurogenesis engine from THIS cortex package. torch is a core
         dependency, so this normally succeeds; torch genuinely absent -> None (growth reports zero, and
@@ -1265,7 +1311,16 @@ class Brain:
             dev = device
             if dev == "cuda" and not torch.cuda.is_available():
                 dev = "cpu"
-            eng = NeurogenesisSelfImprove(seed=seed, refit_every=self.refit_every, device=dev)
+            # T047: the growth stopping criterion rides along from birth -- the engine
+            # consults it at every refit; the verdict logic lives entirely in
+            # cortex/growth_stop.py (the engine and this brain can consult the guard,
+            # never constrain it).
+            eng = NeurogenesisSelfImprove(
+                seed=seed,
+                refit_every=self.refit_every,
+                device=dev,
+                growth_gate=self._growth_gate_verdict,
+            )
             # RESTORE the grown substrate from the one durable lake. Before this the engine was
             # rebuilt empty on every start, and the daemon relaunches on every new commit (~20 times
             # in a working session), so nothing the brain grew ever compounded. A lake with no
@@ -3650,6 +3705,27 @@ class Brain:
             # a write-only instance attribute is a sink, not a consumer; P4c puts what the
             # brain measures on the state the cockpit renders). {} until perception feeds.
             "learning_progress": (self._lp.lp_all() if self._lp is not None else {}),
+            # T047: the growth gate's latest per-region verdict + reason (the P8
+            # attribution, cockpit-visible) + the poisoned-row refusal count (refusals
+            # are counted at the feed, never raised into the sleep path's swallow).
+            # {} until the first gated refit; iterates the gate's OWN regions, not a
+            # hardcoded list (the panel: a per-region gate surfacing one literal).
+            "growth_gate": (
+                {
+                    **{
+                        r: {"grow": bool(d[-1][1]), "reason": d[-1][2]}
+                        for r in self._growth_stop.regions()
+                        if (d := self._growth_stop.decisions(r))
+                    },
+                    **(
+                        {"feed_refusals": self._growth_feed_refusals}
+                        if self._growth_feed_refusals
+                        else {}
+                    ),
+                }
+                if self._growth_stop is not None
+                else {}
+            ),
             "evc_cost": self._evc_cost,  # C1 b4: LEARNED cost-of-control (dopamine-gated, replaces fixed 0.1)
             "evc_value": self._evc_value,  # C1 b4: LEARNED value-of-control
             "episode_retained": self._episode_retained,  # C1 b4: durable-episode recall fraction (systems consolidation, no forgetting)

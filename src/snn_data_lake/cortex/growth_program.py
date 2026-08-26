@@ -43,9 +43,17 @@ ratified names -- both sides of the owner's partition are equality-pinned now):
 
 4. THE DIVISION BUDGET, DECLARED -- NOT DERIVED. `_DIVISION_BUDGET = 10` is a PICKED
    budget (the first draft called 2**-10 'derived' and the panel's M2 called the
-   circularity: nothing in the spec sources the exponent). It is declared with its
-   supersession named: T047's measured stopping criterion replaces it, and the budget
-   exists so the minimal program has ANY terminating behavior to red-test. The floor
+   circularity: nothing in the spec sources the exponent); it exists so the minimal
+   program has ANY terminating behavior to red-test. SUPERSESSION RE-ADJUDICATED AT
+   T047 (the earlier text promised "T047's measured stopping criterion replaces it"
+   -- an exemption-that-promises, and the promise was at the WRONG GRAIN): T047's
+   `cortex/growth_stop.py` gates per-REGION refit growth on (units, held-out acc)
+   evidence rows; this budget bounds per-NODE embryonic division, which produces NO
+   refit rows, so there is nothing for that criterion to read here until the division
+   machinery is composed into a live path that measures its outcomes. The budget
+   stays PICKED with its supersession OWED to the task that wires region-wide growth
+   from seed (the growth-coverage gate's 1-of-10 red is that work's standing driver;
+   no task id is claimed -- said plainly, never dressed as dated). The floor
    comparison is <= (the first self-check run caught strict < proposing an eleventh
    division at the exact boundary).
 
@@ -65,8 +73,9 @@ ratified names -- both sides of the owner's partition are equality-pinned now):
 The program's decision content, stated honestly: quiesce at an exhausted division
 budget, else propose division in the node's OWN region (locality applied to the
 proposal itself). Deliberately minimal -- it exercises the infrastructure while
-deciding nothing T046's coverage gate and T047's stopping criterion have not yet been
-built to police.
+deciding nothing beyond it; T046's coverage gate and T047's stopping criterion are
+BUILT now, and both police the REFIT grain, not this division grain (adjudication in
+point 4 above).
 
 DATA-MODEL SPLIT, stated against specs/022 data-model.md's GrowthProgram entry so the
 partial node is declared, never silent: that contract lists per-node state as {field
@@ -125,8 +134,10 @@ GROWABLE = frozenset(
 SCAFFOLD = frozenset({"brainstem", "medulla", "pons", "olfactory", "insula"})
 
 # DECLARED budget, not derived (the panel's M2 killed the 'derived' label: nothing
-# sources the exponent). T047's measured stopping criterion supersedes this; the budget
-# exists so the minimal program has terminating behavior with a reachable red.
+# sources the exponent). Supersession RE-ADJUDICATED at T047: growth_stop.py gates the
+# REFIT grain and cannot read division outcomes -- this budget's replacement is owed to
+# the task that composes region-wide growth live (docstring point 4). The budget exists
+# so the minimal program has terminating behavior with a reachable red.
 _DIVISION_BUDGET = 10  # PICKED
 _DILUTION_FLOOR = 0.5**_DIVISION_BUDGET
 

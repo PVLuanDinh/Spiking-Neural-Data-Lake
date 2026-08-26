@@ -67,10 +67,14 @@ REGISTRANTS: tuple = (
     ("snn_data_lake.cortex.brain", "declare_ports"),
     # T046a: the |LP| third factor -- the SECOND of percept_surprise's dated forward
     # dispositions discharged (the consumer declares the edge surprise_out -> surprise_in);
-    # lp_out is declared EDGE-LESS with T047's growth stopping criterion as the dated
-    # consumer (the T030 broadcast_out precedent). Ordered after percept_surprise, whose
-    # OUT port the edge needs.
+    # lp_out was declared EDGE-LESS with T047's growth stopping criterion as the dated
+    # consumer (the T030 broadcast_out precedent) -- DISCHARGED at T047, the row below.
+    # Ordered after percept_surprise, whose OUT port the edge needs.
     ("snn_data_lake.basal_ganglia.learning_progress", "declare_ports"),
+    # T047: the growth stopping criterion -- lp_out's dated consumer lands, discharging
+    # T046a's edge-less disposition (the consumer declares the edge lp_out -> lp_in).
+    # Ordered after learning_progress, whose OUT port the edge needs.
+    ("snn_data_lake.cortex.growth_stop", "declare_ports"),
     # T029: the RPE third-factor port -- phasic DA into the R-STDP eligibility gate
     ("snn_data_lake.midbrain.dopamine_nuclei", "declare_ports"),
     ("snn_data_lake.basal_ganglia.r_stdp", "declare_ports"),

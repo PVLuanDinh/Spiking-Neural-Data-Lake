@@ -125,6 +125,13 @@ class NeurogenesisSelfImprove:
         seed=7,
         shuffle_transitions=False,
         device=None,
+        # T047: the growth stopping criterion (cortex/growth_stop.py) -- a ONE-ARG callable
+        # receiving THIS engine's trajectory (the system under test reaches the criterion
+        # through its parameter -- the red_reachability zero-arg red) and returning bool,
+        # consulted at each refit. None = ungated (the incumbent fixed schedule, which is
+        # exactly the criterion's CONTROL arm). The callable's verdict logic is the gate's
+        # own; this engine can consult it, never constrain it.
+        growth_gate=None,
     ):
         self.k_modes = int(k_modes)
         self.refit_every = int(refit_every)
@@ -134,6 +141,7 @@ class NeurogenesisSelfImprove:
         self.seed = int(seed)
         self.shuffle_transitions = bool(shuffle_transitions)
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self._growth_gate = growth_gate
         self._l_max = None if l_max is None else int(l_max)  # None -> NGSNN derives L <= N
         self._eps_tol, self._T = float(eps_tol), int(T)
         self._chain = random.Random(seed)  # mode transitions + jitter RNG
@@ -194,6 +202,23 @@ class NeurogenesisSelfImprove:
         y = torch.tensor(self._buf_y, dtype=torch.long)
         x_tr, y_tr = x[: n - holdout], y[: n - holdout]
         x_te, y_te = x[n - holdout :], y[n - holdout :]
+        # T047: consult the growth gate. CLOSED -> measurement continues, growth does not:
+        # score the RETAINED substrate on the fresh held-out slice and record the refit
+        # row, because the gate re-opens on its own evidence (a new measured optimum, |LP|
+        # motion) and that evidence IS this stream -- a gate that stopped the measurement
+        # would weld itself shut. An engine that has never grown ignores a closed gate:
+        # the criterion has no evidence about a substrate that does not exist.
+        if (
+            self._growth_gate is not None
+            and self._model is not None
+            and not self._growth_gate(self.trajectory)
+        ):
+            pred = self._model.predict(x_te)
+            acc = (pred == y_te.to(self._model.device)).float().mean().item()
+            self._n_units = self._model.n_units
+            self._acc = acc
+            self.trajectory.append((self.ticks, self._model.n_units, acc))
+            return
         # MEASURED ROUTING, not availability routing (P5a, 2026-08-05). `self.device` is
         # "cuda if a card exists" -- decided by `torch.cuda.is_available()` at construction, before
         # anything knows how big the work is. This refit's element count is not a guess: it is
@@ -344,6 +369,19 @@ class NeurogenesisSelfImprove:
     # either side knowing the other's format.
     GROWTH_FORMAT = "ngsnn.growth.v1"
 
+    # distinct-from: hjepa_arm_torch.py -- coarse-transition windows, unrelated. Site read.
+    # distinct-from: hjepa_torch.py -- same family, unrelated. Site read.
+    # distinct-from: method_dormancy_gate.py -- self-check line filter. Site read.
+    # distinct-from: replay_gate.py -- snapshot-resume proof; the matcher fired on the
+    #   word trajectory over a two-line slice helper. Site read.
+    @staticmethod
+    def _traj_tail(trajectory):
+        """The persisted-trajectory tail: the growth gate's own evidence window sizes it
+        (the gate is the one consumer of restored rows; imported, not re-picked)."""
+        from snn_data_lake.cortex.growth_stop import _WINDOW
+
+        return trajectory[-_WINDOW:]
+
     def growth_state_bytes(self):
         """The retained substrate as an opaque blob, or None when there is nothing grown to save.
 
@@ -385,6 +423,22 @@ class NeurogenesisSelfImprove:
             place_depth=np.array([p[0] for p in placed], dtype=np.float64),
             place_layer=np.array([LAYER_NAMES.index(p[1]) for p in placed], dtype=np.int16),
             place_sign=np.array([p[2] for p in placed], dtype=np.int8),
+            # T047: the trailing refit trajectory rides with the substrate -- OPTIONAL
+            # arrays, same additive contract as placement (no format bump). The panel's
+            # P4b find: the substrate persisted while the evidence that GOVERNS its
+            # growth did not, so every daemon relaunch (~20/session) reset the growth
+            # gate to its 9-refit insufficient-history horizon -- restart amnesia for
+            # the gate, on a brain whose restarts are routine. Tail length = the gate's
+            # own evidence window (its need sizes it; imported, not re-picked).
+            traj_ticks=np.array(
+                [t for t, _u, _a in self._traj_tail(self.trajectory)], dtype=np.int64
+            ),
+            traj_units=np.array(
+                [u for _t, u, _a in self._traj_tail(self.trajectory)], dtype=np.int64
+            ),
+            traj_acc=np.array(
+                [a for _t, _u, a in self._traj_tail(self.trajectory)], dtype=np.float64
+            ),
         )
         return buf.getvalue()
 
@@ -412,6 +466,10 @@ class NeurogenesisSelfImprove:
                 z_depth = z["place_depth"] if "place_depth" in z else None
                 z_layer = z["place_layer"] if "place_layer" in z else None
                 z_sign = z["place_sign"] if "place_sign" in z else None
+                # optional -- absent in every blob written before T047's gate evidence
+                z_tt = z["traj_ticks"] if "traj_ticks" in z else None
+                z_tu = z["traj_units"] if "traj_units" in z else None
+                z_ta = z["traj_acc"] if "traj_acc" in z else None
         except Exception:
             return False
         if W.ndim != 2 or beta.ndim != 2 or b.ndim != 1:
@@ -451,6 +509,16 @@ class NeurogenesisSelfImprove:
         except Exception:
             placed = None  # a malformed placement is DERIVED afresh, never half-applied
         self._placement = placed if placed is not None else place(n_units, seed=self.seed)
+        # T047: the gate's evidence comes back with the substrate it governs (P4b -- a
+        # restart is not amnesia). A malformed tail is DROPPED whole, never half-applied;
+        # a pre-T047 blob restores with an empty trajectory, exactly today's behaviour.
+        try:
+            if z_tt is not None and len(z_tt) == len(z_tu) == len(z_ta):
+                self.trajectory = [
+                    (int(z_tt[i]), int(z_tu[i]), float(z_ta[i])) for i in range(len(z_tt))
+                ]
+        except Exception:
+            pass
         return True
 
     def substrate_is_retained(self):

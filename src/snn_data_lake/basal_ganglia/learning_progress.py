@@ -17,9 +17,10 @@ declare_ports carries `percept_surprise.surprise_out -> learning_progress.surpri
 and the live wire feeds the brain's real per-tick surprise scalar into the cortex channel
 (the ONE live error channel today; other regions' error channels join as their producers
 land, dated to their own tasks, and the REGIONS argument stays honest: lp() reports only
-channels that have actually been fed). The lp_out port is declared EDGE-LESS with its
-dated consumer named (T047's growth gates) -- the T030 broadcast_out precedent; declaring
-that edge today would be anatomy ahead of its consumer.
+channels that have actually been fed). The lp_out port was declared EDGE-LESS at T046a
+with its dated consumer named -- DISCHARGED at T047: `cortex/growth_stop.py` consumes
+|LP| as the growth gates' veto arm and declares the edge (the T030 broadcast_out
+precedent, resolved the same way).
 
 THE GOAL STORE (data-model "Goal (S1+)"): records of (embedding, achievement_function_ref,
 |LP| history, outcomes), IN THE ONE LAKE under the NEW record tag _T_GOAL (home.py's tag
@@ -285,9 +286,11 @@ def declare_ports(manifest):
     """Manifest registrant (T046a). IN `surprise_in` consumes the predictor port -- THE
     T028 dated disposition's discharge, the consumer declaring the edge
     `percept_surprise.surprise_out -> learning_progress.surprise_in`. OUT `lp_out` is the
-    |LP| third factor, declared EDGE-LESS with its dated consumer named: T047's growth
-    stopping criterion (`cortex/growth_stop.py`) -- declaring that edge today would be
-    anatomy ahead of its consumer (the T030 broadcast_out precedent)."""
+    |LP| third factor, declared EDGE-LESS at T046a with its dated consumer named: T047's
+    growth stopping criterion (`cortex/growth_stop.py`) -- DISCHARGED at T047, which
+    declares the edge `lp_out -> growth_stop.lp_in` (the consumer declares it, the
+    T034/M10 convention) -- declaring it earlier would have been anatomy ahead of its
+    consumer (the T030 broadcast_out precedent)."""
     from snn_data_lake.substrate.wiring_manifest import Port
 
     manifest.declare_port(
@@ -483,8 +486,8 @@ def main():
     print()
     print(
         "DISCLOSURES: cortex is the ONE fed |LP| channel today (the T028 predictor port; "
-        "other regions' error channels land with their producers). lp_out is declared "
-        "EDGE-LESS; T047's growth stopping criterion is the dated consumer. "
+        "other regions' error channels land with their producers). lp_out's dated "
+        "consumer LANDED at T047 (growth_stop.lp_in -- the edge is declared there). "
         "achievement_function_ref is STORED, never resolved or executed here -- opening "
         "that dispatch surface is T047+'s reviewed step, not a storage side effect. "
         "GoalStore has NO live writer today: its callers are this main() only (both "

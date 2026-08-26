@@ -131,14 +131,11 @@ def test_a_REF_port_is_covered_by_refs_not_by_warnings():
 def test_the_committed_artifact_has_no_dangling_port_in_either_direction():
     """The live pin. Measured at T039l: zero danglers either way. T046a declared ONE
     edge-less OUT port (lp_out, its consumer dated to T047 -- the T030 broadcast_out
-    precedent), so the pin is now the EXACT expected warning list, not zero: an UNDATED
-    dangler still reds, and T047's edge landing reds this pin demanding the entry go."""
+    precedent) and this pin carried it EXACTLY; T047 landed the consumer's edge and the
+    pin, red on that landing as designed, returns to zero -- an UNDATED dangler reds."""
     pytest.importorskip("nir")
     m = WiringManifest.load_artifact(ARTIFACT)
-    expected = ["OUT port ('learning_progress', 'lp_out') is declared but sources no edge"]
-    assert m.warnings() == expected, (
-        f"the committed artifact's danglers != the declared set: {m.warnings()}"
-    )
+    assert m.warnings() == [], f"the committed artifact has a dangling port: {m.warnings()}"
 
 
 def test_structure_and_type_reds():
@@ -215,18 +212,20 @@ def test_artifact_is_tracked_and_loadable():
     # declared consumer (region_coherence.interoception_in, +1 port +1 edge). T046a added
     # the |LP| pair (surprise_in typed-merge + the edge-less lp_out, dated to T047) and
     # the DISCHARGED T028 disposition's edge (surprise_out -> surprise_in, declared by the
-    # consumer): +2 ports +1 edge. A count above the pin means a registrant landed without
-    # updating this premise; below means a declaration was lost.
+    # consumer): +2 ports +1 edge. T047 landed lp_out's dated consumer (growth_stop.lp_in
+    # + the edge, declared by the consumer): +1 port +1 edge, danglers back to zero. A
+    # count above the pin means a registrant landed without updating this premise; below
+    # means a declaration was lost.
     pytest.importorskip("nir")
     m = WiringManifest.load_artifact(ARTIFACT)
-    assert (len(m.ports), len(m.edges)) == (29, 15), (
-        "the T046a artifact carries the patience wire + the interoceptive TRACT (relayed "
+    assert (len(m.ports), len(m.edges)) == (30, 16), (
+        "the T047 artifact carries the patience wire + the interoceptive TRACT (relayed "
         "through thal_relay, with interoception_out's consumer) + the glia self-edge + the "
         "predictor port + the third-factor port + the workspace composite + the report "
         "channel and its brain consumer + the proprioceptive afferent lane + the efferent "
         "lane (action_out -> efferent_in) + the |LP| pair with its discharged surprise "
-        "edge (29 ports, 15 edges); a different census means a registrant landed without "
-        "updating this test's premise"
+        "edge + the growth gate's lp_in consumer (30 ports, 16 edges); a different census "
+        "means a registrant landed without updating this test's premise"
     )
     assert set(m.edges) == {
         ("raphe_serotonin", "five_ht_out", "evidence_accumulation", "patience_in"),
@@ -248,5 +247,7 @@ def test_artifact_is_tracked_and_loadable():
         ("autonomous_loop", "action_out", "efferent_boundary", "efferent_in"),
         # T046a: T028's |LP| disposition discharged -- the consumer declares the edge.
         ("percept_surprise", "surprise_out", "learning_progress", "surprise_in"),
+        # T047: T046a's lp_out disposition discharged -- the growth gate consumes |LP|.
+        ("learning_progress", "lp_out", "growth_stop", "lp_in"),
     }, "the committed edges must be exactly the declared subscriptions"
     assert m.all_findings() == [], "the committed artifact must satisfy all five checks"

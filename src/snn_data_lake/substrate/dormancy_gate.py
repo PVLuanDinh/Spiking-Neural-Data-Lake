@@ -258,7 +258,10 @@ EXEMPT = {
     # inherits T042's closure) and the self-check asserts every grower route sits inside
     # GROWABLE -- functional consumption of the ratified partition, not import-only. Recorded
     # because this row's TODO print dies with it: the program's step/divide machinery remains
-    # __main__-only until T047 composes it.
+    # __main__-only. RE-ADJUDICATED at T047: growth_stop.py gates the REFIT grain and does
+    # not compose the division machinery (the earlier "until T047 composes it" was a promise
+    # at the wrong grain); composition is owed to the task that wires region-wide growth
+    # from seed -- the growth-coverage gate's 1-of-10 red is its standing driver.
     "genomic_bottleneck": (
         "wire",
         "specs/022 T044: the g-network (tag vectors from the T043 placement surface + one "
