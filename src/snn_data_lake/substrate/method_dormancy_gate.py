@@ -62,6 +62,17 @@ LEARN_VERBS = (
 # name -> (disposition, reason). disposition in {"permanent", "wire", "retire"}.
 # "permanent" = legitimately not on the live tick. "wire"/"retire" are open work and are REPORTED.
 EXEMPT_METHOD = {
+    "cortex.genomic_bottleneck.GenomicMap.fit": (
+        "wire",
+        "specs/022 T044: closed-form bilinear least squares (DIRECT_SOLVE declared under the "
+        "class-qualified GRADIENT_CLAIM key 'GenomicMap.fit', which is how the census reads "
+        "it) synthesizing INITIAL fan-in from tags; callers today are the module's own "
+        "main(), which every gate run executes. No wiring task id exists in specs/022 "
+        "tasks.md yet (T044 panel: say so, never dress it as dated); the wire = "
+        "hippocampus/ng_snn.py::NGSNN.fit's candidate pool via neurogenesis_engine's refit, "
+        "behind a measured A/B, with deletion-on-null recorded in the module -- "
+        "class-qualified key so no other fit inherits this disposition",
+    ),
     "train_image": ("permanent", "deep_stdp_2stage: an offline [train]-tier trainer entrypoint"),
     "train_model": ("permanent", "training/: offline GPU trainer entrypoints (snn-train CLI)"),
     "train_with_offload": ("permanent", "training/offload: offline GPU trainer entrypoint"),

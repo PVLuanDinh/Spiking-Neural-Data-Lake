@@ -132,6 +132,7 @@ REGIONS = {
         "arealization",  # specs/022 T040: organizer fields + repression-GRN region emission (P8 #7)
         "growth_program",  # specs/022 T042: one-shared-program locality + scaffold refusal (P8 #7)
         "placement",  # every grown unit gets a cortical depth, a layer and an immutable Dale sign
+        "genomic_bottleneck",  # specs/022 T044: tag vectors + one small map -> initial weights (FR-033)
         "lca_sparse_coding",
         "predictive_coding",
         "is_snn_forward",
