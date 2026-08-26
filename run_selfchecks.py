@@ -265,6 +265,7 @@ CORE = [
     "plasticity.short_term_plasticity",
     "plasticity.developmental_pruning",
     "plasticity.structural_rewiring",  # T048: A/A + budget-conservation + MSP sign arms
+    "plasticity.eligibility_algebra",  # T050: incumbent bit-equivalence + mis-declaration red
     "plasticity.competitive_learning",
     "plasticity.lifelong_consolidation",
     "plasticity.criticality_regulator",

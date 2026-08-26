@@ -362,6 +362,7 @@ REGIONS = {
         "short_term_plasticity",
         "developmental_pruning",
         "structural_rewiring",  # specs/022 T048: DEEP-R budget + MSP sign steering, slow clock
+        "eligibility_algebra",  # specs/022 T050: sum-of-products authoring contract (three-factor rules)
         "competitive_learning",
         "criticality_regulator",
         "meta_plasticity",
