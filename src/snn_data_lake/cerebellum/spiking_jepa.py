@@ -74,6 +74,22 @@ representations in deep sensory networks" (LPL, 2023); Illing et al., "Local pla
 representations using self-supervised contrastive predictions" (2021); the JEPA move (LeCun 2022) -- predict
 in a learned latent space, not pixel space; Izhikevich (2007) eligibility traces.
 
+T049 ADJUDICATION (2026-08-26, specs/022): _modulator's rule="lpl" IS THE TREE'S LPL SPINE (FR-019's
+palette element). A standalone re-implementation (plasticity/lpl_rule.py) was built the same day and its
+own three-lens review panel measured it DEGENERATE -- its smoothed target and its mean EMA were the same
+EMA computed twice (bit-identical at every tau), collapsing the two terms into one sign-flipping gain
+whose net drive pushed activity AWAY from its smoothed past; its slow-feature charge was carried by the
+eligibility low-pass (a constant modulator aligned BETTER, 0.954 vs 0.796); and its "erratum pin" was an
+algebraic identity that passed with the rule neutered and with no rule at all. DELETED per P8(5) -- the
+licence working. THIS incumbent has the correct two-quantity form (echo is a genuinely FROZEN delayed
+target, distinct from mu). Two facts the panel put on the record: (a) NOTHING IN THE TREE PINS the 2024
+erratum's content -- "erratum-corrected" in specs/022 research.md is a spec-level label, and the
+variance-normalized form here derives from -log var independently of any erratum; (b) the lambda_var=2.0
+weighting is the incumbent's form, unadjudicated against a lambda-free reading. PALETTE EXTRACTION IS
+DATED TO T051: the composer defines the rule interface (typed read/write sets, per-rule neuter
+attribution); extracting this modulator into a composable plasticity/ rule lands WITH that interface,
+not before it (a premature extraction was measured wrong once already, above).
+
 Deps: math, random, json, zlib (numpy/torch allowed project-wide); ASCII-only prints, deterministic (random.Random(seed) per instance).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cerebellum.spiking_jepa
