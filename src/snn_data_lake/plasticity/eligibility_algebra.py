@@ -34,13 +34,19 @@ the task's phrase, and the honest census is narrower): expressible today --
 r_stdp (PROVEN), learned_evc value/cost, drive_reduction, brain_native_selfbuild
 (with the population-mean bound as a factor). NEEDS PRE-COLLAPSE (division by a
 population normalizer, sign-conditional dispatch, piecewise nonlinearity) --
-valence_stdp, fear_conditioning/affective_appraisal, naca. NOT EXPRESSIBLE --
-spiking_jepa's full LPL modulator (a cov REDUCTION over k!=j scales terms with
-population width; three coefficients conditional on anti_collapse; a
-layer-conditional top term; division by state) and the eprop tensor family
-(evaluate is SCALAR-only: float(tensor) raises). Rules become "expressible" by
-binding arbitrary structure as one factor -- the escape hatch is disclosed, not
-denied.
+valence_stdp, fear_conditioning/affective_appraisal, naca, AND (moved here at
+T051b-i, which FALSIFIED this census's own NOT-EXPRESSIBLE row by expressing it)
+spiking_jepa's LPL modulator: the cov reduction, the state division, and the
+anti_collapse-conditional coefficients all discharge through five caller-computed
+pre-collapsed factors (SpikingJEPA.lpl_synapse_rule, held to the production path
+by this module's equivalence_check); the pre-collapse COSTS five state quantities
+the caller owns, and only the layer-conditional lambda_jepa top term plus the
+espp branch stay outside the declaration. NOT EXPRESSIBLE -- the eprop tensor
+family (evaluate is SCALAR-only: float(tensor) raises). Rules become
+"expressible" by binding arbitrary structure as one factor -- the escape hatch
+is disclosed, not denied; the LPL pre-collapse is that hatch used honestly, each
+factor a NAMED state quantity with a declared role, never "the rest of the
+computation".
 
 NO TISSUE, NO WIRE: dated consumer = T051's composer, whose accumulated scope this
 task's row enumerates. Charged surface until then: this gate-run self-check.
@@ -57,8 +63,10 @@ import zlib
 #   EXPRESSES and checks against; the algebra evaluates a declaration, it does not
 #   re-implement the neuron. Site read.
 # distinct-from: cerebellum/spiking_jepa.py -- the LPL modulator (T049's adjudicated
-#   spine); two of its five terms are authorable, the full form is censused NOT
-#   expressible (docstring). Site read.
+#   spine); FOUR of its five terms are authored at T051b-i (lpl_synapse_rule, held to
+#   the production path by equivalence; the fifth is the layer-conditional lambda_jepa
+#   addition, not a modulator term) -- the census row moved NOT-EXPRESSIBLE ->
+#   NEEDS-PRE-COLLAPSE (docstring). Site read.
 # distinct-from: cortex/eprop_kernel.py -- an eligibility-propagation KERNEL
 #   (executes traces on tissue); this is the AUTHORING contract layer, and its
 #   scalar evaluate cannot express the tensor family (disclosed). Site read.
@@ -379,29 +387,26 @@ def main():
         "  RED    mis-declaration: lr off by 1e-6 reds equivalence_check vs the REAL reward() (arm 1 is the in-command control)"
     )
 
-    # 3) The incumbent LPL modulator, PARTIALLY authored with coefficients READ FROM
-    #    THE INSTANCE (the first draft hardcoded +1.0 where the incumbent's
-    #    lambda_var is 2.0 -- a 100% coefficient error shipped beside a 1e-6 red).
-    #    TWO of five terms; the full-form census (cov reduction, conditional
-    #    coefficients, layer-conditional term, division by state) is in the module
-    #    docstring -- this arm claims AUTHORABILITY of the unconditional core, and
-    #    canonical() identity, nothing more.
-    from snn_data_lake.cerebellum.spiking_jepa import SpikingJEPA
-
-    jepa = SpikingJEPA(("noop", "left"), seed=0)  # minimal action set; ctor is cheap (0.02s)
+    # 3) Canonical-identity PROPERTY FIXTURE, synthetic constants throughout. Its
+    #    former coefficient-pin half (lambda_var read from a live SpikingJEPA) moved
+    #    to jepa's own self-check at T051b-i -- the T051b-i panel measured the pin
+    #    DUPLICATED VERBATIM across the two modules (P2: one mechanism per claim),
+    #    and the declaration of record is SpikingJEPA.lpl_synapse_rule, held to the
+    #    production train_step path by this module's exported equivalence_check.
+    #    What stays here is what needs no incumbent: order-independence, like-term
+    #    folding, and the role digest.
     alg2 = EligibilityAlgebra(term_budget=8)
-    alg2.declare_factor("pred_dev", "predictive slowness deviation (s_bar - echo), the x2 folded")
-    alg2.declare_factor("var_dev", "variance-normalized deviation (s_bar - mu)/(var + eps)")
+    alg2.declare_factor("pred_dev", "synthetic slowness deviation (property fixture)")
+    alg2.declare_factor("var_dev", "synthetic variance deviation (property fixture)")
     alg2.declare_factor("sg", "post sensitivity / surrogate gradient factor")
     alg2.declare_factor("e", "presynaptic eligibility trace")
     terms = [
-        (-float(jepa.lambda_pred) * 2.0, ("pred_dev", "sg", "e")),
-        (float(jepa.lambda_var), ("var_dev", "sg", "e")),
+        (-2.0, ("pred_dev", "sg", "e")),
+        (7.25, ("var_dev", "sg", "e")),
     ]
     lpl = alg2.author("lpl.modulator.core2", terms)
     lpl_b = alg2.author("lpl.modulator.core2", [terms[1], terms[0]])
     assert lpl.canonical() == lpl_b.canonical(), "canonical form depends on authoring order"
-    assert f"{float(jepa.lambda_var):+.17g}" in lpl.canonical(), "coefficient not from the instance"
     # like-term folding: 3*x == 1*x + 2*x in canonical text (the T051 diff substrate)
     alg3 = EligibilityAlgebra(term_budget=4)
     alg3.declare_factor("x", "probe factor")
@@ -413,7 +418,8 @@ def main():
     alg4.declare_factor("x", "a DIFFERENT role entirely")
     assert alg4.author("f", [(3.0, ("x",))]).canonical() != one.canonical(), "role collision"
     print(
-        "  green  incumbent-coefficient authoring (lambda_var read from SpikingJEPA) + like-term-folded, role-digested canonical identity"
+        "  green  order-independent + like-term-folded + role-digested canonical identity "
+        "(synthetic fixture; the incumbent-coefficient pin lives in jepa's own self-check, T051b-i)"
     )
 
     # 4) REFUSALS, each asserted BY MESSAGE (the panel: a bare `except ValueError:
@@ -514,8 +520,9 @@ def main():
     )
     print(
         "self-check OK: live-range incumbent equivalence through the exported check (+ birth-state "
-        "-0.0 bit case) + mis-declaration red vs the real reward() + instance-read LPL coefficients "
-        "+ folded/digested canonical + 25 refusals asserted by message (incl. output overflow)"
+        "-0.0 bit case) + mis-declaration red vs the real reward() + synthetic canonical fixture "
+        "(the LPL coefficient pin moved to jepa's self-check, T051b-i) + 25 refusals asserted by "
+        "message (incl. output overflow)"
     )
     return 0
 

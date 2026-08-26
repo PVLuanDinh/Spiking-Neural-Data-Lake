@@ -550,6 +550,107 @@ class SpikingJEPA:
             m[j] = -(pred - vart + covt + homeo)
         return m
 
+    # distinct-from: plasticity_rule_stack.py -- the stack DEPOSITS/consolidates already-computed
+    # per-synapse dw through the Benna-Fusi beakers (a composition/storage mechanism); this method
+    # AUTHORS the declaration-of-record for ONE rule's own sum-of-products terms. Different job:
+    # declaring what this module's update IS, not routing where updates go. The real P2 adjacency
+    # is eligibility_algebra's 2-term "lpl.modulator.core2" FIXTURE, adjudicated there and in the
+    # self-check arm below.
+    # distinct-from: jepa_world_model.py -- the same-directory sibling carries the same coefficient
+    # NAMES (lambda_var/lambda_cov) on a DIFFERENT mechanism: a population-normalized VICReg loss
+    # gradient (gz[j] += lambda_var*(-(z-mu)/(L*m*sd))), the algebra's censused
+    # population-normalizer class, encoder-loss grain, not a per-synapse rule. Out of this
+    # declaration's scope; recorded here so a P2 grep on the coefficient names lands somewhere.
+    def lpl_synapse_rule(self):
+        """T051b-i (specs/022): the AUTHORED per-synapse LPL rule -- this instance's
+        declaration, coefficients READ from the instance, never retyped (the T050
+        incumbent-coefficient discipline; a retyped lambda once shipped a 100% error;
+        the self-check's mutated-instance arm is the reachable red for retyping).
+
+        The incumbent update (train_step's local block) is dw_ij = lr*m_j*sg_j*gate*e_i
+        with m_j the rule="lpl" modulator above. Distributed to the SYNAPSE grain:
+
+            dw = (-2*lambda_pred) * d_pred * lr * sg * e         d_pred  = s_bar_j - echo_j
+               + (+lambda_var)  * d_mu * inv_var * lr * sg * e   d_mu    = s_bar_j - mu_j
+               + (-lambda_cov)  * cov_pull * lr * sg * e         inv_var = 1/(var_j+eps_stat)
+               + (-lambda_homeo) * d_homeo * lr * sg * e         d_homeo = mu_j - rho_star
+
+        FACTOR PRE-COLLAPSE, disclosed: the algebra is products-only, so the division
+        (inv_var), the differences (d_*) and the k!=j covariance REDUCTION (cov_pull)
+        are caller-computed STATE QUANTITIES bound per site -- the eligibility window
+        and EMA statistics live in the caller's state (the STDP-window-as-state
+        contract; m*sg*e is the per-synapse triple). What the declaration itself
+        carries is the LAMBDAS: a coefficient drift reds this module's own self-check.
+
+        FACTOR ORDER: the TRAILING (sg, e) order is load-bearing -- it matches the
+        incumbent chain ((lr*m)*sg)*gate*e, making the ablation arm's single term
+        equal bit-for-bit (the tol=0.0 arm); the (state, lr) prefix COMMUTES because
+        the coefficient -(2*lambda_pred) is exact (panel-measured: 2 of 24 factor
+        permutations bit-pass, both sharing the (sg, e) suffix). Zero-coefficient
+        terms are DROPPED at authoring (anti_collapse=False authors the 1-term
+        ablation form -- mirroring _modulator's own lv/lc/lh zeroing).
+
+        HONEST REMAINDER (partial extraction -- P2 merge-must-reduce NOT discharged
+        here, said plainly: the incumbent block REMAINS the production path and this
+        method adds a second expression): rule="espp", the lambda_jepa top-layer
+        addition, and transport-gated bottom sites (gate!=1) stay in-module
+        undeclared; espp/transport/freeze_top instances REFUSE (their production dw
+        is gated or differently composed -- an identical declaration would be a lie).
+
+        DORMANCY, said where a reader looks: this method has ZERO production callers
+        (consumers = this module's self-check + the composer-palette smoke), its host
+        module is dormancy_gate EXEMPT `permanent`, and BOTH method-grade gates
+        structurally miss it (no LEARN_VERB in the name; the host is outside the
+        reachable() enumeration). Its first tick-charged use is UNDATED. The
+        algebra/composer siblings' T053 expiry is discharged by iSTDP's OWN
+        declaration there, NOT by this rule."""
+        if self.rule != "lpl":
+            raise ValueError(
+                f"lpl_synapse_rule declares the rule='lpl' branch only (rule={self.rule!r})"
+            )
+        if self.transport or self.freeze_top:
+            raise ValueError(
+                "lpl_synapse_rule refuses transport/freeze_top control instances: their "
+                "production dw is gate-zeroed or top-skipped, so the unconditional "
+                "declaration would not describe them"
+            )
+        from snn_data_lake.plasticity.eligibility_algebra import EligibilityAlgebra
+
+        lp = float(self.lambda_pred)
+        lv = float(self.lambda_var) if self.anti_collapse else 0.0
+        lc = float(self.lambda_cov) if self.anti_collapse else 0.0
+        lh = float(self.lambda_homeo) if self.anti_collapse else 0.0
+        terms = [(-(lp * 2.0), ("d_pred", "lr", "sg", "e"))]
+        if lv != 0.0:
+            terms.append((lv, ("d_mu", "inv_var", "lr", "sg", "e")))
+        if lc != 0.0:
+            terms.append((-lc, ("cov_pull", "lr", "sg", "e")))
+        if lh != 0.0:
+            terms.append((-lh, ("d_homeo", "lr", "sg", "e")))
+        roles = {
+            "d_pred": "predictive slowness deviation s_bar_j - echo_j (pre-collapsed)",
+            "d_mu": "EMA-mean deviation s_bar_j - mu_j (pre-collapsed)",
+            "inv_var": "reciprocal variance 1/(var_j + eps_stat) (pre-collapsed division)",
+            "cov_pull": "k!=j covariance reduction sum cov_jk*(s_bar_k - mu_k) (pre-collapsed)",
+            "d_homeo": "homeostatic deviation mu_j - rho_star (pre-collapsed)",
+            "lr": "learning rate, read from the instance per step",
+            "sg": "post surrogate-gradient sensitivity sg_j",
+            "e": "presynaptic eligibility trace (the STDP window as state)",
+        }
+        # Always a FRESH algebra: a caller-supplied one was measured (panel) to be
+        # corrupted on every refusal path (declare-before-validate), unusable twice
+        # (redeclaration refuses), and to destabilize the canonical vocab digest.
+        # No call site ever passed one; the parameter is deleted, not documented.
+        alg = EligibilityAlgebra(term_budget=len(terms))
+        used = []
+        for _c, fs in terms:  # declare exactly what the built terms use, in first-use order
+            for f in fs:
+                if f not in used:
+                    used.append(f)
+        for f in used:
+            alg.declare_factor(f, roles[f])
+        return alg.author("jepa.lpl.synapse", terms)
+
     def _update_stats(self, sbar):
         """EMA-update per-layer running mean / variance / covariance (decay stat_decay) from the online s_bar."""
         dec = self.stat_decay
@@ -1246,6 +1347,309 @@ def main():
         shape_raises = True
     os.remove(tmp)
 
+    # ============================ T051b-i: THE DECLARATION OF RECORD (specs/022) ============================
+    # distinct-from: is_snn_forward.py -- that module is a forward-pass architecture (layered time
+    # constants); this block is a HARNESS spy holding jepa's own authored rule to jepa's own
+    # production update path via the exported equivalence_check. No other site does that job.
+    # The authored per-synapse LPL rule (lpl_synapse_rule) held to the LIVE production path by the
+    # EXPORTED equivalence_check on SPIED warm-state train_step sites -- never a cold reconstruction
+    # (the T048 lesson: a cold cascade certified an order the production path refuses). Two arms:
+    #   (a) BIT arm, tol=0.0: the anti_collapse=False ablation's single term -- the trailing
+    #       (sg, e) factor order matches the incumbent chain ((lr*m)*sg)*gate*e; state/lr commute
+    #       (the coefficient is exact), so the arm is equal to the bit.
+    #   (b) TOL arm: the full 4-term form -- the incumbent sums m's terms THEN multiplies the
+    #       chain, the declaration multiplies each term's chain THEN sums (distribution), so the
+    #       tol is DERIVED: K ulps of the largest per-case sum |term|, K = the counted roundings
+    #       of the authored structure -- never fit to the measured divergence. The in-command
+    #       CONTROL: a 1e-6 lambda_var mis-declaration must RED at the SAME tol (T050's class).
+    #   (c) DELTA arm (the panel's BLOCKER fix): arms (a)/(b) bind the declaration to the
+    #       RECORDED modulator + the DECLARED factor semantics (computed through the BASE-class
+    #       _elig/_surrogate, so an override cannot skew both sides) -- they cannot see a defect
+    #       in the production APPLICATION. The delta arm binds that: incumbent = the OBSERVED
+    #       per-site weight delta (Wff/Wrec rows copied at _modulator(0) call time and after
+    #       train_step), tol including the += rounding. Its reachable red is IN-COMMAND: a
+    #       corrupted spy whose _elig scales e by 1.25 (production diverging from the declared
+    #       factor semantics) must RED the delta arm while the chain arms stay green (they are
+    #       scoped to the chain, said plainly). A defect INSIDE _elig/_surrogate themselves is
+    #       out of equivalence scope -- they DEFINE the factors.
+    # P2 ADJACENCY, adjudicated: eligibility_algebra's "lpl.modulator.core2" is a PROPERTY
+    # FIXTURE (synthetic algebra-property regression; its coefficient-pin half moved HERE --
+    # one mechanism per claim); THIS arm is the binding declaration.
+    import sys as _sys
+
+    from snn_data_lake.plasticity.eligibility_algebra import EligibilityAlgebra, equivalence_check
+    from snn_data_lake.plasticity.rule_composer import RuleComposer, RuleSpec
+
+    # distinct-from: dendritic_neuron.py -- that (and the other step()/drive() sites) advance
+    # NEURON STATE; this spy advances nothing: it is a recording subclass holding jepa's own
+    # declaration to jepa's own production update. No other site does that job.
+    class _SpyJEPA(SpikingJEPA):
+        """Harness-only spy (single-thread by design: _cur is one slot -- concurrent
+        train_step under GIL=False would cross-contaminate recs): records _forward
+        outputs, _modulator inputs, and BOTTOM-LAYER WEIGHT ROWS at call time
+        (copies -- _update_stats and the update loop mutate these in place)."""
+
+        def __init__(self, *a, **k):
+            super().__init__(*a, **k)
+            self._rec_on = False
+            self._spied = []
+            self._cur = None
+
+        def train_step(self, x, a, y):
+            if self._rec_on:
+                self._cur = {"recs": [], "mod": {}}
+            out = super().train_step(x, a, y)
+            if self._cur is not None:
+                self._cur["wff_after"] = [row[:] for row in self.Wff[0]]
+                self._cur["wrec_after"] = [row[:] for row in self.Wrec[0]]
+                self._spied.append(self._cur)
+                self._cur = None
+            return out
+
+        def _forward(self, pattern, graded=None):  # graded=None: DELEGATE to self.graded
+            rec = super()._forward(pattern, graded=graded)  # (the panel caught graded=False
+            if self._cur is not None and len(self._cur["recs"]) < 2:  # silently un-grading)
+                self._cur["recs"].append(rec)
+            return rec
+
+        def _modulator(self, l, sb, echo):
+            m = super()._modulator(l, sb, echo)
+            if self._cur is not None:
+                if l == 0:  # bottom weights are untouched until after this call returns
+                    self._cur["wff_before"] = [row[:] for row in self.Wff[0]]
+                    self._cur["wrec_before"] = [row[:] for row in self.Wrec[0]]
+                n = self.sizes[l]
+                mu = self.mu[l]
+                var = self.var[l]
+                cov = self.cov[l]
+                pull = []
+                for j in range(n):  # same loop shape+order as covt -> bit-identical recompute
+                    cj = cov[j]
+                    acc = 0.0
+                    for k in range(n):
+                        if k != j:
+                            acc += cj[k] * (sb[k] - mu[k])
+                    pull.append(acc)
+                self._cur["mod"][l] = {
+                    "sb": sb[:],
+                    "echo": echo[:],
+                    "mu": mu[:],
+                    "var": var[:],
+                    "cov_pull": pull,
+                    "m": m[:],
+                }
+            return m
+
+    def _lpl_sites(spy):
+        """(cases, chain-incumbents, observed-deltas) from spied BOTTOM-layer sites --
+        gate==1 exactly (transport off; the method now refuses transport instances), no
+        lambda_jepa addition (top-layer sites are the disclosed remainder). Chain
+        incumbent = the production association lr*m*sg*1.0*e from the RECORDED
+        modulator. Observed delta = the weight the production loop ACTUALLY wrote
+        (after - before), paired with |w_before| for the delta tol. Factors are
+        computed through the BASE-CLASS _elig/_surrogate explicitly -- the DECLARED
+        semantics, so a subclass override cannot skew declaration and incumbent
+        together."""
+        assert spy.transport is False, "equivalence sites assume gate==1 (transport off)"
+        cases, incs, deltas = [], [], []
+        for st in spy._spied:
+            rec_x = st["recs"][0]
+            mod = st["mod"].get(0)
+            if mod is None:
+                continue
+            n = spy.sizes[0]
+            sg = SpikingJEPA._surrogate(spy, rec_x["vpre"][0], n)
+            e_ff = SpikingJEPA._elig(spy, rec_x["ev"], 2 * spy.R)
+            e_rec = SpikingJEPA._elig(spy, rec_x["spk"][0], n)
+            sb, echo, mu, var = mod["sb"], mod["echo"], mod["mu"], mod["var"]
+            for j in range(n):
+                m_j = mod["m"][j]
+                sites = [("ff", i) for i in sorted(spy.conn_ff[0][j])[:2]]
+                sites += [("rec", k) for k in sorted(spy.conn_rec[0][j])[:1]]
+                for kind, i in sites:
+                    e_val = e_ff[i] if kind == "ff" else e_rec[i]
+                    case = {"d_pred": sb[j] - echo[j], "lr": spy.lr, "sg": sg[j], "e": e_val}
+                    if spy.anti_collapse:
+                        case["d_mu"] = sb[j] - mu[j]
+                        case["inv_var"] = 1.0 / (var[j] + spy.eps_stat)
+                        case["cov_pull"] = mod["cov_pull"][j]
+                        case["d_homeo"] = mu[j] - spy.rho_star
+                    cases.append(case)
+                    incs.append(spy.lr * m_j * sg[j] * 1.0 * e_val)
+                    if kind == "ff":
+                        deltas.append(
+                            (st["wff_after"][j][i] - st["wff_before"][j][i], st["wff_before"][j][i])
+                        )
+                    else:
+                        deltas.append(
+                            (
+                                st["wrec_after"][j][i] - st["wrec_before"][j][i],
+                                st["wrec_before"][j][i],
+                            )
+                        )
+        return cases, incs, deltas
+
+    def _spy_run(steps=250, record=5, cls=_SpyJEPA, **kw):
+        spy = cls(_ACTIONS, retina=retina, seed=0, **kw)
+        warm = train[:steps]
+        for x, a, y, _i, _p in warm[:-record]:
+            spy.train_step(x, a, y)
+        spy._rec_on = True  # record only the tail: warm EMA state, bounded memory
+        for x, a, y, _i, _p in warm[-record:]:
+            spy.train_step(x, a, y)
+        return spy
+
+    def _term_mag(rule, case):
+        s = 0.0
+        for _coeff2, _fs2 in rule.terms:
+            p = abs(_coeff2)
+            for _f2 in _fs2:
+                p *= abs(float(case[_f2]))
+            s += p
+        return s
+
+    # K derived from the authored structure, not chosen: one ulp per rounding in the
+    # longest re-association chain, counted as every factor multiply plus every term
+    # add (4 terms x (4|5) factors + 4 adds = 21 for the full rule). The panel measured
+    # the actual worst at 2.03 ulps; the derived K's headroom is structural slack, and
+    # the mis-declaration control below -- not a second magic ceiling -- is what proves
+    # the tol swallows no real defect (a former `< 1e-12` assert died here as magic
+    # guarding magic).
+    def _k_ulp(rule):
+        return float(sum(len(_fs2) for _c2, _fs2 in rule.terms) + len(rule.terms))
+
+    spy_bit = _spy_run(anti_collapse=False)
+    rule_bit = spy_bit.lpl_synapse_rule()
+    cases_b, incs_b, _deltas_b = _lpl_sites(spy_bit)
+    live_b = sum(1 for v in incs_b if v != 0.0)
+    inc_map_b = {id(c): v for c, v in zip(cases_b, incs_b)}  # id-keyed: equivalence_check's
+    worst_bit = equivalence_check(  # list(cases) keeps object identity, and cases_b holds
+        rule_bit, lambda c: inc_map_b[id(c)], cases_b, tol=0.0
+    )  # the refs alive -- both load-bearing for id() stability
+
+    spy_full = _spy_run()
+    rule_full = spy_full.lpl_synapse_rule()
+    cases_f, incs_f, deltas_f = _lpl_sites(spy_full)
+    live_f = sum(1 for v in incs_f if v != 0.0)
+    inc_map_f = {id(c): v for c, v in zip(cases_f, incs_f)}
+    _mag = max(_term_mag(rule_full, _case) for _case in cases_f)
+    tol_full = _k_ulp(rule_full) * _sys.float_info.epsilon * _mag
+    worst_full = equivalence_check(rule_full, lambda c: inc_map_f[id(c)], cases_f, tol=tol_full)
+
+    # DELTA arm: the declaration vs the weight the production loop ACTUALLY wrote (the
+    # chain arms alone were panel-measured BLIND to a 25% production-application defect
+    # that moved applied |dw| by +20%). tol adds the += rounding scale (|w|+|terms|).
+    _magd = max(abs(w0) + _term_mag(rule_full, _case) for _case, (_d, w0) in zip(cases_f, deltas_f))
+    tol_delta = _k_ulp(rule_full) * _sys.float_info.epsilon * _magd
+    worst_delta = 0.0
+    for _case, (_d, _w0) in zip(cases_f, deltas_f):
+        _dv = abs(rule_full.evaluate(**_case) - _d)
+        if not (_dv <= tol_delta):
+            raise AssertionError(
+                f"declaration diverges from the APPLIED weight delta: |d|={_dv!r} > {tol_delta:.3e}"
+            )
+        worst_delta = max(worst_delta, _dv)
+
+    # the delta arm's reachable red, in-command: production _elig corrupted x1.25 while
+    # the declared factor semantics (base-class _elig) stay clean -> applied deltas
+    # diverge from the declaration; the chain arms stay green (scoped to the chain).
+    class _CorruptElig(_SpyJEPA):
+        def _elig(self, train_sig, n):
+            return [v * 1.25 for v in SpikingJEPA._elig(self, train_sig, n)]
+
+    _spy_corrupt = _spy_run(steps=60, record=3, cls=_CorruptElig)
+    _cases_c, _incs_c, _deltas_c = _lpl_sites(_spy_corrupt)
+    _rule_c = _spy_corrupt.lpl_synapse_rule()
+    lpl_delta_control_red = False
+    for _case, (_d, _w0) in zip(_cases_c, _deltas_c):
+        if _d != 0.0 and abs(_rule_c.evaluate(**_case) - _d) > tol_delta:
+            lpl_delta_control_red = True
+            break
+
+    _alg_bad = EligibilityAlgebra(term_budget=len(rule_full.terms))
+    _seen_bad = []
+    for _cf, _fs in rule_full.terms:
+        for _f in _fs:
+            if _f not in _seen_bad:
+                _seen_bad.append(_f)
+                _alg_bad.declare_factor(
+                    _f, "control copy of the declared factor (mis-declaration arm)"
+                )
+    lpl_bad = _alg_bad.author(
+        "jepa.lpl.synapse.misdeclared",
+        [((cf + 1e-6) if fs[0] == "d_mu" else cf, fs) for cf, fs in rule_full.terms],
+    )
+    lpl_control_red = False
+    try:
+        equivalence_check(lpl_bad, lambda c: inc_map_f[id(c)], cases_f, tol=tol_full)
+    except AssertionError:
+        lpl_control_red = True
+
+    lpl_espp_refuses = False
+    try:
+        SpikingJEPA(_ACTIONS, retina=retina, seed=0, rule="espp").lpl_synapse_rule()
+    except ValueError:
+        lpl_espp_refuses = True
+    lpl_ctrl_refuses = 0
+    for _kw in ({"transport": True}, {"freeze_top": True}):
+        _inst = SpikingJEPA(_ACTIONS, retina=retina, seed=0)
+        for _k2, _v2 in _kw.items():
+            setattr(_inst, _k2, _v2)
+        try:
+            _inst.lpl_synapse_rule()
+        except ValueError:
+            lpl_ctrl_refuses += 1
+
+    # coefficient pins: the TERMS themselves, all four lambdas, exact equality -- the
+    # prior substring test ('+2' in canonical) passed 2.5/20/200 (panel). Plus the
+    # RETYPING red the shipped-defaults instance cannot construct: a mutated instance's
+    # authored coefficients must track the mutation (a retyped literal cannot).
+    _cmap = {fs[0]: cf for cf, fs in rule_full.terms}
+    lpl_coeffs_pin = _cmap == {
+        "d_pred": -(float(spy_full.lambda_pred) * 2.0),
+        "d_mu": float(spy_full.lambda_var),
+        "cov_pull": -float(spy_full.lambda_cov),
+        "d_homeo": -float(spy_full.lambda_homeo),
+    }
+    _mut = SpikingJEPA(_ACTIONS, retina=retina, seed=0)
+    _mut.lambda_var = 3.0
+    _mut.lambda_cov = 0.7
+    _mut.lambda_homeo = 0.9
+    _rmut = _mut.lpl_synapse_rule()
+    _mmap = {fs[0]: cf for cf, fs in _rmut.terms}
+    lpl_mut_tracks = _mmap == {
+        "d_pred": -2.0,
+        "d_mu": 3.0,
+        "cov_pull": -0.7,
+        "d_homeo": -0.9,
+    } and ("+3" in _rmut.canonical())
+
+    # the palette point, with the VALUE bound (the prior form had no reachable red: it
+    # passed for a garbage rule, and its cases_f[0] binding had e == 0.0 so the
+    # declaration contributed exactly 0.0 to its own smoke -- both panel-constructed;
+    # the guarantee-string conjunct was a policy-literal echo and is DELETED, not
+    # weakened).
+    _reads = set()
+    for _cf, _fs in rule_full.terms:
+        _reads.update(_fs)
+    _comp = RuleComposer("sum", "w")
+    _comp.add(RuleSpec("jepa_lpl", rule_full, reads=_reads, writes={"w"}))
+    _alg_d = EligibilityAlgebra(term_budget=1)
+    _alg_d.declare_factor("w", "the composed substrate (smoke)")
+    _decay = _alg_d.author("decay", [(-0.5, ("w",))])
+    _comp.add(RuleSpec("decay", _decay, reads={"w"}, writes={"w"}))
+    _best = max(cases_f, key=lambda c2: abs(rule_full.evaluate(**c2)))
+    _contrib = rule_full.evaluate(**_best)
+    _bind = dict(_best)
+    _bind["w"] = 1.0
+    _w1, _parts = _comp.step(1.0, _bind)
+    lpl_composes = (
+        _contrib != 0.0
+        and _parts["jepa_lpl"] == _contrib
+        and _parts["decay"] == -0.5
+        and _w1 == 1.0 + (_parts["jepa_lpl"] + _parts["decay"])
+    )
+
     # ============================ REPORT ============================
     line = "=" * 92
     print(line)
@@ -1293,6 +1697,17 @@ def main():
     print(
         f"determinism: two seed=7 models byte-identical={same_weights}; save/load exact={roundtrip}; "
         f"crc-raises={crc_raises}; shape-raises={shape_raises}"
+    )
+    print(
+        f"declaration: T051b-i authored LPL rule -- BIT arm worst |d|={worst_bit:.1e} on "
+        f"{len(cases_b)} sites of which {live_b} LIVE (tol=0.0); FULL arm worst |d|="
+        f"{worst_full:.3e} <= derived tol {tol_full:.3e} (K={_k_ulp(rule_full):.0f} ulps of "
+        f"max-mag {_mag:.3e}) on {len(cases_f)} sites of which {live_f} LIVE; DELTA arm (the "
+        f"APPLIED weight) worst |d|={worst_delta:.3e} <= {tol_delta:.3e}, corrupted-production "
+        f"control REDS={lpl_delta_control_red}; 1e-6 mis-declaration REDS={lpl_control_red}; "
+        f"espp+transport+freeze_top refuse={lpl_espp_refuses}/{lpl_ctrl_refuses}; coefficients "
+        f"pin ALL FOUR lambdas={lpl_coeffs_pin}, mutated-instance tracks={lpl_mut_tracks}; "
+        f"accepted by the T051a kernel with the contributed VALUE bound={lpl_composes}"
     )
     print(line)
 
@@ -1396,6 +1811,58 @@ def main():
     assert crc_raises, "a corrupted-crc weight file must raise ValueError"
     assert shape_raises, "a bad-shape weight file must raise ValueError"
 
+    # ---- T051b-i asserts: the declaration binds the implementation ----
+    # Floors are on LIVE (nonzero-incumbent) sites: the panel measured the raw count
+    # 94.2% vacuous on the BIT arm (339/360 were 0==0 compares) -- a floor the vacuum
+    # satisfies is no floor. Measured live counts at landing: BIT 21, FULL 201.
+    assert live_b >= 15 and live_f >= 150, (
+        f"too few LIVE equivalence sites (BIT {live_b}, FULL {live_f}) -- "
+        f"a 0==0 compare is not coverage (raw {len(cases_b)}/{len(cases_f)})"
+    )
+    assert worst_bit == 0.0, (
+        f"the ablation declaration must match the production chain to the bit (worst |d|={worst_bit!r})"
+    )
+    assert tol_full > 0.0 and lpl_control_red, (
+        "the derived tol must be positive AND the 1e-6 lambda_var mis-declaration must RED at it "
+        "-- the control, not a magnitude ceiling, is what proves the tol swallows no real defect"
+    )
+    assert lpl_delta_control_red, (
+        "the corrupted-production control (e x1.25 at apply) must RED the delta arm -- "
+        "without it the check binds only the chain, the panel's BLOCKER"
+    )
+    assert lpl_espp_refuses and lpl_ctrl_refuses == 2, (
+        "lpl_synapse_rule must refuse espp AND transport AND freeze_top instances "
+        f"(espp={lpl_espp_refuses}, controls={lpl_ctrl_refuses}/2)"
+    )
+    assert lpl_coeffs_pin, (
+        "the authored TERM coefficients must equal ALL FOUR instance lambdas exactly "
+        "(the substring form passed 2.5/20/200 -- panel)"
+    )
+    assert lpl_mut_tracks, (
+        "a mutated instance's authored coefficients must track the mutation -- "
+        "the reachable red for a retyped literal (shipped defaults cannot construct it)"
+    )
+    assert lpl_composes, (
+        "the composition smoke must bind the contributed VALUE (nonzero contribution, "
+        "parts == the declaration's own evaluation, w1 arithmetic consumed)"
+    )
+
+    print(
+        "DISCLOSURES (T051b-i): the DECLARATION is equivalence, NOT adoption -- the incumbent "
+        "_modulator + train_step block REMAINS the production path, lpl_synapse_rule has ZERO "
+        "production callers (consumers: this self-check + the composer-palette smoke), the host "
+        "module is dormancy_gate EXEMPT `permanent`, and BOTH method-grade gates structurally "
+        "miss the method (no LEARN_VERB; host outside reachable()). Its first tick-charged use "
+        "is UNDATED; the algebra/composer siblings' T053 expiry is discharged by iSTDP's OWN "
+        "declaration there, not by this rule. UNDECLARED REMAINDER: the rule='espp' branch, the "
+        "lambda_jepa top-layer addition, and transport-gated (gate!=1) bottom sites -- espp/"
+        "transport/freeze_top instances REFUSE rather than receive a lying declaration. The five "
+        "pre-collapsed factors (d_pred, d_mu, inv_var, cov_pull, d_homeo) are caller-computed "
+        "state, defined BY _elig/_surrogate/_update_stats -- a defect inside those definitions "
+        "is out of equivalence scope (the delta arm binds everything after them). Case coverage: "
+        "lr is PINNED to the one instance value and e is substrate-quantized to ~5 distinct "
+        "values (panel-measured population property, not sampling bias)."
+    )
     print(
         f"self-check OK: genuinely spiking (rates {rate0:.2f}/{rate1:.2f}, latent=f(counts)); genuinely local "
         f"(bottom learns {d_prim:.1e} vs transport {d_ctrl:.1e}); predictor tracks latent at identity scale "
