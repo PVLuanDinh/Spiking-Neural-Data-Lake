@@ -727,6 +727,7 @@ class Brain:
         self._percept_conf = 1.0  # perceptual-confidence gate on the percept drive (set live by the no-backprop laminar readout B'; 1.0 = ungated)
         self._percept_readout = None  # Slice B: lazy LIVE no-backprop laminar readout (B') over the real percept latent; learns online, sets _percept_conf
         self._percept_surprise = None  # loop C2: lazy online unsupervised SURPRISE (Oja-PCA reconstruction residual) over the percept latent
+        self._spont_bootstrap_steps = None  # T045: None = the wire never ran; 0 = ran and delivered nothing; 1600 = completed (readers need no getattr default)
         self._surprise_signal = 0.0  # loop C2: current-tick predictive surprise (off-manifold), an orienting drive; set in _perceive_real
         self._learned_latency = 0  # C2 #3: learned reward latency -> opens a timed Go window
         # C2 BRAIN-NATIVE: the approach drive's per-source weights are LEARNED (three-factor,
@@ -1538,6 +1539,26 @@ class Brain:
                     from snn_data_lake.cortex.percept_surprise import PerceptSurprise
 
                     self._percept_surprise = PerceptSurprise(in_dim=len(percept), k=8, seed=0)
+                    # T045: PRE-EXPERIENCE SPONTANEOUS BOOTSTRAP -- an OU drive through the
+                    # SAME observe this instance runs live, delivered BEFORE the first real
+                    # percept below reaches it (the retinal-wave analog). The canonical
+                    # composition (bootstrap_percept_rule) also RESETS the surprise
+                    # baseline, so the only installed effect is subspace structure -- the
+                    # panel measured the un-reset draft handing the first real percept a
+                    # saturated surprise (1.000 vs the cold contract's 0.000) on the action
+                    # gate's eligibility input. MEASURED AT THIS CONFIGURATION (k=8 rule,
+                    # k=3 modes -- the first draft cited the harness's k=4 number here):
+                    # alignment 0.93 at 1600 steps vs cold floor 0.186; the curve
+                    # 400/800/1600/3200 -> 0.58/0.72/0.90/0.998, so 800 already clears the
+                    # bar and 1600 is margin (~70 ms, once). The DELIVERED step count is
+                    # RECORDED so the enclosing except cannot make a swallowed failure read
+                    # as a completed bootstrap -- tests/test_spontaneous_bootstrap.py
+                    # asserts the attribute AND the installed alignment.
+                    from snn_data_lake.substrate.spontaneous_activity import (
+                        bootstrap_percept_rule,
+                    )
+
+                    self._spont_bootstrap_steps = bootstrap_percept_rule(self._percept_surprise)
                 self._surprise_signal = float(self._percept_surprise.observe(percept))
             except Exception:
                 pass

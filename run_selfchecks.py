@@ -307,6 +307,7 @@ CORE = [
     "substrate.home",
     "substrate.binlog",
     "substrate.growable",
+    "substrate.spontaneous_activity",  # T045: OU stationarity + same-path A/B + nulls + refusals
     "substrate.region_wiring",  # the always-on daemon's faculty-wiring registry -> charge_all + honest coverage report
     "substrate.arm_view",  # stdlib PNG encoder + demand-gated offscreen arm frames
     "substrate.brain_telemetry",  # snapshot contract + recorder + /api/state (no-orphan-panel gate)

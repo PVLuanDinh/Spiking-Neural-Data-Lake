@@ -62,6 +62,20 @@ LEARN_VERBS = (
 # name -> (disposition, reason). disposition in {"permanent", "wire", "retire"}.
 # "permanent" = legitimately not on the live tick. "wire"/"retire" are open work and are REPORTED.
 EXEMPT_METHOD = {
+    "substrate.spontaneous_activity.SpontaneousActivity.fit_to_traces": (
+        "wire",
+        "specs/022 T045: closed-form AR(1) theta fit (DIRECT_SOLVE under the class-qualified "
+        "GRADIENT_CLAIM key) -- the LEARNABLE arm of the spontaneous bootstrap. The bootstrap "
+        "is live ONLY where the torch perception tier is armed (the eprop checkpoint is "
+        "gitignored, so a fresh clone and CI never fire the wire; "
+        "tests/test_spontaneous_bootstrap.py pins the CODE PATH with a stub encoder, not the "
+        "deployment -- T045 panel). The fit's callers today are the module's own main(), "
+        "which every gate run executes. The dated wire: feeding REAL percept traces into the "
+        "fit -- no task id in specs/022 tasks.md names it yet, stated plainly, AND that wire "
+        "owes its own A/B first: the panel measured a small fitted theta DEGRADING the "
+        "alignment criterion (Oja is order-blind; smooth real traces fit small theta), so a "
+        "trace-fit landing without the A/B would silently worsen the one measured outcome",
+    ),
     "cortex.genomic_bottleneck.GenomicMap.fit": (
         "wire",
         "specs/022 T044: closed-form bilinear least squares (DIRECT_SOLVE declared under the "
