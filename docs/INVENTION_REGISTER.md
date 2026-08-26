@@ -78,7 +78,7 @@ stage-1 region emission at birth, stage-2 cell-type deferred; sharp compartments
 hindbrain/cerebellum vs graded-then-postmitotic for cortex (importing one regime into the
 other is a published category error). RED: region-coverage over the pinned growable set reads
 below floor TODAY (cortex-only placement); boundary-width vs a gradient-only control in the
-same command. CONTROLS: scrambled-field spatial null; adjusted-Rand vs an out-of-model
+same command. MECHANIZED: substrate/growth_coverage_gate.py (T046, 2026-08-26). CONTROLS: scrambled-field spatial null; adjusted-Rand vs an out-of-model
 partition (Allen / published prosomeric map). ATTRIBUTION: per-region emission counts.
 DISCLOSURE: no computational multi-region growth policy exists to adopt — three searches, none
 found. NULL: if the GRN readout never beats gradient-only labels, the composition is deleted.

@@ -409,6 +409,28 @@ REGION_COORDS = {
 # compartment-like and take the sharp regime at this grain (disclosed simplification).
 _GRADED_NEUROMERES = frozenset({"sp"})
 
+#: Neuromere -> macro segment (prosomeric model, coarse): sp + the three diencephalic
+#: prosomeres are forebrain; m1 is midbrain; isthmus + rhombomeres are hindbrain; sc is
+#: spinal cord (no REGION_COORDS entry maps there). Declared here BESIDE the axis it grains
+#: (the T046 panel: a second neuromere table living in a gate drifts from the first);
+#: consumed by substrate/growth_coverage_gate's Allen external control.
+MACRO_OF_NEUROMERE = {
+    "sp": "forebrain",
+    "p3": "forebrain",
+    "p2": "forebrain",
+    "p1": "forebrain",
+    "m1": "midbrain",
+    "is": "hindbrain",
+    "r1": "hindbrain",
+    "r2": "hindbrain",
+    "r3": "hindbrain",
+    "r4": "hindbrain",
+    "r5": "hindbrain",
+    "r6": "hindbrain",
+    "r7": "hindbrain",
+    "sc": "spinal",
+}
+
 
 def regime_of(neuromere):
     """'graded' for the pallial territory, 'sharp' for compartment neuromeres."""

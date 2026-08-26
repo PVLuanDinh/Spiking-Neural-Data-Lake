@@ -428,6 +428,14 @@ EXEMPT = {
         "audits gate commands, certifies releases. Same disposition as gradient_claim_gate above: "
         "reachable from run_selfchecks and CI, never from a tick",
     ),
+    "growth_coverage_gate": (
+        "permanent",
+        "specs/022 T046: invention register row 7's four instruments (coverage ratchet + "
+        "refusals, three-way partition, boundary sharpness via the PRODUCTION labelers, "
+        "spatial null, Allen elementwise external control) -- a CI/run_selfchecks "
+        "instrument, never on a tick -- the policy_manifest disposition. The coverage red "
+        "it reports (1 of 10, cortex-only) is the OPEN work; the gate is its counter",
+    ),
     "lake_bridge": (
         "wire",
         "specs/022 T005b: the read-old/write-new format bridge (imports lake_segments for the "

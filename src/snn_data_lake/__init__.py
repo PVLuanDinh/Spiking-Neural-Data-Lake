@@ -423,6 +423,7 @@ REGIONS = {
         "binlog",
         "growable",
         "spontaneous_activity",  # specs/022 T045: learnable OU bootstrap through the SAME plasticity path (FR-033)
+        "growth_coverage_gate",  # specs/022 T046: register row 7's instruments, counted (coverage red 1 of 10)
         "region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> GWT ignition bias
         "region_wiring",  # the always-on daemon's faculty-wiring registry -> charge_all + honest coverage report
         "brain_telemetry",  # the ONE snapshot contract + JSONL recorder + provenance table

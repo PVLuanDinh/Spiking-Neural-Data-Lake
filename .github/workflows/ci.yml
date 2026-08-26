@@ -355,6 +355,29 @@ jobs:
       - name: P6 gate criteria can fail (--self-check)
         run: python tools/p6_gate.py --self-check
 
+      # specs/022 T046: invention register row 7's four instruments, mechanized and COUNTED
+      # before any rule lands (the gate-before-rule invariant). Lives in substrate/, NOT
+      # tools/ -- the panel measured the tools/ draft REDDING p4c_ratchet in THIS job before
+      # its own steps ran. Sits after pip install (unlike the ratchet pair) because it
+      # imports the real arealization/growth_program/placement symbols -- policing the
+      # PRODUCTION labelers is the point (the panel poisoned discretize_sharp and the
+      # inline-copy draft stayed green). Asserts: the identity-pinned coverage ratchet
+      # ({cortex}, per-site AST census with an <unresolved> red -- the draft fabricated
+      # "cortex" for any non-literal region argument); REFUSALS for censused growth into
+      # SCAFFOLD (brainstem included) / CHARGED-NEVER-GROWN / undeclared names; the exact
+      # three-way partition; sharp-width-0 via the production discretize_sharp (0 BY
+      # CONSTRUCTION, stated -- the reachable red is the symbol dependency) vs the graded
+      # modal-label width under noise; the scrambled-FIELD spatial null; ELEMENTWISE Allen
+      # macro agreement (ARI alone is name-blind: a singleton region's move is invisible --
+      # ARI + its permutation null stay as display). DAY-ONE COUNT in every run's output:
+      # coverage 1 of 10 -- BELOW FLOOR (cortex-only). Green means the ratchet held, the
+      # refusals are empty and the instruments discriminate; NEVER that coverage is adequate.
+      - name: Growth coverage gate (T046, --assert)
+        run: python -m snn_data_lake.substrate.growth_coverage_gate --assert
+
+      - name: Growth coverage gate criteria can fail (--self-check)
+        run: python -m snn_data_lake.substrate.growth_coverage_gate --self-check
+
       # The e-prop invariant's SCOPE gate: which learning rules OWE a gradient cosine at all. A
       # FOURTH question, distinct from the three gates above it -- eprop_transport_gate asks "is there
       # a rule NOBODY CHECKED?", dormancy_gate asks "is this module reachable?", method_dormancy_gate

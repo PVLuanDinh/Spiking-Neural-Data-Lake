@@ -23,6 +23,7 @@ the rule that stops the policy from being satisfied by theater.
 | *(not a policy — repo hygiene)* standing docs keep their word ceilings | `substrate/doc_budget_gate.py` (bare = assert, in run_selfchecks) | — |
 | *(not a policy — repo hygiene)* outside data passes license + injection gates before the brain keeps it | `substrate/ingest_guard.py` (bare = assert, in run_selfchecks) | — |
 | *(not a policy — repo hygiene)* citations resolve | `tools/citation_guard.py` (step in the `lint` CI job, asserting since 2026-07-30) | — |
+| *(not a policy — a spec instrument, invention register row 7)* growth coverage counted before any rule lands | `substrate/growth_coverage_gate.py` (`--assert` + `--self-check`, `lint` CI job, 2026-08-26). The coverage red — 1 of 10 growable regions grown from a live path, cortex only — is REPORTED every run; asserted: the identity-pinned ratchet, scaffold/undeclared refusals, unresolved-site reds. Green never means coverage is adequate | — |
 | *(not a policy — repo hygiene)* documented `python -m` commands run | **BUILT AND CLEAN, but NOT IN CI** — `tools/doc_command_guard.py --assert` (2026-08-04) | — (see the correction directly below: this row said "step in the `lint` CI job" and the step does not exist) |
 
 **Corrected 2026-08-04, and the direction of this drift is the one this file keeps warning about.** The

@@ -87,7 +87,16 @@ BUDGETS = {
     # remedy, recorded here so it is not lost: the e-prop invariant block now carries FOUR
     # generations of amendment text and owes a CONSOLIDATION pass -- one statement per rule,
     # correction narratives moved to the spec record -- after which this ceiling comes back DOWN.
-    "docs/POLICIES.md": 28083,  # LOWERED from 29750 on 2026-08-18 (specs/021 US4):
+    "docs/POLICIES.md": 28150,  # RAISED 28083 -> 28150 on 2026-08-26 (specs/022 T046), in the
+    # SAME commit as the growth: the policy_manifest's unclaimed-gate ratchet (baseline EMPTY,
+    # may never grow) requires every runnable gate NAMED in this file, and T046 lands
+    # substrate/growth_coverage_gate.py -- one enforcement-table hygiene row (measured 68
+    # words by this gate's counter -- the draft comment guessed ~45 -- at 8 words of
+    # pre-edit headroom). The enforcement table grows one row per gate BY DESIGN; this
+    # ceiling polices PROSE, and prose relocation stays the remedy for prose growth. NOTE
+    # the working convention has tightened: the 2026-08-18 re-anchor granted measured+100,
+    # this raise is minimum-viable (single-digit headroom), stated rather than implied.
+    # Previous adjustment: LOWERED from 29750 on 2026-08-18 (specs/021 US4):
     # the two "Real past incidents" forensics sections (P7 + P8, 1,853 words by this gate's
     # own counter) relocated BYTE-EXACT to docs/POLICIES_EVIDENCE.md with pointers left in
     # place; ceiling re-anchored to measured + 100. HONEST RESIDUE: the e-prop invariant
@@ -104,7 +113,11 @@ BUDGETS = {
     # byte-exact with a pointer. Words conserved, moved not grown; POLICIES.md returns under
     # its LOWERED ceiling with real headroom.
     "docs/POLICIES_EVIDENCE.md": 3550,
-    "docs/INVENTION_REGISTER.md": 950,  # specs/022 T002: the eight P8 invention debt packages
+    "docs/INVENTION_REGISTER.md": 956,  # RAISED 950 -> 956 on 2026-08-26 (specs/022 T046),
+    # in the SAME commit as the growth: row 6's own convention indexes each row's MECHANIZED
+    # instrument, and T046 mechanizes row 7's four -- one 6-word MECHANIZED line at 0 words
+    # of headroom. Minimum viable raise (measured + 0), matching current practice.
+    # Previous: specs/022 T002: the eight P8 invention debt packages
     # (index only -- measurements live in specs/022 evidence/). Measured 844 at landing; ceiling
     # = measured + ~106 so a ninth invention forces a deliberate ceiling raise with its reason here.
     "README.md": 2264,  # 2,156
