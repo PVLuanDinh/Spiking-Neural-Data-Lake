@@ -1,9 +1,10 @@
 """
 Rule composer KERNEL -- specs/022 T051a (P8 invention #3's core): N rules on one
 substrate value with TYPED READ/WRITE SETS and per-rule neuter attribution --
-the INSTRUMENT'S KERNEL (standing at T051b, when the charge probe becomes its
-first live reader; today's readers are zero, said plainly), authored through
-T050's eligibility algebra.
+the INSTRUMENT'S KERNEL. Its first reader landed at T051b-iii: rule_charge, the
+per-rule charge A/B consuming last_attribution(), GATE-RUN grade (zero live
+compositions exist in the tree; the first TICK-live reading arrives with T053's
+charged composition, said plainly). Authored through T050's eligibility algebra.
 
 WHAT IT IS. The arbitration CONTRACT over declared rules -- not a clever policy:
   RuleSpec(name, rule: AuthoredRule, reads, writes, claim_key=None) -- the tree's
@@ -74,16 +75,17 @@ stacks' sandwiches as RuleSpecs held to equivalence the way T050 held r_stdp --
 is dated to T051b, whose row names it. wholistic_loop's "arbitration" is
 FACULTY-grain tick arbitration, distinct.
 
-NO TISSUE, NO WIRE: dated consumers -- T051b (incumbent discharges + the charge
-probe as the instrument's first live reader), T053 (the first tick-charged
-composed rule -- its row names the composition). Charged surface until then:
-this gate-run self-check.
+NO TISSUE, NO WIRE: the reader landed at T051b-iii (rule_charge, gate-run
+grade); the first TICK-charged composed rule is T053's (its row names the
+composition), and the stack-sandwich MERGE is T051b-iv's. Charged surface until
+then: this gate-run self-check.
 
   PYTHONPATH=src python -m snn_data_lake.plasticity.rule_composer
 """
 
 import math
 import threading
+import types
 
 from snn_data_lake.plasticity.eligibility_algebra import AuthoredRule
 
@@ -120,14 +122,23 @@ GRADIENT_CLAIM = {
 POLICIES = ("sum", "sequential")
 
 
+# distinct-from: substrate/wiring_manifest.py -- Port declares a FACULTY signal surface;
+#   RuleSpec declares one RULE's factor/target sets, and its `producers` entries only
+#   REFERENCE manifest ports (resolved by check_producers), never re-model them. Site read.
 class RuleSpec:
     """One rule's typed declaration. Frozen. `claim_key`: the optional
     GRADIENT_CLAIM key of the rule's owning symbol (the T051c cross-check's
-    slot; carrying it is honest even before the check exists)."""
+    slot; carrying it is honest even before the check exists). `producers`
+    (T051b-iii, FR-019): the optional factor->producer declaration --
+    "self" for a caller-computed internal state quantity, or a
+    (faculty, port_name, expected_unit) triple naming the manifest OUT port
+    the factor is fed from; resolution against the manifest is
+    check_producers' job, never construction's (a spec must be
+    constructible without importing the substrate tier)."""
 
-    __slots__ = ("name", "rule", "reads", "writes", "claim_key")
+    __slots__ = ("name", "rule", "reads", "writes", "claim_key", "producers")
 
-    def __init__(self, name, rule, reads, writes, claim_key=None):
+    def __init__(self, name, rule, reads, writes, claim_key=None, producers=None):
         if not (isinstance(name, str) and name.strip()):
             raise ValueError("RuleSpec name must be a non-empty string")
         if not isinstance(rule, AuthoredRule):
@@ -162,11 +173,38 @@ class RuleSpec:
         for w in writes:
             if not (isinstance(w, str) and w.isidentifier()):
                 raise ValueError(f"spec {name!r}: write target {w!r} must be an identifier")
+        if producers is not None:
+            if not isinstance(producers, dict):
+                raise ValueError(
+                    f"spec {name!r}: producers must be a dict, got {type(producers).__name__}"
+                )
+            orphan = sorted(set(producers) - reads)
+            if orphan:
+                raise ValueError(
+                    f"spec {name!r}: producers declared for factors {orphan} the read set "
+                    "does not carry -- a producer for an unread factor is a dead declaration"
+                )
+            for f, prod in producers.items():
+                ok = prod == "self" or (
+                    isinstance(prod, tuple)
+                    and len(prod) == 3
+                    and all(isinstance(x, str) and x.strip() for x in prod)
+                )
+                if not ok:
+                    raise ValueError(
+                        f"spec {name!r}: producer for {f!r} must be 'self' or a "
+                        f"(faculty, port, expected_unit) triple, got {prod!r}"
+                    )
+            # a read-only view: reads/writes are frozensets, and a bare dict here was
+            # panel-measured mutable IN PLACE post-construction -- re-opening the
+            # unread-key invariant this constructor just refused
+            producers = types.MappingProxyType(dict(producers))
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "rule", rule)
         object.__setattr__(self, "reads", reads)
         object.__setattr__(self, "writes", writes)
         object.__setattr__(self, "claim_key", claim_key)
+        object.__setattr__(self, "producers", producers)
 
     def __setattr__(self, key, value):
         raise AttributeError(f"RuleSpec is frozen ({key!r} is not assignable)")
@@ -293,8 +331,8 @@ class RuleComposer:
         return new_w, dict(parts)
 
     def last_attribution(self):
-        """The attribution kernel's read surface (per-call today; its first LIVE
-        reader is T051b's charge-probe integration, dated): the latest step's
+        """The attribution kernel's read surface (first reader: rule_charge,
+        T051b-iii -- gate-run grade; tick-live reading is T053's): the latest step's
         per-rule decomposition, cumulative |dw| TOTALS (cumulative_abs_dw -- not
         shares; divide by their sum if a share is wanted), whether a step has
         happened at all (never-stepped != measured-zero), and the policy's
@@ -326,11 +364,239 @@ class RuleComposer:
         with self._lock:
             if name not in self._names:
                 raise ValueError(f"cannot neuter unknown rule {name!r}")
+            # deliberately RuleComposer, not type(self): the LOO arm measures the
+            # KERNEL's composition semantics; a subclass wanting subclass-semantics
+            # LOO overrides neutered() itself (panel-noted, stated here)
             out = RuleComposer(self._policy, self._target, _loo_of=name)
             for spec in self._specs:
                 if spec.name != name:
                     out.add(spec)
             return out
+
+
+# distinct-from: substrate/signal_ring.py -- JoinConsumer ENFORCES join/delivery policies on
+#   live traffic between faculties; check_producers only RESOLVES a rule's declared factor
+#   references against the manifest (a static census check, no traffic touched). Site read.
+# distinct-from: substrate/manifest_gate.py -- that gate checks the MANIFEST's own coherence;
+#   this checks one RuleSpec AGAINST the manifest it produces. Consumes, never re-models. Site read.
+def check_producers(spec, manifest, consumer=None):
+    """FR-019 / T051b-iii: resolve one RuleSpec's declared factor producers against
+    the wiring manifest. Returns a FINDINGS list (empty == green -- the manifest
+    checks' idiom, composable with gates); refuses (ValueError) a spec with no
+    producers declaration at all, because 'nothing to check' silently reading as
+    green is the vacuous-pass shape the tree keeps deleting.
+
+    Semantics per entry: "self" = a caller-computed internal state quantity
+    (declared, deliberately NOT resolved -- inv_var or cov_pull has no faculty
+    port and pretending otherwise would be a third port model, which FR-019's
+    own text forbids); a (faculty, port, expected_unit) triple must resolve to a
+    DECLARED manifest port that is kind OUT -- only an OUT port produces (an IN
+    port consumes; REF, the audited escape hatch, is deliberately NOT a legal
+    producer) -- whose declared unit equals the spec's expectation (the unit-lie
+    red: a consumer expecting spikes_hz wired to a level01 port would scale
+    silently). WITHOUT `consumer`, resolution is NAME/KIND/UNIT ONLY and
+    ROUTE-BLIND, said plainly: the panel measured 9 of 10 unrouted level01 OUT
+    ports passing green beside the one routed edge. WITH `consumer` (a faculty
+    name), each resolved triple must ALSO source a declared edge into that
+    faculty -- the no-declared-route red, presence-is-not-participation at the
+    port grain. The manifest is the PRODUCTION assembly
+    (manifest_gate.rebuild_from_registrants), never a hand-built one."""
+    if spec.producers is None:
+        raise ValueError(
+            f"spec {spec.name!r} declares no producers -- check_producers has nothing "
+            "to check, and a vacuous green is refused rather than returned"
+        )
+    findings = []
+    for f in sorted(spec.reads):
+        if f not in spec.producers:
+            findings.append(f"factor {f!r}: read but no producer declared")
+    for f in sorted(spec.producers):
+        prod = spec.producers[f]
+        if prod == "self":
+            continue
+        fac, port_name, expected_unit = prod
+        port = manifest.ports.get((fac, port_name))
+        if port is None:
+            findings.append(
+                f"factor {f!r}: producer ({fac!r}, {port_name!r}) is not a declared port"
+            )
+            continue
+        if port.kind != "OUT":
+            findings.append(
+                f"factor {f!r}: producer ({fac!r}, {port_name!r}) is kind {port.kind!r} -- "
+                "only an OUT port produces"
+            )
+        if port.unit != expected_unit:
+            findings.append(
+                f"factor {f!r}: unit lie -- the spec expects {expected_unit!r}, the port "
+                f"declares {port.unit!r}"
+            )
+        if consumer is not None and not any(
+            e[0] == fac and e[1] == port_name and e[2] == consumer for e in manifest.edges
+        ):
+            findings.append(
+                f"factor {f!r}: declared producer ({fac!r}, {port_name!r}) has NO declared "
+                f"route into {consumer!r} -- a resolvable name is not a wire"
+            )
+    return findings
+
+
+# distinct-from: tools/charge_probe.py -- the SAME neuter-A/B pattern at a DIFFERENT grain:
+#   the probe neuters drive sources on a live brain; this neuters RULES on a caller-built
+#   composed trajectory. The probe stays the brain-grain surface (cross-referenced there);
+#   one pattern, two grains, neither re-implements the other. Site read.
+# distinct-from: thalamus/ignition_instrument.py -- that sweep drives a THALAMIC actuator
+#   ensemble; this drives a caller-built RULE composition's A/B arms. Site read.
+def rule_charge(composer, w0, bindings_seq):
+    """The attribution instrument's READER (T051b-iii) -- per-rule charge A/B at
+    the composed-trajectory grain. Drives the FULL composition over bindings_seq
+    from w0, then each rule's leave-one-out arm (neutered()) over the SAME
+    bindings. Per-rule verdicts, THREE-WAY (the panel's convergent finding: a
+    two-way endpoint test read INERT on a rule that wrote every step):
+      CHARGED          -- the endpoint moved.
+      ENDPOINT-NEUTRAL -- endpoint delta exactly 0.0 while the rule's own
+                          cumulative |dw| is nonzero (sign cancellation, or the
+                          delta absorbed below the substrate's resolution).
+                          EXPLICITLY NOT a P3 retirement trigger: the rule
+                          participated; only its net endpoint effect is zero.
+      INERT            -- endpoint delta 0.0 AND cumulative |dw| exactly 0.0:
+                          present, composed, never moved anything (P3's shape).
+      UNCHARGEABLE     -- sequential policy only: removing this rule leaves no
+                          target reader, so its LOO arm is not a sequential
+                          composition (the kernel would refuse the label); the
+                          reader says so instead of crashing mid-A/B.
+    CONSUMES last_attribution(): the verdicts key on cumulative_abs_dw, and
+    under "sum" the first step's LOO endpoint predicted from the parts is held
+    to the measured arm -- a CROSS-CHECK, not a red (0/2000 random pure-rule
+    compositions can fire it; bindings are float-frozen ONCE at entry so a
+    stateful __float__ cannot reach it either). HONEST SCOPE, stated where a
+    reader looks: this runs on whatever composition the CALLER built; with zero
+    live compositions in the tree today it is a gate-run instrument, and the
+    first TICK-live reading arrives with T053's charged composition, not here.
+
+    Refuses: an already-stepped composer (its attribution epoch would mix with
+    this run's), a non-finite w0, an empty bindings_seq, a seq whose bindings
+    carry the target key. A MID-RUN kernel refusal (overflow, non-finite
+    binding, LOO divergence) is re-raised with the arm and step named -- and it
+    leaves the caller's composer STEPPED, so this reader is one-shot per
+    composer, said plainly."""
+    if composer.last_attribution()["stepped"]:
+        raise ValueError(
+            "rule_charge needs a FRESH composer: an already-stepped one would mix "
+            "attribution epochs with this run's trajectory"
+        )
+    try:
+        w0f = float(w0)
+    except (TypeError, ValueError) as ex:
+        raise ValueError(f"rule_charge: w0={w0!r} is not a real scalar ({ex})") from None
+    if not math.isfinite(w0f):
+        raise ValueError(f"rule_charge: non-finite w0 {w0!r}")
+    raw_seq = list(bindings_seq)
+    if not raw_seq:
+        raise ValueError("empty bindings_seq: zero steps prove nothing")
+    target = composer.last_attribution()["target"]
+    seq = []
+    for i, bnd in enumerate(raw_seq):
+        if target in bnd:
+            raise ValueError(
+                f"bindings_seq[{i}] carries the target {target!r} -- the trajectory owns "
+                "the substrate value; a caller-pinned target would fork the A/B arms"
+            )
+        frozen = {}
+        for k, v in dict(bnd).items():
+            try:
+                fv = float(v)  # frozen ONCE: both arms and the cross-check
+            except (TypeError, ValueError) as ex:  # see the SAME value forever
+                raise ValueError(
+                    f"rule_charge: bindings_seq[{i}][{k}]={v!r} is not a real scalar ({ex})"
+                ) from None
+            if not math.isfinite(fv):
+                raise ValueError(  # refused at ENTRY: a mid-run kernel refusal
+                    f"rule_charge: bindings_seq[{i}][{k}]={v!r} is non-finite"
+                )  # would burn the caller's composer before any A/B ran
+            frozen[k] = fv
+        seq.append(frozen)
+
+    def _drive(comp, arm):
+        w = w0f
+        first_parts = None
+        for i, bnd in enumerate(seq):
+            b = dict(bnd)
+            b[target] = w
+            try:
+                w, parts = comp.step(w, b)
+            except ValueError as ex:
+                raise ValueError(
+                    f"rule_charge: the {arm} arm refused at step {i + 1}/{len(seq)}: {ex}"
+                ) from ex
+            if first_parts is None:
+                first_parts = parts
+        return w, first_parts
+
+    w_full, first_parts = _drive(composer, "full")
+    att = composer.last_attribution()  # THE read: the instrument consuming its kernel
+    seq_policy = att["policy"] == "sequential"
+    per_rule = {}
+    for name in sorted(att["cumulative_abs_dw"]):
+        cum = att["cumulative_abs_dw"][name]
+        if seq_policy:
+            remaining = [s for s in composer._specs if s.name != name]
+            if remaining and not any(target in s.reads for s in remaining):
+                per_rule[name] = {
+                    "verdict": "UNCHARGEABLE",
+                    "reason": (
+                        "removing this rule leaves no target reader -- the LOO arm "
+                        "is not a sequential composition"
+                    ),
+                    "cumulative_abs_dw": cum,
+                    "first_step_part": first_parts.get(name),
+                    "first_step_cross_check": "skipped (policy != 'sum')",
+                }
+                continue
+        loo = composer.neutered(name)
+        w_loo, _ = _drive(loo, f"LOO({name})")
+        measured = w_full - w_loo
+        if measured != 0.0:
+            verdict = "CHARGED"
+        elif cum != 0.0:
+            verdict = "ENDPOINT-NEUTRAL"
+        else:
+            verdict = "INERT"
+        entry = {
+            "measured_endpoint_delta": measured,
+            "verdict": verdict,
+            "cumulative_abs_dw": cum,
+            "first_step_part": first_parts.get(name),
+        }
+        if not seq_policy:
+            # the first step's LOO endpoint, predicted from the parts by the
+            # ordered-parts decomposition -- a CROSS-CHECK consuming the
+            # attribution (bit-identical by construction on pure rules; kept
+            # because it binds the reader to the kernel's proven property).
+            pred = None
+            for other, dw in first_parts.items():
+                if other != name:
+                    pred = dw if pred is None else pred + dw
+            pred_w1 = w0f + pred if pred is not None else w0f
+            loo1 = composer.neutered(name)
+            w1_loo, _ = loo1.step(w0f, {**seq[0], target: w0f})
+            if w1_loo != pred_w1:
+                raise ValueError(
+                    f"attribution inconsistency at rule {name!r}: the parts predict a "
+                    f"first-step LOO endpoint {pred_w1!r}, the measured arm gives {w1_loo!r}"
+                )
+            entry["first_step_cross_check"] = True
+        else:
+            entry["first_step_cross_check"] = "skipped (policy != 'sum')"
+        per_rule[name] = entry
+    return {
+        "policy": att["policy"],
+        "target": target,
+        "steps": len(seq),
+        "endpoint_full": w_full,
+        "per_rule": per_rule,
+        "attribution": att,
+    }
 
 
 # ---- self-check ----------------------------------------------------------------------------
@@ -658,6 +924,231 @@ def main():
         f"path NOT driven (relax rebinds wholesale -- no crossing; zero live callers; T054)"
     )
 
+    # 1c) T051b-iii: PRODUCERS x THE MANIFEST + THE ATTRIBUTION'S READER.
+    #     Producer resolution runs against the PRODUCTION manifest assembly
+    #     (rebuild_from_registrants -- never hand-built). THE CENSUS, said the
+    #     way it was actually done (the panel measured the first draft's
+    #     "measured" claim hand-typed): jepa's declaration is ENUMERATED below
+    #     (SpikingJEPA.lpl_synapse_rule imported, its factors iterated -- a new
+    #     factor there reds this arm); r_stdp's form is HAND-ADJUDICATED against
+    #     eligibility_algebra's arm (which holds it to the incumbent THERE;
+    #     canonical dw = +1*d*e*lr); NO tree-wide enumeration gate exists --
+    #     that sweep is T051c's, cited. rule_charge is the attribution's FIRST
+    #     READER -- gate-run grade, said plainly (zero live compositions exist;
+    #     T053's is the first tick-live one).
+    from snn_data_lake.cerebellum.spiking_jepa import SpikingJEPA
+    from snn_data_lake.substrate.manifest_gate import rebuild_from_registrants
+
+    _mani = rebuild_from_registrants()
+    # the ENUMERATED half: jepa's production declaration, factors iterated;
+    # every one must be in the adjudicated self-set (all caller-computed
+    # internal state) -- a cross-faculty factor appearing there reds THIS arm.
+    _jepa_rule = SpikingJEPA(("noop", "left"), seed=0).lpl_synapse_rule()
+    _jepa_factors = {f for _c9, _fs9 in _jepa_rule.terms for f in _fs9}
+    _jepa_self_set = {"d_pred", "d_mu", "inv_var", "cov_pull", "d_homeo", "lr", "sg", "e"}
+    assert _jepa_factors <= _jepa_self_set, (
+        f"jepa's declaration grew factors outside the adjudicated self-set: "
+        f"{sorted(_jepa_factors - _jepa_self_set)} -- re-run the cross-faculty census"
+    )
+    _alg_p = EligibilityAlgebra(term_budget=1)
+    _alg_p.declare_factor("d", "phasic dopamine (RPE) -- the cross-faculty third factor")
+    _alg_p.declare_factor("e", "the neuron's own eligibility trace")
+    _alg_p.declare_factor("lr", "the neuron's own learning rate")
+    _rrule = _alg_p.author("rstdp.form", [(1.0, ("lr", "d", "e"))])
+    _rspec = RuleSpec(
+        "rstdp.form",
+        _rrule,
+        reads={"lr", "d", "e"},
+        writes={"w"},
+        producers={
+            "d": ("dopamine_nuclei", "da_out", "level01"),
+            "e": "self",
+            "lr": "self",
+        },
+    )
+    _pf = check_producers(_rspec, _mani)
+    assert _pf == [], f"the r_stdp producer census must resolve green: {_pf}"
+    # ROUTED, not just resolvable (the panel measured 9 of 10 unrouted level01
+    # OUT ports passing the name-only check): with the consumer named, da_out
+    # must source a declared edge into r_stdp -- and an unrouted port reds.
+    _pf_routed = check_producers(_rspec, _mani, consumer="r_stdp")
+    assert _pf_routed == [], f"da_out must be ROUTED into r_stdp: {_pf_routed}"
+    _unrouted = RuleSpec(
+        "rstdp.form",
+        _rrule,
+        reads={"lr", "d", "e"},
+        writes={"w"},
+        producers={"d": ("learning_progress", "lp_out", "level01"), "e": "self", "lr": "self"},
+    )
+    _pf_norot = check_producers(_unrouted, _mani, consumer="r_stdp")
+    assert any("NO declared route" in x for x in _pf_norot), (
+        f"an unrouted producer must red the route check: {_pf_norot}"
+    )
+    # reds, each by its finding text: unresolvable; IN-port-as-producer (a REAL
+    # IN port picked from the production manifest, never hardcoded); unit lie;
+    # missing entry; and the construction refusal for an unread producer key.
+    _in_ports = sorted(k for k, p in _mani.ports.items() if p.kind == "IN")
+    assert _in_ports, "the production manifest carries no IN port -- the red needs one"
+    _in_port = _in_ports[0]
+    for _prod, _needle in (
+        (("no_such_faculty", "nope", "level01"), "not a declared port"),
+        ((_in_port[0], _in_port[1], "level01"), "only an OUT port produces"),
+        (("dopamine_nuclei", "da_out", "spikes_hz"), "unit lie"),
+    ):
+        _bad_spec = RuleSpec(
+            "rstdp.form",
+            _rrule,
+            reads={"lr", "d", "e"},
+            writes={"w"},
+            producers={"d": _prod, "e": "self", "lr": "self"},
+        )
+        _bf2 = check_producers(_bad_spec, _mani)
+        assert any(_needle in x for x in _bf2), f"expected {_needle!r} in {_bf2}"
+    _missing = check_producers(
+        RuleSpec(
+            "rstdp.form",
+            _rrule,
+            reads={"lr", "d", "e"},
+            writes={"w"},
+            producers={"e": "self", "lr": "self"},
+        ),
+        _mani,
+    )
+    assert any("no producer declared" in x for x in _missing), (
+        f"missing-entry red absent: {_missing}"
+    )
+    try:
+        RuleSpec(
+            "rstdp.form",
+            _rrule,
+            reads={"lr", "d", "e"},
+            writes={"w"},
+            producers={"zzz": "self", "d": "self", "e": "self", "lr": "self"},
+        )
+        raise AssertionError("a producer for an unread factor must refuse at construction")
+    except ValueError as _ex_p:
+        assert "dead declaration" in str(_ex_p), f"wrong refusal: {_ex_p}"
+    try:
+        check_producers(RuleSpec("bare", _rrule, reads={"lr", "d", "e"}, writes={"w"}), _mani)
+        raise AssertionError("a spec with no producers must refuse, not read green")
+    except ValueError as _ex_p2:
+        assert "vacuous" in str(_ex_p2), f"wrong refusal: {_ex_p2}"
+
+    # the READER: rule_charge on a constructed 3-rule sum composition -- two
+    # charged decays + one rule whose only factor is bound 0.0 throughout (the
+    # TRUE INERT case: cumulative |dw| exactly 0.0 -- present, composed, moving
+    # nothing).
+    _alg_c = EligibilityAlgebra(term_budget=1)
+    _alg_c.declare_factor("w", "substrate")
+    _alg_c.declare_factor("z", "a factor bound to zero throughout (the inert arm)")
+    _alg_c.declare_factor("k", "a constant push factor (the cancellation arm)")
+    _cc = RuleComposer("sum", target="w")
+    _cc.add(RuleSpec("dA", _alg_c.author("dA", [(-0.3, ("w",))]), reads={"w"}, writes={"w"}))
+    _cc.add(RuleSpec("dB", _alg_c.author("dB", [(-0.1, ("w",))]), reads={"w"}, writes={"w"}))
+    _cc.add(RuleSpec("zz", _alg_c.author("zz", [(5.0, ("z",))]), reads={"z"}, writes={"w"}))
+    _verdict = rule_charge(_cc, 1.0, [{"z": 0.0, "k": 1.0}] * 6)
+    assert _verdict["per_rule"]["dA"]["verdict"] == "CHARGED"
+    assert _verdict["per_rule"]["dB"]["verdict"] == "CHARGED"
+    assert _verdict["per_rule"]["zz"]["verdict"] == "INERT", (
+        f"the zero-bound rule must read INERT: {_verdict['per_rule']['zz']}"
+    )
+    assert _verdict["per_rule"]["zz"]["cumulative_abs_dw"] == 0.0
+    assert all(v["first_step_cross_check"] is True for v in _verdict["per_rule"].values()), (
+        "the sum-policy first-step cross-check must hold on every rule"
+    )
+    # the DISCRIMINATING red the panel demanded (all three lenses): the c=-2.0
+    # orbit cancels a constant push at the endpoint -- the pushing rule wrote
+    # every step (cumulative 6*0.5) and must read ENDPOINT-NEUTRAL, never INERT
+    # (a two-way endpoint test retired it; the register binds INERT to P3).
+    _co = RuleComposer("sum", target="w")
+    _co.add(RuleSpec("orbit", _alg_c.author("orbit", [(-2.0, ("w",))]), reads={"w"}, writes={"w"}))
+    _co.add(RuleSpec("push", _alg_c.author("push", [(0.5, ("k",))]), reads={"k"}, writes={"w"}))
+    _vo = rule_charge(_co, 1.0, [{"k": 1.0, "z": 0.0}] * 2)
+    assert _vo["per_rule"]["push"]["verdict"] == "ENDPOINT-NEUTRAL", (
+        f"a cancelled-but-contributing rule must read ENDPOINT-NEUTRAL: {_vo['per_rule']['push']}"
+    )
+    assert _vo["per_rule"]["push"]["cumulative_abs_dw"] == 1.0
+    # SEQUENTIAL, both shapes (the adversarial lens's BLOCKER: the first draft
+    # crashed mid-A/B neutering the only target reader and burned the composer):
+    _sq = RuleComposer("sequential", target="w")
+    _sq.add(RuleSpec("decay", _alg_c.author("decay", [(-0.3, ("w",))]), reads={"w"}, writes={"w"}))
+    _sq.add(RuleSpec("push", _alg_c.author("push", [(0.2, ("k",))]), reads={"k"}, writes={"w"}))
+    _vs = rule_charge(_sq, 1.0, [{"k": 1.0, "z": 0.0}] * 2)
+    assert _vs["per_rule"]["decay"]["verdict"] == "UNCHARGEABLE", (
+        f"neutering the only target reader must read UNCHARGEABLE, not crash: "
+        f"{_vs['per_rule']['decay']}"
+    )
+    assert _vs["per_rule"]["push"]["verdict"] == "CHARGED"
+    assert _vs["per_rule"]["push"]["first_step_cross_check"] == "skipped (policy != 'sum')"
+    _sq2 = RuleComposer("sequential", target="w")
+    _sq2.add(RuleSpec("dA", _alg_c.author("dA", [(-0.3, ("w",))]), reads={"w"}, writes={"w"}))
+    _sq2.add(RuleSpec("dB", _alg_c.author("dB", [(-0.1, ("w",))]), reads={"w"}, writes={"w"}))
+    _vs2 = rule_charge(_sq2, 1.0, [{"k": 1.0, "z": 0.0}] * 2)
+    assert all(v["verdict"] == "CHARGED" for v in _vs2["per_rule"].values()), (
+        f"the two-reader sequential control must charge both: {_vs2['per_rule']}"
+    )
+    # reader refusals: a stepped composer; an empty seq; a target-carrying seq;
+    # and a mid-run kernel refusal re-raised WITH the arm and step named
+    try:
+        rule_charge(_cc, 1.0, [{"z": 0.0}])
+        raise AssertionError("a stepped composer must refuse")
+    except ValueError as _ex_c:
+        assert "attribution epochs" in str(_ex_c), f"wrong refusal: {_ex_c}"
+    _cc2 = RuleComposer("sum", target="w")
+    _cc2.add(RuleSpec("dA", _alg_c.author("dA", [(-0.3, ("w",))]), reads={"w"}, writes={"w"}))
+    try:
+        rule_charge(_cc2, 1.0, [])
+        raise AssertionError("an empty seq must refuse")
+    except ValueError as _ex_c2:
+        assert "zero steps" in str(_ex_c2), f"wrong refusal: {_ex_c2}"
+    try:
+        rule_charge(_cc2, 1.0, [{"w": 9.0}])
+        raise AssertionError("a target-carrying seq must refuse")
+    except ValueError as _ex_c3:
+        assert "owns the substrate" in str(_ex_c3), f"wrong refusal: {_ex_c3}"
+    try:
+        rule_charge(_cc2, "abc", [{"z": 0.0}])
+        raise AssertionError("a non-scalar w0 must refuse with context")
+    except ValueError as _ex_c4:
+        assert "w0" in str(_ex_c4), f"wrong refusal: {_ex_c4}"
+    _cg = RuleComposer("sum", target="w")
+    _cg.add(RuleSpec("grow", _alg_c.author("grow", [(0.5, ("w",))]), reads={"w"}, writes={"w"}))
+    _cg.add(
+        RuleSpec("nangate", _alg_c.author("nangate", [(1.0, ("z",))]), reads={"z"}, writes={"w"})
+    )
+    try:
+        rule_charge(_cg, 1.0, [{"z": 0.0}, {"z": float("nan")}])
+        raise AssertionError("a non-finite binding must refuse at ENTRY")
+    except ValueError as _ex_c5:
+        assert "bindings_seq[1]" in str(_ex_c5), f"the index must be named: {_ex_c5}"
+    assert not _cg.last_attribution()["stepped"], (
+        "the entry refusal must leave the composer FRESH (no A/B ran)"
+    )
+    # the mid-run wrapper: finite bindings whose FULL trajectory overflows --
+    # re-raised with the arm and step named (and the composer IS burned, said).
+    _vd = rule_charge(_cg, 1.0, [{"z": 0.0}] * 2)  # _cg still fresh: use it once
+    assert _vd["per_rule"]["grow"]["verdict"] == "CHARGED"
+    _cbig = RuleComposer("sum", target="w")
+    _cbig.add(RuleSpec("big", _alg_c.author("big", [(1e155, ("k",))]), reads={"k"}, writes={"w"}))
+    _cbig.add(RuleSpec("dA", _alg_c.author("dA", [(-0.3, ("w",))]), reads={"w"}, writes={"w"}))
+    try:
+        rule_charge(_cbig, 1e155, [{"k": 1e155}, {"k": 1e155}, {"k": 1e155}])
+        raise AssertionError("a mid-run overflow must re-raise with the arm and step named")
+    except ValueError as _ex_c6:
+        assert "arm refused at step" in str(_ex_c6), f"arm/step missing: {_ex_c6}"
+    print(
+        f"  green  producers x manifest (T051b-iii): jepa's declaration ENUMERATED "
+        f"({len(_jepa_factors)} factors, all in the self-set); r_stdp's 'd' resolves AND routes "
+        f"to dopamine_nuclei.da_out -> r_stdp on the PRODUCTION assembly ({len(_mani.ports)} "
+        f"ports, {len(_mani.edges)} edges); five reds by finding text (unresolvable, "
+        f"IN-port-as-producer, unit lie, missing entry, no-declared-route) + two construction "
+        f"refusals (unread key, vacuous green). rule_charge (the attribution's first reader, "
+        f"gate-run grade): CHARGED/CHARGED/INERT on the trio; ENDPOINT-NEUTRAL on the orbit-"
+        f"cancelled push (the three-lens red); sequential UNCHARGEABLE-not-crash + two-reader "
+        f"control; 6 refusals by message incl. non-finite-at-ENTRY (composer left fresh) and "
+        f"the arm-and-step-named mid-run overflow"
+    )
+
     # 2) Causal decomposition under sum, and the UNSOUND predictor's reachable red.
     #    The ordered-other-parts predictor is bit-exact (3 rules x 3 ablations,
     #    frozen bindings); the total-minus-part form is float-unsound -- proven by
@@ -859,18 +1350,35 @@ def main():
     loo_w, loo_parts = solo.neutered("only").step(2.0, {"w": 2.0})
     assert loo_w == 2.0 and loo_parts == {}, "solo LOO must be the identity trajectory"
     print(
-        "  RED    refusals BY MESSAGE (13 constructions + 6 behavioural): incl. disjoint-writes routing, "
+        "  RED    refusals BY MESSAGE (13 constructions + 6 behavioural -- THIS battery's census; "
+        "the 1b/1c arms carry their own): incl. disjoint-writes routing, "
         "the sequential-degrades-to-sum trap, target-binding disagreement, composed-total overflow, "
         "sealed-after-step; solo-LOO returns the identity (the base case, not an error)"
     )
 
     print()
     print(
-        "DISCLOSURES: attribution is the instrument's KERNEL -- live readers today: "
-        "ZERO (no report(), no state() row; the neutered information is recoverable "
-        "from step()'s returned parts, so the instrument is not the sole carrier); "
-        "the first live reader is T051b's charge-probe integration, dated. "
-        "Arbitration ORDER is bare add() insertion order -- not learned, not "
+        "DISCLOSURES: attribution is the instrument's KERNEL -- its first reader is "
+        "rule_charge (T051b-iii): the per-rule charge A/B consuming last_attribution() "
+        "and holding the sum-policy first-step prediction to the measured LOO arm. "
+        "GATE-RUN grade, said plainly: zero live compositions exist, so TICK-live "
+        "reading arrives with T053's charged composition, not before (the neutered "
+        "information stays recoverable from step()'s returned parts -- the instrument "
+        "is not the sole carrier). check_producers (FR-019) resolves against the "
+        "PRODUCTION manifest assembly -- name/kind/unit WITHOUT `consumer`, "
+        "ROUTE-checked with it (a resolvable name is not a wire: 9 of 10 unrouted "
+        "level01 ports passed the name-only form, panel-measured); 'self' entries are "
+        "declared, not resolved (no third port model). THE CENSUS, said as done: "
+        "jepa's declaration is ENUMERATED (its factors held to the self-set "
+        "in-harness); r_stdp's form is HAND-ADJUDICATED against the algebra's "
+        "incumbent-held arm; NO tree-wide enumeration gate exists -- that sweep is "
+        "T051c's. The 'level01'/'spikes_hz' strings are CROSS-TIER PINS on "
+        "dopamine_nuclei.da_out's declared unit, not exercise values -- a red there "
+        "attributes to the PORT, not this module. check_producers and rule_charge are "
+        "MODULE-LEVEL functions: outside method_dormancy_gate's ClassDef scan, no "
+        "LEARN_VERB, host outside reachable() -- invisible to both method-grade "
+        "gates, and this gate-run self-check is their only charged surface, said "
+        "plainly. Arbitration ORDER is bare add() insertion order -- not learned, not "
         "recorded in the payload; the register's order disclosure is paid there. "
         "claim_key is a SLOT: the GRADIENT_CLAIM cross-check lands at T051c. "
         "Harness constants (coefficients, budgets, the 100-step horizon, w0/g) are "
@@ -896,15 +1404,20 @@ def main():
         "exercise values under P1 exception (c) now also include the prune arm's "
         "seeds/geometry (7, 3; 4x12 at density 0.5), the probe points (w0/u1 "
         "pairs), and the 8/32-ulp band factors. The stack MERGE (both incumbent "
-        "sandwiches as RuleSpecs, held to equivalence) is T051b's, named in its row."
+        "sandwiches as RuleSpecs, held to equivalence) is T051b-iv's, named in its row."
     )
     print(
         "self-check OK: boundary-scoped naive-sum reds (orbit + open-interval divergence + "
         "faster-convergence disclosure) + the T048 pair at component grain (authored-from-"
         "incumbent structural x drag; sequential==component step to the bit, sum "
         "sign-violates at the excitatory prune; wrapper/relax/live-path undriven, said) + "
-        "causal decomposition with the unsound predictor's constructed bit-red + swept "
-        "sequential guarantee + consumed attribution surface + 19 refusals"
+        "producers x the production manifest (five reds by finding text incl. the route red, "
+        "two construction refusals, jepa's declaration enumerated) + rule_charge (the "
+        "attribution's first reader: three-way verdicts incl. ENDPOINT-NEUTRAL on the "
+        "orbit-cancelled push and sequential UNCHARGEABLE-not-crash; 6 refusals) + causal "
+        "decomposition with the unsound predictor's constructed bit-red + swept sequential "
+        "guarantee + consumed attribution surface + 19 battery refusals (section 5's census, "
+        "battery-local)"
     )
     return 0
 

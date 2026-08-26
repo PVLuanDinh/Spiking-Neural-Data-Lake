@@ -274,15 +274,20 @@ EXEMPT = {
         "alone and the sequential control converge; the sum is only wrong past "
         "|1+sum c|>=1, and on (-1,0) it converges FASTER than either rule -- "
         "disclosed), and per-rule neuter attribution as the instrument's KERNEL "
-        "(live readers today ZERO, said plainly; the guarantee key names the POLICY'S "
+        "(readers at T051a: ZERO; the first reader, rule_charge, landed at T051b-iii "
+        "at gate-run grade -- and both it and check_producers are MODULE-LEVEL "
+        "functions invisible to method_dormancy_gate's ClassDef scan, no LEARN_VERB, "
+        "host outside reachable(); this gate-run self-check is their charged surface. "
+        "The guarantee key names the POLICY'S "
         "property, never a per-step causality measurement -- the first landing's "
         "'causality' label was derived from the policy name and measurably mislabeled "
         "exact sequential compositions). P2: BOTH live incumbent compositions named "
         "(PlasticityRuleStack AND its base HomeostaticPlasticityStack); merge dated "
-        "T051b, whose row names it. DATED consumers: T051b (incumbent discharges + "
-        "producers x manifest + the charge probe as the instrument's first live "
-        "reader), T053 (the first tick-charged composed rule). Charged surface until "
-        "then: this gate-run self-check.",
+        "T051b-iv, whose row names it. LANDED at T051b-iii: producers x the production "
+        "manifest (check_producers, FR-019) and rule_charge -- the attribution's first "
+        "reader, GATE-RUN grade (zero live compositions; tick-live reading is T053's, "
+        "the first tick-charged composed rule). Charged surface until then: this "
+        "gate-run self-check.",
     ),
     "eligibility_algebra": (
         "wire",

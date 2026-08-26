@@ -99,6 +99,10 @@ def _numeric_reads(st, prefix="", out=None, depth=0):
     return out
 
 
+# The rule-grain sibling of this probe lives in plasticity/rule_composer.rule_charge
+# (T051b-iii): the same neuter-A/B pattern applied to composed learning rules on a
+# caller-built trajectory, consuming the composer's per-rule attribution. One pattern,
+# two grains; neither re-implements the other.
 def run(source, n, neuter):
     b = make_brain(seed=0, persist=False)  # Policy 4: the ONE sanctioned construction path
     tbl = _VALUE_TABLE.get(source)

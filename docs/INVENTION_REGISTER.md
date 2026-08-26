@@ -38,13 +38,13 @@ per-rule neuter attribution. RED: two composed rules whose naive sum is measurab
 either alone. CONTROL: each rule's single-rule arm. ATTRIBUTION: the point of the invention —
 per-rule contribution ledger. DISCLOSURE (corrected at T051a): arbitration order is bare add()
 insertion order — NOT learned, NOT recorded in the payload; the learned/recorded form is owed,
-undated. ANTI-RIGGING: live readers of the attribution today are ZERO; the neutered information
-is recoverable from step()'s returned parts, so the instrument is not the sole carrier.
-NULL: a rule contributing nothing measurable in its declared scope is retired (P3).
-MECHANIZED (kernel only): `plasticity/rule_composer.py` (T051a, 2026-08-26) — load-bearing
-write-target routing, boundary-scoped naive-sum reds (c=-1.0 orbit entailed; c=-1.5 open-interval
-divergence; sum FASTER on (-1,0), disclosed), bit-exact ordered-parts decomposition with the
-unsound predictor's constructed 5-rule red; no tissue (T051b/T053 dated).
+undated. ANTI-RIGGING (T051b-iii): first reader = rule_charge, the per-rule A/B consuming
+last_attribution(), GATE-RUN grade (zero live compositions; tick-live reading is T053's); the
+neutered information stays recoverable from step()'s parts — not the sole carrier.
+NULL: a nothing-contributing rule is retired (P3) — INERT is rule_charge's constructed case.
+MECHANIZED: `plasticity/rule_composer.py` — T051a kernel; T051b-i jepa LPL declaration; T051b-ii
+the T048 pair at component grain; T051b-iii check_producers (FR-019, production manifest) +
+rule_charge. No tissue (T051b-iv merge + T053 tick-charge dated).
 
 ## 4. Growth stopping criterion (L5, T047)
 |LP|+charge-derived per-region growth gates with an executive-independent arm (a gate routed
