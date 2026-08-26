@@ -174,3 +174,8 @@ scratchpad/
 GATES.md
 .unlazy-hook-state.json
 .unlazy/
+# CLASS rule, not just the three instances the first sweep caught (the T051a
+# panel reproduced the git add -A hazard with a fresh root-level log one commit
+# after the instance fix): root-level working logs never belong in the tree.
+/*.log
+/.battery*

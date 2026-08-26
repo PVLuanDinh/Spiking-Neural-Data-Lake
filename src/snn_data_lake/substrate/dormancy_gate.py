@@ -262,22 +262,49 @@ EXEMPT = {
     # not compose the division machinery (the earlier "until T047 composes it" was a promise
     # at the wrong grain); composition is owed to the task that wires region-wide growth
     # from seed -- the growth-coverage gate's 1-of-10 red is its standing driver.
+    "rule_composer": (
+        "wire",
+        "specs/022 T051a: the composition kernel (P8 invention #3's core) -- typed "
+        "read/write sets that are LOAD-BEARING (the composer routes its substrate by "
+        "the uniform write target; the panel's first-landing measured writes validated "
+        "then ignored, a theta-targeted update deposited into the weight), N rules "
+        "through T050's algebra under a named policy onto a REQUIRED declared target, "
+        "the naive-sum red at its MEASURED boundary (c=-1.0 orbits -- entailed, driven "
+        "100 steps; c=-1.5 genuinely DIVERGES on the open interval while each rule "
+        "alone and the sequential control converge; the sum is only wrong past "
+        "|1+sum c|>=1, and on (-1,0) it converges FASTER than either rule -- "
+        "disclosed), and per-rule neuter attribution as the instrument's KERNEL "
+        "(live readers today ZERO, said plainly; the guarantee key names the POLICY'S "
+        "property, never a per-step causality measurement -- the first landing's "
+        "'causality' label was derived from the policy name and measurably mislabeled "
+        "exact sequential compositions). P2: BOTH live incumbent compositions named "
+        "(PlasticityRuleStack AND its base HomeostaticPlasticityStack); merge dated "
+        "T051b, whose row names it. DATED consumers: T051b (incumbent discharges + "
+        "producers x manifest + the charge probe as the instrument's first live "
+        "reader), T053 (the first tick-charged composed rule). Charged surface until "
+        "then: this gate-run self-check.",
+    ),
     "eligibility_algebra": (
         "wire",
         "specs/022 T050: the sum-of-products authoring CONTRACT for three-factor rules. "
-        "Charged surface today, led by the arms with reachable failure: 24 refusal reds "
-        "asserted BY MESSAGE (silent-misparse traps, budget overruns, frozen-rule and "
-        "bypass-ghost constructions), the 1e-6 mis-declaration red run through the "
-        "exported equivalence_check against the REAL RSTDPNeuron.reward, and the "
-        "like-term-folded role-digested canonical identity. The r_stdp equivalence "
-        "itself holds STRUCTURALLY (coefficient 1.0 + authored order) -- the live-range "
-        "case sweep is a regression guard, not statistical proof, said plainly. The "
-        "module docstring carries the expressibility census ('for ALL three-factor "
-        "rules' is the task's phrase; the census is what is true). DATED consumer: "
-        "T051's composer authors/arbitrates every palette rule through this contract "
-        "(typed read/write sets + factor PRODUCERS composed with wiring_manifest land "
-        "there); T052's ESPP authors against it on arrival. A contract wired before its "
-        "composer exists would have nothing to arbitrate.",
+        "Charged surface today, led by the arms with reachable failure: 25 refusal reds "
+        "asserted BY MESSAGE (silent-misparse traps, budget overruns, frozen-rule, "
+        "bypass-ghost, and the output-overflow red T051a's harness exposed), the 1e-6 "
+        "mis-declaration red run through the exported equivalence_check against the REAL "
+        "RSTDPNeuron.reward, and the like-term-folded role-digested canonical identity. "
+        "The r_stdp equivalence itself holds STRUCTURALLY (coefficient 1.0 + authored "
+        "order) -- the live-range case sweep is a regression guard, not statistical "
+        "proof, said plainly. The module docstring carries the expressibility census "
+        "('for ALL three-factor rules' is the task's phrase; the census is what is "
+        "true). CONSUMERS, re-adjudicated at T051a: the composer KERNEL (T051a) now "
+        "authors through this contract in its own harness -- typed read/write sets "
+        "landed THERE, factor PRODUCERS composed with wiring_manifest land at T051b, "
+        "and T052's ESPP authors against it on arrival. THE EXPIRY, RESCOPED (not "
+        "discharged -- said plainly, the T046a form): the T051 rows promised this "
+        "exemption expires at T051; the kernel's consumption is HARNESS-only, which "
+        "leaves zero live callers, and expiring on harness consumption would be a "
+        "false discharge -- ONE date now, T053's tick-charged composed rule, carried "
+        "identically in this module's own DISCLOSURES.",
     ),
     "structural_rewiring": (
         "wire",

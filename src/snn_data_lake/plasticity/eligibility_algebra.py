@@ -213,10 +213,12 @@ class AuthoredRule:
 
     def evaluate(self, **bindings):
         """dw for one site. Pure; refuses (ValueError) unbound factors, bindings
-        outside the vocabulary, and non-finite/non-scalar values. Each binding is
-        converted to float ONCE and that value is used -- the first draft converted
-        twice, so an object whose __float__ drifted passed validation as 1.0 and
-        multiplied as inf (the panel's Drifting probe)."""
+        outside the vocabulary, non-finite/non-scalar values, AND a non-finite
+        RESULT (output overflow -- finite inputs can still overflow the product;
+        measured at coeff 1e200 x binding 1e200 by T051a's composer harness). Each
+        binding is converted to float ONCE and that value is used -- the first
+        draft converted twice, so an object whose __float__ drifted passed
+        validation as 1.0 and multiplied as inf (the panel's Drifting probe)."""
         needed = self._needed()
         extra = sorted(k for k in bindings if k not in self._vocab)
         if extra:
@@ -243,6 +245,14 @@ class AuthoredRule:
             for f in fs:
                 p *= vals[f]
             dw = p if dw is None else dw + p
+        if not math.isfinite(dw):
+            raise ValueError(
+                f"rule {self.name!r}: non-finite RESULT {dw!r} from finite bindings "
+                "(overflow or cancellation) -- the refusal contract covers outputs "
+                "too; the LANDED T050 module (battery #92 green) guarded inputs only "
+                "and returned inf from coeff 1e200 x binding 1e200 -- exposed by "
+                "T051a's composer harness, one commit later"
+            )
         return dw
 
     def canonical(self):
@@ -441,11 +451,15 @@ def main():
             raise AssertionError(f"accepted an invalid construction (wanted {must_contain!r})")
         except ValueError as ex:
             assert must_contain in str(ex), f"refused for the WRONG reason: {ex}"
+    alg_ovf = EligibilityAlgebra(term_budget=2)
+    alg_ovf.declare_factor("x", "overflow probe factor")
+    r_ovf = alg_ovf.author("overflow", [(1e200, ("x",))])
     for call, must_contain in (
         (lambda: r.evaluate(lr=0.1, d=float("inf"), e=1.0), "non-finite binding"),
         (lambda: r.evaluate(lr=0.1, d=0.5), "unbound factor"),
         (lambda: r.evaluate(lr=0.1, d=0.5, e=1.0, GHOST=1.0), "not in the vocabulary"),
         (lambda: r.evaluate(lr=0.1, d=1 + 0j, e=1.0), "not a real scalar"),
+        (lambda: r_ovf.evaluate(x=1e200), "non-finite RESULT"),
     ):
         try:
             call()
@@ -472,7 +486,7 @@ def main():
         except ValueError as ex:
             assert "authoring vocabulary" in str(ex)
     print(
-        "  RED    refusals BY MESSAGE: 17 authoring + 4 evaluation + frozen-rule + NaN-incumbent + bypass-ghost reds"
+        "  RED    refusals BY MESSAGE: 17 authoring + 5 evaluation + frozen-rule + NaN-incumbent + bypass-ghost reds"
     )
 
     print()
@@ -486,9 +500,13 @@ def main():
         "three-factor rules is in the module docstring -- 'for ALL three-factor "
         "rules' is the task's phrase, the census is what is true. term_budget=4/8 in "
         "THIS harness are exercise values (P1 exception c: the module is a wire "
-        "exemption with zero live callers; the exception expires with T051). Factor "
+        "exemption with zero live callers; the exception expires with T053's "
+        "tick-charged composed rule -- RESCOPED at T051a from 'T051', because the "
+        "composer kernel consumes this contract in its HARNESS only, and a harness "
+        "consumer leaves zero live callers: expiring on harness consumption would "
+        "be a false discharge; one expiry, one date, both siblings). Factor "
         "producers are NOT declared here (name + role prose only) -- FR-019's "
-        "'declared producers' lands at T051 by composing with wiring_manifest, not "
+        "'declared producers' lands at T051b by composing with wiring_manifest, not "
         "a third port model. The GRADIENT_CLAIM above is VOLUNTARY (the gate's verb "
         "list does not reach `evaluate`) and keyed to the class that owns the "
         "method -- the first draft's phantom key censused green, filed as a gate "
@@ -497,7 +515,7 @@ def main():
     print(
         "self-check OK: live-range incumbent equivalence through the exported check (+ birth-state "
         "-0.0 bit case) + mis-declaration red vs the real reward() + instance-read LPL coefficients "
-        "+ folded/digested canonical + 24 refusals asserted by message"
+        "+ folded/digested canonical + 25 refusals asserted by message (incl. output overflow)"
     )
     return 0
 

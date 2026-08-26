@@ -32,12 +32,19 @@ carries the {winner, margin_to_runner_up} cleanup record; a policy-stripped port
 incumbent source `reentrant_workspace._assoc`, final binding = T030). Charge instruments =
 T022. Float-sum determinism: producer-sorted float64 accumulation, disclosed in-module.
 
-## 3. Multi-rule composition arbitration (L4, T051)
+## 3. Multi-rule composition arbitration (L4, T051a-c)
 N local learning rules sharing one synapse under typed read/write sets, with standing
 per-rule neuter attribution. RED: two composed rules whose naive sum is measurably wrong vs
 either alone. CONTROL: each rule's single-rule arm. ATTRIBUTION: the point of the invention —
-per-rule contribution ledger. DISCLOSURE: arbitration order is part of the learned system and
-is recorded. NULL: a rule contributing nothing measurable in its declared scope is retired (P3).
+per-rule contribution ledger. DISCLOSURE (corrected at T051a): arbitration order is bare add()
+insertion order — NOT learned, NOT recorded in the payload; the learned/recorded form is owed,
+undated. ANTI-RIGGING: live readers of the attribution today are ZERO; the neutered information
+is recoverable from step()'s returned parts, so the instrument is not the sole carrier.
+NULL: a rule contributing nothing measurable in its declared scope is retired (P3).
+MECHANIZED (kernel only): `plasticity/rule_composer.py` (T051a, 2026-08-26) — load-bearing
+write-target routing, boundary-scoped naive-sum reds (c=-1.0 orbit entailed; c=-1.5 open-interval
+divergence; sum FASTER on (-1,0), disclosed), bit-exact ordered-parts decomposition with the
+unsound predictor's constructed 5-rule red; no tissue (T051b/T053 dated).
 
 ## 4. Growth stopping criterion (L5, T047)
 |LP|+charge-derived per-region growth gates with an executive-independent arm (a gate routed
