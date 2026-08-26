@@ -245,31 +245,20 @@ EXEMPT = {
         "PALETTE EXAMPLE: a worked demo of the basic_components composition palette (itself permanent). "
         "The REGIONS comment claiming it is 'composed live under a local rule' was FALSE and is corrected",
     ),
-    "arealization": (
-        "wire",
-        "specs/022 T040: organizer fields + Boolean GRN machinery + the census-derived "
-        "emit_regions readout (P8 invention #7's first half; the structure theorem, its "
-        "sensitivity control, and the measured non-discrimination result run in its own "
-        "self-check). No live-path importer YET by construction. THE SPEC-BACKED CONSUMER IS "
-        "T043 (placement priors: tasks.md names GRN output = prior elsewhere); T041 extends "
-        "this same file (a same-file reader confers no reachability) and T042's row does not "
-        "name this module -- corrected per the T040 review panel's M7, which caught the first "
-        "draft of this row claiming all three. Post-B3 discipline: no immovable bound is "
-        "promised; this row prints on the standing-TODO arm every run until T043 lands its "
-        "import or the module is retired under P2",
-    ),
-    "growth_program": (
-        "wire",
-        "specs/022 T042: the one-shared-program locality layer + scaffold-region refusal "
-        "(P8 invention #7's enforcement infrastructure; its reds run in its own "
-        "self-check). No live-path importer YET by construction -- and, per the T042 "
-        "panel's M3, stated precisely: T046 is the one task row whose TEXT reaches this "
-        "module's content (the pinned growable set its coverage red counts over); T043 "
-        "and T047 are expected composers but their rows do not name this module, so they "
-        "confer nothing yet. Post-B3 discipline: no immovable bound; this row prints on "
-        "the standing-TODO arm every run until a consumer lands or the module is retired "
-        "under P2",
-    ),
+    # arealization's "wire" row RETIRED 2026-08-25 by its own stated condition: T043 landed
+    # cortex/placement.py's module-top import, which is what this gate walks (placement is
+    # itself counted reachable through neurogenesis_engine's function-body imports -- the
+    # PERMISSIVE conditional-import walk the banner discloses). Reachability, not charge:
+    # region_prior's GRN arm has no live-path caller yet (the sleep-tick grower takes the
+    # cortex arm); its callers today are placement's own __main__, which every gate run
+    # executes. No waived invariant was recorded in the row beyond that TODO.
+    #
+    # growth_program's "wire" row RETIRED 2026-08-25 the same way, with a REAL consumer this
+    # time: placement.place_grown BRANCHES on growth_program.SCAFFOLD (the admission refusal
+    # inherits T042's closure) and the self-check asserts every grower route sits inside
+    # GROWABLE -- functional consumption of the ratified partition, not import-only. Recorded
+    # because this row's TODO print dies with it: the program's step/divide machinery remains
+    # __main__-only until T047 composes it.
     "cortical_microcircuit": (
         "permanent",
         "REFERENCE MODEL: Potjans-Diesmann 2014 validation dynamics. CORRECTED 2026-08-16 -- this "

@@ -42,18 +42,45 @@ the same units in the same layers with the same signs -- on any machine. That ma
 placement is PERSISTED with the substrate: a restart that re-derived different layers would be a
 different brain wearing the same weights.
 
+T043 GENERALIZED THIS TO EVERY DECLARED REGION, without moving a byte of the above. `place` takes a
+`region` and answers from a prior keyed by the region's declared (neuromere, zone) coordinate --
+AT THIS GRAIN ONLY THE NEUROMERE IS LOAD-BEARING (the zone is carried and pinned inert; a
+dorsoventral field is the missing half). Cortex keeps the H01 measured arm BYTE-IDENTICAL (the
+additive-from-zero control -- a pinned golden asserts it), and every other region in
+`REGION_COORDS` takes the GRN arm, whose label is the settled arealization output at that region's
+own prosomeric coordinate and whose SIGN IS None -- refused, not defaulted, because no measured
+E-fraction exists outside H01 cortex and a default is how a made-up number acquires a
+measurement's authority. The same section composes the project's growers -- a grower -> region
+routing table asserted to sit inside growth_program's owner-ratified GROWABLE partition --
+through the 007 interface (`substrate/growable.GrowthCoordinator`): the first `register_seam`
+caller outside growable.py's own self-check (no live-tick caller yet; T049+ is the dated
+consumer), with the 007 contract's C1.7 safety refusal AND T042's SCAFFOLD closure enforced as
+one admission rule at the growth call site (`place_grown`).
+
   python -m snn_data_lake.cortex.placement
 """
 
 import math
 import random
 import sys
+import zlib
 
+from snn_data_lake.cortex.arealization import (
+    NEUROMERES,
+    REGION_COORDS,
+    discretize_sharp,
+    emit_regions,
+    graded_profiles,
+    postmitotic_discretize,
+    regime_of,
+)
 from snn_data_lake.cortex.cortical_prior import (
     LAYER_CIRCLES,
     LAYER_E_FRACTION,
     LAYER_OCCUPANCY,
 )
+from snn_data_lake.cortex.growth_program import GROWABLE, SCAFFOLD
+from snn_data_lake.substrate.growable import GrowthCoordinator, is_safety_seam
 
 EXCITATORY = 1
 INHIBITORY = -1
@@ -143,8 +170,21 @@ DEPTH_BANDS = _depth_bands()
 # distinct-from: cortex/vsa_reasoning.py::hv -- that builds a +/-1 HYPERVECTOR spike code from a
 #   crc32 seed; this draws a LAMINAR ASSIGNMENT from measured occupancy. Site read; the shared word
 #   is "deterministic" and there is nothing to reuse either way.
-def place(n_units, seed=0):
+def place(n_units, seed=0, region="cortex"):
+    # distinct-from: cortex/vsa_reasoning.py -- that builds a +/-1 HYPERVECTOR spike code from a
+    #   crc32 seed; this draws a LAMINAR/REGIONAL ASSIGNMENT from a prior. Site read (see the
+    #   module-level marker above); the shared word is "deterministic", nothing to reuse.
     """[(depth, layer, sign)] for `n_units` newly grown cells. Deterministic in `seed`.
+
+    THE REGION SELECTS THE ARM (T043). The default, `region="cortex"`, runs the pre-T043 body
+    below UNTOUCHED -- byte-identical output, pinned by the self-check's golden crc. Any other
+    key of `REGION_COORDS` routes to the GRN arm (`_place_grn`): label from the settled
+    arealization output at the region's declared coordinate (only the NEUROMERE is
+    load-bearing at this grain -- region_prior's disclosure), depth uniform and DISCLOSED as
+    uninformative, sign None -- refused, never defaulted. An unknown or non-string region
+    raises. THIS IS THE PRIOR SURFACE, NOT A GROWTH ADMISSION: querying any region's prior
+    (scaffold regions included -- main() prints all 16) is legitimate; admission is
+    place_grown's job, where scaffold regions are refused.
 
     THE LAYER IS DRAWN FROM MEASURED OCCUPANCY, not by sampling the geometry. Layer 1 is the
     remainder OUTSIDE every circle, so uniform sampling in a bounding box over-produces it -- a first
@@ -161,6 +201,10 @@ def place(n_units, seed=0):
     """
     if n_units < 0:
         raise ValueError("n_units must be >= 0")
+    if region != "cortex":
+        if not isinstance(region, str):
+            raise ValueError(f"region must be a region name, got {type(region).__name__}")
+        return _place_grn(n_units, seed, region_prior(region))
     rng = random.Random(seed)  # per-instance, never module-level (determinism invariant)
     occ = LAYER_OCCUPANCY["value"]
     layers = list(_LAYER_NAMES)
@@ -182,11 +226,244 @@ def place(n_units, seed=0):
 
 
 def layer_histogram(placed):
-    """{layer: count} for a placement, in cortical order."""
+    """{layer: count} for a placement, in cortical order. H01-ARM PLACEMENTS ONLY: a GRN
+    region label is not a cortical layer, and silently absorbing one here would report a
+    region inside a laminar census (T043 panel) -- it raises instead."""
     hist = dict.fromkeys(_LAYER_NAMES, 0)
     for _d, layer, _s in placed:
-        hist[layer] = hist.get(layer, 0) + 1
+        if layer not in hist:
+            raise ValueError(
+                f"{layer!r} is not a cortical layer -- layer_histogram takes the H01 arm's "
+                "output only"
+            )
+        hist[layer] += 1
     return {k: v for k, v in hist.items() if v}
+
+
+# ==================================================================================================
+# T043 -- per-region priors keyed by the declared prosomeric coordinate, and the registered
+# growers composed through the 007 interface
+# (specs/007-whole-brain-neurogenesis/contracts/growth-consumption.md). P8 invention #7's first
+# spec-backed consumer of the arealization GRN under specs/022 -- NOT a 007 C2 consumer: C2.1
+# disqualifies a cortex-internal pair, and both modules sit in REGIONS["cortex"].
+# distinct-from: hippocampus/grid_place_map.py -- its `_match_bar` midpoint is a place-cell firing
+#   threshold; nothing here thresholds activity. Site read; the shared word is "midpoint".
+# distinct-from: brainstem/arm_hardware.py -- its configurations are servo-rating arithmetic for
+#   the physical arm; unrelated job. Site read; the shared word is "combinations".
+# distinct-from: substrate/gradient_claim_gate.py -- its "placement" is where a statistical bar
+#   sits relative to a null; this places NEURONS. Site read; the shared word is "placement".
+# distinct-from: cortex/cortical_prior.py -- REUSED, not duplicated: it is this module's existing
+#   import for the measured H01 fractions; nothing re-derives them here.
+# distinct-from: cortex/arealization.py -- REUSED, not duplicated: this section CONSUMES its
+#   emit_regions/graded arm; the zero-repression comparator at its L567 is not re-implemented.
+# ==================================================================================================
+
+#: The presentation grid both arealization arms accept (even -- graded_profiles refuses odd).
+_GRID_NODES = 16
+
+
+# distinct-from: cortex/arealization.py -- NOT distinct but REUSED: the binning below imports
+#   discretize_sharp (the T043 panel's P2 finding killed the first draft's inline re-derivation).
+# distinct-from: hippocampus/grid_place_map.py -- its midpoint is a place-cell firing bar;
+#   unrelated job, site read; the shared word is "midpoint".
+# distinct-from: reasoning/arc_mint.py -- its grid rules recolour ARC task cells; unrelated
+#   job, site read; the shared word is "grid".
+def _ap_node(neuromere):
+    """The presentation-grid node for a neuromere: its midpoint on the 14-entry NEUROMERES
+    partition, binned by the ONE sharp discretizer (`arealization.discretize_sharp`). Not an
+    identity: the position comes from the 14-way partition and the bin from the 16-way grid,
+    so the composition genuinely moves information between two DECLARED partitions."""
+    ap = (NEUROMERES.index(neuromere) + 0.5) / len(NEUROMERES)
+    return int(discretize_sharp([ap], _GRID_NODES)[0])
+
+
+# distinct-from: brainstem/arm_hardware.py -- servo-rating arithmetic for the physical arm;
+#   unrelated job, site read (also declared in the T043 header block above).
+# distinct-from: cortex/theta_gamma_code.py -- its _ensemble draws a sparse LIF population per
+#   gamma sub-cycle; nothing here draws populations. Site read; shared word is "which cells".
+def region_prior(region):
+    """The prior for `region`, keyed by its declared (neuromere, zone) coordinate -- which ARM
+    answers "where does a grown unit go, and what identity does it carry". AT THIS GRAIN ONLY
+    THE NEUROMERE IS LOAD-BEARING: the zone is carried and declared, and nothing downstream
+    reads it yet (the self-check PINS that degeneracy so it cannot silently change) -- a
+    dorsoventral field is what would make it load-bearing, and this build does not have one.
+
+    H01 IS SELECTED BY NAME, NOT BY COORDINATE. cortex and hippocampus share ("sp", "alar") at
+    this grain, and a coordinate-keyed lookup would hand H01's measured laminar occupancy to
+    six regions it was never measured in. A measurement outranks the model at the one region
+    where the measurement exists; everywhere else the GRN's settled output at the region's own
+    coordinate is the prior, DISCLOSED as model-derived with zero tissue measurement behind it.
+
+    DEGENERACY, DISCLOSED NOT SMOOTHED: `same_prior_regions` names the regions whose prior is
+    IDENTICAL to this one -- the neuromere class over GRN-arm regions (the T043 panel caught
+    the first draft disclosing the coordinate class instead, which wrongly listed cortex and
+    wrongly omitted hypothalamus). Seven regions sit at ('sp','alar') and the grid cannot
+    separate them; a prior that pretended to tell hippocampus from amygdala here would be
+    invented resolution (T041's non-discrimination result).
+    """
+    coord = REGION_COORDS.get(region) if isinstance(region, str) else None
+    if coord is None:
+        raise ValueError(
+            f"unknown region {region!r} -- not a declared prosomeric coordinate "
+            f"(REGION_COORDS keys: {sorted(REGION_COORDS)})"
+        )
+    nm, _zone = coord  # the zone rides in `coord`; not load-bearing at this grain (pinned)
+    if region == "cortex":
+        return {
+            "arm": "h01_measured",
+            "coord": coord,
+            "same_prior_regions": (),
+            "disclosure": "measured laminar occupancy + E-fractions (H01); the one region "
+            "with a tissue measurement -- selected by NAME, shared with no other region",
+        }
+    same = tuple(
+        sorted(
+            r for r, (n2, _z2) in REGION_COORDS.items() if r not in (region, "cortex") and n2 == nm
+        )
+    )
+    node = _ap_node(nm)
+    labels, states = emit_regions(_GRID_NODES)
+    prior = {
+        "arm": "grn_model",
+        "coord": coord,
+        "regime": regime_of(nm),
+        "consensus_label": labels[node],
+        "consensus_state": tuple(int(v) for v in states[node]),
+        "same_prior_regions": same,
+        "disclosure": "model-derived (the T040/T041 GRN settled at the declared coordinate); "
+        "no tissue measurement; sign is REFUSED (None), not defaulted",
+    }
+    if prior["regime"] == "graded":
+        prof = graded_profiles(_GRID_NODES)
+        prior["graded_identity"] = tuple(round(float(v), 6) for v in prof[node])
+        prior["label"] = str(postmitotic_discretize(prof)[node])
+    else:
+        # SHARP regime: the compartment IS the lineage, decided at birth (T041's two-regime
+        # split) -- the label is the neuromere itself, stated directly rather than dressed up
+        # as a computation.
+        prior["label"] = nm
+    return prior
+
+
+def _place_grn(n_units, seed, prior):
+    """The GRN arm: [(pos, label, None)] for `n_units` units of a non-cortical region.
+
+    POS IS DRAWN UNIFORM in [0, 1] and disclosed UNINFORMATIVE: no measured within-region
+    occupancy exists outside H01 cortex, and inventing bands would be a made-up number wearing
+    a measurement's authority. LABEL is the prior's settled identity -- PER-COORDINATE, so
+    every unit of a region carries the same label at this grain (disclosed; the GRN answers
+    per coordinate, not per unit). SIGN IS None: Dale needs a measured E-fraction, none exists
+    here, and None is the explicit absence marker a consumer must branch on -- `assign_sign`'s
+    own rule ("an unmeasured layer must not be given a default sign") applied region-wide.
+    """
+    rng = random.Random(seed)
+    label = prior["label"]
+    return [(rng.random(), label, None) for _ in range(n_units)]
+
+
+#: THE REGISTERED GROWERS (T043): a grower -> region routing table -- every grower this
+#: project runs, keyed to the region whose prior places its grown units. Each name is a
+#: growth seam registered through the 007 interface (compose_growers), and place_grown is
+#: the placement route a grower's new units WILL take: today only function_preserving_growth
+#: is driven through it, from this module's own __main__; neurogenesis_engine still calls
+#: place() directly (open composition debt, the learning slice T049+); ng_snn is registered
+#: only. distinct-from: cortex/growth_program.py::GROWABLE -- that is the owner-ratified
+#: REGION partition (10 regions, pinned by equality in T042's self-check, counted by T046);
+#: this is a 3-entry grower routing table, and the self-check asserts every route lands
+#: INSIDE that partition, so the two are one rule rather than two.
+GROWER_REGIONS = {
+    "neurogenesis_engine": "cortex",  # the live sleep-tick grower; calls place() itself today
+    "ng_snn": "hippocampus",  # torch tier -- registered; fit-driven traffic NOT claimed here
+    "function_preserving_growth": "hippocampus",  # stdlib; carries the composed-path demo
+}
+
+
+# distinct-from: cortex/arealization.py -- its L567 comparator is the zero-repression census
+#   instrument; nothing here compares censuses. Site read; term matcher fired on generic words.
+# distinct-from: hippocampus/hippocampal_memory.py -- a replay buffer over the durable lake;
+#   nothing here buffers replays. Site read; unrelated job.
+# distinct-from: insula/interoceptive_integration.py -- a salience accessor; unrelated. Read.
+# distinct-from: basal_ganglia/r_stdp.py -- worker fork/join barriers; unrelated. Read.
+# distinct-from: cortex/access_consciousness.py -- a workspace submit site; unrelated. Read.
+def place_grown(grower, n_units, seed=0):
+    """Placement for `grower`'s newly grown units -- THE GROWTH CALL SITE, enforcing the 007
+    contract's C1.7 refusal AND T042's SCAFFOLD closure as ONE admission rule. The contract's
+    own 2026-08-03 correction records that `is_safety_seam` had no caller outside its own
+    module, so the refusal was structurally unreachable; this call site is the enforcement it
+    demands, verified in the self-check by ATTEMPTING refusals and DISCRIMINATING the branch
+    by message (the T043 panel's blocker: a bare except also caught the unknown-grower branch,
+    leaving the C1.7 red unreachable). No live-tick caller reaches this yet -- the learning
+    slice T049+ is the dated consumer.
+
+    REFUSAL IS FIRST AND UNCONDITIONAL (the T042 lesson: a gate one arm can short-circuit is
+    not a gate): a safety-seam-looking name is refused before the grower is even looked up, so
+    no future branch can route around it.
+    """
+    if is_safety_seam(grower):
+        raise ValueError(
+            f"refusing growth placement for {grower!r}: the effector / actuator / reflex "
+            "envelope is bounded by design and never grows (007 C1.7, enforced at the call "
+            "site)"
+        )
+    region = GROWER_REGIONS.get(grower)
+    if region is None:
+        raise ValueError(
+            f"unknown grower {grower!r} -- not in the grower set {sorted(GROWER_REGIONS)}"
+        )
+    if region in SCAFFOLD:
+        raise ValueError(
+            f"refusing growth placement for {grower!r}: region {region!r} is in the "
+            "owner-ratified SCAFFOLD (T042's closure -- fixed regions never grow, and the "
+            "T043 arm inherits that rule rather than opening a second path around it)"
+        )
+    return place(n_units, seed=seed, region=region)
+
+
+# distinct-from: cortex/growth_program.py -- its shared program decides GROW/QUIESCE proposals
+#   from local fields; this coordinates seam WIDTHS into placements. Site read; adjacent by
+#   design (T042/T043 are sibling tasks), no shared code.
+# distinct-from: cortex/self_improvement_suite.py -- its _rung_growth measures duplicate_unit's
+#   current-difference eps-invariant on a standalone layer; the self-check here demonstrates
+#   gradmax insertion THROUGH the coordinator with placements. Site read; different check.
+# distinct-from: reasoning/reasoning_compose.py -- routes reasoning sub-steps; unrelated. Read.
+# distinct-from: substrate/cockpit.py -- drives a GET through the HTTP handler; unrelated. Read.
+def compose_growers(base_seed=0):
+    """The registered growers composed through the 007 interface: one GrowthCoordinator with a
+    seam per grower -- the first `register_seam` caller outside growable.py's own self-check
+    (NOT live: the only callers are this module's own __main__, and the learning slice T049+
+    is the dated consumer) -- each seam wired so a growth event RIPPLES into placements:
+    `coord.grow(name, w)` appends exactly the delta units' placements to `ledger[name]`,
+    deterministically. Event seed = crc32(name) ^ base_seed ^ old_width (crc32, never builtin
+    hash -- the persistence invariant): a replay of the same growth SCHEDULE places
+    identically; same-grower events can never collide (XOR is injective in old_width); and
+    cross-grower separation is a MEASURED bound, not a "never" -- the pairwise crc32 XOR
+    distances of the three names are >= 2.76e8, so a collision needs a grower at >= 2^28
+    units, far above this repo's measured ~40k ceiling.
+
+    TWO DISCLOSED DEPENDENCES. (1) Widths start at 0 AT COMPOSITION TIME: the seam tracks
+    growth events THROUGH the coordinator from here forward, not a grower's prior history
+    (the engine's existing units were placed by its own place() calls). (2) The ledger is
+    growth-SCHEDULE-dependent: 0->5 in one event and 0->4->5 in two place differently,
+    because the event seed folds old_width -- a consumer that persists the ledger must
+    persist the schedule with it. Treat the returned ledger as READ-ONLY: the resize gates
+    on its length, so hand-appending desynchronizes the seam. ng_snn is REGISTERED at width
+    0 and its fit-driven traffic is NOT claimed: it is the torch tier, P3 honesty forbids
+    reporting a charge nobody measured. Returns (coordinator, ledger).
+    """
+    coord = GrowthCoordinator()
+    ledger = {}
+    for name in sorted(GROWER_REGIONS):
+        coord.register_seam(name, 0)
+        ledger[name] = []
+
+        def _resize(new_width, _name=name):
+            old = len(ledger[_name])
+            if new_width > old:
+                ev_seed = (zlib.crc32(_name.encode()) ^ base_seed ^ old) & 0xFFFFFFFF
+                ledger[_name].extend(place_grown(_name, new_width - old, seed=ev_seed))
+
+        coord.connect(name, _resize)
+    return coord, ledger
 
 
 def main():
@@ -216,6 +493,31 @@ def main():
     print("Layer 1 excitatory cells are UNREPRESENTABLE -- H01 measures that fraction at 0.0000.")
     print(
         f"layer rule agrees with H01's own labels on {LAYER_RULE_AGREEMENT:.2%} of 49,377 somata."
+    )
+
+    print()
+    print("T043 -- the (neuromere, zone)-keyed prior, per region")
+    print(f"{'region':<18}{'coord':<17}{'arm':<14}{'regime':<9}{'label':<11}{'sign'}")
+    for region in sorted(REGION_COORDS):
+        pr = region_prior(region)
+        if pr["arm"] == "h01_measured":
+            row = ("h01_measured", "--", "(6 layers)", "measured")
+        else:
+            row = (pr["arm"], pr["regime"], pr["label"], "None (refused)")
+        print(f"{region:<18}{str(pr['coord']):<17}{row[0]:<14}{row[1]:<9}{row[2]:<11}{row[3]}")
+    print(
+        "H01 is selected by NAME: seven regions share ('sp','alar') and only cortex has the "
+        "measurement."
+    )
+    print(
+        "GRN-arm sign is None -- REFUSED, not defaulted: no measured E-fraction exists outside "
+        "H01 cortex."
+    )
+    coord, ledger = compose_growers()
+    print(
+        f"registered growers (via 007 register_seam, first caller outside growable's own "
+        f"self-check; no live-tick caller yet): {coord.seams()} -- ng_snn at width 0, its "
+        "fit-driven traffic is the learning slice's claim, not this module's."
     )
     return 0
 
@@ -330,11 +632,260 @@ def _selfcheck():
     assert min(hhist.values()) > 0, "a layer emptied at scale -- the distribution is degenerate"
     print(f"  green  NO CEILING: 100,000 units placed, worst proportion drift {worst:.4f}")
 
-    print(f"self-check OK: {len(_LAYER_NAMES)} layers, 3 constructed reds, Dale enforced at birth")
+    # ================================ T043 checks =====================================
+    # BYTE-IDENTITY CONTROL (additive-from-zero): the default arm and the explicit-cortex arm
+    # are the same code path (disclosed self-referential), so the INDEPENDENT leg is the golden
+    # crc pinned at a3191e3d, BEFORE the T043 edit. Reachable red measured on mutants: a reflow
+    # of the cortical draw reds it; a sub-0.1% occupancy drift at n=12 does not (that magnitude
+    # is the occupancy-share check's job above, tol 0.03).
+    d = place(12, seed=5)
+    assert d == place(12, seed=5, region="cortex"), (
+        "region='cortex' diverged from the default arm -- the dispatch is not byte-identical"
+    )
+    assert zlib.crc32(repr(d).encode()) == 3377043314, (
+        "the cortical draw was reflowed -- T043 was required to be additive-from-zero, and "
+        "this crc was pinned against the pre-T043 tree at a3191e3d"
+    )
+    print("  green  T043: cortical arm byte-identical (dispatch equality + golden crc @ a3191e3d)")
+
+    # THE GRN ARM: deterministic, sign REFUSED (None), depth in [0,1], unknown and non-string
+    # regions raise.
+    h1 = place(50, seed=3, region="hippocampus")
+    assert h1 == place(50, seed=3, region="hippocampus"), "GRN arm is not deterministic in seed"
+    assert h1 != place(50, seed=4, region="hippocampus"), "GRN arm ignores its seed"
+    assert all(s is None for _p, _l, s in h1), (
+        "a GRN-arm unit carries a sign -- no measured E-fraction exists outside H01 cortex, "
+        "and a default sign is a fabricated measurement"
+    )
+    assert all(0.0 <= p <= 1.0 for p, _l, _s in h1), "GRN-arm position left [0,1]"
+    assert all(s is not None for _d2, _l2, s in d), "a cortical unit lost its measured sign"
+    for bad_region in ("ventricle", None, 42, ["cortex"]):
+        try:
+            place(3, seed=0, region=bad_region)
+            raise AssertionError(f"an undeclared region {bad_region!r} was placed")
+        except ValueError:
+            pass
+    print(
+        "  RED    T043: sign is None on the GRN arm (refused, not defaulted); "
+        "unknown / non-string regions raise"
+    )
+
+    # THE PRIOR KEY, measured honestly. cortex and hippocampus share ("sp","alar") and the arms
+    # STILL differ -- H01 is selected by name. The identical-prior class is the NEUROMERE class
+    # (the zone is carried, not load-bearing), asserted both ways: hypothalamus ('sp','basal')
+    # gets the SAME prior as hippocampus and IS listed; cortex shares the coordinate and is NOT.
+    pc, ph = region_prior("cortex"), region_prior("hippocampus")
+    assert pc["coord"] == ph["coord"] == ("sp", "alar"), "the declared coordinates moved"
+    assert pc["arm"] == "h01_measured" and ph["arm"] == "grn_model", (
+        "a coordinate-keyed lookup handed H01 to a coordinate-mate -- the measurement must be "
+        "selected by NAME"
+    )
+    assert ph["same_prior_regions"] == (
+        "amygdala",
+        "basal_ganglia",
+        "claustrum",
+        "hypothalamus",
+        "insula",
+        "olfactory",
+    ), (
+        "the identical-prior class is wrong -- it must be the NEUROMERE class over GRN-arm "
+        "regions (hypothalamus in, cortex out), never the coordinate class"
+    )
+    # ZONE-DEGENERACY PIN (disclosed, not smoothed): same neuromere + different zone yields the
+    # IDENTICAL prior today. This pin REDS the day the zone becomes load-bearing, which is the
+    # moment same_prior_regions and the degeneracy disclosure must both change.
+    pt, pe = region_prior("thalamus"), region_prior("epithalamus")
+    assert pt["same_prior_regions"] == ("epithalamus",) and pe["same_prior_regions"] == (
+        "thalamus",
+    ), "the p2 identical-prior pair moved"
+    keyed = lambda pr: {k: v for k, v in pr.items() if k not in ("coord", "same_prior_regions")}  # noqa: E731
+    assert pt["coord"] != pe["coord"] and keyed(pt) == keyed(pe), (
+        "the zone became load-bearing -- update same_prior_regions and the degeneracy disclosure"
+    )
+    # AGREEMENT IS BY CONSTRUCTION, kept as a REGRESSION GUARD: both readouts are monotone in
+    # the same organizer field a(x) (the postmitotic label reduces to [a > 1/2], and the Boolean
+    # consensus settle is a bijection of the same fgf8 input), so agreement corroborates
+    # NOTHING -- what a disagreement proves is that one arm broke. Asserted across all 16
+    # nodes; the reachable red is a neutered graded arm, not any natural input.
+    prof16 = graded_profiles(_GRID_NODES)
+    pm16 = postmitotic_discretize(prof16)
+    lab16, _st16 = emit_regions(_GRID_NODES)
+    assert [str(x) for x in pm16] == lab16, (
+        "the graded postmitotic labels and the Boolean consensus labels diverged -- one arm "
+        "broke (agreement is by construction while both are healthy)"
+    )
+    assert ph["regime"] == "graded" and ph["label"] == "anterior", "the sp prior label moved"
+    # The declared prior surface carries what it says: the graded identity is anterior-high at
+    # sp's node and the consensus state is the settled anterior pattern (read HERE so the two
+    # fields are consumed and policed until T044+'s consumers land).
+    assert ph["graded_identity"][0] == ph["graded_identity"][1] > 0.9, (
+        "the graded identity at sp is not anterior-high -- the organizer field moved"
+    )
+    assert ph["consensus_state"] == (1, 1, 0, 0), (
+        "the settled consensus state at sp is not the anterior pattern"
+    )
+    # The prior is NOT one constant along AP, and the sharp regime labels by lineage.
+    pm = region_prior("medulla")
+    assert pm["regime"] == "sharp" and pm["label"] == "r5", "sharp-regime lineage label moved"
+    assert pm["consensus_label"] == "posterior" != ph["consensus_label"], (
+        "the consensus label does not vary along the AP axis -- the prior degenerated to a constant"
+    )
+    print(
+        "  green  T043: neuromere-keyed prior (zone carried, pinned not-load-bearing) -- "
+        "H01 by name, identical-prior class disclosed, AP axis live"
+    )
+
+    # THE 007 COMPOSITION. C1.7 refusal AT THE CALL SITE, branch-DISCRIMINATED (the panel's
+    # blocker: a bare `except ValueError` also caught the unknown-grower branch, so deleting
+    # the safety gate left this green -- the message assert is what makes the red reachable).
+    # Ordering is proven with an IN-SET safety name: only refusal-FIRST can refuse a name the
+    # lookup would accept.
+    for bad in ("arm_dof", "growing_arm_learner", "estop"):
+        try:
+            place_grown(bad, 1)
+            raise AssertionError(f"a safety-named growth {bad!r} was placed instead of refused")
+        except ValueError as e:
+            assert "007 C1.7" in str(e), (
+                f"{bad!r} was refused by the WRONG branch (unknown-grower, not the safety "
+                "gate) -- the C1.7 red is unreachable"
+            )
+    try:
+        place_grown("not_a_grower", 1)
+        raise AssertionError("an unknown grower was placed instead of refused")
+    except ValueError as e:
+        assert "grower set" in str(e), "the unknown-grower branch lost its message"
+    GROWER_REGIONS["estop_probe"] = "cortex"  # an IN-SET safety name: only refusal-FIRST reds
+    try:
+        place_grown("estop_probe", 1)
+        raise AssertionError("refusal is not first -- an in-set safety name was placed")
+    except ValueError as e:
+        assert "007 C1.7" in str(e), "the in-set safety name was refused by the wrong branch"
+    finally:
+        del GROWER_REGIONS["estop_probe"]
+    # T042's SCAFFOLD refusal is INHERITED (one admission rule, not two): a grower mapped to a
+    # scaffold region is refused at this call site too, and the declared routing table itself
+    # sits inside the owner-ratified growable partition.
+    assert all(r in GROWABLE for r in GROWER_REGIONS.values()), (
+        "a declared grower routes to a region outside growth_program.GROWABLE"
+    )
+    GROWER_REGIONS["scaffold_probe"] = "brainstem"
+    try:
+        place_grown("scaffold_probe", 1)
+        raise AssertionError("a scaffold-region growth was placed -- T042's closure is bypassed")
+    except ValueError as e:
+        assert "SCAFFOLD" in str(e), "the scaffold refusal fired from the wrong branch"
+    finally:
+        del GROWER_REGIONS["scaffold_probe"]
+    assert len(place_grown("function_preserving_growth", 2)) == 2, (
+        "the positive control failed -- an in-set grower must place (else the refusal reds "
+        "above prove only that everything is refused)"
+    )
+    print(
+        "  RED    T043: C1.7 + SCAFFOLD refusal at the growth call site, branch-discriminated "
+        "(safety / scaffold / unknown each by its own message; refusal-first proven in-set)"
+    )
+
+    # The coordinator seams: the first register_seam caller outside growable.py's own
+    # self-check (NO live-tick caller -- nothing on the wake/sleep path reaches this; the
+    # learning slice T049+ is the dated consumer), the safety tripwire red THROUGH the
+    # interface, and a growth event rippling into exactly the delta placements.
+    coord, ledger = compose_growers(base_seed=0)
+    assert coord.seams() == sorted(GROWER_REGIONS), "the grower set is not fully registered"
+    try:
+        coord.register_seam("motor_actions", 1)
+        raise AssertionError("the 007 interface accepted a safety seam")
+    except ValueError:
+        pass
+    from snn_data_lake.hippocampus.function_preserving_growth import SpikingGrowthLayer
+
+    layer = SpikingGrowthLayer(n_in=6, n_hidden=4, n_out=2, seed=2)
+    wrng = random.Random(9)
+    # amp 0.3, NOT 1.0: at amp 1.0 the readout saturates (37 spikes in 40 slots, measured) and
+    # a NON-preserving growth with positive fan-out is undetectable (w_out=+50 read as
+    # "preserved"). At amp 0.3 the rate is ~0.40 and a +1.0 perturbation flips the train --
+    # the sensitivity control below proves that on every run.
+    window = [[wrng.uniform(0.0, 0.3) for _ in range(6)] for _ in range(20)]
+    _c0, out0, _h0 = layer.run(window)
+    coord.grow("function_preserving_growth", layer.n_hidden)  # announce the initial 4
+    gid = layer.add_unit_gradmax(window)
+    coord.grow("function_preserving_growth", layer.n_hidden)  # the growth event: +1
+    _c1, out1, _h1 = layer.run(window)
+    assert out1 == out0, (
+        "function_preserving_growth's zero-fanout insertion is not function-preserving -- "
+        "the readout spike train moved"
+    )
+    # SENSITIVITY CONTROL (the criterion's own reachable red, run every time): a genuinely
+    # non-preserving fan-out on the same window IS detected, so the assert above cannot be
+    # saturation-blind without this control going red first.
+    saved = layer.w_out[gid]
+    layer.w_out[gid] = [1.0] * layer.n_out
+    _c2, out2, _h2 = layer.run(window)
+    layer.w_out[gid] = saved
+    assert out2 != out0, (
+        "the preservation assert is BLIND at this window -- a +1.0 fan-out perturbation did "
+        "not move the readout, so 'preserved' means nothing here"
+    )
+    lg = ledger["function_preserving_growth"]
+    assert len(lg) == layer.n_hidden == 5 and gid == 4, "the ripple did not place the delta"
+    assert all(lab == "anterior" and s is None for _p, lab, s in lg), (
+        "a rippled hippocampal placement lost its GRN label or acquired a fabricated sign"
+    )
+    # THE EVENT-SEED PROPERTIES, each policed (the panel measured all three mutants passing
+    # before these asserts existed): replay identity; base_seed participation; per-grower
+    # stream separation at equal widths; no constant seed (pairwise-distinct positions).
+    coord2, ledger2 = compose_growers(base_seed=0)
+    coord2.grow("function_preserving_growth", 4)
+    coord2.grow("function_preserving_growth", 5)
+    assert ledger2["function_preserving_growth"] == lg, (
+        "a replayed growth sequence placed differently -- the event seed is not deterministic"
+    )
+    coord3, ledger3 = compose_growers(base_seed=1)
+    coord3.grow("function_preserving_growth", 4)
+    coord3.grow("function_preserving_growth", 5)
+    assert ledger3["function_preserving_growth"] != lg, (
+        "base_seed does not participate in the event seed -- two brains would share a stream"
+    )
+    coord4, ledger4 = compose_growers(base_seed=0)
+    coord4.grow("function_preserving_growth", 3)
+    coord4.grow("ng_snn", 3)  # synthetic seed-property probe, NOT fit-driven ng_snn traffic
+    fpg3 = [p for p, _l, _s in ledger4["function_preserving_growth"]]
+    ngs3 = [p for p, _l, _s in ledger4["ng_snn"]]
+    assert fpg3 != ngs3, (
+        "two growers at equal width drew the same stream -- crc32(name) is not separating them"
+    )
+    positions = [p for p, _l, _s in lg]
+    assert len(set(positions)) == len(positions), (
+        "duplicate positions in one ledger -- the event seed degenerated toward a constant"
+    )
+    assert ledger["ng_snn"] == [] and coord.width("ng_snn") == 0, (
+        "ng_snn claimed traffic -- its fit-driven growth is the torch tier's, NOT claimed here"
+    )
+    print(
+        "  green  T043: growers composed through 007 -- register_seam (first caller outside "
+        f"growable's own self-check), growth ripples to {len(lg)} placements, preservation + "
+        "its sensitivity control hold, seed properties policed"
+    )
+
+    # layer_histogram refuses a GRN label rather than absorbing it as a cortical layer.
+    try:
+        layer_histogram(h1)
+        raise AssertionError("layer_histogram absorbed a GRN label as a cortical layer")
+    except ValueError:
+        pass
+    print("  RED    T043: layer_histogram refuses non-cortical labels")
+
+    print(
+        f"self-check OK: {len(_LAYER_NAMES)} layers (H01, measured) + {len(REGION_COORDS) - 1} "
+        "GRN-prior regions, Dale enforced at birth, the growers composed through 007"
+    )
 
 
 if __name__ == "__main__":
-    if "--self-check" in sys.argv:
-        _selfcheck()
-    else:
+    # THE SELF-CHECK RUNS ON THE NO-ARG PATH TOO (T043 panel BLOCKER): run_selfchecks.py and
+    # tests/test_selfchecks.py invoke this module with NO flag, so an argv-gated self-check is
+    # a red nobody runs -- the exact shape the 007 contract's 2026-08-03 correction names. The
+    # asserts execute in every gate run now (arealization's pattern); --self-check alone stays
+    # supported for a quiet check without the report.
+    _selfcheck()
+    if "--self-check" not in sys.argv:
         sys.exit(main())

@@ -29,7 +29,7 @@ sensitivity control, a measured NON-result, and a re-scope:
    settle over exhaustively enumerated wirings (3^12 off-diagonal sign matrices x 2^4
    basal vectors = 8,503,056 candidates -- nothing curated, nothing mis-copyable from a
    paper's edge table); the census-derived consensus readout behind emit_regions()
-   (module-cached, so the T043 consumer never pays the census).
+   (a derivation PIN policed by the self-check, so the T043 consumer never pays the census).
 
 2. THE STRUCTURE THEOREM, asserted with its control in one command: under the
    repression-dominant update rule the activation-only family is MONOTONE, and the
@@ -299,25 +299,37 @@ def census(family="all", posterior_organizer=False, gene_order=None):
     return out
 
 
-_CONSENSUS = None  # (wiring, basal), derived once -- see _consensus()
+# The census-derived consensus pair, PINNED BY DERIVATION: census()'s parsimony-then-
+# representativeness pick at the declared gene order, copied here verbatim because the
+# derivation costs ~28 s and T043 put emit_regions on placement's import path and per-region
+# prior surface -- a first-call census would stall any process that reaches the GRN arm.
+# (Honest scope, per the T043 panel: today those processes are placement's own main() and
+# self-check, i.e. every gate run; the sleep-tick grower takes the cortex arm and does NOT
+# reach this yet.) The pin is not a cached measurement behind a patched constant (the
+# lru-cache failure this repo has recorded): the self-check re-runs census() FRESH and asserts
+# this pin equals the derivation, so the pin cannot drift silently -- and the arrays are
+# write-protected against ACCIDENTAL mutation (setflags can reverse it; the police is the
+# self-check, not the flag).
+CONSENSUS_WIRING = np.array(
+    [[0, 0, 0, 0], [1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 1, 0]], dtype=np.int8
+)
+CONSENSUS_WIRING.setflags(write=False)
+CONSENSUS_BASAL = np.array([0, 0, 1, 0], dtype=np.uint8)
+CONSENSUS_BASAL.setflags(write=False)
 
 
 def _consensus():
-    """The census-derived consensus network, computed once per process and cached as the
-    DERIVED PAIR (never a cached census -- a cached measurement behind a patched
-    constant is the lru-cache failure this repo has already recorded). The self-check
-    re-derives it fresh and asserts the cache matches, so the cache cannot drift."""
-    global _CONSENSUS
-    if _CONSENSUS is None:
-        c = census()
-        _CONSENSUS = (c["consensus_wiring"], c["consensus_basal"])
-    return _CONSENSUS
+    """The census-derived consensus pair -- returns the DERIVATION PIN above, so a consumer
+    never pays the census. The self-check re-derives the census fresh and asserts the pin
+    matches, so the pin cannot drift."""
+    return (CONSENSUS_WIRING, CONSENSUS_BASAL)
 
 
 def emit_regions(n_nodes=16, wiring=None, basal=None):
     """Stage-1 region emission (T043's consumer surface): per-node labels from the
     consensus network's stable states on the presentation grid (even n_nodes; the
-    consensus is module-cached, so a consumer never pays the census). Labels in
+    consensus is a derivation PIN policed by the self-check, so a consumer never pays
+    the census). Labels in
     {"anterior", "posterior", "other", "cyclic"} -- on the current consensus network the
     settled state is a bijection of the fgf8 input bit, so only the first two occur, and
     T041's graded arm did NOT change that (the panel's minor is right: the graded path
@@ -662,14 +674,21 @@ def main() -> int:
         f"{abs(c['n_admissible'] - c_rev['n_admissible'])}) -- the signed census is "
         f"exact over its family GIVEN the declared order semantics, never order-free"
     )
-    # ---- the consensus cache cannot drift ----------------------------------------------
+    # ---- the consensus PIN cannot drift: fresh census vs the derivation pin ------------
     w_cached, b_cached = _consensus()
     if not (
         np.array_equal(w_cached, c["consensus_wiring"])
         and np.array_equal(b_cached, c["consensus_basal"])
     ):
-        print("arealization self-check FAILED: the cached consensus differs from a fresh census")
+        print("arealization self-check FAILED: the consensus PIN differs from a fresh census")
         return 1
+    # ---- the accidental-write protection is LIVE (its red, attempted not asserted) -----
+    try:
+        CONSENSUS_WIRING[0, 0] = 1
+        print("arealization self-check FAILED: the consensus pin accepted a write")
+        return 1
+    except ValueError:
+        pass  # write-protected; a deliberate setflags(write=True) remains possible, disclosed
     # ---- clean emission is the exact half-field under the declared order ---------------
     labels, _ = emit_regions(16, wiring=w_cached, basal=b_cached)
     n_ant, n_post = labels.count("anterior"), labels.count("posterior")
