@@ -56,7 +56,8 @@ projects DC out rather than pretending it is signal. The A/B ships with a matche
 standardizer, and the panel measured the un-reset bootstrap handing the first real percept a
 saturated surprise (1.000 vs the documented cold 0.000) on an action-gate input --
 bootstrap_percept_rule resets `_mu`/`_var` so the ONLY installed effect is subspace
-structure; deliberately seeding the baseline is a separate decision owing its own A/B. THE
+structure; deliberately seeding the baseline was A/B-REFUTED (see bootstrap_percept_rule:
+de-saturation bought by a 5.4x novelty-margin collapse -- the reset stays). THE
 OU'S COST IS MEASURED AND KEPT OPENLY: Oja is order-blind, so on the alignment criterion an
 iid latent does at least as well (criterion 3b ships the arm); the OU exists for the
 temporally-sensitive rules the arc lands next, and deletes per P8 clause 5 if none
@@ -262,9 +263,18 @@ def bootstrap_percept_rule(ps, k=3, seed=0, n_steps=1600, theta=THETA0):
     OU statistics, so the first real percept read a saturated surprise (1.000 vs the
     contract's 0.000) on a signal the action gate consumes as an eligibility source -- a
     live behavioural change the module never disclosed or measured. The bootstrap installs
-    SUBSPACE structure only; whether to seed the baseline DELIBERATELY (the panel measured
-    the seeded arm de-saturating early surprise, plausibly an improvement) is a separate,
-    measured decision that must arrive with its own A/B, not as a side effect.
+    SUBSPACE structure only. Seeding the baseline DELIBERATELY was then MEASURED AND
+    REFUTED (2026-08-26, the chip's A/B at this wire configuration: 20 real-ish percept
+    sequences with planted novelties, criteria declared before measurement, A/A exactly
+    zero, cold control 1.000 saturation / 0.000 discrimination): the seeded arm does
+    de-saturate early surprise (0.98 -> 0.59 pinned) but buys it by collapsing the NOVELTY
+    margin 5.4x (novel-minus-familiar 0.487 -> 0.091) -- a baseline calibrated on synthetic
+    OU statistics reads every real early percept as comparably surprising, so the one thing
+    the eligibility signal exists to flag no longer stands out. Both arms converge by tick
+    ~48 (the seed is transient either way). Measured at the scalar the gate consumes
+    (observe()'s return IS what brain.py reads), so the signal-level result transfers
+    monotonically. THE RESET STAYS; re-open only with an A/B beating 0.487 on the same
+    declared criteria.
 
     k adapts downward to the rule's width (k < in_dim is the modes' validity bound); a rule
     too narrow to drive (in_dim < 2) gets 0 steps, RECORDED as 0 rather than left unset.
