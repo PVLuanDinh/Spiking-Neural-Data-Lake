@@ -169,3 +169,8 @@ scratchpad/
 
 # GeNN runtime codegen/build directories (nvcc-compiled model artifacts, one per GeNNModel name)
 *_CODE/
+
+# unlazy working ledger + hook state (session machinery, never spec artifacts)
+GATES.md
+.unlazy-hook-state.json
+.unlazy/
