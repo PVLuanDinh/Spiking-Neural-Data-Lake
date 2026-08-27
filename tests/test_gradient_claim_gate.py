@@ -675,3 +675,71 @@ def test_the_fr010_approval_path_has_its_own_reds(monkeypatch):
     assert gate.fr010_findings(both, approved=approved) == []
     # the constructed red is untouched: the same planted path with NO approval still fires
     assert gate.fr010_findings([planted])
+
+
+def test_a_phantom_declaration_reds_through_the_assert_composition():
+    """PHANTOM_DECLARATION (owner task 2026-08-27): a declared qualname nothing provides.
+
+    Runs the EXACT composition main()'s --assert path runs -- evaluate(governed_counts,
+    ..., c_all=all_counts) -- for a GOVERNED phantom, an UNGOVERNED phantom (the ALL-scope
+    bound, the one stated FR-001a deviation), the T050 wrong-class shape (a method-LOCAL
+    variable in the wrong class must NOT validate the key), and the truthful shapes the
+    first surface draft red-flagged (green controls).
+    """
+    phantom = (
+        f'{gate.DECL_NAME} = {{"Ghost.gone": ("{gate.LOCAL}", "keys a symbol with no code")}}\n'
+        "class Rule:\n"
+        "    def learn(self, x):\n"
+        "        self.w -= x\n"
+    )
+    incident = (
+        f'{gate.DECL_NAME} = {{"Wrong.evaluate": ("{gate.LOCAL}", "the T050 shape")}}\n'
+        "class Wrong:\n"
+        "    def author(self, x):\n"
+        "        evaluate = x + 1\n"
+        "        return evaluate\n"
+        "class Right:\n"
+        "    def evaluate(self, x):\n"
+        "        return x\n"
+    )
+    truthful = (
+        f'{gate.DECL_NAME} = {{"Outer.Inner.learn": ("{gate.LOCAL}", "nested"), '
+        f'"cond_learn": ("{gate.LOCAL}", "conditional"), '
+        f'"Rule.learn": ("{gate.LOCAL}", "rebind")}}\n'
+        "class Outer:\n"
+        "    class Inner:\n"
+        "        def learn(self, x):\n"
+        "            return x\n"
+        "if True:\n"
+        "    def cond_learn(x):\n"
+        "        return x\n"
+        "def _impl(x):\n"
+        "    return x\n"
+        "class Rule:\n"
+        "    pass\n"
+        "Rule.learn = staticmethod(_impl)\n"
+    )
+
+    def assert_composition(overlay_path, src):
+        rules, _, n = gate.census(overlay={overlay_path: src})
+        gov = gate.counts(rules, governed_only=True)
+        allc = gate.counts(rules, governed_only=False)
+        return [f for f in gate.evaluate(gov, None, n, c_all=allc) if gate.PHANTOM_DECLARATION in f]
+
+    # governed phantom (a real governed relpath overlaid) and ungoverned phantom both red
+    assert assert_composition("cortex/tempotron.py", phantom), "governed phantom must red"
+    assert assert_composition(_PROBE, phantom), "ungoverned phantom must red (ALL-scope)"
+    # the incident shape reds: a local variable is not a provided symbol
+    assert assert_composition(_PROBE, incident), "the T050 wrong-class shape must red"
+    # truthful shapes are NOT flagged
+    assert assert_composition(_PROBE, truthful) == [], "truthful shapes must stay green"
+    # and the live tree is phantom-free through the same composition
+    live, _, n_live = gate.census()
+    live_reds = [
+        f
+        for f in gate.evaluate(
+            gate.counts(live), None, n_live, c_all=gate.counts(live, governed_only=False)
+        )
+        if gate.PHANTOM_DECLARATION in f
+    ]
+    assert live_reds == [], f"the live tree must carry zero phantoms: {live_reds}"

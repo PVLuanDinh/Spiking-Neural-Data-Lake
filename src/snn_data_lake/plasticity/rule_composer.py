@@ -803,11 +803,22 @@ def regen_rule_census():
     fallback on marker-less layouts)."""
     import json
 
-    from snn_data_lake.substrate.gradient_claim_gate import _repo_root, census
+    from snn_data_lake.substrate.gradient_claim_gate import PHANTOM_DECLARATION, _repo_root, census
 
     rules, failures, _n = census()
     if failures:
         raise ValueError(f"census failures: {failures}")
+    # The gate's phantom bound, COUPLED here too (2026-08-27, the phantom-gate panel's P-4:
+    # regen had zero coupling, so a local operator regenerating on a phantom-red tree would
+    # write a row with no code into the disposition artifact AND inflate the undispositioned
+    # baseline it ratchets against). CI cannot order regen before the gate; this raise closes
+    # the local-operator path.
+    phantoms = sorted(r["qualname"] for r in rules if r["state"] == PHANTOM_DECLARATION)
+    if phantoms:
+        raise ValueError(
+            f"REFUSED: {len(phantoms)} phantom declaration(s) {phantoms[:5]} -- a declared "
+            "qualname with no code must be fixed before the disposition artifact is regenerated"
+        )
     bearing = {"LOCAL", "APPROXIMATES_GRADIENT", "EXACT_GRADIENT", "DIRECT_SOLVE"}
     hits = [0] * len(_CENSUS_ADJUDICATED)
 

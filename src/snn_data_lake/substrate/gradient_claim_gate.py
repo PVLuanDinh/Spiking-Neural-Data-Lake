@@ -25,10 +25,13 @@ TWO HALVES, SPLIT BY COST.
     green in one and red in the other.
 
 CENSUS SCOPE AND ASSERT SCOPE ARE DIFFERENT, AND THE SPLIT IS DELIBERATE (spec FR-001a).
-The census walks the WHOLE package. The bounds assert on the GOVERNED tier only; ungoverned rules are
-counted and REPORTED. That is the verdict contract `eprop_transport_gate` already ships, reused rather
-than reinvented: `reasoning/` alone is ~108 modules against ~22 governed local rules, so asserting
-over both would gate this work on remediating a subtree it does not own.
+The census walks the WHOLE package. The rule-quality bounds assert on the GOVERNED tier only;
+ungoverned rules are counted and REPORTED. That is the verdict contract `eprop_transport_gate`
+already ships, reused rather than reinvented: `reasoning/` alone is ~108 modules against ~22
+governed local rules, so asserting over both would gate this work on remediating a subtree it does
+not own. ONE stated deviation (2026-08-27, amended into FR-001a): PHANTOM_DECLARATION asserts
+ALL-scope -- it is a declaration-INTEGRITY bound, and every bearing row, governed or not, flows
+into tools/rule_census.json (see evaluate()).
 
 THE DECLARATION IS AUTHORITATIVE; THE INFERENCE IS A RECALL NET.
 Structural inference measured ~31% error in BOTH directions, with false negatives on exactly the
@@ -181,6 +184,22 @@ CLASSIFIED_NOT_A_RULE = "CLASSIFIED_NOT_A_RULE"
 CLASSIFIED_DIRECT_SOLVE = "CLASSIFIED_DIRECT_SOLVE"
 MISSING_DECLARATION = "MISSING_DECLARATION"
 UNDETERMINABLE = "UNDETERMINABLE"
+#: A declared qualname NOTHING in the parsed tree provides (owner task, 2026-08-27; the
+#: T050 incident: a GRADIENT_CLAIM keyed "EligibilityAlgebra.evaluate" -- the method lives on
+#: AuthoredRule -- produced a governed CLASSIFIED_NOT_A_RULE row for a symbol with no code, while the
+#: real method carried no row; a typo'd declaration was indistinguishable from coverage.
+#: ABSOLUTE bound 0, asserted ALL-scope (the one stated FR-001a deviation -- see evaluate()),
+#: not a ratchet: zero live phantoms existed when this landed (measured at commit: 172
+#: declarations across 419 trees, every key resolving against _symbol_surface) and a phantom
+#: is always a defect, never legacy debt. NO envelope carve-out (a phantom can only enter the
+#: envelope through an already-approved edit; see the census() comment). TWO DISCLOSED
+#: REMAINDERS, not closed here, both the same defect family and both chipped rather than
+#: silently owned: (1) a declaration whose DISPOSITION is typo'd ("LOCAl") is dropped whole by
+#: read_declaration, so a phantom KEY under a typo'd disposition yields NO row at all; (2) a
+#: NON-LITERAL declaration (e.g. GRADIENT_CLAIM = dict(...) or item assignment) fails
+#: ast.literal_eval and silently drops the module's ENTIRE declaration surface -- panel-measured
+#: taking a real module's genuine rows with it.
+PHANTOM_DECLARATION = "PHANTOM_DECLARATION"
 
 _STATE_OF = {
     LOCAL: CLASSIFIED_LOCAL,
@@ -517,6 +536,67 @@ def resolve(declared_disp, inferred):  # FR-002a: TWO signals -- declaration + i
     return UNDETERMINABLE  # classified, NOT decided (FR-016)
 
 
+# distinct-from: substrate/selfcheck_cache.py -- its AST walk HASHES module structure for
+#   carry-forward verification; this one collects a NAME set for existence checks. Read.
+# distinct-from: substrate/home.py (sidecar census) -- a census of MODULES that can write
+#   the T037a sidecar; unrelated to symbol names. Read.
+# distinct-from: cortex/metacognitive_monitor.py -- reliability signals; term overlap on
+#   'ground truth' only. Read.
+def _symbol_surface(tree):
+    """Every name the module PROVIDES, at any nesting -- the phantom check's ground truth.
+
+    _qualnames stays the ENUMERATION scan (module-body and direct class-body defs -- the
+    grain rules live at); this is the broader EXISTENCE surface. What registers:
+      (a) every def/async def at any depth, qualified by its enclosing CLASS path.
+          Control-flow and function scopes are TRANSPARENT for DEFS ONLY (a def under
+          `if`/`try`/`with`, or a factory closure, registers) -- panel-measured refactor
+          shapes with zero false-red cost;
+      (b) ASSIGNMENT targets at MODULE level and CLASS body only, and only when the
+          assigned value is callable-shaped (a lambda, a call like staticmethod(_impl)/
+          partial(...), or a bare-name alias). NEVER function-local assignments -- the
+          first draft collected those transparently and the honesty panel reproduced the
+          T050 incident SLIPPING BACK THROUGH: a method-local `evaluate = x + 1` inside
+          the WRONG class validated the wrong-class key. A local variable is not a
+          provided symbol. Literals are excluded for the same reason a float is not a
+          learning rule.
+    Calibration, measured at landing: every one of the 172 live declarations resolves
+    against the STRICT shallow _qualnames set, so this surface's extra breadth has zero
+    live cost and exists purely to keep plausible refactors (conditional defs, nested
+    classes, callable rebinds) from red-flagging an honest declaration. DISCLOSED
+    RESIDUAL: runtime member injection (setattr(Cls, name, fn), decorator-registered
+    methods) is invisible to any static walk -- a declaration keying one would false-red;
+    no live declaration does, and the remedy if one appears is declaring at the
+    statically-achievable grain, said here rather than discovered."""
+    surface = set()
+
+    def _callable_ish(v):
+        return isinstance(v, (ast.Lambda, ast.Call)) or isinstance(v, ast.Name)
+
+    def visit(node, class_path, in_function):
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, ast.ClassDef):
+                surface.add(".".join(class_path + [child.name]))
+                visit(child, class_path + [child.name], in_function)
+            elif isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                surface.add(".".join(class_path + [child.name]))
+                visit(child, class_path, True)  # defs transparent; assigns below are NOT
+            elif isinstance(child, (ast.Assign, ast.AnnAssign)):
+                value = child.value
+                if not in_function and value is not None and _callable_ish(value):
+                    targets = child.targets if isinstance(child, ast.Assign) else [child.target]
+                    for t in targets:
+                        if isinstance(t, ast.Name):
+                            surface.add(".".join(class_path + [t.id]))
+                        elif isinstance(t, ast.Attribute) and isinstance(t.value, ast.Name):
+                            surface.add(f"{t.value.id}.{t.attr}")
+                visit(child, class_path, in_function)
+            else:
+                visit(child, class_path, in_function)
+
+    visit(tree, [], False)
+    return surface
+
+
 def census(root=None, overlay=None, brain_modules=None):
     """(rules, failures, n_found) where each rule is a dict.
 
@@ -538,14 +618,32 @@ def census(root=None, overlay=None, brain_modules=None):
         tree = trees[relpath]
         declared = read_declaration(tree)
         governed = modname(relpath) in brain_modules
+        surface = _symbol_surface(tree)
         for qual in enumerate_rules(tree, declared):
             disp = declared.get(qual, (None, ""))[0]
             inferred = infer(tree, qual)
             state = resolve(disp, inferred)
+            # PHANTOM: a declaration naming a symbol NOTHING in the parsed tree provides.
+            # Checked AFTER resolve (a declaration is authoritative about DISPOSITION, but
+            # only for a symbol that exists). The check runs against _symbol_surface, NOT
+            # _qualnames: the panel measured ten truthful-declaration shapes the shallow
+            # scan red-flagged (nested classes, conditional/try/with defs, closures,
+            # lambda/staticmethod assignments) -- and a FALSE red on an honest declaration
+            # is the direction that forces someone to weaken an ABSOLUTE bound. The surface
+            # is deliberately GENEROUS: a phantom slipping (false negative) costs one
+            # unverified row; a truthful declaration red-flagged costs the bound itself.
+            # `main` gets no exemption: a real `def main` is on the surface; only a typo'd
+            # key lands here.
+            if disp is not None and qual not in surface:
+                state = PHANTOM_DECLARATION
             # The safety envelope is classified like everything else but never yields a finding whose
             # ONLY remedy is editing an approval-gated file (FR-010, Standing Invariant 7). It falls
             # to UNDETERMINABLE -- honest about not being decided, and still counted, so the envelope
-            # cannot vanish from the census.
+            # cannot vanish from the census. PHANTOM deliberately gets NO carve-out (the panel
+            # measured the downgrade landing on the UNDETERMINABLE ratchet anyway -- renaming the
+            # finding, not removing the obligation): the envelope carries zero declarations, so a
+            # phantom can only ENTER it through an already-approved envelope edit, and fixing the
+            # typo is part of that same approved act.
             if relpath in _SAFETY_ENVELOPE and state == MISSING_DECLARATION:
                 state = UNDETERMINABLE
             rules.append(
@@ -567,6 +665,7 @@ def counts(rules, governed_only=True):
     out = {s: 0 for s in _STATE_OF.values()}
     out[MISSING_DECLARATION] = 0
     out[UNDETERMINABLE] = 0
+    out[PHANTOM_DECLARATION] = 0
     for r in sel:
         out[r["state"]] = out.get(r["state"], 0) + 1
     out["rules_seen"] = len(sel)
@@ -618,13 +717,29 @@ def ratchet_state(live, allowed):
     return "SATISFIED" if live == 0 else "GREEN"
 
 
-def evaluate(c, baseline, n_found):
-    """[] when every bound holds, else a list of human-readable failures. PURE -- no I/O."""
+def evaluate(c, baseline, n_found, c_all=None):
+    """[] when every bound holds, else a list of human-readable failures. PURE -- no I/O.
+
+    `c_all` (all-scope counts) widens exactly ONE bound past FR-001a's governed scope, and
+    the deviation is deliberate and stated: PHANTOM_DECLARATION is a DECLARATION-INTEGRITY
+    bound, not a rule-quality bound -- declarations are tree-wide artifacts and every
+    bearing row, governed or not, flows into tools/rule_census.json, so an ungoverned
+    phantom poisons a governed artifact. The panel measured the governed-only form leaving
+    82 ungoverned rules where a phantom was asserted by nothing and printed by nothing,
+    while the self-check advertised the red as proven. When c_all is None the check falls
+    back to c (the self-check's pure-composition arms pass both)."""
     base = (baseline or {}).get("counts", {})
     floor = (baseline or {}).get("rules_seen_floor", 0)
     out = []
     if c["unclassified"] != 0:
         out.append(f"unclassified={c['unclassified']} (ABSOLUTE bound is 0)")
+    _ph = (c_all if c_all is not None else c).get(PHANTOM_DECLARATION, 0)
+    if _ph != 0:
+        out.append(
+            f"{PHANTOM_DECLARATION}={_ph} (ABSOLUTE bound is 0, ALL-scope -- a declared "
+            "qualname with no code is a typo wearing a disposition; fix the declaration's "
+            "key, never weaken this bound)"
+        )
     for key in (MISSING_DECLARATION, UNDETERMINABLE):
         allowed = base.get(key)
         if allowed is not None and c[key] > allowed:
@@ -674,6 +789,11 @@ def _report(rules, failures, n_found, baseline, elapsed):
         print(
             f"  {label:<21}: {gov[key]:<5} governed   {allr[key]:<5} all   (ratchet, baseline {shown}, {state})"
         )
+    print(
+        f"  PHANTOM DECLARATION  : {gov[PHANTOM_DECLARATION]:<5} governed   "
+        f"{allr[PHANTOM_DECLARATION]:<5} all   (ABSOLUTE 0, asserted ALL-scope -- a "
+        f"declared key with no code)"
+    )
     print(f"  unclassified         : {gov['unclassified']}        <- must be 0")
     print(f"  parse failures       : {len(failures)}")
     for relpath, kind in failures:
@@ -787,6 +907,112 @@ def _selfcheck():
         f"  {'RED  ' if refused else 'FAIL '}  --update-baseline refuses a rise ({MISSING_DECLARATION} +1 offered)"
     )
     ok = ok and refused
+
+    # RED 8 -- PHANTOM DECLARATION (owner task 2026-08-27; the T050 incident: a typo'd
+    # qualname produced a governed row for a symbol with no code, indistinguishable from
+    # coverage). Both arms run THE EXACT COMPOSITION main()'s --assert path runs --
+    # evaluate(governed_counts, ..., c_all=all_counts) -- because this red's first draft
+    # proved itself only under evaluate(all_counts, ...), a composition main() never uses
+    # (the panel's finding 1: an advertised red the assert path could not fire). The
+    # overlay keeps the construction pure (no module-object patching, so the -m
+    # double-import trap never arises).
+    phantom_src = (
+        f'{DECL_NAME} = {{"Ghost.no_such_method": ("{LOCAL}", "keys a symbol with no code")}}\n'
+        "class Rule:\n"
+        "    def learn(self, x):\n"
+        "        self.W -= 0.1 * x\n"
+    )
+
+    def _main_composition_reds(rules_x, n_x):
+        gov_x = counts(rules_x, governed_only=True)
+        return [
+            f
+            for f in evaluate(gov_x, None, n_x, c_all=counts(rules_x, governed_only=False))
+            if PHANTOM_DECLARATION in f
+        ]
+
+    # (a) GOVERNED phantom: overlay a GOVERNED module's relpath (cortex/tempotron.py is in
+    # BRAIN_MODULES; a zz_probe filename would be ungoverned by construction).
+    r8a, _, n8a = census(overlay={"cortex/tempotron.py": phantom_src})
+    gov_hit = any(
+        r["state"] == PHANTOM_DECLARATION and r["governed"]
+        for r in r8a
+        if r["module_rel"] == "cortex/tempotron.py"
+    )
+    gov_reds = _main_composition_reds(r8a, n8a)
+    print(
+        f"  {'RED  ' if gov_hit and gov_reds else 'FAIL '}  GOVERNED phantom -> "
+        f"{PHANTOM_DECLARATION} and the ASSERT composition reds"
+    )
+    ok = ok and gov_hit and bool(gov_reds)
+    # (b) UNGOVERNED phantom: the ALL-scope bound must catch it through the SAME composition
+    # (declarations are tree-wide artifacts; every bearing row enters rule_census.json).
+    r8b, _, n8b = census(overlay={"cortex/zz_probe_rule.py": phantom_src})
+    ungov_reds = _main_composition_reds(r8b, n8b)
+    print(
+        f"  {'RED  ' if ungov_reds else 'FAIL '}  UNGOVERNED phantom -> the SAME assert "
+        f"composition reds (ALL-scope bound)"
+    )
+    ok = ok and bool(ungov_reds)
+    # (c) GREEN control: the same key WITH its symbol present is not flagged, else fixed
+    # and broken are indistinguishable. Plus the truthful-shape controls the panel measured
+    # the first draft red-flagging: a conditional def and a nested-class method must NOT
+    # be phantoms (the _symbol_surface fix's own reachable green).
+    ghost_present = (
+        f'{DECL_NAME} = {{"Ghost.no_such_method": ("{LOCAL}", "now the symbol exists")}}\n'
+        "class Ghost:\n"
+        "    def no_such_method(self, x):\n"
+        "        return x\n"
+    )
+    truthful_shapes = (
+        f'{DECL_NAME} = {{"Outer.Inner.learn": ("{LOCAL}", "nested class method"), '
+        f'"cond_learn": ("{LOCAL}", "conditional def"), '
+        f'"Rule.learn": ("{LOCAL}", "staticmethod rebind")}}\n'
+        "class Outer:\n"
+        "    class Inner:\n"
+        "        def learn(self, x):\n"
+        "            return x\n"
+        "if True:\n"
+        "    def cond_learn(x):\n"
+        "        return x\n"
+        "def _impl(x):\n"
+        "    return x\n"
+        "class Rule:\n"
+        "    pass\n"
+        "Rule.learn = staticmethod(_impl)\n"
+    )
+    g_ok = True
+    for src8 in (ghost_present, truthful_shapes):
+        r8c, _, n8c = census(overlay={"cortex/zz_probe_rule.py": src8})
+        if _main_composition_reds(r8c, n8c):
+            g_ok = False
+    print(
+        f"  {'green' if g_ok else 'FAIL '}  CONTROL: present-symbol + truthful shapes "
+        f"(nested class, conditional def, staticmethod rebind) are NOT flagged"
+    )
+    ok = ok and g_ok
+    # (d) THE INCIDENT'S OWN SHAPE, which the first _symbol_surface draft let SLIP BACK
+    # THROUGH (honesty panel: function scopes transparent for ASSIGNMENTS meant a
+    # method-local variable in the WRONG class validated the wrong-class key). A key
+    # naming Wrong.evaluate, with `evaluate` existing only as a local inside a Wrong
+    # method and as a def on Right, MUST red.
+    incident_shape = (
+        f'{DECL_NAME} = {{"Wrong.evaluate": ("{LOCAL}", "the T050 wrong-class shape")}}\n'
+        "class Wrong:\n"
+        "    def author(self, x):\n"
+        "        evaluate = x + 1\n"
+        "        return evaluate\n"
+        "class Right:\n"
+        "    def evaluate(self, x):\n"
+        "        return x\n"
+    )
+    r8d, _, n8d = census(overlay={"cortex/zz_probe_rule.py": incident_shape})
+    inc_reds = _main_composition_reds(r8d, n8d)
+    print(
+        f"  {'RED  ' if inc_reds else 'FAIL '}  the T050 wrong-class shape (local var in the "
+        f"wrong class) REDS -- a local variable is not a provided symbol"
+    )
+    ok = ok and bool(inc_reds)
 
     print("self-check: " + ("OK" if ok else "FAILED"))
     return ok
@@ -1599,7 +1825,7 @@ def main(argv=None):
                 "Generate it with: python -m snn_data_lake.substrate.gradient_claim_gate --update-baseline"
             )
             return 1
-        findings = evaluate(gov, baseline, n_found)
+        findings = evaluate(gov, baseline, n_found, c_all=counts(rules, governed_only=False))
         if len(failures) != 0:
             findings.append(f"parse_failures={len(failures)} (ABSOLUTE bound is 0)")
         if findings:
@@ -1607,7 +1833,10 @@ def main(argv=None):
             for f in findings:
                 print(f"  {f}")
             return 1
-        print("gate OK: governed tier within every bound (NO WORSE -- not 'the scope is correct')")
+        print(
+            "gate OK: governed tier within every bound, PHANTOM asserted ALL-scope "
+            "(NO WORSE -- not 'the scope is correct')"
+        )
         return 0
     return 0
 

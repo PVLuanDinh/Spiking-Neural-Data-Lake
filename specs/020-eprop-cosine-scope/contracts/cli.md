@@ -53,6 +53,7 @@ Exit **0** only if all hold; exit **1** naming which failed:
 | `undeterminable <= baseline` | RATCHET | else the honesty state becomes a sweep-it-here drawer |
 | `rules_seen >= <floor>` | **LIVENESS** | a dead walk reports zero unclassified and looks perfect. Four gates in this tree already fail exactly this way. |
 | `parse_failures == 0` | ABSOLUTE | 378/378 parse today; a new failure is a silent census hole |
+| `phantom_declaration == 0` | ABSOLUTE, **ALL-scope** | added 2026-08-27 (owner task; the T050 incident): a declared qualname nothing in the tree provides is a typo wearing a disposition. The one stated FR-001a deviation — declarations are tree-wide artifacts consumed by tools/rule_census.json, so an ungoverned phantom poisons a governed artifact. |
 
 ## `--self-check` — verify the verifier
 

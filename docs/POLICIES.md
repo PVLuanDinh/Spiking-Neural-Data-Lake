@@ -729,7 +729,8 @@ same seed grew a DIFFERENT brain on a machine with a card than on CI), and
 `substrate/eprop_transport_gate.py` — **the only mechanization the invariant had until 2026-08-18**,
 when `substrate/gradient_claim_gate.py` joined it: a second CI-asserting e-prop gate that
 classifies every governed learning rule as owing a cosine or not, ratcheting MISSING_DECLARATION
-and UNDETERMINABLE (`--assert` + `--self-check` in the lint job).
+and UNDETERMINABLE, plus the absolute ALL-scope PHANTOM_DECLARATION bound (2026-08-27)
+(`--assert` + `--self-check` in the lint job).
 Anyone cutting from `main` got none of it, and nothing in this file said that was a defect.
 
 **Why the existing guard did not catch it.** P4c's guard is *"a build the gates cannot see is not a

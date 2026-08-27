@@ -402,11 +402,13 @@ jobs:
       - name: Gradient-claim census (e-prop scope; every governed rule classified)
         run: python -m snn_data_lake.substrate.gradient_claim_gate --assert
 
-      # ...and its criteria must be falsifiable. --self-check CONSTRUCTS six reds against the REAL
+      # ...and its criteria must be falsifiable. --self-check CONSTRUCTS its reds against the REAL
       # tree through an in-memory overlay (nothing on disk is touched -- the same string-copy
-      # discipline p6_gate and the dependency ledger use) and then runs two GREEN CONTROLS: the
-      # repaired shape must NOT fire, and two runs must be byte-identical. Measured 2026-08-17: 6 of 6
-      # constructed mutations fired, both controls held, exit 0, 13.3s.
+      # discipline p6_gate and the dependency ledger use) and then runs GREEN CONTROLS: the
+      # repaired/truthful shapes must NOT fire, and two runs must be byte-identical. Measured
+      # 2026-08-17: 6 of 6 constructed mutations fired, both controls held, exit 0, 13.3s.
+      # Re-measured 2026-08-27 (PHANTOM_DECLARATION landing): 8 reds fired, 3 green controls held,
+      # incl. the governed+ungoverned phantom pair and the T050 wrong-class shape.
       #
       # Worth naming because it was found the hard way: the reds are re-verified by MUTATING THE
       # MODULE and confirming each test goes red. One escapee that survived was a guard test whose
