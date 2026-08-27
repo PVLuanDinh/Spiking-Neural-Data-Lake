@@ -70,14 +70,19 @@ short-term gain, not first -- the E/I trim, and Benna-Fusi consolidation, with
 the theta slide running after consolidation in the POST phase; per-arm
 diagnostics ride an untyped ctx dict, so "no typed sets" holds while "exposes
 nothing" would not). This kernel is the DECLARED generalization; all three
-survive today at different grains, and the MERGE PATH -- expressing BOTH
-stacks' sandwiches as RuleSpecs held to equivalence the way T050 held r_stdp --
-is dated to T051b, whose row names it. wholistic_loop's "arbitration" is
-FACULTY-grain tick arbitration, distinct.
+survive today at different grains, and the MERGE -- expressing BOTH stacks'
+sandwiches as RuleSpecs held to equivalence the way T050 held r_stdp -- LANDED
+at T051b-iv (harness section 1d: gain as the sequential two-writer composition,
+base weights as deposit-then-trim, each vs spied production calls; the subclass
+weights phases and rate/theta stay the disclosed remainder, and both stacks
+REMAIN the production path -- the merge is the declaration-of-record layer).
+wholistic_loop's "arbitration" is FACULTY-grain tick arbitration, distinct.
 
 NO TISSUE, NO WIRE: the reader landed at T051b-iii (rule_charge, gate-run
-grade); the first TICK-charged composed rule is T053's (its row names the
-composition), and the stack-sandwich MERGE is T051b-iv's. Charged surface until
+grade) and the stack-sandwich MERGE landed at T051b-iv (section 1d) -- P2
+merge-must-reduce NOT discharged by it, said plainly: both incumbents remain
+production and the expression is a declaration layer. The first TICK-charged
+composed rule is T053's (its row names the composition). Charged surface until
 then: this gate-run self-check.
 
   PYTHONPATH=src python -m snn_data_lake.plasticity.rule_composer
@@ -90,18 +95,18 @@ import types
 from snn_data_lake.plasticity.eligibility_algebra import AuthoredRule
 
 # distinct-from: plasticity/plasticity_rule_stack.py -- live incumbent composition
-#   #1 (the extended sandwich); adjudicated in the module docstring, merge dated
-#   T051b. Site read.
+#   #1 (the extended sandwich); adjudicated in the module docstring, merge LANDED
+#   at T051b-iv as the declaration layer. Site read.
 # distinct-from: plasticity/homeostatic_plasticity_stack.py -- live incumbent
 #   composition #2 (the BASE sandwich the first landing's census missed -- the
-#   T046a all-incumbents lesson); same adjudication, same dated merge. Site read.
+#   T046a all-incumbents lesson); same adjudication, same landed merge. Site read.
 # distinct-from: cortex/wholistic_loop.py -- FACULTY-grain tick arbitration (a
 #   metacognitive spine over tasks); this composes RULES on one substrate. Site read.
 # distinct-from: plasticity/eligibility_algebra.py -- the AUTHORING contract this
 #   kernel consumes; rules arrive as AuthoredRule, never re-parsed. Site read.
 # distinct-from: substrate/wiring_manifest.py -- ports/edges between faculties;
 #   RuleSpec's reads/writes are per-RULE factor/target sets. Producer references
-#   composed with the manifest land at T051b. Site read.
+#   composed with the manifest landed at T051b-iii (check_producers). Site read.
 # distinct-from: substrate/gradient_claim_gate.py -- the per-SYMBOL claim system;
 #   RuleSpec.claim_key is the SLOT binding a rule to its claim, and the
 #   cross-check holding both declarations to each other is dated T051c. Site read.
@@ -1149,6 +1154,355 @@ def main():
         f"the arm-and-step-named mid-run overflow"
     )
 
+    # 1d) T051b-iv: THE STACK-SANDWICH MERGE -- both live incumbent compositions
+    #     (HomeostaticPlasticityStack AND PlasticityRuleStack) expressed as
+    #     RuleSpecs held to their PRODUCTION paths.
+    # distinct-from: cortex/learned_evc.py (and the other gated-update sites) -- those ARE
+    #   learning rules; this block EXPRESSES the two stack sandwiches' pipelines through the
+    #   kernel and holds the expression to spied production calls. No other site does that job.
+    #     NOT adopt-and-delete, said plainly: both stacks REMAIN the production
+    #     path; the merge is the DECLARATION-OF-RECORD layer -- the two
+    #     hard-wired sandwiches' write pipelines under the one kernel contract,
+    #     coefficients and order machine-checked (the T050 r_stdp form of "held
+    #     to equivalence", which the row's own text sanctions). EXPRESSED HERE:
+    #     the GAIN pipeline (the genuine two-multiplicative-writer composition:
+    #     short-term gain then the BCM brake; the base stack is the
+    #     single-writer control) and the base WEIGHTS pipeline (the R-STDP
+    #     deposit then the conditional row-uniform scaling trim), each vs SPIED
+    #     production calls. DISCLOSED REMAINDER: the subclass weights phases
+    #     (E/I trim + Benna-Fusi -- ii's component grain; the tissue wire is
+    #     T054's), rate (Triesch cell-state, single writer -- no composition
+    #     question), theta (BCM state). The multiplicative-to-additive bridge:
+    #     g' = g*f becomes dw = g*(f-1) with (f-1) pre-collapsed from the
+    #     recorded production value.
+    from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
+    from snn_data_lake.plasticity.homeostatic_plasticity_stack import (
+        HomeostaticPlasticityStack,
+        _drive_code,
+        _rstdp_update_fn,
+    )
+    from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack
+
+    _alg_g = EligibilityAlgebra(term_budget=1)
+    _alg_g.declare_factor("gain", "the composed gain substrate (seeds 1.0 per pre_gain call)")
+    _alg_g.declare_factor("f_short_m1", "short-term Tsodyks-Markram gain minus 1 (recorded)")
+    _alg_g.declare_factor("f_bcm_m1", "BCM metaplastic brake minus 1 (recorded)")
+    _r_short = _alg_g.author("stack.short_term", [(1.0, ("gain", "f_short_m1"))])
+    _r_bcm = _alg_g.author("stack.bcm_brake", [(1.0, ("gain", "f_bcm_m1"))])
+
+    # spy the SUBCLASS's production pre_gain: instance-level wrappers RECORD the
+    # two phase outputs without altering them (f_short is exact -- ctx gain
+    # seeds 1.0 and the base has ONE PRE adapter; f_bcm is _meta.gate's return).
+    _sub = PlasticityRuleStack(1, seed=0)
+    _sg_box, _mg_box = [], []
+    _orig_sh = _sub._short.stabilize
+    _orig_gate = _sub._meta.gate
+
+    def _rec_sh(ctx):
+        out = _orig_sh(ctx)
+        _sg_box.append(out["gain"])
+        return out
+
+    def _rec_gate(i):
+        v = _orig_gate(i)
+        _mg_box.append(v)
+        return v
+
+    _sub._short.stabilize = _rec_sh
+    _sub._meta.gate = _rec_gate
+
+    def _k_ulp(rule):  # K counted from the authored structure (the i method)
+        return float(sum(len(_fs9) for _c9, _fs9 in rule.terms) + len(rule.terms))
+
+    _code_d, _act_d, _tp_d = _drive_code(10)
+    _nrn_w = RSTDPNeuron(
+        10, lr=0.1, a_plus=1.0, a_minus=1.0, tau_plus=8.0, tau_minus=8.0, w0=0.3, seed=0
+    )
+    _updw = _rstdp_update_fn(_nrn_w, _code_d, _tp_d)
+    # warm UNTIL the BCM brake actually ENGAGES (gate < 1.0), derived from the
+    # substrate itself, never a step count: the panel measured a 12-step warm
+    # leaving theta (0.0375) BELOW theta0 (0.05) -- the gate PINNED at its clip
+    # ceiling 1.0 on every spied call, so the "two-writer" arm measured ONE
+    # writer and DELETING the brake (coefficient 0.0) passed 8/8. A pinned
+    # gauge can be a live signal -- the recorded lesson, relearned here.
+    # First crossing on this drive: step ~1251 (panel-measured).
+    _warm_n = 0
+    while _orig_gate(0) >= 1.0:
+        _sub.learning_step(0, list(_nrn_w.w), _act_d, _updw)
+        _warm_n += 1
+        assert _warm_n <= 3000, "the BCM gate never engaged -- the warm drive is wrong"
+    _sg_box.clear()
+    _mg_box.clear()
+    _k21 = _k_ulp(_r_short) + _k_ulp(_r_bcm)
+    _gain_cases = 0
+    worst_gain = 0.0
+    _gain_binds = []
+    _fs_seen, _fb_seen = set(), set()
+    for _gstep in range(8):
+        _sg_box.clear()
+        _mg_box.clear()
+        _g_out = _sub.pre_gain(0)  # THE production call (SpikingInteractionLearner's API)
+        _fs, _fb = _sg_box[0], _mg_box[0]
+        assert _fb != 1.0 and _fs != 1.0, (
+            f"a phase output pinned at identity on the measured call (fs={_fs!r}, fb={_fb!r}) "
+            "-- the pinned-gauge degeneracy; re-derive the warm"
+        )
+        _fs_seen.add(_fs)
+        _fb_seen.add(_fb)
+        _gain_binds.append({"f_short_m1": _fs - 1.0, "f_bcm_m1": _fb - 1.0})
+        _cg2 = RuleComposer("sequential", target="gain")
+        _cg2.add(RuleSpec("short_term", _r_short, reads={"gain", "f_short_m1"}, writes={"gain"}))
+        _cg2.add(RuleSpec("bcm_brake", _r_bcm, reads={"gain", "f_bcm_m1"}, writes={"gain"}))
+        _g_comp, _ = _cg2.step(1.0, {"gain": 1.0, "f_short_m1": _fs - 1.0, "f_bcm_m1": _fb - 1.0})
+        _tolg = _k21 * _sys2.float_info.epsilon * (abs(_fs) + abs(_fb) + 1.0)
+        _dg = abs(_g_comp - _g_out)
+        assert _dg <= _tolg, (
+            f"the gain composition diverges from the production pre_gain at step {_gstep}: "
+            f"|d|={_dg!r} > {_tolg:.1e}"
+        )
+        worst_gain = max(worst_gain, _dg)
+        _gain_cases += 1
+        _sub.learning_step(0, list(_nrn_w.w), _act_d, _updw)  # move the state between calls
+    # in-command mis-declaration control on the SECOND writer (the panel measured
+    # the unfixed arm passing a brake coefficient of 0.0 -- the declaration was
+    # unfalsifiable by its own arm): near-deleting the brake must red every
+    # engaged case against the incumbent product.
+    _alg_bad9 = EligibilityAlgebra(term_budget=1)
+    _alg_bad9.declare_factor("gain", "control copy (near-deleted brake)")
+    _alg_bad9.declare_factor("f_bcm_m1", "control copy (near-deleted brake)")
+    _r_bcm_del = _alg_bad9.author("stack.bcm_brake.deleted", [(1e-30, ("gain", "f_bcm_m1"))])
+    _ctrl_reds = 0
+    for _bind9 in _gain_binds:
+        _cgx = RuleComposer("sequential", target="gain")
+        _cgx.add(RuleSpec("short_term", _r_short, reads={"gain", "f_short_m1"}, writes={"gain"}))
+        _cgx.add(RuleSpec("bcm_del", _r_bcm_del, reads={"gain", "f_bcm_m1"}, writes={"gain"}))
+        _gx, _ = _cgx.step(1.0, {"gain": 1.0, **_bind9})
+        _fsx = _bind9["f_short_m1"] + 1.0
+        _fbx = _bind9["f_bcm_m1"] + 1.0
+        _tolx = _k21 * _sys2.float_info.epsilon * (abs(_fsx) + abs(_fbx) + 1.0)
+        if abs(_gx - _fsx * _fbx) > _tolx:
+            _ctrl_reds += 1
+    assert _ctrl_reds == len(_gain_binds), (
+        f"a near-deleted brake must red EVERY engaged case ({_ctrl_reds}/{len(_gain_binds)}) "
+        "-- any pass means the brake's declaration is unfalsifiable on that case"
+    )
+    # the single-writer CONTROL: the base stack's pre_gain is f_short alone
+    _base_g = HomeostaticPlasticityStack(1, seed=0)
+    _bg_box = []
+    _orig_bsh = _base_g._short.stabilize
+
+    def _rec_bsh(ctx):
+        out = _orig_bsh(ctx)
+        _bg_box.append(out["gain"])
+        return out
+
+    _base_g._short.stabilize = _rec_bsh
+    for _bstep in range(4):
+        _bg_box.clear()
+        _g_out_b = _base_g.pre_gain(0)
+        _cg1 = RuleComposer("sequential", target="gain")
+        _cg1.add(RuleSpec("short_term", _r_short, reads={"gain", "f_short_m1"}, writes={"gain"}))
+        _g_comp_b, _ = _cg1.step(1.0, {"gain": 1.0, "f_short_m1": _bg_box[0] - 1.0})
+        assert abs(_g_comp_b - _g_out_b) <= _k_ulp(_r_short) * _sys2.float_info.epsilon * 2.0, (
+            f"the single-writer control diverged: {_g_comp_b!r} vs {_g_out_b!r}"
+        )
+    # the reader on the expressed pair, fed the RECORDED production bindings
+    # (the panel measured the first draft's hand-typed bindings producing
+    # CHARGED/CHARGED while the recorded ones -- brake pinned -- read INERT;
+    # with the engaged warm the recorded bindings are the honest input):
+    _cgr = RuleComposer("sequential", target="gain")
+    _cgr.add(RuleSpec("short_term", _r_short, reads={"gain", "f_short_m1"}, writes={"gain"}))
+    _cgr.add(RuleSpec("bcm_brake", _r_bcm, reads={"gain", "f_bcm_m1"}, writes={"gain"}))
+    _vg = rule_charge(_cgr, 1.0, _gain_binds)
+    assert all(v["verdict"] == "CHARGED" for v in _vg["per_rule"].values()), (
+        f"both expressed gain writers must charge on the RECORDED bindings: {_vg['per_rule']}"
+    )
+    # ORDER is NOT claimed for this pair, said plainly: two pure multiplicative
+    # writers commute (the panel measured the order-swap mutant passing even in
+    # the engaged regime); the order/policy claim lives on the weights pair
+    # below, where sequential and sum genuinely differ.
+
+    # base WEIGHTS pipeline THROUGH THE KERNEL (the panel measured the first
+    # draft hand-composing evaluate() calls -- no RuleSpec, no composer, no
+    # reader -- while claiming kernel expression): the R-STDP deposit (the
+    # T050 canonical dw=lr*d*e; d = pre_gain output x reward) THEN the
+    # conditional trim, composed SEQUENTIALLY on target "w" per synapse.
+    # distinct-from: plasticity/meta_plasticity.py -- that records rates to lag theta (a
+    #   rule's own state); this records the incumbent's applied weights to hold a
+    #   declaration to them (a harness spy). Site read.
+    # learning_step takes the deposit closure FROM the caller, so the harness
+    # records the applied weights natively -- no monkeypatch on the write path.
+    _alg_w = EligibilityAlgebra(term_budget=1)
+    _alg_w.declare_factor("lr", "the neuron's own learning rate")
+    _alg_w.declare_factor("d", "the effective reward: pre_gain output x reward (+1 here)")
+    _alg_w.declare_factor("e", "the synapse's eligibility trace at reward time")
+    _alg_w.declare_factor("w", "the weight (the trim's substrate)")
+    _alg_w.declare_factor("trim_m1", "row-uniform scaling ratio minus 1; 0.0 when untrimmed")
+    _r_dep = _alg_w.author("stack.rstdp_deposit", [(1.0, ("lr", "d", "e"))])
+    _r_trim = _alg_w.author("stack.scaling_trim", [(1.0, ("w", "trim_m1"))])
+    _base_w = HomeostaticPlasticityStack(1, seed=1)
+    _nrn2 = RSTDPNeuron(
+        10, lr=0.1, a_plus=1.0, a_minus=1.0, tau_plus=8.0, tau_minus=8.0, w0=0.3, seed=1
+    )
+    _upd2 = _rstdp_update_fn(_nrn2, _code_d, _tp_d)
+    _rec = []
+
+    def _rec_upd(gain, weights):
+        before = list(weights)
+        out = _upd2(gain, weights)
+        _rec.append((gain, before, list(out)))
+        return out
+
+    # the eligibility at reward time, recomputed EXACTLY as the closure does
+    # (fresh neuron, same params/seed, replay the code): deterministic bit-same.
+    _nrn_e = RSTDPNeuron(
+        10, lr=0.1, a_plus=1.0, a_minus=1.0, tau_plus=8.0, tau_minus=8.0, w0=0.3, seed=1
+    )
+    _nrn_e.e = [0.0] * _nrn_e.n
+    _nrn_e.t_pre = [None] * _nrn_e.n
+    _nrn_e.t_post = None
+    for _i9, _t9 in enumerate(_code_d):
+        _nrn_e.pre_spike(_i9, float(_t9))
+    _nrn_e.post_spike(_tp_d)
+    _e_at_reward = list(_nrn_e.e)
+    _w_cur = list(_nrn2.w)
+    n_trim = 0
+    n_untrim = 0
+    worst_dep = 0.0
+    _gains_seen = set()
+    _kw = _k_ulp(_r_dep) + _k_ulp(_r_trim)  # K counted, never fitted (panel: the
+    _sum_policy_differs = False  # first draft's 8/64 bands were picked; 1-ulp passes)
+    for _wstep2 in range(60):
+        _rec.clear()
+        _w_final = _base_w.learning_step(0, _w_cur, _act_d, _rec_upd)[0]
+        _gain_in, _w_before, _w_mid = _rec[0]
+        _gains_seen.add(_gain_in)
+        for _j9 in range(10):  # the deposit vs the APPLIED delta (the i lesson)
+            _dw_dec = _r_dep.evaluate(lr=_nrn2.lr, d=_gain_in * 1.0, e=_e_at_reward[_j9])
+            _dw_app = _w_mid[_j9] - _w_before[_j9]
+            _dd = abs(_dw_dec - _dw_app)
+            _tolw = _k_ulp(_r_dep) * _sys2.float_info.epsilon * (abs(_dw_dec) + abs(_w_before[_j9]))
+            assert _dd <= _tolw, (
+                f"the deposit declaration diverges from the applied delta at synapse {_j9}, "
+                f"step {_wstep2}: |d|={_dd!r} > {_tolw:.1e}"
+            )
+            worst_dep = max(worst_dep, _dd)
+        if _w_final == _w_mid:
+            n_untrim += 1
+        else:
+            n_trim += 1
+            _ratios = [_w_final[_j9] / _w_mid[_j9] for _j9 in range(10) if _w_mid[_j9] != 0.0]
+            assert _ratios, "an all-zero trimmed row leaves no ratio to bind (panel overflow)"
+            _s_row = _ratios[0]
+            # ROW-UNIFORMITY is ENTAILED, not measured -- HomeostaticNeuron's
+            # stabilize applies ONE scalar f to the whole row, so this is a
+            # structural cross-check on that two-line body (the 1b c0-wording;
+            # the first draft advertised it as "a claim made checkable").
+            assert all(
+                abs(_r9 - _s_row) <= 8.0 * _sys2.float_info.epsilon * abs(_s_row) for _r9 in _ratios
+            ), "the entailed row-uniformity cross-check failed -- the incumbent's body changed"
+            # the trim MAGNITUDE bound to Turrigiano's OWN rule (the panel
+            # measured an arbitrary uniform 0.5 scale passing the first draft:
+            # the ratio was derived from the value it predicted). Expected
+            # f = (target / drive)**scale_rate from the incumbent's cell.
+            _cell9 = _base_w._homeo._cell[0]
+            _y9 = sum(_w_mid[_j8] * _act_d[_j8] for _j8 in range(10))
+            _f_exp = (_cell9.target / _y9) ** _cell9.scale_rate
+            assert abs(_s_row - _f_exp) <= 64.0 * _sys2.float_info.epsilon * abs(_f_exp), (
+                f"the trim ratio {_s_row!r} is not Turrigiano's own "
+                f"(target/drive)**scale_rate = {_f_exp!r} -- an arbitrary uniform scale "
+                "would satisfy uniformity alone (panel-constructed)"
+            )
+            for _j9 in range(10):
+                # deposit THEN trim, THROUGH the kernel: the sequential composer
+                # per synapse must land on the incumbent's w_final...
+                _cw = RuleComposer("sequential", target="w")
+                _cw.add(RuleSpec("deposit", _r_dep, reads={"lr", "d", "e"}, writes={"w"}))
+                _cw.add(RuleSpec("trim", _r_trim, reads={"w", "trim_m1"}, writes={"w"}))
+                _wk, _ = _cw.step(
+                    _w_before[_j9],
+                    {
+                        "lr": _nrn2.lr,
+                        "d": _gain_in * 1.0,
+                        "e": _e_at_reward[_j9],
+                        "trim_m1": _s_row - 1.0,
+                    },
+                )
+                assert abs(_wk - _w_final[_j9]) <= _kw * _sys2.float_info.epsilon * (
+                    abs(_w_final[_j9]) + 1.0
+                ), f"the kernel-composed deposit-then-trim missed w_final at synapse {_j9}"
+            # ...and the SUM policy must MISS it (the order/policy claim lives
+            # HERE -- deposit does not read w, trim does, so sum applies the
+            # trim to the PRE-deposit weight; the gain pair commutes and
+            # carries no order claim): one synapse suffices per trimmed step.
+            _cs = RuleComposer("sum", target="w")
+            _cs.add(RuleSpec("deposit", _r_dep, reads={"lr", "d", "e"}, writes={"w"}))
+            _cs.add(RuleSpec("trim", _r_trim, reads={"w", "trim_m1"}, writes={"w"}))
+            _ws, _ = _cs.step(
+                _w_before[0],
+                {
+                    "lr": _nrn2.lr,
+                    "d": _gain_in * 1.0,
+                    "e": _e_at_reward[0],
+                    "trim_m1": _s_row - 1.0,
+                },
+            )
+            if abs(_ws - _w_final[0]) > _kw * _sys2.float_info.epsilon * (abs(_w_final[0]) + 1.0):
+                _sum_policy_differs = True
+        _w_cur = _w_final
+    assert n_trim >= 1 and n_untrim >= 1, (
+        f"both trim branches must be spied (trimmed {n_trim}, untrimmed {n_untrim}) -- "
+        "a one-branch sweep is the vacuous-coverage shape"
+    )
+    assert _sum_policy_differs, (
+        "the SUM policy must measurably miss the incumbent on at least one trimmed step -- "
+        "otherwise the weights pair carries no order/policy content either"
+    )
+    # deposit mis-declaration control (the panel measured 1d shipping ZERO
+    # in-command reds): a 1e-9-relative coefficient error must red every site.
+    _alg_badw = EligibilityAlgebra(term_budget=1)
+    for _fname in ("lr", "d", "e"):
+        _alg_badw.declare_factor(_fname, "control copy (mis-declared deposit)")
+    _r_dep_bad = _alg_badw.author("stack.rstdp_deposit.bad", [(1.0 + 1e-9, ("lr", "d", "e"))])
+    _dep_reds = 0
+    for _j9 in range(10):
+        _dw_bad = _r_dep_bad.evaluate(lr=_nrn2.lr, d=_gain_in * 1.0, e=_e_at_reward[_j9])
+        _dw_app = _w_mid[_j9] - _w_before[_j9]
+        if abs(_dw_bad - _dw_app) > _k_ulp(_r_dep) * _sys2.float_info.epsilon * (
+            abs(_dw_bad) + abs(_w_before[_j9])
+        ):
+            _dep_reds += 1
+    assert _dep_reds == 10, f"a 1e-9 mis-declared deposit must red all 10 synapses ({_dep_reds}/10)"
+    # rule_charge on the weights pair -- the honest verdicts: deposit CHARGED;
+    # trim UNCHARGEABLE (neutering it leaves no target reader -- the iii
+    # verdict demonstrated on an incumbent-derived pair, not a construction).
+    _cwr = RuleComposer("sequential", target="w")
+    _cwr.add(RuleSpec("deposit", _r_dep, reads={"lr", "d", "e"}, writes={"w"}))
+    _cwr.add(RuleSpec("trim", _r_trim, reads={"w", "trim_m1"}, writes={"w"}))
+    _vw = rule_charge(
+        _cwr,
+        0.3,
+        [{"lr": _nrn2.lr, "d": 0.6, "e": _e_at_reward[0], "trim_m1": -0.02}] * 2,
+    )
+    assert _vw["per_rule"]["deposit"]["verdict"] == "CHARGED"
+    assert _vw["per_rule"]["trim"]["verdict"] == "UNCHARGEABLE"
+    print(
+        f"  green  the stack-sandwich MERGE (T051b-iv): GAIN expressed as the sequential "
+        f"two-writer composition vs the SPIED production pre_gain with the BCM brake ENGAGED "
+        f"(warm derived: {_warm_n} steps to gate<1; {len(_fs_seen)}/{len(_fb_seen)} distinct "
+        f"phase values on {_gain_cases} calls; worst |d|={worst_gain:.1e}; near-deleted-brake "
+        f"control REDS {_ctrl_reds}/{_gain_cases}; order NOT claimed -- multiplicative pair "
+        f"commutes); rule_charge CHARGED/CHARGED on the RECORDED bindings; base WEIGHTS "
+        f"THROUGH THE KERNEL (deposit-then-trim sequential per synapse lands on w_final, "
+        f"worst deposit |d|={worst_dep:.1e} over 60 steps [{len(_gains_seen)} distinct gains] "
+        f"x 10 synapses; SUM policy measurably misses -- the order/policy content; trim "
+        f"magnitude bound to Turrigiano's own (target/drive)**scale_rate, row-uniformity an "
+        f"ENTAILED cross-check; {n_trim} trimmed / {n_untrim} untrimmed; 1e-9 mis-declared "
+        f"deposit REDS 10/10); rule_charge deposit=CHARGED trim=UNCHARGEABLE (the iii verdict "
+        f"on an incumbent-derived pair); E/I + Benna-Fusi + rate + theta = the disclosed "
+        f"remainder (ii's component grain; T054); both stacks REMAIN production"
+    )
+
     # 2) Causal decomposition under sum, and the UNSOUND predictor's reachable red.
     #    The ordered-other-parts predictor is bit-exact (3 rules x 3 ablations,
     #    frozen bindings); the total-minus-part form is float-unsound -- proven by
@@ -1403,8 +1757,18 @@ def main():
         "deleted as duplicative). The live stack is UNCHANGED by ii. Harness "
         "exercise values under P1 exception (c) now also include the prune arm's "
         "seeds/geometry (7, 3; 4x12 at density 0.5), the probe points (w0/u1 "
-        "pairs), and the 8/32-ulp band factors. The stack MERGE (both incumbent "
-        "sandwiches as RuleSpecs, held to equivalence) is T051b-iv's, named in its row."
+        "pairs), the 8/32-ulp band factors, and the iv sandwich arm's tranche "
+        "(stack seeds 0/1, the RSTDPNeuron params lr=0.1/tau=8/w0=0.3/n=10, the "
+        "8-call/60-step horizons, the 3000-step warm bound, the 64-ulp trim-"
+        "magnitude band -- the 'level01' pins note applies to none of these; "
+        "they are exercise values). The stack MERGE (both incumbent "
+        "sandwiches as RuleSpecs, held to equivalence) LANDED at T051b-iv (harness 1d): "
+        "the GAIN pipeline as the sequential two-writer composition vs the spied "
+        "production pre_gain, the base WEIGHTS pipeline (T050-canonical deposit vs the "
+        "APPLIED deltas + the conditional row-uniform trim), rule_charge on the "
+        "expressed pair; NOT adopt-and-delete -- both stacks REMAIN the production "
+        "path, the merge is the declaration-of-record layer; E/I + Benna-Fusi + rate "
+        "+ theta are the disclosed remainder (component grain at ii; tissue at T054)."
     )
     print(
         "self-check OK: boundary-scoped naive-sum reds (orbit + open-interval divergence + "
@@ -1414,10 +1778,11 @@ def main():
         "producers x the production manifest (five reds by finding text incl. the route red, "
         "two construction refusals, jepa's declaration enumerated) + rule_charge (the "
         "attribution's first reader: three-way verdicts incl. ENDPOINT-NEUTRAL on the "
-        "orbit-cancelled push and sequential UNCHARGEABLE-not-crash; 6 refusals) + causal "
-        "decomposition with the unsound predictor's constructed bit-red + swept sequential "
-        "guarantee + consumed attribution surface + 19 battery refusals (section 5's census, "
-        "battery-local)"
+        "orbit-cancelled push and sequential UNCHARGEABLE-not-crash; 6 refusals) + the "
+        "stack-sandwich MERGE (gain two-writer + base weights deposit-then-trim, each vs "
+        "spied production calls; remainder disclosed) + causal decomposition with the "
+        "unsound predictor's constructed bit-red + swept sequential guarantee + consumed "
+        "attribution surface + 19 battery refusals (section 5's census, battery-local)"
     )
     return 0
 

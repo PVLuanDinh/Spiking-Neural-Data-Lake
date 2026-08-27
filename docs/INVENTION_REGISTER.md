@@ -44,7 +44,10 @@ neutered information stays recoverable from step()'s parts — not the sole carr
 NULL: a nothing-contributing rule is retired (P3) — INERT is rule_charge's constructed case.
 MECHANIZED: `plasticity/rule_composer.py` — T051a kernel; T051b-i jepa LPL declaration; T051b-ii
 the T048 pair at component grain; T051b-iii check_producers (FR-019, production manifest) +
-rule_charge. No tissue (T051b-iv merge + T053 tick-charge dated).
+rule_charge; T051b-iv the stack-sandwich MERGE expressed (gain two-writer + base weights
+deposit-then-trim vs spied production; both stacks remain production — a declaration layer,
+P2 merge-must-reduce NOT discharged: two incumbents before and after). No tissue (T053
+tick-charge dated).
 
 ## 4. Growth stopping criterion (L5, T047)
 |LP|+charge-derived per-region growth gates with an executive-independent arm (a gate routed

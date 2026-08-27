@@ -113,7 +113,18 @@ BUDGETS = {
     # byte-exact with a pointer. Words conserved, moved not grown; POLICIES.md returns under
     # its LOWERED ceiling with real headroom.
     "docs/POLICIES_EVIDENCE.md": 3550,
-    "docs/INVENTION_REGISTER.md": 1124,  # RAISED 1047 -> 1124 on 2026-08-26 (specs/022 T051a),
+    # CONVENTION NOTE (T051b-iv panel): the module docstring's "+5% over measured" rule is the
+    # RETIRED 2026-08-16 anchor; the governing practice since T046 is MINIMUM-VIABLE raises
+    # (measured + 0, stated per raise), so 0.0%-headroom rows are deliberate and the
+    # TIGHTENABLE report is structurally quiet for them.
+    "docs/INVENTION_REGISTER.md": 1152,  # RAISED 1124 -> 1152 on 2026-08-26 (specs/022 T051b-iv),
+    # in the SAME commit as the growth: row 3's MECHANIZED line gains the iv sandwich-merge
+    # entry AND the iv panel's P2 clause (merge-must-reduce NOT discharged: two incumbents
+    # before and after), and its no-tissue parens shrink to T053 only. 28 words, minimum
+    # viable raise (measured + 0), the T046/T047/T050/T051a practice -- the iii panel
+    # flagged the 0.0%-headroom ceiling as forcing exactly this deliberate decision, which
+    # is the ceiling doing its job, not a defect.
+    # Prior raise record: 1047 -> 1124 (T051a),
     # in the SAME commit as the growth: row 3 gains its MECHANIZED line (the composer kernel
     # landed) AND pays two debts the T051a panel found unpaid -- the DISCLOSURE correction
     # (arbitration order is bare insertion order, NOT learned/recorded as the row claimed;
