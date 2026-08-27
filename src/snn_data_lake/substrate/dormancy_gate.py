@@ -272,11 +272,24 @@ EXEMPT = {
         "participation. Charged surface today: the registered self-check "
         "(delegation-live rebind arm + BIT/FULL/DELTA equivalence vs the applied "
         "weight + coefficient pins incl. the composed 2*lp*alpha product + the "
-        "lpl/transport/freeze_top refusals). DATED CONSUMER: T052-ii, the "
-        "temporal-stream adoption benchmark (SHD/N-MNIST packs, EpisodeDriver's "
-        "same/different oracle as the supervisory negative source, vs the in-tree "
-        "supervised e-prop encoders with untrained-twin + random-encoder controls) "
-        "drives the core directly; this exemption retires or re-adjudicates there.",
+        "lpl/transport/freeze_top refusals). RE-ADJUDICATED AT T052-ii (2026-08-27): "
+        "the temporal-stream benchmark RAN (SHD/N-MNIST packs, the EpisodeDriver trial "
+        "shape as supervision, matched hidden-64 scale) and measured a MIXED NULL -- "
+        "means degrade on both packs (N-MNIST .547 -> .476, SHD .244 -> .220), the "
+        "improving seeds are the weakest twin draws, the random-encoder control "
+        "brackets espp, and the supervised e-prop incumbent dominates at the same "
+        "width; the null survived six adversarial probes, and the oracle was measured "
+        "PRESENT BUT NOT PARTICIPATING (a label-blind control tied exactly -- ~90% of "
+        "blind draws are different-label on 10-class data). Figures + the corrected "
+        "protocol (the first draft's eligibility under-integrated SHD 689x -- its arm "
+        "measured the harness) in the module's benchmark section, re-derived live by "
+        "its pack-gated arm. NO production wire lands on this measurement; the element "
+        "remains the declaration + jepa's delegated branch (FR-018's retirement "
+        "trigger does not fire -- the declared scope measures green), and this "
+        "exemption's charged surface remains the registered self-check. Next "
+        "re-adjudication trigger: a consumer with a measured non-null, none dated -- "
+        "and the in-gate arm's exact assert RE-OPENS the adjudication the day espp "
+        "starts helping.",
     ),
     "rule_composer": (
         "wire",

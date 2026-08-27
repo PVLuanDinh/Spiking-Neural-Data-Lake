@@ -113,6 +113,12 @@ GRADIENT_CLAIM = {
         "deviation factors x lr*sg*e) for an ESPP instance through the T050 algebra; "
         "declares, never applies",
     ),
+    "main": (
+        "NOT_A_RULE",
+        "the self-check harness; its T052-ii benchmark arm APPLIES the declared LOCAL "
+        "espp update (dw = lr*m*sg*e with m from espp_modulator_core above) to measure "
+        "adoption -- the rule's claim is the core's, the harness only drives it",
+    ),
 }
 
 
@@ -659,6 +665,189 @@ def main():
     )
     assert ablation_form, "the ablation instance must author the 1-term form"
     assert composes, "the authored rule must compose through the kernel with a nonzero contribution"
+
+    # ---- (8) T052-ii: THE TEMPORAL-STREAM ADOPTION BENCHMARK (P2 measurement), and it
+    # measured a MIXED NULL -- recorded with its own review history, not smoothed.
+    # Protocol: the core driven on the REAL packs with the EpisodeDriver trial SHAPE
+    # (sample-phase half-window = sb, probe-phase = echo for 'same'; a DIFFERENT-LABEL
+    # sample's probe half = neg -- oracle truth by construction, FR-019's named
+    # supervisory source); encoder = input-D -> hidden-64 LIF (tau 2.0), auto-gained
+    # into the 0.15-0.3 rate band on 20 samples (achieved 0.27-0.29 -- an early draft
+    # said "~0.2" and "no hand constant"; the BAND is a hand-chosen harness constant,
+    # the GAIN inside it is the network's own); e = the per-input WINDOW INTEGRAL
+    # (mean over the window -- the first draft returned a final-EMA SAMPLE carrying
+    # ~3 frames, which under-integrated SHD 689x and made its arm a FAILED MANIPULATION
+    # its record mislabeled "sparse audio": SHD is DENSER than N-MNIST, the panel
+    # measured; corrected before landing); dw = lr*outer(m*sg, e); ridge probe
+    # IDENTICAL across arms. RECORDED, corrected protocol (3 seeds x 2 packs, 200/56
+    # split, hidden 64 == the eprop encoders' width, LR .05, 5 epochs, 2026-08-27):
+    #   N-MNIST (chance .10): twin .589/.446/.607 -> espp .464/.500/.464 (|dW|/scale
+    #     ~2.5) -- 2/3 seeds degrade, the improving seed is the WEAKEST twin draw;
+    #     mean .547 -> .476.
+    #   SHD (chance .05): twin .125/.304/.304 -> espp .232/.250/.179 (|dW|/scale
+    #     .18-.56, now genuinely coupled) -- 2/3 degrade, same weak-draw pattern;
+    #     mean .244 -> .220.
+    #   RANDOM-ENCODER control (identical construction, independent init seeds 7/8/9,
+    #     NEVER trained -- differs from the twin ONLY in the draw): N-MNIST
+    #     .429/.554/.536, SHD .143/.286/.161. espp lands INSIDE the random-encoder
+    #     band on both packs: the training does not add class information the
+    #     architecture doesn't already carry (the attribution).
+    #   Supervised incumbent (models/eprop_nmnist.pt, SAME width): latent-probe .875
+    #     through the identical ridge probe, own head .964 -- dominates every
+    #     self-supervised arm by 27+ points.
+    # ROBUSTNESS (the adversarial panel's six probes, all survived by the null):
+    # surrogate swaps incl. the production membrane surrogate at MATCHED drive
+    # (degrades on both probes; the harness sg = exp(-|sb-.5|) is near-constant, mean
+    # .74 -- a harness choice, disclosed), eligibility realignment, per-term neuters
+    # (the contrastive term carries 93%, and at alpha=1 -- production's own default --
+    # contr reduces exactly to 2*(neg-echo), sb cancelling), an independent
+    # nearest-centroid probe (gap WIDER), a ridge-lambda sweep (gap at every lambda),
+    # 8 train seeds + 5 encoder seeds (degrades or ties, NEVER helps; one encoder
+    # seed ties exactly -- the effect is seed-graded, the direction is not).
+    # ADJUDICATION: NO PRODUCTION WIRE lands on this measurement. Precisely argued
+    # (the policy panel refused the first draft's "P8#5 applied to the wire" gloss):
+    # P8 #5 proper (method-removal) does not bind -- espp is adopted literature, not
+    # an invention, and its in-tree expression is the T052-i declaration, whose OWN
+    # declared scope measures green (the BIT/FULL/DELTA arms above); FR-018's
+    # retirement trigger ("contributing nothing measurable in its declared scope")
+    # therefore does not fire. What the null kills is any WIRE and any capability
+    # claim. FR-019 is satisfied declaratively (the palette clause requires inclusion
+    # with the oracle NAMED -- its siblings say "ON BUILT TISSUE" where a live
+    # substrate is meant, and say nothing of the sort for ESPP). e-prop REMAINS the
+    # one perception path; the host branch stays presence-not-participation,
+    # disclosed. THE ORACLE, honestly (the honesty panel's control, which refuted the
+    # draft sentence "the null is the RULE's, not the oracle's"): the same/different
+    # supervision was PRESENT in every arm (the different-LABEL draw uses labels), and
+    # a LABEL-BLIND control measured IDENTICAL means -- because on 10-class balanced
+    # data a blind draw is ~90% different-label BY CHANCE, the oracle's guarantee adds
+    # almost nothing at this class count. Presence, not participation: the measurement
+    # is a null for the espp contrast mechanism at this scale, supervised or not, and
+    # it CANNOT separate "the rule fails" from "the supervision never reaches the
+    # weights" -- both are recorded, neither is claimed. The in-gate arm below
+    # re-derives seed 1's N-MNIST sign on the RECORD's exact rng path (espp <= twin:
+    # the NULL is the assertable fact on the pinned path; the effect is SEED-GRADED --
+    # one weight seed improves, one ties -- and the mixed table above is the record;
+    # no accuracy bar, the eprop_shd separability lesson) and RAISES LOUDLY when the
+    # pack is absent.
+    # P1 EXCEPTION (c), claimed where the siblings claim it (rule_composer /
+    # eligibility_algebra carry the same block): every protocol constant in this
+    # section (the reshape, the 200/56 split, 12 gain iterations, the 0.15-0.3 band,
+    # the elig/tau time-constants, mu seed .25, 5 epochs, EMA .98/.02, LR .05, clip
+    # 4.0, ridge 1e-2) is a benchmark EXERCISE VALUE recorded with its measurement --
+    # this module is a wire exemption with zero live callers, and the exception
+    # persists exactly as long as the exemption does (the re-adjudication trigger in
+    # dormancy_gate's row).
+    # distinct-from: cortex/eprop_nmnist.py -- the SUPERVISED incumbent this benchmark
+    #   compares AGAINST (torch, e-prop, classifier); this arm is the numpy espp probe
+    #   harness, benchmark-local. Site read.
+    # distinct-from: cerebellum/spiking_pid.py, basal_ganglia/action_gating.py,
+    #   brainstem/signal_loop.py -- generic run/window vocabulary only (PID drives, race
+    #   circuits, min-max normalizers); nothing shared with this probe. Sites read.
+    # PACK GATING, the percept_surprise precedent (its :320-348 adjudicated this exact
+    # artifact: an unverifiable check must be LOUD, not quiet -- a bare-return SKIP exits
+    # 0 and is scored PASS; and the raise is kept "for the case that actually matters --
+    # the artifact is present but unreadable"). The pack is TRACKED, so absence means a
+    # broken checkout, and a corrupt pack or numpy fault RAISES rather than reporting a
+    # quiet CANNOT-VERIFY green (the first draft's bare `except Exception` swallowed
+    # exactly that case -- the policy panel's finding 4).
+    import pathlib as _pl8
+
+    import numpy as _np
+
+    from snn_data_lake.substrate.gradient_claim_gate import _repo_root as _rr8
+
+    _pack_path = _pl8.Path(_rr8()) / "models" / "nmnist_pack.npz"
+    assert _pack_path.exists(), (
+        f"T052-ii benchmark CANNOT VERIFY: {_pack_path} is absent -- the pack is a TRACKED "
+        "artifact (git ls-files models/nmnist_pack.npz), so a missing file is a broken "
+        "checkout, not an optional extra. Regenerate with `python -m training.make_packs`."
+    )
+    _pack = _np.load(_pack_path)
+    import math as _math8
+
+    _X = _pack["frames"].astype("float32").reshape(256, 15, -1)
+    _y = _pack["labels"].astype("int64")
+    _tr, _te = _np.arange(200), _np.arange(200, 256)
+    _tau8 = 2.0  # benchmark encoder tau -- harness exercise value (the recorded protocol's)
+    _decay = float(_math8.exp(-1.0 / _tau8))
+
+    def _run_win(w, xs):
+        v = _np.zeros((xs.shape[0], 64), "float32")
+        c = _np.zeros((xs.shape[0], 64), "float32")
+        for t in range(xs.shape[1]):
+            v = v * _decay + xs[:, t] @ w.T
+            sp = v >= 1.0
+            c += sp
+            v = _np.where(sp, 0.0, v)
+        return c / xs.shape[1]
+
+    _wr = _np.random.default_rng(1)
+    _w0 = _wr.normal(0.0, 1.0, (64, _X.shape[2])).astype("float32")
+    for _ in range(12):
+        _rt = float(_run_win(_w0, _X[:20]).mean())
+        if 0.15 < _rt < 0.3:
+            break
+        _w0 *= 0.2 / max(_rt, 1e-4)
+
+    def _elig8(xs):
+        # the per-input WINDOW INTEGRAL. The first draft returned the low-pass EMA's
+        # value AT the last step / T -- a final SAMPLE carrying ~3 frames, which
+        # under-integrated SHD 689x (the adversarial panel's blocker: its arm could
+        # not move W by construction and supported no claim). Corrected pre-landing.
+        return xs.mean(axis=1)
+
+    _w = _w0.copy()
+    _r8 = _np.random.default_rng(1)  # the RECORD's rng path (default_rng(seed), seed 1;
+    _mu8 = _np.full(64, 0.25, "float32")  # a first draft used rng 0 + a per-epoch-rebuilt
+    _order = _np.arange(200)  # order and printed a value the record could not explain)
+    for _ep in range(5):
+        _r8.shuffle(_order)  # cumulative shuffle, exactly as the standalone protocol
+        for _k in _order:
+            _xk = _X[_k : _k + 1]
+            _sb = _run_win(_w, _xk[:, :7])[0]
+            _echo = _run_win(_w, _xk[:, 7:])[0]
+            _j = int(_r8.choice(_np.flatnonzero(_y[:200] != _y[_k])))
+            _neg = _run_win(_w, _X[_j : _j + 1, 7:])[0]
+            _mu8 = 0.98 * _mu8 + 0.02 * _sb
+            _m8 = _np.array(
+                espp_modulator_core(
+                    64,
+                    _sb.tolist(),
+                    _echo.tolist(),
+                    _neg.tolist(),
+                    _mu8.tolist(),
+                    1.0,
+                    1.0,
+                    0.5,
+                    0.25,
+                ),
+                "float32",
+            )
+            _sg8 = _np.exp(-_np.abs(_sb - 0.5))
+            _w += 0.05 * _np.outer(_m8 * _sg8, _elig8(_xk)[0])
+            _np.clip(_w, -4.0, 4.0, out=_w)
+
+    def _probe8(w):
+        zt = _np.hstack([_run_win(w, _X[_tr]), _np.ones((200, 1), "float32")])
+        zs = _np.hstack([_run_win(w, _X[_te]), _np.ones((56, 1), "float32")])
+        Y8 = _np.eye(10, dtype="float32")[_y[_tr]]
+        A8 = zt.T @ zt + 1e-2 * _np.eye(zt.shape[1], dtype="float32")
+        return float((_np.argmax(zs @ _np.linalg.solve(A8, zt.T @ Y8), 1) == _y[_te]).mean())
+
+    _acc_twin, _acc_espp = _probe8(_w0), _probe8(_w)
+    print(
+        f"(8) T052-ii benchmark (N-MNIST, seed 1, live): twin {_acc_twin:.4f} vs "
+        f"espp {_acc_espp:.4f} -- the recorded NULL reproduces (espp <= twin; 3-seed "
+        f"record + SHD + the dominant supervised incumbent in the comment above)"
+    )
+    assert _acc_espp <= _acc_twin, (
+        f"the adoption benchmark's RECORDED null must reproduce: espp {_acc_espp:.4f} "
+        f"vs twin {_acc_twin:.4f} -- this arm is FULLY seeded and deterministic, so any "
+        "espp > twin here is a real change (a numpy/BLAS shift or a rule edit), and the "
+        "T052-ii adjudication (no wire) must be RE-OPENED, not silently enjoyed. (A "
+        "first draft carried +0.02 slack; the panel measured the arm deterministic, so "
+        "the slack absorbed nothing but the advertised trigger.)"
+    )
     print("espp_rule self-check OK")
 
 
