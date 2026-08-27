@@ -17,8 +17,10 @@ WHAT IT IS. The arbitration CONTRACT over declared rules -- not a clever policy:
   nothing consumes is decoration, the same bar this module's own docstring sets
   for reads. `claim_key` is the OPTIONAL binding to the rule's GRADIENT_CLAIM
   declaration -- T050 promised "the composer will hold BOTH declarations about
-  one rule to each other"; the SLOT exists now, the cross-check mechanism is
-  DATED to T051c (whose row names GRADIENT_CLAIM per rule), disclosed.
+  one rule to each other"; the cross-check LANDED at T051c (check_claim, holding
+  the key to the gate's own declared surface -- a phantom key REDS), alongside
+  the per-rule disposition census (tools/rule_census.json + rule_census_check,
+  the ratcheted WAVE structure).
 
   RuleComposer(policy, target) -- `target` is REQUIRED (no default): it is BOTH
   the uniform write target every added spec must declare AND the substrate
@@ -109,7 +111,8 @@ from snn_data_lake.plasticity.eligibility_algebra import AuthoredRule
 #   composed with the manifest landed at T051b-iii (check_producers). Site read.
 # distinct-from: substrate/gradient_claim_gate.py -- the per-SYMBOL claim system;
 #   RuleSpec.claim_key is the SLOT binding a rule to its claim, and the
-#   cross-check holding both declarations to each other is dated T051c. Site read.
+#   cross-check holding both declarations to each other LANDED at T051c
+#   (check_claim + the rule_census ratchet). Site read.
 # distinct-from: substrate/basic_components.py -- compose_step is a STAGE pipeline
 #   (encoder -> neuron -> connection -> one rule), not N rules on one substrate;
 #   named here because the sibling module's convention names it. Site read.
@@ -132,8 +135,8 @@ POLICIES = ("sum", "sequential")
 #   REFERENCE manifest ports (resolved by check_producers), never re-model them. Site read.
 class RuleSpec:
     """One rule's typed declaration. Frozen. `claim_key`: the optional
-    GRADIENT_CLAIM key of the rule's owning symbol (the T051c cross-check's
-    slot; carrying it is honest even before the check exists). `producers`
+    GRADIENT_CLAIM key of the rule's owning symbol (held by check_claim,
+    landed at T051c; a phantom key reds against the declared surface). `producers`
     (T051b-iii, FR-019): the optional factor->producer declaration --
     "self" for a caller-computed internal state quantity, or a
     (faculty, port_name, expected_unit) triple naming the manifest OUT port
@@ -604,6 +607,258 @@ def rule_charge(composer, w0, bindings_seq):
     }
 
 
+# distinct-from: substrate/gradient_claim_gate.py -- the gate CENSUSES declarations
+#   tree-wide and asserts ratchet bounds; check_claim holds ONE RuleSpec's claim_key
+#   to that census (a consumer of the gate's own walker, never a second census). Site read.
+def check_claim(spec, declared_keys):
+    """T051c: hold a RuleSpec's claim_key to the tree's DECLARED GRADIENT_CLAIM keys
+    (the T050 panel's phantom-qualname class, closed for composed rules: a claim_key
+    naming a declaration that does not exist reads green to the gate -- enumeration
+    is seeded by declarations -- so the composer holds the reference itself).
+    `declared_keys` = the `relpath::key` strings from the gate's OWN census (one
+    census instrument); the harness shows the build. HONEST SCOPE, said where a
+    reader looks: EXISTENCE only -- the claim's KIND is not held to the spec, and
+    a key declared in an UNGOVERNED module resolves green (the walker's whole
+    surface is the reference); gate-run grade, zero live callers today. Incoming
+    keys are separator/whitespace-normalized (the panel measured a TRUE claim in
+    Windows rel-path form misread as phantom -- a false red asserting the opposite
+    of the truth). Refuses a keyless spec AND an empty declared surface (every key
+    would phantom -- the dead-detector shape)."""
+    if spec.claim_key is None:
+        raise ValueError(
+            f"spec {spec.name!r} carries no claim_key -- check_claim has nothing to hold, "
+            "and a vacuous green is refused rather than returned"
+        )
+    if not declared_keys:
+        raise ValueError(
+            "empty declared_keys: every key would read phantom -- a dead detector, refused"
+        )
+    key = spec.claim_key.strip().replace("\\", "/")
+    if key in declared_keys:
+        return []
+    return [
+        f"spec {spec.name!r}: claim_key {spec.claim_key!r} names NO declared GRADIENT_CLAIM "
+        "-- the phantom-qualname class (a declaration the gate would census green because "
+        "nothing anchors it)"
+    ]
+
+
+def _is_undispositioned(disposition):
+    """Case/whitespace-normalized, and an EMPTY disposition counts as undispositioned
+    (the panel measured '' / 'TODO' / lowercase silently counting as dispositioned --
+    the ratchet's denominator matched one exact token)."""
+    if not isinstance(disposition, str) or not disposition.strip():
+        return True
+    return disposition.strip().upper().startswith("UNDISPOSITIONED")
+
+
+def rule_census_check(artifact, rules):
+    """T051c: the per-rule disposition artifact (tools/rule_census.json) held to the
+    LIVE census. `rules` = gradient_claim_gate.census()[0]. Findings when: a live
+    rule-bearing row has no artifact row (the artifact lags the tree); an artifact
+    row names no live rule (stale); the UNDISPOSITIONED count RISES above the
+    artifact's recorded baseline, or total rows FALL below it. THE DIVISION OF
+    LABOR, said plainly (the panel measured the first draft's baseline recomputed
+    by its own edit path -- a pin rewriting the incumbent): THESE are the cheap
+    membership/count bounds; the MECHANIZED per-row guard lives in the sanctioned
+    edit path itself (regen_rule_census refuses disposition retractions and dead
+    ADJUDICATED entries -- the gradient-claim baseline's refuses-worse pattern);
+    the ADVANCE direction (whether a disposition's text is honest) is review-grade.
+    UNDISPOSITIONED day-one rows are the honest state, counted and bounded, never
+    hidden (the T046 day-one precedent). Shape errors name the artifact, never a
+    bare KeyError."""
+    try:
+        art_rules = artifact["rules"]
+        base = artifact["_meta"]["ratchet_baseline"]
+        base_undisp = base["undispositioned"]
+        base_rows = base["rows"]
+    except (KeyError, TypeError) as ex:
+        raise ValueError(
+            f"rule_census artifact is malformed (missing {ex!r}) -- expected "
+            "{'_meta': {'ratchet_baseline': {'rows', 'undispositioned'}}, 'rules': {...}}"
+        ) from None
+    bearing = {"LOCAL", "APPROXIMATES_GRADIENT", "EXACT_GRADIENT", "DIRECT_SOLVE"}
+    live = {
+        r["qualname"].replace("\\", "/")
+        for r in rules
+        if (r["declared"] or r["inferred"]) in bearing
+    }
+    art = set(art_rules)
+    findings = []
+    for q in sorted(live - art):
+        findings.append(
+            f"live rule-bearing claim {q!r} has NO census row -- the artifact lags the tree"
+        )
+    for q in sorted(art - live):
+        findings.append(f"census row {q!r} names no live rule-bearing claim -- stale row")
+    n_undisp = 0
+    for q, v in art_rules.items():
+        if not isinstance(v, dict) or "disposition" not in v:
+            raise ValueError(f"rule_census artifact row {q!r} is malformed (no disposition)")
+        if _is_undispositioned(v["disposition"]):
+            n_undisp += 1
+    if n_undisp > base_undisp:
+        findings.append(
+            f"UNDISPOSITIONED rose ({n_undisp} > baseline {base_undisp}) -- "
+            "dispositions only ever advance"
+        )
+    if len(art) < base_rows:
+        findings.append(f"census rows fell ({len(art)} < baseline {base_rows})")
+    return findings
+
+
+#: The adjudicated disposition seedings (T050's expressibility census + the T051b
+#: landings) -- checked FIRST, before the kind fallbacks (the panel measured the
+#: first draft dispatching kind first, which made the jepa correction DEAD CODE and
+#: re-published the NOT-EXPRESSIBLE row T051b-i had falsified); every entry must
+#: match >=1 live row or regeneration REFUSES (the first draft's wrong naca path
+#: silently cost a disposition and loosened the ratchet).
+_CENSUS_ADJUDICATED = (
+    (
+        "basal_ganglia/r_stdp.py",
+        "reward",
+        "expressible -- PROVEN: T050 equivalence via the exported check; T051b-iv deposit through the kernel",
+    ),
+    ("cortex/learned_evc.py", None, "expressible -- T050 census (value/cost forms)"),
+    ("hypothalamus/homeostatic_drives.py", None, "expressible -- T050 census (drive_reduction)"),
+    (
+        "basal_ganglia/valence_stdp.py",
+        None,
+        "needs-pre-collapse -- T050 census (sign-conditional dispatch)",
+    ),
+    ("amygdala/fear_conditioning.py", None, "needs-pre-collapse -- T050 census"),
+    ("amygdala/affective_appraisal.py", None, "needs-pre-collapse -- T050 census"),
+    ("neuromodulation/naca.py", None, "needs-pre-collapse -- T050 census"),
+    (
+        "cerebellum/spiking_jepa.py",
+        None,
+        "mixed -- the LOCAL three-factor block is EXPRESSED at T051b-i (lpl_synapse_rule, "
+        "five named pre-collapsed factors, held to the production path); the "
+        "readout/predictor gradient half is not-expressible (tensor family, T050 census)",
+    ),
+    (
+        "plasticity/homeostatic_plasticity_stack.py",
+        None,
+        "expressed -- T051b-iv: deposit-then-trim through the kernel vs spied production",
+    ),
+    (
+        "plasticity/plasticity_rule_stack.py",
+        "learning_step",
+        "expressed (gain pipeline) -- T051b-iv: two-writer sequential vs spied pre_gain; "
+        "weights subclass phases = disclosed remainder",
+    ),
+    (
+        "plasticity/plasticity_rule_stack.py",
+        "consolidate",
+        "remainder -- DISCLOSED at T051b-iv (E/I + Benna-Fusi + rate + theta undriven; "
+        "ii's component grain models the bare cascade; the tissue wire is T054's)",
+    ),
+    (
+        "plasticity/benna_fusi.py",
+        None,
+        "expressed (component grain) -- T051b-ii: the anchor-drag form vs diffuse()",
+    ),
+    (
+        "plasticity/structural_rewiring.py",
+        None,
+        "expressed (component grain) -- T051b-ii: the prune form vs rewire()",
+    ),
+)
+
+#: T050's expressible list has a FOURTH entry, brain_native_selfbuild, which declares
+#: no GRADIENT_CLAIM and is therefore INVISIBLE to the declared surface this census
+#: binds -- recorded so "3 expressible" is never read as the whole T050 list.
+_CENSUS_INVISIBLE = (
+    "basal_ganglia/brain_native_selfbuild.py (T050: expressible; no GRADIENT_CLAIM declared)",
+)
+
+
+def regen_rule_census():
+    """THE ONLY EDIT PATH for tools/rule_census.json (T051c; run via
+    `python -m snn_data_lake.plasticity.rule_composer --regen-census`). Lives HERE,
+    in the governed registered module beside the check that polices the artifact --
+    the sibling pattern (gradient_claim_gate owns --update-baseline), and the panel
+    measured a standalone tools/*.py breaking the zero-headroom p4c tools zone.
+    THE MECHANIZED RATCHET: reads the committed artifact first and REFUSES (raises)
+    any qualname moving FROM a disposition BACK to UNDISPOSITIONED -- per-row
+    monotonicity through the sanctioned door (the first draft recomputed the
+    baseline from the rows it had just written: green through its own edit path).
+    Also refuses ADJUDICATED entries matching zero live rows. Path resolution uses
+    the gate's own marker-anchored _repo_root (the panel measured the first draft's
+    counted parents[] climb resolving OUTSIDE the repo, with a non-terminating
+    fallback on marker-less layouts)."""
+    import json
+
+    from snn_data_lake.substrate.gradient_claim_gate import _repo_root, census
+
+    rules, failures, _n = census()
+    if failures:
+        raise ValueError(f"census failures: {failures}")
+    bearing = {"LOCAL", "APPROXIMATES_GRADIENT", "EXACT_GRADIENT", "DIRECT_SOLVE"}
+    hits = [0] * len(_CENSUS_ADJUDICATED)
+
+    def _disp(qualname, kind):
+        for i, (mod_sub, qual_sub, disp) in enumerate(_CENSUS_ADJUDICATED):
+            if mod_sub in qualname and (qual_sub is None or qual_sub in qualname):
+                hits[i] += 1
+                return disp
+        if kind == "DIRECT_SOLVE":
+            return "direct-solve -- no dw stream to compose (T050 census category)"
+        if kind in ("APPROXIMATES_GRADIENT", "EXACT_GRADIENT"):
+            return (
+                "not-expressible -- the gradient/eprop tensor family "
+                "(scalar-only evaluate; T050 census)"
+            )
+        return "UNDISPOSITIONED"
+
+    rows = {}
+    for r in rules:
+        kind = r["declared"] or r["inferred"]
+        if kind not in bearing:
+            continue
+        q = r["qualname"].replace("\\", "/")
+        rows[q] = {"kind": kind, "governed": r["governed"], "disposition": _disp(q, kind)}
+    dead = [_CENSUS_ADJUDICATED[i][:2] for i in range(len(_CENSUS_ADJUDICATED)) if hits[i] == 0]
+    if dead:
+        raise ValueError(
+            f"REFUSED: ADJUDICATED entries matching zero live rows {dead} -- a dead entry "
+            "is a disposition silently lost"
+        )
+    import pathlib
+
+    out = pathlib.Path(_repo_root()) / "tools" / "rule_census.json"
+    if out.exists():
+        prior = json.loads(out.read_text(encoding="utf-8"))["rules"]
+        regressions = sorted(
+            q
+            for q, v in rows.items()
+            if q in prior
+            and not _is_undispositioned(prior[q]["disposition"])
+            and _is_undispositioned(v["disposition"])
+        )
+        if regressions:
+            raise ValueError(
+                f"REFUSED: {len(regressions)} row(s) would move from a disposition BACK to "
+                f"UNDISPOSITIONED {regressions[:5]} -- dispositions only ever advance; "
+                "re-adjudicate the text in _CENSUS_ADJUDICATED, never retract by regeneration"
+            )
+    n_undisp = sum(1 for v in rows.values() if _is_undispositioned(v["disposition"]))
+    artifact = {
+        "_meta": {
+            "task": "specs/022 T051c",
+            "generated_by": "PYTHONPATH=src python -m snn_data_lake.plasticity.rule_composer --regen-census",
+            "source": "gradient_claim_gate.census() via rule_composer.regen_rule_census -- regeneration is the only edit path for rows; new adjudications join _CENSUS_ADJUDICATED there; the regen refuses disposition retractions and dead entries",
+            "ratchet_baseline": {"rows": len(rows), "undispositioned": n_undisp},
+            "invisible_to_surface": list(_CENSUS_INVISIBLE),
+            "note": "dispositions per T050's expressibility categories; UNDISPOSITIONED is the honest day-one state for unadjudicated LOCAL rules -- the WAVE (T051c-wave) fills rows; regen_rule_census enforces per-row monotonicity through the sanctioned edit path, rule_composer 1e polices membership vs the live census, and the ADVANCE direction (whether a disposition's text is honest) is review-grade, said plainly",
+        },
+        "rules": rows,
+    }
+    with open(out, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(artifact, f, indent=1, sort_keys=True)
+    return out, len(rows), n_undisp
+
+
 # ---- self-check ----------------------------------------------------------------------------
 def main():
     import struct
@@ -938,7 +1193,7 @@ def main():
     #     factor there reds this arm); r_stdp's form is HAND-ADJUDICATED against
     #     eligibility_algebra's arm (which holds it to the incumbent THERE;
     #     canonical dw = +1*d*e*lr); NO tree-wide enumeration gate exists --
-    #     that sweep is T051c's, cited. rule_charge is the attribution's FIRST
+    #     the producers enumeration is T051c-wave's (open, undated), cited. rule_charge is the attribution's FIRST
     #     READER -- gate-run grade, said plainly (zero live compositions exist;
     #     T053's is the first tick-live one).
     from snn_data_lake.cerebellum.spiking_jepa import SpikingJEPA
@@ -1503,6 +1758,131 @@ def main():
         f"remainder (ii's component grain; T054); both stacks REMAIN production"
     )
 
+    # 1e) T051c: THE CLAIM CROSS-CHECK + THE CENSUS RATCHET. check_claim holds a
+    #     RuleSpec.claim_key to the tree's DECLARED GRADIENT_CLAIM keys, derived
+    #     from ONE census() call (the panel measured the first draft running TWO
+    #     full AST walks -- walk() + census()-which-walks-again -- for a key set
+    #     that is a subset of the census rows; 8.3x self-check slowdown, halved
+    #     here); rule_census_check holds tools/rule_census.json to the live
+    #     census; the artifact path is the gate's own marker-anchored _repo_root
+    #     (the first draft's counted parents[] climb resolved OUTSIDE the repo
+    #     with a non-terminating fallback -- panel-constructed).
+    import json as _json
+
+    from snn_data_lake.substrate.gradient_claim_gate import (
+        _repo_root as _gc_root,
+    )
+    from snn_data_lake.substrate.gradient_claim_gate import (
+        census as _gc_census,
+    )
+
+    _gc_rules, _gc_fails, _ = _gc_census()
+    assert not _gc_fails, f"census failures: {_gc_fails}"
+    _declared_keys = {
+        r["qualname"].replace("\\", "/") for r in _gc_rules if r["declared"] is not None
+    }
+    _spec_ok = RuleSpec(
+        "claimed",
+        _alg_c.author("claimed", [(-0.1, ("w",))]),
+        reads={"w"},
+        writes={"w"},
+        claim_key="basal_ganglia/r_stdp.py::RSTDPNeuron.reward",
+    )
+    assert check_claim(_spec_ok, _declared_keys) == [], "a real declared claim must resolve green"
+    _spec_ph = RuleSpec(
+        "phantom",
+        _alg_c.author("phantom", [(-0.1, ("w",))]),
+        reads={"w"},
+        writes={"w"},
+        claim_key="basal_ganglia/r_stdp.py::EligibilityAlgebra.evaluate",
+    )
+    _phf = check_claim(_spec_ph, _declared_keys)
+    assert any("phantom-qualname" in x for x in _phf), (
+        f"the T050 phantom class (a claim key naming no declaration) must red: {_phf}"
+    )
+    try:
+        check_claim(
+            RuleSpec("bare2", _alg_c.author("bare2", [(-0.1, ("w",))]), reads={"w"}, writes={"w"}),
+            _declared_keys,
+        )
+        raise AssertionError("a spec with no claim_key must refuse, not read green")
+    except ValueError as _ex_k:
+        assert "vacuous" in str(_ex_k), f"wrong refusal: {_ex_k}"
+
+    import pathlib as _pathlib2
+
+    _art_path = _pathlib2.Path(_gc_root()) / "tools" / "rule_census.json"
+    _artifact = _json.loads(_art_path.read_text(encoding="utf-8"))
+    assert len(_declared_keys) >= len(_artifact["rules"]), (
+        f"the declared surface ({len(_declared_keys)}) fell below the census rows "
+        f"({len(_artifact['rules'])}) -- walker defect (floor DERIVED, the panel measured "
+        "the first draft's round-100 floor passing a 40%-loss walker)"
+    )
+    _cf = rule_census_check(_artifact, _gc_rules)
+    assert _cf == [], f"the rule census must hold to the live tree: {_cf}"
+    # the ratchet's reds, constructed on COPIES (the artifact itself is tracked):
+    _art_lag = {"_meta": _artifact["_meta"], "rules": dict(_artifact["rules"])}
+    _art_lag["rules"].pop(sorted(_art_lag["rules"])[0])
+    _lf = rule_census_check(_art_lag, _gc_rules)
+    assert any("lags the tree" in x for x in _lf), "a live claim missing must red"
+    assert any("census rows fell" in x for x in _lf), (
+        "the rows-fell arm must also fire on the same construction (its positive control)"
+    )
+    _art_stale = {"_meta": _artifact["_meta"], "rules": dict(_artifact["rules"])}
+    _art_stale["rules"]["ghost/mod.py::Ghost.update"] = {
+        "kind": "LOCAL",
+        "governed": True,
+        "disposition": "UNDISPOSITIONED",
+    }
+    _sf = rule_census_check(_art_stale, _gc_rules)
+    assert any("stale row" in x for x in _sf) and any("UNDISPOSITIONED rose" in x for x in _sf), (
+        f"a ghost row must red as stale AND as an undispositioned rise: {_sf}"
+    )
+    # the lowercase/empty-disposition red (the panel measured '' and 'undispositioned'
+    # silently counting as DISPOSITIONED under the one-token compare):
+    _art_case = {"_meta": _artifact["_meta"], "rules": dict(_artifact["rules"])}
+    _first_disp = next(
+        q
+        for q, v in sorted(_art_case["rules"].items())
+        if not _is_undispositioned(v["disposition"])
+    )
+    _art_case["rules"][_first_disp] = {**_art_case["rules"][_first_disp], "disposition": ""}
+    assert any("UNDISPOSITIONED rose" in x for x in rule_census_check(_art_case, _gc_rules)), (
+        "an EMPTIED disposition must count as undispositioned and red the rise arm"
+    )
+    # the regen path's own red: a retraction through the SANCTIONED door must refuse
+    # (the panel measured the first draft's baseline recomputed by its edit path --
+    # green through the very door it governs). Constructed via a temp prior file?
+    # No -- regen_rule_census reads the REAL artifact; the retraction refusal is
+    # exercised by regenerating against a HAND-ADVANCED copy... the honest cheap
+    # form: call the internal comparison the way regen does, on copies.
+    _prior_rows = dict(_artifact["rules"])
+    _new_rows = dict(_artifact["rules"])
+    _new_rows[_first_disp] = {**_new_rows[_first_disp], "disposition": "UNDISPOSITIONED"}
+    _regr = sorted(
+        q
+        for q, v in _new_rows.items()
+        if q in _prior_rows
+        and not _is_undispositioned(_prior_rows[q]["disposition"])
+        and _is_undispositioned(v["disposition"])
+    )
+    assert _regr == [_first_disp], (
+        f"the per-row monotonicity comparison must catch the constructed retraction: {_regr}"
+    )
+    _n_undisp_now = sum(
+        1 for v in _artifact["rules"].values() if _is_undispositioned(v["disposition"])
+    )
+    print(
+        f"  green  claim cross-check + census ratchet (T051c): claim_key held to "
+        f"{len(_declared_keys)} declared GRADIENT_CLAIM keys derived from ONE census call "
+        f"(real key green, the T050 phantom key REDS, no-key + empty-surface refuse, "
+        f"incoming keys normalized); tools/rule_census.json holds to the live census -- "
+        f"{len(_artifact['rules'])} rule-bearing rows, {_n_undisp_now} UNDISPOSITIONED (the "
+        f"honest day-one count; regen_rule_census is the sanctioned edit path and REFUSES "
+        f"retractions + dead entries -- the mechanized ratchet); lag/rows-fell/stale/rise/"
+        f"emptied-disposition reds each constructed, the retraction comparison verified"
+    )
+
     # 2) Causal decomposition under sum, and the UNSOUND predictor's reachable red.
     #    The ordered-other-parts predictor is bit-exact (3 rules x 3 ablations,
     #    frozen bindings); the total-minus-part form is float-unsound -- proven by
@@ -1725,8 +2105,17 @@ def main():
         "declared, not resolved (no third port model). THE CENSUS, said as done: "
         "jepa's declaration is ENUMERATED (its factors held to the self-set "
         "in-harness); r_stdp's form is HAND-ADJUDICATED against the algebra's "
-        "incumbent-held arm; NO tree-wide enumeration gate exists -- that sweep is "
-        "T051c's. The 'level01'/'spikes_hz' strings are CROSS-TIER PINS on "
+        "incumbent-held arm; the tree-wide producers enumeration is T051c-wave's "
+        "(open, undated). The claim cross-check + the ratcheted 99-row disposition "
+        "census LANDED at T051c: check_claim (phantom keys red against the declared "
+        "surface; existence-only, ungoverned-resolves-green, keys normalized) + "
+        "tools/rule_census.json held to the live census by rule_census_check, with "
+        "--regen-census on THIS module as the sanctioned edit path refusing "
+        "retractions and dead entries. TWO ratcheted artifacts ride ONE census "
+        "walker, different quantities (the P2 sentence the panel demanded): "
+        "gradient_claim_baseline.json ratchets CLASSIFICATION counts "
+        "(machine-written, refuses worse); rule_census.json ratchets DISPOSITIONS "
+        "(the regen refuses retraction). The 'level01'/'spikes_hz' strings are CROSS-TIER PINS on "
         "dopamine_nuclei.da_out's declared unit, not exercise values -- a red there "
         "attributes to the PORT, not this module. check_producers and rule_charge are "
         "MODULE-LEVEL functions: outside method_dormancy_gate's ClassDef scan, no "
@@ -1734,7 +2123,11 @@ def main():
         "gates, and this gate-run self-check is their only charged surface, said "
         "plainly. Arbitration ORDER is bare add() insertion order -- not learned, not "
         "recorded in the payload; the register's order disclosure is paid there. "
-        "claim_key is a SLOT: the GRADIENT_CLAIM cross-check lands at T051c. "
+        "The claim_key cross-check LANDED at T051c (check_claim: a phantom key reds "
+        "against the gate's own declared surface), with the per-rule disposition "
+        "census (tools/rule_census.json, 99 rule-bearing rows, 57 honestly "
+        "UNDISPOSITIONED day-one) held to the live tree by rule_census_check -- the "
+        "WAVE advances by dispositioning rows, the ratchet forbids lag/stale/rise. "
         "Harness constants (coefficients, budgets, the 100-step horizon, w0/g) are "
         "exercise values under P1 exception (c) -- this module is a wire exemption "
         "with zero live callers; the exception expires with T053's tick-charged "
@@ -1780,12 +2173,21 @@ def main():
         "attribution's first reader: three-way verdicts incl. ENDPOINT-NEUTRAL on the "
         "orbit-cancelled push and sequential UNCHARGEABLE-not-crash; 6 refusals) + the "
         "stack-sandwich MERGE (gain two-writer + base weights deposit-then-trim, each vs "
-        "spied production calls; remainder disclosed) + causal decomposition with the "
-        "unsound predictor's constructed bit-red + swept sequential guarantee + consumed "
-        "attribution surface + 19 battery refusals (section 5's census, battery-local)"
+        "spied production calls; remainder disclosed) + the claim cross-check and census "
+        "ratchet (T051c: a phantom claim_key reds against the declared surface; the 99-row "
+        "disposition artifact held to the live census, lag/stale/rise reds constructed) + "
+        "causal decomposition with the unsound predictor's constructed bit-red + swept "
+        "sequential guarantee + consumed attribution surface + 19 battery refusals "
+        "(section 5's census, battery-local)"
     )
     return 0
 
 
 if __name__ == "__main__":
+    import sys as _sys_main
+
+    if "--regen-census" in _sys_main.argv[1:]:
+        _out, _nrows, _nund = regen_rule_census()
+        print(f"wrote {_out}: rows={_nrows} undispositioned={_nund}")
+        raise SystemExit(0)
     raise SystemExit(main())
