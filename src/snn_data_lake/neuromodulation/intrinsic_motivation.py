@@ -141,9 +141,12 @@ class CuriosityDrive:
         the error is FLAT -- whether mastered-low OR unlearnable-high. That the high-but-flat (noisy) case
         gives ~0 -- not stuck-high -- is the anti-noisy-TV property: it is the DECREASE of a smoothed error,
         never the raw error. (MEASURED at T046a and worth stating: the EMA pair converges to a difference
-        of EXACTLY 0.0 on a flat stream at EVERY error level -- the structural property the spiking
-        sibling's threshold pools lack below their calibration reference, which is why T046a's |LP|
-        facade adopts THIS drive.)"""
+        of EXACTLY 0.0 on an UNJITTERED flat stream at EVERY error level -- the structural property the
+        spiking sibling's then-shipped threshold-pool pair lacked below its calibration reference, which
+        is why T046a's |LP| facade adopts THIS drive. RE-DATED 2026-08-26: the spiking sibling was
+        rebuilt to run this same EMA pair over LIF spike counts, closing that defect; what still
+        separates the two is the spiking form's count-quantization residuals -- its own docstring
+        carries the measurements -- and the facade's adoption of THIS drive stands unchanged.)"""
         st = self._ctx.get(context_key)
         if st is None:
             return 0.0
