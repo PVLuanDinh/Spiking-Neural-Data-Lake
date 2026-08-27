@@ -218,13 +218,17 @@ def test_artifact_is_tracked_and_loadable():
     # means a declaration was lost.
     pytest.importorskip("nir")
     m = WiringManifest.load_artifact(ARTIFACT)
-    assert (len(m.ports), len(m.edges)) == (30, 16), (
-        "the T047 artifact carries the patience wire + the interoceptive TRACT (relayed "
+    # T052-iii added the vision/audition afferent lanes (2 OUT ports at the boundary,
+    # 2 IN ports on brain, 2 edges -- landing WITH their consumers, the T028 precedent:
+    # _perceive_real/_perceive_audio now acquire every frame through the contracts).
+    assert (len(m.ports), len(m.edges)) == (34, 18), (
+        "the T052-iii artifact carries the patience wire + the interoceptive TRACT (relayed "
         "through thal_relay, with interoception_out's consumer) + the glia self-edge + the "
         "predictor port + the third-factor port + the workspace composite + the report "
         "channel and its brain consumer + the proprioceptive afferent lane + the efferent "
         "lane (action_out -> efferent_in) + the |LP| pair with its discharged surprise "
-        "edge + the growth gate's lp_in consumer (30 ports, 16 edges); a different census "
+        "edge + the growth gate's lp_in consumer + the vision/audition event-frame lanes "
+        "(34 ports, 18 edges); a different census "
         "means a registrant landed without updating this test's premise"
     )
     assert set(m.edges) == {
@@ -249,5 +253,9 @@ def test_artifact_is_tracked_and_loadable():
         ("percept_surprise", "surprise_out", "learning_progress", "surprise_in"),
         # T047: T046a's lp_out disposition discharged -- the growth gate consumes |LP|.
         ("learning_progress", "lp_out", "growth_stop", "lp_in"),
+        # T052-iii: T036's S1 disposition discharged -- the perception tiers consume the
+        # packs through the boundary contracts (identity-on-valid, fail-closed-to-no-percept).
+        ("afferent_boundary", "vision_out", "brain", "vision_in"),
+        ("afferent_boundary", "audition_out", "brain", "audition_in"),
     }, "the committed edges must be exactly the declared subscriptions"
     assert m.all_findings() == [], "the committed artifact must satisfy all five checks"

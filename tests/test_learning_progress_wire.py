@@ -30,7 +30,14 @@ def _perceiving_brain(n_frames=6):
     b = make_brain(seed=0)
     b._perceiving_real = True
     b._perception_enc = _StubEnc()
-    b._real_frames = [object()] * n_frames
+    # T052-iii: frames now enter through the boundary's vision contract, so the stub
+    # frames must be contract-VALID (shape + f4 + finite + nonnegative); the stub
+    # ENCODER still ignores their content -- the pattern's intent is unchanged.
+    import numpy as _np
+
+    from snn_data_lake.substrate.afferent_boundary import VISION_FRAME_SHAPE
+
+    b._real_frames = [_np.zeros(VISION_FRAME_SHAPE, "float32")] * n_frames
     b._real_labels = [0] * n_frames
     return b
 

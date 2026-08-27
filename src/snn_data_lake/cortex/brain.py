@@ -686,7 +686,11 @@ class Brain:
                         # a pack that LOADS is not a pack that carries rows. An empty .npz used to
                         # set this flag, and the first index into it landed in the blanket except
                         # below -- so the brain reported perceiving real event-vision while holding
-                        # zero frames. The claim now rests on a counted value.
+                        # zero frames. The claim now rests on a counted value. T052-iii adds a
+                        # SECOND way this flag can be True while nothing flows, disclosed rather
+                        # than hidden: a custom pack whose binning differs from the boundary's
+                        # pinned contract shape fail-closes EVERY frame at the door (percepts 0,
+                        # acc None, this flag still True -- rows exist, they just never validate).
                         self._perceiving_real = bool(self._real_frames.size)
             except Exception:  # VISION only. The auditory tier below is untouched by this.
                 self._perception_enc = None
@@ -1540,7 +1544,15 @@ class Brain:
         try:
             i = self._real_ptr % len(self._real_frames)
             self._real_ptr += 1
-            frame = self._real_frames[i]
+            # T052-iii: every frame enters through the DECLARED vision contract, so the
+            # anatomy (afferent_boundary.vision_out -> brain.vision_in) and the runtime
+            # acquisition are one code (the proprioception pattern). Fail-closed = no
+            # percept this tick.
+            from snn_data_lake.substrate.afferent_boundary import transduce_vision_events
+
+            frame, _present = transduce_vision_events(self._real_frames[i])
+            if not _present:
+                return None
             latent = self.perceive_event(frame)  # torch spiking encoder -> latent (dim 64)
             if latent is None:
                 return None
@@ -1651,7 +1663,12 @@ class Brain:
         try:
             i = self._audio_ptr % len(self._audio_frames)
             self._audio_ptr += 1
-            frame = self._audio_frames[i]
+            # T052-iii: the audition contract, exactly as vision above.
+            from snn_data_lake.substrate.afferent_boundary import transduce_audition_events
+
+            frame, _present = transduce_audition_events(self._audio_frames[i])
+            if not _present:
+                return None
             latent = self._audio_enc.encode(frame)  # e-prop spiking auditory encoder -> latent
             if latent is None:
                 return None
@@ -5063,6 +5080,46 @@ def declare_ports(manifest):
         ),
     )
     manifest.declare_edge("afferent_boundary", "proprio_out", "brain", "proprio_in")
+    # T052-iii: the vision/audition afferent lanes' consumers -- _perceive_real and
+    # _perceive_audio acquire every frame through the boundary's contracts (the
+    # declared route and the runtime call are one code, the proprio pattern above).
+    # Shapes IMPORTED from the boundary's pinned constants, never retyped (the honesty
+    # panel counted the shape living in three places; this kills the port copy).
+    from snn_data_lake.substrate.afferent_boundary import (
+        AUDITION_FRAME_SHAPE,
+        VISION_FRAME_SHAPE,
+    )
+
+    manifest.declare_port(
+        "brain",
+        Port(
+            name="vision_in",
+            region="cortex",
+            shape=VISION_FRAME_SHAPE,
+            dtype="f4",
+            unit="nmnist_event_frame",
+            encoding="EVENT",
+            kind="IN",
+            declaring_module="brain",
+            join_policy="arbitrate",
+        ),
+    )
+    manifest.declare_edge("afferent_boundary", "vision_out", "brain", "vision_in")
+    manifest.declare_port(
+        "brain",
+        Port(
+            name="audition_in",
+            region="cortex",
+            shape=AUDITION_FRAME_SHAPE,
+            dtype="f4",
+            unit="shd_event_frame",
+            encoding="EVENT",
+            kind="IN",
+            declaring_module="brain",
+            join_policy="arbitrate",
+        ),
+    )
+    manifest.declare_edge("afferent_boundary", "audition_out", "brain", "audition_in")
 
 
 if __name__ == "__main__":

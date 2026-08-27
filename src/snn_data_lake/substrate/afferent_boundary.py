@@ -32,11 +32,21 @@ THE MODALITY INVENTORY, pinned (each row's stage and disposition stated once, he
     This boundary declares NO second interoceptive row (P2); an earlier draft claimed the
     tract terminated at T031's coalition channels, and the review measured that edge
     absent.
-  * VISION / AUDITION -- S1, DISPOSITIONED NOT DECLARED (the T028 precedent: an edge
-    lands WITH its consumer): the real-percept attention streams exist
-    (Brain._attend_real_stream) but their transduction contract is S1's work; declaring
-    rows today would be anatomy ahead of the boundary that gives them meaning. Recorded
-    in SYNTHESIS section 6 with this task's date.
+  * VISION / AUDITION -- DECLARED AND CONSUMED as of specs/022 T052-iii (2026-08-27;
+    this row said "S1, DISPOSITIONED NOT DECLARED" from T036 until then, honoring the
+    T028 edge-lands-WITH-its-consumer precedent -- the consumers now exist and
+    delegate): `vision_out`/`audition_out` carry the TRACKED packs' binned event
+    frames (shapes pinned as VISION_FRAME_SHAPE/AUDITION_FRAME_SHAPE), and
+    Brain._perceive_real/_perceive_audio acquire every frame THROUGH
+    transduce_vision_events/transduce_audition_events, so the declared contract and
+    the runtime acquisition are one code (the proprioception pattern). CHARGE honesty:
+    these rows declare the TRANSDUCTION lane, not a new capability -- the perception
+    tiers' measured accuracies predate them and are unchanged (the boundary is
+    identity-on-valid); what the rows add is validation at the door and anatomy that
+    matches runtime. The door's validation, in full: ndarray + pinned shape + float32
+    + finite + nonnegative (each check panel-forced; an invalid frame is a silent
+    no-percept-this-tick, and a custom re-binned pack fail-closes EVERY frame -- both
+    disclosed at the contract and at brain's counted-claim note).
   * CHEMOSENSATION -- OUT OF SCOPE on PROVENANCE: no sensor exists, simulated or real;
     a declared row would certify a modality with no source of truth.
 
@@ -166,6 +176,79 @@ def proprioception_delta(theta_before, theta_after):
     return sum(ds) / n
 
 
+#: The pack event-frame CONTRACT shapes, pinned once (specs/022 T052-iii). These are the
+#: shapes the TRACKED packs carry and the e-prop encoders consume -- (T, polarity, H, W)
+#: binned N-MNIST events and (T, channels) binned SHD cochlear events. A frame is data;
+#: its shape is anatomy, so the contract pins it here where the ports are declared.
+#: DISCLOSED NARROWING (the T052-iii honesty panel measured it): T is a PRODUCER
+#: parameter (training/make_packs.py's binning), and both encoders happily consume a
+#: re-binned pack -- but this contract does not, so a custom SNN_PERCEPTION_PACK /
+#: SNN_SHD_PACK with different binning now FAIL-CLOSES every frame (zero percepts,
+#: silently -- see the counted-claim note at brain.py's _perceiving_real). The pin is
+#: deliberate (an un-pinned shape is no contract) and the cost is said here: re-binned
+#: packs need this constant moved WITH them, one commit. Producer<->contract drift is
+#: not machine-gated; this comment is the record a drift would falsify.
+VISION_FRAME_SHAPE = (15, 2, 34, 34)
+AUDITION_FRAME_SHAPE = (100, 700)
+
+
+# distinct-from: cortex/brain.py (_perceive_real/_perceive_audio) -- the CONSUMERS this
+#   contract now fronts (they delegate validation here; encoding stays theirs). Read.
+# distinct-from: substrate/kernel_state.py -- rebuilds KERNEL state from an HDF5 frame;
+#   'frame' vocabulary only. Site read.
+# distinct-from: substrate/arm_view.py -- PNG camera frames for the cockpit; unrelated.
+#   Site read.
+# distinct-from: cortex/theta_gamma_code.py -- decodes LIF firing EVENTS into theta
+#   cycles; 'events' vocabulary only. Site read.
+def _transduce_events(frame, want_shape):
+    """Shared event-frame rule: (frame, present). None / non-ndarray / wrong-shape /
+    wrong-dtype / non-finite / negative -> (None, False) -- FAIL-CLOSED for a percept
+    means NO PERCEPT THIS TICK (the consumer's existing skip branch), never a
+    fabricated stimulus; the T036 distance precedent's split does not apply because no
+    reflex consumes these lanes (representation-only, reflex path untouched by
+    construction). The checks, each panel-forced: ndarray EXPLICITLY (a first draft's
+    bare `except Exception` rendered CUDA/grad tensors and MemoryErrors alike as
+    'missing frame'; a CPU torch tensor even PASSED -- the contract now names its type
+    instead of duck-typing it); dtype float32 (the ports declare f4 and the manifest's
+    type check is declaration-level -- without this line the declaration was
+    decoration); nonnegative (EVENT counts are counts). DISCLOSED LIMITATION: a
+    fail-closed skip is invisible to state() -- no skip counter exists; the accuracy
+    denominator honestly excludes skips (panel-verified: pointer advances, stream
+    recovers, the poisoned index never counts as seen)."""
+    import numpy as _np
+
+    if frame is None or not isinstance(frame, _np.ndarray):
+        return (None, False)
+    if tuple(frame.shape) != want_shape or frame.dtype != _np.float32:
+        return (None, False)
+    # no try/except here ON PURPOSE: after the ndarray + float32 gates above, isfinite
+    # and >= cannot raise -- a defensive except would be an unreachable branch worn as
+    # rigor (the first draft's bare `except Exception` was the real hazard, swallowing
+    # device/type errors as 'missing frame').
+    if not bool(_np.isfinite(frame).all()) or not bool((frame >= 0).all()):
+        return (None, False)
+    return (frame, True)
+
+
+def transduce_vision_events(frame):
+    """The VISION modality's boundary rule (T052-iii; discharges T036's S1 disposition):
+    a binned N-MNIST event frame -> (frame, present). The transduction is the IDENTITY
+    on a valid frame -- the e-prop encoder consumes raw binned events, so the contract's
+    job is validation (ndarray + shape + float32 + finite + nonnegative -- the full
+    list, panel-hardened; see _transduce_events for why each), not transformation; the
+    frame the consumer sees IS the frame the pack carries, asserted by the self-check.
+    An invalid frame is a silent no-percept-this-tick (disclosed in _transduce_events:
+    no skip counter exists)."""
+    return _transduce_events(frame, VISION_FRAME_SHAPE)
+
+
+def transduce_audition_events(frame):
+    """The AUDITION modality's boundary rule (T052-iii): a binned SHD cochlear event
+    frame -> (frame, present). Identity-on-valid with the SAME full validation list as
+    vision (ndarray + shape + float32 + finite + nonnegative)."""
+    return _transduce_events(frame, AUDITION_FRAME_SHAPE)
+
+
 def declare_ports(manifest):
     """Manifest registrant (specs/022 T036): the S0 afferent rows. `proprio_out` carries
     the folded joint scalar; the consumer edge is declared by the consumer
@@ -184,6 +267,37 @@ def declare_ports(manifest):
             dtype="f4",
             unit="level01",
             encoding="SCALAR_DENSE",
+            kind="OUT",
+            declaring_module="afferent_boundary",
+            delivery_policy="all-or-none",
+        ),
+    )
+    # T052-iii: the vision/audition afferent rows, landing WITH their consumers (the
+    # T028 precedent) -- brain's perception tiers consume the packs TODAY and now do so
+    # through these contracts (the delegation in _perceive_real/_perceive_audio).
+    manifest.declare_port(
+        "afferent_boundary",
+        Port(
+            name="vision_out",
+            region="substrate",
+            shape=VISION_FRAME_SHAPE,
+            dtype="f4",
+            unit="nmnist_event_frame",
+            encoding="EVENT",
+            kind="OUT",
+            declaring_module="afferent_boundary",
+            delivery_policy="all-or-none",
+        ),
+    )
+    manifest.declare_port(
+        "afferent_boundary",
+        Port(
+            name="audition_out",
+            region="substrate",
+            shape=AUDITION_FRAME_SHAPE,
+            dtype="f4",
+            unit="shd_event_frame",
+            encoding="EVENT",
             kind="OUT",
             declaring_module="afferent_boundary",
             delivery_policy="all-or-none",
@@ -287,6 +401,68 @@ def _main():
         f"vs neutered {len(dead_vals)}) -- else the declared lane carries nothing"
     )
 
+    # ---- T052-iii: the vision/audition event-frame contracts (identity-on-valid,
+    # fail-closed-to-no-percept), proven against the REAL tracked pack -- LOUD when the
+    # pack is absent (the percept_surprise precedent: a tracked artifact missing is a
+    # broken checkout, not an optional extra).
+    import pathlib as _pl
+
+    import numpy as _np
+
+    # repo root via the percept_surprise precedent (its :293 resolves the SAME pack this
+    # way) -- NOT via gradient_claim_gate._repo_root: importing a gate from this LIVE
+    # module made three exempt gate modules statically reachable and fired the
+    # stale-EXEMPT guard (caught in-wave, the T036 same-run precedent).
+    _repo = _pl.Path(__file__).resolve().parents[3]
+    _pack_p = _repo / "models" / "nmnist_pack.npz"
+    assert _pack_p.exists(), (
+        f"T052-iii contract check CANNOT VERIFY: {_pack_p} absent -- the pack is TRACKED; "
+        "regenerate with `python -m training.make_packs`."
+    )
+    _fr = _np.load(_pack_p)["frames"][0]
+    _out, _pres = transduce_vision_events(_fr)
+    assert _pres and _out is _fr, (
+        "a valid pack frame must pass IDENTITY (the encoder sees the pack's own bytes)"
+    )
+    for _bad in (None, _fr[0], _fr.reshape(-1)):
+        _o2, _p2 = transduce_vision_events(_bad)
+        assert _o2 is None and not _p2, "missing/mis-shaped frames must be (None, False)"
+    _nanf = _fr.copy()
+    _nanf[0, 0, 0, 0] = float("nan")
+    _o3, _p3 = transduce_vision_events(_nanf)
+    assert _o3 is None and not _p3, "a non-finite frame must be (None, False) -- fail-closed"
+    # AUDITION: the FULL battery against ITS OWN tracked pack -- the first draft ran a
+    # single synthetic wrong-shape arm while the printed claim covered both modalities
+    # (the adversarial panel measured 1 of 6 arms; shd_pack.npz sits tracked in the
+    # same tree). Symmetric with vision, plus the panel-forced type/dtype/negativity
+    # reds on both lanes.
+    _apack_p = _repo / "models" / "shd_pack.npz"
+    assert _apack_p.exists(), (
+        f"T052-iii contract check CANNOT VERIFY: {_apack_p} absent -- the pack is TRACKED; "
+        "regenerate with `python -m training.make_packs`."
+    )
+    _afr = _np.load(_apack_p)["frames"][0]
+    _ao, _ap = transduce_audition_events(_afr)
+    assert _ap and _ao is _afr, "a valid SHD pack frame must pass IDENTITY"
+    for _abad in (None, _afr[0], _afr.T, _afr.reshape(-1)):
+        _o4, _p4 = transduce_audition_events(_abad)
+        assert _o4 is None and not _p4, "missing/mis-shaped audition frames must be (None, False)"
+    _ananf = _afr.copy()
+    _ananf[0, 0] = float("nan")
+    assert transduce_audition_events(_ananf) == (None, False), "non-finite audition -> fail-closed"
+    assert transduce_vision_events(_fr.astype("float64")) == (None, False), "f8 must red (f4 port)"
+    assert transduce_audition_events(_afr.astype("int32")) == (None, False), "i4 must red"
+    _negf = _fr.copy()
+    _negf[0, 0, 0, 0] = -1.0
+    assert transduce_vision_events(_negf) == (None, False), "negative event counts must red"
+
+    class _DuckProbe4D:  # harness-local: a plausible .shape on a non-ndarray (the
+        shape = VISION_FRAME_SHAPE  # duck-typing hole a CPU torch tensor walked through)
+
+    assert transduce_vision_events(_DuckProbe4D()) == (None, False), (
+        "a non-ndarray with a plausible .shape must red (the type is named, not duck-typed)"
+    )
+
     print(
         f"\nself-check OK: the sentinel is (nan, False) and FAIL-CLOSED end-to-end on a "
         f"real arm (lazy-forwarded missing metres -> EMERGENCY_STOP, matching the "
@@ -294,7 +470,9 @@ def _main():
         f"normalizer with both divergence halves disclosed; the fold matches _safe_ctx "
         f"verbatim with wrap semantics; proprio neuter A/B: live {len(live_vals)} distinct "
         f"values vs neutered {len(dead_vals)} (the causal loop the DECLARED lane closes). "
-        f"The ranging pair is CONTRACT-until-producer, stated in the inventory."
+        f"The ranging pair is CONTRACT-until-producer, stated in the inventory; the "
+        f"vision/audition contracts are identity-on-valid against the real pack, "
+        f"fail-closed to no-percept on missing/mis-shaped/non-finite (T052-iii)."
     )
     return 0
 
