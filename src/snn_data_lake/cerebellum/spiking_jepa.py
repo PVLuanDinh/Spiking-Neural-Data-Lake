@@ -60,7 +60,8 @@ because at this toy scale they cannot be demonstrated against a control that gen
     win at the pinned seed is seed luck, the same architecture-dominates-learning story as claims 3 and 5.
 
 Rule choice, honestly. The shipped default is the NON-CONTRASTIVE LPL slowness form (rule="lpl"). A
-CONTRASTIVE ESPP variant (rule="espp") is kept selectable, but at this toy scale (only 3 shape identities,
+CONTRASTIVE ESPP variant (rule="espp") is kept selectable (its math lives in plasticity/espp_rule
+since T052-i -- the palette element; this branch delegates), but at this toy scale (only 3 shape identities,
 temporally persistent, so contrastive negatives are dominated by the SAME identity at a different position)
 it does NOT improve the representation and does NOT give a robust predict-beats-identity result -- so it is
 NOT the default. No claim of event-camera SOTA, motion-equivariance, or "beats backprop".
@@ -102,6 +103,7 @@ import zlib
 
 from snn_data_lake.cortex.is_snn_forward import SPARSITY, STABLE_GAIN
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.plasticity.espp_rule import espp_modulator_core
 from snn_data_lake.substrate._mathutils import dot, mean
 
 #: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
@@ -526,12 +528,12 @@ class SpikingJEPA:
         if self.rule == "espp":
             alpha = self.espp_alpha if self.anti_collapse else 0.0
             lh = self.lambda_homeo if self.anti_collapse else 0.0
-            neg = self._sample_neg(l)
-            for j in range(n):
-                contr = lp * (2.0 * (sb[j] - echo[j]) - 2.0 * alpha * (sb[j] - neg[j]))
-                homeo = lh * (mu[j] - self.rho_star)
-                m[j] = -(contr + homeo)
-            return m
+            # T052-i (P2 ADOPT): the contrastive math lives in plasticity/espp_rule --
+            # the palette element -- and this branch DELEGATES (one mechanism; the
+            # inline expression left this file in the same commit).
+            return espp_modulator_core(
+                n, sb, echo, self._sample_neg(l), mu, lp, alpha, lh, self.rho_star
+            )
         lv = self.lambda_var if self.anti_collapse else 0.0
         lc = self.lambda_cov if self.anti_collapse else 0.0
         lh = self.lambda_homeo if self.anti_collapse else 0.0
@@ -592,10 +594,14 @@ class SpikingJEPA:
 
         HONEST REMAINDER (partial extraction -- P2 merge-must-reduce NOT discharged
         here, said plainly: the incumbent block REMAINS the production path and this
-        method adds a second expression): rule="espp", the lambda_jepa top-layer
-        addition, and transport-gated bottom sites (gate!=1) stay in-module
-        undeclared; espp/transport/freeze_top instances REFUSE (their production dw
-        is gated or differently composed -- an identical declaration would be a lie).
+        method adds a second expression): the lambda_jepa top-layer addition and
+        transport-gated bottom sites (gate!=1) stay in-module undeclared;
+        espp/transport/freeze_top instances REFUSE (their production dw is gated or
+        differently composed -- an identical declaration would be a lie). The
+        rule='espp' branch LEFT this remainder at T052-i: its math was extracted to
+        plasticity/espp_rule (this module's branch delegates) and espp_synapse_rule
+        there is its declaration -- each branch declares itself, neither declares
+        the other.
 
         DORMANCY, said where a reader looks: this method has ZERO production callers
         (consumers = this module's self-check + the composer-palette smoke), its host
@@ -1854,9 +1860,11 @@ def main():
         "module is dormancy_gate EXEMPT `permanent`, and BOTH method-grade gates structurally "
         "miss the method (no LEARN_VERB; host outside reachable()). Its first tick-charged use "
         "is UNDATED; the algebra/composer siblings' T053 expiry is discharged by iSTDP's OWN "
-        "declaration there, not by this rule. UNDECLARED REMAINDER: the rule='espp' branch, the "
-        "lambda_jepa top-layer addition, and transport-gated (gate!=1) bottom sites -- espp/"
-        "transport/freeze_top instances REFUSE rather than receive a lying declaration. The five "
+        "declaration there, not by this rule. UNDECLARED REMAINDER (shrunk at T052-i): the "
+        "lambda_jepa top-layer addition and transport-gated (gate!=1) bottom sites -- espp/"
+        "transport/freeze_top instances REFUSE rather than receive a lying declaration; the "
+        "rule='espp' branch is declared by plasticity/espp_rule.espp_synapse_rule since T052-i "
+        "(the branch delegates its math there). The five "
         "pre-collapsed factors (d_pred, d_mu, inv_var, cov_pull, d_homeo) are caller-computed "
         "state, defined BY _elig/_surrogate/_update_stats -- a defect inside those definitions "
         "is out of equivalence scope (the delta arm binds everything after them). Case coverage: "

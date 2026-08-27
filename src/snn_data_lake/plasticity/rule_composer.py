@@ -733,8 +733,22 @@ _CENSUS_ADJUDICATED = (
         "cerebellum/spiking_jepa.py",
         None,
         "mixed -- the LOCAL three-factor block is EXPRESSED at T051b-i (lpl_synapse_rule, "
-        "five named pre-collapsed factors, held to the production path); the "
+        "five named pre-collapsed factors, held to the production path) and its "
+        "rule='espp' branch at T052-i (delegated to plasticity/espp_rule); the "
         "readout/predictor gradient half is not-expressible (tensor family, T050 census)",
+    ),
+    (
+        "plasticity/espp_rule.py",
+        "espp_modulator_core",
+        "expressed -- T052-i: the extracted incumbent math (jepa's rule='espp' branch "
+        "delegates here); held by the frozen-transcription regression arm (tol=0) and "
+        "bound to the applied weight through the DELTA arm's declaration",
+    ),
+    (
+        "plasticity/espp_rule.py",
+        "espp_synapse_rule",
+        "expressed -- T052-i: authors the per-synapse declaration through the T050 "
+        "algebra; held to the applied weight by its BIT/FULL/DELTA arms",
     ),
     (
         "plasticity/homeostatic_plasticity_stack.py",
@@ -1877,8 +1891,10 @@ def main():
         f"{len(_declared_keys)} declared GRADIENT_CLAIM keys derived from ONE census call "
         f"(real key green, the T050 phantom key REDS, no-key + empty-surface refuse, "
         f"incoming keys normalized); tools/rule_census.json holds to the live census -- "
-        f"{len(_artifact['rules'])} rule-bearing rows, {_n_undisp_now} UNDISPOSITIONED (the "
-        f"honest day-one count; regen_rule_census is the sanctioned edit path and REFUSES "
+        f"{len(_artifact['rules'])} rule-bearing rows, {_n_undisp_now} UNDISPOSITIONED (LIVE "
+        f"counts from the committed artifact, not a frozen figure -- a 'day-one' label on "
+        f"this line once carried a drifting number, the T052-i panel's overflow class; "
+        f"regen_rule_census is the sanctioned edit path and REFUSES "
         f"retractions + dead entries -- the mechanized ratchet); lag/rows-fell/stale/rise/"
         f"emptied-disposition reds each constructed, the retraction comparison verified"
     )
@@ -2106,8 +2122,9 @@ def main():
         "jepa's declaration is ENUMERATED (its factors held to the self-set "
         "in-harness); r_stdp's form is HAND-ADJUDICATED against the algebra's "
         "incumbent-held arm; the tree-wide producers enumeration is T051c-wave's "
-        "(open, undated). The claim cross-check + the ratcheted 99-row disposition "
-        "census LANDED at T051c: check_claim (phantom keys red against the declared "
+        "(open, undated). The claim cross-check + the ratcheted disposition "
+        "census (99 rows at its T051c landing; the live count is the artifact's own "
+        "ratchet_baseline, never this string) LANDED at T051c: check_claim (phantom keys red against the declared "
         "surface; existence-only, ungoverned-resolves-green, keys normalized) + "
         "tools/rule_census.json held to the live census by rule_census_check, with "
         "--regen-census on THIS module as the sanctioned edit path refusing "
@@ -2125,8 +2142,10 @@ def main():
         "recorded in the payload; the register's order disclosure is paid there. "
         "The claim_key cross-check LANDED at T051c (check_claim: a phantom key reds "
         "against the gate's own declared surface), with the per-rule disposition "
-        "census (tools/rule_census.json, 99 rule-bearing rows, 57 honestly "
-        "UNDISPOSITIONED day-one) held to the live tree by rule_census_check -- the "
+        "census (tools/rule_census.json; 99 rows / 56 UNDISPOSITIONED / 43 dispositioned "
+        "were the DAY-ONE figures -- the committed artifact's own ratchet_baseline; a '57' "
+        "that stood here through T051c was a pre-landing draft figure the artifact never "
+        "held, caught by the T052-i panel) held to the live tree by rule_census_check -- the "
         "WAVE advances by dispositioning rows, the ratchet forbids lag/stale/rise. "
         "Harness constants (coefficients, budgets, the 100-step horizon, w0/g) are "
         "exercise values under P1 exception (c) -- this module is a wire exemption "
@@ -2174,7 +2193,7 @@ def main():
         "orbit-cancelled push and sequential UNCHARGEABLE-not-crash; 6 refusals) + the "
         "stack-sandwich MERGE (gain two-writer + base weights deposit-then-trim, each vs "
         "spied production calls; remainder disclosed) + the claim cross-check and census "
-        "ratchet (T051c: a phantom claim_key reds against the declared surface; the 99-row "
+        "ratchet (T051c: a phantom claim_key reds against the declared surface; the "
         "disposition artifact held to the live census, lag/stale/rise reds constructed) + "
         "causal decomposition with the unsound predictor's constructed bit-red + swept "
         "sequential guarantee + consumed attribution surface + 19 battery refusals "

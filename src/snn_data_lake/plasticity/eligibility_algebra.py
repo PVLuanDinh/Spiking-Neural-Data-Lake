@@ -40,8 +40,12 @@ spiking_jepa's LPL modulator: the cov reduction, the state division, and the
 anti_collapse-conditional coefficients all discharge through five caller-computed
 pre-collapsed factors (SpikingJEPA.lpl_synapse_rule, held to the production path
 by this module's equivalence_check); the pre-collapse COSTS five state quantities
-the caller owns, and only the layer-conditional lambda_jepa top term plus the
-espp branch stay outside the declaration. NOT EXPRESSIBLE -- the eprop tensor
+the caller owns, and the layer-conditional lambda_jepa top term plus
+transport-gated (gate!=1) sites stay outside the declaration (the espp branch
+joined the declared side at T052-i: plasticity/espp_rule.espp_synapse_rule
+authors it through this same contract, three pre-collapsed deviation factors,
+gate==1 bottom sites only -- the same scoping as the lpl declaration).
+NOT EXPRESSIBLE -- the eprop tensor
 family (evaluate is SCALAR-only: float(tensor) raises). Rules become
 "expressible" by binding arbitrary structure as one factor -- the escape hatch
 is disclosed, not denied; the LPL pre-collapse is that hatch used honestly, each

@@ -262,6 +262,22 @@ EXEMPT = {
     # not compose the division machinery (the earlier "until T047 composes it" was a promise
     # at the wrong grain); composition is owed to the task that wires region-wide growth
     # from seed -- the growth-coverage gate's 1-of-10 red is its standing driver.
+    "espp_rule": (
+        "wire",
+        "specs/022 T052-i: the extracted ESPP palette element (P2 ADOPT -- "
+        "spiking_jepa's rule='espp' branch DELEGATES to espp_modulator_core; the "
+        "inline math left jepa in the same commit, one mechanism). Reachable only "
+        "through jepa, itself EXEMPT permanent, and only on the NON-DEFAULT "
+        "rule='espp' path -- so this row is honest about being presence, not "
+        "participation. Charged surface today: the registered self-check "
+        "(delegation-live rebind arm + BIT/FULL/DELTA equivalence vs the applied "
+        "weight + coefficient pins incl. the composed 2*lp*alpha product + the "
+        "lpl/transport/freeze_top refusals). DATED CONSUMER: T052-ii, the "
+        "temporal-stream adoption benchmark (SHD/N-MNIST packs, EpisodeDriver's "
+        "same/different oracle as the supervisory negative source, vs the in-tree "
+        "supervised e-prop encoders with untrained-twin + random-encoder controls) "
+        "drives the core directly; this exemption retires or re-adjudicates there.",
+    ),
     "rule_composer": (
         "wire",
         "specs/022 T051a: the composition kernel (P8 invention #3's core) -- typed "

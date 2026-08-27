@@ -364,6 +364,7 @@ REGIONS = {
         "structural_rewiring",  # specs/022 T048: DEEP-R budget + MSP sign steering, slow clock
         "eligibility_algebra",  # specs/022 T050: sum-of-products authoring contract (three-factor rules)
         "rule_composer",  # specs/022 T051a: typed sets + naive-sum red + causal attribution (P8 #3 core)
+        "espp_rule",  # specs/022 T052-i: the extracted ESPP palette element (jepa's espp branch delegates)
         "competitive_learning",
         "criticality_regulator",
         "meta_plasticity",

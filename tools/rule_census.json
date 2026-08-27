@@ -6,7 +6,7 @@
   ],
   "note": "dispositions per T050's expressibility categories; UNDISPOSITIONED is the honest day-one state for unadjudicated LOCAL rules -- the WAVE (T051c-wave) fills rows; regen_rule_census enforces per-row monotonicity through the sanctioned edit path, rule_composer 1e polices membership vs the live census, and the ADVANCE direction (whether a disposition's text is honest) is review-grade, said plainly",
   "ratchet_baseline": {
-   "rows": 99,
+   "rows": 101,
    "undispositioned": 56
   },
   "source": "gradient_claim_gate.census() via rule_composer.regen_rule_census -- regeneration is the only edit path for rows; new adjudications join _CENSUS_ADJUDICATED there; the regen refuses disposition retractions and dead entries",
@@ -84,12 +84,12 @@
    "kind": "LOCAL"
   },
   "cerebellum/spiking_jepa.py::SpikingJEPA._readout_grad": {
-   "disposition": "mixed -- the LOCAL three-factor block is EXPRESSED at T051b-i (lpl_synapse_rule, five named pre-collapsed factors, held to the production path); the readout/predictor gradient half is not-expressible (tensor family, T050 census)",
+   "disposition": "mixed -- the LOCAL three-factor block is EXPRESSED at T051b-i (lpl_synapse_rule, five named pre-collapsed factors, held to the production path) and its rule='espp' branch at T052-i (delegated to plasticity/espp_rule); the readout/predictor gradient half is not-expressible (tensor family, T050 census)",
    "governed": true,
    "kind": "APPROXIMATES_GRADIENT"
   },
   "cerebellum/spiking_jepa.py::SpikingJEPA.train_step": {
-   "disposition": "mixed -- the LOCAL three-factor block is EXPRESSED at T051b-i (lpl_synapse_rule, five named pre-collapsed factors, held to the production path); the readout/predictor gradient half is not-expressible (tensor family, T050 census)",
+   "disposition": "mixed -- the LOCAL three-factor block is EXPRESSED at T051b-i (lpl_synapse_rule, five named pre-collapsed factors, held to the production path) and its rule='espp' branch at T052-i (delegated to plasticity/espp_rule); the readout/predictor gradient half is not-expressible (tensor family, T050 census)",
    "governed": true,
    "kind": "APPROXIMATES_GRADIENT"
   },
@@ -405,6 +405,16 @@
   },
   "plasticity/developmental_pruning.py::_train_epoch": {
    "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "plasticity/espp_rule.py::espp_modulator_core": {
+   "disposition": "expressed -- T052-i: the extracted incumbent math (jepa's rule='espp' branch delegates here); held by the frozen-transcription regression arm (tol=0) and bound to the applied weight through the DELTA arm's declaration",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "plasticity/espp_rule.py::espp_synapse_rule": {
+   "disposition": "expressed -- T052-i: authors the per-synapse declaration through the T050 algebra; held to the applied weight by its BIT/FULL/DELTA arms",
    "governed": true,
    "kind": "LOCAL"
   },

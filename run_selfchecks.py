@@ -267,6 +267,7 @@ CORE = [
     "plasticity.structural_rewiring",  # T048: A/A + budget-conservation + MSP sign arms
     "plasticity.eligibility_algebra",  # T050: incumbent bit-equivalence + mis-declaration red
     "plasticity.rule_composer",  # T051a: naive-sum red + causal/measured LOO + refusals by message
+    "plasticity.espp_rule",  # T052-i: delegation-live + BIT/FULL/DELTA equivalence + coefficient pins
     "plasticity.competitive_learning",
     "plasticity.lifelong_consolidation",
     "plasticity.criticality_regulator",
