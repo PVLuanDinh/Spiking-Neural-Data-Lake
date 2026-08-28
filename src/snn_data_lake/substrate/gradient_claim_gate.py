@@ -29,9 +29,9 @@ The census walks the WHOLE package. The rule-quality bounds assert on the GOVERN
 ungoverned rules are counted and REPORTED. That is the verdict contract `eprop_transport_gate`
 already ships, reused rather than reinvented: `reasoning/` alone is ~108 modules against ~22
 governed local rules, so asserting over both would gate this work on remediating a subtree it does
-not own. ONE stated deviation (2026-08-27, amended into FR-001a): PHANTOM_DECLARATION asserts
-ALL-scope -- it is a declaration-INTEGRITY bound, and every bearing row, governed or not, flows
-into tools/rule_census.json (see evaluate()).
+not own. TWO stated deviations (2026-08-27, amended into FR-001a): PHANTOM_DECLARATION and the
+unclassified bound assert ALL-scope -- census-INTEGRITY bounds, and every bearing row, governed
+or not, flows into tools/rule_census.json (see evaluate()).
 
 THE DECLARATION IS AUTHORITATIVE; THE INFERENCE IS A RECALL NET.
 Structural inference measured ~31% error in BOTH directions, with false negatives on exactly the
@@ -208,6 +208,19 @@ _STATE_OF = {
     CONTROL: CLASSIFIED_CONTROL,
     NOT_A_RULE: CLASSIFIED_NOT_A_RULE,
     DIRECT_SOLVE: CLASSIFIED_DIRECT_SOLVE,
+}
+
+#: Every state a census row may legally carry. `unclassified` is counted against THIS set,
+#: never against the accumulating counts dict -- the counting loop inserts every SEEN state
+#: as a key, so an `in out` membership test is vacuously true and the ABSOLUTE bound could
+#: never fire (measured 2026-08-27: a poisoned live census read unclassified=0, evaluate()=[],
+#: zero delta vs control). Derived from the same table resolve() indexes, so the bound it
+#: feeds is a source-edit tripwire, never a tree bound. Spec-side record of this
+#: enumeration: specs/020-eprop-cosine-scope/data-model.md "ClassificationState".
+_DECLARED_STATES = frozenset(_STATE_OF.values()) | {
+    MISSING_DECLARATION,
+    UNDETERMINABLE,
+    PHANTOM_DECLARATION,
 }
 
 #: The five brainstem files. They are ENUMERATED and CLASSIFIED like everything else, but a rule in
@@ -662,16 +675,18 @@ def census(root=None, overlay=None, brain_modules=None):
 def counts(rules, governed_only=True):
     """Per-state counts. `governed_only` is the ASSERT scope; report mode calls both ways."""
     sel = [r for r in rules if r["governed"]] if governed_only else list(rules)
-    out = {s: 0 for s in _STATE_OF.values()}
-    out[MISSING_DECLARATION] = 0
-    out[UNDETERMINABLE] = 0
-    out[PHANTOM_DECLARATION] = 0
+    # sorted() so key order is deterministic across processes (frozenset iteration order
+    # varies with PYTHONHASHSEED; nothing serializes this dict today, so determinism of
+    # the key order itself is the whole claim).
+    out = {s: 0 for s in sorted(_DECLARED_STATES)}
     for r in sel:
         out[r["state"]] = out.get(r["state"], 0) + 1
     out["rules_seen"] = len(sel)
     # UNDETERMINABLE counts as CLASSIFIED, so unclassified is 0 by construction unless a state
-    # escapes the table -- which is exactly the hole the ABSOLUTE bound exists to catch.
-    out["unclassified"] = sum(1 for r in sel if r["state"] not in out)
+    # escapes the declared table. Tested against _DECLARED_STATES, NEVER against `out` -- the
+    # loop above inserts every seen state as a key, so an `in out` test can never fire (the
+    # 2026-08-27 measured hole: poisoned census, unclassified=0, zero delta vs control).
+    out["unclassified"] = sum(1 for r in sel if r["state"] not in _DECLARED_STATES)
     return out
 
 
@@ -720,19 +735,25 @@ def ratchet_state(live, allowed):
 def evaluate(c, baseline, n_found, c_all=None):
     """[] when every bound holds, else a list of human-readable failures. PURE -- no I/O.
 
-    `c_all` (all-scope counts) widens exactly ONE bound past FR-001a's governed scope, and
-    the deviation is deliberate and stated: PHANTOM_DECLARATION is a DECLARATION-INTEGRITY
-    bound, not a rule-quality bound -- declarations are tree-wide artifacts and every
-    bearing row, governed or not, flows into tools/rule_census.json, so an ungoverned
-    phantom poisons a governed artifact. The panel measured the governed-only form leaving
-    82 ungoverned rules where a phantom was asserted by nothing and printed by nothing,
-    while the self-check advertised the red as proven. When c_all is None the check falls
-    back to c (the self-check's pure-composition arms pass both)."""
+    `c_all` (all-scope counts) widens exactly TWO bounds past FR-001a's governed scope, and
+    both deviations are deliberate and stated: PHANTOM_DECLARATION and unclassified are
+    CENSUS-INTEGRITY bounds, not rule-quality bounds -- declarations and states are
+    tree-wide artifacts and every bearing row, governed or not, flows into
+    tools/rule_census.json, so an ungoverned phantom or escaped state poisons a governed
+    artifact. The panel measured the governed-only forms leaving 82 ungoverned rows (33%)
+    outside both bounds and outside the printed number, while the self-check advertised
+    the red as proven. When c_all is None each check falls back to c (the self-check's
+    pure-composition arms pass both)."""
     base = (baseline or {}).get("counts", {})
     floor = (baseline or {}).get("rules_seen_floor", 0)
     out = []
-    if c["unclassified"] != 0:
-        out.append(f"unclassified={c['unclassified']} (ABSOLUTE bound is 0)")
+    _unc = (c_all if c_all is not None else c)["unclassified"]
+    if _unc != 0:
+        out.append(
+            f"unclassified={_unc} (ABSOLUTE bound is 0, ALL-scope -- a state outside the "
+            "declared table is a census hole wherever it sits; extend _DECLARED_STATES "
+            "only together with the state that joins the table)"
+        )
     _ph = (c_all if c_all is not None else c).get(PHANTOM_DECLARATION, 0)
     if _ph != 0:
         out.append(
@@ -794,7 +815,11 @@ def _report(rules, failures, n_found, baseline, elapsed):
         f"{allr[PHANTOM_DECLARATION]:<5} all   (ABSOLUTE 0, asserted ALL-scope -- a "
         f"declared key with no code)"
     )
-    print(f"  unclassified         : {gov['unclassified']}        <- must be 0")
+    print(
+        f"  unclassified         : {gov['unclassified']:<5} governed   "
+        f"{allr['unclassified']:<5} all   (ABSOLUTE 0, asserted ALL-scope -- a state "
+        f"outside the declared table; must be 0)"
+    )
     print(f"  parse failures       : {len(failures)}")
     for relpath, kind in failures:
         print(f"      {relpath}  ({kind})")
@@ -923,12 +948,12 @@ def _selfcheck():
         "        self.W -= 0.1 * x\n"
     )
 
-    def _main_composition_reds(rules_x, n_x):
+    def _main_composition_reds(rules_x, n_x, needle=PHANTOM_DECLARATION):
         gov_x = counts(rules_x, governed_only=True)
         return [
             f
             for f in evaluate(gov_x, None, n_x, c_all=counts(rules_x, governed_only=False))
-            if PHANTOM_DECLARATION in f
+            if needle in f
         ]
 
     # (a) GOVERNED phantom: overlay a GOVERNED module's relpath (cortex/tempotron.py is in
@@ -1013,6 +1038,42 @@ def _selfcheck():
         f"wrong class) REDS -- a local variable is not a provided symbol"
     )
     ok = ok and bool(inc_reds)
+
+    # RED 9 -- the unclassified ABSOLUTE bound (owner task 2026-08-27; the counting-loop
+    # incident: counts() tested membership against the dict its own loop had just inserted
+    # every SEEN state into, so a state escaping the declared table could NEVER count as
+    # unclassified -- a poisoned live census measured unclassified=0, evaluate()=[], zero
+    # delta vs control). Honest scope of what the fix buys: _DECLARED_STATES is derived
+    # from the same table resolve() indexes, so NO TREE INPUT can produce an escape -- the
+    # bound is a SOURCE-EDIT tripwire for a future state constant added to census()/
+    # resolve() without extending the set, and both arms construct the row synthetically
+    # because no walk can produce one. No additional census walk (base_rules is reused).
+    # Both arms run main()'s assert composition (RED 8's lesson, twelve lines up), and the
+    # bound asserts ALL-scope like PHANTOM, so the ungoverned arm is load-bearing.
+    i9 = next((i for i, r in enumerate(base_rules) if r["governed"]), None)
+    j9 = next((i for i, r in enumerate(base_rules) if not r["governed"]), None)
+    if i9 is None or j9 is None:
+        print("  FAIL   RED 9 needs one governed and one ungoverned row in the live census")
+        ok = False
+    else:
+        for label9, k9 in (("GOVERNED", i9), ("UNGOVERNED", j9)):
+            poisoned = [dict(r) for r in base_rules]
+            poisoned[k9]["state"] = "ZZ_NOT_A_DECLARED_STATE"
+            reds9 = _main_composition_reds(poisoned, base_n, needle="unclassified")
+            fired9 = counts(poisoned, governed_only=False)["unclassified"] == 1 and bool(reds9)
+            print(
+                f"  {'RED  ' if fired9 else 'FAIL '}  a state escaping the declared table on a "
+                f"{label9} row counts as unclassified and REDS the ABSOLUTE bound (ALL-scope)"
+            )
+            ok = ok and fired9
+        # GREEN control: the same composition over the UNPOISONED census raises no
+        # unclassified red -- else fixed and broken are indistinguishable.
+        clean9 = not _main_composition_reds(base_rules, base_n, needle="unclassified")
+        print(
+            f"  {'green' if clean9 else 'FAIL '}  CONTROL: the unpoisoned census raises no "
+            f"unclassified red through the same composition"
+        )
+        ok = ok and clean9
 
     print("self-check: " + ("OK" if ok else "FAILED"))
     return ok

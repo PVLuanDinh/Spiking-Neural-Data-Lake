@@ -409,6 +409,10 @@ jobs:
       # 2026-08-17: 6 of 6 constructed mutations fired, both controls held, exit 0, 13.3s.
       # Re-measured 2026-08-27 (PHANTOM_DECLARATION landing): 8 reds fired, 3 green controls held,
       # incl. the governed+ungoverned phantom pair and the T050 wrong-class shape.
+      # Re-measured 2026-08-27 (unclassified ALL-scope landing): 11 reds fired, 4 green controls
+      # held -- RED 9's governed+ungoverned escaped-state pair through main()'s assert composition,
+      # plus its unpoisoned-census control. (The prior line's "8 reds" under-counted its own tree
+      # by one: 9 RED prints existed at that commit.)
       #
       # Worth naming because it was found the hard way: the reds are re-verified by MUTATING THE
       # MODULE and confirming each test goes red. One escapee that survived was a guard test whose

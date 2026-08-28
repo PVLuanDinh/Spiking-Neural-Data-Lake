@@ -230,12 +230,16 @@ measured separation was, without reading code.
 - **FR-001a**: **CENSUS scope and ASSERT scope are different, and the split is required rather than
   incidental.** The census WALKS the whole tree; the absolute bound (FR-016) and both ratchets
   (FR-016a, FR-017) assert on the **GOVERNED tier only**, and ungoverned rules are counted and
-  REPORTED. *(AMENDED 2026-08-27, one stated deviation: the PHANTOM_DECLARATION absolute bound —
+  REPORTED. *(AMENDED 2026-08-27, two stated deviations: the PHANTOM_DECLARATION absolute bound —
   added by an owner task after this spec closed — asserts ALL-scope, because it is a
   DECLARATION-INTEGRITY bound rather than a rule-quality bound: every bearing row, governed or
   not, flows into tools/rule_census.json, so an ungoverned typo'd declaration poisons a governed
   artifact. The rule-quality bounds this clause scopes are unchanged; the deviation and its
-  reasoning live in gradient_claim_gate.evaluate()'s docstring.)* This is the verdict contract `substrate/eprop_transport_gate` already ships — it asserts
+  reasoning live in gradient_claim_gate.evaluate()'s docstring. Second deviation, same day:
+  the unclassified absolute bound (FR-016) likewise asserts ALL-scope — a state outside the
+  declared table is a census hole wherever it sits, and the governed-only form measurably
+  left 82 ungoverned rows outside both the bound and the printed number while the report
+  line read 0.)* This is the verdict contract `substrate/eprop_transport_gate` already ships — it asserts
   on governed findings and reports the rest — so the feature reuses an accepted failure contract
   instead of introducing a second one. Measured scale reason: `reasoning/` alone is ~108 modules
   against roughly 22 governed local rules, so asserting over both would make the initial baselines

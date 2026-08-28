@@ -65,6 +65,7 @@ default resolves to it, so it is not a drawer the classifier can sweep into. Its
 | `CLASSIFIED_DIRECT_SOLVE` | declared `DIRECT_SOLVE` | — (owes no cosine; locality NOT asserted) |
 | `MISSING_DECLARATION` | no declaration, inference says `CLAIM` | **RATCHET** (may fall, never rise) |
 | `UNDETERMINABLE` | no declaration, inference `UNKNOWN`, and no basis to decide | **RATCHET DOWN** (FR-016a) |
+| `PHANTOM_DECLARATION` | a DECLARED qualname whose symbol does not exist in the module | **ABSOLUTE 0, ALL-scope** (FR-001a deviation) |
 
 **`UNDETERMINABLE` counts as CLASSIFIED** (FR-016). Classified ≠ decided. Without this, "zero
 unclassified, always" forces an undecidable rule out as a confident NO-CLAIM — measurably wrong on ≥5
