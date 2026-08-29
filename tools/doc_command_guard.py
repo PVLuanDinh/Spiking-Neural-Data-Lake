@@ -87,15 +87,22 @@ CMD = re.compile(r"-m\s+(?P<mod>snn_data_lake(?:\.[A-Za-z_][A-Za-z0-9_]*)+)(?![\
 
 # key: "document -> dotted module", value: why it is allowed to be unrunnable.
 EXEMPT: dict[str, str] = {
-    "SECURITY.md -> snn_data_lake.reflex": (
-        "NEGATIVE EXAMPLE, quoted on purpose. SECURITY.md documents that the flat alias "
-        "raises AttributeError under -m and prints this command to show the reader what "
-        "NOT to type. Exempting it is correct; fixing it would delete the warning."
-    ),
+    # The "SECURITY.md -> snn_data_lake.reflex" entry lived here until 2026-08-29 and is
+    # DELETED, not re-pointed. It exempted a quoted NEGATIVE EXAMPLE -- the flat
+    # `python -m snn_data_lake.reflex` that SECURITY.md printed to show a reader the form
+    # that raises AttributeError. `518b94c0` removed that quoted command (the prose warning
+    # "Use the FULL dotted path -- the flat back-compat alias cannot execute a module as
+    # `-m`" survives above the working dotted block) and did not remove the exemption in the
+    # same change, so the entry blessed nothing for as long as it outlived its command.
+    # Found by this gate's own both-ways staleness assert, which is the thing that assert is
+    # for. The sibling RUNNING.md entry below is NOT stale: it still quotes its flat form
+    # inline at docs/RUNNING.md:49.
     "docs/RUNNING.md -> snn_data_lake.interpreter": (
-        "NEGATIVE EXAMPLE, quoted on purpose. Same shape as the SECURITY.md entry: the "
-        "note added 2026-08-04 quotes the flat form to show a reader the command that "
-        "fails, immediately above the full dotted paths that work."
+        "NEGATIVE EXAMPLE, quoted on purpose. The note added 2026-08-04 quotes the flat "
+        "form to show a reader the command that fails, immediately above the full dotted "
+        "paths that work. (This read 'Same shape as the SECURITY.md entry' until "
+        "2026-08-29; that entry is gone, and a reason citing a deleted sibling is the same "
+        "rot the staleness assert above exists to catch.)"
     ),
 }
 
