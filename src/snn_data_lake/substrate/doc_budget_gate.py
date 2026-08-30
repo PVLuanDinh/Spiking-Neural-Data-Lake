@@ -87,7 +87,25 @@ BUDGETS = {
     # remedy, recorded here so it is not lost: the e-prop invariant block now carries FOUR
     # generations of amendment text and owes a CONSOLIDATION pass -- one statement per rule,
     # correction narratives moved to the spec record -- after which this ceiling comes back DOWN.
-    "docs/POLICIES.md": 28150,  # RAISED 28083 -> 28150 on 2026-08-26 (specs/022 T046), in the
+    # LOWERED 28150 -> 12100 on 2026-08-30 (owner directive: POLICIES.md is a CONSTITUTION),
+    # in the SAME commit as the split: every dated measurement, census, correction narrative
+    # and incident-forensics block relocated BYTE-EXACT to docs/POLICIES_EVIDENCE.md under
+    # "POLICIES.md constitution split"; rules, honesty guards, standing verdicts and
+    # derivation pins stay. Measured 11,957 by this gate's counter; ceiling = measured + ~140.
+    # THIS LOWERED CEILING IS THE ENFORCEMENT of the constitution scope rule stated at the
+    # top of POLICIES.md -- status re-accumulating there reds the build instead of rotting.
+    # The 2026-08-18 consolidation debt (e-prop block, "after which this ceiling comes back
+    # DOWN") is hereby DISCHARGED. New gate rows still grow the enforcement table BY DESIGN;
+    # raises stay minimum-viable and stated per raise. RE-ANCHORED 12100 -> 12350 in the same
+    # split commit: the split's adversarial review panel (5 lenses, 22 agents) confirmed six
+    # dropped RULE clauses (an owner-adjudication obligation, two do-not-re-propose
+    # prohibitions, an exemption holding condition, and guard clauses) and they were restored
+    # -- rule text, not status; measured 12,294 after restoration plus a final timelessness
+    # pass (flat status assertions converted to conditional/derivable forms), ceiling =
+    # measured + ~56, minimum-viable.
+    "docs/POLICIES.md": 12350,
+    # Superseded history of the 28150 ceiling, kept for the ratchet record:
+    # RAISED 28083 -> 28150 on 2026-08-26 (specs/022 T046), in the
     # SAME commit as the growth: the policy_manifest's unclaimed-gate ratchet (baseline EMPTY,
     # may never grow) requires every runnable gate NAMED in this file, and T046 lands
     # substrate/growth_coverage_gate.py -- one enforcement-table hygiene row (measured 68
@@ -112,7 +130,12 @@ BUDGETS = {
     # 07-28, target-scale 08-03, CUDA graphs 07-28 -- 911 words by this gate's counter) here
     # byte-exact with a pointer. Words conserved, moved not grown; POLICIES.md returns under
     # its LOWERED ceiling with real headroom.
-    "docs/POLICIES_EVIDENCE.md": 3550,
+    # RAISED 3550 -> 19800 on 2026-08-30, the other half of the constitution split above:
+    # 29 blocks (1,003 lines) relocated BYTE-EXACT from POLICIES.md. Words conserved across
+    # the pair (31,597 -> 31,552 total), moved not grown. Measured 19,595; ceiling =
+    # measured + ~200. This file is the DATED-EVIDENCE ledger; unlike POLICIES.md it grows
+    # whenever evidence relocates here, and each growth lands with its relocation commit.
+    "docs/POLICIES_EVIDENCE.md": 19800,
     # CONVENTION NOTE (T051b-iv panel): the module docstring's "+5% over measured" rule is the
     # RETIRED 2026-08-16 anchor; the governing practice since T046 is MINIMUM-VIABLE raises
     # (measured + 0, stated per raise), so 0.0%-headroom rows are deliberate and the
