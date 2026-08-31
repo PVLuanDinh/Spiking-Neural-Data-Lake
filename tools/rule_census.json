@@ -6,7 +6,7 @@
   ],
   "note": "dispositions per T050's expressibility categories; UNDISPOSITIONED is the honest day-one state for unadjudicated LOCAL rules -- the WAVE (T051c-wave) fills rows; regen_rule_census enforces per-row monotonicity through the sanctioned edit path, rule_composer 1e polices membership vs the live census, and the ADVANCE direction (whether a disposition's text is honest) is review-grade, said plainly",
   "ratchet_baseline": {
-   "rows": 101,
+   "rows": 103,
    "undispositioned": 56
   },
   "source": "gradient_claim_gate.census() via rule_composer.regen_rule_census -- regeneration is the only edit path for rows; new adjudications join _CENSUS_ADJUDICATED there; the regen refuses disposition retractions and dead entries",
@@ -430,6 +430,16 @@
   },
   "plasticity/homeostatic_scaling.py::HomeostaticNeuron.hebb": {
    "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "plasticity/inhibitory_stdp.py::InhibitorySTDP.step": {
+   "disposition": "expressible -- PROVEN at T053-i: istdp_synapse_rule's per-branch ablations reproduce the applied weight through the exact staged-clamp identity (6395 synapse-events bit-equal at landing; corrupted-production control red)",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "plasticity/inhibitory_stdp.py::istdp_synapse_rule": {
+   "disposition": "expressed -- T053-i: authors the per-synapse Vogels-Sprekeler declaration (pre x dev, post x x_pre; dev pre-collapsed with alpha) through the T050 algebra; held to production step() by the staged-clamp identity; the tick-charged composition is T053-ii's",
    "governed": true,
    "kind": "LOCAL"
   },

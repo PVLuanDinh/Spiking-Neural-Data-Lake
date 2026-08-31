@@ -751,6 +751,21 @@ _CENSUS_ADJUDICATED = (
         "algebra; held to the applied weight by its BIT/FULL/DELTA arms",
     ),
     (
+        "plasticity/inhibitory_stdp.py",
+        "InhibitorySTDP.step",
+        "expressible -- PROVEN at T053-i: istdp_synapse_rule's per-branch ablations "
+        "reproduce the applied weight through the exact staged-clamp identity "
+        "(6395 synapse-events bit-equal at landing; corrupted-production control red)",
+    ),
+    (
+        "plasticity/inhibitory_stdp.py",
+        "istdp_synapse_rule",
+        "expressed -- T053-i: authors the per-synapse Vogels-Sprekeler declaration "
+        "(pre x dev, post x x_pre; dev pre-collapsed with alpha) through the T050 "
+        "algebra; held to production step() by the staged-clamp identity; the "
+        "tick-charged composition is T053-ii's",
+    ),
+    (
         "plasticity/homeostatic_plasticity_stack.py",
         None,
         "expressed -- T051b-iv: deposit-then-trim through the kernel vs spied production",
