@@ -31,7 +31,26 @@ REM
 REM A clean exit (code 0 = auto-update relaunch) RESETS the backoff and the failure count; only
 REM non-zero exits escalate. That keeps the auto-update path exactly as fast as it was.
 REM ============================================================================================
-cd /d D:\AI-project\spiking-neural-data-lake
+REM HARDENED 2026-08-30 after the THIRD outage (five hours; the 2026-08-29 preflight looping
+REM PREFLIGHT FAILED while the same exe ran a full battery green from a shell). Reviewed by a
+REM two-lens adversarial panel whose findings are folded in here:
+REM   * every path this script touches is ANCHORED to %~dp0 -- the 2026-08-29 fix made only the
+REM     interpreter absolute, so a context where `cd /d` did not take effect would preflight GREEN
+REM     and then scatter its log, marker and script resolution across whatever cwd it woke up in;
+REM   * the preflight verdict comes from a probe with NO capture redirect (a capture file that
+REM     cannot be opened aborts the command UNLAUNCHED and leaves a stale errorlevel -- measured
+REM     false GREEN); the stderr EVIDENCE is a second run, taken only after the verdict is red;
+REM   * the verdict check is `NEQ 0`, not `if errorlevel 1` -- init-time crashes return NEGATIVE
+REM     NTSTATUS codes (0xC0000135 DLL_NOT_FOUND = -1073741515) that a signed >= 1 test calls a pass;
+REM   * `)` inside the escalation block's echo lines is caret-escaped -- an unescaped one CLOSES the
+REM     block and a cmd parse error terminates the whole launcher on its first failure;
+REM   * a preflight PASS deletes the marker (its stated contract: cleared on successful START) and
+REM     resets the BACKOFF to 8s. FAILS stays latched DELIBERATELY: the streak is "consecutive
+REM     failures of any kind", and only a clean exit proves the brain itself is healthy again --
+REM     resetting FAILS on preflight alone would let a crash-looping brain (the 2026-08-19 class)
+REM     dodge escalation forever by passing preflight between crashes.
+REM ============================================================================================
+cd /d "%~dp0"
 setlocal enabledelayedexpansion
 
 set NORD_SELFMOD=1
@@ -61,10 +80,17 @@ REM   new commit and forgets every neuron it grew is not growing. Gates stay det
 REM   they never set this. Restore refuses and records rather than half-restoring on a fmt, length or
 REM   lineage (seed/drive/noise_sd) mismatch; see time_cells.restored().
 
-set PY=.venv-lake\Scripts\python.exe
+REM Everything is ANCHORED to this script's own directory (%~dp0 ends with a backslash): the
+REM interpreter, the daemon script, the log, the rotation target and the escalation marker. No
+REM behavior of this launcher may depend on the working directory a launch context happened to
+REM wake it up in. No path here contains spaces; MARKER/LOG stay unquoted in redirects.
+set PY=%~dp0.venv-lake\Scripts\python.exe
+set DAEMON=%~dp0learn_daemon.py
+set LOG=%~dp0chat_learn.log
+set PFERR=%TEMP%\sndl_preflight_err.txt
 set DELAY=8
 set FAILS=0
-set MARKER=DAEMON_DOWN.txt
+set MARKER=%~dp0DAEMON_DOWN.txt
 
 :loop
 
@@ -72,26 +98,42 @@ REM -- 4. LOG BOUND: keep the evidence readable --------------------------------
 REM `if exist` FIRST: without it, %%~zF expands to EMPTY on a missing log and cmd aborts on the
 REM malformed `if  GTR ...`. Found by testing the launcher on a fresh directory -- in this repo the
 REM log always exists, so the crash would only ever have fired on a clean checkout.
-if exist chat_learn.log (
-  for %%F in (chat_learn.log) do if %%~zF GTR 67108864 (
-    if exist chat_learn.log.1 del chat_learn.log.1
-    move /y chat_learn.log chat_learn.log.1 >nul
-    echo [%date% %time%] rotated chat_learn.log at 64MB >> chat_learn.log
+if exist %LOG% (
+  for %%F in (%LOG%) do if %%~zF GTR 67108864 (
+    if exist %LOG%.1 del %LOG%.1
+    move /y %LOG% %LOG%.1 >nul
+    echo [%date% %time%] rotated chat_learn.log at 64MB >> %LOG%
   )
 )
 
 REM -- 1. PREFLIGHT: prove the interpreter RUNS, not that its stub exists -----------------------
 REM    The stub existed throughout the 8.2-day outage; its uv base interpreter was what vanished.
 REM    `-c pass` is the cheapest thing that fails exactly when the base cannot be resolved.
+REM    TWO runs, verdict first: the VERDICT probe carries no capture redirect, so no filesystem
+REM    state can abort it unlaunched into a stale-errorlevel false green; the EVIDENCE probe runs
+REM    only after the verdict is red, and if ITS capture fails we still escalate -- just with
+REM    "[no stderr captured]" instead of the reason. NEQ 0, because init-time crashes return
+REM    negative NTSTATUS codes that `if errorlevel 1` reads as success.
 "%PY%" -c "pass" >nul 2>&1
-if errorlevel 1 (
+if !errorlevel! NEQ 0 (
   set /a FAILS+=1
   REM RC is set here too: the marker prints it, and on this path the daemon never ran, so
   REM without this the escalation file reported a BLANK exit code -- found in test case A.
   set RC=preflight
-  echo [%date% %time%] PREFLIGHT FAILED: "%PY%" cannot start ^(base interpreter unresolved^); attempt !FAILS!, retry in !DELAY!s >> chat_learn.log
+  set PFLINE=[no stderr captured]
+  "%PY%" -c "pass" >nul 2>"%PFERR%"
+  if exist "%PFERR%" set /p PFLINE=<"%PFERR%"
+  echo [%date% %time%] PREFLIGHT FAILED: "%PY%" cannot start; probe stderr: !PFLINE!; attempt !FAILS!, retry in !DELAY!s >> %LOG%
   goto backoff
 )
+if exist "%PFERR%" del "%PFERR%"
+REM Preflight green == the failure the marker describes has cleared: delete the marker NOW
+REM (its own promise: cleared on the next successful START) and drop the backoff back to 8s so
+REM recovery is not billed at the outage's 300s cadence. FAILS deliberately stays latched --
+REM see the 2026-08-30 header note -- so a brain that crash-loops behind a green preflight
+REM cannot dodge escalation.
+if exist %MARKER% del %MARKER%
+set DELAY=8
 
 REM -- run the brain ---------------------------------------------------------------------------
 REM GPU-prioritized, always-on: run the live brain under .venv-lake (cp314t free-threaded,
@@ -101,12 +143,12 @@ REM launch failure into chat_learn.log, the daemon silently crash-looped (cmd co
 REM "cannot find the path") with NOBODY noticing -- the brain was down while the log grew.
 REM Sharing the gate env does not break gate determinism: the NORD_* env vars are set only
 REM in this launcher, never by run_selfchecks/pytest.
-"%PY%" learn_daemon.py >> chat_learn.log 2>&1
+"%PY%" "%DAEMON%" >> %LOG% 2>&1
 set RC=!errorlevel!
 
 if !RC! EQU 0 (
   REM clean exit == auto-update relaunch. Reset everything; this path stays as fast as before.
-  echo [%date% %time%] learn-daemon exited cleanly ^(code 0, auto-update^); relaunching in 8s >> chat_learn.log
+  echo [%date% %time%] learn-daemon exited cleanly ^(code 0, auto-update^); relaunching in 8s >> %LOG%
   set DELAY=8
   set FAILS=0
   if exist %MARKER% del %MARKER%
@@ -115,11 +157,13 @@ if !RC! EQU 0 (
 )
 
 set /a FAILS+=1
-echo [%date% %time%] learn-daemon exited (code !RC!); consecutive failures !FAILS!; retry in !DELAY!s >> chat_learn.log
+echo [%date% %time%] learn-daemon exited (code !RC!); consecutive failures !FAILS!; retry in !DELAY!s >> %LOG%
 
 :backoff
 REM -- 3. ESCALATION: make a dead brain DISCOVERABLE ---------------------------------------------
 REM    A marker file that appears in the repo root is findable. Line 21,438 of a 29 MB log is not.
+REM    Every `(` and `)` in these echo lines is caret-escaped: inside this parenthesized block an
+REM    unescaped `)` CLOSES the block and the resulting parse error kills the whole launcher.
 if !FAILS! GEQ 5 (
   echo SNDL DAEMON DOWN > %MARKER%
   echo first noticed: %date% %time% >> %MARKER%
@@ -129,8 +173,10 @@ if !FAILS! GEQ 5 (
   echo. >> %MARKER%
   echo The brain is NOT running. Per P4c the daemon is the brain's drive, so this is not >> %MARKER%
   echo a stopped service -- it is a stopped brain. Check the tail of chat_learn.log. >> %MARKER%
-  echo Most likely cause: the venv's BASE interpreter no longer resolves in this context. >> %MARKER%
-  echo Verify with:  %PY% -c "pass" >> %MARKER%
+  if "!RC!"=="preflight" echo preflight probe stderr: !PFLINE! >> %MARKER%
+  echo Most likely cause: the interpreter cannot start IN THIS LAUNCH CONTEXT ^(its base >> %MARKER%
+  echo unresolved, or a container-virtualized environment^); the same exe may run fine from >> %MARKER%
+  echo a shell. Verify with:  %PY% -c "pass" >> %MARKER%
   echo This file is deleted automatically on the next successful start. >> %MARKER%
 )
 

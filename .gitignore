@@ -20,6 +20,8 @@ packaging/installer/
 # brain daemon runtime logs
 brain_daemon.log
 chat_learn.log
+chat_learn.log.1
+DAEMON_DOWN.txt
 
 # Virtual envs
 .venv/
