@@ -292,6 +292,30 @@ EXEMPT = {
     # wiring against it is force-wiring, P6's defect), and the LIVE wire stays dated to
     # T054's sign-structured MLI tissue -- tasks.md's T054 row carries that obligation plus
     # the T048 fix. Reachability here is import-topology, not participation.
+    "microcircuit": (
+        "wire",
+        "specs/022 T054-i: the cerebellar TISSUE (granule codon expansion + PF bundle + "
+        "Purkinje + the MLI opposite-sign pathway; names cb_ctx and cb_deep, retiring "
+        "their atlas phantoms). Charged surface today: its own registered self-check "
+        "(regenerable basis, exact-arithmetic codon gate, separation vs a structure-"
+        "ablated control, the FR-019 window pinned to MEASURED channel latency, MLI "
+        "neuter raising Purkinje, the deep readout held to its identity per step). "
+        "DATED consumer: T054-ii wires structural_rewiring onto the sign-structured "
+        "rows this tissue exposes (sign_identities()). The BRAIN-side consumer -- the "
+        "cerebellar rule of FR-019 running on this tissue in the live motor loop -- has "
+        "NO task id in specs/022 tasks.md yet, stated plainly per the T044 panel form "
+        "rather than dressed as a dated consumer.",
+    ),
+    "mossy_relay": (
+        "wire",
+        "specs/022 T054-i: the pn stage (cortico-ponto-cerebellar mossy fan-out; the "
+        "pons region's first computing module -- names pn, retiring its atlas phantom). "
+        "Charged surface today: its own registered self-check (regenerable structure, "
+        "fan-in normalization, determinism, one-channel locality, refusals) plus the "
+        "tissue self-check's end-to-end ctx->pn->cb_ctx->cb_deep arm. Same consumer "
+        "dating as the microcircuit row above: T054-ii's structural wire runs on the "
+        "tissue, and the live-brain consumer carries no task id yet, said plainly.",
+    ),
     "genomic_bottleneck": (
         "wire",
         "specs/022 T044: the g-network (tag vectors from the T043 placement surface + one "

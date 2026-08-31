@@ -284,6 +284,9 @@ REGIONS = {
         # structure, and synfire_chain.py:37 already cross-references it to distinguish zero-lag
         # synchrony from delay-matched convergence.
         "polychronization",
+        # specs/022 T054-i: the anatomical TISSUE layer (granule expansion + PF bundle +
+        # Purkinje + MLI opposite-sign pathway) -- names cb_ctx and cb_deep
+        "microcircuit",
     ],
     "brainstem": [
         "reflex",
@@ -315,7 +318,9 @@ REGIONS = {
         "sc_deep_layers",
         "multisensory_integration",
     ],
-    "pons": [],
+    # specs/022 T054-i: the pons region's first computing module -- the pn mossy relay
+    # (the second pons disposition: the package had been anatomy prose only)
+    "pons": ["mossy_relay"],
     "medulla": ["vital_nuclei", "interoceptive_arousal"],
     "epithalamus": ["habenula"],
     "olfactory": [],

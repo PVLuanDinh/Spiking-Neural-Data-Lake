@@ -401,7 +401,14 @@ BASELINE = {
     # precisely that reason and named this criterion. P8: a criterion with no reachable red is
     # deleted, not weakened -- so the honest move is to lower the ceiling until the red returns,
     # which is what a ratchet is for.
-    "unimplemented_declared_pairs": 21,
+    # RATCHETED 21 -> 19 at T054-i (2026-08-31), by the rule the paragraph above states:
+    # the cerebellar tissue + pn relay implement two previously-unimplementable declared
+    # pairs (the cortico-ponto-cerebellar chain), and leaving the ceiling at 21 would let
+    # the whole T054-i pathway be reverted with this gate still green -- the no-reachable-
+    # red shape this criterion was lowered once before to escape. Caught by that commit's
+    # own review panel, not by the gate: a ratchet that improves and is not re-tightened
+    # is a silent gate regression.
+    "unimplemented_declared_pairs": 19,
 }
 
 # name -> (kind, human sentence, why this shape and not the obvious neighbour)

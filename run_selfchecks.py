@@ -203,6 +203,8 @@ CORE = [
     # holds the only delay-matched coincidence detector in the tree; keeping it ungoverned is how
     # two prior audits could record it dormant and nothing was obliged to happen.
     "cerebellum.polychronization",
+    "cerebellum.microcircuit",  # T054-i: the tissue (granule/PF/Purkinje/MLI; cb_ctx + cb_deep)
+    "pons.mossy_relay",  # T054-i: the pn stage (the pons region's first computing module)
     # brainstem + spinal cord â€” reflexes, actuation, sensorimotor loops, motor pattern generation
     # (the safety envelope lives here)
     "brainstem.reflex",

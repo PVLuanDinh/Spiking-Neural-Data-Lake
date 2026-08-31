@@ -63,8 +63,9 @@ _PHANTOMS_AT_LANDING: tuple = (
     "bs_motor",
     "ca1",
     "ca3",
-    "cb_ctx",
-    "cb_deep",
+    # "cb_ctx" + "cb_deep" RETIRED 2026-08-31 (specs/022 T054-i): cerebellum/microcircuit.py
+    # computes near both and says their ids -- the retirement condition, met (the ratchet:
+    # rows only ever leave this tuple)
     "ctx_motor",
     "dg",
     "ec",
@@ -77,7 +78,8 @@ _PHANTOMS_AT_LANDING: tuple = (
     "ob",
     "pbc",
     "pir",
-    "pn",
+    # "pn" RETIRED 2026-08-31 (T054-i): pons/mossy_relay.py is the region's first
+    # computing module and says its id
     "prf",
     "sc_deep",
     "sub",
