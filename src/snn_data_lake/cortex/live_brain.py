@@ -62,6 +62,11 @@ def _reply_to_intent(reply):
         return "GOAL"
     if "working memory lives in the data lake" in r or "reading working memory" in r:
         return "MEMORY"
+    if "my learning rules on the interaction path" in r or "i cannot read my learning rules" in r:
+        # T053-iii: the rules report (or its honest refusal) is a self-knowledge answer --
+        # left unmapped it would teach the router GREET on every plasticity turn (the
+        # exact T039e failure, which this file has now fixed three times)
+        return "MEMORY"
     return "GREET"
 
 
@@ -535,6 +540,148 @@ class LiveBrain:
                 f"currently {arm_now}; a threat estimate biases me toward the safe action, and the "
                 "reflex preempts every command."
             )
+        _stopish = ("stop", "halt", "freeze", "abort", "estop", "emergency")
+        if (
+            (
+                ("plasticity" in words)
+                or (
+                    (words & {"rule", "rules"})
+                    and (
+                        words
+                        & {
+                            "learning",
+                            "learn",
+                            "learned",
+                            "learns",
+                            "synaptic",
+                            "weight",
+                            "weights",
+                        }
+                    )
+                )
+            )
+            # SAFETY GUARDS FIRST, substring-matched on the RAW text: the tokenizer strips
+            # ?!. but NOT commas/colons, so "stop, what are the rules" carries the token
+            # "stop," which a bare-token check misses -- at HEAD such phrases fell through
+            # to the NL firewall and EXECUTED the stop; this branch must never intercept
+            # them (its panel's BLOCKER: 5 of 7 constructed phrases regressed a human's
+            # E-STOP). Motion/safety/sequence vocabulary likewise falls through to the
+            # branches and faculties that own it (the Gf bridge answers "what rule comes
+            # next"; the safety branch answers "safety rules").
+            and not any(k in t for k in _stopish)
+            and not (
+                words
+                & {
+                    "safe",
+                    "safety",
+                    "danger",
+                    "dangerous",
+                    "hurt",
+                    "move",
+                    "moving",
+                    "go",
+                    "retract",
+                    "close",
+                    "open",
+                    "home",
+                    "lift",
+                    "rotate",
+                    "next",
+                    "sequence",
+                    "series",
+                    "comes",
+                }
+            )
+        ):
+            # T053-iii: THE BRAIN NAMES ITS OWN LEARNING RULES -- the attribution's second
+            # reader, after rule_charge. Seven probes across five tasks (T051b-i, T052-i,
+            # the curiosity fix, T052-iii, and three post-push probes 2026-08-31) measured
+            # this question abstaining or recalling an unrelated remembered fragment while
+            # the stack ran on every deposit. Everything below is READ from the faculty
+            # that owns it (BOTH rosters -- the superset's rule_order expands its base-
+            # sandwich placeholder with the base's own order, so the three base rules the
+            # first draft omitted are named; the composed arm's identity and counters come
+            # from the composers' own specs and last_attribution) -- nothing is recomputed,
+            # and each missing piece is said for what it is. Disclosed trigger scope:
+            # "how do you learn?" (no rule/plasticity noun) still falls through -- bare
+            # "learn" as a trigger would collide with "what did you learn".
+            ixn = getattr(self, "_ixn", None)
+            if ixn is None:
+                return (
+                    "I cannot read my learning rules right now -- this configuration has "
+                    "no interaction learner, so there is no stack to read."
+                )
+            stk = getattr(ixn, "stack", None)
+            if stk is None:
+                return (
+                    "I cannot read my learning rules right now -- no plasticity stack is "
+                    "attached to my interaction learner, so I will not guess what rules "
+                    "are running."
+                )
+            base_order = [str(x) for x in (getattr(stk, "order", ()) or ())]
+            full = []
+            for n in getattr(stk, "rule_order", ()) or ():
+                if str(n) == "<r_stdp_weight_update>" and base_order:
+                    full.extend(base_order)  # the base sandwich sits in the middle
+                else:
+                    full.append(str(n))
+            names = [
+                "the R-STDP deposit (reward times spike-timing eligibility)"
+                if x == "<r_stdp_weight_update>"
+                else x
+                for x in (full or base_order)
+            ]
+            reuses = sorted(
+                {str(r) for r in (getattr(stk, "reuses", ()) or ())}
+                | {str(r) for r in (getattr(stk, "rule_reuses", ()) or ())}
+            )
+            composed = ""
+            ei = getattr(stk, "_ei", None)
+            if ei is not None:
+                try:
+                    stepped, cum, total = 0, 0.0, 0
+                    rule_ids = set()
+                    for c in getattr(ei, "_ctrl", ()) or ():
+                        comp = getattr(c, "_composer", None)
+                        if comp is None:
+                            continue
+                        total += 1
+                        for spec in getattr(comp, "_specs", ()) or ():
+                            rule_ids.add(str(spec.name))  # the rule's OWN name, no literal
+                        att = comp.last_attribution()
+                        if att.get("stepped"):
+                            stepped += 1
+                            for _v in (att.get("cumulative_abs_dw") or {}).values():
+                                cum += float(_v)
+                    rid = ", ".join(sorted(rule_ids)) if rule_ids else None
+                    if total == 0 or rid is None:
+                        composed = (
+                            " My E/I controllers expose no composed rule right now -- I "
+                            "will not name one I cannot read."
+                        )
+                    elif stepped:
+                        composed = (
+                            f" My E/I balance arm applies THROUGH a composed rule ({rid} "
+                            f"via the rule composer): {stepped} of {total} controllers "
+                            f"have composed steps this process, cumulative |dw| {cum:.4f}."
+                        )
+                    else:
+                        composed = (
+                            f" My E/I balance arm is a composed rule ({rid} via the rule "
+                            "composer); no composed step has run yet this process."
+                        )
+                except Exception as ex:  # a reporting read must not crash the reply path
+                    composed = (
+                        f" (my composed-rule attribution could not be read just now: "
+                        f"{type(ex).__name__})"
+                    )
+            return (
+                "My learning rules on the interaction path, read from the live stack: "
+                + (", ".join(names) if names else "none registered")
+                + "."
+                + composed
+                + (f" The stack reuses {', '.join(reuses)}." if reuses else "")
+            )
         if (
             words & {"feel", "feels", "feeling", "body", "interoception", "interoceptive"}
         ) and not (words & {"move", "go", "retract", "close", "open", "home", "lift", "rotate"}):
@@ -920,6 +1067,59 @@ def _main():
     assert brain.converse("close the effector", human=True).startswith("Done"), (
         "converse must route a safe arm command from a human through the gate"
     )
+    # T053-iii: the brain NAMES ITS OWN LEARNING RULES, read from the live stack -- the
+    # attribution's second reader (seven probes had measured this question abstaining or
+    # recalling an unrelated fragment). Both shapes asserted: stackless -> honest refusal;
+    # with the production-shaped stack attached (exactly Brain's own attach) -> the
+    # stack's roster, the composed istdp.synapse arm, and the R-STDP deposit rule.
+    _prior_ixn = brain._ixn
+    try:
+        # no learner at all -> the refusal must name THIS state, not guess a learner exists
+        r_none = brain.converse("what learning rules are active?")
+        assert "no interaction learner" in r_none, (
+            f"the learnerless refusal must name its own configuration ({r_none})"
+        )
+        from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner as _SIL
+        from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack as _PRS
+
+        brain._ixn = _SIL(["a", "b"], n_in=8, seed=0)  # the production shape: Brain attaches both
+        r_nostack = brain.converse("what learning rules are active?")
+        assert "no plasticity stack is attached" in r_nostack, (
+            f"the stackless refusal must name the missing stack ({r_nostack})"
+        )
+        brain._ixn.stack = _PRS(n_neurons=2, seed=0)
+        brain._ixn.interact([0.5] * 8, "a")  # one real deposit -> the composed arm STEPS
+        r_rules = brain.converse("what learning rules are active?")
+        print(f"           : 'what learning rules are active?' -> {r_rules[:400]}")
+        assert "istdp.synapse" in r_rules and "R-STDP" in r_rules, (
+            f"the rules reply must name the composed arm and the deposit rule ({r_rules})"
+        )
+        assert "inhibitory_stdp_ei_balance" in r_rules, (
+            f"the rules reply must carry the stack's own roster ({r_rules})"
+        )
+        for _base_rule in (
+            "short_term_dynamic_gain",
+            "homeostatic_scaling",
+            "intrinsic_plasticity",
+        ):
+            assert _base_rule in r_rules, (
+                f"the reply must name the base-sandwich rule {_base_rule} -- its panel measured "
+                f"three live rules omitted behind the placeholder ({r_rules})"
+            )
+        assert "<r_stdp_weight_update>" not in r_rules, (
+            f"the internal sentinel must not leak into the spoken roster ({r_rules})"
+        )
+        # the deposit above stepped the composers, so the FIGURE-bearing branch must run
+        # (the panel measured the never-stepped wording satisfying the old OR unconditionally)
+        assert "composed steps this process" in r_rules and "cumulative |dw|" in r_rules, (
+            f"the stepped branch's own counters must be exercised and reported ({r_rules})"
+        )
+        # the reply (and both refusals) must map to a real intent, never teach GREET (T039e)
+        assert _reply_to_intent(r_rules) == "MEMORY" and _reply_to_intent(r_none) == "MEMORY", (
+            "the rules reply must carry an intent mapping -- unmapped replies teach the router GREET"
+        )
+    finally:
+        brain._ixn = _prior_ixn
     # the brain can DELIBERATE: plan ahead over a forward model and reject a high-immediate-value trap.
     target, trap_options = 2.0, [1.0, 5.0, 0.2]  # cmd 0 -> terminal 2.0 (goal); cmd 1 -> 10 (trap)
 
