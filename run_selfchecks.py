@@ -19,6 +19,7 @@ package (src/snn_data_lake/, run as `-m snn_data_lake.<mod>`); RESEARCH = benchm
   python run_selfchecks.py --list   # print the module list, one per line
 """
 
+import contextlib
 import os
 import sys
 import subprocess
@@ -624,8 +625,11 @@ def _sweep_latch(latch, m, w0, w1, latch_left, latch_stray):
     """The classify-and-remove step after every LIVE check: read the sidecar's mtime BEFORE
     removing it, then attribute (latch_left) or report unattributed (latch_stray) by
     latch_in_window. Extracted so the attribution WIRING is testable against a real file --
-    the pre-fix defect (attribution by existence alone) lived exactly here; run_all's single
-    call below is the one line the test does not execute, and that is stated in the test."""
+    the pre-fix defect (attribution by existence alone) lived exactly here. TWO production
+    call seams consume it (run_all's and run_all_in_process's per-check calls); neither is
+    driven by a test, both are stated in the test, and the in-process seam was run-verified
+    end-to-end 2026-08-31 (a sentinel-home --in-process run attributed the one real
+    latch-leaver in-slot with the sentinel left untouched)."""
     if not os.path.exists(latch):
         return
     latch_mtime = os.path.getmtime(latch)  # read BEFORE remove
@@ -635,6 +639,50 @@ def _sweep_latch(latch, m, w0, w1, latch_left, latch_stray):
     else:
         # surfaced during m's slot but written outside it -- see latch_in_window
         latch_stray.append(f"{m}@{latch_mtime - w0:+.1f}s")
+
+
+def _latch_report_lines(latch_left, latch_stray):
+    """The sidecar report, ONE formatter for both runners (subprocess and in-process) so the
+    two paths cannot drift into different claims about the same signal."""
+    lines = []
+    if latch_left:
+        lines.append(
+            f"GATE-HOME E-STOP SIDECAR left by {len(latch_left)} check(s) and cleared between "
+            "checks (a check that exits stopped is information, not a defect; "
+            "attribution is mtime-in-slot -- latch_in_window): " + ", ".join(latch_left)
+        )
+    if latch_stray:
+        lines.append(
+            f"GATE-HOME E-STOP SIDECAR cleared {len(latch_stray)} time(s) with mtime OUTSIDE "
+            "the running check's slot -- background straggler from an earlier arm-driving "
+            "check's process tree, UNATTRIBUTED (slot-it-surfaced-in@mtime-offset-from-that-"
+            "slot-start): " + ", ".join(latch_stray)
+        )
+    return lines
+
+
+@contextlib.contextmanager
+def _gate_home():
+    """Point NORD_HOME at the runner's shared isolated home for the duration, then RESTORE the
+    caller's value -- never a bare pop of a value that was set (substrate.home records why: a
+    bare pop deletes the caller's own isolation). What the 2026-08-31 probe established: home()
+    and so101_arm._latch_path() read NORD_HOME at USE time (set-after-import redirects, re-set
+    re-resolves), so this redirects every home()-derived path resolved INSIDE the span. What it
+    does NOT cover, said plainly: a thread or atexit handler resolving home() AFTER the span
+    exits reads whatever the caller's env then holds -- which is why run_all_in_process spans
+    its WHOLE loop with one gate and the --in-process CLI dispatch sets the env at PROCESS
+    scope (atexit fires after every context manager has restored). Distinct from
+    substrate.home.throwaway_home(), which gates a FRESH temp dir per use; this points at the
+    runner's one SHARED home so persistence checks can prove persistence (the _ENV rationale)."""
+    prev = os.environ.get("NORD_HOME")
+    os.environ["NORD_HOME"] = _HOME
+    try:
+        yield
+    finally:
+        if prev is None:
+            os.environ.pop("NORD_HOME", None)
+        else:
+            os.environ["NORD_HOME"] = prev
 
 
 def run_all(carry=False):
@@ -673,9 +721,11 @@ def run_all(carry=False):
     # Cleared between checks, and SAID: the check that left it is named -- but ONLY when the
     # latch mtime falls inside that check's own wall-clock slot (latch_in_window; a straggler
     # from an earlier arm-driving check's tree is reported unattributed, never named). The
-    # real brain's home is never touched by THIS path (NORD_HOME=_HOME rides in _ENV); the
-    # --in-process runners below have no such isolation and no latch handling -- a
-    # pre-existing gap, tracked separately, not silently covered by this sentence.
+    # real brain's home is never touched by THIS path (NORD_HOME=_HOME rides in _ENV for the
+    # child's whole lifetime). The --in-process runners carry their own gates since 2026-08-31
+    # (_gate_home per call + a loop-wide span + a process-scope set at the CLI dispatch --
+    # three scopes because the per-call gate alone does not cover stragglers that outlive a
+    # call; each scope is named where it lives).
     from snn_data_lake.brainstem.so101_arm import ESTOP_LATCH  # the ONE spelling, in the envelope
 
     latch = os.path.join(_HOME, ESTOP_LATCH)
@@ -750,19 +800,8 @@ def run_all(carry=False):
         # Printed as its own line, not merged into the total, so "277/277" can never quietly mean
         # "276 ran and one was skipped".
         print(f"ARTIFACT-SKIPPED ({len(artifact_skipped)}): " + ", ".join(artifact_skipped))
-    if latch_left:
-        print(
-            f"GATE-HOME E-STOP SIDECAR left by {len(latch_left)} check(s) and cleared between "
-            "subprocesses (a check that exits stopped is information, not a defect; "
-            "attribution is mtime-in-slot -- latch_in_window): " + ", ".join(latch_left)
-        )
-    if latch_stray:
-        print(
-            f"GATE-HOME E-STOP SIDECAR cleared {len(latch_stray)} time(s) with mtime OUTSIDE "
-            "the running check's slot -- background straggler from an earlier arm-driving "
-            "check's process tree, UNATTRIBUTED (slot-it-surfaced-in@mtime-offset-from-that-"
-            "slot-start): " + ", ".join(latch_stray)
-        )
+    for line in _latch_report_lines(latch_left, latch_stray):
+        print(line)
     if failed:
         if carried:
             print(
@@ -785,6 +824,15 @@ def run_one_in_process(mod):
     sys.argv is isolated to [mod] so a module sees no stray caller flags -- several modules dispatch on
     argv (spike_telemetry_hub runs its CLI when given any, control_panel used to run --smoke on none),
     and leaking the parent's arguments would silently run the wrong entry point.
+
+    NORD_HOME is isolated per call (_gate_home, added 2026-08-31): until then a check run
+    through THESE runners hit the operator's REAL ~/.snn_data_lake -- the exact hazard
+    run_all's _ENV exists to prevent -- and an E-STOP sidecar landed there uncleared (the
+    pytest in-process sibling was never exposed: tests/conftest.py's _hermetic_home has
+    isolated it since 2026-07-31). The gate covers home()-derived paths resolved DURING the
+    call; a straggler thread or atexit handler outliving the call resolves the CALLER's env,
+    so a caller wanting run-wide or process-wide isolation owns it (run_all_in_process spans
+    its loop; the --in-process dispatch sets the env at process scope).
     """
     import io
     import runpy
@@ -794,7 +842,7 @@ def run_one_in_process(mod):
     saved_argv = sys.argv
     sys.argv = [mod]
     try:
-        with redirect_stdout(buf), redirect_stderr(buf):
+        with _gate_home(), redirect_stdout(buf), redirect_stderr(buf):
             runpy.run_module(f"snn_data_lake.{mod}", run_name="__main__")
         return True, buf.getvalue()
     except SystemExit as e:  # a module may sys.exit(0) on success
@@ -806,19 +854,49 @@ def run_one_in_process(mod):
 
 
 def run_all_in_process(emit=print):
-    """Every CORE module's self-check, in-process. True iff all passed. See run_one_in_process."""
+    """Every CORE module's self-check, in-process. True iff all passed. See run_one_in_process.
+
+    Carries the same E-STOP sidecar discipline as run_all (added 2026-08-31): pre-clear, a
+    per-check _sweep_latch against the isolated home, and the shared report lines -- until
+    then a latch left by a check run this way sat in the operator's real home, uncleared and
+    unattributed. The WHOLE loop runs inside one _gate_home() span, so inter-check windows
+    and threads outliving a single check still resolve the isolated home; atexit handlers
+    fire after this function returns, which is the --in-process dispatch's process-scope set.
+    If the arm stack cannot import (a frozen bundle without MuJoCo -- the case this runner
+    exists for), the sweep is disabled LOUDLY and the checks still run: so101_arm is the only
+    latch writer, so no in-process check can write one either in that configuration."""
+    try:
+        from snn_data_lake.brainstem.so101_arm import ESTOP_LATCH  # ONE spelling, in the envelope
+    except Exception as e:  # pre-diff this import would have aborted the runner with no output
+        ESTOP_LATCH = None
+        emit(
+            f"E-STOP sidecar sweep DISABLED: arm stack unimportable ({type(e).__name__}: {e}); "
+            "no in-process check can write a latch without it (so101_arm is the only writer)"
+        )
+    latch = os.path.join(_HOME, ESTOP_LATCH) if ESTOP_LATCH else None
+    latch_left, latch_stray = [], []
     failed = []
-    for m in CORE:
-        ok, out = run_one_in_process(m)
-        emit(f"{'PASS' if ok else 'FAIL'}  {m}")
-        if not ok:
-            failed.append(m)
-            emit(out[-2000:])
+    with _gate_home():
+        if latch and os.path.exists(latch):
+            os.remove(latch)
+            emit("GATE-HOME E-STOP SIDECAR from a previous run cleared before this in-process run")
+        for m in CORE:
+            w0 = time.time()
+            ok, out = run_one_in_process(m)
+            w1 = time.time()
+            emit(f"{'PASS' if ok else 'FAIL'}  {m}")
+            if latch:
+                _sweep_latch(latch, m, w0, w1, latch_left, latch_stray)
+            if not ok:
+                failed.append(m)
+                emit(out[-2000:])
     emit("=" * 56)
     emit(
         f"{len(CORE) - len(failed)}/{len(CORE)} core self-checks passed (in-process)"
         + (f"   FAILED: {', '.join(failed)}" if failed else "")
     )
+    for line in _latch_report_lines(latch_left, latch_stray):
+        emit(line)
     return not failed
 
 
@@ -827,5 +905,9 @@ if __name__ == "__main__":
         print("\n".join(MODULES))
         sys.exit(0)
     if "--in-process" in sys.argv:
+        # PROCESS-scope isolation: atexit handlers registered by in-process checks fire after
+        # every context manager has restored, so the env must still point at the gate home
+        # when they run. This process exits right after, so no restore is owed.
+        os.environ["NORD_HOME"] = _HOME
         sys.exit(0 if run_all_in_process() else 1)
     sys.exit(0 if run_all(carry="--carry" in sys.argv) else 1)
