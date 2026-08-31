@@ -30,6 +30,7 @@ additive (no existing behaviour touched).
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.plasticity.inhibitory_stdp        # (also run by run_selfchecks.py)
 """
 
+import collections
 import math
 import random
 
@@ -65,9 +66,46 @@ class InhibitorySTDP:
         self.x_pre = [0.0] * n_syn  # per-synapse presynaptic traces
         self.x_post = 0.0  # postsynaptic trace
         self.neuron = LIFNeuron(tau_m=10.0, v_threshold=1.0)
+        # T053-ii: THE FIRST TICK-CHARGED COMPOSED RULE -- production's weight updates go
+        # THROUGH the T051a kernel. ONE spec under policy 'sum': the two V-S branches are
+        # w-independent, so 'sequential' is policy-indistinguishable here and the kernel
+        # itself refuses that labeling; staging and the clamps stay production's (outside
+        # the rule), and each branch steps the composer with the other gate zeroed -- the
+        # exact per-gate ablation the T053-i identity proved bit-equal to the incumbent
+        # arithmetic. After this delegation eta has ONE source (the authored terms); a
+        # production eta drift is only possible by swapping the composed rule itself, and
+        # the self-check's eta corruption arm constructs exactly that swap.
+        from snn_data_lake.plasticity.rule_composer import RuleComposer, RuleSpec
 
+        self._composer = RuleComposer("sum", target="w")
+        self._composer.add(
+            RuleSpec(
+                "istdp.synapse",
+                istdp_synapse_rule(self),
+                reads=("pre", "dev", "post", "x_pre"),
+                writes=("w",),
+                claim_key="InhibitorySTDP.step",
+                # producers deliberately undeclared: `pre` is the CALLER's spike input,
+                # dev/x_pre/post are self-owned; the tree-wide enumeration is T051c-wave's
+            )
+        )
+        # record_bindings is an OPT-IN instrument switch (default off in production; the
+        # stack self-check arms it on the stack it drives). DISCLOSED: after delegation,
+        # self.eta is an AUTHORING-TIME input only -- a post-construction write reaches
+        # nothing (the corruption arm swaps the composed rule instead); alpha and decay
+        # remain live per-step reads.
+        self.record_bindings = False
+        self._recorded = collections.deque(maxlen=256)  # bounded (w0, bindings) for rule_charge
+
+    # distinct-from: lif_neuron.py -- this is InhibitorySTDP's OWN incumbent step being
+    #   edited in place (T053-ii delegation), not a new stepper; the LIF it drives is that
+    #   module's, imported above. Term overlap is the generic timestep vocabulary. Read.
     def step(self, exc_drive, inh_spikes, learn=True):
-        """One timestep. Net input = exc_drive - sum_i(w[i]*inh_spikes[i]); apply iSTDP; return 1/0 post spike."""
+        """One timestep. Net input = exc_drive - sum_i(w[i]*inh_spikes[i]); apply iSTDP; return 1/0
+        post spike. Since T053-ii both learn branches apply THROUGH self._composer (one composed
+        step per synapse-event, the other branch's gate zeroed) -- bit-equal to the pre-delegation
+        arithmetic by the T053-i association measurement, and policed end-to-end by the
+        staged-clamp identity in main(), whose observation side never reads the composer."""
         self.x_post *= self.decay
         inh = 0.0
         for i in range(self.n):  # leak pre traces + gather this step's inhibitory current
@@ -78,12 +116,13 @@ class InhibitorySTDP:
             exc_drive - inh
         )  # inhibition subtracts from the fixed excitatory drive
         if learn:
-            d = self.eta * (
-                self.x_post - self.alpha
-            )  # pre spike: potentiate by x_post, depress by alpha
+            dev = self.x_post - self.alpha  # the pre-branch read point (the post bump lands last)
             for i in range(self.n):
-                if inh_spikes[i]:
-                    w = self.w[i] + d
+                if inh_spikes[i]:  # pre spike: potentiate by x_post, depress by alpha
+                    b = {"pre": 1.0, "dev": dev, "post": 0.0, "x_pre": self.x_pre[i]}
+                    if self.record_bindings:
+                        self._recorded.append((self.w[i], b))
+                    w, _parts = self._composer.step(self.w[i], b)
                     self.w[i] = w if w > 0.0 else 0.0
         for i in range(self.n):  # pre spikes bump their own traces (after the update)
             if inh_spikes[i]:
@@ -91,7 +130,10 @@ class InhibitorySTDP:
         if post:
             if learn:
                 for i in range(self.n):  # post spike: potentiate every synapse by its pre trace
-                    w = self.w[i] + self.eta * self.x_pre[i]
+                    b = {"pre": 0.0, "dev": dev, "post": 1.0, "x_pre": self.x_pre[i]}
+                    if self.record_bindings:
+                        self._recorded.append((self.w[i], b))
+                    w, _parts = self._composer.step(self.w[i], b)
                     self.w[i] = w if w > 0.0 else 0.0
             self.x_post += 1.0
         return post
@@ -377,11 +419,34 @@ def main():
     s_flat = s_flat if s_flat > 0.0 else 0.0
     assert s_staged == sn.w[0], "staged form must reproduce production on the constructed event"
     assert s_flat != sn.w[0], "the flat one-shot form must FAIL here -- else staging claims nothing"
+
     # corrupted-production controls IN THE SAME COMMAND, one per parameter axis: production
-    # drifting from the declared eta, alpha, or decay must each RED the identity.
+    # drifting from the declared eta, alpha, or decay must each RED the identity. Post-
+    # delegation (T053-ii) eta has ONE source -- the authored terms the composer applies --
+    # so an eta attribute mutation no longer reaches production at all: the eta arm now
+    # corrupts by SWAPPING production's composed rule for one authored at eta x1.25, which
+    # is the only drift channel delegation leaves open. alpha/decay are still read by
+    # step() per call (dev derivation, trace leaks), so attribute mutation corrupts those.
+    def _swap_eta_rule(n):
+        from snn_data_lake.plasticity.rule_composer import RuleComposer, RuleSpec
+
+        donor = InhibitorySTDP(n_syn=n.n, rho0=n.rho0)
+        donor.eta = donor.eta * 1.25
+        comp = RuleComposer("sum", target="w")
+        comp.add(
+            RuleSpec(
+                "istdp.synapse",
+                istdp_synapse_rule(donor),
+                reads=("pre", "dev", "post", "x_pre"),
+                writes=("w",),
+                claim_key="InhibitorySTDP.step",
+            )
+        )
+        n._composer = comp
+
     ax_red = {}
     for ax, mutate in (
-        ("eta", lambda n: setattr(n, "eta", n.eta * 1.25)),
+        ("eta", _swap_eta_rule),
         ("alpha", lambda n: setattr(n, "alpha", n.alpha * 1.25)),
         ("decay", lambda n: setattr(n, "decay", n.decay * 0.5)),
     ):
@@ -394,6 +459,34 @@ def main():
         )
         ax_red[ax] = cmism
         assert cmism > 0, f"corrupted production ({ax}) stayed green -- the identity cannot see"
+
+    # copy/serialize capability guard (panel: the composer's lock had silently removed
+    # deepcopy/pickle from the whole controller family; the lock is dropped and recreated)
+    import copy as _copy
+    import pickle as _pickle
+
+    dup = _copy.deepcopy(decl_net)
+    ev = [1] * decl_net.n
+    a_s = decl_net.step(0.20, ev, learn=True)
+    b_s = dup.step(0.20, ev, learn=True)
+    assert a_s == b_s and decl_net.w == dup.w, (
+        "a deepcopy round-trip must step bit-identically to the original"
+    )
+    # the PICKLE arm pins the PACKAGE class deliberately: production objects are
+    # package-imported, while under runpy this module ALSO executes as __main__, whose
+    # class pickles by a name unpickling cannot resolve (the recorded -m double-import
+    # trap -- battery #112's red, caught in the in-process pytest arm only)
+    from snn_data_lake.plasticity import inhibitory_stdp as _pkg
+
+    pnet = _pkg.InhibitorySTDP(n_syn=4, rho0=0.05)
+    for _t in range(50):
+        pnet.step(0.20, [1, 0, 1, 0], learn=True)
+    pblob = _pickle.loads(_pickle.dumps(pnet))
+    a2 = pnet.step(0.20, [1, 1, 0, 0], learn=True)
+    b2 = pblob.step(0.20, [1, 1, 0, 0], learn=True)
+    assert a2 == b2 and pnet.w == pblob.w, (
+        "a pickle round-trip of the package class must step bit-identically"
+    )
 
     print(
         f"self-check OK: un-inhibited {uninhib_strong:.3f} -> iSTDP {rate_strong:.3f} ~ rho0 {rho0:.3f}; "

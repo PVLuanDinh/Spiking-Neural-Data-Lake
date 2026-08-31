@@ -2,9 +2,11 @@
 Rule composer KERNEL -- specs/022 T051a (P8 invention #3's core): N rules on one
 substrate value with TYPED READ/WRITE SETS and per-rule neuter attribution --
 the INSTRUMENT'S KERNEL. Its first reader landed at T051b-iii: rule_charge, the
-per-rule charge A/B consuming last_attribution(), GATE-RUN grade (zero live
-compositions exist in the tree; the first TICK-live reading arrives with T053's
-charged composition, said plainly). Authored through T050's eligibility algebra.
+per-rule charge A/B consuming last_attribution(). TICK-LIVE since T053-ii
+(2026-08-31): InhibitorySTDP's production step() applies THROUGH this kernel --
+the first tick-charged composed rule -- and rule_charge's first tick-live
+reading ran on the stack's RECORDED bindings (verdict CHARGED, in the stack's
+self-check). Authored through T050's eligibility algebra.
 
 WHAT IT IS. The arbitration CONTRACT over declared rules -- not a clever policy:
   RuleSpec(name, rule: AuthoredRule, reads, writes, claim_key=None) -- the tree's
@@ -80,12 +82,14 @@ weights phases and rate/theta stay the disclosed remainder, and both stacks
 REMAIN the production path -- the merge is the declaration-of-record layer).
 wholistic_loop's "arbitration" is FACULTY-grain tick arbitration, distinct.
 
-NO TISSUE, NO WIRE: the reader landed at T051b-iii (rule_charge, gate-run
-grade) and the stack-sandwich MERGE landed at T051b-iv (section 1d) -- P2
-merge-must-reduce NOT discharged by it, said plainly: both incumbents remain
-production and the expression is a declaration layer. The first TICK-charged
-composed rule is T053's (its row names the composition). Charged surface until
-then: this gate-run self-check.
+THE WIRE LANDED at T053-ii (2026-08-31): InhibitorySTDP.step applies through
+this kernel on the live stack path -- the first TICK-charged composed rule --
+with the charge read from RECORDED bindings (rule_charge CHARGED; neuter A/B
+max|w| 0.791 vs 1.030 at the learner grain; the row's dimensionality-collapse
+prediction measured NULL, recorded in the stack's self-check output). Still
+open, said plainly: the stack-sandwich MERGE (T051b-iv) remains a declaration
+layer -- P2 merge-must-reduce NOT discharged, both incumbents remain production;
+the survivor-count reduction stays undated.
 
   PYTHONPATH=src python -m snn_data_lake.plasticity.rule_composer
 """
@@ -217,6 +221,16 @@ class RuleSpec:
     def __setattr__(self, key, value):
         raise AttributeError(f"RuleSpec is frozen ({key!r} is not assignable)")
 
+    # T053-ii: specs live inside production composers now (see RuleComposer's state
+    # methods); slots restored on a FRESH object during copy/unpickle only -- the
+    # freeze still refuses every post-construction mutation.
+    def __getstate__(self):
+        return {k: getattr(self, k) for k in self.__slots__}
+
+    def __setstate__(self, state):
+        for k, v in state.items():
+            object.__setattr__(self, k, v)
+
 
 class RuleComposer:
     """N declared rules -> one substrate value, under a NAMED policy, onto a
@@ -239,6 +253,20 @@ class RuleComposer:
         self._last = None  # (total_dw, {name: dw}) of the latest step
         self._cum = {}  # name -> cumulative |dw| (bounded: one float per rule)
         self._loo_of = _loo_of  # set ONLY by neutered(): permits the empty LOO arm
+        self._lock = threading.Lock()
+
+    # T053-ii: a composer now lives INSIDE every InhibitorySTDP (production state on the
+    # live stack), and a threading.Lock is neither picklable nor deepcopy-able -- without
+    # these two methods the delegation silently removed copy/serialize capability from the
+    # whole controller family (panel-measured up to the live _ixn object). The lock carries
+    # no state worth copying; it is dropped on get and recreated on set.
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state.pop("_lock", None)
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
         self._lock = threading.Lock()
 
     def add(self, spec):
@@ -340,7 +368,7 @@ class RuleComposer:
 
     def last_attribution(self):
         """The attribution kernel's read surface (first reader: rule_charge,
-        T051b-iii -- gate-run grade; tick-live reading is T053's): the latest step's
+        T051b-iii; tick-live since T053-ii on recorded stack bindings): the latest step's
         per-rule decomposition, cumulative |dw| TOTALS (cumulative_abs_dw -- not
         shares; divide by their sum if a share is wanted), whether a step has
         happened at all (never-stepped != measured-zero), and the policy's
@@ -478,9 +506,10 @@ def rule_charge(composer, w0, bindings_seq):
     to the measured arm -- a CROSS-CHECK, not a red (0/2000 random pure-rule
     compositions can fire it; bindings are float-frozen ONCE at entry so a
     stateful __float__ cannot reach it either). HONEST SCOPE, stated where a
-    reader looks: this runs on whatever composition the CALLER built; with zero
-    live compositions in the tree today it is a gate-run instrument, and the
-    first TICK-live reading arrives with T053's charged composition, not here.
+    reader looks: this runs on whatever composition the CALLER built. TICK-LIVE
+    since T053-ii: the stack self-check replays the E/I controllers' RECORDED
+    production bindings through a fresh composer here (verdict CHARGED); the
+    gate-run harness readings below remain constructed compositions.
 
     Refuses: an already-stepped composer (its attribution epoch would mix with
     this run's), a non-finite w0, an empty bindings_seq, a seq whose bindings
@@ -1234,8 +1263,8 @@ def main():
     #     eligibility_algebra's arm (which holds it to the incumbent THERE;
     #     canonical dw = +1*d*e*lr); NO tree-wide enumeration gate exists --
     #     the producers enumeration is T051c-wave's (open, undated), cited. rule_charge is the attribution's FIRST
-    #     READER -- gate-run grade, said plainly (zero live compositions exist;
-    #     T053's is the first tick-live one).
+    #     READER -- tick-live since T053-ii (the stack replays its controllers'
+    #     RECORDED production bindings; this harness's readings are constructed).
     from snn_data_lake.cerebellum.spiking_jepa import SpikingJEPA
     from snn_data_lake.substrate.manifest_gate import rebuild_from_registrants
 
@@ -2137,9 +2166,10 @@ def main():
         "DISCLOSURES: attribution is the instrument's KERNEL -- its first reader is "
         "rule_charge (T051b-iii): the per-rule charge A/B consuming last_attribution() "
         "and holding the sum-policy first-step prediction to the measured LOO arm. "
-        "GATE-RUN grade, said plainly: zero live compositions exist, so TICK-live "
-        "reading arrives with T053's charged composition, not before (the neutered "
-        "information stays recoverable from step()'s returned parts -- the instrument "
+        "TICK-LIVE since T053-ii: InhibitorySTDP's production step() applies through "
+        "this kernel and the stack self-check replays its controllers' RECORDED "
+        "bindings through rule_charge (verdict CHARGED; the neutered information "
+        "stays recoverable from step()'s returned parts -- the instrument "
         "is not the sole carrier). check_producers (FR-019) resolves against the "
         "PRODUCTION manifest assembly -- name/kind/unit WITHOUT `consumer`, "
         "ROUTE-checked with it (a resolvable name is not a wire: 9 of 10 unrouted "
@@ -2174,10 +2204,10 @@ def main():
         "held, caught by the T052-i panel) held to the live tree by rule_census_check -- the "
         "WAVE advances by dispositioning rows, the ratchet forbids lag/stale/rise. "
         "Harness constants (coefficients, budgets, the 100-step horizon, w0/g) are "
-        "exercise values under P1 exception (c) -- this module is a wire exemption "
-        "with zero live callers; the exception expires with T053's tick-charged "
-        "composed rule, the SAME date the sibling algebra's exception now carries "
-        "(one expiry, one date). The naive-sum claim is SCOPED: wrong only past "
+        "TEST FIXTURES: the P1 exception that covered them EXPIRED at T053-ii when the "
+        "tick-charged composed rule landed (same date as the sibling algebra's, one "
+        "expiry both siblings) -- fixtures parameterize these arms, they arbitrate no "
+        "production behaviour, so no exception is owed or claimed. The naive-sum claim is SCOPED: wrong only past "
         "|1 + sum c| >= 1 for the decay family; on (-1,0) the sum converges faster "
         "than either rule alone -- AND (T051b-ii) measured on the T048 conflict pair "
         "at the COMPONENT grain: incumbent diffuse-step x incumbent prune, where the "
@@ -2192,14 +2222,15 @@ def main():
         "one write target per spec, so that fix is representable only as "
         "per-substrate composition (a scope statement; the first draft's "
         "'adjudication record' refusal arm was the generic target guard and was "
-        "deleted as duplicative). The live stack is UNCHANGED by ii. Harness "
-        "exercise values under P1 exception (c) now also include the prune arm's "
-        "seeds/geometry (7, 3; 4x12 at density 0.5), the probe points (w0/u1 "
+        "deleted as duplicative). The live stack is UNCHANGED by ii. The same "
+        "TEST-FIXTURE adjudication (the expired-exception paragraph above -- one "
+        "adjudication, not two) covers the prune arm's seeds/geometry (7, 3; 4x12 "
+        "at density 0.5), the probe points (w0/u1 "
         "pairs), the 8/32-ulp band factors, and the iv sandwich arm's tranche "
         "(stack seeds 0/1, the RSTDPNeuron params lr=0.1/tau=8/w0=0.3/n=10, the "
         "8-call/60-step horizons, the 3000-step warm bound, the 64-ulp trim-"
         "magnitude band -- the 'level01' pins note applies to none of these; "
-        "they are exercise values). The stack MERGE (both incumbent "
+        "they are fixtures). The stack MERGE (both incumbent "
         "sandwiches as RuleSpecs, held to equivalence) LANDED at T051b-iv (harness 1d): "
         "the GAIN pipeline as the sequential two-writer composition vs the spied "
         "production pre_gain, the base WEIGHTS pipeline (T050-canonical deposit vs the "

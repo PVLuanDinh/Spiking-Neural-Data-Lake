@@ -87,6 +87,26 @@ EXEMPT_METHOD = {
         "behind a measured A/B, with deletion-on-null recorded in the module -- "
         "class-qualified key so no other fit inherits this disposition",
     ),
+    # The next three entered the census at T053-ii (2026-08-31): rule_composer's census
+    # imports made their hosts REACHABLE (the module-gate rows retired on it), and this
+    # per-METHOD gate scopes by reachable() -- import-topology arriving, not a wire.
+    "cerebellum.spiking_jepa.SpikingJEPA.train_step": (
+        "permanent",
+        "TRAIN-TIER world-model trainer on a kept-unadopted model (the module docstring's "
+        "adopt-or-retire record: encode() invariant across live widths, NOT a drop-in). "
+        "Charged surface: its own registered self-check + the T051b-i/T052-i declaration "
+        "equivalence arms that spy its call sites; a live wire would be a P2 adoption "
+        "decision, never a call added for this gate",
+    ),
+    "cerebellum.spiking_jepa._SpyJEPA.train_step": (
+        "permanent",
+        "harness SPY subclass -- records production call sites for the declaration "
+        "equivalence arms; exists only inside the module self-check",
+    ),
+    "plasticity.espp_rule._SpyESPP.train_step": (
+        "permanent",
+        "harness SPY subclass -- the espp arms' call-site recorder; self-check only",
+    ),
     "train_image": ("permanent", "deep_stdp_2stage: an offline [train]-tier trainer entrypoint"),
     "train_model": ("permanent", "training/: offline GPU trainer entrypoints (snn-train CLI)"),
     "train_with_offload": ("permanent", "training/offload: offline GPU trainer entrypoint"),

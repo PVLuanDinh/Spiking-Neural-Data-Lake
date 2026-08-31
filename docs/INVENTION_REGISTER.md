@@ -39,15 +39,15 @@ either alone. CONTROL: each rule's single-rule arm. ATTRIBUTION: the point of th
 per-rule contribution ledger. DISCLOSURE (corrected at T051a): arbitration order is bare add()
 insertion order — NOT learned, NOT recorded in the payload; the learned/recorded form is owed,
 undated. ANTI-RIGGING (T051b-iii): first reader = rule_charge, the per-rule A/B consuming
-last_attribution(), GATE-RUN grade (zero live compositions; tick-live reading is T053's); the
-neutered information stays recoverable from step()'s parts — not the sole carrier.
-NULL: a nothing-contributing rule is retired (P3) — INERT is rule_charge's constructed case.
+last_attribution(); TICK-LIVE since T053-ii: recorded bindings, CHARGED.
+NULL: a nothing-contributing rule is retired (P3) — INERT is its constructed case.
 MECHANIZED: `plasticity/rule_composer.py` — T051a kernel; T051b-i jepa LPL declaration; T051b-ii
 the T048 pair at component grain; T051b-iii check_producers (FR-019, production manifest) +
 rule_charge; T051b-iv the stack-sandwich MERGE expressed (gain two-writer + base weights
 deposit-then-trim vs spied production; both stacks remain production — a declaration layer,
-P2 merge-must-reduce NOT discharged: two incumbents before and after). No tissue (T053
-tick-charge dated).
+P2 merge-must-reduce NOT discharged: two incumbents before and after); T053-i/-ii the FIRST
+TICK-CHARGED COMPOSED RULE (InhibitorySTDP.step applies through it; neuter max|w|
+0.791 vs 1.030; dimensionality prediction NULL). No tissue: T054.
 
 ## 4. Growth stopping criterion (L5, T047)
 |LP|+charge-derived per-region growth gates with an executive-independent arm (a gate routed

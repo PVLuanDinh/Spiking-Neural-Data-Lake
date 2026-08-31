@@ -262,69 +262,21 @@ EXEMPT = {
     # not compose the division machinery (the earlier "until T047 composes it" was a promise
     # at the wrong grain); composition is owed to the task that wires region-wide growth
     # from seed -- the growth-coverage gate's 1-of-10 red is its standing driver.
-    "espp_rule": (
-        "wire",
-        "specs/022 T052-i: the extracted ESPP palette element (P2 ADOPT -- "
-        "spiking_jepa's rule='espp' branch DELEGATES to espp_modulator_core; the "
-        "inline math left jepa in the same commit, one mechanism). Reachable only "
-        "through jepa, itself EXEMPT permanent, and only on the NON-DEFAULT "
-        "rule='espp' path -- so this row is honest about being presence, not "
-        "participation. Charged surface today: the registered self-check "
-        "(delegation-live rebind arm + BIT/FULL/DELTA equivalence vs the applied "
-        "weight + coefficient pins incl. the composed 2*lp*alpha product + the "
-        "lpl/transport/freeze_top refusals). RE-ADJUDICATED AT T052-ii (2026-08-27): "
-        "the temporal-stream benchmark RAN (SHD/N-MNIST packs, the EpisodeDriver trial "
-        "shape as supervision, matched hidden-64 scale) and measured a MIXED NULL -- "
-        "means degrade on both packs (N-MNIST .547 -> .476, SHD .244 -> .220), the "
-        "improving seeds are the weakest twin draws, the random-encoder control "
-        "brackets espp, and the supervised e-prop incumbent dominates at the same "
-        "width; the null survived six adversarial probes, and the oracle was measured "
-        "PRESENT BUT NOT PARTICIPATING (a label-blind control tied exactly -- ~90% of "
-        "blind draws are different-label on 10-class data). Figures + the corrected "
-        "protocol (the first draft's eligibility under-integrated SHD 689x -- its arm "
-        "measured the harness) in the module's benchmark section, re-derived live by "
-        "its pack-gated arm. NO production wire lands on this measurement; the element "
-        "remains the declaration + jepa's delegated branch (FR-018's retirement "
-        "trigger does not fire -- the declared scope measures green), and this "
-        "exemption's charged surface remains the registered self-check. Next "
-        "re-adjudication trigger: a consumer with a measured non-null, none dated -- "
-        "and the in-gate arm's exact assert RE-OPENS the adjudication the day espp "
-        "starts helping.",
-    ),
-    "rule_composer": (
-        "wire",
-        "specs/022 T051a: the composition kernel (P8 invention #3's core) -- typed "
-        "read/write sets that are LOAD-BEARING (the composer routes its substrate by "
-        "the uniform write target; the panel's first-landing measured writes validated "
-        "then ignored, a theta-targeted update deposited into the weight), N rules "
-        "through T050's algebra under a named policy onto a REQUIRED declared target, "
-        "the naive-sum red at its MEASURED boundary (c=-1.0 orbits -- entailed, driven "
-        "100 steps; c=-1.5 genuinely DIVERGES on the open interval while each rule "
-        "alone and the sequential control converge; the sum is only wrong past "
-        "|1+sum c|>=1, and on (-1,0) it converges FASTER than either rule -- "
-        "disclosed), and per-rule neuter attribution as the instrument's KERNEL "
-        "(readers at T051a: ZERO; the first reader, rule_charge, landed at T051b-iii "
-        "at gate-run grade -- and both it and check_producers are MODULE-LEVEL "
-        "functions invisible to method_dormancy_gate's ClassDef scan, no LEARN_VERB, "
-        "host outside reachable(); this gate-run self-check is their charged surface. "
-        "The guarantee key names the POLICY'S "
-        "property, never a per-step causality measurement -- the first landing's "
-        "'causality' label was derived from the policy name and measurably mislabeled "
-        "exact sequential compositions). P2: BOTH live incumbent compositions named "
-        "(PlasticityRuleStack AND its base HomeostaticPlasticityStack); the merge "
-        "LANDED at T051b-iv as the declaration-of-record layer (gain two-writer + "
-        "base weights vs spied production; both stacks REMAIN production; remainder "
-        "disclosed) -- P2 merge-must-reduce NOT discharged by it: two incumbents "
-        "before, two after, plus an expression layer; the survivor-count reduction "
-        "stays open, undated, said plainly. LANDED at T051c: check_claim + the "
-        "ratcheted rule census (tools/rule_census.json; --regen-census on the module "
-        "is the sanctioned edit path, refusing retractions and dead entries) -- the "
-        "disposition WAVE is T051c-wave's open row. LANDED at T051b-iii: producers x the production "
-        "manifest (check_producers, FR-019) and rule_charge -- the attribution's first "
-        "reader, GATE-RUN grade (zero live compositions; tick-live reading is T053's, "
-        "the first tick-charged composed rule). Charged surface until then: this "
-        "gate-run self-check.",
-    ),
+    # espp_rule's `wire` row RETIRED at T053-ii (2026-08-31): the module is REACHABLE through
+    # rule_composer's census imports (which inhibitory_stdp's composed production path now
+    # reaches), so an EXEMPT row would be the stale-exemption red. The T052-ii MIXED-NULL
+    # adjudication (no production wire on that measurement; the exact in-gate assert re-opens
+    # it the day espp starts helping) lives in the module's own benchmark section and the
+    # T052 tasks.md rows -- reachability changes none of it.
+    # rule_composer's `wire` row RETIRED at T053-ii (2026-08-31): InhibitorySTDP's production
+    # step() now applies THROUGH the kernel (the first tick-charged composed rule -- the very
+    # consumer this row dated), so the module is reachable from a live path and the row's
+    # excuse is discharged, not merely stale. Still OPEN and carried where they live: P2
+    # merge-must-reduce (both stacks remain production -- module docstring + tasks.md T051b-iv
+    # row) and the T051c-wave disposition WAVE (its own tasks.md row). check_producers /
+    # rule_charge remain module-level functions invisible to method_dormancy_gate's ClassDef
+    # scan -- the module docstring says so; rule_charge's tick-live reading landed with this
+    # same commit's stack harness.
     # eligibility_algebra's `wire` row RETIRED at T053-i (2026-08-31): istdp_synapse_rule
     # (plasticity/inhibitory_stdp.py, a reachable registered module) now imports the algebra
     # on its authoring path, so module-grade reachability is SATISFIED and an EXEMPT row here
@@ -333,24 +285,13 @@ EXEMPT = {
     # is T053-ii's, and its P1 harness-constant exception carries that date in its own
     # DISCLOSURES (one expiry, one date, both siblings -- the rule_composer row below still
     # holds the composer's half).
-    "structural_rewiring": (
-        "wire",
-        "specs/022 T048: the slow-clock structural pass (DEEP-R budget + MSP sign steering + "
-        "turnover instrument), palette element BUILT and panel-hardened; its intended IXN wire "
-        "was MEASURED AND REFUSED the same day (zero sign crossings on both live paths -- 206 "
-        "autonomous cycles + 1500 teaches, all-excitatory birth; the caller's Benna-Fusi relax "
-        "rebinds rows from the deep store above the pass, erasing the trigger; inhibitory "
-        "regens washed positive in 2 fast-clock steps -- the module docstring carries the full "
-        "record). Wiring against those measurements is force-wiring (P6's defect). DATED: the "
-        "live wire lands with T054's cerebellar tissue (the MLI OPPOSITE-SIGN pathway -- "
-        "sign-structured tissue where identity pruning is native vocabulary); the cascade "
-        "composition conflict is T051's red case -- MODELED at T051b-ii at the component grain "
-        "(rule_composer harness 1b: prune x bare diffuse step; the wrapper, relax() and the "
-        "live wire stay undriven, so the model adjudicates nothing about the T054 fix). Until "
-        "then the module's charged "
-        "surface is its own gate-run self-check (A/A, budget conservation past the first "
-        "event, sign steering + coin control, exact turnover, re-adoption, refusals).",
-    ),
+    # structural_rewiring's `wire` row RETIRED at T053-ii (2026-08-31): reachable through
+    # rule_composer's harness imports, so an EXEMPT row would be the stale-exemption red.
+    # NOTHING about T048's adjudication moves: the IXN wire was MEASURED AND REFUSED (zero
+    # sign crossings, all-excitatory birth -- the module docstring carries the full record;
+    # wiring against it is force-wiring, P6's defect), and the LIVE wire stays dated to
+    # T054's sign-structured MLI tissue -- tasks.md's T054 row carries that obligation plus
+    # the T048 fix. Reachability here is import-topology, not participation.
     "genomic_bottleneck": (
         "wire",
         "specs/022 T044: the g-network (tag vectors from the T043 placement surface + one "
@@ -444,16 +385,12 @@ EXEMPT = {
         "permanent",
         "TRAIN-TIER: recurrent-spiking encoder trained offline and SERVED frozen; emits no live-tick value",
     ),
-    "spiking_jepa": (
-        "permanent",
-        "TRAIN-TIER world model. Probed as an adopt-or-retire vs the live rate JepaWorldModel and it is "
-        "NOT a drop-in: measured encode() output does not vary across 24 distinct live-width patterns, so "
-        "swapping it in would silently deaden the planner's transition_fn. Kept, unadopted, honestly",
-    ),
-    "is_snn_forward": (
-        "permanent",
-        "LIBRARY/BENCHMARK: spiking-forward primitive tied to spiking_jepa, not a tick faculty",
-    ),
+    # spiking_jepa + is_snn_forward `permanent` rows RETIRED at T053-ii (2026-08-31): both
+    # reachable through rule_composer's census imports, so EXEMPT rows would be the
+    # stale-exemption red. The adjudications stand where they live: jepa is NOT a drop-in
+    # for the live rate JepaWorldModel (encode() invariant across 24 live-width patterns --
+    # its own docstring's record; kept, unadopted, honestly), and is_snn_forward remains a
+    # library primitive tied to it. Reachability is import-topology, not adoption.
     # ---- "permanent": legitimately not on the live tick, with a reason (infra / tool / library) ----
     "basic_components": (
         "permanent",
@@ -500,19 +437,11 @@ EXEMPT = {
         "trainer. Same disposition as sensor_csv_ingest: it feeds the [train] tier, not the tick, "
         "and the brain must never make a blocking network call mid-control",
     ),
-    "method_dormancy_gate": (
-        "permanent",
-        "the Policy-3 per-METHOD amendment's gate -- a CI self-check, not a tick faculty",
-    ),
-    "gradient_claim_gate": (
-        "permanent",
-        "the e-prop invariant's SCOPE gate -- a CI self-check, not a tick faculty. Answers a "
-        "question none of its siblings asks: does a given learning rule OWE a gradient cosine at "
-        "all? Censuses the WHOLE package and ASSERTS on the governed tier only, reporting the "
-        "ungoverned half, which is the verdict contract eprop_transport_gate already ships. Same "
-        "disposition and the same reason as the four gates above: reachable from run_selfchecks "
-        "and CI, never from a tick",
-    ),
+    # method_dormancy_gate + gradient_claim_gate `permanent` rows RETIRED at T053-ii
+    # (2026-08-31): both reachable through rule_composer's cross-check imports (check_claim
+    # holds claim_keys to gradient_claim_gate's own surface), so EXEMPT rows would be the
+    # stale-exemption red. Both remain CI self-checks, never tick faculties -- their own
+    # docstrings say so; nothing about their disposition moves with reachability.
     "policy_manifest": (
         "permanent",
         "the POLICIES.md manifest + release-audit instrument (specs/021) -- a CI self-check, not "
@@ -601,13 +530,11 @@ EXEMPT = {
     # selfcheck_cache needs NO exemption: run_selfchecks.py is an external root and its
     # --carry import makes the module live-reachable -- the stale-exemption arm proved it
     # by refusing the row this comment replaces (the gate working, twice in one spec).
-    "envelope_hash_gate": (
-        "permanent",
-        "specs/022 T021b: the envelope-BYTES gate (five brainstem files vs the approved "
-        "baseline tools/envelope_hashes.json; updating the baseline IS the owner-approval "
-        "act). A CI/run_selfchecks instrument, never on a tick, and the envelope is never "
-        "its target -- it reads and compares. The policy_manifest disposition",
-    ),
+    # envelope_hash_gate's `permanent` row RETIRED at T053-ii (2026-08-31): reachable through
+    # the same rule_composer import cluster, so an EXEMPT row would be the stale-exemption
+    # red. It remains a CI/run_selfchecks instrument that reads and compares the five
+    # brainstem files' bytes -- never on a tick, the envelope never its target (its docstring
+    # and the T021b record carry that); reachability changes nothing about the approval act.
     # interoceptive_integration: EXEMPTION RETIRED 2026-08-22 (specs/022 T039f), and it is the
     # measurement that retired it, not the wire. The row promised a coalition consumer at
     # T030/T031; T039b measured that sink OUT OF RANGE and refused it. The row then named the

@@ -163,6 +163,11 @@ class _EIBalance:
     reused = "inhibitory_stdp.InhibitorySTDP"
 
     def __init__(self, n_neurons, n_syn=16, rho0=0.05, max_trim=0.05, k=0.5):
+        # record_bindings stays at its production default (False): the recorder is an
+        # OPT-IN instrument switch -- the panel measured the always-on form buffering for
+        # a reader that only the self-check ever ran ("presence is not participation",
+        # pointed at instrumentation). _tick_charge_selfcheck arms it on the stack IT
+        # drives, so rule_charge still reads bindings recorded on the real host path.
         self._ctrl = [InhibitorySTDP(n_syn=n_syn, rho0=rho0) for _ in range(int(n_neurons))]
         self._n_syn = int(n_syn)
         self._max_trim = float(max_trim)
@@ -617,11 +622,131 @@ def _equivalence_and_determinism_selfcheck():
     return equivalent, deterministic
 
 
+def _tick_charge_selfcheck():
+    """T053-ii: THE FIRST TICK-CHARGED COMPOSED RULE, read on this stack's own live path.
+
+    (a) rule_charge on RECORDED bindings: the harness arms record_bindings on the stack IT
+    drives (an opt-in instrument switch; production defaults off), so the E/I controllers
+    record (w0, bindings) per composed synapse-event on the real host path -- never
+    hand-typed, the T051b-iv pinned-gauge lesson. A fresh composer replays them; the
+    reading is DECLARATION-grade on production-recorded data, and it is TIED to what
+    production applied by a rule-identity assert against the live composer's own terms
+    (closing the swapped-rule blindness the panel measured). An eta=0 donor replayed on
+    the SAME bindings must read INERT -- the reachable non-CHARGED verdict. (b) the neuter
+    A/B at the learner grain, THREE seeds in-gate: neutered controllers develop zero
+    inhibition and the learned weights carry more excitation (deterministic direction --
+    the trim only reduces); the margin asserts against the in-gate per-seed minimum.
+    MEASURED NULL, recorded rather than dressed up: the T053 row predicted `absence
+    collapses dimensionality`; the participation ratio printed per seed here moves ~1
+    percent (live consistently higher, below assertion grade), and the off-gate
+    stack-grain + open-loop protocols measured the same null (2026-08-31 commit record) --
+    the discriminators that DO separate the arms are weight scale and developed
+    inhibition, asserted; the PR figures are printed so the null stays visible."""
+    import random as _r
+
+    from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner
+    from snn_data_lake.plasticity.inhibitory_stdp import istdp_synapse_rule
+    from snn_data_lake.plasticity.rule_composer import RuleComposer, RuleSpec, rule_charge
+
+    def _pr(rows):
+        try:
+            import numpy as np
+        except Exception:
+            return None
+        m = np.array(rows, dtype=float)
+        lam = np.clip(np.linalg.eigvalsh(m @ m.T), 0.0, None)
+        s = lam.sum()
+        return float(s * s / (lam * lam).sum()) if s > 0.0 else 0.0
+
+    def _run(neuter, seed):
+        rng = _r.Random(seed)
+        responses = ["a", "b", "c", "d"]
+        n_in = 20
+        lrn = SpikingInteractionLearner(responses, n_in=n_in, seed=seed)
+        stack = PlasticityRuleStack(n_neurons=len(responses), seed=seed)
+        for c in stack._ei._ctrl:
+            c.record_bindings = True  # the harness's own stack opts in; production stays off
+        if neuter:
+            for c in stack._ei._ctrl:
+                c._composer = c._composer.neutered("istdp.synapse")
+        lrn.stack = stack
+        protos = [[rng.random() for _ in range(n_in)] for _ in range(4)]
+        for _ in range(120):  # phase A: teach the material
+            k = rng.randrange(4)
+            stim = [x + 0.08 * (rng.random() - 0.5) for x in protos[k]]
+            lrn.interact(stim, responses[k])
+        for _ in range(120):  # phase B: conflicting relabel -- the separation compounds here
+            k = rng.randrange(4)
+            stim = [x + 0.08 * (rng.random() - 0.5) for x in protos[k]]
+            lrn.interact(stim, responses[(k + 1) % 4])
+        rows = [list(n.w) for n in lrn.neurons]
+        maxw = max(abs(x) for r in rows for x in r)
+        inh = sum(c.mean_w() for c in stack._ei._ctrl)
+        return stack, maxw, _pr(rows), inh
+
+    per_seed = []
+    live_stack = None
+    for seed in (3, 9, 17):
+        ls, mw_l, pr_l, inh_l = _run(neuter=False, seed=seed)
+        _ns, mw_n, pr_n, inh_n = _run(neuter=True, seed=seed)
+        assert inh_l > 0.0 and inh_n == 0.0, (
+            f"seed {seed}: neuter mechanism check failed (inh {inh_l} vs {inh_n})"
+        )
+        assert mw_n > mw_l * 1.10, (
+            f"seed {seed}: the composed rule's absence must leave MATERIALLY more "
+            f"excitation (live {mw_l:.3f} vs neutered {mw_n:.3f})"
+        )
+        per_seed.append((seed, mw_l, mw_n, pr_l, pr_n, inh_l))
+        if seed == 3:
+            live_stack = ls
+    maxw_live, maxw_neut, pr_live, pr_neut, inh_live = per_seed[0][1:6]
+    ctrl0 = live_stack._ei._ctrl[0]
+    recorded = list(ctrl0._recorded)
+    assert len(recorded) >= 64, f"tick path recorded too few composed events ({len(recorded)})"
+    w0_first, bindings_seq = recorded[0][0], [b for _w, b in recorded]
+
+    def _fresh_composer(donor):
+        comp = RuleComposer("sum", target="w")
+        comp.add(
+            RuleSpec(
+                "istdp.synapse",
+                istdp_synapse_rule(donor),
+                reads=("pre", "dev", "post", "x_pre"),
+                writes=("w",),
+                claim_key="InhibitorySTDP.step",
+            )
+        )
+        return comp
+
+    replay_donor = InhibitorySTDP(n_syn=ctrl0.n, rho0=ctrl0.rho0)
+    fresh = _fresh_composer(replay_donor)
+    # rule-identity tie: the replayed declaration must BE the one production applied
+    assert fresh._specs[0].rule.terms == ctrl0._composer._specs[0].rule.terms, (
+        "replay declaration diverged from the live composer's own terms -- the reading "
+        "would grade a different rule than production applied"
+    )
+    verdicts = rule_charge(fresh, w0_first, bindings_seq)
+    row = verdicts["per_rule"]["istdp.synapse"]
+    assert row["verdict"] == "CHARGED", (
+        f"the FIRST TICK-LIVE rule_charge reading must be CHARGED, got {verdicts!r}"
+    )
+    assert row["first_step_cross_check"], "the sum-policy first-step LOO cross-check failed"
+    # the reachable non-CHARGED verdict on the SAME bindings: an eta=0 donor reads INERT
+    zero_donor = InhibitorySTDP(n_syn=ctrl0.n, rho0=ctrl0.rho0)
+    zero_donor.eta = 0.0
+    inert_row = rule_charge(_fresh_composer(zero_donor), w0_first, bindings_seq)
+    assert inert_row["per_rule"]["istdp.synapse"]["verdict"] == "INERT", (
+        f"the INERT control failed on the recorded bindings: {inert_row!r}"
+    )
+    return per_seed, maxw_live, maxw_neut, pr_live, pr_neut, inh_live, len(recorded), row["verdict"]
+
+
 def main():
     b_ret, r_ret = _retention_selfcheck()
     g_lo, g_hi = _adaptive_lr_selfcheck()
     s_drive, c_drive, s_rate = _stability_selfcheck()
     equivalent, deterministic = _equivalence_and_determinism_selfcheck()
+    per_seed, mw_l, mw_n, pr_l, pr_n, inh_l, n_rec, charge_v = _tick_charge_selfcheck()
     print()
     print(
         f"self-check OK: PlasticityRuleStack is a drop-in SUPERSET of HomeostaticPlasticityStack "
@@ -631,6 +756,20 @@ def main():
         f"{b_ret:.2f}), REUSING BCMNeuron / InhibitorySTDP / BennaFusiSynapse verbatim, while PRESERVING "
         f"the base's bounded (drive {s_drive:.2f} vs a diverging {c_drive:.1f}) + rate-homeostatic "
         f"(rate {s_rate:.2f}~mu) guarantee; deterministic ({deterministic})."
+    )
+    seed_bits = ", ".join(
+        f"s{sd}: {ml:.3f}/{mn:.3f} PR {('n/a' if pl is None else format(pl, '.3f'))}/"
+        f"{('n/a' if pn is None else format(pn, '.3f'))}"
+        for sd, ml, mn, pl, pn, _ in per_seed
+    )
+    print(
+        f"T053-ii tick charge OK: rule_charge on {n_rec} RECORDED bindings (harness-armed "
+        f"opt-in on this stack's own live-host drive) = {charge_v}, rule-identity tied to the "
+        f"live composer, eta=0 INERT control red-able on the same bindings; neuter A/B at the "
+        f"learner grain, 3 seeds in-gate (live/neutered max|w|, live/neutered PR): {seed_bits} "
+        f"-- the dimensionality-collapse prediction is a MEASURED NULL at this grain (and at "
+        f"the off-gate stack grain + open-loop protocols, commit record 2026-08-31); charge = "
+        f"weight scale + developed inhibition ({inh_l:.4f} vs 0)"
     )
 
 

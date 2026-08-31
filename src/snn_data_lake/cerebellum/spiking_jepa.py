@@ -605,11 +605,12 @@ class SpikingJEPA:
 
         DORMANCY, said where a reader looks: this method has ZERO production callers
         (consumers = this module's self-check + the composer-palette smoke), its host
-        module is dormancy_gate EXEMPT `permanent`, and BOTH method-grade gates
-        structurally miss it (no LEARN_VERB in the name; the host is outside the
-        reachable() enumeration). Its first tick-charged use is UNDATED. The
-        algebra/composer siblings' T053 expiry is discharged by iSTDP's OWN
-        declaration there, NOT by this rule."""
+        module is REACHABLE since T053-ii through rule_composer's census imports (its
+        dormancy row retired on that reachability -- adjudications unmoved), and BOTH
+        method-grade gates structurally miss it (no LEARN_VERB in the name). Its first
+        tick-charged use is UNDATED. The algebra/composer siblings' expiry WAS
+        discharged at T053-ii by iSTDP's OWN declaration composing on the tick, NOT by
+        this rule."""
         if self.rule != "lpl":
             raise ValueError(
                 f"lpl_synapse_rule declares the rule='lpl' branch only (rule={self.rule!r})"
@@ -1857,10 +1858,11 @@ def main():
         "DISCLOSURES (T051b-i): the DECLARATION is equivalence, NOT adoption -- the incumbent "
         "_modulator + train_step block REMAINS the production path, lpl_synapse_rule has ZERO "
         "production callers (consumers: this self-check + the composer-palette smoke), the host "
-        "module is dormancy_gate EXEMPT `permanent`, and BOTH method-grade gates structurally "
-        "miss the method (no LEARN_VERB; host outside reachable()). Its first tick-charged use "
-        "is UNDATED; the algebra/composer siblings' T053 expiry is discharged by iSTDP's OWN "
-        "declaration there, not by this rule. UNDECLARED REMAINDER (shrunk at T052-i): the "
+        "module is REACHABLE since T053-ii (its dormancy row retired on rule_composer's census "
+        "imports; adjudications unmoved), and BOTH method-grade gates structurally "
+        "miss the method (no LEARN_VERB). Its first tick-charged use "
+        "is UNDATED; the algebra/composer siblings' expiry WAS discharged at T053-ii by iSTDP's "
+        "OWN declaration composing on the tick, not by this rule. UNDECLARED REMAINDER (shrunk at T052-i): the "
         "lambda_jepa top-layer addition and transport-gated (gate!=1) bottom sites -- espp/"
         "transport/freeze_top instances REFUSE rather than receive a lying declaration; the "
         "rule='espp' branch is declared by plasticity/espp_rule.espp_synapse_rule since T052-i "

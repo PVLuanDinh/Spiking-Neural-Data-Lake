@@ -214,6 +214,17 @@ class AuthoredRule:
     def __setattr__(self, key, value):
         raise AttributeError(f"AuthoredRule is frozen ({key!r} is not assignable)")
 
+    # T053-ii: authored rules now live inside production composers (InhibitorySTDP), so the
+    # controller family must stay copy/pickle-able; the default reconstruction path goes
+    # through setattr, which the freeze correctly refuses. These restore slots on a FRESH
+    # object during copy/unpickle only -- post-construction mutation stays frozen.
+    def __getstate__(self):
+        return {k: getattr(self, k) for k in self.__slots__}
+
+    def __setstate__(self, state):
+        for k, v in state.items():
+            object.__setattr__(self, k, v)
+
     def _needed(self):
         used = {f for _c, fs in self.terms for f in fs}
         ghosts = sorted(f for f in used if f not in self._vocab)
@@ -509,13 +520,12 @@ def main():
         "keep their own kernels). The expressibility census over the tree's "
         "three-factor rules is in the module docstring -- 'for ALL three-factor "
         "rules' is the task's phrase, the census is what is true. term_budget=4/8 in "
-        "THIS harness are exercise values (P1 exception c, dated: the module became "
-        "REACHABLE at T053-i -- istdp_synapse_rule's authoring import retired the "
-        "dormancy wire row -- but reachability is not charge: zero TICK-live "
-        "compositions exist, and the exception expires with T053-ii's tick-charged "
-        "composed rule; RESCOPED at T051a from 'T051' because harness-only "
-        "consumption leaves zero live callers and expiring on it would be a false "
-        "discharge; one expiry, one date, both siblings). Factor "
+        "THIS harness are TEST FIXTURES: the P1 exception that covered them EXPIRED "
+        "at T053-ii (2026-08-31) when InhibitorySTDP's production step() began applying "
+        "its authored declaration through the composer kernel -- the tick-charged "
+        "composed rule this exception was dated to (one expiry, one date, both "
+        "siblings; the composer's DISCLOSURES carry the same landing). Fixtures "
+        "parameterize these arms and arbitrate no production behaviour. Factor "
         "producers are NOT declared here (name + role prose only) -- FR-019's "
         "'declared producers' lands at T051b by composing with wiring_manifest, not "
         "a third port model. The GRADIENT_CLAIM above is VOLUNTARY (the gate's verb "
