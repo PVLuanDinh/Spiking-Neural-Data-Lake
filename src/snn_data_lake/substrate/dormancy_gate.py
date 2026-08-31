@@ -324,6 +324,48 @@ EXEMPT = {
         "structural wire on measurement, and the live-brain consumer carries no task "
         "id yet, both said plainly.",
     ),
+    "wm_attractor": (
+        # "retire", not "wire": this field is the machine-readable disposition that
+        # open_dispositions() emits as the standing TODO, and it previously said "wire"
+        # (pending a verify-first wave) while the reason beside it said the module would
+        # never be wired. The one field a tool can act on must agree with the adjudication.
+        "retire",
+        "specs/022 T055: working memory held as FACILITATION on Tsodyks-Markram synapses "
+        "(the Mongillo family; the module's own docstring discloses what is NOT built -- "
+        "no recurrence, no population spike, the competition is arithmetic). P2 SETTLED "
+        "BY MEASUREMENT, AGAINST THIS MODULE -- this row previously carried it as an "
+        "OPEN DEBT with the settling benchmark merely NAMED; the benchmark now EXISTS "
+        "and has run (delayed_match() in this module, arm 8: multi-item "
+        "delayed-match-to-sample with distractors, both stores behind one adapter, two "
+        "controls flat at 0.00). VERDICT: THE TASK CANNOT SEPARATE THEM. Two earlier "
+        "readings of it were wrong and are recorded so neither is re-derived -- (A) "
+        "'this store wins' held only against cortex/prefrontal_executive at its "
+        "CONSTRUCTOR DEFAULT; (B) 'the incumbent's best form wins' steel-manned the RIVAL "
+        "ONLY, since tau_f here is as unbounded a constructor argument as recurrence is "
+        "there, and symmetrised, tau_f=8000 scores exactly what recurrence=0.9999 scores. "
+        "With both sides tuned every contender scores 0.50 against controls at 0.00, and "
+        "they tie for a substantive reason: NEITHER SUPPRESSES A DISTRACTOR -- each "
+        "reports every item it was shown, so each takes the same false alarms. Same job, "
+        "same failure. THE TIEBREAK GOES AGAINST THIS MODULE on its own substrate: R IS "
+        "INERT here -- neuter('resources') cuts its only route to an output and the entire "
+        "production surface is BIT-IDENTICAL -- so the two-variable synapse that was the "
+        "whole claimed distinction is a ONE-variable trace, which is P3's "
+        "computed-but-not-consumed shape disclosed under P8(4). An earlier arm claimed R "
+        "was still consumed and was measuring facilitation saturation. DISPOSITION: "
+        "RETIRE (this field, not 'wire'). Exactly one mechanism survives per P2 and this "
+        "is not the one with a working claim; it outlives the commit only for P2's "
+        "honesty guard, and T056 is where R either acquires its real job (resources "
+        "bounding the refresh cycle, which is what makes a capacity FALL OUT of time "
+        "constants rather than be declared as max_goals) or this file is DELETED. No live "
+        "wire; not a second workspace. Charged surface until then: its own registered "
+        "self-check (spike-written memory with a 0-drive control that writes nothing; "
+        "selectivity with a second-load red; the trace surviving silence with a "
+        "u-ablation that loses the item; probe idempotence; a competition ranked on the "
+        "memory, carrying the retired u*R scoring as its reachable red; the R-inertness "
+        "neuter and its refusal on an unknown element; refresh outliving decay at 8000 "
+        "ticks; capacity occupancy measured from FIRING ticks with a weak-load red; the "
+        "benchmark and both its controls; the tau_f > tau_d regime guard).",
+    ),
     "genomic_bottleneck": (
         "wire",
         "specs/022 T044: the g-network (tag vectors from the T043 placement surface + one "

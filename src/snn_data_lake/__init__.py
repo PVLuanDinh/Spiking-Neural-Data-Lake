@@ -365,6 +365,9 @@ REGIONS = {
         "inhibitory_stdp",
         "intrinsic_plasticity",
         "short_term_plasticity",
+        # specs/022 T055: the synaptic WM attractor (Mongillo) -- memory in facilitation,
+        # composing the short_term_plasticity synapse above into competing populations
+        "wm_attractor",
         "developmental_pruning",
         "structural_rewiring",  # specs/022 T048: DEEP-R budget + MSP sign steering, slow clock
         "eligibility_algebra",  # specs/022 T050: sum-of-products authoring contract (three-factor rules)
