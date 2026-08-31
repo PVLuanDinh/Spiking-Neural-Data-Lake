@@ -592,6 +592,51 @@ def _assert_tiers_agree_with_regions():
 _assert_tiers_agree_with_regions()
 
 
+def latch_in_window(mtime, w0, w1):
+    """True iff the E-STOP sidecar's mtime falls inside the running check's own wall-clock slot.
+
+    Attribution rule (chip task_100cb4d5, adjudicated 2026-08-31): batteries had attributed a
+    found latch to whatever check's slot it SURFACED in -- existence alone -- which named
+    innocent checks: only an arm-driving process tree writes this file (so101_arm owns it),
+    and a straggler from an earlier check's tree can leave one during a later check's slot or
+    a carried stretch. So a latch is attributed to the running check ONLY when its mtime sits
+    inside [w0, w1]; anything else prints as a background straggler, unattributed, instead of
+    the runner inventing a name. The counted adjudication record (three batteries' sets, the
+    13-run standalone sweeps) lives in the commit that landed this, not here -- re-derive,
+    never cite.
+
+    Disclosed limits, each measured: (a) a straggler writing INSIDE the window is
+    indistinguishable from the check's own write -- the window NARROWS the smear (inter-slot
+    gaps, carried stretches, the first slot), it cannot erase it; full attribution needs
+    writer identity inside the latch, which is envelope-owned and out of runner scope.
+    (b) NTFS mtime can lag time.time() by ~1 ms, so both boundaries are soft at millisecond
+    scale. (c) subprocess.run(capture_output=True) drains pipes to EOF, so it WAITS for
+    grandchildren that inherit stdio -- only a grandchild spawned with detached stdio can
+    outlive its slot; the straggler class is narrow, not generic. VERDICT SCOPE: this
+    variance was never a determinism-contract violation -- the contract binds the substrate
+    tick and G5 replay (docs/POLICIES.md, THE DETERMINISM CONTRACT); battery-runner REPORTING
+    sits outside it, and the defect was the report naming innocent checks.
+    """
+    return w0 <= mtime <= w1
+
+
+def _sweep_latch(latch, m, w0, w1, latch_left, latch_stray):
+    """The classify-and-remove step after every LIVE check: read the sidecar's mtime BEFORE
+    removing it, then attribute (latch_left) or report unattributed (latch_stray) by
+    latch_in_window. Extracted so the attribution WIRING is testable against a real file --
+    the pre-fix defect (attribution by existence alone) lived exactly here; run_all's single
+    call below is the one line the test does not execute, and that is stated in the test."""
+    if not os.path.exists(latch):
+        return
+    latch_mtime = os.path.getmtime(latch)  # read BEFORE remove
+    os.remove(latch)
+    if latch_in_window(latch_mtime, w0, w1):
+        latch_left.append(m)
+    else:
+        # surfaced during m's slot but written outside it -- see latch_in_window
+        latch_stray.append(f"{m}@{latch_mtime - w0:+.1f}s")
+
+
 def run_all(carry=False):
     if not _TORCH:
         # torch is a CORE dependency, so this is a BROKEN INSTALL, not a supported configuration.
@@ -625,12 +670,16 @@ def run_all(carry=False):
     # T037a hygiene: a self-check that E-STOPs its So101Arm and exits leaves the DURABLE latch
     # sidecar in this run's SHARED isolated home; the next subprocess (a different pid) would
     # honour it and come up frozen -- the shared-home sequence coupling, made safety-shaped.
-    # Cleared between checks, and SAID: the check that left it is named, because exiting
-    # stopped is information. The real brain's home is never touched here (NORD_HOME=_HOME).
+    # Cleared between checks, and SAID: the check that left it is named -- but ONLY when the
+    # latch mtime falls inside that check's own wall-clock slot (latch_in_window; a straggler
+    # from an earlier arm-driving check's tree is reported unattributed, never named). The
+    # real brain's home is never touched by THIS path (NORD_HOME=_HOME rides in _ENV); the
+    # --in-process runners below have no such isolation and no latch handling -- a
+    # pre-existing gap, tracked separately, not silently covered by this sentence.
     from snn_data_lake.brainstem.so101_arm import ESTOP_LATCH  # the ONE spelling, in the envelope
 
     latch = os.path.join(_HOME, ESTOP_LATCH)
-    latch_left = []
+    latch_left, latch_stray = [], []
     if os.path.exists(latch):
         os.remove(latch)
         print("GATE-HOME E-STOP SIDECAR from a previous run cleared before this battery")
@@ -664,16 +713,16 @@ def run_all(carry=False):
             print(f"RERUN {m}  ({cache.why(m)})")
         cmd = [sys.executable, "-m", f"snn_data_lake.{m}"]  # every module runs as a package module
         t0 = time.perf_counter()
+        w0 = time.time()  # wall-clock slot start -- latch mtimes compare against THIS clock
         r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", env=_ENV)
         secs = time.perf_counter() - t0
+        w1 = time.time()
         ok = r.returncode == 0
         # the wall-clock rides on every line so a battery log IS the per-module histogram
         # (the battery-speed research needed one and none existed), and the cache stores it
         # so a later carry can say what it did not spend -- measured, never claimed.
         print(f"{'PASS' if ok else 'FAIL'}  {m}  [{secs:.1f}s]")
-        if os.path.exists(latch):
-            os.remove(latch)
-            latch_left.append(m)
+        _sweep_latch(latch, m, w0, w1, latch_left, latch_stray)
         if not ok:
             failed.append(m)
             sys.stderr.write(r.stdout[-2000:] + r.stderr[-2000:] + "\n")
@@ -704,8 +753,15 @@ def run_all(carry=False):
     if latch_left:
         print(
             f"GATE-HOME E-STOP SIDECAR left by {len(latch_left)} check(s) and cleared between "
-            "subprocesses (a check that exits stopped is information, not a defect): "
-            + ", ".join(latch_left)
+            "subprocesses (a check that exits stopped is information, not a defect; "
+            "attribution is mtime-in-slot -- latch_in_window): " + ", ".join(latch_left)
+        )
+    if latch_stray:
+        print(
+            f"GATE-HOME E-STOP SIDECAR cleared {len(latch_stray)} time(s) with mtime OUTSIDE "
+            "the running check's slot -- background straggler from an earlier arm-driving "
+            "check's process tree, UNATTRIBUTED (slot-it-surfaced-in@mtime-offset-from-that-"
+            "slot-start): " + ", ".join(latch_stray)
         )
     if failed:
         if carried:

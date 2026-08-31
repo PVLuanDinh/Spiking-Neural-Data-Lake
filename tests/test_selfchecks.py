@@ -24,16 +24,56 @@ the no-arg self-check path.
 Run: pytest tests/test_selfchecks.py
 """
 
+import os
 import runpy
 import sys
+import time
 
 import pytest
 
-from run_selfchecks import _TORCH, CORE, TORCH_GATED
+from run_selfchecks import _TORCH, CORE, TORCH_GATED, _sweep_latch, latch_in_window
 
 # `_TORCH` is run_selfchecks' own probe, so a broken torch install skips here exactly as it
 # skips there, rather than turning into six confusing import errors.
 _IN_PROCESS = CORE + (TORCH_GATED if _TORCH else [])
+
+
+def test_latch_attribution_refuses_the_smear(tmp_path):
+    """Drive the classify-and-remove unit (_sweep_latch), where the pre-fix defect lived as
+    attribution-by-EXISTENCE (chip task_100cb4d5: batteries named innocent checks for
+    straggler latches), against a REAL latch file: an out-of-slot mtime must land in the
+    UNATTRIBUTED stray bucket, an in-slot mtime attributes, an absent latch is a no-op, and
+    the file is removed either way. Honest scope: run_all's single call into _sweep_latch is
+    the one line this does not execute; the predicate's inclusive boundaries are pinned
+    separately below so the convention cannot drift silently."""
+    latch = tmp_path / "estop.latch"
+    w0 = time.time()
+    w1 = w0 + 5.0
+    left, stray = [], []
+    # the smear: written 30s before this slot began -> stray, unattributed, removed
+    latch.write_text("stop")
+    os.utime(latch, (w0 - 30.0, w0 - 30.0))
+    _sweep_latch(str(latch), "innocent.check", w0, w1, left, stray)
+    assert left == [] and len(stray) == 1
+    assert stray[0].startswith("innocent.check@-") and stray[0].endswith("s")
+    assert not latch.exists()
+    # written after the awaited child exited -> writer unknown -> stray
+    latch.write_text("stop")
+    os.utime(latch, (w1 + 2.0, w1 + 2.0))
+    _sweep_latch(str(latch), "innocent.check", w0, w1, left, stray)
+    assert left == [] and len(stray) == 2
+    # the check's own in-slot write -> attributed by name
+    latch.write_text("stop")
+    os.utime(latch, (w0 + 1.0, w0 + 1.0))
+    _sweep_latch(str(latch), "stopping.check", w0, w1, left, stray)
+    assert left == ["stopping.check"] and len(stray) == 2
+    assert not latch.exists()
+    # no latch -> no-op on both buckets
+    _sweep_latch(str(latch), "clean.check", w0, w1, left, stray)
+    assert left == ["stopping.check"] and len(stray) == 2
+    # predicate boundary convention: inclusive at both ends, exclusive just outside
+    assert latch_in_window(w0, w0, w1) and latch_in_window(w1, w0, w1)
+    assert not latch_in_window(w0 - 0.001, w0, w1)
 
 
 @pytest.mark.parametrize("mod", _IN_PROCESS)
