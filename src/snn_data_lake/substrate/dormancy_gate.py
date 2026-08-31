@@ -287,34 +287,42 @@ EXEMPT = {
     # holds the composer's half).
     # structural_rewiring's `wire` row RETIRED at T053-ii (2026-08-31): reachable through
     # rule_composer's harness imports, so an EXEMPT row would be the stale-exemption red.
-    # NOTHING about T048's adjudication moves: the IXN wire was MEASURED AND REFUSED (zero
-    # sign crossings, all-excitatory birth -- the module docstring carries the full record;
-    # wiring against it is force-wiring, P6's defect), and the LIVE wire stays dated to
-    # T054's sign-structured MLI tissue -- tasks.md's T054 row carries that obligation plus
-    # the T048 fix. Reachability here is import-topology, not participation.
+    # T048's adjudication is unmoved (the IXN wire MEASURED AND REFUSED: zero sign
+    # crossings on an all-excitatory birth substrate), and at T054-ii the wire was REFUSED
+    # A SECOND TIME on the tissue built to host it -- the sign structure arrived, the
+    # trigger did not: nothing writes pf_w (2200 driven steps, 0 crossings, 0 of 512
+    # weights changed). Re-dated to the first mechanism that WRITES those rows (FR-019's
+    # cerebellar rule), with a checkable landing criterion -- a nonzero crossing count on
+    # that probe -- rather than a promise. Both module docstrings carry the record.
     "microcircuit": (
         "wire",
         "specs/022 T054-i: the cerebellar TISSUE (granule codon expansion + PF bundle + "
         "Purkinje + the MLI opposite-sign pathway; names cb_ctx and cb_deep, retiring "
         "their atlas phantoms). Charged surface today: its own registered self-check "
-        "(regenerable basis, exact-arithmetic codon gate, separation vs a structure-"
-        "ablated control, the FR-019 window pinned to MEASURED channel latency, MLI "
-        "neuter raising Purkinje, the deep readout held to its identity per step). "
-        "DATED consumer: T054-ii wires structural_rewiring onto the sign-structured "
-        "rows this tissue exposes (sign_identities()). The BRAIN-side consumer -- the "
-        "cerebellar rule of FR-019 running on this tissue in the live motor loop -- has "
-        "NO task id in specs/022 tasks.md yet, stated plainly per the T044 panel form "
-        "rather than dressed as a dated consumer.",
+        "(regenerable basis, exact-arithmetic codon gate, sparsity + supra-input capacity "
+        "each against its own ablation control, the FR-019 window pinned to MEASURED "
+        "channel latency with a discriminating weakened-twin red, the MLI weight neuter, "
+        "the deep readout held to its identity per step, and FR-018's per-element "
+        "neuter A/B). NO DATED CONSUMER -- said plainly rather than dressed as one. "
+        "T054-ii MEASURED AND REFUSED the structural wire this row previously dated "
+        "(nothing writes pf_w: 0 sign crossings and 0 of 512 weights changed over 2200 "
+        "driven steps, so DEEP-R's prune trigger cannot fire and wiring anyway is P6 "
+        "force-wiring). Both remaining consumers are undated by construction: the "
+        "structural wire waits on the first mechanism that WRITES pf_w, and the "
+        "brain-side consumer -- FR-019's cerebellar rule in the live motor loop -- has "
+        "no task id in specs/022 tasks.md yet (the T044 panel form).",
     ),
     "mossy_relay": (
         "wire",
         "specs/022 T054-i: the pn stage (cortico-ponto-cerebellar mossy fan-out; the "
         "pons region's first computing module -- names pn, retiring its atlas phantom). "
         "Charged surface today: its own registered self-check (regenerable structure, "
-        "fan-in normalization, determinism, one-channel locality, refusals) plus the "
-        "tissue self-check's end-to-end ctx->pn->cb_ctx->cb_deep arm. Same consumer "
-        "dating as the microcircuit row above: T054-ii's structural wire runs on the "
-        "tissue, and the live-brain consumer carries no task id yet, said plainly.",
+        "fan-in normalization, determinism, one-channel locality, discrimination vs a "
+        "full-fan-out control, refusals) plus the tissue self-check's end-to-end "
+        "ctx->pn->cb_ctx->cb_deep arm. Same disposition as the microcircuit row above "
+        "and for the same measured reason: NO dated consumer -- T054-ii refused the "
+        "structural wire on measurement, and the live-brain consumer carries no task "
+        "id yet, both said plainly.",
     ),
     "genomic_bottleneck": (
         "wire",

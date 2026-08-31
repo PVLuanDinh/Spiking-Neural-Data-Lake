@@ -16,8 +16,10 @@ granule axons form the PARALLEL-FIBRE bundle crossing every Purkinje dendritic t
 molecular-layer interneurons (MLI: basket/stellate) read the SAME parallel fibres and
 inhibit Purkinje -- the OPPOSITE-SIGN pathway, which makes every Purkinje input row
 SIGN-STRUCTURED (PF slots carry a fixed + identity, the MLI slot a fixed - identity):
-exactly the substrate structural_rewiring's parked T048 wire needs (identity pruning as
-native vocabulary -- that wire lands at T054-ii, not here). Purkinje output is INHIBITORY
+exactly the sign structure structural_rewiring's parked T048 wire was missing (identity
+pruning as native vocabulary) -- and NOT sufficient for it: see the refusal record below,
+where T054-ii measured the trigger still unreachable because nothing writes these rows.
+Purkinje output is INHIBITORY
 onto the deep nuclei (the connectome's cb_ctx -> cb_deep edge is declared "inh"), and the
 deep stage balances mossy collateral excitation against it.
 
@@ -51,10 +53,30 @@ Stage latency is REAL: granule spikes computed at step t reach Purkinje/MLI at t
 through one-step buffers (a channel, not a function call), which is what makes the
 latency a measurement instead of an artifact of call order.
 
+THE T048 STRUCTURAL WIRE, MEASURED AND REFUSED ON THIS TISSUE TOO (T054-ii, 2026-08-31 --
+the second refusal of the same wire, and the reason is not the one T048 hit). T048 refused
+the IXN substrate because it is all-excitatory at birth, so DEEP-R's identity-violation
+trigger could never fire; this tissue fixes exactly that (PF(+) rows against an MLI(-)
+slot, sign identities READ from the weights). But the trigger is still unreachable here,
+for a different reason measured before any wire was written: NOTHING WRITES pf_w. Over
+2200 driven steps through the pn relay, PF sign crossings = 0 and PF weights CHANGED = 0
+of 512 -- the tissue carries no PF plasticity, because the cerebellar LEARNING RULE
+(FR-019's PF-Purkinje depression under the inferior-olive teaching signal) is a later
+task's build and the T054 row does not carry it. A structural pass over a substrate
+nothing moves is a pass whose prune trigger cannot fire, which is P6's named force-wiring
+defect. UNDATED, with a CONDITION a later reader can check instead of a task id to
+trust: the wire becomes landable when some mechanism WRITES pf_w (the cerebellar rule is
+the expected one, but the criterion is the writing, not the task), and the evidence it
+owes is a nonzero sign-crossing count measured the way this record was -- drive the
+tissue through the pn relay and count crossings against the birth signs. The T048 FIX (a structural write must also reach the state-of-record) is likewise
+inapplicable here and said so rather than faked: no consolidation cascade wraps pf_w, so
+pf_w IS the state of record; the fix is only meaningful on the cascade-wrapped IXN rows,
+which is the pairing T048 refused.
+
 Deterministic (per-instance random.Random(seed)); stdlib + the reused LIFNeuron.
 NO live tick caller yet: the brain-side consumer is future work (the cerebellar rule of
-FR-019 lands on this tissue in its own task; T054-ii wires the structural pass) -- the
-dormancy row states this plainly rather than dressing a harness as a wire.
+FR-019 lands on this tissue in its own task) -- the dormancy row states this plainly
+rather than dressing a harness as a wire.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cerebellum.microcircuit  # (run by run_selfchecks.py)
 """
@@ -92,7 +114,8 @@ class CerebellarMicrocircuit:
     `step(mossy_spikes)` advances one timestep and returns a dict with granule, mli and
     purkinje 0/1 spike lists plus the scalar deep-nuclei drive. Granule spikes reach the
     molecular layer through a one-step buffer (a real channel). `sign_identities()`
-    exposes each Purkinje row's fixed sign structure -- the T054-ii substrate contract."""
+    exposes each Purkinje row's sign structure -- the substrate contract a structural
+    pass would consume (its wire is undated; see the refusal record above)."""
 
     def __init__(self, n_mossy, seed=0):
         if not (isinstance(n_mossy, int) and n_mossy >= _K_DENDRITES):
@@ -168,7 +191,7 @@ class CerebellarMicrocircuit:
             }
         )
         # COPY the mutable structure (pf_w rows) -- sharing by reference was a live
-        # aliasing hazard the moment T054-ii's pruning mutates rows in place (panel note)
+        # aliasing hazard for any future in-place pruning of these rows (panel note)
         twin.pf_w = [list(row) for row in self.pf_w]
         twin.granule = [LIFNeuron(tau_m=10.0, v_threshold=1.0) for _ in range(self.n_granule)]
         twin.mli = [LIFNeuron(tau_m=10.0, v_threshold=1.0) for _ in range(self.n_mli)]
@@ -217,6 +240,40 @@ class CerebellarMicrocircuit:
         deep = mossy_rate - pk_rate
         return {"granule": g_out, "mli": m_out, "purkinje": p_out, "deep": deep}
 
+    # distinct-from: substrate/signal_calibrator.py -- its L92 maps a named live SIGNAL to
+    #   a persisted running quantile; this removes a named STRUCTURAL element from this
+    #   tissue for an A/B. Different object, different verb, prose overlap only. Site read.
+    def neuter(self, element):
+        """Neuter ONE named tissue element IN PLACE (FR-018's per-element attribution
+        instrument, T054-ii). Elements and what each removal means:
+          "codon"  -- the granule dendritic gate: each granule keeps ONE tap at weight
+                      1.0, so it mirrors a single mossy fibre (the k=1 mirror). ONLY the
+                      coincidence requirement goes: the cell COUNT is untouched, so the
+                      expansion survives -- the expansion's own ablation is arm (4b)'s
+                      x1 capacity control, built differently and deliberately
+          "mli"    -- the opposite-sign pathway's WEIGHT (the pools still fire; said
+                      plainly, the way the self-check's arm labels it)
+          "pf"     -- the parallel-fibre drive onto Purkinje (rows zeroed: the bundle
+                      is present, carries nothing). DISCLOSED, because it bounds what
+                      this arm can claim: with pf_w zeroed a v_threshold=1.0 LIF cannot
+                      fire at all, so this arm's Purkinje delta is -base_pk BY
+                      CONSTRUCTION and is indistinguishable from deleting the Purkinje
+                      population. It measures that PF drive is Purkinje's ONLY
+                      excitatory source, which is worth asserting and is not a
+                      graded attribution.
+        Returns self so an arm reads as one expression. Refuses an unknown element
+        rather than silently neutering nothing -- a no-op neuter would read as a
+        measured null."""
+        if element == "codon":
+            self.granule_taps = [((idx[0],), (1.0,)) for idx, _w in self.granule_taps]
+        elif element == "mli":
+            self.mli_w = 0.0
+        elif element == "pf":
+            self.pf_w = [[0.0] * self.n_granule for _ in range(self.n_purkinje)]
+        else:
+            raise ValueError(f"unknown tissue element {element!r} -- neuterable: codon, mli, pf")
+        return self
+
     # distinct-from: arm_config.py -- its L193 reads joint limits from the mujoco model;
     #   prose-level overlap on 'read from'. Site read.
     # distinct-from: genomic_bottleneck.py -- its L194 derives initial weights from tags;
@@ -224,7 +281,14 @@ class CerebellarMicrocircuit:
     def sign_identities(self):
         """Per-Purkinje row sign structure, READ from the tissue's own weights (+1 per PF
         slot from pf_w's sign, the MLI slot from mli_w's sign) -- the sign-structured
-        substrate contract T054-ii's structural pass consumes. Derived, never a literal:
+        substrate contract a structural pass would consume (T054-ii measured that pass
+        unlandable here: nothing writes these rows, so its trigger cannot fire; the
+        contract stands, its consumer is undated). VOCABULARY LIMIT, disclosed because
+        the panel measured it reachable: this reports +1/-1 only, so a ZEROED slot reads
+        as -1 (inhibitory) where structural_rewiring's own _sgn calls it 0 (vacant) --
+        after neuter("pf") every PF slot reports -1. Any future consumer must treat
+        zero-magnitude slots as vacant from the weights, not from this report. Derived,
+        never a literal:
         the panel measured the first draft returning a hardcoded row that could not
         disagree with the weights it claimed to describe; a weight whose sign has drifted
         now CHANGES the report (the self-check constructs that red)."""
@@ -360,7 +424,7 @@ def main():
     def _pk_rate(neuter_mli):
         t = CerebellarMicrocircuit(n_mossy, seed=9)
         if neuter_mli:
-            t.mli_w = 0.0
+            t.neuter("mli")  # ONE mli-neutering mechanism (P2: was a hand-rolled copy)
         rng2 = random.Random(77)
         total = 0
         for _ in range(120):
@@ -420,7 +484,80 @@ def main():
         f"the e2e chain must drive granule AND Purkinje activity (granule {g_total}, "
         f"purkinje {p_total}) -- a deep trace the mossy rate alone explains proves nothing"
     )
-    # (8) refusals
+
+    # (8) FR-018 NEUTER-A/B ON THE BUILT TISSUE (T054-ii): per-ELEMENT attribution in ONE
+    # command -- each named element removed alone, every arm scored on the SAME tissue-level
+    # outcome (the deep readout's mean and the Purkinje rate it carries), against the full
+    # tissue and against each other. Per-item neuter, never "the total moved" (P8 cl. 3).
+    # The reported channels are (purkinje spikes, granule spikes). `deep` is DELIBERATELY
+    # not among them: deep = mossy_rate - pk_rate over an identically-seeded drive, so its
+    # delta is exactly -dpk/(steps*n_purkinje) -- an affine image carrying zero independent
+    # information, which the panel measured at r = -1.000000 and the first draft published
+    # as if it were a third number.
+    def _tissue_outcome(neutered):
+        t = CerebellarMicrocircuit(n_mossy, seed=9)
+        if neutered is not None:
+            t.neuter(neutered)
+        rngn = random.Random(4242)
+        pk = gr = 0
+        for _ in range(200):
+            m = [1 if rngn.random() < 0.6 else 0 for _ in range(n_mossy)]
+            o = t.step(m)
+            pk += sum(o["purkinje"])
+            gr += sum(o["granule"])
+        return pk, gr
+
+    base_pk, base_gr = _tissue_outcome(None)
+    attribution = {}
+    for elem in ("codon", "mli", "pf"):
+        p, g = _tissue_outcome(elem)
+        attribution[elem] = (p - base_pk, g - base_gr)
+    # every element must MOVE the tissue outcome -- an element whose removal changes
+    # nothing is dormant structure (P3), and this arm is what would say so
+    for elem, (dp, dg) in attribution.items():
+        assert dp != 0 or dg != 0, (
+            f"neutering {elem} changed NOTHING (purkinje {dp}, granule {dg}) -- a "
+            f"structural element with no measurable participation is dormant"
+        )
+    # PAIRWISE distinctness: no TWO elements may attribute identically. The first draft
+    # asserted `>= 2 distinct values`, which the panel showed passes when two of three
+    # collapse -- the realistic failure of a per-element instrument (two neuters removing
+    # the same thing), not the three-way lump it was written against.
+    _pairs = [("codon", "mli"), ("codon", "pf"), ("mli", "pf")]
+    for a_e, b_e in _pairs:
+        assert attribution[a_e] != attribution[b_e], (
+            f"{a_e} and {b_e} attribute IDENTICALLY {attribution[a_e]} -- the instrument "
+            f"is reading them as one element, not per-element charge"
+        )
+
+    # CONSTRUCTED RED for the MOVE assert, in the same command (arm 8 shipped without one
+    # while every sibling arm carries its own): a no-op element must be caught.
+    class _NoOpNeuter(CerebellarMicrocircuit):
+        def neuter(self, element):
+            return self  # removes nothing
+
+    def _noop_outcome():
+        t = _NoOpNeuter(n_mossy, seed=9)
+        t.neuter("codon")
+        rngn = random.Random(4242)
+        pk = gr = 0
+        for _ in range(200):
+            m = [1 if rngn.random() < 0.6 else 0 for _ in range(n_mossy)]
+            o = t.step(m)
+            pk += sum(o["purkinje"])
+            gr += sum(o["granule"])
+        return pk - base_pk, gr - base_gr
+
+    assert _noop_outcome() == (0, 0), (
+        "the MOVE criterion's red must be reachable: a no-op neuter has to read as zero "
+        "movement, or the arm cannot tell participation from a broken instrument"
+    )
+    try:
+        t1.neuter("nonexistent")
+        raise AssertionError("an unknown element must refuse")
+    except ValueError as e:
+        assert "neuterable" in str(e)
+    # (9) refusals
     try:
         t1.step([0] * (n_mossy - 1))
         raise AssertionError("wrong-width mossy input must refuse")
@@ -445,7 +582,12 @@ def main():
         f"{rank_bit}Jaccard-gain separation RETIRED (activity artifact, docstring record); "
         f"MLI WEIGHT neuter raises PK ({pk_live} -> {pk_neut}; the pools still fire -- the "
         f"weight is the neutered element); Purkinje inhibits deep per-step by identity; "
-        f"e2e drives granule+Purkinje through the pn relay; refusals by message"
+        f"e2e drives granule+Purkinje through the pn relay; FR-018 per-element neuter A/B "
+        f"vs base pk {base_pk}/granule {base_gr} (independent channels only -- the deep "
+        f"delta is an affine image of dpk and is not reported): "
+        + "; ".join(f"{e} dpk{v[0]:+d} dgr{v[1]:+d}" for e, v in attribution.items())
+        + " (pf's dpk is -base_pk by construction: PF is Purkinje's only excitation); "
+        + "pairwise-distinct, no-op red constructed; refusals by message"
     )
 
 

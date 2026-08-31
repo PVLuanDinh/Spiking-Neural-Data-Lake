@@ -16,9 +16,20 @@ a cold one); (c) an inhibitory regen is dragged back across zero by the cascade 
 2 fast-clock steps, so the MSP inhibitory half was dead on arrival there; (d) a regen
 at the row-minimum lands at 80-87%% of a typical weight on that tight distribution --
 not DEEP-R's near-zero reactivation. Wiring against those measurements would be
-force-wiring (P6's named defect). THE WIRE IS PARKED, DATED: T054's cerebellar tissue
-builds the MLI OPPOSITE-SIGN pathway -- sign-structured tissue where identity pruning
-is native vocabulary -- and lands this pass's live wire with it. The composition
+force-wiring (P6's named defect).
+
+REFUSED A SECOND TIME AT T054-ii (2026-08-31), on the tissue that was supposed to be its
+home -- and the new reason is worth more than the re-dating. T054's cerebellar
+microcircuit DOES supply the sign-structured substrate T048 lacked (PF(+) rows against an
+MLI(-) slot, identities read from the weights), and the trigger is STILL unreachable,
+because NOTHING WRITES pf_w: measured before any wire was written, 2200 driven steps
+through the pn relay give PF sign crossings = 0 and PF weights changed = 0 of 512. The
+tissue carries no PF plasticity -- FR-019's cerebellar rule (PF-Purkinje depression under
+the olive's teaching signal) is a later task's build. So the condition this pass actually
+needs was never "sign-structured rows": it is A WRITER THAT MOVES THEM ACROSS ZERO, which
+neither substrate has had. RE-DATED to the first mechanism that writes pf_w, with a
+checkable criterion instead of a promise -- a nonzero crossing count on that same probe.
+The composition
 conflict with _BennaFusiConsolidation (two writers, the deep store re-imposing sign)
 is EXACTLY T051's red case (two composed rules whose naive sum is wrong vs either
 alone) -- MODELED at T051b-ii at the COMPONENT grain (rule_composer's harness:
@@ -73,8 +84,12 @@ READ/WRITE SETS (FR-018): reads the rows' weights + the population's activity ve
 population minimum); writes weight rows ONLY (zeroing pruned slots, seeding
 regenerated ones) -- note the measured caveat: on a substrate governed by a
 consolidation cascade, a weight row is NOT the state of record and a structural write
-must also reach the cascade (the conflict above, modeled at T051b-ii; the fix
-itself remains T054's). Neuter attribution per FR-018 lands WITH the T054 wire.
+must also reach the cascade (the conflict above, modeled at T051b-ii). THE FIX IS
+UNDATED and its scope was narrowed by measurement at T054-ii: it is meaningful only
+where a cascade WRAPS the rows (the IXN stack -- the pairing T048 refused), and it is
+inapplicable on the cerebellar tissue, whose pf_w IS its own state of record. FR-018's
+neuter attribution did NOT wait for this wire: it landed at T054-ii on the tissue's own
+elements (cerebellum/microcircuit.py's per-element A/B).
 
 WHAT THE ADOPTION OWES (P2/P8 discipline; every arm in main(), driven PAST the first
 event per the T047 lesson -- a harness that breaks at the first firing certifies a
@@ -497,8 +512,13 @@ def main():
         "Ooyen) on the slow clock; THE LIVE WIRE IS PARKED ON MEASUREMENT (module "
         "docstring: zero sign crossings on both live paths, the relax rebind erasing "
         "the trigger, inhibitory washout in 2 steps, seed ratio 0.80-0.87 of typical) "
-        "and dated to T054's sign-structured tissue; the FR-018 neuter A/B lands WITH "
-        "that wire. MSP TARGET steering: built first, MEASURED VACUOUS on dense-at-"
+        "AND REFUSED A SECOND TIME at T054-ii on the cerebellar tissue built to host it "
+        "-- the sign structure arrived, the trigger did not: nothing writes those rows "
+        "(0 crossings, 0 of 512 weights changed over 2200 driven steps). UNDATED now, "
+        "with a checkable landing criterion instead of a date: the first mechanism that "
+        "WRITES pf_w, shown by a nonzero crossing count. FR-018's neuter A/B did NOT "
+        "wait for the wire -- it landed at T054-ii on the tissue's own elements. "
+        "MSP TARGET steering: built first, MEASURED VACUOUS on dense-at-"
         "birth substrates (steered == uniform 0.50/0.50; vacancies == deficit, the "
         "regen set forced) -- deleted, re-opens only with capacity slack. The shipped "
         "sign steer is RANK-relative (row vs population median), not setpoint-"
