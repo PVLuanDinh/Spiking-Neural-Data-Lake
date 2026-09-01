@@ -15,8 +15,30 @@ SSRF firewall (the security boundary):
   * every IP the host resolves to must be PUBLIC. Loopback / private (RFC1918) / link-local /
     reserved / multicast / unspecified are rejected -- which blocks localhost, RFC1918 hosts, and
     the 169.254.169.254 cloud-metadata endpoint (a classic SSRF target).
-  * redirects are re-validated against the same firewall (no redirect into an internal host).
+  * redirects are re-validated against the same firewall (no redirect into an internal host),
+    AND the caller's own check (e.g. a host allowlist) is re-run on every redirect target --
+    so an allowlisted host cannot 30x off the allowlist to some other public host, which the
+    SSRF firewall alone would permit.
   * a hard byte cap (default 5 MB) bounds every download.
+  Most of that is asserted with a REACHABLE RED in the offline self-check below -- eight
+  mutations, all measured RED on 2026-09-01. It is not decoration: three of them were BLIND
+  before that date, and each blind spot had the same shape (a case rejected by a SECOND
+  mechanism, so the one being tested could be deleted with the check still green).
+    * Every non-http entry in the blocked list is also caught by a missing or unresolvable
+      host, so SAFE_SCHEMES could be widened -- to `file` above all, the scheme this docstring
+      names first -- and the self-check stayed GREEN. Fixed by scheme-only cases: a non-http
+      scheme over a PUBLIC IP LITERAL, which the scheme check rejects and nothing else does.
+    * The redirect handler had no test whatsoever.
+    * The first redirect test could not tell the TARGET from the ORIGIN: same-host fixture,
+      deny-everything stub. Handing extra_check `req.full_url` instead of `newurl` -- the
+      exact allowlist escape described above -- stayed GREEN. Fixed with distinct hosts and a
+      check that allows the origin only, plus a control requiring an on-allowlist redirect to
+      still be followed.
+  Keep those fixtures. Simplifying any of them re-opens the hole it closes.
+
+  NOT YET POLICED, and stated rather than implied: the 5MB cap and the extra_check calls on
+  the ORIGINAL and FINAL urls inside fetch_text() have no reachable red -- they sit on the
+  network path and need a fake-opener harness this offline check does not have.
   ponytail: the host is resolved-and-checked but the resolved IP is not pinned for the actual
   socket connect, so a determined DNS-rebinding TOCTOU attacker is out of scope -- acceptable for
   fetching public corpora, not for a hostile-controlled URL set. Upgrade path: pin the checked IP
@@ -235,6 +257,108 @@ def main():
             raised = True
         assert raised, f"SSRF/scheme guard must reject {u!r}"
 
+    # THE SCHEME ALLOWLIST NEEDED A CASE ONLY IT CAN REJECT. Every non-http entry above is
+    # ALSO caught by a second mechanism -- file:/data: have no host, gopher://x/ does not
+    # resolve -- so none of them depended on SAFE_SCHEMES alone, and the allowlist therefore
+    # had NO REACHABLE RED: widening it to {file, gopher} left this whole self-check GREEN
+    # (measured by mutation, 2026-09-01). A non-http scheme over a PUBLIC IP LITERAL is
+    # rejected by the scheme check and by nothing else -- an IP literal skips DNS and the
+    # address passes _addr_blocked -- so these RED the moment SAFE_SCHEMES grows.
+    # EVERY dangerous scheme needs its own case, `file:` and `data:` MOST of all -- the
+    # docstring names file:// first, and the first version of this loop covered ftp/gopher/ws
+    # and left `file` unpoliced, so adding it to SAFE_SCHEMES still passed. A review panel
+    # measured that: the one scheme the module calls out by name was the one still blind.
+    for u in (
+        "file://8.8.8.8/etc/passwd",
+        "data://8.8.8.8/x",
+        "ftp://8.8.8.8/x",
+        "gopher://1.1.1.1/",
+        "ws://8.8.8.8/sock",
+    ):
+        why = ""
+        try:
+            validate_url(u)
+        except ValueError as e:
+            why = str(e)
+        assert "blocked scheme" in why, (
+            f"the scheme allowlist must reject {u!r} ON ITS OWN (got {why!r}) -- this case "
+            f"exists because every other non-http case is also caught by a missing or "
+            f"unresolvable host, which left SAFE_SCHEMES with no reachable red"
+        )
+
+    # REDIRECT RE-VALIDATION HAD NO TEST AT ALL. The module docstring advertises "redirects
+    # are re-validated against the same firewall" and that an allowlisted host cannot
+    # 30x-redirect off the allowlist -- both security properties, and main() never referenced
+    # _ValidatingRedirectHandler, so both were unverified. Driven offline below: redirect_request refuses
+    # BEFORE delegating to the base handler, so no socket is opened.
+    # distinct-from: reasoning/web_ingest_gate.py::WebIngestGate._require_allowed -- THE
+    #   production host-allowlist check and the real extra_check handed to fetch_text.
+    #   Deliberately NOT imported: it lives in the ungated reasoning/ tier (no
+    #   run_selfchecks / REGIONS / dormancy-gate registration, measured 2026-09-01), and a
+    #   CORE self-check must not depend on an unregistered module to prove a security
+    #   property. The stub below stands for ANY caller check; what this module owns is that
+    #   the plumbing CALLS it, which is what is asserted. Site read.
+    # distinct-from: basal_ganglia/brain_native_selfbuild.py::_forbidden (legality of a
+    #   self-build FILE target) and basal_ganglia/latent_q.py::update (a Q-learning scalar
+    #   `target`). Neither concerns redirect targets. Sites read.
+    # THE FIXTURE HAS TO DISCRIMINATE, and the first version of this arm did not. It sent
+    # origin http://8.8.8.8/start -> target http://8.8.8.8/ok (the SAME host) through a stub
+    # that denied EVERYTHING, so it could only prove "extra_check was called with something",
+    # never "called with the redirect TARGET". A panel measured the consequence: mutating
+    # `self._extra_check(newurl)` to `self._extra_check(req.full_url)` -- the classic
+    # wrong-variable bug, and precisely the allowlist escape this handler exists to stop --
+    # left the self-check GREEN. Two fixes, both load-bearing: DISTINCT hosts, and a check
+    # that ALLOWS the origin and denies the rest, so handing it the origin cannot pass.
+    # distinct-from: reasoning/web_ingest_gate.py::_require_allowed -- the PRODUCTION
+    #   allowlist, in the ungated reasoning/ tier; it has carried an equivalent arm since
+    #   2026-08-05, which is why this one matches its discipline. Not imported: a CORE
+    #   self-check must not depend on an unregistered module, and that module's own check
+    #   performs a ~15MB network fetch this offline suite forbids.
+    # distinct-from: substrate/selfcheck_cache.py::consult -- a cache lookup keyed on a
+    #   closure hash; nothing to do with URL hosts. Sites read.
+    _ORIGIN, _TARGET = "http://1.1.1.1/book", "http://8.8.8.8/exfil"
+    _origin_host = urlparse(_ORIGIN).hostname
+
+    def _probe_redirect(newurl, caller_check=None):
+        # a real Request, because the ALLOWED path delegates to the base handler and that
+        # needs a genuine req; constructing one opens no socket.
+        req = urllib.request.Request(_ORIGIN, headers={"User-Agent": _UA})
+        handler = _ValidatingRedirectHandler(extra_check=caller_check)
+        try:
+            handler.redirect_request(req, None, 302, "Found", {}, newurl)
+            return ""
+        except (ValueError, PermissionError) as e:
+            return str(e) or type(e).__name__
+
+    def _one_host_allowed(url):
+        # allows the origin host only -- so it REPORTS which url it got, which a
+        # deny-everything stub cannot.
+        if urlparse(url).hostname != _origin_host:
+            raise PermissionError(f"host {urlparse(url).hostname!r} is not on the allowlist")
+
+    for evil in ("http://127.0.0.1/", "http://169.254.169.254/", "file:///etc/passwd"):
+        assert _probe_redirect(evil), f"a redirect to {evil!r} must be refused by the firewall"
+    # ...and the caller-check half. A PUBLIC target passes the firewall on its own, so only
+    # extra_check can stop it -- assert that first, or the next assert proves nothing.
+    assert _probe_redirect(_TARGET) == "", (
+        "a public redirect target must pass the firewall unaided, or the extra_check arm "
+        "below is vacuous (it would be measuring the firewall, not the caller's allowlist)"
+    )
+    assert _probe_redirect(_TARGET, caller_check=_one_host_allowed), (
+        "extra_check must be enforced on the redirect TARGET -- without it an allowlisted "
+        "host can 30x off the allowlist to any PUBLIC host, which the SSRF firewall itself "
+        "permits. Distinct hosts and an origin-allowing check are deliberate: a same-host "
+        "fixture, or a stub that denies everything, stays GREEN even when the handler checks "
+        "the ORIGIN instead of the target"
+    )
+    # ...and the control that keeps that assert honest: the same check must ACCEPT a redirect
+    # that stays on the allowlist, or the line above could be satisfied by a check that
+    # simply always raises.
+    assert _probe_redirect("http://1.1.1.1/next", caller_check=_one_host_allowed) == "", (
+        "an on-allowlist redirect must still be FOLLOWED -- otherwise the arm above is "
+        "measuring a stub that refuses everything, not an allowlist"
+    )
+
     assert not _addr_blocked("8.8.8.8") and not _addr_blocked("1.1.1.1"), "public IPs must pass"
     for ip in (
         "127.0.0.1",
@@ -260,7 +384,21 @@ def main():
     )
     print(
         "self-check OK: SSRF firewall rejects loopback/private/link-local/metadata + non-http "
-        "schemes; HTML->text strips scripts; NOT wired into the arm control loop"
+        "schemes; HTML->text strips scripts; NOT wired into the arm control loop.\n"
+        "  MUTATION-VERIFIED 2026-09-01, eight mutations, all RED: IP firewall neutered; "
+        "SAFE_SCHEMES widened by file / ftp / data (three separate arms); redirect "
+        "re-validation dropped; the extra_check call removed; extra_check handed the ORIGIN "
+        "instead of the target; extra_check handed a CONSTANT. The last two escaped an "
+        "earlier version of these arms -- a same-host fixture with a deny-everything stub "
+        "proves only that extra_check was CALLED, never that it was called with the redirect "
+        "TARGET -- which is why the fixture uses distinct hosts and an origin-allowing check.\n"
+        "  STILL UNPOLICED, said plainly rather than left for the next reviewer: the 5MB byte "
+        "cap, and extra_check on the ORIGINAL and FINAL urls inside fetch_text(). Those three "
+        "live on the network path, so covering them needs a fake-opener harness this offline "
+        "check does not have yet. reasoning/web_ingest_gate.py has carried a correct "
+        "target-vs-origin arm since 2026-08-05, but it is registered in NO gate (not "
+        "run_selfchecks, REGIONS, or dormancy_gate) and its own check fetches ~15MB, so it "
+        "cannot simply be registered into an offline suite."
     )
 
 
