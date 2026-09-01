@@ -824,6 +824,7 @@ class Brain:
         self._task_pref = (
             None  # MASTER LEVER: task-set per-action preference (bias vec), fed to _route
         )
+        self._task_film = None  # T060: the declared FiLM payload the preference is rebuilt from
         self._drive_activity = (
             None  # C2 #11: the drive-vocabulary activity actually performed this tick
         )
@@ -2460,7 +2461,14 @@ class Brain:
                 # (scaled by settle confidence -> weak just after a shift, recovers as it settles) so
                 # _route_percept_to_action consumes it NEXT tick. bias() was computed only in the module's
                 # own self-check -- its output dead-ended in telemetry. Now the switch COST is behavioural.
-                self._task_pref = self._task_set.bias(feat)
+                # T060 (FR-034): consume the DECLARED FiLM surface. The (gain, dtheta)
+                # pairs reconstruct the incumbent bias() preference EXACTLY
+                # (gain * -dtheta -- the identity task_set's self-check asserts), so the
+                # `_pfc_bias`-style semantics downstream are preserved bit-for-bit while
+                # the faculty speaks through its typed port shape; cost before/after is
+                # measured in task_set's self-check.
+                self._task_film = self._task_set.film(feat)
+                self._task_pref = [g * (-dt) for (g, dt) in self._task_film]
             except Exception:
                 pass
         if self._grid_can is not None:
@@ -5235,6 +5243,27 @@ def declare_ports(manifest):
         ),
     )
     manifest.declare_edge("reentrant_workspace", "reroute_out", "brain", "reroute_in")
+    # T060 (FR-034): the executive task-set faculty's FiLM modulation -- (gain, dtheta) per
+    # action population, consumed every wake tick into the per-action preference
+    # (elig['taskset'] + the directed drive). The consumer declares its subscription and
+    # THE edge (the T034/M10 convention).
+    from snn_data_lake.brainstem.autonomous_loop import ACTIONS as _film_acts
+
+    manifest.declare_port(
+        "brain",
+        Port(
+            name="task_film_in",
+            region="cortex",
+            shape=(len(_film_acts), 2),  # DERIVED from the action vocabulary, never a literal
+            dtype="f4",
+            unit="film",
+            encoding="VEC_DENSE",
+            kind="IN",
+            declaring_module="brain",
+            join_policy="sum",
+        ),
+    )
+    manifest.declare_edge("task_set", "film_out", "brain", "task_film_in")
     # T034: the report channel's declared consumer -- Brain.state() reads the typed
     # {content, availability, strength} snapshot through report_channel.snapshot on every
     # state build, and the cockpit renders those fields (P4c: the cockpit reports what

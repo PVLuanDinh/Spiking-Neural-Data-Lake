@@ -221,14 +221,16 @@ def test_artifact_is_tracked_and_loadable():
     # T052-iii added the vision/audition afferent lanes (2 OUT ports at the boundary,
     # 2 IN ports on brain, 2 edges -- landing WITH their consumers, the T028 precedent:
     # _perceive_real/_perceive_audio now acquire every frame through the contracts).
-    assert (len(m.ports), len(m.edges)) == (34, 18), (
-        "the T052-iii artifact carries the patience wire + the interoceptive TRACT (relayed "
+    # T060 added the executive task-set FiLM wire (film_out + brain.task_film_in + the
+    # edge, declared by the consumer): +2 ports +1 edge.
+    assert (len(m.ports), len(m.edges)) == (36, 19), (
+        "the artifact carries the patience wire + the interoceptive TRACT (relayed "
         "through thal_relay, with interoception_out's consumer) + the glia self-edge + the "
         "predictor port + the third-factor port + the workspace composite + the report "
         "channel and its brain consumer + the proprioceptive afferent lane + the efferent "
         "lane (action_out -> efferent_in) + the |LP| pair with its discharged surprise "
         "edge + the growth gate's lp_in consumer + the vision/audition event-frame lanes "
-        "(34 ports, 18 edges); a different census "
+        "+ the T060 executive FiLM wire (36 ports, 19 edges); a different census "
         "means a registrant landed without updating this test's premise"
     )
     assert set(m.edges) == {
@@ -249,6 +251,8 @@ def test_artifact_is_tracked_and_loadable():
         ("report_channel", "report_out", "brain", "report_in"),
         ("afferent_boundary", "proprio_out", "brain", "proprio_in"),
         ("autonomous_loop", "action_out", "efferent_boundary", "efferent_in"),
+        # T060: the executive task-set FiLM wire (the consumer declares the edge)
+        ("task_set", "film_out", "brain", "task_film_in"),
         # T046a: T028's |LP| disposition discharged -- the consumer declares the edge.
         ("percept_surprise", "surprise_out", "learning_progress", "surprise_in"),
         # T047: T046a's lp_out disposition discharged -- the growth gate consumes |LP|.

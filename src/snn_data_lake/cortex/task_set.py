@@ -163,6 +163,26 @@ class TaskSetLayer:
         conf = self._confidence
         return [conf * sum(w * x for w, x in zip(row, input_vec)) for row in self._W[self._active]]
 
+    # distinct-from: basal_ganglia/action_gating.py -- drive-vector construction for the Go/NoGo
+    #   race; this is the SAME module's own bias() re-expressed as a (gain, threshold) pair, not
+    #   a second drive builder. Site read.
+    def film(self, input_vec):
+        """The active task set expressed as FiLM -- per-ACTION-population (gain, dtheta)
+        pairs (specs/022 T060, FR-034). gain = the set's settle CONFIDENCE (multiplicative:
+        how strongly the held set speaks, ramping from ~0 after a shift); dtheta = MINUS the
+        active rule matrix's raw preference for that action (a threshold DROP for actions
+        the set prefers). EXACT DECOMPOSITION of bias(): gain * (-dtheta) == bias()[a] for
+        every action -- asserted in the self-check, so the declared FiLM surface cannot
+        drift from the behavioural lane it re-expresses. That identity is what
+        '`_pfc_bias` semantics preserved' means here: the consumer reconstructs the
+        incumbent preference exactly. Both halves VARY (confidence with the settle
+        transient, the raw preference with the input), so neither half is a constant
+        wearing a signal's clothes."""
+        conf = self._confidence
+        return [
+            (conf, -sum(w * x for w, x in zip(row, input_vec))) for row in self._W[self._active]
+        ]
+
     def step(self):
         """Advance the active set's working-memory LIF pool one delay tick with NO external
         input -- only its recurrent self-excitation drive (PrefrontalExecutive._run_wm_pool's
@@ -230,6 +250,141 @@ class TaskSetLayer:
         self._Vs = [0.0] * self._n_wm
         self._confidence = 0.0
         return self._active
+
+
+#: the declared FiLM edge (T060, FR-034): producer half here, consumer half + THE edge in
+#: cortex/brain.declare_ports (the T034/M10 convention -- the consumer declares its join).
+FILM_EDGE = ("task_set", "film_out", "brain", "task_film_in")
+
+
+def declare_ports(manifest):
+    """Manifest registrant (specs/022 T060, FR-034): the executive task-set faculty's FiLM
+    surface. OUT `film_out` -- (n_actions, 2) rows of (gain, dtheta) -- GRADED by the set's
+    own settle confidence (the association source: the gain half IS that confidence). The
+    shape is DERIVED from the arm's ACTION vocabulary, never a literal (the panel measured
+    the literal form's drift: ACTIONS has already grown 3 -> 13 once, and a hardcoded 13
+    would have left the tracked anatomy stating a wire the brain no longer carries with
+    every gate green -- the insula's len(BODY_CHANNELS) precedent is the house form).
+
+    PLACEMENT, recorded not smoothed (the port_charge_probe precedent): the T060 row named
+    `cortex/competence_executive.py` wiring, but that module holds the COMPETENCE adapters
+    (no task_set reference, no declare_ports, not a registrant) -- the live task-set lane
+    runs in cortex/brain (:926 constructs the layer, the wake tick consumes it), so the
+    wire lands THERE; a parallel lane through competence_executive would have been the
+    additive failure P2 names."""
+    from snn_data_lake.brainstem.autonomous_loop import ACTIONS
+    from snn_data_lake.substrate.wiring_manifest import Port
+
+    manifest.declare_port(
+        "task_set",
+        Port(
+            name="film_out",
+            region="cortex",
+            shape=(len(ACTIONS), 2),
+            dtype="f4",
+            unit="film",
+            encoding="VEC_DENSE",
+            kind="OUT",
+            declaring_module="task_set",
+            delivery_policy=("graded", "settle_confidence"),
+        ),
+    )
+
+
+def _film_frames(n_ticks=12, seed=0):
+    """Recorded frames for the charge A/B: a settling layer's film() payloads over a fixed
+    input, with a SHIFT mid-sweep so the payload varies through both of its halves (the
+    confidence ramp and the mapping change). Flattened row-major to match the port shape."""
+    from snn_data_lake.brainstem.autonomous_loop import ACTIONS
+
+    layer = TaskSetLayer(n_sets=3, n_in=4, n_actions=len(ACTIONS), seed=seed)
+    feat = [0.8, 0.2, 0.5, 0.1]
+    frames = []
+    for t in range(n_ticks):
+        layer.step()
+        if t == n_ticks // 2:
+            layer.shift((layer.active_set + 1) % layer.n_sets)
+        flat = [x for pair in layer.film(feat) for x in pair]
+        frames.append((t + 1, "task_set", flat))
+    return frames
+
+
+def _film_consumer_factory():
+    """Fresh ring + JoinConsumer over the DECLARED consumer port (brain.task_film_in), one
+    pair per replay arm -- the wire's two ends are the real declarations, not stand-ins."""
+    from snn_data_lake.cortex.brain import declare_ports as brain_declare_ports
+    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+
+    m = WiringManifest()
+    declare_ports(m)
+    brain_declare_ports(m)
+    port = m.ports[("brain", "task_film_in")]
+    ring = SignalRing(slots=64)
+    return ring, JoinConsumer(ring, port)
+
+
+def _consume_film(consumer):
+    """The downstream computation under measurement: EXACTLY the consumer's fold -- rebuild
+    the preference from the (gain, dtheta) pairs (gain * -dtheta, the identity film()
+    asserts) and reduce it the way brain._route_percept_to_action does: the clamped max
+    over non-HOLD actions plus the argmax direction. Deterministic; the replay arms differ
+    only through the payload."""
+    from snn_data_lake.brainstem.autonomous_loop import ACTIONS, SAFE_ACTION
+
+    hold = ACTIONS.index(SAFE_ACTION)  # exclude by NAME, exactly as brain's fold does --
+    # an index literal here silently excluded a motor token if ACTIONS were reordered
+    out = []
+    joined, _lost = consumer.poll_joined()
+    for tick, flat in joined:
+        pref = [flat[i] * -flat[i + 1] for i in range(0, len(flat), 2)]
+        strength = max([0.0] + [max(0.0, min(1.0, p)) for i, p in enumerate(pref) if i != hold])
+        direction = max(range(len(pref)), key=lambda i: (pref[i], -i)) if pref else 0
+        out.append((tick, round(strength, 9), direction))
+    return out
+
+
+def _measure_film_charge():
+    """The replay-twice A/B over recorded film frames: (live, pinned_out, reads,
+    specificity_holds). Pinned payload = a plausible constant film (confidence 0.5, zero
+    preference) -- not a degenerate all-zeros gain."""
+    from snn_data_lake.substrate.port_charge_probe import replay_twice
+
+    frames = _film_frames()
+    pinned = [0.5, 0.0] * 13
+    live, pinned_out, reads = replay_twice(frames, _film_consumer_factory, _consume_film, pinned)
+
+    def constant_consumer(consumer):
+        joined, _lost = consumer.poll_joined()
+        return [(tick, 0) for tick, _vec in joined]
+
+    spec_live, spec_pinned, _ = replay_twice(
+        frames, _film_consumer_factory, constant_consumer, pinned
+    )
+    return live, pinned_out, reads, spec_live == spec_pinned
+
+
+def record_charge():
+    """Measure the film wire's A/B and record the attribution via THE one writer
+    (port_charge_probe.record_attribution). REFUSES a non-diverged run -- evidence is a
+    measurement, never a declaration. The self-check re-measures and requires the recorded
+    numbers to reproduce, so this record cannot outlive the wire it describes."""
+    from snn_data_lake.substrate.port_charge_probe import record_attribution
+
+    live, pinned_out, reads, spec_holds = _measure_film_charge()
+    if live == pinned_out or not spec_holds:
+        print("record_charge REFUSED: the A/B did not diverge (or specificity broke)")
+        return 1
+    path = record_attribution(
+        FILM_EDGE,
+        {"reads": reads, "first": list(live[0]), "last": list(live[-1])},
+        "port_charge_probe.replay_twice over a settle sweep with a mid-sweep shift; the "
+        "consumer fold is brain's own preference reconstruction (gain * -dtheta) reduced "
+        "to (strength, direction); specificity control held (payload-ignoring consumer "
+        "did not flip)",
+    )
+    print(f"recorded {FILM_EDGE} into {path}")
+    return 0
 
 
 def _mag(vec):
@@ -360,13 +515,71 @@ def main():
     same_a, same_b = _scenario(9), _scenario(9)
     assert same_a == same_b, "same seed must reproduce an identical shift trajectory"
 
+    # ---- T060 (FR-034): the FiLM surface -- exact decomposition, measured charge, cost ----
+    import time as _time
+
+    from snn_data_lake.brainstem.autonomous_loop import ACTIONS as _acts
+
+    fl = TaskSetLayer(n_sets=3, n_in=4, n_actions=len(_acts), seed=3)
+    feat = [0.7, 0.1, 0.4, 0.9]
+    for _ in range(4):
+        fl.step()
+    for probe_shift in (False, True):
+        if probe_shift:
+            fl.shift(1)  # confidence cold-resets: the gain half at its other extreme
+        b = fl.bias(feat)
+        f = fl.film(feat)
+        assert all(abs(g * (-dt) - bi) < 1e-12 for (g, dt), bi in zip(f, b)), (
+            f"film() must decompose bias() EXACTLY (gain * -dtheta == bias) -- shifted="
+            f"{probe_shift}: {f[:2]} vs {b[:2]}"
+        )
+    live, pinned_out, reads, spec_holds = _measure_film_charge()
+    assert live != pinned_out, (
+        "the film wire must be CHARGED: pinning the payload must move the consumer's "
+        "(strength, direction) fold -- a wire indistinguishable from a constant is dead"
+    )
+    assert reads == len(_film_frames()), "every recorded frame must be read under the pin"
+    assert spec_holds, "specificity: a payload-ignoring consumer must NOT flip under the pin"
+    from snn_data_lake.substrate.port_charge_probe import read_attribution
+
+    rec = read_attribution(FILM_EDGE)
+    assert rec is not None and rec.get("diverged") is True, (
+        f"committed charge evidence must carry the diverged {FILM_EDGE} attribution -- "
+        "regenerate with --record-charge and commit it"
+    )
+    fresh = {"reads": reads, "first": list(live[0]), "last": list(live[-1])}
+    assert rec.get("measured", {}) == fresh, (
+        f"recorded charge evidence does not reproduce: recorded {rec.get('measured')} vs "
+        f"fresh {fresh} -- the wire changed; regenerate with --record-charge in the same commit"
+    )
+    # cost before/after (the T060 row's own demand): the incumbent bias() read vs the FiLM
+    # read + the consumer's reconstruction -- measured here, reported, not asserted (a
+    # timing assert in CI is a flake generator; the number belongs in the record).
+    n_cost = 2000
+    t0 = _time.perf_counter()
+    for _ in range(n_cost):
+        fl.bias(feat)
+    cost_before = (_time.perf_counter() - t0) / n_cost * 1e6
+    t0 = _time.perf_counter()
+    for _ in range(n_cost):
+        [g * (-dt) for (g, dt) in fl.film(feat)]
+    cost_after = (_time.perf_counter() - t0) / n_cost * 1e6
+
     print(
         f"self-check OK: single set held (settle spread {settle_spread:.5f}); 3-set sustained "
         f"conflict shifted {start_set}->{shifted_set} at tick {shifted_at}; switch cost "
         f"{switch_cost:.3f} (mapping mag {pre_shift_mag:.3f} -> {post_shift_mag:.3f} -> "
-        f"{recovered_mag:.3f}); deterministic"
+        f"{recovered_mag:.3f}); deterministic.\n"
+        f"T060 FiLM surface: film() decomposes bias() EXACTLY (settled AND cold-shifted); the "
+        f"declared wire is CHARGED (live vs pinned diverged over {reads} read frames, "
+        f"specificity control held) and the committed attribution reproduces; cost per read "
+        f"MEASURED: bias {cost_before:.1f}us vs film+reconstruct {cost_after:.1f}us."
     )
 
 
 if __name__ == "__main__":
+    import sys as _sys
+
+    if "--record-charge" in _sys.argv[1:]:
+        raise SystemExit(record_charge())
     main()
