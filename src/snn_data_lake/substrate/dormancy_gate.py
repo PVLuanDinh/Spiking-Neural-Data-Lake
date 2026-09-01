@@ -287,13 +287,16 @@ EXEMPT = {
     # holds the composer's half).
     # structural_rewiring's `wire` row RETIRED at T053-ii (2026-08-31): reachable through
     # rule_composer's harness imports, so an EXEMPT row would be the stale-exemption red.
-    # T048's adjudication is unmoved (the IXN wire MEASURED AND REFUSED: zero sign
-    # crossings on an all-excitatory birth substrate), and at T054-ii the wire was REFUSED
-    # A SECOND TIME on the tissue built to host it -- the sign structure arrived, the
-    # trigger did not: nothing writes pf_w (2200 driven steps, 0 crossings, 0 of 512
-    # weights changed). Re-dated to the first mechanism that WRITES those rows (FR-019's
-    # cerebellar rule), with a checkable landing criterion -- a nonzero crossing count on
-    # that probe -- rather than a promise. Both module docstrings carry the record.
+    # THE WIRE LANDED AT T058 (2026-09-01), mandated by FR-024's sleep-owned structural
+    # slow clock: Brain._sleep_tick rewires the IXN rows per sleep tick, MSP-steered by
+    # the stack's meta theta, with the T051b-ii cascade-adoption fix
+    # (PlasticityRuleStack.adopt_structural) in the same block and rewire refusals
+    # COUNTED into state(). T048's live-regime measurement stands as the EXPECTATION,
+    # not a refusal: an all-positive-birth substrate crosses sign rarely, so live
+    # turnover ~0 is the mechanism holding; the reachable red is the constructed
+    # sign-flip arm in tests/test_sleep_capabilities.py. T054-ii's tissue-side refusal
+    # is unmoved (pf_w is its own state of record; nothing writes it -- that half stays
+    # re-dated to FR-019's cerebellar rule). Both module docstrings carry the record.
     "microcircuit": (
         "wire",
         "specs/022 T054-i: the cerebellar TISSUE (granule codon expansion + PF bundle + "

@@ -288,6 +288,15 @@ class Brain:
         # intent accuracy (5/14 either way), so it is wired for stability, not for recognition quality.
         self._plasticity = None
         self._plastic_relaxed = 0  # neurons whose cascade was relaxed on the last sleep tick
+        # T058 SLEEP OWNERSHIP (FR-024): per-capability switches + evidence counters. Each
+        # sleep-owned capability is separately neuterable (neuter_sleep) so the sleep A/B
+        # attributes per capability instead of certifying the phase wholesale.
+        self._sleep_caps = {"replay": True, "benna_fusi": True, "structural": True}
+        self._sleep_replayed = 0  # interactions re-driven through the full stack last sleep tick
+        self._sleep_consolidate_calls = 0  # Benna-Fusi deposits those replays actually reached
+        self._rewirer = None  # the slow-clock structural pass (constructed on first sleep tick)
+        self._structural_report = None  # last cycle's turnover/prune/regen counts
+        self._structural_refusals = 0  # rewire() ValueErrors, counted never swallowed (T048)
         if getattr(self.brain, "_ixn", None) is not None:
             self._plasticity = self._try(
                 lambda: PlasticityRuleStack(
@@ -3064,20 +3073,84 @@ class Brain:
                 self._episode_retained = round(float(self._episode_consolidator.retained()), 3)
             except Exception:
                 pass
-        if self._plasticity is not None:  # SYNAPTIC consolidation: rest lets the deep Benna-Fusi
-            try:  # cascade re-assert traces a conflicting burst overwrote. relax() RETURNS the
-                # settled weights -- they must be written back or the rest phase does nothing.
-                # `steps` is a rest DURATION (a time-constant, like replay(steps=60) above), not a
-                # threshold arbitrating behaviour; consolidation accumulates across the night.
-                n_relaxed = 0
-                for _i, _n in enumerate(self.brain._ixn.neurons):
-                    _settled = self._plasticity.relax(_i, _PLASTIC_REST_STEPS)
-                    if _settled is not None:
-                        _n.w = list(_settled)
-                        n_relaxed += 1
-                self._plastic_relaxed = n_relaxed
-            except Exception:
-                pass
+        if self._plasticity is not None:  # T058 SLEEP OWNERSHIP (FR-024): replay -> deposits,
+            # the structural slow clock, then the Benna-Fusi rest -- in that order, each
+            # capability separately neuterable with its own counter. Before this block, sleep
+            # only ever relax()ed, and the measured live state was every relax returning None
+            # (no cascade had ever been ensured): consolidate() was unreachable on sleep ticks.
+            # SCOPE OF THE CURE, said plainly (panel): the replay ring is fed by CONVERSATIONAL
+            # traffic (teach/chat/respond -> interact), which the daemon's transcript-ingest
+            # half supplies on NEW turns -- but the ring is process-local and never persisted,
+            # so a restarted daemon replays nothing until a genuinely new turn arrives. The
+            # autonomous drive loop alone (tick() with no conversation) never fills it; the
+            # refeed-from-lake restore is named open work in the T058 record, not hidden.
+            #
+            # THE COUNTERS ARE PER-TICK OBSERVABLES: reset FIRST, every sleep tick, so a
+            # neutered or silently-failing capability reads 0/None instead of the previous
+            # tick's success standing where evidence belongs (the panel's stale-carry red:
+            # a phase-neutered brain reported replayed=8 from the tick before).
+            self._sleep_replayed = 0
+            self._sleep_consolidate_calls = 0
+            self._plastic_relaxed = 0
+            self._structural_report = None
+            if self._sleep_caps["replay"]:
+                try:  # (a) REPLAY: re-drive recorded wake interactions through the FULL
+                    # learning path -- R-STDP + neuromod + the whole stack sandwich, so the
+                    # Benna-Fusi deposit is REACHED on the sleep tick itself. k is a replay
+                    # DURATION (like replay(steps=60) above), not a behaviour threshold.
+                    # NOT the episode replay 15 lines up: that one reactivates the episodic
+                    # ATTRACTOR; this one re-drives the INTERACTION learner. Same word, two
+                    # adjudicated jobs (the split is recorded at the learner's replay()).
+                    _before = self._plasticity.consolidation_calls()
+                    self._sleep_replayed = self.brain._ixn.replay(k=8)
+                    self._sleep_consolidate_calls = self._plasticity.consolidation_calls() - _before
+                except Exception:
+                    pass
+            if self._sleep_caps["structural"]:
+                try:  # (b) THE STRUCTURAL SLOW CLOCK (T048's module, wired at last): prune
+                    # identity violations, regenerate under budget, MSP-steered by the
+                    # stack's OWN meta theta (the public read that lands with this wire).
+                    # A structural write must also reach the cascade -- adopt_structural
+                    # re-anchors changed slots, else the next relax() would silently erase
+                    # the edit (the T051b-ii measured conflict).
+                    from snn_data_lake.plasticity.structural_rewiring import (
+                        StructuralRewiring,
+                    )
+
+                    if self._rewirer is None:
+                        self._rewirer = StructuralRewiring(seed=self._seed)
+                    _rows = [list(_n.w) for _n in self.brain._ixn.neurons]
+                    _prev_rows = [list(_r) for _r in _rows]
+                    self._rewirer.rewire(_rows, activity=self._plasticity.meta_theta())
+                    for _i, _n in enumerate(self.brain._ixn.neurons):
+                        _changed = [
+                            _c
+                            for _c in range(len(_rows[_i]))
+                            if _rows[_i][_c] != _prev_rows[_i][_c]
+                        ]
+                        if _changed:
+                            _n.w = list(_rows[_i])
+                            self._plasticity.adopt_structural(_i, _rows[_i], _changed)
+                    self._structural_report = self._rewirer.report()
+                except ValueError:
+                    self._structural_refusals += 1  # counted, never swallowed (T048's demand)
+                except Exception:
+                    pass
+            if self._sleep_caps["benna_fusi"]:
+                try:  # (c) REST: the deep Benna-Fusi cascade re-asserts traces a conflicting
+                    # burst overwrote. relax() RETURNS the settled weights -- they must be
+                    # written back or the rest phase does nothing. `steps` is a rest DURATION
+                    # (a time-constant, like replay(steps=60) above), not a threshold
+                    # arbitrating behaviour; consolidation accumulates across the night.
+                    n_relaxed = 0
+                    for _i, _n in enumerate(self.brain._ixn.neurons):
+                        _settled = self._plasticity.relax(_i, _PLASTIC_REST_STEPS)
+                        if _settled is not None:
+                            _n.w = list(_settled)
+                            n_relaxed += 1
+                    self._plastic_relaxed = n_relaxed
+                except Exception:
+                    pass
         try:
             s = self._seed * 7 + self._sleep_ticks + 1
             self.attractor.sleep(seed=s, episodes=3, learn=True)
@@ -3317,6 +3390,43 @@ class Brain:
         except Exception:
             pass
         return {"episode": {}, "confidence": 0.0, "source": "miss"}
+
+    # distinct-from: cortex/prefrontal_executive.py -- its neuter() gates the WM rehearsal
+    #   channel's elements; this gates the SLEEP-OWNED consolidation capabilities. Same
+    #   attribution idiom, different substrate. Site read.
+    # distinct-from: cerebellum/microcircuit.py -- its neuter() gates tissue elements
+    #   (codon/mli/pf); a neuter has to know its own internals, which is why the tree keeps
+    #   one per module rather than sharing one. Site read.
+    def neuter_sleep(self, element):
+        """Neuter ONE sleep-owned capability IN PLACE -- FR-024's per-capability attribution arm.
+
+          "replay"     -- cuts the sleep replay of wake interactions: no re-driven deposits, so
+                          consolidate() is reached 0 times on the sleep tick (the pre-T058 state,
+                          reconstructed on purpose).
+          "benna_fusi" -- cuts the rest phase: cascades neither diffuse nor rebind the rows, so
+                          settled weights are never written back.
+          "structural" -- cuts the slow clock: no prune/regen, no turnover report.
+          "phase"      -- the AGGREGATE control over THIS BLOCK's three capabilities (the
+                          phase-level neuter FR-024 names for them): the sleep tick must
+                          then leave the INTERACTION substrate untouched. Scope, said
+                          plainly (panel): the pre-existing sleep lanes -- episode-attractor
+                          replay, attractor sleep learning, reasoning consolidation, the
+                          offline downscale/prune -- keep their own dispositions and are
+                          NOT gated here; this neuter attributes the T058-owned trio only.
+
+        Returns self so an arm can chain. Refuses an unknown element rather than silently
+        neutering nothing -- a no-op neuter reads as a passing control."""
+        if element == "phase":
+            for k in self._sleep_caps:
+                self._sleep_caps[k] = False
+        elif element in self._sleep_caps:
+            self._sleep_caps[element] = False
+        else:
+            raise ValueError(
+                f"unknown element {element!r}: sleep-owned capabilities are "
+                f"{sorted(self._sleep_caps)} plus 'phase' (the aggregate)"
+            )
+        return self
 
     def _enter_sleep(self):
         """One 'night' of offline REASONING learning: train adjacent transitive-inference premises,
@@ -3637,6 +3747,16 @@ class Brain:
             # brain_telemetry.DASHBOARD_KEYS, not in PROVENANCE, no test. brain_telemetry and cockpit
             # self-checks re-run after the rename, both "contract clean", exit 0.
             "shy_prune": self._shy,  # offline downscale + weak-synapse hard-prune telemetry (last night)
+            # T058 (FR-024): the sleep-ownership evidence counters + the turnover instrument,
+            # surfaced per structural_rewiring's own record ("state()-field surfacing lands
+            # WITH the wire"). Per-tick observables (reset at each sleep tick), all MEASURED.
+            "sleep_consolidation": {
+                "replayed": self._sleep_replayed,
+                "consolidate_calls": self._sleep_consolidate_calls,
+                "relaxed": self._plastic_relaxed,
+                "structural": self._structural_report,
+                "structural_refusals": self._structural_refusals,
+            },
             "brain_alive": self.brain.alive(),
             "regions_live": sorted(self._regions_live),
             "n_regions_live": len(self._regions_live),

@@ -71,6 +71,8 @@ import zlib
 from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
 from snn_data_lake.cortex.rank_order_coding import rank_code
 
+_REPLAY_CAP = 64  # sleep-replay ring size (T058): a memory bound, not a behaviour threshold
+
 #: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "SpikingInteractionLearner._deposit": (
@@ -140,6 +142,11 @@ class SpikingInteractionLearner:
         ]
         self.rng = random.Random(self.seed)  # instance rng (e.g. training-order shuffles)
         self._last = None  # (label, eligibility, deltas, reward) of the last deposit
+        # T058 sleep-replay buffer: the last _REPLAY_CAP wake interactions, recorded so the
+        # SLEEP phase can re-drive them through the FULL learning path (deposits included --
+        # which is what makes the consolidation cascade actually reachable on sleep ticks).
+        # A bounded ring, a memory bound rather than a behaviour-arbitrating threshold.
+        self._replay = []
         # OPT-IN neuromodulation (NACABroadcast, duck-typed): a diffuse global gate that reshapes the LOCAL
         # R-STDP delta ADDITIVELY. None -> the local rule is untouched (byte-identical). It modulates
         # plasticity only; it adds NO actuator route (this router stays intent-recognition only).
@@ -247,14 +254,22 @@ class SpikingInteractionLearner:
         """Emit the current best response to a stimulus. Pure inference: NO plasticity, NO rng."""
         return self.responses[self._argmax_label(self.encode(stimulus))]
 
-    def interact(self, stimulus, feedback):
+    # distinct-from: plasticity/benna_fusi.py, plasticity/inhibitory_stdp.py etc. -- their
+    #   step/reward methods are the RULES; this is the incumbent learner entry being edited
+    #   in place (the T058 replay-record flag added to the existing method). Sites read.
+    def interact(self, stimulus, feedback, _record=True):
         """One interaction / learning step, purely via reward-modulated spike-timing plasticity.
 
         `feedback` teaches the learner in one of two ways (both R-STDP, never a gradient):
           * a response label in `self.responses` -> TEACHING signal: reinforce that (correct) neuron
             with dopamine d=+1, and depress the learner's own wrong answer (if any) with d=-1.
           * a number -> SCALAR reward for the answer the learner just gave: reward only that neuron.
-        Returns the response the learner gave (its pre-update best answer)."""
+        Returns the response the learner gave (its pre-update best answer). `_record=False` is the
+        sleep-replay path: same learning, no re-recording (a replay that re-recorded itself would
+        feed its own buffer forever)."""
+        if _record:
+            self._replay.append((list(stimulus), feedback))
+            del self._replay[:-_REPLAY_CAP]
         code = self.encode(stimulus)
         pred = self._argmax_label(code)  # the learner's own current answer (the action taken)
         given = self.responses[pred]
@@ -268,6 +283,29 @@ class SpikingInteractionLearner:
         else:  # scalar reward for the response just produced
             self._deposit(pred, code, float(feedback))
         return given
+
+    # distinct-from: hippocampus/experience_replay.py -- SWR-style replay of (s, a, r)
+    #   transitions into a q-table; hippocampus/episode_consolidation.py::replay -- noise-
+    #   driven attractor reactivation + covariance STDP; substrate/home.py::replay /
+    #   substrate/binlog.py::replay -- durable-record iteration. Same word, four different
+    #   jobs; THIS one re-drives recorded R-STDP teaching interactions through the live
+    #   learner so the consolidation cascade is reached on sleep ticks. Sites read.
+    def replay(self, k=8):
+        """SLEEP REPLAY (specs/022 T058): re-drive up to `k` recorded wake interactions through
+        the FULL learning path -- R-STDP deposit, neuromodulation, and the whole stack sandwich
+        including the Benna-Fusi consolidation deposit. This is what makes the consolidation
+        cascade REACHABLE on sleep ticks: before this, sleep could only relax() cascades that
+        wake chat had happened to ensure, and the measured live state was every relax returning
+        None. Samples with the instance rng (deterministic per seed); returns the replay count.
+        An empty buffer replays nothing and says so with 0, never a fake pass."""
+        if not self._replay:
+            return 0
+        n = 0
+        for _ in range(int(k)):
+            code, fb = self._replay[self.rng.randrange(len(self._replay))]
+            self.interact(list(code), fb, _record=False)
+            n += 1
+        return n
 
     def accuracy(self, dataset):
         """Fraction of (stimulus, correct_response) pairs the learner answers correctly. No learning."""

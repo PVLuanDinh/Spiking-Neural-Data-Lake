@@ -212,6 +212,7 @@ class _BennaFusiConsolidation:
         self._n_levels = int(n_levels)
         self._cas = [None] * self._n  # per-neuron list[BennaFusiSynapse]
         self._prev = [None] * self._n  # last returned effective weights (delta reference)
+        self.calls = 0  # lifetime consolidate() passes (T058 sleep-ownership evidence counter)
 
     def _ensure(self, i, weights):
         if self._cas[i] is None:
@@ -225,6 +226,7 @@ class _BennaFusiConsolidation:
     def consolidate(self, i, weights):
         """Deposit this step's per-synapse weight change into the fast beakers, diffuse once, and return
         the deep-anchored effective weights (the fast beakers)."""
+        self.calls += 1
         self._ensure(i, weights)
         cas, prev = self._cas[i], self._prev[i]
         out = []
@@ -332,6 +334,50 @@ class PlasticityRuleStack(HomeostaticPlasticityStack):
         if self._cons is None:
             return None
         return self._cons.relax(int(neuron_id), int(steps))
+
+    # distinct-from: plasticity/meta_plasticity.py -- ITS theta is a standalone unit's; this
+    #   is the PUBLIC read of THIS stack's _BCMMetaGate thetas (the route structural_rewiring's
+    #   record says lands WITH the sleep wire). Site read.
+    # distinct-from: plasticity/structural_rewiring.py -- the rewirer; adopt_structural below
+    #   is the CASCADE side of its measured two-writer conflict, not a second rewirer. Site read.
+    # distinct-from: hippocampus/lake_consolidation.py, plasticity/benna_fusi.py -- lake-record
+    #   pruning and the synapse model itself; nothing here re-implements either. Sites read.
+    def consolidation_calls(self):
+        """Lifetime count of Benna-Fusi consolidate() passes -- the T058 evidence counter.
+        The measured live defect was every sleep relax() returning None because no cascade had
+        ever been ensured; this makes 'consolidate() was actually reached' a NUMBER a sleep
+        A/B can difference, instead of an inference from a silent no-op. 0 with consolidation off."""
+        return 0 if self._cons is None else int(self._cons.calls)
+
+    def meta_theta(self):
+        """Per-neuron BCM sliding threshold -- the PUBLIC activity read the structural slow
+        clock steers by (structural_rewiring's own record: activity is READ from retained
+        state that already exists; re-deriving an activity EMA there would be the P2
+        failure -- this is the read route that record said lands WITH the wire).
+        None when the metaplastic gate is off (the rewirer degrades honestly to its
+        unsteered coin)."""
+        if self._meta is None:
+            return None
+        return [float(self._meta.theta(i)) for i in range(self.n_neurons)]
+
+    def adopt_structural(self, neuron_id, weights, changed):
+        """A STRUCTURAL write must also reach the cascade (the T048/T051b-ii measured
+        conflict: on this stack a weight row is NOT the state of record, and relax()
+        rebinds rows from the deep store wholesale -- an unadopted structural edit would
+        be silently erased by the next rest phase). Re-anchor each CHANGED slot's cascade
+        at its new value, equilibrium-initialized: a pruned or regenerated synapse is a
+        NEW synapse, and its consolidation history dies with the slot. No-op (returns 0)
+        when consolidation is off or the neuron has no cascade yet -- a row without a
+        cascade IS its own state of record."""
+        i = int(neuron_id)
+        if self._cons is None or self._cons._cas[i] is None:
+            return 0
+        cas, prev = self._cons._cas[i], self._cons._prev[i]
+        for c in changed:
+            lvl = min(self._cons._w_max, max(-self._cons._w_max, float(weights[c])))
+            cas[c].u = [lvl] * self._cons._n_levels
+            prev[c] = float(weights[c])
+        return len(changed)
 
     # -- full superset sandwich, for the self-check: metaplastic gate folded into the live update ----
     def learning_step(self, neuron_id, weights, activity, rstdp_update):

@@ -72,8 +72,10 @@ tissue when the wire lands):
   healthy substrate under a stable regime turns over ~0; one whose fast clock keeps
   violating identities turns over persistently -- the instrument reports, it never
   decides (the deciding gate is T047's, at a different grain). No cockpit renderer
-  exists yet (the T047 precedent: state()-field surfacing only) -- and the state()
-  surfacing itself lands WITH the T054 wire, not before it.
+  exists yet (the T047 precedent: state()-field surfacing only) -- the state()
+  surfacing LANDED WITH THE T058 WIRE (2026-09-01): Brain.state()'s
+  "sleep_consolidation.structural" carries this report() per sleep tick, with the
+  rewire ValueError refusals counted beside it.
 
 TWO CLOCKS, stated: the FAST clock (R-STDP deposit + stack stabilize, per interaction)
 moves magnitudes; the SLOW clock (this module, per structural cycle) moves STRUCTURE.
@@ -84,12 +86,25 @@ READ/WRITE SETS (FR-018): reads the rows' weights + the population's activity ve
 population minimum); writes weight rows ONLY (zeroing pruned slots, seeding
 regenerated ones) -- note the measured caveat: on a substrate governed by a
 consolidation cascade, a weight row is NOT the state of record and a structural write
-must also reach the cascade (the conflict above, modeled at T051b-ii). THE FIX IS
-UNDATED and its scope was narrowed by measurement at T054-ii: it is meaningful only
-where a cascade WRAPS the rows (the IXN stack -- the pairing T048 refused), and it is
-inapplicable on the cerebellar tissue, whose pf_w IS its own state of record. FR-018's
-neuter attribution did NOT wait for this wire: it landed at T054-ii on the tissue's own
-elements (cerebellum/microcircuit.py's per-element A/B).
+must also reach the cascade (the conflict above, modeled at T051b-ii). THE FIX LANDED
+AT T058 (2026-09-01), scope exactly as T054-ii's measurement narrowed it: on the IXN
+stack -- the one substrate where a cascade wraps the rows --
+`PlasticityRuleStack.adopt_structural(i, weights, changed)` re-anchors each CHANGED
+slot's cascade at equilibrium (a pruned/regenerated synapse is a NEW synapse; its
+consolidation history dies with the slot), called by Brain._sleep_tick's slow-clock
+block after every rewire, so the next relax() settles TOWARD the structural edit
+instead of silently erasing it. Inapplicable on the cerebellar tissue, whose pf_w IS
+its own state of record. THE WIRE ITSELF also landed at T058: Brain._sleep_tick runs
+this module per sleep tick over the IXN rows, MSP-steered by the stack's own meta
+theta (`PlasticityRuleStack.meta_theta()`, the public read this paragraph long
+scheduled). Honest live-regime expectation, unchanged from T048's measurement: a
+healthy all-positive-birth substrate produces sign crossings RARELY, so live turnover
+~0 is the mechanism holding, not dormancy -- the wire's reachable red is the
+constructed sign-flip in tests/test_sleep_capabilities.py (prune + budget conservation
++ cascade adoption each asserted), per the house rule that a gate landing green ships
+the reconstruction of the defect it was built for. FR-018's neuter attribution did NOT
+wait for this wire: it landed at T054-ii on the tissue's own elements
+(cerebellum/microcircuit.py's per-element A/B).
 
 WHAT THE ADOPTION OWES (P2/P8 discipline; every arm in main(), driven PAST the first
 event per the T047 lesson -- a harness that breaks at the first firing certifies a
@@ -108,8 +123,9 @@ duty cycle, not a mechanism):
                constructed arm, not by assumption).
   REFUSALS  -- NaN weights, non-finite or mismatched activity: ValueError, raised
                BEFORE any mutation (the panel constructed an aborted pass that had
-               already zeroed three slots); the T054 wire must count these, never
-               swallow them.
+               already zeroed three slots); the wire must count these, never swallow
+               them -- HONORED at T058: Brain._sleep_tick catches ValueError into
+               _structural_refusals (surfaced in state()) before its generic guard.
 
   PYTHONPATH=src python -m snn_data_lake.plasticity.structural_rewiring
 """
