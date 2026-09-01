@@ -266,7 +266,7 @@ CORE = [
     "plasticity.inhibitory_stdp",
     "plasticity.intrinsic_plasticity",
     "plasticity.short_term_plasticity",
-    "plasticity.wm_attractor",  # T055: synaptic WM (Mongillo) over the T-M synapse above
+    "plasticity.wm_capacity",  # T056: K = T_max/t_s derived + five guards (wm_attractor retired)
     "plasticity.developmental_pruning",
     "plasticity.structural_rewiring",  # T048: A/A + budget-conservation + MSP sign arms
     "plasticity.eligibility_algebra",  # T050: incumbent bit-equivalence + mis-declaration red

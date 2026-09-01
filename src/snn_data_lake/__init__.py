@@ -365,9 +365,10 @@ REGIONS = {
         "inhibitory_stdp",
         "intrinsic_plasticity",
         "short_term_plasticity",
-        # specs/022 T055: the synaptic WM attractor (Mongillo) -- memory in facilitation,
-        # composing the short_term_plasticity synapse above into competing populations
-        "wm_attractor",
+        # specs/022 T056: WM capacity derived, never picked -- K = T_max/t_s from the
+        # executive's own synaptic constants + the five FR-020 guards (wm_attractor,
+        # T055's standalone store, was ported into prefrontal_executive and DELETED)
+        "wm_capacity",
         "developmental_pruning",
         "structural_rewiring",  # specs/022 T048: DEEP-R budget + MSP sign steering, slow clock
         "eligibility_algebra",  # specs/022 T050: sum-of-products authoring contract (three-factor rules)

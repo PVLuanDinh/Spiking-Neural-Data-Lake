@@ -324,57 +324,14 @@ EXEMPT = {
         "structural wire on measurement, and the live-brain consumer carries no task "
         "id yet, both said plainly.",
     ),
-    "wm_attractor": (
-        # "retire", not "wire": this field is the machine-readable disposition that
-        # open_dispositions() emits as the standing TODO, and it previously said "wire"
-        # (pending a verify-first wave) while the reason beside it said the module would
-        # never be wired. The one field a tool can act on must agree with the adjudication.
-        "retire",
-        "specs/022 T055: working memory held as FACILITATION on Tsodyks-Markram synapses "
-        "(the Mongillo family; the module's own docstring discloses what is NOT built -- "
-        "no recurrence, no population spike, the competition is arithmetic). P2 SETTLED "
-        "BY MEASUREMENT, AGAINST THIS MODULE -- this row previously carried it as an "
-        "OPEN DEBT with the settling benchmark merely NAMED; the benchmark now EXISTS "
-        "and has run (delayed_match() in this module, arm 8: multi-item "
-        "delayed-match-to-sample with distractors, both stores behind one adapter, two "
-        "controls flat at 0.00). VERDICT: THE TASK CANNOT SEPARATE THEM. Two earlier "
-        "readings of it were wrong and are recorded so neither is re-derived -- (A) "
-        "'this store wins' held only against cortex/prefrontal_executive at its "
-        "CONSTRUCTOR DEFAULT; (B) 'the incumbent's best form wins' steel-manned the RIVAL "
-        "ONLY, since tau_f here is as unbounded a constructor argument as recurrence is "
-        "there, and symmetrised, tau_f=8000 scores exactly what recurrence=0.9999 scores. "
-        "A THIRD wrong verdict came from the repair: scoring max(0,(hits-fa)/n_items) and "
-        "reporting a 0.50 tie MANUFACTURED that tie -- the level set holds (2,0), (3,1) "
-        "and (4,2) alike, three different behaviours, while the raw hits SEPARATE. The "
-        "composite is deleted; delayed_match returns the (hits, false_alarms) pair. "
-        "Corrected, at ONE delay on the CLEAN task with both sides swept: the stores are "
-        "IDENTICAL at (4,0) each, against empty nulls and a report-everything stub at "
-        "(4,4) the floored score could not tell from a null; with distractors both give "
-        "(4,2), neither suppressing. The clean task is primary because the distractor axis "
-        "is CONFOUNDED for the incumbent -- maintain() decays only the top frame, so "
-        "distractors FREEZE targets beneath and its hits RISE with distractor count "
-        "(1->2->3). R: a claim in each direction was measured wrong. Not 'still consumed' "
-        "(that measured facilitation saturation) and not flatly 'inert' (that measured "
-        "only drive=1.2, where every cell fires regardless). At a marginal drive of 0.9 "
-        "the resource neuter moves a load 40 -> 24 spikes, so R IS load-bearing; at this "
-        "module's DEFAULT drive the same neuter is bit-identical. The defect is a dead "
-        "OPERATING POINT, not a dead variable -- every arm here loads at 1.2, so nothing "
-        "the module does exercises its own second variable (P8(4)). DISPOSITION: "
-        "RETIRE (this field, not 'wire'). Exactly one mechanism survives per P2 and this "
-        "is not the one with a working claim; it outlives the commit only for P2's "
-        "honesty guard, and T056 is where R acquires its real job (resources bounding the "
-        "refresh cycle, which is what makes a capacity FALL OUT of time constants rather "
-        "than be declared as max_goals) AND where the default drive stops hiding it -- or "
-        "this file is DELETED. No live "
-        "wire; not a second workspace. Charged surface until then: its own registered "
-        "self-check (spike-written memory with a 0-drive control that writes nothing; "
-        "selectivity with a second-load red; the trace surviving silence with a "
-        "u-ablation that loses the item; probe idempotence; a competition ranked on the "
-        "memory, carrying the retired u*R scoring as its reachable red; the R-inertness "
-        "neuter and its refusal on an unknown element; refresh outliving decay at 8000 "
-        "ticks; capacity occupancy measured from FIRING ticks with a weak-load red; the "
-        "benchmark and both its controls; the tau_f > tau_d regime guard).",
-    ),
+    # wm_attractor: RETIRED AND DELETED (specs/022 T056). The T055 row that stood here
+    # carried the settled P2 verdict (the delayed-match benchmark could not separate the
+    # two stores; two wrong verdicts recorded); T056 executed the row's own disposition --
+    # the unique capability (the decoupled u/tau_f retention vs R/tau_d release pair, its
+    # elapsed-time bookkeeping, and the neuter idiom) is PORTED into
+    # cortex/prefrontal_executive, the capacity is DERIVED there (K = T_max/t_s,
+    # plasticity/wm_capacity, five guards), and the file is gone. Exactly one mechanism
+    # survives; the full record lives in wm_capacity's docstring and specs/022 tasks.md.
     "genomic_bottleneck": (
         "wire",
         "specs/022 T044: the g-network (tag vectors from the T043 placement surface + one "

@@ -67,10 +67,66 @@ persistent state is metastable -- its decay time-constant is set by the `recurre
 gain rather than emerging from spike-frequency adaptation -- so a long enough delay lets it drift
 below threshold (which is what pops a stale sub-goal); the firing itself is real LIF spiking throughout.
 
+THE SYNAPTIC RETENTION/RELEASE PAIR (specs/022 T056, ported from the retired
+`plasticity/wm_attractor.py` -- P2's port-then-retire; exactly one WM mechanism survives).
+Every goal frame now carries a Tsodyks-Markram synapse (`short_term_plasticity.DynamicSynapse`,
+imported never re-implemented; the elapsed-time bookkeeping is this module's, the arithmetic
+stays the incumbent's -- the same split T055 disclosed). Three decoupled clocks, three jobs:
+  - `recurrence` (per maintained tick, TOP frame only) is the COMMITMENT policy -- unchanged
+    incumbent semantics: a pursued goal's drive fades and pops on `hold_threshold`.
+  - facilitation u on `tau_f` is RETENTION: the frame's memory, written ONLY by spikes (a
+    maintain tick that emits no spikes refreshes nothing), decaying between refreshes. A
+    background frame whose decayed u can no longer ignite its pool is DEAD and is CULLED --
+    the fix for T055's measured confound, where frozen lower frames survived any delay for
+    free and the incumbent's hit count ROSE with distractor count.
+  - resources R on `tau_d` are RELEASE, and they BOUND THE REFRESH CYCLE: one rehearsal
+    channel serves background frames round-robin, a frame holds the channel only while its
+    resources still ignite the pool (the dwell), and depletion is what yields the channel
+    (the handoff). `neuter("resources")` cuts R's route to the serve current: the dwell
+    never ends, the channel hogs one frame, and every other background frame starves -- the
+    reachable red that makes R's charge a measurement here, where T055 measured it
+    saturated away at wm_attractor's own operating point.
+CAPACITY FALLS OUT of those constants instead of being declared: `max_goals` now DEFAULTS
+to the derived K = T_max/t_s + 1 (`plasticity/wm_capacity.derive_capacity`, measured on
+this module's own frames; +1 because the active frame rides its own per-tick refresh
+outside the rotation). An explicit `max_goals` argument is still honored (callers own their
+caps); the DEFAULT is no longer a picked 4. Derivation runs AT CONSTRUCTION (memoized on
+every determinant of the probe -- U, taus, seed, n_options, membrane), so a refusal lands
+in __init__, never inside the first push_subgoal. The rehearsal gain 1.1 is a CHOSEN
+operating point, disclosed with its cliff in wm_capacity's docstring.
+
+FOLD DISCLOSURES (panel, 2026-09-01), each measured:
+  - VIABILITY IS REFUSED AT CONSTRUCTION, not discovered as a zombie store: a U at or
+    below this instance's ignition floor (the floor moves with leak/gain and, at the
+    cliff, with seed: 0.155-0.178 over 400 seeds; default U=0.2 clears seed 0 by 27%)
+    would cull every committed goal on its first maintain tick. The old code held at any
+    leak because nothing gated retention; the port gates it, so the non-viable corner of
+    the (U, leak) plane is now an explicit ValueError instead of a silent hold -- callers
+    in-tree all use the defaults, which are viable.
+  - THE DERIVED-DEFAULT PATH REFUSES A NON-DEFAULT MEMBRANE (leak != 0.2): the derivation
+    is validated at md=0.8 only (drift 0 there, ~2 at md=0.9, ~6 at md=0.95).
+  - P3, said plainly: the rehearsal channel rides maintain(), whose live-caller census is
+    unchanged by this port -- offline loops and self-checks (brainstem/autonomous_loop's
+    comment carries the measured 2026-07 revert of a maintain() wire: 0/200 outcome
+    changes). The channel's charge is proven by its own neuter reds, not by a live tick
+    consumer; wiring the stack into the live loop remains T060/T061 scope and P3 forbids
+    force-wiring it here.
+  - P1, the new constants classified: U/tau_f/tau_d defaults are the ported synapse's
+    parameters (T055's disposition, regime- and viability-refused rather than trusted);
+    the rehearsal gain is CHOSEN (cliff in wm_capacity); pointer/horizon values in
+    self-check arms are harness bounds, not behaviour arbiters.
+  - Top-frame pops do not re-anchor the rotation pointers; measured across a 360-config
+    sweep this reorders service within a rotation (49/360) and changes held outcomes in
+    0/360 -- benign, and said here rather than silently relied on.
+
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.prefrontal_executive
 """
 
+import math
 import random
+
+from snn_data_lake.plasticity.short_term_plasticity import DynamicSynapse
+from snn_data_lake.plasticity.wm_capacity import CapacityRefusal, derive_capacity, seed_viability
 
 #: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
@@ -85,6 +141,98 @@ GRADIENT_CLAIM = {
         "slot, caught on the verb `update`",
     ),
 }
+
+
+_REFRESH_GAIN = 1.1  # rehearsal-channel gain: the ONE chosen operating point (cliff in wm_capacity)
+# (U, tau_f, tau_d, seed, n_options, md) -> derived max_goals. The key carries EVERY
+# determinant the probe frame reads: seed AND n_options fix _wm_bias (the het stream
+# burns 5*n_options decision-bias draws first), md carries `leak`. The first key dropped
+# leak and n_options, and the panel measured the consequence: byte-identical constructors
+# answered 97 or raised, depending on what else the process had constructed first.
+_DERIVED_CAP = {}
+
+
+# distinct-from: cortex/lif_neuron.py / cortex/alif_neuron.py -- per-neuron OBJECTS with their
+#   own state; this module has always inlined its pools as raw membrane arrays (the decision
+#   attractor at _decide_spiking and _run_wm_pool both do), and this helper is that existing
+#   inline loop EXTRACTED so maintain() and the capacity probe run one arithmetic, not two.
+#   Sites read.
+# distinct-from: basal_ganglia/evidence_accumulation.py -- a decision race over currents; this
+#   is the WM pool micro-step only. Site read.
+def _lif_pool_run(Vs, cur, bias, md, steps):
+    """Advance one LIF pool `steps` micro-steps at input current `cur` (threshold 1.0, reset
+    0.0), mutating Vs. Extracted from _run_wm_pool so the rehearsal channel and the capacity
+    derivation measure exactly what maintain() executes."""
+    spikes = 0
+    n = len(Vs)
+    for _ in range(steps):
+        for k in range(n):
+            v = md * Vs[k] + cur + bias[k]
+            if v >= 1.0:
+                spikes += 1
+                v = 0.0
+            Vs[k] = v
+    return spikes
+
+
+# distinct-from: plasticity/wm_attractor.py (RETIRED by this change, T056) -- its _decayed
+#   pure-read + last-touch bookkeeping is PORTED here as the unique capability P2 requires
+#   ported before deletion; the synapse arithmetic stays short_term_plasticity's. Site read.
+class _RehearsalFrame:
+    """One goal frame's synaptic retention/release state plus the rehearsal arithmetic.
+
+    Wraps ONE Tsodyks-Markram synapse (imported, never re-implemented) with the elapsed-time
+    bookkeeping DynamicSynapse deliberately lacks (it decays only inside spike(dt) -- the same
+    honest split wm_attractor disclosed, ported with the mechanism). This class is both the
+    live rehearsal unit maintain() serves AND the probe wm_capacity measures -- by
+    construction the same code."""
+
+    __slots__ = ("syn", "last", "Vs", "_bias", "_md", "_n", "_steps", "_gain")
+
+    def __init__(self, syn, bias, md, n, steps, gain=_REFRESH_GAIN):
+        self.syn = syn
+        self.last = 0.0
+        self.Vs = [0.0] * n
+        self._bias, self._md, self._n, self._steps, self._gain = bias, md, n, steps, gain
+
+    def decayed(self, now):
+        """(u, R) decayed to `now` -- a pure read, no state written (a read that refreshed the
+        trace would be the instrument writing what it reports)."""
+        s = self.syn
+        gap = now - self.last
+        if gap <= 0:
+            return s.u, s.R
+        u = s.u * math.exp(-gap / s.tau_f)
+        r = 1.0 - (1.0 - s.R) * math.exp(-gap / s.tau_d)
+        return u, r
+
+    def ignites(self, u):
+        """Does a FRESH pool ignite at facilitation u and FULL resources? The boundary this
+        test draws is the derived retention floor -- no picked constant."""
+        return _lif_pool_run([0.0] * self._n, self._gain * u, self._bias, self._md, self._steps) > 0
+
+    def retention_dead(self, now):
+        """The memory has decayed past its own ignition floor: nothing can read it back."""
+        u, _r = self.decayed(now)
+        return not self.ignites(u)
+
+    def event(self, now):
+        """One spike-driven refresh event THROUGH the imported synapse (facilitate + deplete)."""
+        self.syn.spike(max(now - self.last, 1.0))
+        self.last = now
+
+    def serve(self, now, resources_live=True):
+        """One rehearsal tick: run the pool at the synapse-scaled current; a firing pool writes
+        one refresh event. 'fired' holds the channel; 'depleted' (resources can no longer
+        ignite, facilitation still could) yields it; 'dead' (facilitation itself below the
+        floor) says the memory is gone. resources_live=False is neuter('resources'): R's only
+        route into the serve current is cut."""
+        u, r = self.decayed(now)
+        cur = self._gain * u * (r if resources_live else 1.0)
+        if _lif_pool_run(self.Vs, cur, self._bias, self._md, self._steps) > 0:
+            self.event(now)
+            return "fired"
+        return "depleted" if self.ignites(u) else "dead"
 
 
 class PrefrontalExecutive:
@@ -107,9 +255,17 @@ class PrefrontalExecutive:
         leak=0.2,
         inhibition=0.1,
         commit_races=25,
-        max_goals=4,
+        max_goals=None,
         seed=0,
+        U=0.2,
+        tau_f=1500.0,
+        tau_d=200.0,
     ):
+        if tau_f <= tau_d:
+            raise ValueError(
+                f"synaptic WM requires tau_f > tau_d (facilitation must outlive depression, "
+                f"or nothing holds the memory); got tau_f={tau_f} tau_d={tau_d}"
+            )
         self.n_options = n_options
         self.gate_threshold = gate_threshold  # evidence margin needed to overwrite the held goal
         self.recurrence = recurrence  # WM recurrent self-excitation gain (~1 -> persistent)
@@ -120,10 +276,19 @@ class PrefrontalExecutive:
         self.leak = leak  # LIF membrane leak (sets the membrane decay factor)
         self.inhibition = inhibition  # shared-inhibition strength (WTA competition)
         self.commit_races = commit_races  # spiking decisions majority-voted into a stable commit
-        self.max_goals = max_goals  # bounded goal-stack depth (primary + sub-goals)
+        self._max_goals_arg = max_goals  # None -> DERIVED from the synaptic constants (T056)
+        self.seed = seed
+        self.U = U  # T-M baseline utilization (the ported pair's parameters)
+        self.tau_f = tau_f  # facilitation / RETENTION time constant
+        self.tau_d = tau_d  # depression / RELEASE (resource-recovery) time constant
         self.rng = random.Random(seed)
-        self._stack = []  # goal stack: [[index, drive, Vs], ...] base .. top
+        self._stack = []  # goal stack: [[index, drive, Vs, rehearsal-frame], ...] base .. top
         self._wm_spikes = 0  # spikes emitted by the active WM pool on the last maintain()
+        self._t = 0.0  # the maintenance clock (one tick per maintain())
+        self._focus = 0  # rehearsal-channel rotation pointer over background frames
+        self._sweep = 0  # death-bookkeeping pointer -- SEPARATE from _focus, see _serve_background
+        self._resources_live = True  # neuter("resources") cuts R's route to the serve current
+        self._rehearsal_live = True  # neuter("rehearsal") cuts the refresh, keeps the bookkeeping
 
         # ---- spiking (LIF) constants; dimensionless, discrete-step. threshold=1.0, reset=0.0 -------
         md = 1.0 - leak
@@ -150,6 +315,97 @@ class PrefrontalExecutive:
         het = random.Random((seed * 2654435761 + 1) & 0xFFFFFFFF)
         self._dec_bias = [0.05 * (het.random() - 0.5) for _ in range(self._n_dec * n_options)]
         self._wm_bias = [0.03 + 0.04 * het.random() for _ in range(self._n_wm)]
+        # ---- T056 construction-time refusals (panel fold; loud, never silent) ---------------------
+        # Seed viability: frames are seeded at u=U, and the retention cull removes a frame
+        # whose decayed u cannot ignite. A U at or below THIS instance's floor (the floor
+        # moves with leak/gain/seed) means every committed goal dies on its first maintain
+        # tick with the pool still firing -- the panel measured exactly that silently at
+        # U=0.15, and at the DEFAULT U with leak>=0.3. Refused here, like tau_f <= tau_d.
+        floor, viable = seed_viability(self._probe_frame, self.U)
+        if not viable:
+            raise ValueError(
+                f"synaptic WM cannot hold at these constants: the frame seed u=U={U} sits "
+                f"at or below this instance's ignition floor {floor:.4f} (set by "
+                f"leak={leak}, gain={_REFRESH_GAIN}, seed={seed}) -- every committed goal "
+                f"would be culled on its first maintain tick. Raise U or lower leak."
+            )
+        if max_goals is None:
+            _ = self.max_goals  # derive NOW: every derived-path refusal (regime, seed
+            # viability, membrane band -- the band check lives in the GETTER so the
+            # setter's `p.max_goals = None` route cannot bypass it, fold panel) lands at
+            # construction, not inside the first push_subgoal (total at HEAD, stays total)
+
+    @property
+    def max_goals(self):
+        """Bounded goal-stack depth (primary + sub-goals). Explicitly passed values are honored
+        verbatim; the DEFAULT is DERIVED -- K = T_max/t_s from this instance's own synaptic
+        constants, +1 for the active frame (specs/022 T056; the old declared 4 was
+        unfalsifiable). Lazy and memoized: live paths that never stack goals never derive."""
+        if self._max_goals_arg is not None:
+            return self._max_goals_arg
+        # The derived-default path is validated ONLY at the default membrane: measured
+        # derived-vs-held drift is 0 at md=0.8, ~2 at md=0.9, ~6 at md=0.95. The check
+        # sits HERE, on every derived read, so no route into the derived path (the
+        # constructor's eager read or the setter's `p.max_goals = None`) can bypass it.
+        if self._md != 0.8:
+            raise CapacityRefusal(
+                f"the DERIVED default max_goals is validated only at the default "
+                f"membrane (leak=0.2 -> md=0.8; got md={self._md}); measured "
+                f"derived-vs-held drift reaches 6 frames at md=0.95. Pass max_goals "
+                f"explicitly for a non-default membrane."
+            )
+        key = (self.U, self.tau_f, self.tau_d, self.seed, self.n_options, self._md)
+        if key not in _DERIVED_CAP:
+            _DERIVED_CAP[key] = (
+                derive_capacity(self._probe_frame, self.tau_f, seed_u=self.U)["K"] + 1
+            )
+        return _DERIVED_CAP[key]
+
+    @max_goals.setter
+    def max_goals(self, value):
+        self._max_goals_arg = value
+
+    def _probe_frame(self):
+        """A fresh rehearsal frame over THIS instance's constants -- the unit wm_capacity
+        measures, and exactly the unit maintain() serves (same class, same arithmetic)."""
+        return _RehearsalFrame(
+            DynamicSynapse(self.U, self.tau_f, self.tau_d),
+            self._wm_bias,
+            self._md,
+            self._n_wm,
+            self._wm_steps,
+        )
+
+    # distinct-from: plasticity/wm_attractor.py (retired, T056) -- this is its neuter idiom
+    #   ported with the mechanism; verdict vocabulary stays rule_composer's. Site read.
+    # distinct-from: cerebellum/microcircuit.py::neuter and plasticity/rule_composer.py::
+    #   neutered -- same IDIOM, different substrate: a neuter has to know its own internals,
+    #   which is why the tree keeps one per module. Sites read.
+    def neuter(self, element):
+        """Neuter ONE named element IN PLACE -- the per-element attribution arm (P8 #3).
+
+          "resources" -- cuts R's ONLY route into the rehearsal current: the serve step
+                         drives the pool as if resources were always full, so the dwell
+                         never ends, the channel hogs one background frame, and every
+                         other background frame starves. R's charge, as a reachable red.
+          "rehearsal" -- cuts the refresh half of the channel while KEEPING the death
+                         bookkeeping (frames are still culled when their memory decays
+                         past the ignition floor): background memories then die on tau_f.
+                         The channel's charge, as a reachable red.
+
+        Returns self so an arm can chain. Refuses an unknown element rather than silently
+        neutering nothing -- a no-op neuter reads as a passing control."""
+        if element == "resources":
+            self._resources_live = False
+        elif element == "rehearsal":
+            self._rehearsal_live = False
+        else:
+            raise ValueError(
+                f"unknown element {element!r}: this store's neuterable elements are "
+                f"'resources' (R's route into the rehearsal current) and 'rehearsal' "
+                f"(the refresh half of the background channel)"
+            )
+        return self
 
     @property
     def goal(self):
@@ -319,47 +575,111 @@ class PrefrontalExecutive:
         winner = self._stable_commit(evidence)
         if len(self._stack) >= self.max_goals:
             self._stack.pop(0)  # bounded WM: drop the oldest (base) frame
+            # a removal at background index 0 slides every frame down one slot; the
+            # rotation pointers must follow or they skip a frame's turn (the same
+            # adjustment _serve_background makes for its own culls -- panel fold)
+            if self._focus > 0:
+                self._focus -= 1
+            if self._sweep > 0:
+                self._sweep -= 1
         self._stack.append(self._new_frame(winner))
         return self.goal
 
     def _new_frame(self, index):
-        """A fresh working-memory frame: [goal index, self-excitation drive=1.0, LIF membranes]."""
-        return [index, 1.0, [0.0] * self._n_wm]
+        """A fresh working-memory frame: [goal index, self-excitation drive=1.0, LIF membranes,
+        rehearsal frame]. The synapse is seeded at u=U -- the committing decision itself was a
+        spiking event (a whole WTA race fired to choose this goal), so the first facilitation
+        is spike-justified, not free."""
+        rf = self._probe_frame()
+        rf.syn.u = self.U
+        rf.last = self._t
+        return [index, 1.0, [0.0] * self._n_wm, rf]
 
+    # distinct-from: cortex/task_set.py -- that module deliberately runs THE SAME LIF equation
+    #   (its own docstring cites PrefrontalExecutive._run_wm_pool) on its own active-set pool;
+    #   this is the incumbent method it cites, now delegating to the one extracted loop above.
+    #   Site read.
     def _run_wm_pool(self, frame):
         """Advance a frame's persistent-activity LIF pool `_wm_steps` micro-steps with NO external
         input -- only the recurrent self-excitation drive. Returns the number of spikes emitted (the
         persistent firing that sustains the goal across the delay). Mutates the frame's membranes."""
-        drive = frame[1]
-        Vs = frame[2]
-        md = self._md
-        cur = self._wm_gain * drive  # recurrent drive -> input current (no ext input)
-        bias = self._wm_bias
-        spikes = 0
-        for _ in range(self._wm_steps):
-            for k in range(self._n_wm):
-                v = md * Vs[k] + cur + bias[k]  # LIF: leak + integrate recurrent current
-                if v >= 1.0:  # threshold -> spike -> reset
-                    spikes += 1
-                    v = 0.0
-                Vs[k] = v
-        return spikes
+        cur = self._wm_gain * frame[1]  # recurrent drive -> input current (no ext input)
+        return _lif_pool_run(frame[2], cur, self._wm_bias, self._md, self._wm_steps)
 
     def maintain(self):
         """Advance one delay tick with NO input. The recurrent self-excitation drive on the TOP goal
-        decays by `recurrence` (lower goals are HELD frozen while a sub-goal is pursued) and its LIF
-        pool is re-run -- so a held goal keeps SPIKING (persistent activity). A frame whose drive falls
-        below hold_threshold is released and popped -- a sub-goal pops back to its parent, and the last
-        goal fades to None. Returns the currently held goal, or None once the stack empties."""
+        decays by `recurrence` and its LIF pool is re-run -- so a held goal keeps SPIKING
+        (persistent activity); a top frame whose drive falls below hold_threshold is released and
+        popped (a sub-goal pops back to its parent, the last goal fades to None). The top frame's
+        own spiking REFRESHES its synapse (spike-driven: a silent tick writes nothing).
+
+        Lower goals are no longer held frozen for free (T055 measured that freeze as a confound):
+        one resource-gated rehearsal channel serves them round-robin -- see _serve_background --
+        and a frame whose facilitation has decayed past its ignition floor is CULLED, including a
+        parent that comes back up dead after a long reign. Returns the currently held goal, or
+        None once the stack empties."""
+        self._t += 1.0
+        while self._stack and self._stack[-1][3].retention_dead(self._t):
+            self._stack.pop()  # a frame whose memory died cannot resume as the active goal
         if not self._stack:
             self._wm_spikes = 0
             return None
         top = self._stack[-1]
         top[1] *= self.recurrence  # recurrent drive decays across the input-free delay
         self._wm_spikes = self._run_wm_pool(top)  # persistent LIF spiking on the surviving drive
+        if self._wm_spikes:
+            top[3].event(self._t)  # the active goal's own spikes refresh its synapse
         if top[1] < self.hold_threshold:  # drive too weak to self-sustain -> release goal
             self._stack.pop()
+        self._serve_background()
         return self.goal
+
+    def _serve_background(self):
+        """One tick of the rehearsal channel over the background (non-top) frames.
+
+        The rotation pointer visits one frame per tick. A frame whose memory has decayed past
+        its ignition floor is culled (pure read -- this bookkeeping survives neuter('rehearsal'),
+        so a cut channel makes deaths VISIBLE rather than hiding them). Otherwise, when the
+        refresh is live, the frame is SERVED: it holds the channel while its resources still
+        ignite the pool (the dwell) and yields it on depletion (the handoff) -- resources are
+        what bound the refresh cycle, which is why a capacity falls out of the time constants
+        (K = T_max/t_s, derived and guarded in plasticity/wm_capacity)."""
+        bg = self._stack[:-1]
+        if not bg:
+            return
+        # Death bookkeeping on its OWN pointer. The first build tied it to the serve pointer,
+        # and the R-neuter red exposed that as a defect: a hogged channel froze the pointer,
+        # so the starvation the hog caused stayed INVISIBLE (live 6 == neutered 6) -- the
+        # detector was parked exactly where the failure could not appear. A dead frame is
+        # culled by the sweep within one rotation regardless of what the serve channel does.
+        self._sweep %= len(bg)
+        sw = bg[self._sweep]
+        if sw[3].retention_dead(self._t):
+            # A removal below a pointer slides every later frame down one slot; an unadjusted
+            # pointer then skips a frame's turn. ROTATION FAIRNESS, said precisely (the fold
+            # panel caught this comment claiming the 97-vs-90 capacity gap, which belonged
+            # to the tau_d regime finding -- ablating this adjustment alone does not move
+            # the guard-1 result): the re-anchor keeps service order stable under removals;
+            # its outcome effect is pointwise-rare, and tests exercise the branch directly.
+            self._stack.remove(sw)  # the memory is gone; reporting the goal would be confabulation
+            if self._sweep < self._focus:
+                self._focus -= 1
+            bg = self._stack[:-1]
+            if not bg:
+                return
+        else:
+            self._sweep += 1
+        if not self._rehearsal_live:  # neuter("rehearsal"): bookkeeping sweeps, refresh is cut
+            return
+        self._focus %= len(bg)
+        fr = bg[self._focus]
+        verdict = fr[3].serve(self._t, resources_live=self._resources_live)
+        if verdict == "depleted":
+            self._focus += 1  # depleted resources yield the channel: the handoff
+        elif verdict == "dead":
+            if self._focus < self._sweep:
+                self._sweep -= 1
+            self._stack.remove(fr)  # died since the sweep's last visit; cull now, not next pass
 
     def top_down_bias(self, strength=1.0):
         """A length-n_options top-down preference vector: `strength` SUMMED over every held goal
@@ -651,6 +971,82 @@ def main():
         f"a decayed sub-goal must pop back to the held primary goal (got {popped_back}, stack {after_pop})"
     )
 
+    # (10) THE T056 PORT'S OWN REDS -- retention, release, and the derived capacity, at fast
+    # constants (tau_f=300, tau_d=200; regime-legal) with recurrence=1.0 so the commitment
+    # policy does not drain the stack while the MEMORY is being measured, and commit_races=1
+    # so the pushes are cheap. The full derived==held +/-1 guard runs in wm_capacity's own
+    # self-check; these arms pin the store-side charges.
+    def _stacked(n_frames, neutered=None):
+        p = PrefrontalExecutive(
+            n_options=4,
+            commit_races=1,
+            seed=0,
+            recurrence=1.0,
+            max_goals=10**9,
+            tau_f=300.0,
+            tau_d=200.0,
+        )
+        if neutered:
+            p.neuter(neutered)
+        ev = [[1.0 if j == (i % 4) else 0.0 for j in range(4)] for i in range(4)]
+        for i in range(n_frames):
+            p.push_subgoal(ev[i % 4])
+            for _ in range(4):  # attend each new goal to facilitation equilibrium
+                p.maintain()
+        for _ in range(1000):  # > 3 * tau_f: past the unrefreshed retention horizon
+            p.maintain()
+        return len(p.goals)
+
+    held_live = _stacked(6)
+    held_no_R = _stacked(6, neutered="resources")
+    held_no_reh = _stacked(6, neutered="rehearsal")
+    assert held_live == 6, (
+        f"within capacity, the rehearsal channel must keep every background frame alive "
+        f"({held_live} of 6 held) -- the freeze is gone and its work must actually be done"
+    )
+    assert held_no_R <= 2 and held_no_R < held_live, (
+        f"R'S CHARGE: cutting resources' route into the rehearsal current must let the dwell "
+        f"hog the channel and STARVE the other background frames (live {held_live} vs "
+        f"neutered {held_no_R}) -- T055 measured R saturated away at wm_attractor's own "
+        f"operating point; in this port the refresh cycle is resource-bounded BY CONSTRUCTION"
+    )
+    assert held_no_reh == 1, (
+        f"THE CHANNEL'S CHARGE: with the refresh cut (bookkeeping kept), every background "
+        f"memory must decay past its ignition floor and be CULLED, leaving only the active "
+        f"goal ({held_no_reh} held) -- deaths stay visible, they are not hidden by the neuter"
+    )
+    cap_default = PrefrontalExecutive(
+        n_options=4, commit_races=1, seed=0, tau_f=300.0, tau_d=40.0
+    ).max_goals
+    cap_terms = derive_capacity(
+        PrefrontalExecutive(
+            n_options=4, commit_races=1, seed=0, tau_f=300.0, tau_d=40.0
+        )._probe_frame,
+        300.0,
+    )
+    assert cap_default == cap_terms["K"] + 1, (
+        f"the DEFAULT max_goals must be the derived K+1, not a declared number "
+        f"({cap_default} vs {cap_terms['K']}+1)"
+    )
+    explicit = PrefrontalExecutive(n_options=4, commit_races=1, seed=0, max_goals=2)
+    for i in range(3):
+        ev3 = [0.0] * 4
+        ev3[i % 4] = 1.0
+        explicit.push_subgoal(ev3)
+    assert len(explicit.goals) == 2, (
+        f"an explicitly passed max_goals must be honored verbatim ({explicit.goals})"
+    )
+    try:
+        PrefrontalExecutive(n_options=2, tau_f=100.0, tau_d=200.0)
+        raise AssertionError("tau_f <= tau_d must refuse (depression-dominant cannot hold)")
+    except ValueError as e:
+        assert "tau_f > tau_d" in str(e)
+    try:
+        PrefrontalExecutive(n_options=2).neuter("nonsense")
+        raise AssertionError("an unknown neuter element must refuse, not no-op")
+    except ValueError as e:
+        assert "unknown element" in str(e)
+
     print(
         f"self-check OK: goal {committed} persists as PERSISTENT SPIKING across delay "
         f"(WM spikes {wm_spike_trace}; crippled -> {crippled_wm_spikes});"
@@ -663,6 +1059,12 @@ def main():
         f"  top-down bias tracks the goal; deterministic; lookahead: reactive takes trap option "
         f"{reactive_goal}, planning commits option {planned_goal}; sub-goal {sub_goal} pops back to "
         f"{primary_goal}"
+    )
+    print(
+        f"  T056 port: within-capacity hold {held_live}/6; neuter('resources') starves to "
+        f"{held_no_R} (R bounds the refresh cycle); neuter('rehearsal') culls to {held_no_reh} "
+        f"(deaths visible); default max_goals DERIVED = {cap_default} (K={cap_terms['K']}+1 "
+        f"active, tau_f=300); explicit cap honored; tau_f<=tau_d refused"
     )
 
 
