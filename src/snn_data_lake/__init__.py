@@ -218,6 +218,9 @@ REGIONS = {
         "allocentric_map",
         "grid_place_map",
         "episodic_recall",
+        # specs/022 T057: recall(cue) -> k episodes with margins over THE ONE LAKE's episode
+        # records (LAESA/proximity_index composed; margin vs a measured scrambled-cue null)
+        "lake_recall",
         "spiking_grid_can",  # C1: continuous-attractor SPIKING grid network (bump path integration)
         "episode_consolidation",  # C1 batch-4: systems-consolidation of real episodes (sparse attractor + sleep replay)
         "content_signature",  # PROMOTED 2026-08-11 (#10 family C1): the 64-dim crc32 content key for lake/skill routing

@@ -161,6 +161,7 @@ CORE = [
     "hippocampus.allocentric_map",
     "hippocampus.grid_place_map",  # W6: live grid + place cells binding a percept to an allocentric location
     "hippocampus.episodic_recall",  # W8: reconstructive pattern-completion autobiographical recall
+    "hippocampus.lake_recall",  # T057: recall(cue) -> k episodes with margins from the lake (FR-017)
     "hippocampus.spiking_grid_can",  # C1: continuous-attractor SPIKING grid network (bump path integration)
     "hippocampus.content_signature",  # PROMOTED 2026-08-11 (#10 family C1): moved here from the RESEARCH list
     "hippocampus.proximity_replay",  # PROMOTED+RENAMED 2026-08-11 (#10 family C3): P4b cross-process readback + 2 constructed reds (0.5s)

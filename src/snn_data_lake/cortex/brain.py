@@ -1016,6 +1016,8 @@ class Brain:
         # C1 batch-4: learned expected-value-of-control (executive), real-episode consolidation (memory),
         # VSA relational structure-mapping / analogy (fluid reasoning). numpy allowed, representation-only, guarded.
         self._learned_evc = self._episode_consolidator = self._structure_mapper = None
+        self._lake_recall = None  # T057: the durable recall's lake half, built on first miss
+        self._episode_window = []  # T057: recent lake-derived episodes (restore + own appends)
         self._evc_cost = 0.0
         self._evc_value = 0.0
         self._episode_retained = 0.0
@@ -2201,6 +2203,16 @@ class Brain:
                         from snn_data_lake.substrate.home import save_episode
 
                         save_episode(_ep)
+                        # T057: the recall window tracks what this brain WRITES TO THE LAKE
+                        # (lake provenance only -- an unpersisted episode never enters it),
+                        # bounded by the same derived capacity the attractor uses.
+                        self._episode_window.append(dict(_ep))
+                        cap = (
+                            self._episode_consolidator.capacity
+                            if self._episode_consolidator
+                            else 64
+                        )
+                        del self._episode_window[:-cap]
                     except Exception:
                         pass
 
@@ -3230,6 +3242,7 @@ class Brain:
             for ep in eps:
                 self._episode_consolidator.store(self._episode_consolidator.encode(ep), ep)
             self._episodes_restored = len(eps)
+            self._episode_window = list(eps)  # T057: the lake-derived recall window
         except Exception:
             self._episodes_restored = 0
 
@@ -3241,9 +3254,26 @@ class Brain:
         working memory is not an answer yet: it means "not resident", and the durable store still
         has to be asked before the brain says it does not remember.
 
-        The lake half is exact-content addressing, which is the same honest limit `recall_episode`
-        already discloses for dict cues: this encoder hashes the whole episode, so a genuinely
-        partial dict addresses nothing and correctly returns a miss rather than a guess.
+        The lake half is `hippocampus/lake_recall` (specs/022 T057): LAESA retrieval over
+        lake-derived episodes, VERIFIED in slot space. The exact-content scan that stood here
+        is SUPERSEDED (P2), and its guarantee is carried by the VERIFICATION stage rather than
+        by distance: `confidence` is the fraction of the cue's slots the returned episode
+        matches by string comparison, so a code collision can never impersonate an exact match
+        (the panel measured the distance-only form answering a never-stored cue with a
+        different episode at "confidence" 1.0 -- that shape is dead). A genuinely partial dict
+        now addresses episodes instead of missing by construction; `margin`, when calibrated,
+        is the z-score against a measured scrambled-cue null of the cue's own arity.
+
+        TWO LAKE TIERS, both stated plainly. The WINDOW tier runs the margin-scored indexed
+        recall over the recent episodes this brain restored from the lake at boot plus its
+        own lake appends since -- fast, calibrated, partial-cue capable. Beneath it, the
+        DEEP tier is the ported whole-lake exact sub-cue scan (the incumbent mechanism,
+        kept as the deep fallback rather than deleted -- P2's port-first rule, and the
+        committed durability suite's guarantee that a restart is not amnesia): it replays
+        the ENTIRE lake (seconds on a mature lake, the incumbent's own cost) only when the
+        window tier has no qualifying answer, and returns exact sub-cue matches at verified
+        confidence 1.0 with no margin (no measured null exists at that tier -- a margin is
+        never guessed).
         """
         if self._episode_consolidator is None:
             return {"episode": {}, "confidence": 0.0, "source": "none"}
@@ -3252,13 +3282,38 @@ class Brain:
             got["source"] = "working"
             return got
         try:
+            if isinstance(cue, dict) and cue and self._episode_window:
+                if self._lake_recall is None:
+                    from snn_data_lake.hippocampus.lake_recall import LakeRecall
+
+                    self._lake_recall = LakeRecall(episodes=self._episode_window, seed=self._seed)
+                else:
+                    self._lake_recall.attach(self._episode_window)
+                hits = self._lake_recall.recall(cue, k=1)
+                if hits and hits[0]["confidence"] >= min_conf:
+                    return {
+                        "episode": hits[0]["episode"],
+                        "confidence": hits[0]["confidence"],
+                        "margin": hits[0]["margin"],
+                        "contradicted": hits[0]["contradicted"],
+                        "source": "lake",
+                    }
+        except Exception:
+            pass
+        try:
             from snn_data_lake.substrate.home import load_episodes
 
             want = dict(cue) if isinstance(cue, dict) else None
             if want:
                 for ep in reversed(load_episodes()):  # newest first: the likelier match
                     if all(str(ep.get(k)) == str(v) for k, v in want.items()):
-                        return {"episode": ep, "confidence": 1.0, "source": "lake"}
+                        return {
+                            "episode": ep,
+                            "confidence": 1.0,
+                            "margin": None,
+                            "contradicted": 0,
+                            "source": "lake",
+                        }
         except Exception:
             pass
         return {"episode": {}, "confidence": 0.0, "source": "miss"}
@@ -4048,6 +4103,24 @@ class Brain:
                         if (_rcq and _rcq.get("value") is not None and _rcq.get("n", 0) >= 50)
                         else 0.2
                     )
+                    if not (e and (epi or {}).get("confidence", 0.0) > _rc_th):
+                        # T057: the reconstruction did not clear the floor -- ask THE LAKE
+                        # window before saying "I don't remember". The gate is STRUCTURAL,
+                        # not a tuned constant: min_conf=1.0 means every slot of the cue
+                        # must be VERIFIED str-equal on the returned episode (lake_recall's
+                        # content confidence), which is the retired exact-scan's own bar --
+                        # a partially-matching neighbour is never spoken as a memory.
+                        _lk = self.recall_episode_durable(cue, min_conf=1.0)
+                        if _lk.get("source") == "lake" and _lk.get("episode"):
+                            _le = _lk["episode"]
+                            _lm = _lk.get("margin")
+                            reply = reply + (
+                                f" (recalled from the durable lake: I "
+                                f"{_le.get('what', 'acted')} at '{_le.get('where')}' feeling "
+                                f"{_le.get('affect', 'calm')}"
+                                + (f", margin {_lm:.1f} over the null" if _lm is not None else "")
+                                + ".)"
+                            )
                     if e and (epi or {}).get("confidence", 0.0) > _rc_th:
                         reply = reply + (
                             f" (recalled: I {e.get('what', 'acted')} at '{e.get('where')}' feeling "
