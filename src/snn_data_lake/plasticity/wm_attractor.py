@@ -28,44 +28,54 @@ module's own panel (the incumbent holds a goal across EIGHT consecutive zero-spi
 its memory is `_stack[-1][1]`, a per-tick-decayed scalar). Claim two was that the question
 was open pending a benchmark. THE BENCHMARK NOW EXISTS AND HAS RUN -- `delayed_match()`
 below, the multi-item delayed-match-with-distractors that paragraph named, both stores
-behind one adapter, both controls (a store that forgets instantly, and this store with its
-memory variable ablated) scoring 0.00 in every cell so a win is distinguishable from a
-null.
+behind one adapter, with three controls -- a store that forgets instantly, this store with
+its memory variable ablated, and a stub that reports EVERY slot -- so that a real store is
+distinguishable both from one that holds nothing and from one that holds everything.
 
 ITS VERDICT, in arm (8): THE TASK CANNOT SEPARATE THEM, and getting there cost two more wrong
 verdicts, both recorded so neither is re-derived. Wrong verdict A: "this store wins" --
 true only against the incumbent at its CONSTRUCTOR DEFAULT, which is a parameter result.
 Wrong verdict B: "the incumbent's best form wins, so retire this one" -- that steel-manned
 the RIVAL ONLY. `tau_f` here is as unbounded a constructor argument as `recurrence` is
-there; symmetrised, tau_f=8000 scores exactly what recurrence=0.9999 scores. The delay axis
+there; symmetrised, tau_f=8000 holds exactly what recurrence=0.9999 holds. The delay axis
 is a PARAMETER RACE whoever tunes last wins, and it settles nothing.
 
-What the corrected benchmark does say, with both sides tuned: EVERY contender scores 0.50
-while both controls sit at 0.00. They tie for a substantive reason -- NEITHER SUPPRESSES A
-DISTRACTOR. Each reports every item it was ever shown, so each takes the same false alarms.
-That is a shared FAILURE, not a shared success, and it is the same job done the same way.
-(The first scorer hid it: its false-alarm set began after the distractors, so reporting one
-was free, and the incumbent's score RAN BACKWARDS on distractor count because `maintain()`
-decays only the top frame and distractors pushed on top FREEZE the targets beneath.)
+A THIRD wrong verdict came from the repair itself, and it is recorded because it is the
+subtlest: the arm was rewritten to score `max(0,(hits-fa)/n_items)` and reported "every
+contender scores 0.50" as the P2 finding. That number MANUFACTURED the tie. Its 0.50 level
+set contains (2,0), (3,1) and (4,2) -- full distractor suppression, partial, and none --
+so three different behaviours read as one result, and on the raw hit counts those same runs
+SEPARATE. The composite is deleted: `delayed_match()` returns the (hits, false_alarms) pair
+and the caller compares vectors.
 
-AND THE TIEBREAK GOES AGAINST THIS MODULE, on its own substrate: R IS INERT HERE. The two-
-variable synapse was the whole claimed distinction -- u on tau_f holding the memory, R on
-tau_d recovering resources -- and arm (7) measures that cutting R's ONLY route to an output
-leaves the entire production surface BIT-IDENTICAL. `DynamicSynapse.spike` updates u
-without reading R; every read here takes u alone; and R's one channel, `eff` amplifying the
-next step's drive in load(), is saturated shut at the shipped drive. So this build is a
-ONE-variable trace wearing a two-variable synapse: exactly P3's computed-but-not-consumed
-shape, disclosed under P8(4) rather than argued away. An earlier arm CLAIMED R was still
-consumed and was measuring facilitation saturation instead.
+What the corrected benchmark says, both sides swept over their own retention knob, at ONE
+delay, on the CLEAN task: tuned, the two stores are IDENTICAL -- (4 hits, 0 false alarms)
+each, against empty nulls and a report-everything stub at (4,4) that the retired floored
+score could not tell from a null. Add distractors and both give (4,2): NEITHER SUPPRESSES A
+DISTRACTOR, a shared failure rather than a shared success. The clean task is primary because
+the distractor axis is CONFOUNDED for the incumbent -- `maintain()` decays only the top
+stack frame, so a distractor pushed on top FREEZES the targets beneath and its hit count
+RISES with distractor count (1 -> 2 -> 3). Interference that protects is not interference,
+and moving the false-alarm set did not fix that; it only stopped distractors being free to
+report.
 
-DISPOSITION: same job, same failure, no measured advantage, and the one capability that
-could have distinguished it does not run. Exactly one mechanism survives (P2), and this is
-not the one with a working claim to survival -- its dormancy row therefore reads RETIRE,
-not "wire". It is NOT wired, NOT a second workspace, and it outlives this commit only for
-P2's honesty-guard reason: T056 is where R either acquires its real job (resources bounding
-the refresh cycle, which is what makes a capacity FALL OUT of time constants instead of
-being declared as `max_goals`) or this file is deleted. If T056's port measures no better
-than the incumbent's declared capacity, P8(5) applies to the port too.
+WHAT IS TRUE ABOUT R, after a claim in each direction was measured wrong. It is NOT "still
+consumed" (that arm measured facilitation saturation), and it is NOT flatly "inert" (that
+one measured only drive=1.2, where every cell fires regardless and `eff` cannot change an
+outcome). Measured both ways: at a MARGINAL drive of 0.9 the resource neuter moves a load
+from 40 spikes to 24, so R is genuinely load-bearing -- while at this module's own DEFAULT
+drive the same neuter leaves the whole production surface bit-identical. The defect is
+therefore not a dead variable but a DEAD OPERATING POINT: every other arm here loads at 1.2,
+so nothing this module does ever exercises its own second variable. Disclosed under P8(4).
+
+DISPOSITION: same job, same failure, no measured advantage on the task that was named to
+settle it. Exactly one mechanism survives (P2) and this is not the one with a working claim
+-- its dormancy row reads RETIRE, not "wire". It is NOT wired and NOT a second workspace,
+and it outlives this commit only for P2's honesty guard: T056 is where R acquires its real
+job (resources bounding the refresh cycle, which is what makes a capacity FALL OUT of time
+constants instead of being declared as `max_goals`) AND where the default drive stops
+hiding it -- or this file is deleted. If T056's port measures no better than the incumbent's
+declared capacity, P8(5) applies to the port too.
 
 REUSE, NOT REBUILD (P2): the synapse is `short_term_plasticity.DynamicSynapse` -- the
 incumbent T-M u/R implementation, imported and driven, never re-implemented. One honest
@@ -103,12 +113,13 @@ from snn_data_lake.plasticity.short_term_plasticity import DynamicSynapse
 # distinct-from: cortex/prefrontal_executive.py -- NOT distinct on the job, and no longer
 #   claimed to be. It is a goal-stack executive whose memory is a per-tick-decayed scalar;
 #   it survives silent ticks too; and on the corrected delayed-match benchmark in arm (8),
-#   with BOTH sides tuned to their own best forms, it scores exactly what this store scores
-#   (0.50), failing the same way for the same reason -- neither suppresses a distractor. The
-#   distinction this comment previously claimed (decoupled retention/release from a
-#   two-variable synapse) does NOT exist in this build: R is INERT here, measured in arm
-#   (7). Retirement of THIS file is dated T056; see the docstring's P2 ADJUDICATION. Site
-#   read.
+#   on the CLEAN task with BOTH sides tuned it produces the IDENTICAL (hits, false_alarms)
+#   vector this store produces -- (4, 0) each -- and with distractors both give (4, 2),
+#   neither suppressing. The distinction this comment previously claimed (decoupled
+#   retention/release from a two-variable synapse) is not demonstrated in this build: R acts
+#   only at marginal drives, and this module always loads at a drive that saturates it away
+#   (arm 7). Retirement of THIS file is dated T056; see the docstring's P2 ADJUDICATION.
+#   Site read.
 # distinct-from: cortex/theta_gamma_code.py -- ORDERED WM by oscillatory phase (which item
 #   is first); this holds items in synaptic state with no phase code. Site read.
 # distinct-from: substrate/lake_working_memory.py -- the DURABLE lake as short-term store
@@ -308,7 +319,13 @@ def delayed_match(write, wait, held, n_items, delay, n_distractors, n_slots):
     """THE P2 SETTLING BENCHMARK: multi-item delayed-match-to-sample with distractors.
 
     Writes `n_items` targets, waits, presents `n_distractors` NEW items mid-delay, waits
-    again, then reads the store. Scored (hits - false alarms) / n_items, floored at 0.
+    again, then reads the store. RETURNS THE PAIR (hits, false_alarms) -- deliberately not a
+    composite. This function shipped once returning max(0,(hits-fa)/n_items), and that single
+    number MANUFACTURED the equivalence it was used to prove: its 0.50 level set contains
+    (2,0), (3,1) and (4,2) alike, so three different behaviours -- full distractor
+    suppression, partial, and none -- all read as the same result, while the raw hit counts
+    separated. A scalar that conflates recall with discrimination cannot support "these two
+    stores are the same"; the caller compares vectors.
 
     Store-agnostic on purpose -- it takes three callables, so the same task scores this
     module and `cortex/prefrontal_executive` without either knowing about the other. That
@@ -334,9 +351,7 @@ def delayed_match(write, wait, held, n_items, delay, n_distractors, n_slots):
         wait(5)
     wait(delay // 2)
     got = held()
-    hits = len(targets & got)
-    false_alarms = len(set(range(n_items, n_slots)) & got)
-    return max(0.0, (hits - false_alarms) / n_items), hits, false_alarms
+    return len(targets & got), len(set(range(n_items, n_slots)) & got)
 
 
 def main():
@@ -550,10 +565,35 @@ def main():
         f"the R neuter must be compared over REAL outputs, not an empty surface ({live_surface!r})"
     )
     assert live_surface == neut_surface, (
-        f"R was expected to be INERT and is NOT: cutting its only route to an output moved "
-        f"something, so this module's P3 disclosure and T056's obligation are STALE and must "
-        f"be re-derived (that is the good outcome -- update the claims).\n  live    : "
-        f"{live_surface[:200]}\n  neutered: {neut_surface[:200]}"
+        f"R was expected to be saturated-inert AT THE DEFAULT DRIVE and is not: cutting its "
+        f"only route to an output moved something, so this module's P3 disclosure and T056's "
+        f"obligation are STALE and must be re-derived (that is the good outcome -- update "
+        f"the claims).\n  live    : {live_surface[:200]}\n  neutered: {neut_surface[:200]}"
+    )
+    # ...AND THE OTHER HALF, without which the assert above is a claim measured only where
+    # the mechanism cannot act -- the shape that has caught this module repeatedly. That
+    # bit-identity holds ONLY at drive=1.2, where every cell fires on every step and `eff`
+    # cannot change an outcome. Where firing is MARGINAL, R is plainly load-bearing. So the
+    # flat "R is INERT" this arm once asserted was FALSE AS STATED; what is true is more
+    # specific and worse -- this module's own default operating point saturates its second
+    # variable away, so no other arm here ever exercises it. (Written inline rather than as
+    # a helper: the tree's spike-count-at-a-drive helpers -- spiking_pid.advance/run,
+    # habenula.lhb_spikes, drive_reduction.spikes, spiking_curiosity._calibrate,
+    # mossy_relay, claustrum -- were all read, and none can drive THIS store through THIS
+    # module's load() path, which is what a neuter A/B on `eff` requires.)
+    R_DRIVE = 0.9
+    r_counts = []
+    for _neutered in (False, True):
+        w_r = SynapticWorkingMemory()
+        if _neutered:
+            w_r.neuter("resources")
+        r_counts.append(w_r.load(1, drive=R_DRIVE))
+    r_live, r_neut = r_counts
+    assert r_live != r_neut, (
+        f"R must be CHARGED where firing is marginal -- if neutering resources changes "
+        f"nothing even at drive {R_DRIVE}, then R reaches no output ANYWHERE and the "
+        f"docstring's 'charged, but saturated at the default' is wrong ({r_live} vs "
+        f"{r_neut} spikes)"
     )
     try:
         SynapticWorkingMemory().neuter("nonsense")
@@ -600,44 +640,83 @@ def main():
     def _score(make, n_items, delay, n_dist=2):
         return delayed_match(*make(), n_items, delay, n_dist, slots)
 
-    # BOTH SIDES TUNED, because tuning only the rival is the same error in the other
-    # direction. The first version of this arm raised the incumbent's `recurrence` to its
-    # best form and left THIS store at the constructor default tau_f, then read the gap as a
-    # mechanism verdict. Symmetrised, the gap evaporates: tau_f=8000 scores what
-    # recurrence=0.9999 scores. Both knobs are unbounded constructor arguments, so the delay
-    # axis is a PARAMETER RACE that whoever tunes last wins -- it cannot settle P2, and the
-    # arm asserts that non-discrimination rather than a winner.
-    null_abl = _score(lambda: _synaptic_store(ablate=True), 4, 600)
-    null_fgt = delayed_match((lambda k: None), (lambda s: None), set, 4, 600, 2, slots)
-    assert null_abl[0] == 0.0 and null_fgt[0] == 0.0, (
-        f"BOTH controls must score a flat null, or this benchmark cannot distinguish a "
-        f"store from a stub (ablated {null_abl}, forgetful {null_fgt})"
-    )
-    contenders = {
-        "synaptic tau_f=1500 @600": _score(_synaptic_store, 4, 600),
-        "synaptic tau_f=8000 @20000": _score(lambda: _synaptic_store(tau_f=8000.0), 4, 20000),
-        "incumbent rec=0.99968 @20000": _score(lambda: _executive_store(0.99968), 4, 20000),
-        "incumbent rec=0.9999 @20000": _score(lambda: _executive_store(0.9999), 4, 20000),
+    # READ AS (hits, false_alarms) VECTORS, AT ONE DELAY, ON THE CLEAN TASK. Each of those
+    # three is a repair of a defect this arm shipped with, and all three were found after it
+    # had already passed a full green battery:
+    #
+    #  * A COMPOSITE SCORE MANUFACTURED A TIE. The arm scored max(0,(hits-fa)/n_items) and
+    #    reported "every contender scores 0.50" as the P2 finding. That level set contains
+    #    (2,0), (3,1) and (4,2) -- full distractor suppression, partial, and none -- so the
+    #    "tie" spanned three different behaviours, and one shipped contender really was
+    #    (3,1) while the others were (4,2). Worse, the tie was CREATED by the subtraction:
+    #    on raw hits those same runs separate 4 vs 3. A number that conflates recall with
+    #    discrimination cannot carry an equivalence claim, so it is deleted rather than
+    #    caveated -- delayed_match returns the pair.
+    #  * THE CONTENDERS WERE SCORED AT DIFFERENT DELAYS (one at 600, the rest at 20000). At
+    #    a common 20000 that contender holds NOTHING; its place in the table was bought by
+    #    scoring it in an easier cell.
+    #  * THE DISTRACTOR AXIS IS CONFOUNDED FOR THE INCUMBENT, and moving the false-alarm set
+    #    did not fix it. maintain() decays only the top stack frame, so a distractor pushed
+    #    on top FREEZES the targets beneath: its hit count RISES with distractor count
+    #    (1 -> 2 -> 3 at rec=0.99968). Interference that protects is not interference, so
+    #    the primary comparison is the CLEAN task and the confound is asserted below rather
+    #    than left for the next reviewer to find.
+    DELAY = 20000
+    nulls = {
+        "ablated memory": _score(lambda: _synaptic_store(ablate=True), 4, DELAY, 0),
+        "forgets everything": delayed_match(
+            (lambda k: None), (lambda s: None), set, 4, DELAY, 0, slots
+        ),
     }
-    assert all(v[0] > n[0] for v in contenders.values() for n in (null_abl, null_fgt)), (
-        f"every real store must beat both nulls, or the instrument measures nothing "
-        f"({contenders}, nulls {null_abl[0]}/{null_fgt[0]})"
+    # ...and a control the previous version could not see. Under the floored score a stub
+    # that reported EVERY slot scored 0.00 -- identical to one that reported nothing -- so
+    # the adjacent "cannot distinguish a store from a stub" justification was false. On
+    # vectors the two separate, and this arm now requires that.
+    blurt = delayed_match(
+        (lambda k: None), (lambda s: None), (lambda: set(range(slots))), 4, DELAY, 2, slots
     )
-    scores = {round(v[0], 4) for v in contenders.values()}
-    assert len(scores) == 1, (
-        f"THE P2 FINDING: tuned to their own best forms, these two stores are expected to be "
-        f"INDISTINGUISHABLE on this task -- if they have separated, the docstring's P2 "
-        f"adjudication is stale and must be re-derived ({contenders})"
+    assert all(v == (0, 0) for v in nulls.values()), f"both nulls must be empty ({nulls})"
+    assert blurt != (0, 0) and blurt[1] > 0, (
+        f"a stub that reports EVERY slot must be DISTINGUISHABLE from one that reports "
+        f"nothing -- under the retired floored score both read 0.00 ({blurt} vs {nulls})"
     )
-    # ...and WHY they tie: neither suppresses a distractor. Both report every item they were
-    # shown, so both take the same false alarms. That is the substantive result -- a shared
-    # failure, not a shared success -- and it is asserted rather than left in prose.
-    assert all(v[1] == 4 and v[2] == 2 for k, v in contenders.items() if "synaptic" in k), (
-        f"the synaptic store is expected to hold every target AND every distractor ({contenders})"
+
+    # THE CLEAN TASK (no distractors), both sides swept over their own retention knob. This
+    # is the comparison that settles P2, and it is symmetric: tau_f here is as unbounded a
+    # constructor argument as recurrence is there.
+    syn_clean = {
+        tf: _score(lambda tf=tf: _synaptic_store(tau_f=tf), 4, DELAY, 0)
+        for tf in (1500.0, 8000.0, 30000.0)
+    }
+    inc_clean = {
+        r: _score(lambda r=r: _executive_store(r), 4, DELAY, 0) for r in (0.98, 0.9999, 0.99999)
+    }
+    assert syn_clean[1500.0] == (0, 0) and inc_clean[0.98] == (0, 0), (
+        f"at their DEFAULTS both stores must fail this delay -- if either now holds, the "
+        f"'both untuned arms are nulls' framing is stale ({syn_clean}, {inc_clean})"
     )
-    assert any(v[2] > 0 for k, v in contenders.items() if "incumbent" in k), (
-        f"the incumbent is expected to report distractors too -- if it now suppresses them, "
-        f"the two stores DO differ and P2 must be re-adjudicated ({contenders})"
+    assert syn_clean[8000.0] == (4, 0) and inc_clean[0.99999] == (4, 0), (
+        f"THE P2 FINDING: tuned, BOTH stores must reach a perfect (4 hits, 0 false alarms) "
+        f"on the clean task -- that identity, not a composite score, is what makes them "
+        f"indistinguishable here. If they have separated, the docstring's P2 adjudication is "
+        f"stale and must be re-derived ({syn_clean}, {inc_clean})"
+    )
+    assert syn_clean[8000.0] == inc_clean[0.99999], "the tuned pair must match as a VECTOR"
+
+    # WITH DISTRACTORS, tuned, neither suppresses: both report every distractor they were
+    # shown. A shared FAILURE, and the honest content of "with distractors".
+    syn_d = _score(lambda: _synaptic_store(tau_f=8000.0), 4, DELAY, 2)
+    inc_d = _score(lambda: _executive_store(0.99999), 4, DELAY, 2)
+    assert syn_d == inc_d == (4, 2), (
+        f"tuned, both stores are expected to hold every target AND every distractor "
+        f"(synaptic {syn_d}, incumbent {inc_d})"
+    )
+    # ...and the incumbent's confound, pinned so it cannot rot back into a "result":
+    inc_by_nd = [_score(lambda: _executive_store(0.99968), 4, DELAY, nd)[0] for nd in (0, 1, 2)]
+    assert inc_by_nd[0] < inc_by_nd[-1], (
+        f"the incumbent's hit count is expected to RISE with distractor count (its stack "
+        f"freezes frames beneath a distractor), which is why the clean task is the primary "
+        f"comparison -- if this stops holding, re-derive the confound ({inc_by_nd})"
     )
 
     # (9) REFUSALS: the regime guard is the one that matters -- tau_f <= tau_d cannot hold a
@@ -665,19 +744,23 @@ def main():
         f"vs {unrefreshed}); capacity occupancy MEASURED ({terms['load_occupancy_ticks']} "
         f"over {terms['loads_measured']} loads, 2.0 for a 2-tick load, and a weak load "
         f"reports {weak_occ} of 6 requested); refusals by message.\n"
-        f"R IS INERT (measured, not argued): cutting its only route to an output via "
-        f"neuter('resources') leaves the entire production surface BIT-IDENTICAL, so this "
-        f"build is a ONE-variable trace wearing a two-variable synapse -- P3's "
-        f"computed-but-not-consumed shape, disclosed under P8(4) and dated to T056.\n"
-        f"P2 SETTLED, AND THE ANSWER IS THAT THIS TASK CANNOT SEPARATE THEM: with BOTH "
-        f"sides tuned to their own best forms every contender scores {scores.pop():.2f} "
-        f"({', '.join(f'{k} {v[1]}h/{v[2]}fa' for k, v in contenders.items())}) while both "
-        f"controls sit at {null_abl[0]:.2f}/{null_fgt[0]:.2f}. They tie because NEITHER "
-        f"suppresses a distractor -- each reports every item it was shown -- and because "
-        f"both retention horizons are unbounded constructor arguments, making the delay "
-        f"axis a parameter race. Same job, same failure, no measured advantage: exactly "
-        f"one should survive, and with R inert this module has no working capability to "
-        f"defend, so its dormancy row reads RETIRE and T056 decides what is ported first."
+        f"R IS CHARGED BUT NOT AT THIS MODULE'S OWN OPERATING POINT (measured both ways, "
+        f"and the earlier flat 'R is inert' was measured only where it cannot act): "
+        f"neuter('resources') at drive {R_DRIVE} moves the load {r_live} -> {r_neut} spikes, "
+        f"while at the default drive 1.2 every cell fires regardless and the same neuter "
+        f"leaves the production surface BIT-IDENTICAL. Every other arm here loads at 1.2, "
+        f"so the module never exercises the regime its own second variable acts in -- "
+        f"disclosed under P8(4), dated T056.\n"
+        f"P2, ON VECTORS AND ON THE CLEAN TASK: tuned, the two stores are IDENTICAL -- "
+        f"synaptic tau_f=8000 {syn_clean[8000.0]} == incumbent rec=0.99999 "
+        f"{inc_clean[0.99999]} (hits, false_alarms) at delay {DELAY}, both nulls empty and a "
+        f"report-everything stub {blurt} distinguishable from them. With distractors both "
+        f"give {syn_d}: neither suppresses. The retired composite score would have called "
+        f"(2,0), (3,1) and (4,2) the same result, and the incumbent's hit count still RISES "
+        f"with distractor count {inc_by_nd} because its stack freezes frames beneath one, "
+        f"which is why the clean task decides. Same job, same failure, no measured "
+        f"advantage: exactly one survives, its dormancy row reads RETIRE, and T056 decides "
+        f"what is ported first."
     )
 
 
