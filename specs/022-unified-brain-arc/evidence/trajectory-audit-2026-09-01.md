@@ -469,6 +469,17 @@ in the tree.** Ordered by leverage on the three goal clauses; the policy clause 
    WIRE, not a build: run FR-033's A/B (map-drawn fan-in vs the random pool inside `NGSNN.fit`'s
    candidate loop, reached through the engine's refit); its red is this pinned test going RED. Only
    after that does a second attempt at this rank become a charge question.
+   **OUTCOME 2026-09-02 (rank 1b) — wired, measured, NULL; the deletion its disposition owes is the
+   next commit, shipped in the same push.** The wire
+   landed (`NGSNN.fit(candidates=…)` + `genomic_bottleneck.CandidatePool` + the engine's three pool
+   modes); `genomic_bottleneck --ab` paired by seed: 8 seeds 5–3/5–3 (p≈0.36), **24 seeds 13–11 at
+   +0.002 ± 0.005 and 12–12 against the tag-shuffled control** — zero within error on both halves of
+   the pre-registered rule, with 48% more units admitted for the same accuracy. The panel on that
+   landing measured the instrument too: the majority rule fires 23% of the time under the null, the
+   "continuation" was a cold restart, and on a carried continuation the map-drawn pool LOSES
+   (4–20, −0.015 ± 0.003); the premise is refuted by construction (placement is drawn independent
+   of the weights, so there is no tag→weight association to learn). Record:
+   `evidence/s1-genome-fanin-ab.md`. Placement still has no live reader; the pinned null stands.
 2. **Give the persisted grower the real percept stream, give `GrowingLearner` a lake record, and widen the
    stream the stopping rule watches.** Replace the synthetic `_mode_features` input with the brain's own
    percept/episode stream (`tick(features)`); persist the experience-driven grower under its own tag with the

@@ -335,22 +335,12 @@ EXEMPT = {
     # cortex/prefrontal_executive, the capacity is DERIVED there (K = T_max/t_s,
     # plasticity/wm_capacity, five guards), and the file is gone. Exactly one mechanism
     # survives; the full record lives in wm_capacity's docstring and specs/022 tasks.md.
-    "genomic_bottleneck": (
-        "wire",
-        "specs/022 T044: the g-network (tag vectors from the T043 placement surface + one "
-        "96-param bilinear map -> initial fan-in). Algebra, reds and compression run in its "
-        "own main() every gate run. No live-path importer YET by construction. FR-033 states "
-        "the REQUIREMENT (grown units draw initial weights from this map) but NO task in "
-        "specs/022 tasks.md names the wiring yet, so this row carries no consumer task id -- "
-        "stated plainly per the T044 panel, not dressed as a dated consumer. The wire itself: "
-        "the random pool lives in hippocampus/ng_snn.py::NGSNN.fit's candidate loop, REACHED "
-        "through neurogenesis_engine's refit -- displacing it means editing ng_snn, behind a "
-        "measured A/B on the real earned substrate. NULL DISPOSITION (P8 cl.5): if the A/B "
-        "shows no win over the random pool, this module is DELETED, not parked. No P8 "
-        "register entry is owed until the map's output is load-bearing (panel adjudication). "
-        "Post-B3 discipline: no immovable bound; prints on the standing-TODO arm until the "
-        "wiring lands or the null fires",
-    ),
+    # genomic_bottleneck left this table 2026-09-02: the FR-033 wire it named landed
+    # (neurogenesis_engine imports it; NGSNN.fit reads the map through CandidatePool under
+    # init_pool="genome"), so the row's "no live-path importer" reason no longer holds -- and
+    # the paired A/B behind the wire (genomic_bottleneck.py's --ab entrypoint, 24 seeds) is a NULL, so the
+    # module's pre-registered disposition (deleted, not parked) follows in the next commit.
+    # Record: specs/022 evidence/s1-genome-fanin-ab.md.
     "cortical_microcircuit": (
         "permanent",
         "REFERENCE MODEL: Potjans-Diesmann 2014 validation dynamics. CORRECTED 2026-08-16 -- this "

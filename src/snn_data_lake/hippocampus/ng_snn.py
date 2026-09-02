@@ -200,6 +200,7 @@ class NGSNN:
         self.beta = None  # (L, m)    analytical output weights
         self.d_in = None
         self.m = None
+        self.last_provenance = []  # FR-033: (placement, source) per unit the last fit admitted
 
     # ---- LIF hidden-layer firing rates (Eq. 2-5), vectorized + batched over samples ----
     def _rates(self, X, W, b, batch=4096, return_state=False):
@@ -320,7 +321,14 @@ class NGSNN:
         self.beta = self._solve_beta(S[:n_tr][:, keep], Y[:n_tr])  # re-solve: beta must match W
         return len(drop)
 
-    def fit(self, X, y, delta=1, score_subsample=None, init_W=None, init_b=None):
+    # distinct-from: cortex/paradigm_b_engine.py -- its match_sequence detects ordered channels
+    #   firing within a window; nothing here matches spike sequences (term collision on
+    #   "sequence"). distinct-from: reasoning/spiking_ssm.py -- run_reservoir drives a fixed
+    #   reservoir with a scalar input; nothing is grown there. distinct-from:
+    #   reasoning/ng_snn/push_mnist.py::draw_pool -- that experiment's standalone random pool
+    #   (no hook, no placement, no growth loop); the `candidates` hook below is the FR-033 seam
+    #   INTO this grower's own loop, the one live path. All three sites read.
+    def fit(self, X, y, delta=1, score_subsample=None, init_W=None, init_b=None, candidates=None):
         """Grow the classifier on X (spike sequence {0,1}^(N,T,d_in) or features [0,1]^(N,d_in)) with
         integer labels y (N,). Greedy matching pursuit under the contribution criterion (Alg. 1),
         analytical beta after each block (Alg. 2), until train RMSE < eps_tol or l_max (Alg. 3).
@@ -329,7 +337,16 @@ class NGSNN:
         block. score_subsample: candidate SELECTION scores on a random row subsample of that size;
         the accepted neurons' S columns always span every row. When capacity is derived (l_max=None)
         the growth solve fits only the first 80% of rows and the rest decide when to stop; the
-        shipped readout is then refit on all of them."""
+        shipped readout is then refit on all of them.
+
+        candidates: FR-033's hook (`cortex/genomic_bottleneck.CandidatePool`). Each scale's pool is
+        drawn from the seeded stream EXACTLY as before -- the stream advances identically with or
+        without the hook, so an A/B between arms differs only in the rows the hook replaces -- then
+        `candidates.init(rows, Lam, step)` may substitute map-drawn fan-in and returns per-row
+        provenance (the candidate's placement and its source). The provenance of every unit this
+        call ADMITS lands in `self.last_provenance`, in row order after the seeded rows, so the
+        caller keeps the placement that generated a unit's weights. None leaves every line below
+        byte-identical (the DEFAULT PATH UNCHANGED convention)."""
         X = X.to(self.device).float()
         N = X.shape[0]
         d = X.shape[2] if X.ndim == 3 else X.shape[1]  # sequence (N,T,d) or features (N,d)
@@ -439,6 +456,7 @@ class NGSNN:
         # one unit per fitted row the readout is underdetermined regardless.
         l_max = self.l_max if self.l_max is not None else n_tr
         best_L, best_val, stale = 0, float("inf"), 0
+        step, new_prov = 0, []  # FR-033: per-row provenance of the units this call admits
         while W.shape[0] < l_max:
             if E.pow(2).mean().sqrt().item() < self.eps_tol:  # train RMSE target reached (Alg. 3)
                 break
@@ -450,12 +468,17 @@ class NGSNN:
             # the (possibly subsampled) rows, and keep the TOP-delta by residual reduction: the drop
             # from adding unit s is sum_q <e_q,s>^2/||s||^2 = sum_q C_q ||e_q||^2 (Eq. 6 weighted by
             # per-class residual norm). The consistency criterion (Eq. 7) is a preference tiebreak.
-            poolW, poolb, poolscore, poolpass = [], [], [], []
+            poolW, poolb, poolscore, poolpass, poolprov = [], [], [], [], []
             for Lam in self.lambdas:  # multi-scale candidate search (Alg. 1)
                 P = self.t_cand
                 # drawn on the CPU stream (see __init__), then moved -- seed decides, hardware does not
                 Wp = ((torch.rand(P, d, generator=self.g) * 2 - 1) * Lam).to(self.device)  # (P,d)
                 bp = ((torch.rand(P, generator=self.g) * 2 - 1) * Lam).to(self.device)  # (P,)
+                prov = [None] * P
+                if candidates is not None:  # FR-033: the hook may replace rows; the stream above
+                    rows, prov = candidates.init(Wp.cpu().numpy(), Lam, step)  # already advanced
+                    Wp = torch.as_tensor(rows, dtype=torch.float32, device=self.device)
+                poolprov.extend(prov)
                 Sp = self._rates(Xsel, Wp, bp)  # (Nsel, P) candidate responses
                 proj = Sp.t() @ Esel  # (P, m) <e_q, s_p>
                 spn = (Sp * Sp).sum(dim=0)  # (P,)   ||s_p||^2
@@ -472,6 +495,7 @@ class NGSNN:
             allb = torch.cat(poolb, 0)
             allscore = torch.cat(poolscore, 0)
             allpass = torch.cat(poolpass, 0)
+            step += 1
 
             rank = allscore + allpass.float() * 1e12  # prefer passing, then by score
             k = min(delta, l_max - W.shape[0])  # l_max: the derived bound above, not self.l_max
@@ -481,6 +505,7 @@ class NGSNN:
             ]  # genuinely contributing
             if not keep:  # nothing contributes -> saturate
                 break
+            new_prov.extend(poolprov[j] for j in keep)
             newW = allW[keep]
             newb = allb[keep]
             Snew = self._rates(X, newW, newb)  # FULL S columns for the block
@@ -521,6 +546,12 @@ class NGSNN:
             beta = self._solve_beta(S, Y)
 
         self.W, self.b, self.beta = W, b, beta
+        # the rollback above keeps the LEADING rows, so the admitted units that ship are exactly
+        # the first (rows - seeded) entries of the provenance the loop accumulated; without the
+        # hook there is no provenance to report
+        self.last_provenance = (
+            new_prov[: max(0, int(W.shape[0]) - self.n_seeded)] if candidates is not None else []
+        )
         return self
 
     def predict(self, X):

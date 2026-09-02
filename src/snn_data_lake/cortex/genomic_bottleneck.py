@@ -49,12 +49,16 @@ except proves nothing); and the compression arithmetic with its honest comparato
 96 numbers vs n*d free weights, but the INCUMBENT random pool stores ZERO numbers, so the ratio
 is a claim about carrying structure, never a storage win over the incumbent. Tags are derived,
 not stored, ONLY while a consumer keeps (region, seed, index) to re-derive placements.
-NO CAPABILITY CLAIM IS MADE ABOUT THE REAL SUBSTRATE: whether the EARNED ng_snn weights are
-tag-compressible is a measurement this module has not run. The wiring that would run it (swap
-the pool inside `hippocampus/ng_snn.py::NGSNN.fit`, reached through `neurogenesis_engine`'s
-refit) has NO task id in specs/022 tasks.md yet -- stated plainly rather than dressed as a
-dated consumer. NULL DISPOSITION (P8 clause 5): if that A/B shows map-drawn fan-in does not
-beat the random pool on the real earned substrate, this module is DELETED, not parked.
+THE REAL-SUBSTRATE A/B WAS RUN (2026-09-02, audit s8 rank 1b) AND IT IS A NULL. The wiring named
+here landed: `CandidatePool` below is the hook `hippocampus/ng_snn.py::NGSNN.fit` calls, and
+`neurogenesis_engine`'s refit fits this map on the earned substrate every refit under
+`init_pool="genome"` (with a tag-shuffled control arm). `genomic_bottleneck --ab`, paired by
+seed on the one live grower: 8 seeds 5-3 / 5-3 (a sign-test p~0.36 "win"); 24 seeds genome vs
+random 13-11 at +0.002 +/- 0.005 (SE), genome vs tag-shuffled 12-12 at +0.0016 -- zero within
+error on both halves of the pre-registered rule, while the genome arm admitted 48% more units
+for the same accuracy. Record: specs/022 evidence/s1-genome-fanin-ab.md. NULL DISPOSITION (P8
+clause 5), pre-registered above the result and now due: this module is DELETED, not parked --
+in the commit that follows the measurement, so the measurement stays reproducible here.
 
   PYTHONPATH=src python -m snn_data_lake.cortex.genomic_bottleneck
 """
@@ -246,6 +250,215 @@ class GenomicMap:
         return float(np.sqrt((R * R).mean()))
 
 
+# distinct-from: reasoning/ng_snn/push_mnist.py::draw_pool -- that experiment's standalone random
+#   LIF pool for the MNIST push (no placement, no hook, no growth loop); this is the FR-033 seam
+#   the live grower's loop calls, and its genome=None arm IS the incumbent random rows untouched.
+# distinct-from: cortex/neuron_zoo.py -- its calibration candidate is a timing plan; unrelated.
+# distinct-from: cortex/rose_language.py -- a Forward-Forward refit hook on the language organ.
+# distinct-from: reasoning/arc_solver.py -- a per-task primitive pool for program search.
+# distinct-from: basal_ganglia/evidence_accumulation.py -- a ring + JoinConsumer per replay arm.
+#   All five sites read; the shared words are "candidate", "pool" and "init".
+class CandidatePool:
+    """FR-033's CONSUMER: the candidate hook `hippocampus/ng_snn.NGSNN.fit` calls once per scale
+    per step. It draws the candidates' PLACEMENTS first -- through `placer`, the engine's own
+    `place()` call site, so the growth census keeps its site and the placement that generates a
+    unit's fan-in is the one the admitted unit keeps -- and, when a fitted genome is given,
+    REPLACES a candidate's random fan-in with the map-drawn one wherever the candidate's tag
+    lies in the fitted span. The genome carries the wiring RULE (direction and shape); the row
+    is rescaled to the pool's own envelope at this scale (uniform(-lam, lam)^d has expected
+    norm lam*sqrt(d/3)), so the multi-scale search stays the pool's and the ONLY difference
+    between arms is the direction the genome supplies. A tag outside the span keeps its random
+    row (`init_fanin`'s refusal, counted as `fallback`); a degenerate map row (norm ~ 0)
+    likewise (`degenerate`). genome=None is the incumbent random pool with the same placement
+    bookkeeping -- the control arm, the method with the map removed. Provenance per row:
+    (placement, source), source in {"random", "genome"}. numpy in, numpy out; the model owns
+    the tensors."""
+
+    def __init__(self, placer, region, genome=None, ftags=None):
+        self.placer = placer
+        self.region = region
+        self.genome = genome
+        self.ftags = None if ftags is None else np.asarray(ftags, dtype=np.float64)
+        self.stats = {"drawn": 0, "genome": 0, "fallback": 0, "degenerate": 0}
+
+    def init(self, rows, lam, step):
+        rows = np.array(rows, dtype=np.float64, copy=True)
+        n_cand, d = int(rows.shape[0]), int(rows.shape[1])
+        placements = self.placer(n_cand, step, lam)
+        prov = [(p, "random") for p in placements]
+        self.stats["drawn"] += n_cand
+        if self.genome is None:
+            return rows, prov
+        prior = None if self.region == "cortex" else region_prior(self.region)
+        envelope = float(lam) * math.sqrt(d / 3.0)
+        for i, p in enumerate(placements):
+            try:
+                row = self.genome.init_fanin(self.ftags, unit_tag(p, self.region, _prior=prior))
+            except ValueError:  # outside the fitted span: the refusal is the design, not a bug
+                self.stats["fallback"] += 1
+                continue
+            norm = float(np.linalg.norm(row))
+            if not math.isfinite(norm) or norm < 1e-12:
+                self.stats["degenerate"] += 1
+                continue
+            rows[i] = row * (envelope / norm)
+            prov[i] = (p, "genome")
+            self.stats["genome"] += 1
+        return rows, prov
+
+
+# ---- THE PRE-REGISTERED A/B (audit s8 rank 1b) -- `python -m ...genomic_bottleneck --ab` ----------
+# Lives in this module (not tools/) so it is governed with the mechanism it measures and leaves
+# with it: the P4c ratchet counts every file in tools/ as ungoverned by construction.
+_AB_MODES = ("random", "genome", "genome_shuffled")
+
+
+def _ab_engine(seed, mode, refit_every):
+    from snn_data_lake.cortex.neurogenesis_engine import (
+        NeurogenesisSelfImprove,
+    )  # lazy: it imports us
+
+    return NeurogenesisSelfImprove(seed=seed, device="cpu", refit_every=refit_every, init_pool=mode)
+
+
+def _ab_arm(seed, mode, blob, cont, refit_every):
+    """One arm: restore the warm substrate into a fresh engine of `mode`, run `cont` ticks, and
+    return the continuation trajectory, its mean/final held-out accuracy and the pool census."""
+    import statistics
+
+    eng = _ab_engine(seed, mode, refit_every)
+    if blob is not None and not eng.restore_growth_state(blob):
+        raise RuntimeError("the warm substrate did not restore")
+    census = {
+        k: 0 for k in ("drawn", "genome", "fallback", "degenerate", "admitted", "admitted_genome")
+    }
+    rows, n0 = [], len(eng.trajectory)
+    for _ in range(cont):
+        eng.tick()
+        if len(eng.trajectory) > n0 + len(rows):
+            rows.append(eng.trajectory[-1])
+            for k in census:
+                census[k] += int(eng.pool_stats.get(k, 0))
+    accs = [a for _t, _u, a in rows]
+    return {
+        "mode": mode,
+        "refits": len(rows),
+        "units_end": int(eng.grown_units),
+        "acc_mean": round(statistics.fmean(accs), 6) if accs else None,
+        "acc_final": round(accs[-1], 6) if accs else None,
+        "census": census,
+    }
+
+
+def _ab_paired(results, a, b):
+    import statistics
+
+    d = [r[a]["acc_mean"] - r[b]["acc_mean"] for r in results if r[a]["acc_mean"] is not None]
+    return {
+        "wins": sum(x > 1e-9 for x in d),
+        "losses": sum(x < -1e-9 for x in d),
+        "ties": sum(abs(x) <= 1e-9 for x in d),
+        "mean_delta": round(statistics.fmean(d), 6) if d else None,
+        "se": round(statistics.pstdev(d) / max(1, len(d)) ** 0.5, 6) if len(d) > 1 else None,
+    }
+
+
+def run_ab(argv=None):
+    """Does map-drawn initial fan-in beat the random candidate pool on the EARNED substrate?
+
+    Paired by seed on the one live grower, standalone (no brain, no daemon, no lake write; `--lake`
+    READS the live lake's growth record once). warm: grow a substrate with the incumbent pool for
+    `--warm` ticks. arms: restore it into three fresh engines with the same seed (identical
+    continuation stimulus) and run `--cont` ticks under random / genome / genome_shuffled (the map
+    fitted on tag-SHUFFLED units: the control that keeps its magnitude and span and destroys its
+    tag->weight association). PRE-REGISTERED VERDICT, written before the first run: genome WINS iff
+    its continuation-mean held-out accuracy beats random on a majority of seeds AND beats the
+    shuffled control on a majority; otherwise NULL and P8 clause 5 (delete, not park) applies. A
+    genome that beats random but not the shuffle carried magnitude, not identity: also a null.
+    Record of the runs that decided it: specs/022 evidence/s1-genome-fanin-ab.md."""
+    import argparse
+    import json
+
+    ap = argparse.ArgumentParser(prog="genomic_bottleneck --ab")
+    ap.add_argument("--seeds", type=int, default=8)
+    ap.add_argument("--warm", type=int, default=400)
+    ap.add_argument("--cont", type=int, default=400)
+    ap.add_argument("--refit-every", type=int, default=20)
+    ap.add_argument("--lake", action="store_true", help="add the live lake's substrate (read-only)")
+    ap.add_argument("--json", default=None)
+    args = ap.parse_args(argv)
+    results = []
+    print(
+        f"FR-033 A/B: seeds={args.seeds} warm={args.warm} cont={args.cont} refit_every={args.refit_every}"
+    )
+    for seed in range(args.seeds):
+        warm = _ab_engine(seed, "random", args.refit_every)
+        for _ in range(args.warm):
+            warm.tick()
+        blob = warm.growth_state_bytes()
+        if blob is None:
+            print(f"seed {seed}: the warm substrate grew nothing in {args.warm} ticks -- skipped")
+            continue
+        rec = {"seed": seed, "warm_units": int(warm.grown_units)}
+        for mode in _AB_MODES:
+            rec[mode] = _ab_arm(seed, mode, blob, args.cont, args.refit_every)
+        results.append(rec)
+        print(
+            f"seed {seed}: warm {rec['warm_units']}u | "
+            + " | ".join(
+                f"{m}: {rec[m]['units_end']}u mean {rec[m]['acc_mean']} final {rec[m]['acc_final']} "
+                f"(genome rows {rec[m]['census']['genome']}/{rec[m]['census']['drawn']}, "
+                f"admitted-from-genome {rec[m]['census']['admitted_genome']}/{rec[m]['census']['admitted']})"
+                for m in _AB_MODES
+            )
+        )
+    lake = None
+    if args.lake:
+        from snn_data_lake.substrate.home import load_growth
+
+        blob = load_growth()
+        if blob:
+            lake = {m: _ab_arm(0, m, blob, args.cont, args.refit_every) for m in _AB_MODES}
+            print(
+                "LAKE substrate: "
+                + " | ".join(
+                    f"{m}: {lake[m]['units_end']}u mean {lake[m]['acc_mean']}" for m in _AB_MODES
+                )
+            )
+        else:
+            print("LAKE substrate: no growth record in the lake -- arm skipped")
+    vs_random = _ab_paired(results, "genome", "random")
+    vs_shuffled = _ab_paired(results, "genome", "genome_shuffled")
+    sh_vs_random = _ab_paired(results, "genome_shuffled", "random")
+    n, majority = len(results), len(results) // 2 + 1
+    win = n > 0 and vs_random["wins"] >= majority and vs_shuffled["wins"] >= majority
+    print("\nPAIRED (continuation-mean held-out accuracy):")
+    print(f"  genome vs random          : {vs_random}")
+    print(f"  genome vs genome_shuffled : {vs_shuffled}")
+    print(f"  genome_shuffled vs random : {sh_vs_random}")
+    print(
+        f"VERDICT: {'genome WINS' if win else 'NULL'} -- majority {majority} of {n} needed on BOTH comparisons (pre-registered)."
+    )
+    if args.json:
+        with open(args.json, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "args": vars(args),
+                    "results": results,
+                    "lake": lake,
+                    "paired": {
+                        "vs_random": vs_random,
+                        "vs_shuffled": vs_shuffled,
+                        "shuffled_vs_random": sh_vs_random,
+                    },
+                    "win": win,
+                },
+                f,
+                indent=1,
+            )
+    return 0
+
+
 # DIRECT_SOLVE, not NOT_A_RULE (T044 panel): NOT_A_RULE is the census's enumeration-imprecision
 # meter, and this is a REAL closed-form solve, the `NGSNN.fit` precedent's family -- with the
 # distinction that it solves for the GENERATOR M (initial-weight synthesis for units that have
@@ -418,15 +631,14 @@ def main():
 
     print()
     print(
-        "DISCLOSURE: everything above is ALGEBRA on tag-structured ground truth. Whether the "
-        "REAL earned substrate (ng_snn's W) is tag-compressible is UNMEASURED here. The wiring "
-        "that would measure it -- swapping the candidate pool inside "
-        "hippocampus/ng_snn.py::NGSNN.fit, reached through neurogenesis_engine's refit -- has "
-        "NO task id in specs/022 tasks.md yet; until it lands, the random-uniform pool remains "
-        "the live initializer, undisplaced. The A/B must also treat the 7-bit positional code "
-        "as a variable (it imposes a similarity geometry this module chose, not measured). "
-        "NULL DISPOSITION: if map-drawn fan-in does not beat the random pool on the real "
-        "earned substrate, this module is DELETED, not parked."
+        "DISCLOSURE: everything above is ALGEBRA on tag-structured ground truth. The wiring "
+        "that measures the REAL earned substrate -- swapping the candidate pool inside "
+        "hippocampus/ng_snn.py::NGSNN.fit, reached through neurogenesis_engine's refit -- "
+        "LANDED (this module's --ab entrypoint, paired by seed) and measured a NULL at 24 seeds "
+        "(specs/022 evidence/s1-genome-fanin-ab.md): +0.002 +/- 0.005 over the random pool, "
+        "12-12 against the tag-shuffled control. The random-uniform pool remains the live "
+        "initializer. NULL DISPOSITION applies: this module is DELETED in the next commit, "
+        "not parked."
     )
     print(
         "self-check OK: g-network algebra proven (exact + mixed held-out), out-of-span "
@@ -437,4 +649,10 @@ def main():
 
 
 if __name__ == "__main__":
+    import sys
+
+    if (
+        "--ab" in sys.argv
+    ):  # the pre-registered A/B; run_selfchecks passes no argv, so it never runs there
+        raise SystemExit(run_ab([a for a in sys.argv[1:] if a != "--ab"]))
     raise SystemExit(main())

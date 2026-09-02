@@ -106,6 +106,11 @@ The pinned test is what will say so: `test_placement_charge_null.py` turns RED t
 `state()`/telemetry depends on placement, with the reopen and retire-the-disclosure instructions
 in its message.
 
+**Rank 1b executed the same day: NULL.** The `genomic_bottleneck` wire was built and measured
+(`evidence/s1-genome-fanin-ab.md`): at 24 paired seeds map-drawn fan-in is +0.002 ± 0.005 over the
+random pool and indistinguishable from a tag-shuffled control, so the module's pre-registered
+deletion applies. Item 1 above is closed as a null; items 2 and 3 stand.
+
 ## Correction to the audit
 
 The audit's §8 wrote that each of its ten items is *"a wire or a measurement over machinery that

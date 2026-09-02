@@ -76,17 +76,12 @@ EXEMPT_METHOD = {
         "alignment criterion (Oja is order-blind; smooth real traces fit small theta), so a "
         "trace-fit landing without the A/B would silently worsen the one measured outcome",
     ),
-    "cortex.genomic_bottleneck.GenomicMap.fit": (
-        "wire",
-        "specs/022 T044: closed-form bilinear least squares (DIRECT_SOLVE declared under the "
-        "class-qualified GRADIENT_CLAIM key 'GenomicMap.fit', which is how the census reads "
-        "it) synthesizing INITIAL fan-in from tags; callers today are the module's own "
-        "main(), which every gate run executes. No wiring task id exists in specs/022 "
-        "tasks.md yet (T044 panel: say so, never dress it as dated); the wire = "
-        "hippocampus/ng_snn.py::NGSNN.fit's candidate pool via neurogenesis_engine's refit, "
-        "behind a measured A/B, with deletion-on-null recorded in the module -- "
-        "class-qualified key so no other fit inherits this disposition",
-    ),
+    # cortex.genomic_bottleneck.GenomicMap.fit left this table 2026-09-02: the FR-033 wire
+    # landed (neurogenesis_engine._candidates fits the map on the earned substrate every
+    # refit under init_pool="genome" and NGSNN.fit reads it through the CandidatePool hook),
+    # and the paired A/B behind it (genomic_bottleneck.py's --ab entrypoint, 24 seeds) is a NULL -- the
+    # module's pre-registered deletion follows in the next commit. Record: specs/022
+    # evidence/s1-genome-fanin-ab.md.
     # The next three entered the census at T053-ii (2026-08-31): rule_composer's census
     # imports made their hosts REACHABLE (the module-gate rows retired on it), and this
     # per-METHOD gate scopes by reachable() -- import-topology arriving, not a wire.
