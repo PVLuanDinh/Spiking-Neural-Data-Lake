@@ -7,9 +7,9 @@ write (the `--lake` arm READS the live lake's growth record once). Reproduce:
 
     PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.genomic_bottleneck --ab --seeds 24 --warm 400 --cont 400
 
-This command exists only at the commit that lands this file (commit A); the deletion commit (B) removes
-the module and its `--ab` runner and writes A's hash here, so the measurement stays reproducible by
-checking out A.
+This command exists only at the commit that landed this file and the wire — **`847c5f6a`** — because
+the following commit removed the module and its `--ab` runner per the disposition below; reproduce by
+checking out `847c5f6a`.
 
 ## What was wired
 
@@ -167,8 +167,9 @@ substrate is now measured: on this grower the tag→weight rule carries nothing 
 `candidates=` hook in `NGSNN.fit`, `last_provenance`, `CandidatePool` and the engine's `init_pool` /
 `pool_stats` / `_candidates` / `_place_candidates` existed to feed the map; with the map deleted their
 only effect would be P×scales `place()` calls per greedy step on the default path plus a changed
-persisted placement stream with no reader — the shape the 007 wire was reverted for. Commit B restores
-HEAD's post-hoc placement bookkeeping and removes the hook; FR-033's map clause in `spec.md` is marked
+persisted placement stream with no reader — the shape the 007 wire was reverted for. The commit after
+`847c5f6a` restored the pre-wire post-hoc placement bookkeeping and removed the hook (the engine and
+`ng_snn` are byte-identical to `c4a64613` again); FR-033's map clause in `spec.md` is marked
 withdrawn on measurement (a MUST is withdrawn; its premise is what was refuted).
 
 FR-033 as written ("grown units MUST receive initial weights from the genomic-bottleneck map") is

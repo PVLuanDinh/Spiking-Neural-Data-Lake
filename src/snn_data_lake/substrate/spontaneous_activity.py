@@ -290,7 +290,7 @@ def bootstrap_percept_rule(ps, k=3, seed=0, n_steps=1600, theta=THETA0):
     return steps
 
 
-# DIRECT_SOLVE (the GenomicMap.fit / NGSNN.fit family): closed-form moment matching, no
+# DIRECT_SOLVE (the NGSNN.fit family): closed-form moment matching, no
 # iteration, no error propagation, no plasticity -- it sets the DRIVE's parameters, never a
 # network weight. The e-prop invariant governs gradient transport through spiking dynamics,
 # absent here.

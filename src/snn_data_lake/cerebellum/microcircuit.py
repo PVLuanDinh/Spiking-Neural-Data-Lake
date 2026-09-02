@@ -276,8 +276,6 @@ class CerebellarMicrocircuit:
 
     # distinct-from: arm_config.py -- its L193 reads joint limits from the mujoco model;
     #   prose-level overlap on 'read from'. Site read.
-    # distinct-from: genomic_bottleneck.py -- its L194 derives initial weights from tags;
-    #   this REPORTS existing weight signs, derives nothing. Site read.
     def sign_identities(self):
         """Per-Purkinje row sign structure, READ from the tissue's own weights (+1 per PF
         slot from pf_w's sign, the MLI slot from mli_w's sign) -- the sign-structured

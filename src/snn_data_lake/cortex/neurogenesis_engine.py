@@ -46,12 +46,6 @@ import random
 import torch
 
 from snn_data_lake.brainstem.arm_config import CONTACT
-from snn_data_lake.cortex.genomic_bottleneck import (
-    CandidatePool,
-    GenomicMap,
-    feature_tags,
-    unit_tags,
-)
 from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
 from snn_data_lake.hippocampus.ng_snn import NGSNN
 from snn_data_lake.substrate.device import crossover, decisions, select
@@ -138,14 +132,6 @@ class NeurogenesisSelfImprove:
         # exactly the criterion's CONTROL arm). The callable's verdict logic is the gate's
         # own; this engine can consult it, never constrain it.
         growth_gate=None,
-        # FR-033: where a candidate unit's INITIAL fan-in comes from. "random" = the incumbent
-        # pool (candidate placements still drawn before the fit, so bookkeeping is identical
-        # across arms); "genome" = cortex/genomic_bottleneck's map, refitted every refit on the
-        # earned substrate, read for every candidate whose tag is in the fitted span; "genome_
-        # shuffled" = the same map fitted on tag-SHUFFLED units -- the control that keeps the
-        # map's magnitude and span and destroys its tag->weight association. The production
-        # default is decided by genomic_bottleneck.py's --ab entrypoint's paired measurement, never picked.
-        init_pool="random",
     ):
         self.k_modes = int(k_modes)
         self.refit_every = int(refit_every)
@@ -156,10 +142,6 @@ class NeurogenesisSelfImprove:
         self.shuffle_transitions = bool(shuffle_transitions)
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self._growth_gate = growth_gate
-        if init_pool not in ("random", "genome", "genome_shuffled"):
-            raise ValueError(f"init_pool {init_pool!r} not in random / genome / genome_shuffled")
-        self.init_pool = str(init_pool)
-        self.pool_stats = {}  # the last refit's candidate-pool census (FR-033 attribution)
         self._l_max = None if l_max is None else int(l_max)  # None -> NGSNN derives L <= N
         self._eps_tol, self._T = float(eps_tol), int(T)
         self._chain = random.Random(seed)  # mode transitions + jitter RNG
@@ -268,37 +250,28 @@ class NeurogenesisSelfImprove:
         prev = self._model
         seed_W = prev.W if (prev is not None and prev.W is not None) else None
         seed_b = prev.b if (prev is not None and prev.b is not None) else None
-        pool, genome_info = self._candidates(int(x_tr.shape[1]))
-        model.fit(x_tr, y_tr, init_W=seed_W, init_b=seed_b, candidates=pool)
+        model.fit(x_tr, y_tr, init_W=seed_W, init_b=seed_b)
         # EARN-YOUR-PLACE PRUNE, on the same held-out discipline that admits a unit. Only meaningful
         # now that units are inherited: previously every refit began empty, so there was nothing old
         # to drop. Without it, seeding makes the substrate monotonically grow -- accumulation with no
         # way out is the unbounded-growth failure this project has hit three times, so the prune ships
         # WITH the growth rather than after it.
-        # PLACEMENT, part 1 of 2: the units this refit ADDED keep the cortical home that was drawn
-        # for them BEFORE the fit (FR-033: the placement is the candidate's tag, and under the
-        # genome pool it generated the unit's fan-in). `fit(init_W=...)` keeps the inherited units
-        # as the LEADING rows, so index identity survives growth and the new units are exactly the
-        # tail; `model.n_seeded` says how many rows were inherited (0 on a cold start or a width
-        # mismatch, where the substrate was replaced and so is its placement). A provenance that
-        # does not cover the tail exactly is refused: a placement that describes a different
-        # neuron is worse than none.
+        # PLACEMENT, part 1 of 2: the units this refit ADDED get a cortical home. `fit(init_W=...)`
+        # keeps the inherited units as the LEADING rows, so index identity survives growth and the
+        # new units are exactly the tail. Each is born into a layer drawn from H01's measured
+        # occupancy with a Dale sign fixed at birth (cortex/placement).
         n_before = len(self._placement)
         n_after_fit = int(model.n_units)
-        prov = list(model.last_provenance)
-        if len(prov) != n_after_fit - int(model.n_seeded):
-            raise RuntimeError(
-                f"placement provenance misaligned: {len(prov)} entries for "
-                f"{n_after_fit - int(model.n_seeded)} admitted units"
+        if n_after_fit > n_before:
+            from snn_data_lake.cortex.placement import place
+
+            # seed varies with the engine seed AND how many units already exist, so successive
+            # births are not carbon copies of the first batch while staying deterministic
+            self._placement.extend(
+                place(n_after_fit - n_before, seed=(self.seed * 1_000_003) + n_before)
             )
-        self._placement = self._placement[: int(model.n_seeded)] + [p for p, _src in prov]
-        self.pool_stats = {
-            "mode": self.init_pool,
-            **pool.stats,
-            "admitted": max(0, n_after_fit - n_before),
-            "admitted_genome": sum(1 for _p, src in prov if src == "genome"),
-            **genome_info,
-        }
+        elif n_after_fit < n_before:  # cold start / width mismatch -> the substrate was replaced
+            self._placement = self._placement[:n_after_fit]
 
         self._pruned = model.prune_unearned(x_tr, y_tr)
         # PLACEMENT, part 2 of 2: FOLLOW THE SURVIVORS. `prune_unearned` drops columns, so without
@@ -571,50 +544,7 @@ class NeurogenesisSelfImprove:
             "grown_units": self.grown_units,
             "predict_accuracy": self.predict_accuracy,
             "n_modes": self.n_modes,
-            "init_pool": self.init_pool,
-            "pool_stats": dict(self.pool_stats),
         }
-
-    # ---- FR-033: candidate placement + the genome pool ----------------------------------------
-    def _place_candidates(self, n_cand, step, lam):
-        """Placements for one candidate pool, drawn BEFORE the fit so the placement that generates
-        a unit's fan-in is the one the admitted unit keeps. Deterministic in the engine seed, the
-        tick, the step and the scale; this grower's region is cortex (the H01 measured arm)."""
-        from snn_data_lake.cortex.placement import place
-
-        seed = (
-            self.seed * 1_000_003 + self.ticks * 7_919 + step * 131 + int(lam * 1000)
-        ) & 0xFFFFFFFF
-        return place(n_cand, seed=seed)
-
-    def _candidates(self, d):
-        """The candidate pool for this refit and a census of the genome behind it. A genome needs
-        >= 2 earned, placement-aligned units to fit; before that every mode is the random pool
-        and `genome_fit` says so. `genome_shuffled` fits the SAME map on tag-shuffled units --
-        the control that keeps the map's magnitude and span while destroying its tag->weight
-        association -- so a genome gain that survives the shuffle was never about identity."""
-        genome, info = None, {"genome_fit": False}
-        prev = self._model
-        if self.init_pool != "random" and prev is not None and prev.W is not None:
-            n = int(prev.W.shape[0])
-            # a restored substrate whose width differs from the live one cannot seed the map
-            # (GenomicMap.fit would refuse the shape before NGSNN.fit could refuse the seed)
-            if n >= 2 and len(self._placement) >= n and int(prev.W.shape[1]) == d:
-                utags = unit_tags(self._placement[:n], "cortex")
-                if self.init_pool == "genome_shuffled":
-                    perm = random.Random(self.seed * 31 + self.ticks).sample(range(n), n)
-                    utags = utags[perm]
-                genome = GenomicMap()
-                rmse = genome.fit(prev.W.detach().cpu().numpy(), feature_tags(d), utags)
-                info = {
-                    "genome_fit": True,
-                    "genome_rmse": round(float(rmse), 6),
-                    "rank_u": genome.rank_u,
-                    "rank_f": genome.rank_f,
-                    "fit_units": n,
-                }
-        ftags = feature_tags(d) if genome is not None else None
-        return CandidatePool(self._place_candidates, "cortex", genome=genome, ftags=ftags), info
 
 
 # -------------------------------------------------------------------------------------------------

@@ -147,7 +147,7 @@ The proposer/evaluator loop runs: candidate diffs against declared mutation surf
 
 **Added by analyze-remediation (2026-08-19) — requirements for previously unmapped buildable work**
 - **FR-032**: Every `connectome.NODES` entry MUST resolve to ≥1 referencing module in its region or carry a dated EXEMPT (the atlas-node gate; day-one phantoms recorded, not hidden).
-- **FR-033**: Grown units MUST receive initial weights from the genomic-bottleneck map and pre-experience structure from the spontaneous-activity bootstrap — no grown unit starts from an undeclared initializer.
+- **FR-033**: ~~Grown units MUST receive initial weights from the genomic-bottleneck map~~ **(map clause WITHDRAWN on measurement 2026-09-02 — the wire landed at `847c5f6a`, its paired A/B was a NULL at 24 seeds and a measured LOSS on a carried continuation, and `cortex/genomic_bottleneck` was deleted in the following commit per its own pre-registration; the declared random candidate pool is the initializer. `evidence/s1-genome-fanin-ab.md`)** and grown units MUST receive pre-experience structure from the spontaneous-activity bootstrap — no grown unit starts from an undeclared initializer.
 - **FR-034**: The executive (task-set FiLM gain/threshold) and social cognition (recursive theory-of-mind) faculties MUST be composed onto the typed bus as declared ports with charge verification.
 - **FR-035**: Substrate state MUST live in struct-of-arrays layout outside Python objects on the hot path, with layout changes carrying §3.5 migration dispositions; the human-scale trajectory derivation is maintained per tissue as a disclosed evidence artifact.
 

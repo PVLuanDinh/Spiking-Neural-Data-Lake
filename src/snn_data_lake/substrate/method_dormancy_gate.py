@@ -77,10 +77,9 @@ EXEMPT_METHOD = {
         "trace-fit landing without the A/B would silently worsen the one measured outcome",
     ),
     # cortex.genomic_bottleneck.GenomicMap.fit left this table 2026-09-02: the FR-033 wire
-    # landed (neurogenesis_engine._candidates fits the map on the earned substrate every
-    # refit under init_pool="genome" and NGSNN.fit reads it through the CandidatePool hook),
-    # and the paired A/B behind it (genomic_bottleneck.py's --ab entrypoint, 24 seeds) is a NULL -- the
-    # module's pre-registered deletion follows in the next commit. Record: specs/022
+    # landed at 847c5f6a (the engine refit the map on the earned substrate under a non-default
+    # pool mode), its paired A/B at 24 seeds was a NULL, and the module was DELETED in the
+    # following commit per its own pre-registration. Record: specs/022
     # evidence/s1-genome-fanin-ab.md.
     # The next three entered the census at T053-ii (2026-08-31): rule_composer's census
     # imports made their hosts REACHABLE (the module-gate rows retired on it), and this

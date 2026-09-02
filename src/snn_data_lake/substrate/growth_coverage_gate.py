@@ -465,9 +465,8 @@ def report(do_assert=False):
         "is value-identical in state() and telemetry on every key but the wall clock "
         "(tests/test_placement_charge_null.py pins it; specs/022 evidence/s1-placement-null.md). "
         "The one built reader, cortex/genomic_bottleneck (FR-033), was wired behind its paired "
-        "A/B (genomic_bottleneck.py's --ab entrypoint) and measured a NULL at 24 seeds -- it reads placement "
-        "only under the non-default init_pool modes (genome, genome_shuffled) and is deleted in the "
-        "next commit. A region "
+        "A/B, measured a NULL at 24 seeds (847c5f6a) and was DELETED per its own pre-registration; "
+        "no reader exists. A region "
         "added here without a live reader claims coverage of a write-only record. The 007 "
         "growth->placement wire was built, measured at 0 differing keys, and reverted under P3 "
         "(2026-09-02); retire this line the day that test reds."
@@ -531,9 +530,6 @@ def self_check():
     all_sites = [s for lst in census_real.values() for s in lst]
     assert not any("theory_of_mind" in s for s in all_sites), (
         "the census counted theory_of_mind's .place -- name collision, not placement"
-    )
-    assert not any("genomic_bottleneck" in s for s in all_sites), (
-        "the census counted a harness-function drive as a live path"
     )
     print(f"  green  census: cortex <- {census_real['cortex']}; false-positive classes absent")
 

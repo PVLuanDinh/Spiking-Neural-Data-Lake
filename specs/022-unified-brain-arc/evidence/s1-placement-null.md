@@ -59,9 +59,10 @@ information by construction — `_place_grn` returns a uniform random position, 
 (`'anterior'` for every hippocampal unit at this grain) and sign `None` (refused: no measured
 E-fraction exists outside H01 cortex).
 
-**One reader of the record IS built, and it is not on a live path**: `cortex/genomic_bottleneck`
-(FR-033, T044 — `unit_tag` reads position, layer and sign; `init_fanin` maps tags to a grown
-unit's initial fan-in). It is dormancy-EXEMPT `wire`, its docstring names the wiring it awaits
+**One reader of the record WAS built, and it was not on a live path** (as of `c4a64613`; wired at
+`847c5f6a`, measured a NULL and DELETED in the commit after it — see the rank 1b paragraph below):
+`cortex/genomic_bottleneck` (FR-033, T044 — `unit_tag` read position, layer and sign; `init_fanin`
+mapped tags to a grown unit's initial fan-in). It was dormancy-EXEMPT `wire`, its docstring named the wiring it awaited
 (swap the random candidate pool inside `hippocampus/ng_snn.py::NGSNN.fit`, reached through the
 engine's refit), states that this has no task id, and pre-registers its own delete-on-null. The
 static "nothing reads placement" this note first carried was therefore an over-claim of exactly the
@@ -108,8 +109,10 @@ in its message.
 
 **Rank 1b executed the same day: NULL.** The `genomic_bottleneck` wire was built and measured
 (`evidence/s1-genome-fanin-ab.md`): at 24 paired seeds map-drawn fan-in is +0.002 ± 0.005 over the
-random pool and indistinguishable from a tag-shuffled control, so the module's pre-registered
-deletion applies. Item 1 above is closed as a null; items 2 and 3 stand.
+random pool and indistinguishable from a tag-shuffled control (and, on the panel's carried
+continuation, a measured LOSS), so the module's pre-registered deletion applied: wire + measurement
+at `847c5f6a`, the module deleted in the commit after it. No reader of the placement record exists
+now. Item 1 above is closed as a null; items 2 and 3 stand.
 
 ## Correction to the audit
 

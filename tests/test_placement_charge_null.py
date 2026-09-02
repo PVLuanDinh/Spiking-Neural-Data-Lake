@@ -6,9 +6,10 @@ by constant tuples is value-identical to a live one on every key of `state()` an
 snapshot but the wall clock, over enough ticks for the neurogenesis engine to refit and grow. Two
 positive controls must move the same differencer -- growth switched off (a different stage) and
 the engine's seed shifted (the SAME stage as placement, inside `_refit`) -- so a green here is a
-real null and not a blind instrument. The one built reader of the record,
-`cortex/genomic_bottleneck` (FR-033: unit tags -> a grown unit's initial fan-in), is
-dormancy-EXEMPT `wire` and unwired; the growth blob and its restore path are OUT OF THIS VIEW
+real null and not a blind instrument. The one reader ever built for the record,
+`cortex/genomic_bottleneck` (FR-033: unit tags -> a grown unit's initial fan-in), was wired at
+847c5f6a, measured a NULL and was deleted per its own pre-registration (specs/022
+evidence/s1-genome-fanin-ab.md); the growth blob and its restore path are OUT OF THIS VIEW
 (placement is serialized there by design, and read back only to rebuild the record itself).
 
 WHY THIS IS PINNED RATHER THAN FIXED. The composed growth->placement wire

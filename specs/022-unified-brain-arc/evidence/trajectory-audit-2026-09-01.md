@@ -469,8 +469,8 @@ in the tree.** Ordered by leverage on the three goal clauses; the policy clause 
    WIRE, not a build: run FR-033's A/B (map-drawn fan-in vs the random pool inside `NGSNN.fit`'s
    candidate loop, reached through the engine's refit); its red is this pinned test going RED. Only
    after that does a second attempt at this rank become a charge question.
-   **OUTCOME 2026-09-02 (rank 1b) — wired, measured, NULL; the deletion its disposition owes is the
-   next commit, shipped in the same push.** The wire
+   **OUTCOME 2026-09-02 (rank 1b) — wired and measured at `847c5f6a`, NULL, deleted in the commit
+   after it (same push) per its own disposition.** The wire
    landed (`NGSNN.fit(candidates=…)` + `genomic_bottleneck.CandidatePool` + the engine's three pool
    modes); `genomic_bottleneck --ab` paired by seed: 8 seeds 5–3/5–3 (p≈0.36), **24 seeds 13–11 at
    +0.002 ± 0.005 and 12–12 against the tag-shuffled control** — zero within error on both halves of

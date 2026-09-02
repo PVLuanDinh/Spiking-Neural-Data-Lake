@@ -335,12 +335,10 @@ EXEMPT = {
     # cortex/prefrontal_executive, the capacity is DERIVED there (K = T_max/t_s,
     # plasticity/wm_capacity, five guards), and the file is gone. Exactly one mechanism
     # survives; the full record lives in wm_capacity's docstring and specs/022 tasks.md.
-    # genomic_bottleneck left this table 2026-09-02: the FR-033 wire it named landed
-    # (neurogenesis_engine imports it; NGSNN.fit reads the map through CandidatePool under
-    # init_pool="genome"), so the row's "no live-path importer" reason no longer holds -- and
-    # the paired A/B behind the wire (genomic_bottleneck.py's --ab entrypoint, 24 seeds) is a NULL, so the
-    # module's pre-registered disposition (deleted, not parked) follows in the next commit.
-    # Record: specs/022 evidence/s1-genome-fanin-ab.md.
+    # genomic_bottleneck left this table 2026-09-02: the FR-033 wire it named landed at
+    # 847c5f6a (the engine imported it; NGSNN.fit read the map through a candidate hook), its
+    # paired A/B at 24 seeds was a NULL, and the module was DELETED in the following commit per
+    # its own pre-registered disposition. Record: specs/022 evidence/s1-genome-fanin-ab.md.
     "cortical_microcircuit": (
         "permanent",
         "REFERENCE MODEL: Potjans-Diesmann 2014 validation dynamics. CORRECTED 2026-08-16 -- this "

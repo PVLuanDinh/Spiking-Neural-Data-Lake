@@ -73,7 +73,6 @@ CORE = [
     "cortex.arealization",  # T040+T041: exhaustive GRN censuses + prosomeric grid + graded arm
     "cortex.growth_program",  # T042: sealed view, shared-program counter, dilution, refusal reds
     "cortex.placement",  # grown units ordered into cortical layers by measured H01 occupancy
-    "cortex.genomic_bottleneck",  # T044: g-network algebra + tag reds (FR-033's mechanism)
     "cortex.growth_stop",  # T047: overgrowth red + four regimes + |LP| veto + measured null clause
     "cortex.lca_sparse_coding",
     "cortex.predictive_coding",
