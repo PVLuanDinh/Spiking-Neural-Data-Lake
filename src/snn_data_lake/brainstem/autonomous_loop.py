@@ -2472,6 +2472,10 @@ class AutonomousArm:
         return {
             "unit": unit,
             "grew": grew,
+            # the percept the learner categorized as `unit` (attention-gained when covert
+            # attention is on) -- exposed so a consumer of the category can also consume the
+            # vector it was a category OF (specs/022 audit s8 rank 2: the neurogenesis grower)
+            "percept": list(percept),
             "action": action,
             "reflex": False,
             "threat": threat,

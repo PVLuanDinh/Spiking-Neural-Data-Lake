@@ -226,6 +226,12 @@ PROVENANCE = {
         "process-lifetime counter over a lake-persisted substrate: the units survive in "
         "the lake (B2.09); this number resets with the process"
     ),
+    "predict_accuracy": (
+        "held-out next-category accuracy of the grower on the brain's OWN percept stream "
+        "(rank 2, 2026-09-02); read it against neurogenesis.baseline_persistence and "
+        "neurogenesis.baseline_majority, measured on the SAME slice -- on a bursty stream the "
+        "persistence floor is 0.9+ and an accuracy under it is the stream's inertia, not learning"
+    ),
 }
 
 

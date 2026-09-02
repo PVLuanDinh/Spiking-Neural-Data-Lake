@@ -70,6 +70,12 @@ def _run(arm):
                 b.neuro.tick = lambda: None
             if arm == "engine_seed_shift":
                 b.neuro.seed = 1  # the fit seed AND the placement seed, inside _refit
+            if arm == "engine_admission_shift":
+                # the earn-your-place tolerance NGSNN is built with inside _refit -- the same
+                # stage as placement; measured on the brain's own percept stream (rank 2,
+                # 2026-09-02): 1 -> 14 units and a moved accuracy, where the seed shift alone
+                # moved only the placement depth (the write-only record under test)
+                b.neuro._eps_tol = 0.05
             for _ in range(TICKS):
                 b.tick()
             view = {
@@ -77,12 +83,16 @@ def _run(arm):
                 **_flatten(brain_telemetry.snapshot(b), "snap."),
             }
             grown = b.neuro.grown_units
-            layers = b.neuro.layer_census()
+            # the placement RECORD itself (depth, layer, sign per unit), not the layer census:
+            # rank 2 (2026-09-02) fed the grower the brain's own percept stream and it grows one
+            # or two units in this window, so a census could no longer tell a constant
+            # placement from a drawn one that happened to land in the same layer
+            placed = list(b.neuro.placement)
             try:
                 b.close()
             except Exception:
                 pass
-            return view, grown, layers
+            return view, grown, placed
     finally:
         placement.place = real_place
 
@@ -92,7 +102,7 @@ def _diff(a, b, baseline):
 
 
 def test_placement_is_write_only_on_the_live_path():
-    live_a, grown_a, layers_a = _run("live")
+    live_a, grown_a, layers_a = _run("live")  # layers_a = the drawn placement record
     live_b, _, _ = _run("live")
     baseline = set(_diff(live_a, live_b, set()))
     assert grown_a > 0, f"the engine grew nothing in {TICKS} ticks -- nothing to differ on"
@@ -110,14 +120,27 @@ def test_placement_is_write_only_on_the_live_path():
     # POSITIVE CONTROL 2 (the SAME stage): the engine's seed shifted inside _refit -- where
     # placement is drawn -- must move held-out accuracy, so a placement-only null is read
     # against a control that discriminates AT that stage.
-    shifted, _, _ = _run("engine_seed_shift")
-    assert "state.predict_accuracy" in _diff(live_a, shifted, baseline), (
-        "the differencer cannot see a same-stage change (engine seed shift left accuracy equal)"
+    # Two halves since rank 2 fed the grower the brain's own percept stream (2026-09-02): on that
+    # stream the refit admits ~1 unit in this window and the seed no longer moves the accuracy,
+    # so the seed shift now proves only that the STAGE is reached (the placement record moves),
+    # and the admission-tolerance shift -- built inside the same _refit -- proves the differencer
+    # sees a change made there. A control sharing the null's own key set would be blind.
+    shifted, _, placed_s = _run("engine_seed_shift")
+    assert placed_s != layers_a, (
+        "the engine seed shift did not reach the placement stage (placement record unchanged)"
     )
+    admit, _, _ = _run("engine_admission_shift")
+    moved_same_stage = _diff(live_a, admit, baseline)
+    assert (
+        "state.predict_accuracy" in moved_same_stage or "state.grown_units" in moved_same_stage
+    ), "the differencer cannot see a same-stage change (admission shift moved nothing)"
 
     # THE NULL: placement replaced by constant tuples changes NO downstream key.
-    neutered, _, layers_n = _run("neuter_place")
-    assert layers_n != layers_a, "the neuter did not reach the engine (layer census unchanged)"
+    neutered, _, placed_n = _run("neuter_place")
+    assert placed_n and all(p == (0.5, "Layer 2", 1) for p in placed_n), (
+        f"the neuter did not reach the engine (placements are not the constant tuple): {placed_n}"
+    )
+    assert placed_n != layers_a, "the neuter is indistinguishable from the drawn placement"
     inert = _diff(live_a, neutered, baseline)
     assert inert == [], (
         "PLACEMENT HAS GAINED A LIVE READER: these keys now depend on it -> "

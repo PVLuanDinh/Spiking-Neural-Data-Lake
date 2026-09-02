@@ -892,6 +892,11 @@ function paint(d){
  /* WORLD MODEL + the not-computed readouts, stated as such */
  $('wWm').innerHTML =
    row('pc surprise',s.pc_surprise)+row('predict acc',s.predict_accuracy)
+   /* rank 2: the floors predict acc must clear on the SAME held-out slice (persistence = "the
+      same category as the last one"); on the brain's own bursty percept stream an accuracy
+      under its persistence floor learned nothing the stream's inertia did not supply */
+  +row('predict floor: persistence',(s.neurogenesis||{}).baseline_persistence)
+  +row('predict floor: majority',(s.neurogenesis||{}).baseline_majority)
   +row('place error',dv.place_error)+row('attended modality',s.attended_modality)
   +Object.entries(g).map(([k,o])=>
     `<div class="row"><span class="k">${k}</span><span class="v na">${fmt(o.value)}`+

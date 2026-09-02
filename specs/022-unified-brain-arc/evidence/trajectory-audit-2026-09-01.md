@@ -488,6 +488,23 @@ in the tree.** Ordered by leverage on the three goal clauses; the policy clause 
    P7 accepts the dependency). *P0: "a grown unit that is not KEPT is not even growth."* *P4b: "'it persists'
    is a claim about a NEW process."* Red: the |LP| facade must leave its floor (1 distinct value → >1) with the
    same seeds; if it does not, the stimulus was not the limit and the finding is recorded.
+   **OUTCOME 2026-09-02 (rank 2a, the stimulus half, commit 1 of 3).** `NeurogenesisSelfImprove.observe(percept,
+   category)` is fed on every wake tick with the arm loop's own attention-gained percept (`res["percept"]`, the
+   vector its GrowingLearner categorized) and its own prototype id; the synthetic chain is retired from the live
+   path (self-check stimulus only); `predict_accuracy` travels with its majority and persistence floors on
+   `state()`, in the growth blob, on the cockpit and in PROVENANCE. Two pre-registered A/Bs: v1 (raw pattern,
+   rule mis-specified — disclosed, not repaired) and, after a three-lens panel, v2 (corrected wire,
+   marginal-preserving shuffle, persistence oracle, brain-level differencer; 8 seeds × 8 arms × 800 ticks):
+   **NULL under v2's rule** (live vs shuffle +0.04, t 0.3; vs constant percept +0.12, t 1.1; positive control
+   8/8). Live reaches its persistence floor on 3 of 8 seeds and sits 0.40 below it on average — and so does the
+   ORACLE handed the previous category (2 of 8, −0.35): **the limit is the earn-your-place validation window
+   (the most recent third of a bursty stream), not the stimulus.** Attribution arms are nulls (t ≈ 1); the unit
+   counts survive (7.4 units on the extero channels alone vs 1.6 on proprioception alone; 2.1 live). Brain-level
+   charge: only self-model and growth-gate keys move — CONSUMED-BUT-NOT-DECISIVE, UNCERTAIN under P3; the wire
+   stands because reverting it restores a fabricated stimulus (P0/P2). Downstream: the lever is the admission
+   rule's validation window (oracle as control, red pre-written); 2b is load-bearing for this wire (the
+   categories are the learner's ids); 2c's premise is weakened, not corrected — its own |LP| criterion stands.
+   Record: `evidence/s2-real-percept-stream.md`.
 3. **Instantiate the declared anatomy in `make_brain()`**: one `(ring, JoinConsumer)` per declared edge, using the
    factories the charge harness already calls; criterion "live `JoinConsumer` count == declared edge count and
    the pinned-payload neuter on any one changes the consumer's live output" — red today (reads 0). *P6: "the

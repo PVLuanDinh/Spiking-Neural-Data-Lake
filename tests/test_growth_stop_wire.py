@@ -16,13 +16,16 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from snn_data_lake.cortex.neurogenesis_engine import NeurogenesisSelfImprove  # noqa: E402
+from snn_data_lake.cortex.neurogenesis_engine import (  # noqa: E402
+    NeurogenesisSelfImprove,
+    SyntheticPerceptStream,
+)
 
 
 def _run(engine, ticks=200):
-    for _ in range(ticks):
-        engine.tick()
-    return engine
+    # rank 2 (2026-09-02): the engine synthesizes no stimulus of its own any more -- the live
+    # path feeds it the brain's percepts; here the harness stream plays that role
+    return SyntheticPerceptStream(seed=engine.seed).drive(engine, ticks)
 
 
 def test_closed_gate_stops_growth_not_measurement():

@@ -8,20 +8,31 @@ neurogenesis) is refit as experience accumulates; each new "granule cell" is adm
 if it functionally reduces the next-perception prediction residual, and self-improvement is
 read off as next-context prediction accuracy rising above chance as the pool grows.
 
-Mechanism:
-  * K context MODES, each a distinct SAFE multimodal band (distinct visual/temperature/audio
-    levels; distance fixed at a SAFE value so nothing is ever in a danger band). A fixed,
-    seeded, DOUBLY-STOCHASTIC Markov matrix over the K modes makes the next mode
-    predictable-but-nontrivial (a permuted preferred next-mode with prob `peak`, else spread)
-    -> the stationary distribution is uniform (chance = 1/K) yet next-mode carries structure.
-  * tick() advances the chain one step, encodes the CURRENT mode via encode_multimodal into a
-    [0,1]^64 feature vector, and records the transition (features_t -> mode_{t+1}) into a
-    rolling buffer.
-  * Every `refit_every` ticks a FRESH NG-SNN is fit on the buffer (features_t -> next mode id).
-    It GROWS neurons (contribution criterion) to predict the next perception. predict_accuracy
-    is measured on a HELD-OUT recent slice never used in the fit. Learning-progress /
-    self-improvement = that held-out accuracy rising above chance as the model grows and the
-    transition structure is learned.
+Mechanism (specs/022 audit s8 rank 2, 2026-09-02 -- the stimulus is the BRAIN'S OWN):
+  * observe(features, category) is called on every WAKE tick with the brain's own percept --
+    the arm loop's attention-gained context vector, the SAME vector its GrowingLearner
+    categorized (the unified real vision/audio channels, the arm's real proprioception, the
+    SAFE distance -> encode_multimodal -> attention gain -> [0,1]^64) -- and the brain's own
+    CATEGORY of it (that learner's prototype id; the brain holds three GrowingLearner
+    instances, and this is the arm's, the one whose categories drive action). The engine
+    records (percept_{t-1} -> category_t): from the previous percept, predict the brain's next
+    perceptual category. The category space is whatever the brain has recruited; it grows with
+    experience and NGSNN's readout sizes to it.
+  * tick() is the SLEEP step: every `refit_every` sleep ticks a NG-SNN is refit on the buffer.
+    It GROWS neurons (contribution criterion) to predict the next category. predict_accuracy
+    is measured on a HELD-OUT recent slice never used in the fit, and travels with the two
+    floors measured on the SAME slice: the training majority answered every time, and
+    persistence ("the same category as the last one"). On the brain's own stream persistence
+    is the honest floor -- an accuracy that does not clear it learned nothing the stream's
+    inertia did not already supply. Growth is sleep-gated because the refit is.
+  * Until rank 2 this module SYNTHESIZED its own stimulus on every tick: K context modes on a
+    fixed doubly-stochastic Markov chain (chance 1/K, next mode predictable with prob `peak`).
+    That chain measured ~0.7 vs 0.20 -- a real measurement of a bounded task, and an experiment
+    ABOUT growth rather than the brain growing on what it perceives (P0's honesty guard). It
+    survives ONLY as `SyntheticPerceptStream`, the self-check's stimulus and positive control:
+    the live path has exactly one stimulus, the brain's percepts (P2), and the harness drives the
+    same observe()/tick() the brain does. Its numbers are the instrument's sensitivity, never the
+    organism's.
 
 Safety: PERCEPTION / next-perception self-model ONLY. This engine never constructs a motor
 command, never calls So101Arm / serial_arm / reflex, and has no actuator route -- it sits BESIDE
@@ -54,7 +65,7 @@ from snn_data_lake.substrate.device import crossover, decisions, select
 GRADIENT_CLAIM = {
     "NeurogenesisSelfImprove._refit": (
         "DIRECT_SOLVE",
-        "grows a fresh NG-SNN on the buffer and measures next-mode prediction accuracy. It drives "
+        "grows a fresh NG-SNN on the buffer and measures next-category prediction accuracy. It drives "
         "hippocampus/ng_snn::fit, whose greedy matching pursuit with an analytical beta per block "
         "POLICIES.md adjudicates as a DIRECT SOLVE -- non-local, but propagating no gradient and "
         "transporting no weight. It inherits that disposition rather than LOCAL, because LOCAL would "
@@ -101,69 +112,36 @@ def _markov_matrix(k_modes, peak, seed):
     return matrix
 
 
-class NeurogenesisSelfImprove:
-    """Self-improvement by neurogenesis: grow NG-SNN neurons to predict the brain's own next
-    perception. PERCEPTION-ONLY -- no arm, no motor command, no actuator route (see module
-    docstring). Read state via .goal/.ticks/.grown_units/.predict_accuracy/.n_modes/.state()."""
+# distinct-from: cortex/brain.py -- Brain.tick() is the circadian wake/sleep iteration this
+#   stream's drive() mimics; it perceives, this synthesizes a harness stimulus. Site read.
+# distinct-from: brainstem/arm_bridge.py -- recv_outcome() reads the NEXT reward packet off a
+#   socket. distinct-from: cerebellum/forward_model.py -- reset() sets a plant state.
+#   distinct-from: cortex/dendritic_neuron.py -- step() advances a compartment. distinct-from:
+#   cortex/generative_self_model.py -- a forward model of the self-signal. Phrase overlap on
+#   'next'/'tick'/'stream' only; none produces a (percept, category) stimulus. All sites read.
+class SyntheticPerceptStream:
+    """The self-check's STIMULUS, not a live mechanism (P2: the live path has one stimulus, the
+    brain's percepts). K context modes on a seeded doubly-stochastic Markov chain; next() yields
+    (features of the current mode, the current mode id) -- the same (percept, own-category) pair
+    shape the brain feeds observe() with -- and advances the chain. `shuffle_transitions=True` is
+    the structure-free control: the next mode is drawn independently of the current one, so a
+    grower fed by it can only ever reach chance. drive() runs the engine the way the brain does
+    (observe on the percept, one sleep tick after it) so cadence and buffer math match the live
+    path exactly. Deterministic in `seed`."""
 
-    def __init__(
-        self,
-        k_modes=5,
-        refit_every=20,
-        buffer_cap=1000,
-        peak=0.75,
-        jitter=0.12,
-        # None = let NGSNN derive the bound from the training rows (L <= N, past which the readout
-        # is underdetermined). This was 120 -- a SECOND artificial ceiling, TIGHTER than NGSNN's own
-        # 200, so the brain's neurogenesis was capped below what the learner would have grown.
-        # Policy 0: no artificial ceilings on cognitive growth. The honest limit is where a new unit
-        # can no longer earn its place, which is a property of the data, not a number chosen ahead
-        # of time. Measured before this change: growth stopped at exactly the cap on every task.
-        l_max=None,
-        eps_tol=0.28,
-        T=15,
-        seed=7,
-        shuffle_transitions=False,
-        device=None,
-        # T047: the growth stopping criterion (cortex/growth_stop.py) -- a ONE-ARG callable
-        # receiving THIS engine's trajectory (the system under test reaches the criterion
-        # through its parameter -- the red_reachability zero-arg red) and returning bool,
-        # consulted at each refit. None = ungated (the incumbent fixed schedule, which is
-        # exactly the criterion's CONTROL arm). The callable's verdict logic is the gate's
-        # own; this engine can consult it, never constrain it.
-        growth_gate=None,
-    ):
+    def __init__(self, seed=7, k_modes=5, peak=0.75, jitter=0.12, shuffle_transitions=False):
         self.k_modes = int(k_modes)
-        self.refit_every = int(refit_every)
-        self.buffer_cap = int(buffer_cap)
-        self.peak = float(peak)
-        self.jitter = float(jitter)
-        self.seed = int(seed)
+        self.peak, self.jitter = float(peak), float(jitter)
         self.shuffle_transitions = bool(shuffle_transitions)
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self._growth_gate = growth_gate
-        self._l_max = None if l_max is None else int(l_max)  # None -> NGSNN derives L <= N
-        self._eps_tol, self._T = float(eps_tol), int(T)
-        self._chain = random.Random(seed)  # mode transitions + jitter RNG
-        self._matrix = _markov_matrix(self.k_modes, self.peak, seed)  # transition structure
+        self._chain = random.Random(int(seed))  # mode transitions + jitter RNG
+        self._matrix = _markov_matrix(self.k_modes, self.peak, int(seed))
         self.current_mode = self._chain.randrange(self.k_modes)
-        self._buf_x = []  # features_t
-        self._buf_y = []  # mode_{t+1}
-        self.ticks = 0
-        self._n_units = 0
-        self._acc = 1.0 / self.k_modes  # chance until the first fit
-        self._model = None  # the retained grown NG-SNN; None until the first successful refit
-        #: [(depth, layer, sign)] index-aligned with `self._model.W` rows -- every grown unit's
-        #: cortical home. Maintained across BOTH growth (new units appended) and PRUNE (survivors
-        #: reindexed by the model's `last_keep`), because a placement that stops tracking its unit
-        #: is worse than no placement: it looks like structure and describes a different neuron.
-        self._placement = []
-        self.trajectory = []  # (tick, n_units, acc) per refit
 
-    # ---- context stream ----------------------------------------------------------------------
+    @property
+    def chance(self):
+        return 1.0 / self.k_modes
+
     def _next_mode(self, cur):
-        """Draw mode_{t+1}. Structured: sample row `cur` of the Markov matrix. Control
-        (shuffle_transitions): draw uniformly, INDEPENDENT of cur -> no learnable structure."""
         if self.shuffle_transitions:
             return self._chain.randrange(self.k_modes)
         r = self._chain.random()
@@ -174,34 +152,180 @@ class NeurogenesisSelfImprove:
                 return j
         return self.k_modes - 1
 
+    def next(self):
+        """(percept, own category) for the current mode, then advance the chain."""
+        mode = self.current_mode
+        feats = _mode_features(mode, self.k_modes, self._chain, self.jitter)
+        self.current_mode = self._next_mode(mode)
+        return feats, mode
+
+    # distinct-from: cortex/brain.py -- Brain.tick() is the circadian iteration. distinct-from:
+    #   basal_ganglia/brain_native_selfbuild.py -- a one-time sidecar import. distinct-from:
+    #   brainstem/arm_bridge.py -- reads a reward packet. distinct-from: brainstem/
+    #   autonomous_loop.py -- step() is the arm's tick. distinct-from: brainstem/closed_loop.py
+    #   -- drives raw signal lines through the stack. Phrase overlap only. All sites read.
+    def drive(self, engine, n):
+        """Feed `engine` n percepts: observe, then one sleep tick, 1:1. The brain interleaves
+        blocks of wake ticks (observe) with blocks of sleep ticks (tick) under its circadian
+        clock, so this is the same two calls at a different cadence, not a replica of the live
+        path; and the buffer trails the retired in-engine chain by one row (the first percept has
+        no predecessor), so its refits are the same pairs, not byte-identical numbers."""
+        for _ in range(int(n)):
+            engine.observe(*self.next())
+            engine.tick()
+        return engine
+
+
+class NeurogenesisSelfImprove:
+    """Self-improvement by neurogenesis: grow NG-SNN neurons to predict the brain's own next
+    perception. PERCEPTION-ONLY -- no arm, no motor command, no actuator route (see module
+    docstring). Feed with observe(percept, category) on wake ticks; tick() is the sleep step.
+    Read state via .goal/.ticks/.observed/.grown_units/.predict_accuracy/.n_modes/.state()."""
+
+    def __init__(
+        self,
+        refit_every=20,
+        buffer_cap=1000,
+        # None = let NGSNN derive the bound from the training rows (L <= N, past which the readout
+        # is underdetermined). This was 120 -- a SECOND artificial ceiling, TIGHTER than NGSNN's own
+        # 200, so the brain's neurogenesis was capped below what the learner would have grown.
+        # Policy 0: no artificial ceilings on cognitive growth. The honest limit is where a new unit
+        # can no longer earn its place, which is a property of the data, not a number chosen ahead
+        # of time. Measured before this change: growth stopped at exactly the cap on every task.
+        l_max=None,
+        eps_tol=0.28,
+        T=15,
+        seed=7,
+        device=None,
+        # T047: the growth stopping criterion (cortex/growth_stop.py) -- a ONE-ARG callable
+        # receiving THIS engine's trajectory (the system under test reaches the criterion
+        # through its parameter -- the red_reachability zero-arg red) and returning bool,
+        # consulted at each refit. None = ungated (the incumbent fixed schedule, which is
+        # exactly the criterion's CONTROL arm). The callable's verdict logic is the gate's
+        # own; this engine can consult it, never constrain it.
+        growth_gate=None,
+    ):
+        self.refit_every = int(refit_every)
+        self.buffer_cap = int(buffer_cap)
+        self.seed = int(seed)
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self._growth_gate = growth_gate
+        self._l_max = None if l_max is None else int(l_max)  # None -> NGSNN derives L <= N
+        self._eps_tol, self._T = float(eps_tol), int(T)
+        self._buf_x = []  # percept_{t-1}
+        self._buf_y = []  # the brain's own category of percept_t
+        self._prev = None  # the last percept observed, paired with the NEXT category
+        self._categories = set()  # every category the brain has shown this engine
+        self.observed = 0  # wake percepts received (the stimulus count; ticks counts sleep)
+        self.ticks = 0
+        self._n_units = 0
+        self._acc = 0.0  # no measurement until the first fit -- never a chance guess
+        self._model = None  # the retained grown NG-SNN; None until the first successful refit
+        #: [(tick, majority_acc, persistence_acc)] per refit, on the SAME held-out slice as the
+        #: accuracy: what "predict the next category" scores by always answering the training
+        #: majority, and by answering "the same as the last one". On a bursty real stream the
+        #: persistence baseline is the honest floor -- an accuracy that does not clear it
+        #: learned nothing the stream's own inertia did not already give away (P8 clause 4).
+        #: Measurement, not substrate: never persisted.
+        self.baselines = []
+        #: [(depth, layer, sign)] index-aligned with `self._model.W` rows -- every grown unit's
+        #: cortical home. Maintained across BOTH growth (new units appended) and PRUNE (survivors
+        #: reindexed by the model's `last_keep`), because a placement that stops tracking its unit
+        #: is worse than no placement: it looks like structure and describes a different neuron.
+        self._placement = []
+        self.trajectory = []  # (tick, n_units, acc) per refit
+
+    # ---- the percept stream (WAKE) and the sleep step ----------------------------------------
+    # distinct-from: hippocampus/growing_learner.py -- its observe() RECRUITS/refines prototypes
+    #   and is the CATEGORY producer this consumes. distinct-from: basal_ganglia/
+    #   learning_progress.py -- its observe() feeds error levels into |LP| EMAs.
+    #   distinct-from: substrate/signal_calibrator.py, cortex/percept_surprise.py -- observe()
+    #   there records a scalar distribution / an Oja residual. This one BUFFERS a (percept ->
+    #   next own-category) transition for the sleep refit. All sites read.
+    def observe(self, features, category):
+        """WAKE: one percept the brain just had, with the brain's own category of it. Records the
+        transition (previous percept -> this category): the engine's task is to predict, from
+        what the brain perceived a tick ago, what it will perceive next -- in the brain's own
+        vocabulary. The first percept has no predecessor and is only remembered. Refuses a
+        percept of a different width than the buffer holds (NGSNN would otherwise be fit on a
+        ragged matrix), and a category that is not a non-negative int."""
+        cat = int(category)
+        if cat < 0:
+            raise ValueError(f"a category is a prototype id, never negative (got {cat})")
+        feats = [float(v) for v in features]
+        if self._buf_x and len(feats) != len(self._buf_x[0]):
+            raise ValueError(
+                f"percept width {len(feats)} != buffered width {len(self._buf_x[0])}; "
+                "a widened percept needs a fresh engine"
+            )
+        if self._prev is not None:
+            self._buf_x.append(self._prev)
+            self._buf_y.append(cat)
+            if len(self._buf_x) > self.buffer_cap:
+                self._buf_x.pop(0)
+                self._buf_y.pop(0)
+        self._prev = feats
+        self._categories.add(cat)
+        self.observed += 1
+        return cat
+
     def tick(self):
-        """Advance the chain one step; record (features of the current mode -> next mode id);
-        refit the NG-SNN when due. Returns the new current mode id."""
-        feats = _mode_features(self.current_mode, self.k_modes, self._chain, self.jitter)  # feat_t
-        nxt = self._next_mode(self.current_mode)  # mode_{t+1} (next perception)
-        self._buf_x.append(feats)
-        self._buf_y.append(nxt)
-        if len(self._buf_x) > self.buffer_cap:
-            self._buf_x.pop(0)
-            self._buf_y.pop(0)
-        self.current_mode = nxt
+        """SLEEP: one offline step; refit the NG-SNN on the buffered stream when due. Synthesizes
+        nothing -- an engine that has been shown no percepts has nothing to grow on, and says so
+        through an empty trajectory rather than a fabricated stimulus. Returns the sleep tick."""
         self.ticks += 1
         if self.ticks % self.refit_every == 0:
             self._refit()
-        return nxt
+        return self.ticks
 
     # ---- neurogenesis / self-improvement -----------------------------------------------------
+    # distinct-from: cortex/rose_language.py -- its majority-class CONTROL scores a competence
+    #   head on language items. distinct-from: cortex/metacognitive_monitor.py, cortex/
+    #   wholistic_loop.py -- held-out accuracy of a prototype/two-mode classifier on fresh
+    #   samples. distinct-from: cortex/reasoning_curriculum.py -- the curriculum's nightly
+    #   held-out accuracy. distinct-from: hippocampus/sleep_consolidation.py -- pattern-completion
+    #   retention. None computes the persistence floor of a TEMPORAL category stream, which is
+    #   the number this exists for; the majority floor is two lines and rides beside it so the
+    #   two floors are read off the SAME slice as the accuracy. All sites read.
+    @staticmethod
+    def _heldout_baselines(y_tr, y_te):
+        """(majority, persistence) accuracy on the held-out slice: the training majority class
+        answered every time, and each row answered with the category BEFORE it (the first
+        held-out row's predecessor is the last training row). Pure bookkeeping on labels."""
+        tr = y_tr.tolist()
+        te = y_te.tolist()
+        if not te:
+            return 0.0, 0.0
+        # no training rows -> no majority to answer with (never peek at the held-out slice)
+        maj = max(set(tr), key=tr.count) if tr else None
+        majority = sum(1 for v in te if v == maj) / len(te)
+        # a first held-out row with no predecessor is a MISS for persistence, never a gift
+        prev = ([tr[-1]] if tr else [None]) + te[:-1]
+        persistence = sum(1 for p, v in zip(prev, te) if p == v) / len(te)
+        return majority, persistence
+
+    # distinct-from: brainstem/autonomous_loop.py -- _context_pattern() ENCODES the percept this
+    #   consumes. distinct-from: cerebellum/spiking_jepa.py -- a collapse measurement on a
+    #   held-out batch. distinct-from: cortex/growth_stop.py -- should_grow() is the VERDICT this
+    #   refit consults. distinct-from: cortex/percept_surprise.py -- records an A/B attribution.
+    #   distinct-from: hippocampus/growable_readout.py -- re-seeds an optimizer. Phrase overlap
+    #   on 'measure'/'held-out'/'fresh' only. All sites read.
     def _refit(self):
-        """Grow a fresh NG-SNN on the buffer (features_t -> next mode) and measure next-mode
-        prediction accuracy on a HELD-OUT recent slice (never used in the fit)."""
+        """Grow a fresh NG-SNN on the buffer (percept_{t-1} -> category_t) and measure next-category
+        prediction accuracy on a HELD-OUT recent slice (never used in the fit), beside the
+        slice's own majority and persistence floors."""
         n = len(self._buf_x)
         holdout = min(60, n // 3)
-        if holdout < 3 or (n - holdout) < self.k_modes:
+        # a prediction needs at least two categories to tell apart, and at least as many
+        # training rows as there are categories to tell them apart WITH
+        n_cat = len(set(self._buf_y))
+        if holdout < 3 or n_cat < 2 or (n - holdout) < n_cat:
             return
         x = torch.tensor(self._buf_x, dtype=torch.float32)
         y = torch.tensor(self._buf_y, dtype=torch.long)
         x_tr, y_tr = x[: n - holdout], y[: n - holdout]
         x_te, y_te = x[n - holdout :], y[n - holdout :]
+        self.baselines.append((self.ticks, *self._heldout_baselines(y_tr, y_te)))
         # T047: consult the growth gate. CLOSED -> measurement continues, growth does not:
         # score the RETAINED substrate on the fresh held-out slice and record the refit
         # row, because the gate re-opens on its own evidence (a new measured optimum, |LP|
@@ -439,6 +563,15 @@ class NeurogenesisSelfImprove:
             traj_acc=np.array(
                 [a for _t, _u, a in self._traj_tail(self.trajectory)], dtype=np.float64
             ),
+            # rank 2 (2026-09-02): the floors of the fit these weights came from -- OPTIONAL
+            # arrays, same additive contract. An accuracy restored without its floors would
+            # read as learning on a stream whose inertia may have supplied all of it.
+            base_majority=np.array(
+                [self.baselines[-1][1]] if self.baselines else [], dtype=np.float64
+            ),
+            base_persistence=np.array(
+                [self.baselines[-1][2]] if self.baselines else [], dtype=np.float64
+            ),
         )
         return buf.getvalue()
 
@@ -470,6 +603,9 @@ class NeurogenesisSelfImprove:
                 z_tt = z["traj_ticks"] if "traj_ticks" in z else None
                 z_tu = z["traj_units"] if "traj_units" in z else None
                 z_ta = z["traj_acc"] if "traj_acc" in z else None
+                # optional -- absent in every blob written before rank 2's floors
+                z_bm = z["base_majority"] if "base_majority" in z else None
+                z_bp = z["base_persistence"] if "base_persistence" in z else None
         except Exception:
             return False
         if W.ndim != 2 or beta.ndim != 2 or b.ndim != 1:
@@ -519,6 +655,13 @@ class NeurogenesisSelfImprove:
                 ]
         except Exception:
             pass
+        # the restored accuracy's own floors, or None on state() until the first refit measures
+        # them (a pre-rank-2 blob carries none, and nothing is fabricated in their place)
+        try:
+            if z_bm is not None and z_bp is not None and len(z_bm) == len(z_bp) == 1:
+                self.baselines = [(int(ticks), float(z_bm[0]), float(z_bp[0]))]
+        except Exception:
+            pass
         return True
 
     def substrate_is_retained(self):
@@ -533,16 +676,30 @@ class NeurogenesisSelfImprove:
     def predict_accuracy(self):
         return self._acc
 
+    # distinct-from: reasoning/self_improve.py -- self_map() counts the brain's OWN graph nodes.
+    #   distinct-from: cortex/growth_stop.py -- observed() is the gate's feed cursor.
+    #   distinct-from: basal_ganglia/brain_native_selfbuild.py -- ledger() counts de-hardcoded
+    #   constants. distinct-from: brainstem/autonomous_loop.py -- _pfc_bias() is a top-down
+    #   action bias. distinct-from: brainstem/so101_arm.py -- trajectory_breach() is a droop
+    #   check. Phrase overlap on 'how many' only; this counts the categories shown. Sites read.
     @property
     def n_modes(self):
-        return self.k_modes
+        """How many distinct categories the brain has shown this engine -- its own vocabulary
+        size, and the denominator of chance for the accuracy beside it."""
+        return len(self._categories)
 
     def state(self):
         return {
             "goal": self.goal,
             "ticks": self.ticks,
+            "observed": self.observed,
             "grown_units": self.grown_units,
             "predict_accuracy": self.predict_accuracy,
+            # the floors the accuracy above must clear to mean anything on THIS stream; None
+            # until a refit has measured them (a restored accuracy must never sit beside a
+            # fabricated 0.0 floor -- the floors ride in the blob with the fit they belong to)
+            "baseline_majority": self.baselines[-1][1] if self.baselines else None,
+            "baseline_persistence": self.baselines[-1][2] if self.baselines else None,
             "n_modes": self.n_modes,
         }
 
@@ -618,7 +775,7 @@ def _cross_process_restart(seed, cfg, ticks=140):
         os.environ["NORD_HOME"] = work
         from snn_data_lake.substrate.home import knowledge_path, save_growth
 
-        eng = _run(NeurogenesisSelfImprove(seed=seed, **cfg), ticks)
+        eng = _run(NeurogenesisSelfImprove(seed=seed, **cfg), ticks, SyntheticPerceptStream(seed))
         retained = eng.substrate_is_retained()
         blob = eng.growth_state_bytes()
         parent_fp = growth_fingerprint(eng)
@@ -711,29 +868,40 @@ def _cross_process_restart(seed, cfg, ticks=140):
 # -------------------------------------------------------------------------------------------------
 # __main__ un-riggable self-check: each claim + a CONTROL that MUST fail.
 # -------------------------------------------------------------------------------------------------
-def _run(engine, n_ticks):
-    for _ in range(n_ticks):
-        engine.tick()
-    return engine
+# distinct-from: cortex/brain.py -- _drive() there ticks a BRAIN with a forced clock phase.
+#   distinct-from: cortex/heterogeneous_microcircuit.py -- drives a circuit for spike counts.
+#   distinct-from: cortex/reasoning_curriculum.py -- runs the curriculum's own night loop.
+#   distinct-from: substrate/neuro_chip_stream.py -- an out-of-core AER event loop.
+#   distinct-from: substrate/replay_gate.py -- an RNG-driven stimulus for the resume proof.
+#   Phrase overlap on 'drive for n ticks' only; this hands the harness stream to drive(). Sites read.
+def _run(engine, n_ticks, stream):
+    """Drive `engine` through n_ticks of the harness stimulus (observe + sleep tick each)."""
+    return stream.drive(engine, n_ticks)
 
 
 def main():
     dev = "cuda" if torch.cuda.is_available() else "cpu"
-    cfg = dict(
-        k_modes=5,
-        refit_every=20,
-        buffer_cap=1000,
-        peak=0.75,
-        jitter=0.12,
-        l_max=None,
-        eps_tol=0.28,
-        T=15,
+    cfg = dict(refit_every=20, buffer_cap=1000, l_max=None, eps_tol=0.28, T=15)  # the ENGINE
+    scfg = dict(k_modes=5, peak=0.75, jitter=0.12)  # the harness STIMULUS (never the live path's)
+    chance = 1.0 / scfg["k_modes"]
+
+    def stream(seed=7, **kw):
+        return SyntheticPerceptStream(seed=seed, **scfg, **kw)
+
+    # claim 0: NOTHING GROWS FROM NOTHING. An engine shown no percept refits nothing, grows
+    # nothing and reports no accuracy -- the live path's stimulus is the brain's, and an engine
+    # that fabricated one when unfed would be the retired chain wearing a fallback's clothes.
+    _unfed = NeurogenesisSelfImprove(seed=7, **cfg)
+    for _ in range(200):
+        _unfed.tick()
+    assert _unfed.trajectory == [] and _unfed.grown_units == 0 and _unfed.observed == 0, (
+        "an engine fed no percepts must not refit, grow or report accuracy"
     )
-    chance = 1.0 / cfg["k_modes"]
+    assert _unfed.predict_accuracy == 0.0 and _unfed.n_modes == 0
 
     # claim 1: SELF-IMPROVEMENT -- held-out next-mode accuracy RISES from ~chance as it grows.
     # early/late are averaged over first-2 / last-3 refits (the held-out slice is small -> noisy).
-    eng = _run(NeurogenesisSelfImprove(seed=7, **cfg), 600)
+    eng = _run(NeurogenesisSelfImprove(seed=7, **cfg), 600, stream())
     # P5a: snapshot the routing decision THIS run's last refit made, before claims 2-5 build further
     # engines and overwrite it -- `decisions()` is keyed by workload and is last-write-wins by design.
     # Read live rather than assumed: claim 6 first failed against a width derived from `buffer_cap`,
@@ -760,7 +928,7 @@ def main():
     c1_pass = (late_acc >= 0.5) and (late_acc - early_acc >= 0.10) and (grown > 0)
 
     # claim 2: CONTROL THAT MUST FAIL -- shuffled (structure-free) transitions stay at chance.
-    ctrl = _run(NeurogenesisSelfImprove(seed=7, shuffle_transitions=True, **cfg), 600)
+    ctrl = _run(NeurogenesisSelfImprove(seed=7, **cfg), 600, stream(shuffle_transitions=True))
     ctrl_acc = ctrl.trajectory[-1][2]
     ctrl_grew = ctrl.grown_units > 0  # it DID grow, but cannot generalize
     c2_pass = (ctrl_acc < 0.35) and ctrl_grew and (late_acc - ctrl_acc >= 0.20)
@@ -777,8 +945,8 @@ def main():
     c3_pass = (units_600 > units_100) and (units_600 <= _bound)
 
     # claim 4: DETERMINISTIC -- two seed=7 engines give identical grown_units + accuracy trajos.
-    a = _run(NeurogenesisSelfImprove(seed=7, **cfg), 600)
-    b = _run(NeurogenesisSelfImprove(seed=7, **cfg), 600)
+    a = _run(NeurogenesisSelfImprove(seed=7, **cfg), 600, stream())
+    b = _run(NeurogenesisSelfImprove(seed=7, **cfg), 600, stream())
     units_a = [u for (_, u, _) in a.trajectory]
     units_b = [u for (_, u, _) in b.trajectory]
     accs_a = [ac for (_, _, ac) in a.trajectory]
@@ -834,7 +1002,11 @@ def main():
     ]
     line = "+" + "-" * 4 + "+" + "-" * 42 + "+" + "-" * 34 + "+" + "-" * 6 + "+"
     print("=" * 90)
-    print(f"NEUROGENESIS SELF-IMPROVE | dev={dev} K={cfg['k_modes']} chance={chance:.2f}")
+    print(
+        f"NEUROGENESIS SELF-IMPROVE | dev={dev} harness K={scfg['k_modes']} chance={chance:.2f} "
+        "(the stimulus below is the SELF-CHECK's synthetic chain -- the live path's stimulus is "
+        "the brain's own percepts; these numbers are the instrument's sensitivity)"
+    )
     print(line)
     print(f"| {'#':>2} | {'claim':<40} | {'measured':<32} | {'ok':<4} |")
     print(line)
@@ -892,7 +1064,7 @@ def main():
     # decision the refits ABOVE actually made -- it does not re-derive one -- so it fails if `_refit`
     # stops routing, if it routes on a placeholder width, or if the answer stops following the
     # measurement. The expected width is derived from cfg and the feature encoder, never written down.
-    _feat = len(_mode_features(0, cfg["k_modes"]))
+    _feat = len(_mode_features(0, scfg["k_modes"]))
     _expect_n = (_route_rows - min(60, _route_rows // 3)) * _feat
     _rt = _route
     assert _rt is not None, (

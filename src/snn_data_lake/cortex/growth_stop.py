@@ -711,13 +711,17 @@ def main():
     try:
         import torch  # noqa: F401
 
-        from snn_data_lake.cortex.neurogenesis_engine import NeurogenesisSelfImprove
+        from snn_data_lake.cortex.neurogenesis_engine import (
+            NeurogenesisSelfImprove,
+            SyntheticPerceptStream,
+        )
 
         d_units, d_accs, any_stop = [], [], 0
         for seed in (1, 2, 3, 7, 11, 13):
+            # the engine's harness stimulus (rank 2 moved the live stimulus to the brain's
+            # own percepts; the engine synthesizes nothing, so the A/B drives it here)
             eng_off = NeurogenesisSelfImprove(seed=seed, refit_every=20, device="cpu")
-            for _ in range(1600):
-                eng_off.tick()
+            SyntheticPerceptStream(seed).drive(eng_off, 1600)
             gate = GrowthStop(lp_reader=_FlatLP())
 
             def _g(traj, _gate=gate):
@@ -728,8 +732,7 @@ def main():
             eng_on = NeurogenesisSelfImprove(
                 seed=seed, refit_every=20, device="cpu", growth_gate=_g
             )
-            for _ in range(1600):
-                eng_on.tick()
+            SyntheticPerceptStream(seed).drive(eng_on, 1600)
             d_units.append(eng_on.grown_units - eng_off.grown_units)
             d_accs.append(eng_on.predict_accuracy - eng_off.predict_accuracy)
             any_stop += any(not v for _i, v, _r in gate.decisions("cortex"))

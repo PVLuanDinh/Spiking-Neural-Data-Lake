@@ -490,9 +490,18 @@ be the P1 defect this program audits. Region IDs in one namespace: **CP**=cortex
 ### W3.1 -- CP2 -- real percept into NeurogenesisEngine, under a named contract change
 
 - **Producer / consumer.** The live percept stream -> `cortex/neurogenesis_engine.tick()`,
-  which today takes no argument and draws features from `_mode_features(self.current_mode)`
-  with `self._chain = random.Random(seed)`; `brain.py:2369` calls it bare -- while its
-  docstring claims it grows "to predict the brain's own next perception."
+  which before 2026-09-02 took no argument and drew features from `_mode_features(self.current_mode)`
+  with `self._chain = random.Random(seed)`; `brain.py` called it bare -- while its
+  docstring claimed it grows "to predict the brain's own next perception."
+  **BUILT 2026-09-02 (specs/022 audit s8 rank 2a) under a different contract than the one below:**
+  `NeurogenesisSelfImprove.observe(percept, category)` on every wake tick, target = the brain's
+  OWN next category (the arm learner's prototype id), not the digit class -- the "current class"
+  target proposed below would duplicate the encoder's own classification (P2). Measured: NULL
+  under its pre-registered rule (v2, after a panel): the grower carries nothing beyond the class
+  prior, reaches the stream's persistence floor (0.93) on 3 of 8 seeds, and a persistence oracle
+  does no better -- the earn-your-place validation window on a bursty stream is the limit, not
+  the stimulus; attribution by band is a null. The chain is retired from the live path. Record:
+  `specs/022-unified-brain-arc/evidence/s2-real-percept-stream.md`.
 - **Signal, with the contract change named not sneaked.** On the live pack the *next*-mode
   contract is unlearnable (0.180 in-sample over 255 transitions with 10 states, ~2.5
   samples/cell, an overfit upper bound, against a 0.100 floor), so feeding it the real stream

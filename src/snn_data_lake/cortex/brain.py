@@ -586,6 +586,7 @@ class Brain:
         # whole neurogenesis tier to None.
         self._growth_stop = None  # T047: lazy growth gate; the engine consults it per refit
         self._growth_feed_refusals = 0  # T047: poisoned trajectory rows refused at the feed
+        self._neuro_feed_refusals = 0  # rank 2: wake percepts the grower refused (surfaced)
         self.neuro = self._make_neuro(self._seed, device)
 
         # ---- language organ (brain-native, LAZY): the brain's CONVERSATION comes from the ACQUIRED
@@ -2285,6 +2286,25 @@ class Brain:
         res = self.brain.tick(
             ctx, homeostatic_load=load, reward_fn=self.brain.arm.coverage_reward
         )  # safety lives in here
+        # specs/022 audit s8 rank 2 (2026-09-02): THE GROWER'S STIMULUS IS THIS TICK'S PERCEPT.
+        # The neurogenesis engine used to synthesize a 5-mode Markov chain for itself every sleep
+        # tick (a bounded task it predicted at ~0.7 -- an experiment ABOUT growth, P0's guard).
+        # Now every wake percept the arm loop just had -- `res["percept"]`, the attention-gained
+        # context vector its GrowingLearner categorized (the unified real vision/audio channels,
+        # real proprioception, the SAFE distance) -- and its own category of it (that learner's
+        # prototype id, `unit`) are handed to the engine, which grows neurons at night to predict
+        # the NEXT category from the previous percept. The SAME vector the learner saw, not the
+        # raw pre-attention pattern: the panel measured the first draft feeding the raw pattern
+        # while the category was of the gained one (max |diff| 0.5 on every tick), so the engine
+        # learned a map from a space the categories were never drawn in. The reflex path returns
+        # unit=None and feeds nothing (a stop is not a percept). Refusals are COUNTED and surfaced
+        # on state() rather than swallowed silently: a feed that dies inside this except would
+        # otherwise read as "the brain perceives nothing" forever.
+        if self.neuro is not None and res.get("unit") is not None:
+            try:
+                self.neuro.observe(res["percept"], int(res["unit"]))
+            except Exception:
+                self._neuro_feed_refusals += 1
         pcs = float(res.get("pc_surprise", 0.0) or 0.0)  # live generative-percept prediction-error
         self._pc_surprise = round(pcs, 4)
         self._pc_surprise_ema = (
@@ -3926,6 +3946,26 @@ class Brain:
                 if self._growth_stop is not None
                 else {}
             ),
+            # rank 2 (2026-09-02): the grower's OWN report -- percepts observed, sleep ticks,
+            # the two floors `predict_accuracy` (top-level, above) must clear on the slice it
+            # was measured on (majority, persistence; None until a refit measured them), the
+            # brain's category count, and the wake percepts this brain failed to hand it.
+            # `predict_accuracy` and `grown_units` are NOT repeated here (state() carries one
+            # representation of a fact); the cockpit renders the floors beside its own
+            # `predict acc` row, because on a bursty percept stream the accuracy alone is
+            # mostly the stream's inertia (P4c/P8).
+            "neurogenesis": (
+                {
+                    **{
+                        k: v
+                        for k, v in self.neuro.state().items()
+                        if k not in ("goal", "grown_units", "predict_accuracy")
+                    },
+                    "feed_refusals": self._neuro_feed_refusals,
+                }
+                if self.neuro is not None
+                else {}
+            ),
             "evc_cost": self._evc_cost,  # C1 b4: LEARNED cost-of-control (dopamine-gated, replaces fixed 0.1)
             "evc_value": self._evc_value,  # C1 b4: LEARNED value-of-control
             "episode_retained": self._episode_retained,  # C1 b4: durable-episode recall fraction (systems consolidation, no forgetting)
@@ -4942,6 +4982,16 @@ def _main():
         grown_day0 = brain.neuro.grown_units
         wake_before = brain.state()["wake_ticks"]
         day2 = _force(brain, 0.25, 8)  # force DAY: no growth, wake ticks
+        # rank 2 (2026-09-02): the grower's stimulus is the brain's OWN percept stream, and a
+        # refit needs >= 2 categories to tell apart -- a day on which the arm showed the engine
+        # a single category (measured: seed 1, 14 wake ticks, one category) gives the night
+        # nothing to grow on, and this claim would then be testing the seed. Keep the day going,
+        # bounded, until two categories have been shown; every extra tick is a DAY tick, so the
+        # no-growth-by-day half of the claim only gets stricter.
+        _extra_day = 0
+        while brain.neuro.n_modes < 2 and _extra_day < 160:
+            day2 += _force(brain, 0.25, 8)
+            _extra_day += 8
         grown_after_day = brain.neuro.grown_units
         c2_day = (
             all(m == "awake" for m in day2)
@@ -4962,7 +5012,9 @@ def _main():
             (
                 2,
                 "grows in SLEEP only (day delta 0)",
-                f"day +{grown_after_day - grown_day0}u, night {brain.neuro.grown_units}u",
+                f"day +{grown_after_day - grown_day0}u ({brain.neuro.n_modes} categories shown"
+                f"{f', +{_extra_day} day ticks' if _extra_day else ''}), "
+                f"night {brain.neuro.grown_units}u",
                 c2_pass,
             )
         )
