@@ -456,6 +456,19 @@ in the tree.** Ordered by leverage on the three goal clauses; the policy clause 
    P3 demands — if hippocampal placement changes no downstream outcome the wire is reverted and the null
    recorded. *P3: "a wire that does not charge is reverted and retired/exempted, never faked with a dead
    consumer."* Red: `growth_coverage_gate`'s identity-pinned baseline.
+   **OUTCOME 2026-09-02 — built, measured, NULL, reverted.** The wire (a `growing_learner → hippocampus`
+   seam rippled from the sleep tick) placed 24 hippocampal units in 600 ticks and changed **0** keys of
+   `state()`/telemetry beyond the nondeterminism baseline; so did replacing cortex placement itself with
+   constant tuples, while the growth-off positive control moved 18 (9 unique; the snapshot embeds
+   `state()`). Placement is write-only on the live path — at HEAD for cortex, on the wired tree for
+   hippocampus — and outside cortex the record carries no per-unit information by construction, so P3
+   reverted the wire. Record: `evidence/s1-placement-null.md`; pinned by
+   `tests/test_placement_charge_null.py`. The panel on that landing found the one built reader of
+   placement: `cortex/genomic_bottleneck` (FR-033, T044 — unit tags → a grown unit's initial fan-in),
+   dormancy-EXEMPT `wire`, its own A/B and delete-on-null written in its docstring. So "rank 1b" is a
+   WIRE, not a build: run FR-033's A/B (map-drawn fan-in vs the random pool inside `NGSNN.fit`'s
+   candidate loop, reached through the engine's refit); its red is this pinned test going RED. Only
+   after that does a second attempt at this rank become a charge question.
 2. **Give the persisted grower the real percept stream, give `GrowingLearner` a lake record, and widen the
    stream the stopping rule watches.** Replace the synthetic `_mode_features` input with the brain's own
    percept/episode stream (`tick(features)`); persist the experience-driven grower under its own tag with the

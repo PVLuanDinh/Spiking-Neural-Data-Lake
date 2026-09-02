@@ -53,8 +53,10 @@ E-fraction exists outside H01 cortex and a default is how a made-up number acqui
 measurement's authority. The same section composes the project's growers -- a grower -> region
 routing table asserted to sit inside growth_program's owner-ratified GROWABLE partition --
 through the 007 interface (`substrate/growable.GrowthCoordinator`): the first `register_seam`
-caller outside growable.py's own self-check (no live-tick caller yet; T049+ is the dated
-consumer), with the 007 contract's C1.7 safety refusal AND T042's SCAFFOLD closure enforced as
+caller outside growable.py's own self-check (no live-tick caller: a sleep-tick wire was built
+and measured a NULL on 2026-09-02 -- placement has no live reader yet -- and reverted under P3;
+specs/022 evidence/s1-placement-null.md, pinned by tests/test_placement_charge_null.py), with
+the 007 contract's C1.7 safety refusal AND T042's SCAFFOLD closure enforced as
 one admission rule at the growth call site (`place_grown`).
 
   python -m snn_data_lake.cortex.placement
@@ -366,7 +368,8 @@ def _place_grn(n_units, seed, prior):
 #: growth seam registered through the 007 interface (compose_growers), and place_grown is
 #: the placement route a grower's new units WILL take: today only function_preserving_growth
 #: is driven through it, from this module's own __main__; neurogenesis_engine still calls
-#: place() directly (open composition debt, the learning slice T049+); ng_snn is registered
+#: place() directly (open composition debt: the composed sleep-tick wire measured a NULL on
+#: 2026-09-02 and was reverted, specs/022 evidence/s1-placement-null.md); ng_snn is registered
 #: only. distinct-from: cortex/growth_program.py::GROWABLE -- that is the owner-ratified
 #: REGION partition (10 regions, pinned by equality in T042's self-check, counted by T046);
 #: this is a 3-entry grower routing table, and the self-check asserts every route lands
@@ -392,8 +395,9 @@ def place_grown(grower, n_units, seed=0):
     module, so the refusal was structurally unreachable; this call site is the enforcement it
     demands, verified in the self-check by ATTEMPTING refusals and DISCRIMINATING the branch
     by message (the T043 panel's blocker: a bare except also caught the unknown-grower branch,
-    leaving the C1.7 red unreachable). No live-tick caller reaches this yet -- the learning
-    slice T049+ is the dated consumer.
+    leaving the C1.7 red unreachable). No live-tick caller reaches this: a sleep-tick wire was
+    built and measured a NULL on 2026-09-02 (placement has no live reader; specs/022
+    evidence/s1-placement-null.md, pinned by tests/test_placement_charge_null.py) and reverted.
 
     REFUSAL IS FIRST AND UNCONDITIONAL (the T042 lesson: a gate one arm can short-circuit is
     not a gate): a safety-seam-looking name is refused before the grower is even looked up, so
@@ -430,8 +434,10 @@ def place_grown(grower, n_units, seed=0):
 def compose_growers(base_seed=0):
     """The registered growers composed through the 007 interface: one GrowthCoordinator with a
     seam per grower -- the first `register_seam` caller outside growable.py's own self-check
-    (NOT live: the only callers are this module's own __main__, and the learning slice T049+
-    is the dated consumer) -- each seam wired so a growth event RIPPLES into placements:
+    (NOT live: the only callers are this module's own __main__; a sleep-tick caller was built,
+    measured a NULL on 2026-09-02 -- no live reader of placement exists -- and reverted under
+    P3, specs/022 evidence/s1-placement-null.md) -- each seam wired so a growth event RIPPLES
+    into placements:
     `coord.grow(name, w)` appends exactly the delta units' placements to `ledger[name]`,
     deterministically. Event seed = crc32(name) ^ base_seed ^ old_width (crc32, never builtin
     hash -- the persistence invariant): a replay of the same growth SCHEDULE places
@@ -786,8 +792,8 @@ def _selfcheck():
     )
 
     # The coordinator seams: the first register_seam caller outside growable.py's own
-    # self-check (NO live-tick caller -- nothing on the wake/sleep path reaches this; the
-    # learning slice T049+ is the dated consumer), the safety tripwire red THROUGH the
+    # self-check (NO live-tick caller -- the sleep-tick wire measured a NULL on 2026-09-02 and
+    # was reverted, specs/022 evidence/s1-placement-null.md), the safety tripwire red THROUGH the
     # interface, and a growth event rippling into exactly the delta placements.
     coord, ledger = compose_growers(base_seed=0)
     assert coord.seams() == sorted(GROWER_REGIONS), "the grower set is not fully registered"

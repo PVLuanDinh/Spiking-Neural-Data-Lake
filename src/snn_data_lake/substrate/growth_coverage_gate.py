@@ -459,6 +459,16 @@ def report(do_assert=False):
         f"{null_ari:+.3f} over 200 shuffles (display -- ARI alone is name-blind, disclosed)"
     )
 
+    print(
+        "DISCLOSURE (reported every run): regions-grown is a census of who WRITES a placement "
+        "record. No LIVE path reads one -- a brain with placement replaced by constant tuples "
+        "is value-identical in state() and telemetry on every key but the wall clock "
+        "(tests/test_placement_charge_null.py pins it; specs/022 evidence/s1-placement-null.md); "
+        "the one built reader, cortex/genomic_bottleneck (FR-033), is EXEMPT 'wire'. A region "
+        "added here without a live reader claims coverage of a write-only record. The 007 "
+        "growth->placement wire was built, measured at 0 differing keys, and reverted under P3 "
+        "(2026-09-02); retire this line the day that test reds."
+    )
     print("=" * 96)
     if failed:
         for f in failed:
@@ -498,6 +508,7 @@ def self_check():
     rc0, out0 = _report_rc(G)
     assert rc0 == 0, "the gate is not green on the real tree; fix that before mutating it"
     assert "BELOW FLOOR" in out0, "the coverage red stopped printing"
+    assert "DISCLOSURE (reported every run)" in out0, "the write-only disclosure stopped printing"
 
     def mutant(name, attr, value, needle):
         saved = getattr(G, attr)
