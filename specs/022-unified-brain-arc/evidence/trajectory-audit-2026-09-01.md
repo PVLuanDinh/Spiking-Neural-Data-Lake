@@ -526,6 +526,27 @@ in the tree.** Ordered by leverage on the three goal clauses; the policy clause 
    chain latch → constant proprioception → one buffer category is an INFERENCE consistent with what
    `/api/state` shows (`n_modes` reads 2, the buffer is not exposed), with no latch-cleared control — the
    E-STOP's likely P0 cost, not its measured one. Record: `evidence/s2b-growing-learner-lake-record.md`.
+   **OUTCOME 2026-09-02 (rank 2c, the stimulus half, commit 3 of 3): REFUSED ON MEASUREMENT, not built.**
+   The premise re-measured on the signal this item names does not reproduce: the basal-ganglia `LearningProgress`
+   facade (fed by percept surprise over the pack; the signal `GrowthStop` reads) is ALIVE on the fixed pack —
+   ~100 distinct values per 200 ticks, range 0.2, per-cycle mean 0.05–0.07 not descending, at 1200 and 3000
+   ticks, identical across brain seeds (the pack order and the surprise instrument are seed-free) — so the
+   red as written ("1 distinct value → >1") has no reachable baseline and is deleted, not weakened (P8
+   clause 1). The "1 distinct value" this section measured lives on the OTHER chain its own refuter named:
+   the arm's spiking-curiosity rectified LP over its world-model error on the `_safe_ctx` context (read as
+   `_lp_mean`, `curiosity_mag`, ACh) — `curiosity_mag` reaches exactly 1 distinct value (0.0) by 3000 ticks
+   on seeds 0 and 2 (seed 1: 127 distinct, not yet at the floor). The corrected question — does a rotating
+   real stream move THAT chain — was probed in-process without a tree change (cached tonic-binned test
+   frames, the pack's exact format, a fresh seeded 256-frame window every cycle; the encoder classifies a
+   cached window at 0.97 vs 0.93 on the pack): three seeds, `curiosity_mag` stays at 1 distinct value
+   (rotation is what CONVERGED seed 1), `_lp_mean` and ACh converge harder, the facade stays alive as before,
+   the vision learner gains two prototypes. **The pack is not what saturates the curiosity chain; the arm's
+   context is** — the synthetic 3-stimulus rotation and the proprioception of an arm that has been
+   E-STOP-latched on the daemon since 08-31 (an inference for the daemon; measured in-process with a free
+   arm under `throwaway_home()`). Nothing lands but the record; the corrected red (Chain A's `curiosity_mag`
+   leaving its floor under the same seeds) is the instrument the plan's Phase 1 builds. Rank 2 closes at
+   2 of 3 built + 1 refused on measurement; ranks 3 and 4 stand as ordered.
+   Record: `evidence/s2c-rotating-stream-refused.md` (probes archived with the session's audit record).
 3. **Instantiate the declared anatomy in `make_brain()`**: one `(ring, JoinConsumer)` per declared edge, using the
    factories the charge harness already calls; criterion "live `JoinConsumer` count == declared edge count and
    the pinned-payload neuter on any one changes the consumer's live output" — red today (reads 0). *P6: "the
