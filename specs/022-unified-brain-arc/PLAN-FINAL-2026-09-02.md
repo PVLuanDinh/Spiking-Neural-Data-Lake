@@ -54,11 +54,13 @@ retired, and every claim ships with a control and a red that can fail.
 - **Never write to the live lake** (`C:\Users\vinhl\.snn_data_lake\brain_lake.bin`) from a test or a probe:
   build brains under `substrate.home.throwaway_home()` with `make_brain(seed, persist=False)`, or under an
   isolated `NORD_HOME` temp dir for restart proofs. Never stand up a second brain against the live lake.
-- **Subagents are Fable 5.1 only** (owner rule 2026-09-02). Review panels are three Fable lenses.
+- **Subagents inherit the main session's model** (owner rule 2026-09-02, superseding the earlier Fable-only
+  rule): pass no model override to the Agent or Workflow tools. Review panels are three lenses on that model.
 - **One change per commit; one full battery per pushed ARC, on its stacked head** (owner rule 2026-09-02,
   POLICIES' "Gated + reversible" amendment). Every commit names the battery that verified the head it was
   pushed under; a red on the head is attributed per stage per commit, never by whole re-runs. Commit
-  messages end with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
+  messages end with the session model's trailer (for a Fable 5.1 session:
+  `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`).
 - **Launch sessions from `D:\AI-project`, not the repo subdir** (the memory tools key on that cwd). The
   curated memory store is `C:\Users\vinhl\.claude\projects\D--AI-project\memory\` (its `MEMORY.md` index
   auto-loads; its START-HERE file is the per-session protocol and points back here).
@@ -80,7 +82,7 @@ retired, and every claim ships with a control and a red that can fail.
    venv works from a plain shell today — O2 below concerns only the logon launcher's preflight). The
    archived templates are `rank2a/rank2_ab.py`, `rank2b/rank2b_charge.py`, `rank2c/probe_chains.py` and
    `rank2c/probe_fixed_vs_rotating.py` under the memory store's `archive/audit-2026-09-01/`.
-4. **Panel**: one per ARC — three Fable lenses (instrument / policy-honesty / integration) via the Workflow
+4. **Panel**: one per ARC — three lenses (instrument / policy-honesty / integration) via the Workflow
    tool on the frozen stacked tree; every finding must be reproduced by a command; fold the findings (as a
    further stacked commit); the fold is either re-panelled or stated in the commit as battery-verified
    only. Do not edit the tree while a panel reads it, and no panel agent builds a brain or renders while a
@@ -535,6 +537,7 @@ safety envelope; W1 runs inside the existing scene.
 3. Read that phase's incumbents in A.5 and its reds in Part F; run `graph-exists.js` on the capability
    before writing code.
 4. Pre-register the task's protocol in its evidence file; probe the premise on the named signal first.
-5. Build → measure → panel (three Fable lenses) → fold → battery (A.4 step 5's command) → commit → push →
+5. Build → measure → panel (three lenses, the session's model) → fold → battery (A.4 step 5's command) →
+   commit → push →
    daemon poll → close-out.
 6. If a task measures a NULL, record it, apply its pre-registered disposition, and continue; do not defend it.
