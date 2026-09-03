@@ -160,10 +160,11 @@ def test_revision_advances_per_frame():
     MEASURED, 12 fresh processes timing `render_if_wanted` alone: 11 of them 0.241-0.254 s
     (~4.9% of the TTL), and the FIRST -- a cold process -- 10.44 s, 209% of the TTL, which
     reproduced `r1=1 r2=None` on the spot with nothing else running. So a cold process is
-    SUFFICIENT on its own; contention raises the rate, it is not required. (An earlier note
-    here said 0.49 s / 9.8%; that was the probe's end-to-end wall clock -- imports 0.15 s plus
-    model construction 0.10 s plus the render -- and it under-stated the risk by attributing
-    setup cost to the render and by sampling one warm process.)
+    SUFFICIENT on its own; contention raises the rate, it is not required. The cost is strongly
+    warmth-dependent and a single sample says little: the same probe reports ~0.50 s on its
+    first run in a sequence and ~0.25 s thereafter. An earlier note here quoted one 0.49 s
+    sample as a "~10x margin", which is the error worth naming -- not a mis-measurement, a
+    generalisation from n=1 over a quantity whose tail is two orders of magnitude away.
 
     Demand expiry is not this test's subject and is not lost: `test_demand_expires` owns it
     deliberately, with its own injected clock and assertions in both directions. Two of this
