@@ -260,7 +260,14 @@ def main():
     assert view.status()["arm_view_available"] is False
 
     # ---- 4. the real arm, if this environment can draw ----------------------------------
-    rendered = None
+    # The try covers ONLY the import and the scene build -- the two things that legitimately
+    # fail where there is no mujoco and no GL. It used to wrap the assertions below as well,
+    # which made them unable to fail the self-check: an AssertionError landed in the bare
+    # `except Exception`, set `rendered = None`, and the run reported "unavailable" and exited
+    # 0. A broken revision counter was therefore indistinguishable from a headless box, in
+    # every battery. `render_if_wanted` swallows its own render errors and returns None, so
+    # nothing below needs that cover.
+    scene = None
     try:
         import mujoco
 
@@ -269,18 +276,31 @@ def main():
         m = arm_config._model()
         d = mujoco.MjData(m)
         mujoco.mj_forward(m, d)
-        live = ArmView(width=64, height=48)
+        scene = (m, d)
+    except Exception:  # no mujoco, no scene: this environment cannot draw
+        scene = None
+
+    rendered = None
+    if scene is not None:
+        m, d = scene
+        # Frozen clock, for the reason tests/test_arm_view.py records against these same two
+        # renders: request() once followed by two renders races DEMAND_TTL_S, and a COLD first
+        # render measured 10.44 s against the 5.0 s TTL. Time is not this section's subject.
+        live = ArmView(width=64, height=48, clock=lambda: 0.0)
         live.request()
         rendered = live.render_if_wanted(m, d)
-        if rendered:
+        # `is not None`, NOT truthiness. render_if_wanted returns None when it did not
+        # render and the revision number when it did -- and revision 0 is FALSY, so a
+        # counter stuck at 0 skipped this whole block and the run passed reporting that
+        # the check did not run. Found by constructing the red rather than by reading:
+        # pinning the counter left the self-check green until this line changed.
+        if rendered is not None:
             data, rev2 = live.frame()
             assert data[:8] == b"\x89PNG\r\n\x1a\n" and rev2 == 1
             assert len(data) > 100, "a rendered arm should not compress to nothing"
             r2 = live.render_if_wanted(m, d)
             assert r2 == 2, "the revision counter must advance per frame"
         live.close()
-    except Exception:
-        rendered = None
 
     print("=" * 60)
     print("ARM VIEW - offscreen arm picture for the cockpit (stdlib PNG)")
@@ -288,7 +308,12 @@ def main():
     print(f"encoder     : {len(png)} bytes for {w}x{h}, chunks {[t.decode() for t in seen]}")
     print("demand gate : expires after ttl; no request -> no frame produced")
     print(
-        f"live render : {'OK, revision advanced' if rendered else 'unavailable (reported, not raised)'}"
+        "live render : "
+        + (
+            "OK, revision advanced"
+            if rendered is not None
+            else "unavailable (reported, not raised)"
+        )
     )
     print("thread rule : renderer bound to its creating thread; other threads refused")
 
@@ -306,9 +331,18 @@ def main():
         f"camera      : wrap+clamp OK, az/el/d = {c2['azimuth']}/{c2['elevation']}/{c2['distance']}"
     )
     print("=" * 60)
+    # The live-render clause is CONDITIONAL on the render having happened. It used to be
+    # printed unconditionally, so a headless run -- and, before the fix above, a run whose
+    # revision assert was swallowed -- still claimed "revision advances per frame". A summary
+    # line that names a check it did not run is the same defect as an assert that cannot fail.
+    live_claim = (
+        "revision advances per frame"
+        if rendered is not None
+        else "live render unavailable, so the revision check did NOT run"
+    )
     print(
         "self-check OK: PNG chunk CRCs verified and pixels round-trip; demand gate expires; "
-        "missing GL degrades to a reason; revision advances per frame; camera wraps and clamps"
+        f"missing GL degrades to a reason; {live_claim}; camera wraps and clamps"
     )
 
 
