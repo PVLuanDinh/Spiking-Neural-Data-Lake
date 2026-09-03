@@ -688,6 +688,47 @@ def _gate_home():
             os.environ["NORD_HOME"] = prev
 
 
+# H1 (2026-09-02, owner decision O3): the six `tools/` gates ran only in the CI lint job,
+# which has been dark since 2026-08-20 -- `p4c_ratchet --assert` had NO local execution path
+# (audit section 8 rank 10). This stage gives every tools gate one, so `run_selfchecks` is
+# the whole local gate. Never carried, never run --in-process (a frozen bundle ships no tools/).
+TOOLS_GATES = [
+    ["tools/p4c_ratchet.py", "--assert"],
+    ["tools/p6_gate.py", "--assert"],
+    ["tools/dependency_ledger.py", "--assert"],
+    ["tools/red_reachability.py", "--assert"],
+    ["tools/citation_guard.py"],
+    ["tools/doc_command_guard.py", "--assert"],
+]
+
+
+def run_tools_gates(gates=None, emit=print):
+    """Run the tools/ gates as subprocesses in the isolated env; return the failed names.
+
+    The red is reachable by construction and asserted by tests/test_run_selfchecks_tools_stage.py:
+    a gate argv that exits non-zero comes back in the failed list, one that exits zero does not."""
+    gates = TOOLS_GATES if gates is None else gates
+    failed = []
+    for argv in gates:
+        t0 = time.perf_counter()
+        r = subprocess.run(
+            [sys.executable, *argv],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=_ENV,
+            cwd=_ROOT,
+        )
+        ok = r.returncode == 0
+        name = "tools/" + os.path.basename(argv[0])
+        emit(f"{'PASS' if ok else 'FAIL'}  {name}  [{time.perf_counter() - t0:.1f}s]")
+        if not ok:
+            failed.append(name)
+            emit(((r.stdout or "")[-2000:] + (r.stderr or "")[-2000:]).strip())
+    emit(f"{len(gates) - len(failed)}/{len(gates)} tools gates passed")
+    return failed
+
+
 def run_all(carry=False):
     if not _TORCH:
         # torch is a CORE dependency, so this is a BROKEN INSTALL, not a supported configuration.
@@ -805,6 +846,9 @@ def run_all(carry=False):
         print(f"ARTIFACT-SKIPPED ({len(artifact_skipped)}): " + ", ".join(artifact_skipped))
     for line in _latch_report_lines(latch_left, latch_stray):
         print(line)
+    tools_failed = run_tools_gates()
+    if tools_failed:
+        print("FAILED (tools gates): " + ", ".join(tools_failed))
     if failed:
         if carried:
             print(
@@ -813,7 +857,7 @@ def run_all(carry=False):
                 "confirms it (shared-home sequence coupling is a disclosed blind spot)."
             )
         print("FAILED: " + ", ".join(failed))
-    return not failed
+    return not failed and not tools_failed
 
 
 def run_one_in_process(mod):

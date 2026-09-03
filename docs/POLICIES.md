@@ -48,7 +48,7 @@ compressed clause.
 | *(not a policy — repo hygiene)* outside data passes license + injection gates before the brain keeps it | `substrate/ingest_guard.py` (bare = assert, in run_selfchecks) | — |
 | *(not a policy — repo hygiene)* citations resolve | `tools/citation_guard.py` (step in the `lint` CI job) | — |
 | *(not a policy — a spec instrument, invention register row 7)* growth coverage counted before any rule lands | `substrate/growth_coverage_gate.py` (`--assert` + `--self-check`, `lint` CI job). The coverage red is REPORTED every run; asserted: the identity-pinned ratchet, scaffold/undeclared refusals, unresolved-site reds. Green never means coverage is adequate | — |
-| *(not a policy — repo hygiene)* documented `python -m` commands run | `tools/doc_command_guard.py --assert` — while it sits in no CI step and no `run_selfchecks.py` entry it is, by P4c's own guard, a build the gates cannot see; re-derive its registration state from `policy_manifest`'s census, never from this cell | — |
+| *(not a policy — repo hygiene)* documented `python -m` commands run | `tools/doc_command_guard.py --assert` — in `run_selfchecks`'s tools stage and the `lint` CI job; `policy_manifest`'s census counts both | — |
 | *(not a policy — P0's honesty guard, owner-adopted 2026-09-02, specs/022 OD-5)* a unit COUNT is reported as **admitted**, never as growth, until SC-012a fires ("provisional" = time-bound) | `tests/test_units_admitted_wording.py` (every battery): label bound to the value, PROVENANCE key on the row; red counted pre-change (3 of 3) | — |
 
 **The rule this table has repeatedly broken, kept beside it:** this file is edited far more often
@@ -58,12 +58,12 @@ here, and the corrections that earned this rule, are relocated to `docs/POLICIES
 
 | gate | output | in CI? |
 |---|---|---|
-| `tools/red_reachability.py --assert` | re-run it; historical counted output → POLICIES_EVIDENCE.md | yes, `lint`, `--assert` |
-| `tools/dependency_ledger.py --assert` | re-run it; quote a gate by re-running it, or do not quote it | yes, `lint`, `--assert` |
+| `tools/red_reachability.py --assert` | re-run it; historical counted output → POLICIES_EVIDENCE.md | yes, `lint`, `--assert`; and `run_selfchecks`'s tools stage |
+| `tools/dependency_ledger.py --assert` | re-run it; quote a gate by re-running it, or do not quote it | yes, `lint`, `--assert`; and `run_selfchecks`'s tools stage |
 | `tools/dependency_ledger.py --self-check` | re-run it; every criterion proven falsifiable or the run fails | yes, `lint` |
-| `tools/doc_command_guard.py --assert` | re-run it; scans tracked docs for `python -m` commands that do not run | re-derive from `policy_manifest`'s census; an unregistered gate here is a P4c defect |
-| `tools/p6_gate.py` | re-run it; a RATCHET — green means "no worse", never "P6 satisfied" | yes |
-| `tools/p4c_ratchet.py` | re-run it with `--assert`; per-ZONE ratchet, machine-generated baseline that refuses to write a rise | yes |
+| `tools/doc_command_guard.py --assert` | re-run it; scans tracked docs for `python -m` commands that do not run | `run_selfchecks`'s tools stage; re-derive from `policy_manifest`'s census, which counts that stage |
+| `tools/p6_gate.py` | re-run it; a RATCHET — green means "no worse", never "P6 satisfied" | yes; and `run_selfchecks`'s tools stage |
+| `tools/p4c_ratchet.py` | re-run it with `--assert`; per-ZONE ratchet, machine-generated baseline that refuses to write a rise | yes, and locally in `run_selfchecks`'s tools stage |
 
 ---
 
