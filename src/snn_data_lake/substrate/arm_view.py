@@ -174,12 +174,20 @@ class ArmView:
                 )
                 self._renderer.update_scene(data, camera=cam)
             pixels = self._renderer.render()
+            # The ENCODE is inside the try because this method's contract is "Never raises: a
+            # daemon that cannot draw must still think", and it was not true: encode_png sat
+            # below the handler, so an encoder failure propagated onto the TICK THREAD -- the one
+            # place the module exists to keep exception-free. Reproduced by forcing encode_png to
+            # raise: the call propagated a ValueError instead of reporting unavailability.
+            # It encodes into a LOCAL; the two state writes stay below the handler so a failure
+            # cannot leave a new revision pointing at an old frame.
+            png = encode_png(pixels, self.width, self.height)
         except Exception as exc:  # no GL, no display, driver refusal -- all the same to us
             self._unavailable = f"{UNAVAILABLE_NO_GL} ({type(exc).__name__}: {exc})"
             self._renderer = None
             return None
 
-        self._png = encode_png(pixels, self.width, self.height)
+        self._png = png
         self._revision += 1
         return self._revision
 
@@ -289,6 +297,14 @@ def main():
         live = ArmView(width=64, height=48, clock=lambda: 0.0)
         live.request()
         rendered = live.render_if_wanted(m, d)
+        # DRAWING and REPORTING must agree. Without this, a build that renders a real frame but
+        # stops returning its revision is green AND prints "the revision check did NOT run" -- a
+        # false negative wearing the disclosure added below. Both sides are None/False on a
+        # genuinely GL-less box, so this stays green there and only reds when the two disagree.
+        assert (rendered is not None) == (live.frame()[0] is not None), (
+            "render_if_wanted must report a revision exactly when it produced a frame "
+            f"(returned {rendered!r}, frame present {live.frame()[0] is not None})"
+        )
         # `is not None`, NOT truthiness. render_if_wanted returns None when it did not
         # render and the revision number when it did -- and revision 0 is FALSY, so a
         # counter stuck at 0 skipped this whole block and the run passed reporting that
