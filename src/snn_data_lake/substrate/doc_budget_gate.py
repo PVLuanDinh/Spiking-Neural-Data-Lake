@@ -103,7 +103,9 @@ BUDGETS = {
     # -- rule text, not status; measured 12,294 after restoration plus a final timelessness
     # pass (flat status assertions converted to conditional/derivable forms), ceiling =
     # measured + ~56, minimum-viable.
-    "docs/POLICIES.md": 12350,
+    "docs/POLICIES.md": 12800,  # raised +450 on 2026-09-02 for the owner's batched-battery amendment and the
+    # execution-record note that lands in the same arc; NOT minimum-viable on purpose (the headroom is
+    # for that note), a disclosed departure from the +~56 convention below
     # Superseded history of the 28150 ceiling, kept for the ratchet record:
     # RAISED 28083 -> 28150 on 2026-08-26 (specs/022 T046), in the
     # SAME commit as the growth: the policy_manifest's unclaimed-gate ratchet (baseline EMPTY,

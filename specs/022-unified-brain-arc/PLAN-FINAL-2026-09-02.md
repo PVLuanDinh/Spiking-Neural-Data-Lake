@@ -55,8 +55,10 @@ retired, and every claim ships with a control and a red that can fail.
   build brains under `substrate.home.throwaway_home()` with `make_brain(seed, persist=False)`, or under an
   isolated `NORD_HOME` temp dir for restart proofs. Never stand up a second brain against the live lake.
 - **Subagents are Fable 5.1 only** (owner rule 2026-09-02). Review panels are three Fable lenses.
-- **One change per commit, full battery green on the frozen tree, then push.** Commit messages end with
-  `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
+- **One change per commit; one full battery per pushed ARC, on its stacked head** (owner rule 2026-09-02,
+  POLICIES' "Gated + reversible" amendment). Every commit names the battery that verified the head it was
+  pushed under; a red on the head is attributed per stage per commit, never by whole re-runs. Commit
+  messages end with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
 - **Launch sessions from `D:\AI-project`, not the repo subdir** (the memory tools key on that cwd). The
   curated memory store is `C:\Users\vinhl\.claude\projects\D--AI-project\memory\` (its `MEMORY.md` index
   auto-loads; its START-HERE file is the per-session protocol and points back here).
@@ -78,27 +80,36 @@ retired, and every claim ships with a control and a red that can fail.
    venv works from a plain shell today — O2 below concerns only the logon launcher's preflight). The
    archived templates are `rank2a/rank2_ab.py`, `rank2b/rank2b_charge.py`, `rank2c/probe_chains.py` and
    `rank2c/probe_fixed_vs_rotating.py` under the memory store's `archive/audit-2026-09-01/`.
-4. **Panel**: three Fable lenses (instrument / policy-honesty / integration) via the Workflow tool on the
-   frozen working tree; every finding must be reproduced by a command; fold the findings; the fold is either
-   re-panelled or stated in the commit as battery-verified only. Do not edit the tree while a panel reads it.
-5. **Battery** in its own detached command on the frozen tree (≈ 50 min uncontended; the Bash tool's
-   10-minute cap kills it inline, so launch it detached and poll). The literal command that produced
-   batteries #127–#132 (`$B` = an output dir outside the repo):
+4. **Panel**: one per ARC — three Fable lenses (instrument / policy-honesty / integration) via the Workflow
+   tool on the frozen stacked tree; every finding must be reproduced by a command; fold the findings (as a
+   further stacked commit); the fold is either re-panelled or stated in the commit as battery-verified
+   only. Do not edit the tree while a panel reads it, and no panel agent builds a brain or renders while a
+   battery runs (a frozen tree is not a frozen machine).
+5. **Battery**: one per ARC, in its own detached command on the frozen stacked head (≈ 60–70 min; the Bash
+   tool's 10-minute cap kills it inline, so launch it detached and poll). It OPENS with the execution
+   record: `policy_manifest --assert` first (the previous record must name the pushed head or its parent —
+   a push that skipped its battery reds here), then `--certify` (runs the policy gate commands and writes
+   the record for THIS head). The literal command (`$B` = an output dir outside the repo):
 
    ```bash
-   cd /d/AI-project/spiking-neural-data-lake; export PYTHONUTF8=1 PYTHONPATH=src; B="<output dir>"; mkdir -p "$B"; PY=.venv-lake/Scripts/python.exe; git status --short > "$B/tree.txt"; git diff HEAD --stat >> "$B/tree.txt"; $PY -m ruff check . > "$B/ruff.txt" 2>&1; echo "ruff rc=$?"; $PY -m ruff format --check . > "$B/ruff_format.txt" 2>&1; echo "ruff-format rc=$?"; $PY run_selfchecks.py > "$B/selfchecks.txt" 2>&1; echo "selfchecks rc=$?"; tail -n 3 "$B/selfchecks.txt"; $PY -m pytest -q -p no:cacheprovider > "$B/pytest.txt" 2>&1; echo "pytest rc=$?"; tail -n 3 "$B/pytest.txt"; for t in p4c_ratchet p6_gate dependency_ledger red_reachability citation_guard doc_command_guard; do if [ "$t" = "citation_guard" ]; then $PY tools/$t.py > "$B/$t.txt" 2>&1; else $PY tools/$t.py --assert > "$B/$t.txt" 2>&1; fi; echo "$t rc=$?"; done; for m in dormancy_gate method_dormancy_gate region_charge_gate growth_coverage_gate manifest_gate determinism_gate replay_gate envelope_hash_gate policy_manifest gradient_claim_gate eprop_transport_gate import_manifest replication_guard; do $PY -m snn_data_lake.substrate.$m --assert > "$B/$m.txt" 2>&1; echo "$m rc=$?"; done; echo BATTERY_DONE
+   cd /d/AI-project/spiking-neural-data-lake; export PYTHONUTF8=1 PYTHONPATH=src; B="<output dir>"; mkdir -p "$B"; PY=.venv-lake/Scripts/python.exe; git fetch -q origin; git status --short > "$B/tree.txt"; git diff HEAD --stat >> "$B/tree.txt"; $PY -m snn_data_lake.substrate.policy_manifest --assert > "$B/record_assert.txt" 2>&1 || { echo "RECORD-ASSERT RED: the previous push has no battery record -- battery halted"; exit 1; }; $PY -m snn_data_lake.substrate.policy_manifest --certify > "$B/certify.txt" 2>&1; echo "certify rc=$?"; $PY -m ruff check . > "$B/ruff.txt" 2>&1; echo "ruff rc=$?"; $PY -m ruff format --check . > "$B/ruff_format.txt" 2>&1; echo "ruff-format rc=$?"; $PY run_selfchecks.py > "$B/selfchecks.txt" 2>&1; echo "selfchecks rc=$?"; tail -n 3 "$B/selfchecks.txt"; $PY -m pytest -q -p no:cacheprovider > "$B/pytest.txt" 2>&1; echo "pytest rc=$?"; tail -n 3 "$B/pytest.txt"; for m in dormancy_gate method_dormancy_gate region_charge_gate growth_coverage_gate manifest_gate determinism_gate replay_gate envelope_hash_gate policy_manifest gradient_claim_gate eprop_transport_gate import_manifest replication_guard; do $PY -m snn_data_lake.substrate.$m --assert > "$B/$m.txt" 2>&1; echo "$m rc=$?"; done; echo BATTERY_DONE
    ```
 
-   Green = every `rc=0`, `347/347 self-checks passed` (as of battery #132), pytest coverage above the
-   70 % bar (90.7 % today). A red in any stage stops the landing; a red you cannot explain is a finding.
-6. **Commit** (one change), **push**, then **poll the daemon**: it exits on a new commit and its supervisor
-   relaunches it on the new build (`chat_learn.log` prints `head=<hash>`); `GET /api/state`; one chat via
-   `/api/chat`. Record the observed drop or gain; never smooth it.
+   Green = every `rc=0`, every self-check passed (the runner prints `N/N self-checks passed` and, since H1,
+   `6/6 tools gates passed`), pytest coverage above the 70 % bar (90.7 % today). After a green battery the
+   regenerated `tools/policy_certification.json` is committed as the arc's last commit ("execution record:
+   battery #N on <head>") and the arc is pushed. A red in any stage stops the push; a red you cannot
+   attribute to one commit (re-run that STAGE per commit in a worktree) is a finding.
+6. **Commit** (one change per commit, stacked within the arc), **push the arc**, then **poll the daemon**: it
+   exits on a new commit and its supervisor relaunches it on the new build (`chat_learn.log` prints
+   `head=<hash>`); `GET /api/state`; one chat via `/api/chat`. Record the observed drop or gain; never
+   smooth it.
 7. **Close out**: route-ledger line, task-observer observation(s), memory START-HERE + handoff, the audit
    artifact republished if the audit doc changed.
 
-Measured cost per landing this session: ≈ 2 hours (panel ≈ 25 min, fold, battery ≈ 50 min, plus re-runs when
-a panel finds a BLOCKER — two of five landings needed one). Build time is on top of that.
+Measured cost per ARC: one panel (≈ 25 min) + one fold + one battery (≈ 60–70 min), plus a re-run when the
+head reds; commits inside an arc cost only their build and local checks. Before the batched rule every
+commit paid the full ≈ 2 hours, which is what the owner's 2026-09-02 amendment removed.
 
 ### A.5 Where things are (the map a fresh session needs)
 
@@ -481,13 +492,14 @@ no majority-of-seeds rule anywhere.
 
 ## PART G — EFFORT, HONESTLY
 
-Measured this session: ≈ 2 hours per landing (panel + fold + a 50-minute battery, plus a re-run when a panel
+Measured this session: ≈ 2 hours per landing (panel + fold + a 60–70-minute battery, plus a re-run when a panel
 finds a BLOCKER — two of five landings needed one), before any build time. The phases are roughly: Phase 1
 five commits (an instrument, a goal-driven world with an A/B, a context change with a migration
 disposition, an exit); Phase 2 eight to nine (L1a–c, L2, L3, L4, T069, two new tests); Phase 3 nine to
 eleven; Phase 4 nine to eleven (C0, C1a–c, C3, C2, seven instruments, some parallel); Phase 5 six; Phase 6
-four. About 40 landings: ≈ 80 session-hours of panel and battery before build time, and every phase can end
-in a recorded null that re-sequences what follows. That is the method working.
+four. About 40 landings in perhaps 15–20 arcs under the batched-battery rule: ≈ 30–40 session-hours of panel and
+battery before build time, and every phase can end in a recorded null that re-sequences what follows.
+That is the method working.
 
 ## PART H — OWNER DECISIONS THIS PLAN NEEDED (all given 2026-09-02; one C2 question open)
 

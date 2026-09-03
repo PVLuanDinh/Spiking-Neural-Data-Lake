@@ -1009,6 +1009,20 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
   the safety envelope, and any time the CI/local torch-build skew could bite. "CI will catch it" is
   a claim about a run that has EXECUTED, the same way *"it persists"* is a claim about a new process
   and *"it is pushed"* is a claim about a branch.
+
+  **AMENDED 2026-09-02, owner: THE FULL GATE IS PER PUSHED ARC, NOT PER COMMIT** — the instruction,
+  verbatim: stack an arc's commits and run one battery for all of them, and record the change here. Under
+  it, one change per commit stays and the full gate runs once, on the stacked head of an arc, before that
+  head is pushed. Practice adopted with the rule (the session's, recorded in specs/022's plan of record, not
+  owner text): every commit names the battery that verified the head it was pushed under, so an unverified
+  intermediate commit is disclosed rather than implied green; a red on the stacked head is attributed by
+  re-running the failing STAGE per commit, never whole batteries, and an unattributable red does not push;
+  the review panel is per arc. The gate for the rule is the execution record: the battery opens with
+  `policy_manifest --assert` — the previous record must have been written on a clean tree and must name
+  the pushed head or its parent, or the stacked head or its parent — and HALTS on its red; then
+  `--certify` writes the record for the head under test; a green battery commits that record as the arc's
+  last commit and pushes with it. A shallow checkout cannot resolve the parent refs; the assert says so
+  instead of failing.
 - **A `file.py:NNN` citation is a claim, and it is the least durable claim this project makes.** The
   docs-wide audit that measured it (thousands resolved; the worst misses in this file's own most
   safety-relevant paragraphs; a file whose line numbers moved *between two reads minutes apart*) is
