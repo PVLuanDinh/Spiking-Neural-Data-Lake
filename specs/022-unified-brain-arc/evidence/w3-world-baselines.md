@@ -14,12 +14,33 @@ instrument with a self-check, no reorder"); both are in any case ratified.
 
 ## What was built
 
-`substrate/world_red_probe.py` (commit `20c26117`), registered in `REGIONS`, in `run_selfchecks`'s CORE
+`substrate/world_red_probe.py` (commit `2c6cd783`), registered in `REGIONS`, in `run_selfchecks`'s CORE
 list, in `dormancy_gate.EXEMPT` (permanent: a measurement instrument, not a tick faculty — the same
 disposition `perf_baseline` carries), and in `docs/INVENTION_REGISTER.md` as invention #9. Bare invocation
-is the `run_selfchecks` path: a 0.07 s wiring check over synthetic series that constructs no brain. Its 7
-criteria were mutation-tested at landing — 8 mutants, 8 red, 0 survived, with the unmutated check as the
-sensitivity control run before and after each mutation.
+is the `run_selfchecks` path: a 0.07 s wiring check over synthetic series that constructs no brain.
+
+**Criteria: 11, and 22 mutants red them, 0 survive** — the unmutated check is the sensitivity control and
+is run before and after every mutation. Every one of the 11 is the CATCHING assert for at least one
+mutant, which is a stronger statement than the count alone and is the one that matters: `_wiring_check`
+halts on the first failing assert, so a mutant count on its own proves the CHECK reds, not that each
+criterion individually can.
+
+**This is the post-review state, and the pre-review state was worse in a way worth recording.** At landing
+the module had 7 criteria and a suite of 8 mutants reported as "8 red, 0 survived". That was true and
+insufficient. The arc's three-lens panel showed that (a) mapped onto criteria, those 8 mutants covered 6 of
+the 7 and never redded criterion 2 at all, and (b) criterion 7 — the one that claimed to prove `summarise`
+"slices the two entropy windows apart" — was VACUOUS for exactly that property: its fixture used
+`unit = i % 3` with a window of 5, so the first five and last five categories were the same multiset, and
+its channel varied uniformly so a head slice and a tail slice read alike. Four constructible mutants passed
+it green, including *"the channel window is the FIRST 200 rows"* and *"entropy_last aliases
+entropy_first"* — the two defects that would have silently relocated or erased every number in the Result
+section below. The criterion was rebuilt with an asymmetric fixture; those four mutants now red, and three
+further defects the panel found (NaN inverting the liveness verdict, `wake_row`'s absence-is-not-zero
+decision being unreachable from any criterion, and an unpinned refit boundary) each got a criterion of
+their own. **The measurements below were re-verified against the shipped slicing and are unaffected** —
+`entropy_first` is byte-identical at 3000 and 6000 ticks for all three seeds, which is true only of
+`rows[:1000]`, and the channel statistics differ between checkpoints, which is impossible if the window
+were the head.
 
 ## Protocol — PRE-REGISTERED before the first run (this section is written first; results follow)
 
@@ -175,7 +196,15 @@ verdict on the rounded count was made before these numbers existed, and it decid
 
 The pinned seed-0 expectation (7 categories, 1.8801 bits over the first 1000 wake rows) reproduced exactly,
 including its distribution. The first-1000 window is identical at both checkpoints by construction — an
-internal consistency check, not two measurements. The **last**-1000 window at 6000 is the new finding:
+internal consistency check, not two measurements. The **last**-1000 window at 6000 is the new finding.
+
+**The two windows OVERLAP at 3000 ticks and the table below must be read knowing it.** With ~1483 wake
+rows at that checkpoint, the first-1000 and last-1000 windows share about 517 rows — roughly half of each.
+Only the 6000-tick pair (~2967 wake rows) is disjoint. The contrast below is therefore stated for the
+6000-tick column, which is clean; the 3000-tick figures are reported for completeness, not as a
+first-vs-last contrast. The instrument now reports `entropy_overlap` on every mark so this is visible on
+the line that carries the numbers rather than only in prose. Caught by the arc's panel, which is also why
+the criterion that now pins it exists:
 
 | seed | first-1000 (the pre-registered baseline) | last-1000 @ 6000 | direction |
 |---|---|---|---|
@@ -190,7 +219,7 @@ first and last 1000 wake rows, spanning 0.0 to 2.6 bits. **An entropy bar is mea
 its window and is applied per seed** — the protocol's fixed first-1000 window is what makes W-R2 scoreable
 at all, and a treatment compared against a differently-windowed baseline would be measuring the window.
 
-### 5. Refit: the derived gap fires, and it corroborates the entropy collapse independently
+### 5. Refit: the derived gap fires, and it is a CONSEQUENCE of the entropy collapse, not corroboration of it
 
 Scheduled equals effective everywhere except one cell:
 
@@ -202,8 +231,23 @@ Scheduled equals effective everywhere except one cell:
 | **2 @ 6000** | **151** | **126** | **25** |
 
 The one seed with skipped refits is the one seed whose categories collapsed to a single value — and
-`_refit` early-returns when fewer than two categories are available. **Two numbers derived independently,
-from different attributes, agree on the same mechanism.** Neither was measured before this run.
+`_refit` early-returns when fewer than two categories are available. Neither number was measured before
+this run.
+
+**This paragraph originally called those "two numbers derived independently, from different attributes",
+agreeing on one mechanism. That was wrong, and the arc's panel caught it.** They are two statistics of the
+SAME variable over the SAME window. `wake_row` records `res.get("unit")` off `Brain._last_res`;
+`brain.py` feeds the engine the identical value (`self.neuro.observe(res["percept"], int(res["unit"]))`),
+which lands in `_buf_y` under `buffer_cap = 1000`; and at n = 1000 the only REACHABLE branch of `_refit`'s
+data guard is `n_cat < 2` (holdout is `min(60, n // 3)`, so `holdout < 3` cannot hold, and
+`(n - holdout) < n_cat` would need more than 940 categories). So "the entropy window went
+single-category" and "the refit skipped on the data guard" are one fact stated twice. The agreement could
+not have failed, and an agreement that cannot fail is not evidence — it is the same shape as a control
+that shares a stage with its treatment.
+
+**What IS informative here is the NEGATIVE arm, and it is the part worth keeping:** seeds 0 and 1 held two
+or more categories and skipped ZERO of 151 scheduled refits. That is a real dissociation between the two
+seeds' worlds, and it is what gives the mechanism a control rather than a restatement.
 
 This also retires an inference. Rank 2b recorded, of the latched live daemon, "3,539 wake ticks without a
 refit (`n_cat < 2`)" and labelled it explicitly as an INFERENCE with no latch-cleared control. The
@@ -228,11 +272,23 @@ and skipped zero refits; seed 2 collapsed to one and skipped 25.
 
 **Baselines pre-registered and measured; no null.** Chain A is at or near its floor on this world for
 2.5 of 3 seeds by 6000 ticks, which is precisely the limiter Phase 1 exists to move, and it now has a
-number rather than a recollection. W3 stands: its 7 criteria remain reachable (8 of 8 mutants red at
-landing), and its own red — a reversal on seed 1 — was constructible and did not fire.
+number rather than a recollection. W3 stands: its 11 criteria remain reachable (22 of 22 mutants red at
+the post-panel rebuild, every criterion the catching assert for at least one), and its own red — a
+reversal on seed 1 — was constructible and did not fire.
+
+**Said plainly, because the review is part of the record and not a footnote to it:** the arc's three-lens
+panel returned 17 findings against this work — one BLOCKER, six MAJOR, ten MINOR — and every one was
+reproduced by a command before it was accepted. The BLOCKER and three MAJORs were defects in the
+instrument's own reds, not in the measurements: a vacuous criterion, a NaN inversion, an unreachable
+decision, and a self-check that named five reads while asserting two. Two MAJORs were false claims in
+this file (an orphaned commit hash, and "two numbers derived independently"). All are folded above and in
+the module. **The fold is itself unreviewed code beyond the battery** — it was not put back through a
+second panel; what it has is the extended mutation suite (22 mutants, 0 survivors), the arc's one battery,
+and this sentence.
 
 Carried forward to W1: the per-seed, window-pinned entropy baselines in §4 are what W-R2 is scored
-against; W-R1 needs its own within-run time-shuffled control and is not scored against §1 or §2.
+against — with the 6000-tick column the clean one, since the 3000-tick windows overlap by ~517 rows.
+W-R1 needs its own within-run time-shuffled control and is not scored against §1 or §2.
 
 Reproduce: `PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python.exe -m
 snn_data_lake.substrate.world_red_probe --record --seeds 0,1,2 --checkpoints 3000,6000`; the sweep's raw

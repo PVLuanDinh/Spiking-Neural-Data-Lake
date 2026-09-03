@@ -142,7 +142,14 @@ BUDGETS = {
     # RETIRED 2026-08-16 anchor; the governing practice since T046 is MINIMUM-VIABLE raises
     # (measured + 0, stated per raise), so 0.0%-headroom rows are deliberate and the
     # TIGHTENABLE report is structurally quiet for them.
-    "docs/INVENTION_REGISTER.md": 1380,  # RAISED 1152 -> 1380 on 2026-09-03 (specs/022 Phase 1 W3),
+    "docs/INVENTION_REGISTER.md": 1517,  # RAISED 1380 -> 1517 on 2026-09-03, SAME DAY as the raise
+    # below and in the same arc: the W3 review panel found row 9's RED field overstated (7 criteria /
+    # 8 mutants, one of them vacuous) and its NULL field stating the EXPERIMENT's revert condition
+    # instead of the instrument's own deletion condition, which is what P8 clause 5 asks for. The
+    # corrected row carries the real counts (11 criteria, 22 mutants), the disclosure of what the
+    # panel found, and both nulls. A second raise inside one arc is the ceiling working: each one is
+    # an owner-visible admission in the diff, which is exactly why 0.0% headroom is the design.
+    # (superseded reason, kept for the trail) RAISED 1152 -> 1380 on 2026-09-03 (specs/022 Phase 1 W3),
     # in the SAME commit as the growth: invention #9, the two-chain world-red instrument. This
     # register is a per-invention list that grows by construction -- FR-031 names eight and W3 is
     # the first of them to land, with L1b, L2, T066, T073, T077 and T078 still owed -- so the

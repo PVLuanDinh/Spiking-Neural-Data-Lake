@@ -119,11 +119,19 @@ probes. INVENTED composition: the two curiosity chains scored SEPARATELY and nev
 statistic would lie in both directions); a liveness verdict keyed on the 4 dp ROUNDED distinct count,
 the raw count reported beside it; the refit count DERIVED as scheduled (`ticks // refit_every`) minus
 effective (`len(trajectory)`), the difference counting refits that early-returned on the data guard.
-RED: 7 criteria, all mutation-tested (8 mutants, 8 red, 0 survived) -- a pinned constant must read AT
-FLOOR, an unfed channel missing rather than 0.0, a channel varying only below 1e-4 dead despite 200
-raw-distinct values. CONTROL: the unmutated check as sensitivity, before and after each mutation; a
-ramp beside the pinned constant, one command. ATTRIBUTION: per-channel and per-seed, never a seed
-average -- s2c singled out seed 1 as the one seed not yet converged, and an average hides exactly the
-seed a treatment passes for free on. DISCLOSURE: neither refit derivation survives a lake restore, so
-every mode runs `persist=False` under a throwaway home and refuses the live lake home. NULL: if no
-channel separates W1 from its time-shuffled control, W-R1 fails and W1/W2 revert.
+RED: 11 criteria, every one the catching assert for at least one of 22 mutants (22 red, 0
+survived; the unmutated check is the sensitivity control, run before and after each) -- a pinned constant
+must read AT FLOOR, a varying one LIVE, an unfed channel missing rather than 0.0, a channel varying only
+below 1e-4 dead despite 200 raw-distinct values, a NaN channel dead rather than maximally live, and
+`summarise` must slice the RIGHT rows into each window. CONTROL: the unmutated check as sensitivity; a ramp
+beside the pinned constant, one command. ATTRIBUTION: per-channel and per-seed, never a seed average --
+s2c singled out seed 1 as the one seed not yet converged, and an average hides exactly the seed a treatment
+passes for free on. DISCLOSURE: at landing this row read "7 criteria, 8 mutants" and the arc's panel showed
+criterion 7 was VACUOUS for the property it named -- four slice mutants passed it green, including one that
+would have relocated every reported window; it was rebuilt, and three further criteria were added for
+defects no criterion could see. Also disclosed: neither refit derivation survives a lake restore, so every
+mode runs `persist=False` under a throwaway home and refuses the live lake home; and the refit gap is a
+CONSEQUENCE of a single-category window, not independent corroboration of one. NULL: an instrument whose
+criteria stop being reachable under mutation is deleted, not weakened (P8 clause 5) -- the W1/W2 revert
+below is the EXPERIMENT's null, not this invention's. If no channel separates W1 from its time-shuffled
+control, W-R1 fails and W1/W2 revert.

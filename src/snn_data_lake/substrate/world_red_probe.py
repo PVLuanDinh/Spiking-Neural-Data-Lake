@@ -76,12 +76,20 @@ perf_baseline recorded before it.
 # distinct-from: substrate/perf_baseline.py -- measures the tick's COST (wake/sleep p50/p95,
 #   disk IOPS) and ratchets it; this measures what the tick's telemetry CARRIES. Neither
 #   subsumes the other: a tick can get faster while its signals go flat.
-# distinct-from: substrate/port_charge_probe.py -- attributes a consumer's divergence to ONE
-#   declared port by pinning its payload. This asks a prior question with no neuter at all:
-#   does the signal vary before anyone asks who consumes it.
+# distinct-from: substrate/port_charge_probe.py -- it too has a did-it-move criterion
+#   (margin_frozen: an arbitrate-join margin whose range never exceeds tol), so "this one asks
+#   whether the signal varies" is NOT the distinction and the panel was right to say so. The real
+#   one is subject and statistic: margin_frozen is a boolean over ONE manifest-declared port's
+#   join margins, beside a neuter that ATTRIBUTES divergence to that port; this is a per-channel
+#   distinct/mean/entropy report over arbitrary Brain.state() telemetry with None handling and no
+#   neuter anywhere. Neither can produce the other's number.
 # distinct-from: tools/charge_probe.py -- the module-level neuter A/B. Same reason.
 # distinct-from: basal_ganglia/learning_progress.py -- the Chain B PRODUCER this reads; it
-#   computes |LP|, this only observes it. All sites read.
+#   computes |LP|, this only observes it.
+# distinct-from: cortex/neuron_zoo.py::_worker_ladder -- flagged by the duplicate-capability
+#   check against refit_counts on the shared words "counts" and "derived". Read: it builds a
+#   ladder of candidate THREAD counts to race for a performance choice. Nothing in common but
+#   the vocabulary. All sites read.
 
 from __future__ import annotations
 
@@ -91,6 +99,7 @@ import json
 import math
 import statistics
 import sys
+import types
 
 WINDOW = 200  # wake rows summarised at each checkpoint (s2c's window, kept for comparability)
 ENTROPY_WAKE = 1000  # wake rows in the category-entropy window
@@ -121,22 +130,39 @@ def series_liveness(values, nd=ND):
     """Liveness of one telemetry channel over a window of wake rows.
 
     `values` may contain None (a channel with no feed yet). None is COUNTED in `missing` and
-    excluded from every statistic -- absence is not zero. `live` keys on the ROUNDED distinct
-    count and on adjacent changes, never on the raw count (decision 1).
+    excluded from every statistic -- absence is not zero.
+
+    NON-FINITE values are counted in `nonfinite` and excluded the same way. Without that,
+    NaN INVERTS the verdict: NaN != NaN, so a channel of nothing but NaN reports maximal
+    distinct counts and maximal changes and reads LIVE -- a dead channel scoring as the most
+    alive thing in the report. Found by the arc's review panel, not by the criteria below,
+    which is why criterion 8 now carries it.
+
+    `live` keys on the ROUNDED distinct count alone. It previously also required
+    `changes > 0`; that conjunct was VACUOUS -- over a sequence, more than one distinct
+    rounded value implies at least one adjacent change -- so it is dropped rather than left
+    reading as a second, independent condition. `changes` is still reported, because the
+    NUMBER separates a channel that stepped once from one that oscillates.
     """
-    fin = [v for v in values if v is not None]
+    fin = [v for v in values if v is not None and math.isfinite(v)]
     rounded = [round(v, nd) for v in fin]
     changes = sum(1 for a, b in zip(rounded, rounded[1:]) if a != b)
-    return {
+    out = {
         "n": len(values),
-        "missing": len(values) - len(fin),
+        "missing": sum(1 for v in values if v is None),
+        "nonfinite": sum(1 for v in values if v is not None and not math.isfinite(v)),
         "distinct_raw": len(set(fin)),
         "distinct_round": len(set(rounded)),
         "changes": changes,
         "mean": statistics.fmean(fin) if fin else None,
         "last": fin[-1] if fin else None,
-        "live": bool(fin) and len(set(rounded)) > 1 and changes > 0,
+        "live": len(set(rounded)) > 1,
     }
+    assert out["distinct_round"] <= out["distinct_raw"], (
+        f"rounding can only merge values, never split them ({out}) -- a rounded count above the "
+        "raw count means a non-finite value survived the filter"
+    )
+    return out
 
 
 def category_entropy(cats):
@@ -162,8 +188,18 @@ def category_entropy(cats):
     }
 
 
+# distinct-from: cortex/neuron_zoo.py::_worker_ladder -- see the header block; that races
+#   candidate thread counts, this counts refits of a batch solve.
 def refit_counts(ticks, refit_every, n_trajectory):
-    """The two derivations of the refit count, and the gap between them (decision 3)."""
+    """The two derivations of the refit count, and the gap between them (decision 3).
+
+    ATTRIBUTION LIMIT, because the field name invites more than it earns: at the engine's
+    default buffer_cap of 1000 the only REACHABLE branch of `_refit`'s data guard is
+    `n_cat < 2` (holdout is min(60, n // 3), so `holdout < 3` cannot hold, and
+    `(n - holdout) < n_cat` would need more than 940 categories). A non-zero
+    `skipped_on_data_guard` therefore means "the window went single-category", which is the
+    SAME fact a collapsed category entropy reports -- not an independent confirmation of it.
+    """
     scheduled = ticks // refit_every if refit_every else 0
     return {
         "ticks": ticks,
@@ -188,19 +224,43 @@ def wake_row(b):
     }
 
 
+# distinct-from: brainstem/so101_arm.py::inject_disturbance -- flagged by the duplicate-capability
+#   check on "stand in for". Read: it shoves a joint's qpos to stand in for an EXTERNAL FORCE on
+#   the physical arm, exercising the deviation reflex. This stands in for a READER's data source.
+#   Different subject, different direction, and that file is envelope-gated. All sites read.
+def _telemetry_double(lp, last_res, lp_mean=0.5):
+    """Brain's telemetry surface, reduced to what wake_row touches, so wake_row can be
+    exercised without constructing a Brain. Three attributes and one method are the whole
+    surface. It lives beside the reader it doubles for rather than inside the check."""
+    b = types.SimpleNamespace(_lp_mean=lp_mean, _last_res=last_res)
+    b.state = lambda: {
+        "curiosity_mag": 0.1,
+        "neuromod_acetylcholine": 0.2,
+        "learning_progress": lp,
+    }
+    return b
+
+
 CHANNELS = ("cur_mag", "lp_mean", "ach", "facade")
 
 
 def summarise(rows, window=WINDOW, entropy_wake=ENTROPY_WAKE):
     """Summarise a list of wake rows: per-channel liveness over the last `window`, category
     entropy over the FIRST `entropy_wake` rows (the window the pre-registered baseline uses,
-    fixed so a treatment cannot pick a friendlier slice) and over the LAST `entropy_wake`."""
+    fixed so a treatment cannot pick a friendlier slice) and over the LAST `entropy_wake`.
+
+    The two entropy windows OVERLAP whenever the run has fewer than 2 * entropy_wake wake
+    rows, and `entropy_overlap` reports by how many. It is not zero in practice: at the 3000
+    tick checkpoint the sweep had about 1483 wake rows, so the two 1000-row windows shared
+    about 517 of them. A first-vs-last CONTRAST is only clean where that number is 0.
+    """
     tail = rows[-window:]
     out = {"wake_rows": len(rows), "window": len(tail)}
     for ch in CHANNELS:
         out[ch] = series_liveness([r[ch] for r in tail])
     out["entropy_first"] = category_entropy([r["unit"] for r in rows[:entropy_wake]])
     out["entropy_last"] = category_entropy([r["unit"] for r in rows[-entropy_wake:]])
+    out["entropy_overlap"] = max(0, min(entropy_wake, len(rows)) * 2 - len(rows))
     return out
 
 
@@ -240,13 +300,20 @@ def run_seed(seed, checkpoints=CHECKPOINTS, window=WINDOW, entropy_wake=ENTROPY_
                 rows.append(wake_row(b))
             if t in checkpoints:
                 marks[t] = _mark(b, rows, window, entropy_wake)
-        assert set(marks) == set(checkpoints), (
-            f"every checkpoint must be marked at its own tick: {sorted(marks)} != {sorted(checkpoints)}"
+                marks[t]["at_tick"] = t
+        # IDENTITY, not a side effect. Two earlier guards were both weak and the panel said so:
+        # `set(marks) == set(checkpoints)` cannot fail (last = max(checkpoints), so the loop
+        # visits every checkpoint >= 1 and marks only ever takes keys from checkpoints), and
+        # "wake rows must STRICTLY rise" fires spuriously on adjacent checkpoints and says
+        # nothing at all with one checkpoint. This asserts the property actually at risk: each
+        # mark was taken on ITS OWN tick. It fires with a single checkpoint too.
+        assert all(marks[t]["at_tick"] == t for t in checkpoints), (
+            f"each checkpoint's mark must be taken at its own tick: "
+            f"{ {t: marks[t]['at_tick'] for t in checkpoints} }"
         )
         seen = [marks[t]["wake_rows"] for t in sorted(marks)]
-        assert all(a < b for a, b in zip(seen, seen[1:])), (
-            f"wake rows must STRICTLY rise between checkpoints (got {seen}) -- equal counts mean a "
-            "later checkpoint's state was reported for an earlier one, the defect this assert names"
+        assert all(a <= b for a, b in zip(seen, seen[1:])), (
+            f"wake rows cannot FALL between checkpoints (got {seen})"
         )
         return {"seed": seed, "checkpoints": marks}
     finally:
@@ -338,29 +405,82 @@ def _wiring_check():
         f"the {ND} dp rounding must decide liveness, not the raw count ({fine}) -- "
         "if this passes, the reported distinct_raw would call a dead chain alive"
     )
-    # 7 -- summarise() wires the parts together and slices the two entropy windows apart.
+    # 7 -- summarise() must slice THE RIGHT ROWS into each of its three windows.
+    #   The first version of this criterion was VACUOUS and the arc's panel proved it with four
+    #   surviving mutants: its fixture used unit = i % 3 with entropy_wake = 5, so the first five
+    #   and last five units were the same multiset, and a channel varying uniformly could not
+    #   tell a head slice from a tail slice either. "entropy_last aliases entropy_first" and "the
+    #   channel window is the FIRST 200 rows" both passed green -- the two defects that would
+    #   have silently relocated every number in the evidence file. The fixture is now ASYMMETRIC
+    #   in both dimensions: categories differ head-vs-tail, and `ach` is flat over the head and
+    #   varying over the tail, so a window swap flips a verdict.
     rows = [
-        {"cur_mag": 0.0, "lp_mean": None, "ach": i / 100, "facade": 0.5, "unit": i % 3}
+        {
+            "cur_mag": 0.0,
+            "lp_mean": None,
+            "ach": 0.0 if i < 40 else i / 100,
+            "facade": 0.5,
+            "unit": 0 if i < 25 else 1,
+        }
         for i in range(50)
     ]
     s = summarise(rows, window=10, entropy_wake=5)
     assert s["wake_rows"] == 50 and s["window"] == 10, (
         f"window slicing ({s['wake_rows']}, {s['window']})"
     )
-    assert s["cur_mag"]["live"] is False and s["ach"]["live"] is True, (
-        "per-channel verdicts must differ"
+    assert s["entropy_first"]["dist"] == {0: 5} and s["entropy_last"]["dist"] == {1: 5}, (
+        f"the two entropy windows must come from DIFFERENT rows "
+        f"(first {s['entropy_first']['dist']}, last {s['entropy_last']['dist']}) -- equal "
+        "distributions here is what made this criterion vacuous"
     )
+    assert s["ach"]["live"] is True and s["ach"]["last"] == rows[-1]["ach"], (
+        f"the channel window must be the TAIL ({s['ach']}) -- `ach` is flat over the head, so a "
+        "head or middle slice reads AT FLOOR and a wrong `last` names the wrong row"
+    )
+    assert s["cur_mag"]["live"] is False, "a constant channel must still read at floor here"
     assert s["lp_mean"]["missing"] == 10, "a missing channel stays missing through summarise"
-    assert s["entropy_first"]["dist"] == {0: 2, 1: 2, 2: 1}, (
-        f"first window ({s['entropy_first']['dist']})"
+    assert s["entropy_overlap"] == 0, f"50 rows, window 5: no overlap ({s['entropy_overlap']})"
+    assert summarise(rows, window=10, entropy_wake=30)["entropy_overlap"] == 10, (
+        "50 rows, window 30: the two entropy windows share 10 rows and must SAY so"
     )
-    assert s["entropy_last"]["dist"] == {0: 2, 1: 2, 2: 1}, (
-        f"last window ({s['entropy_last']['dist']})"
+    # 8 RED -- NaN must not INVERT the verdict. NaN != NaN, so an unfiltered NaN channel reads
+    #   maximally distinct and maximally changing: the deadest possible channel scoring as the
+    #   most alive thing in the report. Found by the panel, not by criteria 1-7.
+    nan = series_liveness([float("nan")] * 200)
+    assert nan["nonfinite"] == 200 and nan["mean"] is None and not nan["live"], (
+        f"a NaN channel must read dead, not maximally live ({nan})"
+    )
+    mixed = series_liveness([1.0, float("inf"), None, 1.0])
+    assert mixed["nonfinite"] == 1 and mixed["missing"] == 1 and mixed["distinct_raw"] == 1, (
+        f"non-finite and absent are counted apart, and neither enters a statistic ({mixed})"
+    )
+    # 9 -- wake_row IS decision 2 ("absence is not zero"), and criterion 3 never reached it: it
+    #   tested series_liveness on a hand-built [None] list, so inverting the decision INSIDE
+    #   wake_row left the whole check green (the panel demonstrated exactly that). _telemetry_double
+    #   reaches it with no Brain and no measurable cost.
+    unfed = wake_row(_telemetry_double({}, {"unit": None}))
+    assert unfed["facade"] is None and unfed["unit"] is None, (
+        f"an unfed facade must read None, never 0.0 ({unfed}) -- decision 2 at its only "
+        "implementation"
+    )
+    fed = wake_row(_telemetry_double({"cortex": 0.5}, {"unit": 3}))
+    assert fed["facade"] == 0.5 and fed["unit"] == 3 and fed["lp_mean"] == 0.5, (
+        f"a fed facade must carry its value through ({fed})"
+    )
+    # 10 -- the refit arithmetic on its BOUNDARY, where an off-by-one phase error lives.
+    assert refit_counts(1000, 20, 47)["scheduled"] == 50, "1000 ticks at every 20 is 50 refits"
+    assert refit_counts(999, 20, 47)["scheduled"] == 49, "999 is one short of the 50th refit"
+    # 11 -- the reported derivations, pinned: `changes` counts ROUNDED steps, `mean` is UNROUNDED.
+    step = series_liveness([0.5, 0.50001, 0.5])
+    assert step["changes"] == 0, f"`changes` must count rounded steps, not raw ones ({step})"
+    assert step["mean"] == statistics.fmean([0.5, 0.50001, 0.5]), (
+        f"`mean` must be the unrounded mean ({step['mean']})"
     )
     _emit(
-        "world_red_probe wiring OK: 7 criteria proven falsifiable "
+        "world_red_probe wiring OK: 11 criteria proven falsifiable "
         f"(pinned constant dead, ramp live, absent != zero, entropy exact, refit gap arithmetic, "
-        f"{ND}dp rounding decisive, summarise wired) -- no brain, no disk"
+        f"{ND}dp rounding decisive, summarise slices the RIGHT rows, NaN dead not live, wake_row "
+        "keeps absence, refit boundary, changes/mean derivations) -- no brain, no disk"
     )
 
 
@@ -376,10 +496,22 @@ def _brain_check(ticks):
         try:
             rows = [wake_row(b) for _ in range(ticks) if b.tick() == "awake"]
             assert rows, f"{ticks} ticks produced no wake row -- the probe cannot sample this brain"
-            for ch in ("cur_mag", "ach"):
+            # ALL FIVE reads, because the emitted line claims all five. It previously asserted
+            # only cur_mag and ach while printing "all five reads resolve", and the panel drove
+            # it green against a stub with lp_mean, the facade and unit all DETACHED. An arm
+            # that names five and checks two is a harness that cannot fail on three of them.
+            for ch in ("cur_mag", "ach", "lp_mean"):
                 assert all(isinstance(r[ch], float) for r in rows), (
-                    f"{ch} must be float on every wake row"
+                    f"{ch} must be a float on every wake row -- read {[r[ch] for r in rows[:3]]}"
                 )
+            assert any(r["facade"] is not None for r in rows), (
+                "the Chain B facade never resolved in this run: state()['learning_progress'] "
+                "carried no 'cortex' key on any wake row"
+            )
+            assert any(r["unit"] is not None for r in rows), (
+                "no wake row carried a prototype category: _last_res['unit'] was None throughout, "
+                "which is the reflex/E-STOP shape, not a sampling failure"
+            )
             eng = getattr(b, "neuro", None)
             assert eng is not None, "no neurogenesis engine: the refit derivation has no source"
             r = refit_counts(eng.ticks, eng.refit_every, len(eng.trajectory))
