@@ -22,15 +22,18 @@ production path — out of scope for a single box.
 
 Run (needs polars):  ../.venv-lake/Scripts/python lakehouse/medallion.py
 """
+
 import gzip
 import os
 
 import polars as pl
 
-from snn_data_lake.substrate import data_quality# v0.43 gates: block promotion to Gold on bad data
-from snn_data_lake.substrate.spike_telemetry_hub import synth  # raw spike-telemetry source (this repo)
+from snn_data_lake.substrate import data_quality  # v0.43 gates: block promotion to Gold on bad data
+from snn_data_lake.substrate.spike_telemetry_hub import (
+    synth,  # raw spike-telemetry source (this repo)
+)
 
-LAKE = os.path.join("lakehouse", "data")   # Parquet output (gitignored)
+LAKE = os.path.join("lakehouse", "data")  # Parquet output (gitignored)
 
 
 # ---- BRONZE: raw events -> columnar Parquet --------------------------------
@@ -44,10 +47,12 @@ def bronze(hub):
 
 # ---- SILVER: clean + temporally align (bin into windows) -------------------
 def silver(bronze_df, window):
-    s = (bronze_df
-         .with_columns((pl.col("t") // window).alias("bin"))
-         .group_by(["channel", "bin"]).agg(pl.len().alias("spikes"))
-         .sort(["channel", "bin"]))
+    s = (
+        bronze_df.with_columns((pl.col("t") // window).alias("bin"))
+        .group_by(["channel", "bin"])
+        .agg(pl.len().alias("spikes"))
+        .sort(["channel", "bin"])
+    )
     path = os.path.join(LAKE, "silver.parquet")
     s.write_parquet(path)
     return s, path
@@ -69,15 +74,18 @@ def inverse_compression_ratio(silver_df, n_channels, n_bins):
 def gold(bronze_df, silver_df, hub, window):
     dur, n = hub.dur, hub.n
     n_bins = (dur + window - 1) // window
-    rate = (bronze_df.group_by("channel").agg(pl.len().alias("count"))
-            .with_columns((pl.col("count") / dur).alias("rate")).sort("channel"))
+    rate = (
+        bronze_df.group_by("channel")
+        .agg(pl.len().alias("count"))
+        .with_columns((pl.col("count") / dur).alias("rate"))
+        .sort("channel")
+    )
     # population synchrony index = coefficient of variation of population spikes/bin
     pop = silver_df.group_by("bin").agg(pl.col("spikes").sum().alias("pop"))
     mean_pop = pop["pop"].mean() or 0.0
     synchrony = float((pop["pop"].std() or 0.0) / mean_pop) if mean_pop else 0.0
     icr = inverse_compression_ratio(silver_df, n, n_bins)
-    g = rate.with_columns([pl.lit(synchrony).alias("synchrony_cv"),
-                           pl.lit(icr).alias("icr")])
+    g = rate.with_columns([pl.lit(synchrony).alias("synchrony_cv"), pl.lit(icr).alias("icr")])
     path = os.path.join(LAKE, "gold.parquet")
     g.write_parquet(path)
     return g, path, synchrony, icr
@@ -90,13 +98,15 @@ def gold_cofiring(silver_df, top_k=10):
     once). The robot can then query co-active channel groups directly instead of re-running
     the whole neural inference. Returns the top_k correlated pairs + writes a Parquet view."""
     s = silver_df.select(["channel", "bin", "spikes"])
-    pairs = (s.join(s, on="bin", suffix="_b")
-             .filter(pl.col("channel") < pl.col("channel_b"))            # unordered pairs, no self
-             .with_columns((pl.col("spikes") * pl.col("spikes_b")).alias("co"))
-             .group_by(["channel", "channel_b"])
-             .agg(pl.col("co").sum().alias("synchrony"))
-             .sort("synchrony", descending=True)
-             .head(top_k))
+    pairs = (
+        s.join(s, on="bin", suffix="_b")
+        .filter(pl.col("channel") < pl.col("channel_b"))  # unordered pairs, no self
+        .with_columns((pl.col("spikes") * pl.col("spikes_b")).alias("co"))
+        .group_by(["channel", "channel_b"])
+        .agg(pl.col("co").sum().alias("synchrony"))
+        .sort("synchrony", descending=True)
+        .head(top_k)
+    )
     path = os.path.join(LAKE, "gold_cofiring.parquet")
     pairs.write_parquet(path)
     return pairs, path
@@ -107,25 +117,29 @@ def latency_handoff(gold_df, t_steps=32):
     earlier). This is the SNN-ready representation the repo's models consume."""
     rates = gold_df["rate"].to_list()
     mx = max(rates) or 1.0
-    return sorted((int(round((1 - r / mx) * (t_steps - 1))), i)
-                  for i, r in enumerate(rates) if r / mx > 0.1)
+    return sorted(
+        (int(round((1 - r / mx) * (t_steps - 1))), i) for i, r in enumerate(rates) if r / mx > 0.1
+    )
 
 
 def main():
     os.makedirs(LAKE, exist_ok=True)
-    hub = synth(64, 50_000, 0.004, {7, 42}, (25_000, 26_000))   # burst on channels 7,42
+    hub = synth(64, 50_000, 0.004, {7, 42}, (25_000, 26_000))  # burst on channels 7,42
     WIN = 100
     b_df, b_p = bronze(hub)
     s_df, s_p = silver(b_df, WIN)
     g_df, g_p, synchrony, icr = gold(b_df, s_df, hub, WIN)
     # ---- data-quality gate: blocks promotion to Gold on bad / mutated / non-encodable data ----
     rows = [(int(t), int(c)) for t, c in b_df.iter_rows()]
-    dq = data_quality.gate(rows, hub.n, hub.dur,
-                           gold={"icr": icr, "rates": g_df["rate"].to_list(),
-                                 "synchrony": synchrony},
-                           bronze_prior_hash=data_quality.bronze_hash(rows))
+    dq = data_quality.gate(
+        rows,
+        hub.n,
+        hub.dur,
+        gold={"icr": icr, "rates": g_df["rate"].to_list(), "synchrony": synchrony},
+        bronze_prior_hash=data_quality.bronze_hash(rows),
+    )
     assert dq["gold_checked"], "data-quality gate did not run before Gold"
-    cofire, cf_p = gold_cofiring(s_df)                # synchrony materialized view (relational spikes)
+    cofire, cf_p = gold_cofiring(s_df)  # synchrony materialized view (relational spikes)
     top_pair = (cofire["channel"][0], cofire["channel_b"][0])
     handoff = latency_handoff(g_df)
 
@@ -141,21 +155,28 @@ def main():
     print(f"GOLD    features        : {g_df.height:,} rows  -> {kb(g_p):.1f} KB Parquet")
     print(f"        population synchrony (CV) : {synchrony:.3f}")
     print(f"        inverse compression ratio : {icr:.3f}  (lower = more structured)")
-    print(f"        top co-firing pair (synchrony view): channels {top_pair} "
-          f"(burst {{7,42}} should surface)")
+    print(
+        f"        top co-firing pair (synchrony view): channels {top_pair} "
+        f"(burst {{7,42}} should surface)"
+    )
     print()
 
     # Spark-SQL analog: query Gold Parquet with SQL
     ctx = pl.SQLContext(gold=pl.read_parquet(g_p))
-    top = ctx.execute(
-        "SELECT channel, count, rate FROM gold ORDER BY rate DESC LIMIT 5").collect()
+    top = ctx.execute("SELECT channel, count, rate FROM gold ORDER BY rate DESC LIMIT 5").collect()
     print("SQL: top channels by firing rate (the burst {7,42} should surface):")
     print(top)
 
     # column pruning / predicate pushdown: lazy-scan Silver, read only 2 columns
-    pruned = (pl.scan_parquet(s_p).select(["channel", "spikes"])
-              .group_by("channel").agg(pl.col("spikes").sum().alias("total"))
-              .sort("total", descending=True).head(3).collect())
+    pruned = (
+        pl.scan_parquet(s_p)
+        .select(["channel", "spikes"])
+        .group_by("channel")
+        .agg(pl.col("spikes").sum().alias("total"))
+        .sort("total", descending=True)
+        .head(3)
+        .collect()
+    )
     top_chs = pruned["channel"].to_list()
     print(f"\nlazy column-pruned scan -> busiest channels: {top_chs}")
     print(f"SNN handoff: latency-encoded {len(handoff)} channel-spikes, first few {handoff[:5]}")
@@ -166,9 +187,13 @@ def main():
     assert any(c in top_chs for c in (7, 42)), "Gold/Silver didn't surface the burst channels"
     assert 0.0 < icr < 1.0, f"ICR out of range: {icr}"
     assert synchrony > 0.0 and handoff, "missing Gold synchrony / SNN handoff"
-    assert top_pair == (7, 42), f"co-firing view should surface the burst pair (7,42), got {top_pair}"
-    print("self-check OK: Bronze roundtrip intact, burst surfaced via Gold, ICR valid, "
-          "synchrony + SNN handoff produced, co-firing view found the (7,42) burst pair")
+    assert top_pair == (7, 42), (
+        f"co-firing view should surface the burst pair (7,42), got {top_pair}"
+    )
+    print(
+        "self-check OK: Bronze roundtrip intact, burst surfaced via Gold, ICR valid, "
+        "synchrony + SNN handoff produced, co-firing view found the (7,42) burst pair"
+    )
 
 
 if __name__ == "__main__":

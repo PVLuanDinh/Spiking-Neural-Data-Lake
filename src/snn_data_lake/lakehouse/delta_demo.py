@@ -20,6 +20,7 @@ Scope note: this is the LAKEHOUSE-tier upgrade. It mainly benefits the UNVERIFIE
 streaming path (dataflow_ingest WriteToParquet -> would become a Delta sink). The verified
 local stores stay the stdlib .spk/.spc/.spkl formats (see docs/STORAGE_FORMATS.md).
 """
+
 import os
 import random
 import shutil
@@ -34,19 +35,23 @@ TABLE = os.path.join(LAKE, "delta_bronze")
 def micro_batch(n, seed):
     """One streaming micro-batch of AER events {t, channel} — the kind dataflow appends."""
     rng = random.Random(seed)
-    return pl.DataFrame({"t": [rng.randint(0, 10_000) for _ in range(n)],
-                         "channel": [rng.randint(0, 63) for _ in range(n)]},
-                        schema={"t": pl.Int64, "channel": pl.Int32})
+    return pl.DataFrame(
+        {
+            "t": [rng.randint(0, 10_000) for _ in range(n)],
+            "channel": [rng.randint(0, 63) for _ in range(n)],
+        },
+        schema={"t": pl.Int64, "channel": pl.Int32},
+    )
 
 
 def main():
     os.makedirs(LAKE, exist_ok=True)
     if os.path.isdir(TABLE):
-        shutil.rmtree(TABLE)                       # clean slate (reproducible)
+        shutil.rmtree(TABLE)  # clean slate (reproducible)
 
     BATCHES, PER = 12, 200
     total = 0
-    for i in range(BATCHES):                       # streaming: one Delta append per micro-batch
+    for i in range(BATCHES):  # streaming: one Delta append per micro-batch
         df = micro_batch(PER, seed=i)
         df.write_delta(TABLE, mode="append")
         total += df.height
@@ -78,13 +83,13 @@ def main():
 
     # ---- self-checks --------------------------------------------------------
     assert rows_before == total, f"Delta lost rows on append: {rows_before} != {total}"
-    assert files_after < files_before, \
-        f"OPTIMIZE did not compact ({files_before} -> {files_after})"
+    assert files_after < files_before, f"OPTIMIZE did not compact ({files_before} -> {files_after})"
     assert rows_after == total, f"OPTIMIZE changed the data: {rows_after} != {total}"
-    assert v0_rows == first_batch_rows, \
-        f"time-travel to v0 wrong: {v0_rows} != {first_batch_rows}"
-    print(f"self-check OK: {BATCHES} appends -> {files_before} files -> OPTIMIZE -> {files_after} "
-          f"files, {total} rows intact, time-travel to v0 = {v0_rows} rows")
+    assert v0_rows == first_batch_rows, f"time-travel to v0 wrong: {v0_rows} != {first_batch_rows}"
+    print(
+        f"self-check OK: {BATCHES} appends -> {files_before} files -> OPTIMIZE -> {files_after} "
+        f"files, {total} rows intact, time-travel to v0 = {v0_rows} rows"
+    )
 
 
 if __name__ == "__main__":
