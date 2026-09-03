@@ -63,6 +63,20 @@ retired, and every claim ships with a control and a red that can fail.
   trailer rule this line used to state). `attribution: {commit: "", pr: ""}` in `~/.claude/settings.json`
   enforces it mechanically rather than by remembering; the rule is kept written down here because the
   setting is machine-local and this file is the tree's copy of the protocol.
+- **Suggested-fix chips and open tasks are a COMPLETION GATE** (owner, 2026-09-03, strengthening the
+  2026-08-31 rule that made them pre-authorized). Chips are fixed AUTONOMOUSLY, and **no arc, task or
+  session is declared done while a chip or an open task remains.** Filing a chip is deferral, not
+  closure — the session that raises one owns it. Before saying done, enumerate open chips, background
+  tasks without a terminal verdict, and anything the session itself deferred, and report that list or
+  report it empty. Two honest-sounding reasons had been ending arcs with chips open ("out of this
+  arc's one-change-per-commit scope" and "a `src/` change owes its own panel"); both were true and
+  neither made the work done. **Fix them under the full rhythm, not around it** — a chip touching
+  `src/` still owes its own arc, so the gate is that the queue empties, not that the rhythm is skipped
+  to empty it. **Dismiss a chip only when it is genuinely closed**, with the reason: a wrongly
+  dismissed chip is worse than an open one, because an open one is visible. The only clean exit that
+  is not a fix is an explicit owner deferral — ask, do not assume scope. The A.3 carve-outs above are
+  unaffected: a chip that would touch the five `brainstem/` envelope files, the E-STOP, or anything
+  irreversible outside the repo is raised, never auto-landed.
 - **Launch sessions from `D:\AI-project`, not the repo subdir** (the memory tools key on that cwd). The
   curated memory store is `C:\Users\vinhl\.claude\projects\D--AI-project\memory\` (its `MEMORY.md` index
   auto-loads; its START-HERE file is the per-session protocol and points back here).
