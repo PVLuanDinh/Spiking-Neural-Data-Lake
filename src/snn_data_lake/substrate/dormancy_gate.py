@@ -620,6 +620,14 @@ EXEMPT = {
         "the cross-tier canary -- a CI self-check covering the governed -> ungoverned lazy imports "
         "this gate cannot see (reasoning/ and training/ are outside BRAIN_MODULES), not a tick faculty",
     ),
+    "world_red_probe": (
+        "permanent",
+        "the world-red instrument (specs/022 Phase 1 W3) -- a measurement instrument, not a tick "
+        "faculty. Same disposition as perf_baseline above: reachable from run_selfchecks (bare "
+        "invocation is a 0.07 s wiring check over synthetic series), never from a tick. Wiring it "
+        "into a live path would be the dead consumer P3's own honesty guard forbids -- it OBSERVES "
+        "the two curiosity chains and must not perturb them",
+    ),
 }
 
 

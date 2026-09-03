@@ -110,3 +110,20 @@ CONTROL: capacity-matched sham carrying shuffled schema content — three arms, 
 DISCLOSURE: the ADOPTED half (ACS structure, train-without protocol) is Graziano's; only the
 third-factor routing is invented. NULL: RED-2 equality → the invention is deleted, the
 adoption stays.
+
+## 9. Two-chain world-red instrument (Phase 1 W3, PLAN-FINAL-2026-09-02)
+Adopted parts: the in-tree distinct-values liveness idiom (`autonomous_loop.py`'s
+`len(set(sal_live))` with its pinned-constant control), Shannon entropy, rank 2c's two archived
+probes. INVENTED composition: the two curiosity chains scored SEPARATELY and never averaged
+(`learning_progress.py` records the spiking drive as MEASURED INVALID as an |LP| basis, so a merged
+statistic would lie in both directions); a liveness verdict keyed on the 4 dp ROUNDED distinct count,
+the raw count reported beside it; the refit count DERIVED as scheduled (`ticks // refit_every`) minus
+effective (`len(trajectory)`), the difference counting refits that early-returned on the data guard.
+RED: 7 criteria, all mutation-tested (8 mutants, 8 red, 0 survived) -- a pinned constant must read AT
+FLOOR, an unfed channel missing rather than 0.0, a channel varying only below 1e-4 dead despite 200
+raw-distinct values. CONTROL: the unmutated check as sensitivity, before and after each mutation; a
+ramp beside the pinned constant, one command. ATTRIBUTION: per-channel and per-seed, never a seed
+average -- s2c singled out seed 1 as the one seed not yet converged, and an average hides exactly the
+seed a treatment passes for free on. DISCLOSURE: neither refit derivation survives a lake restore, so
+every mode runs `persist=False` under a throwaway home and refuses the live lake home. NULL: if no
+channel separates W1 from its time-shuffled control, W-R1 fails and W1/W2 revert.

@@ -488,6 +488,7 @@ REGIONS = {
         "hf_stream",  # streamed HF datasets -> brain-consumable features (licence-gated, bounded)
         "basic_components",  # Brain-Cog-adopted composition interface: node + local-rule + connection palette
         "similarity_sized_growth",  # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
+        "world_red_probe",  # specs/022 W3: the world-red instrument -- two-chain liveness at 4dp, category entropy, the derived refit gap (P8 #9)
     ],
 }
 

@@ -142,7 +142,16 @@ BUDGETS = {
     # RETIRED 2026-08-16 anchor; the governing practice since T046 is MINIMUM-VIABLE raises
     # (measured + 0, stated per raise), so 0.0%-headroom rows are deliberate and the
     # TIGHTENABLE report is structurally quiet for them.
-    "docs/INVENTION_REGISTER.md": 1152,  # RAISED 1124 -> 1152 on 2026-08-26 (specs/022 T051b-iv),
+    "docs/INVENTION_REGISTER.md": 1380,  # RAISED 1152 -> 1380 on 2026-09-03 (specs/022 Phase 1 W3),
+    # in the SAME commit as the growth: invention #9, the two-chain world-red instrument. This
+    # register is a per-invention list that grows by construction -- FR-031 names eight and W3 is
+    # the first of them to land, with L1b, L2, T066, T073, T077 and T078 still owed -- so the
+    # ceiling tracks landings rather than bounding them; what it bounds is the WORDS PER ROW. The
+    # row was first drafted at 329 words (2.5x its neighbours) and CONDENSED to 228 before this
+    # raise, so 101 of the 329 were paid by editing, not by the ceiling. 228 words, minimum viable
+    # raise (measured + 0), the T046/T047/T050/T051a practice -- the 0.0%-headroom ceiling is the
+    # design: it forces exactly this deliberate decision instead of absorbing drift silently.
+    # (superseded reason, kept for the trail) RAISED 1124 -> 1152 on 2026-08-26 (specs/022 T051b-iv),
     # in the SAME commit as the growth: row 3's MECHANIZED line gains the iv sandwich-merge
     # entry AND the iv panel's P2 clause (merge-must-reduce NOT discharged: two incumbents
     # before and after), and its no-tissue parens shrink to T053 only. 28 words, minimum

@@ -365,6 +365,7 @@ CORE = [
     "substrate.region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> ignition bias
     "substrate.basic_components",  # Brain-Cog-adopted composition interface (node + local-rule + connection palette)
     "substrate.similarity_sized_growth",  # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
+    "substrate.world_red_probe",  # specs/022 W3: 7 wiring reds (pinned constant dead, absent != zero, 4dp decisive, refit gap arithmetic)
 ]
 # RESEARCH â€” benchmarks / storage / KG demos (research/), run with root on PYTHONPATH.
 RESEARCH = [
