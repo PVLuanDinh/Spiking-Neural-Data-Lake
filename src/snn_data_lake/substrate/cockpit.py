@@ -1193,7 +1193,14 @@ def main():
     assert json.loads(_first_body)["error"], "a 503 must carry a reason, not an empty body"
 
     _drew = _arm.view.render_if_wanted(_arm.model, _arm.data)
-    if _drew:  # environments without a GL context keep the honest 503 path above
+    # `is not None`, NOT truthiness -- the fourth and last copy of the shape fixed in
+    # arm_view.main() at e9e1832b. render_if_wanted returns None when it did not render and the
+    # revision number when it did, and revision 0 is FALSY: a renderer that draws but stops
+    # advancing its counter skips this block, so the three asserts below -- including the
+    # end-to-end one, that the panel's counter agrees with the renderer -- never run, and this
+    # self-check exits 0. Production cannot reach 0 today (the counter post-increments), so this
+    # changes no behaviour; it makes the asserts reachable under the defect they exist to catch.
+    if _drew is not None:  # environments without a GL context keep the honest 503 path above
         _code, _png = _http_get(brain, "/api/arm.png")
         assert _code == 200, f"a drawn frame was not served: {_code}"
         assert _png[:8] == b"\x89PNG\r\n\x1a\n", "the route did not return PNG bytes"
