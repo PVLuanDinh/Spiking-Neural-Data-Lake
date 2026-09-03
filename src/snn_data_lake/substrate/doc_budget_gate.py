@@ -29,7 +29,10 @@ WHAT IS AND IS NOT BUDGETED, decided by COUNTING FIRST (231 tracked .md, 875,704
       CLAUDE.md    UNTRACKED (gitignored). A ceiling on it would report MISSING in every clone.
 
 Budgeting the records would be the allowlist-shaped failure that killed the broad citation rule at
-475 findings. The budgeted set is FIVE standing documents -- a work list.
+475 findings. The budgeted set is the standing documents listed in BUDGETS below -- a work
+list. The count is deliberately NOT written here: this sentence said FIVE while BUDGETS held
+seven, because a ceiling is added without the prose being reread. A literal that must be kept in
+step with a table it sits above will drift again; the table is the count.
 
   python -m snn_data_lake.substrate.doc_budget_gate            # BARE = ASSERT: exit 1 on findings
   python -m snn_data_lake.substrate.doc_budget_gate --assert   # same (kept for CI-spelling parity)
