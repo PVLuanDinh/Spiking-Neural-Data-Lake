@@ -152,19 +152,32 @@ def test_revision_advances_per_frame():
     The clock is FROZEN, and that is the fix for a real flake rather than a convenience.
     This test used the real `time.monotonic` and called `request()` once before two renders,
     so the renders raced `DEMAND_TTL_S` (5.0 s): the FIRST one constructs a `mujoco.Renderer`
-    -- first-time offscreen GL -- and if that exceeds the TTL under a contended full-suite
-    run, `wanted()` is already False when the second is called and `render_if_wanted` returns
-    None at its first line. That produced `assert (1, None) == (1, 2)` in batteries #132 and
-    #137, green both times when the file ran alone (measured uncontended: render #1 takes
-    0.49 s, 9.8% of the TTL). Reproduced deterministically by advancing an injected clock past
-    the TTL, and distinguished from the other two None paths, which LATCH `_unavailable`.
+    -- first-time offscreen GL -- and if that exceeds the TTL, `wanted()` is already False when
+    the second is called and `render_if_wanted` returns None at its first line, the one None
+    path that does not latch `_unavailable`. That produced `assert (1, None) == (1, 2)` in
+    batteries #132 and #137, green both times when the file ran alone.
+
+    MEASURED, 12 fresh processes timing `render_if_wanted` alone: 11 of them 0.241-0.254 s
+    (~4.9% of the TTL), and the FIRST -- a cold process -- 10.44 s, 209% of the TTL, which
+    reproduced `r1=1 r2=None` on the spot with nothing else running. So a cold process is
+    SUFFICIENT on its own; contention raises the rate, it is not required. (An earlier note
+    here said 0.49 s / 9.8%; that was the probe's end-to-end wall clock -- imports 0.15 s plus
+    model construction 0.10 s plus the render -- and it under-stated the risk by attributing
+    setup cost to the render and by sampling one warm process.)
 
     Demand expiry is not this test's subject and is not lost: `test_demand_expires` owns it
-    deliberately, with its own injected clock. The three sibling tests here already inject one;
-    this was the only test in the file that did not, and the only one that flaked. Freezing the
-    clock removes the timing dependence WITHOUT weakening the assertion -- the counter is still
-    asserted hard, so a stuck revision still fails. Extending the r1 skip to r2 was the other
-    candidate and is rejected: it would let a stuck counter pass as a skip.
+    deliberately, with its own injected clock and assertions in both directions. Two of this
+    file's five `ArmView` constructions used the real clock; both are frozen now, this one and
+    `test_renderer_refuses_a_foreign_thread`, whose ownership assertion the same expiry made
+    pass VACUOUSLY.
+
+    Freezing the clock removes the timing dependence WITHOUT weakening the assertion: the
+    counter is still asserted hard, verified by pinning `_revision` in memory, which reds this
+    with `assert (1, 1) == (1, 2)`. Extending the r1 skip to r2 was the other candidate and is
+    rejected -- but NOT for the reason first recorded here. A stuck counter returns 1, not
+    None, so a skip would never have hidden one. It is rejected because it would absorb a
+    genuine second-frame failure into a green skip, and because it would leave the wall-clock
+    dependency in place while hiding its only symptom.
     """
     m, d = _live()
     view = av.ArmView(width=64, height=48, clock=lambda: 0.0)
@@ -186,9 +199,18 @@ def test_renderer_refuses_a_foreign_thread():
 
     Rendering on the wrong thread does not raise -- it returns a garbage frame. That is why
     this is an explicit ownership check and not a try/except, and why a lock would not help.
+
+    The clock is frozen for the same reason as in `test_revision_advances_per_frame`, and here
+    the consequence was worse. This test has the identical shape -- `request()` once, then a
+    render that builds the `mujoco.Renderer`, then a second render -- so an expired
+    `DEMAND_TTL_S` makes `render_if_wanted` return None at its first line. The foreign thread's
+    render is then refused by the DEMAND GATE rather than by the ownership check, and this
+    test's primary assertion passes for the wrong reason: it would report a working ownership
+    check on a build where ownership was never consulted. Only the reason assertion below
+    catches it, and it catches it as an empty string rather than as anything attributable.
     """
     m, d = _live()
-    view = av.ArmView(width=32, height=24)
+    view = av.ArmView(width=32, height=24, clock=lambda: 0.0)
     view.request()
     if view.render_if_wanted(m, d) is None:
         pytest.skip("no offscreen rendering here")
