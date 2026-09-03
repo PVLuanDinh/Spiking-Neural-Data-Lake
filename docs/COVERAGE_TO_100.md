@@ -22,7 +22,7 @@ Two consequences, both load-bearing:
    Affect, SpatialTemporal and action-relevant Perception. It **cannot** raise Language, Imagination,
    Gf, Consciousness or WholeBrain. Crediting those to a wiring wave is the theater P0 forbids.
 2. **Two categories are at measured architectural ceilings.** BLiMP **51.0%** against a 50.0% chance
-   floor on a fully-trained 808k-parameter e-prop LM, and ARC-AGI **2.75%** held-out against a 0.5%
+   floor on a fully-trained 808k-parameter e-prop LM, and ARC-AGI **4.75%** held-out (19/400, re-derived 2026-09-02 at 4f20a7e8; 2.75% on 2026-08-03) against a 0.5%
    trivial-solver noise floor, with the failure mode proven to be DSL coverage rather than search
    budget. Points there require capability, not wiring.
 

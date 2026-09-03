@@ -49,7 +49,7 @@ environment; it is explicitly **not** part of the shipped product.
 
 ```
 ESP32 sensor --> spike-encode --> spike data lake --> order-aware match --> Interpreter --> command --> arm
- (distance/IR)   (multimodal/        (.spk store,      (Van Rossum /                        (JOINT_*, GRIP,   (sim ArmSim
+ (distance/IR)   (multimodal/        (.spk store,      (Van Rossum /                        (JOINT_*, GRIP,   (sim So101Arm
                   latency encode)     Paradigm A/B)      learned classifier)                  EMERGENCY_STOP)   or real servos
                                           ^                                      |                                  |
      reflex (fast LIF, ms) --------------+ preempts cognition                   v                                  |
@@ -78,7 +78,7 @@ Concretely, across the modules that implement each stage:
 - **Act** — `so101_arm.py` (the MuJoCo SO-101: six joints, real units, mass, gravity and
   actuator forces matched to the STS3215) or `serial_arm.py` (real ESP32 servos over serial;
   it mirrors the same body) — **every** motion,
-  sim or real, is routed through the `ArmSim.apply()` safety gate.
+  sim or real, is routed through the `So101Arm.apply()` safety gate.
 - **Reward + stress + learn** — `valence_stdp.py` implements dopamine-style
   reward-prediction-error STDP toward APPROACH/AVOID; `cortisol.py` is a slow tonic
   stress scalar that raises reflex sensitivity and hardens aversive learning under
@@ -167,7 +167,7 @@ Five modules form the **safety envelope** around the physical arm and are treate
 change-controlled: `reflex.py` (emergency-stop reflex), `serial_arm.py` (real hardware
 serial interface, fail-safe — a write error raises rather than silently continuing),
 `so101_arm.py` (the MuJoCo SO-101 body, whose gate every command — sim or real — is gated
-through via `ArmSim.apply()`), `arm_config.py` (calibration, limits, the
+through via `So101Arm.apply()`), `arm_config.py` (calibration, limits, the
 `SAFETY_CALIBRATED` flag), and `interpreter.py` (command validation). The real serial path
 refuses to operate on an uncalibrated port, with no bypass; recent hardening closed a
 fail-*open* gap so non-finite (`NaN`/`inf`) sensor readings are now treated as maximal

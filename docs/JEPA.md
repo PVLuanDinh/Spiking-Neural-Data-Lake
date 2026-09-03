@@ -55,7 +55,7 @@ With `AutonomousArm(jepa=True)` / `LiveBrain(jepa=True)`:
 
 **Safety.** JEPA only biases the executive's goal; it drives no motion and adds no path to the
 actuator. The reflex E-STOP runs first and still preempts every tick, and every motor command flows
-through the gated `ArmSim`. None of the 5 brainstem safety-envelope files changed. All of this is
+through the gated `So101Arm`. None of the 5 brainstem safety-envelope files changed. All of this is
 asserted with the flag ON in `autonomous_loop.py` and `live_brain.py` self-checks.
 
 ## Scaling: a deeper encoder + the torch trainer (v3.12)

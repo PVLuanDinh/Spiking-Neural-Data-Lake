@@ -28,7 +28,7 @@ SAFETY (unchanged, non-negotiable): this is PERCEPTION / COGNITION only. It adds
 route -- it never sends HOME / RETRACT_ALL / JOINT_* / any motor command; every stimulus pins
 distance to a SAFE band (CONTACT * 3.0) so the reflex E-STOP never trips in normal operation. All
 safety lives inside LiveBrain (untouched, COMPOSED never rewritten): the reflex E-STOP fires FIRST
-and the gated ArmSim is the only path to motion. A structured arm/lake command ALWAYS takes the
+and the gated So101Arm is the only path to motion. A structured arm/lake command ALWAYS takes the
 deterministic NL-firewall + gated-arm path; the generative language center is display-only and its
 text is NEVER parsed as a motor command.
 

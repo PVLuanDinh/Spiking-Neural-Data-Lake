@@ -12,7 +12,7 @@ as it interacts with data (a new context -> a new unit -> its own action-value r
 
 SAFETY (non-negotiable): the network only CHOOSES; it never bypasses the envelope. An object at the
 sensor (distance < CONTACT) trips the reflex -> EMERGENCY_STOP BEFORE any learned action, and EVERY
-motor command is issued through the safety-gated ArmSim.apply() (collision / E-STOP / stopped freeze).
+motor command is issued through the safety-gated So101Arm.apply() (collision / E-STOP / stopped freeze).
 Cortisol rises on danger and, while stressed, biases selection toward the safe action.
 
 Online prototype-recruitment (growing_learner) + a reward-modulated action-value table
@@ -103,7 +103,7 @@ _MOTOR = tuple(
 # The arm's autonomous action repertoire. Until v4.58 this was ENGAGE/RELEASE/HOLD only -- three
 # tokens, none of which move a joint, so the brain had no vocabulary with which to change its own
 # next observation and the sensorimotor loop was causally OPEN. The four motor tokens are the
-# precondition for closing it. ArmSim already accepted this exact command form; nothing in the
+# precondition for closing it. So101Arm already accepted this exact command form; nothing in the
 # safety envelope changed, and `apply()` still ignores every one of these while `stopped` is set.
 ACTIONS = ("ENGAGE", "RELEASE", "HOLD") + _MOTOR  # the arm's autonomous action repertoire
 # Every action must pass the WIRE allow-list, checked once at import. HOLD is the deliberate
@@ -186,7 +186,7 @@ _COVER_RATE_WINDOW = 200
 
 # Consecutive ground-contact ticks before the postural recovery reflex fires. Small enough that the
 # arm cannot spend a run underground, large enough that a single grazing contact is not treated as a
-# fall. A latency, not a tuned threshold -- the condition itself (ArmSim reports GROUND) is exact.
+# fall. A latency, not a tuned threshold -- the condition itself (So101Arm reports GROUND) is exact.
 _GROUND_RECOVER_TICKS = 3
 SAFE_ACTION = "HOLD"  # what caution biases toward under stress
 #: The reward CONTRACT's bound -- `reward_fn(unit, action) -> [-1, 1]`, enforced where the reward
@@ -419,7 +419,7 @@ class AutonomousArm:
         self.amyg = Amygdala(seed=seed) if amygdala else None
         # opt-in basal-ganglia Go/NoGo gate: the action SELECTION stage. It disinhibits at most one of
         # the SAME safe actions (k-WTA over their values), or -- with no value drive -- releases
-        # NOTHING, which falls back to the safe action. It feeds the same gated ArmSim.apply(); it
+        # NOTHING, which falls back to the safe action. It feeds the same gated So101Arm.apply(); it
         # cannot bypass the reflex/E-STOP or introduce any new motion (see _bg_select / step()).
         self.bg = BasalGangliaGate(seed=seed) if bg_gate else None
         # opt-in interoceptive arousal: the medullary vital nuclei + a hypothalamic thermal set-point map
@@ -631,7 +631,7 @@ class AutonomousArm:
         # encoder near-collapses its few live contexts, so on-robot the pattern is the reliable substrate; see the
         # NONLINEAR mlp_q block below and self-check 19 for the precise cause.) ADDITIVE to safety: it
         # only changes HOW the action VALUE is computed -- the reflex/E-STOP runs first and every command still
-        # flows through the gated ArmSim. Flag OFF => the tabular q path is byte-identical.
+        # flows through the gated So101Arm. Flag OFF => the tabular q path is byte-identical.
         self._latent_q_on = latent_q
         self.latent_q = None  # lazily built on the first tick (sized to len(pattern))
         # opt-in SHARED NONLINEAR MLP-Q (the task-aligned learned substrate): a one-hidden-layer action-value
@@ -972,7 +972,7 @@ class AutonomousArm:
         Entry point is the top-down `td` preference vector -- the SAME channel the PFC and the routed
         novelty/salience signals already use. It therefore changes only WHICH action the gated
         selection prefers; it adds no actuator route, and the reflex/E-STOP has already returned long
-        before this runs. An E-STOPped arm ignores every motor command regardless (ArmSim.apply).
+        before this runs. An E-STOPped arm ignores every motor command regardless (So101Arm.apply).
 
         Weight is competence-gated, not fixed (Policy 1): the CPG carries while the learned row is
         undifferentiated and recedes to a floor as the row separates. `_cpg_spread_max` is a RUNNING
@@ -2070,7 +2070,7 @@ class AutonomousArm:
         # T037: the tapped passage -- around the envelope, never in it (apply_observed)
         state = self.apply_observed(action)  # gated: frozen after E-STOP, collision-checked
         self._adapt_actuation(state)
-        # POSTURAL RECOVERY REFLEX. ArmSim REPORTS ground contact but deliberately does not prevent
+        # POSTURAL RECOVERY REFLEX. So101Arm REPORTS ground contact but deliberately does not prevent
         # it -- its self-check asserts a command CAN drive the arm into the floor ("reflex would
         # EMERGENCY_STOP"), because a real arm can be, and a sim that silently refused would hide the
         # failure mode from the safety layer. But nothing ever consumed that signal: the reflex fires
@@ -2080,7 +2080,7 @@ class AutonomousArm:
         # underground. This is the same computed-but-not-consumed gap as everywhere else.
         # HOME is the sanctioned recovery command and is the analog of the OpenCat pose-recovery that
         # is mhflocke's ONLY fall handling.
-        # SAFETY: gated on `not stopped`. ArmSim.apply("HOME") clears `stopped`, so firing this while
+        # SAFETY: gated on `not stopped`. So101Arm.apply("HOME") clears `stopped`, so firing this while
         # E-STOPPED would un-freeze an emergency-stopped arm. It must never run in that state, and the
         # E-STOP early-return at the top of step() means a stopped arm normally never reaches here.
         if state.get("collision") == "GROUND" and not state.get("stopped"):

@@ -51,11 +51,11 @@ python local_llm/run_local.py --llm
 
 ## Safety Guarantee
 
-The local LLM only **selects** an allow-listed intent. Every motor command still passes through `ArmSim.apply()`, which enforces:
+The local LLM only **selects** an allow-listed intent. Every motor command still passes through `So101Arm.apply()`, which enforces:
 - **Collision detection**: blocks unsafe end-effector positions
 - **E-STOP reflex**: instant motor kill on overload or emergency signal
 - **Serial firewall**: command allow-list prevents raw wire injection
-- **Deterministic simulation**: `ArmSim` geometry/collision is deterministic — the same command yields the same gated result
+- **Deterministic simulation**: `So101Arm` geometry/collision is deterministic — the same command yields the same gated result
 
 The LLM can never inject a raw command — `nl_interface` gates all output through the existing safety firewall.
 

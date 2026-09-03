@@ -80,6 +80,8 @@ idiom) + a cross-task library. Wired live as `ArcExpert` in `reasoning_cortex.py
 | training (developed against) | **40/400 = 10.00%** |
 | **evaluation (held out, never inspected)** | **11/400 = 2.75%** |
 
+**Re-derived 2026-09-02 at HEAD 4f20a7e8 (specs/022 H1; P5's "re-derive, never cite"):** evaluation **19/400 = 4.75%** with the library flag `on` and **19/400 = 4.75%** with `off` — identical because `tools/arc_score.py` has ignored its third argument since 2026-08-03 (noted above); 220 s per run on the pinned host; the scorer outputs are archived beside the session's audit record (memory store, `archive/audit-2026-09-01/h1-gf/`). The 2.75% above is the 2026-08-03 measurement at its own commit and stays as that record; the current figure is the one to quote, and it rots the same way.
+
 Controls that genuinely fail: identity-only DSL scores 0/3 on synthetic tasks and **0/40 on training**.
 Determinism verified (two budget-bound runs solve the identical set).
 
@@ -98,7 +100,7 @@ Reported as measured, not quietly dropped.
 
 ### What is honest to claim
 
-The measured move is **0.0% → 2.75%** on held-out ARC-AGI-1, roughly 5× the trivial floor. Human performance
+The measured move was **0.0% → 2.75%** on held-out ARC-AGI-1 (2026-08-03; 4.75% at the 2026-09-02 re-derivation above), roughly 5× the trivial floor. Human performance
 is ~85%. What was built is **test-time program synthesis over an author-chosen grid vocabulary**: it solves
 the geometry / colour-mapping / object-selection slice and returns an honest empty candidate list everywhere
 else. The DSL is a developer-supplied prior, and under Chollet's developer-aware clause that prior is charged
@@ -365,7 +367,7 @@ Both ceilings **still stand**. One moved measurably, one did not move at all:
 
 | ceiling | before | after | status |
 |---|---|---|---|
-| fluid intelligence | ARC-AGI eval **0.0%** | ARC-AGI eval **2.75%** | moved off the floor; not closed |
+| fluid intelligence | ARC-AGI eval **0.0%** | ARC-AGI eval **2.75%** (2026-08-03) → **4.75%** (re-derived 2026-09-02 at 4f20a7e8) | moved off the floor; not closed |
 | open-domain language | BLiMP **51.0%** (chance 50.0) | unchanged | not moved; cause now proven architectural |
 
 The honest gain is not the 2.75%. It is that both ceilings are now **quantified against external benchmarks

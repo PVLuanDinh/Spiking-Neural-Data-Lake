@@ -122,7 +122,7 @@ subsystems, all routed through one safety gate:
 - **Recognition** (`signal_loop.py`, `gesture_recognition.py`, `learned_matcher.py`, with
   `growing_learner.py` for novelty-triggered online vocabulary growth) — order-aware matching
   through Paradigm B or a trained classifier.
-- **Safety envelope** — every motor command, sim or real, is routed through `ArmSim.apply()`;
+- **Safety envelope** — every motor command, sim or real, is routed through `So101Arm.apply()`;
   the real serial actuator path (`serial_arm.py`) is fail-safe (a write error raises rather
   than silently continuing) and refuses to operate on an uncalibrated port, with no bypass.
   Non-finite (NaN/inf) sensor readings are treated as maximal danger rather than silently
@@ -155,7 +155,7 @@ End-to-end closed loop (text diagram, see `docs/OVERVIEW.md` for the fully annot
 
 ```
 ESP32 sensor --> spike-encode --> spike data lake --> order-aware match --> Interpreter --> command --> arm
- (distance/IR)   (multimodal/        (.spk store,      (Van Rossum /                        (JOINT_*, GRIP,   (sim ArmSim
+ (distance/IR)   (multimodal/        (.spk store,      (Van Rossum /                        (JOINT_*, GRIP,   (sim So101Arm
                   latency encode)     Paradigm A/B)      learned classifier)                  EMERGENCY_STOP)   or real servos
                                           ^                                      |                                  |
      reflex (fast LIF, ms) --------------+ preempts cognition                   v                                  |

@@ -9,7 +9,7 @@ self-improvement primitive (v3.15 curiosity + v3.16 curriculum) to a coherent, i
 - CAN mean: continual, self-directed learning where many bounded mechanisms interlock into ONE
   live loop -- curiosity + self-generated goals + spiking value + need-driven growth +
   homeostasis + consolidation + a metacognitive monitor -- all writing ONLY to value/representation
-  stores, all structurally downstream of the reflex E-STOP and the gated `ArmSim.apply`.
+  stores, all structurally downstream of the reflex E-STOP and the gated `So101Arm.apply`.
   Integrated-and-BOUNDED.
 - CANNOT mean: open-ended recursive self-improvement, self-authored terminal values, self-rewrite
   of the learning rule/architecture without bound, an "intelligence explosion", or consciousness.
@@ -39,7 +39,7 @@ Status: [present] fully live | [partial] parts exist but unwired/rate/dormant | 
 
 | L | Rung | Status | Anchor |
 |---|------|--------|--------|
-| L0 | Substrate & immutable safety fixed-point | present | `brainstem/autonomous_loop.py:362` reflex E-STOP (NaN fails closed) + gated `ArmSim.apply`; `reflex.py`; `cortex/lif_neuron.py`, `rank_order_coding.py` |
+| L0 | Substrate & immutable safety fixed-point | present | `brainstem/autonomous_loop.py:362` reflex E-STOP (NaN fails closed) + gated `So101Arm.apply`; `reflex.py`; `cortex/lif_neuron.py`, `rank_order_coding.py` |
 | L1 | Reactive extrinsic-reward control | present | `autonomous_loop.py:426` tabular bandit `q[unit][action]` over grown units, through the gate |
 | L2 | Reactive self-improvement primitive (surprise -> learning-progress -> value) | present | `neuromodulation/intrinsic_motivation.py:118` `intrinsic_reward` of `jepa_world_model` error, value-only at `:413` (v3.15) |
 | L3 | Active exploration + self-paced curriculum | present | `most_curious()` + `cortex/reasoning_curriculum.py` streak/patience advance, fused in `AutonomousArm.develop()` (~2/4 stages self-graduated) |
@@ -68,7 +68,7 @@ and turning the built modules from demos into the LIVE deployed primitives (spik
 
 One safety-gated tick with a FAST learning path, a SLOW regulatory/offline path, and a
 metacognitive spine -- all structurally downstream of the reflex E-STOP and the gated
-`ArmSim.apply` (the 5 brainstem files are permanently outside the writable set).
+`So101Arm.apply` (the 5 brainstem files are permanently outside the writable set).
 
 - FAST PATH: a genuinely-spiking world model emits a spiking surprise (error-population firing
   rate); a spiking learning-progress operator (two LIF pools whose rectified rate-difference =

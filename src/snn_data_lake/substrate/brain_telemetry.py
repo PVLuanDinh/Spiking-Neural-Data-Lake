@@ -285,7 +285,7 @@ def snapshot(brain):
       cognition  -- Brain.state(), the canonical ~105-key view
       spikes     -- LiveBrain.spike_snapshot(), 17 REAL per-region rates in [0,1] (region-resolved,
                     NOT cell-type-resolved; do not label these as neuron populations)
-      body       -- ArmSim.state(). Carries `moves: False` because only `effector` currently changes.
+      body       -- So101Arm.state(). Carries `moves: False` because only `effector` currently changes.
       derived    -- arithmetic over the above, computed here so state() does not carry two
                     representations of the same fact
       gated      -- real variables their own source marks as never applied. `applied` is False.
@@ -414,7 +414,7 @@ def snapshot(brain):
             # content CHANGES; this reports the current tick's seizure, so the pair separates "the
             # bus moved" from "perception holds the bus".
             ("ws_percept_ignited", "_ws_percept_ignited"),
-            # Displacement, deliberately NOT called speed: ArmSim has no dt, no mass and no dynamics
+            # Displacement, deliberately NOT called speed: So101Arm has no dt, no mass and no dynamics
             # (arm_hardware.SIM_GAP.sim_has_dynamics is False), so dividing by a timestep would invent
             # a velocity the simulator cannot support. This is the chord length of the last scored
             # tick, in sim units.

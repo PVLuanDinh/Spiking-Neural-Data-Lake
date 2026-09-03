@@ -22,7 +22,7 @@ HONEST SCOPE OF THAT REFUSAL: it is a naming TRIPWIRE (defense-in-depth), NOT a 
 takes an opaque callback, so a determined caller could still wire a mutator under a benign name --
 the filter catches accidents, not sabotage. The ACTUAL safety guarantee is architectural and
 independent of this module: no code wires an effector mutator to a coordinator, and every motor
-command still flows through the brainstem ArmSim.apply() gate, which the coordinator neither touches
+command still flows through the brainstem So101Arm.apply() gate, which the coordinator neither touches
 nor can bypass. The tripwire lowers the chance of an accidental wiring; the brainstem gate is what
 actually bounds the arm.
 
@@ -302,7 +302,7 @@ def main():
     print(
         "self-check OK: one shared growth primitive (function-preserving, monotone), a coordinator "
         "that grows connected regions together, and a naming tripwire that keeps effector / action "
-        "/ E-STOP seams out of the growth network (the brainstem ArmSim gate is the real bound)"
+        "/ E-STOP seams out of the growth network (the brainstem So101Arm gate is the real bound)"
     )
 
 

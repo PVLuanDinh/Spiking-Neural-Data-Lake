@@ -101,6 +101,6 @@ audit on purpose — the sweep produces the single headline number, so it carrie
   part of Perception. It **cannot** raise Language, Imagination, Gf, Consciousness or WholeBrain —
   crediting those to a wiring wave is the theater P0 forbids.
 - **Language and Gf are at measured architectural ceilings**: BLiMP 47.4% (chance) on a fully-trained
-  808k-parameter e-prop LM, and ARC ~2.75% held-out with the failure mode proven to be DSL coverage,
+  808k-parameter e-prop LM, and ARC 4.75% held-out (19/400, re-derived 2026-09-02 at 4f20a7e8; 2.75% on 2026-08-03) with the failure mode proven to be DSL coverage,
   not search budget. Points there require capability, not wiring, and saying so is not pessimism —
   it is what stops the number being fiction.

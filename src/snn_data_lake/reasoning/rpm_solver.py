@@ -1,6 +1,6 @@
 r"""Raven's Progressive Matrices (RPM) solver -- a spiking neuro-vector-symbolic (NVSA) Gf lift.
 
-The brain's general FLUID INTELLIGENCE is near the floor (ARC ~2.75%). RPM is the tractable slice
+The brain's general FLUID INTELLIGENCE is near the floor (ARC 4.75% re-derived 2026-09-02 at 4f20a7e8; re-run `tools/arc_score.py evaluation on`). RPM is the tractable slice
 where the grounded method has a real number: NVSA (Hersche et al. 2023, arXiv:2203.04571) reaches
 ~88% on the RAVEN benchmark by inducing the puzzle's rule in a vector-symbolic algebra and executing
 it over role-filler object codes. This module runs NVSA's backend over the brain's OWN spiking VSA.

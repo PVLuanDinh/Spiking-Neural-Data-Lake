@@ -60,7 +60,7 @@ The `.exe` above is already double-click-runnable. To produce a proper `setup.ex
 - **No data files.** The cockpit's page is a module constant and its anatomical layout is
   computed at request time (`substrate/brain_geometry.py`), so the spec ships no `datas`.
 - **Safety envelope unchanged.** The arm is the internal simulator and every command still
-  routes through the safety-gated `ArmSim.apply()` — packaging changes nothing about the
+  routes through the safety-gated `So101Arm.apply()` — packaging changes nothing about the
   control path, and the cockpit binds loopback only.
 - Build artifacts (`build/`, `dist/`) are git-ignored; only the packaging sources are
   committed.

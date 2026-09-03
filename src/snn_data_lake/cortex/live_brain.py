@@ -403,7 +403,7 @@ class LiveBrain:
         write=True gate-writes the committed goal exactly as before (plan()'s own default).
 
         SAFETY: this holds a goal by lookahead; it does NOT drive the arm. Motor selection stays
-        reactive and GATED (the reflex/E-STOP and the ArmSim gate are untouched); planning only biases
+        reactive and GATED (the reflex/E-STOP and the So101Arm gate are untouched); planning only biases
         the executive's goal, it never adds a path to the actuator. Returns (option_index, mean_rt)."""
         from snn_data_lake.cerebellum.forward_model import ForwardModel
 
@@ -427,7 +427,7 @@ class LiveBrain:
         a language model: it recognises a few intents (greeting, goal, memory, attention, safety, and
         the consciousness question) and answers from the brain's actual state; it routes arm commands
         through the same NL safety firewall + gated arm the control panel uses (NLInterface ->
-        allow-listed command -> gated ArmSim.apply). Unknown text gets an honest capability reply, and
+        allow-listed command -> gated So101Arm.apply). Unknown text gets an honest capability reply, and
         it NEVER claims to be conscious. Returns the reply string."""
         t = (text or "").strip().lower()
         if not t:

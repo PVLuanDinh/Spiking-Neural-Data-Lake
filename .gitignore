@@ -61,7 +61,7 @@ captures/          # live gesture recordings from record_and_run.ps1
 *.npz
 *.npy
 MNIST/
-lakehouse/
+/lakehouse/
 
 # Terraform (local state + provider cache — never commit state, it can hold sensitive detail)
 infra/.terraform/
@@ -173,7 +173,7 @@ scratchpad/
 *_CODE/
 
 # unlazy working ledger + hook state (session machinery, never spec artifacts)
-GATES.md
+/GATES.md
 .unlazy-hook-state.json
 .unlazy/
 # CLASS rule, not just the three instances the first sweep caught (the T051a
