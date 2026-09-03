@@ -149,7 +149,9 @@ def category_entropy(cats):
     none_n = sum(1 for c in cats if c is None)
     counts = collections.Counter(c for c in cats if c is not None)
     n = sum(counts.values())
-    bits = -sum((k / n) * math.log2(k / n) for k in counts.values()) if n else 0.0
+    # len(counts) > 1 rather than n > 0: a single category gives -0.0 from the negated sum, and a
+    # negative zero in a report invites a reader to look for a sign error that is not there.
+    bits = -sum((k / n) * math.log2(k / n) for k in counts.values()) if len(counts) > 1 else 0.0
     return {
         "n": n,
         "none": none_n,
@@ -229,14 +231,23 @@ def run_seed(seed, checkpoints=CHECKPOINTS, window=WINDOW, entropy_wake=ENTROPY_
     try:
         rows, marks, last = [], {}, max(checkpoints)
         for t in range(1, last + 1):
-            if b.tick() != "awake":
-                continue
-            rows.append(wake_row(b))
+            # The checkpoint is taken on tick t whether or not t was awake. Guarding it behind
+            # the wake test is a MEASURED defect, not a hypothetical: the wake fraction is about
+            # 0.49, so roughly half of all checkpoints land on a sleep tick, and a skipped
+            # checkpoint silently reported the state at the END of the run instead. Two
+            # checkpoints printing identical rows is that bug's tell -- it is what caught it.
+            if b.tick() == "awake":
+                rows.append(wake_row(b))
             if t in checkpoints:
                 marks[t] = _mark(b, rows, window, entropy_wake)
-        for t in checkpoints:  # a checkpoint that fell on a sleep tick still gets a row
-            if t not in marks:
-                marks[t] = _mark(b, rows, window, entropy_wake)
+        assert set(marks) == set(checkpoints), (
+            f"every checkpoint must be marked at its own tick: {sorted(marks)} != {sorted(checkpoints)}"
+        )
+        seen = [marks[t]["wake_rows"] for t in sorted(marks)]
+        assert all(a < b for a, b in zip(seen, seen[1:])), (
+            f"wake rows must STRICTLY rise between checkpoints (got {seen}) -- equal counts mean a "
+            "later checkpoint's state was reported for an earlier one, the defect this assert names"
+        )
         return {"seed": seed, "checkpoints": marks}
     finally:
         b.close()
