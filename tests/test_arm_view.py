@@ -147,9 +147,27 @@ def _live():
 
 
 def test_revision_advances_per_frame():
-    """The counter is the honesty mechanism: it must actually move."""
+    """The counter is the honesty mechanism: it must actually move.
+
+    The clock is FROZEN, and that is the fix for a real flake rather than a convenience.
+    This test used the real `time.monotonic` and called `request()` once before two renders,
+    so the renders raced `DEMAND_TTL_S` (5.0 s): the FIRST one constructs a `mujoco.Renderer`
+    -- first-time offscreen GL -- and if that exceeds the TTL under a contended full-suite
+    run, `wanted()` is already False when the second is called and `render_if_wanted` returns
+    None at its first line. That produced `assert (1, None) == (1, 2)` in batteries #132 and
+    #137, green both times when the file ran alone (measured uncontended: render #1 takes
+    0.49 s, 9.8% of the TTL). Reproduced deterministically by advancing an injected clock past
+    the TTL, and distinguished from the other two None paths, which LATCH `_unavailable`.
+
+    Demand expiry is not this test's subject and is not lost: `test_demand_expires` owns it
+    deliberately, with its own injected clock. The three sibling tests here already inject one;
+    this was the only test in the file that did not, and the only one that flaked. Freezing the
+    clock removes the timing dependence WITHOUT weakening the assertion -- the counter is still
+    asserted hard, so a stuck revision still fails. Extending the r1 skip to r2 was the other
+    candidate and is rejected: it would let a stuck counter pass as a skip.
+    """
     m, d = _live()
-    view = av.ArmView(width=64, height=48)
+    view = av.ArmView(width=64, height=48, clock=lambda: 0.0)
     view.request()
     r1 = view.render_if_wanted(m, d)
     if r1 is None:  # environment cannot draw; the degradation path is tested above
