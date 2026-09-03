@@ -290,12 +290,81 @@ def _selfcheck_modules() -> set[str]:
     return set(re.findall(r'"substrate\.([a-z0-9_]+)"', RUN_SELFCHECKS.read_text(encoding="utf-8")))
 
 
+def _selfcheck_tools() -> set[str]:
+    """The tools/ gates run_selfchecks runs in its tools stage (H1): the `"tools/x.py"` literals of
+    its TOOLS_GATES list. Without this the census could not see the local execution path."""
+    if not RUN_SELFCHECKS.exists():
+        return set()
+    return set(re.findall(r'"(tools/[a-z0-9_]+\.py)"', RUN_SELFCHECKS.read_text(encoding="utf-8")))
+
+
+def _enabled_ci_text(ci: str) -> str:
+    """ci.yml with its comment lines removed (H1, 2026-09-02): a `run:` step that is
+    commented out is not a step, and the old whole-file substring test counted it
+    (audit section 8 rank 10). A job disabled by `if: false` is not caught by a line
+    filter -- disclosed, not handled: ci.yml carries none today."""
+    return "\n".join(ln for ln in ci.splitlines() if not ln.lstrip().startswith("#"))
+
+
+def _git_heads() -> tuple[list[str], str]:
+    """The accepted heads: the stacked head and its parent plus the pushed head (origin/main) and
+    its parent. Returns (heads, reason): heads is [] and reason says why when the check cannot run --
+    git unavailable (a frozen bundle), a SHALLOW checkout (the parent refs cannot resolve, so a
+    record that names the parent would red for the wrong reason), or no ref resolving at all."""
+
+    def _rev(*args):
+        try:
+            out = subprocess.run(
+                ["git", *args], cwd=REPO, capture_output=True, text=True, timeout=60
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        return out.stdout.strip() if out.returncode == 0 else None
+
+    shallow = _rev("rev-parse", "--is-shallow-repository")
+    if shallow is None:
+        return [], "git unavailable"
+    if shallow == "true":
+        return [], "shallow checkout (parent refs cannot resolve; fetch depth >= 2 to check)"
+    heads = []
+    for ref in ("HEAD", "HEAD~1", "origin/main", "origin/main~1"):
+        h = _rev("rev-parse", ref)
+        if h:
+            heads.append(h)
+    return heads, ("" if heads else "no ref resolved")
+
+
+def certification_fresh(record: dict, heads: list[str]) -> tuple[bool, str]:
+    """The execution record (H1): `--certify` runs the gates and writes the tree state it
+    ran on. A record is FRESH when it is certified and its commit is the stacked head or its
+    parent, or the pushed head (origin/main) or ITS parent -- the batched-battery amendment:
+    the record is committed as the arc's last commit, so the pushed head's parent is the
+    certified head. A push that skipped its battery reds the next battery's first step
+    (`--assert` runs before `--certify`)."""
+    tree = record.get("tree") or {}
+    commit = str(tree.get("commit") or "")
+    if not record.get("certified"):
+        return False, "certification record is not certified"
+    if tree.get("dirty"):
+        return False, (
+            f"certification at {commit[:8] or '?'} was written on a DIRTY tree (uncommitted changes) -- "
+            "certify a clean head"
+        )
+    if commit in heads:
+        return True, f"certified at {commit[:8]}"
+    return False, (
+        f"certification at {commit[:8] or '?'} names neither the stacked head nor the pushed head "
+        "(or their parents) -- run `policy_manifest --certify` at the start of the battery"
+    )
+
+
 def cross_check(policies: list[Policy]) -> list[Policy]:
     """Fill in_ci / in_selfchecks on every derived command. The selfcheck runner
     is itself a CI step in every matrix job, so a registered module counts as
-    CI-reachable."""
-    ci = CI_YML.read_text(encoding="utf-8") if CI_YML.exists() else ""
+    CI-reachable. Only ENABLED ci.yml lines count (H1)."""
+    ci = _enabled_ci_text(CI_YML.read_text(encoding="utf-8")) if CI_YML.exists() else ""
     mods = _selfcheck_modules()
+    tools = _selfcheck_tools()
     for p in policies:
         for c in p.commands:
             path = c.source_token.split()[0]
@@ -304,7 +373,8 @@ def cross_check(policies: list[Policy]) -> list[Policy]:
                 c.in_selfchecks = stem in mods
                 c.in_ci = stem in ci or c.in_selfchecks
             else:
-                c.in_ci = path in ci
+                c.in_selfchecks = path in tools
+                c.in_ci = path in ci or c.in_selfchecks
     return policies
 
 
@@ -313,7 +383,7 @@ def census(policies: list[Policy]) -> dict:
     means the gate's name appears anywhere in POLICIES.md, the measured
     semantics) and NOT_IN_CI (a claimed mechanized command nothing in CI runs)."""
     text = POLICIES.read_text(encoding="utf-8")
-    ci = CI_YML.read_text(encoding="utf-8") if CI_YML.exists() else ""
+    ci = _enabled_ci_text(CI_YML.read_text(encoding="utf-8")) if CI_YML.exists() else ""
     runnable = {m for m in _selfcheck_modules() if GATE_NAME_RE.search(m)}
     for line in ci.splitlines():
         if "--assert" in line:
@@ -589,6 +659,23 @@ def run_assert() -> int:
             f"POLICY_MANIFEST ASSERT FAILED: claimed command(s) not CI-reachable: {drift['not_in_ci']}"
         )
         return 1
+    # H1 (2026-09-02, owner decision O3): the local battery is the gate, and 'the gate ran' must
+    # be a RECORDED fact -- the certification --certify writes at the start of every battery,
+    # refused here when it names neither the stacked head nor the pushed head (or their parents).
+    heads, reason = _git_heads()
+    if not heads:
+        print(f"policy_manifest: certification freshness NOT checked -- {reason} (disclosed)")
+    else:
+        try:
+            record = json.loads(CERTIFICATION_JSON.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            print(f"POLICY_MANIFEST ASSERT FAILED: no readable certification record ({e})")
+            return 1
+        fresh, why = certification_fresh(record, heads)
+        if not fresh:
+            print(f"POLICY_MANIFEST ASSERT FAILED: {why}")
+            return 1
+        print(f"policy_manifest: execution record {why}")
     print(
         f"policy_manifest assert OK -- rows reconciled, committed copy in sync, "
         f"unclaimed {len(drift['unclaimed_gates'])} (baseline {len(BASELINE_UNCLAIMED)}, may shrink never grow)"
@@ -636,6 +723,49 @@ def self_check() -> int:
     certified, reasons = decide_certified([bad], {"unclaimed_gates": [], "not_in_ci": []})
     if certified or not any("PX" in r for r in reasons):
         failures.append("certify decision did not refuse/name a constructed FAIL row")
+
+    # H1 reds: a commented-out CI step must NOT count as CI-reachable; a stale or
+    # uncertified execution record must be refused; a record at HEAD's parent passes.
+    ci_text = (
+        "      # run: python tools/ghost_gate.py --assert\n"
+        "      run: python tools/live_gate.py --assert\n"
+    )
+    enabled = _enabled_ci_text(ci_text)
+    if "ghost_gate" in enabled or "live_gate" not in enabled:
+        failures.append("commented-out CI step still counted as enabled")
+    heads = ["a" * 40, "b" * 40]
+    stale = certification_fresh({"certified": True, "tree": {"commit": "c" * 40}}, heads)[0]
+    uncert = certification_fresh({"certified": False, "tree": {"commit": "b" * 40}}, heads)[0]
+    parent = certification_fresh({"certified": True, "tree": {"commit": "b" * 40}}, heads)[0]
+    dirty = certification_fresh(
+        {"certified": True, "tree": {"commit": "b" * 40, "dirty": True}}, heads
+    )[0]
+    if stale or uncert or dirty or not parent:
+        failures.append(
+            "certification freshness reds unreachable "
+            f"(stale={stale}, uncertified={uncert}, dirty={dirty}, parent={parent})"
+        )
+    # the CALL SITE, not just the helper: cross_check must read the filtered ci.yml
+    global CI_YML
+    saved = CI_YML
+    try:
+        import tempfile
+
+        with tempfile.NamedTemporaryFile("w", suffix=".yml", delete=False, encoding="utf-8") as fh:
+            fh.write(ci_text)
+            CI_YML = Path(fh.name)
+        ghost = Policy(id="PG", title="fixture", kind="absolute")
+        ghost.commands = [
+            GateCommand(["x"], "tools/ghost_gate.py --assert"),
+            GateCommand(["x"], "tools/live_gate.py --assert"),
+        ]
+        cross_check([ghost])
+        if ghost.commands[0].in_ci or not ghost.commands[1].in_ci:
+            failures.append(
+                "cross_check does not read the enabled-line filter (ghost in_ci or live not in_ci)"
+            )
+    finally:
+        CI_YML = saved
 
     if failures:
         print("SELF-CHECK FAILED -- unreachable red(s):")

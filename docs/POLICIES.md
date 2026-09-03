@@ -1010,6 +1010,14 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
   a claim about a run that has EXECUTED, the same way *"it persists"* is a claim about a new process
   and *"it is pushed"* is a claim about a branch.
 
+  **Mechanized 2026-09-02 (owner decision O3, specs/022 plan of record):** `policy_manifest --certify`
+  executes the policy gate commands and writes the tree it ran on — commit and dirty flag — to
+  `tools/policy_certification.json`; `policy_manifest --assert` (also bare, in `run_selfchecks`) refuses a
+  record that is not certified, was written on a dirty tree, or names none of the accepted heads (the
+  batched-battery amendment below); only ENABLED `ci.yml` lines count as CI-reachable, and the census
+  counts the `tools/` gates `run_selfchecks` runs. A job disabled with `if: false` is not a comment and the
+  line filter does not see it — disclosed, not handled.
+
   **AMENDED 2026-09-02, owner: THE FULL GATE IS PER PUSHED ARC, NOT PER COMMIT** — the instruction,
   verbatim: stack an arc's commits and run one battery for all of them, and record the change here. Under
   it, one change per commit stays and the full gate runs once, on the stacked head of an arc, before that
