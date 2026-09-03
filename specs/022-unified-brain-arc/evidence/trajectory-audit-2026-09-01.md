@@ -503,8 +503,29 @@ in the tree.** Ordered by leverage on the three goal clauses; the policy clause 
    charge: only self-model and growth-gate keys move — CONSUMED-BUT-NOT-DECISIVE, UNCERTAIN under P3; the wire
    stands because reverting it restores a fabricated stimulus (P0/P2). Downstream: the lever is the admission
    rule's validation window (oracle as control, red pre-written); 2b is load-bearing for this wire (the
-   categories are the learner's ids); 2c's premise is weakened, not corrected — its own |LP| criterion stands.
+   categories are the learner's ids) *[withdrawn as an accuracy claim by 2b's measurement, below]*; 2c's
+   premise is weakened, not corrected — its own |LP| criterion stands.
    Record: `evidence/s2-real-percept-stream.md`.
+   **OUTCOME 2026-09-02 (rank 2b, the persistence half, commit 2 of 3).** `GrowingLearner` gained
+   `state_dict`/`load_state_dict` (every field adopted; refusing wrong format, width, non-finite values,
+   out-of-range vigilance/lr and an already-recruited learner); `Brain._flush_prototypes` writes
+   `growing_learners.json` under the existing `_T_STATE` record on the night's persist block and at
+   `close()`; the restore at construction (persist-gated) rebuilds the arm's context learner (refusing a
+   record of another width) and the vision/audio learners (grown or dropped, counted, at the first percept).
+   **The §3 blocker is closed for the three PERCEPT learners across a real process boundary**
+   (`tests/test_growing_learner_restart.py`: byte-equal prototypes in a new interpreter, the record counted
+   in the lake, an empty home restores nothing, a parent killed without `close()` keeps the night's flush,
+   bad and width-mismatched records refused whole) — and stays OPEN for the affect integrator's SOM and the
+   lifelong consolidator's learner (the panel measured both re-growing from zero), and for `arm.q`.
+   Attribution measured, 6 seeds: learner+blob child vs blob-only child at the first refit — 2–0–4 → NULL,
+   and the panel showed the ties are vacuous: both children replay the parent's stream from t = 0 (the
+   perception pointers and the arm RNG are not in the lake), so the blob-only child re-recruited the same
+   ids at the same ticks and the buffers were identical when scored; 2a's "load-bearing" claim is withdrawn
+   as an accuracy claim because the protocol could not reach it. Live-daemon observation: with `arm_stopped`
+   True (the E-STOP latch since 08-31) the grower ran 3,539 wake ticks without a refit (`n_cat < 2`); the
+   chain latch → constant proprioception → one buffer category is an INFERENCE consistent with what
+   `/api/state` shows (`n_modes` reads 2, the buffer is not exposed), with no latch-cleared control — the
+   E-STOP's likely P0 cost, not its measured one. Record: `evidence/s2b-growing-learner-lake-record.md`.
 3. **Instantiate the declared anatomy in `make_brain()`**: one `(ring, JoinConsumer)` per declared edge, using the
    factories the charge harness already calls; criterion "live `JoinConsumer` count == declared edge count and
    the pinned-payload neuter on any one changes the consumer's live output" — red today (reads 0). *P6: "the
@@ -603,7 +624,7 @@ Format: `[severity · status] title — lens — policy clause (abbreviated) —
 
 ### A.1 Census — CONFIRMED (55)
 
-- [BLOCKER · CONFIRMED] GrowingLearner — the experience-driven neurogenesis primitive used at eight live sites — has no persistence anywhere; P4b amnesia on every restart — `L11_goal_growth_unlimited` — P4b: "A restart is not amnesia. A brain constructed over an… — src/snn_data_lake/hippocampus/growing_learner.py::GrowingLearner ; src/snn_data_lake/cort…
+- [BLOCKER · CONFIRMED · PARTLY CLOSED 2026-09-02 by rank 2b: the three percept learners (arm context, vision, audio) now persist under `growing_learners.json` with a cross-process red; the affect SOM, the lifelong learner and `arm.q` still re-grow — `evidence/s2b-growing-learner-lake-record.md`] GrowingLearner — the experience-driven neurogenesis primitive used at eight live sites — has no persistence anywhere; P4b amnesia on every restart — `L11_goal_growth_unlimited` — P4b: "A restart is not amnesia. A brain constructed over an… — src/snn_data_lake/hippocampus/growing_learner.py::GrowingLearner ; src/snn_data_lake/cort…
 - [BLOCKER · CONFIRMED] The cockpit's grown_units provenance is falsified at HEAD, in the direction that inflates the apparent growth rate — `L11_goal_growth_unlimited` — Cross-cutting: "never fake a capability, a metric, or a con… — src/snn_data_lake/substrate/brain_telemetry.py::PROVENANCE['grown_units'] ; src/snn_data_…
 - [BLOCKER · CONFIRMED] The access→self-model limb is wired and load-bearing but transmits a constant zero on the live brain — `L13_goal_consciousness_program` — P3 dormancy family, the "live but inert" shape; and P0's ho… — src/snn_data_lake/cortex/brain.py::Brain._wake_tick (the access_index=min(...) feed) and …
 - [MAJOR · CONFIRMED] The stated reason for never pruning 24,722 _T_SELFBUILD lake records is falsified by those records — `L01_p0_self_improvement` — P4b (the durable lake is part of the brain); P0: "the censu… — src/snn_data_lake/substrate/home.py::save_selfbuild (and the _T_GROWTH/_T_SELFBUILD no-pr…

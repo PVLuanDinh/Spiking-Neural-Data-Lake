@@ -69,6 +69,9 @@ from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
 from snn_data_lake.neuromodulation.raphe_serotonin import DorsalRaphe
 from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack
 
+#: the ONE named-state record for the brain's prototype learners (rank 2b, 2026-09-02)
+PROTOTYPES_STATE = "growing_learners.json"
+
 #: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "Brain._tom_update": (
@@ -587,6 +590,7 @@ class Brain:
         self._growth_stop = None  # T047: lazy growth gate; the engine consults it per refit
         self._growth_feed_refusals = 0  # T047: poisoned trajectory rows refused at the feed
         self._neuro_feed_refusals = 0  # rank 2: wake percepts the grower refused (surfaced)
+        self._prototype_faults = 0  # rank 2b: percepts the prototype learners could not take
         self.neuro = self._make_neuro(self._seed, device)
 
         # ---- language organ (brain-native, LAZY): the brain's CONVERSATION comes from the ACQUIRED
@@ -972,6 +976,48 @@ class Brain:
                 self.brain.arm.restore_coverage(_home.load_state(_CS, default=None))
             except Exception as _e:
                 self.brain.arm.coverage_restore_note = f"restore raised: {_e}"
+        # specs/022 audit s8 rank 2b (2026-09-02): the brain's PROTOTYPES of what it perceived come
+        # back from the ONE lake -- the arm loop's context learner (whose ids are the neurogenesis
+        # grower's categories since rank 2a) and the vision/audio prototype learners. Same gate as
+        # growth (persist), same named-state record family (`_T_STATE`). The vision/audio learners
+        # are CONSTRUCTED from their records here rather than lazily at the first real percept, so
+        # `real_perception_units` at tick 0 is what the lake holds; if the live percept turns out
+        # wider or narrower than the record, `_consume_perception` grows or drops them, counted. An
+        # arm record of another width than the arm's producer is REFUSED here: the panel measured a
+        # 32-wide record restored into a 64-wide arm raising out of every wake tick. A record that
+        # fails a refusal leaves the learner empty (never half-restored) and the note says so. NOT
+        # restored, said plainly: the arm's Q-table over these ids (`arm.q`, lazily re-created), the
+        # affect integrator's SOM and the lifelong consolidator's learner -- two more live
+        # GrowingLearner instances, still P4b debt.
+        self._prototypes_restore_note = None
+        if self._persist:
+            try:
+                from snn_data_lake.substrate import home as _home
+
+                _rec = _home.load_state(PROTOTYPES_STATE, default=None) or {}
+                _ok = {}
+                if _rec.get("arm"):
+                    _arm_l = self.brain.arm.learner
+                    if int(_rec["arm"].get("dim", -1)) != int(_arm_l.dim):
+                        _ok["arm"] = False  # the arm's width is its producer's; never a record's
+                    else:
+                        _ok["arm"] = _arm_l.load_state_dict(_rec["arm"])
+                for _key, _attr in (("vis", "_vis_learner"), ("aud", "_aud_learner")):
+                    if _rec.get(_key):
+                        _l = GrowingLearner(vigilance=0.86, dim=int(_rec[_key].get("dim", 1)))
+                        _ok[_key] = _l.load_state_dict(_rec[_key])
+                        if _ok[_key]:
+                            setattr(self, _attr, _l)
+                self._real_units = (self._vis_learner.n_units if self._vis_learner else 0) + (
+                    self._aud_learner.n_units if self._aud_learner else 0
+                )
+                self._prototypes_restore_note = (
+                    None
+                    if all(_ok.values())
+                    else f"refused: {[k for k, v in _ok.items() if not v]}"
+                )
+            except Exception as _e:  # a broken record must never block brain construction
+                self._prototypes_restore_note = f"restore raised: {_e}"
 
         # C1 batch-2: three MORE brain-native pure-stdlib faculties -- N-agent recursive ToM (social),
         # neuromod-fusion affect integrator with self-organized emotions (affect), counterfactual do()
@@ -1723,12 +1769,29 @@ class Brain:
             if learner is None:
                 learner = GrowingLearner(vigilance=0.86, dim=len(percept))
                 setattr(self, attr, learner)
+            # rank 2b: a learner RESTORED from the lake may not match the live percept's width.
+            # Narrower -> grow it (function-preserving zero-extension, the growable primitive);
+            # wider -> it cannot describe this modality any more: drop it, count the fault, name
+            # it, start fresh. The old bare `except: pass` would have fed a mismatched learner
+            # forever while it learned nothing (P3's fed-but-never-reads shape); every swallow
+            # below is counted on state()["prototype_faults"] instead.
+            if learner.dim != len(percept):
+                if learner.dim < len(percept):
+                    learner.grow_dim(len(percept))
+                else:
+                    self._prototype_faults += 1
+                    self._prototypes_restore_note = (
+                        f"{attr} record dim {learner.dim} wider than the live percept "
+                        f"{len(percept)}: dropped, re-grown from zero"
+                    )
+                    learner = GrowingLearner(vigilance=0.86, dim=len(percept))
+                    setattr(self, attr, learner)
             try:
                 _, grew = learner.observe(percept)  # form/refine a real-stimulus prototype
                 if grew:  # recruitment LIFTS the pseudo-count (an input), no longer overrides it
                     self._real_novelty = min(1.0, self._real_novelty + 0.5)
             except Exception:
-                pass
+                self._prototype_faults += 1
         self._real_units = (self._vis_learner.n_units if self._vis_learner else 0) + (
             self._aud_learner.n_units if self._aud_learner else 0
         )
@@ -3587,6 +3650,7 @@ class Brain:
                 self._skills_state = None
         if self._persist:  # DURABLE: fold the night's growth to disk (never-forget)
             self._flush_growth()
+            self._flush_prototypes()  # rank 2b: the prototypes the growth is keyed to
             self._flush_coverage()  # T038: the coverage ledger rides the same cadence
             try:
                 from snn_data_lake.substrate.home import save_state
@@ -3966,6 +4030,12 @@ class Brain:
                 if self.neuro is not None
                 else {}
             ),
+            # rank 2b: the prototype learners' persistence, TOP-LEVEL so it is visible on a host
+            # with no torch tier too -- None = restored clean or nothing to restore; a string
+            # names the refused, failed or dropped record; faults = percepts a learner could not
+            # take (a width mismatch, an exception) since construction, never swallowed silently
+            "prototypes_restore": self._prototypes_restore_note,
+            "prototype_faults": self._prototype_faults,
             "evc_cost": self._evc_cost,  # C1 b4: LEARNED cost-of-control (dopamine-gated, replaces fixed 0.1)
             "evc_value": self._evc_value,  # C1 b4: LEARNED value-of-control
             "episode_retained": self._episode_retained,  # C1 b4: durable-episode recall fraction (systems consolidation, no forgetting)
@@ -4820,6 +4890,47 @@ class Brain:
         except Exception:
             return False
 
+    # distinct-from: brainstem/autonomous_loop.py -- the tapped envelope passage (motion, T037).
+    #   distinct-from: basal_ganglia/brain_native_selfbuild.py -- ranks self-build candidates.
+    #   distinct-from: cortex/percept_surprise.py, midbrain/dopamine_nuclei.py -- manifest port
+    #   registrants. distinct-from: substrate/lake_segments.py -- the lake engine's segment
+    #   writer. Phrase overlap on 'specs/022'/'write' only; this persists prototypes. Sites read.
+    def _flush_prototypes(self):
+        """specs/022 audit s8 rank 2b: write the brain's three PERCEPT prototype learners -- the
+        arm loop's context learner, the vision learner, the audio learner -- into the ONE lake
+        under the named-state record `growing_learners.json` (`_T_STATE`; superseded history is
+        dropped on consolidation; unchanged state writes nothing). Same two callers as
+        `_flush_growth` -- the night's persist block and `close()` -- for the same reason: one
+        persistence path. True if a record was written. Absent learners are recorded as None so a
+        restore never invents one; a brain that has recruited NOTHING writes nothing (the
+        `save_growth` contract: "no substrate" is not a record). NOT written here, said plainly
+        (open P4b debt): the arm's Q-table over these ids (`arm.q`), the affect integrator's SOM
+        (`n_emotions`) and the lifelong consolidator's learner (`lifelong_units`) -- two more live
+        GrowingLearner instances that still re-grow from zero at a restart."""
+        if not self._persist:
+            return False
+        try:
+            from snn_data_lake.substrate.home import save_state
+
+            if not (
+                self.brain.arm.learner.n_units
+                or (self._vis_learner is not None and self._vis_learner.n_units)
+                or (self._aud_learner is not None and self._aud_learner.n_units)
+            ):
+                return False
+            return bool(
+                save_state(
+                    PROTOTYPES_STATE,
+                    {
+                        "arm": self.brain.arm.learner.state_dict(),
+                        "vis": self._vis_learner.state_dict() if self._vis_learner else None,
+                        "aud": self._aud_learner.state_dict() if self._aud_learner else None,
+                    },
+                )
+            )
+        except Exception:
+            return False
+
     def _flush_coverage(self):
         """T038 (FR-027): write the arm's coverage ledger into the ONE lake. Same two callers as
         `_flush_growth` -- the sleep tick and close() -- for the same reason: a single persistence
@@ -4841,6 +4952,7 @@ class Brain:
         # BEFORE the other saves: this is the one that was missing entirely, and a later failure in
         # this method must not be what decides whether the brain keeps what it grew.
         self._flush_growth()
+        self._flush_prototypes()  # rank 2b
         self._flush_coverage()  # T038
         try:
             wm = self.brain.arm.lake_wm

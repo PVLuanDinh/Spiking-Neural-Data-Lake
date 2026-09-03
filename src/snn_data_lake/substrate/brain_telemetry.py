@@ -232,6 +232,12 @@ PROVENANCE = {
         "neurogenesis.baseline_majority, measured on the SAME slice -- on a bursty stream the "
         "persistence floor is 0.9+ and an accuracy under it is the stream's inertia, not learning"
     ),
+    "prototypes_restore": (
+        "rank 2b (2026-09-02): None = the three percept prototype learners restored clean from "
+        "the lake or there was nothing to restore; a string names a refused/failed/dropped "
+        "record. Covers the arm context, vision and audio learners ONLY -- the affect SOM, the "
+        "lifelong learner and arm.q still re-grow at a restart (open P4b debt)"
+    ),
 }
 
 

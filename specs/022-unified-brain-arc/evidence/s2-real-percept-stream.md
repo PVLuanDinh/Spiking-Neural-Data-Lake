@@ -189,7 +189,8 @@ What this measurement changes downstream:
   reaches the persistence floor is the first thing worth pre-registering. Its red is already written:
   LIVE − persistence ≥ 0 on a majority of seeds, or it is deleted.
 - **Rank 2b (persist `GrowingLearner`) is now LOAD-BEARING for this wire, not just for the audit's
-  blocker:** the engine's categories are the arm learner's prototype ids, and the persisted NG-SNN
+  blocker** *[WITHDRAWN as an accuracy claim by 2b's own measurement — `evidence/s2b-growing-learner-lake-record.md`,
+  Result: the attribution protocol could not reach the question; 2b's claim is P4b's]*: the engine's categories are the arm learner's prototype ids, and the persisted NG-SNN
   readout is keyed to them; a learner that re-grows from zero on every daemon relaunch re-keys the
   vocabulary the substrate was fit on.
 
@@ -312,7 +313,8 @@ What this measurement changes downstream:
   persistence floor on a majority of seeds under the new window, and LIVE must not fall; if the oracle
   still fails, the window was not the limit and the finding is recorded. "Recency weighting" (v1's
   guess) is withdrawn as the first candidate.
-- **Rank 2b is load-bearing for this wire**: the engine's categories are the arm learner's prototype
+- **Rank 2b is load-bearing for this wire** *[withdrawn as an accuracy claim by 2b's measurement; see
+  `s2b-growing-learner-lake-record.md`]*: the engine's categories are the arm learner's prototype
   ids; a learner that re-grows from zero on every daemon relaunch re-keys the vocabulary the persisted
   readout was fit on (the panel measured the OPEN-gate path re-keying at the first refit and the
   CLOSED-gate path mis-keying — accuracy 0.0 rows — until 2b lands).
