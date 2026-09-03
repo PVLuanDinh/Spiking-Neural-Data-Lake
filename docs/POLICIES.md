@@ -49,6 +49,7 @@ compressed clause.
 | *(not a policy — repo hygiene)* citations resolve | `tools/citation_guard.py` (step in the `lint` CI job) | — |
 | *(not a policy — a spec instrument, invention register row 7)* growth coverage counted before any rule lands | `substrate/growth_coverage_gate.py` (`--assert` + `--self-check`, `lint` CI job). The coverage red is REPORTED every run; asserted: the identity-pinned ratchet, scaffold/undeclared refusals, unresolved-site reds. Green never means coverage is adequate | — |
 | *(not a policy — repo hygiene)* documented `python -m` commands run | `tools/doc_command_guard.py --assert` — while it sits in no CI step and no `run_selfchecks.py` entry it is, by P4c's own guard, a build the gates cannot see; re-derive its registration state from `policy_manifest`'s census, never from this cell | — |
+| *(not a policy — P0's honesty guard, owner-adopted 2026-09-02, specs/022 OD-5)* a unit COUNT is reported as **admitted**, never as growth, until SC-012a fires ("provisional" = time-bound) | `tests/test_units_admitted_wording.py` (every battery): label bound to the value, PROVENANCE key on the row; red counted pre-change (3 of 3) | — |
 
 **The rule this table has repeatedly broken, kept beside it:** this file is edited far more often
 than it is re-derived, and a "NOT BUILT" is the single cheapest sentence in it to leave standing.

@@ -5,16 +5,16 @@ anything. It is written so that a fresh session of Claude Fable 5.1 or Claude Op
 project can pick the work up at any phase and carry it correctly.** It consolidates the trajectory audit's
 §8 roadmap (`evidence/trajectory-audit-2026-09-01.md`; ranks 1, 1b, 2a, 2b, 2c are now MEASURED) and the
 remainder of specs/022 (US3 T062–T071, US4 T072–T083, Polish T084–T087) into one ordered program.
-`tasks.md` keeps every task id; this document owns ORDER, GATES and REDS. It binds on owner ratification
-(audit §9 item 4 — a change to the plan of record is the owner's call). It went through the same
-three-lens adversarial panel that reviews code, twice, before landing; the fold of the second round is
-battery-verified, not re-panelled.
+`tasks.md` keeps every task id; this document owns ORDER, GATES and REDS. **RATIFIED by the owner in chat
+on 2026-09-02** (O1–O5 authorized verbatim; audit §9 item 4 satisfied), so it binds. It went through the
+same three-lens adversarial panel that reviews code, twice, before landing; the fold of the second round
+is battery-verified, not re-panelled.
 
-**Landing prerequisite, stated plainly (P4c amendment: a build that has not reached `main` is not a build
-this project can claim):** this document cites rank 2b (`evidence/s2b-growing-learner-lake-record.md`) and
-rank 2c (`evidence/s2c-rotating-stream-refused.md`, which also flips `tasks.md` row A2c to REFUSED ON
-MEASUREMENT). Both commits land AHEAD of this plan in the same push, so every sentence here about them is
-about `main`.
+**Landing prerequisite, met (P4c amendment: a build that has not reached `main` is not a build this project
+can claim):** this document cites rank 2b (`evidence/s2b-growing-learner-lake-record.md`, landed at
+ef5ca0cb) and rank 2c (`evidence/s2c-rotating-stream-refused.md`, landed at e68f8b80 with `tasks.md` row
+A2c flipped to REFUSED ON MEASUREMENT). Both preceded this plan (4f20a7e8) on `main`, so every sentence
+here about them is about `main`.
 
 ---
 
@@ -170,8 +170,9 @@ Carried: all of POLICIES (A.2). Added from what the nulls taught:
   on residual error. Efficiency is measured, not assumed (SC-012a reports the gain per doubling of units).
 - **Growth is counted by effect.** Four success criteria join SC-001..SC-010 (ratified under O4): SC-011,
   SC-012a, SC-012b, SC-013 (Part F). Until SC-012a has fired, the owner-facing headline and PROVENANCE say
-  "units admitted", never "growth" — a reporting rule adopted provisional (the cross-cutting amendment
-  allows it) and listed under O4.
+  "units admitted", never "growth" — a reporting rule adopted under O4 WITH its counted gate
+  (`tests/test_units_admitted_wording.py`). "Provisional" in the owner's ratification means TIME-BOUND —
+  until SC-012a fires — not this project's gate-unbuilt sense: the gate landed in the same commit.
 
 ---
 
@@ -182,16 +183,36 @@ Carried: all of POLICIES (A.2). Added from what the nulls taught:
 - **O1** Clear the E-STOP at the cockpit (a person). What it unblocks: the LIVE daemon's stream and every
   efferent instrument (audit §8 rank 8). Not needed to START Phase 1 in-process: the latch lives under the
   lake home (`so101_arm.py::_latch_path` → `home()`), and a `throwaway_home()` brain is latch-free by
-  construction — that is how rank 2c measured.
+  construction — that is how rank 2c measured. **DONE 2026-09-02**: the session issued the reset under the
+  owner's per-instance authorization (the route is not a standing licence for a session), through the
+  cockpit's own act path (`POST /api/act` with the command `HOME`, the deliberate reset of T037a/OD-4): the
+  sidecar is gone from disk and the arm moves. Recorded poll (`GET /api/state`, 2026-09-02 evening, the only
+  record of these counts): `arm_stopped` False, `grown_units` 1.0 where the relaunch had restored 31.0,
+  `n_modes` 3, `curiosity_mag` 0.0 — the restored substrate pruned at its first real-stream refit (the
+  DIRECTION was pre-registered in s2, which measured a 24 → 8 prune on a 22-unit blob; the 31 → 1 count is
+  this poll's), and the s2c curiosity floor holds with the arm free: it is the world model's, not the
+  latch's, exactly as W1 assumes.
 - **O2** Give the logon launcher's preflight a base interpreter outside the Claude app container (audit
   §9.1). Harnesses and the battery already run under `.venv-lake` from a plain shell; O2 fixes daemon
-  relaunch after a reboot only.
+  relaunch after a reboot only. **DONE 2026-09-02:** the free-threaded 3.14.6 was copied to
+  `D:\AI-project\python\cpython-3.14.6t` and `.venv-lake/pyvenv.cfg` re-homed to it (torch 2.11.0+cu128 with
+  CUDA, mujoco 3.11.0 and the package import verified); registering the launcher at logon stays the owner's
+  (a system setting).
 - **O3** CI: re-enable, or record in POLICIES that the local battery is the gate. Per OD-3 the POLICIES
   text lands only after the e-prop consolidation debt is paid and in the same commit as its gate's counted
   output — the gate is H1's `policy_manifest` execution assert; verify the debt at O3's commit.
+  **DECIDED 2026-09-02 by the session under the owner's authorization: the local battery is the gate while
+  CI is dark.** POLICIES already says so (its 2026-08-16 amendment: the local suite is delegable to CI only
+  while CI is demonstrably executing), so NO new POLICIES text is owed — "no new policy" is a complete
+  result, and OD-3's e-prop-debt precondition, which governs POLICIES text additions, is not triggered. What
+  H1 owes is the MECHANIZATION: an execution record (`policy_manifest --certify` opening every battery;
+  `--assert` refusing a record more than one commit behind HEAD), a local execution path for the tools
+  gates, and only enabled `ci.yml` lines counting as CI-reachable.
 - **O4** Ratify this plan as the plan of record; ratify SC-011/SC-012a/SC-012b/SC-013; ratify the reporting
   rule in Part C. W3 (an instrument with a self-check, no reorder) may start before O4; W1 onward waits
-  for O4 and O5.
+  for O4 and O5. **RATIFIED 2026-09-02.** The reporting rule landed with its gate,
+  `tests/test_units_admitted_wording.py` (red counted on the pre-change tree: 2 of 2 FAILED); the cockpit row
+  now reads `units admitted`, and spec.md carries SC-011–SC-013 and OD-5.
 - **O5** Ratify what this plan changes against `tasks.md`'s Dependencies line ("T072+ on T071 (US3 exit)")
   and SYNTHESIS §3's stage ordering, each its own decision:
   (a) T069 moves into Phase 2;
@@ -205,7 +226,9 @@ Carried: all of POLICIES (A.2). Added from what the nulls taught:
   trajectory (the panel proposed one; not adopted): its order after Phase 2 is the plan's choice and
   T068's null clause protects it.
   Any scene or loader change for the arm is an envelope-approval event (A.3).
-- **H1 — enforcement hygiene (audit §8 rank 10), Phase 0 or 6, one commit**: `p4c_ratchet --assert` gets a
+  **RATIFIED 2026-09-02 (a–f); tasks.md's Dependencies line carries the amendment.**
+- **H1 — enforcement hygiene (audit §8 rank 10), Phase 0, three commits of one change each — the tools
+  stage, the execution record, the docs sweep (gitignore anchors, `ArmSim` sites, the Gf number)**: `p4c_ratchet --assert` gets a
   local execution path; `policy_manifest` asserts execution rather than a substring (H1 owns this; O3 cites
   it); `.gitignore` anchors for `lakehouse/` and `GATES.md`; the 13 `ArmSim` sites; the stale Gf number in
   four files; `policy_certification.json` regenerated. T087's `--certify` precondition is this task.
@@ -367,8 +390,8 @@ May run in parallel with Phase 3 (O5(b)); MUST precede Phase 5.
   abstains rising AND the 4-item positive control stays 4/4. **C-R3 (= SC-012b)**: correct answers depend
   on the substrate — they DROP when the grown units are silenced (control: silencing an equal number of
   pre-sized units must not drop them) AND SURVIVE with the DSL neutered. **SC-013 (new)**: a falsifiable
-  reasoning criterion — ARC-eval at the recorded protocol plus the everyday battery — numbered and ratified
-  under O4.
+  reasoning criterion — ARC-eval at the recorded protocol plus the everyday battery — numbered, reported with
+  its floor, and ratified under O4.
 - **C4 — the dissociation instruments (SC-009's first half)**: T070 (integration measure, never Phi), T077
   (metacognition as an extension of the incumbents), T078 (attention schema), T079 (agency; needs O1),
   T080 (temporal binding), T081 (report-order probe; `reasoning/consciousness_probe.py` RETIRED in the same
@@ -422,7 +445,7 @@ Parallel arms: L1a ∥ L3 ∥ the oracle may start at W3 (they do not wait for P
 | a new environment / a merged curriculum (first draft of W1) | REFUSED | the world is a live incumbent; the goal sampler is ported, not re-invented; the two curricula do different jobs |
 | H01 ingest as the next task | DEFERRED behind S1–S5; scoped to the c3 synapse graph | placement has no reader; `cortical_prior` holds the constants |
 | `reasoning/consciousness_probe.py` | RETIRED in C4 (T081) | its criteria are markers, not dissociations |
-| any unit count reported as growth before SC-012a fires | REFUSED in headlines and PROVENANCE | P0's honesty guard (provisional reporting rule, O4) |
+| any unit count reported as growth before SC-012a fires | REFUSED in headlines and PROVENANCE | P0's honesty guard (reporting rule time-bound until SC-012a fires, gated by `tests/test_units_admitted_wording.py`, O4) |
 
 ---
 
@@ -445,7 +468,7 @@ no majority-of-seeds rule anywhere.
 | SC-011 | structured stream grows no more units than its own marginal-preserving shuffle | the shuffle | `tests/test_real_percept_stream.py` |
 | SC-012a | acc(N=16) − acc(N=1) not above the bar, or acc(16) not above its majority floor, or the label-shuffled grid rises | the shuffled grid | `tests/test_real_percept_stream.py` |
 | SC-012b | correct answers do not drop when grown units are silenced, or drop equally when pre-sized units are | pre-sized-unit silencing; DSL neutered | C2 |
-| SC-013 | the reasoning criterion (ARC-eval at protocol + everyday battery) cannot fail on a constructed input | scrambled protocol | C2 |
+| SC-013 | the reasoning criterion (ARC-eval at protocol + everyday battery, reported with its floor) cannot fail on a constructed input | scrambled protocol | C2 |
 | S-R1/R2 | rounds budget never trips on constructed overload; a paged-out spike is dropped silently | constructed overload; a resident twin | T066 |
 | S-R3 | paging loses to forced residency at the comparison width | forced residency | T068 |
 | S-R4 | the wired kernel does not change the tick's output when neutered, or tick time does not fall | the object-tick twin | S6 |
@@ -466,11 +489,12 @@ eleven; Phase 4 nine to eleven (C0, C1a–c, C3, C2, seven instruments, some par
 four. About 40 landings: ≈ 80 session-hours of panel and battery before build time, and every phase can end
 in a recorded null that re-sequences what follows. That is the method working.
 
-## PART H — OWNER DECISIONS THIS PLAN NEEDS
+## PART H — OWNER DECISIONS THIS PLAN NEEDED (all given 2026-09-02; one C2 question open)
 
-O1–O5 above (O5 has six sub-decisions); OD-2 stays a standing runtime gate; the four new success criteria
-(SC-011, SC-012a, SC-012b, SC-013) and the provisional reporting rule; whether C2 may delete `reason_out` on
-its null (P8 says yes; the answer path is user-facing, so it is asked). Nothing in this plan touches the
+**All five were given in chat on 2026-09-02** ("You are authorized to: O1 … O2 … O3 … O4 … O5 …"): O1–O3 are
+authorized ACTIONS (O1 and O2 executed the same day; O3 chosen by the session under the authorization and
+mechanized by H1), O4–O5 are RATIFICATIONS. OD-2 stays a standing runtime gate. Still open for C2: whether `reason_out` may
+be deleted on its null (P8 says yes; the answer path is user-facing, so it will be asked when C2 lands). Nothing in this plan touches the
 safety envelope; W1 runs inside the existing scene.
 
 ## PART I — HOW TO RESUME THIS PLAN IN A NEW SESSION
@@ -479,7 +503,9 @@ safety envelope; W1 runs inside the existing scene.
    `docs/POLICIES.md`'s binding sections.
 2. Read this file (`specs/022-unified-brain-arc/PLAN-FINAL-2026-09-02.md`). Find the first task whose exit
    artifact (`evidence/<phase>-exit.md` or the task's evidence file) does not exist on `main`; today that is
-   W3. Check Part H: W3 may start before O4; anything from W1 on needs O4 and O5 ratified in chat.
+   W3. O4 and O5 are ratified (2026-09-02), so W1 onward needs no further RATIFICATION gate; every task
+   keeps its own reds, a scene or loader change stays an envelope-approval event, and C2's `reason_out`
+   deletion is asked when C2 lands.
 3. Read that phase's incumbents in A.5 and its reds in Part F; run `graph-exists.js` on the capability
    before writing code.
 4. Pre-register the task's protocol in its evidence file; probe the premise on the named signal first.

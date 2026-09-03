@@ -223,8 +223,10 @@ PROVENANCE = {
     # proved the cross-process restore); this COUNTER does not read it -- it reports the
     # engine instance's units and resets with the process (measured 22 -> 6).
     "grown_units": (
-        "process-lifetime counter over a lake-persisted substrate: the units survive in "
-        "the lake (B2.09); this number resets with the process"
+        "process-lifetime counter of units ADMITTED by the grower's earn-your-place rule -- "
+        "reported as admitted, NOT growth, until SC-012a (specs/022) fires (owner rule "
+        "2026-09-02; P0's honesty guard: growth is not improvement). The substrate is lake-persisted: the "
+        "units survive in the lake (B2.09); this number resets with the process"
     ),
     "predict_accuracy": (
         "held-out next-category accuracy of the grower on the brain's OWN percept stream "
