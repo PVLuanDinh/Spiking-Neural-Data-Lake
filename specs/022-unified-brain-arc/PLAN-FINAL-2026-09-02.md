@@ -58,9 +58,11 @@ retired, and every claim ships with a control and a red that can fail.
   rule): pass no model override to the Agent or Workflow tools. Review panels are three lenses on that model.
 - **One change per commit; one full battery per pushed ARC, on its stacked head** (owner rule 2026-09-02,
   POLICIES' "Gated + reversible" amendment). Every commit names the battery that verified the head it was
-  pushed under; a red on the head is attributed per stage per commit, never by whole re-runs. Commit
-  messages end with the session model's trailer (for a Fable 5.1 session:
-  `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`).
+  pushed under; a red on the head is attributed per stage per commit, never by whole re-runs.
+- **Commit messages carry NO attribution trailer** (owner, 2026-09-03, superseding the session-model
+  trailer rule this line used to state). `attribution: {commit: "", pr: ""}` in `~/.claude/settings.json`
+  enforces it mechanically rather than by remembering; the rule is kept written down here because the
+  setting is machine-local and this file is the tree's copy of the protocol.
 - **Launch sessions from `D:\AI-project`, not the repo subdir** (the memory tools key on that cwd). The
   curated memory store is `C:\Users\vinhl\.claude\projects\D--AI-project\memory\` (its `MEMORY.md` index
   auto-loads; its START-HERE file is the per-session protocol and points back here).
