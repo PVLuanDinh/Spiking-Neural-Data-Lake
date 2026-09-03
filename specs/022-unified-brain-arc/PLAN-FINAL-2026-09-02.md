@@ -64,19 +64,35 @@ retired, and every claim ships with a control and a red that can fail.
   enforces it mechanically rather than by remembering; the rule is kept written down here because the
   setting is machine-local and this file is the tree's copy of the protocol.
 - **Suggested-fix chips and open tasks are a COMPLETION GATE** (owner, 2026-09-03, strengthening the
-  2026-08-31 rule that made them pre-authorized). Chips are fixed AUTONOMOUSLY, and **no arc, task or
-  session is declared done while a chip or an open task remains.** Filing a chip is deferral, not
-  closure — the session that raises one owns it. Before saying done, enumerate open chips, background
-  tasks without a terminal verdict, and anything the session itself deferred, and report that list or
-  report it empty. Two honest-sounding reasons had been ending arcs with chips open ("out of this
+  2026-08-31 rule that made them pre-authorized). **This bullet is the authoritative text of the
+  rule**; the curated memory file `feedback-chip-fixes-preauthorized` points here and carries only
+  machine-local gloss. Chips are fixed AUTONOMOUSLY, and **no arc, task or session is declared done
+  while a chip or an open task remains.** Filing a chip is deferral, not closure — the session that
+  raises one owns it. Two honest-sounding reasons had been ending arcs with chips open ("out of this
   arc's one-change-per-commit scope" and "a `src/` change owes its own panel"); both were true and
-  neither made the work done. **Fix them under the full rhythm, not around it** — a chip touching
-  `src/` still owes its own arc, so the gate is that the queue empties, not that the rhythm is skipped
-  to empty it. **Dismiss a chip only when it is genuinely closed**, with the reason: a wrongly
-  dismissed chip is worse than an open one, because an open one is visible. The only clean exit that
-  is not a fix is an explicit owner deferral — ask, do not assume scope. The A.3 carve-outs above are
-  unaffected: a chip that would touch the five `brainstem/` envelope files, the E-STOP, or anything
-  irreversible outside the repo is raised, never auto-landed.
+  neither made the work done.
+  - **Fix them under the full rhythm, not around it** — a chip touching `src/` still owes its own arc,
+    so the gate is that the queue empties, not that the rhythm is skipped to empty it.
+  - **Before saying done, ENUMERATE** open chips, background tasks without a terminal verdict, and
+    anything the session itself deferred; report that list or report it empty. A panel fold stated in
+    its commit as battery-verified only is CLOSED by that disclosure per A.4 step 4, not open — that
+    is the one deferral this document already grants and this rule does not withdraw it.
+  - **The rule must never reduce the number of chips FILED.** An unfiled defect is strictly worse than
+    an open one: a dismissal at least leaves a reason, and an open chip is visible. If a defect is
+    found and the queue cannot absorb it this arc, FILE IT and escalate the queue to the owner — do
+    not decline to notice. Making an empty queue a completion condition pays a session to look away,
+    and that is the failure this clause exists to price.
+  - **Dismiss a chip only when it is genuinely closed** (fixed, or measured moot), with the reason,
+    and cite the chip id at the fix site. The only clean exit that is not a fix is an explicit owner
+    deferral — ask, do not assume scope.
+  - **UNMECHANIZED, and the debt is named rather than left implicit.** The durable record is
+    START-HERE's `Open chips:` line plus the arc's route-ledger entry: a session reporting the queue
+    empty writes that line empty in the same act. The gate this owes, when built, reads those two
+    records against the chip system and reds on disagreement — and per the cross-cutting invariant it
+    is built and its output counted BEFORE it is promoted to a rule.
+  - The A.3 carve-outs above are unaffected — the five `brainstem/` envelope files and the E-STOP.
+    **Extended here:** anything irreversible outside the repo (a force-push, a published artifact, an
+    external deletion) is likewise raised, never auto-landed.
 - **Launch sessions from `D:\AI-project`, not the repo subdir** (the memory tools key on that cwd). The
   curated memory store is `C:\Users\vinhl\.claude\projects\D--AI-project\memory\` (its `MEMORY.md` index
   auto-loads; its START-HERE file is the per-session protocol and points back here).
