@@ -527,7 +527,9 @@ safety envelope; W1 runs inside the existing scene.
 
 ## PART I — HOW TO RESUME THIS PLAN IN A NEW SESSION
 
-1. Launch from `D:\AI-project`; read the memory START-HERE file (A.3 gives the store's path); read
+1. Launch from `D:\AI-project`; read the memory START-HERE file (A.3 gives the store's path) and re-arm all six
+   reasoning skills it names (`j-space`, `karpathy-guidelines`, `thinking-pre-mortem`, `thinking-red-team`,
+   `thinking-steel-manning`, `thinking-map-territory` — owner 2026-09-03, capability over reload cost); read
    `docs/POLICIES.md`'s binding sections.
 2. Read this file (`specs/022-unified-brain-arc/PLAN-FINAL-2026-09-02.md`). Find the first task whose exit
    artifact (`evidence/<phase>-exit.md` or the task's evidence file) does not exist on `main`; today that is
