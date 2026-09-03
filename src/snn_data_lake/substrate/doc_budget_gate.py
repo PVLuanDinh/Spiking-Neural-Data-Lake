@@ -18,7 +18,9 @@ project is its "never run the full suite locally, CI owns coverage" convention, 
 this repo's one-change-per-commit-with-the-full-gate-green invariant -- importing a convention
 wholesale is how an invariant gets relaxed by accident.
 
-WHAT IS AND IS NOT BUDGETED, decided by COUNTING FIRST (231 tracked .md, 875,704 words):
+WHAT IS AND IS NOT BUDGETED, decided by COUNTING FIRST (counted 2026-08-16: 231 tracked .md,
+875,704 words -- dated because it is the census that justified this scoping, not a live figure;
+it reads 280 tracked .md today):
 
     NOT budgeted -- HISTORICAL RECORDS, where growing is CORRECT:
       CHANGELOG.md (76,624 w)            an entry describes a tree that existed
