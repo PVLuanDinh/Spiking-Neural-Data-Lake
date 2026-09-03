@@ -590,6 +590,12 @@ and reasons on the lake it has.
 
 ---
 
+**§8 CONSOLIDATED (2026-09-02).** Ranks 1, 1b, 2a, 2b, 2c are measured (three nulls, one refusal, one
+persistence red closed). Ranks 3–10 and the rest of specs/022 are re-sequenced into `../PLAN-FINAL-2026-09-02.md`
+(six phases: owner unblocks → the world → learning in the substrate → the scaling substrate and the prior →
+cognition on the substrate → self-improvement → polish), panelled twice, pending owner ratification (O4/O5 there).
+That file is the plan of record from here; this section stays as the measured record it was derived from.
+
 ## 9. Owner decisions and actions (things this audit could not do)
 
 1. **Make the brain self-restarting.** `.venv-lake/pyvenv.cfg` reads `home = C:\Users\vinhl\AppData\Roaming\uv\python\cpython-3.14.6+freethreaded-...` and `executable = C:\Users\vinhl\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\uv\...`. Outside the Claude desktop app's container the `home` path does not exist, so `learn_daemon.bat` fails preflight forever after a reboot (the logon launcher is still failing while a session-launched daemon runs beside it, and keeps writing `DAEMON_DOWN.txt`). Fix from a plain PowerShell (not from inside a Claude session): install the free-threaded 3.14.6 to a real path (`uv python install cpython-3.14.6+freethreaded` or the python.org 3.14t installer), repoint `home`/`executable` in `pyvenv.cfg`, run `learn_daemon.bat` from that shell, and confirm `DAEMON_DOWN.txt` disappears. Then register the launcher at logon (`Get-ScheduledTask` finds none today).
