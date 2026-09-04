@@ -164,6 +164,19 @@ class AchievedOutcomeBuffer:
             self._seen.append(state)
             self._set.add(state)
 
+    def all_seen(self):
+        """Every state ever reached, as a frozenset. The UNBOUNDED view.
+
+        Added for basal_ganglia/curriculum.GoalCurriculum, which needs the full candidate set and
+        has no `allowed` pool to intersect against, so neither sample() nor coverage() fits. It
+        previously reached into `_set` directly; an accessor is the honest boundary.
+
+        NOTE FOR CALLERS, because the two views genuinely differ: this set is unbounded and grows
+        with every distinct state, while `_seen` is a `maxlen`-bounded recency deque. `maxlen`
+        therefore does NOT bound what this returns.
+        """
+        return frozenset(self._set)
+
     def sample(self, rng, allowed):
         """Draw one self-set goal from the achieved outcomes intersected with `allowed` (the training-goal
         pool -- so held-out/novel positions are never chosen as an intended goal). Falls back to the

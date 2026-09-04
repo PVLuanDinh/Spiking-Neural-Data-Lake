@@ -172,6 +172,7 @@ CORE = [
     # basal ganglia â€” action selection, reward-modulated learning, decision, Go/NoGo gating
     "basal_ganglia.evidence_accumulation",
     "basal_ganglia.learning_progress",  # T046a: |LP| four regimes + discharged consumer + goal-store reds
+    "basal_ganglia.curriculum",  # T076/W1: 9 wiring criteria, of which the constructed reds are 1/4/6/8/9 (SNR refuses when unmeasurable, derived floor monotone, no goal before an observation, the objective reaches the drive, and the ARMED configuration -- criteria 1-7 all run storeless, the one mode where the bandit cannot fire)
     "basal_ganglia.r_stdp",
     "basal_ganglia.valence_stdp",
     "basal_ganglia.action_gating",

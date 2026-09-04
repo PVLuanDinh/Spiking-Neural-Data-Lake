@@ -210,5 +210,166 @@ that neuter. The corrected red, which W1's commit carries if W1 is built:
 
 ## Result
 
-*(To be appended after the run. This section is deliberately empty in the commit that pre-registers the
-protocol above; the probe had not been executed when the protocol was written.)*
+**READ THIS SECTION KNOWING THAT ITS FIRST VERSION WAS SUBSTANTIALLY WRONG.** A three-lens
+adversarial panel refuted the headline number, the failure diagnosis, the corrected control and the
+reachability claim of the first write-up. Every refutation was reproduced independently before being
+accepted. What follows is the corrected account; the superseded numbers are shown beside the
+corrected ones rather than deleted, because the size of the gap is itself the finding.
+
+### 1. The premise probe -- HOLDS, but at ~1/15th the published effect and exactly AT its bar
+
+| seed | F snapshot (PUBLISHED) | its 200-draw null | frozen series | cells visited ONCE | F visited-only | **F on curiosity_value, >=5 obs** | its null | beats? |
+|---|---|---|---|---|---|---|---|---|
+| 0 | 15.89 | 0.0861 | 80.1% | 67.6% | 1.205 | **1.039** | 0.2788 | yes |
+| 1 | 11.79 | 0.0762 | 74.1% | 57.1% | 1.027 | **1.989** | 0.3480 | yes |
+| 2 | 10.59 | 0.0816 | 74.0% | 59.6% | 1.246 | **0.460** | 0.2754 | yes |
+| 3 | 22.93 | 0.0775 | 83.7% | 66.1% | 1.057 | **0.897** | 0.3134 | yes |
+| 4 | 13.01 | 0.0738 | 75.7% | 57.6% | 1.123 | **0.619** | 0.2627 | yes |
+| 5 | 14.02 | 0.0888 | 77.7% | 56.7% | 1.056 | **0.411** | 0.4293 | **NO** |
+| 6 | 9.65 | 0.0765 | 84.6% | 57.3% | 1.202 | **2.129** | 0.3617 | yes |
+| 7 | 22.85 | 0.0859 | 90.2% | 71.2% | 1.185 | **0.160** | 0.2375 | **NO** |
+
+**6 of 8 seeds beat their own null. The pre-registered bar was 6 of 8. The premise passes by
+exactly nothing.** The first write-up reported 8 of 8 with F 9.69-22.71. Three separate errors
+inflated that; all were found by the panel and all are reproduced here.
+
+1. **THE SAMPLING COUNTED NON-MEASUREMENTS AS MEASUREMENTS, and this is the big one.** The probe
+   snapshotted every cell seen so far every 25th wake row, whether or not it had been visited.
+   `CuriosityDrive` seeds `fast == slow` on first sighting, so a cell visited ONCE has |LP|
+   identically 0.0 forever and contributes a perfectly constant series. **74.0% to 90.2% of the
+   cells entering the ratio had zero variance, and 56.7% to 71.2% had been visited exactly once.**
+   Those constant series deflate the within-region denominator, so the F-ratio was largely measuring
+   "visited once versus visited more than once" -- an artifact of the drive's initialization --
+   rather than workspace structure. Sampling only on an actual visit collapses F from ~15 to
+   **1.03-1.25**. The earlier disclosure that "56.7%-75.1% of |LP| values are exact zeros" was
+   already in this file; I read it as sparsity in the signal when it was the symptom of a broken
+   denominator, and I did not follow it.
+2. **THE STATISTIC WAS COMPUTED ON A QUANTITY THE BANDIT NEVER READS.** F was measured on
+   `learning_progress_abs`. `most_curious` ranks on `curiosity_value` -- rectified
+   `learning_progress` scaled by novelty, plus a novelty bonus. The thing shown to separate regions
+   was not the thing that chooses between them. Corrected in the table above.
+3. **THE NULL DRAW COUNT WAS MISREPORTED.** This file said "MAXIMUM over 200 draws never exceeds
+   0.072"; the harness ran `range(20)`. At an actual 200 draws the snapshot null reaches 0.0888, and
+   on the corrected statistic the nulls run 0.24-0.43. Publishing a precision the code did not
+   produce is the plainest error here and it was mine.
+
+**What survives.** |LP| separation across workspace regions is REAL: 6 of 8 seeds clear a 200-draw
+marginal-preserving shuffle on the quantity the bandit actually ranks. It is WEAK: F near 1 means
+between-region variance is about equal to within-region variance -- roughly 3x the shuffle null,
+not the 100x+ the snapshot figure implied. Seeds 5 and 7 do not clear their null at all. The
+mechanism rests on a real but thin signal, and the first write-up would have had a reader believe
+otherwise.
+
+### 2. W-R3 -- the pre-registered verdict FAILED, and the statistic that "passed" was confounded
+
+| seed | A exploit% | B exploit% | d_B natural (PUBLISHED) | **d_B bandit-isolated** | d_C natural | d_C isolated | floor A | floor C |
+|---|---|---|---|---|---|---|---|---|
+| 0 | 49.7% | 0.0% | 0.9396 | **0.8725** | 0.0000 | 0.0000 | 0.4682 | 0.4693 |
+| 1 | 39.6% | 0.0% | 0.9262 | **0.8859** | 0.0000 | 0.0000 | 0.5591 | 0.5549 |
+| 2 | 45.6% | 0.0% | 0.8926 | **0.9463** | 0.0000 | 0.0000 | 0.4627 | 0.4573 |
+| 3 | 36.2% | 0.0% | 0.9396 | **0.8993** | 0.0000 | 0.0000 | 0.4856 | 0.4811 |
+| 4 | 43.0% | 0.0% | 0.9732 | **0.6711** | 0.0000 | 0.0000 | 0.5027 | 0.5005 |
+| 5 | 34.5% | 0.0% | 0.8581 | **0.7635** | 0.0203 | 0.0000 | 0.5060 | 0.5017 |
+| 6 | 38.9% | 0.0% | 0.9396 | **0.1342** | 0.0000 | 0.0000 | 0.4490 | 0.4436 |
+| 7 | 50.0% | 0.0% | 0.9257 | **0.5405** | 0.0000 | 0.0000 | 0.4411 | 0.4376 |
+
+**The published treatment statistic did not measure the bandit.** Pinning the objective to 0.0
+drives every region's |LP| to zero, so `snr` -> 0 and the derived floor pins at **1.0 on 8 of 8
+seeds**: the treatment arm takes the exploit branch on **0.0%** of its proposals while the baseline
+exploits 34.5%-50.0%. The arms therefore differed because one was in permanent always-explore mode,
+and because the explore branch consumes an extra RNG draw and desynchronizes the streams. Neither is
+the mechanism. This is the shape the protocol's own preamble forbids: the observable is gated by
+`floor() = 1/(1+snr)`, and the treatment annihilates `snr`.
+
+Holding the branch fixed so that only the ranking can move:
+
+| | mean | sd | t (bar 1.895) | min seed |
+|---|---|---|---|---|
+| natural (published) | 0.9243 | 0.0348 | **75.12** | 0.8581 |
+| bandit-isolated | 0.7142 | 0.2708 | **7.46** | **0.1342** |
+
+**The mechanism survives isolation -- t = 7.46 against a bar of 1.895, all 8 seeds move -- but at
+a tenth of the published t, with the standard deviation opening 8x.** Seed 6 falls to 0.134, a
+near-null that was invisible at 0.9396 in the published table, where it read indistinguishably from
+every other seed. The isolated number is the honest headline.
+
+**The t of 75 was never meaningful.** Under deterministic replay the no-effect null is a point mass
+at zero -- the harness asserts exactly that by reproducing identical proposals from identical inputs
+-- so the t's variance term measures only between-seed heterogeneity in effect SIZE, which the
+branch saturation had artificially compressed. Relatedly, the "permutation false-positive rate
+0.0351" reported beside it is 9/256: a property of n = 8 and the 1.895 bar, not of the data. That is
+why an identical value appeared for two different runs. It is a legitimate calibration of the
+decision rule, and it was placed where a p-value belongs.
+
+### 3. The seed-5 diagnosis was WRONG, and the correct cause is more interesting
+
+The first write-up blamed the clamp in `max(-1, min(1, r+0.1))` for perturbing |LP| at the reward
+ceiling and reordering `most_curious`. **Measured with the branch held fixed, the clamped control
+gives d_C = 0.0000 on 8 of 8 seeds, seed 5 included. The clamp never reorders the bandit.**
+
+The real cause is in the last two columns above: the clamp shifts the aggregate SNR, which shifts
+the DERIVED FLOOR, on **all 8 seeds** (0.4682->0.4693, 0.5591->0.5549, and so on). Seed 5's three
+differing proposals are a knife-edge crossing of the explore/exploit coin against a floor that moved
+in the fourth decimal -- a global-scalar threshold effect whose per-seed probability scales with the
+summed floor gap. Nothing about seed 5 was special except that its gap happened to land on a coin
+flip.
+
+This matters beyond bookkeeping. The synthetic demonstration in the first write-up was a TRUE
+statement about the transform -- the clamp really does destroy shift-invariance at the ceiling --
+that was nonetheless the wrong causal path. A correct mechanism plus a plausible story is not a
+diagnosis. The measurement that settled it (report branch flips and the floor per arm) was free and
+already in hand.
+
+### 4. The "corrected controls" C2 and C3 are DELETED, not recorded as passes
+
+Max |LP| delta under C2 across seed 5's full stream: **1.11e-16**. Under C3: **3.33e-16**.
+`CuriosityDrive.observe` seeds `fast == slow` on first sighting and both EMAs are affine with
+unit weight-sum, so a constant shift cancels EXACTLY. `d_C2 == 0` and `d_C3 == 0` could not have
+come out any other way: they are an algebraic identity, restated 16 times and reported as "BOTH
+PREDICTIONS CONFIRMED ... 8 of 8 seeds each". The stated reason for adding C3 -- that C2 alone
+"could pass for a reason specific to the sign of the offset" -- is refuted by the same algebra,
+since the invariance is affine in the offset and sign is irrelevant.
+
+The pre-registration ordering claim was honest: those controls really were written before they were
+run. But **ordering is not what makes a control valid.** A control that cannot go red is not a
+control, and P8 clause 1 says such a criterion is DELETED, not weakened and not recorded as a pass.
+They are deleted here. Replacing a control that COULD go red (and did, on seed 5) with one that
+could not was, in effect, a post-hoc rescue, whatever the intent behind it.
+
+### 5. What remains unmeasured, stated here rather than left to be found
+
+* **The pre-registered specificity control was never implemented.** Part F says "an
+  unrelated-scalar neuter that must NOT move it". Every arm that ran shifted `coverage_reward`'s OWN
+  return -- the same scalar the treatment neuters. No unrelated scalar was ever touched. The half
+  the red was amended to add is not the half that ran.
+* **The promised per-item attribution never happened.** The pre-registration names `_td_flipped`; it
+  appears in no harness and in no result.
+* **The one genuinely INVENTED element ships unattributed.** The bandit is adopted and the buffer
+  imported; the invention is `floor_from_snr = 1/(1+snr)`. Nothing compares it against the constant
+  floor T076 names as the reference, or against any other curve. W-R3 validates the ADOPTED bandit;
+  the derived floor took credit for a total that moved.
+* **The bar has no alpha.** "6 of 8 seeds" is a majority-of-seeds rule, which Part F's preamble
+  forbids "anywhere" -- arguably scoped to reds rather than probes, but the conflict was never
+  noted. With the null empirically near 0.3 and the bar at F > null, the per-seed false-positive
+  rate is under 1/200, so 6-of-8 is conservative. Stating the alpha would have shown that, and would
+  equally have shown how little margin the corrected result carries.
+
+### 6. Disposition
+
+**W1 LANDS, and it lands weaker than it was first written.** The plan's rule is "on a null: W1/W2
+revert; the finding is the result". This is not a null: the premise clears its pre-registered bar
+(6 of 8, on the corrected statistic, against a 200-draw null) and the mechanism survives branch
+isolation (t = 7.46, 8 of 8 seeds move). The bar was fixed before the run and was not moved after
+it.
+
+The module lands EXEMPT and unwired, so nothing depends on these numbers yet -- which is the
+condition that makes landing on a thin result acceptable rather than reckless. The actuation half
+owes three things named in the exemption row rather than deferred silently: the unrelated-scalar
+control, the `_td_flipped` attribution, and a constant-floor arm that attributes the one invented
+element.
+
+**The transferable lesson is the pattern joining the errors, not any single one.** Four of the five
+made the result look STRONGER, and each was cheap to catch: count what fraction of your series are
+constant; check that the quantity you measured is the quantity the mechanism reads; read the harness
+for the draw count you are about to publish; report which branch your treatment put the arm in.
+Every one of those numbers was already in hand when the first write-up was made.
