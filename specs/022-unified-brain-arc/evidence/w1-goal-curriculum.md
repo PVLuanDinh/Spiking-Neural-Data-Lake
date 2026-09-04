@@ -138,6 +138,36 @@ worth more than the code. The recorded finding would be that |LP| over this body
 does not carry region structure at live scale, which re-targets T076's mechanism rather than deleting
 it, and Phase 2's L2 inherits the same warning. A refusal here is the licence working (P8 clause 5).
 
+## Protocol AMENDMENT, made BEFORE the deciding run and disclosed as smoke-motivated
+
+A 300-tick smoke run (one seed, 1/10 scale, to check the instrument) returned a fact the protocol
+above did not anticipate: at the objective's own resolution the arm visits **72 distinct cells in 146
+wake ticks, median 1 visit per cell**. |LP| is a comparison of a slow and a fast EMA of the error
+observed IN a region; a region entered once has no such comparison. So a null at that partition would
+not have been a fact about the SIGNAL, it would have been a fact about the PARTITION — and the
+protocol as written could not have told those apart.
+
+**A second arm is therefore added before the deciding run: the same measurement on a COARSER
+partition, cells 4x wider per axis.** Three things about this amendment, said plainly because
+amending a pre-registration after seeing data is the exact move pre-registration exists to prevent:
+
+1. **The original bar is UNCHANGED.** The fine-partition arm keeps its bar and is still reported.
+2. **The new arm's bar is stated here, in advance, and is the same bar** — |LP| must separate cells
+   above its own within-cell noise on at least 6 of 8 seeds with the exact-zero fraction below 0.9,
+   and `most_curious()` must select more than one distinct region.
+3. **The smoke run was a 1/10-scale instrument check, not the deciding run**, and it moved no bar; it
+   added an arm that can also fail. The deciding run had not been executed when this was written.
+
+Two supporting changes, same commit: the |LP| snapshot cadence tightens from every 50 wake rows to
+every 25 (at 3000 ticks the original gave ~29 samples per cell, too few for a variance ratio), and a
+cell must now contribute at least 3 snapshots before it enters the F-ratio at all — at 2 the within-cell
+variance of a constant pair is exactly 0 and the ratio reports Infinity, which is an artifact of
+sampling rather than a separation.
+
+**The coarse partition is computed by dividing the measured cell size in the probe, never by mutating
+`_COVER_CELLS_PER_REACH`.** That is deliberate: `_cover_cell()` is `lru_cache`d, and a prior coverage
+red was confounded exactly by moving the constant while the cached grid did not follow.
+
 ## The corrected W-R3, pre-registered
 
 Part F's row reads *"goal selection unchanged with `coverage_reward` neutered | the un-neutered run |
