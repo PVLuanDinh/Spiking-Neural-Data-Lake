@@ -305,8 +305,29 @@ Startable now, in-process. Order inside the phase: W3 (the instrument) first —
   `len(set(sal_live))` and `tools/ab_connectome_delay.py`) — reuse it. **Pre-register the baselines from a
   measured run of today's world — s2c's FIXED PACK arm under `throwaway_home()`, `persist=False`, 3 seeds —
   BEFORE W1** (the record has no category-entropy baseline).
-- **W1 — goals drive the arm inside the existing world (this IS T076's mechanism, pulled forward under
-  O5(c)).** No new environment, no scene change: the world is `brainstem/autonomous_loop.py`'s SO-101
+- **W1 — RETIRED 2026-09-04 BY OWNER DECISION ON ITS OWN MEASUREMENT (P8 deletion-on-a-null).**
+  `basal_ganglia/curriculum.py` was built, measured, panelled, folded, landed at `ec5e9e4`/`dadc9b6`,
+  and is now DELETED. The reason is not that it failed to work — its 9 wiring criteria were green and
+  14/14 mutants red — but that the capability it existed to provide was never demonstrated:
+  (a) **the actuation half was built and refused on its own data.** A bias toward `propose()`'s cell,
+  pushed through the arm's existing `_ext_drive` port and scored on the objective it would serve
+  (distinct cells covered, 400 ticks × 8 seeds): goal vs incumbent paired **t −0.34**, vs a
+  magnitude-preserving shuffled control **t −0.52**, and a FRONTIER arm aimed at the nearest UNREACHED
+  cell **t −0.50** — none resolvable against 1.895, with the incumbent alone spanning 50–107 cells
+  across seeds and a 10% effect needing ~96 seeds.
+  (b) **Part F's unrelated-scalar control came back RED**: substituting any unrelated live scalar for
+  the objective changes 0.863–0.906 of proposals against a SHUFFLE BOUND of 0.879 — no measurable
+  objective-specificity.
+  (c) **a structural defect in the goal space**: `seen()` proposed only cells ALREADY REACHED while the
+  objective pays for reaching somewhere NEW, and the FRONTIER arm shows repairing that does not rescue
+  the wire.
+  The full record survives in `evidence/w1-goal-curriculum.md`, which is deliberately NOT deleted:
+  P8 calls deletion on a null the licence working, and the evidence is what stops this being rebuilt.
+  **T076's mechanism is therefore WITHDRAWN, not delivered** — see its row in Part E.
+  The superseded specification follows, kept so the deletion can be audited against what was asked.
+
+- ~~**W1 — goals drive the arm inside the existing world (this IS T076's mechanism, pulled forward under
+  O5(c)).**~~ No new environment, no scene change: the world is `brainstem/autonomous_loop.py`'s SO-101
   under `coverage_reward` (FR-027). Build the module T076 names, `basal_ganglia/curriculum.py`, with
   `propose()/observe()` and the |LP| bandit over goal-space regions, by PORTING `cortex/autotelic_goals.py`'s
   goal sampling (competence-progress babbling over achieved outcomes, HER) from its toy grid onto the arm's
@@ -469,7 +490,7 @@ May run in parallel with Phase 3 (O5(b)); MUST precede Phase 5.
   operators yield 2 keys. **T073** evaluator cascade on harness-only evidence, stage 2 = Phase 4's
   benchmark (why this phase waits). **T074** archive + MAP-Elites cells (adopted, disclosed — not a P8
   invention) as an IMMORTAL record class with its bytes/tick ceiling and P4b red. **T075** cockpit rows.
-  **T076** has only its exit row left: its mechanism and red landed as W1. **T083** US4 exit.
+  **T076** — its mechanism landed as W1 and was RETIRED 2026-09-04 on its own measurement (owner decision, P8 deletion-on-a-null); the red was reachable and the mechanism was green, but the capability was never demonstrated. Its exit row is WITHDRAWN with it. `evidence/w1-goal-curriculum.md` is the record. **T083** US4 exit.
 
 ### Phase 6 — Polish — T084–T087
 
@@ -484,7 +505,7 @@ L2, T066, T073, T077, T078).
 ## PART E — SEQUENCING, DEPENDENCIES, WHAT IS DROPPED
 
 **Critical path (commits), with the earliest start of each parallel arm marked:**
-W3 → W1 (+T076's red) → W2 (no widening) → L1b → L1c → L2 → L4 (with its ceiling) → T069 → S1 → S2 → S3 →
+W3 → ~~W1 (+T076's red)~~ RETIRED 2026-09-04 → W2 (no widening) → L1b → L1c → L2 → L4 (with its ceiling) → T069 → S1 → S2 → S3 →
 S4 → S5 → S6 → T062 → T063 → T071 → T072 → T073 → T074 → T075/T076 → T083 → H1 → T084–T087.
 Parallel arms: L1a ∥ L3 ∥ the oracle may start at W3 (they do not wait for Phase 1); the C-chain
 (C0 → C1a → C1b → C1c → C3 → C2 → C4) may start at S1 (O5(b)) and must finish before T072.

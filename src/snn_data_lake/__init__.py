@@ -242,7 +242,6 @@ REGIONS = {
     "basal_ganglia": [
         "evidence_accumulation",
         "learning_progress",  # specs/022 T046a: |LP| third factor (adopts CuriosityDrive) + the _T_GOAL store
-        "curriculum",  # specs/022 T076 / plan W1: propose()/observe() goal curriculum over the coverage lattice; ADOPTS CuriosityDrive as its |LP| bandit. NOT "GoalStore's first live caller" as this comment first said -- the module lands EXEMPT/unwired, and its only GoalStore construction is in its own self-check on a tempfile, while learning_progress.py already constructs one. It is GoalStore's first caller outside GoalStore's own module
         "r_stdp",
         "valence_stdp",
         "action_gating",
