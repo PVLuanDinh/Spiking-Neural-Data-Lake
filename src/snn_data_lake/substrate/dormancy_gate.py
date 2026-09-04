@@ -661,7 +661,30 @@ EXEMPT = {
         "landing with the first live per-tick writer if one ever exists. This module IS that "
         "writer -- the premise probe measured 211 to 743 distinct cells per seed over 3000 ticks. "
         "It writes nothing today because it is unwired; the day the consumer lands and this row "
-        "retires, an AppendBudget baseline for _T_GOAL becomes mandatory in the same arc.",
+        "retires, an AppendBudget baseline for _T_GOAL becomes mandatory in the same arc. "
+        "THE WIRE WAS BUILT AND MEASURED, AND IS REFUSED -- this row is no longer 'pending', it is "
+        "'measured and declined', which is a stronger state. A bias toward propose()'s cell was "
+        "pushed through the arm's existing _ext_drive port and scored on the objective it would "
+        "serve (distinct cells covered, 400 ticks x 8 seeds, common warm-up): goal vs incumbent "
+        "paired t -0.34, goal vs a magnitude-preserving SHUFFLED control t -0.52, and a FRONTIER "
+        "arm aimed at the nearest UNREACHED cell t -0.50 -- none resolvable against a bar of "
+        "1.895, because the incumbent alone spans 50-107 cells across seeds. Resolving a 10% "
+        "effect would need ~96 seeds. The wire is NOT dormant: injecting through _ext_drive "
+        "changes 24.5-41.8% of actions, so it charges on behaviour while its effect on the "
+        "OBJECTIVE stays below a feasible instrument. Landing it would credit this module with "
+        "driving the arm on evidence that does not exist. "
+        "TWO CORRECTIONS TO THIS ROW'S OWN TEXT, both from that build. (1) The insertion point it "
+        "names -- 'one gated condition at the _z_goal formation site' -- is WRONG: _z_goal is a "
+        "16-D latent over exteroception and a proposal is an integer workspace cell, and the two "
+        "spaces are orthogonal, so a gate there cannot carry a spatial target. The live port that "
+        "CAN is _ext_drive. (2) The 'jepa at tick 3' figure is construction-dependent (the build "
+        "site is `if self._jepa_on and self.jepa is None` inside step, so jepa=True gives it at "
+        "tick 0); the neuter-A/B figures beside it stand, the tick number does not generalize. "
+        "Also recorded because it is this module's own defect: seen() proposes only cells ALREADY "
+        "REACHED while the objective pays for reaching somewhere NEW, so the goal space is opposed "
+        "to the objective -- and the FRONTIER arm shows repairing that does not rescue the wire. "
+        "RETIREMENT under P8's deletion-on-a-null is ESCALATED, not taken: the null is 'below a "
+        "feasible instrument', not 'measured zero', and deleting shipped work is an owner call.",
     ),
     "world_red_probe": (
         "permanent",

@@ -67,9 +67,29 @@ docstring refuses a fabricated goal as "the same class of theatre as a panel wit
 behind it". Integer cells also make the buffer's exact-equality dedup work; on continuous
 end-effector floats it silently fails (measured: three near-identical floats dedup to three).
 
-FR-027's JOIN: the objective is CARRIED, never replaced. `observe()` is fed `coverage_reward`'s
-own return value and derives its error from it, so the |LP| this bandit reads is learning progress
-ON the incumbent objective rather than a second objective standing beside it.
+FR-027's JOIN, CORRECTED BY ITS OWN CONTROL. The objective is CARRIED, never replaced:
+`observe()` is fed `coverage_reward`'s own return value and derives its error from it. That much is
+structural and true. The stronger reading this paragraph used to carry -- that the |LP| the bandit
+reads is therefore learning progress ON THE INCUMBENT OBJECTIVE specifically -- does NOT survive
+measurement. Part F's unrelated-scalar control, run in the only form with a reachable red
+(SUBSTITUTE an unrelated live scalar for the objective rather than neuter it beside one, since
+observe() has no second input to neuter): substituting `_rpe`, `_plan_w` or `_plan_base` changes
+0.863-0.906 of the proposals, against a SHUFFLE BOUND of 0.879 -- the change produced by feeding
+the objective's OWN values in a scrambled order. Every substituted channel is at or below that
+bound, on 8 seeds, with an identity control at exactly 0.0000.
+So the honest claim is narrower: |LP| is a generic functional of whatever series it is handed, this
+module hands it the incumbent objective, and the PROPOSAL cannot distinguish that objective from
+any other varying scalar of comparable magnitude. The join is real as plumbing and unproven as
+specificity. evidence/w1-goal-curriculum.md section A carries the table.
+
+THE GOAL SPACE IS OPPOSED TO THE OBJECTIVE, and this is a defect in this module rather than in any
+caller. `seen()` returns only cells the arm has ALREADY REACHED, while `coverage_reward` pays for
+reaching somewhere NEW -- so a curriculum joined to that objective proposes, by construction, only
+places it has already been. It surfaced when the actuation wire was built and scored: driving the
+arm toward `propose()`'s cell is unresolvable against the incumbent (paired t -0.34 on 8 seeds),
+and so is a FRONTIER arm targeting the nearest UNREACHED cell (t -0.50), which is the goal space
+this module cannot express. Recording both matters: the defect is real, and repairing it is not
+what would rescue the wire.
 
 THE EXPLORATION FLOOR IS DERIVED, NOT SET (P1). T076: "the exploration floor DERIVED from measured
 |LP| signal-to-noise on the goal store (20% is the literature reference, never the value)." The

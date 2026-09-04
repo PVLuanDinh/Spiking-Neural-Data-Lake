@@ -373,3 +373,154 @@ made the result look STRONGER, and each was cheap to catch: count what fraction 
 constant; check that the quantity you measured is the quantity the mechanism reads; read the harness
 for the draw count you are about to publish; report which branch your treatment put the arm in.
 Every one of those numbers was already in hand when the first write-up was made.
+
+
+---
+
+## Closing the three measurements W1 owed, and the actuation half
+
+The landing commit named three measurements as owed and one half as deliberately not built. All
+four are settled here. **Two of the three came back against the mechanism, and the actuation half
+is REFUSED on its own measurement rather than deferred again.**
+
+### A. Part F's unrelated-scalar control -- RED: no measurable objective-specificity
+
+**The literal pre-registered form is VACUOUS, and the argument is structural.** Part F reds if goal
+selection "changed when an unrelated scalar of comparable magnitude is neutered".
+`GoalCurriculum.observe(cell, reward)` has exactly two inputs and no others: there is no unrelated
+scalar anywhere on the mechanism's input path to neuter, so under replay -- which holds the cell
+stream fixed -- neutering `_rpe` or anything else cannot change a proposal, by construction rather
+than by luck. A criterion that cannot go red is not a control (P8 clause 1), so it is reported
+VACUOUS and NOT counted as a pass.
+
+The form with a reachable red asks what the pre-registration was reaching for: does the proposal
+track THIS objective, or would any varying scalar of similar magnitude do? So the unrelated scalar
+is SUBSTITUTED FOR the objective instead of neutered beside it. Recorded from the same live ticks
+(the extended recording asserts it reproduces the cached cell/reward columns exactly, or the
+instrument changed the run and every comparison is void -- it reproduced on 8 of 8).
+
+| seed | sub `_rpe` | sub `_plan_w` | sub `_plan_base` | **SHUFFLE bound** | identity |
+|---|---|---|---|---|---|
+| 0 | 0.9195 | 0.9463 | 0.9396 | **0.8188** | 0.0000 |
+| 1 | 0.8926 | 0.9799 | 0.9597 | **0.9866** | 0.0000 |
+| 2 | 0.8792 | 0.9866 | 0.8993 | **0.9799** | 0.0000 |
+| 3 | 0.9329 | 0.9329 | 0.9329 | **0.7383** | 0.0000 |
+| 4 | 0.7248 | 0.9329 | 0.9329 | **0.8926** | 0.0000 |
+| 5 | 0.8176 | 0.9527 | 0.9595 | **0.8851** | 0.0000 |
+| 6 | 0.8389 | 0.5906 | 0.7181 | **0.8859** | 0.0000 |
+| 7 | 0.8986 | 0.8784 | 0.9054 | **0.8446** | 0.0000 |
+
+**Every substituted channel sits at or below the shuffle bound.** Feeding the curriculum a wholly
+unrelated scalar changes its proposals by about as much as feeding it ITS OWN reward values in a
+scrambled order (0.863-0.906 against 0.879). The identity control is exactly 0.0000 on 8 of 8, so
+the comparator is sound.
+
+**Consequence for a claim this module makes.** The docstring's FR-027 paragraph says the objective
+is "CARRIED, never replaced" so that "the |LP| this bandit reads is learning progress ON the
+incumbent objective". The first half is structurally true -- it IS fed `coverage_reward`. The
+second half does not survive this control: the proposal sequence cannot distinguish that objective
+from any other varying scalar of comparable magnitude. |LP| is a generic functional of whatever
+series it is handed, and the mechanism has no way to know which scalar is "the objective". The
+honest correction is to the CLAIM, not the mechanism, and it is made in the module.
+
+### B. The constant-floor arm -- the invented element is NOT inert, and explores 2.5x more
+
+The bandit is adopted and the buffer imported; the one genuinely INVENTED element is
+`floor_from_snr = 1/(1+snr)`. T076 names its reference explicitly ("20% is the literature
+reference, never the value"), so the comparison arm is that constant.
+
+| seed | derived floor range | distinct values | exploit% derived | exploit% at 0.2 | d(proposals) |
+|---|---|---|---|---|---|
+| 0 | 0.4617-0.9614 | 111 | 49.7% | 84.6% | 0.6242 |
+| 1 | 0.4956-0.9771 | 119 | 39.6% | 83.2% | 0.6779 |
+| 2 | 0.4517-0.9677 | 108 | 45.6% | 82.6% | 0.6309 |
+| 3 | 0.4856-0.9789 | 100 | 36.2% | 81.9% | 0.7047 |
+| 4 | 0.4533-0.8082 | 112 | 43.0% | 81.2% | 0.6980 |
+| 5 | 0.5072-0.9630 | 122 | 34.5% | 81.1% | 0.7230 |
+| 6 | 0.3751-0.9538 | 63 | 38.9% | 78.5% | 0.9262 |
+| 7 | 0.4363-0.9983 | 95 | 50.0% | 76.4% | 0.7095 |
+
+**Not inert:** the derivation moves the proposals on 8 of 8 seeds (mean 0.7118, t 21.44), and the
+floor takes 63-122 distinct values per seed across 0.375-0.998 -- a genuine variable, not a
+constant wearing a formula. That is the reachable red this arm could have produced and did not.
+
+**What it does NOT establish, stated because the inertness result alone would flatter it:** the
+derived floor explores **2.5x more** than the literature constant (42.2% exploit against 81.2%),
+and never falls below 0.375 -- because the measured separation is weak (snr near 1), so `1/(1+snr)`
+sits near 0.5 and **the bandit is consulted on fewer than half of all proposals.** The thin premise
+of section 1 reappears here as a mechanism that mostly explores. Whether the derived floor is
+BETTER than 0.2 is not settled by this arm and is not claimed: "better" needs an outcome, and
+section D is where that was measured.
+
+### C. The `_td_flipped` attribution -- MOOT, and disposed rather than deferred
+
+The pre-registration promised per-item attribution via `_td_flipped`, the arm's record of whether
+the goal overrode the habit on a selection. That signal attributes nothing while the curriculum's
+proposal reaches no consumer, so it was never runnable in the unwired state. Section D refuses the
+wiring, so it is not runnable in the wired state either. It is therefore **closed as moot with its
+reason**, not carried forward as an open item: an attribution channel for a wire that is not being
+landed is not owed work.
+
+### D. THE ACTUATION HALF -- BUILT, MEASURED, AND REFUSED
+
+The wire was not argued about; it was built end to end and scored on the objective it would serve.
+A bias `gain * dot(FK_displacement(action), unit(target - ee)) / cell` was pushed through the arm's
+existing `_ext_drive` port, and coverage -- distinct cells reached, which IS the objective -- was
+counted over 400 ticks on 8 seeds with a 60-tick common warm-up.
+
+| seed | incumbent | goal-driven | shuffled control | frontier |
+|---|---|---|---|---|
+| 0 | 74 | 88 | 70 | 89 |
+| 1 | 74 | 88 | 85 | 71 |
+| 2 | 52 | 99 | 68 | 59 |
+| 3 | 89 | 47 | 67 | 76 |
+| 4 | 50 | 38 | 46 | 71 |
+| 5 | 61 | 65 | 81 | 57 |
+| 6 | 107 | 70 | 96 | 72 |
+| 7 | 89 | 73 | 84 | 76 |
+
+| comparison | mean diff | sd | paired t (bar 1.895) | verdict |
+|---|---|---|---|---|
+| goal vs incumbent | -3.50 | 29.40 | -0.337 | NOT significant |
+| goal vs shuffled | -3.62 | 19.66 | -0.521 | NOT significant |
+| frontier vs incumbent | -3.12 | 17.83 | -0.496 | NOT significant |
+
+**No effect is resolvable in either direction.** The INCUMBENT alone spans 50-107 cells across
+seeds (sd 19.9, a 2.1x range); that between-seed variance swamps any wire effect. Resolving a 10%
+effect against this noise needs **~96 seeds**; the observed effect size would need ~437.
+
+**The wire is not dormant -- it CHARGES.** Measured separately, injecting through `_ext_drive`
+changes 24.5%-41.8% of the actions taken. P3's charge question and "does it help" are different
+questions, and this wire answers the first YES and the second NOT MEASURABLY.
+
+**A structural defect in `propose()` that the wire exposed, and it is mine.** `seen()` returns
+`sorted(self._buf.all_seen())` -- ONLY cells the arm has ALREADY REACHED. A curriculum joined to an
+objective that pays for reaching somewhere NEW can therefore propose, by construction, only places
+it has already been. The goal space and the objective are opposed. The FRONTIER arm above exists to
+test whether fixing that rescues the wire: it targets the nearest UNREACHED cell, the goal space
+`propose()` cannot express -- and it is equally unresolvable (t -0.496). So the defect is real
+and worth recording, but repairing it does not turn this wire into a demonstrated benefit.
+
+**DISPOSITION: REFUSED, with the measurement, per P7's rule that a rejection ships with its
+measurement or its structural argument.** Landing the wire would credit the curriculum with driving
+the arm on evidence that does not exist. The exemption row keeps its `wire` disposition but now
+records that the wire was BUILT and MEASURED rather than merely pending -- which is a stronger and
+more honest state than the one it was in.
+
+**What the refusal does NOT decide, and why it is escalated rather than settled here.** Whether
+`basal_ganglia/curriculum.py` should now be RETIRED under P8's deletion-on-a-null is a scope
+decision, not a measurement: the null is "below a feasible instrument's resolution", not "measured
+zero", and deleting shipped work is the owner's call. The measurement is on the record; the
+decision is not taken unilaterally.
+
+### E. Two corrections to claims made earlier in this same arc
+
+* **"jepa is built at tick 3" is CONSTRUCTION-DEPENDENT, not a property of the code.** The build
+  site is `if self._jepa_on and self.jepa is None` inside `step`, so an arm constructed with
+  `jepa=True` has it at tick 0. The dormancy row's neuter-A/B figures stand; the tick number does
+  not generalize and should not be quoted as if it did.
+* **The A/B harness's own verdict line was a defect and is fixed.** It printed "aiming HURTS" and
+  "the wire REDUCES the objective" from a comparison of MEANS with no test, on data whose paired t
+  was 0.34 and 0.52. Announcing a direction that the same run's variance cannot resolve is exactly
+  the failure this file spends its length documenting in other instruments; it was in this one, and
+  the harness now prints the test, the power shortfall, and refuses to report a sign.
