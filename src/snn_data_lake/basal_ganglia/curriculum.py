@@ -43,13 +43,23 @@ survives, so this module writes as little as it can:
     would produce labels nothing reads -- dormant on arrival (P3 shape 2, "return value
     discarded"). It lands with the consumer or not at all.
 
-WHAT THE PREMISE PROBE ESTABLISHED BEFORE ANY OF THIS WAS WRITTEN (evidence/w1-goal-curriculum.md).
-The mechanism only works if |LP| SEPARATES regions at the scale the live arm produces, and two
-measured facts put that in doubt: the live |LP| channel runs ~55x smaller than the harness scale
-its facade was validated on, with ~51% exact zeros. Measured, 8 seeds x 3000 ticks, the
-separation beats a marginal-preserving label shuffle on 8 of 8 seeds at both partitions
-(F 9.7-22.7 fine, 2.7-6.7 coarse, against null maxima below 1), and `most_curious` selects
-between 4 and 38 distinct regions per seed. The bar was 6 of 8 and was fixed before the run.
+WHAT THE PREMISE PROBE ESTABLISHED, AND HOW MUCH WEAKER IT IS THAN FIRST REPORTED
+(evidence/w1-goal-curriculum.md carries the full corrected account). The mechanism only works if
+|LP| SEPARATES regions at the scale the live arm produces. Measured over 8 seeds x 3000 ticks, on
+`curiosity_value` -- the quantity `most_curious` actually ranks on -- restricted to cells with at
+least 5 real observations, and against a genuine 200-draw marginal-preserving label shuffle:
+F 0.16-2.13, clearing its own null on 6 of 8 seeds against a bar of 6 of 8 that was fixed before
+the run. It passes by nothing, and seeds 5 and 7 do not clear their null at all.
+
+THE FIRST WRITE-UP OF THIS PARAGRAPH CLAIMED 8 OF 8 AT F 9.7-22.7, and that is kept here as a
+warning rather than deleted. Three errors inflated it ~15x, all found by an adversarial panel:
+the probe sampled EVERY cell every 25th wake row whether or not it had been visited, and a
+once-visited cell's |LP| is identically 0 forever by the drive's initialization -- so 74-90% of the
+series entering the ratio were CONSTANT and deflated its denominator; the statistic was computed on
+`learning_progress_abs`, which the bandit never reads; and the null was reported as 200 draws when
+the harness ran 20. Sampling on visit only collapses F from ~15 to ~1.1. The transferable half:
+a zero-variance series is usually not a measurement of zero, it is the ABSENCE of a measurement
+wearing one, and it lands in the denominator.
 
 THE GOAL SPACE IS THE OBJECTIVE'S OWN LATTICE, WHICH IS WHAT KEEPS IT HONEST. A goal here is an
 integer cell triple from `coverage_reward`'s own grid, not an invented target -- that module's
@@ -130,6 +140,10 @@ import sys
 #: because the quantity does not exist there. It is defensible on that ground and on no other; if a
 #: future estimator is well-defined at two, this constant goes.
 MIN_LP_SAMPLES = 3
+
+#: The achievement function every goal row created here points back to -- the incumbent
+#: objective, named once so observe() and record_outcome() cannot disagree about it.
+_ACHIEVEMENT_REF = "brainstem.autonomous_loop.AutonomousArm.coverage_reward"
 
 
 def snr_from_histories(histories):
@@ -280,10 +294,7 @@ class GoalCurriculum:
                 # to distant ones. Nothing queries these rows today and this module never calls
                 # query(), so there is no live effect -- but a future consumer would inherit the
                 # bias silently, and it is cheaper to say so here than to rediscover it there.
-                gid = self._store.create(
-                    [float(cell[0]), float(cell[1]), float(cell[2]), 1.0],
-                    "brainstem.autonomous_loop.AutonomousArm.coverage_reward",
-                )
+                gid = self._store.create(self._embed(cell), _ACHIEVEMENT_REF)
                 self._gid[cell] = gid
             self._store.record_lp(gid, self._drive.learning_progress_abs(cell))
 
@@ -305,27 +316,41 @@ class GoalCurriculum:
         return self._proposed
 
     def record_outcome(self, cell, outcome):
-        """Note how a proposal turned out, on the store row that region already owns.
+        """Note how a proposal turned out, creating the region's store row if it has none.
 
-        Returns True if it was recorded, False if there is no store. RAISES if the cell has no
-        store row, and that is the point: `_gid` is populated only by observe()'s store branch, so
-        a cell with no row is a cell the arm NEVER REACHED -- which is exactly the outcome this
-        method is most valuable for recording, and exactly the case the original `cell in self._gid`
-        guard threw away in silence. A curriculum that cannot record its failures learns only from
-        its successes.
+        Returns True if it was recorded, False if there is no store.
+
+        THIS METHOD WAS WRITTEN TWICE WRONG BEFORE THIS, in opposite directions, and both failures
+        were about the SAME case: a goal that was proposed and NEVER REACHED.
+          * First it did `if cell in self._gid` and silently no-oped otherwise -- discarding
+            exactly the informative outcome, because `_gid` is populated only by observe()'s store
+            branch and an unreached cell was never observed.
+          * Then it RAISED on that case, which a re-panel pointed out is no better: the natural
+            caller loop is propose() -> act -> record_outcome(cell, reached-or-not), so raising
+            hard-blocks every failure branch. The docstring's own escape hatch ("observe() it")
+            was worse still -- it asks the caller to fabricate an observation for a cell the arm
+            was never in, contradicting observe()'s contract AND this module's own "a goal is
+            never fabricated" invariant.
+        Creating the row on demand is what lets the method do its job. It mirrors observe()'s own
+        lazy create, and a row with an empty lp_history is harmless to snr(): MIN_LP_SAMPLES
+        filters it out, so an unreached goal contributes an OUTCOME without contributing a
+        measurement it never made.
         """
         if self._store is None:
             return False
-        if cell not in self._gid:
-            raise KeyError(
-                f"no goal row for {cell!r}: record_outcome is being called for a region that was "
-                "never observed, so the outcome has nowhere to land. If this is an unreached "
-                "proposed goal, observe() it with the objective's value for not reaching it."
-            )
-        self._store.record_outcome(self._gid[cell], outcome)
+        gid = self._gid.get(cell)
+        if gid is None:
+            gid = self._gid[cell] = self._store.create(self._embed(cell), _ACHIEVEMENT_REF)
+        self._store.record_outcome(gid, outcome)
         return True
 
     # ---- the derived quantities ----------------------------------------------------------
+
+    def _embed(self, cell):
+        """The store embedding for a region. ONE definition, because observe() and
+        record_outcome() both create rows and a drift between them would put two different
+        geometries in one shared record class."""
+        return [float(cell[0]), float(cell[1]), float(cell[2]), 1.0]
 
     def seen(self):
         """The regions actually reached, sorted for determinism (a set's order is not stable
@@ -469,59 +494,91 @@ def _wiring_check():
     from snn_data_lake.basal_ganglia.learning_progress import GoalStore
     from snn_data_lake.substrate import home as _home
 
-    with tempfile.TemporaryDirectory(prefix="curriculum_selfcheck_") as d:
-        armed = GoalCurriculum(seed=2, store=GoalStore(path=str(pathlib.Path(d) / "goals.bin")))
-        assert armed.state()["bandit_active"] is True, "a curriculum WITH a store has a live bandit"
-        # two regions whose |LP| genuinely differs: one region's objective RAMPS, the other is flat.
-        for i in range(12):
-            armed.observe((0, 0, 0), -1.0 + 2.0 * i / 11.0)
-            armed.observe((1, 0, 0), 0.0)
-        snr = armed.snr()
-        assert snr is not None, "with a store and enough samples the SNR must be MEASURABLE"
-        assert armed.floor() < 1.0, (
-            f"a measured separation must pull the floor OFF its explore-everything endpoint "
-            f"({armed.floor()} at snr {snr}) -- a floor pinned at 1.0 means propose() never "
-            "consults the bandit, which is the storeless behaviour wearing a store"
-        )
-        # and the bandit must actually be REACHED, and reached CORRECTLY. The first draft
-        # asserted `most_curious(seen) in seen`, which the panel correctly called VACUOUS: it is a
-        # max() over a non-empty list, so it holds whatever the ranking does. The criterion that
-        # is not vacuous names WHICH region must win -- the ramping one, whose objective is still
-        # changing, over the flat one, whose |LP| is zero by construction.
-        armed._rng.seed(7)
-        picks = [armed.propose() for _ in range(200)]
-        assert set(picks) <= set(armed.seen()), "proposals stay inside the reached regions"
-        ramping, still = (0, 0, 0), (1, 0, 0)
-        lp_r = armed._drive.learning_progress_abs(ramping)
-        lp_s = armed._drive.learning_progress_abs(still)
-        assert lp_r > lp_s, f"the ramping region must carry more |LP| ({lp_r} vs {lp_s})"
-        assert armed._drive.most_curious([ramping, still]) == ramping, (
-            "the bandit must PREFER the region with higher |LP| -- 'the answer is one of the "
-            "candidates' is true of any max() and proves nothing about the ranking"
-        )
-        # record_outcome's contract, which nothing else in this check covered: it lands on an
-        # observed region and REFUSES an unobserved one rather than dropping it silently.
-        assert armed.record_outcome(ramping, "reached") is True, "an observed region records"
-        try:
-            armed.record_outcome((41, 41, 41), "never reached")
-        except KeyError:
-            pass
-        else:
-            raise AssertionError(
-                "record_outcome must REFUSE a region with no goal row -- silently dropping the "
-                "outcome of a goal the arm never reached discards exactly the informative case"
+    # home._log memoizes BinLogs by (path, dedup), so a store opened in a temp dir leaves a cache
+    # entry pointing at a directory TemporaryDirectory is about to delete. TWO CORRECTIONS a
+    # re-panel forced here, and the first is the one that mattered:
+    #   (1) the cleanup was a bare statement after the assertions, so ANY failing criterion skipped
+    #       it -- reproduced by breaking criterion 9, which left exactly one cache entry whose path
+    #       no longer existed. A red self-check is when the process most needs to stay clean for
+    #       whatever runs next, so the cleanup belongs in a finally.
+    #   (2) it was `_LOG_CACHE.clear()`, copied from learning_progress's check, which wipes the
+    #       WHOLE shared cache. run_selfchecks runs every module in ONE process, so that silently
+    #       evicts other modules' still-valid warm BinLogs and forces a reconstruction home.py's
+    #       own docstring measures in seconds on a realistic lake. Only this block's keys are
+    #       dropped now.
+    tmp_keys = []
+    try:
+        with tempfile.TemporaryDirectory(prefix="curriculum_selfcheck_") as d:
+            goal_path = str(pathlib.Path(d) / "goals.bin")
+            tmp_keys = [(goal_path, True), (goal_path, False)]
+            armed = GoalCurriculum(seed=2, store=GoalStore(path=goal_path))
+            assert armed.state()["bandit_active"] is True, (
+                "a curriculum WITH a store has a live bandit"
             )
-        # home._log memoizes BinLogs by path, so a self-check that opens a store in a temp dir
-        # leaves a cache entry pointing at a deleted directory. learning_progress's own check
-        # clears it for this reason; this one inherited the footgun and now inherits the fix.
-        _home._LOG_CACHE.clear()
+            # two regions whose |LP| genuinely differs: one region's objective RAMPS, the other is flat.
+            for i in range(12):
+                armed.observe((0, 0, 0), -1.0 + 2.0 * i / 11.0)
+                armed.observe((1, 0, 0), 0.0)
+            snr = armed.snr()
+            assert snr is not None, "with a store and enough samples the SNR must be MEASURABLE"
+            assert armed.floor() < 1.0, (
+                f"a measured separation must pull the floor OFF its explore-everything endpoint "
+                f"({armed.floor()} at snr {snr}) -- a floor pinned at 1.0 means propose() never "
+                "consults the bandit, which is the storeless behaviour wearing a store"
+            )
+            # and the bandit must actually be REACHED, and reached CORRECTLY. The first draft
+            # asserted `most_curious(seen) in seen`, which the panel correctly called VACUOUS: it is a
+            # max() over a non-empty list, so it holds whatever the ranking does. The criterion that
+            # is not vacuous names WHICH region must win -- the ramping one, whose objective is still
+            # changing, over the flat one, whose |LP| is zero by construction.
+            armed._rng.seed(7)
+            picks = [armed.propose() for _ in range(200)]
+            assert set(picks) <= set(armed.seen()), "proposals stay inside the reached regions"
+            ramping, still = (0, 0, 0), (1, 0, 0)
+            lp_r = armed._drive.learning_progress_abs(ramping)
+            lp_s = armed._drive.learning_progress_abs(still)
+            assert lp_r > lp_s, f"the ramping region must carry more |LP| ({lp_r} vs {lp_s})"
+            assert armed._drive.most_curious([ramping, still]) == ramping, (
+                "the bandit must PREFER the region with higher |LP| -- 'the answer is one of the "
+                "candidates' is true of any max() and proves nothing about the ranking"
+            )
+            # 9 RED -- record_outcome's contract, which nothing else here covered and which this
+            #   criterion has now caught TWICE as it changed. The case that matters is a goal that
+            #   was proposed and NEVER REACHED: the first version dropped it silently, the second
+            #   raised on it (which hard-blocks the natural propose -> act -> record loop on every
+            #   failure branch), and the third creates the row. The red is that the unreached
+            #   outcome must LAND SOMEWHERE, because a curriculum that can only record its
+            #   successes is learning from a filtered sample.
+            assert armed.record_outcome(ramping, "reached") is True, "an observed region records"
+            before = len(armed._store.goals())
+            snr_before = armed.snr()
+            assert armed.record_outcome((41, 41, 41), "proposed, never reached") is True, (
+                "an UNREACHED goal's outcome must be recordable -- it is the informative case, and "
+                "neither dropping it nor raising on it records anything"
+            )
+            assert len(armed._store.goals()) == before + 1, (
+                "the unreached goal must get its own row, or the outcome landed nowhere"
+            )
+            # and creating that row must not disturb the measurement: its lp_history is empty, so
+            # MIN_LP_SAMPLES filters it out of the SNR entirely.
+            assert armed.snr() == snr_before, (
+                f"a row with no |LP| samples must not move the SNR ({armed.snr()} vs {snr_before}) "
+                "-- an unreached goal contributes an OUTCOME, never a measurement it never made"
+            )
+            assert GoalCurriculum(seed=0).record_outcome((0, 0, 0), "x") is False, (
+                "with no store there is nowhere to record, and that is reported, not raised"
+            )
+    finally:
+        for k in tmp_keys:
+            _home._LOG_CACHE.pop(k, None)
     _emit(
         "curriculum wiring OK: 9 criteria proven falsifiable (SNR refuses when unmeasurable, "
         "separated out-scores flat, the floor is derived and monotone, no goal before an "
         "observation, proposals only from reached regions, the objective reaches the drive, "
         "a storeless curriculum says its bandit is inactive, an ARMED one measures an SNR, pulls "
-        "its floor off the explore endpoint, PREFERS the higher-|LP| region and refuses to record "
-        "an outcome for a region it never reached) -- no brain, and never the live lake"
+        "its floor off the explore endpoint, PREFERS the higher-|LP| region, and RECORDS the outcome "
+        "of a goal it never reached without letting that row disturb the SNR) -- no brain, and "
+        "never the live lake"
     )
 
 
