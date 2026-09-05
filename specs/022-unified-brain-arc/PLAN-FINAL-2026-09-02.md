@@ -341,7 +341,26 @@ Startable now, in-process. Order inside the phase: W3 (the instrument) first —
   (an |LP|-driven stage-advance gate) do DIFFERENT jobs and are not merged; no benchmark exists that could
   compare them. **W1's commit carries T076's red**: an objective with `coverage_reward` neutered must
   measurably change goal selection.
-- **W2 — the real latents reach the context without breaking the width.** `_safe_ctx` pools the real
+- **W2 — REFUSED ON MEASUREMENT 2026-09-05, BEFORE A BUILD (the rank-2c outcome; record:
+  `evidence/w2-context-latents.md`).** The premise was probed in-process with no tree change (nine cells:
+  incumbent / W2 / W2 with the context's succession destroyed per cycle, seeds 0–2, 3000 ticks) against a
+  pre-registered decision rule, and failed it on the direction pinned in advance:
+  (a) **the arm's world model reads no succession** — `JepaWorldModel`'s latent COLLAPSES on every
+  context this body sees (trained/fresh target-latent spread ×0.005–0.11 on nine of nine models; its
+  `latent_std > 0.0` self-check bars clear on all of them) and its prediction error is the same to the
+  fourth decimal under the natural order and under a per-cycle permutation; the tracked packs carry no
+  first-order succession either (ordered next-label MI at the median of 200 shuffles). W-R1 as written
+  is therefore unreachable on this chain and this world.
+  (b) **curiosity under W2 leaves the incumbent's floor by 30–190× but not its own time-shuffled control**
+  (2 of 3 seeds; seed 1 read exactly 0.0 the moment recruitment stopped): every "alive" reading on this
+  chain is the per-unit learning-progress transient of newly recruited arm prototypes.
+  (c) **the id lane fragments the arm's alphabet** (51–102 units against 5–7) and the grower's next-category
+  accuracy falls to 1.3–1.7 %, below its own persistence and majority floors on every seed — W-R2's
+  entropy half passes by recruitment alone and its accuracy half nulls.
+  Nothing was built. Two incumbent defects are FILED as their own arcs (the JEPA collapse with its red
+  already specified; `_cur_mag`'s held gauge). **The null sentence below is CORRECTED by measurement**, and
+  two owner questions are open (Part H). The superseded specification follows for audit.
+- ~~**W2 — the real latents reach the context without breaking the width.**~~ `_safe_ctx` pools the real
   vision/audio latents to one scalar per band. W2 delivers them as their prototype ids (the categories the
   learners already produce) and the encoder's surprise through the declared afferent lanes (FR-008) WITHOUT
   widening the 64-wide arm context — a width change would orphan the daemon's 64-wide prototypes and the
@@ -356,7 +375,11 @@ Startable now, in-process. Order inside the phase: W3 (the instrument) first —
   shuffle at the bar, each arm's own floors reported within-arm beside it (s2 v2's idiom). **W-R3 (= T076's
   red)** goal selection changes when `coverage_reward` is neutered. **On a null:** W1/W2 revert; the finding
   is that the curiosity chain's floor is intrinsic to the world model over this body, and Phase 2's L2 is
-  re-targeted at prediction error.
+  re-targeted at prediction error. **CORRECTED BY MEASUREMENT 2026-09-05 (W2 record §4.6):** the floor is
+  intrinsic to the world MODEL — a latent that collapses on every context this body sees — and to a world
+  with no first-order succession, not to the body; the prediction error this sentence names is the
+  collapsed one, so the L2 re-target is HELD pending Q1 (Part H) and no task whose red reads
+  `JepaWorldModel.prediction_error` starts before the JEPA-collapse arc is green.
 - **Exit:** `evidence/w-exit.md`, three tables, the pre-registered baselines beside them.
 
 ### Phase 2 — Learning in the substrate (synaptic first, growth on plateau)
@@ -505,7 +528,7 @@ L2, T066, T073, T077, T078).
 ## PART E — SEQUENCING, DEPENDENCIES, WHAT IS DROPPED
 
 **Critical path (commits), with the earliest start of each parallel arm marked:**
-W3 → ~~W1 (+T076's red)~~ RETIRED 2026-09-04 → W2 (no widening) → L1b → L1c → L2 → L4 (with its ceiling) → T069 → S1 → S2 → S3 →
+W3 → ~~W1 (+T076's red)~~ RETIRED 2026-09-04 → ~~W2 (no widening)~~ REFUSED ON MEASUREMENT 2026-09-05 → [the JEPA-collapse arc, filed, pending Q1] → L1b → L1c → L2 → L4 (with its ceiling) → T069 → S1 → S2 → S3 →
 S4 → S5 → S6 → T062 → T063 → T071 → T072 → T073 → T074 → T075/T076 → T083 → H1 → T084–T087.
 Parallel arms: L1a ∥ L3 ∥ the oracle may start at W3 (they do not wait for Phase 1); the C-chain
 (C0 → C1a → C1b → C1c → C3 → C2 → C4) may start at S1 (O5(b)) and must finish before T072.
@@ -570,7 +593,14 @@ four. About 40 landings in perhaps 15–20 arcs under the batched-battery rule: 
 battery before build time, and every phase can end in a recorded null that re-sequences what follows.
 That is the method working.
 
-## PART H — OWNER DECISIONS THIS PLAN NEEDED (all given 2026-09-02; one C2 question open)
+## PART H — OWNER DECISIONS THIS PLAN NEEDED (all given 2026-09-02; one C2 question open; two W2 questions open since 2026-09-05)
+
+**Open since 2026-09-05 (`evidence/w2-context-latents.md` §5):** **Q1** — the Phase 1 null disposition
+sends L2 at a prediction error that is measured collapsed; ratify (a) the JEPA-collapse arc BEFORE L2 and
+before any task whose red reads `prediction_error`, (b) a different learning signal for L2, or (c) the
+sentence as written (not recommended). **Q2** — with the id lane refused, whether W2's surprise half (one
+scalar into the context, no alphabet fragmentation) gets its own probe or W2 closes whole (this plan
+closes it whole unless reopened).
 
 **All five were given in chat on 2026-09-02** ("You are authorized to: O1 … O2 … O3 … O4 … O5 …"): O1–O3 are
 authorized ACTIONS (O1 and O2 executed the same day; O3 chosen by the session under the authorization and
