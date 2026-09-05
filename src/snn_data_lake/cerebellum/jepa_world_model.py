@@ -587,10 +587,17 @@ class JepaWorldModel:
         return goal_value
 
     def latent_std(self):
-        """Mean over dimensions of the per-dimension std of the current buffer of online latents.
+        """Mean over dimensions of the per-dimension std of the last `buffer` CONSECUTIVE online latents.
 
-        This is the collapse telemetry: a collapsed encoder maps every input to the same latent, so every
-        dimension's batch std -> 0 and this number -> 0."""
+        Collapse telemetry where the input varies (a collapsed encoder maps every input to the same
+        latent, so every dimension's std -> 0). On a near-constant stream it is NOT a collapse gauge: it
+        reads the stimulus's consecutive variation plus the hinge's drift between near-duplicates --
+        measured in-brain 2026-09-05 (specs/022 evidence/jepa-live-floor.md): an untrained twin read
+        0.01-0.07 over 32 consecutive ticks, the trained model 0.025-0.058, and the trained model over
+        DISTINCT patterns 0.036-0.045 (below the 0.05 floor on every seed). The live criterion that
+        replaced the floor there is the trained/fresh spread ratio over distinct patterns (>= x0.10; its
+        red is the ablation's x0.02-0.08); the 0.05 floor stays this module's self-check bar on its
+        varying synthetic stream and the in-tree planted world."""
         m = len(self._buf)
         if m < 2:
             return 0.0
