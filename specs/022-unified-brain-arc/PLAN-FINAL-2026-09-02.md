@@ -401,7 +401,10 @@ incumbent stream. Determinism: every A/B here runs a live-vs-live nondeterminism
 command (the rank-1 idiom), torch threads pinned; "byte-equal" restart reds are state-key equality against
 that baseline.
 
-- **L1a — the admission window.** The grower's held-out slice covers the category marginal (stratified or
+- **L1a — the admission window.** *LANDED 2026-09-05 (`3979001`; `evidence/l-parallel-arms.md`): one marginal-covering
+  split for all three grower windows; the oracle's deficit shrank twenty-fold to AT its floor (not above — the
+  plan's strict red NOT MET, kept as a strict xfail) and LIVE's held-out accuracy rose at the bar (t 2.27, p 0.035);
+  landed on that reading, the session's call, owner may revert.* The grower's held-out slice covers the category marginal (stratified or
   recency-mixed) instead of the most recent third. Control: the incumbent window with the same learner.
   Red (the window half of s2's pre-written red, now at the plan's statistic): paired t over 8 seeds of
   (oracle accuracy − its own persistence floor) > 1.895, AND paired t of (LIVE under L1a − LIVE under the
@@ -430,7 +433,9 @@ that baseline.
   ids are the grower's categories; NG-SNN admits LIF units; they are composed, not duplicated, and no second
   LIF grower is built. Red: every growth event is preceded by a measured synaptic plateau; neutering L1b
   raises the growth rate (attribution). Control: the grower with L1b off.
-- **L3 — the admission instrument.** `prune_unearned` keeps ONE of an all-redundant set; `NGSNN.fit` refuses
+- **L3 — the admission instrument.** *LANDED 2026-09-05 (`308f6db`): the constant percept admits exactly 1 unit on 8 of 8
+  (was 13–51), SYNTH > 1 on 8 of 8; a dead candidate is never admitted (found by the arc's own first-form reading).*
+  `prune_unearned` keeps ONE of an all-redundant set; `NGSNN.fit` refuses
   a zero-variance input. Red: the constant-percept arm (24 units in s2) admits 1. Positive control in the
   same command: a structured stream under the same instrument still admits more than 1 (s2 v2's LIVE 2.1 /
   SYNTH 13.9 are the reference), so a fit that refuses everything cannot pass.
@@ -579,10 +584,10 @@ no majority-of-seeds rule anywhere.
 | W-R1 | mean `curiosity_mag` (last 200 wake rows, 3000 and 6000 ticks) under W1+W2 does not exceed the time-shuffled-context world, per seed | the same world, context order shuffled | W3 |
 | W-R2 | category entropy not above the W3 baseline **at a NAMED window, PER SEED**, or live next-category accuracy not above its marginal-preserving shuffle (floors reported within-arm). **AMENDED 2026-09-03 on W3's measurement:** entropy is NOT a stable property of a run -- the same three seeds on one world moved in OPPOSITE directions between the first-1000 and last-1000 wake-row windows, spanning 0.0 to 2.6 bits -- so a bar that does not name its window and apply per seed is measuring the window. Pre-registered window = the FIRST 1000 wake rows; the 6000-tick column is the clean one (at 3000 the two windows overlap by ~517 rows). `evidence/w3-world-baselines.md` §4 | the shuffle | W3 |
 | W-R3 (T076) | **the CURRICULUM'S OWN PROPOSED GOAL** unchanged with `coverage_reward` neutered, OR changed when an unrelated scalar of comparable magnitude is neutered. **AMENDED 2026-09-03 before the build:** the original row -- "goal selection unchanged" -- is VACUOUS, measured: on the incumbent path with no W1 at all, neutering `coverage_reward` already changes 18/60 actions and takes `_z_goal` 60/60 -> 0/60. A red satisfiable without the mechanism it tests is not a red for that mechanism (P8 clause 1). The observable is therefore `propose()`'s returned goal cell, which the incumbent cannot produce, and the row now carries the SPECIFICITY control the original lacked | the un-neutered run, AND an unrelated-scalar neuter that must NOT move it | W1 |
-| L-R1 | paired t of (oracle − own persistence floor) not above 1.895 under L1a's window, or LIVE falls below the incumbent window past the bar | the incumbent window, same learner | L1a |
+| L-R1 | paired t of (oracle − own persistence floor) not above 1.895 under L1a's window, or LIVE falls below the incumbent window past the bar | the incumbent window, same learner | L1a — **read 2026-09-05: the first half NOT MET (t −2.51; the oracle sits AT its floor, from −0.43), the second half MET and positive (LIVE t +2.27); strict xfail in the tree** |
 | L-R2 | L1b does not beat the batch control, or an untrained twin is not below its own persistence floor while L1b is | batch solve under L1a's window; frozen-readout twin | L1b |
 | L-R3 | a growth event without a preceding synaptic plateau; neutering L1b does not raise growth | the grower with L1b off | L2 |
-| L-R4 | the constant-percept arm admits more than 1 unit, or the structured positive control admits only 1 | a structured stream under the same instrument (must admit > 1) | L3 |
+| L-R4 | the constant-percept arm admits more than 1 unit, or the structured positive control admits only 1 | a structured stream under the same instrument (must admit > 1) | L3 — **MET 2026-09-05 (1 on 8 of 8; SYNTH 10–29)** |
 | L-R5 | the L4 record class exceeds its bytes/tick ceiling without tripping | constructed overload | L4 |
 | SC-011 | structured stream grows no more units than its own marginal-preserving shuffle | the shuffle | `tests/test_real_percept_stream.py` |
 | SC-012a | acc(N=16) − acc(N=1) not above the bar, or acc(16) not above its majority floor, or the label-shuffled grid rises | the shuffled grid | `tests/test_real_percept_stream.py` |
