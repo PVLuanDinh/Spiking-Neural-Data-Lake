@@ -107,6 +107,28 @@ GRADIENT_CLAIM = {
 }
 
 
+def bound_rows(W, rho_max, wd):
+    """THE predictor bound, one mechanism for both latent world models (P2): a tiny weight decay on every
+    entry of the residual map W, then row-scaling so its max row-abs-sum stays <= rho_max. In place.
+
+    Extracted 2026-09-05 (evidence/jepa-live-floor.md section 2.6, commit A) from two byte-identical
+    bodies -- JepaWorldModel.train_step's inline block and cerebellum/spiking_jepa.SpikingJEPA's copied
+    _spectral_bound -- with the operation order kept exactly (decay, rowmax, scale), so both callers'
+    self-check numbers repeat to the digit. rho_max's DERIVATION lives on the caller (see
+    JepaWorldModel.__init__: sqrt(L), on the measurement, not the 1 + sqrt(L) a residual map can need);
+    wd = 1e-3 stays a fixed constant in both classes, disclosed."""
+    decay = 1.0 - wd
+    for row in W:
+        for k in range(len(row)):
+            row[k] *= decay
+    rowmax = max(sum(abs(v) for v in row) for row in W)
+    if rowmax > rho_max:
+        f = rho_max / rowmax
+        for row in W:
+            for k in range(len(row)):
+                row[k] *= f
+
+
 def _clamp(x, lo, hi):
     """Scalar clamp to [lo, hi] -- the final bounded squash on predicted latents."""
     return lo if x < lo else hi if x > hi else x
@@ -449,16 +471,9 @@ class JepaWorldModel:
                 wai[j] -= lr * gai[j]
             self.b[i] -= lr * gb[i]
 
-        # -- bound on Wz: small weight decay + row-scaling so max row-abs-sum stays <= rho_max = sqrt(L) (see __init__) --
-        for i in range(L):
-            for k in range(L):
-                self.Wz[i][k] *= 1.0 - self.wd
-        rowmax = max(sum(abs(self.Wz[i][k]) for k in range(L)) for i in range(L))
-        if rowmax > self.rho_max:
-            f = self.rho_max / rowmax
-            for i in range(L):
-                for k in range(L):
-                    self.Wz[i][k] *= f
+        # -- bound on Wz: small weight decay + row-scaling so max row-abs-sum stays <= rho_max = sqrt(L)
+        #    (see __init__); the ONE body, shared with spiking_jepa, is the module-level bound_rows --
+        bound_rows(self.Wz, self.rho_max, self.wd)
 
         # -- target encoder update (skipped for a frozen deep encoder -- its loaded target stays fixed):
         #    EMA (full) or hard tie to online (ablation guarantees target == online) --

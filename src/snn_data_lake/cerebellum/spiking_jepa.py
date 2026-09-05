@@ -101,6 +101,7 @@ import math
 import random
 import zlib
 
+from snn_data_lake.cerebellum.jepa_world_model import bound_rows
 from snn_data_lake.cortex.is_snn_forward import SPARSITY, STABLE_GAIN
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.plasticity.espp_rule import espp_modulator_core
@@ -679,19 +680,10 @@ class SpikingJEPA:
                     covj[k] = dec * covj[k] + one * cj * cen[k]
 
     def _spectral_bound(self):
-        """Copied Wz bound: tiny weight decay + row-scaling so max row-abs-sum < rho_max (contractive rollout)."""
-        big_l = self.L
-        for i in range(big_l):
-            wzi = self.Wz[i]
-            for k in range(big_l):
-                wzi[k] *= 1.0 - self.wd
-        rowmax = max(sum(abs(self.Wz[i][k]) for k in range(big_l)) for i in range(big_l))
-        if rowmax > self.rho_max:
-            f = self.rho_max / rowmax
-            for i in range(big_l):
-                wzi = self.Wz[i]
-                for k in range(big_l):
-                    wzi[k] *= f
+        """The Wz bound: tiny weight decay + row-scaling so max row-abs-sum <= rho_max. The body lives
+        ONCE, in jepa_world_model.bound_rows (P2; the copy this method carried until 2026-09-05 was
+        byte-identical and is deleted -- evidence/jepa-live-floor.md section 2.6)."""
+        bound_rows(self.Wz, self.rho_max, self.wd)
 
     # ---- one online update -----------------------------------------------------------------------------
     def train_step(self, pattern_t, action_t, pattern_next):
