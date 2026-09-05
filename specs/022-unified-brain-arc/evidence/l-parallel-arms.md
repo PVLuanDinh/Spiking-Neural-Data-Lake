@@ -426,7 +426,7 @@ Commit 3's message cites the first form's SYNTH range (10–29); the measurement
 the tree clean at its start): ALL GREEN.** `policy_manifest --assert` (the previous record named `d0e4109`, the
 parent chain of the pushed `ef36e98`) → `--certify` rc 0 (CERTIFIED full=False; P0/P1/P2/P5/P3-amendment/P4b/P4c-
 amendment/P5a disclosed as not machine-decided) → ruff 0 → ruff-format 0 → `run_selfchecks` 0 (6/6 tools gates) →
-pytest 0 (; coverage 90.60 %) → the 13 substrate gates (dormancy, method_dormancy, region_charge,
+pytest 0 (1150 passed, 2 xfailed, 0 skipped, 0 failed, 0 xpassed, 0 errors (counted from the 16 progress lines; the summary line was suppressed by the doubled -q); coverage 90.60 %) → the 13 substrate gates (dormancy, method_dormancy, region_charge,
 growth_coverage, manifest, determinism, replay, envelope_hash, policy_manifest, gradient_claim, eprop_transport,
 import_manifest, replication_guard) all rc 0. This battery also covers Q2's docs-only commits (`f1a9bf8`…`a9145e0`).
 The fold `1eb37df` is battery-verified only (not re-panelled), as §5 states.
