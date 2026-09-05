@@ -363,7 +363,6 @@ REGIONS = {
         # to the P3 gates; it does not make it charged, and P3 forbids force-wiring it.
         "oja_pca",
         "bcm_plasticity",
-        "grown_input_rule",  # specs/022 L1b: the grown units' input rows learn online (norm-preserving Hebb / BCM x ACh gate)
         "homeostatic_scaling",
         "inhibitory_stdp",
         "intrinsic_plasticity",

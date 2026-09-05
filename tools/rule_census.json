@@ -6,7 +6,7 @@
   ],
   "note": "dispositions per T050's expressibility categories; UNDISPOSITIONED is the honest day-one state for unadjudicated LOCAL rules -- the WAVE (T051c-wave) fills rows; regen_rule_census enforces per-row monotonicity through the sanctioned edit path, rule_composer 1e polices membership vs the live census, and the ADVANCE direction (whether a disposition's text is honest) is review-grade, said plainly",
   "ratchet_baseline": {
-   "rows": 103,
+   "rows": 102,
    "undispositioned": 56
   },
   "source": "gradient_claim_gate.census() via rule_composer.regen_rule_census -- regeneration is the only edit path for rows; new adjudications join _CENSUS_ADJUDICATED there; the regen refuses disposition retractions and dead entries",
@@ -410,11 +410,6 @@
   },
   "plasticity/espp_rule.py::espp_synapse_rule": {
    "disposition": "expressed -- T052-i: authors the per-synapse declaration through the T050 algebra; held to the applied weight by its BIT/FULL/DELTA arms",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "plasticity/grown_input_rule.py::GrownInputRule.learn": {
-   "disposition": "expressed -- L1b (2026-09-05): the flat increment mu*g*post*xn authored (authored_increment); the row renormalization is production staging; equivalence held by the module self-check",
    "governed": true,
    "kind": "LOCAL"
   },

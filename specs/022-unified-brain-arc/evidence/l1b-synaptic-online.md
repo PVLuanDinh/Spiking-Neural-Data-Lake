@@ -153,3 +153,121 @@ row of §2.4 is VOID. Also read here: the live instrument on the incumbent (BATC
 0.547 / 0.849 / 0.807 against live persistence 0.932 / 0.963 / 0.952; units 2 on every seed; refusals 0.
 Owed onward (not this arc): a gate that tracks its own running scale (g / EMA(g)) or the arm's baseline-
 subtracted RPE, each with its positive control — the three-factor row returns when one of them reads usable.
+
+### 3.2 The cells — 6 arms × 8 seeds × 800 ticks, ungated, 4 at a time (23:19–23:30 UTC; `stage1/`; head(s) 4f26c9c; wall 51–63 s per cell; the daemon was up)
+
+Same rows: majority AND persistence floors identical across the six arms on every seed to 1e-6 — no seed excluded; seeds used [0, 1, 2, 3, 4, 5, 6, 7]. A/A (BATCH vs BATCH_B): max |Δacc| = 0.00e+00; W hashes equal on 8 of 8 seeds (the tie tolerance 1e-6 holds). Perception unified on every cell: True; feed refusals: none.
+
+| arm | seed | units (last-third) | acc last third | persistence | majority | live acc / live pers | rule moved / Σ|dW| | gate mean (recorded, unused) | W hash |
+|---|---|---|---|---|---|---|---|---|---|
+| BATCH | 0 | 2 (1.83) | 0.311 | 0.953 | 0.744 | 0.547 / 0.932 |  /  | 0.071 | 1fd01989 |
+| BATCH | 1 | 2 (2.00) | 0.917 | 0.983 | 0.739 | 0.849 / 0.963 |  /  | 0.084 | d655e464 |
+| BATCH | 2 | 2 (1.83) | 0.825 | 0.953 | 0.694 | 0.807 / 0.952 |  /  | 0.072 | f2879fd9 |
+| BATCH | 3 | 7 (7.00) | 0.656 | 0.911 | 0.319 | 0.653 / 0.902 |  /  | 0.102 | 60750bab |
+| BATCH | 4 | 6 (6.00) | 0.628 | 0.950 | 0.508 | 0.590 / 0.907 |  /  | 0.138 | 708075a4 |
+| BATCH | 5 | 3 (2.67) | 0.833 | 0.947 | 0.758 | 0.541 / 0.934 |  /  | 0.269 | 5b73e151 |
+| BATCH | 6 | 3 (2.50) | 0.867 | 0.933 | 0.506 | 0.630 / 0.951 |  /  | 0.085 | 914883ca |
+| BATCH | 7 | 2 (2.00) | 0.947 | 1.000 | 0.653 | 0.771 / 0.992 |  /  | 0.101 | 292414f4 |
+| BATCH_B | 0 | 2 (1.83) | 0.311 | 0.953 | 0.744 | 0.547 / 0.932 |  /  | 0.071 | 1fd01989 |
+| BATCH_B | 1 | 2 (2.00) | 0.917 | 0.983 | 0.739 | 0.849 / 0.963 |  /  | 0.084 | d655e464 |
+| BATCH_B | 2 | 2 (1.83) | 0.825 | 0.953 | 0.694 | 0.807 / 0.952 |  /  | 0.072 | f2879fd9 |
+| BATCH_B | 3 | 7 (7.00) | 0.656 | 0.911 | 0.319 | 0.653 / 0.902 |  /  | 0.102 | 60750bab |
+| BATCH_B | 4 | 6 (6.00) | 0.628 | 0.950 | 0.508 | 0.590 / 0.907 |  /  | 0.138 | 708075a4 |
+| BATCH_B | 5 | 3 (2.67) | 0.833 | 0.947 | 0.758 | 0.541 / 0.934 |  /  | 0.269 | 5b73e151 |
+| BATCH_B | 6 | 3 (2.50) | 0.867 | 0.933 | 0.506 | 0.630 / 0.951 |  /  | 0.085 | 914883ca |
+| BATCH_B | 7 | 2 (2.00) | 0.947 | 1.000 | 0.653 | 0.771 / 0.992 |  /  | 0.101 | 292414f4 |
+| OJA | 0 | 6 (6.00) | 0.211 | 0.953 | 0.744 | 0.629 / 0.932 | 369 / 1616.739634 | 0.071 | 5513c74c |
+| OJA | 1 | 5 (5.00) | 0.933 | 0.983 | 0.739 | 0.910 / 0.963 | 377 / 1953.853016 | 0.084 | 3adf9e82 |
+| OJA | 2 | 4 (4.00) | 0.089 | 0.953 | 0.694 | 0.176 / 0.952 | 374 / 2890.998973 | 0.072 | 52872921 |
+| OJA | 3 | 6 (4.67) | 0.703 | 0.911 | 0.319 | 0.426 / 0.902 | 378 / 3078.102853 | 0.102 | e1fd65e0 |
+| OJA | 4 | 15 (15.00) | 0.539 | 0.950 | 0.508 | 0.516 / 0.907 | 376 / 3767.908355 | 0.138 | 46536b40 |
+| OJA | 5 | 4 (2.83) | 0.872 | 0.947 | 0.758 | 0.607 / 0.934 | 377 / 814.542108 | 0.269 | c79a8c3c |
+| OJA | 6 | 6 (5.67) | 0.608 | 0.933 | 0.506 | 0.570 / 0.951 | 370 / 1995.648565 | 0.085 | 799fe58b |
+| OJA | 7 | 2 (2.00) | 0.458 | 1.000 | 0.653 | 0.840 / 0.992 | 376 / 163.928363 | 0.101 | 10d75a4b |
+| BCM | 0 | 4 (4.00) | 0.211 | 0.953 | 0.744 | 0.664 / 0.932 | 369 / 372.306008 | 0.071 | 97f56271 |
+| BCM | 1 | 2 (2.00) | 0.917 | 0.983 | 0.739 | 0.849 / 0.963 | 377 / 203.003524 | 0.084 | a61df3b0 |
+| BCM | 2 | 3 (3.00) | 0.783 | 0.953 | 0.694 | 0.775 / 0.952 | 374 / 528.428595 | 0.072 | 860f6713 |
+| BCM | 3 | 3 (3.00) | 0.214 | 0.911 | 0.319 | 0.405 / 0.902 | 378 / 905.460525 | 0.102 | fbf2b6a2 |
+| BCM | 4 | 5 (5.00) | 0.939 | 0.950 | 0.508 | 0.638 / 0.907 | 376 / 1289.526463 | 0.138 | cedb5ed4 |
+| BCM | 5 | 2 (1.67) | 0.842 | 0.947 | 0.758 | 0.724 / 0.934 | 377 / 286.327029 | 0.269 | 7f5cdf5a |
+| BCM | 6 | 4 (3.67) | 0.608 | 0.933 | 0.506 | 0.597 / 0.951 | 370 / 650.018584 | 0.085 | bd0f2eb3 |
+| BCM | 7 | 2 (2.00) | 0.472 | 1.000 | 0.653 | 0.840 / 0.992 | 376 / 70.200062 | 0.101 | d0849ffa |
+| TWIN_OJA | 0 | 6 (6.00) | 0.000 | 0.953 | 0.744 | 0.192 / 0.932 | 369 / 1616.402137 | 0.071 | 48ad7191 |
+| TWIN_OJA | 1 | 5 (5.00) | 0.300 | 0.983 | 0.739 | 0.239 / 0.963 | 377 / 1953.853016 | 0.084 | 3adf9e82 |
+| TWIN_OJA | 2 | 2 (2.17) | 0.139 | 0.953 | 0.694 | 0.152 / 0.952 | 374 / 2975.794252 | 0.072 | ce89f5b7 |
+| TWIN_OJA | 3 | 5 (4.50) | 0.167 | 0.911 | 0.319 | 0.190 / 0.902 | 378 / 3014.42398 | 0.102 | 6aac78f7 |
+| TWIN_OJA | 4 | 15 (15.00) | 0.508 | 0.950 | 0.508 | 0.399 / 0.907 | 376 / 3767.908355 | 0.138 | 46536b40 |
+| TWIN_OJA | 5 | 4 (2.83) | 0.231 | 0.947 | 0.758 | 0.215 / 0.934 | 377 / 814.542108 | 0.269 | c79a8c3c |
+| TWIN_OJA | 6 | 9 (6.67) | 0.306 | 0.933 | 0.506 | 0.286 / 0.951 | 370 / 2341.328958 | 0.085 | 20ee60cd |
+| TWIN_OJA | 7 | 2 (2.00) | 0.331 | 1.000 | 0.653 | 0.551 / 0.992 | 376 / 163.928363 | 0.101 | 10d75a4b |
+| TWIN_BCM | 0 | 4 (4.00) | 0.000 | 0.953 | 0.744 | 0.320 / 0.932 | 369 / 372.306008 | 0.071 | 97f56271 |
+| TWIN_BCM | 1 | 2 (2.00) | 0.250 | 0.983 | 0.739 | 0.342 / 0.963 | 377 / 203.003524 | 0.084 | a61df3b0 |
+| TWIN_BCM | 2 | 3 (3.00) | 0.033 | 0.953 | 0.694 | 0.056 / 0.952 | 374 / 528.428595 | 0.072 | 860f6713 |
+| TWIN_BCM | 3 | 3 (3.00) | 0.000 | 0.911 | 0.319 | 0.159 / 0.902 | 378 / 905.460525 | 0.102 | fbf2b6a2 |
+| TWIN_BCM | 4 | 4 (4.33) | 0.022 | 0.950 | 0.508 | 0.090 / 0.907 | 376 / 1466.907081 | 0.138 | a72a60e2 |
+| TWIN_BCM | 5 | 2 (1.83) | 0.053 | 0.947 | 0.758 | 0.090 / 0.934 | 377 / 286.327014 | 0.269 | f2015609 |
+| TWIN_BCM | 6 | 4 (3.67) | 0.022 | 0.933 | 0.506 | 0.065 / 0.951 | 370 / 650.018584 | 0.085 | bd0f2eb3 |
+| TWIN_BCM | 7 | 2 (2.00) | 0.331 | 1.000 | 0.653 | 0.527 / 0.992 | 376 / 70.200062 | 0.101 | d0849ffa |
+
+### 3.3 Verdict — each conjunct of §2.4 against its wording
+
+- **OJA, L-R2(1) ("beats the control on live accuracy at the bar"): paired (acc_OJA − acc_BATCH) clears** — t = -1.959, exact p = 0.9648, 3 / 5 / 0, mean -0.196 (planted t inf, null clears 0.045) → **NOT MET**.
+- **OJA, L-R2(2) restated: paired (acc_OJA − majority floor) clears** — t = -0.511, exact p = 0.6953, 5 / 3 / 0, mean -0.064 (planted t inf, null clears 0.050) → **NOT MET**; **AND TWIN_OJA does NOT clear** — t = -4.248, exact p = 1.0000, 0 / 7 / 1, mean -0.368 (planted t 7.00, null clears 0.055) → twin holds (does not clear).
+- OJA, non-regression (not below −1.895): t -1.959 → NOT MET. Live instrument: (live acc − live pers) t = -4.658, exact p = 1.0000, 0 / 8 / 0, mean -0.357 (planted t inf, null clears 0.040); (live acc − BATCH's live acc) t = -1.038, exact p = 0.7969, 4 / 4 / 0, mean -0.089 (planted t inf, null clears 0.010). Units [6, 5, 4, 6, 15, 4, 6, 2]; rule moved per cell [369, 377, 374, 378, 376, 377, 370, 376]; Σ|dW| [1616.739634, 1953.853016, 2890.998973, 3078.102853, 3767.908355, 814.542108, 1995.648565, 163.928363]; the recorded (unused) gate mean [0.0652, 0.0768, 0.0672, 0.0974, 0.1311, 0.2714, 0.0784, 0.0971].
+- **BCM, L-R2(1) ("beats the control on live accuracy at the bar"): paired (acc_BCM − acc_BATCH) clears** — t = -1.358, exact p = 0.8984, 2 / 5 / 1, mean -0.125 (planted t 7.00, null clears 0.040) → **NOT MET**.
+- **BCM, L-R2(2) restated: paired (acc_BCM − majority floor) clears** — t = 0.079, exact p = 0.4922, 5 / 3 / 0, mean +0.008 (planted t inf, null clears 0.050) → **NOT MET**; **AND TWIN_BCM does NOT clear** — t = -9.105, exact p = 1.0000, 0 / 8 / 0, mean -0.526 (planted t inf, null clears 0.050) → twin holds (does not clear).
+- BCM, non-regression (not below −1.895): t -1.358 → MET. Live instrument: (live acc − live pers) t = -5.815, exact p = 1.0000, 0 / 8 / 0, mean -0.255 (planted t inf, null clears 0.035); (live acc − BATCH's live acc) t = 0.283, exact p = 0.3906, 4 / 3 / 1, mean +0.013 (planted t 7.00, null clears 0.055). Units [4, 2, 3, 3, 5, 2, 4, 2]; rule moved per cell [369, 377, 374, 378, 376, 377, 370, 376]; Σ|dW| [372.306008, 203.003524, 528.428595, 905.460525, 1289.526463, 286.327029, 650.018584, 70.200062]; the recorded (unused) gate mean [0.0652, 0.0768, 0.0672, 0.0974, 0.1311, 0.2714, 0.0784, 0.0971].
+- **A/B (OJA − BCM):** t = -0.583, exact p = 0.6562, 3 / 3 / 2, mean -0.071 (planted t 4.58, null clears 0.050).
+- **The incumbent (BATCH):** units [2, 2, 2, 7, 6, 3, 3, 2]; acc [0.3111, 0.9167, 0.825, 0.6556, 0.6278, 0.8333, 0.8667, 0.9472]; (acc − majority) t = 1.487, exact p = 0.0898, 7 / 1 / 0, mean +0.133 (planted t inf, null clears 0.065); (acc − persistence) t = -2.898, exact p = 1.0000, 0 / 8 / 0, mean -0.206 (planted t inf, null clears 0.045). Floors per seed (majority, persistence): {'0': [0.7444, 0.9528], '1': [0.7389, 0.9833], '2': [0.6944, 0.9528], '3': [0.3194, 0.9111], '4': [0.5083, 0.95], '5': [0.7583, 0.9472], '6': [0.5056, 0.9333], '7': [0.6528, 1.0]}.
+- The gate-attribution row of §2.4 is VOID (the gate withdrawn at Stage 0, §3.1).
+
+## 4. Verdict and disposition — the pre-registered decision rule (§2.5), applied as written
+
+- **L-R2(1), both candidates: NOT MET.** OJA (acc − BATCH) t -1.959, p 0.9648, 3/5/0, mean -0.196; BCM t -1.358, p 0.8984, 2/5/1, mean -0.125.
+- **L-R2(2) restated, both candidates: NOT MET** on the candidate half (OJA t -0.511, p 0.6953, 5/3/0, mean -0.064; BCM
+  t 0.079, p 0.4922, 5/3/0, mean +0.008); the twin half held on both (TWIN_OJA t -4.248, p 1.0000, 0/7/1, mean -0.368; TWIN_BCM
+  t -9.105, p 1.0000, 0/8/0, mean -0.526) — the frozen random readout sits far below the majority, so the conjunct's red
+  was reachable and the candidates did not reach the green.
+- **Non-regression: OJA FELL PAST THE BAR** (t -1.959 < −1.895; 5 losses, seeds 2 and 7 at −0.74 and −0.49) — a
+  measured HARM, not a null: rotating every firing unit's input row toward the percept direction makes the grown rows
+  more alike and the LIF features less discriminative, and the readout re-solved on those features is WORSE. **BCM did
+  not fall past the bar** (t -1.358) and did not gain: its depression term (a unit below its own running rate moves
+  away) undoes part of the collapse and none of the loss. The live instrument reads the same story (OJA live acc − the
+  incumbent's live acc: t -1.038, p 0.7969, 4/4/0, mean -0.089; BCM t 0.283, p 0.3906, 4/3/1, mean +0.013); every arm's live
+  accuracy sits below its live persistence floor (OJA t -4.658, p 1.0000, 0/8/0, mean -0.357; BCM t -5.815, p 1.0000, 0/8/0, mean -0.255).
+- **Side reading (reported):** OJA ADMITTED MORE UNITS than the incumbent on 6 of 8 seeds ([6, 5, 4, 6, 15, 4, 6, 2] vs
+  [2, 2, 2, 7, 6, 3, 3, 2]): the moved rows change the admission path (a fit seeded from rotated rows leaves residual the
+  greedy pursuit fills with new units), so the accuracy comparison is between substrates that differ in width as well
+  as in weights — attributable to the rule (the only difference between the arms) but not to the moved rows ALONE. BCM
+  admitted [4, 2, 3, 3, 5, 2, 4, 2].
+- **A/B:** (OJA − BCM) t -0.583, p 0.6562, 3/3/2, mean -0.071 — not resolvable; moot under the rule.
+- **Instrument:** same rows on 8 of 8 seeds (floors identical across the six arms to 1e-6, no seed excluded); the A/A
+  pair bit-identical (max |Δacc| 0.0, W hashes equal on 8 of 8) under the thread pin, so the 1e-6
+  tie tolerance holds; the rule ran on every rule cell (369–378 moves of ~395 fed percepts; Σ|dW| OJA
+  164–3768, BCM 70–1290); the withdrawn gate was recorded (mean 0.065–0.271,
+  consumed by nothing); perception unified on every cell; refusals none; one head (`4f26c9c`). The incumbent
+  (BATCH): units [2, 2, 2, 7, 6, 3, 3, 2], (acc − majority) t 1.487, p 0.0898, 7/1/0, mean +0.133, (acc − persistence) t -2.898, p 1.0000, 0/8/0, mean -0.206.
+
+**DISPOSITION — the rule is DELETED (P8 clause 5, the licence working), exactly as §2.5 pre-registered: neither
+candidate cleared.** What stays: the engine's per-percept hook (`observe(..., gate=)`, `online_rule=None`) and the LIVE
+instrument (`live_accuracy` / `live_persistence` on state(), scored before any learning), with their own brain-free
+test — an instrument, not a method; the brain keeps passing the ACh gate at the feed (recorded, consumed by nothing
+until a gated rule earns its place). What goes: `plasticity/grown_input_rule.py`, its tests, its registration rows,
+its census adjudication (the census regenerated), the engine's kind-name constructor branch. **The negative to keep
+(the re-proposal guard):** an UNSUPERVISED Hebbian / BCM rule on the grown units' input rows, however normalized, does
+not raise next-category accuracy on this stream and Hebbian alignment HARMS it at the bar — the random-feature
+diversity the readout relies on is what the rule erodes. The next candidate, if any, must carry the TASK into the
+rule without transport: a scalar broadcast of the live prediction's correctness (the R-STDP shape already in the
+tree) gating the same local step — pre-registered in its own arc, not this one. **The plan's L2 trigger ("L1b's
+synaptic plateau") is restated by the session (Part H's authorization): L2 reads the online READOUT's residual
+plateau if L1c lands, else the T047 growth gate's own refit-accuracy plateau (already live) and the row reduces to
+its attribution red.**
+
+## 5. Commits of this arc (stacked on `cdf9454`)
+
+| commit | what | landed on |
+|---|---|---|
+| `0fc7a89` 1 | this record §1–2 (pre-registration) | before any cell |
+| `4b77571` 2 | the build: `plasticity/grown_input_rule`, the engine's hook + live instrument + theta bookkeeping, the ACh gate at the feed, the census row, four brain-free reds | the module self-check + 9 brain-free tests + both claim gates |
+| `4f26c9c` 3 | Stage 0 read: the gate withdrawn per §2.2 (`gated=False`), §3.1 | 3 GATE0 cells |
+| 4 (this commit) | the cells (§3.2–3.3), the verdict (§4), the DELETION on the null, the plan's L1b / L2 / L-R2 rows | 48 cells; P8 clause 5 |

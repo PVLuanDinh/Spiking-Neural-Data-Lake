@@ -207,14 +207,11 @@ class NeurogenesisSelfImprove:
         online_rule=None,
     ):
         self.refit_every = int(refit_every)
-        # L1b (2026-09-05): the online input-weight rule -- a kind name ("oja" | "bcm", constructed here
-        # from plasticity/grown_input_rule), a GrownInputRule, or None (the incumbent: input rows frozen
-        # from admission). Moves the RETAINED model's W in
+        # L1b (2026-09-05): the per-percept HOOK for an online input-weight rule -- an object with
+        # learn(model, x, gate) -> |dW| -- or None. The two candidates measured under this hook
+        # (plasticity/grown_input_rule: norm-preserving Hebb and BCM) were DELETED on their null
+        # (evidence/l1b-synaptic-online.md section 4); the hook and the live instrument below stay. Moves the RETAINED model's W in
         # place on every wake percept from observe(); the sleep refit inherits the moved rows.
-        if isinstance(online_rule, str):  # a kind name: the engine owns the rule's construction
-            from snn_data_lake.plasticity.grown_input_rule import GrownInputRule
-
-            online_rule = GrownInputRule(online_rule)
         self.online_rule = online_rule
         self._online_charge = 0.0  # cumulative |dW| the rule applied (its own charge, on state())
         # the LIVE instrument: the retained model's next-category prediction on the wake stream,
@@ -769,7 +766,13 @@ class NeurogenesisSelfImprove:
             "baseline_persistence": self.baselines[-1][2] if self.baselines else None,
             "n_modes": self.n_modes,
             # L1b: the online rule's own charge and the live instrument (None until scored)
-            "online_rule": self.online_rule.state() if self.online_rule is not None else None,
+            "online_rule": (
+                getattr(
+                    self.online_rule, "state", lambda: {"kind": type(self.online_rule).__name__}
+                )()
+                if self.online_rule is not None
+                else None
+            ),
             "online_charge": round(self._online_charge, 6),
             "live_accuracy": (self.live_correct / self.live_n) if self.live_n else None,
             "live_persistence": (self.live_persist / self.live_n) if self.live_n else None,

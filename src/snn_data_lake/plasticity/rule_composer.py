@@ -744,12 +744,6 @@ def rule_census_check(artifact, rules):
 #: silently cost a disposition and loosened the ratchet).
 _CENSUS_ADJUDICATED = (
     (
-        "plasticity/grown_input_rule.py",
-        "GrownInputRule.learn",
-        "expressed -- L1b (2026-09-05): the flat increment mu*g*post*xn authored (authored_increment); "
-        "the row renormalization is production staging; equivalence held by the module self-check",
-    ),
-    (
         "basal_ganglia/r_stdp.py",
         "reward",
         "expressible -- PROVEN: T050 equivalence via the exported check; T051b-iv deposit through the kernel",

@@ -262,7 +262,6 @@ CORE = [
     # plasticity â€” Hebbian/STDP, homeostatic, developmental learning rules
     "plasticity.bcm_plasticity",
     "plasticity.oja_pca",
-    "plasticity.grown_input_rule",  # L1b: rows turn toward a planted stream, closed gate moves nothing, BCM LTD, authored == tensor
     "plasticity.homeostatic_scaling",
     "plasticity.inhibitory_stdp",
     "plasticity.intrinsic_plasticity",

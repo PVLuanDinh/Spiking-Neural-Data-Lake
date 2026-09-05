@@ -411,7 +411,12 @@ that baseline.
   Red (the window half of s2's pre-written red, now at the plan's statistic): paired t over 8 seeds of
   (oracle accuracy − its own persistence floor) > 1.895, AND paired t of (LIVE under L1a − LIVE under the
   incumbent window) not below −1.895. One commit.
-- **L1b — synapses learn online.** The grown units' INPUT weights learn on every wake percept by a local
+- **L1b — synapses learn online.** *MEASURED AND DELETED ON ITS NULL 2026-09-05 (`evidence/l1b-synaptic-online.md`,
+  P8 clause 5): a norm-preserving Hebbian (Oja-in-direction) and a BCM step on the grown units' input rows, 8 seeds × 800
+  ticks on the same rows — neither beat the frozen rows (t -1.96 / -1.36) nor cleared the majority floor; Oja FELL past the
+  bar (a measured harm: aligned rows lose the feature diversity the readout uses); the ACh gate was withdrawn at Stage 0
+  (decays to 0.03 where the rule acts). The engine's per-percept hook and live instrument stay; the next candidate must
+  carry the task as a scalar broadcast (R-STDP's shape), its own arc.* The grown units' INPUT weights learn on every wake percept by a local
   rule from the palette (Oja/BCM/competitive-Hebbian with a three-factor gate from the live neuromodulators
   — the candidates are named at pre-registration and picked by the A/B), with the GRADIENT_CLAIM row
   (FR-018), `rule_composer`'s census and the e-prop transport gate. `cortex/eprop_kernel.py` is a batch
@@ -424,7 +429,9 @@ that baseline.
   (`cortex/laminar_local_readout.observe`'s single-sample local update, or `similarity_sized_growth.FrozenExpert`'s
   three-factor rule — P2: one survives, named at pre-registration) with its state as a lake record.
   Estimated L1a–c: 400–700 LOC over three commits.
-- **L2 — grow on plateau, prune in sleep (FR-023, FR-024).** *Scheduled 2026-09-05 (`evidence/jepa-live-floor.md`
+- **L2 — grow on plateau, prune in sleep (FR-023, FR-024).** *Trigger RESTATED 2026-09-05 with L1b deleted (the session's
+  call, Part H): L2 reads the online READOUT's residual plateau if L1c lands, else the T047 growth gate's own refit-accuracy
+  plateau (already live) and the row reduces to its attribution red.* *Scheduled 2026-09-05 (`evidence/jepa-live-floor.md`
   §2.7): the plateau it reads is L1b's residual error and the prediction-error signal it may target is
   `JepaWorldModel.prediction_error`, now measured to carry succession (the JEPA-collapse arc) — the Phase 1 null
   disposition unblocked while `dbcf153` stands (the revert option is open, Part H); L2 stays after L1b/L1c on the
@@ -587,7 +594,7 @@ no majority-of-seeds rule anywhere.
 | W-R2 | category entropy not above the W3 baseline **at a NAMED window, PER SEED**, or live next-category accuracy not above its marginal-preserving shuffle (floors reported within-arm). **AMENDED 2026-09-03 on W3's measurement:** entropy is NOT a stable property of a run -- the same three seeds on one world moved in OPPOSITE directions between the first-1000 and last-1000 wake-row windows, spanning 0.0 to 2.6 bits -- so a bar that does not name its window and apply per seed is measuring the window. Pre-registered window = the FIRST 1000 wake rows; the 6000-tick column is the clean one (at 3000 the two windows overlap by ~517 rows). `evidence/w3-world-baselines.md` §4 | the shuffle | W3 |
 | W-R3 (T076) | **the CURRICULUM'S OWN PROPOSED GOAL** unchanged with `coverage_reward` neutered, OR changed when an unrelated scalar of comparable magnitude is neutered. **AMENDED 2026-09-03 before the build:** the original row -- "goal selection unchanged" -- is VACUOUS, measured: on the incumbent path with no W1 at all, neutering `coverage_reward` already changes 18/60 actions and takes `_z_goal` 60/60 -> 0/60. A red satisfiable without the mechanism it tests is not a red for that mechanism (P8 clause 1). The observable is therefore `propose()`'s returned goal cell, which the incumbent cannot produce, and the row now carries the SPECIFICITY control the original lacked | the un-neutered run, AND an unrelated-scalar neuter that must NOT move it | W1 |
 | L-R1 | paired t of (oracle − own persistence floor) not above 1.895 under L1a's window, or LIVE falls below the incumbent window past the bar | the incumbent window, same learner | L1a — **read 2026-09-05: the first half NOT MET (t −2.51; the oracle sits AT its floor, from −0.43; 0 / 6 / 2 with a 1e-6 tie tolerance), the second half MET; the raw LIVE gain (t +2.27) is confounded with the slice the window redefined (majority-floor-relative t 1.32; learner-only on the same rows: t = 1.002, exact p = 0.1719, 5 / 3 / 0, mean +0.088); L1a LANDED on the oracle's majority-answer → persistence-answer reading — the session's call, owner may revert `3979001`; strict xfail in the tree, guarded on the perception packs** |
-| L-R2 | L1b does not beat the batch control, or an untrained twin is not below its own persistence floor while L1b is | batch solve under L1a's window; frozen-readout twin | L1b |
+| L-R2 | L1b does not beat the batch control, or an untrained twin is not below its own persistence floor while L1b is | batch solve under L1a's window; frozen-readout twin | L1b — **read 2026-09-05: NOT MET on both candidates (Oja t -1.96, FELL past the bar; BCM t -1.36); the second conjunct restated against the majority floor at pre-registration (every live arm sits below persistence) and NOT MET; the rule DELETED on its null** |
 | L-R3 | a growth event without a preceding synaptic plateau; neutering L1b does not raise growth | the grower with L1b off | L2 |
 | L-R4 | the constant-percept arm admits more than 1 unit, or the structured positive control admits only 1 | a structured stream under the same instrument (must admit > 1) | L3 — **MET 2026-09-05 (1 alive unit on 8 of 8, answering the majority; SYNTH 8–29; re-read under the N-independent equality form: the same)** |
 | L-R5 | the L4 record class exceeds its bytes/tick ceiling without tripping | constructed overload | L4 |
