@@ -596,8 +596,9 @@ class JepaWorldModel:
         0.01-0.07 over 32 consecutive ticks, the trained model 0.025-0.058, and the trained model over
         DISTINCT patterns 0.036-0.045 (below the 0.05 floor on every seed). The live criterion that
         replaced the floor there is the trained/fresh spread ratio over distinct patterns (>= x0.10; its
-        red is the ablation's x0.02-0.08); the 0.05 floor stays this module's self-check bar on its
-        varying synthetic stream and the in-tree planted world."""
+        red is the ablation's x0.01-0.08) -- read RED on 1 of 5 seeds in-brain (seed 3: x0.062 against the
+        ablation's x0.056), so that criterion is OPEN; the 0.05 floor stays this module's self-check bar
+        on its varying synthetic stream and the in-tree planted world."""
         m = len(self._buf)
         if m < 2:
             return 0.0

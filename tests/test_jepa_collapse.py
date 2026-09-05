@@ -32,9 +32,10 @@ stricter than the 12 the record measured at):
     steps (the proprioception walk still moving, so consecutive patterns are near-duplicates as the
     live stream's are), the model at the arm's defaults must still read the succession AND its
     latent_std() must clear the module's own 0.05 floor. RED on the tree, and a STANDING red (a
-    strict xfail; the reservoir that fixed it did not land -- section 4 there): the consecutive ring
-    buffer drove the encoder to the isotropic ceiling, the predictor read NO order (ordered/shuffled
-    4.1-4.6) and the consecutive gauge read 0.001.
+    strict xfail; the reservoir that fixed it did not land -- sections 3.4b and 5 there). In the
+    archived harness (stage05/) the consecutive ring buffer drove the encoder to the isotropic
+    ceiling, the predictor read NO order (ordered/shuffled 4.1-4.6) and the consecutive gauge read
+    0.001; this test's own count at commit C was seed 0's first conjunct (x4.45, -x halted).
 Slow (pure-Python JEPA steps; ~18 minutes in total); marked accordingly.
 """
 
@@ -63,15 +64,16 @@ def _vdc(i):
     return x
 
 
-def _world(seed, shuffled, k=1):
+def _world(seed, shuffled, k=1, cycles=CYCLES):
     """The planted world -- vision id i%8, audio (3i)%8, a deterministic 3-bit successor map --
     as the 64-d context the arm's own encoder builds; ordered, or re-permuted under one fresh
     permutation per cycle (pairing kept). The proprioception walk and the action draws are the
     same for both arms of a seed. k > 1 shows every pair k consecutive steps (the repeated
-    world)."""
+    world); `cycles` sets the walk's length so the action stream matches the archived harness
+    (the record panel's I-1: a sliced 10-cycle world draws its actions after a longer walk)."""
     vis = [i % 8 for i in range(CYCLE)]
     aud = [(3 * i) % 8 for i in range(CYCLE)]
-    n = CYCLES * CYCLE * k
+    n = cycles * CYCLE * k
     rng = random.Random(seed * 7919 + 1)
     prop, p = [], 0.5
     for _ in range(n + 1):
@@ -79,7 +81,7 @@ def _world(seed, shuffled, k=1):
         prop.append(p)
     acts = [rng.choice(ACTIONS) for _ in range(n + 1)]
     seq = []
-    for c in range(CYCLES + 1):
+    for c in range(cycles + 1):
         if shuffled:
             perm = random.Random(seed * 100003 + c).sample(range(CYCLE), CYCLE)
         else:
@@ -225,10 +227,10 @@ REPEAT_CYCLES = 5
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        "the live-floor arc's STANDING RED (evidence/jepa-live-floor.md section 4): a VICReg "
-        "reservoir batch turned this green (k=32 order ratio 0.42-0.49, std 0.123) but lost the "
-        "planted k=1 order read (seed 0 ratio 1.6 at 10 cycles) and did not land; strict so a fix "
-        "must update the record"
+        "the live-floor arc's STANDING RED (evidence/jepa-live-floor.md sections 3.4b and 5): in "
+        "the archived harness a VICReg reservoir batch turned this green (k=32 order ratio "
+        "0.42-0.49, std 0.123) but lost the planted k=1 order read (seed 0 ratio 1.6 at 10 "
+        "cycles) and did not land; strict so a fix must update the record"
     ),
 )
 def test_the_batch_carries_diversity_on_a_repeated_world():
@@ -236,21 +238,19 @@ def test_the_batch_carries_diversity_on_a_repeated_world():
     every pair shown 32 consecutive near-duplicate steps. The defaults must still read the
     succession (ordered under half the shuffled twin) and latent_std() must clear the module's own
     floor."""
-    n = REPEAT_CYCLES * CYCLE * REPEAT_K + 1
     for seed in SEEDS:
-        ord_p, acts, _ = _world(seed, shuffled=False, k=REPEAT_K)
-        shf_p, _, _ = _world(seed, shuffled=True, k=REPEAT_K)
-        ord_p, shf_p = ord_p[:n], shf_p[:n]
+        ord_p, acts, _ = _world(seed, shuffled=False, k=REPEAT_K, cycles=REPEAT_CYCLES)
+        shf_p, _, _ = _world(seed, shuffled=True, k=REPEAT_K, cycles=REPEAT_CYCLES)
         model = JepaWorldModel(ACTIONS, in_dim=64, seed=seed)
         e_o = _run_block(model, ord_p, acts, CYCLE * REPEAT_K)
         twin = JepaWorldModel(ACTIONS, in_dim=64, seed=seed)
         e_s = _run_block(twin, shf_p, acts, CYCLE * REPEAT_K)
         assert e_o < 0.5 * e_s, (
             f"seed {seed}: on the repeated world the predictor must read order (ordered "
-            f"{e_o:.5f} vs shuffled {e_s:.5f}); the consecutive ring buffer read none (4.1-4.6)"
+            f"{e_o:.5f} vs shuffled {e_s:.5f}); the archived harness read none (4.1-4.6)"
         )
         std = model.latent_std()
         assert std > 0.05, (
             f"seed {seed}: latent_std {std:.4f} below the module's floor on the repeated world "
-            "(the consecutive ring buffer read 0.001 here on a maximally spread encoder)"
+            "(the archived harness read 0.001 here on a maximally spread encoder)"
         )

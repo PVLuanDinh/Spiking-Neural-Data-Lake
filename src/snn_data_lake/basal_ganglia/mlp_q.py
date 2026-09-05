@@ -9,7 +9,8 @@ it lands very slightly BEHIND the linear Q (0.983 vs 0.993) -- the extra hidden 
 where a linear map is already exact. So gate (3) is a NO-REGRESSION tolerance (within 0.05), NOT `>=`,
 and neither model dominates the other everywhere. Both stay, selected per task; and note BOTH are
 opt-in and default OFF in AutonomousArm (latent_q=False, mlp_q=False) -- the live substrate is the
-tabular per-context q, because the encoder near-collapses over the few live contexts on-robot.
+tabular per-context q, because the head does not separate the encoder's few live contexts on-robot
+(the 'near-collapse' explanation was retracted 2026-09-05: specs/022 evidence/jepa-live-floor.md section 5).
 
 Honest framing (read this first). LatentQ is a SHARED LINEAR action-value Q(z, a) = dot(W[a], z) + b[a]:
 ONE weight set across all contexts, so a semi-gradient update from one latent transfers along the

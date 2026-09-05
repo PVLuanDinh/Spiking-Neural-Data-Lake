@@ -10,8 +10,11 @@ The owner's revert option on `dbcf153` (the JEPA record §13.4) stays open until
 
 **History of this file (kept, never rewritten away):** §2 was first written before Stage 0 ran (the
 form Stage 0 was scored against is quoted in §3). A three-lens design panel (§4) then read it against the
-tree and Stage 0's smoke; §2 below is the AMENDED protocol, written before Stage 0.5, Stage 0b and Stage 1
-ran. Where the amendment changed a bar, the original bar and the reason are named in §4.
+tree and Stage 0's smoke; §2 below is the AMENDED protocol, written before Stage 0.5, 0b and 1 ran, EXCEPT its two dated
+amendments: §2.2 Amendment 1 (written after Stage 0.5's ring-buffer cells; pre-registration evidence: commit
+`b678571` at 18:38:18 UTC carries its red, and the k = 32 reservoir cells closed 18:41:28 UTC) and §2.5
+Amendment 1 (written on Stage 0b's numbers). Where the amendment changed a bar, the original bar and the
+reason are named in §4.
 
 ## 1. Territory — what the floor measures today (code read at `4bae53a`; numbers from the JEPA record)
 
@@ -77,7 +80,8 @@ permutation has fired by the 1500 mark — the panel's PH-10; expected ≈ wake 
 
 Gauges, probe-side, identical across arms:
 - **G_consec** — per-dim std over the last 32 consecutive online latents, each computed as
-  `encode(prev pattern)` at the moment `train_step` is called. **Instrument control:** equals the shipped
+  `encode(prev pattern)` at the moment `train_step` is called. **Wiring control** (probe push == shipped
+  buffer, float-identical; its red is the frozen arm's non-zero difference — I-8): equals the shipped
   `latent_std()` to 1e-9 on the incumbent/ablation/shuffle arms at every mark (a mismatch halts); printed
   "n/a (buffer empty)" on the frozen arm (I-9).
 - **The shadow twin (Stage 0b; I-3/INT-2):** an untrained `JepaWorldModel(ACTIONS, in_dim, seed)` inside
@@ -91,7 +95,9 @@ Gauges, probe-side, identical across arms:
   distinct patterns), with the n/(n−1) factor stated. The first form's "round-trip window" is deleted:
   on one set it is a tautology, on two sets it measured the mismatch.
 - **The planted collapse** (I-2): at each mark, a deep copy of the arm's model with `We` scaled to 0 and
-  to 0.01, read on both gauges — the gauge's tick-independent mechanical red (predicted exactly 0.0 at 0).
+  to 0.01, read on the two probe-side re-encode gauges — the gauge's tick-independent mechanical red
+  (predicted 0.0 to within float residue at 0). The shipped ring-buffer gauge stores latents and cannot be
+  planted — itself a reason it has no tick-independent red (the record panel's I-7).
 - The trained/fresh spread over ≤256 distinct patterns (TARGET encoder — the W2-comparable number,
   labelled so); perr per 256-row block with the last FULL block marked (I-6); `raw_cur` / `raw_emp` zero
   fractions after wake row 300; the engine's accuracy and floors; `train_step` mean ms.
@@ -113,8 +119,9 @@ The reservoir is a change to the LOSS's batch, justified by a claim about the ga
 planted world cannot show. **The repeated-pattern world:** the planted 3-bit successor world with every
 (vision, audio) pair shown k consecutive steps while the proprioception walk keeps moving (consecutive
 patterns differ by a jitter, as the live stream's do); k ∈ {1, 8, 32}, seeds 0–2, 5 cycles, ordered and
-per-cycle-shuffled twins. Gauges: the shipped `latent_std()`, G_distinct over the 128 distinct pairs at
-first occurrence, the trained/fresh spread ratio over them, the last-block ordered/shuffled perr ratio,
+per-cycle-shuffled twins. Gauges: the shipped `latent_std()`, G_distinct over the world's distinct (vision, audio) pairs at first
+occurrence — 8, its 3-bit state space (the first form said 128; corrected on measurement, I-6; the archived
+harness docstring carries the miscount), the trained/fresh spread ratio over them, the last-block ordered/shuffled perr ratio,
 `train_step` ms. Measured at the CURRENT tree (the ring buffer) before commit D, then at the reservoir.
 - **RED, at the ring buffer, k = 32:** trained/fresh spread ratio < 0.25 (the brain-free test's own bar)
   on ≥ 2 of 3 seeds while `latent_std()` ≥ 0.05 — the floor passing for the wrong reason.
@@ -133,15 +140,20 @@ trained/fresh spread ratio is ×1.73–1.80 (not < 0.25) and `latent_std()` is 0
 The prediction of COMPRESSION was wrong; what the consecutive batch does on 32-fold near-duplicates is
 the opposite pathology of the same defect: the hinge never switches off, the encoder is driven to the
 isotropic ceiling (G_distinct 0.2500 = 1/√16 on every seed) and the predictor stops reading succession —
-ordered ÷ shuffled last-block perr 4.2 / 4.6 / 4.1, the ordered error 0.18 (14× the k = 1 world's) — while
+ordered ÷ shuffled last-block perr 4.2 / 4.6 / 4.1, the ordered error 0.18 (14× the k = 1 world's on seed
+0, 6.5–6.6× on seeds 1–2) — while
 the consecutive gauge reads 0.001 (the floor "fails" on a maximally spread encoder: the gauge is the
 stimulus). The disposition as written ("not red → the reservoir does not land") was conditioned on the
 predicted shape; the measured shape is a red of the same mechanism, so the arc AMENDS rather than stops,
 with both results kept: **the brain-free RED, as measured at the ring buffer, k = 32, 5 cycles: ordered ÷
 shuffled last-block perr ≥ 1 on 3 of 3 (the predictor reads no order) AND `latent_std()` < 0.05 on 3 of 3.
 GREEN for the reservoir on the same world: ordered ÷ shuffled < 0.5 on 3 of 3 (the in-tree order bar) AND
-the reservoir `latent_std()` ≥ 0.05 on 3 of 3; G_distinct reported (predicted below the 0.25 ceiling).**
-Commit C's test carries exactly this. If the reservoir does not turn this red green, it does not land.
+the reservoir `latent_std()` > 0.05 on 3 of 3; G_distinct reported (predicted below the 0.25 ceiling).**
+Commit C's test carries this red on the same pattern stream; its ACTION stream differed from the harness's
+until the fold (the test sliced a 10-cycle world whose actions were drawn after the longer walk — the
+panel's I-1; commit H builds the world at `cycles = REPEAT_CYCLES` so the two are one world). Commit C's
+own count, run with `-x`, was seed 0's first conjunct only: ordered 0.18009 / shuffled 0.04044 = ×4.45, the
+std conjunct unread. If the reservoir does not turn this red green, it does not land.
 The k = 8 world (ring buffer: `latent_std` 0.07–0.13, order ratio 0.20–0.34) is reported as the regime
 between; the in-brain regime (compression, §3.1/3.2) and the k = 32 regime (explosion) are two outcomes
 of one batch with no diversity, and the reservoir must turn BOTH green (R1 in-brain, this red brain-free).
@@ -263,7 +275,9 @@ REPORTED beside R1 (both absolute arms, as PH-4 asked), never a conjunct. Stated
 gauge the number 0.05 sits at ~60 % of a random projection's spread on this stream; "healthy" means
 "spreads distinct live inputs at least that much", "collapsed" means the ablation's 0.013–0.028 (Stage
 0b, distinct-pattern form). Today's trained incumbent reads 0.036–0.045 — between the two — which is
-what Stage 1 measures the reservoir batch against.
+what Stage 1 measures the reservoir batch against. (Foreseeable from the design panel's I-4 at fold
+time — a fold defect, disclosed; no bearing on the verdict because R1 was never read — the record panel's
+PH-10.)
 
 ### 2.6 The shared bound (P2 — one mechanism), two commits (PH-5)
 
@@ -284,9 +298,10 @@ what Stage 1 measures the reservoir batch against.
 
 ### 2.7 L2's scheduling (a plan edit, docs only)
 
-Phase 2's L2 row and Part H: L2's growth trigger reads `JepaWorldModel.prediction_error` — the Phase 1
-null disposition, unblocked by the JEPA arc — and L2 stays after L1b/L1c on the critical path because it
-needs L1b's synaptic plateau. No task is reordered.
+Phase 2's L2 row and Part H: L2's TRIGGER is L1b's synaptic plateau; the signal it may TARGET is
+`JepaWorldModel.prediction_error` — the Phase 1 null disposition, unblocked by the JEPA arc while `dbcf153`
+stands (the revert option is open) — and L2 stays after L1b/L1c on the critical path. No task is reordered
+(an earlier draft conflated trigger and target — the panel's INT-P1).
 
 ### 2.8 PASS, stated once
 
@@ -348,17 +363,24 @@ P0-4: the instrument control holds; round-trip: sqrt(spread/(2L)) within ×0.7�
 | shuffle | 1 | 0.0522 | 0.0389 | 0.0336 / 0.0908 | 1.041 | ×0.137 | 0.00890 | 0.0 | 1.46 |
 | shuffle | 2 | 0.0642 | 0.0732 | 0.0594 / 0.0814 | 1.023 | ×0.545 | 0.00799 | 0.0 | 1.17 |
 
+- Head (I-3): the cells that started after 18:22:35 UTC (ablation s1–s2, shuffle s0–s2) carry head
+  `093d80c` — commits A and B do not touch `JepaWorldModel`'s arithmetic, and every shared gauge repeats
+  Stage 0's digits (e.g. ablation s1's shipped 0.015449692560216098 in both) — recorded as the in-brain
+  byte-identity witness for commit A that §2.1's "no tree change" sentence hid.
 - **P0-1b HELD, 2 of 3** (twin_consec 0.0402 / 0.0193 / 0.0671 on the incumbent's own stream). The twin's
   consecutive reading is a 32-tick snapshot that swings between marks (seed 0: 0.010 at 1500 → 0.040 at
   3000; seed 1: 0.075 → 0.019), and it depends on the ARM's walk (the ablation arm's twin reads
   0.053–0.087): the consecutive gauge is the stimulus, snapshotted.
 - **P0-2b HELD, 3 of 3** (0.0447 / 0.0361 / 0.0361, all ≤ 512 distinct patterns, no draw noise).
 - **P0-3b HELD, 3 of 3** (the ablation below 0.05 AND below the incumbent on both gauges on every seed;
-  the planted collapse reads 0.0 exactly on both gauges, every cell).
+  the planted collapse reads 0.0 (≤ 1e-17) on both probe gauges, every cell).
 - **P0-4b HELD** on every non-frozen mark (`control_abs_diff` 0.0).
 - **Row 1's replacement criterion, scored (§2.5):** the trained model's target-encoder spread ratio over
-  the distinct patterns ×0.217 / ×0.141 / ×0.143 ≥ ×0.10 — **MET, 3 of 3**; the ablation ×0.075 / ×0.038 /
-  ×0.019 < ×0.10 — **its red reachable, 3 of 3**. Both absolute spreads are in the table.
+  the distinct patterns ×0.217 / ×0.141 / ×0.143 ≥ ×0.10 — **MET BY CONSTRUCTION on these seeds**: the ×0.10
+  bar was chosen from Stage 0's ratios and Stage 0b reproduces them to the digit (deterministic seeds; the
+  record panel's PH-2), so this is a calibration, not a measurement; the ablation ×0.075 / ×0.038 / ×0.019
+  < ×0.10 — its red reachable on the same seeds. The first EVIDENTIAL reading is §3.6 (seeds 3–4, never
+  seen by the bar). Both absolute spreads are in the table.
 - The untrained twin over all distinct patterns reads 0.081 / 0.093 / 0.082 — ABOVE the 0.05 floor on
   every seed (a random projection preserves the input's variance); the trained incumbent reads ×0.55 /
   ×0.39 / ×0.44 of it, the ablation ×0.34 / ×0.21 / ×0.14. This number is what §2.5 Amendment 1 corrects
@@ -372,7 +394,8 @@ P0-4: the instrument control holds; round-trip: sqrt(spread/(2L)) within ×0.7�
 **Row 1's verdict on Stage 0/0b (§2.5, decided here, before the build):** P0-1b HELD → the consecutive-
 window floor is RETIRED as a live criterion (a bar the stimulus itself cannot clear on 2 of 3 seeds, and
 a gauge that ranks an untrained encoder above the trained one on seed 2, measures the stimulus). The
-pre-registered replacement is **MET 3 of 3 with its red reachable 3 of 3**. So (b) as WRITTEN is
+pre-registered replacement is MET by construction on the calibration seeds (its evidential reading is
+§3.6). So (b) as WRITTEN is
 RETIRED-AND-REPLACED, never demoted: the replacement's statement is "the trained model's spread over
 distinct live patterns is ≥ ×0.10 of an untrained twin's, against a collapsed twin's ×0.02–0.08".
 
@@ -399,8 +422,9 @@ pairs — a 3-bit state space — with the proprioception walk making the 64-d p
 here is over the 8 pairs at first occurrence.) `train_step` 1.20–1.23 ms brain-free at 4 workers.
 
 ### 3.4b Stage 0.5 at the RESERVOIR (commit D's build, applied to the working tree, later reverted; the
-build is archived as `commitD/reservoir_build_not_landed.diff`; 9 cells at 5 cycles 18:47–18:52 UTC, 6
-cells at 10 cycles 19:03–19:10 UTC; `stage05/reservoir_*`, `stage05b/`)
+build is archived as `commitD/reservoir_build_not_landed.diff`; 9 cells at 5 cycles 18:37–18:41 UTC, 6
+cells at 10 cycles 18:43–18:46 UTC — file times; an earlier draft misdated them, the panel's I-4/PH-5;
+`stage05/reservoir_*`, `stage05b/`)
 
 | k | cycles | seed | steps | reservoir `latent_std` | G_distinct / fresh | spread ratio | perr ordered / shuffled | ordered ÷ shuffled |
 |---|---|---|---|---|---|---|---|---|
@@ -421,7 +445,8 @@ cells at 10 cycles 19:03–19:10 UTC; `stage05/reservoir_*`, `stage05b/`)
 | 1 | 10 | 2 | 2560 | 0.0675 | 0.2088 / 0.1411 | ×2.044 | 0.06962 / 0.00369 | **18.9** |
 
 - **Amendment 1's GREEN at k = 32: MET, 3 of 3** (order ratio 0.421 / 0.456 / 0.488 < 0.5; reservoir std
-  0.123 ≥ 0.05; G_distinct 0.118–0.123, below the 0.25 ceiling). The reservoir fixes the explosion.
+  0.123 > 0.05; G_distinct 0.118–0.123, below the 0.25 ceiling). The reservoir turned the k = 32 red green
+  at 5 cycles on 3 seeds — a brain-free measurement, not a general claim (PH-11).
 - **R4 FAILED:** `tests/test_jepa_collapse.py::test_the_arms_world_model_reads_the_planted_succession`
   (k = 1, 10 cycles) fails at seed 0 — ordered 0.02823 vs shuffled 0.01755, ratio 1.61 against the bar 0.5;
   the harness reads 1.61 / 5.87 / 18.9 on seeds 0–2 (the ring buffer reads 0.069 at 12 cycles). The other
@@ -429,7 +454,8 @@ cells at 10 cycles 19:03–19:10 UTC; `stage05/reservoir_*`, `stage05b/`)
   At k = 8 the reservoir reads order on 1 of 3 seeds at 5 cycles and 2 of 3 at 10; the ring buffer read 3
   of 3 at 5.
 - **What the reservoir does at k ≤ 8, measured:** the encoder expands beyond a random projection (spread
-  ratio ×1.3–2.0 of FRESH at k = 1 and on two k = 8 seeds; G_distinct 0.18–0.22 against fresh 0.14–0.18)
+  ratio ×1.26–2.20 of FRESH at k = 1 and on two k = 8 seeds; G_distinct 0.169–0.220 against fresh
+  0.140–0.183 — bounds from the archive, I-5)
   and the ORDERED predictor's error rises (0.03–0.11) while the shuffled twin's falls (0.004–0.018): the
   predictor cannot track the expanded latents' succession within 10 cycles. A hypothesis, named for the
   follow-up and NOT tested here: the ring buffer's batch statistics were inflated by STALE latents (pushed
@@ -438,8 +464,42 @@ cells at 10 cycles 19:03–19:10 UTC; `stage05/reservoir_*`, `stage05b/`)
   open harder than the predictor can follow. If so, the JEPA arc's `gamma` was calibrated against an
   instrument artefact, and the honest fix is a re-derivation of `gamma` for a true batch — a separate arc
   with its own pre-registration, not a variant squeezed in here.
-- Cost line (brain-free, 4 workers): `train_step` 2.72–3.16 ms at the reservoir vs 1.20–1.23 ms at the
-  ring buffer (×2.3–2.6; the panel's microbench predicted ×2.2). Not scored: the build did not land.
+- The build's only in-brain reading (PH-7): a 300-tick seed-0 smoke (`smoke3/reservoir_s0`) — reservoir
+  `latent_std` 0.038 (below the floor at 300 ticks), the twin over distinct patterns 0.053, spread ratio
+  0.445, slot ages matching the schedule; not a scoring cell.
+- Provenance (I-2): commit C's red count ran 18:35–18:37 UTC and the reservoir patch reached the WORKING
+  TREE at ~18:36:45 UTC while it ran; the count's regime (×4.45, the explosion) is the ring buffer's, so the
+  module imported at collection was the ring buffer's; the patch stayed unstaged and commit C carries the
+  test file only.
+- Cost line (brain-free, 4 workers): `train_step` 2.72–3.51 ms at the reservoir vs 1.20–1.23 ms at the
+  ring buffer (×2.4–2.9 at matched 5 cycles; the panel's microbench predicted ×2.2). Not scored: the build
+  did not land.
+
+### 3.6 The replacement criterion's EVIDENTIAL reading — seeds 3 and 4, never seen by the bar (4 cells,
+3000 ticks, 19:08–19:15 UTC, at `adad94b`; `stage0c/`; run after the record panel's PH-2, before the fold)
+
+| arm | seed | shipped = G_consec | twin_consec | G_distinct_all trained / twin | spread ratio (trained / fresh, target enc.) | perr last FULL block | planted We×0 |
+|---|---|---|---|---|---|---|---|
+| incumbent | 3 | 0.0232 | 0.0104 | 0.0277 / 0.1027 | **×0.062** (0.0242 / 0.3885) | 0.00350 | 0.0 / 0.0 |
+| incumbent | 4 | 0.0649 | 0.0987 | 0.0538 / 0.1258 | ×0.133 (0.0548 / 0.4130) | 0.00694 | 0.0 / 0.0 |
+| ablation | 3 | 0.0126 | 0.0731 | 0.0245 / 0.0905 | **×0.056** (0.0122 / 0.2185) | 0.00046 | 0.0 / 0.0 |
+| ablation | 4 | 0.0121 | 0.0921 | 0.0183 / 0.1198 | ×0.012 (0.0046 / 0.3863) | 0.00047 | 0.0 / 0.0 |
+
+- **The replacement criterion (≥ ×0.10): MET on seed 4 (×0.133), NOT MET on seed 3 (×0.062).** On seed 3
+  the trained incumbent sits within 10 % of the ablation's ×0.056 on the same seed — and within 13 % of it
+  on G_distinct_all (0.0277 vs 0.0245): by these gauges the live world model on seed 3 is nearly as
+  compressed as a model with NO anti-collapse pressure, while its prediction error is 7× the ablation's
+  (0.0035 vs 0.00046 — a collapsed encoder predicts trivially). The ablation's red stays reachable on both
+  seeds (×0.056, ×0.012).
+- The retirement's evidence repeats on the new seeds: the trained model's consecutive reading sits inside
+  the untrained twin's range (0.023 vs 0.010 on seed 3; 0.065 vs 0.099 on seed 4 — the twin above the
+  trained model again); the consecutive gauge would have passed seed 4 (0.065) and failed seed 3 (0.023)
+  for reasons that are the stimulus's.
+- What this changes: the JEPA arc's (b), re-stated on the replacement gauge, reads **RED on 1 of 5 seeds**
+  (0–2 by construction, 4 evidentially MET, 3 evidentially NOT MET). (b) is therefore RETIRED-AND-REPLACED
+  and, under the replacement, **RED and OPEN** — not cleared. The in-brain compression is seed-dependent and
+  reaches near-collapse on one seed in five; that is the finding the owner's revert decision on `dbcf153`
+  should weigh.
 
 ### 3.5 Stage 1 — NOT RUN. R4 failed before any in-brain cell of the new head was needed (§2.5 Row 2: "R4
 fails: the build does not land"). The in-brain reds R1–R3 and R5 therefore have no Stage 1 reading; what
@@ -458,7 +518,9 @@ fires and the constant's value is unobservable there. Commit B therefore changes
 nothing measured — the derivation is adopted for P1 (one derivation for both classes), the behaviour is
 unchanged in the measured regime, and no dropped claim moves (13 of 20 is below the 16-of-20 bar either
 way). The module's own "11 of 20" (its docstring) is 13 of 20 with this harness's seed shifts; reported,
-not reconciled.
+not reconciled. The tally ran at `4bae53a` on the copied body; commit A's byte-identity carries the count to
+`bound_rows`. The commit-B self-check capture is identical to commit A's because the self-check never prints
+the bound — the tally, not the capture, is B's count (I-9).
 
 ## 4. The design panel — three lenses on §2's first form, and the fold
 
@@ -505,21 +567,38 @@ Not changed by the panel: the arc's purpose, the seeds, the 3000-tick marks, the
 - P0-1b (the stimulus alone, on the incumbent's stream, < 0.05 on ≥ 2 of 3): **MET** (0.040 / 0.019 /
   0.067). Corollary measured beside it: on seed 2 the consecutive gauge ranks the UNTRAINED encoder (0.067)
   above the trained one (0.046).
-- Therefore the consecutive-window floor is **RETIRED as a live criterion** (P8: a bar the stimulus itself
-  cannot clear measures the stimulus; a criterion with no reachable red for the property it names is
-  deleted, not weakened). Landed as `latent_std`'s docstring relabel (commit E); the number 0.05 stays the
+- Therefore the consecutive-window floor is **RETIRED as a live criterion** (P8: a criterion with no
+  reachable red for the property it names is deleted, not weakened). The evidence, four parts (PH-12; the
+  first draft's slogan "a bar the stimulus cannot clear measures the stimulus" did not follow and is
+  replaced): the trained model's consecutive readings 0.025–0.058 sit inside the untrained twin's 0.019–0.067;
+  on seed 2 the twin ranks ABOVE the trained model; the trained model over DISTINCT patterns reads 0.036–0.045,
+  below 0.05 on 3 of 3; and the twin's snapshot flips between marks with a DIFFERENT failing seed at 1500
+  (seed 1: 0.075) and 3000 (seed 2: 0.067) — a 32-tick snapshot of the stimulus. P0-1b's 2 of 3 carries no
+  alpha; the snapshot argument is the stronger claim. Landed as `latent_std`'s docstring relabel (commit E); the number 0.05 stays the
   module self-check's and the planted world's bar, where the input varies.
 - The pre-registered replacement (trained/fresh target-encoder spread ratio over distinct patterns ≥ ×0.10,
-  CHOSEN, both arms printed): **MET, 3 of 3** (×0.217 / ×0.141 / ×0.143); its red, the ablation below ×0.10:
-  **reachable, 3 of 3** (×0.075 / ×0.038 / ×0.019). The JEPA record's §2.7 conjunct (b) is thus
+  CHOSEN, both arms printed): **MET BY CONSTRUCTION on seeds 0–2** (×0.217 / ×0.141 / ×0.143 — the seeds the
+  bar was set on; Stage 0b reproduces Stage 0 to the digit, so this is a calibration — PH-2); its red, the
+  ablation below ×0.10, reachable on the same seeds (×0.075 / ×0.038 / ×0.019). **Its first EVIDENTIAL
+  reading, on seeds 3–4 the bar never saw (§3.6): MET on seed 4 (×0.133), NOT MET on seed 3 (×0.062, within
+  10 % of the ablation's ×0.056 on that seed) — so under the replacement (b) reads RED on 1 of 5 seeds and
+  stays OPEN.** The retirement stands (the consecutive gauge is the stimulus on the new seeds too); the
+  replacement is the criterion (b) is now held to, and it is not cleared. The JEPA record's §2.7 conjunct (b) is thus
   **RETIRED-AND-REPLACED, never demoted**: what the live model is now held to is "spreads distinct live
-  inputs at ≥ ×0.10 of an untrained twin against a collapsed twin's ×0.02–0.08". The replacement lives in
+  inputs at ≥ ×0.10 of an untrained twin against a collapsed twin's ×0.01–0.08" — and it is NOT cleared
+  (seed 3, §3.6). The replacement lives in
   this record and the in-brain probe (its byte-identity control is `control_abs_diff` = 0.0 on every
   non-frozen mark); the in-tree brain-free forms are `tests/test_jepa_collapse.py`'s ratio bars.
 
 **Row 2 — the reservoir (§2.2 Amendment 1, §2.3, §2.5):**
-- Stage 0.5's red at the ring buffer (the amended form): **counted** (k = 32: order ratio 4.2 / 4.6 / 4.1,
-  consecutive gauge 0.001; commit C, strict xfail since commit E).
+- Stage 0.5's red AS FIRST PRE-REGISTERED (§2.2's first form, compression): **NOT FIRED** (spread ratio
+  ×1.73–1.80, `latent_std` 0.0011–0.0014). Its written null disposition ("the reservoir does NOT land;
+  commit D is not made") was NOT applied at that point — §2.2 Amendment 1 is the session's unregistered
+  call: the build was applied to the working tree, measured, and did not land at R4 — the disposition's
+  outcome, reached by a different route (PH-3).
+- Stage 0.5's red at the ring buffer, the AMENDED form: **counted** (harness: order ratio 4.2 / 4.6 / 4.1,
+  consecutive gauge 0.001; commit C's own count: seed 0, ×4.45, first conjunct only, `-x` halted; strict
+  xfail since commit E; the fold aligned the test's action stream to the harness's — I-1).
 - Stage 0.5's GREEN at the reservoir, k = 32: **MET, 3 of 3** (0.42 / 0.46 / 0.49; std 0.123).
 - **R4: NOT MET** — the planted k = 1 order read fails on seed 0 in the in-tree test (1.61) and on every seed
   in the harness at 10 cycles (1.61 / 5.87 / 18.9); the two other k = 1 tests pass.
@@ -536,22 +615,29 @@ Not changed by the panel: the arc's purpose, the seeds, the 3000-tick marks, the
 - The cost bar and the perf report: not scored (no build).
 
 **Row 3 — the shared bound (§2.6):** commit A **landed on byte-identity** (both self-checks byte for byte;
-the archived planted cell to the digit); commit B **landed on its count** (identical numbers at both
+the archived planted cell to the digit) — in all three captures `bound_rows`' row-scaling branch fired 0
+times (0/4627, 0/4100, 0/2560 calls; max row-abs-sum 1.735 against rho_max 4.0), so byte-identity covered
+only the DECAY path; the scaling path's equivalence rests on the panel's direct reconstruction of both
+removed bodies (1200 random matrices, 676 firings, 0 mismatches — INT-A1), promoted in the fold into
+`tests/test_bound_rows.py` as that path's reachable red (an inverted factor is caught); commit B **landed on its count** (identical numbers at both
 values — the bound never fires in that regime, max row-abs-sum 0.181; 13/20 below the 16-of-20 bar, so no
 dropped claim moves).
 
 **Found in passing, fixed as its own commit (F):** the arm self-check's mlp-Q block carried two asserts
 that REQUIRED the collapse (`mlp_spread < 0.05`, `mlp_hold <= lqq_hold − 0.30`); the reservoir tripped the
 first (0.081) while the MLP-Q's held-out stayed 0.33 — the block's stated cause was not the whole cause.
-Converted to a reported contrast; the block asserts what it is for.
+Converted to a reported contrast; the block asserts what it is for. F is outside §2's pre-registration and
+was battery-verified only; the record panel is its review (PH-9: the fold also removed the print's residual
+"the ENCODER is the bottleneck" and a dead tuple, and pointed three sites outside the arc that still stated
+the retracted cause at this record — INT-F2).
 
-**§2.8's PASS: NOT REACHED** (Row 2 failed at R4). (b) is CLOSED-BY-REPLACEMENT under Row 1, not by the
+**§2.8's PASS: NOT REACHED** (Row 2 failed at R4). (b) is RETIRED-AND-REPLACED under Row 1 (never closed — §2.8; an earlier draft wrote "closed", the panel's PH-1), not by the
 reservoir; **the owner's revert option on `dbcf153` STAYS OPEN**, as §2.8 says it must when the PASS is not
 reached. The plan's Part E, Part H and Phase 2 L2 row, and the JEPA record's §13.4, carry this outcome
 (commit G).
 
 **Owed onward, named:** (i) the stale-latent hypothesis (§3.4b) — a re-derivation of `gamma` for a TRUE
-batch, pre-registered in its own arc, is the only route by which the k = 32 red can be turned green
+batch, pre-registered in its own arc, is a candidate route by which the k = 32 red can be turned green
 without losing the k = 1 read; until then the red stands as a strict xfail; (ii) the in-brain replacement
 criterion has no in-tree live gauge (it lives in the probe and this record) — a P3-shaped debt: promoting
 it into the module needs a live reader, else it is dormant code; (iii) the untrained twin reads ABOVE the
@@ -563,10 +649,44 @@ of std gauges here.
 
 | commit | what | landed on |
 |---|---|---|
-| `8affe16` A | `bound_rows`, one body for both world models | byte-identity, both classes |
+| `8affe16` A | `bound_rows`, one body for both world models | byte-identity (decay path), both classes; the scaling path's test lands in H |
 | `093d80c` B | `SpikingJEPA.rho_max = sqrt(L)` | its count (identical at both values) |
 | `b678571` C | the repeated-world test, RED on the tree | the counted red |
 | `be16bc2` E | the red kept as a strict xfail; `latent_std` relabelled | the disposition on the null |
 | `1110e16` F | the arm self-check's two pathology asserts → reported | P8 |
 | G (this commit) | this record, the plan edits (Part E, Part H, L2), the JEPA record §13.4 pointer | docs |
 | (not made) D | the VICReg reservoir | did not land: R4 |
+| H (the fold) | the record panel's 5 MAJORs and 21 MINORs/NOTEs applied (§7); the test's world aligned to the harness; `tests/test_bound_rows.py`; the mlp-Q print and three stale sites; `spiking_jepa` wording | battery-verified only, not re-panelled (plan A.4 step 4) |
+
+## 7. The record panel — three lenses on commits A–G at `adad94b`, and the fold (commit H)
+
+Three read-only lenses (instrument / policy-honesty / integration; 141 tool calls; every finding reproduced
+by a command; archived as `record_panel.txt`). Verdicts: yes-with-the-fold ×3. Every table digit in §3
+recomputed from the archived JSON to the printed digit; the controls held (wiring control 0.0 on all 36
+non-frozen marks, the shuffle fired 5× per seed, the planted collapse ≤ 1e-17 on all 18 Stage-0b marks);
+commit A's captures cmp-identical; the null applied fully (no reservoir residue; both wiring asserts and
+the 15-tick determinism run restored; tree clean). The fold is a stacked commit, battery-verified only.
+
+| id | finding (short) | disposition |
+|---|---|---|
+| PH-1 / INT-R1 | the verdict wrote "CLOSED-BY-REPLACEMENT" against §2.8's "never closed" | ACCEPTED: RETIRED-AND-REPLACED |
+| PH-2 | the replacement's "MET 3/3" was a calibration (bar chosen from Stage 0; Stage 0b reproduces it to the digit) | ACCEPTED: "MET by construction"; the evidential reading run on seeds 3–4 (§3.6) |
+| PH-3 | Row 2 never marked the ORIGINAL Stage 0.5 red NOT FIRED nor named Amendment 1 as the unregistered call | ACCEPTED |
+| I-1 | the test's world ≠ the harness's (action stream drawn after a longer walk); commit C's count was seed 0, first conjunct, `-x` | ACCEPTED: the test builds at `cycles = REPEAT_CYCLES`; messages cite the harness; the record states the count as measured |
+| INT-A1 | commit A's byte-identity never fired the scaling branch (0 of 11,287 calls) | ACCEPTED: disclosed; `tests/test_bound_rows.py` gives the scaling path a reachable red |
+| PH-4, PH-5 / I-4, PH-6 | header overstated the pre-registration; §3.4b clock wrong (one time after commit G); Amendment 1's ordering asserted by prose | ACCEPTED: dated; file times; commit `b678571` cited |
+| PH-7 | the build's in-brain smoke unreported | ACCEPTED |
+| PH-8 | the xfail cited §4 (the design panel) | ACCEPTED: §3.4b / §5 |
+| PH-9 / INT-F1 / INT-F2 | F's print still asserted the retracted cause; a dead tuple; three sites outside the arc still state it | ACCEPTED: print reworded, tuple deleted, `autonomous_loop` :631 / :3501 and `mlp_q.py` pointed here |
+| PH-10 | §2.5 Amendment 1 was foreseeable from the design panel's I-4 (a fold defect) | ACCEPTED: disclosed |
+| PH-11 | "the only route"; "fixes the explosion" | ACCEPTED |
+| PH-12 | Row 1's P8 slogan did not follow; the four-part evidence carries; P0-1b has no alpha; the failing seed differs by mark | ACCEPTED |
+| I-2, I-3 | the reservoir patch reached the working tree while commit C's count ran; 5 of 9 Stage-0b cells ran at `093d80c` (an in-brain byte-identity witness for A) | ACCEPTED: both disclosed |
+| I-5, I-6, I-7, I-8, I-9 | five ranges off the archive's bounds; "128" pairs where the world has 8; the shipped gauge cannot be planted; "instrument control" → wiring control; the tally's tree and B's capture | ACCEPTED, each at its section |
+| INT-B1 | "spectrally-bounded" and a "contractive ... copied" comment left in `spiking_jepa` | ACCEPTED: row-bounded; the comment reworded |
+| INT-P1 | trigger vs target of `prediction_error` conflated; the L2 row omitted the open revert condition | ACCEPTED: §2.7, Part H, the L2 row |
+| INT-N3 | "≥ 0.05" vs the test's "> 0.05" | ACCEPTED |
+| PH-13..16, I-10, INT-N1/N2/N4 | the strict xfail is an honest form (pins seed 0's order conjunct); the null applied fully; the revert option consistent; A/B as claimed; battery expectation 4 pass + 1 xfail + the new test | recorded |
+
+Not changed by the panel: the verdict (Row 1 retired-and-replaced; Row 2 not landed; Row 3 landed), the
+three constants, every table cell.

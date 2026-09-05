@@ -32,8 +32,8 @@ GENUINELY fails):
     update, so it caught inter-LAYER transport and was blind to transport inside the head. An honest
     control that tests the wrong axis is still a control that passes.
   * TRACKS ACTION-CONDITIONED LATENT DYNAMICS AT THE IDENTITY MAP'S ERROR SCALE (claim 4, weakened
-    honestly). The bounded action-conditioned latent map predict(state, command) -- a spectrally-
-    bounded LINEAR residual (row-abs-sum <= rho_max = sqrt(L), clamp +/- z_clip; the bound body shared with jepa_world_model,
+    honestly). The bounded action-conditioned latent map predict(state, command) -- a row-
+    bounded LINEAR residual (max row-abs-sum <= rho_max = sqrt(L), clamp +/- z_clip; the bound body shared with jepa_world_model,
     duck-typed for PrefrontalExecutive.plan()) -- is trained by the JEPA invariance loss. ASSERTED: its
     held-out MSE stays at the identity predictor's error scale, and TIME-SHUFFLED targets never train a
     materially better predictor than the true order. "Beats the identity predictor" is NOT asserted --
@@ -279,7 +279,7 @@ class SpikingJEPA:
             [_fb.uniform(-1.0, 1.0) * sr for _ in range(self.sizes[-1])] for _ in range(self.L)
         ]
 
-        # bounded action-conditioned predictor (Wz small + contractive, Wa, b) -- copied shapes/limits
+        # bounded action-conditioned predictor (Wz small, row-bounded via jepa_world_model.bound_rows, Wa, b) -- shapes shared with jepa_world_model
         self.Wz = [[r.uniform(-1.0, 1.0) * 0.02 for _ in range(self.L)] for _ in range(self.L)]
         self.Wa = [[r.uniform(-1.0, 1.0) * 0.05 for _ in range(self.n_act)] for _ in range(self.L)]
         self.b = [0.0] * self.L

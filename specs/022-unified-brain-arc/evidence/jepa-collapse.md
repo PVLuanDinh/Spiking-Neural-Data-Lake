@@ -581,7 +581,7 @@ the curiosity gauge; the categories the arm forms moved with the changed traject
   RETIRED-AND-REPLACED — the consecutive-window gauge measures the stimulus (an untrained twin reads 0.01–0.07
   over 32 consecutive ticks; the trained model over DISTINCT patterns reads 0.036–0.045, below the floor on every
   seed); the pre-registered replacement (trained/fresh spread ratio over distinct patterns ≥ ×0.10, its red the
-  ablation's ×0.02–0.08) is MET 3/3; a VICReg reservoir batch that turned the repeated-world red green did NOT
+  ablation's ×0.02–0.08) is met by construction on the calibration seeds and read evidentially on seeds 3–4 (MET on seed 4 at ×0.133, NOT MET on seed 3 at ×0.062 against the ablation's ×0.056 — (b) under the replacement is RED on 1 of 5 seeds and OPEN); a VICReg reservoir batch that turned the repeated-world red green did NOT
   land (it loses this arc's planted order read at 10 cycles), so the revert option above stays open.**
 - **Owed onward:** Q1(a)'s consequence — L2 may now be targeted at this prediction error — is the
   owner's to schedule (PLAN-FINAL Part H); the open (b) floor above; `spiking_jepa`'s copied 0.9 bound

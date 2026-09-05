@@ -421,7 +421,8 @@ that baseline.
 - **L2 — grow on plateau, prune in sleep (FR-023, FR-024).** *Scheduled 2026-09-05 (`evidence/jepa-live-floor.md`
   §2.7): the plateau it reads is L1b's residual error and the prediction-error signal it may target is
   `JepaWorldModel.prediction_error`, now measured to carry succession (the JEPA-collapse arc) — the Phase 1 null
-  disposition unblocked; L2 stays after L1b/L1c on the critical path.* A new NG-SNN unit is admitted only when
+  disposition unblocked while `dbcf153` stands (the revert option is open, Part H); L2 stays after L1b/L1c on the
+  critical path.* A new NG-SNN unit is admitted only when
   synaptic learning (L1b) has stalled on residual error over a window; consolidation and earn-your-place
   pruning stay in sleep; the T047 gate consulted as today, fed by Chain B (alive) as it is. **P2 adjudication,
   recorded:** the `GrowingLearner` vigilance recruit (seven live sites) recruits PROTOTYPE vectors and its
@@ -542,7 +543,7 @@ L2, T066, T073, T077, T078).
 ## PART E — SEQUENCING, DEPENDENCIES, WHAT IS DROPPED
 
 **Critical path (commits), with the earliest start of each parallel arm marked:**
-W3 → ~~W1 (+T076's red)~~ RETIRED 2026-09-04 → ~~W2 (no widening)~~ REFUSED ON MEASUREMENT 2026-09-05 → [the JEPA-collapse arc — SHIPPED at `dbcf153` (record `evidence/jepa-collapse.md`): red (a) cleared brain-free 3/3 and in-brain 3/3 by direction; the in-brain `latent_std` floor (b) met 1/3, then RETIRED-AND-REPLACED by measurement in `evidence/jepa-live-floor.md` (2026-09-05: the consecutive-window gauge reads the stimulus; the replacement criterion MET 3/3 with its red reachable; a reservoir batch that fixed the repeated-world red did NOT land — it loses the planted order read — and stands as a strict-xfail red in `tests/test_jepa_collapse.py`)] → L1b → L1c → L2 → L4 (with its ceiling) → T069 → S1 → S2 → S3 →
+W3 → ~~W1 (+T076's red)~~ RETIRED 2026-09-04 → ~~W2 (no widening)~~ REFUSED ON MEASUREMENT 2026-09-05 → [the JEPA-collapse arc — SHIPPED at `dbcf153` (record `evidence/jepa-collapse.md`): red (a) cleared brain-free 3/3 and in-brain 3/3 by direction; the in-brain `latent_std` floor (b) met 1/3, then RETIRED-AND-REPLACED by measurement in `evidence/jepa-live-floor.md` (2026-09-05: the consecutive-window gauge reads the stimulus; the replacement criterion met by construction on the calibration seeds, read evidentially on seeds 3–4 — MET on seed 4 (×0.133), NOT MET on seed 3 (×0.062 against the ablation's ×0.056): (b) under the replacement is RED on 1 of 5 seeds and OPEN; a reservoir batch that fixed the repeated-world red did NOT land — it loses the planted order read — and stands as a strict-xfail red in `tests/test_jepa_collapse.py`)] → L1b → L1c → L2 → L4 (with its ceiling) → T069 → S1 → S2 → S3 →
 S4 → S5 → S6 → T062 → T063 → T071 → T072 → T073 → T074 → T075/T076 → T083 → H1 → T084–T087.
 Parallel arms: L1a ∥ L3 ∥ the oracle may start at W3 (they do not wait for Phase 1); the C-chain
 (C0 → C1a → C1b → C1c → C3 → C2 → C4) may start at S1 (O5(b)) and must finish before T072.
@@ -622,10 +623,11 @@ the owner may revert `dbcf153`. **Follow-up, owner-instructed ("Do all this", 20
 `evidence/jepa-live-floor.md`:** (b) is RETIRED-AND-REPLACED (the consecutive-window gauge measures the
 stimulus — an untrained twin reads 0.01–0.07, the trained model over distinct patterns 0.036–0.045 on every
 seed; the replacement, the trained/fresh spread ratio over distinct patterns ≥ ×0.10 with the ablation as its
-red, is MET 3/3); the reservoir batch built to turn the repeated-world red green did NOT land (it loses the
-planted order read — P8 clause 5), so that arc's PASS was not reached and **the revert option on `dbcf153`
-STAYS OPEN**. L2 is scheduled by the same arc (Phase 2's L2 row): its trigger reads
-`JepaWorldModel.prediction_error`, after L1b/L1c, no task reordered. **Q2** — with the id
+red, is MET by construction on the calibration seeds and read evidentially on seeds 3–4 — MET on seed 4 (×0.133), NOT MET on seed 3 (×0.062 against the ablation's ×0.056): (b) under the replacement is RED on 1 of 5 seeds and OPEN); the
+reservoir batch built to turn the repeated-world red green did NOT land (it loses the planted order read —
+P8 clause 5), so that arc's PASS was not reached and **the revert option on `dbcf153` STAYS OPEN**. L2 is
+scheduled by the same arc (Phase 2's L2 row): its trigger is L1b's synaptic plateau and the signal it may
+target is `JepaWorldModel.prediction_error` (while `dbcf153` stands), after L1b/L1c, no task reordered. **Q2** — with the id
 lane refused, whether W2's surprise half (one scalar into the context, no alphabet fragmentation) gets its
 own probe or W2 closes whole (this plan closes it whole unless reopened) — still open.
 

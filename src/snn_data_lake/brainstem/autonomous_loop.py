@@ -628,8 +628,9 @@ class AutonomousArm:
         # learns each context in isolation). This LINEAR substrate rides the lake-stored PATTERN, which is
         # task-linear and stable. (v3.17 measured a linear Q over the online SSL-JEPA latent at chance and called
         # it "not task-aligned"; v3.18 CORRECTS that -- the SSL latent DOES encode the task, but the arm's online
-        # encoder near-collapses its few live contexts, so on-robot the pattern is the reliable substrate; see the
-        # NONLINEAR mlp_q block below and self-check 19 for the precise cause.) ADDITIVE to safety: it
+        # encoder's latent does not separate its few live contexts for the head (spread 0.043 after a short run;
+        # the head does not separate them at 0.081 either -- specs/022 evidence/jepa-live-floor.md section 5),
+        # so on-robot the pattern is the reliable substrate; see the NONLINEAR mlp_q block below.) ADDITIVE to safety: it
         # only changes HOW the action VALUE is computed -- the reflex/E-STOP runs first and every command still
         # flows through the gated So101Arm. Flag OFF => the tabular q path is byte-identical.
         self._latent_q_on = latent_q
@@ -3464,7 +3465,7 @@ def main():
     print(
         f"mlp-Q       : NONLINEAR head over the ONLINE SSL-JEPA latent -- held-out {mlp_hold:.2f} (vs the "
         f"linear-over-pattern latent-Q {lqq_hold:.2f}); the arm's plain-SSL latent spread over its 3 band contexts after this short run is {mlp_spread:.3f} (not the collapse gauge -- tests/test_jepa_collapse.py) "
-        f"-> the ENCODER, not the head, is the on-arm bottleneck; E-STOP freeze holds ({mlp_frozen})"
+        f"-> the head does not separate them at this spread (the retracted v3.17 cause was 'the ENCODER near-collapses them'; the comment below); E-STOP freeze holds ({mlp_frozen})"
     )
     print("=" * 62)
 
@@ -3485,20 +3486,16 @@ def main():
     # MLP-Q's held-out STAYED 0.33 against the pattern substrate's 1.00 -- so "the head fails because the
     # latents near-collapse" was not the whole cause: the head did not separate the contexts at that spread
     # either. The measured contrast (spread 0.043 today, held-out 0.33 vs 1.00) is printed above and kept here
-    # as a REPORTED tuple, never a bar; what this block asserts is what it is FOR: the head is opt-in, it
+    # in the print, never a bar; what this block asserts is what it is FOR: the head is opt-in, it
     # auto-enables the latent it rides, the E-STOP freeze holds with it on, and it is deterministic.
-    _mlp_contrast = (
-        round(mlp_spread, 3),
-        round(mlp_hold, 2),
-        round(lqq_hold, 2),
-    )  # reported, not asserted
     assert mlp_ev["action"] == "EMERGENCY_STOP" and mlp_ev["reflex"] and mlp_frozen, (
         "danger must E-STOP with mlp_q on"
     )
     assert mlp_det, "the mlp-Q path must be deterministic"
 
     # 20. TASK-ALIGNED ENCODER (reward-shaping): the honest FIX for the v3.18 encoder-collapse bottleneck. §19
-    #     showed the arm's ONLINE SSL encoder near-collapses its few contexts (spread ~0) so the MLP-Q over it is
+    #     showed the MLP-Q over the arm's ONLINE SSL latent at chance over its few contexts (the 'near-collapse'
+    #     cause was retracted 2026-09-05 -- the head does not separate them at spread 0.081 either; see section 19), so it is
     #     at chance (0.33). Reward-shaping adds a reward-predictive gradient into the encoder (opt-in
     #     reward_shaped_encoder=True) so the latent separates contexts BY TASK -> the SAME MLP-Q now recovers the
     #     rule ON THE ARM and transfers to new-unit contexts. Fixes the ENCODER, not the head -- exactly what §19
