@@ -3474,19 +3474,24 @@ def main():
     assert AutonomousArm(seed=0, mlp_q=True)._jepa_on, (
         "mlp_q must auto-enable the JEPA latent it rides"
     )
-    # HONEST FINDING (corrects + refines v3.17): the SSL latent DOES encode the task -- mlp_q's own self-check gets
-    # 0.99 over a clean latent, and an offline probe recovers THIS arm's band rule from the SSL latent at 0.80
-    # (linear) / 0.88 (MLP). v3.17's "0.33 ~ chance -> not task-aligned" was OVER-PESSIMISTIC. The real cause: the
-    # arm's ONLINE JEPA, trained on only a few repeating live contexts, NEAR-COLLAPSES them (spread ~ 0), so on-robot
-    # NO head -- linear or nonlinear -- can separate them. The bottleneck is the ENCODER (a reward-shaped / deeper
-    # encoder, or more diverse experience), NOT the Q-head's capacity -- which is exactly what this experiment shows.
-    assert mlp_spread < 0.05, (
-        f"the arm's online SSL latents for distinct bands must near-collapse ({mlp_spread:.3f})"
-    )
-    assert mlp_hold <= lqq_hold - 0.30, (
-        f"over the near-collapsed online latent the MLP-Q cannot match the pattern substrate "
-        f"({mlp_hold:.2f} vs {lqq_hold:.2f}) -- the ENCODER, not the head, is the on-arm limit"
-    )
+    # HONEST FINDING, re-stated 2026-09-05 (the live-floor arc, evidence/jepa-live-floor.md section 5). The SSL
+    # latent DOES encode the task -- mlp_q's own self-check gets 0.99 over a clean latent, and an offline probe
+    # recovers THIS arm's band rule from the SSL latent at 0.80 (linear) / 0.88 (MLP); v3.17's "0.33 ~ chance ->
+    # not task-aligned" was over-pessimistic. Until the live-floor arc this block ASSERTED its explanation --
+    # `mlp_spread < 0.05` ("the online latents for distinct bands must near-collapse") and `mlp_hold <=
+    # lqq_hold - 0.30` -- two criteria that REQUIRED the pathology (P8: a shipped criterion may not assert a
+    # defect's presence; the JEPA arc removed the same shape from jepa_world_model.main()). They were found
+    # because a VICReg reservoir batch, built in that arc and not landed, lifted the spread to 0.081 while the
+    # MLP-Q's held-out STAYED 0.33 against the pattern substrate's 1.00 -- so "the head fails because the
+    # latents near-collapse" was not the whole cause: the head did not separate the contexts at that spread
+    # either. The measured contrast (spread 0.043 today, held-out 0.33 vs 1.00) is printed above and kept here
+    # as a REPORTED tuple, never a bar; what this block asserts is what it is FOR: the head is opt-in, it
+    # auto-enables the latent it rides, the E-STOP freeze holds with it on, and it is deterministic.
+    _mlp_contrast = (
+        round(mlp_spread, 3),
+        round(mlp_hold, 2),
+        round(lqq_hold, 2),
+    )  # reported, not asserted
     assert mlp_ev["action"] == "EMERGENCY_STOP" and mlp_ev["reflex"] and mlp_frozen, (
         "danger must E-STOP with mlp_q on"
     )
