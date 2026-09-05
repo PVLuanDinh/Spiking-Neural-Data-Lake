@@ -15,11 +15,14 @@ PROCEED / REFUSED at n = 3, and the build's reds (if any) are read at S = 8 on s
 - The signal: `Brain._surprise_signal` ∈ [0, 1], the Oja/Sanger residual of the vision encoder, set in
   `_perceive_real` from `PerceptSurprise.observe(percept)` every wake tick a real frame is perceived. W2 §1b:
   72 distinct values at 4 dp over 294 rows, mean 0.082, range [0, 1] — alive.
-- Its consumers today (P2 census, three): `LearningProgress.consume_surprise` (T046a); the action gate's
-  `surprise` feature (loop C2, an undirected salience like novelty); `self_state.surprise` on state(). It
-  does NOT reach the arm's 64-d context, so the arm's GrowingLearner (categories → the neuro engine's
-  stream), the world model (→ curiosity, Empowerment), the amygdala's context threat and the unit-keyed
-  Q-state never see it.
+- Its consumers today (P2 census, TWO — an earlier draft said three: `self_state.surprise` is the
+  generative self-model's own e-prop error `_self_surprise`, a different quantity; the record panel's
+  INT-2): `LearningProgress.consume_surprise` (T046a, the |LP| third factor; brain.py ~1708) and the
+  action gate's `surprise` eligibility feature (loop C2, brain.py ~1910). It does NOT reach the arm's 64-d
+  context, so the arm's GrowingLearner (categories → the neuro engine's stream), the world model (→
+  curiosity, Empowerment), the amygdala's context threat and the unit-keyed Q-state never see it. The
+  scalar delivered on tick t is the residual of tick t−1's percept — `_safe_ctx` runs at the top of
+  `_wake_tick`, `_perceive_real` after `brain.tick` — the band's own one-tick lag (INT-9).
 - The context: `_safe_ctx` returns `visual` and `audio` as 4-vectors pooled from the real stream
   (near-constant: visual means [0.074, 0.098, 0.035, 0.035], stds ≤ 0.035), `temperature` = [proprio],
   `distance` pinned SAFE (the E-STOP channel, never touched). `encode_multimodal` averages four Gaussian bumps
@@ -28,7 +31,13 @@ PROCEED / REFUSED at n = 3, and the build's reds (if any) are read at S = 8 on s
   scalar replaces the fourth (near-constant) element; the band keeps its shape, three of its four bumps, and
   gains one moving bump whose position IS the surprise. With the id lane refused there is no category bump to
   confound (W2 §3.0 deviation 1), and the band today carries no category (W2 §1c). Vision is the band the
-  surprise comes from.
+  surprise comes from. **Receivers of the wrapped ctx, found by the record panel (INT-3):** besides the
+  arm's pattern, `_wake_tick` reads the same ctx into the L5 generalizing-novelty pseudo-count (which feeds
+  BACK into `_safe_ctx`'s attention gain on the next tick, and into LC salience, the time-clock reset and
+  the affect targets), into `_c1_tick`'s 9-d affect feature (visual[3] is feature 3), and into the
+  predictive-coding front end (→ metacog hold, LC, re-entrant salience); `_tick_ensemble` does not read it.
+  A no-tree-change splice at `_safe_ctx` therefore wires four receivers, not one; an on-tree lane would
+  owe a lane per receiver or a splice at `_context_pattern`.
 
 ## 2. Protocol — pre-registered before any cell runs
 
@@ -70,6 +79,20 @@ Gates, in force before the first cell (each bar CHOSEN, each control's expected 
   record says which gate failed, the plan's Part H Q2 reads CLOSED BY MEASUREMENT, W2's row stays REFUSED,
   and no lane is declared (P2: nothing additive lands).
 
+**Corrections to §2's descriptions, found by the record panel AFTER the read (disclosed, not rewritten):**
+`surprise_pinned` delivers the running mean — a RAMP from 0 to 0.155 over the run, identical to the
+other two treated arms for the first 77 wake rows (the surprise is exactly 0 there) and 0.087–0.156 after
+row 300: a near-constant fourth element at the band's low edge, not "the bump's energy" (INT-4, I-9).
+`surprise_shuffled` keeps the marginal only approximately — drawing from the running prefix over-weights
+the early low regime (delivered mean 0.113–0.121 against the surprise's 0.1545; 230–244 distinct values
+against 503–505) (I-6). The surprise is exactly 0.0 on 62 % of wake ticks, so "the arm's own median" is
+0.0 and (iii)'s split is nonzero-vs-zero (I-7); V is computed against the RAW surprise on every arm (the
+delivered value would make the pinned arm's split an early/late time split) (I-5). G-FRAG's bar had no
+pre-computed null spread on the unit COUNT — the obs #2073 rule was applied to G-INFO and not to G-FRAG
+(I-2, INT-7). (i)'s persistence conjunct was unreachable for every arm INCLUDING the incumbent at this
+horizon (W2 §4.5 and the live-floor arc's Stage 0b already showed 0.18 / 0.84 / 0.55 against 0.97 / 0.99
+/ 0.98) — a conjunct with no reachable green, a pre-registration defect (PH-2, I-8).
+
 ### 2.3 If the probe passes — the build and its reds at S = 8 (so the bar exists before the data)
 `_safe_ctx` delivers s as the fourth visual element on the tree; the lane declared
 (`percept_surprise.surprise_out → brain.context_surprise_in`; census + `tests/test_wiring_manifest.py` in the
@@ -104,7 +127,7 @@ zero mass (I-7) — reported, since the verdict does not rest on (iii).
 ## 3. Results — 12 cells, 3000 ticks, 20:17–20:29 UTC, at `f1a9bf8` (the pre-registration commit's head;
 `probe/` in `memory/archive/q2-2026-09-05/`)
 
-| arm | seed | arm units (vis / aud learners) | engine acc last third / persistence / majority | `raw_emp` zero-frac after 300 | Cramér's V (action × surprise-half) | G-INFO held-out R² (incumbent only) | perr last full block |
+| arm | seed | arm units (vis / aud learners) | engine acc last third / persistence / majority | `raw_emp` zero-frac after 300 | Cramér's V (action × surprise-half, raw split) | G-INFO held-out R² — **MISALIGNED, invalid (§2.5 Amendment 1; superseded by §3.2)** | perr last full block |
 |---|---|---|---|---|---|---|---|
 | incumbent | 0 | 7 (9 / 15) | 0.183 / 0.973 / 0.335 | 0.310 | 0.1045 | **−53.25** (y var 0.0832) | 0.00453 |
 | incumbent | 1 | 4 (9 / 15) | 0.839 / 0.995 / 0.843 | 0.284 | 0.0929 | **−0.008** | 0.00541 |
@@ -121,39 +144,117 @@ zero mass (I-7) — reported, since the verdict does not rest on (iii).
 
 - **Instrument control (incumbent vs the live-floor arc's Stage 0b at 3000):** `raw_emp` zero-fractions 0.310 /
   0.284 / 0.448 and perr 0.00453 / 0.00541 / 0.00348 reproduce that arc's incumbent digit for digit; arm units
-  7 / 4 / 5 likewise. The delivery fired on every wake tick (spliced 1481–1485; perception unified on all but
-  the first), the band's length is 4, and the vision/audio learners (9 / 15 prototypes) are identical across
-  arms, as they must be (they see the percept, not the context).
-- **The surprise scalar is alive:** 1481–1485 rows, mean 0.1545, 503–505 distinct values at 4 dp (the 300-tick
-  smoke's 0.013 was the run's first minute; W2 §1b's 0.082 over 294 rows is the same early regime).
+  7 / 4 / 5 likewise (`stage0b/incumbent_s*.json`, `arm_units`). The delivery fired on every wake tick
+  (spliced 1481–1485; perception unified on all but the first), the band's length is 4, and the vision/audio
+  learners (9 / 15 prototypes) are identical across arms — which proves only that the percept path was
+  untouched by the wrapper, true by construction (INT-6); the witness that the delivered scalar reached the
+  64-d pattern is §3.2's lit-cell count (the visual band lights cells past the incumbent's 0–4 under
+  delivery).
+- **The surprise scalar is alive — and it is ONE realization:** 1481–1485 rows, mean 0.1545, 503–505 distinct
+  values at 4 dp, exactly 0.0 on 62 % of ticks (the 300-tick smoke's 0.013 was the run's first minute; W2
+  §1b's 0.082 over 294 rows is the same early regime). The sequence is byte-identical across the four arms
+  and across seeds (`PerceptSurprise` is built with seed 0 and the pack pointer advances per wake tick), so
+  the twelve cells sample one stimulus; the seeds vary only the brain (INT-5).
+
+### 3.2 The aligned G-INFO re-run (§2.5 Amendment 1; incumbent and surprise × seeds 0–2; `probe2/`)
+
+| arm | seed | aligned held-out R² (pattern → s) | aligned? / PC re-encodes dropped | visual-band lit cells: max / mean after row 300 | V raw split / delivered split | permutation null mean ± sd, p | surprise zero-frac, median |
+|---|---|---|---|---|---|---|---|
+| incumbent | 0 | **-0.019** | True / 1483 | 7 / 5.44 | 0.1045 / None | 0.098 ± 0.02, p 0.38 | 0.62, 0.0 |
+| incumbent | 1 | **-0.010** | True / 1481 | 7 / 5.39 | 0.0929 / None | 0.1 ± 0.019, p 0.63 | 0.621, 0.0 |
+| incumbent | 2 | **-0.036** | True / 1485 | 7 / 5.33 | 0.15 / None | 0.096 ± 0.02, p 0.0 | 0.62, 0.0 |
+| surprise | 0 | **0.930** | True / 1483 | 13 / 6.76 | 0.0735 / 0.0735 | 0.101 ± 0.019, p 0.925 | 0.62, 0.0 |
+| surprise | 1 | **0.937** | True / 1481 | 13 / 6.74 | 0.1108 / 0.1108 | 0.099 ± 0.019, p 0.26 | 0.621, 0.0 |
+| surprise | 2 | **0.927** | True / 1485 | 13 / 6.8 | 0.1077 / 0.1077 | 0.1 ± 0.021, p 0.32 | 0.62, 0.0 |
+
+- Every cell reproduces the first run's brain to the digit (units, engine numbers, drives; the harness change
+  touched logging only); each cell dropped one PC re-encode per wake tick, so the pattern log is aligned
+  (`aligned = True`).
+- **G-INFO, aligned (§2.5 Amendment 1): MET.** The incumbent's pattern predicts the surprise with held-out R²
+  -0.019 / -0.010 / -0.036 (< 0.5 on 3 of 3) AND the positive control — the surprise arm's own
+  pattern → s — reads 0.930 / 0.937 / 0.927 (> 0.5 on 3 of 3): the readout sees a signal it is given and
+  the incumbent context carries none of it. The lane WOULD add information — a true premise closed by G-FRAG.
+- The instrument witness (INT-6): under delivery the visual band lights 13 / 13 / 13 cells at most against the
+  incumbent's 7 / 7 / 7 — the delivered scalar reached the 64-d pattern.
+- V's within-arm permutation null (200 shuffles of s against the actions) is ≈ 0.10 ± 0.02 on every cell; the
+  surprise arm's readings sit inside it (permutation p above); on the delivered split the surprise arm reads
+  the same as on the raw split by construction (its delivered value IS s).
 
 ## 4. Verdict — each gate against §2's wording, MET / NOT MET
 
-- **G-INFO (the premise): MET, 3 of 3.** The incumbent's 64-d pattern predicts the surprise scalar with
-  held-out R² −53.25 / −0.008 / 0.009 (the −53 is the ridge extrapolating a near-constant pattern; the sign
-  says nothing predicts): the context does not carry the encoder's surprise, so a lane WOULD add information.
-- **G-FRAG (the plan's own condition, "no alphabet fragmentation"): NOT MET.** The arm learner's units under
-  `surprise` are 9 / 6 / 8 against the incumbent's 7 / 4 / 5 — +2 / +2 / **+3**; the bar was ≤ +2 on 3 of 3
-  (CHOSEN), and seed 2 exceeds it. The `surprise_shuffled` (+1 / +2 / +2) and `surprise_pinned` (+0 / +2 / +3)
-  arms fragment too: moving the band's fourth element from ~0.035 to the surprise's range fragments the
-  alphabet whatever the element carries — the fragmentation is the bump's, not the information's.
-- **G-CONSUMER: NOT MET on (i) and (ii); (iii) met by sign only.** (i) The engine's last-third accuracy under
-  `surprise` (0.140 / 0.263 / 0.021) is BELOW the shuffled arm's (0.581 / 0.419 / 0.212) on 3 of 3 and below
-  its own persistence floor on 3 of 3 — the lane HARMS the grower (more categories, a less learnable stream);
-  0 of 3. (ii) `raw_emp` zero-fraction differences vs the shuffled arm are 0.030 / 0.073 / 0.084, all inside
-  the 0.164 noise scale; 0 of 3. (iii) Cramér's V under `surprise` exceeds the shuffled arm's on seeds 0 and 1
-  (0.0735 vs 0.0686; 0.1108 vs 0.1036) and not on seed 2 (0.1077 vs 0.1198): 2 of 3 by SIGN, with margins
-  0.005 and 0.007 against a between-seed spread of 0.03–0.05 and an incumbent (no delivery at all) reading
-  0.09–0.15 — P(≥ 2 of 3 by sign under the null) = 0.5. **Pre-registration defect, disclosed:** (iii) carried
-  no margin, so it cannot fail informatively at n = 3; it is recorded as met by the letter and uninformative,
-  and it does not rescue the gate on its own reading.
-- **PROCEED requires G-INFO ∧ G-FRAG ∧ G-CONSUMER: NOT MET (G-FRAG). Q2 CLOSES WHOLE, BY MEASUREMENT.** No lane
-  is declared; the surprise keeps its three consumers; W2's row stays REFUSED; the plan's Part H Q2 reads CLOSED
-  BY MEASUREMENT with G-FRAG named.
+- **G-INFO (the premise), as FIRST scored: UNMEASURED** — the instrument was misaligned (§2.5 Amendment 1);
+  the archived −53.25 / −0.008 / 0.009 pair tick i//2's pattern with s_i, and the surprise arm's rows
+  (−1.43 / −0.36 / −0.45), which were the readout's positive control, FAILED and were wrongly explained as
+  "the delivery in the pattern". **As re-measured with the aligned instrument (§3.2): MET — incumbent held-out R² -0.019 / -0.010 / -0.036 (< 0.5 on 3 of 3) and the positive control 0.930 / 0.937 / 0.927 (> 0.5 on 3 of 3): the context does not carry the encoder's surprise, so a lane WOULD add information; the premise is true and the probe closes on G-FRAG.**
+- **G-FRAG (the plan's own condition, "no alphabet fragmentation"): NOT MET by the letter.** The arm
+  learner's units under `surprise` are 9 / 6 / 8 against the incumbent's 7 / 4 / 5 — +2 / +2 / **+3**; the bar
+  was ≤ +2 on 3 of 3 (CHOSEN), and seed 2 exceeds it by one unit. Read against the same bar, the shuffled
+  control (+1 / +2 / +2) is MET and the pinned control (+0 / +2 / +3) is NOT MET — the control that is not
+  the method passes the bar the method failed, and a zero-information ramp confined to 0.09–0.16 fails it
+  on the same seed. The between-arm spread at a fixed seed is ±1 unit and no noise scale was pre-computed
+  for the count (a pre-registration defect, disclosed), so the count cannot attribute the fragmentation to
+  the lane, to the bump, or to divergence through the four receivers the splice wired (§1) — an earlier
+  draft's "the bump's, not the information's" is an exclusion these counts cannot support and is withdrawn
+  (I-2, INT-7, PH-5). What stands: the bump ALONE already fails the bar; whether the information adds
+  fragmentation (+7 total vs +5 / +5; seed 0: +2 vs +0) is not resolvable at n = 3.
+- **G-CONSUMER: MET BY THE LETTER — via (iii) on 2 of 3; (i) 0 of 3; (ii) 0 of 3.** The letter is defective
+  and the gate is NOT load-bearing: PROCEED fails on G-FRAG alone (PH-3). (i) The engine's last-third
+  accuracy under `surprise` (0.140 / 0.263 / 0.021) is below the shuffled arm's (0.581 / 0.419 / 0.212) on 3
+  of 3 — UNSCORED at n = 3: the gauge swings by seed and by any perturbation (the pinned control moves it
+  +0.70 / −0.52 / −0.40 against the incumbent with no information delivered), and the persistence-floor
+  conjunct is unreachable for every arm including the incumbent, so (i) fails by construction, not by
+  measurement. An earlier draft wrote "the lane HARMS the grower" — withdrawn as unearned (PH-1, I-3); the
+  "more categories" mechanism fails on seed 1 where all three treated arms hold 6 units. Post hoc and
+  unregistered, reported not scored: the surprise arm's accuracy is the lowest of the four arms on every
+  seed (P = 1/64 under exchangeability). (ii) `raw_emp` zero-fraction differences vs the shuffled arm are
+  0.030 / 0.073 / 0.084, inside the 0.164 noise scale. (iii) Cramér's V under `surprise` (raw split) exceeds
+  the shuffled arm's on seeds 0 and 1 (0.0735 vs 0.0686; 0.1108 vs 0.1036) and not on seed 2 (0.1077 vs
+  0.1198): 2 of 3 by SIGN, margins 0.005–0.007; on the DELIVERED split the shuffled arm reads 0.1096 /
+  0.0632 / 0.1183 and the count is 1 of 3 (I-5); the independence null for a 13 × 2 table at n ≈ 1183 is
+  V ≈ 0.10 ± 0.02 and every surprise-arm reading sits inside it (permutation p 0.92 / 0.25 / 0.33; the
+  incumbent, with no delivery, reads above both delivery arms, so the statistic rides the percept path —
+  I-4, PH-8). P(≥ 2 of 3 by sign under the null) = 0.5. **Pre-registration defect, disclosed:** (iii)
+  carried no margin, so it cannot fail informatively at n = 3.
+- **PROCEED requires G-INFO ∧ G-FRAG ∧ G-CONSUMER: NOT MET (G-FRAG). Q2 CLOSES BY MEASUREMENT — for THIS
+  delivery.** The failing gate fails on the delivery: `visual[3] = s ∈ [0, 1]`, 4–30× the band's native
+  range, and the zero-information pinned control fails the same bar on the same seed. A RANGE-MATCHED
+  delivery (s scaled into the band's ~[0, 0.1]) was not probed and is the reopening an owner could name;
+  whether it would be visible at σ = 1/15 is not measured here (PH-4). No lane is declared; the surprise
+  keeps its two consumers; W2's row stays REFUSED; the plan's Part H Q2 reads CLOSED BY MEASUREMENT for this
+  delivery with G-FRAG named. Commit `c31900e`'s subject ("fragments the alphabet and harms the grower")
+  over-states what §4 now says; the subject stands in history, this record corrects it.
 - **Reported, not scored:** the engine's last-third accuracy swings by seed and by any perturbation (incumbent
   0.18 / 0.84 / 0.55; pinned 0.89 / 0.32 / 0.16) — at n = 3 it could not have resolved (i) in either
   direction; a build's S = 8 reds would have needed the paired form. Recorded as a limitation of the probe's
   power, not of the verdict (G-FRAG fails on a unit COUNT, which does not swing).
-- **Owed onward:** none from Q2. The surprise signal's existing consumers are the action gate's feature (loop
-  C2), `LearningProgress.consume_surprise` and `self_state.surprise`; a fourth consumer would need a red of
-  its own.
+- **Owed onward:** the range-matched delivery, if an owner names it (PH-4). The surprise signal's existing
+  consumers are the action gate's eligibility feature (loop C2) and `LearningProgress.consume_surprise`; a
+  third would need a red of its own.
+
+## 5. The record panel — three lenses on `f1a9bf8..c31900e`, and the fold (commit 4)
+
+Three read-only lenses (instrument / policy-honesty / integration; 108 tool calls; every finding reproduced by
+a command, one lens re-ran an incumbent cell and reproduced the archive byte for byte; archived as
+`record_panel.txt`). Verdicts: yes-with-the-fold ×3. The closure stands by the pre-registered letter (G-FRAG
+NOT MET; PROCEED is a conjunction); the fold changes one gate's status (G-INFO: MET → UNMEASURED, then
+re-measured aligned in §3.2), strips two causal headlines, and discloses the null scales.
+
+| id | finding (short) | disposition |
+|---|---|---|
+| I-1 / INT-1 | G-INFO measured by a misaligned instrument (the PC front end's second `_context_pattern` call per tick doubled the pattern log; sliced 2:1 against s); the surprise arm's rows were a failed positive control | ACCEPTED: UNMEASURED as first scored; §2.5 Amendment 1 pre-registered the aligned re-run with its positive control; §3.2 carries it |
+| I-2 / INT-7 / PH-5 | G-FRAG's causal reading unsupported: the pinned control fails the same bar on the same seed, the shuffled control passes it; no noise scale on the count | ACCEPTED: NOT MET by the letter; attribution withdrawn; per-arm bar readings stated; defect disclosed |
+| I-3 / PH-1 / PH-2 / I-8 | "HARMS the grower" unearned (the gauge swings under any perturbation; the persistence conjunct unreachable for every arm) | ACCEPTED: struck from §4, Part H and the W2 pointer; the commit subject's over-statement stated |
+| PH-3 | G-CONSUMER never stated as a whole gate; post-read qualifiers on a passed gate | ACCEPTED: MET by the letter, defect disclosed, not load-bearing |
+| PH-4 | the closure attributed to the delivery yet closed WHOLE | ACCEPTED: closed for THIS delivery; the range-matched delivery named as the owner-nameable reopening |
+| INT-2 | the consumer census named a non-consumer (`self_state.surprise` is `_self_surprise`) | ACCEPTED: two consumers |
+| INT-3 | the wrapped ctx reached four receivers, not one | ACCEPTED: §1; G-FRAG hedged; §2.3's lane note |
+| I-4 / I-5 / I-7 / PH-8 | V's independence null ≈ 0.10 ± 0.02; raw vs delivered split (1 of 3 on the delivered); the median is 0.0 (62 % zeros); the statistic rides the percept path | ACCEPTED, each at its bullet |
+| INT-4 / I-9 / I-6 / INT-5 | the pinned arm is a ramp (identical to the others for 77 rows); the shuffled marginal only approximately kept; one stimulus realization across 12 cells | ACCEPTED: §2's post-read corrections; §3 |
+| INT-6 / INT-10 | the 9 / 15 match proves only the percept path untouched; cite the Stage 0b JSON for 7 / 4 / 5 | ACCEPTED |
+| INT-8 / PH-6 | three stale readers (the plan's W2 row, tasks.md's W2 row, the W2 record's §6); Part H did not name G-FRAG; the W2 pointer omitted G-CONSUMER | ACCEPTED: all pointed here |
+| INT-9 | the one-tick lag unstated | ACCEPTED |
+| PH-7 | a negative held-out R² over-read as "nothing predicts" | superseded by the re-run |
+| PH-9 / INT-10 / I-10 | pre-registration preceded the cells (commit 20:17:34Z; cells from 20:17:34Z); gate text unchanged; every table digit reproduces; docs-only, tree clean | recorded |
+
+Not changed by the panel: the closure (G-FRAG NOT MET by the letter), the twelve cells' digits, the plan's
+W2 row status (REFUSED).

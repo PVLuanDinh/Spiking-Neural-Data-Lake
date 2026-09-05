@@ -525,12 +525,13 @@ What the refusal establishes, stated so it is not re-derived:
   context. With the id lane refused, is a surprise-only context change (one scalar, no alphabet
   fragmentation) worth a probe of its own, or is W2 closed whole? This record closes it whole unless
   the owner reopens the surprise half. **Reopened by the owner 2026-09-05 ("Do all this") and CLOSED BY MEASUREMENT the
-  same day: `evidence/q2-surprise-context.md` — G-INFO met, G-FRAG not met (+2 / +2 / +3 units), the
-  grower harmed.**
+  same day, for its delivery: `evidence/q2-surprise-context.md` — G-FRAG not met by the letter (+2 / +2 /
+  +3 units against +2), G-CONSUMER met by the letter only ((iii), no margin), G-INFO re-measured aligned
+  (its §3.2); a range-matched delivery is the owner-nameable reopening.**
 
 ## 6. Disposition
 
-- W2: **REFUSED ON MEASUREMENT** (this record; the id lane — the surprise half is Q2); nothing built;
+- W2: **REFUSED ON MEASUREMENT** (this record; the id lane — the surprise half is Q2, CLOSED BY MEASUREMENT for its delivery 2026-09-05, `evidence/q2-surprise-context.md`); nothing built;
   `PLAN-FINAL` W2 row and Part E updated; a W2 row ADDED to `tasks.md` in the W3/A2c shape (the fold;
   §3.4's "tasks.md's W2 row closes" presumed a row that did not exist — the panel's INT-3); Phase 1's
   exit record (`evidence/w-exit.md`) written beside it.

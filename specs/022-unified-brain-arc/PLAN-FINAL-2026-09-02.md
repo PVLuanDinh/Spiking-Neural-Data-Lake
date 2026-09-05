@@ -343,6 +343,7 @@ Startable now, in-process. Order inside the phase: W3 (the instrument) first —
   compare them. **W1's commit carries T076's red**: an objective with `coverage_reward` neutered must
   measurably change goal selection.
 - **W2 — REFUSED ON MEASUREMENT 2026-09-05, BEFORE A BUILD (the id lane; the surprise half entered no
+  probe cell then — Q2 ran its own probe the same day and CLOSED BY MEASUREMENT for its delivery, G-FRAG: `evidence/q2-surprise-context.md`;
   cell and is Q2; the rank-2c outcome; record: `evidence/w2-context-latents.md`).** The premise was probed in-process with no tree change (nine cells:
   incumbent / W2 / W2 with the context's succession destroyed per cycle, seeds 0–2, 3000 ticks) against a
   pre-registered decision rule, and failed it on the direction pinned in advance:
@@ -630,11 +631,14 @@ scheduled by the same arc (Phase 2's L2 row): its trigger is L1b's synaptic plat
 target is `JepaWorldModel.prediction_error` (while `dbcf153` stands), after L1b/L1c, no task reordered. **Q2** — with the id
 lane refused, whether W2's surprise half (one scalar into the context, no alphabet fragmentation) gets its
 own probe or W2 closes whole. **CLOSED BY MEASUREMENT 2026-09-05 (owner "Do all this";
-`evidence/q2-surprise-context.md`):** its own probe ran (12 cells, seeds 0–2) — the context does not carry
-the surprise (G-INFO met), but delivering the scalar as the band's fourth element FRAGMENTS the arm's alphabet
-(+2 / +2 / +3 units against a +2 bar; the pinned and shuffled controls fragment too — the bump, not the
-information) and HARMS the grower (last-third accuracy below the shuffled control on 3 of 3); no consumer
-moved beyond noise. No lane; W2 stays REFUSED.
+`evidence/q2-surprise-context.md`):** its own probe ran (12 cells, seeds 0–2) and closed on a pre-registered
+unit-count bar — G-FRAG NOT MET by the letter (+2 / +2 / +3 units against a +2 bar; attribution not
+established: the zero-information pinned control fails the same bar on the same seed and the shuffled
+control passes it); G-CONSUMER met by the letter only ((iii), no margin — not load-bearing); G-INFO as first
+scored was UNMEASURED (a misaligned instrument) and was re-measured aligned (record §3.2). Closed FOR THIS
+DELIVERY (`visual[3] = s ∈ [0, 1]`, 4–30× the band's native range); a range-matched delivery is the
+reopening an owner could name. No lane; W2 stays REFUSED. (An earlier draft's "HARMS the grower" was
+unearned at n = 3 and is withdrawn — the record panel.)
 
 **All five were given in chat on 2026-09-02** ("You are authorized to: O1 … O2 … O3 … O4 … O5 …"): O1–O3 are
 authorized ACTIONS (O1 and O2 executed the same day; O3 chosen by the session under the authorization and
