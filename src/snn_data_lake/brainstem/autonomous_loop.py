@@ -3128,9 +3128,11 @@ def main():
     for _ in range(90):
         jp.step(**a, reward_fn=reward)  # reward RELEASE
     # A WIRING check, not a collapse gauge: latent_std() is the per-dim std over the last 32 ONLINE
-    # latents, and this loop drives the arm with the SAME ctx dict every step, so a healthy encoder
-    # reads ~0 here too. The collapse red lives where the input varies -- tests/test_jepa_collapse.py
-    # and specs/022 evidence/jepa-collapse.md (2026-09-05).
+    # latents, and this loop drives the arm with the SAME ctx dict every step -- on a constant input
+    # the variance hinge never switches off and the encoder drifts, so this reads the hinge's drift
+    # (~0.03 at the defaults), not the encoder's spread over distinct inputs. Its red is a model that
+    # never updated (an empty buffer reads exactly 0.0). The collapse red lives where the input
+    # varies -- tests/test_jepa_collapse.py and specs/022 evidence/jepa-collapse.md (2026-09-05).
     jp_std = jp.jepa.latent_std()
     jp_goal_formed = jp._z_goal is not None  # a reward-derived latent goal formed from the stream
     jp_goal = jp.pfc.goal  # the executive's goal, now set by JEPA latent planning
@@ -3461,7 +3463,7 @@ def main():
 
     print(
         f"mlp-Q       : NONLINEAR head over the ONLINE SSL-JEPA latent -- held-out {mlp_hold:.2f} (vs the "
-        f"linear-over-pattern latent-Q {lqq_hold:.2f}); the arm's band latents near-collapse (spread {mlp_spread:.3f}) "
+        f"linear-over-pattern latent-Q {lqq_hold:.2f}); the arm's plain-SSL latent spread over its 3 band contexts after this short run is {mlp_spread:.3f} (not the collapse gauge -- tests/test_jepa_collapse.py) "
         f"-> the ENCODER, not the head, is the on-arm bottleneck; E-STOP freeze holds ({mlp_frozen})"
     )
     print("=" * 62)

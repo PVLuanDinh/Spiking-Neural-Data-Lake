@@ -539,7 +539,7 @@ L2, T066, T073, T077, T078).
 ## PART E — SEQUENCING, DEPENDENCIES, WHAT IS DROPPED
 
 **Critical path (commits), with the earliest start of each parallel arm marked:**
-W3 → ~~W1 (+T076's red)~~ RETIRED 2026-09-04 → ~~W2 (no widening)~~ REFUSED ON MEASUREMENT 2026-09-05 → [the JEPA-collapse arc, filed, pending Q1] → L1b → L1c → L2 → L4 (with its ceiling) → T069 → S1 → S2 → S3 →
+W3 → ~~W1 (+T076's red)~~ RETIRED 2026-09-04 → ~~W2 (no widening)~~ REFUSED ON MEASUREMENT 2026-09-05 → [the JEPA-collapse arc — SHIPPED at `dbcf153` (record `evidence/jepa-collapse.md`): red (a) cleared brain-free 3/3 and in-brain 3/3 by direction; the in-brain `latent_std` floor (b) met 1/3, kept OPEN as a standing red] → L1b → L1c → L2 → L4 (with its ceiling) → T069 → S1 → S2 → S3 →
 S4 → S5 → S6 → T062 → T063 → T071 → T072 → T073 → T074 → T075/T076 → T083 → H1 → T084–T087.
 Parallel arms: L1a ∥ L3 ∥ the oracle may start at W3 (they do not wait for Phase 1); the C-chain
 (C0 → C1a → C1b → C1c → C3 → C2 → C4) may start at S1 (O5(b)) and must finish before T072.
@@ -611,7 +611,11 @@ sends L2 at a prediction error that is measured collapsed; ratify (a) the JEPA-c
 before any task whose red reads `prediction_error`, (b) a different learning signal for L2, or (c) the
 sentence as written (not recommended). **Q1 RATIFIED (a) BY THE OWNER IN CHAT, 2026-09-05** ("Q1 (a),
 start the JEPA-collapse arc"): the JEPA-collapse arc runs now, before L2 and before any task whose red
-reads `JepaWorldModel.prediction_error`; its record is `evidence/jepa-collapse.md`. **Q2** — with the id
+reads `JepaWorldModel.prediction_error`; its record is `evidence/jepa-collapse.md`. **Landed 2026-09-05
+at `dbcf153`:** the world model reads succession (planted world 3/3 at 12 cycles; the live stream 3/3
+seeds, 9/9 block-pairs); the in-brain `latent_std` floor met on 1/3 seeds and kept OPEN; the ship
+decision on (a) alone was NOT pre-registered and is the session's, disclosed in the record's §13.4 —
+the owner may revert `dbcf153`. L2's scheduling stays the owner's. **Q2** — with the id
 lane refused, whether W2's surprise half (one scalar into the context, no alphabet fragmentation) gets its
 own probe or W2 closes whole (this plan closes it whole unless reopened) — still open.
 

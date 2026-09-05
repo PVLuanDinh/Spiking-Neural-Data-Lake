@@ -1183,8 +1183,10 @@ def _main():
         jbrain.tick(grasp, reward_fn=reward)
     jepa_sized = jbrain.jepa_on()
     # A WIRING check, not a collapse gauge: the same `grasp` ctx is ticked 90 times, so latent_std()
-    # (the std over the last 32 online latents) reads low for a healthy encoder too. The collapse red
-    # lives where the input varies -- tests/test_jepa_collapse.py, specs/022 evidence/jepa-collapse.md.
+    # (the std over the last 32 online latents) reads the variance hinge's drift on a constant input
+    # (~0.03 at the defaults), not the encoder's spread over distinct inputs; its red is a model that
+    # never updated (an empty buffer reads exactly 0.0). The collapse red lives where the input
+    # varies -- tests/test_jepa_collapse.py, specs/022 evidence/jepa-collapse.md.
     jepa_std = jbrain.arm.jepa.latent_std()
     jepa_goal_formed = (
         jbrain.arm._z_goal is not None

@@ -33,13 +33,17 @@ Mechanism (rate-level, deterministic, per-instance rng):
 Rollout bound. The residual predictor z' = z + Wz@z + ... could diverge over the long rollouts plan()
 performs (horizon up to 40). predict() applies a final clamp so every |z'_i| stays bounded -- main() asserts
 a 40-step rollout stays finite and bounded for every action. Wz is initialized small, decayed, and
-row-scaled every step so its max row-abs-sum stays <= sqrt(latent_dim) -- the largest an orthogonal map of
-the latent sphere needs, so any rotation/permutation of latent states is representable. (Until 2026-09-05
-that bound was 0.9, "contractive", which forbade every step longer than the latent's own radius.)
+row-scaled every step so its max row-abs-sum stays <= sqrt(latent_dim). That admits every coordinate
+permutation of latent states and the successor map the planted world needs (measured -- the record's
+section 9); it does NOT admit every rotation: the predictor is RESIDUAL, so the map is I + Wz and the
+residual of an orthogonal Q is Q - I, whose rows can need L1 up to 1 + sqrt(latent_dim). Measured on the
+planted world, no row-scaling at all was identical to sqrt(L) on two of three seeds and differed in the
+fourth decimal on the third -- the bound is not binding there. (Until 2026-09-05 it was 0.9,
+"contractive", which forbade every step longer than the latent's own radius.)
 
 THE COLLAPSE ARC (specs/022 `evidence/jepa-collapse.md`, 2026-09-05; owner Q1(a)). At the previous defaults
 (lambda_var 1.0, gamma 1.0, rho_max 0.9) the model the ARM constructs collapsed its latent on every context
-the body sees (twelve of twelve in-brain models: target-latent spread x0.005-0.11 of a fresh model's) and its
+the body sees (twelve of twelve in-brain models: target-latent spread x0.005-0.12 of a fresh model's) and its
 prediction error could not tell a deterministic succession from a per-cycle permutation of it -- brain-free,
 on a planted 3-bit successor world a tabular oracle reads to 0.0 and a plain linear predictor on the raw
 pattern separates at 0.05, the model predicted the ORDERED world WORSE than the shuffled one (3 of 3 seeds).
@@ -172,10 +176,14 @@ class JepaWorldModel:
         # max row-abs-sum of Wz. The old 0.9 ("contractive") forbade every latent step longer than
         # the latent's own radius, so once the latent was open the successor map between two
         # separated states was unrepresentable and the model predicted a deterministic world WORSE
-        # than a shuffled one. An orthogonal map of the L-sphere has rows of L2-norm 1 and hence
-        # L1-norm <= sqrt(L); a bound of sqrt(L) admits any rotation/permutation of latent states.
-        # Rollout boundedness never rested on this: predict() clamps every output at z_clip, which
-        # main()'s 40-step rollout assert continues to verify.
+        # than a shuffled one. sqrt(L) admits every coordinate permutation of latent states (a
+        # permutation's residual rows have L1 <= 2) and, measured, the successor map the planted
+        # world needs (record section 9); it does NOT admit every rotation -- the map is residual,
+        # I + Wz, and the residual Q - I of an orthogonal Q can need row-L1 up to 1 + sqrt(L). On the
+        # planted world no row-scaling at all measured identical to sqrt(L) on two of three seeds
+        # (record section 6): the bound is not binding there, which is why it stays at sqrt(L) and
+        # not the derivation's 1 + sqrt(L). Rollout boundedness never rested on this: predict()
+        # clamps every output at z_clip, which main()'s 40-step rollout assert continues to verify.
         self.rho_max = math.sqrt(self.L)
         self.wd = 1e-3  # tiny weight decay on Wz each step
         self.lambda_roll = 0.3  # weight of the optional 2-step rollout consistency term
@@ -271,7 +279,8 @@ class JepaWorldModel:
 
         Loss = lambda_inv * invariance + lambda_var * L_var + lambda_cov * L_cov (+ a small 2-step rollout term).
         invariance = ||predict(encode(x_t), a_t) - sg(target_encode(x_{t+1}))||^2. Updates We, be, Wz, Wa, b by
-        closed-form gradients (backprop through unit(tanh(.)) by hand), row-scales Wz to stay contractive, then
+        closed-form gradients (backprop through unit(tanh(.)) by hand), row-scales Wz so its max row-abs-sum stays
+        <= rho_max = sqrt(latent_dim), then
         EMA-updates the target encoder. Pushes encode(x_t) into the VICReg ring buffer. In the ablation
         (anti_collapse=False) VICReg is off and the target is tied to the online encoder with no stop-grad.
 
@@ -440,7 +449,7 @@ class JepaWorldModel:
                 wai[j] -= lr * gai[j]
             self.b[i] -= lr * gb[i]
 
-        # -- spectral bound on Wz: small weight decay + row-scaling so max row-abs-sum stays < 1 (contractive) --
+        # -- bound on Wz: small weight decay + row-scaling so max row-abs-sum stays <= rho_max = sqrt(L) (see __init__) --
         for i in range(L):
             for k in range(L):
                 self.Wz[i][k] *= 1.0 - self.wd
@@ -702,6 +711,11 @@ class JepaWorldModel:
         self.n_act = na
         self._aidx = {a: i for i, a in enumerate(self.actions)}
         self.in_dim, self.L = D, L
+        # gamma and rho_max are DERIVED from L in __init__; re-derive them for the loaded geometry so
+        # a file of another width does not carry the constructor's width (2026-09-05, the collapse arc).
+        # lambda_var is read from the file below: an old snn_jepa/1 file restores its 1.0 beside these.
+        self.gamma = 0.5 / math.sqrt(self.L)
+        self.rho_max = math.sqrt(self.L)
         self.tau = float(obj.get("tau", self.tau))
         self.lr = float(obj.get("lr", self.lr))
         self.lambda_inv = float(obj.get("lambda_inv", self.lambda_inv))
@@ -1188,12 +1202,16 @@ def main():
     print("=" * 78)
 
     # ---- (6) REWARD-SHAPING: the reward head task-aligns the few-context latent and separates it
-    #      MORE than pure SSL does. Until 2026-09-05 this block asserted that pure SSL COLLAPSES the
-    #      contexts and that a readout recovers the rule only from the shaped latent -- criteria that
-    #      measured the collapse defect the arc fixed (the plain readout now recovers the rule too,
-    #      1.00 vs 1.00, so the "+0.3" contrast went red the day the defect left). What the head is
-    #      FOR survives as the criteria: it separates the contexts by a margin over plain SSL, and a
-    #      readout recovers the rule from its latent; the plain arm's numbers are reported beside it.
+    #      MORE than pure SSL does. Until 2026-09-05 this block also asserted `rs_plain_sp < 0.1`
+    #      ("pure SSL must collapse a few repeating contexts") and `rs_shaped_acc > rs_plain_acc + 0.3`.
+    #      The arc's panel corrected the first draft of this comment: the spread criterion did NOT go
+    #      red (pure SSL at the new defaults still maps these three repeating contexts within 0.088 of
+    #      each other, printed above -- a standing limitation of the defaults on a FEW-context stream,
+    #      distinct from the varying-input collapse the arc fixed); it was removed because it asserted
+    #      the defect's PRESENCE, which no shipped criterion may require. The "+0.3" readout contrast
+    #      is what went red (both readouts now recover the rule, 1.00 vs 1.00). What survives: the head
+    #      separates by a margin over plain SSL, and a readout recovers the rule from its latent -- the
+    #      latter a REGRESSION GUARD (the plain arm reads 1.00 too; it does not discriminate the head).
     assert rs_shaped_sp > rs_plain_sp + 0.3, (
         f"reward-shaping must separate the few contexts MORE than pure SSL "
         f"(spread {rs_shaped_sp:.3f} vs {rs_plain_sp:.3f})"
@@ -1201,7 +1219,7 @@ def main():
     assert rs_shaped_sp > 0.4, (
         f"reward-shaping must separate the contexts (spread {rs_shaped_sp:.3f})"
     )
-    assert rs_shaped_acc > 0.9, (
+    assert rs_shaped_acc > 0.9, (  # regression guard; the plain arm also reads 1.00 at the defaults
         f"a linear readout must recover the rule from the reward-shaped latent ({rs_shaped_acc:.2f})"
     )
     assert rs_off_none and rs_bytesame, (

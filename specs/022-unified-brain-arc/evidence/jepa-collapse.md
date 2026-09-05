@@ -9,9 +9,10 @@ tell the natural succession from a destroyed one.
 
 ## 1. The defect, and the one-line cause the orientation found
 
-**Measured (W2, twelve in-brain models at `f546e0a`, seeds 0–2, 3000 ticks):** the trained model's
-target-latent spread over the 256 distinct 64-d context patterns it saw is ×0.005–0.11 of a fresh
-model's spread over the same patterns; `latent_std()` reads 0.005–0.034; the prediction error per
+**Measured (W2, twelve in-brain models — nine at `f546e0a`, three at `6a1a437` — seeds 0–2, 3000
+ticks):** the trained model's target-latent spread over the 256 distinct 64-d context patterns it saw is
+×0.005–0.12 of a fresh model's spread over the same patterns (×0.005–0.11 on the nine, ×0.036–0.12 on
+the three shuffle cells); `latent_std()` reads 0.005–0.034; the prediction error per
 256-row block is identical to the fourth decimal under the natural order and under a fresh per-cycle
 permutation — on the W2 context and on the incumbent's. Brain-free (the design panel's replication on
 the exact classes): a PLANTED world with a deterministic 3-bit successor map is "mastered" as fast
@@ -35,8 +36,9 @@ collapse as a v3.18 finding ("the online arm latent measured ~0.003 apart across
 offered an opt-in reward-shaping head as the remedy; `_reward_shaped_encoder` is off on the live arm.
 
 **The fixtures.** Four readers of `latent_std()` exist. The module self-check asserts `full_std > 0.05
-and full_std > 3.0 · ctrl_std` and `tests/instruments/jepa_highdim_probe.py` asserts `std_full > 2 ·
-std_abl` — both on synthetic streams at `lambda_var = 20`. The only bars on the LIVE model are
+and full_std > 3.0 · ctrl_std` (at its private `lambda_var = 20`) and `tests/instruments/
+jepa_highdim_probe.py` asserts `std_full > 2 · std_abl` (at the module defaults — 1.0 then, `L` now; an
+earlier draft said both ran at 20, the panel's PH-6) — both on synthetic streams whose inputs vary. The only bars on the LIVE model are
 `autonomous_loop`'s self-check `jp_std > 0.0` and `live_brain`'s `jepa_std > 0.0`. Nothing applies the
 module's 0.05 floor to the configuration the arm runs.
 
@@ -67,7 +69,10 @@ Each world runs ORDERED and SHUFFLED (both id lists re-permuted under one fresh 
 SAME action draws per seed; 6 cycles (1536 steps); seeds 0, 1, 2. Per run: prediction error per
 256-block; the trained-vs-fresh target-latent spread over the world's distinct patterns; `latent_std()`;
 and — read-only, from the model's state with the module's own formulas — the magnitudes of the
-invariance gradient and the variance-hinge gradient on `dL/dz`, first and last 16 samples.
+invariance gradient and the variance-hinge gradient on `dL/dz`, first and last 16 samples. (The
+harness forms the VICReg batch as the buffer plus the current latent WITHOUT dropping the oldest — 33
+samples where `train_step` holds 32 — so its `|g_var|` is biased low by up to ~16 %; the panel's I-6.
+Direction and order of magnitude are unaffected, and the ratio was never a bar.)
 
 **Positive control for the harness itself (P8 clause 2):** a tabular oracle `(vis, aud, action) → the
 next pattern seen last time` scores ~0 error on the ordered planted world from cycle 2 and stays high on
@@ -97,7 +102,10 @@ each single change against `base` on the same seeds; the shipped change is the S
   `latent_std()` at 3000 ticks ≥ 0.05 on seeds 0–2 (`throwaway_home()`, `persist=False`, W2's harness).
   Beside it, not a bar: the trained/fresh spread ratio at 3000 ticks (today ×0.04–0.11 on the incumbent).
   If (a) passes and the in-brain floor fails, the floor is NOT lowered: the disagreement is recorded and
-  the `latent_std` gauge's own limitation (§1) is the first suspect, tested by the spread ratio.
+  the `latent_std` gauge's own limitation (§1) is the first suspect, tested by the spread ratio. (This
+  chooses the module's absolute floor over W2 §3.6's "a pre-registered fraction of the init spread"; no
+  fraction is pre-registered here, so the trained/fresh ratio is REPORTED and cannot be scored against a
+  bar in this arc — the panel's INT-7.)
 - **(c) THE GRADIENT RATIO, counted:** `|g_var| / |g_inv|` on `dL/dz` over the last 16 samples, per
   variant — reported beside every verdict, never a bar (a count before any rule).
 
@@ -246,9 +254,9 @@ not a reason to keep 0.9.
 
 | variant | ratio ordered/shuffled (s0 / s1 / s2) | spread ratio | `latent_std` ordered | ordered blocks 4–6 (s1) |
 |---|---|---|---|---|
-| `rho4` (λ 1) | 1.67 / 1.96 / 1.72 | ×0.013–0.020 | 0.012–0.019 | 0.0068, 0.0044, 0.0026 |
+| `rho4` (λ 1) | 1.67 / 1.96 / 1.72 | ×0.013–0.020 | 0.011–0.019 | 0.0068, 0.0044, 0.0026 |
 | `lamvar16_rho4` | 1.28 / **15.3** / 6.17 | **×1.59–1.87** | **0.232–0.244** (the ceiling) | 0.035, 0.106, **0.329** |
-| `lamvar16_rhoinf` | identical to `rho4` (the bound was not binding above 4) | | | |
+| `lamvar16_rhoinf` | identical to `lamvar16_rho4` on seeds 0 and 2; seed 1 differs in the fourth decimal in block 6 (0.3281 vs 0.3287) — the bound bound once above 4 (the panel's I-7) | | | |
 | `lamvar16_rho2` | 9.87 / 6.49 / 14.6 | ×1.48–1.68 | 0.24 | 0.043, 0.083, 0.139 |
 | `lamvar16_wd0` | 1.36 / 1.15 / 2.73 | ×0.10–0.12 | 0.06 | 0.026, 0.025, 0.030 |
 | `lamvar16_rho4_wd0` | 1.55 / 3.12 / 7.15 | ×1.47–1.84 | 0.24 | 0.249, 0.250, 0.148 |
@@ -290,7 +298,7 @@ predictor on the raw 64-d pattern, least squares on cycles 1–5 and scored on c
 
 | world | seed | held-out error ordered / shuffled | ratio | id bands only, ordered / shuffled |
 |---|---|---|---|---|
-| planted | 0 / 1 / 2 | 0.147 / 2.863 · 0.125 / 2.844 · 0.143 / 2.876 | **0.051 / 0.044 / 0.050** | **0.0000** / 2.72 on every seed |
+| planted | 0 / 1 / 2 | 0.147 / 2.863 · 0.125 / 2.844 · 0.143 / 2.876 | **0.051 / 0.044 / 0.050** | **0.0000** / 2.72–2.73 on every seed |
 | labels | 0 / 1 / 2 | 2.563 / 2.870 · 2.530 / 2.873 · 2.558 / 2.884 | 0.89 / 0.88 / 0.89 | 2.41 / 2.72 |
 
 The planted succession is exactly linearly predictable at the arm's own input (the id bands to
@@ -306,14 +314,15 @@ different model:**
 | `lamvar16_g125_rho4` | 0 | **0.238** | 0.127, 0.032, 0.045, 0.019, 0.012, **0.004** (falling) | ×0.61 | 0.164 | 0.09 |
 | `lamvar16_g125_rho4` | 1 | 1.33 | 0.122, 0.040, 0.031, 0.025, 0.028, 0.028 (plateau) | ×0.50 | 0.152 | 0.09 |
 | `lamvar16_g125_rho4` | 2 | 2.36 | 0.124, 0.023, 0.025, 0.028, 0.028, 0.020 (plateau) | ×0.67 | 0.189 | 0.00 (hinge OFF) |
-| `lamvar4_g125_rho4` | 0 / 1 / 2 | 1.97 / 3.57 / 3.74 | falling to 0.005–0.009 | ×0.03–0.05 (partial collapse) | 0.024–0.041 | 0.19–0.29 |
+| `lamvar4_g125_rho4` | 0 / 1 / 2 | 1.97 / 3.57 / 3.74 | falling to 0.005–0.009 | ×0.027–0.054 (partial collapse) | 0.024–0.041 | 0.19–0.29 |
 
 With a target the latent can actually reach, the hinge switches off (the gradient ratio reads 0.000 on
 seed 2 and 0.09 on the others, against 0.26–0.61 under `gamma = 1`), the latent settles in the
 INTERIOR (spread ×0.5–0.67 of fresh, `latent_std` 0.15–0.19 — neither collapsed nor at the ceiling)
 and the ordered error stops rising. On seed 0 the model then READS the cycle: its ordered error falls
-monotonically to 0.004 and sits at 0.24 of the shuffled twin's — the first and only cell in 66 runs where
-a JEPA predicted the deterministic world better than the destroyed one. Seeds 1 and 2 plateau at
+monotonically to 0.004 and sits at 0.24 of the shuffled twin's — the first cell in 61 runs to clear the
+0.5 bar (three earlier cells sat below 1.0 — `lamvar20_rho4` seed 0 at 0.65, the ablation and the
+labels world at 0.96–0.97 — none below 0.5; the panel's I-8). Seeds 1 and 2 plateau at
 0.02–0.03 (ratios 1.3 and 2.4). **Against the pre-registered 3-of-3 bar, (a) FAILS: 1 of 3.** §7's
 prediction ("the encoder settles, the ordered error stops rising") held; whether it clears was pinned
 uncertain, and it did not. `lamvar4` with the same target collapses partially: the reachable target is
@@ -340,17 +349,19 @@ CLEARS on 3 of 3**; the shuffled twins sit at 0.015–0.053 with their latents n
 the model now uses its latent exactly when the world rewards it. Honesty on the bar: §2.3 fixed 6
 cycles and the 6-cycle run failed 1 of 3 (§8); this is the SAME configuration for longer, disclosed as
 amendment 3 before it ran, and both results stand in the record. The in-tree test asserts the
-12-cycle form; "slow" is the reading, and the daemon's wake stream is thousands of ticks long.
+10-cycle form on seeds 0–2 (stricter than the 12 measured here; an earlier draft said 12, the panel's
+INT-3); "slow" is the reading, and the daemon's wake stream is thousands of ticks long.
 
 **Attribution owed (P8 clause 3), run at 12 cycles before the change ships:** `g125` alone
 (`lambda_var 1`, `rho_max 0.9`), `lamvar16_g125` (the old bound) and `g125_rho4` (`lambda_var 1`) —
 the shipped change is the SMALLEST of the four that clears 3 of 3.
 
-## 10. The bundled item — the curiosity gauge's resolution and hold, measured in-brain
+## 10. The bundled item — the curiosity gauge's resolution and hold, measured in-brain BEFORE the fix
 
-`cur_mag_gauge_probe.py` (archived): seed 0, 1500 ticks (742 wake rows), `throwaway_home()`,
-`persist=False`, read-only wraps on `intrinsic_reward` and `step_reward`, the UNROUNDED `arm._cur_mag`
-read every wake tick beside the 4-dp `state()["curiosity_mag"]`:
+`cur_mag_gauge_probe.py` (archived): at `b0bdc47`, seed 0, 1500 ticks (742 wake rows),
+`throwaway_home()`, `persist=False`, read-only wraps on `intrinsic_reward` and `step_reward`, the
+UNROUNDED `arm._cur_mag` read every wake tick beside the 4-dp `state()["curiosity_mag"]` (the post-fix
+run of the same probe is in §13.2):
 
 | window | held (both drives zero) | `raw_cur` zero | `raw_emp` zero | unrounded gauge: distinct / min / max / mean | 4-dp key: distinct / mean |
 |---|---|---|---|---|---|
@@ -358,8 +369,8 @@ read every wake tick beside the 4-dp `state()["curiosity_mag"]`:
 | last 1000 rows | 0.013 | 0.081 | 0.327 | 732 / 0 / 3.3e-2 / 9.4e-3 | 262 / 0.00943 |
 
 The gauge is a live EMA updated on 99–100 % of wake ticks; the hold case (both drives exactly zero)
-is 0–1.3 % of ticks; it decays from 0.033 at ~500 ticks to 1.8e-4 at 1500 — below the 4-dp display
-step by 3000, which is W3's "1 distinct value". **No code change**: the reading the W2 panel corrected
+is 0–1.3 % of ticks; its maximum over the last 1000 rows is 0.033 and its last-200 mean 7.2e-4 —
+below the 4-dp display step by 3000, which is W3's "1 distinct value". **No code change**: the reading the W2 panel corrected
 ("a frozen latch") is refuted in-brain as it was on the cells; the display rounds a live sub-resolution
 signal, and rendering 1e-4 as curiosity would not be more honest than rendering it as 0.0000. Whether
 the gauge moves once the world model reads succession is §2.5's downstream measurement.
@@ -392,10 +403,21 @@ the encoder settles, and a predictor allowed to take the step between two settle
 - `gamma = 0.5 / sqrt(L)` (0.125): a unit-norm latent's per-dimension std is at most 1/√L (Σ var_j ≤ 1),
   so the old `1.0` was never reachable and the hinge never switched off; half the isotropic ceiling is an
   interior fixed point on the normalized output's own scale (P1 case (a)).
-- `rho_max = sqrt(L)` (4): an orthogonal map of the L-sphere has rows of L2-norm 1 and hence L1-norm ≤ √L,
-  so a bound of √L admits any rotation/permutation of latent states while the old 0.9 forbade every step
-  longer than the latent's own radius; long rollouts stay bounded by `predict()`'s `z_clip` clamp, which
-  the module self-check's 40-step assert continues to verify.
+- `rho_max = sqrt(L)` (4): admits every coordinate permutation of latent states (a permutation's residual
+  rows have L1 ≤ 2) and — measured, §9 — the successor map the planted world needs, while the old 0.9
+  forbade every step longer than the latent's own radius. **Corrected by the panel (PH-1 / I-12):** the
+  predictor is RESIDUAL, so the map it bounds is `Wz = Q − I`, whose rows can need L1 up to 1 + √L for an
+  orthogonal `Q`; √L does NOT admit every rotation. It stays at √L on the measurement, not the
+  derivation: no row-scaling at all was identical to √L on seeds 0 and 2 and differed in the fourth
+  decimal on seed 1 (§6) — the bound is not binding on the planted world. Long rollouts stay bounded by
+  `predict()`'s `z_clip` clamp, which the module self-check's 40-step assert continues to verify (max
+  |z| 0.69 at the defaults).
+
+**Transfer across widths, measured by the panel (PH-4):** the derived forms read succession at other
+widths, but the 12-cycle 3-of-3 bar is width-specific — at L = 8 and L = 32 the same seeds read 2 of 3
+(the L = 32 seed-0 miss, ordered error climbing 0.021 → 0.119 over the last blocks, clears at 24
+cycles). The arm runs L = 16, where the read is 3 of 3; the docstring's generality is asserted from that
+width. The 0.5 in `gamma` is a chosen interior fraction (P1 case (a)), the only one measured.
 
 **What the two live-model self-check sites can and cannot assert — disclosed, and it changes §2.3(b) as
 written.** Both `autonomous_loop`'s `jp_std` and `live_brain`'s `jepa_std` are read after 90 steps on a
@@ -423,25 +445,33 @@ here; `main()` runs the DEFAULTS instead of its private `lambda_var 20 / lambda_
 P2); the two live-model self-check sites relabelled as the fixed-stimulus wiring checks they are (their
 `> 0.0` asserts kept — a wiring check's red is a model that never updated).
 
-**A criterion that measured the pathology went red when the pathology left**, and is folded here rather
-than hidden: `main()`'s reward-shaping block asserted "pure SSL must collapse a few repeating contexts"
-and "a readout recovers the rule from the reward-shaped latent, NOT the collapsed one (+0.3)". At the new
-defaults the plain readout also recovers the rule (1.00 vs 1.00), so the contrast that only a collapse
-could produce was gone. What the head is FOR survives as the criteria — it separates the contexts by a
-margin over pure SSL (1.768 vs 0.088) and a readout recovers the rule from its latent (1.00) — and the
-plain arm's numbers are reported beside it. `feedback-criteria-measure-the-pathology` is the memory this
-repeats.
+**Two criteria in `main()`'s reward-shaping block are gone, for two DIFFERENT reasons — and the first
+draft of this paragraph gave the wrong one for the first (the panel's I-1 / PH-2, folded).** (i) `assert
+rs_plain_sp < 0.1` ("pure SSL must collapse a few repeating contexts") did NOT go red: at the new
+defaults pure SSL on the self-check's three-context stream still packs the three contexts within 0.088 of
+each other (max possible 2.0). It was removed because it asserted the defect's PRESENCE — a shipped
+criterion may not require the pathology — and the 0.088 is disclosed as a standing limitation of the
+defaults on a FEW-context stream, distinct from the varying-input collapse this arc fixed (it bears on
+§13.2, and is carried there). (ii) `assert rs_shaped_acc > rs_plain_acc + 0.3` DID go red: both readouts
+now recover the rule (1.00 vs 1.00), so a contrast only a collapse could produce was gone. What the head
+is FOR survives: it separates the contexts by a margin over pure SSL (1.768 vs 0.088, asserted) and a
+readout recovers the rule from its latent (1.00, kept as a REGRESSION GUARD — the plain arm reads 1.00
+too, so it does not discriminate the head). The self-check's `lr = 0.08` against the arm's default 0.05
+remains a second configuration on that axis (PH-7), disclosed and not changed here.
+`feedback-criteria-measure-the-pathology` is the memory this repeats.
 
 **Verification on the fixed tree (all commands re-run, outputs archived):**
 
 | check | result |
 |---|---|
-| `tests/test_jepa_collapse.py` | **3 passed** (green only after the fix) |
+| `tests/test_jepa_collapse.py` | **3 passed** at commit 2 (green only after the fix); **4 passed** after the fold — seeds 0–2 restored to the order test, the ablation control added (`anti_collapse=False` must not clear the bar and must collapse: measured 0.98–1.08, ×0.002–0.004), the linear control repaired (a first draft passed by numerical accident — rank 24 of 65 with `rcond=None`, both held-out errors ~1e17; now regularised, fit on cycles 1–5, scored on the id bands of 6–10 with an absolute bar: 0.0000 vs 2.7–3.7) — the panel's I-2 / I-3 / INT-2; ~12 min, slow-marked |
 | module self-check `jepa_world_model` at the defaults | OK — collapse: full 0.083 vs ablation 0.007; JEPA beats identity 0.049 < 0.100 and the 1-D model 0.018 < 0.116; 40-step rollout bounded (max \|z\| 0.69); determinism + save/load round-trip; deep encoder 4/4 |
-| `autonomous_loop` self-check | OK — buffer std 0.029 on the fixed stimulus (relabelled); reward-latent goal formed; E-STOP freeze holds; its own `reward-enc` line still measures the head separating band latents (1.66 vs 0.043) |
-| `live_brain` self-check | OK — buffer std 0.037 on the fixed stimulus (relabelled); goal formed; determinism with JEPA live |
+| `autonomous_loop` self-check | OK — buffer std 0.029 on the fixed stimulus (relabelled: on a constant input the hinge never switches off and the encoder drifts, so the site reads the hinge's drift, not "~0" — PH-5); its `mlp-Q` line relabelled in the fold (its 0.043 is the plain-SSL spread over three band contexts after a SHORT run, not the collapse gauge — INT-8); its `reward-enc` line still measures the head separating band latents (1.66 vs 0.043) |
+| `live_brain` self-check | OK — buffer std 0.037 on the fixed stimulus (relabelled the same way); goal formed; determinism with JEPA live |
 | `hjepa_serve` self-check | OK (unchanged) |
-| `tests/instruments/jepa_highdim_probe.py` (3000 steps) | OK — latent std 0.229 vs ablation 0.018; learned probe +49 % over random |
+| `tests/instruments/jepa_highdim_probe.py` | OK — at `NORD_STEPS=3000`: latent std 0.229 vs ablation 0.018, learned probe +49 %; at its default 9000 (the panel's run, INT-6): 0.199 vs 0.018, +50 % |
+| two stale "contractive" comments in `train_step` (I-4) | fixed in the fold |
+| `load_weights` re-derives `gamma` / `rho_max` from the loaded `L` (INT-4) | added in the fold; an old `snn_jepa/1` file still restores its `lambda_var = 1.0` beside them — disclosed, unreachable on the live path |
 | `ruff check` + `ruff format --check` on the four files | clean |
 
 Disclosed, not changed: `cerebellum/spiking_jepa.py` carries its own copy of the 0.9 bound and the
@@ -453,7 +483,9 @@ model, so a restored old file cannot reintroduce the constants on the live path.
 ## 13. In-brain, at the fixed head `dbcf153`, on the brain's own stream (§2.5)
 
 Nine cells, `throwaway_home()`, `persist=False`, the live daemon running (it relaunched on the fix
-commit and was alive throughout); JSON and stdout archived under `archive/jepa-2026-09-05/inbrain/`.
+commit and was alive throughout); JSON and stdout archived under `archive/jepa-2026-09-05/inbrain/`
+(the six harness cells carry the head `dbcf153` in their JSON; the three `world_red_probe` cells carry
+none — the instrument does not write one — the panel's I-11).
 The "before" is W2's §4.2/§4.3b (the same harness at `f546e0a`) and W3's baselines.
 
 ### 13.1 The order read, in-brain — the model now reads the live succession (3 of 3)
@@ -484,14 +516,33 @@ direction, not a bar.
 and is recorded as NOT cleared.** §2.3(b) said what to do with exactly this outcome: the floor is not
 lowered, and the gauge's own limitation is the first suspect, tested by the spread ratio. The spread
 ratio says the same thing at a finer grain: on the live stream a FRESH model's spread over the 256
-distinct patterns is only 0.16–0.30 (the planted world's is 0.77–0.98 — W2 §1c measured the live
-context's vision and audio bands as near-constant bumps, so even a perfect encoder has little to
-spread), and the trained model holds ×0.14–0.22 of that against ×0.04–0.11 before — open by a factor
-of two to three, not the ×0.6 the planted world showed. Both statements are true and both are kept:
-the encoder on the live stream still compresses five- to sevenfold relative to fresh, AND it reads the
-succession anyway (§13.1). The shuffled cells' spread (×0.18, ×0.14, ×0.55) and `latent_std` (0.070,
-0.052, 0.064) sit at or above the ordered cells' — a destroyed succession leaves MORE latent variance
-to explain, which is what a model that fits the order should show.
+distinct patterns is only 0.16–0.30 (the planted world's is 1.03–1.20 over 128 patterns, §3 — W2 §1c
+measured the live context's vision and audio bands as near-constant bumps, so even a perfect encoder has
+little to spread), and the trained model holds ×0.14–0.22 of that against ×0.04–0.11 before — open by a
+factor of two to three, not the ×0.6 the planted world showed. The module self-check says the same on
+its own few-context stream: at the new defaults pure SSL still packs three repeating contexts within
+0.088 (§12) — the defaults open the latent where the input VARIES and leave a few-context stream
+compressed. Both statements are true and both are kept: the encoder on the live stream still compresses
+five- to sevenfold relative to fresh, AND it reads the succession anyway (§13.1). The shuffled cells'
+spread (×0.18, ×0.14, ×0.55) and `latent_std` (0.070, 0.052, 0.064) sit at or above the ordered cells'
+— a destroyed succession leaves MORE latent variance to explain, which is what a model that fits the
+order should show.
+
+**The drives, as §2.5 pre-registered and the first draft of this section omitted (the panel's INT-1):**
+
+| seed @3000 | `raw_cur == 0` fraction after row 300, ordered / shuffled | `raw_emp == 0` fraction, ordered / shuffled |
+|---|---|---|
+| 0 | 0.483 / 0.525 | 0.310 / 0.286 |
+| 1 | 0.000 / 0.018 | 0.284 / 0.328 |
+| 2 | 0.000 / 0.069 | 0.448 / 0.403 |
+
+And the gauge probe re-run at the fixed head (seed 0, 1500 ticks; §10 is the before): over the last 200
+rows the both-drives-zero hold rose 0.000 → **0.105**, `raw_cur` zero 0.000 → 0.430, `raw_emp` zero
+0.505 → **0.275**; the unrounded gauge's last-1000 mean 0.0094 → **0.0209**, its maximum 0.033 →
+0.103. The consumer the fix moves MOST is not the curiosity drive but **`Empowerment`** — its
+`step_reward` over the opened latent (the daemon runs `empowerment=True`) is nonzero on 72 % of the
+last 200 ticks against 50 % before, and it feeds `r_int` and the autotelic `_z_goal` gate. Recorded as a
+changed live consumer; its downstream effect on action selection is not measured in this arc.
 
 ### 13.3 Chain A after the fix — the curiosity gauge is unchanged at 6000 ticks, and its transients moved
 
@@ -520,11 +571,42 @@ the curiosity gauge; the categories the arm forms moved with the changed traject
 - **Red (b), in-brain, as pre-registered:** NOT cleared — 1 of 3 at the 0.05 floor; the latent opened
   two- to threefold and the floor's own limitation on a near-constant stream is measured, not assumed
   (§13.2). The floor is not lowered; the disagreement stands in the record.
-- **The fix ships** (commit `dbcf153`): the arc's purpose was a world model whose prediction error can
-  see succession, and it does — brain-free on a planted world and in-brain on the live one. A latent
-  that clears an absolute std floor on a near-constant stream was a secondary gauge, and its miss is
-  disclosed rather than folded into the pass.
+- **§2.7's PASS condition — (a) brain-free AND (b) in-brain — is NOT met as written** (the panel's
+  I-5 / PH-3; an earlier draft called (b) "a secondary gauge", a label applied after the read). The fix
+  ships on (a) alone — brain-free on a planted world and in-brain on the live one — **a disposition the
+  protocol did not pre-register and the session took**, disclosed here and in the plan's Q1 paragraph so
+  the owner can revert `dbcf153` with one command. (b) stays OPEN as a standing, reachable red owned by
+  a named follow-up: the in-brain `latent_std` floor at 3000 ticks on the live stream (the planted-world
+  form of (b) is green in `tests/test_jepa_collapse.py`).
 - **Owed onward:** Q1(a)'s consequence — L2 may now be targeted at this prediction error — is the
-  owner's to schedule (PLAN-FINAL Part H); `spiking_jepa`'s copied 0.9 bound is its own P2 follow-up;
-  the grower's held-out accuracy reading exactly its majority floor on seeds 1 and 2 (0.839 vs 0.843,
-  0.553 vs 0.555) is L1a's first probe, recorded here for it.
+  owner's to schedule (PLAN-FINAL Part H); the open (b) floor above; `spiking_jepa`'s copied 0.9 bound
+  is its own P2 follow-up; the grower's held-out accuracy reading exactly its majority floor on seeds 1
+  and 2 (0.839 vs 0.843, 0.553 vs 0.555) is L1a's first probe, recorded here for it.
+
+## 14. The arc's panel — three lenses on `2b3d067..fd40895`, and the fold
+
+Three read-only lenses (instrument / policy-honesty / integration; 185 tool calls; every finding
+reproduced by a command; reports archived at `archive/jepa-2026-09-05/record_panel.json`). All three
+verdicts: **yes-with-the-fold** — the fix is sound and reproduced to the digit (the pre-fix red rebuilt
+on the frozen tree at 0.00131/0.00129; the shipped defaults replay the archived 12-cycle cells exactly;
+the ablation still collapses and fails order at the shipped configuration; the 40-step rollout at the
+new bound stays at max |z| 0.82; every in-brain table matches its artefact; the gates, the envelope and
+the daemon's restored state untouched). The fold is a stacked commit and is stated as battery-verified
+only, not re-panelled (plan A.4 step 4).
+
+| id | severity | finding | disposition |
+|---|---|---|---|
+| I-1 / PH-2 | MAJOR | the removed `rs_plain_sp < 0.1` assert had NOT gone red (0.088 still passes); the removal's stated reason was false; the 0.088 is a standing limitation on a few-context stream; `rs_shaped_acc > 0.9` is a regression guard, not a discriminator | ACCEPTED: §12 and the `main()` comment re-stated; 0.088 carried into §13.2 |
+| I-2 / PH-8 / INT-2 | MAJOR | the test deviated from its pre-registration (seed 1 dropped; no ablation control) | ACCEPTED: seeds 0–2 and the ablation control restored (both green as measured) |
+| I-3 | MAJOR | the test's linear control passed by numerical accident (rank 24/65, `rcond=None`, errors ~1e17) | ACCEPTED: regularised, 5-cycle fit, id-band score, absolute bar, errors printed |
+| I-4 | MAJOR | two "contractive" comments in `train_step` outlived the bound | ACCEPTED: reworded |
+| I-5 / PH-3 | MAJOR | §2.7's PASS required (b) in-brain; the miss was relabelled "secondary" after the read | ACCEPTED: §13.4 says the clause is not met and the ship-on-(a) is the session's unregistered call; (b) kept OPEN; the plan's Q1 paragraph says the owner may revert |
+| PH-1 / I-12 | MAJOR/MINOR | the √L derivation is for `Q`, the predictor is residual (`Q − I` needs up to 1 + √L); "any rotation" is false | ACCEPTED: docstring, `__init__` comment and §11 corrected; the constant kept on the measurement (not binding) |
+| INT-1 | MAJOR | the drive logging §2.5 pre-registered was missing from §13; `Empowerment` is the consumer the fix moves most | ACCEPTED: §13.2 drive table + the post-fix gauge probe; §10 labelled pre-fix |
+| INT-3 | MAJOR | §9 said the test asserts the 12-cycle form; it asserts 10 | ACCEPTED |
+| INT-5 | MINOR | the plan's critical path still said "filed, pending Q1" | ACCEPTED: plan updated to SHIPPED with the open (b) |
+| INT-4 | MINOR | `load_weights` restored `L` without re-deriving `gamma`/`rho_max` | ACCEPTED: re-derived after the geometry is adopted |
+| I-6, I-7, I-8, I-9, I-10, I-11, PH-4, PH-5, PH-6, PH-7, PH-9, INT-6, INT-7, INT-8 | MINOR | a biased gradient-ratio recomputation; a seed that differed under `rhoinf`; "66 runs / only cell"; the planted fresh spread mis-sourced; three ranges; missing heads on the instrument's cells and an unsourced tick; transfer at L = 8 / 32; the fixed-stimulus sites read hinge drift, not ~0; the highdim probe ran at the defaults; `lr` 0.08 vs 0.05; ×0.12 not ×0.11; the probe's step knob; the (b) definition vs W2's; the `mlp-Q` label | ALL ACCEPTED, each at its section |
+
+Not changed by the panel: the verdict, the three constants, the four gates' outcomes, every table cell
+(recomputed by each lens from the archived JSON).
