@@ -115,3 +115,123 @@ def test_the_brain_feeds_the_engine_and_the_floors_reach_state():
         assert c._neuro_feed_refusals == cm.count("awake") > 0, (
             "a cut wire must be COUNTED on every wake tick, never silent"
         )
+
+
+# ------------------------------------------------------------------------------------------------
+# Phase 2's stream-independent arms (specs/022 evidence/l-parallel-arms.md, 2026-09-05): the
+# persistence oracle and the constant percept, at the mechanism's input contract, RED on the tree
+# before L1a / L3.
+# ------------------------------------------------------------------------------------------------
+import concurrent.futures as _cf  # noqa: E402
+import itertools as _it  # noqa: E402
+import math as _math  # noqa: E402
+import statistics as _st  # noqa: E402
+
+L_SEEDS = tuple(range(8))
+L_TICKS = 800
+T_BAR = 1.895  # paired one-sided t, 7 d.f., alpha 0.05 (the plan's statistic)
+
+
+def _l_cell(args):
+    """One in-brain cell: the engine's feed neutered per arm (LIVE untouched; ORACLE_PREVCAT: the
+    percept is the current category one-hot, so the buffered pair is one-hot(cat_{t-1}) -> cat_t;
+    NEUTER_PERCEPT: a constant; SYNTH: the synthetic chain through the same feed). Returns the
+    last-third accuracy, floors and the unit count. Runs in a worker process."""
+    seed, arm = args
+    from snn_data_lake.substrate.home import throwaway_home
+
+    with throwaway_home():
+        from snn_data_lake.cortex.brain import make_brain
+        from snn_data_lake.cortex.neurogenesis_engine import SyntheticPerceptStream
+
+        b = make_brain(seed=seed, persist=False)
+        eng = b.neuro
+        real = eng.observe
+        synth = SyntheticPerceptStream(seed=seed)
+
+        def observe(features, category):
+            feats = [float(v) for v in features]
+            cat = int(category)
+            if arm == "LIVE":
+                return real(feats, cat)
+            if arm == "NEUTER_PERCEPT":
+                return real([0.5] * len(feats), cat)
+            if arm == "ORACLE_PREVCAT":
+                oh = [0.0] * 64
+                oh[min(cat, 63)] = 1.0
+                return real(oh, cat)
+            return real(*synth.next())
+
+        eng.observe = observe
+        for _ in range(L_TICKS):
+            b.tick()
+        traj, bl = list(eng.trajectory), list(eng.baselines)
+        third = max(1, len(traj) // 3)
+        out = {
+            "seed": seed,
+            "arm": arm,
+            "units": eng.grown_units,
+            "refits": len(traj),
+            "acc": _st.fmean([r[2] for r in traj[-third:]]) if traj else None,
+            "pers": _st.fmean([r[2] for r in bl[-third:]]) if bl else None,
+            "maj": _st.fmean([r[1] for r in bl[-third:]]) if bl else None,
+        }
+        b.close()
+    return out
+
+
+def _paired(diffs):
+    """(clears, t, exact one-sided sign-flip p, non-tied) -- ties as zeros; DEGENERATE below 5 non-
+    tied."""
+    n = len(diffs)
+    non_tied = sum(1 for d in diffs if d != 0.0)
+    m = _st.fmean(diffs)
+    sd = _st.stdev(diffs) if n > 1 else 0.0
+    t = (m / (sd / _math.sqrt(n))) if sd > 0 else (float("inf") if m > 0 else 0.0)
+    obs = sum(diffs)
+    ge = sum(
+        1
+        for signs in _it.product((1, -1), repeat=n)
+        if sum(s * abs(d) for s, d in zip(signs, diffs, strict=True)) >= obs - 1e-12
+    )
+    p = ge / 2**n
+    return (t > T_BAR and p <= 0.05 and non_tied >= 5), t, p, non_tied
+
+
+def _run_arms(arms):
+    with _cf.ProcessPoolExecutor(max_workers=4) as ex:
+        rows = list(ex.map(_l_cell, [(s, a) for a in arms for s in L_SEEDS]))
+    return {(r["seed"], r["arm"]): r for r in rows}
+
+
+@pytest.mark.slow
+def test_the_persistence_oracle_clears_its_own_floor_under_the_admission_window():
+    """L-R1 (plan Part F): the oracle -- handed exactly the information persistence uses -- must
+    beat its own persistence floor, paired over 8 seeds at the plan's bar. RED before L1a (s2 v2:
+    -0.345, t -3.53): the recency window let no unit earn its place for a rarer category."""
+    res = _run_arms(["ORACLE_PREVCAT"])
+    d = [res[(s, "ORACLE_PREVCAT")]["acc"] - res[(s, "ORACLE_PREVCAT")]["pers"] for s in L_SEEDS]
+    clears, t, p, non_tied = _paired(d)
+    reach = sum(1 for x in d if x >= -1e-9)
+    assert non_tied >= 5, f"DEGENERATE-TIES: {non_tied} non-tied seeds ({d})"
+    assert clears, (
+        f"the persistence oracle must clear its own floor at the bar: t={t:.3f} p={p:.4f} "
+        f"reaches the floor on {reach}/8 (diffs {[round(x, 3) for x in d]})"
+    )
+
+
+@pytest.mark.slow
+def test_a_constant_percept_admits_one_unit_and_a_structured_stream_admits_more():
+    """L-R4 (plan Part F): a constant input carries nothing to discriminate rows, so the grower
+    admits exactly ONE unit (the class prior) on every seed, while the structured positive control
+    (the synthetic chain) admits more than one on every seed in the same run. RED before L3 (s2
+    v2: 24.1 units on the constant percept)."""
+    res = _run_arms(["NEUTER_PERCEPT", "SYNTH"])
+    const = [res[(s, "NEUTER_PERCEPT")]["units"] for s in L_SEEDS]
+    synth = [res[(s, "SYNTH")]["units"] for s in L_SEEDS]
+    assert all(u > 1 for u in synth), (
+        f"the positive control must admit > 1 unit on every seed ({synth})"
+    )
+    assert all(u == 1 for u in const), (
+        f"a constant percept must admit exactly 1 unit on every seed ({const})"
+    )
