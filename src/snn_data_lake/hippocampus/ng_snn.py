@@ -357,15 +357,23 @@ class NGSNN:
 
         allc = list(range(L))
         base = _val_rmse(allc)
-        drop = []
+        drop, cost = [], {}
         for j in range(L):
             keep = [c for c in allc if c != j]
             if not keep:
                 continue
-            if _val_rmse(keep) <= base + tol:  # removing it costs nothing -> it earns nothing
+            cost[j] = _val_rmse(keep)
+            if cost[j] <= base + tol:  # removing it costs nothing -> it earns nothing
                 drop.append(j)
-        if not drop or len(drop) >= L:
-            return 0  # never prune to nothing: an empty substrate is not a pruned one
+        if not drop:
+            return 0
+        if len(drop) >= L:
+            # L3 (specs/022, 2026-09-05): EVERY unit is droppable -- an all-redundant set. Until this
+            # landed the answer was "never prune to nothing", which kept ALL of them (24 on a constant
+            # percept, s2 v2). Keep exactly ONE: the unit whose removal costs the most held-out RMSE
+            # (ties -> the lowest index), so a substrate is never empty and never padded.
+            survivor = max(allc, key=lambda j: (cost.get(j, float("-inf")), -j))
+            drop = [c for c in allc if c != survivor]
         keep = [c for c in allc if c not in set(drop)]
         # THE SURVIVOR MASK, published so a caller can follow a unit's IDENTITY across a prune.
         # `return len(drop)` alone says how many went, never WHICH -- and anything keyed per unit
@@ -518,7 +526,7 @@ class NGSNN:
             # the (possibly subsampled) rows, and keep the TOP-delta by residual reduction: the drop
             # from adding unit s is sum_q <e_q,s>^2/||s||^2 = sum_q C_q ||e_q||^2 (Eq. 6 weighted by
             # per-class residual norm). The consistency criterion (Eq. 7) is a preference tiebreak.
-            poolW, poolb, poolscore, poolpass = [], [], [], []
+            poolW, poolb, poolscore, poolpass, poolzero = [], [], [], [], []
             for Lam in self.lambdas:  # multi-scale candidate search (Alg. 1)
                 P = self.t_cand
                 # drawn on the CPU stream (see __init__), then moved -- seed decides, hardware does not
@@ -532,10 +540,28 @@ class NGSNN:
                 )  # (P,m) Eq.6
                 score = (C * enorm.unsqueeze(0)).sum(dim=1)  # (P,) residual reduction
                 passes = (C >= thresh).all(dim=1)  # (P,) meets consistency criterion
+                # L3 (specs/022, 2026-09-05): a candidate whose response does not VARY across the
+                # fitted rows cannot discriminate them -- identical rows give identical rates, so the
+                # test is EXACT zero variance, not an epsilon (P1). At most ONE such unit is ever
+                # admitted (the class prior, when nothing has been admitted yet); once any unit exists a
+                # constant candidate carries nothing. Measured before this landed: a CONSTANT percept
+                # admitted 24 units on the brain's own stream (s2 v2), each shaving ridge slack.
+                # A DEAD candidate (zero norm: rate exactly 0 on every scoring row) is excluded always --
+                # measured 2026-09-05: the first form of this rule admitted one such unit on a constant
+                # percept, whose all-zero readout answered class 0 (accuracy 0.0 against a majority floor of
+                # 0.3-0.7). Exact zero, not an epsilon (P1): a dead LIF unit's rate is exactly 0.
+                dead = spn == 0.0
+                zero_var = (Sp.var(dim=0, unbiased=False) == 0.0) & ~dead
+                passes = passes & ~dead
+                score = score.masked_fill(dead, 0.0)
+                if W.shape[0] > 0:
+                    passes = passes & ~zero_var
+                    score = score.masked_fill(zero_var, 0.0)
                 poolW.append(Wp)
                 poolb.append(bp)
                 poolscore.append(score)
                 poolpass.append(passes)
+                poolzero.append(zero_var)
             allW = torch.cat(poolW, 0)
             allb = torch.cat(poolb, 0)
             allscore = torch.cat(poolscore, 0)
@@ -547,6 +573,13 @@ class NGSNN:
             keep = [
                 int(j) for j in top.tolist() if allscore[j].item() > 0.0 or bool(allpass[j].item())
             ]  # genuinely contributing
+            if (
+                W.shape[0] == 0 and keep
+            ):  # L3: at most one zero-variance unit, and only as the first
+                allzero = torch.cat(poolzero, 0)
+                zk = [j for j in keep if bool(allzero[j].item())]
+                if zk:
+                    keep = [j for j in keep if not bool(allzero[j].item())] + zk[:1]
             if not keep:  # nothing contributes -> saturate
                 break
             newW = allW[keep]
