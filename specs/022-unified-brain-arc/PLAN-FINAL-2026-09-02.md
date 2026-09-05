@@ -384,9 +384,9 @@ Startable now, in-process. Order inside the phase: W3 (the instrument) first —
   re-targeted at prediction error. **CORRECTED BY MEASUREMENT 2026-09-05 (W2 record §4.6):** the floor is
   intrinsic to the world MODEL — a latent that collapses on every context this body sees — and to a world
   with no first-order succession, not to the body; the prediction error this sentence names is the
-  collapsed one, so the L2 re-target is HELD pending Q1 (Part H). The record RECOMMENDS Q1(a) — no task
-  whose red reads `JepaWorldModel.prediction_error` before the JEPA-collapse arc is green — and does not
-  enact it; the sequencing is the owner's.
+  collapsed one, so the L2 re-target was HELD pending Q1 (Part H). **Q1 RATIFIED (a) by the owner
+  2026-09-05:** the JEPA-collapse arc runs first, and no task whose red reads
+  `JepaWorldModel.prediction_error` starts before that arc is green.
 - **Exit:** `evidence/w-exit.md`, three tables, the pre-registered baselines beside them.
 
 ### Phase 2 — Learning in the substrate (synaptic first, growth on plateau)
@@ -609,9 +609,11 @@ That is the method working.
 **Open since 2026-09-05 (`evidence/w2-context-latents.md` §5):** **Q1** — the Phase 1 null disposition
 sends L2 at a prediction error that is measured collapsed; ratify (a) the JEPA-collapse arc BEFORE L2 and
 before any task whose red reads `prediction_error`, (b) a different learning signal for L2, or (c) the
-sentence as written (not recommended). **Q2** — with the id lane refused, whether W2's surprise half (one
-scalar into the context, no alphabet fragmentation) gets its own probe or W2 closes whole (this plan
-closes it whole unless reopened).
+sentence as written (not recommended). **Q1 RATIFIED (a) BY THE OWNER IN CHAT, 2026-09-05** ("Q1 (a),
+start the JEPA-collapse arc"): the JEPA-collapse arc runs now, before L2 and before any task whose red
+reads `JepaWorldModel.prediction_error`; its record is `evidence/jepa-collapse.md`. **Q2** — with the id
+lane refused, whether W2's surprise half (one scalar into the context, no alphabet fragmentation) gets its
+own probe or W2 closes whole (this plan closes it whole unless reopened) — still open.
 
 **All five were given in chat on 2026-09-02** ("You are authorized to: O1 … O2 … O3 … O4 … O5 …"): O1–O3 are
 authorized ACTIONS (O1 and O2 executed the same day; O3 chosen by the session under the authorization and
