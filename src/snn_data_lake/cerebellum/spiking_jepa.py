@@ -33,7 +33,7 @@ GENUINELY fails):
     control that tests the wrong axis is still a control that passes.
   * TRACKS ACTION-CONDITIONED LATENT DYNAMICS AT THE IDENTITY MAP'S ERROR SCALE (claim 4, weakened
     honestly). The bounded action-conditioned latent map predict(state, command) -- a spectrally-
-    contractive LINEAR residual (row-abs-sum < rho_max, clamp +/- z_clip; copied from jepa_world_model,
+    bounded LINEAR residual (row-abs-sum <= rho_max = sqrt(L), clamp +/- z_clip; the bound body shared with jepa_world_model,
     duck-typed for PrefrontalExecutive.plan()) -- is trained by the JEPA invariance loss. ASSERTED: its
     held-out MSE stays at the identity predictor's error scale, and TIME-SHUFFLED targets never train a
     materially better predictor than the true order. "Beats the identity predictor" is NOT asserted --
@@ -234,10 +234,15 @@ class SpikingJEPA:
         self.lambda_jepa = 0.4  # top-down JEPA modulator weight on the top LIF layer
         self.espp_alpha = 1.0  # ESPP negative-pair push strength
 
-        # ---- predictor constants (copied from jepa_world_model) ----
+        # ---- predictor constants (the bound body is jepa_world_model.bound_rows; the CONSTANT is derived
+        #      the same way as there: rho_max = sqrt(L), the JEPA arc's record section 11 -- a residual map's rows
+        #      can need up to 1 + sqrt(L); sqrt(L) is kept on the measurement. Until 2026-09-05 this copied 0.9,
+        #      which forbids every step longer than the latent's own radius. In this module's own self-check
+        #      regime the bound never fires either way: max row-abs-sum 0.181 over 20 seed shifts against 0.9,
+        #      so every printed number is unchanged (evidence/jepa-live-floor.md section 3.3). ----
         self.z_clip = 3.0
-        self.rho_max = 0.9
-        self.wd = 1e-3
+        self.rho_max = math.sqrt(self.L)
+        self.wd = 1e-3  # a fixed constant in both classes, disclosed
 
         # ---- parameter init (all draws from the per-instance rng => seed => byte-identical weights) ----
         r = self.rng
