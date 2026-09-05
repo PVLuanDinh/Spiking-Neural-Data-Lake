@@ -449,3 +449,82 @@ Disclosed, not changed: `cerebellum/spiking_jepa.py` carries its own copy of the
 follow-up for its own arc, named here. `save_weights` persists `lambda_var` but not `gamma`/`rho_max`;
 the only external `load_weights` caller is the research tier, and the live arm never loads a saved
 model, so a restored old file cannot reintroduce the constants on the live path.
+
+## 13. In-brain, at the fixed head `dbcf153`, on the brain's own stream (§2.5)
+
+Nine cells, `throwaway_home()`, `persist=False`, the live daemon running (it relaunched on the fix
+commit and was alive throughout); JSON and stdout archived under `archive/jepa-2026-09-05/inbrain/`.
+The "before" is W2's §4.2/§4.3b (the same harness at `f546e0a`) and W3's baselines.
+
+### 13.1 The order read, in-brain — the model now reads the live succession (3 of 3)
+
+| seed | incumbent (ordered), blocks 4–6 | incumbent-shuffled, blocks 4–6 | last-block ratio | before the fix (W2 §4.3b), last block ordered / shuffled |
+|---|---|---|---|---|
+| 0 | 0.00458, 0.00453, **0.00469** | 0.00568, 0.00608, **0.00614** | **0.76** | 0.00157 / 0.00083 (shuffled lower) |
+| 1 | 0.00527, 0.00541, **0.00422** | 0.00566, 0.00890, **0.00721** | **0.59** | 0.00074 / 0.00081 |
+| 2 | 0.00335, 0.00348, **0.00436** | 0.00643, 0.00799, **0.00864** | **0.50** | 0.00070 / 0.00090 |
+
+Ordered below shuffled on every seed and every one of the last three blocks (nine of nine
+block-pairs; before the fix, seed 0 was the wrong way on all three and the others within 0.0002).
+The prediction error now carries the stream's succession — the signal Phase 2's L2 was told to
+re-target at, and could not have used before this arc. The ratios (0.50–0.76) sit above the planted
+world's 0.5 bar because the live stream's first-order succession is partial (W2 §3.1c: none in the
+frame labels; the body's own motion supplies what there is), and §2.5 pre-registered this read as a
+direction, not a bar.
+
+### 13.2 The latent on the live stream — opened two- to threefold; the 0.05 floor met on 1 of 3
+
+| seed | `latent_std` @3000 (before, W2 §4.2) | spread trained / fresh @3000 (before) |
+|---|---|---|
+| 0 | **0.058** (0.024) | 0.034 / 0.157 = **×0.22** (×0.11) |
+| 1 | 0.025 (0.021) | 0.043 / 0.303 = ×0.14 (×0.047) |
+| 2 | 0.046 (0.018) | 0.037 / 0.258 = ×0.14 (×0.042) |
+
+**Red (b) as pre-registered — `latent_std() ≥ 0.05` at 3000 ticks on seeds 0–2 — is met on 1 of 3
+and is recorded as NOT cleared.** §2.3(b) said what to do with exactly this outcome: the floor is not
+lowered, and the gauge's own limitation is the first suspect, tested by the spread ratio. The spread
+ratio says the same thing at a finer grain: on the live stream a FRESH model's spread over the 256
+distinct patterns is only 0.16–0.30 (the planted world's is 0.77–0.98 — W2 §1c measured the live
+context's vision and audio bands as near-constant bumps, so even a perfect encoder has little to
+spread), and the trained model holds ×0.14–0.22 of that against ×0.04–0.11 before — open by a factor
+of two to three, not the ×0.6 the planted world showed. Both statements are true and both are kept:
+the encoder on the live stream still compresses five- to sevenfold relative to fresh, AND it reads the
+succession anyway (§13.1). The shuffled cells' spread (×0.18, ×0.14, ×0.55) and `latent_std` (0.070,
+0.052, 0.064) sit at or above the ordered cells' — a destroyed succession leaves MORE latent variance
+to explain, which is what a model that fits the order should show.
+
+### 13.3 Chain A after the fix — the curiosity gauge is unchanged at 6000 ticks, and its transients moved
+
+`world_red_probe --record --seeds 0,1,2 --checkpoints 3000,6000` at the new defaults, against W3:
+
+| seed | `curiosity_mag` @3000 distinct@4dp, mean (W3) | @6000 (W3) | `entropy_first` bits / cats (W3) |
+|---|---|---|---|
+| 0 | 1, 0.00000 (1, 0.00000) | 1, 0.00000 (1, 0.00000) | 1.9632 / 7 (1.8801 / 7) |
+| 1 | **1, 0.00000** (127, 0.02001) | 4, 0.00030 (5, 0.00026) | 1.2755 / 4 (1.0369 / 4) |
+| 2 | **85, 0.00261** (1, 0.00000) | 1, 0.00000 (1, 0.00000) | 1.0063 / 5 (2.0415 / 6) |
+
+By 6000 ticks Chain A is at or near its floor on every seed exactly as before; at 3000 the one
+"alive" reading moved from seed 1 to seed 2. This is the expected shape and it is stated as such: the
+drive is RECTIFIED LEARNING PROGRESS — the rate at which error falls — and a model that has learned the
+succession has a flat error again. A world model that reads order makes the ERROR informative
+(§13.1); it does not make an LP-based curiosity stay alive on a stationary world. What the arc changes
+for the plan is the signal L2 can consume (the error's level and its ordered-vs-shuffled contrast), not
+the curiosity gauge; the categories the arm forms moved with the changed trajectory (entropy 1.96 /
+1.28 / 1.01 against 1.88 / 1.04 / 2.04) and are reported, not scored.
+
+### 13.4 Verdict
+
+- **Red (a), brain-free:** CLEARED 3 of 3 at 12 cycles (§9), each change necessary (§11).
+- **Red (a), in-brain (a direction by §2.5):** the live succession is read on 3 of 3 seeds, nine of nine
+  block-pairs (§13.1).
+- **Red (b), in-brain, as pre-registered:** NOT cleared — 1 of 3 at the 0.05 floor; the latent opened
+  two- to threefold and the floor's own limitation on a near-constant stream is measured, not assumed
+  (§13.2). The floor is not lowered; the disagreement stands in the record.
+- **The fix ships** (commit `dbcf153`): the arc's purpose was a world model whose prediction error can
+  see succession, and it does — brain-free on a planted world and in-brain on the live one. A latent
+  that clears an absolute std floor on a near-constant stream was a secondary gauge, and its miss is
+  disclosed rather than folded into the pass.
+- **Owed onward:** Q1(a)'s consequence — L2 may now be targeted at this prediction error — is the
+  owner's to schedule (PLAN-FINAL Part H); `spiking_jepa`'s copied 0.9 bound is its own P2 follow-up;
+  the grower's held-out accuracy reading exactly its majority floor on seeds 1 and 2 (0.839 vs 0.843,
+  0.553 vs 0.555) is L1a's first probe, recorded here for it.
