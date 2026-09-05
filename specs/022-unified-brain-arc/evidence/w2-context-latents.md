@@ -524,7 +524,9 @@ What the refusal establishes, stated so it is not re-derived:
 - **Q2 — W2's remaining half.** The plan's W2 sentence also asked for the encoder's surprise in the
   context. With the id lane refused, is a surprise-only context change (one scalar, no alphabet
   fragmentation) worth a probe of its own, or is W2 closed whole? This record closes it whole unless
-  the owner reopens the surprise half.
+  the owner reopens the surprise half. **Reopened by the owner 2026-09-05 ("Do all this") and CLOSED BY MEASUREMENT the
+  same day: `evidence/q2-surprise-context.md` — G-INFO met, G-FRAG not met (+2 / +2 / +3 units), the
+  grower harmed.**
 
 ## 6. Disposition
 

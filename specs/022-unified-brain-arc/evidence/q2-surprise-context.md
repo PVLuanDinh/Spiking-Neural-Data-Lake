@@ -81,3 +81,60 @@ effect on the observed tie pattern clears the bar; a null sample does not). G-FR
 
 ### 2.4 Disposition on a null
 Q2 closes whole; the failing gate named; no lane; the surprise keeps its three consumers.
+
+## 3. Results — 12 cells, 3000 ticks, 20:17–20:29 UTC, at `f1a9bf8` (the pre-registration commit's head;
+`probe/` in `memory/archive/q2-2026-09-05/`)
+
+| arm | seed | arm units (vis / aud learners) | engine acc last third / persistence / majority | `raw_emp` zero-frac after 300 | Cramér's V (action × surprise-half) | G-INFO held-out R² (incumbent only) | perr last full block |
+|---|---|---|---|---|---|---|---|
+| incumbent | 0 | 7 (9 / 15) | 0.183 / 0.973 / 0.335 | 0.310 | 0.1045 | **−53.25** (y var 0.0832) | 0.00453 |
+| incumbent | 1 | 4 (9 / 15) | 0.839 / 0.995 / 0.843 | 0.284 | 0.0929 | **−0.008** | 0.00541 |
+| incumbent | 2 | 5 (9 / 15) | 0.553 / 0.981 / 0.555 | 0.448 | 0.1500 | **0.009** | 0.00348 |
+| surprise | 0 | **9** (+2) | 0.140 / 0.864 / 0.335 | 0.260 | 0.0735 | (−1.43, the delivery in the pattern) | 0.00566 |
+| surprise | 1 | **6** (+2) | 0.263 / 0.975 / 0.253 | 0.319 | 0.1108 | (−0.36) | 0.00563 |
+| surprise | 2 | **8** (+3) | 0.021 / 0.980 / 0.346 | 0.358 | 0.1077 | (−0.45) | 0.00495 |
+| surprise_shuffled | 0 | 8 (+1) | 0.581 / 0.954 / 0.377 | 0.290 | 0.0686 | (−232.8) | 0.00555 |
+| surprise_shuffled | 1 | 6 (+2) | 0.419 / 0.930 / 0.668 | 0.246 | 0.1036 | (−0.10) | 0.00484 |
+| surprise_shuffled | 2 | 7 (+2) | 0.212 / 0.983 / 0.520 | 0.274 | 0.1198 | (−0.06) | 0.00403 |
+| surprise_pinned | 0 | 7 (+0) | 0.886 / 0.989 / 0.611 | 0.293 | 0.1270 | (−1.64) | 0.00387 |
+| surprise_pinned | 1 | 6 (+2) | 0.321 / 0.975 / 0.460 | 0.274 | 0.0861 | (−1.42) | 0.00646 |
+| surprise_pinned | 2 | 8 (+3) | 0.156 / 0.981 / 0.056 | 0.393 | 0.1183 | (−0.14) | 0.00505 |
+
+- **Instrument control (incumbent vs the live-floor arc's Stage 0b at 3000):** `raw_emp` zero-fractions 0.310 /
+  0.284 / 0.448 and perr 0.00453 / 0.00541 / 0.00348 reproduce that arc's incumbent digit for digit; arm units
+  7 / 4 / 5 likewise. The delivery fired on every wake tick (spliced 1481–1485; perception unified on all but
+  the first), the band's length is 4, and the vision/audio learners (9 / 15 prototypes) are identical across
+  arms, as they must be (they see the percept, not the context).
+- **The surprise scalar is alive:** 1481–1485 rows, mean 0.1545, 503–505 distinct values at 4 dp (the 300-tick
+  smoke's 0.013 was the run's first minute; W2 §1b's 0.082 over 294 rows is the same early regime).
+
+## 4. Verdict — each gate against §2's wording, MET / NOT MET
+
+- **G-INFO (the premise): MET, 3 of 3.** The incumbent's 64-d pattern predicts the surprise scalar with
+  held-out R² −53.25 / −0.008 / 0.009 (the −53 is the ridge extrapolating a near-constant pattern; the sign
+  says nothing predicts): the context does not carry the encoder's surprise, so a lane WOULD add information.
+- **G-FRAG (the plan's own condition, "no alphabet fragmentation"): NOT MET.** The arm learner's units under
+  `surprise` are 9 / 6 / 8 against the incumbent's 7 / 4 / 5 — +2 / +2 / **+3**; the bar was ≤ +2 on 3 of 3
+  (CHOSEN), and seed 2 exceeds it. The `surprise_shuffled` (+1 / +2 / +2) and `surprise_pinned` (+0 / +2 / +3)
+  arms fragment too: moving the band's fourth element from ~0.035 to the surprise's range fragments the
+  alphabet whatever the element carries — the fragmentation is the bump's, not the information's.
+- **G-CONSUMER: NOT MET on (i) and (ii); (iii) met by sign only.** (i) The engine's last-third accuracy under
+  `surprise` (0.140 / 0.263 / 0.021) is BELOW the shuffled arm's (0.581 / 0.419 / 0.212) on 3 of 3 and below
+  its own persistence floor on 3 of 3 — the lane HARMS the grower (more categories, a less learnable stream);
+  0 of 3. (ii) `raw_emp` zero-fraction differences vs the shuffled arm are 0.030 / 0.073 / 0.084, all inside
+  the 0.164 noise scale; 0 of 3. (iii) Cramér's V under `surprise` exceeds the shuffled arm's on seeds 0 and 1
+  (0.0735 vs 0.0686; 0.1108 vs 0.1036) and not on seed 2 (0.1077 vs 0.1198): 2 of 3 by SIGN, with margins
+  0.005 and 0.007 against a between-seed spread of 0.03–0.05 and an incumbent (no delivery at all) reading
+  0.09–0.15 — P(≥ 2 of 3 by sign under the null) = 0.5. **Pre-registration defect, disclosed:** (iii) carried
+  no margin, so it cannot fail informatively at n = 3; it is recorded as met by the letter and uninformative,
+  and it does not rescue the gate on its own reading.
+- **PROCEED requires G-INFO ∧ G-FRAG ∧ G-CONSUMER: NOT MET (G-FRAG). Q2 CLOSES WHOLE, BY MEASUREMENT.** No lane
+  is declared; the surprise keeps its three consumers; W2's row stays REFUSED; the plan's Part H Q2 reads CLOSED
+  BY MEASUREMENT with G-FRAG named.
+- **Reported, not scored:** the engine's last-third accuracy swings by seed and by any perturbation (incumbent
+  0.18 / 0.84 / 0.55; pinned 0.89 / 0.32 / 0.16) — at n = 3 it could not have resolved (i) in either
+  direction; a build's S = 8 reds would have needed the paired form. Recorded as a limitation of the probe's
+  power, not of the verdict (G-FRAG fails on a unit COUNT, which does not swing).
+- **Owed onward:** none from Q2. The surprise signal's existing consumers are the action gate's feature (loop
+  C2), `LearningProgress.consume_surprise` and `self_state.surprise`; a fourth consumer would need a red of
+  its own.

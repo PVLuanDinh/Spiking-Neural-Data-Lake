@@ -629,7 +629,12 @@ P8 clause 5), so that arc's PASS was not reached and **the revert option on `dbc
 scheduled by the same arc (Phase 2's L2 row): its trigger is L1b's synaptic plateau and the signal it may
 target is `JepaWorldModel.prediction_error` (while `dbcf153` stands), after L1b/L1c, no task reordered. **Q2** — with the id
 lane refused, whether W2's surprise half (one scalar into the context, no alphabet fragmentation) gets its
-own probe or W2 closes whole (this plan closes it whole unless reopened) — still open.
+own probe or W2 closes whole. **CLOSED BY MEASUREMENT 2026-09-05 (owner "Do all this";
+`evidence/q2-surprise-context.md`):** its own probe ran (12 cells, seeds 0–2) — the context does not carry
+the surprise (G-INFO met), but delivering the scalar as the band's fourth element FRAGMENTS the arm's alphabet
+(+2 / +2 / +3 units against a +2 bar; the pinned and shuffled controls fragment too — the bump, not the
+information) and HARMS the grower (last-third accuracy below the shuffled control on 3 of 3); no consumer
+moved beyond noise. No lane; W2 stays REFUSED.
 
 **All five were given in chat on 2026-09-02** ("You are authorized to: O1 … O2 … O3 … O4 … O5 …"): O1–O3 are
 authorized ACTIONS (O1 and O2 executed the same day; O3 chosen by the session under the authorization and
