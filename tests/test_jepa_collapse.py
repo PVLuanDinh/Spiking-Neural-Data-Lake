@@ -27,7 +27,15 @@ stricter than the 12 the record measured at):
   * THE LATENT AT THE ARM'S DEFAULTS DOES NOT COLLAPSE -- the trained model's spread over the
     world's distinct patterns stays above a quarter of a fresh model's and latent_std() above
     the module's own 0.05 floor. Likewise red before the fix.
-Slow (pure-Python JEPA steps; ~12 minutes in total); marked accordingly.
+  * THE BATCH MUST CARRY DIVERSITY (the live-floor arc, evidence/jepa-live-floor.md section 2.2
+    Amendment 1, 2026-09-05): on the same world with every (vision, audio) pair shown 32 consecutive
+    steps (the proprioception walk still moving, so consecutive patterns are near-duplicates as the
+    live stream's are), the model at the arm's defaults must still read the succession AND its
+    latent_std() must clear the module's own 0.05 floor. RED on the tree before the reservoir landed
+    (the counted red, section 3.4 there): the 32-latent consecutive ring buffer drove the encoder to
+    the isotropic ceiling, the predictor read NO order (ordered/shuffled 4.1-4.6) and the
+    consecutive gauge read 0.001.
+Slow (pure-Python JEPA steps; ~18 minutes in total); marked accordingly.
 """
 
 import random
@@ -55,14 +63,15 @@ def _vdc(i):
     return x
 
 
-def _world(seed, shuffled):
+def _world(seed, shuffled, k=1):
     """The planted world -- vision id i%8, audio (3i)%8, a deterministic 3-bit successor map --
     as the 64-d context the arm's own encoder builds; ordered, or re-permuted under one fresh
     permutation per cycle (pairing kept). The proprioception walk and the action draws are the
-    same for both arms of a seed."""
+    same for both arms of a seed. k > 1 shows every pair k consecutive steps (the repeated
+    world)."""
     vis = [i % 8 for i in range(CYCLE)]
     aud = [(3 * i) % 8 for i in range(CYCLE)]
-    n = CYCLES * CYCLE
+    n = CYCLES * CYCLE * k
     rng = random.Random(seed * 7919 + 1)
     prop, p = [], 0.5
     for _ in range(n + 1):
@@ -75,7 +84,8 @@ def _world(seed, shuffled):
             perm = random.Random(seed * 100003 + c).sample(range(CYCLE), CYCLE)
         else:
             perm = list(range(CYCLE))
-        seq.extend((vis[g], aud[g]) for g in perm)
+        for g in perm:
+            seq.extend([(vis[g], aud[g])] * k)  # k-fold repeats: near-duplicate consecutives
     pats = [
         encode_multimodal([_vdc(v)] * 4, [prop[t]], [_vdc(a)] * 4, 0.12)
         for t, (v, a) in enumerate(seq[: n + 1])
@@ -91,6 +101,17 @@ def _run(model, pats, acts):
         err.append(float(model.prediction_error(pats[t], acts[t], pats[t + 1])))
         model.train_step(pats[t], acts[t], pats[t + 1])
     last = err[-CYCLE:]
+    return sum(last) / len(last)
+
+
+def _run_block(model, pats, acts, block):
+    """As _run, with the last-block length given (the repeated world's block is CYCLE * k)."""
+    n = len(pats) - 1
+    err = []
+    for t in range(n):
+        err.append(float(model.prediction_error(pats[t], acts[t], pats[t + 1])))
+        model.train_step(pats[t], acts[t], pats[t + 1])
+    last = err[-block:]
     return sum(last) / len(last)
 
 
@@ -194,3 +215,33 @@ def test_the_latent_at_the_arms_defaults_does_not_collapse():
         assert ratio > 0.25, f"seed {seed}: trained/fresh spread ratio {ratio:.4f}"
         std = model.latent_std()
         assert std > 0.05, f"seed {seed}: latent_std {std:.4f} below the module's own floor"
+
+
+REPEAT_K = 32
+REPEAT_CYCLES = 5
+
+
+@pytest.mark.slow
+def test_the_batch_carries_diversity_on_a_repeated_world():
+    """The live-floor arc's brain-free red (evidence/jepa-live-floor.md section 2.2 Amendment 1):
+    every pair shown 32 consecutive near-duplicate steps. The defaults must still read the
+    succession (ordered under half the shuffled twin) and latent_std() must clear the module's own
+    floor."""
+    n = REPEAT_CYCLES * CYCLE * REPEAT_K + 1
+    for seed in SEEDS:
+        ord_p, acts, _ = _world(seed, shuffled=False, k=REPEAT_K)
+        shf_p, _, _ = _world(seed, shuffled=True, k=REPEAT_K)
+        ord_p, shf_p = ord_p[:n], shf_p[:n]
+        model = JepaWorldModel(ACTIONS, in_dim=64, seed=seed)
+        e_o = _run_block(model, ord_p, acts, CYCLE * REPEAT_K)
+        twin = JepaWorldModel(ACTIONS, in_dim=64, seed=seed)
+        e_s = _run_block(twin, shf_p, acts, CYCLE * REPEAT_K)
+        assert e_o < 0.5 * e_s, (
+            f"seed {seed}: on the repeated world the predictor must read order (ordered "
+            f"{e_o:.5f} vs shuffled {e_s:.5f}); the consecutive ring buffer read none (4.1-4.6)"
+        )
+        std = model.latent_std()
+        assert std > 0.05, (
+            f"seed {seed}: latent_std {std:.4f} below the module's floor on the repeated world "
+            "(the consecutive ring buffer read 0.001 here on a maximally spread encoder)"
+        )
