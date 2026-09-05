@@ -151,9 +151,12 @@ def marginal_holdout(y, n_val):
     earned its place and the readout answered the majority -- measured on the brain's own stream (s2 v2): the
     persistence ORACLE reached its own floor on 2 of 8 seeds. One function serves all three windows (P2).
 
-    Quotas: round(n_val * n_c / N) per category, at least one row for every category with >= 2 rows (a
-    single-row category stays in training -- there is nothing to hold out and still learn from), the
-    remainder added to / removed from the largest categories so exactly n_val rows are held out when N allows.
+    Quotas: round(n_val * n_c / N) per category (Python's round -- CHOSEN), at least one row for every
+    category with >= 2 rows (CHOSEN: a category with one row has nothing to hold out and still learn
+    from), the remainder added to / removed from the largest categories -- and, when the one-row floors
+    alone exceed n_val, the floors yield for the SMALLEST categories first -- so exactly n_val rows are
+    held out whenever n_val >= 1 and N > n_val. n_val itself is the caller's window size (the engine's
+    min(60, n // 3), NGSNN's max(8, int(0.2 N)) -- both pre-existing, both CHOSEN, P1 debt carried).
     Deterministic; no rng."""
     ys = [int(v) for v in (y.tolist() if hasattr(y, "tolist") else y)]
     n = len(ys)
@@ -186,6 +189,15 @@ def marginal_holdout(y, n_val):
             quota[c] -= 1
             total -= 1
         k += 1
+    if (
+        total > n_val
+    ):  # more categories than n_val: the one-row floors yield, smallest categories first
+        for c in reversed(cats):
+            if total <= n_val:
+                break
+            if quota[c] > 0:
+                quota[c] -= 1
+                total -= 1
     val = []
     for c in cats:
         if quota[c]:
@@ -394,7 +406,8 @@ class NGSNN:
         delta>1: block neurogenesis -- admit the top-`delta` candidates per step, ONE ridge solve per
         block. score_subsample: candidate SELECTION scores on a random row subsample of that size;
         the accepted neurons' S columns always span every row. When capacity is derived (l_max=None)
-        the growth solve fits only the first 80% of rows and the rest decide when to stop; the
+        the growth solve fits the training rows of a marginal-covering split (marginal_holdout; the
+        withheld ~20 % cover the category marginal) and the withheld rows decide when to stop; the
         shipped readout is then refit on all of them."""
         X = X.to(self.device).float()
         N = X.shape[0]
@@ -405,7 +418,7 @@ class NGSNN:
         delta = max(1, int(delta))
 
         # THE HELD-OUT SPLIT, and it has to be taken before anything else touches the rows. When
-        # capacity is derived rather than preset, the last n_val rows are withheld from the growth
+        # capacity is derived rather than preset, n_val marginal-covering rows are withheld from the growth
         # solve ENTIRELY -- not merely scored separately afterwards. Scoring rows the solve already
         # fit is in-sample under another name, and greedy pursuit drives in-sample residual toward
         # zero by construction, so such a criterion can never say "stop". Measured before this was
@@ -549,9 +562,13 @@ class NGSNN:
                 # A DEAD candidate (zero norm: rate exactly 0 on every scoring row) is excluded always --
                 # measured 2026-09-05: the first form of this rule admitted one such unit on a constant
                 # percept, whose all-zero readout answered class 0 (accuracy 0.0 against a majority floor of
-                # 0.3-0.7). Exact zero, not an epsilon (P1): a dead LIF unit's rate is exactly 0.
+                # 0.3-0.7). Exact zero, not an epsilon (P1): a dead LIF unit's rate is exactly 0. The
+                # constant-response test is an EQUALITY across the scoring rows (identical rows give
+                # identical rates), not a variance rounding to zero -- the record panel showed float32
+                # variance reads exactly 0.0 only for some (N, rate) pairs. Both tests read the SCORING rows
+                # (the fitted rows unless score_subsample is given).
                 dead = spn == 0.0
-                zero_var = (Sp.var(dim=0, unbiased=False) == 0.0) & ~dead
+                zero_var = (Sp == Sp[0]).all(dim=0) & ~dead
                 passes = passes & ~dead
                 score = score.masked_fill(dead, 0.0)
                 if W.shape[0] > 0:

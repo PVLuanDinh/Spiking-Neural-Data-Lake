@@ -136,6 +136,9 @@ import statistics as _st  # noqa: E402
 L_SEEDS = tuple(range(8))
 L_TICKS = 800
 T_BAR = 1.895  # paired one-sided t, 7 d.f., alpha 0.05 (the plan's statistic)
+TIE_TOL = (
+    1e-6  # CHOSEN: a float32 accuracy minus a float64 floor leaves ~1e-8 residues at the floor
+)
 
 
 def _l_cell(args):
@@ -174,6 +177,7 @@ def _l_cell(args):
         traj, bl = list(eng.trajectory), list(eng.baselines)
         third = max(1, len(traj) // 3)
         out = {
+            "unified": bool(getattr(b, "_perception_unified", False)),
             "seed": seed,
             "arm": arm,
             "units": eng.grown_units,
@@ -190,6 +194,7 @@ def _paired(diffs):
     """(clears, t, exact one-sided sign-flip p, non-tied) -- ties as zeros; DEGENERATE below 5 non-
     tied."""
     n = len(diffs)
+    diffs = [0.0 if abs(d) <= TIE_TOL else d for d in diffs]  # a float32 residue is a tie
     non_tied = sum(1 for d in diffs if d != 0.0)
     m = _st.fmean(diffs)
     sd = _st.stdev(diffs) if n > 1 else 0.0
@@ -210,15 +215,26 @@ def _run_arms(arms):
     return {(r["seed"], r["arm"]): r for r in rows}
 
 
+def _require_the_live_packs(res):
+    """The two reds below are properties of the LIVE percept stream (persistence floor 0.91-1.00).
+    On a clone without the gitignored perception packs the extero bands are a synthetic rotation
+    (floor 0.0) and the oracle learns its transitions outright -- the strict red would XPASS."""
+    if not all(r["unified"] for r in res.values()):
+        pytest.skip(
+            "the real perception packs are not on this machine; these reds read the live stream"
+        )
+
+
 @pytest.mark.slow
 @pytest.mark.xfail(
     strict=True,
+    raises=AssertionError,
     reason=(
         "L-R1's STANDING RED (evidence/l-parallel-arms.md section 3.2): under L1a's window the "
-        "oracle sits AT its persistence floor (mean -0.021, exactly at on 2 of 8, within 0.022 on "
-        "5 of 8; the incumbent window read -0.428) and does not EXCEED it -- the stream's "
-        "transitions are persistence-only; strict so a change that clears the bar must update the "
-        "record"
+        "oracle sits AT its persistence floor (mean -0.021, at the floor to 1e-8 on 2 of 8, within "
+        "0.022 on 5 of 8; the incumbent window read -0.428) and does not EXCEED it -- the live "
+        "stream's transitions are persistence-only; strict so a change that clears the bar must "
+        "update the record"
     ),
 )
 def test_the_persistence_oracle_clears_its_own_floor_under_the_admission_window():
@@ -226,10 +242,17 @@ def test_the_persistence_oracle_clears_its_own_floor_under_the_admission_window(
     beat its own persistence floor, paired over 8 seeds at the plan's bar. RED before L1a (s2 v2:
     -0.345, t -3.53): the recency window let no unit earn its place for a rarer category."""
     res = _run_arms(["ORACLE_PREVCAT"])
+    _require_the_live_packs(res)
     d = [res[(s, "ORACLE_PREVCAT")]["acc"] - res[(s, "ORACLE_PREVCAT")]["pers"] for s in L_SEEDS]
     clears, t, p, non_tied = _paired(d)
-    reach = sum(1 for x in d if x >= -1e-9)
-    assert non_tied >= 5, f"DEGENERATE-TIES: {non_tied} non-tied seeds ({d})"
+    reach = sum(1 for x in d if x >= -TIE_TOL)
+    if non_tied < 5:  # a degenerate run must never masquerade as the standing red
+        pytest.fail(f"DEGENERATE-TIES: {non_tied} non-tied seeds ({d})", pytrace=False)
+    mean_d = sum(d) / len(d)
+    if (
+        mean_d < -0.1
+    ):  # a REGRESSION of the window (the oracle back near -0.43) is not the standing red
+        pytest.fail(f"the oracle fell far below its floor again (mean {mean_d:.3f})", pytrace=False)
     assert clears, (
         f"the persistence oracle must clear its own floor at the bar: t={t:.3f} p={p:.4f} "
         f"reaches the floor on {reach}/8 (diffs {[round(x, 3) for x in d]})"
@@ -243,11 +266,20 @@ def test_a_constant_percept_admits_one_unit_and_a_structured_stream_admits_more(
     (the synthetic chain) admits more than one on every seed in the same run. RED before L3 (s2
     v2: 24.1 units on the constant percept)."""
     res = _run_arms(["NEUTER_PERCEPT", "SYNTH"])
+    _require_the_live_packs(res)
     const = [res[(s, "NEUTER_PERCEPT")]["units"] for s in L_SEEDS]
     synth = [res[(s, "SYNTH")]["units"] for s in L_SEEDS]
+    gap = [
+        abs(res[(s, "NEUTER_PERCEPT")]["acc"] - res[(s, "NEUTER_PERCEPT")]["maj"]) for s in L_SEEDS
+    ]
     assert all(u > 1 for u in synth), (
         f"the positive control must admit > 1 unit on every seed ({synth})"
     )
     assert all(u == 1 for u in const), (
         f"a constant percept must admit exactly 1 unit on every seed ({const})"
+    )
+    # the one unit must be ALIVE: its readout answers the training majority (the rule's first form
+    # admitted a dead unit whose all-zero readout answered class 0, accuracy 0.0; record 3.3)
+    assert all(g <= 1e-3 for g in gap), (
+        f"the constant arm's one unit must answer its majority floor (|acc - majority| {gap})"
     )
