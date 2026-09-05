@@ -2364,11 +2364,8 @@ class Brain:
         # on state() rather than swallowed silently: a feed that dies inside this except would
         # otherwise read as "the brain perceives nothing" forever.
         if self.neuro is not None and res.get("unit") is not None:
-            # L1b (2026-09-05): the third factor rides with the percept -- the ACh plasticity
-            # scale this tick's _tick_ensemble already stepped (None when no ACh is wired).
-            gate = self._ach.plasticity_scale() if self._ach is not None else None
             try:
-                self.neuro.observe(res["percept"], int(res["unit"]), gate=gate)
+                self.neuro.observe(res["percept"], int(res["unit"]))
             except Exception:
                 self._neuro_feed_refusals += 1
         pcs = float(res.get("pc_surprise", 0.0) or 0.0)  # live generative-percept prediction-error

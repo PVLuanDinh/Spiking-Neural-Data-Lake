@@ -31,7 +31,7 @@ on is met by construction; the fold of a review is unreviewed code.
 - **The floors and the accuracy.** `_refit` scores the held-out marginal-covering slice (`marginal_holdout`,
   L1a) with its majority and persistence floors; the L cells read the last-third mean of the refit rows.
   Under L1a + L3 LIVE sits BELOW its persistence floor on 8 of 8 seeds (0.31–0.95 vs 0.91–1.00,
-  `l-parallel-arms.md` §3.3) and above its majority floor on 7 of 8 (mean +0.11, t 1.29, not at the bar).
+  `l-parallel-arms.md` §3.3) and above its majority floor on 7 of 8 (mean +0.133, t 1.49, not at the bar).
 - **Governance a new rule joins.** FR-018: a GRADIENT_CLAIM row, declared read/write sets (a RuleSpec over an
   AuthoredRule), per-rule neuter attribution; `tools/rule_census.json` is regenerated only through
   `rule_composer --regen-census` and a new LOCAL row needs a `_CENSUS_ADJUDICATED` entry or the census ratchet
@@ -89,11 +89,20 @@ instrument's null), and the cells run ungated. No other fallback is pre-register
 
 Arms per seed (`l1b_probe.py`): **BATCH** (no rule: the incumbent = Stage A = the control), **BATCH_B** (the
 A/A pair), **OJA**, **BCM**, **OJA_G1**, **BCM_G1** (gate pinned at 1.0: the gate's attribution), **TWIN_OJA**,
-**TWIN_BCM** (the rule on, the readout FROZEN RANDOM: `NGSNN.predict` scores through a seeded random beta of the
-solved beta's Frobenius norm, one per model — the plan's untrained twin). `torch.set_num_threads(1)` in every
-worker (CHOSEN; the A/A pair reports the residual). Same rows: every arm at one seed sees the same stream (the
-engine feeds nothing back to the arm), asserted by identical majority AND persistence floors across the
-arms at every seed; a seed whose floors differ across arms is EXCLUDED and the exclusion counted.
+**TWIN_BCM** (the rule on, the readout UNTRAINED: `NGSNN.predict` scores through a seeded random beta of the
+solved beta's Frobenius norm, one per model object — the plan's untrained twin). *Read after the cells (panel
+I-1 / I-4 / M-5): the readout is RE-DRAWN at every open-gate refit (a new model object each refit; 5–8 draws per
+cell), not frozen; the class-level patch of `predict` also feeds `_refit`'s held-out accuracy into the T047 growth
+gate, so the twin's ADMISSION PATH diverges from its candidate's (W hashes differ on OJA seeds 0, 2, 3, 6 and BCM
+seeds 4, 5) — a two-item neuter (random scoring AND a growth gate fed random accuracy), and the Frobenius-norm
+matching is a no-op for an argmax. The twin conjunct is therefore a FLOOR check (a random readout cannot beat
+the majority on any substrate), not a dissociation; the discriminating half is the candidate's. A future twin
+must patch scoring only (the trajectory accuracy with the solved beta; randomize the reported prediction) and
+key the draw by refit index, not `id()`.* `torch.set_num_threads(1)` in every
+worker (CHOSEN; the A/A pair reports the residual). Same rows: every arm at one seed sees the same stream (a read path from
+the engine's accuracy to the metacognitive HOLD exists in code — `self_model.observe(self_predict_acc=…)` —
+so same rows is a MEASURED property, not a structural one), asserted by identical majority AND persistence
+floors across the arms at every seed; a seed whose floors differ across arms is EXCLUDED and the exclusion counted.
 
 ### 2.4 The reds — each conjunct quoted, MET / NOT MET one by one
 
@@ -105,11 +114,15 @@ tie-pattern check, not power — panel m8).
   (acc_CAND − acc_BATCH) over the last-third refit rows clears, per candidate. Reported beside it: the same
   on the LIVE instrument (live_accuracy − live_persistence, per arm), and units.
 - **L-R2(2), the row's letter: "an untrained twin (frozen random readout) sits BELOW its own persistence floor
-  while L1b does not."** As written this is failed by EVERY live arm (all sit 0.05–0.6 below a 0.91–1.00
-  persistence floor; §1) — a red both arms fail is not a red. **RESTATED at pre-registration (the session's
-  call under the authorization):** paired (acc_CAND − majority floor) clears the bar AND paired
-  (acc_TWIN_CAND − majority floor) does NOT clear. The incumbent reads +0.11 (t 1.29) on this conjunct: a
-  reachable red for the candidate, and the twin's random readout is expected at or below the majority.
+  while L1b does not."** As written the incumbent fails it (it sits 0.05–0.64 below a 0.91–1.00
+  persistence floor on 8 of 8; §1). **The letter is SCORED in §3.3 as written. Beside it, a LOWERED bar was
+  pre-registered as the session's call under the authorization:** paired (acc_CAND − majority floor) clears
+  the bar AND paired (acc_TWIN_CAND − majority floor) does NOT clear. The incumbent reads +0.133 (t 1.49) on
+  this conjunct: a reachable red for the candidate, and the twin's random readout is expected at or below
+  the majority. *(Relabelled in the fold, panel PH-1: the first writing justified the lowered bar by P8
+  clause 1 — "a red both arms fail is not a red" — which is the wrong clause: the letter HAD a reachable red
+  and lacked a reachable green for the incumbent; P8 says such a criterion is deleted, not loosened. The
+  lowered bar is a session choice, stated as one; the disposition is the same under both readings.)*
 - **Non-regression:** paired (acc_CAND − acc_BATCH) does not fall past −1.895.
 - **Attribution (P8 clause 3):** rule on vs off = L-R2(1); the gate: paired (CAND − CAND_G1), reported, no
   bar; the A/B: paired (OJA − BCM), reported.
@@ -156,7 +169,9 @@ subtracted RPE, each with its positive control — the three-factor row returns 
 
 ### 3.2 The cells — 6 arms × 8 seeds × 800 ticks, ungated, 4 at a time (23:19–23:30 UTC; `stage1/`; head(s) 4f26c9c; wall 51–63 s per cell; the daemon was up)
 
-Same rows: majority AND persistence floors identical across the six arms on every seed to 1e-6 — no seed excluded; seeds used [0, 1, 2, 3, 4, 5, 6, 7]. A/A (BATCH vs BATCH_B): max |Δacc| = 0.00e+00; W hashes equal on 8 of 8 seeds (the tie tolerance 1e-6 holds). Perception unified on every cell: True; feed refusals: none.
+Same rows: majority AND persistence floors identical across the six arms on every seed to 1e-6 — no seed excluded; seeds used [0, 1, 2, 3, 4, 5, 6, 7]. A/A (BATCH vs BATCH_B): max |Δacc| = 0.00e+00; W hashes equal on 8 of 8 seeds (the tie tolerance 1e-6 holds). Perception unified on every cell: True; feed refusals: none. **§2.6's instrument control: BATCH's majority
+and persistence floors, units and last-third accuracy equal the same-day incumbent cells of `l-parallel-arms.md`
+§3.3 (LIVE at `308f6db`) to 0.0 on 8 of 8 seeds — the perception input did not move today.**
 
 | arm | seed | units (last-third) | acc last third | persistence | majority | live acc / live pers | rule moved / Σ|dW| | gate mean (recorded, unused) | W hash |
 |---|---|---|---|---|---|---|---|---|---|
@@ -217,6 +232,14 @@ Same rows: majority AND persistence floors identical across the six arms on ever
 - **BCM, L-R2(1) ("beats the control on live accuracy at the bar"): paired (acc_BCM − acc_BATCH) clears** — t = -1.358, exact p = 0.8984, 2 / 5 / 1, mean -0.125 (planted t 7.00, null clears 0.040) → **NOT MET**.
 - **BCM, L-R2(2) restated: paired (acc_BCM − majority floor) clears** — t = 0.079, exact p = 0.4922, 5 / 3 / 0, mean +0.008 (planted t inf, null clears 0.050) → **NOT MET**; **AND TWIN_BCM does NOT clear** — t = -9.105, exact p = 1.0000, 0 / 8 / 0, mean -0.526 (planted t inf, null clears 0.050) → twin holds (does not clear).
 - BCM, non-regression (not below −1.895): t -1.358 → MET. Live instrument: (live acc − live pers) t = -5.815, exact p = 1.0000, 0 / 8 / 0, mean -0.255 (planted t inf, null clears 0.035); (live acc − BATCH's live acc) t = 0.283, exact p = 0.3906, 4 / 3 / 1, mean +0.013 (planted t 7.00, null clears 0.055). Units [4, 2, 3, 3, 5, 2, 4, 2]; rule moved per cell [369, 377, 374, 378, 376, 377, 370, 376]; Σ|dW| [372.306008, 203.003524, 528.428595, 905.460525, 1289.526463, 286.327029, 650.018584, 70.200062]; the recorded (unused) gate mean [0.0652, 0.0768, 0.0672, 0.0974, 0.1311, 0.2714, 0.0784, 0.0971].
+- **L-R2(2) BY THE LETTER ("an untrained twin sits BELOW its own persistence floor while L1b does not"):**
+  the twins sit below persistence on 8 of 8 (TWIN_OJA t −13.56, mean −0.706; TWIN_BCM t −23.59, mean −0.865)
+  and so do BOTH CANDIDATES on 8 of 8 (OJA acc − persistence t −3.81, mean −0.402; BCM t −3.22, mean −0.331;
+  the incumbent t −2.90, mean −0.206) → **NOT MET** for both, harder than under the lowered bar.
+- The counters: "moved" counts learn() calls that REACHED the update (a model present, an open gate, a
+  non-silent percept), not rows that changed; Σ|dW| carries the charge claim. The two gate means differ by
+  denominator: §3.2's column is the probe's mean over every fed tick (0.065–0.271 across seeds), the rule's
+  `mean_gate` is over post-first-model calls only.
 - **A/B (OJA − BCM):** t = -0.583, exact p = 0.6562, 3 / 3 / 2, mean -0.071 (planted t 4.58, null clears 0.050).
 - **The incumbent (BATCH):** units [2, 2, 2, 7, 6, 3, 3, 2]; acc [0.3111, 0.9167, 0.825, 0.6556, 0.6278, 0.8333, 0.8667, 0.9472]; (acc − majority) t = 1.487, exact p = 0.0898, 7 / 1 / 0, mean +0.133 (planted t inf, null clears 0.065); (acc − persistence) t = -2.898, exact p = 1.0000, 0 / 8 / 0, mean -0.206 (planted t inf, null clears 0.045). Floors per seed (majority, persistence): {'0': [0.7444, 0.9528], '1': [0.7389, 0.9833], '2': [0.6944, 0.9528], '3': [0.3194, 0.9111], '4': [0.5083, 0.95], '5': [0.7583, 0.9472], '6': [0.5056, 0.9333], '7': [0.6528, 1.0]}.
 - The gate-attribution row of §2.4 is VOID (the gate withdrawn at Stage 0, §3.1).
@@ -228,13 +251,21 @@ Same rows: majority AND persistence floors identical across the six arms on ever
   t 0.079, p 0.4922, 5/3/0, mean +0.008); the twin half held on both (TWIN_OJA t -4.248, p 1.0000, 0/7/1, mean -0.368; TWIN_BCM
   t -9.105, p 1.0000, 0/8/0, mean -0.526) — the frozen random readout sits far below the majority, so the conjunct's red
   was reachable and the candidates did not reach the green.
-- **Non-regression: OJA FELL PAST THE BAR** (t -1.959 < −1.895; 5 losses, seeds 2 and 7 at −0.74 and −0.49) — a
-  measured HARM, not a null: rotating every firing unit's input row toward the percept direction makes the grown rows
-  more alike and the LIF features less discriminative, and the readout re-solved on those features is WORSE. **BCM did
-  not fall past the bar** (t -1.358) and did not gain: its depression term (a unit below its own running rate moves
-  away) undoes part of the collapse and none of the loss. The live instrument reads the same story (OJA live acc − the
-  incumbent's live acc: t -1.038, p 0.7969, 4/4/0, mean -0.089; BCM t 0.283, p 0.3906, 4/3/1, mean +0.013); every arm's live
-  accuracy sits below its live persistence floor (OJA t -4.658, p 1.0000, 0/8/0, mean -0.357; BCM t -5.815, p 1.0000, 0/8/0, mean -0.255).
+- **Non-regression: OJA FELL PAST THE BAR** (t −1.959 < −1.895; 5 losses, seeds 2 and 7 at −0.74 and −0.49; the
+  mirrored exact p in the harm direction 0.039) — a measured HARM of the rule AS DEPLOYED. **Its cause, read from the
+  refit rows (panel M-1, verified by the session): input rows moving under a readout the growth gate holds STALE.**
+  Every collapse follows a growth row: the T047 gate then CLOSES (its stop is sticky) and each closed-gate refit
+  scores the RETAINED model — whose `W` the rule keeps moving on every wake percept while `beta` stays at the last
+  open-gate solve — so the predictions degenerate to a CONSTANT non-majority class: OJA seed 2 reads 0.083–0.100 for
+  six rows (a ~0.08 minority class under a 0.69 majority), seed 7 falls 0.983 → 0.267 within one refit interval, and on
+  seeds 0 and 7 OJA and BCM read IDENTICAL accuracies for the last 4–6 rows with different substrates (acc + majority
+  ≈ 1 − the minor classes). A readout re-solved on the moved rows could not produce that; the incumbent shows the
+  SAME mode with frozen `W` (BATCH seed 0 rows 15–18 at 0.067–0.167 under a 0.72–0.78 majority, recovering only at
+  the next open refit). The first writing's cause — "aligned rows lose the feature diversity the readout uses" — is
+  therefore an UNMEASURED hypothesis (no diversity statistic was taken in the cells), retracted as a cause. **BCM did
+  not fall past the bar** (t −1.358) and did not gain. The live instrument (which reads the stale-readout interaction
+  on every tick): OJA live acc − the incumbent's live acc mean −0.089; BCM +0.013 (t 0.28); every arm's live accuracy
+  sits below its live persistence floor (OJA t −4.66; BCM t −5.82).
 - **Side reading (reported):** OJA ADMITTED MORE UNITS than the incumbent on 6 of 8 seeds ([6, 5, 4, 6, 15, 4, 6, 2] vs
   [2, 2, 2, 7, 6, 3, 3, 2]): the moved rows change the admission path (a fit seeded from rotated rows leaves residual the
   greedy pursuit fills with new units), so the accuracy comparison is between substrates that differ in width as well
@@ -248,17 +279,29 @@ Same rows: majority AND persistence floors identical across the six arms on ever
   consumed by nothing); perception unified on every cell; refusals none; one head (`4f26c9c`). The incumbent
   (BATCH): units [2, 2, 2, 7, 6, 3, 3, 2], (acc − majority) t 1.487, p 0.0898, 7/1/0, mean +0.133, (acc − persistence) t -2.898, p 1.0000, 0/8/0, mean -0.206.
 
-**DISPOSITION — the rule is DELETED (P8 clause 5, the licence working), exactly as §2.5 pre-registered: neither
-candidate cleared.** What stays: the engine's per-percept hook (`observe(..., gate=)`, `online_rule=None`) and the LIVE
-instrument (`live_accuracy` / `live_persistence` on state(), scored before any learning), with their own brain-free
-test — an instrument, not a method; the brain keeps passing the ACh gate at the feed (recorded, consumed by nothing
-until a gated rule earns its place). What goes: `plasticity/grown_input_rule.py`, its tests, its registration rows,
-its census adjudication (the census regenerated), the engine's kind-name constructor branch. **The negative to keep
-(the re-proposal guard):** an UNSUPERVISED Hebbian / BCM rule on the grown units' input rows, however normalized, does
-not raise next-category accuracy on this stream and Hebbian alignment HARMS it at the bar — the random-feature
-diversity the readout relies on is what the rule erodes. The next candidate, if any, must carry the TASK into the
-rule without transport: a scalar broadcast of the live prediction's correctness (the R-STDP shape already in the
-tree) gating the same local step — pre-registered in its own arc, not this one. **The plan's L2 trigger ("L1b's
+**DISPOSITION — the rule is DELETED (P8 clause 5, the licence working), as §2.5 pre-registered: neither candidate
+cleared, under the lowered bar or the letter.** What stays: the LIVE instrument (`live_accuracy` / `live_persistence`
+on state(), scored from the PREVIOUS percept before this tick's transition is buffered — the percept it predicts
+from was seen by the model one tick earlier, unsupervised, no label leak, not unseen) with its own brain-free test
+asserting that ordering — an instrument, not a method. What goes (the fold completed the deletion the first writing
+left half done, panel I-2 / I-5 / PH-6): `plasticity/grown_input_rule.py`, its tests, its registration rows, its
+census adjudication (the census regenerated), the engine's kind-name constructor branch — AND, departing from
+§2.5's "what stays" as the session's call because P3 does not exempt a dormant wire by disclosure: the engine's
+`online_rule` hook and its charge counter, the `gate` kwarg and the brain's ACh pass at the feed (a write-only wire
+with no consumer), and BCM's theta bookkeeping (a refit carry-over, a prune re-index, an always-empty npz member
+and a restore read with no writer left). The plug point is described in the engine's docstring; the next rule
+re-adds it with its consumer. The pre-registered in-tree strict L-R2 test (§2.5, "carries the reading either
+way") is NOT carried on a deletion — its arms would import the deleted rule; this record and Part F's L-R2 row
+carry the reading (panel I-3 / PH-3 / M-2). **The negative to keep (the re-proposal guard), SCOPED to what was
+measured (panel PH-7 / M-1):** at μ = 0.05 (CHOSEN, untuned), T = 15, ungated, 800 ticks, with the readout
+re-solved only at open-gate refits, on this stream, a norm-preserving Hebbian step on the grown units' input rows
+HARMS next-category accuracy past the bar and BCM neither harms nor helps; the harm's measured mechanism is the
+stale-readout interaction above, and "diversity erosion" is a hypothesis without a statistic. Before that negative
+is generalized it owes one cell: a rule arm with the growth-gate verdict logged per refit row, or a
+re-solve-beta-on-every-refit control. **What it points at:** the READOUT must co-adapt with any moving input
+weights — L1c (the readout online) precedes any second input-weight rule, and that rule's candidate (a scalar
+broadcast of the live prediction's correctness gating the same local step, the R-STDP shape) is pre-registered in
+its own arc after L1c. Owed onward: the μ derivation (P1), a gate that is alive on the tail (§3.1). **The plan's L2 trigger ("L1b's
 synaptic plateau") is restated by the session (Part H's authorization): L2 reads the online READOUT's residual
 plateau if L1c lands, else the T047 growth gate's own refit-accuracy plateau (already live) and the row reduces to
 its attribution red.**
@@ -270,4 +313,33 @@ its attribution red.**
 | `0fc7a89` 1 | this record §1–2 (pre-registration) | before any cell |
 | `4b77571` 2 | the build: `plasticity/grown_input_rule`, the engine's hook + live instrument + theta bookkeeping, the ACh gate at the feed, the census row, four brain-free reds | the module self-check + 9 brain-free tests + both claim gates |
 | `4f26c9c` 3 | Stage 0 read: the gate withdrawn per §2.2 (`gated=False`), §3.1 | 3 GATE0 cells |
-| 4 (this commit) | the cells (§3.2–3.3), the verdict (§4), the DELETION on the null, the plan's L1b / L2 / L-R2 rows | 48 cells; P8 clause 5 |
+| `34583a0` 4 | the cells (§3.2–3.3), the verdict (§4), the DELETION on the null, the plan's L1b / L2 / L-R2 rows | 48 cells; P8 clause 5 |
+| 5 (this commit, the fold) | the record panel's fold: the deletion completed (theta plumbing, the hook and the gate wire — P3), the live-instrument test asserts the ordering, the twin restated, the letter scored, the harm's cause rewritten and the negative scoped, §6 | battery-verified only; the fold of a review is unreviewed code |
+
+The archived `grown_input_rule.py` under `archive/l1b-2026-09-05/` is a pre-commit DRAFT (its first-form reds); the
+measured artifact is `git show 4f26c9c:src/snn_data_lake/plasticity/grown_input_rule.py` (panel M-7).
+
+## 6. Record panel (three lenses, Workflow; `record_panel.json`) — ledger
+
+All three lenses: the disposition STANDS (deletion on the null). Findings and dispositions; "folded" = commit 5.
+
+| id | finding (one line) | disposition |
+|---|---|---|
+| I-1 MAJOR | the twin's `predict` patch leaks into the growth gate; the twin's substrate diverged on 6 of 16 twin cells | folded: §2.3 restated as a two-item neuter; the twin half is a floor check; a scoring-only twin prescribed |
+| I-2 MAJOR | BCM's theta plumbing survived with no writer (P3) | folded: deleted from the engine |
+| I-3 / PH-3 / M-2 | the pre-registered in-tree strict L-R2 test was not delivered and not disclosed | folded: §4 states why |
+| I-4 | "frozen" is per model object — re-drawn at each open refit | folded: §2.3 wording; the plan's row |
+| I-5 / PH-6 | the hook and the ACh gate wire are a write-only wire with no consumer (P3 shapes 4 and 7) | folded: REMOVED (P3 over §2.5's "stays"; the session's call) |
+| I-6 | the instrument test's hook assertion was vacuous; the ordering not asserted | folded: the test asserts the prediction precedes the buffer, hand-computed |
+| I-7..I-10 NOTE | the live path, the gates, the tick cost (~0.3 % of the wake tick), the state surfaces as claimed | none |
+| PH-1 MAJOR | the restated conjunct is a LOWERED bar justified by the wrong P8 clause | folded: the letter scored (NOT MET harder); relabelled as the session's call |
+| PH-2 | two digits (+0.11 / t 1.29; 0.05–0.6) | folded: +0.133 / t 1.49; 0.05–0.64 |
+| PH-4 / M-5 | the twin controls more than the record said | folded with I-1 |
+| PH-5 / M-6 | "moved" counts calls reaching the update; two gate means, one label | folded: §3.3 |
+| PH-7 | the negative overreached one operating point; μ derivation owed | folded: scoped; owed onward |
+| PH-8..PH-10 NOTE | the pre-registration unedited after commit 1; the control scoping honest; every §3 digit reproduces | none |
+| M-1 MAJOR | the harm's stated cause is wrong: rows moving under a readout the closed gate holds stale; the incumbent shows the same mode | folded: §4 rewritten; the negative scoped; the owed cell named; the next candidate re-pointed at the readout (L1c first) |
+| M-3 | §2.6's control never reported | folded: §3.2 (identical to 0.0 on 8 of 8) |
+| M-4 | "the engine feeds nothing back" false by code; same rows by measurement | folded: §2.3 |
+| M-7 | the archived module is a draft; the git hash is the artifact | folded: §5 note |
+| M-8..M-12 NOTE | same rows, A/A, every statistic reproduced (the harm also clears the mirrored p 0.039), Stage 0, the instrument's ordering, the brain-free reds | none |
