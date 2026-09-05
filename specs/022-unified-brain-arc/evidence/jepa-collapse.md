@@ -406,3 +406,46 @@ not collapse. They are relabelled as what they are — wiring checks that the mo
 buffer live — and the collapse floor lives where the input varies: the new test on the planted world
 (brain-free, seeds 0 and 2, 10 cycles) and §2.5's in-brain measurement on the real stream. The (b) red
 as pre-registered is therefore carried by the test and the in-brain cells, not by the two 90-step sites.
+
+## 12. The fix, landed and verified (commit 2 of the arc)
+
+**Commit 1 (`2b3d067`) — the red:** `tests/test_jepa_collapse.py` (the planted world's learnability as
+the positive control; the order red; the collapse gauge; slow-marked, seeds 0 and 2, 10 cycles) plus this
+record through §11 and the plan's Q1 ratification. Run on that tree: the control PASSED, the order test
+FAILED with ordered 0.00131 against shuffled 0.00129 (indistinguishable worlds) — the red counted on the
+committed tree before the rule.
+
+**Commit 2 — the fix, one change (three constants, one derivation):** `JepaWorldModel.__init__` now
+derives `lambda_var = L` (the constructor's `lambda_var=None` default; callers may still pass a value),
+`gamma = 0.5 / sqrt(L)` and `rho_max = sqrt(L)`, each with its reason at the symbol; the module docstring's
+design claims corrected (the hinge target and the "contractive" bound) and a dated paragraph pointing
+here; `main()` runs the DEFAULTS instead of its private `lambda_var 20 / lambda_cov 2` (one configuration,
+P2); the two live-model self-check sites relabelled as the fixed-stimulus wiring checks they are (their
+`> 0.0` asserts kept — a wiring check's red is a model that never updated).
+
+**A criterion that measured the pathology went red when the pathology left**, and is folded here rather
+than hidden: `main()`'s reward-shaping block asserted "pure SSL must collapse a few repeating contexts"
+and "a readout recovers the rule from the reward-shaped latent, NOT the collapsed one (+0.3)". At the new
+defaults the plain readout also recovers the rule (1.00 vs 1.00), so the contrast that only a collapse
+could produce was gone. What the head is FOR survives as the criteria — it separates the contexts by a
+margin over pure SSL (1.768 vs 0.088) and a readout recovers the rule from its latent (1.00) — and the
+plain arm's numbers are reported beside it. `feedback-criteria-measure-the-pathology` is the memory this
+repeats.
+
+**Verification on the fixed tree (all commands re-run, outputs archived):**
+
+| check | result |
+|---|---|
+| `tests/test_jepa_collapse.py` | **3 passed** (green only after the fix) |
+| module self-check `jepa_world_model` at the defaults | OK — collapse: full 0.083 vs ablation 0.007; JEPA beats identity 0.049 < 0.100 and the 1-D model 0.018 < 0.116; 40-step rollout bounded (max \|z\| 0.69); determinism + save/load round-trip; deep encoder 4/4 |
+| `autonomous_loop` self-check | OK — buffer std 0.029 on the fixed stimulus (relabelled); reward-latent goal formed; E-STOP freeze holds; its own `reward-enc` line still measures the head separating band latents (1.66 vs 0.043) |
+| `live_brain` self-check | OK — buffer std 0.037 on the fixed stimulus (relabelled); goal formed; determinism with JEPA live |
+| `hjepa_serve` self-check | OK (unchanged) |
+| `tests/instruments/jepa_highdim_probe.py` (3000 steps) | OK — latent std 0.229 vs ablation 0.018; learned probe +49 % over random |
+| `ruff check` + `ruff format --check` on the four files | clean |
+
+Disclosed, not changed: `cerebellum/spiking_jepa.py` carries its own copy of the 0.9 bound and the
+1e-3 decay ("copied from jepa_world_model") on a different class with its own measured claims — a P2
+follow-up for its own arc, named here. `save_weights` persists `lambda_var` but not `gamma`/`rho_max`;
+the only external `load_weights` caller is the research tier, and the live arm never loads a saved
+model, so a restored old file cannot reintroduce the constants on the live path.

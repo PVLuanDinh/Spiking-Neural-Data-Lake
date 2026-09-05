@@ -1182,7 +1182,10 @@ def _main():
     for _ in range(90):
         jbrain.tick(grasp, reward_fn=reward)
     jepa_sized = jbrain.jepa_on()
-    jepa_std = jbrain.arm.jepa.latent_std()  # non-degenerate latent (did not collapse live)
+    # A WIRING check, not a collapse gauge: the same `grasp` ctx is ticked 90 times, so latent_std()
+    # (the std over the last 32 online latents) reads low for a healthy encoder too. The collapse red
+    # lives where the input varies -- tests/test_jepa_collapse.py, specs/022 evidence/jepa-collapse.md.
+    jepa_std = jbrain.arm.jepa.latent_std()
     jepa_goal_formed = (
         jbrain.arm._z_goal is not None
     )  # a reward-derived latent goal formed from the stream
@@ -1201,12 +1204,13 @@ def _main():
 
     jepa_det = run_jepa(3) == run_jepa(3)
     print(
-        f"JEPA live  : world model sized={jepa_sized}, latent std {jepa_std:.3f} (non-degenerate), "
+        f"JEPA live  : world model sized={jepa_sized}, buffer std {jepa_std:.3f} on a fixed stimulus (wiring, not a collapse gauge), "
         f"reward-latent goal formed={jepa_goal_formed}; executive goal "
         f"{ACTIONS[jgoal] if jgoal is not None else None} set by latent planning; plan_latent -> option {lat_pick}"
     )
     assert jepa_sized and jepa_std > 0.0, (
-        "the JEPA world model must be wired in and learn a non-degenerate latent"
+        "the JEPA world model must be wired in and updating its latent buffer (a fixed-stimulus "
+        "wiring check; the collapse red is tests/test_jepa_collapse.py)"
     )
     assert jepa_goal_formed, "a reward-derived latent goal must form from the live stream"
     assert jgoal is not None, "the executive must hold a goal set by JEPA latent planning"

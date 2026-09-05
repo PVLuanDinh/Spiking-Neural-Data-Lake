@@ -24,15 +24,35 @@ Mechanism (rate-level, deterministic, per-instance rng):
   4. Invariance loss ||predict(encode(x_t), a_t) - sg(target_encode(x_{t+1}))||^2 -- the JEPA objective:
      predict the (stop-gradient) target latent of the NEXT observation from the current latent + the action.
   5. Anti-collapse (VICReg, hand-rolled over a ring buffer B of recent online latents, per dim j):
-       L_var = mean_j max(0, gamma - sqrt(var_j + eps))            (gamma=1.0: keep each dim's batch std up)
+       L_var = mean_j max(0, gamma - sqrt(var_j + eps))            (gamma = 0.5/sqrt(L): a REACHABLE per-dim
+                                                                    std target on the unit sphere; weight L)
        L_cov = sum_{i!=j} cov_ij^2 / latent_dim                    (decorrelate the latent dimensions)
      Closed-form gradients of L_var, L_cov w.r.t. We, be are backpropagated by hand through unit(tanh(.)).
   6. EMA target       Wt <- tau*Wt + (1-tau)*We,  bt likewise      (slow target = the stop-grad asymmetry)
 
-Spectral / rollout bound. The residual predictor z' = z + Wz@z + ... can diverge over the long rollouts
-plan() performs (horizon up to 40). Wz is initialized small, decayed, and row-scaled every step so its
-operator-norm proxy (max row-abs-sum) stays < 1 (contractive), and predict() applies a final clamp so every
-|z'_i| stays bounded -- main() asserts a 40-step rollout stays finite and bounded for every action.
+Rollout bound. The residual predictor z' = z + Wz@z + ... could diverge over the long rollouts plan()
+performs (horizon up to 40). predict() applies a final clamp so every |z'_i| stays bounded -- main() asserts
+a 40-step rollout stays finite and bounded for every action. Wz is initialized small, decayed, and
+row-scaled every step so its max row-abs-sum stays <= sqrt(latent_dim) -- the largest an orthogonal map of
+the latent sphere needs, so any rotation/permutation of latent states is representable. (Until 2026-09-05
+that bound was 0.9, "contractive", which forbade every step longer than the latent's own radius.)
+
+THE COLLAPSE ARC (specs/022 `evidence/jepa-collapse.md`, 2026-09-05; owner Q1(a)). At the previous defaults
+(lambda_var 1.0, gamma 1.0, rho_max 0.9) the model the ARM constructs collapsed its latent on every context
+the body sees (twelve of twelve in-brain models: target-latent spread x0.005-0.11 of a fresh model's) and its
+prediction error could not tell a deterministic succession from a per-cycle permutation of it -- brain-free,
+on a planted 3-bit successor world a tabular oracle reads to 0.0 and a plain linear predictor on the raw
+pattern separates at 0.05, the model predicted the ORDERED world WORSE than the shuffled one (3 of 3 seeds).
+Three necessary conditions, none sufficient alone or in pairs (per-item attribution in the record): a force of
+L (the hinge's 1/L cancelled), a target of 0.5/sqrt(L) the latent can reach (gamma 1.0 never was, so the hinge
+never switched off), and a bound of sqrt(L) that lets the predictor step between two separated states. With
+all three the model reads the planted succession on 3 of 3 seeds by 12 cycles (ordered/shuffled error
+0.069 / 0.022 / 0.238) with the latent interior (x0.61-0.70 of fresh). main() below used to run lambda_var
+20 / lambda_cov 2 "to visibly hold variance" while the arm ran 1.0 -- it certified a configuration the live
+model never had; it now runs the defaults (one configuration, P2). `latent_std()` over the last 32 ONLINE
+latents reads low on a fixed or near-constant stimulus for a healthy encoder too -- it is collapse telemetry
+only where the input varies; the two live-model self-checks that read it on a FIXED stimulus are wiring
+checks, labelled so. `tests/test_jepa_collapse.py` carries the reds (green only after this change).
 
 E-PROP COMPLIANCE (closed 2026-08-04; this module was the tree's named open violation). Every backward
 path here is now a BROADCAST error signal: no weight matrix is ever read transposed to carry error, and
@@ -105,7 +125,7 @@ class JepaWorldModel:
         tau=0.99,
         lr=0.05,
         lambda_inv=1.0,
-        lambda_var=1.0,
+        lambda_var=None,
         lambda_cov=1.0,
         buffer=32,
         anti_collapse=True,
@@ -121,7 +141,15 @@ class JepaWorldModel:
         self.tau = float(tau)  # EMA target coefficient (~1 -> slow target)
         self.lr = float(lr)
         self.lambda_inv = float(lambda_inv)  # weight of the JEPA invariance (prediction) loss
-        self.lambda_var = float(lambda_var)  # weight of the VICReg variance hinge
+        # THE COLLAPSE ARC (specs/022 evidence/jepa-collapse.md, 2026-09-05). The variance hinge's
+        # gradient carries a 1/L from averaging the per-dimension hinge, so at the old default of
+        # 1.0 the anti-collapse force was 1/(L*m) of the invariance gradient and the latent the arm
+        # runs on collapsed (spread x0.005-0.11 of a fresh model's, twelve of twelve in-brain
+        # models). lambda_var = L cancels that 1/L and puts the force at VICReg's own O(1/m) scale.
+        # Derived from the latent width, not tuned: measured alone it opens the latent but does not
+        # buy order; only with the reachable target and the freed predictor below does the model
+        # read a deterministic succession (3 of 3 seeds). Callers may still pass a value.
+        self.lambda_var = float(self.L) if lambda_var is None else float(lambda_var)
         self.lambda_cov = float(lambda_cov)  # weight of the VICReg covariance decorrelation
         self.buffer = int(buffer)  # ring-buffer size for the VICReg batch statistics
         self.anti_collapse = bool(
@@ -131,10 +159,24 @@ class JepaWorldModel:
         self.rng = random.Random(seed)  # per-instance rng; identical seed -> identical weights
 
         # ---- fixed internal constants (not exposed on the contract) ----
-        self.gamma = 1.0  # VICReg target std (hinge threshold)
+        # VICReg target std (hinge threshold). A unit-norm latent's per-dimension std is at most
+        # 1/sqrt(L) (sum_j var_j <= 1), so the old 1.0 was NEVER reachable and the hinge never
+        # switched off -- a constant expansion force with no equilibrium, whose only fixed points
+        # were collapse (weak force) or expansion to the ceiling against a lagging EMA target
+        # (strong force). Half the isotropic ceiling is an interior target on the normalized
+        # output's own scale (P1: a fixed point on a normalized output). Measured: with it the
+        # hinge switches off (|g_var|/|g_inv| -> 0.00) and the encoder settles.
+        self.gamma = 0.5 / math.sqrt(self.L)
         self.eps = 1e-4  # VICReg variance floor
         self.z_clip = 3.0  # predicted-latent clamp -> bounded rollout
-        self.rho_max = 0.9  # max row-abs-sum of Wz (contractive spectral proxy)
+        # max row-abs-sum of Wz. The old 0.9 ("contractive") forbade every latent step longer than
+        # the latent's own radius, so once the latent was open the successor map between two
+        # separated states was unrepresentable and the model predicted a deterministic world WORSE
+        # than a shuffled one. An orthogonal map of the L-sphere has rows of L2-norm 1 and hence
+        # L1-norm <= sqrt(L); a bound of sqrt(L) admits any rotation/permutation of latent states.
+        # Rollout boundedness never rested on this: predict() clamps every output at z_clip, which
+        # main()'s 40-step rollout assert continues to verify.
+        self.rho_max = math.sqrt(self.L)
         self.wd = 1e-3  # tiny weight decay on Wz each step
         self.lambda_roll = 0.3  # weight of the optional 2-step rollout consistency term
         self.use_rollout = True  # fight teacher-forcing drift with a 2-step term
@@ -774,9 +816,10 @@ def main():
     ACTIONS = ("ENGAGE", "RELEASE", "HOLD")
     OPEN = 1  # index of RELEASE (the goal action) in ACTIONS
     STEPS, LR = 1200, 0.08
-    LV, LC = 20.0, 2.0  # VICReg weights (default is 1.0; the unit-sphere latent
-    #                                                      caps per-dim energy, so the anti-collapse pressure is
-    #                                                      scaled up here for both models to visibly hold variance)
+    # Both models run the module DEFAULTS for the VICReg weights (one configuration, P2). Until
+    # 2026-09-05 this self-check overrode them to 20 / 2 "to visibly hold variance" while the arm
+    # ran the default 1.0 -- it certified a configuration the live model never had (the collapse
+    # arc, evidence/jepa-collapse.md). The defaults now derive from the latent width.
     encoders = [
         PopulationEncoder(n=BAND, lo=0.0, hi=1.0, max_spikes=10, overlap=1.0) for _ in range(K)
     ]
@@ -791,8 +834,6 @@ def main():
         in_dim=IN_DIM,
         latent_dim=LATENT,
         lr=LR,
-        lambda_var=LV,
-        lambda_cov=LC,
         anti_collapse=True,
         seed=0,
     )
@@ -801,8 +842,6 @@ def main():
         in_dim=IN_DIM,
         latent_dim=LATENT,
         lr=LR,
-        lambda_var=LV,
-        lambda_cov=LC,
         anti_collapse=False,
         seed=0,
     )
@@ -1143,21 +1182,27 @@ def main():
     rs_det = _js.We == _jd.We and _js.Wr == _jd.Wr
 
     print(
-        f"(6) reward  : pure-SSL few-context spread {rs_plain_sp:.3f} (collapsed, readout {rs_plain_acc:.2f}) -> "
+        f"(6) reward  : pure-SSL few-context spread {rs_plain_sp:.3f} (readout {rs_plain_acc:.2f}) -> "
         f"reward-shaped {rs_shaped_sp:.3f} (readout {rs_shaped_acc:.2f}); head off => Wr None {rs_off_none}"
     )
     print("=" * 78)
 
-    # ---- (6) REWARD-SHAPING: pure SSL collapses the few contexts; the reward head task-aligns + separates them ----
-    assert rs_plain_sp < 0.1, (
-        f"pure SSL must collapse a few repeating contexts (spread {rs_plain_sp:.3f})"
+    # ---- (6) REWARD-SHAPING: the reward head task-aligns the few-context latent and separates it
+    #      MORE than pure SSL does. Until 2026-09-05 this block asserted that pure SSL COLLAPSES the
+    #      contexts and that a readout recovers the rule only from the shaped latent -- criteria that
+    #      measured the collapse defect the arc fixed (the plain readout now recovers the rule too,
+    #      1.00 vs 1.00, so the "+0.3" contrast went red the day the defect left). What the head is
+    #      FOR survives as the criteria: it separates the contexts by a margin over plain SSL, and a
+    #      readout recovers the rule from its latent; the plain arm's numbers are reported beside it.
+    assert rs_shaped_sp > rs_plain_sp + 0.3, (
+        f"reward-shaping must separate the few contexts MORE than pure SSL "
+        f"(spread {rs_shaped_sp:.3f} vs {rs_plain_sp:.3f})"
     )
     assert rs_shaped_sp > 0.4, (
         f"reward-shaping must separate the contexts (spread {rs_shaped_sp:.3f})"
     )
-    assert rs_shaped_acc > rs_plain_acc + 0.3, (
-        f"a linear readout must recover the rule from the reward-shaped latent, not the collapsed one "
-        f"({rs_shaped_acc:.2f} vs {rs_plain_acc:.2f})"
+    assert rs_shaped_acc > 0.9, (
+        f"a linear readout must recover the rule from the reward-shaped latent ({rs_shaped_acc:.2f})"
     )
     assert rs_off_none and rs_bytesame, (
         "reward_shaping OFF must draw no reward head (Wr None) and leave weights byte-identical"
@@ -1183,7 +1228,7 @@ def main():
     )
     print(
         f"  reward-shaping task-aligns few-context latents (spread {rs_plain_sp:.3f}->{rs_shaped_sp:.3f}, "
-        f"readout {rs_plain_acc:.2f}->{rs_shaped_acc:.2f}) where pure SSL collapses"
+        f"readout {rs_plain_acc:.2f}->{rs_shaped_acc:.2f}) beyond pure SSL's"
     )
 
 

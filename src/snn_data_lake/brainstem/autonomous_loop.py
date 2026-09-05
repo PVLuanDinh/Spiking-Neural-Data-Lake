@@ -3127,7 +3127,11 @@ def main():
     jp = AutonomousArm(seed=1, pfc=True, jepa=True)
     for _ in range(90):
         jp.step(**a, reward_fn=reward)  # reward RELEASE
-    jp_std = jp.jepa.latent_std()  # a non-degenerate learned latent (did not collapse)
+    # A WIRING check, not a collapse gauge: latent_std() is the per-dim std over the last 32 ONLINE
+    # latents, and this loop drives the arm with the SAME ctx dict every step, so a healthy encoder
+    # reads ~0 here too. The collapse red lives where the input varies -- tests/test_jepa_collapse.py
+    # and specs/022 evidence/jepa-collapse.md (2026-09-05).
+    jp_std = jp.jepa.latent_std()
     jp_goal_formed = jp._z_goal is not None  # a reward-derived latent goal formed from the stream
     jp_goal = jp.pfc.goal  # the executive's goal, now set by JEPA latent planning
     jp_guard = AutonomousArm(
@@ -3143,7 +3147,7 @@ def main():
         return [bot.step(**ctx, reward_fn=reward)["action"] for _ in range(6) for ctx in (a, b, c)]
 
     print(
-        f"jepa        : latent world model learns online (latent std {jp_std:.3f}); reward-latent goal "
+        f"jepa        : latent world model wired and updating (buffer std {jp_std:.3f} on a FIXED stimulus -- not a collapse gauge); reward-latent goal "
         f"formed={jp_goal_formed}; executive goal {ACTIONS[jp_goal] if jp_goal is not None else None} set by "
         f"latent planning; E-STOP freeze holds with it on ({jp_frozen1})"
     )
@@ -3154,7 +3158,8 @@ def main():
         "the JEPA world model is opt-in (a default arm has none)"
     )
     assert jp.jepa is not None and jp_std > 0.0, (
-        "the JEPA world model must be wired in and learn a non-degenerate latent"
+        "the JEPA world model must be wired in and updating its latent buffer (a fixed-stimulus "
+        "wiring check; the collapse red is tests/test_jepa_collapse.py)"
     )
     assert jp_goal_formed, "a reward-derived latent goal must form from the live stream"
     assert jp_goal is not None, "the executive must hold a goal set by JEPA latent planning"
