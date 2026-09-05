@@ -82,6 +82,25 @@ effect on the observed tie pattern clears the bar; a null sample does not). G-FR
 ### 2.4 Disposition on a null
 Q2 closes whole; the failing gate named; no lane; the surprise keeps its three consumers.
 
+### 2.5 Amendment 1 — G-INFO re-measured with an ALIGNED instrument (written after the record panel, BEFORE
+the re-run cells)
+
+The record panel (§5) found the G-INFO instrument misaligned: `make_brain` runs `predictive_coding=True`, so
+`LiveBrain.tick` calls `arm._context_pattern` a SECOND time per wake tick (the PC front end's re-encode) and
+the harness logged two patterns per surprise value, then sliced the doubled list against the surprise series
+— pairing tick i//2's pattern with s_i. The archived R² values (§3) are that misaligned statistic; the surprise
+arm's negative rows, which WERE the readout's positive control (the delivery is in that pattern), failed and
+were explained away. G-INFO as first scored is therefore UNMEASURED. The harness now keeps one pattern per
+`_safe_ctx` call and drops the PC re-encode (counted). Re-run, pre-registered: incumbent × seeds 0–2 (the
+gate) and surprise × seeds 0–2 (the positive control), 3000 ticks, marks 1500/3000. **G-INFO MET iff the
+aligned incumbent held-out R² < 0.5 on ≥ 2 of 3 (CHOSEN, as before) AND the positive control — the surprise
+arm's own pattern → s — reads R² > 0.5 on ≥ 2 of 3 (CHOSEN; the panel's aligned seed-0 reading was 0.93
+brain-free and 0.93 in-brain).** If the positive control fails, the readout cannot see a signal it is given
+and G-INFO stays UNMEASURED. Beside it, the instrument witness the panel asked for (INT-6): the visual band's
+lit cells under delivery must extend past the incumbent's cells 0–4. The re-run also records V on BOTH
+splits (raw surprise; the delivered value) with a within-arm permutation null (I-4/I-5) and the surprise's
+zero mass (I-7) — reported, since the verdict does not rest on (iii).
+
 ## 3. Results — 12 cells, 3000 ticks, 20:17–20:29 UTC, at `f1a9bf8` (the pre-registration commit's head;
 `probe/` in `memory/archive/q2-2026-09-05/`)
 
