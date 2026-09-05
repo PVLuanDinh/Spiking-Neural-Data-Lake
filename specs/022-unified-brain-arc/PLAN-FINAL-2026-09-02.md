@@ -616,7 +616,7 @@ four. About 40 landings in perhaps 15–20 arcs under the batched-battery rule: 
 battery before build time, and every phase can end in a recorded null that re-sequences what follows.
 That is the method working.
 
-## PART H — OWNER DECISIONS THIS PLAN NEEDED (all given 2026-09-02; one C2 question open; two W2 questions open since 2026-09-05)
+## PART H — OWNER DECISIONS THIS PLAN NEEDED (all given 2026-09-02; the W2 questions and the two revert options resolved 2026-09-05; the 2026-09-05 standing authorization makes every later call the session's)
 
 **Open since 2026-09-05 (`evidence/w2-context-latents.md` §5):** **Q1** — the Phase 1 null disposition
 sends L2 at a prediction error that is measured collapsed; ratify (a) the JEPA-collapse arc BEFORE L2 and
@@ -646,6 +646,20 @@ scored was UNMEASURED (a misaligned instrument) and was re-measured aligned (rec
 DELIVERY (`visual[3] = s ∈ [0, 1]`, 4–30× the band's native range); a range-matched delivery is the
 reopening an owner could name. No lane; W2 stays REFUSED. (An earlier draft's "HARMS the grower" was
 unearned at n = 3 and is withdrawn — the record panel.)
+
+**OWNER 2026-09-05 (chat, after the Phase 2 parallel-arms fold `1eb37df`): "Unblock everything, you are
+authorized to do everything to finish the plan."** Standing authorization, recorded here and in the memory store.
+What it resolves: the revert option on `dbcf153` is CLOSED — the JEPA-collapse ship on (a) alone STANDS; the
+revert option on `3979001` is CLOSED — L1a STANDS on the oracle's majority-answer → persistence-answer reading;
+every later "owner may revert / owner question" row is the SESSION's decision, made at pre-registration and
+disclosed in the record as "the session's call under the 2026-09-05 authorization" — no arc waits on chat; C2's
+`reason_out` deletion on its null is pre-authorized (P8 clause 5); L1b's rule and L1c's P2 survivor are chosen by
+the A/B named at pre-registration, as their rows say; Q2 stays CLOSED BY MEASUREMENT (a range-matched delivery is
+a session-choosable reopening). What it does NOT do: a measured red is not closed by an authorization — the JEPA
+live-floor (b) red on 1 of 5 seeds and the L1a-alone attribution cell stay open as recorded; the per-arc rhythm
+(A.4) is the plan's method and is not lifted; the safety envelope stays out of scope (nothing in this plan
+touches it; an envelope change, if a row ever needed one, is asked per instance); E-STOP clears stay a person's
+per-instance act at the cockpit.
 
 **All five were given in chat on 2026-09-02** ("You are authorized to: O1 … O2 … O3 … O4 … O5 …"): O1–O3 are
 authorized ACTIONS (O1 and O2 executed the same day; O3 chosen by the session under the authorization and
