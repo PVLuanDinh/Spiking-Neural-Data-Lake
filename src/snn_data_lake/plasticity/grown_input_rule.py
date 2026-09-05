@@ -101,10 +101,14 @@ def authored_increment(kind):
 class GrownInputRule:
     """One rule object per engine; the model's W is the substrate and is moved IN PLACE."""
 
-    def __init__(self, kind="oja", mu=MU, tau_theta=TAU_THETA):
+    def __init__(self, kind="oja", mu=MU, tau_theta=TAU_THETA, gated=True):
         if kind not in KINDS:
             raise ValueError(f"kind must be one of {KINDS}, got {kind!r}")
         self.kind = kind
+        # gated=False: the third factor is WITHDRAWN (Stage 0, 2026-09-05: the ACh plasticity scale decays
+        # to a last-200 mean of 0.03 on 2 of 3 seeds -- a multiplicative gate at ~0 makes the rule inert);
+        # the gate passed in is still RECORDED (last_gate / mean_gate) so the instrument reads it, but g = 1.
+        self.gated = bool(gated)
         self.mu = float(mu)
         self.tau_theta = float(tau_theta)
         self.calls = 0  # learn() calls that saw a model
@@ -129,9 +133,10 @@ class GrownInputRule:
         W = getattr(model, "W", None)
         if W is None or int(W.shape[0]) == 0:
             return 0.0
-        g = 1.0 if gate is None else float(gate)
-        self.last_gate = g
-        self.gate_sum += g
+        raw = None if gate is None else float(gate)
+        self.last_gate = raw
+        self.gate_sum += 0.0 if raw is None else raw
+        g = 1.0 if (raw is None or not self.gated) else raw
         if not (g > 0.0):
             return 0.0
         xt = torch.as_tensor(x, dtype=torch.float32, device=W.device).reshape(1, -1)
@@ -164,6 +169,7 @@ class GrownInputRule:
     def state(self):
         return {
             "kind": self.kind,
+            "gated": self.gated,
             "calls": self.calls,
             "moved": self.moved,
             "cum_abs_dw": round(self.cum_abs_dw, 6),

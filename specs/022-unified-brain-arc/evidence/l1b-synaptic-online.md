@@ -130,3 +130,26 @@ in `_make_neuro`; the strict L-R2 test in `tests/test_real_percept_stream.py` ca
 BATCH's per-seed floors and units against `l-parallel-arms.md` §3.4 (stageB3, the same head's src, the same
 day): the floors are expected to agree to 1e-6 on every seed (the perception packs have not moved today); a
 disagreement is reported as the instrument moving, not as a finding.
+
+## 3. Results
+
+### 3.1 Stage 0 — the gate's positive control (GATE0 × 3 seeds × 800 ticks, 23:16–23:17 UTC, `stage0/`, head `4b77571`)
+
+| seed | fed ticks | distinct gate values | mean | max | fraction > 0.05 | last-200 mean | §2.2 rule |
+|---|---|---|---|---|---|---|---|
+| 0 | 393 | 392 | 0.071 | 0.244 | 0.567 | **0.030** | NOT usable |
+| 1 | 399 | 340 | 0.084 | 0.300 | 0.461 | **0.026** | NOT usable |
+| 2 | 399 | 390 | 0.072 | 0.225 | 0.782 | 0.053 | usable |
+
+The ACh plasticity scale is ALIVE at the feed (hundreds of distinct values, 0.0–0.30) — the modulator is not a
+pinned gauge — but it DECAYS as the stream stabilizes (prototype recruits stop, the arm's learning-progress
+flattens): the last-200 mean sits below the pre-registered 0.05 on 2 of 3 seeds. **Per §2.2 the gate is
+WITHDRAWN for this arc: the candidates run UNGATED (g = 1; the gate the brain passes is still recorded per cell),
+the three-factor claim is dropped for this delivery, and the reading stands as the instrument's null — a rule
+multiplied by 0.03 would have been a two-factor rule wearing a name.** No other fallback was pre-registered and
+none is taken. Consequences: the `_G1` arms are the candidate arms (the pinned gate IS the withdrawn gate), so the
+cells are 6 arms × 8 seeds (BATCH, BATCH_B, OJA, BCM, TWIN_OJA, TWIN_BCM, all `--ungated`); the gate-attribution
+row of §2.4 is VOID. Also read here: the live instrument on the incumbent (BATCH = GATE0's brain): live accuracy
+0.547 / 0.849 / 0.807 against live persistence 0.932 / 0.963 / 0.952; units 2 on every seed; refusals 0.
+Owed onward (not this arc): a gate that tracks its own running scale (g / EMA(g)) or the arm's baseline-
+subtracted RPE, each with its positive control — the three-factor row returns when one of them reads usable.
