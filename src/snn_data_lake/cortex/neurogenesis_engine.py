@@ -204,8 +204,25 @@ class NeurogenesisSelfImprove:
         # exactly the criterion's CONTROL arm). The callable's verdict logic is the gate's
         # own; this engine can consult it, never constrain it.
         growth_gate=None,
+        online_rule=None,
     ):
         self.refit_every = int(refit_every)
+        # L1b (2026-09-05): the online input-weight rule -- a kind name ("oja" | "bcm", constructed here
+        # from plasticity/grown_input_rule), a GrownInputRule, or None (the incumbent: input rows frozen
+        # from admission). Moves the RETAINED model's W in
+        # place on every wake percept from observe(); the sleep refit inherits the moved rows.
+        if isinstance(online_rule, str):  # a kind name: the engine owns the rule's construction
+            from snn_data_lake.plasticity.grown_input_rule import GrownInputRule
+
+            online_rule = GrownInputRule(online_rule)
+        self.online_rule = online_rule
+        self._online_charge = 0.0  # cumulative |dW| the rule applied (its own charge, on state())
+        # the LIVE instrument: the retained model's next-category prediction on the wake stream,
+        # scored BEFORE this percept teaches anything, beside its own live persistence floor
+        self._prev_cat = None
+        self.live_n = 0
+        self.live_correct = 0
+        self.live_persist = 0
         self.buffer_cap = int(buffer_cap)
         self.seed = int(seed)
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -242,13 +259,19 @@ class NeurogenesisSelfImprove:
     #   distinct-from: substrate/signal_calibrator.py, cortex/percept_surprise.py -- observe()
     #   there records a scalar distribution / an Oja residual. This one BUFFERS a (percept ->
     #   next own-category) transition for the sleep refit. All sites read.
-    def observe(self, features, category):
+    def observe(self, features, category, gate=None):
         """WAKE: one percept the brain just had, with the brain's own category of it. Records the
         transition (previous percept -> this category): the engine's task is to predict, from
         what the brain perceived a tick ago, what it will perceive next -- in the brain's own
         vocabulary. The first percept has no predecessor and is only remembered. Refuses a
         percept of a different width than the buffer holds (NGSNN would otherwise be fit on a
-        ragged matrix), and a category that is not a non-negative int."""
+        ragged matrix), and a category that is not a non-negative int.
+
+        L1b (2026-09-05): `gate` is the scalar third factor the brain read on this tick
+        (Acetylcholine.plasticity_scale(); None = no modulator wired). When an online rule is
+        set, the retained model's input rows learn from THIS percept after the transition is
+        buffered; the live prediction of this category from the previous percept is scored
+        first, so the instrument never reads a percept it has just learned from."""
         cat = int(category)
         if cat < 0:
             raise ValueError(f"a category is a prototype id, never negative (got {cat})")
@@ -264,7 +287,20 @@ class NeurogenesisSelfImprove:
             if len(self._buf_x) > self.buffer_cap:
                 self._buf_x.pop(0)
                 self._buf_y.pop(0)
+            # the LIVE instrument (scored before any learning on this tick)
+            if (
+                self._model is not None
+                and self._model.W is not None
+                and self._model.beta is not None
+            ):
+                pred = int(self._model.predict(torch.tensor([self._prev], dtype=torch.float32))[0])
+                self.live_n += 1
+                self.live_correct += int(pred == cat)
+                self.live_persist += int(self._prev_cat == cat)
         self._prev = feats
+        self._prev_cat = cat
+        if self.online_rule is not None and self._model is not None:
+            self._online_charge += self.online_rule.learn(self._model, feats, gate)
         self._categories.add(cat)
         self.observed += 1
         return cat
@@ -384,7 +420,15 @@ class NeurogenesisSelfImprove:
         prev = self._model
         seed_W = prev.W if (prev is not None and prev.W is not None) else None
         seed_b = prev.b if (prev is not None and prev.b is not None) else None
+        prev_theta = getattr(prev, "bcm_theta", None)
         model.fit(x_tr, y_tr, init_W=seed_W, init_b=seed_b)
+        # L1b: BCM's per-unit threshold follows the inherited units (leading rows) across the
+        # refit, exactly as placement does; new units start unset (NaN -> first-touch init).
+        if prev_theta is not None:
+            n_keep = min(int(prev_theta.shape[0]), int(model.n_units))
+            th = torch.full((int(model.n_units),), float("nan"), device=model.device)
+            th[:n_keep] = prev_theta[:n_keep].to(model.device)
+            model.bcm_theta = th
         # EARN-YOUR-PLACE PRUNE, on the same held-out discipline that admits a unit. Only meaningful
         # now that units are inherited: previously every refit began empty, so there was nothing old
         # to drop. Without it, seeding makes the substrate monotonically grow -- accumulation with no
@@ -416,6 +460,9 @@ class NeurogenesisSelfImprove:
         keep = getattr(model, "last_keep", None)
         if keep is not None and len(self._placement) >= max(keep, default=-1) + 1:
             self._placement = [self._placement[i] for i in keep]
+        th = getattr(model, "bcm_theta", None)
+        if keep is not None and th is not None and int(th.shape[0]) >= max(keep, default=-1) + 1:
+            model.bcm_theta = th[list(keep)]
         pred = model.predict(x_te)
         acc = (pred == y_te.to(model.device)).float().mean().item()
         self._n_units = model.n_units
@@ -582,6 +629,13 @@ class NeurogenesisSelfImprove:
             base_persistence=np.array(
                 [self.baselines[-1][2]] if self.baselines else [], dtype=np.float64
             ),
+            # L1b (2026-09-05): BCM's per-unit sliding threshold -- OPTIONAL, same additive
+            # contract (empty when the rule is Hebbian or not wired; NaN = unset)
+            bcm_theta=(
+                m.bcm_theta.detach().cpu().numpy().astype(np.float64)
+                if getattr(m, "bcm_theta", None) is not None
+                else np.zeros((0,), dtype=np.float64)
+            ),
         )
         return buf.getvalue()
 
@@ -616,6 +670,7 @@ class NeurogenesisSelfImprove:
                 # optional -- absent in every blob written before rank 2's floors
                 z_bm = z["base_majority"] if "base_majority" in z else None
                 z_bp = z["base_persistence"] if "base_persistence" in z else None
+                z_th = z["bcm_theta"] if "bcm_theta" in z else None  # L1b: OPTIONAL
         except Exception:
             return False
         if W.ndim != 2 or beta.ndim != 2 or b.ndim != 1:
@@ -632,6 +687,8 @@ class NeurogenesisSelfImprove:
         model.b = torch.tensor(b, dtype=torch.float32, device=model.device)
         model.beta = torch.tensor(beta, dtype=torch.float32, device=model.device)
         model.d_in, model.m = d_in, m_out
+        if z_th is not None and z_th.ndim == 1 and int(z_th.shape[0]) == int(W.shape[0]):
+            model.bcm_theta = torch.tensor(z_th, dtype=torch.float32, device=model.device)
         self._model = model
         self._n_units = n_units
         self._acc = acc
@@ -711,6 +768,12 @@ class NeurogenesisSelfImprove:
             "baseline_majority": self.baselines[-1][1] if self.baselines else None,
             "baseline_persistence": self.baselines[-1][2] if self.baselines else None,
             "n_modes": self.n_modes,
+            # L1b: the online rule's own charge and the live instrument (None until scored)
+            "online_rule": self.online_rule.state() if self.online_rule is not None else None,
+            "online_charge": round(self._online_charge, 6),
+            "live_accuracy": (self.live_correct / self.live_n) if self.live_n else None,
+            "live_persistence": (self.live_persist / self.live_n) if self.live_n else None,
+            "live_n": self.live_n,
         }
 
 
