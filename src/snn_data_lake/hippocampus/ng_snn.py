@@ -139,6 +139,61 @@ def current_encode(feats, T):
     return feats.clamp(0, 1).unsqueeze(1).expand(N, T, d).contiguous()
 
 
+def marginal_holdout(y, n_val):
+    """THE admission window (specs/022 L1a, evidence/l-parallel-arms.md, 2026-09-05): the held-out rows of a
+    category stream, chosen PER CATEGORY in proportion to the category marginal, taking the MOST RECENT rows
+    of each category -- "recency-mixed": covers the marginal, prefers recent rows within it. Returns
+    (train_idx, val_idx) as ascending Python lists over range(len(y)).
+
+    Why: until this landed every window here was the most RECENT rows (the last n_val of what fit was handed,
+    the last 20 % in prune_unearned, the last third in the engine's refit). On a bursty category stream the
+    recent rows are usually one run of one category, so a unit that would predict a rarer category never
+    earned its place and the readout answered the majority -- measured on the brain's own stream (s2 v2): the
+    persistence ORACLE reached its own floor on 2 of 8 seeds. One function serves all three windows (P2).
+
+    Quotas: round(n_val * n_c / N) per category, at least one row for every category with >= 2 rows (a
+    single-row category stays in training -- there is nothing to hold out and still learn from), the
+    remainder added to / removed from the largest categories so exactly n_val rows are held out when N allows.
+    Deterministic; no rng."""
+    ys = [int(v) for v in (y.tolist() if hasattr(y, "tolist") else y)]
+    n = len(ys)
+    n_val = int(min(max(0, n_val), max(0, n - 1)))
+    if n_val <= 0:
+        return list(range(n)), []
+    idx_by_cat = {}
+    for i, c in enumerate(ys):
+        idx_by_cat.setdefault(c, []).append(i)
+    cats = sorted(idx_by_cat, key=lambda c: (-len(idx_by_cat[c]), c))
+    quota = {}
+    for c in cats:
+        m = len(idx_by_cat[c])
+        q = int(round(n_val * m / n))
+        if m >= 2:
+            q = max(1, min(q, m - 1))
+        else:
+            q = 0
+        quota[c] = q
+    total = sum(quota.values())
+    # settle the rounding remainder on the largest categories, never emptying a category's training rows
+    k = 0
+    while total != n_val and k < 10 * len(cats) + 10:
+        c = cats[k % len(cats)]
+        m = len(idx_by_cat[c])
+        if total < n_val and quota[c] < m - 1:
+            quota[c] += 1
+            total += 1
+        elif total > n_val and quota[c] > (1 if m >= 2 else 0):
+            quota[c] -= 1
+            total -= 1
+        k += 1
+    val = []
+    for c in cats:
+        if quota[c]:
+            val.extend(idx_by_cat[c][-quota[c] :])  # the most recent rows of this category
+    val_set = set(val)
+    return [i for i in range(n) if i not in val_set], sorted(val)
+
+
 class NGSNN:
     """NG-SNN spike classifier: contribution-grown LIF hidden layer + one-shot analytical readout.
 
@@ -285,16 +340,19 @@ class NGSNN:
         Y = torch.zeros(N, m, device=self.device)
         Y[torch.arange(N, device=self.device), y] = 1.0
         n_val = max(8, int(0.2 * N))
-        n_tr = N - n_val
+        tr_list, va_list = marginal_holdout(y.tolist(), n_val)  # L1a: the ONE window
+        n_tr, n_val = len(tr_list), len(va_list)
         if n_tr < 2 or n_val < 2:
             return 0  # too few rows to judge honestly -- keep everything
+        tr_idx = torch.tensor(tr_list, device=self.device)
+        va_idx = torch.tensor(va_list, device=self.device)
 
         S = self._rates(X, self.W, self.b)  # (N, L)
         L = int(S.shape[1])
 
         def _val_rmse(cols):
-            beta = self._solve_beta(S[:n_tr][:, cols], Y[:n_tr])
-            resid = Y[n_tr:] - S[n_tr:][:, cols] @ beta
+            beta = self._solve_beta(S[tr_idx][:, cols], Y[tr_idx])
+            resid = Y[va_idx] - S[va_idx][:, cols] @ beta
             return resid.pow(2).mean().sqrt().item()
 
         allc = list(range(L))
@@ -317,7 +375,7 @@ class NGSNN:
         self.last_keep = list(keep)
         self.W = self.W[keep]
         self.b = self.b[keep]
-        self.beta = self._solve_beta(S[:n_tr][:, keep], Y[:n_tr])  # re-solve: beta must match W
+        self.beta = self._solve_beta(S[tr_idx][:, keep], Y[tr_idx])  # re-solve: beta must match W
         return len(drop)
 
     def fit(self, X, y, delta=1, score_subsample=None, init_W=None, init_b=None):
@@ -345,8 +403,17 @@ class NGSNN:
         # zero by construction, so such a criterion can never say "stop". Measured before this was
         # split properly: it grew 600 units to fit 600 RANDOM labels and reported that as earned.
         n_val = 0 if self.l_max is not None else max(8, int(0.2 * N))
-        n_tr = N - n_val
-        val_idx = torch.arange(n_tr, N, device=self.device) if n_val else None
+        # L1a (2026-09-05): the withheld rows COVER THE CATEGORY MARGINAL (marginal_holdout), not the
+        # most recent block -- see that function for the measurement that forced it.
+        if n_val:
+            tr_list, va_list = marginal_holdout(y.tolist(), n_val)
+            n_tr, n_val = len(tr_list), len(va_list)
+            tr_idx = torch.tensor(tr_list, device=self.device)
+            val_idx = torch.tensor(va_list, device=self.device)
+        else:
+            n_tr = N
+            tr_idx = torch.arange(N, device=self.device)
+            val_idx = None
 
         # candidate SELECTION may run on a row subsample (acceleration); the accepted neurons' S
         # columns and the growth solve always use the full set of TRAINING rows.
@@ -356,7 +423,8 @@ class NGSNN:
             if use_sub
             else None
         )
-        Xsel = X[sel] if use_sub else X[:n_tr]
+        Xtr = X[tr_idx]
+        Xsel = Xtr[sel] if use_sub else Xtr
 
         W = torch.empty(0, d, device=self.device)
         b = torch.empty(0, device=self.device)
@@ -364,7 +432,7 @@ class NGSNN:
             N, 0, device=self.device
         )  # hidden activity over ALL rows: the withheld ones
         beta = torch.empty(0, self.m, device=self.device)  # still need columns to be scored against
-        E = Y[:n_tr].clone()  # residual E_L = Y - S beta (L=0), over the FITTED rows only
+        E = Y[tr_idx].clone()  # residual E_L = Y - S beta (L=0), over the FITTED rows only
 
         # GROW-ON-TOP (2026-07-30). `init_W`/`init_b` seed the growth from units this model already
         # earned, so a refit EXTENDS the substrate instead of replacing it. Until now every refit
@@ -389,8 +457,8 @@ class NGSNN:
                 W = init_W.to(self.device).float()
                 b = init_b.to(self.device).float()
                 S = self._rates(X, W, b)  # full rows, incl. the withheld ones
-                beta = self._solve_beta(S[:n_tr], Y[:n_tr])
-                E = Y[:n_tr] - S[:n_tr] @ beta
+                beta = self._solve_beta(S[tr_idx], Y[tr_idx])
+                E = Y[tr_idx] - S[tr_idx] @ beta
         self.n_seeded = int(W.shape[0])  # units inherited, not grown by this call
 
         # CAPACITY BOUND, EARNED RATHER THAN PRESET (v4.80), and the tuning story matters because a
@@ -487,8 +555,8 @@ class NGSNN:
             W = torch.cat([W, newW], 0)
             b = torch.cat([b, newb], 0)
             S = torch.cat([S, Snew], 1)  # append accepted columns
-            beta = self._solve_beta(S[:n_tr], Y[:n_tr])  # ONE analytical solve per block (Eq.12)
-            E = Y[:n_tr] - S[:n_tr] @ beta  # update residual, over the fitted rows only
+            beta = self._solve_beta(S[tr_idx], Y[tr_idx])  # ONE analytical solve per block (Eq.12)
+            E = Y[tr_idx] - S[tr_idx] @ beta  # update residual, over the fitted rows only
 
             # EARN-YOUR-PLACE STOP. Only when no preset l_max was given. Score the block on rows the
             # SOLVE did not fit to: train residual falls monotonically as units are added (that is

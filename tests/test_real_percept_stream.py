@@ -63,13 +63,19 @@ def test_observe_refuses_a_bad_category_and_a_ragged_percept():
 
 def test_heldout_baselines_are_the_two_floors():
     f = NeurogenesisSelfImprove._heldout_baselines
-    tr, te = torch.tensor([0, 0, 0, 1]), torch.tensor([1, 1, 0, 0])
-    maj, pers = f(tr, te)
-    assert maj == 0.5  # training majority is 0; two of four held-out rows are 0
-    assert pers == 0.75  # predecessors [1,1,1,0] vs [1,1,0,0] -> 3 of 4 agree
-    # no training rows: no majority to answer with (never a peek at the held-out slice), and
-    # the first held-out row has no predecessor -> a miss
-    assert f(torch.tensor([]), torch.tensor([2, 2])) == (0.0, 0.5)
+    # the stream [0,0,0,1,1,1,0,0]; rows 4-7 held out (the old contiguous window): the training
+    # majority is 0 and two of four held-out rows are 0; persistence by the TRUE predecessor:
+    # rows 4,5,6,7 have predecessors 1,1,1,0 against values 1,1,0,0 -> 3 of 4 agree
+    y = torch.tensor([0, 0, 0, 1, 1, 1, 0, 0])
+    maj, pers = f(y, [0, 1, 2, 3], [4, 5, 6, 7])
+    assert maj == 0.5
+    assert pers == 0.75
+    # a SCATTERED held-out set (L1a's window): rows 2 and 5 -- predecessors 0 and 1 against values
+    # 0 and 1 -> persistence 1.0; the training rows' majority is 0 and one of two held-out rows is 0
+    maj2, pers2 = f(y, [0, 1, 3, 4, 6, 7], [2, 5])
+    assert (maj2, pers2) == (0.5, 1.0)
+    # no training rows: no majority to answer with, and a first row with no predecessor is a miss
+    assert f(torch.tensor([2, 2]), [], [0, 1]) == (0.0, 0.5)
 
 
 @pytest.mark.slow
@@ -205,6 +211,16 @@ def _run_arms(arms):
 
 
 @pytest.mark.slow
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "L-R1's STANDING RED (evidence/l-parallel-arms.md section 3.2): under L1a's window the "
+        "oracle sits AT its persistence floor (mean -0.021, exactly at on 2 of 8, within 0.022 on "
+        "5 of 8; the incumbent window read -0.428) and does not EXCEED it -- the stream's "
+        "transitions are persistence-only; strict so a change that clears the bar must update the "
+        "record"
+    ),
+)
 def test_the_persistence_oracle_clears_its_own_floor_under_the_admission_window():
     """L-R1 (plan Part F): the oracle -- handed exactly the information persistence uses -- must
     beat its own persistence floor, paired over 8 seeds at the plan's bar. RED before L1a (s2 v2:

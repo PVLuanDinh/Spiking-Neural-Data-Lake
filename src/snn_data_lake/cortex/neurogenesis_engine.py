@@ -288,20 +288,22 @@ class NeurogenesisSelfImprove:
     #   the number this exists for; the majority floor is two lines and rides beside it so the
     #   two floors are read off the SAME slice as the accuracy. All sites read.
     @staticmethod
-    def _heldout_baselines(y_tr, y_te):
-        """(majority, persistence) accuracy on the held-out slice: the training majority class
-        answered every time, and each row answered with the category BEFORE it (the first
-        held-out row's predecessor is the last training row). Pure bookkeeping on labels."""
-        tr = y_tr.tolist()
-        te = y_te.tolist()
+    def _heldout_baselines(y, tr_idx, va_idx):
+        """(majority, persistence) accuracy on the held-out rows: the training rows' majority class
+        answered every time, and each held-out row answered with the category of the row BEFORE it
+        IN THE STREAM (its true predecessor, training row or held-out row alike; a first row with no
+        predecessor is a MISS, never a gift). Pure bookkeeping on labels. Since L1a (2026-09-05) the
+        held-out rows are scattered over the stream (marginal_holdout), so the predecessor is looked up
+        by index, not assumed to be the last training row."""
+        ys = y.tolist() if hasattr(y, "tolist") else list(y)
+        te = [ys[i] for i in va_idx]
         if not te:
             return 0.0, 0.0
-        # no training rows -> no majority to answer with (never peek at the held-out slice)
+        tr = [ys[i] for i in tr_idx]
+        # no training rows -> no majority to answer with (never peek at the held-out rows)
         maj = max(set(tr), key=tr.count) if tr else None
         majority = sum(1 for v in te if v == maj) / len(te)
-        # a first held-out row with no predecessor is a MISS for persistence, never a gift
-        prev = ([tr[-1]] if tr else [None]) + te[:-1]
-        persistence = sum(1 for p, v in zip(prev, te) if p == v) / len(te)
+        persistence = sum(1 for i in va_idx if i >= 1 and ys[i - 1] == ys[i]) / len(te)
         return majority, persistence
 
     # distinct-from: brainstem/autonomous_loop.py -- _context_pattern() ENCODES the percept this
@@ -323,9 +325,17 @@ class NeurogenesisSelfImprove:
             return
         x = torch.tensor(self._buf_x, dtype=torch.float32)
         y = torch.tensor(self._buf_y, dtype=torch.long)
-        x_tr, y_tr = x[: n - holdout], y[: n - holdout]
-        x_te, y_te = x[n - holdout :], y[n - holdout :]
-        self.baselines.append((self.ticks, *self._heldout_baselines(y_tr, y_te)))
+        # L1a (2026-09-05): the measurement slice COVERS THE CATEGORY MARGINAL (recency-mixed), not the
+        # most recent third -- hippocampus/ng_snn.marginal_holdout, the ONE window this engine and NGSNN
+        # share; the floors are computed against each held-out row's true stream predecessor.
+        from snn_data_lake.hippocampus.ng_snn import marginal_holdout
+
+        tr_list, va_list = marginal_holdout(self._buf_y, holdout)
+        if len(va_list) < 3 or len(tr_list) < n_cat:
+            return
+        x_tr, y_tr = x[tr_list], y[tr_list]
+        x_te, y_te = x[va_list], y[va_list]
+        self.baselines.append((self.ticks, *self._heldout_baselines(y, tr_list, va_list)))
         # T047: consult the growth gate. CLOSED -> measurement continues, growth does not:
         # score the RETAINED substrate on the fresh held-out slice and record the refit
         # row, because the gate re-opens on its own evidence (a new measured optimum, |LP|
