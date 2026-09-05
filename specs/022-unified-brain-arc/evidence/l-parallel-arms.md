@@ -97,6 +97,37 @@ fails voids the change). Commit 1's tests stay in the tree as strict xfails if t
 1 (tests, red counted) → Stage A cells → 2 (L1a) → Stage B (LIVE, ORACLE) → 3 (L3) → Stage B (NEUTER,
 SYNTH, LIVE) → tests green → the record → panel (3 lenses) → fold → battery → push.
 
+### 2.9 Amendment 1 — three measurements the record panel showed the arc owed (written after the panel,
+BEFORE these cells run)
+
+The panel (§6) found: the LIVE "gain at the bar" (§3.2) compares accuracies scored on different held-out rows
+at the two heads — the majority floor alone shifted +0.177 (t 2.03) and the floor-relative gain is +0.116
+(t 1.32, sub-bar); L3 rule (i)'s "exact zero variance" is exactly 0.0 only for some (N, rate) pairs in float32
+(rounding luck), though rule (i) is load-bearing (with it off the constant arm admits 2); and the claim "the
+stream's transitions are persistence-only" owed the oracle's positive control. Pre-registered here:
+- **(a) The learner-only comparison.** A new arm, LIVE_RECENCY_ADMIT: at the current head, `NGSNN.fit` and
+  `prune_unearned` are given the OLD recency split (train = the first N − n_val rows, val = the last n_val)
+  while the engine's measurement slice stays marginal-covering — so both learners are scored on the SAME rows.
+  Paired (LIVE − LIVE_RECENCY_ADMIT) over 8 seeds at the plan's bar (t > 1.895 AND exact p ≤ 0.05). If it
+  clears, the gain is the learner's; if not, the raw gain of §3.2 was the slice's and L1a's landing rests on
+  the oracle's instrument-invariant reading alone — stated either way.
+- **(b) Rule (i) in its N-independent form** — `(Sp == Sp[0]).all(dim=0) & ~dead` (identical rows give
+  identical rates: an equality, not a variance rounding to zero) — re-run on NEUTER_PERCEPT × 8 and SYNTH × 8:
+  exactly 1 alive unit on 8 of 8 with the constant arm's accuracy equal to its majority floor, SYNTH > 1 on 8
+  of 8 (the same L-R4 bars). Per-item attribution recorded from the cells that exist: Stage A 30.5 units →
+  the first form's 1 (dead) → the corrected 1 (alive); the panel's cell with rule (i) off: 2; the L1a-alone
+  NEUTER × 8 is owed and not run here.
+- **(c) The oracle's positive control (P8 clause 2).** Brain-free, the live-path engine fed one-hot(mode) →
+  mode on `SyntheticPerceptStream`'s chain (a stream WITH first-order structure), 8 seeds, under the marginal
+  window: paired (acc − its own persistence floor) must clear the bar and a per-cycle shuffle of the chain
+  must not. If it clears, "persistence-only" is a claim about the live stream, not about the learner.
+- Also folded before these run: the strict L-R1 xfail guarded on the real perception packs (on a fresh clone
+  the oracle beats persistence on the synthetic rotation, floor 0.0 — the red is a property of the live stream)
+  and given `raises=AssertionError`, the degenerate-ties check outside it, a tie tolerance of 1e-6 in the
+  statistic; the L-R4 test asserts the constant arm's accuracy equals its majority floor (a dead unit reds);
+  `marginal_holdout` gains a brain-free contract test that the recency split fails; L3's two rules gain
+  brain-free reds (`tests/test_admission_window.py`).
+
 ## 3. Results
 
 ### 3.1 Stage A — the incumbent head `bba164b` (32 cells, 800 ticks, 20:33–20:42 UTC; `stageA/` in
