@@ -577,7 +577,12 @@ the curiosity gauge; the categories the arm forms moved with the changed traject
   protocol did not pre-register and the session took**, disclosed here and in the plan's Q1 paragraph so
   the owner can revert `dbcf153` with one command. (b) stays OPEN as a standing, reachable red owned by
   a named follow-up: the in-brain `latent_std` floor at 3000 ticks on the live stream (the planted-world
-  form of (b) is green in `tests/test_jepa_collapse.py`).
+  form of (b) is green in `tests/test_jepa_collapse.py`). **The follow-up ran the same day, owner-instructed (`evidence/jepa-live-floor.md`): (b) is
+  RETIRED-AND-REPLACED — the consecutive-window gauge measures the stimulus (an untrained twin reads 0.01–0.07
+  over 32 consecutive ticks; the trained model over DISTINCT patterns reads 0.036–0.045, below the floor on every
+  seed); the pre-registered replacement (trained/fresh spread ratio over distinct patterns ≥ ×0.10, its red the
+  ablation's ×0.02–0.08) is MET 3/3; a VICReg reservoir batch that turned the repeated-world red green did NOT
+  land (it loses this arc's planted order read at 10 cycles), so the revert option above stays open.**
 - **Owed onward:** Q1(a)'s consequence — L2 may now be targeted at this prediction error — is the
   owner's to schedule (PLAN-FINAL Part H); the open (b) floor above; `spiking_jepa`'s copied 0.9 bound
   is its own P2 follow-up; the grower's held-out accuracy reading exactly its majority floor on seeds 1
