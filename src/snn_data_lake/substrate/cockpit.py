@@ -919,7 +919,7 @@ function paint(d){
    +row('ignitions',dv.ignitions,0)+row('percept holds bus',dv.ws_percept_ignited,0)
    +row('PCI',s.pci,3,'pci')+row('integration',s.integration_competence,3,'integration_competence')
    +`<div class="note">ignitions = broadcast changed hands; percept holds bus = this tick's percept seized the slot (1/0); the others can hold high on one content.</div>`;
- $('bLife').innerHTML=big(s.nights_elapsed,0)+sub('nights slept')
+ $('bLife').innerHTML=big(s.nights_elapsed,0,undefined,'nights_elapsed')+sub('nights slept')
    +row('units admitted',s.grown_units,0,'grown_units')+row('reasoning acc',s.reasoning_accuracy)
    +row('reliability',s.reliability);
  $('bLake').innerHTML=big(dv.lake_events,0)+sub('lake working-memory events')
