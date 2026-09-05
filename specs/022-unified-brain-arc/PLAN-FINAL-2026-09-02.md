@@ -323,7 +323,8 @@ Startable now, in-process. Order inside the phase: W3 (the instrument) first —
   the wire.
   The full record survives in `evidence/w1-goal-curriculum.md`, which is deliberately NOT deleted:
   P8 calls deletion on a null the licence working, and the evidence is what stops this being rebuilt.
-  **T076's mechanism is therefore WITHDRAWN, not delivered** — see its row in Part E.
+  **T076's mechanism is therefore WITHDRAWN, not delivered** — see its row in Phase 5 (Part D) and
+  `tasks.md`'s T076 row.
   The superseded specification follows, kept so the deletion can be audited against what was asked.
 
 - ~~**W1 — goals drive the arm inside the existing world (this IS T076's mechanism, pulled forward under
@@ -341,19 +342,24 @@ Startable now, in-process. Order inside the phase: W3 (the instrument) first —
   (an |LP|-driven stage-advance gate) do DIFFERENT jobs and are not merged; no benchmark exists that could
   compare them. **W1's commit carries T076's red**: an objective with `coverage_reward` neutered must
   measurably change goal selection.
-- **W2 — REFUSED ON MEASUREMENT 2026-09-05, BEFORE A BUILD (the rank-2c outcome; record:
-  `evidence/w2-context-latents.md`).** The premise was probed in-process with no tree change (nine cells:
+- **W2 — REFUSED ON MEASUREMENT 2026-09-05, BEFORE A BUILD (the id lane; the surprise half entered no
+  cell and is Q2; the rank-2c outcome; record: `evidence/w2-context-latents.md`).** The premise was probed in-process with no tree change (nine cells:
   incumbent / W2 / W2 with the context's succession destroyed per cycle, seeds 0–2, 3000 ticks) against a
   pre-registered decision rule, and failed it on the direction pinned in advance:
   (a) **the arm's world model reads no succession** — `JepaWorldModel`'s latent COLLAPSES on every
   context this body sees (trained/fresh target-latent spread ×0.005–0.11 on nine of nine models; its
-  `latent_std > 0.0` self-check bars clear on all of them) and its prediction error is the same to the
-  fourth decimal under the natural order and under a per-cycle permutation; the tracked packs carry no
+  live-model `latent_std > 0.0` self-check bars clear on all of them; the module's own 0.05 floor, which
+  never sees the live context, would fail all of them) and its prediction error is the same to the
+  fourth decimal under the natural order and under a per-cycle permutation — on the W2 context (three
+  seeds) and, in the fold, on the incumbent context (three more; record §4.3b); the tracked packs carry no
   first-order succession either (ordered next-label MI at the median of 200 shuffles). W-R1 as written
   is therefore unreachable on this chain and this world.
-  (b) **curiosity under W2 leaves the incumbent's floor by 30–190× but not its own time-shuffled control**
-  (2 of 3 seeds; seed 1 read exactly 0.0 the moment recruitment stopped): every "alive" reading on this
-  chain is the per-unit learning-progress transient of newly recruited arm prototypes.
+  (b) **curiosity under W2 moves — 0.09–0.13 on seeds 0 and 2 against an incumbent reading 0.0000 at
+  3000, and 0.0000 on seed 1 against the incumbent's 0.0200 — but not above its own time-shuffled
+  control on 3 of 3** (2 of 3, the pinned direction reversed on those two): with the world model blind to
+  succession, recruitment of new arm prototypes is sufficient for a reading and its absence returns the
+  gauge to its 4-dp floor (seed 1: `raw_cur` exactly 0 over the last 200 rows), though recruitment does
+  not order the six cells.
   (c) **the id lane fragments the arm's alphabet** (51–102 units against 5–7) and the grower's next-category
   accuracy falls to 1.3–1.7 %, below its own persistence and majority floors on every seed — W-R2's
   entropy half passes by recruitment alone and its accuracy half nulls.
@@ -378,14 +384,19 @@ Startable now, in-process. Order inside the phase: W3 (the instrument) first —
   re-targeted at prediction error. **CORRECTED BY MEASUREMENT 2026-09-05 (W2 record §4.6):** the floor is
   intrinsic to the world MODEL — a latent that collapses on every context this body sees — and to a world
   with no first-order succession, not to the body; the prediction error this sentence names is the
-  collapsed one, so the L2 re-target is HELD pending Q1 (Part H) and no task whose red reads
-  `JepaWorldModel.prediction_error` starts before the JEPA-collapse arc is green.
+  collapsed one, so the L2 re-target is HELD pending Q1 (Part H). The record RECOMMENDS Q1(a) — no task
+  whose red reads `JepaWorldModel.prediction_error` before the JEPA-collapse arc is green — and does not
+  enact it; the sequencing is the owner's.
 - **Exit:** `evidence/w-exit.md`, three tables, the pre-registered baselines beside them.
 
 ### Phase 2 — Learning in the substrate (synaptic first, growth on plateau)
 
 L1a, L3 and the oracle are stream-independent and can start before Phase 1 finishes; SC-011 and L-R2 need
-Phase 1's stream. Determinism: every A/B here runs a live-vs-live nondeterminism baseline in the same
+Phase 1's stream. **Recorded 2026-09-05 (Phase 1 exit):** Phase 1 delivered NO stream change, and the
+tracked packs were measured to carry no first-order succession (W2 record §3.1c) — so SC-011's positive
+arm ("a stream with learnable temporal structure") has no measured stimulus on today's world and, per Part
+C, must show one before it runs; L-R2's red needs category structure, not succession, and runs on the
+incumbent stream. Determinism: every A/B here runs a live-vs-live nondeterminism baseline in the same
 command (the rank-1 idiom), torch threads pinned; "byte-equal" restart reds are state-key equality against
 that baseline.
 

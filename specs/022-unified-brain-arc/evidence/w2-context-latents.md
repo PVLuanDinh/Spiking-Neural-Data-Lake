@@ -9,7 +9,8 @@ the daemon's 64-wide prototypes and the 31-unit growth blob (rank 2b refuses a r
 (FR-030) with its own P4b restart red and a fresh-engine disposition, stated in advance."*
 
 W1 was retired on 2026-09-04 (owner decision, P8 deletion-on-a-null; `evidence/w1-goal-curriculum.md`),
-so W2 runs ALONE and the plan's "W1+W2" reds are scored on W2 by itself. The reds, verbatim from Part F:
+so W2 runs ALONE and the plan's "W1+W2" reds are scored on W2 by itself. The reds, from Part F (its rows
+say "under W1+W2"; read here as W2 alone, paraphrased):
 **W-R1** — mean `curiosity_mag` over the last 200 wake rows at 3000 and at 6000 ticks does not exceed
 the time-shuffled-context world, per seed (control: the same world, context order shuffled). **W-R2**
 (amended 2026-09-03 on W3's measurement) — category entropy not above the W3 baseline at the NAMED
@@ -68,8 +69,8 @@ distinct values at 4 dp over 294 rows, mean 0.082, range [0.0000, 1.0000].
 
 | band (16 cells) | cells that ever leave 0 | consecutive-row cosine, mean / min | per-cell std, max |
 |---|---|---|---|
-| encoded visual | 0–4 (cells 5–15 identically 0.0) | **0.9938 / 0.9695** | 0.066 |
-| encoded audio | 0–3 | **0.9969 / 0.9733** | 0.045 |
+| encoded visual | 0–4 carry the bump; 5–6 read < 0.003; 7–15 identically 0.0 at 4 dp | **0.9938 / 0.9695** | 0.066 |
+| encoded audio | 0–3 carry the bump; 4–5 read < 0.003; 6–15 identically 0.0 | **0.9969 / 0.9733** | 0.045 |
 | encoded temperature (proprioception) | 0–13 | 0.9575 / 0.0000 | 0.401 |
 
 The raw 4-vectors are small and nearly constant — visual means `[0.074, 0.098, 0.035, 0.035]` with
@@ -129,7 +130,9 @@ widening" = the ctx dict keeps its `(4, 1, 4, 1)` shape and `encode_multimodal`'
 average, a second element in `ctx["visual"]` halves the id bump and adds a bump wandering mostly in
 [0, 0.2] (§1b: mean 0.082), the positions ids 0, 8, 4 and 12 occupy — a category/surprise confound in
 the very band W-R2 scores; and the surprise already has two declared consumers, so a third is a P2
-question. If W2 proceeds, an arm `w2+surprise` measures it (§3.6) and the slot ships only if it wins.
+question. If W2 proceeds, an arm `w2+surprise` (the design panel's arm E; §3.5) measures it and the slot
+ships only if it wins. **The surprise half entered no probe cell** (every cell is `--code vdc`, ids
+only); it is the subject of Q2 (§5).
 **Deviation 2 — the encoding is a POSITION, not a sparse code.** The id enters its band as one scalar,
 `symbol_position(id)` = the base-2 van der Corput value (0 → 0, 1 → .5, 2 → .25, 3 → .75, 4 → .125 …),
 so `ctx["visual"] = [p] * 4` and the unchanged encoder produces ONE unit-amplitude Gaussian bump — the
@@ -162,11 +165,15 @@ frames share a label 7.4 % / 5.9 % of the time. The ordered pack is the median s
 mechanism, read at the symbol:** in `JepaWorldModel.train_step` the VICReg variance hinge pushes each
 latent dimension away from the batch mean by `lambda_var · −(z_j − μ_j) / (L · m · sd)`, a restoring
 force proportional to the latent's own deviation over a floored std — so once the deviation is small the
-force that should re-inflate the latent is itself small, and the invariance term (`2·r`) wins. The two
-in-tree "did not collapse" bars (`autonomous_loop`'s `jp_std > 0.0`, `live_brain`'s `jepa_std > 0.0`)
-are cleared by a std of 0.006: fixtures that cannot tell a collapsed latent from a live one. No consumer
-of `latent_std()` exists outside those two self-checks. **These are owed as a record regardless of W2's
-outcome** (§3.7).
+force that should re-inflate the latent is itself small, and the invariance term (`2·r`) wins. **Four
+readers of `latent_std()` exist, and the sharper finding is which of them sees the live model.** The
+module's own `__main__` self-check asserts an ABSOLUTE floor — `full_std > 0.05 and full_std > 3.0 *
+ctrl_std` — and `tests/instruments/jepa_highdim_probe.py` asserts `std_full > std_abl * 2`; both run on
+synthetic streams and never on the arm's context. The only bars on the LIVE model are `autonomous_loop`'s
+self-check `jp_std > 0.0` and `live_brain`'s `jepa_std > 0.0`, which a std of 0.006 clears. Every
+in-brain value in this record (0.005–0.034, §4.2) would FAIL the module's own 0.05 floor; nothing applies
+that floor where it matters. (Corrected by the arc's panel, PH-2: an earlier draft said "no consumer
+outside two self-checks".) **These are owed as a record regardless of W2's outcome** (§3.7).
 
 **A0, in-brain, no tree change** (this session; seed 0, 1500 ticks = 742 wake rows ≈ 2.9 cycles; instance
 wraps on `jepa.prediction_error`, `curiosity.intrinsic_reward`, `empower.step_reward`,
@@ -183,13 +190,17 @@ saw, beside a FRESH model's spread over the same patterns):
 Read plainly: the richer the context, the harder the latent collapses (ratio 0.15 incumbent, 0.018 vdc,
 0.007 sparse); the ordered and the per-cycle-shuffled contexts give the SAME error trajectory; curiosity
 under W2 leaves the incumbent's floor by 30–80× — and the shuffled control leaves it equally or more.
-What moves `curiosity_mag` under W2 is the per-unit learning-progress transient every newly recruited arm
-unit starts with (55–93 units against 5), not anything the world model learned about succession. The
-panel's own A0 rule ("spread < 0.01 AND `raw_cur == 0` on > 95 % of wake ticks after 300") is met on its
-first half (0.0063 < 0.01 for the sparse arms; 0.0136 for vdc, still falling) and NOT on its second
-(zero-fraction 0.58–0.78 at 1500 ticks, the recruitment transients) — recorded as measured, not as
-confirmed; the operational fact that decides W-R1's reachability is the identical error trajectory, which
-needs no threshold.
+What moves `curiosity_mag` under W2 at 1500 ticks coincides with the recruitment of 55–93 new arm units
+against 5 (§4.4 says how far that reading holds), not with anything the world model learned about
+succession. **The design panel's A0 was a two-branch rule and, applied as written, it did NOT confirm
+collapse** (the arc's panel, PH-6): "CONFIRMED iff spread < 0.01 AND `raw_cur == 0` on > 95 % of wake
+ticks after 300" — the spread half held for the sparse arms (0.0063) and not for the build candidate
+(0.0136, still falling), and the zero-fraction half read 0.58–0.78. Its REFUTED branch prescribed a G3
+cell — the INCUMBENT context ordered against the incumbent frame-shuffled — which the nine-cell probe
+did not run; the probe's G-ORDER measured succession on the W2 context only, and its w2 seed-0 cell at
+1500 ticks is number-for-number A0's vdc seed-0 cell (the same seed, code and head, re-run). The fold
+ran G3 (§4.3b): the incumbent context reads no succession either. The operational fact that decides
+W-R1's reachability is the identical error trajectory on both contexts, which needs no threshold.
 
 ### 3.2 The premise, restated after A0, as the probe's decision rule
 
@@ -242,7 +253,8 @@ per call: `prediction_error`, `intrinsic_reward`, `step_reward`; per mark: `summ
 liveness at 4 dp, first/last-1000 entropy with the overlap count), `latent_std`, the trained/fresh
 spread, perr per 256-row block, `raw_cur`/`raw_emp` zero fractions after wake row 300, and the grower's
 `predict_accuracy`, refit count, last-third mean accuracy beside its majority and persistence floors.
-Cost: 9 cells × ~2 min (measured 0.08 s/tick with four brains contending) ≈ 5 min wall at 4 workers.
+Cost: 9 cells × ~4 min (3000 ticks at the measured 0.08 s/tick with four brains contending) ≈ 12 min
+wall at 4 workers (an earlier draft said 5; the panel's PH-8).
 Three plumbing smoke runs (300 / 700 / 300 ticks, seed 0, the sparse code) and the four A0 cells were
 run BEFORE this section was written; their numbers are in §3.1 and are not scored; the probe below is
 scored against the predictions above and nothing in it was tuned to them.
@@ -296,17 +308,28 @@ answer are raised in §5.
 
 ### 3.7 Owed regardless of W2's outcome
 
-The JEPA collapse record (stage −1 and A0 numbers), the `latent_std > 0.0` fixture finding (two
-self-checks that cannot tell), the re-reading of s2c's "masters in a few hundred ticks" as collapse, and
-`AutonomousArm.step`'s `_cur_mag` — updated only under `if raw_cur or raw_emp`, a held gauge whose "1
-distinct value" in W3 is a frozen latch, not a decayed signal (the panel's C-F3).
+The JEPA collapse record (stage −1 and A0 numbers), the live-model `> 0.0` fixture finding (the
+module's own 0.05 floor never sees the live context), the re-reading of s2c's "masters in a few hundred
+ticks" as collapse, and the RESOLUTION of the curiosity gauge: `state()["curiosity_mag"]` is
+`round(_cur_mag, 4)`, and inside `AutonomousArm.step`'s `if raw_cur or raw_emp:` guard the gauge is an
+EMA (τ 0.02) that DECAYS whenever either drive is nonzero and is held only when both are zero — so "1
+distinct value at 4 dp" is a gauge below 5e-5, and the instrument cannot tell held from decayed without the
+unrounded series. (An earlier draft called this "a frozen latch"; the arc's panel — I-1/PH-1 — refuted it
+on the record's own cells: the incumbent's `raw_cur` is nonzero on 91–98 % of ticks at 1e-6–1e-10 while
+the gauge reads 0.0000.)
 
 ## 4. Result — W2 REFUSED ON MEASUREMENT, before a build (2026-09-05)
 
 Nine cells at HEAD `f546e0a` (tree clean but for this file), 3000 ticks each, four brains at a time,
 the live daemon running throughout (~0.08 s/tick under contention; ~4 min per cell); raw JSON and the
 probe script archived beside the session record (`archive/w2-2026-09-05/`). Every number below is read
-from those files; nothing was re-run to a friendlier value.
+from those files; nothing was re-run to a friendlier value. **Provenance, stated plainly (the panel's
+I-7):** the ordering "protocol, then cells" rests on this record's own text and on the design panel's
+`panel_final.md` §3.11 (which pre-states a stricter prediction set the record then cut to four gates);
+the evidence file has one commit carrying both, the archived files' mtimes are the copy time, and the
+cell JSONs carry `wall_s` but no head or clock. The harness was amended in the fold to write the git
+head and start/end timestamps into every cell (the G3 cells of §4.3b carry them); the nine original cells
+do not.
 
 ### 4.1 G5 — the instrument reproduces W3 exactly, with the wraps on
 
@@ -316,9 +339,11 @@ from those files; nothing was re-run to a friendlier value.
 | 1 | 127, 0.0200 / 127, 0.02001 | 58 / 58 | 1.0369 / 4 / 1.0369 / 4 |
 | 2 | 1, 0.0000 / 1, 0.0000 | 1 / 1 | 2.0415 / 6 / 2.0415 / 6 |
 
-Digit-for-digit, on a head eleven `src` commits past W3's and with three read-only instance wraps
-installed (`prediction_error`, `intrinsic_reward`, `_context_pattern`). The wraps are a polled == unpolled
-control: an instrument that had written what it reports would have moved these. G5 PASSES.
+Digit-for-digit, on a head eleven `src` commits past W3's and with four read-only instance wraps
+installed on every arm (`prediction_error`, `intrinsic_reward`, `step_reward`, `_context_pattern`; the W2
+arms additionally REPLACE `_safe_ctx`, the treatment). The wraps are a polled == unpolled control: an
+instrument that had written what it reports would have moved these. G5 PASSES at 3000 ticks; W3's
+6000-tick columns were not re-run.
 
 ### 4.2 The world model's latent collapses on every arm, hardest under W2
 
@@ -331,10 +356,11 @@ FRESH model of the same seed on the same patterns, at 3000 ticks:
 | 1 | 0.0126 / 0.271 (×0.047) | 0.0044 / 0.831 (×0.005) | 0.0046 / 0.828 (×0.006) | 0.021 / 0.006 / 0.009 |
 | 2 | 0.0052 / 0.122 (×0.042) | 0.0126 / 0.976 (×0.013) | 0.0104 / 0.978 (×0.011) | 0.018 / 0.006 / 0.005 |
 
-A context three times richer (fresh spread 0.77–0.98 against 0.12–0.27) is compressed to a latent
-spread of 0.004–0.013 — one to two hundredfold — while the incumbent's already-narrow context loses a
-further ten- to twentyfold. The in-tree bars (`jp_std > 0.0`, `jepa_std > 0.0`) clear on every one of
-these nine models. Stage −1's brain-free 0.0009 was an underestimate of the in-brain spread but not of
+A context three to eight times richer (fresh spread 0.77–0.98 against 0.12–0.27) is compressed to a
+latent spread of 0.004–0.013 — forty-five- to two-hundredfold (the ×-ratios in the table) — while the
+incumbent's already-narrow context loses a further nine- to twenty-four-fold. The live-model bars
+(`jp_std > 0.0`, `jepa_std > 0.0`) clear on every one of these nine models; the module's own 0.05 floor
+would fail all nine. Stage −1's brain-free 0.0009 was an underestimate of the in-brain spread but not of
 the mechanism.
 
 ### 4.3 G-ORDER — the world model does not read succession
@@ -352,7 +378,27 @@ ways: as a difference ≥ 0.0005, 0 of 3 seeds; as a sign-consistent advantage o
 blocks, 0 of 3 (every seed flips sign at least once). Under a stream whose succession has been
 destroyed the model's error is the same, to the fourth decimal, as under the natural one. G-ORDER FAILS.
 
-### 4.4 G1 — W-R1's premise: curiosity under W2 is the alphabet's growth, not the world's structure
+### 4.3b G3 (the fold) — the incumbent context reads no succession either
+
+Three cells added after the panel (the design panel's A0 refuted-branch cell, PH-6): the UNTOUCHED brain
+with both packs re-permuted under one fresh permutation per cycle (`--arm incumbent_shuffle`, seeds 0–2,
+3000 ticks; these cells carry the git head `6a1a437` and UTC start/end stamps in their JSON):
+
+| seed | incumbent, blocks 4–6 | incumbent-shuffled, blocks 4–6 | last-block difference | spread trained / fresh, shuffled | `curiosity_mag` @3000, incumbent / shuffled |
+|---|---|---|---|---|---|
+| 0 | 0.00423, 0.00132, 0.00157 | 0.00123, 0.00097, **0.00083** | +0.00074 (shuffled LOWER on every block) | 0.032 / 0.264 | 0.0000 / 0.0000 |
+| 1 | 0.00104, 0.00105, 0.00074 | 0.00117, 0.00097, 0.00081 | −0.00007 | 0.013 / 0.271 | **0.0200 / 0.0000** |
+| 2 | 0.00143, 0.00085, 0.00070 | 0.00208, 0.00130, 0.00090 | −0.00020 | 0.0044 / 0.122 | 0.0000 / 0.0000 |
+
+No sign-consistent advantage for the natural order (seed 0 is the wrong way on all three blocks; the two
+"ordered lower" seeds are within 0.0002), the same collapse (ratios ×0.036–0.12), and seed 1 — the one
+incumbent seed W3 recorded "alive" at 3000 (127 distinct, 0.0200) — reads 0.0000 with one distinct value
+under the frame shuffle while its learners hold 10 / 17 prototypes against 9 / 15. G3 FAILS as G-ORDER
+did: on the incumbent context, as on W2's, the world model cannot tell the natural succession from a
+destroyed one. The grower under the shuffled incumbent reads 0.67 / 0.84 / 0.12 against persistence
+0.95 / 0.96 / 0.98 — the same "below persistence" shape as the ordered incumbent.
+
+### 4.4 G1 — W-R1's premise: curiosity under W2 moves without the world model learning succession
 
 | seed | arm units @1500 → @3000, w2 / shuffled | `curiosity_mag` last-200 mean @3000, w2 / shuffled | `raw_cur == 0` fraction after row 300, w2 / shuffled |
 |---|---|---|---|
@@ -361,14 +407,38 @@ destroyed the model's error is the same, to the fourth decimal, as under the nat
 | 2 | 87 → 102 / 59 → 91 | 0.0919 / 0.0528 | 0.62 / 0.70 |
 
 Two of three seeds have w2 above its shuffled control; the rule needed three (probe power, FP 1/8).
-G1 FAILS — and seed 1 is the mechanism in one row: the w2 arm stopped recruiting between 1500 and 3000
-ticks (51 units at both marks) and its `curiosity_mag` read exactly 0.0 with one distinct value — the
-incumbent's floor, back the moment the alphabet stopped growing — while the shuffled arm, still
-recruiting (43 → 56), stayed "alive" at 0.0395. Across the six W2 cells the ordering of `curiosity_mag`
-follows the ordering of units recruited in the second half, not the ordering of anything the world
-model learned (§4.3 says it learned nothing about succession in either arm). The plan's W-R1 control was
-built for exactly this confound and it catches it: a W2 that "leaves the floor" against the incumbent
-(30–190×) does not leave it against its own shuffle.
+G1 FAILS the bar — **and the pinned direction (§3.2: w2 does NOT exceed its shuffle) was REVERSED on
+seeds 0 and 2**, which §3.2's escalation clause said would send W-R1 to an S = 8 sweep. Adjudicated
+here, not skipped: that clause's premise was "the brain-free proxy diverged from the brain" — the world
+model reads succession after all — and §4.3 shows it did not (identical error under order and
+permutation on all three seeds), so a w2-above-shuffle difference on two seeds is not the world model
+reading order; an S = 8 W-R1 column would test a contrast §3.4's rule already cannot turn into a build
+(G-ORDER and G-W-R2b fail regardless). It was NOT run; it costs ~35 min (16 cells at 6000 ticks, 4
+workers) and is available on request. This is the one place the pre-registration and the outcome
+disagree, and it is recorded as such rather than folded into "as predicted".
+
+What the six cells DO support, stated at their strength: recruitment is SUFFICIENT for a reading and its
+absence returns the gauge to the 4-dp floor — seed 1's w2 arm stopped recruiting between 1500 and 3000
+ticks (51 units at both marks) and read 0.0000 with one distinct value while its shuffled twin, still
+recruiting (43 → 56), read 0.0395. It does NOT order the six cells: second-half recruits (25, 3, 0, 13,
+15, 32) against `curiosity_mag` (0.1322, 0.0131, 0.0000, 0.0395, 0.0919, 0.0528) give Spearman ≈ 0.83
+with one within-pair inversion — on seed 2 w2 recruited 15 against the shuffle's 32 and read HIGHER
+(0.0919 vs 0.0528) — and the incumbent pair does not fit at all (seed 1 recruited one unit and reads
+0.0200 with `raw_cur` nonzero on 96 % of ticks; seed 0 recruited two and reads 0.0000). "Every alive
+reading is a recruitment transient" is therefore a HYPOTHESIS with seed 1 as its evidence and seed 2 and
+the incumbent seed 1 as its counter-cases (the panel's I-2/PH-4; an earlier draft stated it as
+established). What is established is narrower and enough for the verdict: the W2 contrast the plan's
+W-R1 control was built to isolate — treatment above its own time-shuffled twin — does not hold on 3 of 3.
+
+Against the incumbent, the honest pairs are: w2 @3000 over the incumbent's @1500 mean, 183× (seed 0)
+and 37× (seed 2) — the incumbent reads 0.0000 at 3000 on those seeds, so no same-checkpoint ratio
+exists; and on seed 1 the OPPOSITE, w2 0.0000 against the incumbent's 0.0200. (An earlier draft's
+"30–190×" was a cross-checkpoint, cross-code composite; the panel's I-3/PH-10.)
+
+Measured consequence of the frame shuffle (the panel's I-6): the control's vision/audio learners
+recruited a different alphabet on every seed — 9–10 / 17 prototypes against w2's 9 / 15 — so the
+control kept the FRAME marginal, not the ID marginal. Harmless to G-ORDER and G1 under identical error
+trajectories, and exactly what the delivery-level shuffle of §3.5 removes if W2 ever proceeds.
 
 ### 4.5 W-R2 — entropy rises by recruitment; the grower cannot use the alphabet
 
@@ -389,9 +459,10 @@ read either. For reference the incumbent grower reads 0.12 / 0.78 / 0.44 against
 
 ### 4.6 Verdict
 
-PROCEED required G5 ∧ G-ORDER ∧ G1 ∧ G-W-R2b. G5 passes; the other three fail, each on the direction
-§3.2 pinned before the run. **W2 is refused on measurement before a build** — the rank-2c outcome. No
-module, port, edge, test or plan constant was written; the tree is unchanged but for this record.
+PROCEED required G5 ∧ G-ORDER ∧ G1 ∧ G-W-R2b. G5 passes; G-ORDER and G-W-R2b fail on the direction
+§3.2 pinned before the run; G1 fails the 3-of-3 bar with the pinned direction REVERSED on seeds 0 and 2
+(adjudicated in §4.4). **W2 is refused on measurement before a build** — the rank-2c outcome. No module,
+port, edge, test or plan constant was written; the tree is unchanged but for this record.
 
 What the refusal establishes, stated so it is not re-derived:
 
@@ -403,11 +474,13 @@ What the refusal establishes, stated so it is not re-derived:
    INSTRUMENT (the world model) and the STIMULUS (the pack), not about the body: the plan's null
    sentence, "intrinsic to the world model over this body", is corrected to "intrinsic to the world
    MODEL — a collapsed latent — and to a world with no succession".
-2. **Every "curiosity leaves the floor" reading on this chain is a recruitment transient.** W3 seed 1's
-   127 distinct values at 3000 ticks, the incumbent's 156 at 600, W2's 30–190× rise — all of it is the
-   per-unit learning-progress transient of newly recruited prototypes, and it returns to exactly 0.0 when
-   recruitment stops (seed 1, §4.4). `_cur_mag` is updated only under `if raw_cur or raw_emp`, so "1
-   distinct value" is a frozen latch, never a measured floor.
+2. **A richer context moves the curiosity gauge without the world model learning anything about
+   succession.** Under W2 the gauge rose to 0.09–0.13 on seeds 0 and 2 (and to 0.0000 on seed 1) while
+   §4.3 shows the ordered and permuted worlds indistinguishable to the model; recruitment of new arm
+   prototypes is sufficient for a reading and its absence returns the gauge to the 4-dp floor (seed 1),
+   but recruitment does not order the six cells (§4.4) — what drives the remaining variance is not
+   measured here. The gauge itself resolves 4 dp of an EMA that decays whenever either drive is nonzero,
+   so "1 distinct value" means "below 5e-5", not "frozen" (§3.7).
 3. **Delivering ids as one RBF position per band fragments the arm's alphabet ten- to twentyfold**, and
    nothing downstream of the arm learner — the Q rows, the curiosity keys, the grower's task — is sized
    for it. A different code (a sparse 16-cell splice, measured in A0) fragments harder (93 units at 742
@@ -422,13 +495,17 @@ What the refusal establishes, stated so it is not re-derived:
 - `cerebellum/jepa_world_model.JepaWorldModel` collapses its latent under the arm's own defaults on
   every seed and every context in this record (nine of nine models; spread ratios 0.005–0.11). The
   VICReg hinge's restoring force is proportional to the latent's own deviation over a floored std, so
-  the collapse is a fixed point. Its two self-check bars (`autonomous_loop` `jp_std > 0.0`, `live_brain`
-  `jepa_std > 0.0`) clear at 0.005–0.034: fixtures that cannot tell. No consumer of `latent_std()` exists
-  outside them. **Filed as its own arc** with the red already specified: stage −1(b)'s planted 3-bit
-  successor world must give perr(ordered) < perr(shuffled); `latent_std` must hold a pre-registered
-  fraction of the fresh model's spread; the hinge/invariance gradient ratio counted before the rule.
-- `AutonomousArm.step`'s `_cur_mag` is a held gauge (updated only when `raw_cur or raw_emp` is nonzero).
-  **Filed** with the JEPA arc (a fix moves the number on every seed and owes its own P8 item).
+  the collapse is a fixed point. The module's own self-check already asserts `full_std > 0.05` (and 3×
+  its ablation) on a synthetic stream; the only bars on the LIVE model are `autonomous_loop`'s
+  `jp_std > 0.0` and `live_brain`'s `jepa_std > 0.0`, which 0.005–0.034 clears (§3.1). **Filed as its
+  own arc** with the red already specified: stage −1(b)'s planted 3-bit successor world must give
+  perr(ordered) < perr(shuffled); the module's EXISTING 0.05 floor applied to the live model (not a new
+  fraction); the hinge/invariance gradient ratio counted before the rule.
+- The curiosity gauge's RESOLUTION and its unmeasured hold: `state()` rounds `_cur_mag` to 4 dp; inside
+  the `if raw_cur or raw_emp:` guard the EMA decays whenever either drive is nonzero and is held only when
+  both are zero — a case that exists in code and was not measured here (no both-zero fraction, no
+  unrounded series logged). **Filed** with the JEPA arc as "gauge resolution + unmeasured hold" (a fix
+  moves the number on every seed and owes its own P8 item).
 - s2c's sentence "the pooled real channels enter that context as scalars a world model masters in a few
   hundred ticks" described collapse, not mastery. The s2c record stands; this file is the correction.
 - The incumbent grower on seed 0 at 3000 ticks reports `predict_accuracy` 0.0 and a last-third majority
@@ -451,9 +528,45 @@ What the refusal establishes, stated so it is not re-derived:
 
 ## 6. Disposition
 
-- W2: **REFUSED ON MEASUREMENT** (this record); nothing built; `PLAN-FINAL` W2 row and Part E updated
-  in this commit; Phase 1's exit record (`evidence/w-exit.md`) written beside it.
+- W2: **REFUSED ON MEASUREMENT** (this record; the id lane — the surprise half is Q2); nothing built;
+  `PLAN-FINAL` W2 row and Part E updated; a W2 row ADDED to `tasks.md` in the W3/A2c shape (the fold;
+  §3.4's "tasks.md's W2 row closes" presumed a row that did not exist — the panel's INT-3); Phase 1's
+  exit record (`evidence/w-exit.md`) written beside it.
 - Open, filed, escalated (the completion gate's "file it and escalate the queue" clause): the
   JEPA-collapse arc; the `_cur_mag` held gauge (bundled). Q1 and Q2 above.
-- The three-lens panel for this arc reviews THIS RECORD (the arc lands no code); its findings and the
-  fold are appended as §7.
+- The three-lens panel for this arc reviewed THIS RECORD (the arc lands no code); its findings and the
+  fold are §7. The fold is a stacked commit; per the plan's A.4 step 4 it is stated here as
+  battery-verified only, not re-panelled.
+
+## 7. The arc's panel — three lenses on the record at `6a1a437`, and the fold
+
+Three read-only lenses (instrument / policy-honesty / integration), every finding reproduced by a
+command the lens ran; the full reports are archived (`archive/w2-2026-09-05/panel/record_panel.json`).
+All three verdicts: the refusal follows from the cells as recorded. What they found wrong was my
+overreach around it. Ledger (dispositions applied in this fold unless marked):
+
+| id | severity | finding | disposition |
+|---|---|---|---|
+| I-1 / PH-1 | MAJOR | "`_cur_mag` is a frozen latch": false — `state()` rounds to 4 dp and the EMA inside the guard decays whenever `raw_emp` is nonzero; the incumbent's `raw_cur` is nonzero on 91–98 % of ticks at 1e-6–1e-10 while the gauge reads 0.0000 | ACCEPTED: §3.7, §4.6(2), §4.7 rewritten; the filed item re-scoped to "gauge resolution + unmeasured hold"; w-exit and the plan row corrected |
+| I-2 / PH-4 | MAJOR | "curiosity follows recruitment": seed 2 inverts within the pair (w2 +15 units / 0.0919 vs shuffled +32 / 0.0528); Spearman 0.83 over six cells; the incumbent pair does not fit | ACCEPTED: §4.4 restated at strength (sufficient, not ordering; a hypothesis with counter-cases); w-exit, plan row (b), and the memory entry corrected |
+| I-3 / PH-10 / INT-5 | MAJOR/MINOR | "30–190×" is a cross-checkpoint composite with no denominator; at 3000 the incumbent reads 0.0000 on seeds 0 and 2 and seed 1 is the opposite | ACCEPTED: replaced everywhere by the actual pairs (183× / 37× against the incumbent's @1500 mean; seed 1 reversed) |
+| PH-2 | MAJOR | "no consumer of `latent_std()` outside two self-checks": false — the module's own self-check asserts `full_std > 0.05 and > 3× ctrl` and `tests/instruments/jepa_highdim_probe.py` asserts `> 2× abl`, both on synthetic streams; only the live-model bars are `> 0.0` | ACCEPTED: §3.1, §4.2, §4.7 corrected; the JEPA arc's red now reuses the existing 0.05 floor on the live model; the chip re-filed |
+| PH-3 | MAJOR | G1's pinned direction was REVERSED on seeds 0 and 2 and §3.2's escalation clause was never adjudicated | ACCEPTED: §4.4 adjudicates it (the clause's premise — the proxy diverged — is contradicted by G-ORDER; the S = 8 column not run, ~35 min on request); §4.6 no longer says "each on the pinned direction" |
+| PH-5 | MAJOR | the plan edit enacted a sequencing rule ("no task whose red reads `prediction_error` starts before…") while Part H lists Q1 open | ACCEPTED: the plan sentence now RECOMMENDS Q1(a) and does not enact it |
+| PH-6 | MAJOR | the design panel's two-branch A0 rule was not confirmed; its refuted branch's G3 was never run; "reads no succession" measured on the W2 context only; probe seed 0 @1500 replays A0's cell | ACCEPTED: §3.1 discloses; G3 run in the fold (§4.3b: fails the same way on the incumbent context); plan row (a) qualified |
+| INT-1 / I-9 | MAJOR/MINOR | w-exit widened G5 to W3's 6000-tick columns, which were not re-run | ACCEPTED: w-exit caption and §4.1 scoped to 3000 |
+| INT-2 | MAJOR | w-exit Table 2 cited the W1 evidence file for two rows that live in the plan's W1 row and commit `17e4613` | ACCEPTED: sources corrected; "bandit and buffer untouched" traced to the commit message |
+| INT-3 | MAJOR | §3.4 promised to close a `tasks.md` W2 row that does not exist | ACCEPTED: W2 row ADDED to `tasks.md` in the W3/A2c shape; §6 says so |
+| INT-4 | MAJOR | SC-011 and L-R2 "need Phase 1's stream" and Phase 1 delivered none; SC-011's stimulus measured absent | ACCEPTED as a RECORD (not a rule): one sentence at Part D's Phase 2 head and in w-exit; the re-scoping is the owner's |
+| INT-9 | MINOR | pre-existing T076 inconsistencies in `tasks.md` (row names the deleted module; the O5 sentence describes it landing) and a Part D pointer to a Part E row that does not exist | ACCEPTED: `tasks.md` T076 row and O5 sentence marked WITHDRAWN with pointers; Part D pointer fixed |
+| I-4 / PH-9 / INT-6 | MINOR | four wraps, not three; the W2 arms also replace `_safe_ctx` | ACCEPTED (§4.1) |
+| I-5 | MINOR | §4.2 prose ratios not derived from its table | ACCEPTED (3–8×, 45–200×, 9–24×) |
+| I-6 | MINOR | the frame shuffle changes the control's id alphabet (9–10 / 17 vs 9 / 15) — measured, undisclosed | ACCEPTED (§4.4) |
+| I-7 | MINOR | ordering "protocol then cells" not verifiable from artefacts; cells carry no head or clock | ACCEPTED: disclosed at §4's head; the harness now writes head + timestamps (the G3 cells carry them) |
+| I-8 / INT-7 | MINOR | §1c "cells 5–15 identically 0.0": cells 5–6 read < 0.003 | ACCEPTED |
+| PH-7 | MINOR | the surprise half entered no cell; the plan row header did not say so; a cross-reference pointed at the wrong section | ACCEPTED (§3.0, the plan row header) |
+| PH-8 | MINOR | "≈ 5 min wall": 12 | ACCEPTED |
+| INT-8 | MINOR | "verbatim from Part F" was a paraphrase | ACCEPTED |
+
+Not changed by the panel: the verdict, the four gates, every table cell in §4.1–4.5 (each lens
+recomputed them from the archived JSON and found them exact), Q1 and Q2.
