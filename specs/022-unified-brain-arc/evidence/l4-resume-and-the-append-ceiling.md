@@ -259,3 +259,35 @@ because the sentence sits under a heading that says what the row does NOT do.
 panel of its own. It has: the re-measured coverage on a live brain, the committed resume probe with its
 positive control, the module self-checks, the tests, and the arc's battery. That is battery-verified, not
 panel-reviewed.
+
+---
+
+## 9. The disclosed risk arrived within minutes, on the live daemon
+
+§8.5 disclosed that an ordinary tick reaches 79–83 % of the `0x07` ceiling and is still climbing, so the only
+live bound this project has was on a path to firing in normal operation. It did not take a matured brain.
+
+The daemon relaunched on this arc's push and, at `nights_elapsed = 8`, reports:
+
+```
+"append_floods": 7
+"append_flood_last": "FLOOD: tag 0x07 (IMMORTAL) appended 160470 B this tick > 8.0x its recorded p95 (12381 B)"
+```
+
+**Seven floods in eight nights, all on `0x07`, at 160 KB against a 12 KB p95.** Two things follow, and they
+point in opposite directions:
+
+1. **The wire works.** It was dormant for the life of the instrument and it fired on the real brain within
+   minutes of being connected. The constructed red predicted a live one.
+2. **The baseline is wrong for the brain that exists now.** 12,381 B was recorded on a 120-tick fresh brain
+   in August; the live brain writes an order of magnitude more per persisting tick, carried by whole-frame
+   state names. These seven are FALSE floods — the brain is not flooding, the ceiling is stale.
+
+`FLOOD_FACTOR = 8` is not the problem and moving it would be tuning a constant to silence a measurement.
+What is owed is a re-recorded `0x07` p95 from a MATURED brain's nightly persist frame, on the pinned host,
+by the same instrument that recorded the original — which is a measurement run, not an edit, and is why it
+is not done here. Until then `append_floods` on the live cockpit reads a stale ceiling and not a lake
+problem, and this section is what a reader of that number should find.
+
+Recorded rather than smoothed: the first live reading of a newly-charged instrument is evidence about the
+instrument, and this one says the ceiling needs re-measuring before the count means anything.
