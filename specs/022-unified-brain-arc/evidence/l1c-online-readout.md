@@ -265,3 +265,134 @@ the rule cannot move) was not read and is owed.
 | `a832906` 2 | Amendment 1: the control failed on the engine's substrate at the ported step; the one derived step pre-registered | before the re-run |
 | `bd53a42` 3 | the build AS MEASURED (its self-check red on this substrate) | the artifact of §3 |
 | `(this commit)` 4 | the REFUSAL: the build deleted; §3–5; the plan's L1c row | P8 clauses 2 and 5 |
+
+## 3. Results (the in-brain cells, §2.0c)
+
+### 3.1 The cells — 8 arms × 8 seeds × 800 ticks, 4 at a time (02:03–02:24 UTC; `stage1/`; head(s) 7862d44; wall 54–114 s; the daemon was up)
+
+Same rows: majority, persistence AND live-persistence floors identical across the six arms on every seed to 1e-6 — no seed excluded; seeds used [0, 1, 2, 3, 4, 5, 6, 7]. A/A (BATCH vs BATCH_B): max |Δ live acc| 0.00e+00, W/beta hashes equal on 8 of 8. Perception unified on every cell: True; feed refusals: none.
+
+| arm | seed | units | live acc / live pers | refit acc (last third) | persistence | majority | updates / Σ|dβ| / widened | W / beta hash |
+|---|---|---|---|---|---|---|---|---|
+| BATCH | 0 | 2 | 0.547 / 0.932 | 0.311 | 0.953 | 0.744 |  /  /  | 1fd01989 / 90fea667 |
+| BATCH | 1 | 2 | 0.849 / 0.963 | 0.917 | 0.983 | 0.739 |  /  /  | d655e464 / ecd22e20 |
+| BATCH | 2 | 2 | 0.807 / 0.952 | 0.825 | 0.953 | 0.694 |  /  /  | f2879fd9 / d131007f |
+| BATCH | 3 | 7 | 0.653 / 0.902 | 0.656 | 0.911 | 0.319 |  /  /  | 60750bab / 60771e58 |
+| BATCH | 4 | 6 | 0.590 / 0.907 | 0.628 | 0.950 | 0.508 |  /  /  | 708075a4 / af611828 |
+| BATCH | 5 | 3 | 0.541 / 0.934 | 0.833 | 0.947 | 0.758 |  /  /  | 5b73e151 / 83f82801 |
+| BATCH | 6 | 3 | 0.630 / 0.951 | 0.867 | 0.933 | 0.506 |  /  /  | 914883ca / 1b8e0b0c |
+| BATCH | 7 | 2 | 0.771 / 0.992 | 0.947 | 1.000 | 0.653 |  /  /  | 292414f4 / 7d7da645 |
+| BATCH_B | 0 | 2 | 0.547 / 0.932 | 0.311 | 0.953 | 0.744 |  /  /  | 1fd01989 / 90fea667 |
+| BATCH_B | 1 | 2 | 0.849 / 0.963 | 0.917 | 0.983 | 0.739 |  /  /  | d655e464 / ecd22e20 |
+| BATCH_B | 2 | 2 | 0.807 / 0.952 | 0.825 | 0.953 | 0.694 |  /  /  | f2879fd9 / d131007f |
+| BATCH_B | 3 | 7 | 0.653 / 0.902 | 0.656 | 0.911 | 0.319 |  /  /  | 60750bab / 60771e58 |
+| BATCH_B | 4 | 6 | 0.590 / 0.907 | 0.628 | 0.950 | 0.508 |  /  /  | 708075a4 / af611828 |
+| BATCH_B | 5 | 3 | 0.541 / 0.934 | 0.833 | 0.947 | 0.758 |  /  /  | 5b73e151 / 83f82801 |
+| BATCH_B | 6 | 3 | 0.630 / 0.951 | 0.867 | 0.933 | 0.506 |  /  /  | 914883ca / 1b8e0b0c |
+| BATCH_B | 7 | 2 | 0.771 / 0.992 | 0.947 | 1.000 | 0.653 |  /  /  | 292414f4 / 7d7da645 |
+| DELTA | 0 | 2 | 0.547 / 0.932 | 0.311 | 0.953 | 0.744 | 369 / 53.763463 / 3 | 1fd01989 / b9bb2ab1 |
+| DELTA | 1 | 2 | 0.841 / 0.963 | 0.917 | 0.983 | 0.739 | 377 / 84.15141 / 1 | d655e464 / e1c83750 |
+| DELTA | 2 | 2 | 0.933 / 0.952 | 0.825 | 0.953 | 0.694 | 374 / 158.321034 / 2 | f2879fd9 / 47012c6f |
+| DELTA | 3 | 7 | 0.857 / 0.902 | 0.403 | 0.911 | 0.319 | 378 / 194.343179 / 3 | 60750bab / 8b8f2732 |
+| DELTA | 4 | 6 | 0.838 / 0.907 | 0.517 | 0.950 | 0.508 | 376 / 152.055553 / 2 | 708075a4 / 6508680f |
+| DELTA | 5 | 3 | 0.708 / 0.934 | 0.836 | 0.947 | 0.758 | 377 / 94.302605 / 1 | 5b73e151 / 89fb07bc |
+| DELTA | 6 | 3 | 0.854 / 0.951 | 0.800 | 0.933 | 0.506 | 370 / 127.510851 / 2 | 914883ca / de83eee7 |
+| DELTA | 7 | 2 | 0.952 / 0.992 | 0.947 | 1.000 | 0.653 | 376 / 114.479314 / 1 | 292414f4 / c3243d87 |
+| SIGN | 0 | 2 | 0.556 / 0.932 | 0.311 | 0.953 | 0.744 | 164 / 12.924321 / 3 | 1fd01989 / f4f9f4ee |
+| SIGN | 1 | 2 | 0.833 / 0.963 | 0.917 | 0.983 | 0.739 | 63 / 20.543337 / 1 | d655e464 / ecd22e20 |
+| SIGN | 2 | 2 | 0.922 / 0.952 | 0.825 | 0.953 | 0.694 | 29 / 38.097555 / 2 | f2879fd9 / d131007f |
+| SIGN | 3 | 7 | 0.868 / 0.902 | 0.433 | 0.911 | 0.319 | 50 / 68.615406 / 3 | 60750bab / c43fc3da |
+| SIGN | 4 | 6 | 0.856 / 0.907 | 0.558 | 0.950 | 0.508 | 54 / 49.152006 / 2 | 708075a4 / daf1a182 |
+| SIGN | 5 | 3 | 0.719 / 0.934 | 0.742 | 0.947 | 0.758 | 106 / 27.167398 / 1 | 5b73e151 / 65d31c92 |
+| SIGN | 6 | 3 | 0.859 / 0.951 | 0.867 | 0.933 | 0.506 | 52 / 29.733911 / 2 | 914883ca / 1b8e0b0c |
+| SIGN | 7 | 2 | 0.973 / 0.992 | 0.947 | 1.000 | 0.653 | 10 / 8.420745 / 1 | 292414f4 / 7d7da645 |
+| RIDGE | 0 | 2 | 0.550 / 0.932 | 0.311 | 0.953 | 0.744 | 364 / 59.518354 / 3 | 1fd01989 / 8aab81e3 |
+| RIDGE | 1 | 2 | 0.830 / 0.963 | 0.917 | 0.983 | 0.739 | 374 / 41.150169 / 1 | d655e464 / 2574864f |
+| RIDGE | 2 | 2 | 0.928 / 0.952 | 0.825 | 0.953 | 0.694 | 366 / 120.853711 / 2 | f2879fd9 / 0a7375fb |
+| RIDGE | 3 | 7 | 0.812 / 0.902 | 0.400 | 0.911 | 0.319 | 370 / 197.410334 / 3 | 60750bab / 7ffa54b6 |
+| RIDGE | 4 | 6 | 0.840 / 0.907 | 0.453 | 0.950 | 0.508 | 364 / 105.578484 / 2 | 708075a4 / fbf05daf |
+| RIDGE | 5 | 3 | 0.732 / 0.934 | 0.792 | 0.947 | 0.758 | 368 / 72.343537 / 1 | 5b73e151 / a48592ab |
+| RIDGE | 6 | 3 | 0.892 / 0.951 | 0.761 | 0.933 | 0.506 | 362 / 91.835466 / 2 | 914883ca / dc4f6021 |
+| RIDGE | 7 | 2 | 0.965 / 0.992 | 0.947 | 1.000 | 0.653 | 371 / 59.552136 / 1 | 292414f4 / 2574864f |
+| NEUTER_DELTA | 0 | 2 | 0.547 / 0.932 | 0.311 | 0.953 | 0.744 | 0 / 0.0 / 0 | 1fd01989 / 90fea667 |
+| NEUTER_DELTA | 1 | 2 | 0.849 / 0.963 | 0.917 | 0.983 | 0.739 | 0 / 0.0 / 0 | d655e464 / ecd22e20 |
+| NEUTER_DELTA | 2 | 2 | 0.807 / 0.952 | 0.825 | 0.953 | 0.694 | 0 / 0.0 / 0 | f2879fd9 / d131007f |
+| NEUTER_DELTA | 3 | 7 | 0.653 / 0.902 | 0.656 | 0.911 | 0.319 | 0 / 0.0 / 0 | 60750bab / 60771e58 |
+| NEUTER_DELTA | 4 | 6 | 0.590 / 0.907 | 0.628 | 0.950 | 0.508 | 0 / 0.0 / 0 | 708075a4 / af611828 |
+| NEUTER_DELTA | 5 | 3 | 0.541 / 0.934 | 0.833 | 0.947 | 0.758 | 0 / 0.0 / 0 | 5b73e151 / 83f82801 |
+| NEUTER_DELTA | 6 | 3 | 0.630 / 0.951 | 0.867 | 0.933 | 0.506 | 0 / 0.0 / 0 | 914883ca / 1b8e0b0c |
+| NEUTER_DELTA | 7 | 2 | 0.771 / 0.992 | 0.947 | 1.000 | 0.653 | 0 / 0.0 / 0 | 292414f4 / 7d7da645 |
+| SIGNFLIP_DELTA | 0 | 2 | 0.187 / 0.932 | 0.311 | 0.953 | 0.744 | 369 / 180.214308 / 3 | 1fd01989 / a1ad0a37 |
+| SIGNFLIP_DELTA | 1 | 2 | 0.159 / 0.963 | 0.917 | 0.983 | 0.739 | 377 / 299.655137 / 1 | d655e464 / 0e10d568 |
+| SIGNFLIP_DELTA | 2 | 2 | 0.195 / 0.952 | 0.825 | 0.953 | 0.694 | 374 / 375.715621 / 2 | f2879fd9 / e959d138 |
+| SIGNFLIP_DELTA | 3 | 7 | 0.222 / 0.902 | 0.325 | 0.911 | 0.319 | 378 / 418.383268 / 3 | 60750bab / e4de3d45 |
+| SIGNFLIP_DELTA | 4 | 6 | 0.160 / 0.907 | 0.028 | 0.950 | 0.508 | 376 / 402.075223 / 2 | 708075a4 / 9be96874 |
+| SIGNFLIP_DELTA | 5 | 3 | 0.122 / 0.934 | 0.422 | 0.947 | 0.758 | 377 / 203.064452 / 1 | 5b73e151 / 7d03a834 |
+| SIGNFLIP_DELTA | 6 | 3 | 0.108 / 0.951 | 0.828 | 0.933 | 0.506 | 370 / 373.738678 / 2 | 914883ca / 2c17a8e9 |
+| SIGNFLIP_DELTA | 7 | 2 | 0.098 / 0.992 | 0.947 | 1.000 | 0.653 | 376 / 360.026197 / 1 | 292414f4 / 02c976dd |
+| RIDGE_SHUF | 0 | 2 | 0.507 / 0.932 | 0.311 | 0.953 | 0.744 | 364 / 105.337473 / 3 | 1fd01989 / 4d66f0c3 |
+| RIDGE_SHUF | 1 | 2 | 0.798 / 0.963 | 0.917 | 0.983 | 0.739 | 374 / 75.984023 / 1 | d655e464 / 2574864f |
+| RIDGE_SHUF | 2 | 2 | 0.890 / 0.952 | 0.825 | 0.953 | 0.694 | 366 / 197.742485 / 2 | f2879fd9 / 0a7375fb |
+| RIDGE_SHUF | 3 | 7 | 0.690 / 0.902 | 0.256 | 0.911 | 0.319 | 370 / 379.136771 / 3 | 60750bab / 7ffa54b6 |
+| RIDGE_SHUF | 4 | 6 | 0.758 / 0.907 | 0.397 | 0.950 | 0.508 | 364 / 236.268773 / 2 | 708075a4 / fbf05daf |
+| RIDGE_SHUF | 5 | 3 | 0.692 / 0.934 | 0.531 | 0.947 | 0.758 | 368 / 129.069423 / 1 | 5b73e151 / a48592ab |
+| RIDGE_SHUF | 6 | 3 | 0.832 / 0.951 | 0.761 | 0.933 | 0.506 | 362 / 163.167472 / 2 | 914883ca / dc4f6021 |
+| RIDGE_SHUF | 7 | 2 | 0.955 / 0.992 | 0.947 | 1.000 | 0.653 | 371 / 72.346798 / 1 | 292414f4 / 2574864f |
+
+### 3.2 Verdict — each conjunct of §2.4 against its wording
+
+- **L1c-R2 (reach): NEUTER_DELTA equals BATCH bit for bit** — W hash 8 of 8, beta hash 8 of 8, live accuracy 8 of 8, units 8 of 8 → **HOLDS**.
+- **DELTA, L1c-R1 ("the online readout beats the stale one on the wake stream, scored before learning"): paired (live_acc_DELTA − live_acc_BATCH) clears** — t = 4.132, exact p = 0.0156, 6 / 1 / 1, mean +0.143 (random-sign clears 0.035) → **MET**. Beside it: (live acc − live persistence) t = -2.874, exact p = 1.0000, 0 / 8 / 0, mean -0.125 (random-sign clears 0.030).
+- **DELTA, L1c-R4 (non-regression on the batch instrument): paired (refit_acc_DELTA − refit_acc_BATCH) not below −1.895** — t = -1.664, exact p = 0.9375, 1 / 3 / 4, mean -0.053 (random-sign clears 0.000) → **MET**. Units [2, 2, 2, 7, 6, 3, 3, 2] (BATCH [2, 2, 2, 7, 6, 3, 3, 2]); the admission path diverged from BATCH (W hash differs) on 0 of 8 seeds (§2.2); updates per cell [369, 377, 374, 378, 376, 377, 370, 376]; Σ|dβ| [53.763463, 84.15141, 158.321034, 194.343179, 152.055553, 94.302605, 127.510851, 114.479314]; widened [3, 1, 2, 3, 2, 1, 2, 1].
+- **SIGN, L1c-R1 ("the online readout beats the stale one on the wake stream, scored before learning"): paired (live_acc_SIGN − live_acc_BATCH) clears** — t = 4.054, exact p = 0.0117, 7 / 1 / 0, mean +0.150 (random-sign clears 0.055) → **MET**. Beside it: (live acc − live persistence) t = -2.714, exact p = 1.0000, 0 / 8 / 0, mean -0.118 (random-sign clears 0.030).
+- **SIGN, L1c-R4 (non-regression on the batch instrument): paired (refit_acc_SIGN − refit_acc_BATCH) not below −1.895** — t = -1.705, exact p = 1.0000, 0 / 3 / 5, mean -0.048 (random-sign clears 0.000) → **MET**. Units [2, 2, 2, 7, 6, 3, 3, 2] (BATCH [2, 2, 2, 7, 6, 3, 3, 2]); the admission path diverged from BATCH (W hash differs) on 0 of 8 seeds (§2.2); updates per cell [164, 63, 29, 50, 54, 106, 52, 10]; Σ|dβ| [12.924321, 20.543337, 38.097555, 68.615406, 49.152006, 27.167398, 29.733911, 8.420745]; widened [3, 1, 2, 3, 2, 1, 2, 1].
+- **RIDGE, L1c-R1 ("the online readout beats the stale one on the wake stream, scored before learning"): paired (live_acc_RIDGE − live_acc_BATCH) clears** — t = 3.910, exact p = 0.0117, 7 / 1 / 0, mean +0.145 (random-sign clears 0.050) → **MET**. Beside it: (live acc − live persistence) t = -2.896, exact p = 1.0000, 0 / 8 / 0, mean -0.123 (random-sign clears 0.035).
+- **RIDGE, L1c-R4 (non-regression on the batch instrument): paired (refit_acc_RIDGE − refit_acc_BATCH) not below −1.895** — t = -2.087, exact p = 1.0000, 0 / 4 / 4, mean -0.072 (random-sign clears 0.000) → **NOT MET**. Units [2, 2, 2, 7, 6, 3, 3, 2] (BATCH [2, 2, 2, 7, 6, 3, 3, 2]); the admission path diverged from BATCH (W hash differs) on 0 of 8 seeds (§2.2); updates per cell [364, 374, 366, 370, 364, 368, 362, 371]; Σ|dβ| [59.518354, 41.150169, 120.853711, 197.410334, 105.578484, 72.343537, 91.835466, 59.552136]; widened [3, 1, 2, 3, 2, 1, 2, 1].
+- **L1c-R3 (the control that is not the method): SIGNFLIP_DELTA does not clear and reads below BATCH on a majority of seeds** — t = -11.562, exact p = 1.0000, 0 / 8 / 0, mean -0.517 (random-sign clears 0.055); below on 8 of 8 → **HOLDS**.
+- **L1c-R3 for RIDGE (the ridge on a label-permuted window does not clear):** t = 2.579, exact p = 0.0312, 6 / 2 / 0, mean +0.092 (random-sign clears 0.045) → **FAILS**.
+- **A/B (live):** DELTA − SIGN t = -1.740, exact p = 0.9375, 2 / 6 / 0, mean -0.007 (random-sign clears 0.030); RIDGE − DELTA t = 0.277, exact p = 0.3945, 5 / 3 / 0, mean +0.002 (random-sign clears 0.055); RIDGE − SIGN t = -0.508, exact p = 0.6797, 3 / 5 / 0, mean -0.005 (random-sign clears 0.035).
+- **The incumbent (BATCH):** live accuracy [0.5474, 0.8488, 0.8075, 0.6534, 0.5904, 0.5411, 0.6297, 0.7713]; (live acc − live persistence) t = -7.274, exact p = 1.0000, 0 / 8 / 0, mean -0.268 (random-sign clears 0.035); refit accuracy [0.3111, 0.9167, 0.825, 0.6556, 0.6278, 0.8333, 0.8667, 0.9472]; units [2, 2, 2, 7, 6, 3, 3, 2].
+
+### 3.3 Amendment 3 — what the cells read, and the one variant pre-registered before its run (commit 7)
+
+**Read from §3.1–3.2, each conjunct by its letter.** R1 is MET by all three candidates on the wake stream, by
+about the same margin (DELTA t 4.132, p 0.0156, 6/1/1, mean +0.143; SIGN t 4.054, p 0.0117, 7/1/0, mean +0.150; RIDGE
+t 3.910, p 0.0117, 7/1/0, mean +0.145) — the incumbent's live accuracy sits 0.11–0.39 below the live persistence floor on
+every seed and the online readouts close about half of that gap (they stay below persistence on 8 of 8: DELTA mean
+−0.125). R2 holds exactly (NEUTER_DELTA == BATCH in W, beta, live accuracy and units on 8 of 8). R3 holds for the LMS
+rules (SIGNFLIP t -11.562, p 1.0000, 0/8/0, mean -0.517, below on 8 of 8 — a directional control in-brain at the
+ported step) and **FAILS for RIDGE: the ridge on a label-PERMUTED window still beats the incumbent
+(t 2.579, p 0.0312, 6/2/0, mean +0.092)** — on a persistence-shaped stream a window's recent label MARGINAL is itself a
+strong predictor, so the ridge's gain is the window's recency, not the readout learning the pairing; **RIDGE does not
+land and is deleted (P2).** R4 is **DEGENERATE for all three** (fewer than 5 non-tied seeds): on seeds 0, 1, 2 and 7
+every last-third refit was an open-gate refit, where `fit` re-solves beta and the arms are identical by construction;
+on seeds 3, 4, 5 and 6 closed-gate refits scored the ONLINE beta on the held-out marginal-covering slice and it read
+LOWER than the stale batch beta on almost every one (DELTA −0.253 / −0.111 / +0.003 / −0.067; SIGN −0.222 / −0.069 /
+−0.092 / 0; RIDGE −0.256 / −0.175 / −0.042 / −0.106). The A/B among the LMS rules is not resolvable (DELTA − SIGN
+t -1.740, p 0.9375, 2/6/0, mean -0.007); RIDGE − DELTA t 0.277, p 0.3945, 5/3/0, mean +0.002.
+
+**The dissociation, stated plainly (the session's reading, to be panelled):** an online readout that learns from the
+wake stream learns a RECENCY-shaped readout — right more often on the stream the brain lives in (which is 93–98 %
+"the same category again"), worse on the marginal-covering slice that samples every category. Both numbers are true;
+they measure different things. The held-out marginal accuracy is the instrument the T047 growth gate reads
+(`_refit` → `_growth_gate_verdict`), and under a closed gate it is now the ONLINE beta's — lower — so the gate sees
+"not charging", holds its stop, and re-opens only on a new optimum the recency-shaped beta cannot produce on that
+slice: **a stop that welds itself shut with no batch re-solve ever again** (the shape `growth_stop.py`'s own docstring
+names). Landing DELTA as measured would ship that hazard; the R4 letter ("not below −1.895") is numerically satisfied
+(t −1.664) but on a degenerate statistic with a per-seed loss on 3 of 4 closed-gate seeds — not a landing the record
+can call earned.
+
+**The ONE variant, pre-registered here (the session's call under the authorization), the decoupled instrument:** the
+engine keeps `_batch_beta` — the readout of the last OPEN-gate solve — and a closed-gate refit scores the held-out
+slice with IT, exactly as the incumbent does, while the retained model's `beta` (the one the live instrument and the
+brain's prediction use) keeps learning online. The growth gate's evidence is then the batch instrument — what a batch
+solve can extract from the current units, the right evidence for a GROWTH decision — unchanged by construction from
+the incumbent's; the live readout is the mechanism. P2: the batch beta is an INSTRUMENT held beside the mechanism
+(POLICIES: a control/instrument is not a second faculty), not a second readout the brain uses; `predict_accuracy` on
+state() is the instrument's number and `live_accuracy` the mechanism's, labelled so on the cockpit surface.
+**Re-run:** DELTA and SIGN × 8 seeds at the amended engine (16 cells), plus BATCH × 8 as the A/A across the change
+(the incumbent path must be bit-identical to stage1's BATCH: W, beta, live accuracy, refit accuracy, units).
+**Decision rule:** the change is honest iff BATCH is bit-identical across it on 8 of 8; then R1 is re-read on the new
+cells (must clear as before), R4 must read IDENTICAL to BATCH on 8 of 8 (ties, by construction — verified, not
+assumed), R2 and R3 stand from stage1 (unchanged paths); the candidate with the larger R1 t lands, the other is
+deleted (P2); if R1 no longer clears, the module is deleted (P8 clause 5). RIDGE is deleted regardless (R3).
