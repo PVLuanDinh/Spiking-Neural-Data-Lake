@@ -1243,6 +1243,23 @@ class Brain:
         self._lake_refused = 0
         self._lake_refusal = ""
         self._lake_night = -1  # no consolidation night yet; -1 is not a night number
+        # THE APPEND BUDGET's first live caller (specs/022 L4, FR-003). It has carried a measured per-tag
+        # baseline since T010-i with NO caller at all -- P3 dormancy in its plainest shape, and the only
+        # instrument this project has for bounding lake growth. The observer is installed here and the tick
+        # closes it; violations are COUNTED and reported, never raised, because a flood is a fact about the
+        # lake and killing the tick over it would lose the brain to protect the disk.
+        self._append_budget = None
+        self._append_floods = 0
+        self._append_flood_last = ""
+        if self._persist:  # a non-persisting brain writes nothing to bound
+            try:
+                from snn_data_lake.substrate.home import set_append_observer
+                from snn_data_lake.substrate.lake_engine import AppendBudget
+
+                self._append_budget = AppendBudget()
+                set_append_observer(self._append_budget.on_append)
+            except Exception:  # noqa: BLE001 - accounting must never stop a brain from existing
+                self._append_budget = None
         self._selfbuild_last = None  # last autonomous self-build result (opt-in via NORD_SELFMOD=1)
         self._selfbuild_proposer = (
             None  # lazily-built brain-native self-build proposer (three-factor learner)
@@ -3801,6 +3818,14 @@ class Brain:
         else:
             self._wake_tick()
         self._was_asleep = asleep
+        # CLOSE THE APPEND TICK (specs/022 L4). Unbaselined tags never trip -- a budget nobody measured is
+        # not a budget -- so this can only fire for a class with a recorded p95, which today is 0x03, 0x04,
+        # 0x07, 0x08 and 0x0A. NOT 0x01: the learned class L6 unbounded has no baseline row, so this caller
+        # does not restore its bound and does not claim to.
+        if self._append_budget is not None:
+            for v in self._append_budget.end_tick():
+                self._append_floods += 1
+                self._append_flood_last = v[:200]
         return "asleep" if asleep else "awake"
 
     # distinct-from: cerebellum/forward_model.py -- dynamics state, not telemetry.
@@ -3854,6 +3879,11 @@ class Brain:
             # night, because zeroing would reinstate the "no consolidation night yet" ambiguity; they go
             # STALE instead, and this is what makes the staleness visible.
             "lake_night": self._lake_night,
+            # The append budget's own report. Zero is the expected reading and a non-zero one is a FLOOD --
+            # a class appending far above its recorded p95 in one tick, which is a fact about the lake and
+            # not a reading about the brain.
+            "append_floods": self._append_floods,
+            "append_flood_last": self._append_flood_last,
             # ---- diffuse neuromodulator levels (stepped EVERY wake tick; previously live but unexposed) ----
             # Raw levels only. Derived quantities (distance travelled, place error) are the reader's job --
             # state() must not carry two representations of the same fact.

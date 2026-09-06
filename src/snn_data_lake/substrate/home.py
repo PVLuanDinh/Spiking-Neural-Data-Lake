@@ -509,7 +509,10 @@ class KnowledgeLog:
         and byte-identical). fsync'd by BinLog. Returns True if written, False if a duplicate."""
         if not isinstance(record, dict):
             raise TypeError("KnowledgeLog.append: record must be a dict")
-        written = self._bin.append(_T_FACT + pack_fact(record))
+        payload = _T_FACT + pack_fact(record)
+        written = self._bin.append(payload)
+        if written:
+            _observe_append(_T_FACT, len(payload))
         if written:
             self._count += 1
         return written
@@ -536,6 +539,8 @@ class KnowledgeLog:
                 raise TypeError("KnowledgeLog.extend: every record must be a dict")
             payloads.append(_T_FACT + pack_fact(record))
         written = self._bin.extend(payloads)
+        for _p in payloads:
+            _observe_append(_T_FACT, len(_p))
         self._count += written
         return written
 
@@ -666,6 +671,34 @@ def _unpack_state(payload):
     return payload[2 : 2 + n], int.from_bytes(payload[2 + n : 6 + n], "little"), payload[6 + n :]
 
 
+#: The APPEND OBSERVER (specs/022 L4, FR-003). Called `(tag_int, n_bytes)` at each site below where this
+#: module knows the tag of what it is writing. It is here rather than in BinLog because a tag is a home
+#: concept and BinLog carries opaque payloads by design; it is module-global because this module's log cache
+#: already is, and threading a budget object through every writer would couple far more than it bounds.
+#: DISCLOSED: one observer per process, so two brains in one process would share it -- which P4 forbids for
+#: other reasons anyway. A raising observer must never break a write: the call is guarded.
+_APPEND_OBSERVER = None
+
+
+def set_append_observer(fn):
+    """Install (or clear, with None) the process-wide append observer. Returns the previous one, so a caller
+    can restore what it replaced rather than assuming it was the only one."""
+    global _APPEND_OBSERVER
+    prev = _APPEND_OBSERVER
+    _APPEND_OBSERVER = fn
+    return prev
+
+
+def _observe_append(tag: bytes, n_bytes: int) -> None:
+    fn = _APPEND_OBSERVER
+    if fn is None:
+        return
+    try:
+        fn(tag[0], int(n_bytes))
+    except Exception:  # noqa: BLE001 - accounting must never break a durable write
+        pass
+
+
 class ImmortalRefusal(ValueError):
     """`consolidate` refused a rewrite that would destroy a record of a non-reclaimable class.
 
@@ -782,7 +815,10 @@ def save_named_state(name, blob, path=None):
     if prev is not None and prev[1] == blob:
         return False
     seq = 0 if prev is None else prev[0] + 1
-    written = log.append(_T_STATE + bytes([len(key)]) + key + seq.to_bytes(4, "little") + blob)
+    _payload = _T_STATE + bytes([len(key)]) + key + seq.to_bytes(4, "little") + blob
+    written = log.append(_payload)
+    if written:
+        _observe_append(_T_STATE, len(_payload))
     if written:
         idx[str(name)] = (seq, blob)
     return written
@@ -1482,6 +1518,32 @@ def main():
             f"the prune must keep the NEWEST frame per name and every foreign record: {_allowed}"
         )
         assert _le.RETENTION[0x07] == _was07, "the red must restore the registry it borrowed"
+        # THE APPEND OBSERVER (specs/022 L4): it must report the tag and the byte count of what this
+        # module writes, and a RAISING observer must never break a durable write -- accounting that can
+        # lose a record is worse than no accounting.
+        # Its OWN store, never the shared self-check lake: writing a probe into that lake breaks a later
+        # assertion twelve lines down, which is a mistake this file has now made twice.
+        _obs_store = os.path.join(tempfile.mkdtemp(), "observer_probe.bin")
+        _seen = []
+        _prev = set_append_observer(lambda tag, n: _seen.append((tag, n)))
+        try:
+            save_named_state("l4observer", b"o" * 48, _obs_store)
+            assert any(t == _T_STATE[0] and n > 48 for t, n in _seen), _seen
+
+            def _boom(tag, n):
+                raise RuntimeError("accounting exploded")
+
+            set_append_observer(_boom)
+            assert save_named_state("l4observer", b"p" * 48, _obs_store) is True, (
+                "a raising append observer broke a durable write"
+            )
+            assert load_named_state("l4observer", _obs_store) == b"p" * 48
+        finally:
+            set_append_observer(_prev)
+        print(
+            f"  append observer   : reports (tag, bytes) at every tag-known site ({len(_seen)} seen); "
+            "a raising observer cannot break a write (L4/FR-003)"
+        )
         print(
             "  immortal guard    : a survivor set missing a LEARNED fact is REFUSED; a re-derivable "
             "fact is still reclaimed in the same call; removing 0x07's SUPERSEDED exemption stops the "

@@ -182,6 +182,8 @@ PROVENANCE = {
     "lake_refused": "sleep-only; non-zero means the immortal guard fired -- a defect, not a reading",
     "lake_refusal": "the last refusal message, or empty -- empty means NOT FIRED IN THIS PROCESS",
     "lake_night": "which night lake_kept/lake_pruned describe; -1 = no consolidation night yet",
+    "append_floods": "persisting brains only; 0 expected -- non-zero is a lake FLOOD, not a brain reading",
+    "append_flood_last": "the last flood message, or empty -- empty means NOT FIRED IN THIS PROCESS",
     # written only in the sleep tick; pci additionally only when nights % 4 == 0
     # (pci brain.py:2519; criticality brain.py:2650 -- it is ALSO set once at birth, :367)
     "pci": "sleep-only, refreshes every 4th night",
