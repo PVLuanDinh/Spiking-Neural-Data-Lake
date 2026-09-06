@@ -1,7 +1,9 @@
 # L4 — persist what makes a relaunch resume instead of replay, within a ceiling
 
-*Measured 2026-09-06 at `a3117b2`. The row has two halves and they came out very differently: the first is
-**refused on measurement**, the second is built.*
+*Measured 2026-09-06 at `a3117b2`. READ SECTION 8 FIRST: an adversarial panel retracted this record's central
+conclusion. Sections 2-4 are kept unaltered so the correction is legible, and each is marked with the section
+that replaces it. The persistence half is RE-OPENED, not refused; the append half stands with its coverage
+claim corrected from five tags to the tags actually observed.*
 
 ## 1. The row, and what it assumed
 
@@ -14,7 +16,7 @@ The first half assumes a relaunch REPLAYS: that a restarted brain has lost those
 them. That assumption had never been measured across a real process boundary, so it was measured before
 anything was built.
 
-## 2. Measured: the relaunch already resumes
+## 2. **RETRACTED BY SECTION 8.1** -- Measured: the relaunch already resumes
 
 Three arms, each a SEPARATE interpreter, all under a throwaway `NORD_HOME` (the live lake was never opened):
 
@@ -40,7 +42,7 @@ The first probe looked much worse — 63 keys "replayed" — because it compared
 **freshly constructed** one. That difference is mostly per-tick READINGS that refill on the next tick, not
 lost learned state. Driving both lives equally is what separates the two, and it is the whole instrument.
 
-## 3. The one apparent regression was two near-zero numbers
+## 3. **RETRACTED BY SECTION 8.2** -- The one apparent regression was two near-zero numbers
 
 `access_index` read 0.000797 in the first life and **0.0** in the second on 4 of 5 seeds, with the no-lake
 control matching the first life — which looks exactly like "restoring from the lake destroys a live reading",
@@ -63,7 +65,7 @@ absolute bar, and this project has the scar for it already. There is no relaunch
 therefore reporting an EMA of a gate that does not open. That is not L4's row to fix, and it is not claimed
 as a defect here — it is measured, dated, and left where the next reader of that surface will find it.
 
-## 4. Disposition on the first half: REFUSED, and why that is the honest outcome
+## 4. **REVERSED BY SECTION 8.3** -- Disposition on the first half: REFUSED, and why that is the honest outcome
 
 No carrier is persisted by this row. The measurement says the relaunch resumes; the row's premise was
 untested when written; and persisting state to fix a replay that does not occur would add lake traffic, add
@@ -144,3 +146,116 @@ The wire LANDS. `AppendBudget` has a live caller, its red is reachable on the pr
 controls hold. What is claimed is exactly that: the budget is now charged for the five baselined tags. What
 is not claimed is any bound on the learned class, which remains L6's open disclosure and needs a measurement,
 not a wire.
+
+---
+
+## 8. The adversarial panel, and the RETRACTION it forced (2026-09-06)
+
+Three lenses read commit `994f812`; twelve findings verified by separate refuting agents, **ten survived, two
+were refuted.** One of them overturns this record's central conclusion, so §2, §3 and §4 are RETRACTED rather
+than annotated. What follows replaces them.
+
+### 8.1 RETRACTED: "the relaunch already resumes"
+
+The claim rested on "57 of ~90 keys identical in both lives". The probe now ships
+(`python -m snn_data_lake.cortex.brain --resume-probe`), states its universe, and separates keys that MOVE
+during driving from keys that never move:
+
+| | |
+|---|---|
+| numeric `state()` keys present in both lives | **93** |
+| of those, keys that MOVE at all | **52** |
+| identical in both lives on every seed, **among moving keys** | **17 of 52 (33 %)** |
+| identical among keys that never move | 41 of 41 — uninformative by construction |
+
+**Two thirds of the state that can differ does differ.** The 57 was inflated by 41 keys that could not have
+differed, which is the same objection §2 raised against its own first probe and then committed itself.
+
+### 8.2 RETRACTED, and this is the serious one: "the workspace never ignites in ANY arm"
+
+§3 reported 0 ignitions everywhere and concluded the `access_index` difference was two near-zero numbers.
+**That was a broken counter** — it sampled `state()["ignited"]`, which does not read the flag the gate sets.
+Counting `_access_state["ignited"]` directly, with arm A as the counter's own positive control:
+
+| seed | ignitions, arm A (first life) | arm B (SECOND life) | arm C (no lake) |
+|---|---|---|---|
+| 0 | **1** | 0 | 1 |
+| 1 | 0 | 0 | 0 |
+| 2 | **1** | 0 | 1 |
+| 3 | **1** | 0 | 1 |
+| 4 | **1** | 0 | 1 |
+| total | **4** | **0** | 4 |
+
+**A first life ignites on 4 of 5 seeds. A second life on the same lake ignites on none.** The `access_index`
+difference was never a comparison of two zeros — it was the visible edge of a real behavioural loss, and I
+argued myself out of it with an instrument that could not count the thing it was counting.
+
+That is the THIRD instrument defect inside this row's own apparatus, after the first probe's
+freshly-constructed comparator and the relative-scale reading. All three pointed the same way: toward
+concluding that nothing was wrong.
+
+### 8.3 The disposition is REVERSED: L4's persistence half RE-OPENS
+
+§4 refused the row on the strength of §2 and §3. Both are retracted, so the refusal goes with them. The
+corrected measurement **supports** the row: a relaunched brain loses two thirds of its moving state and does
+not ignite at all.
+
+The row is re-opened rather than built here, because the build is its own arc and this one has already spent
+its budget correcting itself. What it inherits that it did not have before:
+
+1. **A committed instrument** — the `--resume-probe` arm, with its universe stated and its ignition counter
+   carrying its own positive control.
+2. **A named target** — ignition, not the five carriers the row originally guessed at. `_access_state` is the
+   first thing to follow, and the question is what a first life accumulates before tick ~26 that a second
+   life does not.
+3. **A red that already fires** — arm A ignites, arm B does not, on 4 of 5 seeds. Any fix has to close that.
+
+### 8.4 The append half stands, with its claim corrected
+
+The panel measured that the wire covered **one** of the five baselined tags, not five: the observer sat at
+three sites covering `0x01` (unbaselined) and `0x07`, while a live brain wrote `0x04` and `0x0A` that the
+budget never saw, and constructed floods on both read CALM. The commit's "bounds the five tags that carry a
+recorded p95" was false by four of five.
+
+Fixed, and re-measured on a live 60-tick brain: **written `{0x04, 0x07}`, observed `{0x04, 0x07}`, nothing
+unobserved.** `_observe_append` now sits at every site in `home` that builds a tag — `0x01`, `0x03`, `0x04`,
+`0x05`, `0x07`, `0x08`. **`0x0A` is still NOT observed and is now named rather than implied:** coalitions
+frame onto `BinLog` through the coalition journaller and never enter `home`, and `0x0A` is 80.21 % of the
+production lake. `0x0B` likewise writes through its own store.
+
+Three more, all real:
+
+- **The observer was installed and never removed.** A second brain in one process silently deafened the
+  first — measured: brain A read 0 floods for a flood on its own lake, under a PROVENANCE row saying 0 is
+  expected — and a discarded brain's budget kept accumulating bytes nothing would close. `Brain.close()` now
+  restores what it replaced, which is why `set_append_observer` returns it.
+- **`AppendBudget` was not thread-safe on this project's free-threading interpreter.** 8 threads × 20,000
+  appends counted 36,431 — **78 % lost** — and `end_tick` could raise dict-changed-size out of the caller's
+  tick. It now holds a lock and swaps the dict out under it; the tick's close is guarded as well.
+- **`extend` reported payloads that dedup dropped**, counting traffic that never reached the disk. It now
+  reports only what was written, attributing bytes to the largest written payloads — an over-attribution
+  bounded by the size difference between duplicates, disclosed rather than exact.
+
+### 8.5 An open finding the panel measured and this row does not fix
+
+**An ordinary brain tick reaches 79–83 % of the `0x07` flood ceiling and is still climbing at 1250 ticks**,
+carried by whole-frame state names. The `0x07` p95 was recorded on a 120-tick fresh brain, so the only live
+bound this project has is on a path to firing on a matured brain in normal operation. Re-baselining from a
+matured brain's nightly persist frame is the fix, and it is not this row's: it needs a measurement run on the
+pinned host, which is what `tools/lake_append_baseline.json` records. **Disclosed here so the first false
+flood is not a surprise.**
+
+### 8.6 What was refuted
+
+Two findings did not survive. A claim that a disarmed budget is indistinguishable from a calm one was refuted
+by running it: the shipped test suite fails loudly if the baseline file is missing or the budget fails to
+construct. A claim that "0x01 can never trip" is pinned only against a fabricated dict was refuted because
+`immortal_retention.budget_coverage()` reads the shipped file and prints the absent-key set on every run, and
+because the sentence sits under a heading that says what the row does NOT do.
+
+### 8.7 The honest caveat
+
+**This fold is itself unreviewed code.** It was written in response to the panel and has not been through a
+panel of its own. It has: the re-measured coverage on a live brain, the committed resume probe with its
+positive control, the module self-checks, the tests, and the arc's battery. That is battery-verified, not
+panel-reviewed.

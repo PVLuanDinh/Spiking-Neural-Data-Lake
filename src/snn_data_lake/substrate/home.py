@@ -539,7 +539,12 @@ class KnowledgeLog:
                 raise TypeError("KnowledgeLog.extend: every record must be a dict")
             payloads.append(_T_FACT + pack_fact(record))
         written = self._bin.extend(payloads)
-        for _p in payloads:
+        # Only the payloads that actually LANDED. The first form reported every payload it built, so
+        # dedup-dropped records were counted as lake traffic that never reached the disk -- an accounting
+        # hook must mean bytes appended. extend returns a count, not a mask, so the bytes are attributed
+        # to the LARGEST `written` payloads: an over-attribution of at most the difference between the
+        # largest and smallest duplicate, and never an invented record. DISCLOSED rather than exact.
+        for _p in sorted(payloads, key=len, reverse=True)[: int(written)]:
             _observe_append(_T_FACT, len(_p))
         self._count += written
         return written
@@ -671,8 +676,14 @@ def _unpack_state(payload):
     return payload[2 : 2 + n], int.from_bytes(payload[2 + n : 6 + n], "little"), payload[6 + n :]
 
 
-#: The APPEND OBSERVER (specs/022 L4, FR-003). Called `(tag_int, n_bytes)` at each site below where this
-#: module knows the tag of what it is writing. It is here rather than in BinLog because a tag is a home
+#: The APPEND OBSERVER (specs/022 L4, FR-003). Called `(tag_int, n_bytes)` at every site in THIS MODULE
+#: that appends a payload whose tag this module built: 0x01 (facts, singly and in bulk), 0x03 and 0x08
+#: (growth, legacy and chain), 0x04 (episodes), 0x05 (self-build) and 0x07 (named state).
+#: NOT OBSERVED, and named rather than implied: 0x0A (coalitions) frames onto BinLog through the coalition
+#: journaller and never enters this module, and 0x0B (goals) writes through its own store. The first form
+#: of this hook sat at three sites covering 0x01 and 0x07 only, while its commit claimed it bounded the
+#: five baselined tags -- an adversarial panel measured a live brain writing 0x04 and 0x0A that the budget
+#: never saw, and constructed floods on both reading CALM. It is here rather than in BinLog because a tag is a home
 #: concept and BinLog carries opaque payloads by design; it is module-global because this module's log cache
 #: already is, and threading a budget object through every writer would couple far more than it bounds.
 #: DISCLOSED: one observer per process, so two brains in one process would share it -- which P4 forbids for
@@ -968,7 +979,11 @@ def save_growth(blob, path=None):
         return 0
     members = _growth_members(blob)
     if members is None:
-        return _log(path).append(_T_GROWTH + bytes(blob))
+        _payload = _T_GROWTH + bytes(blob)
+        _w = _log(path).append(_payload)
+        if _w:
+            _observe_append(_T_GROWTH, len(_payload))
+        return _w
     key = os.path.abspath(path or knowledge_path())
     st = _GROWTH_CHAIN.get(key)
     hashes = {name: _growth_hash(name, data) for name, data in members}
@@ -979,7 +994,10 @@ def save_growth(blob, path=None):
         if not changed and set(st["hashes"]) == set(hashes):
             return 0  # byte-identical substrate: nothing to write, nothing to reclaim later
         kind = _GC_DELTA  # a census change with no changed bytes still writes (all-manifest delta)
-    wrote = _log(path).append(_T_GROWTH_DELTA + _growth_pack(kind, members, changed))
+    _payload = _T_GROWTH_DELTA + _growth_pack(kind, members, changed)
+    wrote = _log(path).append(_payload)
+    if wrote:
+        _observe_append(_T_GROWTH_DELTA, len(_payload))
     if wrote:
         _GROWTH_CHAIN[key] = {
             "hashes": hashes,
@@ -997,7 +1015,11 @@ def save_episode(episode, path=None):
     """
     if not episode:
         return False
-    return _log(path).append(_T_EPISODE + pack_episode(episode))
+    _payload = _T_EPISODE + pack_episode(episode)
+    _w = _log(path).append(_payload)
+    if _w:
+        _observe_append(_T_EPISODE, len(_payload))
+    return _w
 
 
 def load_episodes(path=None, limit=None):
@@ -1029,7 +1051,11 @@ def save_selfbuild(blob, path=None):
     tally beside it."""
     if not blob:
         return 0
-    return _log(path).append(_T_SELFBUILD + bytes(blob))
+    _payload = _T_SELFBUILD + bytes(blob)
+    _w = _log(path).append(_payload)
+    if _w:
+        _observe_append(_T_SELFBUILD, len(_payload))
+    return _w
 
 
 def load_selfbuild(path=None):

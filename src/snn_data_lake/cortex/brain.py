@@ -1249,6 +1249,7 @@ class Brain:
         # closes it; violations are COUNTED and reported, never raised, because a flood is a fact about the
         # lake and killing the tick over it would lose the brain to protect the disk.
         self._append_budget = None
+        self._prev_append_observer = None
         self._append_floods = 0
         self._append_flood_last = ""
         if self._persist:  # a non-persisting brain writes nothing to bound
@@ -1257,7 +1258,11 @@ class Brain:
                 from snn_data_lake.substrate.lake_engine import AppendBudget
 
                 self._append_budget = AppendBudget()
-                set_append_observer(self._append_budget.on_append)
+                # CAPTURE what we replace. The first form discarded it, so a second brain in one process
+                # silently deafened the first -- measured: brain A read 0 floods for a flood on its own
+                # lake, under a PROVENANCE row that says 0 is expected -- and a discarded brain's budget
+                # went on accumulating bytes nothing would ever close.
+                self._prev_append_observer = set_append_observer(self._append_budget.on_append)
             except Exception:  # noqa: BLE001 - accounting must never stop a brain from existing
                 self._append_budget = None
         self._selfbuild_last = None  # last autonomous self-build result (opt-in via NORD_SELFMOD=1)
@@ -3818,14 +3823,20 @@ class Brain:
         else:
             self._wake_tick()
         self._was_asleep = asleep
-        # CLOSE THE APPEND TICK (specs/022 L4). Unbaselined tags never trip -- a budget nobody measured is
-        # not a budget -- so this can only fire for a class with a recorded p95, which today is 0x03, 0x04,
-        # 0x07, 0x08 and 0x0A. NOT 0x01: the learned class L6 unbounded has no baseline row, so this caller
-        # does not restore its bound and does not claim to.
+        # CLOSE THE APPEND TICK (specs/022 L4). Two conditions, and the first landing conflated them: a
+        # class can trip only if it is BASELINED (0x03, 0x04, 0x07, 0x08, 0x0A carry a recorded p95) AND
+        # OBSERVED. After the panel's fold home observes 0x01, 0x03, 0x04, 0x05, 0x07 and 0x08, so the
+        # intersection -- what can actually fire -- is 0x03, 0x04, 0x07 and 0x08. NOT 0x0A, which is 80% of
+        # the production lake and frames onto BinLog through the coalition journaller without entering home.
+        # NOT 0x01 either: the learned class L6 unbounded has no baseline row, so this caller does not
+        # restore its bound and does not claim to.
         if self._append_budget is not None:
-            for v in self._append_budget.end_tick():
-                self._append_floods += 1
-                self._append_flood_last = v[:200]
+            try:
+                for v in self._append_budget.end_tick():
+                    self._append_floods += 1
+                    self._append_flood_last = v[:200]
+            except Exception:  # noqa: BLE001 - accounting must never leave the tick
+                pass
         return "asleep" if asleep else "awake"
 
     # distinct-from: cerebellum/forward_model.py -- dynamics state, not telemetry.
@@ -5021,6 +5032,16 @@ class Brain:
         if self._closed:
             return
         self._closed = True
+        # RESTORE the append observer we replaced (specs/022 L4 fold). Leaving it installed kept a dead
+        # brain's budget accumulating bytes nothing would ever close, and left the previous brain -- if
+        # any -- permanently deaf. Restoring what we found is why set_append_observer returns it.
+        if self._append_budget is not None:
+            try:
+                from snn_data_lake.substrate.home import set_append_observer
+
+                set_append_observer(self._prev_append_observer)
+            except Exception:  # noqa: BLE001 - teardown must not raise
+                pass
         # BEFORE the other saves: this is the one that was missing entirely, and a later failure in
         # this method must not be what decides whether the brain keeps what it grew.
         self._flush_growth()
@@ -5112,6 +5133,110 @@ def make_brain(**kwargs):
 
     require_free_threaded("make_brain", strict=True)
     return Brain(**kwargs)
+
+
+# ==================================================================================================
+# L4 (T093) RESUME PROBE -- the producer for evidence/l4-resume-and-the-append-ceiling.md sections 2-3.
+# It ships because the first version of that evidence came from a scratch script that did not survive,
+# and because the ignition counter in that script was broken: it read 0 for every arm while arm A was in
+# fact igniting. Not run by run_selfchecks or main() -- it spawns 3 interpreters per seed.
+# ==================================================================================================
+def _resume_child_source(src_root, seed, ticks):
+    return (
+        "import json, sys\n"
+        f"sys.path.insert(0, {src_root!r})\n"
+        "from snn_data_lake.cortex.brain import make_brain\n"
+        f"b = make_brain(seed={seed}, persist=True)\n"
+        "ign = 0\n"
+        f"for _ in range({ticks}):\n"
+        "    b.tick()\n"
+        "    if b._access_state.get('ignited'):\n"
+        "        ign += 1\n"
+        "st = {k: v for k, v in b.state().items() if isinstance(v, (int, float, bool))}\n"
+        "st['__ignitions__'] = ign\n"
+        "print('@@S@@' + json.dumps(st, sort_keys=True, default=str))\n"
+    )
+
+
+def resume_probe(seeds=5, ticks=120):
+    """(rows, summary). Each arm is its own interpreter, so the boundary under test is a real one."""
+    import json
+    import os
+    import subprocess
+    import sys
+    import tempfile
+    from pathlib import Path as _P
+
+    src_root = str(_P(__file__).resolve().parents[2])
+
+    def run(home, seed, n):
+        env = dict(os.environ)
+        env.update({"NORD_HOME": home, "PYTHONPATH": src_root, "PYTHONUTF8": "1"})
+        out = subprocess.run(  # noqa: S603 - our own interpreter, our own literal source
+            [sys.executable, "-c", _resume_child_source(src_root, seed, n)],
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        if out.returncode != 0:
+            raise RuntimeError(f"resume-probe child rc={out.returncode}: {out.stderr[-1500:]}")
+        return json.loads([x for x in out.stdout.splitlines() if x.startswith("@@S@@")][-1][5:])
+
+    rows = []
+    for seed in range(seeds):
+        with tempfile.TemporaryDirectory() as td:
+            a = run(td, seed, ticks)
+            b = run(td, seed, ticks)
+        with tempfile.TemporaryDirectory() as td2:
+            c = run(td2, seed, ticks)
+        rows.append({"seed": seed, "a": a, "b": b, "c": c})
+    return rows
+
+
+def _print_resume_probe():
+    rows = resume_probe()
+    universe = sorted(set(rows[0]["a"]) & set(rows[0]["b"]) - {"__ignitions__"})
+    moved, still = [], []
+    same_moved = same_still = 0
+    for k in universe:
+        vals_a = [float(r["a"][k]) for r in rows]
+        vals_c = [float(r["c"][k]) for r in rows]
+        # A key that reads the same in arm A and arm C never depended on the lake at all, and a key that
+        # never MOVED during driving could not have differed -- both inflate an "identical" count.
+        does_move = any(abs(x - y) > 1e-12 for x, y in zip(vals_a, vals_c, strict=True)) or any(
+            abs(vals_a[0] - v) > 1e-12 for v in vals_a
+        )
+        ident = all(abs(float(r["a"][k]) - float(r["b"][k])) <= 1e-12 for r in rows)
+        (moved if does_move else still).append(k)
+        if ident:
+            if does_move:
+                same_moved += 1
+            else:
+                same_still += 1
+    print("=" * 104)
+    print("L4 RESUME PROBE -- 3 arms x 5 seeds x 120 ticks, each arm a separate interpreter")
+    print("=" * 104)
+    print(f"  key universe (numeric state() keys present in both lives): {len(universe)}")
+    print(f"  of those, keys that MOVE at all across seeds/arms          : {len(moved)}")
+    print(
+        f"  identical in both lives on every seed, among MOVING keys   : {same_moved} of {len(moved)}"
+    )
+    print(
+        f"  identical among keys that never move (uninformative)       : {same_still} of {len(still)}"
+    )
+    print()
+    print("  IGNITIONS in 120 ticks (arm A is the positive control for the counter):")
+    for r in rows:
+        print(
+            f"    seed {r['seed']}: A={r['a']['__ignitions__']:3d}   B={r['b']['__ignitions__']:3d}"
+            f"   C={r['c']['__ignitions__']:3d}    access_index A={r['a'].get('access_index')}"
+            f" B={r['b'].get('access_index')}"
+        )
+    ia = sum(r["a"]["__ignitions__"] for r in rows)
+    ib = sum(r["b"]["__ignitions__"] for r in rows)
+    print(
+        f"    TOTAL A={ia}  B={ib}  -- a second life that ignites less than its first is a RESUME DEFECT"
+    )
 
 
 def main():
@@ -5581,4 +5706,9 @@ def declare_ports(manifest):
 
 
 if __name__ == "__main__":
+    import sys as _sys
+
+    if len(_sys.argv) > 1 and _sys.argv[1] == "--resume-probe":
+        _print_resume_probe()
+        raise SystemExit(0)
     main()
