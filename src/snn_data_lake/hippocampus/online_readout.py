@@ -68,6 +68,10 @@ KINDS = (
 
 
 class OnlineReadout:
+    #: The readout's error on the last transition it saw, or None before the first. Read by L2's growth
+    #: trigger through the engine's residual_trace; None is honest -- absence is not a zero residual.
+    last_residual = None
+
     def __init__(self, kind="delta", mu=MU, sign=1.0):
         if kind not in KINDS:
             raise ValueError(f"kind must be one of {KINDS}, got {kind!r}")
@@ -104,6 +108,11 @@ class OnlineReadout:
                 beta = model.beta
             lr = self.sign * self.mu / (float(s @ s) + 1.0)
             p = torch.softmax(s @ beta, dim=0)
+            # L2: the readout's OWN error on this transition, read BEFORE the update -- the mass it did
+            # not put on the category that actually followed. Free here (the softmax is already computed
+            # for the rule) and scored on the same pair the live instrument scores, so it inherits that
+            # instrument's honesty and its limits. It is the stall signal L2's growth trigger reads.
+            self.last_residual = 1.0 - float(p[cat])
             p[cat] -= 1.0
             dbeta = -lr * torch.outer(s, p)
             beta += dbeta
@@ -120,6 +129,7 @@ class OnlineReadout:
             "calls": self.calls,
             "steps": self.steps,
             "widened": self.widened,
+            "last_residual": self.last_residual,
         }
 
 
@@ -157,7 +167,7 @@ class ClosingGate:
     def __init__(self, k=3):
         self.k, self.n = k, 0
 
-    def __call__(self, trajectory):
+    def __call__(self, trajectory, residuals=()):
         self.n += 1
         return self.n <= self.k
 

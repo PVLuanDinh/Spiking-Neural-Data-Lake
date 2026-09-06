@@ -57,6 +57,7 @@ import random
 import torch
 
 from snn_data_lake.brainstem.arm_config import CONTACT
+from snn_data_lake.cortex.growth_stop import PATIENCE as _PATIENCE
 from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
 from snn_data_lake.hippocampus.ng_snn import NGSNN
 from snn_data_lake.substrate.device import crossover, decisions, select
@@ -176,6 +177,13 @@ class SyntheticPerceptStream:
         return engine
 
 
+#: L2: how many recent readout residuals the growth trigger keeps. Sized FROM the criterion that reads
+#: it -- growth_stop compares two PATIENCE-blocks and needs its own noise scale over them -- and kept at the
+#: same 4x retention growth_stop._WINDOW uses, for the same reason: an always-on daemon must judge the
+#: RECENT regime. DERIVED from that criterion's own constant rather than restated, so the two cannot drift.
+_RESIDUAL_WINDOW = 4 * (3 * _PATIENCE)
+
+
 class NeurogenesisSelfImprove:
     """Self-improvement by neurogenesis: grow NG-SNN neurons to predict the brain's own next
     perception. PERCEPTION-ONLY -- no arm, no motor command, no actuator route (see module
@@ -238,6 +246,9 @@ class NeurogenesisSelfImprove:
         self.seed = int(seed)
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self._growth_gate = growth_gate
+        #: L2: the online readout's per-transition error, trailing. EMPTY when no readout is attached,
+        #: which the gate reads as "no stall evidence" and permits growth on -- absence is not a plateau.
+        self.residual_trace = []
         self._l_max = None if l_max is None else int(l_max)  # None -> NGSNN derives L <= N
         self._eps_tol, self._T = float(eps_tol), int(T)
         self._buf_x = []  # percept_{t-1}
@@ -312,6 +323,14 @@ class NeurogenesisSelfImprove:
                 self.live_persist += int(self._prev_cat == cat)
                 if self.online_readout is not None:  # L1c: learn from the pair just scored
                     self._readout_charge += self.online_readout.learn(m, S[0], cat)
+                    # L2: the readout's own error on that pair, collected for the growth trigger. A
+                    # trailing window, sized from what the criterion reads (its own constant), so an
+                    # always-on daemon's noise scale reflects the RECENT regime rather than every
+                    # transition since boot -- the same retention argument growth_stop's window carries.
+                    r = self.online_readout.last_residual
+                    if r is not None:
+                        self.residual_trace.append(float(r))
+                        del self.residual_trace[:-_RESIDUAL_WINDOW]
         self._prev = feats
         self._prev_cat = cat
         self._categories.add(cat)
@@ -394,7 +413,11 @@ class NeurogenesisSelfImprove:
         if (
             self._growth_gate is not None
             and self._model is not None
-            and not self._growth_gate(self.trajectory)
+            # L2 (2026-09-06): the gate takes TWO evidence streams now -- the refit trajectory and the
+            # readout's residual. The second argument is passed rather than read off this engine by the
+            # caller, keeping the rule that a gate's evidence arrives through its parameters and the gate
+            # never reaches into its consumer. Implementers take `residuals=()`.
+            and not self._growth_gate(self.trajectory, self.residual_trace)
         ):
             m = self._model
             beta_inst = self._batch_beta if self._batch_beta is not None else m.beta

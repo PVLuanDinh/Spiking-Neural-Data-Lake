@@ -1330,7 +1330,7 @@ class Brain:
     #   lake bytes; this method only relays trajectory rows to the T047 gate. Site read.
     # distinct-from: spiking_curiosity.py -- its step moves a competence weight; nothing
     #   here learns. Site read; the matcher fired on generic gate/growth words.
-    def _growth_gate_verdict(self, trajectory):
+    def _growth_gate_verdict(self, trajectory, residuals=()):
         """T047: the growth-gate callable the neurogenesis engine consults at each refit,
         receiving THE ENGINE'S OWN trajectory (the system under test reaches the
         criterion through its parameter -- the red_reachability zero-arg shape; it also
@@ -1364,6 +1364,14 @@ class Brain:
                 gate.observe_refit("cortex", int(u), float(a))
             except (ValueError, TypeError):
                 self._growth_feed_refusals += 1
+        # L2 (2026-09-06): the readout-residual window. Handed over whole and REPLACED rather than fed
+        # behind a cursor -- see observe_residuals for why the cursor form was wrong here. Poisoned rows
+        # are refused and counted, never raised: a raise would reach the sleep path's swallow and kill
+        # every refit forever, which is the panel find the refit feed above already carries.
+        try:
+            gate.observe_residuals("cortex", residuals)
+        except (ValueError, TypeError):
+            self._growth_feed_refusals += 1
         return gate.should_grow("cortex")
 
     def _make_neuro(self, seed, device):

@@ -103,6 +103,12 @@ _WINDOW = 4 * (3 * PATIENCE)
 
 # The T044 lesson pre-applied (class-qualified key, declared the day the symbol lands):
 GRADIENT_CLAIM = {
+    "GrowthStop.observe_residuals": (
+        "NOT_A_RULE",
+        "replaces the gate's per-region residual window with the producer's -- no weights, no "
+        "plasticity, no error propagation; the value is READ from the online readout's own forward pass "
+        "and the plateau verdict over it is a comparison, not a learning rule",
+    ),
     "GrowthStop.observe_refit": (
         "NOT_A_RULE",
         "appends one (n_units, acc) evidence row to the gate's per-region history -- no "
@@ -126,7 +132,13 @@ class GrowthStop:
         self._lp = lp_reader
         self._hist = {}  # region -> [(n_units, acc)], trailing _WINDOW rows
         self._lp_hist = {}  # region -> [|LP| at each refit], trailing _WINDOW
+        self._res_hist = {}  # region -> [readout residual], trailing _WINDOW (L2)
         self._decisions = {}  # region -> [(fed_count, verdict, reason)], trailing _WINDOW
+        # The STOP log, separate from the attribution log above. `_decide` reads its own last verdict to
+        # detect a held stop, and a PLATEAU refusal must never appear there: "not yet, the readout is still
+        # learning" is not "grown past the optimum", and writing it into the stop log would put the region
+        # into the sticky STOPPED state that only charging evidence can leave (L2, 2026-09-06).
+        self._stop_log = {}
         self._fed = {}  # region -> MONOTONE fed-row count (the cursor; survives the trim)
 
     # ---- evidence ----------------------------------------------------------------------------
@@ -160,6 +172,59 @@ class GrowthStop:
             lh.append(lp_now)
             del lh[:-_WINDOW]
 
+    def observe_residuals(self, region, series):
+        """The readout's recent ERROR WINDOW for `region` (L2, FR-023): the mass the online readout did
+        not put on the category that actually followed, per transition, read before its own update.
+
+        REPLACES this region's copy rather than appending, and takes NO cursor. That is the difference
+        between this stream and the refit stream, and it is deliberate: a refit trajectory is persisted
+        and restored, so the gate accumulates it incrementally behind a monotone cursor; a residual window
+        is the producer's own trailing buffer, is not persisted, and starts empty after a relaunch. The
+        first form of this method appended behind a cursor backed by len(history) -- the exact defect
+        `observed()` below warns about -- and because the history trims to _WINDOW the gate stopped
+        receiving residuals after 36 rows, producing a null on 8 of 8 seeds that was the instrument.
+
+        Refuses a poisoned row and keeps NOTHING on refusal: a partially applied window would be a
+        fabricated series, which is worse than an unfed one (an unfed one permits growth and says so)."""
+        rows = [float(r) for r in series]
+        for r in rows:
+            if not (math.isfinite(r) and 0.0 <= r <= 1.0):
+                raise ValueError(f"residual must be a finite value in [0,1], got {r!r}")
+        self._res_hist[region] = rows[-_WINDOW:]
+
+    @staticmethod
+    def _plateau(res):
+        """(plateaued, reason) over the residual series. PLATEAUED = the readout's error is no longer
+        falling faster than its own noise -- which is when a new unit is the remaining move, and the only
+        state in which L2 permits growth.
+
+        Reuses the charge arm's statistic exactly (two PATIENCE-blocks, median|step| noise converted by
+        0.954 to a per-sample sd, null SE sigma*sqrt(2/PATIENCE)) rather than introducing a second one:
+        one comparison discipline for both streams, so neither arm can be tuned against the other.
+
+        AN UNOBSERVED OR SHORT SERIES PERMITS GROWTH. The gate cannot gate on what it has never measured
+        -- the same rule should_grow already applies to an unobserved region -- and the alternative is a
+        silent global growth stop the first time a caller forgets to feed the stream."""
+        need = 2 * PATIENCE
+        if len(res) < need:
+            return True, f"residual unobserved or short ({len(res)} < {need}): no stall evidence"
+        steps = [abs(res[i] - res[i - 1]) for i in range(1, len(res))]
+        noise = _median(steps)
+        recent = sum(res[-PATIENCE:]) / PATIENCE
+        prior = sum(res[-2 * PATIENCE : -PATIENCE]) / PATIENCE
+        drop = prior - recent  # positive = error still falling = still learning
+        sigma = noise / 0.954
+        margin = sigma * math.sqrt(2.0 / PATIENCE)
+        if drop > margin:
+            return False, (
+                f"readout still learning: residual fell {drop:+.4f} > null scale {margin:.4f} "
+                f"over the last {2 * PATIENCE} transitions -- a new unit is not the remaining move"
+            )
+        return True, (
+            f"readout plateaued: residual fell {drop:+.4f} <= null scale {margin:.4f} "
+            f"over the last {2 * PATIENCE} transitions"
+        )
+
     def _read_lp(self, region):
         if self._lp is None:
             return None
@@ -181,7 +246,20 @@ class GrowthStop:
         attribution log the register cites)."""
         hist = self._hist.get(region)
         log = self._decisions.setdefault(region, [])
-        verdict, reason = self._decide(hist, self._lp_hist.get(region, []), log)
+        stop_log = self._stop_log.setdefault(region, [])
+        verdict, reason = self._decide(hist, self._lp_hist.get(region, []), stop_log)
+        stop_entry = (self._fed.get(region, 0), verdict, reason)
+        if stop_log and stop_log[-1][0] == stop_entry[0]:
+            stop_log[-1] = stop_entry
+        else:
+            stop_log.append(stop_entry)
+            del stop_log[:-_WINDOW]
+        # L2: the TRIGGER, applied only when the stop arm is open. A refusal here is temporary and is
+        # deliberately NOT written to the stop log above, so it cannot become the sticky stop.
+        if verdict:
+            flat, why = self._plateau(self._res_hist.get(region, []))
+            if not flat:
+                verdict, reason = False, why
         # keyed by the MONOTONE fed count, never len(history): the trimmed history caps
         # at _WINDOW, and a len-keyed entry would collide forever once it does -- the
         # dedup then replaces the last slot for the rest of the run and the log freezes
@@ -724,9 +802,10 @@ def main():
             SyntheticPerceptStream(seed).drive(eng_off, 1600)
             gate = GrowthStop(lp_reader=_FlatLP())
 
-            def _g(traj, _gate=gate):
+            def _g(traj, residuals=(), _gate=gate):
                 for _t, u, a in list(traj)[_gate.observed("cortex") :]:
                     _gate.observe_refit("cortex", int(u), float(a))
+                _gate.observe_residuals("cortex", residuals)
                 return _gate.should_grow("cortex")
 
             eng_on = NeurogenesisSelfImprove(
@@ -769,8 +848,55 @@ def main():
         "purpose. The gate's evidence rides the engine's persisted trajectory tail, so "
         "a daemon relaunch resumes the SAME verdict state (P4b)."
     )
+    # ---- L2 (T092): the plateau trigger's own reds ------------------------------------------------
+    falling = [max(0.02, 0.90 - 0.06 * i) for i in range(12)]
+    flat = [0.50 + (0.004 if i % 2 else -0.004) for i in range(12)]
+    ok_fall, why_fall = GrowthStop._plateau(falling)
+    ok_flat, why_flat = GrowthStop._plateau(flat)
+    assert not ok_fall, f"a FALLING residual must refuse growth: {why_fall}"
+    assert ok_flat, f"a FLAT residual must permit growth: {why_flat}"
+    assert GrowthStop._plateau([])[0] and GrowthStop._plateau([0.4, 0.4])[0], (
+        "an unobserved or short residual series must PERMIT growth -- the gate cannot gate on what it "
+        "has never measured, and refusing here is a silent global growth stop"
+    )
+    # A PLATEAU REFUSAL MUST NOT BECOME THE STICKY STOP. Same gate, same refit history, residual falling
+    # then flat: the verdict must come back True. If the refusal had been written to the stop log, the
+    # region would be STOPPED and only charging evidence could re-open it.
+    g2 = GrowthStop()
+    for i in range(3 * PATIENCE):
+        g2.observe_refit("r", 1 + i, 0.5 + 0.02 * i)  # charging, so the stop arm stays OPEN
+    g2.observe_residuals("r", falling)
+    assert g2.should_grow("r") is False, "the falling residual must refuse"
+    g2.observe_residuals("r", flat)
+    assert g2.should_grow("r") is True, (
+        "a plateau refusal leaked into the sticky stop: the same history with a FLAT residual must grow "
+        "again. 'Not yet' is not 'past the optimum'."
+    )
+    for bad in (-0.1, 1.5, float("nan"), float("inf")):
+        g3 = GrowthStop()
+        g3.observe_residuals("r", flat)
+        try:
+            g3.observe_residuals("r", [0.5, bad])
+        except ValueError:
+            pass
+        else:  # pragma: no cover - the red not firing is the failure
+            raise AssertionError(f"a poisoned residual {bad!r} was accepted")
+        assert g3._res_hist["r"] == flat[-_WINDOW:], (
+            "a refused window must keep the PREVIOUS one intact -- a partially applied series is fabricated"
+        )
     print(
-        "self-check OK: overgrowth red + duty-cycle hold + regimes at two horizons + measured "
+        f"  green  L2 plateau trigger: falling REFUSES / flat PERMITS ({why_flat.split(':')[0]}); "
+        "unobserved permits; a plateau refusal does NOT become the sticky stop; poisoned windows refused "
+        "with the previous window intact"
+    )
+    print(
+        "  note   this harness runs the engine WITHOUT an online readout, so residual_trace is empty and "
+        "the plateau arm permits every verdict above -- the T047 results are unchanged BY CONSTRUCTION and "
+        "are control-2 for L2 (the stop still stops), never evidence about the trigger itself"
+    )
+
+    print(
+        "self-check OK: L2 plateau trigger (both directions, unobserved, non-sticky, poisoned) + overgrowth red + duty-cycle hold + regimes at two horizons + measured "
         "discrimination floor + |LP| stationary/excursion/ablation + refusals + evidence re-open + "
         "idempotence + PATIENCE sweep + the armed real-engine null"
     )

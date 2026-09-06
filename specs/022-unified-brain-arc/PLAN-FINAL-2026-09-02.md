@@ -441,7 +441,7 @@ that baseline.
   (`cortex/laminar_local_readout.observe`'s single-sample local update, or `similarity_sized_growth.FrozenExpert`'s
   three-factor rule — P2: one survives, named at pre-registration) with its state as a lake record.
   Estimated L1a–c: 400–700 LOC over three commits.
-- **L2 — grow on plateau, prune in sleep (FR-023, FR-024).** *Trigger RESTATED 2026-09-05 with L1b deleted (the session's
+- **L2 — grow on plateau, prune in sleep (FR-023, FR-024).** *LANDED 2026-09-06 (T092, ): the trigger is a third evidence stream inside GrowthStop, reading the online readout's residual; the red fires in both directions, a plateau refusal is structurally barred from the sticky stop, and the attribution is an IDENTITY -- a neutered readout reproduces the incumbent bit-for-bit on 8/8 seeds and both metrics while the live arm differs on 5/8. The first run was a null that was the INSTRUMENT (a len(history) cursor into a trimmed window, the exact defect observed()'s docstring warns about), found and removed before anything was recorded. NOT claimed: an accuracy or unit-count improvement -- t -1.197 / +1.818 against 1.895, and the accuracy arm is degenerate at 3 non-tied seeds. Pruning untouched.* *Trigger RESTATED 2026-09-05 with L1b deleted (the session's
   call, Part H): L2 reads the online READOUT's residual plateau if L1c lands, else the T047 growth gate's own refit-accuracy
   plateau (already live) and the row reduces to its attribution red.* *Scheduled 2026-09-05 (`evidence/jepa-live-floor.md`
   §2.7): the plateau it reads is L1b's residual error and the prediction-error signal it may target is
