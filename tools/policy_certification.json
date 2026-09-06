@@ -6,7 +6,7 @@
         "-m",
         "snn_data_lake.substrate.dormancy_gate"
       ],
-      "seconds": 2.74,
+      "seconds": 2.64,
       "verdict": "PASS"
     },
     {
@@ -14,7 +14,7 @@
         "-m",
         "snn_data_lake.substrate.method_dormancy_gate"
       ],
-      "seconds": 6.6,
+      "seconds": 5.21,
       "verdict": "PASS"
     },
     {
@@ -22,7 +22,7 @@
         "-m",
         "snn_data_lake.substrate.import_manifest"
       ],
-      "seconds": 1.25,
+      "seconds": 1.04,
       "verdict": "PASS"
     },
     {
@@ -30,7 +30,7 @@
         "-m",
         "snn_data_lake.substrate.replication_guard"
       ],
-      "seconds": 1.42,
+      "seconds": 1.21,
       "verdict": "PASS"
     },
     {
@@ -38,7 +38,7 @@
         "-m",
         "snn_data_lake.substrate.lake_rebuild_gate"
       ],
-      "seconds": 0.45,
+      "seconds": 0.19,
       "verdict": "PASS"
     },
     {
@@ -46,7 +46,7 @@
         "tools/p6_gate.py",
         "--assert"
       ],
-      "seconds": 5.88,
+      "seconds": 5.0,
       "verdict": "PASS"
     },
     {
@@ -54,7 +54,7 @@
         "tools/dependency_ledger.py",
         "--assert"
       ],
-      "seconds": 5.83,
+      "seconds": 4.88,
       "verdict": "PASS"
     },
     {
@@ -62,7 +62,7 @@
         "tools/red_reachability.py",
         "--assert"
       ],
-      "seconds": 1.51,
+      "seconds": 1.29,
       "verdict": "PASS"
     },
     {
@@ -70,7 +70,7 @@
         "-m",
         "snn_data_lake.substrate.eprop_transport_gate"
       ],
-      "seconds": 10.49,
+      "seconds": 8.82,
       "verdict": "PASS"
     },
     {
@@ -78,7 +78,7 @@
         "-m",
         "snn_data_lake.substrate.gradient_claim_gate"
       ],
-      "seconds": 2.42,
+      "seconds": 2.02,
       "verdict": "PASS"
     },
     {
@@ -86,7 +86,7 @@
         "tools/p4c_ratchet.py",
         "--assert"
       ],
-      "seconds": 0.1,
+      "seconds": 0.08,
       "verdict": "PASS"
     }
   ],
@@ -180,7 +180,7 @@
     "P5a"
   ],
   "tree": {
-    "commit": "f3a72655f24df6bb7915113d2bc0f68e4042071c",
+    "commit": "87f7c4fe7ed414cec620cd4bf3729c1ec1251f2f",
     "dirty": false
   }
 }
