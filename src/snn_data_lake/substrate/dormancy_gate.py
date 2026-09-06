@@ -515,45 +515,37 @@ EXEMPT = {
         "instrument, never on a tick -- the policy_manifest disposition. The coverage red "
         "it reports (1 of 10, cortex-only) is the OPEN work; the gate is its counter",
     ),
-    "lake_bridge": (
-        "wire",
-        "specs/022 T005b: the read-old/write-new format bridge (imports lake_segments for the "
-        "sealed arm -- reason corrected 2026-08-19: the first wording had the import direction "
-        "backwards). EXPIRY RE-EVALUATED AT T012 (the close-out this reason previously named): "
-        "T012 landed as verify+flip -- the live lake deliberately stays BinLog-resident, so the "
-        "bridge's consumers remain instruments (lake_migrate.iter_records, T009). The live-path "
-        "consumer is the kernel block's paging tier (T013+), where sealed segments become the "
-        "read path. BOUND EXPIRED AT T039 UNMET (US1 audit B3, 2026-08-25; recorded, not "
-        "re-dated -- a third extension is a defect per s0-lake-closeout): the spec is strictly "
-        "ordered and the named consumer is the US3 kernel paging tier (T064/T066), structurally "
-        "post-S0. The standing-TODO arm prints this row every run",
-    ),
-    "lake_engine": (
-        "wire",
-        "specs/022 T010-i: retention registry + append budget. EXPIRY RE-EVALUATED AT T012: "
-        "T011 landed the ring and T012 measured the 0x08 baseline into "
-        "tools/lake_append_baseline.json, but neither wired AppendBudget onto a tick -- the "
-        "delta chain lives in home.py on stdlib alone (zero-dep contract), and the daemon's "
-        "tick accounting arrives with the kernel block's two-phase tick, now scheduled as the "
-        "US3 kernel cutover (T064 names this module). BOUND EXPIRED AT T039 UNMET (US1 audit "
-        "B3, 2026-08-25; recorded, not re-dated). Printed by the standing-TODO arm every run",
-    ),
-    "lake_migrate": (
-        "wire",
-        "specs/022 T009: per-tag dispositions + identity migration. EXPIRY RE-EVALUATED AT "
-        "T012: the close-out deliberately did NOT migrate the live lake (it stays "
-        "BinLog-resident; verify+flip only), so the consumers remain instruments "
-        "(lake_engine's registry-consistency assert, the T009 full-scale proof). The live "
-        "cutover migration belongs to the US3 kernel paging tier (T066). BOUND EXPIRED AT "
-        "T039 UNMET (US1 audit B3, 2026-08-25; recorded, not re-dated). Printed by the "
-        "standing-TODO arm every run",
-    ),
     "lake_rebuild_gate": (
         "permanent",
         "specs/022 T008: the index-is-derived gate (delete -> rebuild -> logical equality, "
         "planted-divergence red, lake-tracking control). A CI/run_selfchecks instrument, never "
         "on a tick -- the policy_manifest disposition",
     ),
+    # ---- FOUR `wire` ROWS RETIRED 2026-09-06 by the stale-exemption arm (specs/022 L6, T091) --------
+    # lake_engine, lake_migrate, lake_bridge and lake_segments all went reachable in one commit, and the
+    # gate refused their rows the same run. What made it happen: L6 put `lake_engine.retention_of` on the
+    # SLEEP TICK -- `hippocampus/lake_consolidation.consolidate` and `substrate/home.KnowledgeLog.consolidate`
+    # both read the retention label before any record is dropped -- and `lake_engine` imports
+    # `lake_migrate.TAG_DISPOSITIONS` at module top, which carries the other three in behind it.
+    #
+    # THE HONEST PART, and the reason this comment exists instead of four deleted lines. Only ONE of the
+    # four is CHARGED: `lake_engine`. Its `retention_of` decides whether a learned fact survives the night,
+    # which is an outcome, and L-R7 in `lake_consolidation.main()` is the constructed red that proves it --
+    # flip 0x01 to reclaimable and the same call caps again.
+    #
+    # `lake_migrate`, `lake_bridge` and `lake_segments` are reachable through an IMPORT and nothing more.
+    # Their rows promised a live consumer at the US3 kernel paging tier (T064/T066) and that consumer has
+    # NOT arrived; the BOUND EXPIRED AT T039 UNMET is still true of all three, and their standing-TODO
+    # lines are gone with the rows, so it is recorded here instead. Reachability is not charge (P3), and a
+    # retired exemption must not be read as a satisfied promise. The debt these rows carried:
+    #   lake_migrate  (T009) per-tag dispositions + identity migration -- consumers are still instruments
+    #                 (lake_engine's registry-consistency assert, the T009 full-scale proof); the live
+    #                 cutover migration belongs to T066.
+    #   lake_bridge   (T005b) read-old/write-new format bridge -- consumers still instruments
+    #                 (lake_migrate.iter_records); the live path is T013+'s paging tier.
+    #   lake_segments (T005) segment writer (WAL + sealed Arrow IPC) -- the migrator and the bridge read it
+    #                 as instruments; the live-path consumer is T066.
+    # All three keep BOUND EXPIRED AT T039 UNMET, recorded and not re-dated.
     "lake_index": (
         "wire",
         "specs/022 T007: the derived pointer index (sqlite WAL, stdlib). EXPIRY RE-EVALUATED "
@@ -561,15 +553,6 @@ EXEMPT = {
         "did not cut the live lake over, so the live-path consumer is the US3 kernel block's "
         "paged reads (T064/T066). BOUND EXPIRED AT T039 UNMET (US1 audit B3, 2026-08-25; "
         "recorded, not re-dated). Printed by the standing-TODO arm every run",
-    ),
-    "lake_segments": (
-        "wire",
-        "specs/022 T005: the segment writer (WAL + sealed Arrow IPC). EXPIRY RE-EVALUATED AT "
-        "T012: the migrator (T009) consumes it (SegmentStore) and the bridge reads its sealed "
-        "arm -- instruments, not the tick -- and the close-out kept the live lake "
-        "BinLog-resident on purpose. Live-path consumer is the US3 kernel paging tier "
-        "(T066). BOUND EXPIRED AT T039 UNMET (US1 audit B3, 2026-08-25; recorded, not "
-        "re-dated). Printed by the standing-TODO arm every run",
     ),
     "region_charge_gate": (
         "permanent",

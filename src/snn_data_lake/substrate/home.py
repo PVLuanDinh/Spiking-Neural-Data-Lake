@@ -570,6 +570,27 @@ class KnowledgeLog:
         their learning moved at all -- that is an owner call about what the brain keeps, not a
         property of the record layout, and it is why this is a per-tag prune and not a general one.
         """
+        from snn_data_lake.hippocampus.lake_consolidation import _src_class, record_key
+        from snn_data_lake.substrate.lake_engine import retention_of
+
+        # THE LABEL IS LOAD-BEARING HERE, not merely declared elsewhere. _T_FACT is IMMORTAL with
+        # reclaimable=False, so a rewrite that would lose a LEARNED fact is refused outright; only the
+        # per-record exemption RETENTION[0x01] declares (bulk re-derivable ingests, which reconstruct at
+        # boot) may be dropped. Before specs/022 L6 (2026-09-06) nothing here read the label at all, and the
+        # sleep tick's cap could silently discard learned knowledge the registry called never-reclaimed.
+        if not retention_of(_T_FACT[0])[1]:
+            keep_keys = {record_key(r) for r in keep_records}
+            lost = [
+                r
+                for r in self.replay()
+                if _src_class(r) != "re-derivable" and record_key(r) not in keep_keys
+            ]
+            if lost:
+                raise ValueError(
+                    f"consolidate would drop {len(lost)} LEARNED _T_FACT record(s), but 0x01 is "
+                    f"{retention_of(_T_FACT[0])[0]} with reclaimable=False. Only the per-record "
+                    "exemption in RETENTION[0x01]'s reason (bulk re-derivable ingests) may be reclaimed."
+                )
         foreign = _prune_state_history(
             [p for p in self._bin.replay() if p[:1] != _T_FACT]  # growth/episode/spike stay as-is
         )
@@ -1377,6 +1398,33 @@ def main():
         assert (kept, dropped) == (4, 0), (
             "consolidate() must report the FACT tally only, unaffected by the _T_STATE records it "
             f"pruned: returned kept={kept} dropped={dropped}, expected (4, 0)"
+        )
+
+        # ---- L-R7 (specs/022 L6, 2026-09-06): THE LABEL IS LOAD-BEARING HERE --------------------------
+        # Before L6 nothing in this function read the retention label, and the sleep tick's cap could
+        # silently discard learned knowledge that RETENTION[0x01] calls never-reclaimed. The red: hand
+        # consolidate a survivor set with one learned fact removed; it must REFUSE.
+        _facts = [r for r in klog.replay()]
+        assert len(_facts) >= 2, _facts
+        try:
+            klog.consolidate(_facts[1:])
+        except ValueError as exc:
+            assert "LEARNED" in str(exc), exc
+        else:  # pragma: no cover - the red not firing is the failure
+            raise AssertionError("consolidate accepted a survivor set that drops a LEARNED fact")
+        # CONTROL (not the guard): the per-record exemption still works. A re-derivable fact -- one that
+        # reconstructs at boot from its named source -- may be dropped in the same call, so the guard
+        # scopes compaction rather than stopping it.
+        klog.append({"cue": ["wordnet", "probe"], "answer": "rederivable.", "src": "wordnet:noun"})
+        _with_bulk = [r for r in klog.replay()]
+        _keep = [r for r in _with_bulk if str(r.get("src", "")).split(":", 1)[0] != "wordnet"]
+        _k2, _d2 = klog.consolidate(_keep)
+        assert _d2 == 1, (
+            f"the re-derivable exemption must still permit a drop: kept={_k2} dropped={_d2}"
+        )
+        print(
+            "  immortal guard    : a survivor set missing a LEARNED fact is REFUSED; a re-derivable "
+            "fact is still reclaimed in the same call (L-R7)"
         )
         # BOTH numbers in ONE assert on purpose. The 13 is the PRECONDITION -- 5 names carrying 13
         # records -- and on its own it has no red this file can reach that the `is True` loop above

@@ -481,7 +481,7 @@ that baseline.
   is `lake_engine.RETENTION`, which already existed, so the gate READS it rather than re-declaring a
   second class -- P2), its output COUNTED on today's tree before the rule binds. What it does
   NOT claim: a retention guarantee is not a memory faculty — recall stays Phase 4's business.
-- **L6 — the immortal class and the sleep tick must stop disagreeing (T091).** *Opened 2026-09-06 by L5's own
+- **L6 — the immortal class and the sleep tick must stop disagreeing (T091).** *LANDED 2026-09-06 the same day it opened (`evidence/l6-immortal-vs-consolidation.md`): the live lake holds 26,037 facts, ALL learned and ZERO re-derivable, against a cap of 250,000 — the cap had NEVER bound, so no learned record is known to have been lost and the fix costs nothing observable today. The registry states 0x01's per-record exemption, the policy refuses to cap a non-reclaimable class, and the drop site refuses a rewrite that would lose a learned fact; L-R7 and both controls run in the two self-checks; `KNOWN_UNLABELED` is empty and `stale_known()` is what forced the payout. Two findings the census turned up unasked: the growth pathology MOVED (_T_GROWTH 97.64% → 1.81%; _T_COALITION is now 80.21%), and four declared classes have never held a record.* *Opened 2026-09-06 by L5's own
   gate, which is the point of building it: with the rewrite arm restored, `substrate/immortal_retention.py`
   reports one durable reclaimer, `substrate/home.py::consolidate`.* The live sleep tick (`cortex/brain.py`,
   every eighth night when `_persist`) runs `LakeConsolidation().consolidate(records, trace=RecallTrace())` —

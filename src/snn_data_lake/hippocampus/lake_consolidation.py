@@ -129,7 +129,9 @@ class LakeConsolidation:
     def __init__(self, rederivable_budget=3000, learned_cap=250000):
         # keep at most this many of the most-recent re-derivable (dictionary) records; the rest re-derive.
         self.rederivable_budget = int(rederivable_budget)
-        # a large safety ceiling on genuinely-learned records (recency-kept); v2 makes this recall-weighted.
+        # A ceiling on genuinely-learned records that IS NOT APPLIED while _T_FACT is reclaimable=False --
+        # see consolidate(). Kept as a field because the registry, not this class, decides: flip 0x01 to
+        # reclaimable and the cap takes effect again without touching this file (specs/022 L6, 2026-09-06).
         self.learned_cap = int(learned_cap)
 
     def consolidate(self, records, trace=None):
@@ -145,7 +147,15 @@ class LakeConsolidation:
         # cap each class to its budget (records are in append order, so the tail = newest)
         if len(rederivable) > self.rederivable_budget:
             rederivable = rederivable[-self.rederivable_budget :]
-        if len(learned) > self.learned_cap:
+        # THE LABEL DECIDES, NOT THIS POLICY. _T_FACT is IMMORTAL / reclaimable=False, and this cap used to
+        # drop learned records under it every eighth night -- the contradiction L5's gate found (specs/022
+        # L6). While the class is non-reclaimable the cap is REFUSED; the re-derivable budget above still
+        # applies, under the per-record exemption RETENTION[0x01]'s own reason now declares.
+        from snn_data_lake.substrate.home import _T_FACT
+        from snn_data_lake.substrate.lake_engine import retention_of
+
+        learned_reclaimable = retention_of(_T_FACT[0])[1]
+        if learned_reclaimable and len(learned) > self.learned_cap:
             if (
                 trace is not None
             ):  # use-it-or-lose-it: rank by (recall count, recency), keep the top cap
@@ -242,15 +252,50 @@ def main():
     trace = RecallTrace(counts={})
     for _ in range(5):
         trace.bump(lg[0])  # the OLD record is the one that gets used
-    v1 = LakeConsolidation(learned_cap=1).consolidate(
-        lg
-    )  # recency -> keeps the NEWEST ("new unused")
-    v2 = LakeConsolidation(learned_cap=1).consolidate(
-        lg, trace=trace
-    )  # utility -> keeps the RECALLED old one
+    # ---- L-R7 (specs/022 L6, 2026-09-06): THE LABEL REFUSES THE CAP -------------------------------------
+    # This block asserted the capping behaviour above until L6, which is what makes it a reachable red
+    # rather than a decoration: with _T_FACT IMMORTAL / reclaimable=False, a cap of ONE over three learned
+    # records must now keep all three. Revert either half of the L6 change and this line fires.
+    from snn_data_lake.substrate import lake_engine as _le
+
+    assert _le.retention_of(0x01)[1] is False, (
+        "0x01 must be non-reclaimable for this red to mean anything"
+    )
+    kept_all = LakeConsolidation(learned_cap=1).consolidate(lg, trace=trace)
+    assert kept_all == lg, f"a cap dropped a LEARNED record of a non-reclaimable class: {kept_all}"
+
+    # CONTROL 1 (not the method): the REGISTRY decides, not this class. Flip 0x01 to reclaimable and the
+    # same call caps again, with the use-it-or-lose-it ranking intact -- so the red above is the label
+    # doing work, not the policy having been disabled.
+    _was = _le.RETENTION[0x01]
+    _le.RETENTION[0x01] = (_was[0], True, _was[2])
+    try:
+        v1 = LakeConsolidation(learned_cap=1).consolidate(lg)  # recency -> the NEWEST
+        v2 = LakeConsolidation(learned_cap=1).consolidate(
+            lg, trace=trace
+        )  # utility -> the RECALLED one
+    finally:
+        _le.RETENTION[0x01] = _was
     assert v1 == [lg[2]], f"v1 (recency) should keep the newest: {v1}"
     assert v2 == [lg[0]], (
         f"v2 (use-it-or-lose-it) should keep the RECALLED record, not the newest: {v2}"
+    )
+    assert _le.RETENTION[0x01] == _was, "the control must restore the registry it borrowed"
+
+    # CONTROL 2 (not the method): compaction still happens in the same pass. The re-derivable budget binds
+    # under the per-record exemption RETENTION[0x01]'s reason declares -- a change that simply stopped
+    # consolidating would pass the red above and fail here.
+    _bulk = [
+        {"cue": ["w", str(i)], "answer": f"w{i}.", "src": "wordnet:noun"} for i in range(5)
+    ] + [{"cue": ["kept"], "answer": "learned.", "src": "chat:user"}]
+    _capped = LakeConsolidation(rederivable_budget=2, learned_cap=1).consolidate(_bulk)
+    assert sum(1 for r in _capped if _src_class(r) == "re-derivable") == 2, _capped
+    assert _bulk[-1] in _capped, (
+        "the learned record must survive a pass that reclaims re-derivable bulk"
+    )
+    print(
+        "  [OK] L-R7: the IMMORTAL label refuses the learned cap (3 of 3 kept at cap=1); flipping 0x01 to "
+        "reclaimable caps again with the recall ranking intact; re-derivable bulk is still reclaimed 5 -> 2"
     )
     assert trace.get(lg[0]) == 5 and trace.get(lg[1]) == 0, "recall trace counts wrong"
     # prune_to drops trace entries for records no longer in the lake, and keeps the live ones.

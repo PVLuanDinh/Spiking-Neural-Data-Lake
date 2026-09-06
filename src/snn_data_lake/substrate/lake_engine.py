@@ -11,7 +11,12 @@ IMMORTAL classes carry an append BUDGET: bytes/tick measured against a recorded 
 ratchet thereafter). The red is a constructed FLOOD: an append rate far above baseline must
 trip the assert BEFORE disk pressure becomes the detector. The measured pathology this
 instrument exists to prevent: 97.64% of the live lake is repeated whole-substrate _T_GROWTH
-snapshots (83,405 records) that nothing ever reclaims.
+snapshots (83,405 records) that nothing ever reclaims -- MEASURED 2026-08-05, and NO LONGER THE
+SHAPE OF THE LAKE. Re-censused read-only 2026-09-06 (specs/022 L6): 4,753,532 records, of which
+_T_GROWTH is 86,095 (1.81%) and _T_COALITION 3,812,834 (80.21%). Both numbers were true when
+taken; the 2026-08-05 one is kept because it is why this instrument exists, and dated because a
+ratio without its date reads as current. Four declared classes -- 0x02, 0x06, 0x09, 0x0b -- held
+ZERO records at the 2026-09-06 census.
 
 Tag labels (keyed to home.py's _T_* constants BY SYMBOL, same census as
 lake_migrate.TAG_DISPOSITIONS):
@@ -44,7 +49,20 @@ FLOOD_FACTOR = 8.0  # a class appending >8x its recorded per-tick p95 is floodin
 
 #: class label -> (retention, reclaimable_today, reason)
 RETENTION: dict[int, tuple[str, bool, str]] = {
-    0x01: ("IMMORTAL", False, "_T_FACT: learned knowledge is never reclaimed"),
+    0x01: (
+        "IMMORTAL",
+        False,
+        "_T_FACT: learned knowledge is never reclaimed. THE PER-RECORD EXEMPTION, stated here because "
+        "the label is per TAG while the one reclaimer decides per RECORD, and that gap is how the two "
+        "drifted apart (specs/022 L6, 2026-09-06): a fact whose `src` names a bulk re-derivable ingest "
+        "(lake_consolidation.RE_DERIVABLE_SRC -- WordNet/ConceptNet and the like) MAY be reclaimed, "
+        "because it reconstructs at boot from that same source, which is the COMPACTABLE contract "
+        "applied per record. Everything else under this tag is LEARNED and is never dropped: the "
+        "sleep-tick cap that used to drop it is refused by `LakeConsolidation.consolidate`, and "
+        "`KnowledgeLog.consolidate` refuses a rewrite that would lose one. Measured when the exemption "
+        "landed: 26,037 facts in the live lake, ALL learned, ZERO re-derivable -- so the cap had never "
+        "bound and no learned record is known to have been lost",
+    ),
     0x02: ("IMMORTAL", False, "_T_SPIKE: AER exemplars are evidence"),
     0x03: (
         "COMPACTABLE",

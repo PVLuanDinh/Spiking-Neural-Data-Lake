@@ -41,9 +41,12 @@ def test_the_capability_registry_is_empty_and_clean_today():
 def test_the_retention_label_is_consistent_and_every_reclaimer_is_accounted_for():
     assert immortal_retention.label_findings() == []
     bad, scratch = immortal_retention.reclaimers(with_scratch=True)
-    # NOT zero: the tree's sleep tick rewrites the one lake to a survivor set. It is carried
-    # as dated debt with an owning row rather than excluded, and nothing reclaims OUTSIDE it.
-    assert ("substrate/home.py", "consolidate") in bad, bad
+    # ZERO again, and this time it is a zero that has been earned rather than assumed: the census
+    # DID find substrate/home.py::consolidate once the rewrite arm landed, row L6 closed the gap at
+    # both ends, and stale_known() is what forced the debt entry to be paid out. The detector is
+    # proven live by test_a_rewrite_shaped_reclaimer_is_visible_to_the_census below.
+    assert bad == [], bad
+    assert immortal_retention.KNOWN_UNLABELED == {}, immortal_retention.KNOWN_UNLABELED
     assert immortal_retention.unlisted_reclaimers() == [], immortal_retention.unlisted_reclaimers()
     assert immortal_retention.stale_known() == [], immortal_retention.stale_known()
     assert len(scratch) >= 1  # the scratch-home deletions are EXCLUDED and still listed

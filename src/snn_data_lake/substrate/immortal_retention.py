@@ -88,21 +88,15 @@ _MIN_REASON = 20  # a reason shorter than this is a label, not a reason (CHOSEN,
 #: SHRINK -- `findings()` fires on any reclaimer not listed here, and `stale_known()` fires on any listed
 #: entry that no longer reclaims. It is not a licence: the sentence "the lake never evicts the IMMORTAL
 #: class" is FALSE while this table is non-empty, and the report says so in those words.
-KNOWN_UNLABELED: dict[tuple[str, str], str] = {
-    ("substrate/home.py", "consolidate"): (
-        "MEASURED 2026-09-06 by this gate's own rewrite arm, then confirmed on the live path: the sleep tick "
-        "(cortex/brain.py, every 8th night when _persist) runs LakeConsolidation().consolidate(records, "
-        "trace=RecallTrace()) -- 'USE IT OR LOSE IT', learned records capped at learned_cap=250000 and "
-        "re-derivable at 3000 -- then KnowledgeLog.consolidate(survivors), which rewrites the ONE lake to the "
-        "survivor set. _T_FACT is 0x01, labelled IMMORTAL with reason 'learned knowledge is never reclaimed', "
-        "so the declared class and the running brain disagree. The cap is LATENT rather than realized while "
-        "the learned count stays under 250000 (the drop is inside `if len(learned) > learned_cap`), and a "
-        "latent reclaimer is exactly what a gate is for -- P3's reachability-is-not-charge read in reverse. "
-        "Owner: specs/022 row L6 (T091), which must either stop the learned cap dropping a non-reclaimable "
-        "class or re-label 0x01 to say what is true; NOT this row, and never by widening _SCRATCH_MARKERS. "
-        "RETIRES when consolidate consults retention_of in the same function, which this scan then sees."
-    ),
-}
+KNOWN_UNLABELED: dict[tuple[str, str], str] = {}
+#: PAID OUT 2026-09-06, the same day it was opened. It carried exactly one entry,
+#: ("substrate/home.py", "consolidate"): the sleep tick ran LakeConsolidation ("use it or lose it", learned
+#: capped at 250,000) and then rewrote the one lake to the survivor set, while _T_FACT (0x01) was labelled
+#: IMMORTAL with reclaimable=False. Row L6 (T091) measured the live lake read-only -- 26,037 facts, ALL
+#: learned, ZERO re-derivable -- found the cap had never bound, and closed the gap at both ends: the
+#: registry's 0x01 reason now states its per-record exemption, LakeConsolidation refuses to cap a
+#: non-reclaimable class, and KnowledgeLog.consolidate refuses a rewrite that would lose a learned fact.
+#: `stale_known()` is what forced the payout: it red the moment the reclaimer stopped reclaiming.
 
 
 def immortal_tags(registry=None) -> list[int]:
