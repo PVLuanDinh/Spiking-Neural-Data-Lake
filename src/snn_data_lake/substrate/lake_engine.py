@@ -254,37 +254,103 @@ class SynapseDelta:
         return len(got)
 
 
+# : How many of a tag's own WRITING ticks the running bar is computed over. Sized from what the bar
+# needs --
+# : a p95 is meaningless below ~20 samples -- and kept small enough that the window tracks a brain
+# whose
+# : frames grow: at the measured cadence (67 writing ticks in 1200) this is roughly the last 500
+# ticks.
+# : DISCLOSED, and the reason it is not larger: a longer window is a slower-staling fixed ceiling,
+# which is
+#: the defect this replaces.
+RUNNING_WINDOW = 32
+
+
 class AppendBudget:
-    """Per-tag bytes/tick accounting with a flood assert against the recorded baseline."""
+    """Per-tag bytes/tick accounting with a flood assert against the tag's OWN RECENT rate.
+
+    WHY NOT THE RECORDED BASELINE (specs/022 L4b, 2026-09-06). It was a fixed p95 measured once, and the
+    quantity it bounds is not stationary: measured over 1200 ticks, per-tick 0x07 bytes climb monotonically
+    52,763 -> 77,998 B with no settling, because _T_STATE carries WHOLE FRAMES that grow with the brain
+    (growing_learners.json x2.3 over the run, coverage_cells x18.7). The live daemon duly reported 7 floods
+    in 8 nights at 160,470 B against a 12,381 B ceiling recorded in August -- a stuck alarm, not a
+    detection, and a stuck alarm is worse than none because it teaches its reader to ignore the real one.
+    P1 names the fix: running-baseline-relative, never a magic constant held fixed.
+
+    WHAT THIS DOES NOT DO. It does not detect a RAMP -- a class growing without bound over a brain's life,
+    which is the pathology the module docstring names. A flood assert never detected that (a fixed p95 fires
+    once, forever, and says nothing about the slope), and this one does not either. Two pathologies, and
+    conflating them is what produced the stuck alarm.
+    """
 
     def __init__(self, baseline: dict | None = None):
         if baseline is None:
             baseline = json.loads(APPEND_BASELINE.read_text()) if APPEND_BASELINE.exists() else {}
+        # The recorded numbers PRE-FILL each tag's window rather than standing as a permanent
+        # ceiling.
+        # Day-one protection is preserved -- a tag is bounded from its first tick -- and the window
+        # then
+        # MIGRATES to what the brain actually writes as real ticks push the seed out, so a stale
+        # recording
+        # self-corrects within a few writes instead of alarming forever. Measured migration cost is
+        # in the
+        # self-check below and in evidence/l4b-append-ceiling-nonstationary.md.
         self._p95 = {int(k): float(v) for k, v in baseline.get("per_tag_p95_bytes", {}).items()}
+        self._recent: dict[int, list[int]] = {
+            t: [int(v)] * RUNNING_WINDOW for t, v in self._p95.items()
+        }
+        self._seed_vals = {t: (float(v),) for t, v in self._p95.items()}
         self._tick_bytes: dict[int, int] = {}
-        # THIS PROJECT RUNS A FREE-THREADING INTERPRETER, so read-modify-write on a dict is not atomic.
-        # Measured by an adversarial panel (2026-09-06): 8 threads x 20,000 appends counted 36,431 of
-        # 160,000 -- 78% lost -- and end_tick could raise dict-changed-size out of the caller's tick.
+        # THIS PROJECT RUNS A FREE-THREADING INTERPRETER, so read-modify-write on a dict is not
+        # atomic.
+        # Measured by an adversarial panel (2026-09-06): 8 threads x 20,000 appends counted 36,431
+        # of
+        # 160,000 -- 78% lost -- and end_tick could raise dict-changed-size out of the caller's
+        # tick.
         self._lock = threading.Lock()
 
     def on_append(self, tag: int, n_bytes: int) -> None:
         with self._lock:
             self._tick_bytes[tag] = self._tick_bytes.get(tag, 0) + int(n_bytes)
 
+    @staticmethod
+    def _p95_of(xs) -> float:
+        s = sorted(xs)
+        return float(s[min(len(s) - 1, int(round(0.95 * (len(s) - 1))))])
+
+    def bar(self, tag: int):
+        """(bar_bytes, source) for `tag`, or (None, "unbaselined"). The tag's own recent writing ticks once
+        it has enough of them; the recorded seed until then; nothing if it has neither."""
+        recent = self._recent.get(tag)
+        if not recent:
+            return None, "unbaselined"
+        seeded = sum(1 for x in recent if float(x) in self._seed_vals.get(tag, ()))
+        src = "its own recent rate" if seeded == 0 else f"a window {seeded}/{len(recent)} seeded"
+        return self._p95_of(recent) * FLOOD_FACTOR, src
+
     def end_tick(self) -> list[str]:
-        """Close the tick; return violations (empty = green). Unbaselined tags never trip --
-        a budget nobody measured is not a budget (they are REPORTED by the caller instead)."""
+        """Close the tick; return violations (empty = green).
+
+        A tag with neither a window nor a recorded seed never trips -- a budget nobody measured is not a
+        budget, and the caller REPORTS those instead. The tick's bytes join the tag's window AFTER the
+        comparison, so a tick is always judged against history rather than against itself."""
         violations = []
         with self._lock:  # swap out, then scan outside the lock
             taken, self._tick_bytes = self._tick_bytes, {}
         for tag, got in taken.items():
-            p95 = self._p95.get(tag)
-            if p95 is not None and got > p95 * FLOOD_FACTOR:
+            bar, source = self.bar(tag)
+            if bar is not None and got > bar:
                 retention, _, _ = retention_of(tag)
                 violations.append(
                     f"FLOOD: tag {tag:#04x} ({retention}) appended {got} B this tick "
-                    f"> {FLOOD_FACTOR}x its recorded p95 ({p95:.0f} B)"
+                    f"> {FLOOD_FACTOR}x {source} ({bar / FLOOD_FACTOR:.0f} B)"
                 )
+            if (
+                got > 0
+            ):  # only WRITING ticks enter the window; silent ticks would drag the bar to zero
+                w = self._recent.setdefault(tag, [])
+                w.append(int(got))
+                del w[:-RUNNING_WINDOW]
         return violations
 
 
@@ -305,6 +371,60 @@ def main() -> int:
     if not flood:
         print("lake_engine self-check FAILED: the constructed flood did not trip")
         return 1
+    # ---- L4b (2026-09-06): the bar is the tag's OWN RECENT RATE, so it owes three more arms
+    # ----------
+    # CONTROL 1 -- ORDINARY GROWTH MUST NOT FLAG. This replays the MEASURED series from a 1200-tick
+    # brain:
+    # per-tick 0x07 bytes climbing 52,763 -> 77,998 B over 67 writing ticks, carried by whole frames
+    # that
+    # grow with the brain. PRECISELY: this series tops out UNDER the retired fixed bar (99,048 B),
+    # so it is
+    # the no-false-alarm control; what crossed that bar was the LIVE daemon at 160,470 B/tick,
+    # further along
+    # the same monotone curve, and the migration arm below is where the two comparisons actually
+    # diverge.
+    grow = [round(52763 * (77998 / 52763) ** (i / 66)) for i in range(67)]
+    gb = AppendBudget(baseline={"per_tag_p95_bytes": {"7": 12381.0}})
+    grow_flags = 0
+    for n in grow:
+        gb.on_append(0x07, n)
+        grow_flags += len(gb.end_tick())
+    if grow_flags:
+        print(f"lake_engine self-check FAILED: ordinary growth flagged {grow_flags} times")
+        return 1
+    # RED -- a real spike, AFTER the window is all-real, must still flag.
+    sb = AppendBudget(baseline={"per_tag_p95_bytes": {"7": 12381.0}})
+    for n in grow[:RUNNING_WINDOW]:
+        sb.on_append(0x07, n)
+        sb.end_tick()
+    sb.on_append(0x07, int(max(grow[:RUNNING_WINDOW]) * FLOOD_FACTOR * 2))
+    if not sb.end_tick():
+        print("lake_engine self-check FAILED: a real spike did not trip the running bar")
+        return 1
+    # CONTROL 3 -- THE COST, MEASURED AND PRINTED RATHER THAN HIDDEN. A window that adapts is a
+    # window a
+    # SUSTAINED writer can walk up: a stale seed stops alarming after a few real ticks (which is the
+    # point,
+    # and what ended the live daemon's stuck alarm) and by exactly the same mechanism a genuine
+    # sustained
+    # flood goes quiet after the same few. That is the trade of any self-relative bar, and detecting
+    # a
+    # sustained RAMP is a slope instrument's job, which this is not and does not claim to be.
+    mb = AppendBudget(baseline={"per_tag_p95_bytes": {"7": 12381.0}})
+    sustained = 0
+    for _ in range(40):
+        mb.on_append(0x07, 160470)  # the live daemon's measured per-tick rate
+        if mb.end_tick():
+            sustained += 1
+    if not 1 <= sustained <= RUNNING_WINDOW // 4:
+        print(f"lake_engine self-check FAILED: migration took {sustained} ticks, expected 1..8")
+        return 1
+    print(
+        f"  append budget: ordinary growth (52,763 -> 77,998 B over {len(grow)} writes) flags 0; a real "
+        f"spike still flags; a STALE seed costs {sustained} flood(s) before the window migrates -- and a "
+        f"SUSTAINED flood goes quiet after the same {sustained}, which is the disclosed cost of an "
+        "adaptive bar (a RAMP needs a slope instrument, not this one)"
+    )
     # SynapseDelta (T010a): dirty-set wiring, compare-drop, the constructed pathology red, and a
     # zero-base reconstruction -- the cheap halves; full proofs live in tests/test_synapse_delta.py.
     import numpy as np

@@ -103,3 +103,77 @@ def test_the_budget_itself_still_refuses_an_unbaselined_tag():
     assert bud.end_tick() == []
     bud.on_append(0x07, 10_000_000)
     assert bud.end_tick(), "a baselined tag far above its p95 must trip"
+
+
+# ---- specs/022 L4b: the bar is the tag's OWN RECENT RATE, because the quantity is not stationary
+# --------
+
+
+def _measured_growth():
+    """The MEASURED per-tick 0x07 series from a 1200-tick brain: 52,763 -> 77,998 B
+    over 67 writing ticks, carried by whole frames that grow with the brain
+    (growing_learners.json x2.3, coverage_cells x18.7)."""
+    return [round(52763 * (77998 / 52763) ** (i / 66)) for i in range(67)]
+
+
+def test_ordinary_growth_does_not_flag_but_the_retired_fixed_ceiling_would_have():
+    from snn_data_lake.substrate.lake_engine import RUNNING_WINDOW
+
+    series = _measured_growth()
+    bud = AppendBudget(baseline={"per_tag_p95_bytes": {"7": 12381.0}})
+    flags = 0
+    for n in series:
+        bud.on_append(0x07, n)
+        flags += len(bud.end_tick())
+    assert flags == 0, f"ordinary growth flagged {flags} times"
+    assert len(series) > RUNNING_WINDOW
+    # PRECISION, because the first draft of this test overstated it: at 1200 ticks the series tops
+    # out at
+    # 77,998 B, still UNDER the retired fixed bar of 12,381 x 8 = 99,048 B, so THIS series would not
+    # have
+    # flagged under the old comparison either. What crosses it is the LIVE daemon at 160,470 B/tick
+    # -- a
+    # far older brain on the same monotone curve. The next test is where the two comparisons
+    # diverge.
+    fixed_bar = 12381.0 * FLOOD_FACTOR
+    assert max(series) < fixed_bar < 160470, (max(series), fixed_bar)
+
+
+def test_a_real_spike_still_flags_once_the_window_is_all_real():
+    from snn_data_lake.substrate.lake_engine import RUNNING_WINDOW
+
+    series = _measured_growth()
+    bud = AppendBudget(baseline={"per_tag_p95_bytes": {"7": 12381.0}})
+    for n in series[:RUNNING_WINDOW]:
+        bud.on_append(0x07, n)
+        bud.end_tick()
+    assert bud.bar(0x07)[1] == "its own recent rate"
+    bud.on_append(0x07, int(max(series[:RUNNING_WINDOW]) * FLOOD_FACTOR * 2))
+    v = bud.end_tick()
+    assert v and "FLOOD" in v[0], v
+
+
+def test_a_stale_seed_costs_a_bounded_number_of_floods_and_a_sustained_flood_goes_quiet():
+    """The disclosed cost of an adaptive bar, pinned so it cannot drift.
+
+    A stale seed stops alarming after a few real ticks -- which is what ended the live
+    daemon's stuck alarm -- and BY THE SAME MECHANISM a genuine sustained flood goes
+    quiet after the same few. Detecting a sustained RAMP is a slope instrument's job;
+    this is a flood assert and does not claim to be one."""
+    from snn_data_lake.substrate.lake_engine import RUNNING_WINDOW
+
+    bud = AppendBudget(baseline={"per_tag_p95_bytes": {"7": 12381.0}})
+    flagged = 0
+    for _ in range(40):
+        bud.on_append(0x07, 160470)  # the live daemon's measured per-tick rate
+        if bud.end_tick():
+            flagged += 1
+    assert 1 <= flagged <= RUNNING_WINDOW // 4, flagged
+    assert bud.bar(0x07)[1] == "its own recent rate"
+
+
+def test_a_tag_with_no_seed_and_no_history_still_never_trips():
+    bud = AppendBudget(baseline={"per_tag_p95_bytes": {"7": 100.0}})
+    assert bud.bar(0x01) == (None, "unbaselined")
+    bud.on_append(0x01, 10_000_000)
+    assert bud.end_tick() == []
