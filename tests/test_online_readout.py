@@ -29,7 +29,7 @@ def _run(seed, readout, gate=None, n=600):
     return eng
 
 
-@pytest.mark.parametrize("kind", ["delta", "sign", "ridge"])
+@pytest.mark.parametrize("kind", ["delta"])
 def test_under_a_closed_gate_the_online_readout_beats_the_stale_one(kind):
     for seed in (0, 1):
         base = _run(seed, None, ClosingGate(3))
@@ -39,14 +39,17 @@ def test_under_a_closed_gate_the_online_readout_beats_the_stale_one(kind):
         assert live.online_readout.updates > 0 and live.state()["readout_charge"] > 0.0
 
 
-def test_the_sign_flipped_rule_reads_below_under_a_closed_gate_and_the_ridge_wins_ungated():
+def test_the_sign_flipped_rule_reads_below_under_a_closed_gate():
     for seed in (0, 1):
         b = _run(seed, None, ClosingGate(3)).state()["live_accuracy"]
         f = _run(seed, OnlineReadout("delta", sign=-1.0), ClosingGate(3)).state()["live_accuracy"]
         assert f < b, (seed, f, b)
-    b0 = _run(0, None).state()["live_accuracy"]
-    r0 = _run(0, OnlineReadout("ridge")).state()["live_accuracy"]
-    assert r0 > b0 + 0.05, (r0, b0)
+
+
+def test_the_deleted_candidates_are_refused_at_construction():
+    for kind in ("sign", "ridge"):
+        with pytest.raises(ValueError):
+            OnlineReadout(kind)
 
 
 def test_the_neutered_readout_is_bit_identical_to_no_rule():
@@ -58,7 +61,7 @@ def test_the_neutered_readout_is_bit_identical_to_no_rule():
 
 
 def test_widening_preserves_the_old_scores_and_the_record_round_trips():
-    eng = _run(3, OnlineReadout("ridge"))
+    eng = _run(3, OnlineReadout("delta"))
     m = eng._model
     s = torch.rand(int(m.W.shape[0]))
     before = (s @ m.beta).clone()
@@ -76,7 +79,7 @@ def test_the_growth_gates_instrument_is_the_batch_readout_while_the_live_one_lea
     with the last open-gate solve's beta, so the trajectory the growth gate reads is IDENTICAL
     to the batch-only engine's while the live accuracy differs (the online readout learns on
     the wake stream)."""
-    for kind in ("delta", "sign"):
+    for kind in ("delta",):
         base = _run(5, None, ClosingGate(3))
         live = _run(5, OnlineReadout(kind), ClosingGate(3))
         assert [r[2] for r in live.trajectory] == [r[2] for r in base.trajectory], kind

@@ -427,13 +427,13 @@ that baseline.
   GRADIENT_CLAIM row and a test that it is unreachable from the tick), else deleted. Red: L1b beats the
   control on live accuracy at the bar; an untrained twin (frozen random readout) sits BELOW its own
   persistence floor while L1b does not.
-- **L1c — the readout learns online.** *RE-FILED 2026-09-06 (`evidence/l1c-online-readout.md` §2.0c): a first refusal
-  on an UNGATED brain-free control was withdrawn after its panel — the control excluded the regimes the row exists for (a
-  readout held stale under a closed growth gate; the deployed brain's one-category buffer that skips every re-solve), where the
-  ported delta step clears the bar brain-free, and a readout-only sliding ridge on the SAME 7-13 units gains +0.16 ungated, so
-  width is not the constraint. Candidates in-brain: the delta rule, the perceptron, and the engine's own ridge on a K = 20
-  window (P2: the incumbent solve at a per-sample cadence with forgetting). The in-brain cells are the measurement.*
-  Adopt an existing online local readout rule
+- **L1c — the readout learns online.** *LANDED 2026-09-06 (`evidence/l1c-online-readout.md`): the delta rule — laminar’s L5 delta rule ported onto NGSNN.beta — learns on every wake percept
+  from the pair the live instrument just scored; live accuracy over the stale incumbent +0.143 (t 4.13, p 0.0156, 8 seeds, same rows),
+  still below the live persistence floor on every seed; the growth gate's evidence is the DECOUPLED batch instrument (a closed-gate
+  refit scores the last open-gate solve's beta -- unchanged from the incumbent by construction, verified bit for bit), because the
+  online readout is recency-shaped and read LOWER on the gate's marginal slice on every closed-gate seed. A first refusal on an
+  ungated brain-free control was withdrawn after its panel; the ridge candidate failed its own control (a label-permuted window
+  still beats the incumbent); the losing LMS rule deleted (P2). The session's call under the authorization.* Adopt an existing online local readout rule
   (`cortex/laminar_local_readout.observe`'s single-sample local update, or `similarity_sized_growth.FrozenExpert`'s
   three-factor rule — P2: one survives, named at pre-registration) with its state as a lake record.
   Estimated L1a–c: 400–700 LOC over three commits.

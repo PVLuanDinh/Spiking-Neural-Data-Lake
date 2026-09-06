@@ -161,7 +161,7 @@ def _l_cell(args):
         def observe(features, category):
             feats = [float(v) for v in features]
             cat = int(category)
-            if arm == "LIVE":
+            if arm in ("LIVE", "L1C", "L1C_CTRL"):
                 return real(feats, cat)
             if arm == "NEUTER_PERCEPT":
                 return real([0.5] * len(feats), cat)
@@ -172,6 +172,15 @@ def _l_cell(args):
             return real(*synth.next())
 
         eng.observe = observe
+        if arm in (
+            "L1C",
+            "L1C_CTRL",
+        ):  # the online readout (L1c) and its control that is not the method
+            from snn_data_lake.hippocampus.online_readout import OnlineReadout
+
+            eng.online_readout = (
+                OnlineReadout("delta") if arm == "L1C" else OnlineReadout("delta", sign=-1.0)
+            )
         for _ in range(L_TICKS):
             b.tick()
         traj, bl = list(eng.trajectory), list(eng.baselines)
@@ -185,6 +194,8 @@ def _l_cell(args):
             "acc": _st.fmean([r[2] for r in traj[-third:]]) if traj else None,
             "pers": _st.fmean([r[2] for r in bl[-third:]]) if bl else None,
             "maj": _st.fmean([r[1] for r in bl[-third:]]) if bl else None,
+            "live_acc": eng.state().get("live_accuracy"),
+            "live_pers": eng.state().get("live_persistence"),
         }
         b.close()
     return out
@@ -282,4 +293,33 @@ def test_a_constant_percept_admits_one_unit_and_a_structured_stream_admits_more(
     # admitted a dead unit whose all-zero readout answered class 0, accuracy 0.0; record 3.3)
     assert all(g <= 1e-3 for g in gap), (
         f"the constant arm's one unit must answer its majority floor (|acc - majority| {gap})"
+    )
+
+
+@pytest.mark.slow
+def test_the_online_readout_beats_the_stale_one_on_the_wake_stream():
+    """L1c-R1 (evidence/l1c-online-readout.md section 2.0c): paired (live_acc_L1C - live_acc_LIVE)
+    over 8 seeds clears the plan's bar on the SAME rows, and the survivor's control that is not
+    the method does not (R3); the refit-time accuracy does not fall past the bar (R4)."""
+    res = _run_arms(["LIVE", "L1C", "L1C_CTRL"])
+    _require_the_live_packs(res)
+    for s in L_SEEDS:  # same rows
+        assert abs(res[(s, "L1C")]["live_pers"] - res[(s, "LIVE")]["live_pers"]) <= TIE_TOL
+    d1 = [res[(s, "L1C")]["live_acc"] - res[(s, "LIVE")]["live_acc"] for s in L_SEEDS]
+    d3 = [res[(s, "L1C_CTRL")]["live_acc"] - res[(s, "LIVE")]["live_acc"] for s in L_SEEDS]
+    d4 = [res[(s, "L1C")]["acc"] - res[(s, "LIVE")]["acc"] for s in L_SEEDS]
+    c1, t1, p1, n1 = _paired(d1)
+    c3, t3, p3, n3 = _paired(d3)
+    _c4, t4, _p4, _n4 = _paired(d4)
+    if n1 < 5:
+        pytest.fail(f"DEGENERATE-TIES: {n1} non-tied seeds", pytrace=False)
+    if t4 < -1.895:
+        pytest.fail(f"R4: the refit accuracy FELL past the bar (t {t4:.3f})", pytrace=False)
+    if c3:
+        pytest.fail(
+            f"R3: the control that is not the method CLEARED (t {t3:.3f} p {p3:.4f})", pytrace=False
+        )
+    assert c1, (
+        f"L1c-R1: (L1C - LIVE) live accuracy t={t1:.3f} p={p1:.4f} "
+        f"diffs {[round(x, 3) for x in d1]}"
     )

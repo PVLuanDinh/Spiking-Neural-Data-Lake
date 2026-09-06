@@ -396,3 +396,56 @@ state() is the instrument's number and `live_accuracy` the mechanism's, labelled
 cells (must clear as before), R4 must read IDENTICAL to BATCH on 8 of 8 (ties, by construction — verified, not
 assumed), R2 and R3 stand from stage1 (unchanged paths); the candidate with the larger R1 t lands, the other is
 deleted (P2); if R1 no longer clears, the module is deleted (P8 clause 5). RIDGE is deleted regardless (R3).
+
+### 3.4 Stage 2 — the decoupled instrument (BATCH, DELTA, SIGN × 8 seeds, 02:33–02:40 UTC; `stage2/`; head(s) e53e06d)
+
+**The A/A across the engine change:** BATCH at stage 2 equals BATCH at stage 1 in W hash, beta hash, live accuracy, refit accuracy, units and floors on 8 / 8 / 8 / 8 / 8 of 8 → **bit-identical: the incumbent path is untouched by the change.**
+
+| arm | seed | units | live acc / live pers | refit acc (last third) | updates / Σ|dβ| | W / beta hash |
+|---|---|---|---|---|---|---|
+| BATCH | 0 | 2 | 0.547 / 0.932 | 0.311 |  /  | 1fd01989 / 90fea667 |
+| BATCH | 1 | 2 | 0.849 / 0.963 | 0.917 |  /  | d655e464 / ecd22e20 |
+| BATCH | 2 | 2 | 0.807 / 0.952 | 0.825 |  /  | f2879fd9 / d131007f |
+| BATCH | 3 | 7 | 0.653 / 0.902 | 0.656 |  /  | 60750bab / 60771e58 |
+| BATCH | 4 | 6 | 0.590 / 0.907 | 0.628 |  /  | 708075a4 / af611828 |
+| BATCH | 5 | 3 | 0.541 / 0.934 | 0.833 |  /  | 5b73e151 / 83f82801 |
+| BATCH | 6 | 3 | 0.630 / 0.951 | 0.867 |  /  | 914883ca / 1b8e0b0c |
+| BATCH | 7 | 2 | 0.771 / 0.992 | 0.947 |  /  | 292414f4 / 7d7da645 |
+| DELTA | 0 | 2 | 0.547 / 0.932 | 0.311 | 369 / 53.763463 | 1fd01989 / b9bb2ab1 |
+| DELTA | 1 | 2 | 0.841 / 0.963 | 0.917 | 377 / 84.15141 | d655e464 / e1c83750 |
+| DELTA | 2 | 2 | 0.933 / 0.952 | 0.825 | 374 / 158.321034 | f2879fd9 / 47012c6f |
+| DELTA | 3 | 7 | 0.857 / 0.902 | 0.656 | 378 / 194.343179 | 60750bab / 8b8f2732 |
+| DELTA | 4 | 6 | 0.838 / 0.907 | 0.628 | 376 / 152.055553 | 708075a4 / 6508680f |
+| DELTA | 5 | 3 | 0.708 / 0.934 | 0.833 | 377 / 94.302605 | 5b73e151 / 89fb07bc |
+| DELTA | 6 | 3 | 0.854 / 0.951 | 0.867 | 370 / 127.510851 | 914883ca / de83eee7 |
+| DELTA | 7 | 2 | 0.952 / 0.992 | 0.947 | 376 / 114.479314 | 292414f4 / c3243d87 |
+| SIGN | 0 | 2 | 0.556 / 0.932 | 0.311 | 164 / 12.924321 | 1fd01989 / f4f9f4ee |
+| SIGN | 1 | 2 | 0.833 / 0.963 | 0.917 | 63 / 20.543337 | d655e464 / ecd22e20 |
+| SIGN | 2 | 2 | 0.922 / 0.952 | 0.825 | 29 / 38.097555 | f2879fd9 / d131007f |
+| SIGN | 3 | 7 | 0.868 / 0.902 | 0.656 | 50 / 68.615406 | 60750bab / c43fc3da |
+| SIGN | 4 | 6 | 0.856 / 0.907 | 0.628 | 54 / 49.152006 | 708075a4 / daf1a182 |
+| SIGN | 5 | 3 | 0.719 / 0.934 | 0.833 | 106 / 27.167398 | 5b73e151 / 65d31c92 |
+| SIGN | 6 | 3 | 0.859 / 0.951 | 0.867 | 52 / 29.733911 | 914883ca / 1b8e0b0c |
+| SIGN | 7 | 2 | 0.973 / 0.992 | 0.947 | 10 / 8.420745 | 292414f4 / 7d7da645 |
+
+- **DELTA, R1 (re-read under the decoupled instrument): paired (live_acc − BATCH live_acc) clears** — t 4.132, p 0.0156, 6/1/1, mean +0.143 → **MET** (stage 1 read t 4.132). (live acc − live persistence) t -2.874, p 1.0000, 0/8/0, mean -0.125.
+- **DELTA, R4 (identical by construction, verified):** refit accuracy equals BATCH's on 8 of 8, the whole trajectory on 8 of 8 → **HOLDS**; same rows 8 of 8; units [2, 2, 2, 7, 6, 3, 3, 2].
+- **SIGN, R1 (re-read under the decoupled instrument): paired (live_acc − BATCH live_acc) clears** — t 4.054, p 0.0117, 7/1/0, mean +0.150 → **MET** (stage 1 read t 4.054). (live acc − live persistence) t -2.714, p 1.0000, 0/8/0, mean -0.118.
+- **SIGN, R4 (identical by construction, verified):** refit accuracy equals BATCH's on 8 of 8, the whole trajectory on 8 of 8 → **HOLDS**; same rows 8 of 8; units [2, 2, 2, 7, 6, 3, 3, 2].
+- R2 (stage 1): HOLDS; R3 for the LMS rules (stage 1): SIGNFLIP t -11.562, below on 8 of 8 → HOLDS.
+
+## 4b. Disposition — Amendment 3's decision rule, applied as written
+
+- DELTA lands: True; SIGN lands: True; RIDGE: deleted on its failed control (§3.3).
+
+**DELTA LANDS** (the larger R1 t of the two: DELTA 4.132, SIGN 4.054); **SIGN and RIDGE are DELETED from the module (P2, one mechanism).** The brain constructs `OnlineReadout("delta")` in `_make_neuro`; the closed-gate refit keeps scoring the batch instrument; the strict in-tree test `test_the_online_readout_beats_the_stale_one_on_the_wake_stream` (arms LIVE / L1C / L1C_CTRL through the same harness) carries R1, R3 and R4. What the landing claims and what it does not: the grown readout the brain predicts with now tracks the wake stream (+0.14 live accuracy over the stale one, still 0.02–0.38 below persistence on every seed); the growth gate's evidence is unchanged; the readout's recency shape on a marginal-covering slice is the disclosed trade-off (§3.3), which the instrument decoupling keeps out of the gate. The first writing's refusal stands withdrawn (§2.0c); it cost a panel and two commits and bought the regime lesson.
+
+## 5b. Commits (continued)
+
+| commit | what | landed on |
+|---|---|---|
+| `6edc26c` 5 | Amendment 2: the refusal withdrawn; the regimes; the ridge; the cells restored | before any cell |
+| `7862d44` 6 | the build restored + RIDGE; the self-check's regimes | the brain-free reds |
+| `706875f` 7 | the 64 cells (§3.1–3.2) and Amendment 3 (§3.3): the dissociation, the variant, its rule | before the variant's run |
+| (commit 8) | the decoupled instrument + its brain-free test | the stage-2 A/A |
+| `(commit 9)` 9 | stage 2 (§3.4), this disposition, the landing of DELTA, the in-tree test, the plan row | Amendment 3's rule |

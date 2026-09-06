@@ -9,8 +9,8 @@ persistence 0.999, evidence/l1c-online-readout.md section 4).
 
 ONE readout, ONE online rule between refits, ONE batch solve at refits (a schedule composition, P2). `learn(model,
 s, cat)` moves `model.beta` in place from the pair the live instrument just scored -- the rates of the PREVIOUS
-percept and the category that followed -- so the instrument never reads a pair it learned from. Three candidates,
-the A/B decides (record section 2.0c):
+percept and the category that followed -- so the instrument never reads a pair it learned from. Three candidates were measured and the A/B decided (record section 4b): the delta rule LANDED; the perceptron and
+the ridge were deleted (P2) and are refused at construction:
 
   * kind "delta": beta -= lr * s^T (softmax(s @ beta) - onehot(cat)), lr = MU / (||s||^2 + 1) -- laminar's L5
                   rule ported (cortex/laminar_local_readout._observe_lr's normalized form; MU = 1.0 cited from
@@ -57,7 +57,7 @@ MU = 1.0  # cited from cortex/laminar_local_readout (CHOSEN there; the P1 debt n
 K_WINDOW = (
     20  # one refit interval: the online memory (measured ~20 fed percepts per refit in-brain)
 )
-KINDS = ("delta", "sign", "ridge")
+KINDS = ("delta",)  # the A/B deleted ['sign', 'ridge'] (P2; the record section 4)
 
 
 class OnlineReadout:
@@ -223,23 +223,20 @@ def _run(seed, readout, gate=None, n=600, flip_every=100):
 
 def main():
     torch.set_num_threads(1)
-    # (1) beta held stale under a closed gate: DELTA and RIDGE beat the batch-only twin; the flip reads below
+    # (1) beta held stale under a closed gate: DELTA beats the batch-only twin; the sign flip reads below
     for seed in (0, 1):
         b = _run(seed, None, ClosingGate(3)).state()["live_accuracy"]
         d = _run(seed, OnlineReadout("delta"), ClosingGate(3)).state()["live_accuracy"]
-        r = _run(seed, OnlineReadout("ridge"), ClosingGate(3)).state()["live_accuracy"]
         f = _run(seed, OnlineReadout("delta", sign=-1.0), ClosingGate(3)).state()["live_accuracy"]
-        assert d > b + 0.05 and r > b + 0.05, (
-            f"closed gate, seed {seed}: batch {b:.3f} delta {d:.3f} ridge {r:.3f}"
-        )
+        assert d > b + 0.05, f"closed gate, seed {seed}: batch {b:.3f} delta {d:.3f}"
         assert f < b, (
             f"closed gate, seed {seed}: the sign flip {f:.3f} must read below the incumbent {b:.3f}"
         )
-    # (2) ungated: the ridge still beats batch-only; the LMS rules do not (the disclosed negative)
+    # (2) ungated (the batch re-solved every 20 observations) the delta rule gains nothing -- the disclosed
+    # negative the first writing of this arc read as a refusal (record section 2.0c)
     b0 = _run(0, None).state()["live_accuracy"]
-    r0 = _run(0, OnlineReadout("ridge")).state()["live_accuracy"]
     d0 = _run(0, OnlineReadout("delta")).state()["live_accuracy"]
-    assert r0 > b0 + 0.05, f"ungated: ridge {r0:.3f} must beat batch-only {b0:.3f}"
+    ungated_gap = d0 - b0
     # (3) the neutered rule is bit-identical to no rule
     base, neut = _run(2, None), _run(2, OnlineReadout("delta", mu=0.0))
     assert torch.equal(base._model.beta, neut._model.beta) and torch.equal(
@@ -247,7 +244,7 @@ def main():
     )
     assert base.state()["live_accuracy"] == neut.state()["live_accuracy"]
     # (4) widening preserves the old classes' scores (to float tolerance: a wider matmul)
-    m = _run(3, OnlineReadout("sign"))._model
+    m = _run(3, OnlineReadout("delta"))._model
     s = torch.rand(int(m.W.shape[0]))
     before = (s @ m.beta).clone()
     OnlineReadout.widen(m, int(m.beta.shape[1]) + 2)
@@ -255,22 +252,21 @@ def main():
     assert torch.allclose(after[: before.shape[0]], before, atol=1e-6) and bool(
         (after[before.shape[0] :] == 0).all()
     )
-    # (5) determinism, both families
-    for kind in ("delta", "ridge"):
-        a, b2 = _run(4, OnlineReadout(kind)), _run(4, OnlineReadout(kind))
-        assert torch.equal(a._model.beta, b2._model.beta), kind
-    # (6) the online beta survives the growth record's round trip
+    # (5) determinism
+    a, b2 = _run(4, OnlineReadout("delta")), _run(4, OnlineReadout("delta"))
+    assert torch.equal(a._model.beta, b2._model.beta)
+    # (6) the online beta survives the growth record's round trip; the decoupled instrument restores with it
     from snn_data_lake.cortex.neurogenesis_engine import NeurogenesisSelfImprove
 
-    a = _run(4, OnlineReadout("ridge"))
     fresh = NeurogenesisSelfImprove(seed=99, device="cpu")
     assert fresh.restore_growth_state(a.growth_state_bytes()) and torch.equal(
         fresh._model.beta, a._model.beta
     )
+    assert torch.equal(fresh._batch_beta, a._model.beta)
     print(
-        f"online_readout self-check OK: closed gate -- delta {d:.3f} / ridge {r:.3f} beat batch-only {b:.3f}, "
-        f"the flip {f:.3f} below (seed 1); ungated -- ridge {r0:.3f} vs batch {b0:.3f}, delta {d0:.3f} (the "
-        f"disclosed negative); neutered bit-identical; widening exact to 1e-6; deterministic; persisted"
+        f"online_readout self-check OK: closed gate -- delta {d:.3f} beats batch-only {b:.3f}, the flip {f:.3f} "
+        f"below (seed 1); ungated gap {ungated_gap:+.3f} (the disclosed negative); neutered bit-identical; "
+        f"widening exact to 1e-6; deterministic; persisted with the instrument"
     )
 
 

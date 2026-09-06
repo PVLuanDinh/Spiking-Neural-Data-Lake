@@ -1383,6 +1383,10 @@ class Brain:
                 refit_every=self.refit_every,
                 device=dev,
                 growth_gate=self._growth_gate_verdict,
+                # L1c (2026-09-06): the grown readout learns online between sleep refits -- the A/B's
+                # survivor (delta; evidence/l1c-online-readout.md section 4), constructed by the engine
+                # from its kind name; the live instrument scores before it learns on every wake percept.
+                online_readout="delta",
             )
             # RESTORE the grown substrate from the one durable lake. Before this the engine was
             # rebuilt empty on every start, and the daemon relaunches on every new commit (~20 times
