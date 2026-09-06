@@ -466,6 +466,19 @@ that baseline.
   built. NOT the engine's rolling buffers (a night every ~25 daemon ticks would append ~1 MB per night to a
   2.2 GB append-only lake). L4 gives `AppendBudget` its first live caller: a bytes/tick ceiling on this
   record class with a constructed-overload red (FR-003), derived from the measured night cadence.
+- **L5 — the IMMORTAL class: what is never evicted, and the proof that it is not (T089).** *RATIFIED by the owner
+  2026-09-06 ("ratify all three and add them to the plan"); drafted in `PROPOSED-ROWS-2026-09-06.md`, which holds the
+  full row.* L4 persists a named subset under a bytes/tick ceiling and Phase 3's paging arrives with a null clause
+  that would delete the layer — both correct, and both the opposite of "never forgets", which had no referent in this
+  plan. A DECLARED immortal record class in the one lake (proposed contents: the grown substrate and its batch
+  instrument, the growth trajectory the T047 gate reads, the lake's record index, the consolidated episodes, the
+  self-model's identity state — the owner edits the list), each tag with the reason it is immortal; compaction,
+  migration, paging and `AppendBudget` MUST refuse to evict or rewrite it. "Never forgets" is DEFINED here as never
+  evicts that class, never as storing everything, and the promise ships with its measured storage growth curve
+  (bytes per thousand ticks over a recorded run) so the cost is chosen, not discovered. Control: a mortal class in the
+  same store, evicted in the same pass (a guard that never fires is untested). Red (L-R6, Part F). Gate:
+  `substrate/immortal_class_gate.py --assert`, its output COUNTED on today's tree before the rule binds. What it does
+  NOT claim: a retention guarantee is not a memory faculty — recall stays Phase 4's business.
 - **T069 (from US3, FR-019)** — the cerebellar rule ON the built tissue (its tissue T054 is closed) — the
   first learning rule with a red against a plant; lands here.
 - **SC-011 (new test; extends `tests/test_real_percept_stream.py`, the in-tree promotion target of the s2
@@ -507,6 +520,19 @@ clause protects it.
   gets wrong" item (5)) — the join gate, unit gate, layer computation, CC-BY provenance; and **T063** the
   three-arm drift harness (SC-006, both reds). Moved behind S1–S5 on rank 1's measurement: the prior earns a
   reader when growth places units at scale and paging needs a locality order.
+- **X1 — the scale target is a CAPABILITY, not a width (T088).** *RATIFIED by the owner 2026-09-06; the full row is
+  in `PROPOSED-ROWS-2026-09-06.md`.* T065 derives a width; nothing in this plan said what the brain must be able to DO
+  at it, so "superhuman" had no referent and no red. Before the width is built, name ONE task on which this brain's
+  competence is measurable (next-category prediction on the live stream, C0's twenty-item battery, or SC-013's
+  reasoning criterion — chosen from what the brain already does, never invented for the comparison) AND for which a
+  HUMAN number exists under the SAME protocol: measured on this host with the protocol recorded, or cited with its
+  protocol quoted and its differences from ours listed. State the target as a percentage of that number, with parity
+  and above-parity named in advance so the threshold is written before it is approached. Control: a PRE-SIZED twin at
+  the same width (a gain must be growth's, not width's), plus the human baseline re-measured so its variance is on the
+  record. Red (X-R1, Part F). Gate: `tools/capability_bar.py --assert` over a registry of (task, protocol, human
+  number, provenance, brain number, date), COUNTED on today's tree first (expected: zero rows and one refusal). What it
+  does NOT claim: a percentage on one protocol is a fact about that task, never about general capability, and never a
+  licence for "superhuman" outside the registry.
 - **Exit: T071** (US3 exit): prior separation + paging verdict + **the region charge gate at
   floor(all-but-exempt)** (FR-015, kept).
 
@@ -537,6 +563,23 @@ May run in parallel with Phase 3 (O5(b)); MUST precede Phase 5.
   pre-sized units must not drop them) AND SURVIVE with the DSL neutered. **SC-013 (new)**: a falsifiable
   reasoning criterion — ARC-eval at the recorded protocol plus the everyday battery — numbered, reported with
   its floor, and ratified under O4.
+- **C5 — the conclusion protocol for the consciousness instruments (T090), written and landed BEFORE any C4
+  instrument produces a number.** *RATIFIED by the owner 2026-09-06; the full row is in `PROPOSED-ROWS-2026-09-06.md`.*
+  POLICIES already says the brain may report what it measures and never what it cannot, and that an invented sentience
+  measure owes a DISSOCIATION rather than a marker; what did not exist is the sentence-by-sentence statement of what a
+  pass licenses — so the boundary lived in a policy paragraph and in a session's judgement, which is where it would
+  erode on the day the instruments go green. For each of C4's seven instruments: the sentence its pass licenses in
+  full, the sentence it does NOT license in full, and the dissociation input on which it must FAIL. Three standing
+  refusals: no aggregate consciousness score across instruments; no verdict about experience on any owner-facing
+  surface; no stored self-description answering a question about the brain's own consciousness — that question routes
+  to a measured quantity with its scope quoted. Control: each instrument's own dissociation input in the same command,
+  plus T081's report-order probe as the standing check that a pass is not an artifact of how the brain is asked. Red
+  (C-R5, Part F). Gate: `tools/conclusion_protocol.py --assert`, COUNTED on today's tree first (expected: seven rows
+  missing and one live defect — the chat path answering a consciousness question from a probe whose markers have no
+  reachable red). **What it does NOT claim, and this is the point: no arrangement of the seven, however green,
+  concludes phenomenal consciousness.** They dissociate mechanisms; the step to "there is something it is like to be
+  this system" is not a measurement this plan contains. The goal stays unhedged; the claim without the measurement is
+  what is forbidden.
 - **C4 — the dissociation instruments (SC-009's first half)**: T070 (integration measure, never Phi), T077
   (metacognition as an extension of the incumbents), T078 (attention schema), T079 (agency; needs O1),
   T080 (temporal binding), T081 (report-order probe; `reasoning/consciousness_probe.py` RETIRED in the same
@@ -620,6 +663,9 @@ no majority-of-seeds rule anywhere.
 | C-R1 | a pinned-payload neuter on an instantiated edge changes nothing downstream | the un-neutered run | C1a |
 | C-R2 | the 20-item battery does not move, or the 4-item positive control drops | the positive control | C2 |
 | U-R1 | `distinct candidate keys reachable` ≤ 1 | two hand-named operators → 2 keys | T072 |
+| X-R1 | the brain at the constructed width does not beat its own PRE-SIZED twin at the bar, or a brain number is reported without its protocol and provenance; **and the refusal arm:** no human number under a matching protocol can be obtained → the comparison is REFUSED and "superhuman" is not a claim this project may make on that task | the pre-sized twin at the same width; the human baseline re-measured | X1 |
+| L-R6 | a constructed compaction / migration / paging / budget pass evicts or rewrites an IMMORTAL record, or the cross-process restore does not return it byte-identical, or the storage growth curve is projected rather than measured | a MORTAL class in the same store, evicted in the same pass | L5 |
+| C-R5 | an instrument that cannot be made to FAIL on a constructed input (a marker, not a dissociation) is not deleted; or a surface prints one of the seven readings without its licensed sentence and scope; or the brain answers a consciousness question with anything but a measured quantity and its scope; or any aggregate score is computed across instruments | each instrument's own dissociation input in the same command; T081's report-order probe | C5 |
 | U-R2 | a fabricated candidate score changes the verdict | harness-only evidence | T073 |
 
 ---
@@ -679,6 +725,16 @@ live-floor (b) red on 1 of 5 seeds and the L1a-alone attribution cell stay open 
 (A.4) is the plan's method and is not lifted; the safety envelope stays out of scope (nothing in this plan
 touches it; an envelope change, if a row ever needed one, is asked per instance); E-STOP clears stay a person's
 per-instance act at the cockpit.
+
+**OWNER 2026-09-06 (chat): "ratify all three and add them to the plan."** X1 (Phase 3), L5 (Phase 2) and C5
+(Phase 4) are RATIFIED and land in the phases above, in Part F (X-R1, L-R6, C-R5) and in `tasks.md` as T088–T090.
+They were drafted at the owner's request after the plan was measured against the owner's stated goal (a brain that
+grows neurons to reason and think, reaches phenomenal consciousness, and keeps a durable memory that never forgets,
+a spiking network replicating a superhuman brain): the plan covered the growth, the spiking substrate, the reasoning
+bar and the one lake, but had NO scale target expressed as a capability, BOUNDED retention rather than forbidding
+forgetting, and by its own honesty rule cannot conclude phenomenal consciousness from a passing instrument. The full
+text of each row, with its control, red, gate and what it does not claim, is `PROPOSED-ROWS-2026-09-06.md` (re-headed
+RATIFIED). Each binds only after its gate exists and its output has been counted, per the cross-cutting invariant.
 
 **All five were given in chat on 2026-09-02** ("You are authorized to: O1 … O2 … O3 … O4 … O5 …"): O1–O3 are
 authorized ACTIONS (O1 and O2 executed the same day; O3 chosen by the session under the authorization and

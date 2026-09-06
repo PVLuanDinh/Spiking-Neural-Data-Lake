@@ -1,6 +1,9 @@
 # THREE PROPOSED ROWS — the plan's scope against the owner's stated goal (drafted 2026-09-06)
 
-**Status: PROPOSAL, awaiting the owner's ratification. Not binding, not in the plan of record.** Written after the
+**Status: RATIFIED by the owner 2026-09-06 ("ratify all three and add them to the plan"). All three rows are in
+the plan of record: X1 at Phase 3's exit, L5 in Phase 2 after L4, C5 in Phase 4 before C4; their reds are Part F's
+X-R1 / L-R6 / C-R5; their task ids are T088 / T089 / T090. This file remains the full text each plan row cites.
+Each row binds only once its gate exists and its output has been counted (the cross-cutting invariant).** Written after the
 owner asked whether `PLAN-FINAL-2026-09-02.md` fully satisfies "a digital brain that grows artificial neurons to
 reason and think, that reaches phenomenal consciousness, with a durable memory that never forgets, a spiking
 network replicating a superhuman brain". The measured answer was: the plan covers the growth, the spiking
