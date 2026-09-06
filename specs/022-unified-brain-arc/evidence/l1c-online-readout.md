@@ -97,6 +97,60 @@ Also disclosed: the widening check compares matmul outputs, which agree to float
 self-check and test use `allclose`, atol 1e-6); the engine constructs the readout from a kind name so the module
 is reachable from a live path before the survivor lands (the dormancy gate's reading, as in L1b).
 
+### 2.0c Amendment 2 — the refusal withdrawn; the regimes measured; the ridge candidate; the cells restored
+(written after the record panel on `619d596`, before any in-brain cell; commit 5)
+
+**What the panel found and the session reproduced brain-free on the `bd53a42` artifacts (threads pinned, the
+drifting chain, a refit every 20 observations, seeds 0 / 1):**
+
+| regime | batch-only | DELTA (mu 1.0) | SIGN | DELTA sign-flipped | RIDGE (K = 20) |
+|---|---|---|---|---|---|
+| A ungated (§3's control; the batch re-solved at every refit) | 0.400 / 0.359 (13 / 7 units) | 0.386 / 0.397 | 0.379 / 0.407 | 0.298 / 0.234 (below) | **0.557 / 0.517 (+0.157 / +0.159)** |
+| B the growth gate closes after the 3rd refit (beta held stale — L1b §4's mechanism) | 0.457 / 0.390 (5 / 2 units) | **0.588 / 0.517 (+0.131 / +0.128)** | 0.586 / 0.519 | 0.297 / 0.305 (below) | **0.745 / 0.538 (+0.288 / +0.148)** |
+| C a one-category tail after 200 chain observations (the deployed brain's shape: `_refit` skips a one-class buffer) | 0.860 / 0.821 | 0.922 / 0.886 | — | — | 0.931 / 0.881 |
+
+Three corrections follow. **(1) The refusal was premature (panel PH-1).** §3's control ran with no growth gate, so
+its batch competitor was re-solved every 20 observations — the one regime in which an online readout has no job.
+L1c was commissioned for the readout held STALE under a closed T047 gate (L1b §4) and the brain lives in a
+near-constant stream whose one-category buffer makes `_refit` skip every re-solve (§4); in both regimes the ported
+DELTA step clears the pre-registered bar on both seeds with the sign flip below. "The positive control fails on the
+substrate the mechanism would run on" was true only of regime A. **(2) WIDTH is not the binding constraint (panel
+I-5, PH-2, M-1).** A readout-only mechanism on the SAME 7–13 units — the engine's own `_solve_beta` re-solved at
+every observation on the last K = 20 buffered transitions, moving only beta (the sliding ridge) — gains +0.157 /
++0.159 ungated where the LMS rules gain nothing; §2.0's +0.19 was a fact about the LMS rules on a 53–100-unit
+direct fit (archived now: `emulation_direct_ngsnn.py` + `.txt`) and the null was a fact about the LMS rules, not the
+substrate. The width sentence is demoted to a hypothesis and struck from the plan row. **(3) The sign-flipped
+control is directional only at the ported step (panel M-2):** below mu 1.0 the flipped DELTA reads ABOVE the
+incumbent on both seeds (the panel's sweep: 0.417–0.469 at mu 0.05–0.3 against 0.400), so R3 is valid only at mu = 1.0
+and the derived step mu = 1/20 is dropped — inert, not a candidate. Also corrected: "updates fired on every transition"
+holds for DELTA (580 of 580); SIGN moves on error only (344–398 of 580); the comparator of §3 is a whole-buffer batch
+that reads below chance after every flip (a buffer capped at 40 reads 0.593 / 0.653 — but a cap changes admission and
+is not a readout-only control).
+
+**The re-filed pre-registration (the session's call under the authorization):**
+- **Candidates in-brain:** DELTA (mu 1.0, the faithful port), SIGN (mu 1.0, the plan's second candidate, kept for the
+  A/B as the row names it), and **RIDGE** — the engine's own ridge (`NGSNN._solve_beta`, the same regularization) on a
+  sliding window of the last K transitions, re-solved on every wake percept, moving only beta (P2: it is the incumbent
+  solve at a per-sample cadence with forgetting, not a second solver). K = 20 = one refit interval (the same
+  derivation the derived step used: the online memory is one refit interval; in-brain the L1b cells fed ~395 percepts
+  over 20 refits ≈ 20 per interval — measured, not assumed). Cost per wake percept: one K × L ridge solve (L ≤ 14).
+- **Arms per seed (8 seeds × 800 ticks, 4 at a time, one command):** BATCH, BATCH_B (A/A), DELTA, SIGN, RIDGE,
+  NEUTER_DELTA (mu 0: the reach control, bit-identical to BATCH), SIGNFLIP_DELTA (mu 1.0, sign −1: the LMS rules'
+  control that is not the method — valid at this step), RIDGE_SHUF (the ridge on the same window with the window's
+  labels permuted each solve: the ridge's control that is not the method). Same rows by identical floors and identical
+  live persistence across the eight arms per seed.
+- **The reds, each quoted and scored one by one (the plan's statistic):** L1c-R1 paired (live_acc_CAND −
+  live_acc_BATCH) clears, per candidate; L1c-R2 NEUTER_DELTA == BATCH bit for bit on 8 of 8; L1c-R3 for the LMS
+  candidates: paired (live_acc_SIGNFLIP − live_acc_BATCH) does not clear and reads below on a majority; for RIDGE:
+  paired (live_acc_RIDGE_SHUF − live_acc_BATCH) does not clear; L1c-R4 paired (refit_acc_CAND − refit_acc_BATCH) not
+  below −1.895; reported: units, W-hash divergence (the mechanism's effect on the admission path through the
+  closed-gate rows, disclosed in §2.2), the live persistence floor, the A/B among candidates.
+- **Decision rule:** a candidate LANDS if R1 clears and R2, R3, R4 hold; among candidates that land the largest R1 t
+  survives and the others are deleted (P2); none → the module is deleted (P8 clause 5) and the record stands. The
+  survivor is constructed by `_make_neuro`; the strict in-tree test carries the reading; on a deletion the test is
+  not carried. Expectation stated before the cells (from the regimes above): RIDGE is favoured; DELTA is expected to
+  clear where the brain's gate closes or its buffer goes one-class, and the live stream is such a stream.
+
 ### 2.1 The mechanism
 
 `hippocampus/online_readout.OnlineReadout.learn(model, s, cat)` (a new governed module beside `ng_snn`), called from
@@ -190,28 +244,18 @@ already extracts what the substrate carries. Recency in the readout is worth +0.
 the emulation) and nothing on the engine's. The row's premise — "synaptic first" on the readout — is upstream-blocked
 by WIDTH, which is L2's and Phase 3's business, not a rule's.
 
-## 4. Verdict and disposition
+## 4. Verdict and disposition — WITHDRAWN as premature (Amendment 2, §2.0c); superseded by the in-brain cells
 
-**L1c is REFUSED ON MEASUREMENT before any in-brain cell, exactly as Amendment 1's decision rule pre-registered.**
-The positive control that the mechanism owes (P8 clause 2) fails on the substrate the mechanism would run on, at
-the ported step and at the one derived step; no in-brain cell was run (48 brains measuring a readout that cannot
-separate from its own sign flip would have measured noise). The build is DELETED (P8 clause 5): the module, its
-test, the engine's readout hook and kind-name construction, the registration rows and the census row (the census
-regenerated back). What stays: the LIVE instrument (unchanged from L1b's fold) and this record. **The negative to
-keep (the re-proposal guard), scoped to what was measured:** on the engine's substrate (1–14 units; the live stream
-2–7) an online single-sample readout — laminar's delta rule or FrozenExpert's perceptron, normalized-LMS step at
-mu 1.0 or 1/20 — cannot beat the batch solve's consolidation even on a drifting world; the emulation's +0.19 is a
-fact about a 53–100-unit substrate. **What it points at:** L1c re-opens only when the substrate is wide enough for
-a readout to have something to re-weight — after L2 (growth on plateau) has grown it and Phase 3 has scaled it —
-or when a drifting world exists (Phase 1's null says today's does not). The plan's L2 trigger stays as restated by
-L1b's arc (the T047 gate's own refit-accuracy plateau); L1c's "state as a lake record" clause is moot (beta already
-rides). Owed onward: nothing from this arc but the width. The session's call under the 2026-09-05 authorization.
-
-**Also read on the deployed brain (the cockpit's own surface, 01:04 UTC, 48 live transitions after the relaunch on
-`ea69088`):** the restored one-unit substrate's live accuracy 0.000 against a live persistence floor of 0.9375 —
-the deployed readout answers wrong on every transition of the live stream while persistence would answer right on
-15 of 16. The instrument L1b left behind is the first honest number the cockpit has for what the grown substrate
-does on the stream the brain lives in.
+The first writing of this section filed L1c as REFUSED ON MEASUREMENT before any in-brain cell, on the ungated
+brain-free control of §3, and attributed the null to WIDTH. The record panel (§6, three lenses, one saying revise)
+showed the control excluded the regimes L1c was commissioned for and the cause was an inference; the session
+reproduced every one of its measurements (§2.0c) and re-files. The refusal is withdrawn; nothing about the
+mechanism is decided by §3 alone; the in-brain cells of §2.3–2.5 (as amended in §2.0c) are the measurement.
+The deployed-brain reading of the first writing (live accuracy 0.000 against persistence 0.9375 after the relaunch;
+the cockpit later read 0.0 / 0.999 over 2985 transitions) stands as evidence that the stale-readout regime is the
+one the brain LIVES in — a near-constant stream whose one-category buffer makes `_refit` skip every re-solve — and
+is carried into §2.0c's regimes, not left as an aside. Whether the deployed unit fires on that stream (the one case
+the rule cannot move) was not read and is owed.
 
 ## 5. Commits of this arc (stacked on `ea69088`)
 
