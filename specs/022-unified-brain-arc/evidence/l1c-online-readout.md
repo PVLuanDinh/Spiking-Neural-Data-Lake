@@ -109,6 +109,8 @@ drifting chain, a refit every 20 observations, seeds 0 / 1):**
 | B the growth gate closes after the 3rd refit (beta held stale — L1b §4's mechanism) | 0.457 / 0.390 (5 / 2 units) | **0.588 / 0.517 (+0.131 / +0.128)** | 0.586 / 0.519 | 0.297 / 0.305 (below) | **0.745 / 0.538 (+0.288 / +0.148)** |
 | C a one-category tail after 200 chain observations (the deployed brain's shape: `_refit` skips a one-class buffer) | 0.860 / 0.821 | 0.922 / 0.886 | — | — | 0.931 / 0.881 |
 
+(The RIDGE column of this table is the session's reproduction script's sliding ridge, not the module later shipped and
+deleted — the shipped one read 0.569 / 0.507 ungated and 0.745 / 0.529 gated; the sign flip was run in regime B only.)
 Three corrections follow. **(1) The refusal was premature (panel PH-1).** §3's control ran with no growth gate, so
 its batch competitor was re-solved every 20 observations — the one regime in which an online readout has no job.
 L1c was commissioned for the readout held STALE under a closed T047 gate (L1b §4) and the brain lives in a
@@ -154,13 +156,16 @@ is not a readout-only control).
 ### 2.1 The mechanism
 
 `hippocampus/online_readout.OnlineReadout.learn(model, s, cat)` (a new governed module beside `ng_snn`), called from
-`NeurogenesisSelfImprove.observe` immediately AFTER the live instrument has scored this transition and BEFORE it
-is buffered — on the pair (`s = model._rates(x_{t-1})`, `cat_t`) the instrument just scored, so the instrument
+`NeurogenesisSelfImprove.observe` immediately AFTER the live instrument has scored this transition (the transition is
+buffered first; the buffer is not read on the wake tick) — on the pair (`s = model._rates(x_{t-1})`, `cat_t`) the instrument just scored, so the instrument
 never reads a pair it has learned from. `beta` is moved in place on the retained model. If `cat ≥ m`, beta is
 widened with a zero column first (function-preserving; laminar's precedent). Step size for BOTH candidates (one
 derivation, P1): `lr = MU / (‖s‖² + 1)` — the normalized-LMS form of laminar's `_observe_lr` (the `+1` is the
 bias unit's presynaptic energy there; beta has no bias here, so `+1` is CHOSEN as the floor that keeps the
-denominator ≥ 1 on a silent percept — disclosed), MU = 1.0 cited from laminar (CHOSEN there; the P1 debt named).
+denominator ≥ 1 on a silent percept — disclosed), MU = 1.0 is laminar's value: laminar claims it under P1 exception (a) and records that its
+"fully corrective" NLMS derivation was DELETED because NLMS convergence does not transfer to a softmax readout — the
+same caveat applies to this delta rule, and the value is LOAD-BEARING here (1/20 inert; the sign flip directional only at
+1.0), so the owed item is an in-brain step sweep with the sign-flip control at each step (panel PH-9).
 **Candidate DELTA:** `beta -= lr · sᵀ (softmax(s @ beta) − onehot(cat))`. **Candidate SIGN (the perceptron):** on
 `argmax(s @ beta) ≠ cat`: `beta[:, cat] += lr·s`, `beta[:, argmax] −= lr·s`; else nothing. At an open-gate refit
 `fit` re-solves beta on the buffer and `_refit` retains the new model — the online rule continues from that
@@ -217,7 +222,7 @@ naming the numbers — and is NOT carried on a deletion (the L1b lesson).
 BATCH's floors, units and refit accuracy against `l1b-synaptic-online.md` §3.2's BATCH cells (the same src at
 `1e31239` for the incumbent path): expected identical to 1e-6; a difference is the instrument moving.
 
-## 3. Results — the pre-registered one shot (Amendment 1), on the engine's substrate, brain-free
+## 3a. Results of the first writing — the pre-registered one shot (Amendment 1), ungated, brain-free (superseded by §3)
 
 Drifting chain (the succession rule reverses every 100 observations), `NeurogenesisSelfImprove` with a refit every
 20 observations, the live instrument scored before each online step; seeds 0 and 1; the measured module is
@@ -257,20 +262,20 @@ one the brain LIVES in — a near-constant stream whose one-category buffer make
 is carried into §2.0c's regimes, not left as an aside. Whether the deployed unit fires on that stream (the one case
 the rule cannot move) was not read and is owed.
 
-## 5. Commits of this arc (stacked on `ea69088`)
+## 5a. Commits of the first writing (stacked on `ea69088`)
 
 | commit | what | landed on |
 |---|---|---|
 | `3b4de12` 1 | this record §1–2 (pre-registration; the emulation's stimulus reading) | before any run |
 | `a832906` 2 | Amendment 1: the control failed on the engine's substrate at the ported step; the one derived step pre-registered | before the re-run |
 | `bd53a42` 3 | the build AS MEASURED (its self-check red on this substrate) | the artifact of §3 |
-| `(this commit)` 4 | the REFUSAL: the build deleted; §3–5; the plan's L1c row | P8 clauses 2 and 5 |
+| `619d596` 4 | the REFUSAL: the build deleted; §3–5; the plan's L1c row | P8 clauses 2 and 5 |
 
 ## 3. Results (the in-brain cells, §2.0c)
 
 ### 3.1 The cells — 8 arms × 8 seeds × 800 ticks, 4 at a time (02:03–02:24 UTC; `stage1/`; head(s) 7862d44; wall 54–114 s; the daemon was up)
 
-Same rows: majority, persistence AND live-persistence floors identical across the six arms on every seed to 1e-6 — no seed excluded; seeds used [0, 1, 2, 3, 4, 5, 6, 7]. A/A (BATCH vs BATCH_B): max |Δ live acc| 0.00e+00, W/beta hashes equal on 8 of 8. Perception unified on every cell: True; feed refusals: none.
+Same rows: majority, persistence AND live-persistence floors identical across the eight arms on every seed to 1e-6 — no seed excluded; seeds used [0, 1, 2, 3, 4, 5, 6, 7]. A/A (BATCH vs BATCH_B): max |Δ live acc| 0.00e+00, W/beta hashes equal on 8 of 8. Perception unified on every cell: True; feed refusals: none. **§2.6's instrument control: BATCH equals `l1b-synaptic-online.md` §3.2's BATCH on 8 of 8 (floors, units, refit and live accuracy, W hash) — the instrument did not move.**
 
 | arm | seed | units | live acc / live pers | refit acc (last third) | persistence | majority | updates / Σ|dβ| / widened | W / beta hash |
 |---|---|---|---|---|---|---|---|---|
@@ -343,11 +348,11 @@ Same rows: majority, persistence AND live-persistence floors identical across th
 
 - **L1c-R2 (reach): NEUTER_DELTA equals BATCH bit for bit** — W hash 8 of 8, beta hash 8 of 8, live accuracy 8 of 8, units 8 of 8 → **HOLDS**.
 - **DELTA, L1c-R1 ("the online readout beats the stale one on the wake stream, scored before learning"): paired (live_acc_DELTA − live_acc_BATCH) clears** — t = 4.132, exact p = 0.0156, 6 / 1 / 1, mean +0.143 (random-sign clears 0.035) → **MET**. Beside it: (live acc − live persistence) t = -2.874, exact p = 1.0000, 0 / 8 / 0, mean -0.125 (random-sign clears 0.030).
-- **DELTA, L1c-R4 (non-regression on the batch instrument): paired (refit_acc_DELTA − refit_acc_BATCH) not below −1.895** — t = -1.664, exact p = 0.9375, 1 / 3 / 4, mean -0.053 (random-sign clears 0.000) → **MET**. Units [2, 2, 2, 7, 6, 3, 3, 2] (BATCH [2, 2, 2, 7, 6, 3, 3, 2]); the admission path diverged from BATCH (W hash differs) on 0 of 8 seeds (§2.2); updates per cell [369, 377, 374, 378, 376, 377, 370, 376]; Σ|dβ| [53.763463, 84.15141, 158.321034, 194.343179, 152.055553, 94.302605, 127.510851, 114.479314]; widened [3, 1, 2, 3, 2, 1, 2, 1].
+- **DELTA, L1c-R4 (non-regression on the batch instrument): paired (refit_acc_DELTA − refit_acc_BATCH) not below −1.895** — t = -1.664, exact p = 0.9375, 1 / 3 / 4, mean -0.053 (random-sign clears 0.000) → **DEGENERATE** (4 non-tied; relabelled in the fold, panel PH-4: the letter's t is not read on a degenerate statistic; the per-seed closed-gate losses are in §3.3). Units [2, 2, 2, 7, 6, 3, 3, 2] (BATCH [2, 2, 2, 7, 6, 3, 3, 2]); the admission path diverged from BATCH (W hash differs) on 0 of 8 seeds (§2.2); updates per cell [369, 377, 374, 378, 376, 377, 370, 376]; Σ|dβ| [53.763463, 84.15141, 158.321034, 194.343179, 152.055553, 94.302605, 127.510851, 114.479314]; widened [3, 1, 2, 3, 2, 1, 2, 1].
 - **SIGN, L1c-R1 ("the online readout beats the stale one on the wake stream, scored before learning"): paired (live_acc_SIGN − live_acc_BATCH) clears** — t = 4.054, exact p = 0.0117, 7 / 1 / 0, mean +0.150 (random-sign clears 0.055) → **MET**. Beside it: (live acc − live persistence) t = -2.714, exact p = 1.0000, 0 / 8 / 0, mean -0.118 (random-sign clears 0.030).
-- **SIGN, L1c-R4 (non-regression on the batch instrument): paired (refit_acc_SIGN − refit_acc_BATCH) not below −1.895** — t = -1.705, exact p = 1.0000, 0 / 3 / 5, mean -0.048 (random-sign clears 0.000) → **MET**. Units [2, 2, 2, 7, 6, 3, 3, 2] (BATCH [2, 2, 2, 7, 6, 3, 3, 2]); the admission path diverged from BATCH (W hash differs) on 0 of 8 seeds (§2.2); updates per cell [164, 63, 29, 50, 54, 106, 52, 10]; Σ|dβ| [12.924321, 20.543337, 38.097555, 68.615406, 49.152006, 27.167398, 29.733911, 8.420745]; widened [3, 1, 2, 3, 2, 1, 2, 1].
+- **SIGN, L1c-R4 (non-regression on the batch instrument): paired (refit_acc_SIGN − refit_acc_BATCH) not below −1.895** — t = -1.705, exact p = 1.0000, 0 / 3 / 5, mean -0.048 (random-sign clears 0.000) → **DEGENERATE** (3 non-tied). Units [2, 2, 2, 7, 6, 3, 3, 2] (BATCH [2, 2, 2, 7, 6, 3, 3, 2]); the admission path diverged from BATCH (W hash differs) on 0 of 8 seeds (§2.2); updates per cell [164, 63, 29, 50, 54, 106, 52, 10]; Σ|dβ| [12.924321, 20.543337, 38.097555, 68.615406, 49.152006, 27.167398, 29.733911, 8.420745]; widened [3, 1, 2, 3, 2, 1, 2, 1].
 - **RIDGE, L1c-R1 ("the online readout beats the stale one on the wake stream, scored before learning"): paired (live_acc_RIDGE − live_acc_BATCH) clears** — t = 3.910, exact p = 0.0117, 7 / 1 / 0, mean +0.145 (random-sign clears 0.050) → **MET**. Beside it: (live acc − live persistence) t = -2.896, exact p = 1.0000, 0 / 8 / 0, mean -0.123 (random-sign clears 0.035).
-- **RIDGE, L1c-R4 (non-regression on the batch instrument): paired (refit_acc_RIDGE − refit_acc_BATCH) not below −1.895** — t = -2.087, exact p = 1.0000, 0 / 4 / 4, mean -0.072 (random-sign clears 0.000) → **NOT MET**. Units [2, 2, 2, 7, 6, 3, 3, 2] (BATCH [2, 2, 2, 7, 6, 3, 3, 2]); the admission path diverged from BATCH (W hash differs) on 0 of 8 seeds (§2.2); updates per cell [364, 374, 366, 370, 364, 368, 362, 371]; Σ|dβ| [59.518354, 41.150169, 120.853711, 197.410334, 105.578484, 72.343537, 91.835466, 59.552136]; widened [3, 1, 2, 3, 2, 1, 2, 1].
+- **RIDGE, L1c-R4 (non-regression on the batch instrument): paired (refit_acc_RIDGE − refit_acc_BATCH) not below −1.895** — t = -2.087, exact p = 1.0000, 0 / 4 / 4, mean -0.072 (random-sign clears 0.000) → **DEGENERATE** (4 non-tied; the t reads past the bar). Units [2, 2, 2, 7, 6, 3, 3, 2] (BATCH [2, 2, 2, 7, 6, 3, 3, 2]); the admission path diverged from BATCH (W hash differs) on 0 of 8 seeds (§2.2); updates per cell [364, 374, 366, 370, 364, 368, 362, 371]; Σ|dβ| [59.518354, 41.150169, 120.853711, 197.410334, 105.578484, 72.343537, 91.835466, 59.552136]; widened [3, 1, 2, 3, 2, 1, 2, 1].
 - **L1c-R3 (the control that is not the method): SIGNFLIP_DELTA does not clear and reads below BATCH on a majority of seeds** — t = -11.562, exact p = 1.0000, 0 / 8 / 0, mean -0.517 (random-sign clears 0.055); below on 8 of 8 → **HOLDS**.
 - **L1c-R3 for RIDGE (the ridge on a label-permuted window does not clear):** t = 2.579, exact p = 0.0312, 6 / 2 / 0, mean +0.092 (random-sign clears 0.045) → **FAILS**.
 - **A/B (live):** DELTA − SIGN t = -1.740, exact p = 0.9375, 2 / 6 / 0, mean -0.007 (random-sign clears 0.030); RIDGE − DELTA t = 0.277, exact p = 0.3945, 5 / 3 / 0, mean +0.002 (random-sign clears 0.055); RIDGE − SIGN t = -0.508, exact p = 0.6797, 3 / 5 / 0, mean -0.005 (random-sign clears 0.035).
@@ -361,17 +366,22 @@ t 3.910, p 0.0117, 7/1/0, mean +0.145) — the incumbent's live accuracy sits 0.
 every seed and the online readouts close about half of that gap (they stay below persistence on 8 of 8: DELTA mean
 −0.125). R2 holds exactly (NEUTER_DELTA == BATCH in W, beta, live accuracy and units on 8 of 8). R3 holds for the LMS
 rules (SIGNFLIP t -11.562, p 1.0000, 0/8/0, mean -0.517, below on 8 of 8 — a directional control in-brain at the
-ported step) and **FAILS for RIDGE: the ridge on a label-PERMUTED window still beats the incumbent
-(t 2.579, p 0.0312, 6/2/0, mean +0.092)** — on a persistence-shaped stream a window's recent label MARGINAL is itself a
-strong predictor, so the ridge's gain is the window's recency, not the readout learning the pairing; **RIDGE does not
-land and is deleted (P2).** R4 is **DEGENERATE for all three** (fewer than 5 non-tied seeds): on seeds 0, 1, 2 and 7
+ported step) and **FAILS for RIDGE by its letter: the ridge on a label-PERMUTED window still clears the bar against the
+incumbent (t 2.579, p 0.0312, 6/2/0, mean +0.092)** — so **RIDGE does not land (the pre-registered R3) and, beside that,
+loses the P2 wash to DELTA (R1 t 3.910 < 4.132; RIDGE − DELTA +0.002)**. The control itself is near-vacuous on this
+stream (panel PH-2 / M-3, verified): a permutation of a one-category window is the identity, RIDGE and RIDGE_SHUF end
+with bit-identical betas on 7 of 8 seeds, and RIDGE beats its own shuffle on 8 of 8 (+0.053) — so the first writing's
+"the gain is the window's recency, not the pairing" is a HYPOTHESIS the control cannot support, demoted here; DELTA and
+SIGN were never held to a label null, and the sign flip does not separate pairing from marginal-tracking (M-11). R4 is **DEGENERATE for all three** (fewer than 5 non-tied seeds): on seeds 0, 1, 2 and 7
 every last-third refit was an open-gate refit, where `fit` re-solves beta and the arms are identical by construction;
 on seeds 3, 4, 5 and 6 closed-gate refits scored the ONLINE beta on the held-out marginal-covering slice and it read
 LOWER than the stale batch beta on almost every one (DELTA −0.253 / −0.111 / +0.003 / −0.067; SIGN −0.222 / −0.069 /
 −0.092 / 0; RIDGE −0.256 / −0.175 / −0.042 / −0.106). The A/B among the LMS rules is not resolvable (DELTA − SIGN
 t -1.740, p 0.9375, 2/6/0, mean -0.007); RIDGE − DELTA t 0.277, p 0.3945, 5/3/0, mean +0.002.
 
-**The dissociation, stated plainly (the session's reading, to be panelled):** an online readout that learns from the
+**Under §2.0c's rule as written the stage-1 outcome is DELETION** (no candidate's R4 held — degenerate on all three —
+and RIDGE failed R3); the session departs from that letter by pre-registering ONE instrument variant below, disclosed
+before its run (panel PH-5). **The dissociation, stated plainly (the session's reading, panelled):** an online readout that learns from the
 wake stream learns a RECENCY-shaped readout — right more often on the stream the brain lives in (which is 93–98 %
 "the same category again"), worse on the marginal-covering slice that samples every category. Both numbers are true;
 they measure different things. The held-out marginal accuracy is the instrument the T047 growth gate reads
@@ -447,5 +457,45 @@ deleted (P2); if R1 no longer clears, the module is deleted (P8 clause 5). RIDGE
 | `6edc26c` 5 | Amendment 2: the refusal withdrawn; the regimes; the ridge; the cells restored | before any cell |
 | `7862d44` 6 | the build restored + RIDGE; the self-check's regimes | the brain-free reds |
 | `706875f` 7 | the 64 cells (§3.1–3.2) and Amendment 3 (§3.3): the dissociation, the variant, its rule | before the variant's run |
-| (commit 8) | the decoupled instrument + its brain-free test | the stage-2 A/A |
-| `(commit 9)` 9 | stage 2 (§3.4), this disposition, the landing of DELTA, the in-tree test, the plan row | Amendment 3's rule |
+| `e53e06d` 8 | the decoupled instrument + its brain-free test | the stage-2 A/A |
+| `5427b5e` 9 | stage 2 (§3.4), this disposition, the landing of DELTA, the in-tree test, the plan row | Amendment 3's rule |
+
+## 4c. The fold of the cells' panel (three lenses, `record_panel_cells.json`; the disposition stood on all three)
+
+- **The instrument now survives a restart (I-1 / PH-1 / M-1, MAJOR, verified by the session).** As landed at
+  `5427b5e` the growth record carried ONE beta and `restore_growth_state` made it the instrument, so every daemon
+  relaunch would have re-coupled the closed-gate refit to the online readout until the next open-gate solve — the
+  hazard Amendment 3 was built to close, back through the lake. The fold persists `_batch_beta` as an OPTIONAL
+  record member (`batch_beta`, the additive contract, no format bump), restores it when present, and on a legacy
+  blob makes the only beta there is the instrument (disclosed). The self-check's red (6) and a brain-free test now
+  assert the reachable red: a restored online engine's closed-gate trajectory continues identical to a restored
+  batch-only twin's, with the online beta and the instrument restored as two different tensors. The cells never
+  exercised a restart (`persist=False`); the guarantee "unchanged by construction" was in-process until this fold.
+- **The deployed brain: charged in the cells, DORMANT on the daemon (M-2, MAJOR).** `dbeta = −lr·outer(s, p)` is
+  identically zero on a unit that does not fire. The daemon at the landed head reads 929 calls with Σ|dβ| 0.0 and live
+  accuracy 0.0 against live persistence 0.997 on its single restored unit: the rule is reachable and not charged there
+  (P3). The condition under which it charges — a unit that fires on the stream the brain lives in — is the open P3
+  item this arc hands to L2 and the width question (SC-012a); the module discloses it; `updates` was an over-count
+  (it counted zero-magnitude steps) and is now `steps` (M-6).
+- **"SIGN and RIDGE are deleted" is now true of the tree (I-3 / PH-3, MAJOR):** the perceptron and ridge code paths,
+  their constructor arguments and state fields are removed from the module (commit `7862d44` and the archive keep
+  them); `KINDS` and the refusal test stay as the P2 assertion; the census row regenerated.
+- **The strict in-tree test was red by construction (I-2, MAJOR):** its incumbent arm inherited the survivor from
+  `make_brain`. The harness now removes the online readout for every arm except L1C / L1C_CTRL (the L1b arms measure
+  the batch-only readout as before; their pins read the refit accuracy, identical either way), and R4 is carried as an
+  IDENTITY check (the decoupling holds: no online beta reaches the gate), not a non-regression bar — which is what R4
+  can mean once the instrument is decoupled (M-5: the online beta's marginal-slice accuracy is UNMEASURED after the
+  decoupling; its last reading is stage 1's, −0.07 to −0.25 on the closed-gate seeds). The test ran once on the fold
+  head before the battery (§4d).
+- **The cockpit shows the instrument only (I-4 / PH-7 / M-4):** the sentence claiming a labelled live-accuracy row is
+  struck; `predict acc` on the cockpit is the batch instrument's held-out number, and the mechanism's `live_accuracy`
+  / `live_persistence` / `readout_charge` reach only `state()["neurogenesis"]`. The cockpit rows with PROVENANCE are
+  owed onward (a sensorimotor-surface change with its own gate).
+- **The tiebreak (PH-6):** the rule chose DELTA on the pre-registered t (4.132 against 4.054); by mean and by
+  head-to-head SIGN read ahead (mean +0.150 against +0.143; 6 of 8 seeds; not resolvable, t −1.740). The choice is
+  the letter, not the evidence between them.
+- Also folded: 3.2's R4 lines relabelled DEGENERATE (PH-4); the departure from 2.0c's letter quoted (PH-5); RIDGE's
+  deletion re-worded to its letter and its control disclosed as near-vacuous (PH-2 / M-3); the 2.0c table's ridge
+  column sourced (PH-8); the mu citation corrected and the step sweep owed (PH-9); the 2.6 control's verdict printed
+  (M-7); one representation of the charge on state() (I-5); "before buffering" corrected (I-6); numbering and hashes
+  (PH-10). Part B's learner row: superseded 2026-09-06 by L1c (the online delta rule beside the batch solve).

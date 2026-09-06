@@ -5,38 +5,47 @@ THE SUBSTRATE. `NGSNN.beta` (L, m) maps the grown units' LIF rates s (1, L) to c
 analytically inside `fit` at open-gate sleep refits and it is STALE on every wake tick between them, through every
 closed-gate period (the mechanism behind L1b's measured harm, evidence/l1b-synaptic-online.md section 4), and for
 as long as a one-category buffer makes `_refit` skip its re-solve (the deployed brain: live accuracy 0.0 against
-persistence 0.999, evidence/l1c-online-readout.md section 4).
+persistence 0.999, evidence/l1c-online-readout.md).
 
 ONE readout, ONE online rule between refits, ONE batch solve at refits (a schedule composition, P2). `learn(model,
 s, cat)` moves `model.beta` in place from the pair the live instrument just scored -- the rates of the PREVIOUS
-percept and the category that followed -- so the instrument never reads a pair it learned from. Three candidates were measured and the A/B decided (record section 4b): the delta rule LANDED; the perceptron and
-the ridge were deleted (P2) and are refused at construction:
+percept and the category that followed -- so the instrument never reads a pair it learned from. THE RULE (the A/B's
+survivor; evidence/l1c-online-readout.md section 4b -- FrozenExpert's error-sign perceptron and a sliding-window
+ridge were measured beside it and deleted, P2; the archive and commit 7862d44 keep their code):
 
-  * kind "delta": beta -= lr * s^T (softmax(s @ beta) - onehot(cat)), lr = MU / (||s||^2 + 1) -- laminar's L5
-                  rule ported (cortex/laminar_local_readout._observe_lr's normalized form; MU = 1.0 cited from
-                  laminar, CHOSEN there -- the P1 debt named; the +1 keeps the denominator >= 1 on a silent percept)
-  * kind "sign":  on argmax(s @ beta) != cat: beta[:, cat] += lr*s, beta[:, argmax] -= lr*s -- FrozenExpert's
-                  error-sign perceptron (substrate/similarity_sized_growth), single-sample form
-  * kind "ridge": the ENGINE'S OWN `NGSNN._solve_beta` (the same activity-regularized ridge the batch uses)
-                  re-solved on the last K transitions at every wake percept, moving only beta -- the incumbent
-                  solve at a per-sample cadence with forgetting; K = 20 = one refit interval (the online memory
-                  is one refit interval; in-brain ~20 fed percepts per refit, measured in the L1b cells). The
-                  window is reset when the unit count changes (a refit grew or pruned units).
+    beta -= lr * s^T (softmax(s @ beta) - onehot(cat)),   lr = MU / (||s||^2 + 1)
+
+-- laminar's L5 delta rule (cortex/laminar_local_readout) ported onto NGSNN.beta in the normalized form of its
+`_observe_lr`. MU = 1.0 is laminar's value: laminar claims it under P1 exception (a) and records that its
+"fully corrective" NLMS derivation was DELETED because NLMS convergence does not transfer to a softmax readout;
+the same caveat applies here and the value is load-bearing (the interval-derived 1/20 was inert; the sign-flipped
+control is directional only at this step) -- the in-brain step sweep with the sign-flip control at each step is
+the owed item (record section 2.1). The +1 keeps the denominator >= 1 on a silent percept (CHOSEN).
 
 A category id at or past beta's width widens beta with zero columns first (function-preserving on the old
-classes' scores to float tolerance; the new class starts at score 0 -- disclosed). All three read only s, beta's
+classes' scores to float tolerance; the new class starts at score 0 -- disclosed). The rule reads only s, beta's
 own columns and the category: the error is the output layer's own, no weight is transposed, no hidden error is
-formed -- LOCAL rows, no gradient cosine owed (docs/POLICIES.md e-prop SCOPE). `sign=-1` reverses the LMS update
-(the control that is not the method -- directional ONLY at the ported step, record section 2.0c); `mu=0` neuters
-an LMS rule (the reach control: bit-identical to no rule, including NO widening); `shuffle_window=True` permutes
-the ridge window's labels at every solve (the ridge's control that is not the method).
+formed -- a LOCAL row, no gradient cosine owed (docs/POLICIES.md e-prop SCOPE). `sign=-1` reverses the update (the
+control that is not the method -- directional at this step: -0.52 below the incumbent on 8 of 8 in-brain); `mu=0`
+neuters it (the reach control: bit-identical to no rule, including NO widening).
+
+THE DECOUPLED INSTRUMENT (the engine's, record section 3.3): a closed-gate refit scores the held-out slice with
+the last OPEN-gate solve's beta, so the growth gate's evidence is what a batch solve extracts from the current
+units, while this rule moves the beta the brain predicts with. The instrument is PERSISTED in the growth record
+(`batch_beta`, optional) and restored with it; on a blob without it the only beta there is becomes the instrument.
+
+CHARGE, disclosed: `dbeta = -lr * outer(s, p)` is identically zero on a unit that does not fire (s = 0). In the
+cells (2-7 grown units) the rule carried Sigma|dbeta| 54-194 per run and +0.14 live accuracy; on the deployed
+brain's single silent unit it carries 0.0 -- reachable, not charged (P3), until a unit fires on the stream the
+brain lives in.
 
 REACHABLE REDS (self-check + tests/test_online_readout.py), brain-free on the real engine and a drifting chain:
-(1) under a growth gate that CLOSES (beta held stale) DELTA and RIDGE beat the batch-only twin engine on both
-seeds and the sign flip reads below; (2) ungated (the batch re-solved every 20 observations) RIDGE still beats
-batch-only while the LMS rules do not -- the disclosed negative that the first writing of this arc read as a
-refusal; (3) the neutered rule leaves beta bit-identical; (4) widening preserves the old classes' scores;
-(5) determinism; (6) the online beta survives the growth record's round trip.
+(1) under a growth gate that CLOSES (beta held stale) the rule beats the batch-only twin engine on both seeds and
+the sign flip reads below; (2) ungated (the batch re-solved every 20 observations) it gains nothing -- the disclosed
+negative that the first writing of this arc read as a refusal; (3) the neutered rule leaves beta bit-identical;
+(4) widening preserves the old classes' scores; (5) determinism; (6) the growth record round trip restores the
+online beta AND the batch instrument as two different tensors, and a restored engine's closed-gate trajectory
+continues identical to a restored batch-only twin's (the instrument survives a restart).
 """
 
 import torch
@@ -46,37 +55,28 @@ GRADIENT_CLAIM = {
     "OnlineReadout.learn": (
         "LOCAL",
         "single-sample update of the grown readout's OWN output synapses from the unit rates and the "
-        "category that followed (laminar's L5 delta rule / FrozenExpert's error-sign perceptron ported "
-        "onto NGSNN.beta, or the engine's own ridge re-solved on a sliding window). The error is the output "
+        "category that followed (laminar's L5 delta rule ported onto NGSNN.beta). The error is the output "
         "layer's own; nothing is transposed, no hidden error is formed. A LOCAL rule owes no gradient cosine "
         "(POLICIES e-prop SCOPE)",
     ),
 }
 
-MU = 1.0  # cited from cortex/laminar_local_readout (CHOSEN there; the P1 debt named)
-K_WINDOW = (
-    20  # one refit interval: the online memory (measured ~20 fed percepts per refit in-brain)
-)
-KINDS = ("delta",)  # the A/B deleted ['sign', 'ridge'] (P2; the record section 4)
+MU = 1.0  # laminar's value (P1 exception (a) there; the non-transfer caveat above; the step sweep owed)
+KINDS = (
+    "delta",
+)  # the A/B deleted "sign" and "ridge" (P2; record section 4b): refused at construction
 
 
 class OnlineReadout:
-    def __init__(self, kind="delta", mu=MU, sign=1.0, K=K_WINDOW, shuffle_window=False):
+    def __init__(self, kind="delta", mu=MU, sign=1.0):
         if kind not in KINDS:
             raise ValueError(f"kind must be one of {KINDS}, got {kind!r}")
         self.kind = kind
         self.mu = float(mu)
         self.sign = float(sign)
-        self.K = int(K)
-        self.shuffle_window = bool(shuffle_window)
         self.calls = 0
-        self.updates = 0  # calls that changed beta (the sign rule only moves on an error)
-        self.cum_abs_dbeta = 0.0
+        self.steps = 0  # calls whose update was non-zero (a silent unit's step is exactly 0)
         self.widened = 0
-        self.window_resets = 0
-        self._win_s = []
-        self._win_y = []
-        self._shuf = torch.Generator().manual_seed(4242)
 
     @staticmethod
     def widen(model, m_new):
@@ -88,70 +88,28 @@ class OnlineReadout:
         model.beta = torch.cat([beta, pad], dim=1)
         model.m = m_new
 
-    def _ridge(self, model, s, cat):
-        L = int(s.shape[0])
-        if self._win_s and int(self._win_s[-1].shape[0]) != L:  # the unit count changed: a refit
-            self._win_s, self._win_y = [], []
-            self.window_resets += 1
-        self._win_s.append(s.detach().clone())
-        self._win_y.append(cat)
-        self._win_s, self._win_y = self._win_s[-self.K :], self._win_y[-self.K :]
-        if len(self._win_y) < 2:
-            return None
-        m_new = max(int(model.beta.shape[1]), max(self._win_y) + 1)
-        if m_new > int(model.beta.shape[1]):
-            self.widen(model, m_new)
-            self.widened += 1
-        S = torch.stack(self._win_s)
-        ys = list(self._win_y)
-        if self.shuffle_window:
-            perm = torch.randperm(len(ys), generator=self._shuf).tolist()
-            ys = [ys[i] for i in perm]
-        Y = torch.zeros(len(ys), int(model.beta.shape[1]), device=model.beta.device)
-        Y[range(len(ys)), ys] = 1.0
-        return model._solve_beta(S.to(model.beta.device), Y)
-
     def learn(self, model, s, cat):
         """One wake transition: s = the unit rates of the PREVIOUS percept (L,), cat = the category that
         followed. Returns the summed |dbeta| (0.0 when nothing could move)."""
         self.calls += 1
         beta = getattr(model, "beta", None)
-        if beta is None or s is None:
+        if beta is None or s is None or self.mu == 0.0:
             return 0.0
         cat = int(cat)
         with torch.no_grad():
             s = torch.as_tensor(s, dtype=torch.float32, device=beta.device).reshape(-1)
-            if self.kind == "ridge":
-                new = self._ridge(model, s, cat)
-                if new is None:
-                    return 0.0
+            if cat >= int(beta.shape[1]):
+                self.widen(model, cat + 1)
+                self.widened += 1
                 beta = model.beta
-                dbeta = new - beta
-                beta.copy_(new)
-            else:
-                if self.mu == 0.0:
-                    return 0.0
-                if cat >= int(beta.shape[1]):
-                    self.widen(model, cat + 1)
-                    self.widened += 1
-                    beta = model.beta
-                lr = self.sign * self.mu / (float(s @ s) + 1.0)
-                scores = s @ beta
-                if self.kind == "delta":
-                    p = torch.softmax(scores, dim=0)
-                    p[cat] -= 1.0
-                    dbeta = -lr * torch.outer(s, p)
-                else:
-                    pred = int(scores.argmax())
-                    if pred == cat:
-                        return 0.0
-                    dbeta = torch.zeros_like(beta)
-                    dbeta[:, cat] += lr * s
-                    dbeta[:, pred] -= lr * s
-                beta += dbeta
+            lr = self.sign * self.mu / (float(s @ s) + 1.0)
+            p = torch.softmax(s @ beta, dim=0)
+            p[cat] -= 1.0
+            dbeta = -lr * torch.outer(s, p)
+            beta += dbeta
             d = float(dbeta.abs().sum())
-        self.updates += 1
-        self.cum_abs_dbeta += d
+        if d > 0.0:
+            self.steps += 1
         return d
 
     def state(self):
@@ -159,13 +117,9 @@ class OnlineReadout:
             "kind": self.kind,
             "mu": self.mu,
             "sign": self.sign,
-            "K": self.K,
-            "shuffle_window": self.shuffle_window,
             "calls": self.calls,
-            "updates": self.updates,
-            "cum_abs_dbeta": round(self.cum_abs_dbeta, 6),
+            "steps": self.steps,
             "widened": self.widened,
-            "window_resets": self.window_resets,
         }
 
 
@@ -208,40 +162,40 @@ class ClosingGate:
         return self.n <= self.k
 
 
+def _feed(eng, cats, start=0):
+    for i, c in enumerate(cats, start):
+        eng.observe(_percept(c, i), c)
+        if i % 20 == 19:
+            eng.tick()
+
+
 def _run(seed, readout, gate=None, n=600, flip_every=100):
     from snn_data_lake.cortex.neurogenesis_engine import NeurogenesisSelfImprove
 
     eng = NeurogenesisSelfImprove(
         seed=seed, device="cpu", refit_every=1, online_readout=readout, growth_gate=gate
     )
-    for i, c in enumerate(_chain(seed, n, flip_every=flip_every)):
-        eng.observe(_percept(c, i), c)
-        if i % 20 == 19:
-            eng.tick()
+    _feed(eng, _chain(seed, n, flip_every=flip_every))
     return eng
 
 
 def main():
     torch.set_num_threads(1)
-    # (1) beta held stale under a closed gate: DELTA beats the batch-only twin; the sign flip reads below
+    # (1) beta held stale under a closed gate: the rule beats the batch-only twin; the sign flip reads below
     for seed in (0, 1):
         b = _run(seed, None, ClosingGate(3)).state()["live_accuracy"]
         d = _run(seed, OnlineReadout("delta"), ClosingGate(3)).state()["live_accuracy"]
         f = _run(seed, OnlineReadout("delta", sign=-1.0), ClosingGate(3)).state()["live_accuracy"]
         assert d > b + 0.05, f"closed gate, seed {seed}: batch {b:.3f} delta {d:.3f}"
-        assert f < b, (
-            f"closed gate, seed {seed}: the sign flip {f:.3f} must read below the incumbent {b:.3f}"
-        )
-    # (2) ungated (the batch re-solved every 20 observations) the delta rule gains nothing -- the disclosed
-    # negative the first writing of this arc read as a refusal (record section 2.0c)
+        assert f < b, f"closed gate, seed {seed}: the sign flip {f:.3f} must read below {b:.3f}"
+    # (2) ungated: no gain -- the disclosed negative
     b0 = _run(0, None).state()["live_accuracy"]
     d0 = _run(0, OnlineReadout("delta")).state()["live_accuracy"]
     ungated_gap = d0 - b0
     # (3) the neutered rule is bit-identical to no rule
     base, neut = _run(2, None), _run(2, OnlineReadout("delta", mu=0.0))
-    assert torch.equal(base._model.beta, neut._model.beta) and torch.equal(
-        base._model.W, neut._model.W
-    )
+    assert torch.equal(base._model.beta, neut._model.beta)
+    assert torch.equal(base._model.W, neut._model.W)
     assert base.state()["live_accuracy"] == neut.state()["live_accuracy"]
     # (4) widening preserves the old classes' scores (to float tolerance: a wider matmul)
     m = _run(3, OnlineReadout("delta"))._model
@@ -249,24 +203,37 @@ def main():
     before = (s @ m.beta).clone()
     OnlineReadout.widen(m, int(m.beta.shape[1]) + 2)
     after = s @ m.beta
-    assert torch.allclose(after[: before.shape[0]], before, atol=1e-6) and bool(
-        (after[before.shape[0] :] == 0).all()
-    )
+    assert torch.allclose(after[: before.shape[0]], before, atol=1e-6)
+    assert bool((after[before.shape[0] :] == 0).all())
     # (5) determinism
     a, b2 = _run(4, OnlineReadout("delta")), _run(4, OnlineReadout("delta"))
     assert torch.equal(a._model.beta, b2._model.beta)
-    # (6) the online beta survives the growth record's round trip; the decoupled instrument restores with it
+    # (6) the record round trip carries the online beta AND the batch instrument as two tensors, and a
+    # restored engine's closed-gate trajectory continues identical to a restored batch-only twin's
     from snn_data_lake.cortex.neurogenesis_engine import NeurogenesisSelfImprove
 
-    fresh = NeurogenesisSelfImprove(seed=99, device="cpu")
-    assert fresh.restore_growth_state(a.growth_state_bytes()) and torch.equal(
-        fresh._model.beta, a._model.beta
+    live = _run(6, OnlineReadout("delta"), ClosingGate(3), n=300)
+    twin = _run(6, None, ClosingGate(3), n=300)
+    assert not torch.equal(live._model.beta, live._batch_beta), "the online beta never moved"
+    fresh = NeurogenesisSelfImprove(
+        seed=99, device="cpu", online_readout="delta", growth_gate=ClosingGate(0)
     )
-    assert torch.equal(fresh._batch_beta, a._model.beta)
+    fresh_twin = NeurogenesisSelfImprove(seed=99, device="cpu", growth_gate=ClosingGate(0))
+    assert fresh.restore_growth_state(live.growth_state_bytes())
+    assert fresh_twin.restore_growth_state(twin.growth_state_bytes())
+    assert torch.equal(fresh._model.beta, live._model.beta)
+    assert torch.equal(fresh._batch_beta, live._batch_beta)
+    assert torch.equal(fresh._batch_beta, twin._model.beta), "the instrument is not the last solve"
+    tail = _chain(6, 400, flip_every=100)[300:]
+    _feed(fresh, tail, 300)
+    _feed(fresh_twin, tail, 300)
+    assert [r[2] for r in fresh.trajectory] == [r[2] for r in fresh_twin.trajectory], (
+        "the gate's evidence diverged after a restart"
+    )
     print(
-        f"online_readout self-check OK: closed gate -- delta {d:.3f} beats batch-only {b:.3f}, the flip {f:.3f} "
-        f"below (seed 1); ungated gap {ungated_gap:+.3f} (the disclosed negative); neutered bit-identical; "
-        f"widening exact to 1e-6; deterministic; persisted with the instrument"
+        f"online_readout self-check OK: closed gate -- delta {d:.3f} beats batch-only {b:.3f}, the "
+        f"flip {f:.3f} below (seed 1); ungated gap {ungated_gap:+.3f} (the disclosed negative); "
+        f"neutered bit-identical; widening exact to 1e-6; deterministic; the instrument survives a restart"
     )
 
 

@@ -172,6 +172,10 @@ def _l_cell(args):
             return real(*synth.next())
 
         eng.observe = observe
+        # the brain constructs the L1c survivor for every arm; the incumbent arms (LIVE, the L1b
+        # arms) measure the batch-only readout, so it is removed here -- their pins read the refit
+        # accuracy, which the decoupled instrument keeps identical either way
+        eng.online_readout = None
         if arm in (
             "L1C",
             "L1C_CTRL",
@@ -310,11 +314,14 @@ def test_the_online_readout_beats_the_stale_one_on_the_wake_stream():
     d4 = [res[(s, "L1C")]["acc"] - res[(s, "LIVE")]["acc"] for s in L_SEEDS]
     c1, t1, p1, n1 = _paired(d1)
     c3, t3, p3, n3 = _paired(d3)
-    _c4, t4, _p4, _n4 = _paired(d4)
     if n1 < 5:
         pytest.fail(f"DEGENERATE-TIES: {n1} non-tied seeds", pytrace=False)
-    if t4 < -1.895:
-        pytest.fail(f"R4: the refit accuracy FELL past the bar (t {t4:.3f})", pytrace=False)
+    # R4 under the decoupled instrument is an IDENTITY: the gate must not see the online beta
+    if max(abs(x) for x in d4) > TIE_TOL:
+        pytest.fail(
+            f"R4: the refit accuracy differs from the incumbent's (the decoupling leaked): {d4}",
+            pytrace=False,
+        )
     if c3:
         pytest.fail(
             f"R3: the control that is not the method CLEARED (t {t3:.3f} p {p3:.4f})", pytrace=False

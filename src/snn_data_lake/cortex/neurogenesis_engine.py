@@ -637,6 +637,15 @@ class NeurogenesisSelfImprove:
             base_persistence=np.array(
                 [self.baselines[-1][2]] if self.baselines else [], dtype=np.float64
             ),
+            # L1c (2026-09-06): the DECOUPLED INSTRUMENT -- the last open-gate solve's beta -- rides
+            # beside the online beta as an OPTIONAL member (same additive contract, no format bump).
+            # Without it a relaunch would re-couple the growth gate to the online readout (the
+            # panel's find on the first landing).
+            batch_beta=(
+                self._batch_beta.detach().cpu().numpy()
+                if self._batch_beta is not None
+                else m.beta.detach().cpu().numpy()
+            ),
         )
         return buf.getvalue()
 
@@ -671,6 +680,7 @@ class NeurogenesisSelfImprove:
                 # optional -- absent in every blob written before rank 2's floors
                 z_bm = z["base_majority"] if "base_majority" in z else None
                 z_bp = z["base_persistence"] if "base_persistence" in z else None
+                z_bb = z["batch_beta"] if "batch_beta" in z else None  # L1c: OPTIONAL
         except Exception:
             return False
         if W.ndim != 2 or beta.ndim != 2 or b.ndim != 1:
@@ -688,7 +698,13 @@ class NeurogenesisSelfImprove:
         model.beta = torch.tensor(beta, dtype=torch.float32, device=model.device)
         model.d_in, model.m = d_in, m_out
         self._model = model
-        self._batch_beta = model.beta.detach().clone()
+        # the instrument: the persisted batch beta when the blob carries it (L1c), else the only
+        # beta there is (a legacy blob: the online beta becomes the instrument until the next
+        # open-gate solve -- disclosed in the record)
+        if z_bb is not None and tuple(z_bb.shape) == tuple(beta.shape):
+            self._batch_beta = torch.tensor(z_bb, dtype=torch.float32, device=model.device)
+        else:
+            self._batch_beta = model.beta.detach().clone()
         self._n_units = n_units
         self._acc = acc
         self.ticks = max(self.ticks, ticks)

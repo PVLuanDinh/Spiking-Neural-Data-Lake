@@ -13,7 +13,7 @@ from snn_data_lake.hippocampus.online_readout import (  # noqa: E402
     ClosingGate,
     OnlineReadout,
     _chain,
-    _percept,
+    _feed,
 )
 
 
@@ -22,10 +22,7 @@ def _run(seed, readout, gate=None, n=600):
     eng = NeurogenesisSelfImprove(
         seed=seed, device="cpu", refit_every=1, online_readout=readout, growth_gate=gate
     )
-    for i, c in enumerate(_chain(seed, n, flip_every=100)):
-        eng.observe(_percept(c, i), c)
-        if i % 20 == 19:
-            eng.tick()
+    _feed(eng, _chain(seed, n, flip_every=100))
     return eng
 
 
@@ -36,7 +33,7 @@ def test_under_a_closed_gate_the_online_readout_beats_the_stale_one(kind):
         live = _run(seed, OnlineReadout(kind), ClosingGate(3))
         b, acc_live = base.state()["live_accuracy"], live.state()["live_accuracy"]
         assert acc_live > b + 0.05, (kind, seed, acc_live, b)
-        assert live.online_readout.updates > 0 and live.state()["readout_charge"] > 0.0
+        assert live.online_readout.steps > 0 and live.state()["readout_charge"] > 0.0
 
 
 def test_the_sign_flipped_rule_reads_below_under_a_closed_gate():
@@ -86,3 +83,37 @@ def test_the_growth_gates_instrument_is_the_batch_readout_while_the_live_one_lea
         assert [r[1] for r in live.trajectory] == [r[1] for r in base.trajectory], kind
         assert live.state()["live_accuracy"] != base.state()["live_accuracy"], kind
         assert torch.equal(live._batch_beta, base._model.beta), kind
+
+
+def test_the_instrument_survives_a_restart_as_a_tensor_distinct_from_the_online_beta():
+    """I-1 / PH-1 / M-1 of the cells' panel: the growth record carries the batch instrument
+    beside the online beta; a restored engine's closed-gate trajectory continues identical to a
+    restored batch-only twin's (the gate's evidence does not re-couple across a relaunch)."""
+    live = _run(6, OnlineReadout("delta"), ClosingGate(3), n=300)
+    twin = _run(6, None, ClosingGate(3), n=300)
+    assert not torch.equal(live._model.beta, live._batch_beta)
+    fresh = NeurogenesisSelfImprove(
+        seed=99, device="cpu", online_readout="delta", growth_gate=ClosingGate(0)
+    )
+    fresh_twin = NeurogenesisSelfImprove(seed=99, device="cpu", growth_gate=ClosingGate(0))
+    assert fresh.restore_growth_state(live.growth_state_bytes())
+    assert fresh_twin.restore_growth_state(twin.growth_state_bytes())
+    assert torch.equal(fresh._batch_beta, twin._model.beta)
+    assert torch.equal(fresh._model.beta, live._model.beta)
+    tail = _chain(6, 400, flip_every=100)[300:]
+    _feed(fresh, tail, 300)
+    _feed(fresh_twin, tail, 300)
+    assert [r[2] for r in fresh.trajectory] == [r[2] for r in fresh_twin.trajectory]
+    # a legacy blob without the member: the only beta there is becomes the instrument (disclosed)
+    import io
+
+    import numpy as np
+
+    z = np.load(io.BytesIO(live.growth_state_bytes()), allow_pickle=False)
+    legacy = {k: z[k] for k in z.files if k != "batch_beta"}
+    buf = io.BytesIO()
+    np.savez(buf, **legacy)
+    old = NeurogenesisSelfImprove(seed=98, device="cpu", online_readout="delta")
+    assert old.restore_growth_state(buf.getvalue()) and torch.equal(
+        old._batch_beta, old._model.beta
+    )

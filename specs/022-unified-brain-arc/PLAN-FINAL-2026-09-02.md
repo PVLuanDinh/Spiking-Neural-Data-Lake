@@ -183,7 +183,7 @@ curiosity producer over the arm's context vs the percept-surprise |LP| facade th
 | dimension | measured (HEAD after 2a/2b/2c) | source |
 |---|---|---|
 | grown substrate | 2.1 units per 800 ticks in-process on the brain's own stream; 31 restored on the daemon from a pre-2a blob (floors None); the admission rule admits 24 units on a CONSTANT input | s2 §v2, s2b |
-| the grower's learner | a batch solve refit every 20 sleep ticks, validated on the most recent third; live accuracy 0.53 against persistence 0.93 / majority 0.44; the persistence ORACLE reaches its floor on 2 of 8 seeds | s2 §v2 |
+| the grower's learner | a batch solve refit every 20 sleep ticks, validated on the most recent third; live accuracy 0.53 against persistence 0.93 / majority 0.44; the persistence ORACLE reaches its floor on 2 of 8 seeds — *superseded 2026-09-06: L1a's marginal-covering window; L1c's online delta readout beside the batch solve (+0.14 live accuracy in the cells, dormant on the daemon's silent unit), `evidence/l1c-online-readout.md`* | s2 §v2 |
 | the stream | in-process: 4–5 arm categories per 800 ticks; curiosity (Chain A) converges to exactly 0.0 by 3000 ticks on 2 of 3 seeds (seed 1 not yet); a rotating real stream converges it on 3 of 3; the |LP| facade (Chain B) stays alive (~100 distinct values per 200 ticks) — all under `throwaway_home()`, latch-free by construction | s2c |
 | the daemon | E-STOP latched since 2026-08-31 (`arm_stopped` True); s2b recorded 3,539 wake ticks with `n_modes` 2 and floors None (the refit count is not exposed; "no refit" is inferred); a live poll at drafting (2026-09-02) read 16,038 wake ticks, still latched — the one-category chain is an INFERENCE with no latch-cleared control | s2b; `/api/state` |
 | anatomy | 10 growable regions ratified; 19 typed edges declared; AST faculty-to-faculty reads 1 of 19; 0 `JoinConsumer` instantiated in `make_brain` | audit §1, p6_gate |
@@ -431,9 +431,13 @@ that baseline.
   from the pair the live instrument just scored; live accuracy over the stale incumbent +0.143 (t 4.13, p 0.0156, 8 seeds, same rows),
   still below the live persistence floor on every seed; the growth gate's evidence is the DECOUPLED batch instrument (a closed-gate
   refit scores the last open-gate solve's beta -- unchanged from the incumbent by construction, verified bit for bit), because the
-  online readout is recency-shaped and read LOWER on the gate's marginal slice on every closed-gate seed. A first refusal on an
-  ungated brain-free control was withdrawn after its panel; the ridge candidate failed its own control (a label-permuted window
-  still beats the incumbent); the losing LMS rule deleted (P2). The session's call under the authorization.* Adopt an existing online local readout rule
+  online readout is recency-shaped and read LOWER on the gate's marginal slice on every closed-gate seed; the instrument is
+  persisted in the growth record (the cells' panel found the first landing re-coupled it on every relaunch). CHARGED in the
+  cells (2-7 units), DORMANT on the deployed brain (one silent unit: charge 0.0 over 929 percepts, live 0.0 vs persistence
+  0.997) until a unit fires on the live stream -- the open P3 item handed to L2 / SC-012a. A first refusal on an ungated
+  brain-free control was withdrawn after its panel; the ridge candidate did not land by its pre-registered control's letter
+  (near-vacuous on a one-class window) and lost the P2 wash; the perceptron lost the tiebreak on t (by mean it read ahead).
+  The session's call under the authorization.* Adopt an existing online local readout rule
   (`cortex/laminar_local_readout.observe`'s single-sample local update, or `similarity_sized_growth.FrozenExpert`'s
   three-factor rule — P2: one survives, named at pre-registration) with its state as a lake record.
   Estimated L1a–c: 400–700 LOC over three commits.
