@@ -1,11 +1,9 @@
 """specs/022 T047: the growth gate is consulted at the REAL refit, a closed gate stops
 GROWTH without stopping MEASUREMENT, and the gate's evidence SURVIVES a restart.
 
-The wire is NeurogenesisSelfImprove(growth_gate=...) -> _refit consults the callable with
-the engine's own trajectory AND (since L2, 2026-09-06) its readout-residual window -- the
-system under test reaches the criterion through its parameters, and the gate never reaches
-back into its consumer. Implementers take ; Brain._make_neuro passes
-Brain._growth_gate_verdict. These tests
+The wire is NeurogenesisSelfImprove(growth_gate=...) -> _refit consults the ONE-ARG
+callable with the engine's own trajectory (the system under test reaches the criterion
+through its parameter); Brain._make_neuro passes Brain._growth_gate_verdict. These tests
 pin (1) a closed gate freezes the unit count while the trajectory keeps appending (the
 evidence stream the gate re-opens on must keep flowing), (2) an open gate is
 behaviourally identical to no gate (A/A -- the incumbent fixed schedule IS the control
@@ -33,7 +31,7 @@ def _run(engine, ticks=200):
 def test_closed_gate_stops_growth_not_measurement():
     calls = {"n": 0}
 
-    def gate(trajectory, residuals=()):
+    def gate(trajectory):
         calls["n"] += 1
         return False  # closed from the first consult
 
@@ -59,9 +57,7 @@ def test_open_gate_is_identical_to_no_gate():
     same units, same accs, same trajectory ticks."""
     a = _run(NeurogenesisSelfImprove(seed=7, refit_every=20, device="cpu"))
     b = _run(
-        NeurogenesisSelfImprove(
-            seed=7, refit_every=20, device="cpu", growth_gate=lambda _t, _r=(): True
-        )
+        NeurogenesisSelfImprove(seed=7, refit_every=20, device="cpu", growth_gate=lambda _t: True)
     )
     assert a.trajectory == b.trajectory, "an open gate changed the trajectory (A/A must be exact)"
     assert a.grown_units == b.grown_units

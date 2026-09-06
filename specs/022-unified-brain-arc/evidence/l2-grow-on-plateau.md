@@ -305,3 +305,68 @@ the module's printed relaunch disclosure was made false by this commit was refut
 sentence was already false for the |LP| stream on the day it was written, which is a defect of an earlier
 commit and belongs to L4's persistence work. A claim that `_RESIDUAL_WINDOW` restates a formula was refuted
 because the gate re-trims at its own boundary, so no verdict can differ.
+
+---
+
+## 6. DISPOSITION APPLIED: the arm is DELETED on its pre-registered null
+
+§2.5's second row reads: *"The red fires but neutering does NOT change the growth rate → The plateau arm is
+not attributable to the readout. DELETE it (P8 clause 5) and record that the residual carried no
+growth-relevant signal at this cadence."*
+
+That is the branch the corrected measurement lands on, so the arm is gone.
+
+### 6.1 What the numbers say, without softening
+
+| the question | the comparison | result |
+|---|---|---|
+| Does neutering the readout change the growth rate? | units, live − frozen | +3.250, t **+1.135**, p **0.313** — no |
+| Does the arm change the outcome at all? | units, live − arm-off | +0.625, t **+0.141**, p **0.969** — no |
+| Does it buy accuracy? | accuracy, live − arm-off | +0.0312, t +1.580, p 0.250 — no |
+
+The arm's own effect on the outcome it exists to change is **+0.625 units per seed at t = 0.141**. It fires
+(31 refusals in the superseded run, 42 of 158 open-arm consults in the corrected one) and it changes almost
+nothing. That is P3's *reachability is not charge*, applied to a decision rule rather than a module.
+
+### 6.2 The result that does NOT rescue it, and why
+
+§5.4 measured something real: the arm's refusals track temporal ORDER in the residual, with 0 of 200 shuffles
+of the same windows reaching the live refusal rate. **The criterion is not noise.** It is deleted anyway,
+because the row's purpose is to change WHEN growth happens, and a criterion that responds to structure while
+changing no outcome is exactly the thing P3 names. Keeping it on the shuffle result would be answering the
+question I could pass instead of the one I pre-registered.
+
+### 6.3 A defect in the pre-registration itself, recorded because it nearly decided this
+
+§2.4 said the growth rate "must CHANGE" and **named no statistic for that arm.** With the data in hand I was
+therefore free to grade my own criterion after the fact: per-seed the rate changes on 6 of 8 seeds, which is
+a "change"; at the plan's standing bar it is not. I took the stricter reading, because the alternative is
+choosing the bar after seeing the numbers — but the honest finding is that the pre-registration was
+incomplete, and an arm whose bar is unspecified is an arm I get to pass.
+
+### 6.4 What was deleted, and what survives
+
+DELETED: `GrowthStop.observe_residuals`, `_plateau`, `_res_hist`, the `_stop_log` split, the composition in
+`should_grow`, the `GRADIENT_CLAIM` row, the four L2 reds, the `--l2-attribution` harness,
+`NeurogenesisSelfImprove.residual_trace` and `_RESIDUAL_WINDOW`, `OnlineReadout.last_residual` and its split
+guard, the brain's residual feed, and the gate callable's second parameter. The one-argument gate contract
+`tests/test_growth_stop_wire.py` names is restored.
+
+SURVIVES: this record, and commit **`9f63683`**, which is where the harness and the corrected measurement
+live. §5.3's numbers are reproducible from that commit — the project's idiom for a deleted mechanism is that
+its evidence is grepped from history, never re-derived.
+
+### 6.5 What would license re-proposing this
+
+Not another run at more seeds. A re-proposal owes, pre-registered before any of it is run:
+
+1. **A stated statistic for the attribution arm**, so §6.3 cannot repeat.
+2. **An effect size on the outcome, not on the criterion.** The shuffle result shows the residual carries
+   order; what was never shown is that acting on that order changes growth or accuracy. A re-proposal names
+   the minimum effect it expects and on which metric.
+3. **A stream where growth substituting for learning actually occurs.** On `SyntheticPerceptStream` every arm
+   clears its majority floor and the incumbent is already near ceiling, so there is little for a trigger to
+   prevent. The pathology FR-023 names has not been exhibited on a stream this project currently has, and
+   that — not the criterion — is the gap.
+
+The T047 growth STOP is untouched and its whole harness passes: this row deleted a trigger, not a gate.

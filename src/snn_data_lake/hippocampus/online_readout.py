@@ -68,10 +68,6 @@ KINDS = (
 
 
 class OnlineReadout:
-    #: The readout's error on the last transition it saw, or None before the first. Read by L2's growth
-    #: trigger through the engine's residual_trace; None is honest -- absence is not a zero residual.
-    last_residual = None
-
     def __init__(self, kind="delta", mu=MU, sign=1.0):
         if kind not in KINDS:
             raise ValueError(f"kind must be one of {KINDS}, got {kind!r}")
@@ -97,13 +93,7 @@ class OnlineReadout:
         followed. Returns the summed |dbeta| (0.0 when nothing could move)."""
         self.calls += 1
         beta = getattr(model, "beta", None)
-        # ABSENCE returns early -- with no beta or no rates there is no residual to report, and None is
-        # honest. A FROZEN readout (mu == 0) does NOT: it still computes and reports its error and skips
-        # only the update. The two were one condition until the L2 panel (2026-09-06) measured what that
-        # cost: the mu=0 arm fed the growth gate NOTHING, so `neutered == arm-off` was entailed by
-        # _plateau([]) rather than measured, and the attribution control shared the dead-feed failure mode
-        # it existed to rule out. A control must differ from the method in the ONE thing under test.
-        if beta is None or s is None:
+        if beta is None or s is None or self.mu == 0.0:
             return 0.0
         cat = int(cat)
         with torch.no_grad():
@@ -114,13 +104,6 @@ class OnlineReadout:
                 beta = model.beta
             lr = self.sign * self.mu / (float(s @ s) + 1.0)
             p = torch.softmax(s @ beta, dim=0)
-            # L2: the readout's OWN error on this transition, read BEFORE the update -- the mass it did
-            # not put on the category that actually followed. Free here (the softmax is already computed
-            # for the rule) and scored on the same pair the live instrument scores, so it inherits that
-            # instrument's honesty and its limits. It is the stall signal L2's growth trigger reads.
-            self.last_residual = 1.0 - float(p[cat])
-            if self.mu == 0.0:  # FROZEN: reports its error, changes nothing. See the guard above.
-                return 0.0
             p[cat] -= 1.0
             dbeta = -lr * torch.outer(s, p)
             beta += dbeta
@@ -137,7 +120,6 @@ class OnlineReadout:
             "calls": self.calls,
             "steps": self.steps,
             "widened": self.widened,
-            "last_residual": self.last_residual,
         }
 
 
@@ -175,7 +157,7 @@ class ClosingGate:
     def __init__(self, k=3):
         self.k, self.n = k, 0
 
-    def __call__(self, trajectory, residuals=()):
+    def __call__(self, trajectory):
         self.n += 1
         return self.n <= self.k
 

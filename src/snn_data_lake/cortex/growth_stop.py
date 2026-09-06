@@ -78,7 +78,6 @@ WHAT AN INVENTED METHOD OWES (P8), all in main():
 
 import math
 import random as _random
-import sys
 
 # distinct-from: substrate/growth_coverage_gate.py -- CENSUSES which regions have a live
 #   growth call site (a repo instrument); this gate DECIDES whether a censused site may
@@ -104,12 +103,6 @@ _WINDOW = 4 * (3 * PATIENCE)
 
 # The T044 lesson pre-applied (class-qualified key, declared the day the symbol lands):
 GRADIENT_CLAIM = {
-    "GrowthStop.observe_residuals": (
-        "NOT_A_RULE",
-        "replaces the gate's per-region residual window with the producer's -- no weights, no "
-        "plasticity, no error propagation; the value is READ from the online readout's own forward pass "
-        "and the plateau verdict over it is a comparison, not a learning rule",
-    ),
     "GrowthStop.observe_refit": (
         "NOT_A_RULE",
         "appends one (n_units, acc) evidence row to the gate's per-region history -- no "
@@ -133,13 +126,7 @@ class GrowthStop:
         self._lp = lp_reader
         self._hist = {}  # region -> [(n_units, acc)], trailing _WINDOW rows
         self._lp_hist = {}  # region -> [|LP| at each refit], trailing _WINDOW
-        self._res_hist = {}  # region -> [readout residual], trailing _WINDOW (L2)
         self._decisions = {}  # region -> [(fed_count, verdict, reason)], trailing _WINDOW
-        # The STOP log, separate from the attribution log above. `_decide` reads its own last verdict to
-        # detect a held stop, and a PLATEAU refusal must never appear there: "not yet, the readout is still
-        # learning" is not "grown past the optimum", and writing it into the stop log would put the region
-        # into the sticky STOPPED state that only charging evidence can leave (L2, 2026-09-06).
-        self._stop_log = {}
         self._fed = {}  # region -> MONOTONE fed-row count (the cursor; survives the trim)
 
     # ---- evidence ----------------------------------------------------------------------------
@@ -173,59 +160,6 @@ class GrowthStop:
             lh.append(lp_now)
             del lh[:-_WINDOW]
 
-    def observe_residuals(self, region, series):
-        """The readout's recent ERROR WINDOW for `region` (L2, FR-023): the mass the online readout did
-        not put on the category that actually followed, per transition, read before its own update.
-
-        REPLACES this region's copy rather than appending, and takes NO cursor. That is the difference
-        between this stream and the refit stream, and it is deliberate: a refit trajectory is persisted
-        and restored, so the gate accumulates it incrementally behind a monotone cursor; a residual window
-        is the producer's own trailing buffer, is not persisted, and starts empty after a relaunch. The
-        first form of this method appended behind a cursor backed by len(history) -- the exact defect
-        `observed()` below warns about -- and because the history trims to _WINDOW the gate stopped
-        receiving residuals after 36 rows, producing a null on 8 of 8 seeds that was the instrument.
-
-        Refuses a poisoned row and keeps NOTHING on refusal: a partially applied window would be a
-        fabricated series, which is worse than an unfed one (an unfed one permits growth and says so)."""
-        rows = [float(r) for r in series]
-        for r in rows:
-            if not (math.isfinite(r) and 0.0 <= r <= 1.0):
-                raise ValueError(f"residual must be a finite value in [0,1], got {r!r}")
-        self._res_hist[region] = rows[-_WINDOW:]
-
-    @staticmethod
-    def _plateau(res):
-        """(plateaued, reason) over the residual series. PLATEAUED = the readout's error is no longer
-        falling faster than its own noise -- which is when a new unit is the remaining move, and the only
-        state in which L2 permits growth.
-
-        Reuses the charge arm's statistic exactly (two PATIENCE-blocks, median|step| noise converted by
-        0.954 to a per-sample sd, null SE sigma*sqrt(2/PATIENCE)) rather than introducing a second one:
-        one comparison discipline for both streams, so neither arm can be tuned against the other.
-
-        AN UNOBSERVED OR SHORT SERIES PERMITS GROWTH. The gate cannot gate on what it has never measured
-        -- the same rule should_grow already applies to an unobserved region -- and the alternative is a
-        silent global growth stop the first time a caller forgets to feed the stream."""
-        need = 2 * PATIENCE
-        if len(res) < need:
-            return True, f"residual unobserved or short ({len(res)} < {need}): no stall evidence"
-        steps = [abs(res[i] - res[i - 1]) for i in range(1, len(res))]
-        noise = _median(steps)
-        recent = sum(res[-PATIENCE:]) / PATIENCE
-        prior = sum(res[-2 * PATIENCE : -PATIENCE]) / PATIENCE
-        drop = prior - recent  # positive = error still falling = still learning
-        sigma = noise / 0.954
-        margin = sigma * math.sqrt(2.0 / PATIENCE)
-        if drop > margin:
-            return False, (
-                f"readout still learning: residual fell {drop:+.4f} > null scale {margin:.4f} "
-                f"over the last {2 * PATIENCE} transitions -- a new unit is not the remaining move"
-            )
-        return True, (
-            f"readout plateaued: residual fell {drop:+.4f} <= null scale {margin:.4f} "
-            f"over the last {2 * PATIENCE} transitions"
-        )
-
     def _read_lp(self, region):
         if self._lp is None:
             return None
@@ -247,20 +181,7 @@ class GrowthStop:
         attribution log the register cites)."""
         hist = self._hist.get(region)
         log = self._decisions.setdefault(region, [])
-        stop_log = self._stop_log.setdefault(region, [])
-        verdict, reason = self._decide(hist, self._lp_hist.get(region, []), stop_log)
-        stop_entry = (self._fed.get(region, 0), verdict, reason)
-        if stop_log and stop_log[-1][0] == stop_entry[0]:
-            stop_log[-1] = stop_entry
-        else:
-            stop_log.append(stop_entry)
-            del stop_log[:-_WINDOW]
-        # L2: the TRIGGER, applied only when the stop arm is open. A refusal here is temporary and is
-        # deliberately NOT written to the stop log above, so it cannot become the sticky stop.
-        if verdict:
-            flat, why = self._plateau(self._res_hist.get(region, []))
-            if not flat:
-                verdict, reason = False, why
+        verdict, reason = self._decide(hist, self._lp_hist.get(region, []), log)
         # keyed by the MONOTONE fed count, never len(history): the trimmed history caps
         # at _WINDOW, and a len-keyed entry would collide forever once it does -- the
         # dedup then replaces the last slot for the rest of the run and the log freezes
@@ -571,180 +492,6 @@ class _ExcursionLP:
         return base + (0.05 if self._n >= self._at else 0.0)
 
 
-# ==================================================================================================
-# L2 (T092) ATTRIBUTION HARNESS -- the producer for evidence/l2-grow-on-plateau.md section 3.2.
-# Ships in the tree because the first version of that table was run from a scratch script that did not
-# survive, so its numbers had no command behind them and a reviewer's reconstruction contradicted them
-# (adversarial panel, 2026-09-06). Not run by run_selfchecks or by main(): it drives three engines per
-# seed and costs minutes. Invoke with `python -m snn_data_lake.cortex.growth_stop --l2-attribution`.
-# ==================================================================================================
-def _paired(a, b):
-    """(mean difference, paired t, exact sign-flip p, tie count) -- the plan's statistic, computed here
-    so the record's derived numbers come from the same command as its raw ones."""
-    import itertools
-    import statistics
-
-    d = [x - y for x, y in zip(a, b, strict=True)]
-    ties = sum(1 for x in d if abs(x) <= 1e-9)
-    m = statistics.fmean(d)
-    sd = statistics.stdev(d) if len(d) > 1 else 0.0
-    t = m / (sd / math.sqrt(len(d))) if sd > 0 else (float("inf") if m else 0.0)
-    obs = abs(m)
-    hits = sum(
-        1
-        for signs in itertools.product((1, -1), repeat=len(d))
-        if abs(statistics.fmean([sg * x for sg, x in zip(signs, d, strict=True)])) >= obs - 1e-12
-    )
-    return m, t, hits / (2 ** len(d)), ties
-
-
-def l2_attribution(seeds=8, n=1200, refit_every=20, shuffles=200):
-    """THREE ARMS on one stream, plus the trend-free null. Returns (rows, summary).
-
-    LIVE     -- delta readout learning, plateau arm fed.
-    ARM-OFF  -- the same learning readout, plateau arm NOT fed. The incumbent T047 behaviour, and the OFF
-                arm of the real A/B: it varies the GATE and holds the readout constant.
-    FROZEN   -- mu=0, so beta never moves, but the readout still REPORTS its error and the arm is fed.
-                This is the control the row's attribution rests on. Its first form returned before
-                recording anything, which made `frozen == arm-off` true by construction rather than by
-                measurement -- the panel's central find, and the reason this arm exists in this shape.
-    """
-    import random
-    import statistics
-
-    from snn_data_lake.cortex.neurogenesis_engine import (
-        NeurogenesisSelfImprove,
-        SyntheticPerceptStream,
-    )
-    from snn_data_lake.hippocampus.online_readout import OnlineReadout
-
-    def one(seed, feed, mu):
-        gate = GrowthStop()
-        refusals = [0]
-        windows = []
-
-        def _g(traj, residuals=(), _gate=gate):
-            for _t, u, a in list(traj)[_gate.observed("cortex") :]:
-                _gate.observe_refit("cortex", int(u), float(a))
-            if feed:
-                _gate.observe_residuals("cortex", residuals)
-            open_arm, _ = _gate._decide(
-                _gate._hist.get("cortex"),
-                _gate._lp_hist.get("cortex", []),
-                _gate._stop_log.setdefault("cortex", []),
-            )
-            win = list(_gate._res_hist.get("cortex", []))
-            if open_arm and len(win) >= 2 * PATIENCE:
-                windows.append(win)
-            v = _gate.should_grow("cortex")
-            if not v and _gate.decisions("cortex")[-1][2].startswith("readout still learning"):
-                refusals[0] += 1
-            return v
-
-        eng = NeurogenesisSelfImprove(
-            seed=seed,
-            device="cpu",
-            refit_every=refit_every,
-            online_readout=OnlineReadout("delta", mu=mu),
-            growth_gate=_g,
-        )
-        SyntheticPerceptStream(seed).drive(eng, n)
-        st = eng.state()
-        return {
-            "units": eng.grown_units,
-            "acc": float(eng.predict_accuracy),
-            "majority": st.get("baseline_majority"),
-            "persistence": st.get("baseline_persistence"),
-            "refusals": refusals[0],
-            "windows": windows,
-        }
-
-    rows = []
-    for seed in range(seeds):
-        rows.append(
-            {
-                "seed": seed,
-                "live": one(seed, True, 1.0),
-                "off": one(seed, False, 1.0),
-                "frozen": one(seed, True, 0.0),
-            }
-        )
-
-    # THE TREND-FREE NULL. The plateau test is one-sided at 1x its own null SE, so it fires on trend-free
-    # input at a nonzero base rate BY CONSTRUCTION. Shuffling each live window preserves its values and
-    # destroys its order, so the shuffled rate IS that base rate on this data -- the only reference against
-    # which a live refusal rate can be read.
-    wins = [w for r in rows for w in r["live"]["windows"]]
-    real = sum(1 for w in wins if not GrowthStop._plateau(w)[0]) / max(1, len(wins))
-    rng = random.Random(0)
-    sh = []
-    for _ in range(shuffles):
-        k = 0
-        for w in wins:
-            x = list(w)
-            rng.shuffle(x)
-            k += 0 if GrowthStop._plateau(x)[0] else 1
-        sh.append(k / max(1, len(wins)))
-    summary = {
-        "windows": len(wins),
-        "real_refusal_rate": real,
-        "shuffled_mean": statistics.fmean(sh) if sh else 0.0,
-        "shuffled_sd": statistics.pstdev(sh) if sh else 0.0,
-        "shuffles_at_or_above_real": sum(1 for r in sh if r >= real) / max(1, len(sh)),
-    }
-    return rows, summary
-
-
-def _print_l2_attribution():
-    rows, summ = l2_attribution()
-    print("=" * 118)
-    print("L2 (T092) ATTRIBUTION -- SyntheticPerceptStream, 8 seeds x 1200 ticks, refit every 20")
-    print("=" * 118)
-    print(
-        "seed |        LIVE (arm on)        |      ARM-OFF (incumbent)    |   FROZEN mu=0 (control)     |"
-        " floors maj/pers | plateau refusals"
-    )
-    for r in rows:
-        f = r["live"]
-        mj = "n/a" if f["majority"] is None else f"{f['majority']:.3f}"
-        ps = "n/a" if f["persistence"] is None else f"{f['persistence']:.3f}"
-        print(
-            f"  {r['seed']}  | units {r['live']['units']:3d} acc {r['live']['acc']:.3f}      |"
-            f" units {r['off']['units']:3d} acc {r['off']['acc']:.3f}      |"
-            f" units {r['frozen']['units']:3d} acc {r['frozen']['acc']:.3f}      |"
-            f"  {mj} / {ps}  | {r['live']['refusals']}"
-        )
-    # THE ARM's own effect holds the readout constant and varies the GATE (live vs arm-off). The READOUT's
-    # effect holds the arm on and varies the readout (live vs frozen). frozen-vs-arm-off varies BOTH and is
-    # printed last, labelled, because it is the comparison a reader reaches for and it answers nothing.
-    for name, left, field, key in (
-        ("UNITS live - arm-off  [the ARM]", "live", "off", "units"),
-        ("ACC   live - arm-off  [the ARM]", "live", "off", "acc"),
-        ("UNITS live - frozen   [the READOUT]", "live", "frozen", "units"),
-        ("ACC   live - frozen   [the READOUT]", "live", "frozen", "acc"),
-        ("UNITS frozen - arm-off [CONFOUNDED]", "frozen", "off", "units"),
-        ("ACC   frozen - arm-off [CONFOUNDED]", "frozen", "off", "acc"),
-    ):
-        a = [r[left][key] for r in rows]
-        b = [r[field][key] for r in rows]
-        m, t, pv, ties = _paired(a, b)
-        bar = "PASSES" if abs(t) > 1.895 and pv <= 0.05 else "does NOT pass"
-        print(
-            f"  {name:24s} mean {m:+9.4f}  t {t:+7.3f}  sign-flip p {pv:.4f}  ties {ties}  -> {bar}"
-        )
-    print(
-        f"  TREND-FREE NULL: {summ['windows']} open-arm windows; the plateau arm refuses "
-        f"{summ['real_refusal_rate']:.3f} of them, and {summ['shuffled_mean']:.3f} "
-        f"(sd {summ['shuffled_sd']:.3f}) of the SAME windows shuffled. Fraction of shuffles reaching the "
-        f"live rate: {summ['shuffles_at_or_above_real']:.3f}."
-    )
-    print(
-        "  The one-sided 1-sigma bar this arm shares with the charge arm has a nonzero false-positive rate "
-        "BY CONSTRUCTION; the shuffled column is what that rate is on this data, and the live rate must be "
-        "read against it and never on its own."
-    )
-
-
 def main():
     global PATIENCE  # the sweep arm swaps it and restores it
     print("=" * 96)
@@ -977,10 +724,9 @@ def main():
             SyntheticPerceptStream(seed).drive(eng_off, 1600)
             gate = GrowthStop(lp_reader=_FlatLP())
 
-            def _g(traj, residuals=(), _gate=gate):
+            def _g(traj, _gate=gate):
                 for _t, u, a in list(traj)[_gate.observed("cortex") :]:
                     _gate.observe_refit("cortex", int(u), float(a))
-                _gate.observe_residuals("cortex", residuals)
                 return _gate.should_grow("cortex")
 
             eng_on = NeurogenesisSelfImprove(
@@ -1023,55 +769,8 @@ def main():
         "purpose. The gate's evidence rides the engine's persisted trajectory tail, so "
         "a daemon relaunch resumes the SAME verdict state (P4b)."
     )
-    # ---- L2 (T092): the plateau trigger's own reds ------------------------------------------------
-    falling = [max(0.02, 0.90 - 0.06 * i) for i in range(12)]
-    flat = [0.50 + (0.004 if i % 2 else -0.004) for i in range(12)]
-    ok_fall, why_fall = GrowthStop._plateau(falling)
-    ok_flat, why_flat = GrowthStop._plateau(flat)
-    assert not ok_fall, f"a FALLING residual must refuse growth: {why_fall}"
-    assert ok_flat, f"a FLAT residual must permit growth: {why_flat}"
-    assert GrowthStop._plateau([])[0] and GrowthStop._plateau([0.4, 0.4])[0], (
-        "an unobserved or short residual series must PERMIT growth -- the gate cannot gate on what it "
-        "has never measured, and refusing here is a silent global growth stop"
-    )
-    # A PLATEAU REFUSAL MUST NOT BECOME THE STICKY STOP. Same gate, same refit history, residual falling
-    # then flat: the verdict must come back True. If the refusal had been written to the stop log, the
-    # region would be STOPPED and only charging evidence could re-open it.
-    g2 = GrowthStop()
-    for i in range(3 * PATIENCE):
-        g2.observe_refit("r", 1 + i, 0.5 + 0.02 * i)  # charging, so the stop arm stays OPEN
-    g2.observe_residuals("r", falling)
-    assert g2.should_grow("r") is False, "the falling residual must refuse"
-    g2.observe_residuals("r", flat)
-    assert g2.should_grow("r") is True, (
-        "a plateau refusal leaked into the sticky stop: the same history with a FLAT residual must grow "
-        "again. 'Not yet' is not 'past the optimum'."
-    )
-    for bad in (-0.1, 1.5, float("nan"), float("inf")):
-        g3 = GrowthStop()
-        g3.observe_residuals("r", flat)
-        try:
-            g3.observe_residuals("r", [0.5, bad])
-        except ValueError:
-            pass
-        else:  # pragma: no cover - the red not firing is the failure
-            raise AssertionError(f"a poisoned residual {bad!r} was accepted")
-        assert g3._res_hist["r"] == flat[-_WINDOW:], (
-            "a refused window must keep the PREVIOUS one intact -- a partially applied series is fabricated"
-        )
     print(
-        f"  green  L2 plateau trigger: falling REFUSES / flat PERMITS ({why_flat.split(':')[0]}); "
-        "unobserved permits; a plateau refusal does NOT become the sticky stop; poisoned windows refused "
-        "with the previous window intact"
-    )
-    print(
-        "  note   this harness runs the engine WITHOUT an online readout, so residual_trace is empty and "
-        "the plateau arm permits every verdict above -- the T047 results are unchanged BY CONSTRUCTION and "
-        "are control-2 for L2 (the stop still stops), never evidence about the trigger itself"
-    )
-
-    print(
-        "self-check OK: L2 plateau trigger (both directions, unobserved, non-sticky, poisoned) + overgrowth red + duty-cycle hold + regimes at two horizons + measured "
+        "self-check OK: overgrowth red + duty-cycle hold + regimes at two horizons + measured "
         "discrimination floor + |LP| stationary/excursion/ablation + refusals + evidence re-open + "
         "idempotence + PATIENCE sweep + the armed real-engine null"
     )
@@ -1079,7 +778,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "--l2-attribution":
-        _print_l2_attribution()
-        raise SystemExit(0)
     raise SystemExit(main())
