@@ -1235,6 +1235,13 @@ class Brain:
         self._wake_ticks = 0
         self._sleep_ticks = 0
         self._nights = 0
+        # Sleep consolidation of the durable lake, reported in state(). _lake_kept/_lake_pruned were
+        # assigned on the tick and never initialised, so state() could not have read them before the
+        # first consolidation night; _lake_refused counts the immortal guard firing (specs/022 L6).
+        self._lake_kept = 0
+        self._lake_pruned = 0
+        self._lake_refused = 0
+        self._lake_refusal = ""
         self._selfbuild_last = None  # last autonomous self-build result (opt-in via NORD_SELFMOD=1)
         self._selfbuild_proposer = (
             None  # lazily-built brain-native self-build proposer (three-factor learner)
@@ -3635,6 +3642,15 @@ class Brain:
                 self._lake_kept, self._lake_pruned = klog.consolidate(survivors)
                 trace.prune_to(survivors)  # drop trace entries for pruned records, then persist
                 trace.save()
+            except ValueError as exc:
+                # THE IMMORTAL GUARD REFUSED (specs/022 L6). It raises only when a survivor set would
+                # lose a LEARNED _T_FACT record, which LakeConsolidation no longer produces -- so a fire
+                # here means the policy and the label have drifted apart again. Caught SEPARATELY from the
+                # broad swallow below because that swallow would turn "the lake never forgets" into "the
+                # lake is never consolidated" with nothing anywhere saying so. Counted and reported in
+                # state(); the tick continues, because a refused prune is safe and a dead brain is not.
+                self._lake_refused += 1
+                self._lake_refusal = str(exc)[:200]
             except Exception:
                 pass
         if self._persist:  # NIGHTLY SKILL FORMATION (bounded): one small env-budgeted
@@ -3816,6 +3832,12 @@ class Brain:
             "phase": round(self.clock.phase, 3),
             "circadian": "asleep" if self._asleep else "awake",
             "nights_elapsed": self._nights,
+            # SLEEP CONSOLIDATION, now reported. These three were written on the tick and read
+            # NOWHERE before specs/022 L6 -- the prune half of the durable lake had no surface at
+            # all, so neither a normal night nor a refused one was visible to anyone.
+            "lake_kept": self._lake_kept,
+            "lake_pruned": self._lake_pruned,
+            "lake_refused": self._lake_refused,
             # ---- diffuse neuromodulator levels (stepped EVERY wake tick; previously live but unexposed) ----
             # Raw levels only. Derived quantities (distance travelled, place error) are the reader's job --
             # state() must not carry two representations of the same fact.

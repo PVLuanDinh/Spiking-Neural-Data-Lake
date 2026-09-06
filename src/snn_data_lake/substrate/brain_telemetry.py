@@ -168,6 +168,15 @@ PROVENANCE = {
     "integration_gain": "frozen at construction",
     "integration_retention": "frozen at construction",
     "integration_ok": "frozen at construction",
+    # SLEEP CONSOLIDATION of the durable lake (specs/022 L6, 2026-09-06): written only on a
+    # consolidation night -- every 8th night, and only when the brain persists. Zero therefore
+    # means EITHER "nothing was pruned" OR "no consolidation night has happened yet", and a bar
+    # cannot tell those apart, which is what this table exists for. lake_refused counts the
+    # immortal guard refusing a rewrite that would lose a learned fact; it should stay 0 forever,
+    # and a non-zero value means the retention label and the prune policy have drifted apart.
+    "lake_kept": "sleep-only, every 8th night, persisting brains only",
+    "lake_pruned": "sleep-only, every 8th night, persisting brains only",
+    "lake_refused": "sleep-only; non-zero means the immortal guard fired -- a defect, not a reading",
     # written only in the sleep tick; pci additionally only when nights % 4 == 0
     # (pci brain.py:2519; criticality brain.py:2650 -- it is ALSO set once at birth, :367)
     "pci": "sleep-only, refreshes every 4th night",
