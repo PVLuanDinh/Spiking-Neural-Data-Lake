@@ -480,6 +480,33 @@ EXEMPT = {
         "audits gate commands, certifies releases. Same disposition as gradient_claim_gate above: "
         "reachable from run_selfchecks and CI, never from a tick",
     ),
+    "capability_bar": (
+        "permanent",
+        "specs/022 X1 (T088): the capability-claim register -- every claim of a human-comparable "
+        "or superhuman capability carries its protocol, both numbers and both provenances, or it "
+        "is REFUSED and no tracked surface may compare. A CI/run_selfchecks instrument, never on "
+        "a tick -- the policy_manifest disposition. RETIRES when a tick faculty reads the "
+        "register, which nothing should: a claim is about the brain, not an input to it",
+    ),
+    "immortal_retention": (
+        "permanent",
+        "specs/022 L5 (T089): the never-forgets gate -- every lake tag labelled IMMORTAL or "
+        "COMPACTABLE with its reason, no durable reclaimer outside the scratch homes, and a "
+        "cross-process byte-identity round trip per IMMORTAL tag. Reads lake_engine.RETENTION and "
+        "lake_migrate.TAG_DISPOSITIONS rather than re-declaring them (P2). A CI/run_selfchecks "
+        "instrument, never on a tick -- the policy_manifest disposition. RETIRES if the tick ever "
+        "consults retention to decide what to write, which would make the label load-bearing live",
+    ),
+    "conclusion_protocol": (
+        "permanent",
+        "specs/022 C5 (T090): what a consciousness instrument may and may not conclude -- one "
+        "licensed sentence, one refused sentence and one dissociation input per C4 instrument, no "
+        "aggregate across two of them, and no surface printing a reading without its licensed "
+        "sentence in view. The sentences are written BEFORE C4 measures anything; that is the "
+        "point of the row. A CI/run_selfchecks instrument, never on a tick -- the policy_manifest "
+        "disposition. RETIRES when C4's instruments import it to gate their own reporting, which "
+        "would make it live-reachable and the row the stale-exemption red",
+    ),
     "growth_coverage_gate": (
         "permanent",
         "specs/022 T046: invention register row 7's four instruments (coverage ratchet + "

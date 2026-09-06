@@ -1,0 +1,387 @@
+"""C5's instrument (specs/022 plan Phase 4, BEFORE C4 runs; task T090, red C-R5; ratified by the owner
+2026-09-06): what a passing consciousness instrument licenses, and what it never does.
+
+WHY. C4 builds seven dissociation instruments and SC-009 scores them. POLICIES already says the brain may report
+what it measures and never what it cannot, and that an invented sentience measure owes a DISSOCIATION rather than
+a marker. What did not exist is the sentence-by-sentence statement of what a PASS licenses -- so the boundary lived
+in a policy paragraph and in a session's judgement, which is where it would erode on the day the readings go green.
+This module is that statement, plus the check that no surface says more than a row supports.
+
+THE CONTRACT. `CONCLUSION` holds one row per instrument: the sentence its pass licenses, the sentence it does NOT
+license, the input on which it must FAIL (its dissociation -- a criterion with no reachable red is deleted, never
+weakened), and the reading, empty until C4 measures it. Read STATICALLY, like `GRADIENT_CLAIM`.
+
+THREE STANDING REFUSALS, checked here, not merely written:
+  1. no AGGREGATE across instruments -- no code may combine two or more readings into one number;
+  2. no VERDICT about experience on any surface a reader sees;
+  3. no reading printed without its licensed sentence in the same view.
+
+THE SENTENCE THIS MODULE EXISTS FOR. No arrangement of these seven, however green, concludes phenomenal
+consciousness. They dissociate mechanisms: they can show that a report tracks an internal state rather than a
+prompt, and that a capability dies under a neuter that should abolish it. The step from "these dissociations hold"
+to "there is something it is like to be this system" is not a measurement this project contains. The goal stays
+unhedged; the claim without the measurement is what is forbidden.
+
+Bare invocation (also run by run_selfchecks): the constructed reds, their positive control, and today's count.
+"""
+
+# distinct-from: reasoning/consciousness_probe.py -- markers whose reds the audit found unreachable; this module
+#   does not measure anything, it states what a measurement may be said to mean, and RETIRING that probe is C4's
+#   task T081, not this one. Site read.
+# distinct-from: gradient_claim_gate.py -- the same declaration-registry PATTERN over a different claim (a
+#   learning rule's relation to a gradient, not an instrument's relation to a conclusion). Site read.
+# distinct-from: cortex/access_consciousness.py -- an instrument that PRODUCES an access index; a row here says
+#   what its number licenses. Site read.
+# distinct-from: substrate/capability_bar.py -- the same shape for capability claims; the two registries police
+#   different sentences and neither can stand in for the other (X1 vs C5). Site read.
+
+from __future__ import annotations
+
+import ast
+import sys
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[3]
+SELF = Path(__file__).resolve()
+
+#: C4's seven instruments (plan Phase 4). A row per instrument is owed BEFORE its reading exists.
+INSTRUMENTS = (
+    "integration",
+    "metacognition",
+    "attention_schema",
+    "agency",
+    "temporal_binding",
+    "report_order",
+    "social_cognition",
+)
+
+#: Surfaces a reader sees. A reading printed here needs its licensed sentence in the same view.
+TRACKED_SURFACES = (
+    "src/snn_data_lake/substrate/cockpit.py",
+    "docs/OVERVIEW.md",
+    "docs/PITCH.md",
+    "README.md",
+)
+
+#: Words that assert experience. None of them may appear on a surface beside an instrument's reading.
+VERDICT_WORDS = (
+    "is conscious",
+    "is sentient",
+    "has experience",
+    "phenomenally conscious",
+    "there is something it is like",
+    "subjective experience",
+)
+
+#: instrument -> (licensed, refused, dissociation_input, reading, date, surface_symbols)
+#: `surface_symbols` is HOW that instrument's number reaches a reader (the cockpit label, the state key). A
+#: surface finding keys on those symbols, never on the instrument's bare name: the first count flagged
+#: 'integrations/' the directory and 'integration point' in prose, 5 of 6 false (measured 2026-09-06).
+#: The SENTENCES are C5's deliverable and are written BEFORE C4 measures anything -- that is the point of the row.
+#: `reading` is None until C4's instrument produces a number; a row with a reading and no licensed sentence, or
+#: with no dissociation input, fails the check below.
+CONCLUSION: dict[str, tuple] = {
+    "integration": (
+        "the system's parts share information that a partition of the same parts does not, on this substrate",
+        "this licenses no claim that the integration is experienced, and no claim that a larger number is more conscious",
+        "the partitioned twin: the same parts with the measured channel cut must read at or below the null",
+        None,
+        "2026-09-06",
+        ("integration_competence", "pci"),  # printed on the cockpit today, ahead of C4's instrument
+    ),
+    "metacognition": (
+        "the system's confidence tracks its own error rate better than a fixed prior does, on held-out items",
+        "this licenses no claim that the system knows that it knows in any experiential sense",
+        "shuffled confidence-outcome pairing must destroy the tracking, or the instrument is a marker",
+        None,
+        "2026-09-06",
+        (),  # T077 is unbuilt: nothing prints it, so nothing can print it wrongly
+    ),
+    "attention_schema": (
+        "the system's report of what it attends to predicts which input governs its next output",
+        "this licenses no claim that the schema is felt, and no claim that the system has a self",
+        "a report channel severed from the attention state must lose the prediction",
+        None,
+        "2026-09-06",
+        (),  # T078 unbuilt
+    ),
+    "agency": (
+        "the system separates outcomes it caused from outcomes it observed, above a cause-blind twin's rate",
+        "this licenses no claim of felt authorship, ownership of action, or free will",
+        "identical outcomes with the causal link removed must collapse the separation",
+        None,
+        "2026-09-06",
+        (),  # T079 unbuilt
+    ),
+    "temporal_binding": (
+        "features inside one window are bound into one reported object more often than features across windows",
+        "this licenses no claim that there is a felt present, a stream of experience, or a duration lived",
+        "membership-matched pairing at matched K (the plan's primary null) must not reproduce the binding",
+        None,
+        "2026-09-06",
+        (),  # T080 unbuilt
+    ),
+    "report_order": (
+        "perturbing one named intermediate changes the report, so the report is generated from the internal state",
+        "this licenses no claim that the report is a first-person account of anything",
+        "perturbing a scrambled intermediate must leave the report unchanged",
+        None,
+        "2026-09-06",
+        (),  # T081 unbuilt (it also RETIRES reasoning/consciousness_probe.py)
+    ),
+    "social_cognition": (
+        "predicting another agent improves when the system models that agent's belief rather than the world alone",
+        "this licenses no claim that the system understands another mind, or that it has one",
+        "a world-state model of equal capacity replacing the belief model must remove the gain",
+        None,
+        "2026-09-06",
+        (),  # T082 unbuilt
+    ),
+}
+
+_MIN_SENTENCE = 40  # a licensed sentence shorter than this is a label (CHOSEN, disclosed)
+
+
+def _registry_from_source(path: Path = SELF) -> dict[str, tuple]:
+    """Parse CONCLUSION out of the FILE (never import it): the GRADIENT_CLAIM pattern."""
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            targets = node.targets
+        elif isinstance(node, ast.AnnAssign):
+            targets = [node.target]
+        else:
+            continue
+        for t in targets:
+            if isinstance(t, ast.Name) and t.id == "CONCLUSION" and node.value is not None:
+                return ast.literal_eval(node.value)
+    raise ValueError(f"{path}: no CONCLUSION literal found")
+
+
+def row_findings(registry=None, instruments=None) -> list[str]:
+    """A row per instrument, each with its licensed sentence, its refusal and its dissociation input."""
+    reg = _registry_from_source() if registry is None else registry
+    names = INSTRUMENTS if instruments is None else instruments
+    out: list[str] = []
+    for name in names:
+        if name not in reg:
+            out.append(f"{name}: no conclusion row (owed BEFORE the instrument produces a number)")
+            continue
+        row = reg[name]
+        if not (isinstance(row, tuple) and len(row) == 6):
+            out.append(
+                f"{name}: a row is (licensed, refused, dissociation, reading, date, surface_symbols)"
+            )
+            continue
+        licensed, refused, dissociation, reading, _date, symbols = row
+        if not isinstance(symbols, tuple):
+            out.append(
+                f"{name}: surface_symbols must be a tuple (empty until the instrument prints anything)"
+            )
+        if reading is not None and not symbols:
+            out.append(
+                f"{name}: a reading exists but no surface symbol says how a reader would see it"
+            )
+        if not (isinstance(licensed, str) and len(licensed) >= _MIN_SENTENCE):
+            out.append(f"{name}: no licensed sentence")
+        if not (isinstance(refused, str) and len(refused) >= _MIN_SENTENCE):
+            out.append(
+                f"{name}: no refused sentence -- a pass that forbids nothing licenses everything"
+            )
+        if not (isinstance(dissociation, str) and len(dissociation) >= _MIN_SENTENCE):
+            out.append(
+                f"{name}: no dissociation input (a marker with no reachable red is DELETED, not weakened)"
+            )
+        if reading is not None and not isinstance(reading, (int, float)):
+            out.append(f"{name}: a reading that is not a number")
+    for name in sorted(set(reg) - set(names)):
+        out.append(f"{name}: a conclusion row for an instrument the plan does not name")
+    return out
+
+
+def aggregate_findings(root: Path | None = None) -> list[str]:
+    """Refusal 1: no code combines two or more instrument readings into one number."""
+    base = (REPO / "src" / "snn_data_lake") if root is None else root
+    out: list[str] = []
+    for path in sorted(base.rglob("*.py")):
+        if "__pycache__" in path.parts or path.name == "conclusion_protocol.py":
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.BinOp, ast.Call)):
+                continue
+            dump = ast.dump(node)
+            named = [n for n in INSTRUMENTS if n in dump]
+            if len(named) < 2:
+                continue
+            if isinstance(node, ast.Call):
+                f = node.func
+                fname = f.attr if isinstance(f, ast.Attribute) else getattr(f, "id", "")
+                if fname not in ("sum", "mean", "fmean", "prod", "average"):
+                    continue
+            rel = str(path.relative_to(base)).replace(chr(92), "/")
+            out.append(
+                f"{rel}:{getattr(node, 'lineno', 0)}: combines {named} into one number (no aggregate score)"
+            )
+    return out
+
+
+def surface_findings(registry=None, surfaces=None) -> list[str]:
+    """Refusals 2 and 3: no verdict about experience; no reading without its licensed sentence."""
+    reg = _registry_from_source() if registry is None else registry
+    src = surfaces
+    if src is None:
+        src = {}
+        for rel in TRACKED_SURFACES:
+            p = REPO / rel
+            if p.exists():
+                src[rel] = p.read_text(encoding="utf-8", errors="replace")
+    out: list[str] = []
+    for rel, text in sorted(src.items()):
+        lines = text.splitlines()
+        for i, line in enumerate(lines, 1):
+            low = line.lower()
+            for w in VERDICT_WORDS:
+                if w in low:
+                    out.append(
+                        f"{rel}:{i}: a verdict about experience ({w!r}) on a surface a reader sees"
+                    )
+            for name, row in sorted(reg.items()):
+                symbols = row[5] if isinstance(row, tuple) and len(row) == 6 else ()
+                hit = next((sym for sym in symbols if sym.lower() in low), None)
+                if hit is None:
+                    continue
+                licensed = row[0] if isinstance(row, tuple) and row else ""
+                window = chr(10).join(lines[max(0, i - 4) : i + 3]).lower()
+                key = " ".join(str(licensed).lower().split()[:6])
+                if key and key not in window:
+                    out.append(
+                        f"{rel}:{i}: {name}'s reading ({hit}) printed without its licensed sentence in view"
+                    )
+    return out
+
+
+#: Surface findings are C4/T081's defects (a cockpit row printed without its licensed sentence; the retired-in-C4
+#: consciousness probe), not this arc's. They are REPORTED against this measured baseline and may FALL, never rise
+#: -- the tree's ratchet idiom, so the debt is visible and non-worsening instead of blocking every battery.
+SURFACE_BASELINE = (
+    1  # MEASURED 2026-09-06 on this tree: cockpit.py:920 prints integration's reading
+)
+#: without its licensed sentence. C4/T081 owes the fix; until then the debt may fall, never rise.
+
+
+def asserted_findings() -> list[str]:
+    """What --assert fails on: the rows and the aggregate refusal, both fully in this arc's hands."""
+    return row_findings() + aggregate_findings()
+
+
+def all_findings() -> list[str]:
+    return asserted_findings() + surface_findings()
+
+
+def report() -> str:
+    reg = _registry_from_source()
+    missing = [n for n in INSTRUMENTS if n not in reg]
+    surf = surface_findings()
+    lines = [
+        f"CONCLUSION PROTOCOL -- {len(reg)} of {len(INSTRUMENTS)} instrument rows; missing {missing}",
+        "no arrangement of these instruments concludes phenomenal consciousness: they dissociate mechanisms.",
+        "  A pass licenses exactly the sentence its row states, and nothing beyond it.",
+        f"asserted findings (rows + the aggregate refusal): {len(asserted_findings())}",
+    ]
+    lines += [f"  - {x}" for x in asserted_findings()]
+    lines.append(
+        f"reported, not asserted -- surfaces owed to C4/T081: {len(surf)} (baseline {SURFACE_BASELINE}, may fall never rise)"
+    )
+    lines += [f"  - {x}" for x in surf]
+    return chr(10).join(lines)
+
+
+def main() -> None:
+    good_row = (
+        "the reported quantity tracks the named internal state rather than the prompt that asked for it",
+        "this does not license any claim that the system has experience of that state",
+        "the scrambled-intermediate input, on which the instrument must read at or below its own null",
+        None,
+        "2026-09-06",
+        ("widget_reading",),
+    )
+    ok = dict.fromkeys(INSTRUMENTS, good_row)
+    assert row_findings(ok) == [], row_findings(ok)  # the positive control
+    reds = {
+        "a missing row": {k: v for k, v in list(ok.items())[:-1]},
+        "no dissociation": {**ok, "agency": (good_row[0], good_row[1], "", None, "2026-09-06", ())},
+        "no refusal": {**ok, "agency": (good_row[0], "", good_row[2], None, "2026-09-06", ())},
+        "a reading with no surface symbol": {
+            **ok,
+            "agency": (good_row[0], good_row[1], good_row[2], 0.4, "2026-09-06", ()),
+        },
+        "a stranger instrument": {**ok, "vibes": good_row},
+    }
+    for name, reg in reds.items():
+        assert row_findings(reg), f"the constructed red {name!r} was not caught"
+    # refusal 2 and 3, on constructed surfaces
+    assert surface_findings(ok, {"docs/PITCH.md": "the brain is conscious"}), (
+        "a verdict must be caught"
+    )
+    bare = surface_findings(ok, {"docs/PITCH.md": "widget_reading is 0.42 today"})
+    assert bare and "licensed sentence" in bare[0], bare
+    withsent = surface_findings(
+        ok, {"docs/PITCH.md": good_row[0] + chr(10) + "widget_reading is 0.42 today"}
+    )
+    assert withsent == [], withsent
+    prose = surface_findings(ok, {"docs/PITCH.md": "an integration point for a different sensor"})
+    assert prose == [], prose  # a bare instrument NAME in prose is not a reading
+    # refusal 1, on a constructed module
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as td:
+        scratch = Path(td)
+        (scratch / "aggregator.py").write_text(
+            "def score(integration, agency):@    return (integration + agency) / 2@".replace(
+                "@", chr(10)
+            ),
+            encoding="utf-8",
+        )
+        (scratch / "reporter.py").write_text(
+            "def show(integration):@    return integration@".replace("@", chr(10)), encoding="utf-8"
+        )
+        agg = aggregate_findings(scratch)
+        assert any("aggregator.py" in x for x in agg), agg
+        assert not any("reporter.py" in x for x in agg), agg
+    print(report())
+    print(
+        f"conclusion_protocol self-check OK: {len(reds)} row reds caught, the positive control passes; a verdict and "
+        "a bare reading are caught on a surface while the same word in prose is not, and an aggregate across two "
+        "instruments is caught"
+    )
+
+
+def _assert() -> int:
+    f = asserted_findings()
+    surf = surface_findings()
+    print(report())
+    if f:
+        print(f"CONCLUSION_PROTOCOL ASSERT FAILED: {len(f)} finding(s)", file=sys.stderr)
+        return 1
+    if len(surf) > SURFACE_BASELINE:
+        print(
+            f"CONCLUSION_PROTOCOL ASSERT FAILED: surface findings rose to {len(surf)} above the baseline "
+            f"{SURFACE_BASELINE} -- a reading printed without its licensed sentence is new debt",
+            file=sys.stderr,
+        )
+        return 1
+    print(
+        "check OK: every instrument owns its licensed and refused sentences and its dissociation; nothing"
+    )
+    print(
+        f"aggregates two instruments into one number; surface debt {len(surf)} at or under its baseline"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(_assert() if "--assert" in sys.argv else (main() or 0))

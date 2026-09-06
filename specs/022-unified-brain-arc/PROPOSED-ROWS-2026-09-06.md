@@ -45,7 +45,7 @@ reduces to the twin comparison; "superhuman" is then not a claim this project ma
 every owner-facing surface. (iii) The brain's number is reported without its protocol → the reporting gate below
 fails.
 
-**Gate, counted before the row binds.** `tools/capability_bar.py --assert`: reads a declared registry of
+**Gate, counted before the row binds.** `substrate/capability_bar.py --assert`: reads a declared registry of
 (task, protocol, human number, provenance, brain number, date) rows; fails when a brain number is present without a
 protocol or a provenance, when a cited human number's protocol has no quoted text, or when any owner-facing surface
 prints a comparison whose registry row is incomplete. Its output is counted on today's tree first (expected: zero
@@ -82,7 +82,7 @@ a NEW process, and the immortal records return byte-identical (the project's exi
 the class rather than to one blob). (iii) The disclosed growth curve must be measured, not projected; if the curve
 is not measured the row does not land.
 
-**Gate, counted before the row binds.** `substrate/immortal_class_gate.py --assert`: every tag in the class has a
+**Gate, counted before the row binds.** `substrate/immortal_retention.py --assert`: every tag in the class has a
 reason and a live writer; every eviction path in the tree (`lake_engine` retention, `lake_migrate` dispositions, the
 append budget, the paging layer) is enumerated and each is shown to consult the class; the mortal control is present
 and evicted. Counted on today's tree first — expected output on the current tree: the enumeration, plus a red for
@@ -119,7 +119,7 @@ the policy's existing rule, here applied per instrument and enforced before the 
 any of the seven numbers without its licensed sentence and its scope fails the gate. (iii) The brain answering a
 consciousness question with anything other than a measured quantity and its scope fails the gate.
 
-**Gate, counted before the row binds.** `tools/conclusion_protocol.py --assert`: reads the seven registry rows
+**Gate, counted before the row binds.** `substrate/conclusion_protocol.py --assert`: reads the seven registry rows
 (instrument, licensed sentence, refused sentence, dissociation input, current reading, date); fails on a missing
 dissociation, a reading printed anywhere without its licensed sentence, or an aggregate score computed from more
 than one instrument. Counted on today's tree first — expected: seven rows missing, one live defect (the chat path

@@ -127,3 +127,96 @@ from `RETENTION`, and does not fix the consciousness answer path — each of tho
 three instruments and counts their output, which is what the invariant asks before the rows bind. Every gate ships
 with its constructed reds in its own `main()` (the tree's self-check idiom), a `run_selfchecks.py` registration, and
 a brain-free test file; none of them touches the safety envelope, the daemon or the live lake.
+
+---
+
+## 3. Counted output on the tree (2026-09-06, all three built and asserted)
+
+The invariant this arc exists to satisfy: **implement the gate and COUNT its output before the rule lands.** Below is
+what each gate printed on today's tree, and where the count differs from §2's expectation.
+
+### 3.1 X1 — `substrate/capability_bar.py --assert`
+
+```
+CAPABILITY BAR -- 0 row(s); tracked surfaces: 5
+  (empty: no capability claim has been earned.)
+findings: 0
+```
+
+As pre-registered. The register ships EMPTY and that is the honest state: no capability claim on this tree carries a
+protocol, a human number with a measured or quoted provenance, and a brain number beside it. The gate's value today is
+the surface arm — five tracked surfaces are scanned for comparison words attached to an incomplete or REFUSED row, and
+none fires because there are no rows to compare against. The four constructed reds fire in `main()` and in
+`tests/test_ratified_row_gates.py`; the empty register is therefore a measured zero, not an unplugged detector.
+
+### 3.2 L5 — `substrate/immortal_retention.py --assert`
+
+| Measured | Value |
+|---|---|
+| lake tags labelled | 11 |
+| IMMORTAL | 9 (`0x01 0x02 0x04 0x05 0x06 0x07 0x09 0x0a 0x0b`) |
+| COMPACTABLE | 2 (`0x03 _T_GROWTH`, `0x08 _T_GROWTH_DELTA`) |
+| reclaimers of durable records that do not consult the label | 0 |
+| scratch-home deletions EXCLUDED and listed | 8 |
+| immortal tags with an append baseline | 3 of 9 |
+| cross-process byte-identity findings | 0 |
+
+Three things in that table are disclosures, not passes.
+
+**The grown substrate is COMPACTABLE, not immortal.** `_T_GROWTH` and `_T_GROWTH_DELTA` carry a
+reconstruction proof instead of a never-evict guarantee. The registry's own contract permits it, and the gate prints
+the fact on every run so it can never be quietly assumed. "Never forgets" in this project means *never evicts the
+IMMORTAL class*, not *stores everything*.
+
+**Zero durable reclaimers is a measured zero, and the instrument was wrong twice before it was right.** A substring
+scan matched `str.removeprefix` (13 false findings); an exact-call-name scan then matched 8 deletions that only ever
+touch a scratch home. The final form walks AST `Call` nodes for exact names, excludes the scratch-home sites, and
+**lists all 8 exclusions in the report** so the exclusion is auditable rather than invisible.
+
+**Six of nine immortal tags have no append baseline.** That is real, open debt, printed rather than asserted: the
+budget arm can only bound growth for tags it has a baseline for. It is L5's own follow-on work, and naming it here is
+what stops the 3-of-9 from reading as coverage.
+
+### 3.3 C5 — `substrate/conclusion_protocol.py --assert`
+
+```
+CONCLUSION PROTOCOL -- 7 of 7 instrument rows; missing []
+asserted findings (rows + the aggregate refusal): 0
+reported, not asserted -- surfaces owed to C4/T081: 1 (baseline 1, may fall never rise)
+  - src/snn_data_lake/substrate/cockpit.py:920: integration's reading (integration_competence)
+    printed without its licensed sentence in view
+```
+
+All seven rows are filled, each with its licensed sentence, its refused sentence and its dissociation input, and every
+`reading` is `None` — C4 is unbuilt, and a reading without its instrument would be a fabrication.
+
+**Where this differs from §2's expectation, and why.** §2 expected findings against `reasoning/consciousness_probe.py`
+*and* the cockpit's PCI and integration rows. The measured count is **one**. The first run flagged six, of which five
+were the word "integration" appearing in prose or in a directory name — a bare instrument NAME is not a reading. The
+scan was re-keyed onto each row's declared `surface_symbols` (how that instrument's number actually reaches a reader),
+and only the cockpit's `integration_competence` print survives. The consciousness probe does not appear because it
+prints nothing under a declared symbol: **that is a limitation of this instrument, not a clean bill for that file.**
+C4/T081 retires the probe; this gate does not audit it today.
+
+Surface findings are REPORTED against `SURFACE_BASELINE = 1` and may fall, never rise. They are C4/T081's defects, not
+this arc's, so they are visible and non-worsening rather than blocking every battery. The rows and the
+aggregate refusal ASSERT.
+
+### 3.4 Deviations from the pre-registration, disclosed
+
+1. **All three gates live in `substrate/`, not the paths the ratified rows named** (`tools/capability_bar.py`,
+   `substrate/immortal_class_gate.py`, `tools/conclusion_protocol.py`). Every sibling gate lives in `substrate/`, and
+   the p4c ratchet counts `tools/` files as ungoverned against a baseline of 30 that may only fall. The plan, tasks
+   and the ratified-rows file were amended to name what was built.
+2. **L5's gate is `immortal_retention`, not `immortal_class_gate`** — §1.2's find. `lake_engine.RETENTION` and
+   `lake_migrate.TAG_DISPOSITIONS` already declare the classes, so the gate READS both and cross-checks them rather
+   than declaring a second mechanism (P2).
+3. **Three EXEMPT rows were added to `dormancy_gate`.** All three gates are CI/run_selfchecks instruments, never tick
+   faculties — the `policy_manifest` disposition the tree already uses for `lake_rebuild_gate`, `replay_gate` and
+   `determinism_gate`. Each row states what would retire it, so the stale-exemption arm can bite.
+
+### 3.5 Gate state at the close of the build
+
+`capability_bar`, `immortal_retention`, `conclusion_protocol`, `dormancy_gate`, `method_dormancy_gate`,
+`policy_manifest` and `tools/p4c_ratchet.py` all `--assert` rc=0. `tests/test_ratified_row_gates.py` is 7 passed.
+The three rows now bind: each has a gate, and each gate's output has been counted on this tree.

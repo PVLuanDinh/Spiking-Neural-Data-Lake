@@ -334,7 +334,10 @@ CORE = [
     "substrate.eprop_transport_gate",  # e-prop invariant: assert no governed module transposes a weight into a weight update
     "substrate.doc_budget_gate",  # word ceilings on the standing docs: a document may not grow unnoticed
     "substrate.gradient_claim_gate",  # e-prop SCOPE: assert every governed learning rule is classified as owing a cosine or not
-    "substrate.policy_manifest",  # POLICIES.md manifest: derivation reconciles, committed copy in sync, drift never worsens
+    "substrate.policy_manifest",
+    "substrate.capability_bar",  # X1: 4 constructed reds + the REFUSED arm + the surface check
+    "substrate.immortal_retention",  # L5: label reds, the reclaimer scan, the cross-process round trip
+    "substrate.conclusion_protocol",  # C5: row reds, the verdict/aggregate refusals, the prose control  # POLICIES.md manifest: derivation reconciles, committed copy in sync, drift never worsens
     "substrate.perf_baseline",  # 022 T001 wiring check: baseline parses + scorer discriminates (cheap; never measures)
     "substrate.lake_bridge",  # 022 T005b: bridge round-trip red on a constructed temp lake (never the real home)
     "substrate.lake_segments",  # 022 T005: seal round-trip + CRC red on a constructed temp store (never the real home)

@@ -126,7 +126,7 @@ retired, and every claim ships with a control and a red that can fail.
    the record for THIS head). The literal command (`$B` = an output dir outside the repo):
 
    ```bash
-   cd /d/AI-project/spiking-neural-data-lake; export PYTHONUTF8=1 PYTHONPATH=src; B="<output dir>"; mkdir -p "$B"; PY=.venv-lake/Scripts/python.exe; git fetch -q origin; git status --short > "$B/tree.txt"; git diff HEAD --stat >> "$B/tree.txt"; $PY -m snn_data_lake.substrate.policy_manifest --assert > "$B/record_assert.txt" 2>&1 || { echo "RECORD-ASSERT RED: the previous push has no battery record -- battery halted"; exit 1; }; $PY -m snn_data_lake.substrate.policy_manifest --certify > "$B/certify.txt" 2>&1; echo "certify rc=$?"; $PY -m ruff check . > "$B/ruff.txt" 2>&1; echo "ruff rc=$?"; $PY -m ruff format --check . > "$B/ruff_format.txt" 2>&1; echo "ruff-format rc=$?"; $PY run_selfchecks.py > "$B/selfchecks.txt" 2>&1; echo "selfchecks rc=$?"; tail -n 3 "$B/selfchecks.txt"; $PY -m pytest -q -p no:cacheprovider > "$B/pytest.txt" 2>&1; echo "pytest rc=$?"; tail -n 3 "$B/pytest.txt"; for m in dormancy_gate method_dormancy_gate region_charge_gate growth_coverage_gate manifest_gate determinism_gate replay_gate envelope_hash_gate policy_manifest gradient_claim_gate eprop_transport_gate import_manifest replication_guard; do $PY -m snn_data_lake.substrate.$m --assert > "$B/$m.txt" 2>&1; echo "$m rc=$?"; done; echo BATTERY_DONE
+   cd /d/AI-project/spiking-neural-data-lake; export PYTHONUTF8=1 PYTHONPATH=src; B="<output dir>"; mkdir -p "$B"; PY=.venv-lake/Scripts/python.exe; git fetch -q origin; git status --short > "$B/tree.txt"; git diff HEAD --stat >> "$B/tree.txt"; $PY -m snn_data_lake.substrate.policy_manifest --assert > "$B/record_assert.txt" 2>&1 || { echo "RECORD-ASSERT RED: the previous push has no battery record -- battery halted"; exit 1; }; $PY -m snn_data_lake.substrate.policy_manifest --certify > "$B/certify.txt" 2>&1; echo "certify rc=$?"; $PY -m ruff check . > "$B/ruff.txt" 2>&1; echo "ruff rc=$?"; $PY -m ruff format --check . > "$B/ruff_format.txt" 2>&1; echo "ruff-format rc=$?"; $PY run_selfchecks.py > "$B/selfchecks.txt" 2>&1; echo "selfchecks rc=$?"; tail -n 3 "$B/selfchecks.txt"; $PY -m pytest -q -p no:cacheprovider > "$B/pytest.txt" 2>&1; echo "pytest rc=$?"; tail -n 3 "$B/pytest.txt"; for m in dormancy_gate method_dormancy_gate region_charge_gate growth_coverage_gate manifest_gate determinism_gate replay_gate envelope_hash_gate policy_manifest gradient_claim_gate eprop_transport_gate import_manifest replication_guard capability_bar immortal_retention conclusion_protocol; do $PY -m snn_data_lake.substrate.$m --assert > "$B/$m.txt" 2>&1; echo "$m rc=$?"; done; echo BATTERY_DONE
    ```
 
    Green = every `rc=0`, every self-check passed (the runner prints `N/N self-checks passed` and, since H1,
@@ -477,7 +477,9 @@ that baseline.
   evicts that class, never as storing everything, and the promise ships with its measured storage growth curve
   (bytes per thousand ticks over a recorded run) so the cost is chosen, not discovered. Control: a mortal class in the
   same store, evicted in the same pass (a guard that never fires is untested). Red (L-R6, Part F). Gate:
-  `substrate/immortal_class_gate.py --assert`, its output COUNTED on today's tree before the rule binds. What it does
+  `substrate/immortal_retention.py --assert` (BUILT 2026-09-06 under that name: the mechanism it audits
+  is `lake_engine.RETENTION`, which already existed, so the gate READS it rather than re-declaring a
+  second class -- P2), its output COUNTED on today's tree before the rule binds. What it does
   NOT claim: a retention guarantee is not a memory faculty — recall stays Phase 4's business.
 - **T069 (from US3, FR-019)** — the cerebellar rule ON the built tissue (its tissue T054 is closed) — the
   first learning rule with a red against a plant; lands here.
@@ -529,7 +531,8 @@ clause protects it.
   protocol quoted and its differences from ours listed. State the target as a percentage of that number, with parity
   and above-parity named in advance so the threshold is written before it is approached. Control: a PRE-SIZED twin at
   the same width (a gain must be growth's, not width's), plus the human baseline re-measured so its variance is on the
-  record. Red (X-R1, Part F). Gate: `tools/capability_bar.py --assert` over a registry of (task, protocol, human
+  record. Red (X-R1, Part F). Gate: `substrate/capability_bar.py --assert` (BUILT 2026-09-06 in substrate/, not tools/: every
+  sibling gate lives there and the p4c ratchet counts tools/ files as ungoverned) over a registry of (task, protocol, human
   number, provenance, brain number, date), COUNTED on today's tree first (expected: zero rows and one refusal). What it
   does NOT claim: a percentage on one protocol is a fact about that task, never about general capability, and never a
   licence for "superhuman" outside the registry.
@@ -574,7 +577,8 @@ May run in parallel with Phase 3 (O5(b)); MUST precede Phase 5.
   surface; no stored self-description answering a question about the brain's own consciousness — that question routes
   to a measured quantity with its scope quoted. Control: each instrument's own dissociation input in the same command,
   plus T081's report-order probe as the standing check that a pass is not an artifact of how the brain is asked. Red
-  (C-R5, Part F). Gate: `tools/conclusion_protocol.py --assert`, COUNTED on today's tree first (expected: seven rows
+  (C-R5, Part F). Gate: `substrate/conclusion_protocol.py --assert` (BUILT 2026-09-06 in substrate/ with its siblings),
+  COUNTED on today's tree first (expected: seven rows
   missing and one live defect — the chat path answering a consciousness question from a probe whose markers have no
   reachable red). **What it does NOT claim, and this is the point: no arrangement of the seven, however green,
   concludes phenomenal consciousness.** They dissociate mechanisms; the step to "there is something it is like to be

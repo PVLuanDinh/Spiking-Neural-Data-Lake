@@ -459,7 +459,10 @@ REGIONS = {
         "eprop_transport_gate",  # e-prop invariant: a transposed weight may not reach a weight update
         "doc_budget_gate",  # word ceilings on the standing documents: prose growth stays visible
         "gradient_claim_gate",  # e-prop SCOPE: which rules OWE a cosine at all (census asserts on the governed tier)
-        "policy_manifest",  # POLICIES.md manifest + release audit: derive rows, audit gates, certify (bare == --assert)
+        "policy_manifest",
+        "capability_bar",  # specs/022 X1 (T088): a capability claim carries its protocol and provenance
+        "immortal_retention",  # specs/022 L5 (T089): what the lake never evicts, and the proof
+        "conclusion_protocol",  # specs/022 C5 (T090): what a consciousness instrument may conclude  # POLICIES.md manifest + release audit: derive rows, audit gates, certify (bare == --assert)
         "perf_baseline",  # specs/022 T001: pinned-host perf ratchet; bare == cheap wiring check, never a measurement
         "lake_bridge",  # specs/022 T005b: read-old/write-new format bridge; bare == constructed round-trip red
         "lake_segments",  # specs/022 T005: WAL(BinLog) + sealed Arrow IPC segments; bare == round-trip + CRC red
