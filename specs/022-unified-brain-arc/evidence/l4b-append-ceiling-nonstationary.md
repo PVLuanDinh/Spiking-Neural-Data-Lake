@@ -193,3 +193,29 @@ it is silent on ordinary growth, loud on a spike, and blind to a slow ramp it wa
 - **The window does not survive a relaunch.** The daemon restarts on every push and re-seeds, so each
   relaunch pays the 3-flood migration again. Persisting the window belongs to L4's re-opened persistence
   half, which now has a second named carrier to go with ignition.
+
+---
+
+## 8. Confirmed on the live daemon
+
+The daemon relaunched on this arc's push. Against the same lake and the same workload that produced §1's
+seven-and-climbing stuck alarm:
+
+```
+"nights_elapsed": 14
+"append_floods": 3
+"append_flood_last": "FLOOD: tag 0x07 (IMMORTAL) appended 160380 B this tick
+                      > 8.0x a window 30/32 seeded (12381 B)"
+```
+
+**Three floods, and the message says the window is migrating** — `30/32 seeded`, so the stale recording is
+being pushed out by real ticks exactly as designed. This is the migration cost §6 measured in the abstract
+(3 floods) and §7.1 disclosed, now observed end to end on the production brain rather than in a harness.
+
+Two things are confirmed at once: the wire still fires on the real lake, and the alarm now **stops**. Before
+this arc the same brain reported floods on every consolidation night without limit; the honest failure mode
+of the instrument has moved from *cries wolf forever* to *blind to a slow ramp*, which §4 and §7.1 say in
+those words.
+
+The 160,380 B figure also confirms §2's non-stationarity from the other end: the live brain writes roughly
+twice the 77,998 B this row measured at 1200 ticks, on the same monotone curve.
