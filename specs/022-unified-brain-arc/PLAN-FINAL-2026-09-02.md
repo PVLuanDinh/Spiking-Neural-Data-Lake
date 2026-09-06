@@ -427,7 +427,12 @@ that baseline.
   GRADIENT_CLAIM row and a test that it is unreachable from the tick), else deleted. Red: L1b beats the
   control on live accuracy at the bar; an untrained twin (frozen random readout) sits BELOW its own
   persistence floor while L1b does not.
-- **L1c — the readout learns online.** Adopt an existing online local readout rule
+- **L1c — the readout learns online.** *REFUSED ON MEASUREMENT 2026-09-06 before any in-brain cell
+  (`evidence/l1c-online-readout.md`, P8 clauses 2 and 5): the positive control (a drifting chain, where an online readout is
+  worth +0.19 on a 53-100-unit substrate) FAILS on the engine's own substrate of 1-14 units at the ported step (thrashes)
+  and at the one pre-registered derived step (inert: its sign flip reads no lower). The binding constraint is WIDTH --
+  L2's and Phase 3's business; the row re-opens when the substrate is wide enough to re-weight or the world drifts. The
+  build was committed as the measured artifact and deleted.* Adopt an existing online local readout rule
   (`cortex/laminar_local_readout.observe`'s single-sample local update, or `similarity_sized_growth.FrozenExpert`'s
   three-factor rule — P2: one survives, named at pre-registration) with its state as a lake record.
   Estimated L1a–c: 400–700 LOC over three commits.

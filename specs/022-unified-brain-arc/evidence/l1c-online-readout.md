@@ -162,3 +162,62 @@ naming the numbers — and is NOT carried on a deletion (the L1b lesson).
 
 BATCH's floors, units and refit accuracy against `l1b-synaptic-online.md` §3.2's BATCH cells (the same src at
 `1e31239` for the incumbent path): expected identical to 1e-6; a difference is the instrument moving.
+
+## 3. Results — the pre-registered one shot (Amendment 1), on the engine's substrate, brain-free
+
+Drifting chain (the succession rule reverses every 100 observations), `NeurogenesisSelfImprove` with a refit every
+20 observations, the live instrument scored before each online step; seeds 0 and 1; the measured module is
+`git show bd53a42:src/snn_data_lake/hippocampus/online_readout.py`.
+
+| step | seed | units | batch-only | DELTA | SIGN | DELTA sign-flipped | control |
+|---|---|---|---|---|---|---|---|
+| mu = 1.0 (ported) | 0 | 13 | 0.400 | 0.386 | 0.379 | — | FAILS (thrashes each fresh solve; adapts after each flip) |
+| mu = 1/20 (derived, the one shot) | 0 | 13 | 0.400 | 0.407 | 0.340 | 0.417 | FAILS; the sign flip is NOT below |
+| mu = 1/20 | 1 | 7 | 0.359 | 0.333 | 0.314 | 0.386 | FAILS; the sign flip is NOT below |
+| mu = 1/20, STATIONARY chain | 0 | — | 0.872 | 0.871 | — | — | gap −0.002 (inert) |
+
+At the ported step the online readout moves too much (a near-full normalized correction per sample on a 2–5-unit
+readout); at the interval-derived step it moves too little to matter in EITHER direction — its sign-flipped
+control reads no lower than the incumbent (0.417 / 0.386 against 0.400 / 0.359), so at that step the instrument
+cannot even tell the update's direction. Between the two steps lies a tuning campaign the pre-registration forbade.
+Updates fired on every observed transition (580 of 580 per run; Σ|dβ| 25.6 / 23.9 at the derived step, 494 at the
+ported step): the rule ran; it did not help.
+
+**The binding constraint, read from the same runs:** the engine admits 1–14 units on this 4-class chain (7 and 13
+at the end; 1–2 for long stretches — §2.0b's per-interval table), and the live stream's incumbent holds 2–7
+(`l1b-synaptic-online.md` §3.2). A readout over so few units has almost nothing to re-weight; the batch solve
+already extracts what the substrate carries. Recency in the readout is worth +0.19 on a 53–100-unit substrate (§2.0,
+the emulation) and nothing on the engine's. The row's premise — "synaptic first" on the readout — is upstream-blocked
+by WIDTH, which is L2's and Phase 3's business, not a rule's.
+
+## 4. Verdict and disposition
+
+**L1c is REFUSED ON MEASUREMENT before any in-brain cell, exactly as Amendment 1's decision rule pre-registered.**
+The positive control that the mechanism owes (P8 clause 2) fails on the substrate the mechanism would run on, at
+the ported step and at the one derived step; no in-brain cell was run (48 brains measuring a readout that cannot
+separate from its own sign flip would have measured noise). The build is DELETED (P8 clause 5): the module, its
+test, the engine's readout hook and kind-name construction, the registration rows and the census row (the census
+regenerated back). What stays: the LIVE instrument (unchanged from L1b's fold) and this record. **The negative to
+keep (the re-proposal guard), scoped to what was measured:** on the engine's substrate (1–14 units; the live stream
+2–7) an online single-sample readout — laminar's delta rule or FrozenExpert's perceptron, normalized-LMS step at
+mu 1.0 or 1/20 — cannot beat the batch solve's consolidation even on a drifting world; the emulation's +0.19 is a
+fact about a 53–100-unit substrate. **What it points at:** L1c re-opens only when the substrate is wide enough for
+a readout to have something to re-weight — after L2 (growth on plateau) has grown it and Phase 3 has scaled it —
+or when a drifting world exists (Phase 1's null says today's does not). The plan's L2 trigger stays as restated by
+L1b's arc (the T047 gate's own refit-accuracy plateau); L1c's "state as a lake record" clause is moot (beta already
+rides). Owed onward: nothing from this arc but the width. The session's call under the 2026-09-05 authorization.
+
+**Also read on the deployed brain (the cockpit's own surface, 01:04 UTC, 48 live transitions after the relaunch on
+`ea69088`):** the restored one-unit substrate's live accuracy 0.000 against a live persistence floor of 0.9375 —
+the deployed readout answers wrong on every transition of the live stream while persistence would answer right on
+15 of 16. The instrument L1b left behind is the first honest number the cockpit has for what the grown substrate
+does on the stream the brain lives in.
+
+## 5. Commits of this arc (stacked on `ea69088`)
+
+| commit | what | landed on |
+|---|---|---|
+| `3b4de12` 1 | this record §1–2 (pre-registration; the emulation's stimulus reading) | before any run |
+| `a832906` 2 | Amendment 1: the control failed on the engine's substrate at the ported step; the one derived step pre-registered | before the re-run |
+| `bd53a42` 3 | the build AS MEASURED (its self-check red on this substrate) | the artifact of §3 |
+| `(this commit)` 4 | the REFUSAL: the build deleted; §3–5; the plan's L1c row | P8 clauses 2 and 5 |
