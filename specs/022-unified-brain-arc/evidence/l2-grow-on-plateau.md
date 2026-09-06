@@ -128,7 +128,7 @@ the design turns on: a plateau refusal must not become the sticky stop. Construc
 falling residual, feed a flat one, and the same refit history grows again. Had the refusal reached the stop
 log, *"not yet"* would have become *"past the optimum"* and only charging evidence could have left it.
 
-### 3.2 Attribution, 8 seeds × 1200 transitions, refit every 20
+### 3.2 Attribution, 8 seeds -- **SUPERSEDED BY SECTION 5.3.** The control below was a tautology and this table has no producer in the tree; both are corrected there. Kept unaltered so the correction is legible. × 1200 transitions, refit every 20
 
 | seed | live units / acc | plateau arm OFF | readout NEUTERED (mu=0) | plateau refusals |
 |---|---|---|---|---|
@@ -147,7 +147,7 @@ inert: `neutered == arm-off` on **units and accuracy, bit-for-bit, on all 8 seed
 residual cannot fall, so every window reads as plateaued and the trigger never refuses. Any live difference
 is therefore the readout's learning, not the arm's presence. The live arm differs from both on 5 of 8 seeds.
 
-### 3.3 The size does NOT clear the plan's bar, in either direction
+### 3.3 **SUPERSEDED BY SECTION 5.3.** The size does NOT clear the plan's bar, in either direction
 
 | comparison | mean | t (bar 1.895) | sign-flip p (bar 0.05) | ties | verdict |
 |---|---|---|---|---|---|
@@ -210,3 +210,98 @@ implementer taking `residuals=()`. The alternative considered and rejected was f
 read the residual off the engine directly; that was rejected because the adapter's own docstring records that
 it was written to avoid reading the engine, and evidence arriving through a parameter is what keeps the gate
 from reaching into its consumer.
+
+---
+
+## 5. The adversarial panel, and the measurement it forced (2026-09-06)
+
+Three lenses — criterion, wiring, honesty — read commit `5289a65` independently, each finding handed to a
+separate refuting agent. Twelve verified, **eight survived, four refuted.** Two of the survivors invalidate
+§3.2 and §3.3 as first written, so those sections are replaced rather than annotated.
+
+### 5.1 The attribution control was a TAUTOLOGY, and it was my own recorded lesson repeated
+
+`OnlineReadout.learn` returned early on `self.mu == 0.0` **before** `last_residual` was assigned. So the
+"neutered readout" arm never reported a residual at all: `residual_trace` stayed EMPTY, `_plateau([])` took
+its *unobserved* branch and returned True, and `neutered == arm-off bit-for-bit on 8/8 seeds` was **entailed
+by construction, not measured.** Three lenses found it independently.
+
+§3.0 of this same file records that the row's FIRST run was a null caused by an empty feed, and states the
+lesson: *a null and a dead detector are indistinguishable in the output.* The control built to guard the
+row's central claim reproduced exactly that condition. Under P8 that is the control-that-is-not-the-method
+clause failing — the control shared the arm's own dead-feed failure mode.
+
+The guard is now split. Absence (`beta is None or s is None`) still returns early, because there is no
+residual there and None is honest. A FROZEN readout computes and reports its error and skips only the weight
+update. The control is now a frozen-but-reporting readout, which is what §2.4 described all along, and it is
+measurably different from the arm-off arm rather than identical to it.
+
+### 5.2 §3.2's table had no producer in the tree
+
+The 8-seed table was produced by a scratch script that did not survive the session, so its numbers had no
+command behind them and a reviewer's reconstruction contradicted one of its claims. The harness now ships:
+
+```bash
+python -m snn_data_lake.cortex.growth_stop --l2-attribution
+```
+
+It pins the stream (`SyntheticPerceptStream`, the same one T047's own harness uses), the readout, the cadence
+and the seeds; it prints the accuracy FLOORS the engine's `state()` declares mandatory beside every accuracy
+cell; and it computes the derived statistics in the same command as the raw ones. The original table used a
+different and much harder stimulus (`_chain`/`_percept`), which is why its accuracies sat near zero. **It is
+superseded, not corrected: the numbers below replace it entirely.**
+
+### 5.3 The measurement, re-run on the fixed control
+
+`SyntheticPerceptStream`, 8 seeds × 1200 ticks, refit every 20. Majority floor ≈ 0.22 on every seed.
+
+| seed | LIVE units / acc | ARM-OFF units / acc | FROZEN (mu=0, reporting) units / acc | floors maj / pers | plateau refusals |
+|---|---|---|---|---|---|
+| 0 | 21 / 0.850 | 20 / 0.850 | 8 / 0.883 | 0.217 / 0.200 | 6 |
+| 1 | 23 / 0.700 | 23 / 0.650 | 14 / 0.617 | 0.217 / 0.050 | 5 |
+| 2 | 10 / 0.633 | 12 / 0.683 | 18 / 0.783 | 0.217 / 0.233 | 1 |
+| 3 | 16 / 0.683 | 7 / 0.650 | 16 / 0.683 | 0.233 / 0.117 | 4 |
+| 4 | 29 / 0.767 | 22 / 0.767 | 15 / 0.767 | 0.200 / 0.033 | 9 |
+| 5 | 22 / 0.783 | 10 / 0.667 | 19 / 0.800 | 0.300 / 0.533 | 6 |
+| 6 | 12 / 0.750 | 40 / 0.750 | 17 / 0.750 | 0.217 / 0.183 | 8 |
+| 7 | 14 / 0.700 | 8 / 0.600 | 14 / 0.717 | 0.217 / 0.033 | 3 |
+
+Every accuracy clears the majority floor, so unlike the superseded table these numbers are about a stream the
+engine can actually learn.
+
+| comparison | what it isolates | mean | t (1.895) | sign-flip p (0.05) | verdict |
+|---|---|---|---|---|---|
+| units, live − arm-off | **the ARM** (readout held, gate varies) | +0.625 | +0.141 | 0.969 | does not pass |
+| accuracy, live − arm-off | **the ARM** | +0.0312 | +1.580 | 0.250 | does not pass |
+| units, live − frozen | **the READOUT** (arm held, learning varies) | +3.250 | +1.135 | 0.313 | does not pass |
+| accuracy, live − frozen | **the READOUT** | −0.0167 | −0.734 | 0.563 | does not pass |
+| units, frozen − arm-off | varies BOTH — answers nothing | −2.625 | −0.627 | 0.578 | printed and labelled |
+| accuracy, frozen − arm-off | varies BOTH | +0.0479 | +2.209 | 0.094 | printed and labelled |
+
+### 5.4 The one thing that does clear a bar: the trend-free null
+
+The plateau test is one-sided at 1× its own null SE, so it fires on trend-free input at a nonzero base rate
+BY CONSTRUCTION. Shuffling each live window preserves its values and destroys its order, which makes the
+shuffled rate that base rate *on this data*:
+
+| | |
+|---|---|
+| open-arm windows | 158 |
+| refusal rate, real windows | **0.266** |
+| refusal rate, same windows shuffled | 0.168 (sd 0.029, 200 shuffles) |
+| shuffles reaching the live rate | **0 of 200** |
+
+So the arm's refusals track temporal ORDER in the residual and are not explained by its values alone. The
+criterion responds to structure. That is a real result and it is recorded — and it is **not** the result the
+row's disposition turns on.
+
+### 5.5 What was refuted
+
+Four findings did not survive. A claim that a silent grown unit makes the residual constant and the arm
+permits everything was refuted at the code (the permit reason is never bound to the verdict) and its
+surviving half is the row's own pre-registered control. A claim that the noise scale collapses to zero on a
+repeating series was refuted by measurement: 0 of 695 live consults reach the degenerate shape. A claim that
+the module's printed relaunch disclosure was made false by this commit was refuted on attribution — the
+sentence was already false for the |LP| stream on the day it was written, which is a defect of an earlier
+commit and belongs to L4's persistence work. A claim that `_RESIDUAL_WINDOW` restates a formula was refuted
+because the gate re-trims at its own boundary, so no verdict can differ.

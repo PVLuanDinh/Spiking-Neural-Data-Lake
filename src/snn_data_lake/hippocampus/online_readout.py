@@ -97,7 +97,13 @@ class OnlineReadout:
         followed. Returns the summed |dbeta| (0.0 when nothing could move)."""
         self.calls += 1
         beta = getattr(model, "beta", None)
-        if beta is None or s is None or self.mu == 0.0:
+        # ABSENCE returns early -- with no beta or no rates there is no residual to report, and None is
+        # honest. A FROZEN readout (mu == 0) does NOT: it still computes and reports its error and skips
+        # only the update. The two were one condition until the L2 panel (2026-09-06) measured what that
+        # cost: the mu=0 arm fed the growth gate NOTHING, so `neutered == arm-off` was entailed by
+        # _plateau([]) rather than measured, and the attribution control shared the dead-feed failure mode
+        # it existed to rule out. A control must differ from the method in the ONE thing under test.
+        if beta is None or s is None:
             return 0.0
         cat = int(cat)
         with torch.no_grad():
@@ -113,6 +119,8 @@ class OnlineReadout:
             # for the rule) and scored on the same pair the live instrument scores, so it inherits that
             # instrument's honesty and its limits. It is the stall signal L2's growth trigger reads.
             self.last_residual = 1.0 - float(p[cat])
+            if self.mu == 0.0:  # FROZEN: reports its error, changes nothing. See the guard above.
+                return 0.0
             p[cat] -= 1.0
             dbeta = -lr * torch.outer(s, p)
             beta += dbeta
