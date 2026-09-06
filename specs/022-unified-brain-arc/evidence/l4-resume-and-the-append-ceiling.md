@@ -245,7 +245,12 @@ Three more, all real:
   reports only what was written, attributing bytes to the largest written payloads — an over-attribution
   bounded by the size difference between duplicates, disclosed rather than exact.
 
-### 8.5 An open finding the panel measured and this row does not fix
+### 8.5 **SUPERSEDED 2026-09-06 — see `evidence/l4b-append-ceiling-nonstationary.md`.** The re-record this
+section prescribes is NOT the fix: the quantity is non-stationary (per-tick `0x07` bytes climb 52,763 →
+77,998 B monotonically over 1200 ticks), so a re-recorded constant stales again by construction. The bar is
+now the tag's own recent rate. Kept unaltered below so the correction is legible.
+
+An open finding the panel measured and this row does not fix
 
 **An ordinary brain tick reaches 79–83 % of the `0x07` flood ceiling and is still climbing at 1250 ticks**,
 carried by whole-frame state names. The `0x07` p95 was recorded on a 120-tick fresh brain, so the only live
@@ -271,7 +276,13 @@ panel-reviewed.
 
 ---
 
-## 9. The disclosed risk arrived within minutes, on the live daemon
+## 9. **SUPERSEDED — read `evidence/l4b-append-ceiling-nonstationary.md` instead.** This section's
+prescription ("what is owed is a re-recorded `0x07` p95 from a MATURED brain") was measured and refused:
+re-recording buys months and then fires forever again, because the quantity does not settle. `AppendBudget`
+now compares against the tag's own recent rate and the recorded file is a seed. Kept unaltered so the
+correction is legible.
+
+## 9 (as written). The disclosed risk arrived within minutes, on the live daemon
 
 §8.5 disclosed that an ordinary tick reaches 79–83 % of the `0x07` ceiling and is still climbing, so the only
 live bound this project has was on a path to firing in normal operation. It did not take a matured brain.

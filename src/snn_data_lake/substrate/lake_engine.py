@@ -288,7 +288,8 @@ class AppendBudget:
             baseline = json.loads(APPEND_BASELINE.read_text()) if APPEND_BASELINE.exists() else {}
         # The recorded numbers PRE-FILL each tag's window rather than standing as a permanent
         # ceiling.
-        # Day-one protection is preserved -- a tag is bounded from its first tick -- and the window
+        # Day-one protection is preserved -- a seeded tag is bounded from its first write, and stays
+        # bounded by the SEED for its first three (a 32-window's p95 is its 30th value) -- and it
         # then
         # MIGRATES to what the brain actually writes as real ticks push the seed out, so a stale
         # recording
@@ -323,6 +324,19 @@ class AppendBudget:
         it has enough of them; the recorded seed until then; nothing if it has neither."""
         recent = self._recent.get(tag)
         if not recent:
+            return None, "unbaselined"
+        # A TAG WITH NO RECORDED ROW STAYS UNBASELINED UNTIL IT HAS A FULL WINDOW OF ITS OWN.
+        # Without this
+        # gate the first form of this method handed such a tag a live bar computed from ONE sample,
+        # because
+        # end_tick's setdefault creates a window for anything that writes -- inverting "a budget
+        # nobody
+        # measured is not a budget", which is the rule that stops this instrument inventing a bound
+        # for a
+        # class nobody baselined. 0x01, the class L6 left unbounded, is precisely that class. Found
+        # by an
+        # adversarial panel, 2026-09-06.
+        if tag not in self._p95 and len(recent) < RUNNING_WINDOW:
             return None, "unbaselined"
         seeded = sum(1 for x in recent if float(x) in self._seed_vals.get(tag, ()))
         src = "its own recent rate" if seeded == 0 else f"a window {seeded}/{len(recent)} seeded"
@@ -373,16 +387,11 @@ def main() -> int:
         return 1
     # ---- L4b (2026-09-06): the bar is the tag's OWN RECENT RATE, so it owes three more arms
     # ----------
-    # CONTROL 1 -- ORDINARY GROWTH MUST NOT FLAG. This replays the MEASURED series from a 1200-tick
-    # brain:
-    # per-tick 0x07 bytes climbing 52,763 -> 77,998 B over 67 writing ticks, carried by whole frames
-    # that
-    # grow with the brain. PRECISELY: this series tops out UNDER the retired fixed bar (99,048 B),
-    # so it is
-    # the no-false-alarm control; what crossed that bar was the LIVE daemon at 160,470 B/tick,
-    # further along
-    # the same monotone curve, and the migration arm below is where the two comparisons actually
-    # diverge.
+    # CONTROL 1 -- ORDINARY GROWTH MUST NOT FLAG. This INTERPOLATES the measured window-p95
+    # trajectory of a 1200-tick brain; it is NOT the per-tick series, whose real shape alternates
+    # small and large. Its largest step is 1.006x against an 8x bar and its maximum sits UNDER the
+    # 99,048 B seed floor, so it cannot fail on two independent counts -- which the panel of
+    # 2026-09-06 pointed out, and which is why the UNSEEDED arm below exists beside it.
     grow = [round(52763 * (77998 / 52763) ** (i / 66)) for i in range(67)]
     gb = AppendBudget(baseline={"per_tag_p95_bytes": {"7": 12381.0}})
     grow_flags = 0
@@ -391,6 +400,21 @@ def main() -> int:
         grow_flags += len(gb.end_tick())
     if grow_flags:
         print(f"lake_engine self-check FAILED: ordinary growth flagged {grow_flags} times")
+        return 1
+    # ...and the SAME series with NO seed, so the seed floor cannot carry it. Here the bar really is
+    # the
+    # series' own recent rate from the first full window on, and a flag would mean the adaptive bar
+    # itself
+    # false-alarms on ordinary growth. THIS is the arm that can fail.
+    ub = AppendBudget(baseline={})
+    unseeded_flags = 0
+    for n in grow:
+        ub.on_append(0x07, n)
+        unseeded_flags += len(ub.end_tick())
+    if unseeded_flags:
+        print(
+            f"lake_engine self-check FAILED: unseeded ordinary growth flagged {unseeded_flags} times"
+        )
         return 1
     # RED -- a real spike, AFTER the window is all-real, must still flag.
     sb = AppendBudget(baseline={"per_tag_p95_bytes": {"7": 12381.0}})
@@ -401,15 +425,13 @@ def main() -> int:
     if not sb.end_tick():
         print("lake_engine self-check FAILED: a real spike did not trip the running bar")
         return 1
-    # CONTROL 3 -- THE COST, MEASURED AND PRINTED RATHER THAN HIDDEN. A window that adapts is a
-    # window a
-    # SUSTAINED writer can walk up: a stale seed stops alarming after a few real ticks (which is the
-    # point,
-    # and what ended the live daemon's stuck alarm) and by exactly the same mechanism a genuine
-    # sustained
-    # flood goes quiet after the same few. That is the trade of any self-relative bar, and detecting
-    # a
-    # sustained RAMP is a slope instrument's job, which this is not and does not claim to be.
+    # CONTROL 3 -- THE COST, MEASURED AND PRINTED RATHER THAN HIDDEN, and the first version of
+    # this block printed the WRONG cost. _p95_of over a RUNNING_WINDOW of 32 returns sorted[29] --
+    # the value from THREE writing ticks back -- so the no-flag condition is r**3 <= FLOOD_FACTOR:
+    # ANY per-write growth ratio at or under 2.0 never flags, AT ANY MAGNITUDE. The 'goes quiet
+    # after 3' below is therefore true only of a STEP to a new constant rate; a flood arriving over
+    # three or more writing ticks costs ZERO alarms. The ramped arm underneath pins that so the
+    # corrected statement cannot drift (adversarial panel, 2026-09-06).
     mb = AppendBudget(baseline={"per_tag_p95_bytes": {"7": 12381.0}})
     sustained = 0
     for _ in range(40):
@@ -419,11 +441,19 @@ def main() -> int:
     if not 1 <= sustained <= RUNNING_WINDOW // 4:
         print(f"lake_engine self-check FAILED: migration took {sustained} ticks, expected 1..8")
         return 1
+    # THE WORST CASE, pinned: the same increase delivered as a RAMP instead of a step is invisible.
+    rb = AppendBudget(baseline={"per_tag_p95_bytes": {"7": 12381.0}})
+    ramped = 0
+    n = 12381.0
+    for _ in range(67):  # the measured cadence of one 1200-tick run
+        n *= 2.0  # r = 2.0 exactly: the boundary of r**3 <= FLOOD_FACTOR
+        rb.on_append(0x07, int(n))
+        ramped += len(rb.end_tick())
+    if ramped:
+        print(f"lake_engine self-check FAILED: the ramped arm flagged {ramped} times, expected 0")
+        return 1
     print(
-        f"  append budget: ordinary growth (52,763 -> 77,998 B over {len(grow)} writes) flags 0; a real "
-        f"spike still flags; a STALE seed costs {sustained} flood(s) before the window migrates -- and a "
-        f"SUSTAINED flood goes quiet after the same {sustained}, which is the disclosed cost of an "
-        "adaptive bar (a RAMP needs a slope instrument, not this one)"
+        f"  append budget: ordinary growth (52,763 -> 77,998 B over {len(grow)} writes) flags 0 both seeded and UNSEEDED; a real spike still flags; a stale seed costs {sustained} flood(s) to migrate. THE COST AT ITS WORST, not its best: the bar is 8x the p95 of a 32-window, i.e. the value from THREE writing ticks back, so a flood arriving in ONE tick costs {sustained} alarms while one arriving over >=3 writing ticks -- any per-write ratio <= 2.0 -- costs ZERO at ANY magnitude (doubling every write for 67 writes reaches ~9e23 B/tick and flags 0). A self-relative bar sees SLOPE over three writes, never magnitude; a RAMP needs a slope instrument."
     )
     # SynapseDelta (T010a): dirty-set wiring, compare-drop, the constructed pathology red, and a
     # zero-base reconstruction -- the cheap halves; full proofs live in tests/test_synapse_delta.py.

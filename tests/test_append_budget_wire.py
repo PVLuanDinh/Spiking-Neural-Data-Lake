@@ -116,7 +116,7 @@ def _measured_growth():
     return [round(52763 * (77998 / 52763) ** (i / 66)) for i in range(67)]
 
 
-def test_ordinary_growth_does_not_flag_but_the_retired_fixed_ceiling_would_have():
+def test_ordinary_growth_does_not_flag_seeded_or_unseeded():
     from snn_data_lake.substrate.lake_engine import RUNNING_WINDOW
 
     series = _measured_growth()
@@ -177,3 +177,47 @@ def test_a_tag_with_no_seed_and_no_history_still_never_trips():
     assert bud.bar(0x01) == (None, "unbaselined")
     bud.on_append(0x01, 10_000_000)
     assert bud.end_tick() == []
+
+
+def test_an_unseeded_tag_stays_unbaselined_until_it_has_a_FULL_window_of_its_own():
+    """The contract L4b briefly inverted.
+
+    end_tick creates a window for anything that writes, so without a minimum-sample gate an
+    unrecorded tag got a live flood bar from ONE sample -- a budget nobody measured, which is
+    exactly what 0x01 (the class L6 left unbounded) would have acquired."""
+    from snn_data_lake.substrate.lake_engine import RUNNING_WINDOW
+
+    bud = AppendBudget(baseline={"per_tag_p95_bytes": {"7": 100.0}})
+    for _ in range(RUNNING_WINDOW - 1):
+        bud.on_append(0x01, 500)
+        assert bud.end_tick() == []
+        assert bud.bar(0x01) == (None, "unbaselined")
+    bud.on_append(0x01, 4_000_000)  # a huge tick while still unbaselined must NOT flag
+    assert bud.end_tick() == []
+    # ...and once it HAS a window of its own, it is bounded like any other tag.
+    for _ in range(RUNNING_WINDOW):
+        bud.on_append(0x01, 500)
+        bud.end_tick()
+    assert bud.bar(0x01)[1] == "its own recent rate"
+    bud.on_append(0x01, 10_000_000)
+    assert bud.end_tick()
+
+
+def test_a_flood_that_ARRIVES_AS_A_RAMP_is_invisible_at_any_magnitude():
+    """The disclosed cost, at its worst rather than its best.
+
+    A 32-window p95 is the value from three writing ticks back, so the no-flag condition is
+    r**3 <= FLOOD_FACTOR: any per-write ratio <= 2.0 never flags however large it becomes.
+    Pinned so the disclosure cannot quietly drift back to the softer one."""
+    bud = AppendBudget(baseline={"per_tag_p95_bytes": {"7": 12381.0}})
+    n, flags = 12381.0, 0
+    for _ in range(67):
+        n *= 2.0
+        bud.on_append(0x07, int(n))
+        flags += len(bud.end_tick())
+    assert flags == 0, flags
+    assert n > 1e23  # the magnitude it reaches while never flagging
+    # THE CONTRAST that makes it a cost and not a bug: the same 8x delivered in ONE tick does flag.
+    step = AppendBudget(baseline={"per_tag_p95_bytes": {"7": 12381.0}})
+    step.on_append(0x07, int(12381.0 * 8 * 2))
+    assert step.end_tick()

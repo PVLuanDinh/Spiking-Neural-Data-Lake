@@ -132,7 +132,8 @@ in the battery rather than in a scratch script.
 | arm | result |
 |---|---|
 | **RED** — a real spike, after the window is all-real | **flags**: `appended 1014336 B this tick > 8.0x its own recent rate (62650 B)` |
-| **CONTROL 1** — the measured ordinary-growth series (52,763 → 77,998 B over 67 writes) | **0 flags** |
+| **CONTROL 1** — an INTERPOLATION of the measured window-p95 trajectory (52,763 → 77,998 B over 67 writes) | **0 flags**, seeded AND unseeded |
+| CONTROL 1, honestly | its largest step is 1.006x against an 8x bar and its max sits under the 99,048 B seed floor, so the SEEDED arm cannot fail on two counts; the UNSEEDED arm beside it is the one that can |
 | **CONTROL 2** — day-one protection, a cold tag with a seed | **flags immediately**: the existing calm/flood pair still passes, reported as `a window 31/32 seeded` |
 | **CONTROL 3** — a stale seed against the live rate | **3 floods, then quiet** |
 | a tag with neither seed nor history | never trips, reported `unbaselined` |
@@ -165,8 +166,16 @@ is unchanged. `FLOOD_FACTOR` was not touched.
 
 ### 7.1 The cost, stated rather than buried
 
-**A window that adapts is a window a sustained writer can walk up.** The same mechanism that ends a stale
-seed's stuck alarm after 3 ticks means a GENUINE sustained flood goes quiet after 3 ticks. That is the trade
+**A window that adapts is a window a sustained writer can walk up, and the first version of this section
+stated that cost at its BEST rather than its worst.** A panel measured the real shape: `_p95_of` over a
+32-window returns the 30th sorted value, which on a rising series is the value from THREE writing ticks back,
+so the no-flag condition is r**3 <= FLOOD_FACTOR -- **any per-write growth ratio at or under 2.0 never flags,
+at ANY magnitude.** Doubling every write for 67 writes reaches ~9e23 B/tick and flags ZERO times. The
+"3 ticks" below is true only of a STEP to a new constant rate; a flood that arrives over three or more
+writing ticks costs nothing at all. Both numbers are now printed by the self-check and pinned by tests.
+
+The same mechanism that ends a stale seed's stuck alarm after 3 ticks means a sustained STEP flood goes quiet
+after 3 ticks. That is the trade
 of any self-relative bar, it is asserted in both the self-check and a test so it cannot drift, and it is why
 §5.4 says this row does not address the RAMP: detecting a class growing without bound over a brain's life
 needs a slope instrument, and a flood assert has never been one.

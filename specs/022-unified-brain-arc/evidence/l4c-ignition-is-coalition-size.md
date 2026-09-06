@@ -35,7 +35,8 @@ ignites zero times on all five. The committed probe's numbers were right.
 
 ## 3. The three arms that settle the cause
 
-`grown_units` enters the wake path in exactly one place — the number of members handed to `bind_assembly`:
+The coalition size enters the wake path in exactly one place — the number of members handed to
+`bind_assembly`:
 
 ```
 k = min(2 + (len(arm.q) + grown_units + real_units) // _percepts + round(2*sustained), 8)
@@ -50,12 +51,26 @@ k = min(2 + (len(arm.q) + grown_units + real_units) // _percepts + round(2*susta
 Arm 3 is decisive. A first life that never sees a small coalition behaves exactly like a second life. Arm 2
 is its mirror: a second life that is given a small coalition ignites freely.
 
+### 3.1 CORRECTION: which restored quantity caps `k`
+
+This section first named `grown_units` as the restored quantity that puts `k` at its cap. **That is wrong,
+and a panel measured it in both directions:** zeroing `grown_units` in a second life leaves `k` at 8 on all
+61 binds and still gives 0 ignitions, while zeroing `_real_units` — the restored prototype count — drops `k`
+to 3–5 and brings ignitions back. At the first bind of a second life the terms are
+`len(arm.q)=1, grown_units=4, _real_units=20, _percepts=3`, so `k = min(2 + 25//3, 8) = 8`: **`_real_units`
+alone already saturates it.**
+
+The arms above are unaffected, because they intervened on the member list directly rather than on any
+upstream term — which is why the conclusion (coalition size decides) stands while the attribution of which
+restored number drives it did not. Recorded as a correction rather than silently amended: naming the wrong
+carrier would have sent the next reader to the wrong line.
+
 **Ignition is governed by coalition size. It is not governed by persistence.**
 
 ## 4. What is actually true, and it is worse than a resume bug
 
 A first life ignites only because it passes briefly through a small-`k` window while its substrate is still
-growing. A relaunched brain boots past that window because its restored `grown_units` puts `k` at its cap
+growing. A relaunched brain boots past that window because its restored `_real_units` (see §3.1) puts `k` at its cap
 immediately. But arm 1 shows the first life never returns either: **once `k` saturates at 8, ignition does
 not occur again in 223 consecutive binds.**
 
