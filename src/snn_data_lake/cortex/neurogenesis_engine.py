@@ -204,8 +204,19 @@ class NeurogenesisSelfImprove:
         # exactly the criterion's CONTROL arm). The callable's verdict logic is the gate's
         # own; this engine can consult it, never constrain it.
         growth_gate=None,
+        online_readout=None,
     ):
         self.refit_every = int(refit_every)
+        # L1c (2026-09-06): the online readout rule (hippocampus/online_readout.OnlineReadout) or None
+        # (the incumbent: beta solved only at open-gate sleep refits, stale between them). Moves the
+        # RETAINED model's beta in place on every wake transition, from the pair the live instrument
+        # just scored; an open-gate refit re-initializes beta from the batch solve (consolidation).
+        if isinstance(online_readout, str):  # a kind name: the engine owns the construction
+            from snn_data_lake.hippocampus.online_readout import OnlineReadout
+
+            online_readout = OnlineReadout(online_readout)
+        self.online_readout = online_readout
+        self._readout_charge = 0.0  # cumulative |dbeta| (the rule's own charge, on state())
         # the LIVE instrument (specs/022 L1b, 2026-09-05): the retained model's next-category
         # prediction on the wake stream, scored from the PREVIOUS percept before this tick's
         # transition is buffered, beside its own live persistence floor. The per-percept plug point
@@ -285,10 +296,15 @@ class NeurogenesisSelfImprove:
                 and self._model.W is not None
                 and self._model.beta is not None
             ):
-                pred = int(self._model.predict(torch.tensor([self._prev], dtype=torch.float32))[0])
+                m = self._model
+                xp = torch.tensor([self._prev], dtype=torch.float32)
+                S = m._rates(xp, m.W, m.b)  # the previous percept's unit rates (1, L)
+                pred = int((S @ m.beta).argmax(dim=1)[0])  # == m.predict(xp), one rollout
                 self.live_n += 1
                 self.live_correct += int(pred == cat)
                 self.live_persist += int(self._prev_cat == cat)
+                if self.online_readout is not None:  # L1c: learn from the pair just scored
+                    self._readout_charge += self.online_readout.learn(m, S[0], cat)
         self._prev = feats
         self._prev_cat = cat
         self._categories.add(cat)
@@ -737,6 +753,11 @@ class NeurogenesisSelfImprove:
             "baseline_majority": self.baselines[-1][1] if self.baselines else None,
             "baseline_persistence": self.baselines[-1][2] if self.baselines else None,
             "n_modes": self.n_modes,
+            # L1c: the online readout's own charge
+            "online_readout": (
+                self.online_readout.state() if self.online_readout is not None else None
+            ),
+            "readout_charge": round(self._readout_charge, 6),
             # the LIVE instrument (L1b; None until scored)
             "live_accuracy": (self.live_correct / self.live_n) if self.live_n else None,
             "live_persistence": (self.live_persist / self.live_n) if self.live_n else None,

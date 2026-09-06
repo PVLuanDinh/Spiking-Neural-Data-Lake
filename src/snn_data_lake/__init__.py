@@ -519,7 +519,10 @@ TORCH_TIER = {
         # (torch at module top), reached on the same construction path via brain.py's audio try.
         "eprop_shd",
     ],
-    "hippocampus": ["ng_snn"],
+    "hippocampus": [
+        "ng_snn",
+        "online_readout",
+    ],  # L1c: the grown readout learns online (torch tier)
 }
 
 # TRAIN-TIER ANNEX (added 2026-08-11, #10 lane-2 CI regression fix) -- region -> modules that
