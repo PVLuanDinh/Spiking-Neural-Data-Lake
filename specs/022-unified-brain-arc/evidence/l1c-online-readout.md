@@ -69,6 +69,34 @@ negative. On a null the module is deleted (P8 clause 5) — a capability the liv
 dormancy — and the drifting-chain numbers stay in this record as the condition under which the row re-opens
 (a world that drifts).
 
+### 2.0b Amendment 1 — the control re-run on the ENGINE's substrate FAILED at the ported step (written before
+any further run; commit 2)
+
+§2.0's emulation fitted `NGSNN` directly (T = 8, no prune, no marginal holdout) and grew 53–100 units; the real
+engine on the same drifting chain (`NeurogenesisSelfImprove`, refit every 20 observations, `_refit`'s admission
+and `prune_unearned`) grows 1–14 units. On THAT substrate the module's self-check — the drifting-chain positive
+control, seed 0 — reads: batch-only 0.400, DELTA 0.386, SIGN 0.379 (mu = 1.0, the faithfully ported step). Per
+refit interval the online readout ADAPTS after each regime flip (0.30 / 0.25 / 0.35 / 0.30 against the batch's
+0.00 / 0.00 / 0.00 / 0.00 in the four intervals after the first flip) and THRASHES each fresh batch solution
+(0.45 against 0.80; 0.05 against 0.45 right after refits): with ‖s‖² of 1–5 on a 2–5-unit readout, the
+normalized step of mu = 1.0 is a near-full overwrite per sample (laminar's own effective step is 0.05 because its
+presynaptic energy is ~20). **The positive control fails on the substrate the mechanism will run on.** The
+emulation's +0.19 was a claim about a different substrate and is withdrawn as this arc's control.
+
+**One derived step, pre-registered here, one shot:** the online readout's memory is ONE REFIT INTERVAL — the
+batch solve consolidates at every open-gate refit, so the online rule need only carry what happened since the last
+one — hence `mu = 1 / n_refit`, with `n_refit` the fed percepts per refit interval as the engine's own cadence
+gives it (20 in the harness and in-brain: `refit_every = 20` sleep ticks against ~20 fed wake percepts per interval
+in the L1b cells). `lr = (1/20) / (‖s‖² + 1)`. Not tuned against the red: it is the first and only step tried after
+the ported one. **Decision rule for the re-run (seeds 0 and 1 of the self-check, DELTA and SIGN):** if the
+drifting-chain control clears at this step (online > batch-only + 0.05 on both seeds, the sign flip below), the
+in-brain cells run at it and the module's self-check carries it; **if it fails too, L1c is REFUSED ON MEASUREMENT
+before any in-brain cell — the module is deleted, the record stands, and the negative is: on the engine's
+substrate an online single-sample readout cannot beat the batch solve's consolidation even on a drifting world.**
+Also disclosed: the widening check compares matmul outputs, which agree to float tolerance, not bitwise (the
+self-check and test use `allclose`, atol 1e-6); the engine constructs the readout from a kind name so the module
+is reachable from a live path before the survivor lands (the dormancy gate's reading, as in L1b).
+
 ### 2.1 The mechanism
 
 `hippocampus/online_readout.OnlineReadout.learn(model, s, cat)` (a new governed module beside `ng_snn`), called from
