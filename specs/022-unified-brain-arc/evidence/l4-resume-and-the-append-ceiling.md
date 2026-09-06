@@ -171,7 +171,7 @@ during driving from keys that never move:
 **Two thirds of the state that can differ does differ.** The 57 was inflated by 41 keys that could not have
 differed, which is the same objection §2 raised against its own first probe and then committed itself.
 
-### 8.2 RETRACTED, and this is the serious one: "the workspace never ignites in ANY arm"
+### 8.2 **ITSELF RETRACTED -- see the block at the end of this section.** RETRACTED, and this is the serious one: "the workspace never ignites in ANY arm"
 
 §3 reported 0 ignitions everywhere and concluded the `access_index` difference was two near-zero numbers.
 **That was a broken counter** — it sampled `state()["ignited"]`, which does not read the flag the gate sets.
@@ -193,6 +193,15 @@ argued myself out of it with an instrument that could not count the thing it was
 That is the THIRD instrument defect inside this row's own apparatus, after the first probe's
 freshly-constructed comparator and the relative-scale reading. All three pointed the same way: toward
 concluding that nothing was wrong.
+
+> **RETRACTION, 2026-09-06 -- see `evidence/l4c-ignition-is-coalition-size.md`.** The counter above was
+> the THIRD wrong one on this quantity and a FOURTH followed. Its NUMBERS are right (two independent
+> instruments, required to agree, reproduce them exactly), but the CONCLUSION drawn from them is not.
+> Ignition is governed by the bound assembly's SIZE, not by the relaunch: pinning the assembly small in a
+> SECOND life makes it ignite three times -- more than a first life ever does -- and pinning it large in a
+> FIRST life removes ignition entirely. A first life ignites once while k is still ramping and never again
+> in 236 wake ticks. **This is not a resume defect**, and ignition is struck from L4's target list. What
+> survives of section 8.1 -- 17 of 52 moving keys returning identical -- is unaffected.
 
 ### 8.3 The disposition is REVERSED: L4's persistence half RE-OPENS
 

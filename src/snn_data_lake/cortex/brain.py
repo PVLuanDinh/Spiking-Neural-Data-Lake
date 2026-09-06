@@ -5149,8 +5149,14 @@ def _resume_child_source(src_root, seed, ticks):
         f"b = make_brain(seed={seed}, persist=True)\n"
         "ign = 0\n"
         f"for _ in range({ticks}):\n"
-        "    b.tick()\n"
-        "    if b._access_state.get('ignited'):\n"
+        # COUNT ONLY ON WAKE TICKS. _update_access runs on awake ticks alone and never CLEARS
+        # _access_state, so a per-tick read re-counts one ignition on every following sleep tick.
+        # An adversarial panel measured a naive counter reading 293 over 50 seeds where the real
+        # number is 126, and manufacturing a fake invariant from it -- the apparent 'always at the
+        # same wake index' signature is a wake counter that cannot advance while the brain sleeps.
+        # This is the SECOND wrong counter on this quantity; the first read the wrong field entirely.
+        "    awake = b.tick() == 'awake'\n"
+        "    if awake and b._access_state.get('ignited'):\n"
         "        ign += 1\n"
         "st = {k: v for k, v in b.state().items() if isinstance(v, (int, float, bool))}\n"
         "st['__ignitions__'] = ign\n"
@@ -5234,9 +5240,16 @@ def _print_resume_probe():
         )
     ia = sum(r["a"]["__ignitions__"] for r in rows)
     ib = sum(r["b"]["__ignitions__"] for r in rows)
-    print(
-        f"    TOTAL A={ia}  B={ib}  -- a second life that ignites less than its first is a RESUME DEFECT"
-    )
+    print(f"    TOTAL A={ia}  B={ib}")
+    for line in (
+        "    NOT a resume defect -- this line used to say it was (specs/022 L4c). Ignition is governed by",
+        "    COALITION SIZE, not by persistence: pin the bound assembly SMALL in a second life and it",
+        "    ignites three times, more than a first life ever does; pin it LARGE in a first life and",
+        "    ignition vanishes entirely. A first life ignites once while k is still ramping and never",
+        "    again in 236 wake ticks, so every brain permanently outgrows the window. Read",
+        "    evidence/l4c-ignition-is-coalition-size.md before reading anything into these two numbers.",
+    ):
+        print(line)
 
 
 def main():
