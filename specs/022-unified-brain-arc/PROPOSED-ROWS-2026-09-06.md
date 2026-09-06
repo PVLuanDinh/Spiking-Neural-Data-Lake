@@ -134,11 +134,20 @@ The goal stays unhedged; what is forbidden is the claim without the measurement.
 
 ---
 
-## What ratification would change
+## The battery that carried the ratification onto `main`
 
-O4 ratified `PLAN-FINAL-2026-09-02.md` as the plan of record. These rows would extend it: X1 into Phase 3's exit,
-L5 into Phase 2 after L4, C5 into Phase 4 before C4. Each needs, in the plan's own terms, an id in `tasks.md`, a row
-in Part F's reds register, and its gate built-and-counted before it binds. Effort, honestly: X1 is one instrument
+**On `8358541` (the rows' commit; A.4's block; archive `ratified-rows-2026-09-06/battery-8358541/`; the tree clean at
+its start): ALL GREEN.** `policy_manifest --assert` (the previous push `4578772` names itself) → `--certify` rc 0 →
+ruff 0 → ruff-format 0 → `run_selfchecks` 0 (6/6 tools gates) → pytest 0 (1161 passed, 2 xfailed, 19 warnings in
+54:46; coverage 90.62 %) → the 13 substrate gates all rc 0. Docs-only rows still take a battery here for one reason:
+a push whose head is not named by a certification reds the NEXT arc's opening assert, which this session paid for
+once already. This paragraph's commit is the LAST commit before the push.
+
+## What ratification changed
+
+O4 ratified `PLAN-FINAL-2026-09-02.md` as the plan of record; the owner's 2026-09-06 ratification extended it. X1 is at
+Phase 3's exit, L5 in Phase 2 after L4, C5 in Phase 4 before C4; their ids are T088–T090 in `tasks.md` and their reds are
+X-R1 / L-R6 / C-R5 in Part F. Each still binds only once its gate is built and its output COUNTED. Effort, honestly: X1 is one instrument
 plus a comparison protocol (two to three commits, plus whatever the human baseline costs to obtain); L5 is one gate
 plus the eviction-path enumeration and a cross-process proof (three to four commits); C5 is a registry, a gate and
 seven rows of text (two commits), and it retires a live defect the audit already found.
