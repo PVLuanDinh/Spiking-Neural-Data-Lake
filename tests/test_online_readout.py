@@ -69,3 +69,17 @@ def test_widening_preserves_the_old_scores_and_the_record_round_trips():
     blob = eng.growth_state_bytes()
     fresh = NeurogenesisSelfImprove(seed=99, device="cpu")
     assert fresh.restore_growth_state(blob) and torch.equal(fresh._model.beta, m.beta)
+
+
+def test_the_growth_gates_instrument_is_the_batch_readout_while_the_live_one_learns():
+    """Amendment 3: under a gate that closes, the closed-gate refits score the held-out slice
+    with the last open-gate solve's beta, so the trajectory the growth gate reads is IDENTICAL
+    to the batch-only engine's while the live accuracy differs (the online readout learns on
+    the wake stream)."""
+    for kind in ("delta", "sign"):
+        base = _run(5, None, ClosingGate(3))
+        live = _run(5, OnlineReadout(kind), ClosingGate(3))
+        assert [r[2] for r in live.trajectory] == [r[2] for r in base.trajectory], kind
+        assert [r[1] for r in live.trajectory] == [r[1] for r in base.trajectory], kind
+        assert live.state()["live_accuracy"] != base.state()["live_accuracy"], kind
+        assert torch.equal(live._batch_beta, base._model.beta), kind

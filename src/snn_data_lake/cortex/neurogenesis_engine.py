@@ -217,6 +217,13 @@ class NeurogenesisSelfImprove:
             online_readout = OnlineReadout(online_readout)
         self.online_readout = online_readout
         self._readout_charge = 0.0  # cumulative |dbeta| (the rule's own charge, on state())
+        # THE DECOUPLED INSTRUMENT (L1c Amendment 3): the readout of the last OPEN-gate solve. A
+        # closed-gate refit scores the held-out slice with THIS, exactly as the incumbent does, so the
+        # growth gate's evidence stays what a batch solve extracts from the current units -- while the
+        # retained model's beta (the live prediction) learns online. Measured 2026-09-06: an online
+        # readout scored on the gate's slice read LOWER on every closed-gate seed (a recency-shaped
+        # readout on a marginal-covering slice), which would let a closed stop weld itself shut.
+        self._batch_beta = None
         # the LIVE instrument (specs/022 L1b, 2026-09-05): the retained model's next-category
         # prediction on the wake stream, scored from the PREVIOUS percept before this tick's
         # transition is buffered, beside its own live persistence floor. The per-percept plug point
@@ -389,11 +396,16 @@ class NeurogenesisSelfImprove:
             and self._model is not None
             and not self._growth_gate(self.trajectory)
         ):
-            pred = self._model.predict(x_te)
-            acc = (pred == y_te.to(self._model.device)).float().mean().item()
-            self._n_units = self._model.n_units
+            m = self._model
+            beta_inst = self._batch_beta if self._batch_beta is not None else m.beta
+            if int(beta_inst.shape[0]) != int(m.W.shape[0]):  # never under a closed gate; guarded
+                beta_inst = m.beta
+            S_te = m._rates(x_te.to(m.device).float(), m.W, m.b)
+            pred = (S_te @ beta_inst).argmax(dim=1)
+            acc = (pred == y_te.to(m.device)).float().mean().item()
+            self._n_units = m.n_units
             self._acc = acc
-            self.trajectory.append((self.ticks, self._model.n_units, acc))
+            self.trajectory.append((self.ticks, m.n_units, acc))
             return
         # MEASURED ROUTING, not availability routing (P5a, 2026-08-05). `self.device` is
         # "cuda if a card exists" -- decided by `torch.cuda.is_available()` at construction, before
@@ -480,6 +492,7 @@ class NeurogenesisSelfImprove:
         # accumulation question belongs to the persistence layer, where it can be measured, and P1
         # forbids answering it with a magic cap.
         self._model = model
+        self._batch_beta = model.beta.detach().clone() if model.beta is not None else None
 
     # ---- read-only state ---------------------------------------------------------------------
     # REUSE, not a second mechanism: both accessors return what `cortex/placement.place` produced
@@ -675,6 +688,7 @@ class NeurogenesisSelfImprove:
         model.beta = torch.tensor(beta, dtype=torch.float32, device=model.device)
         model.d_in, model.m = d_in, m_out
         self._model = model
+        self._batch_beta = model.beta.detach().clone()
         self._n_units = n_units
         self._acc = acc
         self.ticks = max(self.ticks, ticks)
