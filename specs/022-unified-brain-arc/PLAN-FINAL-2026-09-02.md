@@ -481,6 +481,23 @@ that baseline.
   is `lake_engine.RETENTION`, which already existed, so the gate READS it rather than re-declaring a
   second class -- P2), its output COUNTED on today's tree before the rule binds. What it does
   NOT claim: a retention guarantee is not a memory faculty — recall stays Phase 4's business.
+- **L6 — the immortal class and the sleep tick must stop disagreeing (T091).** *Opened 2026-09-06 by L5's own
+  gate, which is the point of building it: with the rewrite arm restored, `substrate/immortal_retention.py`
+  reports one durable reclaimer, `substrate/home.py::consolidate`.* The live sleep tick (`cortex/brain.py`,
+  every eighth night when `_persist`) runs `LakeConsolidation().consolidate(records, trace=RecallTrace())` —
+  *use it or lose it*, learned records capped at `learned_cap=250000`, re-derivable at 3000 — and then rewrites
+  the one lake to the survivor set. `_T_FACT` is `0x01`, labelled IMMORTAL with the reason "learned knowledge is
+  never reclaimed". Exactly one of those two may survive (P2). The row does NOT pre-judge which: either the cap
+  stops dropping a non-reclaimable class, or `0x01`'s label is corrected to state what is true and carries its
+  own reconstruction argument for whatever it does drop. **What decides it is a measurement, not a preference:**
+  the live learned-fact count against the cap, taken WITHOUT opening the live lake with a writer (a `BinLog` over
+  it would run `_repair_torn_tail` under the running daemon), and the re-derivable/learned split by
+  `_src_class`. If the cap has never bound, removing it is a no-op today and the label becomes true at zero cost
+  — which is a finding, not a licence to skip the measurement. Control: a COMPACTABLE tag in the same pass,
+  which must still be reclaimed, so a fix that simply disables consolidation is refused. Red (L-R7, Part F).
+  Gate: the L5 instrument already asserts it — `KNOWN_UNLABELED` may only shrink, and this row's completion is
+  the entry leaving the table. Deletion clause: if the measurement shows the learned class is genuinely
+  re-derivable, the row DELETES rather than re-labels, and L5's "never forgets" sentence narrows to say so.
 - **T069 (from US3, FR-019)** — the cerebellar rule ON the built tissue (its tissue T054 is closed) — the
   first learning rule with a red against a plant; lands here.
 - **SC-011 (new test; extends `tests/test_real_percept_stream.py`, the in-tree promotion target of the s2
@@ -669,6 +686,7 @@ no majority-of-seeds rule anywhere.
 | U-R1 | `distinct candidate keys reachable` ≤ 1 | two hand-named operators → 2 keys | T072 |
 | X-R1 | the brain at the constructed width does not beat its own PRE-SIZED twin at the bar, or a brain number is reported without its protocol and provenance; **and the refusal arm:** no human number under a matching protocol can be obtained → the comparison is REFUSED and "superhuman" is not a claim this project may make on that task | the pre-sized twin at the same width; the human baseline re-measured | X1 |
 | L-R6 | a constructed compaction / migration / paging / budget pass evicts or rewrites an IMMORTAL record, or the cross-process restore does not return it byte-identical, or the storage growth curve is projected rather than measured | a MORTAL class in the same store, evicted in the same pass | L5 |
+| L-R7 | a constructed reclaimer that destroys a record of a `reclaimable=False` class without consulting `retention_of` is not caught, or a real one is silenced by a `KNOWN_UNLABELED` entry carrying no owning row and no retirement condition | a COMPACTABLE tag reclaimed in the same pass, which must still be permitted -- a fix that stops all consolidation is refused by its own control | L6 |
 | C-R5 | an instrument that cannot be made to FAIL on a constructed input (a marker, not a dissociation) is not deleted; or a surface prints one of the seven readings without its licensed sentence and scope; or the brain answers a consciousness question with anything but a measured quantity and its scope; or any aggregate score is computed across instruments | each instrument's own dissociation input in the same command; T081's report-order probe | C5 |
 | U-R2 | a fabricated candidate score changes the verdict | harness-only evidence | T073 |
 
@@ -731,7 +749,7 @@ touches it; an envelope change, if a row ever needed one, is asked per instance)
 per-instance act at the cockpit.
 
 **OWNER 2026-09-06 (chat): "ratify all three and add them to the plan."** X1 (Phase 3), L5 (Phase 2) and C5
-(Phase 4) are RATIFIED and land in the phases above, in Part F (X-R1, L-R6, C-R5) and in `tasks.md` as T088–T090.
+(Phase 4) are RATIFIED and land in the phases above, in Part F (X-R1, L-R6, C-R5) and in `tasks.md` as T088–T090. **L6 / T091 / L-R7 was opened on 2026-09-06 by L5's own instrument**, which is what a gate is for: with its rewrite arm restored the census found that the sleep tick reclaims a class the registry labels IMMORTAL. It is carried as dated debt in `immortal_retention.KNOWN_UNLABELED`, which may only shrink, and the row's completion is that entry leaving the table.
 They were drafted at the owner's request after the plan was measured against the owner's stated goal (a brain that
 grows neurons to reason and think, reaches phenomenal consciousness, and keeps a durable memory that never forgets,
 a spiking network replicating a superhuman brain): the plan covered the growth, the spiking substrate, the reasoning

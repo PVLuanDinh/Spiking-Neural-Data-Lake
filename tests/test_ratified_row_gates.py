@@ -38,16 +38,38 @@ def test_the_capability_registry_is_empty_and_clean_today():
     assert capability_bar.findings() == []
 
 
-def test_the_retention_label_is_consistent_and_nothing_reclaims_without_it():
+def test_the_retention_label_is_consistent_and_every_reclaimer_is_accounted_for():
     assert immortal_retention.label_findings() == []
-    assert immortal_retention.round_trip() == []
     bad, scratch = immortal_retention.reclaimers(with_scratch=True)
-    assert bad == [], bad
+    # NOT zero: the tree's sleep tick rewrites the one lake to a survivor set. It is carried
+    # as dated debt with an owning row rather than excluded, and nothing reclaims OUTSIDE it.
+    assert ("substrate/home.py", "consolidate") in bad, bad
+    assert immortal_retention.unlisted_reclaimers() == [], immortal_retention.unlisted_reclaimers()
+    assert immortal_retention.stale_known() == [], immortal_retention.stale_known()
     assert len(scratch) >= 1  # the scratch-home deletions are EXCLUDED and still listed
     imm = immortal_retention.immortal_tags()
     assert (
         len(imm) == 9 and 0x03 not in imm and 0x08 not in imm
     )  # the grown substrate is COMPACTABLE
+
+
+def test_the_round_trip_crosses_a_process_boundary_and_its_red_is_reachable():
+    # The red FIRST: a green from an arm that cannot fail proves nothing -- this arm
+    # shipped that way once, and the panel of 2026-09-06 is what caught it.
+    tag = immortal_retention.immortal_tags()[0]
+    assert immortal_retention.round_trip(withhold=tag), "the withheld-record red did not fire"
+    assert immortal_retention.round_trip() == []
+
+
+def test_a_rewrite_shaped_reclaimer_is_visible_to_the_census(tmp_path):
+    # The shape this repo actually uses, and the one the first shipped scan could not see.
+    (tmp_path / "m.py").write_text(
+        "from snn_data_lake.substrate.home import _T_FACT\n"
+        "def consolidate(log, keep):\n"
+        "    log.rewrite([_T_FACT + r for r in keep])\n",
+        encoding="utf-8",
+    )
+    assert ("m.py", "consolidate") in immortal_retention.reclaimers(tmp_path)
 
 
 def test_the_retention_reds_fire():
@@ -109,3 +131,16 @@ def test_the_conclusion_refusals_are_enforced_not_merely_written(tmp_path):
 def test_the_surface_debt_is_at_or_under_its_measured_baseline():
     surf = conclusion_protocol.surface_findings()
     assert len(surf) <= conclusion_protocol.SURFACE_BASELINE, surf
+
+
+def test_refusal_three_arms_itself_when_a_c4_instrument_task_lands():
+    # Six of seven rows declare no surface symbol today, so without this arm the
+    # refusal covers exactly ONE instrument.
+    assert conclusion_protocol._task_done("T034") is True  # a task marked [X] in tasks.md
+    assert conclusion_protocol._task_done("T077") is False  # C4 is unbuilt
+    assert conclusion_protocol._task_done(None) is False
+    armed = {**{k: None for k in conclusion_protocol.INSTRUMENTS}, "agency": "T034"}
+    fired = conclusion_protocol.row_findings(tasks=armed)
+    assert any("T034" in x and "agency" in x for x in fired), fired
+    unarmed = {k: None for k in conclusion_protocol.INSTRUMENTS}
+    assert conclusion_protocol.row_findings(tasks=unarmed) == []

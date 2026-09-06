@@ -74,6 +74,23 @@ VERDICT_WORDS = (
 )
 
 #: instrument -> (licensed, refused, dissociation_input, reading, date, surface_symbols)
+#: The C4 task that BUILDS each instrument. It is the arming signal for refusal 3: a row whose task is marked
+#: [X] in tasks.md while declaring no surface symbol turns the symbol declaration from optional into a red.
+#: Without this the arm is opt-in -- six of seven rows declare no symbol today, so refusal 3 covers ONE
+#: instrument and its baseline was measured through that blindness (adversarial panel, 2026-09-06).
+#: `integration` has no C4 task: its numbers already print on the cockpit ahead of C4, which is why it is the
+#: one row that declares symbols today and the one surface finding this gate carries.
+C4_TASK: dict[str, str | None] = {
+    "integration": None,
+    "metacognition": "T077",
+    "attention_schema": "T078",
+    "agency": "T079",
+    "temporal_binding": "T080",
+    "report_order": "T081",
+    "social_cognition": "T082",
+}
+TASKS_MD = REPO / "specs" / "022-unified-brain-arc" / "tasks.md"
+
 #: `surface_symbols` is HOW that instrument's number reaches a reader (the cockpit label, the state key). A
 #: surface finding keys on those symbols, never on the instrument's bare name: the first count flagged
 #: 'integrations/' the directory and 'integration point' in prose, 5 of 6 false (measured 2026-09-06).
@@ -158,10 +175,26 @@ def _registry_from_source(path: Path = SELF) -> dict[str, tuple]:
     raise ValueError(f"{path}: no CONCLUSION literal found")
 
 
-def row_findings(registry=None, instruments=None) -> list[str]:
-    """A row per instrument, each with its licensed sentence, its refusal and its dissociation input."""
+def _task_done(task: str | None, tasks_md: str | None = None) -> bool:
+    """True when `task` is checked off in tasks.md -- the plan's own completion signal, read rather than
+    mirrored, so this gate cannot disagree with the task list about what exists."""
+    if not task:
+        return False
+    try:
+        text = TASKS_MD.read_text(encoding="utf-8") if tasks_md is None else tasks_md
+    except OSError:
+        return False
+    return f"- [X] {task} " in text or f"- [x] {task} " in text
+
+
+def row_findings(registry=None, instruments=None, tasks=None) -> list[str]:
+    """A row per instrument, each with its licensed sentence, its refusal and its dissociation input.
+
+    `tasks` overrides C4_TASK so the arming arm has a constructed red: point a symbol-less row at a task that
+    IS complete on this tree and the finding must appear."""
     reg = _registry_from_source() if registry is None else registry
     names = INSTRUMENTS if instruments is None else instruments
+    task_of = C4_TASK if tasks is None else tasks
     out: list[str] = []
     for name in names:
         if name not in reg:
@@ -181,6 +214,11 @@ def row_findings(registry=None, instruments=None) -> list[str]:
         if reading is not None and not symbols:
             out.append(
                 f"{name}: a reading exists but no surface symbol says how a reader would see it"
+            )
+        if not symbols and _task_done(task_of.get(name)):
+            out.append(
+                f"{name}: its instrument task {task_of.get(name)} is marked complete but the row "
+                "declares no surface symbol -- refusal 3 cannot see a reading it cannot name"
             )
         if not (isinstance(licensed, str) and len(licensed) >= _MIN_SENTENCE):
             out.append(f"{name}: no licensed sentence")
@@ -327,6 +365,15 @@ def main() -> None:
     assert surface_findings(ok, {"docs/PITCH.md": "the brain is conscious"}), (
         "a verdict must be caught"
     )
+    # REFUSAL 3 ARMS ITSELF. Six of seven rows declare no surface symbol today, so without this arm the
+    # refusal covers ONE instrument -- the panel's finding. Point a symbol-less row at a task that IS complete
+    # on this tree and the finding must fire; that is what makes the empty row_findings() above meaningful.
+    armed = {**{k: None for k in INSTRUMENTS}, "agency": "T034"}  # T034 is marked [X] in tasks.md
+    fired = row_findings(tasks=armed)
+    assert any("T034" in x and "agency" in x for x in fired), fired
+    assert row_findings(tasks={k: None for k in INSTRUMENTS}) == [], (
+        "the unarmed control must stay clean"
+    )
     bare = surface_findings(ok, {"docs/PITCH.md": "widget_reading is 0.42 today"})
     assert bare and "licensed sentence" in bare[0], bare
     withsent = surface_findings(
@@ -356,7 +403,8 @@ def main() -> None:
     print(
         f"conclusion_protocol self-check OK: {len(reds)} row reds caught, the positive control passes; a verdict and "
         "a bare reading are caught on a surface while the same word in prose is not, and an aggregate across two "
-        "instruments is caught"
+        "instruments is caught; refusal 3 ARMS ITSELF -- a symbol-less row whose C4 task is complete reds, and "
+        "the unarmed control stays clean"
     )
 
 

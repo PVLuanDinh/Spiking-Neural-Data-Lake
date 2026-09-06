@@ -24,8 +24,13 @@ row below — grep the tree before building, because the mechanism may already b
   naming one `*_gate` would demand a POLICIES edit that no policy asked for. **They are named without the census's
   tokens** (`capability_bar`, `immortal_retention`, `conclusion_protocol`), which keeps the census honest rather
   than silencing it — and the row L5's own name in the plan (`substrate/immortal_class_gate.py`) is amended to
-  match. Reachability for P3 comes the way every gate's does: a `run_selfchecks.py` registration, which is a live
-  root of `dormancy_gate`.
+  match. **This bullet's last sentence was WRONG and the panel measured it.** It read "reachability for P3 comes the
+  way every gate's does: a `run_selfchecks.py` registration, which is a live root of `dormancy_gate`." It is
+  not. `dormancy_gate._imports()` is an AST walk over `Import`/`ImportFrom` nodes only, and `run_selfchecks.py`
+  registers modules as STRING literals in a list — so the registration confers no reachability whatsoever, and
+  the gate reported all three as DORMANT the first time it ran. The three take the disposition their siblings
+  already carry: `EXEMPT` / `permanent`, the same row `policy_manifest`, `lake_rebuild_gate`, `replay_gate` and
+  `determinism_gate` hold, each with the condition that would retire it. See §3.4.3.
 
 ### 1.2 L5's mechanism ALREADY EXISTS — the row is re-scoped (P2, the find that reshapes this arc)
 
@@ -156,10 +161,10 @@ none fires because there are no rows to compare against. The four constructed re
 | lake tags labelled | 11 |
 | IMMORTAL | 9 (`0x01 0x02 0x04 0x05 0x06 0x07 0x09 0x0a 0x0b`) |
 | COMPACTABLE | 2 (`0x03 _T_GROWTH`, `0x08 _T_GROWTH_DELTA`) |
-| reclaimers of durable records that do not consult the label | 0 |
+| reclaimers of durable records that do not consult the label | **1** (`substrate/home.py::consolidate`) |
 | scratch-home deletions EXCLUDED and listed | 8 |
 | immortal tags with an append baseline | 3 of 9 |
-| cross-process byte-identity findings | 0 |
+| cross-process byte-identity findings | 0, and its red fires |
 
 Three things in that table are disclosures, not passes.
 
@@ -168,10 +173,43 @@ reconstruction proof instead of a never-evict guarantee. The registry's own cont
 the fact on every run so it can never be quietly assumed. "Never forgets" in this project means *never evicts the
 IMMORTAL class*, not *stores everything*.
 
-**Zero durable reclaimers is a measured zero, and the instrument was wrong twice before it was right.** A substring
-scan matched `str.removeprefix` (13 false findings); an exact-call-name scan then matched 8 deletions that only ever
-touch a scratch home. The final form walks AST `Call` nodes for exact names, excludes the scratch-home sites, and
-**lists all 8 exclusions in the report** so the exclusion is auditable rather than invisible.
+**The zero was wrong, and it was this project's archetypal failure.** The first shipped scan printed *0 durable
+reclaimers*. The adversarial panel of 2026-09-06 measured that `_RECLAIM_CALLS` held eight destructive call names
+and not `rewrite` — and **this repo reclaims by rewriting**: `KnowledgeLog.consolidate` (`substrate/home.py:558`)
+destroys records by rebuilding the payload list and calling `BinLog.rewrite`, using none of the eight. So the zero
+was a claim about the instrument. Worse, §2.2 of this very file had pre-registered the arm as "an AST scan for calls
+that delete, truncate **or rewrite** lake records" — the rewrite arm was dropped during the build and the result was
+then recorded as measured.
+
+With `rewrite` added, the census reports **one** durable reclaimer, and it is live rather than latent-in-theory: the
+sleep tick (`cortex/brain.py`, every eighth night when `_persist`) runs `LakeConsolidation().consolidate(records,
+trace=RecallTrace())` — *use it or lose it*, learned records capped at 250,000 and re-derivable at 3,000 — then
+`KnowledgeLog.consolidate(survivors)`. `_T_FACT` is tag `0x01`, labelled IMMORTAL with the reason "learned knowledge
+is never reclaimed". **The declared class and the running brain disagree**, so the sentence "the lake never evicts
+the IMMORTAL class" is FALSE on this tree, and the gate now prints exactly that sentence whenever the debt table is
+non-empty.
+
+The drop is inside `if len(learned) > learned_cap`, so it is LATENT while the learned count stays under 250,000. A
+latent reclaimer is precisely what a gate is for — P3's *reachability is not charge* read in the other direction.
+
+It is carried in `KNOWN_UNLABELED`, which is the opposite of the scratch exclusion: an entry is a red held in the
+open with its owning plan row and its retirement condition, it is PRINTED as debt on every run, `findings()` asserts
+on any reclaimer *not* listed, and `stale_known()` asserts on any listed entry that stops reclaiming. The table may
+only shrink. **Row L6 (T091) owns the fix** — either the learned cap stops dropping a non-reclaimable class, or
+`0x01`'s label is corrected to say what is true. It is explicitly not fixed by widening the scratch markers.
+
+The earlier instrument errors stand as recorded: a substring scan matched `str.removeprefix` (13 false findings), and
+an exact-call-name scan then matched 8 deletions that only ever touch a scratch home. The final form walks AST `Call`
+nodes for exact names and **lists all 8 scratch exclusions in the report** so the exclusion is auditable.
+
+**The process-boundary arm was a fixture, and now it is not.** As first shipped, `round_trip()` wrote its own
+framing with a plain `open()` and read it back in the same interpreter — no lake code under test, no second process,
+and no input that could make it fail. A criterion with no reachable red is what P8 forbids, and all three panel
+lenses caught it independently. It now uses the tree's own idiom (`binlog.py`'s PROPERTY 3): a **child interpreter**
+appends one record per IMMORTAL tag through `BinLog` into a scratch home, and this process re-opens the same file
+with a fresh `BinLog` and checks byte identity per tag. `withhold` names a tag the child skips, and the self-check
+runs that red FIRST — measured: withholding `0x01` produces `tag 0x01: an immortal record did not survive the process
+boundary byte-identical`. The empty return is believable only because of it.
 
 **Six of nine immortal tags have no append baseline.** That is real, open debt, printed rather than asserted: the
 budget arm can only bound growth for tags it has a baseline for. It is L5's own follow-on work, and naming it here is
@@ -198,6 +236,14 @@ and only the cockpit's `integration_competence` print survives. The consciousnes
 prints nothing under a declared symbol: **that is a limitation of this instrument, not a clean bill for that file.**
 C4/T081 retires the probe; this gate does not audit it today.
 
+**Refusal 3 now arms itself.** As first shipped, the surface scan keyed on each row's declared
+`surface_symbols`, and six of seven rows declare none — so the refusal covered exactly one instrument, and the
+baseline of 1 was measured through that blindness (panel finding, corrected severity MINOR). Each row now names the
+C4 task that builds it, and a row whose task is marked `[X]` in `tasks.md` while declaring no surface symbol is a
+finding. Landing T077–T082 without saying how the number reaches a reader reddens this gate instead of silently
+leaving the arm off. The red is constructed by pointing a symbol-less row at T034, a task that IS complete on this
+tree; the unarmed control stays clean.
+
 Surface findings are REPORTED against `SURFACE_BASELINE = 1` and may fall, never rise. They are C4/T081's defects, not
 this arc's, so they are visible and non-worsening rather than blocking every battery. The rows and the
 aggregate refusal ASSERT.
@@ -211,12 +257,55 @@ aggregate refusal ASSERT.
 2. **L5's gate is `immortal_retention`, not `immortal_class_gate`** — §1.2's find. `lake_engine.RETENTION` and
    `lake_migrate.TAG_DISPOSITIONS` already declare the classes, so the gate READS both and cross-checks them rather
    than declaring a second mechanism (P2).
-3. **Three EXEMPT rows were added to `dormancy_gate`.** All three gates are CI/run_selfchecks instruments, never tick
-   faculties — the `policy_manifest` disposition the tree already uses for `lake_rebuild_gate`, `replay_gate` and
-   `determinism_gate`. Each row states what would retire it, so the stale-exemption arm can bite.
+3. **A pre-registered expectation was FALSIFIED, and three EXEMPT rows were added to `dormancy_gate`.** §1.1 had
+   stated that a `run_selfchecks.py` registration is a live root of `dormancy_gate` and would carry these three
+   through P3. It is not: `_imports()` walks `Import`/`ImportFrom` nodes and the registration is a string in a list,
+   so the gate reported all three DORMANT on its first run. All three are CI/run_selfchecks instruments, never tick
+   faculties, so they take the `policy_manifest` disposition the tree already uses for `lake_rebuild_gate`,
+   `replay_gate` and `determinism_gate`. Each row states what would retire it, so the stale-exemption arm can bite.
+4. **The gates' first counted output was itself wrong in two places, and the panel is what found it.** §4 records
+   the fold. Both defects were in this arc's own instruments, not in the tree it audits.
 
 ### 3.5 Gate state at the close of the build
 
 `capability_bar`, `immortal_retention`, `conclusion_protocol`, `dormancy_gate`, `method_dormancy_gate`,
 `policy_manifest` and `tools/p4c_ratchet.py` all `--assert` rc=0. `tests/test_ratified_row_gates.py` is 7 passed.
 The three rows now bind: each has a gate, and each gate's output has been counted on this tree.
+
+---
+
+## 4. The adversarial panel, and what it changed (2026-09-06)
+
+Three lenses (mechanism, policy, instrument discipline) read commit `3ccbf6e` independently, and every finding
+they raised was handed to a separate agent whose instruction was to REFUTE it. Twelve findings were verified;
+**seven survived refutation and five were refuted**, which is the number worth recording — a panel that
+confirms everything is not measuring anything.
+
+### 4.1 What survived, and what it changed
+
+| # | Severity | Where | What it changed |
+|---|---|---|---|
+| 1 | BLOCKER (found twice, mechanism + policy) | `immortal_retention._RECLAIM_CALLS` | The census could not see rewrite-shaped reclamation, which is the shape this repo uses. `rewrite` added; the real reclaimer surfaced; `KNOWN_UNLABELED` created to carry it in the open; a rewrite-shaped red added. |
+| 2 | MAJOR (found three times, all lenses) | `immortal_retention.round_trip` | Crossed no process boundary, touched no lake code, had no reachable red. Rebuilt on `binlog.py`'s cross-process idiom with a `withhold` red run before the green. |
+| 3 | MINOR | `conclusion_protocol.surface_findings` | Refusal 3 was opt-in through `surface_symbols`; it now arms itself from the plan's own task-completion marks. |
+| 4 | MINOR | §1.1 of this record | The `run_selfchecks`-is-a-live-root claim was false. Corrected, and marked as a falsified pre-registration rather than only recording the exemptions. |
+
+### 4.2 What was refuted, and why that matters
+
+Five findings did not survive. Three claimed `capability_bar`'s surface arm is dead because the registry is
+empty; the verifiers showed the vacuity is the arm's pre-registered scope (a comparison word is only a defect
+*for a registered task*), that the arm's red fires in both the self-check and the test file, and that all five
+tracked surfaces contain zero comparison words today. One claimed the aggregate refusal should key on
+`surface_symbols` like the surface scan; the verifier measured that the proposed change would make the check
+*provably* zero (only one row declares symbols) and would lose four realistic aggregation shapes the current
+scan catches — of 72,813 AST nodes scanned, 64 already carry exactly one instrument name, one token away from
+firing. One claimed the `_RECORD_REFS` filter suppressed 43 real reclaimers; the verifier inspected all 43 and
+found none destroys a durable lake record. Recorded because a refuted finding is evidence about the
+instrument too.
+
+### 4.3 The honest caveat about this section
+
+**The fold is itself unreviewed code.** These four changes were written in response to the panel and have not
+been through a panel of their own. They were verified by: each new arm's constructed red run before its green,
+the module self-checks, the 10 brain-free tests, and the arc's battery. That is battery-verified, not
+panel-reviewed, and the distinction is stated here rather than left for a reader to assume.

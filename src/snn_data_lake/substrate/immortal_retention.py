@@ -54,8 +54,13 @@ SRC = REPO / "src" / "snn_data_lake"
 #: EXACT destructive call targets, matched on the AST's call node -- never as a substring. "remove" as a substring
 #: also matches str.removeprefix, which is how the first draft of this scan reported thirteen "reclaimers" that
 #: were string methods and scratch-file cleanup (measured 2026-09-06, corrected before this landed).
+#: `rewrite` is here because THIS REPO RECLAIMS BY REWRITING. The first shipped form of this set omitted it
+#: and printed a zero; the adversarial panel of 2026-09-06 measured that KnowledgeLog.consolidate destroys
+#: records by rebuilding the payload list and calling BinLog.rewrite, using none of the other seven names --
+#: so the zero was a claim about the instrument. The pre-registration had promised "delete, truncate OR
+#: rewrite"; the arm was dropped in the build and the record then reported the result as measured.
 _RECLAIM_CALLS = frozenset(
-    {"unlink", "truncate", "rmtree", "remove", "compact", "reclaim", "evict", "purge"}
+    {"unlink", "truncate", "rmtree", "remove", "compact", "reclaim", "evict", "purge", "rewrite"}
 )
 #: ...and the same function must actually touch a lake RECORD, not a scratch file.
 _RECORD_REFS = (
@@ -76,6 +81,28 @@ _RETENTION_READS = ("retention_of", "RETENTION", "is_immortal")
 #: an exclusion nobody can see is how a census lies.
 _SCRATCH_MARKERS = ("throwaway_home", "TemporaryDirectory", "mkdtemp", "tmp_path", "NamedTemporary")
 _MIN_REASON = 20  # a reason shorter than this is a label, not a reason (CHOSEN, disclosed)
+
+#: DURABLE reclaimers that do NOT consult the label, each with the row that owes the fix and what retires the
+#: entry. This table is the opposite of an exclusion: an entry is a RED that is being carried in the open
+#: rather than a site the scan pretends not to see, it is PRINTED as debt on every run, and it may only
+#: SHRINK -- `findings()` fires on any reclaimer not listed here, and `stale_known()` fires on any listed
+#: entry that no longer reclaims. It is not a licence: the sentence "the lake never evicts the IMMORTAL
+#: class" is FALSE while this table is non-empty, and the report says so in those words.
+KNOWN_UNLABELED: dict[tuple[str, str], str] = {
+    ("substrate/home.py", "consolidate"): (
+        "MEASURED 2026-09-06 by this gate's own rewrite arm, then confirmed on the live path: the sleep tick "
+        "(cortex/brain.py, every 8th night when _persist) runs LakeConsolidation().consolidate(records, "
+        "trace=RecallTrace()) -- 'USE IT OR LOSE IT', learned records capped at learned_cap=250000 and "
+        "re-derivable at 3000 -- then KnowledgeLog.consolidate(survivors), which rewrites the ONE lake to the "
+        "survivor set. _T_FACT is 0x01, labelled IMMORTAL with reason 'learned knowledge is never reclaimed', "
+        "so the declared class and the running brain disagree. The cap is LATENT rather than realized while "
+        "the learned count stays under 250000 (the drop is inside `if len(learned) > learned_cap`), and a "
+        "latent reclaimer is exactly what a gate is for -- P3's reachability-is-not-charge read in reverse. "
+        "Owner: specs/022 row L6 (T091), which must either stop the learned cap dropping a non-reclaimable "
+        "class or re-label 0x01 to say what is true; NOT this row, and never by widening _SCRATCH_MARKERS. "
+        "RETIRES when consolidate consults retention_of in the same function, which this scan then sees."
+    ),
+}
 
 
 def immortal_tags(registry=None) -> list[int]:
@@ -121,8 +148,9 @@ def _called_names(node) -> set:
 def reclaimers(root: Path | None = None, with_scratch: bool = False):
     """(b) functions that destroy a lake RECORD without consulting the label, as (module, function).
 
-    Returns the non-compliant DURABLE ones; with_scratch=True also returns those excluded for deleting only
-    inside a scratch home, so the exclusion is reported rather than silent."""
+    Returns EVERY non-compliant DURABLE one, listed or not -- KNOWN_UNLABELED is applied by `findings()`, not
+    here, so the census and the verdict can never quietly diverge. with_scratch=True also returns those
+    excluded for deleting only inside a scratch home, so the exclusion is reported rather than silent."""
     base = SRC if root is None else root
     bad: list[tuple[str, str]] = []
     scratch: list[tuple[str, str]] = []
@@ -148,30 +176,54 @@ def reclaimers(root: Path | None = None, with_scratch: bool = False):
     return (bad, scratch) if with_scratch else bad
 
 
-def round_trip(tags=None) -> list[str]:
-    """(c) one record per IMMORTAL tag, written, then read back by a NEW reader over the persisted bytes."""
+def round_trip(tags=None, withhold=None) -> list[str]:
+    """(c) one record per IMMORTAL tag written BY A SEPARATE PROCESS through the lake's own writer, then read
+    back here by a fresh reader over the persisted file.
+
+    The first form of this arm wrote its own framing with plain `open()` in this same interpreter, so no lake
+    code was under test and nothing could ever make it fail -- a criterion with no reachable red, which P8
+    forbids (adversarial panel, 2026-09-06). It now uses the tree's own cross-process idiom (binlog.py's
+    PROPERTY 3): the child appends through `BinLog`, this process re-opens the SAME file with a new `BinLog`,
+    and byte identity is checked per tag.
+
+    `withhold` is the red: the tag the child is told to skip. The record for it cannot come back, so the arm
+    MUST report it -- that is what makes the empty return believable.
+    """
+    import subprocess
+
     from snn_data_lake.substrate import home as home_mod
+    from snn_data_lake.substrate.binlog import BinLog
     from snn_data_lake.substrate.home import throwaway_home
 
-    want = immortal_tags() if tags is None else tags
+    want = list(immortal_tags() if tags is None else tags)
     out: list[str] = []
     with throwaway_home():
-        store = Path(home_mod.home()) / "immortal_roundtrip.bin"
-        payloads = {t: bytes([t]) * (16 + t) for t in want}
-        with open(store, "wb") as f:
-            for tag, blob in payloads.items():
-                f.write(bytes([tag]) + len(blob).to_bytes(4, "big") + blob)
-        back: dict = {}
-        with open(store, "rb") as f:
-            while True:
-                head = f.read(5)
-                if not head:
-                    break
-                tag, n = head[0], int.from_bytes(head[1:], "big")
-                back[tag] = f.read(n)
+        store = str(home_mod.knowledge_path("immortal_roundtrip.bin"))
+        payloads = {t: bytes([t]) + (b"immortal" * 4) + bytes([t]) * (8 + t) for t in want}
+        send = [t for t in want if t != withhold]
+        blobs = [payloads[t] for t in send]
+        child = (
+            f"import sys; sys.path.insert(0, {str(SRC.parent)!r})\n"
+            "from snn_data_lake.substrate.binlog import BinLog\n"
+            f"log = BinLog({store!r})\n"
+            f"for blob in {blobs!r}:\n"
+            "    log.append(blob)\n"
+        )
+        rc = subprocess.run(  # noqa: S603 - our own interpreter, our own literal source
+            [sys.executable, "-c", child], capture_output=True, text=True
+        )
+        if rc.returncode != 0:
+            return [
+                f"the writing child process failed (rc={rc.returncode}): {rc.stderr.strip()[:200]}"
+            ]
+        back = {
+            p[:1][0]: p for p in BinLog(store).replay()
+        }  # a FRESH reader over the persisted file
         for tag, blob in payloads.items():
             if back.get(tag) != blob:
-                out.append(f"tag {tag:#04x}: an immortal record did not return byte-identical")
+                out.append(
+                    f"tag {tag:#04x}: an immortal record did not survive the process boundary byte-identical"
+                )
     return out
 
 
@@ -186,13 +238,30 @@ def budget_coverage():
     return have, lack
 
 
+def unlisted_reclaimers() -> list[tuple[str, str]]:
+    """Durable reclaimers that are NOT carried in KNOWN_UNLABELED -- the arm that asserts."""
+    return [w for w in reclaimers() if w not in KNOWN_UNLABELED]
+
+
+def stale_known() -> list[str]:
+    """Entries in KNOWN_UNLABELED that no longer reclaim. The table may only SHRINK, so a stale row is a red:
+    it means the debt was paid and the entry outlived it, or the scan lost sight of the site."""
+    live = set(reclaimers())
+    return [
+        f"KNOWN_UNLABELED carries {m}::{fn}, which this scan no longer finds -- pay the entry out or explain"
+        for (m, fn) in KNOWN_UNLABELED
+        if (m, fn) not in live
+    ]
+
+
 def all_findings() -> list[str]:
     return (
         label_findings()
         + [
             f"{m}::{fn} destroys a lake record without consulting the retention label"
-            for m, fn in reclaimers()
+            for m, fn in unlisted_reclaimers()
         ]
+        + stale_known()
         + round_trip()
     )
 
@@ -207,12 +276,21 @@ def report() -> str:
         f"IMMORTAL RETENTION -- {len(RETENTION)} tags: {len(imm)} IMMORTAL {[hex(t) for t in imm]}, "
         f"{len(comp)} COMPACTABLE {[hex(t) for t in comp]}",
         f"reclaimers of DURABLE records that do not consult the label: {len(bad)}"
-        + (f" {bad}" if bad else " (none exists yet -- the registry labels; nothing reclaims)"),
+        + (f" {bad}" if bad else " (none -- and the red for this arm is constructed in main())"),
+        f"  of those, CARRIED as known debt with an owning row: {len(KNOWN_UNLABELED)}; unlisted (asserts): "
+        f"{len(unlisted_reclaimers())}",
         f"excluded, scratch-home deletions (cannot reach the durable lake): {len(scratch)} {scratch}",
         f"append baseline present for {len(have)} of {len(imm)} immortal tags; missing {[hex(t) for t in lack]}",
         "the grown substrate: 0x03 _T_GROWTH and 0x08 _T_GROWTH_DELTA are COMPACTABLE-with-a-reconstruction-proof,",
         "  NOT immortal -- the registry's own contract permits it, and 'never forgets' means never evicts the",
         "  IMMORTAL class, never 'stores everything'. Printed every run so the fact is never quietly assumed.",
+    ]
+    if KNOWN_UNLABELED:
+        lines += [
+            "THE SENTENCE 'THE LAKE NEVER EVICTS THE IMMORTAL CLASS' IS FALSE ON THIS TREE. Carried debt:",
+        ]
+        lines += [f"  ! {m}::{fn} -- {why}" for (m, fn), why in sorted(KNOWN_UNLABELED.items())]
+    lines += [
         f"findings: {len(f)}",
     ]
     lines += [f"  - {x}" for x in f]
@@ -221,6 +299,12 @@ def report() -> str:
 
 def main() -> None:
     assert label_findings() == [], label_findings()  # the positive control: today's registry passes
+    # (c) is believable only because its red is: a record the child never wrote cannot come back. Run the red
+    # FIRST, so a round trip that has quietly stopped writing anything cannot pass as a green.
+    withheld = immortal_tags()[0]
+    assert round_trip(withhold=withheld), (
+        "the withheld-record red did not fire -- (c) proves nothing"
+    )
     assert round_trip() == [], round_trip()
     good = {0x01: ("IMMORTAL", False, "a reason long enough to be a reason")}
     disp = {0x01: ("x", "y")}
@@ -266,7 +350,17 @@ def main() -> None:
             ),
             encoding="utf-8",
         )
+        # THE SHAPE THIS REPO ACTUALLY USES, and the one the first shipped scan could not see: reclamation by
+        # rebuilding the survivor list and rewriting the log. Without this red, adding "rewrite" to
+        # _RECLAIM_CALLS would be an unverified edit -- which is how the arm went missing in the first place.
+        (scratch / "rewrite_reclaimer.py").write_text(
+            "from snn_data_lake.substrate.home import _T_FACT@"
+            "def consolidate(log, keep):@    survivors = [_T_FACT + r for r in keep]@"
+            "    log.rewrite(survivors)@".replace("@", chr(10)),
+            encoding="utf-8",
+        )
         found, excluded = reclaimers(scratch, with_scratch=True)
+        assert ("rewrite_reclaimer.py", "consolidate") in found, found
         assert ("bad_reclaimer.py", "compact_the_lake") in found, found
         assert ("good_reclaimer.py", "compact_the_lake") not in found, found
         assert ("not_a_reclaimer.py", "tidy") not in found, found  # removeprefix is not a removal
@@ -274,9 +368,12 @@ def main() -> None:
         assert ("scratch_reclaimer.py", "selfcheck") not in found, found
     print(report())
     print(
-        "immortal_retention self-check OK: 5 constructed label reds caught, today's registry and round trip pass; "
-        "the reclaimer scan catches an unguarded durable compactor, clears a guarded one, excludes a "
-        "scratch-home deletion INTO THE REPORT, and does not mistake str.removeprefix for a removal"
+        "immortal_retention self-check OK: 5 constructed label reds caught, today's registry passes; the "
+        f"cross-process round trip reds on a withheld immortal record (tag {withheld:#04x}) and passes without "
+        "it; the reclaimer scan catches BOTH an unlink-shaped and a rewrite-shaped durable compactor, clears a "
+        "guarded one, excludes a scratch-home deletion INTO THE REPORT, and does not mistake str.removeprefix "
+        f"for a removal. Carried debt: {len(KNOWN_UNLABELED)} known reclaimer(s), {len(unlisted_reclaimers())} "
+        "unlisted"
     )
 
 
