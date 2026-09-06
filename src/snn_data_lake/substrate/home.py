@@ -586,7 +586,7 @@ class KnowledgeLog:
                 if _src_class(r) != "re-derivable" and record_key(r) not in keep_keys
             ]
             if lost:
-                raise ValueError(
+                raise ImmortalRefusal(
                     f"consolidate would drop {len(lost)} LEARNED _T_FACT record(s), but 0x01 is "
                     f"{retention_of(_T_FACT[0])[0]} with reclaimable=False. Only the per-record "
                     "exemption in RETENTION[0x01]'s reason (bulk re-derivable ingests) may be reclaimed."
@@ -666,6 +666,18 @@ def _unpack_state(payload):
     return payload[2 : 2 + n], int.from_bytes(payload[2 + n : 6 + n], "little"), payload[6 + n :]
 
 
+class ImmortalRefusal(ValueError):
+    """`consolidate` refused a rewrite that would destroy a record of a non-reclaimable class.
+
+    A ValueError subclass so existing callers that catch ValueError still catch it, and a distinct TYPE so
+    the sleep tick can count THIS and nothing else. It shipped as a bare ValueError for one commit, and the
+    adversarial panel reproduced two unrelated ValueErrors from the same block being counted as retention
+    drift: a lake file that is not a BinLog (binlog.py's magic check, reachable live because the cached log
+    is rebuilt whenever it goes stale) and a `recall_trace.json` holding valid JSON that is not an object.
+    Neither is a retention defect, and both were being published as one.
+    """
+
+
 def _prune_state_history(payloads):
     """`payloads` with every SUPERSEDED _T_STATE record dropped -- the LAST per name survives.
 
@@ -684,6 +696,18 @@ def _prune_state_history(payloads):
     in the sequence it went in -- which `load_growth` / `load_selfbuild` depend on, both taking the
     LAST record of their own tag. A record whose layout `_unpack_state` cannot parse is KEPT.
     """
+    # THE LABEL IS LOAD-BEARING HERE TOO (specs/022 L6 fold, 2026-09-06). 0x07 is IMMORTAL with
+    # reclaimable=False, and this function drops records under it -- which the first L6 landing missed
+    # entirely, because its guard was scoped to _T_FACT and the census accepted one retention_of token as
+    # covering the whole of `consolidate`. What licenses the drop is the PER-RECORD exemption RETENTION[0x07]
+    # now states: a SUPERSEDED frame is unreachable, so losing it loses no state. If that exemption is ever
+    # removed from the reason, this returns the payloads untouched rather than dropping a class the registry
+    # says is never reclaimed.
+    from snn_data_lake.substrate.lake_engine import retention_of
+
+    _label, _reclaimable, _reason = retention_of(_T_STATE[0])
+    if not _reclaimable and "SUPERSEDED" not in _reason:
+        return list(payloads)  # the label forbids it and states no exemption: drop nothing
     last = {}
     for i, payload in enumerate(payloads):
         if payload[:1] == _T_STATE:
@@ -1422,9 +1446,46 @@ def main():
         assert _d2 == 1, (
             f"the re-derivable exemption must still permit a drop: kept={_k2} dropped={_d2}"
         )
+        # THE 0x07 HALF, and its red. Run BEFORE the print, so a prune that has quietly stopped pruning
+        # cannot pass as a green. The first L6 landing scoped its guard to _T_FACT alone and left this
+        # class being reclaimed by the same function -- the adversarial panel of 2026-09-06 measured it.
+        from snn_data_lake.substrate import lake_engine as _le
+
+        # CONSTRUCTED input, not the shared lake. The consolidate() above already pruned this lake's
+        # state history, so reading it back gave both arms nothing to remove and the red could not fail
+        # (measured 19 kept vs 19) -- and writing a fixture INTO the lake to fix that broke a later
+        # assertion in this same self-check. _prune_state_history is pure over a payload list, so the red
+        # supplies its own: two frames under one name, of which the first is superseded, plus a foreign
+        # record that must survive either way.
+        def _frame(name, seq, blob):
+            return (
+                _T_STATE
+                + bytes([len(name)])
+                + name.encode("ascii")
+                + int(seq).to_bytes(4, "little")
+                + blob
+            )
+
+        _probe = [_frame("l6probe", 1, b"v1"), _frame("l6probe", 2, b"v2"), b"\x04foreign"]
+        _was07 = _le.RETENTION[0x07]
+        _le.RETENTION[0x07] = (_was07[0], False, "no exemption stated here")
+        try:
+            _blocked = _prune_state_history(_probe)
+        finally:
+            _le.RETENTION[0x07] = _was07
+        _allowed = _prune_state_history(_probe)
+        assert len(_blocked) == 3 and len(_allowed) == 2, (
+            "removing 0x07's SUPERSEDED exemption must stop the state prune, not merely be ignored: "
+            f"blocked={len(_blocked)} allowed={len(_allowed)}, expected 3 and 2"
+        )
+        assert _allowed[0] == _probe[1] and _probe[2] in _allowed, (
+            f"the prune must keep the NEWEST frame per name and every foreign record: {_allowed}"
+        )
+        assert _le.RETENTION[0x07] == _was07, "the red must restore the registry it borrowed"
         print(
             "  immortal guard    : a survivor set missing a LEARNED fact is REFUSED; a re-derivable "
-            "fact is still reclaimed in the same call (L-R7)"
+            "fact is still reclaimed in the same call; removing 0x07's SUPERSEDED exemption stops the "
+            f"state prune dead ({len(_blocked)} kept vs {len(_allowed)}) (L-R7)"
         )
         # BOTH numbers in ONE assert on purpose. The 13 is the PRECONDITION -- 5 names carrying 13
         # records -- and on its own it has no red this file can reach that the `is True` loop above

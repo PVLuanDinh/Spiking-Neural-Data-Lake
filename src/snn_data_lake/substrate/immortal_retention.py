@@ -127,6 +127,42 @@ def label_findings(registry=None, dispositions=None) -> list[str]:
     return out
 
 
+#: How a function names the record classes it touches. A `_T_*` symbol in the body is the tag; the check
+#: below requires each one to reach `retention_of`, so reading the label for ONE class can no longer exempt a
+#: function that drops another. MEASURED 2026-09-06: before this, `home.consolidate` passed the census with a
+#: single `retention_of(_T_FACT[0])` while `_prune_state_history` dropped tag 0x07 twelve lines below it.
+def _tag_symbols(node) -> set:
+    return {n.id for n in ast.walk(node) if isinstance(n, ast.Name) and n.id.startswith("_T_")}
+
+
+def _tags_given_to_retention(node) -> set:
+    """The `_T_*` symbols passed to a retention read inside `node` -- a label read is credited to the TAG it
+    names, never to the function that contains it."""
+    out: set = set()
+    for sub in ast.walk(node):
+        if not isinstance(sub, ast.Call):
+            continue
+        fn = sub.func
+        name = fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", "")
+        if name not in _RETENTION_READS:
+            continue
+        for arg in sub.args:
+            out |= _tag_symbols(arg)
+    return out
+
+
+def _local_calls(node) -> set:
+    """Bare names called inside `node` -- used for ONE hop into same-module helpers. One hop, not a full call
+    graph, and that is a disclosed limit: `home.consolidate` destroys through `_prune_state_history`, so the
+    tag reference and the destruction sit in different functions exactly one call apart. A two-hop laundering
+    of the same shape would still pass, and there is no red for it here."""
+    return {
+        s.func.id
+        for s in ast.walk(node)
+        if isinstance(s, ast.Call) and isinstance(s.func, ast.Name)
+    }
+
+
 def _called_names(node) -> set:
     names = set()
     for sub in ast.walk(node):
@@ -163,7 +199,25 @@ def reclaimers(root: Path | None = None, with_scratch: bool = False):
             body = ast.dump(node)
             if not any(r in body for r in _RECORD_REFS):
                 continue
-            if any(r in body for r in _RETENTION_READS):
+            # A label read is credited PER TAG, and one hop of same-module helpers is included, because a
+            # function can destroy through a helper that names the tag it never mentions itself.
+            helpers = {
+                f
+                for f in ast.walk(tree)
+                if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and f.name in _local_calls(node)
+            }
+            touched = _tag_symbols(node) | {t for h in helpers for t in _tag_symbols(h)}
+            labeled = _tags_given_to_retention(node) | {
+                t for h in helpers for t in _tags_given_to_retention(h)
+            }
+            # Compliant = it reads the label AND every STATIC tag it touches is named to a read. The
+            # `reads_label` term is not redundant: a function whose tag is a runtime PARAMETER touches no
+            # `_T_*` symbol, so the subset test alone would read its empty set as non-compliant and flag the
+            # tree's own guarded fixture -- measured 2026-09-06. A dynamic tag cannot be attributed by a
+            # static scan; such a function is credited for reading the label, and that is a DISCLOSED hole:
+            # a reclaimer that computes its tag at runtime can drop an immortal class and pass here.
+            if any(r in body for r in _RETENTION_READS) and touched <= labeled:
                 continue
             where = (str(path.relative_to(base)).replace(chr(92), "/"), node.name)
             (scratch if any(m in body for m in _SCRATCH_MARKERS) else bad).append(where)
@@ -353,7 +407,35 @@ def main() -> None:
             "    log.rewrite(survivors)@".replace("@", chr(10)),
             encoding="utf-8",
         )
+        # THE SHAPE THAT SLIPPED THROUGH THE FIRST LANDING (adversarial panel, 2026-09-06): a label read
+        # for ONE tag while a helper ONE HOP away drops ANOTHER. `home.consolidate` passed the census with a
+        # single retention_of(_T_FACT) while `_prune_state_history` dropped tag 0x07 twelve lines below it.
+        (scratch / "one_tag_only.py").write_text(
+            "from snn_data_lake.substrate.home import _T_FACT, _T_STATE@"
+            "from snn_data_lake.substrate.lake_engine import retention_of@"
+            "def _prune(payloads):@    return [p for p in payloads if p[:1] != _T_STATE]@"
+            "def consolidate(log, keep):@    if not retention_of(_T_FACT[0])[1]:@        pass@"
+            "    log.rewrite(_prune(log.replay()) + [_T_FACT + k for k in keep])@".replace(
+                "@", chr(10)
+            ),
+            encoding="utf-8",
+        )
+        # ...and its COMPLIANT TWIN, identical but for the second label read. Without this the red above
+        # would also pass a rule that simply refused every multi-tag function.
+        (scratch / "both_tags.py").write_text(
+            "from snn_data_lake.substrate.home import _T_FACT, _T_STATE@"
+            "from snn_data_lake.substrate.lake_engine import retention_of@"
+            "def _prune(payloads):@    if not retention_of(_T_STATE[0])[1]:@        return list(payloads)@"
+            "    return [p for p in payloads if p[:1] != _T_STATE]@"
+            "def consolidate(log, keep):@    if not retention_of(_T_FACT[0])[1]:@        pass@"
+            "    log.rewrite(_prune(log.replay()) + [_T_FACT + k for k in keep])@".replace(
+                "@", chr(10)
+            ),
+            encoding="utf-8",
+        )
         found, excluded = reclaimers(scratch, with_scratch=True)
+        assert ("one_tag_only.py", "consolidate") in found, found
+        assert ("both_tags.py", "consolidate") not in found, found
         assert ("rewrite_reclaimer.py", "consolidate") in found, found
         assert ("bad_reclaimer.py", "compact_the_lake") in found, found
         assert ("good_reclaimer.py", "compact_the_lake") not in found, found
@@ -366,8 +448,9 @@ def main() -> None:
         f"cross-process round trip reds on a withheld immortal record (tag {withheld:#04x}) and passes without "
         "it; the reclaimer scan catches BOTH an unlink-shaped and a rewrite-shaped durable compactor, clears a "
         "guarded one, excludes a scratch-home deletion INTO THE REPORT, and does not mistake str.removeprefix "
-        f"for a removal. Carried debt: {len(KNOWN_UNLABELED)} known reclaimer(s), {len(unlisted_reclaimers())} "
-        "unlisted"
+        "for a removal; a label read is credited PER TAG, so a function that labels one class while a "
+        "one-hop helper drops another is caught while its compliant twin clears. Carried debt: "
+        f"{len(KNOWN_UNLABELED)} known reclaimer(s), {len(unlisted_reclaimers())} unlisted"
     )
 
 

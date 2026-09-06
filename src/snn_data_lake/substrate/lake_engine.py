@@ -61,7 +61,11 @@ RETENTION: dict[int, tuple[str, bool, str]] = {
         "sleep-tick cap that used to drop it is refused by `LakeConsolidation.consolidate`, and "
         "`KnowledgeLog.consolidate` refuses a rewrite that would lose one. Measured when the exemption "
         "landed: 26,037 facts in the live lake, ALL learned, ZERO re-derivable -- so the cap had never "
-        "bound and no learned record is known to have been lost",
+        "bound and no learned record is known to have been lost. Append budget: UNBASELINED (reported, "
+        "never trips) -- this tag has no row in tools/lake_append_baseline.json, so removing the cap "
+        "leaves the learned class with NO live bound, which L4's first AppendBudget caller does not "
+        "supply either (it is scoped to the _T_STATE family). Disclosed rather than implied, after the "
+        "2026-09-06 panel measured the claim that the budget replaced the cap and refuted it",
     ),
     0x02: ("IMMORTAL", False, "_T_SPIKE: AER exemplars are evidence"),
     0x03: (
@@ -81,7 +85,14 @@ RETENTION: dict[int, tuple[str, bool, str]] = {
     0x07: (
         "IMMORTAL",
         False,
-        "_T_STATE: name-keyed state frames (upserted by replay; small, except the coverage ledger, which scales with the body's workspace -- T038)",
+        "_T_STATE: name-keyed state frames (upserted by replay; small, except the coverage ledger, which "
+        "scales with the body's workspace -- T038). THE PER-RECORD EXEMPTION, stated here on the same "
+        "grounds 0x01's is (specs/022 L6 fold, 2026-09-06, after the adversarial panel measured this class "
+        "being reclaimed on the live lake while the label said otherwise): a SUPERSEDED frame -- any record "
+        "under a name that a later record replaces -- MAY be dropped, because no read path can ever return "
+        "it again (`load_named_state` and `_state_index` both take the LAST record per name), so dropping "
+        "it loses no state. The CURRENT frame for every name is never dropped, and "
+        "`home._prune_state_history` reads this label and refuses if the exemption is ever removed",
     ),
     0x08: (
         "COMPACTABLE",

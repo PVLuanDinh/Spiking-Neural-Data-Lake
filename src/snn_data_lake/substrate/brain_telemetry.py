@@ -172,11 +172,16 @@ PROVENANCE = {
     # consolidation night -- every 8th night, and only when the brain persists. Zero therefore
     # means EITHER "nothing was pruned" OR "no consolidation night has happened yet", and a bar
     # cannot tell those apart, which is what this table exists for. lake_refused counts the
-    # immortal guard refusing a rewrite that would lose a learned fact; it should stay 0 forever,
-    # and a non-zero value means the retention label and the prune policy have drifted apart.
+    # immortal guard refusing a rewrite that would lose a record of a non-reclaimable class; it should
+    # stay 0 forever, and a non-zero value means the retention label and the prune policy have drifted
+    # apart -- it counts ImmortalRefusal ONLY, after the panel of 2026-09-06 reproduced a corrupt lake and
+    # a malformed sidecar landing in a bare-ValueError version of this counter. The pair is NOT zeroed on a
+    # refused night: it goes stale, and lake_night says which night it describes.
     "lake_kept": "sleep-only, every 8th night, persisting brains only",
     "lake_pruned": "sleep-only, every 8th night, persisting brains only",
     "lake_refused": "sleep-only; non-zero means the immortal guard fired -- a defect, not a reading",
+    "lake_refusal": "the last refusal message, or empty -- empty means NOT FIRED IN THIS PROCESS",
+    "lake_night": "which night lake_kept/lake_pruned describe; -1 = no consolidation night yet",
     # written only in the sleep tick; pci additionally only when nights % 4 == 0
     # (pci brain.py:2519; criticality brain.py:2650 -- it is ALSO set once at birth, :367)
     "pci": "sleep-only, refreshes every 4th night",

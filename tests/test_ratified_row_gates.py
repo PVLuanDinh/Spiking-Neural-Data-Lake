@@ -147,3 +147,91 @@ def test_refusal_three_arms_itself_when_a_c4_instrument_task_lands():
     assert any("T034" in x and "agency" in x for x in fired), fired
     unarmed = {k: None for k in conclusion_protocol.INSTRUMENTS}
     assert conclusion_protocol.row_findings(tasks=unarmed) == []
+
+
+def _mod(tmp_path, name, body):
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    (tmp_path / name).write_text(body, encoding="utf-8")
+    return tmp_path
+
+
+def test_a_label_read_is_credited_per_tag_not_per_function(tmp_path):
+    """The shape that slipped through L6's first landing: the label read for ONE tag
+    while a helper one hop away drops ANOTHER -- home.consolidate passed the census that
+    way while _prune_state_history dropped 0x07."""
+    head = (
+        "from snn_data_lake.substrate.home import _T_FACT, _T_STATE\n"
+        "from snn_data_lake.substrate.lake_engine import retention_of\n"
+    )
+    tail = (
+        "def consolidate(log, keep):\n"
+        "    if not retention_of(_T_FACT[0])[1]:\n"
+        "        pass\n"
+        "    log.rewrite(_prune(log.replay()) + [_T_FACT + k for k in keep])\n"
+    )
+    bad = _mod(
+        tmp_path / "a",
+        "m.py",
+        head + "def _prune(p):\n    return [x for x in p if x[:1] != _T_STATE]\n" + tail,
+    )
+    good = _mod(
+        tmp_path / "b",
+        "m.py",
+        head + "def _prune(p):\n"
+        "    if not retention_of(_T_STATE[0])[1]:\n"
+        "        return list(p)\n"
+        "    return [x for x in p if x[:1] != _T_STATE]\n" + tail,
+    )
+    assert ("m.py", "consolidate") in immortal_retention.reclaimers(bad)
+    assert ("m.py", "consolidate") not in immortal_retention.reclaimers(good)
+
+
+def test_a_runtime_tag_is_credited_for_reading_the_label_at_all(tmp_path):
+    """A function whose tag is a PARAMETER touches no _T_* symbol, so the per-tag subset
+    test alone would read its empty set as non-compliant. The disclosed hole, pinned here
+    so it cannot widen silently."""
+    (tmp_path / "m.py").write_text(
+        "from snn_data_lake.substrate.lake_engine import retention_of\n"
+        "def compact(path, tag):\n"
+        "    if retention_of(tag)[0] == 'IMMORTAL':\n"
+        "        return 0\n"
+        "    (path / 'lake.bin').unlink()\n",
+        encoding="utf-8",
+    )
+    assert immortal_retention.reclaimers(tmp_path) == []
+
+
+def test_the_state_class_carries_its_stated_exemption_and_the_prune_reads_it():
+    from snn_data_lake.substrate import home as home_mod
+    from snn_data_lake.substrate import lake_engine as le
+
+    label, reclaimable, reason = le.retention_of(0x07)
+    assert (label, reclaimable) == ("IMMORTAL", False)
+    assert "SUPERSEDED" in reason  # what licenses the prune, stated in the registry
+
+    def frame(name, seq, blob):
+        return (
+            home_mod._T_STATE
+            + bytes([len(name)])
+            + name.encode("ascii")
+            + int(seq).to_bytes(4, "little")
+            + blob
+        )
+
+    probe = [frame("n", 1, b"v1"), frame("n", 2, b"v2"), b"\x04foreign"]
+    assert len(home_mod._prune_state_history(probe)) == 2  # superseded frame dropped, foreign kept
+    was = le.RETENTION[0x07]
+    le.RETENTION[0x07] = (was[0], False, "no exemption stated here")
+    try:
+        assert len(home_mod._prune_state_history(probe)) == 3  # the label stops it dead
+    finally:
+        le.RETENTION[0x07] = was
+
+
+def test_the_refusal_has_its_own_type_so_the_counter_means_what_it_says():
+    from snn_data_lake.substrate.home import ImmortalRefusal
+
+    # A ValueError subclass, so existing catchers still catch it -- and a distinct type,
+    # so the sleep tick counts the guard, not a corrupt lake or a malformed sidecar.
+    assert issubclass(ImmortalRefusal, ValueError)
+    assert not isinstance(ValueError("x"), ImmortalRefusal)

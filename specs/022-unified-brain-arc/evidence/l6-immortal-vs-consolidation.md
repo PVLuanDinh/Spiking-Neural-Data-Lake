@@ -61,9 +61,13 @@ is how the two drifted apart. Both halves are made honest:
 2. `KnowledgeLog.consolidate` consults `retention_of` in the same function, which is what makes the label
    load-bearing at the drop site and what retires the `KNOWN_UNLABELED` entry.
 
-Bounding does not disappear; it moves from *silently forget* to `AppendBudget`'s bytes/tick assert, which is
-the plan's declared instrument for it (L4 gives it its first live caller). That is a real trade and it is
-stated here: **this row makes the lake grow rather than let it forget.**
+Bounding of the learned class does not move — **it ends, and nothing replaces it today.** This paragraph
+first said bounding "moves to `AppendBudget`"; the adversarial panel measured that claim and it does not
+hold. `AppendBudget` is a bytes/tick FLOOD assert, not a cumulative cap; it has no live caller anywhere in
+the tree; L4's row scopes its first caller to the `_T_STATE` family; and tag `0x01` carries no measured
+baseline in `tools/lake_append_baseline.json`, so by its own contract it would not trip for `_T_FACT` even
+once wired. **This row makes the lake grow rather than let it forget, with no live bound on the learned
+class.** That is the trade, stated without the softener.
 
 ### 2.4 Red and control (L-R7)
 
@@ -166,12 +170,17 @@ table that arrives empty teaches nothing.
 
 ### 4.3 The trade, stated plainly
 
-**This row makes the lake grow rather than let it forget.** Bounding does not disappear; it moves from
-*silently discard the least-recalled learned records* to `AppendBudget`'s bytes/tick assert, which is the
-plan's declared instrument for growth and which L4 gives its first live caller. On today's numbers the trade
-costs nothing — the cap was 10× above the live count — but it is a real commitment for a never-off brain, and
-the class that dominates the lake (`_T_COALITION`, 80.21%) is IMMORTAL too and already carries a baselined
-flood assert.
+**This row makes the lake grow rather than let it forget, and nothing bounds the learned class today.**
+The first draft of this section said bounding "moves" to `AppendBudget`. The panel measured that and it is
+false in three ways at once: `AppendBudget` has no live caller, L4 scopes its first caller to the `_T_STATE`
+family rather than to facts, and `0x01` has no baseline row in `tools/lake_append_baseline.json` — so even
+wired it would never trip for this class. The honest statement is that the bound is GONE and its replacement
+is unbuilt.
+
+On today's numbers the trade costs nothing measurable: 26,037 learned facts against a cap of 250,000, so the
+cap was about 10x above the live count and had never fired. But the commitment is real for a never-off brain,
+and the growth to watch is not this class at all — `_T_COALITION` is 80.21% of the lake, is IMMORTAL too, and
+is the one immortal tag here that DOES carry a baselined flood assert.
 
 ### 4.4 What this row did NOT do
 
@@ -197,3 +206,87 @@ standing-TODO lines, so the debt is recorded in a comment where the rows used to
 must not be read as a satisfied promise.** Reachability is not charge.
 
 The standing-TODO list falls from 9 open `wire` exemptions to 5.
+
+---
+
+## 5. The adversarial panel, and what it changed (2026-09-06)
+
+Three lenses — live path, measurement, policy — read the two-commit arc independently, and every finding was
+handed to a separate agent instructed to refute it. Twelve were verified; **eight survived and four were
+refuted.** They collapse to four distinct defects, one of which is the same shape as the defect this row was
+built to close.
+
+### 5.1 The one that matters: the fix watched one tag while the same function dropped another
+
+`KnowledgeLog.consolidate` calls `_prune_state_history` twelve lines below the guard L6 added, and that
+helper drops superseded records of tag `0x07` — `_T_STATE`, labelled IMMORTAL with `reclaimable=False`. **A
+reviewer measured it happening on the live lake between the §3.1 census and theirs.** The guard was scoped to
+`_T_FACT` alone, and the census let it through because `reclaimers()` accepted **one** `retention_of` token
+as exempting an entire function.
+
+That is the same failure as the BLOCKER of the previous arc, one level down: the instrument's exemption was
+coarser than the pathology. Three corrections:
+
+1. **A label read is now credited PER TAG.** The census collects every `_T_*` symbol a reclaiming function
+   touches — following one hop into same-module callees, because here the tag reference and the destruction
+   sit in different functions exactly one call apart — and requires each to appear as an argument to a
+   `retention_of` call. The red is the exact shape that slipped through; the compliant twin, identical but
+   for the second label read, clears. Both are in the self-check and in the test file.
+2. **`RETENTION[0x07]` states its per-record exemption**, on the same grounds `0x01` got one: a superseded
+   frame is unreachable, because `load_named_state` and `_state_index` both take the last record per name,
+   so dropping it loses no state. The current frame for every name is never dropped.
+3. **`_prune_state_history` reads that label** and returns its input untouched if the exemption is ever
+   removed. Its red does exactly that and requires the prune to stop dead — and the red had to be rebuilt
+   once, because the first version ran against a lake the same self-check had already pruned (19 in, 19 out,
+   both arms: a red with nothing to remove cannot fail, which is the shape it exists to catch).
+
+**A disclosed hole remains.** A function whose tag is computed at runtime touches no `_T_*` symbol, so it is
+credited for reading the label at all and its per-tag attribution is skipped. A reclaimer that computes its
+tag dynamically can still drop an immortal class and pass. The two-hop version of the same laundering also
+passes. Both are pinned by a test so the hole cannot widen without someone noticing.
+
+### 5.2 The counter meant something other than what it published
+
+`except ValueError` spanned the whole consolidation block, and two verifiers reproduced unrelated
+`ValueError`s landing in the one number published as *"the retention label and the prune policy have drifted
+apart"*: a lake file that is not a `BinLog` (reachable live, because the cached log is rebuilt whenever it
+goes stale) and a `recall_trace.json` holding valid JSON that is not an object. Fixed with a dedicated
+`ImmortalRefusal(ValueError)` — a subclass so existing catchers still catch it, a distinct type so the tick
+counts the guard and nothing else.
+
+### 5.3 The visibility fix reintroduced the defect it was written to close
+
+`_lake_refusal` was captured, truncated to 200 characters, and read nowhere — the same
+computed-never-consumed shape as the `_lake_kept` / `_lake_pruned` dormancy that commit existed to fix,
+reintroduced in the same edit. It now reaches `state()`, with its PROVENANCE row. `lake_night` was added
+alongside: the kept/pruned pair is **not** zeroed on a refused or swallowed night, because that would
+reinstate the "no consolidation night yet" ambiguity those rows exist to remove — it goes stale, and
+`lake_night` is what makes the staleness visible.
+
+### 5.4 The bounding claim was softer than the truth
+
+§2.3 and §4.3 said bounding "moves" to `AppendBudget`. It does not move — **it ends.** `AppendBudget` is a
+bytes/tick flood assert rather than a cumulative cap, it has no live caller anywhere in the tree, L4 scopes
+its first caller to the `_T_STATE` family, and `0x01` has no baseline row, so even once wired it would not
+trip for this class. Both paragraphs are corrected, and `RETENTION[0x01]`'s reason now carries the same
+*"Append budget: unbaselined"* disclosure that `0x09` and `0x0B` already carry.
+
+### 5.5 What was refuted
+
+Four findings did not survive. A claim that the guard's fresher read of the lake would refuse a legitimate
+consolidation on any concurrent append was refuted on the mechanism: the guard reads the file because the
+rewrite reads the file, and it is the same read the destructive path uses. A claim that the re-derivable
+exemption governs a class no live writer produces was refuted as a different row's work, with the history
+checked. A claim that the stale 97.64% figure should have been dated at every occurrence was refuted as a
+documentation-uniformity preference no reader path depends on — and it named five further undated
+occurrences, which is recorded here even though nothing was changed for it. A claim that the guard and the
+policy read the same predicate and so provide no independent coverage was refuted **by a measured positive**:
+with the registry untouched, a learned fact appended between the caller's snapshot and the rewrite is
+destroyed when the label is flipped and preserved when it is not.
+
+### 5.6 The honest caveat
+
+**This fold is itself unreviewed code.** These four changes were written in response to the panel and have
+not been through a panel of their own. What they have: each new arm's constructed red run before its green,
+both module self-checks, 14 brain-free tests, and the arc's battery. That is battery-verified, not
+panel-reviewed.

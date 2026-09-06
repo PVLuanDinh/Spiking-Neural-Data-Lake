@@ -1242,6 +1242,7 @@ class Brain:
         self._lake_pruned = 0
         self._lake_refused = 0
         self._lake_refusal = ""
+        self._lake_night = -1  # no consolidation night yet; -1 is not a night number
         self._selfbuild_last = None  # last autonomous self-build result (opt-in via NORD_SELFMOD=1)
         self._selfbuild_proposer = (
             None  # lazily-built brain-native self-build proposer (three-factor learner)
@@ -3631,7 +3632,7 @@ class Brain:
                     LakeConsolidation,
                     RecallTrace,
                 )
-                from snn_data_lake.substrate.home import KnowledgeLog
+                from snn_data_lake.substrate.home import ImmortalRefusal, KnowledgeLog
 
                 klog = KnowledgeLog()
                 records = list(klog.replay())
@@ -3640,17 +3641,24 @@ class Brain:
                 )  # USE IT OR LOSE IT: never-recalled learned records fall out first
                 survivors = LakeConsolidation().consolidate(records, trace=trace)
                 self._lake_kept, self._lake_pruned = klog.consolidate(survivors)
+                self._lake_night = self._nights  # which night the pair above describes
                 trace.prune_to(survivors)  # drop trace entries for pruned records, then persist
                 trace.save()
-            except ValueError as exc:
+            except ImmortalRefusal as exc:
                 # THE IMMORTAL GUARD REFUSED (specs/022 L6). It raises only when a survivor set would
-                # lose a LEARNED _T_FACT record, which LakeConsolidation no longer produces -- so a fire
+                # lose a record of a non-reclaimable class, which the policy no longer produces -- so a fire
                 # here means the policy and the label have drifted apart again. Caught SEPARATELY from the
                 # broad swallow below because that swallow would turn "the lake never forgets" into "the
                 # lake is never consolidated" with nothing anywhere saying so. Counted and reported in
                 # state(); the tick continues, because a refused prune is safe and a dead brain is not.
+                #
+                # The TYPE is load-bearing. This branch caught bare `ValueError` for one commit, and the
+                # panel reproduced two unrelated ValueErrors from this same block landing in the counter: a
+                # lake file that is not a BinLog, and a malformed recall-trace sidecar. Neither is retention
+                # drift. ImmortalRefusal is raised only by the guard; everything else falls through below.
                 self._lake_refused += 1
                 self._lake_refusal = str(exc)[:200]
+                self._lake_night = self._nights
             except Exception:
                 pass
         if self._persist:  # NIGHTLY SKILL FORMATION (bounded): one small env-budgeted
@@ -3838,6 +3846,14 @@ class Brain:
             "lake_kept": self._lake_kept,
             "lake_pruned": self._lake_pruned,
             "lake_refused": self._lake_refused,
+            # The MESSAGE, not only the count. It was captured and dropped for one commit -- the same
+            # computed-never-consumed defect the commit that added it was written to close -- and a bare
+            # count cannot say WHICH class refused or why.
+            "lake_refusal": self._lake_refusal,
+            # WHICH night the kept/pruned pair describes. They are not zeroed on a refused or swallowed
+            # night, because zeroing would reinstate the "no consolidation night yet" ambiguity; they go
+            # STALE instead, and this is what makes the staleness visible.
+            "lake_night": self._lake_night,
             # ---- diffuse neuromodulator levels (stepped EVERY wake tick; previously live but unexposed) ----
             # Raw levels only. Derived quantities (distance travelled, place error) are the reader's job --
             # state() must not carry two representations of the same fact.
