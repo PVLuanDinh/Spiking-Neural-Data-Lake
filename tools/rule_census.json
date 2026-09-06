@@ -6,7 +6,7 @@
   ],
   "note": "dispositions per T050's expressibility categories; UNDISPOSITIONED is the honest day-one state for unadjudicated LOCAL rules -- the WAVE (T051c-wave) fills rows; regen_rule_census enforces per-row monotonicity through the sanctioned edit path, rule_composer 1e polices membership vs the live census, and the ADVANCE direction (whether a disposition's text is honest) is review-grade, said plainly",
   "ratchet_baseline": {
-   "rows": 102,
+   "rows": 103,
    "undispositioned": 56
   },
   "source": "gradient_claim_gate.census() via rule_composer.regen_rule_census -- regeneration is the only edit path for rows; new adjudications join _CENSUS_ADJUDICATED there; the regen refuses disposition retractions and dead entries",
@@ -292,6 +292,11 @@
    "disposition": "direct-solve -- no dw stream to compose (T050 census category)",
    "governed": true,
    "kind": "DIRECT_SOLVE"
+  },
+  "hippocampus/online_readout.py::OnlineReadout.learn": {
+   "disposition": "expressed -- L1c (2026-09-06): a single-sample output-layer delta / error-sign step on beta; lr = mu / (||s||^2 + 1); no hidden error, no transpose (the module self-check holds the reds)",
+   "governed": true,
+   "kind": "LOCAL"
   },
   "hippocampus/sleep_replay.py::AttractorNet._normalize": {
    "disposition": "UNDISPOSITIONED",

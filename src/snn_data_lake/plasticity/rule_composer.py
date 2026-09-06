@@ -744,6 +744,12 @@ def rule_census_check(artifact, rules):
 #: silently cost a disposition and loosened the ratchet).
 _CENSUS_ADJUDICATED = (
     (
+        "hippocampus/online_readout.py",
+        "OnlineReadout.learn",
+        "expressed -- L1c (2026-09-06): a single-sample output-layer delta / error-sign step on beta; "
+        "lr = mu / (||s||^2 + 1); no hidden error, no transpose (the module self-check holds the reds)",
+    ),
+    (
         "basal_ganglia/r_stdp.py",
         "reward",
         "expressible -- PROVEN: T050 equivalence via the exported check; T051b-iv deposit through the kernel",
