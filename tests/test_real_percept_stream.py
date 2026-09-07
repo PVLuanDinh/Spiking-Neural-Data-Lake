@@ -366,14 +366,19 @@ def test_the_online_readout_beats_the_stale_one_on_the_wake_stream():
     strict=True,
     raises=AssertionError,
     reason=(
-        "SC-012a did NOT fire (evidence/sc-012a-width.md section 3). (a) and (b) are MET -- "
-        "acc(16)-acc(1) t=5.024 p=0.0039 mean +0.465 on 8 of 8, and acc(16) clears its own "
-        "majority floor t=3.936 p=0.0039 -- but the veto (c) FIRED: the SAME grid on "
-        "marginal-preserving shuffled labels also rose, t=1.928 p=0.0469 mean +0.164. A 1-unit "
-        "readout cannot represent the label marginal on this 5-class skewed stream, so widening "
-        "recovers the prior with or without a percept->category pairing, and acc(1) is a "
-        "degenerate baseline shared by both grids. Only instrument failures (same rows, the reach "
-        "control, the width-varied control, degenerate ties) raise Failed and escape this xfail."
+        "SC-012a is UNREADABLE at this head and its 2026-09-07 verdict is RETRACTED "
+        "(evidence/sc-012a-width.md section 6). The criterion's acc(1) baseline is an ARTEFACT of "
+        "the scoring path, not a weak readout: NGSNN rates are counts/T and therefore "
+        "non-negative, so a held-out row on which the single unit never fires has an exactly-zero "
+        "score vector and `(S @ beta).argmax()` resolves to column 0 -- while the engine buffers "
+        "percept_{t-1} -> category_t, so class 0 is NEVER a target (train classes are 1..N). "
+        "Measured with two counters that fail differently and agree: at CAP1 the tie-break decides "
+        "45/60 held-out rows on seed 0 (acc 0.233; 0.933 once those rows are dropped) and 60/60 on "
+        "seed 1 (acc 0.000). Conjunct (a) and its shuffled null (c) both subtract that artefact, "
+        "so neither can be read. THIS TEST PINS THE DEFECT, not the criterion: it asserts the "
+        "baseline is non-degenerate, which fails today. When the scoring path stops answering an "
+        "impossible class this XPASSes strictly -- which is the signal to re-run SC-012a and read "
+        "its conjuncts for the first time."
     ),
 )
 def test_width_buys_next_category_accuracy_and_the_shuffled_grid_does_not():
@@ -422,10 +427,29 @@ def test_width_buys_next_category_accuracy_and_the_shuffled_grid_does_not():
     ca, ta, pa, na = _paired(d_a)
     cb, tb, pb, nb = _paired(d_b)
     cc, tc, pc, nc = _paired(d_c)
-    if min(na, nb, nc) < 5:
-        pytest.fail(f"DEGENERATE-TIES: {na}/{nb}/{nc} non-tied seeds", pytrace=False)
+    # (a) and (b) are PASS conjuncts, so few non-tied seeds means no measurement. (c) is a VETO, so
+    # ties are evidence FOR the criterion and a motionless null is its STRONGEST reading -- guarding
+    # it here would file the cleanest possible fire as an instrument break (the panel's finding).
+    if min(na, nb) < 5:
+        pytest.fail(f"DEGENERATE-TIES on a PASS conjunct: {na}/{nb} non-tied seeds", pytrace=False)
 
-    # --- the criterion: (a) AND (b) AND NOT (c), through assert so the xfail carries it ---------
+    # --- THE BLOCKING DEFECT, asserted first: is acc(1) a readout at all? ----------------------
+    # The criterion subtracts acc(1) in (a) and again in its null (c). If the CAP1 readout never
+    # fires on the held-out rows, `(S @ beta).argmax()` answers column 0 -- a class the stream never
+    # emits as a target -- and acc(1) is a constant wrong answer rather than a baseline. Neither
+    # conjunct can be read while that holds. `maj` is the slice's own majority rate, so a readout
+    # that is merely WEAK still lands near it; one that answers an impossible class every time
+    # lands at ~0. This is the assert the strict xfail carries.
+    degenerate = [s for s in L_SEEDS if real[(s, "CAP1")]["acc"] <= 0.02]
+    assert not degenerate, (
+        f"acc(1) is an ARTEFACT, not a baseline: CAP1 scores <=0.02 at seeds {degenerate} "
+        f"(all-zero score vectors resolving to class 0, which is never a target). "
+        f"SC-012a is unreadable until the scoring path stops answering an impossible class. "
+        f"For the record, computed but NOT to be read as a verdict: "
+        f"(a) t={ta:.3f} p={pa:.4f}; (b) t={tb:.3f} p={pb:.4f}; (c) t={tc:.3f} p={pc:.4f}"
+    )
+
+    # --- the criterion: (a) AND (b) AND NOT (c) -- reached only once the baseline is real -------
     assert ca and cb and not cc, (
         f"(a) acc(16)-acc(1) t={ta:.3f} p={pa:.4f} diffs {[round(x, 3) for x in d_a]}; "
         f"(b) acc(16)-majority t={tb:.3f} p={pb:.4f}; "

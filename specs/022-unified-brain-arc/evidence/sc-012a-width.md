@@ -188,7 +188,13 @@ only ever runs after the verdict is not a control.
 | CAP16 | 9–14 | 14–16 | **2/8** | 0.8066 | **+0.191 (t 3.94)** | −0.147 (t −2.65) |
 | INCUMBENT | 2–7 | — | n/a | 0.7479 | — | — |
 
-### 3.3 The criterion, conjunct by conjunct
+### 3.3 The criterion, conjunct by conjunct — **RETRACTED, see section 6**
+
+> **THIS SUBSECTION'S VERDICT IS WITHDRAWN.** The arc's own review panel measured, and an independent
+> two-counter check confirmed, that `acc(1)` is an ARTEFACT of the scoring path rather than a baseline:
+> both conjunct (a) and its null (c) subtract it, so neither can be read. The numbers below are what the
+> instrument produced and are kept verbatim, because the retraction is only legible beside them. **They
+> are not a result.** Section 6 carries the defect and what it costs.
 
 - **(a) MET.** acc(16) − acc(1): t **5.024**, p 0.0039, mean **+0.4646**, 8 wins / 0 losses, 0 ties,
   random-sign false-positive rate 0.035.
@@ -247,7 +253,14 @@ the reading, they do not veto a ratified criterion — and this failure does not
 9–14 genuinely differ (control 3, 8/8). What it bounds is the LANGUAGE: every claim here is about width up
 to the **realized 9–14**, never "up to 16".
 
-## 4. Disposition
+## 4. Disposition — **RETRACTED, see section 6**
+
+> **NONE OF THE FOUR ACTIONS BELOW IS TAKEN.** They were written against a verdict that section 6
+> withdraws. In particular item 2 — "L2 stays deleted and is NOT rebuilt" — is a P8-clause-5 action on a
+> null the instrument did not earn, which is exactly the shape this project recorded on 2026-09-05. The
+> only disposition that stands is the one in section 6: **SC-012a is UNREAD, the row stays OPEN, and the
+> "units admitted, never growth" reporting rule stays in force because it has not been lifted, not
+> because this arc measured anything that licenses keeping it.**
 
 **SC-012a did not fire, so section 2.3's not-fired branch executes**, and the licence for it is earned:
 the cap did vary width (controls 2, 3, 4 MET; 1 partial), so this is a measured null and not an instrument
@@ -294,3 +307,83 @@ A fifth, found by the review and fixed in the in-tree test rather than the harne
 declared `raises=AssertionError` absorbs any `assert`-based instrument check, so a broken instrument would
 have been filed as the pre-registered null. Instrument checks now raise `Failed`, which the xfail cannot
 absorb.
+
+## 6. THE RETRACTION — `acc(1)` is an artefact of the scoring path, so SC-012a is UNREAD
+
+Found by this arc's own three-lens panel on the frozen head `5d157e3`, filed as a BLOCKER, and confirmed
+by an independent two-counter check before any of it was acted on. **The panel's verifier put it more
+sharply than the lens that filed it**: neutralising the defect symmetrically does not merely weaken the
+result, it can INVERT the verdict.
+
+### 6.1 The mechanism, in the tree rather than in the harness
+
+`NGSNN` rates are spike counts divided by `T` and are therefore **non-negative**. A held-out row on which
+the fitted units never fire has an exactly-zero rate vector, so its score vector `S @ beta` is exactly
+zero, and `argmax` over a tie resolves to **column 0**. Meanwhile `self.m = int(y.max()) + 1` gives `beta`
+a column 0 that exists — while the engine buffers `percept_{t-1} -> category_t`, so **class 0 is never a
+target**: the training classes on these cells are 1..5, 1..4 or 1..3. Both scoring branches take that
+argmax (the closed-gate branch on `_batch_beta`, the open-gate branch through `model.predict`).
+
+So a CAP1 cell whose one unit is silent on the held-out slice does not score "badly". It answers a class
+that **cannot be correct, on every such row**, and is recorded as an accuracy.
+
+### 6.2 The measurement (two counters that fail differently, in one execution)
+
+Counter A reads at the SOURCE (rows whose rate/score vector is exactly zero). Counter B reads at the
+CONSUMER (rows where the prediction is 0, and rows where the prediction is outside the training classes).
+Positive control in the same command: whether class 0 appears among the targets at all.
+
+| seed | held-out rows | class 0 a target? | A zero-score rows | B pred == 0 | counters agree | rows decided by the tie-break | acc as scored | acc excluding those rows |
+|---|---|---|---|---|---|---|---|---|
+| 0 | 60 | **no** (train 1–5) | 45 | 45 | yes | **75.0 %** | 0.2333 | **0.9333** |
+| 1 | 60 | **no** (train 1–3) | 60 | 60 | yes | **100 %** | 0.0000 | undefined — no rows remain |
+
+`beta` carries 6 columns on seed 0 and 4 on seed 1; column 0 is a phantom in both.
+
+### 6.3 What this costs, stated exactly
+
+- **Conjunct (a) is void.** `acc(16) − acc(1)` subtracts a constant wrong answer, not a baseline. Its
+  +0.465 is mostly the distance from "answers an impossible class" to "answers a real one".
+- **The null (c) is void for the same reason**, and by the same subtraction — the panel measured the
+  tie-break deciding 39.5 % of the SHUF statistic's rows at CAP1. The veto that produced the arc's
+  headline is generated by the defect it was supposed to be independent of.
+- **Section 3.4's attribution is WRONG.** "A 1-unit readout cannot represent the label marginal" was a
+  plausible story fitted to the numbers. The measured mechanism is that the readout does not fire at all
+  and is scored as voting for a phantom class. A readout that were merely weak would land near its
+  majority floor; these land at 0.000.
+- **What is NOT affected:** the cap amendment of section 2.5 (independently reproduced by the panel:
+  `eps_tol=0.0` changes only the growth stop, and the un-amended grid really was bit-identical across
+  CAP4/8/16), the same-rows result, the determinism of the stream across arms, and the finding that
+  forced width does not beat the incumbent — that last one compares two arms that both fire, though it
+  now rests on a scoring path with a known defect and is reported, not relied on.
+
+### 6.4 Disposition
+
+1. **SC-012a is UNREAD. The row stays OPEN.** No verdict is published, in either direction. It is not
+   "did not fire"; it is "could not be read".
+2. **No P8-clause-5 action is taken.** L2 is not re-scoped on this arc's authority, the width lever is not
+   moved to T065 on it, and nothing about the reporting rule changes. The "units admitted, never growth"
+   wording stays in force **because it was never lifted**, not because this arc licensed keeping it.
+3. **The in-tree test pins the DEFECT rather than the criterion.** It asserts the CAP1 baseline is
+   non-degenerate; that assert fails today and the strict xfail carries it. The day the scoring path stops
+   answering an impossible class, the test XPASSes strictly — a reachable red whose firing is the signal
+   to re-run SC-012a and read its conjuncts for the first time.
+4. **What a re-measurement owes.** A scoring path that cannot answer a class absent from the training
+   targets (restricting the argmax to observed classes, or recording an all-zero score as an abstention
+   and reporting the abstention rate beside the accuracy) — and, because that is a change to a SHARED
+   instrument that every accuracy in this project's growth work reads, it is **its own arc with its own
+   red**, not a fix folded into this one. Until then every `NGSNN`-scored accuracy in this tree on a slice
+   where units may be silent carries the same contamination; **that is a finding about the project's
+   instruments, not about SC-012a**, and it is the most valuable thing this arc produced.
+
+### 6.5 Why this is recorded rather than quietly re-run
+
+The verdict in section 3.3 was committed at `5d157e3` and would have been pushed. It was the panel — three
+lenses on a frozen tree, every finding required to be reproduced by a command — that caught it, and the
+adversarial verifier that measured the inversion the filing had explicitly denied. The record keeps the
+withdrawn numbers verbatim beside the retraction, because a retraction with the retracted result deleted
+cannot be checked.
+
+**The through-line of 2026-09-06 held for a fourth day, and one level deeper than before: every arc's
+worst defect was in its own measuring apparatus — and this time the apparatus was not the harness the arc
+wrote, it was the shared scoring path the arc trusted.**
