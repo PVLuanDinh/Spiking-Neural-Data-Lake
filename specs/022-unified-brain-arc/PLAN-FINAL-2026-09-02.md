@@ -538,7 +538,7 @@ that baseline.
   majority floor at the bar; null: the same grid with labels shuffled marginal-preserving must not rise.
   Reported beside it, not a bar: the marginal gain per doubling, acc(2N) − acc(N) at each N (the efficiency
   signal Part C names).
-- **Exit:** `evidence/l-exit.md`.
+- **Exit:** `evidence/l-exit.md` — **WRITTEN 2026-09-07.** Phase 2 closes having DELETED more mechanism than it landed: 6 rows landed (L1a, L1c, L3, L4b, L4c, L5, L6), **3 built and deleted on their own nulls** (L1b, L2, T069), L4 half-open, SC-011 blocked for want of a stream with measured succession, and SC-012a FIRED on its second reading. The surviving learning mechanism is L1c's online READOUT rule; both input-weight rules lost to frozen rows. Width buys accuracy but is nearly exhausted where the brain already sits (8→16 is −0.013; forced width does not beat the incumbent, t −0.141), and **nothing at any width reaches the persistence floor** — the phase's most durable negative, and the bound Phase 3 inherits.
 
 ### Phase 3 — A substrate that scales (lake-resident, sparse), then the prior — US3 re-ordered
 
