@@ -362,36 +362,31 @@ def test_the_online_readout_beats_the_stale_one_on_the_wake_stream():
 
 
 @pytest.mark.slow
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "SC-012a is UNREADABLE at this head and its 2026-09-07 verdict is RETRACTED "
-        "(evidence/sc-012a-width.md section 6). The criterion's acc(1) baseline is an ARTEFACT of "
-        "the scoring path, not a weak readout: NGSNN rates are counts/T and therefore "
-        "non-negative, so a held-out row on which the single unit never fires has an exactly-zero "
-        "score vector and `(S @ beta).argmax()` resolves to column 0 -- while the engine buffers "
-        "percept_{t-1} -> category_t, so class 0 is NEVER a target (train classes are 1..N). "
-        "Measured with two counters that fail differently and agree: at CAP1 the tie-break decides "
-        "45/60 held-out rows on seed 0 (acc 0.233; 0.933 once those rows are dropped) and 60/60 on "
-        "seed 1 (acc 0.000). Conjunct (a) and its shuffled null (c) both subtract that artefact, "
-        "so neither can be read. THIS TEST PINS THE DEFECT, not the criterion: it asserts the "
-        "baseline is non-degenerate, which fails today. When the scoring path stops answering an "
-        "impossible class this XPASSes strictly -- which is the signal to re-run SC-012a and read "
-        "its conjuncts for the first time."
-    ),
-)
 def test_width_buys_next_category_accuracy_and_the_shuffled_grid_does_not():
     """SC-012a (spec.md:183; plan Phase 2, ratified under OD-5): with admission capped exogenously
     at N, paired (acc(16) - acc(1)) clears the bar AND acc(16) clears its own majority floor, AND
-    the same grid with the labels shuffled marginal-preserving does not rise. Until it fires,
-    owner-facing surfaces say units ADMITTED, never growth (tests/test_units_admitted_wording).
+    the same grid with the labels shuffled marginal-preserving does not rise.
 
-    WHAT RAISES WHAT, and it is the point of the structure: the three conjuncts fail through
-    `assert` (AssertionError), which the strict xfail above absorbs as the recorded null. Every
+    FIRED 2026-09-07, on the SECOND reading (evidence/sc-012a-width.md section 7). The first
+    reading was RETRACTED: acc(1) was an artefact of the scoring path -- an all-zero rate row's
+    argmax answered column 0, a class the stream never emits as a target -- and conjunct (a) and
+    its null (c) both subtracted it. `NGSNN.decide` fixed that (evidence/scoring-path-abstention.md)
+    and the grid was re-run: (a) t=2.596 p=0.0234 mean +0.151 on 6 of 8; (b) t=4.011 p=0.0039 mean
+    +0.194 on 8 of 8; (c) the shuffled grid FELL, t=-2.346 mean -0.036. The fix CUT the effect from
+    +0.465 to +0.151 and it still clears, while the null went from marginally rising to cleanly
+    falling -- which is why the surviving effect is read as real rather than as the artefact's
+    residue. Qualified, and the record says so: at N=16 the pursuit saturates below the cap on 6 of
+    8 seeds, so "16" realizes 9-14 units.
+
+    THIS TEST NO LONGER CARRIES AN XFAIL. It carried one while the criterion was unreadable, with
+    the standing note that it would XPASS the day the scoring path was fixed. That day came, the
+    grid was re-read, and the pin is now the criterion itself.
+
+    WHAT RAISES WHAT, kept from the xfail era because it is still the right structure: the three
+    conjuncts fail through `assert` (AssertionError) -- the criterion's own verdict -- while every
     INSTRUMENT check fails through `pytest.fail` -> `Failed`, which is NOT a subclass of
-    AssertionError, so it is never absorbed -- an instrument that broke can never be filed as the
-    pre-registered result."""
+    AssertionError. The separation exists so an instrument that broke can never be filed as a
+    criterion result, in either direction."""
     import random
 
     real = _run_arms(["CAP1", "CAP16"])
@@ -433,21 +428,24 @@ def test_width_buys_next_category_accuracy_and_the_shuffled_grid_does_not():
     if min(na, nb) < 5:
         pytest.fail(f"DEGENERATE-TIES on a PASS conjunct: {na}/{nb} non-tied seeds", pytrace=False)
 
-    # --- THE BLOCKING DEFECT, asserted first: is acc(1) a readout at all? ----------------------
+    # --- THE BLOCKING DEFECT, checked before the conjuncts: is acc(1) a readout at all? --------
     # The criterion subtracts acc(1) in (a) and again in its null (c). If the CAP1 readout never
-    # fires on the held-out rows, `(S @ beta).argmax()` answers column 0 -- a class the stream never
-    # emits as a target -- and acc(1) is a constant wrong answer rather than a baseline. Neither
-    # conjunct can be read while that holds. `maj` is the slice's own majority rate, so a readout
-    # that is merely WEAK still lands near it; one that answers an impossible class every time
-    # lands at ~0. This is the assert the strict xfail carries.
+    # fires on the held-out rows, a bare argmax answers column 0 -- a class the stream never emits
+    # as a target -- and acc(1) is a constant wrong answer rather than a baseline. That is how the
+    # FIRST reading of this criterion was produced, and why it was retracted. `NGSNN.decide` now
+    # answers the training prior on a silent row, so CAP1 lands AT its majority floor instead of at
+    # ~0; this check is the regression pin, and it fails through `Failed` because a scoring path
+    # that broke again is an INSTRUMENT failure, never a criterion result.
     degenerate = [s for s in L_SEEDS if real[(s, "CAP1")]["acc"] <= 0.02]
-    assert not degenerate, (
-        f"acc(1) is an ARTEFACT, not a baseline: CAP1 scores <=0.02 at seeds {degenerate} "
-        f"(all-zero score vectors resolving to class 0, which is never a target). "
-        f"SC-012a is unreadable until the scoring path stops answering an impossible class. "
-        f"For the record, computed but NOT to be read as a verdict: "
-        f"(a) t={ta:.3f} p={pa:.4f}; (b) t={tb:.3f} p={pb:.4f}; (c) t={tc:.3f} p={pc:.4f}"
-    )
+    if degenerate:
+        pytest.fail(
+            f"acc(1) is an ARTEFACT, not a baseline: CAP1 scores <=0.02 at seeds {degenerate} "
+            f"(all-zero score vectors resolving to class 0, which is never a target -- "
+            f"NGSNN.decide's prior fallback has regressed). SC-012a is unreadable while that "
+            f"holds. Computed but NOT to be read as a verdict: (a) t={ta:.3f} p={pa:.4f}; "
+            f"(b) t={tb:.3f} p={pb:.4f}; (c) t={tc:.3f} p={pc:.4f}",
+            pytrace=False,
+        )
 
     # --- the criterion: (a) AND (b) AND NOT (c) -- reached only once the baseline is real -------
     assert ca and cb and not cc, (

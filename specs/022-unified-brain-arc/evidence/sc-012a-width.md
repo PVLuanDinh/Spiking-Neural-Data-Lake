@@ -387,3 +387,87 @@ cannot be checked.
 **The through-line of 2026-09-06 held for a fourth day, and one level deeper than before: every arc's
 worst defect was in its own measuring apparatus — and this time the apparatus was not the harness the arc
 wrote, it was the shared scoring path the arc trusted.**
+
+## 7. THE SECOND READING — on the fixed instrument, SC-012a **FIRES**
+
+The defect §6 found was fixed in its own arc (`evidence/scoring-path-abstention.md`: `NGSNN.decide`,
+one decision rule, a silent row answers the training prior). The grid was then re-run in full — 88
+cells, 11 arms x 8 seeds x 800 ticks, at the committed head, provenance guard PASS, 0 seeds excluded,
+0 counter disagreements.
+
+**The first stage-A run was discarded and re-run**, because its cells recorded the pre-commit head
+while the fix sat uncommitted in the working tree. The provenance guard would have refused them, and
+that is the guard doing its job rather than an inconvenience to route around.
+
+### 7.1 The grid, before and after the fix (means over 8 seeds)
+
+| arm | units | acc BEFORE | acc **AFTER** | acc − majority (after) |
+|---|---|---|---|---|
+| CAP1 | 1 (8/8) | 0.3420 | **0.6583** | +0.043 |
+| CAP2 | 2 (8/8) | 0.6740 | 0.6997 | +0.084 |
+| CAP4 | 3–4 | 0.7167 | 0.7708 | +0.156 |
+| CAP8 | 6–8 | 0.8069 | **0.8215** | +0.206 |
+| CAP16 | 9–14 | 0.8066 | 0.8090 | +0.194 |
+| INCUMBENT | 2–7 | 0.7479 | 0.8160 | — |
+
+The degenerate arm moved 0.342 → 0.658 and now sits just above its own majority floor; the wide arms
+moved by ~0.002–0.015. The fix reached the arm it was built for.
+
+### 7.2 The criterion, conjunct by conjunct — this time readable
+
+- **(a) MET.** acc(16) − acc(1): t **2.596**, p 0.0234, mean **+0.1507**, 6 wins / 2 losses, 0 ties,
+  random-sign false-positive rate 0.045.
+- **(b) MET.** acc(16) − majority(16): t **4.011**, p 0.0039, mean **+0.1937**, 8 wins / 0 losses.
+- **(c) HOLDS.** The marginal-preserving shuffled grid did **not** rise — it **FELL**: t **−2.346**,
+  p 0.9844, mean **−0.0358**, 1 win / 5 losses / 2 ties.
+
+**SC-012a FIRES.**
+
+### 7.3 Why the fire is read as real and not as the artefact's residue
+
+**The fix made firing HARDER, and it fired anyway.** On the contaminated instrument (a) was +0.465 at
+t 5.024; on the fixed one it is +0.151 at t 2.596 — **two thirds of the effect was the artefact**, and
+the third that survives does so against a baseline that now scores at its own prior rather than at zero.
+An instrument change that manufactured a result would have moved the number the other way.
+
+**The null improved at the same time.** Before: (c) marginally ROSE (t 1.928, just past the 1.895 bar),
+which is what vetoed the first reading. After: (c) FALLS (t −2.346), and control 6 shows `CAP1_SHUF`
+sitting exactly AT its majority floor (per-seed acc − maj = 0.0, 0.0, −0.0, −0.031, −0.0, 0.0, 0.0, 0.0).
+That is the designed behaviour of the fix — a shuffled, silent readout answers its prior — and it is what
+removed the contamination from the null rather than from the treatment alone.
+
+### 7.4 Qualifications, none of them smoothed
+
+- **Control 1 still FAILS at N = 16 (2/8 seeds).** The pursuit saturates below the cap and `prune_unearned`
+  cuts further, so **"N = 16" realizes 9–14 units**. Every claim here is bounded by the width REALIZED.
+- **(a) is carried by 6 of 8 seeds, with two NEGATIVE** (−0.117, −0.033). t 2.596 clears the pre-registered
+  bar and p 0.0234 clears 0.05; it is a modest effect, reported as one.
+- **No single doubling clears.** 1→2 +0.041 (t 0.99), 2→4 +0.071 (t 1.44), 4→8 +0.051 (t 0.78),
+  8→16 **−0.013** (t −0.27). The endpoint contrast clears while no individual step does — a gradual
+  accumulation, and the efficiency signal Part C asks for says width stops paying by ~8 units.
+- **Forced width does NOT beat the brain's own.** CAP16 − INCUMBENT = **−0.0069**, t −0.141 — the
+  incumbent's 2–7 units match forced 9–14. Driving `eps_tol` to zero buys nothing over what the engine
+  admits unaided.
+- **Nothing reaches the persistence floor at any width.** CAP16 − persistence = −0.145, t −2.585, 0 of 8.
+  The readout still does not beat "answer the previous category".
+
+### 7.5 Disposition
+
+**SC-012a has FIRED**, so §2.3's fire branch applies and the row CLOSES.
+
+1. **The Part C reporting rule's condition is now satisfied** — "until SC-012a has fired" is no longer
+   true. **This arc does NOT make the wording change.** The plan sequences it as "a separate docs commit,
+   after the arc", it edits the project's most-guarded honesty surface (`tests/test_units_admitted_wording.py`
+   asserts the current wording, so lifting the rule means changing a gate), and the reading is qualified by
+   a failed control. It is handed on as a named, ready next step rather than taken silently here.
+2. **L2's growth-on-plateau now has a measured reason to exist** — width does buy next-category accuracy
+   on this stream. What it does NOT have is a reason to prefer growth over the incumbent's own admission:
+   forced width matched it. A re-proposal owes that comparison, not this one.
+3. **The width lever does not move to T065 on this arc's authority.** §4's retracted disposition said it
+   would; that disposition was written against the retracted verdict and is not resurrected.
+4. **NOT claimed:** that width helps beyond ~8 units (8→16 is negative), that any width reaches the
+   persistence floor (none does), or that the criterion says anything about a stream other than this one.
+
+**In-tree:** the xfail is REMOVED. The test now pins the criterion itself and passes. The instrument
+checks still fail through `Failed` so a scoring-path regression can never be filed as a criterion result
+in either direction — including a future one that would make it fire.

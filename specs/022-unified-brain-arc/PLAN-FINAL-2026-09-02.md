@@ -506,9 +506,20 @@ that baseline.
   8-arm harness):** a stream with learnable temporal structure grows more units than its OWN
   marginal-preserving shuffle (same entropy, no structure), paired t at the bar; the shuffle is the null; the
   constant stream is L3's red, not this control.
-- **SC-012a — RUN 2026-09-07, verdict RETRACTED THE SAME DAY; the row stays OPEN and UNREAD**
-  (`evidence/sc-012a-width.md`, read §6 first). *The grid ran (88 cells, 11 arms x 8 seeds x 800 ticks) and read
-  (a) MET, (b) MET, (c) VETOED — and that verdict is WITHDRAWN. The arc's own panel found, and an independent
+- **SC-012a — FIRED 2026-09-07 on its SECOND reading; the row CLOSES** (`evidence/sc-012a-width.md`, §7).
+  *First reading RETRACTED, instrument fixed, grid re-run: **(a) MET** t 2.596 p 0.0234 mean +0.151 (6 of 8),
+  **(b) MET** t 4.011 p 0.0039 mean +0.194 (8 of 8), **(c) HOLDS** — the shuffled grid FELL (t −2.346, mean
+  −0.036). Read as real because the fix made firing HARDER and it fired anyway: (a) went +0.465 → +0.151, so
+  two thirds of the original effect was the artefact, while the null went from marginally rising to cleanly
+  falling. QUALIFIED: control 1 still fails at N=16 (2/8) so "16" realizes 9–14 units; no single doubling
+  clears (8→16 is −0.013), forced width does NOT beat the uncapped incumbent (t −0.141), and nothing reaches
+  the persistence floor at any width (t −2.585, 0 of 8). DISPOSITION: Part C's "until SC-012a has fired"
+  condition is now satisfied, but **this arc does not make the wording change** — the plan sequences it as a
+  separate docs commit and it edits a gate (`tests/test_units_admitted_wording.py`), so it is handed on as a
+  named next step. L2 gains a measured reason to exist but NOT a reason to prefer growth over the incumbent's
+  own admission. The in-tree xfail is REMOVED; the test pins the criterion and passes.*
+  *The FIRST reading, kept because the retraction is only legible beside it: the grid ran and read
+  (a) MET, (b) MET, (c) VETOED — and that verdict was WITHDRAWN. The arc's own panel found, and an independent
   two-counter check confirmed, that **`acc(1)` is an ARTEFACT of the scoring path, not a baseline**: NGSNN rates
   are counts/T and non-negative, so a held-out row where the units never fire has an exactly-zero score vector and
   `argmax` answers column 0 — while the engine buffers `percept_{t-1} -> category_t`, so class 0 is NEVER a target.
@@ -694,7 +705,7 @@ no majority-of-seeds rule anywhere.
 | L-R4 | the constant-percept arm admits more than 1 unit, or the structured positive control admits only 1 | a structured stream under the same instrument (must admit > 1) | L3 — **MET 2026-09-05 (1 alive unit on 8 of 8, answering the majority; SYNTH 8–29; re-read under the N-independent equality form: the same)** |
 | L-R5 | the L4 record class exceeds its bytes/tick ceiling without tripping | constructed overload | L4 |
 | SC-011 | structured stream grows no more units than its own marginal-preserving shuffle | the shuffle | `tests/test_real_percept_stream.py` |
-| SC-012a | acc(N=16) − acc(N=1) not above the bar, or acc(16) not above its majority floor, or the label-shuffled grid rises | the shuffled grid | `tests/test_real_percept_stream.py` — **run 2026-09-07, verdict RETRACTED the same day: UNREAD, row OPEN. The grid read (a) MET (t 5.024) / (b) MET (t 3.936) / (c) VETOED (t 1.928), then the arc's panel and an independent two-counter check showed `acc(1)` is an ARTEFACT: all-zero score vectors resolve to column 0, a class the stream never emits as a target (45/60 held-out rows at seed 0, 60/60 at seed 1). (a) and (c) both subtract it, so neither is readable and no disposition is taken. The test now PINS THE DEFECT — it asserts the CAP1 baseline is non-degenerate, fails today, and XPASSes strictly when the scoring path is fixed. Instrument failures raise `Failed` so they cannot be absorbed as the null** |
+| SC-012a | acc(N=16) − acc(N=1) not above the bar, or acc(16) not above its majority floor, or the label-shuffled grid rises | the shuffled grid | `tests/test_real_percept_stream.py` — **FIRED 2026-09-07 on the SECOND reading. First reading (a) t 5.024 / (b) t 3.936 / (c) VETOED t 1.928 was RETRACTED: `acc(1)` was an ARTEFACT — all-zero rate rows resolving to column 0, a class the stream never emits (45/60 rows at seed 0, 60/60 at seed 1) — and (a) and (c) both subtracted it. `NGSNN.decide` fixed the scoring path (`evidence/scoring-path-abstention.md`); the grid was re-run and reads (a) t 2.596 p 0.0234 +0.151, (b) t 4.011 p 0.0039 +0.194, (c) the shuffled grid FELL (t −2.346). The fix CUT the effect two-thirds and it still clears while the null cleanly reversed. Qualified: "16" realizes 9–14 units, no single doubling clears, forced width does not beat the incumbent, nothing reaches persistence. xfail REMOVED; instrument checks still raise `Failed` so a scoring regression cannot be filed as a criterion result in EITHER direction** |
 | SC-012b | correct answers do not drop when grown units are silenced, or drop equally when pre-sized units are | pre-sized-unit silencing; DSL neutered | C2 |
 | SC-013 | the reasoning criterion (ARC-eval at protocol + everyday battery, reported with its floor) cannot fail on a constructed input | scrambled protocol | C2 |
 | S-R1/R2 | rounds budget never trips on constructed overload; a paged-out spike is dropped silently | constructed overload; a resident twin | T066 |
