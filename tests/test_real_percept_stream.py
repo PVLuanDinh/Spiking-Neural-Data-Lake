@@ -146,7 +146,8 @@ def _l_cell(args):
     percept is the current category one-hot, so the buffered pair is one-hot(cat_{t-1}) -> cat_t;
     NEUTER_PERCEPT: a constant; SYNTH: the synthetic chain through the same feed). Returns the
     last-third accuracy, floors and the unit count. Runs in a worker process."""
-    seed, arm = args
+    seed, arm = args[0], args[1]
+    perm = args[2] if len(args) > 2 else None  # SC-012a: the seed's recorded sequence, permuted
     from snn_data_lake.substrate.home import throwaway_home
 
     with throwaway_home():
@@ -157,10 +158,27 @@ def _l_cell(args):
         eng = b.neuro
         real = eng.observe
         synth = SyntheticPerceptStream(seed=seed)
+        # SC-012a: admission CAPPED exogenously at N. `eps_tol` must be driven to zero WITH it: at
+        # the engine's default 0.28 the greedy pursuit reaches its train-RMSE target at ~2 units and
+        # `l_max` never binds, so CAP16 admits 2 units and the grid measures nothing
+        # (evidence/sc-012a-width.md section 2.5, where the dissociation is recorded). It is held at
+        # ONE value across every cap arm, so it cannot confound acc(N) against acc(M).
+        cap = int(arm[3:].split("_")[0]) if arm.startswith("CAP") else None
+        if cap is not None:
+            eng._l_max = cap
+            eng._eps_tol = 0.0
+        cat_seq, fed = [], [0]
 
         def observe(features, category):
             feats = [float(v) for v in features]
             cat = int(category)
+            if cap is not None:
+                cat_seq.append(cat)  # the PRE-shuffle category, so arms stay comparable
+                k = fed[0]
+                fed[0] += 1
+                if perm is not None and k < len(perm):
+                    cat = perm[k]  # the marginal-preserving shuffle
+                return real(feats, cat)
             if arm in ("LIVE", "L1C", "L1C_CTRL"):
                 return real(feats, cat)
             if arm == "NEUTER_PERCEPT":
@@ -176,7 +194,15 @@ def _l_cell(args):
         # arms) measure the batch-only readout, so it is removed here -- their pins read the refit
         # accuracy, which the decoupled instrument keeps identical either way
         eng.online_readout = None
-        if arm in (
+        if cap is not None:
+            # SC-012a's cap arms run the DEPLOYED wiring (make_brain's "delta"), so this gate and
+            # the cells in evidence/sc-012a-width.md are the same machine. It cannot move it:
+            # the statistic is the refit accuracy, which the decoupled batch instrument keeps
+            # identical either way (the reason the incumbent arms above can drop it).
+            from snn_data_lake.hippocampus.online_readout import OnlineReadout
+
+            eng.online_readout = OnlineReadout("delta")
+        elif arm in (
             "L1C",
             "L1C_CTRL",
         ):  # the online readout (L1c) and its control that is not the method
@@ -194,6 +220,8 @@ def _l_cell(args):
             "seed": seed,
             "arm": arm,
             "units": eng.grown_units,
+            "units_max": max([r[1] for r in traj]) if traj else None,  # pre-prune, per refit
+            "cat_seq": cat_seq,  # SC-012a's same-rows check; empty for the non-cap arms
             "refits": len(traj),
             "acc": _st.fmean([r[2] for r in traj[-third:]]) if traj else None,
             "pers": _st.fmean([r[2] for r in bl[-third:]]) if bl else None,
@@ -224,9 +252,10 @@ def _paired(diffs):
     return (t > T_BAR and p <= 0.05 and non_tied >= 5), t, p, non_tied
 
 
-def _run_arms(arms):
+def _run_arms(arms, perms=None):
+    jobs = [(s, a, (perms or {}).get(s)) for a in arms for s in L_SEEDS]
     with _cf.ProcessPoolExecutor(max_workers=4) as ex:
-        rows = list(ex.map(_l_cell, [(s, a) for a in arms for s in L_SEEDS]))
+        rows = list(ex.map(_l_cell, jobs))
     return {(r["seed"], r["arm"]): r for r in rows}
 
 
@@ -329,4 +358,77 @@ def test_the_online_readout_beats_the_stale_one_on_the_wake_stream():
     assert c1, (
         f"L1c-R1: (L1C - LIVE) live accuracy t={t1:.3f} p={p1:.4f} "
         f"diffs {[round(x, 3) for x in d1]}"
+    )
+
+
+@pytest.mark.slow
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "SC-012a did NOT fire (evidence/sc-012a-width.md section 3). (a) and (b) are MET -- "
+        "acc(16)-acc(1) t=5.024 p=0.0039 mean +0.465 on 8 of 8, and acc(16) clears its own "
+        "majority floor t=3.936 p=0.0039 -- but the veto (c) FIRED: the SAME grid on "
+        "marginal-preserving shuffled labels also rose, t=1.928 p=0.0469 mean +0.164. A 1-unit "
+        "readout cannot represent the label marginal on this 5-class skewed stream, so widening "
+        "recovers the prior with or without a percept->category pairing, and acc(1) is a "
+        "degenerate baseline shared by both grids. Only instrument failures (same rows, the reach "
+        "control, the width-varied control, degenerate ties) raise Failed and escape this xfail."
+    ),
+)
+def test_width_buys_next_category_accuracy_and_the_shuffled_grid_does_not():
+    """SC-012a (spec.md:183; plan Phase 2, ratified under OD-5): with admission capped exogenously
+    at N, paired (acc(16) - acc(1)) clears the bar AND acc(16) clears its own majority floor, AND
+    the same grid with the labels shuffled marginal-preserving does not rise. Until it fires,
+    owner-facing surfaces say units ADMITTED, never growth (tests/test_units_admitted_wording).
+
+    WHAT RAISES WHAT, and it is the point of the structure: the three conjuncts fail through
+    `assert` (AssertionError), which the strict xfail above absorbs as the recorded null. Every
+    INSTRUMENT check fails through `pytest.fail` -> `Failed`, which is NOT a subclass of
+    AssertionError, so it is never absorbed -- an instrument that broke can never be filed as the
+    pre-registered result."""
+    import random
+
+    real = _run_arms(["CAP1", "CAP16"])
+    _require_the_live_packs(real)
+    perms = {}
+    for s in L_SEEDS:
+        seq = list(real[(s, "CAP1")]["cat_seq"])
+        if seq != real[(s, "CAP16")]["cat_seq"]:
+            pytest.fail(f"same rows: the two caps saw different streams at seed {s}", pytrace=False)
+        random.Random(s + 500).shuffle(seq)
+        perms[s] = seq
+    shuf = _run_arms(["CAP1_SHUF", "CAP16_SHUF"], perms)
+
+    # --- instrument controls: these must not be absorbable as the null -------------------------
+    bad = [s for s in L_SEEDS if real[(s, "CAP1")]["units"] != 1]
+    if bad:
+        pytest.fail(f"the cap's reach control: CAP1 is not 1 unit at seeds {bad}", pytrace=False)
+    # THE WIDTH-VARIED CONTROL. The not-fired branch says width buys nothing; that is a causal
+    # claim, and it is only earned if the cap actually varied the width. Measured 2026-09-07:
+    # CAP1 = 1 unit on 8 of 8, CAP16 = 9-14 (the pursuit saturates below 16 and the prune cuts
+    # further, so the claim is bounded by the width REALIZED, never by the cap's label).
+    thin = [s for s in L_SEEDS if real[(s, "CAP16")]["units"] <= real[(s, "CAP1")]["units"]]
+    if thin:
+        pytest.fail(
+            f"the cap did not force width at seeds {thin}: CAP16 admitted no more than CAP1, so "
+            "neither the criterion nor its null disposition measures width",
+            pytrace=False,
+        )
+
+    d_a = [real[(s, "CAP16")]["acc"] - real[(s, "CAP1")]["acc"] for s in L_SEEDS]
+    d_b = [real[(s, "CAP16")]["acc"] - real[(s, "CAP16")]["maj"] for s in L_SEEDS]
+    d_c = [shuf[(s, "CAP16_SHUF")]["acc"] - shuf[(s, "CAP1_SHUF")]["acc"] for s in L_SEEDS]
+    ca, ta, pa, na = _paired(d_a)
+    cb, tb, pb, nb = _paired(d_b)
+    cc, tc, pc, nc = _paired(d_c)
+    if min(na, nb, nc) < 5:
+        pytest.fail(f"DEGENERATE-TIES: {na}/{nb}/{nc} non-tied seeds", pytrace=False)
+
+    # --- the criterion: (a) AND (b) AND NOT (c), through assert so the xfail carries it ---------
+    assert ca and cb and not cc, (
+        f"(a) acc(16)-acc(1) t={ta:.3f} p={pa:.4f} diffs {[round(x, 3) for x in d_a]}; "
+        f"(b) acc(16)-majority t={tb:.3f} p={pb:.4f}; "
+        f"(c) the SHUFFLED grid t={tc:.3f} p={pc:.4f} -- it must NOT clear, and if it does the "
+        f"rise is the instrument's whatever (a) and (b) read"
     )

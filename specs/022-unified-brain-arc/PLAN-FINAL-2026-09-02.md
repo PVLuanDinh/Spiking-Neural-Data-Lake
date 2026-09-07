@@ -506,7 +506,18 @@ that baseline.
   8-arm harness):** a stream with learnable temporal structure grows more units than its OWN
   marginal-preserving shuffle (same entropy, no structure), paired t at the bar; the shuffle is the null; the
   constant stream is L3's red, not this control.
-- **SC-012a (new test, same file):** admission CAPPED exogenously at N ∈ {1, 2, 4, 8, 16}, S = 8, held-out
+- **SC-012a — MEASURED 2026-09-07, DID NOT FIRE** (`evidence/sc-012a-width.md`). *(a) and (b) MET, the veto (c)
+  FIRED: the marginal-preserving shuffled grid rose too (t 1.928 against the 1.895 bar), because a 1-unit readout
+  cannot represent the label marginal on this 5-class skewed stream — so acc(1) is a degenerate baseline shared by
+  both grids and part of (a)'s +0.465 is prior-recovery, not learned pairing. The exogenous cap was INERT as the row
+  is written: `l_max` alone stops at ~2 units against the engine's `eps_tol = 0.28`, making CAP4/8/16 bit-identical,
+  and on THAT grid all three conjuncts pass — the criterion would have fired on a comparison of 1 unit against 2.
+  Driving `eps_tol` to zero with the cap made it bind (1/2/4/6-8/9-14 units). What the grid shows: only the FIRST
+  doubling pays (+0.332), 8→16 is −0.0003, forced width does not beat the uncapped incumbent (t 0.719), and nothing
+  reaches the persistence floor at any width. What survives the null as a dissociation: REAL clears its majority
+  floor from CAP8 while SHUF never clears its own at any width. DISPOSITION: the "units admitted, never growth"
+  reporting rule STAYS; L2 is not rebuilt as an admission trigger; the width lever moves to Phase 3's T065.*
+  The row as ratified: admission CAPPED exogenously at N ∈ {1, 2, 4, 8, 16}, S = 8, held-out
   next-category accuracy under L1a's window; paired t of acc(16) − acc(1) > 1.895 AND acc(16) above its own
   majority floor at the bar; null: the same grid with labels shuffled marginal-preserving must not rise.
   Reported beside it, not a bar: the marginal gain per doubling, acc(2N) − acc(N) at each N (the efficiency
@@ -677,7 +688,7 @@ no majority-of-seeds rule anywhere.
 | L-R4 | the constant-percept arm admits more than 1 unit, or the structured positive control admits only 1 | a structured stream under the same instrument (must admit > 1) | L3 — **MET 2026-09-05 (1 alive unit on 8 of 8, answering the majority; SYNTH 8–29; re-read under the N-independent equality form: the same)** |
 | L-R5 | the L4 record class exceeds its bytes/tick ceiling without tripping | constructed overload | L4 |
 | SC-011 | structured stream grows no more units than its own marginal-preserving shuffle | the shuffle | `tests/test_real_percept_stream.py` |
-| SC-012a | acc(N=16) − acc(N=1) not above the bar, or acc(16) not above its majority floor, or the label-shuffled grid rises | the shuffled grid | `tests/test_real_percept_stream.py` |
+| SC-012a | acc(N=16) − acc(N=1) not above the bar, or acc(16) not above its majority floor, or the label-shuffled grid rises | the shuffled grid | `tests/test_real_percept_stream.py` — **read 2026-09-07: DOES NOT FIRE on the third clause. (a) MET (t 5.024, p 0.0039, +0.465, 8/8) and (b) MET (t 3.936, p 0.0039, +0.191, 8/8), but the SHUFFLED grid ALSO rose (t 1.928 vs the 1.895 bar, p 0.0469, +0.164, 6/1/1) — a 1-unit readout cannot represent the label marginal, so acc(1) is a degenerate baseline shared by both grids and part of (a) is prior-recovery the null reproduces. The cap was INERT until `eps_tol` was driven to zero with it (CAP4/8/16 were bit-identical before the fix, and the criterion would have FIRED on that grid). Strict xfail in the tree, instrument failures raising `Failed` so they cannot be absorbed as the null** |
 | SC-012b | correct answers do not drop when grown units are silenced, or drop equally when pre-sized units are | pre-sized-unit silencing; DSL neutered | C2 |
 | SC-013 | the reasoning criterion (ARC-eval at protocol + everyday battery, reported with its floor) cannot fail on a constructed input | scrambled protocol | C2 |
 | S-R1/R2 | rounds budget never trips on constructed overload; a paged-out spike is dropped silently | constructed overload; a resident twin | T066 |
