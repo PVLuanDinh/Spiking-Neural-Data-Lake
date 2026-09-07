@@ -256,6 +256,10 @@ class NeurogenesisSelfImprove:
         #: learned nothing the stream's own inertia did not already give away (P8 clause 4).
         #: Measurement, not substrate: never persisted.
         self.baselines = []
+        # `decide`'s fallback counts for the LAST REFIT (never the last tick) -- see _record_decide
+        self._abstentions = 0
+        self._unanswerable = 0
+        self._heldout_n = 0
         #: [(depth, layer, sign)] index-aligned with `self._model.W` rows -- every grown unit's
         #: cortical home. Maintained across BOTH growth (new units appended) and PRUNE (survivors
         #: reindexed by the model's `last_keep`), because a placement that stops tracking its unit
@@ -306,7 +310,14 @@ class NeurogenesisSelfImprove:
                 m = self._model
                 xp = torch.tensor([self._prev], dtype=torch.float32)
                 S = m._rates(xp, m.W, m.b)  # the previous percept's unit rates (1, L)
-                pred = int((S @ m.beta).argmax(dim=1)[0])  # == m.predict(xp), one rollout
+                # P2, 2026-09-07 (the arc's own panel found this): this was a THIRD copy of the
+                # decision rule -- `int((S @ m.beta).argmax(dim=1)[0])` -- and its comment claimed
+                # "== m.predict(xp)", which was true until `predict` began routing through `decide`
+                # and false the moment it did. On a tick where no grown unit fires it answered
+                # column 0, a class the stream never emits as a target, and that answer went
+                # straight into `live_correct`. The consolidation the fix commit CLAIMED (two
+                # mechanisms into one) is only true with this line included; it is now.
+                pred = int(m.decide(S)[0])
                 self.live_n += 1
                 self.live_correct += int(pred == cat)
                 self.live_persist += int(self._prev_cat == cat)
@@ -407,6 +418,7 @@ class NeurogenesisSelfImprove:
             # is now the ONE rule and both callers use it (record:
             # specs/022-unified-brain-arc/evidence/scoring-path-abstention.md).
             pred = m.decide(S_te, beta_inst)
+            self._record_decide(m, len(va_list))
             acc = (pred == y_te.to(m.device)).float().mean().item()
             self._n_units = m.n_units
             self._acc = acc
@@ -476,6 +488,7 @@ class NeurogenesisSelfImprove:
         if keep is not None and len(self._placement) >= max(keep, default=-1) + 1:
             self._placement = [self._placement[i] for i in keep]
         pred = model.predict(x_te)
+        self._record_decide(model, len(va_list))
         acc = (pred == y_te.to(model.device)).float().mean().item()
         self._n_units = model.n_units
         self._acc = acc
@@ -636,6 +649,16 @@ class NeurogenesisSelfImprove:
             # rank 2 (2026-09-02): the floors of the fit these weights came from -- OPTIONAL
             # arrays, same additive contract. An accuracy restored without its floors would
             # read as learning on a stream whose inertia may have supplied all of it.
+            # 2026-09-07: `decide`'s no-evidence answer rides with the substrate -- OPTIONAL array,
+            # same additive contract. Found by this arc's own panel: `prior_class_` is set only in
+            # `fit`, and `restore_growth_state` assigns tensors WITHOUT fitting, so a restored brain
+            # carried None and `decide` fell back to the bare argmax -- the exact defect the fix
+            # retired, returning on the one path that matters most (brain.py restores on every
+            # persisted construction, i.e. every daemon relaunch). -1 encodes "no prior recorded",
+            # so an old blob restores as None rather than as class 0.
+            prior_class=np.array(
+                -1 if m.prior_class_ is None else int(m.prior_class_), dtype=np.int64
+            ),
             base_majority=np.array(
                 [self.baselines[-1][1]] if self.baselines else [], dtype=np.float64
             ),
@@ -686,6 +709,8 @@ class NeurogenesisSelfImprove:
                 z_bm = z["base_majority"] if "base_majority" in z else None
                 z_bp = z["base_persistence"] if "base_persistence" in z else None
                 z_bb = z["batch_beta"] if "batch_beta" in z else None  # L1c: OPTIONAL
+                # optional -- absent in every blob written before `decide` had a prior to restore
+                z_pc = z["prior_class"] if "prior_class" in z else None
         except Exception:
             return False
         if W.ndim != 2 or beta.ndim != 2 or b.ndim != 1:
@@ -702,6 +727,12 @@ class NeurogenesisSelfImprove:
         model.b = torch.tensor(b, dtype=torch.float32, device=model.device)
         model.beta = torch.tensor(beta, dtype=torch.float32, device=model.device)
         model.d_in, model.m = d_in, m_out
+        # `decide`'s no-evidence answer, restored with the substrate (2026-09-07). Without it a
+        # restored model has prior_class_ = None and `decide` silently reverts to the bare argmax
+        # that answers a class the stream never emits. -1 / absent = no prior was recorded, which
+        # stays None rather than becoming class 0 -- absence is a fact, not a default.
+        if z_pc is not None and int(z_pc) >= 0:
+            model.prior_class_ = int(z_pc)
         self._model = model
         # the instrument: the persisted batch beta when the blob carries it (L1c), else the only
         # beta there is (a legacy blob: the online beta becomes the instrument until the next
@@ -775,6 +806,21 @@ class NeurogenesisSelfImprove:
         size, and the denominator of chance for the accuracy beside it."""
         return len(self._categories)
 
+    # distinct-from: cortex/growth_stop.py::regions -- lists the regions that gate has decided
+    #   for, a key listing with no counts. distinct-from: substrate/signal_ring.py::RingOverrun --
+    #   an exception raised when a consumer is lapped. Both read 2026-09-07; the matcher fired on
+    #   the generic words "decide"/"state"/"record". Neither captures a scoring fallback's counts.
+    def _record_decide(self, model, n_heldout):
+        """Capture `decide`'s fallback counts FOR THIS REFIT, on the slice it just scored.
+
+        Per FIT, not per CALL: `NGSNN.last_abstentions_` is overwritten by every later `decide`,
+        and the live instrument calls it once per wake tick on a single row -- so reading the model
+        attribute straight from `state()` would report the last TICK, not the last FIT. The
+        scoring-path record pre-registered a per-fit disclosure; this is it."""
+        self._abstentions = int(getattr(model, "last_abstentions_", 0) or 0)
+        self._unanswerable = int(getattr(model, "last_unanswerable_", 0) or 0)
+        self._heldout_n = int(n_heldout)
+
     def state(self):
         return {
             "goal": self.goal,
@@ -788,6 +834,16 @@ class NeurogenesisSelfImprove:
             "baseline_majority": self.baselines[-1][1] if self.baselines else None,
             "baseline_persistence": self.baselines[-1][2] if self.baselines else None,
             "n_modes": self.n_modes,
+            # `decide`'s fallback, SURFACED (2026-09-07). The scoring-path record pre-registered
+            # this disclosure -- "the fraction of any reported accuracy that came from the fallback
+            # is a printed number rather than an assumption" -- and the first form of the fix never
+            # built it: the counter had zero consumers outside its own tests, which is P3 dormancy
+            # in the instrument that exists to keep a number honest. `unanswerable` is the retired
+            # defect's own counter: non-zero means a silent row was answered by tensor layout.
+            "decide_prior_class": (None if self._model is None else self._model.prior_class_),
+            "decide_abstentions": self._abstentions,
+            "decide_unanswerable": self._unanswerable,
+            "decide_heldout_n": self._heldout_n,
             # L1c: the online readout's own charge
             "online_readout": (
                 self.online_readout.state() if self.online_readout is not None else None

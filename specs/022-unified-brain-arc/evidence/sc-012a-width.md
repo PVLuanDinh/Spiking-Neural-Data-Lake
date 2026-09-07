@@ -471,3 +471,65 @@ removed the contamination from the null rather than from the treatment alone.
 **In-tree:** the xfail is REMOVED. The test now pins the criterion itself and passes. The instrument
 checks still fail through `Failed` so a scoring-path regression can never be filed as a criterion result
 in either direction — including a future one that would make it fire.
+
+## 8. THE PANEL'S CORRECTIONS TO SECTION 7 (2026-09-07)
+
+The arc was panelled on three lenses. **No finding overturned the fire** — (a), (b) and (c) are
+unchanged, and the third decision site the panel found feeds `live_acc`, which no conjunct reads
+(traced in `evidence/scoring-path-abstention.md` §5.1). Four claims in section 7 were nevertheless
+broader than their measurement, and one omission is material.
+
+### 8.1 MATERIAL — conjunct (c) has NO REACHABLE RED on the fixed instrument
+
+Section 7 reports (c) HOLDING as corroboration and does not say what the fix did to (c)'s ability to
+fail. The fallback pins `acc_SHUF(1)` exactly at its own majority floor (measured: 7 of 8 seeds
+exactly 0.0), so (c) reduces to *"does the wide arm beat the training-majority floor on labels
+shuffled independently of the percepts"* — which nothing can do in expectation. A verifier tried to
+construct the red and **failed**: at a 50 % marginal-preserving shuffle (c) reads t −3.477, FURTHER
+from the bar than the pure null; the only regime where d_c can clear is ~zero corruption, where d_c
+is literally d_a.
+
+Under P8 clause 1 and `PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md`'s F11 — *a criterion whose success
+criterion cannot go red is worthless* — **(c) is no longer a discriminating veto.** SC-012a's fire
+therefore rests on (a) and (b), with a veto that could not have vetoed. Stated here rather than left
+for a reader to notice, because "the null held" reads as evidence and in this case it is closer to
+silence.
+
+**Not acted on beyond disclosure**, and the reason is the gate-before-rule invariant: deleting or
+replacing a ratified conjunct is a spec change, and the replacement null (one that corrupts the
+percept→category pairing at the INPUT rather than relabelling at the target) has to be built and
+counted before it can bind. Named as open work, with the measurement that motivates it.
+
+### 8.2 The P2 claim in §7's arc was FALSE — three sites, not two
+
+Corrected in `scoring-path-abstention.md` §5.1 and fixed. The engine's live per-tick instrument
+carried a third copy. It does not touch (a)/(b)/(c); it does move `live_acc`, which section 7 reports
+in its "reported, not barred" column.
+
+### 8.3 "An uninformative readout scores AT its own majority floor" — it OVERSHOOTS
+
+The justification in `scoring-path-abstention.md` §2.1 holds only when an arm is FULLY silent.
+Silence is label-correlated, so a partly-silent arm can land **up to +0.208 above** its floor. The
+claim is corrected to: a fully-silent readout scores at its prior, and a partly-silent one scores
+between its own signal and its prior. The direction of §7.3's argument is unaffected (`acc(1)` still
+rises, still by more than `acc(16)`), but the sentence as written claimed a precision the mechanism
+does not have.
+
+### 8.4 A finding this section nearly adopted, and why it was REFUTED
+
+A lens filed that "forced width does NOT beat the incumbent" varies TWO factors — the cap and
+`eps_tol` — and so overstates a single-factor width null. It was **refuted**, and the refutation is
+this arc's own measurement: section 2.5's dissociation shows `l_max` alone at the engine's default
+`eps_tol` stops at 2 units on every seed. **The cap and the tolerance are not separable factors**;
+driving `eps_tol` to zero is not a second intervention but the thing that makes the first one exist
+at all. Treating them as a confound would describe an experiment nobody can run.
+
+Recorded because a correction adopted from a refuted finding is its own defect — this project has a
+standing note that adversarial review oscillates on its own fixes, and the fold is where that
+happens. The claim in section 7.4 stands as written.
+
+### 8.5 Section 6 is superseded
+
+Sections 3.3, 3.4, 4 and 6 describe the FIRST reading and its retraction. They are historical.
+**Section 7 supersedes them and section 8 corrects section 7.** Any number in sections 3–6 is
+withdrawn unless section 7 restates it.

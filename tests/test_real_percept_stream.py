@@ -228,6 +228,10 @@ def _l_cell(args):
             "maj": _st.fmean([r[1] for r in bl[-third:]]) if bl else None,
             "live_acc": eng.state().get("live_accuracy"),
             "live_pers": eng.state().get("live_persistence"),
+            # `decide`'s fallback, per REFIT -- L-R4's aliveness discriminator since 2026-09-07
+            "abstentions": eng.state().get("decide_abstentions"),
+            "unanswerable": eng.state().get("decide_unanswerable"),
+            "heldout_n": eng.state().get("decide_heldout_n"),
         }
         b.close()
     return out
@@ -322,10 +326,33 @@ def test_a_constant_percept_admits_one_unit_and_a_structured_stream_admits_more(
     assert all(u == 1 for u in const), (
         f"a constant percept must admit exactly 1 unit on every seed ({const})"
     )
-    # the one unit must be ALIVE: its readout answers the training majority (the rule's first form
-    # admitted a dead unit whose all-zero readout answered class 0, accuracy 0.0; record 3.3)
-    assert all(g <= 1e-3 for g in gap), (
-        f"the constant arm's one unit must answer its majority floor (|acc - majority| {gap})"
+    # THE ONE UNIT MUST BE ALIVE, and this pin had to be REBUILT on 2026-09-07.
+    #
+    # It used to read |acc - majority| <= 1e-3: before `NGSNN.decide`, a DEAD unit was silent, its
+    # all-zero readout answered class 0, and it scored ~0.0 -- nowhere near the majority floor --
+    # so the gap discriminated. `decide` now answers the training PRIOR on a silent row, so a dead
+    # unit lands AT the majority floor too: the old assertion passes for alive and dead alike. The
+    # arc that fixed the scoring path BLINDED this red, and its own panel caught it.
+    #
+    # The repair does not route through accuracy at all. `decide_abstentions` counts the held-out
+    # rows this refit answered from the prior, and `decide_unanswerable` counts those it could not
+    # answer even from the prior. A unit that FIRES answers some rows itself; a dead one abstains
+    # on every row. That is the aliveness question asked directly instead of inferred.
+    abst = [res[(s, "NEUTER_PERCEPT")]["abstentions"] for s in L_SEEDS]
+    n_te = [res[(s, "NEUTER_PERCEPT")]["heldout_n"] for s in L_SEEDS]
+    dead = [s for s, a, n in zip(L_SEEDS, abst, n_te, strict=True) if n and a >= n]
+    assert not dead, (
+        f"the constant arm's one unit is DEAD at seeds {dead}: it abstained on every held-out row "
+        f"(abstentions {abst} of {n_te}), so its accuracy is the prior's, not the unit's"
+    )
+    unans = [res[(s, "NEUTER_PERCEPT")]["unanswerable"] for s in L_SEEDS]
+    assert all(u == 0 for u in unans), (
+        f"a silent row was answered by tensor layout, not by the prior ({unans}) -- the retired "
+        "scoring defect is firing again"
+    )
+    # the floor relation is KEPT as a reported companion, no longer as the aliveness test
+    assert all(g <= 0.5 for g in gap), (
+        f"the constant arm's one unit should sit near its majority floor (|acc - majority| {gap})"
     )
 
 

@@ -97,6 +97,68 @@ def test_a_firing_row_is_bit_identical_to_the_retired_rule():
     assert m.last_abstentions_ == 2
 
 
+def test_the_prior_survives_the_engine_persistence_round_trip():
+    """THE RESTORE RED (found by the arc's own panel, 2026-09-07). `prior_class_` is set only in
+    `fit`, and `restore_growth_state` rebuilds the model by assigning tensors WITHOUT fitting -- so
+    before this pin a restored brain carried `prior_class_ = None`, `decide` fell back to the bare
+    argmax, and every silent row answered column 0 again. That is the LIVE path: a persisted brain
+    restores on every construction, i.e. every daemon relaunch.
+
+    The control that makes it a measurement: a blob written WITHOUT the prior (an old blob) must
+    restore as None rather than as class 0 -- absence stays a fact, and the red stays reachable."""
+    import numpy as np
+
+    from snn_data_lake.cortex.neurogenesis_engine import NeurogenesisSelfImprove
+
+    src = NeurogenesisSelfImprove(seed=0, refit_every=10, device="cpu")
+    m, X, y = _fitted()
+    src._model, src._n_units, src._acc = m, m.n_units, 0.5
+    blob = src.growth_state_bytes()
+    assert blob is not None
+
+    dst = NeurogenesisSelfImprove(seed=0, refit_every=10, device="cpu")
+    assert dst.restore_growth_state(blob)
+    assert dst._model.prior_class_ == m.prior_class_, (
+        "the restored model lost its prior -- decide reverts to the bare argmax on the daemon path"
+    )
+    S_silent = torch.zeros(4, dst._model.n_units)
+    assert dst._model.decide(S_silent).tolist() == [m.prior_class_] * 4
+    assert dst._model.last_unanswerable_ == 0
+
+    # THE CONTROL: an old blob, with the key stripped, restores as None and says so.
+    import io
+
+    with np.load(io.BytesIO(blob), allow_pickle=False) as _z:
+        z = {k: _z[k] for k in _z.files if k != "prior_class"}  # materialise while the zip is open
+    buf = io.BytesIO()
+    np.savez(buf, **z)
+    old = NeurogenesisSelfImprove(seed=0, refit_every=10, device="cpu")
+    assert old.restore_growth_state(buf.getvalue())
+    assert old._model.prior_class_ is None, "a blob with no prior must not invent one"
+    old._model.decide(S_silent)
+    assert old._model.last_unanswerable_ == 4, (
+        "a silent row with no prior is the retired defect firing -- it must be COUNTED, not hidden"
+    )
+
+
+def test_the_abstention_counter_counts_what_it_says():
+    """`last_abstentions_` counts rows ANSWERED FROM THE PRIOR. Its first form counted silent rows
+    before the guard that decides whether the prior applies, so on a model with no prior it read N
+    abstentions while `decide` had answered column 0 N times -- the disclosure counter reading
+    healthiest exactly where the defect was live (the panel's find)."""
+    m, _X, _y = _fitted()
+    m.decide(torch.zeros(5, m.n_units))
+    assert (m.last_abstentions_, m.last_unanswerable_) == (5, 0)
+
+    bare = NGSNN(l_max=2, T=15, device="cpu", seed=0)
+    bare.W, bare.b, bare.beta = m.W, m.b, m.beta
+    bare.prior_class_ = None
+    bare.decide(torch.zeros(5, bare.n_units))
+    assert (bare.last_abstentions_, bare.last_unanswerable_) == (0, 5), (
+        "with no prior nothing was answered from it -- those rows are UNANSWERABLE, not abstentions"
+    )
+
+
 def test_an_unfitted_model_invents_no_prior():
     """Absence is a fact: with no fit there is no majority to answer with, so `decide` stays on the
     bare argmax rather than manufacturing a class."""
@@ -114,7 +176,22 @@ def test_predict_routes_through_decide_and_the_engine_keeps_no_second_argmax():
     S = m._rates(X.float(), m.W, m.b)
     assert torch.equal(m.predict(X), m.decide(S))
 
-    _eng_path = pathlib.Path("src/snn_data_lake/cortex/neurogenesis_engine.py")
-    eng = _eng_path.read_text(encoding="utf-8")
+    # ANCHORED ON __file__, not the cwd: run from anywhere else the old form raised
+    # FileNotFoundError, so the pin errored instead of failing and silently stopped being a pin.
+    _repo = pathlib.Path(__file__).resolve().parents[1]
+    eng = (_repo / "src/snn_data_lake/cortex/neurogenesis_engine.py").read_text(encoding="utf-8")
     assert "m.decide(S_te, beta_inst)" in eng, "the closed-gate branch must use the one rule"
-    assert "@ beta_inst).argmax(" not in eng, "the retired inline copy is still in the engine"
+
+    # THE CENSUS, not one literal. The first form of this pin grepped for the single spelling
+    # `@ beta_inst).argmax(` -- the local name in the closed-gate branch it had just migrated -- so
+    # it was structurally incapable of seeing the THIRD copy 95 lines earlier, which binds
+    # `m.beta` and decided the live instrument by answering column 0. The panel found it; a pin
+    # that can only see the site already fixed is not a P2 guard. Count the survivors instead:
+    # any argmax over a beta in this file is a decision rule, and there must be none left.
+    import re
+
+    survivors = re.findall(r"@\s*\w*beta\w*\)?\.argmax\(", eng)
+    assert not survivors, (
+        f"a decision rule over a beta survives in the engine: {survivors}. `NGSNN.decide` is the "
+        "one rule; every site that turns rates into a class must call it (P2: count the survivors)"
+    )

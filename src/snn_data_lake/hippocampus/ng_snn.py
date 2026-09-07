@@ -271,7 +271,8 @@ class NGSNN:
         # fit has run, and `decide` then falls back to the bare argmax rather than inventing a prior
         # -- an untrained model has no majority to answer with, and absence is a fact (T046a).
         self.prior_class_ = None
-        self.last_abstentions_ = 0  # rows `decide` answered from the prior on its last call
+        self.last_abstentions_ = 0  # rows `decide` ANSWERED FROM THE PRIOR on its last call
+        self.last_unanswerable_ = 0  # silent rows it could NOT answer (no prior) -- the defect
 
     # ---- LIF hidden-layer firing rates (Eq. 2-5), vectorized + batched over samples ----
     def _rates(self, X, W, b, batch=4096, return_state=False):
@@ -691,9 +692,20 @@ class NGSNN:
         # a row that fired into a zero beta column, and that IS an answer the readout made --
         # overriding it would be this fix reaching past its own defect.
         silent = S.abs().sum(dim=1) == 0
-        self.last_abstentions_ = int(silent.sum().item())
-        if self.prior_class_ is not None and self.last_abstentions_:
+        n_silent = int(silent.sum().item())
+        # COUNT WHAT WAS ANSWERED FROM THE PRIOR, not what was silent. The first form counted
+        # silent rows BEFORE this guard, so on a model with no prior -- an unfitted one, or (until
+        # 2026-09-07) a RESTORED one -- it reported N abstentions while `decide` had in fact
+        # answered column 0 N times: the disclosure counter read healthiest exactly where the
+        # defect was live. Found by this arc's own panel.
+        if self.prior_class_ is not None and n_silent:
             pred = torch.where(silent, torch.full_like(pred, int(self.prior_class_)), pred)
+            self.last_abstentions_ = n_silent
+        else:
+            self.last_abstentions_ = 0
+        # a row with no evidence AND no prior to answer from is the retired defect still firing;
+        # it is counted separately so it can never hide inside the abstention number.
+        self.last_unanswerable_ = 0 if self.prior_class_ is not None else n_silent
         return pred
 
     def predict(self, X):

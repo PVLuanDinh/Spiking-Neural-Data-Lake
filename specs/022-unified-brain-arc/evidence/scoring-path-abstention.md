@@ -127,3 +127,109 @@ Two things this table says, and both were pre-registered:
 about **+0.18 and NEGATIVE at seed 0**. Most of the pre-fix effect was the artefact. SC-012a is now
 readable for the first time, and re-reading it is the next commit in this arc — not this one, because a
 change to the instrument and a verdict measured with it are two changes.
+
+## 5. THE PANEL'S FOLD (2026-09-07) — five findings, two of them BLOCKERs on this arc's own claims
+
+The arc was panelled at `924d706` on three lenses (25 agents, 15 findings surviving adversarial
+verification, **0 changing the arc's conclusion**). What follows is the fold. The pattern held for a
+fifth day: **every one of the serious findings was a defect in this arc's own apparatus**, not in the
+tree it audited.
+
+### 5.1 BLOCKER — the P2 claim was FALSE: there were THREE decision sites, not two
+
+Section 1 and the fix commit both state that `NGSNN.predict` and the engine's closed-gate inline
+argmax "were two mechanisms for one job". A **third** survived, on the LIVE path:
+`neurogenesis_engine.py`'s per-tick instrument inside `observe()` carried its own
+`int((S @ m.beta).argmax(dim=1)[0])`, feeding `live_correct` -> `live_accuracy`. Its trailing comment
+`# == m.predict(xp), one rollout` was TRUE before the fix and FALSE the moment `predict` began
+routing through `decide` — **a comment that outlived its body, on the very line that needed to move.**
+
+It now calls `m.decide(S)`. The consolidation the commit claimed is true only with this line
+included; it is now.
+
+**Why the SC-012a verdict is untouched by it, traced rather than asserted:** the criterion's three
+conjuncts read only `acc`/`maj`, which come from `trajectory`; `trajectory` is appended at exactly two
+sites and BOTH were already on the fixed path. `live_acc` is a parallel reporting statistic read only
+by L1c-R1, and the contaminated `pred` dead-ended in `live_correct` — the online readout's `learn`
+never receives it, so it could not feed back into beta, the substrate, or any refit.
+
+### 5.2 BLOCKER — the fix did not survive persistence, on the one path that matters most
+
+`prior_class_` was set only in `fit`. `restore_growth_state` rebuilds the model by assigning tensors
+and never fits, so **a restored brain carried `prior_class_ = None` and `decide` silently reverted to
+the bare argmax** — the exact defect this arc retired, returning on every persisted construction, i.e.
+every daemon relaunch. It now rides in the blob as an OPTIONAL array (the additive contract, no format
+bump), with `-1` meaning "no prior recorded" so an old blob restores as None rather than as class 0.
+
+Pinned by `test_the_prior_survives_the_engine_persistence_round_trip`, whose control is an old blob
+with the key stripped: it must restore as None and COUNT its unanswerable rows, so the red stays
+reachable. **Every SC-012a cell ran `persist=False`, so no reported number was scored with the
+reverted rule** — verified, not assumed.
+
+### 5.3 The disclosure counter read healthiest exactly where the defect was live
+
+`last_abstentions_` was set from the silent-row count BEFORE the guard that decides whether the prior
+is applied at all. On a model with no prior — an unfitted one, or (until 5.2) a RESTORED one — it
+reported N abstentions while `decide` had in fact answered column 0 N times.
+
+It now counts only rows ANSWERED FROM THE PRIOR, and a second counter, `last_unanswerable_`, carries
+the rows it could not answer even from the prior — the retired defect's own counter, so that case can
+never hide inside the abstention number.
+
+**It was also DORMANT (P3):** section 2.5 pre-registered that the fallback fraction would be
+"a printed number rather than an assumption", and the first form of the fix never built it — zero
+consumers outside its own tests. `state()` now surfaces `decide_prior_class`, `decide_abstentions`,
+`decide_unanswerable` and `decide_heldout_n`, recorded PER REFIT (`_record_decide`) rather than per
+call, because the live instrument overwrites the model attribute every wake tick.
+
+### 5.4 The arc's own P2 pin could only see the site it had already fixed
+
+The pin grepped one literal, `"@ beta_inst).argmax("` — the LOCAL VARIABLE NAME of the branch it had
+just migrated. The surviving third copy binds `m.beta`, so the assertion was **structurally incapable
+of firing on it**, and it passed with the survivor in place. A guard that can only see the fixed site
+is not a guard. It is now a census — any argmax over a beta in that file — and it is anchored on
+`__file__` rather than the cwd, because the old form raised `FileNotFoundError` from any other
+directory, erroring instead of failing.
+
+### 5.5 The fix BLINDED an existing red, and that red had to be rebuilt
+
+L-R4's aliveness pin asserted `|acc - majority| <= 1e-3` on the constant-percept arm. Before this arc
+a DEAD unit was silent, answered class 0, scored ~0.0, and sat far from the floor — so the gap
+discriminated. After `decide`, **a dead unit answers the prior and lands AT the majority floor too**:
+the assertion now passes for alive and dead alike.
+
+The repair stops routing aliveness through accuracy. A live unit answers some held-out rows itself; a
+dead one abstains on every one. The pin now reads `abstentions >= heldout_n` as death, asserts
+`unanswerable == 0` (a silent row answered by tensor layout is the retired defect firing), and keeps
+the floor relation only as a loose companion. **This is the shape worth remembering: a fix that makes
+a system better-behaved can erase the very contrast an existing red depended on.**
+
+### 5.6 The L-row re-read section 2.5 pre-registered and section 4 did not do
+
+Section 2.5 promised "the L-row records are re-read against it ... and any moved number is reported,
+not smoothed". Section 4 re-read only CAP1 and CAP16. Done now, against
+`l1b-synaptic-online.md`'s recorded incumbent (same configuration; the refit accuracy is the batch
+instrument on both, which is what makes them comparable):
+
+| | recorded (retired path) | re-read (fixed path) |
+|---|---|---|
+| units | [2, 2, 2, 7, 6, 3, 3, 2] | **identical** |
+| majority floors | 8 values | **identical** — the control: floors are label bookkeeping and the fix must not move them |
+| acc | [0.3111, 0.9167, 0.825, 0.6556, 0.6278, 0.8333, 0.8667, 0.9472] | moves on **3 of 8** seeds: s0 +0.478, s5 +0.056, s6 +0.011 |
+| **(acc − majority)** | t 1.487, p 0.0898, 7/1/0 — **does NOT clear** | **t 4.799, p 0.0039, 8/0/0 — CLEARS** |
+| (acc − persistence) | t −2.898 — does not clear | t −3.791 — **still does not clear** |
+
+**A landed record's headline statistic FLIPS.** `l1b-synaptic-online.md`'s incumbent was recorded as
+failing to clear its own majority floor; on the fixed instrument it clears it. Corrected in that file.
+It does **not** resurrect L1b: L1b was deleted because its rule lost to the frozen rows, a different
+comparison, and nothing here touches that. Nothing reaches persistence on either instrument.
+
+### 5.7 What the panel did NOT overturn
+
+The lenses were pointed at the most self-serving shape available — an instrument change that flips a
+verdict toward firing. Three separate agents attacked it and none found a mechanism by which
+answering the prior on a silent row advantages the wide arm. The structural argument stands: on a
+silent row the retired rule scored **exactly 0** (class 0 is never a target) and the fix scores the
+majority rate, so `acc(1)` can only rise, `acc(16)` rises far less (it is rarely silent), and
+`acc(16) − acc(1)` can only SHRINK. Measured: +0.316 against +0.002. The fix made firing harder by
+construction, not by luck.

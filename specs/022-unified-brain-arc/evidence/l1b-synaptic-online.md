@@ -241,6 +241,17 @@ and persistence floors, units and last-third accuracy equal the same-day incumbe
   denominator: §3.2's column is the probe's mean over every fed tick (0.065–0.271 across seeds), the rule's
   `mean_gate` is over post-first-model calls only.
 - **A/B (OJA − BCM):** t = -0.583, exact p = 0.6562, 3 / 3 / 2, mean -0.071 (planted t 4.58, null clears 0.050).
+- **CORRECTION 2026-09-07 — this row's headline statistic was measured on a scoring path since found
+  defective, and it FLIPS.** `NGSNN.decide` retired an argmax that answered class 0 on a held-out row
+  where no unit fired — a class this stream never emits as a target
+  (`evidence/scoring-path-abstention.md`). Re-read on the fixed instrument, same configuration, same
+  seeds: **units identical**, **majority floors identical** (the control — floors are label
+  bookkeeping and the fix must not move them), accuracy moved on 3 of 8 seeds (s0 +0.478, s5 +0.056,
+  s6 +0.011), and **(acc − majority) goes from t 1.487 / p 0.0898 / 7-1-0 / DOES NOT CLEAR to
+  t 4.799 / p 0.0039 / 8-0-0 / CLEARS.** (acc − persistence) still does not clear on either
+  instrument (t −2.898 → t −3.791). **This does NOT resurrect L1b**, whose rule was deleted for
+  losing to the frozen rows — a different comparison this correction does not touch. The figures
+  below are kept as recorded so the correction is legible beside what it corrects.
 - **The incumbent (BATCH):** units [2, 2, 2, 7, 6, 3, 3, 2]; acc [0.3111, 0.9167, 0.825, 0.6556, 0.6278, 0.8333, 0.8667, 0.9472]; (acc − majority) t = 1.487, exact p = 0.0898, 7 / 1 / 0, mean +0.133 (planted t inf, null clears 0.065); (acc − persistence) t = -2.898, exact p = 1.0000, 0 / 8 / 0, mean -0.206 (planted t inf, null clears 0.045). Floors per seed (majority, persistence): {'0': [0.7444, 0.9528], '1': [0.7389, 0.9833], '2': [0.6944, 0.9528], '3': [0.3194, 0.9111], '4': [0.5083, 0.95], '5': [0.7583, 0.9472], '6': [0.5056, 0.9333], '7': [0.6528, 1.0]}.
 - The gate-attribution row of §2.4 is VOID (the gate withdrawn at Stage 0, §3.1).
 
