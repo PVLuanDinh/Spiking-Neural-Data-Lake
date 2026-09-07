@@ -267,6 +267,11 @@ class NGSNN:
         self.beta = None  # (L, m)    analytical output weights
         self.d_in = None
         self.m = None
+        # `decide`'s no-evidence answer: the training-majority class, recorded at fit. None until a
+        # fit has run, and `decide` then falls back to the bare argmax rather than inventing a prior
+        # -- an untrained model has no majority to answer with, and absence is a fact (T046a).
+        self.prior_class_ = None
+        self.last_abstentions_ = 0  # rows `decide` answered from the prior on its last call
 
     # ---- LIF hidden-layer firing rates (Eq. 2-5), vectorized + batched over samples ----
     def _rates(self, X, W, b, batch=4096, return_state=False):
@@ -413,6 +418,11 @@ class NGSNN:
         N = X.shape[0]
         d = X.shape[2] if X.ndim == 3 else X.shape[1]  # sequence (N,T,d) or features (N,d)
         self.d_in, self.m = d, int(y.max().item()) + 1
+        # `decide`'s no-evidence answer. `self.m` spans 0..max(y), so it can carry columns for
+        # classes this fit never saw -- the prior is drawn from the TARGETS actually present, never
+        # from the width of the one-hot.
+        _yl = y.tolist()
+        self.prior_class_ = max(set(_yl), key=_yl.count) if _yl else None
         Y = torch.zeros(N, self.m, device=self.device)  # one-hot targets Y (N, m)
         Y[torch.arange(N, device=self.device), y.to(self.device)] = 1.0
         delta = max(1, int(delta))
@@ -641,10 +651,55 @@ class NGSNN:
         self.W, self.b, self.beta = W, b, beta
         return self
 
+    # distinct-from: substrate/brain_bundle.py::predict -- a ROUTER that delegates to a named
+    #   skill's trained brain; it implements no decision of its own. distinct-from:
+    #   neuromodulation/locus_coeruleus.py::_population_spikes -- integrates an LC pool to a spike
+    #   COUNT, no classes. distinct-from: reasoning/rpm_solver.py::_induce_attr -- induces a
+    #   Raven's-matrix rule for one attribute. distinct-from: substrate/gradient_claim_gate.py's
+    #   ClassificationState -- a policy-census declaration. distinct-from:
+    #   cerebellum/jepa_world_model.py's invariance loss -- a scalar loss, not a class decision.
+    #   All five read 2026-09-07; none decides a class over an NG-SNN rate matrix. This method
+    #   CONSOLIDATES the two sites that did: this one and the inline argmax in
+    #   cortex/neurogenesis_engine.py::_refit's closed-gate branch, which now calls it.
+    def decide(self, S, beta=None):
+        """THE ONE decision rule over a rate matrix S (N, L): argmax of S @ beta (o_out, Eq. 13),
+        EXCEPT that a row carrying no evidence answers the training-majority class.
+
+        WHY THE EXCEPTION EXISTS (2026-09-07, opened by SC-012a's panel; the record is
+        specs/022-unified-brain-arc/evidence/scoring-path-abstention.md). `_rates` returns cnt / T
+        and is therefore NON-NEGATIVE, so a row on which no fitted unit fires has an exactly-zero
+        rate vector and an exactly-zero score vector. A bare `argmax` resolves that tie to column 0
+        -- and `fit` sizes beta as `int(y.max()) + 1`, so a column 0 exists even when the stream
+        never emits class 0 as a target. The engine buffers percept_{t-1} -> category_t and its
+        measured training classes are 1..5 / 1..4 / 1..3, so column 0 was a class that CANNOT be
+        correct, chosen by tensor layout rather than by any decision rule, and recorded as an
+        accuracy. Measured then: it decided 45 of 60 held-out rows on one seed and 60 of 60 on
+        another (accuracies 0.233 and 0.000).
+
+        The prior is ANSWERED rather than the row dropped from the denominator: excluding those
+        rows would have moved that same seed 0.233 -> 0.933, an instrument change manufacturing a
+        four-fold gain. Answering the prior leaves the denominator alone and makes an uninformative
+        readout score AT its own majority floor, which is the comparison every accuracy here is
+        already read against.
+
+        Rows with any firing are UNTOUCHED -- pinned as an exact tensor equality against the bare
+        argmax, because an instrument fix that moves a prediction it was not built to change is a
+        second defect wearing a repair's clothes."""
+        b = self.beta if beta is None else beta
+        pred = (S @ b).argmax(dim=1)
+        # "no evidence" is read on the RATE row, not on the score: a zero SCORE can also arise from
+        # a row that fired into a zero beta column, and that IS an answer the readout made --
+        # overriding it would be this fix reaching past its own defect.
+        silent = S.abs().sum(dim=1) == 0
+        self.last_abstentions_ = int(silent.sum().item())
+        if self.prior_class_ is not None and self.last_abstentions_:
+            pred = torch.where(silent, torch.full_like(pred, int(self.prior_class_)), pred)
+        return pred
+
     def predict(self, X):
-        """Class indices (N,) = argmax of s_new @ beta (o_out, Eq. 13)."""
+        """Class indices (N,) for feature/sequence rows X -- `decide` over their rates."""
         S = self._rates(X.to(self.device).float(), self.W, self.b)
-        return (S @ self.beta).argmax(dim=1)
+        return self.decide(S)
 
     @property
     def n_units(self):

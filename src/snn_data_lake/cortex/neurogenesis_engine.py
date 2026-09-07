@@ -401,7 +401,12 @@ class NeurogenesisSelfImprove:
             if int(beta_inst.shape[0]) != int(m.W.shape[0]):  # never under a closed gate; guarded
                 beta_inst = m.beta
             S_te = m._rates(x_te.to(m.device).float(), m.W, m.b)
-            pred = (S_te @ beta_inst).argmax(dim=1)
+            # P2, 2026-09-07: this branch used to carry its OWN inline argmax -- a second copy of
+            # the decision rule that `NGSNN.predict` also implements. Both answered column 0 on a
+            # row where no unit fired, a class the stream never emits as a target. `NGSNN.decide`
+            # is now the ONE rule and both callers use it (record:
+            # specs/022-unified-brain-arc/evidence/scoring-path-abstention.md).
+            pred = m.decide(S_te, beta_inst)
             acc = (pred == y_te.to(m.device)).float().mean().item()
             self._n_units = m.n_units
             self._acc = acc
