@@ -591,7 +591,7 @@ clause protects it.
   reference untouched (a full --record would have silently reset it), and the ratchet is NOT in the
   pre-push gate because the slope costs 332.7 s measured.* 16k stays the ingest milestone only.
 - **S3 = T066** activation-driven paging, BOTH reds built before the mechanism (FR-010/FR-011: no silent
-  drop of a spike to a paged-out unit; the integer rounds budget trips on constructed overload). *LANDED 2026-09-08 pending the arc's panel (`evidence/s3-neuron-pager.md` §3; §4 carries the fold): a calm paged run is byte-identical to the resident twin while paging; both reds counted red before the mechanism and fired by their broken arms in-command; three further reds constructed and closed after the mechanism was green (deferred external drive dropped; a frozen paged-out membrane; a threshold unit demoted at refractory release). Capacity is honoured, not enforced, under sustained firing — the no-locality regime T067 owns; the prefetch disposition is re-dated to T067; the null is T068's.* **S4 = T067**
+  drop of a spike to a paged-out unit; the integer rounds budget trips on constructed overload). *LANDED 2026-09-08, claims scoped by measurement (`evidence/s3-neuron-pager.md`; §4 is the panel's fold): a calm paged run is byte-identical to the resident twin while paging; both reds counted red before the mechanism and fired by their broken arms in-command; three further reds constructed and closed after the mechanism was green (deferred external drive dropped; a frozen paged-out membrane; a threshold unit demoted at refractory release). The panel (40 filed, 25 stood) found the full suite RED on a stale immortal-tag pin, a second residency instrument reading a different quantity, and a wrong "no locality" attribution — the trips are the ring-safety clause under a firing wavefront. Capacity is honoured, not enforced, under sustained firing, and at width under drive that covers the graph the pager evicts NOTHING (§3.5) — T068 must read residency from the over-capacity tick count and include a sustained-drive cell. The prefetch disposition is re-dated to T067; S6 gains the pager wire and S-R5; the null is T068's.* **S4 = T067**
   growth delta tier + background merge in sleep (its locality reorder uses block adjacency until the prior
   lands). **S5 = T068 (SC-007)** the paging null clause at the derived comparison width vs forced-total
   residency — WIN keep, LOSS delete the layer; gated on T061 (closed) only.
@@ -600,7 +600,13 @@ clause protects it.
   already met by `substrate/kernel_state.py`, T013, SoA), specs/008 gets a `tasks.md`, then the
   resident-CUDA arm gated on `substrate/device.py::select` with a new workload name (`"substrate_tick"`,
   introduced by S6) at the crossover re-derived on this host. Red: tick time at the measured width; a neuter
-  of the kernel changes the tick's output.
+  of the kernel changes the tick's output. **AMENDED 2026-09-08 (T066's fold, panel finding C12 — a visible
+  dated addition, not a rewrite):** S6's scope ALSO carries the paging wire the T066 `wire` exemption is
+  dated to — `substrate/neuron_pager.NeuronPager.tick` as the live tick's residency step, the cockpit's
+  "paging binding-width status" row, a paged snapshot for `replay_gate` (it refuses a masked kernel today),
+  and the pointer index's `0x0C` keying in `lake_rebuild_gate.build_index` — with its own red **S-R5**: the
+  live tick over a PAGED substrate is output-identical to the resident twin (T066's byte-identity arm re-run
+  on the live tick, not the self-check). S6 landing without these does NOT discharge the pager's bound.
 - **Then the prior: T062** — the H01 ingest is the c3 SYNAPSE GRAPH only, composed onto
   `cortex/cortical_prior.py` (which already holds the soma/layer/sign constants; the audit's "what the spec
   gets wrong" item (5)) — the join gate, unit gate, layer computation, CC-BY provenance; and **T063** the
@@ -748,6 +754,7 @@ no majority-of-seeds rule anywhere.
 | S-R1/R2 | rounds budget never trips on constructed overload; a paged-out spike is dropped silently | constructed overload; a resident twin | T066 |
 | S-R3 | paging loses to forced residency at the comparison width | forced residency | T068 |
 | S-R4 | the wired kernel does not change the tick's output when neutered, or tick time does not fall | the object-tick twin | S6 |
+| S-R5 | the live tick over a PAGED substrate is not output-identical to the resident twin, or the pager's bound is declared discharged while `NeuronPager.tick` is not the live tick's residency step (added 2026-09-08, T066's fold) | the resident twin on the live tick; the un-wired pager | S6 |
 | C-R1 | a pinned-payload neuter on an instantiated edge changes nothing downstream | the un-neutered run | C1a |
 | C-R2 | the 20-item battery does not move, or the 4-item positive control drops | the positive control | C2 |
 | U-R1 | `distinct candidate keys reachable` ≤ 1 | two hand-named operators → 2 keys | T072 |
