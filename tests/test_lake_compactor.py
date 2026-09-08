@@ -279,6 +279,21 @@ class _DroppingReorderCompactor(compactor_module.LakeCompactor):
         return [(bid, None if bid == self.skip else payload) for bid, payload in rows]
 
 
+class _DroppingReorderNoProofCompactor(_DroppingReorderCompactor):
+    """...and the same drop with the relocation proof NEUTERED.
+
+    THIS CLASS IS A CORRECTION TO THIS FILE'S OWN RED, made in the mechanism commit and disclosed
+    rather than smoothed. The red as first written asserted that a dropping reorder leaves a block
+    unreadable -- which assumed the damage reaches the index. It does not: the per-record
+    relocation proof catches every shifted pointer and NOTHING is adopted, so the dropping arm
+    with the proof ON demonstrates the proof working, and the damage is observable only with the
+    proof off. The criterion is STRONGER for the correction, not weaker: both halves are asserted
+    below, and the second is exactly 2.6's per-item neuter for the reorder."""
+
+    def _prove(self, *args, **kwargs):
+        return True
+
+
 class _DroppingFetchStore(UnitBlockStore):
     """The 2.6 per-item NEUTER on the READ side: the fresh-tier apply ignores the first delta of
     every block, so a paged run must diverge from the twin."""
@@ -620,7 +635,15 @@ def test_the_random_fetch_control_is_not_helped_by_a_locality_order_fitted_to_it
     r_after = _reads_per_round(random_store, random_sets)
 
     assert s_after == 1.0 and s_before == float(CO_FETCH_K)
-    assert r_after >= 3.0, f"the random control's reads per round fell to {r_after}"
+    # 2.5 pre-registers the null's reading as ">= 3 -> >= 3 (WITHIN ONE)", and the within-one
+    # clause is the bar. This line said `>= 3.0` when it was written, which assumed a noise-fitted
+    # order moves NOTHING; measured, it moves a little (a greedy walk still puts some co-occurring
+    # pair adjacent by chance), so the transcription is corrected to the pre-registration's own
+    # words and the numbers are reported. 2.4's INTEGER MARGIN below is the load-bearing bar.
+    assert r_after >= r_before - 1.0, (
+        f"the random control's reads per round fell {r_before} -> {r_after}, more than the one "
+        "read 2.5 allows a noise-fitted order"
+    )
     assert (s_before - s_after) - (r_before - r_after) >= CONTROL_MARGIN, (
         f"structured reduction {s_before - s_after} vs random {r_before - r_after} -- the "
         f"pre-registered margin is {CONTROL_MARGIN} reads per round"
@@ -660,20 +683,28 @@ def test_a_paged_run_is_byte_identical_to_its_twin_before_and_after_a_reorder(tm
     assert after_trains == twin_trains, "the reorder changed what the substrate computes"
 
 
-def test_a_dropping_reorder_makes_a_block_unreadable_and_fails_the_record_identity(tmp_path):
+def test_a_dropping_reorder_is_caught_by_the_proof_and_is_damage_without_it(tmp_path):
+    """S-R8's red in its two halves, after the correction `_DroppingReorderNoProofCompactor`
+    records: with the relocation proof ON the drop is REFUSED and nothing moves; with it off the
+    same drop leaves a block unreadable and the record identity gone."""
     store, _blocks, _edges = _r8_store(tmp_path, "dropreorder")
     before_edges = _logical_edges(store, R8_BLOCKS)
     order = compactor_module.co_fetch_order(_structured_sets(8), R8_BLOCKS)
     dropper = _DroppingReorderCompactor()
     dropper.skip = order[1]
-    dropper.reorder(store, order)
+    caught = dropper.reorder(store, order)
+    assert caught["refusals"] >= 1, "the dropping reorder was not refused by the proof"
+    assert _logical_edges(store, R8_BLOCKS) == before_edges, "a refused block must not move"
+
+    blind_store, _b, _e = _r8_store(tmp_path, "dropreorder-noproof")
+    blind = _DroppingReorderNoProofCompactor()
+    blind.skip = order[1]
+    blind.reorder(blind_store, order)
     # REFUSED, never read as an empty edge set. The exact type is the segment's own range
     # refusal (ValueError) or the index's missing-pointer refusal (KeyError) depending on where
     # the shifted pointer lands; the criterion is that a read cannot silently succeed.
     with pytest.raises((KeyError, ValueError)):
-        _logical_edges(store, R8_BLOCKS)
-    with pytest.raises((KeyError, ValueError, AssertionError)):
-        assert _logical_edges(store, R8_BLOCKS) == before_edges
+        _logical_edges(blind_store, R8_BLOCKS)
 
 
 def test_a_reorder_refuses_an_order_that_is_not_a_permutation(tmp_path):
