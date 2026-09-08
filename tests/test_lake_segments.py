@@ -2,11 +2,15 @@
 
 import struct
 
+import pyarrow as pa
+import pyarrow.ipc as pa_ipc
 import pytest
 
 from snn_data_lake.substrate.lake_segments import (
+    SEGMENT_SCHEMA,
     SegmentCorruption,
     SegmentStore,
+    read_record,
     read_segment,
     unwrap,
     wrap,
@@ -80,6 +84,52 @@ def test_recovery_drops_stray_tmp_and_duplicate_wal(tmp_path):
     store3 = SegmentStore(tmp_path)
     assert list(store3.iter_payloads()) == [b"kept"], "duplicate WAL must not double the record"
     assert sealed.exists()
+
+
+def _seal_the_pre_t066_way(seg_dir, payloads, seq0=1):
+    """The writer `seal()` REPLACED: the whole segment as ONE Arrow table, so the footer indexes
+    the segment and not the records. Constructed here because no such segment exists in the tree
+    -- without it the seal() comment's "REFUSES an old segment loudly" claim has no test behind
+    it, which is exactly what the 2026-09-08 panel found."""
+    seg_dir.mkdir(parents=True, exist_ok=True)
+    envelopes = [wrap(p) for p in payloads]
+    heads = [struct.unpack_from("<HI", e) for e in envelopes]
+    table = pa.table(
+        [
+            pa.array([seq0 + i for i in range(len(payloads))], pa.uint64()),
+            pa.array([h[0] for h in heads], pa.uint16()),
+            pa.array([h[1] for h in heads], pa.uint32()),
+            pa.array(list(payloads), pa.binary()),
+        ],
+        schema=SEGMENT_SCHEMA,
+    )
+    path = seg_dir / f"seg-{seq0:08d}.lake"
+    with open(path, "wb") as f:
+        with pa_ipc.new_file(f, SEGMENT_SCHEMA) as w:
+            w.write_table(table)
+    return path
+
+
+def test_read_record_refuses_a_pre_t066_whole_table_segment(tmp_path):
+    payloads = [b"old-0", b"old-1", b"old-2"]
+    path = _seal_the_pre_t066_way(tmp_path / "segments", payloads)
+    # POSITIVE CONTROL, same command: every WHOLE-segment reader is unaffected by the layout, so
+    # the refusal below is read_record's per-record addressing and not a broken fixture.
+    assert list(read_segment(path)) == payloads
+    with pa_ipc.open_file(path) as r:
+        assert r.num_record_batches == 1, "the fixture must be the one-batch layout, not the new"
+    # EVERY seq, not just the base one: before 2026-09-08 seqs 2 and 3 fell out of the batch range
+    # first and got "outside [1, 2)" -- a message about a span this segment does not have.
+    for seq in (1, 2, 3):
+        with pytest.raises(SegmentCorruption, match="pre-T066 writer"):
+            read_record(path, seq)
+    # and a seq that is out of range for ANY layout still reads as out of range on a NEW segment
+    store = SegmentStore(tmp_path / "new")
+    store.append(b"fresh")
+    sealed = store.seal()
+    assert read_record(sealed, 1) == b"fresh"
+    with pytest.raises(ValueError, match="outside"):
+        read_record(sealed, 2)
 
 
 def test_torn_wal_healed_by_incumbent_semantics(tmp_path):

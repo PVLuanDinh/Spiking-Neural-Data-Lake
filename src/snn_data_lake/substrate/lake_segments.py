@@ -129,8 +129,11 @@ class SegmentStore:
         # `read_all()` concatenates batches whatever their width, so `read_segment`,
         # `iter_payloads`, `lake_bridge.iter_records` and `lake_rebuild_gate` read an old
         # whole-table segment and a new one identically. Only `read_record` requires the new
-        # layout, and it REFUSES an old segment loudly rather than returning a wrong record.
-        # Asserted, not assumed, in tests/test_lake_segments.py and tests/test_neuron_pager.py.
+        # layout, and it REFUSES an old segment loudly -- at EVERY seq, with the same message --
+        # rather than returning a wrong record. Asserted, not assumed, in
+        # tests/test_lake_segments.py::test_read_record_refuses_a_pre_t066_whole_table_segment
+        # (which constructs one with write_table, the writer this seal replaced) and in
+        # tests/test_neuron_pager.py (the new-layout round trip and its out-of-range refusal).
         with open(tmp, "wb") as f:
             with pa_ipc.new_file(f, SEGMENT_SCHEMA) as w:
                 for i, rec in enumerate(records):
@@ -250,6 +253,19 @@ def read_record(path: str | os.PathLike, seq: int) -> bytes:
             raise SegmentCorruption(f"{path.name}: not a valid sealed segment ({e})") from e
         n = reader.num_record_batches
         if not 0 <= index < n:
+            # THE ERROR PATH ONLY, never the hot path: this branch has already lost the read, so
+            # one extra batch peek costs a paged read nothing. A pre-T066 whole-table segment is
+            # ONE batch holding every row, so the range test fires FIRST for every seq but the
+            # base and the caller got "outside [base, base+1)" -- a message naming a span the
+            # segment does not have, instead of the layout that is the real cause. Peeking batch
+            # 0 here gives every seq of an old segment the same diagnostic the base seq gets.
+            if n:
+                rows = reader.get_batch(0).num_rows
+                if rows > 1:
+                    raise SegmentCorruption(
+                        f"{path.name}: batch 0 holds {rows} rows -- per-record addressing "
+                        "needs one record per batch (a segment sealed by the pre-T066 writer)"
+                    )
             raise ValueError(f"{path.name}: seq {seq} is outside [{base}, {base + n})")
         batch = reader.get_batch(index)
     if batch.num_rows != 1:

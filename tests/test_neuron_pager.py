@@ -26,7 +26,7 @@ the condition still required `v == 0`.
 """
 
 import ast
-import hashlib
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -44,12 +44,15 @@ from snn_data_lake.substrate.lake_engine import (
     retention_of,
 )
 from snn_data_lake.substrate.lake_rebuild_gate import assert_rebuild
-from snn_data_lake.substrate.lake_segments import read_record, read_segment
+from snn_data_lake.substrate.lake_segments import SEGMENT_DIR, read_record, read_segment
 from snn_data_lake.substrate.neuron_pager import (
     NeuronPager,
     RoundsBudgetExceeded,
+    RoundWidthExceeded,
     UnitBlockStore,
+    segment_digest,
 )
+from snn_data_lake.substrate.unit_blocks import UnitBlocks
 
 FRAC = 16
 BLOCK = 128
@@ -233,6 +236,31 @@ def _calm_drives():
     return {0: _drive([3, 17]), 22: _drive([41, 90])}
 
 
+#: THE CALM ARM'S ONE CONFIG, read by both calm tests. Section 2.3 pre-registers that criterion
+#: as a CONJUNCTION -- trains and ring-slot key lists byte-identical to the twin AND the run
+#: actually paged -- and the first encoding split the two halves across two functions with this
+#: config duplicated by hand at both sites. The identity half ALONE survives neutering the
+#: mechanism: at capacity_blocks = N_BLOCKS all four of its assertions pass with page_ins=7,
+#: evictions=0 and resident fraction 1.000. So the guard is folded into the identity test and
+#: neither the config nor the conjunction can drift apart in one edit.
+CALM_ARM = dict(
+    capacity_blocks=4,
+    blocks_per_round=4,
+    max_rounds=2,
+    max_stale_ticks=1,
+    pinned=frozenset({0}),
+)
+
+
+def _assert_actually_paged(pager, kt):
+    """The other half of the calm conjunction: an identity that never paged proves nothing."""
+    fraction = float(kt.resident.mean())
+    assert pager.page_ins > 0, "an identity that never paged proves nothing"
+    assert pager.evictions > 0, "an identity that never evicted proves nothing"
+    assert 0.0 < fraction < 1.0, f"resident fraction must be strictly inside (0, 1): {fraction}"
+    return fraction
+
+
 def _pulse_drives(n_ticks):
     return {t: _drive(range(0, 8)) for t in range(n_ticks)}
 
@@ -244,39 +272,33 @@ def test_a_calm_paged_run_is_byte_identical_to_the_resident_twin(tmp_path):
     twin = _twin(edges)
     twin_trains, twin_rings = _run_plain(twin, drives, 45)
     store, blocks = _store_for(tmp_path, edges)
-    kt, pager = _paged(
-        store,
-        blocks,
-        capacity_blocks=4,
-        blocks_per_round=4,
-        max_rounds=2,
-        max_stale_ticks=1,
-        pinned=frozenset({0}),
-    )
+    kt, pager = _paged(store, blocks, **CALM_ARM)
     paged_trains, paged_rings, _ = _run_paged(pager, drives, 45)
     assert paged_trains == twin_trains, "a calm paged run must be byte-identical to the twin"
     assert paged_rings == twin_rings, "ring-slot key lists must match the twin tick for tick"
     assert not pager.budget_trips, "the calm arm must not trip the rounds budget"
     assert np.array_equal(kt.delivered, twin.delivered)
+    # THE PAGING GUARD, IN THIS TEST. Every assertion above passes on a run with eviction
+    # switched off, so the identity alone is not the pre-registered criterion.
+    _assert_actually_paged(pager, kt)
 
 
 def test_the_calm_arm_actually_paged_rather_than_holding_everything_resident(tmp_path):
+    """The guard on its own run, over the SAME `CALM_ARM` config the identity test uses."""
     edges = _chain_edges()
     store, blocks = _store_for(tmp_path, edges)
-    kt, pager = _paged(
-        store,
-        blocks,
-        capacity_blocks=4,
-        blocks_per_round=4,
-        max_rounds=2,
-        max_stale_ticks=1,
-        pinned=frozenset({0}),
-    )
+    kt, pager = _paged(store, blocks, **CALM_ARM)
     _run_paged(pager, _calm_drives(), 45)
-    fraction = float(kt.resident.mean())
-    assert pager.page_ins > 0, "an identity that never paged proves nothing"
-    assert pager.evictions > 0, "an identity that never evicted proves nothing"
-    assert 0.0 < fraction < 1.0, f"resident fraction must be strictly inside (0, 1): {fraction}"
+    _assert_actually_paged(pager, kt)
+    # the TWO EXACT residency readings, after a run that evicted: the table sum and the sum over
+    # the same arrays reached through `by_pre`. They must agree to the byte with no dangling
+    # route -- an orphaned bundle moves only the first, a stale by_pre entry only the second.
+    table_bytes = pager.resident_edge_bytes()
+    route_bytes, dangling = pager.resident_edge_bytes_via_routes()
+    assert (route_bytes, dangling) == (table_bytes, 0), (
+        f"the two exact residency instruments disagree: table {table_bytes}, routes "
+        f"{route_bytes}, dangling {dangling} -- report no residency number"
+    )
 
 
 def test_overload_conserves_every_units_charge_and_bounds_staleness(tmp_path):
@@ -680,6 +702,9 @@ def test_the_calm_control_never_trips_the_budget_and_still_exercises_it(tmp_path
     assert all(r <= pager.max_rounds for r in pager.rounds_used)
     assert max(pager.rounds_used) >= 1, "a budget that is never exercised is not a control"
     assert pager.assert_within_budget() is True
+    # the width instrument's own control: a CORRECT pager must pass it, or its red means nothing
+    assert pager.assert_round_widths() is True
+    assert max(pager.round_widths()) <= pager.blocks_per_round
 
 
 def test_a_budget_blind_pager_reads_zero_trips_on_the_identical_overload(tmp_path):
@@ -699,6 +724,15 @@ def test_a_budget_blind_pager_reads_zero_trips_on_the_identical_overload(tmp_pat
     _run_paged(blind, {0: _drive(range(0, 8))}, 6)
     assert not blind.budget_trips, "the broken arm must read 0 trips -- that is the red"
     assert max(blind.rounds_used) == 1, "the blind arm submits the whole due set in one round"
+    # THE WIDTH RED the rounds pair cannot see: this arm's planner count and the store's
+    # submissions AGREE (both 1), so the double-count is green on it. The width is not.
+    assert blind.rounds_used == blind.store_rounds_used
+    assert blind.round_widths() == [7], "the whole due set went out as one 7-block submission"
+    with pytest.raises(RoundWidthExceeded):
+        blind.assert_round_widths()
+    assert store.blocks_read == sum(store.submission_widths), (
+        "blocks_read must equal the recorded widths -- neither may be a write-only counter"
+    )
 
 
 def test_both_rounds_instruments_agree_on_every_tick_in_every_arm(tmp_path):
@@ -830,6 +864,51 @@ def test_the_pager_refuses_a_pinned_block_out_of_range_or_larger_than_capacity(t
         NeuronPager(kt, store, capacity_blocks=2, pinned=frozenset({0, 1, 2}), **base)
 
 
+def test_the_pager_refuses_a_grain_that_disagrees_with_its_stores_partition(tmp_path):
+    """The one input every other check in the constructor is ABOUT was itself unchecked.
+
+    `NeuronPager.__init__` validated capacity_blocks, blocks_per_round, max_rounds,
+    max_stale_ticks, the residency mask and every pinned id against `blocks.n_blocks` -- and then
+    accepted `blocks` itself unchecked. Under a mismatch `_page_in` compiles edges at the
+    RECORD's grain while marking residency at the PAGER's, so it inserts bundles whose pre units
+    the mask excludes and nothing raises: a caller silently addresses different units than the
+    records describe. The store's own refusal is KEPT (see the block_size test above) -- these
+    checks are ADDED, never moved."""
+    edges = _chain_edges()
+    store, blocks = _store_for(tmp_path, edges, name="grain")
+    state = KernelState([("net", N)])
+    state.arrays["thr"][:] = 1.0
+    kt = KernelTick(
+        state,
+        Synapses.empty(N, P_PARTS, FRAC, MAX_DELAY),
+        decay=0.5,
+        v_reset=0.0,
+        refrac_ticks=0,
+        resident=np.zeros(N, dtype=bool),
+    )
+    base = dict(
+        capacity_blocks=4,
+        blocks_per_round=2,
+        max_rounds=2,
+        max_stale_ticks=1,
+        pinned=frozenset({0}),
+    )
+    with pytest.raises(ValueError, match="addresses"):
+        NeuronPager(kt, store, blocks=UnitBlocks(N, BLOCK * 2), **base)
+    with pytest.raises(ValueError, match="multiple"):
+        NeuronPager(kt, store, blocks=UnitBlocks(N, 64), **base)
+    with pytest.raises(ValueError):  # the store's refusal is still the store's
+        store.build(*edges, N, 64)
+    # ACCEPTED: a REOPENED store has no partition of its own (`blocks is None`) and serves fetch
+    # from the durable index. That is the path the pager takes when it joins the live tick at S6,
+    # so refusing it would trade a silent defect for a loud one.
+    reopened = UnitBlockStore(store.root)
+    assert reopened.blocks is None
+    pager = NeuronPager(kt, reopened, blocks=blocks, **base)
+    assert pager.blocks.n_blocks == N_BLOCKS and pager.blocks.block_size == BLOCK
+    reopened.close()
+
+
 def test_a_malformed_unit_block_record_is_refused_whole():
     rec = UnitBlockRecord(
         block_id=2,
@@ -910,17 +989,16 @@ def test_read_record_returns_what_read_segment_yields_at_that_seq(tmp_path):
 
 
 def test_the_lake_digest_is_identical_across_a_full_page_out_page_in_cycle(tmp_path):
+    """The identity AND its red, through ONE digest function over a root.
+
+    The identity is true BY CONSTRUCTION -- the pager performs no store write at all, so this arm
+    passed unchanged with every write path replaced by raise-on-call, and passed printing
+    IDENTICAL over ZERO BYTES when its glob was blinded. A criterion with no reachable red is
+    what P8 forbids, so the byte-flip control and the empty-glob refusal live here beside it."""
     edges = _chain_edges()
     store, blocks = _store_for(tmp_path, edges, name="digest")
-    seg_dir = Path(tmp_path) / "digest" / "segments"
-
-    def digest():
-        h = hashlib.sha256()
-        for seg in sorted(seg_dir.glob("seg-*.lake")):
-            h.update(seg.read_bytes())
-        return h.hexdigest()
-
-    before = digest()
+    before, n_files = segment_digest(store.root)
+    assert n_files >= 1, "the digest must be taken over real files, not an empty glob"
     _kt, pager = _paged(
         store,
         blocks,
@@ -932,7 +1010,22 @@ def test_the_lake_digest_is_identical_across_a_full_page_out_page_in_cycle(tmp_p
     )
     _run_paged(pager, _calm_drives(), 45)
     assert pager.page_ins > 0 and pager.evictions > 0, "the cycle must have paged both ways"
-    assert digest() == before, "page-out DESTROYS NO RECORD -- the lake bytes must not move"
+    assert segment_digest(store.root) == (before, n_files), (
+        "page-out DESTROYS NO RECORD -- the lake bytes must not move"
+    )
+
+    control = Path(tmp_path) / "digest-control"
+    shutil.copytree(store.root / SEGMENT_DIR, control / SEGMENT_DIR)
+    assert segment_digest(control) == (before, n_files), "the control copy is not the same bytes"
+    victim = sorted((control / SEGMENT_DIR).glob("seg-*.lake"))[0]
+    raw = bytearray(victim.read_bytes())
+    raw[len(raw) // 2] ^= 0xFF
+    victim.write_bytes(bytes(raw))
+    assert segment_digest(control)[0] != before, (
+        "one flipped byte did not move the digest -- the instrument cannot detect a lost record"
+    )
+    with pytest.raises(ValueError):
+        segment_digest(Path(tmp_path) / "nowhere")  # sha256-of-nothing is never a lake identity
 
 
 def test_the_bridge_and_the_rebuild_gate_stay_green_on_one_batch_per_record(tmp_path):

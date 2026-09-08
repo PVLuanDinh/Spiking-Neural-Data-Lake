@@ -46,11 +46,33 @@ class SnapshotRefused(RuntimeError):
     """A snapshot restore that cannot prove it resumes THE SAME trajectory refuses whole."""
 
 
+#: THE PAGED-KERNEL REFUSAL, both directions. A paged `KernelTick` carries two quantities the
+#: blob does not: `pending` (the lossy input summary a paged-out unit's arriving charge waits in)
+#: and the residency mask itself. Until S6 carries them, the honest answer is a refusal rather
+#: than a silent drop. MEASURED, not argued (adversarial panel, 2026-09-08): 262,144 fixed-point
+#: units sitting in `pending` at capture time read back as ZERO after restore, and after an
+#: identical page-in the live kernel fired [8, 9] while the restored one fired nothing. The
+#: module contract above is what forbids that -- and an evidence file for another row cannot
+#: amend a T017 contract, so the fix lands here.
+_PAGED_REFUSAL = (
+    "the KernelTick is PAGED (resident is not None) and this snapshot format carries neither its "
+    "`pending` summary nor its residency mask -- proceeding would silently drop every unit of "
+    "charge waiting for a paged-out unit and continue on a different trajectory. Refused whole. "
+    "OWED AT S6 (the kernel cutover): a format that carries pending_<p> and residency with "
+    "SNAPSHOT_VERSION bumped, plus the synapse table's provenance, since a paged run's table is "
+    "built BY paging and the caller cannot simply supply the same one"
+)
+
+
 def capture(kt, rng_streams):
     """One snapshot blob from a live KernelTick + its named RNG streams
-    ({name: np.random.Generator}). Positions are the bit-generator state dicts, verbatim."""
+    ({name: np.random.Generator}). Positions are the bit-generator state dicts, verbatim.
+
+    REFUSES a paged kernel rather than dropping its `pending` silently -- `_PAGED_REFUSAL`."""
     import numpy as np
 
+    if getattr(kt, "resident", None) is not None:
+        raise SnapshotRefused(f"capture: {_PAGED_REFUSAL}")
     rings = [[[list(key) for key in slot] for slot in part_rings] for part_rings in kt._rings]
     buf = io.BytesIO()
     arrays = {f"acc_{p}": kt._acc[p] for p in range(kt.p_parts)}
@@ -86,13 +108,17 @@ def restore(blob, kt):
     snapshot. Returns {name: np.random.Generator} rebuilt AT the captured positions.
 
     THE ASSERTS ARE THE GATE (FR-007): a snapshot without rng_positions REFUSES; a parameter
-    mismatch REFUSES (same state on a different kernel is a different brain); and after
-    seating each stream, its bit-generator state is compared to the captured dict and any
-    inequality REFUSES -- stream-position equality is checked, never assumed."""
+    mismatch REFUSES (same state on a different kernel is a different brain); a PAGED target
+    kernel REFUSES (`_PAGED_REFUSAL` -- the blob has no residency and no `pending`, so seating it
+    into one would resume a trajectory the snapshot never described); and after seating each
+    stream, its bit-generator state is compared to the captured dict and any inequality
+    REFUSES -- stream-position equality is checked, never assumed."""
     import numpy as np
 
     from snn_data_lake.substrate.kernel_state import KernelState
 
+    if getattr(kt, "resident", None) is not None:
+        raise SnapshotRefused(f"restore: {_PAGED_REFUSAL}")
     try:
         with np.load(io.BytesIO(blob), allow_pickle=False) as z:
             if int(z["version"]) != SNAPSHOT_VERSION:

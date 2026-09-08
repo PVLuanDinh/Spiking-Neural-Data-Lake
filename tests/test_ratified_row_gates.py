@@ -52,8 +52,12 @@ def test_the_retention_label_is_consistent_and_every_reclaimer_is_accounted_for(
     assert len(scratch) >= 1  # the scratch-home deletions are EXCLUDED and still listed
     imm = immortal_retention.immortal_tags()
     assert (
-        len(imm) == 9 and 0x03 not in imm and 0x08 not in imm
-    )  # the grown substrate is COMPACTABLE
+        len(imm) == 10 and 0x0C in imm and 0x03 not in imm and 0x08 not in imm
+    )  # the grown substrate is COMPACTABLE. 0x0C joined the class on 2026-09-08 (specs/022 T066)
+    # for the reason RETENTION[0x0C] itself gives: "the block IS the synaptic identity of its
+    # units and there is no snapshot to reconstruct it from, so nothing here is reclaimable".
+    # The count is PINNED, never derived from immortal_tags() -- immortal_tags() reads RETENTION,
+    # so an expected count derived from it would be a tautology and this detector would be zero.
 
 
 def test_the_round_trip_crosses_a_process_boundary_and_its_red_is_reachable():

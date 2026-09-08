@@ -29,11 +29,21 @@ whose fetch set holds F blocks costs `ceil(F / blocks_per_round)` submissions. `
 per-tick budget. Rounds are counted TWICE -- the planner's `rounds_used` (arithmetic over the due
 set) and the store's `submissions` (incremented inside `fetch`) -- and no rounds number is
 reported unless they agree on every tick. THE SEPARATION IS NARROW and is stated as narrow: the
-two counts are one call apart, so they diverge on an empty round issued, a `fetch` that raises
-part way through a tick, or an `_issue_rounds` override whose own count does not match what it
-submitted (which is exactly what the budget-blind broken arm is). They are not independent
-measurements of the same physical quantity, and reading them as one would be the mistake this
-sentence exists to prevent.
+two counts are one call apart, so they diverge on an empty round issued or on a `fetch` that
+raises part way through a tick. THEY DO NOT CATCH THE BUDGET-BLIND BROKEN ARM, and this paragraph
+claimed they did until 2026-09-08: that arm reports 1 round and issues exactly 1 `fetch`, so its
+own count matches its own submissions and both counters agree while the single submission carries
+7 blocks against `blocks_per_round = 2`. They are not independent measurements of the same
+physical quantity, and reading them as one would be the mistake this paragraph exists to prevent.
+
+WIDTH IS THE READING THE PAIR CANNOT MAKE, so it is a third instrument rather than a rewording of
+the second. `UnitBlockStore.fetch` records every submission's width; `blocks_read` is asserted
+equal to their sum (so neither is a write-only counter); and `NeuronPager.assert_round_widths()`
+refuses any submission THIS pager issued that carried more than `blocks_per_round` reads. The
+constructor's pinned hot-set load is excluded by construction rather than by an aggregate bound:
+it is one fetch of `len(pinned)` blocks, so an aggregate form would go red on a CORRECT pager
+whenever the hot set is wider than one round. The budget-blind arm reads 7 > 2 on this
+instrument, in the same command that reads 0 trips on the pair.
 
 BOUNDED STALENESS. A due block whose oldest pending arrival has waited `max_stale_ticks` ticks is
 FORCED into rounds beyond the budget rather than deferred again, so observed staleness can never
@@ -54,8 +64,11 @@ WHAT THIS ROW DOES NOT CLAIM: no paging WIN, no tick-time claim, no bytes-fetche
 (T067's metric), no live-tick charge (the pager joins the live tick at S6), no device tier, no
 prefetch. It claims that both reds are reachable and counted, that a calm paged run is
 byte-identical to the resident twin, that delivered charge is conserved under overload with
-staleness bounded by an input, that rounds are integer, budgeted, double-counted and trip on
-constructed overload, and that resident edge bytes fall, measured two ways.
+staleness bounded by an input, that rounds are integer, budgeted, double-counted, width-checked
+and trip on constructed overload, and that resident edge bytes fall, measured TWO EXACT WAYS that
+must agree to the byte -- a sum of `nbytes` over the bundle table, and a sum over the same arrays
+reached by walking the routing index `by_pre`. The tracemalloc readings beside them are printed
+as an allocator FOOTPRINT and are used as no criterion (see `_bundle_alloc_bytes`).
 
   python -m snn_data_lake.substrate.neuron_pager
 """
@@ -64,6 +77,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import sys
 import time
 import tracemalloc
@@ -118,6 +132,16 @@ class RoundsBudgetExceeded(RuntimeError):
     record and `assert_within_budget()` is the criterion that turns it red."""
 
 
+class RoundWidthExceeded(RuntimeError):
+    """A submission carried more block reads than `blocks_per_round` allows.
+
+    DISTINCT FROM `RoundsBudgetExceeded`, and deliberately a separate class: exceeding the ROUNDS
+    budget is a legitimate, counted, disclosed trade the mechanism makes to keep its staleness
+    bound. Exceeding a round's WIDTH is not a trade at all -- it means the caller's per-round I/O
+    allowance was never honoured, which is exactly what the budget-blind broken arm does and what
+    the two rounds counters agree about and therefore cannot see."""
+
+
 # distinct-from: substrate/neuro_chip_stream.py::StreamingChip -- streams a RECORDED chip's spike
 #   shards (input data) with one core resident. It holds no substrate unit, has no
 #   activation-driven policy and no delivery path; its `max_resident_cores` counts context-manager
@@ -140,8 +164,9 @@ class UnitBlockStore:
 
     Records go through `lake_segments.SegmentStore` (WAL then a sealed Arrow segment, one record
     batch per record) and their pointers are folded into `lake_index.LakeIndex` as
-    `(0x0C, block_id) -> (container, seq)` with the watermark advanced in the SAME transaction --
-    no sidecar file, no second durable store.
+    `(0x0C, block_id) -> (container, seq)` in ONE transaction -- no sidecar file, no second
+    durable store. The applied WATERMARK is deliberately NOT advanced here (the reason is at the
+    `put_batch` call): this store is a tenant of the lake's index, not the owner of its fold.
 
     `root` is a lake home directory and there is NO DEFAULT: defaulting to `home()` would put a
     bench store inside the live brain's lake, so a missing root is refused."""
@@ -159,7 +184,14 @@ class UnitBlockStore:
         self.index = LakeIndex(root / INDEX_NAME)
         #: the STORE-side rounds instrument: one increment per `fetch` submission
         self.submissions = 0
+        #: the STORE-side WIDTH instrument: one entry per submission, its block count. Read by
+        #: `NeuronPager.assert_round_widths` (per-round refusal) and by the `blocks_read`
+        #: cross-check below -- the reading the two rounds COUNTERS structurally cannot make.
+        self.submission_widths: list[int] = []
         self.blocks_read = 0
+        #: the partition `build()` wrote, or None on a REOPENED store (the durable index serves
+        #: `fetch` without it). Read by `NeuronPager.__init__` to refuse a pager addressing a
+        #: different grain than the records describe.
         self.blocks = None
 
     def build(self, pre, post, weight, delay, n_units, block_size):
@@ -211,9 +243,23 @@ class UnitBlockStore:
         self.store.append_many(payloads)
         sealed = self.store.seal()
         seq0 = int(sealed.stem.split("-")[1])
+        # watermark=None ON PURPOSE (corrected 2026-09-08): the applied watermark is ONE global
+        # meta row naming how far the lake's fold has been applied, and this store does not own
+        # that fold -- it is a tenant. Writing it here made a second tenant's progress marker go
+        # BACKWARDS (measured 300 -> 4 with two real in-tree writers on one root), because the
+        # two numbers are INCOMMENSURABLE: records-in-the-lake against this store's segment seq.
+        # A stale-LOW marker only costs a replay of the tail; a marker advanced by the wrong
+        # tenant records progress nobody made, so passing None is the safe direction, not the
+        # lazy one. THE SHARED KEY SPACE IS STILL OWED AT S6, and it is the same defect from its
+        # other side: these (0x0C, block_id) rows and `lake_rebuild_gate.build_index`'s
+        # provisional (tag, GLOBAL ORDINAL) rows live in ONE lake_index.db under ONE tag space,
+        # so a derived rebuild overwrites every pointer here and `fetch` then raises. It is inert
+        # only while the store lives in throwaway homes. Whoever wires S6 must say which keying
+        # owns tag 0x0C -- build_index cannot re-derive these rows today, though the lake itself
+        # can (the forward scan sees the segment, the seq and the record's own block_id).
         self.index.put_batch(
             [(TAG, str(bid), sealed.name, seq0 + bid) for bid in range(blocks.n_blocks)],
-            watermark=seq0 + blocks.n_blocks - 1,
+            watermark=None,
         )
         self.blocks = blocks
         return blocks
@@ -236,6 +282,7 @@ class UnitBlockStore:
                 )
             located.append((bid, self.root / SEGMENT_DIR / row[0], row[1]))
         self.submissions += 1
+        self.submission_widths.append(len(ids))
         self.blocks_read += len(ids)
         with ThreadPoolExecutor(max_workers=min(len(ids), 8)) as pool:
             payloads = list(pool.map(lambda loc: read_record(loc[1], loc[2]), located))
@@ -248,16 +295,40 @@ class UnitBlockStore:
         """The store's own forward read, delegated -- one reader path (P2)."""
         return self.store.iter_payloads()
 
-    def segment_digest(self) -> str:
-        """sha256 over every sealed segment's bytes. The lake-identity instrument: a page-out
-        DESTROYS NO RECORD, so this must not move across a full page-out/page-in cycle."""
-        digest = hashlib.sha256()
-        for seg in sorted((self.root / SEGMENT_DIR).glob("seg-*.lake")):
-            digest.update(seg.read_bytes())
-        return digest.hexdigest()
-
     def close(self):
         self.index.close()
+
+
+# distinct-from: substrate/lake_index.py::LakeIndex.logical_dump_digest -- hashes the sorted
+#   POINTER ROWS of the sqlite index (deliberately not the .db bytes, since page layout is engine
+#   noise). This hashes the immutable SEGMENT BYTES on disk, which is the opposite choice for the
+#   opposite reason: the records are what a page-out must not touch.
+# distinct-from: basal_ganglia/self_build_loop.py::_firewalled_bytes/_crcs -- a crc32 fingerprint
+#   of the five safety-envelope FILES, kept so the envelope can be RESTORED byte-exact after a
+#   self-modification. Different files, different purpose, and it holds the bytes to undo with.
+#   Both sites read 2026-09-08.
+def segment_digest(root) -> tuple[str, int]:
+    """(sha256 of every sealed segment's bytes under `root`, how many files went into it).
+
+    THE ONE BODY (P2), taking a root rather than a store, so the byte-flip positive control runs
+    the identical code the identity claim is made with. A page-out DESTROYS NO RECORD, so this
+    must not move across a full page-out/page-in cycle -- and an arm that cannot MOVE it is not a
+    measurement. The file count is returned rather than logged because a ZERO-file glob is
+    REFUSED here: sha256-of-nothing equals sha256-of-nothing, so a blinded glob (a renamed
+    SEGMENT_DIR, a store rooted elsewhere) would otherwise print IDENTICAL forever. Measured, not
+    argued: the shipped arm passed and printed IDENTICAL over zero bytes when its glob was
+    blinded (adversarial panel, 2026-09-08)."""
+    files = sorted((Path(root) / SEGMENT_DIR).glob("seg-*.lake"))
+    if not files:
+        raise ValueError(
+            f"no sealed segment under {Path(root) / SEGMENT_DIR} -- refusing to report "
+            "sha256-of-nothing as a lake identity (an empty glob would compare EQUAL to any "
+            "other empty glob, which is a criterion that cannot fail)"
+        )
+    digest = hashlib.sha256()
+    for seg in files:
+        digest.update(seg.read_bytes())
+    return digest.hexdigest(), len(files)
 
 
 class NeuronPager:
@@ -343,6 +414,34 @@ class NeuronPager:
                 "the pager needs a KernelTick built with a residency mask -- resident=None is "
                 "the incumbent, unpaged, path"
             )
+        # THE GRAIN, checked here and NOT MOVED from the store (tests/test_neuron_pager.py pins
+        # the store's own refusal, and a moved check would turn that red). `blocks` is the one
+        # input every other check in this constructor is ABOUT: capacity_blocks, pinned ids and
+        # the residency mask are all counted in it, and `_page_in` compiles edges at the RECORD's
+        # grain while marking residency at the PAGER's, so a mismatch inserts bundles whose pre
+        # units the mask excludes -- silently, measured, with no exception anywhere.
+        if not (
+            isinstance(blocks.block_size, int)
+            and not isinstance(blocks.block_size, bool)
+            and blocks.block_size > 0
+            and blocks.block_size % ALIGN_UNITS == 0
+        ):
+            raise ValueError(
+                f"blocks.block_size must be a positive multiple of {ALIGN_UNITS} so every "
+                "KernelState field block starts on a 128-byte boundary (the |i1 sign array is "
+                f"the binding field), got {blocks.block_size!r}"
+            )
+        if store.blocks is not None and (
+            blocks.block_size != store.blocks.block_size or blocks.n_blocks != store.blocks.n_blocks
+        ):
+            raise ValueError(
+                f"the pager addresses {blocks.n_blocks} blocks of {blocks.block_size} units "
+                f"while its store wrote {store.blocks.n_blocks} of {store.blocks.block_size} -- "
+                "a fetch would return a record describing different units than the residency "
+                "mask marks. A REOPENED store (store.blocks is None, the durable index serving "
+                "fetch on its own) is accepted: that is the path the pager takes at S6, and "
+                "refusing it would trade this silent defect for a loud one"
+            )
         pinned = frozenset(int(b) for b in pinned)
         bad = sorted(b for b in pinned if not 0 <= b < blocks.n_blocks)
         if bad:
@@ -384,6 +483,11 @@ class NeuronPager:
         #: the pinned hot set is resident FROM CONSTRUCTION, so its load is not an
         #: activation-driven page-in; zeroing here keeps `page_ins > 0` a claim about paging
         self.page_ins = 0
+        #: WHERE THIS PAGER'S OWN SUBMISSIONS START in the store's width log. The hot-set load
+        #: above is ONE fetch of len(pinned) blocks and is deliberately excluded: it is not a
+        #: round, and an aggregate width bound that included it would go red on a CORRECT pager
+        #: whenever the hot set is wider than blocks_per_round (measured, adversarial panel).
+        self.widths_at_start = len(store.submission_widths)
         self.submissions_at_start = store.submissions
         self._prev_submissions = store.submissions
 
@@ -583,10 +687,25 @@ class NeuronPager:
     def resident_edge_bytes(self) -> int:
         """The EXACT sum of `nbytes` over the resident bundle arrays. A memory reading, not a
         nesting counter -- the T064 debt this row was not allowed to repeat."""
-        return int(sum(posts.nbytes + q.nbytes for posts, q in self.kt.syn.bundles.values()))
+        return edge_bytes_over_table(self.kt.syn)
 
     def resident_fraction(self) -> float:
         return float(self.resident.mean())
+
+    # distinct-from: `resident_edge_bytes` two lines above -- that is the FIRST reading and this
+    #   is deliberately a SECOND reading of the SAME quantity, which is the point: they must
+    #   agree to the byte or nothing is reported. `edge_bytes_over_routes` carries how the two
+    #   fail differently.
+    # distinct-from: insula/interoceptive_integration.py::_measure_edge_charge -- also a paired
+    #   reading, but its pair is an A/B over a VARIED producer (live vs pinned), not two paths to
+    #   one static quantity; it measures whether a wire carries influence, not how many bytes are
+    #   resident.
+    # distinct-from: cortex/cortical_prior.py::e_fraction -- returns None for NOT MEASURED over a
+    #   dataset lookup; no allocation, no second path, and nothing here may be None. Sites read
+    #   2026-09-08.
+    def resident_edge_bytes_via_routes(self) -> tuple[int, int]:
+        """(bytes, dangling routes), reached through `by_pre` instead of the bundle table."""
+        return edge_bytes_over_routes(self.kt.syn)
 
     def resident_floor_bytes_per_unit(self) -> float:
         """State + accumulator + pending summary + the residency flag, per unit -- what stays in
@@ -596,6 +715,48 @@ class NeuronPager:
         acc = sum(a.nbytes for a in self.kt._acc)
         pending = sum(a.nbytes for a in self.kt.pending)
         return (state + acc + pending + self.resident.nbytes) / units
+
+    # distinct-from: `assert_within_budget` below -- that criterion reads how MANY rounds a tick
+    #   needed against max_rounds, which is a trade the mechanism makes deliberately. These read
+    #   how WIDE each round was against blocks_per_round, which is never a trade. The
+    #   budget-blind arm is green on the first and RED on this one, which is exactly why both
+    #   exist rather than one.
+    # distinct-from: substrate/unit_blocks.py::UnitBlocks.units_in -- also a per-block width, but
+    #   a STATIC property of the partition (which units a block owns, short at the tail). This
+    #   counts what a fetch actually submitted at runtime; a correct partition says nothing about
+    #   whether the I/O allowance was honoured.
+    # distinct-from: substrate/lake_engine.py::AppendBudget -- a per-tag BYTES/tick flood assert
+    #   against a tag's own recent rate; a rate over a non-stationary quantity, not an integer
+    #   bound on one submission. Sites read 2026-09-08.
+    def round_widths(self) -> list[int]:
+        """The block count of every submission THIS pager issued (hot-set load excluded)."""
+        return list(self.store.submission_widths[self.widths_at_start :])
+
+    def assert_round_widths(self) -> bool:
+        """A round is one fetch of AT MOST `blocks_per_round` block reads -- CHARGED here.
+
+        The two rounds counters agree on the budget-blind arm because they sit one call apart;
+        this is the reading they cannot make, and it goes red on that arm (7 > 2) in the same
+        command. `blocks_read` gets its consumer in the same pass -- it must equal the sum of the
+        store's recorded widths -- so neither is a write-only bookkeeping integer (P3 shape 4)."""
+        widths = self.round_widths()
+        if self.store.blocks_read != sum(self.store.submission_widths):
+            raise RoundWidthExceeded(
+                f"the store's blocks_read ({self.store.blocks_read}) does not equal the sum of "
+                f"its recorded submission widths ({sum(self.store.submission_widths)}) -- the "
+                "two width bookkeepers disagree, so no width verdict follows"
+            )
+        over = [(i, w) for i, w in enumerate(widths) if w > self.blocks_per_round]
+        if over:
+            i, w = over[0]
+            raise RoundWidthExceeded(
+                f"{len(over)} of {len(widths)} submissions carried more than "
+                f"blocks_per_round={self.blocks_per_round} block reads; first at round {i} with "
+                f"{w} blocks. A round is DEFINED as at most blocks_per_round reads, so a wider "
+                "submission means the per-round I/O allowance was never honoured -- which the "
+                "planner/store rounds pair cannot see, because on that arm it agrees"
+            )
+        return True
 
     def assert_within_budget(self) -> bool:
         if self.budget_trips:
@@ -782,6 +943,55 @@ def _run(runner, drives, ticks):
     return trains
 
 
+def _rings_of(kt):
+    return [[list(slot) for slot in ring] for ring in kt._rings]
+
+
+# distinct-from: basal_ganglia/evidence_accumulation.py::_patience_consumer_factory -- the "ring"
+#   there is a SignalRing on a declared inter-region port, built fresh per replay arm; the rings
+#   read here are KernelTick's DELAY-SLOT lists, an execution detail of one tick, and nothing is
+#   constructed.
+# distinct-from: substrate/selfcheck_cache.py::closure_key -- also derived per module run, but it
+#   hashes a file closure to decide whether a self-check may be SKIPPED; these collect a run's own
+#   per-tick series so an arm can print them. Sites read 2026-09-08.
+def _run_twin(kt, drives, ticks):
+    """The resident twin's trains AND its ring-slot key lists, tick by tick."""
+    trains, rings = [], []
+    for t in range(ticks):
+        trains.append(kt.tick(drives.get(t)).tobytes())
+        rings.append(_rings_of(kt))
+    return trains, rings
+
+
+def _run_paged(pager, drives, ticks):
+    """The paged run's trains plus the three per-tick SERIES a counter cannot carry.
+
+    `capacity_trips` is an EVENT count and `page_ins` a running total, so neither can say how far
+    over capacity residency stood or when loading stopped. Rings, resident block count and
+    per-tick page-ins are collected here so the arms can print series instead of end points."""
+    trains, rings, held, page_ins = [], [], [], []
+    last = pager.page_ins
+    for t in range(ticks):
+        trains.append(pager.tick(drives.get(t)).tobytes())
+        rings.append(_rings_of(pager.kt))
+        held.append(len(pager._resident_blocks))
+        page_ins.append(pager.page_ins - last)
+        last = pager.page_ins
+    return trains, rings, held, page_ins
+
+
+def _residency_line(name, held, capacity):
+    """One printed line reconciling the residency SERIES with the trip COUNTER."""
+    return (
+        f"{name}: peak {max(held)} of {_N_BLOCKS} blocks resident, time-mean "
+        f"{sum(held) / len(held):.2f}, and residency stood ABOVE capacity_blocks={capacity} on "
+        f"{sum(1 for h in held if h > capacity)} of {len(held)} ticks. capacity_trips is NOT that "
+        "number, and this line exists because the record once read it as if it were: it counts "
+        "TICKS ON WHICH A FETCH FOUND TOO FEW EVICTABLE CANDIDATES, an event, so it can read "
+        "small while residency sits over capacity for most of the run"
+    )
+
+
 def _derive_rounds(store, blocks):
     """blocks_per_round and max_rounds from a MEASURED per-block read latency against a stated
     share of the recorded wake-tick p50. Printed, never picked."""
@@ -815,6 +1025,37 @@ def _derive_rounds(store, blocks):
     }
 
 
+# distinct-from: substrate/kernel_tick.py::Synapses -- the thing being MEASURED, not a second
+#   measurement of it: that class HOLDS the bundle table and the routing index; these two read how
+#   many bytes of it are resident. Site read 2026-09-08.
+def edge_bytes_over_table(syn) -> int:
+    """READING ONE of resident edge bytes: `nbytes` summed over `syn.bundles.values()`."""
+    return int(sum(posts.nbytes + q.nbytes for posts, q in syn.bundles.values()))
+
+
+# distinct-from: `edge_bytes_over_table` directly above -- the SAME quantity, deliberately, by a
+#   path that fails differently. The table sum walks the dict a page-in writes into; this walks
+#   the ROUTING INDEX a spike actually travels, so the two disagree exactly where the paging
+#   bookkeeping is inconsistent: a bundle left in the table with no route into it is invisible to
+#   the routes walk (the byte sums differ), and a route left in `by_pre` after its bundle was
+#   popped is invisible to the table walk (`dangling` rises). `_page_out` pops both together, so
+#   on a correct run they are EQUAL with dangling 0 -- and that equality is the criterion, in
+#   place of the tracemalloc reading that claimed to be a second reading of this and was not.
+# distinct-from: substrate/kernel_tick.py::Synapses -- as above, the measured object.
+def edge_bytes_over_routes(syn) -> tuple[int, int]:
+    """READING TWO: (bytes, dangling), reached by walking `syn.by_pre` -> keys -> arrays."""
+    total, dangling = 0, 0
+    for routes in syn.by_pre.values():
+        for _part, _delay, key in routes:
+            entry = syn.bundles.get(key)
+            if entry is None:
+                dangling += 1
+                continue
+            posts, q = entry
+            total += posts.nbytes + q.nbytes
+    return int(total), dangling
+
+
 # distinct-from: cortex/brain.py::_regions_for -- the set of brain REGIONS that produced live
 #   output this tick; a wiring/liveness census over a running brain, allocating nothing and
 #   measuring no bytes.
@@ -825,14 +1066,23 @@ def _bundle_alloc_bytes():
     """LIVE traced bytes whose allocation site is `kernel_tick.py` -- the bundle arrays that
     `compile_bundles` created and that are still referenced.
 
-    THE SECOND RESIDENCY INSTRUMENT, and it is filtered on purpose. An UNFILTERED tracemalloc peak
-    over the same run counts everything an arm allocates, and the paged arm allocates a sqlite
-    index, Arrow record batches and a thread pool that exist ONLY because it pages -- so the peak
-    charges paging for its own I/O machinery and stops being a reading of resident edge bytes.
-    Measured, not argued: it read 0.888 standalone and 1.262 for the same code under
-    run_selfchecks. Filtered to the allocation site it measures the same quantity as the exact
-    `nbytes` sum by a different mechanism (allocator accounting vs live-object arithmetic), which
-    is what a second instrument is for."""
+    AN ALLOCATOR FOOTPRINT OF THE BUNDLE TABLE, PER-OBJECT OVERHEAD INCLUDED, AND USED AS NO
+    CRITERION. Until 2026-09-08 this docstring and the printed paragraph both said the filtered
+    snapshot "measures the same quantity as the exact `nbytes` sum by a different mechanism". It
+    does not, and the correction is measured rather than softened: on this module's own fixture
+    it reads ~34x the exact edge bytes (twin 1,979,364 traced against 57,344 B of array data --
+    only 2.9% of the reading is the named quantity), because the filter is by FILENAME and so
+    also counts ndarray object headers, the bundle dict's key tuples, the whole `by_pre` routing
+    index, and KernelTick's own `_acc` / `pending` / `_members` / `_rings`, which are the
+    resident FLOOR paging does not reduce. It also tracks bundle COUNT rather than bundle bytes
+    (holding edge bytes fixed and moving the count 256 -> 3,072 moves this reading 5.0x while the
+    exact instrument does not move), and it varies with PROCESS HISTORY (three identical
+    repetitions in one process read 0.788 / 0.605 / 0.605 against an exact 0.857 every time) --
+    which is the same defect that retired the unfiltered peak below.
+
+    IT STAYS PRINTED, because deleting a reading the record quoted would hide the correction
+    rather than make it. The criterion's two instruments are `edge_bytes_over_table` and
+    `edge_bytes_over_routes`, both EXACT and required to agree to the byte."""
     from snn_data_lake.substrate import kernel_tick as compiler_module
 
     snapshot = tracemalloc.take_snapshot().filter_traces(
@@ -879,22 +1129,29 @@ def main() -> int:
         # ---- S-R2: calm identity, and the DROPPING broken arm ------------------------------
         drives = {0: _drive([3, 17]), 22: _drive([41, 90])}
         twin = _twin(chain)
-        twin_trains = _run(twin, drives, 45)
+        twin_trains, twin_rings = _run_twin(twin, drives, 45)
         store, blocks = _new_store(root, "calm", chain)
+        calm_capacity = 4
         _kt, pager = _new_pager(
             store,
             blocks,
-            capacity_blocks=4,
+            capacity_blocks=calm_capacity,
             blocks_per_round=derived["blocks_per_round"],
             max_rounds=derived["max_rounds"],
             max_stale_ticks=1,
             pinned=frozenset({0}),
             pager_cls=_TripCensus,
         )
-        paged_trains = _run(pager, drives, 45)
+        paged_trains, paged_rings, calm_held, _calm_page_ins = _run_paged(pager, drives, 45)
         if paged_trains != twin_trains:
             first = next(i for i, (a, b) in enumerate(zip(paged_trains, twin_trains)) if a != b)
             return _fail(f"calm paged run diverged from the resident twin at tick {first}")
+        # THE RING CLAUSE, in THIS command. Section 3.2 credits the calm row with "trains AND
+        # ring-slot key lists"; until 2026-09-08 that second half existed only in pytest, i.e. in
+        # a different command than the heading names.
+        if paged_rings != twin_rings:
+            first = next(i for i, (a, b) in enumerate(zip(paged_rings, twin_rings)) if a != b)
+            return _fail(f"calm ring-slot key lists differ from the twin's at tick {first}")
         if not (pager.page_ins > 0 and pager.evictions > 0):
             return _fail(
                 f"the calm arm never paged (page_ins={pager.page_ins}, "
@@ -903,29 +1160,35 @@ def main() -> int:
         if not 0.0 < pager.resident_fraction() < 1.0:
             return _fail(f"resident fraction {pager.resident_fraction()} is not inside (0, 1)")
         print(
-            f"S-R2 calm: 45 ticks byte-identical to the resident twin; page_ins="
-            f"{pager.page_ins} evictions={pager.evictions} resident fraction "
+            f"S-R2 calm: 45 ticks byte-identical to the resident twin in TRAINS AND in RING-SLOT "
+            f"KEY LISTS; page_ins={pager.page_ins} evictions={pager.evictions} resident fraction "
             f"{pager.resident_fraction():.3f} of {_N_BLOCKS} blocks; rounds trips="
             f"{len(pager.budget_trips)}, CAPACITY trips={pager.capacity_trips}"
         )
+        print(f"  {_residency_line('calm arm residency', calm_held, calm_capacity)}")
         if pager.capacity_trips:
             print(
-                f"  the capacity trips are the honest half of that fraction: capacity_blocks=4 "
-                f"was exceeded on {pager.capacity_trips} tick(s), so the fetch went over "
-                "capacity rather than deferring a block -- never a drop, and the reason the "
-                f"final fraction sits above 4/8. WHICH CLAUSE REFUSED, counted rather than "
-                f"asserted: across those trips {pager.trip_skipped} resident block-visits were "
-                f"pinned or already in that tick's due set and {pager.trip_refused} were refused "
-                f"by the eviction predicate, of which {pager.trip_in_ring_window} had spiked "
-                "inside the ring window tick - max_delay. This chain fixture's wavefront keeps "
-                "the last few blocks hot, which is disclosure 2.6(d)'s regime (locality is "
-                "T067's row) reported rather than smoothed. THE MEMBRANE IS NOT THE REASON, and "
-                "this line used to say it was: dropping the old `v == 0` clause moved this arm's "
-                "page_ins, evictions and capacity trips by ZERO, because a fixture whose every "
-                "edge clears threshold resets each unit to exactly 0 anyway. The clause's cost "
-                "is real but it is not visible here -- it is visible in the sub-threshold arm in "
-                "tests/test_neuron_pager.py, where it pinned a charged block in core and the "
-                "fetch went over capacity"
+                f"  the capacity trips are the honest half of that fraction: on "
+                f"{pager.capacity_trips} tick(s) a fetch found too few evictable candidates, so "
+                "it went over capacity rather than deferring a block -- never a drop, and the "
+                f"reason the final fraction sits above {calm_capacity}/{_N_BLOCKS}. WHICH CLAUSE "
+                f"REFUSED, counted rather than asserted: across those trips {pager.trip_skipped} "
+                "resident block-visits were pinned or already in that tick's due set and "
+                f"{pager.trip_refused} were refused by the eviction predicate, of which "
+                f"{pager.trip_in_ring_window} had spiked inside the ring window tick - "
+                "max_delay. THAT CENSUS IS THE ATTRIBUTION, and this line used to give a "
+                "different one: it credited the trips to the no-locality regime of disclosure "
+                "2.6(d) and routed them to T067, on a fixture whose block-to-block reach is "
+                "exactly 1 -- a nearest-neighbour chain, the most LOCAL topology available, so "
+                "connectivity locality is neither the variable here nor varied anywhere in this "
+                "row. The measured cause is the ring-safety clause under a firing wavefront: "
+                "every refusal counted above lies inside tick - max_delay. THE MEMBRANE IS NOT "
+                "THE REASON either, and this line used to say that too: dropping the old "
+                "`v == 0` clause moved this arm's page_ins, evictions and capacity trips by "
+                "ZERO, because a fixture whose every edge clears threshold resets each unit to "
+                "exactly 0 anyway. That clause's cost is real but visible elsewhere -- in the "
+                "sub-threshold arm in tests/test_neuron_pager.py, where it pinned a charged "
+                "block in core and the fetch went over capacity"
             )
 
         drop_store, drop_blocks = _new_store(root, "drop", fanout)
@@ -987,6 +1250,40 @@ def main() -> int:
             f"S-R2 overload: {len(ov_pager.budget_trips)} trip(s), max staleness "
             f"{ov_pager.max_staleness} <= 2, every delivered unit of charge reached a membrane "
             "and pending drained to zero by the tail"
+        )
+
+        # ---- S-R2 under overload at max_stale_ticks = 0: IDENTITY while the budget trips ----
+        # Section 3.4 says the overload arm "runs in two regimes ... both in the same command".
+        # Until 2026-09-08 only the max_stale_ticks=2 regime was in this command and the =0
+        # regime lived in pytest, so the sentence was true only if "the same command" silently
+        # meant a different one. This is that second regime, here.
+        z_store, z_blocks = _new_store(root, "stale0", fanout)
+        z_twin = _twin(fanout, max_delay=1)
+        z_twin_trains, _z_twin_rings = _run_twin(z_twin, ov_drives, 20)
+        z_kt, z_pager = _new_pager(
+            z_store,
+            z_blocks,
+            max_delay=1,
+            capacity_blocks=_N_BLOCKS,
+            blocks_per_round=1,
+            max_rounds=1,
+            max_stale_ticks=0,
+            pinned=frozenset({0}),
+        )
+        z_trains, _z_rings, _z_held, _z_page_ins = _run_paged(z_pager, ov_drives, 20)
+        if not z_pager.budget_trips:
+            return _fail("max_stale_ticks=0 forced no round past the budget -- no trip to report")
+        if z_pager.max_staleness != 0:
+            return _fail(f"max_stale_ticks=0 left staleness {z_pager.max_staleness}, not 0")
+        if z_trains != z_twin_trains:
+            first = next(i for i, (a, b) in enumerate(zip(z_trains, z_twin_trains)) if a != b)
+            return _fail(f"the max_stale_ticks=0 overload arm diverged from the twin at {first}")
+        if not np.array_equal(z_kt.delivered, z_twin.delivered):
+            return _fail("per-unit delivered charge under overload did not equal the twin's")
+        print(
+            f"S-R2 overload at max_stale_ticks=0: {len(z_pager.budget_trips)} trip(s) and "
+            "staleness 0, byte-identical to the resident twin with per-unit delivered charge "
+            "equal to the twin's exactly -- identity WITH trips, the second regime, this command"
         )
 
         # ---- S-R1: the rounds budget, its calm control, and the BUDGET-BLIND arm ------------
@@ -1076,69 +1373,173 @@ def main() -> int:
             "rounds: the planner's rounds_used and the store's submissions agree on EVERY tick "
             "of all five arms. The separation is NARROW, stated as narrow: they are one call "
             "apart (arithmetic over the due set vs a counter inside fetch), so they catch an "
-            "empty round, a fetch that raises mid-tick, and an _issue_rounds override that "
-            "miscounts -- not an independent measurement of the same quantity"
+            "empty round and a fetch that raises mid-tick -- not an independent measurement of "
+            "the same quantity, and NOT the budget-blind arm, which they agree about"
         )
 
-        # ---- residency measured as MEMORY, two ways ----------------------------------------
+        # ---- the WIDTH instrument: the reading the rounds PAIR structurally cannot make -----
+        for name, pgr in (
+            ("calm", pager),
+            ("overload", ov_pager),
+            ("stale0", z_pager),
+            ("r1", r1_pager),
+            ("r1calm", calm_pager),
+        ):
+            try:
+                pgr.assert_round_widths()
+            except RoundWidthExceeded as exc:
+                return _fail(f"the CORRECT arm {name!r} exceeded a round's width: {exc}")
+        blind_widths = blind_pager.round_widths()
+        try:
+            blind_pager.assert_round_widths()
+            return _fail("the BUDGET-BLIND arm passed the width instrument; it cannot be the red")
+        except RoundWidthExceeded:
+            pass
+        print(
+            f"width: every submission of the four correct arms carried at most its own "
+            f"blocks_per_round, and blocks_read equals the sum of the recorded widths on every "
+            f"store (so neither counter is write-only). The BUDGET-BLIND arm reads widths "
+            f"{blind_widths} against blocks_per_round={blind_pager.blocks_per_round} and RAISES "
+            "-- a red the planner/store pair cannot see, because that arm reports 1 round and "
+            "issues exactly 1 fetch, so its two counts agree while the one submission carries "
+            f"{max(blind_widths)} blocks. The constructor's pinned hot-set load is excluded by "
+            "construction: it is one fetch of len(pinned), and an aggregate bound including it "
+            "would go red on a CORRECT pager whose hot set is wider than a round"
+        )
+
+        # ---- residency measured as MEMORY, by TWO EXACT readings that must agree ------------
         wide = _chain_edges(seed=5, fan=4)
+        bytes_capacity = 4
         bytes_store, bytes_blocks = _new_store(root, "bytes", wide)
         tracemalloc.start()
         twin_wide = _twin(wide)
         _run(twin_wide, {0: _drive([1])}, 20)
         twin_traced = _bundle_alloc_bytes()
         twin_peak = tracemalloc.get_traced_memory()[1]
-        twin_edge_bytes = int(sum(p.nbytes + q.nbytes for p, q in twin_wide.syn.bundles.values()))
+        twin_edge_bytes = edge_bytes_over_table(twin_wide.syn)
+        twin_route_bytes, twin_dangling = edge_bytes_over_routes(twin_wide.syn)
         tracemalloc.stop()
         tracemalloc.start()
         _b_kt, b_pager = _new_pager(
             bytes_store,
             bytes_blocks,
-            capacity_blocks=4,
+            capacity_blocks=bytes_capacity,
             blocks_per_round=4,
             max_rounds=2,
             max_stale_ticks=1,
             pinned=frozenset({0}),
         )
-        _run(b_pager, {0: _drive([1])}, 20)
+        _bt, _br, bytes_held, _b_page_ins = _run_paged(b_pager, {0: _drive([1])}, 20)
         paged_traced = _bundle_alloc_bytes()
         paged_peak = tracemalloc.get_traced_memory()[1]
         paged_edge_bytes = b_pager.resident_edge_bytes()
+        paged_route_bytes, paged_dangling = b_pager.resident_edge_bytes_via_routes()
         tracemalloc.stop()
-        below = paged_edge_bytes < twin_edge_bytes and paged_traced < twin_traced
+        edge_owning = len({key[0] // _BLOCK for key in twin_wide.syn.bundles})
+        agree = (
+            paged_edge_bytes == paged_route_bytes
+            and twin_edge_bytes == twin_route_bytes
+            and not paged_dangling
+            and not twin_dangling
+        )
+        below = paged_edge_bytes < twin_edge_bytes and paged_route_bytes < twin_route_bytes
         print(
             f"residency (NOT a win claim): resident edge bytes {paged_edge_bytes} vs the twin's "
-            f"{twin_edge_bytes} (ratio {paged_edge_bytes / max(twin_edge_bytes, 1):.3f}, exact "
-            f"nbytes sum over the live bundle arrays); LIVE ALLOCATIONS traced to "
-            f"kernel_tick.py {paged_traced} vs {twin_traced} (ratio "
-            f"{paged_traced / max(twin_traced, 1):.3f}, tracemalloc filtered to the bundle "
-            f"allocation site); resident floor {b_pager.resident_floor_bytes_per_unit():.1f} "
-            f"B/unit for EVERY unit (state 21 B + {_P} accumulators + {_P} pending + a flag) -- "
-            f"paging reduces edge bytes only. Capacity trips {b_pager.capacity_trips} at "
-            f"capacity_blocks=4 of {_N_BLOCKS}: the paged run held MORE than its capacity for "
-            "part of the run, so the ratios are what this fixture actually cost, not a best case"
+            f"{twin_edge_bytes} (ratio {paged_edge_bytes / max(twin_edge_bytes, 1):.3f}), READ "
+            f"TWICE AND REQUIRED TO AGREE TO THE BYTE. Reading one sums nbytes over the bundle "
+            f"TABLE; reading two sums the same arrays reached by walking the ROUTING INDEX "
+            f"by_pre, and reads {paged_route_bytes} paged / {twin_route_bytes} twin with "
+            f"{paged_dangling}/{twin_dangling} dangling routes. They fail DIFFERENTLY, which is "
+            "the point: a bundle orphaned in the table moves only the first, a by_pre entry left "
+            "behind after a page-out moves only the second. Agreement="
+            f"{agree}, both-below-twin={below}. Resident floor "
+            f"{b_pager.resident_floor_bytes_per_unit():.1f} B/unit for EVERY unit (state 21 B + "
+            f"{_P} accumulators + {_P} pending + a flag) -- paging reduces edge bytes only"
         )
         print(
-            f"  THE UNFILTERED tracemalloc PEAK IS PRINTED AND NOT USED: {paged_peak} paged vs "
-            f"{twin_peak} twin (ratio {paged_peak / max(twin_peak, 1):.3f}). The row "
-            "pre-registered 'tracemalloc peak over the same run' as the second instrument; it "
-            "was built, run, and MEASURED TO BE MEASURING SOMETHING ELSE -- it counts every "
-            "allocation an arm makes, including the sqlite index, the Arrow batches and the "
-            "thread pool that exist ONLY because the run pages, so it charges paging for its own "
-            "I/O machinery. It read 0.888 standalone and 1.262 for the same code inside "
-            "run_selfchecks, i.e. it disagreed with the exact instrument AND with itself across "
-            "process histories. Replaced by the filtered snapshot above, which reads the SAME "
-            "quantity by a different mechanism (allocator accounting at the bundle allocation "
-            "site vs nbytes over the live arrays). Two instruments must AGREE or nothing is "
-            "reported; the peak is kept visible so the replacement is not a silent one"
+            f"  {_residency_line('residency arm', bytes_held, bytes_capacity)}; page_ins="
+            f"{b_pager.page_ins} evictions={b_pager.evictions} capacity trips="
+            f"{b_pager.capacity_trips}. THE RATIO'S SHAPE, stated rather than left to be "
+            f"inferred: {b_pager.evictions} block(s) of the {edge_owning} that own edges were "
+            f"demoted, so this reading is what the fixture actually cost at a nominal capacity "
+            f"of {bytes_capacity}, not a best case"
         )
+        print(
+            f"  THE TRACEMALLOC READINGS ARE PRINTED AND USED AS NO CRITERION: filtered to "
+            f"kernel_tick.py {paged_traced} vs {twin_traced} (ratio "
+            f"{paged_traced / max(twin_traced, 1):.3f}); unfiltered peak {paged_peak} vs "
+            f"{twin_peak} (ratio {paged_peak / max(twin_peak, 1):.3f}). Both are an ALLOCATOR "
+            "FOOTPRINT OF THE BUNDLE TABLE INCLUDING PER-OBJECT OVERHEAD, not a second reading "
+            f"of resident edge bytes: the filtered one runs about "
+            f"{twin_traced / max(twin_edge_bytes, 1):.0f}x the exact quantity on this fixture "
+            "because a filename filter also counts ndarray headers, the dict's key tuples, the "
+            "whole by_pre index and KernelTick's own _acc/pending/_members/_rings; it tracks "
+            "bundle COUNT rather than bundle bytes; and it varies with process history (0.788 / "
+            "0.605 / 0.605 across three identical repetitions in one process against an exact "
+            "0.857 every time). The row pre-registered the peak as the second instrument and "
+            "then the filtered snapshot as its replacement, calling it 'the SAME quantity by a "
+            "different mechanism' -- it was neither, and both are kept visible so the correction "
+            "is not a silent one. The criterion above uses the two EXACT readings"
+        )
+        if not agree:
+            return _fail(
+                f"the two exact residency instruments disagree (table {paged_edge_bytes} vs "
+                f"routes {paged_route_bytes} paged, {twin_edge_bytes} vs {twin_route_bytes} "
+                f"twin, dangling {paged_dangling}/{twin_dangling}) -- report no number"
+            )
         if not below:
             return _fail(
-                "the two residency instruments do not both place the paged run below the twin"
+                "the two exact residency instruments do not both place the paged run below the twin"
             )
 
-        # ---- the lake digest across a full page-out/page-in cycle --------------------------
-        before = store.segment_digest()
+        # ---- the THIRD pre-registered attribution arm (P8 clause 3): eviction NEUTERED ------
+        # 2.6 pre-registered three per-item neuters and this one was dropped at build time, so
+        # 3.4's "every deviation" list was short by one. Built now: capacity = n_blocks means no
+        # block can ever be demoted, so if the ratio above is caused by EVICTION the neutered arm
+        # must read the twin's bytes exactly.
+        neuter_store, neuter_blocks = _new_store(root, "neuter", wide)
+        _n_kt, n_pager = _new_pager(
+            neuter_store,
+            neuter_blocks,
+            capacity_blocks=_N_BLOCKS,
+            blocks_per_round=4,
+            max_rounds=2,
+            max_stale_ticks=1,
+            pinned=frozenset({0}),
+        )
+        _nt, _nr, _n_held, n_page_ins = _run_paged(n_pager, {0: _drive([1])}, 20)
+        neuter_edge_bytes = n_pager.resident_edge_bytes()
+        neuter_route_bytes, neuter_dangling = n_pager.resident_edge_bytes_via_routes()
+        warm = 10
+        print(
+            f"attribution (eviction NEUTERED, capacity_blocks={_N_BLOCKS} of {_N_BLOCKS}) vs the "
+            f"INCUMBENT (capacity_blocks={bytes_capacity}), side by side on one fixture: "
+            f"resident edge bytes {neuter_edge_bytes} vs {paged_edge_bytes}, against the twin's "
+            f"{twin_edge_bytes} -- EQUAL to the twin with eviction off "
+            f"({neuter_edge_bytes == twin_edge_bytes}), BELOW it with eviction on "
+            f"({paged_edge_bytes < twin_edge_bytes}); evictions {n_pager.evictions} vs "
+            f"{b_pager.evictions}; second reading {neuter_route_bytes} with {neuter_dangling} "
+            f"dangling. So the ratio is caused by eviction and by nothing else. THE OTHER HALF "
+            f"OF THE PRE-REGISTERED READING DOES NOT DISCRIMINATE HERE, printed rather than "
+            f"quietly dropped: page-ins after warm-up (t >= {warm}) are "
+            f"{sum(n_page_ins[warm:])} neutered and {sum(_b_page_ins[warm:])} incumbent -- both "
+            "zero on this fixture, so that clause separates nothing and only the bytes clause is "
+            "load-bearing"
+        )
+        if not (
+            neuter_edge_bytes == twin_edge_bytes
+            and neuter_route_bytes == twin_route_bytes
+            and n_pager.evictions == 0
+            and paged_edge_bytes < twin_edge_bytes
+        ):
+            return _fail(
+                f"the neutered attribution arm did not read the twin's bytes ({neuter_edge_bytes}"
+                f" vs {twin_edge_bytes}, evictions {n_pager.evictions}) -- the ratio is not "
+                "attributable to eviction"
+            )
+
+        # ---- the lake digest across a full page-out/page-in cycle, WITH ITS CONTROL --------
+        before, n_segments = segment_digest(store.root)
         _cyc_kt, cyc_pager = _new_pager(
             store,
             blocks,
@@ -1151,23 +1552,54 @@ def main() -> int:
         _run(cyc_pager, drives, 45)
         if not (cyc_pager.page_ins and cyc_pager.evictions):
             return _fail("the digest arm never completed a page-out/page-in cycle")
-        if store.segment_digest() != before:
+        after, after_n = segment_digest(store.root)
+        if after != before or after_n != n_segments:
             return _fail("the lake's bytes moved across a page-out/page-in cycle")
+        # THE POSITIVE CONTROL, in this same command. The identity above is TRUE by construction
+        # -- the pager performs no write at all -- so on its own it is a criterion with no
+        # reachable red, which P8 forbids: the arm passed unchanged with every write path of the
+        # store replaced by raise-on-call, and passed printing IDENTICAL over ZERO BYTES when its
+        # glob was blinded. Two reds now exist: a flipped byte on a COPY must move the digest,
+        # and an empty glob must be REFUSED rather than compared.
+        control_root = root / "digest-control"
+        shutil.copytree(store.root / SEGMENT_DIR, control_root / SEGMENT_DIR)
+        control_before, control_n = segment_digest(control_root)
+        victim = sorted((control_root / SEGMENT_DIR).glob("seg-*.lake"))[0]
+        raw = bytearray(victim.read_bytes())
+        raw[len(raw) // 2] ^= 0xFF
+        victim.write_bytes(bytes(raw))
+        control_after, _ = segment_digest(control_root)
+        blind_refused = False
+        try:
+            segment_digest(root / "digest-control-empty")
+        except ValueError:
+            blind_refused = True
+        if control_before != before or control_n != n_segments:
+            return _fail("the digest control's copy is not byte-identical to the store it copies")
+        if control_after == control_before:
+            return _fail("a flipped byte did not move the digest -- the instrument is blind")
+        if not blind_refused:
+            return _fail("an EMPTY segment glob was digested instead of refused")
         print(
             f"lake: {cyc_pager.page_ins} page-ins and {cyc_pager.evictions} page-outs left the "
-            f"store's segment bytes IDENTICAL (sha256 {before[:16]}...) -- page-out changes "
-            "residency in RAM and destroys no record, which is why 0x0C is IMMORTAL. The "
-            "'MORTAL class evicted in the same pass' control is NOT APPLICABLE to a pass that "
+            f"store's {n_segments} segment file(s) IDENTICAL (sha256 {before[:16]}...) -- "
+            "page-out changes residency in RAM and destroys no record, which is why 0x0C is "
+            "IMMORTAL. CONTROL, same command, same digest function over a root: one byte flipped "
+            f"in a scratch COPY moves it to {control_after[:16]}..., and a zero-file glob is "
+            "REFUSED rather than reported as sha256-of-nothing == sha256-of-nothing. The "
+            "'MORTAL class evicted in the same pass' control stays NOT APPLICABLE to a pass that "
             "destroys nothing (stated, not faked)"
         )
         for closing in (
             store,
             drop_store,
             ov_store,
+            z_store,
             r1_store,
             calm_store,
             blind_store,
             bytes_store,
+            neuter_store,
         ):
             closing.close()
     print(
