@@ -327,3 +327,105 @@ tag-aware `build_index`) — 4. `substrate/lake_compactor.py` (merge with proof 
 the `wire` row) — 5. records (Part F S-R6/7/8, tasks row, plan S4 annotation, SYNTHESIS §6 + the
 producer docstring re-dating, `lake_append_baseline.json` row if measured, §3 here) — panel — fold
 — ONE battery on the stacked head — closing record — push.
+
+## 3. Results (on the stacked head, before the panel)
+
+Commits on `b99ea65`: `1d38a61` (this file, §1–2) → `b560fb1` (the reds, RUN RED) → `51b8683` (the delta
+tier) → `4109912` (the compactor) → `1f2e260` (D2's epoch fence, red-first). The records commit
+follows. Nothing was pushed before the panel ran.
+
+### 3.1 The counted red (`b560fb1`)
+
+`pytest tests/test_lake_compactor.py -q -p no:cacheprovider --no-cov` on the tree with no
+`lake_compactor.py`: `ImportError: cannot import name 'lake_compactor'` — **29 test functions defined,
+0 collected, 1 collection error, rc 2.**
+
+### 3.2 The delta tier (`51b8683`)
+
+`BlockDeltaRecord` (0x0D, tag byte first, `<BIIQ` header, five parallel arrays, refused WHOLE when
+malformed) in both registries — `RETENTION[0x0D] = ("COMPACTABLE", False, …)` at introduction;
+`home.observe_append` is the ONE observer path (a rename with all seven call sites updated — 0x0D is the
+first class observed at a write site outside `home.py`); `UnitBlockStore.append_deltas` (compare-drop
+at the f4 record grain against the block's current edge set; one index row per delta `(0x0D,
+"{bid}/{n}")`, per-block count and generation meta rows); `fetch` returns base + unmerged deltas through
+the ONE apply (`apply_deltas(base, deltas, *, generation)` — the generation keyword is required because
+the stale-base refusal is not computable without it); the seq-arithmetic fix (`seal_and_locate` reads
+every sealed record's seq with a byte-for-byte tail check, so a second write to a store with a
+non-empty WAL indexes every block to its true seq); `lake_bridge.located_records` (`iter_records`
+delegates to it — the rebuild needs `(container, seq)`); a tag-aware `lake_rebuild_gate.build_index`
+for 0x0C/0x0D with the planted-row red kept; `lake_segments.read_records(path, seq_lo, seq_hi)` (a
+plain-file batch-range read, every record CRC-checked, never mmap) and a coalescing `fetch` (maximal
+contiguous runs of needed seqs per segment, one read each) that records reads per round and
+bytes-fetched / bytes-used. The width BOUND stays a BLOCK bound (T066's contract); the record count
+rides beside it with its own cross-check (`assert_read_accounting`).
+
+### 3.3 The compactor (`4109912`) — the self-check's arms, one command, `throwaway_home()`
+
+| arm | reading |
+|---|---|
+| derivation (P1) | 7 blocks folded in ≈17 ms each (measured, this host); a subjective night ≈ 100 sleep ticks at the RECORDED sleep-tick p50 10.99 ms; the check's stated share of one night is 10 % = 109.9 ms → `budget_blocks = 6`. Printed, never picked |
+| S-R6 fresh tier | 3 of 4 deltas written (one compare-dropped at the f4 grain); the paged run reading base + unmerged deltas is **byte-identical** to a twin compiled directly on the post-delta edge set over 20 ticks (7 page-ins); the pre-delta twin DIFFERS (the identity is not vacuous) |
+| S-R6 merged | after `merge`: the paged run reading merged records only is byte-identical to the same twin; `n_unmerged == 0` on every merged block; `refusals == 0`; **every pre-existing segment file's sha256 unchanged**; the logical record set through the index equals the post-delta edge set; a stale-generation delta is REFUSED |
+| S-R6 red + attribution | the DROPPING fold reads `refusals 3 / merged 0` with every pointer and generation UNTOUCHED; the SAME fold with the PROOF NEUTERED reads `refusals 0 / merged 3` and adopts a record set wrong by 4 edges — the proof is what makes the red reachable |
+| S-R7 | 6 dirty blocks vs `budget_blocks = 3`: deferred 3 on the first call, 0 on the second, the union of merged sets IS the dirty set; calm control (2 ≤ 3) defers 0; the BUDGET-BLIND merge reads deferred 0 / merged 6 on the same overload |
+| S-R8 | a co-fetch stream of 4 index-distant blocks costs **4.00 reads per round before the reorder and 1.00 after**; bytes-fetched / bytes-used 1.0 both times (by construction — no over-read); every record decodes identically; every pre-existing segment byte-identical; `co_fetch_order` returns a permutation; the identity-order neuter reads 4.00 → 4.00 (the ORDER is what moves it, not the coalescing) |
+| S-R8 control | the RANDOM-fetch stream reads 3.45 → 2.75 under its own co-fetch order (a noise-fitted greedy order lands some co-occurring pair adjacent by chance); the pre-registered INTEGER margin structured − random = 3.00 − 0.70 = **2.30 ≥ 2** passes; 2.5's "≥ 3 (within one)" holds (2.75) — the reds commit had transcribed it as a hard ≥ 3.0 and was corrected to the pre-registration's own wording (3.4) |
+| S-R8 red | a DROPPING reorder is caught by the per-record proof (**refusals 15 of 16**, `merged 1`, every record still readable and identical); with the proof neutered a block becomes unreadable (the segment's own span refusal) — the reds file's original `KeyError` expectation was wrong and the test now asserts BOTH halves (3.4) |
+| rebuild identity | `build_index` over the root after build + deltas + merge + reorder reproduces the store's rows (logical dump digest equal, planted-row red kept); a store rebuilt this way pages in identically — stated for a store with ZERO merge refusals (3.4, and closed by `1f2e260`) |
+| gates / suite | full suite **1266 tests, 0 failed, 2 pre-existing xfails**; every substrate gate rc 0; `perf_baseline --assert` ASSERTED on the pinned host (wake p50 174.8 ms vs the 183.5 ms reference; p95 reported-HIGH under a concurrent suite, its standing disclosure); self-check 1.5–2.7 s wall |
+
+### 3.4 Deviations from the pre-registration, each with its reason
+
+1. `apply_deltas` takes a required `generation` keyword (the stale-base refusal needs it). 2.
+`co_fetch_order(due_sets, n_blocks)` (the never-fetched tail is not enumerable without `n_blocks`). 3. The
+width bound stays a BLOCK bound; records ride beside it. 4. `edge_table` refuses a base record repeating a
+`(pre, post, delay)` triple (a delta addresses an edge by that triple); delta-free blocks never build a
+table, so T066's fixtures stay green. 5. `merge(…, resident_blocks=())` — a fact, not a constant; the
+result dict carries `merged_ids`/`deferred_ids` (S-R7's union criterion needs sets). 6. **Two corrections
+to this row's own reds, made in the mechanism commit and stated:** the dropping-reorder red as written
+("unfetchable, `KeyError`") was wrong — the proof CATCHES the drop, so the test asserts both halves; and
+the random control's absolute bar was transcribed as ≥ 3.0 against 2.5's "≥ 3 (within one)" — measured
+2.75, the wording restored. 7. **`RETENTION[0x0D].reclaimable` stayed False at `4109912`** although the
+proof's red is reachable, because of a hazard the build found: a FAILED proof leaves an unadopted 0x0C
+record that the rebuild's latest-wins-by-position rule would adopt — closed by the epoch fence
+(`1f2e260`, 3.5). 8. `observe_append` is a rename, not a wrapper. 9. `lake_bridge.located_records`
+added; `iter_records` delegates. 10. The merge seals one segment per block, the reorder one for the pass.
+11. `lake_compactor.py` is 1080 lines, ~640 of them the self-check — over the soft ceiling, deliberately,
+because the row's criterion is one command. 12. The `"13"` append-baseline row is NOT written: the recorded
+method (`make_brain × 120 ticks`) cannot produce a 0x0D append because no live writer exists; 0x0D is
+OBSERVED and `unbaselined` — reported, never trips — and the record says so rather than inventing a row.
+
+### 3.5 D2's epoch fence (`1f2e260`)
+
+Found by the build (3.4 item 7) and closed red-first before the panel. **The red, on `4109912`:** a
+store with one block whose relocation proof FAILS (the dropping fold), rebuilt over its root —
+`block 0: the rebuild adopted ('seg-00000012.lake', 12), a record the store REFUSED (its pointer is
+('seg-00000001.lake', 1))`. Latest-wins-by-position adopted an unproven record. **The fix:** adoption
+is an append-only durable FACT — `BlockAdoptRecord` (tag 0x0D, a sibling class discriminated by the
+version byte `BlockDeltaRecord.decode` already refuses on: a delta's length equation is its
+refused-whole check and cannot carry a variable-length container name) records `block_id`, the adopted
+generation, the adopted `(container, seq)` and `folded_through`; `merge` and `reorder` append it ONLY
+after the proof passes and BEFORE the pointer upsert; `build()` emits generation-0 ADOPT records so the
+rule is total — a 0x0C record is adopted iff an ADOPT record names it; `build_index` derives pointers,
+generations and SUPERSEDED marks from ADOPT records in forward order and never from position. Two
+crash windows constructed and pinned: after the ADOPT record and before the upsert, the rebuild adopts
+the ADOPTed record and a store reopened over it pages in the merged edge set identically; after the
+sealed record and before the ADOPT record, the rebuild does NOT adopt it and the store serves the
+previous generation identically. The rebuild identity now holds on a failed-proof store. Two T066 pins
+changed to assert the fence's contents rather than a segment count (a build now seals two segments).
+**`RETENTION[0x0D].reclaimable` STAYS False**, for a different divergence the build measured by
+constructing the reclaim the flag would license (a folded prefix dropped from a re-containerised
+copy): the ADOPT record's stored container names a segment the new root lacks (`FileNotFoundError`),
+and `folded_through` exceeds the deltas a rebuild can see (`n_unmerged = −1`). A sealed segment cannot
+lose a record in place, so any reclaimer re-containerises, and the fence must then anchor on the ADOPT
+record's POSITION rather than a filename — the reclaimer row's business (3.6). The same hazard applies
+to `lake_migrate.migrate` and is disclosed in the class docstring.
+
+### 3.6 What this row does NOT claim, and what its completion owes
+
+Restating 2.10: no paging WIN (T068), no tick-time claim, no live producer, no live sleep duty, no cockpit
+row, no reclaim of segment-family records, no over-read trade, no claim that the co-fetch order is the
+right locality signal beyond the stream it watched. **Owed:** the S6 sleep wire (the live lake has no
+segment tier; a guarded no-op import was deliberately NOT made); a reclaimer for SUPERSEDED 0x0D records
+with L-R7's control, in its own row; the `"13"` baseline row once a live writer exists; the
+surprise-driven prefetch, re-dated to S6 (2.8); and T068's null.

@@ -593,7 +593,16 @@ clause protects it.
 - **S3 = T066** activation-driven paging, BOTH reds built before the mechanism (FR-010/FR-011: no silent
   drop of a spike to a paged-out unit; the integer rounds budget trips on constructed overload). *LANDED 2026-09-08, claims scoped by measurement (`evidence/s3-neuron-pager.md`; §4 is the panel's fold): a calm paged run is byte-identical to the resident twin while paging; both reds counted red before the mechanism and fired by their broken arms in-command; three further reds constructed and closed after the mechanism was green (deferred external drive dropped; a frozen paged-out membrane; a threshold unit demoted at refractory release). The panel (40 filed, 25 stood) found the full suite RED on a stale immortal-tag pin, a second residency instrument reading a different quantity, and a wrong "no locality" attribution — the trips are the ring-safety clause under a firing wavefront. Capacity is honoured, not enforced, under sustained firing, and at width under drive that covers the graph the pager evicts NOTHING (§3.5) — T068 must read residency from the over-capacity tick count and include a sustained-drive cell. The prefetch disposition is re-dated to T067; S6 gains the pager wire and S-R5; the null is T068's.* **S4 = T067**
   growth delta tier + background merge in sleep (its locality reorder uses block adjacency until the prior
-  lands). **S5 = T068 (SC-007)** the paging null clause at the derived comparison width vs forced-total
+  lands). *LANDED 2026-09-08 pending the arc's panel (`evidence/s4-lake-compactor.md` §3): a PRE-keyed block
+  delta class 0x0D beside the block record; the pager reads base + unmerged deltas through ONE apply and is
+  byte-identical to a twin compiled on the post-delta edge set; a sleep-night merge under an integer budget
+  proves relocation per block BEFORE it moves a pointer and destroys nothing (D1), with adoption an
+  append-only ADOPT record so a rebuild adopts only proven generations (D2's epoch fence); a reorder written
+  as a NEW segment under a co-fetch order cuts reads per round 4.00 → 1.00 on a co-fetched index-distant
+  stream and 3.45 → 2.75 on the random control (margin 2.30 ≥ 2), with bytes-fetched/bytes-used 1.0 by
+  construction; the index rows derived (the T066 keying opening closed). Reds S-R6/7/8 counted red first.
+  NOT wired into `_enter_sleep` — the live lake has no segment tier; the sleep wire and the prefetch
+  disposition are S6's; 0x0D is observed but unbaselined (no live writer). The null is T068's.* **S5 = T068 (SC-007)** the paging null clause at the derived comparison width vs forced-total
   residency — WIN keep, LOSS delete the layer; gated on T061 (closed) only.
 - **S6 — wire the sparse kernel onto the live tick.** `KernelTick` is dormancy-exempt `wire` today; S6 makes
   the flat (post, weight) scatter in `KernelTick._deliver_and_rotate` the live tick's delivery (FR-035 is
@@ -755,6 +764,9 @@ no majority-of-seeds rule anywhere.
 | S-R3 | paging loses to forced residency at the comparison width | forced residency | T068 |
 | S-R4 | the wired kernel does not change the tick's output when neutered, or tick time does not fall | the object-tick twin | S6 |
 | S-R5 | the live tick over a PAGED substrate is not output-identical to the resident twin, or the pager's bound is declared discharged while `NeuronPager.tick` is not the live tick's residency step (added 2026-09-08, T066's fold) | the resident twin on the live tick; the un-wired pager | S6 |
+| S-R6 | a merge or the fresh-tier read loses or mis-applies a block delta: the paged run reading base + deltas (or merged records) is not byte-identical to the resident twin built directly on the post-delta edge set, a relocation proof passes on a dropped delta, a stale base_generation delta is applied, a pre-existing segment file changes, or a rebuild adopts a record no ADOPT record fenced (added 2026-09-08, T067) | the resident twin on the post-delta edge set; the DROPPING fold; the proof-neutered fold | T067 |
+| S-R7 | the merge budget never trips on constructed overload (deferred == 0 with more dirty blocks than budget_blocks), or the merge is reachable from the wake tick (added 2026-09-08, T067) | the calm merge; the BUDGET-BLIND merge; the wake-tick ratchet | T067 |
+| S-R8 | a reorder changes or loses a record, or reads per round do not fall to 1 on a co-fetched index-distant stream, or fall as much on a random-fetch stream, or fall under the identity order (added 2026-09-08, T067) | the random-fetch stream; the DROPPING reorder; the identity order | T067 |
 | C-R1 | a pinned-payload neuter on an instantiated edge changes nothing downstream | the un-neutered run | C1a |
 | C-R2 | the 20-item battery does not move, or the 4-item positive control drops | the positive control | C2 |
 | U-R1 | `distinct candidate keys reachable` ≤ 1 | two hand-named operators → 2 keys | T072 |
