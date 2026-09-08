@@ -161,18 +161,31 @@ RETENTION: dict[int, tuple[str, bool, str]] = {
         "0x08 makes for a prefix ending before its newest FULL, at the block grain. THE PROOF HAS "
         "LANDED AND ITS RED IS COUNTED (lake_compactor.main: the DROPPING fold reads refusals 3 / "
         "merged 0 with every pointer untouched, and the SAME fold with the proof NEUTERED reads "
-        "refusals 0 while adopting a record that differs from base + deltas by 4 edges), AND "
-        "reclaimable STAYS FALSE ANYWAY, for a second reason this row created and did not close: "
-        "a block whose relocation proof FAILS leaves an unadopted 0x0C record in the lake, and "
-        "lake_rebuild_gate.build_index's latest-wins rule would derive both that pointer and a "
-        "SUPERSEDED watermark the store never adopted -- so on such a store the meta row a "
-        "reclaimer would read can name deltas as folded that the current record does not hold. "
-        "The flag flips when a merge refusal can no longer diverge the rebuilt watermark from the "
-        "adopted pointer (the L6 rule: the flag licenses reclaim, it never performs it, and "
-        "licensing one over a reachable divergence would be the licence outrunning the proof). "
+        "refusals 0 while adopting a record that differs from base + deltas by 4 edges). THE "
+        "ADOPTION FENCE HAS ALSO LANDED and it CLOSES the divergence this row's first pass could "
+        "not: adoption is now an append-only RECORD (BlockAdoptRecord, version byte 2 under this "
+        "tag), written only after the relocation proof passes and before the pointer upsert, so a "
+        "block whose proof FAILED leaves a 0x0C record that lake_rebuild_gate.build_index NEVER "
+        "adopts and no SUPERSEDED watermark it never reached (tests/test_lake_compactor.py's three "
+        "arms: the failed proof, and a crash on either side of the ADOPT record). "
+        "RECLAIMABLE STAYS FALSE ANYWAY, and now for a MEASURED reason rather than a read one. A "
+        "reclaim of exactly what this exemption licenses -- a block's FOLDED delta prefix, "
+        "superseded 3 of 5 -- was constructed and run, and a sealed segment cannot lose a record "
+        "in place, so a reclaimer must re-containerise the survivors. Both halves of the fence "
+        "then break: (i) the ADOPT record names its target by (container, seq) and the "
+        "re-containerised root has no such segment, so the rebuilt pointer refuses with "
+        "FileNotFoundError; (ii) the watermark is derived from the record's folded_through (3) "
+        "while the rebuild can only see the 2 SURVIVING deltas, so n_unmerged reads -1 and the "
+        "fresh tier applies 0 of the 2 UNMERGED ones -- silently serving a block short of two "
+        "edges nobody folded. The flag flips when a reclaimer row anchors the fence on the ADOPT "
+        "record's POSITION (the 0x0C record and the deltas that precede it) instead of on the "
+        "address and the count it carries, which is invariant under any order-preserving copy. "
+        "The L6 rule stands: the flag licenses reclaim, it never performs it, and licensing one "
+        "over a MEASURED divergence would be the licence outrunning the proof. "
         "The per-record exemption a reclaimer must read is SUPERSEDED -- only a delta whose index "
         "meta row records it as folded may ever be touched, never an unmerged one, which the "
-        "fresh-tier read still applies. Nothing in the segment family reclaims anything today. "
+        "fresh-tier read still applies, and never an ADOPT record, which carries no such row at "
+        "all and is the fence itself. Nothing in the segment family reclaims anything today. "
         "Append budget: unbaselined (reported, never trips) -- the writer calls home.observe_append "
         "at its own write site so the class is OBSERVED from day one, and a bound follows a "
         "recorded row in tools/lake_append_baseline.json or 32 writing ticks of its own",
@@ -553,6 +566,141 @@ class BlockDeltaRecord:
             np.frombuffer(body[cut[3] : cut[4]], dtype="<u2"),
             np.frombuffer(body[cut[4] : cut[5]], dtype="<u1"),
         )
+
+
+# distinct-from: BlockDeltaRecord directly above -- that carries a CHANGE to a block's out-edges
+#   and is the thing a merge folds. This carries no edge at all: it is the durable statement that
+#   a merge's already-proven 0x0C record IS the block's current one. They share the 0x0D tag and
+#   are told apart by the version byte the delta class ALREADY refuses on, so no reader gains a
+#   second dispatch and no new class needs a retention row of its own.
+# distinct-from: UnitBlockRecord above -- the record being adopted, not the adoption.
+# distinct-from: substrate/lake_index.py::LakeIndex.put_batch -- the DERIVED index's pointer row.
+#   That is the thing a rebuild must be able to RE-DERIVE; this is what it re-derives it FROM.
+# distinct-from: substrate/home.py's _T_GROWTH_DELTA chain manifest -- a sha256 per link proving a
+#   chain's CONTENT; this names a LOCATION and a generation, and proves nothing by itself (the
+#   relocation proof does that, before this record is written). All four sites read 2026-09-08.
+class BlockAdoptRecord:
+    """ADOPTION AS AN APPEND-ONLY FACT -- D2's epoch fence at the block grain (specs/022 T067).
+
+    WHY IT EXISTS. `lake_compactor` appends a merged 0x0C record and only adopts it if a
+    relocation proof passes; a block whose proof FAILS leaves an unadopted 0x0C record in the
+    lake. A rebuild that took the LATEST 0x0C record per block by forward-scan position would
+    derive that pointer, its generation and a SUPERSEDED watermark the store never adopted -- so
+    the rebuilt index disagreed with the store's, and a reclaimer reading the marks could name
+    deltas as folded that the current record does not hold. THE FIX IS THAT ADOPTION IS A RECORD,
+    NOT A POSITION: a 0x0C record is adopted if and only if one of these names it.
+
+    LAYOUT: the 0x0D tag byte, then `struct '<BIQQQH'` = (version = 2, block_id, generation,
+    folded_through, seq, container_len), then `container_len` bytes of UTF-8 segment file name.
+    `generation` is what the block is AT once this record is adopted (0 is the built record, each
+    merge advances it by one) and `folded_through` is how many of the block's deltas that
+    generation holds -- exactly the SUPERSEDED watermark the index meta row carries, so a rebuild
+    derives the mark from a durable statement rather than from where records happen to sit.
+
+    THE VERSION BYTE IS THE DISCRIMINATOR, and it costs nothing: `BlockDeltaRecord.decode` already
+    refuses `version != 1` WHOLE, so a delta reader handed one of these refuses it today, with a
+    refusal that is already tested. `is_block_adoption` below is the one dispatch.
+
+    WHY NOT `op = 2` INSIDE `BlockDeltaRecord` (the preferred one-class form, refused with a
+    reason): a delta's payload is a header plus five PARALLEL 13-byte-per-entry arrays, and the
+    length equation `(len(payload) - 18) / 13` IS its integrity check -- "refused whole" is that
+    division failing. The adopted location is a segment FILE NAME, a variable-length string that
+    no 13-byte entry can hold; carrying it would have meant either a variable-length tail inside
+    the array block (deleting the length check) or dropping the explicit address and inferring the
+    adopted record from position again -- which is the very rule this record exists to remove.
+    Two classes under one tag, discriminated by a byte the incumbent already refuses on, keeps
+    both the delta's integrity check and adoption's self-description.
+
+    ONE HAZARD THIS RECORD CREATES, stated here rather than discovered later, and MEASURED. An
+    adoption names a LOCATION, so it is meaningful only inside the root it was written in. Any
+    pass that RE-CONTAINERISES records -- `lake_migrate.migrate`'s identity copy, or the reclaimer
+    `RETENTION[0x0D]` would license, since a sealed segment cannot lose a record in place -- leaves
+    every ADOPT record pointing at a segment name the new root does not have, and a rebuild over
+    that root derives a pointer whose read refuses with FileNotFoundError. The incumbent
+    latest-wins rule this replaces survived such a copy, because a position does. That is one of
+    the two measured reasons `RETENTION[0x0D].reclaimable` stays False, and the fix a reclaimer
+    row owes is to anchor the fence on this record's POSITION -- the block's newest 0x0C record
+    before it, and the deltas before it -- which is invariant under any order-preserving copy.
+
+    Malformed means refused WHOLE in every case: foreign tag, a version that is not 2, a short
+    header, a container length that does not match the bytes that follow, an empty container name,
+    or a container that is not valid UTF-8."""
+
+    TAG = 0x0D
+    _VER = 2
+    _HEAD = struct.Struct("<BIQQQH")
+
+    def __init__(self, block_id, generation, folded_through, container, seq):
+        self.block_id = int(block_id)
+        self.generation = int(generation)
+        self.folded_through = int(folded_through)
+        self.container = str(container)
+        self.seq = int(seq)
+        if self.block_id < 0 or self.generation < 0 or self.folded_through < 0 or self.seq < 0:
+            raise ValueError(
+                "BlockAdoptRecord needs a non-negative block id, generation, folded_through and "
+                "seq -- refused whole"
+            )
+        encoded = self.container.encode("utf-8")
+        if not encoded or len(encoded) > 0xFFFF:
+            raise ValueError(
+                f"BlockAdoptRecord needs a non-empty container name of at most 65535 UTF-8 bytes, "
+                f"got {len(encoded)} -- an adoption that names no container adopts nothing"
+            )
+
+    def encode(self) -> bytes:
+        encoded = self.container.encode("utf-8")
+        return b"".join(
+            (
+                bytes([self.TAG]),
+                self._HEAD.pack(
+                    self._VER,
+                    self.block_id,
+                    self.generation,
+                    self.folded_through,
+                    self.seq,
+                    len(encoded),
+                ),
+                encoded,
+            )
+        )
+
+    @classmethod
+    def decode(cls, payload):
+        if not isinstance(payload, (bytes, bytearray)) or len(payload) < 1 + cls._HEAD.size:
+            raise ValueError("BlockAdoptRecord payload is shorter than its header -- refused whole")
+        payload = bytes(payload)
+        if payload[0] != cls.TAG:
+            raise ValueError(
+                f"BlockAdoptRecord tag {payload[0]:#04x} is not {cls.TAG:#04x} -- refused whole"
+            )
+        ver, block_id, generation, folded_through, seq, n = cls._HEAD.unpack_from(payload, 1)
+        if ver != cls._VER:
+            raise ValueError(f"BlockAdoptRecord version {ver} is not {cls._VER} -- refused whole")
+        body = payload[1 + cls._HEAD.size :]
+        if len(body) != n:
+            raise ValueError(
+                f"BlockAdoptRecord names a {n}-byte container and carries {len(body)} bytes -- "
+                "refused whole"
+            )
+        try:
+            container = body.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ValueError(
+                f"BlockAdoptRecord container is not valid UTF-8 -- refused whole ({exc})"
+            ) from exc
+        return cls(block_id, generation, folded_through, container, seq)
+
+
+def is_block_adoption(payload) -> bool:
+    """THE ONE DISPATCH between the two classes under tag 0x0D: an ADOPT record iff the version
+    byte is 2. Cheap and total -- it decodes nothing and never raises on a foreign payload."""
+    return (
+        isinstance(payload, (bytes, bytearray))
+        and len(payload) > 1
+        and payload[0] == BlockAdoptRecord.TAG
+        and payload[1] == BlockAdoptRecord._VER
+    )
 
 
 # distinct-from: SynapseDelta.apply above -- that writes quantized weights into a dense [pre, post]

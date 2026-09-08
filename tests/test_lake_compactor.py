@@ -772,7 +772,11 @@ def test_build_index_reproduces_the_stores_block_rows_after_build_deltas_merge_a
     store, blocks = _store_for(tmp_path, edges, name="rebuild")
     store.append_deltas(_delta_records(_delta_spec()))
     merged = compactor_module.LakeCompactor().merge(store, budget_blocks=N_BLOCKS)
-    assert merged["refusals"] == 0, "the rebuild identity is stated for a store with no refusal"
+    # A CLEAN merge is this arm's fixture, not the identity's precondition any more: since the
+    # adoption fence landed, the identity also holds on a store WITH a failed proof, which
+    # `test_a_rebuild_over_a_store_with_a_failed_merge_proof_adopts_exactly_what_the_store_did`
+    # is the arm for. Kept as an assert so a fold that started refusing here is not read as a pass.
+    assert merged["refusals"] == 0, "this arm's fixture is a clean fold; it started refusing"
     store.append_deltas(_delta_records([(5, 0, [(2, 6 * BLOCK + 11, W_SUB, 2, 0)])]))
     compactor_module.LakeCompactor().reorder(
         store, compactor_module.co_fetch_order([(0, 2, 4)], N_BLOCKS)
@@ -811,6 +815,203 @@ def test_a_store_rebuilt_from_the_lake_alone_pages_in_identically(tmp_path):
     reopened = UnitBlockStore(store.root)
     try:
         assert _logical_edges(reopened) == want
+        twin_trains, _tr = _run(_twin(_apply_in_python(edges, spec)), {0: _drive([0, 1, 2])}, 20)
+        _kt, pager = _paged(
+            reopened,
+            blocks,
+            capacity_blocks=4,
+            blocks_per_round=8,
+            max_rounds=4,
+            max_stale_ticks=1,
+            pinned=frozenset({0}),
+        )
+        paged_trains, _pr = _run(pager, {0: _drive([0, 1, 2])}, 20)
+        assert paged_trains == twin_trains
+    finally:
+        reopened.close()
+
+
+# ---- the ADOPTION FENCE (D2): adoption is a RECORD, never a position ---------------------------
+# Run RED on 4109912, where the only fence is `build_index`'s latest-wins-BY-POSITION rule. The
+# three below are the window that rule leaves open: a record the store REFUSED, a crash after the
+# adoption is durable, and a crash before it is.
+def _rebuilt_over(root, index_path):
+    """Delete nothing: rebuild into a SEPARATE index file and hand back an open reader."""
+    from snn_data_lake.substrate.lake_index import LakeIndex
+
+    build_index(root, index_path)
+    return LakeIndex(index_path)
+
+
+def _reindex_in_place(store):
+    """The sanctioned repair: drop the derived index and rebuild it from the lake alone."""
+    store.index.close()
+    for suffix in ("", "-wal", "-shm"):
+        path = Path(str(store.root / "lake_index.db") + suffix)
+        if path.exists():
+            path.unlink()
+    build_index(store.root, store.root / "lake_index.db")
+    return UnitBlockStore(store.root)
+
+
+def _adopted_rows(index, n_blocks):
+    return {
+        bid: (
+            index.get(TAG_BLOCK, str(bid)),
+            index.get(TAG_BLOCK, f"{bid}/gen"),
+            index.get(TAG_DELTA, f"{bid}/count"),
+        )
+        for bid in range(n_blocks)
+    }
+
+
+def test_a_rebuild_over_a_store_with_a_failed_merge_proof_adopts_exactly_what_the_store_did(
+    tmp_path,
+):
+    """RED (a): the dropping fold seals a new 0x0C record per dirty block and EVERY ONE fails its
+    relocation proof, so the store's pointers, generations and delta counts are untouched.
+
+    A rebuilt index must say exactly that -- no pointer the store refused, no generation it never
+    reached, and no delta marked SUPERSEDED that the current record does not hold. On 4109912 the
+    latest-wins-by-position rule derives all three from the unadopted record."""
+    edges = _base_edges()
+    store, _blocks = _store_for(tmp_path, edges, name="failed-proof-rebuild")
+    store.append_deltas(_delta_records(_delta_spec()))
+    result = _DroppingCompactor().merge(store, budget_blocks=N_BLOCKS)
+    assert result["refusals"] >= 1 and result["merged"] == 0, result
+    want = _adopted_rows(store.index, N_BLOCKS)
+
+    rebuilt = _rebuilt_over(store.root, Path(tmp_path) / "failed-proof.db")
+    try:
+        got = _adopted_rows(rebuilt, N_BLOCKS)
+        for bid in range(N_BLOCKS):
+            assert got[bid][0] == want[bid][0], (
+                f"block {bid}: the rebuild adopted {got[bid][0]}, a record the store REFUSED "
+                f"(its pointer is {want[bid][0]})"
+            )
+            assert got[bid][1] == want[bid][1], (
+                f"block {bid}: the rebuild derived generation {got[bid][1]} against the store's "
+                f"{want[bid][1]}"
+            )
+            assert got[bid][2] == want[bid][2], (
+                f"block {bid}: the rebuild derived the delta meta row {got[bid][2]} against the "
+                f"store's {want[bid][2]} -- a SUPERSEDED mark nobody adopted"
+            )
+    finally:
+        rebuilt.close()
+
+
+def test_a_crash_between_the_adopt_record_and_the_pointer_upsert_heals_from_the_lake(
+    tmp_path, monkeypatch
+):
+    """RED (b): the ADOPT record is durable BEFORE the index moves, so a crash in that window
+    leaves the truth derivable from the LAKE ALONE.
+
+    The store's own index lags -- the block still points at its pre-merge record -- and the
+    sanctioned repair (a rebuild) adopts the ADOPTed record, which is the merged one the
+    relocation proof passed on. The reopened store then pages in identically to the twin."""
+    from snn_data_lake.substrate.lake_bridge import located_records
+    from snn_data_lake.substrate.lake_engine import BlockAdoptRecord, is_block_adoption
+
+    edges = _base_edges()
+    spec = _delta_spec()
+    store, blocks = _store_for(tmp_path, edges, name="crash-after-adopt")
+    store.append_deltas(_delta_records(spec))
+    lagging = 0
+    stale_pointer = store.block_pointer(lagging)
+
+    real_put_batch = store.index.put_batch
+    entered = []
+
+    def crash_once(entries, **kwargs):
+        if not entered:
+            entered.append(True)
+            raise RuntimeError("crash: the pointer upsert never reached the index")
+        return real_put_batch(entries, **kwargs)
+
+    monkeypatch.setattr(store.index, "put_batch", crash_once)
+    result = compactor_module.LakeCompactor().merge(store, budget_blocks=N_BLOCKS)
+    monkeypatch.undo()
+    assert entered, "the crash window was never entered"
+    assert result["refusals"] == 1, result
+    assert store.block_pointer(lagging) == stale_pointer, "the index must LAG, never half-move"
+    assert store.generation(lagging) == 0
+
+    fenced = [
+        BlockAdoptRecord.decode(payload)
+        for _c, _s, payload in located_records(store.root)
+        if is_block_adoption(payload)
+    ]
+    assert any(r.block_id == lagging and r.generation == 1 for r in fenced), (
+        "the ADOPT record for the lagging block never reached the lake, so the crash window is "
+        "not recoverable from the lake alone"
+    )
+
+    want = sorted(_edge_tuples(_apply_in_python(edges, spec)))
+    reopened = _reindex_in_place(store)
+    try:
+        assert reopened.block_pointer(lagging) != stale_pointer, (
+            "the rebuild did not adopt the ADOPTed record"
+        )
+        assert reopened.generation(lagging) == 1
+        assert reopened.n_unmerged(lagging) == 0
+        assert _logical_edges(reopened) == want
+        twin_trains, _tr = _run(_twin(_apply_in_python(edges, spec)), {0: _drive([0, 1, 2])}, 20)
+        _kt, pager = _paged(
+            reopened,
+            blocks,
+            capacity_blocks=4,
+            blocks_per_round=8,
+            max_rounds=4,
+            max_stale_ticks=1,
+            pinned=frozenset({0}),
+        )
+        paged_trains, _pr = _run(pager, {0: _drive([0, 1, 2])}, 20)
+        assert paged_trains == twin_trains
+    finally:
+        reopened.close()
+
+
+def test_a_sealed_record_whose_adopt_record_never_landed_is_never_adopted_by_a_rebuild(
+    tmp_path, monkeypatch
+):
+    """RED (c): the other half of the window -- the merged record is sealed and its proof passed,
+    but the crash lands BEFORE the ADOPT record.
+
+    Nothing adopted it, so a rebuild must not either: every block keeps the generation it had and
+    the store goes on serving base + its unmerged deltas, identical to the pre-merge twin."""
+    from snn_data_lake.substrate.lake_bridge import located_records
+
+    edges = _base_edges()
+    spec = _delta_spec()
+    store, blocks = _store_for(tmp_path, edges, name="crash-before-adopt")
+    store.append_deltas(_delta_records(spec))
+    want = _adopted_rows(store.index, N_BLOCKS)
+
+    def never(self, adoptions):
+        raise RuntimeError("crash: the ADOPT record never reached the lake")
+
+    monkeypatch.setattr(UnitBlockStore, "append_adoptions", never)
+    result = compactor_module.LakeCompactor().merge(store, budget_blocks=N_BLOCKS)
+    monkeypatch.undo()
+    assert result["merged"] == 0 and result["refusals"] >= 1, result
+
+    written = {}
+    for _c, _s, payload in located_records(store.root):
+        if payload and payload[0] == TAG_BLOCK:
+            bid = UnitBlockRecord.decode(payload).block_id
+            written[bid] = written.get(bid, 0) + 1
+    assert written[0] >= 2, (
+        "the fixture needs a SEALED, PROVEN, UNADOPTED second record for block 0 -- without one "
+        "this arm cannot tell a positional rule from a fenced one"
+    )
+
+    reopened = _reindex_in_place(store)
+    try:
+        assert _adopted_rows(reopened.index, N_BLOCKS) == want, (
+            "the rebuild adopted a record whose ADOPT record never landed"
+        )
+        assert _logical_edges(reopened) == sorted(_edge_tuples(_apply_in_python(edges, spec)))
         twin_trains, _tr = _run(_twin(_apply_in_python(edges, spec)), {0: _drive([0, 1, 2])}, 20)
         _kt, pager = _paged(
             reopened,

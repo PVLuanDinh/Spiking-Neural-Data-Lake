@@ -90,6 +90,7 @@ from snn_data_lake.substrate.home import _T_BLOCKDELTA, _T_UNITBLOCK, observe_ap
 from snn_data_lake.substrate.kernel_state import KernelState
 from snn_data_lake.substrate.kernel_tick import KernelTick, Synapses, compile_bundles
 from snn_data_lake.substrate.lake_engine import (
+    BlockAdoptRecord,
     BlockDeltaRecord,
     UnitBlockRecord,
     apply_deltas,
@@ -190,6 +191,21 @@ class UnitBlockStore:
     disagree with what `fetch` was already serving. `_page_in` and `compile_bundles` are untouched:
     `fetch` returns a `UnitBlockRecord` either way.
 
+    NOTHING IS CACHED IN MEMORY THAT THE INDEX OWNS. Every `block_pointer`, `generation` and
+    `delta_counts` is an index read at the moment it is needed, so a REOPENED store sees whatever
+    the durable index holds and no stale copy can outlive it (`self.blocks` is the partition
+    `build` wrote and is None on a reopen -- the durable index serves `fetch` without it).
+
+    THE CRASH WINDOW AND ITS REPAIR (the adoption fence). `adopt_merged` appends the ADOPT record
+    to the LAKE and then upserts the index, in that order and never the other. A crash between the
+    two leaves the index LAGGING -- the block still points at its pre-merge record and the merged
+    one, already proven, is adopted only in the lake. The store keeps serving base + its unmerged
+    deltas, which is correct and not corrupt. THE SANCTIONED REPAIR IS A REBUILD:
+    `lake_rebuild_gate.build_index` over the root re-derives every pointer, generation and
+    superseded mark from the lake alone and heals the lag, which is the same rebuild D1 requires
+    of every index and the same one the gate asserts. There is no second repair path and no
+    fixup-on-open: an index that disagrees with the lake is rebuilt, never patched.
+
     `root` is a lake home directory and there is NO DEFAULT: defaulting to `home()` would put a
     bench store inside the live brain's lake, so a missing root is refused."""
 
@@ -284,6 +300,13 @@ class UnitBlockStore:
                 ).encode()
             )
         container, seqs = self.seal_and_locate(payloads)
+        # EVERY ADOPTED RECORD IS FENCED, INCLUDING GENERATION 0 -- the alternative ("the FIRST
+        # 0x0C record for a block in forward-scan order is the built one") would have left the
+        # rebuild with a special case, and a special case is where a positional rule survives. One
+        # ADOPT record per block, in ONE further seal (their target seqs are only known after the
+        # blocks' own seal returns them, which is the same reason `seal_and_locate` exists), so a
+        # build seals TWO segments: the records, then the fact that they are adopted.
+        self.append_adoptions([(bid, container, seqs[bid], 0, 0) for bid in range(blocks.n_blocks)])
         # watermark=None ON PURPOSE (corrected 2026-09-08): the applied watermark is ONE global
         # meta row naming how far the lake's fold has been applied, and this store does not own
         # that fold -- it is a tenant. Writing it here made a second tenant's progress marker go
@@ -403,15 +426,71 @@ class UnitBlockStore:
         self.index.put_batch(rows, watermark=None)
         return len(payloads)
 
+    # distinct-from: `adopt_merged` directly below, which calls it -- that upserts rows into the
+    #   DERIVED index; this appends the durable FACT those rows are re-derived from. Two writes,
+    #   two containers, and the order between them is the whole fence.
+    # distinct-from: `append_deltas` above -- that appends a CHANGE to a block's edges and is the
+    #   thing a merge folds; this appends no edge at all.
+    # distinct-from: `seal_and_locate` above, which it calls -- that is the write mechanism and the
+    #   locator; this adds the record class and the append observation.
+    # distinct-from: substrate/lake_engine.py::UnitBlockRecord -- the 0x0C record being adopted,
+    #   not the adoption of it; it carries edges and no generation at all.
+    # distinct-from: substrate/lake_compactor.py::LakeCompactor._folded -- computes WHAT a merge
+    #   will write (base + unmerged deltas through the one apply) and writes nothing.
+    # distinct-from: substrate/lake_memory.py::LakeMemory.write and
+    #   substrate/lake_working_memory.py::LakeWorkingMemory.write -- both append one SPIKE per
+    #   active channel per tick into a `.spkl` StreamingHub, a different container, a different
+    #   grain and no pointer anywhere in them.
+    # distinct-from: substrate/signal_ring.py::SignalRing.publish -- an in-RAM bounded ring slot
+    #   that overwrites the oldest record; it is not durable and it addresses nothing.
+    #   All eight sites read 2026-09-08.
+    def append_adoptions(self, adoptions):
+        """Append one 0x0D ADOPT record per `(block_id, container, seq, generation,
+        folded_through)`, in ONE seal. Returns `(segment name, [seq per record])`.
+
+        THIS IS THE EPOCH FENCE (D2). An adopted 0x0C record is one an ADOPT record NAMES -- never
+        one that merely sits latest in the lake -- so a merged record whose relocation proof failed
+        is invisible to `lake_rebuild_gate.build_index`, and the SUPERSEDED watermark it derives
+        comes from `folded_through` rather than from how many deltas happen to precede a record.
+
+        The records ride tag 0x0D's own append observation, because they ARE 0x0D records: a class
+        whose byte rate is watched cannot have half its writes off the observer."""
+        rows = [
+            BlockAdoptRecord(
+                block_id=bid,
+                generation=generation,
+                folded_through=folded_through,
+                container=container,
+                seq=seq,
+            ).encode()
+            for bid, container, seq, generation, folded_through in adoptions
+        ]
+        if not rows:
+            raise ValueError(
+                "append_adoptions needs at least one adoption -- an empty fence is no fence"
+            )
+        located = self.seal_and_locate(rows)
+        for payload in rows:
+            observe_append(_T_BLOCKDELTA, len(payload))
+        return located
+
     def adopt_merged(self, bid, container, seq):
         """THE ONE POINTER MOVE: repoint the block at a merged (or relocated) 0x0C record, advance
         its generation, and mark every delta folded into it SUPERSEDED in its own meta row. Called
-        only after the caller's relocation proof has passed; nothing here destroys anything."""
+        only after the caller's relocation proof has passed; nothing here destroys anything.
+
+        THE ADOPT RECORD LANDS FIRST AND THE INDEX SECOND, and that order is the recovery property:
+        a crash between them leaves the index LAGGING over a lake that already states the truth, so
+        the sanctioned repair -- `lake_rebuild_gate.build_index`, the same rebuild D1 requires --
+        heals it. A crash the other way round would leave an index naming an adoption the lake
+        never recorded, which no rebuild could reproduce."""
         bid = int(bid)
         total, _superseded = self.delta_counts(bid)
+        generation = self.generation(bid) + 1
+        self.append_adoptions([(bid, str(container), int(seq), generation, total)])
         rows = [
             (TAG, str(bid), str(container), int(seq)),
-            (TAG, f"{bid}/gen", "meta", self.generation(bid) + 1),
+            (TAG, f"{bid}/gen", "meta", generation),
         ]
         if total:
             rows.append((DELTA_TAG, f"{bid}/count", f"superseded={total}", total))

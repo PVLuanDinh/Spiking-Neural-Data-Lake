@@ -975,8 +975,14 @@ def test_the_unit_block_class_is_immortal_and_both_registries_agree():
 def test_read_record_returns_what_read_segment_yields_at_that_seq(tmp_path):
     edges = _chain_edges()
     store, _blocks = _store_for(tmp_path, edges, name="records")
+    from snn_data_lake.substrate.lake_engine import BlockAdoptRecord, is_block_adoption
+
     segments = sorted((Path(tmp_path) / "records" / "segments").glob("seg-*.lake"))
-    assert len(segments) == 1, "one build seals one multi-record segment"
+    # TWO SEALS SINCE THE ADOPTION FENCE (T067's fix), and the pin is stronger for it: the first
+    # seals one 0x0C record per block, the second seals the ADOPT record that makes each of them
+    # the block's CURRENT one. An ADOPT record can only name a seq the first seal reported, which
+    # is why they cannot share a seal.
+    assert len(segments) == 2, "one build seals its records, then the fact that they are adopted"
     path = segments[0]
     whole = list(read_segment(path))
     assert len(whole) == N_BLOCKS, "one record per block, including edge-less blocks"
@@ -986,6 +992,16 @@ def test_read_record_returns_what_read_segment_yields_at_that_seq(tmp_path):
     for bad_seq in (seq0 - 1, seq0 + len(whole)):
         with pytest.raises(ValueError):
             read_record(path, bad_seq)
+
+    fence = list(read_segment(segments[1]))
+    assert len(fence) == N_BLOCKS and all(is_block_adoption(p) for p in fence)
+    adopted = {}
+    for payload in fence:
+        record = BlockAdoptRecord.decode(payload)
+        assert record.generation == 0 and record.folded_through == 0, "a build folds nothing"
+        assert record.container == path.name
+        adopted[record.block_id] = record.seq
+    assert adopted == {bid: seq0 + bid for bid in range(N_BLOCKS)}
 
 
 def test_the_lake_digest_is_identical_across_a_full_page_out_page_in_cycle(tmp_path):
@@ -1033,8 +1049,14 @@ def test_the_bridge_and_the_rebuild_gate_stay_green_on_one_batch_per_record(tmp_
     store, _blocks = _store_for(tmp_path, edges, name="bridge")
     root = Path(tmp_path) / "bridge"
     bridged = list(iter_records(root))
+    from snn_data_lake.substrate.lake_engine import is_block_adoption
+
     assert bridged == list(store.iter_payloads()), "the ONE forward reader must see every record"
-    assert len(bridged) == N_BLOCKS
+    # ONE 0x0C RECORD AND ONE 0x0D ADOPT RECORD PER BLOCK since the adoption fence: the bridge
+    # carries both, because a rebuild that could not see the ADOPT records could not derive a
+    # single pointer.
+    assert len(bridged) == 2 * N_BLOCKS
+    assert sum(is_block_adoption(p) for p in bridged) == N_BLOCKS
     ok, message = assert_rebuild(root, Path(tmp_path) / "probe-index.db")
     assert ok, message
 

@@ -29,7 +29,11 @@ from pathlib import Path
 from snn_data_lake.substrate.binlog import BinLog
 from snn_data_lake.substrate.home import _T_BLOCKDELTA, _T_UNITBLOCK
 from snn_data_lake.substrate.lake_bridge import located_records
-from snn_data_lake.substrate.lake_engine import BlockDeltaRecord, UnitBlockRecord
+from snn_data_lake.substrate.lake_engine import (
+    BlockAdoptRecord,
+    BlockDeltaRecord,
+    is_block_adoption,
+)
 from snn_data_lake.substrate.lake_index import LakeIndex
 
 INDEX_NAME = "lake_index.db"
@@ -42,16 +46,25 @@ def build_index(root: str | os.PathLike, index_path: str | os.PathLike) -> int:
 
     TWO KEYINGS, and the split is the point (specs/022 T067, closing the opening T066 left owed).
 
-      * THE BLOCK CLASSES ARE TAG-AWARE. A 0x0C record names its own `block_id`, so its key is
-        that id, its container is the SEGMENT FILE it lives in and its seq is the record's own
-        seq -- the LATEST record per block wins by forward-scan position. A 0x0D delta is keyed
-        `<block_id>/<n>` by its order within its block, with a per-block meta row
-        `<block_id>/count` whose container carries the SUPERSEDED watermark (how many of that
-        block's deltas were already folded when the newest 0x0C record for it was written -- a
-        forward scan sees exactly that) and a per-block `<block_id>/gen` row under 0x0C holding
-        the merge count. Those are precisely the rows `UnitBlockStore` writes, so D1 holds for the
-        block tier: the store's rows are DERIVED, and a reorder that renumbers seqs stays
-        re-derivable because the block id is IN the record rather than recoverable by arithmetic.
+      * THE BLOCK CLASSES ARE TAG-AWARE, AND ADOPTION IS A RECORD RATHER THAN A POSITION. A 0x0C
+        record is NEVER adopted because it is the latest one for its block; it is adopted if and
+        only if a 0x0D ADOPT record (`lake_engine.BlockAdoptRecord`, version byte 2, written by
+        `UnitBlockStore.append_adoptions` only after a relocation proof has passed) NAMES it. Each
+        ADOPT record in forward order sets the block's pointer to the `(container, seq)` it
+        carries, its `<block_id>/gen` row to the generation it carries, and the SUPERSEDED
+        watermark in its `<block_id>/count` row to its `folded_through`. A 0x0C record with no
+        ADOPT record gets NO pointer, which is what a store that refused it says too.
+        THIS IS D2'S EPOCH FENCE and it closes the hazard the merge opened: a block whose proof
+        FAILED leaves an unadopted 0x0C record in the lake, and the latest-wins-by-position rule
+        this replaces would have derived that pointer AND a superseded watermark the store never
+        adopted -- so a rebuilt index disagreed with the store's, and a reclaimer reading the mark
+        could name deltas as folded that the current record does not hold.
+        A 0x0D delta is keyed `<block_id>/<n>` by its order within its block. `build` itself emits
+        an ADOPT record per block at generation 0, so EVERY adopted record is fenced with no
+        special case for the built one. Those are precisely the rows `UnitBlockStore` writes, so
+        D1 holds for the block tier: the store's rows are DERIVED, and a reorder that renumbers
+        seqs stays re-derivable because the block id is IN the record rather than recoverable by
+        arithmetic.
       * EVERY OTHER TAG KEEPS THE PROVISIONAL GLOBAL-ORDINAL KEYING, unchanged, because nothing
         else in the lake carries a key of its own yet. The self-check below runs on exactly those
         tags, so its rebuild equality, its planted-row red and its lake-tracking control read the
@@ -61,18 +74,21 @@ def build_index(root: str | os.PathLike, index_path: str | os.PathLike) -> int:
     try:
         batch: list[tuple] = []
         n = 0
-        newest_block: dict[int, tuple[str, int]] = {}
-        block_records: dict[int, int] = {}
+        adopted: dict[int, tuple[str, int]] = {}
+        generation: dict[int, int] = {}
+        folded_through: dict[int, int] = {}
         delta_rows: dict[int, list[tuple[str, int]]] = {}
-        superseded: dict[int, int] = {}
         for ordinal, (container, seq, payload) in enumerate(located_records(root)):
             tag = payload[0] if payload else 0
             where = (container, ordinal if seq is None else seq)
             if tag == _TAG_BLOCK:
-                bid = UnitBlockRecord.decode(payload).block_id
-                newest_block[bid] = where
-                block_records[bid] = block_records.get(bid, 0) + 1
-                superseded[bid] = len(delta_rows.get(bid, ()))
+                # A 0x0C record adopts nothing by being here. Counted, and otherwise ignored.
+                pass
+            elif tag == _TAG_DELTA and is_block_adoption(payload):
+                record = BlockAdoptRecord.decode(payload)
+                adopted[record.block_id] = (record.container, record.seq)
+                generation[record.block_id] = record.generation
+                folded_through[record.block_id] = record.folded_through
             elif tag == _TAG_DELTA:
                 bid = BlockDeltaRecord.decode(payload).block_id
                 delta_rows.setdefault(bid, []).append(where)
@@ -82,12 +98,17 @@ def build_index(root: str | os.PathLike, index_path: str | os.PathLike) -> int:
             if len(batch) >= 10_000:
                 idx.put_batch(batch)
                 batch.clear()
-        for bid, (container, seq) in sorted(newest_block.items()):
+        for bid, (container, seq) in sorted(adopted.items()):
             batch.append((_TAG_BLOCK, str(bid), container, seq))
-            batch.append((_TAG_BLOCK, f"{bid}/gen", "meta", block_records[bid] - 1))
+            batch.append((_TAG_BLOCK, f"{bid}/gen", "meta", generation[bid]))
         for bid, rows in sorted(delta_rows.items()):
             batch.append(
-                (_TAG_DELTA, f"{bid}/count", f"superseded={superseded.get(bid, 0)}", len(rows))
+                (
+                    _TAG_DELTA,
+                    f"{bid}/count",
+                    f"superseded={folded_through.get(bid, 0)}",
+                    len(rows),
+                )
             )
             for k, (container, seq) in enumerate(rows):
                 batch.append((_TAG_DELTA, f"{bid}/{k}", container, seq))

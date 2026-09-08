@@ -32,14 +32,26 @@ made them adjacent costs 1. `bytes_fetched / bytes_used` is 1.0 BY CONSTRUCTION 
 built only from seqs the round asked for, so there is no over-read -- and it is printed as such
 rather than presented as a result.
 
-ONE HAZARD THIS ROW CREATED AND DID NOT CLOSE, stated here rather than discovered later. A block
-whose relocation proof FAILS leaves an unadopted 0x0C record in the lake. `build_index` takes the
-LATEST 0x0C record per block by forward-scan position, so a rebuild of such a store would derive a
-pointer the store never adopted AND a superseded watermark to match it. The rebuild identity is
-therefore stated for a store with ZERO merge refusals, which its arm asserts; and it is why
-`RETENTION[0x0D]`'s `reclaimable` stays False even though the reconstruction proof landed with a
-counted red. Closing it -- a refused merge that cannot diverge a rebuilt watermark from the
-adopted pointer -- is a separate row.
+ADOPTION IS A RECORD, NOT A POSITION -- D2's epoch fence, and it closes the hazard this row's
+first pass opened. A block whose relocation proof FAILS leaves an unadopted 0x0C record in the
+lake, and `build_index` used to take the LATEST 0x0C record per block by forward-scan position, so
+a rebuild of such a store derived a pointer the store never adopted AND a superseded watermark to
+match it -- a reclaimer reading that mark could name deltas as folded that the current record does
+not hold. `UnitBlockStore.adopt_merged` now appends a `lake_engine.BlockAdoptRecord` (0x0D,
+version byte 2, carrying the block, the generation, the adopted `(container, seq)` and how many
+deltas that generation folded) BEFORE it upserts the pointer, and `build_index` adopts a 0x0C
+record ONLY where such a record names it. `build` fences generation 0 the same way, so there is no
+special case for the built record. The ordering is also the recovery property: a crash between the
+ADOPT record and the upsert leaves the truth derivable from the lake alone, and the sanctioned
+repair is a rebuild.
+
+WHAT THE FENCE DOES NOT CLOSE, measured rather than read: `RETENTION[0x0D].reclaimable` STAYS
+False. A reclaim of exactly what that exemption licenses -- a block's folded delta prefix -- was
+constructed and run, and because a sealed segment cannot lose a record in place a reclaimer must
+re-containerise the survivors; the ADOPT record's stored container then names a segment the new
+root lacks, and the watermark it carries (folded_through) exceeds the deltas a rebuild can still
+see, so the fresh tier drops the UNMERGED tail. The reason on `RETENTION[0x0D]` carries both
+readings and the fix a reclaimer row owes.
 
 WHAT THIS ROW DOES NOT CLAIM: no paging WIN (T068's), no tick-time claim, no live producer of
 kernel-tier deltas (S6/T062), no live sleep duty and no cockpit row (S6), no reclaim of
@@ -1048,9 +1060,12 @@ def main() -> int:
             "is a flood bound and not a slope bound; (f) the order is only as good as the run it "
             "watched, which the random control measures; (g) a merged block that is resident keeps "
             "its old bundles until eviction, counted as stale_resident; (h) a block whose proof "
-            "FAILS leaves an unadopted 0x0C record that build_index's latest-wins rule would "
-            "adopt, so the rebuild identity is stated for a store with zero refusals and 0x0D's "
-            "reclaimable stays False despite the landed proof"
+            "FAILS leaves an unadopted 0x0C record, and since the ADOPTION FENCE landed no "
+            "rebuild adopts one -- a 0x0C record is adopted only where a 0x0D ADOPT record names "
+            "it, generation 0 included -- but 0x0D's reclaimable STAYS False on a MEASURED "
+            "divergence of its own: a reclaim of a folded delta prefix must re-containerise the "
+            "survivors, which invalidates the ADOPT record's stored container and leaves its "
+            "folded_through watermark above the deltas a rebuild can see"
         )
         for closing in (
             store,
