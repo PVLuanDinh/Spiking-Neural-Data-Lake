@@ -80,6 +80,12 @@ GRADIENT_CLAIM = {
         "one R-STDP deposit onto a response neuron: present the stimulus train, fire the post spike "
         "AFTER it so pre-before-post pairings build a spike-timing trace, then gate it. Synapse-local",
     ),
+    "SpikingInteractionLearner._record_synapse_delta": (
+        "NOT_A_RULE",
+        "T064: emits the deposit's synapse deltas as a block-aligned _T_SYNDELTA (0x09) record. It "
+        "READS weights that another rule already moved and writes them to the lake; it changes no "
+        "weight and computes no update, so none of the four learning dispositions describes it",
+    ),
     "SpikingInteractionLearner.learn_turn": (
         "LOCAL",
         "improves the router from ONE conversational turn via reward-modulated spike-timing "
@@ -116,6 +122,14 @@ class SpikingInteractionLearner:
     ):
         self.responses = list(responses)  # response label names (intents / actions)
         self.n_in = int(n_in)
+        # T064: the synapse-delta writer is OFF until an owner attaches a durable sink.
+        # `delta_block_size` has no derived value here either -- one label neuron per block is
+        # the identity partition, correct for this learner's handful of labels and explicitly
+        # NOT a claim about the right block for a grown substrate (T065 measures that).
+        self.delta_sink = None
+        self.delta_block_size = 1
+        self._syn_delta = None
+        self._syn_blocks = None
         self.tau = float(tau)  # PSP == STDP eligibility time constant (shared)
         self.lr = float(lr)
         self.seed = int(seed)
@@ -248,7 +262,54 @@ class SpikingInteractionLearner:
             n.w = self.stack.stabilize(
                 li, list(n.w), activity
             )  #   bound the live synapses + hold the firing rate
+        self._record_synapse_delta(li, code)
         return deltas
+
+    # distinct-from: substrate/home.py::save_growth -- persists the grown-substrate BLOB; this
+    #   emits per-synapse deltas of the interaction learner's own weights. distinct-from:
+    #   basal_ganglia/learning_progress.py::GoalStore -- _T_GOAL event rows. Sites read 2026-09-07.
+    def _record_synapse_delta(self, li, code):
+        """T064: emit this deposit's synapse deltas as a block-aligned `_T_SYNDELTA` (0x09) record.
+
+        THE FIRST LIVE WRITER OF `SynapseDelta`. The tag was declared, tested and never written --
+        one of four lake classes L6's census found had never held a record -- so this is what turns
+        it from built-and-uncharged into charged, and what makes its append budget measurable at all
+        (`RETENTION[0x09]`: "unbaselined ... until a live writer exists to measure").
+
+        SPIKE-DERIVED, which is the precondition the record class is built on: the candidates are
+        the synapses of the ONE label neuron just deposited into (post), crossed with the input
+        indices that actually carried a spike this trial (pre). Nothing else is offered, so a
+        byte-frozen substrate whose endpoints keep firing emits nothing.
+
+        `q_step` is DERIVED, never picked (P1): one deposit is `w += lr * d * e` with |d| <= 1 and
+        e <= 1, so `self.lr` IS the scale of a single full-strength deposit -- the quantum below
+        which a change is smaller than anything one deposit can produce. The caller supplying its
+        own rule's scale is exactly what `SynapseDelta` refuses to do for it.
+
+        Off unless a sink is attached: `delta_sink` is set by the owner that has somewhere durable
+        to put the record. No sink, no work -- this must not become a cost every learner pays."""
+        sink = getattr(self, "delta_sink", None)
+        if sink is None:
+            return None
+        try:
+            import numpy as np
+
+            from snn_data_lake.substrate.lake_engine import SynapseDelta
+            from snn_data_lake.substrate.unit_blocks import UnitBlocks
+        except Exception:
+            return None  # numpy/lake absent: the learner still learns, it just records nothing
+        if getattr(self, "_syn_delta", None) is None:
+            self._syn_delta = SynapseDelta(q_step=self.lr)
+            self._syn_blocks = UnitBlocks(len(self.neurons), block_size=self.delta_block_size)
+        # [pre=input synapse, post=label neuron] -- the orientation `group` needs to key on POST
+        w = np.array([[n.w[i] for n in self.neurons] for i in range(self.n_in)], dtype=float)
+        pre_fired = [i for i, t in enumerate(code) if t is not None]
+        payload = self._syn_delta.collect(w, pre_fired, [li])
+        if payload is None:
+            return None  # nothing the lake would learn from changed -- writing nothing IS the rule
+        grouped = self._syn_blocks.group(SynapseDelta.entries(payload))
+        sink(payload, grouped)
+        return payload
 
     def respond(self, stimulus):
         """Emit the current best response to a stimulus. Pure inference: NO plasticity, NO rng."""
