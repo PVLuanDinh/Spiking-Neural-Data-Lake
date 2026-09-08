@@ -280,7 +280,18 @@ twin with a failed proof; structured reorder 4 reads → 1; random reorder ≥ 3
   only as good as the run it watched — a different activation pattern can be worse after reorder
   than before (measured by the random control, disclosed as the regime's cost); (g) resident blocks
   keep stale bundles until evicted — a merged block already resident is not re-read (measured and
-  printed as `stale_resident` in the merge result).
+  printed as `stale_resident` in the merge result); **(h) added at the fold (panel C1, MAJOR):** the
+  reorder's placement is NOT durable under the sleep-night fold — `merge` seals each merged block's
+  record into its own segment, so a fold of k co-fetched blocks returns their reads per round to the
+  pre-reorder value (measured: 1.00 → 1.75 folding 3 of 16; under budget < dirty, 5.00 across
+  passes), and the reorder must re-run after every fold to restore it; a one-seal-per-pass merge in
+  current-placement order was built and measured at the panel and restores 1.00 only when EVERY block
+  of the group is dirty (2.00 under a partial fold), so it is not adopted — the durable answer is the
+  reorder re-run, a sleep-wire (S6) scheduling fact, recorded here rather than mechanised at the fold;
+  **(i) added at the fold (panel C9):** 0x0C records are written by `build()` AND by every merge and
+  reorder pass, and those appends are UNOBSERVED by `home.observe_append` (only the ADOPT records are
+  observed) and unbounded by any budget — `RETENTION[0x0C]`'s "one-time build" clause was false from
+  `4109912` on and is corrected in the fold; the S6 sleep wire owes the observation.
 
 ### 2.7 P2 adjudication (stated before the build)
 
@@ -363,16 +374,16 @@ rides beside it with its own cross-check (`assert_read_accounting`).
 
 | arm | reading |
 |---|---|
-| derivation (P1) | 7 blocks folded in ≈17 ms each (measured, this host); a subjective night ≈ 100 sleep ticks at the RECORDED sleep-tick p50 10.99 ms; the check's stated share of one night is 10 % = 109.9 ms → `budget_blocks = 6`. Printed, never picked |
+| derivation (P1) | 7 blocks folded in ≈17 ms each (measured, this host, ONE draw); a subjective night ≈ 100 sleep ticks at the RECORDED sleep-tick p50 10.99 ms; the check's stated share of one night is 10 % = 109.9 ms → `budget_blocks = 6`. Printed, never picked. **Variance disclosed at the fold (panel C19):** the reading is single-shot wall clock, and 12 consecutive unmanipulated runs on this host derived `{1,3,3,3,3,4,4,5,5,5,6,6}` (per-block 17.4–122.6 ms, median 24.6) — the 6 reproduces on a quiet host and is the TOP of the band; drift under load is toward a SMALLER budget (the safe direction); the derived value has no consumer, and the print now says so rather than a caller discovering it |
 | S-R6 fresh tier | 3 of 4 deltas written (one compare-dropped at the f4 grain); the paged run reading base + unmerged deltas is **byte-identical** to a twin compiled directly on the post-delta edge set over 20 ticks (7 page-ins); the pre-delta twin DIFFERS (the identity is not vacuous) |
 | S-R6 merged | after `merge`: the paged run reading merged records only is byte-identical to the same twin; `n_unmerged == 0` on every merged block; `refusals == 0`; **every pre-existing segment file's sha256 unchanged**; the logical record set through the index equals the post-delta edge set; a stale-generation delta is REFUSED |
 | S-R6 red + attribution | the DROPPING fold reads `refusals 3 / merged 0` with every pointer and generation UNTOUCHED; the SAME fold with the PROOF NEUTERED reads `refusals 0 / merged 3` and adopts a record set wrong by 4 edges — the proof is what makes the red reachable |
 | S-R7 | 6 dirty blocks vs `budget_blocks = 3`: deferred 3 on the first call, 0 on the second, the union of merged sets IS the dirty set; calm control (2 ≤ 3) defers 0; the BUDGET-BLIND merge reads deferred 0 / merged 6 on the same overload |
 | S-R8 | a co-fetch stream of 4 index-distant blocks costs **4.00 reads per round before the reorder and 1.00 after**; bytes-fetched / bytes-used 1.0 both times (by construction — no over-read); every record decodes identically; every pre-existing segment byte-identical; `co_fetch_order` returns a permutation; the identity-order neuter reads 4.00 → 4.00 (the ORDER is what moves it, not the coalescing) |
-| S-R8 control | the RANDOM-fetch stream reads 3.45 → 2.75 under its own co-fetch order (a noise-fitted greedy order lands some co-occurring pair adjacent by chance); the pre-registered INTEGER margin structured − random = 3.00 − 0.70 = **2.30 ≥ 2** passes; 2.5's "≥ 3 (within one)" holds (2.75) — the reds commit had transcribed it as a hard ≥ 3.0 and was corrected to the pre-registration's own wording (3.4) |
+| S-R8 control | the RANDOM-fetch stream reads 3.45 → 2.75 under its own co-fetch order (a noise-fitted greedy order lands some co-occurring pair adjacent by chance); the pre-registered INTEGER margin structured − random = 3.00 − 0.70 = **2.30 ≥ 2** passes; 2.5's "≥ 3 (within one)" holds (2.75) — the reds commit had transcribed it as a hard ≥ 3.0 and was corrected to the pre-registration's own wording (3.4). **Seed and length disclosed at the fold (panel, MINOR):** the control's seed and 20-tick stream length were not registered in 2.4/2.5 and the record reports one draw (2.4 says so); the panel swept 11 seeds at 20 ticks — 10 of 11 pass the margin, 1 misses by chance on the noise-fitted greedy order — and at 50 ticks all 11 pass; the self-check now prints the seed and length it used; the seed and length are NOT changed at the fold (a re-registration is not a fix), the spread is the disclosure |
 | S-R8 red | a DROPPING reorder is caught by the per-record proof (**refusals 15 of 16**, `merged 1`, every record still readable and identical); with the proof neutered a block becomes unreadable (the segment's own span refusal) — the reds file's original `KeyError` expectation was wrong and the test now asserts BOTH halves (3.4) |
 | rebuild identity | `build_index` over the root after build + deltas + merge + reorder reproduces the store's rows (logical dump digest equal, planted-row red kept); a store rebuilt this way pages in identically — stated for a store with ZERO merge refusals (3.4, and closed by `1f2e260`) |
-| gates / suite | full suite **1266 tests, 0 failed, 2 pre-existing xfails**; every substrate gate rc 0; `perf_baseline --assert` ASSERTED on the pinned host (wake p50 174.8 ms vs the 183.5 ms reference; p95 reported-HIGH under a concurrent suite, its standing disclosure); self-check 1.5–2.7 s wall |
+| gates / suite | full suite **1266 tests, 0 failed, 2 pre-existing xfails**; every substrate gate rc 0; `perf_baseline --assert` ASSERTED on the pinned host (wake ratio p50 174.842 vs the 183.517 ambient-ratio baseline — dimensionless, the tick paired with an adjacent crc32 reference, NOT milliseconds: the recorded wake p50 is 119.6 ms; label corrected at the fold, panel C16; p95 reported-HIGH under a concurrent suite, its standing disclosure); self-check 1.5–2.7 s wall |
 
 ### 3.4 Deviations from the pre-registration, each with its reason
 
@@ -381,7 +392,7 @@ rides beside it with its own cross-check (`assert_read_accounting`).
 width bound stays a BLOCK bound; records ride beside it. 4. `edge_table` refuses a base record repeating a
 `(pre, post, delay)` triple (a delta addresses an edge by that triple); delta-free blocks never build a
 table, so T066's fixtures stay green. 5. `merge(…, resident_blocks=())` — a fact, not a constant; the
-result dict carries `merged_ids`/`deferred_ids` (S-R7's union criterion needs sets). 6. **Two corrections
+result dict carries `merged_ids` (S-R7's union criterion needs sets; a `deferred_ids` key was also written here and read by nothing — deleted at the fold, panel C14, P3 shape 4). 6. **Two corrections
 to this row's own reds, made in the mechanism commit and stated:** the dropping-reorder red as written
 ("unfetchable, `KeyError`") was wrong — the proof CATCHES the drop, so the test asserts both halves; and
 the random control's absolute bar was transcribed as ≥ 3.0 against 2.5's "≥ 3 (within one)" — measured
@@ -389,9 +400,15 @@ the random control's absolute bar was transcribed as ≥ 3.0 against 2.5's "≥ 
 proof's red is reachable, because of a hazard the build found: a FAILED proof leaves an unadopted 0x0C
 record that the rebuild's latest-wins-by-position rule would adopt — closed by the epoch fence
 (`1f2e260`, 3.5). 8. `observe_append` is a rename, not a wrapper. 9. `lake_bridge.located_records`
-added; `iter_records` delegates. 10. The merge seals one segment per block, the reorder one for the pass.
-11. `lake_compactor.py` is 1080 lines, ~640 of them the self-check — over the soft ceiling, deliberately,
-because the row's criterion is one command. 12. The `"13"` append-baseline row is NOT written: the recorded
+added; `iter_records` delegates. 10. The merge seals one segment per block, the reorder one for the pass —
+TRUE at `4109912`; since the epoch fence (`1f2e260`, 3.5) `adopt_merged` also appends the ADOPT record
+through `seal_and_locate`, so the merge seals TWO segments per merged block and the reorder n + 1 for
+n relocated blocks (measured at the panel: merge of 5 → +10 segments, reorder of 6 → +7); the cost is
+segment FILES, not read amplification — ADOPT records are never pointed to by a read-path row, so
+`_coalesced_reads` does not group on them (forward pointer added at the fold, panel C17).
+11. `lake_compactor.py` is 1080 lines at `4109912` and 1095 at `bd39587` (the fence added 15; this
+item was transcribed at the head and not re-measured — corrected at the fold, panel C13), ~640 of
+them the self-check — over the soft ceiling, deliberately, because the row's criterion is one command. 12. The `"13"` append-baseline row is NOT written: the recorded
 method (`make_brain × 120 ticks`) cannot produce a 0x0D append because no live writer exists; 0x0D is
 OBSERVED and `unbaselined` — reported, never trips — and the record says so rather than inventing a row.
 
@@ -429,3 +446,96 @@ right locality signal beyond the stream it watched. **Owed:** the S6 sleep wire 
 segment tier; a guarded no-op import was deliberately NOT made); a reclaimer for SUPERSEDED 0x0D records
 with L-R7's control, in its own row; the `"13"` baseline row once a live writer exists; the
 surprise-driven prefetch, re-dated to S6 (2.8); and T068's null.
+
+## 4. The panel's fold (2026-09-08, on `bd39587`; the fold commits are stacked on it)
+
+**Shape.** Three lenses (instrument / policy-honesty / integration), each filing findings only with a
+reproducing command on the frozen head; every filed finding sent to an independent refuter (Opus)
+instructed to refute the CLAIM and, separately, the PROPOSED FIX. 33 filed: **19 stood** (2 MAJOR, 17
+MINOR, 0 BLOCKER), 14 refuted. Of the 19 standing findings, **7 carried a proposed fix the refuter showed
+would introduce a defect** (C1's one-seal merge, C14's assert arm, C15's test-only reclaimer, C17's
+read-amplification cost claim, C18's count-every-moved-resident rule, C19's fold-twice median, C13's
+suite-count rewrite) — the fold adopts the refuter's minimal fix in each case, never the panel's. The
+refuted set includes, verbatim as filed and worth keeping: the "4x fall buys 1.00x wall time" claim (a
+single noisy draw; 8 of 10 re-runs above 1.00x), the reorder-is-not-idempotent MAJOR (real, but the
+cost figure was not a zero-change pass and the fix is the row's own red arm), the per-round allowance
+"bind" (both notes say the bound is reported beside, not lost), and the epoch-fence-reds-in-the-
+mechanism-commit MINOR (the quoted commit-order rule scopes to the S-R6/7/8 tests, which did land first).
+
+**What stood, and what the fold did (record = this file; code = the fold's code commit):**
+
+1. **C1 MAJOR, record only (2.6(h)).** The merge's per-block seal undoes the reorder's placement:
+   reads per round 1.00 → 1.75 folding 3 of 16, and under budget < dirty the co-fetch group is split
+   across passes (5.00). The panel's fix (one seal per merge pass in current-placement order) was built
+   and measured by the refuter: 1.00 only when every block of the group is dirty, 2.00 under a partial
+   fold — not durable either, so NOT adopted. The durable answer is that the reorder re-runs after every
+   fold, a scheduling fact for the S6 sleep wire, now disclosed.
+2. **C2 MAJOR, code + record.** `reorder` folded each block OUTSIDE its guard, so a CRC-failed record or
+   a missing segment raised past the duty (the EXEMPT row and 2.6 said "never raises past its own
+   guards"); it is also unbudgeted. Fold: the per-block fold moves inside a per-block try, a refused
+   block is SKIPPED (pointer and deltas untouched) and counted in `refusals`, and the ADOPT/pointer rows
+   are built from the rows actually WRITTEN so seq mapping cannot misalign; red-first test in
+   `tests/test_lake_compactor.py`: one 0x0C record's payload byte flipped on disk (the positive
+   control in the same test: `payload_at` raises `SegmentCorruption`), RUN RED on `bd39587` —
+   `reorder → _reorder_payloads → _folded → SegmentCorruption: seg-00000001.lake#4: CRC mismatch`
+   escaped the duty — and green after: `refusals == 1`, `merged == 7` of 8, the victim's pointer
+   unmoved, every other block's edge set byte-identical before and after; the dropping arm's None
+   rows still claim their positions so the pre-registered S-R8 red (refusals 15 of 16) still
+   fires; a pass in which EVERY block refuses no longer raises "a reorder that writes nothing" (an
+   unnamed hole the worker closed). No budget is added: the one-seal-per-pass co-fetch property
+   needs the whole pass, so the reorder is a whole-pass duty, deliberately unbudgeted, and the EXEMPT row
+   now says so (C11).
+3. **C18 MINOR, code.** `reorder` hard-coded `stale_resident: 0` and took no `resident_blocks`. Fold:
+   `reorder(store, order, *, resident_blocks=())` reports `len(resident ∩ dirty_at_entry ∩ moved)` —
+   NOT every moved resident block (a clean resident block's bundle is still correct; the panel's rule
+   would have reported 4 where 3 is true and 4 on a clean control where 0 is true). Test: resident
+   {0,1,2,3}, dirty {0,1,2} → 3; the same residents on a clean store → 0.
+4. **C14 MINOR, code + record.** `deferred_ids` was written in both result dicts and read by nothing
+   (P3 shape 4; a frozen literal in `reorder`, shape 5). Deleted; item 5 corrected; the union
+   criterion needs `merged_ids` alone.
+5. **C19 MINOR, record + print.** The budget derivation is a single-shot wall-clock reading that swings
+   6x run-to-run on an unmanipulated host (3.3's derivation row now carries the 12-run band). The
+   panel's fold-twice-and-median fix is NOT adopted (it changes the mechanism to fix a disclosure);
+   the print now states the raw quotient, that the reading is single-shot and load-sensitive, that drift
+   is toward a smaller budget, and "clamped to 1" only when the clamp binds (it was never printed
+   before). The fold's own run, under the worker's load: quotient 2.01 → `budget_blocks = 2` —
+   inside the 12-run band, and a third distinct value for the same command on the same host.
+6. **C9 MINOR, code (prose) + record (2.6(i)).** `RETENTION[0x0C]`'s reason rested on "one-time build";
+   0x0C is written by build AND every merge/reorder, unobserved and unbounded. Reason rewritten;
+   home.py's 0x0D comment likewise.
+7. **C10 MINOR, code (prose).** `lake_migrate.TAG_DISPOSITIONS[0x0D]` named one shape and asserted
+   identity migration; the ADOPT record names a container valid only inside its root, so `migrate`
+   reports equal over a root whose block tier then refuses. Prose corrected (both shapes, the hazard,
+   the reclaimer row's position anchor); `migrate` is NOT made to refuse — that is the reclaimer row's
+   mechanism, and a refusal here would be a second one.
+8. **C15 MINOR, code (prose).** The divergence keeping `RETENTION[0x0D].reclaimable` False was a one-off
+   build measurement with no landed reproducer; the reason now says so and names the reclaimer row as
+   the instrument's owner, and its "silently serving a block short of two edges" clause is scoped to
+   half (ii) alone (the measured composite refuses loudly at half (i)). The panel's test-only reclaimer
+   is NOT landed: it would pin `FileNotFoundError` and `n_unmerged = −1` as expected behaviour, which
+   the reclaimer row must invert.
+9. **C16 / C13 / C17 MINOR, record.** The perf ratchet's dimensionless ambient ratio was labelled
+   "ms" (3.3, corrected); item 11's line count was transcribed at the head and dated to the mechanism
+   commit (corrected, both numbers); item 10's segment counts were true at `4109912` and superseded by
+   the fence one commit later (forward pointer added; the panel's read-amplification cost claim is
+   refuted — ADOPT records are never pointed to by a read-path row).
+10. **MINOR, print only.** The S-R8 arm prints `bytes_appended` for the reorder pass (a reorder is not
+    idempotent — a second pass under the same order rewrites every record; the growth is now visible);
+    the random control prints its seed and stream length (3.3's control row carries the 11-seed
+    spread, and the draw is unchanged: 3.45 → 2.75 under seed 17); the rebuild-identity
+    comparator — the finding named a print that does not exist; `_block_rows_digest`'s docstring
+    was already truthful, so the one text that IS emitted, the assert message, now states that the
+    index is not identical whole and that the rebuild's own `applied_watermark` row and the
+    ordinal-keyed foreign-tag rows are excluded by construction.
+
+**Not changed at the fold, on purpose:** the random control's seed and stream length (a
+re-registration is not a fix; the spread is the disclosure); the reorder's idempotence (no wire exists
+to call it twice; the row's own red arm is the instrument); the merge's seal granularity (see 1).
+
+**Verification of the fold.** The code half was written by one worker from the refuter-corrected list
+and read by the orchestrator; **it was not re-panelled — the fold is battery-verified only** (the arc's
+one battery runs on the stacked head that includes it). Its gates at the fold commit: `ruff format`
++ `ruff check` rc 0; the compactor self-check rc 0 (7.25 s, every arm's reading unchanged; the new
+prints present); `pytest tests/test_lake_compactor.py tests/test_neuron_pager.py
+tests/test_ratified_row_gates.py` 75 passed; the dormancy gate rc 0; the `lake_engine` and
+`lake_migrate` self-checks rc 0. The full suite and every other gate: the battery's.
