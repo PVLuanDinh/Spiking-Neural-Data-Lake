@@ -106,3 +106,74 @@ It does not claim the brain can reach any of these widths — growth on today's 
 is what the SUBSTRATE would cost, not what the brain has grown, and Phase 3 running at a constructed
 width remains capacity ahead of consumption exactly as the plan's O5(f) discloses. It also does not
 re-baseline tick performance, and does not put the new ratchet in the pre-push path.
+
+## 6. THE PANEL'S FOLD — the slope is REAL as a fit and MISATTRIBUTED as a quantity
+
+Three lenses on the frozen arc; the state-per-unit lens returned four findings that survived
+adversarial verification. The headline number is corrected, not defended. **Nothing was pushed
+before the panel ran.**
+
+### 6.1 THE DECISIVE ONE — the slope measures the STREAM'S LABEL CARDINALITY, not the substrate
+
+Re-measured across seeds, the relation is exact:
+
+> **slope = 271 + 8·m**, where **m is the number of distinct labels the stream has shown**
+
+and m moved **3 → 6** across the conditions this row averaged over. So "302 bytes per unit" is not a
+per-unit substrate cost with noise on it — it is a fixed ~271 B term plus 8 bytes per CLASS, and the
+figure moves whenever the stream's vocabulary does. A `beta` column is stored per class per unit, and
+that is what the regression picked up.
+
+**The consequence is that section 2's headline is the wrong quantity for the row's purpose.** The
+binding width is meant to answer "how many units fit a budget"; a number that changes when the
+brain sees a new label answers a different question. The correct form is
+**`bytes_per_unit(m) = 271 + 8·m`**, and any binding width derived from it is conditional on a stated
+label cardinality.
+
+### 6.2 302.01 is a contaminated estimate of an exact integer
+
+Two of the five regression points carry a **stale `batch_beta`**, which perturbs the blob by a fixed
+amount and pulls the fit off the integer. The clean value is **303** at the m of that run. The
+residuals I reported as evidence of a good fit (max 19.62 B) are partly that contamination, not
+measurement noise — a fit can be tight and still be fitting the wrong thing.
+
+### 6.3 It is an IN-MEMORY snapshot, not persisted bytes
+
+`_measure_state_per_unit` builds every brain with `persist=False` and measures
+`growth_state_bytes()` — an in-memory serialisation. **A storage budget is about bytes that reach the
+lake.** The two are not the same number, and the row used one to derive the other without saying so.
+
+### 6.4 The binding widths are over-precise and over-extrapolated
+
+Reported to six significant figures (222,193 / 888,825 / 3,555,352) from **one seed at one tick
+count**, when the same figures move **8.1 % across seeds**. The largest measured point is **11 units**;
+the 1 GB figure extrapolates **~323,000×** beyond it, and assumes the per-unit term stays linear over
+six orders of magnitude with no term that grows with width — which nothing in this row tested. The
+widths are withdrawn as figures and kept only as an order of magnitude, conditional on m.
+
+### 6.5 The reachable-red table probes the wrong boundary
+
+`TOLERANCE` is **0.15**, so the ratchet's true boundary is 1.15×. The table probed 1.10× and called
+it "within tolerance", which is true but is not the boundary — a red demonstrated at 2× and a pass at
+1.10× leaves the actual edge unprobed. The red IS reachable (2× reds, verified); its threshold was
+not the one reported.
+
+### 6.6 One asymmetry worth fixing, recorded not fixed here
+
+`--state-per-unit` **exits 1** when the slope is unmeasurable and no baseline exists, but **exits 0**
+on the identical condition once a baseline does exist (it falls through to the reported-not-asserted
+path). The same unmeasurable state produces two different exit codes depending on history. Named as
+debt; a fix belongs with the wiring, not folded in silently here.
+
+### 6.7 Corrected disposition
+
+**T065 is PARTIAL.** What stands: the method — a SLOPE separates the per-unit term from the fixed
+overhead, and the demonstration that the naive ratio is confounded twice (both confounds reproduce)
+is the row's durable contribution. What is corrected: the quantity is
+**`271 + 8·m` bytes per unit, conditional on label cardinality**, measured **in memory** rather than
+persisted, from a fit whose top end is 11 units.
+
+**What the completion owes:** the same regression over PERSISTED bytes; m held fixed or entered as a
+term; more than one seed; and a width range that does not require extrapolating five orders of
+magnitude past the data. The recorded baseline stays as a ratchet reference — a per-unit cost that
+RISES is still a regression worth catching — but it is no longer offered as "the binding width".

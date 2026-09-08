@@ -111,7 +111,14 @@ class UnitBlocks:
 
     @contextmanager
     def resident(self, block):
-        """Make one block resident. Nesting raises -- see `BlockResidencyError`."""
+        """Make one block resident. Nesting raises -- see `BlockResidencyError`.
+
+        WHAT `max_resident` DOES AND DOES NOT MEASURE, corrected by this module's own panel: it
+        counts CONTEXT-MANAGER NESTING, not memory. `stream()` yields inside the manager and a
+        consumer is free to retain every group it is handed, so peak resident state can be all
+        blocks while this counter reads 1 throughout -- measured overshoot equals the block count
+        exactly. The honest claim is therefore "`resident()` is never nested", which is what the
+        guard enforces; a peak-memory proof is a different instrument and this is not it."""
         if not (isinstance(block, int) and 0 <= block < self.n_blocks):
             raise ValueError(f"block {block!r} is outside [0, {self.n_blocks})")
         if self._resident:

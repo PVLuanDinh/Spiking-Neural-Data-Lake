@@ -546,11 +546,35 @@ The width these tasks run at is CONSTRUCTED (T065), not grown; until Phase 2's g
 is capacity ahead of consumption, disclosed (O5(f)) — which is why Phase 3 follows Phase 2 and its null
 clause protects it.
 
-- **S1 = T064** unit blocks + block-aligned records (`substrate/lake_engine.py`, new `substrate/unit_blocks.py`),
-  the first live writer of `SynapseDelta` (rewiring becomes lake-resident before unit growth does); port
-  `neuro_chip_stream`'s one-core-resident shard discipline (P2).
-- **S2 = T065** the binding width from measured state-per-unit. *DONE 2026-09-07
-  (`evidence/s2-state-per-unit.md`): **302.01 B/unit marginal**, 5195.57 B fixed overhead, max
+- **S1 = T064** unit blocks + block-aligned records. *HALF-LANDED 2026-09-07
+  (`evidence/s1-unit-blocks.md` section 3 is the panel's correction). `substrate/unit_blocks.py`
+  lands (partition, POST-keyed grouping, a non-nesting guard) with tests. **THE "FIRST LIVE WRITER"
+  CLAIM IS WITHDRAWN:** `delta_sink` is non-None in exactly one place in the tree -- the tests -- and
+  **nothing in the tree ever emits the byte 0x09**; the method produces a PAYLOAD, never a tagged
+  lake record, so `SynapseDelta` remains declared, tested and never written, exactly as L6's census
+  found it. P3 shape 7, the registry nobody registered with, and the dormancy green is hollow (the
+  import sits behind the `sink is None` early return and never executes). **The residency claim is
+  also withdrawn:** `max_resident == 1` counts CONTEXT-MANAGER NESTING, not memory -- measured
+  overshoot equals the block count exactly. The blocking is VACUOUS at its only wire (blocks per
+  record = 1.00 over 400 deposits, the identity partition), carried as open debt with section 2.3's
+  deletion condition rather than deleted, because it is untested at this wire rather than measured
+  useless at the wire it was built for. **What the arc DID measure and is the useful part:** the
+  append rate a production sink would produce -- 771 records from 400 deposits (interact deposits
+  twice per turn), ~158 B/deposit, and FLAT across quarters (15984/16032/15168/15967 B). That is a
+  flood shape, and it is why the production wire is NOT made here: L4b's incident was a tag appended
+  at a rate nobody had measured. The wire owes a baselined budget, a genuinely tagged record, a
+  residency proof that measures memory, and a first real consumer of grouped records.*
+- **S2 = T065** the binding width from measured state-per-unit. *PARTIAL 2026-09-07 -- the method stands, the QUANTITY is corrected
+  (`evidence/s2-state-per-unit.md` section 6 is the panel's correction). **The slope measures the
+  stream's LABEL CARDINALITY, not the substrate: slope = 271 + 8*m exactly, and m moved 3->6 across
+  the conditions averaged over** -- a beta column per class per unit is what the regression picked
+  up, so the honest form is `bytes_per_unit(m) = 271 + 8*m` and every width below is conditional on a
+  stated m. Also: 302.01 is a CONTAMINATED estimate of an exact 303 (two of five points carry a stale
+  batch_beta); the figure is an IN-MEMORY snapshot at persist=False while a storage budget is about
+  PERSISTED bytes; the six-significant-figure widths come from one seed at one tick count and move
+  8.1% across seeds, extrapolating ~323,000x past an 11-unit top end. What DURABLY stands is the
+  METHOD -- a slope separates the per-unit term from the fixed overhead, and both confounds of the
+  naive ratio reproduce. Reported as: **302.01 B/unit marginal**, 5195.57 B fixed overhead, max
   residual 19.62 B on 5.5-8.5 KB fits. The naive `blob/units` ratio was measured CONFOUNDED twice --
   with width fixed it tracks the trajectory (2775 -> 3107 B/unit across 200-1200 ticks while the unit
   count never leaves 2), and with width varying it charges the fixed overhead to the units (5503

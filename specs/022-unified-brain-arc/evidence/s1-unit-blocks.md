@@ -68,3 +68,82 @@ blocking is only justified if it is load-bearing for residency.
 It does not claim a paging benefit (that is S3/T066 with its own reds), it does not baseline the
 append budget (a measurement the writer makes POSSIBLE, taken in its own row), and it does not touch
 unit growth — rewiring becomes lake-resident here, growth does not.
+
+## 3. THE PANEL'S FOLD — T064 is HALF-LANDED, and the "first live writer" claim is WITHDRAWN
+
+Three lenses on the frozen arc. The verdict on this row is substantially negative and the claims are
+corrected downward rather than defended. **Nothing was pushed before the panel ran.**
+
+### 3.1 WITHDRAWN — this is not a live writer, and 0x09 is still uncharged
+
+`delta_sink` is set to a non-None value in **exactly one place in the tree: the tests.** No
+production path attaches one, so `_record_synapse_delta` returns at its first line on every real
+deposit. Worse, and found by the panel rather than by me: **nothing in the tree ever emits the byte
+`0x09`.** The method produces a *payload* and hands it to a callable; it never writes a TAGGED lake
+record, so even with a sink attached the tag would still hold nothing.
+
+`SynapseDelta` therefore remains exactly what L6's census found it to be — declared, tested, and
+never written. The commit's headline "the FIRST LIVE WRITER of SynapseDelta" is **false as
+committed**, and is withdrawn here. What landed is a writer that is *capable* of being live: P3
+shape 7, the registry nobody registered with.
+
+**The dormancy green is hollow too.** The gate is satisfied by an `import` statement that sits
+behind the `sink is None` early return and never executes in production — a static AST walk cannot
+tell that branch from a live one. The module passes the gate while never being imported at runtime.
+
+### 3.2 WITHDRAWN — `max_resident == 1` does not measure peak resident state
+
+R-S1a asserted the ported one-resident discipline via a counter incremented in `resident()`. **The
+counter measures CONTEXT-MANAGER NESTING, not memory.** `stream()` yields inside the manager and the
+consumer is free to retain every yielded group, so measured overshoot equals the block count exactly:
+peak resident state is all blocks while the counter reads 1 throughout.
+
+This is the arc's own apparatus failing in the way this project keeps finding — a counter that
+reports the quantity it was incremented for rather than the quantity it is named for. The residency
+claim is withdrawn; what the counter honestly asserts is that `resident()` is never nested.
+
+### 3.3 The blocking is VACUOUS at its only wire, and §2.3 pre-registered what to do
+
+With `delta_block_size = 1` and exactly one post neuron per deposit, `group()` returns **exactly one
+block, every time** — measured: `blocks per record = 1.00` over 400 deposits. The partition is the
+identity, and the residency discipline is never exercised by the only caller.
+
+§2.3 pre-registered: *"If block-aligned grouping cannot be shown to change anything a flat record
+does not already do, the blocks are DELETED."* That disposition is **not executed here**, and the
+reason is stated rather than assumed: the blocking is untested at this wire, not measured useless at
+the wire it was built for (a grown substrate, which does not exist yet — Phase 2 stops at 2 units).
+It is carried as **OPEN DEBT with a deletion condition**: if the first real consumer of grouped
+records does not use the block structure, the blocks go.
+
+### 3.4 What the arc DID measure, and it is the useful part
+
+The append rate a production sink would produce, driven through the real conversational path
+(400 deposits, scratch home):
+
+| quarter of the record stream | records | bytes |
+|---|---|---|
+| q1 | 192 | 15,984 |
+| q2 | 192 | 16,032 |
+| q3 | 192 | 15,168 |
+| q4 | 195 | 15,967 |
+
+**771 records from 400 deposits (192.8 %)** — `interact` deposits twice per turn (reinforce the
+correct neuron, depress the wrongly-chosen one) — at **~158 B per deposit, and the rate is FLAT**.
+Compare-drop does not quiet it, because the learner keeps moving weights past `q_step = lr` on every
+deposit.
+
+**That is a flood shape, and it is the reason the production wire is NOT made in this arc.** L4b's
+incident was a tag appended at a rate nobody had measured; `RETENTION[0x09]` says the budget stays
+unbaselined "until a live writer exists to measure". The measurement now exists; the wire owes a
+baselined budget first.
+
+### 3.5 Corrected disposition
+
+**T064 is HALF-LANDED.** What stands: `UnitBlocks` (partition, POST-keyed grouping, a non-nesting
+guard), the delta-emitting method with a derived `q_step`, their tests, and the append-rate
+measurement above. What does NOT stand: the live-writer claim, the peak-residency claim, and any
+suggestion that `0x09` is charged.
+
+**What the completion owes:** a production sink that writes a genuinely TAGGED `0x09` lake record; a
+baselined append budget for that rate; a residency proof that measures memory rather than nesting;
+and a first real consumer of grouped records, or the blocks are deleted per §2.3.

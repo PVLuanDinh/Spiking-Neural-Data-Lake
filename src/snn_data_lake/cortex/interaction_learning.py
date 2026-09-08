@@ -269,9 +269,16 @@ class SpikingInteractionLearner:
     #   emits per-synapse deltas of the interaction learner's own weights. distinct-from:
     #   basal_ganglia/learning_progress.py::GoalStore -- _T_GOAL event rows. Sites read 2026-09-07.
     def _record_synapse_delta(self, li, code):
-        """T064: emit this deposit's synapse deltas as a block-aligned `_T_SYNDELTA` (0x09) record.
+        """T064: frame this deposit's synapse deltas as a block-aligned `_T_SYNDELTA` (0x09) payload.
 
-        THE FIRST LIVE WRITER OF `SynapseDelta`. The tag was declared, tested and never written --
+        NOT YET A LIVE WRITER, and the first form of this docstring said it was. Corrected by the
+        arc's panel: `delta_sink` is set in exactly one place in the tree -- the tests -- so this
+        returns at its first line on every real deposit, and nothing here emits the byte
+        `SynapseDelta.TAG` at all. It produces a PAYLOAD and hands it to a callable; writing a
+        genuinely TAGGED lake record, with the append budget its measured rate needs (~158 B per
+        deposit, flat over 400 deposits -- a flood shape), is the completion this row owes.
+
+        The tag was declared, tested and never written --
         one of four lake classes L6's census found had never held a record -- so this is what turns
         it from built-and-uncharged into charged, and what makes its append budget measurable at all
         (`RETENTION[0x09]`: "unbaselined ... until a live writer exists to measure").
