@@ -231,7 +231,14 @@ Carried: all of POLICIES (A.2). Added from what the nulls taught:
   is not improvement"), and SC-012a's reading establishes accuracy-with-count, not improvement-over-the-
   incumbent. The rule is re-based from time-bound to that permanent condition; the gate is unchanged in
   mechanism and its docstring states the condition. The wording lifts the day a row shows the
-  improvement — and that row names the gate it retires.*
+  improvement — and that row names the gate it retires. THIS DEVIATES FROM A PRE-REGISTERED
+  CONSEQUENCE and says so: `evidence/sc-012a-width.md` §2.3 registered "if it fires: the Part C
+  reporting rule lifts". The fire's veto conjunct (c) turned out to have NO REACHABLE RED
+  (`evidence/l-exit.md`), so the fire rests on (a) and (b) alone and its pre-registered consequence
+  rests on a veto that could not veto; the lift is HELD on that null rather than taken on a fire whose
+  own record impugns it, until (c) has a reachable red or its replacement null lands with its gate
+  first — and it then lifts only under the permanent condition above. Not a relabelling of a met
+  condition as unmet: (a) and (b) are MET, the fire STANDS, the consequence is what is held.*
 
 ---
 
