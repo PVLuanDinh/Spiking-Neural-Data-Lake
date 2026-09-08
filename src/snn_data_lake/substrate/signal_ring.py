@@ -51,6 +51,8 @@ from __future__ import annotations
 import sys
 import threading
 
+from snn_data_lake.substrate.home import observe_append
+
 
 class RingOverrun(RuntimeError):
     """A consumer lost records (writer lapped it). For the lake consumer this is never survivable
@@ -175,7 +177,16 @@ class LakeJournaller:
             )
         if not records:
             return 0
-        return self._log.extend([payload for _seq, payload in records])
+        payloads = [payload for _seq, payload in records]
+        n = self._log.extend(payloads)
+        # The ONE append-observation path (home.observe_append, specs/022 T067), AFTER the durable
+        # write: this drain is the only writer of the workspace coalition class (0x0A), and until
+        # 2026-09-08 it wrote around the observer, so the append budget's census could never see
+        # the tag that is most of the operator's lake by bytes. Each payload is tag-prefixed as the
+        # producer framed it, which is exactly the length the observer is documented to take.
+        for payload in payloads:
+            observe_append(payload[:1], len(payload))
+        return n
 
 
 # ---- T020: JoinPolicy + DeliveryPolicy ENFORCEMENT on the delivery path (P8 invention #2,
