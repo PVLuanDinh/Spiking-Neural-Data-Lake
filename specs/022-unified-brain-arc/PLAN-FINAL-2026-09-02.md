@@ -54,8 +54,12 @@ retired, and every claim ships with a control and a red that can fail.
 - **Never write to the live lake** (`C:\Users\vinhl\.snn_data_lake\brain_lake.bin`) from a test or a probe:
   build brains under `substrate.home.throwaway_home()` with `make_brain(seed, persist=False)`, or under an
   isolated `NORD_HOME` temp dir for restart proofs. Never stand up a second brain against the live lake.
-- **Subagents inherit the main session's model** (owner rule 2026-09-02, superseding the earlier Fable-only
-  rule): pass no model override to the Agent or Workflow tools. Review panels are three lenses on that model.
+- **FABLE 5.1 ORCHESTRATES, OPUS 5 EXECUTES** (owner rule 2026-09-08, superseding the 2026-09-02 inherit
+  rule). Orchestration is the main session and the workflow script it authors -- routing, planning, folding a
+  panel, and the final verification that never delegates; the OWNER sets that model, since Claude cannot flip
+  its own main model mid-session. Execution is every spawned worker: `Agent(...)` and every Workflow
+  `agent(...)` pass **`model: 'opus'`** explicitly, panel lenses and verifiers included. Omitting `model:` is
+  no longer correct -- it inherits, which is the rule this replaces.
 - **One change per commit; one full battery per pushed ARC, on its stacked head** (owner rule 2026-09-02,
   POLICIES' "Gated + reversible" amendment). Every commit names the battery that verified the head it was
   pushed under; a red on the head is attributed per stage per commit, never by whole re-runs.
