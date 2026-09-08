@@ -353,10 +353,9 @@ class LakeCompactor:
             "bytes_appended": bytes_appended,
             "seconds": time.perf_counter() - started,
             "stale_resident": stale_resident,
-            #: the ids, beside the counts: S-R7's criterion is that the UNION of two calls' merged
-            #: sets equals the dirty set, which a count cannot express.
+            #: the merged ids, beside the counts: S-R7's criterion is that the UNION of two calls'
+            #: `merged_ids` sets equals the dirty set, which a count cannot express.
             "merged_ids": tuple(merged_ids),
-            "deferred_ids": tuple(deferred),
             "refusal_last": refusal_last,
         }
 
@@ -378,13 +377,34 @@ class LakeCompactor:
             )
         return rows
 
-    def reorder(self, store, order):
+    # distinct-from: substrate/neuron_pager.py::UnitBlockStore.build -- the only other pass that
+    #   writes one 0x0C record per block and folds pointers into the index. It MINTS a block's
+    #   first record (generation 0) from a partition, in block-id order, with no prior record to
+    #   prove against; this RELOCATES the records that already exist, in a placement order, and
+    #   every one of them passes the relocation proof before its pointer moves. The other three
+    #   sites the duplicate-capability check named were read and none is a second mechanism for
+    #   this job: `lake_segments.read_segment` is a reader, `cortex/brain.py::_flush_growth`
+    #   writes the growth tier (0x03/0x08), and `signal_ring.LakeJournaller` drains a ring into
+    #   brain_lake.bin. All read 2026-09-08.
+    def reorder(self, store, order, *, resident_blocks=()):
         """Write every block's CURRENT record into ONE new sealed segment in `order`, proving each
         relocated record before moving its pointer. Old segments stay byte for byte.
 
         `order` must be a PERMUTATION of the store's block ids and is refused otherwise -- an
         order that dropped or repeated a block would place a record nobody can address, and
-        refusing at the call is cheaper than discovering it at the next page-in."""
+        refusing at the call is cheaper than discovering it at the next page-in.
+
+        THE FOLD RUNS INSIDE A PER-BLOCK TRY, the shape `merge` already had: a RUNTIME data fault
+        -- a CRC-failed record, a segment a pointer no longer names -- refuses THAT BLOCK (pointer
+        untouched, deltas unmerged, counted in `refusals`) instead of raising past this duty's
+        guards and killing the pass. The pass itself stays deliberately UNBUDGETED, unlike the
+        merge: one seal per pass is what puts co-fetched blocks in one segment, so a budget would
+        cost the property the reorder exists for.
+
+        `resident_blocks` is the caller's pager residency set, as on `merge`, and it is a fact
+        rather than a picked constant. A resident block this pass FOLDED keeps its old compiled
+        bundles until eviction and is counted `stale_resident`; a resident block that was CLEAN
+        re-encodes to the record it already held, so its bundles are still correct (2.6(g))."""
         _refuse_on_label()
         ids = block_ids(store)
         order = [int(b) for b in order]
@@ -394,44 +414,59 @@ class LakeCompactor:
                 f"{len(order)} entries covering {len(set(order))} distinct ids"
             )
         started = time.perf_counter()
-        rows = self._reorder_payloads(store, order)
-        payloads = [payload for _bid, payload in rows if payload is not None]
-        if not payloads:
-            raise ValueError("a reorder that writes nothing is not a reorder")
-        container, seqs = store.seal_and_locate(payloads)
-        # A BLOCK'S NEW ADDRESS IS ITS POSITION IN `order`, which is what makes this a reorder. For
-        # a pass that writes one record per position this is exactly `seqs[position]`, because
-        # `seal_and_locate` returns a contiguous run; a constructed arm that writes FEWER records
-        # than it claims positions for shifts every pointer past the gap, and the per-record
-        # relocation proof below is what has to catch that rather than the arithmetic.
-        first = seqs[0]
-        moved: list[int] = []
-        refusals, bytes_appended = 0, sum(len(p) for p in payloads)
-        refusal_last = ""
-        for position, (bid, _payload) in enumerate(rows):
-            seq = first + position
+        resident = {int(b) for b in resident_blocks}
+        dirty_at_entry = {bid for bid in ids if store.n_unmerged(bid)}
+        rows: list = []
+        refusals, refusal_last = 0, ""
+        for bid in order:
+            # ONE BLOCK AT A TIME THROUGH THE SEAM, so a block whose record cannot be read is
+            # dropped from the pass entirely rather than aborting it -- the rows that SURVIVE here
+            # are the rows the positions below are built from. A row whose payload is None is a
+            # different thing and stays: that is the constructed dropping arm, which claims its
+            # position while writing nothing, and the per-record proof is what has to catch it.
             try:
-                built = rows[position][1]
-                if built is None or not self._prove(
-                    store, bid, container, seq, built, store.generation(bid)
-                ):
-                    refusals += 1
-                    refusal_last = f"block {bid}: the relocation proof failed; pointer untouched"
-                    continue
-                store.adopt_merged(bid, container, seq)
-                moved.append(bid)
+                rows.extend(self._reorder_payloads(store, [bid]))
             except Exception as exc:  # noqa: BLE001 - same nightly-duty shape as merge
                 refusals += 1
                 refusal_last = f"block {bid}: {exc!r}"[:200]
+        payloads = [payload for _bid, payload in rows if payload is not None]
+        if not payloads and not refusals:
+            raise ValueError("a reorder that writes nothing is not a reorder")
+        moved: list[int] = []
+        bytes_appended = sum(len(p) for p in payloads)
+        if payloads:
+            container, seqs = store.seal_and_locate(payloads)
+            # A BLOCK'S NEW ADDRESS IS ITS POSITION AMONG THE ROWS THIS PASS BUILT, which is what
+            # makes this a reorder. For a pass that writes one record per row this is exactly
+            # `seqs[position]`, because `seal_and_locate` returns a contiguous run; a constructed
+            # arm that writes FEWER records than it claims positions for shifts every pointer past
+            # the gap, and the per-record relocation proof below is what has to catch that rather
+            # than the arithmetic.
+            first = seqs[0]
+            for position, (bid, built) in enumerate(rows):
+                seq = first + position
+                try:
+                    if built is None or not self._prove(
+                        store, bid, container, seq, built, store.generation(bid)
+                    ):
+                        refusals += 1
+                        refusal_last = (
+                            f"block {bid}: the relocation proof failed; pointer untouched"
+                        )
+                        continue
+                    store.adopt_merged(bid, container, seq)
+                    moved.append(bid)
+                except Exception as exc:  # noqa: BLE001 - same nightly-duty shape as merge
+                    refusals += 1
+                    refusal_last = f"block {bid}: {exc!r}"[:200]
         return {
             "merged": len(moved),
             "deferred": 0,
             "refusals": refusals,
             "bytes_appended": bytes_appended,
             "seconds": time.perf_counter() - started,
-            "stale_resident": 0,
+            "stale_resident": len(resident & dirty_at_entry & set(moved)),
             "merged_ids": tuple(moved),
-            "deferred_ids": (),
             "refusal_last": refusal_last,
         }
 
@@ -657,11 +692,23 @@ def _reads_per_round(store, due_sets):
     return sum(got) / len(got)
 
 
+# distinct-from: substrate/neuron_pager.py::_derive_rounds -- the same SHAPE (a measured per-block
+#   cost against a stated share of a recorded tick p50) over a different quantity for a different
+#   consumer: that one times a per-block READ to size the pager's rounds budget, this one times a
+#   per-block FOLD to size a sleep-night merge. It also samples 3 x n_blocks and takes the MEDIAN
+#   where this takes ONE reading, which is why the caller prints the raw quotient and the
+#   single-shot caveat rather than presenting the integer as stable. Site read 2026-09-08.
 def _derive_budget(store):
     """budget_blocks from a MEASURED per-block fold cost against a stated share of a subjective
     night at the RECORDED SLEEP-TICK p50 (tools/perf_baseline.json ticks.sleep.p50_ms -- the
     reference named the way `neuron_pager._derive_rounds` names the wake p50). Printed, never
-    picked."""
+    picked.
+
+    IT IS A SINGLE-SHOT WALL-CLOCK READING and the caller prints it as one: `per_block_s` is one
+    timing of one fold on this host, so the derived integer moves with host load, and it moves
+    DOWNWARD -- a loaded host reads a larger per-block cost and derives a SMALLER budget. The raw
+    quotient and whether the max(1, ...) clamp bound are returned beside the integer so the print
+    can say which of the two produced it."""
     ids = block_ids(store)
     store.append_deltas(
         _deltas([(bid, store.generation(bid), ((2, 0, _W_SUB, 3, 0),)) for bid in ids[:-1]])
@@ -673,11 +720,14 @@ def _derive_budget(store):
     baseline = json.loads(PERF_BASELINE.read_text())
     sleep_p50 = baseline["ticks"]["sleep"]["p50_ms"] / 1000.0
     allowance = SELFCHECK_NIGHT_SHARE * SELFCHECK_NIGHT_TICKS * sleep_p50
+    quotient = allowance / max(per_block, 1e-9)
     return {
         "per_block_s": per_block,
         "merged": result["merged"],
         "sleep_p50_s": sleep_p50,
         "allowance_s": allowance,
+        "quotient": quotient,
+        "clamped": int(quotient) < 1,
         "budget_blocks": max(1, int(allowance // max(per_block, 1e-9))),
     }
 
@@ -707,7 +757,12 @@ def main() -> int:
             f"night is ~{SELFCHECK_NIGHT_TICKS} sleep ticks at the RECORDED sleep-tick p50 "
             f"{derived['sleep_p50_s'] * 1e3:.2f} ms, and this check's stated share of one night "
             f"is {SELFCHECK_NIGHT_SHARE:.0%} = {derived['allowance_s'] * 1e3:.1f} ms -> "
-            f"budget_blocks={derived['budget_blocks']}. The OVERLOAD arm below does NOT run on "
+            f"allowance/per-block = {derived['quotient']:.2f} -> "
+            f"budget_blocks={derived['budget_blocks']}"
+            + (" (CLAMPED to 1: the raw quotient is under one block)" if derived["clamped"] else "")
+            + ". THE PER-BLOCK COST IS A SINGLE-SHOT WALL-CLOCK READING, not a median: it varies "
+            "with host load, and the drift is toward a SMALLER budget (a loaded host times a "
+            "slower fold). The OVERLOAD arm below does NOT run on "
             "that budget and cannot: a budget derived to be sufficient never defers, which is "
             "what makes the deferral criterion falsifiable only under a constructed one"
         )
@@ -921,8 +976,11 @@ def main() -> int:
             return _fail("bytes fetched != bytes used -- the round over-read")
         s_store.assert_read_accounting()
 
+        # The control's DRAW is one draw, so its two inputs are named here and printed below
+        # rather than left implicit in a default argument: one seed, one stream length.
+        r_seed, r_ticks = 17, 20
         r_store, _r_blocks = _store(root, "random", r8_edges, n_units=_R8_N)
-        r_sets = _random_sets(20)
+        r_sets = _random_sets(r_ticks, seed=r_seed)
         r_before = _reads_per_round(r_store, r_sets)
         LakeCompactor().reorder(r_store, co_fetch_order(r_sets, _R8_BLOCKS))
         r_after = _reads_per_round(r_store, r_sets)
@@ -960,8 +1018,13 @@ def main() -> int:
             f"(bytes-fetched/bytes-used 1.0 both times, by construction -- no over-read this row); "
             f"every record decodes identically, every pre-existing segment file is byte-identical, "
             f"and {s_result['merged']} of {_R8_BLOCKS} blocks were relocated with "
-            f"{s_result['refusals']} refusals. THE NULL, in the same command: a RANDOM-fetch "
-            f"stream reorders {r_before:.2f} -> {r_after:.2f}, so the structured reduction "
+            f"{s_result['refusals']} refusals, appending "
+            f"{s_result['bytes_appended']} bytes (A REORDER IS NOT IDEMPOTENT: it rewrites every "
+            f"block's record, so a second pass over the same order appends the same again -- the "
+            f"old records stay and the lake GROWS by this much). THE NULL, in the same command: a "
+            f"RANDOM-fetch stream (numpy default_rng seed {r_seed}, {r_ticks} ticks of "
+            f"{_CO_FETCH_K} blocks drawn without replacement -- ONE draw, reported as one) "
+            f"reorders {r_before:.2f} -> {r_after:.2f}, so the structured reduction "
             f"{s_before - s_after:.2f} exceeds the random reduction {r_before - r_after:.2f} by "
             f"{margin:.2f} against a pre-registered margin of {_CONTROL_MARGIN}. THE PER-ITEM "
             f"NEUTER: the order replaced by IDENTITY reads {i_before:.2f} -> {i_after:.2f}, i.e. "

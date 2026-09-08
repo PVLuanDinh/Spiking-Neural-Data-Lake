@@ -643,8 +643,12 @@ EXEMPT = {
         "_LIVE_ROOT whose AST walk is unconditional, so even a guarded no-op import from "
         "_enter_sleep would flip this module REACHABLE, forbid this row, and leave a hollow green "
         "over a duty with nothing to do -- the T064 shape this project has already paid for once. "
-        "The duty lands here in the exact nightly-duty shape instead (never raises past its own "
-        "guards, budgeted, counters returned) and S6 -- where the live brain first has a store -- "
+        "The duty lands here in the exact nightly-duty shape instead -- counters returned, and "
+        "since the T067 review fold BOTH passes count a runtime data fault per block rather than "
+        "raising past their own guards (the reorder's fold used to run outside its try). BUDGETED "
+        "IS TRUE OF THE MERGE ONLY: the reorder is a WHOLE-PASS duty, deliberately unbudgeted, "
+        "because one seal per pass is what puts co-fetched blocks in one segment. S6 -- where the "
+        "live brain first has a store -- "
         "wires it, names its neuter element beside Brain._sleep_caps, and owes its state() keys. "
         "Printed by the standing-TODO arm every run",
     ),

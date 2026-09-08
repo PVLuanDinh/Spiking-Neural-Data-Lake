@@ -50,7 +50,12 @@ from snn_data_lake.substrate.lake_engine import (
 )
 from snn_data_lake.substrate.lake_migrate import TAG_DISPOSITIONS
 from snn_data_lake.substrate.lake_rebuild_gate import build_index
-from snn_data_lake.substrate.lake_segments import SEGMENT_DIR, read_records, read_segment
+from snn_data_lake.substrate.lake_segments import (
+    SEGMENT_DIR,
+    SegmentCorruption,
+    read_records,
+    read_segment,
+)
 from snn_data_lake.substrate.neuron_pager import NeuronPager, UnitBlockStore
 
 FRAC = 16
@@ -707,6 +712,75 @@ def test_a_dropping_reorder_is_caught_by_the_proof_and_is_damage_without_it(tmp_
         _logical_edges(blind_store, R8_BLOCKS)
 
 
+def test_a_reorder_skips_a_block_whose_record_is_corrupt_and_relocates_every_other(tmp_path):
+    """A RUNTIME data fault inside the pass is COUNTED, never raised past the duty's guards.
+
+    RUN RED on the fold this test was written against: the per-block fold ran OUTSIDE the try, so
+    one CRC-failed 0x0C record aborted the whole pass with `SegmentCorruption` -- the shape the
+    merge has never had. The refused block keeps its pointer and its unmerged deltas; every other
+    block still relocates, and the pointer arithmetic must follow the rows ACTUALLY WRITTEN or the
+    survivors end up addressing each other's records."""
+    edges = _base_edges()
+    store, _blocks = _store_for(tmp_path, edges, name="corrupt-reorder")
+    victim = 3
+
+    def _edges_of(bid):
+        record = store.fetch([bid])[bid]
+        pre = record.pre_global()
+        return [
+            (int(pre[j]), int(record.post[j]), float(record.weight[j]), int(record.delay[j]))
+            for j in range(len(record))
+        ]
+
+    before = {bid: _edges_of(bid) for bid in range(N_BLOCKS) if bid != victim}
+    pointer_before = store.block_pointer(victim)
+    container, seq = pointer_before
+    payload = store.payload_at(container, seq)
+    segment = store.root / SEGMENT_DIR / str(container)
+    data = bytearray(segment.read_bytes())
+    at = data.find(payload)
+    assert at >= 0, "the victim's payload bytes must be locatable in its own sealed segment"
+    data[at + len(payload) // 2] ^= 0xFF  # a PAYLOAD byte, so the stored CRC no longer matches
+    segment.write_bytes(bytes(data))
+    # The positive control, in the same test: the corruption is live on the store's read path.
+    with pytest.raises(SegmentCorruption):
+        store.payload_at(container, seq)
+
+    order = list(reversed(range(N_BLOCKS)))
+    result = compactor_module.LakeCompactor().reorder(store, order)
+    assert result["refusals"] == 1, f"exactly the corrupt block refuses: {result}"
+    assert result["merged"] == N_BLOCKS - 1, result
+    assert victim not in result["merged_ids"]
+    assert store.block_pointer(victim) == pointer_before, "a refused block's pointer must not move"
+    for bid, want in before.items():
+        assert _edges_of(bid) == want, f"block {bid} did not survive the reorder byte for byte"
+
+
+def test_a_reorder_counts_a_resident_block_stale_only_when_the_pass_folded_it(tmp_path):
+    """`stale_resident` on the reorder path was a hard-coded 0 and the signature took no
+    residency at all. A resident block the pass FOLDED keeps bundles compiled from the pre-fold
+    edge set until it is evicted; a resident block that was CLEAN re-encodes to the record it
+    already had, so its bundles are still correct and it is not counted."""
+    edges = _base_edges()
+    store, _blocks = _store_for(tmp_path, edges, name="reorder-resident")
+    store.append_deltas(_delta_records(_dirty_spec(3)))
+    assert {bid for bid in range(N_BLOCKS) if store.n_unmerged(bid)} == {0, 1, 2}
+    order = list(reversed(range(N_BLOCKS)))
+    result = compactor_module.LakeCompactor().reorder(
+        store, order, resident_blocks=frozenset({0, 1, 2, 3})
+    )
+    assert result["refusals"] == 0, result
+    assert result["stale_resident"] == 3, (
+        f"resident AND dirty-at-entry AND moved is the count; block 3 was resident but clean: "
+        f"{result}"
+    )
+    clean_store, _clean_blocks = _store_for(tmp_path, edges, name="reorder-resident-clean")
+    control = compactor_module.LakeCompactor().reorder(
+        clean_store, order, resident_blocks=frozenset({0, 1, 2, 3})
+    )
+    assert control["stale_resident"] == 0, f"no block was dirty, so none went stale: {control}"
+
+
 def test_a_reorder_refuses_an_order_that_is_not_a_permutation(tmp_path):
     store, _blocks, _edges = _r8_store(tmp_path, "lossy")
     for bad in (
@@ -789,7 +863,11 @@ def test_build_index_reproduces_the_stores_block_rows_after_build_deltas_merge_a
     rebuilt = LakeIndex(Path(tmp_path) / "rebuilt.db")
     try:
         assert _block_rows_digest(rebuilt, N_BLOCKS) == want, (
-            "build_index did not re-derive the store's (0x0C, *) and (0x0D, *) rows"
+            "build_index did not re-derive the store's (0x0C, *) and (0x0D, *) rows. THE CLAIM IS "
+            "ABOUT THOSE ROWS AND NOTHING ELSE: the index is NOT identical whole -- the rebuild "
+            "writes its own applied_watermark row (the store deliberately never advances one) and "
+            "ordinal-keyed rows for foreign tags, both of which this comparator excludes by "
+            "construction, which is why it is not `LakeIndex.logical_dump_digest`"
         )
         # THE PLANTED-ROW RED IS KEPT: a row inserted behind the gate's back must move the digest.
         rebuilt.put_batch([(TAG_DELTA, "0/planted", "nowhere", 0)])

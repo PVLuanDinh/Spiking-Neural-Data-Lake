@@ -255,8 +255,10 @@ _T_UNITBLOCK = b"\x0c"
 # 0x0C record is reconstructible FROM that record) and lake_migrate.TAG_DISPOSITIONS[0x0D] is
 # read-as-is; both land in the same commit with registry_consistent() asserted. Both registries
 # were checked before minting, per the 0x09/0x0A lesson above: highest tag in use was 0x0C.
-# THIS IS THE CLASS RETENTION[0x0C] NAMED AS T067's: the block store's own writes are a one-time
-# BUILD with no per-tick rate to bound; the per-tick appends at the block grain are these.
+# THIS IS THE CLASS RETENTION[0x0C] NAMED AS T067's: the per-tick appends at the block grain are
+# these. The "one-time BUILD" this comment used to give as the reason is FALSE since T067 --
+# lake_compactor's merge and reorder append 0x0C records on every pass, unobserved and unbounded
+# (see RETENTION[0x0C], which now says so).
 _T_BLOCKDELTA = b"\x0d"
 
 # FULL cadence: a fresh FULL every 64 deltas bounds a cold reconstruction to <= 64 delta applies

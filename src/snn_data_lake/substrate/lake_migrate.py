@@ -84,14 +84,24 @@ TAG_DISPOSITIONS: dict[int, tuple[str, str]] = {
     ),
     0x0D: (
         "read-as-is",
-        "_T_BLOCKDELTA per-block out-edge deltas (lake_engine.BlockDeltaRecord, specs/022 T067); "
-        "v1 byte-identity -- upcaster is IDENTITY, record semantics live in "
-        "BlockDeltaRecord.decode (a `<BIIQ` header then five parallel LE arrays, refused WHOLE on "
-        "any malformation) and the fold semantics in lake_engine.apply_deltas, which the reader "
-        "runs against the block's CURRENT generation. Migrating the bytes migrates the tier, the "
-        "same way 0x08's chain semantics live in home.load_growth. Zero records predate this tag; "
-        "the round-trip red over written records runs in substrate/lake_compactor's own main() "
-        "and in tests/test_lake_compactor.py",
+        "_T_BLOCKDELTA, and TWO record shapes live under it: v1 per-block out-edge deltas "
+        "(lake_engine.BlockDeltaRecord, specs/022 T067 -- a `<BIIQ` header then five parallel LE "
+        "arrays) and v2 ADOPT records (lake_engine.BlockAdoptRecord, the adoption fence). Both are "
+        "read-as-is and the upcaster is IDENTITY for both; delta semantics live in "
+        "BlockDeltaRecord.decode (refused WHOLE on any malformation) and in "
+        "lake_engine.apply_deltas, which the reader runs against the block's CURRENT generation. "
+        "THE HAZARD, stated because migrating the bytes DOES NOT migrate the tier here the way "
+        "0x08's chain semantics travel with home.load_growth: an ADOPT record names its adopted "
+        "0x0C record by (container, seq) and a container is a SEGMENT FILENAME, valid only inside "
+        "the root that wrote it. A migration re-containerises, so it can report equal=True per tag "
+        "over a destination root whose block tier then refuses with FileNotFoundError at the first "
+        "page-in -- byte-identity per record is exactly what this table promises and it is not "
+        "enough for this tag. Migration is NOT made to refuse: the fix belongs to the reclaimer "
+        "row, which anchors the fence on the ADOPT record's POSITION (the 0x0C record and the "
+        "deltas preceding it) rather than on the address it carries -- position is invariant under "
+        "any order-preserving copy, and RETENTION[0x0D] carries the same reading. Zero records "
+        "predate this tag; the round-trip red over written records runs in "
+        "substrate/lake_compactor's own main() and in tests/test_lake_compactor.py",
     ),
 }
 # Anything else is UNKNOWN and refuses -- a record class nobody decided about.
