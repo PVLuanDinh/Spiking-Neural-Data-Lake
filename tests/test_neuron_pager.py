@@ -16,11 +16,13 @@ Every fixture weight is a multiple of 0.25 and so exactly representable in `<f4`
 dtype the block record stores weights in: a fixture whose weights rounded at the record boundary
 would fail the byte-identity criterion for a reason that has nothing to do with paging.
 
-The fixtures set `refrac_ticks=0` and give every edge a weight above threshold on purpose. A unit
-that fires resets to `v_reset` (0.0 here), so the network returns to EXACT rest between waves --
-which is what makes a block evictable at all, since a paged-out unit's membrane does not decay
-(disclosure 2.6(b)) and an evicted block that is not at rest could not be byte-identical to the
-twin.
+Most fixtures set `refrac_ticks=0` and give every edge a weight above threshold, so a unit that
+fires resets to `v_reset` (0.0 here) and the network returns to exact rest between waves. That is
+a property of those fixtures, NOT the eviction condition: a paged-out unit's membrane keeps
+decaying by the same op the resident twin runs, so a block holding sub-threshold charge is
+evictable and comes back holding what the twin holds. The sub-threshold fixture below is the arm
+that makes the difference measurable -- it was RED (nothing evictable, capacity exceeded) while
+the condition still required `v == 0`.
 """
 
 import ast
@@ -29,11 +31,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from snn_data_lake.substrate.neuron_pager import (
-    NeuronPager,
-    RoundsBudgetExceeded,
-    UnitBlockStore,
-)
 
 from snn_data_lake.substrate import kernel_tick as kernel_tick_module
 from snn_data_lake.substrate import neuron_pager as neuron_pager_module
@@ -48,6 +45,11 @@ from snn_data_lake.substrate.lake_engine import (
 )
 from snn_data_lake.substrate.lake_rebuild_gate import assert_rebuild
 from snn_data_lake.substrate.lake_segments import read_record, read_segment
+from snn_data_lake.substrate.neuron_pager import (
+    NeuronPager,
+    RoundsBudgetExceeded,
+    UnitBlockStore,
+)
 
 FRAC = 16
 BLOCK = 128
@@ -56,6 +58,7 @@ N = BLOCK * N_BLOCKS
 P_PARTS = 4
 MAX_DELAY = 3
 WEIGHT = 1.5  # exactly representable in float32; one edge alone clears thr = 1.0
+SUB_WEIGHT = 0.25  # exactly representable in float32; one edge alone stays UNDER thr = 1.0
 TAG = _T_UNITBLOCK[0]
 
 
@@ -350,6 +353,176 @@ def test_the_dropping_twin_loses_exactly_the_charge_it_discards(tmp_path):
         "the naive pager's charge shortfall must equal its own discard count, per unit"
     )
     assert dropping_trains != twin_trains, "a dropped spike must change the trains"
+
+
+# ---- the two conservation/eviction defects, each with the input that makes it fail ------------
+class _ConservingTick(_MeteredTick):
+    """`_MeteredTick` plus the EXTERNAL half of the charge ledger.
+
+    `_MeteredTick` counts bundle charge only, so it is structurally blind to drive that arrives
+    through `ext_q`: external drive reaches a unit INSIDE propagate, never through a bundle, and a
+    counter differenced around delivery therefore cannot see it. `ext_offered` is every fixed-point
+    unit of drive the caller offered; `injected` is what actually entered a membrane (the `acc +
+    ext_q` that propagate integrates for the members it integrates); `ext_at_paged_out` is the
+    INDEPENDENT counter of drive that arrived while its unit was not resident. Conservation is
+    `delivered + ext_offered == injected` once acc and pending have drained.
+
+    The two counters read DIFFERENTLY on the two trees, which is what makes the second one worth
+    keeping. While propagate dropped a non-resident member's drive the shortfall equalled
+    `ext_at_paged_out` exactly (18874368 both ways), attributing the loss to that port and no
+    other. Once the drive is routed into `pending` the shortfall is zero while `ext_at_paged_out`
+    stays large -- so it stops being a loss counter and becomes the control that says the arm is
+    still deferring fetches at all, which a green conservation assert alone could not say."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        n = self.state.n_units
+        self.ext_offered = np.zeros(n, dtype=np.int64)
+        self.ext_at_paged_out = np.zeros(n, dtype=np.int64)
+        self.injected = np.zeros(n, dtype=np.int64)
+
+    def _propagate(self, p, ext_q):
+        members = self._members[p]
+        live = members if self.resident is None else members[self.resident[members]]
+        self.injected[live] += self._acc[p][live]
+        if ext_q is not None:
+            self.ext_offered[members] += ext_q[members]
+            self.injected[live] += ext_q[live]
+            if self.resident is not None:
+                away = members[~self.resident[members]]
+                self.ext_at_paged_out[away] += ext_q[away]
+        return super()._propagate(p, ext_q)
+
+
+class _EvictionLog(NeuronPager):
+    """The pager plus a record of WHICH block left core on WHICH tick -- `evictions` is a count
+    and a count cannot say that the block holding sub-threshold charge was the one demoted."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.evicted: list[tuple[int, int]] = []
+
+    def _page_out(self, block):
+        self.evicted.append((self.kt.tick_index, block))
+        super()._page_out(block)
+
+
+def _sub_threshold_edges():
+    """Block 0's unit b-1 drives ONE unit of block b with a SUB-THRESHOLD weight at delay 1, for
+    b in 1..7; every target is terminal. Driving block 0's units one at a time, ten ticks apart,
+    therefore makes exactly one block due at a time, and the block it charges cannot fire -- so a
+    block sits in core holding charge that the twin's own membrane is decaying."""
+    pre, post, weight, delay = [], [], [], []
+    for b in range(1, N_BLOCKS):
+        pre.append(b - 1)
+        post.append(b * BLOCK)
+        weight.append(SUB_WEIGHT)
+        delay.append(1)
+    return pre, post, weight, delay
+
+
+def _uniform_drive(level):
+    ext = np.zeros(N, dtype=np.int64)
+    ext[:] = int(level * (1 << FRAC))
+    return ext
+
+
+def test_external_drive_to_a_deferred_paged_out_block_is_conserved(tmp_path):
+    """Drive is charge, and a deferred block's drive must survive the deferral.
+
+    `plan()` counts external drive as making a block DUE, but a budget that defers that block
+    leaves its units non-resident when propagate runs, and propagate integrates resident members
+    only -- so the tick's drive is added nowhere and the next tick's plan sees only the next
+    tick's `ext_q`. The arm isolates the port: a sub-threshold drive on EVERY unit every tick,
+    nothing ever fires (asserted), so `delivered` is zero and the whole ledger is external."""
+    edges = _chain_edges()
+    store, blocks = _store_for(tmp_path, edges, name="extdrive")
+    kt, pager = _paged(
+        store,
+        blocks,
+        capacity_blocks=1,
+        blocks_per_round=1,
+        max_rounds=1,
+        max_stale_ticks=3,
+        pinned=frozenset(),
+        tick_cls=_ConservingTick,
+    )
+    drive = _uniform_drive(0.125)
+    _run_paged(pager, {t: drive for t in range(30)}, 40)
+    assert int(kt.delivered.sum()) == 0, (
+        "the arm must isolate the EXTERNAL port: a fired unit would put bundle charge in the "
+        "ledger and the drive would no longer be the only thing measured"
+    )
+    assert int(kt.ext_at_paged_out.sum()) > 0, (
+        "no drive ever arrived at a non-resident unit -- the budget never deferred anything, so "
+        "this arm tests nothing"
+    )
+    leftover = sum(int(np.abs(p).sum()) for p in kt.pending)
+    stranded = sum(int(np.abs(a).sum()) for a in kt._acc)
+    assert leftover == 0 and stranded == 0, (
+        f"the tail is not quiet: pending {leftover}, accumulator {stranded} -- conservation "
+        "cannot be read while charge is still in flight"
+    )
+    shortfall = kt.ext_offered + kt.delivered - kt.injected
+    assert int(shortfall.sum()) == 0, (
+        f"external drive to a DEFERRED paged-out block was dropped: {int(shortfall.sum())} "
+        f"fixed-point units lost across {int((shortfall != 0).sum())} units; the independent "
+        f"counter of drive that arrived at non-resident units reads "
+        f"{int(kt.ext_at_paged_out.sum())}"
+    )
+    assert not np.any(shortfall), "conservation must hold per unit, not only in the sum"
+
+
+def test_a_block_holding_sub_threshold_charge_is_evictable_and_keeps_decaying(tmp_path):
+    """A membrane that merely decays toward zero must not pin a block in core.
+
+    A float32 membrane under sustained sub-threshold charge decays toward zero without reaching
+    it, so an eviction clause requiring `v == 0` exactly makes eviction rare in the one regime
+    that matters. The block charged here holds sub-threshold `v` (asserted at the moment room is
+    needed), has no pending, no accumulator charge and no spike within `max_delay` -- it is
+    exactly the candidate the ring-safety condition admits. It must be demoted, capacity must
+    hold, and the run must stay byte-identical to the resident twin INCLUDING the membrane array:
+    a paged-out unit whose membrane froze would come back ahead of the twin."""
+    edges = _sub_threshold_edges()
+    drives = {0: _drive([0]), 10: _drive([1]), 20: _drive([2]), 30: _drive([3])}
+    twin = _twin(edges)
+    twin_trains, twin_rings = _run_plain(twin, drives, 40)
+    store, blocks = _store_for(tmp_path, edges, name="subthr")
+    kt, pager = _paged(
+        store,
+        blocks,
+        capacity_blocks=2,
+        blocks_per_round=4,
+        max_rounds=2,
+        max_stale_ticks=0,
+        pinned=frozenset({0}),
+        pager_cls=_EvictionLog,
+    )
+    trains, rings, held = [], [], []
+    charge_under_pressure = None
+    for t in range(40):
+        if t == 11:  # block 2 becomes due here, and the only free slot holds block 1
+            charge_under_pressure = float(np.abs(kt.state.arrays["v"][BLOCK : 2 * BLOCK]).max())
+        trains.append(pager.tick(drives.get(t)).tobytes())
+        rings.append(_rings_of(kt))
+        held.append(len(pager._resident_blocks))
+    assert charge_under_pressure is not None and 0.0 < charge_under_pressure < 1.0, (
+        f"the fixture must hold SUB-THRESHOLD charge when room is needed, not "
+        f"{charge_under_pressure}"
+    )
+    assert 1 in [b for _t, b in pager.evicted], (
+        f"the block holding sub-threshold charge was never demoted (evicted {pager.evicted}); a "
+        f"membrane that only decays toward zero pinned it in core"
+    )
+    assert pager.capacity_trips == 0 and max(held) <= 2, (
+        f"capacity 2 was exceeded: {pager.capacity_trips} trip(s), held up to {max(held)} blocks "
+        "because no resident block was demotable"
+    )
+    assert trains == twin_trains
+    assert rings == twin_rings
+    assert np.array_equal(kt.state.arrays["v"], twin.state.arrays["v"]), (
+        "a paged-out unit's membrane must keep decaying exactly as the resident twin's does"
+    )
 
 
 # ---- S-R1: the rounds budget -----------------------------------------------------------------

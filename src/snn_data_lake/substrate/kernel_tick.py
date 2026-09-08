@@ -33,11 +33,15 @@ caller's, and frac_bits' binding value is T015's measurement (D6: fractional bit
 vs FP64).
 
 THE RESIDENCY HOOK (specs/022 T066) is ONE branch, not a second tick. `KernelTick(...,
-resident=None)` is the incumbent, byte for byte; with a bool mask, propagate integrates only
-resident members and delivery splits each bundle's posts -- resident into the accumulator,
-paged-out into `pending[p]`, which `substrate/neuron_pager.NeuronPager` drains before the next
-propagate. There is no second delivery phase and no second scatter (P2). `compile_bundles` is
-likewise ONE compiler, used by `Synapses.__init__` and by the pager's per-block page-in.
+resident=None)` is the incumbent, byte for byte; with a bool mask, EVERY member's membrane still
+decays by the same elementwise op (a paged-out unit is not frozen -- it ages exactly as the twin
+ages, which is what lets the pager demote a block that still holds sub-threshold charge), and what
+the mask actually gates is two things: only resident members may FIRE, and charge bound for a
+non-resident member is routed to `pending[p]` instead of into a membrane -- delivery splits each
+bundle's posts that way, and propagate routes external `ext_q` the same way, so a fetch the pager
+defers cannot lose that tick's drive. `substrate/neuron_pager.NeuronPager` drains `pending` before
+the next propagate. There is no second delivery phase and no second scatter (P2). `compile_bundles`
+is likewise ONE compiler, used by `Synapses.__init__` and by the pager's per-block page-in.
 """
 
 # distinct-from: cortex/cortical_microcircuit.py -- a fixed 8-population Potjans-Diesmann
@@ -182,10 +186,11 @@ class KernelTick:
         if n != synapses.n_units:
             raise ValueError("state and synapse table disagree on unit count")
         #: THE ONE RESIDENCY BRANCH (specs/022 T066, P2). `None` is the incumbent: every phase
-        #: below runs exactly the code it ran before this parameter existed. With a bool mask
-        #: (a VIEW shared with the pager, so the pager's writes are seen here) propagate
-        #: integrates only resident members and delivery splits posts by the mask. Bit-identity
-        #: of `None` against an all-True mask is asserted in tests/test_neuron_pager.py.
+        #: below runs exactly the arithmetic it ran before this parameter existed. With a bool
+        #: mask (a VIEW shared with the pager, so the pager's writes are seen here) the membrane
+        #: update still covers every member -- only FIRING is restricted to resident members, and
+        #: both delivery and external drive route a non-resident target's charge into `pending`.
+        #: Bit-identity of `None` against an all-True mask is asserted in tests/test_neuron_pager.
         if resident is not None and (
             getattr(resident, "dtype", None) != np.bool_ or resident.shape != (n,)
         ):
@@ -198,9 +203,11 @@ class KernelTick:
         self._rings = [[[] for _ in range(synapses.max_delay + 1)] for _ in range(self.p_parts)]
         #: per-partition INTEGER accumulators over the full index space (owner-written only)
         self._acc = [np.zeros(n, dtype=np.int64) for _ in range(self.p_parts)]
-        #: per-partition INTEGER arrival buffer for posts whose unit is NOT resident -- the lossy
+        #: per-partition INTEGER arrival buffer for every charge bound for a unit that is NOT
+        #: resident -- bundle posts from delivery AND external `ext_q` from propagate -- the lossy
         #: two-resolution summary a paged-out unit carries, under the same single-writer contract
-        #: as `_acc`. Allocated unconditionally so a resident twin and a paged run hold the same
+        #: as `_acc` (partition p's own phases are its only writers, for its own members only).
+        #: Allocated unconditionally so a resident twin and a paged run hold the same
         #: floor (the residency measurement would otherwise credit paging with this array), and
         #: left all-zero and untouched while `resident is None`.
         self.pending = [np.zeros(n, dtype=np.int64) for _ in range(self.p_parts)]
@@ -209,25 +216,54 @@ class KernelTick:
     # ---- the three phases ------------------------------------------------------------------
     def _propagate(self, p, ext_q):
         """Integrate partition p's units (elementwise, deterministic at any T); return fired.
-        With a residency mask, only RESIDENT members integrate -- a paged-out unit cannot fire,
-        because its out-bundles are not in the table to route."""
+
+        THE MASK BRANCH CHANGES WHO FIRES AND WHO IS DRIVEN, NEVER WHO DECAYS. The membrane
+        update runs over EVERY member, resident or not, and it is the same elementwise op the
+        incumbent runs: a paged-out unit keeps decaying exactly as the twin's does, so a block can
+        be demoted while it still holds sub-threshold charge and come back holding what the twin
+        holds. What residency gates is (1) FIRING -- a paged-out unit must not fire, because its
+        out-bundles are not in the table to route -- and (2) where external drive LANDS: `ext_q`
+        for a non-resident member is added to `pending[p]` instead of to its membrane, under the
+        same single-writer contract as delivery, so the pager drains it on page-in and no drive is
+        lost to a deferred fetch. A non-resident member's `inj` is therefore exactly zero (its
+        accumulator is empty by the pager's own eviction condition and its drive went to pending),
+        which is why the decay stays bit-identical to the twin rather than merely close.
+
+        `resident is None` is the incumbent, byte for byte -- and the membrane EQUATION is shared
+        rather than duplicated into two branches, on purpose: this module's own header names the
+        LIF step as the vectorized form it owns, and a second copy of it inside a residency branch
+        is the drift P2 exists to refuse. What the mask guards is only the residency-specific
+        work (`np.where` on the drive, the pending route, the firing restriction), each behind an
+        `is None` test that the unpaged path never enters, so the incumbent evaluates the same
+        operands in the same order it did before the parameter existed. That is asserted, not
+        argued: tests/test_neuron_pager.py pins `None` against an all-True mask on trains, rings,
+        accumulators and membranes, and the determinism and replay gates re-run the unpaged
+        path."""
         np = self._np
         m = self._members[p]
-        if self.resident is not None:
-            m = m[self.resident[m]]
         scale = float(1 << self.syn.frac_bits)
         v = self.state.arrays["v"]
         thr = self.state.arrays["thr"]
         refrac = self.state.arrays["refrac"]
         last = self.state.arrays["last_spike"]
+        here = None if self.resident is None else self.resident[m]
         inj = self._acc[p][m]
         if ext_q is not None:
-            inj = inj + ext_q[m]
+            drive = ext_q[m]
+            if here is None:
+                inj = inj + drive
+            else:
+                inj = inj + np.where(here, drive, 0)
+                away = m[~here]
+                if len(away):
+                    self.pending[p][away] += drive[~here]
         v[m] = (v[m] * self.decay + (inj / scale)).astype(np.float32)
         self._acc[p][m] = 0
         gated = refrac[m] > 0
         refrac[m] = np.maximum(refrac[m] - 1, 0)
         can_fire = (v[m] >= thr[m]) & ~gated
+        if here is not None:
+            can_fire &= here
         fired = m[can_fire]
         v[fired] = self.v_reset
         refrac[fired] = self.refrac_ticks

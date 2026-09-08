@@ -14,12 +14,15 @@ in the bundle arrays, so at 32 out-edges per unit the edge arrays alone are 512 
 `kernel_state.v1` `_T_STATE` frame; a second copy inside a block record would be a P2/P4b
 duplicate), and the self-check prints the resident FLOOR per unit that this leaves.
 
-TWO RESOLUTIONS. A resident unit carries full state and edges. A paged-out unit carries exactly
-the lossy summary: `KernelTick.pending[p][unit]` (int64, per partition, under the same
-single-writer contract as the accumulator) plus its block's `last_active`. That summary is what
-DECIDES fetches, and it is also what makes FR-011 true rather than aspirational -- a delivery to a
-paged-out unit lands in `pending` and is drained into the accumulator before the next propagate,
-so nothing is dropped and, within budget, the run is byte-identical to a fully resident twin.
+TWO RESOLUTIONS. A resident unit carries full state and edges. A paged-out unit loses its EDGES
+and carries the lossy input summary: `KernelTick.pending[p][unit]` (int64, per partition, under
+the same single-writer contract as the accumulator) plus its block's `last_active`. Its state does
+not go anywhere -- the membrane keeps decaying in `KernelState` by the same op the resident twin
+runs, so a paged-out unit ages rather than freezing. That summary is what DECIDES fetches, and it
+is also what makes FR-011 true rather than aspirational: EVERY charge bound for a paged-out unit
+lands in `pending` -- bundle deliveries from `_deliver_and_rotate` and external `ext_q` from
+`_propagate` alike -- and is drained into the accumulator before the next propagate, so nothing is
+dropped and, within budget, the run is byte-identical to a fully resident twin.
 
 A ROUND is one `UnitBlockStore.fetch` submission of at most `blocks_per_round` block reads. A tick
 whose fetch set holds F blocks costs `ceil(F / blocks_per_round)` submissions. `max_rounds` is the
@@ -264,18 +267,42 @@ class NeuronPager:
     next phase) and per-block `last_active`. `step()` runs at the START of a tick, before
     propagate: plan the due set, fetch it in rounds, page blocks in (compiling their edges with
     the SAME `compile_bundles` the whole-table constructor uses -- one compiler, P2), drain their
-    pending into the accumulators exactly, and demote at-rest blocks to make room.
+    pending into the accumulators exactly, and demote EVICTABLE blocks to make room.
 
-    WHAT MAKES A BLOCK EVICTABLE, and one clause of it is a REFINEMENT of the pre-registration
-    that is disclosed rather than slipped in. 2.1 requires a candidate's units to have
-    `last_spike < tick - max_delay` and zero pending, which is the RING-SAFETY condition: no
-    bundle key of that block can still be sitting in a delay slot, so removing it cannot orphan a
-    scheduled delivery. That condition is necessary and NOT sufficient for the byte-identity 2.3
-    also pre-registers: disclosure 2.6(b) records that a paged-out unit's membrane does not decay,
-    so a block evicted while any unit holds charge would come back with a membrane the twin has
-    already decayed. The candidate must therefore be AT REST -- v exactly zero, refrac zero, no
-    charge in its accumulator -- and it is, or the calm arm's identity would be unreachable by
-    construction rather than by defect."""
+    WHAT MAKES A BLOCK EVICTABLE is exactly the RING-SAFETY condition 2.1 pre-registers, plus the
+    two buffers that condition does not name. A candidate's units must have `last_spike < tick -
+    max_delay` (no bundle key of that block can still be sitting in a delay slot, so removing it
+    cannot orphan a scheduled delivery), `refrac == 0`, and zero charge in BOTH the accumulator
+    and `pending` -- charge in either would be integrated by a membrane that is no longer being
+    driven, and pending is the summary a page-in drains.
+
+    THE MEMBRANE IS NOT PART OF THAT CONDITION, and that is a CORRECTION to what this class first
+    shipped. The first version also required `v` to be exactly zero, because disclosure 2.6(b)
+    recorded that a paged-out unit's membrane did not decay: a block demoted while any unit held
+    charge would have come back holding a membrane the twin had already decayed, so the identity
+    2.3 pre-registers would have been unreachable. That reason has been REMOVED rather than
+    worked around -- `KernelTick._propagate` now decays every member, resident or not, with the
+    same elementwise op the twin runs, and a non-resident member's `inj` is exactly zero (its
+    accumulator is empty by the condition above and its external drive is routed to `pending`),
+    so the decay is bit-identical rather than approximately right. The `v == 0` clause had to go
+    with it: a float32 membrane under sustained sub-threshold charge decays TOWARD zero without
+    reaching it, so the clause made eviction rare in precisely the regime the pager exists for.
+
+    WHERE THAT COST IS AND IS NOT VISIBLE, because guessing it wrong is what produced the line
+    this paragraph replaces. It is NOT visible in this module's calm arm: every edge in that
+    fixture clears threshold, so each unit resets to exactly 0.0 and `v == 0` held anyway --
+    removing the clause moved its page_ins, evictions and capacity trips by ZERO, measured on
+    both sides. That arm's trips are the RING WINDOW (counted per trip by `_TripCensus` and
+    printed). The cost is visible in the sub-threshold arm in tests/test_neuron_pager.py, where a
+    block that received input, did not fire, and held no buffered charge was refused demotion and
+    the fetch went over capacity.
+
+    ONE LIMIT OF THE RING-SAFETY CONDITION, disclosed rather than assumed away: it admits a unit
+    that is above threshold but was refractory-gated at its last propagate, which can only happen
+    when `refrac_ticks > max_delay`. Such a unit would fire on the twin and not on a paged run
+    while it is out of core. Every fixture in this tree runs `refrac_ticks <= max_delay`, so the
+    case is not reached here; it is named because a caller that raises `refrac_ticks` above
+    `max_delay` owes the check, not because it has been measured."""
 
     def __init__(
         self,
@@ -361,9 +388,13 @@ class NeuronPager:
 
         EXTERNAL DRIVE COUNTS AS DUE, which is an ADDITION to the pre-registered rule (2.1 names
         pending alone) and is disclosed as one. `ext_q` reaches a unit through propagate, not
-        through a bundle, so a paged-out unit's external drive is not carried by the pending
-        summary -- leaving it out would be a silent drop of exactly the kind S-R2 exists to
-        forbid, differing from the S-R2 red only in which port the charge arrived on."""
+        through a bundle, so a driven paged-out block would otherwise be invisible to a planner
+        reading pending alone, and its charge would sit in the summary a whole tick longer than
+        it needs to. It is a LATENCY clause, not the conservation clause it was first written as:
+        `_propagate` routes a non-resident member's `ext_q` into `pending[p]`, so deferring the
+        fetch costs staleness and never a unit of charge (the arm that made that distinction
+        measurable is tests/test_neuron_pager.py's deferred-drive conservation test, which read
+        18874368 fixed-point units lost before the routing existed)."""
         tick = self.kt.tick_index
         ordered = []
         for bid in range(self.blocks.n_blocks):
@@ -406,17 +437,27 @@ class NeuronPager:
         return records, rounds, ((tick, rounds, self.max_rounds) if extra else None)
 
     # ---- residency --------------------------------------------------------------------------
-    def _at_rest(self, block, tick):
-        """True when nothing about this block can change while it is out of core: no spike within
-        max_delay (ring safety), refrac released, membrane exactly at zero and no charge waiting.
-        The last three are the identity clause the class docstring discloses."""
+    # distinct-from: brainstem/so101_arm.py::trajectory_breach -- a SAFETY predicate over joint
+    #   positions against a derived droop envelope; it decides whether a physical arm has been
+    #   disturbed, holds no unit, and no residency decision reads it.
+    # distinct-from: cortex/nightly_skills.py::load -- a persistence RESTORE that rebuilds a
+    #   router and a curiosity log from home(); it moves saved state back into a faculty and
+    #   answers no question about whether anything may leave core.
+    # distinct-from: cortex/time_cells.py::nominal_estimate -- a noise-free decode of what a
+    #   time-cell ladder would report for an interval; a readout over thresholds, not a
+    #   predicate over a substrate block's buffers. All three sites read 2026-09-08.
+    def _evictable(self, block, tick):
+        """True when nothing this block does out of core can differ from what it would do in it:
+        no spike within max_delay (ring safety), refrac released, and no charge waiting in either
+        buffer. The MEMBRANE is deliberately not tested -- it keeps decaying while paged out, by
+        the same op the twin runs, so charge on it is no longer a reason to hold a block in core.
+        The class docstring carries why that clause existed, why removing its CAUSE removed it,
+        and the one regime the ring-safety condition does not cover."""
         units = self._units[block]
         arrays = self.kt.state.arrays
         if int(arrays["last_spike"][units].max()) >= tick - self.kt.syn.max_delay:
             return False
         if int(arrays["refrac"][units].max()) != 0:
-            return False
-        if float(np.abs(arrays["v"][units]).max()) != 0.0:
             return False
         for p in range(self.kt.p_parts):
             if int(np.abs(self.kt._acc[p][units]).sum()):
@@ -474,7 +515,7 @@ class NeuronPager:
         candidates = [
             b
             for b in self._resident_blocks
-            if b not in self.pinned and b not in due_set and self._at_rest(b, tick)
+            if b not in self.pinned and b not in due_set and self._evictable(b, tick)
         ]
         candidates.sort(key=lambda b: (self.last_active[b], b))
         for block in candidates[:wanted]:
@@ -586,6 +627,42 @@ class _DroppingTick(_MeteredTick):
             np.add.at(self.delivered, posts[keep], q[keep])
             np.add.at(self.discarded, posts[~keep], q[~keep])
         slot.clear()
+
+
+class _TripCensus(NeuronPager):
+    """RECORDING ONLY: which clause refused to demote anything on a capacity trip.
+
+    `capacity_trips` says a fetch went over capacity; it does not say WHY nothing was demotable,
+    and this module's first printed explanation named the wrong clause (the membrane) because
+    nobody had counted. On each trip this walks the resident blocks and buckets them with
+    `_evictable` ITSELF rather than a second copy of its clauses -- pinned or in this tick's due
+    set, refused by the predicate, and of those, how many had spiked inside the ring window
+    `tick - max_delay`, which is the one clause a wavefront fixture keeps true. It overrides no
+    decision: `_make_room` runs the incumbent and this class only reads the same state."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.trip_skipped = 0
+        self.trip_refused = 0
+        self.trip_in_ring_window = 0
+
+    def _make_room(self, incoming, due, tick):
+        before = self.capacity_trips
+        due_set = set(due)
+        last = self.kt.state.arrays["last_spike"]
+        skipped, refused, ringed = 0, 0, 0
+        for bid in sorted(self._resident_blocks):
+            if bid in self.pinned or bid in due_set:
+                skipped += 1
+            elif not self._evictable(bid, tick):
+                refused += 1
+                if int(last[self._units[bid]].max()) >= tick - self.kt.syn.max_delay:
+                    ringed += 1
+        super()._make_room(incoming, due, tick)
+        if self.capacity_trips > before:
+            self.trip_skipped += skipped
+            self.trip_refused += refused
+            self.trip_in_ring_window += ringed
 
 
 class _BudgetBlindPager(NeuronPager):
@@ -791,6 +868,7 @@ def main() -> int:
             max_rounds=derived["max_rounds"],
             max_stale_ticks=1,
             pinned=frozenset({0}),
+            pager_cls=_TripCensus,
         )
         paged_trains = _run(pager, drives, 45)
         if paged_trains != twin_trains:
@@ -812,11 +890,21 @@ def main() -> int:
         if pager.capacity_trips:
             print(
                 f"  the capacity trips are the honest half of that fraction: capacity_blocks=4 "
-                f"was exceeded on {pager.capacity_trips} tick(s) because no resident block was "
-                "AT REST to demote, so the fetch went over capacity rather than deferring a "
-                "block -- never a drop, and the reason the final fraction sits above 4/8. This "
-                "chain fixture's wavefront keeps the last few blocks hot, which is disclosure "
-                "2.6(d)'s regime (locality is T067's row) reported rather than smoothed"
+                f"was exceeded on {pager.capacity_trips} tick(s), so the fetch went over "
+                "capacity rather than deferring a block -- never a drop, and the reason the "
+                f"final fraction sits above 4/8. WHICH CLAUSE REFUSED, counted rather than "
+                f"asserted: across those trips {pager.trip_skipped} resident block-visits were "
+                f"pinned or already in that tick's due set and {pager.trip_refused} were refused "
+                f"by the eviction predicate, of which {pager.trip_in_ring_window} had spiked "
+                "inside the ring window tick - max_delay. This chain fixture's wavefront keeps "
+                "the last few blocks hot, which is disclosure 2.6(d)'s regime (locality is "
+                "T067's row) reported rather than smoothed. THE MEMBRANE IS NOT THE REASON, and "
+                "this line used to say it was: dropping the old `v == 0` clause moved this arm's "
+                "page_ins, evictions and capacity trips by ZERO, because a fixture whose every "
+                "edge clears threshold resets each unit to exactly 0 anyway. The clause's cost "
+                "is real but it is not visible here -- it is visible in the sub-threshold arm in "
+                "tests/test_neuron_pager.py, where it pinned a charged block in core and the "
+                "fetch went over capacity"
             )
 
         drop_store, drop_blocks = _new_store(root, "drop", fanout)
