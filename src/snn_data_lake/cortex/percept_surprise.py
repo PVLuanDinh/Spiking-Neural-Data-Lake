@@ -122,7 +122,9 @@ def declare_ports(manifest):
     DISCHARGED at T046a: `learning_progress.declare_ports` declares the edge
     surprise_out -> surprise_in and `Brain._perceive_real` carries the stream (the T034/M10
     convention: the discharging task annotates the disposition where it was dated) --
-    paging prefetch -> T066 (neuron_pager.py), curriculum difficulty -> T076
+    paging prefetch -> T067 (lake_compactor.py; RE-DATED 2026-09-08 by T066: a surprise scalar names
+    no block until the locality reorder gives block adjacency meaning -- evidence/s3-neuron-pager.md
+    2.8), curriculum difficulty -> T076
     (curriculum.py) -- the first record of this mapping was a clean 3-cycle scramble,
     caught by review; declaring a not-yet-built consumer's edge today would be anatomy
     ahead of any consumer, the force-wiring P6 forbids."""

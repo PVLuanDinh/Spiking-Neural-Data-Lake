@@ -591,7 +591,7 @@ clause protects it.
   reference untouched (a full --record would have silently reset it), and the ratchet is NOT in the
   pre-push gate because the slope costs 332.7 s measured.* 16k stays the ingest milestone only.
 - **S3 = T066** activation-driven paging, BOTH reds built before the mechanism (FR-010/FR-011: no silent
-  drop of a spike to a paged-out unit; the integer rounds budget trips on constructed overload). **S4 = T067**
+  drop of a spike to a paged-out unit; the integer rounds budget trips on constructed overload). *LANDED 2026-09-08 pending the arc's panel (`evidence/s3-neuron-pager.md` §3; §4 carries the fold): a calm paged run is byte-identical to the resident twin while paging; both reds counted red before the mechanism and fired by their broken arms in-command; three further reds constructed and closed after the mechanism was green (deferred external drive dropped; a frozen paged-out membrane; a threshold unit demoted at refractory release). Capacity is honoured, not enforced, under sustained firing — the no-locality regime T067 owns; the prefetch disposition is re-dated to T067; the null is T068's.* **S4 = T067**
   growth delta tier + background merge in sleep (its locality reorder uses block adjacency until the prior
   lands). **S5 = T068 (SC-007)** the paging null clause at the derived comparison width vs forced-total
   residency — WIN keep, LOSS delete the layer; gated on T061 (closed) only.

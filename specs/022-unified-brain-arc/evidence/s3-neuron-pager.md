@@ -300,3 +300,125 @@ mechanism (kernel hook + `compile_bundles` + `Synapses.empty`, `_T_UNITBLOCK` in
 triad, the `wire` row) — 4. records (INVENTION_REGISTER row 1 line, SYNTHESIS §6 + `percept_surprise`
 re-dating, tasks.md row, plan S3 annotation, §3 of this file) — panel (3 lenses) — fold — ONE battery
 on the stacked head — closing record commit — push.
+
+## 3. Results (on the stacked head, before the panel)
+
+Five commits on `d1b229b`: `2a3be20` (this file, §1–2) → `2214dd0` (the reds, RUN RED) → `53e4bc3` (the
+mechanism) → `1b0bc1c` (two defects the orchestrator's read found, each red-first) → `0901a02` (a third,
+red-first). The records commit follows. Nothing was pushed before the panel ran.
+
+### 3.1 The counted red (`2214dd0`, the tree carrying only the test file)
+
+`pytest tests/test_neuron_pager.py -q -p no:cacheprovider --no-cov` →
+`ModuleNotFoundError: No module named 'snn_data_lake.substrate.neuron_pager'` — **23 test functions
+defined, 0 collected, 1 collection error, rc 2.** Nothing in the file could pass until the mechanism
+existed.
+
+### 3.2 The mechanism (`53e4bc3`) — the self-check's arms, one command, `throwaway_home()`
+
+| arm | reading |
+|---|---|
+| derivation (P1) | per-block read ≈1.0–1.1 ms (median of 24 single-block rounds); `blocks_per_round` = the widest round still within 2× the single-block latency (read 8 / 8 / 4 across runs); allowance 5 % of the recorded wake-tick p50 119.6 ms = 5.98 ms → `max_rounds` (read 2 / 1 / 3). The derivation is a measurement and moves between runs; the calm arm's criterion (byte-identity) does not depend on which sufficient budget it lands on |
+| S-R2 calm | **45 ticks byte-identical** to the resident twin in trains AND ring-slot key lists; `page_ins` 14, `evictions` 8, resident fraction 0.875 of 8 blocks; rounds trips 0; **capacity trips 8** (below) |
+| S-R2 red | the DROPPING twin lost exactly **28,311,552** fixed-point units of charge across 46 units — shortfall equal to its own discard count per unit; trains differ |
+| S-R2 overload, `max_stale_ticks = 0` | every due block forced; staleness 0; byte-identical to the twin; charge equal to the twin's exactly; budget trips > 0 |
+| S-R2 overload, `max_stale_ticks = 2` | 1 trip, max observed staleness 2 ≤ 2, delivered == integrated per unit, pending drained to zero by the stated tail |
+| S-R1 overload | tick 1 needed 4 rounds against a 2-round budget (overflow 2); the trip record names tick and overflow; `assert_within_budget()` RAISED; nothing left paged out |
+| S-R1 calm control | 0 trips, max rounds 2 ≥ 1 |
+| S-R1 red | the BUDGET-BLIND pager read 0 trips on the identical overload |
+| rounds instruments | planner `rounds_used` and store `submissions` agree on every tick of all arms — a NARROW separation (one call apart), stated as narrow |
+| residency | resident edge bytes **49,152 vs 57,344** (ratio 0.857, exact `nbytes` over the live bundle arrays); live allocations traced to `kernel_tick.py` **1,559,904 vs 1,976,256** (0.789, tracemalloc filtered to the bundle allocation site); resident floor **86.0 B/unit** for every unit (state 21 B + accumulators + pending + a flag) — paging reduces edge bytes only |
+| lake | 14 page-ins and 8 page-outs left the store's segment bytes IDENTICAL (sha256 `935a61ec0d576446…`); the MORTAL-class control is NOT APPLICABLE to a pass that destroys nothing |
+| tests / gates | `tests/test_neuron_pager.py` 23 passed; the kernel + unit_blocks + lake set 71 passed; `tests/test_selfchecks.py` 288 passed; every listed substrate gate and the six tools gates rc 0; self-check 1.2–1.5 s wall |
+
+**The capacity trips are the arm's honest half.** `capacity_blocks = 4` of 8 was exceeded on 8 ticks
+because no resident block was evictable — the fetch went OVER capacity rather than deferring a block
+(never a drop). A per-trip census with the eviction predicate itself: 8 block-visits were pinned or in
+that tick's due set, **30 were refused, and all 30 had spiked inside the ring window** `tick −
+max_delay`. A block whose units fired within `max_delay` ticks may still have bundle keys in a delay
+slot and cannot be demoted; a chain-wavefront fixture keeps exactly those blocks hot. That is
+disclosure 2.6(d)'s no-locality regime (T067's row), reported rather than smoothed — and it means
+**capacity is a target the pager honours when a block is evictable, not a bound it can enforce
+under sustained firing**. T068 inherits that as a measured property, not a surprise.
+
+### 3.3 Three defects found AFTER the mechanism was green, each constructed red first
+
+All three were found by the orchestrator's read of the head, not by the 23 tests or the 24 green
+gates; each was constructed as a failing test on the tree that had it, quoted, then fixed.
+
+- **A — external drive to a DEFERRED paged-out block was dropped** (`1b0bc1c`). `_propagate` restricted
+  members to resident ones, so a non-resident unit's `ext_q` this tick was added nowhere; the next
+  tick's plan saw only the next tick's drive. On `53e4bc3`: `18874368 fixed-point units lost across
+  896 units; the independent counter of drive that arrived at non-resident units reads 18874368` —
+  the two counters agree to the unit, attributing the loss to that port and no other. Fix: the
+  membrane update runs over EVERY member (a paged-out unit ages exactly as the twin's does, `inj` is
+  exactly zero for it, so the decay is bit-identical rather than approximately right); residency now
+  gates two things — only resident members FIRE, and a non-resident member's `ext_q` goes to
+  `pending[p]` under the same single-writer contract delivery uses. **Disclosure 2.6(b) is
+  WITHDRAWN**: a paged-out membrane DOES decay.
+- **B — eviction demanded an exactly-zero membrane** (`1b0bc1c`). The clause existed only because the
+  membrane was frozen; with A fixed it had no reason. On `53e4bc3`: `the block holding sub-threshold
+  charge was never demoted (evicted []); a membrane that only decays toward zero pinned it in core`.
+  `_at_rest` → `_evictable`: ring safety, `refrac == 0`, `acc == 0`, `pending == 0`. The
+  membrane-equality assert in that arm was probed for its own red (decay half neutered: `evicted [1,
+  2, 3], membranes identical to twin = False, 3 units differing`) — it measures the decay.
+- **C — a unit at threshold with its refractory just released could be demoted before it fired**
+  (`0901a02`), reachable when `refrac_ticks > max_delay`. On `1b0bc1c`, `max_delay 2`, `refrac_ticks
+  5`: `the twin fired [128, 256] and the paged run fired [256] — a unit at threshold with its
+  refractory released was demoted before propagate and its spike was DROPPED, not deferred`. Fix: one
+  clause — a block with any unit at `v ≥ thr` is not evictable; the cost is a capacity trip, asserted.
+
+The self-check's calm arm moved by ZERO on every counter across A/B/C: that fixture's edges all clear
+threshold, so every unit resets to exactly 0.0 and none of the three clauses bound it. Their cost is
+visible only in the constructed arms — which is what a red is for.
+
+### 3.4 Deviations from the pre-registration, each with its reason
+
+1. **The record leads with its class tag byte** (`0x0C` before the `<BIIH` header): the lake's dispatch
+   convention is `payload[0] == tag`; without it the `TAG_DISPOSITIONS[0x0C]` row is unreachable and a
+   migration would read the record as `_T_FACT`.
+2. **External drive makes a block due** (2.1 named pending alone) — the LATENCY clause that keeps the
+   calm arm at zero staleness; conservation of that drive is A above.
+3. **S-R2's overload arm runs in two regimes** (2.3(ii) and 2.5 were not jointly satisfiable: charge
+   cannot equal the twin's while trains differ) — `max_stale_ticks = 0` for identity-with-trips,
+   `max_stale_ticks = 2` for deferral-with-conservation; both in the same command.
+4. **Every block gets a record**, including edge-less ones (an unwritten block is an unfetchable one).
+5. **`page_ins` excludes the pinned hot set's construction load.**
+6. **The rounds double-count is a narrow separation**, stated as narrow.
+7. **The seal layout change is forward-only**: `read_all()` concatenates batches whatever their width, so
+   every existing reader is unaffected; only `read_record` needs one-batch-per-record and refuses an
+   old whole-table segment loudly. No production segment existed to migrate.
+8. **The second residency instrument is a FILTERED tracemalloc snapshot, not the pre-registered
+   unfiltered peak.** The peak was built and run and measured to be measuring something else: 0.888
+   standalone, **1.262 in-process under `run_selfchecks`** (it counts the sqlite index, the Arrow
+   batches and the thread pool that exist only because the run pages, and it depends on process
+   history). It is printed beside the filtered reading, labelled not used; the two instruments that ARE
+   used agree in direction (0.857 exact, 0.789 filtered). **The honest reading of the unfiltered peak
+   stands beside them: at this fixture's size, paging's own machinery costs more than the edge bytes
+   it saves in-process.** Whether that inverts at width is the width arm's question (3.5), not this
+   arm's.
+9. **The `resident is None` path shares the LIF step with the mask path** rather than duplicating it
+   into two branches: the incumbent's arithmetic is untouched, each residency-specific step sits behind
+   an `is None` test the unpaged path never enters, and byte-identity is asserted (trains, rings,
+   accumulators, membranes) and re-run by the determinism and replay gates.
+10. **A pre-existing lint red** (`ruff` I001 in the test file at `53e4bc3`, verified by stashing) was
+    cleared in `1b0bc1c`; the mechanism commit's own report had recorded `ruff check .` rc 0 — one of the
+    two readings was taken on a different tree state and the panel is asked to say which.
+
+### 3.5 The width arm
+
+*(Filled by the fold from `memory/archive/t066-2026-09-08/t066_probe.py`: twin vs paged at 65,536
+units × 32 edges, random vs local topology, capacity 0.10 and 0.50 — resident bytes by both
+instruments, page-ins, evictions, budget and capacity trips, rounds per tick, and whether the trains
+were identical. NO win/loss claim; T068 owns it.)*
+
+### 3.6 What this row does NOT claim, and what its completion owes
+
+Restating 2.10: no paging WIN, no tick-time claim, no bytes-fetched/bytes-used figure, no live-tick
+charge, no device tier, no prefetch, no persisted-bytes figure for the grower's units. **Owed:** the S6
+wire onto the live tick (the pager and `lake_segments`/`lake_index`/`lake_bridge` stay off it, honestly
+exempted `wire`); the cockpit's "paging binding-width status" row (S6); replay through a pager
+(`replay_gate` snapshots a bare KernelTick — a paged run's `pending` and residency are not captured);
+the surprise-driven prefetch, re-dated to T067 (2.8); and the null itself, T068's S-R3. Capacity is
+honoured, not enforced, under sustained firing (3.2) — T068's comparison must read that from the
+capacity-trip counter, never from the capacity argument.

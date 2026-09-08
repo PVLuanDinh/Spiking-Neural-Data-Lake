@@ -147,7 +147,9 @@ BUDGETS = {
     # RETIRED 2026-08-16 anchor; the governing practice since T046 is MINIMUM-VIABLE raises
     # (measured + 0, stated per raise), so 0.0%-headroom rows are deliberate and the
     # TIGHTENABLE report is structurally quiet for them.
-    "docs/INVENTION_REGISTER.md": 1517,  # RAISED 1380 -> 1517 on 2026-09-03, SAME DAY as the raise
+    # RAISED 1517 -> 1543 on 2026-09-08: T066's MECHANIZED line on row 1 (measured + 0,
+    # the same minimum-viable raise as every one before it)
+    "docs/INVENTION_REGISTER.md": 1543,  # RAISED 1380 -> 1517 on 2026-09-03, SAME DAY as the raise
     # below and in the same arc: the W3 review panel found row 9's RED field overstated (7 criteria /
     # 8 mutants, one of them vacuous) and its NULL field stating the EXPERIMENT's revert condition
     # instead of the instrument's own deletion condition, which is what P8 clause 5 asks for. The

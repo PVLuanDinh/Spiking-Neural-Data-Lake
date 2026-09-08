@@ -16,6 +16,8 @@ the mechanism exists). CONTROL: forced-total residency at a derived comparison w
 host-RAM ceiling. ATTRIBUTION: per-tick rounds counter vs its integer budget. DISCLOSURE: the
 comparison width is NOT the deployment width (>RAM), stated wherever the win is claimed.
 NULL: paging loses to forced residency at the comparison width → the layer is DELETED.
+MECHANIZED 2026-09-08 (T066, `substrate/neuron_pager.py`): both reds in-tree and counted red
+before the mechanism; a calm paged run is byte-identical to the resident twin; S-R3 stays T068's.
 
 ## 2. JoinPolicy + mechanical charge measurement (L3, T020-T022)
 Declared fan-in/fan-out policies per port (silent elementwise summation abolished — both
