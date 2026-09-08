@@ -1,8 +1,14 @@
 """P0's honesty guard as a gate (owner rule 2026-09-02, specs/022 PLAN-FINAL Part C / O4).
 
-A unit COUNT is reported to the owner as units ADMITTED, never as growth, until SC-012a
-(accuracy rises with unit count under a capped-admission grid) has fired. Two owner-facing
-surfaces carry the count: the cockpit row and the PROVENANCE row rendered as its tag.
+A unit COUNT is reported to the owner as units ADMITTED, never as growth. The rule was
+time-bound to SC-012a (accuracy rises with unit count under a capped-admission grid); SC-012a
+FIRED 2026-09-07 on a QUALIFIED reading (accuracy rises with admitted units; forced width does
+not beat the uncapped incumbent; nothing reaches the persistence floor), and on 2026-09-08 the
+rule was RE-BASED rather than lifted (PLAN-FINAL Part C, the dated decision): a count is labelled
+growth only when that count is shown to change an outcome the brain is measured on -- P0's
+"growth is not improvement". The row that shows the improvement names this gate as the one it
+retires. Two owner-facing surfaces carry the count: the cockpit row and the PROVENANCE row
+rendered as its tag.
 
 Red counted on the pre-change tree (gate-before-rule): the cockpit row read 'grown units'
 and the PROVENANCE row said nothing about admission -> both tests FAILED before the wording

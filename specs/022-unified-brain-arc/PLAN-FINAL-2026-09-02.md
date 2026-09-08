@@ -222,6 +222,16 @@ Carried: all of POLICIES (A.2). Added from what the nulls taught:
   "units admitted", never "growth" — a reporting rule adopted under O4 WITH its counted gate
   (`tests/test_units_admitted_wording.py`). "Provisional" in the owner's ratification means TIME-BOUND —
   until SC-012a fires — not this project's gate-unbuilt sense: the gate landed in the same commit.
+  *DECIDED 2026-09-08 (the session's call under the owner's "close any openings" authorization; a separate
+  docs commit as this plan sequenced it): SC-012a FIRED on 2026-09-07 on a QUALIFIED reading — held-out
+  accuracy rises with admitted units under the capped grid, but forced width does not beat the uncapped
+  incumbent and nothing reaches the persistence floor (its own DISPOSITION above). The time-bound
+  condition is therefore met and the wording is NOT lifted: a count may be labelled "growth" only when
+  that count is shown to change an outcome the brain is measured on (P0's honesty guard, P3's "growth
+  is not improvement"), and SC-012a's reading establishes accuracy-with-count, not improvement-over-the-
+  incumbent. The rule is re-based from time-bound to that permanent condition; the gate is unchanged in
+  mechanism and its docstring states the condition. The wording lifts the day a row shows the
+  improvement — and that row names the gate it retires.*
 
 ---
 
@@ -736,7 +746,7 @@ Parallel arms: L1a ∥ L3 ∥ the oracle may start at W3 (they do not wait for P
 | a new environment / a merged curriculum (first draft of W1) | REFUSED | the world is a live incumbent; the goal sampler is ported, not re-invented; the two curricula do different jobs |
 | H01 ingest as the next task | DEFERRED behind S1–S5; scoped to the c3 synapse graph | placement has no reader; `cortical_prior` holds the constants |
 | `reasoning/consciousness_probe.py` | RETIRED in C4 (T081) | its criteria are markers, not dissociations |
-| any unit count reported as growth before SC-012a fires | REFUSED in headlines and PROVENANCE | P0's honesty guard (reporting rule time-bound until SC-012a fires, gated by `tests/test_units_admitted_wording.py`, O4) |
+| any unit count reported as growth before that count is shown to change a measured outcome | REFUSED in headlines and PROVENANCE | P0's honesty guard (reporting rule re-based 2026-09-08 from "until SC-012a fires" — it fired, QUALIFIED — to the permanent condition; gated by `tests/test_units_admitted_wording.py`, O4; Part C carries the dated decision) |
 
 ---
 
