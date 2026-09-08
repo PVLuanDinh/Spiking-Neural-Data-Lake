@@ -176,3 +176,83 @@ in-tree: the two instrument reds in `tests/` where they touch tree code) — 3. 
 cells, one subprocess each, run.log with the host state — 4. the record (§3) and the verdict's
 disposition applied (a WIN's records, or a LOSS's deletion as its own stacked commits) — panel — fold —
 ONE battery — closing record — push.
+
+### 2.9 Amendments BEFORE the campaign (2026-09-08, after the harness's instrument reds; numbers seen stated beside each)
+
+The harness was built as 2.8 orders (an archived probe, `memory/archive/t068-2026-09-08/`) and its
+instrument reds were run at 4,096 and 16,384 units BEFORE any campaign cell. Three of them fired on THIS
+pre-registration's own apparatus — not on the mechanism — and each is amended here, dated, with the
+reading that forced it. No verdict number has been seen: every cell run so far is a neutered, control
+or pilot cell, and its numbers are quoted in full so the amendments cannot be read as made after them.
+
+**A1 — the memory instruments (2.3), fired: the NEUTERED arm did not read 1.000.** Measured: peak
+working set 1.0431 / 1.0528 (4,096, R1 / R2) and 0.9767 (16,384, R1); traced peak 0.8808 / 0.8804 /
+0.8830 — while the arm's EXACT resident edge bytes equalled the twin's to the byte (2,097,152 and
+8,388,608), evictions 0, fully resident. Two instrument defects, both of the "a replacement instrument
+reads a different quantity" shape the T066 panel already convicted once: (i) `tracemalloc`'s PEAK is a
+compile-path transient — the twin compiles the whole table in ONE `compile_bundles` call whose buffers
+set the high-water mark, the paged arm compiles per block — so the constant −12 % is construction, not
+residency; (ii) `peak_wset` includes the same construction transient on the twin's side and the store's
+roughly constant machinery on the paged side, so its zero point MOVES with width and crosses 1.000
+between 4,096 and 16,384 (+4.3 % → −2.3 %) — a verdict at one width would read that crossing as a
+saving. AMENDED: both instruments become STEADY-STATE readings — after every tick the process's current
+working set (`psutil` `wset`) and the current traced total (`tracemalloc.get_traced_memory()[0]`) are
+sampled, and the cell reports the MAX over ticks of each, construction excluded. The neutered red is
+re-specified as a calibration that can fail rather than a physical identity the two representations do
+not share: (a) exact edge bytes ratio 1.000 (the arm is the twin's graph); (b) the neutered arm's
+steady-state ratio is ≥ 0.99 on BOTH instruments — a "saving" with no eviction and no lazy loading is
+the instrument lying; (c) two neutered runs at the same width and seed agree within 1 % (repeatability);
+and the neutered ratio is REPORTED per width as the layer's zero point (its machinery's cost with no
+eviction). Pre-stated branch: if (b) fails on the traced instrument under steady-state sampling, the
+traced instrument is reading REPRESENTATION (the twin double-holds the raw edge arrays beside its
+bundles) and is DROPPED as a verdict instrument, replaced by committed private bytes (`psutil`
+`private`) as the second instrument that fails differently from the working set; the drop is recorded
+with the number. The WIN rule is unchanged: paged / twin < 1 on both verdict instruments, paired over
+S = 8 seeds, on the layer's whole-process cost — the machinery is what deployment pays, so it stays
+inside the ratio.
+
+**A2 — the regimes' topology and parameters (2.1, 2.2), fired: R2 read exact ratio 1.0000, not
+0.250, with evictions 0 in EVERY cell of EVERY regime at both widths.** Cause, measured: 2.1 fixed
+delays 1..8 and `max_stale_ticks = 2`, and 2.2 named a DRIVE per regime but no TOPOLOGY; under T066's
+random-post edge set any driven subset activates the whole graph, and under an 8-tick ring window the
+ring-safety clause is false for essentially every block — T066 §3.5's own finding, reproduced. The
+panel controls whose 0.250 / 0.164 this row cites ran a LOCAL topology (post inside the pre's own block
+or the next) with `max_delay = 3`, `max_stale_ticks = 1`, `blocks_per_round = 16`, `max_rounds = 8`,
+`pinned = {0}`. AMENDED: topology and the pager parameters are recorded INPUTS per cell, defaulted per
+regime to the fixture whose number this row cites — R1 keeps T066's width fixture exactly (random
+posts, delays 1..8, `max_stale_ticks = 2`, no pinned set: it is the regime bound and must reproduce
+T066's 1.000); R2, R3 and R4 take the panel's local fixture and parameters exactly as listed (pinned
+{0} included, overriding 2.1's "no pinned set" for those three, disclosed), and R2 must reproduce
+0.250 ± 0.02 on the exact instrument as the fixture's check before its cells count. The tick count for
+R1–R4 is 20 (the panel's; 2.2 omitted it); arm F's 50 stands. R1's eviction neuter is disclosed
+VACUOUS (eviction never fires under R1 in either arm — the neutered and incumbent arms read
+0.9767 / 0.9765, identical); the per-item attribution in 2.5 is carried by R2, where the neuter must
+return the paged ratio to the zero point of A1. The neutered red runs in R2 (the verdict regime) and
+R1 (the bound), both at 16,384.
+
+**A3 — R4's fixture (2.2), fired: the reorder refused all 32 blocks** (`block 31 carries the edge
+(2, 61, 7) twice -- the delta tier addresses an edge by (pre_local, post, delay)`), reads per round
+4.0 → 4.0, `moved = 0`. T066's edge builder draws random posts × random delays and collides inside
+every block; T067's own fixture is duplicate-free by construction because the delta tier needs it. The
+order function is correct (the R4 due sets are 8 groups of 4 index-distant blocks; `co_fetch_order`
+places them with mean contiguous runs 4.000 → 1.000). AMENDED: the R2–R4 edge sets are generated
+duplicate-free in `(pre_local, post, delay)` (rejection on collision), as T067's fixture is; R1 keeps
+T066's builder unchanged. The probe now records `reorder_refusal_last` and `reorder_had_effect` so a
+whole-store refusal can never again read as "the reorder did not help".
+
+**Disclosed, not amended.** The ambient-ratio control's 20 % refusal is REACHABLE (a 28-core hog
+drifts the reference 61.1 %), but a 4-core hog on this 28-thread host drifts it only 13.1 % and does
+not refuse — the control is coarse below roughly a fifth of the machine, stated here. Quiet drift
+3.83 % across four runs; cross-arm 0.93 %. One R1 timing cell at 16,384 read a secondary of 3.135×
+(296.9 vs 923.8 ms per tick) — above the 3.0× bound; R1 is the bound regime, not the verdict's, and
+the bound is NOT moved. The paged arm's steady-state working set still carries the store's machinery
+(sqlite index, Arrow segments) — that is the zero point A1 reports, and it is deployment's cost.
+`verdict.py` applies the 1.895 critical value as written and prints a `df_note` when tie-folding
+leaves fewer than 7 d.f. Spike trains were byte-identical between arms in every 4,096 pilot cell and
+NOT at 16,384 under R1 (T066's forced-round deferral at tick 2, reproduced) — the byte-identity claim
+is T066's under calm drive and is not re-claimed here.
+
+**What the amendments cannot do.** They do not change the metric (whole-process footprint, primary),
+the verdict rule, the S = 8 paired test, the 3.0× cost bound, arm F, or the disposition table. They
+change how two instruments sample and which fixture each regime runs — the fixtures whose numbers
+this row cited from the start.
