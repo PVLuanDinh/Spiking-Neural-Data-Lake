@@ -86,19 +86,35 @@ from pathlib import Path
 
 import numpy as np
 
-from snn_data_lake.substrate.home import _T_UNITBLOCK
+from snn_data_lake.substrate.home import _T_BLOCKDELTA, _T_UNITBLOCK, observe_append
 from snn_data_lake.substrate.kernel_state import KernelState
 from snn_data_lake.substrate.kernel_tick import KernelTick, Synapses, compile_bundles
-from snn_data_lake.substrate.lake_engine import UnitBlockRecord, retention_of
+from snn_data_lake.substrate.lake_engine import (
+    BlockDeltaRecord,
+    UnitBlockRecord,
+    apply_deltas,
+    compare_drop,
+    edge_table,
+    record_from_edges,
+    retention_of,
+)
 from snn_data_lake.substrate.lake_index import LakeIndex
 from snn_data_lake.substrate.lake_rebuild_gate import INDEX_NAME
-from snn_data_lake.substrate.lake_segments import SEGMENT_DIR, SegmentStore, read_record
+from snn_data_lake.substrate.lake_segments import (
+    SEGMENT_DIR,
+    SegmentStore,
+    read_record,
+    read_records,
+    read_segment,
+)
 from snn_data_lake.substrate.unit_blocks import UnitBlocks
 
 REPO = Path(__file__).resolve().parents[3]
 PERF_BASELINE = REPO / "tools" / "perf_baseline.json"
 
 TAG = _T_UNITBLOCK[0]
+#: the FRESH tier's tag (specs/022 T067) -- a change to one block's out-edges, read beside its base
+DELTA_TAG = _T_BLOCKDELTA[0]
 #: `KernelState` lays every field block on a 128-byte boundary, and the `|i1` sign array is the
 #: binding field: only multiples of 128 keep a BLOCK's start aligned in all five fields.
 ALIGN_UNITS = 128
@@ -168,6 +184,12 @@ class UnitBlockStore:
     durable store. The applied WATERMARK is deliberately NOT advanced here (the reason is at the
     `put_batch` call): this store is a tenant of the lake's index, not the owner of its fold.
 
+    THE FRESH TIER (specs/022 T067). A block's CURRENT edge set is its newest 0x0C record with its
+    UNMERGED 0x0D deltas applied, in order, through the ONE apply (`lake_engine.apply_deltas`) --
+    the same apply `lake_compactor.LakeCompactor.merge` folds with, so a merged record can never
+    disagree with what `fetch` was already serving. `_page_in` and `compile_bundles` are untouched:
+    `fetch` returns a `UnitBlockRecord` either way.
+
     `root` is a lake home directory and there is NO DEFAULT: defaulting to `home()` would put a
     bench store inside the live brain's lake, so a missing root is refused."""
 
@@ -184,11 +206,32 @@ class UnitBlockStore:
         self.index = LakeIndex(root / INDEX_NAME)
         #: the STORE-side rounds instrument: one increment per `fetch` submission
         self.submissions = 0
-        #: the STORE-side WIDTH instrument: one entry per submission, its block count. Read by
+        #: the STORE-side WIDTH instrument: one entry per submission, its BLOCK count. Read by
         #: `NeuronPager.assert_round_widths` (per-round refusal) and by the `blocks_read`
         #: cross-check below -- the reading the two rounds COUNTERS structurally cannot make.
         self.submission_widths: list[int] = []
         self.blocks_read = 0
+        #: THE RECORD-GRAIN WIDTH, beside the block-grain one rather than replacing it (T067). A
+        #: block with k unmerged deltas costs 1 + k RECORDS in its round, and 2.1 says those ride
+        #: the same instruments. The ROUNDS instrument is unchanged (a block's deltas ride its own
+        #: round). The WIDTH BOUND stays a BLOCK bound, because `blocks_per_round` is the caller's
+        #: per-round allowance in BLOCKS and `assert_round_widths` pins it against `blocks_read`;
+        #: the record count is reported here with its own cross-check in `assert_read_accounting`,
+        #: so nothing is uncounted. Disclosed as a refinement of 2.1's sentence, not a silent one.
+        self.submission_records: list[int] = []
+        self.records_read = 0
+        #: T067's own reading: how many RANGE READS a round cost. A round's needed (segment, seq)
+        #: pairs coalesce into maximal CONTIGUOUS runs and each run is one `read_records` call, so
+        #: this falls when the blocks a tick fetches together sit together in the lake -- which is
+        #: exactly what the locality reorder moves.
+        self.reads_per_round: list[int] = []
+        #: bytes of every record read / bytes of the records the round requested. With no
+        #: over-read the two are EQUAL by construction and the ratio is 1.0, which is printed as
+        #: such rather than presented as a result: over-reading a gap (which would make the ratio
+        #: informative) is a seek-cost-vs-bytes trade that owes its own measurement and is not
+        #: taken in this row.
+        self.bytes_fetched = 0
+        self.bytes_used = 0
         #: the partition `build()` wrote, or None on a REOPENED store (the durable index serves
         #: `fetch` without it). Read by `NeuronPager.__init__` to refuse a pager addressing a
         #: different grain than the records describe.
@@ -240,9 +283,7 @@ class UnitBlockStore:
                     delay=delay[sel],
                 ).encode()
             )
-        self.store.append_many(payloads)
-        sealed = self.store.seal()
-        seq0 = int(sealed.stem.split("-")[1])
+        container, seqs = self.seal_and_locate(payloads)
         # watermark=None ON PURPOSE (corrected 2026-09-08): the applied watermark is ONE global
         # meta row naming how far the lake's fold has been applied, and this store does not own
         # that fold -- it is a tenant. Writing it here made a second tenant's progress marker go
@@ -250,46 +291,304 @@ class UnitBlockStore:
         # two numbers are INCOMMENSURABLE: records-in-the-lake against this store's segment seq.
         # A stale-LOW marker only costs a replay of the tail; a marker advanced by the wrong
         # tenant records progress nobody made, so passing None is the safe direction, not the
-        # lazy one. THE SHARED KEY SPACE IS STILL OWED AT S6, and it is the same defect from its
-        # other side: these (0x0C, block_id) rows and `lake_rebuild_gate.build_index`'s
-        # provisional (tag, GLOBAL ORDINAL) rows live in ONE lake_index.db under ONE tag space,
-        # so a derived rebuild overwrites every pointer here and `fetch` then raises. It is inert
-        # only while the store lives in throwaway homes. Whoever wires S6 must say which keying
-        # owns tag 0x0C -- build_index cannot re-derive these rows today, though the lake itself
-        # can (the forward scan sees the segment, the seq and the record's own block_id).
-        self.index.put_batch(
-            [(TAG, str(bid), sealed.name, seq0 + bid) for bid in range(blocks.n_blocks)],
-            watermark=None,
-        )
+        # lazy one. THE SHARED KEY SPACE IS CLOSED AT T067, and this comment used to carry it as
+        # owed at S6: these (0x0C, block_id) rows and `lake_rebuild_gate.build_index`'s rows lived
+        # in ONE lake_index.db under ONE tag space with the rebuild's provisional (tag, GLOBAL
+        # ORDINAL) keying overwriting every pointer here. `build_index` is now TAG-AWARE for the
+        # block classes -- key from the record's own block_id, container the segment file, seq the
+        # record's seq, latest per block by forward-scan position -- so these rows are DERIVED
+        # (D1) and a reorder that renumbers seqs stays re-derivable, which arithmetic never was.
+        rows = []
+        for bid in range(blocks.n_blocks):
+            rows.append((TAG, str(bid), container, seqs[bid]))
+            #: the block's merge count, 0 at build. `lake_compactor` advances it and
+            #: `build_index` re-derives it as (0x0C records for this block) - 1.
+            rows.append((TAG, f"{bid}/gen", "meta", 0))
+        self.index.put_batch(rows, watermark=None)
         self.blocks = blocks
         return blocks
 
+    # ---- the durable write path, ONE locator ---------------------------------------------------
+    # distinct-from: substrate/lake_segments.py::SegmentStore.append_many/seal -- THE write
+    #   mechanism these two methods CALL; this adds no framing, no fsync and no second container.
+    #   What it adds is the ADDRESS: which seq each appended payload landed at, read back from the
+    #   sealed segment instead of derived from the segment base by arithmetic.
+    # distinct-from: substrate/home.py::KnowledgeLog.append/extend -- the FACT tier's bulk write
+    #   into brain_lake.bin (a BinLog), which needs no address at all because facts are found by
+    #   replay, never by pointer.
+    # distinct-from: substrate/signal_ring.py::LakeJournaller.drain -- decides WHAT reaches the
+    #   lake (refusing a hole after a ring overrun) and hands the batch to BinLog.extend; it
+    #   addresses nothing and writes into the other container.
+    # distinct-from: substrate/lake_segments.py::read_segment -- the whole-segment forward read
+    #   this locator USES for its byte-for-byte tail check.
+    # distinct-from: hippocampus/lake_consolidation.py::LakeConsolidation.consolidate -- a PURE
+    #   prune policy over fact dicts; no disk, no seq, no segment.
+    # distinct-from: cerebellum/spiking_jepa.py::_forward -- "records" as a verb about per-timestep
+    #   spikes; no lake record anywhere in it. All six sites read 2026-09-08.
+    def seal_and_locate(self, payloads):
+        """Append `payloads`, seal, and return `(segment name, [seq per payload])` READ BACK FROM
+        THE SEALED SEGMENT rather than derived by arithmetic.
+
+        THE SEQ FIX (specs/022 T067). `build` used to compute `seq0 + bid` from the sealed
+        segment's base, which assumes the WAL was EMPTY when it ran: with `k` records already in
+        the WAL, `seal()` seals `k + n` records, `seq0` is a foreign record's seq and every block
+        pointer is off by `k`. It was unreachable while `build` only ever ran on a fresh store;
+        this row is the first second-writer, so the arithmetic is replaced by a read. The tail of
+        the sealed segment is compared to the batch BYTE FOR BYTE before any seq is returned --
+        a locator that guessed wrong would otherwise index a block to a foreign record."""
+        payloads = [bytes(p) for p in payloads]
+        if not payloads:
+            raise ValueError(
+                "seal_and_locate needs at least one payload -- an empty seal is not a write"
+            )
+        self.store.append_many(payloads)
+        sealed = self.store.seal()
+        base = int(sealed.stem.split("-")[1])
+        got = list(read_segment(sealed))
+        start = len(got) - len(payloads)
+        if start < 0 or got[start:] != payloads:
+            raise ValueError(
+                f"{sealed.name}: the sealed tail is not the batch this call appended -- refusing "
+                "to derive a seq for it"
+            )
+        return sealed.name, [base + start + i for i in range(len(payloads))]
+
+    def append_deltas(self, records):
+        """Append 0x0D deltas for already-built blocks. Returns how many records were WRITTEN.
+
+        COMPARE-DROP AT THE f4 RECORD GRAIN (D4's quantize-then-compare-then-append, at the grain
+        this record stores rather than at a picked epsilon): an upsert of an edge already at that
+        weight, or a remove of an edge that is not there, changes nothing and is not emitted; a
+        record left with no entry is not written at all. A delta whose `base_generation` is not
+        the block's current one is REFUSED BEFORE ANYTHING LANDS, and a delta for a block with no
+        pointer raises rather than inventing one.
+
+        PRODUCER, disclosed: growth into the kernel substrate arrives at S6/T062, so today the
+        callers are this module's tests, `lake_compactor`'s self-check and its arms -- the same
+        standing the pager itself has."""
+        records = list(records)
+        if not records:
+            return 0
+        generations = {}
+        for record in records:
+            bid = int(record.block_id)
+            self.block_pointer(bid)  # refuses an unknown block before a byte is written
+            generations[bid] = self.generation(bid)
+            if int(record.base_generation) != generations[bid]:
+                raise ValueError(
+                    f"delta for block {bid} names base generation {int(record.base_generation)} "
+                    f"while the block is at {generations[bid]} -- refused, never half-applied"
+                )
+        edges = {bid: self.current_edges(bid)[1] for bid in generations}
+        payloads, owners = [], []
+        for record in records:
+            bid = int(record.block_id)
+            kept = compare_drop(record, edges[bid])
+            if kept is None:
+                continue
+            edges[bid] = apply_deltas(edges[bid], [kept], generation=generations[bid])
+            payloads.append(kept.encode())
+            owners.append(bid)
+        if not payloads:
+            return 0
+        container, seqs = self.seal_and_locate(payloads)
+        rows, counts = [], {}
+        for bid, seq, payload in zip(owners, seqs, payloads, strict=True):
+            total, superseded = counts.get(bid) or self.delta_counts(bid)
+            rows.append((DELTA_TAG, f"{bid}/{total}", container, seq))
+            counts[bid] = (total + 1, superseded)
+            observe_append(_T_BLOCKDELTA, len(payload))
+        for bid, (total, superseded) in counts.items():
+            rows.append((DELTA_TAG, f"{bid}/count", f"superseded={superseded}", total))
+        self.index.put_batch(rows, watermark=None)
+        return len(payloads)
+
+    def adopt_merged(self, bid, container, seq):
+        """THE ONE POINTER MOVE: repoint the block at a merged (or relocated) 0x0C record, advance
+        its generation, and mark every delta folded into it SUPERSEDED in its own meta row. Called
+        only after the caller's relocation proof has passed; nothing here destroys anything."""
+        bid = int(bid)
+        total, _superseded = self.delta_counts(bid)
+        rows = [
+            (TAG, str(bid), str(container), int(seq)),
+            (TAG, f"{bid}/gen", "meta", self.generation(bid) + 1),
+        ]
+        if total:
+            rows.append((DELTA_TAG, f"{bid}/count", f"superseded={total}", total))
+        self.index.put_batch(rows, watermark=None)
+
+    # ---- the index, read ------------------------------------------------------------------------
+    def block_pointer(self, bid):
+        row = self.index.get(TAG, str(int(bid)))
+        if row is None:
+            raise KeyError(
+                f"block {bid} has no pointer under tag {TAG:#04x} -- refused rather than "
+                "read as an empty edge set"
+            )
+        return row
+
+    def generation(self, bid) -> int:
+        """How many merges this block has had; 0 is the record `build` wrote."""
+        row = self.index.get(TAG, f"{int(bid)}/gen")
+        return 0 if row is None else int(row[1])
+
+    def delta_counts(self, bid) -> tuple[int, int]:
+        """(deltas ever appended for this block, how many of them a merge has folded)."""
+        row = self.index.get(DELTA_TAG, f"{int(bid)}/count")
+        if row is None:
+            return 0, 0
+        container, total = row
+        superseded = (
+            int(container.split("=", 1)[1]) if str(container).startswith("superseded=") else 0
+        )
+        return int(total), superseded
+
+    def n_unmerged(self, bid) -> int:
+        total, superseded = self.delta_counts(bid)
+        return total - superseded
+
+    def unmerged_pointers(self, bid) -> list:
+        total, superseded = self.delta_counts(bid)
+        out = []
+        for n in range(superseded, total):
+            row = self.index.get(DELTA_TAG, f"{int(bid)}/{n}")
+            if row is None:
+                raise KeyError(
+                    f"block {bid} delta {n} has no pointer under tag {DELTA_TAG:#04x} -- refused "
+                    "rather than read as an empty change"
+                )
+            out.append(row)
+        return out
+
+    # ---- the read path --------------------------------------------------------------------------
+    def payload_at(self, container, seq) -> bytes:
+        """ONE record by its pointer, through the segment reader's own per-record addressing."""
+        return read_record(self.root / SEGMENT_DIR / str(container), int(seq))
+
+    def current_edges(self, bid):
+        """(the base 0x0C record, its edge table with every UNMERGED delta applied) for one block,
+        through the ONE apply -- what `fetch` serves and what a merge must write."""
+        bid = int(bid)
+        base = UnitBlockRecord.decode(self.payload_at(*self.block_pointer(bid)))
+        deltas = [
+            BlockDeltaRecord.decode(self.payload_at(*loc)) for loc in self.unmerged_pointers(bid)
+        ]
+        edges = edge_table(base)
+        if deltas:
+            edges = apply_deltas(edges, deltas, generation=self.generation(bid))
+        return base, edges
+
+    # distinct-from: `lake_engine.apply_deltas` which it calls -- this is the OVERRIDE SEAM the
+    #   fresh-tier read goes through, the way `NeuronPager._issue_rounds` is the seam the
+    #   budget-blind arm replaces. It adds nothing and exists so a constructed arm can drop a
+    #   delta on the READ side while the merge's relocation proof still re-applies with the
+    #   incumbent. Site read 2026-09-08.
+    def _apply_fetch(self, base_edges, deltas, *, generation):
+        return apply_deltas(base_edges, deltas, generation=generation)
+
     def fetch(self, block_ids):
-        """ONE ROUND: the reads of `block_ids` submitted as one batch to a thread pool.
+        """ONE ROUND: every needed record of `block_ids` -- each block's base 0x0C plus its
+        UNMERGED 0x0D deltas -- coalesced into maximal CONTIGUOUS runs and submitted as one batch
+        to a thread pool.
 
         "Async" means the reads of a round overlap EACH OTHER, not the tick's compute -- there is
-        no prefetch in this row, and saying so is cheaper than letting the word imply one."""
+        no prefetch in this row, and saying so is cheaper than letting the word imply one. A block
+        with k unmerged deltas costs 1 + k RECORDS in this round; how many READS that costs is the
+        quantity the locality reorder moves, and it is recorded per round rather than inferred."""
         ids = [int(b) for b in block_ids]
         if not ids:
             return {}
-        located = []
+        plan, needed = [], []
         for bid in ids:
-            row = self.index.get(TAG, str(bid))
-            if row is None:
-                raise KeyError(
-                    f"block {bid} has no pointer under tag {TAG:#04x} -- refused rather than "
-                    "read as an empty edge set"
-                )
-            located.append((bid, self.root / SEGMENT_DIR / row[0], row[1]))
+            base = self.block_pointer(bid)
+            deltas = self.unmerged_pointers(bid)
+            plan.append((bid, base, deltas, self.generation(bid)))
+            needed.append(base)
+            needed.extend(deltas)
         self.submissions += 1
         self.submission_widths.append(len(ids))
+        self.submission_records.append(len(needed))
         self.blocks_read += len(ids)
-        with ThreadPoolExecutor(max_workers=min(len(ids), 8)) as pool:
-            payloads = list(pool.map(lambda loc: read_record(loc[1], loc[2]), located))
-        return {
-            loc[0]: UnitBlockRecord.decode(payload)
-            for loc, payload in zip(located, payloads, strict=True)
-        }
+        self.records_read += len(needed)
+        payloads = self._coalesced_reads(needed)
+        out = {}
+        for bid, base, deltas, generation in plan:
+            record = UnitBlockRecord.decode(payloads[(str(base[0]), int(base[1]))])
+            if deltas:
+                edges = self._apply_fetch(
+                    edge_table(record),
+                    [
+                        BlockDeltaRecord.decode(payloads[(str(loc[0]), int(loc[1]))])
+                        for loc in deltas
+                    ],
+                    generation=generation,
+                )
+                record = record_from_edges(bid, record.n_units_in_block, record.block_size, edges)
+            out[bid] = record
+        return out
+
+    def _coalesced_reads(self, needed):
+        """{(container, seq) -> payload} for a round's needed records, one `read_records` per
+        maximal CONTIGUOUS run of needed seqs inside one segment.
+
+        NO OVER-READ THIS ROW: a run is built only from seqs the round asked for, so every byte
+        read is a byte used and `bytes_fetched / bytes_used` is 1.0 BY CONSTRUCTION -- printed as
+        such rather than presented as a finding. Reading across a gap (which would make that ratio
+        informative) trades seeks against bytes and owes its own measurement; it is not taken."""
+        by_segment: dict[str, set] = {}
+        for container, seq in needed:
+            by_segment.setdefault(str(container), set()).add(int(seq))
+        runs = []
+        for container in sorted(by_segment):
+            seqs = sorted(by_segment[container])
+            start = 0
+            while start < len(seqs):
+                stop = start
+                while stop + 1 < len(seqs) and seqs[stop + 1] == seqs[stop] + 1:
+                    stop += 1
+                runs.append((container, seqs[start], seqs[stop]))
+                start = stop + 1
+        self.reads_per_round.append(len(runs))
+        with ThreadPoolExecutor(max_workers=min(len(runs), 8)) as pool:
+            results = list(
+                pool.map(
+                    lambda run: read_records(self.root / SEGMENT_DIR / run[0], run[1], run[2]),
+                    runs,
+                )
+            )
+        got = {}
+        for (container, lo, _hi), payloads in zip(runs, results, strict=True):
+            for offset, payload in enumerate(payloads):
+                got[(container, lo + offset)] = payload
+                self.bytes_fetched += len(payload)
+        self.bytes_used += sum(len(got[key]) for key in {(str(c), int(s)) for c, s in needed})
+        return got
+
+    def assert_read_accounting(self) -> bool:
+        """Every counter this store keeps has a consumer, and here it is: the two width logs
+        against their totals, one reads-per-round entry per submission, and the bytes ratio at
+        exactly 1.0. A bookkeeping integer nobody reads is P3 shape 4."""
+        checks = (
+            (self.blocks_read, sum(self.submission_widths), "blocks_read vs submission widths"),
+            (
+                self.records_read,
+                sum(self.submission_records),
+                "records_read vs submission record counts",
+            ),
+            (
+                len(self.reads_per_round),
+                self.submissions,
+                "reads-per-round entries vs submissions",
+            ),
+            (self.bytes_fetched, self.bytes_used, "bytes fetched vs bytes used (no over-read)"),
+        )
+        for got, want, what in checks:
+            if got != want:
+                raise RoundWidthExceeded(
+                    f"the store's read accounting disagrees with itself ({what}: {got} != "
+                    f"{want}) -- no reads-per-round or bytes verdict follows"
+                )
+        return True
 
     def iter_payloads(self):
         """The store's own forward read, delegated -- one reader path (P2)."""

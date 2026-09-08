@@ -44,15 +44,40 @@ SEGMENT_GLOB = "seg-*.lake"
 def iter_records(root: str | os.PathLike) -> Iterator[bytes]:
     """Yield every stored payload under `root`, oldest first: BinLog first (the incumbent
     history), then sealed segments in filename order (the future). Absent pieces are skipped
-    silently -- an empty home yields nothing, which is a fact, not an error."""
+    silently -- an empty home yields nothing, which is a fact, not an error.
+
+    A ONE-LINE DELEGATE to `located_records` since specs/022 T067, so the payload stream and the
+    located stream can never drift into two forward readers (P2). The order, the skips and the
+    torn-tail semantics are unchanged, which is what `tests/test_lake_bridge.py` pins."""
+    for _container, _seq, payload in located_records(root):
+        yield payload
+
+
+# distinct-from: iter_records directly above -- the SAME single forward walk; that one drops the
+#   location and this one carries it. The rebuild gate needs (container, seq) to re-derive the
+#   block tier's own pointer rows, which a payload-only stream cannot supply, and a second walk
+#   beside this one would be the P2 defect this delegation exists to avoid.
+# distinct-from: substrate/lake_segments.py::SegmentStore.iter_payloads -- the STORE's own read
+#   over its segments AND its active WAL; this one deliberately does not read the WAL (that arm is
+#   the store's, pinned by tests/test_lake_bridge.py) and it starts at brain_lake.bin.
+#   Both sites read 2026-09-08.
+def located_records(root: str | os.PathLike):
+    """`(container, seq, payload)` for every stored record under `root`, oldest first.
+
+    `container` is "lake" for `brain_lake.bin` and the segment FILE NAME for a sealed segment;
+    `seq` is the segment's global record seq, or None inside the BinLog, which has no seq space of
+    its own (a caller that needs one there uses the record's forward-scan ordinal and says so)."""
     root = Path(root)
     lake = root / "brain_lake.bin"
     if lake.exists():
-        yield from BinLog(str(lake), dedup=False).replay()
+        for payload in BinLog(str(lake), dedup=False).replay():
+            yield "lake", None, payload
     seg_dir = root / SEGMENT_DIR
     if seg_dir.is_dir():
         for seg in sorted(seg_dir.glob(SEGMENT_GLOB)):
-            yield from _iter_segment(seg)
+            base = int(seg.stem.split("-")[1])
+            for i, payload in enumerate(_iter_segment(seg)):
+                yield seg.name, base + i, payload
 
 
 def _iter_segment(path: Path) -> Iterator[bytes]:

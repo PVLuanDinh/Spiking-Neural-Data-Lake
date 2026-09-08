@@ -82,6 +82,17 @@ TAG_DISPOSITIONS: dict[int, tuple[str, str]] = {
         "any malformation). Zero records predate this tag; the round-trip red over written "
         "records runs in substrate/neuron_pager's own main() and in tests/test_neuron_pager.py",
     ),
+    0x0D: (
+        "read-as-is",
+        "_T_BLOCKDELTA per-block out-edge deltas (lake_engine.BlockDeltaRecord, specs/022 T067); "
+        "v1 byte-identity -- upcaster is IDENTITY, record semantics live in "
+        "BlockDeltaRecord.decode (a `<BIIQ` header then five parallel LE arrays, refused WHOLE on "
+        "any malformation) and the fold semantics in lake_engine.apply_deltas, which the reader "
+        "runs against the block's CURRENT generation. Migrating the bytes migrates the tier, the "
+        "same way 0x08's chain semantics live in home.load_growth. Zero records predate this tag; "
+        "the round-trip red over written records runs in substrate/lake_compactor's own main() "
+        "and in tests/test_lake_compactor.py",
+    ),
 }
 # Anything else is UNKNOWN and refuses -- a record class nobody decided about.
 _OBSERVED_EXTRA: dict[int, str] = {}

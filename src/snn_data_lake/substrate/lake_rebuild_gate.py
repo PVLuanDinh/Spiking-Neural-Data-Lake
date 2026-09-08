@@ -27,25 +27,70 @@ import tempfile
 from pathlib import Path
 
 from snn_data_lake.substrate.binlog import BinLog
-from snn_data_lake.substrate.lake_bridge import iter_records
+from snn_data_lake.substrate.home import _T_BLOCKDELTA, _T_UNITBLOCK
+from snn_data_lake.substrate.lake_bridge import located_records
+from snn_data_lake.substrate.lake_engine import BlockDeltaRecord, UnitBlockRecord
 from snn_data_lake.substrate.lake_index import LakeIndex
 
 INDEX_NAME = "lake_index.db"
+_TAG_BLOCK = _T_UNITBLOCK[0]
+_TAG_DELTA = _T_BLOCKDELTA[0]
 
 
 def build_index(root: str | os.PathLike, index_path: str | os.PathLike) -> int:
-    """Rebuild the pointer index from nothing but the lake. Returns rows written."""
+    """Rebuild the pointer index from nothing but the lake. Returns records scanned.
+
+    TWO KEYINGS, and the split is the point (specs/022 T067, closing the opening T066 left owed).
+
+      * THE BLOCK CLASSES ARE TAG-AWARE. A 0x0C record names its own `block_id`, so its key is
+        that id, its container is the SEGMENT FILE it lives in and its seq is the record's own
+        seq -- the LATEST record per block wins by forward-scan position. A 0x0D delta is keyed
+        `<block_id>/<n>` by its order within its block, with a per-block meta row
+        `<block_id>/count` whose container carries the SUPERSEDED watermark (how many of that
+        block's deltas were already folded when the newest 0x0C record for it was written -- a
+        forward scan sees exactly that) and a per-block `<block_id>/gen` row under 0x0C holding
+        the merge count. Those are precisely the rows `UnitBlockStore` writes, so D1 holds for the
+        block tier: the store's rows are DERIVED, and a reorder that renumbers seqs stays
+        re-derivable because the block id is IN the record rather than recoverable by arithmetic.
+      * EVERY OTHER TAG KEEPS THE PROVISIONAL GLOBAL-ORDINAL KEYING, unchanged, because nothing
+        else in the lake carries a key of its own yet. The self-check below runs on exactly those
+        tags, so its rebuild equality, its planted-row red and its lake-tracking control read the
+        same as they did before this change.
+    """
     idx = LakeIndex(index_path)
     try:
-        batch = []
+        batch: list[tuple] = []
         n = 0
-        for ordinal, payload in enumerate(iter_records(root)):
+        newest_block: dict[int, tuple[str, int]] = {}
+        block_records: dict[int, int] = {}
+        delta_rows: dict[int, list[tuple[str, int]]] = {}
+        superseded: dict[int, int] = {}
+        for ordinal, (container, seq, payload) in enumerate(located_records(root)):
             tag = payload[0] if payload else 0
-            batch.append((tag, str(ordinal), "lake", ordinal))
+            where = (container, ordinal if seq is None else seq)
+            if tag == _TAG_BLOCK:
+                bid = UnitBlockRecord.decode(payload).block_id
+                newest_block[bid] = where
+                block_records[bid] = block_records.get(bid, 0) + 1
+                superseded[bid] = len(delta_rows.get(bid, ()))
+            elif tag == _TAG_DELTA:
+                bid = BlockDeltaRecord.decode(payload).block_id
+                delta_rows.setdefault(bid, []).append(where)
+            else:
+                batch.append((tag, str(ordinal), "lake", ordinal))
             n += 1
             if len(batch) >= 10_000:
                 idx.put_batch(batch)
                 batch.clear()
+        for bid, (container, seq) in sorted(newest_block.items()):
+            batch.append((_TAG_BLOCK, str(bid), container, seq))
+            batch.append((_TAG_BLOCK, f"{bid}/gen", "meta", block_records[bid] - 1))
+        for bid, rows in sorted(delta_rows.items()):
+            batch.append(
+                (_TAG_DELTA, f"{bid}/count", f"superseded={superseded.get(bid, 0)}", len(rows))
+            )
+            for k, (container, seq) in enumerate(rows):
+                batch.append((_TAG_DELTA, f"{bid}/{k}", container, seq))
         idx.put_batch(batch, watermark=n)
         return n
     finally:

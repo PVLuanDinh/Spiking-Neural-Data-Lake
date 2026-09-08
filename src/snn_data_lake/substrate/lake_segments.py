@@ -282,6 +282,74 @@ def read_record(path: str | os.PathLike, seq: int) -> bytes:
     return unwrap(_ENV_HEAD.pack(version, crc) + payload, where=f"{path.name}#{seq}")
 
 
+# distinct-from: read_record directly above -- that seeks ONE record by the footer index. This
+#   seeks a CONTIGUOUS RUN of them in one open, which is what makes "reads per round" a countable
+#   quantity (specs/022 T067): a round's needed seqs coalesce into maximal runs and each run costs
+#   exactly one call here. It is the same addressing, batched, not a second addressing scheme --
+#   same base-from-filename arithmetic, same per-record `unwrap`, same plain file handle.
+# distinct-from: read_segment above -- that streams the WHOLE segment for the migration/bridge
+#   read and CRC-checks every record in it; this reads a NAMED SPAN and touches nothing outside it,
+#   which is the difference between a forward scan and a paged read.
+# distinct-from: substrate/binlog.py::BinLog.replay -- a sequential forward generator over the WAL
+#   framing with torn-tail semantics; it has no random access and no seq space at all.
+#   All three sites read 2026-09-08.
+def read_records(path: str | os.PathLike, seq_lo: int, seq_hi: int) -> list[bytes]:
+    """The payloads of the records at seqs `seq_lo .. seq_hi` INCLUSIVE, in one open.
+
+    The batch form of `read_record`: `seg-NNNNNNNN.lake` holds seqs NNNNNNNN .. NNNNNNNN+n-1, one
+    per Arrow record batch, so the span is `[seq_lo - base, seq_hi - base]` and the footer gives
+    every batch in it in O(1). Every record's own CRC is verified through `unwrap`.
+
+    REFUSES, never truncates: a span whose ends are out of order, a span that reaches outside the
+    segment, and a pre-T066 whole-table segment (whose footer indexes the segment rather than the
+    records, so a batch index would address the wrong thing) -- the same loud refusal `read_record`
+    gives, for the same reason. THE FILE IS OPENED PLAINLY, never `memory_map`, for the reason
+    `read_record` states."""
+    path = Path(path)
+    seq_lo, seq_hi = int(seq_lo), int(seq_hi)
+    if seq_hi < seq_lo:
+        raise ValueError(f"{path.name}: span [{seq_lo}, {seq_hi}] runs backwards")
+    try:
+        base = int(path.stem.split("-")[1])
+    except (IndexError, ValueError) as e:
+        raise ValueError(f"{path.name}: not a seg-NNNNNNNN.lake segment name") from e
+    out: list[bytes] = []
+    with open(path, "rb") as fh:
+        try:
+            reader = pa_ipc.open_file(fh)
+        except pa.ArrowInvalid as e:
+            raise SegmentCorruption(f"{path.name}: not a valid sealed segment ({e})") from e
+        n = reader.num_record_batches
+        if n and reader.get_batch(0).num_rows > 1:
+            raise SegmentCorruption(
+                f"{path.name}: batch 0 holds {reader.get_batch(0).num_rows} rows -- per-record "
+                "addressing needs one record per batch (a segment sealed by the pre-T066 writer)"
+            )
+        if not (0 <= seq_lo - base and seq_hi - base < n):
+            raise ValueError(
+                f"{path.name}: span [{seq_lo}, {seq_hi}] reaches outside [{base}, {base + n})"
+            )
+        for index in range(seq_lo - base, seq_hi - base + 1):
+            batch = reader.get_batch(index)
+            if batch.num_rows != 1:
+                raise SegmentCorruption(
+                    f"{path.name}: batch {index} holds {batch.num_rows} rows -- per-record "
+                    "addressing needs one record per batch"
+                )
+            stored = int(batch.column("seq")[0].as_py())
+            if stored != base + index:
+                raise SegmentCorruption(
+                    f"{path.name}: batch {index} carries seq {stored}, not {base + index}"
+                )
+            version = int(batch.column("version")[0].as_py())
+            crc = int(batch.column("crc")[0].as_py())
+            payload = batch.column("payload")[0].as_py()
+            out.append(
+                unwrap(_ENV_HEAD.pack(version, crc) + payload, where=f"{path.name}#{stored}")
+            )
+    return out
+
+
 def main() -> int:
     # Bare self-check: round-trip + the CRC red, one run, constructed store.
     with tempfile.TemporaryDirectory(prefix="lake_segments_") as td:

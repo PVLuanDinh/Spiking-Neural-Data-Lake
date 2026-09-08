@@ -244,6 +244,21 @@ _T_GOAL = b"\x0b"
 # with registry_consistent() asserted.
 _T_UNITBLOCK = b"\x0c"
 
+# _T_BLOCKDELTA added 2026-09-08 (specs/022 T067): one record per CHANGE to ONE block's out-edges,
+# PRE-keyed exactly as the block record is so the pager's pre_global() -> compile_bundles path
+# composes -- a `<BIIQ` header (version, block_id, n_units_in_block, base_generation) then five
+# parallel LE arrays (pre_local u2, post u4, weight f4, delay u2, op u1; op 0 = upsert an edge
+# (pre, post, delay) with this weight, 1 = remove it). `base_generation` names the merged 0x0C
+# generation the delta applies to, so a delta whose base is not the block's current generation is
+# REFUSED -- the 0x08 chain's "a DELTA whose base is not what the chain holds" refusal, at the
+# block grain. lake_engine.RETENTION[0x0D] labels it COMPACTABLE (a delta superseded by a merged
+# 0x0C record is reconstructible FROM that record) and lake_migrate.TAG_DISPOSITIONS[0x0D] is
+# read-as-is; both land in the same commit with registry_consistent() asserted. Both registries
+# were checked before minting, per the 0x09/0x0A lesson above: highest tag in use was 0x0C.
+# THIS IS THE CLASS RETENTION[0x0C] NAMED AS T067's: the block store's own writes are a one-time
+# BUILD with no per-tick rate to bound; the per-tick appends at the block grain are these.
+_T_BLOCKDELTA = b"\x0d"
+
 # FULL cadence: a fresh FULL every 64 deltas bounds a cold reconstruction to <= 64 delta applies
 # after the newest FULL. A storage-layer engineering constant (same class as lake_migrate's
 # seal_every), not brain behaviour -- P1's infrastructure exception.
@@ -526,7 +541,7 @@ class KnowledgeLog:
         payload = _T_FACT + pack_fact(record)
         written = self._bin.append(payload)
         if written:
-            _observe_append(_T_FACT, len(payload))
+            observe_append(_T_FACT, len(payload))
         if written:
             self._count += 1
         return written
@@ -559,7 +574,7 @@ class KnowledgeLog:
         # to the LARGEST `written` payloads: an over-attribution of at most the difference between the
         # largest and smallest duplicate, and never an invented record. DISCLOSED rather than exact.
         for _p in sorted(payloads, key=len, reverse=True)[: int(written)]:
-            _observe_append(_T_FACT, len(_p))
+            observe_append(_T_FACT, len(_p))
         self._count += written
         return written
 
@@ -714,7 +729,29 @@ def set_append_observer(fn):
     return prev
 
 
-def _observe_append(tag: bytes, n_bytes: int) -> None:
+# distinct-from: substrate/lake_engine.py::AppendBudget -- that is the OBSERVER that gets installed
+#   here (it accumulates bytes/tick per tag and judges a flood); this is the CALL SITE hook that
+#   feeds it. One would be useless without the other and neither re-implements the other.
+# distinct-from: substrate/binlog.py::BinLog.extend -- the bulk WRITE path (one fsync for many
+#   records). It carries opaque payloads by design and knows no tag, which is why the observation
+#   lives here rather than there.
+# distinct-from: substrate/kernel_tick.py::compile_bundles -- "THE ONE" phrasing only; it compiles
+#   delivery bundles from edges and touches no lake record.
+# distinct-from: substrate/afferent_boundary.py -- "the ONE transduction-in boundary": sensor
+#   readings into the stimulus contract, no record, no tag, no bytes/tick.
+# distinct-from: neuromodulation/raphe_serotonin.py::declare_ports -- "the FIRST real manifest
+#   registrant": a typed wiring-manifest port declaration, not an append observation.
+#   All five sites read 2026-09-08.
+def observe_append(tag: bytes, n_bytes: int) -> None:
+    """THE ONE append-observation path (specs/022 T067). `tag` is a `_T_*` constant, `n_bytes` the
+    length of the TAG-PREFIXED payload (never the framed record).
+
+    PROMOTED FROM `_observe_append` with every caller updated, rather than wrapped: a documented
+    public function beside a private one would be two names for one observer, and the class this
+    row mints writes through `lake_segments`/`UnitBlockStore` rather than through a `save_*` here,
+    so it has to call the observer at its own write site. P2 -- one observer, one
+    `set_append_observer` hook, one guarded call. The guard is around the OBSERVER only:
+    accounting must never break a durable write."""
     fn = _APPEND_OBSERVER
     if fn is None:
         return
@@ -843,7 +880,7 @@ def save_named_state(name, blob, path=None):
     _payload = _T_STATE + bytes([len(key)]) + key + seq.to_bytes(4, "little") + blob
     written = log.append(_payload)
     if written:
-        _observe_append(_T_STATE, len(_payload))
+        observe_append(_T_STATE, len(_payload))
     if written:
         idx[str(name)] = (seq, blob)
     return written
@@ -996,7 +1033,7 @@ def save_growth(blob, path=None):
         _payload = _T_GROWTH + bytes(blob)
         _w = _log(path).append(_payload)
         if _w:
-            _observe_append(_T_GROWTH, len(_payload))
+            observe_append(_T_GROWTH, len(_payload))
         return _w
     key = os.path.abspath(path or knowledge_path())
     st = _GROWTH_CHAIN.get(key)
@@ -1011,7 +1048,7 @@ def save_growth(blob, path=None):
     _payload = _T_GROWTH_DELTA + _growth_pack(kind, members, changed)
     wrote = _log(path).append(_payload)
     if wrote:
-        _observe_append(_T_GROWTH_DELTA, len(_payload))
+        observe_append(_T_GROWTH_DELTA, len(_payload))
     if wrote:
         _GROWTH_CHAIN[key] = {
             "hashes": hashes,
@@ -1032,7 +1069,7 @@ def save_episode(episode, path=None):
     _payload = _T_EPISODE + pack_episode(episode)
     _w = _log(path).append(_payload)
     if _w:
-        _observe_append(_T_EPISODE, len(_payload))
+        observe_append(_T_EPISODE, len(_payload))
     return _w
 
 
@@ -1068,7 +1105,7 @@ def save_selfbuild(blob, path=None):
     _payload = _T_SELFBUILD + bytes(blob)
     _w = _log(path).append(_payload)
     if _w:
-        _observe_append(_T_SELFBUILD, len(_payload))
+        observe_append(_T_SELFBUILD, len(_payload))
     return _w
 
 

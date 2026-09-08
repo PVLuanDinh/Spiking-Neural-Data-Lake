@@ -28,6 +28,10 @@ lake_migrate.TAG_DISPOSITIONS):
                reconstruction proof landed (tests/test_growth_delta_chain.py: chain replay
                reconstructs the substrate and REFUSES tampered links); the flag records
                that proof, and each row's reason records what a reclaimer still owes.
+               _T_BLOCKDELTA (0x0D, BlockDeltaRecord below, specs/022 T067) joins the class:
+               a delta the sleep-night merge has folded is superseded by the merged 0x0C
+               record, which is proven equal to base + deltas re-applied from the lake
+               before its pointer moves.
 
 Bare invocation (run_selfchecks): registry completeness vs lake_migrate's disposition table
 (every dispositioned tag owns a retention label -- one census, two views, never divergent),
@@ -144,6 +148,25 @@ RETENTION: dict[int, tuple[str, bool, str]] = {
         "unbaselined (reported, never trips) -- the store's writes are a ONE-TIME BUILD, not "
         "per-tick appends, so there is no per-tick rate to bound; the append-budget class for "
         "per-tick growth deltas at the block grain is T067's",
+    ),
+    0x0D: (
+        "COMPACTABLE",
+        False,
+        "_T_BLOCKDELTA per-block out-edge deltas (BlockDeltaRecord below, specs/022 T067): the "
+        "per-tick class at the block grain that RETENTION[0x0C] named as this row's. COMPACTABLE "
+        "because a delta the sleep-night merge has FOLDED is superseded by the merged 0x0C record "
+        "it was folded into, and that record is proven equal to base + deltas re-applied from the "
+        "lake BEFORE the pointer moves (lake_compactor.LakeCompactor's relocation proof, whose "
+        "reachable red is a merge whose apply skips one delta) -- the same state-identity claim "
+        "0x08 makes for a prefix ending before its newest FULL, at the block grain. reclaimable "
+        "is FALSE AT INTRODUCTION and flips only when that reconstruction proof has LANDED and "
+        "been COUNTED (the L6 rule: the flag licenses reclaim, it never performs it); the "
+        "per-record exemption a reclaimer must read is SUPERSEDED -- only a delta whose index "
+        "meta row records it as folded may ever be touched, never an unmerged one, which the "
+        "fresh-tier read still applies. Nothing in the segment family reclaims anything today. "
+        "Append budget: unbaselined (reported, never trips) -- the writer calls home.observe_append "
+        "at its own write site so the class is OBSERVED from day one, and a bound follows a "
+        "recorded row in tools/lake_append_baseline.json or 32 writing ticks of its own",
     ),
 }
 
@@ -385,6 +408,247 @@ class UnitBlockRecord:
             np.frombuffer(body[cut[2] : cut[3]], dtype="<f4"),
             np.frombuffer(body[cut[3] : cut[4]], dtype="<u2"),
         )
+
+
+OP_UPSERT = 0
+OP_REMOVE = 1
+
+
+# distinct-from: UnitBlockRecord directly above -- that is the WHOLE out-edge set of a block, its
+#   synaptic identity, written once (0x0C); this is a CHANGE to that set, written per growth event
+#   (0x0D), PRE-keyed the same way so the pager's pre_global() -> compile_bundles path composes
+#   without a second compiler. Different tag, different cadence, and the merge below is what turns
+#   a run of these back into one of those.
+# distinct-from: SynapseDelta above -- that is the LEARNER's per-synapse delta over a dense
+#   [pre, post] weight matrix, POST-grouped and quantized at the learner's own lr (0x09). This is
+#   a STRUCTURAL delta over one block's out-edge list, PRE-keyed and stored at the record's own f4
+#   grain. 0x09 is NOT retired and NOT reused: when the kernel becomes THE substrate at S6, 0x09's
+#   "revisits with the kernel block's own proof" clause is discharged by this class and 0x09
+#   retires (the P2 disposition, recorded here rather than left implicit).
+# distinct-from: substrate/home.py's _T_GROWTH_DELTA chain -- that diffs whole npz MEMBERS of the
+#   grown-substrate blob inside the BinLog container, with a sha256 manifest per link and a FULL
+#   every 64. Its SHAPE is adopted here (additive tag, generation base, proof-then-commit,
+#   latest-wins) and its CODE is not shared: a different container and a different grain, so a
+#   common codec would be a merge across tag families this row does not attempt.
+#   All sites read 2026-09-08.
+class BlockDeltaRecord:
+    """One change to ONE unit block's out-edges -- `_T_BLOCKDELTA` = 0x0D (specs/022 T067).
+
+    LAYOUT (pre-registration 2.1): the class tag byte, then `struct '<BIIQ'` = (version=1,
+    block_id, n_units_in_block, base_generation), then five parallel little-endian arrays of equal
+    length -- `pre_local <u2` (the pre unit's index INSIDE the block), `post <u4` (a global unit
+    index), `weight <f4`, `delay <u2`, `op <u1` (0 = upsert the edge (pre_local, post, delay) with
+    this weight, 1 = remove it).
+
+    AN ENTRY ADDRESSES AN EDGE BY THE TRIPLE `(pre_local, post, delay)`, which is why `edge_table`
+    below refuses a base record that carries the same triple twice: two such edges are not
+    separately addressable, and collapsing them silently would lose one.
+
+    `base_generation` names the merged 0x0C generation this delta applies to -- 0 is the built
+    record, and each merge of the block advances it by one. A delta whose base is not the block's
+    CURRENT generation is REFUSED at apply time and never half-applied, which is the 0x08 chain's
+    "a DELTA whose base is not what the chain holds" refusal at the block grain.
+
+    The edge COUNT is not in the header, for the same reason it is not in `UnitBlockRecord`'s: it
+    is `(len(payload) - 18) / 13`, so a truncated or padded record fails the division and is
+    refused WHOLE. Malformed means refused whole in every case (foreign tag, unknown version,
+    short header, length mismatch, a `pre_local` outside the block, an `op` that is neither).
+    """
+
+    TAG = 0x0D
+    _VER = 1
+    _HEAD = struct.Struct("<BIIQ")
+    _ITEM = 13  # pre_local u2 + post u4 + weight f4 + delay u2 + op u1
+
+    def __init__(
+        self, block_id, n_units_in_block, base_generation, pre_local, post, weight, delay, op
+    ):
+        import numpy as np
+
+        self.block_id = int(block_id)
+        self.n_units_in_block = int(n_units_in_block)
+        self.base_generation = int(base_generation)
+        if self.block_id < 0 or self.n_units_in_block <= 0 or self.base_generation < 0:
+            raise ValueError(
+                "BlockDeltaRecord needs a non-negative block id, a positive unit count and a "
+                "non-negative base generation"
+            )
+        self.pre_local = np.asarray(pre_local, dtype="<u2")
+        self.post = np.asarray(post, dtype="<u4")
+        self.weight = np.asarray(weight, dtype="<f4")
+        self.delay = np.asarray(delay, dtype="<u2")
+        self.op = np.asarray(op, dtype="<u1")
+        lengths = {
+            len(self.pre_local),
+            len(self.post),
+            len(self.weight),
+            len(self.delay),
+            len(self.op),
+        }
+        if len(lengths) != 1:
+            raise ValueError(
+                f"the five delta arrays must be parallel, got lengths {sorted(lengths)}"
+            )
+        if len(self.pre_local) and int(self.pre_local.max()) >= self.n_units_in_block:
+            raise ValueError("a pre_local index falls outside its own block -- refused whole")
+        if len(self.op) and not set(int(o) for o in self.op) <= {OP_UPSERT, OP_REMOVE}:
+            raise ValueError(f"op is {OP_UPSERT} (upsert) or {OP_REMOVE} (remove) -- refused whole")
+
+    def __len__(self):
+        return int(len(self.pre_local))
+
+    def encode(self) -> bytes:
+        return b"".join(
+            (
+                bytes([self.TAG]),
+                self._HEAD.pack(
+                    self._VER, self.block_id, self.n_units_in_block, self.base_generation
+                ),
+                self.pre_local.tobytes(),
+                self.post.tobytes(),
+                self.weight.tobytes(),
+                self.delay.tobytes(),
+                self.op.tobytes(),
+            )
+        )
+
+    @classmethod
+    def decode(cls, payload):
+        import numpy as np
+
+        if not isinstance(payload, (bytes, bytearray)) or len(payload) < 1 + cls._HEAD.size:
+            raise ValueError("BlockDeltaRecord payload is shorter than its header -- refused whole")
+        payload = bytes(payload)
+        if payload[0] != cls.TAG:
+            raise ValueError(
+                f"BlockDeltaRecord tag {payload[0]:#04x} is not {cls.TAG:#04x} -- refused whole"
+            )
+        ver, block_id, n_units_in_block, base_generation = cls._HEAD.unpack_from(payload, 1)
+        if ver != cls._VER:
+            raise ValueError(f"BlockDeltaRecord version {ver} is not {cls._VER} -- refused whole")
+        body = payload[1 + cls._HEAD.size :]
+        if len(body) % cls._ITEM:
+            raise ValueError(
+                f"BlockDeltaRecord length mismatch: {len(body)} array bytes is not a whole number "
+                f"of {cls._ITEM}-byte entries -- refused whole"
+            )
+        n = len(body) // cls._ITEM
+        cut = [0, 2 * n, 6 * n, 10 * n, 12 * n, 13 * n]
+        return cls(
+            block_id,
+            n_units_in_block,
+            base_generation,
+            np.frombuffer(body[cut[0] : cut[1]], dtype="<u2"),
+            np.frombuffer(body[cut[1] : cut[2]], dtype="<u4"),
+            np.frombuffer(body[cut[2] : cut[3]], dtype="<f4"),
+            np.frombuffer(body[cut[3] : cut[4]], dtype="<u2"),
+            np.frombuffer(body[cut[4] : cut[5]], dtype="<u1"),
+        )
+
+
+# distinct-from: SynapseDelta.apply above -- that writes quantized weights into a dense [pre, post]
+#   matrix in place on a ZERO base. These three functions carry a BLOCK's out-edge list, keyed by
+#   (pre_local, post, delay), from one immutable record to the next. Site read 2026-09-08.
+def edge_table(record) -> dict:
+    """A block record's out-edges as `(pre_local, post, delay) -> f4 weight`, in the record's own
+    array order. REFUSES a record that repeats a triple: the delta tier addresses an edge by that
+    triple, so two edges sharing one are not addressable and collapsing them would lose an edge
+    silently. `dict` keeps insertion order, which is what makes the re-encoded record
+    deterministic."""
+    import numpy as np
+
+    table: dict[tuple[int, int, int], float] = {}
+    for i in range(len(record)):
+        key = (int(record.pre_local[i]), int(record.post[i]), int(record.delay[i]))
+        if key in table:
+            raise ValueError(
+                f"block {record.block_id} carries the edge {key} twice -- the delta tier "
+                "addresses an edge by (pre_local, post, delay) and cannot name either copy"
+            )
+        table[key] = float(np.float32(record.weight[i]))
+    return table
+
+
+def apply_deltas(base_edges, deltas, *, generation: int) -> dict:
+    """THE ONE APPLY (P2): base edge table + 0x0D records -> the post-delta edge table.
+
+    Used by `UnitBlockStore.fetch` (the fresh tier reads base + unmerged deltas) and by
+    `lake_compactor.LakeCompactor.merge` (the fold writes exactly what the fetch would have read),
+    so a merged record can never disagree with the record the pager was already serving.
+
+    `generation` is the block's CURRENT merged generation and is a REQUIRED keyword: the
+    pre-registration's signature named `(base_edges, deltas)`, and the refusal it also requires --
+    a delta whose `base_generation` is not the current one -- is not computable without it. Stated
+    as a deviation rather than dropped, because dropping it would delete the refusal.
+
+    An upsert of an existing triple REPLACES its weight IN PLACE (the edge keeps its position); a
+    new triple is appended; a remove deletes it. Refusal is WHOLE and before any entry lands."""
+    import numpy as np
+
+    for record in deltas:
+        if int(record.base_generation) != int(generation):
+            raise ValueError(
+                f"delta for block {record.block_id} names base generation "
+                f"{int(record.base_generation)} while the block is at {int(generation)} -- "
+                "refused whole, never half-applied"
+            )
+    edges = dict(base_edges)
+    for record in deltas:
+        for i in range(len(record)):
+            key = (int(record.pre_local[i]), int(record.post[i]), int(record.delay[i]))
+            if int(record.op[i]) == OP_REMOVE:
+                edges.pop(key, None)
+            else:
+                edges[key] = float(np.float32(record.weight[i]))
+    return edges
+
+
+def compare_drop(record, base_edges):
+    """The delta the lake would LEARN from: entries that change nothing at the f4 record grain are
+    dropped, and a record left with no entry is not written at all (D4's
+    quantize-then-compare-then-append, at the grain this record actually stores). Returns a new
+    `BlockDeltaRecord` or None."""
+    import numpy as np
+
+    keep = []
+    for i in range(len(record)):
+        key = (int(record.pre_local[i]), int(record.post[i]), int(record.delay[i]))
+        op = int(record.op[i])
+        weight = float(np.float32(record.weight[i]))
+        if op == OP_REMOVE:
+            if key not in base_edges:
+                continue
+        elif base_edges.get(key) == weight:
+            continue
+        keep.append((key[0], key[1], weight, key[2], op))
+    if not keep:
+        return None
+    return BlockDeltaRecord(
+        block_id=record.block_id,
+        n_units_in_block=record.n_units_in_block,
+        base_generation=record.base_generation,
+        pre_local=[e[0] for e in keep],
+        post=[e[1] for e in keep],
+        weight=[e[2] for e in keep],
+        delay=[e[3] for e in keep],
+        op=[e[4] for e in keep],
+    )
+
+
+def record_from_edges(block_id, n_units_in_block, block_size, edges) -> UnitBlockRecord:
+    """An edge table back into a 0x0C record, in the table's own order -- deterministic, so
+    encoding the same table twice yields the same bytes and the relocation proof can compare
+    them."""
+    keys = list(edges)
+    return UnitBlockRecord(
+        block_id=block_id,
+        n_units_in_block=n_units_in_block,
+        block_size=block_size,
+        pre_local=[k[0] for k in keys],
+        post=[k[1] for k in keys],
+        weight=[edges[k] for k in keys],
+        delay=[k[2] for k in keys],
+    )
 
 
 # : How many of a tag's own WRITING ticks the running bar is computed over. Sized from what the bar

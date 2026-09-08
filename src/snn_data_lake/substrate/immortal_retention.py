@@ -330,8 +330,12 @@ def report() -> str:
         f"excluded, scratch-home deletions (cannot reach the durable lake): {len(scratch)} {scratch}",
         f"append baseline present for {len(have)} of {len(imm)} immortal tags; missing {[hex(t) for t in lack]}",
         "the grown substrate: 0x03 _T_GROWTH and 0x08 _T_GROWTH_DELTA are COMPACTABLE-with-a-reconstruction-proof,",
-        "  NOT immortal -- the registry's own contract permits it, and 'never forgets' means never evicts the",
-        "  IMMORTAL class, never 'stores everything'. Printed every run so the fact is never quietly assumed.",
+        "  and 0x0D _T_BLOCKDELTA joined them on 2026-09-08 (specs/022 T067): a delta the sleep-night merge has",
+        "  FOLDED is superseded by the merged 0x0C record, which is proven equal to base + deltas re-applied from",
+        "  the lake before its pointer moves. NONE of the three is immortal -- the registry's own contract permits",
+        "  it, and 'never forgets' means never evicts the IMMORTAL class, never 'stores everything'. Nothing in the",
+        "  segment family reclaims anything today, so the label is a licence nobody has exercised. Printed every",
+        "  run so the fact is never quietly assumed.",
     ]
     if KNOWN_UNLABELED:
         lines += [
