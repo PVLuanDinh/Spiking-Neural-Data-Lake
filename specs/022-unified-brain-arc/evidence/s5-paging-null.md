@@ -313,3 +313,45 @@ is reported as such); R3 and R4 are reported, R4's reorder control passed.
 **Not changed.** The metric, the instruments as amended in A1, S = 8, the 3.0× cost bound (the one R1
 timing cell at 3.135× is still not a verdict), arm F, the disposition on LOSS, and the tick count. The
 lazy-loading floor is stated as a floor, not claimed as the policy's.
+
+### 2.11 Third amendment BEFORE the campaign (2026-09-08; the A4 check's numbers stated beside)
+
+**A4's check FAILED, twice, identically:** the paged arm at capacity 0.25 read exact ratio **0.843750**
+(7,077,888 / 8,388,608) against the required ≤ 0.50 with **evictions 0**; every one of the 1,273
+candidates at the 19 capacity trips was refused on the ring-safety clause (`_TripCensus`), because the
+activated-block count climbed monotonically 32 → 107 of 128 and no block the window left ever fell
+silent. The neutered arm read the coverage floor **exactly, 0.843750 = 108/128**, in both runs (that
+conjunct met), and paged / neutered = 1.000000. R3 and R4 unchanged to the digit (0.164062; refusals 0,
+moved 128, 3.95 → 1.00). **A4's premise was wrong and is withdrawn:** "recurrent weight 0.6 < threshold
+1.0 silences an abandoned block" ignored that the membrane INTEGRATES — at decay 0.5 the sustained gain
+is 2×, and each post carries ~16 own-block in-edges, so a lit block is self-sustaining far below the
+per-edge threshold. The worker's positive control in the same harness at weight 0.1: **63 evictions,
+exact 0.351562 against its own neutered 0.843750** — the eviction path charges once activity dies. The
+regime the pager exists for (a working set that MOVES and whose abandoned regions GO QUIET) is
+realizable on this substrate; a hand-picked recurrence constant is what failed, twice. Per P1 a picked
+constant is replaced by a derivation. Disclosed: these check cells necessarily produced R2's first
+paged / twin ratios at seed 0 under the FAILED fixture (0.862–0.864 footprint, 0.821 traced, the whole
+saving present in the neutered arm too) — the "STORE WINS, POLICY NULL" shape at one seed of a fixture
+that did not realize the regime; no verdict is read from it, and it is quoted so it cannot be read as
+unseen.
+
+**A5 — R2's recurrence is DERIVED by a silence probe, not picked.** On the R2 fixture at 16,384 (sliding
+window 32, slide 4, `panel_local`, duplicate-free, the panel's pager parameters), for the recurrent
+weight w over the descending grid {0.6, 0.4, 0.3, 0.2, 0.15, 0.1}: drive ONE 32-block window for 5
+ticks, remove the drive, and count the ticks until no unit in those blocks fires (the block's SILENCE
+TIME). R2's w is the LARGEST grid value whose silence time is ≤ 3 ticks — the ring window `max_delay`,
+the clause that must clear for eviction — and the whole table is printed and recorded in every R2 cell's
+JSON as the derivation. The fixture check of §2.10 is unchanged (evictions > 0; exact ≤ 0.50; the
+neutered arm at the 0.844 floor) and must pass under the derived w before any cell counts. Pre-stated
+branch: if NO grid value silences within 3 ticks, the regime is UNREALIZABLE on this substrate's
+membrane and the campaign runs without R2's eviction conjunct being reachable — the verdict is then
+"STORE WINS, POLICY NULL" or LOSS by construction (eviction cannot charge in any realizable regime),
+and it is recorded that way, never as a WIN.
+
+**`verdict.py` is brought up to §2.10 before the campaign** (three outcomes; the paged < neutered
+conjunct by the same paired test; the R2-refrac and R1-bound rows reported, never deciding), and its
+four synthetic self-test sets become five (WIN, STORE-WINS/POLICY-NULL, LOSS, DEGENERATE, R3-blind).
+
+**Not changed:** everything §2.10 lists as unchanged, and §2.10's three outcomes and their dispositions.
+Three fixture reds in a row are the instrument reds doing their job before the number is known; each
+is dated here with the reading that forced it, and the campaign has not started.
