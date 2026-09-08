@@ -105,6 +105,46 @@ def test_journaller_refuses_hole_without_consuming(tmp_path):
         journal.drain()  # the hole does not heal by itself; refusal repeats loudly
 
 
+def test_journaller_drain_reports_every_appended_payload_to_the_one_append_observer(tmp_path):
+    """The ring journaller is the ONLY writer of the workspace coalition class (0x0A) and it wrote
+    around `home.observe_append` -- the append budget's census could never see the tag that is
+    80 % of the operator's lake by bytes. RUN RED first: the observer saw nothing across a drain.
+    The drain reports each payload it appended, tag byte and tag-prefixed length, AFTER the
+    BinLog extend (accounting never precedes or breaks a durable write); an empty drain and a
+    refused drain report nothing (the control, in the same test)."""
+    from snn_data_lake.substrate import home as home_mod
+
+    ring = SignalRing(slots=8)
+    journal = LakeJournaller(ring, BinLog(str(tmp_path / "lake.bin")))
+    payloads = [home_mod._T_COALITION + f"coalition-{k}".encode("ascii") for k in range(3)]
+    for p in payloads:
+        ring.publish(p)
+    seen = []
+    prev = home_mod.set_append_observer(lambda tag, n: seen.append((tag, n)))
+    try:
+        assert journal.drain() == 3
+        assert journal.drain() == 0  # the control: an empty drain observes nothing more
+    finally:
+        home_mod.set_append_observer(prev)
+    assert seen == [(0x0A, len(p)) for p in payloads], (
+        f"the journaller's appends are off the one observer path: {seen}"
+    )
+    assert list(BinLog(str(tmp_path / "lake.bin")).replay()) == payloads
+    # A REFUSED drain appends nothing and must observe nothing (accounting follows the write).
+    small = SignalRing(slots=2)
+    j2 = LakeJournaller(small, BinLog(str(tmp_path / "lake2.bin")))
+    for p in payloads:
+        small.publish(p)
+    seen2 = []
+    prev = home_mod.set_append_observer(lambda tag, n: seen2.append((tag, n)))
+    try:
+        with pytest.raises(RingOverrun):
+            j2.drain()
+    finally:
+        home_mod.set_append_observer(prev)
+    assert seen2 == [], f"a refused drain observed an append that never happened: {seen2}"
+
+
 def test_single_writer_is_structural():
     ring = SignalRing(slots=4)
     ring.publish(b"\x7fowner")
