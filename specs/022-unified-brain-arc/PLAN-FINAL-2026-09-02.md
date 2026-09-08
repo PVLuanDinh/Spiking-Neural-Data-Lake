@@ -549,9 +549,19 @@ clause protects it.
 - **S1 = T064** unit blocks + block-aligned records (`substrate/lake_engine.py`, new `substrate/unit_blocks.py`),
   the first live writer of `SynapseDelta` (rewiring becomes lake-resident before unit growth does); port
   `neuro_chip_stream`'s one-core-resident shard discipline (P2).
-- **S2 = T065** the binding width from measured state-per-unit, recorded by the EXISTING
-  `substrate/perf_baseline.py --record/--assert` (T065's `tools/perf_baseline.py` wording is stale: the p4c
-  ratchet refused `tools/` at T001); 16k stays the ingest milestone only.
+- **S2 = T065** the binding width from measured state-per-unit. *DONE 2026-09-07
+  (`evidence/s2-state-per-unit.md`): **302.01 B/unit marginal**, 5195.57 B fixed overhead, max
+  residual 19.62 B on 5.5-8.5 KB fits. The naive `blob/units` ratio was measured CONFOUNDED twice --
+  with width fixed it tracks the trajectory (2775 -> 3107 B/unit across 200-1200 ticks while the unit
+  count never leaves 2), and with width varying it charges the fixed overhead to the units (5503
+  B/unit at one unit vs 776 at eleven, a seven-fold spread that is all intercept) -- so the figure is
+  a SLOPE, not a ratio. Binding width 222,193 units at 64 MB / 888,825 at 256 MB / 3,555,352 at 1 GB,
+  with the budget reported as an INPUT (P1). **16k is confirmed an ingest milestone only: ~5.0 MB, three
+  orders below the 64 MB width.** Recorded through the EXISTING perf_baseline (P2) with a ratchet whose
+  red is shown reachable (2x reds, 1.10x passes, absent reports). Two things deliberately NOT done and
+  disclosed: the first measurement writes its own block ONLY, leaving the tick baseline's S0-kernel
+  reference untouched (a full --record would have silently reset it), and the ratchet is NOT in the
+  pre-push gate because the slope costs 332.7 s measured.* 16k stays the ingest milestone only.
 - **S3 = T066** activation-driven paging, BOTH reds built before the mechanism (FR-010/FR-011: no silent
   drop of a spike to a paged-out unit; the integer rounds budget trips on constructed overload). **S4 = T067**
   growth delta tier + background merge in sleep (its locality reorder uses block adjacency until the prior

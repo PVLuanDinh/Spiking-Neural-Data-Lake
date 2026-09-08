@@ -32,5 +32,38 @@
     "reads": 1500,
     "file_mb": 256,
     "target_dir": "D:\\"
+  },
+  "state_per_unit": {
+    "slope_bytes_per_unit": 302.01,
+    "fixed_overhead_bytes": 5195.57,
+    "max_abs_residual_bytes": 19.62,
+    "points": [
+      [
+        1,
+        5503
+      ],
+      [
+        2,
+        5806
+      ],
+      [
+        4,
+        6396
+      ],
+      [
+        8,
+        7592
+      ],
+      [
+        11,
+        8533
+      ]
+    ],
+    "ticks": 600,
+    "binding_width_at_budget": {
+      "64MB": 222193,
+      "256MB": 888825,
+      "1024MB": 3555352
+    }
   }
 }

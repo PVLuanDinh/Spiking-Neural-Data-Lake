@@ -197,6 +197,93 @@ def _measure_iops(drive_dir: str | None = None) -> dict:
     }
 
 
+def _measure_state_per_unit(ticks: int = 600, caps: tuple = (1, 2, 4, 8, 16)) -> dict:
+    """The MARGINAL bytes of persisted state per grown unit -- specs/022 T065's binding width.
+
+    MEASURED AS A SLOPE, NOT A RATIO, and the difference is the whole instrument. The naive
+    `blob_bytes / units` is confounded twice over:
+      * with ticks varying and width fixed, the ratio moves entirely with the TRAJECTORY tail --
+        measured: across 200-1200 ticks the unit count never leaves 2 while the blob grows
+        5550 -> 6214 B, so the "per-unit" figure rises 2775 -> 3107 B/unit while no unit is added;
+      * with width varying, the ratio charges the blob's FIXED overhead to the units -- measured:
+        5503 B/unit at one unit against 776 B/unit at eleven, a factor of seven that is all
+        intercept.
+    So ticks are held FIXED, width is forced by the admission cap (`_l_max`, with `_eps_tol` driven
+    to zero so the cap actually binds -- the inertness measured in evidence/sc-012a-width.md), and
+    blob bytes are regressed on units. The SLOPE is the marginal cost of a unit; the INTERCEPT is
+    the fixed overhead a ratio would have silently blamed on the units.
+
+    The binding width follows by division and is reported at DISCLOSED budgets rather than at one
+    picked here -- the budget is an input, not a property of the brain (P1)."""
+    import tempfile as _tf  # noqa: PLC0415
+
+    scratch = _tf.mkdtemp(prefix="perf_state_per_unit_")
+    os.environ["NORD_HOME"] = scratch
+    from snn_data_lake.cortex.brain import make_brain  # noqa: PLC0415
+
+    pts = []
+    for cap in caps:
+        brain = make_brain(seed=0, persist=False)
+        eng = getattr(brain, "neuro", None)
+        if eng is None:
+            brain.close()
+            return {"slope_bytes_per_unit": None, "reason": "no growth engine (torch tier absent)"}
+        eng._l_max = int(cap)
+        eng._eps_tol = 0.0
+        for _ in range(ticks):
+            brain.tick()
+        blob = eng.growth_state_bytes()
+        pts.append((int(eng.grown_units), len(blob) if blob else 0))
+        brain.close()
+
+    xs = [u for u, _ in pts if u]
+    ys = [n for u, n in pts if u]
+    if len(set(xs)) < 2:
+        # absence is a fact: with no width variation the slope is NOT measurable, and this
+        # refuses rather than dividing and calling the ratio a per-unit cost
+        return {
+            "slope_bytes_per_unit": None,
+            "reason": f"width did not vary (units {sorted(set(xs))}) -- slope not measurable",
+            "points": pts,
+        }
+    mx = statistics.fmean(xs)
+    my = statistics.fmean(ys)
+    slope = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / sum((x - mx) ** 2 for x in xs)
+    intercept = my - slope * mx
+    resid = [y - (slope * x + intercept) for x, y in zip(xs, ys)]
+    return {
+        "slope_bytes_per_unit": round(slope, 2),
+        "fixed_overhead_bytes": round(intercept, 2),
+        "max_abs_residual_bytes": round(max(abs(r) for r in resid), 2),
+        "points": pts,
+        "ticks": ticks,
+        # reported, never asserted: the width a budget buys. The budget is an INPUT.
+        "binding_width_at_budget": {
+            f"{mb}MB": (int((mb * 1024 * 1024 - intercept) / slope) if slope > 0 else None)
+            for mb in (64, 256, 1024)
+        },
+    }
+
+
+def _score_state_per_unit(metrics: dict, baseline: dict) -> tuple[bool, str]:
+    """RATCHET: the marginal bytes-per-unit may not RISE past tolerance.
+
+    A growing per-unit cost is the regression that matters for a substrate meant to scale -- it
+    shrinks the binding width at every budget at once. Absent on either side is REPORTED, never a
+    red: a baseline recorded before this metric existed, or a run without the growth engine, is a
+    missing measurement rather than a regression (the standing rule that a zero is a claim about
+    the instrument first)."""
+    cur = (metrics.get("state_per_unit") or {}).get("slope_bytes_per_unit")
+    base = (baseline.get("state_per_unit") or {}).get("slope_bytes_per_unit")
+    if cur is None or base is None:
+        return True, f"state-per-unit: cur={cur} baseline={base} -> reported, not asserted"
+    ok = cur <= base * (1 + TOLERANCE)
+    return ok, (
+        f"state-per-unit {cur:.1f} B/unit vs baseline {base:.1f} "
+        f"-> {'OK' if ok else 'REGRESSION'} (a rising per-unit cost shrinks the binding width)"
+    )
+
+
 def _normalized(metrics: dict, baseline: dict) -> tuple[float, float, float, float, str]:
     """Return (cur_p50, cur_p95, base_p50, base_p95, basis). Ambient-ratio basis whenever the
     baseline carries wake_ratio fields (see the module-top note); absolute otherwise."""
@@ -254,8 +341,49 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--report", action="store_true")
     mode.add_argument("--assert", dest="assert_", action="store_true")
     mode.add_argument("--self-check", dest="self_check", action="store_true")
+    mode.add_argument(
+        "--state-per-unit",
+        dest="spu",
+        action="store_true",
+        help="T065: measure the marginal bytes-per-unit slope and score it against the baseline",
+    )
     ap.add_argument("--stage", default="S0-pre")
     args = ap.parse_args(argv)
+
+    if args.spu:
+        # T065's OWN MODE, and it is separate for a measured reason. The slope needs five brains x
+        # 600 ticks to force width with the admission cap; folding that into --assert would put
+        # minutes onto every pre-push gate, and "anything that observes the brain must be cheap
+        # enough not to become the load" is a standing invariant here. So the expensive
+        # measurement runs on demand and at --record; the per-push gate keeps the tick ratchet.
+        # DISCLOSED: that means the state-per-unit ratchet is NOT in the pre-push path -- it binds
+        # when this mode is run, and its absence from --assert is stated rather than implied.
+        if not BASELINE.exists():
+            print("perf_baseline: no baseline recorded; run --record on the pinned host first")
+            return 1
+        baseline = json.loads(BASELINE.read_text())
+        t0 = time.perf_counter()
+        spu = _measure_state_per_unit()
+        print(json.dumps(spu, indent=2))
+        if not (baseline.get("state_per_unit") or {}).get("slope_bytes_per_unit"):
+            # FIRST measurement establishes this metric's own baseline and NOTHING ELSE. A full
+            # --record would re-measure ticks and iops too, silently resetting the reference the
+            # tick ratchet has asserted against since S0-kernel -- a side effect nobody asked for
+            # and the kind of quiet re-baseline this module's --stage refusal exists to prevent.
+            if spu.get("slope_bytes_per_unit") is None:
+                print(f"perf_baseline [state-per-unit] NOT MEASURABLE: {spu.get('reason')}")
+                return 1
+            baseline["state_per_unit"] = spu
+            BASELINE.write_text(json.dumps(baseline, indent=2) + "\n")
+            print(
+                f"perf_baseline [state-per-unit] BASELINE ESTABLISHED at "
+                f"{spu['slope_bytes_per_unit']} B/unit (ticks and iops UNTOUCHED)  "
+                f"({time.perf_counter() - t0:.1f}s)"
+            )
+            return 0
+        ok, msg = _score_state_per_unit({"state_per_unit": spu}, baseline)
+        print(f"perf_baseline [state-per-unit] {msg}  ({time.perf_counter() - t0:.1f}s)")
+        return 0 if ok else 1
 
     if not (args.record or args.report or args.assert_ or args.self_check):
         # Bare invocation (run_selfchecks path): a CHEAP wiring check -- the baseline
@@ -282,6 +410,24 @@ def main(argv: list[str] | None = None) -> int:
         }
         ok_fast, _ = _score(fast, baseline)
         ok_slow, _ = _score(slow, baseline)
+        # T065: the state-per-unit ratchet is checked on the SAME cheap synthetic basis -- a
+        # cheap-and-lean ratchet must still be shown to discriminate, or its green means nothing.
+        _base_spu = baseline.get("state_per_unit") or {}
+        if _base_spu.get("slope_bytes_per_unit"):
+            _b = float(_base_spu["slope_bytes_per_unit"])
+            ok_spu_fast, _ = _score_state_per_unit(
+                {"state_per_unit": {"slope_bytes_per_unit": _b * 0.5}}, baseline
+            )
+            ok_spu_slow, _ = _score_state_per_unit(
+                {"state_per_unit": {"slope_bytes_per_unit": _b * 100.0}}, baseline
+            )
+            ok_spu_absent, _ = _score_state_per_unit({}, baseline)
+            if not ok_spu_fast or ok_spu_slow or not ok_spu_absent:
+                print(
+                    "perf_baseline wiring-check FAILED: the state-per-unit ratchet does not "
+                    "discriminate (lean should pass, fat should fail, absent should report)"
+                )
+                return 1
         if not ok_fast or ok_slow:
             print(
                 "perf_baseline wiring-check FAILED: scoring does not discriminate (fast should pass, slow should fail)"
@@ -302,12 +448,14 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
         ticks = _measure_ticks()
         iops = _measure_iops()
+        state_per_unit = _measure_state_per_unit()  # T065: the binding width's slope
         record = {
             "stage": args.stage,
             "recorded_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "host": os.environ.get("COMPUTERNAME", "?"),
             "ticks": ticks,
             "iops": iops,
+            "state_per_unit": state_per_unit,
         }
         BASELINE.write_text(json.dumps(record, indent=2) + "\n")
         print(json.dumps(record, indent=2))
