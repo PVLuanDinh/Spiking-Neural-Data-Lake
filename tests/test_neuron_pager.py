@@ -158,12 +158,12 @@ def _drive(units, level=2.0):
     return ext
 
 
-def _twin(edges, *, cls=None, max_delay=MAX_DELAY):
+def _twin(edges, *, cls=None, max_delay=MAX_DELAY, refrac_ticks=0):
     state = KernelState([("net", N)])
     state.arrays["thr"][:] = 1.0
     syn = Synapses(*edges, N, P_PARTS, FRAC, max_delay)
     tick_cls = cls or _MeteredTick
-    return tick_cls(state, syn, decay=0.5, v_reset=0.0, refrac_ticks=0)
+    return tick_cls(state, syn, decay=0.5, v_reset=0.0, refrac_ticks=refrac_ticks)
 
 
 def _store_for(tmp_path, edges, name="lake"):
@@ -186,13 +186,14 @@ def _paged(
     tick_cls=None,
     pager_cls=None,
     max_delay=MAX_DELAY,
+    refrac_ticks=0,
 ):
     state = KernelState([("net", N)])
     state.arrays["thr"][:] = 1.0
     syn = Synapses.empty(N, P_PARTS, FRAC, max_delay)
     resident = np.zeros(N, dtype=bool)
     kt = (tick_cls or _MeteredTick)(
-        state, syn, decay=0.5, v_reset=0.0, refrac_ticks=0, resident=resident
+        state, syn, decay=0.5, v_reset=0.0, refrac_ticks=refrac_ticks, resident=resident
     )
     pager = (pager_cls or NeuronPager)(
         kt,
@@ -522,6 +523,117 @@ def test_a_block_holding_sub_threshold_charge_is_evictable_and_keeps_decaying(tm
     assert rings == twin_rings
     assert np.array_equal(kt.state.arrays["v"], twin.state.arrays["v"]), (
         "a paged-out unit's membrane must keep decaying exactly as the resident twin's does"
+    )
+
+
+REFRAC_MAX_DELAY = 2
+REFRAC_TICKS = 5  # > REFRAC_MAX_DELAY, the ONE regime the ring-safety condition does not cover
+REFRAC_UNIT = BLOCK  # the first unit of block 1
+REFRAC_RELEASE_TICK = 7  # the tick its refractory has expired on and it is at threshold
+REFRAC_DRIVE = 4.0  # decays to 2.0 across one tick at decay=0.5, still over thr = 1.0
+
+
+def _refrac_window_edges():
+    """Two edges out of the PINNED block, both at delay 1 and both above threshold.
+
+    Unit 0 drives `REFRAC_UNIT` (block 1) so block 1 pages in on the tick its pending drains and
+    its unit fires on the SAME tick the resident twin's does -- the paged run is byte-identical
+    up to the eviction, so a divergence can only come from the eviction. Unit 1 drives block 2 so
+    block 2 becomes due EXACTLY on the tick block 1's refractory has been released, which is the
+    capacity pressure that asks for room. Both targets are terminal, so a dropped spike cannot be
+    laundered into a later one."""
+    return [0, 1], [REFRAC_UNIT, 2 * BLOCK], [WEIGHT, WEIGHT], [1, 1]
+
+
+def test_a_unit_at_threshold_with_its_refractory_released_is_not_evicted(tmp_path):
+    """A unit about to fire must not be demoted out from under its own spike.
+
+    `KernelTick._propagate` reads `gated = refrac > 0` BEFORE the decrement, so a unit whose
+    refractory reaches 0 at tick t is gated at t and fires at t+1 if it is still at threshold.
+    The ring-safety condition admits exactly that unit at t+1: its last spike is older than
+    `max_delay` (reachable only when `refrac_ticks > max_delay`), its refractory reads 0, and both
+    buffers are empty -- while its MEMBRANE, which the condition deliberately does not test,
+    stands at or above `thr`. Evicting it before propagate silences a spike the resident twin
+    fires, and firing is restricted to resident units, so the spike is not deferred -- it is GONE.
+
+    The fixture puts that unit under capacity pressure on precisely that tick and asserts the
+    calm byte-identity S-R2 pre-registers. The disclosed cost of holding it is a capacity trip:
+    over capacity for one tick rather than a dropped spike, which is the trade `_make_room`
+    already makes everywhere else."""
+    edges = _refrac_window_edges()
+    drives = {
+        0: _drive([0]),
+        # unit 1 makes block 2 due next tick; REFRAC_UNIT is charged over threshold while it is
+        # still refractory-gated, so it holds that charge into the tick its gate releases
+        REFRAC_RELEASE_TICK - 1: _drive([1]) + _drive([REFRAC_UNIT], REFRAC_DRIVE),
+    }
+    twin = _twin(edges, max_delay=REFRAC_MAX_DELAY, refrac_ticks=REFRAC_TICKS)
+    twin_trains, twin_rings = _run_plain(twin, drives, 12)
+    store, blocks = _store_for(tmp_path, edges, name="refracwin")
+    kt, pager = _paged(
+        store,
+        blocks,
+        capacity_blocks=2,
+        blocks_per_round=4,
+        max_rounds=2,
+        max_stale_ticks=0,
+        pinned=frozenset({0}),
+        pager_cls=_EvictionLog,
+        max_delay=REFRAC_MAX_DELAY,
+        refrac_ticks=REFRAC_TICKS,
+    )
+    arrays = kt.state.arrays
+    trains, rings, at_release = [], [], None
+    for t in range(12):
+        if t == REFRAC_RELEASE_TICK:
+            at_release = {
+                "refrac": int(arrays["refrac"][REFRAC_UNIT]),
+                "v": float(arrays["v"][REFRAC_UNIT]),
+                "thr": float(arrays["thr"][REFRAC_UNIT]),
+                "last_spike": int(arrays["last_spike"][REFRAC_UNIT]),
+                "resident_block": 1 in pager._resident_blocks,
+                "pressure": sum(int(np.abs(p[2 * BLOCK : 3 * BLOCK]).sum()) for p in kt.pending),
+            }
+        trains.append(pager.tick(drives.get(t)).tobytes())
+        rings.append(_rings_of(kt))
+    # the hole's precondition, asserted rather than assumed -- these hold on BOTH trees, and
+    # without them the arm would be testing nothing
+    assert at_release is not None and at_release["resident_block"], (
+        f"block 1 was not resident when its refractory released: {at_release}"
+    )
+    assert at_release["refrac"] == 0, (
+        f"the refractory had not been released at tick {REFRAC_RELEASE_TICK}: {at_release}"
+    )
+    assert at_release["v"] >= at_release["thr"], (
+        f"the unit was not at threshold when room was needed: {at_release}"
+    )
+    assert at_release["last_spike"] < REFRAC_RELEASE_TICK - REFRAC_MAX_DELAY, (
+        f"the ring-safety clause already excluded this block, so the arm cannot reach the "
+        f"membrane clause it exists to test: {at_release}"
+    )
+    assert at_release["pressure"] > 0, (
+        "block 2 was not due, so no room was ever needed and nothing was asked to leave core"
+    )
+    first_diff = next(
+        (i for i, (a, b) in enumerate(zip(trains, twin_trains, strict=True)) if a != b), None
+    )
+    assert first_diff is None, (
+        f"the paged run diverged from the resident twin at tick {first_diff}: the twin fired "
+        f"{np.frombuffer(twin_trains[first_diff], dtype=np.int64).tolist()} and the paged run "
+        f"fired {np.frombuffer(trains[first_diff], dtype=np.int64).tolist()} -- a unit at "
+        f"threshold with its refractory released was demoted before propagate and its spike was "
+        f"DROPPED, not deferred (evicted {pager.evicted})"
+    )
+    assert rings == twin_rings, "ring-slot key lists must match the twin tick for tick"
+    assert np.array_equal(arrays["v"], twin.state.arrays["v"]), (
+        "a dropped spike leaves the membrane unreset, so the arrays must be compared too"
+    )
+    assert (REFRAC_RELEASE_TICK, 1) not in pager.evicted, (
+        f"block 1 was demoted on the very tick its unit was about to fire: {pager.evicted}"
+    )
+    assert pager.capacity_trips >= 1, (
+        "holding a unit that is about to fire COSTS a capacity trip -- a run that stayed within "
+        "capacity did not exercise the refusal at all"
     )
 
 

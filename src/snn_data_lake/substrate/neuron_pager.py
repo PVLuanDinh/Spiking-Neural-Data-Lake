@@ -297,12 +297,23 @@ class NeuronPager:
     block that received input, did not fire, and held no buffered charge was refused demotion and
     the fetch went over capacity.
 
-    ONE LIMIT OF THE RING-SAFETY CONDITION, disclosed rather than assumed away: it admits a unit
-    that is above threshold but was refractory-gated at its last propagate, which can only happen
-    when `refrac_ticks > max_delay`. Such a unit would fire on the twin and not on a paged run
-    while it is out of core. Every fixture in this tree runs `refrac_ticks <= max_delay`, so the
-    case is not reached here; it is named because a caller that raises `refrac_ticks` above
-    `max_delay` owes the check, not because it has been measured."""
+    THE ONE LIMIT OF THE RING-SAFETY CONDITION IS NOW CLOSED, and it was closed the way it should
+    have been opened -- by constructing the input, not by reasoning about it. The condition
+    admitted a unit above threshold whose refractory had just been released: `_propagate` reads
+    `gated = refrac > 0` BEFORE the decrement, so a unit whose refractory reaches 0 at tick t is
+    gated at t and fires at t+1 if it is still at `thr`, and at t+1 its own last spike is already
+    older than `max_delay` -- reachable only when `refrac_ticks > max_delay`, which no fixture in
+    this tree ran, which is exactly why it stayed a paragraph instead of a measurement. Under
+    capacity pressure on that tick `step()` demoted it before propagate and the spike was not
+    deferred but LOST, because firing is restricted to resident units. `_evictable` now also
+    requires every unit of a candidate block to hold `v < thr`: a unit at or above threshold with
+    its refractory released is about to fire and stays in core. The clause is NARROW on purpose --
+    sub-threshold charge still evicts freely, which is the whole point of removing the blanket
+    `v == 0` clause above. The cost of holding such a block is a capacity trip, the same
+    over-capacity trade `_make_room` already makes rather than abandon a fetch. Measured, not
+    argued: tests/test_neuron_pager.py's refractory-window arm builds `max_delay=2` with
+    `refrac_ticks=5` and read the twin firing `[128, 256]` against the paged run's `[256]` on the
+    tree without this clause."""
 
     def __init__(
         self,
@@ -445,19 +456,29 @@ class NeuronPager:
     #   answers no question about whether anything may leave core.
     # distinct-from: cortex/time_cells.py::nominal_estimate -- a noise-free decode of what a
     #   time-cell ladder would report for an interval; a readout over thresholds, not a
-    #   predicate over a substrate block's buffers. All three sites read 2026-09-08.
+    #   predicate over a substrate block's buffers. All three sites read 2026-09-08, and re-read
+    #   2026-09-08 when the membrane clause below was added: none of them reads a membrane
+    #   against a threshold to decide residency, so none is a second mechanism for this job.
     def _evictable(self, block, tick):
         """True when nothing this block does out of core can differ from what it would do in it:
-        no spike within max_delay (ring safety), refrac released, and no charge waiting in either
-        buffer. The MEMBRANE is deliberately not tested -- it keeps decaying while paged out, by
-        the same op the twin runs, so charge on it is no longer a reason to hold a block in core.
-        The class docstring carries why that clause existed, why removing its CAUSE removed it,
-        and the one regime the ring-safety condition does not cover."""
+        no spike within max_delay (ring safety), refrac released, no charge waiting in either
+        buffer, and no unit already AT threshold.
+
+        The membrane is tested for ONE thing and not for the other. Sub-threshold charge is not a
+        reason to hold a block -- it keeps decaying while paged out, by the same op the twin runs,
+        so it comes back holding what the twin holds. Charge that has already reached `thr` is a
+        different quantity: with the refractory released, that unit fires on the NEXT propagate,
+        and firing is restricted to RESIDENT units, so demoting it silences a spike rather than
+        deferring one. The class docstring carries why the blanket `v == 0` clause existed, why
+        removing its CAUSE removed it, and how this narrow clause closes the regime that removal
+        left open."""
         units = self._units[block]
         arrays = self.kt.state.arrays
         if int(arrays["last_spike"][units].max()) >= tick - self.kt.syn.max_delay:
             return False
         if int(arrays["refrac"][units].max()) != 0:
+            return False
+        if bool(np.any(arrays["v"][units] >= arrays["thr"][units])):
             return False
         for p in range(self.kt.p_parts):
             if int(np.abs(self.kt._acc[p][units]).sum()):
