@@ -52,6 +52,17 @@ _ENV_HEAD = struct.Struct("<HI")  # version:u16, crc32:u32
 SEGMENT_DIR = "segments"
 WAL_NAME = "active.wal"
 
+#: The sealed-segment schema, named once because `seal()` now writes batch by batch and every
+#: batch must carry the identical schema for the footer to index them as one file.
+SEGMENT_SCHEMA = pa.schema(
+    [
+        ("seq", pa.uint64()),
+        ("version", pa.uint16()),
+        ("crc", pa.uint32()),
+        ("payload", pa.binary()),
+    ]
+)
+
 
 class SegmentCorruption(RuntimeError):
     """A sealed segment failed its per-record CRC or structural check. Sealed files are
@@ -107,17 +118,34 @@ class SegmentStore:
         seq0 = self._next_seq()
         final = self.dir / f"seg-{seq0:08d}.lake"
         tmp = final.with_suffix(".lake.tmp")
-        table = pa.table(
-            {
-                "seq": pa.array(range(seq0, seq0 + len(records)), pa.uint64()),
-                "version": pa.array([ENVELOPE_VERSION] * len(records), pa.uint16()),
-                "crc": pa.array([_ENV_HEAD.unpack_from(r)[1] for r in records], pa.uint32()),
-                "payload": pa.array([r[_ENV_HEAD.size :] for r in records], pa.binary()),
-            }
-        )
+        # ONE ARROW RECORD BATCH PER RECORD (specs/022 T066). The first form wrote the whole
+        # sealed segment as ONE table, so the footer indexed the segment and a record inside it
+        # was reachable only by reading the segment whole -- which is not a paged read. One batch
+        # per record makes the footer index the RECORDS, which is what `read_record` seeks by.
+        # The BYTE LAYOUT OF A SEALED SEGMENT CHANGES, and it changes for every tenant because a
+        # per-tenant layout would be two writers (P2). The change is FORWARD-ONLY and that is the
+        # load-bearing part rather than the pre-registration's "no production segment exists yet",
+        # which this commit did not re-measure: every existing READER is unaffected, because
+        # `read_all()` concatenates batches whatever their width, so `read_segment`,
+        # `iter_payloads`, `lake_bridge.iter_records` and `lake_rebuild_gate` read an old
+        # whole-table segment and a new one identically. Only `read_record` requires the new
+        # layout, and it REFUSES an old segment loudly rather than returning a wrong record.
+        # Asserted, not assumed, in tests/test_lake_segments.py and tests/test_neuron_pager.py.
         with open(tmp, "wb") as f:
-            with pa_ipc.new_file(f, table.schema) as w:
-                w.write_table(table)
+            with pa_ipc.new_file(f, SEGMENT_SCHEMA) as w:
+                for i, rec in enumerate(records):
+                    version, crc = _ENV_HEAD.unpack_from(rec)
+                    w.write_batch(
+                        pa.record_batch(
+                            [
+                                pa.array([seq0 + i], pa.uint64()),
+                                pa.array([version], pa.uint16()),
+                                pa.array([crc], pa.uint32()),
+                                pa.array([rec[_ENV_HEAD.size :]], pa.binary()),
+                            ],
+                            schema=SEGMENT_SCHEMA,
+                        )
+                    )
             f.flush()
             os.fsync(f.fileno())
         os.replace(tmp, final)
@@ -180,6 +208,62 @@ def read_segment(path: str | os.PathLike):
         if (zlib.crc32(payload) & 0xFFFFFFFF) != crc:
             raise SegmentCorruption(f"{path.name}: record {i} CRC mismatch")
         yield payload
+
+
+# distinct-from: read_segment above -- that streams the WHOLE segment and CRC-checks every record,
+#   which is the migration/bridge read. This seeks ONE record by the footer index and checks only
+#   that record's CRC: the paged read (specs/022 T066), where verifying the segment whole would
+#   defeat the point of paging a block out of it.
+# distinct-from: substrate/lake_bridge.py::_iter_segment -- DELEGATES to read_segment for the
+#   forward scan; it addresses nothing and adds no framing.
+# distinct-from: substrate/home.py::_state_record -- parses ONE _T_STATE payload out of the BinLog
+#   frame (name, seq, blob) inside the incumbent lake file; the `seq` there is a per-name state
+#   ordinal, not a segment row address, and no footer is involved.
+# distinct-from: substrate/gradient_claim_gate.py::_write_measure_artifact -- writes a JSON
+#   measurement artifact so a gate run's age is checkable; no lake record, no CRC envelope.
+# distinct-from: substrate/kernel_tick.py::_bench_kernel, reasoning/resume_learning.py::_forward --
+#   matched on "run one <thing>" vocabulary; both step neurons and neither touches a segment.
+#   All five sites read 2026-09-08.
+def read_record(path: str | os.PathLike, seq: int) -> bytes:
+    """The payload of ONE record in a sealed segment, addressed by its GLOBAL seq.
+
+    `seg-NNNNNNNN.lake` holds seqs NNNNNNNN .. NNNNNNNN+n-1, one per Arrow record batch, so the
+    batch index is `seq - NNNNNNNN` and the footer gives it in O(1). Refuses an out-of-range seq
+    (ValueError) and refuses corruption loudly (SegmentCorruption) -- the record's own CRC is
+    verified through `unwrap`, the same envelope check `read_segment` applies, on that one record
+    rather than on the segment.
+
+    THE FILE IS OPENED PLAINLY, never `memory_map`: OS eviction under mmap is blind to activation
+    (research.md D1), and the pager's residency policy is the quantity being measured, so it must
+    not be shadowed by the kernel's page-cache decisions. `substrate/proximity_index.py` is the
+    tree's mmap store and is the incumbent this deliberately does not follow (site read)."""
+    path = Path(path)
+    try:
+        base = int(path.stem.split("-")[1])
+    except (IndexError, ValueError) as e:
+        raise ValueError(f"{path.name}: not a seg-NNNNNNNN.lake segment name") from e
+    index = int(seq) - base
+    with open(path, "rb") as fh:
+        try:
+            reader = pa_ipc.open_file(fh)
+        except pa.ArrowInvalid as e:
+            raise SegmentCorruption(f"{path.name}: not a valid sealed segment ({e})") from e
+        n = reader.num_record_batches
+        if not 0 <= index < n:
+            raise ValueError(f"{path.name}: seq {seq} is outside [{base}, {base + n})")
+        batch = reader.get_batch(index)
+    if batch.num_rows != 1:
+        raise SegmentCorruption(
+            f"{path.name}: batch {index} holds {batch.num_rows} rows -- per-record addressing "
+            "needs one record per batch (a segment sealed by the pre-T066 writer)"
+        )
+    stored = int(batch.column("seq")[0].as_py())
+    if stored != int(seq):
+        raise SegmentCorruption(f"{path.name}: batch {index} carries seq {stored}, not {seq}")
+    version = int(batch.column("version")[0].as_py())
+    crc = int(batch.column("crc")[0].as_py())
+    payload = batch.column("payload")[0].as_py()
+    return unwrap(_ENV_HEAD.pack(version, crc) + payload, where=f"{path.name}#{seq}")
 
 
 def main() -> int:

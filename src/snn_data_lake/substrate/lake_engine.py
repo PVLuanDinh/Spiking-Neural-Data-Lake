@@ -133,6 +133,18 @@ RETENTION: dict[int, tuple[str, bool, str]] = {
         "unbaselined (goals are LOW-frequency, created deliberately, never per-tick; a "
         "baseline lands with the first live per-tick writer if one ever exists)",
     ),
+    0x0C: (
+        "IMMORTAL",
+        False,
+        "_T_UNITBLOCK per-block out-edge records (UnitBlockRecord below, specs/022 T066): the "
+        "block IS the synaptic identity of its units and there is no snapshot to reconstruct it "
+        "from, so nothing here is reclaimable. The pager's PAGE-OUT destroys no record -- it "
+        "changes residency in RAM only, which its lake-digest identity arm measures (the store's "
+        "segment bytes before and after a full page-out/page-in cycle are equal). Append budget: "
+        "unbaselined (reported, never trips) -- the store's writes are a ONE-TIME BUILD, not "
+        "per-tick appends, so there is no per-tick rate to bound; the append-budget class for "
+        "per-tick growth deltas at the block grain is T067's",
+    ),
 }
 
 
@@ -252,6 +264,127 @@ class SynapseDelta:
         for i, j, q in got:
             w[i, j] = q * self.q_step
         return len(got)
+
+
+# distinct-from: SynapseDelta above -- that is a spike-derived DELTA of individual weights inside
+#   one matrix, compare-dropped tick by tick (tag 0x09); this is the WHOLE out-edge set of a block
+#   of units, written once as the block's synaptic identity (tag 0x0C) and read back to compile
+#   delivery bundles. Different tag, different cadence, different consumer.
+# distinct-from: substrate/unit_blocks.py::UnitBlocks.group -- that PARTITIONS entries by the block
+#   their post unit lives in and frames nothing; this is the on-disk record a block becomes. The
+#   partition arithmetic is adopted from it (P2), not re-derived here.
+# distinct-from: substrate/kernel_state.py::KernelState.to_blob -- the per-unit STATE frame
+#   (_T_STATE, kernel_state.v1). This record deliberately carries NO state: a second copy of v/thr
+#   inside a block record would be the P2/P4b duplicate. Sites read 2026-09-08.
+class UnitBlockRecord:
+    """One lake record per UNIT BLOCK -- `_T_UNITBLOCK` = 0x0C (specs/022 T066).
+
+    LAYOUT (pre-registration 2.1): the class tag byte, then `struct '<BIIH'` = (version=1,
+    block_id, n_units_in_block, block_size), then the block's out-edges as four parallel
+    little-endian arrays of equal length -- `pre_local <u2` (the pre unit's index INSIDE the
+    block), `post <u4` (a global unit index), `weight <f4`, `delay <u2`.
+
+    THE TAG BYTE LEADS, and the pre-registration's 2.1 named the `<BIIH` header without saying
+    so. It is added deliberately, not silently: the lake's dispatch convention is that a record's
+    class is `payload[0]` (`lake_migrate._tag_of`, `lake_rebuild_gate.build_index` both read it),
+    so without the byte this class's own `TAG_DISPOSITIONS[0x0C]` row would be unreachable and a
+    migration would read these records as `_T_FACT` (version=1 = 0x01). Disclosed in the row's
+    evidence file rather than left as a silent refinement.
+
+    The edge COUNT is not in the header on purpose -- it is `(len(payload) - 12) / 12`, so a
+    truncated or padded record fails the division and is refused WHOLE. Malformed means refused
+    whole in every case (foreign tag, unknown version, short header, length mismatch, a
+    `pre_local` outside the block), the same never-half-read rule `SynapseDelta.entries` follows:
+    a block whose edge list half-parsed would compile a synaptic identity nobody ever wrote.
+
+    WEIGHTS ARE STORED AT `<f4`. A caller whose weights are not exactly representable in float32
+    will see them rounded at the record boundary; that is the declared dtype, and the paging
+    row's byte-identity fixtures use multiples of 0.25 so the rounding cannot be mistaken for a
+    paging defect.
+    """
+
+    TAG = 0x0C
+    _VER = 1
+    _HEAD = struct.Struct("<BIIH")
+    _ITEM = 12  # pre_local u2 + post u4 + weight f4 + delay u2
+
+    def __init__(self, block_id, n_units_in_block, block_size, pre_local, post, weight, delay):
+        import numpy as np
+
+        self.block_id = int(block_id)
+        self.n_units_in_block = int(n_units_in_block)
+        self.block_size = int(block_size)
+        if self.block_id < 0 or self.block_size <= 0:
+            raise ValueError("UnitBlockRecord needs a non-negative block id and a positive size")
+        if not (0 < self.n_units_in_block <= self.block_size):
+            raise ValueError(
+                f"a block holds 1..{self.block_size} units (the tail block is SHORT, never "
+                f"padded), got {self.n_units_in_block}"
+            )
+        self.pre_local = np.asarray(pre_local, dtype="<u2")
+        self.post = np.asarray(post, dtype="<u4")
+        self.weight = np.asarray(weight, dtype="<f4")
+        self.delay = np.asarray(delay, dtype="<u2")
+        lengths = {len(self.pre_local), len(self.post), len(self.weight), len(self.delay)}
+        if len(lengths) != 1:
+            raise ValueError(
+                f"the four edge arrays must be parallel, got lengths {sorted(lengths)}"
+            )
+        if len(self.pre_local) and int(self.pre_local.max()) >= self.n_units_in_block:
+            raise ValueError("a pre_local index falls outside its own block -- refused whole")
+
+    def __len__(self):
+        return int(len(self.pre_local))
+
+    def pre_global(self):
+        """The block's out-edge PRE indices in the kernel's global index space."""
+        import numpy as np
+
+        return self.block_id * self.block_size + self.pre_local.astype(np.int64)
+
+    def encode(self) -> bytes:
+        return b"".join(
+            (
+                bytes([self.TAG]),
+                self._HEAD.pack(self._VER, self.block_id, self.n_units_in_block, self.block_size),
+                self.pre_local.tobytes(),
+                self.post.tobytes(),
+                self.weight.tobytes(),
+                self.delay.tobytes(),
+            )
+        )
+
+    @classmethod
+    def decode(cls, payload):
+        import numpy as np
+
+        if not isinstance(payload, (bytes, bytearray)) or len(payload) < 1 + cls._HEAD.size:
+            raise ValueError("UnitBlockRecord payload is shorter than its header -- refused whole")
+        payload = bytes(payload)
+        if payload[0] != cls.TAG:
+            raise ValueError(
+                f"UnitBlockRecord tag {payload[0]:#04x} is not {cls.TAG:#04x} -- refused whole"
+            )
+        ver, block_id, n_units_in_block, block_size = cls._HEAD.unpack_from(payload, 1)
+        if ver != cls._VER:
+            raise ValueError(f"UnitBlockRecord version {ver} is not {cls._VER} -- refused whole")
+        body = payload[1 + cls._HEAD.size :]
+        if len(body) % cls._ITEM:
+            raise ValueError(
+                f"UnitBlockRecord length mismatch: {len(body)} array bytes is not a whole number "
+                f"of {cls._ITEM}-byte edges -- refused whole"
+            )
+        n = len(body) // cls._ITEM
+        cut = [0, 2 * n, 6 * n, 10 * n, 12 * n]
+        return cls(
+            block_id,
+            n_units_in_block,
+            block_size,
+            np.frombuffer(body[cut[0] : cut[1]], dtype="<u2"),
+            np.frombuffer(body[cut[1] : cut[2]], dtype="<u4"),
+            np.frombuffer(body[cut[2] : cut[3]], dtype="<f4"),
+            np.frombuffer(body[cut[3] : cut[4]], dtype="<u2"),
+        )
 
 
 # : How many of a tag's own WRITING ticks the running bar is computed over. Sized from what the bar

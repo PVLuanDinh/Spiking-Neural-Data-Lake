@@ -609,6 +609,18 @@ EXEMPT = {
         "imports, US1 audit B3). The live consumer is the US3 kernel cutover (T064/T066/T070). "
         "BOUND EXPIRED AT T039 UNMET (recorded, not re-dated). Printed by the standing-TODO arm",
     ),
+    "neuron_pager": (
+        "wire",
+        "specs/022 T066: activation-driven paging of unit blocks (residency policy, pinned hot "
+        "set, one async batch per tick, integer ROUNDS budget, no silent drop of a spike to a "
+        "paged-out unit). ITS CONSUMERS TODAY ARE ITS OWN SELF-CHECK AND tests/test_neuron_pager "
+        ".py -- the pager is NOT on the live tick, and that is the row's own disclosure 2.6(g), "
+        "not an omission: the live consumer is the S6 kernel cutover, which is where a paged "
+        "substrate first carries traffic and where the cockpit's 'paging binding-width' row is "
+        "owed. It charges lake_segments/lake_index/lake_bridge with an in-tree consumer, which "
+        "their four retired rows named T066 for, and those three stay off the live tick for the "
+        "same reason this does. Printed by the standing-TODO arm every run",
+    ),
     "kernel_state": (
         "wire",
         "specs/022 T013: SoA substrate state (128B-aligned blocks, contiguous faculty slices, "

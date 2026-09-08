@@ -31,6 +31,13 @@ remains the cited equation owner and its scalar form retires at cutover with a p
 No constant is picked here: decay, thresholds (state.thr), reset and frac_bits are the
 caller's, and frac_bits' binding value is T015's measurement (D6: fractional bits MEASURED
 vs FP64).
+
+THE RESIDENCY HOOK (specs/022 T066) is ONE branch, not a second tick. `KernelTick(...,
+resident=None)` is the incumbent, byte for byte; with a bool mask, propagate integrates only
+resident members and delivery splits each bundle's posts -- resident into the accumulator,
+paged-out into `pending[p]`, which `substrate/neuron_pager.NeuronPager` drains before the next
+propagate. There is no second delivery phase and no second scatter (P2). `compile_bundles` is
+likewise ONE compiler, used by `Synapses.__init__` and by the pager's per-block page-in.
 """
 
 # distinct-from: cortex/cortical_microcircuit.py -- a fixed 8-population Potjans-Diesmann
@@ -65,61 +72,102 @@ IMBALANCE_PROVENANCE = (
 )
 
 
+# distinct-from: cortex/percept_surprise.py::declare_ports, neuromodulation/raphe_serotonin.py::
+#   declare_ports -- manifest REGISTRANTS: they declare typed faculty ports on the wiring manifest
+#   and compile nothing; no weight, no delay, no ring key.
+# distinct-from: substrate/basic_components.py::Connections.update -- an in-place bounded weight
+#   CHANGE (add dw, mask, clip) on a dense matrix; this quantizes a static edge list ONCE into
+#   routing bundles and never moves a weight.
+# distinct-from: substrate/brain_bundle.py::BrainBundle.predict -- "bundle" there is a named
+#   collection of trained brains being routed to; here a bundle is (pre, partition, delay) ->
+#   posts/qweights inside one kernel.
+# distinct-from: hippocampus/ng_snn.py::decide -- the ONE argmax decision rule over an NG-SNN rate
+#   matrix; a readout, not a delivery table. All five sites read 2026-09-08.
+def compile_bundles(pre, post, weight, delay, n_units, p_parts, frac_bits, max_delay=None):
+    """THE ONE BUNDLE COMPILER (specs/022 T066, P2). Factored out of `Synapses.__init__` so the
+    constructor and the pager's per-block page-in share one compiler rather than two that drift:
+    a block compiled on page-in must produce bundles byte-identical to the ones the whole-table
+    constructor would have produced, or a paged run could not be byte-identical to a resident
+    twin. Returns `(bundles, by_pre)`; the caller owns where they land.
+
+    Every refusal lives here, so it binds the per-block compile too: parallel arrays, an endpoint
+    outside [0, n_units), a delay below 1 (it would deliver inside its own propagate phase), and a
+    delay above `max_delay` (which would collide in a ring slot before its drain). `max_delay=None`
+    derives it from the edges, which is the constructor's default; the pager passes the table's
+    own value so a block with short delays cannot silently shrink the rings.
+    """
+    import numpy as np
+
+    pre = np.asarray(pre, dtype=np.int64)
+    post = np.asarray(post, dtype=np.int64)
+    weight = np.asarray(weight, dtype=np.float64)
+    delay = np.asarray(delay, dtype=np.int64)
+    if not (len(pre) == len(post) == len(weight) == len(delay)):
+        raise ValueError("pre/post/weight/delay must be parallel arrays")
+    if len(pre) and (
+        pre.min() < 0 or pre.max() >= n_units or post.min() < 0 or post.max() >= n_units
+    ):
+        raise ValueError("synapse endpoint out of range")
+    if len(delay) and delay.min() < 1:
+        raise ValueError(
+            "delays are in ticks and start at 1 (a 0-delay edge would deliver inside "
+            "its own propagate phase)"
+        )
+    md = int(max_delay if max_delay is not None else (delay.max() if len(delay) else 1))
+    if len(delay) and delay.max() > md:
+        raise ValueError("a delay exceeds max_delay")
+    q = np.rint(weight * (1 << int(frac_bits))).astype(np.int64)
+    part = post % int(p_parts)
+    #: (pre, partition, delay) -> (post_idx array, qweight array)
+    bundles: dict[tuple[int, int, int], tuple] = {}
+    order = np.lexsort((post, delay, part, pre))
+    keys = np.stack([pre[order], part[order], delay[order]], axis=1)
+    if len(order):
+        edges = np.nonzero(np.any(np.diff(keys, axis=0) != 0, axis=1))[0] + 1
+        starts = [0] + edges.tolist() + [len(order)]
+        for a, b in zip(starts[:-1], starts[1:]):
+            k = (int(keys[a, 0]), int(keys[a, 1]), int(keys[a, 2]))
+            sel = order[a:b]
+            bundles[k] = (post[sel].copy(), q[sel].copy())
+    #: pre -> [(partition, delay, key)] for O(out-bundles) routing on a spike
+    by_pre: dict[int, list[tuple[int, int, tuple]]] = {}
+    for k in bundles:
+        by_pre.setdefault(k[0], []).append((k[1], k[2], k))
+    return bundles, by_pre
+
+
 class Synapses:
     """Static synapse table compiled into delivery bundles keyed (pre, target partition, delay).
 
     A bundle is the unit of routing: when `pre` fires, one (partition, delay) bundle reference
     lands in the target partition's ring -- delivery then walks the bundle's posts/weights with
-    integer adds. Weights are quantized ONCE here at `frac_bits` (fixed-point int64), so every
-    later accumulation is exact integer arithmetic."""
+    integer adds. Weights are quantized ONCE at `frac_bits` (fixed-point int64), so every later
+    accumulation is exact integer arithmetic. The compile itself is `compile_bundles` above --
+    ONE compiler, this constructor and the pager's page-in being its two callers."""
 
     def __init__(self, pre, post, weight, delay, n_units, p_parts, frac_bits, max_delay=None):
         import numpy as np
 
-        pre = np.asarray(pre, dtype=np.int64)
-        post = np.asarray(post, dtype=np.int64)
-        weight = np.asarray(weight, dtype=np.float64)
-        delay = np.asarray(delay, dtype=np.int64)
-        if not (len(pre) == len(post) == len(weight) == len(delay)):
-            raise ValueError("pre/post/weight/delay must be parallel arrays")
-        if len(pre) and (
-            pre.min() < 0 or pre.max() >= n_units or post.min() < 0 or post.max() >= n_units
-        ):
-            raise ValueError("synapse endpoint out of range")
-        if len(delay) and delay.min() < 1:
-            raise ValueError(
-                "delays are in ticks and start at 1 (a 0-delay edge would deliver inside "
-                "its own propagate phase)"
-            )
+        d = np.asarray(delay, dtype=np.int64)
         self.n_units, self.p_parts, self.frac_bits = int(n_units), int(p_parts), int(frac_bits)
-        self.max_delay = int(
-            max_delay if max_delay is not None else (delay.max() if len(delay) else 1)
+        self.max_delay = int(max_delay if max_delay is not None else (d.max() if len(d) else 1))
+        self.bundles, self.by_pre = compile_bundles(
+            pre, post, weight, delay, self.n_units, self.p_parts, self.frac_bits, self.max_delay
         )
-        if len(delay) and delay.max() > self.max_delay:
-            raise ValueError("a delay exceeds max_delay")
-        q = np.rint(weight * (1 << self.frac_bits)).astype(np.int64)
-        part = post % self.p_parts
-        #: (pre, partition, delay) -> (post_idx array, qweight array)
-        self.bundles: dict[tuple[int, int, int], tuple] = {}
-        order = np.lexsort((post, delay, part, pre))
-        keys = np.stack([pre[order], part[order], delay[order]], axis=1)
-        if len(order):
-            edges = np.nonzero(np.any(np.diff(keys, axis=0) != 0, axis=1))[0] + 1
-            starts = [0] + edges.tolist() + [len(order)]
-            for a, b in zip(starts[:-1], starts[1:]):
-                k = (int(keys[a, 0]), int(keys[a, 1]), int(keys[a, 2]))
-                sel = order[a:b]
-                self.bundles[k] = (post[sel].copy(), q[sel].copy())
-        #: pre -> [(partition, delay, key)] for O(out-bundles) routing on a spike
-        self.by_pre: dict[int, list[tuple[int, int, tuple]]] = {}
-        for k in self.bundles:
-            self.by_pre.setdefault(k[0], []).append((k[1], k[2], k))
+
+    @classmethod
+    def empty(cls, n_units, p_parts, frac_bits, max_delay):
+        """The empty table a pager fills block by block (specs/022 T066). `max_delay` is REQUIRED
+        here and has no default: the rings are sized from it at KernelTick construction, before a
+        single edge exists, so deriving it from the (absent) edges would size the rings to one
+        slot and refuse every later block whose delays are longer."""
+        return cls([], [], [], [], n_units, p_parts, frac_bits, max_delay)
 
 
 class KernelTick:
     """propagate -> deliver -> rotate over a KernelState. Single mechanism, any thread count."""
 
-    def __init__(self, state, synapses, decay, v_reset, refrac_ticks, threads=1):
+    def __init__(self, state, synapses, decay, v_reset, refrac_ticks, threads=1, resident=None):
         import numpy as np
 
         if not (0.0 < float(decay) <= 1.0):
@@ -133,6 +181,16 @@ class KernelTick:
         n = state.n_units
         if n != synapses.n_units:
             raise ValueError("state and synapse table disagree on unit count")
+        #: THE ONE RESIDENCY BRANCH (specs/022 T066, P2). `None` is the incumbent: every phase
+        #: below runs exactly the code it ran before this parameter existed. With a bool mask
+        #: (a VIEW shared with the pager, so the pager's writes are seen here) propagate
+        #: integrates only resident members and delivery splits posts by the mask. Bit-identity
+        #: of `None` against an all-True mask is asserted in tests/test_neuron_pager.py.
+        if resident is not None and (
+            getattr(resident, "dtype", None) != np.bool_ or resident.shape != (n,)
+        ):
+            raise ValueError("resident must be a bool mask over [0, n_units)")
+        self.resident = resident
         idx = np.arange(n, dtype=np.int64)
         #: static partition membership (the lineage's layout; grown units join by the same rule)
         self._members = [idx[idx % self.p_parts == p] for p in range(self.p_parts)]
@@ -140,13 +198,23 @@ class KernelTick:
         self._rings = [[[] for _ in range(synapses.max_delay + 1)] for _ in range(self.p_parts)]
         #: per-partition INTEGER accumulators over the full index space (owner-written only)
         self._acc = [np.zeros(n, dtype=np.int64) for _ in range(self.p_parts)]
+        #: per-partition INTEGER arrival buffer for posts whose unit is NOT resident -- the lossy
+        #: two-resolution summary a paged-out unit carries, under the same single-writer contract
+        #: as `_acc`. Allocated unconditionally so a resident twin and a paged run hold the same
+        #: floor (the residency measurement would otherwise credit paging with this array), and
+        #: left all-zero and untouched while `resident is None`.
+        self.pending = [np.zeros(n, dtype=np.int64) for _ in range(self.p_parts)]
         self._np = np
 
     # ---- the three phases ------------------------------------------------------------------
     def _propagate(self, p, ext_q):
-        """Integrate partition p's units (elementwise, deterministic at any T); return fired."""
+        """Integrate partition p's units (elementwise, deterministic at any T); return fired.
+        With a residency mask, only RESIDENT members integrate -- a paged-out unit cannot fire,
+        because its out-bundles are not in the table to route."""
         np = self._np
         m = self._members[p]
+        if self.resident is not None:
+            m = m[self.resident[m]]
         scale = float(1 << self.syn.frac_bits)
         v = self.state.arrays["v"]
         thr = self.state.arrays["thr"]
@@ -190,13 +258,28 @@ class KernelTick:
         fills is integrated by the next tick's propagate. The first draft drained (t) and every
         delivery arrived one tick late -- caught by the self-check's delay-arrival arm on its
         first run. Ring safety at slots = max_delay+1: an event that could collide in a slot
-        before its drain would need delay > max_delay, which Synapses refuses."""
+        before its drain would need delay > max_delay, which Synapses refuses.
+
+        THE RESIDENCY SPLIT (specs/022 T066, FR-011): with a mask, each bundle's posts are split
+        by residency -- resident posts into the accumulator exactly as before, paged-out posts
+        into `pending[p]`, which the pager drains into the accumulator BEFORE the next tick's
+        propagate. A delivery is never discarded, which is what the S-R2 red exists to make
+        falsifiable: the naive alternative (dropping the non-resident half) is constructed in
+        tests/test_neuron_pager.py and shows a charge shortfall equal to its own discard count."""
         np = self._np
         slot = self._rings[p][(self.tick_index + 1) % (self.syn.max_delay + 1)]
         acc = self._acc[p]
-        for key in slot:
-            posts, q = self.syn.bundles[key]
-            np.add.at(acc, posts, q)
+        if self.resident is None:
+            for key in slot:
+                posts, q = self.syn.bundles[key]
+                np.add.at(acc, posts, q)
+        else:
+            here, pend = self.resident, self.pending[p]
+            for key in slot:
+                posts, q = self.syn.bundles[key]
+                keep = here[posts]
+                np.add.at(acc, posts[keep], q[keep])
+                np.add.at(pend, posts[~keep], q[~keep])
         slot.clear()
 
     def tick(self, ext_q=None):

@@ -230,6 +230,20 @@ _T_COALITION = b"\x0a"
 # Both registries checked before minting, per the 0x09/0x0A lesson above.
 _T_GOAL = b"\x0b"
 
+# _T_UNITBLOCK added 2026-09-08 (specs/022 T066): one record per UNIT BLOCK -- the block's
+# out-edges as four parallel arrays behind a `<BIIH` header (version, block_id,
+# n_units_in_block, block_size), written by substrate/neuron_pager's UnitBlockStore through
+# lake_segments and pointed at by lake_index as (0x0C, block_id) -> (container, seq). It is the
+# synaptic IDENTITY of a block of units, which is why lake_engine.RETENTION labels it IMMORTAL
+# with reclaimable=False: there is no snapshot to reconstruct a block's edges from, and the
+# pager's page-out changes RESIDENCY IN RAM ONLY -- it destroys no record. State is NOT in here:
+# the kernel_state.v1 _T_STATE frame owns per-unit state, and a second copy inside the block
+# record would be the P2/P4b duplicate this tag exists to avoid. Both registries were checked
+# before minting, per the 0x09/0x0A lesson above: highest tag in use was 0x0B, and
+# lake_engine.RETENTION[0x0C] plus lake_migrate.TAG_DISPOSITIONS[0x0C] land in the same commit
+# with registry_consistent() asserted.
+_T_UNITBLOCK = b"\x0c"
+
 # FULL cadence: a fresh FULL every 64 deltas bounds a cold reconstruction to <= 64 delta applies
 # after the newest FULL. A storage-layer engineering constant (same class as lake_migrate's
 # seal_every), not brain behaviour -- P1's infrastructure exception.

@@ -74,6 +74,14 @@ TAG_DISPOSITIONS: dict[int, tuple[str, str]] = {
         "READ-AS-IS -- JSON body rows folded on replay, zero records predate this tag; "
         "the round-trip red over live-written records runs in the store's own main()",
     ),
+    0x0C: (
+        "read-as-is",
+        "_T_UNITBLOCK per-block out-edge records (lake_engine.UnitBlockRecord, specs/022 T066); "
+        "v1 byte-identity -- upcaster is IDENTITY, record semantics live in "
+        "UnitBlockRecord.decode (a `<BIIH` header then four parallel LE arrays, refused WHOLE on "
+        "any malformation). Zero records predate this tag; the round-trip red over written "
+        "records runs in substrate/neuron_pager's own main() and in tests/test_neuron_pager.py",
+    ),
 }
 # Anything else is UNKNOWN and refuses -- a record class nobody decided about.
 _OBSERVED_EXTRA: dict[int, str] = {}
