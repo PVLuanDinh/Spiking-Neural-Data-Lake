@@ -256,3 +256,60 @@ is T066's under calm drive and is not re-claimed here.
 the verdict rule, the S = 8 paired test, the 3.0× cost bound, arm F, or the disposition table. They
 change how two instruments sample and which fixture each regime runs — the fixtures whose numbers
 this row cited from the start.
+
+### 2.10 Second amendment BEFORE the campaign (2026-09-08, after the amended reds; numbers stated beside)
+
+The amended reds were re-run at 16,384 units, seed 0. **(a) the neutered calibration PASSES** under
+steady-state sampling: exact ratio 1.0000 in R1 and R2; zero points R1 1.0289 footprint / 1.0010
+traced, R2 1.0588 / 1.0026 (all ≥ 0.99); repeatability 0.56 % / 0.005 % / 0.002 % / 0.018 % — and the
+RETIRED peak readings in the same cells still fail (0.9724 / 0.8830), so A1 changed the instrument, not
+the luck. The pre-stated drop branch did NOT apply (traced ≥ 1.000); private bytes was measured anyway
+and would have been unusable (repeatability 7.39 % / 5.40 %; no saving in R3, 1.106) — recorded so the
+branch cannot be re-proposed. **(c) R3 PASSES** (footprint 0.5048, traced 0.1757, exact 0.164062).
+**(d) R4 PASSES** (refusals 0, moved 128 of 128, reads per round 3.95 → 1.00; the "before" is 3.95, not
+4.00, because one due set carries an incidental adjacency — reported as read). The worker also found a
+manufactured zero in its own probe (`reorder` returns `merged`, the probe read `moved`) and fixed it.
+
+**(b) and (e) FAIL, on a fixture truth measured with the module's own `_TripCensus`:** R2 at capacity
+0.25 reads exact ratio **1.0000** (page-ins 127 of 128, evictions 0, over capacity 19 of 20 ticks), and
+the eviction neuter cannot move (paged 1.0502 vs neutered 1.0588 footprint, evictions 0 in both).
+189/189, 741/741 and 636/636 eviction refusals are the RING-SAFETY clause: under `panel_local` the
+recurrent weight (1.5) exceeds the threshold (1.0), so a block once lit re-fires itself forever and
+nothing lit ever goes quiet. Consequence, and it reaches back into §1: **the exact ratio under every
+fixture so far is the ACTIVATED-BLOCK FRACTION** (R3 21/128 = 0.164, R4 80/128, R2 128/128) — a
+lazy-loading count, never a capacity effect — and the panel's 0.250 that §1 cited as "working-set-
+limited" evidence was the same fraction. This row misread that number as evidence of eviction; it was
+evidence of blocks never loaded. Stated here rather than smoothed.
+
+**A4 — R2's drive (2.2), amended to REALIZE the condition the regime was named for.** R2 is defined as
+"the activated working set ≤ ¼ of the graph"; a fixed driven subset with self-sustaining recurrence
+never satisfies it (the set grows to the graph). AMENDED: R2 is a SLIDING working set — each tick a
+contiguous window of 32 blocks (¼ of 128) receives the external drive, the window slides 4 blocks per
+tick, 20 ticks (coverage 32 + 19·4 = 108 of 128 blocks, the lazy-loading floor 108/128 = 0.844); the
+R2 fixture's recurrent weight is 0.6 < threshold 1.0 (a unit fires only under drive or two coincident
+inputs), so a block the window has left falls silent inside the 3-tick ring window and becomes
+evictable; topology `panel_local`, duplicate-free, the panel's pager parameters. The R2 FIXTURE CHECK
+becomes: the paged arm at capacity 0.25 must EVICT (evictions > 0) and read an exact ratio ≤ 0.50 —
+well below the 0.844 coverage floor, so a saving that clears the check is attributable to eviction by
+construction; the neutered arm (capacity = all) must read the coverage floor (≈ 0.844 exact) as R2's
+lazy-loading zero point. If the check fails, the campaign does not start and the failure is recorded
+as a third fixture red — no further tuning without a dated amendment quoting its numbers.
+
+**The verdict rule gains a STRICTER conjunct (added before any campaign number; it can only make a WIN
+harder).** R2's WIN now also requires **paged < neutered** on the primary instrument by the same paired
+one-sided test over S = 8 — the invented residency policy (eviction) must charge beyond what lazy
+loading alone buys. Three outcomes replace two: **WIN** (R2 paged < twin AND paged < neutered on both
+verdict instruments, secondary ≤ 3.0×, arm F discriminates) → the layer stays; **STORE WINS, POLICY
+NULL** (paged < twin but NOT paged < neutered: the saving is lazy loading's) → the eviction policy is
+DELETED ON ITS NULL (P8 clause 5: `NeuronPager`'s capacity parameter, `_evictable`, the demote path and
+the rounds-vs-capacity accounting go; the pager becomes the lazy page-in over the block store;
+INVENTION_REGISTER row 1's residency-policy half is marked DELETED ON ITS NULL; the store, `read_records`,
+the delta tier, the fence and the reorder stay as measured winners; S-R1/S-R2's eviction-shaped reds
+are retired with the policy and the drop red S-R2 is re-homed to the lazy loader if it still applies);
+**LOSS** (NOT paged < twin, or arm F's paged arm cannot run where the twin cannot) → 2.6's deletion
+inventory applies in full. R1 stays the regime bound (its neuter is vacuous under saturating drive and
+is reported as such); R3 and R4 are reported, R4's reorder control passed.
+
+**Not changed.** The metric, the instruments as amended in A1, S = 8, the 3.0× cost bound (the one R1
+timing cell at 3.135× is still not a verdict), arm F, the disposition on LOSS, and the tick count. The
+lazy-loading floor is stated as a floor, not claimed as the policy's.
