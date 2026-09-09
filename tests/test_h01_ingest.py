@@ -624,8 +624,10 @@ def test_the_bare_self_check_is_offline_and_green():
     out = buf.getvalue()
     assert rc == 0, out
     assert out.isascii(), "self-check output must be ASCII (Windows cp1252)"
-    for gate in ("(a)", "(b)", "(c)", "(d)", "(e)", "(f)", "(g)", "(h)"):
+    for gate in ("(a)", "(b)", "(c)", "(d)", "(e')", "(f)", "(g)", "(h)"):
         assert gate in out, f"gate {gate} is not reported by the self-check:\n{out}"
+    assert "disclosures" in out, f"the 2.9 disclosures are not printed:\n{out}"
+    assert "permutation" in out, f"gate (e')'s band is not printed:\n{out}"
 
 
 def test_struct_module_is_used_for_doubles_not_a_hand_rolled_ieee():

@@ -31,10 +31,27 @@ the extremum, so the number that decides is measured in the same pass as the num
                    `placement.LAYER_RULE_AGREEMENT`'s pinned 45,404 / 49,377 exactly. Exactness
                    is the point: it is the P2 evidence that this is the same rule on the same
                    bytes, which a "close enough" bar would not be.
-  (e) SIGN      -- two instruments that fail differently (the PRE cell's type under Dale, and the
-                   export's own per-synapse `type`), required to agree above 0.5. The bar has its
-                   red built in rather than picked: under the swapped map the rate is exactly
-                   1 - r, so a rule that passed both maps would be measuring nothing.
+  (e') E/I      -- two POST-ANCHORED instruments that fail differently: the export's own
+                   per-synapse `type` aggregated per POST cell into that cell's excitatory INPUT
+                   fraction, and upstream's OWN curated per-segment `excitatory synapses` /
+                   `inhibitory synapses` counts in the e/i CSV. Their Pearson r over the joined
+                   post cells must EXCEED the 95th percentile of the same r under 1,000
+                   permutations of the CSV's segment labels; the constructed red is the shuffled
+                   labels themselves. The bar is re-measured from the same data on every run, so
+                   there is nothing in it to tune.
+
+THIS MODULE ONCE CARRIED A DIFFERENT GATE (e) AND IT WAS THE INSTRUMENT'S DEFECT, not the data's.
+It compared the PRE cell's Dale sign with the export's per-synapse `type` and refused the real
+export at 0.3004 (35 shards) and 0.3014 (166 shards) -- a reading that moves 0.001 across a 4.7x
+larger sample is a reading. Measured on shard 0 (998,235 records): by PRE cell type the export's
+excitatory fraction does not separate excitatory from inhibitory classes at all (pyramidal 0.370,
+spiny stellate 0.344, atypical spiny 0.338, interneuron 0.308) and 54.4 % of pre-end soma hits are
+glia or vasculature, which cannot be presynaptic; by POST cell type it separates cleanly (0.639 /
+0.672 / 0.630 / 0.538). `get_neuron_e_to_i_ratios.py` reads 2 = excitatory and 1 = inhibitory
+correctly -- but it counts synapses RECEIVED by a neuron, a POST-anchored quantity, and the old
+gate compared it to a PRE-anchored one. The replacement is pre-registered in the evidence file's
+dated 2.9. P2: the old refusal is DELETED, not flagged off. What the pre side still owes is
+DISCLOSURE, and `ingest` measures and prints five numbers it never filters on -- see `_disclose`.
 
 THE DECODER IS STDLIB AND SCHEMA-SPECIFIC. No Avro reader is installed in `.venv-lake` and PyPI
 serves no `cp314t` Windows wheel for `fastavro`. The container's codec is `null` (uncompressed),
@@ -71,6 +88,7 @@ import base64
 import hashlib
 import io
 import json
+import random
 import struct
 import sys
 import time
@@ -137,9 +155,19 @@ CANDIDATE_SCALES = {
 #: fraction, is what proves the same rule ran over the same bytes.
 LAYER_AGREEMENT_PIN = (45404, 49377)
 
-#: (e) instrument 2. Upstream counts a synapse `type` of 2 as excitatory and 1 as inhibitory
-#: (`get_neuron_e_to_i_ratios.py`: `e_count = syn.count(2)`, `i_count = syn.count(1)`).
+#: The export's own E/I code. Upstream counts a synapse `type` of 2 as excitatory and 1 as
+#: inhibitory (`get_neuron_e_to_i_ratios.py`: `e_count = syn.count(2)`, `i_count = syn.count(1)`).
+#: Used by (e') instrument 1 and by the pre-side DISCLOSURE, and by nothing else: no edge, node,
+#: weight or sign in the artifact is decided by it.
 SYN_TYPE_SIGN = {2: EXCITATORY, 1: INHIBITORY}
+EXPORT_TYPE_E = 2
+EXPORT_TYPE_I = 1
+
+#: (e') the permutation null, pre-registered in 2.9. A fixed seed so the band is a reading and not
+#: a draw, and a percentile rather than a number somebody chose.
+EI_PERMUTATIONS = 1000
+EI_PERCENTILE = 95.0
+EI_SEED = 0
 
 #: The seven laminar bands, in the order a population's faculties are laid out.
 BANDS = (*LAYER_NAMES, WHITE_MATTER)
@@ -156,6 +184,14 @@ CELL_TYPES = tuple(
 )
 _EXCITATORY_TYPES = frozenset(SIGNED_TYPES["value"]["excitatory"])
 _INHIBITORY_TYPES = frozenset(SIGNED_TYPES["value"]["inhibitory"])
+
+#: A NEURON of any sign, including the 1,275 "unclassified neuron" somata that carry no sign and
+#: are therefore excluded from the population. The complement -- oligodendrocyte, microglia/opc,
+#: astrocyte, blood vessel cell, c-shaped cell, unknown cell -- CANNOT be presynaptic, so the
+#: fraction of pre-end soma hits landing there is a measure of the reconstruction's axon side and
+#: is DISCLOSED. It is never a filter: 2.9 is explicit that selecting edges to match the prior
+#: would be selecting the data to fit the seed.
+NEURONAL_TYPES = frozenset({*_EXCITATORY_TYPES, *_INHIBITORY_TYPES, "unclassified neuron"})
 
 
 def _lif_defaults():
@@ -535,12 +571,45 @@ def load_cells():
     return json.loads(_verified_source("agglo_20200916c3_cell_data.json"))
 
 
-def load_layer_labels():
-    """agglo id -> H01's OWN published `cortical layer`, from the e/i CSV's `segment id`."""
+# distinct-from: substrate/lake_engine.py::_iter_segment and substrate/lake_bridge.py's sealed
+#   segment reader -- both read the LAKE's own CRC-framed binary segments; this parses one
+#   external CSV release file. distinct-from: substrate/web_ingest.py::fetch_bytes -- the network
+#   boundary, which this module CALLS to obtain the file and does not re-implement.
+#   distinct-from: cortex/cortical_prior.py::e_fraction -- a per-LAYER excitatory fraction from a
+#   pinned aggregate; this is a per-SEGMENT synapse count read row by row out of the release.
+#   distinct-from: cortex/placement.py::layer_of -- computes a band from geometry, where
+#   load_layer_labels below READS the band upstream published, and the whole point of gate (d) is
+#   that the two are different instruments. All five sites read 2026-09-09.
+def _ei_rows():
+    """The e/i CSV's rows, sha256-verified against `cortical_prior.SOURCES`. ONE parse of one
+    file feeds both the layer validator (d) and instrument 2 of (e'): they are two readings of the
+    same bytes, and a second parser here could drift from the first."""
     import csv
 
     raw = _verified_source("goog14r0s5c3_e_i_ratios_feb_2023.csv").decode("utf-8")
-    return {r["segment id"]: r["cortical layer"] for r in csv.DictReader(raw.splitlines())}
+    return list(csv.DictReader(raw.splitlines()))
+
+
+def load_layer_labels(rows=None):
+    """agglo id -> H01's OWN published `cortical layer`, from the e/i CSV's `segment id`."""
+    return {r["segment id"]: r["cortical layer"] for r in (_ei_rows() if rows is None else rows)}
+
+
+def load_ei_counts(rows=None):
+    """(e') instrument 2: agglo id -> (excitatory synapses, inhibitory synapses), UPSTREAM's OWN
+    curated per-segment counts.
+
+    A row with 0 and 0 is DROPPED rather than read as a fraction: 10,618 of the 45,994 rows carry
+    no synapses at all, and 0/0 is not "half excitatory", it is no measurement. Dropping it here
+    rather than at the correlation keeps the permutation null drawing from exactly the population
+    the real reading joins against."""
+    out = {}
+    for r in _ei_rows() if rows is None else rows:
+        e = int(r["excitatory synapses"])
+        i = int(r["inhibitory synapses"])
+        if e + i > 0:
+            out[r["segment id"]] = (e, i)
+    return out
 
 
 def fetch_sources(fetch=None):
@@ -574,17 +643,19 @@ class JoinKeys:
     long and `base_neuron_id` as a string; both are compared as decimal strings so the pairing
     is the only thing that differs between the four counts)."""
 
-    __slots__ = ("agglo", "base")
+    __slots__ = ("agglo", "base", "neuronal")
 
-    def __init__(self, agglo, base):
+    def __init__(self, agglo, base, neuronal=frozenset()):
         self.agglo = agglo
         self.base = base
+        self.neuronal = neuronal
 
 
 def join_keys(cells):
     return JoinKeys(
         frozenset(str(c["agglo_seg"]) for c in cells),
         frozenset(str(c["base_seg"]) for c in cells),
+        frozenset(str(c["agglo_seg"]) for c in cells if c.get("type") in NEURONAL_TYPES),
     )
 
 
@@ -698,8 +769,19 @@ def dale_signs(cells):
     return {k: v for k, v in per_id.items() if v}
 
 
+# distinct-from: plasticity/benna_fusi.py::MetaplasticNet.accuracy -- scores a LEARNED weight
+#   vector's sign against a target pattern the caller chose, on a 0.5 chance line.
+# distinct-from: plasticity/plasticity_rule_stack.py::_sign_agree -- the same learning readout in
+#   a self-check. Here two EXTERNAL labels of one reconstructed synapse are compared (a cell type
+#   from one release file, a synapse type from another) and NOTHING is decided by the result:
+#   there is no weight, no target and no learning. Both sites read 2026-09-09.
 def sign_agreement(edges, sign_of, type_sign=None):
-    """(e) (agree, total) over SYNAPSES (not edges) whose PRE carries a Dale sign."""
+    """DISCLOSURE (not a gate since 2.9): (agree, total) over SYNAPSES (not edges) whose PRE
+    carries a Dale sign, comparing that sign with the export's own per-synapse type.
+
+    This is the quantity the retired gate (e) refused on. It is still MEASURED and still printed,
+    because 2.9's disclosure clause makes the prior's quality a measured fact carried into T063 --
+    what it no longer does is decide anything. Nothing filters on it."""
     type_sign = SYN_TYPE_SIGN if type_sign is None else type_sign
     agree = total = 0
     for (pre, _post, syn_type), n in edges.items():
@@ -718,37 +800,204 @@ def sign_report(agree, total):
     return f"sign: {agree}/{total} agree (rate {rate:.4f}), {total - agree} disagree"
 
 
-def check_sign(agree, total):
-    """(e) REFUSE unless the two instruments agree above 0.5. The bar is not picked: under the
-    swapped map (1 <-> 2) the rate is exactly 1 - r, so 0.5 is the only value at which the rule
-    cannot pass both maps -- the red is built into the threshold rather than bolted beside it."""
-    if total == 0:
+# distinct-from: substrate/amdahl_gate.py::red_repeatability -- judges two neutered readings of a
+#   TIMING rig by overlapping bootstrap bands over its own resamples; the band below is a
+#   PERMUTATION null over an external file's segment labels, and the two rigs share no input.
+# distinct-from: brainstem/autonomous_loop.py::coverage_scale_cells -- a lattice-point count that
+#   derives an arm's workspace scale; no correlation, no null, no external file.
+# distinct-from: basal_ganglia/r_stdp.py::pre_spike -- pairs a PRE spike against the most recent
+#   POST spike inside a live plasticity rule; "post" there is a spike time in this brain, here it
+#   is the postsynaptic SOMA of a reconstructed human synapse.
+# distinct-from: brainstem/signal_loop.py::stdin_stream and cortex/brain.py::_flush_coverage --
+#   a wire-format reader and a lake write; neither computes a fraction or a null.
+#   All five sites read 2026-09-09; the guard matched on "POST"/"fraction"/"same".
+def post_excitatory_fractions(post_type):
+    """(e') instrument 1: agglo id -> that POST cell's excitatory INPUT fraction, from the
+    export's OWN per-synapse `type` over every synapse whose POST end resolves to a soma.
+
+    POST-ANCHORED ON PURPOSE. The join is 19x asymmetric by end (174,473 post-end hits per shard
+    against 9,170 pre-end): the pre end of a synapse is an axon, and axons are the fragmented,
+    mis-merged side of this reconstruction. Instrument 2 counts synapses RECEIVED by a segment, so
+    instrument 1 must count the same way or the two are not readings of one quantity -- which is
+    exactly the defect 2.9 records."""
+    exc, tot = {}, {}
+    for (post, syn_type), n in post_type.items():
+        if syn_type == EXPORT_TYPE_E:
+            exc[post] = exc.get(post, 0) + n
+        elif syn_type != EXPORT_TYPE_I:
+            continue
+        tot[post] = tot.get(post, 0) + n
+    return {k: exc.get(k, 0) / v for k, v in tot.items() if v > 0}
+
+
+def csv_fractions(ei_counts):
+    """(e') instrument 2 as the same fraction: excitatory / (excitatory + inhibitory)."""
+    return {k: e / (e + i) for k, (e, i) in ei_counts.items() if (e + i) > 0}
+
+
+def _pearson(x, y):
+    """Pearson r over two aligned float64 arrays, written out rather than delegated: it is called
+    1,001 times per gate reading and `np.corrcoef` builds a 2x2 matrix and warns on a constant
+    vector, where a constant vector here is a legitimate reading that must come back NaN."""
+    xc = x - x.mean()
+    yc = y - y.mean()
+    den = float(((xc * xc).sum() * (yc * yc).sum()) ** 0.5)
+    return float((xc * yc).sum() / den) if den > 0 else float("nan")
+
+
+# distinct-from: substrate/gradient_claim_gate.py -- a permutation null over a LEARNED gradient's
+#   alignment; that one shuffles a signal this brain produced, this one shuffles the segment
+#   labels of an external release file and decides nothing about learning. Read 2026-09-09.
+def ei_correlation(post_frac, csv_frac, trials=EI_PERMUTATIONS, seed=EI_SEED, pct=EI_PERCENTILE):
+    """(e') The two instruments' Pearson r over the joined post cells, WITH the permutation band
+    the gate compares it against. Both readings are returned and both are printed (2.9).
+
+    THE NULL IS 2.9's, COMPUTED THE CHEAP WAY, AND IT IS THE SAME NULL. Permuting the CSV's
+    segment labels across the whole file and re-joining leaves the joined ID SET untouched (the
+    labels are the same labels) and hands each joined cell the value of a uniformly random other
+    row -- i.e. a uniform draw WITHOUT replacement of the same size from the CSV's own values.
+    That is what is drawn here, so the arithmetic is identical to a rebuilt join and costs one
+    draw instead of a 35,376-element permutation per trial.
+    """
+    import numpy as np
+
+    ids = sorted(set(post_frac) & set(csv_frac))
+    csv_ids = sorted(csv_frac)
+    csv_vals = np.array([csv_frac[k] for k in csv_ids], dtype=np.float64)
+    x = np.array([post_frac[k] for k in ids], dtype=np.float64)
+    y = np.array([csv_frac[k] for k in ids], dtype=np.float64)
+    r = _pearson(x, y) if len(ids) >= 2 else float("nan")
+
+    rng = np.random.default_rng(seed)
+    n_csv = int(csv_vals.size)
+    null = np.empty(int(trials), dtype=np.float64)
+    for t in range(int(trials)):
+        drawn = csv_vals[rng.choice(n_csv, size=max(len(ids), 1), replace=False)]
+        null[t] = _pearson(x, drawn) if len(ids) >= 2 else float("nan")
+    finite = null[np.isfinite(null)]
+    return {
+        "n_cells": len(ids),
+        "n_csv_segments": n_csv,
+        "r": r,
+        "trials": int(trials),
+        "percentile": float(pct),
+        "seed": int(seed),
+        "bar": float(np.percentile(finite, pct)) if finite.size else float("nan"),
+        "null_min": float(finite.min()) if finite.size else float("nan"),
+        "null_max": float(finite.max()) if finite.size else float("nan"),
+        "null_mean": float(finite.mean()) if finite.size else float("nan"),
+    }
+
+
+def ei_report(band):
+    return (
+        f"e/i: r={band['r']:.4f} over {band['n_cells']} joined post cells against a "
+        f"{band['percentile']:.0f}th-percentile bar of {band['bar']:.4f} from {band['trials']} "
+        f"label permutations (null {band['null_min']:.4f}..{band['null_max']:.4f}, mean "
+        f"{band['null_mean']:.4f}, seed {band['seed']}, {band['n_csv_segments']} CSV segments)"
+    )
+
+
+def check_ei(band):
+    """(e') REFUSE unless the two instruments' correlation EXCEEDS the permutation band's 95th
+    percentile.
+
+    There is no threshold to tune: the bar is re-measured from the same data on every run under
+    the null that a segment's label carries no information about its E/I counts, and the
+    constructed red -- the shuffled labels themselves -- lands inside the band by construction.
+    A reading that cannot beat its own shuffled labels is not evidence that these two files are
+    describing the same tissue."""
+    if band["n_cells"] < 2 or band["r"] != band["r"] or band["bar"] != band["bar"]:
         raise IngestRefused(
-            "sign gate: no joined synapse carried a signed pre -- the rate is vacuous"
+            f"e/i gate: vacuous -- {band['n_cells']} joined post cells is not a correlation. "
+            f"{ei_report(band)}"
         )
-    rate = agree / total
-    if rate <= 0.5:
+    if band["r"] <= band["bar"]:
         raise IngestRefused(
-            f"sign gate: the two instruments agree on only {rate:.4f} of {total} synapses "
-            f"({sign_report(agree, total)}). Under the swapped map the rate is 1 - r, so this "
-            "reading is indistinguishable from the map being backwards."
+            f"e/i gate: the export's per-POST excitatory input fraction does NOT beat its own "
+            f"permutation band. {ei_report(band)}"
         )
-    return rate
+    return band["r"]
+
+
+def _disclose(edges, sign_of, soma_to_soma, pre_hits, pre_non_neuronal):
+    """The 2.9 disclosures: five numbers MEASURED and PRINTED, and NEVER filtered on.
+
+    2.9 is explicit that no edge may be dropped for disagreeing with the prior -- "filtering edges
+    to match the prior would be selecting the data to fit the seed" -- so these are reported and
+    carried into T063, where whether this wiring beats its marginal-matched null is the question.
+    The pre end is the honest weak point: it is an axon, it is the fragmented side of the
+    reconstruction, and the majority of pre-end soma hits land on cells that cannot be
+    presynaptic at all. Saying so is the disclosure; acting on it would be the defect."""
+    agree, total = sign_agreement(edges, sign_of)
+    both = sum(n for (pre, post, _t), n in edges.items() if pre in sign_of and post in sign_of)
+    return {
+        "pre_end_soma_hits": pre_hits,
+        "pre_end_soma_hits_non_neuronal": pre_non_neuronal,
+        "pre_end_non_neuronal_fraction": (
+            (pre_non_neuronal / pre_hits) if pre_hits else float("nan")
+        ),
+        "soma_to_soma_synapses": soma_to_soma,
+        "synapses_with_dale_signed_pre": total,
+        "synapses_with_both_ends_signed": both,
+        "signed_pre_export_type_agreement_counts": [agree, total],
+        "signed_pre_export_type_disagreement": (
+            ((total - agree) / total) if total else float("nan")
+        ),
+        "signed_pre_export_type_report": sign_report(agree, total),
+        "never_filtered_on": (
+            "MEASURED AND PRINTED ONLY. No edge is dropped, reweighted or re-signed by any of "
+            "these; the population's sign is the CELL's (Dale, immutable at birth) and the "
+            "export's type decides nothing outside gate (e')."
+        ),
+    }
 
 
 # =============================================================================================
 # The ingest
 # =============================================================================================
+# distinct-from: substrate/neuro_chip_stream.py::NeuroChipStream.add_core -- its "shard" is a
+#   neuromorphic CORE's LIF state written to disk by this brain; this one is a read-only tally of
+#   one Avro object from an external release, and nothing here is written or persisted. Site read
+#   2026-09-09; the guard matched on the word "shard".
 class ShardTally:
-    __slots__ = ("name", "n_records", "join_counts", "edges", "loc_bounds", "md5")
+    __slots__ = (
+        "name",
+        "n_records",
+        "join_counts",
+        "edges",
+        "loc_bounds",
+        "md5",
+        "post_type",
+        "pre_hits",
+        "pre_hits_non_neuronal",
+    )
 
-    def __init__(self, name, n_records, join_counts, edges, loc_bounds, md5):
+    def __init__(
+        self,
+        name,
+        n_records,
+        join_counts,
+        edges,
+        loc_bounds,
+        md5,
+        post_type=None,
+        pre_hits=0,
+        pre_hits_non_neuronal=0,
+    ):
         self.name = name
         self.n_records = n_records
         self.join_counts = join_counts
         self.edges = edges
         self.loc_bounds = loc_bounds
         self.md5 = md5
+        #: (e') instrument 1's raw material: (post agglo id, export type) -> count, over every
+        #: synapse whose POST end resolves, whether or not its PRE does.
+        self.post_type = Counter() if post_type is None else post_type
+        #: The 2.9 disclosure: how many synapses resolve at the PRE end, and how many of those
+        #: land on a cell that cannot be presynaptic. Counted, never filtered on.
+        self.pre_hits = pre_hits
+        self.pre_hits_non_neuronal = pre_hits_non_neuronal
 
 
 def decode_shard(data, keys, name="<memory>", entry=None, verify_bytes=True):
@@ -756,9 +1005,12 @@ def decode_shard(data, keys, name="<memory>", entry=None, verify_bytes=True):
     synapses' location bounds. The four counts are measured in the SAME pass as the graph, so the
     number that justifies the join cannot come from a different read of different bytes."""
     md5 = verify_md5(name, data, entry) if (entry is not None and verify_bytes) else None
-    agglo, base = keys.agglo, keys.base
+    agglo, base, neuronal = keys.agglo, keys.base, keys.neuronal
     counts = dict.fromkeys(JOIN_PAIRINGS, 0)
     edges = Counter()
+    post_type = Counter()
+    pre_hits = 0
+    pre_non_neuronal = 0
     lo = [None, None, None]
     hi = [None, None, None]
     n = 0
@@ -768,6 +1020,16 @@ def decode_shard(data, keys, name="<memory>", entry=None, verify_bytes=True):
         pre_n = None if rec.pre_id is None else str(rec.pre_id)
         post_n = None if rec.post_id is None else str(rec.post_id)
         pre_b, post_b = rec.pre_base, rec.post_base
+        # (e') and the 2.9 disclosures, measured in the SAME pass over the same bytes as the
+        # join. Both are anchored at ONE end on purpose: instrument 1 counts what a post cell
+        # RECEIVES whether or not the axon that delivered it resolved, and the pre-end tally
+        # counts what claims to be presynaptic whether or not it can be.
+        if post_n in agglo and rec.syn_type in SYN_TYPE_SIGN:
+            post_type[(post_n, rec.syn_type)] += 1
+        if pre_n in agglo:
+            pre_hits += 1
+            if pre_n not in neuronal:
+                pre_non_neuronal += 1
         for pair in JOIN_PAIRINGS:
             pre_k, post_k = (pre_n, post_n) if pair[0] == "neuron_id" else (pre_b, post_b)
             target = agglo if pair[1] == "agglo_seg" else base
@@ -782,7 +1044,7 @@ def decode_shard(data, keys, name="<memory>", entry=None, verify_bytes=True):
                             lo[ax] = v if lo[ax] is None or v < lo[ax] else lo[ax]
                             hi[ax] = v if hi[ax] is None or v > hi[ax] else hi[ax]
     bounds = [(lo[ax], hi[ax]) for ax in range(3)] if lo[0] is not None else None
-    return ShardTally(name, n, counts, edges, bounds, md5)
+    return ShardTally(name, n, counts, edges, bounds, md5, post_type, pre_hits, pre_non_neuronal)
 
 
 class Graph:
@@ -820,6 +1082,7 @@ def _net_fetch(name, entry, manifest):
 def ingest(
     names,
     cells=None,
+    ei_counts=None,
     fetch=None,
     threads=1,
     verify_bytes=True,
@@ -827,7 +1090,7 @@ def ingest(
     progress=None,
     declared_join=DECLARED_JOIN,
 ):
-    """Decode `names` (shard names, or any key `fetch` understands) and run gates (b)..(e).
+    """Decode `names` (shard names, or any key `fetch` understands) and run gates (b), (c), (e').
 
     THREADS, NOT PROCESSES: the interpreter is free-threaded, the fetch is I/O and the decode is
     pure Python, so N workers is real parallelism here and a process pool would pay to ship a
@@ -835,6 +1098,7 @@ def ingest(
     the sum of integers does not care about order -- which is exactly what gate (f) measures.
     """
     cells = load_cells() if cells is None else cells
+    ei_counts = load_ei_counts() if ei_counts is None else ei_counts
     manifest = manifest if manifest is not None else (load_manifest() if fetch is None else None)
     entries = {s["name"]: s for s in manifest["shards"]} if manifest else {}
     if fetch is None:
@@ -855,30 +1119,48 @@ def ingest(
             progress(name, len(data), tally, t1 - t0, time.perf_counter() - t1)
         return tally
 
+    # FOLDED AS THEY ARRIVE, not collected. Holding all 166 tallies was affordable while a tally
+    # carried only the edge Counter (516,214 soma-to-soma synapses across the whole export); the
+    # per-POST type tally is ~19,000 entries PER SHARD, and keeping 166 of those alive at once is
+    # gigabytes of dict for a sum of integers. Order-independence is untouched: integer addition
+    # is what gate (f) asserts about, and arrival order changes no sum.
+    counts = dict.fromkeys(JOIN_PAIRINGS, 0)
+    edges = Counter()
+    post_type = Counter()
+    md5s = {}
+    lo = [None, None, None]
+    hi = [None, None, None]
+    n_records = 0
+    pre_hits = 0
+    pre_non_neuronal = 0
+
+    def fold(tallies):
+        nonlocal n_records, pre_hits, pre_non_neuronal, bounds_seen
+        for t in tallies:
+            n_records += t.n_records
+            pre_hits += t.pre_hits
+            pre_non_neuronal += t.pre_hits_non_neuronal
+            md5s[t.name] = t.md5
+            for k, v in t.join_counts.items():
+                counts[k] += v
+            edges.update(t.edges)
+            post_type.update(t.post_type)
+            if t.loc_bounds:
+                bounds_seen = True
+                for ax in range(3):
+                    a, b = t.loc_bounds[ax]
+                    lo[ax] = a if lo[ax] is None or a < lo[ax] else lo[ax]
+                    hi[ax] = b if hi[ax] is None or b > hi[ax] else hi[ax]
+
+    bounds_seen = False
     if threads and threads > 1:
         from concurrent.futures import ThreadPoolExecutor
 
         with ThreadPoolExecutor(max_workers=int(threads)) as ex:
-            tallies = list(ex.map(one, names))
+            fold(ex.map(one, names))
     else:
-        tallies = [one(n) for n in names]
-
-    counts = dict.fromkeys(JOIN_PAIRINGS, 0)
-    edges = Counter()
-    lo = [None, None, None]
-    hi = [None, None, None]
-    n_records = 0
-    for t in tallies:
-        n_records += t.n_records
-        for k, v in t.join_counts.items():
-            counts[k] += v
-        edges.update(t.edges)
-        if t.loc_bounds:
-            for ax in range(3):
-                a, b = t.loc_bounds[ax]
-                lo[ax] = a if lo[ax] is None or a < lo[ax] else lo[ax]
-                hi[ax] = b if hi[ax] is None or b > hi[ax] else hi[ax]
-    bounds = [(lo[ax], hi[ax]) for ax in range(3)] if lo[0] is not None else None
+        fold(one(n) for n in names)
+    bounds = [(lo[ax], hi[ax]) for ax in range(3)] if bounds_seen else None
 
     # EVERY GATE IS MEASURED BEFORE ANY REFUSAL IS RAISED. 2.7 requires BOTH halves -- "no
     # artifact is written" AND "the readings are recorded" -- and a raise on the first refusing
@@ -900,14 +1182,18 @@ def ingest(
             gates["units"] = check_units(ratios)
         except IngestRefused as e:
             refusals.append(f"units: {e}")
-    signs = dale_signs(cells)
-    s_agree, s_total = sign_agreement(edges, signs)
-    gates["sign"] = sign_report(s_agree, s_total)
-    gates["sign_counts"] = [s_agree, s_total]
+    band = ei_correlation(post_excitatory_fractions(post_type), csv_fractions(ei_counts))
+    gates["ei"] = band
+    gates["ei_report"] = ei_report(band)
     try:
-        gates["sign_rate"] = check_sign(s_agree, s_total)
+        gates["ei_r"] = check_ei(band)
     except IngestRefused as e:
-        refusals.append(f"sign: {e}")
+        refusals.append(f"ei: {e}")
+    signs = dale_signs(cells)
+    gates["disclosures"] = _disclose(
+        edges, signs, counts[tuple(declared_join)], pre_hits, pre_non_neuronal
+    )
+    gates["sign"] = gates["disclosures"]["signed_pre_export_type_report"]
     gates["records_decoded"] = n_records
     gates["refusals"] = refusals
     if refusals:
@@ -917,16 +1203,7 @@ def ingest(
             + " | ".join(refusals),
             readings=gates,
         )
-    return Graph(
-        list(names),
-        n_records,
-        counts,
-        edges,
-        bounds,
-        gates,
-        cells,
-        {t.name: t.md5 for t in tallies},
-    )
+    return Graph(list(names), n_records, counts, edges, bounds, gates, cells, md5s)
 
 
 # =============================================================================================
@@ -1022,9 +1299,21 @@ def artifact_meta(graph, arrays):
         "unit_extent_ratios": graph.gates["unit_ratios"],
         "layer_rule": "COMPUTED via cortex/placement.layer_of (H01 fix_layer_mem circles), microns",
         "layer_agreement": list(LAYER_AGREEMENT_PIN),
-        "sign_instrument_1": "PRE cell type -> Dale sign (cortical_prior.SIGNED_TYPES)",
-        "sign_instrument_2": "the export's own synapse type (2 = E, 1 = I)",
-        "sign_agreement": graph.gates["sign"],
+        "ei_instrument_1": (
+            "the export's own synapse type (2 = E, 1 = I) aggregated per POST cell into that "
+            "cell's excitatory INPUT fraction"
+        ),
+        "ei_instrument_2": (
+            "goog14r0s5c3_e_i_ratios_feb_2023.csv's own per-segment `excitatory synapses` / "
+            "`inhibitory synapses` counts"
+        ),
+        "ei_gate": graph.gates["ei"],
+        "ei_report": graph.gates["ei_report"],
+        "disclosures": graph.gates["disclosures"],
+        "sign_of_a_unit": (
+            "the CELL's type under Dale (cortical_prior.SIGNED_TYPES), immutable at birth. The "
+            "export's per-synapse type is used by gate (e') and by nothing else."
+        ),
         "bands": list(BANDS),
         "cell_types": list(CELL_TYPES),
         "n_nodes": int(arrays["agglo_id"].size),
@@ -1186,7 +1475,7 @@ def propagates(kt, ticks=30, frac=0.01):
 # =============================================================================================
 # The offline self-check (run_selfchecks CORE) -- synthetic fixtures, no network, no lake
 # =============================================================================================
-_SELF_CELLS = [
+_SELF_CELLS_CORE = [
     ("1001", "9001", "pyramidal neuron", 462268, 2805973, 40000),
     ("1002", "9002", "interneuron", 1962268, 2805973, 41000),
     ("1003", "9003", "spiny stellate neuron", 2349931, 2458418, 42000),
@@ -1198,7 +1487,7 @@ _SELF_CELLS = [
 #: own shape (measured on shard 0: neuron_id<->agglo_seg 75 both-ends hits against 8 for
 #: base_neuron_id<->base_seg) -- a fixture where every base id resolved would make gate (b) TIE
 #: and refuse, which is exactly what the first draft of this list did.
-_SELF_SYNAPSES = [
+_SELF_SYNAPSES_CORE = [
     (1001, 9001, 1003, 4003, (100_000, 300_000, 1_000), 2),
     (1003, 9003, 1001, 9001, (667_216, 617_698, 1_121), 2),
     (1002, 9002, 1004, 4004, (200_000, 350_000, 1_050), 1),
@@ -1210,6 +1499,75 @@ _SELF_SYNAPSES = [
 ]
 
 
+# distinct-from: substrate/doc_budget_gate.py::_selfcheck -- builds constructed manifests to make
+#   a DOC gate's statuses reachable; nothing about synapses, cells or a correlation.
+# distinct-from: substrate/amdahl_gate.py::red_repeatability -- constructs a red for a TIMING
+#   rig's own resamples. distinct-from: cortex/theta_gamma_code.py::_decode_cycle -- decodes item
+#   order from live SPIKE PHASE in this brain. distinct-from:
+#   cerebellum/forward_model.py::predict -- an efference-copy sensory prediction.
+# distinct-from: cortex/access_consciousness.py::_post -- the ONE workspace submit site a
+#   self-check uses to stand in for other faculties on a live bus. None of the five builds an
+#   EXTERNAL-release fixture, and none of them is a fixture this could import instead: the shape
+#   below is (Avro record, soma row, e/i CSV row) and exists nowhere else in the tree. All five
+#   sites read 2026-09-09; the guard matched on "self-check"/"red"/"POST".
+def _ei_fixture(n_glia=26, n_decoys=40, seed=0):
+    """POST-ONLY traffic, glial somata and an e/i CSV, so gate (e') has a sample to correlate over.
+
+    FOUR POST CELLS CANNOT RUN A PERMUTATION TEST: the null over 4! = 24 pairings puts ~4 % of its
+    mass on the identity, so a fixture that correlates perfectly sits a hair above its own 95th
+    percentile and the arm would be measuring luck. This tail lifts the joined post cells to 30.
+
+    IT IS SURGICAL BY CONSTRUCTION, and that is what makes it safe to bolt onto the world gates
+    (a)-(d) and (f)-(h) already measure. Every synapse here has an UNRESOLVABLE pre id, so it adds
+    no both-ends join hit under any of the four pairings, no edge, no location bound and no node;
+    every cell here is GLIAL, so it carries no Dale sign and never becomes a unit; and every
+    coordinate is strictly inside the core soma cloud, so the extent ratios do not move. The nine
+    records at the end are the mirror image -- a resolvable NON-NEURONAL pre against an
+    unresolvable post -- and they exist so the pre-end disclosure has both classes in it rather
+    than a 0.0 that no red could distinguish from a broken counter.
+    """
+    rng = random.Random(seed)
+    cells, syn, ei = [], [], {}
+    for k in range(n_glia):
+        aid = 2000 + k
+        cells.append(
+            (
+                str(aid),
+                str(8000 + k),
+                "astrocyte" if k % 2 else "oligodendrocyte",
+                1_000_000 + 70_000 * k,
+                3_000_000 + 30_000 * k,
+                42_000,
+            )
+        )
+        n_e = 1 + rng.randrange(9)
+        n_i = 1 + rng.randrange(9)
+        for j in range(n_e + n_i):
+            syn.append(
+                (
+                    900_000 + 1_000 * k + j,  # pre: resolves nowhere, under any pairing
+                    990_000 + 1_000 * k + j,
+                    aid,
+                    7_000 + k,
+                    None,
+                    EXPORT_TYPE_E if j < n_e else EXPORT_TYPE_I,
+                )
+            )
+        # instrument 2 agrees with instrument 1 up to a curation difference, never exactly
+        ei[str(aid)] = (n_e * 10 + rng.randrange(6), n_i * 10 + rng.randrange(6))
+    for k in range(9):
+        syn.append((2000 + k, 8000 + k, 6666, 5555, None, EXPORT_TYPE_E))
+    ei.update({"1001": (10, 0), "1002": (30, 1), "1003": (8, 0), "1004": (0, 12), "1005": (5, 5)})
+    for d in range(n_decoys):
+        ei[str(3000 + d)] = (rng.randrange(40), rng.randrange(40))
+    return cells, syn, ei
+
+
+_EI_CELLS, _EI_SYNAPSES, _SELF_EI = _ei_fixture()
+_SELF_CELLS = [*_SELF_CELLS_CORE, *_EI_CELLS]
+_SELF_SYNAPSES = [*_SELF_SYNAPSES_CORE, *_EI_SYNAPSES]
+
+
 def self_cells():
     return [
         {"agglo_seg": a, "base_seg": b, "type": t, "true_x": x, "true_y": y, "true_z": z}
@@ -1217,8 +1575,34 @@ def self_cells():
     ]
 
 
+def self_ei(shuffle=False, seed=1):
+    """(e') instrument 2 for the offline gate. `shuffle=True` is the CONSTRUCTED RED of 2.9 --
+    the same values under permuted segment labels, which is one draw from exactly the null the
+    gate's bar is measured from. The seed is fixed so the red is a reading, not a coin flip."""
+    ei = dict(_SELF_EI)
+    if shuffle:
+        keys = sorted(ei)
+        vals = [ei[k] for k in keys]
+        random.Random(seed).shuffle(vals)
+        ei = dict(zip(keys, vals, strict=True))
+    return ei
+
+
 def self_shard(syn=None):
-    return synthetic_shard([encode_record(*s) for s in (syn or _SELF_SYNAPSES)])
+    rows = _SELF_SYNAPSES if syn is None else syn
+    return synthetic_shard([encode_record(*s) for s in rows])
+
+
+def self_shard_pair():
+    """THE two-shard split (P2: one splitter, used by the offline gate AND by the suite).
+
+    The CORE synapses are cut in half so BOTH shards carry soma-to-soma edges -- gate (f)'s
+    unsorted-order red needs two Counters that actually differ, and a naive halfway cut of the
+    whole synapse list now puts every edge in the first shard, which would defuse that red
+    silently. The post-only tail is dealt alternately."""
+    a = [*_SELF_SYNAPSES_CORE[:4], *_EI_SYNAPSES[0::2]]
+    b = [*_SELF_SYNAPSES_CORE[4:], *_EI_SYNAPSES[1::2]]
+    return self_shard(a), self_shard(b)
 
 
 def _selfcheck():
@@ -1351,48 +1735,64 @@ def _selfcheck():
         f"{LAYER_AGREEMENT_PIN[0]}/{LAYER_AGREEMENT_PIN[1]} admits no off-by-one"
     )
 
-    # ---- (e) sign --------------------------------------------------------------------------
-    signs = dale_signs(cells)
-    agree, total = sign_agreement(tally.edges, signs)
-    rate = check_sign(agree, total)
-    s_agree, s_total = sign_agreement(tally.edges, signs, type_sign={2: INHIBITORY, 1: EXCITATORY})
-    if (s_total, s_agree) != (total, total - agree):
+    # ---- (e') e/i, POST-anchored -------------------------------------------------------------
+    ei = self_ei()
+    post_frac = post_excitatory_fractions(tally.post_type)
+    band = ei_correlation(post_frac, csv_fractions(ei))
+    r = check_ei(band)
+    red = ei_correlation(post_frac, csv_fractions(self_ei(shuffle=True)))
+    if red["n_cells"] != band["n_cells"]:
         print(
-            f"h01_ingest self-check FAILED: (e) the swapped map is not 1 - r ({s_agree}/{s_total})"
+            f"h01_ingest self-check FAILED: (e') the shuffled red changed the joined cell set "
+            f"{red['n_cells']} != {band['n_cells']}, so it measures two things at once"
         )
         return 1
     try:
-        check_sign(s_agree, s_total)
-        print("h01_ingest self-check FAILED: (e) the swapped map passed")
+        check_ei(red)
+        print("h01_ingest self-check FAILED: (e') shuffled segment labels beat the band")
         return 1
     except IngestRefused:
         pass
-    # A REFUSAL MUST CARRY ITS READINGS (2.7). Flip the two excitatory somata to inhibitory so
-    # instrument 1 disagrees with the export's type on most synapses, then assert the raise brings
-    # the join counts and the extent ratios out with it -- a refusal IS the result when it
-    # happens, and one that arrives without its evidence cannot be audited or re-derived.
-    _flip = {"pyramidal neuron": "interneuron", "spiny stellate neuron": "interneuron"}
-    flipped = [dict(c, type=_flip.get(c["type"], c["type"])) for c in cells]
+    if not (band["null_min"] <= band["bar"] <= band["null_max"]):
+        print(f"h01_ingest self-check FAILED: (e') the bar sits outside its own null {band}")
+        return 1
+    try:
+        check_ei(ei_correlation({"1001": 1.0}, {"1001": 1.0}, trials=8))
+        print("h01_ingest self-check FAILED: (e') a one-cell correlation was accepted")
+        return 1
+    except IngestRefused:
+        pass
+    # A REFUSAL MUST CARRY ITS READINGS (2.7). Run the whole ingest under the shuffled labels and
+    # assert the raise brings the join counts, the extent ratios and the disclosures out with it
+    # -- a refusal IS the result when it happens, and one that arrives without its evidence
+    # cannot be audited, argued with or re-derived.
     carried = None
     try:
-        ingest(["S"], cells=flipped, fetch={"S": data}.get, verify_bytes=False)
-        print("h01_ingest self-check FAILED: (e) a Dale-flipped world did not refuse")
+        ingest(
+            ["S"],
+            cells=cells,
+            ei_counts=self_ei(shuffle=True),
+            fetch={"S": data}.get,
+            verify_bytes=False,
+        )
+        print("h01_ingest self-check FAILED: (e') a shuffled-label world did not refuse")
         return 1
     except IngestRefused as refusal:
         missing = [
             k
-            for k in ("join_counts", "unit_ratios", "sign", "refusals")
+            for k in ("join_counts", "unit_ratios", "ei", "disclosures", "refusals")
             if k not in refusal.readings
         ]
         if missing:
-            print(f"h01_ingest self-check FAILED: (e) the refusal dropped {missing}")
+            print(f"h01_ingest self-check FAILED: (e') the refusal dropped {missing}")
             return 1
         carried = refusal.readings
     ok.append(
-        f"(e) {sign_report(agree, total)} at rate {rate:.4f}; the swapped map scores "
-        f"exactly 1 - r = {s_agree}/{s_total} and is REFUSED. A Dale-flipped world REFUSES and "
-        f"the refusal carries every reading out with it ({len(carried)} keys, "
-        f"{carried['refusals']})"
+        f"(e') {ei_report(band)} -- r={r:.4f} BEATS its own permutation bar; the same values "
+        f"under SHUFFLED segment labels score r={red['r']:.4f} against bar {red['bar']:.4f} over "
+        f"the identical {red['n_cells']} cells and are REFUSED, a one-cell reading is refused as "
+        f"vacuous, and a shuffled-label ingest carries every reading out with it "
+        f"({len(carried)} keys, {carried['refusals']})"
     )
 
     # ---- (f) determinism + (g) P4b + (h) liveness, in one throwaway home --------------------
@@ -1404,13 +1804,10 @@ def _selfcheck():
             return sum(1 for _ in BinLog(str(p)).replay()) if p.exists() else 0
 
         before = n_records()
-        half = len(_SELF_SYNAPSES) // 2
-        blobs = {
-            "A": self_shard(_SELF_SYNAPSES[:half]),
-            "B": self_shard(_SELF_SYNAPSES[half:]),
-        }
-        fwd = ingest(["A", "B"], cells=cells, fetch=blobs.get, verify_bytes=False)
-        rev = ingest(["B", "A"], cells=cells, fetch=blobs.get, verify_bytes=False)
+        shard_a, shard_b = self_shard_pair()
+        blobs = {"A": shard_a, "B": shard_b}
+        fwd = ingest(["A", "B"], cells=cells, ei_counts=ei, fetch=blobs.get, verify_bytes=False)
+        rev = ingest(["B", "A"], cells=cells, ei_counts=ei, fetch=blobs.get, verify_bytes=False)
         tmp = Path(tmp)
         a = write_artifact(fwd, tmp / "fwd.npz")
         b = write_artifact(rev, tmp / "rev.npz")
@@ -1445,6 +1842,32 @@ def _selfcheck():
             f"(f) determinism: forward and reverse shard order give the SAME artifact "
             f"sha256 {a[:16]}..., the unsorted control DIVERGES ({ua[:8]} vs {ub[:8]}), and "
             "two populations give byte-equal KernelState and byte-equal 30-tick trains"
+        )
+
+        # The 2.9 disclosures, printed beside the gates and asserted to reach the artifact meta.
+        # Nothing refuses on them; what is checked is that no edge was dropped between the join
+        # and the artifact, because that -- not the numbers -- is what "never filtered on" means.
+        disc = fwd.gates["disclosures"]
+        if int(art["n_syn"].sum()) != disc["synapses_with_both_ends_signed"]:
+            print(
+                f"h01_ingest self-check FAILED: {int(art['n_syn'].sum())} synapses reached the "
+                f"artifact but {disc['synapses_with_both_ends_signed']} were joined with both "
+                "ends signed -- an edge was filtered between the join and the artifact"
+            )
+            return 1
+        if art["meta"]["disclosures"] != disc:
+            print("h01_ingest self-check FAILED: the artifact meta lost the disclosures")
+            return 1
+        ok.append(
+            "disclosures (2.9, measured and printed, NEVER filtered on): "
+            f"{disc['pre_end_soma_hits_non_neuronal']}/{disc['pre_end_soma_hits']} = "
+            f"{disc['pre_end_non_neuronal_fraction']:.4f} of pre-end soma hits are non-neuronal; "
+            f"{disc['soma_to_soma_synapses']} soma-to-soma synapses, "
+            f"{disc['synapses_with_dale_signed_pre']} with a Dale-signed pre, "
+            f"{disc['synapses_with_both_ends_signed']} with BOTH ends signed; the export type "
+            f"disagrees with the pre cell's class on "
+            f"{disc['signed_pre_export_type_disagreement']:.4f} of the signed-pre synapses, and "
+            "every one of them is in the artifact"
         )
 
         after = n_records()
@@ -1495,8 +1918,9 @@ def _selfcheck():
         print("  " + line)
     print(f"  licence {LICENSE_ID}; thr/decay imported from {LIF_DEFAULTS['owner']}")
     print(
-        "self-check OK: 8 gates, every one with its constructed RED in this same command; no "
-        "network, no lake write, the artifact never leaves a temp dir"
+        "self-check OK: 8 gates (2.3 (a)-(d), (f)-(h) plus 2.9's replacement (e')), every one "
+        "with its constructed RED in this same command; no network, no lake write, the artifact "
+        "never leaves a temp dir"
     )
     return 0
 
@@ -1531,10 +1955,13 @@ def _run_ingest(argv):
     print(f"H01 c3 ingest: shards [{lo}:{hi}) = {len(chosen)}, threads {threads}")
     print(f"NORD_HOME={os.environ.get('NORD_HOME')}  out={out}")
     cells = load_cells()
-    labels = load_layer_labels()
+    rows = _ei_rows()  # ONE parse; (d)'s labels and (e')'s counts are two readings of it
+    labels = load_layer_labels(rows)
+    ei_counts = load_ei_counts(rows)
     agree, total = layer_agreement(cells, labels)
     print(f"(d) layer agreement {agree}/{total} = {agree / total:.6f}")
     check_layer(agree, total)
+    print(f"(e') instrument 2: {len(ei_counts)} of {len(rows)} CSV segments carry a synapse count")
     t0 = time.perf_counter()
     seen = {"bytes": 0, "records": 0, "fetch_s": 0.0, "decode_s": 0.0}
 
@@ -1551,7 +1978,14 @@ def _run_ingest(argv):
         )
 
     try:
-        graph = ingest(chosen, cells=cells, threads=threads, manifest=manifest, progress=progress)
+        graph = ingest(
+            chosen,
+            cells=cells,
+            ei_counts=ei_counts,
+            threads=threads,
+            manifest=manifest,
+            progress=progress,
+        )
     except IngestRefused as refusal:
         # 2.7's null clause, executed: NO artifact, the readings recorded, the row left OPEN with
         # the refusal named. The pin is written as a REFUSAL record rather than not written at
@@ -1614,9 +2048,11 @@ def _run_ingest(argv):
             "c_unit_ratios": graph.gates["unit_ratios"],
             "c_declared": DECLARED_SCALE,
             "d_layer_agreement": [agree, total],
-            "e_sign": graph.gates["sign"],
-            "e_sign_rate": graph.gates["sign_rate"],
+            "e_prime_ei": graph.gates["ei"],
+            "e_prime_report": graph.gates["ei_report"],
+            "e_prime_r": graph.gates["ei_r"],
         },
+        "disclosures": graph.gates["disclosures"],
         "records_decoded": graph.n_records,
         "bytes_streamed": seen["bytes"],
         "wall_s": round(wall, 2),
