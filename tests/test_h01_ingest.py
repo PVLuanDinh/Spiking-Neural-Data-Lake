@@ -595,6 +595,27 @@ def test_the_pin_records_every_stage_and_never_erases_an_earlier_one():
     assert migrated["stages"][H.stage_key(a["shards"])]["utc"] == "2026-09-09T20:38:52Z", migrated
 
 
+def test_a_re_run_of_the_same_stage_lands_beside_the_reading_it_replaces():
+    """2.9 authorises a SECOND run over the SAME 166 shards, under a different gate set. Its stage
+    key is identical to the refused run's, so a pin keyed by stage alone silently overwrites the
+    refusal it is meant to stand beside -- and with no artifact written, that refusal IS the row's
+    only result. The same rule the legacy-migration arm above exists for: a fix that erases the
+    readings it exists to protect is worse than the defect."""
+    shards = ["export000000000000", "export000000000165"]
+    first = H.merge_pin(None, {"shards": shards, "verdict": "REFUSED", "gates": "e"})
+    second = H.merge_pin(first, {"shards": shards, "verdict": "OK", "gates": "e-prime"})
+    assert len(second["stages"]) == 2, f"the refused run was erased by its re-run: {second}"
+    kept = [v for v in second["stages"].values() if v["verdict"] == "REFUSED"]
+    assert kept and kept[0]["gates"] == "e", second
+    assert second["stages"][second["latest"]]["verdict"] == "OK", second
+    assert H.stage_key(shards) in second["stages"], (
+        "the FIRST reading keeps the plain stage key; a re-run may not take a name that is "
+        "already spoken for"
+    )
+    third = H.merge_pin(second, {"shards": shards, "verdict": "OK", "gates": "e-prime-again"})
+    assert len(third["stages"]) == 3, third
+
+
 def test_the_manifest_pins_166_shards_and_the_schema_sha():
     m = H.load_manifest()
     assert m["shard_count"] == 166 and len(m["shards"]) == 166
