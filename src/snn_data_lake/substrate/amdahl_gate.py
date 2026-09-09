@@ -521,6 +521,14 @@ def _profile_shares(brain, wake_ticks):
     }
 
 
+def _n_star_from_ceiling(c, n_lif, tol):
+    """N*_neuter = K*((1-c)/c)*N, K = tol/(1-tol) -- the identity the neuter branch computes.
+
+    None when c <= 0: the map is monotone DECREASING in c and has no finite value there.
+    """
+    return int(tol * n_lif * (1.0 - c) / ((1.0 - tol) * c)) if c > 0 else None
+
+
 def width_trigger(
     prof,
     n_lif,
@@ -529,6 +537,7 @@ def width_trigger(
     tol=TOLERANCE,
     n_lif_paired_live=None,
     n_lif_neuter_arm=None,
+    band_raw=None,
 ):
     """(iii) N*: the width at which the object path's share reaches `tol`, from TWO instruments.
 
@@ -537,9 +546,31 @@ def width_trigger(
     c_u is the object path's cost per unit per tick and R the rest-of-tick cost per tick. The two
     derivations fail DIFFERENTLY -- one reads the profiler's attribution, the other reads the
     neuter's profiler-free wall clock -- and both are printed, because a single number from a single
-    instrument is an opinion. CAVEAT, pre-registered: N* is a LOWER bound twice over. The rest of the
+    instrument is an opinion.
+
+    NEITHER N* IS A SECOND INSTRUMENT. Each is its upstream statistic restated in width units, and
+    the identities are exact (verified to max abs diff 0.0 over 2,000 random inputs):
+
+        N*_profile = K*((1 - s)/s)*N   with s the profiler's object-path share
+        N*_neuter  = K*((1 - c)/c)*N   with c the Amdahl ceiling,   K = tol/(1 - tol)
+
+    So `agree_ratio` is the share-vs-ceiling disagreement re-expressed, not two instruments
+    disagreeing about a width. The consequence the record owes: the neuter arm INHERITS the ceiling's
+    95% band, and that band is mapped here as `n_star_band` with its endpoints SWAPPED (the map is
+    monotone decreasing) and "unbounded" wherever an endpoint's c <= 0 -- which is every determinate
+    reading on file, so no N* here is a confidence bound. The profile arm's `n_star_band` is None on
+    purpose: no bootstrap exists over profiler tottime, so that number has no interval at all, and
+    printing the asymmetry is the point.
+
+    CAVEAT, pre-registered: N* is a LOWER bound twice over. The rest of the
     tick is held at its measured cost and in truth grows with the brain, and cProfile's per-call
     overhead inflates c_u more than R because the object path is millions of tiny calls.
+    CAVEAT, added 2026-09-09 (NOT pre-registered): and the object path's cost is taken as
+    proportional to the LIF census N. c_u is measured at ONE width; its width-invariance is untested,
+    so the LOWER-bound direction holds only while the path grows at most linearly in N. Measured on
+    the live brain, an awake tick enters the path ~5,124 times over ~71-74 DISTINCT stepped units of
+    a 165-unit census -- one unit carrying ~30% of the calls -- so "cost per unit" is not a
+    mechanism-level quantity and extrapolating it 15-40x assumes growth preserves that composition.
 
     THE WIDTH THE NEUTER ARM'S c_u IS DIVIDED BY. `n_lif` is the post-profile LIVE width, and the
     paired block that produced the p50 delta ran at a possibly narrower one. Given
@@ -551,7 +582,18 @@ def width_trigger(
     reason other than the neutering -- a THIRD attribution bias, pushing the ceiling UP and N* DOWN,
     the same direction as the two the record already names.
     """
-    out = {"tol": tol, "n_lif": n_lif, "formula": "N* = tol*R / ((1 - tol)*c_u)"}
+    out = {
+        "tol": tol,
+        "n_lif": n_lif,
+        "formula": "N* = tol*R / ((1 - tol)*c_u)",
+        "identity_profile": "N*_profile = K*((1-s)/s)*N, s = the profiler's object-path share",
+        "identity_neuter": "N*_neuter = K*((1-c)/c)*N, c = the Amdahl ceiling",
+        "identity_K": "K = tol/(1 - tol)",
+        "identity_note": (
+            "each N* is its upstream statistic restated in width units, NOT a third measurement; "
+            "agree_ratio is the share-vs-ceiling disagreement re-expressed"
+        ),
+    }
     w = prof["wake_ticks_profiled"]
     if n_lif and w:
         c_prof = prof["object_path_tottime_s"] * 1000.0 / (n_lif * w)
@@ -560,6 +602,10 @@ def width_trigger(
             "c_u_ms_per_unit_tick": round(c_prof, 8),
             "rest_ms_per_tick": round(r_prof, 4),
             "n_star": int(tol * r_prof / ((1 - tol) * c_prof)) if c_prof > 0 else None,
+            "n_star_band": None,
+            "n_star_band_reason": (
+                "no bootstrap exists over profiler tottime -- this number has no interval"
+            ),
         }
     delta = live_p50_ms - neut_p50_ms
     if n_lif and delta > 0:
@@ -576,6 +622,19 @@ def width_trigger(
             out["neuter"]["n_lif_paired_block_live"] = n_lif_paired_live
             out["neuter"]["c_u_paired_block"] = round(c_pb, 8)
             out["neuter"]["n_star_paired_block"] = int(tol * neut_p50_ms / ((1 - tol) * c_pb))
+        if band_raw:
+            b_lo, b_hi = band_raw
+            lo_end = _n_star_from_ceiling(b_hi, n_lif, tol)  # high c -> low N*
+            hi_end = _n_star_from_ceiling(b_lo, n_lif, tol)  # low c -> high N*
+            out["neuter"]["n_star_band"] = (
+                lo_end if lo_end is not None else "unbounded",
+                hi_end if hi_end is not None else "unbounded",
+            )
+            out["neuter"]["n_star_band_note"] = (
+                "the ceiling's own 95% band mapped through the SAME identity, endpoints SWAPPED "
+                "(the map is monotone decreasing in c); an endpoint at c <= 0 is 'unbounded' -- "
+                "there is no finite width there, so this is not a confidence bound on N*"
+            )
     else:
         out["neuter"] = {
             "n_star": None,
@@ -731,6 +790,7 @@ def live_reading(seed=0, wake_ticks=W_TICKS, warmup=WARMUP, resamples=RESAMPLES)
         na["neut_p50_raw_ms"],
         n_lif_paired_live=n_live_pb,
         n_lif_neuter_arm=n_neut_pb,
+        band_raw=na["band_raw"],
     )
     out["verdict"] = _verdict(na["band_raw"])
     out["verdict_corrected"] = _verdict(na["band_corrected"]) if na["band_corrected"] else None
@@ -834,6 +894,10 @@ def _print_reading(rep):
         "instrument resolves', never a measured gain."
     )
     print(f"  N* {wt['formula']} tol={wt['tol']} n_lif={wt['n_lif']}")
+    print(
+        f"     IDENTITIES: {wt['identity_profile']}; {wt['identity_neuter']}; {wt['identity_K']} "
+        f"-- {wt['identity_note']}"
+    )
     print(f"     from the PROFILE: {wt.get('profile')}")
     print(f"     from the NEUTER : {wt.get('neuter')}   agree-ratio {wt['agree_ratio']}")
     _nb = wt.get("neuter") or {}
@@ -847,6 +911,13 @@ def _print_reading(rep):
     print(
         "     CAVEAT (pre-registered): N* is a LOWER bound -- the rest of the tick is held at its "
         "measured cost and in truth grows with the brain, and cProfile inflates c_u more than R."
+    )
+    print(
+        "     CAVEAT (added 2026-09-09, NOT pre-registered): and the object path's cost is taken as "
+        "proportional to the LIF census N. c_u is measured at ONE width; its width-invariance is "
+        "untested, so the LOWER-bound direction holds only while the path grows at most linearly "
+        "in N. Measured: an awake tick enters the path ~5,124 times over ~71-74 DISTINCT stepped "
+        "units of a 165-unit census, one unit carrying ~30% of the calls."
     )
     print(
         f"  REPORT verdict={rep['verdict']} (raw) / {rep['verdict_corrected']} (corrected); "
