@@ -260,6 +260,46 @@ def test_gate_e_two_instruments_agree_above_half_and_the_swapped_map_is_its_comp
         H.check_sign(s_agree, s_total)
 
 
+def _dale_flipped_cells():
+    """The same world with the two excitatory somata relabelled inhibitory, so instrument 1
+    disagrees with the export's type on most synapses and gate (e) must refuse."""
+    swap = {"pyramidal neuron": "interneuron", "spiny stellate neuron": "interneuron"}
+    return [dict(c, type=swap.get(c["type"], c["type"])) for c in cells()]
+
+
+def test_a_refusing_ingest_still_carries_every_gate_reading():
+    """2.7: 'no artifact is written, the readings are recorded'. A refusal that throws away the
+    join counts and the extent ratios makes the row unauditable -- the refusal IS the result, so
+    it has to carry the evidence for it."""
+    blobs = _two_shards()
+    with pytest.raises(H.IngestRefused) as e:
+        H.ingest(
+            ["shardA", "shardB"],
+            cells=_dale_flipped_cells(),
+            fetch=blobs.get,
+            verify_bytes=False,
+        )
+    r = e.value.readings
+    assert r["join_counts"][f"{H.DECLARED_JOIN[0]}<->{H.DECLARED_JOIN[1]}"] == 6, r
+    assert set(r["unit_ratios"]) == set(H.CANDIDATE_SCALES), r
+    assert "disagree" in r["sign"], r
+    assert r["refusals"] and any("sign" in x for x in r["refusals"]), r
+
+
+def test_a_refusal_names_every_gate_that_refused_not_just_the_first():
+    blobs = _two_shards()
+    with pytest.raises(H.IngestRefused) as e:
+        H.ingest(
+            ["shardA", "shardB"],
+            cells=_dale_flipped_cells(),
+            fetch=blobs.get,
+            verify_bytes=False,
+            declared_join=("base_neuron_id", "agglo_seg"),
+        )
+    named = {x.split(":")[0] for x in e.value.readings["refusals"]}
+    assert named == {"join", "sign"}, e.value.readings["refusals"]
+
+
 def test_gate_e_disagreement_is_reported_not_rounded_to_zero():
     sign_of = H.dale_signs(cells())
     agree, total = H.sign_agreement(_edges(), sign_of)
