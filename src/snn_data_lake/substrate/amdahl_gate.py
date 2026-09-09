@@ -521,7 +521,15 @@ def _profile_shares(brain, wake_ticks):
     }
 
 
-def width_trigger(prof, n_lif, live_p50_ms, neut_p50_ms, tol=TOLERANCE):
+def width_trigger(
+    prof,
+    n_lif,
+    live_p50_ms,
+    neut_p50_ms,
+    tol=TOLERANCE,
+    n_lif_paired_live=None,
+    n_lif_neuter_arm=None,
+):
     """(iii) N*: the width at which the object path's share reaches `tol`, from TWO instruments.
 
     share(N) = c_u*N / (c_u*N + R) = tol   ->   N* = tol*R / ((1 - tol)*c_u)
@@ -532,6 +540,16 @@ def width_trigger(prof, n_lif, live_p50_ms, neut_p50_ms, tol=TOLERANCE):
     instrument is an opinion. CAVEAT, pre-registered: N* is a LOWER bound twice over. The rest of the
     tick is held at its measured cost and in truth grows with the brain, and cProfile's per-call
     overhead inflates c_u more than R because the object path is millions of tiny calls.
+
+    THE WIDTH THE NEUTER ARM'S c_u IS DIVIDED BY. `n_lif` is the post-profile LIVE width, and the
+    paired block that produced the p50 delta ran at a possibly narrower one. Given
+    `n_lif_paired_live`, the neuter arm additionally reports `c_u_paired_block` and
+    `n_star_paired_block` on that width -- printed BESIDE the published `n_star`, never in place of
+    it, because the published number is on the record. `n_lif_neuter_arm` is reported for the same
+    reason: the two arms are not always the same width (measured seed 1 live 177 / neut 165,
+    seed 2 189 / 177, seed 0 165 / 165), and the missing units make the neutered arm faster for a
+    reason other than the neutering -- a THIRD attribution bias, pushing the ceiling UP and N* DOWN,
+    the same direction as the two the record already names.
     """
     out = {"tol": tol, "n_lif": n_lif, "formula": "N* = tol*R / ((1 - tol)*c_u)"}
     w = prof["wake_ticks_profiled"]
@@ -550,7 +568,14 @@ def width_trigger(prof, n_lif, live_p50_ms, neut_p50_ms, tol=TOLERANCE):
             "c_u_ms_per_unit_tick": round(c_neut, 8),
             "rest_ms_per_tick": round(neut_p50_ms, 4),
             "n_star": int(tol * neut_p50_ms / ((1 - tol) * c_neut)),
+            "n_lif_used": n_lif,
+            "n_lif_neuter_arm": n_lif_neuter_arm,
         }
+        if n_lif_paired_live:
+            c_pb = delta / n_lif_paired_live
+            out["neuter"]["n_lif_paired_block_live"] = n_lif_paired_live
+            out["neuter"]["c_u_paired_block"] = round(c_pb, 8)
+            out["neuter"]["n_star_paired_block"] = int(tol * neut_p50_ms / ((1 - tol) * c_pb))
     else:
         out["neuter"] = {
             "n_star": None,
@@ -634,6 +659,14 @@ def live_reading(seed=0, wake_ticks=W_TICKS, warmup=WARMUP, resamples=RESAMPLES)
         # PHASE comes back with the count because the count depends on it (see _probe_install).
         n_ok, n_calls, n_phase = _probe_install(neut, neuter)
         s_ok, s_calls, s_phase = _probe_install(shm, sham)
+        # PER-ARM WIDTH AT THE END OF THE PAIRED BLOCK -- the widths the ceiling was actually timed
+        # at. It has to be read HERE and not after the profile: the profile block ticks the LIVE arm
+        # ALONE, so a post-profile walk reports an arm gap that did not exist during the timing
+        # (measured on seed 0, twice: 165/165/165 at block end against 177/165/165 after the
+        # profile). The neutered brain spikes less and so GROWS LESS -- not "does not grow".
+        n_live_pb, _wl = _count_lif_in(live)
+        n_neut_pb, _wn = _count_lif_in(neut)
+        n_sham_pb, _ws = _count_lif_in(shm)
         prof = _profile_shares(live, wake_ticks)
         # the width DURING the profiled ticks, per brain, from the audited walk -- not a third of a
         # process total: the neutered brain never spikes and so need not grow like the live one
@@ -643,6 +676,9 @@ def live_reading(seed=0, wake_ticks=W_TICKS, warmup=WARMUP, resamples=RESAMPLES)
             "seed": seed,
             "home": str(home),
             "n_lif_per_brain_at_build": n_walk0,
+            "n_lif_paired_block": {"live": n_live_pb, "neut": n_neut_pb, "sham": n_sham_pb},
+            # kept with its key and its semantics -- the record cites it -- but it is the
+            # POST-PROFILE LIVE width, not the width the paired block ran at
             "n_lif_per_brain_profiled": n_lif,
             "n_lif_all_three_after": n_lif_all_after,
             "census_cross_check": {
@@ -688,7 +724,14 @@ def live_reading(seed=0, wake_ticks=W_TICKS, warmup=WARMUP, resamples=RESAMPLES)
     out["ceiling_exceeds_noise_floor"] = abs(na["ceiling_raw"]) > 2.0 * abs(
         out["sham_arm"]["ceiling_raw"]
     )
-    out["width_trigger"] = width_trigger(prof, n_lif, na["live_p50_raw_ms"], na["neut_p50_raw_ms"])
+    out["width_trigger"] = width_trigger(
+        prof,
+        n_lif,
+        na["live_p50_raw_ms"],
+        na["neut_p50_raw_ms"],
+        n_lif_paired_live=n_live_pb,
+        n_lif_neuter_arm=n_neut_pb,
+    )
     out["verdict"] = _verdict(na["band_raw"])
     out["verdict_corrected"] = _verdict(na["band_corrected"]) if na["band_corrected"] else None
     out["verdict_basis"] = "raw decides (T068 3.6 item 3); both printed"
@@ -744,6 +787,14 @@ def _print_reading(rep):
         f"{rep['paired_wake_ticks']}/{rep['ticks_attempted']} attempted, "
         f"phase-misaligned {rep['phase_misaligned']}"
     )
+    pb = rep["n_lif_paired_block"]
+    print(
+        f"  per-arm width at the END of the paired timing block (live/neut/sham): "
+        f"{pb['live']}/{pb['neut']}/{pb['sham']} -- the width the ceiling was TIMED at. The profile "
+        f"block then ticks the LIVE arm alone, {pb['live']} -> {rep['n_lif_per_brain_profiled']}, "
+        f"so the number above is the POST-PROFILE LIVE width. A narrower neuter arm makes it faster "
+        f"for a reason other than the neutering: a THIRD attribution bias, ceiling UP and N* DOWN"
+    )
     print(
         f"  shares over {p['wake_ticks_profiled']} wake ticks ({p['total_tottime_s']} s tottime): "
         f"object path {p['object_path_share']}, I/O {p['io_share']} {p['io_top']}, "
@@ -785,6 +836,14 @@ def _print_reading(rep):
     print(f"  N* {wt['formula']} tol={wt['tol']} n_lif={wt['n_lif']}")
     print(f"     from the PROFILE: {wt.get('profile')}")
     print(f"     from the NEUTER : {wt.get('neuter')}   agree-ratio {wt['agree_ratio']}")
+    _nb = wt.get("neuter") or {}
+    if _nb.get("n_star_paired_block") is not None:
+        print(
+            f"     the neuter's n_star is published on n_lif={_nb.get('n_lif_used')} (post-profile "
+            f"live). On the width the paired block actually ran at "
+            f"({_nb.get('n_lif_paired_block_live')} live, {_nb.get('n_lif_neuter_arm')} neut) it is "
+            f"{_nb['n_star_paired_block']} -- printed beside the published number, never over it"
+        )
     print(
         "     CAVEAT (pre-registered): N* is a LOWER bound -- the rest of the tick is held at its "
         "measured cost and in truth grows with the brain, and cProfile inflates c_u more than R."
