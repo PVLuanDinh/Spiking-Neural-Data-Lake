@@ -2106,6 +2106,17 @@ def merge_pin(existing, record):
         elif existing.get("shards"):
             out["stages"][stage_key(existing["shards"])] = existing
     key = stage_key(record.get("shards", []))
+    # A RE-RUN OF THE SAME SHARDS IS A NEW READING, NOT A CORRECTION OF THE OLD ONE. 2.9
+    # authorises a second run over the same 166 shards under a different gate set, and its stage
+    # key is identical to the run that REFUSED -- so keying by stage alone would overwrite the
+    # refusal it is meant to stand beside, and with no artifact written a refusal's readings are
+    # the row's only result. The FIRST reading keeps the plain key; a re-run is suffixed, so the
+    # unqualified key never becomes ambiguous to whoever reads the pin later.
+    if key in out["stages"]:
+        n = 2
+        while f"{key}#{n}" in out["stages"]:
+            n += 1
+        key = f"{key}#{n}"
     out["stages"][key] = record
     out["latest"] = key
     return out
