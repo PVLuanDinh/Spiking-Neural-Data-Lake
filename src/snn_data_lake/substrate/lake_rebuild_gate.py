@@ -27,91 +27,42 @@ import tempfile
 from pathlib import Path
 
 from snn_data_lake.substrate.binlog import BinLog
-from snn_data_lake.substrate.home import _T_BLOCKDELTA, _T_UNITBLOCK
 from snn_data_lake.substrate.lake_bridge import located_records
-from snn_data_lake.substrate.lake_engine import (
-    BlockAdoptRecord,
-    BlockDeltaRecord,
-    is_block_adoption,
-)
 from snn_data_lake.substrate.lake_index import LakeIndex
 
 INDEX_NAME = "lake_index.db"
-_TAG_BLOCK = _T_UNITBLOCK[0]
-_TAG_DELTA = _T_BLOCKDELTA[0]
 
 
 def build_index(root: str | os.PathLike, index_path: str | os.PathLike) -> int:
     """Rebuild the pointer index from nothing but the lake. Returns records scanned.
 
-    TWO KEYINGS, and the split is the point (specs/022 T067, closing the opening T066 left owed).
+    ONE KEYING: every tag is keyed by its GLOBAL ORDINAL, which is provisional because nothing in
+    the lake carries a key of its own.
 
-      * THE BLOCK CLASSES ARE TAG-AWARE, AND ADOPTION IS A RECORD RATHER THAN A POSITION. A 0x0C
-        record is NEVER adopted because it is the latest one for its block; it is adopted if and
-        only if a 0x0D ADOPT record (`lake_engine.BlockAdoptRecord`, version byte 2, written by
-        `UnitBlockStore.append_adoptions` only after a relocation proof has passed) NAMES it. Each
-        ADOPT record in forward order sets the block's pointer to the `(container, seq)` it
-        carries, its `<block_id>/gen` row to the generation it carries, and the SUPERSEDED
-        watermark in its `<block_id>/count` row to its `folded_through`. A 0x0C record with no
-        ADOPT record gets NO pointer, which is what a store that refused it says too.
-        THIS IS D2'S EPOCH FENCE and it closes the hazard the merge opened: a block whose proof
-        FAILED leaves an unadopted 0x0C record in the lake, and the latest-wins-by-position rule
-        this replaces would have derived that pointer AND a superseded watermark the store never
-        adopted -- so a rebuilt index disagreed with the store's, and a reclaimer reading the mark
-        could name deltas as folded that the current record does not hold.
-        A 0x0D delta is keyed `<block_id>/<n>` by its order within its block. `build` itself emits
-        an ADOPT record per block at generation 0, so EVERY adopted record is fenced with no
-        special case for the built one. Those are precisely the rows `UnitBlockStore` writes, so
-        D1 holds for the block tier: the store's rows are DERIVED, and a reorder that renumbers
-        seqs stays re-derivable because the block id is IN the record rather than recoverable by
-        arithmetic.
-      * EVERY OTHER TAG KEEPS THE PROVISIONAL GLOBAL-ORDINAL KEYING, unchanged, because nothing
-        else in the lake carries a key of its own yet. The self-check below runs on exactly those
-        tags, so its rebuild equality, its planted-row red and its lake-tracking control read the
-        same as they did before this change.
+    THE TAG-AWARE BLOCK BRANCH IS DELETED (2026-09-09, T068 LOSS). Until then this function had a
+    second keying for the block tier -- the 0x0D ADOPT-record fence (adoption is a RECORD, never a
+    position) and `<block_id>/<n>` delta rows -- written for the paging layer that specs/022
+    evidence/s5-paging-null.md 3.4 measured at a 35.2x tick cost against a 3.0x bound and deleted
+    on its null. It goes with the tags it keyed: 0x0C and 0x0D no longer exist in RETENTION or in
+    TAG_DISPOSITIONS, so the branch could only ever have been dead code.
+
+    IT WAS NEVER EXERCISED BY THIS MODULE'S OWN SELF-CHECK, measured rather than assumed: the
+    check below constructs tags 1-7 only, so the branch's equality, its planted-row red and its
+    lake-tracking control never entered it. That is stated here because it is the honest reason
+    its deletion changes no gate reading -- not evidence that the branch was correct. A successor
+    paging row that re-registers a block tier owes the fence AND a self-check arm that reaches it.
     """
     idx = LakeIndex(index_path)
     try:
         batch: list[tuple] = []
         n = 0
-        adopted: dict[int, tuple[str, int]] = {}
-        generation: dict[int, int] = {}
-        folded_through: dict[int, int] = {}
-        delta_rows: dict[int, list[tuple[str, int]]] = {}
-        for ordinal, (container, seq, payload) in enumerate(located_records(root)):
+        for ordinal, (_container, _seq, payload) in enumerate(located_records(root)):
             tag = payload[0] if payload else 0
-            where = (container, ordinal if seq is None else seq)
-            if tag == _TAG_BLOCK:
-                # A 0x0C record adopts nothing by being here. Counted, and otherwise ignored.
-                pass
-            elif tag == _TAG_DELTA and is_block_adoption(payload):
-                record = BlockAdoptRecord.decode(payload)
-                adopted[record.block_id] = (record.container, record.seq)
-                generation[record.block_id] = record.generation
-                folded_through[record.block_id] = record.folded_through
-            elif tag == _TAG_DELTA:
-                bid = BlockDeltaRecord.decode(payload).block_id
-                delta_rows.setdefault(bid, []).append(where)
-            else:
-                batch.append((tag, str(ordinal), "lake", ordinal))
+            batch.append((tag, str(ordinal), "lake", ordinal))
             n += 1
             if len(batch) >= 10_000:
                 idx.put_batch(batch)
                 batch.clear()
-        for bid, (container, seq) in sorted(adopted.items()):
-            batch.append((_TAG_BLOCK, str(bid), container, seq))
-            batch.append((_TAG_BLOCK, f"{bid}/gen", "meta", generation[bid]))
-        for bid, rows in sorted(delta_rows.items()):
-            batch.append(
-                (
-                    _TAG_DELTA,
-                    f"{bid}/count",
-                    f"superseded={folded_through.get(bid, 0)}",
-                    len(rows),
-                )
-            )
-            for k, (container, seq) in enumerate(rows):
-                batch.append((_TAG_DELTA, f"{bid}/{k}", container, seq))
         idx.put_batch(batch, watermark=n)
         return n
     finally:

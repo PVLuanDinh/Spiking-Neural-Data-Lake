@@ -230,36 +230,16 @@ _T_COALITION = b"\x0a"
 # Both registries checked before minting, per the 0x09/0x0A lesson above.
 _T_GOAL = b"\x0b"
 
-# _T_UNITBLOCK added 2026-09-08 (specs/022 T066): one record per UNIT BLOCK -- the block's
-# out-edges as four parallel arrays behind a `<BIIH` header (version, block_id,
-# n_units_in_block, block_size), written by substrate/neuron_pager's UnitBlockStore through
-# lake_segments and pointed at by lake_index as (0x0C, block_id) -> (container, seq). It is the
-# synaptic IDENTITY of a block of units, which is why lake_engine.RETENTION labels it IMMORTAL
-# with reclaimable=False: there is no snapshot to reconstruct a block's edges from, and the
-# pager's page-out changes RESIDENCY IN RAM ONLY -- it destroys no record. State is NOT in here:
-# the kernel_state.v1 _T_STATE frame owns per-unit state, and a second copy inside the block
-# record would be the P2/P4b duplicate this tag exists to avoid. Both registries were checked
-# before minting, per the 0x09/0x0A lesson above: highest tag in use was 0x0B, and
-# lake_engine.RETENTION[0x0C] plus lake_migrate.TAG_DISPOSITIONS[0x0C] land in the same commit
-# with registry_consistent() asserted.
-_T_UNITBLOCK = b"\x0c"
-
-# _T_BLOCKDELTA added 2026-09-08 (specs/022 T067): one record per CHANGE to ONE block's out-edges,
-# PRE-keyed exactly as the block record is so the pager's pre_global() -> compile_bundles path
-# composes -- a `<BIIQ` header (version, block_id, n_units_in_block, base_generation) then five
-# parallel LE arrays (pre_local u2, post u4, weight f4, delay u2, op u1; op 0 = upsert an edge
-# (pre, post, delay) with this weight, 1 = remove it). `base_generation` names the merged 0x0C
-# generation the delta applies to, so a delta whose base is not the block's current generation is
-# REFUSED -- the 0x08 chain's "a DELTA whose base is not what the chain holds" refusal, at the
-# block grain. lake_engine.RETENTION[0x0D] labels it COMPACTABLE (a delta superseded by a merged
-# 0x0C record is reconstructible FROM that record) and lake_migrate.TAG_DISPOSITIONS[0x0D] is
-# read-as-is; both land in the same commit with registry_consistent() asserted. Both registries
-# were checked before minting, per the 0x09/0x0A lesson above: highest tag in use was 0x0C.
-# THIS IS THE CLASS RETENTION[0x0C] NAMED AS T067's: the per-tick appends at the block grain are
-# these. The "one-time BUILD" this comment used to give as the reason is FALSE since T067 --
-# lake_compactor's merge and reorder append 0x0C records on every pass, unobserved and unbounded
-# (see RETENTION[0x0C], which now says so).
-_T_BLOCKDELTA = b"\x0d"
+# DELETED 2026-09-09 (T068 LOSS): `_T_UNITBLOCK` (0x0C) and `_T_BLOCKDELTA` (0x0D), minted
+# 2026-09-08 for the block tier of the activation-driven paging layer, went with that layer when
+# it measured a 35.2x tick cost against a 3.0x bound fixed before the run
+# (specs/022 evidence/s5-paging-null.md 3.4/3.5). NO LAKE EVER HELD A RECORD UNDER EITHER,
+# measured before the deletion rather than assumed: the live home holds brain_lake.bin and has no
+# `segments/` directory and no `lake_index.db`, so both tags only ever saw scratch segment tiers
+# inside self-checks and tests. Their RETENTION rows and TAG_DISPOSITIONS rows went in the same
+# commit, so `registry_consistent()` stays true. The tag bytes 0x0C and 0x0D are FREE again --
+# the highest tag in use is 0x0B, which is what the next mint must check, per the 0x09/0x0A
+# lesson above.
 
 # FULL cadence: a fresh FULL every 64 deltas bounds a cold reconstruction to <= 64 delta applies
 # after the newest FULL. A storage-layer engineering constant (same class as lake_migrate's

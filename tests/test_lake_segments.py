@@ -10,7 +10,6 @@ from snn_data_lake.substrate.lake_segments import (
     SEGMENT_SCHEMA,
     SegmentCorruption,
     SegmentStore,
-    read_record,
     read_segment,
     unwrap,
     wrap,
@@ -110,26 +109,31 @@ def _seal_the_pre_t066_way(seg_dir, payloads, seq0=1):
     return path
 
 
-def test_read_record_refuses_a_pre_t066_whole_table_segment(tmp_path):
+def test_read_segment_still_reads_a_pre_t066_whole_table_segment(tmp_path):
+    """Backwards compatibility of the WHOLE-segment reader across the 2026-09-08 layout change.
+
+    TRIMMED 2026-09-09 (T068 LOSS): this was the positive control inside
+    `test_read_record_refuses_a_pre_t066_whole_table_segment`, whose subject -- `read_record`'s
+    per-record addressing and its refusal of the one-batch layout -- was deleted with the paging
+    layer that was its only caller (specs/022 evidence/s5-paging-null.md 3.4/3.5). The refusal
+    arms go with the function. THIS claim does not: `read_segment` survives, is live through
+    `lake_bridge.located_records`, and both segment layouts still exist on disk, so the
+    compatibility it asserts is a live property and keeping the arm is not sentiment."""
     payloads = [b"old-0", b"old-1", b"old-2"]
     path = _seal_the_pre_t066_way(tmp_path / "segments", payloads)
-    # POSITIVE CONTROL, same command: every WHOLE-segment reader is unaffected by the layout, so
-    # the refusal below is read_record's per-record addressing and not a broken fixture.
-    assert list(read_segment(path)) == payloads
     with pa_ipc.open_file(path) as r:
         assert r.num_record_batches == 1, "the fixture must be the one-batch layout, not the new"
-    # EVERY seq, not just the base one: before 2026-09-08 seqs 2 and 3 fell out of the batch range
-    # first and got "outside [1, 2)" -- a message about a span this segment does not have.
-    for seq in (1, 2, 3):
-        with pytest.raises(SegmentCorruption, match="pre-T066 writer"):
-            read_record(path, seq)
-    # and a seq that is out of range for ANY layout still reads as out of range on a NEW segment
+    assert list(read_segment(path)) == payloads
+
+    # the CONTROL that keeps this from passing on a broken fixture: the CURRENT writer's layout is
+    # a different shape (one batch per record) and the same reader must read it too.
     store = SegmentStore(tmp_path / "new")
-    store.append(b"fresh")
+    for p in payloads:
+        store.append(p)
     sealed = store.seal()
-    assert read_record(sealed, 1) == b"fresh"
-    with pytest.raises(ValueError, match="outside"):
-        read_record(sealed, 2)
+    with pa_ipc.open_file(sealed) as r:
+        assert r.num_record_batches == len(payloads), "the writer seals one batch per record"
+    assert list(read_segment(sealed)) == payloads
 
 
 def test_torn_wal_healed_by_incumbent_semantics(tmp_path):

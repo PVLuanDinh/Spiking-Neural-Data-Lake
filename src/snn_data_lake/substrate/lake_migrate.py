@@ -74,36 +74,13 @@ TAG_DISPOSITIONS: dict[int, tuple[str, str]] = {
         "READ-AS-IS -- JSON body rows folded on replay, zero records predate this tag; "
         "the round-trip red over live-written records runs in the store's own main()",
     ),
-    0x0C: (
-        "read-as-is",
-        "_T_UNITBLOCK per-block out-edge records (lake_engine.UnitBlockRecord, specs/022 T066); "
-        "v1 byte-identity -- upcaster is IDENTITY, record semantics live in "
-        "UnitBlockRecord.decode (a `<BIIH` header then four parallel LE arrays, refused WHOLE on "
-        "any malformation). Zero records predate this tag; the round-trip red over written "
-        "records runs in substrate/neuron_pager's own main() and in tests/test_neuron_pager.py",
-    ),
-    0x0D: (
-        "read-as-is",
-        "_T_BLOCKDELTA, and TWO record shapes live under it: v1 per-block out-edge deltas "
-        "(lake_engine.BlockDeltaRecord, specs/022 T067 -- a `<BIIQ` header then five parallel LE "
-        "arrays) and v2 ADOPT records (lake_engine.BlockAdoptRecord, the adoption fence). Both are "
-        "read-as-is and the upcaster is IDENTITY for both; delta semantics live in "
-        "BlockDeltaRecord.decode (refused WHOLE on any malformation) and in "
-        "lake_engine.apply_deltas, which the reader runs against the block's CURRENT generation. "
-        "THE HAZARD, stated because migrating the bytes DOES NOT migrate the tier here the way "
-        "0x08's chain semantics travel with home.load_growth: an ADOPT record names its adopted "
-        "0x0C record by (container, seq) and a container is a SEGMENT FILENAME, valid only inside "
-        "the root that wrote it. A migration re-containerises, so it can report equal=True per tag "
-        "over a destination root whose block tier then refuses with FileNotFoundError at the first "
-        "page-in -- byte-identity per record is exactly what this table promises and it is not "
-        "enough for this tag. Migration is NOT made to refuse: the fix belongs to the reclaimer "
-        "row, which anchors the fence on the ADOPT record's POSITION (the 0x0C record and the "
-        "deltas preceding it) rather than on the address it carries -- position is invariant under "
-        "any order-preserving copy, and RETENTION[0x0D] carries the same reading. Zero records "
-        "predate this tag; the round-trip red over written records runs in "
-        "substrate/lake_compactor's own main() and in tests/test_lake_compactor.py",
-    ),
 }
+# DELETED 2026-09-09 (T068 LOSS): the 0x0C `_T_UNITBLOCK` and 0x0D `_T_BLOCKDELTA` dispositions
+# went with the block tier and the paging layer that wrote it (specs/022
+# evidence/s5-paging-null.md 3.4/3.5). An undispositioned tag REFUSES migration, which is the
+# safe direction and costs nothing here: no lake holds a 0x0C or 0x0D record -- the live home
+# has no `segments/` and no `lake_index.db`, measured before the deletion -- so nothing is
+# refused that ever existed. A successor paging row re-registers its own tags here.
 # Anything else is UNKNOWN and refuses -- a record class nobody decided about.
 _OBSERVED_EXTRA: dict[int, str] = {}
 

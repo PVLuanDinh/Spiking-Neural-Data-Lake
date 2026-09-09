@@ -52,10 +52,15 @@ def test_the_retention_label_is_consistent_and_every_reclaimer_is_accounted_for(
     assert len(scratch) >= 1  # the scratch-home deletions are EXCLUDED and still listed
     imm = immortal_retention.immortal_tags()
     assert (
-        len(imm) == 10 and 0x0C in imm and 0x03 not in imm and 0x08 not in imm
-    )  # the grown substrate is COMPACTABLE. 0x0C joined the class on 2026-09-08 (specs/022 T066)
-    # for the reason RETENTION[0x0C] itself gives: "the block IS the synaptic identity of its
-    # units and there is no snapshot to reconstruct it from, so nothing here is reclaimable".
+        len(imm) == 9 and 0x0C not in imm and 0x03 not in imm and 0x08 not in imm
+    )  # the grown substrate is COMPACTABLE. 0x0C joined the IMMORTAL class on 2026-09-08
+    # (specs/022 T066) and LEFT IT on 2026-09-09 with the paging layer it was minted for, which
+    # T068 measured at a 35.2x tick cost against a 3.0x bound and deleted on its null
+    # (evidence/s5-paging-null.md 3.4/3.5); 10 -> 9. Removing a tag from the IMMORTAL class is
+    # normally the dangerous direction, so the measurement that licenses it is named here rather
+    # than left in the commit: no lake has ever held a 0x0C or 0x0D record -- the live home has no
+    # `segments/` and no `lake_index.db` -- so no durable record changes class, and "never
+    # forgets" is untouched.
     # The count is PINNED, never derived from immortal_tags() -- immortal_tags() reads RETENTION,
     # so an expected count derived from it would be a tautology and this detector would be zero.
 
