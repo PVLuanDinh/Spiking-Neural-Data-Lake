@@ -33,15 +33,27 @@ WHAT IT DOES NOT DO. It does not decide. The pre-registered rule's verdict WORD 
 REPORT line; the exit code carries only whether the instrument's OWN controls held. A gate that both
 measures and rules on its measurement has no reviewer.
 
-THE STAND-IN, and why it is the conversion's LOWER BOUND on cost. `_neutered_step` returns the
-neuron's last returned output -- 0, initialised once at class scope and never updated, because a
-neutered neuron integrates nothing and so can never spike -- at the cost of ONE attribute read and no
-arithmetic. No conversion of this path can cost less than producing one output per unit per tick, so
-the neutered arm is a floor on any converted arm and the measured ceiling is an UPPER bound on any
-achievable gain. Two disclosures that both push the SAME way (the ceiling is over-stated, never
-under-stated, so a DECLINE cannot be manufactured by them): the file-level attribution charges ALL of
-basic_components.py to the object path, and the neuter also removes whatever downstream work the
-suppressed spikes would have caused.
+THE STAND-IN, and what it does NOT bound. `_neutered_step` returns the neuron's last returned output
+-- 0, initialised once at class scope and never updated, because a neutered neuron integrates nothing
+and so can never spike -- at the cost of ONE attribute read and no arithmetic. It removes the step
+BODY and KEEPS the per-call Python dispatch, so it is NOT a floor on any converted arm, and the
+ceiling is not strictly an upper bound on the achievable gain. MEASURED on a live
+make_brain(seed=0, persist=False): an AWAKE tick makes ~5,100 `LIFNeuron.step` calls over ~74
+DISTINCT stepped units (~69 sub-steps each), not one call per unit; the residual is calls x dispatch,
+0.26-0.92 ms on a 104.84 ms tick, which a flat (post, weight) scatter removes along with the caller's
+loop it also replaces. A numpy LIF-shaped scatter over the same 165 units costs 5.41 us/tick against
+the neutered arm's 15.21 us -- a vectorized delivery produces one output per unit for LESS than a
+Python attribute read, which is what the retired claim said was impossible.
+
+THREE attribution disclosures, and they do NOT all push the same way. Two OVER-state the ceiling (the
+file-level attribution charges ALL of basic_components.py to the object path; the neuter also removes
+whatever downstream work the suppressed spikes would have caused). The THIRD runs the OTHER way and
+UNDER-states it -- the kept dispatch, bounded at +0.002..+0.009 of ceiling and stated as a BOUND
+because two instruments read the residual at 8-30 us per 165 calls and do not agree to two
+significant figures; corroborated by cProfile attributing 1.290 ms to the object path where the
+neuter removes only 0.520 ms, the 0.770 ms gap sitting inside that band. So a DECLINE is not immune
+to the disclosure set by construction; it SURVIVES it, with the corrected seed-0 upper band at
+<= 0.024 against the 0.15 bar, a ~6x margin.
 
 Modes
   (bare)         the reds, then the live reading; exits 1 only if the instrument's controls fail
@@ -109,9 +121,17 @@ def _neutered_step(self, current):
 
     It is 0: initialised once at class scope and never written, because a neuron that integrates
     nothing can never cross threshold and so can never return anything else. One attribute read, no
-    arithmetic. This is the LOWER BOUND on any conversion of this path -- a vectorized, kernelised or
-    CUDA delivery still has to produce one output per unit per tick, and cannot do it for less than
-    an attribute read -- so 1 - p50(neutered)/p50(live) is an UPPER bound on any achievable gain.
+    arithmetic.
+
+    IT IS NOT A FLOOR ON A CONVERTED ARM. It removes the step BODY and keeps the per-call Python
+    dispatch, and the live brain does not make one call per unit: measured on
+    make_brain(seed=0, persist=False), an AWAKE tick makes ~5,100 `LIFNeuron.step` calls over ~74
+    distinct stepped units (~69 sub-steps each), 1,264 asleep. The residual is calls x dispatch --
+    5,124 x 50-180 ns = 0.26-0.92 ms on a 104.84 ms tick, i.e. +0.002..+0.009 of ceiling -- and a
+    flat (post, weight) scatter removes it along with the caller's loop it also replaces. So
+    1 - p50(neutered)/p50(live) UNDER-states the achievable gain by that much, and is not strictly an
+    upper bound on it. Stated as a BOUND rather than a point: two instruments read the residual at
+    8-30 us per 165 calls and do not agree to two significant figures.
     """
     return self._neutered_last
 
