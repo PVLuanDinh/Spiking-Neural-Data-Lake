@@ -575,6 +575,12 @@ def live_reading(seed=0, wake_ticks=W_TICKS, warmup=WARMUP, resamples=RESAMPLES)
         from snn_data_lake.cortex.brain import make_brain  # noqa: PLC0415
 
         t0 = time.perf_counter()
+        # A WALL-CLOCK STAMP beside the duration. `elapsed_s` alone cannot locate a reading on the
+        # commit timeline, so a host condition asserted for a reading ("the daemon up and
+        # listening") is uncheckable after the fact -- which is exactly what happened to the five
+        # readings on file (evidence/s6-kernel-wire.md 3.2). No host or port is probed: this gate
+        # runs on a scratch home and must read the same on a clean checkout.
+        started_utc = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         live = make_brain(seed=seed, persist=False)
         # TWO INSTRUMENTS ON THE WIDTH, cross-checked at the one moment they must agree: the
         # process-wide gc census and the reachable-from-this-brain walk, with exactly one brain up.
@@ -639,6 +645,7 @@ def live_reading(seed=0, wake_ticks=W_TICKS, warmup=WARMUP, resamples=RESAMPLES)
             "sham_installed": s_ok,
             "sham_calls_one_tick": s_calls,
             "profile": prof,
+            "started_utc": started_utc,
             "elapsed_s": round(time.perf_counter() - t0, 1),
         }
     live_ms = [r[0] for r in rows]
@@ -689,16 +696,24 @@ def run_reading(
         }
     rep = live_reading(seed=seed, wake_ticks=wake_ticks, warmup=warmup, resamples=resamples)
     rep["reds"] = [(r[0], r[1], r[2]) for r in reds]
-    controls_ok = (
-        all(r[1] for r in reds)
-        and rep["neuter_installed"]
-        and rep["neuter_calls_one_tick"] > 0
-        and rep["sham_installed"]
-        and rep["sham_calls_one_tick"] == 0
-        and abs(rep["sham_arm"]["ceiling_raw"]) <= SHAM_NOISE_BAND
-        and rep["paired_wake_ticks"] == wake_ticks
-        and rep["census_cross_check"]["agree"]
-    )
+    # THE ROSTER IS BUILT ONCE, HERE, where the criterion lives -- never re-expressed in the
+    # printer. Two copies of one criterion can disagree, and a printed "all held" beside rc 1 is
+    # worse than silence; conjunct 7 is not reconstructible from `rep` at all, because it compares
+    # against the REQUESTED tick count and only this scope holds it. Measured cause: a real
+    # `controls FAILED` run printed every conjunct it does print as holding, because the two terms
+    # that can fail silently -- the neuter's install and its call count -- reach no line of output.
+    terms = [
+        ("reds", all(r[1] for r in reds)),
+        ("neuter_installed", bool(rep["neuter_installed"])),
+        ("neuter_calls_one_tick", rep["neuter_calls_one_tick"] > 0),
+        ("sham_installed", bool(rep["sham_installed"])),
+        ("sham_calls_zero", rep["sham_calls_one_tick"] == 0),
+        ("sham_within_noise_band", abs(rep["sham_arm"]["ceiling_raw"]) <= SHAM_NOISE_BAND),
+        ("paired_wake_ticks", rep["paired_wake_ticks"] == wake_ticks),
+        ("census_agrees", bool(rep["census_cross_check"]["agree"])),
+    ]
+    rep["controls"] = dict(terms)
+    controls_ok = all(v for _, v in terms)
     rep["controls_ok"] = controls_ok
     return (0 if controls_ok else 1), rep
 
@@ -776,9 +791,14 @@ def main(argv=None) -> int:
         print(f"  {rep['refused']}")
         return rc
     _print_reading(rep)
+    # the roster LAST, so run_selfchecks' 2000-char stdout tail cannot truncate the failing term
+    false_terms = [k for k, v in rep["controls"].items() if not v]
+    print("  controls: " + "; ".join(f"{k}={v}" for k, v in rep["controls"].items()))
     print(
-        f"amdahl gate: controls {'HELD' if rep['controls_ok'] else 'FAILED'} "
-        f"({rep['elapsed_s']} s) -- exit code carries the CONTROLS, never the verdict"
+        f"amdahl gate: controls {'HELD' if rep['controls_ok'] else 'FAILED'}"
+        + (f": {', '.join(false_terms)}" if false_terms else "")
+        + f" (started {rep['started_utc']}, {rep['elapsed_s']} s)"
+        " -- exit code carries the CONTROLS, never the verdict"
     )
     return rc
 
