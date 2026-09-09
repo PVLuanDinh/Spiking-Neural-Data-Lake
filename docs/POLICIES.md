@@ -198,6 +198,12 @@ benchmark in this repo, the swap is not P2-eligible and the answer is *build the
 *pick the more fashionable one*. An external framework being newer, more elegant, or better publicised
 is not evidence. This guard is what stops P2 from becoming a fashion treadmill.
 
+For a *delivery-path* swap the benchmark this guard demands is `substrate/amdahl_gate.py` (Gate Zero,
+specs/008): it neuters the incumbent path on the live tick and reports the ceiling any replacement
+could reach, with a padded-share positive control, a repeatability pair and a zero-share sham. It
+measures; it never decides — the verdict word is a report line and the exit code carries only the
+controls.
+
 **How this guard interacts with P7.** P7 removes exactly one argument from the table: *"it would be
 another dependency."* It removes nothing else. A framework proposed as a replacement for something
 this tree already has is a **P2 event governed by P2's evidence bar**; if no benchmark can compare

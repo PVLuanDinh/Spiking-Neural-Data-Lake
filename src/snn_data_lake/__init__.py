@@ -458,6 +458,7 @@ REGIONS = {
         "method_dormancy_gate",  # Policy 3 amendment: per-METHOD dormancy (update rules with no live caller)
         "eprop_transport_gate",  # e-prop invariant: a transposed weight may not reach a weight update
         "doc_budget_gate",  # word ceilings on the standing documents: prose growth stays visible
+        "amdahl_gate",  # specs/008 Gate Zero / 022 S6: the Amdahl ceiling of a delivery-path conversion
         "gradient_claim_gate",  # e-prop SCOPE: which rules OWE a cosine at all (census asserts on the governed tier)
         "policy_manifest",
         "capability_bar",  # specs/022 X1 (T088): a capability claim carries its protocol and provenance

@@ -339,6 +339,7 @@ CORE = [
     "substrate.immortal_retention",  # L5: label reds, the reclaimer scan, the cross-process round trip
     "substrate.conclusion_protocol",  # C5: row reds, the verdict/aggregate refusals, the prose control  # POLICIES.md manifest: derivation reconciles, committed copy in sync, drift never worsens
     "substrate.perf_baseline",  # 022 T001 wiring check: baseline parses + scorer discriminates (cheap; never measures)
+    "substrate.amdahl_gate",  # specs/008 Gate Zero / 022 S6: the three reds, then the neuter-and-measure ceiling reading
     "substrate.lake_bridge",  # 022 T005b: bridge round-trip red on a constructed temp lake (never the real home)
     "substrate.lake_segments",  # 022 T005: seal round-trip + CRC red on a constructed temp store (never the real home)
     "substrate.lake_index",  # 022 T007: pointer-index round-trip + watermark persistence + divergence red (temp db)

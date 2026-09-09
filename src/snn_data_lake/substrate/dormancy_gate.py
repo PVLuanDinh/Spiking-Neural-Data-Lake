@@ -618,6 +618,15 @@ EXEMPT = {
         "now the US3 kernel cutover (T064/T066/T070). BOUND EXPIRED AT T039 UNMET (US1 audit "
         "B3, 2026-08-25; recorded, not re-dated). Printed by the standing-TODO arm every run",
     ),
+    "amdahl_gate": (
+        "permanent",
+        "specs/008 Gate Zero / specs/022 S6: the Amdahl ceiling of a delivery-path conversion, read "
+        "by neutering the per-object neuron path on a SCRATCH brain (throwaway NORD_HOME, "
+        "persist=False) and re-timing paired wake ticks. A CI/run_selfchecks MEASUREMENT "
+        "INSTRUMENT, never on a tick -- it constructs its own brains and is never constructed BY "
+        "one. Same disposition as determinism_gate and perf_baseline: reachable from "
+        "run_selfchecks, never from a tick",
+    ),
     "perf_baseline": (
         "permanent",
         "the pinned-host performance ratchet (specs/022 T001) -- a measurement instrument, not a "
