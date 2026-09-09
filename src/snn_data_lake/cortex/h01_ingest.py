@@ -1470,8 +1470,14 @@ def population(artifact=None, p_parts=None, frac_bits=None, zero_weights=False, 
 
 def drive_indices(kt, frac=0.01):
     """The 1 % of units driven by the liveness check: the highest OUT-DEGREE units, ties by
-    index. Deterministic and DISCLOSED -- the claim is that a connected graph propagates, and
-    driving units chosen at random would measure how many isolated somata the release has."""
+    index. Deterministic and DISCLOSED, and 2.3(h) fixed NEITHER the selection nor the amplitude.
+
+    The stated reason used to be that a random draw "would measure how many isolated somata the
+    release has". That is true and it does not BITE. Measured 2026-09-09 on the pinned artifact:
+    a random 1 % propagates too (five INDEPENDENT seeds, totals 153-161, 5/5) and the zero-weight
+    red stays RED under a random drive as well ([142, 0, 0, 0]) -- so the selection buys the gate
+    nothing. What it does buy is determinism, and a richer 220-spike train for gate (f)'s
+    byte-equality comparison than a ~155-spike one. See T062 3.1 and 3.5(8)."""
     deg = {}
     for (pre, _part, _delay), (posts, _q) in kt.syn.bundles.items():
         deg[pre] = deg.get(pre, 0) + len(posts)
