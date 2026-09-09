@@ -82,6 +82,7 @@ import random
 import statistics
 import sys
 import time
+import types
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.substrate.basic_components import Connection
@@ -467,10 +468,20 @@ def _count_lif_process():
 def _count_lif_in(root, max_nodes=400000):
     """Every LIFNeuron reachable from ONE brain -- the per-brain width, with three brains alive.
 
-    A bounded attribute walk that never follows classes or modules, so it cannot wander out of this
-    brain into a sibling through a global. It is CROSS-CHECKED against the process-wide count at the
-    single moment the two must agree -- right after the first brain is built and before the second
-    exists -- because a census with no second instrument is a number nobody has audited.
+    A bounded attribute walk. Classes AND modules are skipped, so it cannot wander out of this brain
+    into a sibling through a global. `types.ModuleType` was added to the skip list on 2026-09-09: the
+    docstring had claimed the property while the walk followed any object's `__dict__` values, and a
+    probe reached a LIFNeuron through a bare module reference, transitively
+    (module -> dict -> list -> 3 found). The addition is number-neutral, and that was MEASURED rather
+    than assumed -- a module-counting replica of this walk returns identical n_lif and objects_walked
+    (141 / 14,976 with one brain alive; 141 / 14,976 with all three, against a 423 process census)
+    and reaches ZERO modules on this brain, so the leak was latent and no recorded number moved.
+
+    THE CROSS-CHECK'S SCOPE, stated plainly because the earlier wording over-claimed it. It runs with
+    exactly ONE brain alive, so it proves the two instruments agree on THIS brain's census -- and it
+    CANNOT, by construction, detect a walk that wandered into a sibling, because at that instant no
+    sibling exists. What does discriminate, measured: with all three brains alive the walk still
+    returns the per-brain count, not the process total.
     """
     seen, stack, n_lif, walked = set(), [root], 0, 0
     while stack and walked < max_nodes:
@@ -482,7 +493,9 @@ def _count_lif_in(root, max_nodes=400000):
         walked += 1
         if type(o) is LIFNeuron:
             n_lif += 1
-        if isinstance(o, (str, bytes, bytearray, int, float, bool, type(None), type)):
+        if isinstance(
+            o, (str, bytes, bytearray, int, float, bool, type(None), type, types.ModuleType)
+        ):
             continue
         if isinstance(o, dict):
             stack.extend(list(o.values())[:5000])
