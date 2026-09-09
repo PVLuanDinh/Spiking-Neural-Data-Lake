@@ -470,6 +470,25 @@ def test_the_licence_passes_the_ingest_guard_and_the_attribution_names_fr_007():
     assert "FR-007" in H.ATTRIBUTION
 
 
+def test_the_pin_records_every_stage_and_never_erases_an_earlier_one():
+    """2.4: 'the stage-B artifact REPLACES stage A's (the pin records BOTH)'. A pin writer that
+    overwrites is a pin that quietly loses the cheaper stage's readings the moment the expensive
+    one runs -- and with a refusal there is no artifact, so the readings ARE the record."""
+    a = {"shards": ["export000000000000", "export000000000034"], "verdict": "REFUSED", "n": 1}
+    b = {"shards": ["export000000000000", "export000000000165"], "verdict": "REFUSED", "n": 2}
+    first = H.merge_pin(None, a)
+    assert list(first["stages"]) == [H.stage_key(a["shards"])], first
+    both = H.merge_pin(first, b)
+    assert set(both["stages"]) == {H.stage_key(a["shards"]), H.stage_key(b["shards"])}, both
+    assert both["stages"][H.stage_key(a["shards"])]["n"] == 1, "stage A's readings were erased"
+    assert both["latest"] == H.stage_key(b["shards"])
+
+    # a LEGACY top-level record (what the first stage-A run wrote) must migrate, not vanish
+    legacy = dict(a, utc="2026-09-09T20:38:52Z")
+    migrated = H.merge_pin(legacy, b)
+    assert migrated["stages"][H.stage_key(a["shards"])]["utc"] == "2026-09-09T20:38:52Z", migrated
+
+
 def test_the_manifest_pins_166_shards_and_the_schema_sha():
     m = H.load_manifest()
     assert m["shard_count"] == 166 and len(m["shards"]) == 166
