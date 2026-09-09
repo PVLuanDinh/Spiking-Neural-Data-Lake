@@ -713,3 +713,80 @@ it is.
     ticks, 0 floods); and a tag with no row self-baselines after 32 of its own writing ticks, so "never
     trips" was wrong in general. The seed is not stale: re-run today, 0x0A per-tick bytes read 193–434 against
     the recorded p95 434 / max 435.
+
+## 4. The panel's verdict on the null, and the fold (2026-09-09, on `36b2b6a`; the fold commits are stacked on it)
+
+**Shape.** Three lenses (instrument / pre-registration honesty / disposition), each filing only findings with a
+reproducing command on the frozen head; every finding sent to an independent refuter (Opus) instructed to
+refute the CLAIM and, separately, the proposed FIX (obs #2146). 40 agents, 2.8 h. 37 filed: **31 stood** (1
+BLOCKER, 12 MAJOR, 18 MINOR), 6 refuted — and **31 of the 31 standing findings carried a proposed fix the
+refuter showed would introduce a defect**; every correction in 3.7 and every commit below is the refuter's
+minimal fix. Beside the panel, Codex (an independent second model, `codex-converse`, threads `01a083c6` and
+`01a084e4`, read-only) was asked to refute the ruling twice: its first apparatus hypothesis (allocation
+tracing left active during the timing pass) was REFUTED by the panel at runtime (`tracemalloc.is_tracing()`
+False at all 60 tick boundaries; the 35× survives); its second reading — that the ruling selects among
+conflicting provisions and that deleting the layer strands the archived harnesses — is folded into 3.7 item 1
+and the tag `t068-last-with-pager`.
+
+**The first question, answered.** Is the LOSS a relabelling of a pre-registered condition after its number?
+The instrument lens: NO — every number the record quotes re-derives exactly from the archived cells under a
+script sharing no code with `verdict.py`; the resolution of 2.10's drafting gap to 2.3 is the only rule
+covering the case and pre-dates every number; and an independent paired re-run of both R2 arms, pinned,
+with the ambient control PASSING (drift 9.0 %), read raw 25.7× / corrected 28.5× — "the cost finding does
+not depend on the refused instrument"; the eviction policy contributes nothing to the cost (neutered 19.92 ms
+vs paged 19.98 ms per tick, the same 107 page-ins). The pre-registration-honesty lens found no relabelling
+either; what it found (3.7) were wrong numbers in the record's own controls, a false "quoted in full", a
+false rationale for the bound that cuts against the pager, and an untracked verdict tool — none moving the
+verdict. **The LOSS stands.** Its honest form is 3.7 item 1: a ruling that selects 2.3 over the refusal rows
+for the LOSS direction, with the quiet re-run the row ordered performed and passing.
+
+**The second question, answered by measurement.** 2.6's "RE-HOMED, not deleted (load-bearing independently
+of paging)" was FALSE for the block tier (3.7 item 16): one writer, five reds, one production caller, all in
+the deleted set; a rebuild self-check that never scanned the class; a live lake with no segment tier. The
+disposition taken is the P3 one — the schema goes with its writer — recorded in 3.7 before it was executed
+here. The BLOCKER (the full suite RED at `36b2b6a` on `doc_budget_gate`, SECURITY.md 713 words against a
+488 ceiling after `f441949`) was closed first, in its own commit with the WHY the gate demands (`ac91ed3`).
+
+**The fold, as commits (each one logical change; each gate re-run; the git-index staging rule of 3.7 item 16):**
+
+| commit | change | what the worker found that the brief did not say |
+|---|---|---|
+| `ac91ed3` | the BLOCKER: `doc_budget_gate` ceiling for SECURITY.md 488 → 713 with the WHY | — |
+| `2b11b2d` | the record's §3.7 (the panel's corrections, dated) | — |
+| `343cd48` | `lake_compactor.py` + its 34 tests, its REGIONS/CORE/EXEMPT rows — deleted (no non-pager consumer, as 2.6 decided) | — |
+| `229cdf5` | `neuron_pager.py` (NeuronPager, UnitBlockStore, both residency instruments, `_derive_rounds`, the width instrument) + its 27 tests, its REGIONS/CORE/`wire` rows — deleted | no other test named it (positive-controlled grep) |
+| `327c184` | `unit_blocks.py` retired — its ONE surviving capability ported FIRST: `UnitBlocks.group` → `lake_engine.SynapseDelta.group_by_block` (400 randomized cases, 0 mismatches; the live consumer driven 79 records, identical grouping; a wrong partition IS detected) | **`interaction_learning._record_synapse_delta` imported `UnitBlocks` inside `try … except Exception: return None`** — deleting the module would have reddened nothing and silently turned the 0x09 writer into a no-op; the duplicate-capability hook forced port + retire into one commit (P2's own grammar); 5 of `test_unit_blocks_writer.py`'s 7 arms pin the surviving 0x09 writer and moved to `tests/test_synapse_delta_writer.py` |
+| `5b3fa46` | `KernelTick`'s residency-mask branch (`resident`, `pending`, the mask arms in `_propagate` / `_deliver_and_rotate`) + `replay_gate._PAGED_REFUSAL` and its docstring — deleted together (P8 clause 1) | the paged-refusal test's positive control was the suite's ONLY capture/restore round-trip pin — kept as its own test |
+| `0f48588` | the block-tier schema: `UnitBlockRecord` / `BlockDeltaRecord` / `BlockAdoptRecord`, `apply_deltas`, `edge_table`, `compare_drop`, `record_from_edges`, `is_block_adoption`, `RETENTION[0x0C]`/`[0x0D]`, `TAG_DISPOSITIONS[0x0C]`/`[0x0D]`, `build_index`'s block branch, `read_record`/`read_records`, `home`'s two tag constants — deleted; immortal tags 10 → 9 | "the 0x0D pruner" named no symbol (nothing orphaned); `test_lake_segments`' pre-T066 read-back arm re-homed with a control of its own |
+| `22db40a` | the documentation census (395 hits in 37 files): dated notes at every site, never an edit to pre-registered text; the `INVENTION_REGISTER` row 1 → DELETED ON ITS NULL (its ceiling 1543 → 1595 after condensing, measured + 0) | three sites the brief did not name (`contracts/lake-records.md`, `data-model.md`, `percept_surprise.py`'s prefetch disposition → VOID) |
+
+Gates after every commit, all rc 0: `p4c_ratchet --assert`, `import_manifest`, `dormancy_gate --assert`,
+`method_dormancy_gate --assert`, `replication_guard`, `immortal_retention --assert` (9 tags),
+`red_reachability --assert`, `replay_gate --assert`, `determinism_gate --assert`; ruff clean; the re-homed
+reds proven REACHABLE by mutation (three mutants of the ported method caught by 3/5, 5/5 and 4/5 applicable
+arms, the unmutated control 5/5). 6,761 lines deleted, 314 added, across 34 files.
+
+**Documentation census (C28), applied as dated notes, never as edits to pre-registered text:** 395 hits in 37 files; 16 files annotated with dated notes (PLAN-FINAL: S3, S4, S5 → CLOSED, the 2026-09-08 S6
+amendment RETRACTED — S6 keeps the kernel wire — T062's rationale, Part F S-R1/R2/R3/R5/R6/R7/R8 → "RETIRED
+WITH THE LAYER 2026-09-09 (S-R3 FIRED)", S-R4 deliberately untouched as S6's; tasks T064/T066/T067 (+ the
+0x0A correction)/T089, T068 → DONE; spec.md SC-007's second dated line and eight sites; SYNTHESIS seven sites;
+quickstart; PROPOSED-ROWS L5; `contracts/lake-records.md`; `data-model.md`; the two evidence headers); left
+with a reason: this file, the dated evidence records, `plan.md`/`research.md` (superseded by PLAN-FINAL),
+`kernel_state.py` and its test (the 128-byte alignment stands on contiguous SoA reads; the note lives at the
+contract they cite), `lake_index.py`'s "REVISIT at S2 paging widths" (a conditional that now never
+triggers). The worker's own boundary sweep logged obs #2152 (a test file is a mixture — delete by arm,
+not by file), #2153 (a consumer behind a swallowed dynamic import fails silently, never red) and #2154 (a
+mutation harness catching `Exception` misses pytest's `Failed`).
+
+**What the deletion leaves.** The kernel (`KernelTick` on the `resident=None` path only, `compile_bundles`,
+`Synapses.empty`), the segment tier (`lake_segments.SegmentStore`, `lake_index`) as they were before T066 with
+their own `wire` rows, `lake_bridge.located_records` and `home.observe_append` with their live callers, the
+evidence files of T066, T067 and T068 (each now headed by a pointer to this section and to the tag), and the
+successor comparison 3.7 item 6 names. Nine immortal tags. The S6 kernel wire is unchanged; its pager-wire
+amendment and S-R5 are retracted by dated note. T064's deliverable (`unit_blocks`) is void until a successor
+paging row; the row stays open and says so.
+
+**Verification of the fold.** The deletion commits were executed by one worker from the panel-corrected
+brief and read by the orchestrator; the records commits are the orchestrator's; **neither was re-panelled —
+the fold is battery-verified only** (the arc's one battery runs on the stacked head that includes it, and its
+record commit names it).
