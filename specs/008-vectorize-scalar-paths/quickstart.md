@@ -155,3 +155,26 @@ each needs its own gate and neither proves the other.
 every boundary, so a perimeter that is not closed is not a partial win -- it is a loss. If P1's one
 subsystem cannot be made faster end to end, the approach is wrong and the feature should STOP rather
 than widen. That is a legitimate outcome and it is cheaper to discover at one subsystem than at ten.
+
+---
+
+## DATED SUCCESSION 2026-09-09 (specs/022 S6 panel fold)
+
+Nothing above is edited: it is the record of what was planned and measured in 2026-08. What has since
+changed, in one place:
+
+- **Gate Zero LANDED** as `src/snn_data_lake/substrate/amdahl_gate.py` (`b8413c1`, 2026-09-09), NOT as
+  `tools/convert_gate.py` -- that path is refused by the p4c ratchet, which counts `tools/` files as
+  ungoverned (`tasks.md`'s Discipline note). Measurement 1's "(BUILD FIRST)" is therefore satisfied and
+  every `tools/convert_gate.py` reference above is a planned location, not a live one.
+- **The T0-T3-ladder half of that planned tool is still open**, as `tasks.md` T004.
+- **This file's 74.26 ms baseline is 2026-08's** and reads stale against the 108.663 ms wake p50 recorded
+  at `../022-unified-brain-arc/evidence/s6-kernel-wire.md:61`. `spec.md` SC-001 still pins 74.26; re-recording
+  that baseline is its own task with its own measurement, never a doc annotation, so it is NOT done here.
+- **Run the gate with this file's own pinned env** -- bare `python` on the build host resolves to a 3.11
+  interpreter that the free-threading import guard refuses:
+  `PYTHONUTF8=1 PYTHONPATH=src .venv-lake\Scripts\python.exe -m snn_data_lake.substrate.amdahl_gate --self-check`
+
+The same line is appended to `plan.md`, whose `tools/convert_gate.py` references carry the identical
+superseded assertion. The S6 disposition's own pre-registered scope was "specs/008 gets its `tasks.md`",
+so this is residual doc drift recorded forward, not a missed obligation of that arc.

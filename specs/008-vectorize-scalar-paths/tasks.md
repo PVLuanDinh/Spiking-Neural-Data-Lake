@@ -15,13 +15,36 @@ T001, so instruments land in `src/snn_data_lake/substrate/`.
   `2c3c97e`, `1 error in 0.10s`, a collection ImportError). Neuter-and-measure the Amdahl ceiling of a
   delivery-path conversion over a live `make_brain(seed, persist=False)` in a scratch home: paired warm wake
   ticks, W = 150 per arm, p50 with a 1,000-resample bootstrap band, raw AND reference-corrected (raw decides
-  when they disagree), plus N* derived two ways. Three self-check reds fire their broken arms in the same
-  command (a padded-share brain must read a LARGE ceiling -- the positive control, 0.87; repeatability; a
-  sham neuter on a zero-share path must read within noise of zero); `run_selfchecks` 353/353, every gate
-  rc 0. MEASURED at the deployed width (177-189 live LIF units): ceiling 0.005-0.017 raw, 95% bands inside
-  0.04 on seeds 0 and 1; seed 2 INDETERMINATE twice (its band, +/-0.2, straddles the 0.15 bar). The
-  instrument's floor is ~0.008, so the honest reading is "the removable cost is BELOW WHAT THIS INSTRUMENT
-  RESOLVES" -- which supports the decline more strongly than the point estimate does
+  when they disagree), plus N* derived two ways. THREE CONTROLS HELD in the same command (a padded-share
+  brain must read a LARGE ceiling -- the positive control, 0.87; a repeatability pair; a sham neuter on a
+  zero-share path must read within noise of zero); `run_selfchecks` 353/353, every gate rc 0. MEASURED at
+  the deployed width (177-189 live LIF units): ceiling 0.005-0.017 raw, 95% bands inside 0.04 on seeds 0
+  and 1; seed 2 INDETERMINATE twice (its band, +/-0.2, straddles the 0.15 bar).
+  **CORRECTED 2026-09-09 (panel fold, C10):** this row said "Three self-check reds fire their broken arms
+  in the same command". They did not. 2.2(iv) constructs exactly ONE perturbation and only padded-share is
+  built from it -- repeatability is a self-consistency pair with nothing perturbed and the sham is a
+  negative control -- so NO criterion was shown FAILING in that command, which now says "3 controls HELD"
+  and says so. The padded-share criterion IS seen refusing at
+  `tests/test_amdahl_gate.py::test_the_instrument_blind_disposition_refuses_the_reading` (`pad_iters=0`),
+  and the repeatability criterion now has the one broken arm it lacked: `red_repeatability_broken_arm`
+  re-reads it with its second reading on the PADDED rig, prints it as a fourth `--self-check` line and
+  asserts DISJOINT bands -- measured control 0.0416 band (0.03318, 0.04845) against broken 0.8731 band
+  (0.87196, 0.87406). Its outcome is kept out of the exit code: it demonstrates the criterion can fail, it
+  is not a control on a reading.
+  **CORRECTED 2026-09-09 (panel fold, C8 + C12):** the sentence "The instrument's floor is ~0.008, so the
+  honest reading is 'the removable cost is BELOW WHAT THIS INSTRUMENT RESOLVES'" that stood here is CUT.
+  The sham arm's magnitude is a PER-RUN quantity by the instrument's own definition ("the sham arm removes
+  NO work, so whatever it reads is the instrument's own floor"), not a property of the instrument: over
+  the five recorded readings it runs -0.0009 / +0.0005 / -0.0078 / +0.0185 / -0.0140, and the gate's own
+  "ceiling exceeds 2x the floor" flag prints True on 3 of those 5 -- so the licensed conclusion fails on
+  the majority of the readings it was written over, and ~0.008 is only seed 1's own draw. "95% bands
+  inside 0.04" is likewise WITHDRAWN: it is a property of ONE unlogged reading (the seed-0 quiet extra,
+  band upper 0.0383), and five of six fresh determinate bands breach it. What reproduces, and what the
+  DECLINE rests on: at this width the ceiling is BELOW WHAT THE INSTRUMENT RESOLVES -- the point estimate
+  is not stable across readings (six panel re-readings of the same three seeds read -0.03 to +0.03, none
+  of them inside 0.005-0.017) and is not quotable as a number, while every determinate 95% band's upper
+  bound sits far under the 0.15 bar. No replacement constant is published. Per-reading table:
+  `../022-unified-brain-arc/evidence/s6-kernel-wire.md` 3.2; the per-finding entries are its 3.7
 - [X] T002 The kernel-wire conversion (`KernelTick._deliver_and_rotate` as the live tick's delivery)
   DECLINED AT THE DEPLOYED WIDTH under FR-005, 2026-09-09, with the measurement recorded
   (`../022-unified-brain-arc/evidence/s6-kernel-wire.md`). Two determinate seeds agree; the bar is
@@ -31,7 +54,34 @@ T001, so instruments land in `src/snn_data_lake/substrate/`.
   to specs/022 T062 -- the row that first places units at scale, ~16k signed neurons -- or to growth
   reaching N*, a LOWER BOUND of 2,504-2,828 units by the profile derivation and 4,018-6,316 by the neuter
   derivation. The two disagree 1.5-2.5x (cProfile attributes more to the object path than the neuter
-  removes); that disagreement is reported as the instrument's own finding, NOT resolved into one number
+  removes); that disagreement is reported as the instrument's own finding, NOT resolved into one number.
+  **CORRECTED 2026-09-09 (panel fold, C1 + C4 + C6 + C8 + C11).** (a) N* over ALL FIVE recorded readings
+  is profile 2,504-2,828 (2,565 on the seed-0 quiet extra) and neuter 642-6,316 (1,788 on that same
+  reading), the two 1.43-4.40x apart. The ranges above dropped seed 2 boot's 642 and 4.40 and the quiet
+  extra's 1,788 and 1.43 while keeping 2,828 from that same boot reading; no single reading rule produced
+  that set, and 2.9 -- written BEFORE the re-read, while 4.40 was still the adverse number -- had stated
+  the disagreement as 2.4-4.4x. (b) Neither N* is a second instrument. N*_profile = K*((1-s)/s)*N and
+  N*_neuter = K*((1-c)/c)*N with K = tol/(1-tol), exactly, so the neuter's N* is that reading's ceiling
+  restated in width units and INHERITS its 95% band -- unbounded above on every determinate seed (seed 0
+  boot maps to [2,049, +inf), seed 1 to [2,045, +inf)) -- while the profile's N* has no interval at all,
+  because no bootstrap exists over profiler tottime. Seed 2 boot's 642 is the same formula at its
+  INDETERMINATE ceiling 0.049, not a different regime. (c) The stated cause is withdrawn without a
+  replacement: "cProfile attributes more to the object path than the neuter removes" is contradicted by
+  the record's own quiet reading, where cProfile inflated R by 1.65x (170.82/103.71) against c_u by 1.15x,
+  and on that reading the neuter's N* sits BELOW the profile's, inverting the stated direction. Part of
+  the gap is real removable cost the neuter leaves behind rather than profiler overhead (see C5). (d) "a
+  LOWER BOUND" becomes a POINT ESTIMATE at one measured width, its bound direction UNTESTED: c_u is
+  measured at ONE width and its width-invariance is untested, so the lower-bound direction holds only
+  while the object path grows at most linearly in N. (e) "a ceiling of 0.005-0.017 is an order of
+  magnitude under it" -- the ORDER-OF-MAGNITUDE margin reproduces on every reading ever taken and the
+  DECLINE with it (6/6 fresh readings read DECLINE); the POINT RANGE does not, so the reproducible
+  statement is "below what the instrument resolves at this width, every determinate band upper far under
+  the 0.15 bar". (f) T062 PLACES NO UNITS: PLAN-FINAL scopes its H01 ingest to the c3 SYNAPSE GRAPH
+  composed onto `cortical_prior.py`, its decision table reads "placement has no reader", and its own
+  same-arc dated note names GROWTH as the placer; ~16k is a measured ingest milestone only. T062's own
+  pre-registration does define an ingested population, but OFF the live tick -- the re-arm condition is
+  THE FIRST TICK POPULATION AT OR ABOVE N*, which today only growth can produce. The DECLINE, the bar and
+  the disposition are unchanged
 - [ ] T003 Measure the connectivity law: nonzero synapses per neuron at THREE OR MORE population widths,
   the functional form fitted rather than assumed. OWED BEFORE any ceiling in this spec's amendments is
   quoted -- constant fanout and fraction-of-width differ by orders of magnitude, and plan.md's Complexity
