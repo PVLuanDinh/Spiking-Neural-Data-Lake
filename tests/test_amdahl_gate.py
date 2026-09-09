@@ -74,6 +74,27 @@ def test_the_instrument_blind_disposition_refuses_the_reading():
     assert "verdict" not in report
 
 
+def test_the_repeatability_criterion_fires_on_a_deliberately_broken_arm():
+    """THE ONE FIRED ARM, with its control in the same test.
+
+    `red_repeatability` runs the identical unperturbed pair twice, so its criterion had no perturbed
+    arm anywhere in the tree: the command that printed "3 reds fired their broken arms" showed no
+    criterion failing. Re-read with the second reading on the PADDED rig, the bands must read
+    DISJOINT -- a broken arm that PASSES is itself the failure. The control is the pair AS SHIPPED,
+    which must still OVERLAP, or the arm is measuring ambient rather than the perturbation.
+    """
+    fired, msg, detail = amdahl_gate.red_repeatability_broken_arm()
+    assert detail["bands_overlap"] is False, f"a broken arm that PASSES is the failure: {msg}"
+    assert fired is True, msg
+    assert detail["broken_ceiling"] > detail["control_ceiling"], detail
+
+    ok, cmsg, cdetail = amdahl_gate.red_repeatability()
+    assert ok, f"the control must still overlap, else the arm reads ambient, not the pad: {cmsg}"
+    lo1, hi1 = cdetail["band_a"]
+    lo2, hi2 = cdetail["band_b"]
+    assert lo1 <= hi2 and lo2 <= hi1, cdetail
+
+
 def test_the_reds_are_the_same_three_the_pre_registration_names():
     """The gate's own red roster must be the pre-registered one -- not a subset it grew into.
 

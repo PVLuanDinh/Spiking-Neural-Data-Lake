@@ -57,7 +57,10 @@ to the disclosure set by construction; it SURVIVES it, with the corrected seed-0
 
 Modes
   (bare)         the reds, then the live reading; exits 1 only if the instrument's controls fail
-  --self-check   the three pre-registered reds with their broken arms, PASS/FAIL each, no brain
+  --self-check   the three pre-registered CONTROLS, PASS/FAIL each, plus ONE deliberately broken
+                 arm (the repeatability criterion re-read on a padded rig, asserted to FIRE); no
+                 brain. NOT "three reds firing their broken arms": 2.2(iv) constructs exactly one
+                 perturbation, and only the padded-share red is built from it
   --seed N       read at seed N (default 0);  --ticks N  paired wake ticks per arm (default 150)
 
   python -m snn_data_lake.substrate.amdahl_gate --self-check
@@ -436,8 +439,76 @@ def red_sham_neuter(ticks=RED_TICKS, resamples=RED_RESAMPLES, seed=0):
     )
 
 
+# distinct-from: substrate/selfcheck_cache.py::self_check -- fires P8 reds over CACHE KEY invariance
+#   (a dependency hash must flip the keys that can see it). No timing, no bootstrap band, no
+#   perturbed measurement arm; its "control" is a second key derivation. Site read.
+# distinct-from: reasoning/pc_cortex_torch.py::verify_export_fidelity -- asserts an exported
+#   artifact's float64 settling causes EQUAL the trainer's. An equality check on an artifact, not a
+#   criterion re-run with a perturbation. Site read.
+# distinct-from: substrate/conclusion_protocol.py::surface_findings -- scans tracked prose surfaces
+#   for unlicensed sentences. Text, not a measurement. Site read.
+# distinct-from: cortex/theta_gamma_code.py, substrate/learn_daemon.py::self_check,
+#   substrate/home.py's census rule and brainstem/arm_config.py -- matched on generic docstring words
+#   ("one", "read", "control", "deliberately"); none runs a criterion twice with an arm perturbed.
+#   All sites read. graph-exists returns NO existing broken arm for the repeatability criterion --
+#   that absence is exactly what this function repairs.
+def red_repeatability_broken_arm(ticks=RED_TICKS, resamples=RED_RESAMPLES, seed=0):
+    """THE ONE DELIBERATELY BROKEN ARM: repeatability, re-read with its second reading PADDED.
+
+    `red_repeatability` runs the identical unperturbed pair twice, so its criterion had no perturbed
+    arm anywhere in the tree and was never seen failing. The criterion IS reachable and this is the
+    arm that reaches it: reading (a) is the pair exactly as shipped, reading (b) takes its second
+    reading on the PADDED rig, and the criterion -- the two bands OVERLAP -- must then read DISJOINT.
+    A broken arm that PASSES is itself the failure, which is why `criterion_fires` is asserted.
+
+    Deliberately OUTSIDE the command's exit code: this demonstrates that the criterion CAN fail; it
+    is not a control on any reading. Validated at 0.043 against 0.871 with disjoint bands -- a wide
+    margin, not a bar-straddler.
+
+    The two other broken arms considered are NOT added, for cause. A stand-in on a non-zero-share
+    path for the sham would BE the neuter (the only non-zero-share path on this harness) and reads on
+    both sides of the sham's 0.05 bar with ambient -- 0.0478 / 0.0535 calm against +0.063..+0.102
+    under load -- i.e. a flaky red, which is what `red_sham_neuter`'s own docstring records removing
+    FOR CAUSE. A zero-pad arm is a duplicate: `pad_iters=0` is already the 2.6-row-3 blind refusal in
+    `tests/test_amdahl_gate.py`.
+    """
+    pad = _padded_step(PAD_ITERS)
+    a = _harness_pair(None, NEUTER_PATCH, ticks, resamples, seed)
+    b = _harness_pair((LIFNeuron, "step", pad), NEUTER_PATCH, ticks, resamples, seed + 1)
+    (lo1, hi1), (lo2, hi2) = a["band_raw"], b["band_raw"]
+    overlap = lo1 <= hi2 and lo2 <= hi1
+    d = {
+        "control_ceiling": a["ceiling_raw"],
+        "broken_ceiling": b["ceiling_raw"],
+        "control_band": a["band_raw"],
+        "broken_band": b["band_raw"],
+        "bands_overlap": overlap,
+        "criterion_fires": not overlap,
+    }
+    return (
+        not overlap,
+        (
+            f"repeatability BROKEN ARM (second reading on the PADDED rig): ceilings "
+            f"{a['ceiling_raw']:.4f} / {b['ceiling_raw']:.4f}; bands {a['band_raw']} vs "
+            f"{b['band_raw']} -> {'DISJOINT' if not overlap else 'overlap'}; criterion "
+            f"{'FIRES' if not overlap else 'DID NOT FIRE -- a broken arm that passes IS the failure'}"
+        ),
+        d,
+    )
+
+
 def self_check_reds(pad_iters=PAD_ITERS, quick=False):
-    """The three pre-registered reds, in their pre-registered order, each with its broken arm."""
+    """The three pre-registered CONTROLS, in their pre-registered order.
+
+    NOT "each with its broken arm". That phrase is 2.3's loose summary of 2.2(iv), which constructs
+    exactly ONE perturbation, and it is false of two of the three: as built this roster is a POSITIVE
+    control on a deliberately padded arm, a REPEATABILITY pair with nothing perturbed, and a
+    ZERO-SHARE sham built to pass near zero. NO criterion is shown FAILING here. The padded-share
+    criterion is seen refusing at
+    `tests/test_amdahl_gate.py::test_the_instrument_blind_disposition_refuses_the_reading`
+    (`pad_iters=0`); the repeatability criterion is seen firing by `red_repeatability_broken_arm`,
+    which `--self-check` prints as a fourth line.
+    """
     ticks = RED_TICKS_QUICK if quick else RED_TICKS
     res = 150 if quick else RED_RESAMPLES
     rows = [
@@ -962,13 +1033,27 @@ def _print_reading(rep):
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if "--self-check" in argv:
-        print("AMDAHL GATE (Gate Zero) self-check -- the three pre-registered reds")
+        print("AMDAHL GATE (Gate Zero) self-check -- the three pre-registered controls")
         rows = self_check_reds()
         for name, ok, msg, _d in rows:
             print(f"  {name:<14} {'PASS' if ok else 'FAIL'}  {msg}")
         bad = [r[0] for r in rows if not r[1]]
-        print("self-check OK: 3 reds fired their broken arms" if not bad else f"FAILED: {bad}")
-        return 1 if bad else 0
+        # THE ONE DELIBERATELY BROKEN ARM, printed as a fourth line and kept OUT of `bad`: it
+        # demonstrates that a criterion can fail; it is not a control on a reading, so it must not
+        # be able to flip this command's exit code.
+        fired, fired_msg, _fd = red_repeatability_broken_arm()
+        print(f"  {'broken-arm':<14} {'FIRES' if fired else 'DID NOT FIRE'}  {fired_msg}")
+        if bad:
+            print(f"FAILED: {bad}")
+            return 1
+        print(
+            "self-check OK: 3 controls HELD -- a positive control on a deliberately padded arm, a "
+            "repeatability pair, a zero-share sham. NONE of the three is shown FAILING in this "
+            "command; the padded-share criterion is seen refusing at tests/test_amdahl_gate.py::"
+            "test_the_instrument_blind_disposition_refuses_the_reading (pad_iters=0). The fourth "
+            "line above IS a fired arm."
+        )
+        return 0
 
     seed = int(argv[argv.index("--seed") + 1]) if "--seed" in argv else 0
     ticks = int(argv[argv.index("--ticks") + 1]) if "--ticks" in argv else W_TICKS
