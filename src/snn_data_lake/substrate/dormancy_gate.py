@@ -606,7 +606,20 @@ EXEMPT = {
         "determinism gate (T015) and replay gate (T017) drive it as instruments. THE PROMISED "
         "T033+ CONSUMER LANDED WITHOUT IMPORTING THIS MODULE -- episode_driver drives the "
         "brain path and carries only distinct-from prose about KernelTick (measured zero "
-        "imports, US1 audit B3). The live consumer is the US3 kernel cutover (T064/T066/T070). "
+        "imports, US1 audit B3). PRIOR READING, SUPERSEDED 2026-09-09 -- kept verbatim because "
+        "this row's value is that it records its own past falsehood, and an exemption that "
+        "quietly swaps in a new justification erases the evidence that the old one was wrong: "
+        "'The live consumer is the US3 kernel cutover (T064/T066/T070).' None of the three "
+        "carries the wire -- T064's deliverable is void, T066 was DELETED ON ITS NULL (T068 "
+        "LOSS), T070 is an instrument. CURRENT READING 2026-09-09, dated to T062: the live "
+        "consumer is the row that FIRST PLACES UNITS AT SCALE -- T062's H01 ingest, ~16k signed "
+        "neurons -- or growth reaching the MEASURED width trigger N*, a LOWER BOUND of "
+        "2,500-6,300 units at 0.15 of the tick (the profile and the neuter derivations disagree "
+        "1.5-2.5x and both are reported, the instrument's own finding; evidence/s6-kernel-wire.md "
+        "S3). S6 (2026-09-09) measured this wire's Amdahl ceiling AT THE DEPLOYED WIDTH (177-189 "
+        "live LIF units) at 0.005-0.017 raw, 95% bands inside 0.04 on two determinate seeds (one "
+        "seed INDETERMINATE twice), and DECLINED the conversion under specs/008 FR-005: a "
+        "conversion that cannot be faster at its real width is declined WITH the measurement. "
         "BOUND EXPIRED AT T039 UNMET (recorded, not re-dated). Printed by the standing-TODO arm",
     ),
     "kernel_state": (
@@ -614,9 +627,21 @@ EXEMPT = {
         "specs/022 T013: SoA substrate state (128B-aligned blocks, contiguous faculty slices, "
         "_T_STATE-backed). Consumer is the two-phase tick in the SAME kernel block "
         "(kernel_tick, T014, the very next task); the P2 retirement of the per-object neuron "
-        "state it supersedes executes at the cutover, faculty by faculty, with parity A/Bs -- "
-        "now the US3 kernel cutover (T064/T066/T070). BOUND EXPIRED AT T039 UNMET (US1 audit "
-        "B3, 2026-08-25; recorded, not re-dated). Printed by the standing-TODO arm every run",
+        "state it supersedes executes at the cutover, faculty by faculty, with parity A/Bs. "
+        "PRIOR READING, SUPERSEDED 2026-09-09 -- kept verbatim for the same reason as "
+        "kernel_tick's, that a row which rewrites its own justification destroys the record of "
+        "having been wrong: 'now the US3 kernel cutover (T064/T066/T070)'. None of the three "
+        "carries the cutover -- T064's deliverable is void, T066 was DELETED ON ITS NULL (T068 "
+        "LOSS), T070 is an instrument. CURRENT READING 2026-09-09, dated to T062: the live "
+        "consumer is the row that FIRST PLACES UNITS AT SCALE -- T062's H01 ingest, ~16k signed "
+        "neurons -- or growth reaching the MEASURED width trigger N*, a LOWER BOUND of "
+        "2,500-6,300 units at 0.15 of the tick (two derivations, 1.5-2.5x apart, both reported; "
+        "evidence/s6-kernel-wire.md S3). S6 (2026-09-09) measured the wire's Amdahl ceiling at "
+        "the DEPLOYED width (177-189 live LIF units) at 0.005-0.017 raw, bands inside 0.04 on "
+        "two determinate seeds, and DECLINED the conversion under specs/008 FR-005; the SoA "
+        "state therefore waits on the same trigger its consumer does. BOUND EXPIRED AT T039 "
+        "UNMET (US1 audit B3, 2026-08-25; recorded, not re-dated). Printed by the "
+        "standing-TODO arm every run",
     ),
     "amdahl_gate": (
         "permanent",

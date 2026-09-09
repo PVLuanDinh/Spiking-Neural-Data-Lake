@@ -162,10 +162,17 @@ class Synapses:
 
     @classmethod
     def empty(cls, n_units, p_parts, frac_bits, max_delay):
-        """The empty table a pager fills block by block (specs/022 T066). `max_delay` is REQUIRED
-        here and has no default: the rings are sized from it at KernelTick construction, before a
-        single edge exists, so deriving it from the (absent) edges would size the rings to one
-        slot and refuse every later block whose delays are longer."""
+        """The empty (0-edge) table. DATED NOTE 2026-09-09 (specs/022 T068): this line used to
+        read "the empty table a pager fills block by block (specs/022 T066)"; the paging layer was
+        DELETED ON ITS NULL, so there is no pager and no block-by-block fill. What survives is the
+        constructor a later INCREMENTAL COMPILE would start from. It has ZERO call sites in the
+        tree today -- measured, not assumed, by git grep for the token `.empty(` over the tracked
+        *.py set, where every remaining hit is a numpy or torch `.empty`; tests/test_kernel_tick.py
+        builds `Synapses(...)` directly (its `_build` helper, and the refusal cases) and never
+        reaches this classmethod. `max_delay` is REQUIRED here and has no default: the rings are
+        sized from it at KernelTick construction, before a single edge exists, so deriving it from
+        the (absent) edges would size the rings to one slot and refuse every later block whose
+        delays are longer."""
         return cls([], [], [], [], n_units, p_parts, frac_bits, max_delay)
 
 
