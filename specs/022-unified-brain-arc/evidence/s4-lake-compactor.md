@@ -1,5 +1,7 @@
 # S4 / T067 — the growth delta tier, the sleep-phase merge, and the locality reorder (2026-09-08)
 
+> **THE MECHANISM WAS DELETED ON ITS NULL 2026-09-09** (`substrate/lake_compactor.py`, its tests and the 0x0C/0x0D block tier) -- see `s5-paging-null.md` 3.4/3.5/4. The last head carrying it is tag `t068-last-with-pager`. Everything below is left VERBATIM: the measurements stand, and an evidence file outlives the code it measured.
+
 > Plan row (PLAN-FINAL-2026-09-02.md, Phase 3): **S4 = T067** growth delta tier + background merge in
 > sleep (its locality reorder uses block adjacency until the prior lands).
 >

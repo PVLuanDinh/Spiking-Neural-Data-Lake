@@ -128,7 +128,15 @@ def declare_ports(manifest):
     evidence/s4-lake-compactor.md 2.8), curriculum difficulty -> T076
     (curriculum.py) -- the first record of this mapping was a clean 3-cycle scramble,
     caught by review; declaring a not-yet-built consumer's edge today would be anatomy
-    ahead of any consumer, the force-wiring P6 forbids."""
+    ahead of any consumer, the force-wiring P6 forbids.
+
+    THE PAGING-PREFETCH DISPOSITION IS VOID 2026-09-09 (T068 LOSS), not re-dated a third time:
+    there is no pager to prefetch for and no S6 paging wire to date it to --
+    `substrate/neuron_pager.py` and `substrate/lake_compactor.py` are deleted, the layer having
+    been measured at a 35.2x tick cost against a 3.0x bound fixed before the run (specs/022
+    evidence/s5-paging-null.md 3.4/3.5). It is CLOSED. A successor paging row that wants a
+    surprise-driven prefetch declares the edge itself, with its own consumer and its own red.
+    The other dispositions above are untouched."""
     from snn_data_lake.substrate.wiring_manifest import Port
 
     manifest.declare_port(

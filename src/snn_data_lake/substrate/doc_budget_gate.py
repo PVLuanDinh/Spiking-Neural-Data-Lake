@@ -147,7 +147,14 @@ BUDGETS = {
     # RETIRED 2026-08-16 anchor; the governing practice since T046 is MINIMUM-VIABLE raises
     # (measured + 0, stated per raise), so 0.0%-headroom rows are deliberate and the
     # TIGHTENABLE report is structurally quiet for them.
-    "docs/INVENTION_REGISTER.md": 1543,  # RAISED 1517 -> 1543 on 2026-09-08: T066's MECHANIZED
+    "docs/INVENTION_REGISTER.md": 1595,  # RAISED 1543 -> 1595 on 2026-09-09: row 1's DELETED ON
+    # ITS NULL line (T068 LOSS -- the paging invention was measured at a 35.2x tick cost against a
+    # 3.0x bound fixed before the run and removed). Measured + 0, the same minimum-viable raise as
+    # every one before it. The note is 4 lines: the disposition, the date, the evidence pointer and
+    # the tag carrying the deleted code -- the numbers stay in evidence/s5-paging-null.md, because
+    # this file is the index and never the measurement. A deletion COSTS words here rather than
+    # saving them, which is the register working as designed: the row stays, the mechanism goes.
+    # (superseded reason, kept for the trail) RAISED 1517 -> 1543 on 2026-09-08: T066's MECHANIZED
     # line on row 1 (measured + 0, the same minimum-viable raise as every one before it)
     # (superseded reason, kept for the trail) RAISED 1380 -> 1517 on 2026-09-03, SAME DAY as the raise
     # below and in the same arc: the W3 review panel found row 9's RED field overstated (7 criteria /

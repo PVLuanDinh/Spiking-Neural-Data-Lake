@@ -60,14 +60,14 @@ task, never about general capability, and never a licence for the word "superhum
 
 **Why the plan needs it.** L4 persists a named subset — perception pointers, random-number stream positions, the
 affect map, the arm's action table — under a bytes-per-tick ceiling, explicitly NOT the engine's rolling buffers;
-Phase 3's paging arrives with a null clause that deletes the layer if it loses. Both are good engineering and both
+Phase 3's paging arrives with a null clause that deletes the layer if it loses. Both are good engineering and both *DATED NOTE 2026-09-09: that null clause FIRED -- the layer lost and is deleted (T068 LOSS, evidence/s5-paging-null.md 3.4/3.5). Cited here as a worked example rather than as pending work.*
 are the opposite of "never forgets". The plan today has no statement of what may never be lost, so nothing forbids
 a future compaction from dropping it.
 
 **Mechanism.** A declared IMMORTAL record class in the one durable lake: an explicit list of record tags
 (proposed: the grown substrate and its instrument, the growth trajectory the gate reads, the lake's own record
 index, the episode store's consolidated episodes, and the self-model's identity state — the owner edits the list),
-each with the reason it is immortal. Compaction, migration, paging and the append budget MUST refuse to evict or
+each with the reason it is immortal. Compaction, migration, paging and the append budget MUST refuse to evict or *DATED NOTE 2026-09-09: "paging" is no longer among the eviction paths -- the layer is deleted (T068 LOSS). The requirement on compaction, migration and the append budget is unchanged.*
 rewrite a record of that class; a mortal class beside it keeps being evicted exactly as today, so the guard is not
 a rule with nothing to police. "Never forgets" is thereby defined as NEVER EVICTS THE IMMORTAL CLASS, not as
 storing everything — and the storage cost of that promise is measured and disclosed as a growth curve (bytes per
@@ -84,7 +84,7 @@ is not measured the row does not land.
 
 **Gate, counted before the row binds.** `substrate/immortal_retention.py --assert`: every tag in the class has a
 reason and a live writer; every eviction path in the tree (`lake_engine` retention, `lake_migrate` dispositions, the
-append budget, the paging layer) is enumerated and each is shown to consult the class; the mortal control is present
+append budget, the paging layer) is enumerated and each is shown to consult the class; the mortal control is present *DATED NOTE 2026-09-09: same -- the paging layer is deleted, so the enumeration is over the remaining eviction paths; a successor paging row re-enters it (T068 LOSS).*
 and evicted. Counted on today's tree first — expected output on the current tree: the enumeration, plus a red for
 every eviction path that does not yet consult the class.
 

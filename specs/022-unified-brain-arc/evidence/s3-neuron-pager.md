@@ -1,5 +1,7 @@
 # S3 / T066 — activation-driven paging, both reds before the mechanism (2026-09-08)
 
+> **THE MECHANISM WAS DELETED ON ITS NULL 2026-09-09** (`substrate/neuron_pager.py` and its tests) -- see `s5-paging-null.md` 3.4/3.5/4. The last head carrying it is tag `t068-last-with-pager`. Everything below is left VERBATIM: the measurements stand, and an evidence file outlives the code it measured.
+
 > Plan row (PLAN-FINAL-2026-09-02.md, Phase 3): **S3 = T066** activation-driven paging, BOTH reds built
 > before the mechanism (FR-010/FR-011: no silent drop of a spike to a paged-out unit; the integer rounds
 > budget trips on constructed overload).

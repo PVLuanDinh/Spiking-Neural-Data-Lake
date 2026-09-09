@@ -27,10 +27,10 @@ Green battery + push to main. Performance ratchets compare against the pinned-ho
 4. **WM**: build the attractor; K derived == held ±1; tau_f sweep moves K monotonically; frozen-STP REFUSES.
 5. **Sleep**: per-capability neuters (replay / Benna-Fusi / structural clock) separate; sleep-neutered control loses retention; arm quiesced with E-STOP latch persisting.
 
-## S2 — H01 prior + paging
+## S2 — H01 prior + paging *DATED NOTE 2026-09-09: the paging half of this section is DELETED ON ITS NULL (T068 LOSS, evidence/s5-paging-null.md 3.4/3.5); the H01 prior half stands.*
 1. **Ingest**: cheapest slice (<7 GB); the base↔agglo join and nm-inversion gates REFUSE their constructed bad inputs; layer computed; attribution row on PROVENANCE.
 2. **Beatable prior**: three-arm drift harness — seeded beats random AND wrong; learning moves the brain off the seed (both reds demonstrable).
-3. **Paging**: at the DERIVED binding width — one async batch per tick within the integer rounds budget (overload trips the assert); the paged-out-spike red passes only with the mechanism on; paging vs forced-total residency measured — win, or delete the layer and record it (both outcomes valid).
+3. **Paging**: at the DERIVED binding width — one async batch per tick within the integer rounds budget (overload trips the assert); the paged-out-spike red passes only with the mechanism on; paging vs forced-total residency measured — win, or delete the layer and record it (both outcomes valid). *DATED NOTE 2026-09-09 (T068 LOSS): this step is retired with the layer. Every claim in it was MET while the mechanism existed -- the rounds budget tripped on constructed overload and the paged-out-spike red was counted red before the mechanism -- and the layer was deleted on its COST, measured at 35.2x a 3.0x bound.*
 4. **Cerebellar rule** (tissue built at S1): Bouvier control green/red pair reproduces; one-window-across-two-channels FAILS.
 
 ## S3 — self-improvement + instruments
