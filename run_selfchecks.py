@@ -346,7 +346,6 @@ CORE = [
     "substrate.lake_migrate",  # 022 T009: per-tag identity migration + unknown-tag red (constructed multi-tag lake)
     "substrate.lake_engine",  # 022 T010-i: retention/disposition registries agree + constructed flood red
     "substrate.unit_blocks",  # 022 T064: partition + one-resident discipline + the frozen red
-    "substrate.neuron_pager",  # 022 T066: both paging reds + broken arms + calm controls, one command
     "substrate.signal_ring",  # 022 T011: journaller replay A/B + loud-loss overrun red on scratch rings
     "substrate.kernel_state",  # 022 T013: SoA alignment/contiguity + scratch-lake round-trip + refusal reds
     "substrate.kernel_tick",  # 022 T014: delay-ring arrival + T=1==T=4 train equality + imbalance + refusals

@@ -609,28 +609,6 @@ EXEMPT = {
         "imports, US1 audit B3). The live consumer is the US3 kernel cutover (T064/T066/T070). "
         "BOUND EXPIRED AT T039 UNMET (recorded, not re-dated). Printed by the standing-TODO arm",
     ),
-    "neuron_pager": (
-        "wire",
-        "specs/022 T066: activation-driven paging of unit blocks (residency policy, pinned hot "
-        "set, one async batch per tick, integer ROUNDS budget, no silent drop of a spike to a "
-        "paged-out unit). ITS CONSUMERS TODAY ARE ITS OWN SELF-CHECK AND tests/test_neuron_pager "
-        ".py -- the pager is NOT on the live tick, and that is the row's own disclosure 2.6(g), "
-        "not an omission: the live consumer is the S6 kernel cutover, which is where a paged "
-        "substrate first carries traffic and where the cockpit's 'paging binding-width' row is "
-        "owed. It charges lake_segments/lake_index/lake_bridge with an in-tree consumer. THE "
-        "FOUR ROWS RETIRED 2026-09-06 THAT NAMED T066 WERE lake_engine, lake_migrate, "
-        "lake_bridge and lake_segments -- lake_index is NOT among them: its `wire` row is STILL "
-        "LIVE below, and it SURVIVES T066 because the pager that consumes it is itself off the "
-        "live tick, so lake_index is still not reachable from a live root (the gate's own "
-        "stale_exempt arm is the runtime proof: it ran empty). ALSO OWED AT S6, stated here "
-        "rather than left to be discovered: (1) UnitBlockStore.build passes watermark=None "
-        "because the store does not own the lake's fold marker, and lake_rebuild_gate.build_index"
-        "'s provisional (tag, global-ordinal) keying does not reconstruct this tag's "
-        "(0x0C, block_id) rows -- one index file, one tag space, two unstated owners; (2) "
-        "replay_gate.capture/restore now REFUSE a paged KernelTick rather than silently dropping "
-        "its `pending` and residency, so S6 owes the snapshot format that carries them. Printed "
-        "by the standing-TODO arm every run",
-    ),
     "kernel_state": (
         "wire",
         "specs/022 T013: SoA substrate state (128B-aligned blocks, contiguous faculty slices, "
