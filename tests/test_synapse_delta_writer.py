@@ -1,20 +1,28 @@
-"""T064 / Phase 3 S1 — unit blocks, and the FIRST LIVE WRITER of `SynapseDelta` (0x09).
+"""The LIVE WRITER of `SynapseDelta` (0x09), and the block framing it keeps after T068.
 
-`0x09` was declared, tested and never written: L6's lake census counted it among four classes that
-have never held a record, and `RETENTION[0x09]` says its append budget stays "unbaselined ... until
-a live writer exists to measure". These pins are what turn it from built-and-uncharged into charged.
+RE-HOMED 2026-09-09 from `tests/test_unit_blocks_writer.py`, whose module `substrate/unit_blocks.py`
+was deleted with the paging layer on T068's LOSS (specs/022 evidence/s5-paging-null.md 3.4/3.5).
+Five of that file's seven arms were never about paging: they pin the 0x09 synapse-delta writer,
+which SURVIVES, and its record's block framing, which moved to `SynapseDelta.group_by_block` in the
+commit that deleted the module. Deleting them with the pager would have dropped the only reds a
+surviving mechanism has -- 2.6 orders the pager-free arms re-homed, and here, unlike
+`tests/test_lake_compactor.py`, there are some.
 
-Each claim carries the control that makes it a measurement (record: evidence/s1-unit-blocks.md):
-  * R-S1a  one block resident, with the NESTING ATTEMPT made so the counter is not vacuous
-  * R-S1b  the partition tiles the units; an out-of-range unit is refused, never bucketed
+WHAT DIED WITH THE LAYER, stated rather than quietly dropped:
+  * R-S1a (one block resident, the nesting red) -- it asserted the residency DISCIPLINE of
+    `UnitBlocks.resident`/`stream`, which existed to make "lake-resident" mean something for the
+    pager. No pager, no residency counter, no red.
+  * the tiling half of R-S1b (`units_in` tiles the units, the tail block is short) -- `units_in` is
+    not ported; only the partition's REFUSAL of an out-of-range unit is, and it is pinned below.
+
+What still stands here:
+  * R-S1b (refusals)  an out-of-range POST is refused, never bucketed; `block_size` has no default
   * R-S1c  a byte-frozen substrate emits NOTHING; a single real change emits exactly one entry
-  * R-S1d  a real deposit writes a record that REPLAYS to the weights that moved; a deposit below
-           the derived quantum writes nothing
+  * R-S1d  a real deposit writes a record that REPLAYS to the weights that moved
+  * the control on both halves: no sink, no work
 """
 
 import pytest
-
-from snn_data_lake.substrate.unit_blocks import BlockResidencyError, UnitBlocks
 
 np = pytest.importorskip("numpy")
 
@@ -22,45 +30,35 @@ from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner 
 from snn_data_lake.substrate.lake_engine import SynapseDelta  # noqa: E402
 
 
-def test_the_partition_tiles_the_units_and_refuses_a_stray_one():
-    ub = UnitBlocks(10, 4)
-    assert ub.n_blocks == 3
-    assert [u for b in range(3) for u in ub.units_in(b)] == list(range(10))
-    assert list(ub.units_in(2)) == [8, 9], "the tail block is SHORT, never padded"
+def test_grouping_keys_on_post_and_omits_blocks_that_own_nothing():
+    g = SynapseDelta.group_by_block([(0, 1, 5), (3, 9, -2), (1, 2, 7)], 10, 4)
+    assert set(g) == {0, 2}
+    assert 1 not in g, "a block owning no entry is ABSENT, never present-and-empty"
+    assert g[0] == [(0, 1, 5), (1, 2, 7)], "insertion order is preserved inside a block"
+    assert SynapseDelta.group_by_block([], 10, 4) == {}
+
+
+def test_the_partition_refuses_a_stray_post_rather_than_bucketing_it():
+    """R-S1b's surviving half. `post // block_size` maps a unit that does not exist onto a block
+    that does, so the refusal is the only thing standing between a stray index and a plausible
+    wrong answer -- THE RED, actually attempted."""
     for bad in (-1, 10):
-        with pytest.raises(ValueError):
-            ub.block_of(bad)
+        with pytest.raises(ValueError, match="outside"):
+            SynapseDelta.group_by_block([(0, bad, 1)], 10, 4)
+    assert SynapseDelta.group_by_block([(0, 9, 1)], 10, 4), "the control: the last unit is accepted"
 
 
 def test_block_size_has_no_default_and_the_refusal_says_why():
     with pytest.raises(ValueError, match="refuses to pick one"):
-        UnitBlocks(10, 0)
-
-
-def test_one_block_resident_and_the_nesting_red_is_reachable():
-    ub = UnitBlocks(10, 4)
-    for _b, _entries, _units in ub.stream(ub.group([(0, 1, 5), (3, 9, -2)])):
-        pass
-    assert ub.max_resident == 1
-    with ub.resident(0):
-        with pytest.raises(BlockResidencyError):  # THE RED, actually attempted
-            with ub.resident(1):
-                pass
-    assert ub.max_resident == 1, "a refused nesting must not raise the high-water mark"
-
-
-def test_grouping_keys_on_post_and_omits_blocks_that_own_nothing():
-    ub = UnitBlocks(10, 4)
-    g = ub.group([(0, 1, 5), (3, 9, -2), (1, 2, 7)])
-    assert set(g) == {0, 2}
-    assert 1 not in g, "a block owning no entry is ABSENT, never present-and-empty"
-    assert ub.group([]) == {}
+        SynapseDelta.group_by_block([], 10, 0)
+    with pytest.raises(ValueError):
+        SynapseDelta.group_by_block([], 0, 4)
 
 
 def test_a_frozen_substrate_emits_nothing_and_one_real_change_emits_one_entry():
+    """R-S1c."""
     w = np.array([[0.10, 0.20], [0.30, 0.40]], dtype=float)
     sd = SynapseDelta(q_step=0.01)
-    ub = UnitBlocks(2, 1)
     assert sd.collect(w, [0, 1], [0, 1]) is not None, "the first capture carries the substrate"
     assert sd.collect(w, [0, 1], [0, 1]) is None, (
         "a byte-frozen substrate whose endpoints keep firing must emit NOTHING -- the "
@@ -69,7 +67,7 @@ def test_a_frozen_substrate_emits_nothing_and_one_real_change_emits_one_entry():
     w[1][0] += 0.05
     moved = sd.collect(w, [1], [0])
     assert moved is not None, "the positive control must fire on a real change"
-    g = ub.group(SynapseDelta.entries(moved))
+    g = SynapseDelta.group_by_block(SynapseDelta.entries(moved), 2, 1)
     assert list(g) == [0] and g[0] == [(1, 0, 35)]
 
 
@@ -110,9 +108,8 @@ def test_a_real_deposit_writes_a_record_that_replays_to_the_moved_weights():
         f"a synapse crossed the quantum and was NOT recorded: {moved - recorded}"
     )
     # block-aligned: every entry sits in the block its POST unit owns
-    blocks = UnitBlocks(len(learner.neurons), block_size=learner.delta_block_size)
     for b, es in grouped.items():
-        assert all(blocks.block_of(post) == b for _pre, post, _q in es)
+        assert all(post // learner.delta_block_size == b for _pre, post, _q in es)
 
 
 def test_no_sink_means_no_work_and_a_repeat_deposit_writes_nothing_new():

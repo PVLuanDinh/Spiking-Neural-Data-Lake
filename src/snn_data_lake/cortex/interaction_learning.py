@@ -129,7 +129,6 @@ class SpikingInteractionLearner:
         self.delta_sink = None
         self.delta_block_size = 1
         self._syn_delta = None
-        self._syn_blocks = None
         self.tau = float(tau)  # PSP == STDP eligibility time constant (shared)
         self.lr = float(lr)
         self.seed = int(seed)
@@ -302,19 +301,19 @@ class SpikingInteractionLearner:
             import numpy as np
 
             from snn_data_lake.substrate.lake_engine import SynapseDelta
-            from snn_data_lake.substrate.unit_blocks import UnitBlocks
         except Exception:
             return None  # numpy/lake absent: the learner still learns, it just records nothing
         if getattr(self, "_syn_delta", None) is None:
             self._syn_delta = SynapseDelta(q_step=self.lr)
-            self._syn_blocks = UnitBlocks(len(self.neurons), block_size=self.delta_block_size)
         # [pre=input synapse, post=label neuron] -- the orientation `group` needs to key on POST
         w = np.array([[n.w[i] for n in self.neurons] for i in range(self.n_in)], dtype=float)
         pre_fired = [i for i, t in enumerate(code) if t is not None]
         payload = self._syn_delta.collect(w, pre_fired, [li])
         if payload is None:
             return None  # nothing the lake would learn from changed -- writing nothing IS the rule
-        grouped = self._syn_blocks.group(SynapseDelta.entries(payload))
+        grouped = SynapseDelta.group_by_block(
+            SynapseDelta.entries(payload), len(self.neurons), self.delta_block_size
+        )
         sink(payload, grouped)
         return payload
 

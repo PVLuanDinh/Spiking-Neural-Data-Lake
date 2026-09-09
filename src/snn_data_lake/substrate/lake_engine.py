@@ -318,6 +318,50 @@ class SynapseDelta:
             )
         return [struct.unpack_from("<IIq", payload, 5 + k * 16) for k in range(n)]
 
+    # consolidates: src/snn_data_lake/substrate/unit_blocks.py (retire) -- UnitBlocks.group, whose
+    #   module is DELETED in this same commit (T068 LOSS). Exactly one implementation of the block
+    #   partition survives the change, which is what P2 asks of a retirement: port the surviving
+    #   capability, then delete the original, never leave both live.
+    @staticmethod
+    def group_by_block(entries, n_units, block_size):
+        """Group `(pre, post, q)` entries by the block their POST unit lives in.
+
+        PORTED HERE (P2) 2026-09-09 from `substrate/unit_blocks.py::UnitBlocks.group`, because the
+        paging layer that module was built for measured a LOSS and is deleted with it
+        (specs/022 evidence/s5-paging-null.md 3.4/3.5). The 0x09 synapse-delta path is NOT part of
+        that layer and is this method's one consumer -- `cortex/interaction_learning.py::
+        SpikingInteractionLearner._record_synapse_delta` frames its payload's entries by block --
+        so the capability moves to the class that already frames those entries rather than dying
+        with the pager it never belonged to. The pager-only half of that module (residency counter,
+        `stream`, the one-resident context manager) is NOT ported: it existed to prove a discipline
+        for a layer that no longer exists.
+
+        POST, not PRE, because applying an entry writes the post unit's incoming weight: a reader
+        holding one block can apply every entry addressed to it without touching another block.
+        Returns {block_id: [entry, ...]} with insertion order preserved inside each block, and
+        blocks that own no entry ABSENT rather than present-and-empty -- an empty group would make a
+        writer emit a record for a block nothing happened in, which is the repeated-snapshot
+        pathology in miniature.
+
+        `block_size` has no default, the same refusal `q_step` makes above (P1): the right block is
+        a property of the caller's state-per-unit, never of this frame. An out-of-range POST is
+        REFUSED rather than bucketed -- the partition arithmetic would otherwise map a unit that
+        does not exist onto a block that does, silently."""
+        if not (isinstance(n_units, int) and n_units > 0):
+            raise ValueError(f"n_units must be a positive int, got {n_units!r}")
+        if not (isinstance(block_size, int) and block_size > 0):
+            raise ValueError(
+                f"block_size must be a positive int DERIVED BY THE CALLER from its own "
+                f"state-per-unit (P1: this frame refuses to pick one), got {block_size!r}"
+            )
+        out = {}
+        for pre, post, q in entries:
+            post = int(post)
+            if not 0 <= post < n_units:
+                raise ValueError(f"post unit {post!r} is outside [0, {n_units})")
+            out.setdefault(post // block_size, []).append((int(pre), post, int(q)))
+        return out
+
     def apply(self, payload, w):
         """Apply one record to `w` in place (zero-base reconstruction). Returns the entry count."""
         got = self.entries(payload)
