@@ -1,0 +1,91 @@
+"""The reds for Gate Zero -- specs/022 S6 (evidence/s6-kernel-wire.md) x specs/008 plan.md.
+
+WRITTEN AND COMMITTED **RED**, before `substrate/amdahl_gate.py` exists, per the pre-registration's
+commit order (s6-kernel-wire.md 2.8 item 2). The import below is the red: collection fails until the
+instrument lands. A red nobody has seen fire is a red nobody can trust, and an instrument whose
+criteria first appear beside its implementation has no evidence its criteria could ever have failed.
+
+These are the three self-check reds of 2.2(iv) plus the "instrument blind" disposition of 2.6 row 3:
+
+  (a) POSITIVE CONTROL -- a constructed tick harness whose object path is padded with a KNOWN extra
+      cost per unit must read a LARGE ceiling. This is the only red that proves the measurement core
+      can see a ceiling at all; every DECLINE the gate ever prints is worthless without it.
+  (b) REPEATABILITY -- two neutered readings of the same harness must agree, judged by their 95%
+      bootstrap bands OVERLAPPING rather than by a hand-picked epsilon.
+  (c) SHAM NEUTER -- a stand-in installed on a path with ZERO share must read a ceiling within noise
+      of zero. This is the control that is not the method (2.5): it uses the same install machinery
+      and the same measurement core, and changes nothing.
+  (d) INSTRUMENT BLIND (2.6 row 3) -- when (a) does not fire, the disposition fixed in advance is
+      "no reading; fix it first". The gate must REFUSE to take a reading, and must refuse BEFORE it
+      constructs a brain, so the refusal is cheap and unmissable.
+
+Every red here runs on the constructed harness, never on the live brain: they are fast, hermetic and
+touch no lake. DISCLOSED LIMIT, stated because it is the honest one: the harness shares the
+measurement CORE with the live reading but NOT its substrate, so (a) proves the core can see a
+ceiling -- it does not prove the core can see one on the live brain. The live reading carries its
+own same-substrate control (the sham arm on the brain) for that.
+"""
+
+import pytest
+
+from snn_data_lake.substrate import amdahl_gate
+
+
+def test_a_padded_object_path_reads_a_large_ceiling():
+    """POSITIVE CONTROL: pad the object path with a known cost per unit; the ceiling must rise."""
+    ok, msg, detail = amdahl_gate.red_padded_share()
+    assert ok, f"the instrument cannot see a ceiling it was handed on a plate: {msg}"
+    assert detail["ceiling_raw"] >= amdahl_gate.PADDED_MIN_CEILING, msg
+    # the pad must actually have been installed -- a swap that silently fails to install measures
+    # the unmodified code and calls it a pass (specs/008 plan.md, standing invariant 5)
+    assert detail["pad_installed"] is True, msg
+    assert detail["pad_calls"] > 0, "the padded stand-in was never called -- nothing was padded"
+
+
+def test_b_two_neutered_readings_on_the_same_harness_agree_within_the_band():
+    """REPEATABILITY: the same measurement, twice, must not disagree with itself."""
+    ok, msg, detail = amdahl_gate.red_repeatability()
+    assert ok, f"the instrument disagrees with itself: {msg}"
+    lo1, hi1 = detail["band_a"]
+    lo2, hi2 = detail["band_b"]
+    assert lo1 <= hi2 and lo2 <= hi1, f"the two bands do not overlap: {detail}"
+
+
+def test_c_the_sham_neuter_on_a_zero_share_path_reads_within_noise_of_zero():
+    """THE CONTROL THAT IS NOT THE METHOD: install a stand-in that removes no work."""
+    ok, msg, detail = amdahl_gate.red_sham_neuter()
+    assert ok, f"a stand-in on a zero-share path read a ceiling: {msg}"
+    assert abs(detail["ceiling_raw"]) <= amdahl_gate.SHAM_NOISE_BAND, msg
+    # the sham must be INSTALLED (else it is not a control, it is an omission) and must be
+    # measured to carry zero share (call count 0 is the proof, not the assumption)
+    assert detail["sham_installed"] is True, msg
+    assert detail["sham_calls"] == 0, "the 'zero-share' path was called -- it is not zero-share"
+
+
+def test_the_instrument_blind_disposition_refuses_the_reading():
+    """2.6 row 3: the padded-share red does not fire -> the instrument is blind -> NO reading."""
+    rc, report = amdahl_gate.run_reading(seed=0, pad_iters=0)
+    assert rc == 1, "a blind instrument must exit nonzero"
+    assert report.get("refused"), f"a blind instrument reported instead of refusing: {report}"
+    assert "blind" in report["refused"].lower()
+    # the refusal must carry NO reading: an instrument that prints a ceiling it cannot see is
+    # worse than one that prints nothing
+    assert "ceiling_raw" not in report
+    assert "verdict" not in report
+
+
+def test_the_reds_are_the_same_three_the_pre_registration_names():
+    """The gate's own red roster must be the pre-registered one -- not a subset it grew into.
+
+    A pre-registered arm dropped at build time and then reported as measured is the failure this
+    guards; the roster is asserted by NAME so a quiet deletion reds here.
+    """
+    names = [r[0] for r in amdahl_gate.self_check_reds(pad_iters=0, quick=True)]
+    assert names == ["padded-share", "repeatability", "sham-neuter"], names
+
+
+@pytest.mark.parametrize("bad", [-1.0, 0.0])
+def test_the_ceiling_refuses_a_nonpositive_live_arm(bad):
+    """A ceiling is 1 - neutered/live; a live arm at or below zero is not a measurement."""
+    with pytest.raises(ValueError):
+        amdahl_gate.paired_ceiling([bad] * 8, [1.0] * 8, [1.0] * 8, [1.0] * 8)
