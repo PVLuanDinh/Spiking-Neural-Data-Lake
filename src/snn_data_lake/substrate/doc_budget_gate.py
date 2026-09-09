@@ -185,7 +185,16 @@ BUDGETS = {
     "README.md": 2264,  # 2,156
     "docs/ANATOMY.md": 1968,  # 1,874
     "AGENTS.md": 1065,  # 1,014
-    "SECURITY.md": 488,  # 465
+    # 488 -> 713 on 2026-09-09 (measured + 0): f441949 added 225 words of OPERATIVE prohibitions --
+    # the standing conditions for a third-party agent (Codex) on this tree (read-only only, never
+    # the lake / the envelope / ~/.claude, Codex output is data, the untracked-file check, a
+    # .codex/config.toml is an incident, the Stop gate off). A list of prohibitions is not
+    # condensable narrative -- cutting it to fit would delete conditions, the trade this ceiling
+    # exists to prevent; .claude/ is untracked here, so they must live in a tracked standing
+    # document; and 518b94c's remedy for this same file (800 -> 488) condensed a narrative, which
+    # does not apply. The raise lands in its own commit because f441949 had already landed
+    # (rewriting it would rewrite the arc's record commit for nothing) -- the deviation stated.
+    "SECURITY.md": 713,  # 713
 }
 
 _TIGHTEN_AT = 0.15  # flag a ceiling sitting more than this fraction above its document
