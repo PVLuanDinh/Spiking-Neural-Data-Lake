@@ -1,12 +1,20 @@
 """specs/022 T062 -- every gate of the H01 c3 synapse-graph ingest, each with its RED.
 
-Pre-registration: `specs/022-unified-brain-arc/evidence/t062-h01-ingest.md` 2.3 (a)..(h). Each
-gate below is a REFUSAL with a constructed red run in the same command as its control, and no
-gate carries an invented threshold: (b) requires the declared join to be the strict maximum of
-four measured counts, (c) requires the declared scaling's extent ratios to be the closest to 1
-on every axis of four candidates, (d) requires the layer rule to REPRODUCE
-`placement.LAYER_RULE_AGREEMENT`'s pinned 45,404 / 49,377 exactly, (e) requires sign agreement
-> 0.5 because the swapped map scores exactly 1 - r.
+Pre-registration: `specs/022-unified-brain-arc/evidence/t062-h01-ingest.md` 2.3 (a)..(h) as
+AMENDED by its dated 2.9. Each gate below is a REFUSAL with a constructed red run in the same
+command as its control, and no gate carries an invented threshold: (b) requires the declared join
+to be the strict maximum of four measured counts, (c) requires the declared scaling's extent
+ratios to be the closest to 1 on every axis of four candidates, (d) requires the layer rule to
+REPRODUCE `placement.LAYER_RULE_AGREEMENT`'s pinned 45,404 / 49,377 exactly, and (e') requires
+the two POST-anchored E/I instruments to correlate ABOVE the 95th percentile of the same
+correlation under 1,000 permutations of the CSV's segment labels.
+
+2.9 RETIRED GATE (e), and P2 means the old mechanism is DELETED rather than flagged off: the
+pre-anchored comparison (the PRE cell's Dale sign against the export's per-synapse `type`) was
+comparing two different quantities, refused at 0.3004 / 0.3014 on the real export, and is gone.
+`test_the_pre_anchored_sign_gate_is_removed_not_flagged_off` is the assertion that it stayed
+gone. What the pre side still owes is DISCLOSURE, not a refusal -- five measured numbers that
+nothing filters on, pinned by `test_the_disclosures_are_measured_and_never_filtered_on`.
 
 NO NETWORK. The shard fixtures come from the module's OWN null-codec Avro writer (P2: one
 encoder in the tree, not one here and one there that drift), and it builds them on the REAL
@@ -61,6 +69,24 @@ CELLS = H._SELF_CELLS
 
 def cells():
     return H.self_cells()
+
+
+def ei():
+    """(e') instrument 2's fixture: the e/i CSV's own per-segment counts for this world."""
+    return H.self_ei()
+
+
+def _ingest(names, **kw):
+    """Every offline ingest in this file, with the fixture world's two instruments attached.
+
+    ONE call shape, so a new gate that needs a new input shows up as one edit here rather than as
+    a dozen call sites that drift apart -- which is how the fixture and the self-check's fixture
+    stopped being the same world once already.
+    """
+    kw.setdefault("cells", cells())
+    kw.setdefault("ei_counts", ei())
+    kw.setdefault("verify_bytes", False)
+    return H.ingest(names, **kw)
 
 
 def synapses():
@@ -240,31 +266,115 @@ def test_gate_d_reproduces_45404_of_49377_on_the_real_cell_file():
 
 
 # ---------------------------------------------------------------------------------------------
-# (e) SIGN -- two instruments; the swapped map scores exactly 1 - r, so > 0.5 has its red built in
+# (e') E/I, POST-ANCHORED -- the export's per-POST excitatory input fraction against the CSV's
+# own per-segment counts, against a permutation band. 2.9's replacement for the retired gate (e).
 # ---------------------------------------------------------------------------------------------
 def _edges():
     return H.decode_shard(shard_bytes(), H.join_keys(cells())).edges
 
 
-def test_gate_e_two_instruments_agree_above_half_and_the_swapped_map_is_its_complement():
-    sign_of = H.dale_signs(cells())
-    agree, total = H.sign_agreement(_edges(), sign_of)
-    assert total > 0, "no joined synapse carried a signed pre -- the arm would be vacuous"
-    H.check_sign(agree, total)  # CONTROL: the upstream map passes
-    swapped = {2: -1, 1: +1}
-    s_agree, s_total = H.sign_agreement(_edges(), sign_of, type_sign=swapped)
-    assert s_total == total and s_agree == total - agree, (
-        f"the swapped map must score exactly 1 - r ({s_agree}/{s_total} vs {agree}/{total})"
+def _post_fractions():
+    """Instrument 1: the export's own `type` aggregated per POST cell into that cell's excitatory
+    INPUT fraction. POST-anchored, which is the whole point of 2.9 -- the retired gate compared a
+    post-anchored quantity to a pre-anchored one and measured their difference, not their
+    agreement."""
+    return H.post_excitatory_fractions(
+        H.decode_shard(shard_bytes(), H.join_keys(cells())).post_type
     )
+
+
+def test_gate_e_prime_the_two_post_anchored_instruments_beat_the_permutation_band():
+    band = H.ei_correlation(_post_fractions(), H.csv_fractions(ei()))
+    assert band["n_cells"] >= 20, f"too few joined post cells for a permutation test: {band}"
+    assert band["r"] > band["bar"], band
+    H.check_ei(band)  # CONTROL: the real labels pass
+
+
+def test_gate_e_prime_shuffled_segment_labels_fall_inside_the_band_and_refuse():
+    """2.9's constructed RED, and it is the shuffled labels themselves -- the same values, the
+    same joined cells, only the pairing destroyed."""
+    real = H.ei_correlation(_post_fractions(), H.csv_fractions(ei()))
+    shuffled = H.ei_correlation(_post_fractions(), H.csv_fractions(H.self_ei(shuffle=True)))
+    assert shuffled["n_cells"] == real["n_cells"], (
+        "the red must change the PAIRING and nothing else; a red that also changes which cells "
+        "are joined is measuring two things at once"
+    )
+    assert shuffled["r"] <= shuffled["bar"], shuffled
+    with pytest.raises(H.IngestRefused) as e:
+        H.check_ei(shuffled)
+    assert "permutation" in str(e.value).lower(), e.value
+
+
+def test_gate_e_prime_the_bar_is_measured_from_the_same_data_not_invented():
+    """No threshold literal anywhere in this gate: the bar is the 95th percentile of the SAME
+    statistic under the null that segment labels carry no information, so it is re-measured on
+    every run and cannot be tuned to admit a reading."""
+    band = H.ei_correlation(_post_fractions(), H.csv_fractions(ei()))
+    assert band["trials"] == H.EI_PERMUTATIONS and band["percentile"] == H.EI_PERCENTILE
+    assert band["null_min"] <= band["bar"] <= band["null_max"], band
+    assert abs(band["null_mean"]) < 0.25, f"a null not centred near 0 is not a null: {band}"
+
+
+def test_gate_e_prime_is_deterministic_in_its_seed():
+    a = H.ei_correlation(_post_fractions(), H.csv_fractions(ei()))
+    b = H.ei_correlation(_post_fractions(), H.csv_fractions(ei()))
+    assert a == b, "the permutation band moved between two runs of the same seed"
+
+
+def test_gate_e_prime_refuses_a_vacuous_reading():
     with pytest.raises(H.IngestRefused):
-        H.check_sign(s_agree, s_total)
+        H.check_ei(H.ei_correlation({"1001": 1.0}, {"1001": 1.0}, trials=8))
 
 
-def _dale_flipped_cells():
-    """The same world with the two excitatory somata relabelled inhibitory, so instrument 1
-    disagrees with the export's type on most synapses and gate (e) must refuse."""
-    swap = {"pyramidal neuron": "interneuron", "spiny stellate neuron": "interneuron"}
-    return [dict(c, type=swap.get(c["type"], c["type"])) for c in cells()]
+def test_the_pre_anchored_sign_gate_is_removed_not_flagged_off():
+    """P2: exactly one mechanism survives. 2.9 retired gate (e) as the instrument's defect, so
+    the refusal is DELETED -- not kept behind a flag, an env var or a default argument."""
+    assert not hasattr(H, "check_sign"), "the retired pre-anchored sign gate is still callable"
+    src = Path(H.__file__).read_text(encoding="utf-8")
+    assert "def check_sign" not in src, "check_sign survives in the module source"
+    blobs = _two_shards()
+    graph = _ingest(["shardA", "shardB"], fetch=blobs.get)
+    assert "sign_rate" not in graph.gates, graph.gates
+    assert "ei" in graph.gates, graph.gates
+
+
+# ---------------------------------------------------------------------------------------------
+# The disclosures 2.9 requires: measured, printed, and NEVER filtered on
+# ---------------------------------------------------------------------------------------------
+def test_the_disclosures_are_measured_and_never_filtered_on(tmp_path):
+    blobs = _two_shards()
+    graph = _ingest(["shardA", "shardB"], fetch=blobs.get)
+    d = graph.gates["disclosures"]
+    for key in (
+        "pre_end_soma_hits",
+        "pre_end_soma_hits_non_neuronal",
+        "pre_end_non_neuronal_fraction",
+        "soma_to_soma_synapses",
+        "synapses_with_dale_signed_pre",
+        "synapses_with_both_ends_signed",
+        "signed_pre_export_type_disagreement",
+    ):
+        assert key in d, f"{key} is not disclosed: {d}"
+    assert d["soma_to_soma_synapses"] == 6, d
+    assert 0.0 < d["pre_end_non_neuronal_fraction"] < 1.0, (
+        f"the fixture must carry BOTH neuronal and non-neuronal pre-end hits, or the disclosure "
+        f"is untested: {d}"
+    )
+    assert (
+        d["pre_end_soma_hits_non_neuronal"] / d["pre_end_soma_hits"]
+        == d["pre_end_non_neuronal_fraction"]
+    )
+    # NEVER FILTERED ON: every both-ends-signed synapse reaches the artifact whatever its export
+    # type says. Filtering edges to agree with the prior would be selecting the data to fit the
+    # seed -- 2.9 names that explicitly.
+    path = tmp_path / "disc.npz"
+    H.write_artifact(graph, path)
+    art = H.load_artifact(path)
+    assert int(art["n_syn"].sum()) == d["synapses_with_both_ends_signed"], (
+        "an edge was dropped between the join and the artifact"
+    )
+    assert int(art["n_exc"].sum() + art["n_inh"].sum()) <= int(art["n_syn"].sum())
+    assert art["meta"]["disclosures"] == d, "the artifact meta must carry the same numbers"
 
 
 def test_a_refusing_ingest_still_carries_every_gate_reading():
@@ -273,34 +383,28 @@ def test_a_refusing_ingest_still_carries_every_gate_reading():
     it has to carry the evidence for it."""
     blobs = _two_shards()
     with pytest.raises(H.IngestRefused) as e:
-        H.ingest(
-            ["shardA", "shardB"],
-            cells=_dale_flipped_cells(),
-            fetch=blobs.get,
-            verify_bytes=False,
-        )
+        _ingest(["shardA", "shardB"], fetch=blobs.get, ei_counts=H.self_ei(shuffle=True))
     r = e.value.readings
     assert r["join_counts"][f"{H.DECLARED_JOIN[0]}<->{H.DECLARED_JOIN[1]}"] == 6, r
     assert set(r["unit_ratios"]) == set(H.CANDIDATE_SCALES), r
-    assert "disagree" in r["sign"], r
-    assert r["refusals"] and any("sign" in x for x in r["refusals"]), r
+    assert "disclosures" in r, r
+    assert r["refusals"] and any("ei" in x for x in r["refusals"]), r
 
 
 def test_a_refusal_names_every_gate_that_refused_not_just_the_first():
     blobs = _two_shards()
     with pytest.raises(H.IngestRefused) as e:
-        H.ingest(
+        _ingest(
             ["shardA", "shardB"],
-            cells=_dale_flipped_cells(),
             fetch=blobs.get,
-            verify_bytes=False,
+            ei_counts=H.self_ei(shuffle=True),
             declared_join=("base_neuron_id", "agglo_seg"),
         )
     named = {x.split(":")[0] for x in e.value.readings["refusals"]}
-    assert named == {"join", "sign"}, e.value.readings["refusals"]
+    assert named == {"join", "ei"}, e.value.readings["refusals"]
 
 
-def test_gate_e_disagreement_is_reported_not_rounded_to_zero():
+def test_the_pre_side_is_disclosed_as_a_rate_not_rounded_to_zero():
     sign_of = H.dale_signs(cells())
     agree, total = H.sign_agreement(_edges(), sign_of)
     assert 0 <= total - agree, (agree, total)
@@ -311,17 +415,19 @@ def test_gate_e_disagreement_is_reported_not_rounded_to_zero():
 # (f) DETERMINISM and ORDER-INDEPENDENCE
 # ---------------------------------------------------------------------------------------------
 def _two_shards():
-    half = len(synapses()) // 2
-    return {
-        "shardA": shard_bytes(synapses()[:half]),
-        "shardB": shard_bytes(synapses()[half:]),
-    }
+    """The MODULE's own two-shard split (P2: one splitter, so the offline gate and this suite
+    measure the same two shards). Both shards carry soma-to-soma edges on purpose -- the
+    unsorted-order red below needs two Counters that actually differ, and a naive halfway cut of
+    the synapse list puts every edge in the first shard once the post-only e/i traffic is
+    appended."""
+    a, b = H.self_shard_pair()
+    return {"shardA": a, "shardB": b}
 
 
 def test_gate_f_artifact_is_byte_identical_under_reversed_shard_order(tmp_path):
     blobs = _two_shards()
-    fwd = H.ingest(["shardA", "shardB"], cells=cells(), fetch=blobs.get, verify_bytes=False)
-    rev = H.ingest(["shardB", "shardA"], cells=cells(), fetch=blobs.get, verify_bytes=False)
+    fwd = _ingest(["shardA", "shardB"], fetch=blobs.get)
+    rev = _ingest(["shardB", "shardA"], fetch=blobs.get)
     a = H.write_artifact(fwd, tmp_path / "fwd.npz")
     b = H.write_artifact(rev, tmp_path / "rev.npz")
     assert a == b, f"forward and reverse shard order produced different artifacts: {a} vs {b}"
@@ -330,8 +436,8 @@ def test_gate_f_artifact_is_byte_identical_under_reversed_shard_order(tmp_path):
 def test_gate_f_unsorted_encounter_order_is_the_red(tmp_path):
     """RED: append edges in encounter order without sorting -> the two orders differ."""
     blobs = _two_shards()
-    fwd = H.ingest(["shardA", "shardB"], cells=cells(), fetch=blobs.get, verify_bytes=False)
-    rev = H.ingest(["shardB", "shardA"], cells=cells(), fetch=blobs.get, verify_bytes=False)
+    fwd = _ingest(["shardA", "shardB"], fetch=blobs.get)
+    rev = _ingest(["shardB", "shardA"], fetch=blobs.get)
     a = H.write_artifact(fwd, tmp_path / "u_fwd.npz", sort_edges=False)
     b = H.write_artifact(rev, tmp_path / "u_rev.npz", sort_edges=False)
     assert a != b, (
@@ -342,7 +448,7 @@ def test_gate_f_unsorted_encounter_order_is_the_red(tmp_path):
 
 def test_gate_f_population_construction_is_deterministic(tmp_path):
     blobs = _two_shards()
-    graph = H.ingest(["shardA", "shardB"], cells=cells(), fetch=blobs.get, verify_bytes=False)
+    graph = _ingest(["shardA", "shardB"], fetch=blobs.get)
     path = tmp_path / "g.npz"
     H.write_artifact(graph, path)
     trains, blobs_out = [], []
@@ -370,7 +476,7 @@ def test_gate_g_a_full_ingest_and_population_add_no_lake_record(tmp_path):
     blobs = _two_shards()
     with throwaway_home():
         before = _lake_record_count()
-        graph = H.ingest(["shardA", "shardB"], cells=cells(), fetch=blobs.get, verify_bytes=False)
+        graph = _ingest(["shardA", "shardB"], fetch=blobs.get)
         path = tmp_path / "p4b.npz"
         H.write_artifact(graph, path)
         state, syn, kt = H.population(path)
@@ -397,7 +503,7 @@ def test_gate_g_a_full_ingest_and_population_add_no_lake_record(tmp_path):
 # ---------------------------------------------------------------------------------------------
 def test_gate_h_driving_one_unit_propagates_within_30_ticks(tmp_path):
     blobs = _two_shards()
-    graph = H.ingest(["shardA", "shardB"], cells=cells(), fetch=blobs.get, verify_bytes=False)
+    graph = _ingest(["shardA", "shardB"], fetch=blobs.get)
     path = tmp_path / "live.npz"
     H.write_artifact(graph, path)
     _state, _syn, kt = H.population(path)
@@ -414,7 +520,7 @@ def test_gate_h_driving_one_unit_propagates_within_30_ticks(tmp_path):
 # ---------------------------------------------------------------------------------------------
 def test_population_units_are_the_signed_neurons_in_seven_bands(tmp_path):
     blobs = _two_shards()
-    graph = H.ingest(["shardA", "shardB"], cells=cells(), fetch=blobs.get, verify_bytes=False)
+    graph = _ingest(["shardA", "shardB"], fetch=blobs.get)
     path = tmp_path / "shape.npz"
     H.write_artifact(graph, path)
     art = H.load_artifact(path)
@@ -428,7 +534,7 @@ def test_population_units_are_the_signed_neurons_in_seven_bands(tmp_path):
 
 def test_population_fan_in_shares_sum_to_one_per_post(tmp_path):
     blobs = _two_shards()
-    graph = H.ingest(["shardA", "shardB"], cells=cells(), fetch=blobs.get, verify_bytes=False)
+    graph = _ingest(["shardA", "shardB"], fetch=blobs.get)
     path = tmp_path / "w.npz"
     H.write_artifact(graph, path)
     art = H.load_artifact(path)
@@ -441,7 +547,7 @@ def test_population_fan_in_shares_sum_to_one_per_post(tmp_path):
 
 def test_population_delay_is_one_tick_everywhere_and_disclosed(tmp_path):
     blobs = _two_shards()
-    graph = H.ingest(["shardA", "shardB"], cells=cells(), fetch=blobs.get, verify_bytes=False)
+    graph = _ingest(["shardA", "shardB"], fetch=blobs.get)
     path = tmp_path / "d.npz"
     H.write_artifact(graph, path)
     _state, syn, _kt = H.population(path)
