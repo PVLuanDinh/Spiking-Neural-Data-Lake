@@ -100,38 +100,20 @@ def _plain_kernel(n=4):
     return KernelTick(state, syn, decay=0.5, v_reset=0.0, refrac_ticks=1)
 
 
-def test_replay_gate_refuses_a_paged_kernel_rather_than_dropping_its_pending():
-    """G5 (T017) against a PAGED kernel (T066): charge in `pending` used to vanish silently.
+def test_the_kernel_round_trips_through_capture_and_restore():
+    """G5 (T017): a captured kernel resumes THE SAME trajectory.
 
-    A paged-out unit's arriving charge waits in `KernelTick.pending`, and the snapshot blob holds
-    neither `pending` nor the residency mask. Before 2026-09-08 `capture` took the snapshot
-    anyway and `restore` accepted it, so the charge below was simply gone on the other side and
-    the continuation fired nothing where the original fired -- the one place the tree's "no
-    silent drop" rule was not defended, inside the module whose own contract says a restore that
-    cannot prove it resumes the same trajectory refuses whole. Both directions now refuse."""
-    from snn_data_lake.substrate.replay_gate import SnapshotRefused, capture, restore
+    This was the POSITIVE CONTROL inside a paged-kernel refusal test until 2026-09-09, when the
+    paging layer was deleted on its null (T068 LOSS, evidence/s5-paging-null.md 3.4/3.5) and
+    `replay_gate._PAGED_REFUSAL` went with it: `KernelTick` no longer takes a `resident` mask, so
+    that criterion's red can no longer be CONSTRUCTED, and a criterion with no reachable red is
+    deleted rather than weakened (P8 clause 1 / F11). The control outlives the claim it
+    controlled, deliberately -- it is the only round-trip pin `capture` and `restore` have in the
+    suite, so deleting it with the refusal would have removed live coverage of a surviving
+    mechanism."""
+    from snn_data_lake.substrate.replay_gate import capture, restore
 
     n = 4
-    state = KernelState([("net", n)])
-    state.arrays["thr"][:] = 1.0
-    syn = Synapses([0], [2], [2.0], [1], n, 1, FRAC)
-    paged = KernelTick(
-        state,
-        syn,
-        decay=0.5,
-        v_reset=0.0,
-        refrac_ticks=1,
-        resident=np.array([True, True, False, False]),
-    )
-    paged.tick(_drive(n, [0]))
-    paged.tick()
-    waiting = sum(int(np.abs(p).sum()) for p in paged.pending)
-    assert waiting > 0, "the fixture parked no charge in pending -- it would test nothing"
-    with pytest.raises(SnapshotRefused, match="PAGED"):
-        capture(paged, {})
-
-    # POSITIVE CONTROL, same test: the UNPAGED kernel this gate exists for still round-trips, so
-    # the refusal is a residency clause and not a broken capture.
     plain = _plain_kernel(n)
     plain.tick(_drive(n, [0]))
     blob = capture(plain, {})
@@ -139,11 +121,6 @@ def test_replay_gate_refuses_a_paged_kernel_rather_than_dropping_its_pending():
     assert restore(blob, resumed) == {}
     assert resumed.tick_index == plain.tick_index
     assert np.array_equal(resumed.state.arrays["v"], plain.state.arrays["v"])
-
-    # and the other direction: a paged TARGET is refused too, so a blob captured off an unpaged
-    # kernel cannot be seated into a paged one and read as a resumed trajectory
-    with pytest.raises(SnapshotRefused, match="PAGED"):
-        restore(blob, paged)
 
 
 def test_refusals():
