@@ -685,11 +685,29 @@ def check_join(counts, declared=DECLARED_JOIN):
     return lines
 
 
+# distinct-from: basal_ganglia/r_stdp.py::_da_consumer_factory -- builds a ring and a JoinConsumer
+#   over a declared dopamine port; no coordinates and no extent. distinct-from:
+#   cortex/arealization.py::postmitotic_discretize -- an argmax over graded GRN profiles per node.
+#   distinct-from: cortex/eprop_kernel.py::bptt_grads -- reverse-mode BPTT over an unrolled net.
+#   distinct-from: cortex/theory_of_mind.py::TheoryOfMind -- tracks per-agent beliefs about a world
+#   state. distinct-from: reasoning/reservoir_eprop.py::run -- a full two-arm SHD experiment.
+#   None of the five computes a per-axis bounding box, and nothing in the tree computes the extent
+#   of THIS soma cloud. All five sites read 2026-09-09 (the duplicate guard reported seven matches
+#   and named these five); the guard matched on the docstring's first sentence, which is unchanged.
 def soma_bounds(cells):
     """Per-axis (min, max) of the soma cloud, in NANOMETRES (`true_x/y/z` are nm)."""
+    # A ROW THAT CARRIES NO COORDINATES IS NOT A POINT IN THE CLOUD, and a min() over one is not
+    # a physical extent. The pinned cell file holds 12 null placeholder rows -- base_seg '0',
+    # agglo_seg '0', type 'unknown cell', and x_vx/y_vx/z_vx/soma_cubic_um all 0 beside true_x/
+    # true_y/true_z all 0 -- and they are the ONLY rows at x == 0 or y == 0, so counting them put
+    # the ORIGIN at the cloud's corner and inflated gate (c)'s x and y denominators by 1.16x each.
+    # The test is on the ROW's own coordinates and NEVER on agglo_seg == '0': that id also carries
+    # 1,083 somata with real locations, so the id rule would discard measurements to drop a
+    # placeholder. Not pushed up into load_cells: gate (d)'s pin counts all 49,377 rows.
+    located = [c for c in cells if (c["true_x"], c["true_y"], c["true_z"]) != (0, 0, 0)]
     out = []
     for key in ("true_x", "true_y", "true_z"):
-        vs = [c[key] for c in cells]
+        vs = [c[key] for c in located]
         out.append((min(vs), max(vs)))
     return out
 
