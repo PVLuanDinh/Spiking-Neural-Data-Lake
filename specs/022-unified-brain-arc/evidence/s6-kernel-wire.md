@@ -147,3 +147,41 @@ by a rule written before the number.
 CORE, a self-check that fires the reds) — 4. the reading on the live brain and the disposition applied
 (exemptions, `Synapses.empty` docstring, specs/008 `tasks.md`, S-R4 re-registered, the S6 annotation) — panel
 — fold — ONE battery — closing record — push.
+
+### 2.9 Amendment BEFORE the re-read (2026-09-09; the three readings already taken are quoted, and none is discarded)
+
+The instrument landed (`2c3c97e` reds RUN RED: `1 error in 0.10s`, a collection ImportError; `b8413c1` the
+gate, 787 lines, three reds firing their broken arms in one command, `run_selfchecks` 353/353, every gate
+rc 0) and was read three times at W = 150 paired wake ticks. The readings, verbatim from the builder's
+report: seed 0 ceiling RAW 0.00492, band (−0.00824, 0.01501), corrected 0.00243 (−0.03726, 0.05063), sham
+floor −0.00089, N* 2,504 (profile) / 6,316 (neuter) → **DECLINE**; seed 1 RAW 0.00510 (−0.03397, 0.01504),
+corrected −0.07472 (−0.14971, −0.00529), the ceiling NOT above 2× the sham floor (0.0078) → **DECLINE**
+(raw and corrected agree on the verdict while disagreeing in sign); **seed 2 RAW 0.04935 with a band
+(−0.24872, 0.19646) that STRADDLES the 0.15 bar** — wake p50 82.3 ms against 104–105 on the other seeds,
+n_LIF 189 against 177, the band ~15× wider, N* 2,828 / 642 (agree-ratio 4.40) → the gate printed
+INDETERMINATE, a word 2.6 has no row for. Every control HELD on every seed (padded-share 0.87, repeatability
+overlap, sham within |0.05|).
+
+**What 2.6 did not say, and says now.** (a) A band that straddles the bar is not a verdict for that seed;
+the seed is INDETERMINATE and is re-read ONCE under the host condition 2.2 assumed and did not write down:
+the daemon UP and its cockpit LISTENING (a booting daemon runs its refit burst — `perf_baseline`'s own
+header names it the pinned host's dominant timing variable), nothing else running, the readings taken in
+one session. The builder's readings were taken while the daemon was RESTARTING on the instrument's own
+commit (its cockpit was not listening; the auto-restart-on-commit fired at 05:53 local) — the regime seed 2
+fell into is the daemon's boot, disclosed here as the confound before the re-read. (b) If the re-read
+straddles again, the seed stays INDETERMINATE and no verdict is read from it. (c) The row's verdict is read
+from the determinate seeds and requires at least two of them to agree; with fewer than two determinate
+seeds there is no verdict and the instrument's precision is the finding. Seeds 0 and 1 are DECLINE already,
+so the re-read can only add a third DECLINE, a PROCEED that makes the seeds disagree (then: no verdict; the
+disagreement is recorded and a fourth seed is read under the same condition), or a second INDETERMINATE.
+
+**The claim the deployed width supports, stated at the strength the instrument allows.** On seed 1 the
+ceiling did not exceed twice the sham arm's magnitude: the removable cost at 177 live LIF units is BELOW
+WHAT THIS INSTRUMENT RESOLVES (its floor is ~0.008). That is the honest reading — not "the ceiling is
+0.005" but "the ceiling is under the floor, which is under the bar by an order of magnitude" — and it
+supports DECLINE more strongly than the point estimate. N* stays a lower bound and the two derivations'
+disagreement (2.4–4.4×: cProfile attributes more to the object path than the neuter removes) is reported
+as the instrument's own finding, not resolved into one number.
+
+**Not changed.** The bar (0.15), the rule's direction, the reds, the controls, the dispositions of 2.6 as
+written; the raw-decides rule (2.6 row 4) was applied on seed 1 as written.
