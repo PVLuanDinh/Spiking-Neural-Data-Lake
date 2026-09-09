@@ -176,3 +176,59 @@ there.
 mechanism → the synthetic self-check green with every red in the same command → stage A → stage B
 → the record (§3) → the panel (three lenses; the fold is stacked commits) → ONE battery on the
 stacked head → the closing record → push.
+
+### 2.9 Amendment BEFORE the re-run (2026-09-09; the readings already taken are quoted, and none is discarded)
+
+**What happened.** The ingest ran as pre-registered on stage A (35 shards, 34,994,654 records) and, its
+projection being 16.3 min, on stage B (all 166 shards, 166,216,068 records, 845.78 s wall). Gates (a)–(d)
+PASSED on both: 166/166 md5 equal to the manifest and the pinned schema hash on every shard; the declared
+join `neuron_id ↔ agglo_seg` the strict maximum (516,214 both-ends hits against 56,707 / 1,422 / 305 for
+the other pairings — the forbidden `base_neuron_id ↔ agglo_seg` is 363× smaller); the declared (8, 8, 33)
+scaling closest to 1 on every axis (0.8601, 0.8519, 1.0166 against 0.43 / 0.11 / 0.013 for the cell-voxel,
+identity and inverted scalings); the computed layer reproducing 45,404 / 49,377 exactly. Gate (e) REFUSED
+on both stages: 12,802 / 42,610 = 0.3004 and 60,949 / 202,232 = 0.3014 — a reading that moves 0.001 across
+a 4.7× larger sample is a reading, not noise, and the swapped map (0.6986) is not near 1 either. Per 2.7
+NO ARTIFACT WAS WRITTEN and the pin records the refusal with every gate's reading.
+
+**Why gate (e) was the instrument's defect, not the data's (measured on shard 0, 998,235 records).**
+2.3(e) compared the PRE cell's Dale sign with the export's per-synapse `type`. Three readings show the
+two are not readings of one quantity: (1) by PRE cell type the export's excitatory fraction does not
+separate excitatory from inhibitory classes (pyramidal 0.370, spiny stellate 0.344, atypical spiny 0.338,
+interneuron 0.308) and 54.4 % of the pre-end soma hits are glia or vasculature, which cannot be
+presynaptic; (2) by POST cell type it separates cleanly (pyramidal 0.639, spiny stellate 0.672, atypical
+spiny 0.630, interneuron 0.538, oligodendrocyte 0.448, astrocyte 0.337); (3) a third instrument that
+fails differently — upstream's own per-segment `excitatory synapses` / `inhibitory synapses` counts in the
+e/i CSV — agrees on the POST side (over 9,716 post segments, Pearson r 0.494 between the export-derived and
+the CSV excitatory input fractions). The join is 19× asymmetric by end (174,473 post-end hits per shard
+against 9,170 pre-end): the pre end of a synapse is an axon, and axons are the fragmented, mis-merged
+side of this reconstruction. 1.4's reading of `get_neuron_e_to_i_ratios.py` (2 = excitatory,
+1 = inhibitory) is correct, but that script counts synapses RECEIVED by a neuron — a POST-anchored
+quantity — and 2.3(e) compared it to a PRE-anchored one.
+
+**The replacement gate (e′), pre-registered here before the re-run.** Instrument 1: the export's `type`
+aggregated per POST cell into that cell's excitatory INPUT fraction. Instrument 2: the e/i CSV's own
+counts for the same segment id. Same quantity, failing differently. RULE (no invented threshold): the
+Pearson correlation between the two over the joined post cells must exceed the 95th percentile of the
+same correlation under 1,000 permutations of the CSV's segment labels (the constructed red: shuffled
+labels → the correlation collapses to the permutation band → refused); both the real and the permuted
+readings are printed. CONTROL: the real labels pass. The export's `type` is used for NOTHING else.
+
+**What is kept unchanged.** The population's sign is the CELL's (Dale, immutable at birth) — it never
+depended on gate (e). Every other gate, red and control of 2.3 stands as written and is re-run.
+
+**Disclosure carried into T063 (the prior's quality is now a measured fact).** Of the 516,214
+soma-to-soma synapses, 202,232 carry a Dale-signed pre; the export's E/I type disagrees with the pre
+cell's class on roughly two thirds of those, and the pre-end soma hits are majority glia/vascular. The
+population therefore carries the export's PRE identities as they are (edges from signed pre cells only;
+no edge is filtered by the export's type — filtering edges to match the prior would be selecting the data
+to fit the seed), and the record states the fraction of pre-end hits that are non-neuronal. Whether that
+wiring beats its marginal-matched null is exactly T063's question.
+
+**Three defects the gates found in the builder's own apparatus, recorded.** The first synthetic fixture
+let every base id resolve, so the join gate tied 6–6 and refused (a fixture that cannot tell which key it
+got); the artifact meta carried shards in READ order, so the determinism gate compared two hashes that
+differed only in the list it was meant to be independent of; `np.savez` embeds the wall clock in its
+zip, which would have made the artifact's sha256 a timestamp. Each was fixed before any real reading.
+
+**Authorized by this amendment:** a second stage-B run under gate (e′), producing the artifact and the pin
+iff every gate passes; the stage-B readings above are kept in the record beside the re-run's.
