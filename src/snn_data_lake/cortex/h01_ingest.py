@@ -177,9 +177,29 @@ def _lif_defaults():
 LIF_DEFAULTS = _lif_defaults()
 
 
+# distinct-from: substrate/gradient_claim_gate.py::_further_nulls -- publishes three nulls nothing
+#   asserts on, inside its own verdict; it is a REPORTING FUNCTION of one gate, not a refusal type
+#   carried across gates. distinct-from: substrate/amdahl_gate.py::red_repeatability -- a
+#   band-overlap red for a timing rig. distinct-from:
+#   basal_ganglia/brain_native_selfbuild.py::ThresholdRecalibrationSource -- a self-build source
+#   that emits a source patch. distinct-from: reasoning/ar_spiking_lm_serve.py::
+#   build_random_artifact and reasoning/eprop_lm_serve.py::build_random_artifact -- random-init
+#   demo artifacts labelled trained=False. None of the five is an exception type, and none carries
+#   a gate's readings past a refusal. All sites read 2026-09-09; the guard matched on the words
+#   "REPORTED" and "nulls".
 class IngestRefused(ValueError):
     """A gate refused. No artifact is written and the readings are reported -- 2.7's null clause:
-    nothing is weakened to pass."""
+    nothing is weakened to pass.
+
+    `.readings` carries EVERY gate's measurement: the ones that passed, the one that refused, and
+    the ones measured after it. A refusal IS the row's result when it happens, and a result that
+    arrives without its evidence cannot be audited, argued with, or re-derived -- 2.7 says "the
+    readings are recorded" in the same breath as "no artifact is written", and a
+    first-refusal-wins raise honours only the second half."""
+
+    def __init__(self, message, readings=None):
+        super().__init__(message)
+        self.readings = dict(readings or {})
 
 
 # =============================================================================================
@@ -805,6 +825,7 @@ def ingest(
     verify_bytes=True,
     manifest=None,
     progress=None,
+    declared_join=DECLARED_JOIN,
 ):
     """Decode `names` (shard names, or any key `fetch` understands) and run gates (b)..(e).
 
@@ -859,20 +880,43 @@ def ingest(
                 hi[ax] = b if hi[ax] is None or b > hi[ax] else hi[ax]
     bounds = [(lo[ax], hi[ax]) for ax in range(3)] if lo[0] is not None else None
 
+    # EVERY GATE IS MEASURED BEFORE ANY REFUSAL IS RAISED. 2.7 requires BOTH halves -- "no
+    # artifact is written" AND "the readings are recorded" -- and a raise on the first refusing
+    # gate honours only the second. It would also throw away readings taken in the same pass over
+    # bytes nobody wants to stream twice. Refusals accumulate and are raised together, each named.
     gates = {}
-    gates["join"] = check_join(counts)
+    refusals = []
     gates["join_counts"] = {f"{a}<->{b}": counts[(a, b)] for a, b in JOIN_PAIRINGS}
+    try:
+        gates["join"] = check_join(counts, declared=declared_join)
+    except IngestRefused as e:
+        refusals.append(f"join: {e}")
     if bounds is None:
-        raise IngestRefused(
-            "no joined synapse carried a location -- the unit gate would be vacuous"
-        )
-    ratios = extent_ratios(bounds, soma_bounds(cells))
-    gates["units"] = check_units(ratios)
-    gates["unit_ratios"] = {k: list(v) for k, v in ratios.items()}
+        refusals.append("units: no joined synapse carried a location -- the gate is vacuous")
+    else:
+        ratios = extent_ratios(bounds, soma_bounds(cells))
+        gates["unit_ratios"] = {k: list(v) for k, v in ratios.items()}
+        try:
+            gates["units"] = check_units(ratios)
+        except IngestRefused as e:
+            refusals.append(f"units: {e}")
     signs = dale_signs(cells)
     s_agree, s_total = sign_agreement(edges, signs)
-    gates["sign_rate"] = check_sign(s_agree, s_total)
     gates["sign"] = sign_report(s_agree, s_total)
+    gates["sign_counts"] = [s_agree, s_total]
+    try:
+        gates["sign_rate"] = check_sign(s_agree, s_total)
+    except IngestRefused as e:
+        refusals.append(f"sign: {e}")
+    gates["records_decoded"] = n_records
+    gates["refusals"] = refusals
+    if refusals:
+        raise IngestRefused(
+            f"{len(refusals)} gate(s) REFUSED over {len(gates['join_counts'])} pairings on "
+            f"{n_records:,} records; NO artifact is written and every reading is attached: "
+            + " | ".join(refusals),
+            readings=gates,
+        )
     return Graph(
         list(names),
         n_records,
@@ -1323,9 +1367,32 @@ def _selfcheck():
         return 1
     except IngestRefused:
         pass
+    # A REFUSAL MUST CARRY ITS READINGS (2.7). Flip the two excitatory somata to inhibitory so
+    # instrument 1 disagrees with the export's type on most synapses, then assert the raise brings
+    # the join counts and the extent ratios out with it -- a refusal IS the result when it
+    # happens, and one that arrives without its evidence cannot be audited or re-derived.
+    _flip = {"pyramidal neuron": "interneuron", "spiny stellate neuron": "interneuron"}
+    flipped = [dict(c, type=_flip.get(c["type"], c["type"])) for c in cells]
+    carried = None
+    try:
+        ingest(["S"], cells=flipped, fetch={"S": data}.get, verify_bytes=False)
+        print("h01_ingest self-check FAILED: (e) a Dale-flipped world did not refuse")
+        return 1
+    except IngestRefused as refusal:
+        missing = [
+            k
+            for k in ("join_counts", "unit_ratios", "sign", "refusals")
+            if k not in refusal.readings
+        ]
+        if missing:
+            print(f"h01_ingest self-check FAILED: (e) the refusal dropped {missing}")
+            return 1
+        carried = refusal.readings
     ok.append(
         f"(e) {sign_report(agree, total)} at rate {rate:.4f}; the swapped map scores "
-        f"exactly 1 - r = {s_agree}/{s_total} and is REFUSED"
+        f"exactly 1 - r = {s_agree}/{s_total} and is REFUSED. A Dale-flipped world REFUSES and "
+        f"the refusal carries every reading out with it ({len(carried)} keys, "
+        f"{carried['refusals']})"
     )
 
     # ---- (f) determinism + (g) P4b + (h) liveness, in one throwaway home --------------------
@@ -1483,7 +1550,44 @@ def _run_ingest(argv):
             flush=True,
         )
 
-    graph = ingest(chosen, cells=cells, threads=threads, manifest=manifest, progress=progress)
+    try:
+        graph = ingest(chosen, cells=cells, threads=threads, manifest=manifest, progress=progress)
+    except IngestRefused as refusal:
+        # 2.7's null clause, executed: NO artifact, the readings recorded, the row left OPEN with
+        # the refusal named. The pin is written as a REFUSAL record rather than not written at
+        # all -- an unrecorded refusal is indistinguishable from a run that never happened.
+        wall = time.perf_counter() - t0
+        rec = {
+            "verdict": "REFUSED",
+            "refusals": refusal.readings.get("refusals", []),
+            "message": str(refusal),
+            "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "host": os.environ.get("COMPUTERNAME", "?"),
+            "git_head": _git_head(),
+            "shards": chosen,
+            "threads": threads,
+            "wall_s": round(wall, 2),
+            "bytes_streamed": seen["bytes"],
+            "fetch_s_total": round(seen["fetch_s"], 2),
+            "decode_s_total": round(seen["decode_s"], 2),
+            "harness_sha256": {
+                "cortex/h01_ingest.py": _sha256_of(Path(__file__)),
+                "tools/h01_c3_shards.json": _sha256_of(SHARD_MANIFEST),
+                "tests/fixtures/h01_c3_shard0_head.avro": _sha256_of(REAL_HEAD_FIXTURE),
+            },
+            "gates": {
+                "a_shard_md5": "all verified against tools/h01_c3_shards.json",
+                "a_schema_sha256": AVRO_SCHEMA_SHA256,
+                "d_layer_agreement": [agree, total],
+                **refusal.readings,
+            },
+            "artifact": None,
+            "artifact_sha256": None,
+        }
+        GRAPH_PIN.write_text(json.dumps(rec, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        print(json.dumps(rec, indent=2, sort_keys=True))
+        print(f"\nREFUSED: {refusal}")
+        return 2
     wall = time.perf_counter() - t0
     sha = write_artifact(graph, out)
     art = load_artifact(out)
