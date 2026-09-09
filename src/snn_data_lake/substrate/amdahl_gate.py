@@ -205,6 +205,13 @@ def _probe_install(target, patch):
     and reports it as a pass (specs/008 plan.md invariant 5). The count is taken on its own tick so
     the counter's cost never enters a timed sample -- an instrumented arm would read SLOWER, which
     would SHRINK the ceiling and make a DECLINE easier to reach.
+
+    The PHASE of that tick is returned with the count, because the count depends on it: measured over
+    80 live ticks the neuter's count is 4,324-5,124 awake against 1,264-5,872 asleep, while every
+    paired sample behind the ceiling is an AWAKE tick. An unlabelled `calls=1264` beside an
+    awake-only ceiling understates by ~4x what the neuter removes on the measured ticks. The probe
+    does NOT choose its phase -- that would redefine a control after its readings are on file, and it
+    would buy nothing: no tick of either phase reached zero calls.
     """
     obj, name, fn = patch
     calls = [0]
@@ -217,10 +224,10 @@ def _probe_install(target, patch):
     setattr(obj, name, counting)
     installed = getattr(obj, name) is counting
     try:
-        target.tick()
+        phase = target.tick()
     finally:
         _restore(token)
-    return installed, calls[0]
+    return installed, calls[0], phase
 
 
 def _p50(vals):
@@ -321,9 +328,9 @@ def _harness_pair(patch_a, patch_b, ticks, resamples, seed):
 def red_padded_share(pad_iters=PAD_ITERS, ticks=RED_TICKS, resamples=RED_RESAMPLES, seed=0):
     """RED (a), the POSITIVE CONTROL: a padded object path must read a LARGE ceiling."""
     pad = _padded_step(pad_iters)
-    installed, calls = _probe_install(_TickHarness(seed=seed), (LIFNeuron, "step", pad))
+    installed, calls, phase = _probe_install(_TickHarness(seed=seed), (LIFNeuron, "step", pad))
     d = _harness_pair((LIFNeuron, "step", pad), NEUTER_PATCH, ticks, resamples, seed)
-    d.update(pad_installed=installed, pad_calls=calls, pad_iters=pad_iters)
+    d.update(pad_installed=installed, pad_calls=calls, pad_iters=pad_iters, pad_phase=phase)
     ok = bool(installed) and calls > 0 and d["ceiling_raw"] >= PADDED_MIN_CEILING
     return (
         ok,
@@ -386,10 +393,15 @@ def red_sham_neuter(ticks=RED_TICKS, resamples=RED_RESAMPLES, seed=0):
     `band_excludes_zero`, so nothing is hidden -- it is reported, not asserted.
     """
     sham = SHAM_PATCH
-    installed, calls = _probe_install(_TickHarness(seed=seed), sham)
+    installed, calls, phase = _probe_install(_TickHarness(seed=seed), sham)
     d = _harness_pair(None, sham, ticks, resamples, seed)
     lo, hi = d["band_raw"]
-    d.update(sham_installed=installed, sham_calls=calls, band_excludes_zero=not (lo <= 0 <= hi))
+    d.update(
+        sham_installed=installed,
+        sham_calls=calls,
+        sham_phase=phase,
+        band_excludes_zero=not (lo <= 0 <= hi),
+    )
     ok = bool(installed) and calls == 0 and abs(d["ceiling_raw"]) <= SHAM_NOISE_BAND
     return (
         ok,
@@ -618,8 +630,10 @@ def live_reading(seed=0, wake_ticks=W_TICKS, warmup=WARMUP, resamples=RESAMPLES)
                 )
             elif not pl == pn == ps:
                 misaligned += 1
-        n_ok, n_calls = _probe_install(neut, neuter)  # untimed: the neuter reached the path
-        s_ok, s_calls = _probe_install(shm, sham)  # untimed: the sham path carries zero share
+        # untimed probes: the neuter reached the path; the sham path carries zero share. The tick's
+        # PHASE comes back with the count because the count depends on it (see _probe_install).
+        n_ok, n_calls, n_phase = _probe_install(neut, neuter)
+        s_ok, s_calls, s_phase = _probe_install(shm, sham)
         prof = _profile_shares(live, wake_ticks)
         # the width DURING the profiled ticks, per brain, from the audited walk -- not a third of a
         # process total: the neutered brain never spikes and so need not grow like the live one
@@ -642,8 +656,10 @@ def live_reading(seed=0, wake_ticks=W_TICKS, warmup=WARMUP, resamples=RESAMPLES)
             "phase_misaligned": misaligned,
             "neuter_installed": n_ok,
             "neuter_calls_one_tick": n_calls,
+            "neuter_probe_phase": n_phase,
             "sham_installed": s_ok,
             "sham_calls_one_tick": s_calls,
+            "sham_probe_phase": s_phase,
             "profile": prof,
             "started_utc": started_utc,
             "elapsed_s": round(time.perf_counter() - t0, 1),
@@ -748,8 +764,16 @@ def _print_reading(rep):
         f"correction. persist=False, so the fsync share is the live daemon's -- disclosed)"
     )
     print(
+        f"  MEASUREMENT arm liveness (the arm the ceiling is computed FROM): "
+        f"installed={rep['neuter_installed']} calls={rep['neuter_calls_one_tick']} "
+        f"probe phase={rep['neuter_probe_phase']} -- the count is from ONE untimed tick of that "
+        f"phase, while every paired sample behind the ceiling is AWAKE, so an asleep-phase count is "
+        f"roughly a quarter of what the neuter removes on the measured ticks"
+    )
+    print(
         f"  CONTROL sham arm (zero-share path): ceiling {sa['ceiling_raw']:+} band "
-        f"{sa['band_raw']}; installed={rep['sham_installed']} calls={rep['sham_calls_one_tick']}"
+        f"{sa['band_raw']}; installed={rep['sham_installed']} calls={rep['sham_calls_one_tick']} "
+        f"probe phase={rep['sham_probe_phase']}"
     )
     print(
         f"  NOISE FLOOR (disclosure, not the statistic): the sham removes no work, so its "
