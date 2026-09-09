@@ -69,6 +69,50 @@ _ENTRYPOINTS = (  # pyproject [project.scripts] + the always-on daemon's in-pack
     f"{_PKG}.substrate.region_wiring",  # the daemon charges faculties through this registry
 )
 
+# The S6 panel's dated correction, appended VERBATIM to both kernel `wire` rows. It is a SUCCESSION,
+# never a rewrite: each row keeps its earlier reading word for word, because a row that quietly swaps
+# in a new justification erases the evidence that the old one was wrong -- the discipline those two
+# rows already apply to their own T064/T066/T070 reading. Full entries: evidence/s6-kernel-wire.md
+# S3.7 (C1, C2, C3, C6, C8, C11, C12, C20, C21, C27).
+_S6_PANEL_CORRECTION = (
+    "CORRECTED 2026-09-09 (PANEL FOLD; everything above is kept VERBATIM). "
+    "(1) T062 PLACES NO UNITS. PLAN-FINAL scopes its H01 ingest to the c3 SYNAPSE GRAPH composed "
+    "onto cortex/cortical_prior.py (:649-651), its decision table reads 'placement has no reader' "
+    "(:774, :290), and its own same-arc dated note names GROWTH as the placer -- 'T062's OTHER "
+    "reader stands unchanged (growth placing units at scale)' (:653-655); ~16k is a measured "
+    "INGEST MILESTONE only (~5.0 MB at 302 B/unit, three orders under the 64 MB binding width; "
+    "evidence/s2-state-per-unit.md 61-63, tasks.md T065). T062's own pre-registration DOES define "
+    "an ingested population -- a KernelState + Synapses built from the H01 graph, off the live "
+    "tick, consumed by T063 -- but this row's consumer is the first population ON THE TICK, which "
+    "T062 does not put there. The live consumer is THE FIRST TICK POPULATION AT OR ABOVE N*, which "
+    "today only growth can produce; T062 supplies the prior, not the population. This row is now "
+    "dated to that CONDITION and not to a task id -- the third naming of this clause in two days "
+    "-- so it names a measurable state that discharges itself instead of a row whose landing would "
+    "leave it stale again. "
+    "(2) N* by the profile derivation 2,504-2,828 across the five recorded readings (2,565 on the "
+    "quiet extra), by the neuter derivation 642-6,316 (1,788 on the quiet extra), the two "
+    "1.43-4.40x apart across those five (a panel re-read on a loaded host read 1.34). Each is its "
+    "upstream statistic restated in width units -- N*_profile = K*((1-s)/s)*N with s the "
+    "profiler's object-path share, N*_neuter = K*((1-c)/c)*N with c the Amdahl ceiling, "
+    "K = tol/(1-tol) -- so the neuter's N* inherits the ceiling's 95% band, which is unbounded "
+    "above on every determinate seed (seed 0 boot maps to [2,049, +inf), seed 1 to [2,045, +inf)); "
+    "seed 2 boot's 642 is that formula at its INDETERMINATE ceiling 0.049. A POINT ESTIMATE at one "
+    "measured width, its bound direction UNTESTED (c_u is measured at one width; the LOWER-bound "
+    "reading holds only while the object path grows at most linearly in N). The committed "
+    "'2,500-6,300 / 1.5-2.5x' above dropped seed 2 boot's 642 and 4.40 and the quiet extra's 1,788 "
+    "and 1.43 while keeping 2,828 from that same boot reading; no single reading rule produced it. "
+    "(3) THE CEILING, restated as what reproduces: measured at the deployed width (177-189 live "
+    "LIF units) BELOW WHAT THE INSTRUMENT RESOLVES -- 0.005 raw on the two determinate recorded "
+    "seeds (bands to 0.015), 0.017 on an UNREGISTERED quiet re-read of seed 0 (band to 0.038); the "
+    "point estimate is not stable across readings (six panel re-readings of the same seeds read "
+    "-0.03 to +0.03) and is NOT quotable as a number; the instrument's own matched A/A null reads "
+    "0.01-0.03 run to run; every determinate 95% band's upper bound sits far under the 0.15 bar. "
+    "The clause '95% bands inside 0.04' above is WITHDRAWN -- it is a property of one unlogged "
+    "reading, and five of six fresh determinate bands breach it. Per-reading table: "
+    "evidence/s6-kernel-wire.md S3.2. "
+    "(4) The DECLINE, the 0.15 bar and this row's disposition are UNCHANGED by all of it."
+)
+
 # ------------------------------------------------------------------------------------------------
 # EXEMPT: brain modules that are legitimately NOT reachable from a live path, each with a disposition
 # and a reason. Dispositions: "retire" (pending deletion), "wire" (pending a verify-first wave),
@@ -618,9 +662,16 @@ EXEMPT = {
         "1.5-2.5x and both are reported, the instrument's own finding; evidence/s6-kernel-wire.md "
         "S3). S6 (2026-09-09) measured this wire's Amdahl ceiling AT THE DEPLOYED WIDTH (177-189 "
         "live LIF units) at 0.005-0.017 raw, 95% bands inside 0.04 on two determinate seeds (one "
-        "seed INDETERMINATE twice), and DECLINED the conversion under specs/008 FR-005: a "
-        "conversion that cannot be faster at its real width is declined WITH the measurement. "
-        "BOUND EXPIRED AT T039 UNMET (recorded, not re-dated). Printed by the standing-TODO arm",
+        "seed INDETERMINATE twice), and DECLINED the conversion under specs/008 FR-010 / SC-006 "
+        "(declined-with-measurement, 0 sites unaccounted), FR-004 read contrapositively, plan.md "
+        "Standing Invariants 1 and 3, and contracts/conversion.md C1.3 -- 'a site whose ceiling "
+        "is below the noise floor of the tick is DECLINED, and the decline carries its number'. "
+        "CITATION CORRECTED 2026-09-09 (panel): this row cited FR-005, whose antecedent is a site "
+        "measured SLOWER AFTER vectorizing. No array version was built, so the Conversion-site "
+        "entity's measured array cost and equivalence result do not exist for this site and "
+        "FR-005 is not reached; the rule applied is the one written first, only its citation was "
+        "narrow. BOUND EXPIRED AT T039 UNMET (recorded, not re-dated). Printed by the "
+        "standing-TODO arm. " + _S6_PANEL_CORRECTION,
     ),
     "kernel_state": (
         "wire",
@@ -638,10 +689,15 @@ EXEMPT = {
         "2,500-6,300 units at 0.15 of the tick (two derivations, 1.5-2.5x apart, both reported; "
         "evidence/s6-kernel-wire.md S3). S6 (2026-09-09) measured the wire's Amdahl ceiling at "
         "the DEPLOYED width (177-189 live LIF units) at 0.005-0.017 raw, bands inside 0.04 on "
-        "two determinate seeds, and DECLINED the conversion under specs/008 FR-005; the SoA "
-        "state therefore waits on the same trigger its consumer does. BOUND EXPIRED AT T039 "
-        "UNMET (US1 audit B3, 2026-08-25; recorded, not re-dated). Printed by the "
-        "standing-TODO arm every run",
+        "two determinate seeds, and DECLINED the conversion under specs/008 FR-010 / SC-006 "
+        "(declined-with-measurement, 0 sites unaccounted), FR-004 read contrapositively, plan.md "
+        "Standing Invariants 1 and 3, and contracts/conversion.md C1.3 -- 'a site whose ceiling "
+        "is below the noise floor of the tick is DECLINED, and the decline carries its number'. "
+        "CITATION CORRECTED 2026-09-09 (panel): this row cited FR-005, whose antecedent is a site "
+        "measured SLOWER AFTER vectorizing, and no array version was built, so FR-005 is not "
+        "reached. The SoA state therefore waits on the same trigger its consumer does. BOUND "
+        "EXPIRED AT T039 UNMET (US1 audit B3, 2026-08-25; recorded, not re-dated). Printed by "
+        "the standing-TODO arm every run. " + _S6_PANEL_CORRECTION,
     ),
     "amdahl_gate": (
         "permanent",
