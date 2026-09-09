@@ -674,17 +674,46 @@ def test_a_re_run_of_the_same_stage_lands_beside_the_reading_it_replaces():
     readings it exists to protect is worse than the defect."""
     shards = ["export000000000000", "export000000000165"]
     first = H.merge_pin(None, {"shards": shards, "verdict": "REFUSED", "gates": "e"})
-    second = H.merge_pin(first, {"shards": shards, "verdict": "OK", "gates": "e-prime"})
+    second = H.merge_pin(first, {"shards": shards, "verdict": "PASSED", "gates": "e-prime"})
     assert len(second["stages"]) == 2, f"the refused run was erased by its re-run: {second}"
     kept = [v for v in second["stages"].values() if v["verdict"] == "REFUSED"]
     assert kept and kept[0]["gates"] == "e", second
-    assert second["stages"][second["latest"]]["verdict"] == "OK", second
+    assert second["stages"][second["latest"]]["verdict"] == "PASSED", second
     assert H.stage_key(shards) in second["stages"], (
         "the FIRST reading keeps the plain stage key; a re-run may not take a name that is "
         "already spoken for"
     )
-    third = H.merge_pin(second, {"shards": shards, "verdict": "OK", "gates": "e-prime-again"})
+    third = H.merge_pin(second, {"shards": shards, "verdict": "PASSED", "gates": "e-prime-again"})
     assert len(third["stages"]) == 3, third
+
+
+def test_the_pin_writer_marks_both_outcomes_and_spells_each_one_way():
+    """The refusal path wrote `verdict: "REFUSED"` while the success path wrote no verdict at
+    all, so the machine-readable record carried a refusal marker and no counterpart: a passing
+    stage was inferable only from a non-null `artifact_sha256` plus the absence of `refusals`.
+    The fixtures above used "OK", a word the writer never emitted, so the divergence had no arm.
+
+    Asserted on the module's own dict LITERALS rather than by running an ingest, because the
+    success path is reachable only through a 166-shard network fetch. The red is reachable:
+    delete either key, or spell either token a second way, and this goes red.
+
+    2.7 still governs what the word may mean -- the row has refusals and no WIN/LOSS. "PASSED"
+    says only that no gate raised; the readings that justify it are the pin's `gates` block, and
+    a later reader who quotes the token instead of the numbers is reading it wrong."""
+    import ast
+
+    verdicts = set()
+    for node in ast.walk(ast.parse(Path(H.__file__).read_text(encoding="utf-8"))):
+        if not isinstance(node, ast.Dict):
+            continue
+        for key, value in zip(node.keys, node.values, strict=True):
+            if isinstance(key, ast.Constant) and key.value == "verdict":
+                assert isinstance(value, ast.Constant), ast.dump(value)
+                verdicts.add(value.value)
+    assert verdicts == {"REFUSED", "PASSED"}, (
+        f"the pin writer's verdict vocabulary is {sorted(verdicts)}; both outcomes must be "
+        "written by the run that produced them, and neither may be spelled two ways"
+    )
 
 
 def test_the_manifest_pins_166_shards_and_the_schema_sha():

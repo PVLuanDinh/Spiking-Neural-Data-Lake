@@ -782,8 +782,12 @@ def check_layer(agree, total, pin=LAYER_AGREEMENT_PIN):
 def dale_signs(cells):
     """(e) instrument 1: agglo id -> Dale sign, from the cell's TYPE (`cortical_prior`'s rule).
 
-    Every type outside SIGNED_TYPES is EXCLUDED, never signed by default. An agglo id whose
-    records disagree about signedness is excluded too and counted: a node cannot be both."""
+    Every type outside SIGNED_TYPES is EXCLUDED, never signed by default. An agglo id is
+    excluded whenever its records do not agree on a SINGLE sign -- whether two signed rows
+    disagree (excitatory against inhibitory) or a signed row co-exists with an unsigned one --
+    because this function cannot pick a sign for a node its own source describes two ways. The
+    per-export split of those two cases is a MEASURED fact, recorded in T062 3.5(3), not a
+    property of this function; nothing here counts the exclusions."""
     per_id = {}
     for c in cells:
         aid = str(c["agglo_seg"])
@@ -2057,6 +2061,14 @@ def _run_ingest(argv):
     art = load_artifact(out)
     state, syn, kt = population(out)
     pin = {
+        # SYMMETRY, not a WIN. 2.7 gives this row refusals and no WIN/LOSS, and 2.1 never named a
+        # verdict field -- but the refusal path above writes one and this path wrote nothing, so
+        # the machine-readable record carried a refusal marker and no counterpart. The token says
+        # only that no gate raised; the readings that justify it are in `gates` below, and a
+        # reader who trusts this string instead of those numbers is reading it wrong. Written by
+        # the RUN and never back-filled: the "...#2" entry already in the pin has no verdict, is
+        # not hand-edited, and gains one only when a later legitimate ingest writes its own.
+        "verdict": "PASSED",
         "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "host": os.environ.get("COMPUTERNAME", "?"),
         "git_head": _git_head(),

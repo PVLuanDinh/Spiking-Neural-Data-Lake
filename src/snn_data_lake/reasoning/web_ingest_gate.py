@@ -134,7 +134,14 @@ class WebAccessGate:
         text, which would both exhaust memory and corrupt a gzip. This keeps every gate guarantee:
         host ALLOWLIST + the substrate SSRF firewall (`validate_url` = http/https only + every resolved
         IP must be PUBLIC, plus a redirect validator so a 302 cannot walk to a private address) + a hard
-        byte cap enforced while streaming + provenance logging. Returns (path, bytes_written)."""
+        byte cap enforced while streaming + provenance logging. Returns (path, bytes_written).
+
+        THIS FUNCTION IS THE OPEN P2 DEBT named and dated 2026-09-09 under specs/022 T062. Its
+        retirement target is `substrate/web_ingest.fetch_bytes(sink=)` -- the capability was
+        ported THERE first, which is P2's order; the rationale lives at that site and is not
+        restated here. It has NO call site in the tracked tree today, so the retirement is a
+        rewrite of this body into one `fetch_bytes(..., sink=f.write)` call plus the provenance
+        log line, not a rewiring of callers."""
         self._require_allowed(url)
         # the SSRF firewall lives in the substrate; reuse it rather than re-implementing it
         from snn_data_lake.substrate.web_ingest import _ValidatingRedirectHandler, validate_url
