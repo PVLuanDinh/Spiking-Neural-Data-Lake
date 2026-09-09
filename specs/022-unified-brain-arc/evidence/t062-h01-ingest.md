@@ -232,3 +232,142 @@ zip, which would have made the artifact's sha256 a timestamp. Each was fixed bef
 
 **Authorized by this amendment:** a second stage-B run under gate (e′), producing the artifact and the pin
 iff every gate passes; the stage-B readings above are kept in the record beside the re-run's.
+
+## 3. Results (written after the runs; nothing above this line was edited after §2.9)
+
+### 3.1 The reds, RUN RED, and the instrument as built
+
+The reds were committed before the mechanism existed (`bd886a2`: a collection error, `ImportError: cannot
+import name 'h01_ingest'`) and again before each later mechanism (`6e6917f` a refusing ingest must carry
+every gate reading — `AttributeError: 'IngestRefused' object has no attribute 'readings'`; `194223d` the pin
+must never erase an earlier stage; `a8f3541` gate (e′) — 17 tests failing, each naming the replacement gate
+or its fixture; `0116c09` a same-stage re-run must not erase the refusal it stands beside). The mechanism
+landed at `5b51179` (`cortex/h01_ingest.py`, REGIONS, `run_selfchecks` CORE, a dated `wire` row in
+`dormancy_gate` naming T063 as the consumer) after `98b88f7` gave `web_ingest` ONE firewalled binary
+download (`fetch_bytes`; `fetch_text` now decodes it — P2, one mechanism; all eight prior reds plus a ninth
+mutation-verified reachable). Gate (e′) replaced gate (e) at `7004148` (the retired pre-anchored refusal is
+DELETED, not flagged); `169348b` makes a re-run of the same stage a NEW pin reading (`#2` suffix; the first
+reading keeps the plain key). The pinned inputs are `tools/h01_c3_shards.json` (166 shards, 32,859,876,087
+bytes, the GCS listing verbatim) and `tests/fixtures/h01_c3_shard0_head.avro` (185,659 bytes, 11 whole
+blocks, 928 records of real bytes) at `d9e2b71`.
+
+Three defects the gates found in the builder's OWN apparatus before any real reading, each pointing at
+"nothing is wrong": the first synthetic fixture let every base id resolve, so the join gate tied 6–6 and
+refused (a fixture that cannot tell which key it got); the artifact meta carried shards in READ order, so the
+determinism gate compared two hashes that differed only in the list it was meant to be independent of;
+`np.savez` embeds the wall clock in its zip, which would have made the artifact's sha256 a timestamp.
+
+How gate (e′) was realised within 2.9's words (the builder's choices, disclosed): "the joined post cells"
+means every synapse whose POST end resolves to a CSV segment (35,374 of 35,376 usable segments), not only
+both-ends-joined synapses; the CSV's 10,618 rows with 0/0 counts are dropped before the null is drawn (0/0 is
+not "half excitatory"), so the permutation draws from exactly the population the real reading joins; the
+1,000 permutations are a uniform draw without replacement of |ids| labels from the CSV, distributionally
+identical to permuting the file's labels and re-joining.
+
+### 3.2 The readings (every gate, every run)
+
+| gate | stage A (35 shards, 34,994,654 rec) | stage B (166 shards, 166,216,068 rec) | stage B re-run under (e′) |
+|---|---|---|---|
+| (a) bytes | 35/35 md5 = manifest | 166/166 md5 = manifest; schema sha256 pinned on every shard | 166/166; identical |
+| (b) join, declared `neuron_id↔agglo_seg` | **108,958** (strict max) | **516,214** (strict max) | 516,214 |
+| `base_neuron_id↔base_seg` | 12,164 | 56,707 | 56,707 |
+| `base_neuron_id↔agglo_seg` (forbidden) | 309 | 1,422 (363× smaller) | 1,422 |
+| `neuron_id↔base_seg` | 65 | 305 | 305 |
+| (c) declared (8,8,33) extent ratios x/y/z | 0.8585 / 0.8467 / 1.0166 | 0.8601 / 0.8519 / 1.0166 (closest to 1 on every axis) | identical |
+| cell-voxel (4,4,30) | 0.4292 / 0.4234 / 0.9241 | 0.4301 / 0.4259 / 0.9241 | identical |
+| identity | 0.1073 / 0.1058 / 0.0308 | 0.1075 / 0.1065 / 0.0308 | identical |
+| inversion (÷8,÷8,÷33) | 0.0134 / 0.0132 / 0.0009 | 0.0134 / 0.0133 / 0.0009 | identical |
+| (d) layer agreement | 45,404 / 49,377 exact | 45,404 / 49,377 exact | identical |
+| (e) pre-anchored sign (RETIRED by 2.9) | 12,802/42,610 = 0.3004 → REFUSED | 60,949/202,232 = 0.3014 → REFUSED | — |
+| (e′) post-anchored r vs permutation bar | — | — | **r = 0.4527** over 35,374 cells; bar 0.0089 (null −0.0180..0.0200, mean 0.0002) → PASS |
+| artifact | none (refused) | none (refused) | written |
+
+Offline (fixture) arms, run in the self-check on every invocation: (f) forward and reverse shard order
+give one artifact sha256 and the unsorted control diverges; two constructions give byte-equal
+`KernelState` arrays and a byte-equal 30-tick train; (g) a full synthetic ingest + population under
+`throwaway_home()` leaves the lake at 0 → 0 records while the deliberate `save_named_state` moves the same
+counter to 1 (the arm is sensitive); (h) driving 1 of 4 units propagates within 30 ticks and the zeroed-weight
+control does not. On the real artifact (`scratchpad/t062/item5.py`): order-independence measured on the FIRST
+8 SHARDS ONLY (forward = reverse = `227f1527…307f`, 7,992,186 records, two re-fetched passes 123.2 s; the
+unsorted control diverges); two constructions byte-equal (state and a 1,760-byte 30-tick train); liveness:
+142 driven units (1 %, highest out-degree) → per-tick spikes 142, 71, 6, 1, 0 … (220 total, propagates);
+the zero-weight control 142 (drive only), does not propagate.
+
+Disclosures measured on the full export and filtered on by nothing: pre-end soma hits 1,494,143, of which
+831,649 (0.5566) are non-neuronal; soma-to-soma synapses 516,214; with a Dale-signed pre 202,232; with BOTH
+ends signed 104,959; among the signed-pre synapses the export's type disagrees with the pre cell's class on
+141,283 (0.6986).
+
+Timing (reported, never asserted): the final stage-B run 840.66 s wall with 8 threads, 197,720 records/s
+aggregate (31,687 per thread; per-shard decode 27.5–34.0 s); threads beat one thread, measured on 4 shards
+(1 → 46,969 rec/s; 4 → 146,089, 3.11×; 8 → 149,834). The earlier stage A 206.06 s projected stage B at 977 s
+(over-estimating by 15.6 %). Host condition: the daemon UP (PID 2172 during the final run, started 16:32:08,
+working set 5,871–8,420 MB) and its cockpit LISTENING in all 27 samples at 30 s; free RAM 8.4–11.1 GB;
+NORD_HOME on a scratch dir; no battery or panel running.
+
+### 3.3 The verdict, by the rule of record
+
+Every gate of 2.3 as amended by 2.9 PASSED on the full 166-shard export; the artifact
+`data/h01/h01_c3_graph.npz` (421,421 bytes, sha256 `a1d0491ac486bf194a479a8c6aab419df90c7f05d2ba643d6b16ed3c3d4a0549`)
+is written and pinned in `tools/h01_c3_graph_pin.json` beside both refused readings, the harness sha256s and
+the git head. There is no WIN/LOSS here (2.7): the row's deliverable is an artifact whose gates all pass, and
+they do. The population: 14,215 signed units (9,793 excitatory, 4,422 inhibitory; 362 agglo ids excluded —
+see 3.5) in seven bands — Layer 1 527, Layer 2 4,709, Layer 3 2,946, Layer 4 2,509, Layer 5 2,015, Layer 6
+1,040, White matter 469 (against `cortical_prior`'s published column 540 / 4,469 / 2,851 / 2,998 / 2,092 /
+883 / 498; the L4 deficit and L6 surplus are the pinned adjacent-layer confusions of `layer_of`) — 70,001 edges
+aggregating 104,959 both-ends-signed synapses; `p_parts` 1, `frac_bits` 12, delay 1. Resident bytes:
+`KernelState.to_blob()` 301,027; the `Synapses` bundles 1,120,016 bytes of post/qweight arrays across 10,606
+bundles (2,857,424 with the Python dict) — about 3.16 MB for the whole population.
+
+### 3.4 The disposition applied
+
+The T062 row's four named items: the join gate (b), the nm-unit gate (c), the layer computed (d, via
+`placement.layer_of`, validated against the CSV column at the pinned 0.9195), c3 pinned (the manifest, the
+schema hash, the five SOURCES sha256-verified), CC-BY on PROVENANCE — `brain_telemetry.PROVENANCE` has no row
+that derives from the prior or placement (measured: the only "placement" matches are `displacement`, the arm
+end-effector), so the licence sentence and FR-007 live in the module's `ATTRIBUTION` constant, in the
+artifact meta and in the manifest, as 2.1 directs when no telemetry row exists. `tests/test_placement_charge_null.py`
+stays green: no live reader was added. The kernel's two `wire` exemptions are untouched: this population is
+off the live tick and its consumer is T063.
+
+### 3.5 Deviations from the pre-registration, each with its reason (dated 2026-09-09)
+
+1. Gate (e) as pre-registered was the instrument's defect (2.9): retired, replaced by (e′) before the re-run;
+   its refused readings stand in 3.2 and in the pin.
+2. The population admits an edge only when BOTH ends are signed: 104,959 synapses, not the 202,232 that 2.9's
+   disclosure named as "what the population carries" — 411,255 of the 516,214 soma-to-soma synapses have a
+   post that is not a signed neuron. A structural consequence of "units are the signed neurons", not a filter
+   on the export's type; the number T063's null must be matched against.
+3. `dale_signs` excludes 362 agglo ids; only 25 are excitatory-vs-inhibitory conflicts. 337 are a signed row
+   co-existing with an UNSIGNED row for the same agglo id (14,792 signed rows over 14,577 distinct ids; one id
+   carries 1,095 rows; 1,336 carry more than one). The docstring's "a node cannot be both" describes the 25;
+   the 337 are a different claim (a segment recorded as a neuron and as something else) and get their own
+   disposition in T063's brief: excluded, reported, never signed by default.
+4. 2.3(d)'s red was written as "the agreement collapses"; measured, a soma genuinely in Layer 1 agrees with
+   the nm collapse by accident, so the claim is "every soma lands in Layer 1", and the self-check says so.
+5. 2.1 asked the pin to hold "every gate reading"; on a refusal the per-shard md5s are recorded as verified
+   against the manifest rather than restated (they are the manifest's own values).
+6. The order-independence arm on the real data ran on the first 8 shards, not all 166 (two full re-fetches
+   would be 28 minutes for a hash the fixture arm already checks on every invocation); said so in 3.2.
+7. `p_parts = 1` from `tools/kernel_partition_baseline.json`: the seeded population is single-partition, so a
+   green tick here says nothing about the kernel's partitioned delivery path.
+8. Gate (h) licenses "connected", not "self-sustaining": the seeded cascade dies by tick 4 (142, 71, 6, 1, 0).
+   T063's arms use the identical drive and report the same five numbers.
+9. T065's "~5.0 MB at 16k" projection is 16× high for the state array (301,027 bytes at 14,215 units); the
+   mass it lacked is the synapse table. The honest resident figure for this population is ~3.16 MB; the
+   projection is corrected by this reading, not re-derived.
+10. P2 debt named, not silently left: `reasoning/web_ingest_gate.py::fetch_binary` already streams a binary
+    through the same firewall; `fetch_bytes`'s `sink=` is the capability ported first so that module can
+    retire onto it, not retired here because a CORE self-check must not depend on the unregistered
+    `reasoning/` tier and that module's own check performs a ~15 MB network fetch.
+11. Stage A's artifact does not exist (stage A refused); the plan's "cheapest slice first" was honoured as a
+    run, and the final artifact is stage B's re-run — the pin names both refused stages and the re-run by key.
+
+### 3.6 What this row does NOT claim
+
+No learning, no drift, no "beats random" — T063's. Not the connectome: the c3 export's soma-to-soma
+subgraph, whose pre-end identity is majority non-neuronal (0.5566) and whose export type disagrees with the
+pre cell's class on 0.6986 of signed-pre synapses — the prior's measured quality, carried into T063 as a fact
+about the seed, not corrected by filtering. Not a live reader: the population is off the tick, the kernel
+exemptions stand, the charge-null test stays green. Not "16k": 14,215 signed units, measured. Not a claim
+about timing: the decode rate is reported with its host condition and asserted on by nothing.
