@@ -36,9 +36,13 @@ SSRF firewall (the security boundary):
       still be followed.
   Keep those fixtures. Simplifying any of them re-opens the hole it closes.
 
-  NOT YET POLICED, and stated rather than implied: the 5MB cap and the extra_check calls on
-  the ORIGINAL and FINAL urls inside fetch_text() have no reachable red -- they sit on the
-  network path and need a fake-opener harness this offline check does not have.
+  NOT YET POLICED, and stated rather than implied: the byte cap and the extra_check calls on
+  the ORIGINAL and FINAL urls inside fetch_bytes() have no reachable red -- they sit on the
+  network path and need a fake-opener harness this offline check does not have. (They moved
+  from fetch_text() to fetch_bytes() on 2026-09-09 when the download became one function; the
+  blind spot moved with them and did not shrink. What the offline check DID gain that day is a
+  structural pin that fetch_text still routes through fetch_bytes -- reverting the refactor to
+  a second opener reds it.)
   ponytail: the host is resolved-and-checked but the resolved IP is not pinned for the actual
   socket connect, so a determined DNS-rebinding TOCTOU attacker is out of scope -- acceptable for
   fetching public corpora, not for a hostile-controlled URL set. Upgrade path: pin the checked IP
@@ -122,24 +126,90 @@ class _ValidatingRedirectHandler(urllib.request.HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-def fetch_text(url, max_bytes=DEFAULT_MAX_BYTES, timeout=DEFAULT_TIMEOUT, extra_check=None):
-    """Download url and return decoded text. Firewalled + redirect-checked + size-capped. `extra_check`
-    (if given) is run on the original URL, every redirect target, AND the final URL -- callers pass
-    their host allowlist so a redirect cannot escape it."""
+# P2 DEBT, NAMED AND DATED 2026-09-09 (specs/022 T062) -- the one real duplicate of the loop below
+#   is `reasoning/web_ingest_gate.py::WebIngestGate.fetch_binary`: it already streams a large binary
+#   through THIS module's firewall (it imports `validate_url` and `_ValidatingRedirectHandler`
+#   rather than re-implementing them) and enforces its own byte cap while streaming, differing only
+#   in DESTINATION (a file on disk) and TIER (the ruff-excluded, gate-less `reasoning/`). `sink`
+#   below exists so that duplicate can be retired ONTO this function -- the capability is ported
+#   FIRST, which is P2's order. It was NOT retired in this change and that is a disclosure, not an
+#   oversight: `cortex/h01_ingest.py` is a CORE self-check module and this module's own docstring
+#   already refuses to let a CORE check depend on the unregistered `reasoning/` tier, and
+#   `web_ingest_gate`'s own check performs a ~15 MB network fetch, so the swap could be written but
+#   not RUN in an offline arc -- and an unverified refactor of a security boundary is worse than a
+#   named debt. The retirement is one call site plus its provenance log line.
+# distinct-from: substrate/self_mod_harness.py::_run_selfchecks -- runs run_selfchecks.py in a
+#   subprocess inside a sandbox; no URL, no socket. distinct-from: cortex/live_brain.py::tick --
+#   one brain tick over a context dict. distinct-from: cortex/metacognitive_monitor.py::_experiment
+#   -- a gated/lesioned/plain comparison harness. distinct-from: reasoning/arc_solver.py::solve --
+#   iterative-deepening program synthesis over ARC grids. distinct-from:
+#   reasoning/autonomous_enrich.py::learn_topic -- a CALLER of this module (through the gate's
+#   fetch_wikipedia), not a second downloader. All five sites read 2026-09-09; the guard matched on
+#   the words "Fetch"/"Returns", not on a capability.
+def fetch_bytes(
+    url,
+    max_bytes=DEFAULT_MAX_BYTES,
+    timeout=DEFAULT_TIMEOUT,
+    extra_check=None,
+    chunk=1 << 20,
+    sink=None,
+):
+    """THE ONE firewalled download (specs/022 T062, P2). Returns raw bytes, or a byte count.
+
+    Firewalled + redirect-checked + size-capped exactly as `fetch_text` was: `extra_check` (if
+    given) runs on the original URL, every redirect target, AND the final URL, so a redirect
+    cannot escape a caller's host allowlist. `fetch_text` is now a decode of this -- one download
+    path, not a text one and a binary one that drift apart.
+
+    WHY BYTES AT ALL, stated rather than left to be inferred: this module could fetch only text, so
+    an ingest of a BINARY release (T062 streams 197 MB Avro shards from the H01 bucket) had a
+    choice between standing up a second opener with its own firewall wiring -- the additive failure
+    P2 names -- and widening this one.
+
+    `sink`, if given, is called with each chunk and NOTHING is buffered: the return value is the
+    byte count. That is how a 197 MB shard is hashed and decoded without a second copy, and it is
+    also the shape that lets the `fetch_binary` duplicate named above retire onto this function.
+
+    `max_bytes` stays required-by-default at 5 MB and is enforced WHILE streaming, so an oversized
+    response is refused without being buffered whole; a caller pulling a large object passes the
+    size it verified from a manifest, so the cap is still a number somebody committed to rather
+    than an absent bound. The refusal message is unchanged.
+    """
     validate_url(url)
     if extra_check is not None:
         extra_check(url)
     opener = urllib.request.build_opener(_ValidatingRedirectHandler(extra_check))
     req = urllib.request.Request(url, headers={"User-Agent": _UA})
+    buf = bytearray()
+    total = 0
     with opener.open(req, timeout=timeout) as resp:
         final = resp.geturl()
         validate_url(final)  # re-check the final (post-redirect) URL
         if extra_check is not None:
             extra_check(final)  # ...and re-check it against the caller's allowlist too
-        data = resp.read(max_bytes + 1)
-    if len(data) > max_bytes:
+        while total <= max_bytes:
+            piece = resp.read(min(chunk, max_bytes + 1 - total))
+            if not piece:
+                break
+            total += len(piece)
+            if sink is None:
+                buf += piece
+            else:
+                sink(piece)
+    if total > max_bytes:
         raise ValueError(f"download exceeds the {max_bytes}-byte cap")
-    return data.decode("utf-8", errors="replace")
+    return total if sink is not None else bytes(buf)
+
+
+def fetch_text(url, max_bytes=DEFAULT_MAX_BYTES, timeout=DEFAULT_TIMEOUT, extra_check=None):
+    """Download url and return decoded text. Firewalled + redirect-checked + size-capped. `extra_check`
+    (if given) is run on the original URL, every redirect target, AND the final URL -- callers pass
+    their host allowlist so a redirect cannot escape it.
+
+    One line of body on purpose: `fetch_bytes` above IS the download; this is the decode."""
+    return fetch_bytes(url, max_bytes=max_bytes, timeout=timeout, extra_check=extra_check).decode(
+        "utf-8", errors="replace"
+    )
 
 
 def html_to_text(html):
@@ -375,6 +445,20 @@ def main():
     t = html_to_text("<html><body><script>steal()</script><p>Hello &amp; world</p></body></html>")
     assert "steal()" not in t and "Hello & world" in t, t
 
+    # ONE DOWNLOAD PATH (P2, specs/022 T062). fetch_text must ROUTE THROUGH fetch_bytes rather
+    # than open its own connection: a second opener is a second place for the firewall, the
+    # redirect re-validation and the cap to be got wrong, and the whole point of this module is
+    # that there is exactly one of each. Structural rather than behavioural because the offline
+    # check opens no socket -- but it is a REACHABLE red: restore fetch_text's own
+    # build_opener/read pair and this line goes red in the same command.
+    assert "fetch_bytes" in fetch_text.__code__.co_names, (
+        "fetch_text no longer routes through fetch_bytes -- there are two download paths again, "
+        "and the firewall/redirect/cap guarantees above now have to hold in both"
+    )
+    assert "build_opener" not in fetch_text.__code__.co_names, (
+        "fetch_text builds its own opener again (P2: exactly one mechanism survives)"
+    )
+
     print("=" * 62)
     print("WEB INGEST -- firewalled web -> training-corpus fetcher")
     print("=" * 62)
@@ -392,8 +476,13 @@ def main():
         "earlier version of these arms -- a same-host fixture with a deny-everything stub "
         "proves only that extra_check was CALLED, never that it was called with the redirect "
         "TARGET -- which is why the fixture uses distinct hosts and an origin-allowing check.\n"
-        "  STILL UNPOLICED, said plainly rather than left for the next reviewer: the 5MB byte "
-        "cap, and extra_check on the ORIGINAL and FINAL urls inside fetch_text(). Those three "
+        "  ONE DOWNLOAD PATH pinned 2026-09-09 (P2, specs/022 T062): fetch_text routes through "
+        "fetch_bytes and opens no connection of its own; restoring a second opener reds this "
+        "check. fetch_bytes' `sink` carries the streaming capability that "
+        "reasoning/web_ingest_gate.fetch_binary duplicates -- ported here first, that duplicate "
+        "NOT yet retired, named as a dated P2 debt at the function.\n"
+        "  STILL UNPOLICED, said plainly rather than left for the next reviewer: the byte "
+        "cap, and extra_check on the ORIGINAL and FINAL urls inside fetch_bytes(). Those three "
         "live on the network path, so covering them needs a fake-opener harness this offline "
         "check does not have yet. reasoning/web_ingest_gate.py has carried a correct "
         "target-vs-origin arm since 2026-08-05, but it is registered in NO gate (not "
