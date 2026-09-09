@@ -105,6 +105,18 @@ from snn_data_lake.cortex.placement import (
     layer_of,
 )
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "drive_train": (
+        "NOT_A_RULE",
+        "gate (f)'s determinism helper: drives 1 % of units for one tick and returns the "
+        "concatenated BYTE-FORM of `ticks` tick outputs, which two constructions are compared "
+        "for byte-equality. No weight is read or written and no error signal exists -- 'train' "
+        "here is a SPIKE TRAIN, not training. (Gate (h)'s liveness driver is `propagates`, a "
+        "separate function the census does not enumerate.)",
+    )
+}
+
 REPO = Path(__file__).resolve().parents[3]
 SHARD_MANIFEST = REPO / "tools" / "h01_c3_shards.json"
 GRAPH_PIN = REPO / "tools" / "h01_c3_graph_pin.json"
