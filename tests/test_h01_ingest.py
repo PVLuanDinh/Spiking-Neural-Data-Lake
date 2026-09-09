@@ -545,6 +545,77 @@ def test_population_fan_in_shares_sum_to_one_per_post(tmp_path):
         assert math.isclose(s, 1.0, rel_tol=1e-9), f"post {post} fan-in |weights| sum to {s}, not 1"
 
 
+def test_population_fan_in_partitions_the_whole_unit_index(tmp_path):
+    """The assertion above is keyed on `post_idx`, so a unit with NO in-edge is structurally
+    invisible to it -- it never appears in `totals` and nothing ever checks it.
+
+    That blind spot hides a real, measured falsehood. On the pinned artifact the T062 panel
+    measured 11,227 of 14,215 units with at least one in-edge (max |1 - sum| = 1.1e-15), 2,988
+    with none (sum exactly 0.0), 3,609 with no out-edge and 1,702 with neither -- so 2.2's and
+    the artifact meta's "a unit's summed |input| is 1 by construction" is universally quantified
+    over units and false for 21 % of them.
+
+    PARTITION, never disjoin. Asserting "every entry is 1.0 OR 0.0" is strictly WEAKER than the
+    assertion above: it admits a unit that HAS in-edges and sums to 0.0, which is precisely the
+    case `fan_in_shares`' own `where=denom > 0` guard exists to produce. Every unit WITH an
+    in-edge must sum to 1, every unit WITHOUT must sum to exactly 0, and both counts are
+    reported rather than inferred.
+
+    This arm runs on the SYNTHETIC artifact, and on it the zero side is empty -- so the red is
+    CONSTRUCTED below rather than found, and the real artifact's 2,988 has no in-command red
+    until the next legitimate re-ingest records the four counts in the pin. Said plainly rather
+    than left for the next reader."""
+    import numpy as np
+
+    def partitioned_counts(art):
+        n = int(art["agglo_id"].size)
+        has_in = np.zeros(n, dtype=bool)
+        has_in[art["post_idx"]] = True
+        totals = np.zeros(n, dtype=np.float64)
+        np.add.at(totals, art["post_idx"], np.abs(H.fan_in_shares(art)))
+        for i in range(n):
+            if has_in[i]:
+                assert abs(totals[i] - 1.0) <= 1e-9, (
+                    f"unit {i} has an in-edge but its fan-in |weights| sum to {totals[i]}, not 1"
+                )
+            else:
+                assert totals[i] == 0.0, (
+                    f"unit {i} has NO in-edge but its fan-in |weights| sum to {totals[i]}, not 0"
+                )
+        with_in = int(has_in.sum())
+        assert with_in + int((~has_in).sum()) == n, "the partition lost a unit"
+        return with_in, n - with_in
+
+    blobs = _two_shards()
+    graph = _ingest(["shardA", "shardB"], fetch=blobs.get)
+    path = tmp_path / "fanin.npz"
+    H.write_artifact(graph, path)
+    art = H.load_artifact(path)
+    with_in, without_in = partitioned_counts(art)
+    assert with_in + without_in == int(art["agglo_id"].size)
+    assert without_in == 0, (
+        f"the synthetic artifact grew an in-edge-less unit ({without_in}); the docstring's "
+        "'the zero side is empty here' no longer describes this fixture"
+    )
+
+    # THE RED, CONSTRUCTED -- the synthetic artifact has no in-edge-less unit, so without this
+    # the zero half of the partition never fires and the arm is blind, not green. One edge over
+    # three units leaves units 0 and 2 with no in-edge at all, which is the shape the
+    # post_idx-keyed form cannot see.
+    iso = {
+        "agglo_id": np.array([10, 20, 30], dtype=np.int64),
+        "sign": np.array([1, -1, 1], dtype=np.int8),
+        "pre_idx": np.array([0], dtype=np.int32),
+        "post_idx": np.array([1], dtype=np.int32),
+        "n_syn": np.array([4], dtype=np.int32),
+    }
+    assert partitioned_counts(iso) == (1, 2), partitioned_counts(iso)
+    assert {int(p) for p in iso["post_idx"].tolist()} == {1}, (
+        "the post_idx-keyed form must be blind to units 0 and 2 -- if it is not, this red does "
+        "not reconstruct the defect the partition exists to close"
+    )
+
+
 def test_population_delay_is_one_tick_everywhere_and_disclosed(tmp_path):
     blobs = _two_shards()
     graph = _ingest(["shardA", "shardB"], fetch=blobs.get)
