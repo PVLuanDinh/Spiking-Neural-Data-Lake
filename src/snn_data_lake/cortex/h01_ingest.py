@@ -1584,7 +1584,7 @@ def _run_ingest(argv):
             "artifact": None,
             "artifact_sha256": None,
         }
-        GRAPH_PIN.write_text(json.dumps(rec, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        write_pin(rec)
         print(json.dumps(rec, indent=2, sort_keys=True))
         print(f"\nREFUSED: {refusal}")
         return 2
@@ -1631,9 +1631,57 @@ def _run_ingest(argv):
         "units_per_band": {b: (r[1] - r[0]) for b, r in state.ranges.items()},
         "propagates_within_30": bool(propagates(kt, ticks=30)),
     }
-    GRAPH_PIN.write_text(json.dumps(pin, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    write_pin(pin)
     print(json.dumps(pin, indent=2, sort_keys=True))
     return 0
+
+
+# distinct-from: substrate/port_charge_probe.py::record_attribution -- THE one writer for
+#   tools/region_charge_evidence.json, and the CLOSEST relative here: same read-modify-write
+#   discipline, for the same reason ("one registrant's regeneration can never delete another's").
+#   Not reusable: it is hard-wired to that path and to an (edge, diverged, measured, provenance)
+#   row, while a stage pin is keyed by shard range and carries gate readings. What is reused is
+#   the LESSON, cited so the next reader sees it was not reinvented.
+# distinct-from: cortex/brain.py::_flush_growth -- writes GROWN SUBSTRATE into the durable lake
+#   (P4b state, the thing this module must never write). distinct-from:
+#   neuromodulation/intrinsic_motivation.py::observe and neuromodulation/spiking_curiosity.py::
+#   observe -- fold a prediction error into running EMAs. distinct-from:
+#   reasoning/developmental_loop_wm.py::_wm_persistence_probe -- a working-memory hold probe.
+#   distinct-from: substrate/region_coherence.py::record_charge -- measures an A/B and delegates
+#   to record_attribution above. All sites read 2026-09-09; the guard matched on "Fold"/"record".
+def stage_key(shards):
+    """The pin's key for one stage: how many shards, and which range."""
+    s = list(shards)
+    return f"{len(s)}-shards:{s[0]}..{s[-1]}" if s else "0-shards"
+
+
+def merge_pin(existing, record):
+    """Fold `record` into the pin under its own stage key, NEVER erasing an earlier stage.
+
+    2.4 says the stage-B artifact replaces stage A's and "the pin records BOTH". With a refusal
+    there is no artifact at all, so the readings ARE the record and overwriting them would throw
+    away the row's only result. A LEGACY flat record (the shape the first stage-A run wrote) is
+    MIGRATED into the stage map rather than dropped -- a fix that erased the readings it exists to
+    protect would be worse than the defect it fixes."""
+    out = {"task": "specs/022 T062", "stages": {}}
+    if existing:
+        if isinstance(existing.get("stages"), dict):
+            out["stages"].update(existing["stages"])
+        elif existing.get("shards"):
+            out["stages"][stage_key(existing["shards"])] = existing
+    key = stage_key(record.get("shards", []))
+    out["stages"][key] = record
+    out["latest"] = key
+    return out
+
+
+def write_pin(record, path=None):
+    """Read-modify-write the pin so a later stage cannot erase an earlier one."""
+    path = Path(path or GRAPH_PIN)
+    existing = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+    merged = merge_pin(existing, record)
+    path.write_text(json.dumps(merged, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return merged
 
 
 def _sha256_of(path):
