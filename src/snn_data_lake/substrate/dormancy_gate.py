@@ -631,27 +631,6 @@ EXEMPT = {
         "its `pending` and residency, so S6 owes the snapshot format that carries them. Printed "
         "by the standing-TODO arm every run",
     ),
-    "lake_compactor": (
-        "wire",
-        "specs/022 T067: the sleep-night fold of the 0x0D fresh tier into a new 0x0C record "
-        "(relocation proof BEFORE the pointer moves, integer budget_blocks, deferral counted) and "
-        "the locality reorder that places co-fetched blocks adjacent. ITS CONSUMERS TODAY ARE ITS "
-        "OWN SELF-CHECK AND tests/test_lake_compactor.py, the same standing neuron_pager has. THE "
-        "SLEEP WIRE IS DATED TO S6 AND WAS DELIBERATELY NOT MADE HERE: the LIVE lake has no "
-        "segment tier at all (~/.snn_data_lake holds brain_lake.bin and neither segments/ nor "
-        "lake_index.db), so there is no store for a nightly duty to fold; cortex.brain is a "
-        "_LIVE_ROOT whose AST walk is unconditional, so even a guarded no-op import from "
-        "_enter_sleep would flip this module REACHABLE, forbid this row, and leave a hollow green "
-        "over a duty with nothing to do -- the T064 shape this project has already paid for once. "
-        "The duty lands here in the exact nightly-duty shape instead -- counters returned, and "
-        "since the T067 review fold BOTH passes count a runtime data fault per block rather than "
-        "raising past their own guards (the reorder's fold used to run outside its try). BUDGETED "
-        "IS TRUE OF THE MERGE ONLY: the reorder is a WHOLE-PASS duty, deliberately unbudgeted, "
-        "because one seal per pass is what puts co-fetched blocks in one segment. S6 -- where the "
-        "live brain first has a store -- "
-        "wires it, names its neuter element beside Brain._sleep_caps, and owes its state() keys. "
-        "Printed by the standing-TODO arm every run",
-    ),
     "kernel_state": (
         "wire",
         "specs/022 T013: SoA substrate state (128B-aligned blocks, contiguous faculty slices, "
