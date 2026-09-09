@@ -70,6 +70,7 @@ CORE = [
     "cortex.neuronal_avalanches",
     "cortex.cortical_microcircuit",
     "cortex.cortical_prior",  # H01 human reference data: every entry carries its four attributes
+    "cortex.h01_ingest",  # T062: the c3 synapse graph -- 8 gates, each with its red, offline
     "cortex.arealization",  # T040+T041: exhaustive GRN censuses + prosomeric grid + graded arm
     "cortex.growth_program",  # T042: sealed view, shared-program counter, dilution, refusal reds
     "cortex.placement",  # grown units ordered into cortical layers by measured H01 occupancy

@@ -699,6 +699,24 @@ EXEMPT = {
         "EXPIRED AT T039 UNMET (US1 audit B3, 2026-08-25; recorded, not re-dated). Printed by "
         "the standing-TODO arm every run. " + _S6_PANEL_CORRECTION,
     ),
+    "h01_ingest": (
+        "wire",
+        "specs/022 T062, DATED 2026-09-09: the H01 c3 synapse-graph ingest and the population it "
+        "constructs. Reachable from run_selfchecks (the offline gate: 8 refusals, each with its "
+        "constructed red, on synthetic fixtures plus the tracked real-release header), NEVER from "
+        "a tick -- the artifact is read ONCE at construction of a population and nothing on a live "
+        "path reads it again, which is the specs/011 data-model.md 3 rule that makes a seeded "
+        "value MOVABLE rather than pinned. THE NAMED CONSUMER IS T063, the three-arm "
+        "seeded/random/wrong drift harness (cortex/prior_drift_harness.py), which is the row that "
+        "turns this population into a beatable prior; this exemption retires the day T063 lands. "
+        "Stated as a wire and not as 'permanent' deliberately: an ingest whose output nothing ever "
+        "consumes is exactly the dormancy P3 names, and cortical_prior's own exemption is the "
+        "precedent for how such a row is RETIRED once a live root reaches the module. Note what "
+        "this row does NOT claim -- it is not the kernel wire. kernel_state's and kernel_tick's "
+        "rows name T062's ingested population as their live consumer; constructing that population "
+        "here does not by itself re-arm those, because a population built inside a self-check is "
+        "an instrument, not a tick",
+    ),
     "amdahl_gate": (
         "permanent",
         "specs/008 Gate Zero / specs/022 S6: the Amdahl ceiling of a delivery-path conversion, read "

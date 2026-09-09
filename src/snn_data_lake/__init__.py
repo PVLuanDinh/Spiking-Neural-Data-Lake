@@ -129,6 +129,7 @@ REGIONS = {
         "neuronal_avalanches",
         "cortical_microcircuit",
         "cortical_prior",  # H01 HUMAN cortex reference data: value + units + provenance + bound
+        "h01_ingest",  # specs/022 T062: the H01 c3 SYNAPSE graph, four gates, a seeded population
         "arealization",  # specs/022 T040: organizer fields + repression-GRN region emission (P8 #7)
         "growth_program",  # specs/022 T042: one-shared-program locality + scaffold refusal (P8 #7)
         "placement",  # every grown unit gets a cortical depth, a layer and an immutable Dale sign

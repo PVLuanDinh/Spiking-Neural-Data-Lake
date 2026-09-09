@@ -8,17 +8,21 @@ on every axis of four candidates, (d) requires the layer rule to REPRODUCE
 `placement.LAYER_RULE_AGREEMENT`'s pinned 45,404 / 49,377 exactly, (e) requires sign agreement
 > 0.5 because the swapped map scores exactly 1 - r.
 
-NO NETWORK. The shard fixtures are written by the in-test Avro writer below, which reuses the
-REAL release header from `tests/fixtures/h01_c3_shard0_head.avro` -- so the pinned `avro.schema`
-sha256 is checked against bytes Google published, not against bytes this file produced. The
-writer's own round trip through the module's decoder is asserted first: a fixture nobody has
-proven decodes is not a fixture, it is a second bug waiting to be blamed on the mechanism.
+NO NETWORK. The shard fixtures come from the module's OWN null-codec Avro writer (P2: one
+encoder in the tree, not one here and one there that drift), and it builds them on the REAL
+release header from `tests/fixtures/h01_c3_shard0_head.avro` -- so the pinned `avro.schema`
+sha256 is checked against bytes Google published rather than bytes this suite produced.
 
-The two data-backed arms (the real 45,404 / 49,377 reading and the real-header schema pin) skip
-when `data/h01/` is absent -- `data/` is gitignored, so CI has neither. They are NOT the only
-cover for gate (d): the nm-instead-of-microns red and the synthetic-agreement arms below run
-unconditionally, and the pinned pair is asserted against `placement.LAYER_RULE_AGREEMENT` in
-every environment.
+A writer and a decoder that share an author cannot catch a bug they SHARE, so the independent
+control is `test_the_decoder_reads_the_real_release_bytes`: real release bytes checked against
+values a different reader produced (the export's JSON twin -- pre 5472528459, post 5414315245,
+type 2). Read the round-trip test as "the fixture is well-formed", never as "the decoder is
+right"; that second claim is the real-bytes arm's.
+
+One arm (the real 45,404 / 49,377 reading) skips when `data/h01/` is absent -- `data/` is
+gitignored, so CI has neither the 11 MB cell file nor the CSV. It is NOT the only cover for gate
+(d): the nm-instead-of-microns red, the off-by-one refusals and the assertion that the pinned
+pair rounds to `placement.LAYER_RULE_AGREEMENT` all run unconditionally.
 """
 
 from __future__ import annotations
@@ -41,156 +45,32 @@ FIXTURE = Path(__file__).parent / "fixtures" / "h01_c3_shard0_head.avro"
 
 
 # ---------------------------------------------------------------------------------------------
-# The in-test Avro writer (null codec, the release's own field order). Mirrors the decoder the
-# module ports; every optional field is a ["null", X] union, index 0 = null, 1 = value.
+# ONE Avro writer, and it lives in the MODULE (P2). A second encoder here could drift from the
+# decoder it is supposed to exercise, and the drift would look like a mechanism bug. The honest
+# consequence -- a writer/decoder pair cannot catch a bug they SHARE -- is covered by
+# `test_the_decoder_reads_the_real_release_bytes` below, which checks real release bytes against
+# values a different reader produced (the export's JSON twin).
 # ---------------------------------------------------------------------------------------------
-def _long(v):
-    z = (v << 1) ^ (v >> 63)
-    out = bytearray()
-    while True:
-        b = z & 0x7F
-        z >>= 7
-        if z:
-            out.append(b | 0x80)
-        else:
-            out.append(b)
-            return bytes(out)
+_record = H.encode_record
+make_shard = H.synthetic_shard
+real_header = H.real_header
+_header_for = H.ocf_header
 
-
-def _bytes(b):
-    return _long(len(b)) + b
-
-
-def _str(s):
-    return _bytes(s.encode("utf-8"))
-
-
-def _null():
-    return _long(0)
-
-
-def _some(payload):
-    return _long(1) + payload
-
-
-def _xyz(t):
-    if t is None:
-        return _null()
-    return _some(b"".join(_some(_long(int(v))) for v in t))
-
-
-def _site(neuron_id, base_neuron_id, class_label="AXON"):
-    """The 11 site fields in the pinned order; only the three the join needs are non-null."""
-    body = b"".join(
-        [
-            _some(_long(int(neuron_id))),  # neuron_id
-            _null(),  # id
-            _null(),  # num_voxels
-            _null(),  # centroid
-            _null(),  # type
-            _null(),  # subtype
-            _null(),  # confidence
-            _null(),  # bounding_box
-            _null(),  # mask
-            _some(_str(class_label)),  # class_label
-            _some(_str(str(base_neuron_id))),  # base_neuron_id
-        ]
-    )
-    return _some(body)
-
-
-def _record(pre, pre_base, post, post_base, loc, syn_type):
-    return b"".join(
-        [
-            _site(pre, pre_base),
-            _site(post, post_base),
-            _xyz(loc),
-            _some(_long(int(syn_type))),
-            _null(),  # contact_area
-            _null(),  # confidence
-            _null(),  # bounding_box
-        ]
-    )
-
-
-def real_header():
-    """(header_bytes, sync, schema_bytes) from the REAL release fixture."""
-    raw = FIXTURE.read_bytes()
-    r = H.Reader(raw)
-    meta, sync = H.parse_header(r)
-    return raw[: r.p], sync, meta["avro.schema"]
-
-
-def _header_for(schema_bytes):
-    """An OCF header carrying `schema_bytes` (used to build the reordered-schema red)."""
-    sync = bytes(range(16))
-    body = b"Obj\x01" + _long(2)
-    body += _str("avro.schema") + _bytes(schema_bytes)
-    body += _str("avro.codec") + _bytes(b"null")
-    body += _long(0) + sync
-    return body, sync
-
-
-def make_shard(records, header=None, sync=None, per_block=4):
-    """A complete null-codec OCF over `records` (already-encoded record bytes)."""
-    if header is None:
-        header, sync, _ = real_header()
-    out = bytearray(header)
-    for i in range(0, len(records), per_block):
-        chunk = records[i : i + per_block]
-        body = b"".join(chunk)
-        out += _long(len(chunk)) + _long(len(body)) + body + sync
-    return bytes(out)
-
-
-# ---------------------------------------------------------------------------------------------
-# A tiny synthetic world: 4 signed somata + 1 unsigned, their layers, and a handful of synapses.
-# ---------------------------------------------------------------------------------------------
-CELLS = [
-    # (agglo_seg, base_seg, type, true_x nm, true_y nm, true_z nm)
-    ("1001", "9001", "pyramidal neuron", 1_200_000, 2_500_000, 40_000),
-    ("1002", "9002", "interneuron", 1_150_000, 2_450_000, 41_000),
-    ("1003", "9003", "spiny stellate neuron", 1_300_000, 2_600_000, 42_000),
-    ("1004", "9004", "pyramidal neuron", 400_000, 2_800_000, 43_000),
-    ("1005", "9005", "oligodendrocyte", 1_000_000, 2_000_000, 44_000),
-]
+CELLS = H._SELF_CELLS
 
 
 def cells():
-    return [
-        {
-            "agglo_seg": a,
-            "base_seg": b,
-            "type": t,
-            "true_x": x,
-            "true_y": y,
-            "true_z": z,
-        }
-        for a, b, t, x, y, z in CELLS
-    ]
+    return H.self_cells()
 
 
 def synapses():
-    """(pre, pre_base, post, post_base, location_in_8nm_voxels, syn_type).
-
-    Locations are chosen so that under the DECLARED (8, 8, 33) nm scaling the synapse cloud's
-    nm extent lands nearest the soma cloud's, which is what gate (c) requires.
-    """
-    return [
-        (1001, 9001, 1002, 9002, (150_000, 312_500, 1_212), 2),
-        (1002, 9002, 1003, 9003, (162_500, 325_000, 1_242), 1),
-        (1001, 9001, 1003, 9003, (50_000, 350_000, 1_303), 2),
-        (1003, 9003, 1001, 9001, (162_500, 306_250, 1_272), 2),
-        (1001, 9001, 1002, 9002, (156_250, 318_750, 1_227), 2),
-        (1004, 9004, 1002, 9002, (55_000, 348_000, 1_290), 2),
-        (7777, 8888, 1002, 9002, (100_000, 320_000, 1_250), 2),  # pre not a soma
-        (1001, 9001, 6666, 5555, (110_000, 330_000, 1_260), 1),  # post not a soma
-    ]
+    """(pre, pre_base, post, post_base, location_in_8nm_voxels, syn_type) -- the module's own
+    self-check world, so the offline gate and this suite measure the SAME fixture."""
+    return list(H._SELF_SYNAPSES)
 
 
 def shard_bytes(syn=None):
-    syn = synapses() if syn is None else syn
-    return make_shard([_record(*s) for s in syn])
+    return H.self_shard(syn)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -330,9 +210,9 @@ def test_gate_d_the_pin_matches_placements_published_agreement():
 
 def test_gate_d_nanometres_instead_of_microns_collapses_every_soma_into_layer_1():
     """specs/011 quickstart Scenario 3's red, made numeric."""
-    labels = {c["agglo_seg"]: "Layer 2" for c in cells()}
+    labels = {c["agglo_seg"]: H.layer_of_cell(c) for c in cells()}
     good_agree, good_total = H.layer_agreement(cells(), labels)
-    assert good_total == len(CELLS)
+    assert good_total == len(CELLS) and good_agree == len(CELLS)
     nm_agree, nm_total = H.layer_agreement(cells(), labels, divisor=1.0)
     assert nm_total == len(CELLS)
     assert nm_agree < good_agree, (
@@ -498,7 +378,7 @@ def test_population_units_are_the_signed_neurons_in_seven_bands(tmp_path):
     path = tmp_path / "shape.npz"
     H.write_artifact(graph, path)
     art = H.load_artifact(path)
-    assert "oligodendrocyte" not in json.dumps(art["meta"])
+    assert 1005 not in art["agglo_id"].tolist(), "an unsigned (glial) soma became a unit"
     assert len(art["agglo_id"]) == 4, "only the four SIGNED somata may become units"
     assert list(art["agglo_id"]) == sorted(art["agglo_id"]), "node ids must be sorted"
     assert set(art["sign"].tolist()) <= {1, -1}, art["sign"]
