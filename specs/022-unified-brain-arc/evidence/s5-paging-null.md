@@ -355,3 +355,212 @@ four synthetic self-test sets become five (WIN, STORE-WINS/POLICY-NULL, LOSS, DE
 **Not changed:** everything §2.10 lists as unchanged, and §2.10's three outcomes and their dispositions.
 Three fixture reds in a row are the instrument reds doing their job before the number is known; each
 is dated here with the reading that forced it, and the campaign has not started.
+
+## 3. Results (on the stacked head, before the panel)
+
+### 3.1 The harness, and the instrument reds' final state under the final fixture (`memory/archive/t068-2026-09-08/`)
+
+Built as 2.8 orders: `t068_probe.py` (one cell per subprocess, `NORD_HOME` on a scratch dir, every input
+recorded in the cell JSON — topology, pager parameters, drive, recurrence and its derivation, tick
+count), `run_cells.py` (resumable driver, one cell at a time, host state per line in `run.log`),
+`silence_probe.py` (A5's derivation), `derive_wstar.py` + `run_f.py` (arm F), `verdict.py` (§2.10's
+three outcomes, a five-set synthetic self-test each with an asserted expected outcome, and four rule
+mutations that each break it). The tree was not changed by the harness (the archived-probe precedent of
+T066's width arm). Three instrument reds fired on this row's own apparatus before any campaign cell,
+each amended and dated in 2.9–2.11; their FINAL readings under the final fixture, at 16,384 units × 32
+edges, 128 blocks, seed 0:
+
+| red (2.3, as amended) | reading | verdict |
+|---|---|---|
+| neutered calibration (a) identity | exact edge bytes ratio 1.0000 in R1 and R2 (8,388,608 B both arms) | MET |
+| neutered calibration (b) no false saving, steady state | R1 1.0289 footprint / 1.0010 traced; R2 (fully resident form) 1.0588 / 1.0026 — the retired PEAK readings in the same cells still fail (0.9724 / 0.8830), so A1 changed the instrument, not the luck | MET |
+| neutered calibration (c) repeatability | 0.56 % / 0.005 % / 0.002 % / 0.018 % | MET |
+| the pre-stated drop branch | did NOT apply (traced ≥ 1.000); private bytes measured anyway and unusable (repeatability 7.39 % / 5.40 %, no saving in R3: 1.106) — recorded so it cannot be re-proposed | — |
+| two exact residency instruments | `edge_bytes_table == edge_bytes_routes`, `dangling == 0`, in every paged cell (dozens) | MET |
+| R3 positive control | footprint 0.5048, traced 0.1757, exact 0.164062 = 21 of 128 blocks ever loaded (the panel's 0.164 to three digits; evictions 0 — a lazy-loading saving) | MET |
+| R4 reorder control | refusals 0, moved 128 of 128 (`is_permutation`), reads per round **3.95 → 1.00** (one due set carries an incidental adjacency; reported as read), bytes appended 6,292,992 | MET |
+| ambient-ratio control | quiet drift 3.83 % over four runs, cross-arm 0.93 %; a 28-core hog drifts the reference 61.1 % (the red is reachable); a 4-core hog only 13.1 % on this 28-thread host (coarse below a fifth of the machine, disclosed) | MET |
+| A5 silence probe (R2's recurrence derived) | w ∈ {0.6, 0.4, 0.3}: NEVER silent within the 20-tick cap (at 0.3 the abandoned window is still recruiting, 40 → 908 units); w = **0.2**: silent 1 tick after the drive stops (2 ticks at seeds 1–3; stays silent to the cap); 0.15 and 0.1: 1 tick. Known-positive (never driven) silent at tick 1 at all six weights; known-negative (drive sustained) never silent at any — the detector discriminates. **Derived w = 0.2**, the largest grid value inside the 3-tick ring window; the cliff sits between 0.3 and 0.2 where the sustained gain w/(1 − decay) = 2w times the realized coincidence stops clearing threshold 1.0 | derived |
+| R2 fixture check (2.10), two runs | paged at capacity 0.25: exact **0.367188** (3,080,192 B), **61 evictions**, page-ins 107, 19 capacity trips, over capacity 19 of 20 ticks; the neutered arm reads the coverage floor **0.843750 = 108/128 exactly**, evictions 0; the neuter discriminates: paged / neutered 0.435 exact, 0.718 / 0.720 footprint, 0.483 traced; repeatability: exact identical, footprint ≤ 0.62 %, traced ≤ 0.002 %. `_TripCensus`: 19 trips, 750 refusals of which 748 are the ring-safety clause, 61 evictions (under A4's 0.6 the same census read 1,273 of 1,273 refusals, 0 evictions). The activated working set, MEASURED per tick: 32 … 34 of 128, peak 0.266 — marginally above R2's "≤ ¼" because the drive's leading edge recruits one or two blocks, recorded rather than rounded | MET, all four conjuncts |
+
+Twin, paged and neutered spike trains were byte-identical in every check cell (`ca6db5c22801d9b6`),
+so the twin's silence is the silence in the arm that evicts. The check cells necessarily produced R2's
+paged / twin ratios at seed 0 under the campaign's fixture — 0.612 / 0.608 footprint, 0.395 traced —
+before the campaign; they are quoted in 2.11 and here so that seed 0 cannot be read as unseen; A5's
+rule, the check's conjuncts and `verdict.py`'s outcomes were fixed before they existed (`f61911c`).
+
+One reading that is not a red: the neutered arm's steady-state footprint under the sliding drive is
+0.845–0.853, below A1(b)'s "≥ 0.99" — A1(b) was written for a FULLY RESIDENT neutered arm (R1's form,
+exact 1.000, where it reads 1.0289); under the sliding drive the neutered arm lazily loads 108 of 128
+blocks and 2.10 re-specifies its reading as the coverage floor, which it hits to the digit.
+
+Defects found in the harness by its own builders, each fixed before the campaign: `LakeCompactor.reorder`
+returns `merged`/`merged_ids`, and the probe had read `moved` — a manufactured zero in every reordered
+cell; `verdict.py`'s cell key omitted `refrac_ticks`, so the R2-refrac sensitivity cell would have
+silently replaced the seed-0 R2 verdict cell; one of the builder's own rule mutations moved a symbol
+the fixture builder shares and was itself defective, reported.
+
+### 3.2 The campaign (226 cells, 16,384 units, S = 8, one cell at a time, the live daemon up)
+
+Launched 23:10 UTC on 2026-09-08 after the A5 check, one cell per subprocess, `NORD_HOME` on a scratch
+dir, every cell `rc 0` (226 of 226 by 00:13 UTC); the 24 R2 timing cells were then re-run pinned to the
+fast core class (3.6, item 3) and the campaign's own unpinned R2 timing cells are kept beside them under
+`campaign/refused_timing_unpinned/`. `verdict.py` over the cells (`campaign/verdict_pre_f.json`),
+paired over S = 8 seeds, the one-sided t against 1.895 at 7 d.f., the exact sign-flip p over all 2^8
+assignments (the permutation false-positive rate 0.047 at this S), ties within 1 % folded:
+
+| regime | steady working set, paged / twin (median; t; p) | steady traced total (median; t; p) | vs NEUTERED (2.10), footprint / traced | secondary: tick cost paged / twin, RAW wall-clock (median; range) and reference-corrected | regime WIN |
+|---|---|---|---|---|---|
+| R1 saturating (the bound) | **1.028**; t −21.2; p 1.0 — the paged arm costs MORE (the zero point of A1) | 1.000134; DEGENERATE (0 non-tied of 8: identical to the byte) | — (vacuous: evictions 0 in both arms) | **3.07×** (2.89–3.36); corrected 3.12× | no (no saving; cost at the bound's edge) |
+| **R2 sliding working set (the verdict regime)** | **0.602**; t 203.8; p 0.0039 (8 of 8) | **0.399**; t 229.8; p 0.0039 | **0.709** (neutered / twin 0.847); t 107.8; p 0.0039 — and **0.488** (0.818); t 159.6; p 0.0039: **eviction charges beyond lazy loading on both instruments** | **35.2×** (34.3–37.6); corrected 26.0× — twin 0.55 ms per tick, paged 20 ms | **no — memory WIN on every conjunct, the cost conjunct FAILS by an order of magnitude** |
+| R3 transient (the positive control) | 0.454; t 50.5; p 0.0039 | 0.184; t 11,089; p 0.0039 | — | 4.51× (4.05–4.62); corrected 4.27× | no (cost) |
+| R4 co-fetched, reordered | 0.766; t 112.0; p 0.0039 | 0.628; t 6,465; p 0.0039 | — | 3.81× (3.68–3.93); corrected 3.84× | no (cost) |
+
+Reported, never deciding: the R4 reorder control reproduced T067 on all 8 seeds (reads per round 3.95 →
+1.00, refusals 0, moved 128 of 128, `had_effect`); the R2-refrac sensitivity cell (`refrac_ticks = 10 >
+max_delay 3`, seed 0) read paged 156,123,136 vs twin 223,559,680 B (0.698) with 63 evictions and trains
+byte-identical to the twin — T066's third defect's regime, clean at width; the ambient-ratio control
+passed within 20 % in R1, R3 and R4 on every seed (drift 0.2–9.5 %) and REFUSED R2 on every seed (3.6,
+item 3); the R3 positive control read a saving on both instruments (the instruments are not blind).
+The raw wall-clock instrument's own control: the best-of-3 mean tick's spread across the three runs is
+≤ 9 % in 30 of 32 cells (one R2 twin cell 36 %, one R1 paged 18 %), and the twin's raw tick is stable
+across seeds within 8 % in every regime.
+
+### 3.3 Arm F — the derived ceiling width
+
+`derive_wstar.py` (R1, seed 0): twin peak working set at 2,048 / 4,096 / 8,192 / 16,384 units =
+98.2 / 130.2 / 194.0 / 321.0 MB; fit bytes = 66,503,725 + 15,538.66 × units (485.6 B/edge at 32
+edges/unit; max residual 0.05 %); available RAM with the daemon up 11.02 GB of 31.79; budget 0.8 ×
+available = 8.82 GB → **W* = 604,800 units** (predicted twin 8.81 GB), **2·W* = 1,209,600** (predicted
+17.57 GB — above available, so by 2.2 the twin "must FAIL"). `run_f.py` (R1 drive — T066's width
+fixture, the harness default; 2.2 left F's drive unstated; 50 ticks; capacity 0.10; one seed):
+
+| cell | arm | units | constructed | wall | steady working set | available before → after |
+|---|---|---|---|---|---|---|
+| F1 | twin | 604,800 | **yes**, ticked 50 | 785 s | 10.03 GB (predicted 8.81) | 11.51 → 7.34 GB |
+| F2 | twin | 1,209,600 | **yes — it did NOT fail**, ticked 50 | 1,780 s (2.27× F1 for 2× the units) | 17.70 GB (predicted 17.57) | 14.81 → 7.18 GB |
+| F3 | paged, capacity 0.10 (472 of 4,725 blocks) | 604,800 | **yes**, ticked 50 — page-ins 4,725 (every block), evictions 0, over capacity 48 of 50 ticks, rounds mean 11.8 (585 at tick 0), resident fraction 1.0 | 2,872 s (store build 153 s) | 9.57 GB (0.954 of the twin) | 20.78 → 8.71 GB |
+| F4 | paged, capacity 0.10 (945 of 9,450) | 1,209,600 | **yes**, ticked 50 — page-ins 9,450 (every block), evictions 0, over capacity 48 of 50, rounds mean 23.6 (1,176 at tick 0), resident 1.0 | 6,443 s (build 674 s) | 17.55 GB (0.992 of the twin) | 16.36 → 6.79 GB |
+
+Both paged cells are T066's width bound reproduced at 37× and 74× its width: under saturating drive the
+pager evicts NOTHING (the ring-safety clause is false for every block), pages every block in over forced
+rounds, and holds the twin's footprint — capacity 0.10 was honoured on 2 of 50 ticks. "Executes where
+the twin cannot" was never reached because the twin executed everywhere F looked. Both exact residency
+instruments agreed in every F cell (309,657,600 and 619,315,200 B, dangling 0).
+
+**Arm F did not discriminate, and the reason is the derivation's premise, not the twin.** 2.6 row 5
+pre-stated it: *"arm F's twin constructs at 2·W* → W* was mis-derived — re-derive, re-run F; no verdict
+until F discriminates."* W* was derived against AVAILABLE RAM; the twin at 2·W* ran with a working set
+6 GB above what was available because Windows trimmed other processes (the daemon among them — it
+stayed up) and backed the rest with the pagefile. Forced-total residency's ceiling on this host is the
+COMMIT limit (RAM + pagefile), not available RAM, and below it the OS supplies paging of its own at a
+cost — F2's wall was 2.27× F1's for 2× the units, i.e. the OS-paged twin slowed by ~14 % per tick, not
+by a wall. The pre-stated re-derivation (against the commit limit, tens of GB, a twin that thrashes
+for hours before it fails) was NOT executed: F is a WIN conjunct only ("WIN iff R2 is a WIN AND F…"),
+and the layer's verdict is already LOSS on R2's cost (3.4), which no F outcome can change; re-running
+F could only decorate a LOSS, and it is recorded as not run rather than run for show (3.6). What F
+leaves behind for the successor row: the deployment claim "runs where forced residency cannot" has NO
+width on this host below the commit limit; the honest successor comparison is the OS-paged twin's
+tick against the pager's at the same width above RAM — F2 and F4 are that pair, one seed, reported.
+
+### 3.4 The verdict, in the pre-registration's words
+
+2.3: *"A regime is a WIN when the paired one-sided t … clears 1.895 at 7 d.f. with the exact sign-flip
+p ≤ 0.05 … on BOTH memory instruments, AND the secondary ratio's median does not exceed 3.0×."* 2.10:
+*"R2's WIN now also requires paged < neutered on the primary instrument by the same paired one-sided
+test."* 2.3: *"The layer's verdict: WIN iff R2 is a WIN AND arm F shows the paged arm executes at 2·W*
+where the twin cannot; LOSS iff R2 is not a WIN OR arm F's paged arm cannot execute where the twin
+cannot."*
+
+| R2 conjunct | required | measured | verdict |
+|---|---|---|---|
+| paged beats twin, both instruments | t > 1.895, p ≤ 0.05, both | 0.602 (t 203.8, p 0.0039) and 0.399 (t 229.8, p 0.0039) | **MET** |
+| paged beats neutered (2.10) | same test, primary (and traced reported) | 0.709 (t 107.8, p 0.0039); traced 0.488 (t 159.6, p 0.0039) | **MET** |
+| eviction conjunct reachable (2.11) | the derived w realizes the regime | w = 0.2; 61 evictions per cell; the neuter discriminates | **MET** |
+| secondary cost ≤ 3.0× | median paged / twin tick ratio | RAW 35.2× (34.3–37.6); reference-corrected 26.0× — the most pager-favourable reading is 8.7× over the bound | **NOT MET** |
+| arm F discriminates | twin fails at 2·W*, paged runs at both | the twin CONSTRUCTED and ticked at 2·W* (17.7 GB working set; the OS trimmed and paged for it) — F does not discriminate on this host below the commit limit (3.3) | **NOT MET** (a WIN conjunct only; it cannot make or unmake the LOSS) |
+
+**What the pre-registered machinery prints, literally** (`verdict.py --arm-f`, `campaign/verdict_final.json`):
+`LAYER VERDICT: NO VERDICT`, on two refusal rows of 2.6 — row 4 (R2's timing arm: the reference level
+differs more than 20 % across the arms; "re-run quiet, never read") and row 5 (arm F's twin constructed
+at 2·W*; "re-derive, re-run F; no verdict until F discriminates"). The quiet re-run was executed (pinned,
+both arms) and the drift persisted for a measured, arm-intrinsic reason (3.6 item 3); the F re-derivation
+was not executed for the reason 3.3 states. **The session's ruling, put to the panel as its first
+question and to Codex as an independent second model before anything is deleted:** the two refusals
+guard the WIN path (a contended cost reading could hide a real cost; a non-discriminating F could
+decorate a win) and neither can convert a cost measured at 35× on an instrument with a passing control
+of its own into a reading under 3.0×; the LOSS below is therefore read under 2.3, with both deviations
+quoted, and a panel finding that this is a relabelling REVERTS the disposition to NO VERDICT (instrument
+fix + F re-derivation before any deletion). The deletion follows the panel, not this paragraph.
+
+**R2 is NOT a WIN**: the memory claim the layer exists for is MET on every conjunct, on both instruments,
+with eviction charging beyond lazy loading on all 8 seeds — and the bounded secondary is NOT MET by an
+order of magnitude. Under 2.3, "LOSS iff R2 is not a WIN": **the layer's verdict is LOSS.** 2.10's
+three-outcome restatement carried a drafting gap — its LOSS clause named only "NOT paged < twin, or arm
+F", omitting the cost conjunct that 2.10 itself said was "not changed" and that WIN still required — so
+this case fell in no 2.10 outcome as literally written; it is resolved to 2.3's rule (the stricter
+reading, the one that pre-dates every number) and the gap is recorded here as the pre-registration's
+own defect, not smoothed. Not a "STORE WINS, POLICY NULL": the policy charges (paged < neutered). Not a
+WIN on any reading of the cost: the twin's tick under the sliding drive is 0.55 ms at 16,384 units and
+the paged arm's is 20 ms — four page-ins per tick at ≈ 4.5 ms each (index lookup, range read, decode,
+per-block compile), a cost the ratio method cannot hide and the bound cannot absorb.
+
+What the LOSS is and is not. It IS the pre-registered finding that THIS pager, in the regime it exists
+for, buys a 40 % / 60 % footprint saving at a 35× tick cost — "it was measured and it did not work" for
+a residency layer whose cost bound was set at 3.0× before the run. It is NOT a finding that paging cannot
+work: the cost is a per-page-in fixed cost against a twin whose per-block tick cost is ~4 µs, so the
+ratio is set by how many ticks a block stays resident between page-ins (8 here, the window ÷ the slide);
+a working set that moves 100× more slowly would sit inside the bound. That regime was not
+pre-registered and is not measured here; it is the first row of whatever replaces the layer.
+
+### 3.5 The disposition applied
+
+2.6, row LOSS: *"the layer is DELETED"*, with the inventory written before the number was known
+(`neuron_pager.py`, its tests, its REGIONS/CORE rows and `wire` EXEMPT row, INVENTION_REGISTER row 1
+marked DELETED ON ITS NULL, the S3/S5 annotations, S-R1/2/3/5, quickstart §S2 item 3, SYNTHESIS §6 L2;
+`lake_compactor.py`'s pager-dependent halves and — as decided there — its merge/reorder over the store
+unless a non-pager consumer exists (it does not); `unit_blocks`; KernelTick's mask branch; the
+pager-free arms re-homed FIRST: `compile_bundles` as the one compiler, `Synapses.empty`,
+`read_records`, `located_records`, the ADOPT fence and the tag-aware rebuild, the 0x0C/0x0D record
+classes with their retention rows, `observe_append`, KernelTick's `resident=None` path; the evidence
+files survive). **Applied AFTER the panel** (3.6 item 4): the panel's verdict on the null is §4; the
+deletion is the fold's stacked commits, one logical change each, re-homing before removal (P2), each
+gate re-run, battery-verified only. P8 clause 5 is the licence: a null this clean — the memory claim
+met on every conjunct, the cost failed by an order of magnitude in the regime the layer exists for —
+is the method being deleted because it was measured, which is the policy working. What the deletion
+does NOT touch: records already written under 0x0C/0x0D (IMMORTAL/COMPACTABLE — the lake's schema
+outlives its writer), T067's delta-tier record classes and fence (re-homed), the kernel (S6 wires it,
+resident-only, until a successor row re-registers paging with the successor comparison 3.3 names).
+The deletion commits, if the panel does not block the ruling, are listed in §4 with their hashes; if it
+does, §4 records the reversion to NO VERDICT and the instrument work it orders instead.
+
+### 3.6 Deviations from the pre-registration, each with its reason
+
+1. Three amendments before the campaign (2.9–2.11), each dated with the readings that forced it; the
+metric, the verdict rule's direction, S = 8, the 3.0× bound, arm F and the LOSS inventory never moved;
+the WIN rule gained a STRICTER conjunct and a third outcome. 2. Arm F ran after the campaign, not
+before it (the campaign's timing cells needed a quiet host, and F needs the whole RAM); 2.2 left F's
+DRIVE unstated, and it ran under R1 (T066's width fixture, the harness's own default and the harshest
+for the paged arm — everything pages in), stated rather than chosen for a friendlier number. 3. **The
+secondary is read on RAW wall-clock per tick, with the reference-corrected ratio beside it, and the
+pre-registered refusal is recorded as an instrument FINDING.** The ambient-ratio control refused R2's
+timing arm on every seed: the twin's crc32 reference read 0.41–0.46 ms while every paged cell's read
+0.58–0.69 ms (a 35–40 % drift by ARM). A per-core probe showed this host is hybrid (logical CPUs 0–15
+at 0.050 ms per sample, 16–27 at 0.092), and the pre-registered "re-run quiet" was executed as a
+re-run of all 24 R2 timing cells pinned to the fast class, both arms alike (`--affinity`, recorded per
+cell): the drift PERSISTED (0.455 vs 0.615 ms). It is not placement and not contention: the R2 twin
+is a process whose whole tick is 0.55 ms, and its adjacent reference sample runs faster than every
+other cell's on this host (every other regime's twin AND paged references sit at 0.59–0.69 ms), so
+the reference is not arm-independent when one arm is that light — the assumption the ratio method
+rests on fails, and the pre-registered refusal cannot be lifted by any quiet re-run. The quantity the
+secondary names is tick time; the raw wall-clock per tick on a quiet, pinned host is that quantity
+without the failed correction, and it carries its own control (the best-of-3 spread and cross-seed
+stability, 3.2). Both readings are printed; the verdict is the same under either; the corrected one
+is the more pager-favourable and is 8.7× over the bound. 4. **The deletion follows the panel instead
+of preceding it** (2.8 step 4 ordered the disposition before the panel): a LOSS deletes two arcs of
+code, so the panel refutes the null BEFORE anything is destroyed; the deletion commits are then the
+fold's, battery-verified only, and the panel's verdict on the null is in §4. 5. The R2 timing cells
+were re-run outside the driver (its command template, a scratch `NORD_HOME` per cell, one at a time);
+the unpinned originals are kept beside them. 6. `run_f.py` refused a numeric `--wstar` (the width is
+derived, never picked) — it takes the derivation file; recorded because the first launch was the
+orchestrator's mistake, not the harness's.
