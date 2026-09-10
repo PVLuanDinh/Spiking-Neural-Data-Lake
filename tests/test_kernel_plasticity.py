@@ -21,7 +21,6 @@ N_UNITS = 12
 
 def _plast(sign_preserving=True, lr=r_stdp.LR, frac_bits=16, weights=None):
     from snn_data_lake.substrate.kernel_plasticity import KernelPlasticity
-
     from snn_data_lake.substrate.kernel_state import KernelState
     from snn_data_lake.substrate.kernel_tick import KernelTick, Synapses
 

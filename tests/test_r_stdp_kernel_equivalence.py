@@ -123,7 +123,6 @@ def _edges():
 
 def _kernel_form(frac_bits=16, sign_preserving=True):
     from snn_data_lake.substrate.kernel_plasticity import KernelPlasticity
-
     from snn_data_lake.substrate.kernel_state import KernelState
     from snn_data_lake.substrate.kernel_tick import KernelTick, Synapses
 

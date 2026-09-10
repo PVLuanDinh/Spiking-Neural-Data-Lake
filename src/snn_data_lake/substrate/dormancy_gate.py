@@ -717,6 +717,21 @@ EXEMPT = {
         "here does not by itself re-arm those, because a population built inside a self-check is "
         "an instrument, not a tick",
     ),
+    "kernel_plasticity": (
+        "wire",
+        "specs/022 T063, DATED 2026-09-09: the kernel-side driver of the ONE R-STDP rule -- the "
+        "first mechanism in this tree that can write a weight into a Synapses bundle table. "
+        "Reachable from run_selfchecks (the offline check: the sign-preservation red with its "
+        "clamp-off arm, byte-determinism, the four diagnostic lines, and the P2 equivalence with "
+        "RSTDPNeuron), NEVER from a tick. ITS CONSUMER IS cortex/prior_drift_harness, which "
+        "constructs a scratch population and drives it; that is the amdahl_gate shape -- an "
+        "instrument that builds its own substrate and is never built BY one. Stated as a wire "
+        "rather than permanent DELIBERATELY: a learner whose only caller is a measurement "
+        "instrument is exactly the dormancy P3 names, and the row retires the day a live path "
+        "reaches it. What this row does NOT claim: it is not the kernel wire, and it does not "
+        "discharge kernel_tick's or kernel_state's own exemptions -- an instrument that ticks a "
+        "scratch population is not the live consumer those rows name (T063 2.8)",
+    ),
     "amdahl_gate": (
         "permanent",
         "specs/008 Gate Zero / specs/022 S6: the Amdahl ceiling of a delivery-path conversion, read "
