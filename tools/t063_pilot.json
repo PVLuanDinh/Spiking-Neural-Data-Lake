@@ -141,14 +141,16 @@
       },
       "W": {
         "cpu_seconds_per_window": [
-          120.297,
-          121.109,
-          112.016
+          82.219,
+          84.266,
+          86.516,
+          81.875,
+          69.297
         ],
         "edges": 70001,
         "frac": 1.0,
-        "projected_hours": 0.11560752000271653,
-        "seconds_per_tick": 0.0010838205000254675,
+        "projected_hours": 0.11508719999886428,
+        "seconds_per_tick": 0.0010789424999893527,
         "settled": true,
         "units": 14215
       },
@@ -185,21 +187,31 @@
         "chance": 0.125,
         "seeded_same_protocol": 0.625
       },
-      "git_head": "ebd3d9201eda3acadd2ead4b2601f9ec00d9781d",
-      "harness_sha256": "776663490e22e62ea72ca65489064567219522873a5a7a94a53dcabf986ab786",
+      "git_head": "7caea77b70bef3927bdc6aee97287ed858d81b74",
+      "harness_sha256": "93f6fa58a739af7549a6d02ae194ebca35419778dd1953cb61afbacc989fa095",
       "host": {
-        "daemon_pid": "34316",
-        "daemon_working_set": 5487538176,
+        "daemon_pid": "29380",
+        "daemon_working_set": 7263883264,
         "port_8137": "LISTEN"
       },
       "host_note": "CPU WINDOWS TAKEN ON DAEMON PID 27228 (not necessarily the PID a later run records -- the daemon on this host RESTARTS: 33396, then 27228, then 32604 were observed holding 8137 inside about forty minutes, so `host.daemon_pid` beside a number and this note's PID may differ, and that is a fact about the daemon rather than a mismatch to reconcile). LISTEN on 8137 throughout, working set 5.50-8.77 GB; five 90 s CPU windows 112.000 / 122.906 / 106.266 / 133.641 / 117.828 s, mean 118.5, no trend, range +-11.5 %. The two-consecutive-windows-within-6 % clause is NOT MET and is not meetable by this daemon's steady duty cycle; settling read from the absence of a trend. No battery and no panel were running. Every timing is a min of repeats.",
       "settling": {
         "cpu_seconds_per_window": [
-          120.297,
-          121.109,
-          112.016
+          82.219,
+          84.266,
+          86.516,
+          81.875,
+          69.297
         ],
-        "rule": "2.12(c): settled = NO monotone trend across at least 3 windows of 90 s",
+        "daemon_pid_per_window": [
+          "29380",
+          "29380",
+          "29380",
+          "29380",
+          "29380"
+        ],
+        "daemon_restarted": false,
+        "rule": "2.12(c): settled = every window strictly positive, ONE live daemon throughout, and NO monotone trend across at least 3 windows of 90 s; a run takes 5 windows, because at the floor of 3 the monotone test rejects a SETTLED host one time in three (2 of n! orderings are monotone; 2/120 at five)",
         "settled": true,
         "window_seconds": 90
       },
@@ -208,53 +220,61 @@
       "widths": [
         {
           "cpu_seconds_per_window": [
-            120.297,
-            121.109,
-            112.016
+            82.219,
+            84.266,
+            86.516,
+            81.875,
+            69.297
           ],
           "edges": 70001,
           "frac": 1.0,
-          "projected_hours": 0.11560752000271653,
-          "seconds_per_tick": 0.0010838205000254675,
+          "projected_hours": 0.11508719999886428,
+          "seconds_per_tick": 0.0010789424999893527,
           "settled": true,
           "units": 14215
         },
         {
           "cpu_seconds_per_window": [
-            120.297,
-            121.109,
-            112.016
+            82.219,
+            84.266,
+            86.516,
+            81.875,
+            69.297
           ],
           "edges": 52949,
           "frac": 0.5,
-          "projected_hours": 0.06394085333061716,
-          "seconds_per_tick": 0.0005994454999745358,
+          "projected_hours": 0.06265066666916634,
+          "seconds_per_tick": 0.0005873500000234344,
           "settled": true,
           "units": 7107
         },
         {
           "cpu_seconds_per_window": [
-            120.297,
-            121.109,
-            112.016
+            82.219,
+            84.266,
+            86.516,
+            81.875,
+            69.297
           ],
           "edges": 27940,
           "frac": 0.25,
-          "projected_hours": 0.03219808000139892,
-          "seconds_per_tick": 0.0003018570000131149,
+          "projected_hours": 0.03167104000070443,
+          "seconds_per_tick": 0.000296916000006604,
           "settled": true,
           "units": 3553
         },
         {
           "cpu_seconds_per_window": [
-            120.297,
-            121.109,
-            112.016
+            82.219,
+            84.266,
+            86.516,
+            81.875,
+            69.297
           ],
           "edges": 12543,
           "frac": 0.125,
-          "projected_hours": 0.023197333332306395,
-          "seconds_per_tick": 0.00021747499999037246,
+          "projected_hours": 0.016687093333651624,
+          "seconds_per_tick": 0.00015644150000298395,
           "settled": true,
           "units": 1778
         }
