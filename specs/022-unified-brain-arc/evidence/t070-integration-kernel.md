@@ -155,3 +155,45 @@ self-check green with every red in the same command · 6 the campaign pin · 7 t
 cockpit row, and -- on PASS -- the toy net's retirement) · 8 section 3 · panel · fold. Census gates after every
 symbol-adding commit (rule_composer included; `above_chance`'s sibling readings carry no learning verb, verified by
 running the gate). No battery until the stack's rows are in (owner 2026-09-10).
+
+### 2.10 Amendment, dated 2026-09-10 03:55 local, written BEFORE any campaign number was read (the campaign was
+### running with its log block-buffered; the only numbers seen are the 64-unit fixture's, quoted here)
+
+**What the fixture showed (the builder's self-check on `synthetic_artifact(64, out_degree=8)`, 4 seeds; commit `551ba84`):**
+(b4) "SILENT PCI = 0 exactly on every seed" read NOT MET -- SILENT PCI = 0 exactly on 1 of 4 seeds; on the others the
+pulse propagates ONE HOP from rest through the intact wiring on roughly 1 of 8 pulse sets (PCI 0.0012-0.0025). (b6)'s
+rate-matched clause read NOT MET on 1 of 4 seeds: the rate-matched arm's local echo at its higher drive amplitude
+exceeded INTEGRATED's echo on seed 3 (0.0162 vs 0.0134). Every other conjunct read MET on the fixture ((b1) t +4.2504,
+(b2) +3.9028, (b3) +4.9497, (b5) 4/4, (b7) 4/4); R1, R2 and R3 fired RED in the same command.
+
+**The defect is in this pre-registration, not in the instrument.** 2.2 defined SILENT as "INTEGRATED with the background
+drive amplitude 0 (the pulse still lands)" and 2.5(d) read a non-zero SILENT PCI as "drive leaked into the footprint".
+That reading assumed the pulse alone cannot fire a post-synaptic unit from rest. On this kernel it can: a 1.2x-threshold
+pulse on three units fires them, and their out-edges carry enough charge to fire a neighbour in some pulse sets, so the
+footprint contains propagation with NO background drive present. A non-zero SILENT PCI on this arm is therefore NOT drive
+leakage; it is integration of the pulse through the resting wiring -- the very quantity the instrument exists to read.
+The incumbent's `silent_network` read exactly 0 because its silent regime had neither coupling nor noise (a network that
+cannot propagate anything), which 2.2's SILENT does not reproduce. The drive-leak control 2.5(d) wanted already exists
+and is asserted on every arm before any PCI is read: the pulse-less identity (2.5(c)) -- with the pulse removed the two
+restores' rasters are byte-identical, so nothing in any footprint comes from anywhere but the pulse.
+
+**What this amendment does and does NOT do.** It does NOT remove (b4) from the verdict rule and does NOT relabel it: 2.3's
+PASS requires all seven conjuncts as written, and the campaign's (b4) reading is recorded exactly as the rule reads it. It
+records, before the number, WHAT a NOT MET (b4) means on this arm (pulse propagation at rest, reported beside the
+local-echo null), so that the reading is not later explained after the fact. The same holds for (b6)'s rate-matched
+clause: a rate-matched arm at a higher drive amplitude has a larger local echo by construction (more pulsed-unit spikes
+in the window), so "rate-matched <= null" compares an echo at one amplitude against a null taken at another; where it
+reads NOT MET the record says so and names this cause, and the conjunct stays in the rule.
+
+**Disposition, fixed now for the branch 2.6 did not name.** 2.6 prescribes PASS (all seven) and NULL on (b1), (b2) or (b6).
+If the campaign reads (b1), (b2) and (b6)'s first two clauses MET but (b4) and/or (b6)'s rate-matched clause NOT MET, the
+row reads NOT MET on those conjuncts with their numbers; neither 2.6 branch fires: the port is RETAINED as an instrument
+(it separates the arms it was built to separate and its reds are reachable), the registry `reading` stays None and
+`C4_TASK["integration"]` stays None (no PASS, no C4 number), the toy net is NOT retired (its retirement was conditional on
+PASS), the cockpit PCI row is NOT filled, and `PROVENANCE["pci"]`'s stale row is corrected as a map/territory fix only
+(it is false regardless of this row's outcome). A successor pre-registration re-specifies (b4) as a reported quantity
+(SILENT propagation from rest, beside the null) and (b6)'s rate-matched clause against a null taken at the matched
+amplitude, and re-reads the row -- never this row re-reading itself.
+
+**Numbers seen before this amendment:** only the fixture readings quoted above. No campaign number had been read; the
+campaign's log had flushed nothing when this section was written.
