@@ -352,7 +352,7 @@ Campaign (git `f37fe90`; K = 8, D = 4, W = 1.0; 5 tables × 8 seeds; wall 589.7 
 
 | conjunct | reading | numbers |
 |---|---|---|
-| (a) DRIFT | MET | red 1 fired on the pin (executed 120, attempted 179,571, effective 0, drift 0); SEEDED S1 distance 0.107–0.172, effective weight change 435k–654k entries (L1 232k–398k) on every seed |
+| (a) DRIFT | MET | red 1 fired on the pin (executed 120, effective 0, drift 0 on every seed; attempted 174,781–184,936); SEEDED S1 distance 0.107–0.172, effective weight change 435k–654k entries (L1 232k–398k) on every seed |
 | (b) BEATS RANDOM | NOT MET | paired one-sided t = −0.2277 (FPR 0.0781) |
 | (c) NOT BLIND | MET | PLANTED − RANDOM t = +9.2601 (FPR 0.0508) — the verdict is read |
 | (d) RED 2 FIRED | NOT MET | t(random − wrong) = −2.5459 (FPR 0.0391); WRONG VALID on all 8 seeds (PSI 6.175870 vs 2.2711–2.3029) — the corrupted prior OUTPERFORMS the null |
@@ -362,6 +362,19 @@ Campaign (git `f37fe90`; K = 8, D = 4, W = 1.0; 5 tables × 8 seeds; wall 589.7 
 DriftRecords (S1, PSI to the seeded table): SEEDED 0.107–0.172, RANDOM 0.029–0.086, WRONG 0.142–0.252, PLANTED
 0.179–0.297, FROZEN exactly 0 with direction 0 on all 8 seeds. The per-seed table, every contrast's differences and
 every diagnostic line are in the pin with the harness sha256s, the artifact sha256, the git head and the host windows.
+
+**APPENDED 2026-09-10 (T063 panel of 2026-09-09) — the grid these t-values sit on, and the campaign's own host
+reading.** Every arm accuracy above is k/8. Per 2.6 and 2.7 the score is the FINAL block's held-out trials alone — 1 per
+class, K = 8, so 8 trials per seed; the other five blocks' 40 held-out trials are scored and overwritten, and never
+enter the readout's training pool. In TRIALS OUT OF 8 the mean differences are: (b) seeded − random −0.125,
+(c) planted − random +3.5, (d) random − wrong −1.25, (e) seeded − wrong −1.375, and the learner's seeded − frozen −5.5;
+the per-seed diff vectors for all five contrasts are in `tools/t063_campaign.json` under `verdict.contrasts[*].diffs`.
+This is a REPORTING correction, not a deviation: 2.6 pre-registers "accuracy on the final block's held-out trials" and
+2.7 pre-registers 1 held-out trial per class per block, so the harness implements the frozen text literally. And the
+campaign's own host windows, which this section quoted for the pilot only: **0.0 / 113.25 / 106.281 / 122.344 / 123.984
+CPU-s on PIDs none / 34212 / 34212 / 34212 / 34212, daemon_restarted = True, NOT settled; host 29380 → host_end
+34212** — the first window's owner vanished under the probe, which the repaired rule reports as `none 0` and rejects.
+3.5(4)'s attribution of the clause failure to the restart is complete as it stands and is not widened here.
 
 ### 3.3 The verdict, by the rule of record
 
@@ -379,20 +392,42 @@ depth-reversed corrupted prior decodes BETTER than both the true prior (t −5.2
 uninformative; the wiring that sends each band's synapses to the mirrored band is more decodable. Nothing here says
 why; the record names it and does not explain it.
 
+**APPENDED 2026-09-10 (T063 panel of 2026-09-09) — two withdrawals from the paragraph above, which is left readable
+exactly as written so the audit trail survives.** FIRST: contrast (e) differs from RANDOM along TWO axes — laminar
+target identity AND fan-in concentration (3.5 item 12) — so the inference "the H01 laminar targets are not merely
+uninformative" is WITHDRAWN. What the contrast carries is only this: at D = 4 the band-permuted table is more decodable
+than both SEEDED and RANDOM, and this record does not isolate which of the two axes carries the sign. SECOND: the
+clause "the wiring that sends each band's synapses to the mirrored band is more decodable" over-reaches as a claim
+about the TABLE and is withdrawn too. Every accuracy behind (d) and (e) was taken with the learner ON, and this arc has
+no reading that separates the band-permuted table's decodability from its interaction with the learner. What WAS
+measured is the sentence before it: the band-permuted arm SCORED higher at D = 4 under the learner (t −5.23 against
+SEEDED, −2.55 against RANDOM). An off-pin no-learner reading of all four arms at D = 4 over the same 8 seeds cannot
+decide it either way — its positive control reads PLANTED − RANDOM t = +0.8143 against the 1.895 bar, so by 2.9 that
+configuration is INSTRUMENT BLIND and no verdict is read from it, consistent with 3.4's disclosure that the learner had
+supplied part of PLANTED's margin. Recorded here so the next reader does not re-take that reading as the panel did.
+**"Nothing here says why" STANDS**, and no mechanism is put in its place.
+
 ### 3.4 The disposition applied
 
 Applied as §2.9 prescribes, in seven commits (`1fb01ba`..`594b95d`), the harness's no-learner form landing BEFORE the
 deletion so no commit imports a module that no longer exists: (1) `cortex/prior_drift_harness.py` kept as a NO-LEARNER
 instrument (`1fb01ba` the reds RED, `4c6c4cf`, `077d647` the census gate's catch of `no_learner_holds`): every arm runs as
-the frozen form, the drift half reports the §2.5 no-learner refusal verbatim ("no learner in the tree -- `substrate/
-kernel_plasticity` DELETED on its own criterion 2026-09-09: drift is not measurable; FR-008/FR-009 (specs/011) remain
-OPEN") and reads no drift verdict; the contrasts (b)(c)(d)(e), the D guard, the WRONG validity precondition, the
+the frozen form; the drift half returns the harness-defect refusal §2.9 pre-registered ("if effective change is 0 on
+every arm the learner is DELETED and red 1's reading is a harness defect, not a finding"), AUTHORED BY THE DISPOSITION
+to stand in red 1's §2.5 slot — it carries §2.5's four diagnostic lines, never says PINNED, and closes with the module's
+`NO_LEARNER` constant, quoted here exactly: "no learner in the tree -- substrate/kernel_plasticity DELETED on its own
+criterion 2026-09-09 (T063's record, section 3): drift is not measurable; FR-008/FR-009 (specs/011) remain OPEN" — and
+reads no drift verdict; the contrasts (b)(c)(d)(e), the D guard, the WRONG validity precondition, the
 nuisance refusals and PLANTED all stand; `--campaign` still runs the no-learning contrasts; the pinned campaign is the
 record of the learner's run and is neither re-run nor edited. (2) `substrate/kernel_plasticity.py` (474 lines) and its
 tests DELETED with its REGIONS / CORE / dormancy registrations (`2da3bb5`); `tests/test_r_stdp_kernel_equivalence.py`
 keeps the incumbent's byte-exact trajectory pin, the module-level and spy tests, and gains a test that the deleted
 kernel form cannot be imported (a second substrate cannot return quietly); `tools/gradient_claim_baseline.json` untouched
-(governed rules_seen fell 173 → 172, floor 149). (3) The R-STDP merge KEPT as the one implementation; its two
+(governed rules_seen 174 → 172 across `2da3bb5` itself — the two keys removed are
+`substrate/kernel_plasticity.py::KernelPlasticity.reward` and `::update_eligibility`; the disposition's span reads 173 at
+`963799e`, the commit before `1fb01ba`, to 172 at the head, its +1 being `cortex/prior_drift_harness.py::no_learner_holds`,
+which ENTERS the governed set at `4c6c4cf` (UNDETERMINABLE, gate RED) and is declared NOT_A_RULE at `077d647` with the
+count already 174; floor 149). (3) The R-STDP merge KEPT as the one implementation; its two
 container branches written for the kernel form measured ORPHANED by two instruments with a positive control taken
 before the deletion (decay numpy 38,400 / deltas numpy 1,920 entries with the kernel form; numpy 0 and tripwire 0
 after, list 297 / 4,476) and deleted (`96082cc`). (4) `h01_ingest`'s dormancy row re-dated by appended succession
@@ -412,6 +447,35 @@ docstring, their difference being the finding. And the criterion as a whole gain
 conjunct, not for the whole; recorded as the builder's judgment call. One stale index entry surfaced: the graphify
 guard's inventory cites `substrate/lake_engine.py L769` for a symbol that is not in the tree (the file is 561 lines) —
 a carried opening, not this arc's.
+
+**APPENDED 2026-09-10 (T063 panel of 2026-09-09) — WHAT "STAND" AND "SURVIVES" MEAN, MEASURED ON THE ARTIFACT.** On
+`data/h01/h01_c3_graph.npz` at the pinned K = 8, D = 4, W = 1.0 over seeds 0–7 the surviving no-learner harness reads
+**(c) NOT MET at t = +0.8143** (permutation FPR 0.0469) — per-arm means seeded 0.8750, random 0.8281, wrong 0.8281,
+planted 0.8750, with FROZEN identical to SEEDED and d_f = 0 on all 8 seeds, so the identity control holds and the
+reading is on the pinned path. `verdict()` therefore prints SC-006 = **NO VERDICT** with (a), (b), (d) and (e) NOT
+READ: "no verdict is read: the harness is BLIND". The other contrasts at lr = 0 read (b) +1.0000, (d) 0.0000,
+(e) +1.0000, none clearing 1.895, with every arm between 0.75 and 1.00 — at CEILING, which adjudicates nothing in
+either direction, and (c)'s pinned margin is NOT called damage on the strength of it. So what SURVIVES the deletion is
+RETAINED AS A MECHANISM, and on this population at this capacity the instrument REFUSES rather than reads — §2.2's
+pre-registered disposition FIRING, not a new defect. The consequence a successor inherits: (b)(c)(d)(e) CANNOT be
+re-read on H01 with this instrument as-is, and re-reading them needs a NEW pre-registration of the capacity guard. The
+bare self-check's green is the 64-unit fixture at `out_degree = 8`, which does not cover the artifact. REPRODUCTION,
+and it is deliberately not the CLI: direct calls to `band_balanced_subgraph` / `drive_classes` / `build_arms` /
+`wrong_validity` / `run_arm` / `verdict` at `_pin_stages()[-1]`'s constants with `NORD_HOME` on a scratch dir — and
+NEVER `--campaign`, because `run_campaign()` writes `tools/t063_campaign.json` unconditionally and would destroy the
+record of the learner's run. The pinned campaign's own (c) = +9.2601 was read WITH the learner and STANDS.
+
+**APPENDED 2026-09-10 (T063 panel of 2026-09-09) — the mirror of the H-R1 correction.** Item (5) above records
+PLAN-FINAL's H-R1 cell as saying its reds are "not re-runnable as written without a learner". That over-reaches and is
+corrected there by an appended sentence rather than removed: only RED 1 lost its subject — its pin stood against a
+learning arm and there is no learning arm (the harness's own self-check docstring reads "WHAT IS GONE: red 1"). RED 2's
+contrast, the paired one-sided t over acc_random − acc_wrong against the 1.895 bar, needs NO learner, is conjunct (d),
+is named among what survives in the module docstring, and `--campaign` still computes it. Two qualifications ride with
+that: red 2 as literally written names the REVERSED-LAMINAR table for its validity precondition, and 2.12 retired that
+table on measurement in favour of the BAND-PERMUTED-TARGETS arm, so what remains runnable is red 2's PREDICATE under
+2.12's arm; and an evidential re-reading requires `--campaign`, which must not be taken against the pin. No self-check
+number enters either site — 3.5(9) already fixes that the offline red-2 reading is a predicate on a constructed input,
+not an evidential reading.
 
 ### 3.5 Deviations from the pre-registration, each with its reason (dated 2026-09-09)
 
@@ -439,6 +503,63 @@ a carried opening, not this arc's.
 11. The kernel's `wire` exemptions are NOT discharged by this instrument, and the harness's fixture (T062's population)
     is not a live reader: `tests/test_placement_charge_null.py` stays green.
 
+*Items 12–17 are APPENDED 2026-09-10 by the T063 panel of 2026-09-09. Items 1–11 above are untouched.*
+
+12. (2026-09-10) **2.12's replacement WRONG arm is not degree-matched to RANDOM, and 2.12 made no degree disclosure
+    where 2.2 had made one for the retired arm.** RANDOM preserves every unit's in-degree exactly (14,215/14,215
+    unchanged); the band-permuted arm's quantile rank map is many-to-one into every smaller mirrored band, leaving only
+    3,701/14,215 in-degrees unchanged — max in-degree 67 → 190, receiving units 11,227 → 8,222, top-1% fan-in share
+    0.0126 → 0.0173, out-degree untouched. The many-to-one map is disclosed in `decisions.md`'s T004 reading (1) and in
+    `band_rank_map`'s docstring, but only as the reason multi-edges are permitted; its degree consequence was not
+    stated. Degrees are not among 2.2's enumerated nuisance invariants, so `check_nuisance` is correct not to test them:
+    this is a DISCLOSURE GAP and an interpretive confound, not a nuisance violation. What a successor owes to separate
+    the two axes: a degree-matched laminar corruption, or a degree-only control alongside the laminar corruption, read
+    in a NON-saturated regime — the separating control attempted during the panel (WRONG's in-degree sequence with
+    laminar identity destroyed) was uninformative here because every arm saturated, which is the separate blocker of
+    item 15's neighbour, 3.4's appended paragraph. SC-006's verdict is unaffected: it rests on SEEDED-vs-RANDOM, and
+    both arms preserve in-degree exactly.
+13. (2026-09-10) **Two of §2.12's quoted pilot readings are NOT in `tools/t063_pilot.json` and no committed code
+    produces them.** The 13-cell class-fraction × K sweep and the nearest-centroid second instrument were taken by
+    uncommitted out-of-harness probes and are not reproducible from the tree. The amendment's DECISION rests only on
+    pinned stage-0 fields: `K_rule.satisfied = false` (K = 8 and K = 16 both 1.0000, K = 32 does not fit), `drive_only`
+    (0.0625 = chance with no edges, 1.0000 seeded) and `wrong_validity` (PSI 0.032389 vs 2.281271). The two unpinned
+    readings corroborate the "structural, not the readout's" explanation and carry no decision on their own. §2.12 and
+    §3.1 are left byte-identical; the same disclosure is appended to `specs/011`'s decisions.md, naming its lines 55–60.
+14. (2026-09-10) **`594b95d`'s subject claims the dated annotations landed "at every site the verdict touches". It did
+    not:** the census enumerated in §3.4(5) missed `quickstart.md` §S2 step 2 and `tasks.md:140`, both found by the
+    T063 panel and annotated at `6d2a309`. The subject line is left as written — amending a pushed commit is forbidden
+    (item 6 is the precedent) — and this line is the correction. The miss was an OMISSION, not a declared scope.
+15. (2026-09-10) **CORRECTION to §3.1 and §3.5(4): the "~15 min supervisor cycle" is not a property of this host.**
+    `learn_daemon.bat` has no timer — it relaunches only when the daemon exits, 8 s later — and
+    `substrate/learn_daemon.py` has exactly one `os._exit(0)`, reachable only from `_head() != start_head`. The log tail
+    holds 254 clean auto-update exits against 255 "new commit detected" lines, and all 30 relaunches in
+    `1d4602c..a4c2504` land 1–27 s after one of this arc's own 30 commits, with gaps from 44.7 s to 22 m 16 s. The
+    pinned campaign's `daemon_restarted = True` was produced by THIS SESSION committing `f37fe90` at 21:58:40, seconds
+    before the probe: `host.daemon_pid` 29380 exited cleanly at 21:58:45.59, settling window 1 reads pid "none", windows
+    2–5 pid 34212. What is NOT MET is 2.12(c)'s ONE-LIVE-DAEMON condition, and it IS meetable — the run needs a
+    commit-free window of 450 s probe + 589.66 s campaign ≈ 17.4 min, and the session controls the trigger. 2.7's
+    literal "two consecutive 90 s windows within 6 %" remains NOT MEETABLE for the separate, measured reason of the
+    duty cycle (106.3–133.6 CPU-s per 90 s, ±11.5 %). `f37fe90`'s message and `tools/t063_campaign.json`'s `host_note`
+    carry the superseded attribution and are deliberately NOT edited: the commit is pushed and amending is forbidden,
+    and the JSON is the pin. Item 4's text stands as written; the `restarted` guard and its red are untouched, because
+    a probe whose subject changed is not a reading whatever moved the subject.
+16. (2026-09-10) **§2.9 and §3.3 label the learner's outcome "a null under P8 clauses 3 and 5"; clause 5 is
+    mis-cited.** Clause 3 (attribution — no gain to attribute against 435,119–654,321 moved entries, L1
+    231,865.22–397,915.81) applies as cited. Clause 5's words are "an invented method that measures nothing", and the
+    outcome was not nothing: seeded mean 0.1875 against frozen 0.8750, t(d_f) = −13.0154, the frozen twin ahead on 8 of
+    8 seeds. The P8 line that governs is the transferable one — "it was measured and it did not work". The disposition
+    is UNCHANGED: DELETED on 2.9's pre-registered t(d_f) ≤ 1.895 criterion, and §3.6 already states it in these terms.
+    2.9:207 is frozen and untouched; §3.3's sentence, the pin's `verdict.learner.note`, `r_stdp.py`'s appended
+    paragraph and the `NO_LEARNER` constant with its tests are all left exactly as they are.
+17. (2026-09-10) **SEEDED, FROZEN and WRONG are deterministic constructions on the single W-table** (`arm_seeded(art)`
+    and `arm_wrong(art)` take no seed); only RANDOM and PLANTED are re-drawn per seed. The band-permuted corruption
+    therefore has exactly ONE realisation across the campaign — psi_wrong = 6.175869708803301 and the whole
+    `band_masses` block are identical on all 8 seeds, against RANDOM's 2.2711–2.3029. So (e)'s eight paired differences
+    vary only in the per-seed drive / class-subset / projection draw, and (d)'s vary in that PLUS the RANDOM draw;
+    neither replicates the corruption. The reading of §3.3's negative-direction finding is about THIS band-permuted
+    table on those eight task draws, and generalises over neither corruptions of this kind nor other choices of π.
+    §2.2 and §2.12 are left byte-unchanged.
+
 ### 3.6 What this row does NOT claim
 
 Not that the H01 prior is useless: that it does not beat its marginal-matched null on ONE task (K = 8 drive classes
@@ -448,3 +569,146 @@ readout worse than a frozen twin on every seed, and the pre-registered criterion
 in specs/011's sense: the drift-eligible statistics here were newly chosen graph-weight statistics (2.4) and, with the
 learner deleted, drift on the kernel has no mechanism again — FR-008 / FR-009 remain OPEN. Not a claim about the live
 brain. Not a claim about why the corrupted prior decodes better.
+
+*Four limitations APPENDED 2026-09-10 by the T063 panel of 2026-09-09. Nothing above this line is edited.*
+
+- (2026-09-10) **Both pins carry a `host_note` module constant whose CPU windows and clause-reading are the 2.7
+  host-clause measurement of 2026-09-09 on daemon PID 27228, not the pinned run's.** Each run's settling reading is its
+  in-band `settling` block — settled = false, daemon_restarted = true on the campaign; settled = true on pilot stage 1 —
+  and where the two differ the IN-BAND BLOCK GOVERNS. Neither pin is touched or regenerated; the constant now carries a
+  static prefix saying the same thing (`ad98d47`), with no per-run outcome written into it.
+- (2026-09-10) **The two arms of (b) sit at or beside the chance floor in the pinned campaign.** The per-arm reading
+  against chance = 1/K, and what it does and does not license, is §3.7's opening block; it is a POST-HOC reading, not a
+  pre-registered conjunct, since 2.6 defines only arm-vs-arm differences. Attribution only where it is controlled:
+  SEEDED's collapse is attributed to its FROZEN twin (t(d_f) = −13.0154, the twin ahead on every seed); the pin holds
+  NO frozen twin for RANDOM, whose only no-learning reading is the pilot's single-seed D-ladder (0.7500 at D = 4), so
+  RANDOM's cause is NOT CONTROLLED and "the learner drove both arms to chance" is not written anywhere in this record.
+- (2026-09-10) **2.12's D guard is a ceiling with no floor, and it is read in a configuration the pinned verdict did
+  not run.** The ladder calls the arm at lr = 0.0 over ONE block, while the pinned campaign's non-FROZEN arms ran at
+  lr = LR over five. 2.12's own wording ("the no-learning RANDOM arm") discloses the learner half; the one-block half
+  was not disclosed until this line. Filed as a LIMITATION and NOT a deviation — 2.12 was implemented literally. The
+  selection is corroborated inside the pin: at the selected D = 4 the guard read no-learner RANDOM 0.7500 at one block,
+  and the pin's only no-learner five-block arm, FROZEN (the seeded table at lr = 0), reads 0.8750 — under the same 0.9
+  ceiling. The learning arms' 0.1875–0.3594 at that rung is the LEARNER's effect, already read by the learner's own
+  retention criterion (t(d_f) = −13.0154, DELETED), not evidence of a mis-selected capacity. A successor's guard is
+  read in the configuration the verdict runs, and carries a floor as well as a ceiling.
+- (2026-09-10) **This row does not claim any of its magnitudes is large.** |t| > 5 on (e) is one and a bit held-out
+  trials out of eight. A larger per-seed held-out sample needs its own pre-registration, because 2.6 is frozen; and if
+  a successor pools, it pools only the C = 5 SCORED learning blocks, NEVER the warm-up block, where `predict(None, …)`
+  returns class 0 and every arm scores a deterministic 1/K.
+
+### 3.7 The panel fold (appended 2026-09-10)
+
+The panel ran 2026-09-09 against head `a4c2504`: three lenses and 28 refuters. **22 findings STOOD and 6 were
+REFUTED — and every one of the 22 filed fixes was judged WRONG by its own refuter.** So this fold adopts the
+REFUTERS' minimal fixes and not the panel's (obs #2146: a confirmed finding can carry a fix that introduces a defect).
+Nothing below re-runs the campaign or the pilot; `tools/t063_campaign.json` and `tools/t063_pilot.json` are
+byte-untouched, and sections 1–2.12 above are byte-untouched.
+
+**WHERE THE ARMS WERE WHEN THE VERDICT WAS READ.** Per-arm MEAN HELD-OUT ACCURACY in the pinned campaign, against
+chance = 1/K = 0.1250 on the 1/8 grid:
+
+| arm | mean accuracy | held-out trials above chance | t vs chance | FPR | above chance |
+|---|---|---|---|---|---|
+| SEEDED | 0.1875 | +0.50 | +1.5275 | 0.0312 | **no** |
+| RANDOM | 0.2031 | +0.62 | +1.9296 | 0.0938 | yes (barely) |
+| WRONG | 0.3594 | +1.88 | +6.3549 | 0.0391 | yes |
+| PLANTED | 0.6406 | +4.12 | +18.2054 | 0.0352 | yes |
+| FROZEN | 0.8750 | +6.00 | +22.4499 | 0.0352 | yes |
+
+FROZEN **is the SEEDED table at lr = 0**, so the wiring the verdict scored at 0.1875 decodes at 0.8750 in the same
+pin, the same seeds and the same D. Conjunct (b) therefore contrasts two arms 0.50 and 0.62 held-out trials above
+chance on a mean gap of ONE EIGHTH OF ONE TRIAL; WRONG, the arm (d) and (e) fail toward, sits 1.88 trials above chance
+— it is NOT at the floor, and this record does not say it is. The subject §2.9's clause was read on is **the arm under
+THIS task's learner**, not the wiring alone. §2.9 is the clause that FIRED and it fired as written; §3.3's quotation of
+it is not re-scoped, and the disposition is HELD, not withdrawn — US3's "beatable prior" stays NOT MET and
+`cortical_prior` stays the harness's fixture. What is recorded beside it is that its WARRANT is an OPENING: (c), the
+control that licenses the whole verdict, was read against a RANDOM arm at 1.6× chance, and the tree's own floor rule
+rejects that shape in the fixture ("a positive control that beats a floor is a formality, not a reading" — accepted
+cell RANDOM 2.2× chance, rejected cells 1.1×). The row is re-read at a capacity where the base arms are above the
+floor before any of the three retirements is treated as settled. The lr = 0 re-reading is an OPENING TOO and not a
+conclusion: every arm there sits between 0.75 and 1.00, at CEILING, adjudicating nothing in either direction, and
+(c)'s pinned margin is NOT called learner damage on the strength of it.
+
+**THE ONE CODE CHANGE, red first.** `verdict()` now carries `arms_vs_chance` — every arm's mean, chance = 1/K, and the
+harness's OWN `contrast` on (accuracy − chance) over the seeds — printed beside the t of every contrast; and every
+contrast carries `wiring_contrast`, which reads NOT INTERPRETABLE AS A WIRING CONTRAST when BOTH of its arms fail the
+above-chance check. The rule is ONE module-level `above_chance(accs, k)`, LIFTED out of `synthetic_artifact`'s
+docstring so one rule governs the fixture and the campaign (P2); that docstring now cites it. **It REPORTS and it never
+refuses:** no conjunct state, no verdict word and no bar depends on it. A gate here would have been worse than the
+omission — had one existed, the pinned campaign would have refused, taking with it t(d_f) = −13.0154, the number that
+deleted the learner. Applied offline to the pin's own per-seed accuracies (read, not re-run), **the mark fires on NO
+pinned contrast**: RANDOM clears the bar, barely, so (b)'s near-floor reading is carried by the per-arm line above and
+not by the mark. Red at `da0139f`, green at `82eafb1`; the bare self-check stays green with PLANTED still firing.
+
+**THE 22 STANDING FINDINGS, and the form adopted for each.**
+
+| # | sev | the finding | form adopted |
+|---|---|---|---|
+| F1 | MAJOR | WRONG is not degree-matched to RANDOM; 2.12 made no degree disclosure | §3.5 item 12 + the §3.3 withdrawal + a decisions.md OUTCOME line. NOT an edit of §2.12 (frozen). |
+| F2 | MINOR | `h01_ingest`:1 still reads "a beatable prior"; no T063 succession in the module | appended dated block at the END of the module docstring (`2c2fea9`); :1/:817/:962 untouched. |
+| F3 | MINOR | `HOST_NOTE` contradicts the machine `settling` block, and the pin field is undisclosed | §3.6 line + a STATIC prefix on the constant (`ad98d47`). No per-run outcome in the constant; pins untouched. |
+| F4 | MAJOR | §2.12 cites two pilot readings that are not in the pin and no code produces | §3.5 item 13 + a decisions.md OUTCOME line naming its lines 55–60. §2.12 / §3.1 byte-identical; stage 0 never backfilled. |
+| F5 | MAJOR | `quickstart.md`:32 and `tasks.md`:140 un-annotated; `594b95d`'s "every site" claim false | dated notes at both sites (`6d2a309`) + §3.5 item 14. The pushed subject line is NOT amended. |
+| F6 | MINOR | the SEEDED-vs-chance t (+1.5275) is undisclosed | §3.6 line pointing at this section + a decisions.md OUTCOME line. RANDOM's collapse marked NOT CONTROLLED. |
+| F7 | MINOR | the D guard is read at lr = 0 / one block, and is a ceiling with no floor | §3.6 line, filed as a LIMITATION not a deviation, carrying FROZEN 0.8750 as the corroborating no-learner five-block arm. |
+| F8 | MAJOR | H-R1's "reds not re-runnable as written" over-reaches — red 2 needs no learner | appended sentence on the H-R1 cell (`6d2a309`) + its §3.4 mirror. No self-check number enters the register. |
+| F9 | MAJOR | the "~15 min supervisor cycle" is false; the daemon restarts on every NEW COMMIT | §3.5 item 15 + appended succession in `settling_report`'s docstring (`ad98d47`). `f37fe90` and the pin's `host_note` deliberately not edited. |
+| F10 | MINOR | "a null under P8 clauses 3 and 5" mis-cites clause 5 | §3.5 item 16. Clause 3 stands as cited; the disposition unchanged; no re-wording anywhere. |
+| F11 | MINOR | "the §2.5 no-learner refusal … verbatim" mis-cites §2.5 and is not verbatim | IN-PLACE replacement of the §3.4(1) sentence, quoting the `NO_LEARNER` constant exactly. |
+| F12 | MINOR | "attempted 179,571" is seed 0's, not an every-seed constant | prose sites rewritten to the range; QUOTE sites (specs/011 T012/T013) keep the message BYTE-IDENTICAL with the attribution corrected; decisions.md:271's sibling corrected by an appended line. |
+| F13 | MINOR | `rules_seen` 173 → 172 does not name its span | IN-PLACE replacement of the §3.4(2) parenthetical with the span-named form. `1d4602c` is NOT cited as the 173 anchor — it reads 169. |
+| F14 | MINOR | `tasks.md`'s "38,504" is a cross-driver sum of one counter | appended dated correction INSIDE the T063 DONE note (`6d2a309`), quoting only per-driver numbers already in `r_stdp.py`. No new aggregate. |
+| F15 | MAJOR | the surviving harness reads NO VERDICT on H01 at the pinned capacity | the §3.4 appended paragraph (merged with F21 and F22c) + the module docstring's DISPOSITION block + `synthetic_artifact`'s appended succession (`ad98d47`). The harness is KEPT. |
+| F16 | MINOR | the accuracies are k/8 and the verdict's t-values rest on 8 trials per seed | §3.2 appended paragraph with the trial-unit differences, + a §3.6 clause. No pooling recipe is prescribed. |
+| F17 | MINOR | WRONG is seed-independent, so the corruption has ONE realisation | §3.5 item 17, stating it correctly for BOTH (d) and (e). §2.2 / §2.12 byte-unchanged. |
+| F18 | MINOR | decisions.md's "Nothing is at ceiling" is false over its own table | one dated line appended at the end of that file's OUTCOME. "No arm is PINNED at chance" STANDS; (c) explicitly ring-fenced. |
+| F19 | MINOR | §3.3's "the wiring … is more decodable" over-reaches | merged into the §3.3 appended paragraph. "Nothing here says why" STANDS; no decisions.md change; no mechanism claim. |
+| F20 | MINOR | the campaign's settling windows are absent from §3.2 | the first half only: the windows quoted in the §3.2 appended paragraph. §3.5(4)'s attribution is NOT widened to a second cause. |
+| F21 | MAJOR | the module docstring asserts the contrasts survive in a stronger form than §3.4 | merged into the same §3.4 paragraph and into the docstring's DISPOSITION block, with the reproduction recipe and the explicit "never `--campaign`". |
+| F22 | BLOCKER | (b) was read near the floor; FROZEN decodes the same wiring at 0.8750 | this section's opening block, the §3.4 paragraph, the disposition HELD, the warrant recorded as an opening, and the ONE code change above. |
+
+**THE 6 REFUTED FINDINGS, one line each, disclosed because a refuted finding is part of the record.**
+
+1. [MAJOR] *"The D guard is a one-seed reading whose other side is REFUSAL OF THE ROW, not a different D."* — every
+   number reproduced on an independent probe, but the finding's consequence did not follow: the ladder's blocks = 1
+   protocol is what 2.7's frozen text defines, and the alternative reading it proposed is a different pre-registration.
+2. [MAJOR] *"t(d_f) = −13 is a property of the unbaselined reward as much as of the rule, and the mechanism is a
+   positive-feedback collapse the record does not name."* — the numbers reproduce byte-for-byte against the pin, but
+   the mechanism claim is not established by them, and the disposition rests on the pre-registered criterion.
+3. [MAJOR] *"Conjunct (b) was read between two arms at/near chance, under a learner the same campaign deleted;
+   decisions.md's licensing sentence says otherwise."* — the arithmetic reproduces exactly (seeded +1.5275 below the
+   bar, random +1.9296 above it), but the two load-bearing assertions fail: the licensing sentence is MISREAD (the
+   licence is attached to t(planted − random) = +9.2601, not to the descriptive sentence beside it), and "pinned at
+   chance" is true in this record's own sense of PINNED. The measured half survives as the §3.6 line and this
+   section's opening block.
+4. [MINOR] *"The whole-criterion NOT READ is a category 2.6 does not define and 2.9's closing clause forbids."* — the
+   mechanical facts reproduce, but the finding is disclosed-half plus misread-half, and its own reachability
+   sub-claim is false. §3.4 already records the third reading as the builder's judgment call.
+5. [MINOR] *"The re-reading of the frozen host/settling clause was applied in code and used by a pinned pilot before
+   the amendment that registers it."* — the timestamps reproduce exactly, and they refute the ordering claim: `aba9a71`
+   appends §2.12 with no in-place edit of frozen text.
+6. [MINOR] *"The repair that keeps a verdict whose host clause is NOT MET rests on two executions that left no
+   artifact."* — the filed command reproduces byte-for-byte, and the conclusion does not follow from it.
+
+**EVERY IN-PLACE CORRECTION THIS FOLD MADE** (everything else is appended dated succession):
+
+| site | commit |
+|---|---|
+| `specs/022 tasks.md` T063 DONE note — "attempted 179,571" → the range | `6d2a309` |
+| `specs/022 spec.md` SC-006 note — the same quartet | `6d2a309` |
+| `PLAN-FINAL` :681 (T063 bullet) — the same quartet | `6d2a309` |
+| `PLAN-FINAL` :864 (H-R1 cell) — the same quartet, inside 594b95d's own resolution text | `6d2a309` |
+| `specs/011 tasks.md` T012 / T013 — the ATTRIBUTION around the quoted message (the message itself byte-identical) | `d560a95` |
+| `prior_drift_harness.py` `HOST_NOTE` — a static prefix, body verbatim | `ad98d47` |
+| evidence §3.2 (a) DRIFT cell — the same quartet | this record commit |
+| evidence §3.4(1) — the no-learner refusal sentence (F11) | this record commit |
+| evidence §3.4(2) — the `rules_seen` parenthetical (F13) | this record commit |
+
+**THE FOLD'S COMMITS.** `6d2a309` (specs/022 annotation sites) · `d560a95` (specs/011 OUTCOME + T012/T013) ·
+`2c2fea9` (h01_ingest appended succession) · `ad98d47` (the harness's DISPOSITION block, HOST_NOTE,
+`settling_report`, `synthetic_artifact`) · `da0139f` (the RED) · `82eafb1` (the green: `above_chance`,
+`arms_vs_chance`, `wiring_contrast`) · this record commit.
+
+**This fold is battery-verified only (obs #35).** It was not itself panelled: the fold of review findings is unreviewed
+code, and this sentence is the disclosure rather than a smoothing of it.
