@@ -301,6 +301,84 @@ def test_the_frozen_arm_is_now_an_IDENTITY_control_not_a_learner_control():
     assert c["degenerate"] is True and c["t"] == 0.0
 
 
+# ---- the verdict owes each arm's ACCURACY AGAINST CHANCE, and marks a contrast between two
+#      floor-bound arms NOT INTERPRETABLE (T063 panel 2026-09-09, finding F22) -------------------
+_AT_CHANCE_SEEDED = [0.125, 0.0, 0.25, 0.125, 0.0, 0.25, 0.125, 0.125]
+_AT_CHANCE_RANDOM = [0.0, 0.25, 0.125, 0.125, 0.25, 0.0, 0.125, 0.125]
+_ABOVE_WRONG = [0.50, 0.52, 0.48, 0.51, 0.49, 0.53, 0.50, 0.52]
+_ABOVE_PLANTED = [0.875, 0.90, 0.85, 0.88, 0.86, 0.90, 0.87, 0.89]
+_ABOVE_FROZEN = [0.70, 0.72, 0.68, 0.71, 0.69, 0.73, 0.70, 0.72]
+_NOT_INTERPRETABLE = (
+    "NOT INTERPRETABLE AS A WIRING CONTRAST (both arms fail the above-chance check)"
+)
+
+
+def test_above_chance_reads_an_arm_against_the_1_over_K_floor_with_the_harnesss_own_statistic():
+    """The floor rule the tree already wrote for the FIXTURE -- "a positive control that beats a
+    floor is a formality, not a reading" -- lifted out of `synthetic_artifact`'s docstring into ONE
+    module-level predicate so the same rule governs the fixture and the campaign (P2). It REPORTS:
+    the arm's mean, chance = 1/K, and the harness's own paired t / permutation FPR on
+    (accuracy - chance) over the seeds."""
+    at_floor = H.above_chance(_AT_CHANCE_SEEDED, 8)
+    assert at_floor["chance"] == 0.125
+    assert at_floor["mean"] == sum(_AT_CHANCE_SEEDED) / 8.0
+    assert at_floor["met"] is False, "an arm whose mean sits ON the floor does not clear it"
+    clear = H.above_chance(_ABOVE_PLANTED, 8)
+    assert clear["met"] is True and clear["t"] > H.T_BAR
+
+
+def test_a_contrast_between_two_arms_that_both_fail_the_floor_is_marked_NOT_INTERPRETABLE():
+    """(b) in the pinned campaign contrasted two arms 0.50 and 0.62 held-out trials above chance on
+    a mean gap of one eighth of one trial. The verdict now says so: every arm's accuracy against
+    chance is carried beside the t, and a contrast BOTH of whose arms fail the above-chance check
+    is marked NOT INTERPRETABLE AS A WIRING CONTRAST. It is a REPORT -- no conjunct, no verdict and
+    no threshold moves."""
+    v = H.verdict(
+        _acc(
+            _AT_CHANCE_SEEDED,
+            _AT_CHANCE_RANDOM,
+            _ABOVE_WRONG,
+            _ABOVE_PLANTED,
+            _ABOVE_FROZEN,
+        ),
+        wrong_valid=True,
+        k=8,
+    )
+    vs = v["arms_vs_chance"]
+    assert vs["seeded"]["met"] is False and vs["random"]["met"] is False
+    assert vs["wrong"]["met"] is True and vs["planted"]["met"] is True
+    assert v["contrasts"]["seeded - random"]["wiring_contrast"] == _NOT_INTERPRETABLE
+    assert v["contrasts"]["seeded - wrong"]["wiring_contrast"] == "INTERPRETABLE"
+    assert v["contrasts"]["planted - random"]["wiring_contrast"] == "INTERPRETABLE"
+    #: the mark REPORTS and never refuses: the verdict reads exactly what it read before
+    assert v["conjuncts"]["c"]["state"] == "MET"
+    assert v["conjuncts"]["b"]["state"] == "NOT MET"
+    assert v["sc006"] == "NOT MET"
+    text = H.format_verdict(v)
+    assert _NOT_INTERPRETABLE in text
+    assert "seeded - chance" in text
+
+
+def test_every_contrast_is_INTERPRETABLE_when_at_least_one_of_its_arms_clears_the_floor():
+    """The mark fires only when BOTH arms fail. One arm above the floor is enough for the contrast
+    to be a reading about wiring, which is why the mark is not a refusal."""
+    v = H.verdict(
+        _acc(
+            [0.70, 0.72, 0.68, 0.71, 0.69, 0.73, 0.70, 0.72],
+            [0.50, 0.52, 0.48, 0.51, 0.49, 0.53, 0.50, 0.52],
+            [0.30, 0.32, 0.28, 0.31, 0.29, 0.33, 0.30, 0.32],
+            [0.90, 0.92, 0.88, 0.91, 0.89, 0.93, 0.90, 0.92],
+            [0.70, 0.72, 0.68, 0.71, 0.69, 0.73, 0.70, 0.72],
+        ),
+        wrong_valid=True,
+        k=8,
+    )
+    assert all(a["met"] for a in v["arms_vs_chance"].values())
+    marks = {c["wiring_contrast"] for c in v["contrasts"].values()}
+    assert marks == {"INTERPRETABLE"}
+    assert _NOT_INTERPRETABLE not in H.format_verdict(v)
+
+
 # ---- the arms, and the nuisance properties that make attribution possible ---------------------
 def _art():
     return H.synthetic_artifact(n_units=64, seed=0)
