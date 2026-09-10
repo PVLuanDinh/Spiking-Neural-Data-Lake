@@ -218,3 +218,71 @@ connectome could not distinguish. Its readings are preserved verbatim as stage 1
 - T005 is untouched.
 - Nothing here is a claim about the LIVE brain: the population is off the live tick, and an
   instrument that ticks a scratch population does not discharge the kernel's `wire` exemptions.
+
+---
+
+## OUTCOME 2026-09-09 — what the campaign read on these two decisions
+
+APPENDED, never an edit: everything above was written BEFORE the campaign and stays as it stands,
+including the parts these numbers make look optimistic. The campaign is
+`tools/t063_campaign.json` at head `f37fe90` — K = 8, D = 4 (the ladder's choice), W = 1.0
+(14,215 units / 70,001 edges), 5 tables × 8 seeds, 0.164 h wall. It is NOT re-run and NOT edited.
+
+### T003 — the task instrument WORKED, and that is what makes the negative readable
+
+The re-decided readout was built to stop the saturation the pilot found (every wiring reading
+1.0000 at every K and class fraction). At D = 4 it did:
+
+| arm | accuracy over the 8 seeds |
+|---|---|
+| PLANTED (positive control) | 0.7500 0.6250 0.6250 0.6250 0.7500 0.6250 0.6250 0.5000 |
+| WRONG (band-permuted) | 0.2500 0.3750 0.5000 0.3750 0.2500 0.5000 0.3750 0.2500 |
+| RANDOM (marginal-matched null) | 0.1250 0.0000 0.2500 0.2500 0.3750 0.1250 0.2500 0.2500 |
+| SEEDED (the H01 prior) | 0.0000 0.3750 0.2500 0.2500 0.1250 0.2500 0.1250 0.1250 |
+| FROZEN (SEEDED, `lr = 0`) | 0.7500 0.7500 0.8750 1.0000 1.0000 0.8750 0.8750 0.8750 |
+
+Nothing is at ceiling and nothing is pinned at chance (0.1250). **The instrument is NOT BLIND**:
+t(planted − random) = **+9.2601**, permutation FPR 0.0508. That single reading is what licenses
+treating the rest as measurements of the ARMS rather than of the harness — a null from a blind
+instrument is worth nothing, which is why 2.9 makes (c) the gate on reading anything at all.
+
+### T004 — the replacement WRONG prior was VALID, fired its precondition, and inverted its red
+
+The band-permuted-targets table cleared 2.2's validity precondition on every seed: PSI(wrong,
+seeded) = **6.175870** against PSI(random, seeded) = **2.271100–2.302899**. So red 2 was READ, not
+skipped — which is exactly what the reversed-laminar candidate could not achieve on this
+connectome (0.032389 against 2.281271, above).
+
+Red 2's predicate is that WRONG must UNDERPERFORM RANDOM. **t(random − wrong) = −2.5459**
+(FPR 0.0391). The sign is inverted: the deliberately corrupted prior beat the marginal-matched
+null, and it beat the true prior too (t(seeded − wrong) = **−5.2271**, FPR 0.0312). So red 2 did
+not fire, and nothing is attributed to the prior from it.
+
+**This is a finding of its own and it is not a separation.** T004's whole warrant was that the
+laminar IDENTITY of a synapse's target carries information — the claim red 2 was FOR. Permuting
+that identity across mirrored bands did not degrade the task; it improved it. What that licenses
+is one negative sentence about this task at this width, and no positive story about why.
+
+### The prior's own reading, and the learner's
+
+- **(b) BEATS RANDOM: NOT MET**, t(seeded − random) = **−0.2277** (FPR 0.0781). US3's "beatable
+  prior" is recorded NOT MET for the H01 WIRING BEYOND ITS MARGINALS on this task.
+- **(a) DRIFT: MET.** Red 1 fired on the constructed pin on every seed (executed 120, attempted
+  179,571, effective 0, drift 0) and the SEEDED arm moved on every seed (effective 528,383
+  entries, L1 231,865.22, S1 distance 0.107–0.172). Learning moved the population; it just did
+  not help.
+- **THE LEARNER IS DELETED.** t(d_f) = **−13.0154** (FPR 0.0430): FROZEN scored 0.75–1.00 against
+  the learning arm's 0.00–0.375 on every seed. R-STDP on this population at this reward schedule
+  was actively harmful, and 2.9's clause is that a learner which moves weights without an
+  attributed benefit is a null. `substrate/kernel_plasticity.py` is gone; the R-STDP merge in
+  `basal_ganglia/r_stdp.py` survives as the one implementation.
+
+### What this outcome does to this file's own scope paragraph
+
+It does not widen it. The random control RETAINS H01's degrees, signs and weight magnitudes, so
+the reading cannot separate "H01 contributes nothing" from "H01's useful information is exactly
+what both arms share". The placement-side statistics are still unmeasured. FR-008 and FR-009 are
+now not merely unclosed but **unmeasurable by this instrument**: with no learner, every distance
+it records is a measured zero. Disclosed with the rest: the host clause was NOT MET on the pinned
+run (`daemon_restarted = True`); the campaign was executed three times across four daemon PIDs
+with identical per-seed numbers and identical t-values, and pinned once.

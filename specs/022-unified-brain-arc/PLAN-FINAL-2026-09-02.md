@@ -674,6 +674,26 @@ clause protects it.
   LOSS): half of that rationale is void — there is no paging layer to need a locality order. T062's OTHER
   reader stands unchanged (growth placing units at scale), so the row keeps its rank and its content; what
   is retracted is only "and paging needs a locality order" as a reason for the ordering.*
+  *DATED NOTE 2026-09-09 (T063 CLOSED, campaign `tools/t063_campaign.json` at head `f37fe90`, K = 8, D = 4,
+  W = 1.0 over 14,215 units / 70,001 edges, 8 seeds, 0.164 h): **SC-006 NOT MET on conjuncts (b), (d) and
+  (e).*** (c) NOT BLIND is **MET**, t(planted − random) = **+9.2601** (FPR 0.0508), so the instrument sees an
+  advantage and the verdict is read. (a) DRIFT **MET** — red 1 fired on the constructed pin on every seed
+  (executed 120, attempted 179,571, effective 0, drift 0) and the SEEDED arm moved on every seed (S1 distance
+  0.107–0.172). (b) BEATS RANDOM **NOT MET**, t = **−0.2277** (FPR 0.0781). (d) RED 2 **NOT MET**,
+  t(random − wrong) = **−2.5459** (FPR 0.0391), the WRONG arm VALID on all 8 seeds (PSI 6.175870 against
+  RANDOM's 2.271100–2.302899). (e) BEATS WRONG **NOT MET**, t = **−5.2271** (FPR 0.0312). **The signs of (d)
+  and (e) are a finding of their own and not a separation**: the BAND-PERMUTED corruption beat both the true
+  prior and the marginal-matched null (wrong 0.25–0.50, seeded 0.00–0.375, random 0.00–0.375), so on this task
+  destroying laminar target identity HELPED. Nothing is attributed to the prior from it. **THE LEARNER IS
+  DELETED** on its own criterion, t(d_f) = **−13.0154** (FPR 0.0430): the FROZEN twin scored 0.75–1.00 against
+  the learning arm's 0.00–0.375 on every seed, so `substrate/kernel_plasticity.py` is gone (2.9 — a learner
+  that moves weights without an attributed benefit is a null). What the null clause does to this row: US3's
+  "beatable prior" is NOT MET for the H01 WIRING BEYOND ITS MARGINALS on this task; `cortical_prior` and
+  T062's artifact remain REFERENCE DATA; `h01_ingest.population()` is retained as the harness's FIXTURE and
+  loses its prior role. The claim is bounded by 2.2: the null RETAINS H01's degrees, signs and magnitudes, so
+  this cannot separate "H01 contributes nothing" from "H01's useful information is what both arms share".
+  The host clause was NOT MET on the pinned run (`daemon_restarted = True`); the campaign was executed three
+  times across four daemon PIDs with identical per-seed numbers and identical t-values, and pinned once.*
 - **X1 — the scale target is a CAPABILITY, not a width (T088).** *RATIFIED by the owner 2026-09-06; the full row is
   in `PROPOSED-ROWS-2026-09-06.md`.* T065 derives a width; nothing in this plan said what the brain must be able to DO
   at it, so "superhuman" had no referent and no red. Before the width is built, name ONE task on which this brain's
@@ -690,6 +710,14 @@ clause protects it.
   licence for "superhuman" outside the registry.
 - **Exit: T071** (US3 exit): prior separation + paging verdict + **the region charge gate at
   floor(all-but-exempt)** (FR-015, kept).
+  *DATED NOTE 2026-09-09 (T063 CLOSED): **"prior separation" reads NOT MET.** T063 defined it for the first
+  time (pre-registration 2.6) as conjuncts (b), (d) and (e) together — the harness separates the true prior
+  from its marginal-matched null AND from its corruption on one task — and the campaign read all three NOT
+  MET (b −0.2277, d −2.5459, e −5.2271) with the instrument PROVEN NOT BLIND ((c) +9.2601). This is a
+  measured negative, not an unrun item: T071 inherits the reading, and the two remaining halves of the exit
+  (the paging verdict, the region charge gate at the floor) are untouched by it. What T071 may NOT do with
+  it: read it as "H01 contributes nothing" — the null retains H01's degrees, signs and weight magnitudes
+  (2.2), so the reading is restricted to wiring information BEYOND those marginals on this task.*
 
 ### Phase 4 — Cognition on the substrate (so growth matters) — ranks 3, 5, 6 + US4's instruments
 
@@ -833,7 +861,7 @@ no majority-of-seeds rule anywhere.
 | L-R8 | the append budget flags a class's ORDINARY growth (the measured 52,763 -> 77,998 B climb), or fails to flag a real spike once the window is all-real, or a stale seed alarms for more than a handful of ticks | the same series under the retired fixed bar, and a cold tag that must still be bounded from its first tick | L4b |
 | C-R5 | an instrument that cannot be made to FAIL on a constructed input (a marker, not a dissociation) is not deleted; or a surface prints one of the seven readings without its licensed sentence and scope; or the brain answers a consciousness question with anything but a measured quantity and its scope; or any aggregate score is computed across instruments | each instrument's own dissociation input in the same command; T081's report-order probe | C5 |
 | U-R2 | a fabricated candidate score changes the verdict | harness-only evidence | T073 |
-| H-R1 | **added 2026-09-09 (T063, SC-006/FR-022 — the register carried no row for either).** Two reds, both must be constructible and RUN: **red 1** — a seeded population that never moves off its seed (the FROZEN `lr = 0` arm: effective weight change 0 and both statistics' distance 0, the verdict failing and naming the pin the harness itself applied, never naming pinning for a cancellation, a below-quantization update or an absent spike pair); **red 2** — the deliberately WRONG prior does not UNDERPERFORM its within-sign degree-matched null (paired one-sided t over acc_random − acc_wrong ≤ 1.895), or the reversed-laminar table fails its validity precondition (its band-pair weight-share matrix no farther from SEEDED's, in PSI, than RANDOM's realised matrix is) — in which case red 2 is NOT READ and no attribution to the prior is made. The bar the arms must clear is SC-006's two DIRECT contrasts, seeded-vs-random and seeded-vs-wrong, under Part F's rule above | the PLANTED positive control (a table wired to make the task easy under the same nuisance constraints; it must beat RANDOM at the same t bar or the harness is BLIND and no verdict is read) AND the FROZEN twin (the same seeded table at `lr = 0`, which is also the learner's own retention criterion) | `cortex/prior_drift_harness.py` (with `substrate/kernel_plasticity.py`, the learner the row cannot run without) — widths NAMED BY THE PILOT RULE: the full ingested width and band-balanced induced subgraphs at 1/2, 1/4, 1/8, W = the LARGEST whose measured tick cost projects the campaign under 6 hours on this host, recorded with the projection before the campaign |
+| H-R1 | **added 2026-09-09 (T063, SC-006/FR-022 — the register carried no row for either).** Two reds, both must be constructible and RUN: **red 1** — a seeded population that never moves off its seed (the FROZEN `lr = 0` arm: effective weight change 0 and both statistics' distance 0, the verdict failing and naming the pin the harness itself applied, never naming pinning for a cancellation, a below-quantization update or an absent spike pair); **red 2** — the deliberately WRONG prior does not UNDERPERFORM its within-sign degree-matched null (paired one-sided t over acc_random − acc_wrong ≤ 1.895), or the reversed-laminar table fails its validity precondition (its band-pair weight-share matrix no farther from SEEDED's, in PSI, than RANDOM's realised matrix is) — in which case red 2 is NOT READ and no attribution to the prior is made. The bar the arms must clear is SC-006's two DIRECT contrasts, seeded-vs-random and seeded-vs-wrong, under Part F's rule above | the PLANTED positive control (a table wired to make the task easy under the same nuisance constraints; it must beat RANDOM at the same t bar or the harness is BLIND and no verdict is read) AND the FROZEN twin (the same seeded table at `lr = 0`, which is also the learner's own retention criterion) | `cortex/prior_drift_harness.py` (with `substrate/kernel_plasticity.py`, the learner the row cannot run without) — widths NAMED BY THE PILOT RULE: the full ingested width and band-balanced induced subgraphs at 1/2, 1/4, 1/8, W = the LARGEST whose measured tick cost projects the campaign under 6 hours on this host, recorded with the projection before the campaign. ***FIRED 2026-09-09, and the row is RESOLVED.*** Both reds were constructed and RUN at K = 8, D = 4, W = 1.0 (14,215 units / 70,001 edges, 8 seeds, `tools/t063_campaign.json` at head `f37fe90`). **RED 1 FIRED** on the FROZEN `lr = 0` arm on every seed and named the pin the harness applied — executed 120, attempted 179,571, effective 0, drift 0 — with its control holding (the SEEDED arm moved: S1 distance 0.107–0.172 on every seed). **RED 2 DID NOT FIRE**: the WRONG arm was VALID (PSI 6.175870 against RANDOM's 2.271100–2.302899, measured on all 8 seeds), and t(random − wrong) = **−2.5459** — underperformance is NOT ESTABLISHED because the corruption OUTPERFORMED the null, so nothing is attributed to the prior. **The PLANTED positive control held**, t = **+9.2601** (FPR 0.0508), so the harness is not blind and the verdict is read. **The bar was not cleared on either direct contrast**: seeded−random **−0.2277**, seeded−wrong **−5.2271**. **The FROZEN twin's second job resolved too**: t(d_f) = **−13.0154**, so `substrate/kernel_plasticity.py` — cited in this cell as "the learner the row cannot run without" — is **DELETED** on that criterion, and the harness is kept as a no-learner instrument whose conjunct (a) now reads NOT READ. This row's reds are therefore not re-runnable as written: red 1's subject was a pin against a LEARNING arm, and its slot now reads the no-learner refusal instead. |
 
 ---
 
