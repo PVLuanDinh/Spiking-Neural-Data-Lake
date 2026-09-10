@@ -67,6 +67,15 @@ GRADIENT_CLAIM = {
         "not trained, which is why it can be refit between blocks without contaminating the "
         "learner's own attribution",
     ),
+    "_learner": (
+        "NOT_A_RULE",
+        "the verdict's LEARNER DISPOSITION formatter: it reads the already-computed t(d_f) "
+        "contrast and the arms' effective-change counts and returns KEPT or DELETED with its "
+        "reason. It touches no weight, forms no trace and computes no update -- 'learner' here "
+        "names the thing being JUDGED, not a rule. Declared rather than renamed, because the "
+        "census is right to enumerate the token and a reader is better served by the reason than "
+        "by a name chosen to dodge a gate",
+    ),
 }
 
 REPO = Path(__file__).resolve().parents[3]
