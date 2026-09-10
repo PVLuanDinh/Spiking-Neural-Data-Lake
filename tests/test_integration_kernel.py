@@ -167,3 +167,38 @@ def test_r2_an_uncut_partition_reads_ABOVE_the_null_and_b6_reads_NOT_MET(scratch
         f"(b6) must read NOT MET for a partition that did not cut: {v}"
     )
     assert "partitioned <= null" in _conjunct(v, "b6")["note"]
+
+
+# =============================================================================================
+# Amendment 2.11 (iii): the kernel's partition loop runs with threads = synapses.p_parts, and the
+# INTEGRATED rasters are byte-identical at threads = 1 and threads = p_parts (the determinism
+# gate's invariant, read THROUGH the port's two restores). The lineage's pinned P is 1, so the
+# invariance is asserted on a P = 4 port built through the seam that exists for this test.
+# =============================================================================================
+def test_the_port_defaults_threads_to_the_tables_partition_count(scratch_home):
+    syn, params = M.kernel_port(_fixture())
+    assert params["threads"] == syn.p_parts
+    syn4, params4 = M.kernel_port(_fixture(), p_parts=4)
+    assert syn4.p_parts == 4 and params4["threads"] == 4
+    _syn1, params1 = M.kernel_port(_fixture(), threads=1, p_parts=4)
+    assert params1["threads"] == 1
+
+
+def test_seed_0_integrated_rasters_are_byte_identical_at_threads_1_and_threads_p_parts(
+    scratch_home,
+):
+    art = _fixture()
+    pulse = M.Pulse(units=M.perturbation_sets(64, 0)[0], at=0, length=M.PULSE_LEN, current=1.2)
+    rasters = {}
+    for threads in (1, None):
+        syn, params = M.kernel_port(art, threads=threads, p_parts=4)
+        assert params["threads"] == (1 if threads == 1 else 4)
+        cap = M.warm_capture(syn, params, seed=0, amp=M.FIXTURE_AMP)
+        resp = M.kernel_causal_response(cap.blob, syn, params, M.FIXTURE_AMP, pulse)
+        rasters[params["threads"]] = (resp.base.tobytes(), resp.pert.tobytes(), cap.inflight)
+    assert rasters[1] == rasters[4], (
+        "the INTEGRATED rasters diverged between threads=1 and threads=p_parts -- the "
+        "determinism gate's thread-count invariance is broken through the port"
+    )
+    assert rasters[1][2] > 0, "the fixture carried no in-flight spike at the capture tick"
+    assert rasters[1][0] != rasters[1][1], "the pulse left no footprint -- the run is vacuous"

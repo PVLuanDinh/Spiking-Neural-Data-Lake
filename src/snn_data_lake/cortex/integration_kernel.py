@@ -154,15 +154,21 @@ class Response(NamedTuple):
     pert: object
 
 
-def kernel_port(art, threads=1):
+def kernel_port(art, threads=None, p_parts=None):
     """(Synapses, params) for a population in `h01_ingest`'s artifact format -- built ONCE per arm
     through the harness fixture's own constructor. `params` is what a FRESH kernel needs to be
     seated by `replay_gate.restore`: the faculty layout, the LIF constants, the threshold, the sign
     field (immutable at birth; the tick never reads it, the frame carries it) and the thread count.
-    """
+
+    `threads` None -> the table's own partition count, `synapses.p_parts` (amendment 2.11 (iii):
+    one thread per partition in `KernelTick.tick`'s own pool; the determinism gate's invariant makes
+    the trains byte-identical to threads = 1, asserted through this port's two restores in
+    `tests/test_integration_kernel.py`). `p_parts` None -> the lineage's pinned baseline, which
+    `population` reads itself (`tools/kernel_partition_baseline.json`: P = 1, the knee); it is given
+    only by that test, which needs P > 1 for the invariance to say anything."""
     from snn_data_lake.cortex.h01_ingest import population
 
-    state, syn, kt = population(art, threads=threads)
+    state, syn, kt = population(art, p_parts=p_parts)
     params = {
         "faculties": [(name, hi - lo) for name, (lo, hi) in state.ranges.items()],
         "decay": kt.decay,
@@ -170,7 +176,7 @@ def kernel_port(art, threads=1):
         "refrac_ticks": kt.refrac_ticks,
         "thr": float(state.arrays["thr"].max()),
         "sign": state.arrays["sign"].copy(),
-        "threads": int(threads),
+        "threads": int(syn.p_parts if threads is None else threads),
     }
     return syn, params
 
@@ -410,8 +416,17 @@ def local_echo_null(footprint, units):
     return score_footprint(echo)[0]
 
 
+# distinct-from: cortex/learned_evc.py::_run_regime -- alternates reward schedules to train an EVC;
+#   no kernel, no snapshot, no footprint. Read 2026-09-10.
 def run_regime(
-    art, name, seed, amp, pulse_current=PULSE_CURRENT, threads=1, trials=TRIALS, n_perturb=N_PERTURB
+    art,
+    name,
+    seed,
+    amp,
+    pulse_current=PULSE_CURRENT,
+    threads=None,
+    trials=TRIALS,
+    n_perturb=N_PERTURB,
 ):
     """One arm on one seed: the warm-up and ONE snapshot; the pulse-less identity ASSERTED before any
     PCI is read (2.5(c) -- two restores without a pulse must be byte-identical, or the arm REFUSES
@@ -459,8 +474,10 @@ def run_regime(
     )
 
 
+# distinct-from: substrate/nengo_bridge.py::_NengoLIFMatch -- maps a LIF's constants onto a Nengo
+#   neuron so the two fire at one rate; no drive search, no kernel. Read 2026-09-10.
 def rate_matched_amplitude(
-    art, seed, target, amp, threads=1, tol=RATE_TOL, steps=BISECT_STEPS, ceiling=SEARCH_CEILING
+    art, seed, target, amp, threads=None, tol=RATE_TOL, steps=BISECT_STEPS, ceiling=SEARCH_CEILING
 ):
     """The rate-matched control's amplitude (2.5(a), Codex objection (a) adopted): a BOUNDED bisection
     (<= `steps`) on the background amplitude of the CUT population between 0 and `ceiling` x `amp`,
@@ -492,7 +509,7 @@ def rate_matched_amplitude(
     return best[0], tuple(search), bool(target > 0.0 and abs(best[1] - target) <= tol * target)
 
 
-def kernel_regimes(art, seed, amp=FIXTURE_AMP, pulse_current=PULSE_CURRENT, threads=1):
+def kernel_regimes(art, seed, amp=FIXTURE_AMP, pulse_current=PULSE_CURRENT, threads=None):
     """The five arms of one seed (2.2) on ONE population, the perturbation sets identical across
     them: INTEGRATED (the population's own wiring), PARTITIONED (every edge cut), PARTITIONED-
     RATE-MATCHED (the cut twin at the bisected amplitude), SYNCHRONOUS (the dense strong table),
@@ -749,7 +766,12 @@ def _sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def run_campaign(seeds=None, threads=1):
+# distinct-from: cortex/prior_drift_harness.py::run_campaign -- T063's campaign: five synapse
+#   TABLES x 8 seeds read by spike counts into tools/t063_campaign.json; this is T070's: five
+#   REGIMES on one population read by the PCI contrast into tools/t070_pci.json. The harness's
+#   host clause, seeds, artifact loader and subgraph builder are IMPORTED from it, never
+#   re-implemented. Read 2026-09-10.
+def run_campaign(seeds=None, threads=None):
     """THE CAMPAIGN (2.2, 2.8): the H01 population at the T063 campaign's pinned fraction through the
     harness's `band_balanced_subgraph`, the harness's 8 seeds, the host clause read as T063 2.12(c)
     reads it (five 90 s windows, the daemon's PID per window, IN BAND before the compute), R3 on the
