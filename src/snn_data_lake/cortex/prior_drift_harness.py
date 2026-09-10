@@ -106,6 +106,16 @@ GRADIENT_CLAIM = {
         "subject is gone -- the formatter now reports the DELETION and its date, and derives no "
         "criterion from a run that has no learner to judge",
     ),
+    "no_learner_holds": (
+        "NOT_A_RULE",
+        "the ASSERTION THAT NO RULE RAN, and the census is right to enumerate it: the name carries "
+        "the learning verb precisely because the thing it names is a learner's absence. It reads "
+        "an already-computed ArmResult -- four diagnostic counters and two DriftRecord distances "
+        "-- and returns True iff all six are zero. It touches no weight, forms no trace, computes "
+        "no update and has no gradient of any kind. Declared rather than renamed, for the same "
+        "reason `_learner` above is: a name chosen to dodge a gate tells a later reader less than "
+        "the reason does (2026-09-09)",
+    ),
 }
 
 #: The one statement of what this instrument can no longer measure, quoted by red 1's refusal, by
