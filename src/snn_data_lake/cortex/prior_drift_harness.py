@@ -510,6 +510,23 @@ def arm_seeded(art):
     return _copy(art)
 
 
+# distinct-from: substrate/kernel_tick.py::Synapses.empty -- the empty COMPILED table (zero call
+#   sites); this returns an ARTIFACT dict for `population()` to compile, the units untouched.
+# distinct-from: cortex/h01_ingest.py::build_arrays -- builds the node and edge arrays FROM the
+#   release's cells; this drops the edges of an artifact already built.
+# distinct-from: substrate/determinism_gate.py::_bench_net -- a disclosed synthetic bench with
+#   random edges; nothing is cut. distinct-from: substrate/brain_geometry.py::_connectome_pairs --
+#   region->region tracts of the connectome, not a unit population. All four sites read 2026-09-10.
+def arm_no_edges(art):
+    """The population with EVERY edge cut -- T003's drive-only twin, and (specs/022 T070) the
+    integration instrument's PARTITIONED arm, "the same parts with the measured channel cut". Lifted
+    2026-09-10 from `run_pilot`'s inline block so the two callers share ONE constructor (P2)."""
+    out = _copy(art)
+    for key in ("pre_idx", "post_idx", "n_syn"):
+        out[key] = out[key][:0]
+    return out
+
+
 def arm_random(art, seed):
     """The within-sign degree-preserving rewire. Double-edge swaps inside each SOURCE-SIGN class
     keep every unit's in-degree, out-degree and polarity exactly; the synapse-count multiset is
@@ -2025,10 +2042,7 @@ def run_pilot():
     d_basis = d_chosen if d_chosen is not None else min(D_CANDIDATES)
 
     # ---- T003's required measurement, RE-MEASURED at the chosen D ------------------------------
-    no_edges = _copy(art)
-    for key in ("pre_idx", "post_idx", "n_syn"):
-        no_edges[key] = no_edges[key][:0]
-    drive_only = run_arm(no_edges, "drive-only", 0, classes, d=d_basis, blocks=1)
+    drive_only = run_arm(arm_no_edges(art), "drive-only", 0, classes, d=d_basis, blocks=1)
     seeded_pilot = run_arm(arm_seeded(art), "seeded", 0, classes, d=d_basis, blocks=1)
     chance = 1.0 / k
     print(
