@@ -447,6 +447,29 @@ def test_the_settling_clause_is_read_as_the_absence_of_a_monotone_trend_over_thr
     assert H.is_settled([]) is False
 
 
+def test_the_settling_clause_REFUSES_a_physically_impossible_window():
+    """MEASURED DEFECT, 2026-09-09: the first campaign run's settling read
+    [-515.156, 0.0, 0.0] and `is_settled` returned TRUE -- the daemon restarted mid-probe, the
+    process CPU counter went NEGATIVE against a dead subject, and a run of zeros is not monotone,
+    so the clause passed on a reading of nothing. A zero is a claim about the INSTRUMENT first."""
+    assert H.is_settled([-515.156, 0.0, 0.0]) is False, "a negative CPU window is not a reading"
+    assert H.is_settled([0.0, 0.0, 0.0]) is False, "a daemon with a drive loop never reads 0 CPU"
+    assert H.is_settled([112.0, 0.0, 106.3]) is False, "one dead window invalidates the reading"
+    assert H.is_settled([112.000, 122.906, 106.266]) is True, "the positive control must survive"
+
+
+def test_the_settling_report_marks_a_daemon_restart_as_UNSETTLED():
+    ok = H.settling_report([("34316", 120.297), ("34316", 121.109), ("34316", 112.016)])
+    assert ok["settled"] is True and ok["daemon_restarted"] is False
+    assert ok["daemon_pid_per_window"] == ["34316", "34316", "34316"]
+    moved = H.settling_report([("34316", 120.297), ("33320", 121.109), ("33320", 112.016)])
+    assert moved["daemon_restarted"] is True
+    assert moved["settled"] is False, "a host that swapped daemons under the probe is not settled"
+    dead = H.settling_report([("34316", -515.156), ("none", 0.0), ("none", 0.0)])
+    assert dead["daemon_restarted"] is True and dead["settled"] is False
+    assert H.settling_report([])["settled"] is False
+
+
 # ---- 2.12: the campaign runs iff the guard selected a D AND the WRONG arm is valid ------------
 def test_the_campaign_guard_refuses_without_a_D_and_refuses_an_invalid_wrong_arm():
     ok, why = H.campaign_guard(
