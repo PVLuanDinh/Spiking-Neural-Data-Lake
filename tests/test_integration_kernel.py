@@ -202,3 +202,44 @@ def test_seed_0_integrated_rasters_are_byte_identical_at_threads_1_and_threads_p
     )
     assert rasters[1][2] > 0, "the fixture carried no in-flight spike at the capture tick"
     assert rasters[1][0] != rasters[1][1], "the pulse left no footprint -- the run is vacuous"
+
+
+# =============================================================================================
+# Amendment 2.11: the campaign's SCHEDULE -- every arm reported as it completes (a stalled run is
+# distinguishable from a running one within minutes), the seeds in a thread pool assembled in the
+# order given (the pin byte-identical whatever the scheduling), and the cost rule: ONE measured
+# seed projects the campaign, and a projection past the ceiling REFUSES the run before it starts.
+# =============================================================================================
+def test_kernel_regimes_reports_each_arm_as_it_completes_in_arm_order(scratch_home):
+    art = _fixture()
+    seen = []
+    readings = M.kernel_regimes(
+        art, 0, amp=M.FIXTURE_AMP, report=lambda r, secs: seen.append((r.arm, secs))
+    )
+    assert [arm for arm, _ in seen] == list(M.ARMS), "one report per arm, in arm order"
+    assert all(secs > 0.0 for _, secs in seen)
+    assert readings == M.kernel_regimes(art, 0, amp=M.FIXTURE_AMP), "reporting changes no reading"
+
+
+def test_pooled_seeds_read_the_same_arms_as_the_serial_run_in_the_order_given(scratch_home):
+    art = _fixture()
+    seeds = (2, 0, 1)
+    pooled, walls = M.pooled_regimes(art, seeds, M.FIXTURE_AMP, workers=3)
+    assert list(pooled) == [2, 0, 1] and list(walls) == [2, 0, 1], "the order given, not completion"
+    for s in seeds:
+        assert pooled[s] == M.kernel_regimes(art, s, amp=M.FIXTURE_AMP), f"seed {s} differs pooled"
+        assert walls[s] > 0.0
+
+
+def test_a_seed_that_projects_the_campaign_past_the_ceiling_is_refused():
+    assert M.CAMPAIGN_CEILING_S == 3 * 3600
+    slow = {arm: 1_200.0 for arm in M.ARMS}  # a fake 6,000 s seed
+    p = M.campaign_projection(slow, n_seeds=8, workers=8)
+    assert (p.seed_s, p.serial_s, p.scheduled_s) == (6_000.0, 48_000.0, 12_000.0)
+    assert p.refused, "6,000 s x (1 + ceil(7 / 8)) = 12,000 s > 10,800 s must REFUSE"
+    quick = {arm: 60.0 for arm in M.ARMS}  # a fake 300 s seed
+    q = M.campaign_projection(quick, n_seeds=8, workers=8)
+    assert (q.serial_s, q.scheduled_s, q.refused) == (2_400.0, 600.0, False)
+    one = M.campaign_projection(quick, n_seeds=8, workers=1)
+    assert (one.scheduled_s, one.refused) == (2_400.0, False), "one worker: scheduled == serial"
+    assert M.campaign_projection({arm: 500.0 for arm in M.ARMS}, 8, workers=1).refused

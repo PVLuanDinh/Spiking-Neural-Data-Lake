@@ -509,19 +509,36 @@ def rate_matched_amplitude(
     return best[0], tuple(search), bool(target > 0.0 and abs(best[1] - target) <= tol * target)
 
 
-def kernel_regimes(art, seed, amp=FIXTURE_AMP, pulse_current=PULSE_CURRENT, threads=None):
+def kernel_regimes(
+    art, seed, amp=FIXTURE_AMP, pulse_current=PULSE_CURRENT, threads=None, report=None
+):
     """The five arms of one seed (2.2) on ONE population, the perturbation sets identical across
     them: INTEGRATED (the population's own wiring), PARTITIONED (every edge cut), PARTITIONED-
     RATE-MATCHED (the cut twin at the bisected amplitude), SYNCHRONOUS (the dense strong table),
-    SILENT (the wiring with the background amplitude 0; the pulse still lands)."""
+    SILENT (the wiring with the background amplitude 0; the pulse still lands). `report(reading,
+    seconds)`, when given, is called as EACH arm completes with its wall seconds (the rate-matched
+    arm's include its bisection) -- the campaign's per-arm log (2.11); it changes no reading."""
+    import time
+
+    def done(reading, t0):
+        if report is not None:
+            report(reading, time.perf_counter() - t0)
+        return time.perf_counter()
+
+    t = time.perf_counter()
     integ = run_regime(art, "integrated", seed, amp, pulse_current, threads)
+    t = done(integ, t)
     cut = arm_partitioned(art)
     part = run_regime(cut, "partitioned", seed, amp, pulse_current, threads)
+    t = done(part, t)
     amp_m, search, matched = rate_matched_amplitude(cut, seed, integ.rate, amp, threads)
     prm = run_regime(cut, "partitioned_rate_matched", seed, amp_m, pulse_current, threads)
     prm = prm._replace(search=search, matched=matched)
+    t = done(prm, t)
     sync = run_regime(art, "synchronous", seed, amp, pulse_current, threads)
+    t = done(sync, t)
     silent = run_regime(art, "silent", seed, 0.0, pulse_current, threads)
+    done(silent, t)
     return {
         "integrated": integ,
         "partitioned": part,
@@ -529,6 +546,82 @@ def kernel_regimes(art, seed, amp=FIXTURE_AMP, pulse_current=PULSE_CURRENT, thre
         "synchronous": sync,
         "silent": silent,
     }
+
+
+# ---- the campaign's SCHEDULE and COST RULE (amendment 2.11) ----------------------------------
+# distinct-from: cortex/prior_drift_harness.py::random_projection -- a QR-orthonormalised Gaussian
+#   matrix projecting spike counts to D dimensions (T063 2.12(a)); "projection" there is linear
+#   algebra, here it is a wall-time forecast.
+# distinct-from: brainstem/arm_config.py::_joint_limits -- the arm's per-joint ranges (the safety
+#   envelope; read, never touched).
+# distinct-from: hippocampus/grid_place_map.py::GridPlaceMap.grid_spikes -- a rate-to-spike
+#   readout of a grid population.
+# distinct-from: hippocampus/growable_readout.py::_restore_adam -- an optimizer state restore.
+# distinct-from: reasoning/resonator_network.py::_resonate -- a resonator's fixed-point loop.
+#   All five read 2026-09-10 before this block was written; the guard matched on shared words.
+WORKERS = 8  # 2.11 (ii): one seed per worker -- true parallel threads under Python 3.14t
+CAMPAIGN_CEILING_S = 3 * 3600  # 2.11: one measured seed projecting the run past this REFUSES it
+
+
+class Projection(NamedTuple):
+    """2.11's cost rule, read from ONE measured seed: `arm_s` its wall seconds per arm, `seed_s`
+    their sum, `serial_s` = seed_s x n_seeds, `scheduled_s` the forecast as the run schedules it
+    (the measured seed, then the rest in `workers` parallel threads, each assumed no faster than
+    the measured one -- optimistic about contention, which is why the per-arm log lines are the
+    running check), `refused` when scheduled_s passes the ceiling."""
+
+    arm_s: dict
+    seed_s: float
+    n_seeds: int
+    workers: int
+    serial_s: float
+    scheduled_s: float
+    refused: bool
+
+
+def campaign_projection(arm_s, n_seeds, workers=WORKERS, ceiling=CAMPAIGN_CEILING_S):
+    """The Projection of `n_seeds` from one seed's per-arm wall seconds `arm_s` (see Projection)."""
+    import math
+
+    seed_s = float(sum(arm_s.values()))
+    waves = 1 + math.ceil(max(0, int(n_seeds) - 1) / max(1, int(workers)))
+    scheduled = seed_s * waves
+    return Projection(
+        dict(arm_s),
+        seed_s,
+        int(n_seeds),
+        int(workers),
+        seed_s * int(n_seeds),
+        scheduled,
+        bool(scheduled > float(ceiling)),
+    )
+
+
+def pooled_regimes(
+    art,
+    seeds,
+    amp=FIXTURE_AMP,
+    pulse_current=PULSE_CURRENT,
+    threads=None,
+    workers=WORKERS,
+    report=None,
+):
+    """`kernel_regimes` for every seed of `seeds`, one seed per worker thread (2.11 (ii)); returns
+    ({seed: readings}, {seed: wall seconds}) assembled in the ORDER GIVEN, never in completion
+    order, so the pin is byte-identical whatever the scheduling. Every seed builds its own port
+    and streams; the readings are independent of the pool."""
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+
+    def one(seed):
+        t0 = time.perf_counter()
+        readings = kernel_regimes(art, seed, amp, pulse_current, threads, report)
+        return readings, time.perf_counter() - t0
+
+    with ThreadPoolExecutor(max_workers=max(1, int(workers))) as pool:
+        futures = {s: pool.submit(one, s) for s in seeds}
+        done = {s: futures[s].result() for s in seeds}
+    return {s: done[s][0] for s in seeds}, {s: done[s][1] for s in seeds}
 
 
 def _con(name, diffs, bar):
@@ -771,15 +864,20 @@ def _sha256(path):
 #   REGIMES on one population read by the PCI contrast into tools/t070_pci.json. The harness's
 #   host clause, seeds, artifact loader and subgraph builder are IMPORTED from it, never
 #   re-implemented. Read 2026-09-10.
-def run_campaign(seeds=None, threads=None):
-    """THE CAMPAIGN (2.2, 2.8): the H01 population at the T063 campaign's pinned fraction through the
-    harness's `band_balanced_subgraph`, the harness's 8 seeds, the host clause read as T063 2.12(c)
-    reads it (five 90 s windows, the daemon's PID per window, IN BAND before the compute), R3 on the
-    campaign population itself, then the five arms per seed and the verdict. Pinned whole to
-    tools/t070_pci.json: head, the instrument's and the scorers' and the harness's sha256, the
-    artifact's sha256, every arm's per-seed PCI / gzip twin / rate / null / in-flight / amplitude,
-    the rate search per seed, every contrast with its FPR, the chain rows, the host windows. Runs in
-    a commit-free window (the daemon exits on a new commit at HEAD)."""
+def run_campaign(seeds=None, threads=None, workers=WORKERS):
+    """THE CAMPAIGN (2.2, 2.8, 2.11): the H01 population at the T063 campaign's pinned fraction
+    through the harness's `band_balanced_subgraph`, the harness's 8 seeds, the host clause read as
+    T063 2.12(c) reads it (five 90 s windows, the daemon's PID per window, IN BAND before the
+    compute), R3 on the campaign population itself, then the five arms per seed and the verdict.
+    2.11's schedule: the FIRST seed runs alone with every arm's wall time printed as it completes,
+    that seed projects the run (`campaign_projection`; past the ceiling the campaign is REFUSED
+    here, with no pin), and the remaining seeds run one per worker thread (`pooled_regimes`).
+    Pinned whole to tools/t070_pci.json: head, the instrument's and the scorers' and the harness's
+    sha256, the artifact's sha256, every arm's per-seed PCI / gzip twin / rate / null / in-flight /
+    amplitude, the rate search per seed, every contrast with its FPR, the chain rows, the host
+    windows, the kernel's partition and thread counts, the scorer's routed device, the projection
+    and every seed's and arm's wall seconds. Runs in a commit-free window (the daemon exits on a
+    new commit at HEAD)."""
     import time
 
     from snn_data_lake.cortex import integration_measure, prior_drift_harness
@@ -794,6 +892,7 @@ def run_campaign(seeds=None, threads=None):
         _settling,
         band_balanced_subgraph,
     )
+    from snn_data_lake.substrate.device import decisions
     from snn_data_lake.substrate.home import throwaway_home
 
     seeds = tuple(range(S_SEEDS)) if seeds is None else tuple(int(s) for s in seeds)
@@ -813,18 +912,46 @@ def run_campaign(seeds=None, threads=None):
         chain = chain_check(art, seeds, FIXTURE_AMP)
         for line in _chain_lines(chain):
             print(line, flush=True)
-        readings = {}
+        syn0, params0 = kernel_port(art, threads=threads)
+        kernel_cfg = {"p_parts": int(syn0.p_parts), "threads": int(params0["threads"])}
+        print(
+            f"kernel: p_parts {syn0.p_parts}, threads {params0['threads']} (2.11 (iii))", flush=True
+        )
+        arm_wall = {}
+
+        def report(r, secs):
+            arm_wall[(r.seed, r.arm)] = secs
+            print(
+                f"seed {r.seed} {r.arm:<26} amp {r.amp:6.4f} PCI {r.pci:.4f} gzip {r.gzip:7.2f} "
+                f"rate {r.rate:.4f} null {r.null:.4f} in-flight {r.inflight}  {secs:.1f} s",
+                flush=True,
+            )
+
+        first, rest = seeds[:1], seeds[1:]
+        readings, seed_wall = pooled_regimes(
+            art, first, FIXTURE_AMP, threads=threads, workers=1, report=report
+        )
+        proj = campaign_projection(
+            {arm: arm_wall[(first[0], arm)] for arm in ARMS}, len(seeds), workers
+        )
+        print(
+            f"one seed measured (seed {first[0]}): {proj.seed_s:.1f} s over the five arms; "
+            f"projection for {len(seeds)} seeds: serial {proj.serial_s / 3600:.2f} h, scheduled "
+            f"with {workers} workers {proj.scheduled_s / 3600:.2f} h, ceiling "
+            f"{CAMPAIGN_CEILING_S / 3600:.0f} h -> {'REFUSED' if proj.refused else 'PROCEEDS'}",
+            flush=True,
+        )
+        if proj.refused:
+            print("campaign REFUSED (2.11): one seed projects past the ceiling; no pin written")
+            return 2
+        more, more_wall = pooled_regimes(
+            art, rest, FIXTURE_AMP, threads=threads, workers=workers, report=report
+        )
+        readings.update(more)
+        seed_wall.update(more_wall)
         for s in seeds:
-            t_seed = time.time()
-            readings[s] = kernel_regimes(art, s, FIXTURE_AMP, threads=threads)
-            for arm in ARMS:
-                r = readings[s][arm]
-                print(
-                    f"seed {s} {arm:<26} amp {r.amp:6.4f} PCI {r.pci:.4f} gzip {r.gzip:7.2f} "
-                    f"rate {r.rate:.4f} null {r.null:.4f} in-flight {r.inflight}",
-                    flush=True,
-                )
-            print(f"seed {s} done in {time.time() - t_seed:.1f} s", flush=True)
+            how = "measured solo" if s == first[0] else f"pooled, {workers} workers"
+            print(f"seed {s} done in {seed_wall[s]:.1f} s ({how})", flush=True)
     v = verdict_t070(readings, chain)
     print("-" * 96)
     print(format_verdict_t070(v, readings))
@@ -867,6 +994,15 @@ def run_campaign(seeds=None, threads=None):
         "host_daemon_changed": host0.get("daemon_pid") != host1.get("daemon_pid"),
         "settling": settling,
         "wall_seconds": round(time.time() - t0, 1),
+        "kernel": kernel_cfg,
+        "workers": int(workers),
+        "schedule": {"measured_solo": list(first), "pooled": list(rest)},
+        "projection": proj._asdict(),
+        "seed_wall_seconds": {str(s): round(seed_wall[s], 1) for s in seeds},
+        "arm_wall_seconds": {
+            str(s): {arm: round(arm_wall[(s, arm)], 1) for arm in ARMS} for s in seeds
+        },
+        "scorer_device": decisions().get("lz76"),
     }
     CAMPAIGN_PIN.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
     print(f"campaign pinned to {CAMPAIGN_PIN} ({record['wall_seconds']} s)")
