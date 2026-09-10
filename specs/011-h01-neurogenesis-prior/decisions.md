@@ -125,6 +125,90 @@ stands as a decision while its ARM is invalid on this artifact.
 
 ---
 
+## RE-DECISION 2026-09-09 (T063 pre-registration §2.12) — read this before either section above
+
+Both sections above stand as the record of what was decided and measured FIRST. Neither is edited:
+the amendment §2.12 of `specs/022-unified-brain-arc/evidence/t063-prior-drift-harness.md` re-decided
+T003's INSTRUMENT and T004's ARM after the first pilot, and this section is what supersedes them.
+Where the two disagree, this section is current and the sections above are history.
+
+### T003 — the TASK is unchanged; its READOUT is not
+
+The task's DEFINITION is exactly as decided above: K drive classes on fixed 5 % subsets drawn per
+seed and disjoint, a deterministic per-seed Poisson-shaped drive, **features from NON-driven units
+only**, a least-squares linear readout fit on previous blocks, `marginal_holdout` per class, and the
+frozen per-trial protocol of §2.3. What changed is the readout's **CAPACITY**, and the guard that
+sets it.
+
+**Why.** The first pilot found the task saturated: with ~13,500 non-driven units against ~24
+training trials per block, the least-squares readout is massively over-parameterised, so every
+wiring interpolated its training block exactly and read **1.0000** held out — at K = 8 and K = 16,
+at every cell of a 13-configuration sweep, and on a second instrument (nearest-centroid) that fits
+no readout at all. The pre-registered K rule therefore selected **no K**.
+
+**The replacement instrument.** The feature vector is a **FIXED per-seed random projection**
+(Gaussian, orthonormalised) of the non-driven units' spike counts to **D** dimensions. **K = 8.**
+**D is the LARGEST of {4, 8, 16, 32, 64, 128} at which the no-learning RANDOM arm scores below 0.9**
+held out on the pilot seed — a capacity guard applied to the NULL, before any arm is compared. If no
+D qualifies, the row is REFUSED ON MEASUREMENT with the finding that this population admits no
+readout capacity at which its wiring can be separated from a marginal-matched null by this protocol.
+
+**PILOT READING (2026-09-09, git `41c2705`, harness under amendment 2.12, same artifact
+`h01_c3_graph.npz` sha256 `a1d0491a…4a0549`, 14,215 units, 70,001 edges, seed 0, K = 8, daemon PID
+34316 LISTEN on 8137, settled = True from three 90 s CPU windows 120.297 / 121.109 / 112.016).**
+The ladder reads **0.7500** at D = 4 and **1.0000** at D = 8, 16, 32, 64 and 128, so **D = 4** — the
+largest under the ceiling, and the only candidate under it. DISCLOSED: the reading has 8 held-out
+trials, so its grid is eighths; 0.7500 is 6/8 against a ceiling that admits up to 7/8. The guard is
+COARSE at this block count, and it is satisfied as written.
+
+**T003's required measurement, RE-MEASURED at the chosen D.** The DRIVE-ONLY population — the same
+units, the same class subsets, the same drive, **no edges** — scores **0.1250** against a chance
+level of 1/K = **0.1250**, while the same protocol on the graph-bearing SEEDED arm reads **0.6250**.
+The shortcut is measured absent a second time: the projection opened no path around the graph.
+
+**Rejected here, and the side each failed on.** OVERLAPPING class subsets — leaves the reachable-set
+signature intact wherever the subsets differ, i.e. the same saturation one level down. A GRADED
+regression target — changes the task's KIND after the numbers were seen, rather than its capacity.
+The five candidates rejected in the T003 table above are unaffected and still stand.
+
+### T004 — the WRONG PRIOR is now the BAND-PERMUTED-TARGETS table
+
+**DECIDED: every edge keeps its pre and its synapse count, and its post is drawn from band
+π(band(post)) at the same within-band degree rank, where π reverses cortical depth (Layer 1 ↔ Layer
+6, Layer 2 ↔ Layer 5, Layer 3 ↔ Layer 4, White matter fixed); polarity is re-applied from the pre;
+fan-in is re-normalised; the synapse-count multiset and the edge count are preserved.**
+
+**Why the direction-reversed table was retired.** Not because it was wrong to decide — because it is
+**structurally near-null on this connectome**, which the precondition existed to detect and did.
+The band-pair weight-share matrix carries **0.726520** of its mass on the DIAGONAL, which a
+transpose cannot touch; its total asymmetry is `Σ|M − Mᵀ|/2` = **0.041883**; PSI(Mᵀ, M) =
+**0.034053**. The realised arm read PSI(WRONG, SEEDED) = **0.032389** against PSI(RANDOM, SEEDED) =
+**2.281271** — invalid by 70×. **No transpose-based corruption can clear this precondition here.**
+
+**What the permutation falsifies.** That the laminar **IDENTITY** of a synapse's target carries
+information — a claim about the diagonal, which is where this connectome's mass actually is. It
+moves each band's intra-band mass onto its depth-mirror, so it is far from SEEDED wherever band
+masses differ (Layer 2's 4,709 units against Layer 6's 1,040).
+
+**VALIDITY PRECONDITION, unchanged and MEASURED (same run).** PSI(WRONG, SEEDED) = **6.175870**
+against PSI(RANDOM, SEEDED) = **2.281271** → the WRONG arm is **VALID**, 2.7× farther than the null.
+**Off-band fallback edges: 0** — every edge landed in π(band(post)).
+
+**TWO READINGS DISCLOSED, because the amendment's text admits them.** (1) "The same within-band
+degree rank" between bands of different size is realised as the same rank **QUANTILE**: rank r of
+n_b maps to ⌊r · n_π(b) / n_b⌋ — the only total and monotone reading of "same rank" across unequal
+sets. Where the mirrored band is smaller the map is many-to-one, which is why this arm permits
+repeated (pre, post) pairs and is not checked for multi-edges. (2) A remap that would create a
+SELF-edge walks forward inside the target band; where that band is empty or holds only the pre, the
+original post is kept and counted as an off-band fallback.
+
+**T004's three earlier rejections (inverted E/I, shuffled layer labels, uniform-across-layers)
+stand unchanged**, and the reversed-laminar table stays in the record above as the candidate this
+connectome could not distinguish. Its readings are preserved verbatim as stage 1 of
+`tools/t063_pilot.json`.
+
+---
+
 ## What these two decisions do NOT close
 
 - specs/011's original seeded statistics — layer occupancy, layer geometry, the excitatory CELL
