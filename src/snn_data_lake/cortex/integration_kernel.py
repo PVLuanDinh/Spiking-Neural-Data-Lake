@@ -70,6 +70,7 @@ from __future__ import annotations
 import io
 import json
 import sys
+from pathlib import Path
 from typing import NamedTuple
 
 from snn_data_lake.cortex.integration_measure import (
@@ -739,9 +740,123 @@ def selfcheck(seeds=SELF_SEEDS, amp=FIXTURE_AMP):
     return chain, (red1, v1), (uncut, v2), readings, verdict_t070(readings, chain)
 
 
+CAMPAIGN_PIN = Path(__file__).resolve().parents[3] / "tools" / "t070_pci.json"
+
+
+def _sha256(path):
+    import hashlib
+
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def run_campaign(seeds=None, threads=1):
+    """THE CAMPAIGN (2.2, 2.8): the H01 population at the T063 campaign's pinned fraction through the
+    harness's `band_balanced_subgraph`, the harness's 8 seeds, the host clause read as T063 2.12(c)
+    reads it (five 90 s windows, the daemon's PID per window, IN BAND before the compute), R3 on the
+    campaign population itself, then the five arms per seed and the verdict. Pinned whole to
+    tools/t070_pci.json: head, the instrument's and the scorers' and the harness's sha256, the
+    artifact's sha256, every arm's per-seed PCI / gzip twin / rate / null / in-flight / amplitude,
+    the rate search per seed, every contrast with its FPR, the chain rows, the host windows. Runs in
+    a commit-free window (the daemon exits on a new commit at HEAD)."""
+    import time
+
+    from snn_data_lake.cortex import integration_measure, prior_drift_harness
+    from snn_data_lake.cortex.h01_ingest import ARTIFACT, load_artifact
+    from snn_data_lake.cortex.prior_drift_harness import (
+        CAMPAIGN_PIN as T063_PIN,
+    )
+    from snn_data_lake.cortex.prior_drift_harness import (
+        S_SEEDS,
+        _git_head,
+        _host_condition,
+        _settling,
+        band_balanced_subgraph,
+    )
+    from snn_data_lake.substrate.home import throwaway_home
+
+    seeds = tuple(range(S_SEEDS)) if seeds is None else tuple(int(s) for s in seeds)
+    t0 = time.time()
+    host0 = _host_condition()
+    print(f"host at start: {host0}")
+    settling = _settling()
+    print(f"settling: {settling}")
+    w_frac = float(json.loads(T063_PIN.read_text(encoding="utf-8"))["W_frac"])
+    with throwaway_home():
+        art = band_balanced_subgraph(load_artifact(), w_frac)
+        n_units, n_edges = int(art["agglo_id"].size), int(art["pre_idx"].size)
+        print(
+            f"campaign: the H01 population at W = {w_frac} -> {n_units} units / {n_edges} edges; "
+            f"seeds {list(seeds)}; amp {FIXTURE_AMP} re-measured here (obs #2165)"
+        )
+        chain = chain_check(art, seeds, FIXTURE_AMP)
+        for line in _chain_lines(chain):
+            print(line, flush=True)
+        readings = {}
+        for s in seeds:
+            t_seed = time.time()
+            readings[s] = kernel_regimes(art, s, FIXTURE_AMP, threads=threads)
+            for arm in ARMS:
+                r = readings[s][arm]
+                print(
+                    f"seed {s} {arm:<26} amp {r.amp:6.4f} PCI {r.pci:.4f} gzip {r.gzip:7.2f} "
+                    f"rate {r.rate:.4f} null {r.null:.4f} in-flight {r.inflight}",
+                    flush=True,
+                )
+            print(f"seed {s} done in {time.time() - t_seed:.1f} s", flush=True)
+    v = verdict_t070(readings, chain)
+    print("-" * 96)
+    print(format_verdict_t070(v, readings))
+    print("-" * 96)
+    host1 = _host_condition()
+    record = {
+        "task": "T070 -- the integration instrument on the kernel's port (specs/022 Phase 4 / C4)",
+        "git_head": _git_head(),
+        "instrument_sha256": _sha256(__file__),
+        "scorer_sha256": _sha256(integration_measure.__file__),
+        "harness_sha256": _sha256(prior_drift_harness.__file__),
+        "artifact": str(ARTIFACT),
+        "artifact_sha256": _sha256(ARTIFACT),
+        "W_frac": w_frac,
+        "W_units": n_units,
+        "W_edges": n_edges,
+        "seeds": list(seeds),
+        "constants": {
+            "WARM": WARM,
+            "STEPS": STEPS,
+            "PULSE_T": PULSE_T,
+            "PULSE_LEN": PULSE_LEN,
+            "PULSE_CURRENT": PULSE_CURRENT,
+            "TRIALS": TRIALS,
+            "N_PERTURB": N_PERTURB,
+            "amp": FIXTURE_AMP,
+            "RATE_TOL": RATE_TOL,
+            "BISECT_STEPS": BISECT_STEPS,
+            "SYNC_FANOUT": SYNC_FANOUT,
+            "SEARCH_CEILING": SEARCH_CEILING,
+            "bar": T_BAR,
+        },
+        "chain": chain,
+        "arms": {str(s): {arm: readings[s][arm]._asdict() for arm in ARMS} for s in seeds},
+        "null_per_seed": {str(s): readings[s]["integrated"].null for s in seeds},
+        "conjuncts": v["conjuncts"],
+        "pass": v["pass"],
+        "host": host0,
+        "host_end": host1,
+        "host_daemon_changed": host0.get("daemon_pid") != host1.get("daemon_pid"),
+        "settling": settling,
+        "wall_seconds": round(time.time() - t0, 1),
+    }
+    CAMPAIGN_PIN.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
+    print(f"campaign pinned to {CAMPAIGN_PIN} ({record['wall_seconds']} s)")
+    return 0
+
+
 def main(argv=None) -> int:
     from snn_data_lake.substrate.home import throwaway_home
 
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] == ["--campaign"]:
+        return run_campaign()
     with throwaway_home():
         chain, (red1, v1), (uncut, v2), readings, v = selfcheck()
     print("=" * 96)
