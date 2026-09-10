@@ -103,6 +103,7 @@ CORE = [
     "cortex.neuron_zoo",
     "cortex.access_consciousness",
     "cortex.integration_measure",
+    "cortex.integration_kernel",
     "cortex.self_model",
     "cortex.reasoning_curriculum",
     "cortex.autapse_neuron",

@@ -26,7 +26,7 @@ import pytest
 
 np = pytest.importorskip("numpy")
 
-from snn_data_lake.cortex import integration_measure as M  # noqa: E402
+from snn_data_lake.cortex import integration_kernel as M  # noqa: E402
 from snn_data_lake.cortex import prior_drift_harness as H  # noqa: E402
 from snn_data_lake.substrate import replay_gate as G  # noqa: E402
 
