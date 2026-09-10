@@ -97,6 +97,20 @@ WHITE_MATTER = "White matter"
 #: 49,377 soma records: 45,404 / 49,377. Every disagreement is an ADJACENT layer (top confusions
 #: L4->L3 971, L5->L6 537, L3->L2 501) -- boundary cells the circle fit places one band over. This
 #: is the accuracy bound for anything derived from placement, and it is measured, not asserted.
+#:
+#: APPENDED 2026-09-10, the text above kept VERBATIM because it is the record of what this constant
+#: was taken to mean and rewriting it would destroy that record: THE SENTENCE "Every disagreement is
+#: an ADJACENT layer" IS FALSE AS MEASURED. T062's H01 ingest re-measured the confusion matrix and
+#: filed it as an open finding: "1,277 of the 3,973 disagreements are non-adjacent (519 of 3,016
+#: after dropping the buckets), the largest being Layer 3 -> White matter 315 and, from id '0'
+#: alone, Layer 1 -> White matter 246." Quoted from
+#: `specs/022-unified-brain-arc/evidence/t062-h01-ingest.md` 3.5(15); nothing here is re-derived.
+#: WHAT IS UNCHANGED: LAYER_RULE_AGREEMENT = 0.9195 stands exactly as recorded -- T062's fold made
+#: that finding record-only, and two self-checks and a test assert on the value. WHAT CHANGES IS HOW
+#: THE BOUND MAY BE READ: the disagreements are not all one band over, so "adjacent" may not be used
+#: to bound the error of anything derived from placement. The same record measures a second reading
+#: of the agreement itself, both kept: 45,404 / 49,377 = 0.9195 over all somata, and 45,129 / 47,558
+#: = 0.9489 over the somata left after excluding the 1,819 bucket rows.
 LAYER_RULE_AGREEMENT = 0.9195
 
 
