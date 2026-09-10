@@ -458,6 +458,30 @@ def test_the_settling_clause_REFUSES_a_physically_impossible_window():
     assert H.is_settled([112.000, 122.906, 106.266]) is True, "the positive control must survive"
 
 
+def test_three_windows_FALSE_ALARM_on_a_third_of_settled_hosts_so_the_run_takes_more():
+    """MEASURED, 2026-09-09: the re-run's settling read [127.047, 121.172, 109.969] on ONE live
+    daemon -- a real reading of a steady host that happened to come out strictly decreasing, so the
+    monotone test called it NOT settled. That is not a bad host, it is a weak instrument: over n
+    windows drawn from a settled duty cycle, exactly 2 of n! orderings are monotone. At n = 3 that
+    is one settled host in three. The floor stays at 3 (the amendment says "at least three"); the
+    number of windows a RUN takes is what must be large enough for the test to mean anything."""
+    import itertools
+
+    for n, expect in ((3, 2 / 6), (5, 2 / 120)):
+        alarms = sum(
+            1
+            for p in itertools.permutations(range(n))
+            if not H.is_settled([float(x) + 1.0 for x in p])
+        )
+        assert alarms / math.factorial(n) == pytest.approx(expect), (
+            f"{n} windows: the monotone rule's false-alarm rate on a settled host"
+        )
+    assert H.SETTLING_WINDOWS == 3, "the amendment's floor is three windows"
+    assert H.SETTLING_MEASURED >= 5, (
+        "a run must take at least 5 windows: at 3 the clause rejects a settled host 1 time in 3"
+    )
+
+
 def test_the_settling_report_marks_a_daemon_restart_as_UNSETTLED():
     ok = H.settling_report([("34316", 120.297), ("34316", 121.109), ("34316", 112.016)])
     assert ok["settled"] is True and ok["daemon_restarted"] is False
