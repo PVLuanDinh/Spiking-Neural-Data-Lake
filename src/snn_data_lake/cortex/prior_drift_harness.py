@@ -444,6 +444,43 @@ def contrast(name, diffs, bar=T_BAR):
     return Contrast(name, diffs, t, permutation_fpr(diffs, bar), False, t > bar)
 
 
+#: THE FLOOR RULE, LIFTED (P2). It was written once, in prose, inside `synthetic_artifact`'s
+#: docstring -- "12 and 16 are REJECTED though their t is larger: both base arms sit at chance
+#: (0.25 = 1/K) there, and a positive control that beats a floor is a formality, not a reading" --
+#: where it governed the FIXTURE only, and the same docstring told the reader it "changes nothing
+#: about the campaign's population". The campaign was never exempt from it. ONE function now states
+#: the rule, that docstring cites it, and it reads the fixture and the campaign alike.
+# distinct-from: cortex/nef_compute.py::_run_hint -- DERIVES A COMMAND STRING from `__spec__.name` so a self-check hint cannot go stale when the file moves; it reads no number and has no criterion.
+# distinct-from: reasoning/self_improve.py::_self_pkg_relpath -- DERIVES THIS MODULE'S OWN PATH from `__file__` so a PROTECTED-set assert has an independent second side; a filesystem walk, not a statistic.
+# distinct-from: substrate/self_mod_harness.py::_repo_root -- WALKS UP TO THE REPO ROOT by marker files; an anchored directory search, with no accuracy, no chance level and no bar.
+#   All three sites read 2026-09-10 before this marker was written. What follows derives an arm's
+#   distance from the 1/K chance floor and reads it with the row's own paired t and its own bar.
+def above_chance(accs, k, bar=T_BAR):
+    """Is this arm's accuracy distinguishable from the 1/K floor, by the harness's OWN statistic?
+
+    `accs` is one accuracy per seed; `k` is the number of drive classes, so chance is 1/k. The
+    reading is `contrast` on (accuracy - chance) over the seeds -- the same paired one-sided t and
+    the same permutation FPR every conjunct is read with, against the same bar.
+
+    IT REPORTS AND IT NEVER REFUSES. Nothing here changes a conjunct, a verdict or a threshold, and
+    it is deliberately not a gate: a guard that suppressed a reading taken near the floor would
+    have suppressed the pinned campaign's own t(d_f) = -13.0154, the number that deleted the
+    learner, and a guard that suppresses a negative is worse than the omission it repairs. What it
+    buys is that a reader of any verdict can see WHERE the arms were when a contrast between them
+    was read (T063 panel of 2026-09-09, finding F22)."""
+    accs = [float(a) for a in accs]
+    chance = 1.0 / float(k)
+    c = contrast("arm - chance", [a - chance for a in accs], bar)
+    return {
+        "mean": sum(accs) / float(len(accs)) if accs else 0.0,
+        "chance": chance,
+        "t": c.t,
+        "fpr": c.fpr,
+        "degenerate": c.degenerate,
+        "met": bool(c.met),
+    }
+
+
 # =============================================================================================
 # The arms (2.2)
 # =============================================================================================
@@ -1111,9 +1148,17 @@ def build_arms(art, seed, classes):
 # =============================================================================================
 # The verdict (2.6) and the null clauses (2.9)
 # =============================================================================================
-def verdict(results, wrong_valid):
+def verdict(results, wrong_valid, k=K_FIXED):
     """SC-006's five conjuncts, each printed MET / NOT MET / NOT READ with its numbers, plus the
-    LEARNER's own disposition, which is independent of the prior's."""
+    LEARNER's own disposition, which is independent of the prior's.
+
+    `k` is the number of drive classes, and it is here for ONE reason: a contrast is a DIFFERENCE
+    between two arms, and a difference says nothing about wiring unless at least one of the arms
+    was doing better than guessing. Every arm therefore carries `arms_vs_chance` -- its mean, the
+    1/k floor and `above_chance`'s reading of it -- and every contrast carries `wiring_contrast`,
+    which reads NOT INTERPRETABLE when BOTH of its arms fail that check. Both are REPORTS: no
+    conjunct state, no verdict word and no bar depends on either (T063 panel of 2026-09-09,
+    finding F22)."""
     seeds = sorted(results)
     acc = {arm: [results[s][arm].accuracy for s in seeds] for arm in results[seeds[0]]}
     d_r = [a - b for a, b in zip(acc["seeded"], acc["random"], strict=True)]
@@ -1127,6 +1172,17 @@ def verdict(results, wrong_valid):
     c_w = contrast("seeded - wrong", d_w)
     c_rw = contrast("random - wrong", d_rw)
     c_f = contrast("seeded - frozen", d_f)
+
+    vs_chance = {arm: above_chance(acc[arm], k) for arm in acc}
+    cs = (c_p, c_r, c_w, c_rw, c_f)
+    #: the two arms each contrast is BETWEEN, named here rather than parsed back out of its label
+    pairs = {
+        c_p.name: ("planted", "random"),
+        c_r.name: ("seeded", "random"),
+        c_w.name: ("seeded", "wrong"),
+        c_rw.name: ("random", "wrong"),
+        c_f.name: ("seeded", "frozen"),
+    }
 
     #: 2026-09-09. Conjunct (a) is NOT READ on every run from here on: drift needs a learner and
     #: there is none. `red1` returns the no-learner refusal (fired is always False) and the note
@@ -1142,7 +1198,8 @@ def verdict(results, wrong_valid):
         out = {
             "conjuncts": conj,
             "sc006": "NO VERDICT",
-            "contrasts": _contrasts(c_p, c_r, c_w, c_rw, c_f),
+            "contrasts": _contrasts(cs, pairs, vs_chance),
+            "arms_vs_chance": vs_chance,
             "learner": _learner(c_f, results, seeds),
             "per_seed": _per_seed(results, seeds),
             "wrong_valid": bool(wrong_valid),
@@ -1179,7 +1236,8 @@ def verdict(results, wrong_valid):
     return {
         "conjuncts": conj,
         "sc006": "NOT READ" if readable else "NOT MET",
-        "contrasts": _contrasts(c_p, c_r, c_w, c_rw, c_f),
+        "contrasts": _contrasts(cs, pairs, vs_chance),
+        "arms_vs_chance": vs_chance,
         "learner": _learner(c_f, results, seeds),
         "per_seed": _per_seed(results, seeds),
         "wrong_valid": bool(wrong_valid),
@@ -1197,11 +1255,32 @@ def _con(state, c, note):
     }
 
 
-def _contrasts(*cs):
+NOT_A_WIRING_CONTRAST = (
+    "NOT INTERPRETABLE AS A WIRING CONTRAST (both arms fail the above-chance check)"
+)
+
+
+def _contrasts(cs, pairs, vs_chance):
     return {
-        c.name: {"t": c.t, "fpr": c.fpr, "degenerate": c.degenerate, "diffs": list(c.diffs)}
+        c.name: {
+            "t": c.t,
+            "fpr": c.fpr,
+            "degenerate": c.degenerate,
+            "diffs": list(c.diffs),
+            "wiring_contrast": _wiring_contrast(pairs[c.name], vs_chance),
+        }
         for c in cs
     }
+
+
+# distinct-from: substrate/wiring_manifest.py::PortManifest.warnings -- reports a DECLARED CONNECTOME PORT that no edge connects (its "two arms" are the IN and OUT directions of that static census); it reads no accuracy, no seed and no bar. Site read 2026-09-10.
+def _wiring_contrast(pair, vs_chance):
+    """The mark on ONE contrast: a difference between two arms that were both at the floor is a
+    difference between two guesses, and it says so and stops there. It decides nothing."""
+    a, b = pair
+    if not vs_chance[a]["met"] and not vs_chance[b]["met"]:
+        return NOT_A_WIRING_CONTRAST
+    return "INTERPRETABLE"
 
 
 def _learner(c_f, results, seeds):
@@ -1259,6 +1338,13 @@ def format_verdict(v):
         "d": "RED 2 FIRED (wrong underperforms random) and the WRONG arm was VALID",
         "e": "BEATS WRONG",
     }
+    #: which contrast each conjunct is read from, so the wiring mark prints beside its own t
+    conjunct_contrast = {
+        "b": "seeded - random",
+        "c": "planted - random",
+        "d": "random - wrong",
+        "e": "seeded - wrong",
+    }
     for k in "abcde":
         c = v["conjuncts"][k]
         num = ""
@@ -1266,8 +1352,20 @@ def format_verdict(v):
             num = f"  t = {c['t']:+.4f}  permutation FPR = {c['fpr']:.4f}"
             if c["degenerate"]:
                 num += "  [DEGENERATE: zero-variance differences]"
+            cn = v["contrasts"].get(conjunct_contrast.get(k, ""))
+            if cn is not None:
+                num += f"  [{cn['wiring_contrast']}]"
         lines.append(f"({k}) {labels[k]}: {c['state']}{num}")
         lines.append(f"     {c['note']}")
+    lines.append("")
+    #: WHERE THE ARMS WERE when those contrasts were read. A difference between two arms says
+    #: nothing about wiring unless at least one of them beat the 1/K floor (finding F22).
+    lines.append("each arm against chance = 1/K (reported, never a refusal):")
+    for arm, a in v["arms_vs_chance"].items():
+        lines.append(
+            f"  {arm:<8} mean {a['mean']:.4f}  chance {a['chance']:.4f}  {arm} - chance  "
+            f"t = {a['t']:+.4f}  permutation FPR = {a['fpr']:.4f}  above chance = {a['met']}"
+        )
     lines.append("")
     lo = v["learner"]
     lines.append(
@@ -1330,7 +1428,9 @@ def synthetic_artifact(n_units=64, seed=0, out_degree=8):
     formality, not a reading" -- is not a fixture-only rule and the campaign was never EXEMPT from
     it: the campaign's (c) was read against a RANDOM arm at 1.6x chance, between the rejected
     cells' 1.1x and the accepted cell's 2.2x. Read as a limit on the warrant, not as a
-    re-reading of the pin."""
+    re-reading of the pin. THE RULE NO LONGER LIVES IN THIS DOCSTRING: it was lifted into the
+    module-level `above_chance`, `verdict` reads every arm through it, and this paragraph now
+    CITES it rather than being its only statement (P2 -- one mechanism, one place)."""
     import numpy as np
 
     rng = np.random.default_rng(int(seed) * 9_176 + 5)
@@ -1417,7 +1517,7 @@ def selfcheck(
             )
         results[s] = row
 
-    v = verdict(results, wrong_valid=valid)
+    v = verdict(results, wrong_valid=valid, k=k)
     no_learner_msg = red1(results[0]["frozen"])[1]
     planted = v["conjuncts"]["c"]["state"] == "MET"
 
@@ -2137,7 +2237,7 @@ def run_campaign():
     #: snapshot that quietly stops being true.
     host_end = _host_condition()
 
-    v = verdict(results, wrong_valid=valid)
+    v = verdict(results, wrong_valid=valid, k=k)
     print("=" * 78)
     print(format_verdict(v))
     print("=" * 78)
