@@ -1,95 +1,279 @@
 {
-  "K_rule": {
-    "K": null,
-    "K_basis": 16,
-    "ceiling": 0.9,
-    "note": "UNSATISFIED: no power of two >= 8 that FITS (K x 5 % of the units must be <= 100 %, so only 8 and 16 fit) put the no-learning RANDOM arm under the ceiling. Every other pilot item below was measured on K_basis as a workload basis only; the campaign is BLOCKED on this rule",
-    "readings": [
-      {
-        "accuracy": 1.0,
-        "k": 8
+  "stages": [
+    {
+      "K_rule": {
+        "K": null,
+        "K_basis": 16,
+        "ceiling": 0.9,
+        "note": "UNSATISFIED: no power of two >= 8 that FITS (K x 5 % of the units must be <= 100 %, so only 8 and 16 fit) put the no-learning RANDOM arm under the ceiling. Every other pilot item below was measured on K_basis as a workload basis only; the campaign is BLOCKED on this rule",
+        "readings": [
+          {
+            "accuracy": 1.0,
+            "k": 8
+          },
+          {
+            "accuracy": 1.0,
+            "k": 16
+          },
+          {
+            "accuracy": null,
+            "k": 32,
+            "note": "32 classes of 710 units do not fit in 14215 units"
+          }
+        ],
+        "satisfied": false
       },
-      {
-        "accuracy": 1.0,
-        "k": 16
+      "W": {
+        "edges": 70001,
+        "frac": 1.0,
+        "projected_hours": 0.2289953066656987,
+        "seconds_per_tick": 0.0010734154999954627,
+        "units": 14215
       },
-      {
-        "accuracy": null,
-        "k": 32,
-        "note": "32 classes of 710 units do not fit in 14215 units"
+      "artifact": "h01_c3_graph.npz",
+      "artifact_sha256": "a1d0491ac486bf194a479a8c6aab419df90c7f05d2ba643d6b16ed3c3d4a0549",
+      "campaign_ticks": 768000,
+      "constants": {
+        "C_blocks": 5,
+        "S_seeds": 8,
+        "T_trial": 50,
+        "class_frac": 0.05,
+        "drive_amplitude_x_thr": 1.2,
+        "held_out_per_class": 1,
+        "p_drive": 0.3,
+        "swap_passes": 10,
+        "t_bar": 1.895,
+        "trials_per_class": 4
+      },
+      "drive_only": {
+        "accuracy": 0.0625,
+        "chance": 0.0625,
+        "seeded_same_protocol": 1.0
+      },
+      "git_head": "a343a1f94009cfe6ca669609098f0fc599956482",
+      "harness_sha256": "3d9a8ee5577e698c0cb8f85f57bd08ecaccbff050c020f7d12431619838820da",
+      "host": {
+        "daemon_pid": "32604",
+        "daemon_working_set": 8835993600,
+        "port_8137": "LISTEN"
+      },
+      "host_note": "CPU WINDOWS TAKEN ON DAEMON PID 27228 (not necessarily the PID a later run records -- the daemon on this host RESTARTS: 33396, then 27228, then 32604 were observed holding 8137 inside about forty minutes, so `host.daemon_pid` beside a number and this note's PID may differ, and that is a fact about the daemon rather than a mismatch to reconcile). LISTEN on 8137 throughout, working set 5.50-8.77 GB; five 90 s CPU windows 112.000 / 122.906 / 106.266 / 133.641 / 117.828 s, mean 118.5, no trend, range +-11.5 %. The two-consecutive-windows-within-6 % clause is NOT MET and is not meetable by this daemon's steady duty cycle; settling read from the absence of a trend. No battery and no panel were running. Every timing is a min of repeats.",
+      "stage": "2026-09-09 pre-amendment -- 2.7's K rule (UNSATISFIED)",
+      "task": "specs/022 T063 pilot",
+      "widths": [
+        {
+          "edges": 70001,
+          "frac": 1.0,
+          "projected_hours": 0.2289953066656987,
+          "seconds_per_tick": 0.0010734154999954627,
+          "units": 14215
+        },
+        {
+          "edges": 52949,
+          "frac": 0.5,
+          "projected_hours": 0.1447689599978427,
+          "seconds_per_tick": 0.0006786044999898877,
+          "units": 7107
+        },
+        {
+          "edges": 27940,
+          "frac": 0.25,
+          "projected_hours": 0.07125493333054085,
+          "seconds_per_tick": 0.00033400749998691026,
+          "units": 3553
+        },
+        {
+          "edges": 12543,
+          "frac": 0.125,
+          "projected_hours": 0.03536800000195702,
+          "seconds_per_tick": 0.00016578750000917353,
+          "units": 1778
+        }
+      ],
+      "wrong_validity": {
+        "psi_random": 2.281271303789785,
+        "psi_wrong": 0.03238947373952294,
+        "valid": false
       }
-    ],
-    "satisfied": false
-  },
-  "W": {
-    "edges": 70001,
-    "frac": 1.0,
-    "projected_hours": 0.2289953066656987,
-    "seconds_per_tick": 0.0010734154999954627,
-    "units": 14215
-  },
-  "artifact": "h01_c3_graph.npz",
-  "artifact_sha256": "a1d0491ac486bf194a479a8c6aab419df90c7f05d2ba643d6b16ed3c3d4a0549",
-  "campaign_ticks": 768000,
-  "constants": {
-    "C_blocks": 5,
-    "S_seeds": 8,
-    "T_trial": 50,
-    "class_frac": 0.05,
-    "drive_amplitude_x_thr": 1.2,
-    "held_out_per_class": 1,
-    "p_drive": 0.3,
-    "swap_passes": 10,
-    "t_bar": 1.895,
-    "trials_per_class": 4
-  },
-  "drive_only": {
-    "accuracy": 0.0625,
-    "chance": 0.0625,
-    "seeded_same_protocol": 1.0
-  },
-  "git_head": "a343a1f94009cfe6ca669609098f0fc599956482",
-  "harness_sha256": "3d9a8ee5577e698c0cb8f85f57bd08ecaccbff050c020f7d12431619838820da",
-  "host": {
-    "daemon_pid": "32604",
-    "daemon_working_set": 8835993600,
-    "port_8137": "LISTEN"
-  },
-  "host_note": "CPU WINDOWS TAKEN ON DAEMON PID 27228 (not necessarily the PID a later run records -- the daemon on this host RESTARTS: 33396, then 27228, then 32604 were observed holding 8137 inside about forty minutes, so `host.daemon_pid` beside a number and this note's PID may differ, and that is a fact about the daemon rather than a mismatch to reconcile). LISTEN on 8137 throughout, working set 5.50-8.77 GB; five 90 s CPU windows 112.000 / 122.906 / 106.266 / 133.641 / 117.828 s, mean 118.5, no trend, range +-11.5 %. The two-consecutive-windows-within-6 % clause is NOT MET and is not meetable by this daemon's steady duty cycle; settling read from the absence of a trend. No battery and no panel were running. Every timing is a min of repeats.",
-  "task": "specs/022 T063 pilot",
-  "widths": [
-    {
-      "edges": 70001,
-      "frac": 1.0,
-      "projected_hours": 0.2289953066656987,
-      "seconds_per_tick": 0.0010734154999954627,
-      "units": 14215
     },
     {
-      "edges": 52949,
-      "frac": 0.5,
-      "projected_hours": 0.1447689599978427,
-      "seconds_per_tick": 0.0006786044999898877,
-      "units": 7107
-    },
-    {
-      "edges": 27940,
-      "frac": 0.25,
-      "projected_hours": 0.07125493333054085,
-      "seconds_per_tick": 0.00033400749998691026,
-      "units": 3553
-    },
-    {
-      "edges": 12543,
-      "frac": 0.125,
-      "projected_hours": 0.03536800000195702,
-      "seconds_per_tick": 0.00016578750000917353,
-      "units": 1778
+      "D_rule": {
+        "D": 4,
+        "D_basis": 4,
+        "candidates": [
+          4,
+          8,
+          16,
+          32,
+          64,
+          128
+        ],
+        "ceiling": 0.9,
+        "n_non_driven_features": 8535,
+        "note": "SATISFIED: D is the LARGEST candidate at which the no-learning RANDOM arm sits under the ceiling",
+        "readings": [
+          {
+            "accuracy": 0.75,
+            "d": 4
+          },
+          {
+            "accuracy": 1.0,
+            "d": 8
+          },
+          {
+            "accuracy": 1.0,
+            "d": 16
+          },
+          {
+            "accuracy": 1.0,
+            "d": 32
+          },
+          {
+            "accuracy": 1.0,
+            "d": 64
+          },
+          {
+            "accuracy": 1.0,
+            "d": 128
+          }
+        ],
+        "satisfied": true
+      },
+      "W": {
+        "cpu_seconds_per_window": [
+          120.297,
+          121.109,
+          112.016
+        ],
+        "edges": 70001,
+        "frac": 1.0,
+        "projected_hours": 0.11560752000271653,
+        "seconds_per_tick": 0.0010838205000254675,
+        "settled": true,
+        "units": 14215
+      },
+      "artifact": "h01_c3_graph.npz",
+      "artifact_sha256": "a1d0491ac486bf194a479a8c6aab419df90c7f05d2ba643d6b16ed3c3d4a0549",
+      "campaign_authorized": true,
+      "campaign_reason": "the ladder selected a D, the WRONG arm is valid, and a width fits the ceiling",
+      "campaign_ticks": 384000,
+      "constants": {
+        "C_blocks": 5,
+        "K": 8,
+        "S_seeds": 8,
+        "T_trial": 50,
+        "band_permutation": [
+          5,
+          4,
+          3,
+          2,
+          1,
+          0,
+          6
+        ],
+        "class_frac": 0.05,
+        "drive_amplitude_x_thr": 1.2,
+        "held_out_per_class": 1,
+        "p_drive": 0.3,
+        "swap_passes": 10,
+        "t_bar": 1.895,
+        "trials_per_class": 4
+      },
+      "drive_only": {
+        "D": 4,
+        "accuracy": 0.125,
+        "chance": 0.125,
+        "seeded_same_protocol": 0.625
+      },
+      "git_head": "ebd3d9201eda3acadd2ead4b2601f9ec00d9781d",
+      "harness_sha256": "776663490e22e62ea72ca65489064567219522873a5a7a94a53dcabf986ab786",
+      "host": {
+        "daemon_pid": "34316",
+        "daemon_working_set": 5487538176,
+        "port_8137": "LISTEN"
+      },
+      "host_note": "CPU WINDOWS TAKEN ON DAEMON PID 27228 (not necessarily the PID a later run records -- the daemon on this host RESTARTS: 33396, then 27228, then 32604 were observed holding 8137 inside about forty minutes, so `host.daemon_pid` beside a number and this note's PID may differ, and that is a fact about the daemon rather than a mismatch to reconcile). LISTEN on 8137 throughout, working set 5.50-8.77 GB; five 90 s CPU windows 112.000 / 122.906 / 106.266 / 133.641 / 117.828 s, mean 118.5, no trend, range +-11.5 %. The two-consecutive-windows-within-6 % clause is NOT MET and is not meetable by this daemon's steady duty cycle; settling read from the absence of a trend. No battery and no panel were running. Every timing is a min of repeats.",
+      "settling": {
+        "cpu_seconds_per_window": [
+          120.297,
+          121.109,
+          112.016
+        ],
+        "rule": "2.12(c): settled = NO monotone trend across at least 3 windows of 90 s",
+        "settled": true,
+        "window_seconds": 90
+      },
+      "stage": "2026-09-09 amended -- 2.12's D ladder and the band-permuted WRONG arm",
+      "task": "specs/022 T063 pilot",
+      "widths": [
+        {
+          "cpu_seconds_per_window": [
+            120.297,
+            121.109,
+            112.016
+          ],
+          "edges": 70001,
+          "frac": 1.0,
+          "projected_hours": 0.11560752000271653,
+          "seconds_per_tick": 0.0010838205000254675,
+          "settled": true,
+          "units": 14215
+        },
+        {
+          "cpu_seconds_per_window": [
+            120.297,
+            121.109,
+            112.016
+          ],
+          "edges": 52949,
+          "frac": 0.5,
+          "projected_hours": 0.06394085333061716,
+          "seconds_per_tick": 0.0005994454999745358,
+          "settled": true,
+          "units": 7107
+        },
+        {
+          "cpu_seconds_per_window": [
+            120.297,
+            121.109,
+            112.016
+          ],
+          "edges": 27940,
+          "frac": 0.25,
+          "projected_hours": 0.03219808000139892,
+          "seconds_per_tick": 0.0003018570000131149,
+          "settled": true,
+          "units": 3553
+        },
+        {
+          "cpu_seconds_per_window": [
+            120.297,
+            121.109,
+            112.016
+          ],
+          "edges": 12543,
+          "frac": 0.125,
+          "projected_hours": 0.023197333332306395,
+          "seconds_per_tick": 0.00021747499999037246,
+          "settled": true,
+          "units": 1778
+        }
+      ],
+      "wrong_validity": {
+        "band_masses": {
+          "asymmetry": 0.0418828828231939,
+          "diagonal_mass": 0.7265204457513662,
+          "inter_band_edge_fraction": 0.2962671961829117,
+          "off_band_fallback_edges": 0,
+          "off_diagonal_mass": 0.27347955424863357,
+          "psi_transpose_vs_seeded": 0.034053311798621845,
+          "psi_wrong_vs_seeded": 6.175869708803301
+        },
+        "psi_random": 2.281271303789785,
+        "psi_wrong": 6.175869708803301,
+        "valid": true
+      }
     }
   ],
-  "wrong_validity": {
-    "psi_random": 2.281271303789785,
-    "psi_wrong": 0.03238947373952294,
-    "valid": false
-  }
+  "task": "specs/022 T063 pilot"
 }
