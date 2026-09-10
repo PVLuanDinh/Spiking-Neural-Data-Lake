@@ -715,7 +715,29 @@ EXEMPT = {
         "this row does NOT claim -- it is not the kernel wire. kernel_state's and kernel_tick's "
         "rows name T062's ingested population as their live consumer; constructing that population "
         "here does not by itself re-arm those, because a population built inside a self-check is "
-        "an instrument, not a tick",
+        "an instrument, not a tick. "
+        "APPENDED 2026-09-09, the text above kept VERBATIM (a row that rewrites its own "
+        "justification destroys the record of what it used to claim): T063 LANDED AND ITS ANSWER "
+        "WAS NO, so this row is RE-DATED rather than retired. The campaign read the PLANTED "
+        "control MET at t = +9.2601 -- the instrument is NOT blind, so the verdict is read -- and "
+        "then conjunct (b) NOT MET at t = -0.2277: the H01 WIRING BEYOND ITS MARGINALS does not "
+        "beat its degree-, sign- and magnitude-matched null on that task. 2.9's clause for that "
+        "combination is exact, and it is applied here: US3's beatable prior is recorded NOT MET "
+        "for that component; `cortical_prior` and T062's artifact remain REFERENCE DATA, "
+        "untouched; and THE SEEDED POPULATION CONSTRUCTOR `h01_ingest.population()` LOSES ITS "
+        "PRIOR ROLE. What the sentence above calls 'the row that turns this population into a "
+        "beatable prior' is the row that measured it is not one. THE CONSUMER IS UNCHANGED AND "
+        "THE ROLE IS NOT: `cortex/prior_drift_harness` still reaches this module, now as the "
+        "harness's FIXTURE -- the population an instrument constructs and scores -- and no longer "
+        "as a prior anything is seeded from. This exemption therefore does NOT retire the day "
+        "T063 lands, as the text above promised: T063 landed, and what it changed is the role, "
+        "not the reachability. The narrowness of the claim is 2.2's own and is restated because "
+        "it bounds what was just recorded -- the null RETAINS H01's degrees, signs and weight "
+        "magnitudes, so this cannot separate 'H01 contributes nothing' from 'H01's useful "
+        "information is exactly what both arms share', and nothing beyond that component is "
+        "claimed. Also unchanged: this is still not the kernel wire, and kernel_state's and "
+        "kernel_tick's rows are untouched by any of it -- an instrument that ticks a scratch "
+        "population is not the live consumer those rows name (T063 2.8)",
     ),
     "prior_drift_harness": (
         "permanent",
