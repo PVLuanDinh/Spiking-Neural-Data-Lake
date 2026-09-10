@@ -197,3 +197,59 @@ amplitude, and re-reads the row -- never this row re-reading itself.
 
 **Numbers seen before this amendment:** only the fixture readings quoted above. No campaign number had been read; the
 campaign's log had flushed nothing when this section was written.
+
+### 2.11 Amendment, dated 2026-09-10 13:20 local, BEFORE any campaign PCI number exists: the scorer's cost, an apparatus
+### defect of this pre-registration, and its fix (the same statistic, a different algorithm, equality-tested)
+
+**What happened (numbers seen, all of them).** The first campaign (`python -m snn_data_lake.cortex.integration_kernel
+--campaign`, started 03:40:35 local on the H01 population, 14,215 units / 70,001 edges, 8 seeds) read the host clause
+(settled = True, one daemon PID 37988 across five windows: 97.969 / 124.719 / 115.734 / 110.297 / 79.375 CPU-s), ran R3 on
+all 8 seeds in under 8 minutes (in-flight 485-611 spikes per snapshot; restored baseline BYTE-IDENTICAL; the frame-only
+restore DIVERGED as it must; omit-positions REFUSED; the pulse-less identity held), and then spent 9 h 25 min inside seed 0's
+five arms without printing a seed line. It was stopped at 13:20 with no PCI number produced. A probe of the incumbent
+scorer on sparse binary strings (density 0.02): 5,120 characters (the 64-unit fixture's footprint) parse in 0.241 s; a
+160,000-character string had not returned after 20 s; the campaign's footprint is 14,215 x 80 = 1,137,200 characters, and
+the design calls for 8 pulse sets x 5 arms x 8 seeds = 320 parses plus 320 null parses.
+
+**The defect.** 2.8 costed the campaign in TICKS and ignored the scorer. `integration_measure.lz76_complexity` is the
+Kaspar & Schuster (1987) form of the LZ76 exhaustive-history parse, written for 12-unit nets (960-character strings); its
+inner loop extends a candidate match one character at a time from every earlier position, so on a sparse string with
+long zero runs the cost grows quadratically with the length. The 64-unit fixture (2.8's self-check width) sits far below
+the knee, which is why no fixture run showed it -- the same shape as obs #2165: a parameter the fixture never exercised is
+where the real object sits outside the instrument's range.
+
+**The fix, pre-registered.** The STATISTIC does not change: c(L), the number of phrases in the LZ76 exhaustive-history
+parse, and normalized_lz = c(L) log2(L) / L, exactly as 2.1 and the incumbent define them. The ALGORITHM changes to one
+with the same output and linear-or-near-linear cost: the exhaustive history of Lempel-Ziv 1976 is the LZ77 factorization
+with self-overlapping references in which every phrase is the longest previous occurrence plus one new symbol; it is
+computed from a suffix array and LCP array (prefix-doubling in numpy; the longest-previous-factor array of Crochemore &
+Ilie) or by any other method that reproduces the incumbent's count EXACTLY. The equivalence is a RED FIRST: a test that
+compares the new function against the incumbent's on (i) every string the incumbent's self-check scores, (ii) 500 random
+binary strings of lengths 2-4,096 at densities 0.5, 0.1, 0.02 and 0.005, (iii) all-zero, all-one, periodic and
+single-one strings -- byte-for-byte equal counts on every one, or the fix is REFUSED and this row stops. One implementation
+survives (P2): the incumbent's function body is replaced, its name, signature, docstring contract and every caller
+unchanged; the old body is kept ONLY inside the equality test as the reference oracle, never as a code path.
+Cost is then MEASURED before the 8-seed run: one full seed of the five arms at the campaign width, its wall time printed
+per arm; if one seed projects the campaign past 3 hours the row STOPS and reports rather than running for a day.
+
+**The compute, as the owner directed (2026-09-10: "We are using python 3.14t, make sure to use the correct Python
+dependencies for the task, use PyTorch and GeNN, and multithreading appropriately"), verified on the venv before writing
+this: Python 3.14.6 free-threaded (GIL disabled at runtime), 28 cores, torch 2.11.0+cu128 with CUDA on the RTX 5070 (a core
+dependency of the tree), pygenn 5.4.0. (i) The LZ76 factorization's sort rounds run as torch tensor ops on the GPU (CPU
+fallback when CUDA is absent; the count is device-independent because every suffix of a string is distinct, so the
+suffix array is unique and the equality test decides, never the device); (ii) the eight seeds run in a
+ThreadPoolExecutor -- under 3.14t these are true parallel threads -- one seed per worker, the arms of a seed in order, the
+pin assembled after all workers return in seed order so the pin is byte-identical whatever the scheduling; (iii) the
+kernel's own partition loop runs with `threads = p_parts` (KernelTick.tick's ThreadPoolExecutor over partitions; the
+determinism gate asserts thread-count invariance, so the trains are byte-identical to the threads=1 run); (iv) GeNN is NOT
+used in this row: the pre-registered instrument is the tree's numpy kernel with G5's snapshot chain (2.1), which GeNN's
+simulator has no restore for, and the bottleneck was never the simulation; a measured fact for the record -- importing
+`pygenn` re-enables the GIL in the importing process ("The global interpreter lock (GIL) has been enabled to load module
+'pygenn._genn'"), so a process that free-threads its seeds cannot also host GeNN without `PYTHON_GIL=0`, which this row does
+not set. GeNN's place in the plan is the GPU tick (P5a, the S6 kernel wire's successor), not this scorer.
+
+**What else changes, and what does not.** The campaign entry point prints per ARM (not only per seed), unbuffered
+(`python -u`), so a stalled run is distinguishable from a running one within minutes -- a run whose log is empty for
+hours is the failure mode this amendment records. Nothing in 2.2-2.7 changes: the arms, the constants, the seven
+conjuncts, the null, the reds, the controls, the disposition. No campaign number had been produced when this was
+written; the stopped run's only readings are the host clause and the R3 chain lines quoted above.
