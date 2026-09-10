@@ -231,3 +231,63 @@ protocol was inconsistent → per-arm reward values, shared timing, the frozen t
 isolation; (11) the pilot under-determined the allocation and PLANTED had two bars → constants fixed
 before the pilot, one predicate, degenerate cases defined; (12) "proportions" over-claimed D1 → the
 statistics named as newly chosen, the unmeasured originals disclosed.
+
+### 2.12 Amendment BEFORE the campaign (2026-09-09; the pilot's readings are quoted, and none is discarded)
+
+**What the pilot measured (`tools/t063_pilot.json`, harness sha256 `3d9a8ee5…8820da`, artifact
+`a1d0491a…4a0549`, 14,215 units / 70,001 edges, W = 1.0 at 0.229 h projected against the 6 h ceiling).**
+(1) 2.7's K rule selects NOTHING: the no-learning RANDOM arm scores 1.0000 held-out at K = 8 and K = 16, and
+K = 32 does not fit (32 × 5 % > 100 %). The ceiling is structural, not the readout's: a 13-cell sweep over
+class fraction 0.05 / 0.02 / 0.01 / 0.005 × K = 8 / 16 / 32 / 64 reads 1.0000 in every cell for SEEDED and for
+RANDOM, and a second instrument that fits no readout — nearest-centroid over raw spike counts — reads 1.0000
+for both arms while its own controls sit exactly at chance (drive-only 0.1250 from 0 feature spikes;
+label-shuffled 0.1250). T003's drive-only measurement passed cleanly (0.0625 = chance at K = 16; 1.0000 with
+edges): the class reaches the readout only through the graph, and over ~14k sparsely wired units a class's
+REACHABLE SET is a unique signature that every wiring produces. (2) 2.2's validity precondition FAILS for the
+direction-reversed table: PSI(WRONG, SEEDED) = 0.032389 against PSI(RANDOM, SEEDED) = 2.281271; the band-pair
+weight-share matrix carries 0.726520 of its mass on the diagonal (intra-band edges, untouched by a reversal by
+construction), 29.6 % of edges are inter-band, and `Σ|M − Mᵀ|/2 = 0.041883` of a matrix summing to 1. No
+transpose-based corruption can be far from SEEDED under S1 on this connectome; T004's decided candidate is
+structurally near-null, not unlucky. (3) The host clause's "two consecutive 90 s windows within 6 %" cannot be
+met by this daemon: five consecutive windows read 112.0 / 122.9 / 106.3 / 133.6 / 117.8 CPU-s per 90 s, the
+ordinary wake/sleep duty cycle, no monotone trend. (4) The self-check fixture predicted the saturation
+(`out_degree` 2 gave every arm a perfect class code) and the builder read it as a fixture setting; recorded.
+
+**Replacement task instrument (T003 re-decided; the task's DEFINITION is unchanged: K drive classes on fixed
+5 % subsets, features from NON-driven units only, a least-squares readout, `marginal_holdout` per class,
+the frozen trial protocol of 2.3).** What changes is the readout's CAPACITY, chosen by a measured rule instead
+of the class count: the feature vector is a FIXED per-seed random projection (Gaussian, orthonormalised) of the
+non-driven units' spike counts to D dimensions; K = 8; D is the LARGEST of {4, 8, 16, 32, 64, 128} at which the
+no-learning RANDOM arm scores below 0.9 held-out on the pilot seed (a capacity guard on the null, applied
+before any arm is compared; the ceiling margin 0.9 is CHOSEN, as before). If NO D in that ladder puts RANDOM
+under 0.9, the row is REFUSED ON MEASUREMENT with the finding that this population admits no readout capacity
+at which its wiring can be separated from a marginal-matched null by this protocol — recorded, not softened.
+The drive-only control is re-measured at the chosen D and must read chance. Rejected: overlapping class
+subsets (leaves the reachable-set signature intact where the subsets differ; the same saturation one level
+down); a graded regression target (changes the task's kind after the numbers, not its capacity).
+
+**Replacement wrong prior (T004 re-decided).** WRONG = the BAND-PERMUTED-TARGETS table: every edge a→b keeps
+its pre and its synapse count and gets a post drawn from band π(band(b)) with the same within-band degree
+rank, where π reverses cortical depth (Layer 1↔Layer 6, Layer 2↔Layer 5, Layer 3↔Layer 4, White matter fixed);
+polarity re-applied from the pre; fan-in re-normalised; the synapse-count multiset and the edge count
+preserved. It corrupts what the diagonal carries — the intra-band mass moves to the mirrored band — so it is
+far from SEEDED under S1 wherever band masses differ (Layer 2 4,709 units against Layer 6 1,040). It falsifies
+the claim red 2 is FOR: that the laminar IDENTITY of a synapse's target carries information. The same validity
+precondition applies unchanged (its PSI from SEEDED must exceed RANDOM's) and is measured before the campaign;
+the reversed-laminar reading above stays in the record as the candidate this connectome could not distinguish.
+T004's three earlier rejections stand.
+
+**Three readings of frozen text, disclosed.** The settling clause of 2.7 is read as the ABSENCE of a
+monotone trend across at least three 90 s windows, the windows recorded beside every timing number and every
+timing taken as the minimum of repeats (the daemon also restarts between readings; the PID beside a number
+is recorded). "The weight multiset" of 2.2 is realised as the per-edge SYNAPSE-COUNT multiset, the quantity the
+weight is computed from, with the fan-in normalisation re-applied on top (a weight multiset and a re-applied
+normalisation cannot both be preserved). PLANTED may repeat a (pre, post) pair: "no self-edges or
+multi-edges" is a property 2.2 states for the RANDOM rewire, and the unique-pair form leaves the positive
+control unbuildable wherever the edge count exceeds the class×block product.
+
+**What is unchanged.** 2.1, 2.4, 2.5, 2.6, 2.8, 2.9, 2.10, 2.11; every gate, red and control; the learner's own
+retention criterion (the 64-unit fixture read the FROZEN arm ahead of SEEDED at t ≈ −6.0 — a fixture
+observation the campaign will read evidentially). Authorized by this amendment: the pilot re-run under the D
+rule and the new WRONG arm, then the campaign iff the guard selects a D and the WRONG arm is valid; the pilot
+readings above stay in the record beside the re-run's.
