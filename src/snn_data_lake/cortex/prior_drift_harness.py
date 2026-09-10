@@ -20,6 +20,23 @@ too, and now serve as the MEASUREMENT that no learner ran -- four zeros and two 
 arm, read rather than assumed from the absence of an import. The campaign is NOT re-run and NOT
 edited: it is the record of the learner's run at its own head and harness hash.
 
+APPENDED 2026-09-10 (T063 panel of 2026-09-09), the paragraph above kept VERBATIM -- WHAT
+"SURVIVES" AND "STAND" MEAN, MEASURED. On `data/h01/h01_c3_graph.npz` at the pinned K = 8, D = 4,
+W = 1.0 over seeds 0-7 this no-learner harness reads (c) NOT MET at t = +0.8143 (permutation FPR
+0.0469) -- per-arm means seeded 0.8750, random 0.8281, wrong 0.8281, planted 0.8750, with FROZEN
+identical to SEEDED and d_f = 0 on all 8 seeds, so the identity control holds and the reading is
+on the pinned path. `verdict()` therefore prints SC-006 = NO VERDICT with (a) (b) (d) (e) NOT
+READ, "no verdict is read: the harness is BLIND". So what SURVIVES the deletion is RETAINED AS A
+MECHANISM, and on this population at this capacity the instrument REFUSES rather than reads --
+2.2's pre-registered disposition firing, not a new defect. A successor cannot re-read (b) (c) (d)
+(e) on H01 with this instrument as-is and must re-derive the capacity guard under a NEW
+pre-registration. The bare self-check's green is the 64-unit fixture at `out_degree = 8`, which
+does not cover the artifact. REPRODUCTION, and it is not the CLI: direct calls to
+`band_balanced_subgraph` / `drive_classes` / `build_arms` / `wrong_validity` / `run_arm` /
+`verdict` at `_pin_stages()[-1]`'s constants with NORD_HOME on a scratch dir -- NEVER
+`--campaign`, which rewrites `tools/t063_campaign.json` and would destroy the record of the
+learner's run. The pinned campaign's own (c) = +9.2601 was read WITH the learner and stands.
+
 FIVE TABLES on ONE unit set, ONE drive, NO learner, ONE readout -- only the wiring differs:
   SEEDED   T062's H01 c3 population at the pilot's width.
   RANDOM   the control that is NOT the method: a WITHIN-SIGN degree-preserving rewire, the
@@ -168,6 +185,8 @@ SWAP_PASSES = 10  # double-edge swap attempts per edge, per sign class, in the R
 #: read instead from the absence of a trend across five windows, and every timing number below is
 #: a MIN of repeats so the swing costs precision rather than correctness. Recorded, not smoothed.
 HOST_NOTE = (
+    "HISTORICAL host-clause reading (2026-09-09, PID 27228). The settling reading for any run is "
+    "the in-band `settling` block beside it, which governs. "
     "CPU WINDOWS TAKEN ON DAEMON PID 27228 (not necessarily the PID a later run records -- the "
     "daemon on this host RESTARTS: 33396, then 27228, then 32604 were observed holding 8137 "
     "inside about forty minutes, so `host.daemon_pid` beside a number and this note's PID may "
@@ -1300,7 +1319,18 @@ def synthetic_artifact(n_units=64, seed=0, out_degree=8):
     that does. 12 and 16 are REJECTED though their t is larger: both base arms sit at chance
     (0.25 = 1/K) there, and a positive control that beats a floor is a formality, not a reading.
     Disclosed as a fixture property; it changes nothing about the campaign's population, whose own
-    PLANTED contrast was read at t = +9.2601 with the learner and is pinned, not re-run."""
+    PLANTED contrast was read at t = +9.2601 with the learner and is pinned, not re-run.
+
+    APPENDED 2026-09-10 (T063 panel of 2026-09-09), the paragraph above kept VERBATIM: the closing
+    clause is TOO BROAD as written. What it changes nothing about is the PINNED READING -- t =
+    +9.2601, taken WITH the learner, not re-run. The out_degree-4 collapse was NOT confined to the
+    fixture: the same collapse is present on the CAMPAIGN'S OWN POPULATION, where this positive
+    control does not clear its bar without a learner (+0.8143 against the fixture's +0.7977). And
+    the floor rule stated three sentences up -- "a positive control that beats a floor is a
+    formality, not a reading" -- is not a fixture-only rule and the campaign was never EXEMPT from
+    it: the campaign's (c) was read against a RANDOM arm at 1.6x chance, between the rejected
+    cells' 1.1x and the accepted cell's 2.2x. Read as a limit on the warrant, not as a
+    re-reading of the pin."""
     import numpy as np
 
     rng = np.random.default_rng(int(seed) * 9_176 + 5)
@@ -1648,7 +1678,16 @@ def settling_report(samples, seconds=SETTLING_SECONDS):
     per window. The daemon on this host RESTARTS -- three different PIDs were observed holding 8137
     inside forty minutes, and a fourth swap corrupted the first campaign run's reading -- so WHICH
     process each window measured is part of the reading, not context around it. A run whose subject
-    changed or was lost is NOT settled, whatever its numbers look like."""
+    changed or was lost is NOT settled, whatever its numbers look like.
+
+    APPENDED 2026-09-10 (T063 panel of 2026-09-09), the paragraph above kept VERBATIM: "the daemon
+    on this host RESTARTS" names the FACT correctly and the arc's record attached a false CAUSE to
+    it ("a supervisor cycle of roughly 15 minutes"). There is no timer anywhere. `learn_daemon.bat`
+    relaunches only when the daemon EXITS, 8 s later, and `substrate/learn_daemon.py` has exactly
+    one `os._exit(0)`, reachable only from `_head() != start_head` -- so a clean exit is
+    DEFINITIONALLY a new commit at HEAD, and a session that commits during a probe restarts the
+    subject itself. The guard's logic and its red are UNCHANGED: a probe whose subject changed is
+    not a reading, whatever moved the subject."""
     pids = [str(p) for p, _d in samples]
     windows = [float(d) for _p, d in samples]
     live = {p for p in pids if p != "none"}
