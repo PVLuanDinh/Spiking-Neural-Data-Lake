@@ -184,9 +184,15 @@ PROVENANCE = {
     "lake_night": "which night lake_kept/lake_pruned describe; -1 = no consolidation night yet",
     "append_floods": "persisting brains only; 0 expected -- non-zero is a lake FLOOD, not a brain reading",
     "append_flood_last": "the last flood message, or empty -- empty means NOT FIRED IN THIS PROCESS",
-    # written only in the sleep tick; pci additionally only when nights % 4 == 0
-    # (pci brain.py:2519; criticality brain.py:2650 -- it is ALSO set once at birth, :367)
-    "pci": "sleep-only, refreshes every 4th night",
+    # criticality is written only in the sleep tick (brain.py:2650 -- it is ALSO set once at birth,
+    # :367); pci's producer was DELETED 2026-08-05 and this row said "sleep-only, refreshes every 4th
+    # night" until 2026-09-10 -- a map/territory fix (T070, evidence/t070-integration-kernel.md 2.10)
+    "pci": (
+        "NOT PRODUCED: the brain's pci producer was deleted 2026-08-05 (its net had no port for the "
+        "brain's state), so this row is absent from state(). T070's kernel-port instrument reads a "
+        "CONTRAST (integrated vs partitioned, rate-matched control beside it) OFF the tick on the H01 "
+        "fixture population, pinned in tools/t070_pci.json -- NOT the live brain, and NOT this row"
+    ),
     "criticality": "sleep-only",
     # string/bool literals in state(), not readings (goal brain.py:2892; reflex_armed :3055)
     "goal": "hardcoded literal",
