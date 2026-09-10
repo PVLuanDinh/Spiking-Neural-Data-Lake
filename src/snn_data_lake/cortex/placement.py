@@ -105,6 +105,8 @@ WHITE_MATTER = "White matter"
 #: after dropping the buckets), the largest being Layer 3 -> White matter 315 and, from id '0'
 #: alone, Layer 1 -> White matter 246." Quoted from
 #: `specs/022-unified-brain-arc/evidence/t062-h01-ingest.md` 3.5(15); nothing here is re-derived.
+#: 'the buckets' in that parenthetical is the record's label for the id-'0'-only cut (dated line
+#: appended to 3.5(15)); the 1,819-row exclusion below is the eight-id cut.
 #: WHAT IS UNCHANGED: LAYER_RULE_AGREEMENT = 0.9195 stands exactly as recorded -- T062's fold made
 #: that finding record-only, and two self-checks and a test assert on the value. WHAT CHANGES IS HOW
 #: THE BOUND MAY BE READ: the disagreements are not all one band over, so "adjacent" may not be used

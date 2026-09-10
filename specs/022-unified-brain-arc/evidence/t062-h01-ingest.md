@@ -621,6 +621,13 @@ are as pushed and are corrected only by the dated lines appended under them.*
     `LAYER_RULE_AGREEMENT = 0.9195` stands (two self-checks and a test assert on it); correcting those two
     comment blocks is owed work with its own gate.
 
+    2026-09-10: the parenthetical '519 of 3,016 after dropping the buckets' uses 'buckets' for the id-'0'-only
+    cut -- by this item's own figures 48,282 - 45,266 = 3,016, whereas dropping all eight aggregate ids leaves
+    47,558 - 45,129 = 3,973 - 1,544 = 2,429 disagreements (the seven-round-ids-only cut gives 3,386). 519 is
+    therefore the non-adjacent count on the id-'0'-only cut, by arithmetic, not re-measured; the eight-id
+    non-adjacent count is unmeasured. No number changes. (Appended by the T071 panel fold; the item above is
+    untouched.)
+
 16. **(2026-09-09, panel C12 — gate (e′) is pre-registered relative to the re-run but SELECTED ON A POSITIVE
     PILOT, and 3.3's undifferentiated "every gate PASSED" should be read with that asymmetry.)** (e′)'s
     statistic was first read as a diagnostic on shard 0 — r 0.494 over 9,716 post segments, quoted in 2.9 item
