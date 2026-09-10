@@ -7,6 +7,14 @@ t063-prior-drift-harness.md` closes those, and this file is the reds and control
 
 Committed RED, before `cortex/prior_drift_harness.py` exists.
 
+AMENDMENT 2.12 (2026-09-09), committed RED a second time before the amended instrument exists: the
+pilot's K rule selected NO K (the task saturated at 1.0000 for every wiring) and the reversed
+laminar WRONG arm failed its validity precondition by 70x. The reds below are the three items --
+(a) the fixed per-seed orthonormalised random projection to D with the LARGEST-D-under-0.9 guard,
+(b) the BAND-PERMUTED-TARGETS wrong arm under the depth-reversing permutation, and (c) the settling
+clause read as the absence of a monotone trend over at least three 90 s windows -- plus the campaign
+guard that runs the campaign only when a D was selected AND the WRONG arm is valid.
+
   PYTHONUTF8=1 PYTHONPATH=src pytest tests/test_prior_drift_harness.py -q --no-cov
 """
 
@@ -301,16 +309,59 @@ def test_random_has_no_self_or_multi_edges():
     assert np.unique(pairs).size == pairs.size
 
 
-def test_wrong_reverses_inter_band_edges_only():
+# ---- 2.12(b): WRONG is the BAND-PERMUTED-TARGETS table ---------------------------------------
+# The direction-reversed laminar table is RETIRED as an ARM (its pilot readings stay in the pin):
+# the pilot measured PSI(reversed, seeded) = 0.032389 against PSI(random, seeded) = 2.281271, so it
+# failed 2.2's validity precondition on this connectome by 70x. What replaces it corrupts the
+# DIAGONAL -- the 0.7265 of the band-pair mass a transpose cannot touch.
+def test_wrong_is_the_band_permuted_target_table_under_the_depth_reversing_permutation():
+    assert H.BAND_PERMUTATION == (5, 4, 3, 2, 1, 0, 6), (
+        "pi must reverse cortical depth -- L1<->L6, L2<->L5, L3<->L4, White matter fixed"
+    )
     base = _art()
     wrong = H.arm_wrong(base)
     H.check_nuisance(wrong, base, "wrong")
-    lay = base["layer"]
-    intra = lay[base["pre_idx"]] == lay[base["post_idx"]]
-    assert np.array_equal(base["pre_idx"][intra], wrong["pre_idx"][intra])
-    inter = ~intra
-    assert np.array_equal(base["pre_idx"][inter], wrong["post_idx"][inter])
-    assert np.array_equal(base["post_idx"][inter], wrong["pre_idx"][inter])
+    assert np.array_equal(wrong["pre_idx"], base["pre_idx"]), "every edge KEEPS its pre"
+    assert np.array_equal(wrong["n_syn"], base["n_syn"]), "every edge KEEPS its synapse count"
+    lay = base["layer"].astype(np.int64)
+    want = np.asarray([H.BAND_PERMUTATION[int(b)] for b in lay[base["post_idx"]]], dtype=np.int64)
+    got = lay[wrong["post_idx"]]
+    assert (got == want).mean() > 0.95, "the post must land in band pi(band(post))"
+    assert not np.any(wrong["pre_idx"] == wrong["post_idx"]), "no self-edge may be created"
+
+
+def test_wrong_keeps_the_within_band_degree_rank_of_the_target():
+    """ "the same within-band degree rank": the rank ORDER of the targets inside a band must be
+    carried into the mirrored band, so the permutation moves laminar IDENTITY and nothing else."""
+    base = H.synthetic_artifact(n_units=140, seed=0)
+    wrong = H.arm_wrong(base)
+    lay = base["layer"].astype(np.int64)
+    rank = H.within_band_degree_rank(base)
+    old_r = rank[base["post_idx"].astype(np.int64)]
+    new_r = rank[wrong["post_idx"].astype(np.int64)]
+    band_ok = lay[wrong["post_idx"]] == np.asarray(
+        [H.BAND_PERMUTATION[int(b)] for b in lay[base["post_idx"]]], dtype=np.int64
+    )
+    #: monotone in rank: a higher-ranked source target maps to a >= ranked mirrored target
+    order = np.argsort(old_r[band_ok], kind="stable")
+    seq = new_r[band_ok][order]
+    assert np.all(np.diff(seq) >= 0), "the within-band rank order was not carried across"
+
+
+def test_the_band_mass_report_names_what_the_permutation_moved():
+    base = _art()
+    rep = H.band_mass_report(base, H.arm_wrong(base))
+    for key in (
+        "diagonal_mass",
+        "off_diagonal_mass",
+        "inter_band_edge_fraction",
+        "asymmetry",
+        "off_band_fallback_edges",
+        "psi_wrong_vs_seeded",
+    ):
+        assert key in rep, f"the band-mass report must name {key}"
+    assert 0.0 <= rep["diagonal_mass"] <= 1.0
+    assert rep["diagonal_mass"] + rep["off_diagonal_mass"] == pytest.approx(1.0, abs=1e-9)
 
 
 def test_wrong_validity_precondition_is_measured_not_assumed():
@@ -326,6 +377,100 @@ def test_planted_is_a_positive_control_under_the_same_nuisance_constraints():
     classes = H.drive_classes(base, k=4, seed=0)
     planted = H.arm_planted(base, classes, seed=0)
     H.check_nuisance(planted, base, "planted")
+
+
+def test_planted_may_repeat_a_pre_post_pair_and_is_not_refused_for_it():
+    """2.12's third disclosed reading: "no self-edges or multi-edges" is a property 2.2 states for
+    the RANDOM rewire, not a nuisance property every arm holds. The unique-pair form leaves the
+    positive control UNBUILDABLE wherever the edge count exceeds the class x block product, so the
+    repeat is permitted for PLANTED and PLANTED alone -- and that is asserted, not assumed."""
+    base = _art()
+    classes = H.drive_classes(base, k=H.K_FIXED, seed=0)
+    planted = H.arm_planted(base, classes, seed=0)
+    H.check_nuisance(planted, base, "planted")  # must NOT raise
+    with pytest.raises(H.ArmRefused):
+        H.check_nuisance(planted, base, "planted", unique_edges=True)
+
+
+# ---- 2.12(a): the task instrument is a FIXED per-seed orthonormal random projection -----------
+def test_the_feature_is_a_fixed_per_seed_orthonormalised_gaussian_projection():
+    proj = H.random_projection(50, 8, seed=3)
+    assert proj.shape == (50, 8)
+    assert np.allclose(proj.T @ proj, np.eye(8), atol=1e-9), "the columns must be orthonormal"
+    assert np.array_equal(proj, H.random_projection(50, 8, seed=3)), "FIXED per seed"
+    assert not np.allclose(proj, H.random_projection(50, 8, seed=4)), "and a draw per seed"
+    with pytest.raises(H.ArmRefused):
+        H.random_projection(4, 8, seed=0)  # D > n_feat has no orthonormal basis
+
+
+def test_the_D_ladder_takes_the_LARGEST_D_under_the_ceiling_and_REFUSES_when_none_is():
+    assert H.D_CANDIDATES == (4, 8, 16, 32, 64, 128)
+    assert H.K_FIXED == 8
+    assert H.D_CEILING == 0.9
+    readings = [
+        {"d": 4, "accuracy": 0.30},
+        {"d": 8, "accuracy": 0.55},
+        {"d": 16, "accuracy": 0.88},
+        {"d": 32, "accuracy": 0.95},
+        {"d": 64, "accuracy": 1.0},
+        {"d": 128, "accuracy": None},
+    ]
+    assert H.choose_d(readings) == 16, "the LARGEST D under the ceiling, not the first"
+    assert H.choose_d([{"d": d, "accuracy": 1.0} for d in H.D_CANDIDATES]) is None
+    assert H.choose_d([{"d": 4, "accuracy": None}]) is None
+    assert H.choose_d([]) is None
+
+
+def test_the_arm_scores_from_a_D_DIMENSIONAL_feature_not_from_the_raw_counts():
+    art = _art()
+    classes = H.drive_classes(art, k=4, seed=0)
+    r = H.run_arm(
+        art, "seeded", 0, classes, d=4, blocks=1, t_trial=10, trials_per_class=4, held_out=1
+    )
+    assert r.feature_dim == 4, "the readout must see D dimensions, never the raw non-driven counts"
+    assert 0.0 <= r.accuracy <= 1.0
+
+
+# ---- 2.12(c): the settling clause, read as the ABSENCE of a monotone trend --------------------
+def test_the_settling_clause_is_read_as_the_absence_of_a_monotone_trend_over_three_windows():
+    assert H.is_settled([112.000, 122.906, 106.266]) is True
+    assert H.is_settled([112.0, 122.9, 106.3, 133.6, 117.8]) is True
+    assert H.is_settled([100.0, 110.0, 120.0]) is False, "a rising trend is NOT settled"
+    assert H.is_settled([120.0, 110.0, 100.0]) is False, "a falling trend is NOT settled"
+    assert H.is_settled([100.0, 110.0]) is False, "fewer than three windows is not a reading"
+    assert H.is_settled([]) is False
+
+
+# ---- 2.12: the campaign runs iff the guard selected a D AND the WRONG arm is valid ------------
+def test_the_campaign_guard_refuses_without_a_D_and_refuses_an_invalid_wrong_arm():
+    ok, why = H.campaign_guard(
+        {
+            "D_rule": {"D": 16, "satisfied": True},
+            "wrong_validity": {"valid": True},
+            "W": {"frac": 1.0},
+        }
+    )
+    assert ok is True, why
+    ok, why = H.campaign_guard(
+        {
+            "D_rule": {"D": None, "satisfied": False},
+            "wrong_validity": {"valid": True},
+            "W": {"frac": 1.0},
+        }
+    )
+    assert ok is False and "REFUSED ON MEASUREMENT" in why
+    ok, why = H.campaign_guard(
+        {
+            "D_rule": {"D": 16, "satisfied": True},
+            "wrong_validity": {"valid": False},
+            "W": {"frac": 1.0},
+        }
+    )
+    assert ok is False and "INVALID" in why
+    ok, why = H.campaign_guard(
+        {"D_rule": {"D": 16, "satisfied": True}, "wrong_validity": {"valid": True}, "W": None}
+    )
+    assert ok is False
 
 
 def test_an_arm_that_violates_a_nuisance_property_is_REFUSED():
