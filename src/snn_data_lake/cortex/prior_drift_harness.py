@@ -5,7 +5,22 @@ FR-008/009/010, C5, D1, D4, Scenario 2, T003, T004). The pre-registration is
 `specs/022-unified-brain-arc/evidence/t063-prior-drift-harness.md`, sections 1-2.11 FROZEN before
 a line of this module existed; this file implements it and adds nothing to it.
 
-FIVE TABLES on ONE unit set, ONE drive, ONE learner, ONE readout -- only the wiring differs:
+DISPOSITION 2026-09-09 (T063's record, section 3) -- THIS HARNESS NO LONGER HAS A LEARNER. The
+campaign pinned in `tools/t063_campaign.json` fired 2.9's null clauses. The learner's own
+criterion FAILED: t(d_f) = -13.0154, the FROZEN twin ahead of the learning arm on every one of the
+8 seeds, so `substrate/kernel_plasticity` was DELETED on the disposition it was built under ("a
+learner that moves weights without an attributed benefit is a null"). What that costs, stated
+plainly rather than worked around: DRIFT IS NOT MEASURABLE by this instrument any more -- nothing
+in the tree can write a weight into a `Synapses` bundle table -- so conjunct (a) reads NOT READ,
+SC-006 can never be called MET here again, and specs/011's FR-008 / FR-009 remain OPEN. What
+SURVIVES is everything that never needed a learner: the five tables, the task instrument, the
+nuisance refusals, the WRONG arm's validity precondition, the PLANTED positive control, and the
+prior's contrasts (b) (c) (d) (e). The DriftRecord machinery and the four diagnostic lines survive
+too, and now serve as the MEASUREMENT that no learner ran -- four zeros and two zero distances per
+arm, read rather than assumed from the absence of an import. The campaign is NOT re-run and NOT
+edited: it is the record of the learner's run at its own head and harness hash.
+
+FIVE TABLES on ONE unit set, ONE drive, NO learner, ONE readout -- only the wiring differs:
   SEEDED   T062's H01 c3 population at the pilot's width.
   RANDOM   the control that is NOT the method: a WITHIN-SIGN degree-preserving rewire, the
            per-edge synapse-count multiset reassigned at random inside each sign class, no self-
@@ -24,8 +39,10 @@ FIVE TABLES on ONE unit set, ONE drive, ONE learner, ONE readout -- only the wir
   PLANTED  the POSITIVE CONTROL, never an arm of the verdict: each drive class's units wired
            densely onto a disjoint block of non-driven units. ONE predicate: PLANTED beats RANDOM
            at the same t bar. If it does not, the harness is BLIND and NO verdict is read.
-  FROZEN   the learner's own control: SEEDED at lr = 0. Red 1's constructed pin, and the twin the
-           learner's retention criterion is read against.
+  FROZEN   WAS the learner's own control -- SEEDED at lr = 0, red 1's constructed pin and the twin
+           the retention criterion was read against. With no learner it is SEEDED run a second
+           time, so d_f must be identically 0 and the contrast is kept as an IDENTITY control: a
+           nonzero reading is a DETERMINISM defect in this harness, never a learning signal.
 
 THE TASK'S READOUT sees the non-driven units' spike counts ONLY through a FIXED per-seed
 orthonormalised Gaussian projection to D dimensions (2.12(a)). D -- the readout's CAPACITY -- is
@@ -85,8 +102,27 @@ GRADIENT_CLAIM = {
         "reason. It touches no weight, forms no trace and computes no update -- 'learner' here "
         "names the thing being JUDGED, not a rule. Declared rather than renamed, because the "
         "census is right to enumerate the token and a reader is better served by the reason than "
-        "by a name chosen to dodge a gate",
+        "by a name chosen to dodge a gate. DATED 2026-09-09: the judgement was EXECUTED and the "
+        "subject is gone -- the formatter now reports the DELETION and its date, and derives no "
+        "criterion from a run that has no learner to judge",
     ),
+}
+
+#: The one statement of what this instrument can no longer measure, quoted by red 1's refusal, by
+#: conjunct (a) and by the learner's disposition, so the three cannot drift apart.
+NO_LEARNER = (
+    "no learner in the tree -- substrate/kernel_plasticity DELETED on its own criterion "
+    "2026-09-09 (T063's record, section 3): drift is not measurable; FR-008/FR-009 (specs/011) "
+    "remain OPEN"
+)
+
+#: The four diagnostic lines of 2.5 as a no-learner arm reads them. Written ONCE so an arm cannot
+#: report a shape the refusal does not describe.
+NO_LEARNER_DIAGNOSTICS = {
+    "executed": 0,
+    "attempted": 0,
+    "effective_count": 0,
+    "effective_l1": 0.0,
 }
 
 REPO = Path(__file__).resolve().parents[3]
@@ -167,12 +203,28 @@ class DriftRecord(NamedTuple):
     direction: int
 
 
+# distinct-from: substrate/kernel_plasticity.py::KernelPlasticity.diagnostics -- returned a LIVE
+#   learner's four counters as it accumulated them; this is the immutable per-arm record a scored
+#   run returns, and after 2026-09-09 there is no learner to accumulate anything.
+# distinct-from: substrate/amdahl_gate.py::red_repeatability_broken_arm -- a deliberately PADDED
+#   second timing reading, built to reach a criterion that had no failing arm; "arm" there is a
+#   reading of one timed pair, not a wiring of a population.
+# distinct-from: substrate/replay_gate.py::run_gate -- returns four arms' outcomes where arms 2-4
+#   are arm 1's reds; the arms differ by an INJECTED DEFECT, not by a table under comparison.
+# distinct-from: brainstem/arm_bridge.py::send_outcome and brainstem/so101_arm.py::collision -- the
+#   ROBOT arm's UDP reward datagram and its contact authority; "arm" there is hardware.
+#   All five sites read 2026-09-09 before this note was written.
 class ArmResult(NamedTuple):
-    """One arm, one seed. `pinned` is TRUE only for a VERIFIED lr = 0 intervention -- it is the
-    single thing that licenses the word "pinning" in red 1's message."""
+    """The scored record of one wiring at one seed, plus 2.5's four diagnostic lines.
+
+    `pinned` was a field here until 2026-09-09 and is GONE with the learner. It was TRUE only for
+    a VERIFIED lr = 0 intervention -- the single thing that licensed the word "pinning" in red 1's
+    message -- and with no learner no such intervention can be applied to any wiring. A field that
+    can never be True is not a reading, and keeping one would let the refusal below claim a pin
+    nobody applied. The four diagnostic lines STAY: they carry the MEASUREMENT that no learner
+    ran, rather than leaving it inferred from the absence of an import."""
 
     name: str
-    pinned: bool
     accuracy: float
     executed: int
     attempted: int
@@ -269,40 +321,58 @@ def is_seeding_failure(records):
 # The two reds' readings (2.5)
 # =============================================================================================
 def red1(result):
-    """RED 1 -- never moves off the seed. Returns (fired, message).
+    """RED 1's SLOT, and what it reads after 2026-09-09: the NO-LEARNER REFUSAL. Returns
+    (fired, message), and `fired` is now always False -- there is no drift verdict to read.
 
-    Pinning is attributed ONLY to the verified intervention. A learning arm's zero is reported as
-    what it is -- cancelled / below quantization, or no eligible spike pairs -- and red 1 does NOT
-    fire on it, because a zero from four other causes is not evidence about seeding."""
-    zero_drift = is_seeding_failure(result.records)
-    if result.pinned and result.effective_count == 0 and zero_drift:
-        return True, (
-            "seeding approach failed: PINNED (lr = 0 by construction): "
-            f"executed {result.executed}, attempted {result.attempted}, effective 0, drift 0"
-        )
-    if result.effective_count == 0 and result.attempted == 0:
-        return False, (
-            f"{result.name}: no eligible spike pairs (executed {result.executed}, attempted 0) "
-            "-- NOT pinning"
-        )
-    if result.effective_count == 0:
-        return False, (
-            f"{result.name}: updates cancelled or below quantization (executed "
-            f"{result.executed}, attempted {result.attempted}, effective 0) -- NOT pinning"
-        )
+    Red 1 asked whether the brain never moves off the seed, and its whole discipline was
+    ATTRIBUTION: pinning was claimed only for a VERIFIED lr = 0 intervention, while a learning
+    arm's zero was reported as cancellation, quantization or absent pairs (Codex defect 4). With
+    the learner deleted the question has no subject -- there is no intervention to verify and no
+    learning arm to contrast it against -- so every arm's zero has ONE cause, and the honest
+    reading is the harness defect 2.9 itself names: "if effective change is 0 on every arm the
+    learner is DELETED and red 1's reading is a harness defect, not a finding".
+
+    The message still carries all four diagnostic lines, because a zero is read from four lines
+    and never from one, and it must NEVER contain the word PINNED: claiming a pin nobody applied
+    is the exact attribution error red 1 existed to prevent."""
     return False, (
-        f"{result.name}: moved (executed {result.executed}, attempted {result.attempted}, "
-        f"effective {result.effective_count}, L1 {result.effective_l1:.6f})"
+        f"harness defect: no learner ran ({result.name}): executed {result.executed}, "
+        f"attempted {result.attempted}, effective {result.effective_count}, "
+        f"L1 {result.effective_l1:.6f} -- {NO_LEARNER}"
     )
 
 
-def drift_control_holds(result):
-    """Red 1's control: the SEEDED arm at the declared lr must read effective > 0 AND a distance
-    above zero on BOTH statistics. A red whose control does not hold measures the harness."""
+# distinct-from: substrate/amdahl_gate.py::red_sham_neuter -- RED (c), a stand-in on a ZERO-share
+#   path whose bar is "within noise of zero" over a resampled band; that is a magnitude criterion
+#   on a TIMING, judged against a reported band. This is an EXACT-zero predicate over six recorded
+#   quantities of one arm and admits no band at all.
+# distinct-from: cortex/h01_ingest.py::_disclose -- prints five ingest numbers and explicitly never
+#   filters on them; it decides nothing. This decides, and its decision gates a conjunct.
+# distinct-from: basal_ganglia/r_stdp.py::Calibration -- a NamedTuple of what a host measured for
+#   the parallel crossover; a record, not a predicate.
+# distinct-from: substrate/signal_ring.py::attach -- cursors a new consumer at the current head;
+#   "sees nothing before it attached" is a ring's history rule, not a zero reading.
+# distinct-from: cortex/interaction_learning.py::_live_brain_demo -- talks to the live brain and
+#   shows a learner improving; it is a demo of a learner, and its subject is exactly the thing
+#   this predicate asserts is ABSENT. All five sites read 2026-09-09 before this note was written.
+def no_learner_holds(result):
+    """RED 1's CONTROL, inverted and MEASURED. The learning control was "the SEEDED arm at the
+    declared lr reads effective > 0 and a distance above zero on BOTH statistics"; with no learner
+    the reading that must hold is its exact complement -- all four diagnostic lines at zero AND
+    both distances exactly zero -- and it is taken per arm FROM THE RUN rather than assumed from
+    the absence of an import (runtime evidence outranks static reading).
+
+    Its red is reachable six ways: any nonzero diagnostic line, or any nonzero distance, breaks
+    it. An EMPTY record set breaks it too, for the reason red 1 refused to fire on one: there is
+    nothing to read the zero FROM. The distance half is `is_seeding_failure` itself -- specs/011's
+    FR-009 / C5 / T012 predicate, CALLED and not re-written, so the tree states "every distance is
+    zero" exactly once."""
     return bool(
-        result.effective_count > 0
-        and result.records
-        and all(r.distance > 0.0 for r in result.records)
+        result.executed == 0
+        and result.attempted == 0
+        and result.effective_count == 0
+        and result.effective_l1 == 0.0
+        and is_seeding_failure(result.records)
     )
 
 
@@ -818,10 +888,50 @@ def predict(coef, feature, k):
     return int(np.argmax(x @ coef)) % k
 
 
-def _reset_population(kt, plast):
+# distinct-from: substrate/kernel_plasticity.py::KernelPlasticity.__init__ -- built the same three
+#   arrays as a SIDE EFFECT of re-pointing every bundle's qweight at a writable view, so a learner
+#   could move the table the tick reads. That module is DELETED (2026-09-09); this reads and never
+#   re-points, and the tree now has no path that can write a bundle weight at all.
+# distinct-from: substrate/lake_engine.py -- the guard's inventory cites a block record's out-edges
+#   as `(pre_local, post, delay) -> f4 weight` at L769. GREPPED 2026-09-09 and it is NOT IN THE
+#   TREE: lake_engine.py is 561 lines and neither `pre_local` nor that docstring exists anywhere in
+#   src. The overlap is with a stale index entry, not with code.
+# distinct-from: cortex/heterogeneous_microcircuit.py::run_circuit -- drives a circuit and returns
+#   per-neuron SPIKE COUNTS; a dynamics run, not a weight read.
+# distinct-from: cortex/predictive_coding.py::set_state and reasoning/resume_learning.py::_forward
+#   -- force causes / clear error membranes, and integrate a LIF readout for one window. Both are
+#   MEMBRANE state; a synapse table is neither. All four live sites read 2026-09-09.
+def edge_table(syn):
+    """(edge_pre, edge_post, weight) read out of a compiled `Synapses` bundle table, in the
+    bundle-key order the tick itself stores.
+
+    The statistics of 2.4 need an edge list with weights and nothing else. They used to take it
+    off `KernelPlasticity.edge_pre / edge_post / weights()`, which assembled exactly these three
+    arrays -- but only on its way to re-pointing every bundle at a writable view. With the learner
+    deleted the read is all that is left, and it is stated as a read: no view, no copy handed
+    back, nothing in this tree that can move the numbers it returns."""
+    import numpy as np
+
+    scale = float(1 << int(syn.frac_bits))
+    pre, post, qs = [], [], []
+    for key in sorted(syn.bundles):
+        p, q = syn.bundles[key]
+        pre.extend([key[0]] * len(p))
+        post.extend(p.tolist())
+        qs.append(q)
+    flat = np.concatenate(qs).astype(np.int64) if qs else np.zeros(0, dtype=np.int64)
+    return (
+        np.asarray(pre, dtype=np.int64),
+        np.asarray(post, dtype=np.int64),
+        flat.astype(np.float64) / scale,
+    )
+
+
+def _reset_population(kt):
     """The per-trial reset of 2.3: membranes, refractory state, spike memory, the delay rings and
-    the partition accumulators, and the learner's eligibility. Weights are NOT reset -- what a
-    trial resets is state, and the weights are the thing under measurement."""
+    the partition accumulators. The learner's eligibility used to be reset here too, and there is
+    none to reset. Weights are NOT reset -- what a trial resets is state, and the weights are the
+    thing under measurement."""
     kt.state.arrays["v"][:] = 0.0
     kt.state.arrays["refrac"][:] = 0
     kt.state.arrays["last_spike"][:] = 0
@@ -830,17 +940,17 @@ def _reset_population(kt, plast):
             slot.clear()
     for acc in kt._acc:
         acc[:] = 0
-    if plast is not None:
-        plast.reset()
 
 
-def run_trial(kt, plast, mask, learn, amp_q):
-    """One trial: reset, drive for T_trial ticks, collect the spike counts. When `learn`, the
-    learner forms eligibility from each tick's spike set and decays it; a held-out trial passes
-    `learn=False` and carries no state at all."""
+def run_trial(kt, mask, amp_q):
+    """One trial: reset, drive for T_trial ticks, collect the spike counts.
+
+    `learn` and the learner it gated are GONE (2026-09-09). Every trial is now what a HELD-OUT
+    trial always was -- drive and count, no eligibility, no reward, no state carried -- so the
+    training and held-out halves of a block differ only in whether the readout is FIT on them."""
     import numpy as np
 
-    _reset_population(kt, plast)
+    _reset_population(kt)
     n = kt.state.n_units
     counts = np.zeros(n, dtype=np.int64)
     ext = np.zeros(n, dtype=np.int64)
@@ -849,9 +959,6 @@ def run_trial(kt, plast, mask, learn, amp_q):
         ext[mask[tick]] = amp_q
         fired = kt.tick(ext)
         counts[fired] += 1
-        if learn and plast is not None:
-            plast.update_eligibility(fired, float(tick + 1))
-            plast.decay()
     return counts
 
 
@@ -870,19 +977,23 @@ def run_arm(
     classes,
     *,
     d,
-    lr=None,
     blocks=C_BLOCKS,
     t_trial=T_TRIAL,
     trials_per_class=TRIALS_PER_CLASS,
     held_out=HELD_OUT_PER_CLASS,
     threads=1,
 ):
-    """One arm, one seed, the frozen per-trial protocol of 2.3. Returns an ArmResult.
+    """One arm, one seed, the per-trial protocol of 2.3 with its learner removed. -> ArmResult.
 
     Order per trial: reset -> drive -> collect -> PREDICT with the readout fit on all PREVIOUS
-    blocks -> reward = +1 if correct else -1 -> the learner updates. Block 0 uses the readout fit
-    on a warm-up block run with the learner OFF. Held-out trials run with the learner OFF, deliver
-    no reward, form no eligibility and carry no state; the split is `marginal_holdout` per block.
+    blocks. Block 0 uses the readout fit on a warm-up block; the split is `marginal_holdout` per
+    block. The reward step and the weight update that followed it are GONE (2026-09-09), and with
+    them the `lr` parameter: with no learner an `lr` would be a knob that moves nothing, which is
+    precisely the kind of call site that lets a deleted mechanism look alive.
+
+    THE STATISTICS ARE STILL TAKEN THREE TIMES -- at construction, at the middle block and at the
+    end. Nothing can move them, and that is the point: the DriftRecords are the MEASUREMENT that
+    the table did not move, not an assumption from the absence of an import.
 
     `d` (2.12(a), required, no default): the readout sees the NON-DRIVEN units' spike counts
     through a fixed per-seed orthonormal projection to D dimensions and never sees the raw counts.
@@ -891,18 +1002,14 @@ def run_arm(
     """
     import numpy as np
 
-    from snn_data_lake.basal_ganglia.r_stdp import LR
     from snn_data_lake.cortex.h01_ingest import population
     from snn_data_lake.hippocampus.ng_snn import marginal_holdout
-    from snn_data_lake.substrate.kernel_plasticity import KernelPlasticity
 
-    lr = LR if lr is None else lr
     state, syn, kt = population(art, threads=threads)
-    plast = KernelPlasticity(kt, lr=lr)
     layer = population_layers(art)
-    amp_q = int(DRIVE_AMPLITUDE * float(state.arrays["thr"][0]) * (1 << plast.frac_bits))
+    amp_q = int(DRIVE_AMPLITUDE * float(state.arrays["thr"][0]) * (1 << int(syn.frac_bits)))
 
-    seeded_stats = statistics_of(layer, plast.edge_pre, plast.edge_post, plast.weights())
+    seeded_stats = statistics_of(layer, *edge_table(syn))
     mid_stats = seeded_stats
 
     k = len(classes)
@@ -927,10 +1034,9 @@ def run_arm(
         block_x, block_y = [], []
         correct = hits = 0
         for i, cls in enumerate(labels):
-            learn = (block >= 0) and (i not in val)
             mask = trial_drive(classes, cls, seed, trial_id, state.n_units, t_trial)
             trial_id += 1
-            counts = run_trial(kt, plast, mask, learn, amp_q)
+            counts = run_trial(kt, mask, amp_q)
             feature = counts[feat_idx].astype(np.float64) @ proj
             guess = predict(coef, feature, k)
             if i in val:
@@ -939,28 +1045,21 @@ def run_arm(
             else:
                 block_x.append(feature)
                 block_y.append(cls)
-                if learn:
-                    plast.reward(+1.0 if guess == cls else -1.0)
         if hits:
             accuracy = correct / float(hits)
         pool_x.extend(block_x)
         pool_y.extend(block_y)
         coef = fit_readout(pool_x, pool_y, k)
         if block == mid_block:
-            mid_stats = statistics_of(layer, plast.edge_pre, plast.edge_post, plast.weights())
+            mid_stats = statistics_of(layer, *edge_table(syn))
 
-    current = statistics_of(layer, plast.edge_pre, plast.edge_post, plast.weights())
-    diag = plast.diagnostics()
+    current = statistics_of(layer, *edge_table(syn))
     return ArmResult(
         name,
-        pinned=(lr == 0.0),
         accuracy=accuracy,
-        executed=diag["executed"],
-        attempted=diag["attempted"],
-        effective_count=diag["effective_count"],
-        effective_l1=diag["effective_l1"],
         records=drift_records(seeded_stats, current, mid_stats),
         feature_dim=int(proj.shape[1]),
+        **NO_LEARNER_DIAGNOSTICS,
     )
 
 
@@ -1000,8 +1099,12 @@ def verdict(results, wrong_valid):
     c_rw = contrast("random - wrong", d_rw)
     c_f = contrast("seeded - frozen", d_f)
 
-    red1_fired = all(red1(results[s]["frozen"])[0] for s in seeds)
-    drift_ok = all(drift_control_holds(results[s]["seeded"]) for s in seeds)
+    #: 2026-09-09. Conjunct (a) is NOT READ on every run from here on: drift needs a learner and
+    #: there is none. `red1` returns the no-learner refusal (fired is always False) and the note
+    #: below carries it verbatim, so the conjunct says WHY it cannot be read instead of failing
+    #: quietly as NOT MET -- "the instrument cannot measure this" and "the measurement came out
+    #: negative" are different facts, and SC-006's own reading depends on which.
+    no_learner_note = red1(results[seeds[0]]["frozen"])[1]
     conj = {}
     if not c_p.met:
         conj["c"] = _con("NOT MET", c_p, "the PLANTED control did not beat RANDOM")
@@ -1018,13 +1121,7 @@ def verdict(results, wrong_valid):
         return out
 
     conj["c"] = _con("MET", c_p, "the harness can see an advantage")
-    conj["a"] = {
-        "state": "MET" if (drift_ok and red1_fired) else "NOT MET",
-        "note": (
-            f"SEEDED effective change > 0 and both distances > 0 on every seed = {drift_ok}; "
-            f"red 1 fired on the FROZEN pin = {red1_fired}"
-        ),
-    }
+    conj["a"] = {"state": "NOT READ", "note": no_learner_note}
     conj["b"] = _con("MET" if c_r.met else "NOT MET", c_r, "seeded beats random")
     if not wrong_valid:
         conj["d"] = {
@@ -1045,10 +1142,14 @@ def verdict(results, wrong_valid):
             "to the prior",
         )
     conj["e"] = _con("MET" if c_w.met else "NOT MET", c_w, "seeded beats wrong")
-    met = all(conj[k]["state"] == "MET" for k in "abcde")
+    #: MET is no longer one of SC-006's readings here. With (a) NOT READ the criterion is NOT MET
+    #: whenever a conjunct this instrument CAN still read fails, and NOT READ when every readable
+    #: conjunct holds and only the missing drift half stands between the row and its criterion.
+    #: Folding the second into the first would hide which of the two happened.
+    readable = all(conj[k]["state"] == "MET" for k in "bcde")
     return {
         "conjuncts": conj,
-        "sc006": "MET" if met else "NOT MET",
+        "sc006": "NOT READ" if readable else "NOT MET",
         "contrasts": _contrasts(c_p, c_r, c_w, c_rw, c_f),
         "learner": _learner(c_f, results, seeds),
         "per_seed": _per_seed(results, seeds),
@@ -1075,29 +1176,29 @@ def _contrasts(*cs):
 
 
 def _learner(c_f, results, seeds):
-    """2.9: the learner is KEPT iff its attributed benefit holds -- t(d_f) > bar AND the effective
-    change is above zero. A learner that moves weights without benefit is a null (P8 clauses 3 and
-    5, and r_stdp's own docstring rejects weight movement as charge)."""
+    """2.9's learner criterion, EXECUTED 2026-09-09 and not re-derivable here.
+
+    The rule was: KEPT iff t(d_f) > bar AND the effective change is above zero; DELETED otherwise,
+    because a learner that moves weights without an attributed benefit is a null (P8 clauses 3 and
+    5, and r_stdp's own docstring rejects weight movement as charge). The campaign read
+    t(d_f) = -13.0154 with the FROZEN twin ahead of the learning arm on every seed, and the
+    learner was DELETED on it.
+
+    What this reports now is that EXECUTED disposition and its date -- never a fresh verdict. A
+    no-learner run's own t(d_f) is a mechanical zero (FROZEN is SEEDED run twice), and returning
+    KEPT or DELETED off it would be a criterion evaluated on the absence of its subject. The
+    contrast is still carried, because zero is the reading the identity control needs."""
     moved = any(results[s][a].effective_count > 0 for s in seeds for a in results[s])
-    if not moved:
-        return {
-            "disposition": "DELETED",
-            "t": c_f.t,
-            "fpr": c_f.fpr,
-            "note": (
-                "the effective change is 0 on EVERY arm: the learner is deleted and red 1's "
-                "reading is a HARNESS DEFECT, not a finding"
-            ),
-        }
-    keep = c_f.met
     return {
-        "disposition": "KEPT" if keep else "DELETED",
+        "disposition": "DELETED",
         "t": c_f.t,
         "fpr": c_f.fpr,
+        "any_arm_moved": bool(moved),
         "note": (
-            "learning beats its frozen twin on the seeded table"
-            if keep
-            else "a learner that moves weights without an attributed benefit is a null"
+            f"{NO_LEARNER}. The disposition was executed on the pinned campaign "
+            f"(tools/t063_campaign.json), not on this run: t(d_f) = -13.0154, the frozen twin "
+            f"ahead of the learning arm on every seed. Any arm moved on THIS run = {moved}, "
+            "which must be False -- a True here would mean a learner came back unannounced"
         ),
     }
 
@@ -1123,7 +1224,7 @@ def _per_seed(results, seeds):
 def format_verdict(v):
     lines = ["SC-006 verdict: " + v["sc006"], ""]
     labels = {
-        "a": "DRIFT (seeded moved, and red 1 fired on the pin)",
+        "a": "DRIFT (learning moved the seeded table) -- NO INSTRUMENT since 2026-09-09",
         "b": "BEATS RANDOM",
         "c": "NOT BLIND (the PLANTED control)",
         "d": "RED 2 FIRED (wrong underperforms random) and the WRONG arm was VALID",
@@ -1141,8 +1242,10 @@ def format_verdict(v):
     lines.append("")
     lo = v["learner"]
     lines.append(
-        f"the LEARNER's own criterion t(d_f) = {lo['t']:+.4f} -> {lo['disposition']}  ({lo['note']})"
+        f"the LEARNER: {lo['disposition']}  (this run's identity contrast t(d_f) = {lo['t']:+.4f}, "
+        f"a mechanical zero)"
     )
+    lines.append(f"     {lo['note']}")
     lines.append("")
     lines.append(
         "per-seed table (accuracy | executed / attempted / effective / L1 | S1 / S2 drift):"
@@ -1165,20 +1268,29 @@ def format_verdict(v):
 # =============================================================================================
 # A synthetic artifact in the real format -- the offline self-check's population
 # =============================================================================================
-def synthetic_artifact(n_units=64, seed=0, out_degree=4):
+def synthetic_artifact(n_units=64, seed=0, out_degree=8):
     """A population in `h01_ingest`'s artifact format: signed units spread over the seven bands, a
     sparse laminar-biased edge set with integer synapse counts. No network, no lake, no artifact
     file -- the self-check must run anywhere, and an instrument validated only against the thing
     it was built to bless is not an instrument (specs/011 D4).
 
-    `out_degree` = 4 (256 edges over 64 units) was CHOSEN by measurement, not by taste: at 2 the
-    fixture's non-driven units have a fan-in of ~2, so the class that reaches a unit reaches it
-    alone and EVERY arm's feature vector is a perfect class code -- the baseline sits at ceiling
-    and a positive control has nothing to beat (measured over a density sweep: t(planted - random)
-    = +0.66 at degree 2, +3.53 at 4, +2.82 at 8, +7.48 at 12, K = 4). Fan-in of ~4 dilutes each
-    class's contribution enough that the base graph's task is genuinely hard, which is what makes
-    PLANTED's advantage a reading rather than a formality. Disclosed as a fixture property; it
-    changes nothing about the campaign's population."""
+    `out_degree` is CHOSEN by measurement, not by taste, under one rule: the SMALLEST density at
+    which the PLANTED positive control clears the t bar while the base graph's task is still
+    genuinely hard. At a low density the fixture's non-driven units have a fan-in of ~2, so the
+    class that reaches a unit reaches it alone and EVERY arm's feature vector is a perfect class
+    code -- the baseline sits at ceiling and a positive control has nothing to beat.
+
+    IT WAS 4, RE-MEASURED TO 8 ON 2026-09-09 WHEN THE LEARNER WAS DELETED, and both sweeps are
+    kept because the difference between them is the finding. WITH the learner, K = 4:
+    t(planted - random) = +0.66 at degree 2, +3.53 at 4, +2.82 at 8, +7.48 at 12 -- 4 was the
+    smallest that cleared. WITHOUT it, same fixture and the same self-check settings:
+    +0.6831 at 2 (random 0.9062), +0.7977 at 4 (random 0.8281), +4.4063 at 8 (random 0.5469),
+    +6.8739 at 12 (random 0.2812), +11.0625 at 16 (random 0.2500). Degree 4 NO LONGER REACHES the
+    control -- the learner had been supplying part of PLANTED's margin -- and 8 is the smallest
+    that does. 12 and 16 are REJECTED though their t is larger: both base arms sit at chance
+    (0.25 = 1/K) there, and a positive control that beats a floor is a formality, not a reading.
+    Disclosed as a fixture property; it changes nothing about the campaign's population, whose own
+    PLANTED contrast was read at t = +9.2601 with the learner and is pinned, not re-run."""
     import numpy as np
 
     rng = np.random.default_rng(int(seed) * 9_176 + 5)
@@ -1225,13 +1337,20 @@ def selfcheck(
 ):
     """The bare invocation: the whole pipeline on a synthetic population, under 60 s, no network.
 
-    WHAT IS REAL AND WHAT IS CONSTRUCTED, stated plainly. RED 1 is REAL: the FROZEN arm is run at
-    lr = 0 on the synthetic population and its verdict message names the pin the harness applied.
-    The PLANTED control is REAL: the contrast is computed from the arms' own accuracies. RED 2's
-    PREDICATE is exercised on a CONSTRUCTED accuracy set -- a synthetic table has no reason to
-    make a reversed prior genuinely harmful, and a red must be shown to be reachable rather than
-    waited for (P8 clause 1) -- while the WRONG arm's own VALIDITY PRECONDITION is measured on the
-    synthetic table for real. The campaign is where red 2 is read evidentially.
+    WHAT IS REAL AND WHAT IS CONSTRUCTED, stated plainly. The NO-LEARNER READING is REAL and is
+    taken from the run: every arm on every seed must report four zero diagnostic lines and zero
+    distance on both statistics, measured per arm by `no_learner_holds` rather than inferred from
+    the absence of an import. The IDENTITY control is REAL: with no learner the FROZEN arm must
+    reproduce SEEDED's accuracy exactly on every seed, and a difference would be a determinism
+    defect. The PLANTED control is REAL: the contrast is computed from the arms' own accuracies.
+    RED 2's PREDICATE is exercised on a CONSTRUCTED accuracy set -- a synthetic table has no
+    reason to make a corrupted prior genuinely harmful, and a red must be shown to be reachable
+    rather than waited for (P8 clause 1) -- while the WRONG arm's own VALIDITY PRECONDITION is
+    measured on the synthetic table for real.
+
+    WHAT IS GONE: red 1. Its subject was a verified lr = 0 pin standing against a learning arm,
+    and there is no learning arm. Its slot reads the no-learner refusal, and the control on THAT
+    is that the refusal never says PINNED.
     """
 
     t0 = time.perf_counter()
@@ -1251,7 +1370,6 @@ def selfcheck(
                 s,
                 classes,
                 d=d,
-                lr=0.0 if name == "frozen" else None,
                 blocks=blocks,
                 t_trial=t_trial,
                 trials_per_class=trials_per_class,
@@ -1260,8 +1378,7 @@ def selfcheck(
         results[s] = row
 
     v = verdict(results, wrong_valid=valid)
-    red1_fired = all(red1(results[s]["frozen"])[0] for s in results)
-    red1_msg = red1(results[0]["frozen"])[1]
+    no_learner_msg = red1(results[0]["frozen"])[1]
     planted = v["conjuncts"]["c"]["state"] == "MET"
 
     #: red 2's predicate, on the constructed input that makes it fire, and on one that must NOT
@@ -1343,8 +1460,15 @@ def selfcheck(
 
     seconds = time.perf_counter() - t0
     return {
-        "red1": bool(red1_fired),
-        "red1_message": red1_msg,
+        #: the no-learner reading, MEASURED on every arm of every seed -- not on the frozen one
+        #: alone, because "nothing in the tree can write a bundle weight" is a claim about the
+        #: whole run and a per-arm zero is the only evidence for it
+        "no_learner": all(no_learner_holds(results[s][a]) for s in results for a in results[s]),
+        "no_learner_message": no_learner_msg,
+        #: the identity control: with no learner FROZEN is SEEDED run twice
+        "frozen_identity": all(
+            results[s]["frozen"].accuracy == results[s]["seeded"].accuracy for s in results
+        ),
         "red2": red2,
         "planted": bool(planted),
         "wrong_valid": bool(valid),
@@ -1358,7 +1482,6 @@ def selfcheck(
         "campaign_guard": guard_ok,
         "planted_repeats_a_pair": bool(planted_repeats),
         "feature_dim": int(results[0]["seeded"].feature_dim),
-        "drift_control": all(drift_control_holds(results[s]["seeded"]) for s in results),
         "refusals": refusals,
         "verdict": v,
         "seconds": seconds,
@@ -1385,8 +1508,8 @@ def _bare():
     print("prior drift harness -- seeded / random / wrong, with PLANTED and FROZEN")
     print("=" * 78)
     out = selfcheck()
-    print(f"1 red 1 (the pin)     : fired = {out['red1']}")
-    print(f"                        {out['red1_message']}")
+    print(f"1 NO-LEARNER reading  : every arm four zero lines and zero drift = {out['no_learner']}")
+    print(f"                        {out['no_learner_message']}")
     print(
         f"2 red 2 (predicate)   : reachable = {out['red2']} (constructed input; see the docstring)"
     )
@@ -1398,7 +1521,9 @@ def _bare():
         f"4 WRONG validity      : valid = {out['wrong_valid']}  PSI(wrong) "
         f"{out['wrong_psi']:.6f} vs PSI(random) {out['random_psi']:.6f}"
     )
-    print(f"5 drift control       : SEEDED moved on every seed = {out['drift_control']}")
+    print(
+        f"5 identity control    : FROZEN reproduces SEEDED on every seed = {out['frozen_identity']}"
+    )
     print(f"6 nuisance refusals   : {out['refusals']}")
     print(f"7 accuracies          : {json.dumps(out['accuracies'])}")
     m = out["wrong_band_masses"]
@@ -1420,12 +1545,21 @@ def _bare():
     print("=" * 78)
     print(format_verdict(out["verdict"]))
     print("=" * 78)
-    assert out["red1"], "red 1 must FIRE on the constructed pin"
+    assert out["no_learner"], (
+        "an arm reported a learner's diagnostics or a nonzero distance -- with "
+        "substrate/kernel_plasticity deleted nothing in this tree can move a bundle weight"
+    )
+    assert "PINNED" not in out["no_learner_message"], (
+        "the no-learner refusal must never claim a pin nobody applied"
+    )
+    assert out["frozen_identity"], (
+        "FROZEN did not reproduce SEEDED: with no learner the two are the same run, so a "
+        "difference is a DETERMINISM defect in this harness"
+    )
     assert out["red2"], "red 2's predicate must be reachable and must not fire on a tie"
     assert out["planted"], (
         "the PLANTED positive control must beat RANDOM -- else the harness is blind"
     )
-    assert out["drift_control"], "red 1's control failed: the SEEDED arm did not move"
     assert all(ok for _n, ok in out["refusals"]), (
         f"a nuisance refusal did not fire: {out['refusals']}"
     )
@@ -1439,10 +1573,11 @@ def _bare():
     )
     assert out["seconds"] < 60.0, f"the offline self-check took {out['seconds']:.1f}s"
     print(
-        f"prior_drift_harness self-check OK in {out['seconds']:.1f}s: red 1 fires on the "
-        "constructed pin and names it, red 2's predicate is reachable and does not fire on a tie, "
-        "the PLANTED control sees an advantage, the SEEDED arm moves on every seed, every "
-        "nuisance violation is refused before it can run, the readout sees only an orthonormal "
+        f"prior_drift_harness self-check OK in {out['seconds']:.1f}s: every arm reads four zero "
+        "diagnostic lines and zero drift on both statistics, the refusal names the deleted learner "
+        "and never says PINNED, FROZEN reproduces SEEDED exactly, red 2's predicate is reachable "
+        "and does not fire on a tie, the PLANTED control sees an advantage, every nuisance "
+        "violation is refused before it can run, the readout sees only an orthonormal "
         "D-dimensional projection, the D ladder refuses the row when no D is under the ceiling, "
         "the settling clause fires on a trend and not on this daemon's duty cycle, and the "
         "campaign guard refuses both a missing D and an invalid WRONG arm"
@@ -1453,8 +1588,6 @@ def _bare():
 # =============================================================================================
 # The pilot (2.7) and the campaign (2.6)
 # =============================================================================================
-# distinct-from: substrate/kernel_plasticity.py::KernelPlasticity -- "beside every" there is the
-#   eligibility array beside a bundle's qweight; here it is a host reading beside a timing number.
 # distinct-from: cortex/h01_ingest.py::_lif_defaults -- imports the LIF constants from their
 #   equation owner; no host, no process, no port.
 # distinct-from: substrate/doc_budget_gate.py::_selfcheck,
@@ -1603,6 +1736,13 @@ def _tick_cost(art, classes, reps=3, trials=4, t_trial=T_TRIAL):
     """Seconds per tick at this width WITH THE LEARNER ON and the reward gate fired once per
     trial, so the projection's basis is the work the campaign actually does (Codex defect 11).
 
+    DATED CORRECTION 2026-09-09: THE LEARNER IS GONE, so the first sentence describes what this
+    measured UNTIL the disposition and not what it measures now. The basis is the tick and the
+    per-trial reset alone. Disclosed here rather than left as an unexplained shrink -- Codex
+    defect 11's point was that a projection excluding the learner UNDER-COUNTS the campaign, so
+    any width chosen against this number is chosen against a cheaper workload than the pinned
+    campaign's, and the pinned campaign's own W is NOT re-derived from it.
+
     MIN OF `reps`, not a single reading: the host runs a live daemon whose own duty cycle swings
     its CPU by more than 10 % between 90 s windows, and a single timing on a contended box is the
     instrument defect this project hunts. Each rep runs whole TRIALS with the per-trial reset, so
@@ -1610,11 +1750,9 @@ def _tick_cost(art, classes, reps=3, trials=4, t_trial=T_TRIAL):
     import numpy as np
 
     from snn_data_lake.cortex.h01_ingest import population
-    from snn_data_lake.substrate.kernel_plasticity import KernelPlasticity
 
-    state, _syn, kt = population(art)
-    plast = KernelPlasticity(kt)
-    amp_q = int(DRIVE_AMPLITUDE * float(state.arrays["thr"][0]) * (1 << plast.frac_bits))
+    state, syn, kt = population(art)
+    amp_q = int(DRIVE_AMPLITUDE * float(state.arrays["thr"][0]) * (1 << int(syn.frac_bits)))
     masks = [
         trial_drive(classes, i % len(classes), 0, i, state.n_units, t_trial) for i in range(trials)
     ]
@@ -1623,14 +1761,11 @@ def _tick_cost(art, classes, reps=3, trials=4, t_trial=T_TRIAL):
     for _rep in range(reps):
         t0 = time.perf_counter()
         for mask in masks:
-            _reset_population(kt, plast)
+            _reset_population(kt)
             for tick in range(t_trial):
                 ext[:] = 0
                 ext[mask[tick]] = amp_q
-                fired = kt.tick(ext)
-                plast.update_eligibility(fired, float(tick + 1))
-                plast.decay()
-            plast.reward(+1.0)
+                kt.tick(ext)
         dt = (time.perf_counter() - t0) / (trials * t_trial)
         best = dt if best is None else min(best, dt)
     return best
@@ -1727,7 +1862,7 @@ def run_pilot():
             d_readings.append({"d": d, "accuracy": None, "note": f"D > {n_feat} features"})
             print(f"D ladder: D = {d:>3}  DOES NOT FIT ({n_feat} non-driven units)")
             continue
-        r = run_arm(table_random, "random", 0, classes, d=d, lr=0.0, blocks=1)
+        r = run_arm(table_random, "random", 0, classes, d=d, blocks=1)
         d_readings.append({"d": d, "accuracy": r.accuracy})
         print(f"D ladder: D = {d:>3}  no-learning RANDOM held-out accuracy = {r.accuracy:.4f}")
     d_chosen = choose_d(d_readings)
@@ -1744,7 +1879,7 @@ def run_pilot():
     no_edges = _copy(art)
     for key in ("pre_idx", "post_idx", "n_syn"):
         no_edges[key] = no_edges[key][:0]
-    drive_only = run_arm(no_edges, "drive-only", 0, classes, d=d_basis, lr=0.0, blocks=1)
+    drive_only = run_arm(no_edges, "drive-only", 0, classes, d=d_basis, blocks=1)
     seeded_pilot = run_arm(arm_seeded(art), "seeded", 0, classes, d=d_basis, blocks=1)
     chance = 1.0 / k
     print(
@@ -1939,7 +2074,7 @@ def run_campaign():
         row = {}
         for name, table in tables.items():
             r0 = time.perf_counter()
-            row[name] = run_arm(table, name, s, classes, d=d, lr=0.0 if name == "frozen" else None)
+            row[name] = run_arm(table, name, s, classes, d=d)
             print(
                 f"seed {s} {name:<8} acc {row[name].accuracy:.4f}  "
                 f"exec {row[name].executed} att {row[name].attempted} "
@@ -1995,7 +2130,14 @@ def run_campaign():
             for s in results
         },
         "verdict": v,
-        "red1_messages": {s: red1(results[s]["frozen"])[1] for s in results},
+        #: RENAMED from `red1_messages` on 2026-09-09. The key held red 1's reading, and red 1's
+        #: subject is deleted; a key whose name says "red 1 fired or did not" over a no-learner
+        #: refusal is a name that is not what it measures. The PINNED campaign is not edited and
+        #: keeps its own `red1_messages` -- the two pins differ because the instrument did.
+        "no_learner_refusals": {s: red1(results[s]["frozen"])[1] for s in results},
+        "no_learner_holds": {
+            s: {a: no_learner_holds(results[s][a]) for a in results[s]} for s in results
+        },
         "drift_records": {
             s: {a: [r._asdict() for r in results[s][a].records] for a in results[s]}
             for s in results
