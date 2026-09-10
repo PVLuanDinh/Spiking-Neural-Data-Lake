@@ -704,6 +704,7 @@ not by the mark. Red at `da0139f`, green at `82eafb1`; the bare self-check stays
 | evidence §3.2 (a) DRIFT cell — the same quartet | this record commit |
 | evidence §3.4(1) — the no-learner refusal sentence (F11) | this record commit |
 | evidence §3.4(2) — the `rules_seen` parenthetical (F13) | this record commit |
+| `specs/011 tasks.md` T013 — the SEEDED control's seed-0 sibling ("528,383 / 231,865.22 … on every seed" → the ranges), a site no refuter named; the fold builder reported it instead of widening its scope, the orchestrator folded it | the commit after this record commit |
 
 **THE FOLD'S COMMITS.** `6d2a309` (specs/022 annotation sites) · `d560a95` (specs/011 OUTCOME + T012/T013) ·
 `2c2fea9` (h01_ingest appended succession) · `ad98d47` (the harness's DISPOSITION block, HOST_NOTE,
