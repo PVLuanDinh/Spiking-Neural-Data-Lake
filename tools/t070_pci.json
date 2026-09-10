@@ -1,0 +1,1047 @@
+{
+  "task": "T070 -- the integration instrument on the kernel's port (specs/022 Phase 4 / C4)",
+  "git_head": "c1aac927b33e9620c29633d3b243a8c40cb6155d",
+  "instrument_sha256": "09ef70cf7daf4c22712bf352665960c66ca68025761f0bb952af22f9795d5fdf",
+  "scorer_sha256": "b0e84643813cff6717d3d21699af0f87ff6c361aef07bef05c9c9421a961a57a",
+  "harness_sha256": "bf6603e0e759dd560be2ce9229ac168d3d8100a599f68f43b8647627b0fca1a9",
+  "artifact": "D:\\AI-project\\spiking-neural-data-lake\\data\\h01\\h01_c3_graph.npz",
+  "artifact_sha256": "a1d0491ac486bf194a479a8c6aab419df90c7f05d2ba643d6b16ed3c3d4a0549",
+  "W_frac": 1.0,
+  "W_units": 14215,
+  "W_edges": 70001,
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "constants": {
+    "WARM": 40,
+    "STEPS": 80,
+    "PULSE_T": 0,
+    "PULSE_LEN": 3,
+    "PULSE_CURRENT": 1.2,
+    "TRIALS": 8,
+    "N_PERTURB": 3,
+    "amp": 0.4,
+    "RATE_TOL": 0.05,
+    "BISECT_STEPS": 12,
+    "SYNC_FANOUT": 8,
+    "SEARCH_CEILING": 4.0,
+    "bar": 1.895
+  },
+  "chain": [
+    {
+      "seed": 0,
+      "inflight": 532,
+      "identical": true,
+      "frame_only_diverged": true,
+      "omit_refused": true,
+      "pulseless_identity": true,
+      "n_units": 14215
+    },
+    {
+      "seed": 1,
+      "inflight": 571,
+      "identical": true,
+      "frame_only_diverged": true,
+      "omit_refused": true,
+      "pulseless_identity": true,
+      "n_units": 14215
+    },
+    {
+      "seed": 2,
+      "inflight": 611,
+      "identical": true,
+      "frame_only_diverged": true,
+      "omit_refused": true,
+      "pulseless_identity": true,
+      "n_units": 14215
+    },
+    {
+      "seed": 3,
+      "inflight": 561,
+      "identical": true,
+      "frame_only_diverged": true,
+      "omit_refused": true,
+      "pulseless_identity": true,
+      "n_units": 14215
+    },
+    {
+      "seed": 4,
+      "inflight": 548,
+      "identical": true,
+      "frame_only_diverged": true,
+      "omit_refused": true,
+      "pulseless_identity": true,
+      "n_units": 14215
+    },
+    {
+      "seed": 5,
+      "inflight": 485,
+      "identical": true,
+      "frame_only_diverged": true,
+      "omit_refused": true,
+      "pulseless_identity": true,
+      "n_units": 14215
+    },
+    {
+      "seed": 6,
+      "inflight": 517,
+      "identical": true,
+      "frame_only_diverged": true,
+      "omit_refused": true,
+      "pulseless_identity": true,
+      "n_units": 14215
+    },
+    {
+      "seed": 7,
+      "inflight": 579,
+      "identical": true,
+      "frame_only_diverged": true,
+      "omit_refused": true,
+      "pulseless_identity": true,
+      "n_units": 14215
+    }
+  ],
+  "arms": {
+    "0": {
+      "integrated": {
+        "arm": "integrated",
+        "seed": 0,
+        "amp": 0.4,
+        "pci": 0.000721697699186751,
+        "gzip": 318.25,
+        "ones": 67.375,
+        "rate": 0.03767235314808301,
+        "null": 8.018863324297234e-05,
+        "inflight": 532,
+        "search": [],
+        "matched": true
+      },
+      "partitioned": {
+        "arm": "partitioned",
+        "seed": 0,
+        "amp": 0.4,
+        "pci": 7.789752943603027e-05,
+        "gzip": 145.625,
+        "ones": 1.875,
+        "rate": 0.02804871614491734,
+        "null": 7.789752943603027e-05,
+        "inflight": 393,
+        "search": [],
+        "matched": true
+      },
+      "partitioned_rate_matched": {
+        "arm": "partitioned_rate_matched",
+        "seed": 0,
+        "amp": 0.5,
+        "pci": 9.622635989156681e-05,
+        "gzip": 148.5,
+        "ones": 2.625,
+        "rate": 0.039300035174111854,
+        "null": 9.622635989156681e-05,
+        "inflight": 548,
+        "search": [
+          [
+            0.8,
+            0.06713594794231445
+          ],
+          [
+            0.4,
+            0.02804871614491734
+          ],
+          [
+            0.6000000000000001,
+            0.049552409426661975
+          ],
+          [
+            0.5,
+            0.039300035174111854
+          ]
+        ],
+        "matched": true
+      },
+      "synchronous": {
+        "arm": "synchronous",
+        "seed": 0,
+        "amp": 0.4,
+        "pci": 0.0,
+        "gzip": 9.0,
+        "ones": 0.0,
+        "rate": 0.9880953218431234,
+        "null": 0.0,
+        "inflight": 14045,
+        "search": [],
+        "matched": true
+      },
+      "silent": {
+        "arm": "silent",
+        "seed": 0,
+        "amp": 0.0,
+        "pci": 2.74932456833048e-05,
+        "gzip": 48.25,
+        "ones": 0.625,
+        "rate": 0.0,
+        "null": 0.0,
+        "inflight": 0,
+        "search": [],
+        "matched": true
+      }
+    },
+    "1": {
+      "integrated": {
+        "arm": "integrated",
+        "seed": 1,
+        "amp": 0.4,
+        "pci": 0.0011111853463669024,
+        "gzip": 405.25,
+        "ones": 111.125,
+        "rate": 0.03812873724938445,
+        "null": 9.851746369850886e-05,
+        "inflight": 571,
+        "search": [],
+        "matched": true
+      },
+      "partitioned": {
+        "arm": "partitioned",
+        "seed": 1,
+        "amp": 0.4,
+        "pci": 8.247973704991441e-05,
+        "gzip": 146.0,
+        "ones": 2.0,
+        "rate": 0.028319556806190645,
+        "null": 8.247973704991441e-05,
+        "inflight": 414,
+        "search": [],
+        "matched": true
+      },
+      "partitioned_rate_matched": {
+        "arm": "partitioned_rate_matched",
+        "seed": 1,
+        "amp": 0.5,
+        "pci": 7.56064256290882e-05,
+        "gzip": 144.25,
+        "ones": 1.5,
+        "rate": 0.03971157228279986,
+        "null": 7.56064256290882e-05,
+        "inflight": 569,
+        "search": [
+          [
+            0.8,
+            0.0676618009145269
+          ],
+          [
+            0.4,
+            0.028319556806190645
+          ],
+          [
+            0.6000000000000001,
+            0.049861062258177984
+          ],
+          [
+            0.5,
+            0.03971157228279986
+          ]
+        ],
+        "matched": true
+      },
+      "synchronous": {
+        "arm": "synchronous",
+        "seed": 1,
+        "amp": 0.4,
+        "pci": 0.0,
+        "gzip": 9.0,
+        "ones": 0.0,
+        "rate": 0.9878728455856489,
+        "null": 0.0,
+        "inflight": 14046,
+        "search": [],
+        "matched": true
+      },
+      "silent": {
+        "arm": "silent",
+        "seed": 1,
+        "amp": 0.0,
+        "pci": 7.102421801520406e-05,
+        "gzip": 128.375,
+        "ones": 2.25,
+        "rate": 0.0,
+        "null": 0.0,
+        "inflight": 0,
+        "search": [],
+        "matched": true
+      }
+    },
+    "2": {
+      "integrated": {
+        "arm": "integrated",
+        "seed": 2,
+        "amp": 0.4,
+        "pci": 0.0005590293288938643,
+        "gzip": 261.5,
+        "ones": 49.125,
+        "rate": 0.03796341892367218,
+        "null": 6.873311420826201e-05,
+        "inflight": 611,
+        "search": [],
+        "matched": true
+      },
+      "partitioned": {
+        "arm": "partitioned",
+        "seed": 2,
+        "amp": 0.4,
+        "pci": 7.789752943603027e-05,
+        "gzip": 147.625,
+        "ones": 2.625,
+        "rate": 0.028352092859655294,
+        "null": 7.789752943603027e-05,
+        "inflight": 442,
+        "search": [],
+        "matched": true
+      },
+      "partitioned_rate_matched": {
+        "arm": "partitioned_rate_matched",
+        "seed": 2,
+        "amp": 0.5,
+        "pci": 7.331532182214613e-05,
+        "gzip": 143.375,
+        "ones": 1.25,
+        "rate": 0.039570875835385155,
+        "null": 7.331532182214613e-05,
+        "inflight": 591,
+        "search": [
+          [
+            0.8,
+            0.06763454097784032
+          ],
+          [
+            0.4,
+            0.028352092859655294
+          ],
+          [
+            0.6000000000000001,
+            0.04982676749912065
+          ],
+          [
+            0.5,
+            0.039570875835385155
+          ]
+        ],
+        "matched": true
+      },
+      "synchronous": {
+        "arm": "synchronous",
+        "seed": 2,
+        "amp": 0.4,
+        "pci": 0.0,
+        "gzip": 9.0,
+        "ones": 0.0,
+        "rate": 0.9872467463946535,
+        "null": 0.0,
+        "inflight": 14040,
+        "search": [],
+        "matched": true
+      },
+      "silent": {
+        "arm": "silent",
+        "seed": 2,
+        "amp": 0.0,
+        "pci": 5.0404283752725466e-05,
+        "gzip": 106.25,
+        "ones": 1.125,
+        "rate": 0.0,
+        "null": 0.0,
+        "inflight": 0,
+        "search": [],
+        "matched": true
+      }
+    },
+    "3": {
+      "integrated": {
+        "arm": "integrated",
+        "seed": 3,
+        "amp": 0.4,
+        "pci": 0.001001212363633683,
+        "gzip": 380.875,
+        "ones": 93.0,
+        "rate": 0.03758617657404151,
+        "null": 0.0001168462941540454,
+        "inflight": 561,
+        "search": [],
+        "matched": true
+      },
+      "partitioned": {
+        "arm": "partitioned",
+        "seed": 3,
+        "amp": 0.4,
+        "pci": 7.102421801520406e-05,
+        "gzip": 110.5,
+        "ones": 2.25,
+        "rate": 0.028078614139992967,
+        "null": 7.102421801520406e-05,
+        "inflight": 407,
+        "search": [],
+        "matched": true
+      },
+      "partitioned_rate_matched": {
+        "arm": "partitioned_rate_matched",
+        "seed": 3,
+        "amp": 0.5,
+        "pci": 8.93530484707406e-05,
+        "gzip": 131.25,
+        "ones": 2.875,
+        "rate": 0.03916989096025325,
+        "null": 8.93530484707406e-05,
+        "inflight": 590,
+        "search": [
+          [
+            0.8,
+            0.06713155117833275
+          ],
+          [
+            0.4,
+            0.028078614139992967
+          ],
+          [
+            0.6000000000000001,
+            0.04937741822018994
+          ],
+          [
+            0.5,
+            0.03916989096025325
+          ]
+        ],
+        "matched": true
+      },
+      "synchronous": {
+        "arm": "synchronous",
+        "seed": 3,
+        "amp": 0.4,
+        "pci": 0.0,
+        "gzip": 9.0,
+        "ones": 0.0,
+        "rate": 0.9865986633837496,
+        "null": 0.0,
+        "inflight": 14023,
+        "search": [],
+        "matched": true
+      },
+      "silent": {
+        "arm": "silent",
+        "seed": 3,
+        "amp": 0.0,
+        "pci": 0.00011913739796098747,
+        "gzip": 136.125,
+        "ones": 5.625,
+        "rate": 0.0,
+        "null": 9.164415227768267e-06,
+        "inflight": 0,
+        "search": [],
+        "matched": true
+      }
+    },
+    "4": {
+      "integrated": {
+        "arm": "integrated",
+        "seed": 4,
+        "amp": 0.4,
+        "pci": 0.0002863879758677583,
+        "gzip": 214.875,
+        "ones": 19.0,
+        "rate": 0.03781392894829406,
+        "null": 4.81131799457834e-05,
+        "inflight": 548,
+        "search": [],
+        "matched": true
+      },
+      "partitioned": {
+        "arm": "partitioned",
+        "seed": 4,
+        "amp": 0.4,
+        "pci": 4.1239868524957204e-05,
+        "gzip": 69.375,
+        "ones": 1.125,
+        "rate": 0.028265036932817445,
+        "null": 4.1239868524957204e-05,
+        "inflight": 409,
+        "search": [],
+        "matched": true
+      },
+      "partitioned_rate_matched": {
+        "arm": "partitioned_rate_matched",
+        "seed": 4,
+        "amp": 0.5,
+        "pci": 0.000103099671312393,
+        "gzip": 150.5,
+        "ones": 3.125,
+        "rate": 0.03945655997186071,
+        "null": 0.000103099671312393,
+        "inflight": 578,
+        "search": [
+          [
+            0.8,
+            0.06737776996130848
+          ],
+          [
+            0.4,
+            0.028265036932817445
+          ],
+          [
+            0.6000000000000001,
+            0.04954185719310587
+          ],
+          [
+            0.5,
+            0.03945655997186071
+          ]
+        ],
+        "matched": true
+      },
+      "synchronous": {
+        "arm": "synchronous",
+        "seed": 4,
+        "amp": 0.4,
+        "pci": 0.0,
+        "gzip": 9.0,
+        "ones": 0.0,
+        "rate": 0.9878886739359831,
+        "null": 0.0,
+        "inflight": 14036,
+        "search": [],
+        "matched": true
+      },
+      "silent": {
+        "arm": "silent",
+        "seed": 4,
+        "amp": 0.0,
+        "pci": 5.9568698980493734e-05,
+        "gzip": 108.625,
+        "ones": 1.75,
+        "rate": 0.0,
+        "null": 0.0,
+        "inflight": 0,
+        "search": [],
+        "matched": true
+      }
+    },
+    "5": {
+      "integrated": {
+        "arm": "integrated",
+        "seed": 5,
+        "amp": 0.4,
+        "pci": 0.000992047948405915,
+        "gzip": 368.5,
+        "ones": 98.875,
+        "rate": 0.03808301090397467,
+        "null": 9.622635989156681e-05,
+        "inflight": 485,
+        "search": [],
+        "matched": true
+      },
+      "partitioned": {
+        "arm": "partitioned",
+        "seed": 5,
+        "amp": 0.4,
+        "pci": 0.00010080856750545093,
+        "gzip": 150.25,
+        "ones": 3.0,
+        "rate": 0.028417164966584595,
+        "null": 0.00010080856750545093,
+        "inflight": 368,
+        "search": [],
+        "matched": true
+      },
+      "partitioned_rate_matched": {
+        "arm": "partitioned_rate_matched",
+        "seed": 5,
+        "amp": 0.5,
+        "pci": 5.9568698980493734e-05,
+        "gzip": 88.875,
+        "ones": 1.625,
+        "rate": 0.039527787548364404,
+        "null": 5.9568698980493734e-05,
+        "inflight": 553,
+        "search": [
+          [
+            0.8,
+            0.06752022511431587
+          ],
+          [
+            0.4,
+            0.028417164966584595
+          ],
+          [
+            0.6000000000000001,
+            0.04975114315863524
+          ],
+          [
+            0.5,
+            0.039527787548364404
+          ]
+        ],
+        "matched": true
+      },
+      "synchronous": {
+        "arm": "synchronous",
+        "seed": 5,
+        "amp": 0.4,
+        "pci": 1.37466228416524e-05,
+        "gzip": 29.0,
+        "ones": 0.5,
+        "rate": 0.9871720014069645,
+        "null": 1.37466228416524e-05,
+        "inflight": 14033,
+        "search": [],
+        "matched": true
+      },
+      "silent": {
+        "arm": "silent",
+        "seed": 5,
+        "amp": 0.0,
+        "pci": 5.9568698980493734e-05,
+        "gzip": 89.25,
+        "ones": 1.875,
+        "rate": 0.0,
+        "null": 0.0,
+        "inflight": 0,
+        "search": [],
+        "matched": true
+      }
+    },
+    "6": {
+      "integrated": {
+        "arm": "integrated",
+        "seed": 6,
+        "amp": 0.4,
+        "pci": 0.0004078164776356879,
+        "gzip": 241.125,
+        "ones": 28.625,
+        "rate": 0.03776292648610623,
+        "null": 9.622635989156681e-05,
+        "inflight": 517,
+        "search": [],
+        "matched": true
+      },
+      "partitioned": {
+        "arm": "partitioned",
+        "seed": 6,
+        "amp": 0.4,
+        "pci": 9.622635989156681e-05,
+        "gzip": 164.5,
+        "ones": 2.0,
+        "rate": 0.02825712275765037,
+        "null": 9.622635989156681e-05,
+        "inflight": 404,
+        "search": [],
+        "matched": true
+      },
+      "partitioned_rate_matched": {
+        "arm": "partitioned_rate_matched",
+        "seed": 6,
+        "amp": 0.5,
+        "pci": 0.00010080856750545093,
+        "gzip": 147.375,
+        "ones": 2.375,
+        "rate": 0.03942754132958143,
+        "null": 0.00010080856750545093,
+        "inflight": 534,
+        "search": [
+          [
+            0.8,
+            0.0673153359127682
+          ],
+          [
+            0.4,
+            0.02825712275765037
+          ],
+          [
+            0.6000000000000001,
+            0.049555047485051004
+          ],
+          [
+            0.5,
+            0.03942754132958143
+          ]
+        ],
+        "matched": true
+      },
+      "synchronous": {
+        "arm": "synchronous",
+        "seed": 6,
+        "amp": 0.4,
+        "pci": 0.0,
+        "gzip": 9.0,
+        "ones": 0.0,
+        "rate": 0.988192050650721,
+        "null": 0.0,
+        "inflight": 14044,
+        "search": [],
+        "matched": true
+      },
+      "silent": {
+        "arm": "silent",
+        "seed": 6,
+        "amp": 0.0,
+        "pci": 2.06199342624786e-05,
+        "gzip": 48.125,
+        "ones": 0.5,
+        "rate": 0.0,
+        "null": 0.0,
+        "inflight": 0,
+        "search": [],
+        "matched": true
+      }
+    },
+    "7": {
+      "integrated": {
+        "arm": "integrated",
+        "seed": 7,
+        "amp": 0.4,
+        "pci": 0.00029784349490246867,
+        "gzip": 202.125,
+        "ones": 19.875,
+        "rate": 0.037376011255715796,
+        "null": 0.00011455519034710333,
+        "inflight": 579,
+        "search": [],
+        "matched": true
+      },
+      "partitioned": {
+        "arm": "partitioned",
+        "seed": 7,
+        "amp": 0.4,
+        "pci": 6.18598027874358e-05,
+        "gzip": 91.125,
+        "ones": 2.125,
+        "rate": 0.027968695040450228,
+        "null": 6.18598027874358e-05,
+        "inflight": 400,
+        "search": [],
+        "matched": true
+      },
+      "partitioned_rate_matched": {
+        "arm": "partitioned_rate_matched",
+        "seed": 7,
+        "amp": 0.5,
+        "pci": 7.102421801520406e-05,
+        "gzip": 127.125,
+        "ones": 1.875,
+        "rate": 0.03919715089693985,
+        "null": 7.102421801520406e-05,
+        "inflight": 576,
+        "search": [
+          [
+            0.8,
+            0.06693017938797045
+          ],
+          [
+            0.4,
+            0.027968695040450228
+          ],
+          [
+            0.6000000000000001,
+            0.0493220189940204
+          ],
+          [
+            0.5,
+            0.03919715089693985
+          ]
+        ],
+        "matched": true
+      },
+      "synchronous": {
+        "arm": "synchronous",
+        "seed": 7,
+        "amp": 0.4,
+        "pci": 0.0,
+        "gzip": 9.0,
+        "ones": 0.0,
+        "rate": 0.9881990854730918,
+        "null": 0.0,
+        "inflight": 14054,
+        "search": [],
+        "matched": true
+      },
+      "silent": {
+        "arm": "silent",
+        "seed": 7,
+        "amp": 0.0,
+        "pci": 2.2911038069420668e-05,
+        "gzip": 48.625,
+        "ones": 0.75,
+        "rate": 0.0,
+        "null": 0.0,
+        "inflight": 0,
+        "search": [],
+        "matched": true
+      }
+    }
+  },
+  "null_per_seed": {
+    "0": 8.018863324297234e-05,
+    "1": 9.851746369850886e-05,
+    "2": 6.873311420826201e-05,
+    "3": 0.0001168462941540454,
+    "4": 4.81131799457834e-05,
+    "5": 9.622635989156681e-05,
+    "6": 9.622635989156681e-05,
+    "7": 0.00011455519034710333
+  },
+  "conjuncts": {
+    "b1": {
+      "met": true,
+      "t": 5.201517841812392,
+      "fpr": 0.05078125,
+      "degenerate": false,
+      "diffs": [
+        0.0006438001697507208,
+        0.001028705609316988,
+        0.00048113179945783407,
+        0.0009301881456184791,
+        0.00024514810734280114,
+        0.0008912393809004641,
+        0.00031159011774412114,
+        0.00023598369211503287
+      ],
+      "note": "t +5.2015 FPR 0.0508"
+    },
+    "b2": {
+      "met": true,
+      "t": 4.8966834281776705,
+      "fpr": 0.05078125,
+      "degenerate": false,
+      "diffs": [
+        0.0006254713392951842,
+        0.0010355789207378142,
+        0.0004857140070717182,
+        0.0009118593151629425,
+        0.00018328830455536534,
+        0.0009324792494254212,
+        0.000307007910130237,
+        0.0002268192768872646
+      ],
+      "note": "t +4.8967 FPR 0.0508"
+    },
+    "b3": {
+      "met": true,
+      "t": 5.722016106516081,
+      "fpr": 0.04296875,
+      "degenerate": false,
+      "diffs": [
+        0.000721697699186751,
+        0.0011111853463669024,
+        0.0005590293288938643,
+        0.001001212363633683,
+        0.0002863879758677583,
+        0.0009783013255642626,
+        0.0004078164776356879,
+        0.00029784349490246867
+      ],
+      "note": "t +5.7220 FPR 0.0430"
+    },
+    "b4": {
+      "met": false,
+      "t": null,
+      "fpr": null,
+      "degenerate": false,
+      "diffs": [
+        2.74932456833048e-05,
+        7.102421801520406e-05,
+        5.0404283752725466e-05,
+        0.00011913739796098747,
+        5.9568698980493734e-05,
+        5.9568698980493734e-05,
+        2.06199342624786e-05,
+        2.2911038069420668e-05
+      ],
+      "note": "SILENT PCI = 0 exactly on 0/8"
+    },
+    "b5": {
+      "met": true,
+      "t": null,
+      "fpr": null,
+      "degenerate": false,
+      "diffs": [
+        0.001627682026028844,
+        0.001582835033415407,
+        0.0016074569117129761,
+        0.001583714386211743,
+        0.0016426310235666541,
+        0.0014447766443897309,
+        0.0016646148434752012,
+        0.0018211396412240524
+      ],
+      "note": "rate(SYNCHRONOUS) >= rate(INTEGRATED) on 8/8; rate(PARTITIONED-RATE-MATCHED) within 5% on 8/8"
+    },
+    "b6": {
+      "met": false,
+      "t": 5.073215903598055,
+      "fpr": 0.046875,
+      "degenerate": false,
+      "diffs": [
+        0.0006415090659437787,
+        0.0010126678826683935,
+        0.0004902962146856023,
+        0.0008843660694796377,
+        0.00023827479592197494,
+        0.0008958215885143482,
+        0.00031159011774412114,
+        0.00018328830455536534
+      ],
+      "note": "t(INTEGRATED - null) +5.0732 FPR 0.0469; partitioned <= null on 6/8; partitioned_rate_matched <= null on 4/8"
+    },
+    "b7": {
+      "met": true,
+      "t": null,
+      "fpr": null,
+      "degenerate": false,
+      "diffs": [],
+      "note": "R3 (i)(ii)(iii) + the pulse-less identity held on 8/8 seeds"
+    }
+  },
+  "pass": false,
+  "host": {
+    "daemon_pid": "15928",
+    "daemon_working_set": 5538643968,
+    "port_8137": "LISTEN"
+  },
+  "host_end": {
+    "daemon_pid": "15928",
+    "daemon_working_set": 8273309696,
+    "port_8137": "LISTEN"
+  },
+  "host_daemon_changed": false,
+  "settling": {
+    "cpu_seconds_per_window": [
+      118.813,
+      92.141,
+      110.969,
+      122.0,
+      113.531
+    ],
+    "daemon_pid_per_window": [
+      "15928",
+      "15928",
+      "15928",
+      "15928",
+      "15928"
+    ],
+    "daemon_restarted": false,
+    "window_seconds": 90,
+    "settled": true,
+    "rule": "2.12(c): settled = every window strictly positive, ONE live daemon throughout, and NO monotone trend across at least 3 windows of 90 s; a run takes 5 windows, because at the floor of 3 the monotone test rejects a SETTLED host one time in three (2 of n! orderings are monotone; 2/120 at five)"
+  },
+  "wall_seconds": 573.9,
+  "kernel": {
+    "p_parts": 1,
+    "threads": 1
+  },
+  "workers": 8,
+  "schedule": {
+    "measured_solo": [
+      0
+    ],
+    "pooled": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ]
+  },
+  "projection": {
+    "arm_s": {
+      "integrated": 8.77438620000612,
+      "partitioned": 5.490314900001977,
+      "partitioned_rate_matched": 5.5216419999924256,
+      "synchronous": 19.008231600004365,
+      "silent": 2.037339799993788
+    },
+    "seed_s": 40.831914499998675,
+    "n_seeds": 8,
+    "workers": 8,
+    "serial_s": 326.6553159999894,
+    "scheduled_s": 81.66382899999735,
+    "refused": false
+  },
+  "seed_wall_seconds": {
+    "0": 40.8,
+    "1": 76.4,
+    "2": 75.1,
+    "3": 75.7,
+    "4": 71.4,
+    "5": 73.9,
+    "6": 75.4,
+    "7": 71.7
+  },
+  "arm_wall_seconds": {
+    "0": {
+      "integrated": 8.8,
+      "partitioned": 5.5,
+      "partitioned_rate_matched": 5.5,
+      "synchronous": 19.0,
+      "silent": 2.0
+    },
+    "1": {
+      "integrated": 11.4,
+      "partitioned": 8.4,
+      "partitioned_rate_matched": 8.4,
+      "synchronous": 44.6,
+      "silent": 3.6
+    },
+    "2": {
+      "integrated": 8.8,
+      "partitioned": 8.9,
+      "partitioned_rate_matched": 8.3,
+      "synchronous": 45.6,
+      "silent": 3.4
+    },
+    "3": {
+      "integrated": 11.4,
+      "partitioned": 7.0,
+      "partitioned_rate_matched": 7.7,
+      "synchronous": 45.4,
+      "silent": 4.2
+    },
+    "4": {
+      "integrated": 8.8,
+      "partitioned": 5.1,
+      "partitioned_rate_matched": 9.0,
+      "synchronous": 44.6,
+      "silent": 3.8
+    },
+    "5": {
+      "integrated": 9.7,
+      "partitioned": 8.9,
+      "partitioned_rate_matched": 5.8,
+      "synchronous": 45.9,
+      "silent": 3.5
+    },
+    "6": {
+      "integrated": 10.8,
+      "partitioned": 9.3,
+      "partitioned_rate_matched": 8.4,
+      "synchronous": 44.6,
+      "silent": 2.3
+    },
+    "7": {
+      "integrated": 10.2,
+      "partitioned": 6.2,
+      "partitioned_rate_matched": 7.7,
+      "synchronous": 44.9,
+      "silent": 2.7
+    }
+  },
+  "scorer_device": {
+    "device": "cuda",
+    "n": 1094555,
+    "why": "n 1094555 >= measured crossover 262144"
+  }
+}
