@@ -351,7 +351,6 @@ CORE = [
     "substrate.signal_ring",  # 022 T011: journaller replay A/B + loud-loss overrun red on scratch rings
     "substrate.kernel_state",  # 022 T013: SoA alignment/contiguity + scratch-lake round-trip + refusal reds
     "substrate.kernel_tick",  # 022 T014: delay-ring arrival + T=1==T=4 train equality + imbalance + refusals
-    "substrate.kernel_plasticity",  # 022 T063: the sign-preservation red (clamp off -> a flip), byte-determinism, the four diagnostic lines, and the P2 equivalence with RSTDPNeuron
     "substrate.determinism_gate",  # 022 T015: f32-diverges/int64-agrees control arms + a thread pair (full sweep in CI --assert)
     "substrate.replay_gate",  # 022 T017: G5 resume byte-identical + omit-positions/mismatch refusals + re-seed divergence control
     "substrate.wiring_manifest",  # 022 T018: five checks + constructed reds + NIR-HDF5 round-trip on a scratch manifest

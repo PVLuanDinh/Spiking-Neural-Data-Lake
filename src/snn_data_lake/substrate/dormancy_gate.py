@@ -729,22 +729,23 @@ EXEMPT = {
         "control, the WRONG arm's measured validity precondition, and every nuisance refusal), "
         "never from a tick. It is the CONSUMER kernel_plasticity's row names; it is NOT the live "
         "consumer kernel_tick's and kernel_state's rows name, and T063 2.8 records that an "
-        "instrument that ticks a scratch population discharges neither",
-    ),
-    "kernel_plasticity": (
-        "wire",
-        "specs/022 T063, DATED 2026-09-09: the kernel-side driver of the ONE R-STDP rule -- the "
-        "first mechanism in this tree that can write a weight into a Synapses bundle table. "
-        "Reachable from run_selfchecks (the offline check: the sign-preservation red with its "
-        "clamp-off arm, byte-determinism, the four diagnostic lines, and the P2 equivalence with "
-        "RSTDPNeuron), NEVER from a tick. ITS CONSUMER IS cortex/prior_drift_harness, which "
-        "constructs a scratch population and drives it; that is the amdahl_gate shape -- an "
-        "instrument that builds its own substrate and is never built BY one. Stated as a wire "
-        "rather than permanent DELIBERATELY: a learner whose only caller is a measurement "
-        "instrument is exactly the dormancy P3 names, and the row retires the day a live path "
-        "reaches it. What this row does NOT claim: it is not the kernel wire, and it does not "
-        "discharge kernel_tick's or kernel_state's own exemptions -- an instrument that ticks a "
-        "scratch population is not the live consumer those rows name (T063 2.8)",
+        "instrument that ticks a scratch population discharges neither. "
+        "APPENDED 2026-09-09 (the text above is kept VERBATIM, including the sentence about "
+        "kernel_plasticity's row, because a row that rewrites its own justification destroys the "
+        "record of what it used to say): THAT ROW IS GONE. `substrate/kernel_plasticity` was "
+        "DELETED on its own retention criterion -- T063's campaign read t(d_f) = -13.0154 with "
+        "the FROZEN twin ahead of the learning arm on every one of the 8 seeds, and 2.9 says a "
+        "learner that moves weights without an attributed benefit is a null. The exemption's own "
+        "warning was the thing that came true: it was stated as a wire and not as permanent "
+        "BECAUSE a learner whose only caller is a measurement instrument is exactly the dormancy "
+        "P3 names, and it retired by DELETION rather than by a live path reaching it. This module "
+        "is unchanged in disposition -- still a CI/run_selfchecks instrument on a scratch "
+        "population, still never on a tick -- but it is now a NO-LEARNER instrument: its offline "
+        "check reads the no-learner refusal in red 1's slot (never the word PINNED), measures per "
+        "arm that four diagnostic lines and both distances are zero, and keeps PLANTED, the WRONG "
+        "arm's validity precondition, the D ladder, the projection, the settling clause, the "
+        "campaign guard and every nuisance refusal. Conjunct (a) reads NOT READ from here on: "
+        "drift is not measurable without a learner, and specs/011's FR-008/FR-009 stay OPEN",
     ),
     "amdahl_gate": (
         "permanent",

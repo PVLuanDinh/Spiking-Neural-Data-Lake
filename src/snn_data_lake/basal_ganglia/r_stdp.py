@@ -85,6 +85,17 @@ TAU_E = 1000.0  # long eligibility time constant -- the distal-reward bridge
 # quantization step, plus a spy proving the per-object form GOES THROUGH these functions
 # rather than merely agreeing with them, plus the incumbent's trajectory pinned byte-exact.
 #
+# APPENDED 2026-09-09, the paragraph above kept VERBATIM because it is the record of why
+# these functions exist and deleting it would leave them looking arbitrary: THE SECOND
+# SUBSTRATE IS GONE. `substrate/kernel_plasticity.py` was DELETED on its own retention
+# criterion -- T063's campaign read t(d_f) = -13.0154, the frozen twin ahead of the learning
+# arm on every one of the 8 seeds, and 2.9's clause is that a learner which moves weights
+# without an attributed benefit is a null. The MERGE STANDS and is not reverted: P2 asks that
+# exactly ONE mechanism survive, and one does. `RSTDPNeuron` still owns only the per-object
+# bookkeeping and calls these functions for every arithmetic operation of the rule, which is
+# what the surviving tests pin (the module-level form, the spy, and the incumbent trajectory).
+# What is retired with the kernel form is the CONTAINER BRANCH those functions carried for it.
+#
 # WHY THE PAIR LIST RATHER THAN A VECTORIZED KERNEL. The formula is written exactly once in
 # each function and applied per pair, so no container branch can make the two substrates
 # diverge -- which is precisely the drift a "kernel form" of a rule usually introduces. The
