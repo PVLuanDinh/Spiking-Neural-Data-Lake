@@ -42,10 +42,28 @@ same units, the same class subsets, the same drive, and NO EDGES) must score at 
 trials. Without it, "the class code reaches the readout through the graph" is an assertion; with it,
 the shortcut is measured absent. The pilot's reading is appended below.
 
-**PILOT READING — NOT YET TAKEN.** This paragraph is a placeholder and is replaced, in the commit
-that lands the pilot, by the measured drive-only held-out accuracy, the chance level 1/K, the same
-protocol's SEEDED reading beside it, and the command that produced them. Until then T003 is decided
-on its acceptance argument and its required measurement is OUTSTANDING, which is the honest state.
+**PILOT READING (2026-09-09, T063 pilot, git `a343a1f`, artifact `h01_c3_graph.npz` sha256
+`a1d0491ac486bf194a479a8c6aab419df90c7f05d2ba643d6b16ed3c3d4a0549`, 14,215 units, 70,001 edges,
+seed 0, K = 16 as the workload basis, 1 warm-up + 1 learning block).** The DRIVE-ONLY population —
+the same units, the same class subsets, the same drive, and **no edges** — scores **0.0625** on the
+held-out trials against a chance level of 1/K = **0.0625**: exactly chance, from **0** feature
+spikes. The same protocol on the graph-bearing SEEDED arm reads **1.0000**. The shortcut is
+measured absent, so the class code reaches the readout only through the graph. Command:
+`PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python.exe -m snn_data_lake.cortex.prior_drift_harness --pilot`;
+every number is in `tools/t063_pilot.json`.
+
+**AND THE SAME PILOT FOUND THE TASK SATURATED, which T003 must carry.** The no-learning RANDOM arm
+scores **1.0000** at K = 8 and **1.0000** at K = 16 — and 1.0000 at every cell of a 13-configuration
+sweep over class fractions 0.05 / 0.02 / 0.01 / 0.005 and K = 8 / 16 / 32 / 64, on both the SEEDED
+and the RANDOM tables. A second instrument that fails differently agrees: nearest-centroid
+classification of raw spike counts, fit and tested outside the harness with no readout at all,
+reads **1.0000** for SEEDED and **1.0000** for RANDOM, while its own two controls hold exactly
+(drive-only 0.1250 = chance with 0 feature spikes; label-shuffled 0.1250 for every arm). The task
+as decided is therefore **too easy at this width for any wiring to be distinguished on it**: with a
+class's reachable set a stable and essentially unique signature over ~14k units, every arm sits at
+the ceiling and a positive control has nothing to beat. T063's pre-registered K rule — the ceiling
+guard — has **no satisfying K**, and the campaign is blocked until the pre-registration is amended.
+This paragraph records the finding; the amendment is the orchestrator's to make.
 
 **Rejected candidates, and the side each failed on.**
 
@@ -82,9 +100,20 @@ laminar matrix), the WRONG arm is INVALID, red 2 is NOT READ, and the record sta
 was measured. This is the rule Codex defect 5 demanded: a corruption that provably changes the
 intended information, or an invalidated control.
 
-**PILOT READING — NOT YET TAKEN.** This paragraph is a placeholder and is replaced, in the commit
-that lands the pilot, by the two measured PSI values (WRONG-vs-SEEDED and RANDOM-vs-SEEDED on the
-realised table at the chosen width) and the resulting VALID / INVALID disposition of the WRONG arm.
+**PILOT READING (2026-09-09, same run): the WRONG arm is INVALID, and red 2 is NOT READ.** On the
+realised tables at the full ingested width, PSI(WRONG, SEEDED) = **0.032389** against
+PSI(RANDOM, SEEDED) = **2.281271** — the reversed table is **70x CLOSER** to the seeded band-pair
+matrix than the marginal-matched null is, so the precondition fails.
+
+**The asymmetry it measured, stated because the precondition requires it.** The H01 c3 band-pair
+weight-share matrix carries **0.726520** of its mass on the DIAGONAL — intra-band edges, which the
+reversal leaves untouched by construction — and **0.273480** off it; 20,739 of 70,001 edges
+(29.6 %) are inter-band. Its total asymmetry is `sum |M - M^T| / 2` = **0.041883** of a matrix that
+sums to 1, so transposing it moves about four per cent of the weight mass: PSI(M^T, M) =
+**0.034053**, which agrees on a second path with the realised arm's 0.032389. This is exactly the
+"near-symmetric laminar matrix" case the precondition was written for. The reversed-laminar prior
+is not a wrong prior on this connectome — it is very nearly the same prior — and T004's decision
+stands as a decision while its ARM is invalid on this artifact.
 
 **Rejected candidates, and what each would have falsified.**
 
