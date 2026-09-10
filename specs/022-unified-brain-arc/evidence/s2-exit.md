@@ -144,7 +144,12 @@ no lake-home writer, and never the live lake.
 ---
 
 *Everything below this line was written and committed AFTER the commands ran
-(`docs(022): T071 -- the S2 exit certification, measured`). Section 0 above is untouched by it.*
+(`docs(022): T071 -- the S2 exit certification, measured`), and edited once more by the panel fold of
+2026-09-10 (`docs(022): T071 -- the S2 exit certification, corrected by the panel: item 3 NOT MET under
+(B), the ratchet beside it; the post-run prose corrections; the panel-fold section`); every changed line
+carries PANEL 2026-09-10, except the two restored cells of §2's quoted table (rows 2 and 5), which a
+marker would alter and which the Panel fold section at the end lists by site. Section 0 above is
+untouched by both.*
 
 ## Verdict
 
@@ -152,13 +157,13 @@ no lake-home writer, and never the live lake.
 |---|---|---|---|
 | 1 | **Prior separation** -- T063 2.6's conjuncts (b), (d), (e) together, licensed by (c) | (c) +9.2601 MET (the instrument is not blind); (b) -0.2277, (d) -2.5459, (e) -5.2271, all NOT MET -- `tools/t063_campaign.json` at `f37fe90` | **NOT MET, measured** -- see §1 |
 | 2 | **The paging verdict** -- SC-007 at the derived comparison width | memory claim MET on every conjunct (0.602 / 0.399, t 203.8 / 229.8, p 0.0039; paged < neutered 0.709); bounded secondary NOT MET by an order of magnitude (35.2x raw / 26.0x corrected against a 3.0x bound); **LAYER VERDICT: LOSS**; the layer deleted and the deletion recorded | **SC-007 SATISFIED by its second branch; the paging CAPABILITY is a measured LOSS** -- see §2 |
-| 3 | **Region charge at floor(all-but-exempt), reading (A)** -- `charged >= floor`, `exempt <= ceiling`, identity intact | 8 of 16 CHARGED, 0 exempt (ceiling 0), `floor holds: 8 >= 8`, identity 6 of 6 (`named_and_NOT_charged` empty) | **MET** -- see §3 |
-| 3b | **The same item read by (B)** -- every non-exempt region CHARGED | 8 of 16; six REACHABLE-UNCHARGED (amygdala, brainstem, cerebellum, claustrum, epithalamus, hippocampus), two UNREACHABLE (olfactory, pons) | **NOT MET** -- see §3 |
+| 3 | **Region charge at floor(all-but-exempt), read by (B)** -- every non-exempt region CHARGED | 8 of 16; six REACHABLE-UNCHARGED (amygdala, brainstem, cerebellum, claustrum, epithalamus, hippocampus), two UNREACHABLE (olfactory, pons) | **NOT MET** (PANEL 2026-09-10, pre-registration-honesty lens: (A) ruled a relabelling) -- see §3 |
+| 3a | **The FR-015 ratchet (CI's assert, ci.yml:148), reading (A)** -- `charged >= floor`, `exempt <= ceiling`, identity intact | 8 >= 8, 0 <= 0, identity 6 of 6 (`named_and_NOT_charged` empty) | **HOLDS** -- a fact beside the item, not its status (PANEL 2026-09-10) -- see §3 |
 
 **This certification is a GATE BY EXISTENCE, not a pass:** T072-T075 and T083 are unblocked because
-every one of T071's three named items has been READ and recorded here with its measurement, and two
-of the three read NEGATIVE -- exactly as US2 exited with its headline criterion UNMET and T068, gated
-on it, ran.
+every one of T071's three named items has been READ and recorded here with its measurement, and all
+three read NEGATIVE (PANEL 2026-09-10: item 3 recorded NOT MET under (B)) -- exactly as US2 exited
+with its headline criterion UNMET and T068, gated on it, ran.
 
 ## 1. Item 1 -- prior separation: NOT MET, inherited from T063 and not re-run
 
@@ -226,6 +231,14 @@ and the pin is deliberately byte-untouched. So every per-arm-versus-chance numbe
 quotes comes from `t063` §3.7's table (which states it was applied to the pin's per-seed accuracies
 offline, read and not re-run), never from the pin's own fields.
 
+**(2026-09-10, panel) The pin's run did not meet T063 2.7's host clause.** Its in-band `settling`
+block reads `settled = False`, `daemon_restarted = True`; the top-level `host_daemon_changed = True`
+(daemon PID 29380 at start, 34212 at end) is a separate flag and not the clause's reading. No number
+this section quotes is a timing number; `t063` §3.1 and §3.5 item 4 declare the contrasts
+host-independent on three executions with identical per-seed numbers, of which only the third is
+pinned and the first two left no artifact (`t063` panel item 6). Quoted from the pin and the record;
+nothing re-measured.
+
 ## 2. Item 2 -- the paging verdict: SC-007 satisfied by its second branch, the capability a LOSS
 
 **Nothing in this section was measured for this file.** The harness is archived under the tag
@@ -237,16 +250,22 @@ quoted with their section.
 | R2 conjunct | required | measured | verdict |
 |---|---|---|---|
 | paged beats twin, both instruments | t > 1.895, p <= 0.05, both | 0.602 (t 203.8, p 0.0039) and 0.399 (t 229.8, p 0.0039) | **MET** |
-| paged beats neutered (2.10) | same test, primary | 0.709 (t 107.8, p 0.0039); traced 0.488 (t 159.6, p 0.0039) | **MET** |
+| paged beats neutered (2.10) | same test, primary (and traced reported) | 0.709 (t 107.8, p 0.0039); traced 0.488 (t 159.6, p 0.0039) | **MET** |
 | eviction conjunct reachable (2.11) | the derived w realizes the regime | w = 0.2; 61 evictions per cell; the neuter discriminates | **MET** |
 | secondary cost <= 3.0x | median paged / twin tick ratio | RAW 35.2x (34.3-37.6); reference-corrected 26.0x -- the most pager-favourable reading is 8.7x over the bound | **NOT MET** |
-| arm F discriminates | twin fails at 2*W*, paged runs at both | the twin CONSTRUCTED and ticked at 2*W* (17.7 GB working set) -- F does not discriminate on this host | **NOT MET** (a WIN conjunct only) |
+| arm F discriminates | twin fails at 2*W*, paged runs at both | the twin CONSTRUCTED and ticked at 2*W* (17.7 GB working set; the OS trimmed and paged for it) -- F does not discriminate on this host below the commit limit (3.3) | **NOT MET** (a WIN conjunct only; it cannot make or unmake the LOSS) |
 
 and its ruling: *"R2 is NOT a WIN ... Under 2.3, 'LOSS iff R2 is not a WIN': **the layer's verdict is
 LOSS.**"* The panel's verdict on the null (§4) is that the LOSS **stands**: 37 findings filed, **31
 stood** (1 BLOCKER, 12 MAJOR, 18 MINOR), 6 refuted, and the pre-registration-honesty lens found no
 relabelling; Codex's two independent refutations were answered (the first refuted at runtime, the
 second folded into §3.7 item 1 and the tag).
+
+*Dated 2026-09-10 (panel, instrument lens):* §0.1 item 2's '31 of 31 standing findings' is §4's count
+(`s5-paging-null.md` :721-723; also §3.7 :562) of standing findings whose PROPOSED FIX the refuter
+showed would introduce a defect; it is not a tally behind 'The LOSS stands' (§4 :740), which the panel
+rules with no count. §0.1 is frozen and left as written; the counts quoted above (37 filed, 31 stood,
+6 refuted) are the panel's.
 
 **SC-007's own words settle the item:** *"or the layer is deleted and the deletion recorded (both
 outcomes satisfy this criterion; silence satisfies nothing)"* (spec.md `:178`). The deletion was
@@ -265,7 +284,7 @@ Existence-checked for this file:
     22db40a                  22db40a        (the documentation census, 395 hits in 37 files)
     fd1359e                  fd1359e        (the T068 record commit)
     6268a39                  6268a39        (the T068 closing record commit)
-    t068-last-with-pager     36b2b6a        (the last head carrying the layer)
+    t068-last-with-pager     36b2b6a        (the T068 record head the panel ran on, s5 §4, and the head the archived T066/T067/T068 harnesses check out, s5 §3.7 item 1. The tag's annotation calls it 'the last head carrying the layer'; by the letter it is not: the layer is intact through 2b11b2d, byte-identical to the tag, and neuron_pager alone through 343cd48; PANEL 2026-09-10)
 
 **What the LOSS is and is NOT.** §3.4: it IS the pre-registered finding that THIS pager, in the
 regime it exists for, buys a 40% / 60% footprint saving at a 35x tick cost. It is **NOT** a finding
@@ -289,7 +308,7 @@ inherits is the decomposition and the 3.38x OS-paged comparison of §3.3.
   magnitude past an 11-unit top end (§6.4). T062's record measured the related "~5.0 MB at 16k"
   projection **16x high** for the state array (301,027 B at 14,215 units).
 
-## 3. Item 3 -- the region charge gate: (A) MET, (B) NOT MET, both rows carried
+## 3. Item 3 -- the region charge gate: (B) NOT MET; the ratchet (A) holds, carried beside it (PANEL 2026-09-10)
 
 **The one fresh measurement of a criterion in this certification.**
 
@@ -332,7 +351,8 @@ The floor pin, read for this file:
     named_and_NOT_charged []
     charged_but_not_named ['basal_ganglia', 'cortex']
 
-**Reading (A) -- MET.** `charged >= floor` (8 >= 8, the gate's own assert, rc 0); `exempt <= ceiling`
+**The ratchet facts, reading (A) -- HOLD, and are not the item's status (PANEL 2026-09-10).**
+`charged >= floor` (8 >= 8, the gate's own assert, rc 0); `exempt <= ceiling`
 (0 <= 0); and the IDENTITY FR-015 pins is intact -- all six named regions charged,
 `named_and_NOT_charged` empty, identity 6 of 6. Two regions are charged and not named
 (basal_ganglia, cortex), which the pin records and which raises the integer above the named six
@@ -351,10 +371,41 @@ now"* -- and reports (B) beside it. The panel's pre-registration-honesty lens is
 choosing (A) is a relabelling; if it rules so, the item is recorded NOT MET under (B) and §0.1
 stands as the record of the choice. **Neither reading is argued for in this section, by rule.**
 
+**PANEL 2026-09-10 (pre-registration-honesty lens) -- the ruling §0.1 asked for: reading (A) is a
+relabelling, and the item is recorded NOT MET under (B), the branch §0.1 pre-committed.** The lens's
+basis, quoted: (1) the gate has NO all-but-exempt quantity -- `region_charge_gate.census()` sets
+`denominator = len(rows)` INCLUDING EXEMPT rows and `charged_count` counts only CHARGED, so (A)'s
+gloss 'the floor's denominator' names nothing in the instrument (a floor is an integer, it has no
+denominator). (2) With EXEMPT empty the qualifier is inert under (A): the check reduces to
+charged >= 8 AND exempt <= 0 AND identity 6 of 6, which is exactly `tools/region_charge_floor.json`'s
+S0 ratchet that ci.yml:148 already asserts on every run -- an S2 exit item that cannot fail while CI
+is green is not an exit item. (3) SYNTHESIS.md gives S0 and S2 DIFFERENT exit phrases (:70 'integer
+floor of regions CHARGED' vs :72 'region charge gate == floor(all-but-exempt)'); under (A) they are
+the same check. (4) FR-015's floor sentence defines 'The S0 exit' -- §0.1 borrowed S0's criterion to
+read the S2 item. (5) The exemption machinery FR-015 defines (date+owner+expiry, ratcheting ceiling)
+only does work under a coverage criterion -- exempting a region never helps a floor of 8 -- which is
+reading (B). The floor pin is NOT raised: raising it to 16 is the reachable red (the panel's
+instrument lens showed floor 9 -> rc 1 on a scratch pin), and `tools/region_charge_floor.json` stays
+at floor 8 with its identity of six. The number is unchanged: 8 of 16 at this head, `floor holds:
+8 >= 8`, rc 0.
+
+*Dated 2026-09-10 (panel, instrument lens):* the cardinals 'Eight', 'six' and 'two' in this section,
+in Verdict row 3 (the (B) row; 3b before the panel's ruling), at §0.4 item 3 / misses item 3, and in
+'the same six / the same two' above are this file's tallies of the gate's 16 printed rows (8 CHARGED,
+6 REACHABLE-UNCHARGED, 2 UNREACHABLE); the gate's `--assert` prints no per-status total (its
+`--self-check` arm prints '6 REACHABLE-UNCHARGED regions'). They are the only numbers in this file
+not printed by a quoted command or quoted from a pin; the header rule is not softened.
+
 ## 4. What the tree says is live and what is a fixture (the dormancy census)
 
     PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python.exe -m snn_data_lake.substrate.dormancy_gate --assert
     rc=0
+
+(elided from the quote, PANEL 2026-09-10: the gate's three `=` rules, its header line, and its
+conditional-import NOTE -- 'reachability counts N in-package imports that sit inside a conditional.
+This gate is PERMISSIVE by construction -- an import under a never-taken guard still confers
+reachability.' The NOTE cuts in finding 2's favour: a module outside a PERMISSIVE reachable set is
+outside any stricter one.)
 
     brain modules 288  reachable 234  exempt 54  dormant 0
     STANDING TODO -- 6 non-permanent exemption(s) still open (module-gate arm, US1 audit B3; report-only):
@@ -393,7 +444,11 @@ or above N* -- which today only growth can produce (tasks.md T071's panel-fold n
    was deleted with the pager at `343cd48` together with its 34 tests and its REGIONS/CORE/EXEMPT
    rows, and the reader above returns `NOT IN EXEMPT` for it exactly as it does for `neuron_pager`
    and `unit_blocks`. A deleted module has no dormancy row, and that absence is the correct state,
-   not a gap.
+   not a gap. §0.2's T067 row transcribes T068's own partition of the module (`s5-paging-null.md`
+   :158/:513 -- 'pager-dependent halves' + 'merge/reorder over the store', which together ARE
+   `lake_compactor.py`) and drops 'merge'; read from `343cd48`'s diffstat, not from any §0.3 command
+   (5 files, 2,356 deletions, 0 insertions -- nothing ported), the module was deleted whole, as the
+   T066 row already says of the pager. (PANEL 2026-09-10.)
 2. §0.3 described this command as naming "what is live and what is a fixture". The measured answer
    is stronger and is written as measured: **both** US3 modules are EXEMPT (one `wire`, one
    `permanent`) and NEITHER is reachable from a live path. `lake_index` survives the deletion with
@@ -407,6 +462,12 @@ drafted has been removed.
 1. **Prior separation** (§1) -- NOT MET, and not re-readable with the surviving instrument at D = 4
    (BLIND, t +0.8143 against a 1.895 bar) or with any learner (none exists in the tree). A successor
    owes a NEW pre-registration of the capacity guard AND a learning signal a local rule can use.
+   specs/011's FR-008/FR-009 stay OPEN, on the two grounds the record already states: kernel drift
+   has no mechanism without a learner (`t063` §3.6; specs/011 `decisions.md` OUTCOME: 'not merely
+   unclosed but unmeasurable by this instrument'), and specs/011's placement-side statistics -- layer
+   occupancy, layer geometry, the excitatory cell fraction -- were never this harness's statistics
+   (`t063` §2.4 disclosure), so a successor learner alone does not close them. (PANEL 2026-09-10;
+   §0.4 item 1 byte-identical.)
 2. **Paging** (§2) -- a LOSS; residency beyond RAM is UNOWNED at this head; T064's row is void until
    a successor paging row, and T065's derived width carries the debts §6.7 names.
 3. **Region charge** (§3) -- 8 of 16 charged; six reachable-uncharged, two unreachable. The floor is
@@ -424,3 +485,86 @@ drafted has been removed.
    per-seed accuracies. Anyone re-deriving them must read the record, not the artifact.
 8. **ADDED by the runs.** T070 is OPEN and is deliberately not a gate for this exit (O5(b)); the
    live-integration instrument it owns has therefore never been read against these three items.
+9. **ADDED by the T071 panel (2026-09-10).** T062's row-owned P2 debt is OPEN at this head and was
+   omitted from §0.2's census row and from items 1-8:
+   `reasoning/web_ingest_gate.py::WebIngestGate.fetch_binary` (:129) duplicates
+   `substrate/web_ingest.fetch_bytes(sink=)` (:149), the capability already ported there per P2's
+   order (tasks.md T062, "P2 DEBT STILL OPEN AND OWNED BY THIS ROW"); zero tracked call sites
+   (`git grep "\.fetch_binary(" -- "*.py"`), so the retirement is a body rewrite onto
+   `fetch_bytes(sink=)`, not a rewiring. It is not one of the three items and changes no verdict here.
+10. **ADDED after the measured commit (2026-09-10, panel finding).** US3 acceptance scenario 3
+    (spec.md:69; SYNTHESIS §3's S2 content 'cerebellar rule + controls on the built tissue') is NOT
+    discharged by this exit and is not one of its three named items. T069 was REFUSED ON MEASUREMENT,
+    not a clean null (tasks.md T069; `evidence/t069-cerebellar-rule.md` §4.5): TAUGHT vs SHUFFLED
+    t 1.242, p 0.1328, +0.0038, 6/2, DOES NOT CLEAR (§3's table) at roughly 29 % power at S = 8
+    (§4.3); the Bouvier GPE/G_E control pair the scenario names is defined nowhere in the tree and was
+    never run (§4.2). Carried at `evidence/l-exit.md` (Phase 2's exit, where T069 lives per O5(a))
+    and by the dated note at spec.md:69 (commit `docs(022): US3 scenario 3 -- the dated note T069's
+    refusal owed`).
+11. **ADDED by the panel fold (2026-09-10).** tasks.md:145 (T065) carried no dated note until the
+    fold of this panel; its recorded state lived only at PLAN-FINAL :588 and `s2-state-per-unit.md`
+    §6.7. The note now appended there is the site annotation the 09-07 arc did not append.
+
+*DATED 2026-09-10 (panel):* the header's Part E `:812` was correct at the pre-registered commit; the
+measured commit (`docs(022): T071 -- the S2 exit certification, measured`) inserted 25 lines above it,
+so in that commit's tree the sentence sits at `:837`; the quoted words are unchanged and locate it by
+grep. `:289` (O5(d)) and `:711` lie above both insertions and are unmoved.
+
+## Panel fold (appended 2026-09-10)
+
+The T071 panel -- three lenses (instrument, policy-honesty, integration) and eighteen refuters --
+filed 18 findings; **ALL 18 STOOD** (1 MAJOR, 17 MINOR); **refuted findings: NONE.** Fourteen of the
+eighteen filed fixes were judged WRONG by their refuters, and this fold adopts the REFUTER'S minimal
+fix in every case (obs #2146), never the panel's filed fix. **This fold is battery-verified only
+(obs #35).**
+
+**The ruling on item 3 and the pre-registered branch it executed.** F18 [MAJOR], the
+pre-registration-honesty lens: reading (A) is a relabelling. §0.1 pre-committed the branch -- *"if it
+rules so, the item is recorded NOT MET under (B) and this paragraph stays as the record of the
+choice"* -- and this fold executed it: Verdict row 3 is the (B) reading, NOT MET; the FR-015 ratchet
+(A) is row 3a, HOLDS, a fact beside the item and not its status; the floor pin is untouched; all three
+named items read NEGATIVE; the gate-by-existence is undisturbed. §0 is byte-identical to the
+pre-registered commit.
+
+**The eighteen findings, by number, severity and the form adopted:**
+
+- F1 MINOR -- dated line in §2 (the '31 of 31' predicate).
+- F2 MINOR -- dated arithmetic line appended to `t062-h01-ingest.md` 3.5(15); one clause in
+  `cortex/placement.py`'s 2026-09-10 block, no new number in src (commit 1 below).
+- F3 MINOR -- in place: rows 2 and 5 of §2's quoted table restored to the record's full cells, in
+  this file's ASCII form; no 'abridged' label.
+- F4 MINOR -- dated correction appended inside spec.md:69's note (commit 2 below).
+- F5 MINOR -- dated line at the end of §3 (the cardinals are this file's tallies).
+- F6 MINOR -- bracketed elision line after §4's `rc=0`.
+- F7 MINOR -- misses item 9 (T062's P2 debt); the optional line below §0.2's table was NOT added,
+  because it would sit inside frozen §0.
+- F8 MINOR -- dated paragraph at the end of §1 (the host clause).
+- F9 MINOR -- dated line after the misses (Part E `:812` -> `:837` in the measured commit's tree).
+- F10 MINOR -- site-specific dated notes at tasks.md:205, PLAN-FINAL after O5(d) and under the
+  Phase 5 heading (commit 2).
+- F11 MINOR -- one sentence appended to §4 finding 1.
+- F12 + F13 MINOR -- one merged dated note at tasks.md:145 (commit 2); misses item 11.
+- F14 MINOR -- dated note at SYNTHESIS.md:72 with the ruling filled in (commit 2).
+- F15 MINOR -- post-run miss 1 extended with the two grounds (§0.4 item 1 byte-identical).
+- F16 MINOR -- misses item 10 (US3 scenario 3); the misses-count line at tasks.md:151 (commit 2).
+- F17 MINOR -- in place: the `t068-last-with-pager` gloss in §2's existence table.
+- F18 MAJOR -- as above: Verdict rows 3 and 3a, the GATE BY EXISTENCE paragraph, §3's title, the
+  retitled ratchet paragraph, the dated ruling paragraph, the provenance sentence at the §0
+  boundary; and the one-line PANEL note at tasks.md:151, PLAN-FINAL (the T071 bullet and Part E),
+  spec.md:59, quickstart.md:30 (commit 2).
+
+**Every in-place correction this fold made, by site -> commit.** In this file, all in commit 3
+below: the provenance sentence below §0's `---`; Verdict rows 3 and 3a; the GATE BY EXISTENCE
+paragraph ("all three read NEGATIVE"); §2's quoted table, rows 2 and 5; §2's existence-table gloss
+on `t068-last-with-pager`; §3's title; the title of §3's "The ratchet facts, reading (A)" paragraph;
+misses item 1. Everything else this fold wrote in this file is an appended dated line, paragraph or
+item. In other files: `cortex/placement.py`'s 2026-09-10 block, one clause (commit 1). No other file
+was edited in place -- tasks.md, PLAN-FINAL, spec.md, quickstart.md, SYNTHESIS.md and
+`t062-h01-ingest.md` received appended dated notes only.
+
+**The fold's commits, in order:** (1) `docs(cortex,022): T071 panel -- placement's 'buckets' clause
+and the T062 record's 3.5(15) dated arithmetic line`; (2) `docs(022): T071 panel -- the annotation
+sites: item 3 re-read, the gate sites, T065's note, SYNTHESIS S2, spec.md:69 correction`; (3)
+`docs(022): T071 -- the S2 exit certification, corrected by the panel: item 3 NOT MET under (B), the
+ratchet beside it; the post-run prose corrections; the panel-fold section` (this file). Section 0
+(the pre-registration) is byte-identical to the pre-registered commit after all three.
