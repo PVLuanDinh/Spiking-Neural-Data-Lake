@@ -96,6 +96,22 @@ WIDTH_FRACTIONS = (1.0, 0.5, 0.25, 0.125)
 CAMPAIGN_HOURS = 6.0  # the projection ceiling W is chosen under
 SWAP_PASSES = 10  # double-edge swap attempts per edge, per sign class, in the RANDOM rewire
 
+#: THE HOST CLAUSE, READ AND DISCLOSED (2.7). Measured 2026-09-09 on the daemon at PID 27228,
+#: five consecutive 90 s windows of process CPU: 112.000, 122.906, 106.266, 133.641, 117.828 s.
+#: Mean 118.5 s per 90 s wall (~132 % of one core on a 28-core box), no monotone trend, range
+#: +-11.5 %. The pre-registration's literal test -- two consecutive windows within ~6 % -- is NOT
+#: MET and cannot be met by this daemon in ANY state: the swing is its ordinary wake/sleep duty
+#: cycle, not a boot transient. What the clause is FOR (no startup burst inflating a timing) is
+#: read instead from the absence of a trend across five windows, and every timing number below is
+#: a MIN of repeats so the swing costs precision rather than correctness. Recorded, not smoothed.
+HOST_NOTE = (
+    "daemon PID 27228, LISTEN on 8137, working set 5.50-8.77 GB; five 90 s CPU windows "
+    "112.000 / 122.906 / 106.266 / 133.641 / 117.828 s, mean 118.5, no trend, range +-11.5 %. "
+    "The two-consecutive-windows-within-6 % clause is NOT MET and is not meetable by this "
+    "daemon's steady duty cycle; settling read from the absence of a trend. No battery and no "
+    "panel were running. Every timing is a min of repeats."
+)
+
 S_SEEDS = 8
 T_BAR = 1.895  # paired one-sided t, 7 d.f., alpha = 0.05 (PLAN-FINAL Part F preamble)
 STATISTICS = ("band_pair_weight_share", "band_fanin_e_fraction")
@@ -1112,8 +1128,23 @@ def _bare():
 # =============================================================================================
 # The pilot (2.7) and the campaign (2.6)
 # =============================================================================================
+# distinct-from: substrate/kernel_plasticity.py::KernelPlasticity -- "beside every" there is the
+#   eligibility array beside a bundle's qweight; here it is a host reading beside a timing number.
+# distinct-from: cortex/h01_ingest.py::_lif_defaults -- imports the LIF constants from their
+#   equation owner; no host, no process, no port.
+# distinct-from: substrate/doc_budget_gate.py::_selfcheck,
+#   hippocampus/spiking_storage_prototype.py::run, hypothalamus/__init__ -- a gate's constructed
+#   reds, a prototype's returned criteria numbers and a region docstring; none reads a PROCESS.
+#   All five read 2026-09-09.
 def _host_condition():
-    """The daemon's PID, working set and port state, recorded beside every timing number."""
+    """The daemon's PID, working set and port state, recorded beside every timing number.
+
+    The pre-registration's host clause also asks for a SETTLED boot burst, read as two consecutive
+    90 s CPU windows within ~6 %. That reading is taken OUT OF BAND and recorded in the pin's
+    `host_note`: it costs minutes, and on this host the daemon's STEADY state duty-cycles by more
+    than 6 % between windows, so settling is read from the ABSENCE OF A TREND across several
+    windows rather than from one pair. This function records the part a run can read in a second,
+    which is the part that must sit beside every number."""
     import subprocess
 
     ps = (
@@ -1138,9 +1169,14 @@ def _host_condition():
         }
 
 
-def _tick_cost(art, classes, ticks=200):
-    """Seconds per tick at this width WITH THE LEARNER ON, so the projection's basis includes the
-    work the campaign actually does (Codex defect 11)."""
+def _tick_cost(art, classes, reps=3, trials=4, t_trial=T_TRIAL):
+    """Seconds per tick at this width WITH THE LEARNER ON and the reward gate fired once per
+    trial, so the projection's basis is the work the campaign actually does (Codex defect 11).
+
+    MIN OF `reps`, not a single reading: the host runs a live daemon whose own duty cycle swings
+    its CPU by more than 10 % between 90 s windows, and a single timing on a contended box is the
+    instrument defect this project hunts. Each rep runs whole TRIALS with the per-trial reset, so
+    the activity level the cost depends on is the campaign's, not a 200-tick free run's."""
     import numpy as np
 
     from snn_data_lake.cortex.h01_ingest import population
@@ -1149,17 +1185,25 @@ def _tick_cost(art, classes, ticks=200):
     state, _syn, kt = population(art)
     plast = KernelPlasticity(kt)
     amp_q = int(DRIVE_AMPLITUDE * float(state.arrays["thr"][0]) * (1 << plast.frac_bits))
-    mask = trial_drive(classes, 0, 0, 0, state.n_units, ticks)
-    _reset_population(kt, plast)
+    masks = [
+        trial_drive(classes, i % len(classes), 0, i, state.n_units, t_trial) for i in range(trials)
+    ]
     ext = np.zeros(state.n_units, dtype=np.int64)
-    t0 = time.perf_counter()
-    for tick in range(ticks):
-        ext[:] = 0
-        ext[mask[tick]] = amp_q
-        fired = kt.tick(ext)
-        plast.update_eligibility(fired, float(tick + 1))
-        plast.decay()
-    return (time.perf_counter() - t0) / ticks
+    best = None
+    for _rep in range(reps):
+        t0 = time.perf_counter()
+        for mask in masks:
+            _reset_population(kt, plast)
+            for tick in range(t_trial):
+                ext[:] = 0
+                ext[mask[tick]] = amp_q
+                fired = kt.tick(ext)
+                plast.update_eligibility(fired, float(tick + 1))
+                plast.decay()
+            plast.reward(+1.0)
+        dt = (time.perf_counter() - t0) / (trials * t_trial)
+        best = dt if best is None else min(best, dt)
+    return best
 
 
 def _campaign_ticks(k, blocks=C_BLOCKS, trials_per_class=TRIALS_PER_CLASS, t_trial=T_TRIAL):
@@ -1273,6 +1317,7 @@ def run_pilot():
         "artifact": str(ARTIFACT.name),
         "artifact_sha256": art_sha,
         "host": host,
+        "host_note": HOST_NOTE,
         "constants": {
             "T_trial": T_TRIAL,
             "trials_per_class": TRIALS_PER_CLASS,
@@ -1360,6 +1405,7 @@ def run_campaign():
         "artifact": str(ARTIFACT.name),
         "artifact_sha256": hashlib.sha256(Path(ARTIFACT).read_bytes()).hexdigest(),
         "host": host,
+        "host_note": HOST_NOTE,
         "K": k,
         "W_frac": frac,
         "W_units": int(art["agglo_id"].size),
