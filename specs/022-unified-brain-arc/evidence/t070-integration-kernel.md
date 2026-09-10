@@ -253,3 +253,118 @@ not set. GeNN's place in the plan is the GPU tick (P5a, the S6 kernel wire's suc
 hours is the failure mode this amendment records. Nothing in 2.2-2.7 changes: the arms, the constants, the seven
 conjuncts, the null, the reds, the controls, the disposition. No campaign number had been produced when this was
 written; the stopped run's only readings are the host clause and the R3 chain lines quoted above.
+
+## 3. Results (written after the runs, 2026-09-10; nothing above this line was edited after 2.11)
+
+### 3.1 The build, red-first, and what the fixture found before the campaign
+`a2cf76d` R3 RED (the G5 chain through a port that did not exist) -> `47c9bdf` the port GREEN: `cortex/integration_kernel.py`
+restores TWO KernelTicks from ONE `replay_gate.capture` blob taken after the warm-up (rings, accumulators, tick_index and the
+drive stream's position inside it), drives both from the captured stream, adds the quantized pulse to one, scores the XOR
+footprint with the incumbent's `_serialize` / `normalized_lz` / `gzip_complexity`; R3 (i) restored baseline byte-identical,
+(ii) the frame-only restore DIVERGES on a delayed fixture, (iii) a positions-stripped blob REFUSED -- all three in one
+test file -> `a42cdbe` R1/R2 RED before the arms existed -> `551ba84` the five arms (`kernel_regimes`; PARTITIONED is the
+harness's no-edges twin lifted into `arm_no_edges`, P2; SYNCHRONOUS = `synchronous_synapses`, mean out-degree x 8 at the
+table's maximum magnitude, Dale signs kept; the rate-matched arm by a bounded bisection printed per seed), the local-echo
+null, `verdict_t070` over (b1)-(b7) with the harness's `contrast`, the pulse-less identity ASSERTED before any PCI is read.
+The 64-unit fixture's self-check reads R1, R2 and R3 RED in one command with (b1) +4.2504, (b2) +3.9028, (b3) +4.9497,
+(b5) 4/4, (b7) 4/4 -- and (b4) NOT MET on 3 of 4 seeds and (b6)'s rate-matched clause NOT MET on 1 of 4, which is what
+amendment 2.10 recorded BEFORE any campaign number (the fixture predicted the campaign's (b4) reading; obs #2165).
+The incumbent's orderings reproduce on the kernel fixture: PCI(integrated) 0.043-0.087 > PCI(partitioned) 0.008-0.012 >
+PCI(silent) 0.000-0.003; the gzip twin orders the same way (56-107 > 17-21 > 9-11 bytes).
+
+### 3.2 Campaign run 1, STOPPED, and the scorer's repair (amendment 2.11)
+Run 1 (`30b4d2e`'s entry point, started 03:40:35): host clause settled (daemon PID 37988 across five windows 97.969 /
+124.719 / 115.734 / 110.297 / 79.375 CPU-s); R3 held on all 8 seeds within 8 minutes (in-flight 532 / 571 / 611 / 561 / 548
+/ 485 / 517 / 579); seed 0's five arms then ran 9 h 25 min without returning; stopped at 13:20 with no PCI number. The
+probe: the incumbent `lz76_complexity` parses 5,120 characters in 0.241 s, 160,000 in 156.569 s, 320,000 in 601.248 s --
+quadratic on sparse strings -- and the campaign footprint is 1,094,555 characters (14,215 units x 77 post-pulse ticks),
+640 parses: about two hours each, weeks in all. 2.8 had costed ticks and not the scorer.
+The repair (`e8d10d3` RED: the incumbent's body verbatim as the oracle, equality on its own self-check strings, 500
+random strings at four densities and the edge cases, plus a 5 s cost bar on 200,000 characters -- RED as run: "still
+parsing after 5.0 s"; `3b7a2b6` GREEN): the SAME count by a suffix array (prefix doubling in torch through the tree's
+own device router `substrate/device.select`), LCP by binary lifting, the longest-previous-factor array, the phrase walk.
+Oracle-equal on every string; the campaign string (c = 7,369) parses in 0.37 s on the RTX 5070 and 1.18 s on the CPU
+fallback; the live `region_coherence` path's 1,000-character strings score in 1.93 ms against 11.92 ms before. Both bare
+self-checks read numbers IDENTICAL before and after the change (the incumbent's integrated 0.4268 / gzip 65.12 /
+independent 0.0826 / synchronous 0.0000 / silent 0.0000; the kernel fixture's seven conjuncts and every per-seed line).
+`b9bffbf`: the port's kernel at the lineage's pinned partition count (`tools/kernel_partition_baseline.json`, P = 1, so
+2.11 (iii) resolves to threads = 1 -- the thread-invariance test is real on a P = 4 port and vacuous on the campaign's);
+`c1aac92`: every arm reported as it finishes, unbuffered; seed 0 measured solo, the 8-seed projection printed against a
+3-hour ceiling (REFUSED, rc 2, no pin, if exceeded), the remaining seeds pooled over 8 worker threads (Python 3.14t, the
+GIL disabled), the pin assembled in seed order.
+
+### 3.3 Campaign run 2 (`tools/t070_pci.json`, run at `c1aac92`, committed `ab09b9b`)
+Host: daemon PID 15928 across all five windows (118.813 / 92.141 / 110.969 / 122.0 / 113.531 CPU-s), settled = True,
+daemon_restarted = False, port 8137 LISTEN; wall 573.9 s of which 450 s the settling probe. Population: the H01 artifact
+(sha256 a1d0491a...4a0549) at W = 1.0, 14,215 units / 70,001 edges; amp 0.4 re-measured on it (2.11's obs #2165 clause).
+R3 on the campaign population: identical to run 1 seed for seed. Seed 0 solo 40.8 s (integrated 8.8, partitioned 5.5,
+rate-matched 5.5, synchronous 19.0, silent 2.0 s); projection serial 0.09 h, pooled 0.02 h -> PROCEEDS; pooled seeds 71.4-76.4
+s each. Scorer on CUDA (n = 1,094,555 above the measured 262,144 crossover).
+
+| conjunct | reading (8 seeds) | state |
+|---|---|---|
+| (b1) t(INTEGRATED - PARTITIONED) | t +5.2015, FPR 0.0508 | MET |
+| (b2) t(INTEGRATED - PARTITIONED-RATE-MATCHED) [the artefact control] | t +4.8967, FPR 0.0508 | MET |
+| (b3) t(INTEGRATED - SYNCHRONOUS) | t +5.7220, FPR 0.0430 | MET |
+| (b4) SILENT PCI = 0 exactly on every seed | 0 of 8 (SILENT PCI 0.0000-0.0001; gzip 48-136 bytes: the pulse propagates from rest, 2.10's named cause) | NOT MET |
+| (b5) rate(SYNCHRONOUS) >= rate(INTEGRATED); rate-matched within 5 % | 8/8 (0.987-0.988 vs 0.037-0.038); 8/8 (0.039 vs 0.038, amp 0.5 vs 0.4) | MET |
+| (b6) clause 1: t(INTEGRATED - null) | t +5.0732, FPR 0.0469 | MET |
+| (b6) clause 2: PARTITIONED <= null | 6 of 8 (misses on seeds 2 and 5 by 0.5 and 0.25 phrases in the 8-set mean) | NOT MET |
+| (b6) clause 3: PARTITIONED-RATE-MATCHED <= null | 4 of 8 (misses on 0/2/4/6 by 0.9 / 0.25 / 3.0 / 0.25 phrases) | NOT MET |
+| (b7) R3 (i)(ii)(iii) + the pulse-less identity | 8/8 | MET |
+
+**Verdict, by 2.3's rule: NOT MET** (`pass` = false in the pin), on (b4) and on (b6)'s clauses 2 and 3.
+
+**The reading sits at the instrument's floor, said plainly.** INTEGRATED reads PCI 0.0003-0.0011 (13-60 LZ phrases in a
+1,094,555-character footprint; one phrase = 1.83e-5 PCI); every partition, every echo and the null read 2-6 phrases;
+SYNCHRONOUS reads 0 (rate 0.988: the saturated table's response to the pulse is empty, gzip 9 bytes -- "integrated but
+not differentiated" exactly as the incumbent's regime); SILENT reads 1-7 phrases of propagation from rest. The absolute
+PCI values are not comparable to the incumbent's 12-unit fixture (0.43) and 2.1 says a lone PCI number is never
+reportable; what this row reads is the CONTRASTS, and they carry: a three-unit pulse on this population causes a
+footprint 5-10x more complex through the wiring than without it, on every seed, matched for rate.
+
+### 3.4 The disposition, and why 2.6's deletion is HELD rather than applied
+2.6 prescribes PASS on all seven, or NULL on (b1), (b2) or (b6) -> the port DELETED. 2.10 carved out the branch where (b1),
+(b2) and (b6)'s FIRST TWO clauses are MET and only (b4) / (b6)'s rate-matched clause fail -> the port RETAINED. The campaign
+reads (b6)'s second clause 6 of 8, so by the letter 2.10's carve-out does not apply and 2.6's NULL branch fires.
+**The deletion is HELD, and the hold is disclosed as a session ruling, not a reading.** The two failing clauses compare
+two floor-level echoes with an exact <= and no tolerance: PARTITIONED's own local echo against the null taken on the
+INTEGRATED run's pulsed units, whose trains differ only in the recurrent input the cut removes -- 2-6 phrases on each side
+of a 1,094,555-character parse, differences of 0.25-3 phrases in an 8-set mean. That inequality was pre-registered on a
+4,928-character fixture where one phrase is 2.5e-3 of the reading; on the campaign it is a coin flip between two
+quantities the instrument cannot separate, and it does not touch what (b6) exists to test: the dissociation "the
+partitioned twin reads at or below the null" holds where the null is INTEGRATED's echo and the partition is measured
+against it as a CONTRAST -- (b1) +5.20 and (b6) clause 1 +5.07. A null that impugns the clause's construction rather than
+the mechanism does not license a deletion under P8 clause 5 ("an invented method that measures nothing"): this method
+measured a separation at t +5 on four contrasts with its artefact control beside it. The owner's rule of 2026-09-05 (a
+pre-registered null disposition is a causal claim; HOLD its routing when the null impugns it) is applied and NAMED here.
+**What the hold does NOT do:** it takes none of the PASS disposition -- `C4_TASK["integration"]` stays None, the registry
+`reading` stays None, the cockpit's PCI row carries NO T070 quantity, the toy net is NOT retired (its retirement was
+conditional on PASS), the licensed sentence is licensed to nothing. `PROVENANCE["pci"]` is corrected as a map/territory
+fix only (`a0d8946`: the producer deleted 2026-08-05, the row said "refreshes every 4th night"). Annotations appended,
+dated, at tasks.md T070, PLAN-FINAL's C4 bullet, Part F C-R5 and spec.md SC-009 (`750ee15`).
+**The adjudicator, named before the panel runs:** the arc's panel, pre-registration-honesty lens, is asked whether this
+hold is a relabelling of 2.6 after its number. If it rules so, the fold's FIRST commit executes 2.6's deletion of
+`cortex/integration_kernel.py` and its tests (the exact scorer, the pin and this record survive); if it does not, the port
+is retained as an instrument and a successor re-specifies (b6)'s clauses 2-3 with a tolerance the parse length sets (at
+least one phrase) or a paired test, and (b4) as a reported quantity. Either way this row does not re-read itself.
+
+### 3.5 Deviations from 2.1-2.11, each with its number (dated 2026-09-10)
+1. 2.8's cost estimate was wrong by four orders of magnitude on the scorer (3.2); corrected by 2.11 before any number.
+2. 2.3's (b4) and (b6) clauses 2-3 were mis-specified for this population (2.10, 3.3); recorded, not relabelled.
+3. 2.6's NULL branch fired by the letter and is HELD (3.4), adjudicated by the panel's honesty lens.
+4. 2.11 (iii) "threads = p_parts" resolves to 1 on the lineage's pinned partition baseline; the multithreading the owner
+   directed lives at the seed level (8 workers, 71-76 s per seed pooled) and in the torch scorer, not in the kernel's tick.
+5. 2.11 named Kasai for the LCP; the build used binary lifting over the doubling ranks (inside 2.11's "any other method
+   that reproduces the count EXACTLY"; the oracle test decides, and did).
+6. The settling probe cost 450 of the campaign's 574 s; the host clause's cost now exceeds the campaign's.
+7. Found, not touched: `substrate/region_coherence.py:70` carries a SECOND Kaspar-Schuster LZ76 body behind an import
+   fallback (`except Exception`) -- a dormant duplicate (P2/P3) that predates this row; for the fold.
+8. Campaign run 1's 9 h 40 min was invisible because its log was block-buffered and printed per seed only; run 2 prints
+   per arm, unbuffered, and refuses above a projected 3 h (obs #2170).
+
+### 3.6 What this row does NOT claim
+No Phi, no threshold, no sentence about experience, no aggregate with another reading; no C4 number; no statement about
+the live brain (no live population runs on the kernel -- "live" is NOT delivered, 2.7); no claim that the absolute PCI
+values mean anything beyond their contrasts; no claim that the hold in 3.4 is a pass -- SC-009's integration instrument
+has fired its reds and has NOT met its own verdict rule.
