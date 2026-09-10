@@ -1,0 +1,95 @@
+{
+  "K_rule": {
+    "K": null,
+    "K_basis": 16,
+    "ceiling": 0.9,
+    "note": "UNSATISFIED: no power of two >= 8 that FITS (K x 5 % of the units must be <= 100 %, so only 8 and 16 fit) put the no-learning RANDOM arm under the ceiling. Every other pilot item below was measured on K_basis as a workload basis only; the campaign is BLOCKED on this rule",
+    "readings": [
+      {
+        "accuracy": 1.0,
+        "k": 8
+      },
+      {
+        "accuracy": 1.0,
+        "k": 16
+      },
+      {
+        "accuracy": null,
+        "k": 32,
+        "note": "32 classes of 710 units do not fit in 14215 units"
+      }
+    ],
+    "satisfied": false
+  },
+  "W": {
+    "edges": 70001,
+    "frac": 1.0,
+    "projected_hours": 0.2289953066656987,
+    "seconds_per_tick": 0.0010734154999954627,
+    "units": 14215
+  },
+  "artifact": "h01_c3_graph.npz",
+  "artifact_sha256": "a1d0491ac486bf194a479a8c6aab419df90c7f05d2ba643d6b16ed3c3d4a0549",
+  "campaign_ticks": 768000,
+  "constants": {
+    "C_blocks": 5,
+    "S_seeds": 8,
+    "T_trial": 50,
+    "class_frac": 0.05,
+    "drive_amplitude_x_thr": 1.2,
+    "held_out_per_class": 1,
+    "p_drive": 0.3,
+    "swap_passes": 10,
+    "t_bar": 1.895,
+    "trials_per_class": 4
+  },
+  "drive_only": {
+    "accuracy": 0.0625,
+    "chance": 0.0625,
+    "seeded_same_protocol": 1.0
+  },
+  "git_head": "a343a1f94009cfe6ca669609098f0fc599956482",
+  "harness_sha256": "3d9a8ee5577e698c0cb8f85f57bd08ecaccbff050c020f7d12431619838820da",
+  "host": {
+    "daemon_pid": "32604",
+    "daemon_working_set": 8835993600,
+    "port_8137": "LISTEN"
+  },
+  "host_note": "CPU WINDOWS TAKEN ON DAEMON PID 27228 (not necessarily the PID a later run records -- the daemon on this host RESTARTS: 33396, then 27228, then 32604 were observed holding 8137 inside about forty minutes, so `host.daemon_pid` beside a number and this note's PID may differ, and that is a fact about the daemon rather than a mismatch to reconcile). LISTEN on 8137 throughout, working set 5.50-8.77 GB; five 90 s CPU windows 112.000 / 122.906 / 106.266 / 133.641 / 117.828 s, mean 118.5, no trend, range +-11.5 %. The two-consecutive-windows-within-6 % clause is NOT MET and is not meetable by this daemon's steady duty cycle; settling read from the absence of a trend. No battery and no panel were running. Every timing is a min of repeats.",
+  "task": "specs/022 T063 pilot",
+  "widths": [
+    {
+      "edges": 70001,
+      "frac": 1.0,
+      "projected_hours": 0.2289953066656987,
+      "seconds_per_tick": 0.0010734154999954627,
+      "units": 14215
+    },
+    {
+      "edges": 52949,
+      "frac": 0.5,
+      "projected_hours": 0.1447689599978427,
+      "seconds_per_tick": 0.0006786044999898877,
+      "units": 7107
+    },
+    {
+      "edges": 27940,
+      "frac": 0.25,
+      "projected_hours": 0.07125493333054085,
+      "seconds_per_tick": 0.00033400749998691026,
+      "units": 3553
+    },
+    {
+      "edges": 12543,
+      "frac": 0.125,
+      "projected_hours": 0.03536800000195702,
+      "seconds_per_tick": 0.00016578750000917353,
+      "units": 1778
+    }
+  ],
+  "wrong_validity": {
+    "psi_random": 2.281271303789785,
+    "psi_wrong": 0.03238947373952294,
+    "valid": false
+  }
+}

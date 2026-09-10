@@ -105,11 +105,15 @@ SWAP_PASSES = 10  # double-edge swap attempts per edge, per sign class, in the R
 #: read instead from the absence of a trend across five windows, and every timing number below is
 #: a MIN of repeats so the swing costs precision rather than correctness. Recorded, not smoothed.
 HOST_NOTE = (
-    "daemon PID 27228, LISTEN on 8137, working set 5.50-8.77 GB; five 90 s CPU windows "
-    "112.000 / 122.906 / 106.266 / 133.641 / 117.828 s, mean 118.5, no trend, range +-11.5 %. "
-    "The two-consecutive-windows-within-6 % clause is NOT MET and is not meetable by this "
-    "daemon's steady duty cycle; settling read from the absence of a trend. No battery and no "
-    "panel were running. Every timing is a min of repeats."
+    "CPU WINDOWS TAKEN ON DAEMON PID 27228 (not necessarily the PID a later run records -- the "
+    "daemon on this host RESTARTS: 33396, then 27228, then 32604 were observed holding 8137 "
+    "inside about forty minutes, so `host.daemon_pid` beside a number and this note's PID may "
+    "differ, and that is a fact about the daemon rather than a mismatch to reconcile). LISTEN on "
+    "8137 throughout, working set 5.50-8.77 GB; five 90 s CPU windows 112.000 / 122.906 / "
+    "106.266 / 133.641 / 117.828 s, mean 118.5, no trend, range +-11.5 %. The "
+    "two-consecutive-windows-within-6 % clause is NOT MET and is not meetable by this daemon's "
+    "steady duty cycle; settling read from the absence of a trend. No battery and no panel were "
+    "running. Every timing is a min of repeats."
 )
 
 S_SEEDS = 8
@@ -1229,6 +1233,10 @@ def run_pilot():
     )
 
     # ---- K: the smallest power of two >= 8 at which the NO-LEARNING RANDOM arm scores < 0.9 ----
+    # The rule may have NO satisfying K -- the class subsets are 5 % of the units, so at most 20
+    # of them fit and only 8 and 16 are powers of two that do. When that happens the pilot RECORDS
+    # the readings, marks the rule UNSATISFIED and BLOCKS the campaign; it does not abort at the
+    # first candidate, because the remaining pilot items are measurable and the record needs them.
     k_readings = []
     k_chosen = None
     for k in K_CANDIDATES:
@@ -1236,19 +1244,27 @@ def run_pilot():
             classes = drive_classes(art, k, 0)
         except ArmRefused as exc:
             k_readings.append({"k": k, "accuracy": None, "note": str(exc)})
+            print(f"K rule: K = {k:>2}  DOES NOT FIT: {exc}")
             continue
         table = arm_random(art, 0)
         check_nuisance(table, art, "random", unique_edges=True)
         r = run_arm(table, "random", 0, classes, lr=0.0, blocks=1)
         k_readings.append({"k": k, "accuracy": r.accuracy})
         print(f"K rule: K = {k:>2}  no-learning RANDOM held-out accuracy = {r.accuracy:.4f}")
-        if r.accuracy < K_CEILING:
+        if r.accuracy < K_CEILING and k_chosen is None:
             k_chosen = k
-            break
+    fitting = [rec["k"] for rec in k_readings if rec.get("accuracy") is not None]
+    k_basis = k_chosen if k_chosen is not None else (max(fitting) if fitting else None)
     if k_chosen is None:
-        print("PILOT REFUSED: no candidate K put the no-learning RANDOM arm under the ceiling")
+        print(
+            "K RULE UNSATISFIED: no candidate K put the no-learning RANDOM arm under the "
+            f"{K_CEILING} ceiling. The remaining pilot items are measured anyway, on K = "
+            f"{k_basis} as a WORKLOAD BASIS ONLY, and the campaign is BLOCKED."
+        )
+    if k_basis is None:
+        print("PILOT REFUSED: no candidate K even fits the unit count")
         return 1
-    classes = drive_classes(art, k_chosen, 0)
+    classes = drive_classes(art, k_basis, 0)
 
     # ---- T003's required measurement: a DRIVE-ONLY population must score at chance -------------
     no_edges = _copy(art)
@@ -1256,7 +1272,7 @@ def run_pilot():
         no_edges[key] = no_edges[key][:0]
     drive_only = run_arm(no_edges, "drive-only", 0, classes, lr=0.0, blocks=1)
     seeded_pilot = run_arm(arm_seeded(art), "seeded", 0, classes, blocks=1)
-    chance = 1.0 / k_chosen
+    chance = 1.0 / k_basis
     print(
         f"T003 drive-only: accuracy {drive_only.accuracy:.4f} against chance {chance:.4f}; "
         f"the same protocol WITH edges (SEEDED) reads {seeded_pilot.accuracy:.4f}"
@@ -1272,12 +1288,12 @@ def run_pilot():
     )
 
     # ---- the tick cost at four widths, learner ON, and the 6-hour projection -------------------
-    total_ticks = _campaign_ticks(k_chosen)
+    total_ticks = _campaign_ticks(k_basis)
     widths = []
     for frac in WIDTH_FRACTIONS:
         sub = band_balanced_subgraph(art, frac)
         try:
-            sub_classes = drive_classes(sub, k_chosen, 0)
+            sub_classes = drive_classes(sub, k_basis, 0)
         except ArmRefused as exc:
             widths.append({"frac": frac, "units": int(sub["agglo_id"].size), "note": str(exc)})
             continue
@@ -1330,7 +1346,23 @@ def run_pilot():
             "S_seeds": S_SEEDS,
             "t_bar": T_BAR,
         },
-        "K_rule": {"ceiling": K_CEILING, "readings": k_readings, "K": k_chosen},
+        "K_rule": {
+            "ceiling": K_CEILING,
+            "readings": k_readings,
+            "K": k_chosen,
+            "satisfied": k_chosen is not None,
+            "K_basis": k_basis,
+            "note": (
+                "SATISFIED"
+                if k_chosen is not None
+                else (
+                    "UNSATISFIED: no power of two >= 8 that FITS (K x 5 % of the units must be "
+                    "<= 100 %, so only 8 and 16 fit) put the no-learning RANDOM arm under the "
+                    "ceiling. Every other pilot item below was measured on K_basis as a workload "
+                    "basis only; the campaign is BLOCKED on this rule"
+                )
+            ),
+        },
         "drive_only": {
             "accuracy": drive_only.accuracy,
             "chance": chance,
@@ -1344,6 +1376,12 @@ def run_pilot():
     PILOT_PIN.parent.mkdir(parents=True, exist_ok=True)
     PILOT_PIN.write_text(json.dumps(pin, indent=2, sort_keys=True), encoding="utf-8")
     print(f"pilot pinned to {PILOT_PIN}")
+    if k_chosen is None:
+        print(
+            "CAMPAIGN BLOCKED: the pre-registered K rule has no satisfying K at this width. The "
+            "campaign is NOT run and the pre-registration cannot be executed as written."
+        )
+        return 3
     return 0 if w_chosen is not None else 2
 
 
@@ -1359,6 +1397,14 @@ def run_campaign():
     pin = json.loads(PILOT_PIN.read_text(encoding="utf-8"))
     if pin.get("W") is None:
         print("CAMPAIGN REFUSED: the pilot recorded no width under the projection ceiling")
+        return 1
+    if not pin["K_rule"].get("satisfied"):
+        print(
+            "CAMPAIGN REFUSED: the pilot's K rule is UNSATISFIED -- the no-learning RANDOM arm "
+            "sits at the ceiling at every candidate K, so PLANTED has nothing to beat and no "
+            "verdict could be read. Running anyway would produce a NO VERDICT whose cause is the "
+            "task's saturation, not the harness. Amend the pre-registration first."
+        )
         return 1
     k = int(pin["K_rule"]["K"])
     frac = float(pin["W"]["frac"])
