@@ -15,6 +15,17 @@ laminar WRONG arm failed its validity precondition by 70x. The reds below are th
 clause read as the absence of a monotone trend over at least three 90 s windows -- plus the campaign
 guard that runs the campaign only when a D was selected AND the WRONG arm is valid.
 
+DISPOSITION 2026-09-09, committed RED a THIRD time before the no-learner instrument exists. The
+campaign (`tools/t063_campaign.json`) fired 2.9's null clauses: the LEARNER was DELETED on its own
+criterion -- t(d_f) = -13.0154, the FROZEN twin ahead of the learning arm on every one of the 8
+seeds -- so `substrate/kernel_plasticity` is gone and the harness is KEPT as a NO-LEARNER
+instrument. Red 1's subject, a constructed lr = 0 pin standing against a LEARNING arm, no longer
+exists: there is nothing to pin. So red 1's test becomes the NO-LEARNER REFUSAL ("harness defect:
+no learner ran" -> no drift verdict) with the control that its message never says PINNED, conjunct
+(a) reads NOT READ, and the learner's disposition is DELETED with its dated reason. Every other red
+in this file is unchanged and must stay green: PLANTED, the WRONG validity precondition, the
+nuisance refusals, the D ladder, the projection, the settling clause and the campaign guard.
+
   PYTHONUTF8=1 PYTHONPATH=src pytest tests/test_prior_drift_harness.py -q --no-cov
 """
 
@@ -71,40 +82,47 @@ def test_zero_distance_is_a_failure_of_the_seeding_approach_not_stability():
     assert H.is_seeding_failure([moved]) is False
 
 
-# ---- RED 1: never moves off the seed ---------------------------------------------------------
-def test_red1_names_the_pin_the_harness_applied():
-    frozen = H.ArmResult("frozen", True, 0.2, 40, 900, 0, 0.0, _zero_recs())
-    fired, msg = H.red1(frozen)
-    assert fired is True
-    assert "seeding approach failed" in msg and "PINNED (lr = 0 by construction)" in msg
-    assert "executed 40" in msg and "attempted 900" in msg and "effective 0" in msg
+# ---- RED 1, SUPERSEDED: the NO-LEARNER REFUSAL -----------------------------------------------
+def test_red1_is_the_no_learner_refusal_and_reads_no_drift_verdict():
+    """The learner was DELETED on its own criterion, so red 1's subject -- a constructed lr = 0
+    pin standing against a LEARNING arm -- does not exist. What red 1 reads now is the HARNESS
+    DEFECT 2.9 already names: no learner ran, so drift is not measurable and no verdict is read."""
+    arm = H.ArmResult("frozen", 0.2, 0, 0, 0, 0.0, _zero_recs())
+    fired, msg = H.red1(arm)
+    assert fired is False, "a no-learner harness reads NO drift verdict"
+    assert "harness defect: no learner ran" in msg
+    assert "kernel_plasticity DELETED" in msg and "2026-09-09" in msg
+    assert "FR-008/FR-009" in msg and "remain OPEN" in msg
+    #: the four diagnostic lines of 2.5 stay in the message, never collapsed to one number
+    assert "executed 0" in msg and "attempted 0" in msg and "effective 0" in msg
 
 
-def test_red1_refuses_to_call_a_learning_arms_zero_pinning():
-    """Codex defect 4: a zero can come from cancellation, quantization or absent pairs. Only the
-    VERIFIED intervention is called pinning."""
-    cancelled = H.ArmResult("seeded", False, 0.2, 40, 900, 0, 0.0, _zero_recs())
-    fired, msg = H.red1(cancelled)
-    assert fired is False
-    assert "PINNED (lr = 0 by construction)" not in msg
-    assert "cancelled or below quantization" in msg
-    no_pairs = H.ArmResult("seeded", False, 0.2, 40, 0, 0, 0.0, _zero_recs())
-    fired, msg = H.red1(no_pairs)
-    assert fired is False and "no eligible spike pairs" in msg
-    assert "PINNED (lr = 0 by construction)" not in msg
-    #: and a zero read from an EMPTY record set is not zero drift either -- there is nothing to
-    #: read it from, so red 1 must not fire on it
-    assert H.red1(H.ArmResult("frozen", True, 0.2, 40, 900, 0, 0.0, ()))[0] is False
+def test_the_no_learner_refusal_NEVER_says_PINNED():
+    """The control on the refusal. Pinning is attributable ONLY to a verified lr = 0 intervention
+    against a learner; with no learner in the tree there is no intervention, so the word must not
+    appear for ANY arm -- including the one still named `frozen`."""
+    for name in ("seeded", "random", "wrong", "planted", "frozen"):
+        _fired, msg = H.red1(H.ArmResult(name, 0.2, 0, 0, 0, 0.0, _zero_recs()))
+        assert "PINNED" not in msg, f"{name}: the refusal must not claim a pin that was not applied"
+        assert "seeding approach failed" not in msg, f"{name}: a missing learner is not a seeding"
 
 
-def test_red1_control_a_learning_arm_reads_effective_and_drift_above_zero():
-    recs = (
+def test_no_learner_holds_reads_all_four_lines_and_both_distances():
+    """Replaces red 1's control. A learning arm's control was "effective > 0 and distance > 0";
+    with no learner the honest reading is its exact inverse, and it is MEASURED per arm rather
+    than assumed from the absence of an import. Its red: any nonzero line breaks it."""
+    zero = H.ArmResult("seeded", 0.7, 0, 0, 0, 0.0, _zero_recs())
+    assert H.no_learner_holds(zero) is True
+    assert H.no_learner_holds(H.ArmResult("seeded", 0.7, 1, 0, 0, 0.0, _zero_recs())) is False
+    assert H.no_learner_holds(H.ArmResult("seeded", 0.7, 0, 9, 0, 0.0, _zero_recs())) is False
+    assert H.no_learner_holds(H.ArmResult("seeded", 0.7, 0, 0, 3, 0.0, _zero_recs())) is False
+    assert H.no_learner_holds(H.ArmResult("seeded", 0.7, 0, 0, 0, 0.5, _zero_recs())) is False
+    moved = (
         H.DriftRecord("band_pair_weight_share", (1.0,), (0.9,), 0.01, 1),
-        H.DriftRecord("band_fanin_e_fraction", (1.0,), (0.9,), 0.1, 1),
+        H.DriftRecord("band_fanin_e_fraction", (1.0,), (0.9,), 0.10, 1),
     )
-    seeded = H.ArmResult("seeded", False, 0.7, 40, 900, 133, 0.4, recs)
-    assert H.drift_control_holds(seeded) is True
-    assert H.drift_control_holds(H.ArmResult("seeded", False, 0.7, 40, 900, 0, 0.0, recs)) is False
+    assert H.no_learner_holds(H.ArmResult("seeded", 0.7, 0, 0, 0, 0.0, moved)) is False
+    assert H.no_learner_holds(H.ArmResult("seeded", 0.7, 0, 0, 0, 0.0, ())) is False
 
 
 # ---- the statistic over 8 seeds --------------------------------------------------------------
@@ -131,23 +149,19 @@ def test_zero_variance_differences_are_met_only_when_positive():
 
 # ---- RED 2 and the SC-006 conjuncts ----------------------------------------------------------
 def _acc(seeded, random_, wrong, planted, frozen):
+    """The arms as the no-learner instrument produces them: every diagnostic line zero and every
+    DriftRecord at distance 0, because nothing in the tree can move a bundle weight any more. Only
+    the ACCURACIES differ between arms, which is exactly what contrasts (b) (c) (d) (e) read."""
     out = {}
     for s in range(8):
         out[s] = {
-            "seeded": H.ArmResult("seeded", False, seeded[s], 40, 900, 100, 0.4, _recs()),
-            "random": H.ArmResult("random", False, random_[s], 40, 900, 100, 0.4, _recs()),
-            "wrong": H.ArmResult("wrong", False, wrong[s], 40, 900, 100, 0.4, _recs()),
-            "planted": H.ArmResult("planted", False, planted[s], 40, 900, 100, 0.4, _recs()),
-            "frozen": H.ArmResult("frozen", True, frozen[s], 40, 900, 0, 0.0, _zero_recs()),
+            "seeded": H.ArmResult("seeded", seeded[s], 0, 0, 0, 0.0, _zero_recs()),
+            "random": H.ArmResult("random", random_[s], 0, 0, 0, 0.0, _zero_recs()),
+            "wrong": H.ArmResult("wrong", wrong[s], 0, 0, 0, 0.0, _zero_recs()),
+            "planted": H.ArmResult("planted", planted[s], 0, 0, 0, 0.0, _zero_recs()),
+            "frozen": H.ArmResult("frozen", frozen[s], 0, 0, 0, 0.0, _zero_recs()),
         }
     return out
-
-
-def _recs():
-    return (
-        H.DriftRecord("band_pair_weight_share", (1.0,), (0.9,), 0.02, 1),
-        H.DriftRecord("band_fanin_e_fraction", (1.0,), (0.9,), 0.05, 1),
-    )
 
 
 def _zero_recs():
@@ -157,23 +171,29 @@ def _zero_recs():
     )
 
 
-def test_all_five_conjuncts_met():
+def test_the_prior_conjuncts_are_read_and_the_DRIFT_conjunct_is_NOT_READ():
+    """Every conjunct the no-learner instrument can still read -- (b) (c) (d) (e) -- is read. (a)
+    is NOT READ, so SC-006 can never be called MET again by this harness: an instrument that cannot
+    measure drift cannot satisfy a criterion whose first conjunct IS drift."""
     v = H.verdict(
         _acc(
             [0.70, 0.72, 0.68, 0.71, 0.69, 0.73, 0.70, 0.72],
             [0.50, 0.52, 0.48, 0.51, 0.49, 0.53, 0.50, 0.52],
             [0.30, 0.32, 0.28, 0.31, 0.29, 0.33, 0.30, 0.32],
             [0.90, 0.92, 0.88, 0.91, 0.89, 0.93, 0.90, 0.92],
-            [0.20] * 8,
+            [0.70, 0.72, 0.68, 0.71, 0.69, 0.73, 0.70, 0.72],
         ),
         wrong_valid=True,
     )
-    assert [v["conjuncts"][k]["state"] for k in "abcde"] == ["MET"] * 5
-    assert v["sc006"] == "MET"
+    assert [v["conjuncts"][k]["state"] for k in "bcde"] == ["MET"] * 4
+    assert v["conjuncts"]["a"]["state"] == "NOT READ"
+    assert "kernel_plasticity DELETED" in v["conjuncts"]["a"]["note"]
+    assert v["sc006"] == "NOT READ"
     text = H.format_verdict(v)
     for k in "abcde":
         assert f"({k})" in text
     assert "per-seed" in text.lower()
+    assert "no learner" in text.lower()
 
 
 def test_a_blind_harness_reads_no_verdict_at_all():
@@ -243,7 +263,10 @@ def test_an_invalid_wrong_arm_makes_red2_not_read():
     assert v["sc006"] != "MET"
 
 
-def test_the_learners_own_criterion_is_separate_from_the_priors():
+def test_the_learners_disposition_is_DELETED_and_carries_its_dated_reason():
+    """The learner's criterion was read ONCE, on the campaign, and it FAILED: t(d_f) = -13.0154.
+    The disposition is therefore not re-derivable from a no-learner run and must not pretend to be
+    -- it is reported as EXECUTED, with the date and the reason, whatever the accuracies say."""
     v = H.verdict(
         _acc(
             [0.70, 0.72, 0.68, 0.71, 0.69, 0.73, 0.70, 0.72],
@@ -254,19 +277,28 @@ def test_the_learners_own_criterion_is_separate_from_the_priors():
         ),
         wrong_valid=True,
     )
-    assert v["learner"]["disposition"] == "KEPT"
-    assert v["learner"]["t"] > H.T_BAR
-    v2 = H.verdict(
+    assert v["learner"]["disposition"] == "DELETED"
+    assert "kernel_plasticity DELETED" in v["learner"]["note"]
+    assert "2026-09-09" in v["learner"]["note"]
+
+
+def test_the_frozen_arm_is_now_an_IDENTITY_control_not_a_learner_control():
+    """With no learner, FROZEN is the SEEDED table run twice under one protocol, so d_f must be
+    identically 0 -- and a nonzero d_f is then a DETERMINISM defect in the harness, not a learning
+    signal. The contrast is kept for exactly that reading, and it is degenerate by construction."""
+    v = H.verdict(
         _acc(
-            [0.70] * 8,
-            [0.50, 0.52, 0.48, 0.51, 0.49, 0.53, 0.50, 0.52],
+            [0.70, 0.72, 0.68, 0.71, 0.69, 0.73, 0.70, 0.72],
+            [0.50] * 8,
             [0.30] * 8,
             [0.90] * 8,
-            [0.70] * 8,
+            [0.70, 0.72, 0.68, 0.71, 0.69, 0.73, 0.70, 0.72],
         ),
         wrong_valid=True,
     )
-    assert v2["learner"]["disposition"] == "DELETED"
+    c = v["contrasts"]["seeded - frozen"]
+    assert c["diffs"] == [0.0] * 8, "FROZEN and SEEDED must be the same run without a learner"
+    assert c["degenerate"] is True and c["t"] == 0.0
 
 
 # ---- the arms, and the nuisance properties that make attribution possible ---------------------
@@ -435,6 +467,8 @@ def test_the_arm_scores_from_a_D_DIMENSIONAL_feature_not_from_the_raw_counts():
     )
     assert r.feature_dim == 4, "the readout must see D dimensions, never the raw non-driven counts"
     assert 0.0 <= r.accuracy <= 1.0
+    #: and the arm is MEASURED to have run without a learner, on the real per-arm path
+    assert H.no_learner_holds(r) is True, "a no-learner arm must read four zero lines and 0 drift"
 
 
 # ---- 2.12(c): the settling clause, read as the ABSENCE of a monotone trend --------------------
@@ -584,11 +618,14 @@ def test_the_prior_is_read_once_at_construction():
         assert np.array_equal(before[k], v[1])
 
 
-# ---- the offline self-check runs, both reds fire, PLANTED fires ------------------------------
-def test_the_offline_selfcheck_runs_and_fires_both_reds():
+# ---- the offline self-check runs, every REMAINING red fires ----------------------------------
+def test_the_offline_selfcheck_runs_and_fires_every_remaining_red():
     out = H.selfcheck()
-    assert out["red1"] is True, "red 1 must FIRE in the self-check"
-    assert out["red2"] is True, "red 2 must FIRE in the self-check"
+    assert out["no_learner"] is True, "every arm must read four zero lines and zero drift"
+    assert out["no_learner_message"].startswith("harness defect: no learner ran")
+    assert "PINNED" not in out["no_learner_message"]
+    assert out["frozen_identity"] is True, "FROZEN must reproduce SEEDED exactly with no learner"
+    assert out["red2"] is True, "red 2's predicate must still be reachable"
     assert out["planted"] is True, "the positive control must fire"
     assert out["seconds"] < 60.0, f"the offline self-check took {out['seconds']:.1f}s"
     assert math.isfinite(out["seconds"])
