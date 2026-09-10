@@ -142,8 +142,14 @@ N_BANDS = 7
 #: matter): Layer 1 <-> Layer 6, Layer 2 <-> Layer 5, Layer 3 <-> Layer 4, White matter fixed.
 BAND_PERMUTATION = (5, 4, 3, 2, 1, 0, 6)
 
-#: 2.12(c). The settling clause is read from at least this many windows of this length.
+#: 2.12(c). SETTLING_WINDOWS is the amendment's FLOOR -- "at least three windows" -- below which
+#: there is no reading at all. SETTLING_MEASURED is how many a RUN actually takes, and it is not
+#: the floor on purpose: over n windows of a settled duty cycle exactly 2 of the n! orderings are
+#: monotone, so a three-window reading rejects a SETTLED host one time in three (measured: the
+#: 2026-09-09 re-run read 127.047 / 121.172 / 109.969 on one live daemon, no restart, and the
+#: clause said NOT settled because those three came out descending). At five it is 2/120 = 1.7 %.
 SETTLING_WINDOWS = 3
+SETTLING_MEASURED = 5
 SETTLING_SECONDS = 90
 
 
@@ -1513,11 +1519,14 @@ def settling_report(samples, seconds=SETTLING_SECONDS):
         "rule": (
             "2.12(c): settled = every window strictly positive, ONE live daemon throughout, and "
             f"NO monotone trend across at least {SETTLING_WINDOWS} windows of {SETTLING_SECONDS} s"
+            f"; a run takes {SETTLING_MEASURED} windows, because at the floor of "
+            f"{SETTLING_WINDOWS} the monotone test rejects a SETTLED host one time in three "
+            "(2 of n! orderings are monotone; 2/120 at five)"
         ),
     }
 
 
-def _cpu_windows(n=SETTLING_WINDOWS, seconds=SETTLING_SECONDS):
+def _cpu_windows(n=SETTLING_MEASURED, seconds=SETTLING_SECONDS):
     """`n` consecutive `seconds`-long windows of the daemon's own process CPU as (pid, CPU-seconds)
     pairs. Taken IN BAND (2.12(c)) so the settling reading sits BESIDE the timing numbers it
     qualifies instead of in a prose note a later reader has to trust.
@@ -1555,7 +1564,7 @@ def _cpu_windows(n=SETTLING_WINDOWS, seconds=SETTLING_SECONDS):
         return []
 
 
-def _settling(n=SETTLING_WINDOWS, seconds=SETTLING_SECONDS):
+def _settling(n=SETTLING_MEASURED, seconds=SETTLING_SECONDS):
     return settling_report(_cpu_windows(n, seconds), seconds)
 
 
@@ -1691,7 +1700,7 @@ def run_pilot():
     host = _host_condition()
     print("=" * 78)
     print(f"T063 pilot (2.12) -- host {json.dumps(host)}")
-    print(f"settling: taking {SETTLING_WINDOWS} x {SETTLING_SECONDS} s CPU windows...")
+    print(f"settling: taking {SETTLING_MEASURED} x {SETTLING_SECONDS} s CPU windows...")
     settling = _settling()
     print(
         f"settling: windows {settling['cpu_seconds_per_window']} CPU-s on PIDs "
@@ -1901,7 +1910,7 @@ def run_campaign():
     host = _host_condition()
     print("=" * 78)
     print(f"T063 campaign -- K = {k}, D = {d}, W = {frac}, host {json.dumps(host)}")
-    print(f"settling: taking {SETTLING_WINDOWS} x {SETTLING_SECONDS} s CPU windows...")
+    print(f"settling: taking {SETTLING_MEASURED} x {SETTLING_SECONDS} s CPU windows...")
     settling = _settling()
     print(
         f"settling: windows {settling['cpu_seconds_per_window']} CPU-s on PIDs "
