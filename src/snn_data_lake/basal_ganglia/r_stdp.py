@@ -71,9 +71,97 @@ TAU_MINUS = 20.0
 TAU_E = 1000.0  # long eligibility time constant -- the distal-reward bridge
 
 
+# ==========================================================================================
+# THE RULE, ONCE (specs/022 T063, P2 MERGE 2026-09-09).
+#
+# Until this landed the three-factor rule existed only as list arithmetic INSIDE
+# `RSTDPNeuron`'s four methods. T063 needs the same rule over a kernel bundle table
+# (`substrate/kernel_plasticity.py`), and P2 forbids a second implementation: "a merge that
+# keeps both paths is additive with extra steps". So the rule's operations are lifted HERE,
+# to module scope, over any indexable container of eligibilities -- a Python list for the
+# per-object neuron, a numpy array for the kernel's flat edge table -- and BOTH substrates
+# call them. `tests/test_r_stdp_kernel_equivalence.py` is the behavioural verification P2
+# demands: one spike/reward sequence through both forms, same weights to within the kernel's
+# quantization step, plus a spy proving the per-object form GOES THROUGH these functions
+# rather than merely agreeing with them, plus the incumbent's trajectory pinned byte-exact.
+#
+# WHY THE PAIR LIST RATHER THAN A VECTORIZED KERNEL. The formula is written exactly once in
+# each function and applied per pair, so no container branch can make the two substrates
+# diverge -- which is precisely the drift a "kernel form" of a rule usually introduces. The
+# cost is a Python loop over the pairs a tick actually forms (spikes x incident edges), not
+# over the whole table; only `decay_eligibility` touches every entry, and it is the one place
+# a container branch is unavoidable, so the DECAY FACTOR is computed once above the branch and
+# the branch decides only how to multiply.
+#
+# distinct-from: cortex/neuron_zoo.py::_step_serial -- advances a MEMBRANE one timestep over a
+#   list of neuron objects; no eligibility, no spike-time pairing, no reward. Read 2026-09-09.
+# distinct-from: brainstem/arm_bridge.py::UdpArmBridge.recv_outcome -- reads a reward FLOAT off
+#   a UDP socket; it transports the third factor, it never gates one. Read 2026-09-09.
+# distinct-from: cortex/predictive_coding.py::_lif -- a vectorized LIF step over signed ON/OFF
+#   pairs; "pairs" there are two neurons encoding one error component, not a (pre, post) spike
+#   ordering. Read 2026-09-09.
+# distinct-from: plasticity/competitive_learning.py::CompetitiveLearner.present -- drives a
+#   pattern for `steps` ticks and returns spike counts; its learning is prototype-row movement
+#   with no trace and no reward. Read 2026-09-09.
+# distinct-from: reasoning/arc_agi/rule_inducer.py::step -- a symbolic world model returning
+#   (state', reward, done); "reward" is an environment return, not a synaptic gate.
+#   Read 2026-09-09.
+# ==========================================================================================
+
+
+def accumulate_causal(e, pairs, a_plus=A_PLUS, tau_plus=TAU_PLUS):
+    """CAUSAL pairing (pre-before-post) -> LTP onto eligibility, for every (index, dt) in
+    `pairs` with dt = t_post - t_pre. Only dt > 0 contributes: a pair at dt == 0 is not
+    ordered and an anti-causal pair belongs to `accumulate_anticausal`. Mutates `e`."""
+    for i, dt in pairs:
+        if dt > 0:
+            e[i] += a_plus * math.exp(-dt / tau_plus)
+    return e
+
+
+def accumulate_anticausal(e, pairs, a_minus=A_MINUS, tau_minus=TAU_MINUS):
+    """ANTI-CAUSAL pairing (post-before-pre) -> LTD onto eligibility, for every (index, dt) in
+    `pairs` with dt = t_post - t_pre. Only dt < 0 contributes. Mutates `e`."""
+    for i, dt in pairs:
+        if dt < 0:
+            e[i] += -a_minus * math.exp(dt / tau_minus)
+    return e
+
+
+def decay_eligibility(e, dt_step=1.0, tau_e=TAU_E):
+    """The distal-reward bridge decaying one timestep: e *= exp(-dt_step / tau_e), elementwise.
+
+    The formula is the first line and is computed ONCE; the branch below chooses only how the
+    scalar is applied, because `list *= float` is a TypeError while `ndarray *= float` is the
+    elementwise op. Mutates `e` in place on both containers."""
+    decay = math.exp(-dt_step / tau_e)
+    if hasattr(e, "dtype"):  # numpy: one elementwise multiply over the whole edge table
+        e *= decay
+    else:
+        for i in range(len(e)):
+            e[i] *= decay
+    return e
+
+
+def reward_deltas(e, d, lr=LR):
+    """THE reward gate: the per-synapse weight delta lr * d * e for a (possibly long-delayed)
+    reward d. Returns the deltas; it does NOT apply them, because the two substrates apply them
+    differently and only the DELTA is the rule -- the per-object form adds them to a float
+    weight list, the kernel form re-quantizes them into an int64 bundle table under a
+    sign-preserving clamp. Association order is (lr * d) * e[i] on both containers, so the two
+    forms are bit-comparable rather than approximately equal."""
+    if hasattr(e, "dtype"):
+        return lr * d * e
+    return [lr * d * e[i] for i in range(len(e))]
+
+
 class RSTDPNeuron:
     """One output neuron fed by n_syn input synapses; each synapse has a weight w and an
-    eligibility trace e. STDP (spike timing) writes to e; a delayed reward gates e into w."""
+    eligibility trace e. STDP (spike timing) writes to e; a delayed reward gates e into w.
+
+    Every arithmetic operation of the rule is delegated to the module-level functions above
+    (the P2 merge): this class owns the per-object BOOKKEEPING -- which synapse, which spike
+    time -- and owns none of the rule."""
 
     def __init__(
         self,
@@ -96,39 +184,46 @@ class RSTDPNeuron:
         self.lr, self.a_plus, self.a_minus = lr, a_plus, a_minus
         self.tau_plus, self.tau_minus, self.tau_e = tau_plus, tau_minus, tau_e
 
+    # `step` below advances an ELIGIBILITY TRACE, never a membrane, which is why none of these
+    # is the same job (all five read 2026-09-09 before this note was written):
+    # distinct-from: cortex/lif_neuron.py::LIFNeuron.step and cortex/alif_neuron.py::ALIFNeuron.step
+    #   -- integrate a membrane under an input current and return a 0/1 spike; no trace, no reward.
+    # distinct-from: cortex/autapse_neuron.py::AutapseNeuron.step -- the same membrane step with a
+    #   self-current added; it delegates to LIFNeuron.step.
+    # distinct-from: plasticity/competitive_learning.py::CompetitiveLearner.step -- advances a
+    #   competitive layer and applies prototype-row updates at post spikes; no eligibility trace
+    #   and no third factor, so a delayed reward cannot reach it.
+    # distinct-from: hippocampus/function_preserving_growth.py::step -- a forward pass over a
+    #   hidden layer returning currents and spikes; it computes an output, not an update.
     def pre_spike(self, i, t):
         """Input synapse i fires at time t. Pair with the neuron's most recent POST spike:
         post-before-pre (dt < 0) is anti-causal -> LTD onto this synapse's eligibility."""
         self.t_pre[i] = t
         if self.t_post is not None:
-            dt = self.t_post - t  # <= 0 here: post came before this pre
-            if dt < 0:
-                self.e[i] += -self.a_minus * math.exp(dt / self.tau_minus)
+            accumulate_anticausal(self.e, ((i, self.t_post - t),), self.a_minus, self.tau_minus)
 
     def post_spike(self, t):
         """The output neuron fires at time t. Pair with each synapse's most recent PRE spike:
         pre-before-post (dt > 0) is causal -> LTP onto that synapse's eligibility."""
         self.t_post = t
-        for i in range(self.n):
-            tp = self.t_pre[i]
-            if tp is not None:
-                dt = t - tp  # > 0 here: pre came before this post
-                if dt > 0:
-                    self.e[i] += self.a_plus * math.exp(-dt / self.tau_plus)
+        accumulate_causal(
+            self.e,
+            ((i, t - self.t_pre[i]) for i in range(self.n) if self.t_pre[i] is not None),
+            self.a_plus,
+            self.tau_plus,
+        )
 
     def step(self, dt_step=1.0):
         """Advance one timestep: the eligibility trace decays slowly (over tau_e). No reward
         yet -- this is the interval in which OTHER spikes may occur before the reward lands."""
-        decay = math.exp(-dt_step / self.tau_e)
-        for i in range(self.n):
-            self.e[i] *= decay
+        decay_eligibility(self.e, dt_step, self.tau_e)
 
     def reward(self, d):
         """A (possibly long-delayed) reward/dopamine signal d arrives: gate the stored
         eligibility into the weights. w += lr * d * e for every synapse; d>0 reinforces
         positive-eligibility (causally paired) synapses, d<0 flips the direction. Returns the
         per-synapse weight deltas."""
-        deltas = [self.lr * d * self.e[i] for i in range(self.n)]
+        deltas = reward_deltas(self.e, d, self.lr)
         for i in range(self.n):
             self.w[i] += deltas[i]
         return deltas
