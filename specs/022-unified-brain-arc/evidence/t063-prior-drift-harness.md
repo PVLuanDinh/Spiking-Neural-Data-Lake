@@ -291,3 +291,160 @@ retention criterion (the 64-unit fixture read the FROZEN arm ahead of SEEDED at 
 observation the campaign will read evidentially). Authorized by this amendment: the pilot re-run under the D
 rule and the new WRONG arm, then the campaign iff the guard selects a D and the WRONG arm is valid; the pilot
 readings above stay in the record beside the re-run's.
+
+## 3. Results (written after the runs; nothing above this line was edited after §2.12)
+
+### 3.1 The reds, RUN RED, the merges, the learner, the harness, and the pilot that stopped the first campaign
+
+The reds were committed before any mechanism existed (`e63cb98`: a collection error on the harness, 16 failing tests
+on the learner and the merge, one deliberate PASS pinning the incumbent R-STDP trajectory) and again before each later
+mechanism (`91882fa` for §2.12's instrument; `0c5c636` and `b327e1c` for the host probe's two defects). `decisions.md`
+was CREATED with T003 and T004 decided and the Part F row `H-R1` appended (`3c79573`). The R-STDP rule was MERGED into
+one authoritative implementation in `basal_ganglia/r_stdp.py` (`bccb89a`): the per-object neuron calls the module-level
+operations (a spy test proves it goes through them), the incumbent's trajectory is byte-identical before and after
+(`_run(7)` = 0.5587212259170016 / 0.5453367971886981 / 0.4783055031868412), and its own self-check reproduces every
+number it printed before the merge. `substrate/kernel_plasticity.py` (`b4e981b`) drove that one rule over the kernel's
+bundle table: equivalence with the per-object form on one spike/reward sequence within one quantization step
+(max |Δw| 7.104e-06 against a step of 1.526e-05, clamp not fired; the test is not vacuous — doubling `a_plus` breaks
+it); sign preserved through learning (the clamp acted on 44 entries and removing it produced 10 flips — the invariant
+is reachable); byte-equal weights for the same seed and reward sequence (sha256 `c66b0f0f…`, a flipped sequence
+`53e6c943…`); the four diagnostic lines separated (lr = 0: executed 2, attempted 48, effective 0; lr = 1e-12:
+attempted 24, effective 0, reported as below quantization, NOT pinning). `DriftMonitor`'s PSI was lifted to module
+scope (`d0d4c53`). `cortex/prior_drift_harness.py` (`548a17a`) carried both reds, PLANTED, the WRONG validity
+precondition and the nuisance refusals in its offline self-check (64 units, < 4 s): red 1 fired ("PINNED (lr = 0 by
+construction): executed 48, attempted 151, effective 0, drift 0"), PLANTED beat RANDOM (t +3.53, FPR 0.0625), WRONG
+valid (PSI 8.86 vs 4.74), SEEDED moved on every seed, and the three nuisance refusals fired. The census gates caught the
+harness's `_learner` symbol without a declaration (`dc6d52e`; obs #2164's shape a second time).
+
+**The first pilot STOPPED the campaign, as 2.7 wrote it to.** At the full ingested width (14,215 units, 70,001 edges;
+W = 1.0 projected 0.229 h against the 6 h ceiling) the K rule selected nothing: the no-learning RANDOM arm decoded
+K = 8 and K = 16 disjoint drive classes at 1.0000 held-out (K = 32 does not fit), a 13-cell sweep over class fraction
+0.05 / 0.02 / 0.01 / 0.005 × K = 8 / 16 / 32 / 64 read 1.0000 in every cell on both arms, and a nearest-centroid
+instrument with no readout agreed (1.0000 on both arms; its own controls exactly at chance). T003's drive-only
+measurement passed cleanly (0.0625 = chance with no edges; 1.0000 with edges): the class reaches the readout only
+through the graph, and over ~14k sparse units a class's reachable set is a signature every wiring produces. The
+direction-reversed WRONG arm failed 2.2's validity precondition (PSI 0.032389 against RANDOM's 2.281271; 0.726520 of
+the band-pair weight mass is intra-band and a transpose cannot move it). No campaign ran; no known-vacuous criterion
+was executed. The fixture had predicted this — `out_degree` 2 gave every arm a perfect class code and was tuned to 4
+so PLANTED could fire — and the builder read it as a fixture setting (obs #2165). Amendment 2.12 (`aba9a71`) replaced
+the readout's CAPACITY rule and the wrong prior before any campaign.
+
+**Three defects in the host instrument, each caught red-first (`0c5c636`/`9e92768`, `b327e1c`/`7caea77`):** the
+settling probe passed on a DEAD reading (`[-515.156, 0.0, 0.0]` → settled; the daemon had restarted under it and the
+cached handle differenced a corpse; now every window must be positive, the PID is recorded per window, the listener is
+re-resolved at both ends); three windows rejected a settled host one time in three (exactly 2 of n! orderings are
+monotone; runs now take 5 windows, the amendment's floor of 3 unchanged); and the campaign's host clause is NOT MET
+on the pinned run — `learn_daemon.bat`'s supervisor restarts the daemon on a cycle (~15 min) shorter than the probe
+plus the campaign, four PIDs held 8137 in the session, `daemon_restarted = True`. Measured, not argued: the campaign
+was executed three times across four daemon PIDs and two settling outcomes and every per-seed accuracy, every
+executed / attempted / effective / L1 count and all five t-values came back identical; the third run is pinned.
+
+### 3.2 The pilot under 2.12 and the campaign (`tools/t063_pilot.json`, `tools/t063_campaign.json`)
+
+Pilot (git `7caea77`, harness sha256 `93f6fa58…89fa095`, artifact `a1d0491a…4a0549`): the D ladder on the no-learning
+RANDOM arm at K = 8 (8,535 non-driven features projected): D = 4 → 0.7500; D = 8 / 16 / 32 / 64 / 128 → 1.0000. D = 4
+selected — the largest under the 0.9 ceiling and the ladder's bottom rung. Drive-only at D = 4: 0.1250 = chance (0.6250
+with edges). WRONG (band-permuted targets) VALID: PSI 6.175870 against RANDOM's 2.281271 (0 off-band fallbacks). Tick
+cost with the learner ON: 1.0789 / 0.5874 / 0.2969 / 0.1564 ms per tick at W = 1.0 / 0.5 / 0.25 / 0.125 → 0.115 h
+projected; W = 1.0. Host windows 82.2 / 84.3 / 86.5 / 81.9 / 69.3 CPU-s on one PID, settled.
+
+Campaign (git `f37fe90`; K = 8, D = 4, W = 1.0; 5 tables × 8 seeds; wall 589.7 s):
+
+| conjunct | reading | numbers |
+|---|---|---|
+| (a) DRIFT | MET | red 1 fired on the pin (executed 120, attempted 179,571, effective 0, drift 0); SEEDED S1 distance 0.107–0.172, effective weight change 435k–654k entries (L1 232k–398k) on every seed |
+| (b) BEATS RANDOM | NOT MET | paired one-sided t = −0.2277 (FPR 0.0781) |
+| (c) NOT BLIND | MET | PLANTED − RANDOM t = +9.2601 (FPR 0.0508) — the verdict is read |
+| (d) RED 2 FIRED | NOT MET | t(random − wrong) = −2.5459 (FPR 0.0391); WRONG VALID on all 8 seeds (PSI 6.175870 vs 2.2711–2.3029) — the corrupted prior OUTPERFORMS the null |
+| (e) BEATS WRONG | NOT MET | t = −5.2271 (FPR 0.0312) |
+| the learner's own criterion | NOT MET | t(d_f) = −13.0154 (FPR 0.0430); per-seed differences −0.75 / −0.375 / −0.625 / −0.75 / −0.875 / −0.625 / −0.75 / −0.75 — the FROZEN twin beats the learning arm on every seed |
+
+DriftRecords (S1, PSI to the seeded table): SEEDED 0.107–0.172, RANDOM 0.029–0.086, WRONG 0.142–0.252, PLANTED
+0.179–0.297, FROZEN exactly 0 with direction 0 on all 8 seeds. The per-seed table, every contrast's differences and
+every diagnostic line are in the pin with the harness sha256s, the artifact sha256, the git head and the host windows.
+
+### 3.3 The verdict, by the rule of record
+
+SC-006 is NOT MET: conjuncts (a) and (c) MET, (b), (d) and (e) NOT MET. By 2.9's enumeration: (c) MET and (b) NOT MET →
+the H01 WIRING BEYOND ITS MARGINALS does not beat its degree-, sign- and weight-matched null on this task; US3's
+"beatable prior" is recorded NOT MET for that component; `cortical_prior` and T062's artifact remain reference data; the
+seeded population constructor loses its "prior" role and is retained only as the harness's fixture. The learner: t(d_f)
+≤ 1.895 → DELETED (a learner that moves weights — at scale — and makes the readout worse on every seed is a null under
+P8 clauses 3 and 5, and r_stdp's own docstring says weight movement is not charge). PRIOR SEPARATION (T071's item, as
+2.6 defined it) is NOT MET.
+
+**A finding 2.9 had no clause for, recorded as its own:** (d) and (e) fail in the OPPOSITE direction — the
+depth-reversed corrupted prior decodes BETTER than both the true prior (t −5.23) and the marginal-matched null
+(t −2.55) at the readout capacity the guard selected (D = 4). On this task the H01 laminar targets are not merely
+uninformative; the wiring that sends each band's synapses to the mirrored band is more decodable. Nothing here says
+why; the record names it and does not explain it.
+
+### 3.4 The disposition applied
+
+Applied as §2.9 prescribes, in seven commits (`1fb01ba`..`594b95d`), the harness's no-learner form landing BEFORE the
+deletion so no commit imports a module that no longer exists: (1) `cortex/prior_drift_harness.py` kept as a NO-LEARNER
+instrument (`1fb01ba` the reds RED, `4c6c4cf`, `077d647` the census gate's catch of `no_learner_holds`): every arm runs as
+the frozen form, the drift half reports the §2.5 no-learner refusal verbatim ("no learner in the tree -- `substrate/
+kernel_plasticity` DELETED on its own criterion 2026-09-09: drift is not measurable; FR-008/FR-009 (specs/011) remain
+OPEN") and reads no drift verdict; the contrasts (b)(c)(d)(e), the D guard, the WRONG validity precondition, the
+nuisance refusals and PLANTED all stand; `--campaign` still runs the no-learning contrasts; the pinned campaign is the
+record of the learner's run and is neither re-run nor edited. (2) `substrate/kernel_plasticity.py` (474 lines) and its
+tests DELETED with its REGIONS / CORE / dormancy registrations (`2da3bb5`); `tests/test_r_stdp_kernel_equivalence.py`
+keeps the incumbent's byte-exact trajectory pin, the module-level and spy tests, and gains a test that the deleted
+kernel form cannot be imported (a second substrate cannot return quietly); `tools/gradient_claim_baseline.json` untouched
+(governed rules_seen fell 173 → 172, floor 149). (3) The R-STDP merge KEPT as the one implementation; its two
+container branches written for the kernel form measured ORPHANED by two instruments with a positive control taken
+before the deletion (decay numpy 38,400 / deltas numpy 1,920 entries with the kernel form; numpy 0 and tripwire 0
+after, list 297 / 4,476) and deleted (`96082cc`). (4) `h01_ingest`'s dormancy row re-dated by appended succession
+(`371d607`): the population is the harness's FIXTURE; the "prior" role withdrawn on T063's reading; the kernel_tick /
+kernel_state `wire` rows untouched. (5) The dated annotations (`594b95d`): PLAN-FINAL's T062/T063 bullet, Part F row
+H-R1 (FIRED, RESOLVED — its reds are not re-runnable as written without a learner), the T071 exit line ("prior
+separation" NOT MET, a measured negative); tasks.md T063 `[X]` with its DONE note and T071's note; spec.md SC-006 and
+US3; specs/011 tasks.md T010–T014, T031, T039 (what T063 closes and what it leaves OPEN: FR-008/FR-009 without a
+learner); `decisions.md`'s OUTCOME section.
+
+Two readings the disposition took, disclosed: after the learner's removal the fixture's PLANTED control at
+`out_degree = 4` no longer cleared the bar (t +0.7977 — the learner had supplied part of PLANTED's margin); the
+docstring's own rule (the smallest density that clears while the base task stays hard) re-applied to a fresh sweep
+chose 8 (t +4.4063, RANDOM 0.5469; 12 and 16 rejected with both base arms at chance); both sweeps stay in the
+docstring, their difference being the finding. And the criterion as a whole gained a third reading, NOT READ, for
+"every conjunct this instrument can read held and drift could not be measured" — §2.6 defines the readings per
+conjunct, not for the whole; recorded as the builder's judgment call. One stale index entry surfaced: the graphify
+guard's inventory cites `substrate/lake_engine.py L769` for a symbol that is not in the tree (the file is 561 lines) —
+a carried opening, not this arc's.
+
+### 3.5 Deviations from the pre-registration, each with its reason (dated 2026-09-09)
+
+1. 2.7's K rule had no satisfying K; 2.2's reversed-laminar WRONG arm failed its own precondition; both replaced by
+   the dated amendment 2.12 BEFORE any campaign (the numbers seen are quoted there).
+2. The D ladder is read on ONE seed with 8 held-out trials, so its grid is eighths: 0.7500 is 6/8 against a ceiling
+   admitting 7/8, and one trial flip changes the selection. Disclosed; a successor reads the ladder over ≥ 3 seeds.
+3. D = 4 is the ladder's bottom rung: "the largest D under the ceiling" degenerated to "the only one". Had D = 4 also
+   read ≥ 0.9 the row would have been refused; the selected capacity sits at the floor.
+4. The host clause is NOT MET on the pinned campaign (the daemon's supervisor restarts it on a cycle shorter than the
+   measurement); the verdict is host-independent by the three identical executions of 3.1, and the timing numbers are
+   declared host-contended by construction.
+5. The settling clause's reading (2.12) was itself defective twice — a dead reading passed; three windows rejected a
+   settled host — and was repaired red-first before the pinned run.
+6. `e63cb98`'s trailer reads "the arc battery" (missing the possessive); amending is forbidden; recorded.
+7. Two assertions in the first red file were wrong about their own subject (an empty DriftRecord tuple; the "does not
+   say pinning" check rejecting the disclaimer inside the refusing message) and were corrected in `548a17a`, stated in
+   that commit.
+8. The self-check fixture's `out_degree = 4` was chosen by measurement so PLANTED could fire; it was the campaign's
+   blocker in miniature and was not read as such until the pilot (obs #2165).
+9. Red 2 in the offline self-check is a predicate on a constructed input, not an evidential reading (the evidential
+   reading is the campaign's).
+10. "The weight multiset", "no multi-edges" and the settling clause each admitted two readings of frozen text; the
+    readings taken are in 2.12.
+11. The kernel's `wire` exemptions are NOT discharged by this instrument, and the harness's fixture (T062's population)
+    is not a live reader: `tests/test_placement_charge_null.py` stays green.
+
+### 3.6 What this row does NOT claim
+
+Not that the H01 prior is useless: that it does not beat its marginal-matched null on ONE task (K = 8 drive classes
+decoded from a 4-dimensional projection of non-driven units' spike counts) at the one capacity the guard selected. Not
+that R-STDP cannot learn on a kernel: that this reward (per-trial readout correctness, ±1) on this population made the
+readout worse than a frozen twin on every seed, and the pre-registered criterion deletes it. Not that drift was measured
+in specs/011's sense: the drift-eligible statistics here were newly chosen graph-weight statistics (2.4) and, with the
+learner deleted, drift on the kernel has no mechanism again — FR-008 / FR-009 remain OPEN. Not a claim about the live
+brain. Not a claim about why the corrupted prior decodes better.
