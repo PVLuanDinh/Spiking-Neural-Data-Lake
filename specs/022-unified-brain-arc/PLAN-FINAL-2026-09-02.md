@@ -287,6 +287,7 @@ Carried: all of POLICIES (A.2). Added from what the nulls taught:
   (c) **T076's MECHANISM lands in Phase 1 as W1 with T076's own red** — the one reorder that crosses the
   T071 gate — and T076 keeps only its US4 exit row in Phase 5;
   (d) T071 stays the gate for T072–T075 and T083 — that clause is NOT rescinded;
+  *DATED NOTE 2026-09-10: discharged, not rescinded -- T071 CERTIFIED (evidence/s2-exit.md; Part E's note of the same date).*
   (e) T062/T063 move behind T064–T068 on rank 1's measurement (placement has no reader);
   (f) Phase 3's paging (S3–S5) runs at T065's constructed width WITHOUT an entry gate on a measured growth
   trajectory (the panel proposed one; not adopted): its order after Phase 2 is the plan's choice and
@@ -733,6 +734,10 @@ clause protects it.
   reachable-uncharged, two unreachable). Both rows are in the Verdict table and the panel's
   pre-registration-honesty lens is asked first whether choosing (A) is a relabelling. This bullet's
   text above is untouched.*
+  *PANEL 2026-09-10 (pre-registration-honesty lens): reading (A) ruled a relabelling -- item 3 is
+  recorded NOT MET under (B), 8 of 16 at d9dd3c0; the FR-015 ratchet (8 >= 8, 0 <= 0, identity 6 of 6)
+  holds and the floor pin is unchanged; all three named items therefore read NEGATIVE; the
+  gate-by-existence is undisturbed.*
 
 ### Phase 4 — Cognition on the substrate (so growth matters) — ranks 3, 5, 6 + US4's instruments
 
@@ -792,6 +797,8 @@ May run in parallel with Phase 3 (O5(b)); MUST precede Phase 5.
 
 ### Phase 5 — Self-improvement (US4 core; SC-008) — after T071 AND Phase 4
 
+*DATED NOTE 2026-09-10: the T071 conjunct is DISCHARGED (evidence/s2-exit.md); Phase 5 still waits on Phase 4 -- T070, T077-T082 all OPEN.*
+
 - **T072** proposer un-latched (rank 7 incl. its `note_cycle` clause: a futile set counts as exhausted for
   its source); red: `distinct candidate keys reachable` ≤ 1 (red today); positive control: two hand-named
   operators yield 2 keys. **T073** evaluator cascade on harness-only evidence, stage 2 = Phase 4's
@@ -831,6 +838,10 @@ Parallel arms: L1a ∥ L3 ∥ the oracle may start at W3 (they do not wait for P
   the certification's EXISTENCE, not by a pass** — the s1-exit precedent, where US2 exited with its
   headline criterion UNMET and T068, gated on it, ran. T070 remains OPEN and is not a gate for this
   exit (O5(b)).*
+  *PANEL 2026-09-10 (pre-registration-honesty lens): reading (A) ruled a relabelling -- item 3 is
+  recorded NOT MET under (B), 8 of 16 at d9dd3c0; the FR-015 ratchet (8 >= 8, 0 <= 0, identity 6 of 6)
+  holds and the floor pin is unchanged; all three named items therefore read NEGATIVE; the
+  gate-by-existence is undisturbed.*
 - Phase 1 is startable now in-process (the latch is per home); O1 unblocks the LIVE brain's measurement.
 - Phase 3's paging runs at a constructed width and does not wait for Phase 2's growth; its ORDER after
   Phase 2 is the plan's choice (O5(f)), not a hard gate.
