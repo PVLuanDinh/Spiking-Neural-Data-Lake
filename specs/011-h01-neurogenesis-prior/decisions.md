@@ -286,3 +286,74 @@ now not merely unclosed but **unmeasurable by this instrument**: with no learner
 it records is a measured zero. Disclosed with the rest: the host clause was NOT MET on the pinned
 run (`daemon_restarted = True`); the campaign was executed three times across four daemon PIDs
 with identical per-seed numbers and identical t-values, and pinned once.
+
+### CORRECTIONS APPENDED 2026-09-10 (the T063 panel of 2026-09-09)
+
+APPENDED, never an edit — everything above stays exactly as it stands, including the sentences
+these lines correct, so a later reader can see what the record used to say. Nothing below was
+re-run: `tools/t063_campaign.json` and `tools/t063_pilot.json` are the pinned artifacts and are
+untouched.
+
+1. **2026-09-10 (T063 panel of 2026-09-09) — T004, beside reading (1): 2.12's replacement WRONG
+   arm is not degree-matched to RANDOM, and 2.12 made no degree disclosure where 2.2 had made one
+   for the retired arm.** RANDOM preserves every unit's in-degree exactly (14,215/14,215
+   unchanged); the band-permuted arm's quantile rank map is many-to-one into every smaller mirrored
+   band, leaving only 3,701/14,215 in-degrees unchanged — max in-degree 67 -> 190, receiving units
+   11,227 -> 8,222, top-1% fan-in share 0.0126 -> 0.0173, out-degree untouched. The many-to-one map
+   is disclosed in this file's T004 reading (1) and in `band_rank_map`'s docstring, but only as the
+   reason multi-edges are permitted; its degree consequence was not stated. Degrees are not among
+   2.2's enumerated nuisance invariants, so `check_nuisance` is correct not to test them: this is a
+   DISCLOSURE GAP, not a nuisance violation. The consequence for the reading is in the evidence
+   file's §3.5 item 12 and §3.3 — contrast (e) differs from RANDOM along TWO axes, so the inference
+   "the H01 laminar targets are not merely uninformative" is WITHDRAWN. SC-006's verdict is
+   unaffected: it rests on SEEDED-vs-RANDOM, and both arms preserve in-degree exactly.
+
+2. **2026-09-10 (T063 panel of 2026-09-09) — the two pilot readings at lines 55-60 of this file are
+   NOT in `tools/t063_pilot.json` and no committed code produces them.** The 13-cell class-fraction
+   x K sweep and the nearest-centroid second instrument were taken by uncommitted out-of-harness
+   probes and are not reproducible from the tree. The DECISION they sit beside rests only on pinned
+   stage-0 fields: `K_rule.satisfied = false` (K = 8 and K = 16 both 1.0000, K = 32 does not fit),
+   `drive_only` (0.0625 = chance with no edges, 1.0000 seeded) and `wrong_validity`
+   (PSI 0.032389 vs 2.281271). The two unpinned readings corroborate the "structural, not the
+   readout's" explanation and carry no decision on their own. Lines 55-60 are left as written; this
+   line is the disclosure.
+
+3. **2026-09-10 (T063 panel of 2026-09-09) — a POST-HOC reading of the pinned per-seed accuracies
+   against chance. NOT a pre-registered conjunct: 2.6 defines only arm-vs-arm differences.**
+   Applying the harness's own `paired_t` to (acc − 1/K) over the 8 seeds against this row's bar
+   1.895: SEEDED t = +1.5275 (sample FPR 0.0312), RANDOM t = +1.9296 (sample FPR 0.0938) — both t
+   and FPR printed as 2.6 requires, and the FPR is this test's false-positive rate on this sample,
+   not a significance. So the two arms of (b) sit at or beside the chance floor in the pinned
+   campaign, while the same wiring's no-learning FROZEN twin reads 0.8750 mean (t +22.4499) and
+   PLANTED reads 0.6406 (t +18.2054). LIMITATION, not a re-reading of 2.9: (b)'s null is a
+   non-difference measured where both arms perform near the floor, and the sensitivity floor it was
+   read against — 2.6(c), PLANTED − RANDOM t = +9.2601 — establishes sensitivity to a LARGE effect
+   only. The disposition recorded under 2.9 stands unchanged. ATTRIBUTION, only where it is
+   controlled: SEEDED's collapse is attributed to its FROZEN twin (t(d_f) = −13.0154, the twin
+   ahead on every seed); the pin holds NO frozen twin for RANDOM, whose only no-learning reading is
+   the pilot's single-seed D-ladder (0.7500 at D = 4), so RANDOM's cause is NOT CONTROLLED and "the
+   learner drove both arms to chance" is not written here. GLOSS, since the sentence above stays:
+   "nothing is pinned at chance (0.1250)" is TRUE in this file's own sense of PINNED (2.5:
+   stuck by a verified intervention, degenerate across seeds), and it is NOT the sentence that
+   licenses reading (b) — the licensing reading is and remains t(planted − random) = +9.2601 per
+   2.6(c). Source: `tools/t063_campaign.json`, read without re-running the campaign; the full
+   per-arm table is in the evidence file's §3.7.
+
+4. **2026-09-10 (T063 panel of 2026-09-09) — the quartet at line 271 above is seed 0's, not an
+   every-seed constant.** The pin's frozen `attempted` runs 174,781-184,936 across the 8 seeds
+   (seed 0 = 179,571) while `executed` (120), `effective_count` (0) and both drift statistics (0)
+   ARE constant on every seed, so the red's substance is unchanged: red 1 turns on effective 0 AND
+   drift 0, both genuinely constant. The same sentence's SEEDED sibling is likewise seed 0's: the
+   SEEDED arm read effective 435,119-654,321 entries and L1 231,865.22-397,915.81 over the 8 seeds,
+   not "effective 528,383 entries, L1 231,865.22 ... on every seed". 2.5's frozen template already
+   writes it as "executed N, attempted M", so the per-seed variation was expected, never a surprise.
+
+5. **CORRECTION (appended 2026-09-10 for the T063 panel of 2026-09-09, never an edit):** "Nothing
+   is at ceiling" is wrong over the table above — FROZEN reads exactly 1.0000 on seeds 3 and 4, 2
+   of its 8 cells, at a mean of 0.8750; at lr = 0 every arm reads 0.8281-0.8750, so the pilot's
+   saturation is still present in the un-learned state and it is the learner-ON run that pushed the
+   arms to 0.1875-0.6406. The rest of the sentence stands as written: no arm is PINNED at chance —
+   SEEDED spans 0.0000-0.3750 and RANDOM 0.0000-0.3750, with 5 of the 16 SEEDED/RANDOM cells
+   exactly at 0.1250 and 2 below it. Neither correction touches (c): 2.6 fixes (c) as
+   t(d_p) > 1.895 on the pinned campaign, it read +9.2601, and 3.3's verdict and 3.4's disposition
+   are unchanged.
