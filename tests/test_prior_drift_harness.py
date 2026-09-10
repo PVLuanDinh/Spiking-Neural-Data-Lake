@@ -65,7 +65,7 @@ def test_zero_distance_is_a_failure_of_the_seeding_approach_not_stability():
 
 # ---- RED 1: never moves off the seed ---------------------------------------------------------
 def test_red1_names_the_pin_the_harness_applied():
-    frozen = H.ArmResult("frozen", True, 0.2, 40, 900, 0, 0.0, ())
+    frozen = H.ArmResult("frozen", True, 0.2, 40, 900, 0, 0.0, _zero_recs())
     fired, msg = H.red1(frozen)
     assert fired is True
     assert "seeding approach failed" in msg and "PINNED (lr = 0 by construction)" in msg
@@ -75,13 +75,18 @@ def test_red1_names_the_pin_the_harness_applied():
 def test_red1_refuses_to_call_a_learning_arms_zero_pinning():
     """Codex defect 4: a zero can come from cancellation, quantization or absent pairs. Only the
     VERIFIED intervention is called pinning."""
-    cancelled = H.ArmResult("seeded", False, 0.2, 40, 900, 0, 0.0, ())
+    cancelled = H.ArmResult("seeded", False, 0.2, 40, 900, 0, 0.0, _zero_recs())
     fired, msg = H.red1(cancelled)
     assert fired is False
-    assert "pinn" not in msg.lower() and "cancelled or below quantization" in msg
-    no_pairs = H.ArmResult("seeded", False, 0.2, 40, 0, 0, 0.0, ())
+    assert "PINNED (lr = 0 by construction)" not in msg
+    assert "cancelled or below quantization" in msg
+    no_pairs = H.ArmResult("seeded", False, 0.2, 40, 0, 0, 0.0, _zero_recs())
     fired, msg = H.red1(no_pairs)
     assert fired is False and "no eligible spike pairs" in msg
+    assert "PINNED (lr = 0 by construction)" not in msg
+    #: and a zero read from an EMPTY record set is not zero drift either -- there is nothing to
+    #: read it from, so red 1 must not fire on it
+    assert H.red1(H.ArmResult("frozen", True, 0.2, 40, 900, 0, 0.0, ()))[0] is False
 
 
 def test_red1_control_a_learning_arm_reads_effective_and_drift_above_zero():

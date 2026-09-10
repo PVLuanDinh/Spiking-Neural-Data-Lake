@@ -73,6 +73,7 @@ CORE = [
     "cortex.h01_ingest",  # T062: the c3 synapse graph -- 8 gates, each with its red, offline
     "cortex.arealization",  # T040+T041: exhaustive GRN censuses + prosomeric grid + graded arm
     "cortex.growth_program",  # T042: sealed view, shared-program counter, dilution, refusal reds
+    "cortex.prior_drift_harness",  # 022 T063: both reds, the PLANTED positive control, the WRONG validity precondition and every nuisance refusal, on a 64-unit synthetic population
     "cortex.placement",  # grown units ordered into cortical layers by measured H01 occupancy
     "cortex.growth_stop",  # T047: overgrowth red + four regimes + |LP| veto + measured null clause
     "cortex.lca_sparse_coding",

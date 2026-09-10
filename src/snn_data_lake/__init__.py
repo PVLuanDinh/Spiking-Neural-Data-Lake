@@ -132,6 +132,7 @@ REGIONS = {
         "h01_ingest",  # specs/022 T062: the H01 c3 SYNAPSE graph, 8 gates, a seeded population
         "arealization",  # specs/022 T040: organizer fields + repression-GRN region emission (P8 #7)
         "growth_program",  # specs/022 T042: one-shared-program locality + scaffold refusal (P8 #7)
+        "prior_drift_harness",  # specs/022 T063: the three-arm seeded/random/wrong drift harness with SC-006's two reds, PLANTED and FROZEN; bare == the offline self-check
         "placement",  # every grown unit gets a cortical depth, a layer and an immutable Dale sign
         "growth_stop",  # specs/022 T047: |LP|+charge growth gates, executive-independent (P8 #4)
         "lca_sparse_coding",

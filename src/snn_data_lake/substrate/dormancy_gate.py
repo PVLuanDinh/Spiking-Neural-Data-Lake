@@ -717,6 +717,20 @@ EXEMPT = {
         "here does not by itself re-arm those, because a population built inside a self-check is "
         "an instrument, not a tick",
     ),
+    "prior_drift_harness": (
+        "permanent",
+        "specs/022 T063, DATED 2026-09-09: the three-arm seeded/random/wrong drift harness with "
+        "SC-006's two reds, the PLANTED positive control and the FROZEN twin. A "
+        "CI/run_selfchecks MEASUREMENT INSTRUMENT on a SCRATCH population -- it constructs its "
+        "own artifact and its own KernelState/Synapses/KernelTick under a throwaway NORD_HOME and "
+        "is never constructed BY a brain, which is the amdahl_gate / determinism_gate / "
+        "perf_baseline shape exactly. Reachable from run_selfchecks (the offline check: red 1 on "
+        "the constructed lr = 0 pin, red 2's predicate on its constructed input, the PLANTED "
+        "control, the WRONG arm's measured validity precondition, and every nuisance refusal), "
+        "never from a tick. It is the CONSUMER kernel_plasticity's row names; it is NOT the live "
+        "consumer kernel_tick's and kernel_state's rows name, and T063 2.8 records that an "
+        "instrument that ticks a scratch population discharges neither",
+    ),
     "kernel_plasticity": (
         "wire",
         "specs/022 T063, DATED 2026-09-09: the kernel-side driver of the ONE R-STDP rule -- the "
