@@ -111,38 +111,103 @@ def _child_seed(base, tag):
 # The compression primitives: Lempel-Ziv (LZ76) + a gzip cross-check. LZ rewards STRUCTURE, not
 # marginal randomness (unlike an entropy coder) -- the anti-noise-trap choice for the compression step.
 # ======================================================================================================
+# distinct-from: cortex/integration_kernel.py::verdict_t070 -- the T070 verdict rule over arm
+#   readings; no string parse.
+# distinct-from: cortex/executive_control.py::plan_sequence (L190) -- a beam search over ACTION
+#   sequences scored by a value function; no suffix array, no factorization.
+# distinct-from: reasoning/gf.py::consistent_programs -- enumerates arithmetic programs that
+#   reproduce a numeric series; no string parse.
+#   All three read 2026-09-10 before this helper was written; the guard matched on docstring words.
+def _longest_previous_factor(s):
+    """LPF[p] for every position p of `s`: the length of the longest prefix of s[p:] that also
+    starts at some q < p (the occurrence may overlap p). Three passes, each linear or near-linear:
+    the suffix array by prefix doubling -- the sort rounds are torch ops on the device
+    `substrate.device.select` routes a width-len(s) workload to (CUDA above the machine's measured
+    crossover, CPU below it or without a card; the array is the same on either, because every
+    suffix of a string is distinct so its suffix array is unique); the LCP of each adjacent pair by
+    binary lifting over the doubling ranks (two suffixes share rank_k iff their first 2^k
+    characters agree); the LPF array from SA and LCP by Crochemore & Ilie's one-pass stack (2008:
+    each rank's nearest smaller position on both sides, with the lcp carried along the chain)."""
+    import numpy as np
+    import torch
+
+    from snn_data_lake.substrate.device import select
+
+    n = len(s)
+    dev = select("lz76", n)
+    chars = np.frombuffer(s.encode("utf-32-le"), dtype=np.uint32).astype(np.int64)
+    _, rank = torch.unique(torch.from_numpy(chars).to(dev), return_inverse=True)
+    rank = rank + 1  # 1..m; 0 is the sentinel that pads a short suffix, below every character
+    history = []  # history[k] = rank_k: each suffix ranked by its first 2^k characters
+    span = 1
+    while int(rank.max()) < n:  # until every suffix has its own rank
+        history.append(rank)
+        shifted = torch.zeros_like(rank)
+        shifted[: n - span] = rank[span:]
+        key_sorted, order = torch.sort(rank * (n + 1) + shifted, stable=True)
+        boundary = torch.ones_like(rank)
+        boundary[1:] = (key_sorted[1:] != key_sorted[:-1]).to(rank.dtype)
+        rank = torch.empty_like(rank)
+        rank[order] = torch.cumsum(boundary, 0)
+        span *= 2
+    sa = torch.argsort(rank)
+    a, b = sa[:-1], sa[1:]
+    acc = torch.zeros(n - 1, dtype=torch.int64, device=sa.device)
+    for k in range(len(history) - 1, -1, -1):
+        ia, ib = a + acc, b + acc
+        same = (ia < n) & (ib < n)
+        same &= history[k][ia.clamp(max=n - 1)] == history[k][ib.clamp(max=n - 1)]
+        acc = acc + same.to(torch.int64) * (1 << k)
+    sa = sa.tolist() + [-1]  # the sentinel position below every real one empties the stack
+    lcp = [0] + acc.tolist() + [0]  # lcp[r] = lcp(suffix sa[r-1], suffix sa[r])
+    lpf = [0] * n
+    stack = []
+    for r in range(n + 1):
+        h = lcp[r]
+        while stack and (sa[r] < sa[stack[-1]] or (sa[r] > sa[stack[-1]] and h <= lcp[stack[-1]])):
+            top = stack.pop()
+            if sa[r] < sa[top]:
+                lpf[sa[top]] = max(lcp[top], h)
+                h = min(lcp[top], h)
+            else:
+                lpf[sa[top]] = lcp[top]
+        if r < n:
+            lcp[r] = h if stack else 0
+            stack.append(r)
+    return lpf
+
+
 def lz76_complexity(s):
     """Lempel-Ziv 1976 complexity c(L): the number of distinct phrases in the exhaustive left-to-right
     LZ parse of the binary string `s` (Kaspar & Schuster 1987 form). This is the complexity term of
     Casali's PCI. A stereotyped/periodic string yields few phrases (low c); a structurally rich string
-    yields many. Deterministic."""
+    yields many. Deterministic.
+
+    ALGORITHM REPLACED 2026-09-10 (specs/022 T070, pre-registration amendment 2.11); the STATISTIC is
+    unchanged. The body this paragraph dates was the Kaspar & Schuster loop, which extends a
+    candidate match one character at a time from EVERY earlier position -- quadratic on a sparse
+    string with long zero runs: 5,120 characters (the 64-unit fixture) in 0.24 s, 160,000 not back
+    after 20 s, and the campaign footprint is 14,215 x 80 = 1,137,200 characters, 640 parses; the
+    first campaign spent 9 h 25 min inside one seed's arms without a number. The exhaustive history
+    is the LZ77 factorization with self-overlap in which every phrase is its longest previous
+    occurrence plus one new symbol, so c(L) is read off the longest-previous-factor array
+    (`_longest_previous_factor`: suffix array, LCP, LPF) by the walk below. What licenses the
+    replacement is `tests/test_integration_measure_lz.py`: the old body lives there VERBATIM as the
+    oracle and the count here must equal it on every string the incumbent's self-check scores, on
+    500 seeded random strings at four densities and on the structured edge cases -- a single
+    difference REFUSES the fix; its cost bar is 200,000 characters in under 5 s."""
     n = len(s)
     if n < 2:
         return 1
-    i, k, l = 0, 1, 1
-    k_max = 1
-    c = 1
+    lpf = _longest_previous_factor(s)
+    c, l = 1, 1
     while True:
-        if s[i + k - 1] == s[l + k - 1]:
-            k += 1
-            if l + k > n:
-                c += 1
-                break
-        else:
-            if k > k_max:
-                k_max = k
-            i += 1
-            if i == l:
-                c += 1
-                l += k_max
-                if l + 1 > n:
-                    break
-                i = 0
-                k = 1
-                k_max = 1
-            else:
-                k = 1
-    return c
+        c += 1  # the phrase starting at l: its longest previous factor plus one new symbol
+        if l + lpf[l] >= n:
+            return c  # the match runs to the end: the last phrase, no new symbol
+        l += lpf[l] + 1
+        if l >= n:
+            return c  # the new symbol was the last character
 
 
 def source_entropy(s):
