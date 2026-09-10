@@ -718,6 +718,21 @@ clause protects it.
   (the paging verdict, the region charge gate at the floor) are untouched by it. What T071 may NOT do with
   it: read it as "H01 contributes nothing" — the null retains H01's degrees, signs and weight magnitudes
   (2.2), so the reading is restricted to wiring information BEYOND those marginals on this task.*
+  *DATED NOTE 2026-09-10: **T071 CERTIFIED — `evidence/s2-exit.md`.** All three named items READ,
+  two of them NEGATIVE, and the gate is discharged by the certification's EXISTENCE, not by a pass.
+  Item 1 prior separation **NOT MET**, inherited from T063 and not re-run ((b) −0.2277, (d) −2.5459,
+  (e) −5.2271, licensed by (c) +9.2601 at `f37fe90`). Item 2 the paging verdict — **SC-007 satisfied
+  by its second branch** and the paging CAPABILITY a measured **LOSS** (memory MET on every
+  conjunct; the bounded secondary missed by an order of magnitude, 35.2× raw / 26.0× corrected
+  against a 3.0× bound; the deletion existence-checked commit by commit). Item 3 the region charge
+  gate, the ONE fresh measurement, run at the head: `8 of 16 CHARGED (10 evidence records; 0 exempt,
+  ceiling 0) … floor holds: 8 >= 8`, rc 0, reproducing the pre-registered expectation exactly. The
+  item's INTERPRETIVE STEP was written before its number: "at floor(all-but-exempt)" is READ by (A),
+  the recorded floor over the non-exempt denominator with the identity intact (**MET**, identity 6
+  of 6), and (B), every non-exempt region charged, is REPORTED beside it (**NOT MET**: six
+  reachable-uncharged, two unreachable). Both rows are in the Verdict table and the panel's
+  pre-registration-honesty lens is asked first whether choosing (A) is a relabelling. This bullet's
+  text above is untouched.*
 
 ### Phase 4 — Cognition on the substrate (so growth matters) — ranks 3, 5, 6 + US4's instruments
 
@@ -806,6 +821,16 @@ Parallel arms: L1a ∥ L3 ∥ the oracle may start at W3 (they do not wait for P
   read the kernel wire's Amdahl ceiling at the deployed width and the conversion was DECLINED under specs/008
   FR-005 (evidence/s6-kernel-wire.md; the S6 bullet's annotation carries the numbers). The critical path is
   unchanged in ORDER — **T062 is next** — and the kernel's exemptions are now dated to it.*
+- *DATED NOTE 2026-09-10 on the critical path above: **T071 CERTIFIED 2026-09-10**
+  (`evidence/s2-exit.md`) — the ordering `… → T062 → T063 → T071 → T072 → …` advances past T071 and
+  **"Phase 5 waits for BOTH T071 and Phase 4"** now waits on Phase 4 alone. O5(d)'s clause is
+  DISCHARGED, not rescinded: T072–T075 and T083 are unblocked because all three of T071's named
+  items were READ and recorded with their measurements — prior separation NOT MET, the paging
+  verdict a LOSS with SC-007 satisfied by its second branch, and the region charge gate MET at its
+  floor under reading (A) with reading (B) reported NOT MET beside it. **The gate is discharged by
+  the certification's EXISTENCE, not by a pass** — the s1-exit precedent, where US2 exited with its
+  headline criterion UNMET and T068, gated on it, ran. T070 remains OPEN and is not a gate for this
+  exit (O5(b)).*
 - Phase 1 is startable now in-process (the latch is per home); O1 unblocks the LIVE brain's measurement.
 - Phase 3's paging runs at a constructed width and does not wait for Phase 2's growth; its ORDER after
   Phase 2 is the plan's choice (O5(f)), not a hard gate.
