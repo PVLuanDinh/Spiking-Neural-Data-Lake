@@ -104,6 +104,24 @@ TAU_E = 1000.0  # long eligibility time constant -- the distal-reward bridge
 # a container branch is unavoidable, so the DECAY FACTOR is computed once above the branch and
 # the branch decides only how to multiply.
 #
+# APPENDED 2026-09-09, the paragraph above kept VERBATIM: "unavoidable" was true of TWO
+# substrates and stopped being true when the second was deleted. `decay_eligibility` and
+# `reward_deltas` each carried a `hasattr(e, "dtype")` branch whose numpy arm existed for the
+# kernel form alone; `accumulate_causal` and `accumulate_anticausal` never had one, because a
+# per-pair `e[i] +=` is already container-agnostic. THE ORPHANED ARMS ARE DELETED, on a
+# measurement rather than on a reading of the imports (P3; runtime evidence outranks static
+# reading). Two instruments in ONE execution, each with its positive control taken at 963799e
+# BEFORE the deletion -- a COUNTER of numpy-vs-list entries and a TRIPWIRE raising inside the
+# numpy arm -- driven by r_stdp's bare self-check, the harness's bare self-check and the whole
+# targeted pytest set:
+#   at 963799e, kernel_plasticity's self-check alone: decay numpy 104, deltas numpy 28;
+#     the harness's self-check alone: decay numpy 38,400, deltas numpy 1,920, list 0 for both
+#   after the deletion, all three drivers together: decay list 297 numpy 0,
+#     deltas list 4,476 numpy 0, tripwire entries 0
+# So both functions are ONE CODE PATH again, and the per-index form each keeps is the one the
+# per-object neuron always took -- which is why the incumbent's byte-exact trajectory pin at
+# 851b026 is unmoved by this.
+#
 # distinct-from: cortex/neuron_zoo.py::_step_serial -- advances a MEMBRANE one timestep over a
 #   list of neuron objects; no eligibility, no spike-time pairing, no reward. Read 2026-09-09.
 # distinct-from: brainstem/arm_bridge.py::UdpArmBridge.recv_outcome -- reads a reward FLOAT off
@@ -139,30 +157,45 @@ def accumulate_anticausal(e, pairs, a_minus=A_MINUS, tau_minus=TAU_MINUS):
     return e
 
 
+# distinct-from: cortex/lif_neuron.py::LIFNeuron.step and cortex/alif_neuron.py::ALIFNeuron.step --
+#   advance a MEMBRANE one timestep under an input current and return a 0/1 spike, with a
+#   refractory clamp. A membrane leak is not an eligibility decay: nothing here integrates an
+#   input, nothing fires, and the quantity that decays is a per-synapse trace.
+# distinct-from: cortex/neuron_zoo.py::NeuronZoo.make -- a factory returning objects that expose
+#   step(current)->0/1; it builds the things above and owns no formula at all.
+# distinct-from: cerebellum/spiking_jepa.py::_forward -- runs an event retina and a 2-layer
+#   recurrent LIF backbone, recording per-timestep spikes and PRE-RESET MEMBRANES because its own
+#   eligibility trace needs them. It is a forward pass that PRODUCES the inputs a trace is built
+#   from; this is the one line that ages a trace already built.
+# distinct-from: brainstem/arm_bridge.py::UdpArmBridge.recv_outcome -- reads the next reward float
+#   off a UDP socket; it transports the third factor and never decays anything.
+#   All five sites read 2026-09-09 before this note was written.
 def decay_eligibility(e, dt_step=1.0, tau_e=TAU_E):
     """The distal-reward bridge decaying one timestep: e *= exp(-dt_step / tau_e), elementwise.
 
-    The formula is the first line and is computed ONCE; the branch below chooses only how the
-    scalar is applied, because `list *= float` is a TypeError while `ndarray *= float` is the
-    elementwise op. Mutates `e` in place on both containers."""
+    The formula is the first line and is computed ONCE. It used to be applied through a
+    `hasattr(e, "dtype")` branch -- one vectorized multiply for the kernel's flat edge table,
+    because `list *= float` is a TypeError -- and that arm is DELETED with the kernel form it
+    existed for (2026-09-09; the header carries the measurement). ONE code path, per index,
+    mutating `e` in place."""
     decay = math.exp(-dt_step / tau_e)
-    if hasattr(e, "dtype"):  # numpy: one elementwise multiply over the whole edge table
-        e *= decay
-    else:
-        for i in range(len(e)):
-            e[i] *= decay
+    for i in range(len(e)):
+        e[i] *= decay
     return e
 
 
 def reward_deltas(e, d, lr=LR):
     """THE reward gate: the per-synapse weight delta lr * d * e for a (possibly long-delayed)
-    reward d. Returns the deltas; it does NOT apply them, because the two substrates apply them
+    reward d. Returns the deltas; it does NOT apply them, because the two substrates applied them
     differently and only the DELTA is the rule -- the per-object form adds them to a float
-    weight list, the kernel form re-quantizes them into an int64 bundle table under a
-    sign-preserving clamp. Association order is (lr * d) * e[i] on both containers, so the two
-    forms are bit-comparable rather than approximately equal."""
-    if hasattr(e, "dtype"):
-        return lr * d * e
+    weight list, the kernel form re-quantized them into an int64 bundle table under a
+    sign-preserving clamp. Association order is (lr * d) * e[i], so the two forms were
+    bit-comparable rather than approximately equal.
+
+    THE KERNEL FORM IS GONE (2026-09-09) and so is the `hasattr(e, "dtype")` arm that returned
+    the whole array in one multiply; the header carries the measurement. Returning the DELTA
+    rather than applying it is KEPT even with one substrate: it is what let the equivalence be
+    read at all, and re-fusing the gate into the update would delete that seam."""
     return [lr * d * e[i] for i in range(len(e))]
 
 
