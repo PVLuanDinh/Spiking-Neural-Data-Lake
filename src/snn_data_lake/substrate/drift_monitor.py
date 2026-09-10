@@ -40,6 +40,29 @@ def _proportions(windows, dim, n_bins):
     return hist
 
 
+# distinct-from: cortex/spike_preprocessing.py::van_rossum_distance -- a metric between two SPIKE
+#   TRAINS (L2 between exponentially-filtered waveforms). PSI below is a divergence between two
+#   BINNED PROPORTION VECTORS, it is not symmetric, and it takes no time axis. Read 2026-09-09.
+def psi(actual, reference, eps=_EPS):
+    """THE Population Stability Index between two binned proportion vectors: sum (a - e) * ln((a +
+    eps) / (e + eps)) over paired bins. 0 when the two agree; larger as they separate.
+
+    LIFTED TO MODULE SCOPE 2026-09-09 (specs/022 T063, the P2 ADOPT/MERGE decision specs/019
+    [B10.13] demanded before a second "drift" mechanism could land). The formula lived once, inside
+    `DriftMonitor.psi`, and T063's drift statistic needs the same distance for a band-pair weight
+    matrix. Two copies of a distance is the additive shape P2 forbids, so the formula moves here
+    and `DriftMonitor.psi` becomes its per-feature caller.
+
+    WHAT THIS MERGE DOES NOT DO. `DriftMonitor` is NOT retired and is NOT T063's instrument: it
+    compares an ENROLLED REFERENCE distribution against a sliding window of live sensor features
+    and its zero is a PASS (a quiet stream), which is the exact inversion of specs/011 FR-009,
+    where a zero distance is a FAILURE of the seeding approach. What the two share is one formula,
+    which is all that moves."""
+    return sum(
+        (a - e) * math.log((a + eps) / (e + eps)) for a, e in zip(actual, reference, strict=True)
+    )
+
+
 def _centroid(windows, dim):
     n = len(windows)
     return [sum(w[i] for w in windows) / n for i in range(dim)]
@@ -75,17 +98,25 @@ class DriftMonitor:
             self.recent.pop(0)
         return self.is_novel(w)
 
+    # distinct-from: substrate/stream_sketch_panel.py::_recent_resemblance -- a MinHash Jaccard
+    #   over a motif VOCABULARY (set overlap), not a binned-histogram divergence; it is this
+    #   monitor's own panel and reads this number alongside its own.
+    # distinct-from: cortex/learned_matcher.py::nearest_dist_enc -- nearest Van Rossum distance to
+    #   an enrolled reference TRAIN; "reference" there is a stored exemplar, not a histogram.
+    # distinct-from: cortex/cortical_microcircuit.py::firing_rates,
+    #   cortex/language_acquisition.py::developmental_curve, cortex/tempotron.py::TempotronMatcher
+    #   -- a mean rate, a mean surprise and a one-vs-rest classifier: means over a window, none of
+    #   them a distance between two distributions. All five read 2026-09-09.
     def psi(self):
-        """Mean per-feature PSI between the reference and the recent-window distribution."""
+        """Mean per-feature PSI between the reference and the recent-window distribution. The
+        formula itself is the module-level `psi` above (the P2 merge, T063) -- what stays here is
+        the per-feature loop and the mean, which is what makes this monitor's reading its own."""
         if len(self.recent) < self.n_bins:
             return 0.0
         act = _proportions(self.recent, self.dim, self.n_bins)
         total = 0.0
         for i in range(self.dim):
-            total += sum(
-                (a - e) * math.log((a + _EPS) / (e + _EPS))
-                for a, e in zip(act[i], self.ref_hist[i])
-            )
+            total += psi(act[i], self.ref_hist[i], _EPS)
         return total / self.dim
 
     def novelty_rate(self):
