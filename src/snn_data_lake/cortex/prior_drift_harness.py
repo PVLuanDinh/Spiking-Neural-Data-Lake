@@ -1310,6 +1310,12 @@ def selfcheck(
         and not is_settled([100.0, 110.0, 120.0])
         and not is_settled([120.0, 110.0, 100.0])
         and not is_settled([100.0, 110.0])
+        #: the reading that PASSED before the guard: the daemon died under the probe
+        and not is_settled([-515.156, 0.0, 0.0])
+        and not is_settled([0.0, 0.0, 0.0])
+        and settling_report([("1", 112.0), ("1", 122.9), ("1", 106.3)])["settled"]
+        and not settling_report([("1", 112.0), ("2", 122.9), ("2", 106.3)])["settled"]
+        and not settling_report([("1", -515.156), ("none", 0.0), ("none", 0.0)])["settled"]
     )
 
     #: 2.12: the campaign guard refuses on no D and on an invalid WRONG arm
@@ -1462,9 +1468,20 @@ def is_settled(windows):
     clause is FOR -- no startup burst inflating a timing -- survives that reading, because a burst
     that has not settled shows as a TREND. Fewer than three windows is not a reading and is never
     settled: two windows cannot distinguish a trend from a duty cycle, which is the exact failure
-    the original pair test had."""
+    the original pair test had.
+
+    AND EVERY WINDOW MUST BE STRICTLY POSITIVE. Measured defect, 2026-09-09: the first campaign run
+    read [-515.156, 0.0, 0.0] and this function returned TRUE, because a run of zeros after a
+    negative is not monotone. The daemon had RESTARTED under the probe, so the CPU counter was
+    being differenced against a dead process. A negative CPU delta over 90 s is impossible and a
+    zero is impossible for a daemon that holds a drive loop -- both mean the probe lost its
+    subject, and a reading of nothing must never read as a settled host. The positive control
+    [112.000, 122.906, 106.266] is unchanged by the guard, which is the check that the guard did
+    not simply kill the measurement it was added to protect."""
     w = [float(x) for x in windows]
     if len(w) < SETTLING_WINDOWS:
+        return False
+    if any(x <= 0.0 for x in w):
         return False
     pairs = list(zip(w[:-1], w[1:], strict=True))
     rising = all(b > a for a, b in pairs)
@@ -1472,22 +1489,59 @@ def is_settled(windows):
     return not (rising or falling)
 
 
+# distinct-from: amdahl_gate.py -- `red_repeatability_broken_arm` PADS a rig's second reading to
+#   make a criterion fail on purpose; it constructs a red, it does not read a host.
+# distinct-from: so101_arm.py -- `collision` is the robot arm's contact authority inside the
+#   SAFETY ENVELOPE. Both sites read 2026-09-09; neither measures a process. This is a host
+#   reading: which daemon each CPU window measured, and whether it stayed the same daemon.
+def settling_report(samples, seconds=SETTLING_SECONDS):
+    """The settling reading with its SUBJECT recorded beside it: `samples` is one (pid, cpu_delta)
+    per window. The daemon on this host RESTARTS -- three different PIDs were observed holding 8137
+    inside forty minutes, and a fourth swap corrupted the first campaign run's reading -- so WHICH
+    process each window measured is part of the reading, not context around it. A run whose subject
+    changed or was lost is NOT settled, whatever its numbers look like."""
+    pids = [str(p) for p, _d in samples]
+    windows = [float(d) for _p, d in samples]
+    live = {p for p in pids if p != "none"}
+    restarted = bool(len(live) > 1 or "none" in pids or not pids)
+    return {
+        "cpu_seconds_per_window": windows,
+        "daemon_pid_per_window": pids,
+        "daemon_restarted": restarted,
+        "window_seconds": int(seconds),
+        "settled": bool(is_settled(windows) and not restarted),
+        "rule": (
+            "2.12(c): settled = every window strictly positive, ONE live daemon throughout, and "
+            f"NO monotone trend across at least {SETTLING_WINDOWS} windows of {SETTLING_SECONDS} s"
+        ),
+    }
+
+
 def _cpu_windows(n=SETTLING_WINDOWS, seconds=SETTLING_SECONDS):
-    """`n` consecutive `seconds`-long windows of the daemon's own process CPU, in CPU-seconds per
-    window. Taken IN BAND (2.12(c)) so the settling reading sits BESIDE the timing numbers it
-    qualifies instead of in a prose note a later reader has to trust."""
+    """`n` consecutive `seconds`-long windows of the daemon's own process CPU as (pid, CPU-seconds)
+    pairs. Taken IN BAND (2.12(c)) so the settling reading sits BESIDE the timing numbers it
+    qualifies instead of in a prose note a later reader has to trust.
+
+    THE LISTENER IS RE-RESOLVED AT BOTH ENDS OF EVERY WINDOW. The first version resolved it ONCE
+    and then differenced a cached handle, so when the daemon restarted mid-probe it kept
+    subtracting from a corpse and emitted [-515.156, 0.0, 0.0]. Now a window whose owner changed or
+    vanished reports `none 0` and `settling_report` marks the whole reading unsettled."""
     import subprocess
 
     ps = (
+        "for ($i = 0; $i -lt " + str(int(n)) + "; $i++) { "
         "$c = Get-NetTCPConnection -LocalPort 8137 -State Listen -ErrorAction SilentlyContinue; "
-        "if (-not $c) { 'none'; exit }; "
-        "$p = Get-Process -Id $c.OwningProcess; $last = $p.TotalProcessorTime.TotalSeconds; "
-        "for ($i = 0; $i -lt "
-        + str(int(n))
-        + "; $i++) { Start-Sleep -Seconds "
+        "$p = if ($c) { Get-Process -Id $c.OwningProcess -ErrorAction SilentlyContinue } "
+        "else { $null }; "
+        "if (-not $p) { 'none 0'; Start-Sleep -Seconds " + str(int(seconds)) + "; continue }; "
+        "$a = $p.TotalProcessorTime.TotalSeconds; Start-Sleep -Seconds "
         + str(int(seconds))
-        + "; $p.Refresh(); $now = $p.TotalProcessorTime.TotalSeconds; "
-        "'{0:F3}' -f ($now - $last); $last = $now }"
+        + "; $c2 = Get-NetTCPConnection -LocalPort 8137 -State Listen "
+        "-ErrorAction SilentlyContinue; "
+        "$p2 = if ($c2 -and $c2.OwningProcess -eq $c.OwningProcess) { "
+        "Get-Process -Id $c2.OwningProcess -ErrorAction SilentlyContinue } else { $null }; "
+        "if (-not $p2) { 'none 0'; continue }; "
+        "'{0} {1:F3}' -f $c.OwningProcess, ($p2.TotalProcessorTime.TotalSeconds - $a) }"
     )
     try:
         out = subprocess.run(
@@ -1496,22 +1550,13 @@ def _cpu_windows(n=SETTLING_WINDOWS, seconds=SETTLING_SECONDS):
             text=True,
             timeout=int(n) * int(seconds) + 120,
         ).stdout.split()
-        return [float(x) for x in out]
+        return [(out[i], float(out[i + 1])) for i in range(0, len(out) - 1, 2)]
     except Exception:  # pragma: no cover - the host probe must never fail the run
         return []
 
 
 def _settling(n=SETTLING_WINDOWS, seconds=SETTLING_SECONDS):
-    w = _cpu_windows(n, seconds)
-    return {
-        "cpu_seconds_per_window": w,
-        "window_seconds": int(seconds),
-        "settled": bool(is_settled(w)),
-        "rule": (
-            "2.12(c): settled = NO monotone trend across at least "
-            f"{SETTLING_WINDOWS} windows of {SETTLING_SECONDS} s"
-        ),
-    }
+    return settling_report(_cpu_windows(n, seconds), seconds)
 
 
 def _host_condition():
@@ -1649,8 +1694,9 @@ def run_pilot():
     print(f"settling: taking {SETTLING_WINDOWS} x {SETTLING_SECONDS} s CPU windows...")
     settling = _settling()
     print(
-        f"settling: windows {settling['cpu_seconds_per_window']} CPU-s -> "
-        f"settled = {settling['settled']} (no monotone trend)"
+        f"settling: windows {settling['cpu_seconds_per_window']} CPU-s on PIDs "
+        f"{settling['daemon_pid_per_window']} -> settled = {settling['settled']} "
+        f"(daemon_restarted = {settling['daemon_restarted']})"
     )
     print("=" * 78)
     art = load_artifact()
@@ -1858,8 +1904,9 @@ def run_campaign():
     print(f"settling: taking {SETTLING_WINDOWS} x {SETTLING_SECONDS} s CPU windows...")
     settling = _settling()
     print(
-        f"settling: windows {settling['cpu_seconds_per_window']} CPU-s -> "
-        f"settled = {settling['settled']}"
+        f"settling: windows {settling['cpu_seconds_per_window']} CPU-s on PIDs "
+        f"{settling['daemon_pid_per_window']} -> settled = {settling['settled']} "
+        f"(daemon_restarted = {settling['daemon_restarted']})"
     )
     print("=" * 78)
 
@@ -1892,12 +1939,20 @@ def run_campaign():
             )
         results[s] = row
     wall = time.perf_counter() - t0
+    #: the host is read again AFTER the arms: on this box the daemon restarts, and a run whose
+    #: daemon changed under it is a fact the record has to carry rather than a start-of-run
+    #: snapshot that quietly stops being true.
+    host_end = _host_condition()
 
     v = verdict(results, wrong_valid=valid)
     print("=" * 78)
     print(format_verdict(v))
     print("=" * 78)
     print(f"wall clock {wall:.1f}s ({wall / 3600.0:.3f} h)")
+    print(
+        f"host at end {json.dumps(host_end)}  daemon changed during the run = "
+        f"{host.get('daemon_pid') != host_end.get('daemon_pid')}"
+    )
 
     out = {
         "task": "specs/022 T063 campaign",
@@ -1906,6 +1961,8 @@ def run_campaign():
         "artifact": str(ARTIFACT.name),
         "artifact_sha256": hashlib.sha256(Path(ARTIFACT).read_bytes()).hexdigest(),
         "host": host,
+        "host_end": host_end,
+        "host_daemon_changed": host.get("daemon_pid") != host_end.get("daemon_pid"),
         "host_note": HOST_NOTE,
         "settling": settling,
         "pilot_stage": pin.get("stage"),
