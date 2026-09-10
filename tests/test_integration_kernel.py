@@ -109,3 +109,61 @@ def test_the_snapshot_the_port_captures_names_the_drive_stream(scratch_home):
     with np.load(io.BytesIO(cap.blob), allow_pickle=False) as z:
         positions = json.loads(str(z["rng_positions"]))
     assert list(positions) == [M.DRIVE_STREAM]
+
+
+# =============================================================================================
+# R1 -- the row's red, "four regime arms must separate" (2.4): the instrument with the pulse
+# REMOVED reads every arm's PCI exactly 0, so (b1)(b2)(b3)(b6) all read NOT MET
+# =============================================================================================
+SEEDS = (0, 1, 2, 3)
+
+
+def _conjunct(v, name):
+    return v["conjuncts"][name]
+
+
+def test_r1_a_pulse_less_run_reads_every_arm_zero_and_the_separation_conjuncts_NOT_MET(
+    scratch_home,
+):
+    art = _fixture()
+    readings = {s: M.kernel_regimes(art, s, amp=M.FIXTURE_AMP, pulse_current=0.0) for s in SEEDS}
+    for s, arms in readings.items():
+        for name, r in arms.items():
+            assert r.pci == 0.0, f"seed {s} arm {name}: a pulse-less run must read PCI exactly 0"
+            assert r.ones == 0, f"seed {s} arm {name}: the footprint must be EMPTY without a pulse"
+    v = M.verdict_t070(readings)
+    for name in ("b1", "b2", "b3", "b6"):
+        assert not _conjunct(v, name)["met"], f"{name} must read NOT MET on a pulse-less run: {v}"
+    assert v["pass"] is False
+
+
+# =============================================================================================
+# R2 -- the registry's dissociation (C-R5, Codex (b)): a "partition" that did NOT cut -- ONE edge
+# class left uncut -- propagates, its PCI exceeds the local-echo floor, and the instrument must
+# report (b6) NOT MET for it. The un-cut arm is the red's INPUT; the cut arm is the measurement.
+# =============================================================================================
+def test_the_uncut_partition_keeps_exactly_one_sign_class_of_edges():
+    art = _fixture()
+    uncut = M.arm_uncut(art)
+    cut = M.arm_partitioned(art)
+    assert cut["pre_idx"].size == 0 and cut["post_idx"].size == 0 and cut["n_syn"].size == 0
+    assert 0 < uncut["pre_idx"].size < art["pre_idx"].size
+    assert set(art["sign"][uncut["pre_idx"]].tolist()) == {1}, "the uncut class is the E edges"
+    for key in ("agglo_id", "sign", "layer"):
+        assert np.array_equal(uncut[key], art[key]), "the same units, only the edges differ"
+
+
+def test_r2_an_uncut_partition_reads_ABOVE_the_null_and_b6_reads_NOT_MET(scratch_home):
+    art = _fixture()
+    readings = {s: M.kernel_regimes(art, s, amp=M.FIXTURE_AMP) for s in SEEDS}
+    red = {
+        s: {**arms, "partitioned": M.run_regime(M.arm_uncut(art), "partitioned", s, M.FIXTURE_AMP)}
+        for s, arms in readings.items()
+    }
+    above = [s for s in SEEDS if red[s]["partitioned"].pci > red[s]["integrated"].null]
+    assert above, "the uncut 'partition' must read above the local-echo null on some seed"
+    v = M.verdict_t070(red)
+    assert not _conjunct(v, "b6")["met"], (
+        f"(b6) must read NOT MET for a partition that did not cut: {v}"
+    )
+    assert "partitioned <= null" in _conjunct(v, "b6")["note"]
