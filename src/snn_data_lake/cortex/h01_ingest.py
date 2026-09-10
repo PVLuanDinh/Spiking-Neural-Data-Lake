@@ -68,6 +68,28 @@ twin: pre 5472528459, post 5414315245, type 2).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.h01_ingest        # offline gate
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.h01_ingest --ingest --shards 0:35
+
+APPENDED 2026-09-10 (T063 panel of 2026-09-09), the text above kept VERBATIM (including line 1's
+"a beatable prior" and `_disclose`'s "is the question", which is exactly the question T063
+answered -- a module that rewrites its own premise destroys the record of what it used to claim):
+T063 LANDED AND ITS ANSWER WAS NO. The campaign read the PLANTED control MET at t = +9.2601, so
+the instrument is not blind and the verdict is read; conjunct (b) then read NOT MET at
+t = -0.2277. Under 2.9's clause for that combination, `population()` LOSES its "prior" role and
+is retained ONLY as `cortex/prior_drift_harness`'s FIXTURE -- the population an instrument
+constructs and scores -- while the eight gates, the artifact and `cortical_prior` remain
+REFERENCE DATA and are untouched. The reading is BOUNDED and this bound is 2.2's own: ONE task
+(K = 8 drive classes decoded from a 4-dimensional projection) at the ONE capacity the guard
+selected, and the null RETAINS H01's degrees, signs and weight magnitudes, so it cannot separate
+"H01 contributes nothing" from "H01's useful information is exactly what both arms share".
+Registration of record: `substrate/dormancy_gate`'s h01_ingest row (371d607); evidence 3.4(4).
+Not touched by any of it: `kernel_state`'s and `kernel_tick`'s wire rows (T063 2.8).
+
+AND THE FIXTURE READING'S WARRANT IS AN OPENING, not a settled result: (c), the control that
+licenses the whole verdict, was read against a RANDOM arm 0.62 held-out trials above chance -- a
+shape `prior_drift_harness.synthetic_artifact`'s own floor rule rejects in the fixture ("a
+positive control that beats a floor is a formality, not a reading") -- so the row is re-read at a
+capacity where the base arms are above the floor before any of the three retirements (this
+population's prior role, the learner, T071's "prior separation") is treated as settled.
 """
 
 # distinct-from: substrate/web_ingest.py -- the network boundary (SSRF firewall, redirect
