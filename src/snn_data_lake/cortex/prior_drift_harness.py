@@ -13,15 +13,26 @@ FIVE TABLES on ONE unit set, ONE drive, ONE learner, ONE readout -- only the wir
            BEYOND the retained H01 marginals (degrees, signs, magnitudes), which the two arms
            SHARE. It cannot separate "H01 contributes nothing" from "H01's useful information is
            exactly what both arms share", and every claim here is restricted to that component.
-  WRONG    the DIRECTION-REVERSED laminar table (specs/011 T004): every INTER-band edge's pre and
-           post swapped, intra-band untouched, polarity re-applied from the NEW source's cell
-           sign, fan-in re-normalised. VALID only if its band-pair weight-share matrix is farther
-           from SEEDED's than RANDOM's realised matrix is -- measured, never assumed.
+  WRONG    the BAND-PERMUTED-TARGETS table (specs/011 T004, RE-DECIDED by amendment 2.12): every
+           edge keeps its pre and its synapse count and gets a post in band pi(band(post)) at the
+           same within-band degree rank, pi reversing cortical depth. VALID only if its band-pair
+           weight-share matrix is farther from SEEDED's than RANDOM's realised matrix is --
+           measured, never assumed. Its predecessor, the DIRECTION-REVERSED laminar table, was
+           RETIRED on that measurement: PSI(reversed, seeded) = 0.032389 against
+           PSI(random, seeded) = 2.281271, because 0.726520 of the band-pair mass is DIAGONAL and
+           a transpose cannot move it. Its readings stay in `tools/t063_pilot.json`'s first stage.
   PLANTED  the POSITIVE CONTROL, never an arm of the verdict: each drive class's units wired
            densely onto a disjoint block of non-driven units. ONE predicate: PLANTED beats RANDOM
            at the same t bar. If it does not, the harness is BLIND and NO verdict is read.
   FROZEN   the learner's own control: SEEDED at lr = 0. Red 1's constructed pin, and the twin the
            learner's retention criterion is read against.
+
+THE TASK'S READOUT sees the non-driven units' spike counts ONLY through a FIXED per-seed
+orthonormalised Gaussian projection to D dimensions (2.12(a)). D -- the readout's CAPACITY -- is
+chosen by the pilot as the LARGEST of {4, 8, 16, 32, 64, 128} at which the no-learning RANDOM arm
+scores below 0.9, and the row is REFUSED ON MEASUREMENT if no D qualifies. K is FIXED at 8. The
+guard used to be K itself and selected NOTHING: over ~13.5k non-driven units against ~24 training
+trials, the least-squares readout interpolated exactly and EVERY wiring read 1.0000.
 
 THE NUISANCE PROPERTIES, held constant by construction and REFUSED if violated: the unit set and
 each unit's cell sign; every unit's outgoing edges carry its own sign (Dale); every unit's total
@@ -88,8 +99,14 @@ TRIALS_PER_CLASS = 4  # trials per class per block
 C_BLOCKS = 5  # learning blocks after one warm-up block
 HELD_OUT_PER_CLASS = 1  # held-out trials per class per block, via marginal_holdout
 CLASS_FRAC = 0.05  # each drive class is 5 % of the units
-K_CANDIDATES = (8, 16, 32)  # powers of two >= 8; the pilot picks the first under the ceiling
-K_CEILING = 0.9  # the no-learning RANDOM arm must score BELOW this
+#: 2.12(a). The guard MOVED: it was the class count K (the smallest power of two >= 8 at which the
+#: no-learning RANDOM arm fell under 0.9) and that rule selected NOTHING -- RANDOM read 1.0000 at
+#: K = 8 and at K = 16, and K = 32 does not fit (32 x 5 % > 100 %). K is now FIXED at 8 and the
+#: guard is the READOUT'S CAPACITY: D, the dimension of a fixed per-seed orthonormalised random
+#: projection of the non-driven units' spike counts. The task's DEFINITION is unchanged.
+K_FIXED = 8
+D_CANDIDATES = (4, 8, 16, 32, 64, 128)
+D_CEILING = 0.9  # the no-learning RANDOM arm must score BELOW this at the chosen D
 P_DRIVE = 0.30  # per-tick firing probability of a driven unit (the Poisson shape)
 DRIVE_AMPLITUDE = 1.2  # x threshold, the amplitude h01_ingest's own liveness driver uses
 WIDTH_FRACTIONS = (1.0, 0.5, 0.25, 0.125)
@@ -121,6 +138,14 @@ T_BAR = 1.895  # paired one-sided t, 7 d.f., alpha = 0.05 (PLAN-FINAL Part F pre
 STATISTICS = ("band_pair_weight_share", "band_fanin_e_fraction")
 N_BANDS = 7
 
+#: 2.12(b). pi reverses CORTICAL DEPTH over `h01_ingest.BANDS` = (Layer 1 .. Layer 6, White
+#: matter): Layer 1 <-> Layer 6, Layer 2 <-> Layer 5, Layer 3 <-> Layer 4, White matter fixed.
+BAND_PERMUTATION = (5, 4, 3, 2, 1, 0, 6)
+
+#: 2.12(c). The settling clause is read from at least this many windows of this length.
+SETTLING_WINDOWS = 3
+SETTLING_SECONDS = 90
+
 
 class ArmRefused(ValueError):
     """An arm that violates a nuisance property is refused BEFORE it runs, not explained after."""
@@ -148,6 +173,9 @@ class ArmResult(NamedTuple):
     effective_count: int
     effective_l1: float
     records: tuple
+    #: 2.12(a): the D the readout actually saw, carried so "the readout has capacity D" is a
+    #: reading off the result rather than a claim about the call site.
+    feature_dim: int = 0
 
 
 class Contrast(NamedTuple):
@@ -384,24 +412,151 @@ def arm_random(art, seed):
     return out
 
 
+def within_band_degree_rank(art):
+    """Each unit's rank INSIDE its own band by IN-degree, ties by artifact index; 0 is the highest.
+    In-degree and not total degree, because the quantity `arm_wrong` remaps is a TARGET."""
+    import numpy as np
+
+    n = int(art["agglo_id"].size)
+    indeg = np.zeros(n, dtype=np.int64)
+    np.add.at(indeg, art["post_idx"].astype(np.int64), 1)
+    rank = np.zeros(n, dtype=np.int64)
+    for band in range(N_BANDS):
+        members = np.nonzero(art["layer"] == band)[0]
+        if members.size == 0:
+            continue
+        ordered = members[np.lexsort((members, -indeg[members]))]
+        rank[ordered] = np.arange(ordered.size, dtype=np.int64)
+    return rank
+
+
+# distinct-from: h01_ingest.py -- `drive_train` drives 1 % of units for N ticks and hashes the run.
+# distinct-from: kernel_tick.py -- `_bench_kernel` times a synthetic network to derive P.
+# distinct-from: placement.py -- `_place_grn` draws POSITIONS for a non-cortical region's units.
+# distinct-from: prefrontal_executive.py -- `retention_dead` reads one memory against its floor.
+# distinct-from: schema_induction.py -- `_confident` RANKS entities as candidate tails for a fact.
+#   None of the five maps a unit to another unit; this is a pure index permutation over the
+#   laminar bands, and it has no dynamics, no drive and no scoring in it. All read 2026-09-09.
+def band_rank_map(art):
+    """The UNIT-level half of `arm_wrong`, separated so it is readable on its own: for every unit u
+    of band b, the unit of band pi(b) holding the same within-band degree RANK. Returns
+    (target, slot, ordered, tgt_band) -- the map, the rank slot each unit took in its target band,
+    each band's units in rank order, and each unit's target band.
+
+    "The same within-band degree rank" between bands of different size (Layer 2 has 4,709 units
+    against Layer 6's 1,040) is realised as the same rank QUANTILE: rank r of n_b maps to
+    floor(r * n_pi(b) / n_b). It is the only reading of "same rank" that is total and MONOTONE
+    across unequal sets -- and monotone is the property that makes this a laminar remap rather than
+    a second scramble. Where the target band is smaller the map is many-to-one, which is why this
+    arm permits repeated (pre, post) pairs and is not checked for multi-edges."""
+    import numpy as np
+
+    lay = np.asarray(art["layer"]).astype(np.int64)
+    rank = within_band_degree_rank(art)
+    ordered = []
+    for band in range(N_BANDS):
+        members = np.nonzero(lay == band)[0]
+        ordered.append(members[np.argsort(rank[members], kind="stable")])
+
+    tgt_band = np.asarray(BAND_PERMUTATION, dtype=np.int64)[lay]
+    src_n = np.asarray([max(1, ordered[b].size) for b in range(N_BANDS)], dtype=np.int64)
+    tgt_n = np.asarray([ordered[b].size for b in range(N_BANDS)], dtype=np.int64)
+    slot = (rank * tgt_n[tgt_band]) // src_n[lay]
+    slot = np.minimum(slot, np.maximum(tgt_n[tgt_band] - 1, 0))
+
+    target = np.arange(lay.size, dtype=np.int64)
+    for band in range(N_BANDS):
+        sel = tgt_band == band
+        if ordered[band].size == 0 or not bool(sel.any()):
+            continue  # an empty mirrored band: the unit keeps its own place, counted as a fallback
+        target[sel] = ordered[band][slot[sel]]
+    return target, slot, ordered, tgt_band
+
+
 def arm_wrong(art):
-    """The direction-reversed laminar table (specs/011 T004). INTER-band edges have pre and post
-    swapped; intra-band edges are untouched. This transposes the realised band-pair matrix exactly
-    and swaps each unit's inter-band in- and out-degree; the degree DISTRIBUTION is preserved and
-    per-unit degrees are NOT, which is disclosed rather than hidden. Polarity follows the NEW
-    source because the weight formula reads `sign(pre)`, and fan-in is re-normalised by it too."""
+    """2.12(b) -- the BAND-PERMUTED-TARGETS table (T004 re-decided). Every edge KEEPS its pre and
+    its synapse count; its post becomes the unit of band `pi(band(post))` holding the same
+    within-band degree rank, `pi` reversing cortical depth. Polarity is re-applied from the pre --
+    which this arm never moves, so `sign(pre)` and every unit's OUT-degree are untouched -- and
+    fan-in is re-normalised by the weight formula. Edge count and synapse-count multiset preserved.
+
+    WHY IT REPLACED THE DIRECTION-REVERSED TABLE. A reversal transposes the realised band-pair
+    matrix, and 0.726520 of that matrix's mass sits on the DIAGONAL, which a transpose cannot
+    touch: the pilot measured PSI(reversed, seeded) = 0.032389 against PSI(random, seeded) =
+    2.281271, so 2.2's validity precondition failed by 70x -- structurally, not unluckily. A band
+    PERMUTATION moves the diagonal itself (Layer 2's 4,709 units' intra-band mass lands on Layer
+    6's 1,040), so it is far from SEEDED wherever band masses differ. It falsifies the claim red 2
+    is FOR: that the laminar IDENTITY of a synapse's target carries information.
+
+    TWO READINGS, DISCLOSED because the amendment's text admits them. (1) "the same within-band
+    degree rank" between bands of different size is realised as the same rank QUANTILE -- rank r of
+    n_b maps to floor(r * n_pi(b) / n_b) -- the only total, monotone reading of "same rank" across
+    unequal sets; where the target band is smaller the map is many-to-one, which is why this arm
+    permits repeated (pre, post) pairs and is not checked for multi-edges. (2) A remap that would
+    make an edge a SELF-edge walks forward inside the target band to the next unit; if the target
+    band is empty, or holds only that one unit, the ORIGINAL post is kept. `band_mass_report`
+    counts every edge that did not land in pi(band(post)) for exactly that reason."""
     import numpy as np
 
     out = _copy(art)
-    lay = art["layer"]
-    pre = out["pre_idx"].astype(np.int64).copy()
-    post = out["post_idx"].astype(np.int64).copy()
-    inter = lay[pre] != lay[post]
-    pre_new = np.where(inter, post, pre)
-    post_new = np.where(inter, pre, post)
-    out["pre_idx"] = pre_new.astype(art["pre_idx"].dtype)
-    out["post_idx"] = post_new.astype(art["post_idx"].dtype)
+    pre = art["pre_idx"].astype(np.int64)
+    post = art["post_idx"].astype(np.int64)
+    target, slot, ordered, tgt_band = band_rank_map(art)
+    new_post = target[post]
+
+    for i in np.nonzero(new_post == pre)[0].tolist():
+        pool = ordered[int(tgt_band[int(post[i])])]
+        new_post[i] = post[i]
+        for step in range(1, int(pool.size)):
+            cand = int(pool[(int(slot[int(post[i])]) + step) % int(pool.size)])
+            if cand != int(pre[i]):
+                new_post[i] = cand
+                break
+
+    out["pre_idx"] = pre.astype(art["pre_idx"].dtype)
+    out["post_idx"] = new_post.astype(art["post_idx"].dtype)
+    out["n_syn"] = art["n_syn"].copy()
     return out
+
+
+def band_mass_report(art_seeded, art_wrong):
+    """The numbers BEHIND the validity precondition: what the seeded band-pair weight-share matrix
+    carries on its diagonal, what fraction of its edges are inter-band, its total asymmetry (the
+    quantity that CAPS any transpose-based corruption), the PSI a transpose would have reached, how
+    many edges the permutation could not move off their own band, and the PSI the precondition
+    actually reads. A precondition that fails owes the asymmetry it measured (2.2); a precondition
+    that passes owes it too, or the pass is unattributable."""
+    import numpy as np
+
+    from snn_data_lake.cortex.h01_ingest import fan_in_shares
+
+    lay = art_seeded["layer"]
+    flat = band_pair_weight_share(
+        lay, art_seeded["pre_idx"], art_seeded["post_idx"], fan_in_shares(art_seeded)
+    )
+    s = np.asarray(flat, dtype=np.float64).reshape(N_BANDS, N_BANDS)
+    w = band_pair_weight_share(
+        lay, art_wrong["pre_idx"], art_wrong["post_idx"], fan_in_shares(art_wrong)
+    )
+    diag = float(np.trace(s))
+    inter = float(
+        (np.asarray(lay)[art_seeded["pre_idx"]] != np.asarray(lay)[art_seeded["post_idx"]]).mean()
+    )
+    want = np.asarray(BAND_PERMUTATION, dtype=np.int64)[
+        np.asarray(lay)[art_seeded["post_idx"]].astype(np.int64)
+    ]
+    got = np.asarray(lay)[art_wrong["post_idx"]].astype(np.int64)
+    return {
+        "diagonal_mass": diag,
+        "off_diagonal_mass": float(s.sum() - diag),
+        "inter_band_edge_fraction": inter,
+        "asymmetry": float(np.abs(s - s.T).sum() / 2.0),
+        "psi_transpose_vs_seeded": float(
+            distance("band_pair_weight_share", tuple(s.T.reshape(-1).tolist()), flat)
+        ),
+        "off_band_fallback_edges": int((got != want).sum()),
+        "psi_wrong_vs_seeded": float(distance("band_pair_weight_share", w, flat)),
+    }
 
 
 def arm_planted(art, classes, seed):
@@ -577,6 +732,61 @@ def trial_drive(classes, cls, seed, trial_id, n_units, t_trial=T_TRIAL):
     return out
 
 
+# distinct-from: cerebellum/spiking_jepa.py::_sparse_init -- the nearest neighbour, and it is a
+#   different object: a SPARSE random WEIGHT INITIALISER for a LIF layer, k = SPARSITY*fan_in
+#   non-zeros per row drawn U(0.5, 1) and scaled by gain * v_threshold / k so the layer sits at the
+#   rate fixed point, with the connectivity mask kept so plasticity stays sparse. It is not
+#   orthonormal, it is not a feature map, and it is TRAINED afterwards. What is built here is a
+#   DENSE, ORTHONORMAL, FROZEN measurement basis whose only job is to bound the readout's capacity.
+# distinct-from: hippocampus/grid_place_map.py::grid_spikes -- a deterministic rate-to-SPIKE
+#   sampler over a grid population (Bernoulli draws per cell per tick), not a linear map of counts.
+# distinct-from: hippocampus/growable_readout.py::_restore_adam -- optimizer-moment surgery when a
+#   torch readout gains a unit; no projection and no draw.
+# distinct-from: cortex/neurogenesis_engine.py::grown_model, cortex/placement.py::_place_grn -- a
+#   retained-model accessor and a uniform POSITION draw for a non-cortical region. All five read
+#   2026-09-09 before this note was written.
+def random_projection(n_feat, d, seed):
+    """2.12(a) -- the FIXED per-seed random projection of the NON-DRIVEN units' spike counts to D
+    dimensions: a Gaussian matrix ORTHONORMALISED (the thin QR's Q, so Q^T Q = I), drawn from the
+    seed alone. It is therefore identical for every arm of a seed -- the driven set, and so
+    `n_feat`, is a nuisance constant across the arms by construction (2.2).
+
+    WHY IT REPLACED THE RAW COUNT VECTOR. With ~13.5k non-driven units against ~24 training trials
+    per block the least-squares readout was massively over-parameterised, so EVERY wiring -- seeded,
+    marginal-matched random, reversed -- interpolated the training block exactly and read 1.0000 on
+    the held-out trials at every K and every class fraction the pilot swept. D is the readout's
+    CAPACITY and it is the quantity the amendment's guard now bounds. A projection to more
+    dimensions than there are features has no orthonormal basis and is REFUSED, never padded --
+    padding would hand the ladder a rank-deficient D that reads like a measurement."""
+    import numpy as np
+
+    n_feat, d = int(n_feat), int(d)
+    if d < 1:
+        raise ArmRefused(f"a projection to {d} dimensions is not a readout")
+    if d > n_feat:
+        raise ArmRefused(
+            f"a projection to {d} dimensions has no orthonormal basis in {n_feat} features"
+        )
+    rng = np.random.default_rng(int(seed) * 5_915_587 + 29)
+    q, _r = np.linalg.qr(rng.standard_normal((n_feat, d)))
+    return np.ascontiguousarray(q[:, :d])
+
+
+def choose_d(readings):
+    """2.12(a)'s capacity guard, applied to the ladder BEFORE any arm is compared: the LARGEST D at
+    which the no-learning RANDOM arm scores below the ceiling. `None` means NO D qualifies, and
+    that is not a smaller number to fall back on -- it is the row REFUSED ON MEASUREMENT, with the
+    finding that this population admits no readout capacity at which its wiring can be separated
+    from a marginal-matched null by this protocol. A D with no reading (one that does not fit the
+    feature count) never qualifies."""
+    under = [
+        int(r["d"])
+        for r in readings
+        if r.get("accuracy") is not None and float(r["accuracy"]) < D_CEILING
+    ]
+    return max(under) if under else None
+
+
 def fit_readout(features, labels, k):
     """The least-squares linear map from a feature vector to a one-hot class -- solved in closed
     form, never trained (see GRADIENT_CLAIM). Returns the (n_feat + 1, k) coefficient matrix, or
@@ -639,11 +849,21 @@ def run_trial(kt, plast, mask, learn, amp_q):
     return counts
 
 
+# distinct-from: live_arm.py -- the ROBOT arm's stream-to-actuator loop; "arm" there is hardware.
+# distinct-from: so101_arm.py -- a contact counterfactual on a never-stepped body; also hardware.
+# distinct-from: hjepa_arm_torch.py -- a coarse ACTION batch for the robot arm's trajectory.
+# distinct-from: developmental_pruning.py -- runs a prune-and-retrain SCHEDULE and returns a curve.
+# distinct-from: meta_plasticity.py -- runs a non-stationary REACH and returns a learning curve.
+#   "Arm" below is an ARM OF A COMPARISON: one wiring of one unit set, scored once under a frozen
+#   per-trial protocol whose learner is the SUBJECT of the measurement, not its method. All five
+#   sites read 2026-09-09 before this note was written.
 def run_arm(
     art,
     name,
     seed,
     classes,
+    *,
+    d,
     lr=None,
     blocks=C_BLOCKS,
     t_trial=T_TRIAL,
@@ -657,6 +877,11 @@ def run_arm(
     blocks -> reward = +1 if correct else -1 -> the learner updates. Block 0 uses the readout fit
     on a warm-up block run with the learner OFF. Held-out trials run with the learner OFF, deliver
     no reward, form no eligibility and carry no state; the split is `marginal_holdout` per block.
+
+    `d` (2.12(a), required, no default): the readout sees the NON-DRIVEN units' spike counts
+    through a fixed per-seed orthonormal projection to D dimensions and never sees the raw counts.
+    It has no default on purpose -- a default would let a call site silently restore the saturated
+    instrument the amendment retired.
     """
     import numpy as np
 
@@ -679,6 +904,7 @@ def run_arm(
     for cls in classes:
         driven[np.asarray(cls, dtype=np.int64)] = True
     feat_idx = np.nonzero(~driven)[0]
+    proj = random_projection(feat_idx.size, d, seed)
 
     pool_x, pool_y = [], []
     coef = None
@@ -699,7 +925,7 @@ def run_arm(
             mask = trial_drive(classes, cls, seed, trial_id, state.n_units, t_trial)
             trial_id += 1
             counts = run_trial(kt, plast, mask, learn, amp_q)
-            feature = counts[feat_idx]
+            feature = counts[feat_idx].astype(np.float64) @ proj
             guess = predict(coef, feature, k)
             if i in val:
                 hits += 1
@@ -718,16 +944,17 @@ def run_arm(
             mid_stats = statistics_of(layer, plast.edge_pre, plast.edge_post, plast.weights())
 
     current = statistics_of(layer, plast.edge_pre, plast.edge_post, plast.weights())
-    d = plast.diagnostics()
+    diag = plast.diagnostics()
     return ArmResult(
         name,
         pinned=(lr == 0.0),
         accuracy=accuracy,
-        executed=d["executed"],
-        attempted=d["attempted"],
-        effective_count=d["effective_count"],
-        effective_l1=d["effective_l1"],
+        executed=diag["executed"],
+        attempted=diag["attempted"],
+        effective_count=diag["effective_count"],
+        effective_l1=diag["effective_l1"],
         records=drift_records(seeded_stats, current, mid_stats),
+        feature_dim=int(proj.shape[1]),
     )
 
 
@@ -987,7 +1214,9 @@ def synthetic_artifact(n_units=64, seed=0, out_degree=4):
 # =============================================================================================
 # The offline self-check (run_selfchecks CORE): both reds, the positive control, the refusals
 # =============================================================================================
-def selfcheck(n_units=64, k=4, t_trial=20, trials_per_class=6, blocks=3, held_out=2, seeds=S_SEEDS):
+def selfcheck(
+    n_units=64, k=4, d=8, t_trial=20, trials_per_class=6, blocks=3, held_out=2, seeds=S_SEEDS
+):
     """The bare invocation: the whole pipeline on a synthetic population, under 60 s, no network.
 
     WHAT IS REAL AND WHAT IS CONSTRUCTED, stated plainly. RED 1 is REAL: the FROZEN arm is run at
@@ -1015,6 +1244,7 @@ def selfcheck(n_units=64, k=4, t_trial=20, trials_per_class=6, blocks=3, held_ou
                 name,
                 s,
                 classes,
+                d=d,
                 lr=0.0 if name == "frozen" else None,
                 blocks=blocks,
                 t_trial=t_trial,
@@ -1055,6 +1285,50 @@ def selfcheck(n_units=64, k=4, t_trial=20, trials_per_class=6, blocks=3, held_ou
         except ArmRefused:
             refusals.append((label, True))
 
+    #: 2.12(a): the projection is orthonormal and REFUSES a D it has no basis for
+    import numpy as np
+
+    q = random_projection(32, 8, seed=0)
+    proj_ok = bool(np.allclose(q.T @ q, np.eye(8), atol=1e-9))
+    proj_ok = proj_ok and bool(np.array_equal(q, random_projection(32, 8, seed=0)))
+    try:
+        random_projection(4, 8, seed=0)
+        proj_refuses = False
+    except ArmRefused:
+        proj_refuses = True
+
+    #: 2.12(a): the ladder takes the LARGEST D under the ceiling, and REFUSES the row when none is
+    d_guard = bool(
+        choose_d([{"d": 4, "accuracy": 0.3}, {"d": 8, "accuracy": 0.8}, {"d": 16, "accuracy": 1.0}])
+        == 8
+        and choose_d([{"d": x, "accuracy": 1.0} for x in D_CANDIDATES]) is None
+    )
+
+    #: 2.12(c): the settling clause fires on a trend and holds on this daemon's duty cycle
+    settle_ok = bool(
+        is_settled([112.000, 122.906, 106.266, 133.641, 117.828])
+        and not is_settled([100.0, 110.0, 120.0])
+        and not is_settled([120.0, 110.0, 100.0])
+        and not is_settled([100.0, 110.0])
+    )
+
+    #: 2.12: the campaign guard refuses on no D and on an invalid WRONG arm
+    good = {"D_rule": {"D": 8, "satisfied": True}, "wrong_validity": {"valid": True}, "W": {}}
+    no_d = {"D_rule": {"D": None, "satisfied": False}, "wrong_validity": {"valid": True}, "W": {}}
+    bad_w = {"D_rule": {"D": 8, "satisfied": True}, "wrong_validity": {"valid": False}, "W": {}}
+    guard_ok = bool(
+        campaign_guard(good)[0] and not campaign_guard(no_d)[0] and not campaign_guard(bad_w)[0]
+    )
+
+    #: 2.12's third disclosed reading: PLANTED may repeat a pair, and nothing else may
+    planted_tbl = arm_planted(art, drive_classes(art, k, 0), 0)
+    check_nuisance(planted_tbl, art, "planted")
+    try:
+        check_nuisance(planted_tbl, art, "planted", unique_edges=True)
+        planted_repeats = False
+    except ArmRefused:
+        planted_repeats = True
+
     seconds = time.perf_counter() - t0
     return {
         "red1": bool(red1_fired),
@@ -1064,6 +1338,14 @@ def selfcheck(n_units=64, k=4, t_trial=20, trials_per_class=6, blocks=3, held_ou
         "wrong_valid": bool(valid),
         "wrong_psi": float(d_wrong),
         "random_psi": float(d_random),
+        "wrong_band_masses": band_mass_report(art, arm_wrong(art)),
+        "projection": bool(proj_ok),
+        "projection_refuses_overcapacity": bool(proj_refuses),
+        "d_guard": d_guard,
+        "settling_rule": settle_ok,
+        "campaign_guard": guard_ok,
+        "planted_repeats_a_pair": bool(planted_repeats),
+        "feature_dim": int(results[0]["seeded"].feature_dim),
         "drift_control": all(drift_control_holds(results[s]["seeded"]) for s in results),
         "refusals": refusals,
         "verdict": v,
@@ -1107,6 +1389,22 @@ def _bare():
     print(f"5 drift control       : SEEDED moved on every seed = {out['drift_control']}")
     print(f"6 nuisance refusals   : {out['refusals']}")
     print(f"7 accuracies          : {json.dumps(out['accuracies'])}")
+    m = out["wrong_band_masses"]
+    print(
+        f"8 WRONG band masses   : diagonal {m['diagonal_mass']:.6f} off-diagonal "
+        f"{m['off_diagonal_mass']:.6f} inter-band edges {m['inter_band_edge_fraction']:.6f} "
+        f"asymmetry {m['asymmetry']:.6f} PSI(transpose) {m['psi_transpose_vs_seeded']:.6f} "
+        f"off-band fallbacks {m['off_band_fallback_edges']}"
+    )
+    print(
+        f"9 2.12(a) projection  : orthonormal + fixed = {out['projection']}, refuses D > n_feat = "
+        f"{out['projection_refuses_overcapacity']}, feature dim seen by the readout = "
+        f"{out['feature_dim']}"
+    )
+    print(f"10 2.12(a) D guard    : largest-under-ceiling + REFUSES on none = {out['d_guard']}")
+    print(f"11 2.12(c) settling   : trend fires, duty cycle does not = {out['settling_rule']}")
+    print(f"12 campaign guard     : refuses no-D and an invalid WRONG = {out['campaign_guard']}")
+    print(f"13 PLANTED repeats    : permitted for PLANTED alone = {out['planted_repeats_a_pair']}")
     print("=" * 78)
     print(format_verdict(out["verdict"]))
     print("=" * 78)
@@ -1119,12 +1417,23 @@ def _bare():
     assert all(ok for _n, ok in out["refusals"]), (
         f"a nuisance refusal did not fire: {out['refusals']}"
     )
+    assert out["projection"], "the projection must be orthonormal and fixed per seed"
+    assert out["projection_refuses_overcapacity"], "a projection to D > n_feat must be REFUSED"
+    assert out["d_guard"], "the D ladder must take the LARGEST D and refuse the row when none is"
+    assert out["settling_rule"], "the settling clause must fire on a trend and hold on a duty cycle"
+    assert out["campaign_guard"], "the campaign guard must refuse no-D and an invalid WRONG arm"
+    assert out["planted_repeats_a_pair"], (
+        "PLANTED must be allowed to repeat a (pre, post) pair, and nothing else may"
+    )
     assert out["seconds"] < 60.0, f"the offline self-check took {out['seconds']:.1f}s"
     print(
         f"prior_drift_harness self-check OK in {out['seconds']:.1f}s: red 1 fires on the "
         "constructed pin and names it, red 2's predicate is reachable and does not fire on a tie, "
-        "the PLANTED control sees an advantage, the SEEDED arm moves on every seed, and every "
-        "nuisance violation is refused before it can run"
+        "the PLANTED control sees an advantage, the SEEDED arm moves on every seed, every "
+        "nuisance violation is refused before it can run, the readout sees only an orthonormal "
+        "D-dimensional projection, the D ladder refuses the row when no D is under the ceiling, "
+        "the settling clause fires on a trend and not on this daemon's duty cycle, and the "
+        "campaign guard refuses both a missing D and an invalid WRONG arm"
     )
     return 0
 
@@ -1140,15 +1449,78 @@ def _bare():
 #   hippocampus/spiking_storage_prototype.py::run, hypothalamus/__init__ -- a gate's constructed
 #   reds, a prototype's returned criteria numbers and a region docstring; none reads a PROCESS.
 #   All five read 2026-09-09.
+# distinct-from: microcircuit.py -- its `sign_identities` READS a per-Purkinje +1/-1 row from the
+#   tissue's own weights; the prose overlap is "READ from" in capitals. This reads a PROCESS's CPU
+#   counter off the operating system and decides whether a HOST has settled. Site read 2026-09-09.
+def is_settled(windows):
+    """2.12(c) -- THE SETTLING CLAUSE, read as the ABSENCE OF A MONOTONE TREND across at least
+    three consecutive 90 s CPU windows.
+
+    2.7's literal test (two consecutive windows within ~6 %) is NOT MET and is NOT MEETABLE by this
+    daemon in any state: five consecutive windows read 112.0 / 122.9 / 106.3 / 133.6 / 117.8 CPU-s
+    per 90 s, which is its ordinary wake/sleep duty cycle rather than a boot transient. What the
+    clause is FOR -- no startup burst inflating a timing -- survives that reading, because a burst
+    that has not settled shows as a TREND. Fewer than three windows is not a reading and is never
+    settled: two windows cannot distinguish a trend from a duty cycle, which is the exact failure
+    the original pair test had."""
+    w = [float(x) for x in windows]
+    if len(w) < SETTLING_WINDOWS:
+        return False
+    pairs = list(zip(w[:-1], w[1:], strict=True))
+    rising = all(b > a for a, b in pairs)
+    falling = all(b < a for a, b in pairs)
+    return not (rising or falling)
+
+
+def _cpu_windows(n=SETTLING_WINDOWS, seconds=SETTLING_SECONDS):
+    """`n` consecutive `seconds`-long windows of the daemon's own process CPU, in CPU-seconds per
+    window. Taken IN BAND (2.12(c)) so the settling reading sits BESIDE the timing numbers it
+    qualifies instead of in a prose note a later reader has to trust."""
+    import subprocess
+
+    ps = (
+        "$c = Get-NetTCPConnection -LocalPort 8137 -State Listen -ErrorAction SilentlyContinue; "
+        "if (-not $c) { 'none'; exit }; "
+        "$p = Get-Process -Id $c.OwningProcess; $last = $p.TotalProcessorTime.TotalSeconds; "
+        "for ($i = 0; $i -lt "
+        + str(int(n))
+        + "; $i++) { Start-Sleep -Seconds "
+        + str(int(seconds))
+        + "; $p.Refresh(); $now = $p.TotalProcessorTime.TotalSeconds; "
+        "'{0:F3}' -f ($now - $last); $last = $now }"
+    )
+    try:
+        out = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", ps],
+            capture_output=True,
+            text=True,
+            timeout=int(n) * int(seconds) + 120,
+        ).stdout.split()
+        return [float(x) for x in out]
+    except Exception:  # pragma: no cover - the host probe must never fail the run
+        return []
+
+
+def _settling(n=SETTLING_WINDOWS, seconds=SETTLING_SECONDS):
+    w = _cpu_windows(n, seconds)
+    return {
+        "cpu_seconds_per_window": w,
+        "window_seconds": int(seconds),
+        "settled": bool(is_settled(w)),
+        "rule": (
+            "2.12(c): settled = NO monotone trend across at least "
+            f"{SETTLING_WINDOWS} windows of {SETTLING_SECONDS} s"
+        ),
+    }
+
+
 def _host_condition():
     """The daemon's PID, working set and port state, recorded beside every timing number.
 
-    The pre-registration's host clause also asks for a SETTLED boot burst, read as two consecutive
-    90 s CPU windows within ~6 %. That reading is taken OUT OF BAND and recorded in the pin's
-    `host_note`: it costs minutes, and on this host the daemon's STEADY state duty-cycles by more
-    than 6 % between windows, so settling is read from the ABSENCE OF A TREND across several
-    windows rather than from one pair. This function records the part a run can read in a second,
-    which is the part that must sit beside every number."""
+    The host clause's SETTLING half is `_settling` / `is_settled` (2.12(c)), taken IN BAND and
+    recorded beside every timing number -- it used to be an out-of-band note in `HOST_NOTE`, which
+    left a later reader trusting prose. This function records the part a run can read in a second;
+    the two are written side by side into every stage of the pin."""
     import subprocess
 
     ps = (
@@ -1215,15 +1587,71 @@ def _campaign_ticks(k, blocks=C_BLOCKS, trials_per_class=TRIALS_PER_CLASS, t_tri
     return 5 * S_SEEDS * (1 + blocks) * k * trials_per_class * t_trial
 
 
+def campaign_guard(stage):
+    """2.12's authorization, made mechanical: the campaign runs IFF the ladder selected a D AND the
+    WRONG arm is VALID AND a width came in under the projection ceiling. Returns (ok, reason).
+
+    A refusal is a FINDING carrying numbers, never a blocked chore. No D means this population
+    admits no readout capacity at which its wiring separates from a marginal-matched null under
+    this protocol; an invalid WRONG arm means red 2 has no reachable reading on this connectome."""
+    d_rule = stage.get("D_rule") or {}
+    valid = (stage.get("wrong_validity") or {}).get("valid")
+    if not d_rule.get("satisfied") or d_rule.get("D") is None:
+        return False, (
+            "ROW REFUSED ON MEASUREMENT: no D in the ladder put the no-learning RANDOM arm under "
+            f"the {D_CEILING} ceiling, so this population admits no readout capacity at which its "
+            "wiring can be separated from a marginal-matched null by this protocol"
+        )
+    if not valid:
+        return False, (
+            "CAMPAIGN REFUSED: the WRONG arm is INVALID -- its band-pair weight-share matrix is "
+            "not farther from SEEDED's than RANDOM's realised matrix is, so red 2 has no reachable "
+            "reading and 2.12 authorizes the campaign only on a VALID wrong arm"
+        )
+    if stage.get("W") is None:
+        return False, "CAMPAIGN REFUSED: no width came in under the projection ceiling"
+    return True, "the ladder selected a D, the WRONG arm is valid, and a width fits the ceiling"
+
+
+# distinct-from: lake_bridge.py -- `iter_records` streams durable payloads; home.py -- the
+#   _T_SELFBUILD append-only sidecar; lake_engine.py -- the retention census. All three are the
+#   BRAIN'S DURABLE LAKE. This reads a JSON evidence pin in `tools/`, which is never a lake record.
+# distinct-from: theory_of_mind.py -- `place` updates observers' beliefs; arm_config.py -- the
+#   robot arm's calibration constants. Prose-level overlap only. Five sites read 2026-09-09.
+def _pin_stages():
+    """Every pilot stage ever written, earliest first. The pre-amendment pilot was written as a
+    FLAT document; it is lifted into the list under its own stage key and never erased -- 2.12
+    keeps its readings in the record beside the re-run's, so the pin GROWS and is not overwritten.
+    """
+    if not PILOT_PIN.exists():
+        return []
+    doc = json.loads(PILOT_PIN.read_text(encoding="utf-8"))
+    if isinstance(doc, dict) and "stages" in doc:
+        return list(doc["stages"])
+    doc = dict(doc)
+    doc.setdefault("stage", "2026-09-09 pre-amendment -- 2.7's K rule (UNSATISFIED)")
+    return [doc]
+
+
+PILOT_STAGE = "2026-09-09 amended -- 2.12's D ladder and the band-permuted WRONG arm"
+
+
 def run_pilot():
-    """K by the 0.9 rule, the drive-only measurement, the tick cost at four widths with the
-    learner ON, W by the 6-hour rule, and the WRONG validity precondition -- all recorded BEFORE
-    the campaign, in `tools/t063_pilot.json`."""
+    """2.12's pilot: the D ladder at K = 8, the drive-only control re-measured at the chosen D, the
+    WRONG arm's validity precondition with the band masses behind it, the tick cost with the
+    learner ON, W by the 6-hour rule, and the settling reading beside every timing. APPENDED to
+    `tools/t063_pilot.json` as a new stage; the pre-amendment stage is never erased."""
     from snn_data_lake.cortex.h01_ingest import ARTIFACT, load_artifact
 
     host = _host_condition()
     print("=" * 78)
-    print(f"T063 pilot -- host {json.dumps(host)}")
+    print(f"T063 pilot (2.12) -- host {json.dumps(host)}")
+    print(f"settling: taking {SETTLING_WINDOWS} x {SETTLING_SECONDS} s CPU windows...")
+    settling = _settling()
+    print(
+        f"settling: windows {settling['cpu_seconds_per_window']} CPU-s -> "
+        f"settled = {settling['settled']} (no monotone trend)"
+    )
     print("=" * 78)
     art = load_artifact()
     art_sha = hashlib.sha256(Path(ARTIFACT).read_bytes()).hexdigest()
@@ -1232,68 +1660,67 @@ def run_pilot():
         f"edges {art['pre_idx'].size}"
     )
 
-    # ---- K: the smallest power of two >= 8 at which the NO-LEARNING RANDOM arm scores < 0.9 ----
-    # The rule may have NO satisfying K -- the class subsets are 5 % of the units, so at most 20
-    # of them fit and only 8 and 16 are powers of two that do. When that happens the pilot RECORDS
-    # the readings, marks the rule UNSATISFIED and BLOCKS the campaign; it does not abort at the
-    # first candidate, because the remaining pilot items are measurable and the record needs them.
-    k_readings = []
-    k_chosen = None
-    for k in K_CANDIDATES:
-        try:
-            classes = drive_classes(art, k, 0)
-        except ArmRefused as exc:
-            k_readings.append({"k": k, "accuracy": None, "note": str(exc)})
-            print(f"K rule: K = {k:>2}  DOES NOT FIT: {exc}")
+    # ---- 2.12(a): D = the LARGEST of the ladder at which no-learning RANDOM scores < 0.9 --------
+    k = K_FIXED
+    classes = drive_classes(art, k, 0)
+    table_random = arm_random(art, 0)
+    check_nuisance(table_random, art, "random", unique_edges=True)
+    n_feat = int(art["agglo_id"].size) - sum(len(c) for c in classes)
+    d_readings = []
+    for d in D_CANDIDATES:
+        if d > n_feat:
+            d_readings.append({"d": d, "accuracy": None, "note": f"D > {n_feat} features"})
+            print(f"D ladder: D = {d:>3}  DOES NOT FIT ({n_feat} non-driven units)")
             continue
-        table = arm_random(art, 0)
-        check_nuisance(table, art, "random", unique_edges=True)
-        r = run_arm(table, "random", 0, classes, lr=0.0, blocks=1)
-        k_readings.append({"k": k, "accuracy": r.accuracy})
-        print(f"K rule: K = {k:>2}  no-learning RANDOM held-out accuracy = {r.accuracy:.4f}")
-        if r.accuracy < K_CEILING and k_chosen is None:
-            k_chosen = k
-    fitting = [rec["k"] for rec in k_readings if rec.get("accuracy") is not None]
-    k_basis = k_chosen if k_chosen is not None else (max(fitting) if fitting else None)
-    if k_chosen is None:
+        r = run_arm(table_random, "random", 0, classes, d=d, lr=0.0, blocks=1)
+        d_readings.append({"d": d, "accuracy": r.accuracy})
+        print(f"D ladder: D = {d:>3}  no-learning RANDOM held-out accuracy = {r.accuracy:.4f}")
+    d_chosen = choose_d(d_readings)
+    if d_chosen is None:
         print(
-            "K RULE UNSATISFIED: no candidate K put the no-learning RANDOM arm under the "
-            f"{K_CEILING} ceiling. The remaining pilot items are measured anyway, on K = "
-            f"{k_basis} as a WORKLOAD BASIS ONLY, and the campaign is BLOCKED."
+            f"D RULE UNSATISFIED: no D in {D_CANDIDATES} put the no-learning RANDOM arm under the "
+            f"{D_CEILING} ceiling. THE ROW IS REFUSED ON MEASUREMENT."
         )
-    if k_basis is None:
-        print("PILOT REFUSED: no candidate K even fits the unit count")
-        return 1
-    classes = drive_classes(art, k_basis, 0)
+    else:
+        print(f"D = {d_chosen}: the LARGEST D at which RANDOM sits under the {D_CEILING} ceiling")
+    d_basis = d_chosen if d_chosen is not None else min(D_CANDIDATES)
 
-    # ---- T003's required measurement: a DRIVE-ONLY population must score at chance -------------
+    # ---- T003's required measurement, RE-MEASURED at the chosen D ------------------------------
     no_edges = _copy(art)
     for key in ("pre_idx", "post_idx", "n_syn"):
         no_edges[key] = no_edges[key][:0]
-    drive_only = run_arm(no_edges, "drive-only", 0, classes, lr=0.0, blocks=1)
-    seeded_pilot = run_arm(arm_seeded(art), "seeded", 0, classes, blocks=1)
-    chance = 1.0 / k_basis
+    drive_only = run_arm(no_edges, "drive-only", 0, classes, d=d_basis, lr=0.0, blocks=1)
+    seeded_pilot = run_arm(arm_seeded(art), "seeded", 0, classes, d=d_basis, blocks=1)
+    chance = 1.0 / k
     print(
-        f"T003 drive-only: accuracy {drive_only.accuracy:.4f} against chance {chance:.4f}; "
-        f"the same protocol WITH edges (SEEDED) reads {seeded_pilot.accuracy:.4f}"
+        f"T003 drive-only at D = {d_basis}: accuracy {drive_only.accuracy:.4f} against chance "
+        f"{chance:.4f}; the same protocol WITH edges (SEEDED) reads {seeded_pilot.accuracy:.4f}"
     )
 
-    # ---- the WRONG arm's validity precondition, on the realised table --------------------------
-    rnd = arm_random(art, 0)
+    # ---- 2.12(b): the WRONG arm's validity precondition, and the band masses behind it ---------
     wrg = arm_wrong(art)
-    valid, d_wrong, d_random = wrong_validity(wrg, rnd, art)
+    check_nuisance(wrg, art, "wrong")
+    valid, psi_wrong, psi_random = wrong_validity(wrg, table_random, art)
+    masses = band_mass_report(art, wrg)
     print(
-        f"T004 validity: PSI(wrong, seeded) {d_wrong:.6f} vs PSI(random, seeded) {d_random:.6f} "
-        f"-> WRONG is {'VALID' if valid else 'INVALID'}"
+        f"T004 validity: PSI(wrong, seeded) {psi_wrong:.6f} vs PSI(random, seeded) "
+        f"{psi_random:.6f} -> WRONG is {'VALID' if valid else 'INVALID'}"
+    )
+    print(
+        f"           band masses: diagonal {masses['diagonal_mass']:.6f} off-diagonal "
+        f"{masses['off_diagonal_mass']:.6f} inter-band edges "
+        f"{masses['inter_band_edge_fraction']:.6f} asymmetry {masses['asymmetry']:.6f} "
+        f"PSI(transpose) {masses['psi_transpose_vs_seeded']:.6f} off-band fallbacks "
+        f"{masses['off_band_fallback_edges']}"
     )
 
-    # ---- the tick cost at four widths, learner ON, and the 6-hour projection -------------------
-    total_ticks = _campaign_ticks(k_basis)
+    # ---- the tick cost per width, learner ON, and the 6-hour projection ------------------------
+    total_ticks = _campaign_ticks(k)
     widths = []
     for frac in WIDTH_FRACTIONS:
         sub = band_balanced_subgraph(art, frac)
         try:
-            sub_classes = drive_classes(sub, k_basis, 0)
+            sub_classes = drive_classes(sub, k, 0)
         except ArmRefused as exc:
             widths.append({"frac": frac, "units": int(sub["agglo_id"].size), "note": str(exc)})
             continue
@@ -1306,11 +1733,14 @@ def run_pilot():
                 "edges": int(sub["pre_idx"].size),
                 "seconds_per_tick": sec,
                 "projected_hours": hours,
+                "settled": settling["settled"],
+                "cpu_seconds_per_window": settling["cpu_seconds_per_window"],
             }
         )
         print(
             f"width {frac:<6} units {sub['agglo_id'].size:>6} edges {sub['pre_idx'].size:>6}  "
-            f"{sec * 1000:.4f} ms/tick  -> {hours:.3f} h for {total_ticks} ticks"
+            f"{sec * 1000:.4f} ms/tick  -> {hours:.3f} h for {total_ticks} ticks  "
+            f"[settled {settling['settled']}]"
         )
     under = [w for w in widths if w.get("projected_hours", 1e9) < CAMPAIGN_HOURS]
     if not under:
@@ -1326,7 +1756,8 @@ def run_pilot():
             f"cost projects {w_chosen['projected_hours']:.3f} h < {CAMPAIGN_HOURS} h"
         )
 
-    pin = {
+    stage = {
+        "stage": PILOT_STAGE,
         "task": "specs/022 T063 pilot",
         "git_head": _git_head(),
         "harness_sha256": _self_sha(),
@@ -1334,6 +1765,7 @@ def run_pilot():
         "artifact_sha256": art_sha,
         "host": host,
         "host_note": HOST_NOTE,
+        "settling": settling,
         "constants": {
             "T_trial": T_TRIAL,
             "trials_per_class": TRIALS_PER_CLASS,
@@ -1345,42 +1777,56 @@ def run_pilot():
             "swap_passes": SWAP_PASSES,
             "S_seeds": S_SEEDS,
             "t_bar": T_BAR,
+            "K": K_FIXED,
+            "band_permutation": list(BAND_PERMUTATION),
         },
-        "K_rule": {
-            "ceiling": K_CEILING,
-            "readings": k_readings,
-            "K": k_chosen,
-            "satisfied": k_chosen is not None,
-            "K_basis": k_basis,
+        "D_rule": {
+            "ceiling": D_CEILING,
+            "candidates": list(D_CANDIDATES),
+            "readings": d_readings,
+            "D": d_chosen,
+            "satisfied": d_chosen is not None,
+            "D_basis": d_basis,
+            "n_non_driven_features": n_feat,
             "note": (
-                "SATISFIED"
-                if k_chosen is not None
+                "SATISFIED: D is the LARGEST candidate at which the no-learning RANDOM arm sits "
+                "under the ceiling"
+                if d_chosen is not None
                 else (
-                    "UNSATISFIED: no power of two >= 8 that FITS (K x 5 % of the units must be "
-                    "<= 100 %, so only 8 and 16 fit) put the no-learning RANDOM arm under the "
-                    "ceiling. Every other pilot item below was measured on K_basis as a workload "
-                    "basis only; the campaign is BLOCKED on this rule"
+                    "UNSATISFIED: no candidate D put the no-learning RANDOM arm under the "
+                    "ceiling. The row is REFUSED ON MEASUREMENT -- this population admits no "
+                    "readout capacity at which its wiring separates from a marginal-matched null "
+                    "under this protocol. The items below were measured on D_basis as a workload "
+                    "basis only"
                 )
             ),
         },
         "drive_only": {
             "accuracy": drive_only.accuracy,
             "chance": chance,
+            "D": d_basis,
             "seeded_same_protocol": seeded_pilot.accuracy,
         },
-        "wrong_validity": {"valid": bool(valid), "psi_wrong": d_wrong, "psi_random": d_random},
+        "wrong_validity": {
+            "valid": bool(valid),
+            "psi_wrong": psi_wrong,
+            "psi_random": psi_random,
+            "band_masses": masses,
+        },
         "campaign_ticks": total_ticks,
         "widths": widths,
         "W": w_chosen,
     }
+    stage["campaign_authorized"], stage["campaign_reason"] = campaign_guard(stage)
+    stages = [s for s in _pin_stages() if s.get("stage") != PILOT_STAGE] + [stage]
     PILOT_PIN.parent.mkdir(parents=True, exist_ok=True)
-    PILOT_PIN.write_text(json.dumps(pin, indent=2, sort_keys=True), encoding="utf-8")
-    print(f"pilot pinned to {PILOT_PIN}")
-    if k_chosen is None:
-        print(
-            "CAMPAIGN BLOCKED: the pre-registered K rule has no satisfying K at this width. The "
-            "campaign is NOT run and the pre-registration cannot be executed as written."
-        )
+    PILOT_PIN.write_text(
+        json.dumps({"task": "specs/022 T063 pilot", "stages": stages}, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    print(f"pilot stage {len(stages)} pinned to {PILOT_PIN}")
+    print(f"campaign authorized = {stage['campaign_authorized']}: {stage['campaign_reason']}")
+    if not stage["campaign_authorized"]:
         return 3
     return 0 if w_chosen is not None else 2
 
@@ -1391,26 +1837,30 @@ def run_campaign():
 
     if not PILOT_PIN.exists():
         print(
-            "CAMPAIGN REFUSED: run --pilot first; W and K are read from its pin, never chosen here"
+            "CAMPAIGN REFUSED: run --pilot first; W and D are read from its pin, never chosen here"
         )
         return 1
-    pin = json.loads(PILOT_PIN.read_text(encoding="utf-8"))
-    if pin.get("W") is None:
-        print("CAMPAIGN REFUSED: the pilot recorded no width under the projection ceiling")
+    stages = _pin_stages()
+    if not stages:
+        print("CAMPAIGN REFUSED: the pin holds no stage")
         return 1
-    if not pin["K_rule"].get("satisfied"):
-        print(
-            "CAMPAIGN REFUSED: the pilot's K rule is UNSATISFIED -- the no-learning RANDOM arm "
-            "sits at the ceiling at every candidate K, so PLANTED has nothing to beat and no "
-            "verdict could be read. Running anyway would produce a NO VERDICT whose cause is the "
-            "task's saturation, not the harness. Amend the pre-registration first."
-        )
+    pin = stages[-1]
+    ok, reason = campaign_guard(pin)
+    if not ok:
+        print(reason)
         return 1
-    k = int(pin["K_rule"]["K"])
+    k = int(pin["constants"]["K"])
+    d = int(pin["D_rule"]["D"])
     frac = float(pin["W"]["frac"])
     host = _host_condition()
     print("=" * 78)
-    print(f"T063 campaign -- K = {k}, W = {frac}, host {json.dumps(host)}")
+    print(f"T063 campaign -- K = {k}, D = {d}, W = {frac}, host {json.dumps(host)}")
+    print(f"settling: taking {SETTLING_WINDOWS} x {SETTLING_SECONDS} s CPU windows...")
+    settling = _settling()
+    print(
+        f"settling: windows {settling['cpu_seconds_per_window']} CPU-s -> "
+        f"settled = {settling['settled']}"
+    )
     print("=" * 78)
 
     full = load_artifact()
@@ -1423,12 +1873,17 @@ def run_campaign():
         classes = drive_classes(art, k, s)
         tables = build_arms(art, s, classes)
         v_ok, d_wrong, d_random = wrong_validity(tables["wrong"], tables["random"], art)
-        validity[s] = {"valid": bool(v_ok), "psi_wrong": d_wrong, "psi_random": d_random}
+        validity[s] = {
+            "valid": bool(v_ok),
+            "psi_wrong": d_wrong,
+            "psi_random": d_random,
+            "band_masses": band_mass_report(art, tables["wrong"]),
+        }
         valid = v_ok if valid is None else (valid and v_ok)
         row = {}
         for name, table in tables.items():
             r0 = time.perf_counter()
-            row[name] = run_arm(table, name, s, classes, lr=0.0 if name == "frozen" else None)
+            row[name] = run_arm(table, name, s, classes, d=d, lr=0.0 if name == "frozen" else None)
             print(
                 f"seed {s} {name:<8} acc {row[name].accuracy:.4f}  "
                 f"exec {row[name].executed} att {row[name].attempted} "
@@ -1452,11 +1907,27 @@ def run_campaign():
         "artifact_sha256": hashlib.sha256(Path(ARTIFACT).read_bytes()).hexdigest(),
         "host": host,
         "host_note": HOST_NOTE,
+        "settling": settling,
+        "pilot_stage": pin.get("stage"),
         "K": k,
+        "D": d,
         "W_frac": frac,
         "W_units": int(art["agglo_id"].size),
         "W_edges": int(art["pre_idx"].size),
         "wrong_validity_per_seed": validity,
+        "diagnostics": {
+            s: {
+                a: {
+                    "executed": results[s][a].executed,
+                    "attempted": results[s][a].attempted,
+                    "effective_count": results[s][a].effective_count,
+                    "effective_l1": results[s][a].effective_l1,
+                    "feature_dim": results[s][a].feature_dim,
+                }
+                for a in results[s]
+            }
+            for s in results
+        },
         "verdict": v,
         "red1_messages": {s: red1(results[s]["frozen"])[1] for s in results},
         "drift_records": {

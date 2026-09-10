@@ -331,21 +331,27 @@ def test_wrong_is_the_band_permuted_target_table_under_the_depth_reversing_permu
 
 
 def test_wrong_keeps_the_within_band_degree_rank_of_the_target():
-    """ "the same within-band degree rank": the rank ORDER of the targets inside a band must be
-    carried into the mirrored band, so the permutation moves laminar IDENTITY and nothing else."""
+    """ "the same within-band degree rank": inside EACH band the rank ORDER must be carried into
+    the mirrored band, so the permutation moves laminar IDENTITY and nothing else. Monotone is
+    asserted PER SOURCE BAND -- ranks from different bands are not comparable, and a test that
+    mixes them measures nothing."""
     base = H.synthetic_artifact(n_units=140, seed=0)
-    wrong = H.arm_wrong(base)
     lay = base["layer"].astype(np.int64)
+    target, _slot, _ordered, tgt_band = H.band_rank_map(base)
     rank = H.within_band_degree_rank(base)
-    old_r = rank[base["post_idx"].astype(np.int64)]
-    new_r = rank[wrong["post_idx"].astype(np.int64)]
-    band_ok = lay[wrong["post_idx"]] == np.asarray(
-        [H.BAND_PERMUTATION[int(b)] for b in lay[base["post_idx"]]], dtype=np.int64
-    )
-    #: monotone in rank: a higher-ranked source target maps to a >= ranked mirrored target
-    order = np.argsort(old_r[band_ok], kind="stable")
-    seq = new_r[band_ok][order]
-    assert np.all(np.diff(seq) >= 0), "the within-band rank order was not carried across"
+    moved = 0
+    for band in range(7):
+        members = np.nonzero(lay == band)[0]
+        if members.size == 0 or int(tgt_band[members[0]]) == band:
+            continue
+        ordered_members = members[np.argsort(rank[members], kind="stable")]
+        mapped = target[ordered_members]
+        assert np.all(lay[mapped] == H.BAND_PERMUTATION[band]), "a unit left its mirrored band"
+        assert np.all(np.diff(rank[mapped]) >= 0), (
+            f"band {band}: the within-band rank order was not carried across"
+        )
+        moved += int(members.size)
+    assert moved > 0, "the fixture must have at least one band the permutation moves"
 
 
 def test_the_band_mass_report_names_what_the_permutation_moved():
