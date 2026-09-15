@@ -93,13 +93,19 @@ are a pinned null on the object brain and which the graph-weight statistics belo
 
 import hashlib
 import json
-import math
 import sys
 import time
 from pathlib import Path
 from typing import NamedTuple
 
 from snn_data_lake.substrate.drift_monitor import psi
+from snn_data_lake.substrate.paired_contrast import (  # noqa: F401  (re-exported: LIFTED 2026-09-15, T077 2.10)
+    T_BAR,
+    Contrast,
+    contrast,
+    paired_t,
+    permutation_fpr,
+)
 
 #: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
 #:
@@ -199,7 +205,10 @@ HOST_NOTE = (
 )
 
 S_SEEDS = 8
-T_BAR = 1.895  # paired one-sided t, 7 d.f., alpha = 0.05 (PLAN-FINAL Part F preamble)
+# T_BAR, Contrast, paired_t, permutation_fpr and contrast were LIFTED 2026-09-15 (specs/022 T077 2.10) into
+# substrate/paired_contrast.py, verbatim, and are imported at the top of this module so every name still
+# resolves here; the reason is in that module's docstring (a live module importing this EXEMPT instrument
+# stales five dormancy rows). Nothing else in this file changed.
 STATISTICS = ("band_pair_weight_share", "band_fanin_e_fraction")
 N_BANDS = 7
 
@@ -265,13 +274,7 @@ class ArmResult(NamedTuple):
     feature_dim: int = 0
 
 
-class Contrast(NamedTuple):
-    name: str
-    diffs: tuple
-    t: float
-    fpr: float
-    degenerate: bool
-    met: bool
+# (`Contrast` lives in substrate/paired_contrast.py since 2026-09-15; imported above.)
 
 
 # =============================================================================================
@@ -406,42 +409,9 @@ def no_learner_holds(result):
 
 
 # =============================================================================================
-# The statistic over the seeds (2.6)
+# The statistic over the seeds (2.6) -- `paired_t`, `permutation_fpr`, `contrast`: LIFTED 2026-09-15 into
+# substrate/paired_contrast.py (T077 2.10), verbatim; imported at the top of this module.
 # =============================================================================================
-def paired_t(diffs):
-    """Paired one-sided t over the S seeds; ties are counted, never dropped. 0.0 when the sample
-    has no variance -- that case is DEGENERATE and `contrast` decides it explicitly."""
-    n = len(diffs)
-    if n < 2:
-        return 0.0
-    mean = sum(diffs) / n
-    var = sum((d - mean) ** 2 for d in diffs) / (n - 1)
-    if var <= 0.0:
-        return 0.0
-    return mean / math.sqrt(var / n)
-
-
-def permutation_fpr(diffs, bar=T_BAR):
-    """The false-positive rate of this test on THIS sample: the fraction of the 2^S sign flips
-    whose t exceeds the bar. Printed beside every contrast (Part F's preamble)."""
-    n = len(diffs)
-    hits = 0
-    for mask in range(1 << n):
-        flipped = [(-d if (mask >> i) & 1 else d) for i, d in enumerate(diffs)]
-        if paired_t(flipped) > bar:
-            hits += 1
-    return hits / float(1 << n)
-
-
-def contrast(name, diffs, bar=T_BAR):
-    """One contrast, decided BEFORE any number: a zero-variance set of differences is MET iff its
-    common value is > 0 (recorded as degenerate) and NOT MET otherwise."""
-    diffs = tuple(float(d) for d in diffs)
-    degenerate = len(set(diffs)) <= 1
-    if degenerate:
-        return Contrast(name, diffs, 0.0, 0.0, True, bool(diffs and diffs[0] > 0.0))
-    t = paired_t(diffs)
-    return Contrast(name, diffs, t, permutation_fpr(diffs, bar), False, t > bar)
 
 
 #: THE FLOOR RULE, LIFTED (P2). It was written once, in prose, inside `synthetic_artifact`'s

@@ -284,6 +284,7 @@ CORE = [
     "plasticity.snn_mnist_stdp_genn",  # specs/012 GeNN port: codegen-integrity check every box; GPU train is GENN_RUN-gated
     # substrate â€” the spiking data-lake, telemetry, and infra (not a brain region)
     "substrate._mathutils",
+    "substrate.paired_contrast",  # T077 2.10: the seed-paired t + exact FPR, lifted from the T063 harness
     "substrate.spike_stream_sketch",
     "substrate.spike_cardinality",
     "substrate.reservoir_sampling",

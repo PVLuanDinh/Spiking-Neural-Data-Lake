@@ -247,3 +247,28 @@ already uses it; GeNN not used (no GPU tick in this row).
 5. The conclusion row / cockpit / PROVENANCE per 2.6; INVENTION_REGISTER row; PLAN-FINAL Part F row C-R6; spec.md SC-009
    dated note; tasks.md T077.
 6. Section 3 the record -> panel (3 lenses + refuters, CLAIM and FIX separately) -> fold -> Codex closing report.
+
+### 2.10 Amendment, dated 2026-09-15 ~11:10 local, BEFORE any campaign number exists: the paired t is LIFTED out of the
+### EXEMPT harness (an apparatus fact the first campaign commit measured; no conjunct, control or disposition changes)
+
+WHAT WAS SEEN. Commit order step 4 placed the campaign entry in `cortex/metacognitive_monitor.py` with
+`prior_drift_harness.contrast` imported LAZILY inside `run_t077_campaign` (2.1 named the trap and thought a lazy import
+avoided it). `substrate/dormancy_gate --assert` read RED on that tree: "5 stale EXEMPT entry/entries -- now REACHABLE:
+['determinism_gate', 'h01_ingest', 'kernel_state', 'kernel_tick', 'prior_drift_harness']" -- the gate counts an import
+inside a function or conditional as reachability ("This gate is PERMISSIVE by construction"), so a live CORE module
+importing the EXEMPT harness at any depth stales those rows. Retiring them to green the gate is the lie T070's record
+refused (t070-integration-kernel.md 3.5, `dormancy_gate.py`'s own row text); restating `contrast` in the monitor is the
+P2 defect.
+
+WHAT CHANGES. `T_BAR`, `Contrast`, `paired_t`, `permutation_fpr` and `contrast` move VERBATIM from
+`cortex/prior_drift_harness.py` (T063's 2.6, reused by T070) into `substrate/paired_contrast.py`, a live-safe module
+registered in `__init__.py` REGIONS and `run_selfchecks.py` with its own self-check (its reds: a sign-balanced sample
+NOT MET, a reversed sample NOT MET, the exact 1/256 FPR of eight same-sign differences, the degenerate branches); the
+harness imports and re-exports the five names (every `prior_drift_harness.contrast` call and T063's tests resolve
+unchanged; the harness keeps every other symbol and its exemption); the campaign imports `contrast` from the new
+module. ONE implementation survives, where any module may reach it. No number in 2.3 changes; the reds of 2.4 are
+unchanged; the monitor's `T_BAR` restatement is replaced by the import (the reds' equality assertion still holds by
+identity).
+
+WHAT DOES NOT CHANGE. 2.9's steps and their order (this is step 4's first commit); the scorer (48750eb) and the
+re-pointing (5261eb0) stand as committed.

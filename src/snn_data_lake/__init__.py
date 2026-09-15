@@ -436,6 +436,7 @@ REGIONS = {
         "web_ingest",
         "lake_working_memory",
         "chat_memory",  # durable content-addressable chat memory on the spike lake (noise-filtered)
+        "paired_contrast",  # the plan's seed-paired t + exact sign-flip FPR (lifted from the T063 harness, T077 2.10)
         "signal_calibrator",  # durable running-quantile of a live signal (Step-0 of data self-recalibration)
         "nengo_bridge",
         "home",
