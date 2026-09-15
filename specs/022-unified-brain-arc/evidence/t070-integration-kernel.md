@@ -32,6 +32,11 @@ commit that lands them; amendments are dated appended sections; section 3 is wri
    one-sided t with its 2^S sign-flip FPR (`contrast` :417, bar `T_BAR` = 1.895 at 7 d.f.), the per-arm
    above-chance reading (`above_chance`), the 64-unit fixture (`synthetic_artifact` :1281) and the pinned campaign
    constants (`_pin_stages()[-1]`: K = 8, D = 4, W = 1.0). Population 14,215 units / 70,001 edges at W = 1.0.
+   *Dated 2026-09-15 (T070 panel of 2026-09-14, pre-registration-honesty lens):* item 4's `contrast` :417 and
+   `synthetic_artifact` :1281 are the harness at `077d647` (2026-09-09 22:45), not at this file's freeze; at `f09adc4`
+   they are `contrast` :436 and `synthetic_artifact` :1398 (`git show f09adc4:src/snn_data_lake/cortex/prior_drift_harness.py`
+   piped through `grep -n`), moved by `ad98d47` (00:11, +19 both) and `82eafb1` (00:19, +98 `synthetic_artifact` only);
+   every other line cited in item 4 resolves at `f09adc4`.
 5. The conclusion registry (`substrate/conclusion_protocol.py`): `CONCLUSION["integration"]` = (licensed "the system's
    parts share information that a partition of the same parts does not, on this substrate"; refused "this licenses
    no claim that the integration is experienced, and no claim that a larger number is more conscious";
@@ -283,8 +288,9 @@ The repair (`e8d10d3` RED: the incumbent's body verbatim as the oracle, equality
 random strings at four densities and the edge cases, plus a 5 s cost bar on 200,000 characters -- RED as run: "still
 parsing after 5.0 s"; `3b7a2b6` GREEN): the SAME count by a suffix array (prefix doubling in torch through the tree's
 own device router `substrate/device.select`), LCP by binary lifting, the longest-previous-factor array, the phrase walk.
-Oracle-equal on every string; the campaign string (c = 7,369) parses in 0.37 s on the RTX 5070 and 1.18 s on the CPU
-fallback; the live `region_coherence` path's 1,000-character strings score in 1.93 ms against 11.92 ms before. Both bare
+Oracle-equal on every string; 3b7a2b6's campaign-SHAPED scratch probe (a random string of 14,215 x 80 = 1,137,200
+characters at density 0.02, c = 7,369; the pinned footprints themselves carry 2.2-60.6 phrases) parses in 0.37 s on the
+RTX 5070 and 1.18 s on the CPU fallback; the live `region_coherence` path's 1,000-character strings score in 1.93 ms against 11.92 ms before. Both bare
 self-checks read numbers IDENTICAL before and after the change (the incumbent's integrated 0.4268 / gzip 65.12 /
 independent 0.0826 / synchronous 0.0000 / silent 0.0000; the kernel fixture's seven conjuncts and every per-seed line).
 `b9bffbf`: the port's kernel at the lineage's pinned partition count (`tools/kernel_partition_baseline.json`, P = 1, so
@@ -296,7 +302,14 @@ GIL disabled), the pin assembled in seed order.
 ### 3.3 Campaign run 2 (`tools/t070_pci.json`, run at `c1aac92`, committed `ab09b9b`)
 Host: daemon PID 15928 across all five windows (118.813 / 92.141 / 110.969 / 122.0 / 113.531 CPU-s), settled = True,
 daemon_restarted = False, port 8137 LISTEN; wall 573.9 s of which 450 s the settling probe. Population: the H01 artifact
-(sha256 a1d0491a...4a0549) at W = 1.0, 14,215 units / 70,001 edges; amp 0.4 re-measured on it (2.11's obs #2165 clause).
+(sha256 a1d0491a...4a0549) at W = 1.0, 14,215 units / 70,001 edges; amp 0.4 = FIXTURE_AMP, chosen by the fixture sweep
+disclosed at `cortex/integration_kernel.py` :102-125 as that module stood at `c1aac92` (it is DELETED in the fold, 3.7)
+under obs #2165's discipline -- 2.11 cites obs #2165 only for the scorer's cost and names no amplitude, so the pointer
+this sentence carried ("2.11's obs #2165 clause") resolved to nothing; see 3.5 item 10. The background amplitude is not
+among 2.2's pre-registered constants. The rule's three clauses hold at 0.4 on this population -- (a) in-flight 485-611
+on 8/8 seeds, (b) frame-only restore diverged 8/8, (c) (b1) t +5.2015 > 1.895 -- and its minimality (the SMALLEST such
+amplitude) was NOT re-swept at width: no amplitude sweep existed on the campaign path; the only amplitude search is the
+rate-matched arm's bisection, final 0.5 on 8/8 seeds, which serves (b2)/(b5).
 R3 on the campaign population: identical to run 1 seed for seed. Seed 0 solo 40.8 s (integrated 8.8, partitioned 5.5,
 rate-matched 5.5, synchronous 19.0, silent 2.0 s); projection serial 0.09 h, pooled 0.02 h -> PROCEEDS; pooled seeds 71.4-76.4
 s each. Scorer on CUDA (n = 1,094,555 above the measured 262,144 crossover).
@@ -315,13 +328,43 @@ s each. Scorer on CUDA (n = 1,094,555 above the measured 262,144 crossover).
 
 **Verdict, by 2.3's rule: NOT MET** (`pass` = false in the pin), on (b4) and on (b6)'s clauses 2 and 3.
 
-**The reading sits at the instrument's floor, said plainly.** INTEGRATED reads PCI 0.0003-0.0011 (13-60 LZ phrases in a
-1,094,555-character footprint; one phrase = 1.83e-5 PCI); every partition, every echo and the null read 2-6 phrases;
-SYNCHRONOUS reads 0 (rate 0.988: the saturated table's response to the pulse is empty, gzip 9 bytes -- "integrated but
-not differentiated" exactly as the incumbent's regime); SILENT reads 1-7 phrases of propagation from rest. The absolute
+*(2026-09-15, T070 panel of 2026-09-14, instrument lens)* The rate-matched arm's rate lands 3.8-4.9 % ABOVE INTEGRATED's
+on all 8 seeds (pin `conjuncts.b5.diffs`, all positive, +0.00144..+0.00182 over INTEGRATED's 0.0372-0.0381): the
+bisection walks 0.8 -> 0.4 -> 0.6 -> 0.5 on every seed (pin `arms[*].partitioned_rate_matched.search`; first mid = 0.5 x
+SEARCH_CEILING 4.0 x amp 0.4) and returns at its first in-tolerance step, amp 0.5, as `rate_matched_amplitude` is
+written (`cortex/integration_kernel.py` :499-500 at `c1aac92`); the offset is inside 2.2's symmetric 5 % and in the
+conservative direction for (b2) -- the control carries MORE background activity than INTEGRATED and still reads at the
+floor -- and its adverse side is (b6) clause 3, recorded above with 2.10's cause. PARTITIONED-RATE-MATCHED's PCI differs
+from PARTITIONED's by 0.25-3.4 phrases in either sign (pin `arms[*].partitioned.pci` vs `.partitioned_rate_matched.pci`;
+one phrase = 1.83e-5 in the 1,094,555-character parse), at the floor 3.4 names, so the (b1) gap survives matching whole:
+t +5.20 -> +4.90 (pin `conjuncts.b1`/`b2`).
+
+**The reading sits at the instrument's floor, said plainly.** INTEGRATED reads PCI 0.0003-0.0011 (15.6-60.6 LZ phrases
+per seed, the 8-set means, in a 1,094,555-character footprint; one phrase = 1.83e-5 PCI); every partition, every echo
+and the null read 2-6 phrases; SYNCHRONOUS reads 0.0000 on every seed (rate 0.987-0.988): the saturated table's response
+to the pulse is empty on 7 of 8 seeds (gzip 9 bytes); seed 5 carries 0.5 ones in the 8-set mean (0.75 phrases, gzip 29)
+-- "integrated but not differentiated" exactly as the incumbent's regime; SILENT reads 1-7 phrases of propagation from
+rest. The absolute
 PCI values are not comparable to the incumbent's 12-unit fixture (0.43) and 2.1 says a lone PCI number is never
 reportable; what this row reads is the CONTRASTS, and they carry: a three-unit pulse on this population causes a
-footprint 5-10x more complex through the wiring than without it, on every seed, matched for rate.
+footprint 4.2-14.1x higher in normalized LZ than PARTITIONED (b1) and 2.8-16.7x higher than the rate-matched partition
+(b2) per seed (ratio of 8-seed means 8.8x and 8.0x), positive on 8/8 seeds.
+
+*(2026-09-15, T070 panel of 2026-09-14, instrument lens + its refuter)* The separation is carried by footprint MASS:
+INTEGRATED flips 19.0-111.1 bits per set-mean against 1.1-3.0 (PARTITIONED) and 1.25-3.1 (rate-matched), 9-56x / 6-74x
+[pin `ones`]; INTEGRATED's phrases per flipped bit are 0.55-0.82 [pin pci divided by k = log2(L)/L, over pin `ones`,
+L = 1,094,555], at the random-placement ceiling for the same mass (0.53-0.66 at 56/132/251 bits; a stereotyped same-mass
+footprint reads 0.03-0.18) [refuter probe through `integration_measure.normalized_lz`, scratch, no kernel, dated
+2026-09-14]; the 8 INTEGRATED seed means rank by PCI as they rank by mass (Spearman +0.976; +0.942 over the 33 non-empty
+(seed, arm) readings) [panel rederive.py over the pin]. The differentiation axis discriminated no pair -- not because
+the statistic cannot read it at this density, but because no arm produced a stereotyped non-empty footprint: (b3)
+compares INTEGRATED with an EMPTY footprint on 7 of 8 seeds (seed 5: 0.5 bits, 0.75 phrases) [pin
+`synchronous.ones`/`.pci`], the SYNCHRONOUS table at width saturating at rate 0.987-0.988 with 14,023-14,054 of 14,215
+units in flight at capture [pin `synchronous.rate`/`.inflight`], refrac_ticks 0 (`h01_ingest.population` imports
+`LIFNeuron.refractory`, default 0), where the 64-unit fixture's same arm responded on seed 2 (PCI 0.0426, 508.8 bits,
+rate 0.84) [self-check output]. Its 0.0000 reproduces the incumbent's synchronous reading (3.2) as a NO-response, not a
+stereotyped one; a successor pre-registration owes a SYNCHRONOUS arm that responds at width if (b3) is to test
+differentiation.
 
 ### 3.4 The disposition, and why 2.6's deletion is HELD rather than applied
 2.6 prescribes PASS on all seven, or NULL on (b1), (b2) or (b6) -> the port DELETED. 2.10 carved out the branch where (b1),
@@ -354,6 +397,17 @@ deleted, its CORE/REGIONS/EXEMPT registrations removed; the port is re-landable 
 a2cf76d..c1aac92). The successor pre-registration re-specifies (b6) clauses 2-3 with a tolerance sized by a MEASURED per-set
 echo dispersion or a paired test (an un-registered paired t(null - partitioned) reads +1.6733 FPR 0.0391 and t(null -
 rate_matched) +0.5435 FPR 0.0586 on the pin -- quoted as a pointer, never a reading) and (b4) as a reported quantity.
+(2026-09-15, T070 panel of 2026-09-14, pre-registration-honesty lens) The sentence "a coin flip between two quantities
+the instrument cannot separate" above carries no statistic; it is a characterization from the parse granularity (one
+phrase = 1.83e-5 PCI, L = 14,215 x 77 = 1,094,555 -- pin `W_units`, `constants`). On the pin, clause 2 reads partitioned
+<= null on 6/8 (one exact tie) and clause 3 on 4/8 (pin `conjuncts.b6.note`). A paired t on (null - arm), NOT
+pre-registered and computed by the panel only to test this sentence, reads +1.67 (clause 2) and +0.54 (clause 3) with
+the harness's `contrast` on the pin's per-seed null and pci; both are below the 1.895 bar, so neither direction is
+established at the row's bar, and the FPR beside them is the bar's sign-flip rate, not a p-value. No resolution control
+was run and none can be computed from this pin (per-set echoes are averaged before pinning). The seed-4 rate-matched
+miss (5.62 vs 2.62 phrases) has 2.10's pre-named cause. The successor sizes any tolerance from the per-set echo
+dispersion it records -- not from two restores with nothing changed, which 2.5(c) proves byte-identical -- or uses the
+paired test this section already names.
 
 ### 3.5 Deviations from 2.1-2.11, each with its number (dated 2026-09-10)
 1. 2.8's cost estimate was wrong by four orders of magnitude on the scorer (3.2); corrected by 2.11 before any number.
@@ -369,8 +423,214 @@ rate_matched) +0.5435 FPR 0.0586 on the pin -- quoted as a pointer, never a read
 8. Campaign run 1's 9 h 40 min was invisible because its log was block-buffered and printed per seed only; run 2 prints
    per arm, unbuffered, and refuses above a projected 3 h (obs #2170).
 
+*Items 9-17 are appended 2026-09-15 by the T070 panel of 2026-09-14 and its refuters; each carries its own date, so the
+heading's 2026-09-10 governs items 1-8 only. Line cites into `cortex/integration_kernel.py` name the tree at `c1aac92`,
+the module having been DELETED in the fold (3.7).*
+
+9. (2026-09-15, T070 panel of 2026-09-14, instrument lens) 2.4 R3(ii)'s diagnostic sentence names ONE cause for a
+   non-divergence (no in-flight spikes); the fixture sweep found a second BEFORE the R3 red -- at amp 0.70 seed 3
+   carried 4 spikes in flight and the frame-only restore did NOT diverge (a lost sub-threshold delivery washed out
+   without flipping a crossing); FIXTURE_AMP = 0.4 was chosen as the smallest swept amplitude at which every self-check
+   seed both carries >= 1 in-flight spike AND diverges (0.3 fails the first with in-flight [0,3,2,0]; 0.7 fails the
+   second), so the fixture's R3(ii) is a tuned red and the test asserted both conjuncts independently; the untuned
+   reading is the campaign population's 8/8 divergence at 485-611 in flight (3.2). Disclosed at the time only in
+   `a2cf76d`'s message and the FIXTURE_AMP docstring (`cortex/integration_kernel.py` :102-125 at `c1aac92`); reported to
+   the orchestrator and omitted from this section when written. Re-measured 2026-09-14 by the panel's probe and its
+   refuter: amp 0.4 in-flight [1,5,1,1] all diverge; amp 0.7 in-flight [3,7,9,4], seed 3 no divergence.
+10. (2026-09-15, T070 panel of 2026-09-14, pre-registration-honesty and disposition lenses) 2.2 named seven constants
+   "chosen BEFORE the pilot" and omitted INTEGRATED's background drive amplitude (2.2 names it only as what the
+   rate-matched arm re-calibrates and SILENT sets to 0). amp = 0.4 (`FIXTURE_AMP`; pin `constants.amp`) entered the tree
+   at `47c9bdf` (2026-09-10 03:25:39), after the freeze `f09adc4` (03:04:03), by the sweep disclosed at
+   `cortex/integration_kernel.py` :102-125 at `c1aac92` on `synthetic_artifact(64, out_degree=8)`: the SMALLEST swept
+   amplitude at which (a) every self-check seed carries >= 1 in-flight spike at the capture tick, (b) the frame-only
+   restore diverges on every self-check seed, (c) the INTEGRATED - PARTITIONED contrast clears the bar over the four
+   self-check seeds. (c) never bound -- it clears at 0.30-0.70; (a) bound at 0.30, (b) at 0.70. The sweep's OWN time is
+   unrecorded: `a2cf76d` (03:16:22, "a throwaway sweep BEFORE this red") is its first record, so the tree fixes only an
+   upper bound, not that it ran after the freeze. Its per-amplitude t-values in that comment (+18.5 at 0.30, +5.78 at
+   0.40) predate the arms' commit `551ba84` (03:37:00) and are NOT the committed self-check's reading, which is +4.2504
+   (2.10, 3.1, FIXTURE_TRIPWIRES; reproduced at `c56a730` on 2026-09-14 by the bare self-check). The campaign reused 0.4
+   without re-selection; its rates (0.037-0.038) and in-flight counts (485-611) are in the pin. The pin's constants dict
+   also carries SEARCH_CEILING = 4.0, which 2.2 likewise never names; a successor lists both. Whether rule (c) is
+   selection on the outcome was put to the pre-registration-honesty lens: its ruling is the one in 3.4 and 3.7, on the
+   HOLD; it did not rule (c) separately, and this record does not rule it either.
+11. (2026-09-15, T070 panel of 2026-09-14, pre-registration-honesty lens) On the 64-unit fixture the honest reading's
+   (b6) already reads NOT MET through clause 3 on seed 3 (rate-matched echo 0.0162 vs INTEGRATED's 0.0134 -- 2.10's
+   number), so R2's registered response "the instrument must report (b6) NOT MET for it" (2.4) had no contrast against
+   its own control there. What carried the fire in the self-check command is `above` = [0, 1, 2, 3] and the
+   instrument's clause 2 reading 0/4 (un-cut) against 4/4 (cut) -- the printed lines -- which neither the test nor this
+   record asserted; a mutant with clause 2's comparison flipped passed the R2 test and the self-check alike. The
+   pre-registered criterion is unchanged, no conjunct is relabelled, and the campaign pin's clause counts (6/8, 4/8)
+   recount from its own rows. With the port and its tests DELETED in the fold (3.7) the test-side fix is moot; the
+   successor's R2 asserts the instrument's clause reading against the raw one in the same test.
+12. (2026-09-15, T070 panel of 2026-09-14, instrument lens + refuter) R3(ii)'s control drops an EMPTY ring on every
+   table `population()` builds -- the 64-unit fixture and the H01 population alike compile `delay = ones`,
+   `max_delay = 1` (`h01_ingest.py` :1476-1480; PROVENANCE "delay" :1383-1385; T062 evidence :414), and
+   `compile_bundles` refuses delay < 1 (`kernel_tick.py` :117), so "the fixture with non-zero delays" (2.4) and "a
+   delayed fixture" (3.1) mean delay 1. With every delay 1, `_route` (:237) fills and `_deliver_and_rotate` (:254)
+   drains the same slot `(tick+1) % 2` inside one tick, so the blob's `rings` is `[[[], []]]` at every capture
+   (measured on fixture seeds 0-3 and H01 seed 0, W_frac 1.0, WARM 40, amp 0.4). What the control drops that diverges
+   is the ACCUMULATOR: frame + acc alone (tick_index 0, rings empty) continues byte-identical to the original over 80
+   ticks; frame + tick_index or frame + rings without acc diverges (H01 seed 0, fixture seed 0). The pin's `inflight`
+   (532 on seed 0; 485-611 across the 8 seeds, pin `chain[].inflight`, 2.11; 1/5/1/1 on fixture seeds 0-3) is
+   `Capture.inflight = fired.size`, the count that fired at the capture tick (`cortex/integration_kernel.py` :138-146,
+   :227 at `c1aac92`), whose bundle charge sits in `_acc` (2,222 non-zero entries on seed 0); (b7) asserts it > 0
+   (:703 at `c1aac92`). The ring path of capture/restore is exercised by `replay_gate.run_gate` (delays 1-5,
+   `replay_gate.py` :188-199), not by this row. No number, conjunct or verdict changes.
+13. (2026-09-15, T070 panel of 2026-09-14, pre-registration-honesty lens) 2.10 (heading :159, "dated 03:55") was
+   committed at `f7f7cfa` 13:21:55, 9 h 27 min after its stated date and 22 s after the campaign entry point
+   `30b4d2e` 13:21:33 [`git log --format=%ci`]; run 1 (started 03:40:35, 2.11 / 3.2) returned no PCI number
+   [3.2; `30b4d2e`'s body], run 2 ran at `git_head` `c1aac92` (14:01:07) and pinned at `ab09b9b` (14:15:44) [pin;
+   `git log -- tools/t070_pci.json`], so git alone orders the freeze before every campaign number. The AUTHORING time
+   rests on a second, machine-local instrument: the session scratch draft `amendment_2_10.md`, last written 03:44:29
+   -0500 [`ls --time-style=full-iso`], byte-identical to :159-199 [`diff -q`] -- 10.5 min EARLIER than the heading's
+   "03:55", which is therefore a forward-dated estimate; the discrepancy favours the pre-number claim. The other drafts
+   read: 2.11 13:20:34 (committed 13:21:55), section 3 14:24:33 (committed 14:25:08), the pre-registration 02:05:34
+   (committed `f09adc4` 03:04:03, before the first code commit `a2cf76d` 03:16:22), each byte-identical to its
+   committed text at :201-255, :257-370 and :1-157 as the file then stood. The scratch file is ephemeral; these
+   readings are quoted, not referenced.
+14. (2026-09-15, T070 panel of 2026-09-14, pre-registration-honesty lens) `30b4d2e` (adds `run_campaign`, +115 lines in
+   `cortex/integration_kernel.py`, the only src-touching commit of the stack without one) records no census-gate run in
+   its message, against 2.9. `integration_kernel.py` is unchanged from `30b4d2e` through `3b7a2b6` -- the next
+   src-touching commit, four commits later, touching only `integration_measure.py` -- whose message reports
+   CENSUS_GATES rc=0; the gates walk the whole package (`substrate/method_dormancy_gate.py` :196), so the symbol was
+   gated from `3b7a2b6` on. Whether `30b4d2e` itself was gated is not recorded.
+15. (2026-09-15, T070 panel of 2026-09-14, disposition lens) `scorer_sha256` b0e84643... (`tools/t070_pci.json` :5) is
+   the sha256 of the CRLF working-tree bytes of `cortex/integration_measure.py` (`git ls-files --eol`: i/lf w/crlf;
+   `core.autocrlf=true` from the system gitconfig); the LF blob at `c1aac92` and at the panel's head `c56a730` hashes
+   90ee7535..., which `tr -d '\r'` of the working file reproduces; its git blob id is 0b13851a...
+   (`git rev-parse c1aac92:<path>`). `instrument_sha256` and `harness_sha256` reproduce from their blobs. No test or
+   module reads the field and the verdict is unaffected; a reader checks `git ls-files --eol` before reading a pin hash
+   mismatch as a content change. Since the fold's commit 2 (`994ff0b`) also edited that file -- dropping the dangling
+   `# distinct-from:` marker at the deleted module -- the scorer's bytes at HEAD differ from `c1aac92`'s by that hunk
+   as well, and the pin's `scorer_sha256` now refers to the tree at `c1aac92`, as 2.6 and 3.7 say. The fold half the
+   finding proposed (pin `git hash-object` beside the raw sha256 in `run_campaign`) is MOOT: `run_campaign` lived in
+   the module the fold deleted. A successor pin owes it, with the sibling writers `prior_drift_harness._self_sha` and
+   `h01_ingest._sha256_of`; existing pins are not rewritten. Obs #2173.
+16. (2026-09-15, T070 panel of 2026-09-14, instrument lens) Set-level, re-derived 2026-09-14 through `run_regime`'s own
+   functions (`kernel_port`, `warm_capture`, `perturbation_sets`, `kernel_causal_response`, `score_footprint`,
+   `local_echo_null`) in a session scratch script whose 8-set means are IDENTICAL to the pin's pci/gzip/ones/null/rate/
+   inflight on 8/8 seeds (the positive control): INTEGRATED's footprint reaches no unit beyond the three pulsed on 11
+   of 64 sets (per seed 3/1/1/0/2/2/0/2; 3 of the 11 are EMPTY footprints, c 0 / gzip 9), and the two largest sets
+   carry 42-80 % of a seed's phrases (largest single set 337/485 on seed 1, 230/433 on seed 5, 188/437 on seed 3).
+   "On every seed" in 3.3 is a statement about the 8-set mean 2.3 registers. The pin carries seed means only, as 2.6
+   pre-registered; per-set (c, ones, units reached with its definition, echo) is a field for the successor
+   pre-registration 3.4 names -- the incumbent's `PerturbationalComplexity.pci()` already returns per-trial tuples
+   (`integration_measure.py` :350) which the port's `ArmReading` averaged away.
+17. (2026-09-15, T070 panel of 2026-09-14, disposition lens) 2.1 named `cortex/integration_measure.py`; the port landed
+   in `cortex/integration_kernel.py` at 2.9's commit 3 (`47c9bdf`, 2026-09-10 03:25 local, BEFORE the first campaign
+   started 03:40 per 2.11). Written first into `integration_measure`, the dormancy gate read 5 stale EXEMPT rows
+   (kernel_tick, kernel_state, replay_gate, h01_ingest, determinism_gate) because `integration_measure` is
+   live-reachable through `region_coherence`'s `normalized_lz` import and the gate walks every import; retiring those
+   rows would have been the lie fact 7 refuses, so the instrument took `prior_drift_harness`'s shape (own module,
+   EXEMPT permanent, run_selfchecks CORE). The mechanism was unchanged and the scorers stayed live in
+   `integration_measure` (the port imported them, never the reverse). Disclosed in the module docstring, the EXEMPT row
+   and `47c9bdf`'s message, which deferred it "for section 3"; 3.1 and 2.11's entry point name the file without this
+   flag. Source: `47c9bdf`'s message and the module's own :39-51 at `c1aac92` (the arc's own reading, not re-run by the
+   panel, since reproducing it needs the first-written port rebuilt). The module, its test and all three registrations
+   are DELETED in the fold (3.7).
+
 ### 3.6 What this row does NOT claim
 No Phi, no threshold, no sentence about experience, no aggregate with another reading; no C4 number; no statement about
 the live brain (no live population runs on the kernel -- "live" is NOT delivered, 2.7); no claim that the absolute PCI
 values mean anything beyond their contrasts; no claim that the hold in 3.4 is a pass -- SC-009's integration instrument
 has fired its reds and has NOT met its own verdict rule.
+
+### 3.7 The panel fold (appended 2026-09-15; the panel ran 2026-09-10/14 on head `c56a730`)
+
+Three lenses (pre-registration honesty; the instrument and the campaign; the disposition and the tree) filed findings;
+each finding was put to a refuter that re-ran its command and refuted the FIX as its own claim. 23 findings STAND, 6 are
+REFUTED, and the refuter marked 17 of the 23 filed fixes wrong (`fix_is_correct=False`). **This fold adopts the
+REFUTERS' minimal fixes, never the panel's filed fixes.** F-numbers below are the fold material's ordering.
+
+**THE RULING, and the branch it fired.** 3.4 named the adjudicator before the panel ran and pre-committed: "If it rules
+so, the fold's FIRST commit executes 2.6's deletion." **F10 [BLOCKER], the pre-registration-honesty lens, ruled the
+hold a post-number change of the routing 2.6 pre-registered** (2.6 :133, 2.10 :188-190, 2.11 :253-254): all seven
+conjuncts were read as written and the verdict word is 2.3's, so this is NOT a conjunct relabelling -- it is an
+un-pre-registered change of the DISPOSITION after its number. The NULL branch of 2.6 therefore fired and was executed in
+the fold's commit 2, `994ff0b`: `cortex/integration_kernel.py` and `tests/test_integration_kernel.py` DELETED with the
+three registrations `47c9bdf` added (run_selfchecks CORE, `__init__` REGIONS cortex, `dormancy_gate` EXEMPT). KEPT, as
+the ruling specifies: `lz76_complexity`'s new body, `tests/test_integration_measure_lz.py`, the pin `tools/t070_pci.json`
+(never edited, never re-run), the harness's lifted `arm_no_edges`, and this record. The port is re-landable from the tree
+at `c1aac92` (history `a2cf76d..c1aac92`).
+
+**The 23 standing findings, with severity as adjudicated and the form adopted.**
+
+| # | severity | the finding, in one line | the form adopted |
+|---|---|---|---|
+| F1 | MINOR | four numbers in 3.3 / `ab09b9b` / the scorer docstring are not what the pin holds | folded with F3 and F18 into the 3.3 phrase-range, SYNCHRONOUS and ratio corrections and the 3.2 probe wording (below); the scorer docstring is left unedited -- 3.2 :280 already carries the measured 1,094,555, and the pin's scorer provenance is recorded in 3.5 item 15 instead |
+| F2 | MINOR | the activity-floor control's effect is unquantified and the matched rate is one-sidedly high | one dated sentence after 3.3's conjunct table, verbatim from the refuter's fix, with NO percentage-of-gap figure (0.41 phrases is below the floor 3.4 names) |
+| F3 | MINOR (filed MAJOR) | "13-60 LZ phrases" is a wrong number; two neighbouring ranges are loose | 3.3 in place: "15.6-60.6 LZ phrases per seed, the 8-set means"; the SYNCHRONOUS clause requalified (0.0000 on 8/8; empty on 7 of 8; seed 5 at 0.5 ones / 0.75 phrases / gzip 29); "2-6 phrases" left as the refuter directs; no per-set minimum written |
+| F4 | MINOR (filed MAJOR) | 3.4's "a coin flip between two quantities the instrument cannot separate" is asserted, not measured | one dated line appended to 3.4, verbatim from the refuter: no direction claimed at the row's bar, the FPR named as the bar's sign-flip rate, no resolution control run or computable, the successor sized from per-set echo dispersion (never from two restores, which 2.5(c) proves byte-identical) |
+| F5 | MINOR | section 1 fact 4 cites two harness lines stale at the freeze | ONE appended dated line under section 1 item 4 -- the sanctioned correction inside frozen text; nothing else in 1-2 changes; `ad98d47` (+19) and `82eafb1` (+98) attributed from git, not from the panel's narrative |
+| F6 | MAJOR | 2.4 R3(ii)'s diagnostic names one cause; the sweep found a second, and 3.5 never recorded it | 3.5 item 9, with the tuned-red disclosure the refuter required (FIXTURE_AMP 0.4 the smallest amplitude meeting (a) and (b)) beside the counterexample |
+| F7 | MINOR | amp 0.4 is absent from 2.2's constants, sweep-chosen, with the row's own statistic among the criteria | 3.5 item 10, merged with F22; "chosen after the freeze" NOT written as fact -- the sweep's own time is unrecorded and only an upper bound exists |
+| F8 | MINOR | "amp 0.4 re-measured on it" overstates; minimality was never re-swept at width | 3.3 :299 rewritten in place with the three clauses' numbers and the correct citation; the source print was never edited (the module is now deleted) |
+| F9 | MAJOR | R2's registered fire criterion had no contrast on the fixture; the record names R2 fired without naming what fired it | 3.5 item 11, record only; the refuter's test-side fix is moot with the port deleted and is passed to the successor's R2 |
+| F10 | BLOCKER | RULING: the hold is a post-number change of 2.6's routing | executed in commit 2 `994ff0b` (above), with the dated line in 3.4 and the four annotation sites |
+| F11 | MINOR (filed MAJOR) | "5-10x more complex" over-reads what separated the arms | 3.3's ratio corrected to 4.2-14.1x / 2.8-16.7x and ONE dated line on footprint MASS after it, verbatim from the refuter -- the filed headline ("normalized LZ is monotone in mass") was refuted by the same refuter's probe and is NOT written |
+| F12 | MINOR | "in-flight spikes" live in the accumulators, not the rings, at every capture | 3.5 item 12, verbatim from the refuter, with the attribution control it ran (frame + acc identical; frame without acc diverges) |
+| F13 | MINOR | 2.10 sat uncommitted 9.5 h; the stated 03:55 post-dates the draft's 03:44:29 | 3.5 item 13, verbatim; the filed overstatement "git alone could not show it" is NOT written -- git alone does order the freeze before every campaign number |
+| F14 | MINOR | `30b4d2e` records no census-gate run, against 2.9 | 3.5 item 14, worded as the refuter requires: what is unrecorded, not what did not happen; "four commits later"; the tree is NOT the same at `3b7a2b6` |
+| F15 | MINOR (filed MAJOR) | the pin's `scorer_sha256` is the CRLF working-tree hash, not the git blob | 3.5 item 15, record half only; the fold half (pin `git hash-object` beside the raw sha256 in `run_campaign`) is MOOT -- `run_campaign` lived in the deleted module -- and is passed to the successor. Obs #2173 |
+| F16 | MINOR | `brain_telemetry`'s docstring still said the brain computes `pci` in the sleep tick | commit 3 `ae1af59`: corrected IN PLACE per that file's own dated-correction convention, the dead coordinate `brain.py:2519` dropped |
+| F17 | MINOR | per-set readings are heavy-tailed and the pin carries seed means only | 3.5 item 16, with the 8-seed figure (11 of 64 sets) the refuter derived, never the two-seed "3-4 of 8"; the per-set fields go to the successor pre-registration, not to a re-pin |
+| F18 | MINOR | one rounded number in 3.3: the pin reads 15.6-60.6, the record said 13-60 | folded into F3's single edit (the refuter's "16-61" rounding is not taken alone; the unrounded per-seed range is written) |
+| F19 | MINOR | the port landed in a new module where 2.1 names `integration_measure`; 3.5 never listed it | 3.5 item 17; the test-docstring half is moot (the test is deleted) |
+| F20 | MINOR | PLAN-FINAL's Phase 5 gate note still reads "T070 ... OPEN" | ONE appended dated note at `PLAN-FINAL-2026-09-02.md`'s Phase 5 gate line, carrying the RULED fate; nothing at the historical note further down, nothing in `evidence/s2-exit.md` (the tree does not retro-annotate a pushed certification) |
+| F21 | MINOR | `conclusion_protocol`'s C4_TASK comment "integration has no C4 task" is now false | commit 3 `ae1af59`: one dated `#:` line appended; the VALUE is not set (2.6 reserves it for PASS) and no "set only with a reading" rule is written (false for six of seven rows) |
+| F22 | MINOR | the same amplitude finding from the disposition lens, with the sweep's t-values | merged into 3.5 item 10; the sweep's +18.5 / +5.78 are written only WITH the disclosure that they predate `551ba84` and are not the committed self-check's +4.2504; 3.3's dead "2.11's obs #2165 clause" pointer replaced |
+| F23 | MAJOR | 62 unpushed commits; the last battery on disk read RED on `plasticity.rule_composer`, fixed by `5a99739` | no edit here, as the refuter directs: the content belongs to the push's CLOSING RECORD COMMIT (the battery's coverage `1d4602c..<stacked head>`, run 1's red and its fix), which is written after the ONE battery on the stacked head |
+
+**The six REFUTED findings** (one line each; in every case the numbers or observed facts reproduced and the finding did
+not stand as filed):
+1. [MINOR] "The successor 3.4 proposes for (b6) clauses 2-3 ('a paired test') would read NOT MET too; the measured fact
+   is non-separability in BOTH directions" -- the numbers reproduce exactly on the frozen pin (t(null - partitioned)
+   +1.6733 FPR 0.0391; t(null - rate-matched) +0.5435 FPR 0.0586) and the reading does not follow.
+2. [MINOR] "SILENT's propagation from rest reaches up to three hops on the campaign population, not one, and one pulsed
+   unit re-fires in the window" -- the re-run is byte-identical on every line (hop depths per seed, non-empty sets), and
+   the record's SILENT clause is not impugned by it.
+3. [MINOR] "The sign-flip FPR printed beside (b1)/(b2) is 13/256 = 0.0508, above the bar's nominal 0.05" -- the
+   arithmetic reproduces exactly (b1/b2 13/256, b3 11/256, b6 clause 1 12/256) and the pin's fields match; no conjunct
+   moves.
+4. [MINOR] "tasks.md T070 flipped to [X] DONE in the record commit while 2.9's step 7 is explicitly unexecuted" -- the
+   OBSERVED reproduces, but only through `rtk proxy git show`; the filed command returned exit 1 under RTK truncation.
+5. [MAJOR] "P2: TWO network implementations that produce PCI rasters survive at head, both in CORE, and the hold branch
+   names no closure condition" -- the facts reproduce exactly (both modules CORE, both self-checks rc 0, the toy
+   factories present); the count was the pre-registered state of 2.10's own carve-out branch, not the defect. The
+   ruling's deletion (commit 2) leaves one.
+6. [MINOR] "`region_coherence.py` carries a dormant duplicate of the OLD Kaspar-Schuster LZ76 under an import fallback"
+   -- the facts reproduce exactly; it was already disclosed as 3.5 item 7 "for the fold", so it is not a panel finding.
+   The fold executed that disposition anyway, in commit 4.
+
+**Every IN-PLACE correction, site -> commit.**
+- `cortex/integration_kernel.py`, `tests/test_integration_kernel.py` (DELETED); `run_selfchecks.py` CORE row;
+  `snn_data_lake/__init__.py` REGIONS cortex row; `substrate/dormancy_gate.py` EXEMPT row;
+  `cortex/integration_measure.py` the dangling `# distinct-from:` marker; `substrate/brain_telemetry.py`
+  `PROVENANCE["pci"]` to the past tense; this file 3.4 (appended dated line); `tasks.md` T070 :150, PLAN-FINAL's C4
+  bullet and Part F C-R5, `spec.md` SC-009 (appended dated sentences) -> **commit 2, `994ff0b`**.
+- `substrate/brain_telemetry.py` module docstring, the `pci` clause (F16); `substrate/conclusion_protocol.py` the dated
+  `#:` line after the C4_TASK comment (F21) -> **commit 3, `ae1af59`**.
+- `substrate/region_coherence.py`, the `try/except` LZ76 fallback deleted and the unguarded import kept (3.5 item 7)
+  -> **commit 4, `2851574`**.
+- This file: section 1 item 4 (appended line, F5); 3.2's campaign-probe wording (F1); 3.3 :299 the amplitude sentence
+  (F8, F22); 3.3 the sentence after the conjunct table (F2); 3.3's floor paragraph, phrase range and SYNCHRONOUS clause
+  (F1 + F3 + F18); 3.3's ratio and the footprint-MASS line (F1, F11); 3.4 (appended line, F4); 3.5 items 9-17;
+  `PLAN-FINAL-2026-09-02.md`'s Phase 5 gate line (appended note, F20); this section -> **commit 5, this commit**.
+- Sections 1-2.11 are otherwise byte-identical to `f09adc4`; the pin `tools/t070_pci.json` was never touched.
+
+**The fold's five commits.** 1 `f1180ce` -- the prelude: two appended corrections from Codex's closing reports, into
+the T063 record's 3.6 and `evidence/s2-exit.md` section 2. 2 `994ff0b` -- 2.6 EXECUTED on (b6)'s null (the ruling
+above). 3 `ae1af59` -- the two stale comments (F16, F21). 4 `2851574` -- `region_coherence`'s dormant duplicate LZ76
+fallback deleted (P2/P3; 3.5 item 7). 5 this commit -- section 3 corrected by the panel, and this section.
+
+**Not adopted, and why, so the reader does not look for them.** F11's refuter also asked for a pointer line in 3.5 to
+its 3.3 mass paragraph; the fold's 3.5 numbering is fixed at items 9-17 and the paragraph sits in 3.3 where it reads, so
+no pointer was added. F1's refuter offered a dated 3.2 line about `lz76_complexity`'s docstring repeating 2.11's
+80-tick estimate; 3.2 :280 already states the measured 1,094,555, and the pin's scorer provenance is recorded in 3.5
+item 15, so no source edit was made for a docstring number. F23 writes nothing here by its refuter's own direction.
+
+**This fold is battery-verified only (obs #35).** Its commits were gated as their messages record (census gates, the
+scoped pytest, the bare self-checks, ruff), never by the full suite: 2.9 holds the battery until the stack's rows are
+in (owner 2026-09-10), and the ONE battery on the stacked head, with its coverage range, is named in the closing record
+commit -- which is also where F23's content lands. Each commit's "Verified by: the arc's battery, named in the closing
+record commit" is that IOU.

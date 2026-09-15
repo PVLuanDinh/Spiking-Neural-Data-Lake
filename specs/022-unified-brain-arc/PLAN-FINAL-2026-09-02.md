@@ -809,6 +809,10 @@ May run in parallel with Phase 3 (O5(b)); MUST precede Phase 5.
 
 *DATED NOTE 2026-09-10: the T071 conjunct is DISCHARGED (evidence/s2-exit.md); Phase 5 still waits on Phase 4 -- T070, T077-T082 all OPEN.*
 
+*DATED NOTE 2026-09-15 (T070 panel of 2026-09-14): T070 ran 2026-09-10 (campaign run 2 at `c1aac92`, pin `ab09b9b`;
+evidence/t070-integration-kernel.md 3.3: verdict NOT MET; tasks.md T070 `[X]` at `c56a730`); the port's fate per 3.4's
+adjudication: DELETED under 2.6 in `994ff0b`. Phase 5 still waits on Phase 4 -- T077-T082 open, no c-exit.*
+
 - **T072** proposer un-latched (rank 7 incl. its `note_cycle` clause: a futile set counts as exhausted for
   its source); red: `distinct candidate keys reachable` ≤ 1 (red today); positive control: two hand-named
   operators yield 2 keys. **T073** evaluator cascade on harness-only evidence, stage 2 = Phase 4's
