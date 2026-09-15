@@ -1335,9 +1335,11 @@ def run_t077_campaign(seeds=T077_SEEDS, n_ticks=T077_N_TICKS, pin=T077_PIN):
     if readable:
         au = [x["intact"]["auroc2"] for x in ss]
         verdict["b1"] = contrast("b1 tracking", [a - 0.5 for a in au])._asdict()
-        # (b2)'s null is ANALYTIC -- E[auroc2] under the label permutation is exactly 0.5 (average ranks sum
-        # to n(n+1)/2), so this contrast is (b1) plus the Monte-Carlo error of a 2,000-draw median (<= 0.0024
-        # on the T077 pin); it cannot disagree with (b1). Kept as pre-registered (2.3); evidence 3.5.
+        # (b2)'s null has an ANALYTIC MEAN -- E[auroc2] under the label permutation is exactly 0.5 (average
+        # ranks sum to n(n+1)/2) -- but its MEDIAN is not fixed by it: on the T077 pin's streams (100-167
+        # distinct confidences) the median sits within 0.0024 of 0.5 and (b2) tracks (b1); on a discrete,
+        # skewed stream the median departs and (b2) can read MET where (b1) does not (Codex's counterexample,
+        # reproduced: evidence 3.5 item 30). Kept as pre-registered (2.3); redundant on THIS pin only.
         verdict["b2"] = contrast(
             "b2 not a marker", [x["intact"]["auroc2"] - x["intact"]["shuffled_auroc2"] for x in ss]
         )._asdict()
