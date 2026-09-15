@@ -238,10 +238,13 @@ def _mi_from_counts(joint, px, py, n):
     return total
 
 
-def _mi_read(x, y, n_perm=N_PERM, seed=0, n_min_per_cell=N_MIN_PER_CELL):
+def _mi_read(x, y, n_perm=N_PERM, seed=0, n_min_per_cell=N_MIN_PER_CELL, min_rule="per_cell"):
     """The core of `mi_read`. `n_min_per_cell` is a parameter ONLY so R3's mutation
     (N_MIN_PER_CELL := 0) can be RUN rather than argued -- the public `mi_read` hardcodes the
-    declared constant and the campaign never reaches this spelling."""
+    declared constant and the campaign never reaches this spelling. `min_rule` is 2.10's: "per_cell"
+    (the pre-registered rule, n >= N_MIN_PER_CELL x observed joint cells -- the PRIMARY reading) or
+    "per_class" (n >= N_MIN_PER_CELL x |y classes| -- the (g3c) CONTROL only, whose 12 x 12 joint would
+    otherwise refuse at every pair count N = 1,200 can produce; its floor is exact at any cell count)."""
     n = len(x)
     px, py = Counter(x), Counter(y)
     joint = Counter(zip(x, y, strict=True)) if n and n == len(y) else Counter()
@@ -262,10 +265,14 @@ def _mi_read(x, y, n_perm=N_PERM, seed=0, n_min_per_cell=N_MIN_PER_CELL):
     if len(px) < 2 or len(py) < 2:
         out["refusal"] = f"a one-class axis (|x| = {len(px)}, |y| = {len(py)}): MI is 0 by identity"
         return out
-    if n < n_min_per_cell * cells:
+    need = n_min_per_cell * (len(py) if min_rule == "per_class" else cells)
+    if n < need:
+        unit = (
+            f"{len(py)} y classes" if min_rule == "per_class" else f"{cells} observed joint cells"
+        )
         out["refusal"] = (
-            f"{n} pairs over {cells} observed joint cells is below {n_min_per_cell} per cell "
-            f"({n_min_per_cell * cells} required): the floor cannot resolve this stream"
+            f"{n} pairs over {unit} is below {n_min_per_cell} per {'class' if min_rule == 'per_class' else 'cell'} "
+            f"({need} required): the floor cannot resolve this stream"
         )
         return out
     rng = random.Random(seed)
@@ -282,7 +289,7 @@ def _mi_read(x, y, n_perm=N_PERM, seed=0, n_min_per_cell=N_MIN_PER_CELL):
     return out
 
 
-def mi_read(x, y, n_perm=N_PERM, seed=0):
+def mi_read(x, y, n_perm=N_PERM, seed=0, min_rule="per_cell"):
     """`mi_bits` against its OWN permutation floor: the 95th percentile of `mi_bits(x, permuted y)`
     over `n_perm` permutations of y, drawn by a seeded `random.Random` -- the same convention as
     `metacognitive_monitor.track_error`, whose q95 order statistic is reused verbatim.
@@ -291,7 +298,9 @@ def mi_read(x, y, n_perm=N_PERM, seed=0):
     False, NO mi) below `N_MIN_PER_CELL` pairs per OBSERVED joint cell, or when either axis carries
     one class. `n_perm` and `refusal` are beyond 2.1's listed keys and are reported, never barred:
     a refusal that does not say why is a number without a reason."""
-    return _mi_read(x, y, n_perm=n_perm, seed=seed, n_min_per_cell=N_MIN_PER_CELL)
+    return _mi_read(
+        x, y, n_perm=n_perm, seed=seed, n_min_per_cell=N_MIN_PER_CELL, min_rule=min_rule
+    )
 
 
 def _fit_and_score(x_tr, y_tr, x_sc, y_sc, k, seed):
@@ -622,7 +631,9 @@ def t078_g3(rows, seed, n_perm=N_PERM):
         "dropped_estop": p["dropped_estop"],
         "n_awake": p["n_awake"],
         "primary": primary,
-        "control": mi_read(x_action, y_next, n_perm=n_perm, seed=seed),
+        # 2.10: the CONTROL's readability is per action CLASS (its 12 x 12 joint would refuse at
+        # every pair count N = 1,200 can produce under the per-cell rule); the primary keeps 2.1's
+        "control": mi_read(x_action, y_next, n_perm=n_perm, seed=seed, min_rule="per_class"),
         "gate16": mi_read(_gate16(pairs), y_next, n_perm=n_perm, seed=seed),
         "same_tick": mi_read(x_focus, x_action, n_perm=n_perm, seed=seed),
         "cells": primary["cells"],
@@ -901,6 +912,8 @@ def t078_reds(n_perm=REDS_N_PERM, n_shuffle=N_SHUFFLE, seeds=T078_SEEDS):
     readable = mi_read(ox, oy, n_perm=n_perm, seed=0)
     one_class = mi_read([0] * 600, oy, n_perm=n_perm, seed=0)
     m3 = _t078_mutated_scorer("no_min")(cx, cy, n_perm=n_perm, seed=0)
+    # 2.10's twin: the same 145 pairs read as a 12-class CONTROL are readable under the per-class rule
+    ctrl_ok = mi_read(cx, cy, n_perm=n_perm, seed=0, min_rule="per_class")
     out["R3"] = bool(
         refused["readable"] is False
         and refused["mi"] is None
@@ -908,6 +921,7 @@ def t078_reds(n_perm=REDS_N_PERM, n_shuffle=N_SHUFFLE, seeds=T078_SEEDS):
         and readable["readable"] is True
         and readable["cells"] == 39
         and one_class["readable"] is False
+        and ctrl_ok["readable"] is True
         and m3["readable"] is True
     )
 

@@ -144,6 +144,11 @@ def test_r3_the_refusal_fires_on_the_probes_own_shape():
     mutant = _t078_mutated_scorer("no_min")(x, y, n_perm=REDS_N_PERM, seed=0)
     assert mutant["readable"] is True, "N_MIN_PER_CELL := 0 must redden R3"
     assert mutant["mi"] is not None, mutant
+    # 2.10: the (g3c) CONTROL reads under a per-CLASS minimum -- 145 pairs over 12 next-tick classes
+    # (120 required) are readable while the same 145 pairs over 39 cells still refuse as the PRIMARY
+    ctrl = mi_read(x, y, n_perm=REDS_N_PERM, seed=0, min_rule="per_class")
+    assert ctrl["readable"] is True, ctrl
+    assert mi_read(x, y, n_perm=REDS_N_PERM, seed=0, min_rule="per_cell")["readable"] is False
 
 
 def test_r4_the_decoder_reads_above_its_own_label_shuffle_band():
@@ -288,8 +293,17 @@ def test_the_readers_run_on_a_constructed_recording_and_the_control_axis_can_ref
     g3 = t078_g3(rows, 0, n_perm=50)
     assert g3["n_pairs"] > 0 and g3["dropped_sleep"] > 0, g3
     assert g3["primary"]["readable"] is True, g3["primary"]
-    assert g3["control"]["readable"] is False, "a uniform 12-class action axis must refuse here"
-    assert "below 10 per cell" in g3["control"]["refusal"], g3["control"]["refusal"]
+    # 2.10: the control reads under the per-CLASS rule (12 classes -> 120 pairs) where the
+    # per-cell rule (up to 144 cells -> 1,440 pairs) refused it; the primary keeps per-cell
+    assert g3["control"]["readable"] is True, g3["control"]
+    per_cell = mi_read(
+        [a["action"] for a, _ in t078_pairs(rows)["pairs"]],
+        [b["action"] for _, b in t078_pairs(rows)["pairs"]],
+        n_perm=50,
+        seed=0,
+        min_rule="per_cell",
+    )
+    assert per_cell["readable"] is False and "per cell" in per_cell["refusal"], per_cell
     g4 = t078_g4(rows, 0, n_shuffle=20)
     assert g4["n_rows"] > 0 and g4["n_classes"] == 10, g4
     for key in ("u", "c15", "raw64", "chan", "u_digit"):
