@@ -272,3 +272,118 @@ identity).
 
 WHAT DOES NOT CHANGE. 2.9's steps and their order (this is step 4's first commit); the scorer (48750eb) and the
 re-pointing (5261eb0) stand as committed.
+
+## 3. Results (written 2026-09-15 after the campaign; nothing above this line was edited after 2.10)
+
+### 3.1 The build, red-first, and the commits
+
+`47c41aa` the pre-registration (sections 1-2.9 + PLAN-FINAL Part F row C-R6) -> `654106b` the reds R0-R5 committed RED
+(`ImportError: cannot import name 'RHO'`) -> `48750eb` `track_error` + `replay_reliability` in the incumbent, the reds
+green (7 passed; the label entropy reuses `integration_measure.source_entropy` at the graphify guard's naming) ->
+`5261eb0` `SecondOrderAccess.calibration()` re-pointed to the scorer (its self-check: calibration 1.000 against shuffled
+0.500 / first-order 0.641 / fixed-prior 0.500 / ignition-echo 0.864; SYNTHESIS S6 row) -> `14807ef` the paired t LIFTED
+into `substrate/paired_contrast.py` (2.10; the dormancy gate had read five EXEMPT rows stale on the lazy import) ->
+`07fd69a` the campaign entry (`--t077-campaign`; the apparatus dry-run on one seed at 80 ticks refused on (a) as it
+must) -> `d4e86f6` the pin. Every red of 2.4 fired on its constructed input before the campaign; R0 also held on every
+live recording (the campaign asserts the exact replay before scoring a seed).
+
+### 3.2 The campaign (`tools/t077_metacognition.json`, run at `07fd69a`, committed `d4e86f6`)
+
+2026-09-15 10:06-10:25 local, 1,140 s, under a throwaway NORD_HOME: seeds 0-7, N = 600 ticks, an INTACT and a LESIONED
+scratch brain per seed, arm D three times per seed (intact, pin-to-mean, flip). Prospective pairs per seed 270 / 277 /
+274 / 279 / 279 / 279 / 269 / 279 (0 skipped); scored outcomes equal the pairs (every scored tick had a fed read before
+it); perception frames 294 / 299 / 299 / 298 / 298 / 292 / 293 / 296. Readability (a) MET on every seed: q95 0.5777 /
+0.5715 / 0.5954 / 0.5784 / 0.5721 / 0.5770 / 0.5865 / 0.6148 against 0.75; the minority class ran 18-57 of ~275.
+
+### 3.3 The readings, conjunct by conjunct (every number from the pin; the bar 1.895 over 8 seeds; FPR = the sign-flip rate)
+
+| conjunct | statistic | per seed (0..7) | t | FPR | reads |
+|---|---|---|---|---|---|
+| (a) readable | q95 <= 0.75, both classes | q95 0.5777 0.5715 0.5954 0.5784 0.5721 0.5770 0.5865 0.6148 | -- | -- | **MET** on 8/8 |
+| (b1) tracking | auroc2 - 0.5 | auroc2 0.3828 0.6694 0.6092 0.4571 0.5364 0.6775 0.3907 0.4477 | +0.5049 | 0.0430 | **NOT MET** (above its own q95 on seeds 1, 2, 5; BELOW CHANCE on 0, 3, 6, 7) |
+| (b2) not a marker | auroc2 - shuffle median | shuffle median 0.4986 0.5015 0.4999 0.4986 0.5016 0.4994 0.4976 0.4977 | +0.5246 | 0.0430 | **NOT MET** |
+| (b3) calibration collapses under the lesion | auroc2_intact - auroc2_lesioned | lesioned 0.5932 0.5000 0.4529 0.4907 0.3714 0.5226 0.7030 0.3352 | +0.3736 | 0.0508 | **NOT MET** (the lesioned read tracks BETTER than the intact one on seeds 0, 3, 6) |
+| (b3o) passthrough, reported | auroc2_intact - auroc2_passthrough | identical to (b3) on every seed (3.5 item 2) | +0.3736 | 0.0508 | reported |
+| (b4) first-order preserved (TOST) | acc_intact - acc_lesioned, Delta = 0.0465 | 0.0 on every seed (acc 0.8296 0.7942 0.9124 0.8387 0.8100 0.8351 0.8773 0.9355 on BOTH arms) | 0.0 / 0.0 (degenerate) | 0.0 | **MET, DEGENERATE** (3.5 item 2) |
+| (b5) not blind | oracle = 1.0 and > q95 | 1.0 on every seed | -- | -- | **MET** |
+| (b6) competence over persistence | acc_intact - persistence | persistence 0.9481 0.9495 0.9380 0.8817 0.8781 0.9355 0.9480 0.9892 | **-5.2502** | 0.0469 | **NOT MET** on 8/8: the readout is below "repeat the previous category" |
+| (c) R0 | exact replay of the live recording | held on every seed | -- | -- | **MET** |
+
+**VERDICT: NOT MET** -- (b1), (b2), (b3) and (b6) NOT MET; (a), (b4), (b5), (c) MET. The instrument is not blind (b5),
+the streams are readable (a), the replay is exact (c); the CLAIM -- that the monitor's read tracks the brain's own
+error rate better than a fixed prior, on held-out items -- is not established on this stream: the paired t sits at a
+quarter of the bar, and on four of eight seeds the read is anti-correlated with correctness.
+
+REPORTED beside (never barred). Per-input attribution by exact replay (delta auroc2 with the input pinned to its
+stream mean): `conflict` +0.2476 / -0.2354 / -0.0165 / +0.0375 / -0.1192 / -0.2472 / +0.2646 / +0.0055 -- the ACC
+conflict term is what moves the read's relation to correctness, in BOTH directions across seeds; `surprise` -0.0525 /
++0.0443 / -0.0351 / +0.0309 / +0.0135 / +0.0140 / -0.1171 / -0.0579; `learning_progress` -0.0316 / +0.0048 / +0.0055 /
++0.0056 / +0.0195 / +0.0029 / -0.0153 / +0.0276; `confidence` and `novelty` within +/-0.002 of 0 on every seed (pinning
+them changes no spike). The +5-tick lag control reads 0.3473 / 0.6440 / 0.5707 / 0.5134 / 0.5971 / 0.5832 / 0.3645 /
+0.4656 -- the same range as the prospective pairing, so whatever relation exists is not specific to the tick before
+the score. The perception stream (the vision classifier's per-frame hits, same-tick) reads auroc2 0.4270 / 0.3885 /
+0.5412 / 0.4036 / 0.4305 / 0.4749 / 0.4831 / 0.4638 -- no tracking there either. `brier_gain` is negative on every seed
+(-0.3261 / -0.3197 / -0.4729 / -0.3966 / -0.3392 / -0.2804 / -0.3843 / -0.5981): the read is not on a probability scale.
+ARM D (2.2): `_second_order_hold` True on 39/40 turns on seed 0 and 40/40 on seeds 1-7; conf2 mean 0.0084 (max 0.336)
+and 0.0076 (max 0.276) on seeds 0 and 5, 0.0000 with max 0.0 on the other six; the pin-to-mean neuter changed 0/40
+routes on every seed; the FLIP neuter (hold False) changed 21 / 21 / 22 / 22 / 19 / 23 / 21 / 21 of 40 routes -- the
+constant second-order hold decides about half of the chat path's routes on every seed.
+
+### 3.4 The disposition applied (2.6, the NULL branch: nothing of the incumbents is deleted)
+
+(a), (b5) and (c) MET: the instrument works -- its reds fired, its positive control reads 1.0 above every band, its
+replay is exact. (b1), (b2), (b3), (b6) NOT MET: the claim about the layer does not hold on this stream. By 2.6, fixed
+before any number: the reading is recorded NOT MET with every conjunct's number (3.3); `CONCLUSION["metacognition"]`'s
+`reading` stays None and its surface symbol names the row the cockpit WOULD print on a PASS (`metacog_tracking`,
+printed nowhere; the conclusion gate's arming arm requires a symbol once tasks.md reads `[X]`, and refusal 3 polices
+it if it ever appears); the C5 licensed sentence is NOT written anywhere; the cockpit's `reliability` row and its
+PROVENANCE gain a dated line naming what was measured (the fused spike-count of self-model signals; NOT an
+error-tracking confidence on the readout's stream: t +0.50 against 1.895, four seeds below chance); NOTHING of the
+incumbents is deleted or re-labelled beyond that line (2.0 points 2 and e). The instrument STAYS: `track_error`,
+`replay_reliability`, the campaign entry and the pin are the record's apparatus, reachable and red-tested.
+
+Two facts the disposition did not need but the record must carry: (i) the LESION CHANGED NOTHING in the first-order
+stream -- accuracy identical to four decimals on both arms of every seed, so the lesioned auroc2 equals the offline
+passthrough exactly; (b4) is MET by degeneracy, not by tolerance, and the monitor's gates (learn / explore / grow /
+hold) are shown NOT to touch the readout's tick over 600 ticks (the monitor's own record already read the learn
+consumer inert; this measures the whole gate set on the perception/readout path); (ii) (b6) is a finding about the
+READOUT, not the monitor: on every seed the prequential readout scores BELOW the trivial persistence predictor
+(0.79-0.94 against 0.88-0.99), and the daemon's own cockpit numbers at the time of writing read the same way
+(live_accuracy 0.932 against live_persistence 0.994 over 486 items). That is L1c's online readout on the scratch
+brain's stream failing a competence floor this row is the first to compute; it is carried as a named opening (3.6),
+not adjudicated here.
+
+### 3.5 Deviations from 2.1-2.10, each with its number (dated 2026-09-15)
+
+1. The paired t was lifted out of the EXEMPT harness (2.10) after the dormancy gate read five stale rows on the lazy
+   import 2.1 had believed safe -- an apparatus fact measured on the first campaign commit; no conjunct changed.
+2. The LESIONED arm's outcome stream was BYTE-IDENTICAL to the intact arm's on all 8 seeds (acc differences 0.0), so
+   (b4)'s TOST contrasts were degenerate (`contrast` records a zero-variance sample as degenerate and MET iff its
+   common value is positive; Delta 0.0465 > 0). 2.3 wrote (b4) as two positive contrasts expecting variance; the
+   record reads the degenerate branch as the pre-registered rule states it and names it here rather than smoothing it
+   into "preserved at the bar".
+3. `SecondOrderAccess`'s self-check assertion "calibration must NOT be perfect" could not survive the statistic change
+   (5261eb0): the rank-based read on its constructed stream is exactly 1.000; the honest-limit assertion is now on
+   the CALLS (`errors > 0`). Disclosed in that commit and in the SYNTHESIS S6 row.
+4. The first draft of `substrate/paired_contrast`'s self-check asserted an FPR of 1/256 from expectation; the exact
+   enumeration reads 13/256 for eight same-sign differences; the assertion is now the enumeration (14807ef).
+5. The `learn_gate` "measured learning outcome" licence the first draft of 2.6 relied on was FALSE by the monitor's own
+   record (2.0 point e); nothing in the applied disposition rests on it.
+6. R0's red moved from "an input perturbed by 1e-9" to "a recorded read perturbed by 1e-9" before the freeze (2.4): the
+   read is spike-quantized at 1/384 and the first form would have passed vacuously.
+7. No `metacog_lesion` kwarg was threaded through `make_brain` (the draft's 2.2): the campaign sets the instance's
+   `lesion` attribute and replaces its `reliability()`; brain.py is untouched by this row.
+
+### 3.6 What this row does NOT claim, and the openings it leaves
+
+No experiential claim; the C5 refused sentence stands and the licensed one is not written. The reading is about ONE
+stream (the scratch brain's prequential readout at 600 ticks, 8 seeds) and, reported beside, its perception stream;
+nothing is claimed about chat answers, reasoning or the arm, nor about the daemon's brain. NOT claimed: that the
+monitor's read is useless -- it decides chat routes (its own record: 3/30) and arm D shows the second-order hold
+deciding ~half of them; what is measured is that neither read tracks the readout's error. OPENINGS, each named for a
+successor row: (1) the readout below persistence on every seed and on the daemon (3.4 ii) -- L1c's online readout
+owes a competence floor; (2) the two LIF pools' P2 fate on a matched-input A/B with arm D's counts as input (2.0
+point 4): a hold that is True on 319 of 320 chat turns from a pool silent by construction; (3) the monitor's gates
+touching nothing on the readout's tick (3.4 i) -- P3's "consumed but not decisive" shape for `learn_gate`,
+`explore` and `grow_trigger` on this path; (4) the `conflict` term as the mover of the read's relation to
+correctness, in both directions across seeds -- a successor that wants a tracking read starts there.
