@@ -951,6 +951,132 @@ T077_INPUTS = ("confidence", "surprise", "learning_progress", "novelty", "confli
 T077_PIN = Path("tools/t077_metacognition.json")
 
 
+def t077_tracker_stream(n, p_err, strength, seed, correct=None):
+    """A constructed (conf, correct) stream whose confidence tracks the outcome with `strength`: conf = uniform
+    noise shifted by `strength` on correct items (overlapping classes; strength 0.15 reads auroc2 about 0.65,
+    never 1.0 -- a tracker the permutation band must still resolve). With `correct` given, a SECOND confidence
+    stream on the SAME outcomes (the two-order constructions of R2 / R5; pass a different seed)."""
+    import random
+
+    rng = random.Random(seed)
+    if correct is None:
+        correct = [0 if rng.random() < p_err else 1 for _ in range(n)]
+    conf = [min(1.0, max(0.0, rng.random() * (1.0 - strength) + strength * y)) for y in correct]
+    return conf, correct
+
+
+def _t077_mutated_scorer(kind):
+    """Deliberately broken scorers, each reddening one clause of R2 / R5 -- RUN, not reasoned (P8: a reachable red).
+    `drift`: a non-deterministic scorer (+1e-9 x calls^2 per call) -- a relay's diffs are no longer exactly 0.0,
+    so the degenerate NOT-MET branch cannot fire. `blind`: the confidence stream is discarded -- every read is the
+    fixed prior, so no control can read MET."""
+    calls = [0]
+
+    def drift(conf, correct, **kw):
+        calls[0] += 1
+        r = track_error(conf, correct, **kw)
+        if r["auroc2"] is not None:
+            r["auroc2"] += 1e-9 * calls[0] * calls[0]
+        return r
+
+    def blind(conf, correct, **kw):
+        return track_error([0.5] * len(conf), correct, **kw)
+
+    return {"drift": drift, "blind": blind}[kind]
+
+
+def t077_relay_contrasts(scorer=track_error, seeds=T077_SEEDS, n=120, n_perm=200):
+    """R2 on `contrast` (2.4; rebuilt 2026-09-15 after the panel -- until then R2 scored one stream twice and
+    asserted the two reads equal, which any deterministic scorer passes). RELAY arm: the second-order read IS the
+    first-order input, so (b3o)'s per-seed diffs are exactly 0.0 -- degenerate, NOT MET. CONTROL: a second-order
+    read that is a stronger tracker than the first-order input on the same outcomes reads MET. Returns
+    (relay, control)."""
+    from snn_data_lake.substrate.paired_contrast import contrast
+
+    relay, control = [], []
+    for s in seeds:
+        conf1, correct = t077_tracker_stream(n, 0.1, 0.15, seed=s)
+        conf2, _ = t077_tracker_stream(n, 0.1, 0.6, seed=s + 100, correct=correct)
+        first = scorer(conf1, correct, n_perm=n_perm, seed=s)["auroc2"]
+        relay.append(scorer(list(conf1), correct, n_perm=n_perm, seed=s)["auroc2"] - first)
+        control.append(scorer(conf2, correct, n_perm=n_perm, seed=s)["auroc2"] - first)
+    return contrast("R2 relay: intact - passthrough", relay), contrast("R2 control", control)
+
+
+def t077_lesion_contrasts(scorer=track_error, seeds=T077_SEEDS, n=120, n_perm=200):
+    """R5 on `contrast` (2.4; rebuilt 2026-09-15 after the panel, same defect as R2): (b3) is intact - lesioned
+    auroc2 over the seeds. NO-COLLAPSE twin: the lesioned read EQUALS the intact read -- every diff exactly 0.0,
+    degenerate, NOT MET (the in-vivo half of the dissociation can fail, and fails exactly). COLLAPSING twin: the
+    lesioned read is noise on the same outcomes -- MET. Returns (no_collapse, collapsing)."""
+    from snn_data_lake.substrate.paired_contrast import contrast
+
+    same, collapsed = [], []
+    for s in seeds:
+        conf, correct = t077_tracker_stream(n, 0.1, 0.6, seed=s)
+        noise, _ = t077_tracker_stream(n, 0.1, 0.0, seed=s + 100, correct=correct)
+        intact = scorer(conf, correct, n_perm=n_perm, seed=s)["auroc2"]
+        same.append(intact - scorer(list(conf), list(correct), n_perm=n_perm, seed=s)["auroc2"])
+        collapsed.append(intact - scorer(noise, correct, n_perm=n_perm, seed=s)["auroc2"])
+    return contrast("R5 no collapse", same), contrast("R5 collapsing twin", collapsed)
+
+
+def t077_reds():
+    """2.4's six reds as ONE self-check line (each is also a test in tests/test_metacognition_instrument.py; this
+    is the in-command control 2.4 required and the module did not carry until 2026-09-15). Each value is True iff
+    the red holds on its constructed input and -- for R2 / R5 -- the mutated scorers REDDEN it."""
+    import random
+
+    out = {}
+    rng = random.Random(0)
+    stream = [{k: rng.uniform(0.0, 0.9) for k in T077_INPUTS} for _ in range(120)]
+    rec = replay_reliability(stream, seed=5)
+    bad, big = list(rec), [dict(row) for row in stream]
+    bad[60] += 1e-9
+    big[60]["surprise"] = 1.0
+    caught = 0
+    for args in ((stream, bad), (big, rec)):
+        try:
+            replay_reliability(args[0], seed=5, expect=args[1])
+        except AssertionError:
+            caught += 1
+    out["R0"] = caught == 2 and replay_reliability(stream, seed=5, expect=rec) == rec
+    conf, correct = t077_tracker_stream(400, 0.0, 0.9, seed=1)
+    for i in (7, 311):
+        correct[i] = 0
+    two = track_error(conf, correct, n_perm=200, seed=0)
+    for i in (100, 200, 250, 333):
+        correct[i] = 0
+    six = track_error(conf, correct, n_perm=200, seed=0)
+    out["R1"] = two["readable"] is False and two["auroc2"] is None and six["readable"] is True
+    relay, ctrl = t077_relay_contrasts()
+    d_relay, _ = t077_relay_contrasts(_t077_mutated_scorer("drift"))
+    _, b_ctrl = t077_relay_contrasts(_t077_mutated_scorer("blind"))
+    out["R2"] = (
+        relay.degenerate
+        and not relay.met
+        and ctrl.met
+        and not (d_relay.degenerate and not d_relay.met)
+        and not b_ctrl.met
+    )
+    conf, correct = t077_tracker_stream(400, 0.1, 0.15, seed=3)
+    r = track_error(conf, correct, n_perm=200, seed=0)
+    out["R3"] = bool(r["readable"] and r["shuffled_auroc2"] <= r["perm_q95"] < r["auroc2"] < 1.0)
+    e = _experiment(0)
+    tol = (e["commit_acc"] * (1.0 - e["commit_acc"]) / max(1, e["committed"])) ** 0.5
+    out["R4"] = abs(e["commit_acc"] - e["always_acc"]) > tol
+    same, coll = t077_lesion_contrasts()
+    d_same, _ = t077_lesion_contrasts(_t077_mutated_scorer("drift"))
+    _, b_coll = t077_lesion_contrasts(_t077_mutated_scorer("blind"))
+    out["R5"] = (
+        same.degenerate
+        and not same.met
+        and coll.met
+        and not (d_same.degenerate and not d_same.met)
+        and not b_coll.met
+    )
+    return out
+
+
 def t077_record_brain(seed, n_ticks=T077_N_TICKS, lesion=False):
     """Tick a scratch brain n_ticks times; return (brain, per-tick rows). See the block comment above."""
     from snn_data_lake.cortex.brain import make_brain
@@ -1396,6 +1522,13 @@ def main():
     # P8: delete, never weaken. `excess_baseline` is still PRINTED, because a number a reader can
     # see is worth keeping even when it is not a criterion.
 
+    # ---- (6) T077: THE SIX REDS OF 2.4, one line (tests/test_metacognition_instrument.py carries them as
+    #      tests; this is the in-command control 2.4 required). Added 2026-09-15 after the panel, which found
+    #      R2 / R5 to be f(x)==f(x) checks -- they now read `contrast` and are reddened IN FACT by two mutated
+    #      scorers (`_t077_mutated_scorer`: a drifting one and a confidence-blind one), not by argument.
+    reds = t077_reds()
+    assert all(reds.values()), f"T077 reds must fire on their constructed inputs: {reds}"
+
     print(
         f"self-check OK: GATING lifts held-out {r['l_acc']:.3f}->{r['g_acc']:.3f} while cutting units "
         f"{r['l_units']}->{r['g_units']} (abstained on {r['g_abstains']} noise);"
@@ -1414,6 +1547,10 @@ def main():
         f"changes this monitor's OWN output on {q['charge'][0]}/{q['n']} ticks "
         f"({q['charge'][1]} hold flips, {q['charge'][2]} explore flips), while a CONSTANT conflict "
         f"stream and w_conflict=0 are both byte-identical to no wire at all"
+    )
+    print(
+        f"  T077 reds R0-R5 fire on their constructed inputs, R2 / R5 reddened by mutated scorers: "
+        f"{sum(reds.values())}/{len(reds)}"
     )
 
 
