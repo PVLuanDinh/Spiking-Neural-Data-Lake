@@ -873,6 +873,11 @@ def track_error(conf, correct, n_perm=N_PERM_FLOOR, seed=0):
         "n": n,
         "minority": minority,
         "entropy_bits": source_entropy("".join("1" if y else "0" for y in correct)),
+        # DISCLOSED, never a refusal (2026-09-15, the panel): a CONSTANT confidence stream reads auroc2 exactly
+        # 0.5 inside a zero-width null (every permutation draw is 0.5, so q95 = 0.5) -- the fixed prior's own
+        # value, which second_order_access's CONTROL 3 and 2.1 depend on. The count is printed so a reader can
+        # see when a stream's 0.5 is that identity rather than a measured discrimination (T077 seed 1, 3.5).
+        "conf_distinct": len(set(conf)),
         "rho": RHO,
         "readable": False,
         "perm_q95": None,

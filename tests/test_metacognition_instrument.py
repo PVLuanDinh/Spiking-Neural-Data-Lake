@@ -66,6 +66,21 @@ def test_r1_a_degenerate_stream_is_refused_by_its_own_permutation_null():
     assert ok["readable"] is True and ok["perm_q95"] <= 0.5 + RHO, ok
 
 
+def test_r1c_a_constant_confidence_stream_is_disclosed_not_refused():
+    """The CONFIDENCE axis R1 never covered (added 2026-09-15 after the panel): a constant
+    confidence on a balanced outcome stream reads auroc2 exactly 0.5 -- the fixed prior's value --
+    inside a zero-width null (q95 0.5), readable, with `conf_distinct` 1 printed beside it; the
+    tree's own CONTROL 3 (second_order_access) depends on exactly that reading, so it is disclosed,
+    never refused. The control: a two-valued confidence carries a null of positive width."""
+    rng = random.Random(11)
+    y = [rng.random() < 0.5 for _ in range(400)]
+    r = track_error([0.5] * 400, y, seed=0)
+    assert r["readable"] is True and r["conf_distinct"] == 1, r
+    assert r["perm_q95"] == 0.5 and r["auroc2"] == 0.5, r
+    two = track_error([0.2 if rng.random() < 0.5 else 0.8 for _ in y], y, seed=0)
+    assert two["conf_distinct"] == 2 and two["perm_q95"] > 0.5, two
+
+
 def test_r5_a_lesion_that_does_not_collapse_reads_a_zero_contrast():
     """(b3) is intact - lesioned auroc2 over the seeds, read by the campaign's own `contrast`. A
     lesioned twin whose read EQUALS the intact read gives exactly 0.0 on every seed:
