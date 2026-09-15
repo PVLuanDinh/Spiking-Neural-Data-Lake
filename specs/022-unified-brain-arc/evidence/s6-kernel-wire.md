@@ -878,3 +878,35 @@ six fresh readings of the same three seeds taken during the panel all read DECLI
     rebased (it sits under the closing record commit the arc's battery ran on), and specs/008 `tasks.md`'s
     FR-005 tags at lines 9/26/40 are left as they are — the refuter marked that widening optional and item
     8 discharges the finding.
+
+## 3.8 Post-push amendment (2026-09-15): the sham controls read "within noise of zero" as pre-registered
+
+**What happened, numbers first.** The T063+T071+T070 stack's battery on head `5b6cb2a` (68 commits over this
+row's push) read pytest RED twice, on ONE head, on this instrument's sham controls and nothing else: run 2
+(00:21-01:51 local) on the constructed red `red_sham_neuter`, ceiling **-0.1025** against |c| <= 0.05 with band
+**(-0.28571, +0.00911)**; run 3 (01:54-03:27) on the live reading's `sham_within_noise_band` control inside
+`tests/test_selfchecks.py::test_core_selfcheck_in_process[substrate.amdahl_gate]`, sham arm **+0.05844** with band
+**(-0.0802, +0.10295)** (RAW p50 live 64.22 / neutered 64.92 ms at width 189, the reading itself INDETERMINATE by
+its own floor rule). Diagnosed before any change: on the idle host minutes after run 2 the same test PASSED and
+five direct `red_sham_neuter()` readings were +0.0046, +0.0001, +0.0018, -0.0087, -0.0003 with bands about
++/-0.01 -- the battery-time bands were 20x wider; the host carries the always-on brain daemon (6.8 GB, 5,163
+CPU-s at 01:52). The stack's one change on the live tick, T070's suffix-array LZ76 in `integration_measure`
+(reached every tick through `region_coherence`), was probed as a cause and is NOT one: on tick-size raster strings
+(13 regions x 16..256 samples) it reads 0.524 vs 0.269 ms at 208 chars and is FASTER above 300 chars (0.551 vs
+1.090 ms at 416, 0.920 vs 4.350 at 832, 1.352 vs 16.692 at 1,664), jitter comparable. This row had already
+measured the loaded sham at +0.063..+0.102 (3.7 item 12's "0.0478/0.0535 calm against +0.063..+0.102 loaded")
+and recorded two REFUSED readings (-0.01883, -0.05562; 3.7 C12) without changing the bar.
+
+**What changed, and what did not.** `amdahl_gate.within_noise_of_zero(ceiling, band)` now decides BOTH sham
+controls: the magnitude bar |c| <= 0.05 as built, OR the sham's own paired bootstrap band containing zero.
+The pre-registration's words (2.2 iv / 2.5) are "within noise of zero"; the 0.05 was the build's
+operationalization, recorded in `red_sham_neuter`'s docstring as "a criterion choice made AFTER seeing data".
+A band that EXCLUDES zero never holds through the new clause -- the instrument's own bad draw (C12) stays a
+FAIL -- and the mirror rule (band excluding zero as a FAIL) is NOT reinstated: the build removed it for cause.
+The bar is not moved; no new number enters; the band the instrument already printed "reported, not asserted"
+is allowed to decide. Reds run first: `tests/test_amdahl_gate.py::test_within_noise_of_zero_holds_by_magnitude_or_by_its_own_band_and_fails_on_a_band_excluding_zero`
+constructs both failing cases and both battery readings. NOT changed: `W_TICKS`, `RED_TICKS`, the reading's
+verdict rule, its floor rule, the controls roster's other seven terms, and 2.2/2.5's text. This amendment is
+battery-verified only (obs #35) and is the stack's stacked commit for a red on an earlier arc's artifact
+(owner rule 2026-09-10); obs #2175 records the transferable rule (a timing control with a fixed epsilon on a
+loaded host owes a refusal or its own band, never a re-run until green).

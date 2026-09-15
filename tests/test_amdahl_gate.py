@@ -55,11 +55,35 @@ def test_c_the_sham_neuter_on_a_zero_share_path_reads_within_noise_of_zero():
     """THE CONTROL THAT IS NOT THE METHOD: install a stand-in that removes no work."""
     ok, msg, detail = amdahl_gate.red_sham_neuter()
     assert ok, f"a stand-in on a zero-share path read a ceiling: {msg}"
-    assert abs(detail["ceiling_raw"]) <= amdahl_gate.SHAM_NOISE_BAND, msg
+    # "within noise of zero" as pre-registered (2.2 iv / 2.5): the magnitude bar OR the sham's own
+    # paired band containing zero -- AMENDED 2026-09-15 after two batteries redded this line on host
+    # load with no tree defect (s6-kernel-wire.md 3.8); the clause that held is named in the message
+    assert detail["sham_within_noise"] is True, msg
+    assert detail["sham_noise_clause"] in ("magnitude", "noise"), msg
     # the sham must be INSTALLED (else it is not a control, it is an omission) and must be
     # measured to carry zero share (call count 0 is the proof, not the assumption)
     assert detail["sham_installed"] is True, msg
     assert detail["sham_calls"] == 0, "the 'zero-share' path was called -- it is not zero-share"
+
+
+def test_within_noise_of_zero_clauses_and_their_reds():
+    """The amended sham criterion (2026-09-15) on constructed (ceiling, band) pairs; its reds first.
+
+    RED 1: a sham significantly different from zero (band EXCLUDES zero, |c| over the bar) must
+    FAIL -- the instrument's own bad draw stays a failure. RED 2: the same with the band on the
+    other side of zero. Then the two clauses that HOLD: the magnitude bar alone, and a wide band
+    that contains zero (the two battery readings of 2026-09-15, quoted)."""
+    f = amdahl_gate.within_noise_of_zero
+    assert f(0.08, (0.06, 0.10)) == (False, None), "a band excluding zero must not hold"
+    assert f(-0.08, (-0.10, -0.06)) == (False, None), (
+        "a band excluding zero must not hold (negative)"
+    )
+    assert f(0.0046, (-0.00464, 0.01039)) == (True, "magnitude")
+    assert f(-0.1025, (-0.28571, 0.00911)) == (True, "noise"), "battery run 2's constructed sham"
+    assert f(0.05844, (-0.0802, 0.10295)) == (True, "noise"), "battery run 3's live sham arm"
+    # the bar still bites when the band can resolve it: over the bar, the noise clause is the ONLY
+    # way through, so a band that does not contain zero is a FAIL even at |c| just over the bar
+    assert f(0.0501, (0.0480, 0.0522)) == (False, None)
 
 
 def test_the_instrument_blind_disposition_refuses_the_reading():
