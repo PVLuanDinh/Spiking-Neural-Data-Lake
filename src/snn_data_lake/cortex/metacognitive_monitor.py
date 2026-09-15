@@ -146,6 +146,7 @@ from pathlib import Path
 from snn_data_lake.cortex.executive_control import ExecutiveControl
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.substrate._mathutils import clamp01, sigmoid
+from snn_data_lake.substrate.paired_contrast import T_BAR
 from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
 
 #: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
@@ -799,7 +800,8 @@ def _p6_experiment(seed=0, n=180):
 # distinct-from: substrate/replay_gate.py -- the kernel's snapshot/restore chain; `replay_reliability` below
 #   replays THIS pool on its recorded keyword inputs, no kernel, no snapshot.
 # distinct-from: cortex/prior_drift_harness.py::contrast -- the paired t over seeds, REUSED (lazily), not rewritten.
-T_BAR = 1.895  # PLAN-FINAL Part F preamble; equal to prior_drift_harness.T_BAR (the T077 reds assert it)
+# T_BAR is imported at the top from substrate/paired_contrast (T077 2.10: the restatement is replaced by the import;
+# landed 2026-09-15 in the panel fold -- the literal had survived 14807ef, evidence 3.5). The T077 reds assert it.
 #: READABILITY (2.3 (a), fixed after the design read): a stream is readable iff both outcome classes are present
 #: AND the permutation null of auroc2 for THAT stream (ties at 1/2, N_PERM_FLOOR shuffles of the pairing) has its
 #: 95th percentile at or below 0.5 + RHO. RHO is DECLARED -- the midpoint of the statistic's range between chance
