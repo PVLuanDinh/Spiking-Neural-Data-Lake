@@ -149,7 +149,9 @@ def test_refusal_three_arms_itself_when_a_c4_instrument_task_lands():
     # Six of seven rows declare no surface symbol today, so without this arm the
     # refusal covers exactly ONE instrument.
     assert conclusion_protocol._task_done("T034") is True  # a task marked [X] in tasks.md
-    assert conclusion_protocol._task_done("T077") is False  # C4 is unbuilt
+    # T078 is the C4 task still unmarked; T077 read [X] at f27f436 (2026-09-15) and this line was
+    # RED on that head for a day -- the panel found it (evidence/t077-metacognition.md 3.5).
+    assert conclusion_protocol._task_done("T078") is False  # a C4 task still unbuilt
     assert conclusion_protocol._task_done(None) is False
     armed = {**{k: None for k in conclusion_protocol.INSTRUMENTS}, "agency": "T034"}
     fired = conclusion_protocol.row_findings(tasks=armed)
