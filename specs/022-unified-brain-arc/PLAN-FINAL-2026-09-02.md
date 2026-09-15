@@ -931,7 +931,7 @@ May run in parallel with Phase 3 (O5(b)); MUST precede Phase 5.
   3.3): tracking t +0.5049, the in-vivo lesion collapses nothing t +0.3736, the readout BELOW its own persistence
   predictor t -5.2502 on every seed; the oracle and the replay held. No C4 number; `CONCLUSION["metacognition"].reading`
   stays None; nothing of the incumbents deleted (the C5 refusals and P8 clause 5 as read in its 2.0). Phase 4 still
-  waits on T078-T082.*
+  waits on T078-T082.* *DATED NOTE 2026-09-15 (the T077 panel fold): 27 findings stood (2 BLOCKER / 10 MAJOR / 15 MINOR), 9 refuted, every filed fix wrong; the refuters' minimal fixes landed as eleven stacked commits (`475fbe4`..`a5eff15`) and the record's 3.5 items 9-26, 3.7 ((b5) withdrawn under P8 clause 1 -- the oracle is `_auroc2`'s orientation identity, entailed by (a)) and 3.8; VERDICT NOT MET stands, no bar moved. C-R6's "constructed reds R0-R5" reads: R0 / R1 / R3 / R4 fired before the campaign, R2 / R5 were rebuilt after it on `contrast`; the "+5-tick lag control" of its row shifts by five FED reads (5-19 ticks on the run, 3.5 item 19).*
 - **SC-004's open half gets its owner here:** the multi-region clause (1 of 10 regions grows) is
   re-scoped to "a second region receives grown units that a live path READS" and is owned by C1a (readers
   exist once ports are instantiated) together with L2's growth through the 007 seam — the seam rank 1 built
