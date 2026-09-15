@@ -518,9 +518,11 @@ not adjudicated here.
    40 recorded values are EVERY observe call of the run. On seeds 1, 2, 3, 4, 6, 7 every call reads exactly 0.0
    (3.3's own "max 0.0"), so pinning the mean 0.0 is the identity -- re-run on seed 3 under a scratch home
    (`scratchpad/t077-panel/fold_armd.py`): the intact and pinned output tuples are byte-identical. On seed 5 the
-   pinned values (0.0 / 0.026 / 0.276, from the pin) and the pinned mean 0.0076 all lie below `c_hold` 0.30, so
-   `hold()` -- the only quantity the chat route gate reads -- cannot differ; its 0/40 is entailed by the threshold.
-   On seed 0 the pin can move the hold on exactly ONE turn of 320 (turn 5, conf2 0.3359 against the pinned 0.0084);
+   pin carries conf2's mean 0.0076 and max 0.2760 over 40 turns (the pin holds no per-turn values; mean x 40 - max =
+   0.026 is what the other nonzero turns sum to): every observed value is <= 0.2760 and the pinned mean is 0.0076,
+   both below `c_hold` 0.30, so `hold()` -- the only quantity the chat route gate reads -- cannot differ on any
+   turn; its 0/40 is entailed by the threshold. On seed 0 the pin can move the hold on exactly ONE of its 40 turns
+   (turn 5, conf2 0.3359 against the pinned 0.0084; the only such turn among all 320);
    re-run, both arms read `_metacog_hold` True on that turn and the same route string, "Gf (metacognitive hold:
    abstain)" -- decided by the metacognitive hold, not the second-order one. The pin-to-mean count therefore carries
    no information about the second-order pool's charge on this path, and the successor P2 arc must not read it as
