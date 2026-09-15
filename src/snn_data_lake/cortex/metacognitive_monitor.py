@@ -792,14 +792,17 @@ def _p6_experiment(seed=0, n=180):
 # specs/022 T077 (evidence/t077-metacognition.md 2.1-2.4): does the monitor's read TRACK the brain's own error
 # rate on held-out items better than a fixed prior does? ONE scorer for that question, here, in the incumbent
 # it extends (P2: no third monitor; the row's other incumbent, second_order_access.calibration(), is re-pointed
-# to this scorer in the next commit). The paired t over seeds is prior_drift_harness.contrast, imported LAZILY by
-# the campaign: that module is an EXEMPT instrument, and a module-level import from this live CORE module would
-# make it "reachable from a live root" and stale its dormancy row (the T070 trap, t070-integration-kernel.md 3.5).
+# to this scorer in the next commit). The paired t over seeds is `substrate/paired_contrast.contrast`, imported
+# lazily by the campaign. It was LIFTED there from cortex/prior_drift_harness.py by T077 2.10 because the dormancy
+# gate counts an import at ANY depth -- the lazy import of the EXEMPT harness from this live CORE module read five
+# EXEMPT rows stale (determinism_gate, h01_ingest, kernel_state, kernel_tick, prior_drift_harness); a lazy import
+# does NOT avoid the T070 trap (t077-metacognition.md 2.10; t070-integration-kernel.md 3.5).
 # consolidates: cortex/second_order_access.py::SecondOrderAccess.calibration -- a thresholded call's running
 #   accuracy; superseded by the rank-based scorer below and re-pointed to it (2.9 step 3).
 # distinct-from: substrate/replay_gate.py -- the kernel's snapshot/restore chain; `replay_reliability` below
 #   replays THIS pool on its recorded keyword inputs, no kernel, no snapshot.
-# distinct-from: cortex/prior_drift_harness.py::contrast -- the paired t over seeds, REUSED (lazily), not rewritten.
+# distinct-from: substrate/paired_contrast.py::contrast -- the paired t over seeds, REUSED, not rewritten;
+#   cortex/prior_drift_harness.py re-exports it, so its own call sites still resolve.
 # T_BAR is imported at the top from substrate/paired_contrast (T077 2.10: the restatement is replaced by the import;
 # landed 2026-09-15 in the panel fold -- the literal had survived 14807ef, evidence 3.5). The T077 reds assert it.
 #: READABILITY (2.3 (a), fixed after the design read): a stream is readable iff both outcome classes are present
@@ -859,7 +862,9 @@ def track_error(conf, correct, n_perm=N_PERM_FLOOR, seed=0):
     Always: n, minority, entropy_bits, rho, readable, perm_q95, auroc2 (None unless readable). When both classes
     are present: perm_q95 and shuffled_auroc2 (the median draw) from the stream's own permutation null -- the C5
     dissociation input, computed before any reading. When readable: auroc2 (primary), brier_gain (beside),
-    oracle (conf := outcome, the positive control). Otherwise `refusal` names why."""
+    oracle (conf := outcome): the ORIENTATION identity of `_auroc2` -- exactly 1.0 whenever both classes are
+    present, invariant to `conf`; a unit check on the statistic's sign, NOT a positive control of the campaign
+    (disclosed 2026-09-15 after the panel, evidence 3.5). Otherwise `refusal` names why."""
     import random
 
     from snn_data_lake.cortex.integration_measure import (
@@ -907,7 +912,9 @@ def track_error(conf, correct, n_perm=N_PERM_FLOOR, seed=0):
     out["readable"] = True
     out["auroc2"] = _auroc2(conf, correct)
     out["brier_gain"] = _brier_gain(conf, correct)
-    out["oracle"] = _auroc2([float(y) for y in correct], correct)
+    out["oracle"] = _auroc2(
+        [float(y) for y in correct], correct
+    )  # never reads `conf`: 1.0 for any two-class stream (the orientation identity, not a control)
     return out
 
 
@@ -936,7 +943,8 @@ def replay_reliability(stream, seed, base=0.4, expect=None, neuter=None):
 # `_perc_hits`. The LESIONED arm removes the second-order READ in vivo (gates off, reliability() replaced by the
 # first-order input). Arm D repeats the chat probe. The pin is written ONCE. Seeds run sequentially in one process.
 # distinct-from: cortex/prior_drift_harness.py::run_campaign -- that harness ticks a KernelState population from the
-#   H01 artifact; this ticks make_brain() and reads its own monitor; the paired t (`contrast`) is REUSED, lazily.
+#   H01 artifact; this ticks make_brain() and reads its own monitor; the paired t (`contrast`) is REUSED from
+#   substrate/paired_contrast.py, lazily.
 # distinct-from: substrate/amdahl_gate.py::live_reading -- a timing ceiling over three brains; this records a
 #   read/outcome stream and scores it; no timing, no neuter of a code path.
 T077_N_TICKS = 600
@@ -1145,7 +1153,10 @@ def t077_record_brain(seed, n_ticks=T077_N_TICKS, lesion=False):
 
 def t077_pairs_prospective(rows, key, gap=1):
     """(the LAST FED value strictly before the scoring tick, the outcome scored on that tick); `gap` > 1 reaches
-    further back (the +k-tick lag control). Outcomes with no fed read before them are skipped and counted."""
+    further back by k FED READS (the +k-fed-read lag control): the monitor is fed only on awake ticks, so k fed
+    reads span >= k ticks -- at k = 5 on the campaign, 5 ticks at the median and up to 19 (mean 10.20 over
+    2,206 pairs, seeds 0-7; re-recorded 2026-09-15 after the panel). Outcomes with no fed read before them are
+    skipped and counted."""
     conf, correct, skipped = [], [], 0
     fed_idx = [i for i, r in enumerate(rows) if r["inputs"] is not None]
     for t, r in enumerate(rows):
@@ -1248,7 +1259,7 @@ def run_t077_campaign(seeds=T077_SEEDS, n_ticks=T077_N_TICKS, pin=T077_PIN):
         )  # (c) R0 on the live recording, exact
         intact = track_error(conf, correct, n_perm=T077_N_PERM, seed=s)
         passthrough = track_error(po, correct, n_perm=T077_N_PERM, seed=s)
-        lag5c, lag5y, _ = t077_pairs_prospective(rows, "read", 5)
+        lag5c, lag5y, _ = t077_pairs_prospective(rows, "read", 5)  # 5 FED reads back, not 5 ticks
         lag5 = track_error(lag5c, lag5y, n_perm=T077_N_PERM, seed=s)
         pc, py = t077_pairs_perception(rows, "read")
         perception = track_error(pc, py, n_perm=T077_N_PERM, seed=s)
@@ -1312,6 +1323,9 @@ def run_t077_campaign(seeds=T077_SEEDS, n_ticks=T077_N_TICKS, pin=T077_PIN):
     if readable:
         au = [x["intact"]["auroc2"] for x in ss]
         verdict["b1"] = contrast("b1 tracking", [a - 0.5 for a in au])._asdict()
+        # (b2)'s null is ANALYTIC -- E[auroc2] under the label permutation is exactly 0.5 (average ranks sum
+        # to n(n+1)/2), so this contrast is (b1) plus the Monte-Carlo error of a 2,000-draw median (<= 0.0024
+        # on the T077 pin); it cannot disagree with (b1). Kept as pre-registered (2.3); evidence 3.5.
         verdict["b2"] = contrast(
             "b2 not a marker", [x["intact"]["auroc2"] - x["intact"]["shuffled_auroc2"] for x in ss]
         )._asdict()

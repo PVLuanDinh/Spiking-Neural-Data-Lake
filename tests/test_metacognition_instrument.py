@@ -103,7 +103,7 @@ def test_r3_the_shuffled_pairing_is_a_marker_and_the_oracle_is_not():
     r = track_error(conf, correct, n_perm=200, seed=0)
     assert r["readable"] is True
     assert r["oracle"] == 1.0, "conf := outcome must read auroc2 1.0 when both classes are present"
-    assert r["oracle"] > r["perm_q95"], "the positive control must sit outside the permutation band"
+    assert r["oracle"] > r["perm_q95"], "the orientation identity sits outside the permutation band"
     # the dissociation input: the SAME confidences paired with shuffled outcomes sit inside the band
     assert r["shuffled_auroc2"] <= r["perm_q95"], r
     assert 0.5 < r["auroc2"] < 1.0, r
