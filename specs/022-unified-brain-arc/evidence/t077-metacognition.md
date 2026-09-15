@@ -373,6 +373,14 @@ not adjudicated here.
    read is spike-quantized at 1/384 and the first form would have passed vacuously.
 7. No `metacog_lesion` kwarg was threaded through `make_brain` (the draft's 2.2): the campaign sets the instance's
    `lesion` attribute and replaces its `reliability()`; brain.py is untouched by this row.
+8. (appended 2026-09-15, before the panel) TWO STATED TIMES IN THIS FILE ARE WRONG AND GIT IS THE INSTRUMENT: the header
+   says sections 1-2 were written "05:10-10:20 local" and 2.10's heading says "~11:10 local"; `git log --format=%ci`
+   records the freeze `47c41aa` at 09:47:05 -0500, 2.10's commit `14807ef` at 10:05:47, the campaign entry `07fd69a` at
+   10:06:11, the campaign's own start at 10:06:23 (its log) and the pin `d4e86f6` at 10:27:08. The stated times were the
+   session's estimates written without reading a clock (obs #2171's shape: an amendment's stated time owes an instrument
+   git cannot supply, and here git supplies the better one). What the times were meant to establish -- that 2.10 was
+   written BEFORE any campaign number -- git establishes on its own: `14807ef` precedes `07fd69a` precedes the run that
+   produced `d4e86f6`. The headings are left as written; this item corrects them.
 
 ### 3.6 What this row does NOT claim, and the openings it leaves
 
