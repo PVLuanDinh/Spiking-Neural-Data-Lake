@@ -80,6 +80,11 @@ VERDICT_WORDS = (
 #: instrument and its baseline was measured through that blindness (adversarial panel, 2026-09-06).
 #: `integration` has no C4 task: its numbers already print on the cockpit ahead of C4, which is why it is the
 #: one row that declares symbols today and the one surface finding this gate carries.
+#: 2026-09-15 (T070 verdict 2026-09-10): `integration` DOES have a C4 task -- T070 (tasks.md :205;
+#: evidence/t070-integration-kernel.md), [X] with verdict NOT MET; its 2.6 sets `C4_TASK['integration'] = 'T070'`
+#: on PASS only and keeps None on the NULL branch that fired (2.6, 2.10, 3.4; the port deleted in the fold), so
+#: None here reads 'not passed', not 'no task'. Gate unaffected: the row declares symbols, so the arming arm
+#: never reads this id.
 C4_TASK: dict[str, str | None] = {
     "integration": None,
     "metacognition": "T077",

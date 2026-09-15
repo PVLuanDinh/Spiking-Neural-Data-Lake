@@ -37,8 +37,10 @@ THE HONESTY CONTRACT (the whole point -- read before adding a panel)
        This exists because rule 2 was not enough. An audit of this file's own dashboard found four
        signals being drawn as live bars that are nothing of the kind: `integration_competence` is
        assigned only inside `Brain.__init__` (brain.py:394, and its except-branch sibling at :403)
-       and never again; `pci` is computed only inside the sleep tick and only when `nights % 4 == 0`
-       (`Brain._sleep_tick`, brain.py:2519); `spikes.midbrain` reduces to a constant 0.05 because its
+       and never again; `pci` WAS computed only inside the sleep tick and only when `nights % 4 == 0` --
+       its producer in `Brain._sleep_tick` was DELETED 2026-08-05 (the block that stood there carries the
+       measurement); this clause said 'is computed' until 2026-09-15, corrected with PROVENANCE['pci']
+       below (a0d8946, 2026-09-10); `spikes.midbrain` reduces to a constant 0.05 because its
        `novelty` term is written only under a `_salience_on` flag that is never enabled
        (`AutonomousArm.__init__` sets it from the `salience_novelty=False` kwarg at
        autonomous_loop.py:242, and `cortex/brain.py:241` records deliberately NOT passing it; it is
