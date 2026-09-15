@@ -54,6 +54,12 @@ MEASURED LIMITS -- KEPT, NOT TUNED AWAY (the self-check prints the true numbers)
     "was there an ignition at all". The self-check therefore runs an IGNITION-FLAG-ECHO
     control (predict availability = the ignited bit); the monitor must beat it, or it
     would be adding nothing over reading that one bit.
+  * CIRCULARITY, named 2026-09-15 by the T077 panel: the ground truth the calibration is
+    scored against (`truly = ignited and availability >= avail_majority`) is a deterministic
+    function of TWO of the four values observe() is handed, so on the constructed stream a
+    trivial recomputation of it scores 1.000 (CONTROL 5, the ceiling) and the monitor's
+    1.000 TIES it -- a computability result about the stream, not a calibration result
+    about the pool. The number is 1.000, never the ignition-echo's 0.864.
 
 Reuses (does NOT reimplement): cortex/lif_neuron.LIFNeuron. Mirrors the style of
 cortex/metacognitive_monitor.py (which monitors LEARNING reliability; this one
@@ -181,7 +187,14 @@ class SecondOrderAccess:
         -- P2, the thresholded-call agreement this method returned until then is retired). 0.5 is chance
         (the fixed prior's exact value). Returns 0.0 before any observation, or while the history cannot
         resolve tracking on its own permutation null -- an HONEST 'no evidence yet', not a score. The call
-        itself (`hold`) and its per-trial errors are unchanged; only the score's statistic changed."""
+        itself (`hold`) and its per-trial errors are unchanged; only the score's statistic changed.
+        CIRCULAR on a constructed stream (the T077 panel, 2026-09-15): the target is recomputable from two
+        of observe()'s own inputs, so 1.000 here ties the recomputed target and says nothing about the pool.
+        PRICE, measured 2026-09-15 on the self-check's stream: 2,000 permutations over the FULL history, each
+        an O(n log n) rank pass -- 34 ms at n = 50, 64 ms at n = 100, 119 ms at n = 200, 246 ms at n = 400,
+        from a former O(1) read; the history is never truncated (that would silently change the statistic).
+        No live tick reads this today (only `state()`, which nothing on the tick calls); a live caller keeps
+        it OFF the hot path, computed on demand."""
         if self._n == 0:
             return 0.0
         from snn_data_lake.cortex.metacognitive_monitor import track_error
@@ -246,10 +259,11 @@ def _experiment(seed=0):
     trials = _stream(seed)
 
     mon = SecondOrderAccess(seed=seed)
-    confs, truths, calls, kinds, conf1s, igs = [], [], [], [], [], []
+    confs, truths, calls, kinds, conf1s, igs, avails = [], [], [], [], [], [], []
     for kind, avail, strength, ig, c1, truth in trials:
         c2 = mon.observe(avail, strength, ig, c1)
         confs.append(c2)
+        avails.append(avail)
         truths.append(truth)
         calls.append(not mon.hold())
         kinds.append(kind)
@@ -280,6 +294,17 @@ def _experiment(seed=0):
     # ---- CONTROL 4 (must FAIL): echo the IGNITION FLAG alone as the score. This is the cheap
     #      strategy the monitor must beat -- otherwise the second order re-reads one bit. -------
     cal_ignition_echo = track_error([1.0 if ig else 0.0 for ig in igs], y, seed=seed)["auroc2"]
+
+    # ---- CONTROL 5 (the CEILING, added 2026-09-15 after the panel): the ground truth RECOMPUTED
+    #      from the pool's OWN inputs -- `truly = ig and a >= avail_majority` is a deterministic
+    #      function of two of the four values observe() is handed -- scored as if it were the
+    #      confidence. It reads 1.000 and TIES the monitor: the monitor's 1.000 on this stream is
+    #      a computability result about the stream, not a calibration result about the pool. ----
+    cal_ground_truth = track_error(
+        [1.0 if (ig and a >= mon.avail_majority) else 0.0 for ig, a in zip(igs, avails)],
+        y,
+        seed=seed,
+    )["auroc2"]
 
     # ---- per-kind confidence means AND per-kind ERROR counts (the honest breakdown) ------------
     by_kind, err_kind = {}, {}
@@ -327,6 +352,7 @@ def _experiment(seed=0):
         "cal_first_order": cal_first_order,
         "cal_majority": cal_majority,
         "cal_ignition_echo": cal_ignition_echo,
+        "cal_ground_truth": cal_ground_truth,
         "by_kind": by_kind,
         "err_kind": err_kind,
         "errors": sum(err_kind.values()),
@@ -396,6 +422,11 @@ def main():
     _p(lines, f"    CONTROL ignition-flag echo only   : {r['cal_ignition_echo']:.3f}  <- must FAIL")
     _p(
         lines,
+        f"    CEILING ground truth from own inputs: {r['cal_ground_truth']:.3f}  <- TIES the monitor: the 1.000 "
+        "is about the stream, not the pool",
+    )
+    _p(
+        lines,
         f"    HONEST LIMIT: {r['errors']} wrong calls remain (see the per-kind column); the "
         f"weak-but-available trials clear hold by only {r['by_kind']['weak_ok'] - r['c_hold']:+.3f}",
     )
@@ -448,6 +479,14 @@ def main():
     assert r["cal"] > r["cal_ignition_echo"] + 0.05, (
         f"calibration {r['cal']:.3f} must beat the ignition-flag-echo control {r['cal_ignition_echo']:.3f} "
         "-- otherwise the monitor only re-reads the ignited bit"
+    )
+    # 2026-09-15 (the T077 panel): the binding control was MISSING. The target `truly` is recomputable
+    # from two of the pool's own inputs, and that recomputation scores 1.000 -- the monitor TIES it.
+    # Asserted as the tie the data supports (a monitor reading below the recomputed target is the
+    # red), never as the monitor beating its own inputs, which would be the bar moved.
+    assert r["cal"] == r["cal_ground_truth"] == 1.0, (
+        f"on this stream the recomputed ground truth ({r['cal_ground_truth']:.3f}) is the ceiling and the "
+        f"monitor ({r['cal']:.3f}) must tie it; a 'beats ignition-echo' reading is not evidence about the pool"
     )
     # T077 (2026-09-15): the honest limit is the CALLS, which still err on the masked trials; the
     # rank-based calibration on this constructed stream reads 1.000 (every truly-available trial
