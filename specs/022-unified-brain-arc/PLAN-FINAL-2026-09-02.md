@@ -739,6 +739,132 @@ clause protects it.
   holds and the floor pin is unchanged; all three named items therefore read NEGATIVE; the
   gate-by-existence is undisturbed.*
 
+### N workstream - Navier-Stokes coupled to a liquid state machine (T096-T100)
+
+**ADDED 2026-09-14** (owner request 2026-09-13, retried 2026-09-14): planned experimental
+workstream, **OPEN / UNBUILT**. FR-036 and SC-014 own the requirement and composite success
+criterion; this section owns its design and order. It starts after Phase 2's exit disposition,
+alongside Phases 3/4. Its live deployment waits for its own gates and the relevant Phase 4
+wake/recall consumers; its self-improvement registration also waits for Phase 5's existing gates.
+It discharges none of the older learning, persistence, cognition or integration deficits.
+
+**N1 / T096 - formulation and pre-registration.** Combine an ARTIFICIAL fluid reservoir with
+the existing spiking substrate and learned readout. The fluid supplies recurrent temporal state;
+spikes drive it and receive its feedback. This is a new engineering hypothesis, not a derivation
+of neurons from a fluid. The [liquid state machine framework](https://pubmed.ncbi.nlm.nih.gov/12433288/)
+supports recurrent spiking computation with a readout; it does not validate this particular hybrid.
+Neither a universal edge-of-chaos optimum, an invented neural Reynolds number, nor a consciousness
+claim is part of this design. Establish fading memory/input synchronization for the COUPLED system
+empirically under the registered input envelope; positive viscosity alone cannot establish it.
+
+Use a fixed small 2D periodic grid initially, fixed positive density rho and viscosity nu, and
+declared nondimensional space/time/velocity scales. Let u be velocity, p the periodic pressure
+with zero spatial mean, r filtered per-neuron spike activity, and P0 the zero-mean Helmholtz
+projection onto divergence-free fields. The continuous target and discrete coupling contract are:
+
+```text
+du/dt + (u . grad)u = -grad(p)/rho + nu * laplacian(u) + P0(B r)
+div(u) = 0
+alpha = exp(-dt/tau); r[k+1] = alpha*r[k] + (1-alpha)*s[k]
+u[k+1] = NSstep(u[k], P0(B r[k]), dt)
+Ifluid[k+1] = g * tanh(C u[k] / U_ref)
+```
+
+Here s[k] is normalized per-tick spiking activity and tau is the declared filter time constant;
+B maps activity into two-component grid forcing, C samples/mixes velocity into neuron currents,
+and U_ref > 0 is a fixed persisted velocity scale. B/C are seeded, REALIZED arrays persisted in
+full, with declared dimensions and norm bounds. The LIF update at tick k consumes its already
+buffered Ifluid[k] plus the incumbent input/recurrent currents. All right-hand sides use old
+state and commit together, giving one explicit step of feedback delay and no algebraic loop.
+Readout features come from spikes through the incumbent learned readout; no fluid-to-answer bypass.
+Local synaptic/readout learning uses the retained incumbent rules. No global adjoint or
+backpropagation is introduced as the live synaptic learner; PERC/adjoint extensions are outside
+this first design. Freeze growth, topology and realized B/C within each paired trial; any candidate
+change happens only at a recorded trial boundary, with the same initial spiking state for all arms.
+
+Before scored runs, record the grid, initial-state/input envelope, scales, nu/g/tau and B/C search
+domains, numeric tolerances, washout/horizon, readout schedule, benefit/regression thresholds,
+solver policy and hard compute/memory/latency/checkpoint budgets. Tune each arm on training/validation
+only, with equal search effort; freeze the protocol before opening held-out data. Use Part F's
+eight paired seeds and uncertainty rule, adding prospective effect-size thresholds and intervals;
+do not select a threshold after seeing a result. A larger grid needs a measured benefit and a new
+budgeted comparison before adoption.
+
+**N2 / T097 - solver and causal coupling.** Start with a periodic Fourier projection solver:
+project initial velocity and every forcing/update, keep the velocity zero mode fixed at zero,
+solve pressure on nonzero modes with its zero mode fixed, and use 2/3 dealiasing of nonlinear
+advection. Pin the integrator and an explicit stability/error rule for dt/substeps against grid
+spacing, measured velocity and viscosity (including any explicit diffusion restriction). Substeps
+advance the fluid with the tick's frozen forcing; they do not invent extra neural ticks. Check
+Taylor-Green unforced decay against its analytic solution and grid/time refinement; also check
+divergence, finite state, and the forced viscous energy balance over the periodic domain:
+
+```text
+E = integral(|u|^2 / 2); dE/dt = -nu * integral(|grad u|^2) + integral(u . P0(B r))
+```
+
+This is dissipation plus forcing, not energy conservation. Bound forcing/current by the registered
+maps and gain, never repair an invalid trajectory by clipping fluid velocity. A stability,
+divergence, convergence, non-finite or energy-residual failure is a visible failed trial and RED;
+no failed run is silently discarded, clipped into a pass, or retuned on held-out data. N-R1 owns
+constructed solver faults plus correct analytic controls. N-R2 compares distinct initial states
+under identical inputs, at the registered washout/horizon, and tests temporal separation and
+memory against ordered/shuffled controls; synchronization alone could be a dead reservoir.
+For this probe only, hold learned weights/readout identical and freeze plasticity; perturb only
+transient fluid, LIF, spike-filter and delayed-current state. Fading memory means convergence of
+these transients under common drive, never erasure of durable knowledge or convergence of differently
+learned brains. Restore the registered local learning schedule for the behavioral trials.
+
+**N3 / T098 - one durable brain.** Append versioned checkpoints to the SAME `brain_lake.bin` at
+bounded cadence and promotion boundaries: fluid field/config, realized B/C and U_ref, r, delayed
+current buffers, LIF state, synapses, readout and local-learning state, all RNG stream positions,
+solver/backend/numeric/tick/version identity, integrator history if any, and proposal-parent lineage.
+Use the existing lake framing and retention machinery, no second memory store and no unbounded
+per-tick field dumps.
+Declare per-record migration dispositions/upcasters and run round-trip reds under FR-030; preserve
+the IMMORTAL policy and append budget. This does not revive the rejected paging layer.
+
+N-R3 resumes in a FRESH PROCESS under a pinned deterministic runtime, replays the same remaining
+inputs, and compares spikes, readout decisions and learning updates with uninterrupted execution.
+Decisions/spikes must agree exactly; explicitly justified numerical tolerances for continuous state
+are fixed before the run. Zeroed/omitted meaningful field, filter, delay, learner or RNG state,
+corrupt records and incompatible versions must fail or be explicitly refused, never silently
+restart from zero. Run the migration round-trip and measure checkpoint bytes/growth, append cost
+and restart latency; the hybrid cannot claim durable continuity while any required carrier is absent.
+
+**N4 / T099 - behavior and cost, conjunctively.** Compare (a) an equally tuned spiking-only LSM,
+(b) the same hybrid with advection removed (diffusion-only), and (c) full Navier-Stokes feedback.
+Use paired frozen inputs/seeds, identical readout training and parameter-search effort, and the
+same measured compute, peak memory and latency ceilings, including solver and checkpoint work.
+Declare comparable capacity and account for ALL extra fluid state; giving the cheaper arms less
+tuning or hiding the solver cost invalidates the comparison. Score temporal memory/discrimination
+AND an existing live-brain task/recall path selected before held-out evaluation. Full NS must beat
+BOTH cheaper controls by the prospective primary task-benefit threshold, with the registered uncertainty
+rule, while respecting regression tolerances on the other named outcomes (N-R4).
+
+Disconnect or time-shuffle fluid feedback and silence the relevant grown spiking units, with the
+equal-count pre-sized-unit control from SC-012b: the attributed useful task gain must deteriorate
+at its registered threshold (N-R5), while the correct unablated positive controls hold. A pretty
+flow, low physics residual, extra neurons or a changed output without useful performance is not
+success. Numerical validity, useful temporal dynamics, continuation, incremental task benefit,
+causal attribution and resource limits are ALL required by SC-014. A null/loss keeps its honest
+evidence and removes the failed coupling from the claimed architecture under P8; it does not
+weaken the target, turn diffusion's success into NS's success, or claim SC-014 passed.
+
+**N5 / T100 - live wiring and improvement.** Only after N-R1 through N-R5 and budgets pass,
+wire the hybrid into the declared wake/recall ports and repeat the behavioral, continuation and
+latency gates on that live path. Register the governed modules/self-checks, manifest readers,
+provenance and this invention's controls before claiming it is part of the working brain.
+Before Phase 5 uses it, declare bounded viscosity, filter-time and coupling-gain mutation surfaces
+with lake-persisted parent/candidate lineage, harness-only evidence and archive/retention decisions.
+Keep realized maps/topology frozen per evaluation; changing them requires an explicitly declared
+surface and renewed capacity/determinism tests. FR-025/OD-2's evaluator/invariant/safety protections
+remain in force, including owner approval for protected diffs; motor outputs still pass the
+existing arm gate. N-R6 refuses premature deployment, out-of-surface candidates, fabricated scores
+and resource overruns. All six instruments and their registration are PLANNED, not already in CI.
+Exit: a recorded SC-014 verdict, measured controls/costs and live disposition in this workstream's
+future evidence record; all T096-T100 checkboxes remain OPEN until their own deliverables exist.
+
 ### Phase 4 — Cognition on the substrate (so growth matters) — ranks 3, 5, 6 + US4's instruments
 
 May run in parallel with Phase 3 (O5(b)); MUST precede Phase 5.
@@ -860,6 +986,11 @@ Parallel arms: L1a ∥ L3 ∥ the oracle may start at W3 (they do not wait for P
 - Phase 3's paging runs at a constructed width and does not wait for Phase 2's growth; its ORDER after
   Phase 2 is the plan's choice (O5(f)), not a hard gate.
 - Phase 5 waits for BOTH T071 and Phase 4.
+- **ADDED 2026-09-14:** N1 -> N2 -> N3 -> N4 -> N5 (T096-T100) is a planned arm after
+  Phase 2's exit disposition; N4's brain comparison waits for its named Phase 4 consumer.
+  N5's live wire waits for SC-014's numerical/behavioral/persistence/resource evidence; its
+  mutation registration waits for T073/T074 and Phase 5's standing prerequisites. A failed
+  hybrid does not delay unrelated work; it receives the recorded null/loss disposition above.
 
 | dropped / refused / deferred | disposition | measurement |
 |---|---|---|
@@ -883,6 +1014,12 @@ no majority-of-seeds rule anywhere.
 
 | id | red (what makes it fail) | control (not the method) | lives in |
 |---|---|---|---|
+| N-R1 | analytic decay/convergence, finite/divergence or forced-energy tolerance fails; a constructed projection/advection/timestep fault is missed | correct Taylor-Green and forced reference runs, refinement | N2 / T097, PLANNED |
+| N-R2 | initial-state dependence survives the registered washout, or ordered temporal information is no better than its shuffle | same-input distinct-state twins and learnable temporal positive control | N2 / T097, PLANNED |
+| N-R3 | fresh-process spikes/decisions/updates differ, a meaningful omitted/corrupt carrier is missed, or migration loses state | uninterrupted twin, valid versioned round-trip and corruption refusal | N3 / T098, PLANNED |
+| N-R4 | full NS fails the prospective benefit over either equally tuned LSM or diffusion-only control, or regresses past a registered tolerance | both cheaper controls under paired protocol and measured budgets | N4 / T099, PLANNED |
+| N-R5 | disconnecting/shuffling feedback or silencing relevant grown units does not reduce attributed useful task gain | intact feedback and equal-count pre-sized-unit silence | N4 / T099, PLANNED |
+| N-R6 | live path bypasses a gate, resources exceed budget, or an invalid candidate/premature promotion is admitted | compliant live candidate, measured cost control and refused invalid diff | N5 / T100, PLANNED |
 | W-R1 | mean `curiosity_mag` (last 200 wake rows, 3000 and 6000 ticks) under W1+W2 does not exceed the time-shuffled-context world, per seed | the same world, context order shuffled | W3 |
 | W-R2 | category entropy not above the W3 baseline **at a NAMED window, PER SEED**, or live next-category accuracy not above its marginal-preserving shuffle (floors reported within-arm). **AMENDED 2026-09-03 on W3's measurement:** entropy is NOT a stable property of a run -- the same three seeds on one world moved in OPPOSITE directions between the first-1000 and last-1000 wake-row windows, spanning 0.0 to 2.6 bits -- so a bar that does not name its window and apply per seed is measuring the window. Pre-registered window = the FIRST 1000 wake rows; the 6000-tick column is the clean one (at 3000 the two windows overlap by ~517 rows). `evidence/w3-world-baselines.md` §4 | the shuffle | W3 |
 | W-R3 (T076) | **the CURRICULUM'S OWN PROPOSED GOAL** unchanged with `coverage_reward` neutered, OR changed when an unrelated scalar of comparable magnitude is neutered. **AMENDED 2026-09-03 before the build:** the original row -- "goal selection unchanged" -- is VACUOUS, measured: on the incumbent path with no W1 at all, neutering `coverage_reward` already changes 18/60 actions and takes `_z_goal` 60/60 -> 0/60. A red satisfiable without the mechanism it tests is not a red for that mechanism (P8 clause 1). The observable is therefore `propose()`'s returned goal cell, which the incumbent cannot produce, and the row now carries the SPECIFICITY control the original lacked | the un-neutered run, AND an unrelated-scalar neuter that must NOT move it | W1 |
@@ -986,6 +1123,13 @@ authorized ACTIONS (O1 and O2 executed the same day; O3 chosen by the session un
 mechanized by H1), O4–O5 are RATIFICATIONS. OD-2 stays a standing runtime gate. Still open for C2: whether `reason_out` may
 be deleted on its null (P8 says yes; the answer path is user-facing, so it will be asked when C2 lands). Nothing in this plan touches the
 safety envelope; W1 runs inside the existing scene.
+
+**OWNER AMENDMENT 2026-09-14:** "Combine the Navier-stokes equation with Liquid state machines to
+the final plan" (requested 2026-09-13; retry requested 2026-09-14). This adds the N workstream,
+FR-036, SC-014 and T096-T100 as planned experimental work. The amendment records a design and
+falsifiable gates; it does not record implementation, a passing measurement, or a consciousness
+finding. Custom architecture is acceptable. Existing phase exits, lake retention and protected
+self-modification/safety approval boundaries retain their authority.
 
 ## PART I — HOW TO RESUME THIS PLAN IN A NEW SESSION
 

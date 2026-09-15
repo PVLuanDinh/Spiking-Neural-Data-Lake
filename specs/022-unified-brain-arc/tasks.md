@@ -198,12 +198,24 @@
 
 ---
 
+## N workstream: Navier-Stokes + liquid state machine (added 2026-09-14)
+
+Owner requested the combination on 2026-09-13 and retried on 2026-09-14. These are planned,
+unbuilt deliverables under FR-036/SC-014; the final plan's N1-N5 own formulation, gates and order.
+
+- [ ] T096 [N1] Pre-register the artificial 2D periodic fluid/spiking formulation, realized B/C maps and one-step coupling delay; frozen topology/trial state; small grid, numeric/input/parameter domains, readout/search protocol, paired seeds, prospective held-out benefit/regression thresholds and uncertainty, and measured compute/memory/latency/checkpoint budgets for full NS, diffusion-only and spiking-only LSM controls.
+- [ ] T097 [N2] Build the projected/dealiased periodic NS solver and bounded lagged LIF coupling through the existing spiking readout/local rules; construct N-R1 faults with analytic Taylor-Green/refinement/divergence/forced-energy controls and N-R2 input-synchronization plus temporal-separation tests. Failed trajectories remain visible RED, never clipped into validity.
+- [ ] T098 [N3] Persist complete fluid/coupling/filter/delay/neural/learning/RNG and versioned solver state in the same lake, with bounded checkpoint cadence, migration/upcaster dispositions and retention compliance; N-R3 fresh-process continuation versus uninterrupted replay, meaningful-state omission/corruption refusals and migration round-trip; measure storage growth/append/restart costs.
+- [ ] T099 [N4] Run equally tuned paired full-NS, diffusion-only and spiking-only LSM comparisons under T096's frozen protocol and actual total resource budgets on temporal memory/discrimination and the named existing brain task/recall path; N-R4 benefit over both controls without excess regressions, N-R5 feedback disconnect/shuffle and grown-unit silence with matched controls; retain evidence and withdraw failed coupling on null/loss.
+- [ ] T100 [N5] After N-R1-N-R5 and budgets pass, register and wire declared live wake/recall consumers and repeat the gates there; add provenance and bounded Phase 5 viscosity/filter/coupling mutation surfaces only after T073/T074 and existing prerequisites, with lake lineage/archive/retention and FR-025/OD-2 protections. N-R6 must reject premature/out-of-surface/fabricated/resource-violating candidates. Record SC-014's measured verdict; no new instrument is claimed already in CI.
+
 ## Dependencies
 
 - Phase 1 → Phase 2 → US1 → US2 → US3 → US4 → Polish (stages are strictly ordered; the stories are NOT independent by design — each stage's exit gates are the next stage's preconditions, per spec §3).
 - Within phases: [P]-marked tasks parallelize (different files, no shared state). T023 lands in the SAME COMMIT as T018/T019 (the manifest itself — intra-phase pin). Lake-block order is load-bearing: T005a → T005b → T005 → … → T012.
 - T046a precedes T047 (its consumer). T068 is gated on T061 (US2 exit); T072+ on T071 (US3 exit). **AMENDED 2026-09-02 by owner decision O5 (`PLAN-FINAL-2026-09-02.md`):** T069 moves into the plan's Phase 2; T070 and T077–T082 (the plan's Phase 4) run in parallel with Phase 3 (US3's T064–T068); T076's MECHANISM lands in Phase 1 as W1 with T076's own red (T076 keeps only its exit row) -- W1 was BUILT then RETIRED 2026-09-04 (`17e4613`, owner decision, P8 deletion-on-a-null), so T076's mechanism is WITHDRAWN (`evidence/w1-goal-curriculum.md`); W2 was REFUSED ON MEASUREMENT 2026-09-05 (`evidence/w2-context-latents.md`); Phase 1 closed at `evidence/w-exit.md`; T071 stays the gate for T072–T075 and T083; T062/T063 run after T064–T068; T066–T068 run at T065's constructed width without a growth-trajectory entry gate. *DATED NOTE 2026-09-10: T071 CERTIFIED (evidence/s2-exit.md); the T072+/T083 gate is DISCHARGED, not rescinded -- by the certification's existence, not by a pass (all three items NEGATIVE after the panel's ruling), the s1-exit precedent under which T068 ran.*
 - OD-2 (owner promotion approvals) is a standing runtime gate inside T073; OD-4 (E-STOP latch durability across restart — an envelope change) was RESOLVED 2026-08-19 in spec.md and built as T037a.
+- **Added 2026-09-14:** T096 -> T097 -> T098 -> T099 -> T100 starts after the final plan's Phase 2 exit disposition and can run alongside Phases 3/4. T099's brain arm needs its declared Phase 4 consumer; T100's live wire needs the numerical/continuation/behavioral/resource gates, and its mutation registration additionally needs T073/T074 and Phase 5's standing prerequisites. This arm does not close older deficits or block unrelated work on a recorded null. The historical task total below predates these five added tasks.
 
 ## Parallel example (Phase 3)
 
