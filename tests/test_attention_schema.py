@@ -70,6 +70,7 @@ from snn_data_lake.cortex.attention_schema import (
     t078_g4_recording,
     t078_label_stream,
     t078_markov_stream,
+    t078_pack_latents,
     t078_pairs,
     t078_planted_rows,
     t078_projection,
@@ -287,7 +288,7 @@ def test_the_readers_run_on_a_constructed_recording_and_the_control_axis_can_ref
                 "label": rng.randrange(10) if awake else None,
                 "chan": [0.1] * 4,
                 "chan_from_gated": [0.1] * 4,
-                "gated": [rng.random() for _ in range(LATENT_DIM)],
+                "gated": [rng.random() for _ in range(LATENT_DIM)] if awake else [],
             }
         )
     g3 = t078_g3(rows, 0, n_perm=50)
@@ -309,6 +310,21 @@ def test_the_readers_run_on_a_constructed_recording_and_the_control_axis_can_ref
     for key in ("u", "c15", "raw64", "chan", "u_digit"):
         assert g4[key]["readable"] is True, (key, g4[key])
     assert len(g4["c15"]) and g4["c15"]["n_train"] + g4["c15"]["n_test"] == g4["n_rows"], g4["c15"]
+
+
+def test_the_latent_packer_skips_ticks_without_a_latent_and_keeps_their_indices():
+    """The red the first dry run fired (2026-09-15 14:48): asleep ticks record an empty `gated`,
+    and a ragged np.asarray over every row crashed the campaign 16 s in. The packer keeps only
+    the rows that carry a latent, as a (m, 64) float32 array, with their tick indices beside it."""
+    rows = []
+    for t in range(40):
+        awake = (t % 4) != 3
+        rows.append({"t": t, "awake": awake, "gated": [0.5] * LATENT_DIM if awake else []})
+    arr, ticks = t078_pack_latents(rows)
+    assert arr.shape == (30, LATENT_DIM) and arr.dtype.name == "float32", arr.shape
+    assert ticks.tolist() == [t for t in range(40) if (t % 4) != 3], ticks.tolist()
+    empty, no_ticks = t078_pack_latents([{"t": 0, "awake": False, "gated": []}])
+    assert empty.shape == (0, LATENT_DIM) and no_ticks.shape == (0,)
 
 
 def test_the_content_projection_is_fixed_by_its_crc32_seed():

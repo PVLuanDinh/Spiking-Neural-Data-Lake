@@ -683,6 +683,24 @@ def t078_g4(rows, seed, n_shuffle=N_SHUFFLE):
     return out
 
 
+def t078_pack_latents(rows):
+    """The companion .npz's per-seed arrays: the 64-d gated latents of the ticks that HAVE one (an
+    asleep tick, or an awake tick on which `attend` was not called, records an empty `gated`), as a
+    (m, LATENT_DIM) float32 array, beside the (m,) int32 array of their tick indices -- so the npz
+    re-joins the pin's rows by `t`. The first dry run (2026-09-15 14:48, 200 ticks) crashed on a
+    ragged `np.asarray` over ALL rows; the builder's constructed-recording test had given every row,
+    asleep ones included, a latent, so it never saw the empty ones (2.9 step 5's red, added after)."""
+    import numpy as np
+
+    kept = [(r["t"], r["gated"]) for r in rows if r.get("gated")]
+    if not kept:
+        return np.zeros((0, LATENT_DIM), dtype=np.float32), np.zeros((0,), dtype=np.int32)
+    return (
+        np.asarray([g for _, g in kept], dtype=np.float32),
+        np.asarray([t for t, _ in kept], dtype=np.int32),
+    )
+
+
 def t078_determinism(seed, n_ticks=DETERMINISM_TICKS):
     """2.2's DETERMINISM PRECONDITION (G5 on this loop, cheap): two `n_ticks` recordings of the
     same seed must be byte-identical on (focus band, gate, action, perceived digit, label). A
@@ -1037,7 +1055,8 @@ def run_t078_campaign(seeds=T078_SEEDS, n_ticks=T078_N_TICKS, pin=T078_PIN, late
         rows = t078_record_brain(s, n_ticks)
         g3 = t078_g3(rows, s)
         g4 = t078_g4(rows, s)
-        lat[f"seed{s}"] = np.asarray([r["gated"] for r in rows], dtype=np.float32)
+        arr, ticks = t078_pack_latents(rows)
+        lat[f"seed{s}"], lat[f"seed{s}_ticks"] = arr, ticks
         per_seed[s] = {
             "g3": g3,
             "g4": g4,
