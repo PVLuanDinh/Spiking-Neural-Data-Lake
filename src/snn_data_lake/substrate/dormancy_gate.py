@@ -769,6 +769,25 @@ EXEMPT = {
         "campaign guard and every nuisance refusal. Conjunct (a) reads NOT READ from here on: "
         "drift is not measurable without a learner, and specs/011's FR-008/FR-009 stay OPEN",
     ),
+    "attention_schema": (
+        "permanent",
+        "specs/022 T078 Part I instrument, DATED 2026-09-15: the G3 task-binding gate (MI between "
+        "the attention control state at t and the committed action at t+1, against a "
+        "2,000-permutation floor) and the G4 content-leakage gate (a held-out decode of the frame "
+        "label from the candidate u_t against a 200-draw label-shuffle band, beside the matched "
+        "content decode), plus their six reds on CONSTRUCTED streams. A CI/run_selfchecks "
+        "MEASUREMENT INSTRUMENT on a SCRATCH brain (make_brain under throwaway_home, "
+        "persist=False) -- it constructs its own brain and is never constructed BY one, which is "
+        "the amdahl_gate / determinism_gate / perf_baseline shape exactly. Reachable from "
+        "run_selfchecks (the six reds run on constructed streams with no brain and no lake), "
+        "never from a tick. PART I ADDS NO WIRE: there is no attention schema in it, and "
+        "brain.py's `_attend_real_stream` keeps `goal=None` byte-identical. The ONE live wire "
+        "(Head A's endogenous band preference fed to LearnedAttention.attend as the top-down "
+        "goal) lands in Part II (2.11) -- or the row STOPS at G3 / VOIDS at G4, in which case no "
+        "ACS is ever built and THIS EXEMPTION IS RETIRED WITH THE ROW. It is stated as permanent "
+        "rather than as a wire because the instrument is legitimately an instrument on either "
+        "branch; what is conditional is whether a SECOND, live module follows it",
+    ),
     "amdahl_gate": (
         "permanent",
         "specs/008 Gate Zero / specs/022 S6: the Amdahl ceiling of a delivery-path conversion, read "
