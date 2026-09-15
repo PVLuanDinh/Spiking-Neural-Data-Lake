@@ -365,3 +365,192 @@ nowhere; refusal 3 polices it; T077 3.5 item 9 is the precedent this sentence ex
 cockpit prints the row with the licensed sentence inside its 7-line window, `SURFACE_BASELINE` unchanged or lowered.
 Nothing of the incumbents is deleted on any null except the invented third factor on RED-2 (P8 clause 5 targets the
 invented method that measures nothing).
+
+## 3. Results (written 2026-09-15 after the campaign; nothing above this line was edited after 2.10)
+
+### 3.0 The apparatus, measured before the campaign (2.9 step 5; dry run, one seed, 200 ticks, the pin redirected)
+
+`scratchpad/t078/dry_run_module.py` at `677ee16` (the first attempt at `455236d`, 14:48:36, crashed 16 s in on a ragged
+latent array -- 3.5 item 1; the re-run 18:29:51): the determinism twin identical over 100 ticks of seed 0; 200 ticks ->
+97 awake, 89 consecutive awake pairs (7 straddling a sleep bout dropped, 0 E-STOP), 35 observed (focus, action) cells,
+13 distinct actions, 96 G4 rows over 10 classes; EVERY gate reading REFUSED by construction as 2.8 and 2.10 fix it --
+the primary "89 pairs over 35 observed joint cells is below 10 per cell (350 required)", the control below 10 per class
+(13 classes), G4 "48 held-out rows is below N_TEST_MIN = 50" -- so no gate number was previewed; 42.9 s end to end for
+400 brain-ticks plus the reads, i.e. ~0.1 s per brain-tick, which re-projects the campaign (9,600 ticks + the twin +
+the reads) at ~17-20 min against 2.8's "~10-12 min" (the projection was low by about the same 1.9x T077's was; the
+refusal rule of 2.8 -- re-size above 3 h -- was not near). Pin shape verified: every per-tick field of 2.1 present,
+`gated` absent from the rows and packed to the npz with tick indices (3.5 item 1). The dry run's npz landed in `tools/`
+by the campaign's default path and was deleted before the campaign; its pin stayed in the scratchpad.
+
+### 3.1 The build, red-first, and the commits
+
+`02d677e` the pre-registration (sections 1-2.9, 2.11 + PLAN-FINAL Part F row C-R7; the Codex design read disclosed
+absent in 2.0) -> `3485853` `cortex/attention_schema.py` SKELETON with the six functions as stubs returning null
+readings, `t078_reds()` all False, the three registrations (REGIONS, run_selfchecks CORE, dormancy EXEMPT) -> `4971a99`
+the reds R1-R6 committed RED -- 7 of 7 tests FAILING ON ASSERTIONS against the stubs (R1/R2 `readable is True` ->
+`{'readable': False, 'refusal': 'stub'}`; R3's refusal half passed and its readable half failed; R4/R6 `readable is
+True`; R5's vacuity clause `control_state(c) != ua` -> two zero vectors equal; the self-check line all six False), not an
+ImportError (T077 3.5 item 10's lesson) -> `490a9b8` the instruments GREEN with every red reddened IN FACT by its
+mutated scorer (R1 un-permuted floor: the control's margin 1.9787 bits -> 0.0000; R2 self-scored: the i.i.d. action
+stream 0.038 <= 0.053 -> 3.5822 above; R3 N_MIN := 0: the 145/39 shape reads 0.1143; R4 train-scored: the band's q95
+0.1333 -> 0.3000; R5 chan[0] appended: length 16, the twins differ; R6 operands swapped: VOID -> PASS-WITH-LEAK); the
+gradient-claim gate read the decoder's autograd fit RED (MISSING_DECLARATION 1 > baseline 0) and was answered by a
+`GRADIENT_CLAIM` declaring it NOT_A_RULE with the gradient stated, not hidden -> `c955e27` the recorder, the two readers,
+`t078_determinism`, `t078_projection` and `--t078-campaign`, code only (no brain run) -> `1094234` amendment 2.10 (the
+Codex read refused twice; the control's per-class readability; two recorder disclosures) -> `455236d` 2.10's code
+(`min_rule="per_class"` on the control call only; R3's twin) -> `677ee16` the latent packer fixed on the dry run's crash
+(3.5 item 1) -> the dry run (3.0) -> `9acc730` the pin. Census gates rc=0 after every src commit; the module
+self-check green (6/6) from `490a9b8` on; `tests/test_attention_schema.py` 7 RED -> 10 -> 11 green.
+
+### 3.2 The campaign (`tools/t078_attention_schema.json` + `tools/t078_latents.npz`, run at `677ee16`, committed `9acc730`)
+
+Seeds 0-7, N = 1200 ticks, ONE arm, 644.1 s; the determinism twin (p): identical=True over 100 ticks of seed 0. Latents sha256 `f74d85247ccc7d39...`. Reds in-run: 6/6.
+
+| seed | awake | pairs (sleep-dropped / estop) | cells | actions | G4 rows | two-attend ticks | chan disagrees | ignited ticks |
+|---|---|---|---|---|---|---|---|---|
+| 0 | 593 | 544 (48 / 0) | 50 | 13 | 592 | 592 | 1196 | 1 |
+| 1 | 593 | 544 (48 / 0) | 46 | 13 | 592 | 592 | 1199 | 0 |
+| 2 | 598 | 549 (48 / 0) | 47 | 13 | 597 | 597 | 1199 | 1 |
+| 3 | 592 | 543 (48 / 0) | 43 | 13 | 591 | 591 | 1199 | 1 |
+| 4 | 589 | 540 (48 / 0) | 39 | 13 | 588 | 588 | 1199 | 1 |
+| 5 | 590 | 541 (48 / 0) | 35 | 13 | 589 | 589 | 1191 | 1 |
+| 6 | 594 | 545 (48 / 0) | 46 | 13 | 593 | 593 | 1195 | 1 |
+| 7 | 589 | 540 (48 / 0) | 41 | 13 | 588 | 588 | 1199 | 1 |
+
+The sleep cadence is clock-driven and seed-independent: 48 bouts in 1,200 ticks on every seed (awake 589-598), so 48
+consecutive-awake links straddle a bout and are dropped and counted; no E-STOP pair occurred. `two-attend ticks` equals
+the awake ticks that attended on every seed (3.4 i); `chan disagrees` counts ALL 1,200 ticks, awake (the vision-call
+channel against the audio-call band means, every awake tick) plus asleep (a stale `_attn_real` against an empty
+latent), so it is ~1,195 of 1,200 and is a count, not a reading. Ignition fired on 1 awake tick per seed (0 on seed 1).
+
+### 3.3 The readings, conjunct by conjunct (every number from the pin; the bar 1.895 over 8 seeds; FPR = the sign-flip rate)
+
+| seed | G3 primary MI | q95 | control MI | q95 | gate16 MI | q95 | same-tick MI | q95 |
+|---|---|---|---|---|---|---|---|---|
+| 0 | 0.0549 | 0.0777 | 0.7967 | 0.2494 | -- | -- | 0.0582 | 0.0777 |
+| 1 | 0.0670 | 0.0755 | 0.8310 | 0.2446 | -- | -- | 0.0479 | 0.0749 |
+| 2 | 0.0408 | 0.0743 | 0.8746 | 0.2434 | -- | -- | 0.0506 | 0.0775 |
+| 3 | 0.0591 | 0.0744 | 0.7528 | 0.2539 | -- | -- | 0.0378 | 0.0743 |
+| 4 | 0.0538 | 0.0709 | 0.7744 | 0.2514 | -- | -- | 0.0549 | 0.0710 |
+| 5 | 0.0847 | 0.0683 | 0.6396 | 0.2585 | -- | -- | 0.0442 | 0.0678 |
+| 6 | 0.0545 | 0.0767 | 0.5528 | 0.2535 | -- | -- | 0.0646 | 0.0781 |
+| 7 | 0.0445 | 0.0716 | 0.8392 | 0.2433 | -- | -- | 0.0475 | 0.0700 |
+
+| seed | u_t acc | band q95 | c15 acc | band | raw64 acc | band | chan acc | band | u_t -> digit acc |
+|---|---|---|---|---|---|---|---|---|---|
+| 0 | 0.1858 | 0.1385 | 0.2601 | 0.1520 | 0.5236 | 0.1453 | 0.1689 | 0.1453 | 0.1554 |
+| 1 | 0.1723 | 0.1486 | 0.2500 | 0.1486 | 0.5203 | 0.1453 | 0.1791 | 0.1419 | 0.1588 |
+| 2 | 0.1773 | 0.1405 | 0.2274 | 0.1472 | 0.5251 | 0.1371 | 0.1773 | 0.1405 | 0.1639 |
+| 3 | 0.1385 | 0.1351 | 0.2669 | 0.1486 | 0.5372 | 0.1419 | 0.1858 | 0.1453 | 0.1351 |
+| 4 | 0.1531 | 0.1395 | 0.2687 | 0.1497 | 0.5340 | 0.1463 | 0.1939 | 0.1429 | 0.1361 |
+| 5 | 0.1085 | 0.1424 | 0.1932 | 0.1458 | 0.4136 | 0.1424 | 0.1458 | 0.1424 | 0.0915 |
+| 6 | 0.1818 | 0.1380 | 0.2593 | 0.1481 | 0.5152 | 0.1380 | 0.1785 | 0.1414 | 0.1448 |
+| 7 | 0.1293 | 0.1429 | 0.2551 | 0.1463 | 0.5306 | 0.1395 | 0.1871 | 0.1395 | 0.1327 |
+
+| conjunct | statistic | t | FPR | reads |
+|---|---|---|---|---|
+| (p) determinism | twin byte-identical | -- | -- | MET |
+| (r) readable | G3 primary + control, G4 u + c15 on every seed | -- | -- | MET |
+| (g3c) the estimator sees | MI(a_t; a_t+1) - q95 | +12.6296 | 0.0469 | MET |
+| (g3) task binding | MI(focus_t; a_t+1) - q95 | -3.0213 | 0.0469 | NOT MET |
+| (g4a) u_t decodes content | u_acc - band | +1.4903 | 0.0430 | NOT MET |
+| (g4b) content decodes better | c15_acc - u_acc | +9.2116 | 0.0508 | MET |
+| reported gate16 | | +0.0000 | 0.0000 | not above the bar (never barred) |
+| reported same_tick | | -9.1089 | 0.0508 | not above the bar (never barred) |
+| reported raw64_ceiling | | +29.7204 | 0.0352 | above the bar (never barred) |
+| reported chan | | +6.5118 | 0.0586 | above the bar (never barred) |
+
+**PART I VERDICT: G3 STOP x G4 PASS** (leak +0.0151 accuracy points, mean over seeds of u_acc - band).
+
+### 3.4 The disposition applied (2.6, the STOP branch at G3; G4 PASS recorded beside it)
+
+(p) MET, (r) MET on every seed, (g3c) MET: the estimator SEES -- the action stream's own one-tick autocorrelation reads
+MI 0.5528-0.8746 bits against floors 0.2433-0.2585 on every seed, t +12.6296 (FPR 0.0469); the estimator is not blind on
+this loop. (g3) NOT MET: the focus band at t carries MI 0.0408-0.0847 bits about the action committed at t+1 against
+floors 0.0683-0.0777 -- BELOW its own floor on 7 of 8 seeds (seed 5 above: 0.0847 against 0.0683), t -3.0213 (FPR
+0.0469) -> G3 STOP. By 2.6: NO ACS is built, NO third factor, NO wire to brain.py (`git diff 02d677e..HEAD --
+src/snn_data_lake/cortex/brain.py` is empty); the row stays `[ ]` with its dated note; no surface symbol is declared
+and none is needed; `CONCLUSION["attention_schema"].reading` stays None; the C5 sentence is not written; the incumbents
+(`learned_attention`, the loop, the workspace) are untouched; Part II (2.11) is NOT built. A STOP is the algorithm's own
+terminal state (SYNTHESIS :65): on this loop, over 8 seeds, the recorded attention control state one tick earlier does
+not predict the committed action above chance.
+
+G4 PASS, read beside it and at the bar: (g4a) the 15-d `u_t` decodes the perceived frame's LABEL above its own
+200-shuffle band on 5 of 8 seeds (0.1858 / 0.1723 / 0.1773 / 0.1385 / 0.1531 / 0.1085 / 0.1818 / 0.1293 against bands
+0.1351-0.1486; chance 0.1 over 10 classes), t +1.4903 (FPR 0.0430) -- NOT MET at 1.895, so the vector is content-blind in
+information AT THE BAR, not comfortably; the leak's mean is +0.0151 accuracy points and is written as 2.3 requires.
+(g4b) the matched 15-d content decode reads 0.1932-0.2687 and beats `u_t` by t +9.2116 (FPR 0.0508) MET; the raw 64-d
+ceiling reads 0.4136-0.5372 (t +29.72 over `u_t`) and the 4-d arm channel 0.1458-0.1939 (above its band, t +6.51) --
+the content ground truth exists on this loop and the schema vector carries little of it. Had (g4a) crossed the bar
+the reading would have been PASS-WITH-LEAK by 2.3's rule; it did not, and the size of the leak is the same number either
+way.
+
+Two facts the disposition did not need but the record must carry (both disclosed in 2.10 before the run; their
+MAGNITUDE is the campaign's): (i) EVERY awake tick attends TWICE -- `_attend_real_stream` for the vision percept, then
+for the audio percept (brain.py:1603-1608) -- on 592 / 592 / 597 / 591 / 588 / 589 / 593 / 588 of the awake ticks; the
+recorded gate, focus and `u_t` are the SECOND (audio) call's state, which is also what the brain's own `_attn_focus`,
+`LearnedAttention.gate` and `.focus` hold after the tick, while the arm's sensory channel `chan` (`_attn_real = va or
+aa`) is the FIRST (vision) call's. The last-call focus band equals the vision channel's argmax band on only 27-153 of
+~540 pairs per seed. So (g3) as pre-registered and read is the AUDIO attend's focus band against the next action.
+POST-HOC, REPORTED, NEVER BARRED AND NEVER PRE-REGISTERED (`scratchpad/t078/record_gen` companion probe, from the pin):
+the vision channel's argmax band as X reads MI 0.0429-0.1252 against floors 0.0637-0.0714, above on seeds 3 and 5 only,
+t -0.5262 (FPR 0.0391) -- the STOP does not hinge on which call was recorded; but the vision call's own LIF focus band
+was NOT recorded (only its 4-d channel), so a successor records BOTH calls' focus and pre-registers which one the
+action path consumes (opening 2). (ii) three of `u_t`'s fifteen fields are near-constant on the scratch brain at this
+width: `sustain` reads 0.65 on all but 3-4 awake ticks per seed, `ignited` is True on exactly 1 awake tick per seed
+(0 on seed 1), and the focus STRENGTH averages 0.03-0.06 (max 0.10-0.20); `pc_surprise` (567-577 distinct values per
+seed) and `drive_margin` (494-511) carry the vector's variance. The reported gate16 reading REFUSED on every seed under
+the per-cell rule (16 x 13 = up to 208 cells, 2,080 pairs required) and is recorded as refused, not as a number (the
+degenerate t 0.0000 in the pin's `reported.gate16` is eight zero diffs from the refusals); the same-tick MI(focus_t;
+action_t) reads BELOW its floor on every seed (t -9.1089) -- the recorded focus does not even co-occur with the action
+above chance, which is the reading the STOP is consistent with.
+
+### 3.6 What this row does NOT claim, and the openings it leaves
+
+No experiential claim; the C5 refused sentence stands and no licensed sentence exists. The reading is about ONE loop:
+the scratch brain's own attention control state (the audio call's, 3.4 i) and its committed actions at the deployed
+width, 1,200 ticks, 8 seeds; nothing about the daemon's brain, chat, reasoning or the arm's hardware. A STOP is NOT "the
+brain does not attend" and NOT the algorithm's G3 (which binds a held GOAL to a FIRST action across a gap): it says the
+recorded control state one tick earlier carries no information about the next committed action above the shuffle floor
+on this loop. G4 PASS is NOT "content-blind": it is "not decodable above chance AT THE BAR over 8 seeds", with a measured
+leak on 5 seeds. OPENINGS, each named for a successor row: (1) the brain-side stimulus port (docs/
+PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md 5.2, "the largest and riskiest single item") -- G3 as written needs a held goal
+and a gap, and this loop has neither; the successor that builds the port re-runs G3 as the algorithm words it; (2) BOTH
+attend calls' focus recorded, with the pre-registered X being the call whose channel the action path consumes (3.4 i);
+the direct test of "governs" is the per-band neuter of the vision channel (4 replays per tick), not MI; (3) three
+near-constant `u_t` fields at this width (3.4 ii) -- the workspace ignites on ~1 of ~590 awake ticks on a scratch brain,
+the opposite rail from G1's saturation; a schema of a control state that does not move is a schema of a constant; (4)
+WHICH field leaks the label on the 5 seeds where `u_t` decodes above its band -- a per-field neuter (drop one of the
+fifteen, re-decode) for the successor, not this row's to adjudicate; (5) `_q95` is a second spelling of `track_error`'s
+order statistic (P2: lift beside `paired_contrast` when a third caller lands); (6) the gate16 reported reading needs a
+readability rule of its own or fewer cells (a per-band median split over 4 bands x 13 actions refuses at N = 1,200).
+
+### 3.5 Deviations from 2.1-2.11, each with its number (dated 2026-09-15)
+
+1. THE FIRST DRY RUN CRASHED, AND THE WAITER HID IT FOR THREE AND A HALF HOURS (obs #2181). At 14:48:36 the 200-tick dry
+   run passed the determinism twin and died 16 s in at the campaign's latent packing: `np.asarray([r["gated"] ...])`
+   over ALL rows is ragged because asleep ticks (and awake ticks on which `attend` is not called) record an empty
+   `gated`; the builder's constructed-recording test had given every row a latent. The traceback was in the .err file;
+   the background waiter grepped only the success line, timed out silently, and the session idled until the owner
+   asked at 18:27. Fixed at `677ee16`: `t078_pack_latents` keeps the rows that carry a latent as (m, 64) float32 with
+   their tick indices beside (`seed{s}_ticks` in the npz), its red added, the constructed test given the real shape;
+   re-run 18:29:51, green (3.0). No brain number was seen by the crashed run beyond the twin's byte-identity.
+2. THE (g3c) CONTROL's READABILITY RULE was amended BEFORE any brain run (2.10, `1094234`; code `455236d`) on the
+   builder's constructed fact: the 12 x 12 action joint refused under the per-cell rule at every pair count N = 1,200
+   produces. The primary keeps the per-cell rule. Had the rule not been amended the campaign would have REFUSED at (r)
+   on every seed (the pin's per-seed control lines carry 13 distinct actions and 35-50 observed (focus, action) cells).
+3. THE BUILD's seven disclosures (2.10's last paragraph, `c955e27`): `mi_read`'s signature is `track_error`'s shape;
+   the decoder's init is an explicit CPU `torch.Generator` (2.1's "identically by seed" is obtained that way); extra
+   keys `n_perm` / `k` / `refusal` reported beside 2.1's; R5 carries a vacuity clause 2.4 did not word (a constant
+   `u_t` passes content-blindness trivially, the T077 R2/R5 shape); `REDS_N_PERM = 200` for the reds, 2,000 for the
+   campaign; two private parameters exist only so two mutations can be RUN; `_q95` is a second spelling of
+   `track_error`'s order statistic (a P2 lift when a third caller appears).
+4. THE DRY RUN's npz landed in `tools/` by the campaign's default path (only the pin was redirected) and was deleted
+   before the campaign; the dry run's own pin stayed in the scratchpad (3.0). The campaign's npz is the one committed.
+5. THE COST PROJECTION: 2.8 projected ~10-12 min sequential; the dry run re-projected ~17-20 min at ~0.1 s per
+   brain-tick (3.0); the campaign took 644.1 s (3.2). 2.8's refusal rule (re-size above 3 h) was not near.
+6. THE CODEX DESIGN READ never arrived (2.0, 2.10): refused at 11:55 and at 14:43 by Codex's usage limit; its five
+   questions and question 6 go to the T078 closing report. No point of a design read shaped this file after the
+   freeze; 2.10 changed one readability rule on a constructed fact and folded two apparatus disclosures.
+7. THE 2.2 PAIRING DROPPED exactly 48 pairs on every seed as straddling a sleep bout (about 8 % of consecutive awake
+   links, the sleep cadence the T077 lag amendment measured) and 0 E-STOP pairs; both counted in the pin.
