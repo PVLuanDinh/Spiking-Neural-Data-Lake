@@ -136,7 +136,12 @@ never a verdict about experience) lives in the evidence file and in `tools/t077_
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.metacognitive_monitor
 """
 
+import json
 import math
+import statistics
+import sys
+import time
+from pathlib import Path
 
 from snn_data_lake.cortex.executive_control import ExecutiveControl
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
@@ -917,6 +922,315 @@ def replay_reliability(stream, seed, base=0.4, expect=None, neuter=None):
     return out
 
 
+# ============================== T077: the campaign (2026-09-15; pre-registration 2.2-2.3, 2.8) ==============================
+# A scratch brain per seed under a throwaway NORD_HOME (never the live lake), N_TICKS ticks, the monitor's five inputs
+# and unrounded read captured by wrapping the INSTANCE's update (brain.py:2506-2512 calls it by keyword), the prequential
+# outcome / persistence hit from the engine's live counters (neurogenesis_engine.py:321-323), the vision hit from
+# `_perc_hits`. The LESIONED arm removes the second-order READ in vivo (gates off, reliability() replaced by the
+# first-order input). Arm D repeats the chat probe. The pin is written ONCE. Seeds run sequentially in one process.
+# distinct-from: cortex/prior_drift_harness.py::run_campaign -- that harness ticks a KernelState population from the
+#   H01 artifact; this ticks make_brain() and reads its own monitor; the paired t (`contrast`) is REUSED, lazily.
+# distinct-from: substrate/amdahl_gate.py::live_reading -- a timing ceiling over three brains; this records a
+#   read/outcome stream and scores it; no timing, no neuter of a code path.
+T077_N_TICKS = 600
+T077_SEEDS = tuple(range(8))
+T077_N_PERM = 2000
+T077_CHAT_TURNS = 40
+T077_CHAT_GAP = 5
+T077_CHAT_QUESTIONS = (
+    "What are you doing right now?",
+    "How sure are you about what you just perceived?",
+    "What did you learn in the last few ticks?",
+    "Is the arm safe where it is?",
+    "What do you remember from earlier?",
+    "Which sense is loudest at the moment?",
+    "Are you exploring or exploiting?",
+    "What would you do next if nothing changed?",
+)
+T077_INPUTS = ("confidence", "surprise", "learning_progress", "novelty", "conflict")
+T077_PIN = Path("tools/t077_metacognition.json")
+
+
+def t077_record_brain(seed, n_ticks=T077_N_TICKS, lesion=False):
+    """Tick a scratch brain n_ticks times; return (brain, per-tick rows). See the block comment above."""
+    from snn_data_lake.cortex.brain import make_brain
+
+    b = make_brain(seed=seed, persist=False)
+    mon = b._metacog
+    captured, reads = [], []
+    real_update = mon.update
+    last_first_order = [0.0]
+
+    def wrapped(**kw):
+        captured.append({k: float(kw.get(k, 0.0)) for k in T077_INPUTS})
+        last_first_order[0] = float(kw.get("confidence", 0.0))
+        r = real_update(**kw)
+        reads.append(
+            float(r)
+        )  # the UNROUNDED pool read; brain.py:2513 rounds `_metacog_rel` to 4 places
+        return r
+
+    mon.update = wrapped
+    if lesion:  # 2.2 LESIONED, in vivo: gates off AND the second-order READ removed (first-order passthrough)
+        mon.lesion = True
+        mon.reliability = lambda: last_first_order[0]
+    rows = []
+    prev_n = prev_ok = prev_persist = 0
+    prev_seen = prev_hits = 0
+    for t in range(n_ticks):
+        n_before = len(captured)
+        kind = b.tick()
+        ng = b.neuro
+        outcome = persist = None
+        if ng is not None and ng.live_n > prev_n:  # exactly one prequential score this tick
+            outcome = int(ng.live_correct - prev_ok)
+            persist = int(ng.live_persist - prev_persist)
+            prev_n, prev_ok, prev_persist = ng.live_n, ng.live_correct, ng.live_persist
+        perc = None  # the perception stream's per-frame hit (reported beside, never barred)
+        seen, hits = int(getattr(b, "_perc_seen", 0) or 0), int(getattr(b, "_perc_hits", 0) or 0)
+        if seen > prev_seen:
+            perc = int(hits - prev_hits)
+            prev_seen, prev_hits = seen, hits
+        fed = len(captured) > n_before
+        rows.append(
+            {
+                "t": t,
+                "kind": kind,
+                "fed": fed,
+                "inputs": captured[-1] if fed else None,
+                "rel": reads[-1] if fed else None,  # the pool's own read on a fed tick
+                "read": float(mon.reliability()) if fed else None,  # what consumers see
+                "hold": bool(b._metacog_hold),
+                "learn_gate": float(mon.learn_gate()),
+                "outcome": outcome,
+                "persist": persist,
+                "perc": perc,
+            }
+        )
+    return b, rows
+
+
+def t077_pairs_prospective(rows, key, gap=1):
+    """(the LAST FED value strictly before the scoring tick, the outcome scored on that tick); `gap` > 1 reaches
+    further back (the +k-tick lag control). Outcomes with no fed read before them are skipped and counted."""
+    conf, correct, skipped = [], [], 0
+    fed_idx = [i for i, r in enumerate(rows) if r["inputs"] is not None]
+    for t, r in enumerate(rows):
+        if r["outcome"] is None:
+            continue
+        before = [i for i in fed_idx if i < t]
+        if len(before) < gap:
+            skipped += 1
+            continue
+        i = before[-gap]
+        v = rows[i]["inputs"]["confidence"] if key == "first_order" else rows[i][key]
+        conf.append(float(v))
+        correct.append(int(r["outcome"]))
+    return conf, correct, skipped
+
+
+def t077_pairs_perception(rows, key="read"):
+    """The perception stream: the frame's hit on tick t with the read on the same tick (the frame is scored before
+    the monitor's update on t, brain.py:1653 vs :2468). Reported beside, never barred."""
+    conf, correct = [], []
+    for r in rows:
+        if r["perc"] is None or r[key] is None:
+            continue
+        conf.append(float(r[key]))
+        correct.append(int(r["perc"]))
+    return conf, correct
+
+
+def t077_arm_d(seed):
+    """Arm D (2.2): SecondOrderAccess on the chat path -- intact counts, the pin-to-mean neuter, the flip neuter."""
+    from snn_data_lake.cortex.brain import make_brain
+
+    def run(pin):
+        b = make_brain(seed=seed, persist=False)
+        so = b._second_order
+        if pin is not None and so is not None:
+            real = so.observe
+
+            def pinned(*a, **k):
+                real(*a, **k)
+                so._conf2 = pin
+                return pin
+
+            so.observe = pinned
+        out = []
+        for i in range(T077_CHAT_TURNS):
+            for _ in range(T077_CHAT_GAP):
+                b.tick()
+            r = b.respond(T077_CHAT_QUESTIONS[i % len(T077_CHAT_QUESTIONS)])
+            out.append(
+                (
+                    r["route"],
+                    bool(b._second_order_hold),
+                    bool(b._metacog_hold),
+                    so._conf2 if so else None,
+                )
+            )
+        return out
+
+    intact = run(None)
+    c2 = [r[3] for r in intact if r[3] is not None]
+    mean_c2 = statistics.mean(c2) if c2 else 0.0
+    neut = run(mean_c2)
+    flip = run(1.0)
+    return {
+        "turns": T077_CHAT_TURNS,
+        "so_hold_true": sum(1 for r in intact if r[1]),
+        "so_hold_true_monitor_false": sum(1 for r in intact if r[1] and not r[2]),
+        "conf2_mean": mean_c2,
+        "conf2_max": max(c2) if c2 else None,
+        "pin_to_mean_routes_changed": sum(1 for a, b2 in zip(intact, neut) if a[0] != b2[0]),
+        "pin_to_mean_holds_changed": sum(1 for a, b2 in zip(intact, neut) if a[1] != b2[1]),
+        "flip_routes_changed": sum(1 for a, b2 in zip(intact, flip) if a[0] != b2[0]),
+        "routes": sorted({r[0] for r in intact}),
+    }
+
+
+def run_t077_campaign(seeds=T077_SEEDS, n_ticks=T077_N_TICKS, pin=T077_PIN):
+    """The T077 campaign (2.2-2.3): records, scores, contrasts, pins ONCE. Returns an exit code."""
+    from snn_data_lake.substrate.paired_contrast import (
+        contrast,
+    )  # the ONE paired t (lifted, T077 2.10)
+
+    if pin.exists():
+        print(
+            f"REFUSED: {pin} exists -- the pin is written once (delete it by hand only with the record)",
+            flush=True,
+        )
+        return 2
+    t0 = time.time()
+    per_seed = {}
+    for s in seeds:
+        _b, rows = t077_record_brain(s, n_ticks)
+        conf, correct, skipped = t077_pairs_prospective(rows, "read", 1)
+        po, _, _ = t077_pairs_prospective(rows, "first_order", 1)
+        stream = [r["inputs"] for r in rows if r["inputs"] is not None]
+        rel = [r["rel"] for r in rows if r["inputs"] is not None]
+        replay_reliability(
+            stream, seed=s, base=0.4, expect=rel
+        )  # (c) R0 on the live recording, exact
+        intact = track_error(conf, correct, n_perm=T077_N_PERM, seed=s)
+        passthrough = track_error(po, correct, n_perm=T077_N_PERM, seed=s)
+        lag5c, lag5y, _ = t077_pairs_prospective(rows, "read", 5)
+        lag5 = track_error(lag5c, lag5y, n_perm=T077_N_PERM, seed=s)
+        pc, py = t077_pairs_perception(rows, "read")
+        perception = track_error(pc, py, n_perm=T077_N_PERM, seed=s)
+        neuters = {}
+        for name in T077_INPUTS:
+            mean_v = statistics.mean(x[name] for x in stream)
+            rep = replay_reliability(stream, seed=s, base=0.4, neuter=(name, mean_v))
+            rep_rows, k = [], 0
+            for r in rows:
+                rr = dict(r)
+                if r["inputs"] is not None:
+                    rr["read"] = rep[k]
+                    k += 1
+                rep_rows.append(rr)
+            c2, y2, _ = t077_pairs_prospective(rep_rows, "read", 1)
+            nt = track_error(c2, y2, n_perm=T077_N_PERM, seed=s)
+            neuters[name] = (
+                None if nt["auroc2"] is None else nt["auroc2"] - (intact["auroc2"] or 0.0)
+            )
+        _lb, lrows = t077_record_brain(s, n_ticks, lesion=True)
+        lc, ly, _ = t077_pairs_prospective(lrows, "read", 1)
+        lesioned = track_error(lc, ly, n_perm=T077_N_PERM, seed=s)
+        acc_i = statistics.mean(r["outcome"] for r in rows if r["outcome"] is not None)
+        acc_l = statistics.mean(r["outcome"] for r in lrows if r["outcome"] is not None)
+        pers_i = statistics.mean(r["persist"] for r in rows if r["persist"] is not None)
+        armd = t077_arm_d(s)
+        per_seed[s] = {
+            "n_pairs": len(conf),
+            "skipped_outcomes": skipped,
+            "intact": intact,
+            "lesioned": lesioned,
+            "passthrough": passthrough,
+            "lag5": lag5,
+            "perception": perception,
+            "neuters": neuters,
+            "acc_intact": acc_i,
+            "acc_lesioned": acc_l,
+            "persistence_intact": pers_i,
+            "n_scored": sum(1 for r in rows if r["outcome"] is not None),
+            "n_scored_lesioned": sum(1 for r in lrows if r["outcome"] is not None),
+            "arm_d": armd,
+            "streams": {
+                "read": conf,
+                "first_order": po,
+                "outcome": correct,
+                "lesioned_read": lc,
+                "lesioned_outcome": ly,
+            },
+        }
+        print(
+            f"seed {s}: pairs {len(conf)} (skipped {skipped}) readable={intact['readable']} auroc2={intact['auroc2']} "
+            f"lesioned={lesioned['auroc2']} passthrough={passthrough['auroc2']} q95={intact.get('perm_q95')} "
+            f"oracle={intact.get('oracle')} acc {acc_i:.4f}/{acc_l:.4f} persist {pers_i:.4f} "
+            f"armD hold {armd['so_hold_true']}/{armd['turns']} pin-mean {armd['pin_to_mean_routes_changed']} "
+            f"flip {armd['flip_routes_changed']}  [{time.time() - t0:.0f} s]",
+            flush=True,
+        )
+    ss = [per_seed[s] for s in seeds]
+    readable = all(x["intact"]["readable"] and x["lesioned"]["readable"] for x in ss)
+    verdict = {"a_readable": readable, "per_seed_q95": [x["intact"]["perm_q95"] for x in ss]}
+    if readable:
+        au = [x["intact"]["auroc2"] for x in ss]
+        verdict["b1"] = contrast("b1 tracking", [a - 0.5 for a in au])._asdict()
+        verdict["b2"] = contrast(
+            "b2 not a marker", [x["intact"]["auroc2"] - x["intact"]["shuffled_auroc2"] for x in ss]
+        )._asdict()
+        verdict["b3"] = contrast(
+            "b3 calibration collapses under the lesion",
+            [x["intact"]["auroc2"] - x["lesioned"]["auroc2"] for x in ss],
+        )._asdict()
+        verdict["b3_passthrough_reported"] = contrast(
+            "b3o intact - passthrough (reported)",
+            [x["intact"]["auroc2"] - x["passthrough"]["auroc2"] for x in ss],
+        )._asdict()
+        d = [x["acc_intact"] - x["acc_lesioned"] for x in ss]
+        delta = statistics.pstdev([x["acc_intact"] for x in ss]) if len(ss) > 1 else 0.0
+        tost_lo = contrast("b4 TOST lower (d + Delta > 0)", [v + delta for v in d])
+        tost_hi = contrast("b4 TOST upper (Delta - d > 0)", [delta - v for v in d])
+        verdict["b4"] = {
+            "mean_diff": statistics.mean(d),
+            "delta": delta,
+            "lower": tost_lo._asdict(),
+            "upper": tost_hi._asdict(),
+            "met": tost_lo.met and tost_hi.met,
+        }
+        verdict["b5"] = {
+            "oracle_all_one": all(x["intact"]["oracle"] == 1.0 for x in ss),
+            "oracle_above_q95_all": all(
+                x["intact"]["oracle"] > x["intact"]["perm_q95"] for x in ss
+            ),
+        }
+        verdict["b5"]["met"] = (
+            verdict["b5"]["oracle_all_one"] and verdict["b5"]["oracle_above_q95_all"]
+        )
+        verdict["b6"] = contrast(
+            "b6 competence over persistence",
+            [x["acc_intact"] - x["persistence_intact"] for x in ss],
+        )._asdict()
+        verdict["pass"] = all(verdict[k]["met"] for k in ("b1", "b2", "b3", "b4", "b5", "b6"))
+    out = {
+        "row": "T077",
+        "n_ticks": n_ticks,
+        "seeds": list(seeds),
+        "bar": T_BAR,
+        "rho": RHO,
+        "per_seed": per_seed,
+        "verdict": verdict,
+        "elapsed_s": round(time.time() - t0, 1),
+    }
+    pin.write_text(json.dumps(out, indent=1, default=str), encoding="utf-8")
+    print(f"VERDICT {json.dumps(verdict, default=str)}", flush=True)
+    print(f"pinned {pin} in {time.time() - t0:.0f} s", flush=True)
+    return 0
+
+
 def _p(lines, s):
     """Append an ASCII-only line (Windows cp1252 safety)."""
     if any(ord(ch) > 127 for ch in s):
@@ -925,6 +1239,13 @@ def _p(lines, s):
 
 
 def main():
+    if (
+        "--t077-campaign" in sys.argv[1:]
+    ):  # T077 2.9 step 4: the campaign, under a throwaway home, pinned once
+        from snn_data_lake.substrate.home import throwaway_home
+
+        with throwaway_home():
+            sys.exit(run_t077_campaign())
     r = _experiment(0)
     lines = []
     _p(lines, "=" * 78)
