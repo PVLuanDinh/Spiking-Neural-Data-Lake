@@ -99,6 +99,18 @@ them:
   in this configuration, in ANY arm, so `learn_gate` differing on 296/300 ticks charges nothing
   there. That consumer is inert for reasons that predate this wire, and it is recorded rather than
   counted.
+  AMENDED 2026-09-15 (the T077 panel; the paragraph above is left as written): "never fires" is
+  FALSE on exactly that configuration -- make_brain(seed=0, persist=False) under a scratch home,
+  300 ticks, natural clock -- the branch gated at `Brain._enter_sleep` learns all 3 lifelong tasks
+  (_ll_i 3, _ll_units 6, _ll_retention 1.0; seed 1 the same). The 2026-08-05 A/B measured only that
+  _ll_i / _ll_retention / _ll_units did not DIFFER between arms, which is equally consistent with
+  the branch firing identically in both -- which it does. What the read does NOT do there, measured
+  the same day: pinned to a constant 0.0 for 300 ticks the learner still learns all 3 tasks with the
+  same units and retention, because the branch compares the gate against an EMA written from that
+  same gate one line earlier, so any constant passes; a contrived monotonically decaying gate does
+  block it (_ll_i 1, _ll_units 4). So the consumer is LIVE and the read is consumed but not decisive
+  at any constant value -- the no-difference-means-inert inference this module's own openings warn
+  about, made here (evidence/t077-metacognition.md 3.5).
 
 DISCLOSED LIMITATION, because the first pass of this measurement was WRONG and the way it was wrong
 is the useful part. It was taken with the default `persist` (NORD_PERSIST unset -> True), so every
