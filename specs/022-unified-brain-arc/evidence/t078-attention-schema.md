@@ -265,7 +265,53 @@ SC-009 note; on a STOP / VOID nothing in `conclusion_protocol` or `brain_telemet
 panel (3 lenses + refuters judging CLAIM and FIX) -> fold -> Codex closing report -> the battery on the stacked head.
 Part II (if licensed): 2.11's own order, reds first, after step 8.
 
-### 2.10 (reserved for the dated fold of the Codex design read if it lands after the freeze)
+### 2.10 Amendment, dated 2026-09-15 14:50 local, BEFORE any brain recording exists (the Codex design read refused a
+### second time; one readability rule corrected on a constructed fact; two apparatus disclosures) -- no gate's form,
+### bar, disposition or N changes
+
+THE CODEX DESIGN READ IS NOT FOLDED. 2.0 named the condition: the read was refused by Codex's usage limit at 11:55 and,
+re-sent at 14:41:59 immediately after the T077 closing report's reply (which consumed the reset window's quota), refused
+AGAIN at 14:43:10 ("try again at 7:35 PM"; `scratchpad/t078/codex_design_read.md`, 53,577 tokens, no content beyond
+"I'll review against the design's stated head"). Per 2.0 the row proceeds: 2.9 steps 5-6 (the dry run, the campaign)
+follow this amendment. If a design read lands after this point it is folded as a dated 3.5 item (post-number: it may
+name defects, it may not move a bar), never as a pre-registration amendment; the T078 closing report to Codex asks its
+five questions and question 6 in the same prompt.
+
+THE POSITIVE CONTROL'S READABILITY RULE, corrected on a CONSTRUCTED fact before any brain run: 2.8 computed
+`N_MIN_PER_CELL = 10`'s consequence for the PRIMARY reading only (focus(4) x actions(12), <= 48 observed cells, 480 pairs
+at 1,200 ticks). The (g3c) control's axes are actions x actions -- up to 144 observed cells, 1,440 pairs -- and the
+builder's committed test (`tests/test_attention_schema.py::test_the_readers_run_on_a_constructed_recording_and_the_
+control_axis_can_refuse`, `c955e27`) shows the control REFUSING on a uniform 12-class action stream at every pair count
+N = 1,200 can produce. A control that refuses by construction cannot certify the estimator, and a REFUSED G3 would be
+the instrument's fault by 2.3's own words. The per-observed-cell minimum protects the SUBTLE primary reading; the
+control's job is to detect a STRONG dependence (actions are autocorrelated), and its permutation floor is exact at any
+cell count -- sparsity raises the floor, it does not blind it. AMENDED: the control's readability is `n >=
+N_MIN_PER_CELL x |Y|` (10 pairs per ACTION CLASS on the next-tick axis; >= 120 pairs at 12 actions), spelled
+`mi_read(..., min_rule="per_class")` on the control call ONLY; the primary keeps 2.1's per-cell rule as pre-registered;
+R3 gains the twin red (the same 145 pairs REFUSE as the 39-cell primary and READ as a 12-class control). Nothing else
+moves: N, n_perm, the bar, (p), (r), (g3c), (g3), (g4a), (g4b), 2.6's branches, 2.9's order. Landed as the commit after
+this one, before the dry run.
+
+TWO APPARATUS DISCLOSURES the recorder's build surfaced (code only; no brain was run before this amendment): (i)
+`_attend_real_stream` is called up to TWICE per awake tick (vision, then audio -- brain.py:1603-1608), and the brain's
+own record then disagrees with itself: `_attn_real` is `va or aa` (the FIRST successful call) while `_attn_focus`,
+`LearnedAttention.gate` and `.focus` are last-call state. The recorder takes the LAST call (so the recorded vector
+matches what `control_state` reads), records `attend_calls` per tick and `chan` both ways, and the pin COUNTS
+`ticks_two_attend_calls` and `ticks_chan_disagrees` per seed -- reported, never adjudicated here. (ii) the `sustain`
+field reads `Brain.workspace` (the arm's one workspace, brain.py:1312) through `report_channel.snapshot`; on a scratch
+brain it may be a near-constant (1.3's ignition rate), which the decoder's train-half standardization tolerates (a
+zero-variance column reads 0) and which G4 reports through `u_t`'s decode rather than hiding.
+
+THE BUILD's own disclosures (the builder's report, `c955e27`; each a 3.5 item at record time, named here so the dry run
+is read against them): `mi_read`'s signature is `track_error`'s shape; the decoder's init is an explicit CPU
+`torch.Generator` (2.1's "CPU or CUDA identically by seed" is obtained that way, not by a global seed); `mi_read` and
+`decode_heldout` return `n_perm` / `k` / `refusal` beside 2.1's keys; R5 carries a vacuity clause 2.4 did not word (a
+constant `u_t` would pass content-blindness trivially -- the T077 R2/R5 shape); `REDS_N_PERM = 200` for the reds (the
+campaign's floors use 2,000); two private parameters exist only so two mutations can be RUN; `_q95` is a second
+spelling of `track_error`'s order statistic (a P2 lift the moment a third caller appears); the `GRADIENT_CLAIM` of the
+decoder's autograd fit is declared `NOT_A_RULE` (an offline analysis decoder over a recording; no synapse, never on a
+tick) after the gradient-claim gate read the new symbol RED and was answered by the registration, not the gate.
+
 
 ### 2.11 PART II, pre-registered now, built only on G3 PASS and G4 PASS / PASS-WITH-LEAK
 
