@@ -769,28 +769,6 @@ EXEMPT = {
         "campaign guard and every nuisance refusal. Conjunct (a) reads NOT READ from here on: "
         "drift is not measurable without a learner, and specs/011's FR-008/FR-009 stay OPEN",
     ),
-    "integration_kernel": (
-        "permanent",
-        "specs/022 T070, DATED 2026-09-10: the PCI instrument (cortex/integration_measure's causal "
-        "footprint, serialized and scored by that module's own primitives) on the KERNEL's port -- "
-        "two replay_gate restores from one snapshot over a population h01_ingest.population "
-        "builds. A CI/run_selfchecks MEASUREMENT INSTRUMENT on a SCRATCH population, the "
-        "prior_drift_harness shape exactly: it constructs its own artifact and its own "
-        "KernelState/Synapses/KernelTick under a throwaway NORD_HOME and is never constructed BY a "
-        "brain. Reachable from run_selfchecks (R3 the G5 chain through the port with its "
-        "frame-only-restore and positions-stripped reds, the pulse-less identity, the regime arms' "
-        "contrasts), never from a tick. THE PORT WAS FIRST WRITTEN INTO integration_measure AND THIS "
-        "GATE READ 5 STALE EXEMPT ENTRIES ON THE SPOT (kernel_tick, kernel_state, replay_gate, "
-        "h01_ingest, determinism_gate): integration_measure is reachable from the brain through "
-        "region_coherence's normalized_lz import, so the port's imports would have made the kernel "
-        "'reachable' from a live root -- and those rows are the record that the kernel is NOT on the "
-        "live tick (S6 declined the wire at the deployed width; kernel_tick's own row says 'T070 is an "
-        "instrument'). Retiring them to green this gate would have been that lie. The instrument "
-        "therefore lives here, exempt for the reason prior_drift_harness is, and is NOT the live "
-        "consumer kernel_tick's and kernel_state's rows name: an instrument that ticks a scratch "
-        "population discharges neither (T063 2.8). 'Live' is not delivered by this module and it says "
-        "so in its own docstring",
-    ),
     "amdahl_gate": (
         "permanent",
         "specs/008 Gate Zero / specs/022 S6: the Amdahl ceiling of a delivery-path conversion, read "

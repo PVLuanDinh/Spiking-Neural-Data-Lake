@@ -189,9 +189,11 @@ PROVENANCE = {
     # night" until 2026-09-10 -- a map/territory fix (T070, evidence/t070-integration-kernel.md 2.10)
     "pci": (
         "NOT PRODUCED: the brain's pci producer was deleted 2026-08-05 (its net had no port for the "
-        "brain's state), so this row is absent from state(). T070's kernel-port instrument reads a "
-        "CONTRAST (integrated vs partitioned, rate-matched control beside it) OFF the tick on the H01 "
-        "fixture population, pinned in tools/t070_pci.json -- NOT the live brain, and NOT this row"
+        "brain's state), so this row is absent from state(). T070's kernel-port instrument READ a "
+        "CONTRAST (integrated vs partitioned, rate-matched control beside it) on the H01 fixture "
+        "population, pinned in tools/t070_pci.json at c1aac92; the port was DELETED under evidence 2.6 "
+        "on (b6) NOT MET (the panel of 2026-09-14 ruled the record's hold a relabelling); the pin "
+        "stands, recomputable from the tree at c1aac92; NOT the live brain"
     ),
     "criticality": "sleep-only",
     # string/bool literals in state(), not readings (goal brain.py:2892; reflex_armed :3055)

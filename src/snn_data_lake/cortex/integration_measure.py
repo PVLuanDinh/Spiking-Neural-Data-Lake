@@ -111,13 +111,13 @@ def _child_seed(base, tag):
 # The compression primitives: Lempel-Ziv (LZ76) + a gzip cross-check. LZ rewards STRUCTURE, not
 # marginal randomness (unlike an entropy coder) -- the anti-noise-trap choice for the compression step.
 # ======================================================================================================
-# distinct-from: cortex/integration_kernel.py::verdict_t070 -- the T070 verdict rule over arm
-#   readings; no string parse.
 # distinct-from: cortex/executive_control.py::plan_sequence (L190) -- a beam search over ACTION
 #   sequences scored by a value function; no suffix array, no factorization.
 # distinct-from: reasoning/gf.py::consistent_programs -- enumerates arithmetic programs that
 #   reproduce a numeric series; no string parse.
-#   All three read 2026-09-10 before this helper was written; the guard matched on docstring words.
+#   Both read 2026-09-10 before this helper was written; the guard matched on docstring words. (A
+#   third marker, cortex/integration_kernel.py::verdict_t070, was dropped 2026-09-15: that module
+#   was DELETED under evidence/t070-integration-kernel.md 2.6 on the T070 panel's ruling.)
 def _longest_previous_factor(s):
     """LPF[p] for every position p of `s`: the length of the longest prefix of s[p:] that also
     starts at some q < p (the occurrence may overlap p). Three passes, each linear or near-linear:

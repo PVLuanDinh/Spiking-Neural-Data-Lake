@@ -348,6 +348,12 @@ hold is a relabelling of 2.6 after its number. If it rules so, the fold's FIRST 
 `cortex/integration_kernel.py` and its tests (the exact scorer, the pin and this record survive); if it does not, the port
 is retained as an instrument and a successor re-specifies (b6)'s clauses 2-3 with a tolerance the parse length sets (at
 least one phrase) or a paired test, and (b4) as a reported quantity. Either way this row does not re-read itself.
+(2026-09-15, T070 panel of 2026-09-14) The panel's pre-registration-honesty lens ruled the hold a post-number change of 2.6's
+routing (F10, BLOCKER); 2.6 executed in this commit (the fold's commit 2; its hash is named in 3.7): the port and its tests
+deleted, its CORE/REGIONS/EXEMPT registrations removed; the port is re-landable from the tree at c1aac92 (history
+a2cf76d..c1aac92). The successor pre-registration re-specifies (b6) clauses 2-3 with a tolerance sized by a MEASURED per-set
+echo dispersion or a paired test (an un-registered paired t(null - partitioned) reads +1.6733 FPR 0.0391 and t(null -
+rate_matched) +0.5435 FPR 0.0586 on the pin -- quoted as a pointer, never a reading) and (b4) as a reported quantity.
 
 ### 3.5 Deviations from 2.1-2.11, each with its number (dated 2026-09-10)
 1. 2.8's cost estimate was wrong by four orders of magnitude on the scorer (3.2); corrected by 2.11 before any number.

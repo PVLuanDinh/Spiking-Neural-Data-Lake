@@ -177,7 +177,6 @@ REGIONS = {
         "resonate_and_fire",
         "srm_neuron",
         "integration_measure",
-        "integration_kernel",  # T070: the PCI instrument on the kernel's port (off-tick instrument)
         "agency_monitor",
         "affect_core",
         "crossmodal_binder",
