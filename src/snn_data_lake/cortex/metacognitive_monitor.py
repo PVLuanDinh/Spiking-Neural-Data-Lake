@@ -125,6 +125,14 @@ learning-progress / novelty source), keyed off a coarse, label-free input bucket
 Pure standard library (math, random, zlib, collections). Per-instance random.Random,
 zlib.crc32 for bucketing (never hash()), ASCII-only prints, deterministic.
 
+T077 (2026-09-15, specs/022 Phase 4 / C4; evidence/t077-metacognition.md): THE CALIBRATION SCORER lives here --
+`track_error(conf, correct)`, type-2 discrimination (auroc2) of a confidence stream against its own outcomes with
+the stream's permutation null deciding readability, and `replay_reliability(stream, seed)`, the exact offline replay
+of this pool on its recorded keyword inputs (R0) that also carries the per-input neuters. It is the row's ONE
+calibration mechanism (P2): `second_order_access.calibration()` is re-pointed to it. The reads this module emits are
+NOT thereby licensed as error-tracking: that is the campaign's question, and the answer (a number about a mechanism,
+never a verdict about experience) lives in the evidence file and in `tools/t077_metacognition.json` once pinned.
+
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.metacognitive_monitor
 """
 
@@ -772,6 +780,141 @@ def _p6_experiment(seed=0, n=180):
         "charge": _p6_diff(live, neutered),  # THE BAR -- must NOT be zero
         "gain0_is_inert": _p6_diff(off, neutered),  # must be all-zero
     }
+
+
+# ============================== T077: the calibration scorer (2026-09-15) ==============================
+# specs/022 T077 (evidence/t077-metacognition.md 2.1-2.4): does the monitor's read TRACK the brain's own error
+# rate on held-out items better than a fixed prior does? ONE scorer for that question, here, in the incumbent
+# it extends (P2: no third monitor; the row's other incumbent, second_order_access.calibration(), is re-pointed
+# to this scorer in the next commit). The paired t over seeds is prior_drift_harness.contrast, imported LAZILY by
+# the campaign: that module is an EXEMPT instrument, and a module-level import from this live CORE module would
+# make it "reachable from a live root" and stale its dormancy row (the T070 trap, t070-integration-kernel.md 3.5).
+# consolidates: cortex/second_order_access.py::SecondOrderAccess.calibration -- a thresholded call's running
+#   accuracy; superseded by the rank-based scorer below and re-pointed to it (2.9 step 3).
+# distinct-from: substrate/replay_gate.py -- the kernel's snapshot/restore chain; `replay_reliability` below
+#   replays THIS pool on its recorded keyword inputs, no kernel, no snapshot.
+# distinct-from: cortex/prior_drift_harness.py::contrast -- the paired t over seeds, REUSED (lazily), not rewritten.
+T_BAR = 1.895  # PLAN-FINAL Part F preamble; equal to prior_drift_harness.T_BAR (the T077 reds assert it)
+#: READABILITY (2.3 (a), fixed after the design read): a stream is readable iff both outcome classes are present
+#: AND the permutation null of auroc2 for THAT stream (ties at 1/2, N_PERM_FLOOR shuffles of the pairing) has its
+#: 95th percentile at or below 0.5 + RHO. RHO is DECLARED -- the midpoint of the statistic's range between chance
+#: (0.5) and the oracle (1.0) -- and disclosed as chosen, not derived; its consequence is computed by the null
+#: itself (at N = 600, q95 falls under 0.75 from about 4 minority outcomes).
+RHO = 0.25
+N_PERM_FLOOR = 2000
+
+
+def _auroc2(conf, correct):
+    """P(conf on a correct item > conf on an incorrect item), ties 1/2 -- the Mann-Whitney form over average
+    ranks; the fixed prior's value is exactly 0.5; None when one outcome class is absent."""
+    n = len(conf)
+    order = sorted(range(n), key=lambda i: conf[i])
+    ranks = [0.0] * n
+    i = 0
+    while i < n:
+        j = i
+        while j + 1 < n and conf[order[j + 1]] == conf[order[i]]:
+            j += 1
+        r = (i + j) / 2.0 + 1.0  # average rank, 1-based
+        for k in range(i, j + 1):
+            ranks[order[k]] = r
+        i = j + 1
+    n_ok = sum(1 for y in correct if y)
+    n_err = n - n_ok
+    if n_ok == 0 or n_err == 0:
+        return None
+    rank_sum_ok = sum(ranks[i] for i in range(n) if correct[i])
+    u = rank_sum_ok - n_ok * (n_ok + 1) / 2.0
+    return u / float(n_ok * n_err)
+
+
+def _brier_gain(conf, correct):
+    """Brier(prequential prior) - Brier(conf): the prior at item i is the running accuracy of items < i (0.5
+    before the first item); no lookahead. Reported beside auroc2, never barred: the pool's rate is not a
+    probability and a fitted rescaling would be lookahead."""
+    seen = 0
+    ok = 0
+    prior_loss = 0.0
+    conf_loss = 0.0
+    for c, y in zip(conf, correct):
+        p = (ok / seen) if seen else 0.5
+        prior_loss += (p - y) ** 2
+        conf_loss += (c - y) ** 2
+        seen += 1
+        ok += int(y)
+    n = float(len(conf)) or 1.0
+    return (prior_loss - conf_loss) / n
+
+
+def track_error(conf, correct, n_perm=N_PERM_FLOOR, seed=0):
+    """THE ONE scorer of "confidence tracks error" (T077 2.1). Returns a dict; REFUSES below the floor.
+
+    Always: n, minority, entropy_bits, rho, readable, perm_q95, auroc2 (None unless readable). When both classes
+    are present: perm_q95 and shuffled_auroc2 (the median draw) from the stream's own permutation null -- the C5
+    dissociation input, computed before any reading. When readable: auroc2 (primary), brier_gain (beside),
+    oracle (conf := outcome, the positive control). Otherwise `refusal` names why."""
+    import random
+
+    from snn_data_lake.cortex.integration_measure import (
+        source_entropy,
+    )  # P2: the tree's binary entropy
+
+    conf = [float(c) for c in conf]
+    correct = [1 if y else 0 for y in correct]
+    n = len(conf)
+    n_ok = sum(correct)
+    minority = min(n_ok, n - n_ok)
+    out = {
+        "n": n,
+        "minority": minority,
+        "entropy_bits": source_entropy("".join("1" if y else "0" for y in correct)),
+        "rho": RHO,
+        "readable": False,
+        "perm_q95": None,
+        "auroc2": None,
+    }
+    if minority == 0:
+        out["refusal"] = "one outcome class only: auroc2 undefined"
+        return out
+    rng = random.Random(seed)
+    draws = []
+    shuffled = list(correct)
+    for _ in range(max(int(n_perm), N_PERM_FLOOR)):
+        rng.shuffle(shuffled)
+        draws.append(_auroc2(conf, shuffled))
+    draws.sort()
+    q95 = draws[min(len(draws) - 1, int(round(0.95 * (len(draws) - 1))))]
+    out["perm_q95"] = q95
+    out["shuffled_auroc2"] = draws[len(draws) // 2]
+    out["n_perm"] = len(draws)
+    if q95 > 0.5 + RHO:
+        out["refusal"] = (
+            f"null q95 {q95:.4f} above 0.5 + rho ({0.5 + RHO}): the stream cannot resolve tracking"
+        )
+        return out
+    out["readable"] = True
+    out["auroc2"] = _auroc2(conf, correct)
+    out["brier_gain"] = _brier_gain(conf, correct)
+    out["oracle"] = _auroc2([float(y) for y in correct], correct)
+    return out
+
+
+def replay_reliability(stream, seed, base=0.4, expect=None, neuter=None):
+    """Replay `MetacognitiveMonitor(base, seed)` on a recorded input stream (a list of the five keyword inputs
+    per fed tick, exactly as brain.py:2506-2512 fed them). With `expect`, asserts exact equality with the
+    recorded read (R0). With `neuter=(name, value)`, pins that input to `value` on every tick (the per-input
+    attribution, P8 clause 3). The pool is spike-quantized (24 x 16 steps), so only an input change that moves a
+    spike changes the read -- disclosed in the pre-registration's 2.4."""
+    mon = MetacognitiveMonitor(base=base, seed=seed)
+    out = []
+    for row in stream:
+        kw = dict(row)
+        if neuter is not None:
+            kw[neuter[0]] = neuter[1]
+        out.append(mon.update(**kw))
+    if expect is not None:
+        assert out == list(expect), "the replay diverged from the recorded read (R0)"
+    return out
 
 
 def _p(lines, s):
