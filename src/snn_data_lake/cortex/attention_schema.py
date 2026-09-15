@@ -72,9 +72,14 @@ CUDA by seed and the tests run it on CPU. ASCII-only prints (Windows cp1252). De
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.attention_schema --t078-campaign
 """
 
+import math
+import random
+import time
+from collections import Counter
 from pathlib import Path
 
-from snn_data_lake.substrate.paired_contrast import T_BAR
+from snn_data_lake.substrate.paired_contrast import T_BAR, contrast
+from snn_data_lake.substrate.report_channel import snapshot as _report_snapshot
 
 # distinct-from: cortex/metacognitive_monitor.py::track_error -- a TYPE-2 AUROC over one
 #   (confidence, outcome) stream against its own label-permutation null. This is the MUTUAL
@@ -89,6 +94,33 @@ from snn_data_lake.substrate.paired_contrast import T_BAR
 #   information" and which carries no null. This estimates MI on an OBSERVED recording, with a
 #   permutation FLOOR and an explicit refusal, and constructs no world model at all.
 
+#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it. `_fit_and_score`
+#: is inferred CLAIM by the census (it calls `torch.autograd.grad`), so it owes a declaration --
+#: the gate reported MISSING_DECLARATION on the commit that added it, which is the registration
+#: working, not the gate misfiring.
+#:
+#: NOT_A_RULE is the honest label and the reason states the gradient rather than hiding it. It DOES
+#: compute an exact reverse-mode gradient, of an OFFLINE ANALYSIS DECODER's own convex multinomial
+#: logistic loss, over a RECORDING that already exists. No synapse, trace, threshold or weight of
+#: the brain is touched by it; it never runs on a tick; its output is an ACCURACY, read against a
+#: label-shuffle band, and thrown away. The precedent is `cortex/eprop_kernel::_first_layer_grad`,
+#: a gradient-computing function declared NOT_A_RULE because it DIAGNOSES rather than learns, and
+#: the sibling is `metacognitive_monitor`'s two NOT_A_RULE rows. EXACT_GRADIENT was considered and
+#: NOT taken: in this tree that value means "the independent BPTT reference the e-prop cosine
+#: clause compares against" (eprop_kernel::bptt_grads), and this decoder is a reference for
+#: nothing -- claiming it would put a measurement probe into the rule census as a bearing row.
+GRADIENT_CLAIM = {
+    "_fit_and_score": (
+        "NOT_A_RULE",
+        "fits m multinomial-logistic ANALYSIS decoders by full-batch autograd descent over an "
+        "already-recorded (rows, labels) table, to read whether the label is decodable above a "
+        "label-shuffle band (G4). An estimator, not a learning rule: it trains no part of the "
+        "brain, touches no synapse or trace, never runs on a tick, and its weights are discarded "
+        "with the reading. Same disposition and same reason shape as cortex/eprop_kernel::"
+        "_first_layer_grad -- a gradient that measures instead of learning",
+    ),
+}
+
 # ---- 2.1 / 2.8's declared constants -------------------------------------------------------------
 N_MIN_PER_CELL = 10  # pairs per OBSERVED joint cell; below it `mi_read` REFUSES (2.1, 2.8)
 N_PERM = 2000  # permutations of y behind every MI floor (2.1)
@@ -102,6 +134,17 @@ DECODER_LR = 0.1  # decoder learning rate (2.1)
 DECODER_L2 = 1e-3  # decoder L2 penalty (2.1)
 PROJ_TAG = b"t078-proj"  # crc32(PROJ_TAG) + seed seeds the (64, 15) Gaussian projection (2.1)
 DETERMINISM_TICKS = 100  # the determinism twin's length (2.2); the NAME is the builder's
+#: BUILDER-INTRODUCED, disclosed (2.9 step 4). The reds and the tests run their MI floors at 200
+#: draws, not the campaign's 2,000: 2.1 fixes n_perm = 2,000 for the CAMPAIGN's four readings, and
+#: `t078_reds()` is executed by every run_selfchecks pass, where 2,000 x 8 reads would dominate the
+#: gate. 2.4's n_shuffle = 200 and n_test = 300 are used VERBATIM because R4 asserts on them.
+REDS_N_PERM = 200
+#: BUILDER-INTRODUCED, disclosed: R2's constructed action streams are 2,000 ticks long. 2.4 fixes
+#: neither n nor the alphabet for R2, and the apparatus probe measured ~12 action labels, so a
+#: 12-class pair stream spans up to 144 observed joint cells and N_MIN_PER_CELL x 144 = 1,440 pairs
+#: is the floor the REFUSAL itself imposes -- a 600-tick R2 would be refused by R3's own rule.
+REDS_ACTION_N = 2000
+REDS_ACTION_K = 12
 T078_N_TICKS = 1200  # ticks per seed (2.2, 2.8)
 T078_SEEDS = tuple(range(8))  # PLAN-FINAL Part F: S = 8
 T078_BAR = T_BAR  # the ONE bar; paired one-sided t, 7 d.f., alpha = 0.05
@@ -139,35 +182,278 @@ assert not (set(U_FIELDS) & set(U_FORBIDDEN)), (
 )
 
 
+# distinct-from: cortex/h01_ingest.py::_ei_band / check_ei -- the tree's other permutation bar, and
+#   the nearest thing to `_q95` here. READ before this marker was written: it bars a CORRELATION r
+#   between two instruments, takes its bar from `np.percentile` (which INTERPOLATES between order
+#   statistics), and RAISES IngestRefused instead of returning a reading. `_q95` is the exact
+#   non-interpolating order statistic 2.1 pre-registers -- "the q95 as `track_error` takes it" --
+#   over MI draws and decoder accuracies. DISCLOSED P2 debt rather than hidden: that expression now
+#   has two spellings in the tree, this one and the inline copy at metacognitive_monitor:915 which
+#   2.1 names as THE convention. Lifting it beside `paired_contrast` is the merge, and it is the
+#   right move the moment a THIRD caller appears; it is not taken in this commit because that edits
+#   T077's shipped instrument, which this row's brief scopes out.
+# distinct-from: substrate/determinism_gate.py::measure_frac_bits -- a sweep for the smallest
+#   fractional-bit width whose spike trains equal an FP64 reference. A search over widths, not a
+#   percentile of a null. Read; unrelated.
+# distinct-from: cortex/executive_control.py::search -- beam/tree search over action SEQUENCES.
+#   Read; shares only the word "score". distinct-from: cortex/neuron_zoo.py::_worker_ladder (a
+#   thread-count race) and substrate/selfcheck_cache.py::_refresh_derived (a roster recompute) --
+#   both read, neither computes a percentile, a null or an information quantity.
+def _q95(draws):
+    """The 95th percentile of the draws, EXACTLY as `track_error` takes it
+    (metacognitive_monitor:915): the order statistic at round(0.95 * (len - 1)), never an
+    interpolation. ONE convention for every floor and every band in this module."""
+    draws.sort()
+    return draws[min(len(draws) - 1, int(round(0.95 * (len(draws) - 1))))]
+
+
 def mi_bits(x, y):
-    """PART I STUB (2.9 step 2). The plug-in mutual information in bits of two equal-length
-    discrete label sequences, over the OBSERVED joint cells, with no smoothing -- the permutation
-    floor absorbs the plug-in bias. Returns a null reading until 2.9 step 4 lands."""
-    return 0.0
+    """The plug-in mutual information in bits of two equal-length discrete label sequences: the
+    joint counts over the OBSERVED cells only, with NO smoothing. The plug-in estimate of a finite
+    sample is positive even under independence; nothing here corrects that, because the
+    permutation floor in `mi_read` is what absorbs it (2.1) and a bias correction would be a second
+    mechanism doing the floor's job. graph-exists found no MI estimator in the tree on
+    2026-09-15; the three nearest relatives are the `# distinct-from:` lines at the top."""
+    n = len(x)
+    if n == 0 or n != len(y):
+        return 0.0
+    return _mi_from_counts(Counter(zip(x, y, strict=True)), Counter(x), Counter(y), n)
+
+
+def _mi_from_counts(joint, px, py, n):
+    """MI in bits from joint and marginal COUNTS. Split out so the permutation floor can reuse the
+    marginals, which a permutation of y leaves unchanged -- the same mechanism, not a second one."""
+    total = 0.0
+    for (a, b), c in joint.items():
+        total += (c / n) * math.log2((c * n) / float(px[a] * py[b]))
+    return total
+
+
+def _mi_read(x, y, n_perm=N_PERM, seed=0, n_min_per_cell=N_MIN_PER_CELL):
+    """The core of `mi_read`. `n_min_per_cell` is a parameter ONLY so R3's mutation
+    (N_MIN_PER_CELL := 0) can be RUN rather than argued -- the public `mi_read` hardcodes the
+    declared constant and the campaign never reaches this spelling."""
+    n = len(x)
+    px, py = Counter(x), Counter(y)
+    joint = Counter(zip(x, y, strict=True)) if n and n == len(y) else Counter()
+    cells = len(joint)
+    out = {
+        "n": n,
+        "cells": cells,
+        "mi": None,
+        "perm_q95": None,
+        "perm_median": None,
+        "n_perm": 0,
+        "readable": False,
+        "refusal": None,
+    }
+    if n == 0 or n != len(y):
+        out["refusal"] = f"length mismatch: {n} against {len(y)}"
+        return out
+    if len(px) < 2 or len(py) < 2:
+        out["refusal"] = f"a one-class axis (|x| = {len(px)}, |y| = {len(py)}): MI is 0 by identity"
+        return out
+    if n < n_min_per_cell * cells:
+        out["refusal"] = (
+            f"{n} pairs over {cells} observed joint cells is below {n_min_per_cell} per cell "
+            f"({n_min_per_cell * cells} required): the floor cannot resolve this stream"
+        )
+        return out
+    rng = random.Random(seed)
+    shuffled = list(y)
+    draws = []
+    for _ in range(max(int(n_perm), 1)):
+        rng.shuffle(shuffled)
+        draws.append(_mi_from_counts(Counter(zip(x, shuffled, strict=True)), px, py, n))
+    out["mi"] = _mi_from_counts(joint, px, py, n)
+    out["perm_median"] = sorted(draws)[len(draws) // 2]
+    out["perm_q95"] = _q95(draws)
+    out["n_perm"] = len(draws)
+    out["readable"] = True
+    return out
 
 
 def mi_read(x, y, n_perm=N_PERM, seed=0):
-    """PART I STUB (2.9 step 2). `mi_bits` against its own permutation floor: the 95th percentile
-    of `mi_bits(x, permuted y)` over `n_perm` permutations of y, drawn by a seeded
-    `random.Random` -- the same convention as `metacognitive_monitor.track_error`. REFUSES below
-    `N_MIN_PER_CELL` pairs per observed joint cell, or on a one-class axis. Returns a null
-    reading until 2.9 step 4 lands."""
-    return {"readable": False, "mi": None, "perm_q95": None, "refusal": "stub"}
+    """`mi_bits` against its OWN permutation floor: the 95th percentile of `mi_bits(x, permuted y)`
+    over `n_perm` permutations of y, drawn by a seeded `random.Random` -- the same convention as
+    `metacognitive_monitor.track_error`, whose q95 order statistic is reused verbatim.
+
+    Returns {n, cells, mi, perm_q95, perm_median, n_perm, readable, refusal}. REFUSES (readable
+    False, NO mi) below `N_MIN_PER_CELL` pairs per OBSERVED joint cell, or when either axis carries
+    one class. `n_perm` and `refusal` are beyond 2.1's listed keys and are reported, never barred:
+    a refusal that does not say why is a number without a reason."""
+    return _mi_read(x, y, n_perm=n_perm, seed=seed, n_min_per_cell=N_MIN_PER_CELL)
+
+
+def _fit_and_score(x_tr, y_tr, x_sc, y_sc, k, seed):
+    """`m` multinomial logistic decoders AT ONCE: the weight tensor is (m, d, k), so the 200-draw
+    band is ONE batched fit rather than 200 sequential ones (2.1). Full-batch gradient descent,
+    DECODER_STEPS steps at DECODER_LR with an L2 penalty of DECODER_L2; the models are independent,
+    so summing their losses is exactly the per-model objective.
+
+    `y_tr` is (m, n_train) and `y_sc` is (m, n_score) -- the band's models differ only in their
+    TRAIN labels and are scored on the TRUE test labels; R4's mutation is the one caller that
+    passes a per-model scoring target. The init is drawn from an explicit CPU `torch.Generator`:
+    2.1 words it `torch.manual_seed(seed)`, and a local generator is how "CPU or CUDA identically
+    by seed" is actually obtained (the global seed draws DIFFERENT numbers on the two devices),
+    without touching process-global RNG state -- which matters on a free-threaded interpreter."""
+    import torch
+
+    gen = torch.Generator().manual_seed(int(seed))
+    m, d = y_tr.shape[0], x_tr.shape[1]
+    w = (0.01 * torch.randn(m, d, k, generator=gen)).requires_grad_(True)
+    b = torch.zeros(m, 1, k, requires_grad=True)
+    xb = x_tr.unsqueeze(0)
+    for _ in range(DECODER_STEPS):
+        logp = (xb @ w + b).log_softmax(-1)
+        nll = -logp.gather(-1, y_tr.unsqueeze(-1)).squeeze(-1).mean(-1)
+        loss = nll.sum() + DECODER_L2 * (w * w).sum()
+        gw, gb = torch.autograd.grad(loss, (w, b))
+        with torch.no_grad():
+            w -= DECODER_LR * gw
+            b -= DECODER_LR * gb
+    with torch.no_grad():
+        pred = (x_sc.unsqueeze(0) @ w + b).argmax(-1)
+        return (pred == y_sc).float().mean(-1).tolist()
+
+
+def _decode(X, y, seed, n_shuffle=N_SHUFFLE, score_train=False):
+    """The core of `decode_heldout`. `score_train` is a parameter ONLY so R4's mutation (a decoder
+    scored on the half it was fitted on, which collapses the band to 1.0) can be RUN -- the public
+    `decode_heldout` never scores on train and the campaign never reaches this spelling."""
+    import torch
+
+    n = len(y)
+    n_train = n // 2
+    ytr_raw, yte_raw = list(y[:n_train]), list(y[n_train:])
+    out = {
+        "n_train": n_train,
+        "n_test": n - n_train,
+        "k": 0,
+        "acc": None,
+        "shuffle_q95": None,
+        "shuffle_median": None,
+        "readable": False,
+        "refusal": None,
+    }
+    if n != len(X):
+        out["refusal"] = f"length mismatch: {len(X)} rows against {n} labels"
+        return out
+    if out["n_test"] < N_TEST_MIN:
+        out["refusal"] = f"{out['n_test']} held-out rows is below N_TEST_MIN = {N_TEST_MIN}"
+        return out
+    if len(set(ytr_raw)) < 2 or len(set(yte_raw)) < 2:
+        out["refusal"] = (
+            f"a half with one class (train {len(set(ytr_raw))}, test {len(set(yte_raw))}): "
+            f"the decode is undefined"
+        )
+        return out
+    classes = sorted(set(y))
+    idx = {c: i for i, c in enumerate(classes)}
+    k = len(classes)
+    out["k"] = k
+    x_tr = torch.tensor(X[:n_train], dtype=torch.float32)
+    x_te = torch.tensor(X[n_train:], dtype=torch.float32)
+    mu = x_tr.mean(0, keepdim=True)  # standardized on the TRAIN half only -- no lookahead
+    sd = x_tr.std(0, unbiased=False, keepdim=True).clamp_min(1e-6)
+    x_tr, x_te = (x_tr - mu) / sd, (x_te - mu) / sd
+    y_tr = torch.tensor([[idx[c] for c in ytr_raw]], dtype=torch.long)
+    y_te = torch.tensor([[idx[c] for c in yte_raw]], dtype=torch.long)
+    x_score = x_tr if score_train else x_te
+    out["acc"] = _fit_and_score(x_tr, y_tr, x_score, y_tr if score_train else y_te, k, seed)[0]
+    rng = random.Random(seed)
+    perm_rows = []
+    for _ in range(max(int(n_shuffle), 1)):
+        shuffled = list(ytr_raw)
+        rng.shuffle(shuffled)
+        perm_rows.append([idx[c] for c in shuffled])
+    y_perm = torch.tensor(perm_rows, dtype=torch.long)
+    # the band is scored on the TRUE test labels; the mutation scores each model on the PERMUTED
+    # labels it was fitted to, which is exactly what makes the band collapse toward 1.0
+    band_target = y_perm if score_train else y_te.expand(y_perm.shape[0], -1)
+    draws = _fit_and_score(x_tr, y_perm, x_score, band_target, k, seed)
+    out["shuffle_median"] = sorted(draws)[len(draws) // 2]
+    out["shuffle_q95"] = _q95(draws)
+    out["readable"] = True
+    return out
 
 
 def decode_heldout(X, y, seed, n_shuffle=N_SHUFFLE):
-    """PART I STUB (2.9 step 2). A multinomial logistic decoder trained on the FIRST half of the
-    rows in tick order and scored on the SECOND (prequential halves, no lookahead), against a
-    band of `n_shuffle` decoders trained on label-permuted train halves and scored on the TRUE
-    test labels. Returns a null reading until 2.9 step 4 lands."""
-    return {"readable": False, "acc": None, "shuffle_q95": None}
+    """A multinomial logistic decoder (torch) trained on the FIRST half of the rows in tick order
+    and scored on the SECOND -- prequential halves, no lookahead, standardized on the train half.
+
+    Returns {n_train, n_test, k, acc, shuffle_q95, shuffle_median, readable, refusal}. The band is
+    `n_shuffle` decoders trained on label-permuted train halves and scored on the TRUE test labels,
+    fitted as ONE batched (n_shuffle, d, k) tensor. NOT readable when the held-out half is below
+    `N_TEST_MIN` rows or either half carries fewer than two classes. `k` and `refusal` are beyond
+    2.1's listed keys and are reported, never barred."""
+    return _decode(X, y, seed, n_shuffle=n_shuffle, score_train=False)
 
 
 def control_state(brain):
-    """PART I STUB (2.9 step 2). A4's candidate `u_t` -- the 15 fields of `U_FIELDS`, in that
-    order, read from the live signals of the pre-registration's 1.2 and from nothing else.
-    Returns the 15 zeros until 2.9 step 4 lands."""
-    return [0.0] * U_DIM
+    """A4's candidate `u_t`: the 15 fields of `U_FIELDS`, in that order, read from the live signals
+    of the pre-registration's 1.2 and from NOTHING else.
+
+      gate(4)            `brain._learned_attn.gate`         LearnedAttention.gate, :181-184
+      precision(2)       `_pc_surprise` and `pc_dev`        brain.py:2406-2408 and :2482-2485's form
+      onehot(focus)(5)   `brain._attn_focus`                brain.py:1571; the fifth slot is NONE,
+                                                            reachable while it is still the :1049 init
+      focus_strength     the LIF winner's rate              brain.py:1571
+      ignited            `_access_state["ignited"]`         brain.py:3154-3158
+      drive_margin       `brain.brain.arm._decision_margin` autonomous_loop.py:1219
+      sustain            the workspace snapshot's strength  report_channel.snapshot :98-111
+
+    CONTENT-BLIND BY TYPE: a pure function of those fields, so two brains whose control fields are
+    equal and whose latents differ read a bit-identical vector (R5). Every field is read through
+    `getattr` with a declared default, which is what lets R5 run on a duck-typed stand-in instead
+    of constructing a brain."""
+    la = getattr(brain, "_learned_attn", None)
+    raw_gate = list(getattr(la, "gate", None) or []) if la is not None else []
+    gate = [float(g) for g in raw_gate[:N_BANDS]]
+    gate += [0.0] * (N_BANDS - len(gate))
+    raw = float(getattr(brain, "_pc_surprise", 0.0) or 0.0)
+    ema = float(getattr(brain, "_pc_surprise_ema", 0.0) or 0.0)
+    pc_dev = min(1.0, max(0.0, raw - ema) / (ema + 1e-6)) if ema > 0.0 else 0.0
+    focus = getattr(brain, "_attn_focus", None)
+    onehot = [0.0] * (N_BANDS + 1)
+    strength = 0.0
+    if focus is None:
+        onehot[N_BANDS] = 1.0
+    else:
+        band, strength = int(focus[0]), float(focus[1])
+        onehot[band if 0 <= band < N_BANDS else N_BANDS] = 1.0
+    ignited = 1.0 if (getattr(brain, "_access_state", None) or {}).get("ignited") else 0.0
+    arm = getattr(getattr(brain, "brain", None), "arm", None)
+    margin = float(getattr(arm, "_decision_margin", 0.0) or 0.0)
+    sustain = float(_report_snapshot(getattr(brain, "workspace", None))["strength"])
+    u = gate + [raw, pc_dev] + onehot + [strength, ignited, margin, sustain]
+    assert len(u) == U_DIM, f"u_t must carry exactly {U_DIM} fields, got {len(u)}"
+    return u
+
+
+def _g4_reading(g4a, g4b):
+    """2.3's branch map, shared by `g4_rule` and by R6's mutated twin so that the mutation changes
+    ONLY the operands of (g4b) and nothing else."""
+    if not g4a.met:
+        return "PASS"
+    return "PASS-WITH-LEAK" if g4b.met else "VOID"
+
+
+def g4_rule(u_reads, c_reads):
+    """2.3's G4 branches from the per-seed decodes. ONE implementation, read by R6 and by the
+    campaign alike (P2).
+
+      (g4a) t(u_acc - u_shuffle_q95) > the bar  -- the 15-d `u_t` decode above its own band
+      (g4b) t(c15_acc - u_acc)       > the bar  -- the MATCHED 15-d content decode above it
+      VOID           iff (g4a) MET and (g4b) NOT MET -- content-blindness is a naming convention
+      PASS           iff (g4a) NOT MET           -- the vector decodes nothing above chance
+      PASS-WITH-LEAK iff (g4a) MET and (g4b) MET -- it leaks, far below the content"""
+    a = contrast("(g4a) u_t decodes content", [u["acc"] - u["shuffle_q95"] for u in u_reads])
+    b = contrast(
+        "(g4b) content decodes better",
+        [c["acc"] - u["acc"] for c, u in zip(c_reads, u_reads, strict=True)],
+    )
+    return {"g4a": a, "g4b": b, "reading": _g4_reading(a, b)}
 
 
 def t078_record_brain(seed, n_ticks=T078_N_TICKS):
@@ -176,12 +462,277 @@ def t078_record_brain(seed, n_ticks=T078_N_TICKS):
     raise NotImplementedError("t078_record_brain lands in 2.9 step 5 (the recorder)")
 
 
-def t078_reds():
-    """2.4's six reds as ONE self-check line (each is also a test in
-    `tests/test_attention_schema.py`). Every value is False against the stubs: the reds are
-    committed RED, and they go True in 2.9 step 4 only when each is reddened IN FACT by its own
-    mutated scorer."""
-    return {"R1": False, "R2": False, "R3": False, "R4": False, "R5": False, "R6": False}
+# ============================== 2.4's constructed inputs (no brain, no lake) ======================
+# Every red below runs on one of these. They live in the MODULE rather than in the test because
+# `t078_reds()` is the in-command control the module's own self-check asserts, and a constructed
+# input that exists only under pytest is unavailable to a gate run -- which is why T077's
+# `t077_tracker_stream` sits in `metacognitive_monitor` for the same reason.
+# distinct-from: cortex/live_brain.py::LiveBrain.run -- drives the REAL brain over a stream of
+#   context dicts and returns live states. Read: these constructors tick nothing and construct no
+#   brain; `t078_stub_brain` is a duck-typed namespace carrying the seven attributes
+#   `control_state` reads, so R5 runs with no Brain, no lake and no torch.
+# distinct-from: cortex/self_model.py::SelfModel.observe -- folds one tick of REAL brain signals
+#   into an EMA-tracked model. Read: `control_state` keeps no state, folds nothing and returns a
+#   pure function of the fields it is handed on that tick.
+# distinct-from: substrate/amdahl_gate.py::_count_lif_in -- a bounded attribute walk counting
+#   LIFNeurons reachable from one brain. Read: shares only the phrase "one brain"; no census here.
+# distinct-from: cortex/snn_moe_classifier.py::_new_rng -- derives a numpy Generator's seed from
+#   the module-global `random` stream to keep a consumer's determinism contract. Read: every RNG
+#   here is a per-call `random.Random(seed)` or a per-call `torch.Generator`, and NOTHING in this
+#   module reads or writes a process-global random stream.
+# distinct-from: cerebellum/wavefront_planner.py::_limits -- per-joint actuator ranges from the
+#   arm model. Read; unrelated to anything in this file.
+def t078_label_stream(n, k, seed):
+    """n i.i.d. labels drawn uniformly from range(k) by a seeded `random.Random`."""
+    rng = random.Random(seed)
+    return [rng.randrange(k) for _ in range(n)]
+
+
+def t078_markov_stream(n, k, p_self, seed):
+    """n labels from a k-state chain that repeats the previous label with probability `p_self` and
+    otherwise jumps uniformly to one of the other k - 1 states -- autocorrelated BY CONSTRUCTION,
+    which is the property R2's positive control has to be able to read."""
+    rng = random.Random(seed)
+    out = [rng.randrange(k)]
+    for _ in range(n - 1):
+        if rng.random() < p_self:
+            out.append(out[-1])
+        else:
+            out.append((out[-1] + 1 + rng.randrange(k - 1)) % k)
+    return out
+
+
+def t078_cell_stream(n_pairs, n_cells, n_x=N_BANDS, n_y=12):
+    """An (x, y) pair stream occupying EXACTLY `n_cells` observed joint cells, by cycling the first
+    `n_cells` of the n_x by n_y grid. R3's shape: the cell count is pinned and the PAIR count is
+    the only thing that moves, so the refusal is attributable to the ratio and to nothing else."""
+    grid = [(i, j) for i in range(n_x) for j in range(n_y)][:n_cells]
+    pairs = [grid[t % len(grid)] for t in range(n_pairs)]
+    return [p[0] for p in pairs], [p[1] for p in pairs]
+
+
+def t078_planted_rows(n, d, k, seed, planted=True):
+    """n rows of d uniform-noise features with the label planted in coordinate 0 as y / (k - 1) --
+    an ORDERED one-dimensional separation a linear multinomial decoder can reach. With
+    planted=False the labels are drawn independently of the rows, so nothing predicts them."""
+    rng = random.Random(seed)
+    y = [rng.randrange(k) for _ in range(n)]
+    rows = [[rng.random() for _ in range(d)] for _ in range(n)]
+    if planted:
+        for i in range(n):
+            rows[i][0] = y[i] / float(k - 1)
+    return rows, y
+
+
+def t078_g4_recording(seed, kind, n=200, k=10):
+    """A constructed (u_rows, content_rows, labels) recording for R6.
+
+    "void": `u_t` IS a one-hot of the label (a near-perfect decode) while the content is a LOSSY
+    one-hot of label // 2 (five distinguishable groups), so (g4a) is MET and (g4b) -- content minus
+    u_t -- is NOT: the VOID branch. Deliberately NOT a tie, so that swapping (g4b)'s operands
+    (2.4's mutation) FLIPS the reading instead of leaving a degenerate contrast degenerate.
+    "pass": `u_t` is pure noise, so (g4a) is NOT MET: the PASS branch."""
+    rng = random.Random(seed)
+    y = [rng.randrange(k) for _ in range(n)]
+    u_rows, c_rows = [], []
+    for i in range(n):
+        if kind == "void":
+            u = [rng.random() * 1e-3 for _ in range(U_DIM)]
+            u[y[i] % U_DIM] += 1.0
+        else:
+            u = [rng.random() for _ in range(U_DIM)]
+        c = [rng.random() * 1e-3 for _ in range(U_DIM)]
+        c[(y[i] // 2) % U_DIM] += 1.0
+        u_rows.append(u)
+        c_rows.append(c)
+    return u_rows, c_rows, y
+
+
+def t078_stub_brain(gate, latent_seed, pc=0.4, ema=0.2, focus=(2, 0.05), ignited=False, margin=1.0):
+    """The attribute shape `control_state` reads, and nothing else: a duck-typed stand-in so R5
+    runs without constructing a brain. Its `_real_percept` / `_attn_real` carry CONTENT that varies
+    with `latent_seed` and that `control_state` must IGNORE -- which is the whole of R5."""
+    import types
+
+    rng = random.Random(latent_seed)
+    latent = [rng.random() for _ in range(LATENT_DIM)]
+    span = max(1, LATENT_DIM // N_BANDS)
+    chan = [sum(latent[b * span : (b + 1) * span]) / span for b in range(N_BANDS)]
+    return types.SimpleNamespace(
+        _learned_attn=types.SimpleNamespace(gate=list(gate), focus=focus),
+        _attn_focus=focus,
+        _pc_surprise=pc,
+        _pc_surprise_ema=ema,
+        _access_state={"ignited": ignited},
+        _real_percept=latent,
+        _attn_real={"channel": chan, "band": focus[0], "focus": focus[1]},
+        workspace=types.SimpleNamespace(broadcast=lambda: "digit-3", broadcast_hold=0.7),
+        brain=types.SimpleNamespace(arm=types.SimpleNamespace(_decision_margin=margin)),
+    )
+
+
+def _t078_mutated_scorer(kind):
+    """2.4's six mutations, RUN and not reasoned (P8: a reachable red; T077 3.5 item 10). Each is
+    the deliberately broken twin of the instrument whose red it must redden, and each is exercised
+    BOTH in `tests/test_attention_schema.py` and in `t078_reds()` below.
+
+      floor_unpermuted (R1) -- the floor is drawn on UN-permuted y, so every draw equals the
+          reading: the i.i.d. stream then reads exactly AT its "floor" and the deterministic
+          control's margin over it vanishes.
+      self_score       (R2) -- the estimator scores y against ITSELF, so the i.i.d. action stream
+          reads its own entropy instead of reading at its floor: the control becomes an identity,
+          which is the defect that withdrew T077's oracle.
+      no_min           (R3) -- N_MIN_PER_CELL := 0, so the probe's own 145-pairs-over-39-cells
+          shape stops refusing and a number appears where the pre-registration says none can.
+      train_scored     (R4) -- every decoder is scored on the half it was FITTED on, the band's
+          models on their own permuted labels, so the band collapses toward 1.0.
+      content_leak     (R5) -- chan[0] is appended to `u_t`, so the vector carries a coordinate of
+          the attended content: the two brains stop being bit-identical and the length guard trips.
+      g4_swap          (R6) -- (g4b)'s operands are swapped, so the VOID construction reads
+          PASS-WITH-LEAK instead."""
+
+    def floor_unpermuted(x, y, **kw):
+        r = mi_read(x, y, **kw)
+        if r["readable"]:
+            r["perm_q95"] = r["mi"]
+            r["perm_median"] = r["mi"]
+        return r
+
+    def self_score(x, y, **kw):
+        return mi_read(y, y, **kw)
+
+    def no_min(x, y, **kw):
+        return _mi_read(x, y, n_min_per_cell=0, **kw)
+
+    def train_scored(X, y, seed, n_shuffle=N_SHUFFLE):
+        return _decode(X, y, seed, n_shuffle=n_shuffle, score_train=True)
+
+    def content_leak(brain):
+        chan = (getattr(brain, "_attn_real", None) or {}).get("channel") or [0.0] * N_BANDS
+        return control_state(brain) + [float(chan[0])]
+
+    def g4_swap(u_reads, c_reads):
+        a = contrast("(g4a) u_t decodes content", [u["acc"] - u["shuffle_q95"] for u in u_reads])
+        b = contrast(
+            "(g4b) SWAPPED operands",
+            [u["acc"] - c["acc"] for c, u in zip(c_reads, u_reads, strict=True)],
+        )
+        return {"g4a": a, "g4b": b, "reading": _g4_reading(a, b)}
+
+    return {
+        "floor_unpermuted": floor_unpermuted,
+        "self_score": self_score,
+        "no_min": no_min,
+        "train_scored": train_scored,
+        "content_leak": content_leak,
+        "g4_swap": g4_swap,
+    }[kind]
+
+
+def t078_reds(n_perm=REDS_N_PERM, n_shuffle=N_SHUFFLE, seeds=T078_SEEDS):
+    """2.4's six reds as ONE self-check line (each is ALSO a test in
+    `tests/test_attention_schema.py`; this is the in-command control 2.4 requires). Every value is
+    True iff the red holds on its constructed input AND its mutated scorer REDDENS it in fact --
+    a red a broken instrument still passes is not a red (T077's panel, C1)."""
+    out = {}
+
+    # R1 -- the floor absorbs the plug-in bias; the mutation draws it on UN-permuted y
+    x = t078_label_stream(600, N_BANDS, seed=1)
+    y = t078_label_stream(600, 12, seed=2)
+    iid = mi_read(x, y, n_perm=n_perm, seed=0)
+    mapped = [(v * 3) % 12 for v in x]
+    ctrl = mi_read(x, mapped, n_perm=n_perm, seed=0)
+    m1 = _t078_mutated_scorer("floor_unpermuted")(x, mapped, n_perm=n_perm, seed=0)
+    out["R1"] = bool(
+        iid["readable"]
+        and iid["mi"] == mi_bits(x, y)
+        and iid["mi"] <= iid["perm_q95"]
+        and ctrl["readable"]
+        and ctrl["mi"] - ctrl["perm_q95"] > 1.0
+        and not (m1["mi"] - m1["perm_q95"] > 1.0)
+    )
+
+    # R2 -- the positive control is not an identity; the mutation scores y against itself
+    a_iid = t078_label_stream(REDS_ACTION_N, REDS_ACTION_K, seed=3)
+    r_iid = mi_read(a_iid[:-1], a_iid[1:], n_perm=n_perm, seed=0)
+    a_mk = t078_markov_stream(REDS_ACTION_N, REDS_ACTION_K, 0.7, seed=4)
+    r_mk = mi_read(a_mk[:-1], a_mk[1:], n_perm=n_perm, seed=0)
+    m2 = _t078_mutated_scorer("self_score")(a_iid[:-1], a_iid[1:], n_perm=n_perm, seed=0)
+    out["R2"] = bool(
+        r_iid["readable"]
+        and r_iid["mi"] <= r_iid["perm_q95"]
+        and r_mk["readable"]
+        and r_mk["mi"] > r_mk["perm_q95"]
+        and not (m2["readable"] and m2["mi"] <= m2["perm_q95"])
+    )
+
+    # R3 -- the refusal fires on the probe's own shape; the mutation sets N_MIN_PER_CELL to 0
+    cx, cy = t078_cell_stream(145, 39)
+    refused = mi_read(cx, cy, n_perm=n_perm, seed=0)
+    ox, oy = t078_cell_stream(600, 39)
+    readable = mi_read(ox, oy, n_perm=n_perm, seed=0)
+    one_class = mi_read([0] * 600, oy, n_perm=n_perm, seed=0)
+    m3 = _t078_mutated_scorer("no_min")(cx, cy, n_perm=n_perm, seed=0)
+    out["R3"] = bool(
+        refused["readable"] is False
+        and refused["mi"] is None
+        and refused["refusal"]
+        and readable["readable"] is True
+        and readable["cells"] == 39
+        and one_class["readable"] is False
+        and m3["readable"] is True
+    )
+
+    # R4 -- the decoder's band; the mutation scores every model on its own TRAIN half
+    rows, ry = t078_planted_rows(600, U_DIM, 10, seed=5, planted=True)
+    planted = decode_heldout(rows, ry, seed=0, n_shuffle=n_shuffle)
+    flat_rows, flat_y = t078_planted_rows(600, U_DIM, 10, seed=6, planted=False)
+    unplanted = decode_heldout(flat_rows, flat_y, seed=0, n_shuffle=n_shuffle)
+    m4 = _t078_mutated_scorer("train_scored")(rows, ry, 0, n_shuffle=n_shuffle)
+    out["R4"] = bool(
+        planted["readable"]
+        and planted["n_test"] == 300
+        and planted["shuffle_q95"] < 0.2
+        and planted["acc"] > planted["shuffle_q95"]
+        and unplanted["readable"]
+        and unplanted["acc"] <= unplanted["shuffle_q95"]
+        and not (m4["shuffle_q95"] < 0.2)
+    )
+
+    # R5 -- content-blind by TYPE plus the vacuity clause; the mutation appends chan[0]
+    same_gate = (0.11, 0.12, 0.13, 0.14)
+    b1 = t078_stub_brain(gate=same_gate, latent_seed=1)
+    b2 = t078_stub_brain(gate=same_gate, latent_seed=2)
+    b3 = t078_stub_brain(gate=(0.90, 0.02, 0.03, 0.04), latent_seed=1)
+    u1, u2, u3 = control_state(b1), control_state(b2), control_state(b3)
+    leak = _t078_mutated_scorer("content_leak")
+    out["R5"] = bool(
+        len(u1) == U_DIM
+        and not (set(U_FIELDS) & set(U_FORBIDDEN))
+        and u1 == u2
+        and u1 != u3
+        and not (leak(b1) == leak(b2) and len(leak(b1)) == U_DIM)
+    )
+
+    # R6 -- the void rule can fire and the pass branch can too; the mutation swaps (g4b)
+    void_u, void_c, pass_u, pass_c = [], [], [], []
+    for s in seeds:
+        u_rows, c_rows, labels = t078_g4_recording(s, "void")
+        void_u.append(decode_heldout(u_rows, labels, seed=s, n_shuffle=n_shuffle))
+        void_c.append(decode_heldout(c_rows, labels, seed=s, n_shuffle=n_shuffle))
+        u_rows, c_rows, labels = t078_g4_recording(s, "pass")
+        pass_u.append(decode_heldout(u_rows, labels, seed=s, n_shuffle=n_shuffle))
+        pass_c.append(decode_heldout(c_rows, labels, seed=s, n_shuffle=n_shuffle))
+    void = g4_rule(void_u, void_c)
+    swapped = _t078_mutated_scorer("g4_swap")(void_u, void_c)
+    noise = g4_rule(pass_u, pass_c)
+    out["R6"] = bool(
+        all(r["readable"] for r in void_u + void_c + pass_u + pass_c)
+        and void["reading"] == "VOID"
+        and noise["reading"] == "PASS"
+        and swapped["reading"] != "VOID"
+    )
+    return out
 
 
 def run_t078_campaign(seeds=T078_SEEDS, n_ticks=T078_N_TICKS, pin=T078_PIN):
@@ -195,24 +746,68 @@ def run_t078_campaign(seeds=T078_SEEDS, n_ticks=T078_N_TICKS, pin=T078_PIN):
     return 2
 
 
+#: The one-line description of each red, printed beside its boolean so a gate run's log says WHAT
+#: fired rather than only that something did. 2.4's wording, compressed to one ASCII line each.
+RED_LINES = {
+    "R1": "the permutation floor absorbs the plug-in bias (an un-permuted floor reddens it)",
+    "R2": "MI(a_t; a_t+1) is a CONTROL, not an identity (scoring y against itself reddens it)",
+    "R3": "145 pairs over 39 cells REFUSE, 600 do not (N_MIN_PER_CELL := 0 reddens it)",
+    "R4": "the decode beats its 200-shuffle band (scoring on the TRAIN half reddens it)",
+    "R5": "u_t is content-blind by TYPE and not constant (appending chan[0] reddens it)",
+    "R6": "the VOID rule can fire and PASS can too (swapping (g4b)'s operands reddens it)",
+}
+
+
+# distinct-from: cortex/metacognitive_monitor.py::t077_reds and its main() reds line -- the PATTERN
+#   this self-check mirrors, and 2.1 names it as the thing to reuse. Read: that line asserts T077's
+#   R0-R5 over a metacognitive monitor's replay and its type-2 AUROC; this asserts T078's R1-R6
+#   over an MI floor, a decoder band and a control vector. Same shape, different instrument,
+#   different reds, no shared state -- one self-check per module is the tree's own convention, not
+#   a second mechanism.
+# distinct-from: substrate/paired_contrast.py::main -- the reds of the STATISTIC (it must be able
+#   to say NOT MET, its FPR must be exact). Read; that module is IMPORTED here, never re-checked.
+# distinct-from: thalamus/gwt_deep.py::_reds -- constructs the input that makes each BINDING
+#   criterion fail. distinct-from: substrate/selfcheck_cache.py::self_check -- cache key-invariance
+#   reds. distinct-from: substrate/learn_daemon.py::_selfcheck -- the daemon's non-driving checks.
+#   All three read; each fires its own module's reds, and none touches a permutation floor, a
+#   decoder band or a control state.
 def main():
-    """THE STUB SELF-CHECK. It asserts NOTHING: at 2.9 step 2 every red is False by construction,
-    and a self-check that went red here would redden CI on a commit whose whole purpose is to give
-    step 3's tests a real symbol to fail against. The asserts arrive with the instruments in
-    step 4, together with the mutated scorers that make each red reachable."""
+    """The self-check: 2.4's six reds, each holding on its constructed input AND reddened IN FACT
+    by its own mutated scorer. No brain, no lake, no network -- the campaign is `--t078-campaign`
+    and lands in 2.9 step 5."""
+    t0 = time.time()
     reds = t078_reds()
     print("=" * 78)
-    print("T078 PART I -- the attention schema on the live loop: the gates first (SKELETON)")
+    print("T078 PART I -- the attention schema on the live loop: the gates first")
     print("=" * 78)
     print(
         f"bar {T078_BAR} | u_t {U_DIM} fields | N_MIN_PER_CELL {N_MIN_PER_CELL} | "
-        f"n_perm {N_PERM} | n_shuffle {N_SHUFFLE} | seeds {list(T078_SEEDS)} | ticks {T078_N_TICKS}"
+        f"campaign n_perm {N_PERM} | n_shuffle {N_SHUFFLE} | seeds {list(T078_SEEDS)} | "
+        f"ticks {T078_N_TICKS}"
+    )
+    print(
+        f"reds run at n_perm {REDS_N_PERM} (2.1's 2,000 is the CAMPAIGN's), n_shuffle {N_SHUFFLE}"
     )
     print("-" * 78)
     for name in sorted(reds):
-        print(f"  {name}: {reds[name]}  (stub -- the instrument lands in 2.9 step 4)")
+        print(f"  {name}: {str(reds[name]):5s}  {RED_LINES[name]}")
     print("-" * 78)
-    print(f"T078 Part I stubs: {sum(reds.values())}/{len(reds)} reds fire, as expected at step 2")
+
+    # ---- 2.4's SIX REDS. Each is also a test in tests/test_attention_schema.py; this line is the
+    #      in-command control, so a gate run that never executes pytest still runs them. Every
+    #      `not (...)` clause inside t078_reds() is a MUTATED scorer having been RUN (P8 clause 1:
+    #      a criterion with no reachable red is DELETED, not weakened).
+    assert all(reds.values()), f"T078 reds must fire on their constructed inputs: {reds}"
+
+    print(
+        f"self-check OK: R1-R6 fire on their constructed streams and each is reddened IN FACT by "
+        f"its mutated scorer ({sum(reds.values())}/{len(reds)}); no brain, no lake, no network "
+        f"[{time.time() - t0:.0f} s]"
+    )
+    print(
+        "  PART I adds NO wire: there is no attention schema in this module, brain.py's "
+        "_attend_real_stream keeps goal=None, and the recorder + campaign land in 2.9 step 5"
+    )
 
 
 if __name__ == "__main__":
