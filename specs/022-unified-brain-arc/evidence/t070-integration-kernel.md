@@ -408,6 +408,21 @@ was run and none can be computed from this pin (per-set echoes are averaged befo
 miss (5.62 vs 2.62 phrases) has 2.10's pre-named cause. The successor sizes any tolerance from the per-set echo
 dispersion it records -- not from two restores with nothing changed, which 2.5(c) proves byte-identical -- or uses the
 paired test this section already names.
+(2026-09-15, Codex's closing report, reproduced on the pin) TWO CORRECTIONS TO THIS SECTION'S OWN WORDS. (i) The sentence
+above that the dissociation "the partitioned twin reads at or below the null" HOLDS "where the null is INTEGRATED's echo
+and the partition is measured against it as a CONTRAST -- (b1) +5.20 and (b6) clause 1 +5.07" over-reads: those two
+contrasts order INTEGRATED above PARTITIONED and above the null; neither orders PARTITIONED against the null, which is what
+clause 2 asks, and by the pin's own numbers that ordering FAILS on seed 2 -- `tools/t070_pci.json` :298 / :302 read the
+PARTITIONED arm's pci 7.7898e-05 EQUAL to its own echo ("null" 7.7898e-05, a wholly local response), while `null_per_seed`
+"2" (:788) is INTEGRATED's echo 6.8733e-05, below it. (ii) That is the sharper diagnosis of what (b6) clauses 2-3 measured:
+an ECHO MISMATCH between arms, not scorer noise -- a cut arm whose response is exactly its own local echo still "exceeds
+the null" whenever its echo is larger than INTEGRATED's, so the clause's single null cannot be read as a statement about
+integration on either side of the bar. The successor re-specifies clauses 2-3 against EACH ARM'S OWN echo (or the
+paired test named above), beside the tolerance clause already named. Two disclosures ride with this, both already in
+the record and repeated here so they sit beside the diagnosis: no resolution control exists for the phrase-level margins
+(this paragraph), and the scorer's oracle equality is tested to 4,096 characters (2.11 :233; `tests/test_integration_measure_lz.py`
+RANDOM_MAX_LEN) while the campaign parse is 1,094,555 -- exactness at campaign length rests on the factorization's
+construction, not on an oracle run there (the incumbent is quadratic; ~2 h per string).
 
 ### 3.5 Deviations from 2.1-2.11, each with its number (dated 2026-09-10)
 1. 2.8's cost estimate was wrong by four orders of magnitude on the scorer (3.2); corrected by 2.11 before any number.
@@ -617,6 +632,10 @@ not stand as filed):
   (F1 + F3 + F18); 3.3's ratio and the footprint-MASS line (F1, F11); 3.4 (appended line, F4); 3.5 items 9-17;
   `PLAN-FINAL-2026-09-02.md`'s Phase 5 gate line (appended note, F20); this section -> **commit 5, this commit**.
 - Sections 1-2.11 are otherwise byte-identical to `f09adc4`; the pin `tools/t070_pci.json` was never touched.
+  *(2026-09-15, Codex's closing report, reproduced in `git log`: the line above is wrong as written -- `f09adc4` ends at
+  2.9; 2.10 arrived at `f7f7cfa` and 2.11 at `99fe3ef` (3.5 item 13's chronology). Correct statement: sections 1-2.9 are
+  byte-identical to `f09adc4` except F5's appended line under section 1 item 4; 2.10 is as committed at `f7f7cfa` and 2.11
+  as at `99fe3ef`, both unedited since.)*
 
 **The fold's five commits.** 1 `f1180ce` -- the prelude: two appended corrections from Codex's closing reports, into
 the T063 record's 3.6 and `evidence/s2-exit.md` section 2. 2 `994ff0b` -- 2.6 EXECUTED on (b6)'s null (the ruling
