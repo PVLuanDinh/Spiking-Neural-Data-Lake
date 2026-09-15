@@ -684,6 +684,19 @@ not adjudicated here.
    consistently; the per-arc rhythm is not breached (the last commit before the push is a record commit).
    Re-ordering is not available -- a rebase would break 3.1's own committed hash chain -- so the disclosure is the
    remedy; the fold lands its surfaces BEFORE its record commit.
+27. (appended 2026-09-15, from the Codex closing report's interim finding, REPRODUCED from the pin) ON TWO SEEDS THE
+   FIRST-ORDER INPUT DISCRIMINATES THE SAME OUTCOMES ABOVE ITS OWN NULL WHILE THE MONITOR'S FUSED READ IS BELOW
+   CHANCE. Codex (read-only, 11:52; its reply cut off by its usage limit after this one sentence) named seed 6;
+   from `per_seed[*].passthrough` (the first-order `confidence` input scored on the same prospective pairs): seed 6
+   auroc2 0.7030 against its q95 0.5943 while the intact read is 0.3907 (q95 0.5865); seed 0 auroc2 0.5932 against
+   0.5750 while the intact read is 0.3828 (q95 0.5777); on the other six seeds the first-order input is inside its
+   band (seed 1's is the constant 0.5 of item 17). So on seeds 0 and 6 "the stream is uninformative" is FALSE: the
+   readout's error rate WAS discriminable from one of the monitor's own inputs, and the monitor's fusion of five
+   inputs read the opposite sign. This is the strongest reading that the (b1) null is the MONITOR's and not the
+   stream's, and it sharpens opening (4): the `conflict` term (delta +0.2476 on seed 0, +0.2646 on seed 6 -- the two
+   largest positive neuter deltas in 3.3, i.e. pinning conflict RAISES the read's tracking most on exactly these two
+   seeds) is where a successor that wants a tracking read starts. No conjunct, bar, verdict or disposition moves;
+   (b3o) already tabled the passthrough per seed, this item states what two of its cells mean.
 
 ### 3.6 What this row does NOT claim, and the openings it leaves
 
@@ -781,6 +794,11 @@ the file); the pre-freeze dry run showing the degeneracies (its evidence does no
 relabelling the P2 clause after Codex (the reading predates the number and the pre-registration was never touched);
 (b4) MET at t = 0.0 as a surviving null-as-conjunct (the arithmetic reproduces, the defect does not); no PROVENANCE
 line for `live_accuracy` (the facts reproduce, the charge does not).
+
+THE CODEX CLOSING REPORT (owner rule 2026-09-10): sent 11:52 on head `ac7b04b`, read-only sandbox, prompt on stdin
+(`scratchpad/t077/codex_closing_prompt.md`); Codex's run was cut off by its usage limit at 11:55 ("try again at
+2:33 PM") after 55,528 tokens and one interim finding, reproduced and appended as 3.5 item 27; the same prompt is
+re-sent after the reset and its reply is folded by dated appended items in the next commits before the push.
 
 THE FOLD IS ITSELF UNREVIEWED CODE (obs #35): it was not re-panelled; it is battery-verified only -- the arc's
 battery, named in the closing record commit of this push, is its review. The verdict, the pin, the disposition and
