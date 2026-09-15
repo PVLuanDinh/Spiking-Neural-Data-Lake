@@ -36,9 +36,11 @@ random.Random(seed)) turns the all-or-none LIF into a graded population rate.
 API:
   observe(availability, access_strength, ignited, first_order_conf) -> conf in [0,1]
   hold()        -> True when the second-order confidence is too low to act on the content
-  calibration() -> running agreement between its own call (conf >= c_hold) and whether
-                   the content was ACTUALLY globally available (ignited AND availability
-                   >= 0.5, i.e. it reached a majority of downstream taps)
+  calibration() -> type-2 discrimination (auroc2) of the second-order confidence against
+                   whether the content was ACTUALLY globally available (ignited AND
+                   availability >= 0.5), over the running history, read by THE ONE scorer
+                   `metacognitive_monitor.track_error` (T077, 2026-09-15; P2 -- the thresholded-
+                   call agreement it returned before is retired; 0.5 chance, 0.0 no evidence)
 
 MEASURED LIMITS -- KEPT, NOT TUNED AWAY (the self-check prints the true numbers).
   * The monitor errs on MASKED content: a tick that ignites but reaches only a minority
@@ -173,13 +175,19 @@ class SecondOrderAccess:
         return self._conf2 < self.c_hold
 
     def calibration(self):
-        """Running agreement in [0,1] between the monitor's call (conf >= c_hold) and whether
-        the content was ACTUALLY globally available (ignited AND availability >= majority).
-        0.5 is chance on a balanced stream. Returns 0.0 before any observation -- that is an
-        HONEST 'no evidence yet', not a score."""
+        """Type-2 discrimination (auroc2) of the second-order confidence against whether the content
+        was ACTUALLY globally available (ignited AND availability >= majority), over the running history,
+        read by THE ONE calibration scorer of the tree (T077, 2026-09-15: `metacognitive_monitor.track_error`
+        -- P2, the thresholded-call agreement this method returned until then is retired). 0.5 is chance
+        (the fixed prior's exact value). Returns 0.0 before any observation, or while the history cannot
+        resolve tracking on its own permutation null -- an HONEST 'no evidence yet', not a score. The call
+        itself (`hold`) and its per-trial errors are unchanged; only the score's statistic changed."""
         if self._n == 0:
             return 0.0
-        return self._agree / float(self._n)
+        from snn_data_lake.cortex.metacognitive_monitor import track_error
+
+        r = track_error([h[0] for h in self._hist], [1 if h[2] else 0 for h in self._hist], seed=0)
+        return float(r["auroc2"]) if r["readable"] else 0.0
 
     def n_observed(self):
         """Number of observations folded into the running calibration."""
@@ -248,27 +256,30 @@ def _experiment(seed=0):
         conf1s.append(c1)
         igs.append(ig)
 
+    # T077 (2026-09-15): calibration and its four controls are read on THE ONE scorer, auroc2 via
+    # metacognitive_monitor.track_error, each control being the SAME statistic of a rival score on
+    # the SAME trials (the thresholded-call accuracies they were until then are retired, P2).
+    from snn_data_lake.cortex.metacognitive_monitor import track_error
+
+    y = [1 if t else 0 for t in truths]
+    scored = track_error(confs, y, seed=seed)
     cal = mon.calibration()
 
-    # ---- CONTROL 1 (must FAIL): the SAME confidences paired with SHUFFLED truths -> chance. ----
-    srng = random.Random(7777 + seed)
-    shuffled = list(truths)
-    srng.shuffle(shuffled)
-    cal_shuffled = sum(1 for c, t in zip(calls, shuffled) if c == t) / float(len(calls))
+    # ---- CONTROL 1 (must FAIL): the SAME confidences paired with SHUFFLED truths -> chance
+    #      (the median of the scorer's own permutation draws; its q95 is printed beside). --------
+    cal_shuffled = scored["shuffled_auroc2"]
+    cal_q95 = scored["perm_q95"]
 
-    # ---- CONTROL 2 (must FAIL): a FIRST-ORDER-ONLY echo (trust conf1 >= 0.5). It is fooled by
-    #      the loud-but-never-ignited false alarms -- exactly what the second order adds. --------
-    cal_first_order = sum(1 for c1, t in zip(conf1s, truths) if (c1 >= 0.5) == t) / float(
-        len(truths)
-    )
+    # ---- CONTROL 2 (must FAIL): the FIRST-ORDER read alone as the score. It is fooled by the
+    #      loud-but-never-ignited false alarms -- exactly what the second order adds. -----------
+    cal_first_order = track_error(conf1s, y, seed=seed)["auroc2"]
 
-    # ---- CONTROL 3 (must FAIL): always-say-available, and the majority-class baseline. ---------
-    cal_always = sum(1 for t in truths if t) / float(len(truths))
-    cal_majority = max(cal_always, 1.0 - cal_always)
+    # ---- CONTROL 3 (must FAIL): the fixed prior -- a constant score reads exactly 0.5. ---------
+    cal_majority = track_error([0.5] * len(y), y, seed=seed)["auroc2"]
 
-    # ---- CONTROL 4 (must FAIL): echo the IGNITION FLAG alone. This is the cheap strategy the
-    #      monitor must beat -- otherwise the second order is just re-reading one bit. ----------
-    cal_ignition_echo = sum(1 for ig, t in zip(igs, truths) if ig == t) / float(len(truths))
+    # ---- CONTROL 4 (must FAIL): echo the IGNITION FLAG alone as the score. This is the cheap
+    #      strategy the monitor must beat -- otherwise the second order re-reads one bit. -------
+    cal_ignition_echo = track_error([1.0 if ig else 0.0 for ig in igs], y, seed=seed)["auroc2"]
 
     # ---- per-kind confidence means AND per-kind ERROR counts (the honest breakdown) ------------
     by_kind, err_kind = {}, {}
@@ -311,6 +322,7 @@ def _experiment(seed=0):
 
     return {
         "cal": cal,
+        "cal_q95": cal_q95,
         "cal_shuffled": cal_shuffled,
         "cal_first_order": cal_first_order,
         "cal_majority": cal_majority,
@@ -373,7 +385,11 @@ def main():
         lines,
         f"(b) weak/masked/FAILED     : mean confidence {r['lo_mean']:.3f}, hold on every tick={r['lo_all_hold']}",
     )
-    _p(lines, f"(c) calibration over {r['n']} mixed trials : {r['cal']:.3f}")
+    _p(
+        lines,
+        f"(c) calibration over {r['n']} mixed trials : {r['cal']:.3f}  (auroc2 on THE ONE scorer, T077; "
+        f"chance 0.5; its permutation q95 {r['cal_q95']:.3f})",
+    )
     _p(lines, f"    CONTROL shuffled-truth (chance)   : {r['cal_shuffled']:.3f}  <- must FAIL")
     _p(lines, f"    CONTROL first-order-echo only     : {r['cal_first_order']:.3f}  <- must FAIL")
     _p(lines, f"    CONTROL majority-class baseline   : {r['cal_majority']:.3f}  <- must FAIL")
@@ -433,8 +449,12 @@ def main():
         f"calibration {r['cal']:.3f} must beat the ignition-flag-echo control {r['cal_ignition_echo']:.3f} "
         "-- otherwise the monitor only re-reads the ignited bit"
     )
-    assert r["cal"] < 1.0 and r["errors"] > 0, (
-        f"calibration must NOT be perfect -- {r['errors']} real wrong calls are kept, not tuned away"
+    # T077 (2026-09-15): the honest limit is the CALLS, which still err on the masked trials; the
+    # rank-based calibration on this constructed stream reads 1.000 (every truly-available trial
+    # outranks every unavailable one) and is NOT asserted below 1.0 any more -- the constructed
+    # stream is not the live path (T077 2.2 arm D measured the live hold saturated).
+    assert r["errors"] > 0, (
+        f"the calls must NOT be perfect -- {r['errors']} real wrong calls are kept, not tuned away"
     )
 
     # ---- structural + honesty ------------------------------------------------------------------
