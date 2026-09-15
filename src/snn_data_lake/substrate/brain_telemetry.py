@@ -203,8 +203,11 @@ PROVENANCE = {
         "rate of cortex/metacognitive_monitor over the self-model's confidence / surprise / learning progress / "
         "novelty / ACC conflict. On a scratch brain's prequential readout stream (600 ticks, 8 seeds) it does NOT "
         "track the readout's own error rate better than a fixed prior: paired t +0.50 against the bar 1.895, four of "
-        "eight seeds below chance; removing the read in vivo collapses nothing (t +0.37). It gates learning and the "
-        "chat abstention; it is NOT an error-tracking confidence, and no C5 sentence is licensed for it"
+        "eight seeds below chance; removing the read in vivo collapses nothing (t +0.37). It decides the chat "
+        "abstention route (the monitor's own per-item attribution, 2026-08-05: 3 of 30 sampled replies); it is "
+        "READ by the lifelong learn gate in cortex/brain.py::Brain._enter_sleep -- consumed there, NOT shown "
+        "decisive (3.4 i, opening 3; the panel fold 3.5); it is NOT an error-tracking confidence, and no C5 "
+        "sentence is licensed for it"
     ),
     "criticality": "sleep-only",
     # string/bool literals in state(), not readings (goal brain.py:2892; reflex_armed :3055)
