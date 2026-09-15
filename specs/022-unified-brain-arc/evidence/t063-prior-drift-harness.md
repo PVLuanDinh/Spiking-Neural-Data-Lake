@@ -596,6 +596,10 @@ brain. Not a claim about why the corrupted prior decodes better.
   trials out of eight. A larger per-seed held-out sample needs its own pre-registration, because 2.6 is frozen; and if
   a successor pools, it pools only the C = 5 SCORED learning blocks, NEVER the warm-up block, where `predict(None, …)`
   returns class 0 and every arm scores a deterministic 1/K.
+- (2026-09-14, Codex closing report 2026-09-10, reproduced 2026-09-10) The line above reading 'The learning
+  arms' 0.1875-0.3594 at that rung is the LEARNER's effect' is licensed for SEEDED alone (its FROZEN twin, t(d_f) -13.0154, 8
+  of 8 seeds); RANDOM (0.2031) and WRONG (0.3594) have no frozen twin in the pin and their low scores are attributed to nothing
+  here. The sentence stands as the record of the fold's wording; this line corrects its scope.
 
 ### 3.7 The panel fold (appended 2026-09-10)
 

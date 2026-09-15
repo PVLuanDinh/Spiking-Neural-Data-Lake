@@ -245,6 +245,13 @@ nothing re-measured.
 `t068-last-with-pager` and the code is deleted; the numbers are `evidence/s5-paging-null.md` §3.4's,
 quoted with their section.
 
+(2026-09-14, Codex closing report, reproduced) 'archived under the tag' at :57 and above conflates two things: the tag
+`t068-last-with-pager` pins the repository tree (36b2b6a) the archived harnesses IMPORT and check out against; the harness
+and its 226 per-cell artifacts live outside the repository under the memory store `memory/archive/t068-2026-09-08/`
+(s5-paging-null.md 3.1-3.2); the 24 R2 timing cells and arm F's four were re-run pinned; the other 202 cells' provenance is
+the archive's, not the tag's. Item 2's reading is unchanged. Codex also WITHDREW its item-1 scope objection and accepted
+the gate-by-existence reading (s2-exit.md's Verdict) -- recorded as Codex's.
+
 §3.4's conjunct table, quoted:
 
 | R2 conjunct | required | measured | verdict |
