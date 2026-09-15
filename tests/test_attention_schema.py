@@ -48,7 +48,11 @@ campaign's four MI readings and these reds use 200 so the suite stays cheap (the
 R4 asserts on them.
 """
 
+import random
+
 from snn_data_lake.cortex.attention_schema import (
+    ESTOP_LABEL,
+    LATENT_DIM,
     N_MIN_PER_CELL,
     REDS_N_PERM,
     U_DIM,
@@ -61,10 +65,14 @@ from snn_data_lake.cortex.attention_schema import (
     mi_bits,
     mi_read,
     t078_cell_stream,
+    t078_g3,
+    t078_g4,
     t078_g4_recording,
     t078_label_stream,
     t078_markov_stream,
+    t078_pairs,
     t078_planted_rows,
+    t078_projection,
     t078_reds,
     t078_stub_brain,
 )
@@ -205,6 +213,99 @@ def test_r6_the_void_rule_can_fire_and_the_pass_branch_can_too():
     swapped = _t078_mutated_scorer("g4_swap")(void_u, void_c)
     assert swapped["reading"] == "PASS-WITH-LEAK", swapped["reading"]
     assert swapped["reading"] != "VOID", "swapped (g4b) operands must redden R6"
+
+
+def _row(t, awake, action="ENGAGE", band=2):
+    """One recorder row, carrying only the fields `t078_pairs` reads. Constructed, never recorded:
+    no brain is ticked anywhere in this file."""
+    return {"t": t, "awake": awake, "action": action, "focus_band": band, "gate": [0.1] * 4}
+
+
+def test_the_pairing_drops_sleep_straddling_and_estop_pairs_and_counts_both():
+    """2.2's G3 pairing on a constructed recording. Ticks 0-3 are awake, 4-5 asleep, 6-9 awake,
+    and tick 8 commits EMERGENCY_STOP. The awake-to-awake links are 0-1, 1-2, 2-3, 3->6 (a sleep
+    bout between), 6-7, 7-8, 8-9, so: three clean pairs at the start, ONE dropped for straddling
+    the bout, one clean pair (6-7), and TWO dropped for touching the E-STOP tick (7-8 and 8-9).
+    Both drops are COUNTED, never silently skipped -- T077 3.2's no-stale-pairing amendment, and
+    2.2's note that a nonzero E-STOP count is itself a finding because it never occurs under
+    `_safe_ctx`."""
+    rows = [_row(t, True) for t in range(4)]
+    rows += [_row(t, False) for t in (4, 5)]
+    rows += [_row(t, True) for t in (6, 7)]
+    rows += [_row(8, True, action=ESTOP_LABEL), _row(9, True)]
+    p = t078_pairs(rows)
+    assert p["n_awake"] == 8, p
+    assert p["dropped_sleep"] == 1, p
+    assert p["dropped_estop"] == 2, p
+    assert [(a["t"], b["t"]) for a, b in p["pairs"]] == [(0, 1), (1, 2), (2, 3), (6, 7)], p
+    all_awake = [_row(t, True) for t in range(5)]
+    q = t078_pairs(all_awake)
+    assert q["dropped_sleep"] == 0 and q["dropped_estop"] == 0, q
+    assert len(q["pairs"]) == 4, q
+    assert t078_pairs([])["pairs"] == [], "an empty recording yields no pairs, not an error"
+
+
+def test_the_readers_run_on_a_constructed_recording_and_the_control_axis_can_refuse():
+    """The row SCHEMA contract between `t078_record_brain` and the two readers, pinned on a
+    constructed recording so a KeyError cannot first appear fifteen minutes into the campaign.
+
+    It also pins an ARITHMETIC CONSEQUENCE that 2.8 computes for the PRIMARY reading and not for
+    the positive control, and that is worth seeing before the campaign runs rather than after.
+    2.8 bounds the primary at "~580 pairs over <= 48 cells" -- focus(4) x actions(12). The (g3c)
+    control's axes are actions x actions, up to 144 observed cells, and N_MIN_PER_CELL = 10 then
+    demands 1,440 pairs. On a UNIFORM 12-class action stream the control therefore REFUSES at any
+    pair count the pre-registered N = 1,200 ticks can produce, as it does here. Whether it refuses
+    on the LIVE loop depends on how concentrated the real action marginal is (the apparatus probe
+    read ENGAGE on 48 of 146 awake ticks, so the observed joint will be far below 144) -- the
+    campaign's own per-seed `cells` line is what answers it. This test asserts the mechanism, not
+    a prediction about the brain."""
+    rng = random.Random(0)
+    rows = []
+    for t in range(1000):  # 750 awake -> ~700 pairs, above the primary's own 10 x 48 = 480 floor
+        awake = (t % 20) < 15
+        rows.append(
+            {
+                "t": t,
+                "kind": "awake" if awake else "asleep",
+                "awake": awake,
+                "attend_calls": 1,
+                "u": [rng.random() for _ in range(U_DIM)],
+                "gate": [rng.random() for _ in range(4)],
+                "focus_band": rng.randrange(4),
+                "focus_strength": 0.03,
+                "ignited": False,
+                "sustain": 0.0,
+                "drive_margin": 1.0,
+                "pc_surprise": 0.1,
+                "action": f"A{rng.randrange(12)}",
+                "digit": rng.randrange(10),
+                "label": rng.randrange(10) if awake else None,
+                "chan": [0.1] * 4,
+                "chan_from_gated": [0.1] * 4,
+                "gated": [rng.random() for _ in range(LATENT_DIM)],
+            }
+        )
+    g3 = t078_g3(rows, 0, n_perm=50)
+    assert g3["n_pairs"] > 0 and g3["dropped_sleep"] > 0, g3
+    assert g3["primary"]["readable"] is True, g3["primary"]
+    assert g3["control"]["readable"] is False, "a uniform 12-class action axis must refuse here"
+    assert "below 10 per cell" in g3["control"]["refusal"], g3["control"]["refusal"]
+    g4 = t078_g4(rows, 0, n_shuffle=20)
+    assert g4["n_rows"] > 0 and g4["n_classes"] == 10, g4
+    for key in ("u", "c15", "raw64", "chan", "u_digit"):
+        assert g4[key]["readable"] is True, (key, g4[key])
+    assert len(g4["c15"]) and g4["c15"]["n_train"] + g4["c15"]["n_test"] == g4["n_rows"], g4["c15"]
+
+
+def test_the_content_projection_is_fixed_by_its_crc32_seed():
+    """2.1's matched arm: the 64-d gated latent is projected to the SAME 15 inputs `u_t` carries,
+    by a Gaussian matrix seeded `crc32(b"t078-proj") + seed`. Two calls at one seed must be
+    identical (a projection that moved between the two decodes would make (g4b) a comparison of
+    two different arms), two seeds must differ, and the shape must be the matched one."""
+    a, b = t078_projection(3), t078_projection(3)
+    assert a.shape == (LATENT_DIM, U_DIM), a.shape
+    assert bool((a == b).all()), "the projection must be a pure function of the seed"
+    assert not bool((a == t078_projection(4)).all()), "a different seed must give a different arm"
 
 
 def test_t078_reds_all_fire_in_the_modules_own_self_check_line():

@@ -72,9 +72,14 @@ CUDA by seed and the tests run it on CPU. ASCII-only prints (Windows cp1252). De
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.attention_schema --t078-campaign
 """
 
+import hashlib
+import json
 import math
 import random
+import statistics
+import sys
 import time
+import zlib
 from collections import Counter
 from pathlib import Path
 
@@ -134,6 +139,10 @@ DECODER_LR = 0.1  # decoder learning rate (2.1)
 DECODER_L2 = 1e-3  # decoder L2 penalty (2.1)
 PROJ_TAG = b"t078-proj"  # crc32(PROJ_TAG) + seed seeds the (64, 15) Gaussian projection (2.1)
 DETERMINISM_TICKS = 100  # the determinism twin's length (2.2); the NAME is the builder's
+#: The committed-action label the E-STOP path returns (brainstem/autonomous_loop.py `step`
+#: :1895-1919). 2.2 records that it NEVER occurs under `_safe_ctx`, so a nonzero
+#: `dropped_estop` in any seed is itself a finding and the campaign prints it per seed.
+ESTOP_LABEL = "EMERGENCY_STOP"
 #: BUILDER-INTRODUCED, disclosed (2.9 step 4). The reds and the tests run their MI floors at 200
 #: draws, not the campaign's 2,000: 2.1 fixes n_perm = 2,000 for the CAMPAIGN's four readings, and
 #: `t078_reds()` is executed by every run_selfchecks pass, where 2,000 x 8 reads would dominate the
@@ -456,10 +465,229 @@ def g4_rule(u_reads, c_reads):
     return {"g4a": a, "g4b": b, "reading": _g4_reading(a, b)}
 
 
+# ============================== 2.1 / 2.2: the recorder and the campaign =========================
+# A SCRATCH brain per seed under a throwaway NORD_HOME (the live lake is never touched and the
+# daemon's brain is never constructed), N_TICKS ticks, the attention state captured by wrapping the
+# INSTANCE's `_learned_attn.attend` so both what it is FED and what it RETURNS are recorded -- the
+# shape `metacognitive_monitor.t077_record_brain` uses for the monitor's `update`, reused rather
+# than reinvented (2.1's P2 list). Seeds run sequentially in ONE process because `throwaway_home()`
+# sets a process-wide env var and is not thread-safe (2.8). The pin is written ONCE.
+# distinct-from: cortex/metacognitive_monitor.py::t077_record_brain -- records the METACOGNITIVE
+#   monitor's five inputs and its unrounded read, and carries a LESIONED arm. This records the
+#   ATTENTION control state, the committed action and the frame label, and Part I has NO lesion
+#   and NO second arm at all: one recording, two gates read off it.
+# distinct-from: substrate/amdahl_gate.py::live_reading -- a TIMING ceiling over three brains with
+#   a neutered code path. No timing is read here and no code path is neutered.
 def t078_record_brain(seed, n_ticks=T078_N_TICKS):
-    """PART I STUB (2.9 step 2). One SCRATCH brain's per-tick recording (2.1). Built in 2.9
-    step 5; it is deliberately absent here so that nothing in this commit can touch a brain."""
-    raise NotImplementedError("t078_record_brain lands in 2.9 step 5 (the recorder)")
+    """Tick a SCRATCH brain `n_ticks` times and return the per-tick rows of 2.1.
+
+    `_learned_attn.attend` is wrapped on the INSTANCE, so every call's input latent, gated output,
+    gate and focus are captured without touching brain.py. DISCLOSED, because the brain calls it
+    up to TWICE per tick (`_attend_real_stream` for vision then for audio, brain.py:1603-1608) and
+    the two halves of the brain's own record then disagree: `_attn_real` is `va or aa`, the FIRST
+    successful call, while `_attn_focus`, `la.gate` and `la.focus` are all last-call state. This
+    recorder takes the LAST call's latent/gated/gate/focus, so the recorded vector is consistent
+    with `control_state`'s own reads, records `attend_calls` per tick, and records `chan` BOTH from
+    `_attn_real` (1.2's arm sensory channel) and as the last call's four band means, so the
+    campaign can COUNT the ticks on which the two differ instead of adjudicating between them.
+
+    The frame LABEL is recovered as `_real_labels[(_real_ptr - 1) % n]` on the ticks where
+    `_real_ptr` ADVANCED (1.2), and is None otherwise -- never carried forward from a past tick.
+    Returns rows only; the brain is dropped so eight seeds do not stay alive at once."""
+    from snn_data_lake.cortex.brain import make_brain
+
+    b = make_brain(seed=seed, persist=False)
+    la = getattr(b, "_learned_attn", None)
+    cap = {"calls": 0, "latent": None, "gated": None, "gate": None, "focus": None}
+    if la is not None:
+        real_attend = la.attend
+
+        def wrapped(features, goal=None):
+            gated = real_attend(features, goal=goal)
+            cap["calls"] += 1
+            cap["latent"] = [float(v) for v in features]
+            cap["gated"] = [float(v) for v in gated]
+            cap["gate"] = [float(g) for g in la.gate]
+            cap["focus"] = la.focus
+            return gated
+
+        la.attend = wrapped
+    rows = []
+    prev_ptr = int(getattr(b, "_real_ptr", 0) or 0)
+    for t in range(n_ticks):
+        before = cap["calls"]
+        kind = b.tick()
+        res = b._last_res or {}
+        ptr = int(getattr(b, "_real_ptr", 0) or 0)
+        labels = getattr(b, "_real_labels", None)
+        label = None
+        if labels is not None and len(labels) and ptr != prev_ptr:
+            label = int(labels[(ptr - 1) % len(labels)])
+        prev_ptr = ptr
+        calls = cap["calls"] - before
+        gated = list(cap["gated"] or [])
+        span = max(1, len(gated) // N_BANDS) if gated else 1
+        from_gated = [
+            min(1.0, max(0.0, sum(gated[i * span : (i + 1) * span]) / span)) for i in range(N_BANDS)
+        ]
+        attn = getattr(b, "_attn_real", None) or {}
+        chan = [float(v) for v in (attn.get("channel") or from_gated)]
+        focus = getattr(b, "_attn_focus", None)
+        u = control_state(b)
+        rows.append(
+            {
+                "t": t,
+                "kind": kind,
+                "awake": kind == "awake",
+                "attend_calls": calls,
+                "u": [round(v, 6) for v in u],
+                "gate": [round(v, 6) for v in (cap["gate"] or [0.0] * N_BANDS)],
+                "focus_band": None if focus is None else int(focus[0]),
+                "focus_strength": 0.0 if focus is None else round(float(focus[1]), 6),
+                "ignited": bool((getattr(b, "_access_state", None) or {}).get("ignited", False)),
+                "sustain": round(
+                    float(_report_snapshot(getattr(b, "workspace", None))["strength"]), 6
+                ),
+                "drive_margin": round(
+                    float(getattr(getattr(b.brain, "arm", None), "_decision_margin", 0.0) or 0.0), 6
+                ),
+                "pc_surprise": round(float(getattr(b, "_pc_surprise", 0.0) or 0.0), 6),
+                "action": None if res.get("action") is None else str(res.get("action")),
+                "digit": getattr(b, "_perceived_digit", None),
+                "label": label,
+                "chan": [round(v, 6) for v in chan],
+                "chan_from_gated": [round(v, 6) for v in from_gated],
+                # the 64-d gated latent: the ONE field the pin does not carry (it goes to the
+                # companion .npz, float32 per seed, sha256 in the pin -- 2.1)
+                "gated": [round(v, 4) for v in gated],
+            }
+        )
+    return rows
+
+
+def t078_pairs(rows):
+    """2.2's G3 pairs: CONSECUTIVE awake ticks (t, t+1), and nothing else.
+
+    Two drops, both COUNTED rather than silently skipped (T077 3.2's no-stale-pairing amendment):
+    a link from one awake tick to the next awake tick that is NOT adjacent has a sleep bout between
+    them and is dropped; a pair either of whose ticks committed EMERGENCY_STOP is dropped (2.2
+    records that it never occurs under `_safe_ctx`, so a nonzero count here is itself a finding).
+    Returns {pairs, dropped_sleep, dropped_estop, n_awake}."""
+    awake = [i for i, r in enumerate(rows) if r["awake"]]
+    pairs, dropped_sleep, dropped_estop = [], 0, 0
+    for i, j in zip(awake, awake[1:], strict=False):
+        if j != i + 1:
+            dropped_sleep += 1
+            continue
+        if rows[i]["action"] == ESTOP_LABEL or rows[j]["action"] == ESTOP_LABEL:
+            dropped_estop += 1
+            continue
+        pairs.append((rows[i], rows[j]))
+    return {
+        "pairs": pairs,
+        "dropped_sleep": dropped_sleep,
+        "dropped_estop": dropped_estop,
+        "n_awake": len(awake),
+    }
+
+
+def _gate16(pairs):
+    """2.2's REPORTED gate16 code: the four gate values, each split at ITS OWN seed median over the
+    pairs of this seed, packed into one of 16 cells. A per-seed median rather than a fixed
+    threshold, so no magic constant enters (P1); it is reported, never barred."""
+    if not pairs:
+        return []
+    meds = [statistics.median([a["gate"][b] for a, _ in pairs]) for b in range(N_BANDS)]
+    return [sum(1 << b for b in range(N_BANDS) if a["gate"][b] > meds[b]) for a, _ in pairs]
+
+
+def t078_g3(rows, seed, n_perm=N_PERM):
+    """2.2's four G3 readings, ALL over the same pairs (2.2: "the same pairs serve every G3
+    reading"). Returns {primary, control, gate16, same_tick, n_pairs, cells, dropped_*}.
+
+      primary  BARRED   MI(focus_t ; action_t+1)     -- the gate itself
+      control  BARRED   MI(action_t ; action_t+1)    -- the estimator's positive control; a failure
+                                                        here REFUSES G3, it never STOPS it
+      gate16   reported MI(gate16_t ; action_t+1)
+      same_tick reported MI(focus_t ; action_t)      -- separates prediction from co-occurrence"""
+    p = t078_pairs(rows)
+    pairs = p["pairs"]
+    x_focus = [a["focus_band"] for a, _ in pairs]
+    y_next = [b["action"] for _, b in pairs]
+    x_action = [a["action"] for a, _ in pairs]
+    primary = mi_read(x_focus, y_next, n_perm=n_perm, seed=seed)
+    return {
+        "n_pairs": len(pairs),
+        "dropped_sleep": p["dropped_sleep"],
+        "dropped_estop": p["dropped_estop"],
+        "n_awake": p["n_awake"],
+        "primary": primary,
+        "control": mi_read(x_action, y_next, n_perm=n_perm, seed=seed),
+        "gate16": mi_read(_gate16(pairs), y_next, n_perm=n_perm, seed=seed),
+        "same_tick": mi_read(x_focus, x_action, n_perm=n_perm, seed=seed),
+        "cells": primary["cells"],
+        "distinct_actions": len({a for a in y_next if a is not None}),
+    }
+
+
+def t078_projection(seed):
+    """2.1's fixed Gaussian random projection of the 64-d gated latent down to the MATCHED 15
+    inputs, seeded `crc32(b"t078-proj") + seed` -- `zlib.crc32`, never the builtin `hash()`, so it
+    is stable across processes. A (LATENT_DIM, U_DIM) tensor; the capacity match is what makes
+    (g4b) a comparison of INFORMATION rather than of input width."""
+    import torch
+
+    g = torch.Generator().manual_seed(int(zlib.crc32(PROJ_TAG)) + int(seed))
+    return torch.randn(LATENT_DIM, U_DIM, generator=g)
+
+
+def t078_g4(rows, seed, n_shuffle=N_SHUFFLE):
+    """2.2's four G4 decodes, over the awake ticks on which a frame was PERCEIVED (the label
+    exists). Target = the frame's LABEL; the perceived digit is a second target, reported.
+
+      u        BARRED (g4a)  the 15-d `u_t`
+      c15      BARRED (g4b)  the gated 64-d latent projected to 15 -- the MATCHED arm
+      raw64    reported      the raw gated latent: the CEILING, never barred (2.1)
+      chan     reported      the arm's 4-d sensory channel
+    Every decode carries its own `n_shuffle`-draw label-shuffle band."""
+    import torch
+
+    seen = [r for r in rows if r["awake"] and r["label"] is not None and r["gated"]]
+    y = [r["label"] for r in seen]
+    digits = [r["digit"] for r in seen]
+    u_rows = [r["u"] for r in seen]
+    raw = [r["gated"] for r in seen]
+    chan = [r["chan"] for r in seen]
+    proj = t078_projection(seed)
+    c15 = (torch.tensor(raw, dtype=torch.float32) @ proj).tolist() if raw else []
+    out = {
+        "n_rows": len(seen),
+        "n_classes": len(set(y)),
+        "u": decode_heldout(u_rows, y, seed=seed, n_shuffle=n_shuffle),
+        "c15": decode_heldout(c15, y, seed=seed, n_shuffle=n_shuffle),
+        "raw64": decode_heldout(raw, y, seed=seed, n_shuffle=n_shuffle),
+        "chan": decode_heldout(chan, y, seed=seed, n_shuffle=n_shuffle),
+        "u_digit": decode_heldout(u_rows, digits, seed=seed, n_shuffle=n_shuffle),
+    }
+    return out
+
+
+def t078_determinism(seed, n_ticks=DETERMINISM_TICKS):
+    """2.2's DETERMINISM PRECONDITION (G5 on this loop, cheap): two `n_ticks` recordings of the
+    same seed must be byte-identical on (focus band, gate, action, perceived digit, label). A
+    difference REFUSES the campaign -- nothing below is readable on a non-deterministic recording,
+    and that is the INSTRUMENT's fault, not a finding about the loop."""
+    key = lambda r: (  # noqa: E731 - one line, used twice, never exported
+        r["focus_band"],
+        tuple(r["gate"]),
+        r["action"],
+        r["digit"],
+        r["label"],
+    )
+    a = [key(r) for r in t078_record_brain(seed, n_ticks)]
+    b = [key(r) for r in t078_record_brain(seed, n_ticks)]
+    first = next((i for i, (x, y) in enumerate(zip(a, b, strict=False)) if x != y), None)
+    return {"identical": a == b, "n": len(a), "first_diff": first, "seed": seed}
 
 
 # ============================== 2.4's constructed inputs (no brain, no lake) ======================
@@ -735,15 +963,194 @@ def t078_reds(n_perm=REDS_N_PERM, n_shuffle=N_SHUFFLE, seeds=T078_SEEDS):
     return out
 
 
-def run_t078_campaign(seeds=T078_SEEDS, n_ticks=T078_N_TICKS, pin=T078_PIN):
-    """PART I STUB (2.9 step 2). The Part I campaign (2.2-2.3). Built in 2.9 step 5 and RUN only
-    after the Codex design read folds as 2.10 -- this commit refuses rather than records."""
-    print(
-        f"REFUSED: run_t078_campaign is a Part I stub (2.9 step 2); the recorder lands in step 5 "
-        f"[seeds={list(seeds)} n_ticks={n_ticks} pin={pin}]",
-        flush=True,
-    )
-    return 2
+def _line(c):
+    """One contrast as an ASCII line: its verdict, its t and its EXACT sign-flip FPR (PLAN-FINAL
+    Part F's preamble requires the FPR printed beside every contrast)."""
+    verdict = "MET" if c.met else "NOT MET"
+    deg = " DEGENERATE" if c.degenerate else ""
+    return f"{c.name}: {verdict}{deg} t={c.t:.4f} FPR={c.fpr}"
+
+
+# distinct-from: cortex/metacognitive_monitor.py::run_t077_campaign -- the PIN-ONCE campaign shape
+#   2.1 names for reuse, read before this marker was written. That one records a metacognitive
+#   monitor's five inputs over an intact and a LESIONED arm plus a chat arm, and scores a type-2
+#   AUROC. This one records the ATTENTION state over ONE arm (Part I has no lesion), scores an MI
+#   floor and a decoder band, and decides a STOP/VOID gate. Different instrument, different
+#   conjuncts, different pin; the `contrast` they share is IMPORTED from substrate/paired_contrast
+#   by both, which is the single mechanism.
+# distinct-from: substrate/policy_manifest.py::execute -- runs a gate SUBPROCESS and maps its exit
+#   code to CANNOT_RUN / FAIL. Read: no subprocess here, and a REFUSED is decided from a reading,
+#   not from an exit code. distinct-from: substrate/gradient_claim_gate.py::_write_measure_artifact
+#   -- writes a staleness-checkable measurement artifact. Read: the shared idea is "pin the run",
+#   and this pin is written ONCE and refuses to overwrite, which that one deliberately does not do.
+# distinct-from: substrate/signal_ring.py::publish (a single-writer ring append) and
+#   hippocampus/episodic_recall.py::_flip (a spike-code corruption probe). Both read; neither
+#   records a brain, contrasts seeds, or writes a pin.
+def run_t078_campaign(seeds=T078_SEEDS, n_ticks=T078_N_TICKS, pin=T078_PIN, latents=T078_LATENTS):
+    """Part I's campaign (2.2-2.3): record, read, contrast, pin ONCE. Returns an exit code.
+
+    ORDER IS 2.3's, and it is the order verdicts are DECIDED in, not a presentation choice:
+      (p)   DETERMINISM   the twin recordings byte-identical, else REFUSED -- no reading of any kind
+      (r)   READABLE      every seed's G3 primary and control readable, every G4 decode readable
+      (g3c) THE ESTIMATOR SEES  MI(action_t; action_t+1) above its floor, else G3 REFUSED
+      (g3)  TASK BINDING  MI(focus_t; action_t+1) above its floor -> PASS, else STOP
+      (g4a) u_t DECODES CONTENT / (g4b) CONTENT DECODES BETTER -> PASS / PASS-WITH-LEAK / VOID
+    A REFUSAL is a finding about the INSTRUMENT and a STOP is a finding about the LOOP; the two are
+    never merged. The pin carries every per-tick field except the 64-d gated latents, which go to
+    the companion .npz (float32 per seed) whose sha256 the pin carries -- so every reading here
+    re-derives offline from the pin alone (T077 3.5 item 23)."""
+    import numpy as np
+
+    if pin.exists():
+        print(
+            f"REFUSED: {pin} exists -- the pin is written once (delete it by hand only with the "
+            f"record)",
+            flush=True,
+        )
+        return 2
+    t0 = time.time()
+    det = t078_determinism(seeds[0] if seeds else 0)
+    print(f"(p) determinism twin: {det}", flush=True)
+    if not det["identical"]:
+        print(
+            "REFUSED at (p): two same-seed recordings are NOT byte-identical -- the instrument's "
+            "own fault; nothing below is readable on a non-deterministic recording",
+            flush=True,
+        )
+        return 2
+    per_seed, lat = {}, {}
+    for s in seeds:
+        rows = t078_record_brain(s, n_ticks)
+        g3 = t078_g3(rows, s)
+        g4 = t078_g4(rows, s)
+        lat[f"seed{s}"] = np.asarray([r["gated"] for r in rows], dtype=np.float32)
+        per_seed[s] = {
+            "g3": g3,
+            "g4": g4,
+            "n_ticks": len(rows),
+            "n_awake": g3["n_awake"],
+            # the DISCLOSURES the recorder's docstring names, COUNTED rather than adjudicated
+            "ticks_two_attend_calls": sum(1 for r in rows if r["attend_calls"] > 1),
+            "ticks_chan_disagrees": sum(1 for r in rows if r["chan"] != r["chan_from_gated"]),
+            "ticks_ignited": sum(1 for r in rows if r["ignited"]),
+            "rows": [{k: v for k, v in r.items() if k != "gated"} for r in rows],
+        }
+        print(
+            f"seed {s}: awake {g3['n_awake']} pairs {g3['n_pairs']} (sleep-dropped "
+            f"{g3['dropped_sleep']}, estop-dropped {g3['dropped_estop']}) cells {g3['cells']} "
+            f"actions {g3['distinct_actions']} | primary readable={g3['primary']['readable']} "
+            f"mi={g3['primary']['mi']} q95={g3['primary']['perm_q95']} | control "
+            f"readable={g3['control']['readable']} mi={g3['control']['mi']} "
+            f"q95={g3['control']['perm_q95']} | G4 rows {g4['n_rows']} classes {g4['n_classes']} "
+            f"u_acc={g4['u']['acc']} band={g4['u']['shuffle_q95']} c15_acc={g4['c15']['acc']} "
+            f"raw64_acc={g4['raw64']['acc']} chan_acc={g4['chan']['acc']} "
+            f"[{time.time() - t0:.0f} s]",
+            flush=True,
+        )
+    ss = [per_seed[s] for s in seeds]
+    g3_readable = all(x["g3"]["primary"]["readable"] and x["g3"]["control"]["readable"] for x in ss)
+    g4_readable = all(x["g4"][k]["readable"] for x in ss for k in ("u", "c15"))
+    reading = {
+        "determinism": det,
+        "r_g3_readable": g3_readable,
+        "r_g4_readable": g4_readable,
+        "g3": "REFUSED",
+        "g4": "REFUSED",
+    }
+    if not (g3_readable and g4_readable):
+        reading["refusal"] = (
+            "REFUSED at (r): a reading is not readable on every seed -- the instrument's own "
+            "fault. G3 refusals: "
+            + str([x["g3"]["primary"]["refusal"] for x in ss if not x["g3"]["primary"]["readable"]])
+            + "; G4 refusals: "
+            + str(
+                [
+                    x["g4"][k]["refusal"]
+                    for x in ss
+                    for k in ("u", "c15")
+                    if not x["g4"][k]["readable"]
+                ]
+            )
+        )
+        print(reading["refusal"], flush=True)
+    else:
+        g3c = contrast(
+            "(g3c) the estimator sees",
+            [x["g3"]["control"]["mi"] - x["g3"]["control"]["perm_q95"] for x in ss],
+        )
+        g3 = contrast(
+            "(g3) task binding",
+            [x["g3"]["primary"]["mi"] - x["g3"]["primary"]["perm_q95"] for x in ss],
+        )
+        g4 = g4_rule([x["g4"]["u"] for x in ss], [x["g4"]["c15"] for x in ss])
+        reading["g3c"] = g3c._asdict()
+        reading["g3_contrast"] = g3._asdict()
+        reading["g4a"] = g4["g4a"]._asdict()
+        reading["g4b"] = g4["g4b"]._asdict()
+        reading["g3"] = "REFUSED" if not g3c.met else ("PASS" if g3.met else "STOP")
+        reading["g4"] = g4["reading"]
+        reading["leak_points"] = statistics.mean(
+            x["g4"]["u"]["acc"] - x["g4"]["u"]["shuffle_q95"] for x in ss
+        )
+        reading["reported"] = {
+            "gate16": contrast(
+                "gate16 (reported)",
+                [
+                    (x["g3"]["gate16"]["mi"] or 0.0) - (x["g3"]["gate16"]["perm_q95"] or 0.0)
+                    for x in ss
+                ],
+            )._asdict(),
+            "same_tick": contrast(
+                "same-tick focus/action (reported)",
+                [
+                    (x["g3"]["same_tick"]["mi"] or 0.0) - (x["g3"]["same_tick"]["perm_q95"] or 0.0)
+                    for x in ss
+                ],
+            )._asdict(),
+            "raw64_ceiling": contrast(
+                "raw-64 content ceiling (reported)",
+                [x["g4"]["raw64"]["acc"] - x["g4"]["u"]["acc"] for x in ss],
+            )._asdict(),
+            "chan": contrast(
+                "chan decode (reported)",
+                [x["g4"]["chan"]["acc"] - x["g4"]["chan"]["shuffle_q95"] for x in ss],
+            )._asdict(),
+        }
+        print("-" * 78, flush=True)
+        print(_line(g3c), flush=True)
+        print(_line(g3), flush=True)
+        print(_line(g4["g4a"]), flush=True)
+        print(_line(g4["g4b"]), flush=True)
+        for name, c in reading["reported"].items():
+            print(f"  reported {name}: t={c['t']:.4f} FPR={c['fpr']} met={c['met']}", flush=True)
+        print(
+            f"PART I VERDICT: G3 {reading['g3']} x G4 {reading['g4']} "
+            f"(leak {reading['leak_points']:+.4f} accuracy points)",
+            flush=True,
+        )
+    latents.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(latents, **lat)
+    reading["latents_sha256"] = hashlib.sha256(latents.read_bytes()).hexdigest()
+    out = {
+        "row": "T078 Part I",
+        "n_ticks": n_ticks,
+        "seeds": list(seeds),
+        "bar": T078_BAR,
+        "n_perm": N_PERM,
+        "n_shuffle": N_SHUFFLE,
+        "n_min_per_cell": N_MIN_PER_CELL,
+        "u_fields": list(U_FIELDS),
+        "latents": str(latents),
+        "latents_sha256": reading["latents_sha256"],
+        "reds": t078_reds(),
+        "per_seed": per_seed,
+        "reading": reading,
+        "elapsed_s": round(time.time() - t0, 1),
+    }
+    pin.parent.mkdir(parents=True, exist_ok=True)
+    pin.write_text(json.dumps(out, indent=1, default=str), encoding="utf-8")
+    print(f"pinned {pin} (+ {latents}) in {time.time() - t0:.0f} s", flush=True)
+    return 0
 
 
 #: The one-line description of each red, printed beside its boolean so a gate run's log says WHAT
@@ -775,6 +1182,11 @@ def main():
     """The self-check: 2.4's six reds, each holding on its constructed input AND reddened IN FACT
     by its own mutated scorer. No brain, no lake, no network -- the campaign is `--t078-campaign`
     and lands in 2.9 step 5."""
+    if "--t078-campaign" in sys.argv[1:]:  # 2.9 step 6: the campaign, scratch home, pinned ONCE
+        from snn_data_lake.substrate.home import throwaway_home
+
+        with throwaway_home():
+            sys.exit(run_t078_campaign())
     t0 = time.time()
     reds = t078_reds()
     print("=" * 78)
