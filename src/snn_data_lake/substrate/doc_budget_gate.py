@@ -147,7 +147,10 @@ BUDGETS = {
     # RETIRED 2026-08-16 anchor; the governing practice since T046 is MINIMUM-VIABLE raises
     # (measured + 0, stated per raise), so 0.0%-headroom rows are deliberate and the
     # TIGHTENABLE report is structurally quiet for them.
-    "docs/INVENTION_REGISTER.md": 1595,  # RAISED 1543 -> 1595 on 2026-09-09: row 1's DELETED ON
+    "docs/INVENTION_REGISTER.md": 1618,  # RAISED 1595 -> 1618 on 2026-09-15: T077's MECHANIZED line under
+    # S6 (FR-031 requires a register row per landed P8 invention; the row is two lines, condensed twice
+    # to 23 words). Measured + 0, the same minimum-viable raise as the one below.
+    # EARLIER: RAISED 1543 -> 1595 on 2026-09-09: row 1's DELETED ON
     # ITS NULL line (T068 LOSS -- the paging invention was measured at a 35.2x tick cost against a
     # 3.0x bound fixed before the run and removed). Measured + 0, the same minimum-viable raise as
     # every one before it. The note is 4 lines: the disposition, the date, the evidence pointer and

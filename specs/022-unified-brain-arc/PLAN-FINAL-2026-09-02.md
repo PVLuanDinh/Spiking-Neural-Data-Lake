@@ -924,7 +924,14 @@ May run in parallel with Phase 3 (O5(b)); MUST precede Phase 5.
   in the fold's commit 2 -- `cortex/integration_kernel.py` and its tests DELETED, its CORE/REGIONS/EXEMPT registrations
   removed; re-landable from the tree at c1aac92 (history a2cf76d..c1aac92); the pin `tools/t070_pci.json` and the record
   stand (`evidence/t070-integration-kernel.md` 3.4, 3.7); the successor pre-registration re-specifies (b6) clauses 2-3
-  and (b4) as a reported quantity.*
+  and (b4) as a reported quantity.* *DATED NOTE 2026-09-15 (T077): the metacognition instrument LANDED as ONE scorer in
+  the incumbent (`metacognitive_monitor.track_error`; `SecondOrderAccess.calibration()` re-pointed to it; the paired t
+  lifted into `substrate/paired_contrast.py`, amendment 2.10) and its campaign read NOT MET on a scratch brain's
+  prequential readout stream (600 ticks, 8 seeds; `tools/t077_metacognition.json`; `evidence/t077-metacognition.md`
+  3.3): tracking t +0.5049, the in-vivo lesion collapses nothing t +0.3736, the readout BELOW its own persistence
+  predictor t -5.2502 on every seed; the oracle and the replay held. No C4 number; `CONCLUSION["metacognition"].reading`
+  stays None; nothing of the incumbents deleted (the C5 refusals and P8 clause 5 as read in its 2.0). Phase 4 still
+  waits on T078-T082.*
 - **SC-004's open half gets its owner here:** the multi-region clause (1 of 10 regions grows) is
   re-scoped to "a second region receives grown units that a live path READS" and is owned by C1a (readers
   exist once ports are instantiated) together with L2's growth through the 007 seam — the seam rank 1 built

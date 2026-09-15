@@ -93,6 +93,8 @@ fires its constructed red before any positive claim (SC-009). CONTROLS: shuffled
 recurrence-ablation, capacity-matched shams — external per instrument. DISCLOSURE: phenomenal
 experience is never claimed from a passing criterion (P8 sentience clause). NULL: an instrument
 whose red never fires is not an instrument and is deleted.
+MECHANIZED (second, T077, 2026-09-15): `metacognitive_monitor.track_error` (auroc2, permutation-null readability,
+the in-vivo dissociation; reds R0-R5 fired first) READ NOT MET -- `evidence/t077-metacognition.md` 3.3-3.4; nothing deleted.
 
 ## 7. Two-stage two-regime arealization composition (L5, T040-T042)
 Adopted parts: positional-information organizer fields, repression-dominant GRN readout,
