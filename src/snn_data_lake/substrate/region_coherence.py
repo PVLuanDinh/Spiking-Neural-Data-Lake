@@ -51,6 +51,8 @@ import zlib
 
 import numpy as np
 
+from snn_data_lake.cortex.integration_measure import normalized_lz
+
 #: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "RegionCoherence.update": (
@@ -62,37 +64,11 @@ GRADIENT_CLAIM = {
     ),
 }
 
-# Reuse the tractable integration primitive from the PCI module (Casali normalized Lempel-Ziv complexity).
-try:
-    from snn_data_lake.cortex.integration_measure import normalized_lz
-except Exception:  # pragma: no cover - defensive fallback keeps this module self-contained
-
-    def normalized_lz(s):
-        """Fallback normalized-LZ (Casali) if the cortex primitive is unavailable at import time."""
-        L = len(s)
-        if L == 0 or s.count("1") == 0:
-            return 0.0
-        # Lempel-Ziv 1976 phrase count c(L).
-        i, k, l, k_max, c = 0, 1, 1, 1, 1
-        while True:
-            if s[i + k - 1] == s[l + k - 1]:
-                k += 1
-                if l + k > L:
-                    c += 1
-                    break
-            else:
-                if k > k_max:
-                    k_max = k
-                i += 1
-                if i == l:
-                    c += 1
-                    l += k_max
-                    if l + 1 > L:
-                        break
-                    i, k, k_max = 0, 1, 1
-                else:
-                    k = 1
-        return c * math.log2(L) / L
+# The tractable integration primitive (Casali normalized Lempel-Ziv complexity) is IMPORTED from the PCI
+# module in the import block above. A `try/except Exception` fallback stood here until 2026-09-15 carrying a
+# SECOND Kaspar-Schuster LZ76 body (the pre-3b7a2b6 algorithm) that could run only if that import failed;
+# the import succeeds (`region_coherence.normalized_lz is integration_measure.normalized_lz` read True at
+# c56a730), so the branch never ran -- a dormant duplicate, DELETED under P2/P3 (T070 record 3.5 item 7).
 
 
 class RegionCoherence:
