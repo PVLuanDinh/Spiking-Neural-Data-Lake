@@ -115,9 +115,13 @@ CONCLUSION: dict[str, tuple] = {
         "the system's confidence tracks its own error rate better than a fixed prior does, on held-out items",
         "this licenses no claim that the system knows that it knows in any experiential sense",
         "shuffled confidence-outcome pairing must destroy the tracking, or the instrument is a marker",
-        None,
+        None,  # T077 read NOT MET 2026-09-15 (t +0.50 vs 1.895; tools/t077_metacognition.json): no reading
         "2026-09-06",
-        (),  # T077 is unbuilt: nothing prints it, so nothing can print it wrongly
+        # T077 (2026-09-15, evidence/t077-metacognition.md 3.4): the row the cockpit WOULD print on a PASS, printed
+        # nowhere today (the reading is None and the licensed sentence is NOT written); named so the arming arm
+        # below sees a symbol for a task marked complete and refusal 3 polices it if it ever appears. The cockpit's
+        # `reliability` row is the monitor's OWN read, not this instrument's, and carries its own PROVENANCE line.
+        ("metacog_tracking",),
     ),
     "attention_schema": (
         "the system's report of what it attends to predicts which input governs its next output",

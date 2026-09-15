@@ -197,6 +197,15 @@ PROVENANCE = {
         "on (b6) NOT MET (the panel of 2026-09-14 ruled the record's hold a relabelling); the pin "
         "stands, recomputable from the tree at c1aac92; NOT the live brain"
     ),
+    "reliability": (
+        "MEASURED, and measured NOT to be what its name suggests (T077, 2026-09-15, "
+        "evidence/t077-metacognition.md 3.3-3.4, pin tools/t077_metacognition.json): the fused spike-count "
+        "rate of cortex/metacognitive_monitor over the self-model's confidence / surprise / learning progress / "
+        "novelty / ACC conflict. On a scratch brain's prequential readout stream (600 ticks, 8 seeds) it does NOT "
+        "track the readout's own error rate better than a fixed prior: paired t +0.50 against the bar 1.895, four of "
+        "eight seeds below chance; removing the read in vivo collapses nothing (t +0.37). It gates learning and the "
+        "chat abstention; it is NOT an error-tracking confidence, and no C5 sentence is licensed for it"
+    ),
     "criticality": "sleep-only",
     # string/bool literals in state(), not readings (goal brain.py:2892; reflex_armed :3055)
     "goal": "hardcoded literal",
