@@ -699,6 +699,41 @@ not adjudicated here.
    largest positive neuter deltas in 3.3, i.e. pinning conflict RAISES the read's tracking most on exactly these two
    seeds) is where a successor that wants a tracking read starts. No conjunct, bar, verdict or disposition moves;
    (b3o) already tabled the passthrough per seed, this item states what two of its cells mean.
+28. (appended 2026-09-15, from the Codex closing report, REPRODUCED from the pin) "DOES NOT TRACK" IS THE 8-SEED
+   PAIRED READING, NOT A PER-SEED FACT, AND NO MEASUREMENT IN THIS ROW ISOLATES APPARATUS FAILURE FROM LAYER FAILURE.
+   Codex: seed 1's MONITOR read has 55 distinct values and auroc2 0.6694 above its q95 0.5715 while its fed `confidence`
+   is identically 0.0 (item 17) -- the constant stream is the passthrough's, not the pool's. Reproduced: `streams.read`
+   on seed 1 carries 55 distinct values (seed 2: 63; seed 5: 73), and seeds 1, 2, 5 read above their own bands (3.3's
+   (b1) row already prints it). So on three seeds the pool's output tracked the readout's error from surprise /
+   learning progress / conflict alone, on two (items 27: seeds 0, 6) the first-order input tracked and the fused read
+   anti-tracked, and on three neither did; the aggregate NOT MET at the bar is the pre-registered reading, and 3.3's,
+   3.4's and PROVENANCE's "does not track ... better than a fixed prior: paired t +0.50" are read as that contrast
+   over 8 seeds, not as a statement true of every seed. No measurement in the row separates the two readings of the
+   null -- the recording + pairing positive control that would (3.7's offline planted read) is deferred, and item
+   29 carries it as an opening. No conjunct, bar, verdict or disposition moves.
+29. (appended 2026-09-15, from the Codex closing report) THE DISPOSITION'S PREMISE "THE INSTRUMENT WORKS" (3.4) IS NOT
+   P8 CLAUSE 2's EXTERNAL SENSITIVITY DEMONSTRATION. Codex: readability (a) and the exact replay (c) do not supply the
+   "external positive control proving the harness is sensitive at all" that POLICIES P8 clause 2 words; with (b5)
+   withdrawn (3.7) as an identity, nothing in the row shows the recording + pairing path reads a planted tracking
+   signal near 1.0. Reproduced against the record: R0-R5 (item 10) show the SCORER is not degenerate on constructed
+   streams; (a) shows each stream's null resolves; (c) shows the replay is exact; none of them plants a signal on a
+   recorded read and reads it back through `t077_pairs_prospective`. So "the instrument works" in 3.4 means "the
+   instrument is not degenerate", and P8 clause 2 is OPEN for this instrument -- opening (7) in 3.6. What does NOT
+   move, also Codex's reading: the NULL branch still qualifies -- (a) entails (b5), so withdrawing (b5) does not
+   falsify 2.6's "(a), (b5) and (c) MET"; keeping the incumbents is what 2.6 requires; and P8 clause 5's deletion
+   condition (an invented method that measures nothing) is not established either way -- the instrument measured
+   a number on every seed and its reds fire; it has not yet been shown SENSITIVE on the live path.
+30. (appended 2026-09-15, from the Codex closing report, REPRODUCED through the unchanged scorer) ITEM 18's "CANNOT
+   DISAGREE" IS WITHDRAWN: the analytic MEAN 0.5 of the permutation null does not determine its MEDIAN. On THIS pin's
+   streams (100-167 distinct confidence values, near-symmetric nulls) the pinned medians sit within 0.0024 of 0.5 and
+   (b2) tracks (b1), as item 18 measured; on a discrete, skewed stream the median departs. Codex's counterexample,
+   reproduced through `track_error` and `contrast` unchanged: eight 100-item streams, 90 zero / 10 unit confidences,
+   four correct labels, high-confidence-correct counts [0, 0, 0, 0, 0, 1, 1, 1] -- every stream readable, permutation
+   median 0.4479 on each, (b1) t -0.136626 NOT MET while (b2) t +2.049390 MET. So (b2) is redundant with (b1) ON THIS
+   PIN, not analytically, and a successor may not drop it as entailed; item 18's remaining content (the closed-form
+   mean, the Monte-Carlo sd, the pinned per-seed departures <= 0.002375, (b2)'s non-redundant second clause) stands.
+   The site comment above the (b2) contrast in `run_t077_campaign` is corrected in the same fold (it said "cannot
+   disagree with (b1)").
 
 ### 3.6 What this row does NOT claim, and the openings it leaves
 
@@ -733,7 +768,11 @@ live reader. A successor row either gives it a consumer that changes an outcome 
 gate is the force-wire P3's honesty guard forbids, and this NULL row does not touch incumbent source. (6) the fed
 `confidence` (self_model confidence x decision confidence at the monitor's call site in `Brain`) identically 0.0 on one
 seed of eight (3.5 item 17) -- a fact about the self-model / BG margin, not about the scorer; it makes that seed's
-passthrough control vacuous and is the successor's input, not this row's to adjudicate.
+passthrough control vacuous and is the successor's input, not this row's to adjudicate. (7) P8 clause 2's EXTERNAL
+positive control for this instrument (3.5 item 29): a planted tracking signal written onto the recorded reads and read
+back through `t077_pairs_prospective` and `track_error` near 1.0 -- offline, on the pinned rows, never a new in-vivo
+arm on this frozen tree (3.7's design); until it exists, "the instrument works" means "not degenerate", and no
+successor reads a T077-shaped contrast as a verdict about the monitor rather than about the stream.
 
 ### 3.7 Amendment, appended 2026-09-15 after the panel: (b5) WITHDRAWN under P8 clause 1 (C9)
 
@@ -799,8 +838,14 @@ line for `live_accuracy` (the facts reproduce, the charge does not).
 
 THE CODEX CLOSING REPORT (owner rule 2026-09-10): sent 11:52 on head `ac7b04b`, read-only sandbox, prompt on stdin
 (`scratchpad/t077/codex_closing_prompt.md`); Codex's run was cut off by its usage limit at 11:55 ("try again at
-2:33 PM") after 55,528 tokens and one interim finding, reproduced and appended as 3.5 item 27; the same prompt is
-re-sent after the reset and its reply is folded by dated appended items in the next commits before the push.
+2:33 PM") after 55,528 tokens and one interim finding, reproduced and appended as 3.5 item 27; the same prompt was
+RE-SENT at 14:34 and answered at 14:41 (100,829 tokens; `scratchpad/t077/codex_closing_report.md`, the limited first
+attempt kept as `codex_closing_report_limit1.md`): three claims -- (a) "does not track" overstates the aggregate
+reading and no measurement isolates apparatus from layer; (b) the NULL branch still qualifies with (b5) withdrawn,
+keeping the incumbents is what 2.6 requires, and "the instrument works" is not P8 clause 2's external sensitivity
+demonstration; (c) item 18's "cannot disagree" is false in general, with a constructed counterexample -- ALL THREE
+REPRODUCED by the fold's own probe and folded as 3.5 items 28-30 (each a stacked commit's worth: nothing was taken
+on Codex's word). Codex named no error in the fold's numbers beyond item 18's claim.
 
 THE FOLD IS ITSELF UNREVIEWED CODE (obs #35): it was not re-panelled; it is battery-verified only -- the arc's
 battery, named in the closing record commit of this push, is its review. The verdict, the pin, the disposition and
