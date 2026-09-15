@@ -128,7 +128,6 @@ class SecondOrderAccess:
         self._conf1 = 0.0
         # running calibration bookkeeping
         self._n = 0
-        self._agree = 0
         self._hist = []  # (second_order_conf, called_available, truly_available) per observation
 
     # -- the spiking read ------------------------------------------------------------------------
@@ -165,8 +164,6 @@ class SecondOrderAccess:
         called = self._conf2 >= self.c_hold
         truly = ig and a >= self.avail_majority
         self._n += 1
-        if called == truly:
-            self._agree += 1
         self._hist.append((self._conf2, called, truly))
         return self._conf2
 
@@ -515,7 +512,8 @@ def main():
         f"self-check OK: 2nd-order access confidence {r['hi_mean']:.3f} on strong reliable ignition vs "
         f"{r['lo_mean']:.3f} on weak/masked/FAILED (holds on all); calibration {r['cal']:.3f} beats "
         f"shuffled {r['cal_shuffled']:.3f} / first-order-echo {r['cal_first_order']:.3f} / majority "
-        f"{r['cal_majority']:.3f} / ignition-echo {r['cal_ignition_echo']:.3f}; HONEST LIMIT {r['errors']} "
+        f"{r['cal_majority']:.3f} / ignition-echo {r['cal_ignition_echo']:.3f} and TIES the ground truth "
+        f"recomputed from its own inputs {r['cal_ground_truth']:.3f} (the ceiling); HONEST LIMIT {r['errors']} "
         f"wrong calls kept (masked {r['err_kind']['masked']}/{N_MASKED}); functional access metacognition "
         "only, NOT phenomenal; deterministic"
     )
