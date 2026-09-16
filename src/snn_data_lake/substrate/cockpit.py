@@ -576,6 +576,17 @@ h2{font:600 13px/1 ui-monospace,Consolas,monospace;letter-spacing:.06em;color:rg
 .na{color:#4d5a70!important}
 .tag{color:var(--org);font-size:10px;letter-spacing:.02em}
 .note{color:var(--grey);font-size:11px;padding:3px 12px 0;font-style:italic}
+/* Every other value on this page is a NUMBER, so `.row .v` is nowrap and a long tag simply runs
+   off the plate. These are SENTENCES, and a sentence cut at the plate edge says something the
+   author did not write -- so this block wraps, and the provenance string (thousands of characters
+   on some rows) is bounded and scrollable inside a collapsed details instead of a nowrap tag. */
+.c5{white-space:normal;font-size:11px;line-height:1.35;padding:2px 12px}
+.c5 i{color:var(--grey);font-style:normal}
+.c5 .rf{color:var(--org)}
+.c5 details{margin-top:1px}
+.c5 summary{color:var(--grey);font-size:10px;letter-spacing:.04em;cursor:pointer}
+.c5 details>div{white-space:normal;color:var(--grey);font-size:10px;line-height:1.3;
+ max-height:96px;overflow:auto;padding:2px 0 0}
 canvas{display:block}
 @media(max-width:1500px){#app{grid-template-columns:1fr 420px;
  grid-template-areas:"brand brand" "scene widgets" "chat chat" "bottom bottom";
@@ -616,6 +627,7 @@ canvas{display:block}
    <div class="plate" style="flex:2"><h2>ARM</h2><div id="wArm"></div></div>
 <div class="plate" style="flex:3"><h2>MOTOR MIX</h2><div id="wMotor"></div></div>
    <div class="plate" style="flex:4"><h2>BEHAVIOR &amp; EMOTION</h2><div id="wBeh"></div></div>
+   <div class="plate" style="flex:5"><h2>CONSCIOUSNESS -- what is measured, what it licenses</h2><div id="wC5"></div></div>
    <div class="plate" style="flex:5"><h2>HARDWARE TARGET &mdash; NOT BUILT</h2><div id="wHw"></div></div>
    <div class="plate" style="flex:3"><h2>NEUROMODULATORS</h2><div id="wNm"></div></div>
    <div class="plate" style="flex:3"><h2>WORLD MODEL</h2><div id="wWm"></div></div>
@@ -840,6 +852,51 @@ function paint(d){
   +row('RPE',s.rpe)
   +`<div class="note">wake drive is two-valued by construction (explore / fidget).</div>`;
 
+ /* CONSCIOUSNESS -- the whole C5 registry, served at d.conclusion by
+    brain_telemetry.conclusion_rows() over substrate/conclusion_protocol. THREE THINGS THIS PLATE
+    DOES THAT A ROW IN THE FIXED-HEIGHT BOTTOM STRIP STRUCTURALLY COULD NOT:
+      - the licensed AND the refused sentence render in the SAME VIEW, wrapped -- refusal 3 as a
+        rendering rather than as a sentence in a policy file;
+      - the CHARGED reading prints beside the LIVE state value, which is a different quantity;
+      - a row with no reading is ABSENT, so an instrument that did not pass prints nothing at all.
+    NO tag() on the value row: the provenance strings run to thousands of characters and `.row .v`
+    is nowrap, which is exactly how the old rows rendered ZERO visible provenance characters. Here
+    the string sits in a collapsed details, wrapped and bounded.
+    The three rows' own notes, moved with them out of the ACCESS plate (P2: one place per reading):
+    C5 row temporal_binding (T080, 2026-09-16), CHARGED by tools/t080_temporal_binding.json on an aligned scratch stream.
+      licensed -- features inside one window are bound into one reported object more often than features across windows;
+      refused -- this licenses no claim that there is a felt present, a stream of experience, or a duration lived.
+      Its live value is Brain.state()["crossmodal_bound_rate"], the daemon's OWN rate, which its independent percept
+      streams hold at the null's level -- a chance rate, never the within-window rate the pin measured.
+    C5 row report_order (T081, 2026-09-16), CHARGED by tools/t081_report_order.json on a scratch brain.
+      licensed -- perturbing one named intermediate changes the report, so the report is generated from the internal state;
+      refused -- this licenses no claim that the report is a first-person account of anything.
+      Its live value is Brain.state()["report_order_margin"], the charge margin the campaign's flip dose was read
+      against; that dose read 1.0 on every seed BY CONSTRUCTION, so it predicts nothing about the flip, and the
+      margin itself can read NEGATIVE (24 of 100 ticks). Not clamped -- the provenance says why.
+    C5 row social_cognition (T082, 2026-09-16), CHARGED at 0.4437 by tools/t082_social_cognition.json (head 6d4a65f).
+      licensed -- predicting another agent improves when the system models that agent's belief rather than the world alone;
+      refused -- this licenses no claim that the system understands another mind, or that it has one.
+      Its live value is the LENGTH of Brain.state()["recursive_tom_false_beliefs"], a LIST of the agents whose belief
+      diverges from the world -- NOT the charged reading, which is a campaign accuracy difference measured elsewhere. */
+ const cc=d.conclusion||[];
+ const esc5=t=>String(t).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+ $('wC5').innerHTML = cc.length ? cc.map(e=>{
+   const sy=e.symbols||[], lv=e.live||{};
+   /* a list-valued state key renders as its LENGTH, which is what the ACCESS row rendered too --
+      moving a reading must not quietly change the quantity shown */
+   const val=sy.map(k=>Array.isArray(lv[k])?fmt(lv[k].length,0):fmt(lv[k])).join(' / ');
+   const pv=sy.map(k=>PROV[k]||'').filter(Boolean).join('   ||   ');
+   return `<div class="row"><span class="k">${esc5(e.instrument)}`
+    +`${e.task?' '+esc5(e.task):''}</span>`
+    +`<span class="v">live ${val} &middot; reading ${fmt(e.reading,4)}</span></div>`
+    +`<div class="c5"><i>licensed:</i> ${esc5(e.licensed)}<br>`
+    +`<span class="rf"><i>refused:</i> ${esc5(e.refused)}</span>`
+    +(pv?`<details><summary>provenance</summary><div>${esc5(pv)}</div></details>`:'')
+    +`</div>`;
+  }).join('')
+  : `<div class="note">no instrument carries a reading yet, and a row without one prints nothing.</div>`;
+
  /* HARDWARE TARGET -- a plan from the build notes, never telemetry */
  if(hw.joints){
   $('wHw').innerHTML =
@@ -923,25 +980,9 @@ function paint(d){
  $('bAcc').innerHTML=big(s.access_index,3)+sub('global access index')
    +row('ignitions',dv.ignitions,0)+row('percept holds bus',dv.ws_percept_ignited,0)
    +row('PCI',s.pci,3,'pci')+row('integration',s.integration_competence,3,'integration_competence')
-   /* C5 row temporal_binding (T080, 2026-09-16), CHARGED by tools/t080_temporal_binding.json on an aligned scratch stream:
-      licensed -- features inside one window are bound into one reported object more often than features across windows;
-      refused -- this licenses no claim that there is a felt present, a stream of experience, or a duration lived.
-      The live value below is the daemon's own rate, which its independent streams hold at the null's level (provenance). */
-   +row('cross-modal bound rate',s.crossmodal_bound_rate,3,'crossmodal_bound_rate')
-   /* C5 row report_order (T081, 2026-09-16), CHARGED by tools/t081_report_order.json on a scratch brain.
-      The live value is the charge margin the campaign's flip dose was read against, and that flip dose read 1.0 on every
-      seed BY CONSTRUCTION (2.10 (b)), so it predicts nothing about the flip; it can read NEGATIVE because the slot order
-      is the admission rank (-_last_v) and not the charge order (24 of 100 ticks). Not clamped -- see PROVENANCE.
-      licensed -- perturbing one named intermediate changes the report, so the report is generated from the internal state;
-      refused -- this licenses no claim that the report is a first-person account of anything. */
-   +row('report-order margin',s.report_order_margin,3,'report_order_margin')
-   /* C5 row social_cognition (T082, 2026-09-16), CHARGED at 0.4437 by tools/t082_social_cognition.json (head 6d4a65f) on
-      scratch brains, representation-level throughout. The value below is the LIVE state key's LENGTH -- the count of agents
-      whose belief diverges from the world, plus the diverging nested pairs, read off the chat's own statements -- and NOT
-      the charged reading, which is a campaign accuracy difference measured elsewhere (see PROVENANCE for both).
-      licensed -- predicting another agent improves when the system models that agent's belief rather than the world alone;
-      refused -- this licenses no claim that the system understands another mind, or that it has one. */
-   +row('social false beliefs',Array.isArray(s.recursive_tom_false_beliefs)?s.recursive_tom_false_beliefs.length:null,0,'recursive_tom_false_beliefs')
+   /* The three C5 readings LEFT this plate at T090 (P2: one place per reading). They print on the
+      CONSCIOUSNESS plate in the widgets column, where the sentences each one licenses and refuses
+      render beside it and the provenance wraps instead of running off a nowrap value span. */
    +`<div class="note">ignitions = broadcast changed hands; percept holds bus = this tick's percept seized the slot (1/0); the others can hold high on one content.</div>`;
  $('bLife').innerHTML=big(s.nights_elapsed,0,undefined,'nights_elapsed')+sub('nights slept')
    +row('units admitted',s.grown_units,0,'grown_units')+row('reasoning acc',s.reasoning_accuracy)

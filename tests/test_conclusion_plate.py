@@ -128,3 +128,28 @@ def test_the_gates_mechanism_clause_fires_where_the_text_clause_cannot_see():
         len(conclusion_protocol.surface_findings(live_blank)) > conclusion_protocol.SURFACE_BASELINE
     )
     assert len(conclusion_protocol.surface_findings()) <= conclusion_protocol.SURFACE_BASELINE
+
+
+def test_the_consciousness_plate_ships_outside_the_fixed_height_strip_and_wraps():
+    """R5, DECLARED A RATCHET OF SOURCE TEXT and never the rendered red (obs #2195).
+
+    It proves the page SHIPS a plate outside `#bottom` carrying a wrapping rule, and that the
+    three C5 readings left the ACCESS fill. Whether every character of every sentence lands inside
+    the plate's visible box is the RENDERED measurement at two widths (2.2,
+    tests/instruments/t090_measure_plate.js), which no test in this suite can see: a CSS rule in a
+    source string and a laid-out character are different claims, and this file can only make the
+    first one. Mutation `nowrap` (`.c5{white-space:nowrap`): red.
+    """
+    from snn_data_lake.substrate import cockpit
+
+    html = cockpit.COCKPIT_HTML
+    assert ".c5{white-space:normal" in html
+    head, sep, bottom = html.partition('<div id="bottom">')
+    assert sep, "the page lost its #bottom row"
+    assert 'id="wC5"' in head, "the plate must not live in the fixed-height #bottom grid row"
+    assert 'id="wC5"' not in bottom
+    # P2: one place per reading. The three C5 symbols no longer render in the ACCESS fill.
+    for sym in ("crossmodal_bound_rate", "report_order_margin", "recursive_tom_false_beliefs"):
+        assert f"'{sym}'" not in html, f"{sym} is still passed to a row() call"
+    # and the plate reads the SERVED section rather than re-deriving anything from cognition
+    assert "d.conclusion" in html
