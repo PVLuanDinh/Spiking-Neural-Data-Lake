@@ -342,7 +342,9 @@ BASELINE = {
     # SUBJECT (`t081_constructed_workspace`) for its reds R1-R6 -- the pre-registration
     # (evidence/t081-report-order.md 2.4, 2.9 step 4) requires the reds to run on a constructed
     # workspace IN-FILE, and nothing else reads that subject BY DESIGN: it is a measurement
-    # instrument (dormancy_gate EXEMPT as such), the T033 shape below. The factory form that
+    # instrument whose SUBJECT nobody else reads -- the T033 shape below (the module itself left
+    # `dormancy_gate.EXEMPT` at `614a73e`, when `Brain.state()` began importing `_t081_top_margin`;
+    # that changed its reachability, not this census's ground). The factory form that
     # keeps this census at 6 was measured before the build and REFUSED -- evasion through this
     # walk's disclosed blind spot is worse than the admission. The ceiling still traps the NEXT
     # private instance: a real faculty holding its own bus lands on 8 and reddens.
