@@ -370,3 +370,14 @@ def test_the_live_report_order_margin_reaches_state_with_both_c5_sentences_besid
         ws = b.workspace
         if ws is not None:
             assert margin == round(rop._t081_top_margin(ws), 4)
+
+
+def test_the_charged_reading_is_re_derived_from_the_pin(tmp_path):
+    """T081 panel fold (2026-09-16): CONCLUSION['report_order'].reading is not a free literal -- it
+    equals 2.6's reduction of the committed pin at the recorded precision, the mutated derivation
+    (the sides swapped) differs, and a missing pin is a RED, never a skip (T080's shape)."""
+    derived, recorded, mutated = rop.t081_pin_reading()
+    assert derived == recorded == 1.0, (derived, recorded)
+    assert mutated != recorded, mutated
+    with pytest.raises(AssertionError):
+        rop.t081_pin_reading(tmp_path / "absent.json")

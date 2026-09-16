@@ -1081,6 +1081,24 @@ def _t081_head():
         return f"unavailable ({type(e).__name__})"
 
 
+# distinct-from: substrate/policy_manifest.py::_tree_state -- the same `git status --porcelain`
+#   read, kept beside `_t081_head`'s bare-sha pin field (the t079/t080/pin convention) rather than
+#   replacing it; added at T081's panel fold (2026-09-16) because the executor's dry run carried the
+#   LAST COMMIT's sha while running on an uncommitted step-5 tree (record 3.5 item 12).
+def _t081_dirty():
+    """Whether the working tree differed from HEAD when this artifact was written -- a pin field
+    beside `head`, so a stamp can never again name a commit that could not have run the code."""
+    import subprocess
+
+    try:
+        r = subprocess.run(
+            ["git", "status", "--porcelain"], capture_output=True, text=True, timeout=20
+        )
+        return bool(r.stdout.strip()) if r.returncode == 0 else f"unavailable (rc {r.returncode})"
+    except Exception as e:  # noqa: BLE001 -- a pin field, never a control-flow decision
+        return f"unavailable ({type(e).__name__})"
+
+
 # distinct-from: thalamus/binding_instrument.py::_t080_seed_block and
 #   cortex/agency_monitor.py / cortex/attention_schema.py's per-seed printers -- the same
 #   one-printer-per-instrument CONVENTION over a DIFFERENT reading (a bound fraction against a
@@ -1222,6 +1240,7 @@ def run_t081_dry_run(out_path=T081_DRY_RUN_OUT, seed=0):
     report = {
         "row": "T081 dry run",
         "head": _t081_head(),
+        "dirty": _t081_dirty(),
         "seed": int(seed),
         "stream": {"seed0": labels0, "seed1": labels1, "differ": differ, "first_diff": first_diff},
         "determinism": det,
@@ -1319,6 +1338,7 @@ def run_t081_campaign(seeds=T081_SEEDS, pin=T081_PIN):
     out = {
         "row": "T081",
         "head": _t081_head(),
+        "dirty": _t081_dirty(),
         "seeds": list(seeds),
         "constants": _t081_constants(),
         "reds": t081_reds(),
@@ -1351,6 +1371,34 @@ def _t081_reds_line(reds, out=print):
 #   module's own `__main__` block, which is this tree's convention (run_selfchecks.py executes
 #   exactly that block per module and scores the exit status), not a second dispatcher. Nothing
 #   here runs another module's self-check. Read.
+# distinct-from: thalamus/binding_instrument.py::t080_pin_reading -- the same job (the C5 row's
+#   reading re-derived from its pin at self-check, with a mutated derivation shown to refuse) over a
+#   DIFFERENT pin schema (per-seed f_named / f_scr by dose, keyed by JSON strings) and a different
+#   mutated derivation (the sides swapped, R2's blind scorer). Added at T081's panel fold (2026-09-16,
+#   record 3.5 item 11). OPENING for the next charged row: ONE helper taking (row, pin, reducer) with
+#   both per-row bodies retired into it -- a P2 merge larger than a fold's one clause.
+def t081_pin_reading(pin=None):
+    """(derived, recorded, mutated): 2.6's reading -- the mean over seeds of f_named(1.0) -
+    f_scr(1.0) -- re-derived from the committed pin, beside the CONCLUSION row's recorded value and
+    a mutated derivation (the sides swapped) that would refuse."""
+    from snn_data_lake.substrate.conclusion_protocol import CONCLUSION
+
+    pin = T081_PIN if pin is None else Path(pin)
+    assert pin.exists(), (
+        f"{pin} missing -- the C5 reading's re-derivation cannot run; the pin is tracked, so absence "
+        "means deletion or a broken path"
+    )
+    seeds = json.loads(pin.read_text(encoding="utf-8"))["per_seed"]
+    k = str(T081_LESION_DOSE)  # the pin's dose keys are JSON strings
+    derived = round(
+        sum(float(e["f_named"][k]) - float(e["f_scr"][k]) for e in seeds) / len(seeds), 4
+    )
+    mutated = round(
+        sum(float(e["f_scr"][k]) - float(e["f_named"][k]) for e in seeds) / len(seeds), 4
+    )
+    return derived, CONCLUSION["report_order"][3], mutated
+
+
 def main(argv=None):
     """The module's self-check, plus 2.9's two brain-touching entry points.
 
@@ -1399,6 +1447,20 @@ def main(argv=None):
         f"  --t081-dry-run writes {T081_DRY_RUN_OUT} (one seed, NO barred conjunct); "
         f"--t081-campaign pins {T081_PIN.name} ONCE. Neither runs from here."
     )
+    # THE CHARGED READING IS TIED TO ITS PIN HERE (T081 panel fold, 2026-09-16; T080's shape). A
+    # missing pin is a RED (the pin is tracked), never a skip; the mutated derivation shows the clause
+    # reachable on every run.
+    derived, reading, mutated = t081_pin_reading()
+    print(
+        f"  C5 report_order: reading {reading} re-derived from {T081_PIN.name} as {derived} "
+        f"(a mutated derivation reads {mutated} and would refuse)"
+    )
+    if derived != reading or mutated == reading:
+        print(
+            f"T081 SELF-CHECK RED: C5 reading {reading} != {derived} re-derived from {T081_PIN} "
+            f"(mutated {mutated}) -- re-derive or explain before re-recording"
+        )
+        return 1
     return 0
 
 
