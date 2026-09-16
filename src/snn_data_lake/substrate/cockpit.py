@@ -923,13 +923,12 @@ function paint(d){
       refused -- this licenses no claim that there is a felt present, a stream of experience, or a duration lived.
       The live value below is the daemon's own rate, which its independent streams hold at the null's level (provenance). */
    +row('cross-modal bound rate',s.crossmodal_bound_rate,3,'crossmodal_bound_rate')
-   /* C5 row report_order (T081, 2026-09-16), CHARGED by tools/t081_report_order.json on a scratch brain:
+   /* C5 row report_order (T081, 2026-09-16), CHARGED by tools/t081_report_order.json on a scratch brain.
+      The live value is the charge margin the campaign's flip dose was read against, and that flip dose read 1.0 on every
+      seed BY CONSTRUCTION (2.10 (b)), so it predicts nothing about the flip; it can read NEGATIVE because the slot order
+      is the admission rank (-_last_v) and not the charge order (24 of 100 ticks). Not clamped -- see PROVENANCE.
       licensed -- perturbing one named intermediate changes the report, so the report is generated from the internal state;
-      refused -- this licenses no claim that the report is a first-person account of anything.
-      The live value below is the charge margin the campaign's flip dose was read against, and that flip dose read 1.0 on
-      every seed BY CONSTRUCTION (2.10 (b)), so it predicts nothing about the flip -- it is telemetry (provenance).
-      It can read NEGATIVE: the slot order is the admission rank (-_last_v), not the charge order, so the admitted head is
-      not always the most charged pool (24 of 100 ticks measured 2026-09-16). Not clamped -- see PROVENANCE. */
+      refused -- this licenses no claim that the report is a first-person account of anything. */
    +row('report-order margin',s.report_order_margin,3,'report_order_margin')
    +`<div class="note">ignitions = broadcast changed hands; percept holds bus = this tick's percept seized the slot (1/0); the others can hold high on one content.</div>`;
  $('bLife').innerHTML=big(s.nights_elapsed,0,undefined,'nights_elapsed')+sub('nights slept')

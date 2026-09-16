@@ -159,12 +159,20 @@ CONCLUSION: dict[str, tuple] = {
         "perturbing one named intermediate changes the report, so the report is generated from the internal state",
         "this licenses no claim that the report is a first-person account of anything",
         "perturbing a scrambled intermediate must leave the report unchanged",
-        None,
+        # T081 CHARGED 2026-09-16 (evidence/t081-report-order.md 2.6; tools/t081_report_order.json,
+        # head f5cf8b8, seeds 0-7 x 600 ticks on a scratch brain): the mean over 8 seeds of
+        # (f_named(1.0) - f_scr(1.0)) -- the named lesion's report-change fraction at the full dose
+        # minus the scrambled lesion's. Every seed read exactly +1.0 (f_named 1.0000, f_scr 0.0000),
+        # so (c1) is a ZERO-VARIANCE sample: t 0.0000, sign-flip FPR 0.0000, MET by 2.3's degenerate
+        # rule (the common value is > 0), recorded as degenerate and never dressed as a large t.
+        # (c2) counted 0 scrambled ticks that moved the report on 8 of 8 seeds.
+        1.0,
         "2026-09-06",
-        # T081's RETIREMENT of reasoning/consciousness_probe.py LANDED 2026-09-16 in this commit
-        # (P2, T034's deferred clause: the 20-seed PCI sweep ported to integration_measure first).
-        # This row's own charge is the NEXT commit's -- the pin decides it, not this one.
-        (),
+        # Brain.state()["report_order_margin"]: the cockpit's row and brain_telemetry.PROVENANCE
+        # carry both sentences beside it, and disclose that the flip dose this margin was read
+        # against was 1.0 on every seed BY CONSTRUCTION (2.10 (b)) and that the margin itself can
+        # read negative. The RETIREMENT of reasoning/consciousness_probe.py landed two commits back.
+        ("report_order_margin",),
     ),
     "social_cognition": (
         "predicting another agent improves when the system models that agent's belief rather than the world alone",
@@ -395,11 +403,14 @@ def main() -> None:
     # fixture shift tests/test_ratified_row_gates.py took.
     armed = {
         **{k: None for k in INSTRUMENTS},
-        "report_order": "T034",
-    }  # T034 is [X] in tasks.md; report_order (T081, unbuilt) is the next symbol-less row
-    # after temporal_binding was CHARGED at T080 (2026-09-16) and named its symbol
+        "social_cognition": "T034",
+    }  # T034 is [X] in tasks.md; social_cognition (its own C4 task T082, UNBUILT) is the next
+    # symbol-less row after report_order was CHARGED at T081 (2026-09-16) and named its symbol.
+    # The arming id stays a COMPLETE task by construction -- this arm's red is "a symbol-less row
+    # whose instrument task is done", so pointing it at T082, which is [ ], would fire nothing and
+    # assert an empty list. The row moves; the stand-in task id does not.
     fired = row_findings(tasks=armed)
-    assert any("T034" in x and "report_order" in x for x in fired), fired
+    assert any("T034" in x and "social_cognition" in x for x in fired), fired
     assert row_findings(tasks={k: None for k in INSTRUMENTS}) == [], (
         "the unarmed control must stay clean"
     )

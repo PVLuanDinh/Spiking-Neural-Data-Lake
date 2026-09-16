@@ -165,11 +165,19 @@ def test_refusal_three_arms_itself_when_a_c4_instrument_task_lands():
     # nowhere -- T077's shape; `temporal_binding` (T080, unbuilt) is the next symbol-less row.
     assert conclusion_protocol._task_done("T079") is True  # marked [X] NOT MET, its symbol named
     # T080 read PASS (2026-09-16, evidence/t080-temporal-binding.md 3.4): its row carries a reading
-    # AND a symbol, so `report_order` (T081, unbuilt) is the next symbol-less row the arm points at.
+    # AND a symbol, so `report_order` (T081, unbuilt) became the next symbol-less row.
     assert conclusion_protocol._task_done("T080") is True
-    armed = {**{k: None for k in conclusion_protocol.INSTRUMENTS}, "report_order": "T034"}
+    # T081 read PASS too (2026-09-16, evidence/t081-report-order.md 2.6; pin
+    # tools/t081_report_order.json): its row now carries reading 1.0 AND `report_order_margin`, so
+    # `social_cognition` (its own C4 task T082, still unbuilt) is the next symbol-less row.
+    assert conclusion_protocol._task_done("T081") is True
+    assert conclusion_protocol._task_done("T082") is False
+    # The ARMING id stays T034 and not T082: this arm's red is "a symbol-less row whose instrument
+    # task is DONE", so an id that is still [ ] would fire nothing and assert an empty list. The
+    # ROW is what moves.
+    armed = {**{k: None for k in conclusion_protocol.INSTRUMENTS}, "social_cognition": "T034"}
     fired = conclusion_protocol.row_findings(tasks=armed)
-    assert any("T034" in x and "report_order" in x for x in fired), fired
+    assert any("T034" in x and "social_cognition" in x for x in fired), fired
     unarmed = {k: None for k in conclusion_protocol.INSTRUMENTS}
     assert conclusion_protocol.row_findings(tasks=unarmed) == []
 
