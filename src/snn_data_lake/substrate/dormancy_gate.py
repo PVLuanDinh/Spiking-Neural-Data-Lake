@@ -169,6 +169,17 @@ EXEMPT = {
         "certification. Wiring it into the live tick would make the observer part of the "
         "observed -- the same reason charge probes are not tick faculties",
     ),
+    "binding_instrument": (
+        "permanent",
+        "MEASUREMENT INSTRUMENT (specs/022 T080 [US4], the C5 row temporal_binding): reads the "
+        "LIVE CrossModalBinder's own per-tick report off a SCRATCH brain (throwaway_home, "
+        "persist=False) whose audio pack is re-ordered at the STIMULUS, and scores it against a "
+        "membership-matched permutation of that same recording at matched K. Its consumers are "
+        "its __main__ self-check (2.4's six reachable reds on constructed inputs), "
+        "tests/test_binding_instrument.py, and the T080 campaign (--t080-campaign, which pins "
+        "tools/t080_temporal_binding.json once). Wiring it to the tick would make the observer "
+        "part of the observed -- the same reason ignition_instrument is not a tick faculty",
+    ),
     "gwt_deep": (
         "permanent",
         "BENCHMARK DEMONSTRATION (promoted reasoning/ -> thalamus/ 2026-08-11): the tree's "

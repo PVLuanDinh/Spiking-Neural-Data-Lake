@@ -230,6 +230,7 @@ CORE = [
     "thalamus.gwt_deep",  # phase-binding demonstration (spiking-vs-rate control); promoted 2026-08-11
     "thalamus.interoceptive_relay",  # T039j: thal_relay -- the declared tract hop that had no module
     "thalamus.ignition_instrument",  # T033: dual-derived ignition scorer over the re-entry stage
+    "thalamus.binding_instrument",  # T080: the live cross-modal binder's report vs its own re-paired features
     # hypothalamus â€” homeostatic timing (the SCN circadian clock)
     "hypothalamus.circadian_clock",
     "hypothalamus.set_points",
