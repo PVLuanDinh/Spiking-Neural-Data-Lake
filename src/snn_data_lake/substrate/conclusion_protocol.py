@@ -318,8 +318,49 @@ def aggregate_findings(root: Path | None = None) -> list[str]:
     return out
 
 
+# distinct-from: cortex/report_order_probe.py::t081_seed and cortex/prior_drift_harness.py::
+#   settling_report -- both PRODUCE a reading from a campaign recording (and name that campaign's
+#   own refusals); this clause produces no reading at all, it asks whether an already-charged row
+#   can be SERVED with both of its sentences. Site read.
+# distinct-from: reasoning/autonomous_enrich.py::_first_sentence -- a text splitter over an
+#   encyclopedic summary; nothing here parses a sentence, the registry holds them whole. Site read.
+def mechanism_findings(registry=None) -> list[str]:
+    """Refusal 3 checked in the MECHANISM a browser receives, beside the text clause below.
+
+    The text clause reads a tracked surface's SOURCE and credits a licensed sentence sitting within
+    three lines of a symbol. That is satisfiable by a COMMENT (obs #2199) and is blind to what is
+    actually rendered (obs #2195). This clause calls the one thing a page is served --
+    `brain_telemetry.conclusion_rows()` -- and reports a finding per charged row that the served
+    section REFUSES, which is every row carrying a reading without both of its sentences.
+
+    ONE CALL PER ROW, deliberately: `conclusion_rows` raises on the first bad row, so a single call
+    over the whole registry could only ever name one of two blanks.
+
+    Counted on the tree before this rule landed (T090 2.9 step 3): 0 on the live registry, 1 on the
+    constructed blank of R4. It is added BESIDE the text clause and never in place of it (2.5).
+    """
+    reg = _registry_from_source() if registry is None else registry
+    # LAZY: brain_telemetry imports this module back inside conclusion_rows, so a module-level
+    # pair in both directions would be an import cycle. This is also the one clause in this file
+    # that IMPORTS rather than parses -- the point is to exercise the served path, not to read it.
+    from snn_data_lake.substrate import brain_telemetry
+
+    out: list[str] = []
+    for name, row in reg.items():
+        try:
+            brain_telemetry.conclusion_rows({}, {name: row})
+        except ValueError as e:
+            out.append(f"the served conclusion section REFUSES {name}: {e}")
+    return out
+
+
 def surface_findings(registry=None, surfaces=None) -> list[str]:
-    """Refusals 2 and 3: no verdict about experience; no reading without its licensed sentence."""
+    """Refusals 2 and 3: no verdict about experience; no reading without its licensed sentence.
+
+    TWO clauses reporting into one list: the TEXT clause over every tracked surface's source
+    (below), and the MECHANISM clause over the served section (`mechanism_findings`, T090). One
+    list, so `--assert`'s baseline comparison covers what is rendered as well as what is written.
+    """
     reg = _registry_from_source() if registry is None else registry
     src = surfaces
     if src is None:
@@ -350,6 +391,8 @@ def surface_findings(registry=None, surfaces=None) -> list[str]:
                     out.append(
                         f"{rel}:{i}: {name}'s reading ({hit}) printed without its licensed sentence in view"
                     )
+    # THE MECHANISM CLAUSE, beside the text clause above and never in place of it (T090 2.1 (d)).
+    out += mechanism_findings(reg)
     return out
 
 
@@ -383,7 +426,8 @@ def report() -> str:
     ]
     lines += [f"  - {x}" for x in asserted_findings()]
     lines.append(
-        f"reported, not asserted -- surfaces owed to C4/T081: {len(surf)} (baseline {SURFACE_BASELINE}, may fall never rise)"
+        f"reported, not asserted -- surface + mechanism findings (the surface debt is owed to "
+        f"C4/T081): {len(surf)} (baseline {SURFACE_BASELINE}, may fall never rise)"
     )
     lines += [f"  - {x}" for x in surf]
     return chr(10).join(lines)
@@ -448,6 +492,24 @@ def main() -> None:
     assert withsent == [], withsent
     prose = surface_findings(ok, {"docs/PITCH.md": "an integration point for a different sensor"})
     assert prose == [], prose  # a bare instrument NAME in prose is not a reading
+    # THE MECHANISM CLAUSE (T090 2.9 step 3), on a row CONSTRUCTED here rather than on a live one:
+    # the arming arm above had to be re-pointed four times in two days while it borrowed a real
+    # symbol-less row, and this clause is built to have no hand-off to forget for the same reason.
+    charged = (good_row[0], good_row[1], good_row[2], 0.42, "2026-09-06", ("widget_reading",))
+    assert mechanism_findings({constructed: charged}) == []  # the positive control
+    for blank in (
+        ("",) + charged[1:],  # no licensed sentence
+        charged[:1] + ("",) + charged[2:],  # no refused sentence
+        charged[:1] + ("   ",) + charged[2:],  # whitespace is not a sentence
+    ):
+        fired_mech = mechanism_findings({constructed: blank})
+        assert len(fired_mech) == 1 and constructed in fired_mech[0], fired_mech
+    # a row with NO reading has nothing to license, so a blank sentence there is row_findings' job
+    assert mechanism_findings({constructed: ("",) + charged[1:3] + (None,) + charged[4:]}) == []
+    assert mechanism_findings() == [], mechanism_findings()  # the LIVE registry, clean on this tree
+    # ...and the finding REACHES THE GATE, not just its own function -- surface_findings carries it,
+    # which is what puts it in front of --assert's baseline comparison.
+    assert any(constructed in x for x in surface_findings({constructed: ("",) + charged[1:]}, {}))
     # refusal 1, on a constructed module
     import tempfile
 
@@ -470,7 +532,8 @@ def main() -> None:
         f"conclusion_protocol self-check OK: {len(reds)} row reds caught, the positive control passes; a verdict and "
         "a bare reading are caught on a surface while the same word in prose is not, and an aggregate across two "
         "instruments is caught; refusal 3 ARMS ITSELF -- a symbol-less row whose C4 task is complete reds, and "
-        "the unarmed control stays clean"
+        "the unarmed control stays clean; the MECHANISM clause serves the live registry with 0 findings and "
+        "refuses a constructed charged row whose licensed or refused sentence is blank"
     )
 
 

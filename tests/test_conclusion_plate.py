@@ -7,7 +7,7 @@ case that needs a snapshot, and that one runs on a SCRATCH brain under a throwaw
 
 import pytest
 
-from snn_data_lake.substrate import brain_telemetry
+from snn_data_lake.substrate import brain_telemetry, conclusion_protocol
 
 # A row shaped like a live one: two sentences, a dissociation input, a reading, a surface symbol.
 CHARGED = (
@@ -102,3 +102,29 @@ def test_a_scratch_brains_snapshot_serves_todays_three_charged_rows():
         assert e["licensed"].strip() and e["refused"].strip() and e["dissociation"].strip()
         assert e["symbols"] and set(e["live"]) == set(e["symbols"])
     assert "conclusion" not in brain_telemetry.verify_contract(snap)
+
+
+def test_the_gates_mechanism_clause_fires_where_the_text_clause_cannot_see():
+    """R4. Mutation `text_only` (the `mechanism_findings` call removed from surface_findings): red.
+
+    The text clause credits a licensed sentence sitting within three lines of a symbol in a tracked
+    surface's SOURCE -- satisfiable by a comment, and blind to what is served. This clause asks the
+    served path itself. Counted before the rule landed: 0 on the live registry, 1 on the blank.
+    """
+    assert conclusion_protocol.mechanism_findings() == []  # the live registry, clean today
+    assert conclusion_protocol.mechanism_findings({"widget": CHARGED}) == []
+    blanked = {"widget": ("",) + CHARGED[1:]}
+    fired = conclusion_protocol.mechanism_findings(blanked)
+    assert len(fired) == 1 and "widget" in fired[0], fired
+    # IT REACHES THE GATE. Without this the clause could be green in its own function while
+    # --assert never called it -- which is what the `text_only` mutation removes.
+    assert any("widget" in x for x in conclusion_protocol.surface_findings(blanked, {}))
+    assert conclusion_protocol.surface_findings({"widget": CHARGED}, {}) == []
+    # ...and the blank pushes the real debt ABOVE the baseline, which is how --assert fails on it
+    live = conclusion_protocol._registry_from_source()
+    charged = next(n for n, r in live.items() if r[3] is not None)
+    live_blank = {**live, charged: ("",) + live[charged][1:]}
+    assert (
+        len(conclusion_protocol.surface_findings(live_blank)) > conclusion_protocol.SURFACE_BASELINE
+    )
+    assert len(conclusion_protocol.surface_findings()) <= conclusion_protocol.SURFACE_BASELINE
