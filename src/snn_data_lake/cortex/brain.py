@@ -745,6 +745,10 @@ class Brain:
         # T080 (2026-09-16, evidence/t080-temporal-binding.md 2.6 PASS): one flag per awake tick,
         # the last 200 -- did the binder report ONE object for THIS tick's two latents?
         self._xmodal_bound_hist = []
+        # T080 panel fold (2026-09-16): a bind() that raised is COUNTED, never silently swallowed
+        # (the `prototype_faults` convention), and it clears the handle so the bound rate and
+        # `crossmodal_handle` never carry a stale object across a faulted tick
+        self._xmodal_faults = 0
         self._place_here = (
             None  # the landmark/percept the grid-place map binds to the current position
         )
@@ -1853,7 +1857,12 @@ class Brain:
                 self._superadditive = bool(fused.get("superadditive"))
                 self._xmodal_handle = fused.get("handle")
             except Exception:
+                # T080 panel fold: a faulted bind is not a bound tick -- the previous handle must
+                # not survive into this tick's report or into the T080 rate below (the panel
+                # measured the stale-handle path as the one way the live symbol could read UP)
                 self._superadditive = False
+                self._xmodal_handle = None
+                self._xmodal_faults += 1
         # T080: the live bound rate's window. A tick counts as bound only when BOTH latents were
         # presented and the binder named an object for them; `_xmodal_handle` alone would not do
         # (it keeps the last reported handle on a tick the binder did not run -- opening, 3.6).
@@ -4140,6 +4149,7 @@ class Brain:
             "dominant_drive": self._dominant_drive,  # W8: the currently most-unmet homeostatic drive (interoceptive)
             "drive_activity": self._drive_activity,  # C2 #11: the drive-vocabulary activity performed (rest/explore/socialize/fidget)
             "crossmodal_handle": self._xmodal_handle,  # C2 #19: the TAUGHT bimodal object recognised this tick
+            "crossmodal_faults": self._xmodal_faults,  # T080 fold: bind() calls that raised (counted, handle cleared)
             # T080 (C5 row temporal_binding, CHARGED 2026-09-16): the fraction of the last 200 awake
             # ticks with ONE reported object for that tick's two latents; the licensed and refused
             # sentences ride in brain_telemetry.PROVENANCE beside it, and on this daemon's

@@ -109,8 +109,11 @@ T080_BAND_FW = (0.005 / len(T080_SEEDS), 1.0 - 0.005 / len(T080_SEEDS))
 
 #: The one bar (2.3): the paired one-sided t over 8 seeds, 7 d.f., alpha = 0.05.
 T080_BAR = T_BAR
-#: The pin, written ONCE by `--t080-campaign` (2.9 step 6).
-T080_PIN = Path("tools/t080_temporal_binding.json")
+#: The tree root, so the pin resolves from any working directory (ignition_instrument's idiom).
+REPO = Path(__file__).resolve().parents[3]
+#: The pin, written ONCE by `--t080-campaign` (2.9 step 6); READ by the self-check below, which
+#: re-derives the C5 row's reading from it on every gate run (the T080 panel fold, 2026-09-16).
+T080_PIN = REPO / "tools" / "t080_temporal_binding.json"
 #: The pin's COMPANION (2.10 (g), T078's npz precedent): every scored tick's raw latents per
 #: seed and arm at float32, sha256 recorded in the pin, so (r)'s decomposition re-derives
 #: from the files alone. Written once, beside the pin.
@@ -544,6 +547,11 @@ def t080_null(recs, seed, n_draws=T080_N_DRAWS, resample=False):
     }
 
 
+# distinct-from: substrate/_mathutils.py::q95 -- the same round(q * (len - 1)) convention at a
+#   PARAMETERISED q over an ALREADY-SORTED sample (q95 sorts and is pinned at 0.95). Four bodies of
+#   this convention are live in src/ (T080 panel, 2026-09-16: _mathutils, here, metacognitive_monitor,
+#   lake_engine); the lift to one `order_stat(sorted_draws, q)` is deferred to T081, the second
+#   consumer of a band -- recorded in the T080 record's 3.5 and the route ledger, not silently.
 def _t080_order_stat(sorted_draws, q):
     """The `q`-th order statistic of an ALREADY SORTED sample, by `_mathutils.q95`'s own
     convention (round(q * (len - 1)), never an interpolation), so the band and the margin are
@@ -593,8 +601,11 @@ def t080_contrasts(per_seed, score=None, band=None, g0=None, bar=T080_BAR):
       (b1) t over seeds of (R_within - Q95_null): the ALIGNED arm's bound fraction against
            the DERIVED margin -- the licensed sentence, and the only barred claim.
       (b2) EXACT COUNTS, no t: the NULL IN VIVO arm's bound fraction must lie inside the
-           offline null's [q005, q995] on EVERY seed (two instruments required to agree,
-           obs #2106). Any seed outside is NAMED, and the whole reading REFUSES.
+           offline null's band on EVERY seed (two instruments required to agree, obs #2106)
+           -- AS AMENDED BY 2.11 (after run 1's numbers, disclosed) the FAMILY-WISE band
+           `T080_BAND_FW` derived from `len(T080_SEEDS)`, read via `_t080_band`; 2.3's
+           per-seed [q005, q995] stays REPORTED, never barred. Any seed outside is NAMED,
+           and the whole reading REFUSES.
 
     `score`, `band` and `g0` are R5's, R6's and R4's mutation hooks; None means the shipped
     reading."""
@@ -910,8 +921,9 @@ def t080_constructed_seeds(kind, seeds=T080_SEEDS, seed=0):
       "independent" -- the two congruence fractions are sign-balanced noise: (g0) NOT MET.
       "at_margin"   -- within EQUALS the null's q95 on every seed: (b1) NOT MET.
       "above"       -- within EXCEEDS it on every seed: (b1) MET.
-      "band_inside" -- the in-vivo null lies inside [q005, q995] on every seed: (b2) holds.
-      "band_outside"-- it lies ABOVE q995 on one seed: (b2) REFUSED.
+      "band_inside" -- the in-vivo null lies inside the family-wise band [q_lo, q_hi] on every
+                       seed: (b2) holds.
+      "band_outside"-- it lies ABOVE q_hi on one seed: (b2) REFUSED.
     """
     import random
 
@@ -960,7 +972,14 @@ def _t080_arm_counts(rows):
 
     `awake_missing` is REPORTED beside them: 2.3 (r)'s second clause, "on every scored awake
     tick both latents are present", is true BY THE DEFINITION of scored, so the quantity that
-    can actually say something about the apparatus is how many awake ticks carried no pair."""
+    can actually say something about the apparatus is how many awake ticks carried no pair.
+
+    `superadditive` is NOT one of 2.2's quantities and is not a second observation: bind()
+    sets the SC cell's receptive-field offset to 0 iff `congruent`, so at the declared
+    cue_strength 0.055 the enhancement index is the constant 1.769 on a congruent pair and
+    exactly 1.0 otherwise (measured per call, 400/400 at the T080 panel fold, 2026-09-16) --
+    the field records the SC CELL'S REGIME, never a per-tick fact about the pair, and enters
+    no conjunct."""
     scored = [r for r in rows if _t080_is_scored(r)]
     awake = sum(1 for r in rows if r["awake"])
     handled = [r for r in scored if r["handle"] is not None]
@@ -1707,7 +1726,47 @@ def main(argv=None):
         f"  T080 OK: R1-R6 fire on their constructed inputs and each is reddened IN FACT by "
         f"its mutated scorer ({sum(reds.values())}/{len(reds)}); no brain, no lake, no network"
     )
+    # THE CHARGED READING IS RE-DERIVED FROM THE PIN ON EVERY GATE RUN (the T080 panel fold,
+    # 2026-09-16): the C5 row's 0.2309 was a hand-typed literal with nothing on the tree tying
+    # it to tools/t080_temporal_binding.json. Absence is LOUD (ignition_instrument's baseline
+    # discipline), never a skip: the pin is tracked, so a missing file is a deletion or a broken
+    # path. The same pass reddens the clause with a mutated derivation, so it is shown reachable.
+    derived, reading, mutated = t080_pin_reading()
+    print(
+        f"  C5 temporal_binding: reading {reading} re-derived from {T080_PIN.name} as {derived} "
+        f"(a mutated derivation reads {mutated} and would refuse)"
+    )
+    if derived != reading or mutated == reading:
+        print(
+            f"T080 SELF-CHECK RED: C5 reading {reading} != {derived} re-derived from {T080_PIN} "
+            f"(mutated {mutated}) -- re-derive or explain before re-recording"
+        )
+        return 1
     return 0
+
+
+# distinct-from: amdahl_gate.py -- its repeatability red compares two timing readings' bands; this re-derives
+#   a C5 row's charged number from a committed pin. Read 2026-09-16.
+# distinct-from: evidence_accumulation.py -- a replay-twice charge A/B over serotonin frames; no pin, no row.
+# distinct-from: task_set.py -- a replay-twice charge A/B over film frames; no pin, no row.
+# distinct-from: gwt_deep.py -- an F1 over recovered pairs on a synthetic task; no pin, no row.
+def t080_pin_reading(pin=None):
+    """(derived, recorded, mutated): 2.6's reading -- the mean over seeds of (the ALIGNED arm's
+    bound fraction minus its offline null's MEAN), rounded to 4 places -- re-derived from the
+    committed pin; the C5 row's stored value; and the same formula with the null's q95 in place
+    of its mean (the MUTATED derivation, which must NOT equal the recorded reading -- the clause
+    is shown reachable on every run, never assumed). Raises when the pin is absent."""
+    from snn_data_lake.substrate.conclusion_protocol import CONCLUSION
+
+    pin = T080_PIN if pin is None else Path(pin)
+    assert pin.exists(), (
+        f"{pin} missing -- the C5 reading's re-derivation cannot run; the pin is tracked, so "
+        "absence means deletion or a broken path resolution"
+    )
+    seeds = json.loads(pin.read_text(encoding="utf-8"))["per_seed"]
+    derived = round(sum(e["within"] - e["null"]["mean"] for e in seeds) / len(seeds), 4)
+    mutated = round(sum(e["within"] - e["q95_null"] for e in seeds) / len(seeds), 4)
+    return derived, CONCLUSION["temporal_binding"][3], mutated
 
 
 if __name__ == "__main__":

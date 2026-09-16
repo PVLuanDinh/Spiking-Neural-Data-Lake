@@ -293,3 +293,44 @@ def test_the_live_bound_rate_reaches_state_with_both_c5_sentences_beside_it():
             awake += b.tick() == "awake"
         rate = b.state()["crossmodal_bound_rate"]
         assert rate is not None and 0.0 <= rate <= 1.0 and len(b._xmodal_bound_hist) == awake
+
+
+def test_the_charged_reading_re_derives_from_the_pin_and_a_mutated_derivation_does_not():
+    """The T080 panel fold (2026-09-16): the C5 row's reading is tied to the committed pin on
+    every gate run -- re-derived as the mean over seeds of (within - the null's mean) -- and
+    the clause is reachable: the same formula with the null's q95 reads a different number."""
+    from snn_data_lake.thalamus.binding_instrument import T080_PIN, t080_pin_reading
+
+    assert T080_PIN.exists(), T080_PIN
+    derived, recorded, mutated = t080_pin_reading()
+    assert derived == recorded == 0.2309
+    assert mutated != recorded
+    with pytest.raises(AssertionError):
+        t080_pin_reading(T080_PIN.with_name("no_such_pin.json"))
+
+
+def test_a_faulted_binder_is_counted_and_never_a_bound_tick():
+    """The T080 panel fold (2026-09-16): a bind() that raises clears the handle and counts a
+    fault, so neither `crossmodal_handle` nor the bound rate carries a stale object across the
+    faulted tick (the one path the panel measured that could move the live symbol UP)."""
+    from snn_data_lake.substrate.home import throwaway_home
+
+    with throwaway_home():
+        from snn_data_lake.cortex.brain import make_brain
+
+        b = make_brain(seed=0, persist=False)
+        # reach the first awake tick with both latents and a call into the binder
+        calls = {"n": 0}
+        real_bind = b._xmodal.bind
+
+        def boom(v, a):
+            calls["n"] += 1
+            raise RuntimeError("constructed binder fault")
+
+        b._xmodal.bind = boom
+        while calls["n"] == 0:
+            b.tick()
+        assert b.state()["crossmodal_handle"] is None
+        assert b.state()["crossmodal_faults"] == calls["n"] >= 1
+        assert b._xmodal_bound_hist[-1] is False
+        b._xmodal.bind = real_bind
