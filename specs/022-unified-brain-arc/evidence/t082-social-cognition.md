@@ -227,3 +227,102 @@ surfaces and annotations per 2.6 (tasks.md's dated note; PLAN-FINAL C4 note; spe
 row-gate fixture's rewrite; on PASS the conclusion row and the cockpit row) -> 8. section 3 the record -> panel
 (3 lenses + refuters judging CLAIM and FIX) -> fold -> stacked with T080 / T081 for ONE battery (the Codex closing
 report when the cap lifts, 2.0).
+
+### 2.10 Amendment, dated 2026-09-16, BEFORE the campaign (no clock in this heading -- the commit's own stamp is the
+### time, obs #2190): ONE apparatus correction that the pre-registered positive control forced; the entailment the
+### design carries, disclosed; the build's deviations; the dry run reproduced -- no gate's form, bar, disposition, arm
+### or N changes; no barred conjunct has been read
+
+**The build (an Opus executor on `668b4ff`, brief `scratchpad/t082/builder_brief.md`; 2.9 steps 2-5, one commit each):
+`af07f81` the declared belief wire + stubs + constants (`tools/wiring_manifest.nir` regenerated: 38 ports, 20 edges, 0
+escape hatches); `6e58afb` R1-R6 committed RED (six AssertionErrors; R1's three live parse assertions green first);
+`07c0a59` green with the six mutations reddening in-file and in `t082_reds()`, the symmetric feed, the two narrower
+feeds and the birth-time constant retired -- R5 run against the LIVE `SecondOrderToM` before its deletion (1,200/1,200
+nested, 600/600 first-order, the reference == the live class on the same 1,200); `76cdb4b` recorder, dry run, charge
+evidence (`tools/region_charge_evidence.json`), campaign flag and pin writer. The census script read every gate rc 0
+after commits 2, 4 and 5. The orchestrator re-ran the tests (15 passed), the self-check (6/6, the charge row
+re-derived, rc 0), the live merge smoke and the dry run (below) before writing this.**
+
+**(a) THE APPARATUS CORRECTION (g0) FORCED, and why it is an apparatus change and not a bar change (`da80dcd`).** 2.1's
+script draws the moved-to location from the locations other than the current WORLD; it does not exclude the agent's
+BELIEVED location. An unwitnessed move can therefore land exactly where the agent last saw the object, and on that
+episode the agent's look equals the world -- 2.3 (g0)'s second half ("on EVERY unwitnessed episode the agent's look
+differs from the world") then REFUSES. Measured with no brain (`t082_script` is pure; the executor's
+`scratchpad/t082/g0_conflict.py`, re-run by the orchestrator to the same digits): 23 of 213 unwitnessed episodes over
+seeds 0-7 coincide (seed 0: 3, first at episode 4; 1: 3; 2: 2; 3: 3; 4: 3; 5: 5; 6: 3; 7: 1), so the pre-registered
+campaign would REFUSE on all eight seeds and read no barred conjunct at all; (g0)'s first half held everywhere
+(unwitnessed 0.350-0.533 against the 0.3 floor). A move onto the believed location is not a false-belief episode --
+the positive control asks for a false-believing agent and the script as written could not deliver one. The
+correction is ONE clause in `t082_script`: on an unwitnessed episode whose drawn location equals the agent's belief,
+the first alternative location is taken DETERMINISTICALLY (no RNG draw), so the draw sequence, every witnessed
+episode and every unwitnessed count (25 / 29 / 26 / 21 / 26 / 31 / 23 / 32) are unchanged and the coincidences read 0 on
+every seed (re-measured after the change: look differs on 25/25, 29/29, 26/26, 21/21, 26/26, 31/31, 23/23, 32/32). (g0)
+itself, its floor, the arms, N, the disposition and every other conjunct are untouched. The honesty lens adjudicates
+whether a stimulus generator may be corrected before the campaign so that the pre-registered positive control is
+satisfiable; the alternative -- run, REFUSE on every seed, amend after the numbers, run again -- is T080's 2.11 path
+with the refusal known in advance from a pure function, which would read nothing the panel cannot already see here.
+
+**(b) THE ENTAILMENT THIS DESIGN CARRIES, written down before the campaign (the lesson of T081's panel).** The
+scripted agent's look IS "its last witnessed location" (2.1) and the tracker's first-order prediction of an agent IS
+"its last witnessed location", so on a losslessly fed tracker acc_belief = 1.0000 by construction, acc_world = the
+witnessed fraction (the world equals the look exactly on witnessed episodes), acc_ctrl = acc_world by the control's
+construction (the full present set makes it a world model, (s2)), and (s1)'s per-seed difference is the
+unwitnessed-and-differing fraction -- 0.350-0.533 on these seeds, a property of the SCRIPT. The dry run reads exactly
+this (BELIEF 1.0000, WORLD 0.5833, CONTROL 0.5833, +0.4167 on seed 0). What the campaign can therefore license is not
+"a belief model beats a world model" as a discovery about the mechanism's power, but that the LIVE composed path --
+the parse through `Brain.respond`, the symmetric feed, the recursive tracker, the report -- implements the witness
+rule LOSSLESSLY on the live dialogue path (any parse miss, feed asymmetry or stale path lowers acc_belief below 1.0
+-- R1, R5, R6 are the reds that would show it) while the equal-capacity control cannot; and that the tracker's output
+charges the arm's caution (the A/B). The licensed sentence's "improves" is exactly that and no more; 2.7 already
+refuses a mind. A script whose agent departs from the witness rule (updates on an unwitnessed move with probability
+q, or looks elsewhere) would make acc_belief a measurement of the tracker's model against an agent it does not
+define -- an OPENING for a re-registration, not an arm added here.
+
+**(c) THE CAUTION TRAJECTORY IS CIRCADIAN-GATED (reported, never barred).** The fold `_tom_protect` runs only on an
+AWAKE tick, so the social-risk trajectory at 1 / 3 / 5 ticks between statements measures the fold AND the wake/sleep
+phase together: at 5 ticks the caution first moves at episode 4-5 rather than at the first unwitnessed episode
+because the intervening ticks were asleep (the executor's `why_ticks5_lags.py`, re-run: tick kinds printed per
+episode). The three trajectories are distinct (distinct-value counts 5 / 10 / 8; max 0.68 at every level), so the
+one graded level the design declares does move the read-out; 2.8's stated reason for 3 is computed.
+
+**(d) THE BUILD'S DEVIATIONS, each with its reason.** (1) the PRODUCER declares the edge in `recursive_tom.declare_ports`
+(the brief's step 2), against the T034/M10 convention that the consumer declares its subscription -- `declare_edge`
+appends unconditionally and `validate_structure` checks the assembled manifest order-independently, so the position
+carries no mechanism; (2) `belief_out`'s width is a literal 2 (a pair of counts, not a vocabulary vector); (3) R5
+compares against `t082_second_order_reference`, a restatement of the deleted class's `observe` over plain dicts,
+because 2.1 deletes `SecondOrderToM` in the commit that greens the red -- mitigated by the pre-deletion run above;
+(4) the step-3 tests reach step-4 instruments through `_need(name)` so each red FAILS ITS ASSERTION rather than
+dying on an AttributeError, and the test bodies are final at step 3; (5) `t_respond_ms` is excluded BY NAME from (p)'s
+field comparison (a wall clock can never be byte-identical; the exclusion is printed and stored); (6)
+`record_charge()` records the CONSTRUCTED 12-frame stream's A/B, not the 60-episode recording's, because the
+committed row must reproduce in `tests/test_recursive_tom.py` without a brain -- the recording's A/B is measured and
+REPORTED beside it (diverged, 60 reads, specificity holds); (7) `_false_beliefs`'s CONTENTS changed (the state key is
+unchanged): it used to hold the first-order list on an unwitnessed turn and the pair list on a witnessed one, so the
+quantity the arm's caution reads changed meaning with the last statement's type -- now one derivation
+(`t082_false_beliefs`) on both branches; (8) `test_charge_evidence_is_committed_and_reproduces` landed in commit 5,
+not 3 (the evidence does not exist before commit 5 writes it); (9) commit 5 added `t082_charge_reading` to the module
+self-check so a gate run without pytest still checks the committed row. Contradicted by the apparatus, for step 7:
+`docs/coverage/Social.md` (lines 13, 255-259, 339) and `docs/CODEBASE_DIGEST.md` (795) still cite
+`affect_core.py#SecondOrderToM` and the retired `_tom2` path (the citation guard checks tracked FILES, not symbols);
+`tests/test_task_film.py`'s two declared-anatomy tests have no T082 twin (an opening); `respond()`'s 3,144-3,237 ms
+maximum is the first turn only (mean 172-174 ms over 60 against 2.8's ~120), moving the estimate from ~2.5 to 2.9 min.
+
+**(e) THE DRY RUN, REPRODUCED -- and re-run after (a).** The executor's run (`scratchpad/t082/dry_run_builder.json`,
+head `07c0a59`, DIRTY True -- the step-5 source uncommitted at run time, recorded beside the head as T081's panel
+required, 103 s) read on the PRE-correction script: parsed 60/60, unwitnessed 25 (0.417), look differs on 22 of them,
+BELIEF 1.0000 / WORLD 0.6333 / CONTROL 0.6333 (+0.3667), (s2) 60/60, spurious nested divergences 0/60, (g0) False --
+the conflict of (a) on seed 0. The orchestrator's run on the corrected script (`dry_run.json` + `dry_run_orch.txt`,
+head `76cdb4b`, DIRTY True -- the correction uncommitted at run time; shell clock 11:09:30-11:11:07 local, 95 s): parsed
+60/60, unwitnessed 25 (0.417), look differs on 25/25, BELIEF 1.0000 / WORLD 0.5833 / CONTROL 0.5833 (+0.4167), (s2)
+60/60, spurious 0/60, social-risk trajectory identical to the executor's (first 12: 0, 0, 0, 0.68, 0.68, 0.68, 0.68,
+0.612, 0.4461, 0.3252, 0.2371, 0.1921; max 0.68), respond mean 171.8 ms, (p) identical on 20 rows, the charge A/B
+identical (constructed: diverged, 12 reads, specificity holds; the recording: 60 reads, last 0.4015), cost 361.4
+ms/episode, campaign estimate 2.9 min. Both runs on both pointers offset 150 x seed (seed 0 / 1 differ from the first
+frame); the live path's double read (the row's `_tom_update` and `respond`'s own parse) leaves the tracker identical
+over 4 holder paths. The live merge smoke (scratch brain, seed 0): `_tom` / `_tom2` / `_tom_ok` / `_tom_locs` gone;
+witnessed -> [] risk 0.0, UNWITNESSED -> ['user', 'user->brain'] risk 0.68, witnessed -> [] 0.4957, 0.4461 (fact 4's
+spurious `['user->brain']` clears). NO barred conjunct was read (one seed carries no t).
+
+**(f) CLOCK.** The commit stamps are the times; the two dry-run windows are shell-printed clocks (the orchestrator's
+`date` calls) bounded by the artifacts' mtimes; the executor's run carries none and is dated by its commit and its
+`dirty` field. Nothing above 2.10 was edited.
