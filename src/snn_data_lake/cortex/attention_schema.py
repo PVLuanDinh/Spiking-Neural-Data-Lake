@@ -923,7 +923,8 @@ def t078_reds(n_perm=REDS_N_PERM, n_shuffle=N_SHUFFLE, seeds=T078_SEEDS):
         and not (m2["readable"] and m2["mi"] <= m2["perm_q95"])
     )
 
-    # R3 -- the refusal fires on the probe's own shape; the mutation sets N_MIN_PER_CELL to 0
+    # R3 -- the refusal fires on the probe's own shape, AND 2.10's per-CLASS twin reads the same
+    #       145 pairs; the mutation sets N_MIN_PER_CELL to 0, which reddens the per-cell half only
     cx, cy = t078_cell_stream(145, 39)
     refused = mi_read(cx, cy, n_perm=n_perm, seed=0)
     ox, oy = t078_cell_stream(600, 39)
@@ -1247,7 +1248,10 @@ def run_t078_campaign(seeds=T078_SEEDS, n_ticks=T078_N_TICKS, pin=T078_PIN, late
 RED_LINES = {
     "R1": "the permutation floor absorbs the plug-in bias (an un-permuted floor reddens it)",
     "R2": "MI(a_t; a_t+1) is a CONTROL, not an identity (scoring y against itself reddens it)",
-    "R3": "145 pairs over 39 cells REFUSE, 600 do not (N_MIN_PER_CELL := 0 reddens it)",
+    "R3": (
+        "145 pairs over 39 cells REFUSE per-CELL and READ per-CLASS (2.10's twin), 600 do not "
+        "refuse (N_MIN_PER_CELL := 0 reddens the per-cell half)"
+    ),
     "R4": "the decode beats its 200-shuffle band (scoring on the TRAIN half reddens it)",
     "R5": "u_t is content-blind by TYPE and not constant (appending chan[0] reddens it)",
     "R6": "the VOID rule can fire and PASS can too (swapping (g4b)'s operands reddens it)",

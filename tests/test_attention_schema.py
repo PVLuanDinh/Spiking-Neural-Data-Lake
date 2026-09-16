@@ -15,9 +15,11 @@ the mutated scorer that reddens it.
      action stream and above it on a 0.7-self-transition Markov stream, so G3's precondition can
      FAIL and its passing means something (the withdrawal of T077's oracle, C9).  MUTATION: an
      estimator that scores y against itself.
-  R3 THE REFUSAL -- 145 pairs over 39 observed joint cells (the 300-tick probe's shape) REFUSE;
-     600 pairs over the same 39 cells are readable; a one-class axis refuses.  MUTATION:
-     N_MIN_PER_CELL := 0.
+  R3 THE REFUSAL -- 145 pairs over 39 observed joint cells (the 300-tick probe's shape) REFUSE
+     under the pre-registered per-CELL rule; the SAME 145 pairs are readable under 2.10's
+     per-CLASS rule (the (g3c) control's twin, added to R3 at 455236d); 600 pairs over the same
+     39 cells are readable; a one-class axis refuses.  MUTATION: N_MIN_PER_CELL := 0, which
+     reddens the per-CELL half only -- the per-class twin is not covered by that mutation.
   R4 THE DECODER'S BAND -- a 15-d input with the label planted in one coordinate decodes above
      its 200-shuffle band; the same input with the labels drawn independently decodes inside it;
      the band's q95 on n_test = 300 sits below 0.2 against a chance of 0.1 over 10 classes.
