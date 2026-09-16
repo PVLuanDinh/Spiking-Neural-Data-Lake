@@ -153,6 +153,51 @@ def proprioception(theta_deg):
 #   the absolute fold manufactured 25% phantom half-range commands.
 # distinct-from: reasoning/jepa_scaffold_torch.py -- a latent JEPA trainer; term overlap
 #   only (action-conditioned deltas in LEARNED latent space, not a degree-space fold). Read.
+# consolidates: substrate/efferent_boundary.py -- its 2.9 step-2 `proprioception_deltas`
+#   STUB is deleted in the same change and becomes an import of the function below, so the
+#   wrap exists in exactly ONE place (P2). The efferent door keeps the NAME (specs/022 T079
+#   2.1 names `efferent_boundary.proprioception_deltas` as the import path every consumer
+#   uses) and the sensory door keeps the FOLD, which is where the wrap already lived; the
+#   alternative -- defining it in the efferent module -- makes afferent import efferent at
+#   module top, and efferent already imports afferent, which is a cycle.
+# distinct-from: brainstem/live_arm.py::_joint_obs_delta -- a COMMANDED delta parsed from an
+#   action TOKEN (one joint, degrees). This is an ACHIEVED delta read off two posture
+#   vectors (every joint, normalised). Read; the token parse is routed through
+#   `efferent_boundary.intended_deltas` in the same change, so it is one mechanism too.
+# distinct-from: basal_ganglia/r_stdp.py, plasticity/plasticity_rule_stack.py -- per-SYNAPSE
+#   weight deltas from a reward-gated eligibility trace. distinct-from: substrate/home.py
+#   -- a BinLog rebuild. distinct-from: cortex/prior_drift_harness.py -- per-seed drive-class
+#   subsets. All four read; the word "delta"/"per-" is the only overlap and none folds an
+#   angle.
+def proprioception_deltas(theta_before, theta_after):
+    """THE DELTA FOLD, per joint: theta_after - theta_before for each SHARED joint, each
+    wrapped to [-180, 180) degrees BEFORE normalising by 180 -> one signed value in
+    [-1, 1) per joint, in qpos order. `proprioception_delta` below is the MEAN of this
+    list -- ONE fold, read two ways (specs/022 T079 2.1), so the wrap exists in exactly
+    one place and the scalar can never disagree with the vector about a joint.
+
+    UNITS, said plainly because the per-joint row now travels beside a DEGREE row (the
+    efference copy's `u_j`): these values are the degree delta DIVIDED BY 180, the same
+    units the scalar has always carried. A 359.9 -> 0.1 move is +0.2 deg and reads
+    +0.2/180 here.
+
+    None / short / mismatched input -> None (a body that cannot be read is a missing
+    modality, never a fabricated posture -- and never a row of zeros, which a consumer
+    would read as "no motion")."""
+    if not theta_before or not theta_after:
+        return None
+    n = min(len(theta_before), len(theta_after))
+    if n < 2:
+        return None
+    try:
+        return [
+            (((float(a) - float(b)) + 180.0) % 360.0 - 180.0) / 180.0
+            for b, a in zip(theta_before[:n], theta_after[:n])
+        ]
+    except (TypeError, ValueError):
+        return None
+
+
 def proprioception_delta(theta_before, theta_after):
     """The proprioceptive DELTA fold: per-joint angular change theta_after - theta_before,
     each wrapped to [-180, 180) degrees, normalised by 180, averaged over the shared
@@ -160,20 +205,17 @@ def proprioception_delta(theta_before, theta_after):
     negative); opposite-moving joints can partially cancel in the mean -- disclosed, and
     acceptable for a one-scalar copy because the live loop commands one joint per tick.
     None / short / mismatched input -> None (a body that cannot be read is a missing
-    modality, never a fabricated posture)."""
-    if not theta_before or not theta_after:
+    modality, never a fabricated posture).
+
+    MERGED 2026-09-15 (specs/022 T079 2.1): the wrap loop moved up into
+    `proprioception_deltas` and this is now its mean. Numerically unchanged -- the old body
+    computed `sum(ds) / n` over that same list with that same `n`, so the two are bit-for-bit
+    equal, and `tests/test_agency_monitor.py::test_r5_...` asserts exactly that on 200
+    random triples rather than leaving it a claim."""
+    ds = proprioception_deltas(theta_before, theta_after)
+    if ds is None:
         return None
-    n = min(len(theta_before), len(theta_after))
-    if n < 2:
-        return None
-    try:
-        ds = [
-            (((float(a) - float(b)) + 180.0) % 360.0 - 180.0) / 180.0
-            for b, a in zip(theta_before[:n], theta_after[:n])
-        ]
-    except (TypeError, ValueError):
-        return None
-    return sum(ds) / n
+    return sum(ds) / len(ds)
 
 
 #: The pack event-frame CONTRACT shapes, pinned once (specs/022 T052-iii). These are the

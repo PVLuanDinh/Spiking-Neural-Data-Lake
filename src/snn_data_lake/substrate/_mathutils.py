@@ -15,6 +15,9 @@ Canonical sources:
   Rng      <- trained_brain._Rng / spiking_lm_serve._Rng   (64-bit LCG; the two were byte-equivalent
               in formula and differed only in docstring, so this is the first case above rather than
               the second -- merged 2026-08-15, both originals now import it)
+  q95      <- attention_schema._q95            (the 95th-percentile ORDER STATISTIC; lifted
+              2026-09-15 so a LIVE module can import it without making that EXEMPT instrument
+              reachable -- the dormancy-gate argument `substrate/paired_contrast` records too)
 
 Copies whose formula DIFFERS were deliberately left in place (not merged):
   - adaptive_spiking keeps the public name `correlation` (thin wrapper here).
@@ -67,6 +70,29 @@ def dot(a, b):
 def unit(v):
     n = math.sqrt(sum(c * c for c in v)) or 1.0
     return [c / n for c in v]
+
+
+# consolidates: src/snn_data_lake/cortex/attention_schema.py (merge) -- its `_q95` becomes an
+#   alias of this one in the same change, exactly as `clamp01` below did for eight copies.
+def q95(draws):
+    """The 95th percentile of `draws` as an ORDER STATISTIC, never an interpolation: the
+    element at round(0.95 * (len - 1)) of the sorted sample. Sorts `draws` IN PLACE, which
+    every caller in this tree already relies on.
+
+    LIFTED 2026-09-15 (specs/022 T079) from `cortex/attention_schema._q95`, itself T078's
+    restatement of `cortex/metacognitive_monitor`'s `track_error` convention. Moved rather
+    than copied for a MEASURED reason: `agency_monitor` is a LIVE module (autonomous_loop
+    imports it) and attention_schema is an EXEMPT instrument, so a live module importing it
+    -- even lazily, inside a function -- makes `substrate/dormancy_gate` name that exemption
+    stale and the gate exits 1 (run 2026-09-15: "1 EXEMPT entries are now reachable
+    (retire them): ['attention_schema']"). The statistic therefore lives where any module
+    may import it, and the instruments keep their exemptions -- the same argument, and the
+    same fix, as `substrate/paired_contrast`'s own lift.
+
+    ONE convention for every floor and every band that uses it; the formula is reproduced
+    exactly, so no consumer's number moves."""
+    draws.sort()
+    return draws[min(len(draws) - 1, int(round(0.95 * (len(draws) - 1))))]
 
 
 # consolidates: src/snn_data_lake/cortex/self_model.py (merge), src/snn_data_lake/cortex/wholistic_loop.py (merge), src/snn_data_lake/neuromodulation/affect_integrator.py (merge), src/snn_data_lake/cortex/agency_monitor.py (merge), src/snn_data_lake/cortex/metacognitive_monitor.py (merge), src/snn_data_lake/cortex/recognizer_bank.py (merge), src/snn_data_lake/substrate/stream_sketch_panel.py (merge), src/snn_data_lake/cortex/second_order_access.py (merge)
@@ -142,7 +168,15 @@ def main():
     assert abs(math.sqrt(sum(c * c for c in u)) - 1.0) < 1e-12
     assert unit([0.0, 0.0]) == [0.0, 0.0]
 
-    print("_mathutils OK: softmax pearson mean sigmoid dot unit")
+    # q95: the ORDER STATISTIC at round(0.95 * (n - 1)), not an interpolation. On 0..99 that
+    # index is 94, so the answer is the ELEMENT 94.0 -- an interpolating percentile would say
+    # 94.05. The red: 1..100 (no zero) must read 95.0, so a fencepost slip is visible.
+    assert q95(list(range(100))) == 94.0
+    assert q95([float(v) for v in range(1, 101)]) == 95.0
+    assert q95([3.0]) == 3.0 and q95([2.0, 1.0]) == 2.0  # short samples, and it sorts
+    assert q95([0.0] * 50) == 0.0
+
+    print("_mathutils OK: softmax pearson mean sigmoid dot unit q95")
 
 
 if __name__ == "__main__":

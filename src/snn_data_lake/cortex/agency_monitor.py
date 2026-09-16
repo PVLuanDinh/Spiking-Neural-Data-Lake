@@ -89,11 +89,19 @@ prints; plain-float EMAs updated in a fixed order so two seed=0 runs are byte-id
 
 import math
 import random
+import statistics
+import time
 import zlib
 from pathlib import Path
 
 from snn_data_lake.brainstem import arm_config
-from snn_data_lake.substrate._mathutils import clamp01
+from snn_data_lake.substrate._mathutils import clamp01, q95
+from snn_data_lake.substrate.afferent_boundary import proprioception_delta
+from snn_data_lake.substrate.efferent_boundary import (
+    _ROTATE_TOKEN,
+    intended_deltas,
+    proprioception_deltas,
+)
 from snn_data_lake.substrate.paired_contrast import T_BAR, contrast
 
 __version__ = "0.1.0"
@@ -313,10 +321,10 @@ class AgencyMonitor:
 # T079 -- THE AGENCY INSTRUMENT (specs/022 Phase 4 / C4;
 # specs/022-unified-brain-arc/evidence/t079-agency.md, frozen at 9b04c8c).
 #
-# 2.9 step 2: THE SKELETON. Every reading below is NULL BY CONSTRUCTION -- `readable`
-# False, every boolean False, no brain ticked, no floor drawn -- so the six reds of 2.4
-# land RED against it at 2.9 step 3 and turn green at 2.9 step 4. Nothing here reads a
-# body yet; the feed switch, the recorder and the campaign land at 2.9 step 5.
+# 2.9 step 4: THE INSTRUMENTS, GREEN, each red of 2.4 reddened IN FACT by its own mutated
+# scorer (`_t079_mutated_scorer`). Nothing here reads a BODY yet: every input is either a
+# constructed stream or a finished recording. The feed switch, the recorder and the
+# campaign land at 2.9 step 5.
 #
 # The instrument is the incumbent `AgencyMonitor` above, whole and un-re-implemented
 # (2.1): its EMAs, its thresholds and its two-counter state machine ARE the reading. What
@@ -382,15 +390,39 @@ T079_VAR_FLOOR = _T079_DEFAULTS.var_floor
 #: vocabulary, so it is not a per-joint command/feedback channel at all).
 T079_JOINTS = tuple(arm_config.ROTATABLE)
 
+#: The REDS' shuffle count. BUILDER-INTRODUCED and disclosed (2.9 step 4): 2.1 fixes
+#: n_shuffle = 2,000 for the CAMPAIGN's floors, and `t079_reds()` is executed by every
+#: run_selfchecks pass, where 2,000 draws x 5 joints x 25 recordings would dominate the
+#: gate. 2.4 fixes no draw count for the reds themselves. Measured cost is printed by the
+#: self-check line, so the trade is visible rather than asserted.
+T079_REDS_N_SHUFFLE = 200
+#: R1's width, VERBATIM from 2.4 ("600 passages").
+T079_R1_PASSAGES = 600
+#: R6's width and disturbance. 2.4 fixes the decoupling point (passage 300) and the
+#: amplitude (U(-2, 2) x command scale) and NOT n; 900 leaves 600 decoupled passages, which
+#: is what the machine needs -- the alpha = 0.02 EMA (a ~50-observation memory) has to decay
+#: THROUGH the coupled history before `delay` = 48 consecutive low readings can start
+#: counting. BUILDER-INTRODUCED, disclosed.
+T079_R6_PASSAGES = 900
+T079_R6_AT = 300
+T079_R6_AMP = 2.0
+#: R6's COMMAND DUTY CYCLE: one passage in this many carries a command, the rest are 0.
+#: NOT free-floating -- it is 1.3's measured shape for this body (each rotatable joint was
+#: commanded on 14 / 27 / 15 / 17 / 16 of 146 passages, roughly one in ten), and it is what
+#: decides whether a U(-2, 2) x step disturbance can collapse the coupling at all: the
+#: correlation a shove leaves behind is set by the ratio of command variance to disturbance
+#: variance, so a body commanded on every passage cannot be dissociated by this amplitude.
+T079_R6_DUTY = 10
+
 #: One ASCII line per red, printed beside its boolean so a gate log says WHAT fired rather
 #: than only that something did (2.4's wording, compressed).
 T079_RED_LINES = {
-    "R1": "the shuffle floor is a FLOOR (drawing it un-permuted reddens it)",
+    "R1": "the shuffle floor is a FLOOR (an un-permuted floor collapses the coupled margin)",
     "R2": "the machine's hysteresis holds both ways (delay = recover_n = 0 reddens it)",
     "R3": "an unexercised channel is UNSCORED, never lost (var_floor := 0 reddens it)",
     "R4": "the token parser refuses a foreign joint (accepting any name reddens it)",
     "R5": "the per-joint fold wraps and its mean IS the scalar (dropping the wrap reddens it)",
-    "R6": "the dissociation reads on a constructed body (1 - c on the shoved arm reddens it)",
+    "R6": "the dissociation reads on a constructed body (1 - c on the shoved arm reddens (a2))",
 }
 
 
@@ -403,72 +435,624 @@ def t079_record_brain(seed, n_ticks=T079_N_TICKS, shove=None, amp=0.0):
     return []
 
 
-def t079_read(rows):
-    """SKELETON (2.9 step 2): `readable` False, every joint unscored, every controllability
-    0.0. The real per-joint read lands at 2.9 step 4.
+# ---- the constructed streams every red runs on (2.4) ---------------------------------
+# They live HERE and not only in tests/test_agency_monitor.py because `t079_reds()` needs
+# them: a gate run that never executes pytest still has to run every red on the same
+# stream the suite runs it on (T077's in-command control; T078's shape).
+def t079_channel_rows(u_cols, ds_cols, monitor=None):
+    """Feed constructed per-joint channels through the SHIPPED `AgencyMonitor` and return
+    rows in the RECORDER's own shape (2.1), so a red and a live recording are read by the
+    same `t079_read`. `monitor` is the mutation hook (R2's no-hysteresis twin, R3's
+    var_floor := 0 twin); None means the shipped defaults."""
+    mon = AgencyMonitor(seed=0) if monitor is None else monitor
+    rows = []
+    for p in range(len(u_cols[0])):
+        u = [float(col[p]) for col in u_cols]
+        ds = [float(col[p]) for col in ds_cols]
+        for k, j in enumerate(T079_JOINTS):
+            mon.observe(j, u[k], ds[k])
+        snaps = [mon.snapshot(j) for j in T079_JOINTS]
+        rows.append(
+            {
+                "t": p,
+                "kind": "awake",
+                "awake": True,
+                "awake_ticks": p + 1,
+                "action": None,
+                "u": u,
+                "ds": ds,
+                "ctrl": [s["ctrl"] for s in snaps],
+                "status": [s["status"] for s in snaps],
+                "n": [s["n"] for s in snaps],
+                "latched": False,
+                "tap_errors": 0,
+            }
+        )
+    return rows
 
-    Its built form reports, per joint: `c` (the MEAN of the instrument's own streaming
-    `controllability(j)` over the passages past warmup), `status` at the end of the
-    recording, `scored`, and the counts (r) is refused on."""
+
+def t079_coupled_decoupled(n, seed, gain=0.9, noise=0.05):
+    """R1's channels in the five-joint frame: joint 0 COUPLED (fb = gain u + noise), joint 1
+    DECOUPLED (fb drawn independently of u), joints 2-4 coupled filler."""
+    rng = random.Random(seed)
+    u_cols, ds_cols = [], []
+    for k in range(len(T079_JOINTS)):
+        u = [rng.uniform(-1.0, 1.0) for _ in range(n)]
+        if k == 1:
+            ds = [rng.uniform(-1.0, 1.0) for _ in range(n)]
+        else:
+            ds = [gain * c + noise * rng.uniform(-1.0, 1.0) for c in u]
+        u_cols.append(u)
+        ds_cols.append(ds)
+    return u_cols, ds_cols
+
+
+def t079_dead_channel(n, seed):
+    """R3's recording: joint 0 is NEVER commanded (u == 0 on every passage, its feedback
+    still moving -- a channel you cannot assess, not a channel you have lost); the other
+    four are exercised and coupled."""
+    rng = random.Random(seed)
+    u_cols, ds_cols = [], []
+    for k in range(len(T079_JOINTS)):
+        if k == 0:
+            u_cols.append([0.0] * n)
+            ds_cols.append([rng.uniform(-1.0, 1.0) for _ in range(n)])
+            continue
+        u = [rng.uniform(-1.0, 1.0) for _ in range(n)]
+        u_cols.append(u)
+        ds_cols.append([0.9 * c + 0.05 * rng.uniform(-1.0, 1.0) for c in u])
+    return u_cols, ds_cols
+
+
+def t079_body_channels(
+    seed, shove=None, amp=T079_R6_AMP, n=T079_R6_PASSAGES, at=T079_R6_AT, stream=0
+):
+    """R6's constructed body: five channels commanded in {-step, 0, +step} with the servo
+    following at gain 0.93, and -- when `shove` names one -- that joint carrying an additive
+    U(-amp, amp) x command-scale disturbance from passage `at` onward. `stream` selects an
+    INDEPENDENT noise realisation of the same body, which is how R6's no-decoupling twin is
+    built (an identical construction would make every paired difference exactly 0.0 and the
+    twin's null degenerate rather than measured)."""
+    rng = random.Random(1000 + seed + 100003 * stream)
+    step = arm_config.DEFAULT_STEP_DEG
+    alphabet = (-step, step) + (0.0,) * (T079_R6_DUTY - 2)
+    u_cols, ds_cols = [], []
+    for j in T079_JOINTS:
+        u = [rng.choice(alphabet) for _ in range(n)]
+        ds = [0.93 * c + 0.02 * step * rng.uniform(-1.0, 1.0) for c in u]
+        if shove == j:
+            ds = [
+                d + (amp * step * rng.uniform(-1.0, 1.0) if p >= at else 0.0)
+                for p, d in enumerate(ds)
+            ]
+        u_cols.append(u)
+        ds_cols.append(ds)
+    return u_cols, ds_cols
+
+
+def _t079_variance(xs):
+    """Population variance of the commanded deltas over a window; 0.0 on an empty window."""
+    if not xs:
+        return 0.0
+    m = sum(xs) / len(xs)
+    return sum((x - m) ** 2 for x in xs) / len(xs)
+
+
+def t079_read(rows, var_floor=T079_VAR_FLOOR, warmup=T079_WARMUP):
+    """2.1's per-joint reading of one recording, and 2.3's (r) beside it.
+
+    Per joint: `c` = the MEAN of the instrument's OWN streaming `controllability(j)` over
+    the passages at or past `warmup` (not the last value -- a single final reading is one
+    EMA sample of a quantity the machine spent the whole recording estimating); `status` as
+    the machine left it; `scored` = the joint reached warmup AND its commanded deltas vary
+    by at least `var_floor` over that window; `n`, `var_c` and the scored-passage count.
+
+    TWO INSTRUMENTS ON "EXERCISED", DELIBERATELY: `var_c` here is the PLAIN population
+    variance of `u_j` over the scored window, read off the recording; the machine's own gate
+    is an EMA variance read inside `_advance`. They answer the same question from different
+    ends -- the recording's and the estimator's -- and R3 reddens both with one mutation
+    (var_floor := 0 scores the dead channel AND lets its status reach 'lost').
+
+    `readable` IS 2.3's (r) for this one recording: every rotatable joint scored, the
+    passage count equal to the awake-tick count (the T037 1:1 contract), `tap_errors` 0 and
+    the body never latched. A recording that fails it is REFUSED, never read around.
+
+    `var_floor` and `warmup` are arguments for the same reason `AgencyMonitor`'s thresholds
+    are: R3's mutated scorer has to be able to set the floor to zero and READ the difference."""
+    joints = {}
+    last = rows[-1] if rows else None
+    for k, j in enumerate(T079_JOINTS):
+        scored_rows = [r for r in rows if r["n"][k] >= warmup]
+        ctrls = [float(r["ctrl"][k]) for r in scored_rows]
+        var_c = _t079_variance([float(r["u"][k]) for r in scored_rows])
+        joints[j] = {
+            "c": (sum(ctrls) / len(ctrls)) if ctrls else 0.0,
+            "status": None if last is None else last["status"][k],
+            "scored": bool(ctrls) and var_c >= var_floor,
+            "n": 0 if last is None else int(last["n"][k]),
+            "var_c": var_c,
+            "scored_passages": len(ctrls),
+        }
+    passages = len(rows)
+    awake = 0 if last is None else int(last.get("awake_ticks", 0))
+    latched = sum(1 for r in rows if r.get("latched"))
+    tap_errors = 0 if last is None else int(last.get("tap_errors", 0))
     return {
-        "readable": False,
-        "passages": 0,
-        "awake": 0,
-        "latched": 0,
-        "tap_errors": 0,
-        "joints": {
-            j: {"c": 0.0, "status": None, "scored": False, "n": 0, "var_c": 0.0}
-            for j in T079_JOINTS
-        },
+        "readable": bool(rows)
+        and all(v["scored"] for v in joints.values())
+        and passages == awake
+        and latched == 0
+        and tap_errors == 0,
+        "passages": passages,
+        "awake": awake,
+        "latched": latched,
+        "tap_errors": tap_errors,
+        "joints": joints,
     }
 
 
-def t079_floor(rows, seed, n_shuffle=T079_N_SHUFFLE):
-    """SKELETON (2.9 step 2): `readable` False, every floor 0.0, zero draws. The real
-    cause-blind twin lands at 2.9 step 4.
+def _t079_draws(u_col, ds_col, first_scored, n_shuffle, gen, mon, permute=True):
+    """THE CAUSE-BLIND TWIN's draws for one joint: `n_shuffle` runs of the SAME EMA
+    recurrence `AgencyMonitor.observe` / `_ctrl_var` implement, batched as one
+    (n_shuffle x passages) torch recurrence on CPU.
 
-    Its built form permutes `u_j` across the SCORED passages (the outcomes identical, the
-    causal link removed -- the C5 row's own dissociation input), pushes all `n_shuffle` draws
-    through the SAME EMA recurrence as one batched torch tensor, and takes the 95th-percentile
-    order statistic of the resulting mean-controllability draws."""
+    The recurrence is sequential in PASSAGES (an EMA is), and vectorised across DRAWS -- a
+    per-draw Python loop is what 2.1 forbids, not a per-passage one. Feedback is identical
+    on every draw (only the command is permuted), so `ef`/`eff` stay scalars and only
+    `ec`/`ecf`/`ecc` carry a draw axis.
+
+    `permute=False` is R1's `floor_unpermuted` mutation AND this recurrence's own positive
+    control: with the identity permutation every draw must reproduce the shipped machine's
+    own `c_j` to floating-point, which is what R1 asserts rather than assumes."""
+    import torch
+
+    n = len(u_col)
+    u = torch.tensor(u_col, dtype=torch.float64)
+    f = torch.tensor(ds_col, dtype=torch.float64)
+    idx = torch.arange(first_scored, n, dtype=torch.long)
+    cmd = u.unsqueeze(0).repeat(n_shuffle, 1)
+    if permute and len(idx) > 1:
+        perm = torch.argsort(torch.rand(n_shuffle, len(idx), generator=gen), dim=1)
+        cmd[:, idx] = u[idx][perm]
+
+    a = mon.alpha
+    ec = ecf = ecc = None
+    ef = eff = 0.0
+    total = torch.zeros(n_shuffle, dtype=torch.float64)
+    counted = 0
+    for p in range(n):
+        c = cmd[:, p]
+        fv = float(f[p])
+        if p == 0:
+            ec, ecf, ecc = c.clone(), c * fv, c * c
+            ef, eff = fv, fv * fv
+        else:
+            ec = ec + a * (c - ec)
+            ecf = ecf + a * (c * fv - ecf)
+            ecc = ecc + a * (c * c - ecc)
+            ef += a * (fv - ef)
+            eff += a * (fv * fv - eff)
+        if p >= first_scored:
+            var_c = torch.clamp(ecc - ec * ec, min=0.0)
+            var_f = max(eff - ef * ef, 0.0)
+            cov = ecf - ec * ef
+            denom = torch.sqrt(var_c * var_f)
+            ratio = torch.clamp(cov.abs() / torch.clamp(denom, min=1e-300), 0.0, 1.0)
+            total = total + torch.where(denom < mon.eps, torch.zeros_like(ratio), ratio)
+            counted += 1
+    return (total / max(counted, 1)).tolist()
+
+
+def t079_floor(rows, seed, n_shuffle=T079_N_SHUFFLE, warmup=T079_WARMUP, permute=True):
+    """2.1's CAUSE-BLIND TWIN, per joint: the same feed with `u_j` PERMUTED across the
+    scored passages -- the outcomes identical, the causal link removed, which is word for
+    word the dissociation input `conclusion_protocol.CONCLUSION["agency"]` declares.
+
+    `floor` is `_mathutils.q95` of the `n_shuffle` mean-controllability draws and
+    `floor_median` sits beside it (2.3 reports both). The RNG is a `torch.Generator` seeded
+    per (recording seed, joint); the global RNG is never touched, so two runs of the same
+    recording draw the same floor.
+
+    DISCLOSED, and CONSERVATIVE: the recurrence runs over the WHOLE recording and the
+    permutation covers only the scored window, exactly as 2.1 words it, so the EMA carries
+    real coupling across the warmup boundary and decays through it (~50 observations at
+    alpha 0.02, against a scored window of hundreds). That biases the floor UP, which makes
+    (g0) harder to meet, never easier."""
+    joints = {}
+    first = max(int(warmup) - 1, 0)
+    ok = bool(rows) and len(rows) > first
+    for k, j in enumerate(T079_JOINTS):
+        if not ok:
+            joints[j] = {"floor": 0.0, "floor_median": 0.0, "draws": 0}
+            continue
+        import torch
+
+        gen = torch.Generator()
+        gen.manual_seed((int(seed) * 1000003 + zlib.crc32(j.encode("ascii"))) & 0x7FFFFFFF)
+        draws = _t079_draws(
+            [float(r["u"][k]) for r in rows],
+            [float(r["ds"][k]) for r in rows],
+            first,
+            int(n_shuffle),
+            gen,
+            _T079_DEFAULTS,
+            permute=permute,
+        )
+        joints[j] = {
+            "floor": q95(draws),  # q95 SORTS its argument; `draws` is local and dead after
+            "floor_median": statistics.median(draws),
+            "draws": len(draws),
+        }
     return {
-        "readable": False,
+        "readable": ok,
         "n_shuffle": int(n_shuffle),
         "seed": int(seed),
-        "joints": {j: {"floor": 0.0, "floor_median": 0.0, "draws": 0} for j in T079_JOINTS},
+        "joints": joints,
     }
 
 
-def t079_contrasts(intact, shoved):
-    """SKELETON (2.9 step 2): every conjunct NOT MET. The real contrasts land at 2.9 step 4.
+def _t079_score(entry, joint, arm):
+    """The barred quantity, read from one arm of one seed: the instrument's OWN
+    controllability for that joint. `arm` is 'intact' or 'shoved'; the default reading does
+    not use it, and R6's `blind_scorer` mutation does."""
+    return float(entry["read"]["joints"][joint]["c"])
+
+
+def t079_contrasts(intact, shoved, deadband=T079_DEADBAND, score=_t079_score, bar=T079_BAR):
+    """2.3's conjuncts, each decided by `substrate/paired_contrast.contrast` (the ONE
+    statistic; nothing is re-spelled here).
 
     `intact` and `shoved` are per-seed lists of `{"read": t079_read(...), "floor":
-    t079_floor(...)}` -- the floor travels WITH its arm because (g0) reads the intact arm
-    against its own twin. Its built form returns 2.3's (g0) per joint, (a1) on J*, (a2) per
-    unshoved joint and (a3)'s exact counts, each decided by `paired_contrast.contrast`."""
+    t079_floor(...)}`, index-paired -- the floor travels WITH its arm because (g0) reads the
+    intact arm against its OWN twin, on its own seed and its own stream.
+
+      (g0) per joint: t over seeds of (c_j^intact - floor_j^intact). The positive control
+           that is NOT the method: the twin is a different construction of the same
+           outcomes, never a re-reading of the statistic.
+      (a1) t over seeds of (c_J*^intact - c_J*^shoved).
+      (a2) per unshoved joint k: t over seeds of ((c_k^shoved - c_k^intact) + DEADBAND),
+           the band the machine itself treats as noise.
+      (a3) EXACT COUNTS, no t: `status_J*^shoved` is 'lost' on every seed AND no other
+           (joint, arm, seed) is.
+
+    `score` is R6's mutation hook and `deadband` is the reported sensitivity knob of 2.4's
+    `deadband_zero` (a constant's sensitivity, explicitly NOT a red)."""
+    seeds = range(min(len(intact), len(shoved)))
+    floored = bool(len(intact)) and all(intact[s]["floor"]["readable"] for s in seeds)
+    # NO TWIN, NO (g0). A caller that skipped the floor gets None, never a contrast read
+    # against a floor of 0.0 -- which every c would clear, and which would look like the
+    # positive control passing.
+    g0 = (
+        {
+            j: contrast(
+                f"(g0) {j}: intact c - its cause-blind floor",
+                [
+                    score(intact[s], j, "intact") - float(intact[s]["floor"]["joints"][j]["floor"])
+                    for s in seeds
+                ],
+                bar,
+            )
+            for j in T079_JOINTS
+        }
+        if floored
+        else None
+    )
+    a1 = contrast(
+        f"(a1) {T079_SHOVE_JOINT}: intact c - shoved c",
+        [
+            score(intact[s], T079_SHOVE_JOINT, "intact")
+            - score(shoved[s], T079_SHOVE_JOINT, "shoved")
+            for s in seeds
+        ],
+        bar,
+    )
+    a2 = {
+        j: contrast(
+            f"(a2) {j}: (shoved c - intact c) + {deadband:g}",
+            [
+                score(shoved[s], j, "shoved") - score(intact[s], j, "intact") + deadband
+                for s in seeds
+            ],
+            bar,
+        )
+        for j in T079_JOINTS
+        if j != T079_SHOVE_JOINT
+    }
+    star_lost = sum(
+        1 for s in seeds if shoved[s]["read"]["joints"][T079_SHOVE_JOINT]["status"] == "lost"
+    )
+    other_lost = 0
+    for s in seeds:
+        for arm, entries in (("intact", intact), ("shoved", shoved)):
+            for j in T079_JOINTS:
+                if j == T079_SHOVE_JOINT and arm == "shoved":
+                    continue
+                if entries[s]["read"]["joints"][j]["status"] == "lost":
+                    other_lost += 1
+    n_seeds = len(seeds)
     return {
-        "g0": {
-            j: contrast(f"(g0) {j}: intact c - its cause-blind floor", [0.0] * 8)
-            for j in T079_JOINTS
+        "g0": g0,
+        "a1": a1,
+        "a2": a2,
+        "a3": {
+            "shoved_star_lost": star_lost,
+            "other_lost": other_lost,
+            "met": bool(n_seeds) and star_lost == n_seeds and other_lost == 0,
         },
-        "a1": contrast(f"(a1) {T079_SHOVE_JOINT}: intact c - shoved c", [0.0] * 8),
-        "a2": {
-            j: contrast(f"(a2) {j}: (shoved c - intact c) + deadband", [0.0] * 8)
-            for j in T079_JOINTS
-            if j != T079_SHOVE_JOINT
-        },
-        "a3": {"shoved_star_lost": 0, "other_lost": 0, "met": False},
-        "n_seeds": 0,
+        "n_seeds": n_seeds,
     }
 
 
-def t079_reds(n_shuffle=T079_N_SHUFFLE):
-    """SKELETON (2.9 step 2): 2.4's six reds, all False -- no red has been RUN yet.
+# distinct-from: substrate/eprop_transport_gate.py, substrate/gradient_claim_gate.py --
+#   census gates that CLASSIFY existing code. Every entry below is a deliberately broken
+#   twin of THIS module's own instrument, constructed so a red can be shown to fire rather
+#   than argued to (P8 clause 1). Read; nothing here inspects or rewrites any other module.
+# distinct-from: cortex/attention_schema.py::_t078_mutated_scorer and
+#   cortex/metacognitive_monitor.py's equivalent -- the PATTERN this follows (2.1 names them
+#   as the thing to reuse) over DIFFERENT instruments: an MI floor and a decoder band there,
+#   a permutation floor over an EMA correlation and a token parser here. One catalog per
+#   module is this tree's convention, not a second mechanism. Read.
+def _t079_mutated_scorer(kind):
+    """2.4's six mutations, RUN and not reasoned. Each is the deliberately broken twin of
+    the instrument whose red it must redden, and each is exercised BOTH in
+    `tests/test_agency_monitor.py` and in `t079_reds()` below.
 
-    At 2.9 step 3 each is a failing assertion in `tests/test_agency_monitor.py`; at 2.9 step 4
-    each is True iff the red holds on its constructed input AND its mutated scorer reddens it
-    IN FACT (a red a broken instrument still passes is not a red)."""
-    return {f"R{i}": False for i in range(1, 7)}
+      floor_unpermuted (R1) -- the floor is drawn from the UN-shuffled sequence, so every
+          draw equals the reading itself and the decoupled channel reads "above" its own
+          floor. Doubles as the batched recurrence's positive control (it must reproduce the
+          shipped machine's c_j exactly).
+      no_hysteresis    (R2) -- delay = recover_n = 0, so ONE low reading flips 'ok' to
+          'lost' and ONE high reading flips it back: the window and the dead-band both gone.
+      no_floor         (R3) -- var_floor = 0 in BOTH the machine and the read, so a channel
+          that was never commanded is scored, is allowed to go 'lost', and (r) reads a
+          recording the pre-registration says must be refused.
+      parse_any_name   (R4) -- the parser trusts the regex instead of the vocabulary, so a
+          ROTATE token naming a joint outside `arm_config.ROTATABLE` mints a channel.
+      no_wrap          (R5) -- the per-joint delta is not wrapped to [-180, 180), so the
+          T037 seam returns: a 359.9 -> 0.1 nano-move reads as a -359.8 deg sweep.
+      blind_scorer     (R6) -- c_j is replaced by 1 - c_j on the SHOVED arm, which inverts
+          (a1): a collapse reads as an improvement.
+
+    2.4's `deadband_zero` is NOT here and that is deliberate: 2.4 declares it a REPORTED
+    sensitivity of a declared constant, not a red. It is `t079_contrasts(..., deadband=0.0)`,
+    called by name where it is reported."""
+
+    def floor_unpermuted(rows, seed, **kw):
+        kw["permute"] = False
+        return t079_floor(rows, seed, **kw)
+
+    def no_hysteresis(**kw):
+        return AgencyMonitor(delay=0, recover_n=0, seed=0, **kw)
+
+    def no_floor(u_cols, ds_cols):
+        rows = t079_channel_rows(u_cols, ds_cols, monitor=AgencyMonitor(var_floor=0.0, seed=0))
+        return t079_read(rows, var_floor=0.0)
+
+    def parse_any_name(action):
+        out = dict.fromkeys(arm_config.ROTATABLE, 0.0)
+        m = _ROTATE_TOKEN.fullmatch(action or "")
+        if m is None:
+            return out
+        out[m.group(1)[len("JOINT_") : -len("_ROTATE")].lower()] = float(m.group(2))
+        return out
+
+    def no_wrap(theta_before, theta_after):
+        if not theta_before or not theta_after:
+            return None
+        n = min(len(theta_before), len(theta_after))
+        if n < 2:
+            return None
+        return [(float(a) - float(b)) / 180.0 for b, a in zip(theta_before[:n], theta_after[:n])]
+
+    def blind_scorer(entry, joint, arm):
+        c = float(entry["read"]["joints"][joint]["c"])
+        return (1.0 - c) if arm == "shoved" else c
+
+    return {
+        "floor_unpermuted": floor_unpermuted,
+        "no_hysteresis": no_hysteresis,
+        "no_floor": no_floor,
+        "parse_any_name": parse_any_name,
+        "no_wrap": no_wrap,
+        "blind_scorer": blind_scorer,
+    }[kind]
+
+
+def t079_hysteresis_probe(seed, monitor=None):
+    """R2's trajectory through the module's OWN `_experiment` construction (healthy ->
+    decoupled -> recovered), instrumented for the two things 2.4 asks about and `_experiment`
+    does not return: the status at the FIRST low reading while 'ok', and the low-streak
+    length at the flip to 'lost'. The stream, the gain and the phase lengths are
+    `_experiment`'s, so the mutated monitor is judged on the same trajectory."""
+    mon = AgencyMonitor(seed=seed) if monitor is None else monitor
+    rng = random.Random(seed)
+    gain, noise = 0.9, 0.05
+    out = {
+        "first_low_while_ok_status": None,
+        "lows_at_flip": None,
+        "first_high_while_lost_status": None,
+        "highs_at_flip": None,
+        "delay": mon.delay,
+        "recover_n": mon.recover_n,
+    }
+    for phase, n in (("heal", 400), ("decouple", 400), ("recover", 500)):
+        for _ in range(n):
+            c = rng.uniform(-1.0, 1.0)
+            fb = (
+                rng.uniform(-1.0, 1.0)
+                if phase == "decouple"
+                else gain * c + noise * rng.uniform(-1.0, 1.0)
+            )
+            before = mon.snapshot("grasp")
+            mon.observe("grasp", c, fb)
+            after = mon.snapshot("grasp")
+            if after["n"] < mon.warmup:
+                continue
+            if before["status"] == "ok" and after["ctrl"] < mon.dead_thresh:
+                if out["first_low_while_ok_status"] is None:
+                    out["first_low_while_ok_status"] = after["status"]
+            if (
+                before["status"] == "ok"
+                and after["status"] == "lost"
+                and out["lows_at_flip"] is None
+            ):
+                out["lows_at_flip"] = before["below"] + 1
+            if before["status"] == "lost" and after["ctrl"] >= mon.high_thresh:
+                if out["first_high_while_lost_status"] is None:
+                    out["first_high_while_lost_status"] = after["status"]
+            if (
+                before["status"] == "lost"
+                and after["status"] == "ok"
+                and out["highs_at_flip"] is None
+            ):
+                out["highs_at_flip"] = after["high"]
+    return out
+
+
+def t079_arm(seed, shove, n_shuffle=T079_REDS_N_SHUFFLE, stream=0, floor=False):
+    """One arm of R6's constructed body, read (and optionally floored) in
+    `t079_contrasts`' shape.
+
+    `floor` is OFF by default because R6 bars (a1), (a2) and (a3) and none of them reads a
+    floor -- (g0) is the INTACT arm's conjunct and R6 does not assert it. Drawing 24 unused
+    floors cost 12 of the reds line's 15 seconds, measured; `t079_contrasts` reports
+    `g0 = None` rather than a floor of 0.0 when the twin was never drawn, so a skipped
+    floor can never be mistaken for a floor of zero."""
+    u_cols, ds_cols = t079_body_channels(seed, shove=shove, stream=stream)
+    rows = t079_channel_rows(u_cols, ds_cols)
+    return {
+        "read": t079_read(rows),
+        "floor": t079_floor(rows if floor else [], seed, n_shuffle=n_shuffle),
+    }
+
+
+def t079_reds(n_shuffle=T079_REDS_N_SHUFFLE):
+    """2.4's six reds as ONE self-check line (each is ALSO a test in
+    `tests/test_agency_monitor.py`; this is the in-command control 2.4 requires, so a gate
+    run that never executes pytest still runs every one). Each value is True iff the red
+    holds on its constructed input AND its mutated scorer REDDENS it IN FACT -- every
+    `not (...)` clause below is a broken twin having been RUN."""
+    out = {}
+
+    # R1 -- the shuffle floor is a FLOOR. The mutation draws it UN-permuted, which also
+    #       serves as the batched recurrence's positive control: on the identity
+    #       permutation every draw must reproduce the shipped machine's own c_j.
+    u_cols, ds_cols = t079_coupled_decoupled(T079_R1_PASSAGES, seed=11)
+    rows = t079_channel_rows(u_cols, ds_cols)
+    read = t079_read(rows)
+    floor = t079_floor(rows, 11, n_shuffle=n_shuffle)
+    m1 = _t079_mutated_scorer("floor_unpermuted")(rows, 11, n_shuffle=n_shuffle)
+    up, dn = T079_JOINTS[0], T079_JOINTS[1]
+    # WHAT THE MUTATION REDDENS IN FACT, and it is not what 2.4's sentence predicts.
+    # 2.4 says the un-permuted floor makes "the decoupled channel read 'above'". Run, it
+    # does not: with the identity permutation EVERY draw equals the reading exactly, so
+    # q95(draws) == c and the decoupled channel reads AT its floor, which still satisfies
+    # "at or below". What collapses is the MARGIN -- the COUPLED channel's strict
+    # `c > floor` becomes `c == floor` and fails. That is T078's own R1 shape
+    # ("the deterministic control's margin over it vanishes") and it is the clause asserted
+    # here; 2.4's predicted target is reported as a deviation, not silently swapped.
+    # The same exactness is the batched recurrence's POSITIVE CONTROL: the un-permuted floor
+    # must reproduce the shipped machine's c_j, which is asserted rather than assumed.
+    out["R1"] = bool(
+        floor["readable"]
+        and read["joints"][up]["c"] > floor["joints"][up]["floor"]
+        and read["joints"][dn]["c"] <= floor["joints"][dn]["floor"]
+        and abs(m1["joints"][up]["floor"] - read["joints"][up]["c"]) < 1e-9
+        and not (read["joints"][up]["c"] > m1["joints"][up]["floor"])
+    )
+
+    # R2 -- the window and the dead-band. The mutation sets delay = recover_n = 0.
+    h = t079_hysteresis_probe(0)
+    hm = t079_hysteresis_probe(0, monitor=_t079_mutated_scorer("no_hysteresis")())
+    out["R2"] = bool(
+        h["first_low_while_ok_status"] == "ok"
+        and h["lows_at_flip"] is not None
+        and h["lows_at_flip"] > h["delay"]
+        and h["first_high_while_lost_status"] == "lost"
+        and h["highs_at_flip"] is not None
+        and h["highs_at_flip"] >= h["recover_n"]
+        and not (
+            hm["first_low_while_ok_status"] == "ok" and hm["first_high_while_lost_status"] == "lost"
+        )
+    )
+
+    # R3 -- an unexercised channel is UNSCORED, never lost. The mutation sets var_floor = 0.
+    du, dd = t079_dead_channel(T079_R1_PASSAGES, seed=13)
+    dead_read = t079_read(t079_channel_rows(du, dd))
+    m3 = _t079_mutated_scorer("no_floor")(du, dd)
+    dead = T079_JOINTS[0]
+    out["R3"] = bool(
+        dead_read["joints"][dead]["n"] >= T079_WARMUP
+        and not dead_read["joints"][dead]["scored"]
+        and dead_read["joints"][dead]["status"] != "lost"
+        and not dead_read["readable"]
+        and all(dead_read["joints"][j]["scored"] for j in T079_JOINTS[1:])
+        and not (not m3["readable"] and not m3["joints"][dead]["scored"])
+    )
+
+    # R4 -- the parser refuses a joint outside the vocabulary. The mutation trusts the regex.
+    foreign = "JOINT_GRIPPER_ROTATE(+6deg)"
+    plus = intended_deltas(arm_config.command_for("elbow_flex", 6.0))
+    ref = intended_deltas(foreign)
+    m4 = _t079_mutated_scorer("parse_any_name")(foreign)
+    out["R4"] = bool(
+        plus["elbow_flex"] == 6.0
+        and all(v == 0.0 for k, v in plus.items() if k != "elbow_flex")
+        and all(v == 0.0 for v in intended_deltas("ENGAGE").values())
+        and all(
+            v == 0.0 for v in intended_deltas(arm_config.moveto_for("elbow_flex", 30.0)).values()
+        )
+        and set(ref) == set(T079_JOINTS)
+        and all(v == 0.0 for v in ref.values())
+        and not (set(m4) == set(T079_JOINTS) and all(v == 0.0 for v in m4.values()))
+    )
+
+    # R5 -- the per-joint fold wraps, and the scalar IS its mean. The mutation drops the wrap.
+    before, after = [359.9] * 6, [0.1] * 6
+    seam = proprioception_deltas(before, after)
+    m5 = _t079_mutated_scorer("no_wrap")(before, after)
+    rng5 = random.Random(5)
+    agree = True
+    for _ in range(200):
+        b = [rng5.uniform(-720.0, 720.0) for _ in range(6)]
+        a = [rng5.uniform(-720.0, 720.0) for _ in range(6)]
+        per = proprioception_deltas(b, a)
+        if per is None or sum(per) / len(per) != proprioception_delta(b, a):
+            agree = False
+            break
+    out["R5"] = bool(
+        seam is not None
+        and all(abs(d * 180.0 - 0.2) < 1e-9 for d in seam)
+        and agree
+        and proprioception_deltas(None, None) is None
+        and not all(abs(d * 180.0 - 0.2) < 1e-9 for d in m5)
+    )
+
+    # R6 -- the dissociation on a constructed body. The mutation reads 1 - c on the shoved arm.
+    intact = [t079_arm(s, None, n_shuffle) for s in T079_SEEDS]
+    shoved = [t079_arm(s, T079_SHOVE_JOINT, n_shuffle) for s in T079_SEEDS]
+    twin = [t079_arm(s, None, n_shuffle, stream=1) for s in T079_SEEDS]
+    got = t079_contrasts(intact, shoved)
+    null = t079_contrasts(intact, twin)
+    m6 = t079_contrasts(intact, shoved, score=_t079_mutated_scorer("blind_scorer"))
+    # WHAT THE MUTATION REDDENS IN FACT, and again it is not 2.4's predicted target.
+    # 2.4 says 1 - c on the shoved arm "inverts (a1)". Run, it cannot on a body whose
+    # intact coupling is near 1: (a1)'s mutated difference is c_intact - (1 - c_shoved) =
+    # c_intact + c_shoved - 1, which is negative ONLY where the two sum below 1, and
+    # c_intact alone reads ~0.999 here (and +0.945..+1.000 on the real body, 1.3). The
+    # mutation DOES redden R6's reading -- through (a2), whose mutated difference is
+    # (1 - c_k) - c_k + DEADBAND and goes decisively negative on every preserved joint. The
+    # clause asserted is therefore R6's READING as a whole, which is the object 2.4 bars;
+    # the conjunct that actually fails is reported.
+    out["R6"] = bool(
+        got["a1"].met
+        and all(c.met for c in got["a2"].values())
+        and got["a3"]["met"]
+        and not null["a1"].met
+        and not null["a3"]["met"]
+        and not (m6["a1"].met and all(c.met for c in m6["a2"].values()) and m6["a3"]["met"])
+    )
+    return out
 
 
 def _t079_reds_line(reds, out=print):
@@ -678,10 +1262,13 @@ def main():
         f"(recover_n={r['recover_n']}) -- one good tick never flips it; deterministic"
     )
 
-    # ---- T079's six reds (2.4). At 2.9 step 2 they are NULL READINGS and are PRINTED, not
-    #      asserted: the skeleton exists so tests/test_agency_monitor.py can commit them RED
-    #      at 2.9 step 3. The assert lands at 2.9 step 4, when each is reddened IN FACT by its
-    #      mutated scorer. Printing False here is the honest state of the row, not a failure.
+    # ---- T079's six reds (2.4), each holding on its constructed input AND reddened IN FACT
+    #      by its own mutated scorer. Every `not (...)` clause inside `t079_reds()` is a
+    #      broken twin having been RUN (P8 clause 1: a criterion with no reachable red is
+    #      DELETED, not weakened). This line is the in-command control, so a gate run that
+    #      never executes pytest still runs all six.
+    t0 = time.time()
+    reds = t079_reds()
     print("-" * 78)
     print("T079 -- the agency instrument (specs/022 C4): 2.4's six reds")
     print(
@@ -690,12 +1277,15 @@ def main():
     )
     print(
         f"  warmup {T079_WARMUP} obs | var_floor {T079_VAR_FLOOR:g} | deadband {T079_DEADBAND:g} | "
-        f"n_shuffle {T079_N_SHUFFLE} | ticks {T079_N_TICKS} | stream offset {T079_STREAM_OFFSET} x seed"
+        f"n_shuffle {T079_N_SHUFFLE} (reds {T079_REDS_N_SHUFFLE}) | ticks {T079_N_TICKS} | "
+        f"stream offset {T079_STREAM_OFFSET} x seed"
     )
-    _t079_reds_line(t079_reds())
+    _t079_reds_line(reds)
+    assert all(reds.values()), f"T079 reds must fire on their constructed inputs: {reds}"
     print(
-        "  2.9 step 2 SKELETON: every reading above is NULL by construction (no brain, no "
-        "floor, no feed). The reds go green at 2.9 step 4."
+        f"  T079 OK: R1-R6 fire on their constructed streams and each is reddened IN FACT by "
+        f"its mutated scorer ({sum(reds.values())}/{len(reds)}); no brain, no lake, no "
+        f"network [{time.time() - t0:.1f} s]"
     )
 
 

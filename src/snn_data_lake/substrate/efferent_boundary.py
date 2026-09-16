@@ -57,7 +57,7 @@ import re
 
 from snn_data_lake.brainstem import arm_config
 from snn_data_lake.cerebellum.forward_model import ForwardModel
-from snn_data_lake.substrate.afferent_boundary import proprioception_delta
+from snn_data_lake.substrate.afferent_boundary import proprioception_delta, proprioception_deltas
 
 # LMS learning rate, derived from the fold's own bounds rather than copied from the
 # incumbent's demo (which runs dt=0.1; this boundary runs dt=1.0, so its 0.05 under-drives
@@ -72,49 +72,50 @@ _LR = 0.5
 #: ordering of its own.
 _QPOS_NAMES = tuple(j.name for j in arm_config.JOINTS)
 
-#: `JOINT_<NAME>_ROTATE(<+/-N>deg)` and ONLY that verb. ROTATE is RELATIVE (arm_config's
-#: two-verb note: it adds to the current setpoint), so its argument IS a commanded delta;
-#: MOVETO is ABSOLUTE, so its argument is a setpoint and a delta parser that read it would
-#: report a target ANGLE as a move. The joint name this regex captures is checked against
-#: `arm_config.ROTATABLE` membership before it is believed -- arm_config states the rule in
-#: its own words ("a site that matches the shape without checking membership here can mint a
-#: token for a joint that does not exist"), and the syntax alone is not the vocabulary.
-_ROTATE_TOKEN = re.compile(r"JOINT_([A-Z_]+)_ROTATE\(([+-]?\d+(?:\.\d+)?)deg\)")
+#: The ROTATE token SYNTAX -- the vocabulary is the map below, never this pattern. The
+#: prefix is captured whole so it can be looked up rather than lowercased and trusted.
+_ROTATE_TOKEN = re.compile(r"(JOINT_[A-Z_]+_ROTATE)\(([+-]?\d+(?:\.\d+)?)deg\)")
+
+#: THE VOCABULARY: `arm_config.token_for` for every `arm_config.ROTATABLE` joint, and
+#: nothing else. arm_config states the rule in its own words -- "a site that matches the
+#: shape without checking membership here can mint a token for a joint that does not
+#: exist" -- so membership is a dict lookup against the table, not a regex class.
+#:
+#: ONLY THE ROTATE VERB IS A DELTA. ROTATE is RELATIVE (it adds to the current setpoint);
+#: MOVETO is ABSOLUTE, so its argument is a SETPOINT and a commanded-delta parser that read
+#: it would report a target angle as a move.
+_ROTATE_PREFIX = {arm_config.token_for(n): n for n in arm_config.ROTATABLE}
 
 
-# distinct-from: substrate/afferent_boundary.py::proprioception_delta -- the SCALAR this
-#   function is the per-joint half of; specs/022 T079 2.1 folds the two into one mechanism at
-#   2.9 step 4 (the scalar becomes the mean of this list). Read.
-# distinct-from: brainstem/autonomous_loop.py::_pfc_bias -- also returns a zero-filled row when
-#   its faculty is opt-out, but that row is a top-down PREFERENCE over the ACTION alphabet fed
-#   into selection; this is a per-JOINT proprioceptive fold that drives nothing. Read: no
-#   quantity, alphabet or consumer is shared.
-def proprioception_deltas(theta_before, theta_after):
-    """STUB (specs/022 T079, 2.9 step 2) -- returns zeros, so `tests/test_agency_monitor.py`'s
-    R5 runs RED against it. The real per-joint fold lands at 2.9 step 4.
-
-    Readability is already the real thing and not stubbed: a missing, short or unreadable body
-    reads None, never a fabricated row a consumer would mistake for "no motion"."""
-    if not theta_before or not theta_after:
-        return None
-    n = min(len(theta_before), len(theta_after))
-    if n < 2:
-        return None
-    return [0.0] * n
-
-
-# distinct-from: brainstem/live_arm.py::_joint_obs_delta -- the ONE-joint spelling of this
-#   parse (shoulder_lift only, its own private regex). 2.1 makes that a call into this at 2.9
-#   step 4 so exactly one parser survives (P2). Read.
+# distinct-from: brainstem/live_arm.py::_joint_obs_delta -- WAS the one-joint spelling of
+#   this parse (shoulder_lift only, its own private regex). It is a one-line call into this
+#   function as of specs/022 T079 2.9 step 4, so exactly one parser survives (P2). Read.
 # distinct-from: brainstem/interpreter.py -- VALIDATES a command against the envelope's
-#   allow-list and issues it; this reads a already-issued token's commanded magnitude and
-#   issues nothing. Read.
+#   allow-list and ISSUES it. This reads an already-issued token's commanded magnitude and
+#   issues nothing; it is on no actuation path. Read.
+# distinct-from: brainstem/so101_arm.py::_JOINT_TOKEN -- the ENVELOPE's own parse, which
+#   decides what the body DOES with a token (and handles both verbs, because it must). This
+#   one decides what the brain INTENDED, which is only defined for the relative verb. Read;
+#   the envelope is never edited from here and its parse is untouched.
 def intended_deltas(action):
-    """STUB (specs/022 T079, 2.9 step 2) -- returns zeros, so `tests/test_agency_monitor.py`'s
-    R4 runs RED against it. The real token parser lands at 2.9 step 4.
+    """The per-joint COMMANDED delta in DEGREES, parsed from one action token (specs/022
+    T079 2.1): `JOINT_<NAME>_ROTATE(<+/-N>deg)` reads +/-N on that joint and 0 on every
+    other. One entry per `arm_config.ROTATABLE` joint, always -- the KEY SET never depends
+    on the token, so a consumer iterating it sees the same five channels on every passage.
 
-    The shape is already fixed: one entry per `arm_config.ROTATABLE` joint, in degrees."""
-    return dict.fromkeys(arm_config.ROTATABLE, 0.0)
+    REFUSED, all reading 0 on every joint: MOVETO (absolute -- a setpoint is not a delta),
+    ENGAGE / RELEASE / HOLD / HOME / EMERGENCY_STOP, None, and a ROTATE token naming a joint
+    outside ROTATABLE (the gripper, or a name that is not a joint at all). A refused token
+    MINTS NO CHANNEL: nothing outside the table can ever appear as a key."""
+    out = dict.fromkeys(arm_config.ROTATABLE, 0.0)
+    m = _ROTATE_TOKEN.fullmatch(action or "")
+    if m is None:
+        return out
+    name = _ROTATE_PREFIX.get(m.group(1))
+    if name is None:
+        return out  # syntactically a rotate token, but not a joint this vocabulary has
+    out[name] = float(m.group(2))
+    return out
 
 
 def _intended_row(action, n):

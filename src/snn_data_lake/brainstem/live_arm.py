@@ -23,7 +23,6 @@ Gesture -> command map (sensor domain): approach = grab the incoming object, ret
 
 import math
 import os
-import re
 import sys
 import time
 
@@ -37,6 +36,7 @@ from snn_data_lake.brainstem.interpreter import Interpreter
 from snn_data_lake.brainstem.so101_arm import So101Arm
 from snn_data_lake.cortex.gesture_recognition import W, classify, load_csv
 from snn_data_lake.substrate import home
+from snn_data_lake.substrate.efferent_boundary import intended_deltas
 
 SENSOR_COMMANDS = {
     "HAND_APPROACH": "ENGAGE",  # grab the approaching object
@@ -51,15 +51,30 @@ SLIP_DEG = 15.0  # |estimate - actual| above this flags an uncommanded slip
 #: shoulder_pan, a yaw joint, and an unchanged `[0]` would have silently watched the wrong one.
 _OBS_JOINT = "shoulder_lift"
 _OBS_INDEX = next(j.qpos_index for j in arm_config.JOINTS if j.name == _OBS_JOINT)
-_JOINT_OBS = re.compile(
-    r"JOINT_" + _OBS_JOINT.upper() + r"_(?:ROTATE|MOVETO)\(([+-]?\d+(?:\.\d+)?)deg\)"
-)
 
 
+# consolidates: substrate/efferent_boundary.py -- the private shoulder_lift regex this
+#   function carried is DELETED and the parse is that module's `intended_deltas`, which
+#   parses every rotatable joint. One parser survives (P2, specs/022 T079 2.1).
+# distinct-from: hippocampus/ring_attractor.py::ProprioceptiveEstimator -- the CONSUMER of
+#   this number (it integrates commanded deltas into an encoder-free angle estimate). This
+#   only reads the delta out of a token; it integrates nothing and holds no state. Read.
 def _joint_obs_delta(command):
-    """Commanded delta (deg) for the observed joint; 0.0 for effector / HOLD / stop."""
-    m = _JOINT_OBS.fullmatch(command or "")
-    return float(m.group(1)) if m else 0.0
+    """Commanded delta (deg) for the observed joint; 0.0 for effector / HOLD / stop.
+
+    ONE PARSER (P2, specs/022 T079 2.1): this was a private `JOINT_SHOULDER_LIFT_(ROTATE|
+    MOVETO)` regex; the per-joint intended delta T079 needs is the same parse over every
+    joint, so the parse moved to `substrate/efferent_boundary.intended_deltas` and this is
+    a projection of it. Every ROTATE token reads bit-identically to the retired regex.
+
+    ONE BEHAVIOUR CHANGED, and it is a correction, disclosed rather than preserved: the old
+    regex also matched `JOINT_SHOULDER_LIFT_MOVETO(<N>deg)` and returned N as a DELTA.
+    MOVETO is the ABSOLUTE verb (arm_config's two-verb note), so N there is a target ANGLE,
+    and handing it to `ProprioceptiveEstimator.command(delta)` -- this function's one call
+    site, in `run()` -- integrated a setpoint as a movement. It now reads 0.0. Unreachable
+    on this module's own path either way: `run()` issues only SENSOR_COMMANDS (ENGAGE /
+    RELEASE / HOLD) and the reflex's EMERGENCY_STOP, none of which is a joint token."""
+    return intended_deltas(command)[_OBS_JOINT]
 
 
 def _make_observer():

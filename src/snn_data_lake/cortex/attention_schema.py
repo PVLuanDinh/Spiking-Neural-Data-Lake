@@ -93,6 +93,7 @@ import zlib
 from collections import Counter
 from pathlib import Path
 
+from snn_data_lake.substrate._mathutils import q95
 from snn_data_lake.substrate.paired_contrast import T_BAR, contrast
 from snn_data_lake.substrate.report_channel import snapshot as _report_snapshot
 
@@ -254,12 +255,16 @@ assert not (set(U_FIELDS) & set(U_FORBIDDEN)), (
 #   Read; shares only the word "score". distinct-from: cortex/neuron_zoo.py::_worker_ladder (a
 #   thread-count race) and substrate/selfcheck_cache.py::_refresh_derived (a roster recompute) --
 #   both read, neither computes a percentile, a null or an information quantity.
-def _q95(draws):
-    """The 95th percentile of the draws, EXACTLY as `track_error` takes it
-    (metacognitive_monitor:915): the order statistic at round(0.95 * (len - 1)), never an
-    interpolation. ONE convention for every floor and every band in this module."""
-    draws.sort()
-    return draws[min(len(draws) - 1, int(round(0.95 * (len(draws) - 1))))]
+#: MERGED 2026-09-15 (specs/022 T079) into `substrate/_mathutils.q95`. The body moved there
+#: VERBATIM -- the order statistic at round(0.95 * (len - 1)), EXACTLY as `track_error` takes
+#: it (metacognitive_monitor's `track_error`), never an interpolation -- and this alias keeps
+#: the local spelling so no call site in this module or its tests changes. ONE convention for
+#: every floor and every band here, and now one IMPLEMENTATION of it. Why it moved rather
+#: than being imported from here: T079's `cortex/agency_monitor` is LIVE (autonomous_loop
+#: imports it) and this module is dormancy-EXEMPT, so a live importer of this file makes
+#: `substrate/dormancy_gate` name the exemption stale and exit 1 (measured 2026-09-15). The
+#: MECHANISM is singular; only the door moved.
+_q95 = q95
 
 
 def mi_bits(x, y):
