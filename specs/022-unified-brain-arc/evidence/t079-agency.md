@@ -326,3 +326,258 @@ and the whole-recording floor is reported beside it in 3.3 as the constant's sen
 width is not ~1.0 on every joint (seed 0: 0.99 / 0.95 / 0.86 / 1.00 / 1.00): the policy drives shoulder_lift and elbow_flex
 into their limits and the ground (30 recoveries), where a commanded step achieves less than its delta -- the body's fact,
 inside the reading as pre-registered.
+
+## 3. Results (written 2026-09-15 22:36-23:05 after the campaign; nothing above this line was edited after 2.10)
+
+### 3.0 The apparatus, measured before the campaign (2.9 step 5 and 2.10's campaign-width run)
+
+THE DRY RUN (2.9 step 5; the builder, `--t079-dry-run`, `scratchpad/t079/dry_run.json`, seed 0, 300 ticks, 96 s; its
+output is pasted verbatim in the builder's report and in 2.10): 67.9 ms per brain-tick measured on the BUILT apparatus
+(2.8 carried 61.5 ms from 1.3's probe) -> a campaign projection of 21.7 min; the stream offset varies the frames (the
+first 50 labels of seeds 0 and 1 differ from index 0: `[6, 6, 0, 4, 8, 7, ...]` vs `[1, 0, 8, 6, 1, 4, ...]`); the shove
+LADDER on elbow_flex, A = 3 / 6 / 12 deg, read that joint's coupling 0.6244 / 0.3089 / 0.0799 against 1.0000 intact (one
+seed: NO paired t, the column reads n/a by construction) -- the contrast's detection floor, printed BEFORE the campaign as
+2.3 pre-registers: a 3-deg force is already resolvable by (a1)'s diff (+0.38 on this seed) while the status machine
+needs the 12-deg force and more than 27 scored passages; (r) REFUSED the 300-tick recordings twice (two joints
+un-commanded inside a 27-passage scored window; 300 ticks leave 146 passages, warmup 120) and the machine could not fire
+(`delay` 48 > 27) -- both named, neither a defect at 1,200 ticks (465 scored passages); the floor's Monte-Carlo sd over
+12 independent 2,000-draw floors of the same recording: 0.0000 on the two joints with a degenerate 27-passage window,
+0.0026-0.0034 on the three scored ones (2.8's n_shuffle sensitivity, COMPUTED here as 2.8 promised).
+
+THE CAMPAIGN-WIDTH APPARATUS RUN (2.10; `scratchpad/t079/probe_width.py`, seed 0, 1,200 ticks, both arms, 172 s; an
+apparatus reading on ONE seed, disclosed in 2.10 before the campaign: it read per-joint `c`, the status machine and both
+floor constructions on seed 0 and computed no paired t): 623 passages over 593 awake ticks on the intact arm (30
+postural recoveries -- the (r) defect 2.10 corrected), 593/593 shoved; elbow_flex 0.8620 intact -> 0.0794 shoved,
+'lost'; the four unshoved joints within (a2)'s dead-band on this seed; the cause-blind floor AS BUILT (2.1's scored-window
+permutation) q95 0.160-0.226 against 0.106-0.112 for a whole-recording permutation on the same rows -- the as-built
+floor is the higher one, so (g0) as pre-registered is the harder reading (2.10 (a)).
+
+COST: the campaign took 1375.5 s for 19,200 brain-ticks plus the twin and the floors -- 71.6 ms per brain-tick
+against the dry run's 67.9 and 1.3's 61.5; 2.8's "~20 min" read 22.9 min. 2.8's refusal rule (re-size above 3 h) was not
+near.
+
+### 3.1 The build, red-first, and the commits
+
+An Opus executor built 2.9 steps 2-5 from `scratchpad/t079/builder_brief.md` (2.0: no second model read the design):
+`f0081ea` (21:24) the skeleton -- the boundary's per-joint stubs, the reader/floor/contrast/reds stubs returning null
+readings; `4725249` (21:29) `tests/test_agency_monitor.py` R1-R6 committed RED against the stubs, 6 failed / 0 passed,
+every failure an assertion: R1 "a floor drawn on a scored recording must be readable"; R2 "t079_reds() must run R2 and
+its no-hysteresis mutation in-command"; R3 "the dead channel is still OBSERVED / assert 0 >= 120"; R4 "+6deg on
+elbow_flex, got 0.0"; R5 "joint 0: 359.9 -> 0.1 must fold to +0.2 deg, got +0.000000 deg"; R6 "(a1) the perturbed
+channel must collapse: t 0.000"; `ed91ce9` (21:47) the instruments green, each red reddened in fact by its mutated
+scorer in the test and in `t079_reds()` (6/6; `_q95` lifted into `substrate/_mathutils.q95`, 2.10 (i)); `820aaaa`
+(21:58) the feed switch in `apply_observed` (the tick-level qmax/reward feed DELETED), the recorder, `--t079-campaign`,
+the determinism precondition, the pin writer, the dry run. Then mine: `fd16de0` (22:06) amendment 2.10; `743176b`
+(22:07) 2.10's code -- (r) reads "every awake tick carries at least one passage", `extra_passages` counted, its
+constructed red (7 tests); `cb33b8d` (22:33) the pin; `28070fa` (22:35) the surfaces per 2.6's NOT MET branch. After
+every src commit the census gates read rc=0 (the builder's 13 reconstructed from `run_selfchecks.TOOLS_GATES` and the
+substrate gates -- the brief's `archive/.../census_gates.sh` path did not exist in the tree, 3.5 item 4 -- and my own
+16-line `scratchpad/census_gates.sh` on `820aaaa`, CENSUS_GATES rc=0); `tests/test_efferent_boundary.py` (T037's
+observation-only contract) green throughout; the wider regression at step 5: 91 passed.
+
+### 3.2 The campaign (`tools/t079_agency.json`, run at `743176b`, committed `cb33b8d`)
+
+Seeds 0-7, N = 1,200 ticks, two arms (INTACT; SHOVED = elbow_flex, U(-12, 12) deg after every passage), stream offset
+150 x seed, 1375.5 s; the determinism twin (p): identical=True over 49 passages of seed 0 at 100 ticks; the
+reds in-command R1-R6 all True; (r) MET on every seed and arm -- every rotatable joint scored, every awake tick carrying
+a passage, `tap_errors` 0, no latch; refusals: none. The extra passages are the postural recoveries (2.10): 0-92 per
+recording, 16 of 16 recordings readable.
+
+| seed | arm | awake | passages | extra | latched | tap errors | scored joints | actions (top 3) |
+|---|---|---|---|---|---|---|---|---|
+| 0 | intact | 593 | 623 | 30 | 0 | 0 | 5/5 | JOINT_SHOULDER_LIFT_ROTATE(+6deg) 107, JOINT_SHOULDER_LIFT_ROTATE(-6deg) 99, HOLD 77 |
+| 0 | shoved | 593 | 593 | 0 | 0 | 0 | 5/5 | ENGAGE 519, JOINT_SHOULDER_LIFT_ROTATE(-6deg) 11, JOINT_SHOULDER_PAN_ROTATE(+6deg) 9 |
+| 1 | intact | 593 | 604 | 11 | 0 | 0 | 5/5 | JOINT_SHOULDER_LIFT_ROTATE(-6deg) 182, HOLD 90, JOINT_SHOULDER_LIFT_ROTATE(+6deg) 57 |
+| 1 | shoved | 593 | 593 | 0 | 0 | 0 | 5/5 | JOINT_SHOULDER_LIFT_ROTATE(-6deg) 493, ENGAGE 33, JOINT_SHOULDER_LIFT_ROTATE(+6deg) 9 |
+| 2 | intact | 598 | 648 | 50 | 0 | 0 | 5/5 | JOINT_SHOULDER_LIFT_ROTATE(-6deg) 127, HOLD 108, JOINT_SHOULDER_LIFT_ROTATE(+6deg) 97 |
+| 2 | shoved | 598 | 690 | 92 | 0 | 0 | 5/5 | HOLD 161, JOINT_SHOULDER_LIFT_ROTATE(-6deg) 148, JOINT_SHOULDER_LIFT_ROTATE(+6deg) 74 |
+| 3 | intact | 592 | 620 | 28 | 0 | 0 | 5/5 | JOINT_SHOULDER_LIFT_ROTATE(-6deg) 130, JOINT_SHOULDER_LIFT_ROTATE(+6deg) 101, HOLD 91 |
+| 3 | shoved | 592 | 592 | 0 | 0 | 0 | 5/5 | JOINT_SHOULDER_PAN_ROTATE(+6deg) 100, JOINT_SHOULDER_PAN_ROTATE(-6deg) 84, JOINT_ELBOW_FLEX_ROTATE(-6deg) 75 |
+| 4 | intact | 589 | 663 | 74 | 0 | 0 | 5/5 | HOLD 152, JOINT_SHOULDER_LIFT_ROTATE(-6deg) 121, JOINT_ELBOW_FLEX_ROTATE(-6deg) 101 |
+| 4 | shoved | 589 | 594 | 5 | 0 | 0 | 5/5 | JOINT_SHOULDER_LIFT_ROTATE(-6deg) 207, JOINT_WRIST_FLEX_ROTATE(-6deg) 130, JOINT_SHOULDER_LIFT_ROTATE(+6deg) 66 |
+| 5 | intact | 590 | 605 | 15 | 0 | 0 | 5/5 | JOINT_SHOULDER_LIFT_ROTATE(-6deg) 104, JOINT_SHOULDER_LIFT_ROTATE(+6deg) 100, JOINT_WRIST_ROLL_ROTATE(+6deg) 72 |
+| 5 | shoved | 590 | 590 | 0 | 0 | 0 | 5/5 | JOINT_SHOULDER_LIFT_ROTATE(-6deg) 458, JOINT_WRIST_ROLL_ROTATE(+6deg) 30, JOINT_SHOULDER_LIFT_ROTATE(+6deg) 16 |
+| 6 | intact | 594 | 612 | 18 | 0 | 0 | 5/5 | JOINT_SHOULDER_LIFT_ROTATE(-6deg) 132, JOINT_ELBOW_FLEX_ROTATE(-6deg) 87, JOINT_SHOULDER_LIFT_ROTATE(+6deg) 86 |
+| 6 | shoved | 594 | 594 | 0 | 0 | 0 | 5/5 | JOINT_WRIST_ROLL_ROTATE(-6deg) 381, JOINT_SHOULDER_LIFT_ROTATE(+6deg) 37, JOINT_SHOULDER_LIFT_ROTATE(-6deg) 33 |
+| 7 | intact | 589 | 621 | 32 | 0 | 0 | 5/5 | JOINT_SHOULDER_LIFT_ROTATE(-6deg) 139, JOINT_SHOULDER_LIFT_ROTATE(+6deg) 130, HOLD 113 |
+| 7 | shoved | 589 | 636 | 47 | 0 | 0 | 5/5 | JOINT_SHOULDER_LIFT_ROTATE(+6deg) 144, HOLD 108, JOINT_SHOULDER_LIFT_ROTATE(-6deg) 98 |
+
+The policy's reaction to the shove (1.3, reported): the top action's share of passages is 0.17-0.30 on the intact arm
+and 0.17-0.88 on the shoved arm (0.64-0.88 on seeds 0, 1, 5, 6: ENGAGE 519/593, shoulder_lift(-6) 493/593 and 458/590,
+wrist_roll(-6) 381/594); 13 distinct actions on every recording. The incumbent feed's `n_scored` is not re-read (the feed
+is retired; 0 on 1.3's probe).
+
+### 3.3 The readings, conjunct by conjunct (every number from the pin; the bar 1.895 over 8 seeds; FPR = the sign-flip rate)
+
+#### shoulder_pan
+| seed | intact c | floor q95 | floor median | intact - floor | shoved c | shoved status | intact - shoved |
+|---|---|---|---|---|---|---|---|
+| 0 | 0.9926 | 0.2263 | 0.1736 | 0.7663 | 1.0000 | ok | -0.0074 |
+| 1 | 0.9708 | 0.2102 | 0.1561 | 0.7606 | 0.9954 | ok | -0.0247 |
+| 2 | 0.9035 | 0.1894 | 0.1491 | 0.7140 | 0.9269 | ok | -0.0234 |
+| 3 | 0.9712 | 0.2015 | 0.1543 | 0.7697 | 0.9961 | ok | -0.0248 |
+| 4 | 0.9971 | 0.2170 | 0.1555 | 0.7801 | 0.9718 | ok | 0.0253 |
+| 5 | 0.9604 | 0.1780 | 0.1310 | 0.7825 | 0.9999 | ok | -0.0395 |
+| 6 | 0.9490 | 0.1649 | 0.1161 | 0.7841 | 1.0000 | ok | -0.0510 |
+| 7 | 0.9674 | 0.1801 | 0.1352 | 0.7873 | 0.9233 | ok | 0.0441 |
+
+#### shoulder_lift
+| seed | intact c | floor q95 | floor median | intact - floor | shoved c | shoved status | intact - shoved |
+|---|---|---|---|---|---|---|---|
+| 0 | 0.9514 | 0.1596 | 0.1166 | 0.7919 | 1.0000 | ok | -0.0485 |
+| 1 | 0.7563 | 0.1505 | 0.1060 | 0.6058 | 0.3933 | lost | 0.3630 |
+| 2 | 0.8583 | 0.1767 | 0.1403 | 0.6817 | 0.4589 | lost | 0.3994 |
+| 3 | 0.8786 | 0.1596 | 0.1204 | 0.7190 | 0.9427 | ok | -0.0641 |
+| 4 | 0.6497 | 0.1414 | 0.1030 | 0.5083 | 0.8031 | ok | -0.1534 |
+| 5 | 0.9219 | 0.1572 | 0.1191 | 0.7647 | 0.4436 | ok | 0.4783 |
+| 6 | 0.9014 | 0.1722 | 0.1328 | 0.7292 | 0.9957 | ok | -0.0943 |
+| 7 | 0.8350 | 0.1636 | 0.1281 | 0.6714 | 0.7402 | ok | 0.0948 |
+
+#### elbow_flex (J*)
+| seed | intact c | floor q95 | floor median | intact - floor | shoved c | shoved status | intact - shoved |
+|---|---|---|---|---|---|---|---|
+| 0 | 0.8620 | 0.1905 | 0.1480 | 0.6715 | 0.0794 | lost | 0.7827 |
+| 1 | 0.9738 | 0.1792 | 0.1332 | 0.7947 | 0.0979 | lost | 0.8759 |
+| 2 | 0.9326 | 0.2186 | 0.1703 | 0.7140 | 0.2373 | lost | 0.6952 |
+| 3 | 0.9574 | 0.1773 | 0.1358 | 0.7800 | 0.2544 | lost | 0.7030 |
+| 4 | 0.5641 | 0.1645 | 0.1137 | 0.3996 | 0.1056 | lost | 0.4584 |
+| 5 | 0.9831 | 0.1917 | 0.1485 | 0.7915 | 0.1084 | lost | 0.8747 |
+| 6 | 0.8241 | 0.2018 | 0.1562 | 0.6223 | 0.1852 | lost | 0.6390 |
+| 7 | 0.8387 | 0.1895 | 0.1400 | 0.6492 | 0.2430 | lost | 0.5956 |
+
+#### wrist_flex
+| seed | intact c | floor q95 | floor median | intact - floor | shoved c | shoved status | intact - shoved |
+|---|---|---|---|---|---|---|---|
+| 0 | 0.9994 | 0.2005 | 0.1363 | 0.7989 | 0.9868 | ok | 0.0125 |
+| 1 | 1.0000 | 0.2107 | 0.1599 | 0.7893 | 1.0000 | ok | 0.0000 |
+| 2 | 0.9956 | 0.2008 | 0.1532 | 0.7948 | 0.7922 | lost | 0.2034 |
+| 3 | 0.9999 | 0.2217 | 0.1723 | 0.7782 | 1.0000 | ok | -0.0001 |
+| 4 | 0.9508 | 0.2337 | 0.1903 | 0.7171 | 0.7632 | ok | 0.1876 |
+| 5 | 0.9994 | 0.1594 | 0.1137 | 0.8400 | 0.9987 | ok | 0.0008 |
+| 6 | 0.9981 | 0.1571 | 0.1122 | 0.8410 | 1.0000 | ok | -0.0019 |
+| 7 | 0.9999 | 0.2156 | 0.1575 | 0.7843 | 0.9668 | ok | 0.0331 |
+
+#### wrist_roll
+| seed | intact c | floor q95 | floor median | intact - floor | shoved c | shoved status | intact - shoved |
+|---|---|---|---|---|---|---|---|
+| 0 | 1.0000 | 0.1923 | 0.1300 | 0.8077 | 1.0000 | ok | -0.0000 |
+| 1 | 1.0000 | 0.1982 | 0.1206 | 0.8018 | 1.0000 | ok | -0.0000 |
+| 2 | 0.9962 | 0.2209 | 0.1624 | 0.7753 | 0.9967 | ok | -0.0005 |
+| 3 | 1.0000 | 0.2020 | 0.1389 | 0.7980 | 1.0000 | ok | -0.0000 |
+| 4 | 1.0000 | 0.1952 | 0.1192 | 0.8048 | 0.9998 | ok | 0.0001 |
+| 5 | 0.9020 | 0.1845 | 0.1360 | 0.7176 | 0.9980 | ok | -0.0959 |
+| 6 | 0.9941 | 0.2321 | 0.1700 | 0.7621 | 0.2890 | lost | 0.7052 |
+| 7 | 1.0000 | 0.1983 | 0.1379 | 0.8017 | 1.0000 | ok | 0.0000 |
+
+| conjunct | statistic | t | FPR | met |
+|---|---|---|---|---|
+| (g0) shoulder_pan | intact c - floor q95 | +91.3188 | 0.0352 | True |
+| (g0) shoulder_lift | intact c - floor q95 | +21.1497 | 0.0391 | True |
+| (g0) elbow_flex | intact c - floor q95 | +14.6628 | 0.0469 | True |
+| (g0) wrist_flex | intact c - floor q95 | +57.5714 | 0.0352 | True |
+| (g0) wrist_roll | intact c - floor q95 | +71.1811 | 0.0352 | True |
+| (a1) elbow_flex | intact c - shoved c | +13.9998 | 0.0430 | True |
+| (a2) shoulder_pan | (shoved c - intact c) + deadband 0.20 | +18.6279 | 0.0391 | True |
+| (a2) shoulder_lift | (shoved c - intact c) + deadband 0.20 | +0.8723 | 0.0547 | False |
+| (a2) wrist_flex | (shoved c - intact c) + deadband 0.20 | +4.6820 | 0.0391 | True |
+| (a2) wrist_roll | (shoved c - intact c) + deadband 0.20 | +1.3668 | 0.0312 | False |
+| (a3) | counts | {'shoved_star_lost': 8, 'other_lost': 4, 'met': False} | | |
+
+REPORTED, never barred: the same-tick Pearson(u_j, ds_j) over each recording's passages (the raw coupling, not the
+instrument's EMA) reads intact +0.60..+1.00 and shoved elbow_flex +0.07..+0.26, with lag-1 inside -0.21..+0.65 (largest
+on shoulder_lift, the joint the policy drives into its limit); the intact floors' medians 0.103-0.190 beside their q95
+0.141-0.234; the shoved arm's floors 0.074-0.952 (the wide upper values are joints commanded fewer than ten times in the
+scored window, where a permutation barely moves the EMA -- the intact floors are the ones (g0) reads).
+
+### 3.4 The disposition applied (2.6, the NOT MET branch)
+
+(p) MET, (r) MET, (g0) MET on every joint: the instrument SEES on this body -- the intact coupling clears its cause-blind
+twin by +0.40..+0.84 on every seed and joint (t +14.7 to +91.3). (a1) MET: the shoved joint's coupling collapses on every
+seed (0.56-0.98 intact -> 0.08-0.25 shoved; t +13.9998, FPR 0.0430). (a2) NOT MET on two of four: shoulder_lift
+t +0.8723 and wrist_roll t +1.3668 (shoulder_pan +18.6279 and wrist_flex +4.6820 MET). (a3) NOT MET: elbow_flex
+'lost' on 8/8 shoved seeds, but 4 other (joint, arm, seed) cells read 'lost' -- shoulder_lift on seeds 1 and 2,
+wrist_flex on seed 2, wrist_roll on seed 6, all on the SHOVED arm. VERDICT NOT MET, as 2.3 decides it; 2.6's NOT MET
+branch applied at `28070fa`: no reading, no symbol printed (the conclusion row names `agency_controllability`, reading
+None, the licensed sentence unwritten, so refusal 3's arming arm sees it -- T077's shape), the per-joint efference feed
+stays as the one feed, `AgencyMonitor`'s disposition EXEMPT with this record as its reason, `route_around` unwired,
+nothing deleted; tasks.md T079 [X] NOT MET.
+
+WHAT FAILED, MEASURED (post-hoc, reported, never re-adjudicated; `scratchpad/t079/probe_clamp.py` on the pin's rows): the
+four losses beside the shoved joint are joints whose commands were CLAMPED at their `ctrl` limit -- the gate accepts the
+token, clamps the setpoint (`So101Arm.apply`, `_clamped`) and the joint does not move, so the copy records a command with
+no outcome. Over the scored window: shoulder_lift seed 1 shoved, 437 of 449 commands clamped (97 %), c 0.393; seed 2,
+83 of 157 (53 %), c 0.459; wrist_roll seed 6, 304 of 314 (97 %), c 0.289; wrist_flex seed 2, 8 of 48 (17 %), c 0.792.
+The same mechanism depresses INTACT readings on two seeds (shoulder_lift seed 1: 97/198 clamped, c 0.756; elbow_flex
+seed 4: 51/69, c 0.564). Across the 80 (seed, arm, joint) cells Pearson(clamped share, c) = -0.394. The policy's reaction
+to the shove is the proximate cause: on the seeds where (a2) breaks it drives one other joint's rotate token hundreds of
+times into its limit (top-action share 0.64-0.88). So the instrument reported truthfully -- a joint at its limit IS
+uncontrollable by the command it receives -- and the pre-registered conjunct (a2) asked for something this body and this
+policy do not deliver: that shoving one joint leaves the others' coupling inside the machine's dead-band. NOT MET
+stands; the row's finding is about the loop's reaction and the copy's blindness to a clamp, not about a blind
+estimator.
+
+(i) DISCLOSED: the shove is applied after recovery passages as well as main ones (2.1's "once after every passage's
+feed"); 5 of 16 recordings carried none and the shoved arm of seed 2 carried 92 (its policy hammered shoulder_lift into
+the ground). (ii) DISCLOSED: (a2)'s dead-band tolerance is the machine's own 0.20; on the two failing joints the paired
+drops are -0.36..-0.71 on the losing seeds and inside the band elsewhere, so no tolerance the machine owns would have
+read them "preserved". (iii) The reading noun in every sentence above is the per-joint command-to-outcome coupling the
+instrument reads (2.2's X), on a MuJoCo SO-101 under a test-only exafference, on a scratch brain; the daemon's brain and
+the real arm are untouched.
+
+### 3.5 Deviations from 2.1-2.10, each with its number (dated 2026-09-15)
+
+1. (r)'s passage-count clause would have refused the campaign on the body's normal behaviour; corrected BEFORE the
+   campaign by 2.10 on the campaign-width apparatus run (623/593 on seed 0 intact) -- amendment `fd16de0`, code
+   `743176b`, its red in `tests/test_agency_monitor.py`. The campaign read 0-92 extra passages per recording (3.2).
+2. The builder's six deviations from 2.1-2.4, disclosed in 2.10 (ii)-(vi) and in-code: `_q95` lifted into
+   `_mathutils.q95` (the dormancy gate refuses a live import of the EXEMPT `attention_schema`); `proprioception_deltas`
+   defined in `afferent_boundary` (import cycle) with `u_j` in degrees and `ds_j` normalised (Pearson is
+   scale-invariant); R1's and R6's mutations reddening the clause that fires; the recorder's outer wrap of
+   `apply_observed` (a `ctrl` read inside the inner wrap would be one passage stale); `live_arm._joint_obs_delta` now
+   0.0 on MOVETO; the reds' `n_shuffle` 200, R6's 900 passages at a 1-in-10 duty, the dry run's 300 ticks and 12 floor
+   repeats.
+3. The campaign-width apparatus run (2.10; 3.0) read the instrument on ONE seed before the campaign -- per-joint `c`,
+   the status machine, both floor constructions -- as apparatus, disclosed there and here; no paired statistic and no
+   verdict was computed, and none of its numbers moved a bar or a conjunct.
+4. The builder brief named `archive/t062-t063-2026-09-09/census_gates.sh`, which does not exist in the tree (the script
+   lives in the session scratchpad and in memory only); the builder reconstructed the 13-gate set from
+   `run_selfchecks.TOOLS_GATES` and the substrate gates, rc=0 at its baseline `9b04c8c` and after every commit; I ran
+   my own 16-line `scratchpad/census_gates.sh` on `820aaaa` (CENSUS_GATES rc=0). An orchestration slip, not a gate gap.
+5. The dry run's ladder and floors were read on 27-passage scored windows (300 ticks - warmup 120 passages), so its
+   floors (0.81-1.00, the EMA carry-in dominating) and its statuses ('ok' everywhere) are apparatus numbers only; 2.9
+   step 5's 300 ticks were kept as pre-registered and the width's consequence is named in 2.10 and 3.0.
+6. Cost: 71.6 ms per brain-tick in the campaign against the dry run's 67.9 (the shoved arms' recoveries and the floors),
+   22.9 min against 2.8's ~20; within the same budget, no re-sizing.
+7. The surfaces commit `28070fa` shifted `tests/test_ratified_row_gates.py`'s arming-arm fixture from the agency row
+   (which now declares a symbol) to `temporal_binding` and asserts `_task_done("T079") is True` -- the fixture shift
+   T077's [X] forced on T078's line, taken deliberately this time.
+8. The cause-blind floor as built carries the EMA's real coupling across the warmup boundary (2.10 (a)); on seed 0 the
+   as-built q95 reads 0.160-0.226 against 0.106-0.112 for a whole-recording permutation. (g0) is read on the as-built,
+   higher, floor as pre-registered; the margins (+0.40..+0.84) dwarf the difference. The whole-recording construction
+   is the successor's, pre-registered as the twin's definition (opening 5).
+9. The Codex closing report is owed and cannot be sent before 2026-09-20 00:30 (2.0; T078 3.5 item 27); if the push
+   precedes it, this record carries the absence.
+10. The shove RNG (`random.Random(7000 + seed)`) draws once per passage INCLUDING recovery passages, so the two arms'
+    passage counts differ (3.2) and the shoved arm's action sequence is its own; the pairing is by seed and stream, as
+    2.2 pre-registers, not by passage.
+
+### 3.6 What this row does NOT claim, and the openings it leaves
+
+No felt authorship, ownership of action or free will (the refused sentence); nothing about the real arm
+(`SAFETY_CALIBRATED` False) or the daemon's brain; nothing about a dead effector (no joint was disabled; the port that
+exists shoves a working servo); the loop's reaction to a disturbance is reported, not adjudicated. NOT MET here is NOT
+"the instrument is blind": (g0) and (a1) read at t +14 to +91; it is "with one joint shoved, this loop drives other
+joints into their limits, and a clamped command reads as lost controllability" -- a fact about the copy and the policy.
+OPENINGS, each named for a successor row: (1) the copy is blind to a CLAMP: `So101Arm.apply` knows a command was clamped
+(`_clamped`, on the state) and the tap does not read it; a successor records the clamp flag per passage and pre-registers
+whether a clamped command is an unexercised passage (excluded from the coupling) or a genuine loss -- the two readings of
+"my command did nothing" the C5 row's licensed sentence does not separate; (2) "preserved elsewhere" needs a
+POLICY-HELD control: replay the shoved arm's own action sequence on an unshoved twin (the exact-replay idea of T077) so
+the other joints' coupling is read under the same commands, separating the policy's reaction from the instrument's
+reading; (3) the amplitude is a single point (12 deg) at the campaign width; a successor runs the ladder on all seeds and
+reads the detection floor as a paired contrast, not a single seed; (4) the dead-band as the tolerance for (a2) mixes two
+scales (a fixed 0.20 against drops of 0.36-0.71 caused by clamps) -- a successor pre-registers the tolerance from the
+intact arm's own across-seed spread AFTER the clamp is excluded; (5) the cause-blind twin's definition (scored-window vs
+whole-recording permutation; 3.5 item 8); (6) the stream offset varies the frames per seed (T078 opening 9, taken here)
+but the eight arms still share ONE pack; (7) the C5 row's reading and symbol stay unwritten -- on this body the licensed
+sentence would need the clamp-aware copy of (1) before any number is licensed.
