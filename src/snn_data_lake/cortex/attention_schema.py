@@ -55,9 +55,18 @@ free parameter introduced by the builder):
                                    of every barred G4 decode.
   T078_N_TICKS   = 1200 2.2/2.8 -- ticks per seed (about 585 awake, about 580 awake pairs).
   T078_SEEDS     = 0..7 2.2     -- PLAN-FINAL Part F's S = 8.
-  DECODER_STEPS / DECODER_LR / DECODER_L2 = 200 / 0.1 / 1e-3   2.1 -- fixed; the raw-64 ceiling
-                                   decode is what shows whether capacity, not information, limits
-                                   the matched decode.
+  DECODER_STEPS / DECODER_LR / DECODER_L2 = 200 / 0.1 / 1e-3   2.1 -- a fixed, pre-registered
+                                   optimizer budget whose SENSITIVITY WAS NOT COMPUTED. 2.8 lists
+                                   the three under "the consequence of each, computed here" and
+                                   substitutes the raw-64 ceiling decode for the computation; that
+                                   substitution cannot do the job, because the ceiling runs through
+                                   the SAME `_fit_and_score` at the SAME budget as the arms it is
+                                   meant to diagnose (`t078_g4` reads all four decodes through one
+                                   `decode_heldout`), so it is partly the method (2.5, P8 clause 2)
+                                   and cannot separate capacity from budget. The panel fold's dated
+                                   item in section 3.5 of the evidence file carries the
+                                   re-derivation and its numbers; the pre-registered reading at the
+                                   pre-registered budget remains the record.
   PROJ_TAG = b"t078-proj"  2.1 -- `crc32(PROJ_TAG) + seed` seeds the (64, 15) Gaussian projection.
 BUILDER-INTRODUCED beyond 2.1/2.8, disclosed here because every constant owes its why:
   DETERMINISM_TICKS = 100  -- 2.2 words the determinism precondition as "two 100-tick recordings";
