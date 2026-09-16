@@ -63,6 +63,9 @@ from snn_data_lake.cortex.attention_schema import (
     U_DIM,
     U_FIELDS,
     U_FORBIDDEN,
+    _decode,
+    _fit_and_score,
+    _q95,
     _reported_mi,
     _t078_mutated_scorer,
     control_state,
@@ -357,6 +360,96 @@ def test_the_content_projection_is_fixed_by_its_crc32_seed():
     assert a.shape == (LATENT_DIM, U_DIM), a.shape
     assert bool((a == b).all()), "the projection must be a pure function of the seed"
     assert not bool((a == t078_projection(4)).all()), "a different seed must give a different arm"
+
+
+def _late_signal_rows(n, d, k, seed):
+    """Feature 0 is NOISE across the tick-ordered FIRST half and carries the label in the SECOND,
+    and feature 1's scale drifts between the halves. The only shape on which "prequential halves,
+    no lookahead" and "standardized on the train half" can be EXHIBITED: `t078_planted_rows` draws
+    rows and labels i.i.d. in time, so shuffling before the split is a no-op in distribution there
+    and standardizing over all rows changes nothing -- neither defect can appear on it."""
+    rng = random.Random(seed)
+    y = [rng.randrange(k) for _ in range(n)]
+    rows = [[rng.random() for _ in range(d)] for _ in range(n)]
+    for i in range(n // 2, n):
+        rows[i][0] = y[i] / float(k - 1)
+        rows[i][1] = rows[i][1] * 20.0 + 10.0
+    return rows, y
+
+
+def _split_shuffled(X, y, seed, n_shuffle=REDS_N_PERM):
+    """The LOOKAHEAD twin: shuffle the row order, then split -- future rows reach training."""
+    rng = random.Random(4242)
+    order = list(range(len(y)))
+    rng.shuffle(order)
+    return _decode([X[i] for i in order], [y[i] for i in order], seed, n_shuffle=n_shuffle)
+
+
+def _standardize_all(X, y, seed, n_shuffle=REDS_N_PERM):
+    """The SCOPE twin: byte-identical to `_decode` except mu/sd come from EVERY row, not train."""
+    import torch
+
+    n_train = len(y) // 2
+    classes = sorted(set(y))
+    idx = {c: i for i, c in enumerate(classes)}
+    full = torch.tensor(X, dtype=torch.float32)
+    mu = full.mean(0, keepdim=True)
+    sd = full.std(0, unbiased=False, keepdim=True).clamp_min(1e-6)
+    z = (full - mu) / sd
+    x_tr, x_te = z[:n_train], z[n_train:]
+    ytr_raw, yte_raw = list(y[:n_train]), list(y[n_train:])
+    y_tr = torch.tensor([[idx[c] for c in ytr_raw]], dtype=torch.long)
+    y_te = torch.tensor([[idx[c] for c in yte_raw]], dtype=torch.long)
+    acc = _fit_and_score(x_tr, y_tr, x_te, y_te, len(classes), seed)[0]
+    rng = random.Random(seed)
+    perm = []
+    for _ in range(n_shuffle):
+        sh = list(ytr_raw)
+        rng.shuffle(sh)
+        perm.append([idx[c] for c in sh])
+    y_perm = torch.tensor(perm, dtype=torch.long)
+    draws = _fit_and_score(x_tr, y_perm, x_te, y_te.expand(y_perm.shape[0], -1), len(classes), seed)
+    return {"acc": acc, "shuffle_q95": _q95(draws)}
+
+
+def test_the_decoders_prequential_split_and_train_half_standardization_have_reachable_reds():
+    """`_decode`'s two STATED instrument properties -- "prequential halves, no lookahead" and
+    "standardized on the train half" (2.1 and `decode_heldout`'s docstring) -- had no reachable
+    red at the record. 2.4's six reds pin the BAND and the split SIZE, never the split ORDER or
+    the standardization SCOPE: on `t078_planted_rows` (i.i.d. in time) the shipped decoder reads
+    acc 0.2733 band 0.1333, a lookahead twin 0.2700/0.1367 and a standardize-all twin 0.2733, and
+    R4 is True on all three. The shipped `_decode` IS correct -- the halves are sliced in tick
+    order and mu/sd come from `x_tr` alone -- so this is red COVERAGE, not a live defect, and the
+    property is given its red HERE rather than as a seventh red or a clause of R4: `t078_reds()`
+    still returns the six booleans 2.4 pre-registers and the pin's `reds` block still describes
+    the shipped assertions.
+
+    On the pinned recording both defects were RUN and neither crosses the bar, so no recorded
+    number depends on this: shuffled split (g4a) t -0.1214, standardize-all +1.6744, shipped
+    +1.4903 against the bar 1.895 -- G4 PASS under all three."""
+    X, y = _late_signal_rows(600, U_DIM, 10, seed=13)
+    pre = decode_heldout(X, y, seed=0, n_shuffle=REDS_N_PERM)
+    assert pre["readable"] is True, pre
+    assert pre["acc"] <= pre["shuffle_q95"], (
+        "a prequential decode cannot see the second half",
+        pre,
+    )
+    leaked = _split_shuffled(X, y, 0)
+    assert leaked["acc"] > leaked["shuffle_q95"], (
+        "a shuffled split leaks future rows into training and must read ABOVE its band",
+        leaked,
+    )
+    scoped = _standardize_all(X, y, 0)
+    assert scoped["acc"] != pre["acc"], (
+        "standardizing over every row must separate from train-half standardization",
+        scoped,
+        pre,
+    )
+    # clause 1 is not satisfied by a decoder that reads nothing on everything: the planted
+    # direction R4 pins still holds on the SAME instrument
+    prows, py = t078_planted_rows(600, U_DIM, 10, seed=5, planted=True)
+    planted = decode_heldout(prows, py, seed=0, n_shuffle=REDS_N_PERM)
+    assert planted["acc"] > planted["shuffle_q95"], planted
 
 
 def _hazard_rows(fire):
