@@ -918,6 +918,11 @@ function paint(d){
  $('bAcc').innerHTML=big(s.access_index,3)+sub('global access index')
    +row('ignitions',dv.ignitions,0)+row('percept holds bus',dv.ws_percept_ignited,0)
    +row('PCI',s.pci,3,'pci')+row('integration',s.integration_competence,3,'integration_competence')
+   /* C5 row temporal_binding (T080, 2026-09-16), CHARGED by tools/t080_temporal_binding.json on an aligned scratch stream:
+      licensed -- features inside one window are bound into one reported object more often than features across windows;
+      refused -- this licenses no claim that there is a felt present, a stream of experience, or a duration lived.
+      The live value below is the daemon's own rate, which its independent streams hold at the null's level (provenance). */
+   +row('cross-modal bound rate',s.crossmodal_bound_rate,3,'crossmodal_bound_rate')
    +`<div class="note">ignitions = broadcast changed hands; percept holds bus = this tick's percept seized the slot (1/0); the others can hold high on one content.</div>`;
  $('bLife').innerHTML=big(s.nights_elapsed,0,undefined,'nights_elapsed')+sub('nights slept')
    +row('units admitted',s.grown_units,0,'grown_units')+row('reasoning acc',s.reasoning_accuracy)

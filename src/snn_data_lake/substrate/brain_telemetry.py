@@ -209,6 +209,24 @@ PROVENANCE = {
         "decisive (3.4 i, opening 3; the panel fold 3.5); it is NOT an error-tracking confidence, and no C5 "
         "sentence is licensed for it"
     ),
+    "crossmodal_bound_rate": (
+        "MEASURED (T080, 2026-09-16, evidence/t080-temporal-binding.md 3.3-3.4, pin "
+        "tools/t080_temporal_binding.json + tools/t080_latents.npz, head c3a9fb5): the fraction of the last "
+        "200 awake ticks on which cortex/crossmodal_binder reported ONE bound object (crossmodal_handle not "
+        "None) for the vision and audio latents presented in the same tick. The C5 row temporal_binding is "
+        "CHARGED by that pin, on a scratch brain fed an ALIGNED bimodal stream: features inside one window are "
+        "bound into one reported object more often than features across windows -- within-window 0.26-0.42 "
+        "against a membership-matched null (the same audio features and the same ten taught objects, their "
+        "pairing permuted across ticks, 2,000 draws) whose q95 is 0.12-0.14, paired t +13.54 over 8 seeds, "
+        "reading 0.2309; the binding window is the tick (audio delayed by one tick binds at the null's rate on "
+        "6 of 8 seeds, reported). This licenses NO claim that there is a felt present, a stream of experience, "
+        "or a duration lived. ON THIS DAEMON the two percept streams are INDEPENDENT (the classifiers agree on "
+        "0.08 of ticks at every lag, measured 2026-09-16), so the live rate here is a CHANCE rate -- the null's "
+        "level (about 0.10) once all ten objects are taught, higher while the codebook is sparse (a lone "
+        "prototype names every latent above the margin: 0.42 over the first 31 awake ticks of a fresh brain), "
+        "about half of those reports contradicting the classifiers -- never the within-window rate the pin "
+        "measured"
+    ),
     "criticality": "sleep-only",
     # string/bool literals in state(), not readings (goal brain.py:2892; reflex_armed :3055)
     "goal": "hardcoded literal",

@@ -268,3 +268,28 @@ def test_r6_the_agreement_band(reds):
         "check that cannot refuse is not a check"
     )
     assert reds["R6"], "t080_reds()['R6'] must fire on the same tables the suite used"
+
+
+def test_the_live_bound_rate_reaches_state_with_both_c5_sentences_beside_it():
+    """2.6's PASS branch (2026-09-16): `Brain.state()["crossmodal_bound_rate"]` is the fraction of
+    the last 200 awake ticks with ONE reported object for that tick's two latents, and its
+    provenance carries the licensed and the refused sentence and says the daemon's own rate is a
+    chance rate."""
+    from snn_data_lake.substrate import brain_telemetry
+    from snn_data_lake.substrate.conclusion_protocol import CONCLUSION
+    from snn_data_lake.substrate.home import throwaway_home
+
+    licensed, refused, _dis, reading, _date, symbols = CONCLUSION["temporal_binding"]
+    assert symbols == ("crossmodal_bound_rate",) and isinstance(reading, float)
+    prov = brain_telemetry.PROVENANCE["crossmodal_bound_rate"]
+    assert " ".join(licensed.split()[:6]) in prov and "felt present" in prov and "CHANCE" in prov
+    with throwaway_home():
+        from snn_data_lake.cortex.brain import make_brain
+
+        b = make_brain(seed=0, persist=False)
+        assert b.state()["crossmodal_bound_rate"] is None, "no awake tick yet -> no rate, never 0.0"
+        awake = 0
+        while awake < 12:
+            awake += b.tick() == "awake"
+        rate = b.state()["crossmodal_bound_rate"]
+        assert rate is not None and 0.0 <= rate <= 1.0 and len(b._xmodal_bound_hist) == awake

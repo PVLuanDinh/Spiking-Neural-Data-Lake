@@ -742,6 +742,9 @@ class Brain:
         self._superadditive = False  # cross-modal vision+audio super-additive binding this tick
         self._xmodal_known = set()  # C2 #19: bimodal object handles the binder has been TAUGHT
         self._xmodal_handle = None  # C2 #19: the bound object recognised this tick (None = unbound)
+        # T080 (2026-09-16, evidence/t080-temporal-binding.md 2.6 PASS): one flag per awake tick,
+        # the last 200 -- did the binder report ONE object for THIS tick's two latents?
+        self._xmodal_bound_hist = []
         self._place_here = (
             None  # the landmark/percept the grid-place map binds to the current position
         )
@@ -1851,6 +1854,18 @@ class Brain:
                 self._xmodal_handle = fused.get("handle")
             except Exception:
                 self._superadditive = False
+        # T080: the live bound rate's window. A tick counts as bound only when BOTH latents were
+        # presented and the binder named an object for them; `_xmodal_handle` alone would not do
+        # (it keeps the last reported handle on a tick the binder did not run -- opening, 3.6).
+        self._xmodal_bound_hist.append(
+            bool(
+                self._xmodal is not None
+                and self._real_percept
+                and self._audio_percept
+                and self._xmodal_handle is not None
+            )
+        )
+        del self._xmodal_bound_hist[:-200]
         # W6: bind the perceived stimulus to the current allocentric PLACE (grid + place cells)
         if self._grid_place is not None and self._perceived_digit is not None:
             try:
@@ -4125,6 +4140,15 @@ class Brain:
             "dominant_drive": self._dominant_drive,  # W8: the currently most-unmet homeostatic drive (interoceptive)
             "drive_activity": self._drive_activity,  # C2 #11: the drive-vocabulary activity performed (rest/explore/socialize/fidget)
             "crossmodal_handle": self._xmodal_handle,  # C2 #19: the TAUGHT bimodal object recognised this tick
+            # T080 (C5 row temporal_binding, CHARGED 2026-09-16): the fraction of the last 200 awake
+            # ticks with ONE reported object for that tick's two latents; the licensed and refused
+            # sentences ride in brain_telemetry.PROVENANCE beside it, and on this daemon's
+            # independent streams it reads the null's rate (the pin measured the aligned one)
+            "crossmodal_bound_rate": (
+                round(sum(self._xmodal_bound_hist) / len(self._xmodal_bound_hist), 4)
+                if self._xmodal_bound_hist
+                else None
+            ),
             "crossmodal_objects": len(
                 self._xmodal_known
             ),  # C2 #19: bimodal objects the binder has learned
