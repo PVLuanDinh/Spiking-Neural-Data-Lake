@@ -428,3 +428,58 @@ def test_the_live_false_belief_list_reaches_state_with_both_c5_sentences_beside_
     assert live == ["user", "user->brain"], live
     assert all(isinstance(x, str) for x in live)
     assert live != reading and len(live) != reading
+
+
+# ---- 2.10 (d)'s OPENING, closed: `tests/test_task_film.py` pins the FiLM wire's declared anatomy
+# against the live shape and against the committed manifest, and this wire -- declared in the same
+# arc, under the same FR-034 -- had no twin. These two are that twin for `belief_out`.
+
+
+def test_declared_anatomy_matches_the_live_shape():
+    """The declared OUT port must state the anatomy the faculty actually emits.
+
+    `task_set.film_out` DERIVES its width from `len(ACTIONS)` because the panel measured a literal
+    form staying green while a grown action vocabulary left the tracked anatomy describing a wire
+    the brain no longer carried. `belief_out`'s width is a LITERAL 2 by design (2.1 / 2.10 (d)(2)):
+    the payload is a PAIR OF COUNTS, not a per-item vector, and it cannot grow with any vocabulary.
+    So the live quantity this test holds the declaration against is not a vocabulary length but the
+    ARITY OF THE PAYLOAD the faculty emits -- `t082_false_beliefs`'s (first, nested) pair, which is
+    what the brain's fold sums and what the charge A/B replays."""
+    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+
+    m = WiringManifest()
+    recursive_tom.declare_ports(m)
+    port = m.ports[("recursive_tom", "belief_out")]
+    assert port.shape == (2,) and port.kind == "OUT" and port.dtype == "f4"
+    assert port.unit == "count" and port.encoding == "VEC_DENSE"
+    assert port.delivery_policy == ("graded", "divergence")
+    assert recursive_tom.BELIEF_EDGE == ("recursive_tom", "belief_out", "brain", "social_risk_in")
+    # ...and the live faculty emits exactly that width, on a tracker carrying a real false belief:
+    # a witnessed event puts both agents on the world, then an unwitnessed one moves the world with
+    # the user absent, so the user's own belief and the user's nested model of the brain go stale.
+    t = RecursiveToM(n_agents=3, seed=0)
+    recursive_tom.t082_feed(t, {"user", "brain"}, "basket")
+    assert recursive_tom.t082_false_beliefs(t) == ([], [])
+    recursive_tom.t082_feed(t, {"brain"}, "box")
+    first, nested = recursive_tom.t082_false_beliefs(t)
+    payload = [len(first), len(nested)]
+    assert len(payload) == port.shape[0], (payload, port.shape)
+    assert (first, nested) == (["user"], ["user->brain"]), (first, nested)
+    assert payload == [1, 1], payload
+
+
+def test_committed_manifest_carries_the_belief_wire():
+    """The TRACKED artifact must hold the declared edge (regenerated in the same commit), and the
+    consumer's subscription must state the same anatomy as the producer's payload -- a wire whose
+    two ends disagreed would typecheck at neither end."""
+    from snn_data_lake.substrate.manifest_gate import rebuild_from_registrants
+
+    m = rebuild_from_registrants()
+    assert ("recursive_tom", "belief_out") in m.ports
+    assert ("brain", "social_risk_in") in m.ports
+    assert ["recursive_tom", "belief_out", "brain", "social_risk_in"] in [list(e) for e in m.edges]
+    prod = m.ports[("recursive_tom", "belief_out")]
+    cons = m.ports[("brain", "social_risk_in")]
+    assert prod.shape == cons.shape and prod.dtype == cons.dtype and prod.unit == cons.unit
+    assert prod.encoding == cons.encoding
+    assert cons.kind == "IN" and cons.join_policy == "sum"
