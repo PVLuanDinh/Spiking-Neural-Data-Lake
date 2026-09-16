@@ -322,3 +322,184 @@ read (one seed carries no t); (g0) and (c2) are printed as seed 0's.
 
 **(j) CLOCK.** The executor's report carries no wall-clock stamps; the commit stamps are the times (`git log
 --format=%ci`). Nothing above 2.10 was edited.
+
+## 3. Results (written 2026-09-16 after the campaign and the surfaces; nothing above this line was edited after 2.10)
+
+### 3.0 The apparatus, measured before the campaign (2.9 step 5, the dry run; 2.10)
+
+The executor's dry run on seed 0 at the campaign width (head `b7c1a5c`, `scratchpad/t081/dry_run_builder.json`, 55.1
+ms/tick) and the orchestrator's re-run (head `d5e7e6e`, 08:12:12-08:13:25 local, `dry_run.json` + `dry_run_orch.txt`,
+65.5 ms/tick under the daemon's load) agree on every non-timing field (2.10 (i)): 294 rows from 294 awake ticks, 20
+distinct contents, 37 changes, availability 1.0000, mean pools 9.52, mean `top_margin` 0.0217, mismatches 0/294, both
+lesions applicable 294/294, the ladder 0 / 0 / 0 / 1.0000 named and 0 / 0 / 0 / 0 scrambled, flip dose 1.0, 12
+scrambled re-draws changing 0 of 294 on every draw. The P6 ceilings were measured BEFORE the build through the gate's
+own overlay and raised as an admission (`65fa7d3`, 2.10 (a)). The section-1 probes (`scratchpad/t081/probe_report.py`,
+`probe_copy.py`) were the design's and were NOT re-run at record time -- the panel's honesty lens is asked to. CLOCK:
+every time in this section is a commit stamp (`git log --format=%ci`) or a printed clock (`date` in the launcher and
+the waiter); no stamp was typed ahead (obs #2190).
+
+### 3.1 The build, red-first, and the commits
+
+Pre-registration `f64b41b` (this file 1-2.9 + C-R10). An Opus executor built 2.9 steps 2-5 (brief
+`scratchpad/t081/builder_brief.md`): skeleton `6ae9aab`; R1-R6 committed RED `ea36a86` (six AssertionErrors on
+constructed inputs, none a collection error); green with the six mutations reddening in the test and in
+`t081_reds()` `b7c1a5c`; recorder, dry run, campaign flag and pin writer `d5e7e6e`. The census script read every gate
+rc 0 after commit 2 and one red -- `p6_gate --assert` -- after commits 4 and 5, disposed by the orchestrator as the
+admission `65fa7d3` (2.10 (a)); 2.10 `f5cf8b8` (dated BEFORE the campaign, 08:16:31). The orchestrator re-ran the
+tests (6 passed), the module self-check (6/6 rc 0) and the dry run before the campaign.
+
+### 3.2 The campaign (`tools/t081_report_order.json`)
+
+Launched DETACHED on `f5cf8b8` at 08:16:35 local (`scratchpad/t081/launch_campaign.ps1`; log `campaign.log`, empty
+`campaign.err`); the pin written in 350 s (the log's own line; the pin's `elapsed_s` 349.8; the waiter read it at
+08:22:47, polling every 30 s); committed ONCE as `c1502b5` (08:23:05). Per seed 292-299 awake ticks of 600 with ten
+workspace steps per awake tick (the real step + nine clones), 57.4-75.8 ms per brain-tick, 35-45 s per seed. THE PIN
+CARRIES PER-SEED SUMMARIES AND NO PER-TICK ROWS (unlike T080's): every barred number re-derives from the per-seed
+fields, and the campaign is deterministic -- `--t081-dry-run` reproduces seed 0's row field by field (3.0) -- but a
+tick-level re-read of the other seven seeds needs a re-run of the recorder, not the pin (opening 5). The
+orchestrator re-derived every barred number from the pin with no brain (`scratchpad/t081/verify_t081_pin.py`,
+`verify_out.txt`): (g0), (c2) and the flip dose per seed, (c1) through `paired_contrast.contrast` (diffs, t,
+degenerate, met identical to the pin), the 2.6 reading, and the verdict through the module's own `t081_verdict`
+(PASS); seed 0 equals the dry run on n, contents, changes, f_named, f_scr, scr_changed_1, flip_dose and mismatch,
+margin 0.021722 both.
+
+### 3.3 The readings, conjunct by conjunct (every number from the pin; the bar 1.895 over 8 seeds; FPR = the sign-flip rate)
+
+(p)  DETERMINISM: two recordings of seed 0 at 100 ticks identical on every field (49 awake rows each, first_diff
+     None): MET.
+(r)  READABLE: the clone's report equals the real report on EVERY awake tick of every seed (twin mismatches 0 x 8);
+     the named lesion applicable on 292-299 of 292-299 awake ticks and the scrambled on the same (both at 1.0 against
+     the 0.5 floor); `pre_intact` = n on every seed: MET.
+(g0) THE REPORT VARIES: 17-24 distinct contents (floor 2) and 26-73 tick-to-tick changes (floor 1) on every seed: MET.
+(c1) NAMED > SCRAMBLED AT THE LESION: f_named(1.0) - f_scr(1.0) = +1.0000 on every seed (294/294 ... 299/299 named,
+     0 scrambled); the sample has ZERO VARIANCE, so the t is 0.0000 and the FPR 0.0 and NEITHER DECIDES ANYTHING --
+     2.3's zero-variance clause decides: "MET iff its common value is > 0, recorded as degenerate" -> **MET
+     (degenerate)**.
+(c2) THE SCRAMBLED INTERMEDIATE LEAVES THE REPORT UNCHANGED: 0 applicable scrambled ticks with a changed content on
+     every seed (0 x 8 of 292-299): MET.
+VERDICT: **PASS**.
+
+pin head `f5cf8b8`; seeds [0, 1, 2, 3, 4, 5, 6, 7]; elapsed 349.8 s; verdict **PASS**; refusals none
+(p) determinism: identical=True on 49 awake rows of 100 ticks (awake [49, 49], first_diff None)
+
+| seed | awake / rows | offset | contents | changes | availability | mean pools | mean top_margin | twin mismatch | applicable named / scr | pre_intact | g_intact | flip dose | (c2) scr changed at 1.0 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 294 / 294 | 0 | 20 | 37 | 1.0000 | 9.52 | 0.0217 | 0 | 294 / 294 | 294 | 294 | 1.0 | 0 |
+| 1 | 299 / 299 | 150 | 20 | 55 | 1.0000 | 10.43 | 0.0334 | 0 | 299 / 299 | 299 | 299 | 1.0 | 0 |
+| 2 | 299 / 299 | 44 | 21 | 73 | 1.0000 | 11.10 | 0.0563 | 0 | 299 / 299 | 299 | 299 | 1.0 | 0 |
+| 3 | 298 / 298 | 194 | 24 | 36 | 1.0000 | 11.05 | 0.0255 | 0 | 298 / 298 | 298 | 298 | 1.0 | 0 |
+| 4 | 298 / 298 | 88 | 22 | 65 | 1.0000 | 11.77 | 0.0234 | 0 | 298 / 298 | 298 | 298 | 1.0 | 0 |
+| 5 | 292 / 292 | 238 | 17 | 26 | 1.0000 | 11.06 | 0.0134 | 0 | 292 / 292 | 292 | 292 | 1.0 | 0 |
+| 6 | 293 / 293 | 132 | 24 | 47 | 1.0000 | 11.31 | 0.0152 | 0 | 293 / 293 | 293 | 293 | 1.0 | 0 |
+| 7 | 296 / 296 | 26 | 21 | 39 | 1.0000 | 10.34 | 0.0202 | 0 | 296 / 296 | 296 | 296 | 1.0 | 0 |
+
+| seed | NAMED content change 0.25 / 0.5 / 0.75 / 1.0 | SCRAMBLED content change | NAMED strength change | SCRAMBLED strength change |
+|---|---|---|---|---|
+| 0 | 0.0000 / 0.0000 / 0.0000 / 1.0000 | 0.0000 / 0.0000 / 0.0000 / 0.0000 | 0.0000 / 0.0000 / 0.0000 / 1.0000 | 0.0000 / 0.0000 / 0.0000 / 0.0000 |
+| 1 | 0.0000 / 0.0000 / 0.0000 / 1.0000 | 0.0000 / 0.0000 / 0.0000 / 0.0000 | 0.0000 / 0.0000 / 0.0000 / 1.0000 | 0.0000 / 0.0000 / 0.0000 / 0.0000 |
+| 2 | 0.0000 / 0.0000 / 0.0000 / 1.0000 | 0.0000 / 0.0000 / 0.0000 / 0.0000 | 0.0000 / 0.0000 / 0.0000 / 1.0000 | 0.0000 / 0.0000 / 0.0000 / 0.0000 |
+| 3 | 0.0000 / 0.0000 / 0.0000 / 1.0000 | 0.0000 / 0.0000 / 0.0000 / 0.0000 | 0.0000 / 0.0000 / 0.0000 / 1.0000 | 0.0000 / 0.0000 / 0.0000 / 0.0000 |
+| 4 | 0.0000 / 0.0000 / 0.0000 / 1.0000 | 0.0000 / 0.0000 / 0.0000 / 0.0000 | 0.0000 / 0.0000 / 0.0000 / 1.0000 | 0.0000 / 0.0000 / 0.0000 / 0.0000 |
+| 5 | 0.0000 / 0.0000 / 0.0000 / 1.0000 | 0.0000 / 0.0000 / 0.0000 / 0.0000 | 0.0000 / 0.0000 / 0.0000 / 1.0000 | 0.0000 / 0.0000 / 0.0000 / 0.0000 |
+| 6 | 0.0000 / 0.0000 / 0.0000 / 1.0000 | 0.0000 / 0.0000 / 0.0000 / 0.0000 | 0.0000 / 0.0000 / 0.0000 / 1.0000 | 0.0000 / 0.0000 / 0.0000 / 0.0000 |
+| 7 | 0.0000 / 0.0000 / 0.0000 / 1.0000 | 0.0000 / 0.0000 / 0.0000 / 0.0000 | 0.0000 / 0.0000 / 0.0000 / 1.0000 | 0.0000 / 0.0000 / 0.0000 / 0.0000 |
+
+- **(g0) the report varies**: {'failures': [], 'met': True, 'n_seeds': 8}
+- **(c1) (c1) the named lesion's report-change fraction - the scrambled lesion's**: diffs [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]; t +0.0000; FPR 0.0; degenerate True; **MET** (2.3's zero-variance clause: the common value +1.0 > 0)
+- **(c2) the scrambled lesion leaves the report unchanged**: {'failures': [], 'changed': [0, 0, 0, 0, 0, 0, 0, 0], 'met': True, 'n_seeds': 8}
+- flip dose per seed: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]; mean top_margin per seed: [0.0217, 0.0334, 0.0563, 0.0255, 0.0234, 0.0134, 0.0152, 0.0202]
+- timings per seed (s): [{'build_s': 0.848, 'record_s': 36.494, 'total_s': 37.342, 'ms_per_tick': 60.82333333333333}, {'build_s': 0.93, 'record_s': 34.456, 'total_s': 35.387, 'ms_per_tick': 57.42666666666667}, {'build_s': 1.05, 'record_s': 36.063, 'total_s': 37.113, 'ms_per_tick': 60.105}, {'build_s': 1.035, 'record_s': 42.617, 'total_s': 43.652, 'ms_per_tick': 71.02833333333334}, {'build_s': 1.075, 'record_s': 39.961, 'total_s': 41.037, 'ms_per_tick': 66.60166666666667}, {'build_s': 1.079, 'record_s': 45.464, 'total_s': 46.544, 'ms_per_tick': 75.77333333333333}, {'build_s': 0.958, 'record_s': 34.968, 'total_s': 35.926, 'ms_per_tick': 58.28}, {'build_s': 0.948, 'record_s': 37.261, 'total_s': 38.21, 'ms_per_tick': 62.10166666666667}]
+- ms per brain-tick per seed: [60.8, 57.4, 60.1, 71.0, 66.6, 75.8, 58.3, 62.1]
+- reds at campaign time: {'R1': True, 'R2': True, 'R3': True, 'R4': True, 'R5': True, 'R6': True}
+- constants: {'n_ticks': 600, 'doses': [0.25, 0.5, 0.75, 1.0], 'lesion_dose': 1.0, 'stream_offset': 150, 'stream_positions': 256, 'seeds': [0, 1, 2, 3, 4, 5, 6, 7], 'applicable_floor': 0.5, 'min_contents': 2, 'min_changes': 1, 'flip_floor': 0.5, 'scr_redraws': 12, 'scr_rng_base': 7000, 'scr_redraw_base': 900000, 'determinism_ticks': 100, 'offset_labels': 50, 'bar': 1.895, 'clone_fields': ['_buffer', '_g', '_jit', '_last_focus', '_last_late', '_last_total', '_last_v', '_rng', '_settled', '_slot_buf', '_slots']}
+- 2.6 reading: mean over seeds of (f_named(1.0) - f_scr(1.0)) = 1.0
+
+REPORTED: the dose ladder is a STEP on every seed (0 / 0 / 0 / 1.0 named, 0 / 0 / 0 / 0 scrambled, content and
+strength alike), the flip dose 1.0 x 8 (floor 0.5), so the pre-registered pairing "does the live charge margin
+predict the flip dose?" cannot be read -- the margin varies 0.0134-0.0563 across seeds against a constant (2.10
+(b); 3.5 item 1 gives the mechanism); the strength-change fraction equals the content-change fraction on every arm
+(a changed winner is a changed hold); the 12 scrambled re-draws on the dry-run recording changed 0 of 294 on every
+draw; availability 1.0000 on every seed (the bus was never dark on an awake tick); the clone cost is nine extra
+steps per awake tick (57-76 ms per brain-tick against the dry run's 55-66).
+
+### 3.4 The disposition applied (2.6, the PASS branch) and the retirement
+
+On this composite the report channel's record is a function of the workspace's competition state that changes when
+the reported content's pool is lesioned and not when an unreported pool is, at the bar over 8 seeds -- read under
+the zero-variance clause. CHARGED (`f67328d`): `CONCLUSION["report_order"].reading` = **1.0** (the mean over seeds
+of f_named(1.0) - f_scr(1.0), each +1.0), `surface_symbols` = ("report_order_margin",); `Brain.state()
+["report_order_margin"]` = `_t081_top_margin` of the arm's bus this tick (`614a73e`; None with no workspace);
+`brain_telemetry.PROVENANCE["report_order_margin"]` names the pin, the lesion apparatus, f_named / f_scr and the
+flip-dose-by-construction finding with both C5 sentences; the cockpit row `report-order margin` is appended after
+the cross-modal row with both sentences in its title and JS comment -- and, like T080's row (T080 record 3.5 item
+11), it is CLIPPED out of the ACCESS plate's 110 px box as rendered, so 2.6's "in the same view" conjunct is NOT MET
+AS RENDERED, disclosed here and on tasks.md / spec.md / PLAN-FINAL / WholeBrain (`be493fe`); the arming fixtures
+move to `social_cognition`; `conclusion_protocol --assert` rc 0; tasks.md T081 -> [X] PASS. THE RETIREMENT (P2,
+T034's clause; the condition -- both halves exist as instruments -- held before the campaign): the 20-seed PCI sweep
+PORTED first into `cortex/integration_measure` with the probe's two-sided assert (`272c4e1`; the probe's own run
+took 2.82 s and 2.86 s on a calm host (a first reading of 9.79 s was taken under host load); the sweep line now reads "20-seed PCI marker (ported from consciousness_probe, T081): PCI marker PRESENT on 10 of 20 seeds (50%); ABSENT on seeds [1, 2, 3, 4, 5, 7, 9, 14]... -- the marker sweep cost 1.2-1.6 s of this self-check (the executor's three runs and the orchestrator's; the detail line byte-identical to the incumbent's)"); `reasoning/consciousness_probe.py` DELETED
+and its consumers re-pointed (`45a5fa4`): `spike_chat_lake._consciousness()` answers "are you conscious" from
+the report channel's live record (content / availability / strength), the conclusion protocol's rows that carry a
+reading (their licensed AND refused sentences: `temporal_binding` 0.2309 and now `report_order` 1.0), this row's
+pinned verdict as PROVENANCE, and the contamination clause unchanged; `measured_about_me` = a brain is attached and
+its report was read; `tests/test_red_reachability.py`'s probe test re-pointed to the `report_order_probe.` criteria
+(`report_order_probe.t081_verdict`, reads_system True -- the one criterion the scanner discovers in the module; 18 criteria tree-wide once the two `consciousness_probe.` ones left with the file, 0 tautologies; the orchestrator re-ran `red_reachability.scan()` and read the same); the comment-only sites and the docs of fact 5 annotated RETIRED, never rewritten, and the
+`episode_driver` exemption's dated current reading (2.0) landed (`f030b4b`). `tests/test_ratified_row_gates.py`'s
+arming fixture moves to `social_cognition`.
+
+### 3.5 Deviations from 2.1-2.10, each with its number (dated 2026-09-16)
+
+1. THE DOSE LADDER IS A STEP, AND WHY (2.10 (b) reported it; the mechanism is measured here). `t081_lesion` scales
+   the pre-step clone's `_g` by (1 - dose); `GlobalWorkspace.step()` then sets, for every key submitted THIS tick,
+   `_g[key] = min(1, max(_g[key] * decay, submitted_salience))` -- so the scaled charge of a content that is
+   re-submitted in the same tick is overwritten by its submission before the ranking reads it. Measured on the
+   module's constructed subject (`scratchpad/t081/probe_runnerup.py`, seed 0, 20 ticks; decay 0.85): a 0.75 lesion
+   takes the winner's `_g` 0.72 -> 0.18 on the clone and `step()` restores it to 0.90 (the submitted salience) on
+   every tick; the 0.75 arm changes neither content nor strength on 20/20 ticks; only dose 1.0, which also drops
+   the content's `Coalition` records from the buffer, removes it from the competition. On the live bus every
+   percept is re-submitted every awake tick, so no sub-full dose can lesion the reported content at all. A
+   re-registered ladder scales the SUBMITTED salience (the buffer records) and `_g` together (opening 2).
+2. (c1) READS UNDER THE ZERO-VARIANCE CLAUSE, NOT THE t. Every seed's difference is exactly +1.0, so the paired t is
+   0.0 and the sign-flip FPR 0.0; 2.3's clause ("MET iff its common value is > 0") was written before any number and
+   is applied verbatim; the record says plainly that no t decided this conjunct.
+3. THE PIN CARRIES NO PER-TICK ROWS (2.2 listed the recorded fields per tick; the pin writer summarised them per
+   seed). Every barred number re-derives from the summaries and seed 0 reproduces the dry run; a tick-level re-read
+   of seeds 1-7 needs the recorder (opening 5). The pin is not rewritten.
+4. The P6 ceilings raised 6 -> 7 as an ADMISSION (2.10 (a), `65fa7d3`), the T033 shape; both ceilings sit on the
+   measurement and the self-check's regression still crosses.
+5. The campaign's cost 57-76 ms per brain-tick against 2.8's ~65 (the five-clone probe) and the dry run's 55-66;
+   350 s for 8 seeds against the dry run's 4.4-5.2 min estimate.
+6. The section-1 probes were not re-run at record time (3.0).
+7. The executor's step-7 deviations, verbatim: (a) THE MARGIN IS NOT BOUNDED IN [0, 1] -- the brief's test range was wrong and the executor measured instead of clamping: `_slot()` returns the ADMISSION rank (P6's `-_last_v` repair), not the charge order, so the top slot is not always the top charge and (g_top - g_second) / g_top goes NEGATIVE; on a scratch brain (seed 0, 120 ticks; `scratchpad/t081/margin_range.py`, re-run by the orchestrator with the same numbers) the slot order is not charge-descending on 32 of 100 readings, the margin is negative on 24 of 100, range [-0.0664, 0.2083], mean 0.0541; the pin's per-seed MEANS (0.0134-0.0563) hid every per-tick negative. Nothing is clamped (the printed number is the scored number); the test asserts margin <= 1.0; the PROVENANCE, the cockpit comment, brain.py, tasks.md and the three dated notes say so. 2.1's `top_margin` was defined over the SLOTS' charges and is read as defined; a re-registered margin over the CHARGE order is opening 4. (b) The arming fixture keeps the stand-in id "T034" (T082 is [ ], so `_task_done("T082")` is False and pointing the arm at it would fire nothing); the ROW moves to `social_cognition`, as `49288cd` did; the tests pin `_task_done("T081") is True` and `_task_done("T082") is False`. (c) TWO `dormancy_gate.EXEMPT` rows RETIRED, each a registration red this work caused and each fixed in the registration: `conclusion_protocol` (its own row pre-registered this: "RETIRES when C4's instruments import it to gate their own reporting" -- `spike_chat_lake` now imports it) and `report_order_probe` (reachable once `Brain.state()` imports `_t081_top_margin`); the reasons kept verbatim in the replacing comments. The P6 admission's comment (`65fa7d3`) still calls the module "dormancy_gate EXEMPT as such" -- stale by one commit; the admission's ground (a measurement instrument's throwaway subject) is unchanged; corrected at the fold if the panel asks. (d) The cockpit comment was reordered after `conclusion_protocol --assert` read surface debt 2 against the baseline 1: `surface_findings` reads a 7-line window and the first draft put the licensed sentence 5 lines above the `+row(...)` line; the two sentences now sit immediately above the row; the layout is untouched. (e) The port's test went into the existing `tests/test_integration_measure_lz.py` (a 3-seed determinism subset so the suite pays for one full sweep). (f) `docs/SYNTHESIS.md` does not exist; fact 5's "SYNTHESIS", "research", "tasks" and "PLAN-FINAL" resolved to the specs/022 files; `specs/BACKLOG_RANKED.md:77` and `specs/019-consolidated-open-work/tasks.md:1059` mention the probe and were left alone; specs/010's records untouched. (g) The graphify duplicate-capability guard fired twice (`pci_marker_sweep`; the `_StubBrain` docstring) and was answered with `# distinct-from:` markers after every listed site was read -- the one true second mechanism for the stub-brain job, `consciousness_probe._MinimalBrain`, is deleted in that same commit. (h) Fact 5's `brain.py:3399` had rotted to `:3423`; annotated at the current line. (i) `red_reachability.scan()` discovers ONE criterion in the probe (`t081_verdict`); the six reds are tests, not scanner-visible criteria -- the same shape as the sibling instruments.
+8. The record's tables are generated from the pin (`scratchpad/t081/record_gen.py` -> `record_tables.md`), never
+   typed.
+
+### 3.6 What this row does NOT claim, and the openings it leaves
+
+Nothing about a first-person account, an author, a self, or an experience (the refused sentence, printed beside
+the symbol on every surface that prints it and in the chat reply). THE STRUCTURAL ENTAILMENT, stated so the panel
+can weigh it: on this bus a FULL lesion of the winner -- its submissions dropped and its charge zeroed -- entails a
+different report, and a full lesion of any non-winner leaves the winner in place (the runner-up and the third slot
+lesioned at 1.0 change the report on 0 of 20 constructed ticks each, `probe_runnerup.py`; the scrambled pool on 0 of
+2,369 live ticks and 0 of 12 re-draws). (c1) and (c2) therefore read what a winner-take-all bus whose report IS its
+top slot entails once the report channel reads that bus; the row's discriminating power lives in R3 and R4 (a
+canned reporter and a hallucinating reporter read NOT MET) and in (r) (a clone that is not the workspace refuses).
+What PASS licenses is exactly the licensed sentence and no more: the report channel's record is generated from the
+workspace's competition state -- it is not a canned string, a hallucination, or a read of something other than the
+bus. It does not license that the report is ABOUT anything, that the bus's content is a thought, or that the flip
+dose is a threshold of anything (it is 1.0 by construction). Openings: (1) the graded ladder is unmeasured (3.5
+item 1); (2) a re-registered lesion scales the submitted salience and `_g` together, and pre-registers the pairing
+against `top_margin` only after a one-seed probe shows the flip dose varies (obs #2196); (3) the cockpit row is
+clipped as rendered (3.4) -- the ACCESS plate's layout is owed its own row, shared with T070 / T077 / T080; (4)
+`Brain.state()["report_order_margin"]` is the charge margin between the top slot and the runner-up on the live bus,
+a quantity this campaign never read against anything (the pairing was unreadable) -- it is published as 2.6
+prescribed and its provenance says what it is; (5) the pin without rows (3.5 item 3); (6) THE RETIREMENT's
+non-unique losses, for the panel's P2 lens: `consciousness_probe.py` also carried `probe_access` (a reading of
+`_access_ema` that returned no verdict since F11), `_MinimalBrain`, and `deleted_access_marker_arithmetic` (a LIVE
+re-derivation of the F11 deletion's arithmetic, coherent / scrambled salience against rheobase and `_JITTER`, with
+its positive-control numbers) -- 2.6 named the PCI sweep as the one unique capability and the arithmetic's
+re-derivation is now off the tree (its record stands in docs/POLICIES_EVIDENCE.md's F11 row and in the deleted
+file's git history); whether that is a P2 loss or a retired marker's epitaph is the panel's call; (7) the EpisodeDriver
+is not routed to this report (2.0, fact 6) and the exemption row now says so; (8) the chat reply prints the C5 rows
+with a reading -- two today -- and grows with each charged row; its contamination clause is unchanged and still
+covers the framing.
