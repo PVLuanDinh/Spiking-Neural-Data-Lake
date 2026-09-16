@@ -9,10 +9,22 @@ asserted that, and P7 abolished the rule it named -- so the docstring was advert
 does not exist, for a property the project no longer holds. Both halves are wrong independently,
 which is why it goes rather than gets a purity test written for it.)
 
+Since 2026-09-16 it also carries T082's six reds (specs/022-unified-brain-arc/evidence/
+t082-social-cognition.md 2.4), one per `test_r*`. They are committed RUNNING RED against 2.9
+step 2's stubs and go green at step 4, where each one's MUTATED scorer is applied here and in
+`recursive_tom.t082_reds()` -- the same constructed input in both, so a gate run that never
+executes pytest still runs every red.
+
 Run: pytest tests/test_recursive_tom.py
 """
 
+import random
+
+import pytest
+
+from snn_data_lake.cortex import recursive_tom
 from snn_data_lake.cortex.recursive_tom import RecursiveToM
+from snn_data_lake.cortex.theory_of_mind import TheoryOfMind
 
 
 def test_false_belief_transfer_and_world_divergence():
@@ -85,3 +97,270 @@ def test_determinism_and_noise_robustness():
     assert a.predict_first_order("A") == b.predict_first_order("A")
     assert a.predict_nested("B", "A") == b.predict_nested("B", "A")
     assert a.predict_first_order("A", jitter=2) == "X"  # population readout survives jitter
+
+
+# =============================================================================
+# T082 -- the six reds of 2.4. Each runs on its CONSTRUCTED input and, at 2.9 step 4, is
+# reddened IN FACT by its own mutated scorer. Committed RED at step 3: `_need` names the
+# instrument the step-4 commit lands, so every red fails on an ASSERTION rather than on an
+# import error, which is what 2.4's "runs on its constructed input and FAILS its assertion"
+# requires of the skeleton.
+# =============================================================================
+#: R1's three surface forms: the two the grammar accepts (2.1's script) and one it must refuse.
+T082_OFF_GRAMMAR = "the weather is nice today."
+T082_WITNESSED_FORM = "i put the marble in the basket."
+T082_UNWITNESSED_FORM = "someone moved the marble to the box while i was away."
+
+
+def _need(name):
+    """The instrument `name`, or an ASSERTION naming the step that lands it. 2.9 step 2's
+    skeleton carries stubs for what it can; the helpers below arrive at step 4, and a red that
+    died on an AttributeError would not be a red that RAN."""
+    fn = getattr(recursive_tom, name, None)
+    assert fn is not None, (
+        f"cortex.recursive_tom.{name} does not exist yet -- 2.9 step 2 landed the stubs and "
+        f"step 4 lands the instrument. This red is RUNNING red, exactly as 2.4 requires."
+    )
+    return fn
+
+
+def _as_int(label):
+    """The recursive tracker's content is a LABEL; `TheoryOfMind` and the retired second-order
+    semantics key on an integer location. R5 compares the same quantity across both."""
+    return None if label is None else int(label)
+
+
+@pytest.fixture(scope="module")
+def scratch_brain():
+    """THE ONE brain this module builds (2.9 step 3's cap): a scratch `make_brain(seed=0,
+    persist=False)` under `throwaway_home()`, so the daemon's brain and the durable lake are
+    unreachable from here. Module-scoped -- R1 is the only red that needs a live parse."""
+    from snn_data_lake.substrate.home import throwaway_home
+
+    with throwaway_home():
+        from snn_data_lake.cortex.brain import make_brain
+
+        yield make_brain(seed=0, persist=False)
+
+
+def test_r1_the_parse_refuses_outside_the_grammar(scratch_brain):
+    """R1 -- THE PARSE REFUSES OUTSIDE THE GRAMMAR. A statement the hand-specified surface parse
+    does not match returns None from the LIVE `Brain._tom_update`, and (r) reads REFUSED on a
+    constructed stream containing it; both script forms parse. The `parse_anything` mutation
+    (a non-match returns an event) removes the refusal."""
+    b = scratch_brain
+    assert b._tom_update(T082_OFF_GRAMMAR) is None, (
+        "a statement outside the grammar must be REFUSED, never guessed"
+    )
+    assert b._tom_update(T082_WITNESSED_FORM) is not None, "the witnessed script form must parse"
+    assert b._tom_update(T082_UNWITNESSED_FORM) is not None, (
+        "the unwitnessed script form must parse"
+    )
+
+    rows_fn = _need("t082_constructed_rows")
+    mutated = _need("_t082_mutated_scorer")
+    rec = rows_fn(seed=0, off_grammar_at=3)
+    rows = rec["rows"]
+    read = recursive_tom.t082_read(rows)
+    assert read.get("n") == len(rows)
+    assert read.get("parsed") == len(rows) - 1, (
+        "exactly the off-grammar statement must fail to parse"
+    )
+    assert any("parse" in str(w) for w in read.get("refusals", [])), (
+        "(r) must REFUSE a stream carrying a statement the grammar does not accept"
+    )
+    mut_rows = rows_fn(seed=0, off_grammar_at=3, parse=mutated("parse_anything"))["rows"]
+    mut_read = recursive_tom.t082_read(mut_rows)
+    assert mut_read.get("parsed") == len(mut_rows), "the mutation must parse everything"
+    assert not mut_read.get("refusals"), (
+        "the parse_anything mutation must REMOVE (r)'s refusal -- that is R1's red"
+    )
+
+
+def test_r2_the_control_is_a_world_model():
+    """R2 -- THE CONTROL IS A WORLD MODEL. On a constructed 40-event witness script at 50 %
+    absences the equal-capacity control's first-order prediction equals the world on 40/40 (it
+    is the same class with the absence gating removed -- the C5 row's own dissociation input).
+    The `control_keeps_witnesses` mutation (the control HONOURS absence) differs on the absent
+    events."""
+    feed = _need("t082_feed")
+    mutated = _need("_t082_mutated_scorer")
+    steps = recursive_tom.t082_script(0, recursive_tom.T082_R2_EVENTS)
+    assert len(steps) == recursive_tom.T082_R2_EVENTS
+    absent = [s for s in steps if s["unwitnessed"]]
+    assert absent, "the script must carry absences for this red to be reachable"
+
+    ctrl = RecursiveToM(n_agents=3, seed=0)
+    hits = 0
+    for st in steps:
+        feed(ctrl, set(recursive_tom.T082_AGENTS), st["loc"])  # the control: everyone witnesses
+        hits += ctrl.predict_first_order("user") == st["world"]
+    assert hits == len(steps), (
+        f"the equal-capacity control must read the WORLD on every episode, got {hits}/{len(steps)}"
+    )
+
+    keeps = mutated("control_keeps_witnesses")
+    ctrl2 = RecursiveToM(n_agents=3, seed=0)
+    mhits = 0
+    for st in steps:
+        keeps(ctrl2, st)
+        mhits += ctrl2.predict_first_order("user") == st["world"]
+    assert mhits < len(steps), (
+        "a control that honours absence must DIFFER from the world on the absent events -- "
+        "that is R2's red"
+    )
+
+
+def test_r3_the_dissociation_on_a_constructed_script():
+    """R3 -- THE DISSOCIATION ON A CONSTRUCTED SCRIPT. Eight constructed MIXED scripts read (s1)
+    MET and (s2) MET; eight ALL-WITNESSED scripts read (s1) NOT MET as a degenerate zero
+    (acc_belief == acc_ctrl -- with nothing unwitnessed there is no belief to beat the world
+    with). The `blind_scorer` mutation (the two sides swapped) reddens (s1) on the mixed set."""
+    read_fn = _need("t082_constructed_read")
+    mutated = _need("_t082_mutated_scorer")
+    seeds = recursive_tom.T082_R_SEEDS
+
+    mixed = [read_fn(seed=s) for s in seeds]
+    got = recursive_tom.t082_contrasts(mixed)
+    assert got.get("n_seeds") == len(seeds)
+    assert got["s1"].met, f"(s1) must be MET on the mixed scripts: {got['s1']}"
+    assert got["s2"]["met"], f"(s2) must be MET on the mixed scripts: {got['s2']}"
+
+    allw = [read_fn(seed=s, all_witnessed=True) for s in seeds]
+    got2 = recursive_tom.t082_contrasts(allw)
+    assert all(d == 0.0 for d in got2["s1"].diffs), (
+        f"an all-witnessed script leaves the belief model nothing to gain: {got2['s1'].diffs}"
+    )
+    assert not got2["s1"].met, "(s1) must read NOT MET on an all-witnessed script"
+
+    blind = recursive_tom.t082_contrasts(mixed, score=mutated("blind_scorer"))
+    assert not blind["s1"].met, (
+        "swapping the belief and control arms must redden (s1) -- that is R3's red"
+    )
+
+
+def test_r4_the_charge_ab():
+    """R4 -- THE CHARGE A/B. Recorded belief frames carrying false beliefs drive the brain's own
+    `_tom_protect` fold to a caution trajectory that DIVERGES from the pinned-[0, 0] one, and the
+    constant consumer (specificity) does not flip. The `consumer_ignores_payload` mutation (the
+    fold reads 0 in place of the payload) removes the divergence, which is exactly the condition
+    `record_charge` REFUSES on."""
+    live, pinned_out, reads, spec = recursive_tom._measure_belief_charge()
+    assert live is not None and pinned_out is not None, (
+        "the charge instrument is still 2.9 step 2's stub (it returns a null reading)"
+    )
+    assert reads == recursive_tom.T082_R4_FRAMES, (
+        f"the neuter must be READ on every recorded frame, got {reads}"
+    )
+    assert live != pinned_out, "the belief payload must move the caution trajectory"
+    assert spec, "the constant consumer must NOT flip (specificity)"
+
+    mutated = _need("_t082_mutated_scorer")
+    m_live, m_pinned, m_reads, _ = recursive_tom._measure_belief_charge(
+        consume=mutated("consumer_ignores_payload")
+    )
+    assert m_reads == recursive_tom.T082_R4_FRAMES, "the mutated consumer must still be read"
+    assert m_live == m_pinned, (
+        "a fold that ignores the payload must NOT diverge, so record_charge refuses -- "
+        "that is R4's red"
+    )
+
+
+def test_r5_the_merge_is_lossless():
+    """R5 -- THE MERGE IS LOSSLESS. On 200 random witness scripts (3 agents, 4 locations, 12
+    events each) the SYMMETRIC feed into `RecursiveToM` reads `predict_nested(x, y)` equal to the
+    retired second-order semantics for every ordered pair, and `predict_first_order` equal to
+    `TheoryOfMind.predict_from_belief` for every agent. The `nested_reads_world` mutation reddens
+    it.
+
+    `affect_core.SecondOrderToM` is DELETED in the same commit that greens this red (2.1), so the
+    second-order side is compared against `recursive_tom.t082_second_order_reference` -- the
+    deleted class's `observe` bookkeeping restated over plain dicts. Recorded, not smoothed: the
+    reference is a genuinely different mechanism (no VSA bundle, no spiking readout), which makes
+    this a STRONGER equivalence than comparing against a class that shared `BeliefPopulation`
+    with `TheoryOfMind`. The pre-deletion run against the live class is in the row's record."""
+    ref_cls = _need("t082_second_order_reference")
+    feed = _need("t082_feed")
+    n_loc = recursive_tom.T082_R5_LOCATIONS
+    agents = ("A", "B", "C")[: recursive_tom.T082_R5_AGENTS]
+
+    for i in range(recursive_tom.T082_R5_SCRIPTS):
+        rng = random.Random(recursive_tom.T082_R5_RNG_BASE + i)
+        rt = RecursiveToM(n_agents=len(agents), seed=0)
+        ref = ref_cls(n_locations=n_loc, seed=0)
+        tom = TheoryOfMind(n_locations=n_loc, seed=0)
+        for ev in range(recursive_tom.T082_R5_EVENTS):
+            loc = rng.randrange(n_loc)
+            # the opening event is witnessed by ALL, so every first-order and every ordered
+            # pair is initialised and the comparison never rests on an unheld path
+            present = (
+                set(agents)
+                if ev == 0
+                else ({a for a in agents if rng.random() < 0.6} or {agents[0]})
+            )
+            feed(rt, present, str(loc))
+            ref.observe(loc, sorted(present))
+            tom.place(loc, sorted(present))
+        for x in agents:
+            assert _as_int(rt.predict_first_order(x)) == tom.predict_from_belief(x), (
+                f"script {i}: first order for {x} diverged from TheoryOfMind"
+            )
+            for y in agents:
+                if x == y:
+                    continue
+                assert _as_int(rt.predict_nested(x, y)) == ref.predict_second_order(x, y), (
+                    f"script {i}: nested ({x},{y}) diverged from the retired second-order form"
+                )
+
+    mutated = _need("_t082_mutated_scorer")
+    rng = random.Random(recursive_tom.T082_R5_RNG_BASE)
+    rt = RecursiveToM(n_agents=len(agents), seed=0)
+    ref = ref_cls(n_locations=n_loc, seed=0)
+    reads_world = mutated("nested_reads_world")
+    differs = 0
+    for ev in range(recursive_tom.T082_R5_EVENTS):
+        loc = rng.randrange(n_loc)
+        present = (
+            set(agents) if ev == 0 else ({a for a in agents if rng.random() < 0.6} or {agents[0]})
+        )
+        feed(rt, present, str(loc))
+        ref.observe(loc, sorted(present))
+    for x in agents:
+        for y in agents:
+            if x != y and _as_int(reads_world(rt, x, y)) != ref.predict_second_order(x, y):
+                differs += 1
+    assert differs > 0, (
+        "a nested read that returns the WORLD must diverge from the retired second-order "
+        "semantics on a stale pair -- that is R5's red"
+    )
+
+
+def test_r6_the_symmetric_feed_kills_the_spurious_divergence():
+    """R6 -- THE SYMMETRIC FEED KILLS THE SPURIOUS DIVERGENCE (fact 4 reconstructed). After an
+    unwitnessed then a witnessed statement `divergence("user", "brain")` is False and
+    `predict_first_order("brain")` equals the world. The `feed_subject_only` mutation -- the OLD
+    subject-centric call the live path made until this row -- reads the divergence True, which is
+    the persistent spurious nested false belief fact 4 measured at 5 of 12 episodes."""
+    feed = _need("t082_feed")
+    mutated = _need("_t082_mutated_scorer")
+    both, brain_only = {"user", "brain"}, {"brain"}
+
+    rt = RecursiveToM(n_agents=3, seed=0)
+    feed(rt, both, "basket")  # witnessed opening
+    feed(rt, brain_only, "box")  # UNWITNESSED: the user is away
+    assert rt.predict_first_order("user") == "basket", "the user's false belief must stand"
+    assert rt.world_content() == "box"
+    feed(rt, both, "drawer")  # witnessed again
+    assert rt.divergence("user", "brain") is False, (
+        "the symmetric feed must leave NO nested divergence after a witnessed statement"
+    )
+    assert rt.predict_first_order("brain") == rt.world_content() == "drawer"
+
+    subject_only = mutated("feed_subject_only")
+    rt2 = RecursiveToM(n_agents=3, seed=0)
+    subject_only(rt2, both, "basket")
+    subject_only(rt2, brain_only, "box")
+    subject_only(rt2, both, "drawer")
+    assert rt2.divergence("user", "brain") is True, (
+        "the OLD subject-only feed must read a spurious nested divergence -- that is R6's red"
+    )
