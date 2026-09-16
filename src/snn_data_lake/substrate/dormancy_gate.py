@@ -786,7 +786,11 @@ EXEMPT = {
         "goal) lands in Part II (2.11) -- or the row STOPS at G3 / VOIDS at G4, in which case no "
         "ACS is ever built and THIS EXEMPTION IS RETIRED WITH THE ROW. It is stated as permanent "
         "rather than as a wire because the instrument is legitimately an instrument on either "
-        "branch; what is conditional is whether a SECOND, live module follows it",
+        "branch; what is conditional is whether a SECOND, live module follows it. "
+        "2026-09-15, AFTER the campaign (the sentences above were written at 3485853, BEFORE it): "
+        "the STOP branch fired -- G3 STOP beside a G4 PASS, "
+        "specs/022-unified-brain-arc/evidence/t078-attention-schema.md 3.4 -- so Part II (2.11) is "
+        "not built and no live wire follows this instrument",
     ),
     "amdahl_gate": (
         "permanent",
