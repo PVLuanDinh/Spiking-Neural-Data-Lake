@@ -63,8 +63,11 @@ a MECHANISM, never a verdict about experience.
 """
 
 import copy
+import json
 import random
+import statistics
 import sys
+import time
 from pathlib import Path
 
 from snn_data_lake.substrate.paired_contrast import T_BAR, contrast
@@ -851,18 +854,492 @@ def t081_reds():
     return out
 
 
-def t081_record_brain(seed, n_ticks=T081_N_TICKS):
-    """THE RECORDER (2.1): a scratch brain under `throwaway_home()`, its arm's `workspace.step`
-    wrapped on the INSTANCE, one row per awake tick carrying every arm.
+# =============================================================================
+# 2.9 STEP 5: THE RECORDER, the determinism precondition, the apparatus DRY RUN and the campaign.
+# Everything below touches a brain; everything above does not. Every brain here is
+# `make_brain(seed, persist=False)` under `throwaway_home()` -- a fresh NORD_HOME for the
+# duration -- so nothing in this file can reach the daemon's brain or the durable lake.
+# =============================================================================
+def t081_record_brain(seed, n_ticks=T081_N_TICKS, keep_pre=False):
+    """THE RECORDER (2.1). A SCRATCH brain under `throwaway_home()`, built with
+    `make_brain(seed, persist=False)`, both stream pointers set to
+    `(T081_STREAM_OFFSET * seed) % T081_STREAM_POSITIONS` (T080's rule), and the ARM's bus --
+    `b.workspace`, the object `report_channel.snapshot` reads (fact 1) -- with its `step` WRAPPED
+    ON THE INSTANCE.
 
-    STUB (2.9 step 2) -- returns the empty recording. Built at 2.9 step 5; nothing above that
-    line touches a brain, a lake or a network."""
-    return {"seed": int(seed), "rows": [], "n_ticks": int(n_ticks), "timings": {}}
+    THE WRAPPER IS THE WHOLE APPARATUS. Before each real step it takes a clone `pre`; the real
+    step then runs untouched; the real report `r0` is read THROUGH the report channel; and every
+    arm of 2.2 is carried on fresh clones of that same `pre`. The live workspace is never
+    perturbed -- `g_intact` says so on every row -- and the wrapper is popped out of every clone,
+    so no clone re-enters the recorder.
+
+    A ROW IS AN AWAKE TICK ON WHICH THE WRAPPER RAN, and both halves are required: `b.tick()`
+    must return "awake" AND the arm must actually have stepped its bus that tick. A sleeping tick
+    has no broadcast to lesion, and an awake tick that never reached the workspace has no
+    pre-step state to clone. `wrapper_ticks` and `awake_ticks` are both REPORTED, so a recording
+    where the two diverge says so rather than quietly shrinking.
+
+    `keep_pre` retains each row's pre-step clone for the dry run's scrambled re-draws (2.3's
+    REPORTED Monte-Carlo effect of the scrambled pool's random choice). They are dropped by the
+    caller as soon as the re-draws are done; the campaign never asks for them."""
+    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.substrate.home import throwaway_home
+
+    seed = int(seed)
+    n_ticks = int(n_ticks)
+    rng = random.Random(T081_SCR_RNG_BASE + seed)
+    out = {"seed": seed, "n_ticks": n_ticks, "rows": [], "pres": [] if keep_pre else None}
+    t0 = time.time()
+    with throwaway_home():
+        b = make_brain(seed=seed, persist=False)
+        out["build_s"] = round(time.time() - t0, 3)
+        b._real_ptr = b._audio_ptr = (T081_STREAM_OFFSET * seed) % T081_STREAM_POSITIONS
+        out["offset"] = int(b._real_ptr)
+        out["positions"] = len(b._real_labels)
+        ws = b.workspace
+        out["workspace"] = type(ws).__name__
+        real_step = ws.step
+        state = {"t": 0, "wrapper": 0}
+        pending = []
+
+        def wrapped():
+            state["wrapper"] += 1
+            pre = t081_clone(ws)
+            result = real_step()
+            r0 = snapshot(ws)
+            row = _t081_tick_row(
+                state["t"], ws, pre, r0, rng, T081_DOSES, snapshot, _t081_content_of, t081_clone
+            )
+            pending.append((row, pre))
+            return result
+
+        ws.step = wrapped
+        kinds = {}
+        tr = time.time()
+        for t in range(n_ticks):
+            state["t"] = t
+            pending.clear()
+            kind = b.tick()
+            kinds[kind] = kinds.get(kind, 0) + 1
+            if kind != "awake":
+                continue
+            for row, pre in pending:
+                out["rows"].append(row)
+                if keep_pre:
+                    out["pres"].append(pre)
+        out["record_s"] = round(time.time() - tr, 3)
+        out["kinds"] = kinds
+        out["awake_ticks"] = kinds.get("awake", 0)
+        out["wrapper_ticks"] = state["wrapper"]
+        ws.step = real_step
+        del b
+    out["total_s"] = round(time.time() - t0, 3)
+    out["ms_per_tick"] = (out["record_s"] * 1000.0 / n_ticks) if n_ticks else 0.0
+    return out
+
+
+def t081_seed(seed, n_ticks=T081_N_TICKS, keep_pre=False):
+    """ONE seed's reading: record, read, name (r)'s refusals, drop the brain. The entry
+    `t081_contrasts` and `t081_refusals` consume, with everything 2.3 REPORTS beside it."""
+    rec = t081_record_brain(seed, n_ticks=n_ticks, keep_pre=keep_pre)
+    out = t081_read(rec["rows"])
+    out["seed"] = rec["seed"]
+    for k in ("offset", "positions", "awake_ticks", "wrapper_ticks", "kinds", "workspace"):
+        out[k] = rec[k]
+    out["timings"] = {k: rec[k] for k in ("build_s", "record_s", "total_s", "ms_per_tick")}
+    out["refusals"] = t081_refusals(out)
+    if keep_pre:
+        out["_rows"], out["_pres"] = rec["rows"], rec["pres"]
+    return out
+
+
+def t081_determinism(seed=0, n_ticks=T081_DETERMINISM_TICKS):
+    """(p): two recordings of the same seed at the same width, compared FIELD BY FIELD -- not a
+    sample of fields and not a tolerance. A nondeterminism anywhere in the recorder, the clone,
+    the lesion or the brain is a REFUSAL before any number is read, and the first differing
+    (row, field) is NAMED."""
+    a = t081_record_brain(seed, n_ticks=n_ticks)
+    b = t081_record_brain(seed, n_ticks=n_ticks)
+    ra, rb = a["rows"], b["rows"]
+    diff = None
+    if len(ra) != len(rb):
+        diff = f"row count {len(ra)} vs {len(rb)}"
+    for i, (x, y) in enumerate(zip(ra, rb)):
+        if diff:
+            break
+        if set(x) != set(y):
+            diff = f"row {i}: field sets differ ({sorted(set(x) ^ set(y))})"
+            break
+        for k in sorted(x):
+            if x[k] != y[k]:
+                diff = f"row {i} field {k}: {x[k]!r} vs {y[k]!r}"
+                break
+    return {
+        "seed": int(seed),
+        "identical": diff is None and a["awake_ticks"] == b["awake_ticks"],
+        "first_diff": diff,
+        "rows": len(ra),
+        "twin_rows": len(rb),
+        "awake": [a["awake_ticks"], b["awake_ticks"]],
+        "n_ticks": int(n_ticks),
+    }
+
+
+def t081_stream_labels(seed, n_labels=T081_OFFSET_LABELS, max_ticks=260):
+    """The first `n_labels` REAL frame labels seed `s` walks with 2.1's offset applied. The
+    offset check is an APPARATUS precondition, so it reads the labels the brain actually
+    CONSUMED rather than re-deriving them from the pack by arithmetic (T080's idiom)."""
+    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.substrate.home import throwaway_home
+
+    out = []
+    with throwaway_home():
+        b = make_brain(seed=int(seed), persist=False)
+        labels = b._real_labels
+        b._real_ptr = b._audio_ptr = (T081_STREAM_OFFSET * int(seed)) % T081_STREAM_POSITIONS
+        prev = int(b._real_ptr)
+        for _ in range(max_ticks):
+            if len(out) >= n_labels:
+                break
+            b.tick()
+            ptr = int(b._real_ptr)
+            if ptr != prev:
+                out.append(int(labels[(ptr - 1) % len(labels)]))
+            prev = ptr
+    return out
+
+
+def t081_scrambled_redraws(rows, pres, repeats=T081_SCR_REDRAWS, base=T081_SCR_REDRAW_BASE):
+    """2.3's REPORTED Monte-Carlo effect of the scrambled pool's RANDOM CHOICE: the SCRAMBLED arm
+    re-run on the recording's SAVED pre-step clones under `repeats` different RNG seeds, so the
+    spread is the choice's own sampling noise and nothing else -- same ticks, same states, same
+    lesion, only the draw varies. COMPUTED, never promised.
+
+    The saved clones are read, never stepped: each draw takes a fresh `t081_clone` of them, which
+    is what lets twelve draws share one recording."""
+    out = []
+    for i in range(int(repeats)):
+        rng = random.Random(base + i)
+        applicable = changed = 0
+        for row, pre in zip(rows, pres):
+            base_content = row["r0"]["content"]
+            others = sorted(
+                {k[1] for k in pre._g if k[1] != base_content}
+                | {c[1] for c in pre._buffer if c[1] != base_content},
+                key=repr,
+            )
+            if not others:
+                continue
+            applicable += 1
+            c = t081_clone(pre)
+            t081_lesion(c, others[rng.randrange(len(others))], T081_LESION_DOSE)
+            c.step()
+            if snapshot(c)["content"] != base_content:
+                changed += 1
+        out.append(
+            {
+                "draw": i,
+                "applicable": applicable,
+                "changed": changed,
+                "frac": (changed / applicable) if applicable else 0.0,
+            }
+        )
+    return out
+
+
+def _t081_constants():
+    """Every declared constant of 2.8, pinned beside the reading it produced."""
+    return {
+        "n_ticks": T081_N_TICKS,
+        "doses": list(T081_DOSES),
+        "lesion_dose": T081_LESION_DOSE,
+        "stream_offset": T081_STREAM_OFFSET,
+        "stream_positions": T081_STREAM_POSITIONS,
+        "seeds": list(T081_SEEDS),
+        "applicable_floor": T081_APPLICABLE_FLOOR,
+        "min_contents": T081_MIN_CONTENTS,
+        "min_changes": T081_MIN_CHANGES,
+        "flip_floor": T081_FLIP_FLOOR,
+        "scr_redraws": T081_SCR_REDRAWS,
+        "scr_rng_base": T081_SCR_RNG_BASE,
+        "scr_redraw_base": T081_SCR_REDRAW_BASE,
+        "determinism_ticks": T081_DETERMINISM_TICKS,
+        "offset_labels": T081_OFFSET_LABELS,
+        "bar": T081_BAR,
+        "clone_fields": list(T081_CLONE_FIELDS),
+    }
+
+
+def _t081_head():
+    """The tree's HEAD, for the pin. Unavailable (no git, a tarball) is recorded as such."""
+    import subprocess
+
+    try:
+        r = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=20)
+        return r.stdout.strip() if r.returncode == 0 else f"unavailable (rc {r.returncode})"
+    except Exception as e:  # noqa: BLE001 -- a pin field, never a control-flow decision
+        return f"unavailable ({type(e).__name__})"
+
+
+# distinct-from: thalamus/binding_instrument.py::_t080_seed_block and
+#   cortex/agency_monitor.py / cortex/attention_schema.py's per-seed printers -- the same
+#   one-printer-per-instrument CONVENTION over a DIFFERENT reading (a bound fraction against a
+#   permutation null there, a per-dose report-change fraction here). It exists so the dry run and
+#   the campaign cannot drift into two report formats. Read.
+def _t081_seed_block(r, out=print):
+    """Everything 2.3 REPORTS for one seed, printed."""
+    out(
+        f"seed {r['seed']}: {r['n']} rows from {r['awake_ticks']} awake ticks "
+        f"(wrapper ran {r['wrapper_ticks']}x; kinds {r['kinds']}; offset {r['offset']} of "
+        f"{r['positions']}; bus {r['workspace']})"
+    )
+    out(
+        f"  report: {r['contents']} distinct contents, {r['changes']} tick-to-tick changes, "
+        f"availability {r['availability']:.4f}, mean pools {r['n_pools']:.2f}, mean top_margin "
+        f"{r['top_margin']:.4f}"
+    )
+    out(
+        f"  readable: twin mismatches {r['mismatch']}/{r['n']}; applicable named "
+        f"{r['applicable_named']}/{r['n']} scrambled {r['applicable_scr']}/{r['n']}; "
+        f"pre_intact {r['pre_intact']}/{r['n']}; g_intact {r['g_intact']}/{r['n']} "
+        f"(structurally satisfied -- reported, not counted)"
+    )
+    for arm, key in (("NAMED", "f_named"), ("SCRAMBLED", "f_scr")):
+        out(
+            f"  {arm:<9} content-change by dose: "
+            + ", ".join(f"{d}={r[key][d]:.4f}" for d in T081_DOSES)
+        )
+    for arm, key in (("NAMED", "s_named"), ("SCRAMBLED", "s_scr")):
+        out(
+            f"  {arm:<9} strength-change by dose: "
+            + ", ".join(f"{d}={r[key][d]:.4f}" for d in T081_DOSES)
+        )
+    out(
+        f"  flip dose {r['flip_dose']} (floor {T081_FLIP_FLOOR}) beside mean top_margin "
+        f"{r['top_margin']:.4f}; (c2) scrambled changes at dose {T081_LESION_DOSE}: "
+        f"{r['scr_changed_1']} (ticks {r['scr_changed_ticks'][:12]})"
+    )
+    for why in r["refusals"]:
+        out(f"  (r) REFUSAL: {why}")
+
+
+def run_t081_dry_run(out_path=T081_DRY_RUN_OUT, seed=0):
+    """2.9 step 5's APPARATUS dry run: ONE seed at the CAMPAIGN's width, and NOT ONE barred
+    conjunct -- one seed cannot carry a paired t, so (c1) is printed as a single seed's
+    difference with "n/a" where the t would go.
+
+    What it DOES read, all of it reported in 3.0 before the campaign:
+      * the STREAM-OFFSET precondition: seeds 0 and 1 must walk different frames;
+      * (p)'s determinism twin: two 100-tick recordings compared field by field;
+      * the full 600-tick recording, read whole: the dose ladder on both arms, the readability
+        twin, the applicability of both lesions, the report's own variability;
+      * the 12 SCRAMBLED RE-DRAWS on the recording's saved pre-step clones;
+      * the cost, re-measured on the BUILT apparatus (2.8 carried ~65 ms from fact 4's probe).
+
+    Writes its JSON to `out_path` and NOTHING under tools/: the pin is the campaign's."""
+    out_path = Path(out_path)
+    if "tools" in out_path.parts:
+        print(f"REFUSED: the dry run never writes under tools/ ({out_path})", flush=True)
+        return 2
+    t0 = time.time()
+    print("=" * 78, flush=True)
+    print(
+        f"T081 DRY RUN -- one seed ({seed}) at the campaign width, NO barred conjunct", flush=True
+    )
+    print("=" * 78, flush=True)
+
+    labels0, labels1 = t081_stream_labels(0), t081_stream_labels(1)
+    differ = bool(labels0) and labels0 != labels1
+    first_diff = next((i for i, (x, y) in enumerate(zip(labels0, labels1)) if x != y), None)
+    print(
+        f"stream offset ({T081_STREAM_OFFSET} x seed mod {T081_STREAM_POSITIONS}, BOTH pointers): "
+        f"seed0 {labels0[:12]} | seed1 {labels1[:12]} | differ={differ} "
+        f"first_diff_at={first_diff} (n {len(labels0)}/{len(labels1)})",
+        flush=True,
+    )
+    if not differ:
+        print("REFUSED at the apparatus: the per-seed offset does not vary the frames", flush=True)
+        return 2
+
+    det = t081_determinism(seed)
+    print(
+        f"(p) determinism twin: identical={det['identical']} on {det['rows']} rows of "
+        f"{det['n_ticks']} ticks (awake {det['awake']}, first_diff {det['first_diff']})",
+        flush=True,
+    )
+
+    reading = t081_seed(seed, keep_pre=True)
+    rows, pres = reading.pop("_rows"), reading.pop("_pres")
+    print("-" * 78, flush=True)
+    print(
+        f"cost: {reading['timings']['ms_per_tick']:.1f} ms/tick measured on the BUILT apparatus "
+        f"over {T081_N_TICKS} ticks with ten workspace steps per awake tick (2.8 carried ~65 ms "
+        f"from fact 4's five-clone probe) -> campaign estimate "
+        f"{reading['timings']['record_s'] * len(T081_SEEDS) / 60.0:.1f} min for "
+        f"{len(T081_SEEDS)} seeds; timings {reading['timings']}",
+        flush=True,
+    )
+    print("-" * 78, flush=True)
+    _t081_seed_block(reading)
+
+    print("-" * 78, flush=True)
+    draws = t081_scrambled_redraws(rows, pres)
+    fracs = [d["frac"] for d in draws]
+    print(
+        f"scrambled RE-DRAWS ({len(draws)} draws, seeds {T081_SCR_REDRAW_BASE}..+"
+        f"{len(draws) - 1}, the SAME saved pre-step clones): changed "
+        f"{[d['changed'] for d in draws]} of {draws[0]['applicable'] if draws else 0} applicable; "
+        f"fractions min {min(fracs, default=0.0):.4f} max {max(fracs, default=0.0):.4f} "
+        f"mean {(sum(fracs) / len(fracs)) if fracs else 0.0:.4f} "
+        f"sd {statistics.stdev(fracs) if len(set(fracs)) > 1 else 0.0:.4f}",
+        flush=True,
+    )
+    del pres
+
+    print("-" * 78, flush=True)
+    print(
+        "NO barred conjunct is read here: (c1) is a paired t over 8 seeds and one seed cannot "
+        "carry one. (g0) and (c2) are per-seed counts and are printed as this seed's.",
+        flush=True,
+    )
+    print(
+        f"  (c1) one seed: f_named({T081_LESION_DOSE}) {reading['f_named'][T081_LESION_DOSE]:.4f} "
+        f"- f_scr({T081_LESION_DOSE}) {reading['f_scr'][T081_LESION_DOSE]:.4f} = "
+        f"{_t081_c1(reading):+.4f}  t: n/a",
+        flush=True,
+    )
+    print(
+        f"  (g0) one seed: {reading['contents']} distinct contents (floor {T081_MIN_CONTENTS}), "
+        f"{reading['changes']} changes (floor {T081_MIN_CHANGES}) -> "
+        f"{reading['contents'] >= T081_MIN_CONTENTS and reading['changes'] >= T081_MIN_CHANGES}",
+        flush=True,
+    )
+    print(
+        f"  (c2) one seed: {reading['scr_changed_1']} scrambled ticks moved the report", flush=True
+    )
+    print(f"  (r)  one seed: {reading['refusals'] or 'no refusal'}", flush=True)
+
+    report = {
+        "row": "T081 dry run",
+        "head": _t081_head(),
+        "seed": int(seed),
+        "stream": {"seed0": labels0, "seed1": labels1, "differ": differ, "first_diff": first_diff},
+        "determinism": det,
+        "reading": reading,
+        "scrambled_redraws": draws,
+        "reds": t081_reds(),
+        "constants": _t081_constants(),
+        "elapsed_s": round(time.time() - t0, 1),
+    }
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(report, indent=1, default=str), encoding="utf-8")
+    print("-" * 78, flush=True)
+    print(
+        f"dry run written to {out_path} in {time.time() - t0:.0f} s; nothing under tools/",
+        flush=True,
+    )
+    return 0
+
+
+# distinct-from: thalamus/binding_instrument.py::run_t080_campaign and
+#   cortex/agency_monitor.py::run_t079_campaign and cortex/attention_schema.py's -- the PATTERN
+#   this follows (record, read, contrast, pin ONCE) over a different instrument, different arms
+#   and a different pin. Each row's campaign is its own instrument's; a shared runner would be a
+#   fifth mechanism, not one. Read; nothing is shared beyond `substrate/paired_contrast`.
+def run_t081_campaign(seeds=T081_SEEDS, pin=T081_PIN):
+    """The campaign (2.2-2.3): record, read, contrast, pin ONCE. Returns an exit code.
+
+    ORDER IS 2.3's, and it is the order the verdict is DECIDED in:
+      (p)  DETERMINISM  two seed-0 recordings identical field by field, else REFUSED -- nothing
+                        is read
+      (r)  READABLE     the SAME clone's report equal to the real report on every awake tick, and
+                        both lesions applicable on at least half of them, else REFUSED with the
+                        seed and the clause NAMED
+      (g0) THE REPORT VARIES  at least two distinct contents and one change per seed, else
+                        REFUSED ("a constant report cannot be read for its generation order"),
+                        never a STOP
+      (c1) (c2)         the licensed sentence at the lesion, and the dissociation input
+    A REFUSAL is a finding about the apparatus or the instrument; a NOT MET is a finding about
+    THIS composite under THIS stream. They are never merged."""
+    pin = Path(pin)
+    if pin.exists():
+        print(f"REFUSED: {pin} exists -- the pin is written once", flush=True)
+        return 2
+    t0 = time.time()
+    print("=" * 78, flush=True)
+    print(f"T081 CAMPAIGN -- seeds {list(seeds)}, ten arms per awake tick", flush=True)
+    print("=" * 78, flush=True)
+
+    labels0, labels1 = t081_stream_labels(0), t081_stream_labels(1)
+    if not labels0 or labels0 == labels1:
+        print(
+            f"REFUSED at the apparatus: the per-seed stream offset does not vary the frames "
+            f"(seed 0 {labels0[:10]} vs seed 1 {labels1[:10]})",
+            flush=True,
+        )
+        return 2
+    det = t081_determinism(seeds[0] if seeds else 0)
+    print(
+        f"(p) determinism: identical={det['identical']} on {det['rows']} rows "
+        f"(first_diff {det['first_diff']})",
+        flush=True,
+    )
+    if not det["identical"]:
+        print("REFUSED: two identical-seed recordings differ -- no reading is taken", flush=True)
+        return 2
+
+    per_seed, refusals = [], []
+    for s in seeds:
+        r = t081_seed(s)
+        per_seed.append(r)
+        refusals.extend(r["refusals"])
+        print("-" * 78, flush=True)
+        _t081_seed_block(r)
+
+    got = t081_contrasts(per_seed)
+    verdict = t081_verdict(got, refusals)
+    print("=" * 78, flush=True)
+    for why in refusals:
+        print(f"  (r) REFUSAL: {why}", flush=True)
+    print(f"  (g0) the report varies: {got['g0']}", flush=True)
+    c = got["c1"]
+    print(
+        f"  {c.name}: diffs {[round(d, 4) for d in c.diffs]} t={c.t:.4f} FPR={c.fpr} "
+        f"degenerate={c.degenerate} met={c.met}",
+        flush=True,
+    )
+    print(f"  (c2) the scrambled lesion leaves the report unchanged: {got['c2']}", flush=True)
+    print(f"  REPORTED flip dose per seed: {[r['flip_dose'] for r in per_seed]}", flush=True)
+    print(
+        f"  REPORTED mean top_margin per seed: {[round(r['top_margin'], 4) for r in per_seed]}",
+        flush=True,
+    )
+    print(f"T081 VERDICT: {verdict}", flush=True)
+
+    out = {
+        "row": "T081",
+        "head": _t081_head(),
+        "seeds": list(seeds),
+        "constants": _t081_constants(),
+        "reds": t081_reds(),
+        "determinism": det,
+        "stream_labels": {"seed0": labels0, "seed1": labels1},
+        "per_seed": per_seed,
+        "contrasts": {"g0": got["g0"], "c1": got["c1"]._asdict(), "c2": got["c2"]},
+        "refusals": refusals,
+        "verdict": verdict,
+        "elapsed_s": round(time.time() - t0, 1),
+    }
+    pin.parent.mkdir(parents=True, exist_ok=True)
+    pin.write_text(json.dumps(out, indent=1, default=str), encoding="utf-8")
+    print(f"pinned {pin} in {time.time() - t0:.0f} s", flush=True)
+    return 0 if verdict != "REFUSED" else 2
 
 
 # =============================================================================
 # The self-check line (2.9 step 2: main() prints the six booleans and EXITS NON-ZERO while any
-# is False, so the gate carries the red until 2.9 step 4).
+# is False, so the gate carried the red until 2.9 step 4), plus 2.9 step 5's two brain-touching
+# entry points.
 # =============================================================================
 def _t081_reds_line(reds, out=print):
     """Print the six booleans beside what each one says."""
@@ -870,11 +1347,24 @@ def _t081_reds_line(reds, out=print):
         out(f"  {name}: {str(reds[name]):5s}  {T081_RED_LINES[name]}")
 
 
+# distinct-from: thalamus/binding_instrument.py::main and cortex/attention_schema.py's -- each
+#   module's own `__main__` block, which is this tree's convention (run_selfchecks.py executes
+#   exactly that block per module and scores the exit status), not a second dispatcher. Nothing
+#   here runs another module's self-check. Read.
 def main(argv=None):
-    """The module's self-check. It touches NO brain, NO lake and NO network: the six reds run on
-    constructed inputs only. The brain-touching entry points (`--t081-dry-run`,
-    `--t081-campaign`) land at 2.9 step 5 and are not reachable from the gate's bare
-    `python -m` invocation."""
+    """The module's self-check, plus 2.9's two brain-touching entry points.
+
+    BOTH of those run under `throwaway_home()` INSIDE their recorders, every brain is
+    `persist=False`, and NEITHER is reachable from the gate's bare `python -m` invocation --
+    which runs the six reds on constructed workspaces and touches no brain, no lake and no
+    network."""
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if "--t081-campaign" in argv:  # 2.9 step 6: the campaign, pinned ONCE
+        return run_t081_campaign()
+    if "--t081-dry-run" in argv:  # 2.9 step 5: the apparatus dry run, NO barred conjunct
+        i = argv.index("--t081-dry-run")
+        path = argv[i + 1] if i + 1 < len(argv) and not argv[i + 1].startswith("-") else None
+        return run_t081_dry_run(T081_DRY_RUN_OUT if path is None else path)
     print("=" * 78)
     print("T081 -- the report-order probe (specs/022 [US4], C5 row report_order)")
     print("=" * 78)
@@ -904,6 +1394,10 @@ def main(argv=None):
     print(
         f"  T081 OK: R1-R6 fire on their constructed inputs and each is reddened IN FACT by its "
         f"mutated scorer ({sum(reds.values())}/{len(reds)}); no brain, no lake, no network"
+    )
+    print(
+        f"  --t081-dry-run writes {T081_DRY_RUN_OUT} (one seed, NO barred conjunct); "
+        f"--t081-campaign pins {T081_PIN.name} ONCE. Neither runs from here."
     )
     return 0
 
