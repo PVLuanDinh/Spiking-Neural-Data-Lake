@@ -19,7 +19,7 @@ coordination, homeostasis, self-improvement. The roster below is grouped in that
 | gwt_reentry_to_action_drive | 30 | src/snn_data_lake/cortex/brain.py:1763#_route_percept_to_action; src/snn_data_lake/cortex/brain.py:1562#_route_percept_to_action | wb_reroute_60.txt | opus-5 WholeBrain auditor / tools/charge_probe.py reroute 60 + eligibility measured from inside | 2026-07-30 |
 | criticality_edge_of_chaos_regulation | 30 | src/snn_data_lake/cortex/brain.py:2994#_enter_sleep; src/snn_data_lake/cortex/brain.py:2842#_sleep_tick | - | opus-5 WholeBrain auditor / live run, sigma sampled | 2026-07-30 |
 | wholistic_integration_capstone | 22 | src/snn_data_lake/cortex/brain.py:426#__init__ | - | opus-5 WholeBrain auditor / live run at birth | 2026-07-30 |
-| agency_controllability_monitor | 15 | src/snn_data_lake/brainstem/autonomous_loop.py:1924#step; src/snn_data_lake/cortex/agency_monitor.py:2#module | - | opus-5 WholeBrain auditor / live run, agency() sampled at 60 ticks | 2026-07-30 |
+| agency_controllability_monitor | 15 | src/snn_data_lake/brainstem/autonomous_loop.py:1827#apply_observed; src/snn_data_lake/cortex/agency_monitor.py:2#module | - | opus-5 WholeBrain auditor / live run, agency() sampled at 60 ticks | 2026-07-30 |
 | homeostatic_plasticity_stack | 10 | src/snn_data_lake/cortex/brain.py:278#__init__; src/snn_data_lake/cortex/interaction_learning.py:200#_deposit; src/snn_data_lake/cortex/brain.py:2745#_sleep_tick | - | opus-5 WholeBrain auditor / live instrumented run, pre_gain/stabilize/relax counted | 2026-07-30 |
 | gated_self_modification | 10 | src/snn_data_lake/cortex/brain.py:3141#_reason_chunk_mastered; src/snn_data_lake/cortex/brain.py:3190#_gate | - | opus-5 WholeBrain auditor / live run, _selfbuild_last after 2 nights | 2026-07-30 |
 | knowledge_acquisition_web_ingest | 12 | src/snn_data_lake/reasoning/autonomous_enrich.py:41#module; src/snn_data_lake/reasoning/spike_chat_lake.py:2259#boot | - | opus-5 WholeBrain auditor / caller grep over brain.py + cockpit.py | 2026-07-30 |
@@ -310,6 +310,16 @@ per-channel `n` of 10 against `warmup=120` -- so the readout is not merely unrea
 module's own status block (`agency_monitor.py:2-19`) reaches the same conclusion from a 600-tick run and
 puts the requirement at roughly 4,000 ticks. Its citation of the call site as `autonomous_loop.py:1498`
 has drifted; the call is at `:1561`.
+
+*DATED NOTE 2026-09-15 (specs/022 T079; `evidence/t079-agency.md` 3.4; pin `tools/t079_agency.json`): the feed
+described above is RETIRED. The monitor is now fed the per-joint efference copy on every envelope PASSAGE inside
+`AutonomousArm.apply_observed` (one observation per rotatable joint: the action token's intended delta against
+the achieved delta), so the ":1561 every tick" sentence and the "~4,000 ticks" horizon here and in item 8 below
+are superseded -- every joint reached `warmup` (120) by passage 120 on every seed. The monitor still has ZERO
+readers (band 15 stands on that reason alone), and the in-vivo dissociation read NOT MET: one shoved joint
+collapses (t +14.00) but two unshoved joints drop past the machine's own dead-band because the loop drives them
+into their clamp limits under the disturbance (the copy is blind to a clamp). Its disposition is EXEMPT with
+that record as its reason.*
 
 ## A lead that was wrong, and the correction is the point
 

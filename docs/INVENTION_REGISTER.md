@@ -95,6 +95,8 @@ experience is never claimed from a passing criterion (P8 sentience clause). NULL
 whose red never fires is not an instrument and is deleted.
 MECHANIZED (second, T077, 2026-09-15): `metacognitive_monitor.track_error` (auroc2, permutation-null readability,
 the in-vivo dissociation; reds R0-R5 fired first) READ NOT MET -- `evidence/t077-metacognition.md` 3.3-3.4; nothing deleted.
+MECHANIZED (third, T079, 2026-09-15): `agency_monitor` per-joint efference copy + cause-blind twin + in-vivo dissociation
+(reds R1-R6 fired first) READ NOT MET -- `evidence/t079-agency.md` 3.3-3.4; nothing deleted.
 
 ## 7. Two-stage two-regime arealization composition (L5, T040-T042)
 Adopted parts: positional-information organizer fields, repression-dominant GRN readout,
