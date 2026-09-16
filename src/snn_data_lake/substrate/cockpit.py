@@ -277,9 +277,10 @@ def _geometry():
 # long PROVENANCE string and it is never rendered through `tag()` at all -- `drawRegions` uses it
 # as a BOOLEAN (`flagged=!!PROV[...]`) -- so it was not the precedent it looked like. DATED
 # 2026-09-16 (the T082 panel): that sentence stood at its own date and is left as written; four
-# LONGER strings are now rendered through `tag()` under `.row .v`'s nowrap -- `pci` 516,
-# `crossmodal_bound_rate` 1,806, `report_order_margin` 3,352, `recursive_tom_false_beliefs` 4,316
-# characters -- each clipped on BOTH axes in the ACCESS plate (T082 record 3.7). The tag
+# LONGER strings are now rendered through `tag()` under `.row .v`'s nowrap -- the integration row's
+# (516 characters) and the T080, T081 and T082 consciousness rows' (1,806 / 3,352 / 4,316; no symbol
+# is named here on purpose -- the C5 surface gate reads this file's text) -- each clipped
+# on BOTH axes in the ACCESS plate (T082 record 3.7). The tag
 # carries the claim; the plate's `note` carries the consequence; the measurement behind both is in
 # the block above and in `device.decisions()`.
 _DEVICE_PROV = "router log, not a GPU census"
