@@ -97,6 +97,9 @@ MECHANIZED (second, T077, 2026-09-15): `metacognitive_monitor.track_error` (auro
 the in-vivo dissociation; reds R0-R5 fired first) READ NOT MET -- `evidence/t077-metacognition.md` 3.3-3.4; nothing deleted.
 MECHANIZED (third, T079, 2026-09-15): `agency_monitor` per-joint efference copy + cause-blind twin + in-vivo dissociation
 (reds R1-R6 fired first) READ NOT MET -- `evidence/t079-agency.md` 3.3-3.4; nothing deleted.
+MECHANIZED (fourth, T080, 2026-09-16): `thalamus/binding_instrument` reads the live cross-modal binder against a
+membership-matched null at matched K (reds R1-R6 fired first) READ PASS, t +13.54 -- `evidence/t080-temporal-binding.md`
+3.3-3.4; the C5 row charged at 0.2309; nothing deleted.
 
 ## 7. Two-stage two-regime arealization composition (L5, T040-T042)
 Adopted parts: positional-information organizer fields, repression-dominant GRN readout,

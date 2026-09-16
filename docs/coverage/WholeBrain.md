@@ -321,6 +321,16 @@ collapses (t +14.00) but two unshoved joints drop past the machine's own dead-ba
 into their clamp limits under the disturbance (the copy is blind to a clamp). Its disposition is EXEMPT with
 that record as its reason.*
 
+*DATED NOTE 2026-09-16 (specs/022 T080; `evidence/t080-temporal-binding.md` 3.4; pin `tools/t080_temporal_binding.json`):
+the cross-modal binder (`cortex/crossmodal_binder`, W6) is now READ by an instrument. On a scratch brain fed an
+ALIGNED bimodal stream (the audio pack re-ordered so each position's word names its digit) it reports ONE object for
+features presented inside one tick window on 0.26-0.42 of ticks against a membership-matched null's q95 of
+0.12-0.14 (t +13.54 over 8 seeds); audio delayed by one tick binds at the null's rate on 6 of 8 seeds. On THIS
+daemon the two percept streams are INDEPENDENT (digit == word at chance, 0.08, at every lag), so the binder's live
+reports are chance congruences and `crossmodal_superadditive` rides on them; `Brain.state()['crossmodal_bound_rate']`
+publishes the live fraction with both C5 sentences and that disclosure in its provenance. The row's C5 reading is
+0.2309.*
+
 ## A lead that was wrong, and the correction is the point
 
 I nearly filed `theta_gamma_code` as a dormant oscillatory-coordination faculty on the strength of a
