@@ -41,7 +41,6 @@ WHAT THIS MODULE REUSES rather than rebuilds (P2; checked with graph-exists 2026
     (`draws[min(len-1, round(0.95*(len-1)))]`) -- which `substrate/lake_engine::AppendBudget._p95_of`
     also spells, so `_q95` is the THIRD spelling of it and not the second; the `# distinct-from:`
     block above `_q95` carries the P2 debt and the home a successor's merge belongs in.
-  * `cortex/integration_measure.source_entropy` -- the tree's binary entropy.
   * `substrate/home.throwaway_home` -- the scratch NORD_HOME every recording runs under. THE LIVE
     LAKE IS NEVER TOUCHED and the daemon's brain is never constructed here.
 ABSENT from the tree on 2026-09-15 and therefore this row's two new symbols: a mutual-information
@@ -103,8 +102,14 @@ from snn_data_lake.substrate.report_channel import snapshot as _report_snapshot
 #   answering a different question (does the attention state predict the next action, not does
 #   confidence track error). Its q95 CONVENTION is reused verbatim; its scorer is not.
 # distinct-from: cortex/integration_measure.py::source_entropy -- the Shannon entropy of ONE
-#   binary stream. `mi_bits` is the entropy of a JOINT distribution over two streams; the binary
-#   entropy itself is IMPORTED from there rather than re-derived (P2).
+#   binary stream, taking a binary STRING; `mi_bits` estimates a JOINT quantity over two discrete
+#   streams. CORRECTED 2026-09-15 (the panel fold): this block used to assert "the binary entropy
+#   itself is IMPORTED from there rather than re-derived (P2)", and the module docstring listed
+#   `source_entropy` under WHAT THIS MODULE REUSES. Neither was true. This module's only non-stdlib
+#   imports are `substrate/paired_contrast` and `substrate/report_channel`, and it computes NO
+#   entropy term at all -- `mi_bits` hands Counters straight to `_mi_from_counts`, whose whole body
+#   is the joint-over-marginals log2 sum. So nothing is duplicated and P2 owes no merge here; the
+#   reuse was declared and never performed, which the fold records as a deviation from 1.6.
 # distinct-from: neuromodulation/empowerment.py::Empowerment -- reachable-cell counting over
 #   world-model rollouts, which its own docstring already declares is "NOT exact mutual
 #   information" and which carries no null. This estimates MI on an OBSERVED recording, with a
@@ -202,8 +207,12 @@ assert not (set(U_FIELDS) & set(U_FORBIDDEN)), (
 )
 
 
-# distinct-from: cortex/h01_ingest.py::_ei_band / check_ei -- the tree's other permutation bar, and
-#   the nearest thing to `_q95` here. READ before this marker was written: it bars a CORRELATION r
+# distinct-from: cortex/h01_ingest.py::ei_correlation / check_ei -- ONE OF the tree's permutation
+#   bars (the symbol was written `_ei_band` here, which occurs nowhere in src/ outside this comment;
+#   the band is produced by `ei_correlation` and barred by `check_ei` -- corrected 2026-09-15 in the
+#   panel fold, along with the definite article: there are at least three others, and the nearest
+#   relative of `decode_heldout`'s band is the one on the line below, not this one).
+#   READ before this marker was written: it bars a CORRELATION r
 #   between two instruments, takes its bar from `np.percentile` (which INTERPOLATES between order
 #   statistics), and RAISES IngestRefused instead of returning a reading. `_q95` is the exact
 #   non-interpolating order statistic 2.1 pre-registers -- "the q95 as `track_error` takes it" --
@@ -227,6 +236,17 @@ assert not (set(U_FIELDS) & set(U_FORBIDDEN)), (
 #   moves a pinned T077 number; and `_p95_of` must keep its `sorted(xs)` copy, because an
 #   in-place-sorting helper would reorder the list `AppendBudget._recent` holds as a rolling window,
 #   which `bar()` passes directly and `end_tick` appends to and trims BY POSITION.
+# distinct-from: thalamus/ignition_instrument.py::_permutation_null -- the NEAREST relative of
+#   `decode_heldout`'s band, and named here because the line above used to claim h01_ingest was the
+#   tree's only other permutation bar. READ: it REFITS the logistic from scratch on every shuffle
+#   and reads per-point logloss on the SAME points (in-sample), against a strict-exceedance
+#   criterion ("real strictly below EVERY permutation", a one-sided p < 1/(n_perm+1)).
+#   `decode_heldout` trains on the FIRST half in tick order, scores the held-out SECOND, and takes
+#   the `_q95` order statistic of label-permuted TRAIN-half decoders scored on the TRUE test labels.
+#   In-sample refit vs prequential halves, exceedance vs a q95 band: different null, different
+#   criterion. The tree's other permutation nulls -- substrate/growth_coverage_gate.py's permuted-
+#   FIELD and ARI nulls and substrate/gradient_claim_gate.py's within_matrix_permutation -- were
+#   read too; none scores a held-out decode.
 # distinct-from: substrate/determinism_gate.py::measure_frac_bits -- a sweep for the smallest
 #   fractional-bit width whose spike trains equal an FP64 reference. A search over widths, not a
 #   percentile of a null. Read; unrelated.
