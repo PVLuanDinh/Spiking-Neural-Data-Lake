@@ -335,3 +335,188 @@ decomposition were never affected: agree 0). RUN 2 is the same deterministic rec
 checked against them in 3.x; the refused pin's numbers stand in this section as the record of the refusal. The
 transferable rule is logged (obs #2191): a per-seed band on S seeds owes its family-wise rate before it is a
 refusal clause.
+
+## 3. Results (written 2026-09-16 after campaign run 2; nothing above this line was edited after 2.11)
+
+### 3.0 The apparatus, measured before the campaign (2.9 step 5, the dry run; 2.10; the trial campaign)
+
+The dry run on seed 0 (`--t080-dry-run`, the builder's at 05:00-05:04 local and the orchestrator's re-run at
+05:07-05:11, `scratchpad/t080/dry_run.json` / `dry_run_orch.txt`, every count identical): stream offset check
+seeds 0 / 1 differ from the first frame; the determinism twin identical on 100 ALIGNED rows (ticks-to-K 39 / 39);
+cost 66.7 / 69.8 ms per brain-tick over 2,439 ticks; ALIGNED bound 76/294, NULL 24/294, LAG 1 11/146, LAG 2
+17/152, LAG 5 17/150, SCRAMBLED 8/152; the offline null mean 0.0953 q95 0.1224; decomposition 1188/1188; the
+margin sensitivity FLAT (76 bound at 0.10 / 0.15 / 0.20, 0 sub-margin ticks); the q95 Monte-Carlo sd 0.00000
+over 12 independent 2,000-draw nulls; the scrambled arm's audio accuracy 0.3355 against ALIGNED's 0.7143.
+Everything 2.10 records (a)-(j) was read here before any barred number. A ONE-SEED TRIAL of the campaign path into
+scratch paths (05:14-05:18, `scratchpad/t080/trial_campaign.txt`, 214 s) exercised the companion writer: pin and
+npz written, sha256 pinned and matching, 12 arrays whose row counts equal each arm's decomposition. CLOCK-TIME
+CORRECTIONS (obs #2190): section 1's facts 4-5 were probed at ~04:04-04:05 and ~04:09-04:11, not "04:12" and
+"04:18"; 2.11's heading says "06:05" but its commit `00e4a15` landed at 05:59:25 -- both stamps were typed
+ahead of the clock; the numbers are unaffected.
+
+### 3.1 The build, red-first, and the commits
+
+Pre-registration `de101bf` (this file 1-2.9 + C-R9). An Opus executor built 2.9 steps 2-5 (brief
+`scratchpad/t080/builder_brief.md`): skeleton `4c5b8c9`; R1-R6 committed RED `4ef9ab3` (six AssertionErrors on
+constructed inputs, none a TypeError); green with the six mutations reddening in the test and in `t080_reds()`
+`8466cf2`; recorder, dry run, campaign flag and pin writer `66822fa` (the census gates rc=0 after commits 2, 4
+and 5). The orchestrator's pre-campaign commits: 2.10 `521c5f1`; the latents companion `7f6a000`; the taught
+prototypes in the pin `309efe6`; after run 1: 2.11 `00e4a15`; the family-wise band and the prototypes in
+registration order `c3a9fb5`. The pin `c1f857b`. The PASS branch's surfaces: `7f82060` (the live symbol, its
+provenance, the cockpit row, a test), `49288cd` (the conclusion row charged, the arming fixtures, tasks.md),
+`8be7d89` (the dated notes and the register's budget). Every builder number was reproduced by the orchestrator
+before it was written anywhere (3.0; obs #2180, #2185).
+
+### 3.2 The campaign (`tools/t080_temporal_binding.json` + `tools/t080_latents.npz`)
+
+Run 1 on `309efe6` (05:23:37-05:47:31 local, 1,434 s; a first launch on `7f6a000` was stopped at 57 s before it
+wrote anything so the pin could carry the prototypes): REFUSED on (b2) as pre-registered -- seed 3's in-vivo
+NULL arm 0.1531 above the per-seed band's 0.1424 -- with every other number as below. Its pin is archived
+(`scratchpad/t080/pin_run1_refused.json`, `memory/archive/t080-2026-09-16/`), quoted in 2.11 and was deleted
+from `tools/` before run 2 (2.10 (h)). Run 2 on `c3a9fb5` (05:59:52-06:23:48 local, 1,436 s): the SAME
+deterministic recordings (every count identical to run 1's, checked from both pins), read under 2.11's
+family-wise band: VERDICT PASS. Per seed 2,439-2,450 brain-ticks over six arms in 157-182 s; the companion 96
+float32 arrays, sha256 `b5bddf194407e09b...` (identical to run 1's, the latents being the same). The
+orchestrator re-derived every barred number from the two files with no brain (`scratchpad/t080/
+verify_t080_pin.py`: a fresh binder taught the pinned prototypes in registration order re-decomposes every
+scored latent to the pinned recognition -- 0 disagreements on 8 x 6 arms; an independent permutation loop
+reproduces every seed's q95 bit-for-bit; (g0), (b1), (b2), the windows and the verdict reproduce).
+
+### 3.3 The readings, conjunct by conjunct (every number from the pin; the bar 1.895 over 8 seeds; FPR = the sign-flip rate)
+
+(p) DETERMINISM: two ALIGNED recordings of seed 0 at 100 ticks byte-identical on every field (ticks-to-K 39 / 39,
+    taught sets equal): MET.
+(r) READABLE: K = 10 taught on every seed within 32-87 ticks; `awake_missing` 0 on all 48 arms; the decomposition
+    equals the recorded handle on every scored tick of every arm (`agree` 0 x 48): MET.
+(g0) THE STREAM CARRIES WITHIN-WINDOW STRUCTURE: the classifiers' congruence ALIGNED - NULL per seed 0.6122 /
+    0.6533 / 0.5869 / 0.5894 / 0.6100 / 0.6298 / 0.5738 / 0.6289; t **+65.3517**, FPR 0.0352: MET.
+(b1) WITHIN > ACROSS AT THE DERIVED MARGIN: the ALIGNED arm's bound fraction minus the offline null's q95 per seed
+    0.1361 / 0.2423 / 0.1757 / 0.2169 / 0.1781 / 0.2068 / 0.1913 / 0.2721 (within 0.2585-0.4150 against q95
+    0.1220-0.1429); t **+13.5395**, FPR 0.0469, positive on 8 of 8: **MET**.
+(b2) THE IN-VIVO NULL AGREES WITH THE OFFLINE NULL: the in-vivo NULL arm's bound fraction 0.0816 / 0.1174 / 0.1054 /
+    0.1531 / 0.0956 / 0.0990 / 0.0973 / 0.1126 inside the family-wise band on 8 of 8 (inside the per-seed band
+    on 7 of 8 -- seed 3 is 2.11's case): MET.
+VERDICT: **PASS**.
+
+pin head `c3a9fb5`; seeds [0, 1, 2, 3, 4, 5, 6, 7]; elapsed 1436.1 s; verdict **PASS**; refusals none
+(p) determinism: identical=True on 100 rows (ticks_to_k [39, 39], taught_equal True)
+
+| seed | ticks to K | offset | arm order | vision acc | audio acc | ALIGNED bound | NULL in vivo | null mean | null q95 | band [q005, q995] | within - q95 | congruent ALIGNED | congruent NULL | window |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 39 | 0 | ali/nul/lag/lag/lag/scr | 0.9273 | 0.6606 | 76/294 = 0.2585 | 24/294 = 0.0816 | 0.0953 | 0.1224 | [0.0544, 0.1395] fw [0.0442, 0.1463] | +0.1361 | 0.7279 | 0.1156 | 1 |
+| 1 | 77 | 150 | nul/ali/lag/lag/lag/scr | 0.9321 | 0.6645 | 110/293 = 0.3754 | 35/298 = 0.1174 | 0.1037 | 0.1331 | [0.0614, 0.1536] fw [0.0512, 0.1604] | +0.2423 | 0.7338 | 0.0805 | 1 |
+| 2 | 87 | 44 | ali/nul/lag/lag/lag/scr | 0.9287 | 0.6580 | 93/296 = 0.3142 | 31/294 = 0.1054 | 0.1089 | 0.1385 | [0.0676, 0.1520] fw [0.0608, 0.1655] | +0.1757 | 0.7196 | 0.1327 | 1 |
+| 3 | 56 | 194 | nul/ali/lag/lag/lag/scr | 0.9317 | 0.6601 | 102/295 = 0.3458 | 45/294 = 0.1531 | 0.1003 | 0.1288 | [0.0610, 0.1424] fw [0.0475, 0.1593] | +0.2169 | 0.7153 | 0.1259 | 1 |
+| 4 | 32 | 88 | ali/nul/lag/lag/lag/scr | 0.9283 | 0.6692 | 88/292 = 0.3014 | 28/293 = 0.0956 | 0.0968 | 0.1233 | [0.0548, 0.1404] fw [0.0445, 0.1507] | +0.1781 | 0.7192 | 0.1092 | 5 |
+| 5 | 70 | 238 | nul/ali/lag/lag/lag/scr | 0.9280 | 0.6500 | 97/295 = 0.3288 | 29/293 = 0.0990 | 0.0944 | 0.1220 | [0.0542, 0.1390] fw [0.0508, 0.1492] | +0.2068 | 0.7390 | 0.1092 | 2 |
+| 6 | 59 | 132 | ali/nul/lag/lag/lag/scr | 0.9310 | 0.6322 | 96/298 = 0.3221 | 29/298 = 0.0973 | 0.1026 | 0.1309 | [0.0604, 0.1477] fw [0.0537, 0.1544] | +0.1913 | 0.6812 | 0.1074 | 1 |
+| 7 | 53 | 26 | nul/ali/lag/lag/lag/scr | 0.9273 | 0.6631 | 122/294 = 0.4150 | 33/293 = 0.1126 | 0.1123 | 0.1429 | [0.0714, 0.1599] fw [0.0646, 0.1701] | +0.2721 | 0.7177 | 0.0887 | 1 |
+
+| seed | aligned bound | null bound | lag1 bound | lag2 bound | lag5 bound | scrambled bound | aligned false | null false | lag1 false | lag2 false | lag5 false | scrambled false |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 76/294 (0.2585) | 24/294 (0.0816) | 11/146 (0.0753) | 17/152 (0.1118) | 17/150 (0.1133) | 8/152 (0.0526) | 9/76 (0.1184) | 6/24 (0.2500) | 5/11 (0.4545) | 2/17 (0.1176) | 4/17 (0.2353) | 4/8 (0.5000) |
+| 1 | 110/293 (0.3754) | 35/298 (0.1174) | 13/145 (0.0897) | 14/149 (0.0940) | 9/149 (0.0604) | 16/149 (0.1074) | 10/110 (0.0909) | 9/35 (0.2571) | 4/13 (0.3077) | 3/14 (0.2143) | 4/9 (0.4444) | 5/16 (0.3125) |
+| 2 | 93/296 (0.3142) | 31/294 (0.1054) | 12/146 (0.0822) | 21/151 (0.1391) | 14/150 (0.0933) | 18/149 (0.1208) | 7/93 (0.0753) | 16/31 (0.5161) | 4/12 (0.3333) | 5/21 (0.2381) | 5/14 (0.3571) | 9/18 (0.5000) |
+| 3 | 102/295 (0.3458) | 45/294 (0.1531) | 17/149 (0.1141) | 17/148 (0.1149) | 8/148 (0.0541) | 14/151 (0.0927) | 7/102 (0.0686) | 15/45 (0.3333) | 10/17 (0.5882) | 3/17 (0.1765) | 4/8 (0.5000) | 5/14 (0.3571) |
+| 4 | 88/292 (0.3014) | 28/293 (0.0956) | 19/148 (0.1284) | 20/150 (0.1333) | 18/149 (0.1208) | 12/149 (0.0805) | 10/88 (0.1136) | 6/28 (0.2143) | 8/19 (0.4211) | 6/20 (0.3000) | 3/18 (0.1667) | 6/12 (0.5000) |
+| 5 | 97/295 (0.3288) | 29/293 (0.0990) | 20/148 (0.1351) | 11/148 (0.0743) | 14/151 (0.0927) | 10/152 (0.0658) | 8/97 (0.0825) | 12/29 (0.4138) | 11/20 (0.5500) | 7/11 (0.6364) | 7/14 (0.5000) | 6/10 (0.6000) |
+| 6 | 96/298 (0.3221) | 29/298 (0.0973) | 13/147 (0.0884) | 13/147 (0.0884) | 11/150 (0.0733) | 17/149 (0.1141) | 8/96 (0.0833) | 8/29 (0.2759) | 4/13 (0.3077) | 2/13 (0.1538) | 3/11 (0.2727) | 8/17 (0.4706) |
+| 7 | 122/294 (0.4150) | 33/293 (0.1126) | 15/149 (0.1007) | 23/149 (0.1544) | 13/150 (0.0867) | 12/149 (0.0805) | 15/122 (0.1230) | 14/33 (0.4242) | 5/15 (0.3333) | 7/23 (0.3043) | 4/13 (0.3077) | 6/12 (0.5000) |
+
+| seed | aligned congruent | null congruent | lag1 congruent | lag2 congruent | lag5 congruent | scrambled congruent | aligned yield | null yield | lag1 yield | lag2 yield | lag5 yield | scrambled yield | aligned audio acc | null audio acc | lag1 audio acc | lag2 audio acc | lag5 audio acc | scrambled audio acc |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 0.7279 | 0.1156 | 0.0822 | 0.1316 | 0.0867 | 0.0921 | 0.3551 | 0.7059 | 0.9167 | 0.8500 | 1.3077 | 0.5714 | 0.7143 | 0.7041 | 0.6644 | 0.7303 | 0.7133 | 0.3355 |
+| 1 | 0.7338 | 0.0805 | 0.1034 | 0.0671 | 0.0805 | 0.1074 | 0.5116 | 1.4583 | 0.8667 | 1.4000 | 0.7500 | 1.0000 | 0.7099 | 0.6980 | 0.7241 | 0.6913 | 0.6980 | 0.3960 |
+| 2 | 0.7196 | 0.1327 | 0.1301 | 0.1126 | 0.1000 | 0.0738 | 0.4366 | 0.7949 | 0.6316 | 1.2353 | 0.9333 | 1.6364 | 0.7095 | 0.7109 | 0.7055 | 0.6954 | 0.7400 | 0.2483 |
+| 3 | 0.7153 | 0.1259 | 0.0604 | 0.1081 | 0.0473 | 0.0927 | 0.4834 | 1.2162 | 1.8889 | 1.0625 | 1.1429 | 1.0000 | 0.7051 | 0.7041 | 0.6644 | 0.7095 | 0.7095 | 0.3576 |
+| 4 | 0.7192 | 0.1092 | 0.0946 | 0.0733 | 0.1141 | 0.0738 | 0.4190 | 0.8750 | 1.3571 | 1.8182 | 1.0588 | 1.0909 | 0.7055 | 0.7235 | 0.7635 | 0.6733 | 0.7718 | 0.2752 |
+| 5 | 0.7390 | 0.1092 | 0.0608 | 0.1284 | 0.0861 | 0.1118 | 0.4450 | 0.9062 | 2.2222 | 0.5789 | 1.0769 | 0.5882 | 0.7085 | 0.6894 | 0.6892 | 0.7365 | 0.6821 | 0.2961 |
+| 6 | 0.6812 | 0.1074 | 0.0748 | 0.0952 | 0.0800 | 0.0872 | 0.4729 | 0.9062 | 1.1818 | 0.9286 | 0.9167 | 1.3077 | 0.6745 | 0.6644 | 0.7211 | 0.6667 | 0.7067 | 0.2685 |
+| 7 | 0.7177 | 0.0887 | 0.0940 | 0.1342 | 0.0867 | 0.0805 | 0.5782 | 1.2692 | 1.0714 | 1.1500 | 1.0000 | 1.0000 | 0.7109 | 0.7099 | 0.6980 | 0.7248 | 0.6867 | 0.3423 |
+
+- **(g0) the classifiers' congruence: ALIGNED - NULL**: diffs [0.6122, 0.6533, 0.5869, 0.5894, 0.61, 0.6298, 0.5738, 0.6289]; t +65.3517; FPR 0.03515625; degenerate False; **MET**
+- **(b1) the binder's within-window rate - the null's q95**: diffs [0.1361, 0.2423, 0.1757, 0.2169, 0.1781, 0.2068, 0.1913, 0.2721]; t +13.5395; FPR 0.046875; degenerate False; **MET**
+- **(b2) the two nulls agree** (in-vivo NULL inside the offline band on every seed): **{'outside': [], 'inside': 8, 'n_seeds': 8, 'met': True}**
+- windows per seed: [1, 1, 1, 1, 5, 2, 1, 1]; scrambled bound fractions: [0.0526, 0.1074, 0.1208, 0.0927, 0.0805, 0.0658, 0.1141, 0.0805]
+- null draws sd per seed: [0.0162, 0.017, 0.0174, 0.0169, 0.0167, 0.0163, 0.0172, 0.018]; expected (product of marginals) vs mean: [(0.0952, 0.0953), (0.1032, 0.1037), (0.1084, 0.1089), (0.1006, 0.1003), (0.097, 0.0968), (0.0941, 0.0944), (0.1025, 0.1026), (0.1113, 0.1123)]; multiset_ok True
+- agree (decomposition disagreements) per seed/arm: [{'aligned': 0, 'null': 0, 'lag1': 0, 'lag2': 0, 'lag5': 0, 'scrambled': 0}, {'aligned': 0, 'null': 0, 'lag1': 0, 'lag2': 0, 'lag5': 0, 'scrambled': 0}, {'aligned': 0, 'null': 0, 'lag1': 0, 'lag2': 0, 'lag5': 0, 'scrambled': 0}, {'aligned': 0, 'null': 0, 'lag1': 0, 'lag2': 0, 'lag5': 0, 'scrambled': 0}, {'aligned': 0, 'null': 0, 'lag1': 0, 'lag2': 0, 'lag5': 0, 'scrambled': 0}, {'aligned': 0, 'null': 0, 'lag1': 0, 'lag2': 0, 'lag5': 0, 'scrambled': 0}, {'aligned': 0, 'null': 0, 'lag1': 0, 'lag2': 0, 'lag5': 0, 'scrambled': 0}, {'aligned': 0, 'null': 0, 'lag1': 0, 'lag2': 0, 'lag5': 0, 'scrambled': 0}]
+- awake_missing per seed/arm: [{'aligned': 0, 'null': 0, 'lag1': 0, 'lag2': 0, 'lag5': 0, 'scrambled': 0}, {'aligned': 0, 'null': 0, 'lag1': 0, 'lag2': 0, 'lag5': 0, 'scrambled': 0}, {'aligned': 0, 'null': 0, 'lag1': 0, 'lag2': 0, 'lag5': 0, 'scrambled': 0}, {'aligned': 0, 'null': 0, 'lag1': 0, 'lag2': 0, 'lag5': 0, 'scrambled': 0}, {'aligned': 0, 'null': 0, 'lag1': 0, 'lag2': 0, 'lag5': 0, 'scrambled': 0}, {'aligned': 0, 'null': 0, 'lag1': 0, 'lag2': 0, 'lag5': 0, 'scrambled': 0}, {'aligned': 0, 'null': 0, 'lag1': 0, 'lag2': 0, 'lag5': 0, 'scrambled': 0}, {'aligned': 0, 'null': 0, 'lag1': 0, 'lag2': 0, 'lag5': 0, 'scrambled': 0}]
+- timings per seed (s): [{'warmup_s': 2.728, 'total_s': 164.365, 'decompose_s': 4.915}, {'warmup_s': 3.877, 'total_s': 180.469, 'decompose_s': 4.8}, {'warmup_s': 4.493, 'total_s': 157.416, 'decompose_s': 4.919}, {'warmup_s': 3.065, 'total_s': 182.001, 'decompose_s': 4.899}, {'warmup_s': 1.941, 'total_s': 161.196, 'decompose_s': 4.867}, {'warmup_s': 3.702, 'total_s': 166.897, 'decompose_s': 4.966}, {'warmup_s': 2.917, 'total_s': 166.584, 'decompose_s': 5.014}, {'warmup_s': 3.107, 'total_s': 171.877, 'decompose_s': 5.047}]
+- companion: tools\t080_latents.npz sha256 b5bddf194407e09b..., 96 arrays; prototypes per seed: [10, 10, 10, 10, 10, 10, 10, 10]
+- reds at campaign time: {'R1': True, 'R2': True, 'R3': True, 'R4': True, 'R5': True, 'R6': True}
+
+REPORTED: the binding window reads 1 tick on seeds 0-3, 6, 7 (every lag arm at or below the margin), 5 on seed 4
+(LAG 1 0.1284 and LAG 2 0.1333 above its margin 0.1233 -- 2.3's "a lag arm ABOVE the margin is a finding") and
+2 on seed 5 (LAG 1 0.1351 above 0.1220); the scrambled-phase arm binds at 0.0526-0.1208 -- at or below every seed's
+null q95 -- with the audio classifier collapsing to 0.20-0.35 while vision stays at 0.89-0.96 (the SHD frame's
+time bins carry the word; the secondary null takes at the classifier, 2.10 (j)); the false-binding fraction is
+0.069-0.123 on ALIGNED and 0.214-0.516 on NULL (a reported object the classifiers did not name); the yield (bound
+/ classifier-congruent) 0.355-0.578 on ALIGNED -- the binder's nearest-prototype recognition, not the margin, is
+the ceiling (2.10 (b)); the offline null's mean equals its product-of-marginals expectation to 0.001 on every seed
+and the position-permutation null (2.11) widens it by 1.13x; the q95's Monte-Carlo sd is 0 (an integer count over
+~294 ticks).
+
+### 3.4 The disposition applied (2.6, the PASS branch)
+
+On this composite the live binder reports one object for features presented inside one tick window more often
+than a null that keeps every feature and the taught K and breaks only their pairing across windows, at the bar
+over 8 seeds. CHARGED: `CONCLUSION["temporal_binding"].reading` = **0.2309** (the mean over seeds of the ALIGNED
+bound fraction minus the null's MEAN, per 2.6: 0.1632 / 0.2718 / 0.2053 / 0.2455 / 0.2046 / 0.2344 / 0.2195 /
+0.3027), `surface_symbols` = ("crossmodal_bound_rate",); `Brain.state()["crossmodal_bound_rate"]` = the fraction
+of the last 200 awake ticks with one reported object for that tick's two latents (a scratch brain at 60 ticks
+reads 0.4194 over 31 awake ticks -- the sparse-codebook rate, 2.7); the cockpit's access panel prints it with the
+licensed and the refused sentence in the same view and `brain_telemetry.PROVENANCE` names the pin, the null's
+q95 and the disclosure that on this daemon's independent streams the value is a chance rate (fact 4);
+`conclusion_protocol --assert` reads the charged row with the surface debt unchanged at its baseline; tasks.md
+T080 -> [X] PASS. Nothing is retired: `gwt_deep`'s exemption stands on its own reason (1.3), the binder is W6's
+live mechanism. `tests/test_ratified_row_gates.py`'s arming fixture moves to `report_order`.
+
+### 3.5 Deviations from 2.1-2.11, each with its number (dated 2026-09-16)
+
+1. (b2)'s band was changed AFTER the numbers (2.11): from the per-seed [q005, q995] to the family-wise
+   [q(0.005/8), q(1 - 0.005/8)] of the same draws. The pre-registered clause refused run 1 on seed 3 alone
+   (0.1531 vs 0.1424) at a family-wise false-refusal rate of 7.7 % (1 - 0.99^8; 6.2 % simulated from the position
+   nulls); seed 3's one-sided p under its own position null is 0.0037. The barred claim (b1) was not touched and
+   read the same t on both runs. The honesty lens adjudicates whether a readability clause with a computable
+   6-8 % false-refusal rate may be corrected once, disclosed, after it fires; obs #2191 records the rule.
+2. The pin was written TWICE: run 1's (REFUSED) archived and deleted from `tools/`, run 2's committed. 2.10 (h)
+   prescribed exactly this for a refusal; the numbers are identical, the verdict is not.
+3. The campaign's first launch on `7f6a000` was stopped at 57 s (before any write) to add the prototypes to the
+   pin (`309efe6`) -- an apparatus change between the dry run and the campaign, with no effect on any number.
+4. The companion commit `309efe6` pinned the prototypes SORTED; `cleanup` breaks an exact coincidence tie by the
+   codebook's insertion order, so an offline binder named the other prototype on tied ticks (9 of 294 on seed 7
+   ALIGNED, ties at 440/512; seeds 6-7 differed by a few ticks on run 1's verification). Fixed in `c3a9fb5`
+   (registration order); run 2's verification re-decomposes 0 disagreements. The campaign's own decomposition
+   was never affected (`agree` 0 on both runs) -- it used the brain's binder. The tie-break's dependence on
+   registration order is itself a fact about the mechanism (opening 3).
+5. 2.3 (r)'s vacuous second clause was made stricter before the campaign (2.10 (c)); the dry run and both runs
+   read 0 missing.
+6. R2's constructed input is drawn sparse (2.10 (a)); `T080_REDS_N_DRAWS` = 500 for the reds; three mutation hooks in
+   signatures; `t080_verdict`; R3's tables as constants; `agree` counts disagreements; the per-arm accuracies from
+   differenced counters -- the builder's deviations, accepted as disclosed (2.10 (h)).
+7. The reading of 2.6 is (within - the null's MEAN), while (b1) bars (within - the null's q95): both are in the
+   pin; the record reports the q95 differences beside the reading's mean differences (3.3).
+8. Clock stamps typed ahead of the clock twice (3.0; obs #2190).
+9. The warm-up reads 32-87 ticks across seeds (fact 5 measured 54 on the probe's aligned order); the cost 66.7-69.8
+   ms/tick against 2.8's 55.
+10. The record's tables are generated from the pin (`scratchpad/t080/record_gen.py`), never typed.
+
+### 3.6 What this row does NOT claim, and the openings it leaves
+
+Nothing about a felt present, a stream of experience or a duration lived (the refused sentence, printed beside
+the symbol on every surface that prints it). The binding window is the tick because the binder is stateless --
+the lag arms measured the mechanism's shape (1 tick on 6 seeds; the two seeds whose LAG 1 arm sat above the
+margin are chance congruences of 148 ticks, reported); nothing about a temporal integration window. The alignment
+is the apparatus's: on this daemon the streams are independent (fact 4), so its live `crossmodal_bound_rate` is a
+chance rate and the provenance says so. Openings: (1) `_xmodal_handle` persists on ticks the binder does not run
+(brain.py:1833 guards the call, not the state) -- the rate counts only ticks with both latents, but
+`crossmodal_handle` and `crossmodal_superadditive` publish a stale value on the others; (2) a sparse codebook
+names one object for everything above the margin (the first taught object binds 0.42 of early ticks on a fresh
+brain) -- a report that is a marker of "one prototype exists", not of binding; (3) the tie-break by registration
+order (3.5 item 4); (4) the audio classifier at 0.65-0.73 caps the yield at 0.36-0.58 -- a better audio encoder,
+not the binder, is the lever; (5) the scrambled-phase arm is a classifier test as built (2.10 (j)); a phase
+scramble that preserves the classifier's output would test the binder's own use of phase, which nothing here
+does; (6) the plan's "scrambled-phase secondary" and "matched K" are read as this record reads them (2.1); the
+plan's author may have meant gwt_deep's K-object task, which stays unrun; (7) the stale `crossmodal_superadditive`
+on the cockpit has no sentence beside it and is not a C5 symbol -- it prints a chance-binding indicator without
+saying so; (8) the (b2) clause's post-number correction (3.5 item 1) is the panel's to judge.
