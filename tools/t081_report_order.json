@@ -1,0 +1,685 @@
+{
+ "row": "T081",
+ "head": "f5cf8b8c6b9bb1b2e147f3572fee5b19d3e53d13",
+ "seeds": [
+  0,
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7
+ ],
+ "constants": {
+  "n_ticks": 600,
+  "doses": [
+   0.25,
+   0.5,
+   0.75,
+   1.0
+  ],
+  "lesion_dose": 1.0,
+  "stream_offset": 150,
+  "stream_positions": 256,
+  "seeds": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7
+  ],
+  "applicable_floor": 0.5,
+  "min_contents": 2,
+  "min_changes": 1,
+  "flip_floor": 0.5,
+  "scr_redraws": 12,
+  "scr_rng_base": 7000,
+  "scr_redraw_base": 900000,
+  "determinism_ticks": 100,
+  "offset_labels": 50,
+  "bar": 1.895,
+  "clone_fields": [
+   "_buffer",
+   "_g",
+   "_jit",
+   "_last_focus",
+   "_last_late",
+   "_last_total",
+   "_last_v",
+   "_rng",
+   "_settled",
+   "_slot_buf",
+   "_slots"
+  ]
+ },
+ "reds": {
+  "R1": true,
+  "R2": true,
+  "R3": true,
+  "R4": true,
+  "R5": true,
+  "R6": true
+ },
+ "determinism": {
+  "seed": 0,
+  "identical": true,
+  "first_diff": null,
+  "rows": 49,
+  "twin_rows": 49,
+  "awake": [
+   49,
+   49
+  ],
+  "n_ticks": 100
+ },
+ "stream_labels": {
+  "seed0": [
+   6,
+   6,
+   0,
+   4,
+   8,
+   7,
+   6,
+   4,
+   7,
+   5,
+   9,
+   3,
+   8,
+   2,
+   4,
+   2,
+   1,
+   3,
+   8,
+   9,
+   2,
+   4,
+   1,
+   1,
+   5,
+   7,
+   9,
+   1,
+   5,
+   7,
+   5,
+   3,
+   9,
+   7,
+   7,
+   8,
+   4,
+   1,
+   8,
+   0,
+   1,
+   6,
+   0,
+   8,
+   5,
+   3,
+   5,
+   1,
+   2,
+   9
+  ],
+  "seed1": [
+   1,
+   0,
+   8,
+   6,
+   1,
+   4,
+   1,
+   3,
+   1,
+   4,
+   5,
+   7,
+   2,
+   8,
+   7,
+   0,
+   9,
+   1,
+   3,
+   4,
+   5,
+   7,
+   9,
+   2,
+   3,
+   0,
+   2,
+   2,
+   5,
+   8,
+   3,
+   1,
+   9,
+   7,
+   2,
+   0,
+   7,
+   6,
+   9,
+   8,
+   4,
+   5,
+   6,
+   3,
+   2,
+   9,
+   0,
+   7,
+   1,
+   5
+  ]
+ },
+ "per_seed": [
+  {
+   "n": 294,
+   "applicable_named": 294,
+   "applicable_scr": 294,
+   "mismatch": 0,
+   "g_intact": 294,
+   "pre_intact": 294,
+   "contents": 20,
+   "changes": 37,
+   "availability": 1.0,
+   "f_named": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 1.0
+   },
+   "f_scr": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 0.0
+   },
+   "s_named": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 1.0
+   },
+   "s_scr": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 0.0
+   },
+   "scr_changed_1": 0,
+   "scr_changed_ticks": [],
+   "n_pools": 9.520408163265307,
+   "top_margin": 0.021721642820344812,
+   "flip_dose": 1.0,
+   "seed": 0,
+   "offset": 0,
+   "positions": 256,
+   "awake_ticks": 294,
+   "wrapper_ticks": 294,
+   "kinds": {
+    "asleep": 306,
+    "awake": 294
+   },
+   "workspace": "GlobalWorkspace",
+   "timings": {
+    "build_s": 0.848,
+    "record_s": 36.494,
+    "total_s": 37.342,
+    "ms_per_tick": 60.82333333333333
+   },
+   "refusals": []
+  },
+  {
+   "n": 299,
+   "applicable_named": 299,
+   "applicable_scr": 299,
+   "mismatch": 0,
+   "g_intact": 299,
+   "pre_intact": 299,
+   "contents": 20,
+   "changes": 55,
+   "availability": 1.0,
+   "f_named": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 1.0
+   },
+   "f_scr": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 0.0
+   },
+   "s_named": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 1.0
+   },
+   "s_scr": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 0.0
+   },
+   "scr_changed_1": 0,
+   "scr_changed_ticks": [],
+   "n_pools": 10.434782608695652,
+   "top_margin": 0.03342599065867777,
+   "flip_dose": 1.0,
+   "seed": 1,
+   "offset": 150,
+   "positions": 256,
+   "awake_ticks": 299,
+   "wrapper_ticks": 299,
+   "kinds": {
+    "awake": 299,
+    "asleep": 301
+   },
+   "workspace": "GlobalWorkspace",
+   "timings": {
+    "build_s": 0.93,
+    "record_s": 34.456,
+    "total_s": 35.387,
+    "ms_per_tick": 57.42666666666667
+   },
+   "refusals": []
+  },
+  {
+   "n": 299,
+   "applicable_named": 299,
+   "applicable_scr": 299,
+   "mismatch": 0,
+   "g_intact": 299,
+   "pre_intact": 299,
+   "contents": 21,
+   "changes": 73,
+   "availability": 1.0,
+   "f_named": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 1.0
+   },
+   "f_scr": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 0.0
+   },
+   "s_named": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 1.0
+   },
+   "s_scr": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 0.0
+   },
+   "scr_changed_1": 0,
+   "scr_changed_ticks": [],
+   "n_pools": 11.096989966555183,
+   "top_margin": 0.05627291500724121,
+   "flip_dose": 1.0,
+   "seed": 2,
+   "offset": 44,
+   "positions": 256,
+   "awake_ticks": 299,
+   "wrapper_ticks": 299,
+   "kinds": {
+    "awake": 299,
+    "asleep": 301
+   },
+   "workspace": "GlobalWorkspace",
+   "timings": {
+    "build_s": 1.05,
+    "record_s": 36.063,
+    "total_s": 37.113,
+    "ms_per_tick": 60.105
+   },
+   "refusals": []
+  },
+  {
+   "n": 298,
+   "applicable_named": 298,
+   "applicable_scr": 298,
+   "mismatch": 0,
+   "g_intact": 298,
+   "pre_intact": 298,
+   "contents": 24,
+   "changes": 36,
+   "availability": 1.0,
+   "f_named": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 1.0
+   },
+   "f_scr": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 0.0
+   },
+   "s_named": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 1.0
+   },
+   "s_scr": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 0.0
+   },
+   "scr_changed_1": 0,
+   "scr_changed_ticks": [],
+   "n_pools": 11.050335570469798,
+   "top_margin": 0.025493120504997434,
+   "flip_dose": 1.0,
+   "seed": 3,
+   "offset": 194,
+   "positions": 256,
+   "awake_ticks": 298,
+   "wrapper_ticks": 298,
+   "kinds": {
+    "awake": 298,
+    "asleep": 302
+   },
+   "workspace": "GlobalWorkspace",
+   "timings": {
+    "build_s": 1.035,
+    "record_s": 42.617,
+    "total_s": 43.652,
+    "ms_per_tick": 71.02833333333334
+   },
+   "refusals": []
+  },
+  {
+   "n": 298,
+   "applicable_named": 298,
+   "applicable_scr": 298,
+   "mismatch": 0,
+   "g_intact": 298,
+   "pre_intact": 298,
+   "contents": 22,
+   "changes": 65,
+   "availability": 1.0,
+   "f_named": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 1.0
+   },
+   "f_scr": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 0.0
+   },
+   "s_named": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 1.0
+   },
+   "s_scr": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 0.0
+   },
+   "scr_changed_1": 0,
+   "scr_changed_ticks": [],
+   "n_pools": 11.768456375838927,
+   "top_margin": 0.02335893256100112,
+   "flip_dose": 1.0,
+   "seed": 4,
+   "offset": 88,
+   "positions": 256,
+   "awake_ticks": 298,
+   "wrapper_ticks": 298,
+   "kinds": {
+    "awake": 298,
+    "asleep": 302
+   },
+   "workspace": "GlobalWorkspace",
+   "timings": {
+    "build_s": 1.075,
+    "record_s": 39.961,
+    "total_s": 41.037,
+    "ms_per_tick": 66.60166666666667
+   },
+   "refusals": []
+  },
+  {
+   "n": 292,
+   "applicable_named": 292,
+   "applicable_scr": 292,
+   "mismatch": 0,
+   "g_intact": 292,
+   "pre_intact": 292,
+   "contents": 17,
+   "changes": 26,
+   "availability": 1.0,
+   "f_named": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 1.0
+   },
+   "f_scr": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 0.0
+   },
+   "s_named": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 1.0
+   },
+   "s_scr": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 0.0
+   },
+   "scr_changed_1": 0,
+   "scr_changed_ticks": [],
+   "n_pools": 11.061643835616438,
+   "top_margin": 0.01343861637843182,
+   "flip_dose": 1.0,
+   "seed": 5,
+   "offset": 238,
+   "positions": 256,
+   "awake_ticks": 292,
+   "wrapper_ticks": 292,
+   "kinds": {
+    "asleep": 308,
+    "awake": 292
+   },
+   "workspace": "GlobalWorkspace",
+   "timings": {
+    "build_s": 1.079,
+    "record_s": 45.464,
+    "total_s": 46.544,
+    "ms_per_tick": 75.77333333333333
+   },
+   "refusals": []
+  },
+  {
+   "n": 293,
+   "applicable_named": 293,
+   "applicable_scr": 293,
+   "mismatch": 0,
+   "g_intact": 293,
+   "pre_intact": 293,
+   "contents": 24,
+   "changes": 47,
+   "availability": 1.0,
+   "f_named": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 1.0
+   },
+   "f_scr": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 0.0
+   },
+   "s_named": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 1.0
+   },
+   "s_scr": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 0.0
+   },
+   "scr_changed_1": 0,
+   "scr_changed_ticks": [],
+   "n_pools": 11.30716723549488,
+   "top_margin": 0.015170310018000196,
+   "flip_dose": 1.0,
+   "seed": 6,
+   "offset": 132,
+   "positions": 256,
+   "awake_ticks": 293,
+   "wrapper_ticks": 293,
+   "kinds": {
+    "asleep": 307,
+    "awake": 293
+   },
+   "workspace": "GlobalWorkspace",
+   "timings": {
+    "build_s": 0.958,
+    "record_s": 34.968,
+    "total_s": 35.926,
+    "ms_per_tick": 58.28
+   },
+   "refusals": []
+  },
+  {
+   "n": 296,
+   "applicable_named": 296,
+   "applicable_scr": 296,
+   "mismatch": 0,
+   "g_intact": 296,
+   "pre_intact": 296,
+   "contents": 21,
+   "changes": 39,
+   "availability": 1.0,
+   "f_named": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 1.0
+   },
+   "f_scr": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 0.0
+   },
+   "s_named": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 1.0
+   },
+   "s_scr": {
+    "0.25": 0.0,
+    "0.5": 0.0,
+    "0.75": 0.0,
+    "1.0": 0.0
+   },
+   "scr_changed_1": 0,
+   "scr_changed_ticks": [],
+   "n_pools": 10.341216216216216,
+   "top_margin": 0.020236664128219544,
+   "flip_dose": 1.0,
+   "seed": 7,
+   "offset": 26,
+   "positions": 256,
+   "awake_ticks": 296,
+   "wrapper_ticks": 296,
+   "kinds": {
+    "awake": 296,
+    "asleep": 304
+   },
+   "workspace": "GlobalWorkspace",
+   "timings": {
+    "build_s": 0.948,
+    "record_s": 37.261,
+    "total_s": 38.21,
+    "ms_per_tick": 62.10166666666667
+   },
+   "refusals": []
+  }
+ ],
+ "contrasts": {
+  "g0": {
+   "failures": [],
+   "met": true,
+   "n_seeds": 8
+  },
+  "c1": {
+   "name": "(c1) the named lesion's report-change fraction - the scrambled lesion's",
+   "diffs": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "t": 0.0,
+   "fpr": 0.0,
+   "degenerate": true,
+   "met": true
+  },
+  "c2": {
+   "failures": [],
+   "changed": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "met": true,
+   "n_seeds": 8
+  }
+ },
+ "refusals": [],
+ "verdict": "PASS",
+ "elapsed_s": 349.8
+}
