@@ -3871,7 +3871,14 @@ class Brain:
     #   overlap on 'state' only; this is the ONE /api/state telemetry build. Sites read.
     def state(self):
         """Telemetry for /api/state. Adds a COMPACT self_state view of the evolving self-model."""
+        from snn_data_lake.cortex.report_order_probe import _t081_top_margin
         from snn_data_lake.substrate.report_channel import snapshot as _report_snapshot
+
+        # T081 (2026-09-16, evidence/t081-report-order.md 2.6 PASS): the ARM's bus, bound ONCE so
+        # `workspace_report` and `report_order_margin` below are two readings of the SAME object
+        # rather than two `getattr` loads a host rebinding `self.workspace` between them could pull
+        # apart -- the two-loads window report_channel's own chat-side adapter documents closing.
+        _ws = getattr(self, "workspace", None)
 
         grown = self.neuro.grown_units if self.neuro is not None else 0
         acc = self.neuro.predict_accuracy if self.neuro is not None else 0.0
@@ -4091,7 +4098,21 @@ class Brain:
             # workspace-report snapshot on the state the cockpit renders (P4c). THE
             # runtime read matching the declared edge; the review measured the first
             # draft's 'consumers' to be prose only.
-            "workspace_report": _report_snapshot(getattr(self, "workspace", None)),
+            "workspace_report": _report_snapshot(_ws),
+            # T081 (C5 row report_order, CHARGED 2026-09-16): the live charge margin of the SAME bus
+            # the line above snapshots -- (g_top - g_second) / g_top over the slots, the quantity the
+            # campaign's flip dose was read against. The function is IMPORTED from the instrument
+            # (`cortex/report_order_probe._t081_top_margin`), never re-implemented here: ONE
+            # mechanism (P2), so the number the cockpit prints and the number the probe scored come
+            # from the same body. None when there is no workspace -- a brain that has not built its
+            # arm has no margin, which is a state and not a 0.0. The licensed and refused sentences
+            # ride in brain_telemetry.PROVENANCE beside it, as temporal_binding's do. NOT CLAMPED,
+            # and it can read NEGATIVE: `_slot()` is the ADMISSION rank (P6's -_last_v repair), not
+            # the charge order, so the admitted head is not always the most charged pool (24 of 100
+            # ticks, measured 2026-09-16 -- the provenance carries the numbers). Clamping would make
+            # this number differ from the one the campaign scored, which is the whole point of the
+            # shared body.
+            "report_order_margin": (round(_t081_top_margin(_ws), 4) if _ws is not None else None),
             # T046a: the |LP| facade's fed channels -- a REAL reported output (the panel:
             # a write-only instance attribute is a sink, not a consumer; P4c puts what the
             # brain measures on the state the cockpit renders). {} until perception feeds.

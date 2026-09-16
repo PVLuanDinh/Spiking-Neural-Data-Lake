@@ -191,20 +191,33 @@ EXEMPT = {
         "tools/t080_temporal_binding.json once). Wiring it to the tick would make the observer "
         "part of the observed -- the same reason ignition_instrument is not a tick faculty",
     ),
-    "report_order_probe": (
-        "permanent",
-        "MEASUREMENT INSTRUMENT (specs/022 T081 [US4], the C5 row report_order): reads the LIVE "
-        "arm's report channel off a SCRATCH brain (throwaway_home, persist=False) and scores it "
-        "against LESIONED CLONES of the very workspace state that produced it -- the reported "
-        "content's attractor charge zeroed on one clone, an unreported pool's on another. THE "
-        "LESION IS APPLIED TO A COPY: the live workspace is never perturbed, and a clone's "
-        "subscribers and output ring are detached, so no copy can deliver a broadcast or write a "
-        "lake byte. Its consumers are its __main__ self-check (2.4's six reachable reds on "
-        "constructed workspaces), tests/test_report_order_probe.py, and the T081 campaign "
-        "(--t081-campaign, which pins tools/t081_report_order.json once). Wiring it to the tick "
-        "would make the observer part of the observed -- the same reason ignition_instrument and "
-        "binding_instrument are not tick faculties",
-    ),
+    # `report_order_probe` RETIRED from EXEMPT 2026-09-16 (T081's PASS surfaces,
+    # evidence/t081-report-order.md 2.6): it is REACHABLE now, because `cortex/brain.py::Brain.state`
+    # imports `_t081_top_margin` from it to publish `report_order_margin`. The reason is kept here
+    # rather than deleted, because the gate's own advice is that an exemption may be the only record
+    # of a waived invariant -- VERBATIM: "MEASUREMENT INSTRUMENT (specs/022 T081 [US4], the C5 row
+    # report_order): reads the LIVE arm's report channel off a SCRATCH brain (throwaway_home,
+    # persist=False) and scores it against LESIONED CLONES of the very workspace state that produced
+    # it -- the reported content's attractor charge zeroed on one clone, an unreported pool's on
+    # another. THE LESION IS APPLIED TO A COPY: the live workspace is never perturbed, and a clone's
+    # subscribers and output ring are detached, so no copy can deliver a broadcast or write a lake
+    # byte. Its consumers are its __main__ self-check (2.4's six reachable reds on constructed
+    # workspaces), tests/test_report_order_probe.py, and the T081 campaign (--t081-campaign, which
+    # pins tools/t081_report_order.json once). Wiring it to the tick would make the observer part of
+    # the observed -- the same reason ignition_instrument and binding_instrument are not tick
+    # faculties."
+    #
+    # WHAT CHANGED AND WHAT DID NOT, stated exactly rather than waved through. The RECORDER, the
+    # CLONES and the CAMPAIGN are untouched: they still run on a scratch brain and still lesion only
+    # copies, so "the lesion is applied to a copy" stands. What is now reachable is ONE pure reader,
+    # `_t081_top_margin(ws)`, which takes `ws._slot()` and returns a ratio -- it mutates nothing,
+    # clones nothing, and submits nothing. It is read on `Brain.state()`, the TELEMETRY view, and
+    # its value is consumed by exactly two surfaces (brain_telemetry.PROVENANCE and the cockpit's
+    # report-order row, measured by grep at this commit) and by no decision anywhere. So the
+    # observer has NOT been wired into the tick; a number it computes is printed on the state the
+    # cockpit renders, which is what 2.6's PASS branch requires and what P4c requires of any
+    # reported quantity. If a future caller feeds this margin back into an action, THAT is the wire
+    # the sentence above forbids, and it owes its own adjudication.
     "gwt_deep": (
         "permanent",
         "BENCHMARK DEMONSTRATION (promoted reasoning/ -> thalamus/ 2026-08-11): the tree's "

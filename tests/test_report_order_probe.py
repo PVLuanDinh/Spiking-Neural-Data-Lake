@@ -324,3 +324,49 @@ def test_r6_the_dose_ladder(reds):
         f"(it read {mut(rop.T081_R6_LADDER)!r})"
     )
     assert reds["R6"], "t081_reds()['R6'] must fire on the same ladder the suite used"
+
+
+def test_the_live_report_order_margin_reaches_state_with_both_c5_sentences_beside_it():
+    """2.6's PASS branch (2026-09-16): `Brain.state()["report_order_margin"]` is the live charge
+    margin of the arm's bus -- `_t081_top_margin` on the SAME workspace object the state's
+    `workspace_report` snapshots, ONE mechanism rather than a re-implementation -- and its
+    provenance carries the licensed sentence, the refused sentence, the pin, and the disclosure
+    that the flip dose this margin was read against was 1.0 on every seed by construction.
+
+    A SCRATCH brain, never the live lake: `make_brain(seed=0, persist=False)` under
+    `throwaway_home()`.
+    """
+    from snn_data_lake.substrate import brain_telemetry
+    from snn_data_lake.substrate.conclusion_protocol import CONCLUSION
+    from snn_data_lake.substrate.home import throwaway_home
+
+    # The two sentences are read OFF THE ROW, never retyped here -- C5 writes them before C4
+    # measures anything, so a provenance line that paraphrases them is a second copy that can
+    # drift. The row's own CHARGE (its reading and its surface symbol) is the NEXT commit's.
+    licensed, refused, _dis, _reading, _date, _symbols = CONCLUSION["report_order"]
+    prov = brain_telemetry.PROVENANCE["report_order_margin"]
+    assert licensed in prov and refused in prov, "both C5 sentences ride beside the symbol"
+    assert "t081_report_order.json" in prov and "BY CONSTRUCTION" in prov
+    with throwaway_home():
+        from snn_data_lake.cortex.brain import make_brain
+
+        b = make_brain(seed=0, persist=False)
+        for _ in range(30):
+            b.tick()
+        margin = b.state()["report_order_margin"]
+        # THE RANGE IS <= 1, NOT [0, 1], and that is a MEASURED finding about the apparatus rather
+        # than a looser assert (2026-09-16, `scratchpad/t081/margin_range.py`, seed 0, 120 ticks):
+        # `_slot()` returns the ADMISSION rank, which P6's repair orders by `-_last_v` (the final
+        # membrane), NOT by `_g`. So the top SLOT is not always the top CHARGE: on the arm's live
+        # bus the slot order was not charge-descending on 32 of 100 readings and the margin read
+        # NEGATIVE on 24 of 100, range [-0.0664, 0.2083], mean 0.0541 (the pin's per-seed means,
+        # 0.0134-0.0563, are means over ~294 ticks and hide every per-tick negative). Structurally
+        # the quantity is <= 1 because the lesion's charges are non-negative and the zero-top case
+        # returns 0.0; it has no measured lower bound, and asserting [0, 1] here would have been a
+        # bound the instrument does not have. Clamping it would be worse: the cockpit's number must
+        # be the probe's number, so the body stays as the campaign ran it.
+        assert margin is None or (isinstance(margin, float) and margin <= 1.0), margin
+        # the number on the state is the INSTRUMENT's, not a second body computing the same thing
+        ws = b.workspace
+        if ws is not None:
+            assert margin == round(rop._t081_top_margin(ws), 4)
