@@ -336,7 +336,17 @@ BASELINE = {
     # the three green controls were green at either ceiling -- an earlier 0-of-3-controls reading
     # was caused by the then-undeclared hippocampus<->thalamus import pair, a different red, and
     # is NOT evidence for this ratchet; corrected at the same day's review pass).
-    "private_instance_modules": 6,
+    #
+    # RAISED 6 -> 7 on 2026-09-16 (specs/022 T081), and per this gate's own rule a raise is an
+    # ADMISSION, so here it is: cortex/report_order_probe.py constructs a private GlobalWorkspace
+    # SUBJECT (`t081_constructed_workspace`) for its reds R1-R6 -- the pre-registration
+    # (evidence/t081-report-order.md 2.4, 2.9 step 4) requires the reds to run on a constructed
+    # workspace IN-FILE, and nothing else reads that subject BY DESIGN: it is a measurement
+    # instrument (dormancy_gate EXEMPT as such), the T033 shape below. The factory form that
+    # keeps this census at 6 was measured before the build and REFUSED -- evasion through this
+    # walk's disclosed blind spot is worse than the admission. The ceiling still traps the NEXT
+    # private instance: a real faculty holding its own bus lands on 8 and reddens.
+    "private_instance_modules": 7,
     # RAISED 6 -> 7 on 2026-08-21 (specs/022 T033), and per this gate's own rule a raise is
     # an ADMISSION, so here it is: thalamus/ignition_instrument.py constructs private
     # ReentrantWorkspace SUBJECTS inside its sweep and ablation protocols and nothing else
@@ -356,7 +366,13 @@ BASELINE = {
     # constructed mutation landing ON it instead of over it, which costs the criterion its
     # reachable red -- measured: `--self-check` went exit 1 naming this criterion while `--assert`
     # stayed exit 0.
-    "unread_writer_modules": 6,
+    #
+    # RAISED 6 -> 7 on 2026-09-16 (specs/022 T081): the same admission as private_instance_modules
+    # above -- cortex/report_order_probe.py SUBMITS pools into its constructed GlobalWorkspace
+    # subject (2.4's six pools over 20 ticks) and nobody else reads that instance, by design. The
+    # ceiling sits ON the measurement (7 = 7), so the self-check's one-mutant regression still
+    # crosses it; a real faculty writing into a bus nobody reads lands on 8 and reddens.
+    "unread_writer_modules": 7,
     #
     # 1 -> 3 AT T039h. A FLOOR, so it ratchets UP: two live_brain reads of the arm's bus, plus the
     # insula's read of brain.py's re-entrant bus. Left at 1 the mutation (which removes one cross
