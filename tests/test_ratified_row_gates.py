@@ -106,9 +106,16 @@ def test_every_consciousness_instrument_owns_its_licensed_and_refused_sentences(
         assert len(licensed) >= conclusion_protocol._MIN_SENTENCE, name
         assert len(refused) >= conclusion_protocol._MIN_SENTENCE, name
         assert len(dissociation) >= conclusion_protocol._MIN_SENTENCE, name
-        assert reading is None, (
-            name
-        )  # C4 is unbuilt; a reading without its instrument would be a fabrication
+        # A reading exists ONLY where its C4 instrument task is marked [X] and its pin exists on
+        # the tree -- a reading without its instrument would be a fabrication. Until 2026-09-16
+        # every row read None ("C4 is unbuilt"); T080 charged temporal_binding from
+        # tools/t080_temporal_binding.json, so the premise is now checked per row, not assumed.
+        if reading is not None:
+            task = conclusion_protocol.C4_TASK.get(name)
+            assert conclusion_protocol._task_done(task), (name, task)
+            assert symbols, name
+            pins = list((conclusion_protocol.REPO / "tools").glob(f"{task.lower()}_*.json"))
+            assert pins, (name, task)
         assert isinstance(symbols, tuple)
     assert conclusion_protocol.asserted_findings() == []
 
@@ -157,9 +164,12 @@ def test_refusal_three_arms_itself_when_a_c4_instrument_task_lands():
     # (2026-09-15, evidence/t079-agency.md 3.4) and named `agency_controllability` printed
     # nowhere -- T077's shape; `temporal_binding` (T080, unbuilt) is the next symbol-less row.
     assert conclusion_protocol._task_done("T079") is True  # marked [X] NOT MET, its symbol named
-    armed = {**{k: None for k in conclusion_protocol.INSTRUMENTS}, "temporal_binding": "T034"}
+    # T080 read PASS (2026-09-16, evidence/t080-temporal-binding.md 3.4): its row carries a reading
+    # AND a symbol, so `report_order` (T081, unbuilt) is the next symbol-less row the arm points at.
+    assert conclusion_protocol._task_done("T080") is True
+    armed = {**{k: None for k in conclusion_protocol.INSTRUMENTS}, "report_order": "T034"}
     fired = conclusion_protocol.row_findings(tasks=armed)
-    assert any("T034" in x and "temporal_binding" in x for x in fired), fired
+    assert any("T034" in x and "report_order" in x for x in fired), fired
     unarmed = {k: None for k in conclusion_protocol.INSTRUMENTS}
     assert conclusion_protocol.row_findings(tasks=unarmed) == []
 

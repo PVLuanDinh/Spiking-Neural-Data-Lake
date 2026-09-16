@@ -146,9 +146,14 @@ CONCLUSION: dict[str, tuple] = {
         "features inside one window are bound into one reported object more often than features across windows",
         "this licenses no claim that there is a felt present, a stream of experience, or a duration lived",
         "membership-matched pairing at matched K (the plan's primary null) must not reproduce the binding",
-        None,
+        # T080 CHARGED 2026-09-16 (evidence/t080-temporal-binding.md 3.3-3.4; tools/t080_temporal_binding.json,
+        # run 2 on c3a9fb5): the mean over 8 seeds of (the ALIGNED arm's within-window bound fraction minus
+        # its membership-matched null's mean); (b1) against the null's q95 read t +13.54, FPR 0.047, 8 of 8.
+        0.2309,
         "2026-09-06",
-        (),  # T080 unbuilt
+        # Brain.state()["crossmodal_bound_rate"]: the cockpit's row and brain_telemetry.PROVENANCE carry both
+        # sentences beside it, and say that on the daemon's independent streams it reads the null's rate
+        ("crossmodal_bound_rate",),
     ),
     "report_order": (
         "perturbing one named intermediate changes the report, so the report is generated from the internal state",
@@ -387,10 +392,11 @@ def main() -> None:
     # fixture shift tests/test_ratified_row_gates.py took.
     armed = {
         **{k: None for k in INSTRUMENTS},
-        "temporal_binding": "T034",
-    }  # T034 is [X] in tasks.md
+        "report_order": "T034",
+    }  # T034 is [X] in tasks.md; report_order (T081, unbuilt) is the next symbol-less row
+    # after temporal_binding was CHARGED at T080 (2026-09-16) and named its symbol
     fired = row_findings(tasks=armed)
-    assert any("T034" in x and "temporal_binding" in x for x in fired), fired
+    assert any("T034" in x and "report_order" in x for x in fired), fired
     assert row_findings(tasks={k: None for k in INSTRUMENTS}) == [], (
         "the unarmed control must stay clean"
     )
