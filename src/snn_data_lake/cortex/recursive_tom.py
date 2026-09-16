@@ -1616,6 +1616,51 @@ def t082_charge_reading(edge=BELIEF_EDGE):
     }
 
 
+# distinct-from: report_order_probe.py -- `report_order_probe.t081_pin_reading`, the same JOB (a C5
+#   row's charged reading re-derived from its committed pin at self-check, beside a mutated
+#   derivation shown to refuse) over a DIFFERENT pin schema (dose-keyed f_named / f_scr fractions,
+#   JSON string keys) and a different row. Read 2026-09-16.
+# distinct-from: binding_instrument.py -- `binding_instrument.t080_pin_reading`, the same job again
+#   over per-seed bound fractions against a membership-matched null, whose mutated derivation swaps
+#   the null's mean for its q95; this one swaps the two ACCURACIES. Read 2026-09-16.
+# distinct-from: amdahl_gate.py -- its repeatability red compares two timing readings' BANDS for
+#   overlap; there is no pin, no C5 row and no reading. Read 2026-09-16.
+# distinct-from: evidence_accumulation.py -- a replay-twice charge A/B over serotonin frames; no
+#   pin, no row. The charge-side sibling in THIS module is `t082_charge_reading` above, which is a
+#   different quantity from the one below (an edge's A/B, not the row's reading). Read 2026-09-16.
+# distinct-from: task_set.py -- a replay-twice charge A/B over film frames; no pin, no row.
+#   Read 2026-09-16.
+#
+#   OPENING, recorded and deliberately NOT taken here (T081's own docstring opened it; this is the
+#   THIRD body): ONE helper taking (row, pin, reducer) with all three per-row bodies retired into
+#   it -- `t080_pin_reading`, `t081_pin_reading` and this one differ only in the reducer over the
+#   pin's `per_seed` list and in the row name they compare against. That is a P2 merge across three
+#   modules and two arcs; doing it inside a surfaces commit would be a second change, so it is owed
+#   as its own commit with its own gate rather than smuggled in here.
+def t082_pin_reading(pin=None):
+    """(derived, recorded, mutated): 2.6's PASS reading -- the mean over seeds of
+    (acc_belief - acc_ctrl) -- re-derived from the committed pin, beside the CONCLUSION row's
+    recorded value and a MUTATED derivation (the sides swapped, acc_ctrl - acc_belief) which must
+    not equal the recorded reading, so the refusal clause is shown reachable on every run rather
+    than assumed. A missing pin is a RED, never a skip: the pin is tracked, so absence means
+    deletion or a broken path."""
+    from snn_data_lake.substrate.conclusion_protocol import CONCLUSION
+
+    pin = T082_PIN if pin is None else Path(pin)
+    assert pin.exists(), (
+        f"{pin} missing -- the C5 reading's re-derivation cannot run; the pin is tracked, so "
+        "absence means deletion or a broken path resolution"
+    )
+    seeds = json.loads(pin.read_text(encoding="utf-8"))["per_seed"]
+    derived = round(
+        sum(float(e["acc_belief"]) - float(e["acc_ctrl"]) for e in seeds) / len(seeds), 4
+    )
+    mutated = round(
+        sum(float(e["acc_ctrl"]) - float(e["acc_belief"]) for e in seeds) / len(seeds), 4
+    )
+    return derived, CONCLUSION["social_cognition"][3], mutated
+
+
 # distinct-from: thalamus/binding_instrument.py::main and cortex/report_order_probe.py::main --
 #   each module's own `__main__` block, which is this tree's convention (run_selfchecks.py
 #   executes exactly that block per module and scores the exit status), not a second dispatcher.
@@ -1772,6 +1817,22 @@ def main(argv=None):
         print(
             f"T082 SELF-CHECK RED: the committed charge row for {BELIEF_EDGE} does not reproduce "
             f"({ch['committed']} vs {ch['derived']})"
+        )
+        return 1
+    # THE CHARGED READING IS TIED TO ITS PIN HERE (T082 surfaces, 2026-09-16; T081's shape). A
+    # missing pin is a RED (the pin is tracked), never a skip; the mutated derivation shows the
+    # clause reachable on every run. The reading is the CAMPAIGN's accuracy difference, NOT the
+    # live `recursive_tom_false_beliefs` list the cockpit renders -- those are different quantities
+    # and this line checks only the first.
+    derived, reading, mutated = t082_pin_reading()
+    print(
+        f"  C5 social_cognition: reading {reading} re-derived from {T082_PIN.name} as {derived} "
+        f"(a mutated derivation reads {mutated} and would refuse)"
+    )
+    if derived != reading or mutated == reading:
+        print(
+            f"T082 SELF-CHECK RED: C5 reading {reading} != {derived} re-derived from {T082_PIN} "
+            f"(mutated {mutated}) -- re-derive or explain before re-recording"
         )
         return 1
     print(

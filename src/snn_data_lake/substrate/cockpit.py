@@ -930,6 +930,13 @@ function paint(d){
       licensed -- perturbing one named intermediate changes the report, so the report is generated from the internal state;
       refused -- this licenses no claim that the report is a first-person account of anything. */
    +row('report-order margin',s.report_order_margin,3,'report_order_margin')
+   /* C5 row social_cognition (T082, 2026-09-16), CHARGED at 0.4437 by tools/t082_social_cognition.json (head 6d4a65f) on
+      scratch brains, representation-level throughout. The value below is the LIVE state key's LENGTH -- the count of agents
+      whose belief diverges from the world, plus the diverging nested pairs, read off the chat's own statements -- and NOT
+      the charged reading, which is a campaign accuracy difference measured elsewhere (see PROVENANCE for both).
+      licensed -- predicting another agent improves when the system models that agent's belief rather than the world alone;
+      refused -- this licenses no claim that the system understands another mind, or that it has one. */
+   +row('social false beliefs',Array.isArray(s.recursive_tom_false_beliefs)?s.recursive_tom_false_beliefs.length:null,0,'recursive_tom_false_beliefs')
    +`<div class="note">ignitions = broadcast changed hands; percept holds bus = this tick's percept seized the slot (1/0); the others can hold high on one content.</div>`;
  $('bLife').innerHTML=big(s.nights_elapsed,0,undefined,'nights_elapsed')+sub('nights slept')
    +row('units admitted',s.grown_units,0,'grown_units')+row('reasoning acc',s.reasoning_accuracy)

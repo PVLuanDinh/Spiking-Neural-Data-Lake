@@ -168,16 +168,44 @@ def test_refusal_three_arms_itself_when_a_c4_instrument_task_lands():
     # AND a symbol, so `report_order` (T081, unbuilt) became the next symbol-less row.
     assert conclusion_protocol._task_done("T080") is True
     # T081 read PASS too (2026-09-16, evidence/t081-report-order.md 2.6; pin
-    # tools/t081_report_order.json): its row now carries reading 1.0 AND `report_order_margin`, so
-    # `social_cognition` (its own C4 task T082, still unbuilt) is the next symbol-less row.
+    # tools/t081_report_order.json): its row now carries reading 1.0 AND `report_order_margin`.
     assert conclusion_protocol._task_done("T081") is True
-    assert conclusion_protocol._task_done("T082") is False
-    # The ARMING id stays T034 and not T082: this arm's red is "a symbol-less row whose instrument
-    # task is DONE", so an id that is still [ ] would fire nothing and assert an empty list. The
-    # ROW is what moves.
-    armed = {**{k: None for k in conclusion_protocol.INSTRUMENTS}, "social_cognition": "T034"}
-    fired = conclusion_protocol.row_findings(tasks=armed)
-    assert any("T034" in x and "social_cognition" in x for x in fired), fired
+    # THE ARM IS A CONSTRUCTED ROW SINCE T082 (2026-09-16, evidence/t082-social-cognition.md 2.6:
+    # "in every branch the arming arm is rewritten to a constructed row"). It used to point a REAL
+    # symbol-less row at a complete task, so it had to be RE-POINTED on every charge -- `agency` ->
+    # `temporal_binding` -> `report_order` -> `social_cognition`, four hand-offs in two days, and
+    # the T079 panel found the twin self-check RED for a day on one of them. `social_cognition` is
+    # CHARGED in this commit (reading 0.4437, symbol `recursive_tom_false_beliefs`), so the red is
+    # BUILT here instead: its own one-name instrument tuple and its own symbol-less row, with no
+    # live row's state in it and no hand-off left to forget.
+    #
+    # T082's own flip rides in THIS commit and not in the dated-notes commit that follows, because
+    # `test_every_consciousness_instrument_owns_its_licensed_and_refused_sentences` above refuses a
+    # reading whose C4 task is still [ ] -- the charge and the flip are bound by that gate, and
+    # splitting them would commit a red in whichever order they were split.
+    assert conclusion_protocol._task_done("T082") is True
+    name = "widget"  # deliberately NOT an INSTRUMENTS name -- this row lives only inside this test
+    row = (
+        "the reported quantity tracks the named internal state rather than the prompt asking",
+        "this does not license any claim that the system has experience of that state",
+        "the scrambled-intermediate input, on which the instrument must read at or below null",
+        None,
+        "2026-09-06",
+        (),
+    )
+    one = (name,)
+    fired = conclusion_protocol.row_findings({name: row}, instruments=one, tasks={name: "T034"})
+    assert any("T034" in x and name in x for x in fired), fired
+    # TWO controls on the SAME constructed row, so the red is attributable to the missing symbol
+    # and not to the arming: an unarmed id fires nothing, and the row WITH a symbol fires nothing
+    # even while its task is complete.
+    assert conclusion_protocol.row_findings({name: row}, instruments=one, tasks={name: None}) == []
+    with_symbol = row[:5] + (("widget_reading",),)
+    assert (
+        conclusion_protocol.row_findings({name: with_symbol}, instruments=one, tasks={name: "T034"})
+        == []
+    )
+    # ...and the LIVE registry stays clean when no task is armed at all.
     unarmed = {k: None for k in conclusion_protocol.INSTRUMENTS}
     assert conclusion_protocol.row_findings(tasks=unarmed) == []
 

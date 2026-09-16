@@ -380,3 +380,51 @@ def test_charge_evidence_is_committed_and_reproduces():
     assert live != pinned_out and spec
     assert reads == recursive_tom.T082_R4_FRAMES
     assert rec.get("measured") == {"reads": reads, "first": list(live[0]), "last": list(live[-1])}
+
+
+def test_the_charged_reading_is_re_derived_from_the_pin(tmp_path):
+    """2.6's PASS branch (2026-09-16): `CONCLUSION['social_cognition'].reading` is not a free
+    literal -- it equals 2.6's reduction of the committed pin (the mean over seeds of
+    acc_belief - acc_ctrl) at the recorded precision, the MUTATED derivation (the sides swapped)
+    differs, and a missing pin is a RED, never a skip (T080's and T081's shape)."""
+    derived, recorded, mutated = recursive_tom.t082_pin_reading()
+    assert derived == recorded == 0.4437, (derived, recorded)
+    assert mutated != recorded, mutated
+    with pytest.raises(AssertionError):
+        recursive_tom.t082_pin_reading(tmp_path / "absent.json")
+
+
+def test_the_live_false_belief_list_reaches_state_with_both_c5_sentences_beside_it(scratch_brain):
+    """2.6's PASS branch: `Brain.state()["recursive_tom_false_beliefs"]` is the surface symbol the
+    charged row names, its PROVENANCE carries BOTH C5 sentences plus "representation-level", the
+    pin and the charge evidence, and the key is a LIST OF AGENT NAMES rather than the row's
+    reading -- the confusion the provenance exists to prevent.
+
+    The SCRATCH brain of this module's fixture, never the live lake. The two-statement sequence is
+    deterministic whatever earlier reds left in the tracker: a witnessed statement puts every
+    tracked agent on the world, so the list empties; the unwitnessed statement that follows moves
+    the world with the user absent, so the user's first-order belief and the user's nested model of
+    the brain both go stale."""
+    from snn_data_lake.substrate import brain_telemetry
+    from snn_data_lake.substrate.conclusion_protocol import CONCLUSION
+
+    # The two sentences are read OFF THE ROW, never retyped here: a provenance line that
+    # paraphrases them is a second copy that can drift.
+    licensed, refused, _dis, reading, _date, symbols = CONCLUSION["social_cognition"]
+    prov = brain_telemetry.PROVENANCE["recursive_tom_false_beliefs"]
+    assert licensed in prov and refused in prov, "both C5 sentences ride beside the symbol"
+    assert "representation-level" in prov
+    assert "t082_social_cognition.json" in prov and "region_charge_evidence.json" in prov
+    assert "BY CONSTRUCTION" in prov  # 2.10 (b)'s entailment, disclosed at the surface
+    assert symbols == ("recursive_tom_false_beliefs",) and reading == 0.4437
+
+    b = scratch_brain
+    assert b._tom_update(T082_WITNESSED_FORM) is not None
+    assert b.state()["recursive_tom_false_beliefs"] == [], "a witnessed turn leaves no divergence"
+    assert b._tom_update(T082_UNWITNESSED_FORM) is not None
+    live = b.state()["recursive_tom_false_beliefs"]
+    # A LIST OF NAMES, not a number, and not the row's reading -- the first-order holder followed
+    # by the ordered nested pair, exactly what `t082_false_beliefs` derives.
+    assert live == ["user", "user->brain"], live
+    assert all(isinstance(x, str) for x in live)
+    assert live != reading and len(live) != reading

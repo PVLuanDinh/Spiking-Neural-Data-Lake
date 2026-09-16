@@ -178,9 +178,32 @@ CONCLUSION: dict[str, tuple] = {
         "predicting another agent improves when the system models that agent's belief rather than the world alone",
         "this licenses no claim that the system understands another mind, or that it has one",
         "a world-state model of equal capacity replacing the belief model must remove the gain",
-        None,
+        # T082 CHARGED 2026-09-16 (evidence/t082-social-cognition.md 2.6; tools/t082_social_cognition.json,
+        # head 6d4a65f, dirty False, seeds 0-7 x 60 scripted episodes through the LIVE Brain.respond path on
+        # scratch brains, 252.3 s): the mean over 8 seeds of (acc_belief - acc_ctrl) -- the composed tracker's
+        # first-order prediction of the scripted other agent minus an EQUAL-CAPACITY world model's, both
+        # scored against the agent's look on the same episodes. Per seed acc_belief 1.0000 on all 8 and
+        # acc_ctrl 0.5833 / 0.5167 / 0.5667 / 0.6500 / 0.5667 / 0.4833 / 0.6167 / 0.4667, so the per-seed
+        # differences are 0.4167 / 0.4833 / 0.4333 / 0.3500 / 0.4333 / 0.5167 / 0.3833 / 0.5333; their sum is
+        # 3.55 and 3.55 / 8 = 0.44375 -> 0.4437 at the recorded precision. (s1) t = 19.7401 against the 1.895
+        # bar with sign-flip FPR 0.0352; (s2) the control's prediction equalled the world content on 60/60
+        # episodes on every seed, so acc_ctrl == acc_world exactly and the replacement removes the gain.
+        # DISCLOSED HERE because it bounds what the number means (2.10 (b), written BEFORE the campaign):
+        # acc_belief is 1.0 BY CONSTRUCTION -- the scripted agent's look IS "its last witnessed location" and
+        # a losslessly fed tracker's first-order prediction IS the same quantity -- so this difference is the
+        # script's unwitnessed-and-differing fraction, and what it licenses is that the LIVE composed path
+        # implements the witness rule losslessly while the equal-capacity control cannot.
+        0.4437,
         "2026-09-06",
-        (),  # T082 unbuilt
+        # Brain.state()["recursive_tom_false_beliefs"] -- the LIVE key the tracker ALREADY publishes, and it
+        # is NOT this reading: it is a LIST OF AGENT NAMES (the first-order divergers, e.g. "user", plus the
+        # ordered nested pairs, e.g. "user->brain") derived from the chat's own statements by
+        # `recursive_tom.t082_false_beliefs`, and the cockpit renders its LENGTH. The reading above is a
+        # campaign accuracy difference in [0, 1] measured on scratch brains; the live key is a count of
+        # divergent beliefs on the daemon right now. The two are different quantities and neither is a
+        # reading of the other. brain_telemetry.PROVENANCE and the cockpit row carry both C5 sentences,
+        # "representation-level", the pin, the scripted agent and the charge evidence beside it.
+        ("recursive_tom_false_beliefs",),
     ),
 }
 
@@ -393,24 +416,27 @@ def main() -> None:
     assert surface_findings(ok, {"docs/PITCH.md": "the brain is conscious"}), (
         "a verdict must be caught"
     )
-    # REFUSAL 3 ARMS ITSELF. Symbol-less rows exist today, so without this arm the refusal covers
-    # only the rows that declare a symbol -- the panel's finding. Point a symbol-less row at a task
-    # that IS complete on this tree and the finding must fire; that is what makes the empty
-    # row_findings() above meaningful. The fixture row must be one that declares NO symbol: `agency`
-    # served until T079 read NOT MET (2026-09-15, evidence/t079-agency.md 3.4) and named
-    # `agency_controllability` printed nowhere -- the T079 panel found this self-check RED on that
-    # head (its fold); `temporal_binding` (T080, unbuilt) is the next symbol-less row, the same
-    # fixture shift tests/test_ratified_row_gates.py took.
-    armed = {
-        **{k: None for k in INSTRUMENTS},
-        "social_cognition": "T034",
-    }  # T034 is [X] in tasks.md; social_cognition (its own C4 task T082, UNBUILT) is the next
-    # symbol-less row after report_order was CHARGED at T081 (2026-09-16) and named its symbol.
-    # The arming id stays a COMPLETE task by construction -- this arm's red is "a symbol-less row
-    # whose instrument task is done", so pointing it at T082, which is [ ], would fire nothing and
-    # assert an empty list. The row moves; the stand-in task id does not.
-    fired = row_findings(tasks=armed)
-    assert any("T034" in x and "social_cognition" in x for x in fired), fired
+    # REFUSAL 3 ARMS ITSELF, ON A ROW THIS FUNCTION CONSTRUCTS (T082, 2026-09-16, 2.6: "in every
+    # branch the arming arm is rewritten to a constructed row"). Symbol-less rows exist today, so
+    # without this arm the refusal covers only the rows that declare a symbol -- the panel's
+    # finding. Until here the arm pointed a REAL symbol-less row at a task that IS complete, and it
+    # therefore had to be RE-POINTED every time a row was charged: `agency` (until T079 read NOT MET
+    # and named `agency_controllability` printed nowhere) -> `temporal_binding` -> `report_order` ->
+    # `social_cognition`, four hand-offs in two days, and the T079 panel found this self-check RED
+    # for a day on one of them. `social_cognition` is CHARGED in this commit, so the arm now builds
+    # its OWN symbol-less row over its own one-name instrument tuple: the red stays reachable
+    # whatever the live registry does, and there is no hand-off left to forget.
+    constructed = "widget"  # deliberately NOT an INSTRUMENTS name -- it lives only inside this arm
+    symbolless = (good_row[0], good_row[1], good_row[2], None, "2026-09-06", ())
+    one = (constructed,)
+    fired = row_findings({constructed: symbolless}, instruments=one, tasks={constructed: "T034"})
+    assert any("T034" in x and constructed in x for x in fired), fired
+    # TWO controls on the SAME constructed row, so the red is attributable to the missing symbol and
+    # not to the arming: an unarmed task id fires nothing, and the row WITH a symbol fires nothing
+    # even while its task is complete.
+    assert row_findings({constructed: symbolless}, instruments=one, tasks={constructed: None}) == []
+    assert row_findings({constructed: good_row}, instruments=one, tasks={constructed: "T034"}) == []
+    # ...and the LIVE registry stays clean when no task is armed at all.
     assert row_findings(tasks={k: None for k in INSTRUMENTS}) == [], (
         "the unarmed control must stay clean"
     )
