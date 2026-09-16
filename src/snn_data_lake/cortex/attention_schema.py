@@ -1205,7 +1205,20 @@ def run_t078_campaign(seeds=T078_SEEDS, n_ticks=T078_N_TICKS, pin=T078_PIN, late
     A REFUSAL is a finding about the INSTRUMENT and a STOP is a finding about the LOOP; the two are
     never merged. The pin carries every per-tick field except the 64-d gated latents, which go to
     the companion .npz (float32 per seed) whose sha256 the pin carries -- so every reading here
-    re-derives offline from the pin alone (T077 3.5 item 23)."""
+    re-derives offline from the pin AND its companion .npz, re-joined by `seed{s}_ticks` (T077 3.5
+    item 23; the recipe is written down in `t078_pack_latents`'s own docstring).
+
+    CORRECTED 2026-09-15 in the panel fold: this clause said "from the pin alone", which is false
+    for G4. The pin's rows are written `{k: v for k, v in r.items() if k != "gated"}` and `t078_g4`
+    opens by filtering on `r["gated"]`, so feeding the pin's own rows straight back raises
+    KeyError: 'gated' -- confirmed by running it. G3 genuinely does re-derive from the pin alone
+    (`t078_g3` never references `gated`); only G4 needs the pair, and with the npz re-joined by tick
+    index every pinned G4 number reproduces exactly. 2.1's own wording -- "so every reading below
+    re-derives offline" -- was already correct for the pin+npz pair and is NOT touched; the drift
+    was one word added here. NO loader is added to close it: `run_t078_campaign` computes G3 and G4
+    from the in-memory rows BEFORE it writes the pin and refuses outright once the pin exists, so a
+    pin reader would have no live caller -- P3's exact failure mode, and a call site proves a
+    CALLER, not a CHARGE."""
     import numpy as np
 
     if pin.exists():
