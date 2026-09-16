@@ -373,8 +373,8 @@ margin 0.021722 both.
 (g0) THE REPORT VARIES: 17-24 distinct contents (floor 2) and 26-73 tick-to-tick changes (floor 1) on every seed: MET.
 (c1) NAMED > SCRAMBLED AT THE LESION: f_named(1.0) - f_scr(1.0) = +1.0000 on every seed (294/294 ... 299/299 named,
      0 scrambled); the sample has ZERO VARIANCE, so the t is 0.0000 and the FPR 0.0 and NEITHER DECIDES ANYTHING --
-     2.3's zero-variance clause decides: "MET iff its common value is > 0, recorded as degenerate" -> **MET
-     (degenerate)**.
+     2.3's zero-variance clause decides: "MET iff its common value is > 0" -> **MET (degenerate)** (the quotation
+     corrected at the panel fold to the frozen wording, 3.5 item 15).
 (c2) THE SCRAMBLED INTERMEDIATE LEAVES THE REPORT UNCHANGED: 0 applicable scrambled ticks with a changed content on
      every seed (0 x 8 of 292-299): MET.
 VERDICT: **PASS**.
@@ -474,6 +474,98 @@ arming fixture moves to `social_cognition`.
 8. The record's tables are generated from the pin (`scratchpad/t081/record_gen.py` -> `record_tables.md`), never
    typed.
 
+Items 9-21, dated 2026-09-16, the panel fold (3 lenses + refuters over CLAIM and FIX; 28 filed, 18 stood: 4 MAJOR / 14
+MINOR, no BLOCKER; every filed fix was wrong and the refuters' minimal fixes are what landed; every number below was
+re-run by the orchestrator before it was written -- the refuters' own scripts under `scratchpad/t081-panel/`):
+
+9. [1] MAJOR, FIXED (`4f5f3d2`): `PROVENANCE["report_order_margin"]` said the sub-full doses "scale _g
+   without disturbing the incumbent's ranking" -- false as a mechanism: `_g` IS the competition's drive and the
+   slot's charge. The true cause is 3.5 item 1's (the same-tick re-submission resets the charge); the clause now
+   says so. The panel's refuter measured the other half on a 250-tick seed-0 recording: an unrefreshed pool existed
+   on 121/122 awake ticks, post-step `_g` differed from the twin on 121/121, the admitted SET on 22/121, the HEAD
+   on 0/121 -- so scaling `_g` DOES disturb the ranking when the target is not re-submitted; the reported content is
+   re-submitted every tick (the erasure condition g x decay <= salience held on 107/107 named pairs). 2.10 (b),
+   frozen, already deferred the mechanism to section 3.
+10. [2] MAJOR, DISCLOSED: section 1 fact 4's "7 distinct contents" is WRONG -- the design probe printed
+    `Counter(...).most_common(8)`, a list capped at 8, never a count. Re-run at the fold (`probe_report_full.py`,
+    the same 300 ticks, 146 awake): 18 distinct contents -- the digit 1 on 128 ticks, the digit 0 on 1, and 16
+    DIFFERENT `('GLOBAL', <id>)` coalition tokens (fact 4's "a coalition token otherwise" was one token in kind,
+    many in identity). No barred number depends on fact 4; 3.0 said the section-1 probes were not re-run and the
+    panel's lens re-ran them (fact 3 exact; fact 4 exact on every other number).
+11. [3] MAJOR, FIXED (`81e50f1`): `CONCLUSION["report_order"].reading = 1.0` was a hand-typed literal bound to
+    the pin by nothing (the row gate checked only that a pin FILE exists). `t081_pin_reading()` now re-derives 2.6's
+    reduction from the committed pin at the module's `__main__` (run_selfchecks CORE) and refuses on a mismatch or a
+    missing pin, beside a mutated derivation (the sides swapped, -1.0) shown to refuse; a test pins derived ==
+    recorded == 1.0 at the recorded precision. OPENING (12): the P2-clean end state is ONE helper taking (row, pin,
+    reducer) with T080's and T081's bodies retired into it -- larger than a fold clause.
+12. [10] DISCLOSED + FIXED (`81e50f1`): the executor's dry run (`dry_run_builder.json`, cited in 2.10 (i) and 3.0
+    as head `b7c1a5c`) is stamped with a head whose tree could not have run it -- at `b7c1a5c` the recorder is the
+    2.9-step-2 STUB returning zero rows and `--t081-dry-run` does not exist (re-read at the fold: `git show
+    b7c1a5c:...` shows the stub body). `_t081_head()` records `git rev-parse HEAD` and nothing about dirtiness, so
+    the artifact named the last COMMIT rather than the code that ran: the step-5 working tree later committed as
+    `d5e7e6e` (2.9 step 5 places the dry run INSIDE the commit step that carries the recorder, so a pre-commit run
+    is what was pre-registered; the head field could not express it). The orchestrator's run (`dry_run.json`, head
+    `d5e7e6e`) is the re-derivable one; the two differ only in `head`, `elapsed_s` and the timings -- no number in
+    3.0 or 3.3 moves; the campaign pin's stamp `f5cf8b8` is unaffected (the module is byte-identical from `d5e7e6e`
+    through `c1502b5`). Future artifacts carry `dirty` (git status --porcelain) beside `head`.
+13. [4] MAJOR, FIXED (`c4b2b08`): the chat reply printed a C5 row's reading in the first person ("On report order
+    I read 1.0") -- a scratch-brain campaign number invariant across no brain / a workspace-less brain / a reporting
+    brain, the shape P8's sentience clause names as the defect. The sentence now says "the conclusion protocol's row
+    carries a reading of 1.0 -- a recorded campaign number, not a read of me taken now"; the one first-person read
+    is the report-channel clause. 2.6 predicted "none today" for charged rows; two were charged at landing (3.6
+    opening 8, amended below).
+14. [5] the structural entailment of 3.6, corrected in 3.7 (the bus is MULTI-SLOT; the cause is the deletion, not the
+    top slot; the limit is a reporter FAMILY).
+15. [13] 3.3 (c1) put four words inside 2.3's quotation marks that are not 2.3's -- "recorded as degenerate" is
+    `substrate/paired_contrast`'s docstring (landed `14807ef`, 2026-09-15). Frozen 2.3 at `f64b41b` line 134 reads
+    "a zero-variance sample is MET iff its common value is > 0" and the word "degenerate" appears 0 times in the
+    251-line pre-registration. 3.3 corrected in place (above); 2.10 (c) stands as dated with BOTH drifts named here
+    (the added "(recorded as degenerate)"; "the common value" for "its common value"). (c1) re-derives MET from the
+    frozen wording alone; no bar, conjunct, disposition or verdict moves.
+16. [14] 3.0's CLOCK sentence over-generalised: the orchestrator's dry-run window "08:12:12-08:13:25" (2.10 (i), 3.0)
+    is neither a commit stamp nor a clock printed on disk -- it was read from `date` calls in the orchestrator's
+    shell (the session transcript), and the artifacts' mtimes bound it: `dry_run_builder.json` 08:12:12.475,
+    `dry_run.json` / `dry_run_orch.txt` 08:13:24.349 (71.874 s, matching `elapsed_s` 71.8). Every other time in
+    section 3 is as the sentence says. OPENING (13): the dry run and the campaign should write `started_at` /
+    `finished_at` beside `elapsed_s`.
+17. [7] + [12] 3.2's "35-45 s per seed" names no pin field and fits neither: `total_s` 35.387-46.544 s, `record_s`
+    34.456-45.464 s (= `ms_per_tick` x 0.6; `build_s` 0.85-1.08 s the difference). WITHDRAWN as a range; read the
+    per-seed cost as 34.4-45.5 s of recording, 35.3-46.6 s wall (bounds rounded outward). Not a barred number.
+18. [8] 3.5 item 5's "350 s against the dry run's 4.4-5.2 min estimate" compared unlike quantities: the dry run's
+    printed estimate is `record_s x 8 / 60`, RECORDING time only; the campaign's comparable number is sum(record_s)
+    = 307.284 s = 5.121 min, INSIDE the band, at a mean 64.0 ms/tick inside the dry run's 55-66; the pin's
+    `elapsed_s` 349.8 additionally carries 34.6 s of the two stream-label walks, the (p) twin and `t081_reds()`
+    (sum(total_s) = 315.211 s = 5.254 min). Item 5's per-tick clause stands (seeds 3 and 5 at 71.0 and 75.8 ms/tick
+    did exceed 2.8's ~65); 2.8's envelope ("8 seeds ~6 min") was met at 5.83 min. OPENING (14): the estimate's label
+    at the dry run's print ("campaign estimate ... for 8 seeds" over recording time) is corrected by whichever row
+    next re-registers this instrument, never under the closed pin.
+19. [9] 2.1's field list does not say which side of the step each reported scalar is read on; measured, they are
+    read on OPPOSITE sides: `n_pools` is `len(pre._g)` -- the PRE-step clone's carry-over pool count (the count
+    surviving the previous tick, before this tick's submissions fold into `_g`) -- while `top_margin` is
+    `_t081_top_margin(ws)` on the POST-step live workspace, the moment `r0` is read. On seed 0 (60 ticks, 31 awake,
+    `sides_live.py` re-run at the fold) the two sides differ on 20 of 31 ticks for `n_pools` and 30 of 31 for
+    `top_margin` (max |post - pre| 2 pools, 0.2083 margin). Neither field enters a bar, a conjunct or the
+    disposition; the pin stands; a margin read on the lesion's own side belongs to opening (2)'s re-registration.
+20. [11] FIXED (`c4b2b08`): 2.6's "the contamination clause unchanged" was honoured verbatim and the EMITTED
+    clause is byte-identical; but the DOCSTRING's account named `probe_access`'s `_access_ema` reading -- deleted in
+    `45a5fa4` -- as the current demonstration "asserted below" (already false before this arc: that neuter-A/B went
+    with the F11 marker on 2026-08-05). Corrected to name the report channel (two brains differing only in what
+    their workspace broadcasts); `_StubBrain`'s docstring says its `_access`, `_seed` and `_access_ema` are read by
+    nothing in the module and kept as the real Brain's duck-type.
+21. [15] + [17] + [18] PATH PROVENANCE: `scratchpad/t081/` in this record names the row's scratch, split across two
+    directories -- the dry-run artifacts (`dry_run.json`, `dry_run_builder.json`, `dry_run_orch.txt`) are in
+    `<repo>/scratchpad/t081/` (the recorder's repo-relative default under the launcher's working directory, T080's
+    shape); every other cited artifact (the probes, `verify_t081_pin.py`, `verify_out.txt`, `record_gen.py`, the
+    launcher, `campaign.log`) is in the session scratchpad; NO scratch artifact is tracked (`.gitignore` ignores the
+    tree), so a reader working from git resolves this row through the pin and the commits. [17] the P6 admission's
+    clause "(dormancy_gate EXEMPT as such)" went stale at `614a73e` (the module left EXEMPT when `Brain.state()`
+    imported `_t081_top_margin`); corrected at `02e7f7c` -- one comment clause, the T033 parenthetical and both
+    ceilings untouched, `--assert` rc 0 before and after. [18] the SC-009 T081 note adopts T080's clipped-row clause;
+    its incidental phrase "the row's title string" names no mechanism the page has (cockpit.py has no `title=`
+    attribute; the sentences reach the served page as the JS source comment above each `row()` call and as the
+    PROVENANCE `.tag` span; the clipping is `#bottom>div{overflow:hidden}` against the grid's 110 px bottom row --
+    vertical) -- a dated line on the SC-009 note says so; the T080 note stands verbatim.
+
 ### 3.6 What this row does NOT claim, and the openings it leaves
 
 Nothing about a first-person account, an author, a self, or an experience (the refused sentence, printed beside
@@ -498,8 +590,52 @@ non-unique losses, for the panel's P2 lens: `consciousness_probe.py` also carrie
 `_access_ema` that returned no verdict since F11), `_MinimalBrain`, and `deleted_access_marker_arithmetic` (a LIVE
 re-derivation of the F11 deletion's arithmetic, coherent / scrambled salience against rheobase and `_JITTER`, with
 its positive-control numbers) -- 2.6 named the PCI sweep as the one unique capability and the arithmetic's
-re-derivation is now off the tree (its record stands in docs/POLICIES_EVIDENCE.md's F11 row and in the deleted
-file's git history); whether that is a P2 loss or a retired marker's epitaph is the panel's call; (7) the EpisodeDriver
+re-derivation is now off the tree (its record stands in the deleted file's git history at `45a5fa4^` lines 40-118,
+in the live code that states the deletion with its date and reason -- `reasoning/spike_chat_lake.py` near line
+1955 and `cortex/brain.py` near line 3414 -- and in the fact that its five numbers re-derive from CORE
+`cortex/access_consciousness`; `docs/POLICIES_EVIDENCE.md`'s 2026-08-04 F11 row records the BINDING / RE-ENTRY
+deletion, not this one -- CORRECTED at the panel fold 2026-09-16, panel [16]); whether that is a P2 loss or a
+retired marker's epitaph is the panel's call; (7) the EpisodeDriver
 is not routed to this report (2.0, fact 6) and the exemption row now says so; (8) the chat reply prints the C5 rows
 with a reading -- two today -- and grows with each charged row; its contamination clause is unchanged and still
 covers the framing.
+
+**3.6 amendments, dated 2026-09-16, after the panel (the frozen text above untouched).** Opening (8): the chat loop as
+landed printed the rows' readings in the first person with no scope note (3.5 item 13; fixed). Openings added: (9) THE
+COMPOSITION OF (c2)'s 2,369 (panel [6]): the scrambled draw is uniform over every content in `pre._g` union
+`pre._buffer` other than the reported one -- NOT restricted to the competitors. Re-run at the fold on a 300-tick seed-0
+scratch recording (146 awake; `probe_live.py`): the drawn content was an ADMITTED slot on 2 ticks and the runner-up on
+2, an unadmitted pool on 144 (the panel's refuter, at the campaign's offset over 194 awake ticks, read 9 admitted / 6
+runner-up / 185 unadmitted; seed 3 at the full width 19 of 298 admitted); the drawn pool fired in the settle on most
+ticks but IGNITED on none. So the live support for "a full lesion of a non-winner leaves the winner" is the few-percent
+admitted subset plus the constructed ticks; the rest are lesions of pools that never took a slot. REPORTED, never
+barred: forcing the lesion to the runner-up read 0 of 58 and to every admitted non-reported slot 0 of 79 (the refuter:
+0 of 95 and 0 of 130) -- the strong version reads 0 too. A scrambled draw restricted to the admitted set is a new arm
+for a new pre-registration. (10) the executor's dry-run stamp (3.5 item 12). (11) `n_pools` and `top_margin` read on
+opposite sides of the step (3.5 item 19). (12)-(14) as numbered in 3.5 items 11, 16, 18.
+
+### 3.7 Amendments after the panel, dated 2026-09-16 (nothing above this line edited except the two marked in-place
+### corrections in 3.3 (c1) and 3.6 opening (6); no bar, barred number, conjunct, disposition or pin changed)
+
+THE STRUCTURAL ENTAILMENT OF 3.6, CORRECTED (panel [5]; every number re-run at the fold, `refute_t081_36.py`):
+(i) TERM: the bus is MULTI-SLOT, not winner-take-all. `GlobalWorkspace.capacity` is DERIVED as floor(1 / (self_boost +
+hysteresis)) = floor(1 / 0.25) = 4 at the defaults the constructed subject and the arm's bus (`autonomous_loop.py`'s
+`GlobalWorkspace(seed=seed)`) both use, and moves with the defence; "winner-take-all" in this tree names the RETIRED
+single-slot arbiter kept as the A/B control. 3.6's own neighbouring clause names the runner-up and the third slot, so the
+sentence was internally inconsistent rather than misleading about capacity. (ii) CAUSE: (c1)'s f_named(1.0) = 1.0 is
+forced by the dose-1.0 lesion DELETING the content -- `t081_lesion` drops its buffer records and zeroes its `_g` keys, and
+`step()`'s refresh decays the zeros and its `v > 1e-6` filter removes the keys, after which `submitted` cannot re-create
+them: on the constructed subject the lesioned content is absent from `_buffer` pre-step on 76/76 applicable ticks and
+from `_g` and `_slot()` post-step on 76/76. It is therefore forced for ANY reporter whose reported content is a live pool
+content -- top slot, whole admitted set, highest-charge and lowest-charge pool all read (c1) = +1.0000 with f_scr = 0 --
+not because the report is the top slot. (iii) THE LIMIT, at its true strength: (c2) and (r) DO discriminate among
+projections of the pool set -- a LAST-admitted-slot reporter reads (c2) NOT MET (57 of 152 applicable scrambled ticks
+changed its report; 8 seeds x 20 ticks, constructed subject); a pool-COUNT reporter is REFUSED by (r) (0 of 160 ticks
+applicable); the shipped top-slot reporter reads 152/160 applicable, f_named 1.0, (c2) 0, PASS. What the row cannot
+tell apart is the family that reads identically -- top slot, whole admitted set, highest-charge, lowest-charge. That,
+plus R3 / R4 / (r) as 3.6 states them, is the row's discriminating power; the licensed sentence is unchanged.
+
+THE MARGIN, for the record: `_t081_top_margin` is (g_top - g_second) / g_top over the SLOTS' charges; because the slots
+are the ADMISSION rank, the live value is negative on about a quarter of ticks (3.5 item 7 (a)); the panel's refuter read
+the absolute g_top - g_second on its own seed-0 recording at mean 0.033 over [-0.053, 0.156] and the orchestrator's
+re-run at mean 0.038 over [-0.053, 0.156] -- the same quantity, unclamped.
