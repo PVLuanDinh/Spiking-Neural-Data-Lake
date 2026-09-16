@@ -566,16 +566,15 @@ EXEMPT = {
         "instrument, never on a tick -- the policy_manifest disposition. RETIRES if the tick ever "
         "consults retention to decide what to write, which would make the label load-bearing live",
     ),
-    "conclusion_protocol": (
-        "permanent",
-        "specs/022 C5 (T090): what a consciousness instrument may and may not conclude -- one "
-        "licensed sentence, one refused sentence and one dissociation input per C4 instrument, no "
-        "aggregate across two of them, and no surface printing a reading without its licensed "
-        "sentence in view. The sentences are written BEFORE C4 measures anything; that is the "
-        "point of the row. A CI/run_selfchecks instrument, never on a tick -- the policy_manifest "
-        "disposition. RETIRES when C4's instruments import it to gate their own reporting, which "
-        "would make it live-reachable and the row the stale-exemption red",
-    ),
+    # `conclusion_protocol` RETIRED from EXEMPT 2026-09-16 (T081, evidence/t081-report-order.md 2.6)
+    # ON ITS OWN STATED CONDITION, kept here verbatim rather than paraphrased: "RETIRES when C4's
+    # instruments import it to gate their own reporting, which would make it live-reachable and the
+    # row the stale-exemption red". That is exactly what landed -- `reasoning/spike_chat_lake.py`'s
+    # "are you conscious" reply now reads CONCLUSION for the rows that CARRY A READING and prints
+    # each one's licensed AND refused sentence together, which is the row's own "no surface printing
+    # a reading without its licensed sentence in view" clause enforced at the one surface where a
+    # consciousness claim reaches a human. The gate read the stale entry on the same commit; the
+    # entry is retired, never the gate.
     "growth_coverage_gate": (
         "permanent",
         "specs/022 T046: invention register row 7's four instruments (coverage ratchet + "

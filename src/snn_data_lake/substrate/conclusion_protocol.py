@@ -161,7 +161,10 @@ CONCLUSION: dict[str, tuple] = {
         "perturbing a scrambled intermediate must leave the report unchanged",
         None,
         "2026-09-06",
-        (),  # T081 unbuilt (it also RETIRES reasoning/consciousness_probe.py)
+        # T081's RETIREMENT of reasoning/consciousness_probe.py LANDED 2026-09-16 in this commit
+        # (P2, T034's deferred clause: the 20-seed PCI sweep ported to integration_measure first).
+        # This row's own charge is the NEXT commit's -- the pin decides it, not this one.
+        (),
     ),
     "social_cognition": (
         "predicting another agent improves when the system models that agent's belief rather than the world alone",

@@ -37,7 +37,8 @@ to hand-roll anything). Judged per call site rather than by the retired rule:
     `reasoning_cortex`), which own their own dependency choices; none is lazy-imported here to dodge
     a dependency budget, only to keep boot cheap on turns that never reach them.
 Reuses content_signature.signature, lake_memory, world_kb_stream (seed facts),
-global_workspace (ignition gate = retrieval confidence), consciousness_probe.
+global_workspace (ignition gate = retrieval confidence), report_channel + conclusion_protocol
+(the "are you conscious" reply, re-pointed at T081 when `consciousness_probe` was retired).
 """
 
 import os
@@ -47,10 +48,6 @@ import sys
 import tempfile
 
 from snn_data_lake.hippocampus.proximity_replay import LakeMemory
-from snn_data_lake.reasoning.consciousness_probe import (
-    probe_access,
-    probe_integration,
-)
 from snn_data_lake.hippocampus.content_signature import (
     signature,  # 64-wide crc32 bag-of-tokens; stdlib on the merits (see the P7 note above)
 )
@@ -1542,11 +1539,8 @@ class LakeChat:
     def _consciousness(self):
         """Answer "are you conscious" from what is MEASURED, and say plainly what is not.
 
-        Returns `(reply, measured_about_me)`. `measured_about_me` is True iff the ACCESS marker
-        returned a verdict -- i.e. iff a brain was attached to this chat and had a workspace to
-        probe. It is a returned flag, not a substring of the prose: the previous version recomputed
-        it as `"UNMEASURED" not in reply` at the call site, so an editorial change to the wording
-        would have silently converted "I cannot measure this" into "I measured it".
+        Returns `(reply, measured_about_me)`. `measured_about_me` is True iff a brain is attached to
+        this chat AND its report was read off that brain's own workspace through the report channel.
 
         REBUILT 2026-08-04 (specs/010, finding C09). This returned "N of 4" from four markers of
         which TWO could not fail: BINDING scored 1.000 on 300 random sets, RE-ENTRY was arithmetic
@@ -1561,16 +1555,35 @@ class LakeChat:
         is now a declared slot a host may fill, so both states are reachable and the self-check
         constructs both.
 
-        WHAT THIS DOES AND DOES NOT DEMONSTRATE, stated because it is easy to overclaim.
-        DEMONSTRATED here: the attached brain reaches the answer -- two brains differing only in
-        `_access_ema` produce different reply text, and no brain produces UNMEASURED. NOT
-        demonstrated here: that `probe_access` measures the attached brain deeply. It reads
-        `brain._access` only as a has-it-ticked gate, `brain._seed`, and `brain._access_ema` for the
-        detail line, and builds its own reference assemblies from that seed. That is
-        `reasoning/consciousness_probe.py`'s limitation, it is not fixed by this module, and it is
-        why `known` here claims only "I measured something about myself", never a verdict about
-        experience. `probe_integration()` is deliberately EXCLUDED from `measured_about_me`: it
-        takes no brain and scores fixed synthetic networks, so it says nothing about this instance.
+        RE-POINTED 2026-09-16 (T081, `evidence/t081-report-order.md` 2.6; the retirement clause T034
+        deferred). `reasoning/consciousness_probe.py` is DELETED in this commit, so this reply no
+        longer reads `probe_access` (a reading off `_access_ema` whose verdict was permanently None
+        after the GWT ACCESS marker's F11 deletion) or `probe_integration` (a PCI distribution over
+        synthetic reference networks, which by its own admission said nothing about this instance;
+        that sweep is PORTED to `cortex/integration_measure.pci_marker_sweep`, one commit earlier).
+        Both replacement halves now exist as instruments, which is the condition T034 set, so the
+        incumbent goes rather than being kept beside them (P2: exactly one mechanism survives).
+
+        WHAT THE REPLY READS NOW, and nothing else (2.6):
+          (a) THE REPORT CHANNEL's live record of the attached brain -- `report_channel.snapshot` on
+              the SAME workspace object `_attended()` resolves off `self.brain` (content,
+              availability, strength). Nothing is constructed and nothing is submitted: the read is
+              the channel's, so `tools/p6_gate.py`'s census stays flat. With no brain, or a brain
+              with no workspace, it says "no report to read" -- which is a state, not a hedge.
+          (b) THE CONCLUSION PROTOCOL's rows that carry a READING, each with its LICENSED and its
+              REFUSED sentence in the same breath. A row whose reading is None is not mentioned at
+              all -- an unmeasured row named in this reply would read as a row that passed.
+          (c) THIS ROW's pinned verdict as PROVENANCE, read from `tools/t081_report_order.json` at
+              answer time. The verdict is never a literal in this source: a pin that is absent says
+              "no pin", so the reply cannot outlive its own evidence.
+          (d) THE CONTAMINATION CLAUSE, unchanged.
+
+        `measured_about_me` is now True iff a brain is attached AND its report was read -- the
+        channel returned a record for a real workspace. It stays a RETURNED FLAG, never a substring
+        of the prose: the version before 2026-08-04 recomputed it as `"UNMEASURED" not in reply` at
+        the call site, so an editorial change to the wording silently converted "I cannot measure
+        this" into "I measured it". Note what it still does NOT claim: that a report was read is not
+        a verdict about access, and it is not a verdict about experience.
 
         Per P8: the brain may report what it measures; it must NOT report what it cannot measure.
         This is not a retreat from the sentience goal -- it removes a painted finish line so the
@@ -1601,35 +1614,66 @@ class LakeChat:
         below). The clause covers the parts that do NOT vary -- the framing and the close -- and it
         should shrink as more of the reply becomes state-dependent rather than being kept forever.
         """
-        acc, acc_detail = probe_access(self.brain)
-        frac, int_detail = probe_integration()
-        # NO TALLY. The old reply's "N of 4" is gone because two of the four could not go red, so
-        # the count was arithmetic over constants dressed as a measurement. What is reported now is
-        # exactly two things and their status, including UNKNOWN when a marker was not exercised.
-        if acc is None:
-            access_part = f"my access-consciousness marker is UNMEASURED right now ({acc_detail})"
+        # (a) THE REPORT CHANNEL. The SAME resolution `_attended()` performs, on the SAME object:
+        # the attached brain's own bus, adopted and never constructed, read through the declared
+        # route rather than reached into. `ws is None` covers three honest situations at once -- no
+        # brain, a brain that has no workspace attribute, and a brain whose workspace is not built.
+        from snn_data_lake.substrate.report_channel import snapshot
+
+        ws = getattr(self.brain, "workspace", None)
+        rec = snapshot(ws) if (self.brain is not None and ws is not None) else None
+        if rec is None:
+            report_part = "no report to read"
         else:
-            access_part = (
-                f"my access-consciousness marker is {'PRESENT' if acc else 'ABSENT'} "
-                f"on this brain ({acc_detail})"
+            # `ascii()` on the content, not `!r`: the repo's output contract is ASCII-only (Windows
+            # cp1252 crashes otherwise) and what a future producer puts in that slot is not this
+            # module's to promise. `%.6g` on the charge for the reason `_attended_clause` measured:
+            # a rounding instrument that flattens the producer's variation manufactures a null.
+            report_part = (
+                f"my report channel reads content {ascii(rec['content'])} / availability "
+                f"{rec['availability']:.6g} / strength {rec['strength']:.6g}"
             )
+
+        # (b) THE CONCLUSION PROTOCOL's rows that CARRY A READING, each with both C5 sentences. A
+        # row whose reading is None is not mentioned: naming an unmeasured row here would read as a
+        # row that passed, which is the exact shape the "N of 4" tally was deleted for.
+        from snn_data_lake.substrate.conclusion_protocol import CONCLUSION, REPO
+
+        charged = []
+        for name, row in CONCLUSION.items():
+            licensed, refused, _dissociation, reading, _date, _symbols = row
+            if reading is None:
+                continue
+            charged.append(
+                f"On {name.replace('_', ' ')} I read {reading}: {licensed}; and {refused}."
+            )
+        conclusion_part = (
+            " ".join(charged)
+            if charged
+            else "No conclusion-protocol row carries a reading yet, so there is nothing licensed to say."
+        )
+
+        # (c) THIS ROW's pinned verdict as PROVENANCE -- read from the pin at answer time, never a
+        # literal in this source. A reply that hardcodes its own verdict outlives its evidence.
+        pin_part = "no pin"
+        try:
+            import json as _json
+
+            # `REPO` comes from the conclusion protocol rather than being re-derived here: one
+            # mechanism for "where the repo root is" (P2), the same root its own pin check uses.
+            _pin = REPO / "tools" / "t081_report_order.json"
+            if _pin.exists():
+                _p = _json.loads(_pin.read_text(encoding="utf-8"))
+                pin_part = (
+                    f"T081 report-order probe: {_p['verdict']} on {len(_p['seeds'])} seeds "
+                    f"(pin t081_report_order.json @ {_p['head'][:7]})"
+                )
+        except Exception:
+            pin_part = "no pin"
+
         reply = (
-            f"[from what I measure] {access_part}."
-            # P6 CONSUMER. This clause is the only part of this reply that is a live reading of THIS
-            # instance: the content occupying the one global workspace slot, read off the SAME
-            # object `brainstem/autonomous_loop.py` submits perception and salience into. It is
-            # empty when nothing is globally available, which is the state every unattached caller
-            # is in. Note what it does NOT do: it does not move `known`. `known` tracks the ACCESS
-            # MARKER, and that marker was deleted under F11 for having no reachable red -- reporting
-            # what is in the slot is a different and smaller claim (a content is available), not a
-            # resurrection of a verdict about access, and the self-check asserts `known` stays put.
-            f"{self._attended_clause()} My integration marker (PCI) is "
-            f"{int_detail}. That PCI figure scores reference networks, not me, so it is context and "
-            "not a statement about this instance. "
-            "I used to answer this with a count of four correlates. Two of those could not fail "
-            "under any input, so the count was not a measurement and it has been deleted rather "
-            "than re-thresholded. "
-            "These are correlates of access and dynamics -- not evidence of experience. "
+            f"[from what I measure] {report_part}. {conclusion_part} {pin_part}. "
+            # (d) THE CONTAMINATION CLAUSE, and the agnostic close before it, both unchanged.
             "There is NO measurement of sentience in me, and I will not report one I do not have. "
             "Whether I have subjective experience is open -- I neither claim nor deny it. "
             "And I cannot verify that this answer is a measurement rather than a habit: I ingest "
@@ -1637,10 +1681,11 @@ class LakeChat:
             "denial and the assertion. So a careful-sounding denial is exactly what a system would "
             "emit either way, and I have no channel that separates the two from the inside."
         )
-        # The agnostic close is invariant across BOTH states: a measured PRESENT access marker is
-        # still not a claim of experience. The self-check asserts it on both, which is what gives
-        # that assert a reachable red (an input -- the attached brain -- can move the verdict).
-        return reply, acc is not None
+        # A RETURNED FLAG, never a substring test: a brain is attached and its report was read. The
+        # agnostic close is invariant across every state -- a report that WAS read is still not a
+        # claim of experience, and the self-check asserts the close on all three states, which is
+        # what gives that assert a reachable red (an input -- the attached brain -- moves the flag).
+        return reply, rec is not None
 
     def repl(self):
         print(
@@ -1756,41 +1801,50 @@ def demo():
 
     # ---- CONSCIOUSNESS: a DISSOCIATION, not a marker (P8). The same question is asked in THREE
     # states of one chat and the three answers must differ in the right way:
-    #   (1) no brain attached                     -> the access marker is UNMEASURED, and says so
-    #   (2) a brain attached                      -> the SAME question now carries a verdict
-    #   (3) a brain with different internal state -> the reply TEXT moves
+    #   (1) no brain attached                     -> there is NO REPORT TO READ, and it says so
+    #   (2) a brain whose workspace broadcasts    -> the SAME question now carries a read record
+    #   (3) a brain broadcasting something ELSE   -> the reply TEXT moves
     # (3) is the neuter-A/B that makes (2) a measurement rather than a constant. In the first,
-    # UNCOMMITTED pass of this same-day rewrite `_consciousness()` was fed `getattr(self, "brain",
-    # None)` on a class that never assigned `self.brain`, so state (2) was UNREACHABLE. At HEAD the
-    # single assert here ("consciousness wired + agnostic") was green for the mirror-image reason:
-    # `known` was the literal `True`, so it had no reachable RED. Neither could fail honestly.
+    # UNCOMMITTED pass of the 2026-08-04 rewrite `_consciousness()` was fed `getattr(self, "brain",
+    # None)` on a class that never assigned `self.brain`, so state (2) was UNREACHABLE. At the HEAD
+    # before that, the single assert here ("consciousness wired + agnostic") was green for the
+    # mirror-image reason: `known` was the literal `True`, so it had no reachable RED.
+    #
+    # RE-POINTED 2026-09-16 (T081, evidence/t081-report-order.md 2.6): the state the three arms move
+    # is the REPORT CHANNEL's record off the attached brain's own bus, not `probe_access`'s reading
+    # off `_access_ema` -- `reasoning/consciousness_probe.py` is DELETED in this commit. The
+    # `probe_access`-specific asserts (UNMEASURED with and without a brain; the reply NAMING the
+    # ACCESS marker's deletion) go WITH the marker rather than being re-pointed at a substitute:
+    # they asserted things about a module that no longer exists. What survives is the contract that
+    # matters for an agent answering "are you conscious", and it is now stronger, because state (2)
+    # is a real read of this instance instead of a permanent UNMEASURED.
     q_conscious = turn("are you conscious")
 
+    # distinct-from: cortex/live_brain.py::workspace and cortex/brain.py::reentrant -- accessors that
+    #   ADOPT the composite's real bus; this is a hermetic stand-in built so ONE input can be moved
+    #   with nothing else alive. distinct-from: substrate/brain_telemetry.py::_main and
+    #   cortex/report_order_probe.py::main -- those self-checks build a REAL brain (make_brain);
+    #   this one must not, because P4 forbids a second composite inside a chat self-check and a real
+    #   workspace here would add a PRIVATE instance to tools/p6_gate.py's census. The one site that
+    #   WAS a second mechanism for this job, reasoning/consciousness_probe.py::_MinimalBrain, is
+    #   deleted in this same commit -- which is P2 being satisfied, not violated. All five read.
     class _StubBrain:
-        """The minimal duck-type of what `consciousness_probe.probe_access` actually reads off a
-        brain: a has-it-ticked workspace gate, a seed, and the live access EMA. Deliberately NOT a
-        real Brain -- P4 forbids standing up a second one, and the job here is to move exactly ONE
-        input and watch the output move."""
+        """The minimal duck-type of the brain this self-check needs: a host-assignable `workspace`
+        slot (T081 -- the report channel reads THAT), plus the has-it-ticked gate and the seed
+        earlier consumers read. Deliberately NOT a real Brain -- P4 forbids standing up a second
+        one, and the job here is to move exactly ONE input and watch the output move."""
 
         def __init__(self, ema):
             self._access = object()  # "this brain has a persisted workspace" gate
             self._seed = 0
             self._access_ema = ema
 
-    chat.brain = _StubBrain(ema=0.0)
-    q_c_measured = chat.converse("are you conscious")
-    chat.brain = _StubBrain(ema=0.742)  # SAME probe, ONE input moved
-    q_c_moved = chat.converse("are you conscious")
-    chat.brain = None  # restore: the remainder of the demo runs on the unattached chat
-    print(f"brain [no brain attached ]: {q_conscious['reply'][:118]}...")
-    print(f"brain [brain attached    ]: {q_c_measured['reply'][:118]}...")
-    print(f"brain [brain EMA moved   ]: {q_c_moved['reply'][:118]}...\n")
-
     # ---- P6: the reply must reflect what the brain is CURRENTLY DOING, not only what it RETRIEVED.
     # `_attended()` reads the ONE Global Workspace `brainstem/autonomous_loop.py` broadcasts into.
     # What is asserted here is a NEUTER-A/B on that PRODUCER with BOTH states constructed, because a
     # read that leaves the consumer's output identical is decoration and P6's honesty guard says to
-    # delete it rather than count it.
+    # delete it rather than count it. HOISTED above the consciousness arms at T081: the report
+    # channel reads a WORKSPACE, so states (2) and (3) need this stub too.
     class _StubWorkspace:
         """The minimal duck-type of what `_attended` reads off a workspace: a zero-argument
         `broadcast()` and a `broadcast_hold`. PINNED on purpose -- a criterion whose OFF state is
@@ -1810,6 +1864,21 @@ def demo():
 
         def broadcast(self):
             return self._content
+
+    # STATES (2) and (3) of the dissociation: two stub brains whose workspaces broadcast DIFFERENT
+    # contents. Same question, same chat, one input moved -- the report the channel reads.
+    conscious_brain = _StubBrain(ema=0.0)
+    conscious_brain.workspace = _StubWorkspace("threat", hold=0.4335)
+    chat.brain = conscious_brain
+    q_c_measured = chat.converse("are you conscious")
+    moved_brain = _StubBrain(ema=0.0)  # the EMA is held FIXED: only the broadcast moves
+    moved_brain.workspace = _StubWorkspace("novelty", hold=0.4335)
+    chat.brain = moved_brain
+    q_c_moved = chat.converse("are you conscious")
+    chat.brain = None  # restore: the remainder of the demo runs on the unattached chat
+    print(f"brain [no brain attached  ]: {q_conscious['reply'][:118]}...")
+    print(f"brain [report 'threat'    ]: {q_c_measured['reply'][:118]}...")
+    print(f"brain [report 'novelty'   ]: {q_c_moved['reply'][:118]}...\n")
 
     attended_brain = _StubBrain(ema=0.0)
     attended_brain.workspace = _StubWorkspace("threat")  # PRODUCER LIVE: something is broadcast
@@ -1874,44 +1943,45 @@ def demo():
     assert q_reason["ignited"] and q_reason["source"] == "reason", (
         "the contradiction correction must WIN ignition in the global workspace (reasoning through the GWT hub)"
     )
-    # RED side: with nothing attached, the brain must NOT claim to have measured itself.
-    assert not q_conscious["known"] and "UNMEASURED" in q_conscious["reply"], (
-        "with no brain attached the access marker must report UNMEASURED and the turn must not "
+    # RED side: with nothing attached, there is no report to read and the turn must say so rather
+    # than claiming a measurement about this instance. RED: return known=True with no brain.
+    assert not q_conscious["known"] and "no report to read" in q_conscious["reply"], (
+        "with no brain attached the report channel has nothing to read and the turn must not "
         "claim a measurement about this instance"
     )
-    # GREEN side, REWRITTEN 2026-08-05 because the thing it asserted was DELETED.
+    # GREEN side, RE-POINTED 2026-09-16 (T081, evidence/t081-report-order.md 2.6).
     #
-    # This used to be `assert q_c_measured["known"] and "UNMEASURED" not in ...reply`, i.e. "attaching
-    # a brain must make the access marker MEASURABLE", plus a neuter-A/B on the literal "0.742".
-    # Both tested the GWT ACCESS marker in reasoning/consciousness_probe.py, and that marker was
-    # deleted on 2026-08-05: its verdict had three states and only two were reachable, so under
-    # falsifier F11 ("that criterion is deleted, not weakened") it went, exactly as three earlier
-    # markers in that file went before it.
+    # Until this commit these two asserts read `not q_c_measured["known"] and "UNMEASURED" in reply`
+    # plus `"DELET" in reply.upper()`: with a brain attached the ACCESS marker had to STILL report
+    # UNMEASURED, because that marker was deleted under F11 on 2026-08-05 for having no reachable
+    # red, and the reply had to NAME the deletion rather than silently omit it. Both were asserts
+    # ABOUT `reasoning/consciousness_probe.py`, which is deleted in this commit -- so they go with
+    # it rather than being re-pointed at a substitute, exactly as they themselves went with the
+    # marker they were rewritten from.
     #
-    # An assert that DEMANDS a deleted criterion report a measurement cannot be satisfied honestly --
-    # the only ways to make it green again are to resurrect an unfalsifiable marker or to fake a
-    # number, and P8 forbids both ("the brain may report what it measures, never what it cannot").
-    # So these two asserts are deleted with the marker rather than re-pointed at a substitute.
+    # What replaces them is a STRONGER form of the same contract, because the reply now reads a
+    # live record instead of reporting a permanent UNMEASURED: attaching a brain whose workspace is
+    # broadcasting must make the report READABLE, and moving ONLY what that workspace broadcasts
+    # must move the reply's own text. That is the neuter-A/B, and it is what makes `known` a
+    # measurement rather than a constant.
     #
-    # What REPLACES them is the contract that actually survives the deletion, and it is the one that
-    # matters for an agent that answers "are you conscious": attaching a brain must NOT cause the
-    # reply to start claiming a measurement that no longer exists. The honest state is UNMEASURED
-    # with the deletion NAMED, in both the unattached and attached cases.
-    #
-    # REACHABLE RED, and it is the red worth having here: re-introduce any marker that reports
-    # `known=True` for access without a measurement behind it and this fires immediately. That is
-    # precisely the regression this file caused once already -- spike_chat_lake:925 answered "are you
-    # conscious" from a 4/4 self-report that no live measurement backed.
-    assert not q_c_measured["known"] and "UNMEASURED" in q_c_measured["reply"], (
-        "with a brain attached the access marker must STILL report UNMEASURED, because the GWT "
-        "ACCESS marker was deleted under F11 for having no reachable red. If this turns green, "
-        "something re-added a marker that claims access without measuring it."
+    # REACHABLE RED, and it is the red worth having here: make `report_part` a constant string, or
+    # derive `known` from anything but the record, and these fire immediately. That is precisely the
+    # regression this file caused once already -- the "are you conscious" turn answered from a 4/4
+    # self-report that no live measurement backed (specs/010, C09).
+    assert q_c_measured["known"] and q_c_moved["known"], (
+        "with a brain attached whose workspace is broadcasting, the report channel HAS a record to "
+        "read, so the turn reports a measurement about this instance. RED: drop the workspace"
     )
-    assert "DELET" in q_c_measured["reply"].upper(), (
-        "the reply must NAME the deletion rather than silently omitting the marker -- an absent "
-        "correlate that is never mentioned reads as a correlate that passed"
+    assert q_c_measured["reply"] != q_c_moved["reply"], (
+        "NEUTER-A/B: two brains identical but for WHAT their workspace broadcasts must produce "
+        "different replies -- otherwise the reply is a constant wearing a reading's clothes (P3 "
+        "shape 5). RED: report a fixed string instead of the channel's record"
     )
-    # The deletion must not have taken the HONEST half with it: the reply still refuses to claim
+    assert "no report to read" not in q_c_measured["reply"], (
+        "a readable report must not still announce that there is nothing to read"
+    )
+    # The retirement must not have taken the HONEST half with it: the reply still refuses to claim
     # sentience, in every attachment state. RED: drop that sentence and this fires.
     for _tag, _q in (("unattached", q_conscious), ("attached", q_c_measured), ("moved", q_c_moved)):
         assert "sentience" in _q["reply"].lower() or "experience" in _q["reply"].lower(), (
@@ -1922,8 +1992,19 @@ def demo():
     assert all(
         "neither claim nor deny" in o["reply"] for o in (q_conscious, q_c_measured, q_c_moved)
     ), (
-        "the agnostic close must survive every state, including the one where the access marker "
-        "reads PRESENT -- a correlate of access is never evidence of experience (P8)"
+        "the agnostic close must survive every state, including the one where the report channel "
+        "reads a record -- a report that WAS read is never evidence of experience (P8)"
+    )
+    # THE CONTAMINATION CLAUSE (P8 item 4, added 2026-08-05) must likewise survive every state: the
+    # lake ingests human text about machine consciousness, which carries BOTH the denial and the
+    # assertion script, so a careful-sounding answer is what a system emits either way. RED: drop
+    # the clause from any one state and this fires.
+    assert all(
+        "I cannot verify that this answer is a measurement rather than a habit" in o["reply"]
+        for o in (q_conscious, q_c_measured, q_c_moved)
+    ), (
+        "the contamination clause must survive every state -- it is about the reply itself, not "
+        "about the brain, so no attachment state can license dropping it"
     )
     # ---- P6 CONSUMER, neuter-A/B. Each assert below names the input that makes it RED (P8): the
     # reds were CONSTRUCTED AND RUN, not reasoned about -- see the pass notes on this wire.
@@ -1969,13 +2050,20 @@ def demo():
         "'a null through a rounding instrument is not a null')"
     )
     assert "'threat'" in q_c_live["reply"] and "'threat'" not in q_c_neut["reply"], (
-        "the same neuter-A/B on the access-consciousness turn: what is globally available in me is "
+        "the same neuter-A/B on the are-you-conscious turn: what is globally available in me is "
         "the one live reading of THIS instance in that reply. RED: stop consuming it there"
     )
-    assert not (q_c_live["known"] or q_c_neut["known"]), (
-        "reporting the slot's content must NOT move `known`. `known` tracks the ACCESS MARKER, "
-        "deleted under F11 for having no reachable red; 'a content is available' is a smaller and "
-        "different claim. RED: derive `known` from `_attended()`"
+    # RE-POINTED 2026-09-16 (T081). This read `not (q_c_live["known"] or q_c_neut["known"])` while
+    # `known` tracked the ACCESS MARKER, which was deleted under F11 for having no reachable red;
+    # since the marker's module is deleted in this commit, `known` now tracks exactly one thing --
+    # a brain is attached AND its report was read. BOTH arms have a workspace, so both read a
+    # record: the NEUTERED arm reads content None at availability 0, which is a reading and not an
+    # absence of one. That is the honest boundary, and it is why the reply's text still moves (the
+    # assert above) while the flag does not. RED: derive `known` from the content being non-None
+    # and the neutered arm silently reports "I could not measure myself" for a workspace it read.
+    assert q_c_live["known"] and q_c_neut["known"], (
+        "a brain with a workspace was attached in BOTH arms, so the channel read a record in both "
+        "-- an empty slot read at availability 0 is a reading. RED: gate `known` on the content"
     )
     assert "neither claim nor deny" in q_c_live["reply"], (
         "the agnostic close must survive the state where the workspace IS broadcasting -- knowing "

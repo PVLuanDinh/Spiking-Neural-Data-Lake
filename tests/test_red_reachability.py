@@ -158,12 +158,23 @@ def test_assert_mode_returns_1_on_the_pre_fix_shape_and_0_on_the_repaired_one(
     assert red_reachability.main(["--assert"]) == 0, "the repaired shape must PASS the gate"
 
 
-def test_live_consciousness_probe_now_reads_the_system():
-    """The regression this feature exists to prevent, asserted against the real module."""
+def test_live_report_order_probe_reads_the_system():
+    """The regression this feature exists to prevent, asserted against the real module.
+
+    RE-POINTED 2026-09-16 (specs/022 T081, `evidence/t081-report-order.md` 2.6): this guarded
+    `consciousness_probe.` criteria until that module was RETIRED (P2, T034's deferred clause --
+    both replacement halves now exist: the report channel since T034, and this probe once its six
+    reds fired). The live criteria it guards are `report_order_probe.`'s. `scan()` discovers a
+    criterion by NAME (`probe_*` prefix, `_present`/`_verdict`/`_is_present` suffix, or one of the
+    bare verdict names) and scores `reads_system` as "takes at least one real parameter", so the
+    contract asserted is the same one: a criterion that reads no system cannot fail.
+
+    The two "deleted (C08)" asserts that stood here -- `probe_binding` and `probe_reentry` must not
+    reappear -- are DROPPED with the module they guarded: both names lived in
+    `reasoning/consciousness_probe.py`, retired at T081, so nothing can re-add them there.
+    """
     criteria, _ = red_reachability.scan()
-    probes = {c["name"]: c for c in criteria if c["name"].startswith("consciousness_probe.")}
-    assert probes, "consciousness_probe exposes no discoverable criteria"
+    probes = {c["name"]: c for c in criteria if c["name"].startswith("report_order_probe.")}
+    assert probes, "report_order_probe exposes no discoverable criteria"
     for name, c in probes.items():
         assert c["reads_system"], f"{name} takes no arguments -- the C09 defect has returned"
-    assert "consciousness_probe.probe_binding" not in probes, "probe_binding was deleted (C08)"
-    assert "consciousness_probe.probe_reentry" not in probes, "probe_reentry was deleted (C08)"
