@@ -78,6 +78,7 @@ from snn_data_lake.cortex.agency_monitor import (
     T079_WARMUP,
     _experiment,
     _t079_mutated_scorer,
+    _t079_refusals,
     t079_arm,
     t079_channel_rows,
     t079_contrasts,
@@ -311,3 +312,32 @@ def test_r6_the_dissociation_reads_on_a_constructed_body(reds):
         "and it must fail (a2) on every preserved joint, which is where it fires"
     )
     assert reds["R6"], "t079_reds() must run R6 and its blind-scorer mutation in-command"
+
+
+def test_r_every_awake_tick_carries_a_passage_and_extra_passages_are_counted():
+    """2.10: (r) refuses an awake tick with NO passage and READS a tick with two (a postural
+    recovery), counting the extra -- the campaign-width seed-0 run carried 30 of them."""
+    u_cols, ds_cols = t079_coupled_decoupled(T079_R1_PASSAGES, seed=5)
+    rows = t079_channel_rows(u_cols, ds_cols)
+    base = t079_read(rows)
+    assert (
+        base["readable"] and base["extra_passages"] == 0 and base["observed_ticks"] == base["awake"]
+    )
+
+    # two passages on one awake tick (the recovery): readable, extra 1, no refusal named
+    two = [dict(r) for r in rows]
+    two[300]["awake_ticks"] = two[299]["awake_ticks"]
+    for r in two[301:]:
+        r["awake_ticks"] -= 1
+    read = t079_read(two)
+    assert read["readable"], _t079_refusals(read, 0, "intact")
+    assert read["extra_passages"] == 1 and read["passages"] == read["awake"] + 1
+    assert not _t079_refusals(read, 0, "intact")
+
+    # an awake tick with NO passage: refused, and the refusal names the count
+    hole = [dict(r) for r in rows]
+    hole[-1]["awake_ticks"] += 1
+    read = t079_read(hole)
+    assert not read["readable"]
+    named = _t079_refusals(read, 0, "intact")
+    assert any("carried NO passage" in x for x in named), named

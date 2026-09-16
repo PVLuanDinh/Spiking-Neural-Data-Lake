@@ -558,9 +558,14 @@ def t079_read(rows, var_floor=T079_VAR_FLOOR, warmup=T079_WARMUP):
     ends -- the recording's and the estimator's -- and R3 reddens both with one mutation
     (var_floor := 0 scores the dead channel AND lets its status reach 'lost').
 
-    `readable` IS 2.3's (r) for this one recording: every rotatable joint scored, the
-    passage count equal to the awake-tick count (the T037 1:1 contract), `tap_errors` 0 and
-    the body never latched. A recording that fails it is REFUSED, never read around.
+    `readable` IS 2.3's (r) for this one recording: every rotatable joint scored, every
+    awake tick carrying at least ONE passage (the T037 1:1 step-and-tick contract, read per
+    tick; 2.10), `tap_errors` 0 and the body never latched. A recording that fails it is
+    REFUSED, never read around. EXTRA passages -- the postural-recovery reflex issues a
+    SECOND tapped `apply_observed` on ground contact (30 of 593 awake ticks on the
+    campaign-width seed-0 apparatus run, `scratchpad/t079/probe_width.py`) -- are counted as
+    `extra_passages`, fed and reported, never a refusal: a command with its outcome is exactly
+    what the copy should see.
 
     `var_floor` and `warmup` are arguments for the same reason `AgencyMonitor`'s thresholds
     are: R3's mutated scorer has to be able to set the floor to zero and READ the difference."""
@@ -580,6 +585,14 @@ def t079_read(rows, var_floor=T079_VAR_FLOOR, warmup=T079_WARMUP):
         }
     passages = len(rows)
     awake = 0 if last is None else int(last.get("awake_ticks", passages))
+    observed_ticks = len(
+        {
+            int(r["awake_ticks"])
+            for r in rows
+            if r.get("awake", True) and r.get("awake_ticks") is not None
+        }
+    )
+    extra = passages - awake
     latched = sum(1 for r in rows if r.get("latched"))
     tap_errors = 0 if last is None else int(last.get("tap_errors", 0))
     # A passage whose per-joint copy could not be read fed the monitor NOTHING (the feed
@@ -590,12 +603,14 @@ def t079_read(rows, var_floor=T079_VAR_FLOOR, warmup=T079_WARMUP):
     return {
         "readable": bool(rows)
         and all(v["scored"] for v in joints.values())
-        and passages == awake
+        and observed_ticks == awake
         and latched == 0
         and tap_errors == 0
         and unreadable == 0,
         "passages": passages,
         "awake": awake,
+        "observed_ticks": observed_ticks,
+        "extra_passages": extra,
         "latched": latched,
         "tap_errors": tap_errors,
         "copies_unreadable": unreadable,
@@ -1320,8 +1335,12 @@ def _t079_refusals(read, seed, arm):
                 f"seed {seed} {arm}: {j} UNSCORED (n {v['n']}/{T079_WARMUP}, "
                 f"var_c {v['var_c']:.3e}/{T079_VAR_FLOOR:.1e})"
             )
-    if read["passages"] != read["awake"]:
-        out.append(f"seed {seed} {arm}: {read['passages']} passages vs {read['awake']} awake ticks")
+    if read.get("observed_ticks", read["passages"]) != read["awake"]:
+        missing = read["awake"] - read.get("observed_ticks", 0)
+        out.append(
+            f"seed {seed} {arm}: {missing} awake ticks carried NO passage "
+            f"({read['passages']} passages, {read['awake']} awake)"
+        )
     if read["latched"]:
         out.append(f"seed {seed} {arm}: latched on {read['latched']} passages")
     if read["tap_errors"]:
