@@ -58,6 +58,7 @@ from snn_data_lake.cortex.attention_schema import (
     U_DIM,
     U_FIELDS,
     U_FORBIDDEN,
+    _reported_mi,
     _t078_mutated_scorer,
     control_state,
     decode_heldout,
@@ -77,6 +78,7 @@ from snn_data_lake.cortex.attention_schema import (
     t078_reds,
     t078_stub_brain,
 )
+from snn_data_lake.substrate.paired_contrast import contrast
 
 TEST_SEEDS = tuple(range(8))
 ACTION_N = 2000
@@ -336,6 +338,49 @@ def test_the_content_projection_is_fixed_by_its_crc32_seed():
     assert a.shape == (LATENT_DIM, U_DIM), a.shape
     assert bool((a == b).all()), "the projection must be a pure function of the seed"
     assert not bool((a == t078_projection(4)).all()), "a different seed must give a different arm"
+
+
+def _g3_reading(readable, mi=0.30, q95=0.10, refusal=None):
+    """One seed's slot of a `t078_g3` result, carrying only what `_reported_mi` reads."""
+    if readable:
+        return {"readable": True, "mi": mi, "perm_q95": q95, "refusal": None}
+    return {"readable": False, "mi": None, "perm_q95": None, "refusal": refusal or "a refusal"}
+
+
+def test_a_refused_reported_reading_carries_REFUSED_and_never_a_number():
+    """The campaign's reported block must carry a REFUSAL for a refused reading, never a number.
+
+    `reported.gate16` and `reported.same_tick` were built over `(mi or 0.0) - (perm_q95 or 0.0)`,
+    which coerces a refused None into a 0.0 DIFF. On the landed campaign gate16 refused on all
+    eight seeds, so the pin carries a contrast of eight fabricated zeros (t 0.0000, FPR 0.0,
+    degenerate true) and the printed line dropped even the DEGENERATE marker. The sharper case is
+    PARTIAL refusal: one fabricated zero among seven real diffs is NOT degenerate, so it would
+    carry no flag at all. `_reported_mi` refuses on ANY refusing seed -- 2.9's (r) rule -- and
+    emits no `t`, no `fpr` and no `met`, so nothing downstream can lift a number that never was."""
+    seeds = tuple(range(8))
+    # the readable diffs VARY by seed, or `contrast` is degenerate and its t is 0.0 by construction
+    readable = [{"g3": {"k": _g3_reading(True, mi=0.30 + 0.01 * s)}} for s in seeds]
+    c = _reported_mi("k (reported)", "k", seeds, readable)
+    assert "refused" not in c, c
+    assert c["degenerate"] is False and c["t"] > 0.0 and c["met"] is True, c
+
+    all_refused = [{"g3": {"k": _g3_reading(False, refusal=f"seed {s} floor")}} for s in seeds]
+    r = _reported_mi("k (reported)", "k", seeds, all_refused)
+    assert r["refused"] is True and r["n_refused"] == 8, r
+    assert not ({"t", "fpr", "met"} & set(r)), "a refused reading must carry NO number"
+    assert r["refusals"]["3"] == "seed 3 floor", "a refusal must name why, per seed"
+
+    partial = [{"g3": {"k": _g3_reading(True, mi=0.30 + 0.01 * s)}} for s in seeds]
+    partial[3] = {"g3": {"k": _g3_reading(False, refusal="seed 3 floor")}}
+    p = _reported_mi("k (reported)", "k", seeds, partial)
+    assert p["refused"] is True and p["n_refused"] == 1, p
+    assert not ({"t", "fpr", "met"} & set(p)), "one refusal must not ride inside seven real diffs"
+    # THE RED: the incumbent `or 0.0` coercion fabricated a non-degenerate number on that input
+    fabricated = contrast(
+        "k (reported)",
+        [(x["g3"]["k"]["mi"] or 0.0) - (x["g3"]["k"]["perm_q95"] or 0.0) for x in partial],
+    )
+    assert fabricated.degenerate is False and fabricated.t != 0.0, fabricated
 
 
 def test_t078_reds_all_fire_in_the_modules_own_self_check_line():

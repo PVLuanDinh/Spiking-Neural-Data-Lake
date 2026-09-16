@@ -1003,6 +1003,46 @@ def _line(c):
     return f"{c.name}: {verdict}{deg} t={c.t:.4f} FPR={c.fpr}"
 
 
+# distinct-from: substrate/paired_contrast.py::contrast -- decides MET/degenerate over a list of
+#   differences it is HANDED, and is the function this one calls. It has no notion of a reading, a
+#   readability or a refusal, and cannot: by the time diffs reach it the fabrication has happened.
+#   This is the guard in front of it -- whether a contrast may be BUILT at all. Read, imported,
+#   never re-implemented. distinct-from: hippocampus/online_readout.py::ClosingGate (a refit-count
+#   gate that holds beta stale after k refits), substrate/signal_ring.py::publish (a single-writer
+#   ring append whose "never drops ITS OWN write" is about slot reuse), cerebellum/hjepa_serve.py::
+#   _validate_stack (layer shape chaining, raises) and cerebellum/gain_adaptation.py (online LMS
+#   gain recalibration). All four READ: none decides whether a REPORTED statistic may be computed
+#   from readings that refused, and none returns a refusal record in place of a number.
+def _reported_mi(name, key, seeds, ss):
+    """A REPORTED MI contrast that never fabricates a number for a refusal.
+
+    `reported.gate16` and `reported.same_tick` were each built over
+    `(mi or 0.0) - (perm_q95 or 0.0)`, which turns a REFUSED reading into a 0.0 DIFF. On the
+    landed campaign `gate16` refused on every seed, so the surface carried a contrast of eight
+    fabricated zeros; the sharper case is PARTIAL refusal, where one refused seed injects one 0.0
+    among real diffs and the contrast is not even degenerate, so it carries no flag at all.
+    `mi_read`'s own rule is that a refusal which does not say why is a number without a reason.
+
+    Gated on EVERY seed readable, mirroring 2.9's (r) rule -- never on "no seed readable", and
+    never by contrasting the readable remainder, which would silently change the paired sample
+    size the bar is pre-registered over. A refused entry carries NO `t`, NO `fpr` and NO `met`, so
+    no downstream reader can lift a number that does not exist; it carries the refusing seeds and
+    `mi_read`'s own refusal sentence for each, which is the reason the surface owed.
+
+    POST-NUMBER (2026-09-15, the panel fold): `tools/t078_attention_schema.json` was pinned ONCE
+    before this shape existed and retains the eight-zero `reported.gate16` contrast. No BARRED
+    reading is touched -- gate16 and same_tick are pre-registered "reported, never barred", enter
+    no conjunct, and the STOP x PASS verdict is computed without either."""
+    refused = {
+        str(s): x["g3"][key]["refusal"]
+        for s, x in zip(seeds, ss, strict=True)
+        if not x["g3"][key]["readable"]
+    }
+    if refused:
+        return {"name": name, "refused": True, "n_refused": len(refused), "refusals": refused}
+    return contrast(name, [x["g3"][key]["mi"] - x["g3"][key]["perm_q95"] for x in ss])._asdict()
+
+
 # distinct-from: cortex/metacognitive_monitor.py::run_t077_campaign -- the PIN-ONCE campaign shape
 #   2.1 names for reuse, read before this marker was written. That one records a metacognitive
 #   monitor's five inputs over an intact and a LESIONED arm plus a chat arm, and scores a type-2
@@ -1138,20 +1178,11 @@ def run_t078_campaign(seeds=T078_SEEDS, n_ticks=T078_N_TICKS, pin=T078_PIN, late
             x["g4"]["u"]["acc"] - x["g4"]["u"]["shuffle_q95"] for x in ss
         )
         reading["reported"] = {
-            "gate16": contrast(
-                "gate16 (reported)",
-                [
-                    (x["g3"]["gate16"]["mi"] or 0.0) - (x["g3"]["gate16"]["perm_q95"] or 0.0)
-                    for x in ss
-                ],
-            )._asdict(),
-            "same_tick": contrast(
-                "same-tick focus/action (reported)",
-                [
-                    (x["g3"]["same_tick"]["mi"] or 0.0) - (x["g3"]["same_tick"]["perm_q95"] or 0.0)
-                    for x in ss
-                ],
-            )._asdict(),
+            # BOTH MI readings go through `_reported_mi`: a refusal becomes a REFUSAL record, never
+            # a 0.0 diff. same_tick was readable on all 8 seeds of the landed run, so it carried the
+            # identical `or 0.0` coercion one refusal away from fabricating a number.
+            "gate16": _reported_mi("gate16 (reported)", "gate16", seeds, ss),
+            "same_tick": _reported_mi("same-tick focus/action (reported)", "same_tick", seeds, ss),
             "raw64_ceiling": contrast(
                 "raw-64 content ceiling (reported)",
                 [x["g4"]["raw64"]["acc"] - x["g4"]["u"]["acc"] for x in ss],
@@ -1167,7 +1198,20 @@ def run_t078_campaign(seeds=T078_SEEDS, n_ticks=T078_N_TICKS, pin=T078_PIN, late
         print(_line(g4["g4a"]), flush=True)
         print(_line(g4["g4b"]), flush=True)
         for name, c in reading["reported"].items():
-            print(f"  reported {name}: t={c['t']:.4f} FPR={c['fpr']} met={c['met']}", flush=True)
+            if c.get("refused"):
+                seed0, why = next(iter(c["refusals"].items()))
+                print(
+                    f"  reported {name}: REFUSED on {c['n_refused']}/{len(ss)} seeds "
+                    f"(seed {seed0}: {why})",
+                    flush=True,
+                )
+            else:
+                # the DEGENERATE marker `_line` appends and this loop used to drop
+                deg = " DEGENERATE" if c["degenerate"] else ""
+                print(
+                    f"  reported {name}: t={c['t']:.4f}{deg} FPR={c['fpr']} met={c['met']}",
+                    flush=True,
+                )
         print(
             f"PART I VERDICT: G3 {reading['g3']} x G4 {reading['g4']} "
             f"(leak {reading['leak_points']:+.4f} accuracy points)",
