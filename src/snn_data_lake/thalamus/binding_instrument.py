@@ -101,6 +101,11 @@ T080_N_DRAWS = 2000
 T080_SEEDS = tuple(range(8))
 #: (b2)'s agreement band on the offline null's draws (2.3).
 T080_BAND = (0.005, 0.995)
+#: (b2)'s REFUSAL band (2.11, after run 1's numbers, disclosed): the FAMILY-WISE 99 % band over the
+#: S seeds, [q(0.005 / S), q(1 - 0.005 / S)] of the same draws -- DERIVED from the seed count, never a
+#: literal. Eight per-seed 99 % checks refuse an honest apparatus 1 - 0.99^8 = 7.7 % of the time
+#: (6.2 % simulated from run 1's own position nulls); the per-seed band above stays REPORTED.
+T080_BAND_FW = (0.005 / len(T080_SEEDS), 1.0 - 0.005 / len(T080_SEEDS))
 
 #: The one bar (2.3): the paired one-sided t over 8 seeds, 7 d.f., alpha = 0.05.
 T080_BAR = T_BAR
@@ -504,6 +509,8 @@ def t080_null(recs, seed, n_draws=T080_N_DRAWS, resample=False):
             "q95": 0.0,
             "q005": 0.0,
             "q995": 0.0,
+            "q_lo": 0.0,
+            "q_hi": 0.0,
             "expected": float(expected),
             "draws_sd": 0.0,
             "multiset_ok": False,
@@ -526,6 +533,9 @@ def t080_null(recs, seed, n_draws=T080_N_DRAWS, resample=False):
         "q95": q95,
         "q005": float(_t080_order_stat(draws, T080_BAND[0])),
         "q995": float(_t080_order_stat(draws, T080_BAND[1])),
+        # the family-wise ends (2.11): the refusal reads THESE; q005/q995 stay reported
+        "q_lo": float(_t080_order_stat(draws, T080_BAND_FW[0])),
+        "q_hi": float(_t080_order_stat(draws, T080_BAND_FW[1])),
         "expected": float(expected),
         "draws_sd": float(statistics.stdev(draws)) if len(set(draws)) > 1 else 0.0,
         "multiset_ok": multiset_ok,
@@ -566,9 +576,10 @@ def _t080_g0(entry):
 
 
 def _t080_band(entry):
-    """(b2)'s per-seed agreement band: the offline null's own [q005, q995]. R6's
-    `band_unbounded` is the hook."""
-    return float(entry["q005_null"]), float(entry["q995_null"])
+    """(b2)'s agreement band: the offline null's own FAMILY-WISE 99 % band [q_lo, q_hi] over
+    the S seeds (2.11; run 1's per-seed [q005, q995] refused an honest apparatus on seed 3 at a
+    6-8 % family-wise rate). R6's `band_unbounded` is the hook."""
+    return float(entry["q_lo_null"]), float(entry["q_hi_null"])
 
 
 def t080_contrasts(per_seed, score=None, band=None, g0=None, bar=T080_BAR):
@@ -908,6 +919,7 @@ def t080_constructed_seeds(kind, seeds=T080_SEEDS, seed=0):
     out = []
     for i, s in enumerate(seeds):
         q95, q005, q995 = 0.10, 0.04, 0.16
+        q_lo, q_hi = q005 - 0.01, q995 + 0.01  # the family-wise band is wider than the per-seed one
         entry = {
             "seed": s,
             "congruent_aligned": 0.70 + rng.uniform(-0.02, 0.02),
@@ -916,6 +928,8 @@ def t080_constructed_seeds(kind, seeds=T080_SEEDS, seed=0):
             "q95_null": q95,
             "q005_null": q005,
             "q995_null": q995,
+            "q_lo_null": q_lo,
+            "q_hi_null": q_hi,
             "null_in_vivo": 0.09 + rng.uniform(-0.01, 0.01),
         }
         if kind == "independent":
@@ -1039,6 +1053,8 @@ def t080_seed(seed, arms=None, n_ticks=None, n_draws=T080_N_DRAWS):
     out["q95_null"] = null["q95"]
     out["q005_null"] = null["q005"]
     out["q995_null"] = null["q995"]
+    out["q_lo_null"] = null["q_lo"]
+    out["q_hi_null"] = null["q_hi"]
     out["null_in_vivo"] = out["arms"]["null"]["bound_frac"] if "null" in out["arms"] else 0.0
     out["congruent_aligned"] = aligned["congruent_frac"] if aligned else 0.0
     out["congruent_null"] = out["arms"]["null"]["congruent_frac"] if "null" in out["arms"] else 0.0
@@ -1050,9 +1066,13 @@ def t080_seed(seed, arms=None, n_ticks=None, n_draws=T080_N_DRAWS):
     # THE TAUGHT PROTOTYPES (2.10 (g)): the registering latents of every object the warm-up
     # taught, so the decomposition of the companion's latents re-derives OFFLINE through a
     # fresh binder -- register these, project the npz rows, recognise -- with no brain at all.
+    # IN REGISTRATION ORDER, never sorted: `cleanup` breaks an exact coincidence tie by the
+    # codebook's insertion order, so an offline binder must register the objects in the order
+    # the warm-up did or it names the other prototype on tied ticks (measured on run 1's pin:
+    # 9 of 294 ALIGNED ticks on seed 7 tied at 440/512 between two prototypes).
     out["prototypes"] = {
         h: {"vis": list(o["vision_latent"]), "aud": list(o["audio_latent"])}
-        for h, o in sorted(binder.objects.items())
+        for h, o in binder.objects.items()
     }
     del binder
     return out
@@ -1255,12 +1275,15 @@ def _t080_seed_block(r, out=print):
     out(
         f"  offline membership-matched null on ALIGNED ({n['n']} ticks x {n['n_draws']} draws): "
         f"mean {n['mean']:.4f} q95 {n['q95']:.4f} band [{n['q005']:.4f}, {n['q995']:.4f}] "
+        f"family-wise [{n['q_lo']:.4f}, {n['q_hi']:.4f}] "
         f"sd {n['draws_sd']:.4f} expected(product of marginals) {n['expected']:.4f} "
         f"multiset_ok {n['multiset_ok']}"
     )
     out(
         f"  within {r['within']:.4f} - q95 {r['q95_null']:.4f} = {r['within'] - r['q95_null']:+.4f}"
-        f" | NULL IN VIVO {r['null_in_vivo']:.4f} in band {r['q005_null'] <= r['null_in_vivo'] <= r['q995_null']}"
+        f" | NULL IN VIVO {r['null_in_vivo']:.4f} in per-seed band "
+        f"{r['q005_null'] <= r['null_in_vivo'] <= r['q995_null']} in family-wise band "
+        f"{r['q_lo_null'] <= r['null_in_vivo'] <= r['q_hi_null']}"
         f" | congruent ALIGNED {r['congruent_aligned']:.4f} - NULL {r['congruent_null']:.4f} = "
         f"{r['congruent_aligned'] - r['congruent_null']:+.4f}"
     )
@@ -1347,6 +1370,8 @@ def run_t080_dry_run(out_path=T080_DRY_RUN_OUT, seed=0):
     reading["q95_null"] = null["q95"]
     reading["q005_null"] = null["q005"]
     reading["q995_null"] = null["q995"]
+    reading["q_lo_null"] = null["q_lo"]
+    reading["q_hi_null"] = null["q_hi"]
     reading["null_in_vivo"] = reading["arms"]["null"]["bound_frac"]
     reading["congruent_aligned"] = aligned["congruent_frac"]
     reading["congruent_null"] = reading["arms"]["null"]["congruent_frac"]
@@ -1416,9 +1441,10 @@ def run_t080_dry_run(out_path=T080_DRY_RUN_OUT, seed=0):
     )
     print(f"  (b1) one seed: {reading['within'] - reading['q95_null']:+.4f}  t: n/a", flush=True)
     print(
-        f"  (b2) one seed: NULL IN VIVO {reading['null_in_vivo']:.4f} in "
-        f"[{reading['q005_null']:.4f}, {reading['q995_null']:.4f}] -> "
-        f"{reading['q005_null'] <= reading['null_in_vivo'] <= reading['q995_null']}",
+        f"  (b2) one seed: NULL IN VIVO {reading['null_in_vivo']:.4f} in family-wise "
+        f"[{reading['q_lo_null']:.4f}, {reading['q_hi_null']:.4f}] -> "
+        f"{reading['q_lo_null'] <= reading['null_in_vivo'] <= reading['q_hi_null']} "
+        f"(per-seed [{reading['q005_null']:.4f}, {reading['q995_null']:.4f}] reported)",
         flush=True,
     )
 
@@ -1461,6 +1487,7 @@ def _t080_constants():
         "n_draws": T080_N_DRAWS,
         "seeds": list(T080_SEEDS),
         "band": list(T080_BAND),
+        "band_fw": list(T080_BAND_FW),
         "bar": T080_BAR,
         "margins": list(T080_MARGINS),
         "latent_places": T080_LATENT_PLACES,
@@ -1663,7 +1690,8 @@ def main(argv=None):
     )
     print(
         f"  bar {T080_BAR} | seeds {list(T080_SEEDS)} | n_draws {T080_N_DRAWS} "
-        f"(reds {T080_REDS_N_DRAWS}) | band {T080_BAND} | offset {T080_STREAM_OFFSET} x seed"
+        f"(reds {T080_REDS_N_DRAWS}) | band {T080_BAND} family-wise {T080_BAND_FW} | "
+        f"offset {T080_STREAM_OFFSET} x seed"
     )
     reds = t080_reds()
     print("-" * 78)
