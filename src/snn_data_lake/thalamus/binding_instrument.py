@@ -64,6 +64,7 @@ about a MECHANISM, never a verdict about experience.
 """
 
 import copy
+import hashlib
 import json
 import random
 import statistics
@@ -105,6 +106,10 @@ T080_BAND = (0.005, 0.995)
 T080_BAR = T_BAR
 #: The pin, written ONCE by `--t080-campaign` (2.9 step 6).
 T080_PIN = Path("tools/t080_temporal_binding.json")
+#: The pin's COMPANION (2.10 (g), T078's npz precedent): every scored tick's raw latents per
+#: seed and arm at float32, sha256 recorded in the pin, so (r)'s decomposition re-derives
+#: from the files alone. Written once, beside the pin.
+T080_LATENTS = Path("tools/t080_latents.npz")
 #: The dry run's report (2.9 step 5). Never under tools/: the pin is the campaign's.
 T080_DRY_RUN_OUT = Path("scratchpad/t080/dry_run.json")
 
@@ -1016,6 +1021,15 @@ def t080_seed(seed, arms=None, n_ticks=None, n_draws=T080_N_DRAWS):
         counts["recs"] = recs["recs"]
         out["arms"][name] = counts
         counts["acc"] = rec["arm_acc"][name]
+    # the raw latents of every scored tick, in the SAME order as each arm's `recs` (the
+    # campaign packs them into the companion npz; nothing barred reads them here)
+    out["latents"] = {
+        name: {
+            "vis": np.asarray([r["vis"] for r in rows if _t080_is_scored(r)], dtype=np.float32),
+            "aud": np.asarray([r["aud"] for r in rows if _t080_is_scored(r)], dtype=np.float32),
+        }
+        for name, rows in rec["arms"].items()
+    }
     out["timings"]["decompose_s"] = round(time.time() - t0, 3)
 
     aligned = out["arms"].get("aligned")
@@ -1453,7 +1467,12 @@ def _t080_constants():
 #   cortex/attention_schema.py::run_t078_campaign -- the PATTERN this follows (record, read,
 #   contrast, pin ONCE) over a different instrument, different arms and a different pin.
 #   Read; no state, no pin and no statistic is shared beyond `substrate/paired_contrast`.
-def run_t080_campaign(seeds=T080_SEEDS, pin=T080_PIN):
+# distinct-from: agency_monitor.py -- run_t079_campaign is T079's campaign over its own efference feed and pin; read 2026-09-16.
+# distinct-from: attention_schema.py -- run_t078_campaign is T078's over the attention gates and its pin; read 2026-09-16.
+# distinct-from: metacognitive_monitor.py -- run_t077_campaign is T077's over the metacognition scorer; read 2026-09-16.
+# distinct-from: prior_drift_harness.py -- run_campaign is the drift harness's over its priors; read 2026-09-16.
+#   Each row's campaign is its own instrument's; a shared runner would be a fifth mechanism, not one.
+def run_t080_campaign(seeds=T080_SEEDS, pin=T080_PIN, latents=T080_LATENTS):
     """The campaign (2.2-2.3): record, decompose, null, contrast, pin ONCE. Returns an exit
     code.
 
@@ -1471,6 +1490,10 @@ def run_t080_campaign(seeds=T080_SEEDS, pin=T080_PIN):
     A REFUSAL is a finding about the apparatus or the instrument; a NOT MET is a finding about
     this binder on this stimulus. They are never merged."""
     pin = Path(pin)
+    latents = Path(latents)
+    if latents.exists():
+        print(f"REFUSED: {latents} exists -- the companion is written once", flush=True)
+        return 2
     if pin.exists():
         print(f"REFUSED: {pin} exists -- the pin is written once", flush=True)
         return 2
@@ -1526,6 +1549,32 @@ def run_t080_campaign(seeds=T080_SEEDS, pin=T080_PIN):
     )
     print(f"T080 VERDICT: {verdict}", flush=True)
 
+    # THE COMPANION (2.10 (g)): every scored tick's raw latents per seed and arm, float32, in
+    # the SAME order as `per_seed[].arms[arm].recs`, so the decomposition and the in-vivo
+    # handle re-derive from the two files alone. Popped from the JSON, hashed into it.
+    arrays = {}
+    for r in per_seed:
+        for arm, la in r.pop("latents", {}).items():
+            arrays[f"s{r['seed']}_{arm}_vis"] = la["vis"]
+            arrays[f"s{r['seed']}_{arm}_aud"] = la["aud"]
+    latents.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(latents, **arrays)
+    latents_meta = {
+        "path": str(latents),
+        "sha256": hashlib.sha256(latents.read_bytes()).hexdigest(),
+        "dtype": "float32",
+        "keys": sorted(arrays),
+        "shapes": {k: list(arrays[k].shape) for k in sorted(arrays)},
+        "order": (
+            "the scored ticks of each arm in recording order -- the same order as "
+            "per_seed[].arms[arm].recs"
+        ),
+    }
+    print(
+        f"companion {latents}: {len(arrays)} arrays, sha256 {latents_meta['sha256'][:12]}",
+        flush=True,
+    )
+
     out = {
         "row": "T080",
         "head": _t080_head(),
@@ -1542,9 +1591,12 @@ def run_t080_campaign(seeds=T080_SEEDS, pin=T080_PIN):
         # ticks x 8 seeds is a 3.7 M-float artifact, and no conjunct reads them -- the
         # decomposition that does is what is recorded. Stated, not silently omitted.
         "rows_omitted": (
-            "raw vis/aud latents (64 + 128 floats per tick); the decomposition's per-tick "
-            "columns are pinned instead and are what every conjunct reads"
+            "raw vis/aud latents (64 + 128 floats per tick) are NOT in this JSON: they are in "
+            "the companion npz named under latents_npz (float32, sha256 pinned), in the same "
+            "order as each arm's recs; the decomposition's per-tick columns are pinned here "
+            "and are what every conjunct reads"
         ),
+        "latents_npz": latents_meta,
         "per_seed": per_seed,
         "contrasts": {
             "g0": got["g0"]._asdict(),
