@@ -933,7 +933,8 @@ def t078_stub_brain(gate, latent_seed, pc=0.4, ema=0.2, focus=(2, 0.05), ignited
 
 
 def _t078_mutated_scorer(kind):
-    """2.4's six mutations, RUN and not reasoned (P8: a reachable red; T077 3.5 item 10). Each is
+    """2.4's six mutations plus ONE added in the 2026-09-15 panel fold (`blind_min_rule`, the last
+    entry), RUN and not reasoned (P8: a reachable red; T077 3.5 item 10). Each is
     the deliberately broken twin of the instrument whose red it must redden, and each is exercised
     BOTH in `tests/test_attention_schema.py` and in `t078_reds()` below.
 
@@ -1016,7 +1017,9 @@ def t078_reds(n_perm=REDS_N_PERM, n_shuffle=N_SHUFFLE, seeds=T078_SEEDS):
     """2.4's six reds as ONE self-check line (each is ALSO a test in
     `tests/test_attention_schema.py`; this is the in-command control 2.4 requires). Every value is
     True iff the red holds on its constructed input AND its mutated scorer REDDENS it in fact --
-    a red a broken instrument still passes is not a red (T077's panel, C1)."""
+    a red a broken instrument still passes is not a red (T077's panel, C1). SIX reds, still exactly
+    2.4's; R3 alone runs TWO mutations, one per half, after the panel fold gave 2.10's per-class
+    twin its own."""
     out = {}
 
     # R1 -- the floor absorbs the plug-in bias; the mutation draws it on UN-permuted y
