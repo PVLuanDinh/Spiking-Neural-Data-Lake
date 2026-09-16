@@ -286,3 +286,52 @@ ms/tick) contradicted or sharpened the frozen text in these places:
     SCRAMBLED 4/8); reported, never barred.
 Nothing else moves: (p), (g0), (b1), (b2), the arms, N, the doses of nothing (there are none here), the derived margin's
 form, the disposition, the reds' clauses.
+
+### 2.11 Amendment, dated 2026-09-16 06:05 local, AFTER campaign run 1's numbers (disclosed as such): (b2)'s per-seed
+### band is made family-wise over the 8 seeds; the pin carries the prototypes in registration order; run 2 follows
+
+**What run 1 read, numbers first.** The campaign ran once on head `309efe6` (05:23:37-05:47:31 local, 1,434 s; a
+first launch on `7f6a000` at 05:21:54 was stopped at 57 s before it wrote anything, so the pin could carry the taught
+prototypes). Its pin (archived as `scratchpad/t080/pin_run1_refused.json` + `lat_run1_refused.npz` + `campaign_run1.log`
+and in the memory archive; DELETED from `tools/` before run 2 as 2.10 (h) prescribes) read: (p) identical on 100 rows;
+(r) 0 decomposition disagreements and 0 missing latents on every arm of every seed; (g0) diffs 0.6122 / 0.6533 /
+0.5869 / 0.5894 / 0.6100 / 0.6298 / 0.5738 / 0.6289, t **+65.3517** FPR 0.0352 MET; (b1) diffs 0.1361 / 0.2423 / 0.1757 /
+0.2169 / 0.1781 / 0.2068 / 0.1913 / 0.2721, t **+13.5395** FPR 0.0469 MET -- the within-window bound fraction above the
+null's q95 on 8 of 8 seeds; (b2) inside on 7 seeds and OUTSIDE on seed 3: the in-vivo NULL arm 0.1531 against the
+offline band [0.0610, 0.1424] -> **VERDICT REFUSED as pre-registered**; windows [1, 1, 1, 1, 5, 2, 1, 1]; scrambled
+bound fractions 0.0526 / 0.1074 / 0.1208 / 0.0927 / 0.0805 / 0.0658 / 0.1141 / 0.0805. The orchestrator re-derived
+every barred number from the pin and the companion with no brain (`scratchpad/t080/verify_t080_pin.py`): (g0), (b1),
+(b2), the windows and the verdict reproduce; the bound fractions reproduce on 6 of 8 seeds exactly and differ on 2
+(seeds 6, 7) by a few ticks -- see the tie finding below.
+
+**Why (b2) refused, measured from the pin (`scratchpad/t080/b2_analysis.py`, `b2_position_null.py`).** (b2)'s stated
+causes are both excluded: the decomposition equals the report on every tick (agree 0), and the permutation took
+(the NULL arm's classifier congruence 0.081-0.126 against ALIGNED's 0.715-0.734). The two arms' recognition
+marginals agree (product-of-marginals expectation ALIGNED vs NULL: 0.1006 vs 0.0971 on seed 3; within 0.004 on
+every seed), so the two instruments agree on the QUANTITY. What the pre-registration failed to foresee is the
+BAND: the in-vivo NULL arm is one draw of a POSITION permutation of the 256-frame pack walked over ~1.15 laps by
+the ~294 scored ticks, so its bound fraction is 1.13x more variable than the i.i.d. tick re-pairing the offline
+null draws (position-null sd 0.0188 vs 0.0171 on seed 3; 256 position classes, 0 inconsistent audio
+recognitions within a class on any seed), and a per-seed 99 % band applied to EIGHT seeds refuses an honest
+apparatus 1 - 0.99^8 = 7.7 % of the time by construction (6.2 % simulated from the position nulls). Seed 3's draw
+has a one-sided p of 0.0037 under its own position null -- outside the per-seed 99 % band, inside the family-wise
+band [0.0458, 0.1695]; every other seed sits inside both. This is a readability clause with a 6-8 % false-refusal
+rate, not a disagreement between the instruments.
+
+**What changes (AFTER the numbers -- the honesty lens adjudicates), and what does not.** (b2) reads: "on every seed
+the NULL IN VIVO arm's bound fraction lies within the offline null's FAMILY-WISE 99 % band, [q(0.005 / S),
+q(1 - 0.005 / S)] over its draws with S = 8 seeds (`T080_BAND` derived from `len(T080_SEEDS)`, never a literal); else
+REFUSED". The same instrument, the same draws, the same quantity; only the quantiles move so that the eight checks
+together refuse an honest apparatus about 1 % of the time, the rate the per-seed band had claimed. The position-
+permutation null is REPORTED beside it in 3.x on every seed (its band, sd ratio and seed p-value) as the check that
+the offline null's exchangeability assumption holds within 13 %. NOT changed: (b1)'s null and margin (the plan's
+primary null at q95 -- MET at t +13.54 on run 1 and untouched), (p), (r), (g0), the arms, N, the disposition, the
+reds. THE TIE FINDING: `cleanup` breaks an exact coincidence tie (e.g. 440/512 for two prototypes on seed 7, 9 of 294
+ALIGNED ticks) by the codebook's INSERTION order, and the companion commit `309efe6` pinned the prototypes SORTED, so
+an offline binder named the other prototype on tied ticks; the pin now carries them in registration order (a fix
+of the orchestrator's own reproducibility apparatus, not of the instrument -- the in-vivo report and the campaign's
+decomposition were never affected: agree 0). RUN 2 is the same deterministic recordings read under the amended
+(b2) with the corrected pin; its (g0), (b1), windows and fractions are expected identical to run 1's and are
+checked against them in 3.x; the refused pin's numbers stand in this section as the record of the refusal. The
+transferable rule is logged (obs #2191): a per-seed band on S seeds owes its family-wise rate before it is a
+refusal clause.
