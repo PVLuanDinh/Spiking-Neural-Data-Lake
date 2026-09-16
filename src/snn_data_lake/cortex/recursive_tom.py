@@ -37,8 +37,10 @@ codes + per-instance RNG + fixed LIF), ASCII-only.
 """
 
 import itertools
+import json
 import random
 import sys
+import time
 from pathlib import Path
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
@@ -329,6 +331,17 @@ T082_OFF_GRAMMAR_STMT = "the weather is nice today."
 #: to carry a divergence -- an A/B whose live arm happened to hold none would measure nothing and
 #: read as a clean refusal. Four episodes x `T082_TICKS_BETWEEN` = `T082_R4_FRAMES` frames.
 T082_R4_WITNESS = (True, False, True, False)
+#: 2.9 step 5's recorder widths. BUILDER-INTRODUCED and disclosed, except the warm-up, which is
+#: the territory probe's (fact 4) carried forward unchanged.
+T082_WARMUP_TICKS = 5
+#: (p)'s determinism twin: two seed-0 recordings at this width, compared FIELD BY FIELD (2.3).
+T082_DETERMINISM_EPISODES = 20
+#: 2.8's sensitivity sweep on `T082_TICKS_BETWEEN`: the caution trajectory at these tick counts,
+#: each on its own short recording, REPORTED on the dry run.
+T082_TRAJECTORY_TICKS = (1, 3, 5)
+T082_TRAJECTORY_EPISODES = 20
+#: The offset check's width (2.8): the first this many vision labels of seeds 0 and 1 differ.
+T082_OFFSET_LABELS = 50
 
 
 def t082_feed(tracker, present, loc):
@@ -547,11 +560,564 @@ def t082_constructed_rows(
     return {"seed": int(seed), "n_ep": int(n_ep), "rows": rows}
 
 
-def t082_record_brain(seed, n_ep=T082_N_EPISODES):
-    """STUB (2.9 step 4) -> an empty recording. THE RECORDER lands at 2.9 step 5: a scratch brain
-    under `throwaway_home()`, `make_brain(seed, persist=False)`, the script of 2.1 driven through
-    `Brain.respond` with `T082_TICKS_BETWEEN` ticks between statements."""
-    return {"seed": int(seed), "n_ep": int(n_ep), "rows": []}
+def t082_record_brain(seed, n_ep=T082_N_EPISODES, ticks_between=T082_TICKS_BETWEEN):
+    """THE RECORDER (2.1). A SCRATCH brain under `throwaway_home()`, built with
+    `make_brain(seed, persist=False)`, both stream pointers set to
+    `(T082_STREAM_OFFSET * seed) % T082_STREAM_POSITIONS` (T080's rule), `T082_WARMUP_TICKS`
+    warm-up ticks, then the script of 2.1 driven through the LIVE dialogue path: per episode
+    `b.respond(stmt)`, then `ticks_between` wake ticks so the `_tom_protect` fold runs and
+    `arm._social_risk` moves, then the row.
+
+    THE LIVE PATH'S OWN DOUBLE READ, disclosed: `_tom_update` is called ONCE here to capture the
+    event string the row records, and `respond` then parses the SAME turn again -- so every
+    statement folds into the tracker twice. That is the live path's own behaviour, not the
+    recorder's addition, and the symmetric feed is idempotent under it (the same content on the
+    same holder paths); `t082_double_read_check` MEASURES that rather than asserting it, and the
+    dry run prints the result.
+
+    The EQUAL-CAPACITY CONTROL is a second `RecursiveToM` fed the same statements with every
+    present set replaced by the full set -- the absence markers ignored, which is the C5 row's
+    own dissociation input ("a world-state model of equal capacity replacing the belief model").
+    Neither tracker is fed on a statement that does not parse, exactly as the live path does not
+    feed on a non-parse."""
+    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.substrate.home import throwaway_home
+
+    seed, n_ep, ticks_between = int(seed), int(n_ep), int(ticks_between)
+    out = {
+        "seed": seed,
+        "n_ep": n_ep,
+        "ticks_between": ticks_between,
+        "warmup": T082_WARMUP_TICKS,
+        "rows": [],
+    }
+    t0 = time.time()
+    with throwaway_home():
+        b = make_brain(seed=seed, persist=False)
+        out["build_s"] = round(time.time() - t0, 3)
+        b._real_ptr = b._audio_ptr = (T082_STREAM_OFFSET * seed) % T082_STREAM_POSITIONS
+        out["offset"] = int(b._real_ptr)
+        out["positions"] = len(b._real_labels)
+        for _ in range(T082_WARMUP_TICKS):
+            b.tick()
+        ctrl = RecursiveToM(n_agents=3, seed=seed)
+        tr = time.time()
+        for st in t082_script(seed, n_ep):
+            ev = b._tom_update(st["stmt"])  # ONCE, for the row; respond parses the same turn again
+            t1 = time.perf_counter()
+            res = b.respond(st["stmt"])  # THE LIVE DIALOGUE PATH
+            dt_ms = (time.perf_counter() - t1) * 1000.0
+            for _ in range(ticks_between):
+                b.tick()  # the wake tick folds `_false_beliefs` into arm._social_risk
+            if ev is not None:
+                t082_feed(ctrl, set(T082_AGENTS), st["loc"])  # the control ignores absence
+            rt = b._recursive_tom
+            first, nested = t082_false_beliefs(rt)
+            out["rows"].append(
+                {
+                    "ep": st["ep"],
+                    "stmt": st["stmt"],
+                    "unwitnessed": st["unwitnessed"],
+                    "parsed": ev,
+                    "agent_looks": st["agent_looks"],
+                    "world": st["world"],
+                    "pred_belief": rt.predict_first_order("user"),
+                    "pred_world": rt.world_content(),
+                    "pred_ctrl": ctrl.predict_first_order("user"),
+                    "pred_nested": rt.predict_nested("user", "brain"),
+                    "false_beliefs": list(b._false_beliefs),
+                    "social_risk": getattr(b.brain.arm, "_social_risk", None),
+                    "charge_frame": [len(first), len(nested)],
+                    "t_respond_ms": round(dt_ms, 1),
+                    "reply_head": str(res.get("reply", ""))[:60]
+                    if isinstance(res, dict)
+                    else str(res)[:60],
+                }
+            )
+        out["record_s"] = round(time.time() - tr, 3)
+        del b
+    out["total_s"] = round(time.time() - t0, 3)
+    out["ms_per_episode"] = (out["record_s"] * 1000.0 / n_ep) if n_ep else 0.0
+    return out
+
+
+def t082_double_read_check():
+    """The live path's double read, MEASURED not claimed: feeding the same symmetric event twice
+    must leave the tracker's write-side record, its world and its codebook identical to feeding
+    it once. If this ever reads False the recorder's rows are reading a different stream from the
+    one the brain folded."""
+    once = RecursiveToM(n_agents=3, seed=0)
+    twice = RecursiveToM(n_agents=3, seed=0)
+    for present, loc in ((T082_AGENTS, "basket"), (("brain",), "box"), (T082_AGENTS, "drawer")):
+        t082_feed(once, set(present), loc)
+        t082_feed(twice, set(present), loc)
+        t082_feed(twice, set(present), loc)
+    return {
+        "identical": bool(
+            once._props == twice._props
+            and once.world == twice.world
+            and once._content == twice._content
+        ),
+        "paths": len(once._props),
+    }
+
+
+def t082_seed(seed, n_ep=T082_N_EPISODES):
+    """ONE seed's reading: record, read, drop the brain. The entry `t082_contrasts` consumes,
+    with everything 2.3 REPORTS beside it."""
+    rec = t082_record_brain(seed, n_ep=n_ep)
+    out = t082_read(rec["rows"], seed=rec["seed"])
+    for k in ("offset", "positions", "n_ep", "ticks_between", "warmup"):
+        out[k] = rec[k]
+    out["timings"] = {k: rec[k] for k in ("build_s", "record_s", "total_s", "ms_per_episode")}
+    out["charge_frames"] = [
+        (i + 1, "recursive_tom", list(map(float, r["charge_frame"])))
+        for i, r in enumerate(rec["rows"])
+    ]
+    return out
+
+
+def t082_determinism(seed=0, n_ep=T082_DETERMINISM_EPISODES):
+    """(p): two recordings of the same seed at the same width, compared FIELD BY FIELD -- not a
+    sample of fields and not a tolerance. A nondeterminism anywhere in the script, the brain or
+    the recorder is a REFUSAL before any number is read, and the first differing (row, field) is
+    NAMED."""
+    a = t082_record_brain(seed, n_ep=n_ep)
+    b = t082_record_brain(seed, n_ep=n_ep)
+    ra, rb = a["rows"], b["rows"]
+    # `t_respond_ms` is a WALL-CLOCK field and can never be byte-identical; it is excluded by
+    # NAME and the exclusion is stated, never applied silently (T081's field-by-field rule).
+    skip = {"t_respond_ms"}
+    diff = None
+    if len(ra) != len(rb):
+        diff = f"row count {len(ra)} vs {len(rb)}"
+    for i, (x, y) in enumerate(zip(ra, rb)):
+        if diff:
+            break
+        if set(x) != set(y):
+            diff = f"row {i}: field sets differ ({sorted(set(x) ^ set(y))})"
+            break
+        for k in sorted(x):
+            if k in skip:
+                continue
+            if x[k] != y[k]:
+                diff = f"row {i} field {k}: {x[k]!r} vs {y[k]!r}"
+                break
+    return {
+        "seed": int(seed),
+        "identical": diff is None,
+        "first_diff": diff,
+        "rows": len(ra),
+        "twin_rows": len(rb),
+        "n_ep": int(n_ep),
+        "excluded_fields": sorted(skip),
+    }
+
+
+def t082_stream_labels(seed, n_labels=T082_OFFSET_LABELS, max_ticks=260):
+    """The first `n_labels` REAL frame labels seed `s` walks with 2.1's offset applied. The
+    offset check is an APPARATUS precondition, so it reads the labels the brain actually
+    CONSUMED rather than re-deriving them from the pack by arithmetic (T080/T081's idiom)."""
+    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.substrate.home import throwaway_home
+
+    out = []
+    with throwaway_home():
+        b = make_brain(seed=int(seed), persist=False)
+        labels = b._real_labels
+        b._real_ptr = b._audio_ptr = (T082_STREAM_OFFSET * int(seed)) % T082_STREAM_POSITIONS
+        prev = int(b._real_ptr)
+        for _ in range(max_ticks):
+            if len(out) >= n_labels:
+                break
+            b.tick()
+            ptr = int(b._real_ptr)
+            if ptr != prev:
+                out.append(int(labels[(ptr - 1) % len(labels)]))
+            prev = ptr
+        del b
+    return out
+
+
+def t082_trajectory_sweep(seed=0, tick_counts=T082_TRAJECTORY_TICKS, n_ep=T082_TRAJECTORY_EPISODES):
+    """2.8's declared-constant sensitivity, COMPUTED: `T082_TICKS_BETWEEN` is chosen at 3 because
+    the fold's 0.9 decay per tick makes the caution trajectory readable within the episode. Each
+    tick count gets its OWN short recording, so the trajectories are comparable and nothing is
+    inferred from the 3-tick run."""
+    out = {}
+    for k in tick_counts:
+        rec = t082_record_brain(seed, n_ep=n_ep, ticks_between=int(k))
+        risk = [r["social_risk"] for r in rec["rows"]]
+        out[int(k)] = {
+            "risk": risk,
+            "max": max((x or 0.0) for x in risk) if risk else 0.0,
+            "distinct": len({round(x or 0.0, 4) for x in risk}),
+            "nonzero": sum(1 for x in risk if (x or 0.0) > 0.0),
+            "ms_per_episode": rec["ms_per_episode"],
+        }
+    return out
+
+
+def _t082_constants():
+    """Every declared constant of 2.8, pinned beside the reading it produced."""
+    return {
+        "n_episodes": T082_N_EPISODES,
+        "ticks_between": T082_TICKS_BETWEEN,
+        "p_unwitnessed": T082_P_UNWITNESSED,
+        "objects": list(T082_OBJECTS),
+        "locations": list(T082_LOCATIONS),
+        "stream_offset": T082_STREAM_OFFSET,
+        "stream_positions": T082_STREAM_POSITIONS,
+        "seeds": list(T082_SEEDS),
+        "min_unwitnessed": T082_MIN_UNWITNESSED,
+        "rng_base": T082_RNG_BASE,
+        "protect_gain": T082_PROTECT_GAIN,
+        "protect_decay": T082_PROTECT_DECAY,
+        "bar": T082_BAR,
+        "agents": list(T082_AGENTS),
+        "warmup_ticks": T082_WARMUP_TICKS,
+        "determinism_episodes": T082_DETERMINISM_EPISODES,
+        "trajectory_ticks": list(T082_TRAJECTORY_TICKS),
+        "trajectory_episodes": T082_TRAJECTORY_EPISODES,
+        "offset_labels": T082_OFFSET_LABELS,
+        "pinned_belief": list(T082_PINNED_BELIEF),
+        "r4_frames": T082_R4_FRAMES,
+        "r5_scripts": T082_R5_SCRIPTS,
+        "belief_edge": list(BELIEF_EDGE),
+    }
+
+
+def _t082_head():
+    """The tree's HEAD, for the artifact. Unavailable (no git, a tarball) is recorded as such."""
+    import subprocess
+
+    try:
+        r = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=20)
+        return r.stdout.strip() if r.returncode == 0 else f"unavailable (rc {r.returncode})"
+    except Exception as e:  # noqa: BLE001 -- an artifact field, never a control-flow decision
+        return f"unavailable ({type(e).__name__})"
+
+
+# distinct-from: cortex/report_order_probe.py::_t081_dirty and substrate/policy_manifest.py::
+#   _tree_state -- the same `git status --porcelain` read, kept beside THIS row's `_t082_head`
+#   rather than imported across modules, because T081's panel found an executor stamping the LAST
+#   COMMIT's sha onto an artifact produced by an uncommitted tree (record 3.5 item 12). Read.
+def _t082_dirty():
+    """Whether the working tree differed from HEAD when this artifact was written -- a field
+    beside `head`, so a stamp can never name a commit that could not have run the code."""
+    import subprocess
+
+    try:
+        r = subprocess.run(
+            ["git", "status", "--porcelain"], capture_output=True, text=True, timeout=20
+        )
+        return bool(r.stdout.strip()) if r.returncode == 0 else f"unavailable (rc {r.returncode})"
+    except Exception as e:  # noqa: BLE001 -- an artifact field, never a control-flow decision
+        return f"unavailable ({type(e).__name__})"
+
+
+def _t082_seed_block(r, out=print):
+    """Everything 2.3 REPORTS for one seed, printed. ONE printer, shared by the dry run and the
+    campaign, so the two cannot drift into two report formats (T080/T081's convention)."""
+    out(
+        f"seed {r['seed']}: {r['n']} episodes (offset {r.get('offset')} of {r.get('positions')}; "
+        f"{r.get('ticks_between')} ticks between statements)"
+    )
+    out(
+        f"  parsed {r['parsed']}/{r['n']}; unwitnessed {r['unwitnessed']} "
+        f"({r['unwitnessed_frac']:.3f}, floor {T082_MIN_UNWITNESSED}); of those "
+        f"{r['unwitnessed_look_differs']} have the agent's look differing from the world; "
+        f"look differs from world on {r['look_differs']}/{r['n']} episodes"
+    )
+    out(
+        f"  accuracy vs the agent's look: BELIEF {r['acc_belief']:.4f}  WORLD "
+        f"{r['acc_world']:.4f}  equal-capacity CONTROL {r['acc_ctrl']:.4f}  "
+        f"(belief - control = {r['acc_belief'] - r['acc_ctrl']:+.4f})"
+    )
+    out(
+        f"  (s2) control == world content on {r['ctrl_equals_world']}/{r['n']} episodes; "
+        f"acc_ctrl == acc_world: {r['acc_ctrl'] == r['acc_world']}"
+    )
+    out(
+        f"  spurious nested divergences on witnessed, no-false-belief episodes: "
+        f"{r['spurious_nested']}/{r['n']} (the OLD subject-only feed read 5 of 12 on the "
+        f"territory probe and never cleared)"
+    )
+    ms = [x for x in r.get("respond_ms") or [] if x is not None]
+    out(f"  social-risk trajectory (first 12): {[x for x in r['risk'][:12]]}  max {r['risk_max']}")
+    if ms:
+        out(f"  respond() ms per turn: mean {sum(ms) / len(ms):.1f}  max {max(ms):.1f}")
+    for why in r["refusals"]:
+        out(f"  (r) REFUSAL: {why}")
+
+
+def run_t082_dry_run(out_path=T082_DRY_RUN_OUT, seed=0):
+    """2.9 step 5's APPARATUS dry run: ONE seed at the CAMPAIGN's width, and NOT ONE barred
+    conjunct -- one seed cannot carry a paired t, so (s1) is printed as a single seed's
+    difference with "n/a" where the t would go.
+
+    What it reads, all of it reported in 3.0 before the campaign: the stream-offset
+    precondition; (p)'s determinism twin; the live path's double read; the full 60-episode
+    recording read whole; the charge A/B on BOTH the committed constructed stream and THIS
+    recording's own frames, with `record_charge()` RUN; the caution trajectory at 1 / 3 / 5 ticks
+    between statements; and the cost re-measured on the BUILT apparatus.
+
+    Writes its JSON to `out_path` and NOTHING under tools/ except the charge evidence, which is
+    `record_attribution`'s own file and is committed with this step."""
+    out_path = Path(out_path)
+    if "tools" in out_path.parts:
+        print(f"REFUSED: the dry run never writes under tools/ ({out_path})", flush=True)
+        return 2
+    t0 = time.time()
+    head, dirty = _t082_head(), _t082_dirty()
+    print("=" * 78, flush=True)
+    print(
+        f"T082 DRY RUN -- one seed ({seed}) at the campaign width, NO barred conjunct", flush=True
+    )
+    print(f"head {head} | tree dirty at write time: {dirty}", flush=True)
+    print("=" * 78, flush=True)
+
+    labels0, labels1 = t082_stream_labels(0), t082_stream_labels(1)
+    differ = bool(labels0) and labels0 != labels1
+    first_diff = next((i for i, (x, y) in enumerate(zip(labels0, labels1)) if x != y), None)
+    print(
+        f"stream offset ({T082_STREAM_OFFSET} x seed mod {T082_STREAM_POSITIONS}, BOTH pointers): "
+        f"seed0 {labels0[:12]} | seed1 {labels1[:12]} | differ={differ} "
+        f"first_diff_at={first_diff} (n {len(labels0)}/{len(labels1)})",
+        flush=True,
+    )
+    if not differ:
+        print("REFUSED at the apparatus: the per-seed offset does not vary the frames", flush=True)
+        return 2
+
+    dbl = t082_double_read_check()
+    print(
+        f"the live path's DOUBLE READ (_tom_update once for the row, respond parses again): "
+        f"feeding the symmetric event twice leaves the tracker identical={dbl['identical']} "
+        f"over {dbl['paths']} holder paths",
+        flush=True,
+    )
+
+    det = t082_determinism(seed)
+    print(
+        f"(p) determinism twin: identical={det['identical']} on {det['rows']} rows of "
+        f"{det['n_ep']} episodes (first_diff {det['first_diff']}; excluded by name "
+        f"{det['excluded_fields']})",
+        flush=True,
+    )
+
+    reading = t082_seed(seed)
+    frames = reading.pop("charge_frames")
+    print("-" * 78, flush=True)
+    _t082_seed_block(reading)
+
+    print("-" * 78, flush=True)
+    live, pinned_out, reads, spec = _measure_belief_charge()
+    print(
+        f"CHARGE A/B on the COMMITTED constructed stream ({T082_R4_FRAMES} frames, witness "
+        f"pattern {list(T082_R4_WITNESS)}, pinned {list(T082_PINNED_BELIEF)}): diverged="
+        f"{live != pinned_out}, reads={reads}, specificity_holds={spec}",
+        flush=True,
+    )
+    print(f"  live   caution trajectory: {live}", flush=True)
+    print(f"  pinned caution trajectory: {pinned_out}", flush=True)
+    rec_live, rec_pinned, rec_reads, rec_spec = _measure_belief_charge(frames=frames)
+    print(
+        f"CHARGE A/B on THIS RECORDING's own frames ({len(frames)} episode frames from the live "
+        f"60-episode run): diverged={rec_live != rec_pinned}, reads={rec_reads}, "
+        f"specificity_holds={rec_spec}; live first/last {rec_live[0] if rec_live else None} / "
+        f"{rec_live[-1] if rec_live else None}",
+        flush=True,
+    )
+    print(
+        "  RECORDED, not smoothed: `record_charge()` writes the CONSTRUCTED stream's numbers, "
+        "not this recording's, because the committed row must be reproducible at unit grain "
+        "(tests/test_recursive_tom.py re-measures it). The recording's A/B is REPORTED here so "
+        "both readings are on the table.",
+        flush=True,
+    )
+    rc_charge = record_charge()
+    print(f"record_charge rc={rc_charge}", flush=True)
+    if rc_charge != 0:
+        print(
+            "REFUSED at the charge: the A/B did not diverge -- no evidence row is committed",
+            flush=True,
+        )
+
+    print("-" * 78, flush=True)
+    sweep = t082_trajectory_sweep(seed)
+    for k in sorted(sweep):
+        s = sweep[k]
+        print(
+            f"caution trajectory at {k} tick(s) between statements "
+            f"({T082_TRAJECTORY_EPISODES} episodes): max {s['max']} distinct {s['distinct']} "
+            f"nonzero {s['nonzero']}/{T082_TRAJECTORY_EPISODES} | first 10 {s['risk'][:10]}",
+            flush=True,
+        )
+
+    print("-" * 78, flush=True)
+    print(
+        f"cost: {reading['timings']['ms_per_episode']:.1f} ms/episode measured on the BUILT "
+        f"apparatus over {T082_N_EPISODES} episodes (2.8 carried ~120 ms respond + 3 x ~55 ms "
+        f"ticks = ~17 s per seed) -> campaign estimate "
+        f"{reading['timings']['record_s'] * len(T082_SEEDS) / 60.0:.1f} min for "
+        f"{len(T082_SEEDS)} seeds; timings {reading['timings']}",
+        flush=True,
+    )
+
+    print("-" * 78, flush=True)
+    print(
+        "NO barred conjunct is read here: (s1) is a paired t over 8 seeds and one seed cannot "
+        "carry one. (g0) and (s2) are per-seed counts and are printed as this seed's.",
+        flush=True,
+    )
+    print(
+        f"  (s1) one seed: acc_belief {reading['acc_belief']:.4f} - acc_ctrl "
+        f"{reading['acc_ctrl']:.4f} = {_t082_s1(reading):+.4f}  t: n/a",
+        flush=True,
+    )
+    print(
+        f"  (g0) one seed: unwitnessed {reading['unwitnessed_frac']:.3f} (floor "
+        f"{T082_MIN_UNWITNESSED}), agent's look differs on "
+        f"{reading['unwitnessed_look_differs']}/{reading['unwitnessed']} of them -> "
+        f"{reading['unwitnessed_frac'] >= T082_MIN_UNWITNESSED and reading['unwitnessed_look_differs'] == reading['unwitnessed']}",
+        flush=True,
+    )
+    print(f"  (s2) one seed: {_t082_s2(reading)}", flush=True)
+    print(f"  (r)  one seed: {reading['refusals'] or 'no refusal'}", flush=True)
+
+    report = {
+        "row": "T082 dry run",
+        "head": head,
+        "dirty": dirty,
+        "seed": int(seed),
+        "stream": {"seed0": labels0, "seed1": labels1, "differ": differ, "first_diff": first_diff},
+        "double_read": dbl,
+        "determinism": det,
+        "reading": reading,
+        "charge": {
+            "constructed": {
+                "live": live,
+                "pinned": pinned_out,
+                "reads": reads,
+                "specificity_holds": spec,
+                "recorded": rc_charge == 0,
+            },
+            "recording": {
+                "live_first": rec_live[0] if rec_live else None,
+                "live_last": rec_live[-1] if rec_live else None,
+                "diverged": rec_live != rec_pinned,
+                "reads": rec_reads,
+                "specificity_holds": rec_spec,
+            },
+        },
+        "trajectory_sweep": sweep,
+        "reds": t082_reds(),
+        "constants": _t082_constants(),
+        "elapsed_s": round(time.time() - t0, 1),
+    }
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(report, indent=1, default=str), encoding="utf-8")
+    print("-" * 78, flush=True)
+    print(
+        f"dry run written to {out_path} in {time.time() - t0:.0f} s; head {head}, dirty {dirty}; "
+        f"nothing under tools/ but the charge evidence row",
+        flush=True,
+    )
+    return 0
+
+
+# distinct-from: cortex/report_order_probe.py::run_t081_campaign, thalamus/binding_instrument.py::
+#   run_t080_campaign and cortex/agency_monitor.py::run_t079_campaign -- the PATTERN this follows
+#   (record, read, contrast, pin ONCE) over a different instrument, different arms and a different
+#   pin. Each row's campaign is its own instrument's; a shared runner would be a fifth mechanism,
+#   not one. Read; nothing is shared beyond `substrate/paired_contrast`.
+def run_t082_campaign(seeds=T082_SEEDS, pin=T082_PIN, n_ep=T082_N_EPISODES):
+    """The campaign (2.2-2.3): record, read, contrast, pin ONCE. Returns an exit code.
+
+    ORDER IS 2.3's, and it is the order the verdict is DECIDED in: (p) determinism, then (r)
+    readability, then (g0) the script IS a false-believing agent, then (s1) the licensed sentence
+    and (s2) the dissociation input. A REFUSAL is a finding about the apparatus or the stream; a
+    NOT MET is a finding about THIS composite. They are never merged."""
+    pin = Path(pin)
+    if pin.exists():
+        print(f"REFUSED: {pin} exists -- the pin is written once", flush=True)
+        return 2
+    t0 = time.time()
+    head, dirty = _t082_head(), _t082_dirty()
+    print("=" * 78, flush=True)
+    print(f"T082 CAMPAIGN -- seeds {list(seeds)}, {n_ep} episodes per seed", flush=True)
+    print(f"head {head} | tree dirty at write time: {dirty}", flush=True)
+    print("=" * 78, flush=True)
+
+    labels0, labels1 = t082_stream_labels(0), t082_stream_labels(1)
+    if not labels0 or labels0 == labels1:
+        print(
+            f"REFUSED at the apparatus: the per-seed stream offset does not vary the frames "
+            f"(seed 0 {labels0[:10]} vs seed 1 {labels1[:10]})",
+            flush=True,
+        )
+        return 2
+    det = t082_determinism(seeds[0] if seeds else 0)
+    print(
+        f"(p) determinism: identical={det['identical']} on {det['rows']} rows "
+        f"(first_diff {det['first_diff']})",
+        flush=True,
+    )
+    if not det["identical"]:
+        print("REFUSED: two identical-seed recordings differ -- no reading is taken", flush=True)
+        return 2
+
+    per_seed = []
+    for s in seeds:
+        r = t082_seed(s, n_ep=n_ep)
+        r.pop("charge_frames", None)
+        per_seed.append(r)
+        print("-" * 78, flush=True)
+        _t082_seed_block(r)
+
+    got = t082_contrasts(per_seed)
+    print("=" * 78, flush=True)
+    for why in got["refusals"]:
+        print(f"  (r) REFUSAL: {why}", flush=True)
+    print(f"  (g0) the script is a false-believing agent: {got['g0']}", flush=True)
+    c = got["s1"]
+    print(
+        f"  {c.name}: diffs {[round(d, 4) for d in c.diffs]} t={c.t:.4f} FPR={c.fpr} "
+        f"degenerate={c.degenerate} met={c.met}",
+        flush=True,
+    )
+    print(f"  (s2) the control is a world model: {got['s2']}", flush=True)
+    print(
+        f"  REPORTED spurious nested divergences per seed: {[r['spurious_nested'] for r in per_seed]}",
+        flush=True,
+    )
+    print(f"  REPORTED max social risk per seed: {[r['risk_max'] for r in per_seed]}", flush=True)
+    print(f"T082 VERDICT: {got['verdict']}", flush=True)
+
+    out = {
+        "row": "T082",
+        "head": head,
+        "dirty": dirty,
+        "seeds": list(seeds),
+        "constants": _t082_constants(),
+        "reds": t082_reds(),
+        "determinism": det,
+        "stream_labels": {"seed0": labels0, "seed1": labels1},
+        "per_seed": per_seed,
+        "contrasts": {
+            "g0": got["g0"],
+            "s1": got["s1"]._asdict(),
+            "s2": got["s2"],
+        },
+        "refusals": got["refusals"],
+        "verdict": got["verdict"],
+        "elapsed_s": round(time.time() - t0, 1),
+    }
+    pin.parent.mkdir(parents=True, exist_ok=True)
+    pin.write_text(json.dumps(out, indent=1, default=str), encoding="utf-8")
+    print(f"pinned {pin} in {time.time() - t0:.0f} s", flush=True)
+    return 0 if got["verdict"] != "REFUSED" else 2
 
 
 def t082_read(rows, seed=None):
@@ -1003,7 +1569,61 @@ def _t082_reds_line(reds, out=print):
         out(f"  {name}: {str(reds[name]):5s}  {T082_RED_LINES[name]}")
 
 
-def main():
+# distinct-from: cortex/report_order_probe.py::t081_pin_reading and thalamus/binding_instrument.py
+#   ::t080_pin_reading -- BOTH re-derive their row's C5 READING from their own campaign PIN and
+#   compare it with `conclusion_protocol.CONCLUSION`. This re-derives a CHARGE A/B against
+#   `tools/region_charge_evidence.json` (FR-034's evidence file, a different artifact, a different
+#   writer and a different quantity), and T082's C5 reading has no pin until the campaign runs at
+#   2.9 step 6. Both read; neither is a second mechanism for this job. The nearest sibling is
+#   `cortex/task_set.py`'s `tests/test_task_film.py::test_charge_evidence_is_committed_and_
+#   reproduces`, which does this for the FiLM wire from the test side -- this is the SELF-CHECK
+#   side 2.1 additionally requires, so a gate run that never executes pytest still checks it.
+def t082_charge_reading(edge=BELIEF_EDGE):
+    """(derived, committed, mutated): the belief wire's charge A/B re-measured and checked
+    against the COMMITTED row in `tools/region_charge_evidence.json`, beside a mutated
+    derivation (the payload-ignoring fold) that would refuse. 2.1: the self-check re-measures
+    and requires the committed numbers to reproduce, so the record cannot outlive the wire."""
+    from snn_data_lake.substrate.port_charge_probe import read_attribution
+
+    rec = read_attribution(edge)
+    live, pinned_out, reads, spec = _measure_belief_charge()
+    derived = {"reads": reads, "first": list(live[0]), "last": list(live[-1])}
+    m_live, m_pinned, _m_reads, _ = _measure_belief_charge(
+        consume=_t082_mutated_scorer("consumer_ignores_payload")
+    )
+    return {
+        "committed": None if rec is None else rec.get("measured"),
+        "derived": derived,
+        "diverged": live != pinned_out,
+        "specificity_holds": spec,
+        "mutated_diverged": m_live != m_pinned,
+    }
+
+
+# distinct-from: thalamus/binding_instrument.py::main and cortex/report_order_probe.py::main --
+#   each module's own `__main__` block, which is this tree's convention (run_selfchecks.py
+#   executes exactly that block per module and scores the exit status), not a second dispatcher.
+#   Read both: the two flags here only ADD this row's brain-touching entry points to a self-check
+#   that already existed for `RecursiveToM`, and nothing here runs another module's self-check.
+# distinct-from: cortex/nef_compute.py::L151 and substrate/selfcheck_cache.py::L495 -- a derived
+#   COMMAND STRING for a module's self-check and a cache key over the MODULES table. Term overlap
+#   ("self-check", "derived") only; neither dispatches anything. Read.
+# distinct-from: reasoning/spike_chat_lake.py::L2390 -- an interactive-REPL-vs-self-check branch
+#   for THAT module. This one has no REPL and always runs its reds. Read.
+def main(argv=None):
+    """The module's self-check, plus 2.9's two brain-touching entry points.
+
+    BOTH of those run under `throwaway_home()` INSIDE their recorders, every brain is
+    `persist=False`, and NEITHER is reachable from the gate's bare `python -m` invocation --
+    which runs the RecursiveToM self-check and T082's six reds on constructed scripts and
+    touches no brain, no lake and no network."""
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if "--t082-campaign" in argv:  # 2.9 step 6: the campaign, pinned ONCE
+        return run_t082_campaign()
+    if "--t082-dry-run" in argv:  # 2.9 step 5: the apparatus dry run, NO barred conjunct
+        i = argv.index("--t082-dry-run")
+        path = argv[i + 1] if i + 1 < len(argv) and not argv[i + 1].startswith("-") else None
+        return run_t082_dry_run(T082_DRY_RUN_OUT if path is None else path)
     lines = []
     emit = lines.append
     emit("=" * 78)
@@ -1118,6 +1738,29 @@ def main():
     print(
         f"  T082 OK: R1-R6 fire on their constructed inputs and each is reddened IN FACT by its "
         f"mutated scorer ({sum(reds.values())}/{len(reds)}); no brain, no lake, no network"
+    )
+    # THE CHARGE EVIDENCE IS TIED TO THE WIRE HERE (2.1): the committed row must reproduce on
+    # every gate run, and the mutated derivation shows the refusal clause reachable.
+    ch = t082_charge_reading()
+    print(
+        f"  charge {BELIEF_EDGE}: committed {ch['committed']} re-derived as {ch['derived']} "
+        f"(diverged {ch['diverged']}, specificity {ch['specificity_holds']}; the "
+        f"payload-ignoring fold diverges {ch['mutated_diverged']} and would refuse)"
+    )
+    if (
+        ch["committed"] != ch["derived"]
+        or not ch["diverged"]
+        or not ch["specificity_holds"]
+        or ch["mutated_diverged"]
+    ):
+        print(
+            f"T082 SELF-CHECK RED: the committed charge row for {BELIEF_EDGE} does not reproduce "
+            f"({ch['committed']} vs {ch['derived']})"
+        )
+        return 1
+    print(
+        f"  --t082-dry-run writes {T082_DRY_RUN_OUT} (one seed, NO barred conjunct); "
+        f"--t082-campaign pins {T082_PIN.name} ONCE. Neither runs from here."
     )
     return 0
 

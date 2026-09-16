@@ -114,6 +114,27 @@
       "provenance": "port_charge_probe.replay_twice over the raphe LEVELS sweep; the self-check re-measures and requires `measured` to reproduce exactly, so this record cannot outlive the wire it describes; specificity control held (payload-ignoring consumer did not flip)"
     },
     {
+      "edge": [
+        "recursive_tom",
+        "belief_out",
+        "brain",
+        "social_risk_in"
+      ],
+      "diverged": true,
+      "measured": {
+        "reads": 12,
+        "first": [
+          1,
+          0.0
+        ],
+        "last": [
+          12,
+          0.68
+        ]
+      },
+      "provenance": "port_charge_probe.replay_twice over recorded [fb_first, fb_nested] frames from a scripted witnessed/unwitnessed stream; the consumer fold is brain's own _tom_protect recurrence (max(min(1, 0.34 fb), 0.9 prev), fb = the payload's two counts summed) reduced to the caution trajectory the arm receives; pinned payload [0, 0]; specificity control held (payload-ignoring consumer did not flip)"
+    },
+    {
       "diverged": true,
       "edge": [
         "reentrant_workspace",

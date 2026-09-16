@@ -364,3 +364,19 @@ def test_r6_the_symmetric_feed_kills_the_spurious_divergence():
     assert rt2.divergence("user", "brain") is True, (
         "the OLD subject-only feed must read a spurious nested divergence -- that is R6's red"
     )
+
+
+def test_charge_evidence_is_committed_and_reproduces():
+    """2.1's standing obligation on the declared wire: the attribution in
+    `tools/region_charge_evidence.json` must RE-MEASURE to the same numbers, so the record
+    cannot outlive the wire it describes (`tests/test_task_film.py`'s shape for the FiLM wire).
+    The committed row is the CONSTRUCTED stream's A/B, which is why it reproduces at unit grain
+    without building a brain; the live 60-episode recording's A/B is reported by the dry run."""
+    from snn_data_lake.substrate.port_charge_probe import read_attribution
+
+    rec = read_attribution(recursive_tom.BELIEF_EDGE)
+    assert rec is not None and rec.get("diverged") is True
+    live, pinned_out, reads, spec = recursive_tom._measure_belief_charge()
+    assert live != pinned_out and spec
+    assert reads == recursive_tom.T082_R4_FRAMES
+    assert rec.get("measured") == {"reads": reads, "first": list(live[0]), "last": list(live[-1])}
