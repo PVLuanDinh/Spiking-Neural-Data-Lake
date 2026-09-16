@@ -331,6 +331,25 @@ reports are chance congruences and `crossmodal_superadditive` rides on them; `Br
 publishes the live fraction with both C5 sentences and that disclosure in its provenance. The row's C5 reading is
 0.2309. DATED 2026-09-16 (the panel fold; `evidence/t080-temporal-binding.md` 3.5 item 11): the "same view" conjunct is NOT MET AS RENDERED -- the cockpit's `cross-modal bound rate` row is appended below the ACCESS plate's 110 px visible box and its two sentences reach the DOM only in the row's title string, so a viewer sees neither; the row's data and the /api/state PROVENANCE line (both sentences) stand; the clipping is shared with the PCI and integration rows and is owed a cockpit row of its own.*
 
+*DATED NOTE 2026-09-16 (specs/022 T081; `evidence/t081-report-order.md` section 2 and 2.10; pin `tools/t081_report_order.json`,
+head `f5cf8b8`): the ARM's global workspace (`thalamus/global_workspace`, read through `substrate/report_channel`) is now READ
+by an instrument that perturbs it. On a scratch brain's own stream (seeds 0-7 x 600 ticks, ten clones of the same pre-step
+state per awake tick, the lesion applied only to COPIES so the live bus is never touched) the report channel's record is
+reproduced BIT-FOR-BIT by an unperturbed clone on every awake tick of every seed; it MOVES on 1.0000 of applicable ticks when
+the pools whose content the report NAMES are lesioned at dose 1.0, and on 0.0000 when a pool the report does not name is
+lesioned the same way -- (c1) MET by the zero-variance degenerate rule, (c2) 0 on 8 of 8. So on this composite the report is
+generated from the competition state; this licenses no claim that the report is a first-person account of anything. Three
+things this says about the WHOLE brain rather than the row: the clone is the workspace and nothing else (its subscribers and
+output ring detach, so no copy delivers a broadcast or writes a lake byte); a graded lesion of `_g` is NOT a graded lesion of
+the competition -- scaling at 0.25 / 0.5 / 0.75 left the incumbent's ranking intact on every tick, and only the full lesion,
+which also drops the content's submissions, moved the report; and `Brain.state()['report_order_margin']` now publishes the
+live charge margin of that bus, which read NEGATIVE on 24 of 100 ticks because `_slot()` returns the ADMISSION rank (P6's
+`-_last_v` repair) and not the charge order -- the admitted head is not always the most charged pool. The row's C5 reading is
+1.0. The clipped-row clause the T080 note carries applies here unchanged: the cockpit's `report-order margin` row is appended
+below the ACCESS plate's 110 px visible box, so its two sentences reach the DOM and not the viewer, and /api/state's
+PROVENANCE line is where a reader actually sees them. Retired with this row, on T034's condition rather than on the verdict:
+`reasoning/consciousness_probe.py`, whose 20-seed PCI marker sweep is ported into `cortex/integration_measure`.*
+
 ## A lead that was wrong, and the correction is the point
 
 I nearly filed `theta_gamma_code` as a dormant oscillatory-coordination faculty on the strength of a
