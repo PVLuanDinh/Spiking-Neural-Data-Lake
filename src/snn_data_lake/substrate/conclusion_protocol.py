@@ -377,12 +377,20 @@ def main() -> None:
     assert surface_findings(ok, {"docs/PITCH.md": "the brain is conscious"}), (
         "a verdict must be caught"
     )
-    # REFUSAL 3 ARMS ITSELF. Six of seven rows declare no surface symbol today, so without this arm the
-    # refusal covers ONE instrument -- the panel's finding. Point a symbol-less row at a task that IS complete
-    # on this tree and the finding must fire; that is what makes the empty row_findings() above meaningful.
-    armed = {**{k: None for k in INSTRUMENTS}, "agency": "T034"}  # T034 is marked [X] in tasks.md
+    # REFUSAL 3 ARMS ITSELF. Symbol-less rows exist today, so without this arm the refusal covers
+    # only the rows that declare a symbol -- the panel's finding. Point a symbol-less row at a task
+    # that IS complete on this tree and the finding must fire; that is what makes the empty
+    # row_findings() above meaningful. The fixture row must be one that declares NO symbol: `agency`
+    # served until T079 read NOT MET (2026-09-15, evidence/t079-agency.md 3.4) and named
+    # `agency_controllability` printed nowhere -- the T079 panel found this self-check RED on that
+    # head (its fold); `temporal_binding` (T080, unbuilt) is the next symbol-less row, the same
+    # fixture shift tests/test_ratified_row_gates.py took.
+    armed = {
+        **{k: None for k in INSTRUMENTS},
+        "temporal_binding": "T034",
+    }  # T034 is [X] in tasks.md
     fired = row_findings(tasks=armed)
-    assert any("T034" in x and "agency" in x for x in fired), fired
+    assert any("T034" in x and "temporal_binding" in x for x in fired), fired
     assert row_findings(tasks={k: None for k in INSTRUMENTS}) == [], (
         "the unarmed control must stay clean"
     )
