@@ -508,7 +508,9 @@ token, clamps the setpoint (`So101Arm.apply`, `_clamped`) and the joint does not
 no outcome. Over the scored window: shoulder_lift seed 1 shoved, 437 of 449 commands clamped (97 %), c 0.393; seed 2,
 83 of 157 (53 %), c 0.459; wrist_roll seed 6, 304 of 314 (97 %), c 0.289; wrist_flex seed 2, 8 of 48 (17 %), c 0.792.
 The same mechanism depresses INTACT readings on two seeds (shoulder_lift seed 1: 97/198 clamped, c 0.756; elbow_flex
-seed 4: 51/69, c 0.564). Across the 80 (seed, arm, joint) cells Pearson(clamped share, c) = -0.394. The policy's reaction
+seed 4: 51/69, c 0.564). Across the 80 (seed, arm, joint) cells Pearson(clamped share, c) = -0.394. [The counts
+above are the |achieved delta| < 0.5 deg PROXY; re-read with the gate's own predicate they hold on three of the four
+losses and WITHDRAW seed 2 wrist_flex -- 3.5 item 12, appended 2026-09-15 after the panel.] The policy's reaction
 to the shove is the proximate cause: on the seeds where (a2) breaks it drives one other joint's rotate token hundreds of
 times into its limit (top-action share 0.64-0.88). So the instrument reported truthfully -- a joint at its limit IS
 uncontrollable by the command it receives -- and the pre-registered conjunct (a2) asked for something this body and this
@@ -560,6 +562,116 @@ the real arm are untouched.
 10. The shove RNG (`random.Random(7000 + seed)`) draws once per passage INCLUDING recovery passages, so the two arms'
     passage counts differ (3.2) and the shoved arm's action sequence is its own; the pairing is by seed and stream, as
     2.2 pre-registers, not by passage.
+11. (appended 2026-09-15, after the panel) THE PANEL's BLOCKER, reproduced and fixed: `conclusion_protocol`'s OWN self-check
+   (`main()`, run by `run_selfchecks` and so by the battery) armed its refusal-3 fixture on the agency row -- `armed =
+   {..., "agency": "T034"}` and `assert any("T034" in x and "agency" in x ...)` -- so the moment `28070fa` gave that row
+   its symbol (named, printed nowhere, T077's shape) the assertion read `AssertionError: []`: `python -m
+   snn_data_lake.substrate.conclusion_protocol` was RED on `28070fa` and `99da783` (reproduced before the fix) while
+   `--assert` stayed green (it does not run the fixture) and `tests/test_ratified_row_gates.py` was green (its fixture
+   HAD been shifted). Fixed at `dacbb31`: the fixture points at `temporal_binding` (T080, unbuilt, symbol-less), the same
+   shift the test took; the self-check line reads OK. The arming arm is satisfied by any non-empty symbol tuple -- naming
+   a symbol for a NOT MET row satisfies it without a surface; that is the disposition T077 pre-registered and this row
+   followed, disclosed as such.
+12. (appended 2026-09-15, after the panel) 3.4's CLAMP COUNTS ARE A PROXY, AND THE GATE's OWN PREDICATE WITHDRAWS ONE OF
+   THE FOUR ATTRIBUTIONS: the probe cited in 3.4 counts commanded passages whose |achieved delta| < 0.5 deg ("clamped ... OR
+   absorbed", its own docstring), not `So101Arm.apply`'s `_clamped`. Re-read from the pin's consecutive `commanded`
+   setpoints with the gate's arithmetic (a command is clamped iff the setpoint step differs from the token's delta;
+   validated exactly on every commanded row: `commanded[t] == clip(commanded[t-1] + u, ctrl_lo, ctrl_hi)`), the four cells
+   read 437/449, 63/157, 0/48 and 304/314 (proxy: 437, 83, 8, 304): seed 2 shoved wrist_flex's setpoint never left
+   -18..+78 deg inside its +/-95 deg limits, so NONE of its 48 commands was clamped and the clamp attribution for that
+   loss is WITHDRAWN (its c 0.792 stands unexplained by a clamp; 3.6 opening (2)'s policy-held control is where it goes);
+   seed 2 shoulder_lift restates as 63 of 157 (40 %). Campaign-wide 1,992 commands were clamped at the source against
+   2,030 by the proxy; the two shares correlate +0.9714 across the 80 cells and Pearson(clamped share, c) reads -0.4022
+   at the source against 3.4's -0.3942. The mechanism paragraph stands on three of four cells and on the aggregate; the
+   pointer in 3.4 says so. Also: the pin's row field `ctrl` is the MONITOR's controllability (`snapshot(j)["ctrl"]`),
+   while 3.4's prose uses "ctrl limit" for the body's setpoint range -- the counts derive from `commanded` against
+   `arm_config.JOINT_LIMITS[j]["ctrl_lo"/"ctrl_hi"]`, never from the row's `ctrl` field.
+13. (appended 2026-09-15, after the panel) 3.4 (ii)'s FINAL CLAUSE OVER-REACHES, and its "inside the band elsewhere" is
+   wrong: (a2) is a paired t decided by the MEAN drop, so the smallest DEADBAND that reads shoulder_lift MET is 0.2916 and
+   wrist_roll 0.2479 -- both below the machine's own `dead_thresh` 0.35, at which all four unshoved joints read MET
+   (t +31.77 / +2.55 / +9.51 / +3.02) and its `high_thresh` 0.55 likewise (+49.28 / +4.78 / +15.94 / +5.23); and
+   shoulder_lift drops -0.4783 on seed 5, outside the 0.20 band, on a seed whose status stays 'ok'. (a2)'s NOT MET
+   therefore rests on the pre-registered choice DEADBAND = high_thresh - dead_thresh = 0.20 among the machine's constants,
+   which is what 2.3 chose before any number; the sentence in 3.4 (ii) is superseded here, not edited.
+14. (appended 2026-09-15, after the panel) THE PRE-REGISTERED DEADBAND SENSITIVITY WAS NEVER COMPUTED by the campaign, and
+   the shipped docstring said it was reported "where it is reported": computed now off the pin, (a2) at DEADBAND = 0
+   reads t +1.1097 / -1.3612 / -1.7514 / -0.8396 for shoulder_pan / shoulder_lift / wrist_flex / wrist_roll, all below
+   1.895 -- so (a2)'s two METs are carried by the declared constant, and its two NOT METs are NOT MET at every tolerance
+   from 0 to 0.20 (item 13 gives the crossings). A reported sensitivity that re-adjudicates no conjunct; the docstring's
+   locative clause now names this item as the only place it is computed (the code half).
+15. (appended 2026-09-15, after the panel) 3.0's SHOVE LADDER IS ANCHORED ON A BASELINE THE DRY RUN ITSELF MARKED UNSCORED:
+   its "1.0000 intact" is `dry_run.json`'s `intact.read.joints.elbow_flex` `c 0.9999996` with `scored: False`, `var_c
+   0.0000`, `scored_passages 27`, inside a recording (r) REFUSED -- J* was one of the two joints not commanded inside the
+   27-passage scored window. So "+0.38 on this seed" at A = 3 deg is computed against an unexercised-channel baseline; the
+   comparable scored intact elbow_flex on the same seed at the campaign width is 0.8620 (3.0's second paragraph), giving
+   +0.24 at A = 3 by that baseline. The dry run's other rungs already showed the unshoved joints moving (shoulder_lift
+   0.4408 at A = 3, shoulder_pan 0.3206 at A = 6, both 27-passage readings) -- (a2)'s failure was visible in shape, not in
+   number, before the campaign; 2.10's window disclosure covers it and no bar moved.
+16. (appended 2026-09-15, after the panel) 2.10's HEADING CLAUSE "no gate's form, bar, disposition, arm or N changes" IS
+   INACCURATE AS WRITTEN ABOUT (r): (r) is a REFUSAL gate and 2.10 corrects its passage-count clause; the body's "Nothing
+   else moves" is the accurate scoping and 3.5 item 1 the accurate record. The change turned a campaign that would have
+   read "(r) intact readable False, 623 passages, 593 awake" (probe_width.log, pre-amendment) into one that read (r) MET
+   on 16 of 16 recordings -- the correction of a wording defect on the body's normal behaviour, before any number, as 2.10
+   discloses; the heading stays as frozen.
+17. (appended 2026-09-15, after the panel) TWO PROSE CLOCKS ARE CONTRADICTED BY GIT, which line 3 makes the authority:
+   section 3's heading says "written 22:36-23:05" while the record froze at `99da783` 22:38:53 (its window was 22:36-
+   22:38); 2.10's heading says "22:10" while it froze at `fd16de0` 22:06:49 (3.1 cites the commit correctly). No ordering
+   claim changes; the headings stay as frozen.
+18. (appended 2026-09-15, after the panel) THIN CELLS FEED THE BARRED CONTRASTS: (r)'s `n` counts PASSAGES (every joint is
+   observed on every passage) and a single +/-6 deg command already exceeds `var_floor` 758-fold (the minimum
+   scored-window `var_c` over the 80 cells is 0.0758), so the commands inside a scored window run 1..449 (median 51; 7
+   cells <= 5, 10 cells <= 10, all on the SHOVED arm -- seed 0 all five at 1 / 7 / 3 / 1 / 5 of 474, seed 1 four cells,
+   seed 5 elbow_flex 9). Two of (a2)'s METs rest partly on such cells: seed 0 shoved shoulder_pan (1 command, c 1.0000
+   against its own pinned floor 0.9523) and wrist_flex (1 command, c 0.9868 vs 0.8891). Robustness, reported: with seeds
+   0, 1 and 5 dropped (5 seeds, 4 d.f. -- the bar 1.895 is not this sample's), (a1) reads +13.8955 and (a2) shoulder_pan
+   +11.7132, shoulder_lift +1.6417, wrist_flex +2.5209, wrist_roll +0.4186: the same two joints fail. The successor
+   pre-registers a minimum COMMAND count per scored window (opening 9).
+19. (appended 2026-09-15, after the panel) THE EXERCISE GUARD CANNOT FIRE IN VIVO AT THIS WIDTH, so R3 covers a channel that
+   was NEVER commanded and not one that STOPS being commanded: replaying the machine's own EMA over all 39,870 scored
+   passages, the `var_floor` hold never fired (minimum EMA command variance 1.9558e-04, 1.96 x the floor), and
+   `t079_read`'s `scored` gate sat 758 x above it at its thinnest cell; a channel exercised then silent reads 'lost'
+   through the same rows. Opening (9). No red, constant or conjunct moves here; the constructed R3 stays green on the
+   stream it constructs.
+20. (appended 2026-09-15, after the panel) 1.3's ACTION INVENTORY DID NOT SUM TO ITS OWN PASSAGE COUNT: it listed the six
+   rotate tokens with 9-14 passages and omitted four (7 / 6 / 4 / 4). The full seed-0 intact inventory, re-run at HEAD
+   (`scratchpad/t079/probe_streams.py`): ten rotate tokens 14, 13, 11, 11, 10, 9, 7, 6, 4, 4 (sum 89) + ENGAGE 48 + HOLD 6
+   + RELEASE 3 = 146, the paragraph's own passage count and "13 distinct". The frozen text stands; no bar, arm or
+   conjunct read it.
+21. (appended 2026-09-15, after the panel) (a3) BARS A DIFFERENT OBJECT FROM (a1)/(a2): the TERMINAL `status` (the last
+   row's) while the others read the scored-window MEAN of `controllability`; 14 status->'lost' events against 12
+   terminal 'lost' cells, two recovering (item 21 is opening (8)'s number). 3.2's `latched` column is the BODY latch
+   (`stopped`), not the machine's; (a3) as pre-registered stands as read.
+22. (appended 2026-09-15, after the panel) "71.6 ms PER BRAIN-TICK" IS WALL TIME OVER CAMPAIGN TICKS, NOT A PER-TICK
+   MEASUREMENT: 1,375.5 s is the pin's `elapsed_s`, the clock from before the determinism twin to the pin write, over
+   19,200 campaign ticks; the dry run's 67.9 ms is `run_t079_dry_run`'s timer around `t079_record_brain` ALONE (its own
+   wall over its 300 ticks reads 95.7 s / 300 = 319 ms). The comparison in 3.0/3.5 item 6 is not like-for-like and item
+   6's "shoved arms' recoveries" clause is withdrawn as underivable; the campaign's tick loop projected at 67.9 ms x
+   19,400 ticks is 1,317 s, leaving ~58 s for the twin, the 80 floors, the reds and the write.
+23. (appended 2026-09-15, after the panel) THE T037 NEUTER CONTRACT CITED IN 3.1 NEVER EXECUTED THE FEED: `AutonomousArm
+   (seed=0)` defaults to `agency_monitor=False`, so `test_tap_is_observation_only_identical_trajectory_when_neutered`
+   was green without the per-joint feed running. The refuter endorsed the filed fix: the test is now parametrized over
+   `agency_monitor` in (False, True) and both arms are green (the code half); the True arm's red is a monitor whose
+   `observe` reached the caller's arm.
+24. (appended 2026-09-15, after the panel) THE FEED SHARES THE TAP's `except` AND `tap_errors` COUNTER, as 2.1 pre-registers
+   ("inside the same guarded block"): a feed-only raise would print as `tap_errors N` and could leave a partial channel
+   set for that passage. It never fired (every `tap_errors` value in the pin is 0) and would in any case REFUSE the
+   recording under (r), which requires `tap_errors == 0`; splitting the counter is a mechanism change for a successor.
+25. (appended 2026-09-15, after the panel) THE EXEMPT DISPOSITION LIVES IN PROSE ONLY -- this record and the module
+   docstring -- because no gate table can hold it: `dormancy_gate.EXEMPT` cannot (the module is REACHABLE on every
+   passage, so a row there is the stale-exemption red) and `method_dormancy_gate`'s census is learning verbs, which
+   reaches no read accessor; P3's charge tier is review-enforced by design. Ten T079 functions are named nowhere outside
+   `agency_monitor.py`; after the pin four of them (`t079_determinism`, `t079_verdict`, `_t079_report_block`,
+   `run_t079_campaign`) have no executable path while the recorder and the readers still run under `--t079-dry-run`;
+   P3's disposition already classes a campaign harness as exempt and `red_reachability` censuses `t079_verdict`; a
+   successor that wants the recorder under a gate extends the dry run, never adds a re-run door to the pinned campaign.
+   The docstring's LIVE STATUS head (2026-07-28) is marked superseded and its "every tick" sentence false (the code half);
+   `docs/coverage/WholeBrain.md`'s agency row and its "~4,000 ticks" sentences are superseded by a dated note (the code
+   half); `docs/INVENTION_REGISTER.md` 6 gains T079's MECHANIZED line after the record commit (T077's landed before) with
+   the doc budget raised by the measured delta.
+26. (appended 2026-09-15, after the panel) THE MUTATED-SCORER DOCSTRING STATED 2.4's PREDICTED TARGETS FOR R1 AND R6 AS
+   THE MEASURED ONES; it now keeps them verbatim and adds the clause each red fires on in fact (2.10 (iii)), and (a1) --
+   the conjunct this row reports MET -- has no mutated scorer of its own (R6 reddens through (a2)): disclosed, no red
+   owed because no behaviour changed.
 
 ### 3.6 What this row does NOT claim, and the openings it leaves
 
@@ -568,7 +680,8 @@ No felt authorship, ownership of action or free will (the refused sentence); not
 exists shoves a working servo); the loop's reaction to a disturbance is reported, not adjudicated. NOT MET here is NOT
 "the instrument is blind": (g0) and (a1) read at t +14 to +91; it is "with one joint shoved, this loop drives other
 joints into their limits, and a clamped command reads as lost controllability" -- a fact about the copy and the policy.
-OPENINGS, each named for a successor row: (1) the copy is blind to a CLAMP: `So101Arm.apply` knows a command was clamped
+OPENINGS, each named for a successor row (openings (8)-(9) appended 2026-09-15 after the panel): (1) the copy is blind
+to a CLAMP: `So101Arm.apply` knows a command was clamped
 (`_clamped`, on the state) and the tap does not read it; a successor records the clamp flag per passage and pre-registers
 whether a clamped command is an unexercised passage (excluded from the coupling) or a genuine loss -- the two readings of
 "my command did nothing" the C5 row's licensed sentence does not separate; (2) "preserved elsewhere" needs a
@@ -580,4 +693,44 @@ scales (a fixed 0.20 against drops of 0.36-0.71 caused by clamps) -- a successor
 intact arm's own across-seed spread AFTER the clamp is excluded; (5) the cause-blind twin's definition (scored-window vs
 whole-recording permutation; 3.5 item 8); (6) the stream offset varies the frames per seed (T078 opening 9, taken here)
 but the eight arms still share ONE pack; (7) the C5 row's reading and symbol stay unwritten -- on this body the licensed
-sentence would need the clamp-aware copy of (1) before any number is licensed.
+sentence would need the clamp-aware copy of (1) before any number is licensed; (8) (a3) reads a TERMINAL latch while
+(a1)/(a2) read the scored-window MEAN (3.5 item 21): the campaign's rows carry 14 status->'lost' events against 12
+terminal 'lost' cells, two of them recovering before the end (seed 4 intact shoulder_lift, first lost at passage 371;
+seed 7 shoved shoulder_lift at 191) -- a successor pre-registers the same object for every conjunct, an ever-latched
+count or a mean, not one of each; (9) neither spelling of "not exercised" was reachable at this width (3.5 item 19):
+the machine's `var_floor` hold fired on 0 of 39,870 scored passages (the EMA command variance never fell below 1.96 x
+the floor) and `t079_read`'s `scored` gate sat 758 x above it at its thinnest cell (one +/-6 deg command in 474 scored
+passages), so a previously-exercised, now-silent channel reads 'lost' rather than unscored -- R3 is green on a channel
+that was NEVER commanded, not on one that STOPS being commanded; a successor pre-registers the floor in units of
+commands per EMA memory, not raw variance, and reddens R3 on the silent-after-exercise stream.
+
+### 3.7 The panel fold (2026-09-15/16; three lenses, refuters judging CLAIM and FIX separately)
+
+The panel (instrument / pre-registration-honesty / disposition lenses at head `99da783`, 39 Opus agents) filed 36
+findings; 23 STOOD after refutation (1 BLOCKER, 6 MAJOR, 16 MINOR at the refuters' corrected severities) and 13 were
+REFUTED or dropped; 22 of the 23 filed fixes were judged WRONG by their refuters (obs #2146's shape). The fold landed the
+REFUTERS' minimal fixes, never the panel's: the CODE half (dacbb31 the fixture, b0aa67b the docstrings, d2f4a6c the test, df57846 the docs) -- the conclusion registry's own self-check fixture
+repointed (the BLOCKER, item 11; reproduced RED on `99da783` before the fix), the neuter test parametrized over the feed
+(item 23), three docstring corrections in `agency_monitor.py` (items 14, 25, 26), `docs/coverage/WholeBrain.md`'s agency
+row and the register's MECHANIZED line with its measured budget raise (item 25) -- and the RECORD half here (two pointers
+in 3.4 and 3.6, openings (8)-(9), items 11-26). Every number written was reproduced by my own probes first
+(`scratchpad/t079-panel/fold_verify_t079.py`; `scratchpad/t079/probe_streams.py` for item 20); the refuters' output was
+data. The lenses' what_stands: the pin re-derives bit-exactly from its rows through an independent EMA / Pearson /
+hysteresis machine; every barred statistic re-derives to zero error with an independent sign-flip enumeration; (g0)
+survives both floor constructions and an independent RNG; (a1) survives clamp exclusion, equal-length truncation and the
+raw same-tick estimator; NOT MET survives every re-reading the instrument lens could construct; the envelope is
+untouched and exactly one feed survives; the commit order is 2.9's and the reds RAN red. The 13 refuted findings, by
+substance: the clamp numbers "do not re-derive" (they do, from the pin alone); `t079_verdict` untested (censused by
+`red_reachability`, a string switch on pinned booleans); the `_q95` lift half-executed (one spelling now); 2.10 (ii)'s
+"no reading moves" (true: Pearson is scale-invariant); two disagreeing "commands" in `last_copy` (the copy's setpoint
+delta and the token delta are two disclosed quantities, one feeds the forward model and one the monitor); the amplitude
+chosen after a reading (derived from the step, the ladder pre-registered); (a2) estimator-dependent (the raw same-tick
+Pearson is REPORTED, never barred); R1 an identity of the statistic (the strict margin can fail on m = c - 1e-16); the
+cause-blind twin IS the method (P8 clause 2 names a permutation null as the control); the as-built twin's carry-in
+(disclosed in 2.10 (a)); the ms-per-tick "rise" (item 22 carries the correct reading); (p) covering the intact arm only
+(as 2.3 pre-registers, and the shoved twin's own determinism is the shove RNG's); the sign-flip FPR beside (a2) (the
+non-inferiority form's null is the shifted sample). NOT done: no pin re-run; no tolerance moved (item 13 reports the
+crossings); no conjunct re-adjudicated; no code numerics changed. THE FOLD IS ITSELF UNREVIEWED CODE (obs #35): it was
+not re-panelled; it is battery-verified only -- the arc's battery, named in the closing record commit of this push, is
+its review. The verdict NOT MET, the pin, 2.6's NOT MET branch and the openings stand as recorded; the fold added
+openings (8)-(9), moved no bar, dropped no conjunct.
