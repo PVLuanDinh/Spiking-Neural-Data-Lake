@@ -228,3 +228,61 @@ SC-009 note; the row-gate fixture to `report_order`; on PASS the conclusion row,
 on NOT MET / REFUSED nothing in `conclusion_protocol`, `brain_telemetry` or the cockpit changes) -> 8. section 3 the
 record -> panel (3 lenses + refuters judging CLAIM and FIX) -> fold -> stacked with T081 / T082 for ONE battery (the
 Codex closing report when the cap lifts, 2.0).
+
+### 2.10 Amendment, dated 2026-09-16 05:20 local, BEFORE the campaign (the build's contradictions and deviations
+### disclosed; one readability clause made non-vacuous; the pin gains a companion) -- no gate's form, bar, disposition, arm or N changes
+
+The build (commits `4c5b8c9` skeleton, `4ef9ab3` R1-R6 RED, `8466cf2` green + mutations, `66822fa` recorder + dry run;
+an Opus executor, brief `scratchpad/t080/builder_brief.md`) and the dry run on seed 0 (`--t080-dry-run`, 204 s, its
+output `scratchpad/t080/dry_run.json`; RE-RUN by the orchestrator at 05:07-05:11 with every count identical --
+bound 76 / 24 / 11 / 17 / 17 / 8 over ALIGNED / NULL / LAG 1 / LAG 2 / LAG 5 / SCRAMBLED, the offline null mean 0.0953
+q95 0.1224 band [0.0544, 0.1395], window 1, decomposition 1188/1188 -- and only the wall clock moved, 69.8 vs 66.7
+ms/tick) contradicted or sharpened the frozen text in these places:
+
+(a) R2 AS WRITTEN WAS UNREACHABLE. 2.4 R2 asks `ignore_margin` to differ "on a sub-margin pair"; with 10 taught pairs
+    and 200 probes drawn dense in [0, 1] no probe falls under the 0.15 margin (min coincidence 0.469 / 0.492; the
+    sign-random projection of two all-positive vectors is dominated by their common mean). The red's constructed
+    input is drawn SPARSE (`T080_R2_DENSITY` = 0.10: 41 / 58 sub-margin probes, 11 changed by the mutation) -- the
+    red's input, not a bar; the density sweep is in commit `4ef9ab3`'s message.
+(b) THE MARGIN SENSITIVITY OF 2.8 IS FLAT BECAUSE `recog_margin` REFUSES NOTHING IN VIVO: bound 76 at 0.10, 0.15 and
+    0.20, 0 sub-margin ticks at any (centred coincidence on the ALIGNED arm: vision min 0.594 / median 0.742, audio
+    min 0.504 / median 0.719). The handle is decided entirely by whether the two nearest-prototype winners agree (76
+    of 294). This sharpens fact 4: in vivo EVERY latent is above the margin. Reported; no clause moves.
+(c) (r)'s SECOND CLAUSE WAS VACUOUS ("on every scored awake tick both latents are present" -- a scored tick is defined
+    as such). AMENDED to read "on every AWAKE tick of every arm both latents are present (`awake_missing` = 0), else
+    REFUSED (the seed and arm named)". The dry run reads 0 missing on all six arms (294/294, 294/294, 146/146,
+    152/152, 150/150, 152/152). A stricter readability clause, adopted before any barred number is read.
+(d) NUMBERS THAT MOVED FROM SECTION 1 / 2.8: the warm-up to K = 10 reads 39 ticks (fact 5 measured 54) because the
+    built `t080_aligned_order` visits the classes in SORTED order, not the probe's dict-insertion order -- the pairing
+    depends on the pack's content, not on numpy's label order; the NULL arm's permutation is drawn from a FRESH
+    `random.Random(1000 + seed)` (the probe continued the aligned order's generator); the cost is 66.7-69.8 ms/tick
+    over 2,439 ticks (2.8 carried 55 from the unwrapped probe) -> ~22 min for 8 seeds, inside 2.8's 2 h re-size.
+(e) THE DERIVED MARGIN'S MONTE-CARLO SD IS EXACTLY 0.00000: 12 independent 2,000-draw nulls all read q95 = 0.12245
+    (= 36/294); the statistic is an integer count over 294 ticks, so its sampling noise sits below its own
+    discretisation. 2.3 asked for the sd; at this width it is zero.
+(f) CLOCK TIMES IN FACTS 4-5 WERE ESTIMATED, NOT READ (obs #2190): the probes were written 04:04:15 and 04:09:02 and
+    ran immediately after, not at "04:12" and "04:18". The numbers stand; the stamps are corrected here.
+(g) THE PIN GAINS A COMPANION. The builder pinned the decomposition's per-tick columns and omitted the raw latents
+    (a 3.7 M-float artifact no conjunct reads -- disclosed in the pin's `rows_omitted`). Without them (r)'s
+    "decomposition equals the recorded handle" cannot be re-derived from the artifacts after the fact, so the
+    campaign now also writes `tools/t080_latents.npz` (float32, every scored tick of every arm and seed, in each
+    arm's `recs` order) and pins its sha256, keys and shapes under `latents_npz`; written once beside the pin (T078's
+    npz precedent). Landed as the commit after this amendment.
+(h) DEVIATIONS ACCEPTED AS DISCLOSED (the builder's report, §6): the reds' constructed-input builders are real from
+    the skeleton commit so step 3's failures are assertions, not TypeErrors; three mutation hooks in the signatures
+    (`t080_null(resample=)`, `t080_recognitions(recognize=)`, `t080_contrasts(score=, band=, g0=, bar=)`, T079's
+    precedent); `t080_verdict` spells 2.3's rule once; R3's lag tables are module constants; `agree` COUNTS
+    DISAGREEMENTS (its docstring says so; (r) requires 0); per-arm classifier accuracy is a difference of the brain's
+    cumulative counters (the published `_audio_acc` carries the warm-up); `T080_REDS_N_DRAWS` = 500 for the reds
+    (2,000 stays the campaign's); a REFUSED campaign writes the pin and returns 2 (T079's shape) -- a refused pin
+    and its companion are deleted before any re-run, and the re-run is disclosed.
+(i) TWO DEFECTS IN THE BUILDER'S OWN APPARATUS, found by the dry run and fixed inside `66822fa`: the margin-sensitivity
+    reader was handed the decomposition instead of the rows, read 0 scored / 0 bound at every margin, and its
+    positive control PASSED on 0 == 0 (now `n > 0` is part of `control_ok`); the per-arm audio accuracy was
+    unreadable off the cumulative counter (fixed by differencing) -- which is what exposed (j).
+(j) THE SCRAMBLED-PHASE ARM TAKES AT THE CLASSIFIER: audio accuracy 0.7143 (ALIGNED) -> 0.3355 (SCRAMBLED) with
+    vision unchanged (0.9286 -> 0.8947), bound 0.2585 -> 0.0526. 2.3 asked for this beside ALIGNED's and predicted
+    nothing; reported. The false-binding fraction is non-trivial on every arm (ALIGNED 9/76, NULL 6/24, LAG 1 5/11,
+    SCRAMBLED 4/8); reported, never barred.
+Nothing else moves: (p), (g0), (b1), (b2), the arms, N, the doses of nothing (there are none here), the derived margin's
+form, the disposition, the reds' clauses.
