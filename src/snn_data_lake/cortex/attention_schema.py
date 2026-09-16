@@ -373,8 +373,24 @@ def _decode(X, y, seed, n_shuffle=N_SHUFFLE, score_train=False):
     x_tr = torch.tensor(X[:n_train], dtype=torch.float32)
     x_te = torch.tensor(X[n_train:], dtype=torch.float32)
     mu = x_tr.mean(0, keepdim=True)  # standardized on the TRAIN half only -- no lookahead
-    sd = x_tr.std(0, unbiased=False, keepdim=True).clamp_min(1e-6)
+    sd_raw = x_tr.std(0, unbiased=False, keepdim=True)
+    sd = sd_raw.clamp_min(1e-6)
     x_tr, x_te = (x_tr - mu) / sd, (x_te - mu) / sd
+    # A column whose TRAIN-half sd is EXACTLY zero carries no train information by construction,
+    # and `clamp_min(1e-6)` turns it into a 1e6 amplifier for any test row on which it fires: the
+    # standardized feature reads (1 - 0) / 1e-6 = 1e+06 against a weight that received only the L2
+    # gradient (never an NLL one, the column being constant in train), so that row's argmax is
+    # decided by the random init. Measured on a constructed 15-d input: 1e+06 exactly, a logit
+    # contribution of order 1e4 against the other fourteen columns' 1.24e4 combined, and one
+    # held-out row of 100 flipped. Zeroing those columns in BOTH standardized halves is what 2.10
+    # (ii)'s "a zero-variance column reads 0" already says; `clamp_min` STAYS for the genuinely
+    # small-but-non-zero case (the smallest non-zero train-half sd on the pinned recording is
+    # 0.0236, four orders above the floor). `U_DIM` and therefore `d` are unchanged, so
+    # `_fit_and_score`'s (m, d, k) init draw is untouched and no pinned number moves -- verified by
+    # re-deriving the pin at DECODER_STEPS = 200 on all 8 seeds after this guard landed.
+    const = sd_raw == 0.0
+    if bool(const.any()):
+        x_tr, x_te = x_tr.masked_fill(const, 0.0), x_te.masked_fill(const, 0.0)
     y_tr = torch.tensor([[idx[c] for c in ytr_raw]], dtype=torch.long)
     y_te = torch.tensor([[idx[c] for c in yte_raw]], dtype=torch.long)
     x_score = x_tr if score_train else x_te

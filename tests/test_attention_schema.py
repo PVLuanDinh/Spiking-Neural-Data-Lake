@@ -359,6 +359,52 @@ def test_the_content_projection_is_fixed_by_its_crc32_seed():
     assert not bool((a == t078_projection(4)).all()), "a different seed must give a different arm"
 
 
+def _hazard_rows(fire):
+    """200 rows of 15 features with the label planted in coordinate 0, and coordinate 14 an
+    indicator held at 0 across the whole TRAIN half. `fire` fires it once, on the last test row.
+    The RNG is consumed identically either way, so the two tables differ in exactly one cell."""
+    rng = random.Random(1)
+    y = [rng.randrange(10) for _ in range(200)]
+    rows = [[rng.random() for _ in range(U_DIM)] for _ in range(200)]
+    for i in range(200):
+        rows[i][0] = y[i] / 9.0
+        rows[i][U_DIM - 1] = 0.0
+    if fire:
+        rows[199][U_DIM - 1] = 1.0
+    return rows, y
+
+
+def test_a_column_constant_in_the_train_half_cannot_amplify_into_the_decode():
+    """`_decode` standardizes on the train half with `sd.clamp_min(1e-6)`. A 0/1 field that is
+    CONSTANT in the train half but FIRES in the test half therefore reads (1 - 0) / 1e-6 = 1e+06
+    against a column whose weight never received an NLL gradient -- it is constant in train -- so
+    that single row's argmax is decided by the random init. The hazard is live on the pinned
+    recording's shape: `focus_is_none` is train-constant on all 8 seeds and `ignited` on seed 1,
+    and `ignited` fires on 0-1 awake ticks per seed. It was INERT there only because every
+    ignition landed in the train half, and (g4a)'s seed-3 margin is exactly one held-out row.
+
+    RUN RED FIRST, against the unguarded `_decode`: this construction read acc 0.240000 firing
+    against 0.250000 inert -- one held-out row of 100 decided by the amplifier. GREEN under the
+    guard, which zeroes the raw-zero-sd columns in both standardized halves. `clamp_min` stays for
+    the small-but-non-zero case; `U_DIM` and the init draw are untouched, so no pinned number
+    moves."""
+    fx, fy = _hazard_rows(fire=True)
+    qx, qy = _hazard_rows(fire=False)
+    assert fy == qy, "the two tables must share their labels"
+    assert set(r[U_DIM - 1] for r in fx[:100]) == {0.0}, "constant across the TRAIN half"
+    assert fx[199][U_DIM - 1] == 1.0 and qx[199][U_DIM - 1] == 0.0, "it fires exactly once, in test"
+    assert [r for i, r in enumerate(fx) if r != qx[i]] == [fx[199]], "exactly one cell differs"
+    firing = decode_heldout(fx, fy, seed=0)
+    inert = decode_heldout(qx, qy, seed=0)
+    assert firing["readable"] and inert["readable"], (firing, inert)
+    assert firing["acc"] == inert["acc"], (
+        "a column carrying no TRAIN information must not move the decode",
+        firing["acc"],
+        inert["acc"],
+    )
+    assert firing["shuffle_q95"] == inert["shuffle_q95"], (firing, inert)
+
+
 def _g3_reading(readable, mi=0.30, q95=0.10, refusal=None):
     """One seed's slot of a `t078_g3` result, carrying only what `_reported_mi` reads."""
     if readable:
