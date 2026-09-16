@@ -336,7 +336,50 @@ checked against them in 3.x; the refused pin's numbers stand in this section as 
 transferable rule is logged (obs #2191): a per-seed band on S seeds owes its family-wise rate before it is a
 refusal clause.
 
-## 3. Results (written 2026-09-16 after campaign run 2; nothing above this line was edited after 2.11)
+### 2.12 Amendment, dated 2026-09-16 (no clock in this heading -- the commit's own stamp is the time, 3.0), AFTER the
+### panel (the fold): (b2)'s two denominators named, the pinned band's Monte-Carlo instability and its RESOLVED reading
+### at 200,000 draws, the position null delivered per seed (3.7), a self-check added -- no gate's form, bar, disposition,
+### arm or N changes; the pin is not rewritten
+
+**(a) The two denominators, named (panel [16]).** 2.11's "1.13x" and "within 13 %" set ONE seed's position-null sd
+against ONE denominator. There are two: the membership-matched re-pairing drawn on the NULL IN VIVO arm's OWN
+recognitions (2.11's parenthetical 0.0171 on seed 3) and the offline null drawn on the ALIGNED arm (the pin's
+`null.draws_sd`, 0.0169 on seed 3). Measured on every seed at the fold (`scratchpad/t080-panel/fold_verify_t080.py`;
+the position null at 4,000 draws under RNG 9000 + seed, `tests/instruments/t080_position_null.py`): position sd /
+NULL-arm re-pairing sd 1.094-1.188 (mean 1.134; seed 3 1.116); position sd / offline-null sd 1.120-1.170 (mean
+1.142; seed 3 1.122). "Holds within 13 %" is WITHDRAWN as a bound: the position null is 9-19 % more variable than
+the exchangeable null depending on seed and denominator. The per-seed check 2.11 promised is 3.7. (The panel's
+refuter read seed 3 at 1.099 / 1.112 on its own draws; a 4,000-draw sd has its own sd, and neither reading is
+inside 13 % on every seed.)
+
+**(b) The pinned band's endpoints are order statistics 1 and 1998 of 2,000 draws (panel [4]).** At per-side alpha
+0.005 / 8 = 0.000625 a 2,000-draw null expects 1.25 exceedances a side, so the family-wise endpoints are the
+2nd-smallest and 2nd-largest draws, whose own Monte-Carlo sd is an order above q95's: over 200 independent
+2,000-draw nulls per seed from the pinned recordings alone (`tests/instruments/t080_b2_reread.py`, no brain, ~11 s
+for the 200,000-draw pass) q_hi's sd is 0.0041-0.0050 on every seed against q95's 0-0.0017 (3.5 item 12); with the
+campaign's recordings FIXED, the pinned clause refuses on 37 of 200 null RNG seeds on seed 3 and on 0 of 200 on
+each other seed (the panel's refuter read 56 of 200 on its own RNG family -- the same defect, a different draw). Run
+2's PASS is therefore the reading of one 2,000-draw null that another null seed would have refused about one time
+in five on seed 3. THE RESOLVED READING, at 200,000 draws under the pre-registered RNG 7000 + seed (the same
+instrument, recordings and quantiles): every seed inside its family-wise band -- seed 3 0.1531 against [0.0508,
+0.1593], one-sided tail p 0.00141 (alpha/side 0.000625); every other seed's tail p 0.20-0.82 -- and (b1) at
+200,000 draws t +13.4164, FPR 0.0469, MET (pinned +13.5395). The pin is NOT rewritten (a pin is written once, 2.10
+(h)): the pinned verdict stands as the 2,000-draw reading; the resolved reading is recorded here and in 3.7 and is
+reproducible from the pin alone. THE RULE, for the next row that reads a family-wise band over S seeds:
+pre-register N_DRAWS so that alpha/side x N_DRAWS >= 20 (here >= 32,000) -- a change to no gate of this row.
+
+**(c) Seed 3 under its own position null** reads p 0.0030 at 4,000 draws (2.11 said 0.0037 on its analysis's draws):
+under 0.005 in both readings, above 0.000625 in both -- the seed the per-seed band refused and the family-wise band
+admits, on every null tried.
+
+**(d) A self-check added AFTER the campaign, at the fold (panel [3]).** `binding_instrument.t080_pin_reading()`
+re-derives the C5 reading (the mean over seeds of within minus the null's mean) from the committed pin, and the
+module's `__main__` (run_selfchecks CORE) refuses when it differs from `CONCLUSION["temporal_binding"].reading`
+(a mutated derivation, within minus q95, reads 0.2024 and would refuse). It reads the pin, never a brain; it is
+not a pre-registered gate and enters no verdict.
+
+## 3. Results (written 2026-09-16 after campaign run 2; nothing above this line was edited after 2.11 except the
+## dated 2.12, APPENDED at the panel fold and disclosed as such; section 3's in-place corrections are each marked)
 
 ### 3.0 The apparatus, measured before the campaign (2.9 step 5, the dry run; 2.10; the trial campaign)
 
@@ -350,9 +393,10 @@ over 12 independent 2,000-draw nulls; the scrambled arm's audio accuracy 0.3355 
 Everything 2.10 records (a)-(j) was read here before any barred number. A ONE-SEED TRIAL of the campaign path into
 scratch paths (05:14-05:18, `scratchpad/t080/trial_campaign.txt`, 214 s) exercised the companion writer: pin and
 npz written, sha256 pinned and matching, 12 arrays whose row counts equal each arm's decomposition. CLOCK-TIME
-CORRECTIONS (obs #2190): section 1's facts 4-5 were probed at ~04:04-04:05 and ~04:09-04:11, not "04:12" and
-"04:18"; 2.11's heading says "06:05" but its commit `00e4a15` landed at 05:59:25 -- both stamps were typed
-ahead of the clock; the numbers are unaffected.
+CORRECTIONS (obs #2190; the fourth site added at the panel fold, panel [15]): section 1's facts 4-5 were
+probed at ~04:04-04:05 and ~04:09-04:11, not "04:12" and "04:18"; 2.10's heading says "05:20" but its commit
+`521c5f1` landed at 05:16:56; 2.11's heading says "06:05" but its commit `00e4a15` landed at 05:59:25 -- FOUR
+stamps typed ahead of the clock (facts 4 and 5, the 2.10 heading, the 2.11 heading); the numbers are unaffected.
 
 ### 3.1 The build, red-first, and the commits
 
@@ -375,7 +419,8 @@ NULL arm 0.1531 above the per-seed band's 0.1424 -- with every other number as b
 (`scratchpad/t080/pin_run1_refused.json`, `memory/archive/t080-2026-09-16/`), quoted in 2.11 and was deleted
 from `tools/` before run 2 (2.10 (h)). Run 2 on `c3a9fb5` (05:59:52-06:23:48 local, 1,436 s): the SAME
 deterministic recordings (every count identical to run 1's, checked from both pins), read under 2.11's
-family-wise band: VERDICT PASS. Per seed 2,439-2,450 brain-ticks over six arms in 157-182 s; the companion 96
+family-wise band: VERDICT PASS. Per seed 2,432-2,487 brain-ticks (63.3-74.1 ms per brain-tick from the pin's own timings; corrected at the panel
+fold from a typed "2,439-2,450", 3.5 item 18) over six arms in 157-182 s; the companion 96
 float32 arrays, sha256 `b5bddf194407e09b...` (identical to run 1's, the latents being the same). The
 orchestrator re-derived every barred number from the two files with no brain (`scratchpad/t080/
 verify_t080_pin.py`: a fresh binder taught the pinned prototypes in registration order re-decomposes every
@@ -445,16 +490,19 @@ pin head `c3a9fb5`; seeds [0, 1, 2, 3, 4, 5, 6, 7]; elapsed 1436.1 s; verdict **
 - companion: tools\t080_latents.npz sha256 b5bddf194407e09b..., 96 arrays; prototypes per seed: [10, 10, 10, 10, 10, 10, 10, 10]
 - reds at campaign time: {'R1': True, 'R2': True, 'R3': True, 'R4': True, 'R5': True, 'R6': True}
 
-REPORTED: the binding window reads 1 tick on seeds 0-3, 6, 7 (every lag arm at or below the margin), 5 on seed 4
+REPORTED: the binding window reads 1 tick on seeds 0-3, 6, 7 (the LAG 1 arm at or below the margin -- the window is the first lag at which the bound rate falls to the
+null; "every lag arm" was FALSE on seeds 2 and 7, corrected at the panel fold, 3.5 item 13), 5 on seed 4
 (LAG 1 0.1284 and LAG 2 0.1333 above its margin 0.1233 -- 2.3's "a lag arm ABOVE the margin is a finding") and
 2 on seed 5 (LAG 1 0.1351 above 0.1220); the scrambled-phase arm binds at 0.0526-0.1208 -- at or below every seed's
-null q95 -- with the audio classifier collapsing to 0.20-0.35 while vision stays at 0.89-0.96 (the SHD frame's
+null q95 -- with the audio classifier collapsing to 0.2483-0.3960 while vision stays at 0.8947-0.9664 (both ranges
+corrected at the panel fold from typed "0.20-0.35" / "0.89-0.96", 3.5 item 14) (the SHD frame's
 time bins carry the word; the secondary null takes at the classifier, 2.10 (j)); the false-binding fraction is
 0.069-0.123 on ALIGNED and 0.214-0.516 on NULL (a reported object the classifiers did not name); the yield (bound
 / classifier-congruent) 0.355-0.578 on ALIGNED -- the binder's nearest-prototype recognition, not the margin, is
 the ceiling (2.10 (b)); the offline null's mean equals its product-of-marginals expectation to 0.001 on every seed
-and the position-permutation null (2.11) widens it by 1.13x; the q95's Monte-Carlo sd is 0 (an integer count over
-~294 ticks).
+and the position-permutation null (2.11) widens it by 1.09-1.19x per seed and denominator (2.12 (a), 3.7;
+corrected at the panel fold from "1.13x"); the q95's Monte-Carlo sd is 0 on seeds 0, 1 and 6 and 0.0010-0.0017 on the other five (3.5 item 12; corrected
+at the panel fold from an unscoped "is 0").
 
 ### 3.4 The disposition applied (2.6, the PASS branch)
 
@@ -478,7 +526,9 @@ live mechanism. `tests/test_ratified_row_gates.py`'s arming fixture moves to `re
    (0.1531 vs 0.1424) at a family-wise false-refusal rate of 7.7 % (1 - 0.99^8; 6.2 % simulated from the position
    nulls); seed 3's one-sided p under its own position null is 0.0037. The barred claim (b1) was not touched and
    read the same t on both runs. The honesty lens adjudicates whether a readability clause with a computable
-   6-8 % false-refusal rate may be corrected once, disclosed, after it fires; obs #2191 records the rule.
+   6-8 % false-refusal rate may be corrected once, disclosed, after it fires; obs #2191 records the rule. The
+   per-seed position null 2.11 promised is delivered in 3.7 (added at the panel fold); the amended band's own
+   Monte-Carlo instability and its resolved reading are 2.12 (b).
 2. The pin was written TWICE: run 1's (REFUSED) archived and deleted from `tools/`, run 2's committed. 2.10 (h)
    prescribed exactly this for a refusal; the numbers are identical, the verdict is not.
 3. The campaign's first launch on `7f6a000` was stopped at 57 s (before any write) to add the prototypes to the
@@ -496,10 +546,82 @@ live mechanism. `tests/test_ratified_row_gates.py`'s arming fixture moves to `re
    differenced counters -- the builder's deviations, accepted as disclosed (2.10 (h)).
 7. The reading of 2.6 is (within - the null's MEAN), while (b1) bars (within - the null's q95): both are in the
    pin; the record reports the q95 differences beside the reading's mean differences (3.3).
-8. Clock stamps typed ahead of the clock twice (3.0; obs #2190).
+8. Clock stamps typed ahead of the clock at FOUR sites (3.0; obs #2190; "twice" corrected at the panel fold).
 9. The warm-up reads 32-87 ticks across seeds (fact 5 measured 54 on the probe's aligned order); the cost 66.7-69.8
-   ms/tick against 2.8's 55.
+   ms/tick on the dry run and 63.3-74.1 ms per brain-tick per seed on the campaign (the pin's timings, 3.2;
+   the campaign figure added at the panel fold) against 2.8's 55.
 10. The record's tables are generated from the pin (`scratchpad/t080/record_gen.py`), never typed.
+
+Items 11-25, dated 2026-09-16, the panel fold (3 lenses + refuters over CLAIM and FIX; 26 filed, 17 stood: 1 BLOCKER /
+4 MAJOR / 12 MINOR; every filed fix was wrong and the refuters' minimal fixes are what landed; every number below
+was reproduced by the orchestrator's own scripts before it was written -- `scratchpad/t080-panel/fold_verify_t080.py`,
+`tests/instruments/t080_{verify_pin,b2_reread,position_null}.py`):
+
+11. BLOCKER [1], DISCLOSED, NOT FIXED HERE: the CHARGED branch's surface conjunct "the cockpit prints it as a
+    consciousness row WITH the licensed and refused sentences in the same view" (3.4) is NOT MET AS RENDERED. The
+    ACCESS plate's bottom grid row is 110 px (cockpit.py's two `110px` sites) and the `cross-modal bound rate` row
+    is appended below the plate's visible box (the panel's measurement: row box y 1111-1129 against the plate's
+    961-1069 at 1920x1080, and clipped at every width); the two sentences reach the DOM only inside the row's
+    1,479-character `.tag` string and its JS comment, so `conclusion_protocol`'s surface gate -- which reads
+    tracked-surface SOURCE text -- is satisfied by text no viewer sees. NOT changed at the fold: the row's data
+    (what the brain measures), and `PROVENANCE["crossmodal_bound_rate"]` (2.6's required line, its substrings
+    pinned by a green test), which carries both sentences on /api/state. The plate's geometry is shared with the
+    PCI and integration rows, clipped the same way (inherited from T070 / T077), so the layout change is a cockpit
+    row of its own, owed -- not a fold edit. The same dated clause is on tasks.md T080, spec.md SC-009, PLAN-FINAL's
+    T080 note and WholeBrain.md (the fold's surfaces commit).
+12. [9] "The q95's Monte-Carlo sd is 0" was measured on seed 0 and reported without its scope. 2.3 pre-registered
+    the sd on the DRY-RUN recording, so the campaign correctly never measured it (not a deviation) and 3.0's reading
+    stands; re-measured at the fold from the committed pin's ALIGNED recordings with the shipped `t080_q95_sd` (12
+    nulls): 0 on seeds 0, 1 and 6; 0.0015 / 0.0013 / 0.0010 / 0.0010 / 0.0017 on seeds 2, 3, 4, 5 and 7 (min-max
+    spread up to 0.0034 on seed 5). An integer count over ~294 ticks is discrete; its 95th order statistic is not
+    fixed. 2.10 (e)'s "at this width it is zero" generalised from one seed; 3.3's clause is corrected in place.
+13. [10] + [13] 3.3's "(every lag arm at or below the margin)" for seeds 0-3, 6, 7 was FALSE on seeds 2 and 7: seed 2
+    LAG 2 21/151 = 0.1391 against the margin 41/296 = 0.1385 (+0.0006 -- one bound tick either way flips it); seed 7
+    LAG 2 23/149 = 0.1544 against 42/294 = 0.1429 (+0.0115). FIVE of the 24 lag arms sit above their seed's q95
+    (2/LAG 2 +0.0006, 4/LAG 1 +0.0051, 4/LAG 2 +0.0100, 5/LAG 1 +0.0131, 7/LAG 2 +0.0115), and 2.3's "a lag arm ABOVE
+    the margin is a finding" applies to five, not three: `t080_window` returns the smallest lag at or below the
+    margin and never inspects the lags above it, so a non-monotone lag profile hides its exceedances. Nothing was
+    hidden by the pin (the arm table prints every lag rate). THE MARGIN ITSELF is the ALIGNED arm's q95 at
+    n = 292-298 applied to arms scoring n = 145-152; the arms' null means and sd x sqrt(n) are indistinguishable
+    from the aligned arm's, so the gap is 1 / sqrt(n): at each lag arm's own n the q95 is 0.1216-0.1611, the pinned
+    margin's effective per-arm alpha is 0.048-0.235 (0.124 on the mean), five crossings of 24 against ~2.97 expected
+    by chance (Poisson P(X >= 5) = 0.18), and re-read against its own-n margin NO lag arm is above and every seed's
+    window is 1. The pinned windows [1, 1, 1, 1, 5, 2, 1, 1] and PROVENANCE's "binds at the null's rate on 6 of 8
+    seeds" STAND AS RECORDED (the pre-registered reader read them) and are read as chance (3.6 opening 9).
+14. [14] Two typed prose ranges in 3.3 contradicted the pin-generated table beside them ("0.20-0.35" against the
+    pinned 0.2483-0.3960; "0.89-0.96" against 0.8947-0.9664); corrected in place and marked. Item 10 is true of the
+    tables and was never true of the prose around them.
+15. [16] 2.11's "1.13x" / "within 13 %" -- one seed, one denominator; both denominators on every seed in 2.12 (a);
+    "within 13 %" withdrawn.
+16. [4] The pinned family-wise band's endpoints are order statistics 1 / 1998 of 2,000 draws; on seed 3 the pinned
+    clause refuses on 37 of 200 null RNG seeds; resolved at 200,000 draws (every seed inside; seed 3 tail p 0.00141)
+    -- 2.12 (b), 3.7. The pin is not rewritten.
+17. [15] Clock stamps: four sites, not two (3.0; item 8 corrected).
+18. [12] 3.2's "2,439-2,450 brain-ticks" and item 9's dry-run-only cost were contradicted by the pin's own timings
+    (2,432-2,487; 63.3-74.1 ms per brain-tick); corrected in place and marked.
+19. [11] `superadditive` is an exact alias of the bound handle (`bind()` zeroes the SC cell's offset iff congruent),
+    not a second recorded fact: the pin's per-arm `superadditive` count carries no bit `bound` lacks.
+    `_t080_arm_counts`'s docstring says so now (`3885fbc`); no number moves.
+20. [2] MAJOR, FIXED (`3885fbc`): before the fold a tick on which `bind()` raised kept the PREVIOUS handle, and the
+    bound-rate append -- guarded on both latents and a non-None handle -- COUNTED it as bound; the handler now clears
+    the handle and counts the fault (`crossmodal_faults`, published in `Brain.state()`), with a test. 3.6 opening
+    (1)'s "the rate counts only ticks with both latents" named the wrong mitigation. No campaign number is affected
+    (0 faults on every recorded arm; the campaign's decomposition read the handle the binder returned).
+21. [3] `t080_pin_reading()` and its self-check clause were added AFTER the campaign (2.12 (d)); `T080_PIN` is
+    anchored on the repo root, not the cwd (`3885fbc`).
+22. [17] + [6] `t080_contrasts`'s docstring still stated the per-seed [q005, q995] clause that REFUSED run 1 while
+    computing the family-wise clause that PASSED run 2; the constructed seeds of the reds and the `distinct-from`
+    note on `_t080_order_stat` -- docstrings, folded in `3885fbc`.
+23. [8] P2 DEBT, DISCLOSED, carried: `_t080_order_stat` re-opens the order-statistic duplication T079 closed by
+    lifting q95 into `substrate/_mathutils` -- four bodies now (`_mathutils.q95`, `binding_instrument.
+    _t080_order_stat`, `metacognitive_monitor`, `lake_engine`); T079's lift was a dormancy-gate move, not a tree-wide
+    closure. No code change on this row beyond the marker clause; the lift to ONE `order_stat(sorted_draws, q)` in
+    `_mathutils` is carried to T081, the first row with a second consumer (route-ledger debt).
+24. [7] The live provenance's "once all ten objects are taught" named a precondition the daemon never reaches: on
+    the shipped independent walk the codebook saturates at 9 of 10 (obj9 never registers; seeds 0 and 1 stall at
+    K = 9 from about tick 600 over 2,000 / 1,200 ticks; the daemon read `crossmodal_objects` 9 at 0.095, wake tick
+    2,630) -- the clause now says so and names no cause (`74bd6b0`); the 0.08-0.10 replicates.
+25. [15] Opening (7) mis-located `crossmodal_superadditive`'s exposure -- corrected by the 3.6 amendment below.
 
 ### 3.6 What this row does NOT claim, and the openings it leaves
 
@@ -520,3 +642,65 @@ does; (6) the plan's "scrambled-phase secondary" and "matched K" are read as thi
 plan's author may have meant gwt_deep's K-object task, which stays unrun; (7) the stale `crossmodal_superadditive`
 on the cockpit has no sentence beside it and is not a C5 symbol -- it prints a chance-binding indicator without
 saying so; (8) the (b2) clause's post-number correction (3.5 item 1) is the panel's to judge.
+
+**3.6 amendments, dated 2026-09-16, after the panel (the frozen text above untouched).** Opening (7) is imprecise about
+WHERE `crossmodal_superadditive` appears: it is carried on the cockpit's /api/state and /api/all payloads
+(`brain_telemetry` copies every `Brain.state()` key into `snap["cognition"]`; the cockpit serves it) with no
+PROVENANCE entry, and it is drawn on NO rendered row -- cockpit.py contains no `superadd` token at `9242c20` or
+`f49472c`. The debt is a machine surface, not a drawn one; fact 6 stands as written (the keys reach the cockpit's
+payload, and the C5 gate misses them because it reads tracked-surface source text, not served keys). Openings
+added: (9) `t080_window`'s margin is derived at the ALIGNED arm's n and applied at half that n (3.5 item 13) -- a
+re-registered window instrument owes each lag arm its own-n margin; (10) a faulted binder was counted as bound until
+`3885fbc`; `crossmodal_faults` is published and reads 0 on every recorded arm and on the daemon -- the fault path is
+unexercised in vivo; (11) the cockpit's ACCESS plate clips its appended rows (3.5 item 11) -- a cockpit row of its own;
+(12) the order-statistic lift (3.5 item 23).
+
+### 3.7 The position-permutation null per seed and the resolved (b2), appended 2026-09-16 AFTER the record commit
+### `9242c20` (the panel fold), discharging 2.11's stated consideration
+
+THE MAPPING. The pack position of the k-th SCORED tick of an arm is (start + k) mod 256: the pointers advance once
+per awake tick, so the ~294 scored ticks walk ~1.15 laps of the 256-frame pack; the recorder's pointer columns are
+not pinned, so the position CLASS is the scored-tick ordinal mod 256, never the recorded `t` (which counts asleep
+ticks too). The in-vivo NULL arm is one draw of a position permutation, so this null pairs each scored tick's vision
+object with the audio object of its permuted class (256 classes on every seed, 0 inconsistent audio recognitions
+within a class -- the same frame reads the same object). Produced from the pin alone by
+`tests/instruments/t080_position_null.py` (4,000 draws per seed, RNG 9000 + seed; writes nothing) and
+`tests/instruments/t080_b2_reread.py` (200 independent 2,000-draw nulls per seed, then 200,000 draws under the
+pre-registered RNG 7000 + seed), both committed (`e62d3ea`) and both run by the orchestrator before these tables were
+written (`scratchpad/t080-panel/position_null_out.md`, `b2_reread_out.txt`).
+
+The position null (in? = the in-vivo NULL arm inside the position null's family-wise band; sd ratio against the
+pin's `null.draws_sd`, the offline null on the ALIGNED arm -- the NULL-arm denominator is in 2.12 (a)):
+
+| seed | in-vivo NULL | classes / inconsistent | position 99 % band | position family-wise band | in? | sd position / pin draws_sd (ratio) | p (one-sided high) |
+|---|---|---|---|---|---|---|---|
+| 0 | 0.0816 | 256 / 0 | [0.0510, 0.1463] | [0.0442, 0.1633] | True | 0.0187 / 0.0162 (1.152) | 0.8105 |
+| 1 | 0.1174 | 256 / 0 | [0.0580, 0.1570] | [0.0512, 0.1706] | True | 0.0199 / 0.0170 (1.170) | 0.2343 |
+| 2 | 0.1054 | 256 / 0 | [0.0608, 0.1622] | [0.0507, 0.1723] | True | 0.0201 / 0.0174 (1.155) | 0.5260 |
+| 3 | 0.1531 | 256 / 0 | [0.0508, 0.1492] | [0.0407, 0.1627] | True | 0.0190 / 0.0169 (1.122) | 0.0030 |
+| 4 | 0.0956 | 256 / 0 | [0.0514, 0.1473] | [0.0445, 0.1541] | True | 0.0191 / 0.0167 (1.147) | 0.5467 |
+| 5 | 0.0990 | 256 / 0 | [0.0542, 0.1458] | [0.0441, 0.1559] | True | 0.0183 / 0.0163 (1.128) | 0.3750 |
+| 6 | 0.0973 | 256 / 0 | [0.0570, 0.1544] | [0.0436, 0.1779] | True | 0.0196 / 0.0172 (1.140) | 0.6378 |
+| 7 | 0.1126 | 256 / 0 | [0.0612, 0.1633] | [0.0476, 0.1803] | True | 0.0202 / 0.0180 (1.120) | 0.4373 |
+
+family-wise refusal rate of a per-seed 99 % band over 8 seeds, simulated from these nulls: 0.0633 (analytic 1 - 0.99^8 = 0.0773) -- the analytic rate assumes continuous draws; the discrete
+count ties below it. Seed 3 is the one seed outside its own per-seed band (p 0.0030) and inside the family-wise
+band, on the position null as on the exchangeable null.
+
+The pinned band's instability and the resolved (b2) (q_hi sd over 200 nulls; "refusing" = nulls on which the
+pinned family-wise clause refuses this seed; then the 200,000-draw band under the pre-registered RNG):
+
+| seed | in-vivo NULL | pinned fw band (2,000) | q_hi sd | refusing | fw band at 200,000 | inside | tail p | q95 at 200,000 / pinned |
+|---|---|---|---|---|---|---|---|---|
+| 0 | 0.0816 | [0.0442, 0.1463] | 0.0047 | 0/200 | [0.0476, 0.1531] | True | 0.82161 | 0.1224 / 0.1224 |
+| 1 | 0.1174 | [0.0512, 0.1604] | 0.0050 | 0/200 | [0.0512, 0.1638] | True | 0.20113 | 0.1331 / 0.1331 |
+| 2 | 0.1054 | [0.0608, 0.1655] | 0.0045 | 0/200 | [0.0574, 0.1689] | True | 0.53824 | 0.1385 / 0.1385 |
+| 3 | 0.1531 | [0.0475, 0.1593] | 0.0044 | 37/200 | [0.0508, 0.1593] | True | 0.00141 | 0.1288 / 0.1288 |
+| 4 | 0.0956 | [0.0445, 0.1507] | 0.0046 | 0/200 | [0.0479, 0.1575] | True | 0.55528 | 0.1267 / 0.1233 |
+| 5 | 0.0990 | [0.0508, 0.1492] | 0.0041 | 0/200 | [0.0441, 0.1525] | True | 0.35237 | 0.1220 / 0.1220 |
+| 6 | 0.0973 | [0.0537, 0.1544] | 0.0043 | 0/200 | [0.0503, 0.1611] | True | 0.64779 | 0.1309 / 0.1309 |
+| 7 | 0.1126 | [0.0646, 0.1701] | 0.0043 | 0/200 | [0.0578, 0.1735] | True | 0.43217 | 0.1429 / 0.1429 |
+
+Seeds on which the pinned 2,000-draw clause refuses for some null RNG seed: 1 of 8 (seed 3, 37 of 200). (b1) re-read
+at 200,000 draws: t +13.4164, FPR 0.0469, MET (pinned +13.5395). Nothing here is pinned; the pin stands as written
+(2.10 (h)); 2.12 (b) carries the reading and the rule.
