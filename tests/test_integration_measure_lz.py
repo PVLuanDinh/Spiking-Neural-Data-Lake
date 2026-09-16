@@ -156,3 +156,34 @@ def test_a_200k_character_sparse_string_parses_in_under_five_seconds():
         f"lz76_complexity on {COST_CHARS:,} characters at density {COST_DENSITY}: {out['s']:.3f} s "
         f"(bar {COST_BUDGET_S} s; c = {out['c']})"
     )
+
+
+def test_the_ported_20_seed_pci_marker_reaches_both_verdicts_and_names_its_absent_seeds():
+    """T081's PORT (2026-09-16, `evidence/t081-report-order.md` 2.6): the one capability
+    `reasoning/consciousness_probe.py` carried that nothing else did -- the PCI marker read as a
+    DISTRIBUTION over twenty fixed seeds -- now lives in `integration_measure.pci_marker_sweep`.
+    The incumbent's own two-sided property is what is checked here: the marker must reach BOTH
+    verdicts across the sweep, and the detail must NAME the seeds it read ABSENT on (a fraction
+    with no absent seeds named is a number nobody can re-derive).
+
+    Deterministic: the seeds are fixed, the networks are seeded from them, and the sweep takes no
+    RNG of its own -- two calls return the same pair.
+    """
+    n_seeds = len(IM.INTEGRATION_SEEDS)
+    assert IM.INTEGRATION_SEEDS == tuple(range(20))
+    frac, detail = IM.pci_marker_sweep()
+    assert 0.0 < frac < 1.0, (
+        f"the ported marker must be able to go BOTH ways across the seed sweep; got {frac:.0%} "
+        f"({detail})"
+    )
+    assert f"PRESENT on {round(frac * n_seeds)} of {n_seeds} seeds" in detail, detail
+    listed = detail.split("ABSENT on seeds [")[1].split("]")[0]
+    absent = [int(x) for x in listed.split(", ") if x]
+    assert absent and all(s in IM.INTEGRATION_SEEDS for s in absent), detail
+    # the marker is ABSENT somewhere, so the detail must say WHERE -- a fraction whose absent seeds
+    # are unnamed is a number nobody can re-derive
+    assert len(absent) == min(8, n_seeds - round(frac * n_seeds)), detail
+    # deterministic: the sweep is a pure function of its seeds (checked on a 3-seed subset so the
+    # test pays for one full sweep, not two)
+    sub = IM.INTEGRATION_SEEDS[:3]
+    assert IM.pci_marker_sweep(seeds=sub) == IM.pci_marker_sweep(seeds=sub)

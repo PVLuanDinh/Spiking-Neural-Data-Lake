@@ -97,6 +97,7 @@ hash()); zlib for the gzip cross-check compressor; deterministic; ASCII-only out
 
 import math
 import random
+import time
 import zlib
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
@@ -413,6 +414,60 @@ def silent_network(seed=0):
     return PerturbationalComplexity(coupling=0.0, noise=0.0, weight_mode="balanced", seed=seed)
 
 
+#: The seeds `pci_marker_sweep` walks. PORTED here 2026-09-16 from `reasoning/consciousness_probe.py`
+#: with the sweep itself (T081, `evidence/t081-report-order.md` 2.6). Fixed so the sweep is
+#: reproducible, PLURAL so the marker reports a distribution rather than whichever single seed
+#: happens to pass.
+INTEGRATION_SEEDS = tuple(range(20))
+
+
+# distinct-from: substrate/paired_contrast.py -- that module decides ONE pre-registered conjunct from
+# a seed-paired difference sample (paired t, sign-flip FPR, the degenerate rule); this returns a
+# per-seed PRESENT/ABSENT distribution of a four-clause PCI ordering over this module's own three
+# reference networks. No t, no bar, no seed pairing: the fraction IS the reported quantity, and its
+# two-sided assert is about the marker's discrimination, not about a hypothesis. Also read before
+# writing this and likewise distinct: substrate/chat_memory.py (a lake view), substrate/dormancy_gate.py
+# (the P3 reachability census), substrate/amdahl_gate.py::_probe_install (a patch-install counter) and
+# substrate/kernel_tick.py::_bench_kernel (a ticks/s host benchmark) -- none of the five sweeps a
+# marker over seeds, and none of them is a second implementation of this job.
+def pci_marker_sweep(seeds=INTEGRATION_SEEDS, trials=8):
+    """THE PCI MARKER as a DISTRIBUTION over `seeds` -- the one capability
+    `reasoning/consciousness_probe.py` carried that nothing else did, PORTED here at its retirement
+    (T081, 2026-09-16; `evidence/t081-report-order.md` 2.6 and fact 5; P2: the unique capability
+    moves FIRST, then the incumbent is deleted). `main()`'s own regime comparison sweeps seed 0;
+    this sweeps twenty.
+
+    Returns `(fraction_present, detail)` -- a DISTRIBUTION over `seeds`, never a boolean.
+
+    The rule is the incumbent's `probe_integration`, unchanged: per seed the marker is PRESENT iff
+    `(pci_i > 3 * pci_n) and (pci_i > 0.25) and (pci_n > pci_s) and (rate_n >= rate_i)` over
+    `integrated_network` / `independent_noise` / `silent_network` at `pci(trials=8)` and
+    `mean_firing_rate()`.
+
+    The incumbent's own reason for the plural sweep, kept because it IS the capability: the version
+    before it hardcoded `seed=0`, which is a seed that PASSES, while the marker reads ABSENT on
+    roughly half of a 20-seed sweep. Reporting one pinned passing seed out of a bimodal distribution
+    is not a measurement of the system, it is a measurement of the seed.
+    """
+    verdicts = []
+    for s in seeds:
+        pci_i, _ = integrated_network(seed=s).pci(trials=trials)
+        pci_n, _ = independent_noise(seed=s).pci(trials=trials)
+        pci_s, _ = silent_network(seed=s).pci(trials=trials)
+        rate_i = integrated_network(seed=s).mean_firing_rate()
+        rate_n = independent_noise(seed=s).mean_firing_rate()
+        verdicts.append(
+            (pci_i > 3 * pci_n) and (pci_i > 0.25) and (pci_n > pci_s) and (rate_n >= rate_i)
+        )
+    n_present = sum(verdicts)
+    frac = n_present / len(verdicts) if verdicts else 0.0
+    absent_seeds = [s for s, v in zip(seeds, verdicts) if not v]
+    return frac, (
+        f"PCI marker PRESENT on {n_present} of {len(verdicts)} seeds ({frac:.0%}); "
+        f"ABSENT on seeds {absent_seeds[:8]}{'...' if len(absent_seeds) > 8 else ''}"
+    )
+
+
 def main():
     trials = 8
     integ = integrated_network(seed=0)
@@ -561,6 +616,26 @@ def main():
     )
     # (7) spiking + determinism.
     assert deterministic, "same seed must reproduce an identical PCI"
+
+    # ---- (8) THE 20-SEED PCI MARKER, ported at T081 (2026-09-16) --------------------------------
+    # `reasoning/consciousness_probe.py` is RETIRED in the next commit (`evidence/t081-report-order.md`
+    # 2.6). Its ONE capability nothing else carried was this: the marker read as a DISTRIBUTION over
+    # twenty seeds rather than at the single seed the block above compares. It lands here WITH the
+    # incumbent's own two-sided assert, so the capability outlives the module (P2: port first, then
+    # delete). Run LAST because it is the expensive clause: every cheap ordering red above fires first.
+    t0_marker = time.perf_counter()
+    frac, marker_detail = pci_marker_sweep()
+    marker_s = time.perf_counter() - t0_marker
+    print("")
+    print(f"  20-seed PCI marker (ported from consciousness_probe, T081): {marker_detail}")
+    print(f"  the marker sweep cost {marker_s:.1f} s of this self-check")
+    # The incumbent's assert, VERBATIM. Its RED, run 2026-08-05 in its old home: pin the sweep to
+    # the single passing seed 0 -> frac 100% and this fires.
+    assert 0.0 < frac < 1.0, (
+        f"the integration marker must be able to go BOTH ways across the seed sweep; got {frac:.0%}. "
+        "All-present or all-absent means the marker has stopped discriminating and is no longer a "
+        "measurement -- delete it rather than re-thresholding it (F11)."
+    )
 
     print("")
     print(
