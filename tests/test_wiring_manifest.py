@@ -223,14 +223,20 @@ def test_artifact_is_tracked_and_loadable():
     # _perceive_real/_perceive_audio now acquire every frame through the contracts).
     # T060 added the executive task-set FiLM wire (film_out + brain.task_film_in + the
     # edge, declared by the consumer): +2 ports +1 edge.
-    assert (len(m.ports), len(m.edges)) == (36, 19), (
+    # T082 added the belief wire (recursive_tom.belief_out + brain.social_risk_in + the edge,
+    # declared by the PRODUCER -- the T082 record's 2.10 (d)(1)): +2 ports +1 edge. This premise
+    # was NOT updated in the registrant commit `af07f81`; the stacked battery on `9d6a33c` read
+    # (38, 20) against (36, 19) here and went RED on this one test (2026-09-16) -- the premise's
+    # own rule ("a count above the pin means a registrant landed without updating this premise")
+    # fired exactly as written, and this is the stacked fix.
+    assert (len(m.ports), len(m.edges)) == (38, 20), (
         "the artifact carries the patience wire + the interoceptive TRACT (relayed "
         "through thal_relay, with interoception_out's consumer) + the glia self-edge + the "
         "predictor port + the third-factor port + the workspace composite + the report "
         "channel and its brain consumer + the proprioceptive afferent lane + the efferent "
         "lane (action_out -> efferent_in) + the |LP| pair with its discharged surprise "
         "edge + the growth gate's lp_in consumer + the vision/audition event-frame lanes "
-        "+ the T060 executive FiLM wire (36 ports, 19 edges); a different census "
+        "+ the T060 executive FiLM wire + the T082 belief wire (38 ports, 20 edges); a different census "
         "means a registrant landed without updating this test's premise"
     )
     assert set(m.edges) == {
