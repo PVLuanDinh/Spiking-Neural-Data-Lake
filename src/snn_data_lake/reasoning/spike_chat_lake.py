@@ -1609,9 +1609,11 @@ class LakeChat:
         careful, which is the failure mode a merely-better-worded denial would be.
 
         WHAT WOULD DELETE THIS CLAUSE: a demonstration that the reply varies with the brain's
-        measured state in a way the ingested corpus cannot account for. The access half already
-        does this (two brains differing only in `_access_ema` produce different text, asserted
-        below). The clause covers the parts that do NOT vary -- the framing and the close -- and it
+        measured state in a way the ingested corpus cannot account for. The report channel already
+        does this (two brains differing only in what their workspace broadcasts produce different
+        text, asserted below; the earlier `_access_ema` demonstration went with the F11 marker on
+        2026-08-05 and its probe at T081, 2026-09-16 -- this sentence was corrected at T081's panel
+        fold). The clause covers the parts that do NOT vary -- the framing and the close -- and it
         should shrink as more of the reply becomes state-dependent rather than being kept forever.
         """
         # (a) THE REPORT CHANNEL. The SAME resolution `_attended()` performs, on the SAME object:
@@ -1644,8 +1646,14 @@ class LakeChat:
             licensed, refused, _dissociation, reading, _date, _symbols = row
             if reading is None:
                 continue
+            # THE SCOPE, by construction (T081 panel fold, 2026-09-16): `CONCLUSION[name][3]` is a
+            # static source literal -- a campaign's recorded reading -- never a read of THIS brain
+            # taken now, so the sentence says so; the one first-person read in this reply is the
+            # report-channel clause above.
             charged.append(
-                f"On {name.replace('_', ' ')} I read {reading}: {licensed}; and {refused}."
+                f"On {name.replace('_', ' ')} the conclusion protocol's row carries a reading of "
+                f"{reading} -- a recorded campaign number, not a read of me taken now: "
+                f"{licensed}; and {refused}."
             )
         conclusion_part = (
             " ".join(charged)
@@ -1832,7 +1840,10 @@ def demo():
         """The minimal duck-type of the brain this self-check needs: a host-assignable `workspace`
         slot (T081 -- the report channel reads THAT), plus the has-it-ticked gate and the seed
         earlier consumers read. Deliberately NOT a real Brain -- P4 forbids standing up a second
-        one, and the job here is to move exactly ONE input and watch the output move."""
+        one, and the job here is to move exactly ONE input and watch the output move. `_access`,
+        `_seed` and `_access_ema` are READ BY NOTHING in this module since T081 retired
+        `consciousness_probe` (2026-09-16); they are kept only as the real Brain's duck-type, and
+        the one input this self-check moves is `workspace`."""
 
         def __init__(self, ema):
             self._access = object()  # "this brain has a persisted workspace" gate
