@@ -64,8 +64,11 @@ about a MECHANISM, never a verdict about experience.
 """
 
 import copy
+import json
+import random
 import statistics
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
@@ -232,11 +235,184 @@ def t080_aligned_order(vis_labels, aud_labels, rng):
     return order
 
 
+def t080_arm_order(seed):
+    """2.2's arm order, ALTERNATING by seed parity -- even seeds ALIGNED first, odd seeds
+    NULL first -- then LAG 1, 2, 5 and SCRAMBLED PHASE. The brain's other state drifts across
+    arms; the binder does not (it is stateless between calls once taught), so the alternation
+    is what keeps that drift from being confounded with the arm."""
+    head = ("aligned", "null") if int(seed) % 2 == 0 else ("null", "aligned")
+    return list(head) + ["lag1", "lag2", "lag5", "scrambled"]
+
+
+def _t080_record_arm(b, n_ticks):
+    """One arm: `n_ticks` ticks of the live brain, one row each, 2.9 step 5's field list
+    exactly. The latents are lists of floats rounded to `T080_LATENT_PLACES` -- the
+    decomposition must STILL reproduce the handle at that rounding, which the dry run
+    counts rather than assumes."""
+    rows = []
+    for t in range(n_ticks):
+        kind = b.tick()
+        vis, aud = b._real_percept, b._audio_percept
+        rows.append(
+            {
+                "t": t,
+                "kind": kind,
+                "awake": kind == "awake",
+                "digit": None if b._perceived_digit is None else int(b._perceived_digit),
+                "word": None if b._perceived_word is None else int(b._perceived_word),
+                "handle": b._xmodal_handle,
+                "superadditive": bool(getattr(b, "_superadditive", False)),
+                "vis": None if vis is None else [round(float(x), T080_LATENT_PLACES) for x in vis],
+                "aud": None if aud is None else [round(float(x), T080_LATENT_PLACES) for x in aud],
+                "vptr": int(b._real_ptr),
+                "aptr": int(b._audio_ptr),
+            }
+        )
+    return rows
+
+
 def t080_record_brain(seed, arms=None, n_ticks=None):
-    """STUB (2.9 step 2; the recorder lands at 2.9 step 5). A scratch brain under
-    `throwaway_home()`, the aligned pack installed at the stimulus, the warm-up to K, then
-    the arms of 2.2, rows returned."""
-    return None
+    """THE RECORDER (2.1, 2.2). A SCRATCH brain under `throwaway_home()` -- a fresh NORD_HOME
+    for the duration, so nothing this recorder does can reach the live lake -- built with
+    `make_brain(seed, persist=False)`.
+
+    THE STIMULUS MANIPULATION, and it is the only one: the shipped SHD pack is re-ordered so
+    that position i carries a word naming the digit of vision position i
+    (`t080_aligned_order`), `_audio_frames` / `_audio_labels` are replaced, and BOTH pointers
+    are set to `(T080_STREAM_OFFSET * seed) % 256`. Nothing inside the binder or the brain is
+    touched.
+
+    EVERY ARM'S PACK IS BUILT BEFORE ANY ARM RUNS, so the parity order of 2.2 cannot change
+    which frames an arm sees:
+      ALIGNED   the aligned pack as installed.
+      NULL      the aligned pack with its 256 positions permuted under
+                `random.Random(T080_ALIGN_RNG_BASE + seed)` -- the same frames, K already
+                taught, the pairing broken at the stimulus.
+      LAG d     the aligned pack with `_audio_ptr` set d positions behind `_real_ptr` at the
+                arm's start.
+      SCRAMBLED the aligned pack with every frame's 100 time bins permuted by ONE fixed
+                per-seed permutation from `default_rng(T080_SCRAMBLE_RNG_BASE + seed)`.
+
+    The warm-up ticks until `len(_xmodal_known) == T080_K` or `T080_WARMUP_MAX`; the taught
+    set is then FROZEN by the brain's own one-shot rule, so K is matched across every arm by
+    construction. The brain's `_xmodal` is returned under "binder" and is the ONLY thing that
+    outlives the brain -- `t080_seed` drops it once the seed's analysis is done.
+
+    `arms` and `n_ticks` are the twin's hooks ((p) records one ALIGNED arm at 100 ticks)."""
+    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.substrate.home import throwaway_home
+
+    seed = int(seed)
+    order_arms = t080_arm_order(seed) if arms is None else list(arms)
+    out = {"seed": seed, "arm_order": order_arms, "arms": {}, "timings": {}}
+    t0 = time.time()
+    with throwaway_home():
+        b = make_brain(seed=seed, persist=False)
+        out["timings"]["build_s"] = round(time.time() - t0, 3)
+        vis_labels = [int(x) for x in b._real_labels]
+        aud = b._audio_frames
+        aud_labels = [int(x) for x in b._audio_labels]
+        order = t080_aligned_order(
+            vis_labels, aud_labels, random.Random(T080_ALIGN_RNG_BASE + seed)
+        )
+        n_pos = len(order)
+        aligned_frames = aud[order]
+        aligned_labels = np.array([aud_labels[j] for j in order])
+        nrng = random.Random(T080_ALIGN_RNG_BASE + seed)
+        perm = list(range(n_pos))
+        nrng.shuffle(perm)
+        null_frames = aud[[order[p] for p in perm]]
+        null_labels = np.array([aud_labels[order[p]] for p in perm])
+        bins = np.random.default_rng(T080_SCRAMBLE_RNG_BASE + seed).permutation(
+            aligned_frames.shape[1]
+        )
+        packs = {
+            "aligned": (aligned_frames, aligned_labels),
+            "null": (null_frames, null_labels),
+            "lag1": (aligned_frames, aligned_labels),
+            "lag2": (aligned_frames, aligned_labels),
+            "lag5": (aligned_frames, aligned_labels),
+            "scrambled": (aligned_frames[:, bins, :], aligned_labels),
+        }
+        b._audio_frames, b._audio_labels = aligned_frames, aligned_labels
+        b._real_ptr = b._audio_ptr = (T080_STREAM_OFFSET * seed) % n_pos
+        out["offset"] = int(b._real_ptr)
+        out["positions"] = n_pos
+
+        tw = time.time()
+        warm = 0
+        while len(b._xmodal_known) < T080_K and warm < T080_WARMUP_MAX:
+            b.tick()
+            warm += 1
+        out["ticks_to_k"] = warm
+        out["k"] = len(b._xmodal_known)
+        out["taught"] = sorted(b._xmodal_known)
+        out["perception_acc"] = _t080_float_or_none(getattr(b, "_perception_acc", None))
+        out["audio_acc"] = _t080_float_or_none(getattr(b, "_audio_acc", None))
+        out["timings"]["warmup_s"] = round(time.time() - tw, 3)
+
+        out["arm_acc"] = {}
+        for name in order_arms:
+            frames, labels = packs[name]
+            b._audio_frames, b._audio_labels = frames, labels
+            if name.startswith("lag"):
+                b._audio_ptr = (int(b._real_ptr) - int(name[3:])) % n_pos
+            ta = time.time()
+            before = _t080_acc_counters(b)
+            n = T080_ARM_TICKS[name] if n_ticks is None else int(n_ticks)
+            out["arms"][name] = _t080_record_arm(b, n)
+            out["arm_acc"][name] = _t080_arm_accuracy(before, _t080_acc_counters(b))
+            out["timings"][f"{name}_s"] = round(time.time() - ta, 3)
+
+        out["taught_end"] = sorted(b._xmodal_known)
+        out["audio_acc_end"] = _t080_float_or_none(getattr(b, "_audio_acc", None))
+        out["perception_acc_end"] = _t080_float_or_none(getattr(b, "_perception_acc", None))
+        out["binder"] = b._xmodal
+    out["timings"]["total_s"] = round(time.time() - t0, 3)
+    return out
+
+
+def _t080_float_or_none(x):
+    """A brain accuracy that has not been computed yet reads None, and None is REPORTED as
+    None -- never silently folded to 0.0."""
+    return None if x is None else float(x)
+
+
+# distinct-from: cortex/prior_drift_harness.py::above_chance -- reads an arm's accuracy
+#   against the 1/K chance floor with a paired t and a bar. The two below compute NO
+#   statistic, take NO bar and decide nothing: they difference the brain's own cumulative
+#   hit/seen counters so a per-ARM accuracy exists to report at all. Read.
+# distinct-from: cortex/agency_monitor.py::_t079_arm_extras -- the per-arm REPORTED
+#   quantities of a DIFFERENT instrument (an action histogram and two Pearsons over joint
+#   channels). Same word "arm", different recording, different quantity. Read.
+# distinct-from: substrate/amdahl_gate.py::red_sham_neuter and
+#   substrate/immortal_retention.py::unlisted_reclaimers -- a sham-path timing control and a
+#   reclaimer census. Term overlap ("arm", "reads") only; neither touches a classifier. Read.
+def _t080_acc_counters(b):
+    """The brain's OWN classifier hit/seen counters. `_perception_acc` and `_audio_acc` are
+    CUMULATIVE over the brain's whole life (`hits / seen`, `cortex/brain.py::_perceive_audio`),
+    so an arm's accuracy is a DIFFERENCE of these counters, never the published ratio --
+    reading the ratio at an arm's end would report the warm-up and every earlier arm too."""
+    return {
+        "vis_hits": int(getattr(b, "_perc_hits", 0) or 0),
+        "vis_seen": int(getattr(b, "_perc_seen", 0) or 0),
+        "aud_hits": int(getattr(b, "_audio_hits", 0) or 0),
+        "aud_seen": int(getattr(b, "_audio_seen", 0) or 0),
+    }
+
+
+def _t080_arm_accuracy(before, after):
+    """2.3's REPORTED per-arm classifier accuracy. The SCRAMBLED arm's audio accuracy beside
+    ALIGNED's is what says whether the audio feature survives the loss of its spike phase;
+    ALIGNED's is the yield's ceiling."""
+    dv_s = after["vis_seen"] - before["vis_seen"]
+    da_s = after["aud_seen"] - before["aud_seen"]
+    return {
+        "vision_seen": dv_s,
+        "vision_acc": ((after["vis_hits"] - before["vis_hits"]) / dv_s) if dv_s else None,
+        "audio_seen": da_s,
+        "audio_acc": ((after["aud_hits"] - before["aud_hits"]) / da_s) if da_s else None,
+    }
 
 
 def _t080_is_scored(row):
@@ -697,7 +873,6 @@ def t080_constructed_pairs(binder, protos, n=T080_R2_PROBES, seed=1):
                 "t": t,
                 "kind": "awake",
                 "awake": True,
-                "scored": True,
                 "digit": None,
                 "word": None,
                 "handle": binder.bind(v, a)["handle"],
@@ -755,6 +930,638 @@ def t080_constructed_seeds(kind, seeds=T080_SEEDS, seed=0):
 
 
 # =============================================================================
+# 2.9 step 5: THE PER-SEED READING, the determinism precondition, the apparatus DRY RUN and
+# the campaign. Everything below touches a brain; everything above does not.
+# =============================================================================
+def _t080_arm_counts(rows):
+    """One arm's counts (2.2's "every recording also carries..."), all of them over the
+    SCORED ticks: `n`, `bound`, `false` (a handle that does not name the perceived digit),
+    `congruent` (the CLASSIFIERS' agreement, digit == word mod 10) and the `yield` (bound
+    over congruent -- the audio classifier's accuracy is its ceiling).
+
+    `awake_missing` is REPORTED beside them: 2.3 (r)'s second clause, "on every scored awake
+    tick both latents are present", is true BY THE DEFINITION of scored, so the quantity that
+    can actually say something about the apparatus is how many awake ticks carried no pair."""
+    scored = [r for r in rows if _t080_is_scored(r)]
+    awake = sum(1 for r in rows if r["awake"])
+    handled = [r for r in scored if r["handle"] is not None]
+    false_ = sum(1 for r in handled if r["digit"] is None or r["handle"] != f"obj{int(r['digit'])}")
+    congruent = [
+        r
+        for r in scored
+        if r["digit"] is not None and r["word"] is not None and r["digit"] == r["word"] % 10
+    ]
+    n = len(scored)
+    return {
+        "ticks": len(rows),
+        "awake": awake,
+        "n": n,
+        "awake_missing": awake - n,
+        "bound": len(handled),
+        "bound_frac": (len(handled) / n) if n else 0.0,
+        "false": false_,
+        "false_frac": (false_ / len(handled)) if handled else 0.0,
+        "congruent": len(congruent),
+        "congruent_frac": (len(congruent) / n) if n else 0.0,
+        "yield": (len(handled) / len(congruent)) if congruent else 0.0,
+        "superadditive": sum(1 for r in scored if r["superadditive"]),
+    }
+
+
+def _t080_refusals(reading):
+    """2.3 (r)'s named refusals for ONE seed: WHICH clause, WHICH arm, WHICH count.
+
+    (r) has three clauses. K taught within the cap, and the decomposition equal to the
+    recorded handle on EVERY scored tick of EVERY arm, are checked here. The middle clause --
+    both latents present on every SCORED tick -- is definitionally true (2.2 defines a scored
+    tick as an awake tick with both latents), so `awake_missing` is REPORTED per arm instead
+    of being dressed up as a refusal the pre-registration did not license."""
+    out = []
+    if reading["k"] != T080_K:
+        out.append(
+            f"seed {reading['seed']}: taught {reading['k']} of K={T080_K} objects in "
+            f"{reading['ticks_to_k']} ticks (cap {T080_WARMUP_MAX})"
+        )
+    for name in sorted(reading["arms"]):
+        arm = reading["arms"][name]
+        if arm["n"] == 0:
+            out.append(f"seed {reading['seed']} {name}: NO scored tick in {arm['ticks']}")
+        if arm["agree"]:
+            out.append(
+                f"seed {reading['seed']} {name}: the decomposition disagrees with the "
+                f"recorded handle on {arm['agree']} of {arm['n']} scored ticks"
+            )
+    return out
+
+
+def t080_seed(seed, arms=None, n_ticks=None, n_draws=T080_N_DRAWS):
+    """ONE seed's reading: record, decompose every arm through the brain's OWN binder, null
+    the ALIGNED arm offline, read the window off the lag arms, and drop the binder.
+
+    Returns the per-seed entry `t080_contrasts` consumes (`within`, `q95_null`, `q005_null`,
+    `q995_null`, `null_in_vivo`, `congruent_aligned`, `congruent_null`) with everything 2.3
+    REPORTS beside it."""
+    rec = t080_record_brain(seed, arms=arms, n_ticks=n_ticks)
+    binder = rec.pop("binder")
+    out = {k: rec[k] for k in ("seed", "arm_order", "timings", "offset", "positions")}
+    out.update({k: rec[k] for k in ("ticks_to_k", "k", "taught", "taught_end")})
+    out["perception_acc"] = rec["perception_acc_end"]
+    out["audio_acc"] = rec["audio_acc_end"]
+    out["arms"] = {}
+    t0 = time.time()
+    for name, rows in rec["arms"].items():
+        counts = _t080_arm_counts(rows)
+        recs = t080_recognitions(rows, binder)
+        counts["agree"] = recs["agree"]
+        counts["recs"] = recs["recs"]
+        out["arms"][name] = counts
+        counts["acc"] = rec["arm_acc"][name]
+    out["timings"]["decompose_s"] = round(time.time() - t0, 3)
+
+    aligned = out["arms"].get("aligned")
+    null = t080_null(aligned["recs"], seed, n_draws=n_draws) if aligned else t080_null([], seed, 0)
+    out["null"] = null
+    out["within"] = aligned["bound_frac"] if aligned else 0.0
+    out["q95_null"] = null["q95"]
+    out["q005_null"] = null["q005"]
+    out["q995_null"] = null["q995"]
+    out["null_in_vivo"] = out["arms"]["null"]["bound_frac"] if "null" in out["arms"] else 0.0
+    out["congruent_aligned"] = aligned["congruent_frac"] if aligned else 0.0
+    out["congruent_null"] = out["arms"]["null"]["congruent_frac"] if "null" in out["arms"] else 0.0
+    out["lag_rates"] = {
+        d: out["arms"][f"lag{d}"]["bound_frac"] for d in T080_LAGS if f"lag{d}" in out["arms"]
+    }
+    out["window"] = t080_window(out["lag_rates"], null["q95"]) if out["lag_rates"] else "none"
+    out["refusals"] = _t080_refusals(out)
+    del binder
+    return out
+
+
+def t080_determinism(seed=0, n_ticks=T080_DETERMINISM_TICKS):
+    """(p): two ALIGNED recordings of the same seed, at the same width, after identical
+    warm-ups, compared FIELD BY FIELD -- not a sample of fields and not a tolerance. A
+    nondeterminism anywhere in the recorder, the stimulus install or the brain is a REFUSAL
+    before any number is read, and the first differing (row, field) is named."""
+    a = t080_record_brain(seed, arms=("aligned",), n_ticks=n_ticks)
+    b = t080_record_brain(seed, arms=("aligned",), n_ticks=n_ticks)
+    a.pop("binder", None)
+    b.pop("binder", None)
+    ra, rb = a["arms"]["aligned"], b["arms"]["aligned"]
+    diff = None
+    if len(ra) != len(rb):
+        diff = f"row count {len(ra)} vs {len(rb)}"
+    for i, (x, y) in enumerate(zip(ra, rb)):
+        if diff:
+            break
+        if set(x) != set(y):
+            diff = f"row {i}: field sets differ ({sorted(set(x) ^ set(y))})"
+            break
+        for k in sorted(x):
+            if x[k] != y[k]:
+                diff = f"row {i} field {k}: {x[k]!r} vs {y[k]!r}"
+                break
+    warm_same = a["ticks_to_k"] == b["ticks_to_k"] and a["taught"] == b["taught"]
+    return {
+        "identical": diff is None and warm_same,
+        "first_diff": diff,
+        "rows": len(ra),
+        "twin_rows": len(rb),
+        "ticks_to_k": [a["ticks_to_k"], b["ticks_to_k"]],
+        "taught_equal": a["taught"] == b["taught"],
+        "seed": int(seed),
+    }
+
+
+def t080_stream_labels(seed, n_labels=T080_OFFSET_LABELS, max_ticks=260):
+    """The first `n_labels` REAL frame labels seed `s` walks with 2.2's offset applied. The
+    offset check is an APPARATUS precondition, so it reads the labels the brain actually
+    consumed rather than re-deriving them from the pack by arithmetic."""
+    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.substrate.home import throwaway_home
+
+    out = []
+    with throwaway_home():
+        b = make_brain(seed=int(seed), persist=False)
+        labels = b._real_labels
+        b._real_ptr = b._audio_ptr = (T080_STREAM_OFFSET * int(seed)) % len(labels)
+        prev = int(b._real_ptr)
+        for _ in range(max_ticks):
+            if len(out) >= n_labels:
+                break
+            b.tick()
+            ptr = int(b._real_ptr)
+            if ptr != prev:
+                out.append(int(labels[(ptr - 1) % len(labels)]))
+            prev = ptr
+    return out
+
+
+def t080_margin_sensitivity(rows, binder, margins=T080_MARGINS):
+    """2.8's REPORTED sensitivity of the binding rate to `recog_margin`, computed OFFLINE on
+    ONE decomposition: the margin-free twin gives (nearest prototype, coincidence) per
+    modality per tick, and each margin is then a re-threshold of those same numbers -- so the
+    sweep costs one pass, not three, and the three readings share their projections.
+
+    `rows` are the RECORDER's rows, never a finished decomposition: the sweep re-projects the
+    latents, and a decomposition has none.
+
+    ITS OWN POSITIVE CONTROL: at the binder's SHIPPED margin the re-threshold must reproduce
+    the default decomposition's bound count exactly, ON A NON-EMPTY recording. `n > 0` is part
+    of `control_ok` because the first build of this sweep was handed a decomposition instead
+    of rows, read 0 scored ticks, and its control passed on 0 == 0 -- a zero is a claim about
+    the instrument before it is a claim about the brain."""
+    free = t080_recognitions(rows, binder, recognize=_t080_mutated_scorer("ignore_margin")(binder))
+    shipped = t080_recognitions(rows, binder)
+    shipped_bound = sum(1 for r in shipped["recs"] if r["bound"])
+    sv = sorted(r["s_v"] for r in free["recs"])
+    sa = sorted(r["s_a"] for r in free["recs"])
+    out = {
+        "n": free["n"],
+        "shipped_margin": float(binder.recog_margin),
+        "margins": {},
+        # WHY the sweep can be flat, in its own numbers rather than in a sentence: if the
+        # WORST coincidence on the recording already clears the widest margin tested, then
+        # `recog_margin` refuses nothing in vivo and the handle is decided entirely by
+        # whether the two nearest-prototype winners agree.
+        "coincidence": {
+            "vision": _t080_spread(sv),
+            "audio": _t080_spread(sa),
+        },
+        "top_agree": sum(
+            1 for r in free["recs"] if r["obj_v"] is not None and r["obj_v"] == r["obj_a"]
+        ),
+    }
+    for m in margins:
+        bound = sum(
+            1
+            for r in free["recs"]
+            if r["s_v"] >= m
+            and r["s_a"] >= m
+            and r["obj_v"] is not None
+            and r["obj_v"] == r["obj_a"]
+        )
+        out["margins"][f"{m:g}"] = {
+            "bound": bound,
+            "frac": (bound / free["n"]) if free["n"] else 0.0,
+            "sub_vision": sum(1 for x in sv if x < m),
+            "sub_audio": sum(1 for x in sa if x < m),
+        }
+    key = f"{float(binder.recog_margin):g}"
+    out["shipped_bound"] = shipped_bound
+    out["control_ok"] = bool(
+        free["n"] > 0 and key in out["margins"] and out["margins"][key]["bound"] == shipped_bound
+    )
+    return out
+
+
+def _t080_spread(sorted_values):
+    """min / median / max of an already-sorted sample, or Nones when it is empty. Reported
+    beside the margin sweep so a FLAT sweep is explained by the data rather than argued."""
+    if not sorted_values:
+        return {"min": None, "median": None, "max": None, "n": 0}
+    return {
+        "min": sorted_values[0],
+        "median": statistics.median(sorted_values),
+        "max": sorted_values[-1],
+        "n": len(sorted_values),
+    }
+
+
+def t080_q95_sd(recs, repeats=T080_Q95_REPEATS, n_draws=T080_N_DRAWS, base=T080_Q95_SD_BASE):
+    """2.3's Monte-Carlo sd of Q95_null: `repeats` INDEPENDENT `n_draws`-draw nulls of the
+    SAME recording, whose spread IS the margin's sampling noise. COMPUTED, not promised."""
+    vals = [float(t080_null(recs, base + i, n_draws=n_draws)["q95"]) for i in range(repeats)]
+    return {
+        "q95": vals,
+        "mean": statistics.mean(vals),
+        "sd": statistics.stdev(vals) if len(set(vals)) > 1 else 0.0,
+        "min": min(vals),
+        "max": max(vals),
+        "repeats": repeats,
+        "n_draws": n_draws,
+    }
+
+
+def _t080_head():
+    """The tree's HEAD, for the pin. Unavailable (no git, a tarball) is recorded as such."""
+    import subprocess
+
+    try:
+        r = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=20)
+        return r.stdout.strip() if r.returncode == 0 else f"unavailable (rc {r.returncode})"
+    except Exception as e:  # noqa: BLE001 -- a pin field, never a control-flow decision
+        return f"unavailable ({type(e).__name__})"
+
+
+# distinct-from: cortex/attention_schema.py -- its `g4_rule` is a BRANCH RULE over per-seed
+#   decodes; this computes nothing at all. Read.
+# distinct-from: cortex/metacognitive_monitor.py -- `_experiment` RUNS a three-condition
+#   comparison; this formats one already-computed arm. Read.
+# distinct-from: cortex/autotelic_goals.py -- `_random_reach_rate` is a CHANCE BASELINE under
+#   a random policy; no baseline, no policy and no rng here. Read.
+# distinct-from: substrate/efferent_boundary.py -- `intended_deltas` PARSES an action token
+#   into per-joint degrees; this parses nothing. Read.
+# distinct-from: cortex/agency_monitor.py -- its `_t079_arm_extras` computes an action
+#   histogram and two Pearsons for a DIFFERENT instrument's arms. This is a printf, and it
+#   exists so the dry run and the campaign cannot drift into two report formats. Read.
+def _t080_arm_line(name, arm):
+    """One ASCII line per arm, the same shape in the dry run and the campaign."""
+    acc = arm.get("acc") or {}
+    va, aa = acc.get("vision_acc"), acc.get("audio_acc")
+    return (
+        f"  {name:<10} ticks {arm['ticks']:<5} awake {arm['awake']:<5} scored {arm['n']:<5} "
+        f"(missing {arm['awake_missing']:<4}) bound {arm['bound']:<5} = {arm['bound_frac']:.4f} "
+        f"| false {arm['false']:<4} ({arm['false_frac']:.3f}) congruent {arm['congruent']:<5} "
+        f"({arm['congruent_frac']:.4f}) yield {arm['yield']:.4f} super {arm['superadditive']:<5} "
+        f"agree_fail {arm['agree']} | vision acc "
+        f"{'n/a' if va is None else format(va, '.4f')} audio acc "
+        f"{'n/a' if aa is None else format(aa, '.4f')} (audio seen {acc.get('audio_seen')})"
+    )
+
+
+def _t080_seed_block(r, out=print):
+    """Everything 2.3 REPORTS for one seed, printed."""
+    out(
+        f"seed {r['seed']}: K {r['k']}/{T080_K} in {r['ticks_to_k']} ticks "
+        f"(offset {r['offset']} of {r['positions']}); taught {r['taught']}; "
+        f"vision acc {r['perception_acc']} audio acc {r['audio_acc']}; "
+        f"arm order {r['arm_order']}"
+    )
+    for name in r["arm_order"]:
+        if name in r["arms"]:
+            out(_t080_arm_line(name, r["arms"][name]))
+    n = r["null"]
+    out(
+        f"  offline membership-matched null on ALIGNED ({n['n']} ticks x {n['n_draws']} draws): "
+        f"mean {n['mean']:.4f} q95 {n['q95']:.4f} band [{n['q005']:.4f}, {n['q995']:.4f}] "
+        f"sd {n['draws_sd']:.4f} expected(product of marginals) {n['expected']:.4f} "
+        f"multiset_ok {n['multiset_ok']}"
+    )
+    out(
+        f"  within {r['within']:.4f} - q95 {r['q95_null']:.4f} = {r['within'] - r['q95_null']:+.4f}"
+        f" | NULL IN VIVO {r['null_in_vivo']:.4f} in band {r['q005_null'] <= r['null_in_vivo'] <= r['q995_null']}"
+        f" | congruent ALIGNED {r['congruent_aligned']:.4f} - NULL {r['congruent_null']:.4f} = "
+        f"{r['congruent_aligned'] - r['congruent_null']:+.4f}"
+    )
+    out(
+        f"  lag rates { {d: round(v, 4) for d, v in r['lag_rates'].items()} } vs margin "
+        f"{r['q95_null']:.4f} -> window {r['window']}"
+    )
+    for why in r["refusals"]:
+        out(f"  (r) REFUSAL: {why}")
+
+
+def run_t080_dry_run(out_path=T080_DRY_RUN_OUT, seed=0):
+    """2.9 step 5's APPARATUS dry run: ONE seed at the CAMPAIGN's widths, and NOT ONE barred
+    conjunct -- one seed cannot carry a paired t, so every (g0)/(b1) number here is printed
+    as a single seed's difference with "n/a" where the t would go.
+
+    What it DOES read, all of it reported in 3.0 before the campaign:
+      * the STREAM-OFFSET precondition: seeds 0 and 1 must walk different frames;
+      * (p)'s determinism twin: two 100-tick ALIGNED recordings after identical warm-ups,
+        compared field by field;
+      * the six arms at their campaign widths, with the false-binding count, the congruence,
+        the yield and the scrambled-phase arm's audio accuracy beside ALIGNED's;
+      * the DECOMPOSITION's agreement with the recorded handle per arm -- the rounding of
+        the latents to 6 places must not move a single sign, and the count says so;
+      * the margin sensitivity at 0.10 / 0.15 / 0.20 with its own positive control;
+      * the Monte-Carlo sd of Q95 over 12 independent 2,000-draw nulls;
+      * the cost, re-measured on the BUILT apparatus (2.8 carried 55 ms from 1.4's probe).
+
+    Writes its JSON to `out_path` and NOTHING under tools/: the pin is the campaign's."""
+    out_path = Path(out_path)
+    if "tools" in out_path.parts:
+        print(f"REFUSED: the dry run never writes under tools/ ({out_path})", flush=True)
+        return 2
+    t0 = time.time()
+    print("=" * 78, flush=True)
+    print(
+        f"T080 DRY RUN -- one seed ({seed}) at the campaign widths, NO barred conjunct",
+        flush=True,
+    )
+    print("=" * 78, flush=True)
+
+    labels0, labels1 = t080_stream_labels(0), t080_stream_labels(1)
+    differ = bool(labels0) and labels0 != labels1
+    first_diff = next((i for i, (x, y) in enumerate(zip(labels0, labels1)) if x != y), None)
+    print(
+        f"stream offset ({T080_STREAM_OFFSET} x seed, BOTH pointers): "
+        f"seed0 {labels0[:12]} | seed1 {labels1[:12]} | differ={differ} "
+        f"first_diff_at={first_diff} (n {len(labels0)}/{len(labels1)})",
+        flush=True,
+    )
+    if not differ:
+        print("REFUSED at the apparatus: the per-seed offset does not vary the frames", flush=True)
+        return 2
+
+    det = t080_determinism(seed)
+    print(
+        f"(p) determinism twin: identical={det['identical']} on {det['rows']} ALIGNED rows "
+        f"(ticks_to_k {det['ticks_to_k']}, taught_equal {det['taught_equal']}, "
+        f"first_diff {det['first_diff']})",
+        flush=True,
+    )
+
+    t_rec = time.time()
+    rec = t080_record_brain(seed)
+    binder = rec.pop("binder")
+    ticks = sum(len(v) for v in rec["arms"].values()) + rec["ticks_to_k"]
+    ms_per_tick = (time.time() - t_rec) * 1000.0 / max(ticks, 1)
+    reading = {k: rec[k] for k in ("seed", "arm_order", "timings", "offset", "positions")}
+    reading.update({k: rec[k] for k in ("ticks_to_k", "k", "taught", "taught_end")})
+    reading["perception_acc"] = rec["perception_acc_end"]
+    reading["audio_acc"] = rec["audio_acc_end"]
+    reading["arms"] = {}
+    for name, rows in rec["arms"].items():
+        counts = _t080_arm_counts(rows)
+        recs = t080_recognitions(rows, binder)
+        counts["agree"] = recs["agree"]
+        counts["recs"] = recs["recs"]
+        counts["acc"] = rec["arm_acc"][name]
+        reading["arms"][name] = counts
+    aligned = reading["arms"]["aligned"]
+    null = t080_null(aligned["recs"], seed)
+    reading["null"] = null
+    reading["within"] = aligned["bound_frac"]
+    reading["q95_null"] = null["q95"]
+    reading["q005_null"] = null["q005"]
+    reading["q995_null"] = null["q995"]
+    reading["null_in_vivo"] = reading["arms"]["null"]["bound_frac"]
+    reading["congruent_aligned"] = aligned["congruent_frac"]
+    reading["congruent_null"] = reading["arms"]["null"]["congruent_frac"]
+    reading["lag_rates"] = {d: reading["arms"][f"lag{d}"]["bound_frac"] for d in T080_LAGS}
+    reading["window"] = t080_window(reading["lag_rates"], null["q95"])
+    reading["refusals"] = _t080_refusals(reading)
+
+    print("-" * 78, flush=True)
+    print(
+        f"cost: {ms_per_tick:.1f} ms/tick measured on the BUILT apparatus over {ticks} ticks "
+        f"(2.8 carried 55 ms from 1.4's probe) -> campaign estimate "
+        f"{ms_per_tick * ticks * len(T080_SEEDS) / 1000.0 / 60.0:.1f} min for "
+        f"{len(T080_SEEDS)} seeds x {ticks} ticks; timings {rec['timings']}",
+        flush=True,
+    )
+    print("-" * 78, flush=True)
+    _t080_seed_block(reading)
+    total_agree = sum(a["agree"] for a in reading["arms"].values())
+    total_scored = sum(a["n"] for a in reading["arms"].values())
+    print(
+        f"  DECOMPOSITION vs the recorded handle at {T080_LATENT_PLACES}-place rounding: "
+        f"{total_scored - total_agree}/{total_scored} reproduce, {total_agree} disagree",
+        flush=True,
+    )
+
+    print("-" * 78, flush=True)
+    ms = t080_margin_sensitivity(rec["arms"]["aligned"], binder)
+    print(
+        f"margin sensitivity on the ALIGNED arm ({ms['n']} scored ticks, shipped margin "
+        f"{ms['shipped_margin']}; control_ok {ms['control_ok']} -- the shipped margin's "
+        f"re-threshold reproduces the decomposition's {ms['shipped_bound']} bound ticks):",
+        flush=True,
+    )
+    for m, v in ms["margins"].items():
+        print(
+            f"  recog_margin {m:<6} bound {v['bound']:<5} = {v['frac']:.4f} "
+            f"(sub-margin ticks: vision {v['sub_vision']}, audio {v['sub_audio']})",
+            flush=True,
+        )
+    cv, ca = ms["coincidence"]["vision"], ms["coincidence"]["audio"]
+    print(
+        f"  centred coincidence IN VIVO: vision min {cv['min']} median {cv['median']} max "
+        f"{cv['max']} | audio min {ca['min']} median {ca['median']} max {ca['max']}; "
+        f"nearest-prototype winners agree on {ms['top_agree']} of {ms['n']} scored ticks",
+        flush=True,
+    )
+
+    print("-" * 78, flush=True)
+    sd = t080_q95_sd(aligned["recs"])
+    print(
+        f"Q95 Monte-Carlo sd: {sd['repeats']} INDEPENDENT {sd['n_draws']}-draw nulls of the "
+        f"SAME ALIGNED recording -> mean {sd['mean']:.5f} sd {sd['sd']:.5f} "
+        f"min {sd['min']:.5f} max {sd['max']:.5f}",
+        flush=True,
+    )
+    print(f"  q95 draws: {[round(x, 5) for x in sd['q95']]}", flush=True)
+
+    print("-" * 78, flush=True)
+    print(
+        "NO barred conjunct is read here: (g0) and (b1) are paired t's over 8 seeds and one "
+        "seed cannot carry one. The single-seed differences above are printed with t = n/a.",
+        flush=True,
+    )
+    print(
+        f"  (g0) one seed: {reading['congruent_aligned'] - reading['congruent_null']:+.4f}  t: n/a",
+        flush=True,
+    )
+    print(f"  (b1) one seed: {reading['within'] - reading['q95_null']:+.4f}  t: n/a", flush=True)
+    print(
+        f"  (b2) one seed: NULL IN VIVO {reading['null_in_vivo']:.4f} in "
+        f"[{reading['q005_null']:.4f}, {reading['q995_null']:.4f}] -> "
+        f"{reading['q005_null'] <= reading['null_in_vivo'] <= reading['q995_null']}",
+        flush=True,
+    )
+
+    report = {
+        "row": "T080 dry run",
+        "head": _t080_head(),
+        "seed": int(seed),
+        "ms_per_tick": ms_per_tick,
+        "ticks": ticks,
+        "stream": {"seed0": labels0, "seed1": labels1, "differ": differ, "first_diff": first_diff},
+        "determinism": det,
+        "reading": reading,
+        "decomposition": {"scored": total_scored, "disagree": total_agree},
+        "margin_sensitivity": ms,
+        "q95_sd": sd,
+        "reds": t080_reds(),
+        "constants": _t080_constants(),
+        "elapsed_s": round(time.time() - t0, 1),
+    }
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(report, indent=1, default=str), encoding="utf-8")
+    print("-" * 78, flush=True)
+    print(
+        f"dry run written to {out_path} in {time.time() - t0:.0f} s; nothing under tools/",
+        flush=True,
+    )
+    return 0
+
+
+def _t080_constants():
+    """Every declared constant of 2.8, pinned beside the reading it produced."""
+    return {
+        "K": T080_K,
+        "warmup_max": T080_WARMUP_MAX,
+        "n_ticks": T080_N_TICKS,
+        "lag_ticks": T080_LAG_TICKS,
+        "lags": list(T080_LAGS),
+        "scramble_ticks": T080_SCRAMBLE_TICKS,
+        "stream_offset": T080_STREAM_OFFSET,
+        "n_draws": T080_N_DRAWS,
+        "seeds": list(T080_SEEDS),
+        "band": list(T080_BAND),
+        "bar": T080_BAR,
+        "margins": list(T080_MARGINS),
+        "latent_places": T080_LATENT_PLACES,
+        "align_rng_base": T080_ALIGN_RNG_BASE,
+        "null_rng_base": T080_NULL_RNG_BASE,
+        "scramble_rng_base": T080_SCRAMBLE_RNG_BASE,
+    }
+
+
+# distinct-from: cortex/agency_monitor.py::run_t079_campaign and
+#   cortex/attention_schema.py::run_t078_campaign -- the PATTERN this follows (record, read,
+#   contrast, pin ONCE) over a different instrument, different arms and a different pin.
+#   Read; no state, no pin and no statistic is shared beyond `substrate/paired_contrast`.
+def run_t080_campaign(seeds=T080_SEEDS, pin=T080_PIN):
+    """The campaign (2.2-2.3): record, decompose, null, contrast, pin ONCE. Returns an exit
+    code.
+
+    ORDER IS 2.3's, and it is the order the verdict is DECIDED in:
+      (p)  DETERMINISM  two ALIGNED seed-0 recordings identical field by field, else REFUSED
+                        -- nothing is read
+      (r)  READABLE     K taught within the cap on every seed, and the decomposition equal to
+                        the recorded handle on EVERY scored tick of EVERY arm, else REFUSED
+                        with the seed and the arm named
+      (g0) THE STREAM CARRIES WITHIN-WINDOW STRUCTURE  the CLASSIFIERS' congruence clears the
+                        bar ALIGNED over NULL, else REFUSED ("the alignment did not reach the
+                        brain"), never a STOP
+      (b1) (b2)         the licensed sentence at the derived margin, and the two nulls'
+                        agreement
+    A REFUSAL is a finding about the apparatus or the instrument; a NOT MET is a finding about
+    this binder on this stimulus. They are never merged."""
+    pin = Path(pin)
+    if pin.exists():
+        print(f"REFUSED: {pin} exists -- the pin is written once", flush=True)
+        return 2
+    t0 = time.time()
+    print("=" * 78, flush=True)
+    print(f"T080 CAMPAIGN -- seeds {list(seeds)}, six arms, the binder's own report", flush=True)
+    print("=" * 78, flush=True)
+
+    labels0, labels1 = t080_stream_labels(0), t080_stream_labels(1)
+    if not labels0 or labels0 == labels1:
+        print(
+            f"REFUSED at the apparatus: the per-seed stream offset does not vary the frames "
+            f"(seed 0 {labels0[:10]} vs seed 1 {labels1[:10]})",
+            flush=True,
+        )
+        return 2
+    det = t080_determinism(seeds[0] if seeds else 0)
+    print(
+        f"(p) determinism: identical={det['identical']} on {det['rows']} ALIGNED rows "
+        f"(first_diff {det['first_diff']})",
+        flush=True,
+    )
+    if not det["identical"]:
+        print("REFUSED: two identical-seed recordings differ -- no reading is taken", flush=True)
+        return 2
+
+    per_seed, refusals = [], []
+    for s in seeds:
+        r = t080_seed(s)
+        per_seed.append(r)
+        refusals.extend(r["refusals"])
+        print("-" * 78, flush=True)
+        _t080_seed_block(r)
+
+    got = t080_contrasts(per_seed)
+    verdict = t080_verdict(got, refusals)
+    print("=" * 78, flush=True)
+    for why in refusals:
+        print(f"  (r) REFUSAL: {why}", flush=True)
+    for key in ("g0", "b1"):
+        c = got[key]
+        print(
+            f"  {c.name}: diffs {[round(d, 4) for d in c.diffs]} t={c.t:.4f} FPR={c.fpr} "
+            f"degenerate={c.degenerate} met={c.met}",
+            flush=True,
+        )
+    print(f"  (b2) the two nulls agree: {got['b2']}", flush=True)
+    print(f"  REPORTED windows per seed: {[r['window'] for r in per_seed]}", flush=True)
+    print(
+        f"  REPORTED scrambled-phase bound fraction: "
+        f"{[round(r['arms']['scrambled']['bound_frac'], 4) for r in per_seed]}",
+        flush=True,
+    )
+    print(f"T080 VERDICT: {verdict}", flush=True)
+
+    out = {
+        "row": "T080",
+        "head": _t080_head(),
+        "seeds": list(seeds),
+        "constants": _t080_constants(),
+        "reds": t080_reds(),
+        "determinism": det,
+        "stream_labels": {"seed0": labels0, "seed1": labels1},
+        # EVERY PER-TICK INPUT OF EVERY BARRED CONJUNCT: the DECOMPOSITION's own columns
+        # (obj_v, obj_a, the two coincidences, bound, the recorded handle, the two classifier
+        # labels) for every scored tick of every arm of every seed, so (g0), (b1) and (b2)
+        # re-derive offline from this file alone by replaying t080_null / t080_contrasts.
+        # The raw LATENTS are deliberately NOT pinned: 192 floats per tick x ~1,200 scored
+        # ticks x 8 seeds is a 3.7 M-float artifact, and no conjunct reads them -- the
+        # decomposition that does is what is recorded. Stated, not silently omitted.
+        "rows_omitted": (
+            "raw vis/aud latents (64 + 128 floats per tick); the decomposition's per-tick "
+            "columns are pinned instead and are what every conjunct reads"
+        ),
+        "per_seed": per_seed,
+        "contrasts": {
+            "g0": got["g0"]._asdict(),
+            "b1": got["b1"]._asdict(),
+            "b2": got["b2"],
+        },
+        "refusals": refusals,
+        "verdict": verdict,
+        "elapsed_s": round(time.time() - t0, 1),
+    }
+    pin.parent.mkdir(parents=True, exist_ok=True)
+    pin.write_text(json.dumps(out, indent=1, default=str), encoding="utf-8")
+    print(f"pinned {pin} in {time.time() - t0:.0f} s", flush=True)
+    return 0 if verdict != "REFUSED" else 2
+
+
+# =============================================================================
 # The self-check line (2.9 step 2: main() prints the six booleans and EXITS NON-ZERO while
 # any is False, so the gate carries the red until 2.9 step 4).
 # =============================================================================
@@ -764,10 +1571,30 @@ def _t080_reds_line(reds, out=print):
         out(f"  {name}: {str(reds[name]):5s}  {T080_RED_LINES[name]}")
 
 
+# distinct-from: reasoning/spike_chat_lake.py::_wants_repl -- decides whether `__main__` is an
+#   interactive REPL or the self-check for THAT module. This one has no REPL and always runs
+#   its reds; the two flags below only ADD the brain-touching entry points. Read.
+# distinct-from: substrate/brain_telemetry.py::_main and substrate/home.py's self-check --
+#   each module's own `__main__` block, which is this tree's convention (run_selfchecks.py
+#   executes exactly that block per module and scores the exit status), not a second
+#   dispatcher. Read; nothing here runs another module's self-check.
+# distinct-from: substrate/selfcheck_cache.py::closure_key and brain_atlas.py::region_of --
+#   a cache key over the MODULES table and a module -> region lookup. Term overlap ("module",
+#   "main") only; neither runs anything. Read.
 def main(argv=None):
-    """The module's self-check. Runs the six reds on their CONSTRUCTED inputs: no brain, no
-    lake, no network. Returns 0 only when all six fire."""
+    """The module's self-check, plus 2.9's two brain-touching entry points.
+
+    BOTH of those run under `throwaway_home()` INSIDE their recorders, every brain is
+    `persist=False`, and NEITHER is reachable from the gate's bare `python -m` invocation --
+    which runs the six reds on constructed inputs and touches no brain, no lake and no
+    network."""
     argv = list(sys.argv[1:] if argv is None else argv)
+    if "--t080-campaign" in argv:  # 2.9 step 6: the campaign, pinned ONCE
+        return run_t080_campaign()
+    if "--t080-dry-run" in argv:  # 2.9 step 5: the apparatus dry run, NO barred conjunct
+        i = argv.index("--t080-dry-run")
+        path = argv[i + 1] if i + 1 < len(argv) and not argv[i + 1].startswith("-") else None
+        return run_t080_dry_run(T080_DRY_RUN_OUT if path is None else path)
     print("=" * 78)
     print("T080 -- the temporal-binding instrument (specs/022 [US4], C5 row temporal_binding)")
     print("=" * 78)
