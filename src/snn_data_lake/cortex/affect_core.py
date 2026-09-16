@@ -1,16 +1,24 @@
 """
-affect_core -- dimensional (valence, arousal) -> CATEGORICAL emotion, affective CONTAGION,
-and SECOND-ORDER theory of mind.  Deterministic.
+affect_core -- dimensional (valence, arousal) -> CATEGORICAL emotion and affective CONTAGION.
+Deterministic.
+
+T082 RETIREMENT (2026-09-16, specs/022 evidence/t082-social-cognition.md 2.1): this module also
+carried `SecondOrderToM`, a WHERE-only second-order belief tracker, and it is DELETED here with
+its ice-cream-van self-check section. It was one of THREE trackers the same dialogue statement
+fed in `Brain._tom_update`, and the chat, the state key and the telemetry each read a different
+one, so one turn had three answers (the row's fact 1). `cortex/recursive_tom.RecursiveToM` under
+the symmetric feed generalises it (N agents, depth k, content beyond location), and red R5
+measures the equivalence on 200 constructed witness scripts before the deletion -- 1200/1200
+ordered pairs identical to this class, and `recursive_tom.t082_second_order_reference` (which
+survives, as R5's control) identical to it on the same 1200. P2: exactly one mechanism survives.
 
 Where the repo stood (honest baseline this module deepens):
   * affect was ONE 1-D approach/avoid valence scalar (basal_ganglia/valence_stdp.ValenceLearner,
     cortex/self_model valence axis) plus an |rpe| / threat arousal PROXY -- no discrete emotions.
-  * theory of mind was FIRST-ORDER, WHERE-only (cortex/theory_of_mind.TheoryOfMind: one belief
-    population per agent that can lag the world -> a first-order false belief).
-  * empathy, emotion-recognition, pragmatics, and SECOND-ORDER ToM were ABSENT.
+  * empathy and emotion-recognition were ABSENT.
 
-This module adds four faculties on top of that substrate, reusing the repo's spiking primitives
-(cortex/lif_neuron.LIFNeuron and cortex/theory_of_mind.BeliefPopulation) rather than reinventing:
+This module adds three faculties on top of that substrate, reusing the repo's spiking primitives
+(cortex/lif_neuron.LIFNeuron) rather than reinventing:
 
   (a) CATEGORICAL EMOTION from the 2-D core.  Russell's affect CIRCUMPLEX (Russell 1980,
       "A circumplex model of affect", JPSP 39:1161-1178) lays discrete emotions out as anchors on
@@ -33,21 +41,12 @@ This module adds four faculties on top of that substrate, reusing the repo's spi
       gradient.  Repeated exposure converges own affect onto the other's and can FLIP the agent's
       own categorical emotion (a calm agent next to a terrified one drifts toward fear).
 
-  (d) SECOND-ORDER ToM (WHERE-only).  SecondOrderToM tracks "what A believes B believes" about an
-      object's location as a NESTED belief population -- the first-order idea extended one level.
-      belief2[(A,B)] updates only when A witnesses B observe; when A does not, A's model of B's
-      belief goes STALE -> a SECOND-ORDER false belief.  It resolves the nested (ice-cream-van,
-      Perner & Wimmer 1985) task: John thinks Mary thinks the van is at the park, though Mary has
-      since learned it moved -- a false belief John holds ABOUT Mary's belief, distinct from both
-      Mary's actual (first-order) belief and the world.
-
-HONEST FRAMING.  This is a dimensional->categorical MAPPING plus nested-belief BOOKKEEPING. The
-anchors are a structural prior (Russell's circumplex), not learned; classification is a spiking
-nearest-prototype readout; contagion is a local dynamical pull; the nested ToM is stale-vs-fresh
-population persistence.  It is NOT felt emotion: nothing here experiences fear, anger, or empathy,
-and it makes no claim of phenomenal affect.  It models THAT affect sorts into categories, that an
-agent's affect can be pulled by another's, and that a belief can be held about a belief -- not
-WHAT any of that is like.  Toy scenarios, near-tabular readouts.
+HONEST FRAMING.  This is a dimensional->categorical MAPPING.  The anchors are a structural prior
+(Russell's circumplex), not learned; classification is a spiking nearest-prototype readout;
+contagion is a local dynamical pull.  It is NOT felt emotion: nothing here experiences fear,
+anger, or empathy, and it makes no claim of phenomenal affect.  It models THAT affect sorts into
+categories and that an agent's affect can be pulled by another's -- not WHAT any of that is like.
+Toy scenarios, near-tabular readouts.
 
 P6 -- MEASURED NULL, 2026-08-05, recorded because it is the result rather than the absence of one.
 This module was examined for a faculty-to-faculty read in the same pass that wired
@@ -81,7 +80,6 @@ import math
 import random
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
-from snn_data_lake.cortex.theory_of_mind import BeliefPopulation
 
 # Russell-circumplex prototype anchors as (name, angle_deg). The affect circle is centred on
 # neutral (valence 0, arousal 0.5); an anchor at angle t has valence = cos(t), arousal = 0.5 +
@@ -207,64 +205,9 @@ class AffectCore:
         return (self.own_v, self.own_a)
 
 
-class SecondOrderToM:
-    """SECOND-ORDER, WHERE-only theory of mind: track what agent A believes agent B believes about
-    an object's location, as a NESTED belief population.
-
-    Reuses cortex.theory_of_mind.BeliefPopulation (spiking population code + LIF winner-take-all
-    readout) for every belief, at both levels. observe(location, observers) updates the world, each
-    PRESENT agent's first-order belief, AND -- for every ordered pair of present agents (x, y) -- x's
-    model of y's belief (x witnessed y observe). Agents/pairs not present are untouched, so their
-    belief goes STALE relative to the world: a first- or SECOND-order FALSE belief."""
-
-    def __init__(self, n_locations=4, seed=0):
-        self.n_locations = n_locations
-        self.seed = seed
-        self.world = None
-        self.belief = {}  # agent -> BeliefPopulation (first-order: what agent believes)
-        self.belief2 = {}  # (x, y) -> BeliefPopulation (second-order: what x believes y believes)
-
-    def _b(self, agent):
-        if agent not in self.belief:
-            self.belief[agent] = BeliefPopulation(self.n_locations, seed=self.seed)
-        return self.belief[agent]
-
-    def _b2(self, x, y):
-        if (x, y) not in self.belief2:
-            self.belief2[(x, y)] = BeliefPopulation(self.n_locations, seed=self.seed)
-        return self.belief2[(x, y)]
-
-    def observe(self, location, observers):
-        """The object is placed/seen at `location`. Update the world; every present agent's first-
-        order belief; and, for every ordered pair of present agents, the first agent's model of the
-        second agent's belief (each present agent witnesses the others observing)."""
-        self.world = location
-        obs = list(observers)
-        for x in obs:
-            self._b(x).observe(location)
-        for x in obs:
-            for y in obs:
-                if x != y:
-                    self._b2(x, y).observe(location)
-
-    def predict_first_order(self, agent, jitter=0):
-        """Where `agent` will look, read from ITS OWN tracked belief (first-order)."""
-        return self._b(agent).believed_location(jitter=jitter)
-
-    def predict_second_order(self, x, y, jitter=0):
-        """Where `x` thinks `y` will look, read from x's tracked model of y's belief (second-order)."""
-        return self._b2(x, y).believed_location(jitter=jitter)
-
-    def predict_from_world(self):
-        """CONTROL predictor: ignore all minds, return reality. Fails every false-belief case."""
-        return self.world
-
-
 # ============================ un-riggable self-check ==========================
-def _loc(i):
-    return "?" if i is None else chr(ord("A") + int(i))
-
-
+# (`_loc`, the integer-location renderer, went with `SecondOrderToM` at T082: nothing else in
+# this module speaks in location ids.)
 # a minimal affect-tagged episode, duck-typed like hippocampus.affective_memory.Episode
 _Episode = collections.namedtuple("_Episode", ["valence", "arousal"])
 
@@ -430,86 +373,6 @@ def _contagion_section(emit):
     return d0, d_end, start_emotion, end_emotion
 
 
-def _run_van(park, church, told_by, seed=0):
-    """Stage the second-order ice-cream-van task on n_locations=4.
-    1. Van at `park`; John AND Mary present (each sees the other see it).
-    2. Mary leaves; van moves to `church`; only John witnesses (Mary absent).
-    3. The vendor tells Mary the van moved to `church`. `told_by` lists who WITNESSES the telling
-       -- ('Mary',) for the classic second-order FALSE belief (John does not witness it),
-       ('John','Mary') for the true-belief control (John witnesses Mary being told)."""
-    tom = SecondOrderToM(n_locations=4, seed=seed)
-    tom.observe(park, observers=("John", "Mary"))
-    tom.observe(church, observers=("John",))
-    if told_by:
-        tom.observe(church, observers=told_by)
-    return tom
-
-
-def _second_order_section(emit):
-    """(4) SECOND-ORDER ToM: the nested (ice-cream-van) false belief resolves correctly -- John thinks
-    Mary thinks the van is at the PARK, though Mary has learned it moved. Distinct from Mary's actual
-    (first-order) belief AND the world; a random guesser is at chance; a true-belief control agrees."""
-    emit("(4) SECOND-ORDER THEORY OF MIND (nested WHERE-belief, ice-cream-van)")
-    scenarios = [(0, 2), (1, 3), (2, 0), (3, 1)]  # (park, church), varied so nothing is hardcoded
-    second_hits = 0
-    world_hits = 0
-    first_hits = 0
-    rng = random.Random(99)
-    rand_hits = 0
-    n_loc = 4
-    for park, church in scenarios:
-        tom = _run_van(park, church, told_by=("Mary",))
-        so = tom.predict_second_order(
-            "John", "Mary"
-        )  # John's model of Mary's belief -> PARK (false)
-        fo = tom.predict_first_order("Mary")  # Mary's actual belief          -> CHURCH
-        wo = tom.predict_from_world()  # reality                       -> CHURCH
-        correct = park  # the second-order false-belief answer
-        second_hits += so == correct
-        first_hits += fo == correct
-        world_hits += wo == correct
-        rand_hits += rng.randrange(n_loc) == correct
-        emit(
-            f"    van {_loc(park)}->{_loc(church)} (Mary told, John unaware): "
-            f"2nd-order(John of Mary)={_loc(so)}  Mary's-belief={_loc(fo)}  world={_loc(wo)}  "
-            f"answer={_loc(correct)}"
-        )
-        assert so == park, (
-            f"second-order belief must be the stale PARK basket {_loc(park)}, got {_loc(so)}"
-        )
-        assert fo == church and wo == church, "Mary's actual belief and the world are the CHURCH"
-
-    n = len(scenarios)
-    emit(
-        f"    second-order predictor accuracy = {second_hits / n:.2f}  (resolves the nested false belief)"
-    )
-    emit(
-        f"    first-order (Mary's belief)     = {first_hits / n:.2f}  (CONTROL: predicts CHURCH, wrong)"
-    )
-    emit(
-        f"    world (reality) predictor       = {world_hits / n:.2f}  (CONTROL: predicts CHURCH, wrong)"
-    )
-    emit(f"    random guesser                  = {rand_hits / n:.2f}  (chance ~ 1/{n_loc})")
-
-    assert second_hits == n, "second-order predictor must pass every nested false-belief case"
-    assert first_hits == 0 and world_hits == 0, (
-        "first-order and world predictors must FAIL the second-order question (they predict the church)"
-    )
-
-    # true-belief control: John WITNESSES Mary being told -> John's model of Mary updates to CHURCH
-    true_tom = _run_van(0, 2, told_by=("John", "Mary"))
-    so_true = true_tom.predict_second_order("John", "Mary")
-    fo_true = true_tom.predict_first_order("Mary")
-    emit(
-        f"    true-belief control (John sees Mary told): 2nd-order={_loc(so_true)} == Mary's-belief="
-        f"{_loc(fo_true)}  (agree -> divergence is specific to the unwitnessed telling)"
-    )
-    assert so_true == fo_true == 2, (
-        "when John witnesses the telling, his second-order belief tracks Mary's"
-    )
-    return second_hits, n, first_hits, world_hits
-
-
 def main():
     lines = []
 
@@ -517,7 +380,7 @@ def main():
         lines.append(s)
 
     emit("=" * 78)
-    emit("AFFECT CORE -- dimensional->categorical emotion + contagion + second-order ToM")
+    emit("AFFECT CORE -- dimensional->categorical emotion + contagion")
     emit("=" * 78)
 
     acc, rand_acc, fa = _confusion_section(emit)
@@ -526,27 +389,23 @@ def main():
     emit("-" * 78)
     d0, d_end, start_emotion, end_emotion = _contagion_section(emit)
     emit("-" * 78)
-    so_hits, so_n, fo_hits, wo_hits = _second_order_section(emit)
-    emit("-" * 78)
+    # section (4), the ice-cream-van nested false belief, went with `SecondOrderToM` at T082
+    # (2.1). Its criterion is not weakened, it MOVED: `cortex/recursive_tom`'s red R5 measures
+    # the nested equivalence on 200 constructed witness scripts and the module's own self-check
+    # (a) / (b) keep a nested false belief reachable-red on every gate run.
 
-    # (5) DETERMINISM + ASCII
+    # (4) DETERMINISM + ASCII
     a1 = AffectCore(own_valence=0.6, own_arousal=0.2, seed=3)
     a2 = AffectCore(own_valence=0.6, own_arousal=0.2, seed=3)
     a1.empathize(-0.5, 0.9, gain=0.4)
     a2.empathize(-0.5, 0.9, gain=0.4)
     det_affect = a1.affect() == a2.affect() and a1.own_emotion() == a2.own_emotion()
-    t1 = _run_van(1, 3, told_by=("Mary",))
-    t2 = _run_van(1, 3, told_by=("Mary",))
-    det_tom = t1.predict_second_order("John", "Mary") == t2.predict_second_order("John", "Mary")
     # noise-robust categorical readout: jittered similarities still recover the label
     noisy = AffectCore(seed=5).recognize(*_proto_va(120.0, 0.95), jitter=0.05)
-    emit("(5) DETERMINISM + NOISE-ROBUSTNESS + ASCII")
+    emit("(4) DETERMINISM + NOISE-ROBUSTNESS + ASCII")
     emit(f"    identical seeds/inputs -> identical affect+emotion : {det_affect}")
-    emit(f"    identical scenario -> identical second-order answer : {det_tom}")
     emit(f"    jitter=0.05 on similarities still recognises fear   : {noisy == 'fear'}")
-    assert det_affect and det_tom, (
-        "identical inputs produced different outputs -- not deterministic"
-    )
+    assert det_affect, "identical inputs produced different outputs -- not deterministic"
     assert noisy == "fear", "spiking categorical readout must survive similarity jitter"
 
     emit("=" * 78)
@@ -556,17 +415,16 @@ def main():
     print(report)
     print(
         "HONEST NEGATIVE: this is dimensional->categorical MAPPING (fixed Russell-circumplex anchors, "
-        "a spiking nearest-prototype readout) + nested-belief BOOKKEEPING (stale-vs-fresh population "
-        "persistence). It is NOT felt emotion -- nothing here experiences fear, anger, or empathy; the "
-        "scenarios are toy and the readouts near-tabular. The fear/anger pair is the tightest (30 deg) "
-        "and is the honest hard case."
+        "a spiking nearest-prototype readout). It is NOT felt emotion -- nothing here experiences fear, "
+        "anger, or empathy; the scenarios are toy and the readouts near-tabular. The fear/anger pair is "
+        "the tightest (30 deg) and is the honest hard case."
     )
     print(
         f"self-check OK: {len(AffectCore().emotions)} emotions separable (accuracy {acc:.2f}, "
         f"fear/anger confusions {fa}) vs random-label control {rand_acc:.2f}; recognised {rec_hits}/{rec_n} "
         f"affect-tagged episodes; contagion converged {d0:.2f}->{d_end:.2f} and flipped "
-        f"{start_emotion}->{end_emotion}; second-order false belief resolved {so_hits}/{so_n} while the "
-        f"first-order and world controls failed ({fo_hits}/{so_n}, {wo_hits}/{so_n}); deterministic, ASCII"
+        f"{start_emotion}->{end_emotion}; deterministic, ASCII. SECOND-ORDER ToM RETIRED at T082 -- "
+        "cortex/recursive_tom is the one belief tracker"
     )
 
 

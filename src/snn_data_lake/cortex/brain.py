@@ -50,6 +50,11 @@ from snn_data_lake.cortex.access_consciousness import AccessConsciousness
 from snn_data_lake.cortex.live_brain import LiveBrain
 from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor
 from snn_data_lake.cortex.reasoning_curriculum import ReasoningEnv, ReasoningLearner
+
+# T082 (FR-034): the social-risk fold's two constants are the PRODUCER's, read here rather than
+# restated, so the live fold and the charge A/B's consumer cannot drift apart. Module-top because
+# the fold runs on every wake tick; recursive_tom imports nothing from brain at module scope.
+from snn_data_lake.cortex.recursive_tom import T082_PROTECT_DECAY, T082_PROTECT_GAIN
 from snn_data_lake.cortex.self_model import SelfModel, SelfNarrator
 from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
 from snn_data_lake.hippocampus.growing_learner import GrowingLearner
@@ -522,47 +527,37 @@ class Brain:
         # LIVE THEORY OF MIND (gap #9): model the USER as an agent whose knowledge is tracked SEPARATELY
         # from the world, so the brain can tell when the user's belief differs from reality (false belief).
         # Representation-only; inferred (not certain). Full per-agent affect/empathy is a follow-up.
-        self._tom_ok = False
-        try:
-            from snn_data_lake.cortex.theory_of_mind import TheoryOfMind
-
-            self._tom = TheoryOfMind(seed=self._seed)
-            self._tom.place(0, ["user", "brain"])  # both observe the fact at location 0
-            self._tom.move(1, ["brain"])  # brain learns an update (loc 1) the user did NOT observe
-            self._tom_ok = (
-                self._tom.predict_from_belief("user") == 0  # user still believes the OLD location
-                and self._tom.predict_from_world("user") == 1
-            )  # reality moved on -> false belief tracked
-        except Exception:
-            self._tom = None
-        self._tom_locs = {}  # live ToM: dialogue location name -> integer id
-        self._tom_obj = None  # the object the live ToM currently tracks
+        #
+        # T082 (2026-09-16, evidence/t082-social-cognition.md 2.1): the live first-order `_tom`
+        # instance, its `_tom_locs` id map and the BIRTH-TIME Sally-Anne run that published
+        # `_tom_ok` are RETIRED here. Three trackers were fed the same dialogue statement and gave
+        # three answers on one turn (fact 1); `_recursive_tom` generalises both retired ones on
+        # three axes and R5 shows the symmetric feed reproduces each of them, so exactly ONE
+        # survives (P2). `_tom_ok` additionally was a constant computed at construction and True on
+        # every brain -- a marker, not a measurement. `cortex/theory_of_mind.TheoryOfMind` STAYS:
+        # `reasoning/pragmatics.py` runs its own instance.
+        self._tom_obj = None  # the object the live belief tracker currently tracks
 
         # ---- BrainCog-inspired cognitive primitives adopted into the brain (pure-stdlib, from
-        # docs/BRAINCOG_COMPARISON.md): Theory-of-Mind (an OTHER-agent false-belief tracker -- a whole
-        # cognitive category we previously lacked) + multisensory super-additivity (a superior-colliculus
+        # docs/BRAINCOG_COMPARISON.md): multisensory super-additivity (a superior-colliculus
         # Stein-Meredith cell). Composed at BIRTH + reported under state()["braincog"]; value/rep-only,
         # guarded, deterministic. The feedback-alignment credit-assignment PoC is multi-seed (heavy) ->
         # gate-verified in run_selfchecks, not birth-run.
+        #
+        # T082 (2026-09-16, 2.1): `theory_of_mind_false_belief` is DELETED with the birth-time
+        # Sally-Anne run that produced it. It was a constant computed once at construction and True
+        # on every brain -- a capability MARKER, not a measurement of anything this brain does, and
+        # the live belief tracking it stood in for is now measured on the dialogue path itself
+        # (`recursive_tom_false_beliefs`, the declared `belief_out` wire and its charge evidence).
+        # `multisensory_index` stays: it reads a live cell's enhancement, not a frozen flag.
         self._braincog = {}
         try:
-            from snn_data_lake.cortex.theory_of_mind import TheoryOfMind
             from snn_data_lake.midbrain.multisensory_integration import MultisensoryCell
 
-            _tom = TheoryOfMind(seed=self._seed)  # Sally-Anne false-belief
-            _tom.place(0, ["sally", "anne"])  # marble in basket A; both present
-            _tom.move(1, ["anne"])  # Anne moves it to B; Sally ABSENT
-            _fb = _tom.predict_from_belief(
-                "sally"
-            )  # Sally looks by BELIEF -> A(0), the false belief
-            _fw = _tom.predict_from_world("sally")  # reality CONTROL -> B(1)
             _idx = MultisensoryCell(seed=self._seed).enhancement(0.06, 0.06)[
                 "index"
             ]  # weak coincident -> super-additive
             self._braincog = {
-                "theory_of_mind_false_belief": bool(
-                    _fb == 0 and _fw == 1
-                ),  # belief tracked != reality
                 "multisensory_index": round(float(_idx), 3)
                 if _idx is not None
                 else None,  # >1 super-additive
@@ -737,7 +732,7 @@ class Brain:
             self._perceiving_audio = False
 
         # W6: extended cortical faculties (optional, pure-stdlib, representation-only) -- lazily built, guarded.
-        self._affect_core = self._tom2 = self._xmodal = self._grid_place = None
+        self._affect_core = self._xmodal = self._grid_place = None
         self._emotion = None  # current categorical emotion (AffectCore over valence/arousal)
         self._superadditive = False  # cross-modal vision+audio super-additive binding this tick
         self._xmodal_known = set()  # C2 #19: bimodal object handles the binder has been TAUGHT
@@ -806,16 +801,21 @@ class Brain:
         self._place_fault = None  # last exception that aborted the place binding (None = healthy)
         self._place_faults = 0  # how many ticks the place binding aborted -> _place_here went STALE
         try:
-            from snn_data_lake.cortex.affect_core import AffectCore, SecondOrderToM
+            # T082 (2026-09-16, 2.1): `SecondOrderToM` is RETIRED here and DELETED from
+            # affect_core -- the WHERE-only second-order tracker the same dialogue statement used
+            # to feed in parallel with `_tom` and `_recursive_tom` (fact 1: three trackers, three
+            # answers on one turn). R5 measures `predict_nested` reproducing
+            # `predict_second_order` on 200 constructed witness scripts, which is what licenses
+            # the deletion rather than a flag keeping both paths alive (P2).
+            from snn_data_lake.cortex.affect_core import AffectCore
             from snn_data_lake.cortex.crossmodal_binder import CrossModalBinder
             from snn_data_lake.hippocampus.grid_place_map import GridPlaceMap
 
             self._affect_core = AffectCore(seed=self._seed)
-            self._tom2 = SecondOrderToM(seed=self._seed)
             self._xmodal = CrossModalBinder(seed=self._seed)
             self._grid_place = GridPlaceMap(seed=self._seed)
         except Exception:
-            self._affect_core = self._tom2 = self._xmodal = self._grid_place = None
+            self._affect_core = self._xmodal = self._grid_place = None
 
         # W8: re-entrant (de-saturated) workspace + reconstructive episodic memory + homeostatic drives
         self._reentrant = self._episodic = self._drives = None
@@ -2247,9 +2247,14 @@ class Brain:
             # (recursive_tom divergence -- until now a readout that drove nothing) now pushes a
             # decaying SOCIAL-RISK caution to the arm, so the brain HOLDS more under social
             # uncertainty. Bounded, caution-only (the reflex/E-STOP preempts); no new actuator route.
+            # T082 (2026-09-16, FR-034): this fold is the DECLARED consumer of
+            # `recursive_tom.belief_out` (the edge `BELIEF_EDGE` -> `brain.social_risk_in`), and its
+            # two constants are read from the producer rather than restated here, so the charge
+            # A/B's consumer and this live fold can never drift apart (`_measure_belief_charge`).
             fb = len(self._false_beliefs) if self._false_beliefs else 0
             self._tom_protect = max(
-                min(1.0, 0.34 * fb), 0.9 * float(getattr(self, "_tom_protect", 0.0))
+                min(1.0, T082_PROTECT_GAIN * fb),
+                T082_PROTECT_DECAY * float(getattr(self, "_tom_protect", 0.0)),
             )
             self.brain.arm._social_risk = round(self._tom_protect, 4)
         except Exception:
@@ -4248,7 +4253,9 @@ class Brain:
             # `python -m snn_data_lake.substrate.cockpit` -> "contract clean", exit 0. Both are now
             # stale and want removing -- the PROVENANCE tag in particular still promises a reading
             # "sleep-only, refreshes every 4th night" beside a row that can now only be an em-dash.
-            "tom_false_belief": self._tom_ok,  # birth false-belief CAPABILITY proof (Sally-Anne; the tracker works)
+            # T082 (2026-09-16, 2.1): `tom_false_belief` DELETED -- it published `_tom_ok`, a
+            # constant computed at construction and True on every brain. `tom_live` stays and now
+            # reads the ONE recursive tracker.
             "tom_live": self._tom_live(),  # LIVE dialogue-driven belief vs reality (None when idle; updated from chat)
             "schemas": self._schemas,  # SCHEMA INDUCTION: derived prototype/schema triples kept last consolidation (ART+DistMult gated)
             "skills": self._skills_state,  # bounded nightly skill FORMATION (per-domain competence; not general skill)
@@ -4359,7 +4366,8 @@ class Brain:
             route = "language (ROSE constituency parse)" if rose is not None else "act (gated)"
         elif (
             not is_command
-            and self._tom is not None
+            and self._recursive_tom
+            is not None  # T082 (2.1): the ONE belief tracker gates the route
             and any(
                 p in low
                 for p in (
@@ -4678,12 +4686,31 @@ class Brain:
         }
 
     def _tom_update(self, message):
-        """LIVE first-order theory of mind: update the user-belief model from THIS turn's statement instead of
-        the birth script. Grammar '<subj> put/moved the <obj> in/to the <loc>'. Witnessed (no absence marker)
-        -> place(): user+brain share the true belief; UNWITNESSED (an absence marker) -> move() for the brain
-        ONLY, so the user keeps a now-FALSE belief. The belief tracking is real; only the surface parse is
-        hand-specified. Returns a short event string, or None when the turn carries no belief statement."""
-        if self._tom is None:
+        """LIVE theory of mind: update the belief model from THIS turn's statement. Grammar
+        '<subj> put/moved the <obj> in/to the <loc>'. Witnessed (no absence marker) -> the present set is
+        {user, brain}; UNWITNESSED (an absence marker) -> {brain} only, so the user keeps a now-FALSE
+        belief. The belief tracking is real; only the surface parse is hand-specified. Returns a short
+        event string, or None when the turn carries no belief statement.
+
+        T082 (2026-09-16, evidence/t082-social-cognition.md 2.1) -- THE MERGE. This method fed THREE
+        trackers the same statement (`_tom`, `_tom2`, `_recursive_tom`) and the chat, the state key and
+        the telemetry each read a different one, so one dialogue turn had three answers (fact 1). It now
+        feeds `_recursive_tom` ONLY, through the SYMMETRIC event `recursive_tom.t082_feed`: for a present
+        set P, `observe_event(a, "believes", loc, witnesses=P)` once for EACH a in sorted(P), so every
+        present agent's own path AND every chain among the present update while an absent agent's paths
+        stay stale. The old subject-only call wrote the SUBJECT's path alone, which left the brain's own
+        path pinned at its last unwitnessed location and `divergence("user", "brain")` reading True on
+        every later witnessed episode -- a persistent SPURIOUS nested false belief, measured at 5 of 12
+        episodes on the territory probe (fact 4) and reconstructed as red R6.
+
+        The content is the location NAME: the `_tom_locs` name->id map and its capacity refusal are gone
+        with `_tom`, so the tracker is no longer capped at four dialogue locations.
+
+        `_false_beliefs` is now ONE derivation on BOTH branches (`recursive_tom.t082_false_beliefs`):
+        the first-order holders plus the diverging ordered pairs. It used to be the first-order list on
+        the unwitnessed branch and the pair list on the witnessed branch, so its meaning changed with
+        the last statement's type -- and the arm's caution term reads `len()` of it."""
+        if self._recursive_tom is None:
             return None
         low = str(message).lower()
         m = _TOM_PLACE.search(low)
@@ -4692,76 +4719,42 @@ class Brain:
         obj, loc = m.group("obj").strip(), m.group("loc").strip()
         if not obj or not loc:
             return None
-        if loc not in self._tom_locs:
-            if (
-                len(self._tom_locs) >= self._tom.n_locations
-            ):  # out of location capacity -> stay honest, ignore
-                return None
-            self._tom_locs[loc] = len(self._tom_locs)
-        lid = self._tom_locs[loc]
+        unwitnessed = any(mk in low for mk in _TOM_ABSENT) and (
+            self._recursive_tom.world_content() is not None
+        )
         self._tom_obj = obj
-        if any(mk in low for mk in _TOM_ABSENT) and self._tom.world is not None:
-            self._tom.move(lid, observers=["brain"])  # brain sees it; user does NOT -> false belief
-            if self._tom2 is not None:  # W6: same event -> 2nd-order belief ("A thinks B believes")
-                try:
-                    self._tom2.observe(lid, observers=["brain"])
-                except Exception:
-                    pass
-            if (
-                self._recursive_tom is not None
-            ):  # C1 b2: N-agent recursive ToM -- only brain witnessed the move
-                try:
-                    self._recursive_tom.observe_event("brain", "believes", loc, witnesses={"brain"})
-                    _w = (
-                        self._recursive_tom.world_content()
-                    )  # false belief = an agent's first-order belief diverges from the world
-                    self._false_beliefs = [
-                        a
-                        for a in ("user", "brain")
-                        if self._recursive_tom.predict_first_order(a) != _w
-                    ]
-                except Exception:
-                    pass
+        try:
+            from snn_data_lake.cortex.recursive_tom import t082_false_beliefs, t082_feed
+
+            t082_feed(self._recursive_tom, {"brain"} if unwitnessed else {"user", "brain"}, loc)
+            first, nested = t082_false_beliefs(self._recursive_tom)
+            self._false_beliefs = list(first) + list(nested)
+        except Exception:
+            pass
+        if unwitnessed:
             return f"unwitnessed move: the {obj} is now at '{loc}' (you did not see it)"
-        self._tom.place(lid, observers=["user", "brain"])  # both witness -> shared true belief
-        if self._tom2 is not None:
-            try:
-                self._tom2.observe(lid, observers=["user", "brain"])
-            except Exception:
-                pass
-        if self._recursive_tom is not None:  # C1 b2: N-agent recursive ToM -- both witnessed
-            try:
-                self._recursive_tom.observe_event(
-                    "user", "believes", loc, witnesses={"user", "brain"}
-                )
-                self._false_beliefs = [
-                    f"{o}->{t}"
-                    for o in ("user", "brain")
-                    for t in ("user", "brain")
-                    if o != t and bool(self._recursive_tom.divergence(o, t))
-                ]
-            except Exception:
-                pass
         return f"witnessed: you and I both saw the {obj} at '{loc}'"
 
     def _tom_report(self):
         """Report the LIVE (dialogue-driven) theory-of-mind state, not a frozen flag: where the user BELIEVES
-        the tracked object is vs where it ACTUALLY is, flagging a false belief on divergence."""
-        if self._tom is not None and self._tom_obj is not None and self._tom.world is not None:
-            bel, wor = self._tom.predict_from_belief("user"), self._tom.predict_from_world("user")
-            names = {v: k for k, v in self._tom_locs.items()}
-            bname, wname = names.get(bel, f"loc{bel}"), names.get(wor, f"loc{wor}")
-            if bel != wor:
+        the tracked object is vs where it ACTUALLY is, flagging a false belief on divergence.
+
+        T082 (2.1): re-pointed from `_tom` / `_tom2` to the ONE recursive tracker -- first order
+        `predict_first_order("user")` against `world_content()`, the second-order line from
+        `predict_nested("user", "brain")`. The closing sentence no longer quotes a birth-time
+        false-belief 'proof': that constant was computed at construction, True on every brain, and is
+        deleted with the run that produced it."""
+        rt = self._recursive_tom
+        if rt is not None and self._tom_obj is not None and rt.world_content() is not None:
+            bname, wname = rt.predict_first_order("user"), rt.world_content()
+            if bname != wname:
                 extra = ""
-                if (
-                    self._tom2 is not None
-                ):  # W9: 2nd-order ToM DRIVES the report -- what you think I believe
-                    try:
-                        s2 = self._tom2.predict_second_order("user", "brain")
-                        if s2 is not None:
-                            extra = f" (2nd-order: and you'd expect ME to think it is at '{names.get(s2, s2)}')."
-                    except Exception:
-                        pass
+                try:  # W9: the SECOND-ORDER line -- what you think I believe
+                    s2 = rt.predict_nested("user", "brain")
+                    if s2 is not None:
+                        extra = f" (2nd-order: and you'd expect ME to think it is at '{s2}')."
+                except Exception:
+                    pass
                 return (
                     f"You would look for the {self._tom_obj} at '{bname}' -- that is where you last saw it -- but "
                     f"it is actually at '{wname}'. I track your belief SEPARATELY from reality, so I know you hold "
@@ -4774,21 +4767,23 @@ class Brain:
             )
         return (
             "I keep a model of your mind SEPARATE from the world, so I can tell when your belief differs from "
-            f"reality (birth false-belief proof: {'passed' if self._tom_ok else 'degraded'}). Tell me e.g. 'I put "
-            "the ball in the basket', then 'you moved it to the box while I was away', then ask 'where will I "
-            "look?'. Inferred, not certain -- I model your knowledge, I do not read your mind."
+            "reality. Tell me e.g. 'I put the ball in the basket', then 'you moved it to the box while I was "
+            "away', then ask 'where will I look?'. Inferred, not certain -- I model your knowledge, I do not "
+            "read your mind."
         )
 
     def _tom_live(self):
-        """Compact live-ToM telemetry for state(): tracked object + user belief vs world (None when idle)."""
-        if self._tom is None or self._tom_obj is None or self._tom.world is None:
+        """Compact live-ToM telemetry for state(): tracked object + user belief vs world (None when idle).
+        T082 (2.1): re-pointed to the ONE recursive tracker, which reads location NAMES -- the
+        `_tom_locs` id->name inversion is gone with the id map."""
+        rt = self._recursive_tom
+        if rt is None or self._tom_obj is None or rt.world_content() is None:
             return None
-        bel, wor = self._tom.predict_from_belief("user"), self._tom.predict_from_world("user")
-        names = {v: k for k, v in self._tom_locs.items()}
+        bel, wor = rt.predict_first_order("user"), rt.world_content()
         return {
             "obj": self._tom_obj,
-            "belief": names.get(bel, bel),
-            "world": names.get(wor, wor),
+            "belief": bel,
+            "world": wor,
             "false_belief": bool(bel != wor),
         }
 

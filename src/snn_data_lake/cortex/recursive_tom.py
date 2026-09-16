@@ -1,9 +1,10 @@
 """
 Recursive Theory of Mind -- N agents, depth-k nested beliefs, content BEYOND location.
 
-The repo already has a first-order WHERE-tracker (cortex/theory_of_mind.BeliefPopulation) and a
-WHERE-only second-order tracker (cortex/affect_core.SecondOrderToM). Both hold a single believed
-LOCATION for one observer. This module generalises on three axes at once:
+The repo has a first-order WHERE-tracker (cortex/theory_of_mind.BeliefPopulation) and, until T082,
+also carried a WHERE-only second-order tracker (affect_core.SecondOrderToM, DELETED 2026-09-16 --
+red R5 measured this module reproducing it on 200 constructed witness scripts, P2). Both hold a
+single believed LOCATION for one observer. This module generalises on three axes at once:
 
   1. N AGENTS, DEPTH k. A belief is held on a HOLDER-PATH -- a tuple of agents. (A,) is A's own
      belief; (B, A) is B's model of A's belief; (C, B, A) is C's model of B's model of A's belief,
@@ -43,7 +44,7 @@ from pathlib import Path
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.cortex.population_encoding import PopulationEncoder
 from snn_data_lake.cortex.vsa_reasoning import bind, bundle, coincidence, hv
-from snn_data_lake.substrate.paired_contrast import T_BAR
+from snn_data_lake.substrate.paired_contrast import T_BAR, contrast
 
 # spiking winner-take-all readout constants (shared with theory_of_mind.BeliefPopulation)
 _WINDOW = 20  # steps each content bin's LIF neuron is driven
@@ -317,60 +318,683 @@ def declare_ports(manifest):
 
 
 # =============================================================================
-# 2.9 STEP 2's STUBS. Each returns a NULL reading, so the six reds of 2.4 RUN RED at step 3
-# against the real thing rather than against an import error. Every one is implemented at
-# step 4 (the instruments) or step 5 (the recorder).
+# 2.9 STEP 4 -- THE INSTRUMENTS, GREEN. Every red of 2.4 is reddened IN FACT by its own mutated
+# scorer (`_t082_mutated_scorer`). Nothing here reads a BRAIN: every input is a CONSTRUCTED
+# script or a finished recording. The recorder, the dry run and the campaign land at step 5.
 # =============================================================================
-def t082_script(seed, n_ep=T082_N_EPISODES):
-    """STUB (2.9 step 2) -> []. THE SCRIPTED OTHER AGENT (2.1): objects and locations drawn
-    under `random.Random(T082_RNG_BASE + seed)`, p_unwitnessed = `T082_P_UNWITNESSED`, the
-    agent's look = its last WITNESSED location, the world = the last location."""
-    del seed, n_ep
-    return []
+#: R1's off-grammar statement (2.4): a turn carrying no belief statement at all.
+T082_OFF_GRAMMAR_STMT = "the weather is nice today."
+#: R4's charge stream (2.1: "a scripted stream with false beliefs"): the witness pattern the
+#: belief frames are recorded from, CONSTRUCTED rather than drawn so the live arm is GUARANTEED
+#: to carry a divergence -- an A/B whose live arm happened to hold none would measure nothing and
+#: read as a clean refusal. Four episodes x `T082_TICKS_BETWEEN` = `T082_R4_FRAMES` frames.
+T082_R4_WITNESS = (True, False, True, False)
+
+
+def t082_feed(tracker, present, loc):
+    """THE SYMMETRIC EVENT (2.1) -- the ONE way a dialogue statement reaches the belief tracker.
+
+    For a present set P, call `observe_event(a, "believes", loc, witnesses=P)` once for EACH
+    a in sorted(P), so every present agent's OWN path and every chain among the present update,
+    while an absent agent's paths stay stale (the false-belief substrate). The content is the
+    location NAME; there is no id map.
+
+    THE DEFECT THIS REPLACES (fact 3 + fact 4): `observe_event` is SUBJECT-asymmetric -- a
+    present witness's own first-order belief is not updated unless it IS the subject. The live
+    path called it once with a single subject, so a witnessed statement about the user left the
+    brain's own path pinned at its last unwitnessed location and `divergence("user", "brain")`
+    read True from then on. Feeding each present agent as a subject in turn is what makes the
+    tracker's witness semantics match `SecondOrderToM`'s symmetric form, which is what R5
+    measures and what licenses that class's deletion (P2)."""
+    present = set(present)
+    for a in sorted(present):
+        tracker.observe_event(a, DEFAULT_ATTITUDE, str(loc), witnesses=present)
+    return tracker
+
+
+def t082_false_beliefs(tracker, agents=T082_AGENTS):
+    """THE ONE derivation of the brain's `_false_beliefs` list (2.1) -> (first, nested).
+
+    `first` names the agents whose FIRST-ORDER belief diverges from the world; `nested` names
+    the ordered pairs "o->t" whose nested model diverges from the target's own belief. The
+    declared `belief_out` payload is `[len(first), len(nested)]` and the arm's caution reads
+    `len(first) + len(nested)` -- which is what `Brain._route_percept_to_action` computes as
+    `len(self._false_beliefs)`.
+
+    RECORDED, not smoothed: the live path used to write the FIRST list on an unwitnessed turn
+    and the NESTED list on a witnessed one, so the meaning of `recursive_tom_false_beliefs`
+    (and of the caution the arm received) changed with the last statement's type. The key is
+    unchanged; its contents are now one quantity on every turn."""
+    world = tracker.world_content()
+    first = [a for a in agents if tracker.predict_first_order(a) != world]
+    nested = [
+        f"{o}->{t}" for o in agents for t in agents if o != t and bool(tracker.divergence(o, t))
+    ]
+    return first, nested
+
+
+class _T082SecondOrderReference:
+    """R5's CONTROL (2.4, 2.5): the RETIRED `affect_core.SecondOrderToM.observe` bookkeeping,
+    restated over plain dicts -- the world, each present agent's own belief, and every ordered
+    pair of present agents.
+
+    It is a genuinely DIFFERENT mechanism from the tracker it checks (no VSA bundle, no spiking
+    winner-take-all, no codebook cleanup), which is why it survives the deletion of the class it
+    restates AND makes the equivalence stronger than a comparison against a class that shared
+    `theory_of_mind.BeliefPopulation` with the first-order side. `seed` and `n_locations` are
+    accepted for signature parity with the deleted class and are deliberately unused: this
+    reference holds labels, not populations."""
+
+    def __init__(self, n_locations=T082_R5_LOCATIONS, seed=0):
+        self.n_locations = int(n_locations)
+        self.seed = seed
+        self.world = None
+        self.belief = {}  # agent -> believed location
+        self.belief2 = {}  # (x, y) -> x's model of y's belief
+
+    def observe(self, location, observers):
+        self.world = location
+        obs = list(observers)
+        for x in obs:
+            self.belief[x] = location
+        for x in obs:
+            for y in obs:
+                if x != y:
+                    self.belief2[(x, y)] = location
+
+    def predict_first_order(self, agent):
+        return self.belief.get(agent)
+
+    def predict_second_order(self, x, y):
+        return self.belief2.get((x, y))
+
+    def predict_from_world(self):
+        return self.world
+
+
+def t082_second_order_reference(n_locations=T082_R5_LOCATIONS, seed=0):
+    """A fresh retired-second-order reference tracker (R5's control)."""
+    return _T082SecondOrderReference(n_locations=n_locations, seed=seed)
+
+
+def _t082_parse(message):
+    """THE GRAMMAR, READ from the live path rather than restated: this imports `_TOM_PLACE` and
+    `_TOM_ABSENT` -- the compiled objects `Brain._tom_update` itself matches on -- so a change to
+    the surface parse cannot leave the constructed inputs testing a second, stale grammar (P2).
+    -> (obj, loc, unwitnessed) or None. The import is lazy because brain imports this module at
+    module scope for the fold constants."""
+    from snn_data_lake.cortex.brain import _TOM_ABSENT, _TOM_PLACE
+
+    low = str(message).lower()
+    m = _TOM_PLACE.search(low)
+    if not m:
+        return None
+    obj, loc = m.group("obj").strip(), m.group("loc").strip()
+    if not obj or not loc:
+        return None
+    return obj, loc, any(mk in low for mk in _TOM_ABSENT)
+
+
+def t082_script(seed, n_ep=T082_N_EPISODES, all_witnessed=False):
+    """THE SCRIPTED OTHER AGENT (2.1), and the positive control that is NOT the method (2.5).
+
+    Objects and locations are drawn under `random.Random(T082_RNG_BASE + seed)` at
+    `T082_P_UNWITNESSED`; the agent's LOOK is its last WITNESSED location and the world is the
+    last location, so on every unwitnessed episode the two differ -- which is what (g0) counts.
+    The first episode is always witnessed (there is no world to move yet).
+
+    `all_witnessed` forces every episode witnessed for R3's degenerate arm. The RNG draw is
+    still CONSUMED so the location sequence is identical to the mixed script's -- the two arms
+    differ in witness structure and in nothing else."""
+    rng = random.Random(T082_RNG_BASE + int(seed))
+    obj = rng.choice(T082_OBJECTS)
+    agent_looks = None
+    world = None
+    out = []
+    for ep in range(int(n_ep)):
+        loc = rng.choice([x for x in T082_LOCATIONS if x != world] or list(T082_LOCATIONS))
+        drawn = rng.random() < T082_P_UNWITNESSED
+        unwitnessed = bool(drawn and world is not None and not all_witnessed)
+        stmt = (
+            f"someone moved the {obj} to the {loc} while i was away."
+            if unwitnessed
+            else f"i put the {obj} in the {loc}."
+        )
+        world = loc
+        if not unwitnessed:
+            agent_looks = loc
+        out.append(
+            {
+                "ep": ep,
+                "obj": obj,
+                "loc": loc,
+                "stmt": stmt,
+                "unwitnessed": unwitnessed,
+                "present": ("brain",) if unwitnessed else T082_AGENTS,
+                "world": world,
+                "agent_looks": agent_looks,
+            }
+        )
+    return out
+
+
+def t082_caution(fb, prev, ticks=T082_TICKS_BETWEEN):
+    """The brain's OWN social-risk fold, run `ticks` times on one episode's false-belief count:
+    `_tom_protect = max(min(1, GAIN * fb), DECAY * prev)` per wake tick, which is exactly what
+    `Brain._route_percept_to_action` computes and pushes to `arm._social_risk`."""
+    for _ in range(int(ticks)):
+        prev = max(min(1.0, T082_PROTECT_GAIN * float(fb)), T082_PROTECT_DECAY * float(prev))
+    return prev
+
+
+def t082_constructed_rows(
+    seed=0,
+    n_ep=T082_R3_EVENTS,
+    off_grammar_at=None,
+    all_witnessed=False,
+    parse=None,
+    feed=None,
+):
+    """ONE constructed recording in the LIVE recorder's row shape (2.4), with NO brain: the
+    belief tracker fed by `t082_feed` with the script's present set, the EQUAL-CAPACITY CONTROL
+    fed the same statements with every agent present, and the caution trajectory produced by the
+    brain's own fold. It lives here and not only in the test module because `t082_reds()` needs
+    it: a gate run that never executes pytest still runs every red on the SAME input.
+
+    `off_grammar_at` replaces that episode's statement with one the grammar refuses -- neither
+    tracker is fed, exactly as the live path does not feed on a non-parse, and the script's
+    ground truth moves on without them, which is what (r) must REFUSE."""
+    parse = _t082_parse if parse is None else parse
+    feed = t082_feed if feed is None else feed
+    steps = t082_script(seed, n_ep, all_witnessed=all_witnessed)
+    rt = RecursiveToM(n_agents=3, seed=int(seed))
+    ctrl = RecursiveToM(n_agents=3, seed=int(seed))
+    rows = []
+    prev = 0.0
+    for st in steps:
+        stmt = (
+            T082_OFF_GRAMMAR_STMT
+            if (off_grammar_at is not None and st["ep"] == off_grammar_at)
+            else st["stmt"]
+        )
+        hit = parse(stmt)
+        ev = None
+        if hit is not None:
+            _obj, _loc, _unw = hit
+            ev = f"{'unwitnessed' if st['unwitnessed'] else 'witnessed'}: the {st['obj']} at '{st['loc']}'"
+            feed(rt, set(st["present"]), st["loc"])
+            feed(ctrl, set(T082_AGENTS), st["loc"])  # the control ignores absence
+        first, nested = t082_false_beliefs(rt)
+        frame = [len(first), len(nested)]
+        prev = t082_caution(sum(frame), prev)
+        rows.append(
+            {
+                "ep": st["ep"],
+                "stmt": stmt,
+                "unwitnessed": st["unwitnessed"],
+                "parsed": ev,
+                "agent_looks": st["agent_looks"],
+                "world": st["world"],
+                "pred_belief": rt.predict_first_order("user"),
+                "pred_world": rt.world_content(),
+                "pred_ctrl": ctrl.predict_first_order("user"),
+                "false_beliefs": list(first) + list(nested),
+                "social_risk": round(prev, 4),
+                "charge_frame": frame,
+                "t_respond_ms": 0.0,
+            }
+        )
+    return {"seed": int(seed), "n_ep": int(n_ep), "rows": rows}
 
 
 def t082_record_brain(seed, n_ep=T082_N_EPISODES):
-    """STUB (2.9 step 2) -> an empty recording. THE RECORDER (2.1, landed at step 5): a scratch
-    brain under `throwaway_home()`, `make_brain(seed, persist=False)`, the script driven through
+    """STUB (2.9 step 4) -> an empty recording. THE RECORDER lands at 2.9 step 5: a scratch brain
+    under `throwaway_home()`, `make_brain(seed, persist=False)`, the script of 2.1 driven through
     `Brain.respond` with `T082_TICKS_BETWEEN` ticks between statements."""
     return {"seed": int(seed), "n_ep": int(n_ep), "rows": []}
 
 
-def t082_read(rows):
-    """STUB (2.9 step 2) -> {}. The per-seed reading of 2.1: acc_belief / acc_world / acc_ctrl
-    against the agent's look, the unwitnessed fraction, the parse count, the spurious
-    nested-divergence count on witnessed-only stretches, the social-risk trajectory."""
-    del rows
-    return {}
+def t082_read(rows, seed=None):
+    """The per-seed reading of 2.1 over a recording's rows, live or constructed.
+
+    `refusals` is (r) ONLY (2.3): every statement must parse, and after the first witnessed
+    statement every episode's THREE predictions must be non-None. (g0) is a per-seed count and
+    is adjudicated in `t082_contrasts`, so a stream that simply carries no false belief is never
+    confused with an apparatus that could not be read."""
+    rows = list(rows)
+    n = len(rows)
+    tag = "" if seed is None else f"seed {seed}: "
+    parsed = sum(1 for r in rows if r.get("parsed"))
+    unw = [r for r in rows if r.get("unwitnessed")]
+
+    def acc(key):
+        return (sum(1 for r in rows if r.get(key) == r.get("agent_looks")) / n) if n else 0.0
+
+    first_witnessed = next((i for i, r in enumerate(rows) if not r.get("unwitnessed")), None)
+    none_after = 0
+    if first_witnessed is not None:
+        for r in rows[first_witnessed:]:
+            if any(r.get(k) is None for k in ("pred_belief", "pred_world", "pred_ctrl")):
+                none_after += 1
+    out = {
+        "n": n,
+        "parsed": parsed,
+        "unwitnessed": len(unw),
+        "unwitnessed_frac": (len(unw) / n) if n else 0.0,
+        "acc_belief": acc("pred_belief"),
+        "acc_world": acc("pred_world"),
+        "acc_ctrl": acc("pred_ctrl"),
+        "ctrl_equals_world": sum(1 for r in rows if r.get("pred_ctrl") == r.get("pred_world")),
+        "look_differs": sum(1 for r in rows if r.get("agent_looks") != r.get("world")),
+        "unwitnessed_look_differs": sum(1 for r in unw if r.get("agent_looks") != r.get("world")),
+        "predictions_none": none_after,
+        # fact 4's rate: a NESTED divergence on an episode that is witnessed AND carries no
+        # first-order false belief is spurious by construction. Expected 0 after the merge; the
+        # old subject-only feed read it on 5 of 12 episodes on the territory probe.
+        "spurious_nested": sum(
+            1
+            for r in rows
+            if not r.get("unwitnessed")
+            and r.get("agent_looks") == r.get("world")
+            and (r.get("charge_frame") or [0, 0])[1] > 0
+        ),
+        "risk": [r.get("social_risk") for r in rows],
+        "risk_max": max((r.get("social_risk") or 0.0) for r in rows) if rows else 0.0,
+        "respond_ms": [r.get("t_respond_ms") for r in rows],
+    }
+    refusals = []
+    if n == 0:
+        refusals.append(f"{tag}(r) empty recording -- no episode was recorded")
+    if parsed != n:
+        refusals.append(f"{tag}(r) parse: {n - parsed} of {n} statements did not parse")
+    if none_after:
+        refusals.append(
+            f"{tag}(r) predictions: {none_after} episodes after the first witnessed statement "
+            f"carry a None prediction"
+        )
+    out["refusals"] = refusals
+    if seed is not None:
+        out["seed"] = int(seed)
+    return out
 
 
-def t082_contrasts(per_seed):
-    """STUB (2.9 step 2) -> {}. 2.3's conjuncts through `substrate.paired_contrast.contrast`."""
-    del per_seed
-    return {}
+def t082_constructed_read(seed=0, **kw):
+    """`t082_read` over ONE constructed recording, with the seed carried into the reading so a
+    constructed contrast names the seed it refuses (T081's idiom)."""
+    rec = t082_constructed_rows(seed=seed, **kw)
+    out = t082_read(rec["rows"], seed=rec["seed"])
+    out["n_ep"] = rec["n_ep"]
+    return out
 
 
-def _measure_belief_charge():
-    """STUB (2.9 step 2) -> (None, None, [], False). T060's form over recorded belief frames:
-    `port_charge_probe.replay_twice`, the consumer = the brain's own `_tom_protect` fold
-    reduced to the caution trajectory, the pinned payload `T082_PINNED_BELIEF`, the
-    specificity control a constant consumer."""
-    return None, None, [], False
+def _t082_s1(entry):
+    """(s1)'s per-seed difference: the belief model's accuracy MINUS the equal-capacity world
+    model's, both against the scripted agent's look. 2.3's rule, spelled once."""
+    return float(entry["acc_belief"]) - float(entry["acc_ctrl"])
+
+
+def _t082_s2(entry):
+    """(s2)'s per-seed check, exact and a count: the control predicted the world content on
+    EVERY episode, so its accuracy IS the world predictor's -- the gain is removed when the
+    belief model is replaced."""
+    return int(entry.get("ctrl_equals_world", -1)) == int(entry.get("n", 0)) and float(
+        entry.get("acc_ctrl", -1.0)
+    ) == float(entry.get("acc_world", -2.0))
+
+
+def t082_contrasts(per_seed, score=None, ctrl=None, bar=T082_BAR):
+    """2.3's conjuncts over the per-seed readings, through `substrate.paired_contrast.contrast`.
+
+    (g0) the script IS a false-believing agent; (s1) the licensed sentence, a paired one-sided t
+    against the bar; (s2) the dissociation input, an exact per-seed count. The verdict is 2.3's:
+    REFUSED iff (r) or (g0) fails, PASS iff (s1) and (s2), else NOT MET. A REFUSAL is a finding
+    about the apparatus or the stream; a NOT MET is a finding about THIS composite. They are
+    never merged."""
+    per_seed = list(per_seed)
+    score = _t082_s1 if score is None else score
+    ctrl = _t082_s2 if ctrl is None else ctrl
+
+    g0_fail = []
+    for e in per_seed:
+        frac = float(e.get("unwitnessed_frac", 0.0))
+        if frac < T082_MIN_UNWITNESSED:
+            g0_fail.append(
+                f"seed {e.get('seed')}: unwitnessed {frac:.3f} < {T082_MIN_UNWITNESSED} -- "
+                f"the stream carries no false belief to track"
+            )
+        missed = int(e.get("unwitnessed", 0)) - int(e.get("unwitnessed_look_differs", 0))
+        if missed:
+            g0_fail.append(
+                f"seed {e.get('seed')}: {missed} unwitnessed episodes where the agent's look "
+                f"does NOT differ from the world"
+            )
+    s2_fail = [e.get("seed") for e in per_seed if not ctrl(e)]
+    refusals = [w for e in per_seed for w in e.get("refusals", [])]
+    out = {
+        "n_seeds": len(per_seed),
+        "g0": {"met": bool(per_seed) and not g0_fail, "failures": g0_fail},
+        "s1": contrast(
+            "(s1) the belief model beats the equal-capacity world model",
+            [score(e) for e in per_seed],
+            bar,
+        ),
+        "s2": {"met": bool(per_seed) and not s2_fail, "failures": s2_fail},
+        "refusals": refusals,
+    }
+    if refusals or not out["g0"]["met"]:
+        out["verdict"] = "REFUSED"
+    elif out["s1"].met and out["s2"]["met"]:
+        out["verdict"] = "PASS"
+    else:
+        out["verdict"] = "NOT MET"
+    return out
+
+
+# ---- THE CHARGE (2.1, T060's form) -------------------------------------------------------
+def _t082_belief_frames(witness=T082_R4_WITNESS, ticks=T082_TICKS_BETWEEN):
+    """Recorded belief frames for the charge A/B: one `[fb_first, fb_nested]` vector per WAKE
+    TICK of a scripted stream carrying false beliefs, flattened to the declared (2,) shape. The
+    fold runs per tick in the live brain, so the frames are per tick here too -- a per-EPISODE
+    frame stream would measure a trajectory the arm never receives."""
+    rt = RecursiveToM(n_agents=3, seed=0)
+    locs = list(T082_LOCATIONS)
+    frames = []
+    tick = 0
+    for i, witnessed in enumerate(witness):
+        loc = locs[i % len(locs)]
+        t082_feed(rt, set(T082_AGENTS) if witnessed else {"brain"}, loc)
+        first, nested = t082_false_beliefs(rt)
+        for _ in range(int(ticks)):
+            tick += 1
+            frames.append((tick, "recursive_tom", [float(len(first)), float(len(nested))]))
+    return frames
+
+
+def _t082_consumer_factory():
+    """Fresh ring + JoinConsumer over the DECLARED consumer port (`brain.social_risk_in`), one
+    pair per replay arm -- the wire's two ends are the real declarations, not stand-ins."""
+    from snn_data_lake.cortex.brain import declare_ports as brain_declare_ports
+    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+
+    m = WiringManifest()
+    declare_ports(m)
+    brain_declare_ports(m)
+    port = m.ports[("brain", "social_risk_in")]
+    ring = SignalRing(slots=64)
+    return ring, JoinConsumer(ring, port)
+
+
+def _t082_consume_caution(consumer):
+    """The downstream computation under measurement: EXACTLY the brain's own fold. `fb` is the
+    SUM of the payload's two counts, because `Brain._route_percept_to_action` reads
+    `len(self._false_beliefs)` and that list is the first-order holders plus the diverging
+    pairs. Reduced to the caution trajectory `arm._social_risk` receives."""
+    out = []
+    prev = 0.0
+    joined, _lost = consumer.poll_joined()
+    for tick, vec in joined:
+        fb = sum(float(x) for x in vec)
+        prev = max(min(1.0, T082_PROTECT_GAIN * fb), T082_PROTECT_DECAY * prev)
+        out.append((tick, round(prev, 6)))
+    return out
+
+
+def _measure_belief_charge(frames=None, consume=None):
+    """The replay-twice A/B over recorded belief frames -> (live, pinned_out, reads,
+    specificity_holds). The pinned payload is `[0, 0]`: no false belief, no divergence -- the
+    honest neuter for a COUNT port, where a "plausible constant" would be a claim about a rate
+    this wire does not have."""
+    from snn_data_lake.substrate.port_charge_probe import replay_twice
+
+    frames = _t082_belief_frames() if frames is None else frames
+    consume = _t082_consume_caution if consume is None else consume
+    live, pinned_out, reads = replay_twice(
+        frames, _t082_consumer_factory, consume, list(T082_PINNED_BELIEF)
+    )
+
+    def constant_consumer(consumer):
+        joined, _lost = consumer.poll_joined()
+        return [(tick, 0) for tick, _vec in joined]
+
+    spec_live, spec_pinned, _ = replay_twice(
+        frames, _t082_consumer_factory, constant_consumer, list(T082_PINNED_BELIEF)
+    )
+    return live, pinned_out, reads, spec_live == spec_pinned
 
 
 def record_charge():
-    """STUB (2.9 step 2) -> 1 (a refusal). Measures the belief wire's A/B and records the
-    attribution through THE one writer (`port_charge_probe.record_attribution`); REFUSES a
-    non-diverged A/B -- evidence is a measurement, never a declaration."""
-    print("record_charge REFUSED: the T082 charge instrument is still 2.9 step 2's stub")
-    return 1
+    """Measure the belief wire's A/B and record the attribution via THE one writer
+    (`port_charge_probe.record_attribution`). REFUSES a non-diverged run -- evidence is a
+    measurement, never a declaration. `tests/test_recursive_tom.py` re-measures and requires the
+    recorded numbers to reproduce, so this record cannot outlive the wire it describes."""
+    from snn_data_lake.substrate.port_charge_probe import record_attribution
+
+    live, pinned_out, reads, spec_holds = _measure_belief_charge()
+    if live == pinned_out or not spec_holds:
+        print("record_charge REFUSED: the A/B did not diverge (or specificity broke)")
+        return 1
+    path = record_attribution(
+        BELIEF_EDGE,
+        {"reads": reads, "first": list(live[0]), "last": list(live[-1])},
+        "port_charge_probe.replay_twice over recorded [fb_first, fb_nested] frames from a "
+        "scripted witnessed/unwitnessed stream; the consumer fold is brain's own "
+        "_tom_protect recurrence (max(min(1, 0.34 fb), 0.9 prev), fb = the payload's two "
+        "counts summed) reduced to the caution trajectory the arm receives; pinned payload "
+        "[0, 0]; specificity control held (payload-ignoring consumer did not flip)",
+    )
+    print(f"recorded {BELIEF_EDGE} into {path}")
+    return 0
+
+
+def _t082_mutated_scorer(kind):
+    """2.4's six mutations, RUN and not reasoned. Each is the deliberately broken twin of the
+    instrument whose red it must redden, and each is exercised BOTH in
+    `tests/test_recursive_tom.py` and in `t082_reds()` below.
+
+      parse_anything        (R1) -- a statement the grammar does not match returns an event
+          anyway, so a stream containing an off-grammar turn parses 100 % and (r) never refuses.
+      control_keeps_witnesses (R2) -- the equal-capacity control HONOURS absence, so it is a
+          second belief model rather than the world model the dissociation input requires.
+      blind_scorer          (R3) -- (s1)'s two sides swapped, so the belief arm is compared to
+          the control from the wrong direction and the dissociation is lost.
+      consumer_ignores_payload (R4) -- the fold reads 0 in place of the payload, so the live and
+          pinned arms coincide and `record_charge` refuses.
+      nested_reads_world    (R5) -- the nested read returns the WORLD instead of the holder
+          path's belief, so a stale pair reads reality and the losslessness claim is lost.
+      feed_subject_only     (R6) -- the OLD subject-centric call the live path made until this
+          row: one `observe_event` with a single subject, which is fact 4's spurious divergence."""
+
+    def parse_anything(message):
+        hit = _t082_parse(message)
+        return hit if hit is not None else ("", "", False)
+
+    def control_keeps_witnesses(tracker, step):
+        return t082_feed(tracker, set(step["present"]), step["loc"])
+
+    def blind_scorer(entry):
+        return float(entry["acc_ctrl"]) - float(entry["acc_belief"])
+
+    def consumer_ignores_payload(consumer):
+        out = []
+        prev = 0.0
+        joined, _lost = consumer.poll_joined()
+        for tick, _vec in joined:
+            prev = max(min(1.0, T082_PROTECT_GAIN * 0.0), T082_PROTECT_DECAY * prev)
+            out.append((tick, round(prev, 6)))
+        return out
+
+    def nested_reads_world(tracker, _observer, _target):
+        return tracker.world_content()
+
+    def feed_subject_only(tracker, present, loc):
+        present = set(present)
+        subject = "user" if "user" in present else "brain"
+        tracker.observe_event(subject, DEFAULT_ATTITUDE, str(loc), witnesses=present)
+        return tracker
+
+    return {
+        "parse_anything": parse_anything,
+        "control_keeps_witnesses": control_keeps_witnesses,
+        "blind_scorer": blind_scorer,
+        "consumer_ignores_payload": consumer_ignores_payload,
+        "nested_reads_world": nested_reads_world,
+        "feed_subject_only": feed_subject_only,
+    }[kind]
 
 
 def t082_reds():
-    """STUB (2.9 step 2) -> six False. 2.4's six reds as ONE self-check line: each True iff the
-    red holds on its constructed input AND its mutated scorer REDDENS it IN FACT. Null here so
-    `main()` carries the red until 2.9 step 4, exactly as 2.9 orders."""
-    return dict.fromkeys(("R1", "R2", "R3", "R4", "R5", "R6"), False)
+    """2.4's six reds as ONE self-check line (each is ALSO a test in
+    `tests/test_recursive_tom.py`; this is the in-command control 2.4 requires, so a gate run
+    that never executes pytest still runs every one on the SAME constructed input).
+
+    Each value is True iff the red holds on its input AND its mutated scorer REDDENS it IN FACT
+    -- every `not (...)` clause below is a broken twin having been RUN. No brain, no lake, no
+    network: every subject is a constructed script or a finished recording."""
+    out = {}
+
+    # R1 -- THE PARSE REFUSES OUTSIDE THE GRAMMAR. The mutation parses anything.
+    rec = t082_constructed_rows(seed=0, off_grammar_at=3)
+    read = t082_read(rec["rows"])
+    mut = t082_constructed_rows(
+        seed=0, off_grammar_at=3, parse=_t082_mutated_scorer("parse_anything")
+    )
+    mut_read = t082_read(mut["rows"])
+    out["R1"] = bool(
+        _t082_parse(T082_OFF_GRAMMAR_STMT) is None
+        and _t082_parse("i put the marble in the basket.") is not None
+        and _t082_parse("someone moved the marble to the box while i was away.") is not None
+        and read["parsed"] == read["n"] - 1
+        and any("parse" in w for w in read["refusals"])
+        and mut_read["parsed"] == mut_read["n"]
+        and not mut_read["refusals"]
+    )
+
+    # R2 -- THE CONTROL IS A WORLD MODEL. The mutation honours absence.
+    steps = t082_script(0, T082_R2_EVENTS)
+    ctrl = RecursiveToM(n_agents=3, seed=0)
+    hits = 0
+    for st in steps:
+        t082_feed(ctrl, set(T082_AGENTS), st["loc"])
+        hits += ctrl.predict_first_order("user") == st["world"]
+    keeps = _t082_mutated_scorer("control_keeps_witnesses")
+    ctrl2 = RecursiveToM(n_agents=3, seed=0)
+    mhits = 0
+    for st in steps:
+        keeps(ctrl2, st)
+        mhits += ctrl2.predict_first_order("user") == st["world"]
+    out["R2"] = bool(
+        len(steps) == T082_R2_EVENTS
+        and any(st["unwitnessed"] for st in steps)
+        and hits == len(steps)
+        and mhits < len(steps)
+    )
+
+    # R3 -- THE DISSOCIATION ON A CONSTRUCTED SCRIPT. The mutation swaps the two arms.
+    mixed = [t082_constructed_read(seed=s) for s in T082_R_SEEDS]
+    got = t082_contrasts(mixed)
+    allw = [t082_constructed_read(seed=s, all_witnessed=True) for s in T082_R_SEEDS]
+    got_w = t082_contrasts(allw)
+    blind = t082_contrasts(mixed, score=_t082_mutated_scorer("blind_scorer"))
+    out["R3"] = bool(
+        got["n_seeds"] == len(T082_R_SEEDS)
+        and got["s1"].met
+        and got["s2"]["met"]
+        and all(d == 0.0 for d in got_w["s1"].diffs)
+        and not got_w["s1"].met
+        and not blind["s1"].met
+    )
+
+    # R4 -- THE CHARGE A/B. The mutation's fold ignores the payload.
+    live, pinned_out, reads, spec = _measure_belief_charge()
+    m_live, m_pinned, m_reads, _ = _measure_belief_charge(
+        consume=_t082_mutated_scorer("consumer_ignores_payload")
+    )
+    out["R4"] = bool(
+        live is not None
+        and live != pinned_out
+        and reads == T082_R4_FRAMES
+        and spec
+        and m_reads == T082_R4_FRAMES
+        and m_live == m_pinned
+    )
+
+    # R5 -- THE MERGE IS LOSSLESS. The mutation's nested read returns the world.
+    agents = ("A", "B", "C")[:T082_R5_AGENTS]
+    lossless = True
+    for i in range(T082_R5_SCRIPTS):
+        rt, ref, tom = _t082_r5_run(i, agents)
+        for x in agents:
+            if _t082_as_int(rt.predict_first_order(x)) != tom.predict_from_belief(x):
+                lossless = False
+            for y in agents:
+                if x != y and _t082_as_int(rt.predict_nested(x, y)) != ref.predict_second_order(
+                    x, y
+                ):
+                    lossless = False
+    rt, ref, _tom = _t082_r5_run(0, agents)
+    reads_world = _t082_mutated_scorer("nested_reads_world")
+    differs = sum(
+        1
+        for x in agents
+        for y in agents
+        if x != y and _t082_as_int(reads_world(rt, x, y)) != ref.predict_second_order(x, y)
+    )
+    out["R5"] = bool(lossless and differs > 0)
+
+    # R6 -- THE SYMMETRIC FEED KILLS THE SPURIOUS DIVERGENCE. The mutation is the old feed.
+    both, brain_only = {"user", "brain"}, {"brain"}
+    rt6 = RecursiveToM(n_agents=3, seed=0)
+    t082_feed(rt6, both, "basket")
+    t082_feed(rt6, brain_only, "box")
+    stale = rt6.predict_first_order("user")
+    t082_feed(rt6, both, "drawer")
+    subject_only = _t082_mutated_scorer("feed_subject_only")
+    rt6m = RecursiveToM(n_agents=3, seed=0)
+    for present, loc in ((both, "basket"), (brain_only, "box"), (both, "drawer")):
+        subject_only(rt6m, present, loc)
+    out["R6"] = bool(
+        stale == "basket"
+        and rt6.divergence("user", "brain") is False
+        and rt6.predict_first_order("brain") == rt6.world_content() == "drawer"
+        and rt6m.divergence("user", "brain") is True
+    )
+    return out
+
+
+def _t082_as_int(label):
+    """The recursive tracker's content is a LABEL; the retired second-order semantics and
+    `TheoryOfMind` key on an integer location. R5 compares the same quantity across all three."""
+    return None if label is None else int(label)
+
+
+def _t082_r5_run(i, agents):
+    """R5's i-th constructed witness script, driven through all three trackers -> (recursive,
+    retired-second-order reference, TheoryOfMind). The OPENING event is witnessed by ALL, so
+    every first-order path and every ordered pair is initialised and the equivalence never rests
+    on an unheld path (which all three would read as None, proving nothing)."""
+    rng = random.Random(T082_R5_RNG_BASE + int(i))
+    rt = RecursiveToM(n_agents=len(agents), seed=0)
+    ref = t082_second_order_reference(n_locations=T082_R5_LOCATIONS, seed=0)
+    tom = _t082_theory_of_mind(T082_R5_LOCATIONS)
+    for ev in range(T082_R5_EVENTS):
+        loc = rng.randrange(T082_R5_LOCATIONS)
+        present = (
+            set(agents) if ev == 0 else ({a for a in agents if rng.random() < 0.6} or {agents[0]})
+        )
+        t082_feed(rt, present, str(loc))
+        ref.observe(loc, sorted(present))
+        tom.place(loc, sorted(present))
+    return rt, ref, tom
+
+
+def _t082_theory_of_mind(n_locations):
+    """R5's first-order control: the LIVE `cortex.theory_of_mind.TheoryOfMind` (that class STAYS
+    -- `reasoning/pragmatics.py` runs its own instance). Imported lazily so this module's import
+    graph does not grow for a control used only by the reds."""
+    from snn_data_lake.cortex.theory_of_mind import TheoryOfMind
+
+    return TheoryOfMind(n_locations=int(n_locations), seed=0)
 
 
 def _t082_reds_line(reds, out=print):
