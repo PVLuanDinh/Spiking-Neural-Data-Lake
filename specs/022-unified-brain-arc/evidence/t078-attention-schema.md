@@ -377,9 +377,12 @@ latent array -- 3.5 item 1; the re-run 18:29:51): the determinism twin identical
 the primary "89 pairs over 35 observed joint cells is below 10 per cell (350 required)", the control below 10 per class
 (13 classes), G4 "48 held-out rows is below N_TEST_MIN = 50" -- so no gate number was previewed; 42.9 s end to end for
 400 brain-ticks plus the reads, i.e. ~0.1 s per brain-tick, which re-projects the campaign (9,600 ticks + the twin +
-the reads) at ~17-20 min against 2.8's "~10-12 min" (the projection was low by about the same 1.9x T077's was; the
+the reads) at ~17-20 min against 2.8's "~10-12 min" (CORRECTED 2026-09-15 after the panel: the campaign then landed at
+644.1 s, INSIDE 2.8's window, so this re-projection was the one that missed, high -- 3.5 item 5; the
 refusal rule of 2.8 -- re-size above 3 h -- was not near). Pin shape verified: every per-tick field of 2.1 present,
-`gated` absent from the rows and packed to the npz with tick indices (3.5 item 1). The dry run's npz landed in `tools/`
+`gated` absent from the rows and packed to the npz with tick indices (3.5 item 1;
+CORRECTED 2026-09-15 after the panel: the npz also packs the STALE latent of every asleep tick, 602-611 per seed --
+item 4's appended mechanism). The dry run's npz landed in `tools/`
 by the campaign's default path and was deleted before the campaign; its pin stayed in the scratchpad.
 
 ### 3.1 The build, red-first, and the commits
@@ -406,46 +409,56 @@ self-check green (6/6) from `490a9b8` on; `tests/test_attention_schema.py` 7 RED
 
 Seeds 0-7, N = 1200 ticks, ONE arm, 644.1 s; the determinism twin (p): identical=True over 100 ticks of seed 0. Latents sha256 `f74d85247ccc7d39...`. Reds in-run: 6/6.
 
-| seed | awake | pairs (sleep-dropped / estop) | cells | actions | G4 rows | two-attend ticks | chan disagrees | ignited ticks |
-|---|---|---|---|---|---|---|---|---|
-| 0 | 593 | 544 (48 / 0) | 50 | 13 | 592 | 592 | 1196 | 1 |
-| 1 | 593 | 544 (48 / 0) | 46 | 13 | 592 | 592 | 1199 | 0 |
-| 2 | 598 | 549 (48 / 0) | 47 | 13 | 597 | 597 | 1199 | 1 |
-| 3 | 592 | 543 (48 / 0) | 43 | 13 | 591 | 591 | 1199 | 1 |
-| 4 | 589 | 540 (48 / 0) | 39 | 13 | 588 | 588 | 1199 | 1 |
-| 5 | 590 | 541 (48 / 0) | 35 | 13 | 589 | 589 | 1191 | 1 |
-| 6 | 594 | 545 (48 / 0) | 46 | 13 | 593 | 593 | 1195 | 1 |
-| 7 | 589 | 540 (48 / 0) | 41 | 13 | 588 | 588 | 1199 | 1 |
+| seed | awake | pairs (sleep-dropped / estop) | primary cells | required (10 x cells) / slack | control cells | actions | G4 rows | two-attend ticks | chan disagrees | ignited ticks |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 593 | 544 (48 / 0) | 50 | 500 / +44 (8.8 %) | 130 | 13 | 592 | 592 | 1196 | 1 |
+| 1 | 593 | 544 (48 / 0) | 46 | 460 / +84 (18.3 %) | 127 | 13 | 592 | 592 | 1199 | 0 |
+| 2 | 598 | 549 (48 / 0) | 47 | 470 / +79 (16.8 %) | 127 | 13 | 597 | 597 | 1199 | 1 |
+| 3 | 592 | 543 (48 / 0) | 43 | 430 / +113 (26.3 %) | 143 | 13 | 591 | 591 | 1199 | 1 |
+| 4 | 589 | 540 (48 / 0) | 39 | 390 / +150 (38.5 %) | 135 | 13 | 588 | 588 | 1199 | 1 |
+| 5 | 590 | 541 (48 / 0) | 35 | 350 / +191 (54.6 %) | 146 | 13 | 589 | 589 | 1191 | 1 |
+| 6 | 594 | 545 (48 / 0) | 46 | 460 / +85 (18.5 %) | 144 | 13 | 593 | 593 | 1195 | 1 |
+| 7 | 589 | 540 (48 / 0) | 41 | 410 / +130 (31.7 %) | 126 | 13 | 588 | 588 | 1199 | 1 |
+
+The vision classifier's own accuracy, REPORTED and never barred (2.7; appended 2026-09-15 after the panel, 3.5 item
+14): 0.9321-0.9331 per seed over the 589-598 perceived frames each (the rows whose `label` is not None),
+re-derived offline from the pin's per-tick `digit` and `label`; `run_t078_campaign` does not compute it (`t078_g4`
+computes `u_digit`, 2.2's second target, and no classifier accuracy). It adjudicates nothing; its consequence is that
+the perceived digit and the frame label are near-interchangeable targets, so 3.3's `u_t -> digit acc` column is close
+to a second reading of the (g4a) target. The `primary cells` / `control cells` split and the required / slack column
+were added 2026-09-15 after the panel (3.5 items 11 and 14); the other columns are the pin's as first written.
 
 The sleep cadence is clock-driven and seed-independent: 48 bouts in 1,200 ticks on every seed (awake 589-598), so 48
 consecutive-awake links straddle a bout and are dropped and counted; no E-STOP pair occurred. `two-attend ticks` equals
 the awake ticks that attended on every seed (3.4 i); `chan disagrees` counts ALL 1,200 ticks, awake (the vision-call
 channel against the audio-call band means, every awake tick) plus asleep (a stale `_attn_real` against an empty
-latent), so it is ~1,195 of 1,200 and is a count, not a reading. Ignition fired on 1 awake tick per seed (0 on seed 1).
+latent), so it is ~1,195 of 1,200 and is a count, not a reading. APPENDED 2026-09-15 after the panel: it equals the
+npz row count on every seed; the agreeing ticks are the pre-first-attend ticks, where the comparison is degenerate
+(3.5 item 26). Ignition fired on 1 awake tick per seed (0 on seed 1).
 
 ### 3.3 The readings, conjunct by conjunct (every number from the pin; the bar 1.895 over 8 seeds; FPR = the sign-flip rate)
 
-| seed | G3 primary MI | q95 | control MI | q95 | gate16 MI | q95 | same-tick MI | q95 |
-|---|---|---|---|---|---|---|---|---|
-| 0 | 0.0549 | 0.0777 | 0.7967 | 0.2494 | -- | -- | 0.0582 | 0.0777 |
-| 1 | 0.0670 | 0.0755 | 0.8310 | 0.2446 | -- | -- | 0.0479 | 0.0749 |
-| 2 | 0.0408 | 0.0743 | 0.8746 | 0.2434 | -- | -- | 0.0506 | 0.0775 |
-| 3 | 0.0591 | 0.0744 | 0.7528 | 0.2539 | -- | -- | 0.0378 | 0.0743 |
-| 4 | 0.0538 | 0.0709 | 0.7744 | 0.2514 | -- | -- | 0.0549 | 0.0710 |
-| 5 | 0.0847 | 0.0683 | 0.6396 | 0.2585 | -- | -- | 0.0442 | 0.0678 |
-| 6 | 0.0545 | 0.0767 | 0.5528 | 0.2535 | -- | -- | 0.0646 | 0.0781 |
-| 7 | 0.0445 | 0.0716 | 0.8392 | 0.2433 | -- | -- | 0.0475 | 0.0700 |
+| seed | G3 primary MI | perm median | q95 | control MI | perm median | q95 | gate16 | same-tick MI | perm median | q95 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 0.0549 | 0.0577 | 0.0777 | 0.7967 | 0.2120 | 0.2494 | REFUSED (153 cells) | 0.0582 | 0.0570 | 0.0777 |
+| 1 | 0.0670 | 0.0556 | 0.0755 | 0.8310 | 0.2113 | 0.2446 | REFUSED (148 cells) | 0.0479 | 0.0556 | 0.0749 |
+| 2 | 0.0408 | 0.0558 | 0.0743 | 0.8746 | 0.2093 | 0.2434 | REFUSED (147 cells) | 0.0506 | 0.0554 | 0.0775 |
+| 3 | 0.0591 | 0.0553 | 0.0744 | 0.7528 | 0.2168 | 0.2539 | REFUSED (151 cells) | 0.0378 | 0.0558 | 0.0743 |
+| 4 | 0.0538 | 0.0529 | 0.0709 | 0.7744 | 0.2115 | 0.2514 | REFUSED (153 cells) | 0.0549 | 0.0535 | 0.0710 |
+| 5 | 0.0847 | 0.0511 | 0.0683 | 0.6396 | 0.2166 | 0.2585 | REFUSED (142 cells) | 0.0442 | 0.0512 | 0.0678 |
+| 6 | 0.0545 | 0.0573 | 0.0767 | 0.5528 | 0.2135 | 0.2535 | REFUSED (156 cells) | 0.0646 | 0.0575 | 0.0781 |
+| 7 | 0.0445 | 0.0515 | 0.0716 | 0.8392 | 0.2067 | 0.2433 | REFUSED (151 cells) | 0.0475 | 0.0524 | 0.0700 |
 
-| seed | u_t acc | band q95 | c15 acc | band | raw64 acc | band | chan acc | band | u_t -> digit acc |
-|---|---|---|---|---|---|---|---|---|---|
-| 0 | 0.1858 | 0.1385 | 0.2601 | 0.1520 | 0.5236 | 0.1453 | 0.1689 | 0.1453 | 0.1554 |
-| 1 | 0.1723 | 0.1486 | 0.2500 | 0.1486 | 0.5203 | 0.1453 | 0.1791 | 0.1419 | 0.1588 |
-| 2 | 0.1773 | 0.1405 | 0.2274 | 0.1472 | 0.5251 | 0.1371 | 0.1773 | 0.1405 | 0.1639 |
-| 3 | 0.1385 | 0.1351 | 0.2669 | 0.1486 | 0.5372 | 0.1419 | 0.1858 | 0.1453 | 0.1351 |
-| 4 | 0.1531 | 0.1395 | 0.2687 | 0.1497 | 0.5340 | 0.1463 | 0.1939 | 0.1429 | 0.1361 |
-| 5 | 0.1085 | 0.1424 | 0.1932 | 0.1458 | 0.4136 | 0.1424 | 0.1458 | 0.1424 | 0.0915 |
-| 6 | 0.1818 | 0.1380 | 0.2593 | 0.1481 | 0.5152 | 0.1380 | 0.1785 | 0.1414 | 0.1448 |
-| 7 | 0.1293 | 0.1429 | 0.2551 | 0.1463 | 0.5306 | 0.1395 | 0.1871 | 0.1395 | 0.1327 |
+| seed | u_t acc | band median | band q95 | c15 acc | band median | band q95 | raw64 acc | band q95 | chan acc | band q95 | u_t -> digit acc |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 0.1858 | 0.1081 | 0.1385 | 0.2601 | 0.1115 | 0.1520 | 0.5236 | 0.1453 | 0.1689 | 0.1453 | 0.1554 |
+| 1 | 0.1723 | 0.1149 | 0.1486 | 0.2500 | 0.1149 | 0.1486 | 0.5203 | 0.1453 | 0.1791 | 0.1419 | 0.1588 |
+| 2 | 0.1773 | 0.1104 | 0.1405 | 0.2274 | 0.1137 | 0.1472 | 0.5251 | 0.1371 | 0.1773 | 0.1405 | 0.1639 |
+| 3 | 0.1385 | 0.1115 | 0.1351 | 0.2669 | 0.1149 | 0.1486 | 0.5372 | 0.1419 | 0.1858 | 0.1453 | 0.1351 |
+| 4 | 0.1531 | 0.1190 | 0.1395 | 0.2687 | 0.1156 | 0.1497 | 0.5340 | 0.1463 | 0.1939 | 0.1429 | 0.1361 |
+| 5 | 0.1085 | 0.1051 | 0.1424 | 0.1932 | 0.1119 | 0.1458 | 0.4136 | 0.1424 | 0.1458 | 0.1424 | 0.0915 |
+| 6 | 0.1818 | 0.1145 | 0.1380 | 0.2593 | 0.1111 | 0.1481 | 0.5152 | 0.1380 | 0.1785 | 0.1414 | 0.1448 |
+| 7 | 0.1293 | 0.1122 | 0.1429 | 0.2551 | 0.1122 | 0.1463 | 0.5306 | 0.1395 | 0.1871 | 0.1395 | 0.1327 |
 
 | conjunct | statistic | t | FPR | reads |
 |---|---|---|---|---|
@@ -455,7 +468,7 @@ latent), so it is ~1,195 of 1,200 and is a count, not a reading. Ignition fired 
 | (g3) task binding | MI(focus_t; a_t+1) - q95 | -3.0213 | 0.0469 | NOT MET |
 | (g4a) u_t decodes content | u_acc - band | +1.4903 | 0.0430 | NOT MET |
 | (g4b) content decodes better | c15_acc - u_acc | +9.2116 | 0.0508 | MET |
-| reported gate16 | | +0.0000 | 0.0000 | not above the bar (never barred) |
+| reported gate16 | REFUSED on 8/8 seeds: 540-549 pairs over 142-156 observed (gate16, action) cells under the per-cell rule | -- | -- | refused, NOT a number: the pin's `reading.reported.gate16` (t 0.0000, `degenerate`) is eight refusals coerced to 0.0 (3.5 item 16) |
 | reported same_tick | | -9.1089 | 0.0508 | not above the bar (never barred) |
 | reported raw64_ceiling | | +29.7204 | 0.0352 | above the bar (never barred) |
 | reported chan | | +6.5118 | 0.0586 | above the bar (never barred) |
@@ -472,13 +485,21 @@ floors 0.0683-0.0777 -- BELOW its own floor on 7 of 8 seeds (seed 5 above: 0.084
 src/snn_data_lake/cortex/brain.py` is empty); the row stays `[ ]` with its dated note; no surface symbol is declared
 and none is needed; `CONCLUSION["attention_schema"].reading` stays None; the C5 sentence is not written; the incumbents
 (`learned_attention`, the loop, the workspace) are untouched; Part II (2.11) is NOT built. A STOP is the algorithm's own
-terminal state (SYNTHESIS :65): on this loop, over 8 seeds, the recorded attention control state one tick earlier does
-not predict the committed action above chance.
+terminal state (SYNTHESIS :65): on this loop, over 8 seeds, the recorded FOCUS BAND one tick earlier -- identically
+argmax(gate), a four-way summary of the four-band gate (3.4 iii) -- does not predict the committed action above chance.
+SCOPE, appended 2026-09-15 after the panel (3.5 item 15): the barred X in `t078_g3` is the recorded `focus_band` (the
+audio attend call's, 3.4 i; four bands plus the NONE head of the first awake tick) against `y_next`, the committed
+action; the only state-wide reading, `gate16`, returned `readable=False` on every seed under the per-cell rule; and the
+15-field `u_t` was never read against the action on this row (`t078_g4`'s decodes target the frame label and, for
+`u_digit`, the perceived digit) -- so the row says nothing about the rest of `U_FIELDS`, and 2.6's noun "the attention
+state" and 2.7's "attention control state" are wider than 2.2's pre-registered X.
 
 G4 PASS, read beside it and at the bar: (g4a) the 15-d `u_t` decodes the perceived frame's LABEL above its own
-200-shuffle band on 5 of 8 seeds (0.1858 / 0.1723 / 0.1773 / 0.1385 / 0.1531 / 0.1085 / 0.1818 / 0.1293 against bands
-0.1351-0.1486; chance 0.1 over 10 classes), t +1.4903 (FPR 0.0430) -- NOT MET at 1.895, so the vector is content-blind in
-information AT THE BAR, not comfortably; the leak's mean is +0.0151 accuracy points and is written as 2.3 requires.
+200-shuffle band on 6 of 8 seeds (0.1858 / 0.1723 / 0.1773 / 0.1385 / 0.1531 / 0.1085 / 0.1818 / 0.1293 against bands
+0.1351-0.1486; chance 0.1 over 10 classes; seeds 5 and 7 below; seed 3's margin is one held-out prediction, 41 of 296
+against a band of 40 of 296 -- "5 of 8" was a transcription slip, 3.5 item 12), t +1.4903 (FPR 0.0430) -- NOT MET at
+1.895, so the vector is content-blind in information AT THE BAR, not comfortably; the leak's mean is +0.0151 accuracy
+points (a q95 margin; +0.0439 against the band's centre, 3.5 item 8) and is written as 2.3 requires.
 (g4b) the matched 15-d content decode reads 0.1932-0.2687 and beats `u_t` by t +9.2116 (FPR 0.0508) MET; the raw 64-d
 ceiling reads 0.4136-0.5372 (t +29.72 over `u_t`) and the 4-d arm channel 0.1458-0.1939 (above its band, t +6.51) --
 the content ground truth exists on this loop and the schema vector carries little of it. Had (g4a) crossed the bar
@@ -495,15 +516,46 @@ aa`) is the FIRST (vision) call's. The last-call focus band equals the vision ch
 POST-HOC, REPORTED, NEVER BARRED AND NEVER PRE-REGISTERED (`scratchpad/t078/record_gen` companion probe, from the pin):
 the vision channel's argmax band as X reads MI 0.0429-0.1252 against floors 0.0637-0.0714, above on seeds 3 and 5 only,
 t -0.5262 (FPR 0.0391) -- the STOP does not hinge on which call was recorded; but the vision call's own LIF focus band
-was NOT recorded (only its 4-d channel), so a successor records BOTH calls' focus and pre-registers which one the
-action path consumes (opening 2). (ii) three of `u_t`'s fifteen fields are near-constant on the scratch brain at this
-width: `sustain` reads 0.65 on all but 3-4 awake ticks per seed, `ignited` is True on exactly 1 awake tick per seed
-(0 on seed 1), and the focus STRENGTH averages 0.03-0.06 (max 0.10-0.20); `pc_surprise` (567-577 distinct values per
-seed) and `drive_margin` (494-511) carry the vector's variance. The reported gate16 reading REFUSED on every seed under
+was NOT recorded, though it was LIVE on the brain when each row was written (`_attend_real_stream` returns
+`{channel, band, focus}`, `_safe_ctx` keeps the vision dict as `_attn_real` -- `va or aa` -- and `Brain.state()`
+publishes it as `attention_real`): the recorder omitted an available field, it did not lack the quantity (CORRECTED
+2026-09-15 after the panel, 3.5 item 19); a successor records BOTH calls' focus per call and pre-registers which one
+the action path consumes (opening 2). (ii) CORRECTED 2026-09-15 after the panel (3.5 item 9; the first wording called
+`sustain` near-constant on a misread of the fold's own probe): TWO of `u_t`'s fifteen fields are near-constant on the
+scratch brain at this width -- `ignited` is True on exactly 1 awake tick per seed (0 on seed 1; pin key
+`per_seed.<s>.ticks_ignited`; 1.3 measured 1 of 146 before the run) and `focus_is_none` (`u[10]`) is 1 on exactly one
+awake tick per seed, the first, which carries no latent and so is identically 0 on every G4 decode row (a
+zero-variance decode column, the case 2.10 (ii) anticipated for a different field); ONE is low-cardinality -- the
+focus STRENGTH takes three levels (0.0 / 0.05 / 0.10) on seven seeds and five on seed 5, is 0.0 on 52-56 % of awake
+ticks (25 % on seed 5), mean 0.03-0.06 (1.3 had measured it "nearly degenerate"); and `sustain` is NOT near-constant:
+it is the workspace snapshot's `strength` (`report_channel.snapshot`, a graded hold), taking 586-596 distinct values
+over the 589-598 awake ticks per seed, spanning 0.5595-0.7500, mean 0.613-0.633, sd 0.030-0.039 (among the three
+narrowest sds of the fifteen fields, yet graded), and equal to 0.65 on exactly ONE awake tick per seed -- the first,
+the hold's initial value -- so 2.10 (ii)'s hedged "may be a near-constant" is NOT borne out. The widest-sd fields are
+`pc_surprise` (567-586 distinct values per seed, sd 0.76-1.08) and `drive_margin` (423-511, sd 0.22-0.46); the four
+`gate` fields carry 585-598 distinct values each (`per_seed.<s>.rows[].sustain / .pc_surprise / .drive_margin / .u`).
+The reported gate16 reading REFUSED on every seed under
 the per-cell rule (16 x 13 = up to 208 cells, 2,080 pairs required) and is recorded as refused, not as a number (the
 degenerate t 0.0000 in the pin's `reported.gate16` is eight zero diffs from the refusals); the same-tick MI(focus_t;
 action_t) reads BELOW its floor on every seed (t -9.1089) -- the recorded focus does not even co-occur with the action
-above chance, which is the reading the STOP is consistent with.
+above chance, which is the reading the STOP is consistent with. (iii) APPENDED 2026-09-15 after the panel: the
+recorded focus band is identically argmax(gate) on every attending awake tick of the pin (0 exceptions in 4,730), and
+this is structural, not empirical -- `LearnedAttention.attend` takes `np.argmax(rates + 1e-9 * gate)` while
+`LearnedAttention._lif_rate(steps=20)` quantizes each rate to a multiple of 0.05 (seven distinct values over the whole
+gate range, 0.0 to 0.30), so the 1e-9 tie-break can never cross a quantum and the monotone rate always ranks with the
+gate; the LIF race selects no band the gate did not already select, and the rate survives only as `u_t`'s
+`focus_strength`. So (g3) reads argmax(gate)_t against action_t+1, and the refused gate16 code is the ONLY reading of
+the gate beyond its argmax this record could have carried (opening 6). (iv) APPENDED 2026-09-15 after the panel,
+REPORTED and never barred -- the DETECTION FLOOR of the (g3) contrast, measured post-hoc on the pinned pairs
+(`scratchpad/t078-panel/fold_detection_floor.py`): a deterministic band-to-action map is planted on a fraction q of
+each seed's pairs (the action at t+1 replaced by map(focus_t)) and (g3) is read through the shipped `t078_pairs` /
+`mi_read` / `contrast` at N_PERM and the bar; positive control: q = 0 reproduces the pin's t -3.0213 exactly. Over a
+grid q = 0.02 / 0.04 / 0.06 / 0.08 / 0.10 / 0.12 / ..., all FOUR maps (four distinct actions; the four most frequent;
+two actions by band parity; a permuted own-index map) first fire at q = 0.10 and none fires at 0.08 -- t +3.235 /
++3.080 / +2.335 / +3.663 at the firing point, mean MI margin above the floor +0.0248 / +0.0155 / +0.0148 / +0.0211
+bits. So at these pair counts and this bar the pre-registered contrast resolves a planted dependence that rewrites
+about one action in ten, an MI margin of roughly 0.015-0.025 bits; the primary's pinned mean margin is -0.0163 bits.
+A real dependence weaker than that floor would have read as this STOP (3.5 item 21, opening 8).
 
 ### 3.6 What this row does NOT claim, and the openings it leaves
 
@@ -511,19 +563,44 @@ No experiential claim; the C5 refused sentence stands and no licensed sentence e
 the scratch brain's own attention control state (the audio call's, 3.4 i) and its committed actions at the deployed
 width, 1,200 ticks, 8 seeds; nothing about the daemon's brain, chat, reasoning or the arm's hardware. A STOP is NOT "the
 brain does not attend" and NOT the algorithm's G3 (which binds a held GOAL to a FIRST action across a gap): it says the
-recorded control state one tick earlier carries no information about the next committed action above the shuffle floor
-on this loop. G4 PASS is NOT "content-blind": it is "not decodable above chance AT THE BAR over 8 seeds", with a measured
-leak on 5 seeds. OPENINGS, each named for a successor row: (1) the brain-side stimulus port (docs/
+recorded FOCUS BAND (identically argmax(gate); 3.4 iii) one tick earlier carries no information about the next
+committed action above the shuffle floor on this loop -- nothing is said of the rest of `U_FIELDS` (the state-wide
+gate16 reading refused; `u_t` was never read against the action). G4 PASS is NOT "content-blind": it is "not decodable
+above chance AT THE BAR over 8 seeds", with a measured leak on 6 of 8 seeds (+0.0439 against the band's centre) -- and
+at the pre-registered decoder budget only (3.5 item 13).
+OPENINGS, each named for a successor row: (1) the brain-side stimulus port (docs/
 PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md 5.2, "the largest and riskiest single item") -- G3 as written needs a held goal
 and a gap, and this loop has neither; the successor that builds the port re-runs G3 as the algorithm words it; (2) BOTH
 attend calls' focus recorded, with the pre-registered X being the call whose channel the action path consumes (3.4 i);
-the direct test of "governs" is the per-band neuter of the vision channel (4 replays per tick), not MI; (3) three
-near-constant `u_t` fields at this width (3.4 ii) -- the workspace ignites on ~1 of ~590 awake ticks on a scratch brain,
-the opposite rail from G1's saturation; a schema of a control state that does not move is a schema of a constant; (4)
-WHICH field leaks the label on the 5 seeds where `u_t` decodes above its band -- a per-field neuter (drop one of the
+the direct test of "governs" is the per-band neuter of the vision channel (4 replays per tick), not MI; (3) two
+near-constant `u_t` fields at this width (`ignited`, `focus_is_none`) and one low-cardinality field (`focus_strength`)
+(3.4 ii, corrected) -- the workspace ignites on ~1 of ~590 awake ticks on a scratch brain, the opposite rail from G1's
+saturation; the rest of the control state DOES move (`sustain` and the four gates take a distinct value on nearly every
+awake tick), so what a successor owes is the IGNITION rail at a width where the workspace fires; (4)
+WHICH field leaks the label on the 6 seeds where `u_t` decodes above its band -- a per-field neuter (drop one of the
 fifteen, re-decode) for the successor, not this row's to adjudicate; (5) `_q95` is a second spelling of `track_error`'s
 order statistic (P2: lift beside `paired_contrast` when a third caller lands); (6) the gate16 reported reading needs a
-readability rule of its own or fewer cells (a per-band median split over 4 bands x 13 actions refuses at N = 1,200).
+readability rule of its own or fewer cells (a per-band median split over 4 bands x 13 actions refuses at N = 1,200) --
+and because the focus band is identically argmax(gate) (3.4 iii) it was the ONLY reading of the gate beyond its argmax
+this record could have carried, so a successor owes a coarser code or a longer recording before any statement about
+"the attention state" as a whole is licensed, and pre-registers 2.6's disposition noun and 2.2's X as the SAME object
+(3.5 item 15); (7) pre-register |X| = B + 1 = 5 explicitly (the algorithm's own alphabet: the NONE head of the first
+awake tick) rather than deleting the non-attending tick, and buy the primary real headroom by raising N or coarsening Y
+-- the cell count is set by the 13 observed actions; dropping the one None pair-head moves seed 0's headroom only from
+8.8 % to 10.8 % and leaves (g3) at t -3.1709, still a STOP, so the drop is not the remedy, and a successor that drops
+it COUNTS it beside `dropped_sleep` (3.5 item 11); (8) the DETECTION FLOOR of the G3 contrast (3.4 iv): P8 clause 2's
+external positive control is MET in the form the policy words it -- `t078_g3` builds (g3c) from `t078_pairs` on the
+real pinned rows, the recording-and-pairing path T077's fold found untested there -- but the contrast's minimum
+resolvable margin was never pre-registered and (g3c)'s margin sits an order above the primary's whole scale; the
+successor behind the stimulus port PRE-REGISTERS a plant map and the margin its contrast must resolve BEFORE the run;
+(9) the eight arms share ONE stimulus stream (3.5 item 20): a successor varies the frame ORDER or the pack OFFSET per
+seed -- the only change that supplies the missing variance component -- and re-reads (g4a) and (g4b) on the varied
+stream; (10) the decoder budget (3.5 item 13): a successor pre-registers DECODER_STEPS from a convergence read on the
+constructed stream, not from T077's constant, and reads (g4a) at two budgets so the null half of G4 is budget-robust
+or is not claimed; (11) the determinism key (3.5 item 25): a successor pre-registers the twin's key over EVERY
+recorded field before its run, so "(p) MET" covers the rows and not five of their eighteen fields; (12) one
+strictness for the latent field across the packer and the reader, and a reader that refuses loudly on an empty pack
+(3.5 item 26).
 
 ### 3.5 Deviations from 2.1-2.11, each with its number (dated 2026-09-15)
 
@@ -535,10 +612,29 @@ readability rule of its own or fewer cells (a per-band median split over 4 bands
    asked at 18:27. Fixed at `677ee16`: `t078_pack_latents` keeps the rows that carry a latent as (m, 64) float32 with
    their tick indices beside (`seed{s}_ticks` in the npz), its red added, the constructed test given the real shape;
    re-run 18:29:51, green (3.0). No brain number was seen by the crashed run beyond the twin's byte-identity.
+   CORRECTED 2026-09-15 after the panel (the mechanism): asleep ticks do NOT record an empty `gated` -- the recorder's
+   capture dict persists across ticks, so an asleep tick carries the STALE latent of the last attending tick; the empty
+   rows are the ticks BEFORE the first `attend` call, and the ragged array came from those. The pinned npz therefore
+   packs every tick with a non-empty capture, 602-611 asleep ticks per seed included (`seed<s>_ticks` joined to
+   `per_seed.<s>.rows[].awake`), and `t078_g4` selects awake rows with a label (which always attended), so no G4
+   number is touched; the packer's docstring and a reader-side filter now carry the correct mechanism (the code half
+   of the fold). The crash artifacts `dry_run_module_crash1.log` / `.err` are that run's two output files copied aside
+   before the re-run; a scratchpad mtime is the copy's time, not the crash's.
 2. THE (g3c) CONTROL's READABILITY RULE was amended BEFORE any brain run (2.10, `1094234`; code `455236d`) on the
    builder's constructed fact: the 12 x 12 action joint refused under the per-cell rule at every pair count N = 1,200
    produces. The primary keeps the per-cell rule. Had the rule not been amended the campaign would have REFUSED at (r)
    on every seed (the pin's per-seed control lines carry 13 distinct actions and 35-50 observed (focus, action) cells).
+   CORRECTED 2026-09-15 after the panel (3.5 item 14): that parenthetical cited the PRIMARY's joint, which is READABLE
+   under the per-cell rule on every seed (35-50 cells against 540-549 pairs); the counterfactual is true of the
+   CONTROL's action x action joint -- `per_seed.<s>.g3.control.cells` 126-146 observed cells against `g3.n_pairs`
+   540-549, so the per-cell rule needs 1,260-1,460 pairs and refuses on all 8 seeds, while the per-class rule needs 130
+   (13 actions, one above 2.10's constructed 12). Also: 2.10's "Nothing else moves: N, n_perm, the bar, (p), (r),
+   ..." and its heading's "no gate's form, bar, disposition or N changes" are FALSE AS WORDED of (r) -- 2.3's (r)
+   states the per-observed-cell minimum for the positive-control reading as well as the primary, so the clause 2.10
+   amended IS (r)'s; what the amendment gates is whether any verdict is read at all (under the un-amended rule
+   `run_t078_campaign`'s (r) block sets both `g3` and `g4` to REFUSED), while (g3)'s own contrast is unchanged by the
+   readability rule. The one surface still stating the superseded rule, PLAN-FINAL's C-R7 row, carries a dated
+   appended sentence.
 3. THE BUILD's seven disclosures (2.10's last paragraph, `c955e27`): `mi_read`'s signature is `track_error`'s shape;
    the decoder's init is an explicit CPU `torch.Generator` (2.1's "identically by seed" is obtained that way); extra
    keys `n_perm` / `k` / `refusal` reported beside 2.1's; R5 carries a vacuity clause 2.4 did not word (a constant
@@ -548,9 +644,242 @@ readability rule of its own or fewer cells (a per-band median split over 4 bands
 4. THE DRY RUN's npz landed in `tools/` by the campaign's default path (only the pin was redirected) and was deleted
    before the campaign; the dry run's own pin stayed in the scratchpad (3.0). The campaign's npz is the one committed.
 5. THE COST PROJECTION: 2.8 projected ~10-12 min sequential; the dry run re-projected ~17-20 min at ~0.1 s per
-   brain-tick (3.0); the campaign took 644.1 s (3.2). 2.8's refusal rule (re-size above 3 h) was not near.
+   brain-tick (3.0); the campaign took 644.1 s (3.2). 2.8's refusal rule (re-size above 3 h) was not near. APPENDED
+   2026-09-15 after the panel: the campaign's `elapsed_s` (644.1 s = 10.7 min) is INSIDE 2.8's projected window, so
+   2.8's projection held and the dry run's per-brain-tick re-projection was the one that missed, high; the 1.9x miss
+   2.8 cites from T077 3.5 item 20 did not repeat on this row. No cause is named (unmeasured).
 6. THE CODEX DESIGN READ never arrived (2.0, 2.10): refused at 11:55 and at 14:43 by Codex's usage limit; its five
    questions and question 6 go to the T078 closing report. No point of a design read shaped this file after the
-   freeze; 2.10 changed one readability rule on a constructed fact and folded two apparatus disclosures.
+   freeze; 2.10 changed one readability rule on a constructed fact and folded two apparatus disclosures. APPENDED
+   2026-09-15 after the panel: Codex's full output across both codex blocks of `scratchpad/t078/codex_design_read.md`,
+   verbatim: "I’ll apply the graphify and Karpathy review rules, check the design against the permitted sources, and
+   keep the refutation within 400 words. I’ll treat your ban on touching `brainstem/` as a read ban and use only the
+   excerpt you supplied from that path." and "The current checkout is newer than the design and already contains T078
+   implementation entries. I’ll review against the design’s stated head, `ac7b04b`, to avoid judging it using later
+   results." -- 2.10 quoted only a fragment of the last sentence, so its "no content beyond" reads "no REVIEW
+   content". Two facts, no adjudication: the re-send left at 14:41:59 and returned at 14:43:10
+   (`scratchpad/t078/codex_design_send.log`), after `490a9b8` (the instruments green, 12:38:02) and `c955e27` (the
+   recorder, 12:47:28); the head Codex named, `ac7b04b`, predates the pre-registration commit `02d677e`.
 7. THE 2.2 PAIRING DROPPED exactly 48 pairs on every seed as straddling a sleep bout (about 8 % of consecutive awake
    links, the sleep cadence the T077 lag amendment measured) and 0 E-STOP pairs; both counted in the pin.
+8. (appended 2026-09-15, after the panel) THE BARRED (g4a) CONTRAST IS REFERENCED TO THE BAND's 95th PERCENTILE, SO
+   ITS NO-SIGNAL EXPECTATION IS BELOW ZERO. On this pin the offset alone, `shuffle_median - shuffle_q95`, reads t
+   -14.2145 (mean -0.0287 accuracy points); the same accuracies against the band CENTRE read t +4.5724, positive on 8
+   of 8 seeds, and `reading.leak_points` (+0.0151, a q95 margin) is +0.0439 against the centre. The same offset on the
+   G3 primary reads t -51.3567 while `(mi - perm_median)` reads t +0.5318, under the bar, so the STOP is unaffected.
+   2.3's parenthetical "decodes nothing above chance" and 3.4's "content-blind in information" are SUPERSEDED as
+   glosses by this reading -- superseded here, never deleted upstream; the bar, (g4a), (g4b), `g4_rule` and the
+   verdict stay as pre-registered; 3.3's tables now carry the pinned `perm_median` / `shuffle_median` beside every q95
+   (`scratchpad/t078-panel/fold_verify_pin.py`).
+9. (appended 2026-09-15, after the panel) 3.4 (ii)'s `sustain` SENTENCE PROMOTED 2.10 (ii)'s PRE-RUN POSSIBILITY TO A
+   MEASURED FACT, AND IT WAS FALSE: the fold's own probe had printed the first four entries of a Counter and the
+   writer read "0.65: 12" as the mode; the pin reads 586-596 distinct values per seed (3.4 ii, corrected in place).
+   Two adjacent ranges were min/max over two seeds while the text said "per seed" (`pc_surprise` 567-577 -> 567-586;
+   `drive_margin` 494-511 -> 423-511). The near-constant fields are `ignited` and `focus_is_none` (1.3 had
+   pre-measured the first); `focus_strength` is low-cardinality (1.3: "nearly degenerate"). No gate, bar, conjunct, N
+   or disposition moves; 3.3's readings and the verdict are untouched. Two refuters disagreed on the count ("one"
+   near-constant vs "three"); the pin decided it (obs #2180).
+10. (appended 2026-09-15, after the panel) THE TWO MONTE-CARLO SENSITIVITIES 2.8 PROMISED ("computed on the
+   constructed R1 stream in 3.0"; "computed on the constructed R4 stream in 3.0") WERE NOT COMPUTED THERE, and no
+   earlier item disclosed it (section 1 item 7's binding, "every declared constant's sensitivity computed here, not
+   later"). Computed now, from the pin and 2.8's own streams (`scratchpad/t078-panel/fold_sensitivity.py`; positive
+   controls: the pinned floors and bands re-derive bit-for-bit on all 8 seeds): (a) n_perm -- on 2.8's constructed
+   stream, 24 independent 2,000-permutation floors give `perm_q95` mean 0.0580 bits, sd 0.00059, so 2.8's declared
+   "~0.002 bits" overstated the sd three-fold; on the campaign's own primary, 8 independent floor redraws per seed
+   move (g3) t across -3.0396..-2.9005 (sd 0.0425; pinned -3.0213) and (g3c) across +12.6277..+12.7690 (pinned
+   +12.6296) -- neither verdict is within a floor redraw of the bar; (b) n_shuffle -- with the decoder's own init HELD
+   and only the 200-shuffle RNG varied, 12 band redraws move (g4a) t across +1.4456..+1.6520 (sd 0.0645; pinned
+   +1.4903), 0 of 12 above 1.895 -- (g4a) NOT MET is robust to the band's Monte-Carlo noise at the pre-registered
+   budget (item 13 records what it is NOT robust to). Both numbers are what 3.0 owed; neither moves a reading.
+11. (appended 2026-09-15, after the panel) N_MIN_PER_CELL's REALIZED HEADROOM ON THE PRIMARY, per seed (pairs /
+   observed cells / required / slack): 0: 544/50/500/+44 (8.8 %); 1: 544/46/460/+84 (18.3 %); 2: 549/47/470/+79 (16.8
+   %); 3: 543/43/430/+113 (26.3 %); 4: 540/39/390/+150 (38.5 %); 5: 541/35/350/+191 (54.6 %); 6: 545/46/460/+85 (18.5
+   %); 7: 540/41/410/+130 (31.7 %). The sensitivity band: every seed readable at N_MIN_PER_CELL <= 10, seed 0 refuses
+   at 11, no seed readable at 16 or above; `run_t078_campaign` reads readability with `all(...)` over seeds and 2.3
+   (r) routes a single unreadable seed to 2.6's REFUSED branch, so the STOP terminal state carried 44 pairs of
+   headroom on one seed. 2.8's COMPUTED CEILING WAS MISSED ON BOTH FACTORS: it projected "~580 pairs over <= 48 cells"
+   (focus(4) x actions(12)); realized: 13 distinct actions on every seed and FIVE focus classes (a 65-cell ceiling),
+   seed 0's 50 observed cells above 48, and 540-549 pairs after the 48 sleep-straddle drops 2.2 itself pre-registers
+   (item 7 is the cause). THE G3 X ALPHABET IS 5, NOT 2.2's "4 classes": the pair-head carries `focus_band` None on
+   exactly one pair per seed -- the first awake tick, one tick before the first `attend` call -- which the algorithm's
+   section 4 already pre-registers as the control-state encoding's own fifth class, `onehot(focus|NONE)(B+1)`; the
+   deviation is 2.2's G3-axis wording. At these pair counts a seed with 55 or more observed cells would have REFUSED
+   the campaign (2.6's REFUSED branch, not its STOP). A successor sizes N from the observed cell count rather than
+   from 2.8's projection (opening 7).
+12. (appended 2026-09-15, after the panel) "5 OF 8 SEEDS" WAS 6 OF 8 -- a transcription slip against the pin's
+   `reading.g4a.diffs` (six positive entries); five is the count of seeds whose accuracy clears the TOP of the printed
+   band range, 0.1486, rather than each seed's own band, which is where the slip came from. Corrected in place in 3.4
+   and 3.6 (the (g4a) sentence, the leak sentence, opening 4). It moves no reading: 2.3 decides (g4a) on the paired t
+   against the bar and pre-registers "no majority-of-seeds rule", so the verdict and the leak's mean are unchanged.
+13. (appended 2026-09-15, after the panel) DECODER_STEPS = 200 IS FAR FROM CONVERGED, and 2.8 listed the decoder's
+   three constants under "the consequence of each, computed here" while computing none of them -- it substituted the
+   raw-64 ceiling decode, which runs through the same `_fit_and_score` at the same budget as the arms it is meant to
+   diagnose (so it is partly the method, P8 clause 2, and cannot separate capacity from budget). Re-derived from the
+   pin (`scratchpad/t078-panel/redecode_2000.py`): at the pre-registered 200 steps `decode_heldout` reproduces the pin
+   EXACTLY on all 8 seeds (u acc and band, c15 acc) and `contrast` reproduces (g4a) t +1.4903 FPR 0.0430, (g4b) t
+   +9.2116, leak +0.0151; at 2,000 steps (ten times the budget; 260 s) the SAME rows read (g4a) t +2.7125 (FPR 0.0586)
+   MET, (g4b) t +16.2144 MET, `g4_rule` PASS-WITH-LEAK, leak +0.0189, `u_t` above its band on 7 of 8 seeds (u acc
+   0.1622 / 0.1824 / 0.1806 / 0.1486 / 0.1497 / 0.1220 / 0.1616 / 0.1429), and the raw-64 ceiling rises from
+   0.4136-0.5372 to 0.7075-0.7407 on seven seeds (0.4542 on seed 5) -- so the ceiling's "capacity" reading at 200
+   steps was a budget reading. The pre-registered reading at the pre-registered budget REMAINS the record, and (g4a)
+   NOT MET -- the null half of G4 PASS -- is NOT budget-robust: 3.4's "content-blind in information AT THE BAR" is
+   conditioned on DECODER_STEPS = 200 and the leak +0.0151 is a 200-step reading (opening 10). Nothing is moved; the
+   constants-table comment in `attention_schema.py` no longer asserts the ceiling shows capacity-vs-information (the
+   code half).
+14. (appended 2026-09-15, after the panel) 3.5 ITEM 2's COUNTERFACTUAL CITED THE PRIMARY's CELLS; the control's own
+   cells (126-146) appeared nowhere in section 3 -- corrected by the appended sentence under item 2, and 3.2's table
+   now carries `primary cells` and `control cells` so the record has no unqualified "cells"; the vision classifier's
+   accuracy line under that table is the same panel's reported addition.
+15. (appended 2026-09-15, after the panel) 2.6's DISPOSITION NOUN ("the attention state") AND 2.7's "attention control
+   state" ARE WIDER THAN 2.2's PRE-REGISTERED X (the focus band); the two were pre-registered in one document without
+   being tied together, and 3.4's and 3.6's verdict sentences repeated the wide noun. Corrected in place (the
+   sentences now name the FOCUS BAND, identically argmax(gate)); 2.6 and 2.7 stay as frozen; the successor
+   pre-registers the noun and the X as the same object (opening 6). The same scope clause is appended to tasks.md's
+   T078 note and PLAN-FINAL's C4 note.
+16. (appended 2026-09-15, after the panel) THE PIN's `reading.reported.gate16` IS A CONTRAST FABRICATED FROM EIGHT
+   REFUSALS: `run_t078_campaign`'s reported block wrote `(mi or 0.0) - (perm_q95 or 0.0)` and `contrast` read eight
+   0.0 diffs as a degenerate t 0.0000 / FPR 0.0 (`degenerate: true` in the pin) -- a number where the reading was
+   REFUSED on every seed (142-156 observed (gate16, action) cells under the per-cell rule). 3.3's conjunct table now
+   says REFUSED; the code half of the fold makes a refused reported reading carry its refusal and no t; the pin
+   predates that fix and still carries the manufactured key, which this item is the reading of. No barred conjunct is
+   affected.
+17. (appended 2026-09-15, after the panel) THREE STAMPS IN THE FROZEN TEXT ARE FORECASTS, NOT OBSERVATIONS: the
+   header's window end ("12:05-14:50") was written before 14:50 existed; the `### 2.0` heading's past-tense "re-sent
+   after the 14:33 reset" while its body words the act as armed; the `### 2.10` heading's "14:50" against its commit
+   at 14:45:41. Git is the operative record, as the header itself delegates: sections 1-2 froze at `02d677e`
+   (12:06:25), 2.10 at `1094234` (14:45:41), its code at `455236d` (14:48:07). No frozen line is edited; the header
+   line is byte-identical at `02d677e`.
+18. (appended 2026-09-15, after the panel) THE DRY RUN's WIDTH: 2.9 step 5 pre-registers one seed at 300 ticks; it was
+   run at 200 (3.0; `scratchpad/t078/dry_run_module.py`, whose docstring carries the reason). 2.9's parenthetical
+   justified 300 for G3 only ("its G3 reading REFUSES by N_MIN"); at 200 G4 refuses as well ("48 held-out rows is
+   below N_TEST_MIN = 50"), while at 300 the 146 awake ticks 1.3 measured would have cleared `N_TEST_MIN` and a G4
+   decode number WOULD have been previewed. The narrowing removed a preview the pre-registered width allowed; at
+   neither width was a G3 number previewed. Apparatus only; no gate reading in 3.3 is touched.
+19. (appended 2026-09-15, after the panel) THE VISION CALL's FOCUS BAND WAS LIVE ON THE BRAIN AND THE RECORDER OMITTED
+   IT (3.4 i, corrected): `_attend_real_stream` returns `{"channel", "band", "focus"}`, `_safe_ctx` keeps the vision
+   dict as `_attn_real` (`va or aa`) on every tick that attends twice, and `Brain.state()` publishes it as
+   `attention_real`. The hole is the recorder's, not the loop's; the argmax(chan) substitute stood in for something
+   the tick held. Opening (2) is narrowed to what a recorder can retire: a successor's `attend` wrapper APPENDS each
+   call's `LearnedAttention.focus` to a per-tick list beside `attend_calls` (call 1 vision, call 2 audio; a tick with
+   `attend_calls != 2` visibly unresolvable), reading the per-call list rather than `_attn_real["band"]`; the
+   pre-registration of WHICH call is X and the per-band neuter of the vision channel are still owed by that successor,
+   not supplied by any recording. Not applied to this closed row.
+20. (appended 2026-09-15, after the panel) THE EIGHT ARMS SHARE ONE STIMULUS STREAM: the G4 decode target is one
+   ordered stream shared by all eight arms -- each seed's label sequence is an exact PREFIX of the longest seed's, the
+   shared prefix byte-identical (verified on the first 580 labels of every seed). `_real_frames` / `_real_labels` load
+   once from the fixed pack, `Brain.__init__` sets `_real_ptr = 0`, `_perceive_real` walks it by `_real_ptr % len`,
+   and `t078_record_brain` seeds only `make_brain(seed=...)`; so 2.2's "seeds 0-7" varies the brain's RNG at the INPUT
+   only, and `contrast`'s eight arm-level diffs are not independent in the stimulus factor. Everything downstream of
+   the RNG does vary: the awake and G4 row counts (3.2), the gate, the gated latents (the npz's per-seed arrays differ
+   on the aligned prefix) and the committed actions. DIRECTION: sharing the stream REMOVES a variance component across
+   arms, so a design that also varied it can only ADD variance and lower |t|; the nominal 7 d.f. is on the generous
+   side for the same reason. This route cannot carry (g4a) ACROSS the bar and does not reach (g3), (g3c) or (g4b); THE
+   VERDICT DOES NOT MOVE -- a scope disclosure (opening 9).
+21. (appended 2026-09-15, after the panel) THE DETECTION FLOOR OF THE G3 CONTRAST WAS NEVER MEASURED BEFORE THE RUN:
+   the only positive control, (g3c), reads MI 0.55-0.87 bits against floors ~0.25 -- an order of magnitude above the
+   primary's whole scale (0.04-0.08) in a sparser joint -- so it certifies that the estimator sees a STRONG dependence
+   and says nothing about the margin the contrast resolves at the primary's scale. Measured post-hoc, reported and
+   never barred (3.4 iv): on a grid q = 0.02 ... 0.30, all four planted maps first fire at q = 0.10 and none at 0.08
+   (t +3.235 / +3.080 / +2.335 / +3.663; mean MI margin +0.0248 / +0.0155 / +0.0148 / +0.0211 bits above the floor);
+   the primary's pinned mean margin is -0.0163 bits. The firing FRACTION is the same across the four maps while the MI
+   margin resolved at it varies with the map, so the reportable number is the margin in bits the pre-registered
+   contrast resolves at 540-549 pairs: roughly 0.015-0.025 (the refuter's own probe reported a firing fraction near
+   0.11 that swung two-fold across maps; at this grid, 0.02 steps, the four maps agree at 0.10, so any swing sits
+   inside one grid step -- NOT reproduced here, and not the reportable number either way). 2.10 disclosed the regime
+   difference before the run ("the per-observed-cell minimum protects the SUBTLE primary reading; the control's job is
+   to detect a STRONG dependence ... sparsity raises the floor, it does not blind it"); what it did not do is state
+   the floor. The successor pre-registers the plant map and the margin BEFORE its run (opening 8); the STOP stands as
+   read.
+22. (appended 2026-09-15, after the panel) THREE POST-NUMBER INSTRUMENT CHANGES LANDED IN THE CODE HALF, each touching
+   no barred conjunct and each verified by the fold's head check re-deriving every pinned MI, floor, decode, band and
+   contrast bit-for-bit (`scratchpad/t078-panel/verify_head.py`, 35 s): (a) `c3ebace` (K5): R3 gained an ADDITIONAL
+   conjunct and the scorer catalog a seventh mutation, `blind_min_rule` (the scorer drops `min_rule` and reads
+   everything under the per-cell rule), so 2.10's per-class twin is reddened in fact -- the six pre-registered
+   mutations leave the twin readable, so the addition is additive and substituting it for one of them would take R3
+   False; (b) `5b686ac` (K4/K11): `run_t078_campaign`'s reported block carries REFUSED and no number when any seed's
+   reading is unreadable (`_reported_mi`; `test_a_refused_reported_reading_carries_REFUSED_and_never_a_number`) -- the
+   pin retains the old eight-zero shape (item 16), and the partial-refusal hazard the refuter named reproduces on
+   every seed: coercing ONE seed's same-tick diff to 0.0 moves the reported same-tick t from -9.1089 to -5.2547 (seed
+   5) .. -5.8957 (seed 3) with `degenerate` False, a live-looking number where a refusal stood (the refuter's -5.2547
+   and the builder's -5.8957 are the same hazard on two seeds); (c) `278e7a5` (K14): `_decode` zeroes a column whose
+   train-half sd is raw zero in BOTH standardized halves
+   (`test_a_column_constant_in_the_train_half_cannot_amplify_into_the_decode`); on the pin the standardized `u_t` test
+   half's |z|max is 4.894 (seed 5) to 11.431 (seed 6) -- the panel's printed range reproduces, the fold-builder's
+   alternative range (6.952-17.234) did NOT reproduce with the shipped standardization and is not written -- and every
+   seed carries exactly one raw-zero-sd train column (`focus_is_none`; two on seed 1, where `ignited` is also 0),
+   which the pre-guard clamp already mapped to 0, so the guard moves no pinned decode. Also `b3886ab` (K10): a
+   reachable red for the decoder's no-lookahead and train-half-standardization properties
+   (`test_the_decoders_prequential_split_and_train_half_standardization_have_reachable_reds`), a test and not an
+   instrument change, landed on a late-signal construction after the refuter's own sign-flip construction failed to
+   separate. `tests/test_attention_schema.py` 11 -> 14 passed; the module's self-check line reads 6/6 reds; the
+   catalog's printed mutation count, made stale by (a), was corrected by the builder's own `bddc37c`.
+23. (appended 2026-09-15, after the panel) `_q95` IS THE THIRD SPELLING OF THE 95th-PERCENTILE ORDER STATISTIC, NOT
+   THE SECOND (3.5 item 3 and 3.6 opening (5) say "a second spelling of `track_error`'s"):
+   `substrate/_mathutils._p95_of` landed at `37c3203` (2026-09-06), nine days before `02d677e`, and `_mathutils`'s own
+   docstring declares it the home for byte-equivalent duplicated helpers (`metacognitive_monitor` already imports from
+   it). The panel's filed lift into `substrate/paired_contrast` was judged WRONG by its refuter and is REFUSED:
+   `track_error` sorts its `draws` in place and then reads the median from the same list, so a non-mutating shared
+   helper would move a pinned T077 number. The code half corrected the deferral's stated reason in the module
+   (`8ce41be`, K7); the lift is the successor's, into `_mathutils`, with T077's in-place sort disclosed first. Opening
+   (5) is amended by this item, not edited.
+24. (appended 2026-09-15, after the panel) SECTION 1 ITEM 6's P2 REUSE OF `integration_measure.source_entropy` NEVER
+   HAPPENED: the module imports exactly `paired_contrast` and `report_channel`, and `source_entropy` occurs in prose
+   only. Corrected in the module header (`151d4f8`, K8), which also names `thalamus/ignition_instrument.
+   _permutation_null` as the nearest incumbent -- a label-permutation band around a refit decoder read IN-SAMPLE -- so
+   the header's "ABSENT from the tree" claim for a held-out decoder with a label-shuffle band rests on the word
+   held-out alone: thinner than it reads, disclosed. A deviation from 1.6; no number touched.
+25. (appended 2026-09-15, after the panel) THE DETERMINISM KEY COMPARES 5 OF THE 18 RECORDED FIELDS, and 3.4 records
+   "(p) MET" on that key: the builder verified a mutant recording that passes the key while its full rows differ, and
+   that each of the 5 keyed fields fires (p) when mutated. The panel's filed fix (extend the key to every field) was
+   judged post-number bar movement by its refuter (2.2 freezes the key; the pin carries `reading.determinism`); the
+   code half landed the docstring's scope sentence only (`d9f1fdd`, K2). Opening (11).
+26. (appended 2026-09-15, after the panel) THE `chan disagrees` COUNTER EQUALS THE npz ROW COUNT ON EVERY SEED (1196 /
+   1199 / 1199 / 1199 / 1199 / 1191 / 1195 / 1199; `per_seed.<s>.ticks_chan_disagrees` against `seed<s>_ticks`): the
+   ticks where the two agree are exactly the ticks BEFORE the first `attend` call, where `_attn_real` is absent and
+   `chan` falls back to `from_gated`, so the comparison is degenerate there and the counter reads "the two differ on
+   every tick where both exist" (3.2's sentence is appended, not moved). Two more apparatus facts from the code half,
+   reported: `t078_pack_latents` filters on `r.get("gated")` while `t078_g4` filters on `r["gated"]`, so the pin's own
+   rows raise KeyError in the reader (K12; the docstring now names the npz join, no loader added) and return a SILENT
+   (0, 64) array from the packer -- the worse failure, and nothing catches it (opening 12); and
+   `dormancy_gate.EXEMPT["attention_schema"]` now records which branch fired (`679edc7`, K13) while its "permanent"
+   wording and "RETIRED WITH THE ROW" clause stay as frozen, since 2.9 step 7 pre-registers that on a STOP nothing in
+   `conclusion_protocol` changes.
+
+### 3.7 The panel fold (2026-09-15; three lenses, refuters judging CLAIM and FIX separately)
+
+The panel (instrument / pre-registration-honesty / disposition lenses at head `23eb085`) filed 46 findings; 39 STOOD
+after refutation and 7 were REFUTED; 35 of the 39 filed fixes were judged WRONG by their refuters (obs #2146's shape
+again). The fold landed the REFUTERS' minimal fixes, never the panel's, in two halves: the CODE half by an Opus
+executor (23eb085..bddc37c, 14 commits: (r)'s refusal naming the arm; a refused reported reading carrying REFUSED and
+no number; R3's printed description and its per-class twin reddened in fact by a seventh mutation; the standardization
+guard with its constructed red; the prequential-halves red; the decoder-budget comment; the determinism docstring's
+scope; the packer's and the recorder's real mechanism; `_q95` as the THIRD spelling with the panel's lift REFUSED; the
+unperformed `source_entropy` reuse deleted; the pin-and-npz docstring with no loader added; the dormancy exemption
+recording its branch; the builder's own stale count corrected -- three brief-versus-refuter conflicts resolved to the
+refuter (no `_q95` lift, no pin loader, no exemption rewrite), one between two refuters (K4 versus K11, the more
+complete landed), every commit followed by the fifteen census gates rc=0 and the 200-step re-derivation of the pin,
+bit-for-bit) and the RECORD half here (3.0 x2, 3.2's table, the classifier line and the counter's meaning, 3.3's
+tables with every null's centre, 3.4 x5 with the new (iii) and (iv), 3.6 x4 with openings (7)-(12), 3.5 items 8-26 and
+four appended corrections under items 2, 4, 5 and 6). Every number written was REPRODUCED by the fold's own probes
+first (`fold_verify_pin.py`, `fold_verify_extra.py`, `fold_verify_builder.py`, `redecode_2000.py`,
+`fold_sensitivity.py`, `fold_detection_floor.py`, `verify_head.py`, all under `scratchpad/t078-panel/`); the refuters'
+output and the builder's report were data -- one of the builder's five reported numbers did not reproduce and is not
+written (item 22).
+
+Where refuters disagreed the pin decided: the count of near-constant `u_t` fields (one vs three; the pin reads two
+near-constant, one low-cardinality, item 9). NOT done, and why: no post-hoc sensitivity arm was added to the shipped
+CORE self-check (the probes live in the scratchpad and read the pin, as the vision-channel probe does); the pin's
+manufactured `reported.gate16` key is not hand-edited (write-once) and is read by item 16; no decoder constant moved
+(item 13 records the 2,000-step re-read beside the pre-registered 200); no pin was regenerated; the determinism key
+was not extended (item 25), `_q95` was not lifted (item 23), no pin loader was added (item 26) -- each a post-number
+change its refuter refused. The 7 refuted findings, by substance: the disposition sentence generalizing a null from
+one projection (its scope survives as item 15, the claim as filed did not); `u_t` carrying the action selector's own
+margin with no control (the field list is the algorithm's own); R1 carrying an f(x)==f(x) conjunct (its control margin
+can fail); the dormancy exemption promising retirement on the STOP branch (the exemption names Part II, not STOP); the
+pin not self-attesting its head (the commit does); the invention register's #8 row lacking an outcome line (C-R6 sets
+the precedent); the openings owned by no task row (tasks.md's dated note names them).
+
+THE FOLD IS ITSELF UNREVIEWED CODE (obs #35): it was not re-panelled; it is battery-verified only -- the arc's
+battery, named in the closing record commit of this push, is its review. The verdict G3 STOP x G4 PASS, the pin, 2.6's
+STOP branch and the openings stand as recorded; the fold added openings (7)-(12), moved no bar, and dropped no
+conjunct.
