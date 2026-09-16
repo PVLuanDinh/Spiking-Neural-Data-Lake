@@ -281,3 +281,48 @@ dated note; PLAN-FINAL C4 note; spec.md SC-009 note; on PASS the conclusion row,
 row; on NOT MET / REFUSED nothing in `conclusion_protocol`, `brain_telemetry` or the cockpit changes) -> 8. section
 3 the record -> panel (3 lenses + refuters judging CLAIM and FIX) -> fold -> the battery on the stacked head (the
 Codex closing report when the cap lifts, 2.0).
+
+### 2.10 Amendment, dated 2026-09-15 22:10 local, BEFORE the campaign (one readability clause corrected on an apparatus
+### fact; the build's deviations disclosed) -- no gate's form, bar, disposition, arm or N changes
+
+(r) AS WRITTEN WOULD REFUSE THE CAMPAIGN ON THE BODY'S NORMAL BEHAVIOUR. 2.3 (r) requires "the passage count equals the
+awake-tick count". The 300-tick dry run read 146 passages over 146 awake ticks (2.9 step 5, `scratchpad/t079/dry_run.json`),
+and the pre-registration inferred one passage per awake tick from it. The apparatus run at the CAMPAIGN width
+(`scratchpad/t079/probe_width.py`, seed 0, 1,200 ticks, both arms, 172 s -- an APPARATUS reading on one seed, disclosed:
+it read per-joint `c`, the status machine and both floor constructions on seed 0 and computed NO paired t and no verdict)
+read 623 passages over 593 awake ticks on the INTACT arm and 593 over 593 on the shoved arm. The 30 extra passages are the
+POSTURAL RECOVERY REFLEX of `AutonomousArm.step` (autonomous_loop.py, the `_GROUND_RECOVER_TICKS` block after the main
+apply): on a ground contact the loop issues a SECOND `apply_observed` in the same tick, which T037 counts as a passage, the
+tap observes, and 2.1's feed feeds. A recovery passage is exactly what the copy should see -- a command with its outcome --
+and refusing a recording for carrying it would refuse the body for standing up. AMENDED: (r)'s clause reads "every awake
+tick carries at least ONE passage (the T037 1:1 step-and-tick contract, read per tick), the extra passages (recoveries and
+self-clears, `passages - awake`) are COUNTED, fed and reported per seed and arm as `extra_passages`, never a refusal"; the
+recorder already records `passages_this_tick`. Nothing else moves: (p), (g0), (a1), (a2), (a3), the bar, the arms, N, the
+shove, the floor. Landed as the commit after this one, before the campaign, with its constructed red (an awake tick with no
+passage REFUSES; an awake tick with two passages READS, `extra_passages` 1).
+
+THE BUILD'S DEVIATIONS FROM 2.1-2.9, each disclosed in-code and here (the builder's report, `scratchpad/t079/builder_brief.md`
+was the brief): (i) `_q95` was LIFTED into `substrate/_mathutils.q95` (`attention_schema._q95` now its alias) rather than
+imported from `attention_schema`, because `agency_monitor` is LIVE and `attention_schema` is dormancy-EXEMPT, so importing it
+-- even lazily -- makes `dormancy_gate` name the exemption stale and exit 1 (probed on a throwaway edit before the commit);
+the formula is verbatim and no consumer's number moves -- T078 3.5 item 23's successor lift, taken by this row because the
+gate forced it. (ii) `proprioception_deltas` is DEFINED in `afferent_boundary` (where `proprioception_delta` lives; the
+efferent module imports the afferent one at module top, so the reverse would be an import cycle) and re-exported by
+`efferent_boundary`; its units are the scalar's (degrees / 180), so `u_j` is in degrees and `ds_j` in normalised units --
+Pearson is scale-invariant and `var_floor` reads the command variance, so no reading moves. (iii) R1's `floor_unpermuted`
+reddens the COUPLED channel's margin (every draw equals the reading exactly, so the decoupled channel still reads "at its
+floor"), and R6's `blind_scorer` reddens the reading through (a2), not (a1) -- each red is reddened in fact, on the clause
+that fires. (iv) The recorder wraps `apply_observed` as well as `efferent.observe`, because the feed runs after the tap
+returns and a `ctrl` read inside the inner wrap would be one passage stale (T077 3.2's forbidden pairing). (v)
+`live_arm._joint_obs_delta` now reads 0.0 on a MOVETO token (the retired regex returned the setpoint as a delta; unreachable
+on its own path either way). (vi) Builder constants, in-file: the reds' `n_shuffle` 200 (the campaign's 2,000 is untouched),
+R6's 900 passages at a 1-in-10 command duty (1.3's measured shape), the dry run's 300 ticks and 12 floor repeats.
+
+TWO APPARATUS FACTS FROM THE CAMPAIGN-WIDTH RUN, reported now so 3.0 cannot present them as new: (a) the cause-blind
+twin's floor as BUILT (2.1's words: `u_j` permuted over the SCORED window, the EMA carrying real coupling across warmup)
+reads q95 0.160-0.226 on seed 0's intact arm against 0.106-0.112 when the permutation covers the WHOLE recording -- the
+as-built floor is HIGHER, so (g0) is harder to meet, never easier; the as-built construction stays the pre-registered one
+and the whole-recording floor is reported beside it in 3.3 as the constant's sensitivity. (b) The intact coupling at this
+width is not ~1.0 on every joint (seed 0: 0.99 / 0.95 / 0.86 / 1.00 / 1.00): the policy drives shoulder_lift and elbow_flex
+into their limits and the ground (30 recoveries), where a commanded step achieves less than its delta -- the body's fact,
+inside the reading as pre-registered.
