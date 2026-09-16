@@ -38,7 +38,9 @@ WHAT THIS MODULE REUSES rather than rebuilds (P2; checked with graph-exists 2026
     `throwaway_home()`, per-tick rows, an INSTANCE's method wrapped to capture what it is fed and
     what it returns), of `_t077_mutated_scorer` / `t077_reds` (every red reddened IN FACT by a
     deliberately broken scorer, run, never argued), and the q95 convention of `track_error`
-    (`draws[min(len-1, round(0.95*(len-1)))]`).
+    (`draws[min(len-1, round(0.95*(len-1)))]`) -- which `substrate/lake_engine::AppendBudget._p95_of`
+    also spells, so `_q95` is the THIRD spelling of it and not the second; the `# distinct-from:`
+    block above `_q95` carries the P2 debt and the home a successor's merge belongs in.
   * `cortex/integration_measure.source_entropy` -- the tree's binary entropy.
   * `substrate/home.throwaway_home` -- the scratch NORD_HOME every recording runs under. THE LIVE
     LAKE IS NEVER TOUCHED and the daemon's brain is never constructed here.
@@ -205,11 +207,26 @@ assert not (set(U_FIELDS) & set(U_FORBIDDEN)), (
 #   between two instruments, takes its bar from `np.percentile` (which INTERPOLATES between order
 #   statistics), and RAISES IngestRefused instead of returning a reading. `_q95` is the exact
 #   non-interpolating order statistic 2.1 pre-registers -- "the q95 as `track_error` takes it" --
-#   over MI draws and decoder accuracies. DISCLOSED P2 debt rather than hidden: that expression now
-#   has two spellings in the tree, this one and the inline copy at metacognitive_monitor:915 which
-#   2.1 names as THE convention. Lifting it beside `paired_contrast` is the merge, and it is the
-#   right move the moment a THIRD caller appears; it is not taken in this commit because that edits
-#   T077's shipped instrument, which this row's brief scopes out.
+#   over MI draws and decoder accuracies. DISCLOSED P2 debt rather than hidden, and CORRECTED
+#   2026-09-15 in the panel fold: this is the THIRD spelling of that non-interpolating order
+#   statistic in the tree, not the second. The others are the inline copy in
+#   `cortex/metacognitive_monitor::track_error`, which 2.1 names as THE convention, and
+#   `substrate/lake_engine::AppendBudget._p95_of`, which landed at 37c3203 on 2026-09-06 -- NINE
+#   DAYS before this row's pre-registration -- so this module's own stated trigger ("the moment a
+#   THIRD caller appears") was already met when `_q95` was written, and the sentence that said
+#   "two spellings" was false at HEAD. The reason the merge is not taken here is ALSO corrected: it
+#   changes EXECUTABLE code in two shipped instruments outside this row's brief and is a row of its
+#   own, NOT that T077's file was untouchable (5b020cf edited `metacognitive_monitor` in this same
+#   push -- one file, 5/3, comment-only, and a T077-arc commit four commits after this disclosure
+#   was written). If a successor takes the lift, the home is `substrate/_mathutils` -- the tree's
+#   DECLARED home for byte-equivalent duplicated helpers, whose own docstring states the doctrine
+#   and which `metacognitive_monitor` already imports -- and not `paired_contrast`, which is the
+#   seed-paired statistic plus `T_BAR` and would become a second home for shared helpers. Two
+#   hazards to carry with it, both read here: `track_error` sorts `draws` IN PLACE and the next
+#   statement reads `shuffled_auroc2` as the median of that same list, so a non-mutating helper
+#   moves a pinned T077 number; and `_p95_of` must keep its `sorted(xs)` copy, because an
+#   in-place-sorting helper would reorder the list `AppendBudget._recent` holds as a rolling window,
+#   which `bar()` passes directly and `end_tick` appends to and trims BY POSITION.
 # distinct-from: substrate/determinism_gate.py::measure_frac_bits -- a sweep for the smallest
 #   fractional-bit width whose spike trains equal an FP64 reference. A search over widths, not a
 #   percentile of a null. Read; unrelated.
