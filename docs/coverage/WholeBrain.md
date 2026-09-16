@@ -329,7 +329,7 @@ features presented inside one tick window on 0.26-0.42 of ticks against a member
 daemon the two percept streams are INDEPENDENT (digit == word at chance, 0.08, at every lag), so the binder's live
 reports are chance congruences and `crossmodal_superadditive` rides on them; `Brain.state()['crossmodal_bound_rate']`
 publishes the live fraction with both C5 sentences and that disclosure in its provenance. The row's C5 reading is
-0.2309.*
+0.2309. DATED 2026-09-16 (the panel fold; `evidence/t080-temporal-binding.md` 3.5 item 11): the "same view" conjunct is NOT MET AS RENDERED -- the cockpit's `cross-modal bound rate` row is appended below the ACCESS plate's 110 px visible box and its two sentences reach the DOM only in the row's title string, so a viewer sees neither; the row's data and the /api/state PROVENANCE line (both sentences) stand; the clipping is shared with the PCI and integration rows and is owed a cockpit row of its own.*
 
 ## A lead that was wrong, and the correction is the point
 
