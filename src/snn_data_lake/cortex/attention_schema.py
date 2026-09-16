@@ -525,6 +525,22 @@ def t078_record_brain(seed, n_ticks=T078_N_TICKS):
     `_attn_real` (1.2's arm sensory channel) and as the last call's four band means, so the
     campaign can COUNT the ticks on which the two differ instead of adjudicating between them.
 
+    DISCLOSED, 2026-09-15 (the panel fold), because the staleness is the RECORDER's and not the
+    packer's: `cap` is built ONCE above the tick loop and is never reset, so a tick on which
+    `attend` is not called keeps the LAST attending tick's capture. Exactly three recorded fields
+    are tainted by that -- `gated`, `gate` and `chan_from_gated` (which is derived from `gated`).
+    Measured on the committed pin: on every post-first-attend asleep row of all eight seeds, `gate`
+    is identical to the previous row's (604/604, 607/607, 602/602, 608/608, 611/611, 602/602,
+    602/602, 611/611). `focus_band`, `focus_strength` and `chan` are NOT tainted -- they read the
+    brain's `_attn_focus` and `_attn_real` directly, and `chan`'s `from_gated` FALLBACK was taken on
+    0 of those rows on every seed -- and `cap["latent"]` / `cap["focus"]` are captured but never
+    consumed into a row at all. The LIVE RISK this leaves open: `t078_g4` filters on a truthy
+    `gated` and `t078_pairs` filters nothing, so an awake tick with `attend_calls == 0` arriving
+    AFTER the first attend would enter a G3 pair and a G4 row on the previous tick's latent -- the
+    stale pairing T077 3.2's amendment forbids, and no gate catches it today. It did not arise on
+    the pinned recording: the one zero-attend awake tick per seed is the tick immediately BEFORE
+    that seed's first attend, so it is outside the npz and its `gate` is already the empty vector.
+
     The frame LABEL is recovered as `_real_labels[(_real_ptr - 1) % n]` on the ticks where
     `_real_ptr` ADVANCED (1.2), and is None otherwise -- never carried forward from a past tick.
     Returns rows only; the brain is dropped so eight seeds do not stay alive at once."""
@@ -709,12 +725,23 @@ def t078_g4(rows, seed, n_shuffle=N_SHUFFLE):
 
 
 def t078_pack_latents(rows):
-    """The companion .npz's per-seed arrays: the 64-d gated latents of the ticks that HAVE one (an
-    asleep tick, or an awake tick on which `attend` was not called, records an empty `gated`), as a
-    (m, LATENT_DIM) float32 array, beside the (m,) int32 array of their tick indices -- so the npz
-    re-joins the pin's rows by `t`. The first dry run (2026-09-15 14:48, 200 ticks) crashed on a
-    ragged `np.asarray` over ALL rows; the builder's constructed-recording test had given every row,
-    asleep ones included, a latent, so it never saw the empty ones (2.9 step 5's red, added after)."""
+    """The companion .npz's per-seed arrays: the 64-d gated latents of the ticks that CARRY one, as
+    a (m, LATENT_DIM) float32 array, beside the (m,) int32 array of their tick indices -- so the npz
+    re-joins the pin's rows by `t`. `seed{s}_ticks` is therefore "the ticks that carry a latent",
+    NOT "the ticks that attended".
+
+    THE MECHANISM, corrected 2026-09-15 in the panel fold and MEASURED on the committed pin rather
+    than argued. An asleep tick does NOT record an empty `gated`: `t078_record_brain`'s `cap` dict
+    is built once before the tick loop and is never reset, so a tick on which `attend` is not called
+    keeps the LAST attending tick's `gated` and `gate`. The npz proves it -- per seed it keeps
+    1,191-1,199 of 1,200 ticks, and the count of consecutive byte-identical latent rows equals the
+    ASLEEP count exactly on every seed while the number of DISTINCT rows equals the AWAKE count
+    exactly. So about half of each seed's packed rows (50.2%-51.0%, 50.6% over all 9,577) is one
+    byte-duplicate per asleep tick. The ONLY rows carrying an empty `gated` are those before the
+    FIRST `attend` call of a run, and those are exactly the ticks missing from the npz on all eight
+    seeds -- they are the rows the first dry run's ragged `np.asarray` tripped on (2026-09-15 14:48,
+    200 ticks; the builder's constructed-recording test had given every row a latent, asleep ones
+    included, so it never saw the empty ones -- 2.9 step 5's red, added after)."""
     import numpy as np
 
     kept = [(r["t"], r["gated"]) for r in rows if r.get("gated")]
