@@ -844,6 +844,17 @@ strictness for the latent field across the packer and the reader, and a reader t
    `dormancy_gate.EXEMPT["attention_schema"]` now records which branch fired (`679edc7`, K13) while its "permanent"
    wording and "RETIRED WITH THE ROW" clause stay as frozen, since 2.9 step 7 pre-registers that on a STOP nothing in
    `conclusion_protocol` changes.
+27. (appended 2026-09-15 20:55, after the fold) THE CODEX CLOSING REPORT WAS REFUSED, so the fold stands with NO
+   external refutation: sent 20:46:58 on head `39e2144` (`scratchpad/t078/codex_closing_prompt.md`, the fold's 3.7
+   first, the corrected facts -- 6 of 8, two near-constant fields, the vision band live, the 2,000-step re-read --
+   handed to it), it returned at 20:49:26 with "You've hit your usage limit ... try again at Sep 20th, 2026
+   12:30 AM" after 71,746 tokens of tool calls (a graph check and six sandbox reads) and zero findings
+   (`scratchpad/t078/codex_closing_report.md`). This is a WEEKLY cap, not the five-hour window 2.0 and 2.10 met, so no
+   re-send is armed; if a reply lands after this row's push it is folded as a dated item here, never as a
+   pre-registration amendment, per 2.10's own rule. Nothing in this record was read by a second model after `02d677e`
+   -- the design read (2.0, 2.10) and the closing report both refused -- and the fold is battery-verified only (3.7,
+   obs #35). Apparatus note: the first send-waiter fired on its own prompt echo (the prompt contains the words
+   "usage limit"); the waiter now reads only Codex's output after the last `codex` marker (obs #2181's shape again).
 
 ### 3.7 The panel fold (2026-09-15; three lenses, refuters judging CLAIM and FIX separately)
 
