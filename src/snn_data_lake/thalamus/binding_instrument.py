@@ -153,6 +153,21 @@ T080_R2_VIS_DIM = 64
 T080_R2_AUD_DIM = 128
 T080_R2_NEAR_EVERY = 3
 T080_R2_NOISE = 0.02
+#: R2's latent DENSITY -- the fraction of each latent's coordinates that are non-zero, the
+#: rest exactly 0.0. BUILDER-INTRODUCED and MEASURED, not chosen: 2.4 requires the 200 probe
+#: pairs to contain a SUB-MARGIN pair (else `ignore_margin` cannot redden R2), and DENSE
+#: latents drawn uniform in [0, 1] cannot produce one. A sign-random projection of two
+#: all-positive vectors is dominated by their common mean, so every pair reads far above the
+#: margin. Measured on this construction (200 probes, 10 taught, margin 0.15), sub-margin
+#: vision / audio pairs and the number of pairs `ignore_margin` changes:
+#:   density 1.00 -> min sim 0.469 / 0.492,  0 /  0 sub-margin,  0 changed  (R2 UNREACHABLE)
+#:   density 0.25 -> min sim 0.117 / 0.105,  7 / 12 sub-margin,  3 changed
+#:   density 0.15 -> min sim 0.059 / 0.074, 26 / 40 sub-margin,  4 changed
+#:   density 0.10 -> min sim 0.020 / 0.066, 41 / 58 sub-margin, 11 changed  <- adopted
+#:   density 0.06 -> min sim 0.016 / 0.039, 47 / 59 sub-margin,  7 changed
+#: Every row read `agree` 0 (the decomposition equals `bind()`'s handle), which is R2's own
+#: claim: the density decides whether the red is REACHABLE, never whether it holds.
+T080_R2_DENSITY = 0.10
 #: The REDS' draw count. BUILDER-INTRODUCED and disclosed (T079's precedent): 2.1 fixes
 #: n_draws = 2,000 for the CAMPAIGN's nulls; `t080_reds()` runs on every run_selfchecks pass
 #: and 2.4 fixes no draw count for the reds themselves.
@@ -303,6 +318,21 @@ def t080_constructed_recs(n=T080_R1_TICKS, k=T080_R1_OBJECTS, congruent=T080_R1_
     return recs
 
 
+def _clip01(x):
+    """Keep a noised latent coordinate inside [0, 1] -- the packs' own range (2.4's words)."""
+    return 0.0 if x < 0.0 else (1.0 if x > 1.0 else float(x))
+
+
+def _t080_sparse_latent(rng, dim, density=T080_R2_DENSITY):
+    """One random latent: `density` of its coordinates drawn uniform in [0, 1], the rest
+    exactly 0.0. The sparsity is what makes a SUB-MARGIN pair reachable at all -- see
+    `T080_R2_DENSITY` for the measurement that fixed it."""
+    v = [0.0] * dim
+    for j in rng.sample(range(dim), max(2, int(round(dim * density)))):
+        v[j] = rng.random()
+    return v
+
+
 def t080_constructed_binder(seed=0, taught=T080_R2_TAUGHT):
     """R2's binder: a shipped `CrossModalBinder` taught `taught` random latent pairs at the
     LIVE packs' widths (vision 64-d, audio 128-d, values in [0, 1]). Returns (binder,
@@ -315,8 +345,8 @@ def t080_constructed_binder(seed=0, taught=T080_R2_TAUGHT):
     binder = CrossModalBinder(seed=0)
     protos = []
     for i in range(taught):
-        v = [rng.random() for _ in range(T080_R2_VIS_DIM)]
-        a = [rng.random() for _ in range(T080_R2_AUD_DIM)]
+        v = _t080_sparse_latent(rng, T080_R2_VIS_DIM)
+        a = _t080_sparse_latent(rng, T080_R2_AUD_DIM)
         binder.register(f"obj{i}", v, a)
         protos.append((v, a))
     return binder, protos
@@ -334,11 +364,11 @@ def t080_constructed_pairs(binder, protos, n=T080_R2_PROBES, seed=1):
     for t in range(n):
         if t % T080_R2_NEAR_EVERY == 0 and protos:
             pv, pa = protos[rng.randrange(len(protos))]
-            v = [x + rng.uniform(-T080_R2_NOISE, T080_R2_NOISE) for x in pv]
-            a = [x + rng.uniform(-T080_R2_NOISE, T080_R2_NOISE) for x in pa]
+            v = [_clip01(x + rng.uniform(-T080_R2_NOISE, T080_R2_NOISE)) for x in pv]
+            a = [_clip01(x + rng.uniform(-T080_R2_NOISE, T080_R2_NOISE)) for x in pa]
         else:
-            v = [rng.random() for _ in range(T080_R2_VIS_DIM)]
-            a = [rng.random() for _ in range(T080_R2_AUD_DIM)]
+            v = _t080_sparse_latent(rng, T080_R2_VIS_DIM)
+            a = _t080_sparse_latent(rng, T080_R2_AUD_DIM)
         rows.append(
             {
                 "t": t,
