@@ -153,8 +153,9 @@ def test_the_surface_debt_is_at_or_under_its_measured_baseline():
 
 
 def test_refusal_three_arms_itself_when_a_c4_instrument_task_lands():
-    # Six of seven rows declare no surface symbol today, so without this arm the
-    # refusal covers exactly ONE instrument.
+    # ONE of seven rows (attention_schema, T078 still [ ]) declares no surface symbol today -- this
+    # header once read "six of seven", inverted on the head it was written for (the T082 panel,
+    # 2026-09-16); the arm is CONSTRUCTED so the refusal's red stays reachable whatever the census.
     assert conclusion_protocol._task_done("T034") is True  # a task marked [X] in tasks.md
     # T078 is the C4 task still unmarked; T077 read [X] at f27f436 (2026-09-15) and this line was
     # RED on that head for a day -- the panel found it (evidence/t077-metacognition.md 3.5).

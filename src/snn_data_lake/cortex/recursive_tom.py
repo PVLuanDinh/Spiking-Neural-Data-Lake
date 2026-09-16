@@ -467,8 +467,12 @@ def t082_script(seed, n_ep=T082_N_EPISODES, all_witnessed=False):
     world") REFUSED on all eight seeds before any barred conjunct was read. An unwitnessed move
     onto the believed location is not a false-belief episode, so it is excluded: when the drawn
     location equals the agent's belief on an unwitnessed episode, the first alternative location
-    is taken DETERMINISTICALLY (no RNG consumed -- the draw sequence, and so every witnessed
-    episode and every unwitnessed count, is unchanged; 0 coincidences on every seed)."""
+    is taken DETERMINISTICALLY (no RNG consumed -- the draw sequence, and so the WITNESS PATTERN
+    and every unwitnessed count, is unchanged; 0 coincidences on every seed). The LOCATIONS of
+    episodes downstream of a corrected one DO move, because the next draw indexes a candidate
+    list that excludes the NEW world: 38 of 480 statements over seeds 0-7, 5 of them witnessed,
+    none of them a barred number (the T082 panel, 2026-09-16; record 3.5 item 9 -- this sentence
+    first read "every witnessed episode ... unchanged", which was false)."""
     rng = random.Random(T082_RNG_BASE + int(seed))
     obj = rng.choice(T082_OBJECTS)
     agent_looks = None
@@ -584,7 +588,10 @@ def t082_record_brain(seed, n_ep=T082_N_EPISODES, ticks_between=T082_TICKS_BETWE
     `b.respond(stmt)`, then `ticks_between` wake ticks so the `_tom_protect` fold runs and
     `arm._social_risk` moves, then the row.
 
-    THE LIVE PATH'S OWN DOUBLE READ, disclosed: `_tom_update` is called ONCE here to capture the
+    THE RECORDER'S OWN DOUBLE FEED, disclosed (the live dialogue path folds ONCE, at brain.py's
+    sole `_tom_update` call site under `if not is_command`; the second fold below is this
+    recorder's out-of-band capture, corrected from "the live path's own behaviour" at the T082
+    panel, 2026-09-16, record 3.5 item 13): `_tom_update` is called ONCE here to capture the
     event string the row records, and `respond` then parses the SAME turn again -- so every
     statement folds into the tracker twice. That is the live path's own behaviour, not the
     recorder's addition, and the symmetric feed is idempotent under it (the same content on the
