@@ -730,7 +730,22 @@ def t078_determinism(seed, n_ticks=DETERMINISM_TICKS):
     """2.2's DETERMINISM PRECONDITION (G5 on this loop, cheap): two `n_ticks` recordings of the
     same seed must be byte-identical on (focus band, gate, action, perceived digit, label). A
     difference REFUSES the campaign -- nothing below is readable on a non-deterministic recording,
-    and that is the INSTRUMENT's fault, not a finding about the loop."""
+    and that is the INSTRUMENT's fault, not a finding about the loop.
+
+    SCOPE OF THE KEY, disclosed here so the next reader of this symbol cannot mistake it for the
+    prose above. `t078_record_brain` emits 18 fields per row; this key compares FIVE, which is
+    2.2's frozen wording and is NOT changed here. Those five pin `u_t`'s `gate0`-`gate3` directly
+    and its five `focus_is_*` slots derivatively (`control_state` and the row read the same
+    `_attn_focus`), leaving `pc_surprise`, `pc_dev`, `focus_strength`, `ignited`, `drive_margin`
+    and `sustain`, plus `awake`/`kind` -- which `t078_pairs` consumes for EVERY G3 pair and for
+    its sleep-bout drop count -- and `attend_calls`, `t`, `chan`, `chan_from_gated` and the 64-d
+    `gated` latent, i.e. none of the G4 content arm, outside it. MEASURED, not argued: a
+    constructed recording whose un-keyed fields are all corrupted is key-identical to its clean
+    twin while the full rows differ, and corrupting any ONE keyed field fires (p) on all five --
+    so (p) has a reachable red and what is narrower than its stated warrant is its SCOPE.
+    "(p) MET" in the record therefore certifies the five, not the eighteen. The successor that
+    re-runs G3 pre-registers the key over the FULL recorded row and writes the compared field list
+    beside `reading.determinism` in its own pin (the fold's opening in 3.6)."""
     key = lambda r: (  # noqa: E731 - one line, used twice, never exported
         r["focus_band"],
         tuple(r["gate"]),
