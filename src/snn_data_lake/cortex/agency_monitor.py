@@ -1,5 +1,8 @@
 r"""
-LIVE STATUS, MEASURED 2026-07-28 (v4.80): write-only, and NOT a wire candidate. `observe()` runs every
+LIVE STATUS AS MEASURED 2026-07-28 (v4.80), SUPERSEDED 2026-09-15 by the DISPOSITION block below (specs/022
+T079) -- kept verbatim for the measurement, and FALSE as of that date where it says `observe()` runs every tick
+from `AutonomousArm.step`: the one feed is now per-passage in `AutonomousArm.apply_observed`. As measured then:
+write-only, and NOT a wire candidate. `observe()` runs every
 tick from `brainstem/autonomous_loop.AutonomousArm.step` (guarded by its `agency_monitor=` flag, which
 `cortex/brain.py` sets True), and nothing reads `agency()` / `controllability()` / `status()`. The
 line cite this row carried (`autonomous_loop.py:1498`) had drifted onto an unrelated comment about
@@ -30,7 +33,11 @@ read NOT MET: a 12-deg external force on one joint collapses that joint's coupli
 ((a2) shoulder_lift t +0.8723, wrist_roll t +1.3668) and 4 other
 (joint, arm, seed) read 'lost'. P3 disposition: EXEMPT with that record as its reason -- consumed by no
 one, measured unable to separate the perturbed channel from the rest on this body; `route_around`
-stays unwired; nothing deleted (R1-R6 fire).
+stays unwired; nothing deleted (R1-R6 fire). This EXEMPT lives in this docstring and in that record
+ONLY (the T079 panel fold, 2026-09-15): `dormancy_gate.EXEMPT` cannot hold it -- the module is REACHABLE
+on every passage, so a row there would be the stale-exemption red -- and `method_dormancy_gate`'s
+census is learning verbs, which reaches no read accessor; P3's charge tier is review-enforced by
+design (POLICIES.md), and the record's openings (1) and (7) are the condition that settles wire-vs-retire.
 
 Sense-of-agency / per-channel CONTROLLABILITY monitor -- the learned-helplessness
 substrate. Asks, for every action channel the brain drives: "do MY commands still
@@ -851,9 +858,18 @@ def _t079_mutated_scorer(kind):
       blind_scorer     (R6) -- c_j is replaced by 1 - c_j on the SHOVED arm, which inverts
           (a1): a collapse reads as an improvement.
 
+    THE CLAUSE EACH RED FIRES ON, as MEASURED (2.10 (iii); the T079 panel fold, 2026-09-15): the two
+    lines above for R1 and R6 are 2.4's PREDICTED targets and are kept verbatim; in fact `floor_unpermuted`
+    makes every draw equal the reading exactly, so the decoupled channel still reads AT its floor and it is
+    the COUPLED channel's strict margin that dies (the clause R1 asserts); and `blind_scorer`'s mutated
+    (a1) difference is c_intact + c_shoved - 1, which stays positive wherever the two sum above 1 (they do,
+    at ~0.999 intact), so R6 is reddened through (a2), whose mutated difference is (1 - c_k) - c_k +
+    DEADBAND -- see the note in `t079_reds()`.
+
     2.4's `deadband_zero` is NOT here and that is deliberate: 2.4 declares it a REPORTED
-    sensitivity of a declared constant, not a red. It is `t079_contrasts(..., deadband=0.0)`,
-    called by name where it is reported."""
+    sensitivity of a declared constant, not a red. It is `t079_contrasts(..., deadband=0.0)`; the
+    campaign did not print it, and it is reported post-hoc off the pin in the record's 3.5 (the T079
+    panel fold, 2026-09-15), the only place it is computed."""
 
     def floor_unpermuted(rows, seed, **kw):
         kw["permute"] = False
