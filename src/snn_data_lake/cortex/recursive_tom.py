@@ -458,7 +458,17 @@ def t082_script(seed, n_ep=T082_N_EPISODES, all_witnessed=False):
 
     `all_witnessed` forces every episode witnessed for R3's degenerate arm. The RNG draw is
     still CONSUMED so the location sequence is identical to the mixed script's -- the two arms
-    differ in witness structure and in nothing else."""
+    differ in witness structure and in nothing else.
+
+    THE BELIEVED-LOCATION EXCLUSION (2.10, dated 2026-09-16 BEFORE the campaign; record 2.10 (a)):
+    as pre-registered the draw excluded only the current WORLD, so an unwitnessed move could land
+    exactly where the agent last saw the object -- 23 of 213 unwitnessed episodes over seeds 0-7
+    -- and (g0)'s second half ("on EVERY unwitnessed episode the agent's look differs from the
+    world") REFUSED on all eight seeds before any barred conjunct was read. An unwitnessed move
+    onto the believed location is not a false-belief episode, so it is excluded: when the drawn
+    location equals the agent's belief on an unwitnessed episode, the first alternative location
+    is taken DETERMINISTICALLY (no RNG consumed -- the draw sequence, and so every witnessed
+    episode and every unwitnessed count, is unchanged; 0 coincidences on every seed)."""
     rng = random.Random(T082_RNG_BASE + int(seed))
     obj = rng.choice(T082_OBJECTS)
     agent_looks = None
@@ -468,6 +478,12 @@ def t082_script(seed, n_ep=T082_N_EPISODES, all_witnessed=False):
         loc = rng.choice([x for x in T082_LOCATIONS if x != world] or list(T082_LOCATIONS))
         drawn = rng.random() < T082_P_UNWITNESSED
         unwitnessed = bool(drawn and world is not None and not all_witnessed)
+        if unwitnessed and loc == agent_looks:
+            alt = [x for x in T082_LOCATIONS if x != world and x != agent_looks]
+            if alt:
+                loc = alt[
+                    0
+                ]  # the believed-location exclusion (2.10 (a)); deterministic, no RNG draw
         stmt = (
             f"someone moved the {obj} to the {loc} while i was away."
             if unwitnessed
