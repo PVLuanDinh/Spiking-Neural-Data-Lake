@@ -249,3 +249,76 @@ of 2.6 -- the port into `integration_measure` first, then the deletion and the r
 annotations; on PASS the conclusion row, `Brain.state()` and the cockpit row) -> 8. section 3 the record -> panel
 (3 lenses + refuters judging CLAIM and FIX) -> fold -> stacked with T080 / T082 for ONE battery (the Codex closing
 report when the cap lifts, 2.0).
+
+### 2.10 Amendment, dated 2026-09-16, BEFORE the campaign (no clock in this heading -- the commit's own stamp is the
+### time, obs #2190): the build's deviations and findings disclosed; one ceiling raised as an admission; the dry run
+### reproduced -- no gate's form, bar, disposition, arm or N changes
+
+**The build (an Opus executor on `af1a5d8`, brief `scratchpad/t081/builder_brief.md`; 2.9 steps 2-5, one commit
+each): `6ae9aab` skeleton + registrations; `ea36a86` R1-R6 committed RED (six AssertionErrors on constructed
+inputs, none a collection error -- the executor implemented first, verified green, restored the skeleton, captured
+the red and committed the tests; the test file is not edited at step 4); `b7c1a5c` green with the six mutations
+reddening in-file and in `t081_reds()`; `d5e7e6e` recorder, `--t081-dry-run`, `--t081-campaign`, the determinism
+precondition, the pin writer. The orchestrator re-ran the tests (6 passed), the self-check (6/6, rc 0) and the dry
+run (below) before writing this.**
+
+**(a) THE P6 CEILINGS, RAISED AS AN ADMISSION (`65fa7d3`).** 2.4 requires the reds to run on a constructed
+`GlobalWorkspace(seed=0)` with pools posted into it and 2.9 step 4 requires them in-file, so the module holds a
+private workspace instance and writes into it; `tools/p6_gate.py`'s `private_instance_modules` and
+`unread_writer_modules` ratchets stood at 6 with zero slack and read 7 at commits 4 and 5 (the census script red on
+`p6_gate --assert` alone; every other gate rc 0). The executor measured this BEFORE building through the gate's own
+overlay (assigned form 7 RED; a `return GlobalWorkspace(...)` factory form 6 green) and REFUSED the factory form as
+evasion through the walk's disclosed blind spot. The orchestrator's disposition: both ceilings 6 -> 7 with dated
+admissions naming `cortex/report_order_probe.py` -- the T033 shape (`thalamus/ignition_instrument.py`'s constructed
+subjects), an EXEMPT measurement instrument whose subject nobody else reads BY DESIGN. Both ceilings now sit on
+the measurement (7 = 7): `--assert` green, `--self-check`'s one-mutant regression still crosses (4 of 4 controls
+green). The next private instance or unread writer lands on 8 and reddens.
+
+**(b) THE DOSE LADDER IS A STEP, NOT A LADDER (an apparatus finding against 2.3's REPORTED pairing).** On the dry
+run (seed 0, 294 awake ticks) doses 0.25 / 0.5 / 0.75 move the reported content on 0 of 294 ticks and dose 1.0 on
+294 of 294: scaling `_g` leaves the incumbent's ranking intact, and only the full lesion -- which also drops the
+content's submissions from `_buffer` -- moves the report. The flip dose is therefore 1.0 BY CONSTRUCTION on every
+seed, and 2.3's reported question "does the live charge margin predict the flip dose?" CANNOT be read: a constant
+has no correlation with `top_margin` (0.0217 on seed 0). The ladder is still computed and printed per seed as
+registered; the reading of (c1) at dose 1.0 is unaffected (2.3 fixes it at dose 1.0). What this says about the
+mechanism is section 3's to state; what it says about the apparatus is that a graded lesion of `_g` is not a
+graded lesion of the competition, and a re-registered ladder would scale the SUBMISSIONS' salience.
+
+**(c) (g0) AND (c2) ARE NOT t-TESTS.** The brief paraphrased all three of (g0), (c1), (c2) through
+`paired_contrast.contrast`; frozen 2.3 makes only (c1) a t; (g0) is a per-seed floor and (c2) an exact count. The
+executor implemented 2.3, not the paraphrase (disclosed in-file and in `b7c1a5c`). 2.3's zero-variance rule
+("MET iff the common value is > 0, recorded as degenerate") is the clause (c1) will read if every seed's
+f_named(1.0) - f_scr(1.0) is exactly +1.0000 as on the dry run -- written here BEFORE the campaign.
+
+**(d) A CONTROL THAT COULD NOT FAIL, found by running the mutation.** "The original's `_g` is unchanged after the
+lesioned clone steps" read 20/20 intact WITH the `clone_shares_state` mutation installed, because `step()` rebinds
+`_g`; R1's reachable red is `pre_intact` (the baseline the ten arms clone from). `g_intact` is kept and printed as
+structurally satisfied -- reported, never counted.
+
+**(e) APPLICABILITY READS THE SUBMISSIONS TOO.** 2.1's named intermediate includes "that content's submissions in the
+tick"; a content first submitted this tick sits in `_buffer` and not yet in `_g`, so a `_g`-only test read it
+inapplicable (a recording of fresh contents read applicable on 0 of 20 ticks and REFUSED at (r)). The test now
+reads both; no effect on the seed-0 recording (294/294 either way).
+
+**(f) R5's CONSTRUCTION IS NARROWER THAN 2.4's WORDING.** `_rng` is drawn from in exactly one place (`_jitter_for`,
+first encounter of a pool key), so a clone sharing the original's RNG diverges only when a NEW key appears; R5's
+subject posts fresh contents each tick with the top two saliences tied (disclosed in `t081_clone_shares_rng`).
+
+**(g) R4 IS CAUGHT TWICE** -- the hallucinating reporter fails (c2) AND (r); the test asserts both.
+
+**(h) THE TESTS IMPORT THE MODULE AS A MODULE** (`report_order_probe as rop`), because 2.9 step 2 fixes the stub
+list and the constructed inputs are not in it -- a name-level import would have made every red a collection error
+at step 3 (the test docstring and `ea36a86` say so).
+
+**(i) THE DRY RUN, REPRODUCED.** The executor's run (`scratchpad/t081/dry_run_builder.json`, head `b7c1a5c`, 55.1
+ms/tick) and the orchestrator's (`dry_run.json` + `dry_run_orch.txt`, head `d5e7e6e`, 08:12:12-08:13:25 local, 65.5
+ms/tick under the daemon's load) agree on every non-timing field: offsets differ from the first frame (seed 0 vs 1);
+the determinism twin identical on 49 awake rows of 100 ticks; 294 rows from 294 awake ticks (306 asleep); 20
+distinct contents, 37 changes, availability 1.0000, mean pools 9.52, mean `top_margin` 0.0217; twin mismatches
+0/294; named and scrambled applicable 294/294; NAMED content change 0 / 0 / 0 / 1.0000 by dose, SCRAMBLED 0 / 0 / 0
+/ 0; strength change the same; flip dose 1.0; (c2) 0 scrambled ticks moved the report; the 12 scrambled re-draws
+changed 0 of 294 on every draw (min = max = 0). Campaign estimate 4.4-5.2 min for 8 seeds. NO barred conjunct was
+read (one seed carries no t); (g0) and (c2) are printed as seed 0's.
+
+**(j) CLOCK.** The executor's report carries no wall-clock stamps; the commit stamps are the times (`git log
+--format=%ci`). Nothing above 2.10 was edited.
