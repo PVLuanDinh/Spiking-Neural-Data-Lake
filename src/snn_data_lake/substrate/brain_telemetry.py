@@ -428,6 +428,68 @@ def _coverage_census():
     return _COVERAGE
 
 
+# distinct-from: substrate/conclusion_protocol.py -- that module GATES the registry (findings a gate
+#   asserts on); this one SERVES it to the page. One registry, two consumers. Site read.
+# distinct-from: cortex/recursive_tom.py::t082_read and cortex/report_order_probe.py::t081_read --
+#   per-seed readings of a CAMPAIGN's recording rows, producing the numbers a C5 row is charged
+#   with; this function never measures anything, it hands an already-charged row to a surface.
+#   Site read.
+# distinct-from: cortex/access_consciousness.py::bind_assembly -- grows and bundles a coalition
+#   inside the brain; no relation to the registry. Site read.
+# distinct-from: cortex/agency_monitor.py -- per-arm reported quantities of T079's campaign, a row
+#   that reads NOT MET and is therefore ABSENT from what this serves. Site read.
+def conclusion_rows(cognition, registry=None):
+    """The CONSCIOUSNESS section: one entry per CHARGED row of C5's conclusion registry.
+
+    A pure function over `conclusion_protocol.CONCLUSION` (specs/022 T090,
+    evidence/t090-conclusion-plate.md 2.1 (a)). One entry per row whose reading is NOT None, in
+    registry order; a NOT MET row is ABSENT -- the standing refusal rendered rather than written.
+
+    It REFUSES (raises ValueError) on a row carrying a reading with a blank licensed or refused
+    sentence. A reading served without the sentence saying what it licenses is the one thing the
+    registry exists to forbid, so serving it degraded would be worse than serving nothing. The raise
+    is deliberately NOT swallowed by `snapshot()`: the registry is static source policed by
+    conclusion_protocol's gate, so a blank sentence is an edit someone made, never a runtime state.
+
+    `cognition` supplies the LIVE value of each surface symbol (a `Brain.state()` key) beside the
+    charged reading. The two are DIFFERENT QUANTITIES -- the reading is a campaign measurement on
+    scratch brains, the live value is this daemon right now -- and every entry carries both so no
+    surface can show one as the other. Pass `{}` when only the sentences are wanted.
+    """
+    # LAZY, and it has to be: conclusion_protocol's mechanism clause imports THIS module back
+    # (T090 2.9 step 3), so a module-level pair in both directions would be an import cycle.
+    from snn_data_lake.substrate import conclusion_protocol as _cp
+
+    reg = _cp.CONCLUSION if registry is None else registry
+    live = cognition or {}
+    out = []
+    for name, row in reg.items():
+        if not (isinstance(row, tuple) and len(row) == 6):
+            raise ValueError(f"{name}: a conclusion row is a 6-tuple, got {type(row).__name__}")
+        licensed, refused, dissociation, reading, _date, symbols = row
+        if reading is None:
+            continue
+        for label, sentence in (("licensed", licensed), ("refused", refused)):
+            if not (isinstance(sentence, str) and sentence.strip()):
+                raise ValueError(
+                    f"{name}: a reading ({reading}) with no {label} sentence -- refusal 3 forbids "
+                    "serving a reading whose sentence cannot be shown in the same view"
+                )
+        out.append(
+            {
+                "instrument": name,
+                "task": _cp.C4_TASK.get(name),
+                "reading": reading,
+                "licensed": licensed,
+                "refused": refused,
+                "dissociation": dissociation,
+                "symbols": list(symbols),
+                "live": {sym: live.get(sym) for sym in symbols},
+            }
+        )
+    return out
+
+
 def snapshot(brain):
     """The single telemetry contract: everything a panel may read, and nothing invented.
 
@@ -628,6 +690,11 @@ def snapshot(brain):
                     "computed": bool(getattr(a, flag, False)),
                 }
 
+    # C5's served section (T090 2.1 (a)): every charged reading WITH the sentences it licenses and
+    # refuses, so a surface cannot print one without the other. Not wrapped in try/except on
+    # purpose -- see conclusion_rows()'s docstring on why a blank sentence must reach the caller.
+    out["conclusion"] = conclusion_rows(out["cognition"])
+
     out["provenance"] = dict(PROVENANCE)
     return out
 
@@ -638,12 +705,19 @@ def verify_contract(snap):
     Widened deliberately. The first version built `have` from cognition|derived only, so a panel drawn
     from spikes.*, body.* or hardware.* had no gate behind it whatsoever -- exactly the silently-dead
     panel this function exists to prevent, in the three sections most likely to move.
+
+    `conclusion` is checked as a required TOP-LEVEL key rather than through DASHBOARD_SECTION_KEYS,
+    because that table maps a section to the KEYS inside a dict and this section is a LIST of rows
+    (T090 2.1 (a)). Its absence is the same failure the table exists for: the CONSCIOUSNESS plate
+    would draw an empty column indistinguishable from "no row is charged yet".
     """
     have = set(snap.get("cognition", {})) | set(snap.get("derived", {}))
     missing = [k for k in DASHBOARD_KEYS if k not in have]
     for section, keys in DASHBOARD_SECTION_KEYS.items():
         present = set(snap.get(section, {}))
         missing += [f"{section}.{k}" for k in keys if k not in present]
+    if "conclusion" not in snap:
+        missing.append("conclusion")
     return missing
 
 
