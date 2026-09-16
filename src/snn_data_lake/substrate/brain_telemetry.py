@@ -222,10 +222,13 @@ PROVENANCE = {
         "6 of 8 seeds, reported). This licenses NO claim that there is a felt present, a stream of experience, "
         "or a duration lived. ON THIS DAEMON the two percept streams are INDEPENDENT (the classifiers agree on "
         "0.08 of ticks at every lag, measured 2026-09-16), so the live rate here is a CHANCE rate -- the null's "
-        "level (about 0.10) once all ten objects are taught, higher while the codebook is sparse (a lone "
-        "prototype names every latent above the margin: 0.42 over the first 31 awake ticks of a fresh brain), "
-        "about half of those reports contradicting the classifiers -- never the within-window rate the pin "
-        "measured"
+        "level (0.08-0.10) once the codebook saturates, which on the shipped independent walk is 9 of 10 objects "
+        "(obj9 never registers: seeds 0 and 1 at 2,000 and 1,200 ticks stall at K = 9 from about tick 600; the "
+        "live daemon read crossmodal_objects 9 with this rate at 0.095 at wake tick 2,630, 2026-09-16 -- the "
+        "panel fold; why the tenth is never taught is unmeasured), higher while the codebook is sparse (a lone "
+        "prototype names every latent above the margin: 0.42 over the first 31 awake ticks of a fresh brain, "
+        "0.26 at K = 8), about half of those reports contradicting the classifiers -- never the within-window "
+        "rate the pin measured"
     ),
     "criticality": "sleep-only",
     # string/bool literals in state(), not readings (goal brain.py:2892; reflex_armed :3055)
