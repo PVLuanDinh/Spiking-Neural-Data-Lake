@@ -105,7 +105,8 @@ HARNESS_REST = 12000  # integer work per harness tick that the object-path neute
 PAD_ITERS = 600  # the positive control's KNOWN extra cost per unit
 PADDED_MIN_CEILING = 0.5  # a padded object path must read at least this, or the instrument is blind
 SHAM_NOISE_BAND = 0.05  # a stand-in on a zero-share path must read within this of zero -- OR, since
-#: 2026-09-15, within its own paired bootstrap band of zero (`within_noise_of_zero`; s6-kernel-wire.md 3.8)
+#: 2026-09-15, within its own paired bootstrap band of zero (`within_noise_of_zero`; s6-kernel-wire.md 3.8);
+#: since 2026-09-16 a band wider than TOLERANCE that excludes zero is a NOISE REFUSAL, not a verdict (3.9)
 
 RED_NAMES = ("padded-share", "repeatability", "sham-neuter")
 
@@ -400,7 +401,9 @@ def red_repeatability(ticks=RED_TICKS, resamples=RED_RESAMPLES, seed=0):
 # distinct-from: cortex/deep_stdp_latency.py::_stdp -- a soft-bound weight update; no criterion at all.
 #   (prior_drift_harness::arm_random, home::_binlog, spiking_jepa::_feedback_gz matched on words only;
 #   all five read 2026-09-15 before this helper was written.)
-def within_noise_of_zero(ceiling, band, bar=SHAM_NOISE_BAND):
+# distinct-from: prior_drift_harness.py -- arm_random (L500) is a degree-preserving edge rewire on a
+#   connectome artifact: no band, no timing statistic, no criterion; matched on words only (re-read 2026-09-16).
+def within_noise_of_zero(ceiling, band, bar=SHAM_NOISE_BAND, resolution=TOLERANCE):
     """The sham criterion as PRE-REGISTERED (s6-kernel-wire.md 2.2 iv / 2.5): "within noise of zero".
 
     Either clause holds: (1) MAGNITUDE, |ceiling| <= bar -- the operationalization the build fixed; or
@@ -408,7 +411,20 @@ def within_noise_of_zero(ceiling, band, bar=SHAM_NOISE_BAND):
     the resolution the instrument itself measured, so a magnitude verdict on it would be a verdict about
     the host's load, not about the path's share. A band that EXCLUDES zero never holds through clause 2:
     a sham significantly different from zero is the instrument's own bad draw (3.7 C12) and stays FAIL.
-    Returns (ok, clause) with clause in {"magnitude", "noise", None}.
+    Returns (ok, clause) with clause in {"magnitude", "noise", "unresolvable", None}.
+
+    ADDED 2026-09-16 (the T077+T078+T079 stack's battery, s6-kernel-wire.md 3.9), the numbers seen
+    first: the live reading's sham arm read -0.05595 with band (-0.3138, -0.01658) -- 0.297 wide
+    against the 0.15 resolution this gate's decision needs (`TOLERANCE`) -- while `red_sham_neuter`
+    in the SAME run read -0.0060 with band (-0.00995, +0.00633) and the run_selfchecks stage had read
+    this same command PASS seventy minutes earlier on the same tree. Clause 2 cannot hold a band that
+    excludes zero, and 3.8 left such a draw a FAIL; obs #2175 had prescribed the other half of the
+    disposition, which the 3.8 fold did not land: a band WIDER than the resolution is a REFUSAL --
+    "unresolvable at this load; re-run idle" -- neither PASS nor FAIL. So the third outcome,
+    (False, "unresolvable"), fires only when the band excludes zero AND its width exceeds
+    `resolution`. It is not a pass (the exit code stays 1) and not a bar move (no number changes); a
+    NARROW band excluding zero stays (False, None). The width test comes AFTER the two holding
+    clauses, so no draw that held before reads differently.
 
     ADDED 2026-09-15 (the T063+T071+T070 stack battery, s6-kernel-wire.md 3.8), the numbers seen first:
     two consecutive batteries on ONE head read this control RED on host load with no tree defect -- the
@@ -425,6 +441,8 @@ def within_noise_of_zero(ceiling, band, bar=SHAM_NOISE_BAND):
         return True, "magnitude"
     if lo <= 0.0 <= hi:
         return True, "noise"
+    if hi - lo > resolution:
+        return False, "unresolvable"
     return False, None
 
 
@@ -468,11 +486,22 @@ def red_sham_neuter(ticks=RED_TICKS, resamples=RED_RESAMPLES, seed=0):
         sham_noise_clause=clause,
     )
     ok = bool(installed) and calls == 0 and within
+    held = (
+        f"held by: {clause}"
+        if within
+        else "NOT held"
+        + (
+            f" -- NOISE REFUSAL (3.9): band wider than the {TOLERANCE} resolution, unresolvable "
+            "at this host load; re-run quiet"
+            if clause == "unresolvable"
+            else ""
+        )
+    )
     return (
         ok,
         (
             f"sham-neuter: ceiling {d['ceiling_raw']:+.4f} band {d['band_raw']} "
-            f"(bar |c| <= {SHAM_NOISE_BAND}, or the band contains zero; held by: {clause}); "
+            f"(bar |c| <= {SHAM_NOISE_BAND}, or the band contains zero; {held}); "
             f"band excludes zero: {d['band_excludes_zero']}; installed={installed} "
             f"calls={calls} (0 is the PROOF the path carries zero share)"
         ),
@@ -966,16 +995,17 @@ def run_reading(
     # against the REQUESTED tick count and only this scope holds it. Measured cause: a real
     # `controls FAILED` run printed every conjunct it does print as holding, because the two terms
     # that can fail silently -- the neuter's install and its call count -- reach no line of output.
+    sham_within, sham_clause = within_noise_of_zero(
+        rep["sham_arm"]["ceiling_raw"], rep["sham_arm"]["band_raw"]
+    )
+    rep["sham_noise_clause"] = sham_clause  # "unresolvable" is printed as a refusal by main()
     terms = [
         ("reds", all(r[1] for r in reds)),
         ("neuter_installed", bool(rep["neuter_installed"])),
         ("neuter_calls_one_tick", rep["neuter_calls_one_tick"] > 0),
         ("sham_installed", bool(rep["sham_installed"])),
         ("sham_calls_zero", rep["sham_calls_one_tick"] == 0),
-        (
-            "sham_within_noise_band",
-            within_noise_of_zero(rep["sham_arm"]["ceiling_raw"], rep["sham_arm"]["band_raw"])[0],
-        ),
+        ("sham_within_noise_band", sham_within),
         ("paired_wake_ticks", rep["paired_wake_ticks"] == wake_ticks),
         ("census_agrees", bool(rep["census_cross_check"]["agree"])),
     ]
@@ -1110,6 +1140,14 @@ def main(argv=None) -> int:
     # the roster LAST, so run_selfchecks' 2000-char stdout tail cannot truncate the failing term
     false_terms = [k for k, v in rep["controls"].items() if not v]
     print("  controls: " + "; ".join(f"{k}={v}" for k, v in rep["controls"].items()))
+    if rep.get("sham_noise_clause") == "unresolvable":
+        lo, hi = rep["sham_arm"]["band_raw"]
+        print(
+            f"  NOISE REFUSAL (3.9): the sham band ({lo:+.5f}, {hi:+.5f}) is {hi - lo:.3f} wide "
+            f"against the {TOLERANCE} resolution this gate's decision needs -- the control was NOT "
+            "read at this host load: not held (exit code 1), and not the sham failing. Re-run on a "
+            "quiet host; the cause is named, the bar is not moved."
+        )
     print(
         f"amdahl gate: controls {'HELD' if rep['controls_ok'] else 'FAILED'}"
         + (f": {', '.join(false_terms)}" if false_terms else "")

@@ -910,3 +910,39 @@ verdict rule, its floor rule, the controls roster's other seven terms, and 2.2/2
 battery-verified only (obs #35) and is the stack's stacked commit for a red on an earlier arc's artifact
 (owner rule 2026-09-10); obs #2175 records the transferable rule (a timing control with a fixed epsilon on a
 loaded host owes a refusal or its own band, never a re-run until green).
+
+## 3.9 Post-push amendment (2026-09-16): a sham band wider than the decision's resolution is a NOISE REFUSAL, not a verdict
+
+**What happened, numbers first.** The T077+T078+T079 stack's battery run 2 on head `0bfb3d7` (00:40-02:19 local,
+`scratchpad/battery-stack6`; run 1 died at the session usage limit at pytest 48 % after 13 host-load F marks
+that pass alone, obs #2188) read every stage green -- record assert, certify, ruff, format, 355/355 self-checks,
+16/16 gates, coverage 89.57 % -- and pytest RED on exactly one test, again this instrument's live sham control
+inside `tests/test_selfchecks.py::test_core_selfcheck_in_process[substrate.amdahl_gate]`: sham arm **-0.05595**
+with band **(-0.3138, -0.01658)**, 0.297 wide against the 0.15 resolution the gate's decision needs (`TOLERANCE`);
+RAW p50 live 66.39 / neutered 68.11 ms at width 189, ceiling -0.0259 with band (-0.36596, +0.03158), the reading
+itself INDETERMINATE by its own floor rule. In the SAME run the constructed red `red_sham_neuter` read **-0.0060**
+with band (-0.00995, +0.00633) and held by magnitude, and the run_selfchecks stage had read this same no-argument
+command PASS (99.7 s) about seventy minutes earlier on the same tree; the reading started 02:09:48 local and took
+69.4 s while the always-on brain daemon was in its sleep phase (circadian `asleep`, 7.3 GB, 4,564 CPU-s since
+00:27). Nothing else ran on the host (the panel and the workflow were finished before the battery; obs #2188).
+3.7 C12 had refused a sham of -0.05562 on 2026-09-09 -- the same magnitude. The stack's three arcs did not touch
+this module (last change 53172a8, 2026-09-15); the tree is not the cause, the draw is.
+
+**What changed, and what did not.** 3.8 landed one half of obs #2175's prescription (the band containing zero
+holds) and left a band that EXCLUDES zero a FAIL. The other half -- "if the bootstrap band's width exceeds the
+resolution the gate's decision needs (0.15), the red reports NOISE, unresolvable at this load; re-run idle,
+rather than PASS or FAIL" -- is now the third outcome of `within_noise_of_zero`: `(False, "unresolvable")` when
+the band excludes zero AND its width exceeds `TOLERANCE`. It is not a pass: the roster term is still False and the
+exit code stays 1, so a battery still reads the stage red and the remedy is a re-run on a quiet host with the
+cause named -- never a stitched stage, never "re-run until green". It is not a bar move: no number changes, a
+NARROW band excluding zero stays `(False, None)`, and the width test runs AFTER the two holding clauses, so no draw
+that held before reads differently. `run_reading` records the clause (`sham_noise_clause`) and `main()` prints
+one `NOISE REFUSAL (3.9)` line naming the width and the remedy; `red_sham_neuter`'s message says "NOT held --
+NOISE REFUSAL" instead of "held by: None". Reds run first: `tests/test_amdahl_gate.py::test_within_noise_of_zero_clauses_and_their_reds`
+now constructs this battery's draw and asserts it is named unresolvable, and that a narrow band excluding zero is
+still a FAIL. NOT changed: `SHAM_NOISE_BAND`, `TOLERANCE`, `W_TICKS`, `RED_TICKS`, the reading's verdict rule,
+its floor rule, the roster's other seven terms, and 2.2/2.5's text. This amendment is battery-verified only
+(obs #35) and is the stack's stacked commit for a red on an earlier arc's artifact (owner rule 2026-09-10).
+Standing disposition for the battery: a NOISE REFUSAL on this control is re-run on a quiet host; three of the
+last five batteries have read this control red under the daemon's sleep-phase load with no tree defect, so a
+refusal that recurs is an operational question for the owner (the daemon's load during a battery), not a bar.

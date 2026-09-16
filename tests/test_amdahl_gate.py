@@ -84,6 +84,14 @@ def test_within_noise_of_zero_clauses_and_their_reds():
     # the bar still bites when the band can resolve it: over the bar, the noise clause is the ONLY
     # way through, so a band that does not contain zero is a FAIL even at |c| just over the bar
     assert f(0.0501, (0.0480, 0.0522)) == (False, None)
+    # RED 3 (2026-09-16, the T077+T078+T079 stack's battery, s6-kernel-wire.md 3.9): a band that
+    # excludes zero but is WIDER than the resolution the decision needs (TOLERANCE 0.15) is not a
+    # verdict on the sham -- the instrument could not resolve the draw. It does NOT hold (rc stays
+    # 1) and it is named as unresolvable, never as the sham failing. The battery's own numbers:
+    assert f(-0.05595, (-0.3138, -0.01658)) == (False, "unresolvable"), (
+        "battery-stack6's live sham arm: band 0.297 wide against a 0.15 resolution"
+    )
+    assert f(0.08, (0.06, 0.10)) == (False, None), "a NARROW band excluding zero is still a FAIL"
 
 
 def test_the_instrument_blind_disposition_refuses_the_reading():
