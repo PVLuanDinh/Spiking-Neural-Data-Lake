@@ -912,6 +912,7 @@ May run in parallel with Phase 3 (O5(b)); MUST precede Phase 5.
   what is forbidden.
 - **C4 — the dissociation instruments (SC-009's first half)**: T070 (integration measure, never Phi), T077
   (metacognition as an extension of the incumbents), T078 (attention schema), T079 (agency; needs O1),
+  *RETIRED at T081 (2026-09-16): `reasoning/consciousness_probe.py` is deleted; its 20-seed PCI sweep lives in `cortex/integration_measure.main()`; "are you conscious" answers from the report channel (`evidence/t081-report-order.md` 2.6).*
   T080 (temporal binding), T081 (report-order probe; `reasoning/consciousness_probe.py` RETIRED in the same
   commit — its criteria are markers, not dissociations), T082 (social cognition composed onto the bus).
   Each fires its constructed red once. *DATED NOTE 2026-09-10 (T070): its reds FIRED (R1, R2, R3 in the

@@ -267,7 +267,7 @@ jobs:
       # P8 (specs/010): a success criterion with no reachable RED is worthless and is DELETED, not
       # weakened. ASSERTING from the start because it is clean on this tree with zero findings to
       # disposition -- and because it has been proven able to fire: tests/test_red_reachability.py
-      # reconstructs the pre-fix consciousness_probe and checks every bucket lights up. A gate that
+      # reconstructs the pre-fix consciousness_probe (RETIRED at T081, 2026-09-16) and checks every bucket lights up. A gate that
       # has only ever been seen green is indistinguishable from one that cannot see.
       - name: Criteria can fail (no zero-argument or self-asserting success criterion)
         run: python tools/red_reachability.py --assert

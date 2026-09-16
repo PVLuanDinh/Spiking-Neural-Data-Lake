@@ -130,7 +130,7 @@ than a signal collapsing, and the per-reader attribution of that move is tabulat
 version of that table said three of eight, and both figures were wrong -- see there).
 
 WHAT THE BRAIN SAYS ABOUT ITSELF MOVED WITH IT, traced end to end rather than assumed:
-`reasoning/consciousness_probe.py::probe_access` puts `brain._access_ema` into its detail string at
+`reasoning/consciousness_probe.py::probe_access` (RETIRED at T081, 2026-09-16) puts `brain._access_ema` into its detail string at
 three decimals, and `reasoning/spike_chat_lake.py::_consciousness` renders that detail verbatim into
 the reply to "are you conscious". Run on the live brain, the reply's own number goes "live access EMA
 0.489" -> "0.287". The measurement that moved is `_access_ema` and NOTHING else on that chain: the
@@ -1517,7 +1517,7 @@ def main():
     # `state()` DICT, and `state()["focused"]` is the whole reason the focus question is answerable
     # for them. MEASURED, not reasoned: deleting the `focused` key outright, and separately wiring
     # it to `self._ignited`, each left this module's self-check green AND
-    # `reasoning/consciousness_probe.py` green -- so the key the fix was justified by could report
+    # `reasoning/consciousness_probe.py` (RETIRED at T081, 2026-09-16) green -- so the key the fix was justified by could report
     # the wrong quantity with every gate passing. Both halves are counted, so this cannot pass
     # vacuously: the dict must MIRROR the accessors, and the two keys must actually COME APART.
     st_ws = _bus()

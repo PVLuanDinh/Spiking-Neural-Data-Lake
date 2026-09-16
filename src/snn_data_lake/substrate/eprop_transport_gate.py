@@ -500,7 +500,7 @@ def main(argv=None):
 # Self-check. The gate lands GREEN, which is normally the shape that makes a gate untrustworthy --
 # `POLICIES.md`'s rule for exactly this case is *"if a gate lands green, ship the reconstruction of
 # the defect it was built for"*, as `tools/red_reachability.py` does with the pre-fix
-# consciousness_probe. So the reds below are the tree's OWN adjudicated history, reconstructed.
+# consciousness_probe (RETIRED at T081, 2026-09-16). So the reds below are the tree's OWN adjudicated history, reconstructed.
 # ---------------------------------------------------------------------------------------------
 _CASES = (
     (

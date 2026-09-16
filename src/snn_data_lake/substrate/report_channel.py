@@ -31,7 +31,7 @@ THE RECORD. `snapshot(workspace)` returns {content, availability, strength}:
   strength     -- broadcast_hold: how strongly the incumbent is still held, in [0,1] --
                   the workspace's own accessor, read from the same single snapshot.
 
-`consciousness_probe` is NOT retired here: its retirement is DEFERRED to T081 (P2 -- both
+`consciousness_probe` (RETIRED at T081, 2026-09-16) is NOT retired here: its retirement is DEFERRED to T081 (P2 -- both
 replacement halves, this channel AND the report-order probe, must exist when the incumbent
 dies; only the first half lands now).
 
@@ -44,7 +44,7 @@ phenomenal claim is made or implied.
 #   CLAIMS/criteria over the bus; this is the typed transport of the report itself.
 # distinct-from: cortex/live_brain.py -- owns the composite and the `thought` accessor;
 #   this snapshots through the same public accessors, constructs nothing.
-# distinct-from: reasoning/consciousness_probe.py -- the INCUMBENT this channel half-
+# distinct-from: reasoning/consciousness_probe.py (RETIRED at T081, 2026-09-16) -- the INCUMBENT this channel half-
 #   replaces at T081; untouched here. All sites read.
 
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.substrate.report_channel

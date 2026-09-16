@@ -25,7 +25,7 @@ unhedged; the claim without the measurement is what is forbidden.
 Bare invocation (also run by run_selfchecks): the constructed reds, their positive control, and today's count.
 """
 
-# distinct-from: reasoning/consciousness_probe.py -- markers whose reds the audit found unreachable; this module
+# distinct-from: reasoning/consciousness_probe.py (RETIRED at T081, 2026-09-16) -- markers whose reds the audit found unreachable; this module
 #   does not measure anything, it states what a measurement may be said to mean, and RETIRING that probe is C4's
 #   task T081, not this one. Site read.
 # distinct-from: gradient_claim_gate.py -- the same declaration-registry PATTERN over a different claim (a

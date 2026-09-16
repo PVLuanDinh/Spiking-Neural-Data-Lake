@@ -69,7 +69,7 @@ def _real_params(fn):
 def _tautological_asserts(tree, criterion_names):
     """Find `x, _ = probe_y(); assert x` -- an assert on a value the same scope just computed.
 
-    This is the shape that kept `consciousness_probe` green: `main()` asserted every verdict it had
+    This is the shape that kept `consciousness_probe` (RETIRED at T081, 2026-09-16) green: `main()` asserted every verdict it had
     itself produced, so the check could not go red no matter what the probes reported, and the one
     marker with a real red had to have its seed pinned to a passing value to keep the gate quiet.
     """
@@ -97,7 +97,7 @@ def _is_bare_truthiness(test):
 
     THE DISTINCTION IS THE WHOLE POINT, and the first run got it wrong by flagging this tool's own
     fixed code. `assert present` says "the criterion passed" and can never go red -- that is the
-    shape that kept `consciousness_probe` green for its whole life. But `assert acc is None` and
+    shape that kept `consciousness_probe` (RETIRED at T081, 2026-09-16) green for its whole life. But `assert acc is None` and
     `assert 0.0 < frac < 1.0` assert a FALSIFIABLE PROPERTY of the result (it reports UNKNOWN
     without a brain; the marker reaches both verdicts across seeds) and are exactly what a repaired
     self-check should look like.

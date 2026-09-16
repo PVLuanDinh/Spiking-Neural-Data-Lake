@@ -81,7 +81,7 @@ claim here. A finding recorded as OPEN may have been fixed since.
 - **test_method_dormancy_keys** — same-named methods in one module stay distinct; exemption keys suppress exactly one rule via the shipped `audit()` path; exemption branch reachability control.
 - **test_real_rpm_bench** — above-chance accuracy on held-out matrices, strict ≤ accuracy, failures kept and never claim `known`, two broken controls near chance, perception re-derived from raster.
 - **test_recursive_tom** — false-belief transfer, second-order divergence, non-location attitudes, depth-3 chains, unheld paths return None.
-- **test_red_reachability** — NO_RED and TAUTOLOGICAL buckets fired on the reconstructed pre-fix `consciousness_probe`; repaired shape not flagged; live probe re-asserted.
+- **test_red_reachability** — NO_RED and TAUTOLOGICAL buckets fired on the reconstructed pre-fix `consciousness_probe`; repaired shape not flagged; live probe re-asserted. *RETIRED at T081 (2026-09-16): `reasoning/consciousness_probe.py` is deleted; its 20-seed PCI sweep lives in `cortex/integration_measure.main()`; "are you conscious" answers from the report channel (`evidence/t081-report-order.md` 2.6).*
 - **test_reflex** — threshold-exact firing, severe breach in one step, reverse-sign danger, worst-channel wins, out-of-range channels ignored, guard side-channel.
 - **test_reflex_channel_layout** — channel *meanings* pinned behaviourally with two asymmetric readings, so a 6↔7 renumber inverts all four; narrow frame surfaces a disabled safety channel.
 - **test_region_coherence** — sync/desync phase order, ignition bias monotone and threshold-lowering, scalar rolling path, empty/single-region safety.

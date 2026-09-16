@@ -631,7 +631,7 @@ a second, independent channel on that claim should know the old one was spent he
 Verified UNAFFECTED, RE-RUN 2026-08-06 after the delivery change rather than carried over:
 `cortex/live_brain.py`, `cortex/brain.py`, `brainstem/autonomous_loop.py`,
 `thalamus/reentrant_workspace.py`, `cortex/self_model.py`, `cortex/executive_control.py`,
-`reasoning/rpm_solver.py`, `reasoning/spike_chat_lake.py`, `reasoning/consciousness_probe.py`,
+`reasoning/rpm_solver.py`, `reasoning/spike_chat_lake.py`, `reasoning/consciousness_probe.py` (RETIRED at T081, 2026-09-16),
 `reasoning/train_of_thought.py`, `reasoning/concept_reflection.py`,
 `cortex/competence_executive.py` (verified at its pre-promotion path
 `reasoning/brain_adapters/executive_control.py`; PROMOTED+RENAMED 2026-08-12, same file),
@@ -654,7 +654,7 @@ carried "spikes WIN at K>=2 (multi-item binding via synchrony) -- the specific, 
 'what do spikes buy'" for as long as the family existed, and the claim died in two steps the same
 day. First its margin criteria were deleted (F11): `_bind_pair_acc` was recall with no precision
 term, `bind_decode_spiking` returned K^2 pairs for K true, and an all-pairs strawman decoder scored
-1.0000 on the same scorer -- the SECOND deletion of that criterion, `reasoning/consciousness_probe.py`
+1.0000 on the same scorer -- the SECOND deletion of that criterion, `reasoning/consciousness_probe.py` (RETIRED at T081, 2026-09-16)
 having deleted its copy 2026-08-04, after which this one read as independent corroboration. Then
 the honest precision-bearing benchmark was run and returned the pre-registered NULL, sharper than
 predicted: the spiking decoder's Jaccard EQUALS the all-fired-pairs strawman at every K (1.0000 /
@@ -2251,7 +2251,7 @@ def _fmt_set(slots):
 # `bind_decode_rate` / `_bind_pair_acc` / `_bind_step` and the four `_BIND_*` constants -- the
 # "multi-item BINDING + spiking-vs-rate control" deepening, self-check only, zero external callers
 # (swept at retirement: src/tests/tools/research/integrations/training, plus importlib/string
-# dispatch; `reasoning/consciousness_probe.py`'s call died 2026-08-04 with its F11 deletion).
+# dispatch; `reasoning/consciousness_probe.py` (RETIRED at T081, 2026-09-16)'s call died 2026-08-04 with its F11 deletion).
 #
 # THE MEASUREMENT THAT DECIDED IT, run against the family the day it was retired -- the honest
 # benchmark its recall-only criterion had been standing in for. Jaccard |true & got| / |true | got|
@@ -3466,7 +3466,7 @@ def main():
 
     # (d) THE BINDING FAMILY IS GONE. Its margin criteria were deleted first (P8/F11 -- the
     # recall-only scorer on which an all-pairs strawman scores 1.0000; the SECOND deletion of the
-    # same criterion, `reasoning/consciousness_probe.py` having deleted its copy 2026-08-04), and
+    # same criterion, `reasoning/consciousness_probe.py` (RETIRED at T081, 2026-09-16) having deleted its copy 2026-08-04), and
     # the honest precision-bearing benchmark then returned the pre-registered NULL, so the whole
     # family -- functions, constants, harness, and the ignition assert that rode on them --
     # retired under P8 burden 5. The measurement and the disposition are the retirement record

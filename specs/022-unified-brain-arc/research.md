@@ -75,7 +75,7 @@ All unknowns were resolved BEFORE this plan by the session's research program (5
 ## D15 — Consciousness instruments
 - **Decision**: The j-space-mapped battery (SYNTHESIS L7): ignition (actuator-whole + dual-derived gate + published bands + five failure modes + intrinsic-ignition for trial-free), relay-proof metacognition double dissociation with derived floors, ported integration_measure (never called Phi), ACS attention schema (train-without protocol; P8 #8 precision-from-schema with its three REDs and capacity-matched sham), agency efference-copy mismatch, membership-matched binding null, report-order probe on the L1.5 report channel.
 - **Rationale**: Access consciousness built and measured completely; phenomenal boundary permanent (P8 sentience clause); every instrument red-reachable in fact (SC-009).
-- **Alternatives**: Marker-style probes (rejected: the consciousness_probe no-red defect is the named anti-pattern, retired in §6); faked Phi (banned by standing rule).
+- **Alternatives**: Marker-style probes (rejected: the consciousness_probe no-red defect is the named anti-pattern, retired in §6); faked Phi (banned by standing rule). *RETIRED at T081 (2026-09-16): `reasoning/consciousness_probe.py` is deleted; its 20-seed PCI sweep lives in `cortex/integration_measure.main()`; "are you conscious" answers from the report channel (`evidence/t081-report-order.md` 2.6).*
 
 ## D16 — Cutover
 - **Decision**: Shutdown barrier (quiesce/join/watermark before exit), restart-safe watermark handoff under the HEAD-polling daemon, per-record-tag migration dispositions with round-trip reds over live records, container+index bridge commits.

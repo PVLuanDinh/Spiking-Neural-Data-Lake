@@ -366,7 +366,7 @@ Two corrections this settlement forced, both found by re-deriving rather than by
    by the row *"expectation alone does not ignite"* (the anti-vacuity row -- a `expect()` that does
    nothing satisfies the forward assert perfectly), and removing the structural guard makes the
    10.0-expectation assert go red.
-2. **The reachability sentence in this section was stale.** It said `consciousness_probe.py:102`
+2. **The reachability sentence in this section was stale.** *RETIRED at T081 (2026-09-16): `reasoning/consciousness_probe.py` is deleted; its 20-seed PCI sweep lives in `cortex/integration_measure.main()`; "are you conscious" answers from the report channel (`evidence/t081-report-order.md` 2.6).* It said `consciousness_probe.py:102`
    imports `run_loop`, giving the module a thin live reach through the chat path. Re-derived at
    `b1095d43`: `consciousness_probe.py` imports only `access_consciousness`, `integration_measure`
    and `global_workspace`; there is no `probe_reentry` function in it at all (`probe_access` and

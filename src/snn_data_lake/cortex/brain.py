@@ -3420,7 +3420,7 @@ class Brain:
         # built on WITHIN-SYSTEM CONTRASTS with controls (integrated vs independent-noise vs
         # synchronous vs silent, plus a firing-rate control proving the gap is integration and not
         # activity), which is the honest shape; it stays reachable through `substrate/region_coherence.py`
-        # and `reasoning/consciousness_probe.py`. What was invalid was lifting ONE absolute number off
+        # and `reasoning/consciousness_probe.py` (RETIRED at T081, 2026-09-16). What was invalid was lifting ONE absolute number off
         # a synthetic instance of it and reporting it as this brain's.
         self._observe_self_sleep()  # night growth -> self-model episode
         self._sleep_ticks += 1

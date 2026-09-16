@@ -157,7 +157,18 @@ EXEMPT = {
         "over its trials -- dated forward clients, each landing WITH its task (an "
         "earlier draft cited 'T077+', which does not route through this driver -- "
         "corrected at review). Wiring it into the live tick would make the experiment "
-        "part of the organism it measures",
+        "part of the organism it measures. "
+        "CURRENT READING 2026-09-16 (T081 landed; evidence/t081-report-order.md 2.0 and "
+        "fact 6, quoted): 'the row's wording says the probe runs on the T034/T035 report "
+        "channel + EpisodeDriver. The report channel yes; the driver no -- fact 6 measures "
+        "that the driver drives a kernel the composite does not include, and routing its "
+        "trial patterns into the arm's bus would be a second stimulus mechanism beside the "
+        "percept packs (P2).' Measured there: the composite the report channel reads has no "
+        "KernelTick and no EpisodeDriver (grep over cortex/brain.py and cortex/live_brain.py "
+        "found neither). T081 therefore did NOT route this driver, and the forward-client "
+        "sentence above -- 'T081's report-order probe windowing over its trials' -- is "
+        "SUPERSEDED, not deleted: it stands as the dated expectation this row disposed of in "
+        "the open. The remaining forward client is T052's ESPP adoption benchmark",
     ),
     "ignition_instrument": (
         "permanent",
