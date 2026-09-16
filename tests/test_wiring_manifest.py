@@ -236,8 +236,8 @@ def test_artifact_is_tracked_and_loadable():
         "channel and its brain consumer + the proprioceptive afferent lane + the efferent "
         "lane (action_out -> efferent_in) + the |LP| pair with its discharged surprise "
         "edge + the growth gate's lp_in consumer + the vision/audition event-frame lanes "
-        "+ the T060 executive FiLM wire + the T082 belief wire (38 ports, 20 edges); a different census "
-        "means a registrant landed without updating this test's premise"
+        "+ the T060 executive FiLM wire + the T082 belief wire (38 ports, 20 edges); a "
+        "different census means a registrant landed without updating this test's premise"
     )
     assert set(m.edges) == {
         ("raphe_serotonin", "five_ht_out", "evidence_accumulation", "patience_in"),
@@ -259,6 +259,9 @@ def test_artifact_is_tracked_and_loadable():
         ("autonomous_loop", "action_out", "efferent_boundary", "efferent_in"),
         # T060: the executive task-set FiLM wire (the consumer declares the edge)
         ("task_set", "film_out", "brain", "task_film_in"),
+        # T082: the belief wire, declared by the PRODUCER (recursive_tom.declare_ports; the T082
+        # record's 2.10 (d)(1)) -- the brain's social_risk_in join is `sum`.
+        ("recursive_tom", "belief_out", "brain", "social_risk_in"),
         # T046a: T028's |LP| disposition discharged -- the consumer declares the edge.
         ("percept_surprise", "surprise_out", "learning_progress", "surprise_in"),
         # T047: T046a's lp_out disposition discharged -- the growth gate consumes |LP|.
