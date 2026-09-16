@@ -846,7 +846,15 @@ def _t078_mutated_scorer(kind):
       content_leak     (R5) -- chan[0] is appended to `u_t`, so the vector carries a coordinate of
           the attended content: the two brains stop being bit-identical and the length guard trips.
       g4_swap          (R6) -- (g4b)'s operands are swapped, so the VOID construction reads
-          PASS-WITH-LEAK instead."""
+          PASS-WITH-LEAK instead.
+      blind_min_rule   (R3, 2.10's TWIN) -- the scorer DROPS `min_rule` and reads everything under
+          the per-CELL floor, so the twin (the same 145 pairs read as a 12-class CONTROL) refuses
+          and R3's `ctrl_ok` conjunct fails. ADDED IN THE PANEL FOLD, 2026-09-15, and disclosed as
+          post-number: 2.10's twin conjunct landed in the SAME commit as the `min_rule`
+          implementation (455236d), so it was never in the tree in a failing state, and none of the
+          six mutations above reddens it -- `no_min`, `floor_unpermuted` and `self_score` all leave
+          the twin readable. It is an ADDITIONAL conjunct of R3, never a substitution for `ctrl_ok`
+          (substituting takes R3 False). R3's boolean is unchanged."""
 
     def floor_unpermuted(x, y, **kw):
         r = mi_read(x, y, **kw)
@@ -860,6 +868,19 @@ def _t078_mutated_scorer(kind):
 
     def no_min(x, y, **kw):
         return _mi_read(x, y, n_min_per_cell=0, **kw)
+
+    # distinct-from: cortex/laminar_local_readout.py::observe -- one LOCAL WEIGHT UPDATE on a
+    #   sample. distinct-from: plasticity/eligibility_algebra.py::canonical -- like-term folding of
+    #   a plasticity RULE expression. distinct-from: plasticity/plasticity_rule_stack.py
+    #   ::_equivalence_and_determinism_selfcheck -- a stack drop-in equivalence check.
+    # distinct-from: reasoning/arc_mint.py::induce_rule -- MDL induction of an attribute->colour
+    #   map. distinct-from: reasoning/raven_bench.py::_synth_task -- NVSA rule sampling for an RPM.
+    #   All five READ; every one is a LEARNING or INDUCTION rule. The twin below learns nothing and
+    #   induces nothing: it is 2.4's catalog shape, a deliberately broken `mi_read` that DISCARDS
+    #   its `min_rule` argument so 2.10's per-class readability twin can be reddened in fact.
+    def blind_min_rule(x, y, **kw):
+        kw.pop("min_rule", None)  # the per-CLASS rule is ignored; everything reads per-CELL
+        return mi_read(x, y, **kw)
 
     def train_scored(X, y, seed, n_shuffle=N_SHUFFLE):
         return _decode(X, y, seed, n_shuffle=n_shuffle, score_train=True)
@@ -883,6 +904,7 @@ def _t078_mutated_scorer(kind):
         "train_scored": train_scored,
         "content_leak": content_leak,
         "g4_swap": g4_swap,
+        "blind_min_rule": blind_min_rule,
     }[kind]
 
 
@@ -924,7 +946,8 @@ def t078_reds(n_perm=REDS_N_PERM, n_shuffle=N_SHUFFLE, seeds=T078_SEEDS):
     )
 
     # R3 -- the refusal fires on the probe's own shape, AND 2.10's per-CLASS twin reads the same
-    #       145 pairs; the mutation sets N_MIN_PER_CELL to 0, which reddens the per-cell half only
+    #       145 pairs; TWO mutations, one per half: N_MIN_PER_CELL := 0 reddens the per-cell
+    #       refusal, a `min_rule`-blind scorer reddens the twin
     cx, cy = t078_cell_stream(145, 39)
     refused = mi_read(cx, cy, n_perm=n_perm, seed=0)
     ox, oy = t078_cell_stream(600, 39)
@@ -933,6 +956,12 @@ def t078_reds(n_perm=REDS_N_PERM, n_shuffle=N_SHUFFLE, seeds=T078_SEEDS):
     m3 = _t078_mutated_scorer("no_min")(cx, cy, n_perm=n_perm, seed=0)
     # 2.10's twin: the same 145 pairs read as a 12-class CONTROL are readable under the per-class rule
     ctrl_ok = mi_read(cx, cy, n_perm=n_perm, seed=0, min_rule="per_class")
+    # ... and its OWN mutation, added in the panel fold: a scorer blind to `min_rule` reads the same
+    # 145 pairs under the per-CELL floor and REFUSES, so the `ctrl_ok` conjunct is reddened in fact.
+    # An ADDITIONAL conjunct, never a substitution -- substituting the blind read takes R3 False.
+    m3b = _t078_mutated_scorer("blind_min_rule")(
+        cx, cy, n_perm=n_perm, seed=0, min_rule="per_class"
+    )
     out["R3"] = bool(
         refused["readable"] is False
         and refused["mi"] is None
@@ -942,6 +971,7 @@ def t078_reds(n_perm=REDS_N_PERM, n_shuffle=N_SHUFFLE, seeds=T078_SEEDS):
         and one_class["readable"] is False
         and ctrl_ok["readable"] is True
         and m3["readable"] is True
+        and not m3b["readable"]  # the mutation must break `ctrl_ok["readable"] is True`
     )
 
     # R4 -- the decoder's band; the mutation scores every model on its own TRAIN half
@@ -1250,7 +1280,7 @@ RED_LINES = {
     "R2": "MI(a_t; a_t+1) is a CONTROL, not an identity (scoring y against itself reddens it)",
     "R3": (
         "145 pairs over 39 cells REFUSE per-CELL and READ per-CLASS (2.10's twin), 600 do not "
-        "refuse (N_MIN_PER_CELL := 0 reddens the per-cell half)"
+        "refuse (N_MIN_PER_CELL := 0 reddens the per-cell half, a min_rule-BLIND scorer the twin)"
     ),
     "R4": "the decode beats its 200-shuffle band (scoring on the TRAIN half reddens it)",
     "R5": "u_t is content-blind by TYPE and not constant (appending chan[0] reddens it)",

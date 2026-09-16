@@ -18,8 +18,11 @@ the mutated scorer that reddens it.
   R3 THE REFUSAL -- 145 pairs over 39 observed joint cells (the 300-tick probe's shape) REFUSE
      under the pre-registered per-CELL rule; the SAME 145 pairs are readable under 2.10's
      per-CLASS rule (the (g3c) control's twin, added to R3 at 455236d); 600 pairs over the same
-     39 cells are readable; a one-class axis refuses.  MUTATION: N_MIN_PER_CELL := 0, which
-     reddens the per-CELL half only -- the per-class twin is not covered by that mutation.
+     39 cells are readable; a one-class axis refuses.  MUTATIONS, one per half: N_MIN_PER_CELL
+     := 0 reddens the per-CELL refusal; a `min_rule`-BLIND scorer, which discards the argument
+     and reads everything per-CELL, reddens the per-CLASS twin (added in the 2026-09-15 panel
+     fold -- the twin landed at 455236d with the implementation, so it was never committed red
+     and no catalog mutation reached it).
   R4 THE DECODER'S BAND -- a 15-d input with the label planted in one coordinate decodes above
      its 200-shuffle band; the same input with the labels drawn independently decodes inside it;
      the band's q95 on n_test = 300 sits below 0.2 against a chance of 0.1 over 10 classes.
@@ -154,6 +157,20 @@ def test_r3_the_refusal_fires_on_the_probes_own_shape():
     ctrl = mi_read(x, y, n_perm=REDS_N_PERM, seed=0, min_rule="per_class")
     assert ctrl["readable"] is True, ctrl
     assert mi_read(x, y, n_perm=REDS_N_PERM, seed=0, min_rule="per_cell")["readable"] is False
+    # ... and the twin's OWN mutation (the panel fold): a scorer blind to `min_rule` reads the same
+    # 145 pairs under the per-CELL floor and REFUSES, so R3's `ctrl_ok` conjunct goes red in fact.
+    # None of the six 2.4 mutations reached it -- `no_min` leaves the twin readable.
+    blind = _t078_mutated_scorer("blind_min_rule")(
+        x, y, n_perm=REDS_N_PERM, seed=0, min_rule="per_class"
+    )
+    assert blind["readable"] is False, "a min_rule-blind scorer must redden R3's per-class twin"
+    assert "per cell" in blind["refusal"], blind
+    assert (
+        _t078_mutated_scorer("no_min")(x, y, n_perm=REDS_N_PERM, seed=0, min_rule="per_class")[
+            "readable"
+        ]
+        is True
+    ), "R3's own N_MIN_PER_CELL := 0 mutation leaves the twin readable -- it is not its red"
 
 
 def test_r4_the_decoder_reads_above_its_own_label_shuffle_band():
