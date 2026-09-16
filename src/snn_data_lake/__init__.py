@@ -188,6 +188,7 @@ REGIONS = {
         "counterfactual_sim",  # C1 batch-2: N-agent recursive ToM / counterfactual do()-operator simulation
         "learned_attention",  # C1 batch-3: learned spiking reticular attention gate (local plasticity)
         "attention_schema",  # specs/022 T078 Part I: the G3 task-binding (MI vs a permutation floor) and G4 content-leakage (held-out decode vs a shuffle band) instrument over the live loop's own attention state; no ACS, no wire to brain.py
+        "report_order_probe",  # specs/022 T081 [US4]: the C5 report_order instrument -- the live arm's report channel read against LESIONED CLONES of the workspace state that produced it (named pool vs a scrambled one); the lesion never touches the live brain
         "learned_evc",  # C1 batch-4: learned expected-value-of-control (dopamine-gated cost/value)
         "second_order_access",  # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
         "heterogeneous_microcircuit",  # Brain-Cog-adopted: LIF+Izhikevich+AdEx worked EXAMPLE of the basic_components palette (not on the live tick)

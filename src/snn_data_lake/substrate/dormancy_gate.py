@@ -180,6 +180,20 @@ EXEMPT = {
         "tools/t080_temporal_binding.json once). Wiring it to the tick would make the observer "
         "part of the observed -- the same reason ignition_instrument is not a tick faculty",
     ),
+    "report_order_probe": (
+        "permanent",
+        "MEASUREMENT INSTRUMENT (specs/022 T081 [US4], the C5 row report_order): reads the LIVE "
+        "arm's report channel off a SCRATCH brain (throwaway_home, persist=False) and scores it "
+        "against LESIONED CLONES of the very workspace state that produced it -- the reported "
+        "content's attractor charge zeroed on one clone, an unreported pool's on another. THE "
+        "LESION IS APPLIED TO A COPY: the live workspace is never perturbed, and a clone's "
+        "subscribers and output ring are detached, so no copy can deliver a broadcast or write a "
+        "lake byte. Its consumers are its __main__ self-check (2.4's six reachable reds on "
+        "constructed workspaces), tests/test_report_order_probe.py, and the T081 campaign "
+        "(--t081-campaign, which pins tools/t081_report_order.json once). Wiring it to the tick "
+        "would make the observer part of the observed -- the same reason ignition_instrument and "
+        "binding_instrument are not tick faculties",
+    ),
     "gwt_deep": (
         "permanent",
         "BENCHMARK DEMONSTRATION (promoted reasoning/ -> thalamus/ 2026-08-11): the tree's "
