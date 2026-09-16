@@ -25,6 +25,8 @@ substrate/efferent_boundary.py's own self-check; this file owns the embodiment c
 import math
 import random
 
+import pytest
+
 from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.brainstem.autonomous_loop import AutonomousArm
 
@@ -64,9 +66,14 @@ def test_envelope_tick_counts_every_passage_and_latch_schedule():
     assert eb.envelope_tick == 11, "a refused passage is still a passage"
 
 
-def test_tap_is_observation_only_identical_trajectory_when_neutered():
+@pytest.mark.parametrize("agency", [False, True])
+def test_tap_is_observation_only_identical_trajectory_when_neutered(agency):
+    # T079 (2026-09-15, its panel fold): the per-joint agency feed runs INSIDE the tap's guarded
+    # block after `efferent.observe`, and `AutonomousArm(seed=0)` defaults to agency_monitor=False,
+    # so the green this test carried at T079's build never exercised that branch. The True arm
+    # runs the feed; its red is a monitor whose observe reached the caller's arm (a divergence).
     def run(neuter):
-        bot = AutonomousArm(seed=0)
+        bot = AutonomousArm(seed=0, agency_monitor=agency)
         if neuter:
             bot.efferent.observe = lambda *a, **k: None
         rng = random.Random(7)
