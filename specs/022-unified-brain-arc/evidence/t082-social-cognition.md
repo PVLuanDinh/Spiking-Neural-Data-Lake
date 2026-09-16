@@ -432,7 +432,9 @@ disclosure; the cockpit row `social false beliefs` is appended after the report-
 "representation-level" in its comment -- and, like its two siblings (T080 record 3.5 item 11; T081 3.5 item 21), it is
 CLIPPED out of the ACCESS plate's 110 px box as rendered, so 2.6's "in the same view" conjunct is NOT MET AS RENDERED,
 disclosed here and on the surfaces (`cc1b223`); the arming arm of `conclusion_protocol.main()` and
-`tests/test_ratified_row_gates.py` is rewritten to a constructed row (no symbol-less C4 row remains -- this was the last);
+`tests/test_ratified_row_gates.py` is rewritten to a constructed row (no symbol-less row whose C4 task is COMPLETE remains, so the arming fixture has
+no successor; `attention_schema` (T078, still [ ]) is symbol-less, which is exactly why the arm is CONSTRUCTED rather
+than re-pointed -- narrowed at the panel fold, 3.5 item 8);
 `conclusion_protocol --assert` rc 0; tasks.md T082 -> [X] PASS. THE MERGE, THE WIRE AND THE CHARGE EVIDENCE landed in
 the build on every branch (3.1). The declared-anatomy twin tests for `belief_out` (the build's own opening) landed
 (`2094232`).
@@ -458,6 +460,93 @@ the build on every branch (3.1). The declared-anatomy twin tests for `belief_out
 7. The record's tables are generated from the pin (`scratchpad/t082/record_gen.py` -> `record_tables.md`), never
    typed.
 
+Items 8-15, dated 2026-09-16, the panel fold (3 lenses + refuters over CLAIM and FIX; 27 filed, 10 stood: 4 MAJOR / 6
+MINOR, no BLOCKER; every filed fix was wrong and the refuters' minimal fixes are what landed; every number below was
+re-run by the orchestrator before it was written -- the refuters' scripts under `scratchpad/t082-panel/refute/`):
+
+8. [8] 2.6's frozen parenthetical and 3.4's as first written read "(no symbol-less C4 row remains -- this was the
+   last)", which is over-broad: `attention_schema` (T078 [ ]) is symbol-less on this head (`refute_34_symbolless_last.py`:
+   rows with a symbol 6 of 7, without 1). 2.6 is FROZEN and is not edited; it is read at fact 1.5's width (no symbol-less
+   row whose TASK IS COMPLETE remains), which the committed code comment also carries ("Symbol-less rows exist today");
+   3.4's parenthetical is narrowed in place and marked. `tests/test_ratified_row_gates.py`'s header "Six of seven rows
+   declare no surface symbol today" was INVERTED on this head and is corrected (`393bf90 + 31e96eb`). No number, bar, conjunct
+   or gate is affected; the arm's red is reachable by construction with its two controls.
+9. [3] + [5] 2.10 (a)'s "the draw sequence, every witnessed episode and every unwitnessed count ... are unchanged" -- also
+   the docstring at `t082_script` and `da80dcd`'s commit message -- is FALSE in its second conjunct and its "and so"
+   derivation is invalid. MEASURED against the actual pre-correction module recovered from `76cdb4b`
+   (`rf_a_locdiff.py`, `rf_b_rng_and_bars.py`; the RNG call tape identical call-for-call, 138-145 calls per seed): the
+   draw sequence, the witness pattern and every unwitnessed count (25/29/26/21/26/31/23/32) ARE unchanged and the
+   coincidences read 0; but 38 of 480 episodes' drawn location and statement changed -- 33 unwitnessed (5/5/3/4/3/8/4/1
+   per seed) and 5 WITNESSED (seed 0 ep 7; seed 1 eps 9, 47; seed 5 eps 18, 59) -- because `rng.choice` consumes the same
+   index from `[x for x in LOCATIONS if x != world]` whose contents differ once a coinciding episode's `world` was
+   rewritten. No barred or reported number moves: acc_belief 1.0000, acc_ctrl == acc_world and every (s1) difference are
+   functions of the witness pattern alone (3.5 item 2; pre/post identical on 8/8). The honesty lens reads the
+   correction's footprint as 38 of 480 statements, not the 23 coincidences alone; the docstring is corrected in one
+   clause (`393bf90 + 31e96eb`); 2.10 (a) stands as dated and is amended by this item.
+10. [6] (g0)'s SECOND HALF IS ENTAILED BY THE CORRECTED GENERATOR, not measured -- the disclosure 2.10 (b) owed the
+    control as well as (s1). After `da80dcd` the exclusion re-picks from LOCATIONS minus {previous world, the agent's
+    belief} and `agent_looks` is never rewritten on an unwitnessed episode, so world != belief on EVERY unwitnessed
+    episode by construction (the alternative set is never empty at 4 locations; 0 failures over 20,000 seeds,
+    `refute_g0_entailment.py`; (g0)'s whole 3.3 column re-derives from the SEED alone, 8 of 8). 3.3's "213/213" records a
+    theorem about `t082_script`. (g0)'s FIRST half is not an invariant: the unwitnessed count is Bin(59, 0.5), P(fraction
+    < 0.3) = 7.7e-4 per seed (seeds 1624, 1673, 5237, 5963, 6138 refuse). A conjunct with no reachable red is DELETED,
+    not weakened, under P8 -- but deleting a conjunct after the numbers is the move this record refuses; the half stands
+    as pre-registered, disclosed as carrying no information, and its deletion is the next re-registration's.
+11. [1] MAJOR: 2.10 (b)'s clause "any parse miss, feed asymmetry or stale path lowers acc_belief below 1.0 -- R1, R5, R6
+    are the reds that would show it" is FALSE in its feed-asymmetry term and untestable in its stale-path term, quoted
+    here rather than struck. MEASURED (`probe_a_reproduce.py`, `probe_c_what_else_moves.py`; the row's own reader and
+    contrast over the row's own 8 constructed seeds): the R6 mutation `feed_subject_only` -- the live PRE-merge call
+    shape -- reads acc_belief 1.0 x 8, the IDENTICAL acc_ctrl vector, t 18.3621, (g0)/(s1)/(s2) MET, verdict PASS,
+    identical to the merged feed; only `spurious_nested` moves (0 x 8 -> 21/15/23/23/24/19/23/16). Only the parse-miss
+    term reaches a campaign number (an off-grammar statement -> (r) REFUSED). THE LICENCE NARROWED, in this item rather
+    than by rewriting 3.4: what PASS licenses is that the tracked agent's FIRST-ORDER path is fed losslessly through
+    `Brain.respond` and that an equal-capacity world model cannot match it; the NESTED half's losslessness rests on R5,
+    R6 and the REPORTED spurious count (0/60 live, 0 x 8 constructed, against the old feed's 5/12 and 15-24), never on a
+    barred conjunct. What the old feed DOES move: `charge_frame` (the declared payload), `false_beliefs` (the live key)
+    and `social_risk` -- the mean caution the arm receives rises 0.4266-0.5386 -> 0.6290-0.6669 while risk_max stays 0.68
+    in both arms, so the REPORTED caution summary (a max) is saturated and blind to it as well.
+12. [2] MAJOR: the campaign exercises NONE of the module's discriminative substrate -- measured by ablation
+    (`r_ablate_substrate.py`, `r_ablate_reds.py`): with `_spiking_readout` replaced by the identity, and again with
+    `RecursiveToM._predict` replaced by a plain dict read (the VSA bundle / unbind / cleanup and the LIF winner-take-all
+    both removed), all 8 seeds x 60 constructed rows are field-identical to stock (0 diffs), the reading is 0.4437 in
+    every arm, R1-R6 all still fire, the charge A/B trajectory is identical. On this workload every holder path carries
+    exactly one (believes, location) proposition over a 4-symbol codebook at depth 2, so the bundle is one term and the
+    unbind exact; the readout is the identity at jitter 0, which is every call the row makes. Nothing in this row --
+    verdict, bar, the pinned 0.4437, the six reds -- is charge on the spiking or VSA substrate; the row's charge is on the
+    witness gating, the live feed and the caution fold. OPENING (10): the substrate named in the module's docstring has
+    no reachable red in the module's gate (the one substrate-touching assertion, `jitter=2`, passes under the ablation;
+    the readout first misreads at jitter >= 3) -- a P3 debt recorded, not discharged.
+13. [7] The recorder feeds every statement TWICE and the module called that "the live path's own behaviour" (and 2.10
+    (e) "the live path's double read"): the live dialogue path folds ONCE (brain.py's sole `_tom_update` call site,
+    under `if not is_command`); the second fold is the RECORDER's own out-of-band capture. Docstring corrected
+    (`393bf90 + 31e96eb`). MEASURED (`probe_t082_double_feed.py`, re-run): the extra feed is inert on the tracker's complete
+    mutable state (`world`, `_props`, `_content`; a full `__dict__` diff once vs twice over the campaign's 60 statements
+    shows zero differing attributes) and an A/B on a scratch brain between the recorder's order and `respond`-only is
+    identical on every recorded field (risk 0.1921 at episode 11 in both) -- so no number moves; `t082_double_read_check`
+    is the named mitigation for a RECORDER artefact.
+14. [9] 3.3's "visible as leading zeros on seeds 1, 3, 5, 7" is WRONG on two of its four seeds: the leading-zero counts
+    over the pin are 3 / 6 / 1 / 6 / 6 / 0 / 2 / 6 for seeds 0-7, so the seeds with the maximal six are 1, 3, 4, 7, and
+    the seeds where 2.10 (c)'s gating is visible (the caution still 0 at the first unwitnessed statement) are 3, 4, 7;
+    seed 1's six zeros are not gating (its first unwitnessed episode is 6); seed 4, omitted, is the clearest case.
+    Seed 5's trajectory begins with None -- the only None in all 480 rows: every warm-up tick and every episode-0 tick
+    was asleep, so `_route_percept_to_action` (wake-only) never ran and `arm._social_risk` was never created; the
+    recorder's `getattr(..., None)` faithfully recorded the absence (episode 0 is witnessed with fb = 0, so it hides no
+    caution). NO code change: coercing the None to 0.0 would manufacture a leading zero indistinguishable from a real
+    one. Nothing barred moves.
+15. [10] PATH PROVENANCE (T081 fold item 21's form): `scratchpad/t082/` in this record names the row's scratch, split
+    across two directories -- the three dry-run artifacts (`dry_run.json`, `dry_run_builder.json`, `dry_run_orch.txt`)
+    are in `<repo>/scratchpad/t082/` (the recorder's repo-relative default under the launcher's working directory);
+    every other cited artifact (`probe_tom.py`, `builder_brief.md`, `g0_conflict.py`, `launch_campaign.ps1` +
+    `campaign.log`, `verify_t082_pin.py` + `verify_out.txt`, `record_gen.py` + `record_tables.md`) is in the session
+    scratchpad (`resolve_scratchpad_citations.py`: repo-only 1, temp-only 6); NO scratch artifact is tracked, so a reader
+    working from git resolves this row through the pin and the commits.
+16. THE FOLD'S OWN RED, disclosed: the cockpit's dated note (panel [4] (B)) as first committed (`393bf90`) named three
+    C5 symbols in prose, and the C5 surface gate -- a source-text reader (T080 3.5 item 11) -- read three new debts
+    against its baseline of 1; `tests/test_ratified_row_gates.py` went RED in the same command and the commit landed
+    anyway because the test was piped through a filter (the pipeline's exit code was the filter's). Caught by the
+    printed FAILED line before any battery; `31e96eb` rewords the note to name no symbol; the gate reads its baseline
+    again (obs #2199).
+
 ### 3.6 What this row does NOT claim, and the openings it leaves
 
 No understanding of another mind, no mind (the refused sentence, printed beside the symbol on every surface that
@@ -478,3 +567,26 @@ forms; a statement outside them is refused, never guessed -- the live daemon's u
 `TheoryOfMind` stays as pragmatics' engine; its liveness there is the pragmatics row's, not this one's; (9) the stale
 citations of the deleted `SecondOrderToM` in `docs/coverage/Social.md` and `docs/CODEBASE_DIGEST.md` are annotated,
 never rewritten (`cc1b223`).
+
+### 3.7 Amendments after the panel, dated 2026-09-16 (nothing above this line edited except the one marked in-place
+### narrowing in 3.4; no bar, barred number, conjunct, disposition or pin changed)
+
+THE C5 SURFACE CONJUNCT FAILS ON BOTH AXES (panel [4]; the refuter's measurement in the running page at 1920 x 1080,
+`measure_access_plate_run.js`; the character counts re-run by the orchestrator): 3.4's "CLIPPED out of the ACCESS
+plate's 110 px box" names only the VERTICAL term. The row's `.v` span carries the FULL `PROVENANCE` string under `.row
+.v`'s `white-space: nowrap` -- 4,316 characters for `recursive_tom_false_beliefs` (T081's `report_order_margin` 3,352,
+T080's `crossmodal_bound_rate` 1,806, `pci` 516) -- and the panel measured it at 24,593 px against a 232 px clip box
+(5.7 px per character): the licensed sentence begins at character 1,118 and the refused at 1,230, both thousands of
+pixels right of the clip's edge and below its bottom; ZERO characters of the tag are visible. Opening (2) is CORRECTED:
+giving the ACCESS plate its own grid row is necessary but NOT sufficient -- `#bottom` computes eight fixed columns, so
+its own row leaves the plate 232 px wide (about 37 characters), and even a full-viewport plate reaches about 330,
+short of the licensed sentence by a factor of 3; only wrapping the provenance, or moving it out of a nowrap row, can
+meet "in the same view". The conjunct is NOT MET on both axes on all three C4 rows; the owed cockpit row is re-scoped
+to "wrap or relocate the provenance" and stays owed. `cockpit.py`'s own note that `spikes.midbrain` was "the only other
+long PROVENANCE string" is left as written with a dated line beside it naming the four longer ones.
+
+WHAT THIS ROW'S PASS LICENSES, RESTATED with 3.5 items 10-12 beside 2.10 (b): the tracked agent's FIRST-ORDER path
+through `Brain.respond` is fed losslessly and an equal-capacity world model cannot match it (item 11); (g0)'s second
+half is a theorem about the generator (item 10); the VSA / LIF substrate carries none of the charge (item 12); the
+pre-campaign correction's footprint is 38 of 480 statements (item 9). The licensed sentence stands at that width and
+no wider; the refused sentence stands as written.
