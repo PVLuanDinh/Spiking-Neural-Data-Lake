@@ -53,6 +53,9 @@ advance the envelope.
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.substrate.efferent_boundary
 """
 
+import re
+
+from snn_data_lake.brainstem import arm_config
 from snn_data_lake.cerebellum.forward_model import ForwardModel
 from snn_data_lake.substrate.afferent_boundary import proprioception_delta
 
@@ -62,6 +65,66 @@ from snn_data_lake.substrate.afferent_boundary import proprioception_delta
 # delta/LMS needs lr * dt^2 * (s^2 + u^2) < 2; the delta fold pins |s| <= 1 and |u| <= 1,
 # so the worst case is lr * 2 -> lr = 0.5 sits at half the bound.
 _LR = 0.5
+
+#: The joint names in qpos order -- `arm_config.JOINTS` is the vocabulary, this is its name
+#: projection. It exists so `u_j[i]`, `ds_j[i]` and `theta_deg[i]` are the SAME joint: the
+#: per-joint copy is indexed exactly like the body's own posture vector, never by a private
+#: ordering of its own.
+_QPOS_NAMES = tuple(j.name for j in arm_config.JOINTS)
+
+#: `JOINT_<NAME>_ROTATE(<+/-N>deg)` and ONLY that verb. ROTATE is RELATIVE (arm_config's
+#: two-verb note: it adds to the current setpoint), so its argument IS a commanded delta;
+#: MOVETO is ABSOLUTE, so its argument is a setpoint and a delta parser that read it would
+#: report a target ANGLE as a move. The joint name this regex captures is checked against
+#: `arm_config.ROTATABLE` membership before it is believed -- arm_config states the rule in
+#: its own words ("a site that matches the shape without checking membership here can mint a
+#: token for a joint that does not exist"), and the syntax alone is not the vocabulary.
+_ROTATE_TOKEN = re.compile(r"JOINT_([A-Z_]+)_ROTATE\(([+-]?\d+(?:\.\d+)?)deg\)")
+
+
+# distinct-from: substrate/afferent_boundary.py::proprioception_delta -- the SCALAR this
+#   function is the per-joint half of; specs/022 T079 2.1 folds the two into one mechanism at
+#   2.9 step 4 (the scalar becomes the mean of this list). Read.
+# distinct-from: brainstem/autonomous_loop.py::_pfc_bias -- also returns a zero-filled row when
+#   its faculty is opt-out, but that row is a top-down PREFERENCE over the ACTION alphabet fed
+#   into selection; this is a per-JOINT proprioceptive fold that drives nothing. Read: no
+#   quantity, alphabet or consumer is shared.
+def proprioception_deltas(theta_before, theta_after):
+    """STUB (specs/022 T079, 2.9 step 2) -- returns zeros, so `tests/test_agency_monitor.py`'s
+    R5 runs RED against it. The real per-joint fold lands at 2.9 step 4.
+
+    Readability is already the real thing and not stubbed: a missing, short or unreadable body
+    reads None, never a fabricated row a consumer would mistake for "no motion"."""
+    if not theta_before or not theta_after:
+        return None
+    n = min(len(theta_before), len(theta_after))
+    if n < 2:
+        return None
+    return [0.0] * n
+
+
+# distinct-from: brainstem/live_arm.py::_joint_obs_delta -- the ONE-joint spelling of this
+#   parse (shoulder_lift only, its own private regex). 2.1 makes that a call into this at 2.9
+#   step 4 so exactly one parser survives (P2). Read.
+# distinct-from: brainstem/interpreter.py -- VALIDATES a command against the envelope's
+#   allow-list and issues it; this reads a already-issued token's commanded magnitude and
+#   issues nothing. Read.
+def intended_deltas(action):
+    """STUB (specs/022 T079, 2.9 step 2) -- returns zeros, so `tests/test_agency_monitor.py`'s
+    R4 runs RED against it. The real token parser lands at 2.9 step 4.
+
+    The shape is already fixed: one entry per `arm_config.ROTATABLE` joint, in degrees."""
+    return dict.fromkeys(arm_config.ROTATABLE, 0.0)
+
+
+def _intended_row(action, n):
+    """`intended_deltas` projected into qpos order over `n` slots (None when `n` is None)."""
+    if n is None:
+        return None
+    intent = intended_deltas(action)
+    return [
+        float(intent.get(_QPOS_NAMES[i], 0.0)) if i < len(_QPOS_NAMES) else 0.0 for i in range(n)
+    ]
 
 
 class EfferentBoundary:
@@ -90,12 +153,16 @@ class EfferentBoundary:
         self.envelope_tick += 1
         u = proprioception_delta(theta_pre, commanded_after)
         ds = proprioception_delta(theta_pre, theta_post)
-        if u is None or ds is None:
+        ds_j = proprioception_deltas(theta_pre, theta_post)
+        u_j = _intended_row(action, None if ds_j is None else len(ds_j))
+        if u is None or ds is None or ds_j is None:
             self.last_copy = {
                 "action": action,
                 "s": None,
                 "next": None,
                 "u": None,
+                "u_j": None,
+                "ds_j": None,
                 "err": None,
                 "envelope_tick": self.envelope_tick,
             }
@@ -111,6 +178,13 @@ class EfferentBoundary:
             "s": s,
             "next": ds,
             "u": u,
+            # The PER-JOINT copy beside the scalars (specs/022 T079 2.1): `u_j` the commanded
+            # delta per joint in DEGREES (the action token's own magnitude), `ds_j` the achieved
+            # delta per joint in the SAME units the scalar `u`/`next` are folded in. Both are
+            # qpos-ordered, so `u_j[i]` and `ds_j[i]` name one joint. Nothing reads them at 2.9
+            # step 2; the agency feed lands at 2.9 step 5.
+            "u_j": u_j,
+            "ds_j": ds_j,
             "err": err,
             "envelope_tick": self.envelope_tick,
         }

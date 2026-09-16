@@ -90,8 +90,11 @@ prints; plain-float EMAs updated in a fixed order so two seed=0 runs are byte-id
 import math
 import random
 import zlib
+from pathlib import Path
 
+from snn_data_lake.brainstem import arm_config
 from snn_data_lake.substrate._mathutils import clamp01
+from snn_data_lake.substrate.paired_contrast import T_BAR, contrast
 
 __version__ = "0.1.0"
 
@@ -307,6 +310,174 @@ class AgencyMonitor:
 
 
 # =============================================================================
+# T079 -- THE AGENCY INSTRUMENT (specs/022 Phase 4 / C4;
+# specs/022-unified-brain-arc/evidence/t079-agency.md, frozen at 9b04c8c).
+#
+# 2.9 step 2: THE SKELETON. Every reading below is NULL BY CONSTRUCTION -- `readable`
+# False, every boolean False, no brain ticked, no floor drawn -- so the six reds of 2.4
+# land RED against it at 2.9 step 3 and turn green at 2.9 step 4. Nothing here reads a
+# body yet; the feed switch, the recorder and the campaign land at 2.9 step 5.
+#
+# The instrument is the incumbent `AgencyMonitor` above, whole and un-re-implemented
+# (2.1): its EMAs, its thresholds and its two-counter state machine ARE the reading. What
+# T079 adds is the FEED (a per-joint efference copy instead of the 2026-07-28 measured-
+# meaningless action/qmax/reward triple), a cause-blind twin to read the coupling against,
+# and the in-vivo dissociation.
+#
+# distinct-from: substrate/brain_telemetry.py -- the ONE telemetry CONTRACT, a live
+#   per-panel view of the brain's own keys. These functions read a finished RECORDING of
+#   envelope passages offline and publish nothing. Read.
+# distinct-from: cortex/prior_drift_harness.py -- a scratch-POPULATION drift harness whose
+#   "reading" is a host-settling measurement with its subject PID beside it. Different
+#   subject, different quantity; its paired statistic is the one this module IMPORTS from
+#   `substrate/paired_contrast` rather than re-spelling. Read.
+# distinct-from: substrate/amdahl_gate.py -- a live/neuter/sham paired reading over tick
+#   COST on three scratch brains. This pairs INTACT against SHOVED on the per-joint
+#   command-to-outcome coupling; no timing quantity is read at all. Read.
+# distinct-from: cortex/h01_ingest.py -- an Avro OCF record reader over a connectome
+#   export. Term overlap ("record", "read") only. Read.
+# distinct-from: brainstem/arm_config.py::joint_limits -- per-joint LIMITS read off the
+#   MuJoCo model (the safety envelope's vocabulary). This reads a per-joint CORRELATION off
+#   a recording and touches no limit. Read; arm_config is imported here, never restated.
+# =============================================================================
+
+#: Ticks per recording, per seed, per arm (2.2, 2.8).
+T079_N_TICKS = 1200
+#: The campaign's seeds (2.2; PLAN-FINAL Part F: S = 8).
+T079_SEEDS = tuple(range(8))
+#: Permutation draws per joint per recording for the cause-blind twin (2.1, 2.8).
+T079_N_SHUFFLE = 2000
+#: J*, the perturbed channel: the mid-chain joint (2.2).
+T079_SHOVE_JOINT = "elbow_flex"
+#: The disturbance amplitude, DERIVED from the command scale rather than chosen (2.2):
+#: the shove equals twice the step the loop itself commands.
+T079_SHOVE_DEG = 2.0 * arm_config.DEFAULT_STEP_DEG
+#: The reported ladder of 2.3 / 2.9 step 5, in the same derived units: half the step, the
+#: step, twice the step.
+T079_LADDER = (0.5 * arm_config.DEFAULT_STEP_DEG, arm_config.DEFAULT_STEP_DEG, T079_SHOVE_DEG)
+#: The per-seed percept-stream offset (2.2): `brain._real_ptr = T079_STREAM_OFFSET * seed`.
+T079_STREAM_OFFSET = 150
+#: The shove RNG base: `random.Random(T079_SHOVE_RNG_BASE + seed)`, so the disturbance
+#: draw is per-seed and the loop's own RNG is never touched (2.1).
+T079_SHOVE_RNG_BASE = 7000
+#: (p)'s determinism twin: two INTACT seed-0 recordings at this width must be byte-identical.
+T079_DETERMINISM_TICKS = 100
+#: The one bar (2.3): the paired one-sided t over 8 seeds, 7 d.f., alpha = 0.05.
+T079_BAR = T_BAR
+#: The pin, written ONCE by `--t079-campaign` (2.1, 2.9 step 6).
+T079_PIN = Path("tools/t079_agency.json")
+
+#: The instrument's OWN constants, READ off a default monitor rather than re-declared here
+#: (P1, and 2.8 records them as read-not-chosen). A literal 0.20 / 120 / 1e-4 in this module
+#: would be three constants to keep in agreement with `AgencyMonitor.__init__` instead of one.
+_T079_DEFAULTS = AgencyMonitor(seed=0)
+#: (a2)'s DEADBAND: the band the machine ITSELF treats as noise, `high_thresh - dead_thresh`
+#: (2.3). A drop smaller than this is a drop the state machine would not act on.
+T079_DEADBAND = _T079_DEFAULTS.high_thresh - _T079_DEFAULTS.dead_thresh
+#: The settle window, in observations (the monitor derives it from alpha).
+T079_WARMUP = _T079_DEFAULTS.warmup
+#: The command-variance floor below which a channel is UNSCORED (R3, (r)).
+T079_VAR_FLOOR = _T079_DEFAULTS.var_floor
+#: The five channels: the rotatable joints (the gripper is ENGAGE/RELEASE and has no angle
+#: vocabulary, so it is not a per-joint command/feedback channel at all).
+T079_JOINTS = tuple(arm_config.ROTATABLE)
+
+#: One ASCII line per red, printed beside its boolean so a gate log says WHAT fired rather
+#: than only that something did (2.4's wording, compressed).
+T079_RED_LINES = {
+    "R1": "the shuffle floor is a FLOOR (drawing it un-permuted reddens it)",
+    "R2": "the machine's hysteresis holds both ways (delay = recover_n = 0 reddens it)",
+    "R3": "an unexercised channel is UNSCORED, never lost (var_floor := 0 reddens it)",
+    "R4": "the token parser refuses a foreign joint (accepting any name reddens it)",
+    "R5": "the per-joint fold wraps and its mean IS the scalar (dropping the wrap reddens it)",
+    "R6": "the dissociation reads on a constructed body (1 - c on the shoved arm reddens it)",
+}
+
+
+def t079_record_brain(seed, n_ticks=T079_N_TICKS, shove=None, amp=0.0):
+    """SKELETON (2.9 step 2): no rows, no brain, no lake. The recorder lands at 2.9 step 5.
+
+    Its built form ticks a SCRATCH brain (`throwaway_home()`, `make_brain(seed,
+    persist=False)`, `_real_ptr = T079_STREAM_OFFSET * seed`) and returns one row per
+    ENVELOPE PASSAGE -- never a verdict, never a contrast."""
+    return []
+
+
+def t079_read(rows):
+    """SKELETON (2.9 step 2): `readable` False, every joint unscored, every controllability
+    0.0. The real per-joint read lands at 2.9 step 4.
+
+    Its built form reports, per joint: `c` (the MEAN of the instrument's own streaming
+    `controllability(j)` over the passages past warmup), `status` at the end of the
+    recording, `scored`, and the counts (r) is refused on."""
+    return {
+        "readable": False,
+        "passages": 0,
+        "awake": 0,
+        "latched": 0,
+        "tap_errors": 0,
+        "joints": {
+            j: {"c": 0.0, "status": None, "scored": False, "n": 0, "var_c": 0.0}
+            for j in T079_JOINTS
+        },
+    }
+
+
+def t079_floor(rows, seed, n_shuffle=T079_N_SHUFFLE):
+    """SKELETON (2.9 step 2): `readable` False, every floor 0.0, zero draws. The real
+    cause-blind twin lands at 2.9 step 4.
+
+    Its built form permutes `u_j` across the SCORED passages (the outcomes identical, the
+    causal link removed -- the C5 row's own dissociation input), pushes all `n_shuffle` draws
+    through the SAME EMA recurrence as one batched torch tensor, and takes the 95th-percentile
+    order statistic of the resulting mean-controllability draws."""
+    return {
+        "readable": False,
+        "n_shuffle": int(n_shuffle),
+        "seed": int(seed),
+        "joints": {j: {"floor": 0.0, "floor_median": 0.0, "draws": 0} for j in T079_JOINTS},
+    }
+
+
+def t079_contrasts(intact, shoved):
+    """SKELETON (2.9 step 2): every conjunct NOT MET. The real contrasts land at 2.9 step 4.
+
+    `intact` and `shoved` are per-seed lists of `{"read": t079_read(...), "floor":
+    t079_floor(...)}` -- the floor travels WITH its arm because (g0) reads the intact arm
+    against its own twin. Its built form returns 2.3's (g0) per joint, (a1) on J*, (a2) per
+    unshoved joint and (a3)'s exact counts, each decided by `paired_contrast.contrast`."""
+    return {
+        "g0": {
+            j: contrast(f"(g0) {j}: intact c - its cause-blind floor", [0.0] * 8)
+            for j in T079_JOINTS
+        },
+        "a1": contrast(f"(a1) {T079_SHOVE_JOINT}: intact c - shoved c", [0.0] * 8),
+        "a2": {
+            j: contrast(f"(a2) {j}: (shoved c - intact c) + deadband", [0.0] * 8)
+            for j in T079_JOINTS
+            if j != T079_SHOVE_JOINT
+        },
+        "a3": {"shoved_star_lost": 0, "other_lost": 0, "met": False},
+        "n_seeds": 0,
+    }
+
+
+def t079_reds(n_shuffle=T079_N_SHUFFLE):
+    """SKELETON (2.9 step 2): 2.4's six reds, all False -- no red has been RUN yet.
+
+    At 2.9 step 3 each is a failing assertion in `tests/test_agency_monitor.py`; at 2.9 step 4
+    each is True iff the red holds on its constructed input AND its mutated scorer reddens it
+    IN FACT (a red a broken instrument still passes is not a red)."""
+    return {f"R{i}": False for i in range(1, 7)}
+
+
+def _t079_reds_line(reds, out=print):
+    """Print the six booleans beside what each one says (2.9 step 2: main() prints them)."""
+    for name in sorted(reds):
+        out(f"  {name}: {str(reds[name]):5s}  {T079_RED_LINES[name]}")
+
+
+# =============================================================================
 # Un-riggable self-check: drive real command/feedback dynamics and assert the
 # monitor's behavior emerges from them (never from a hardcoded label).
 # =============================================================================
@@ -505,6 +676,26 @@ def main():
         f"  dropping agency_signal {r['heal_signal']:.2f}->{r['lost_signal']:.2f} and rerouting to "
         f"'{r['lost_reroute_to']}'; revival needed {r['high_at_flip']} consecutive highs "
         f"(recover_n={r['recover_n']}) -- one good tick never flips it; deterministic"
+    )
+
+    # ---- T079's six reds (2.4). At 2.9 step 2 they are NULL READINGS and are PRINTED, not
+    #      asserted: the skeleton exists so tests/test_agency_monitor.py can commit them RED
+    #      at 2.9 step 3. The assert lands at 2.9 step 4, when each is reddened IN FACT by its
+    #      mutated scorer. Printing False here is the honest state of the row, not a failure.
+    print("-" * 78)
+    print("T079 -- the agency instrument (specs/022 C4): 2.4's six reds")
+    print(
+        f"  bar {T079_BAR} | joints {list(T079_JOINTS)} | J* {T079_SHOVE_JOINT} | "
+        f"A {T079_SHOVE_DEG:g} deg | ladder {[f'{a:g}' for a in T079_LADDER]}"
+    )
+    print(
+        f"  warmup {T079_WARMUP} obs | var_floor {T079_VAR_FLOOR:g} | deadband {T079_DEADBAND:g} | "
+        f"n_shuffle {T079_N_SHUFFLE} | ticks {T079_N_TICKS} | stream offset {T079_STREAM_OFFSET} x seed"
+    )
+    _t079_reds_line(t079_reds())
+    print(
+        "  2.9 step 2 SKELETON: every reading above is NULL by construction (no brain, no "
+        "floor, no feed). The reds go green at 2.9 step 4."
     )
 
 
