@@ -5693,6 +5693,25 @@ def declare_ports(manifest):
         ),
     )
     manifest.declare_edge("task_set", "film_out", "brain", "task_film_in")
+    # T082 (FR-034): the recursive belief tracker's divergence pair -- [first-order
+    # false-belief count, nested-divergence count] -- consumed on the wake tick into
+    # `_tom_protect` and pushed to the arm's caution term (`arm._social_risk`). The PRODUCER
+    # declares THE edge for this wire (recursive_tom.declare_ports); this half is the
+    # consumer's typed subscription and its join.
+    manifest.declare_port(
+        "brain",
+        Port(
+            name="social_risk_in",
+            region="cortex",
+            shape=(2,),
+            dtype="f4",
+            unit="count",
+            encoding="VEC_DENSE",
+            kind="IN",
+            declaring_module="brain",
+            join_policy="sum",
+        ),
+    )
     # T034: the report channel's declared consumer -- Brain.state() reads the typed
     # {content, availability, strength} snapshot through report_channel.snapshot on every
     # state build, and the cockpit renders those fields (P4c: the cockpit reports what

@@ -37,10 +37,13 @@ codes + per-instance RNG + fixed LIF), ASCII-only.
 
 import itertools
 import random
+import sys
+from pathlib import Path
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.cortex.population_encoding import PopulationEncoder
 from snn_data_lake.cortex.vsa_reasoning import bind, bundle, coincidence, hv
+from snn_data_lake.substrate.paired_contrast import T_BAR
 
 # spiking winner-take-all readout constants (shared with theory_of_mind.BeliefPopulation)
 _WINDOW = 20  # steps each content bin's LIF neuron is driven
@@ -187,6 +190,195 @@ class RecursiveToM:
         return self.world.get(att)
 
 
+# =============================================================================
+# T082 -- SOCIAL COGNITION COMPOSED (specs/022 [US4], FR-034, the C5 row `social_cognition`).
+# Pre-registration: `specs/022-unified-brain-arc/evidence/t082-social-cognition.md`, FROZEN at
+# the commit that landed it. This block is 2.9 STEP 2, the skeleton: 2.8's declared constants,
+# the DECLARED belief wire, and the instrument STUBS the six reds of 2.4 run RED against at
+# step 3. Nothing here reads a brain; the recorder, the dry run and the campaign land at step 5.
+#
+# WHY THE PORT LIVES HERE AND NOT IN A NEW MODULE: the T082 row names `cortex/recursive_tom.py`
+# wiring, and this is the faculty whose divergence count the arm's caution already folds
+# (brain.py's wake tick -> `arm._social_risk` -> autonomous_loop's caution term). A parallel
+# instrument module beside the faculty would be the additive failure P2 names.
+# =============================================================================
+
+# ---- 2.8's DECLARED CONSTANTS. Each is the plan's width, the composite's own shape, or a
+# quantity the pre-registration names; every BUILDER-INTRODUCED width says so (T079-T081's
+# disclosure discipline -- an undisclosed width is a hidden degree of freedom).
+#: Episodes per seed's scripted dialogue (2.2, 2.8).
+T082_N_EPISODES = 60
+#: Wake ticks run BETWEEN statements, so the brain's own `_tom_protect` fold executes and the
+#: caution trajectory is readable within the episode (2.1, 2.8; 1 / 3 / 5 reported on the dry run).
+T082_TICKS_BETWEEN = 3
+#: The script's probability that an episode is UNWITNESSED (2.1, 2.8).
+T082_P_UNWITNESSED = 0.5
+#: The script's object and location vocabularies (2.8).
+T082_OBJECTS = ("marble", "key", "coin", "ring", "cup")
+T082_LOCATIONS = ("basket", "box", "drawer", "shelf")
+#: The per-seed stream offset applied to BOTH pointers: `(T082_STREAM_OFFSET * seed) % 256`
+#: (2.1; T080's rule, carried by T081).
+T082_STREAM_OFFSET = 150
+#: The campaign's seeds (2.2; PLAN-FINAL Part F: S = 8).
+T082_SEEDS = tuple(range(8))
+#: (g0)'s floor (2.3): the fraction of a seed's episodes that must be UNWITNESSED before the
+#: stream is accepted as carrying a false belief to track.
+T082_MIN_UNWITNESSED = 0.3
+
+#: THE DECLARED BELIEF WIRE (2.1, FR-034): producer half + THE edge here, consumer half
+#: (`brain.social_risk_in`) in `cortex/brain.declare_ports`.
+BELIEF_EDGE = ("recursive_tom", "belief_out", "brain", "social_risk_in")
+
+#: The script's RNG: `random.Random(T082_RNG_BASE + seed)` (2.1, the territory probe's base).
+T082_RNG_BASE = 4000
+#: The stream-pointer modulus (2.1's "mod their packs"; T081's declared width).
+T082_STREAM_POSITIONS = 256
+#: THE BRAIN'S OWN social-risk fold, READ not chosen (2.8): on the wake tick
+#: `_tom_protect = max(min(1, GAIN * fb), DECAY * prev)` and the arm's caution term is that
+#: value. The pair lives HERE so the charge A/B's consumer and
+#: `cortex/brain._route_percept_to_action` read ONE definition (2.9 step 4 re-points brain).
+T082_PROTECT_GAIN = 0.34
+T082_PROTECT_DECAY = 0.9
+#: The one bar (2.3): the paired one-sided t over 8 seeds, 7 d.f., alpha = 0.05.
+T082_BAR = T_BAR
+#: The tree root, so the pin resolves from any working directory (T081's idiom).
+REPO = Path(__file__).resolve().parents[3]
+#: The pin, written ONCE by `--t082-campaign` (2.9 step 6).
+T082_PIN = REPO / "tools" / "t082_social_cognition.json"
+#: The dry run's report (2.9 step 5). Never under tools/: the pin is the campaign's.
+T082_DRY_RUN_OUT = Path("scratchpad/t082/dry_run.json")
+
+#: The two AGENTS the live dialogue path tracks (2.1): the user and the brain.
+T082_AGENTS = ("user", "brain")
+#: R2's constructed witness script (2.4): this many events at this absence rate.
+T082_R2_EVENTS = 40
+T082_R2_P_ABSENT = 0.5
+#: R3's constructed scripts: one per seed, at the campaign's seed count (2.4, "eight").
+T082_R_SEEDS = T082_SEEDS
+T082_R3_EVENTS = 40
+#: R5's losslessness sweep (2.4): this many random witness scripts over this many agents,
+#: locations and events each.
+T082_R5_SCRIPTS = 200
+T082_R5_AGENTS = 3
+T082_R5_LOCATIONS = 4
+T082_R5_EVENTS = 12
+#: R5's RNG base -- BUILDER-INTRODUCED, disclosed (T081's `T081_SCR_REDRAW_BASE` precedent).
+T082_R5_RNG_BASE = 820000
+#: R4's charge frames: this many recorded [fb_first, fb_nested] ticks, and the PINNED payload
+#: the neuter substitutes (2.1: "the pinned payload [0, 0]").
+T082_R4_FRAMES = 12
+T082_PINNED_BELIEF = [0.0, 0.0]
+
+#: One ASCII line per red, printed beside its boolean so a gate log says WHAT fired (2.4).
+T082_RED_LINES = {
+    "R1": "the parse REFUSES outside the grammar (parsing anything reddens it)",
+    "R2": "the equal-capacity control IS a world model (honouring absence reddens it)",
+    "R3": "the dissociation reads on constructed scripts (swapping the arms reddens it)",
+    "R4": "the belief payload moves the caution fold (a payload-ignoring consumer reddens it)",
+    "R5": "the symmetric feed is LOSSLESS vs both retired trackers (reading the world reddens it)",
+    "R6": "the symmetric feed kills the spurious divergence (the subject-only feed reddens it)",
+}
+
+
+def declare_ports(manifest):
+    """Manifest registrant (specs/022 T082, FR-034): the recursive belief tracker's surface.
+    OUT `belief_out` -- (2,) f4 = [first-order false-belief count, nested-divergence count]
+    over the tracked agents -- GRADED by `divergence` (the association source: the nested half
+    IS `RecursiveToM.divergence` summed over ordered pairs). The consumer half is
+    `brain.social_risk_in`, declared in `cortex/brain.declare_ports` beside `task_film_in`.
+
+    THE EDGE IS DECLARED HERE, by the PRODUCER, and that is a deviation from the T034/M10
+    convention (the consumer declares its subscription) recorded rather than smoothed: the
+    builder brief for 2.9 step 2 puts the edge in this registrant, and `declare_edge` appends
+    unconditionally while `validate_structure` checks the ASSEMBLED manifest order-independently
+    (manifest_gate's own T060 comment measured both orderings identical), so the position
+    carries no mechanism either way.
+
+    THE WIDTH IS A LITERAL 2 and that is the honest form here, unlike `task_set.film_out`'s
+    derived `len(ACTIONS)`: the payload is not a per-item vector but the pair of COUNTS the
+    fold reads, and the pair cannot grow with any vocabulary."""
+    from snn_data_lake.substrate.wiring_manifest import Port
+
+    manifest.declare_port(
+        "recursive_tom",
+        Port(
+            name="belief_out",
+            region="cortex",
+            shape=(2,),
+            dtype="f4",
+            unit="count",
+            encoding="VEC_DENSE",
+            kind="OUT",
+            declaring_module="recursive_tom",
+            delivery_policy=("graded", "divergence"),
+        ),
+    )
+    manifest.declare_edge(*BELIEF_EDGE)
+
+
+# =============================================================================
+# 2.9 STEP 2's STUBS. Each returns a NULL reading, so the six reds of 2.4 RUN RED at step 3
+# against the real thing rather than against an import error. Every one is implemented at
+# step 4 (the instruments) or step 5 (the recorder).
+# =============================================================================
+def t082_script(seed, n_ep=T082_N_EPISODES):
+    """STUB (2.9 step 2) -> []. THE SCRIPTED OTHER AGENT (2.1): objects and locations drawn
+    under `random.Random(T082_RNG_BASE + seed)`, p_unwitnessed = `T082_P_UNWITNESSED`, the
+    agent's look = its last WITNESSED location, the world = the last location."""
+    del seed, n_ep
+    return []
+
+
+def t082_record_brain(seed, n_ep=T082_N_EPISODES):
+    """STUB (2.9 step 2) -> an empty recording. THE RECORDER (2.1, landed at step 5): a scratch
+    brain under `throwaway_home()`, `make_brain(seed, persist=False)`, the script driven through
+    `Brain.respond` with `T082_TICKS_BETWEEN` ticks between statements."""
+    return {"seed": int(seed), "n_ep": int(n_ep), "rows": []}
+
+
+def t082_read(rows):
+    """STUB (2.9 step 2) -> {}. The per-seed reading of 2.1: acc_belief / acc_world / acc_ctrl
+    against the agent's look, the unwitnessed fraction, the parse count, the spurious
+    nested-divergence count on witnessed-only stretches, the social-risk trajectory."""
+    del rows
+    return {}
+
+
+def t082_contrasts(per_seed):
+    """STUB (2.9 step 2) -> {}. 2.3's conjuncts through `substrate.paired_contrast.contrast`."""
+    del per_seed
+    return {}
+
+
+def _measure_belief_charge():
+    """STUB (2.9 step 2) -> (None, None, [], False). T060's form over recorded belief frames:
+    `port_charge_probe.replay_twice`, the consumer = the brain's own `_tom_protect` fold
+    reduced to the caution trajectory, the pinned payload `T082_PINNED_BELIEF`, the
+    specificity control a constant consumer."""
+    return None, None, [], False
+
+
+def record_charge():
+    """STUB (2.9 step 2) -> 1 (a refusal). Measures the belief wire's A/B and records the
+    attribution through THE one writer (`port_charge_probe.record_attribution`); REFUSES a
+    non-diverged A/B -- evidence is a measurement, never a declaration."""
+    print("record_charge REFUSED: the T082 charge instrument is still 2.9 step 2's stub")
+    return 1
+
+
+def t082_reds():
+    """STUB (2.9 step 2) -> six False. 2.4's six reds as ONE self-check line: each True iff the
+    red holds on its constructed input AND its mutated scorer REDDENS it IN FACT. Null here so
+    `main()` carries the red until 2.9 step 4, exactly as 2.9 orders."""
+    return dict.fromkeys(("R1", "R2", "R3", "R4", "R5", "R6"), False)
+
+
+def _t082_reds_line(reds, out=print):
+    """Print the six booleans beside what each one says."""
+    for name in sorted(reds):
+        out(f"  {name}: {str(reds[name]):5s}  {T082_RED_LINES[name]}")
+
+
 def main():
     lines = []
     emit = lines.append
@@ -278,6 +470,33 @@ def main():
         "reads through; deterministic and jitter-robust"
     )
 
+    # ---- T082 (2.9 step 2): the six reds of 2.4 as ONE line, and the module's exit status.
+    print("-" * 78)
+    print(
+        f"T082 -- social cognition composed | episodes {T082_N_EPISODES} | ticks between "
+        f"{T082_TICKS_BETWEEN} | p_unwitnessed {T082_P_UNWITNESSED} | seeds {list(T082_SEEDS)} | "
+        f"offset {T082_STREAM_OFFSET} x seed mod {T082_STREAM_POSITIONS} | bar {T082_BAR}"
+    )
+    print(f"  the declared belief wire: {BELIEF_EDGE}")
+    reds = t082_reds()
+    print("2.4's six reds:")
+    _t082_reds_line(reds)
+    if not all(reds.values()):
+        print(
+            f"T082 SELF-CHECK RED: only {sum(reds.values())}/{len(reds)} of 2.4's reds fire on "
+            f"their constructed inputs -- {reds}"
+        )
+        print(
+            "  EXPECTED AT 2.9 STEPS 2-3: the skeleton's stubs return null readings so the reds "
+            "RUN red. This line goes green at 2.9 step 4, never before."
+        )
+        return 1
+    print(
+        f"  T082 OK: R1-R6 fire on their constructed inputs and each is reddened IN FACT by its "
+        f"mutated scorer ({sum(reds.values())}/{len(reds)}); no brain, no lake, no network"
+    )
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

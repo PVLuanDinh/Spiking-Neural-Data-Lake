@@ -70,6 +70,8 @@ REGISTRANTS: tuple = (
     # position carries no mechanism (the panel measured both orderings identical; the
     # T039j comment above states otherwise and predates that measurement).
     ("snn_data_lake.cortex.task_set", "declare_ports"),
+    # T082 (FR-034): the recursive belief tracker's divergence wire, producer + THE edge.
+    ("snn_data_lake.cortex.recursive_tom", "declare_ports"),
     ("snn_data_lake.cortex.brain", "declare_ports"),
     # T046a: the |LP| third factor -- the SECOND of percept_surprise's dated forward
     # dispositions discharged (the consumer declares the edge surprise_out -> surprise_in);
