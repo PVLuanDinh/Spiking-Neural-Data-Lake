@@ -1094,7 +1094,19 @@ def run_t078_campaign(seeds=T078_SEEDS, n_ticks=T078_N_TICKS, pin=T078_PIN, late
         reading["refusal"] = (
             "REFUSED at (r): a reading is not readable on every seed -- the instrument's own "
             "fault. G3 refusals: "
-            + str([x["g3"]["primary"]["refusal"] for x in ss if not x["g3"]["primary"]["readable"]])
+            # TAGGED BY ARM, over BOTH arms `g3_readable` conjoins: the two refuse under DIFFERENT
+            # rules (2.10 reads the control per action CLASS, the primary per observed CELL), so a
+            # control-only refusal is reachable and the single-arm list rendered it as `[]` -- a
+            # refusal naming nothing, against `mi_read`'s own rule. 2.6 separates the (g3c) control
+            # branch from (r), so WHICH arm refused is part of the fault's identity.
+            + str(
+                [
+                    (k, x["g3"][k]["refusal"])
+                    for x in ss
+                    for k in ("primary", "control")
+                    if not x["g3"][k]["readable"]
+                ]
+            )
             + "; G4 refusals: "
             + str(
                 [
