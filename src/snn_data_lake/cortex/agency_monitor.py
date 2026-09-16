@@ -87,15 +87,17 @@ prints; plain-float EMAs updated in a fixed order so two seed=0 runs are byte-id
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.agency_monitor
 """
 
+import json
 import math
 import random
 import statistics
+import sys
 import time
 import zlib
 from pathlib import Path
 
 from snn_data_lake.brainstem import arm_config
-from snn_data_lake.substrate._mathutils import clamp01, q95
+from snn_data_lake.substrate._mathutils import clamp01, pearson, q95
 from snn_data_lake.substrate.afferent_boundary import proprioception_delta
 from snn_data_lake.substrate.efferent_boundary import (
     _ROTATE_TOKEN,
@@ -389,6 +391,18 @@ T079_VAR_FLOOR = _T079_DEFAULTS.var_floor
 #: The five channels: the rotatable joints (the gripper is ENGAGE/RELEASE and has no angle
 #: vocabulary, so it is not a per-joint command/feedback channel at all).
 T079_JOINTS = tuple(arm_config.ROTATABLE)
+#: The same five as JointSpecs, so the recorder reads `u_j`/`ds_j` by the body's own qpos
+#: index and a row's column k is T079_JOINTS[k] on every recording.
+_T079_SPECS = tuple(next(j for j in arm_config.JOINTS if j.name == n) for n in T079_JOINTS)
+
+#: The dry run's width (2.9 step 5: ONE seed at 300 ticks).
+T079_DRY_TICKS = 300
+#: 2.8's n_shuffle sensitivity, COMPUTED in the dry run: this many INDEPENDENT floors of the
+#: same recording, whose spread IS the floor's Monte-Carlo sd.
+T079_FLOOR_REPEATS = 12
+#: The seed base those independent floors are drawn at (the generator is keyed on (seed,
+#: joint), so varying this and nothing else varies only the draw).
+T079_FLOOR_SD_BASE = 900000
 
 #: The REDS' shuffle count. BUILDER-INTRODUCED and disclosed (2.9 step 4): 2.1 fixes
 #: n_shuffle = 2,000 for the CAMPAIGN's floors, and `t079_reds()` is executed by every
@@ -424,15 +438,6 @@ T079_RED_LINES = {
     "R5": "the per-joint fold wraps and its mean IS the scalar (dropping the wrap reddens it)",
     "R6": "the dissociation reads on a constructed body (1 - c on the shoved arm reddens (a2))",
 }
-
-
-def t079_record_brain(seed, n_ticks=T079_N_TICKS, shove=None, amp=0.0):
-    """SKELETON (2.9 step 2): no rows, no brain, no lake. The recorder lands at 2.9 step 5.
-
-    Its built form ticks a SCRATCH brain (`throwaway_home()`, `make_brain(seed,
-    persist=False)`, `_real_ptr = T079_STREAM_OFFSET * seed`) and returns one row per
-    ENVELOPE PASSAGE -- never a verdict, never a contrast."""
-    return []
 
 
 # ---- the constructed streams every red runs on (2.4) ---------------------------------
@@ -574,19 +579,26 @@ def t079_read(rows, var_floor=T079_VAR_FLOOR, warmup=T079_WARMUP):
             "scored_passages": len(ctrls),
         }
     passages = len(rows)
-    awake = 0 if last is None else int(last.get("awake_ticks", 0))
+    awake = 0 if last is None else int(last.get("awake_ticks", passages))
     latched = sum(1 for r in rows if r.get("latched"))
     tap_errors = 0 if last is None else int(last.get("tap_errors", 0))
+    # A passage whose per-joint copy could not be read fed the monitor NOTHING (the feed
+    # skips an unreadable body rather than handing it a row of zeros), so its `u`/`ds`
+    # columns are placeholders. Counted here and refused by (r): a recording with a hole in
+    # it is not a recording with a smaller n.
+    unreadable = sum(1 for r in rows if not r.get("copy_ok", True))
     return {
         "readable": bool(rows)
         and all(v["scored"] for v in joints.values())
         and passages == awake
         and latched == 0
-        and tap_errors == 0,
+        and tap_errors == 0
+        and unreadable == 0,
         "passages": passages,
         "awake": awake,
         "latched": latched,
         "tap_errors": tap_errors,
+        "copies_unreadable": unreadable,
         "joints": joints,
     }
 
@@ -1061,6 +1073,563 @@ def _t079_reds_line(reds, out=print):
         out(f"  {name}: {str(reds[name]):5s}  {T079_RED_LINES[name]}")
 
 
+def _t079_pearson(a, b):
+    """Pearson of two equal-length series, or None when either has NO variance.
+    `_mathutils.pearson` carries no zero-denominator guard -- its own module docstring says
+    so -- and this is a REPORTED quantity over recordings where a joint can sit still, so
+    the guard lives at this one call site rather than becoming a second correlation."""
+    n = min(len(a), len(b))
+    if n < 2:
+        return None
+    a, b = list(a[:n]), list(b[:n])
+    ma, mb = sum(a) / n, sum(b) / n
+    if all(x == ma for x in a) or all(y == mb for y in b):
+        return None
+    return pearson(a, b)
+
+
+def t079_record_brain(seed, n_ticks=T079_N_TICKS, shove=None, amp=0.0):
+    """Tick a SCRATCH brain `n_ticks` times and return ONE ROW PER ENVELOPE PASSAGE (2.1).
+
+    The brain is `make_brain(seed, persist=False)` under `throwaway_home()` -- a fresh
+    NORD_HOME for the duration, so nothing this recorder does can reach the live lake -- and
+    `_real_ptr` is set to `T079_STREAM_OFFSET * seed` right after construction, so each seed
+    walks a DIFFERENT window of the percept pack (2.2; the dry run checks two seeds' first
+    50 frame labels actually differ and REFUSES if they do not).
+
+    TWO INSTANCE WRAPS, and the second is a DEVIATION from 2.1 that is stated here rather
+    than hidden. 2.1 says "efferent.observe wrapped on the INSTANCE to capture the triple
+    and the action per passage" -- that wrap is here and does exactly that. But 2.1 also
+    asks each row to carry `ctrl` READ AFTER THE FEED, and the feed happens in
+    `apply_observed` AFTER `efferent.observe` returns, so a reading taken inside that wrap
+    would be one passage stale. `apply_observed` is therefore wrapped too, and the row is
+    built after it returns: the triple comes from the inner wrap, the reading from the
+    monitor the feed just updated. Both wraps are observation-only.
+
+    The shove, when `shove` names a joint: `So101Arm.inject_disturbance(shove, U(-amp,
+    amp))` ONCE after every passage's feed, drawn from `random.Random(T079_SHOVE_RNG_BASE +
+    seed)` so the loop's own RNG is untouched, and NEVER while the body is latched (the port
+    refuses a latched arm anyway; this does not rely on that). The draw is recorded per row.
+
+    Rows only -- no reading, no floor, no verdict -- and the brain is dropped on return so
+    eight seeds never stay alive at once."""
+    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.substrate.home import throwaway_home
+
+    rows = []
+    with throwaway_home():
+        b = make_brain(seed=seed, persist=False)
+        b._real_ptr = T079_STREAM_OFFSET * int(seed)
+        arm = b.brain.arm  # the AutonomousArm
+        body = arm.arm  # the So101Arm
+        shove_rng = random.Random(T079_SHOVE_RNG_BASE + int(seed))
+        cap = {}
+        real_observe = arm.efferent.observe
+        real_apply = arm.apply_observed
+
+        def wrapped_observe(action, theta_pre, commanded_after, theta_post):
+            cap["action"] = action
+            cap["theta_pre"] = None if theta_pre is None else list(theta_pre)
+            cap["commanded"] = None if commanded_after is None else list(commanded_after)
+            cap["theta_post"] = None if theta_post is None else list(theta_post)
+            return real_observe(action, theta_pre, commanded_after, theta_post)
+
+        def wrapped_apply(command, *, deliberate=False):
+            cap.clear()
+            out = real_apply(command, deliberate=deliberate)
+            copy = arm.efferent.last_copy or {}
+            u_j, ds_j = copy.get("u_j"), copy.get("ds_j")
+            ok = u_j is not None and ds_j is not None
+            mon = getattr(arm, "_agency", None)
+            snaps = [None if mon is None else mon.snapshot(j) for j in T079_JOINTS]
+            st = body.state() or {}
+            row = {
+                "t": None,
+                "kind": None,
+                "awake": None,
+                "awake_ticks": None,
+                "passages_this_tick": None,
+                "action": None if command is None else str(command),
+                "copy_ok": bool(ok),
+                "u": [float(u_j[s.qpos_index]) for s in _T079_SPECS] if ok else [0.0] * 5,
+                "ds": [float(ds_j[s.qpos_index]) for s in _T079_SPECS] if ok else [0.0] * 5,
+                "ctrl": [0.0 if s is None else float(s["ctrl"]) for s in snaps],
+                "status": [None if s is None else s["status"] for s in snaps],
+                "n": [0 if s is None else int(s["n"]) for s in snaps],
+                "latched": bool(st.get("stopped")),
+                "latch_source": st.get("latch_source"),
+                "tap_errors": int(arm.efferent.tap_errors),
+                "envelope_tick": int(arm.efferent.envelope_tick),
+                "theta_pre": cap.get("theta_pre"),
+                "commanded": cap.get("commanded"),
+                "theta_post": cap.get("theta_post"),
+                "shoved_deg": 0.0,
+            }
+            rows.append(row)
+            if shove and not body.stopped:
+                deg = shove_rng.uniform(-amp, amp)
+                body.inject_disturbance(shove, deg)
+                row["shoved_deg"] = deg
+            return out
+
+        arm.efferent.observe = wrapped_observe
+        arm.apply_observed = wrapped_apply
+
+        labels = getattr(b, "_real_labels", None)
+        prev_ptr = int(getattr(b, "_real_ptr", 0) or 0)
+        n_awake = 0
+        for t in range(n_ticks):
+            start = len(rows)
+            kind = b.tick()
+            ptr = int(getattr(b, "_real_ptr", 0) or 0)
+            label = None
+            if labels is not None and len(labels) and ptr != prev_ptr:
+                label = int(labels[(ptr - 1) % len(labels)])
+            prev_ptr = ptr
+            awake = kind == "awake"
+            n_awake += 1 if awake else 0
+            for r in rows[start:]:
+                r["t"] = t
+                r["kind"] = kind
+                r["awake"] = awake
+                r["awake_ticks"] = n_awake
+                r["passages_this_tick"] = len(rows) - start
+                r["label"] = label
+    return rows
+
+
+def t079_stream_labels(seed, n_labels=50, max_ticks=260):
+    """The first `n_labels` REAL frame labels seed `s` walks, with 2.2's stream offset
+    applied. The offset check is an APPARATUS precondition, so it reads the labels the brain
+    actually consumed rather than re-deriving them from the pack by arithmetic."""
+    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.substrate.home import throwaway_home
+
+    out = []
+    with throwaway_home():
+        b = make_brain(seed=seed, persist=False)
+        b._real_ptr = T079_STREAM_OFFSET * int(seed)
+        labels = getattr(b, "_real_labels", None)
+        prev = int(getattr(b, "_real_ptr", 0) or 0)
+        for _ in range(max_ticks):
+            if len(out) >= n_labels:
+                break
+            b.tick()
+            ptr = int(getattr(b, "_real_ptr", 0) or 0)
+            if labels is not None and len(labels) and ptr != prev:
+                out.append(int(labels[(ptr - 1) % len(labels)]))
+            prev = ptr
+    return out
+
+
+def t079_determinism(seed=0, n_ticks=T079_DETERMINISM_TICKS):
+    """(p): two INTACT recordings of the same seed at the same width, byte-identical on
+    EVERY recorded field. Not a sample of fields and not a tolerance -- the rows are
+    compared whole, so a nondeterminism anywhere in the recorder or the loop is a REFUSAL
+    before any number is read."""
+    a = t079_record_brain(seed, n_ticks=n_ticks)
+    b = t079_record_brain(seed, n_ticks=n_ticks)
+    return {"identical": a == b, "passages": len(a), "twin_passages": len(b), "seed": seed}
+
+
+def t079_verdict(got, refusals):
+    """2.3's verdict rule, decided in 2.3's order and nowhere else.
+
+    REFUSED iff (p), (r) or (g0) fails -- a finding about the APPARATUS or the INSTRUMENT.
+    PASS iff (g0) and (a1) and (a2) and (a3). NOT MET iff (g0) is met and any of (a1)-(a3)
+    is not -- a finding about this BODY under this disturbance. The two are never merged."""
+    if refusals:
+        return "REFUSED"
+    if got["g0"] is None or not all(c.met for c in got["g0"].values()):
+        return "REFUSED"
+    ok = got["a1"].met and all(c.met for c in got["a2"].values()) and got["a3"]["met"]
+    return "PASS" if ok else "NOT MET"
+
+
+def _t079_head():
+    """The tree's HEAD, for the pin. Unavailable (no git, a tarball) is recorded as such."""
+    import subprocess
+
+    try:
+        r = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=20)
+        return r.stdout.strip() if r.returncode == 0 else f"unavailable (rc {r.returncode})"
+    except Exception as e:  # noqa: BLE001 -- a pin field, never a control-flow decision
+        return f"unavailable ({type(e).__name__})"
+
+
+def _t079_report_block(per_seed, seeds):
+    """2.3's REPORTED, never barred: the floors and their medians, the action distribution
+    per arm (the policy's own reaction to the disturbance, which "preserved elsewhere" is
+    NEVER read on), the same-tick vs lag-1 Pearson per joint, and the incumbent feed's
+    n_scored -- which is not recomputed here at all. 2.3 and 1.3 fix it: the tick-level
+    action/qmax/reward feed is RETIRED at build time and read 0 on 1.3's probe; recomputing
+    it offline would be building the retired mechanism a second time to report a number its
+    own measurement already refused."""
+    return {
+        "floors": {
+            j: {
+                "intact_q95": [per_seed[s]["intact"]["floor"]["joints"][j]["floor"] for s in seeds],
+                "intact_median": [
+                    per_seed[s]["intact"]["floor"]["joints"][j]["floor_median"] for s in seeds
+                ],
+                "shoved_q95": [per_seed[s]["shoved"]["floor"]["joints"][j]["floor"] for s in seeds],
+                "shoved_median": [
+                    per_seed[s]["shoved"]["floor"]["joints"][j]["floor_median"] for s in seeds
+                ],
+            }
+            for j in T079_JOINTS
+        },
+        "actions": {
+            arm: [per_seed[s][arm]["actions"] for s in seeds] for arm in ("intact", "shoved")
+        },
+        "coupling": {
+            arm: {
+                j: {
+                    "same_tick": [per_seed[s][arm]["same_tick"][j] for s in seeds],
+                    "lag1": [per_seed[s][arm]["lag1"][j] for s in seeds],
+                }
+                for j in T079_JOINTS
+            }
+            for arm in ("intact", "shoved")
+        },
+        "incumbent_n_scored": "retired, 0 on 1.3's probe",
+    }
+
+
+def _t079_arm_extras(rows):
+    """The per-arm REPORTED quantities that are read off the rows themselves."""
+    counts = {}
+    for r in rows:
+        counts[r["action"]] = counts.get(r["action"], 0) + 1
+    same, lag1 = {}, {}
+    for k, j in enumerate(T079_JOINTS):
+        u = [float(r["u"][k]) for r in rows]
+        ds = [float(r["ds"][k]) for r in rows]
+        same[j] = _t079_pearson(u, ds)
+        lag1[j] = _t079_pearson(u[:-1], ds[1:])
+    return {"actions": dict(sorted(counts.items())), "same_tick": same, "lag1": lag1}
+
+
+def _t079_refusals(read, seed, arm):
+    """(r)'s named refusals for one recording: WHICH joint, WHICH count, per seed and arm."""
+    out = []
+    for j in T079_JOINTS:
+        v = read["joints"][j]
+        if not v["scored"]:
+            out.append(
+                f"seed {seed} {arm}: {j} UNSCORED (n {v['n']}/{T079_WARMUP}, "
+                f"var_c {v['var_c']:.3e}/{T079_VAR_FLOOR:.1e})"
+            )
+    if read["passages"] != read["awake"]:
+        out.append(f"seed {seed} {arm}: {read['passages']} passages vs {read['awake']} awake ticks")
+    if read["latched"]:
+        out.append(f"seed {seed} {arm}: latched on {read['latched']} passages")
+    if read["tap_errors"]:
+        out.append(f"seed {seed} {arm}: tap_errors {read['tap_errors']}")
+    if read["copies_unreadable"]:
+        out.append(f"seed {seed} {arm}: {read['copies_unreadable']} unreadable per-joint copies")
+    return out
+
+
+# distinct-from: cortex/attention_schema.py::run_t078_campaign and
+#   cortex/metacognitive_monitor.py's campaign -- the PATTERN this follows (2.1 names them as
+#   the thing to reuse), over a different instrument, different arms and a different pin.
+#   Read; no state, no pin and no statistic is shared beyond `substrate/paired_contrast`,
+#   which all three IMPORT.
+def run_t079_campaign(seeds=T079_SEEDS, n_ticks=T079_N_TICKS, pin=T079_PIN):
+    """The campaign (2.2-2.3): record, read, floor, contrast, pin ONCE. Returns an exit code.
+
+    ORDER IS 2.3's, and it is the order the verdict is DECIDED in:
+      (p)  DETERMINISM  the twin recordings byte-identical, else REFUSED -- nothing is read
+      (r)  READABLE     every joint scored on both arms of every seed, passages == awake
+                        ticks, tap_errors 0, never latched, else REFUSED with the joint named
+      (g0) THE ESTIMATOR SEES  the intact coupling clears its cause-blind twin's rate on
+                        EVERY joint, else REFUSED ("blind on this body", never a STOP)
+      (a1) (a2) (a3)    the dissociation, the preservation and the status machine
+    A REFUSAL is a finding about the apparatus or the instrument; a NOT MET is a finding
+    about this body under this disturbance. They are never merged."""
+    if pin.exists():
+        print(f"REFUSED: {pin} exists -- the pin is written once", flush=True)
+        return 2
+    t0 = time.time()
+
+    labels0, labels1 = t079_stream_labels(0), t079_stream_labels(1)
+    if not labels0 or labels0 == labels1:
+        print(
+            f"REFUSED at the apparatus: the per-seed stream offset does not vary the frames "
+            f"(seed 0 {labels0[:10]} vs seed 1 {labels1[:10]})",
+            flush=True,
+        )
+        return 2
+    det = t079_determinism(seeds[0] if seeds else 0)
+    print(
+        f"(p) determinism: identical={det['identical']} on {det['passages']} passages", flush=True
+    )
+    if not det["identical"]:
+        print("REFUSED: two identical-seed recordings differ -- no reading is taken", flush=True)
+        return 2
+
+    per_seed, refusals = {}, []
+    for s in seeds:
+        entry = {}
+        for arm, sh, amp in (("intact", None, 0.0), ("shoved", T079_SHOVE_JOINT, T079_SHOVE_DEG)):
+            rows = t079_record_brain(s, n_ticks=n_ticks, shove=sh, amp=amp)
+            read = t079_read(rows)
+            entry[arm] = {
+                "read": read,
+                "floor": t079_floor(rows, s),
+                "rows": rows,
+                **_t079_arm_extras(rows),
+            }
+            refusals.extend(_t079_refusals(read, s, arm))
+        per_seed[s] = entry
+        print(
+            f"seed {s}: intact c "
+            + " ".join(f"{j}={entry['intact']['read']['joints'][j]['c']:.3f}" for j in T079_JOINTS)
+            + f" | shoved {T079_SHOVE_JOINT}="
+            f"{entry['shoved']['read']['joints'][T079_SHOVE_JOINT]['c']:.3f} "
+            f"({entry['shoved']['read']['joints'][T079_SHOVE_JOINT]['status']})",
+            flush=True,
+        )
+
+    intact = [
+        {"read": per_seed[s]["intact"]["read"], "floor": per_seed[s]["intact"]["floor"]}
+        for s in seeds
+    ]
+    shoved = [
+        {"read": per_seed[s]["shoved"]["read"], "floor": per_seed[s]["shoved"]["floor"]}
+        for s in seeds
+    ]
+    got = t079_contrasts(intact, shoved)
+    verdict = t079_verdict(got, refusals)
+
+    print("-" * 78, flush=True)
+    for why in refusals:
+        print(f"  (r) REFUSAL: {why}", flush=True)
+    if got["g0"] is not None:
+        for c in got["g0"].values():
+            print(f"  {c.name}: t={c.t:.4f} FPR={c.fpr} met={c.met}", flush=True)
+    print(
+        f"  {got['a1'].name}: t={got['a1'].t:.4f} FPR={got['a1'].fpr} met={got['a1'].met}",
+        flush=True,
+    )
+    for c in got["a2"].values():
+        print(f"  {c.name}: t={c.t:.4f} FPR={c.fpr} met={c.met}", flush=True)
+    print(f"  (a3) status machine: {got['a3']}", flush=True)
+    print(f"T079 VERDICT: {verdict}", flush=True)
+
+    out = {
+        "row": "T079",
+        "head": _t079_head(),
+        "seeds": list(seeds),
+        "n_ticks": n_ticks,
+        "bar": T079_BAR,
+        "n_shuffle": T079_N_SHUFFLE,
+        "shove": {
+            "joint": T079_SHOVE_JOINT,
+            "amp_deg": T079_SHOVE_DEG,
+            "ladder": list(T079_LADDER),
+        },
+        "constants": {
+            "warmup": T079_WARMUP,
+            "var_floor": T079_VAR_FLOOR,
+            "deadband": T079_DEADBAND,
+            "stream_offset": T079_STREAM_OFFSET,
+            "alpha": _T079_DEFAULTS.alpha,
+            "dead_thresh": _T079_DEFAULTS.dead_thresh,
+            "high_thresh": _T079_DEFAULTS.high_thresh,
+            "delay": _T079_DEFAULTS.delay,
+            "recover_n": _T079_DEFAULTS.recover_n,
+        },
+        "reds": t079_reds(),
+        "determinism": det,
+        "stream_labels": {"seed0": labels0, "seed1": labels1},
+        # EVERY PER-PASSAGE INPUT OF EVERY BARRED CONJUNCT (2.1): the rows themselves, both
+        # arms, every seed -- so each of (g0), (a1), (a2), (a3) re-derives offline from this
+        # file alone by replaying t079_read / t079_floor / t079_contrasts over them.
+        "per_seed": {
+            str(s): {
+                arm: {
+                    "read": per_seed[s][arm]["read"],
+                    "floor": per_seed[s][arm]["floor"],
+                    "actions": per_seed[s][arm]["actions"],
+                    "same_tick": per_seed[s][arm]["same_tick"],
+                    "lag1": per_seed[s][arm]["lag1"],
+                    "rows": per_seed[s][arm]["rows"],
+                }
+                for arm in ("intact", "shoved")
+            }
+            for s in seeds
+        },
+        "contrasts": {
+            "g0": None if got["g0"] is None else {j: c._asdict() for j, c in got["g0"].items()},
+            "a1": got["a1"]._asdict(),
+            "a2": {j: c._asdict() for j, c in got["a2"].items()},
+            "a3": got["a3"],
+        },
+        "refusals": refusals,
+        "reported": _t079_report_block(per_seed, seeds),
+        "verdict": verdict,
+        "elapsed_s": round(time.time() - t0, 1),
+    }
+    pin.parent.mkdir(parents=True, exist_ok=True)
+    pin.write_text(json.dumps(out, indent=1, default=str), encoding="utf-8")
+    print(f"pinned {pin} in {time.time() - t0:.0f} s", flush=True)
+    return 0 if verdict != "REFUSED" else 2
+
+
+def run_t079_dry_run(out_path, seed=0, n_ticks=T079_DRY_TICKS):
+    """2.9 step 5's APPARATUS dry run: ONE seed, 300 ticks, and NOT ONE barred conjunct.
+
+    One seed cannot carry a paired t, so every (a1)-style number here is printed as a single
+    seed's difference with "n/a" where the t would go. What it DOES read, all of it reported
+    in 3.0 before the campaign:
+      * the shove LADDER A = 3 / 6 / 12 deg (0.5x, 1x, 2x DEFAULT_STEP_DEG), one shoved
+        recording each -- the DETECTION FLOOR of (a1) and of the status machine;
+      * the STREAM-OFFSET precondition: seeds 0 and 1 must walk different frames, REFUSED if
+        not (2.2 makes this an apparatus refusal, not a finding);
+      * the floor's MONTE-CARLO sd over 12 independent 2,000-draw floors of the SAME intact
+        recording -- 2.8's n_shuffle sensitivity, COMPUTED and not promised;
+      * the cost, re-measured on the built apparatus (2.8's 61.5 ms/tick was 1.3's probe).
+
+    Writes its JSON to `out_path` and NOTHING under tools/: the pin is the campaign's."""
+    out_path = Path(out_path)
+    if "tools" in out_path.parts:
+        print(f"REFUSED: the dry run never writes under tools/ ({out_path})", flush=True)
+        return 2
+    t0 = time.time()
+    print("=" * 78, flush=True)
+    print(f"T079 DRY RUN -- one seed ({seed}), {n_ticks} ticks, NO barred conjunct", flush=True)
+    print("=" * 78, flush=True)
+
+    labels0, labels1 = t079_stream_labels(0), t079_stream_labels(1)
+    differ = bool(labels0) and labels0 != labels1
+    first_diff = next(
+        (i for i, (x, y) in enumerate(zip(labels0, labels1, strict=False)) if x != y), None
+    )
+    print(
+        f"stream offset ({T079_STREAM_OFFSET} x seed): seed0 {labels0[:12]} | "
+        f"seed1 {labels1[:12]} | differ={differ} first_diff_at={first_diff} "
+        f"(n {len(labels0)}/{len(labels1)})",
+        flush=True,
+    )
+    if not differ:
+        print("REFUSED at the apparatus: the per-seed offset does not vary the frames", flush=True)
+        return 2
+
+    t_rec = time.time()
+    intact_rows = t079_record_brain(seed, n_ticks=n_ticks)
+    ms_per_tick = (time.time() - t_rec) * 1000.0 / max(n_ticks, 1)
+    intact = t079_read(intact_rows)
+    intact_floor = t079_floor(intact_rows, seed)
+    print("-" * 78, flush=True)
+    print(
+        f"cost: {ms_per_tick:.1f} ms/tick measured on the BUILT apparatus "
+        f"(2.8 carried 61.5 ms from 1.3's probe) -> campaign estimate "
+        f"{ms_per_tick * T079_N_TICKS * 2 * len(T079_SEEDS) / 1000.0 / 60.0:.1f} min for "
+        f"{len(T079_SEEDS)} seeds x 2 arms x {T079_N_TICKS} ticks",
+        flush=True,
+    )
+    print(
+        f"intact: passages {intact['passages']} awake {intact['awake']} latched "
+        f"{intact['latched']} tap_errors {intact['tap_errors']} unreadable_copies "
+        f"{intact['copies_unreadable']} readable {intact['readable']}",
+        flush=True,
+    )
+    for j in T079_JOINTS:
+        v = intact["joints"][j]
+        f = intact_floor["joints"][j]
+        print(
+            f"  {j:<14} c={v['c']:.4f} status={str(v['status']):<7} n={v['n']:<5} "
+            f"scored={str(v['scored']):<5} var_c={v['var_c']:.3e} floor={f['floor']:.4f} "
+            f"median={f['floor_median']:.4f} scored_passages={v['scored_passages']}",
+            flush=True,
+        )
+
+    print("-" * 78, flush=True)
+    print(
+        "shove ladder (one seed -> NO paired t; the t column reads n/a by construction)",
+        flush=True,
+    )
+    ladder = {}
+    for amp in T079_LADDER:
+        rows = t079_record_brain(seed, n_ticks=n_ticks, shove=T079_SHOVE_JOINT, amp=amp)
+        read = t079_read(rows)
+        floor = t079_floor(rows, seed)
+        ladder[f"{amp:g}"] = {
+            "read": read,
+            "floor": floor,
+            "diffs": {j: intact["joints"][j]["c"] - read["joints"][j]["c"] for j in T079_JOINTS},
+            "shoved_deg": [r["shoved_deg"] for r in rows],
+        }
+        print(f"  A = {amp:g} deg  (t: n/a -- one seed)", flush=True)
+        for j in T079_JOINTS:
+            v = read["joints"][j]
+            d = ladder[f"{amp:g}"]["diffs"][j]
+            star = " <- J*" if j == T079_SHOVE_JOINT else ""
+            print(
+                f"    {j:<14} c={v['c']:.4f} status={str(v['status']):<7} "
+                f"floor={floor['joints'][j]['floor']:.4f} "
+                f"intact-shoved={d:+.4f}{star}",
+                flush=True,
+            )
+        print(
+            f"    (r) readable={read['readable']} passages={read['passages']} "
+            f"awake={read['awake']} latched={read['latched']} "
+            f"tap_errors={read['tap_errors']}",
+            flush=True,
+        )
+
+    print("-" * 78, flush=True)
+    print(
+        f"floor Monte-Carlo sd: {T079_FLOOR_REPEATS} INDEPENDENT {T079_N_SHUFFLE}-draw floors "
+        f"of the SAME intact recording (2.8's n_shuffle sensitivity)",
+        flush=True,
+    )
+    sds = {}
+    for j in T079_JOINTS:
+        sds[j] = []
+    for i in range(T079_FLOOR_REPEATS):
+        f = t079_floor(intact_rows, T079_FLOOR_SD_BASE + i)
+        for j in T079_JOINTS:
+            sds[j].append(f["joints"][j]["floor"])
+    floor_sd = {}
+    for j in T079_JOINTS:
+        vals = sds[j]
+        sd = statistics.stdev(vals) if len(set(vals)) > 1 else 0.0
+        floor_sd[j] = {"mean": statistics.mean(vals), "sd": sd, "min": min(vals), "max": max(vals)}
+        print(
+            f"  {j:<14} mean={floor_sd[j]['mean']:.4f} sd={sd:.5f} "
+            f"min={min(vals):.4f} max={max(vals):.4f}",
+            flush=True,
+        )
+
+    report = {
+        "row": "T079 dry run",
+        "head": _t079_head(),
+        "seed": seed,
+        "n_ticks": n_ticks,
+        "ms_per_tick": ms_per_tick,
+        "stream": {"seed0": labels0, "seed1": labels1, "differ": differ, "first_diff": first_diff},
+        "intact": {"read": intact, "floor": intact_floor, **_t079_arm_extras(intact_rows)},
+        "ladder": {
+            k: {"read": v["read"], "floor": v["floor"], "diffs": v["diffs"]}
+            for k, v in ladder.items()
+        },
+        "floor_sd": floor_sd,
+        "reds": t079_reds(),
+        "elapsed_s": round(time.time() - t0, 1),
+    }
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(report, indent=1, default=str), encoding="utf-8")
+    print("-" * 78, flush=True)
+    print(
+        f"dry run written to {out_path} in {time.time() - t0:.0f} s; nothing under tools/",
+        flush=True,
+    )
+    return 0
+
+
 # =============================================================================
 # Un-riggable self-check: drive real command/feedback dynamics and assert the
 # monitor's behavior emerges from them (never from a hardcoded label).
@@ -1154,6 +1723,20 @@ def _p(lines, s):
 
 
 def main():
+    # 2.9 step 5 / step 6: the two brain-touching entry points. Both run under
+    # `throwaway_home()` INSIDE their recorders, every brain is `persist=False`, and neither
+    # is reachable from the gate's bare `python -m` invocation -- which runs the six reds on
+    # constructed streams and touches no brain, no lake and no network.
+    argv = sys.argv[1:]
+    if "--t079-campaign" in argv:  # 2.9 step 6: the campaign, pinned ONCE
+        sys.exit(run_t079_campaign())
+    if "--t079-dry-run" in argv:  # 2.9 step 5: the apparatus dry run, NO barred conjunct
+        i = argv.index("--t079-dry-run")
+        if i + 1 >= len(argv):
+            print("usage: --t079-dry-run <out.json>  (never a path under tools/)", flush=True)
+            sys.exit(2)
+        sys.exit(run_t079_dry_run(argv[i + 1]))
+
     r = _experiment(0)
     lines = []
     _p(lines, "=" * 78)

@@ -106,6 +106,15 @@ _MOTOR = tuple(
 # precondition for closing it. So101Arm already accepted this exact command form; nothing in the
 # safety envelope changed, and `apply()` still ignores every one of these while `stopped` is set.
 ACTIONS = ("ENGAGE", "RELEASE", "HOLD") + _MOTOR  # the arm's autonomous action repertoire
+#: The agency feed's channels (specs/022 T079 2.1): the ROTATABLE joints, as JointSpecs, so
+#: the feed indexes `u_j`/`ds_j` by the body's own qpos index and never by a private order.
+#: The gripper is driven by ENGAGE/RELEASE and has no angle vocabulary, so it is not a
+#: per-joint command/feedback channel at all.
+_AGENCY_JOINTS = tuple(j for j in arm_config.JOINTS if j.name in arm_config.ROTATABLE)
+#: The per-joint copy must be at least this wide for every channel to be readable; a
+#: narrower body feeds NOTHING rather than a partial row (an IndexError would be swallowed
+#: into `tap_errors` and read as a tap failure, which it would not be).
+_AGENCY_WIDTH = max(j.qpos_index for j in _AGENCY_JOINTS) + 1
 # Every action must pass the WIRE allow-list, checked once at import. HOLD is the deliberate
 # exception the safety envelope already documents: it is a decision not to move, consumed by
 # this loop, and is intentionally not transmissible to a real arm.
@@ -1843,6 +1852,28 @@ class AutonomousArm:
                 _commanded_deg(self.arm),
                 (state or {}).get("theta_deg"),
             )
+            # THE AGENCY FEED (specs/022 T079 2.1), inside the SAME guarded block and after
+            # the tap, because it reads the tap's own per-joint copy. One observation per
+            # ROTATABLE joint per PASSAGE: the command is that joint's commanded delta in
+            # degrees (the action token's own magnitude) and the feedback is its achieved
+            # delta, so every joint is observed on every passage and `warmup` counts
+            # passages rather than being split across seven action labels -- the structural
+            # cause of the 2026-07-28 write-only measurement this REPLACES (the tick-level
+            # observe(action, qmax, reward) it superseded is deleted, not left beside it).
+            # It reads the copy and the token; it drives nothing, so T037's neuter contract
+            # holds by construction.
+            #
+            # AN UNREADABLE BODY FEEDS NOTHING. `u_j`/`ds_j` are None whenever the fold is
+            # (a missing or short posture vector, or a neutered tap), and a row of zeros
+            # would read to the monitor as a real "commanded nothing, moved nothing" sample.
+            copy = self.efferent.last_copy if self._agency_on else None
+            u_j = (copy or {}).get("u_j")
+            ds_j = (copy or {}).get("ds_j")
+            if u_j is not None and ds_j is not None and min(len(u_j), len(ds_j)) >= _AGENCY_WIDTH:
+                if self._agency is None:
+                    self._agency = AgencyMonitor(seed=self._seed)
+                for _spec in _AGENCY_JOINTS:
+                    self._agency.observe(_spec.name, u_j[_spec.qpos_index], ds_j[_spec.qpos_index])
         except Exception:
             self.efferent.tap_errors += 1  # the passage completed; the tap's failure is counted
         # The reflex's compass: the end effector's height change COINCIDENT with issuing this
@@ -2374,16 +2405,17 @@ class AutonomousArm:
                 self._affmem.store(
                     pattern, valence=math.tanh(r_int + rx), arousal=threat, reward=rx
                 )
-            # WRITE-ONLY as of today: AgencyMonitor.observe() is fed every tick, but nothing in src/
-            # or tests/ reads agency() / controllability() / status(), and no `agency` key reaches the
-            # telemetry contract or the cockpit. The comment here used to read "controllability of
-            # action -> realized value (sense of agency)", whose arrow asserted a consumer that does
-            # not exist. It is a P3 case awaiting its disposition -- wire and prove the charge, retire,
-            # or EXEMPT with a reason -- not a live signal.
-            if self._agency_on:
-                if self._agency is None:
-                    self._agency = AgencyMonitor(seed=self._seed)
-                self._agency.observe(action, cmd=qmax, fb=(rx if reward_fn is not None else r_int))
+            # RETIRED 2026-09-15 (specs/022 T079 2.1, P2 -- exactly one feed survives). The
+            # tick-level feed that stood here was `AgencyMonitor.observe(action, cmd=qmax,
+            # fb=reward)`: the channel was the ACTION LABEL, the "command" the peak of the
+            # value row and the "feedback" that tick's reward. That is not an efference
+            # copy, and its own measurements said so -- over 600 live ticks ONE channel of
+            # seven crossed warmup (2026-07-28), and on the make_brain composition it scored
+            # 0 channels after 146 awake ticks (T079 1.3, `n_scored` 0, `agency_signal`
+            # 0.0). It is REPLACED, not duplicated, by the per-joint efference copy fed from
+            # `apply_observed`, where every rotatable joint is observed on every envelope
+            # passage. `_agency_on` still gates it and `cortex/brain.py` still sets it; only
+            # the feed moved, and the monitor's lazy construction moved with it.
             if (
                 self._contrast_on and reward_fn is not None
             ):  # success-vs-failure context pooling (REAL task reward only)
