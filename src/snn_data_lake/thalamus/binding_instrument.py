@@ -1047,6 +1047,13 @@ def t080_seed(seed, arms=None, n_ticks=None, n_draws=T080_N_DRAWS):
     }
     out["window"] = t080_window(out["lag_rates"], null["q95"]) if out["lag_rates"] else "none"
     out["refusals"] = _t080_refusals(out)
+    # THE TAUGHT PROTOTYPES (2.10 (g)): the registering latents of every object the warm-up
+    # taught, so the decomposition of the companion's latents re-derives OFFLINE through a
+    # fresh binder -- register these, project the npz rows, recognise -- with no brain at all.
+    out["prototypes"] = {
+        h: {"vis": list(o["vision_latent"]), "aud": list(o["audio_latent"])}
+        for h, o in sorted(binder.objects.items())
+    }
     del binder
     return out
 
