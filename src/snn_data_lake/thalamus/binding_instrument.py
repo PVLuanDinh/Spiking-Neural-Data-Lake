@@ -63,9 +63,14 @@ about a MECHANISM, never a verdict about experience.
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.thalamus.binding_instrument
 """
 
+import copy
+import statistics
 import sys
 from pathlib import Path
 
+import numpy as np
+
+from snn_data_lake.substrate._mathutils import q95 as _q95
 from snn_data_lake.substrate.paired_contrast import T_BAR, contrast
 
 # =============================================================================
@@ -141,6 +146,15 @@ T080_OFFSET_LABELS = 50
 #: decomposition must STILL reproduce the handle at this rounding -- the dry run counts it.
 T080_LATENT_PLACES = 6
 
+#: R3's constructed lag table (2.4): rates ABOVE the derived margin at lags 1-3 and at or
+#: below it from lag 4, so the window reads 4; and an all-above table, which reads "none".
+#: They live here and not only in the suite because `t080_reds()` runs the same red.
+T080_R3_Q95 = 0.10
+T080_R3_LAG_RATES = {1: 0.31, 2: 0.24, 3: 0.18, 4: 0.09, 5: 0.05}
+T080_R3_ALL_ABOVE = {1: 0.31, 2: 0.24, 3: 0.18}
+T080_R3_FIRST_BELOW = {1: 0.05, 2: 0.31}
+T080_R3_WINDOW = 4
+
 #: R1's constructed recognition table (2.4): ticks, objects, congruent fraction.
 T080_R1_TICKS = 200
 T080_R1_OBJECTS = 10
@@ -185,92 +199,307 @@ T080_RED_LINES = {
 
 
 # =============================================================================
-# 2.9 step 2: THE SKELETON. Every function below is a STUB returning a NULL reading -- an
-# empty list, a degenerate contrast, False, or None -- so that 2.9 step 3's R1-R6 run on
-# their constructed inputs and fail on their own ASSERTIONS rather than on a missing symbol.
-# The constructed-input BUILDERS are real here and not stubbed, for exactly that reason: a
-# red that dies on a TypeError has not been shown to be reachable.
+# 2.9 step 4: THE INSTRUMENTS, GREEN, each red of 2.4 reddened IN FACT by its own mutated
+# scorer (`_t080_mutated_scorer`). Nothing here reads a BRAIN yet: every input is either a
+# constructed table or a finished recording. The recorder, the dry run and the campaign land
+# at 2.9 step 5. `t080_record_brain` is still the step-2 stub.
 # =============================================================================
 def t080_aligned_order(vis_labels, aud_labels, rng):
-    """STUB (2.9 step 2). Per vision position an audio frame index whose label mod 10 equals
-    the vision label, cycling within each class in a per-seed shuffled order (2.1)."""
-    return []
+    """Per vision position an audio frame index whose label mod 10 equals the vision label,
+    cycling within each class in a per-seed shuffled order (2.1).
+
+    The SHD pack's labels run 0-19 (English + German spoken digits) and its digit is
+    `label % 10`, so each of the 10 digit classes pools two SHD labels. The per-class lists
+    are visited in SORTED class order so the order depends on the pack's CONTENT and not on
+    the order numpy happened to hand the labels back in.
+
+    Raises rather than silently mis-pairing when a vision class has no audio frame at all:
+    an apparatus that cannot be aligned is a refusal, never a quieter alignment."""
+    by_class = {}
+    for j, lab in enumerate(aud_labels):
+        by_class.setdefault(int(lab) % 10, []).append(j)
+    for k in sorted(by_class):
+        rng.shuffle(by_class[k])
+    ptr = dict.fromkeys(by_class, 0)
+    order = []
+    for lab in vis_labels:
+        k = int(lab) % 10
+        lst = by_class.get(k)
+        if not lst:
+            raise ValueError(f"no audio frame names digit {k}: the two packs cannot be aligned")
+        order.append(lst[ptr[k] % len(lst)])
+        ptr[k] += 1
+    return order
 
 
 def t080_record_brain(seed, arms=None, n_ticks=None):
-    """STUB (2.9 step 2). The recorder of 2.1 / 2.2: a scratch brain, the aligned pack
-    installed at the stimulus, the warm-up to K, then the arms, rows returned."""
+    """STUB (2.9 step 2; the recorder lands at 2.9 step 5). A scratch brain under
+    `throwaway_home()`, the aligned pack installed at the stimulus, the warm-up to K, then
+    the arms of 2.2, rows returned."""
     return None
+
+
+def _t080_is_scored(row):
+    """2.2's SCORED tick, spelled once: awake, with BOTH latents present. Everything barred
+    is a fraction of these."""
+    return bool(row.get("awake")) and row.get("vis") is not None and row.get("aud") is not None
 
 
 def t080_recognitions(rows, binder, recognize=None):
-    """STUB (2.9 step 2). The decomposition of `bind()`'s handle through the binder's OWN
-    `_project` and `_recognize` (2.1), with `agree` counting the ticks where it DISAGREES
-    with the recorded handle -- (r) requires 0."""
-    return {"recs": [], "agree": 0, "n": 0}
+    """THE DECOMPOSITION of `bind()`'s handle (2.1), per scored tick, through the binder's
+    OWN `_project` and `_recognize` -- nothing of the mechanism is re-implemented here.
+
+      `bound` = `obj_v is not None and obj_v == obj_a`, which is exactly what `bind()` calls
+      `congruent` and publishes as `handle`.
+
+    `agree` is the count of scored ticks where the decomposition DISAGREES with the recorded
+    handle -- the name is 2.3 (r)'s ("the decomposition's `bound` equals (`handle` is not
+    None) on EVERY scored tick"), and the conjunct requires it to be 0. It is stated here
+    because the name reads like a count of agreements and is the opposite.
+
+    `recognize` is R2's mutation hook (`ignore_margin`); None means the binder's own."""
+    recognize = binder._recognize if recognize is None else recognize
+    recs, agree = [], 0
+    for r in rows:
+        if not _t080_is_scored(r):
+            continue
+        obj_v, s_v = recognize(binder._project(r["vis"], "vision"), "vision")
+        obj_a, s_a = recognize(binder._project(r["aud"], "audio"), "audio")
+        bound = obj_v is not None and obj_v == obj_a
+        recs.append(
+            {
+                "t": r.get("t"),
+                "obj_v": obj_v,
+                "s_v": float(s_v),
+                "obj_a": obj_a,
+                "s_a": float(s_a),
+                "bound": bound,
+                "handle": r.get("handle"),
+                "digit": r.get("digit"),
+                "word": r.get("word"),
+            }
+        )
+        if bound != (r.get("handle") is not None):
+            agree += 1
+    return {"recs": recs, "agree": agree, "n": len(recs)}
 
 
-def t080_null(recs, seed, n_draws=T080_N_DRAWS):
-    """STUB (2.9 step 2). The membership-matched null at matched K (2.1): the audio-object
-    column permuted across the scored ticks, `n_draws` draws, q95 the derived margin."""
+def t080_null(recs, seed, n_draws=T080_N_DRAWS, resample=False):
+    """THE MEMBERSHIP-MATCHED NULL AT MATCHED K (2.1), the C5 row's own dissociation input.
+
+    The AUDIO-OBJECT column of the scored ticks is permuted ACROSS the ticks: the same
+    multiset of audio features, the same taught K, and only the pairing across windows
+    broken. `n_draws` draws are taken as ONE (n_draws x n) integer array -- never a per-draw
+    Python loop over ticks, which at 2,000 x 600 would cost more than the recording did.
+
+    Returns the derived margin `q95` (`substrate/_mathutils.q95`, the tree's ONE order
+    statistic), the draws' `mean` and `draws_sd`, the agreement band [`q005`, `q995`] of
+    2.3 (b2), the product-of-marginals `expected` (sum over objects of p_v(o) p_a(o)), and
+    `multiset_ok` -- the membership match ASSERTED on the draws themselves rather than argued
+    from the construction.
+
+    `resample` is R1's mutation hook (`null_resamples`): the audio objects drawn i.i.d. WITH
+    REPLACEMENT, which keeps the marginal and breaks the multiset."""
+    codes = {}
+
+    def code(handle):
+        if handle is None:
+            return -1
+        if handle not in codes:
+            codes[handle] = len(codes)
+        return codes[handle]
+
+    n = len(recs)
+    n_draws = max(0, int(n_draws))
+    v = np.array([code(r["obj_v"]) for r in recs], dtype=np.int32)
+    a = np.array([code(r["obj_a"]) for r in recs], dtype=np.int32)
+    expected = 0.0
+    if n:
+        for o in set(codes.values()):
+            expected += (np.count_nonzero(v == o) / n) * (np.count_nonzero(a == o) / n)
+    if n == 0 or n_draws == 0:
+        return {
+            "mean": 0.0,
+            "q95": 0.0,
+            "q005": 0.0,
+            "q995": 0.0,
+            "expected": float(expected),
+            "draws_sd": 0.0,
+            "multiset_ok": False,
+            "n": n,
+            "n_draws": n_draws,
+        }
+    rng = np.random.default_rng(T080_NULL_RNG_BASE + int(seed))
+    if resample:
+        drawn = rng.choice(a, size=(n_draws, n), replace=True)
+    else:
+        drawn = rng.permuted(np.tile(a, (n_draws, 1)), axis=1)
+    multiset_ok = bool(
+        np.array_equal(np.sort(drawn, axis=1), np.broadcast_to(np.sort(a), drawn.shape))
+    )
+    fractions = ((v[None, :] >= 0) & (v[None, :] == drawn)).mean(axis=1)
+    draws = [float(x) for x in fractions]
+    q95 = float(_q95(draws))  # sorts `draws` IN PLACE -- the band below reads it sorted
     return {
-        "mean": 0.0,
-        "q95": 0.0,
-        "q005": 0.0,
-        "q995": 0.0,
-        "expected": 0.0,
-        "draws_sd": 0.0,
-        "multiset_ok": False,
-        "n": 0,
-        "n_draws": 0,
+        "mean": float(sum(draws) / len(draws)),
+        "q95": q95,
+        "q005": float(_t080_order_stat(draws, T080_BAND[0])),
+        "q995": float(_t080_order_stat(draws, T080_BAND[1])),
+        "expected": float(expected),
+        "draws_sd": float(statistics.stdev(draws)) if len(set(draws)) > 1 else 0.0,
+        "multiset_ok": multiset_ok,
+        "n": n,
+        "n_draws": n_draws,
     }
+
+
+def _t080_order_stat(sorted_draws, q):
+    """The `q`-th order statistic of an ALREADY SORTED sample, by `_mathutils.q95`'s own
+    convention (round(q * (len - 1)), never an interpolation), so the band and the margin are
+    read the same way."""
+    return sorted_draws[min(len(sorted_draws) - 1, int(round(q * (len(sorted_draws) - 1))))]
 
 
 def t080_window(lag_rates, q95):
-    """STUB (2.9 step 2). The binding window (2.1): the smallest lag whose bound fraction is
-    at or below the derived margin, else "none"."""
-    return None
+    """THE BINDING WINDOW (2.1): the smallest lag whose bound fraction is at or below the
+    derived margin, else the string "none" when every lag arm is above it. REPORTED, never
+    barred (2.3) -- on this stateless binder the expected reading is 1 tick, and a lag arm
+    ABOVE the margin is a finding, printed."""
+    for lag in sorted(lag_rates):
+        if float(lag_rates[lag]) <= float(q95):
+            return int(lag)
+    return "none"
 
 
-def t080_contrasts(per_seed, score=None, band=T080_BAND, g0=None):
-    """STUB (2.9 step 2). 2.3's conjuncts (g0), (b1) and (b2) through
-    `substrate/paired_contrast.contrast`."""
+def _t080_score(entry, which):
+    """(b1)'s two sides, read from one seed's reading. R5's `blind_scorer` mutation is the
+    hook that swaps them."""
+    return float(entry["within"]) if which == "within" else float(entry["q95_null"])
+
+
+def _t080_g0(entry):
+    """(g0)'s per-seed difference: the CLASSIFIERS' congruence (digit == word mod 10) on the
+    ALIGNED arm minus the NULL arm. It is not the binder's report -- that is the point of
+    the control. R4's `g0_always_met` is the hook."""
+    return float(entry["congruent_aligned"]) - float(entry["congruent_null"])
+
+
+def _t080_band(entry):
+    """(b2)'s per-seed agreement band: the offline null's own [q005, q995]. R6's
+    `band_unbounded` is the hook."""
+    return float(entry["q005_null"]), float(entry["q995_null"])
+
+
+def t080_contrasts(per_seed, score=None, band=None, g0=None, bar=T080_BAR):
+    """2.3's conjuncts, each decided by `substrate/paired_contrast.contrast` (the ONE
+    statistic; nothing is re-spelled here).
+
+      (g0) t over seeds of (congruent fraction ALIGNED - congruent fraction NULL), the
+           CLASSIFIERS' agreement. The positive control that is NOT the method: it never
+           reads the binder's report. NOT MET -> REFUSED ("the alignment did not reach the
+           brain"), never a STOP.
+      (b1) t over seeds of (R_within - Q95_null): the ALIGNED arm's bound fraction against
+           the DERIVED margin -- the licensed sentence, and the only barred claim.
+      (b2) EXACT COUNTS, no t: the NULL IN VIVO arm's bound fraction must lie inside the
+           offline null's [q005, q995] on EVERY seed (two instruments required to agree,
+           obs #2106). Any seed outside is NAMED, and the whole reading REFUSES.
+
+    `score`, `band` and `g0` are R5's, R6's and R4's mutation hooks; None means the shipped
+    reading."""
+    score = _t080_score if score is None else score
+    band = _t080_band if band is None else band
+    g0 = _t080_g0 if g0 is None else g0
+    entries = list(per_seed)
+    outside = []
+    for e in entries:
+        lo, hi = band(e)
+        x = float(e["null_in_vivo"])
+        if not (lo <= x <= hi):
+            outside.append(
+                f"seed {e.get('seed')}: NULL IN VIVO {x:.4f} outside [{lo:.4f}, {hi:.4f}]"
+            )
+    n = len(entries)
     return {
-        "g0": contrast("(g0) the classifiers' congruence: ALIGNED - NULL", ()),
-        "b1": contrast("(b1) within - the null's q95", ()),
-        "b2": {"outside": [], "inside": 0, "n_seeds": 0, "met": False},
-        "n_seeds": 0,
+        "g0": contrast(
+            "(g0) the classifiers' congruence: ALIGNED - NULL",
+            [g0(e) for e in entries],
+            bar,
+        ),
+        "b1": contrast(
+            "(b1) the binder's within-window rate - the null's q95",
+            [score(e, "within") - score(e, "null") for e in entries],
+            bar,
+        ),
+        "b2": {
+            "outside": outside,
+            "inside": n - len(outside),
+            "n_seeds": n,
+            "met": bool(n) and not outside,
+        },
+        "n_seeds": n,
     }
 
 
-def t080_reds(n_draws=T080_REDS_N_DRAWS):
-    """STUB (2.9 step 2). 2.4's six reds as ONE self-check line. All False here BY DESIGN:
-    the self-check RUNS RED until 2.9 step 4 greens the instruments."""
-    return {"R1": False, "R2": False, "R3": False, "R4": False, "R5": False, "R6": False}
+def t080_verdict(got, refusals):
+    """2.3's verdict rule, spelled ONCE and decided in 2.3's order.
+
+    REFUSED iff (p), (r), (g0) or (b2) fails -- a finding about the APPARATUS or the
+    INSTRUMENT. PASS iff (b1) is MET with all of them holding. NOT MET iff (b1) is NOT MET --
+    a finding about this BINDER on this stimulus. The two are never merged."""
+    if refusals:
+        return "REFUSED"
+    if not got["g0"].met or not got["b2"]["met"]:
+        return "REFUSED"
+    return "PASS" if got["b1"].met else "NOT MET"
 
 
+# distinct-from: substrate/eprop_transport_gate.py, substrate/gradient_claim_gate.py --
+#   census gates that CLASSIFY existing code. Every entry below is a deliberately broken twin
+#   of THIS module's own instrument, constructed so a red can be shown to fire rather than
+#   argued to (P8 clause 1). Read; nothing here inspects or rewrites any other module.
+# distinct-from: cortex/agency_monitor.py::_t079_mutated_scorer and
+#   cortex/attention_schema.py::_t078_mutated_scorer -- the PATTERN this follows over
+#   DIFFERENT instruments (a permutation floor over an EMA correlation there, a
+#   membership-matched permutation over a recognition pair here). One catalog per module is
+#   this tree's convention, not a second mechanism. Read.
 def _t080_mutated_scorer(kind):
-    """STUB (2.9 step 2). 2.4's six mutated scorers, each the deliberately broken twin of the
-    instrument whose red it must redden. Every one returns its target's NULL reading here, so
-    a step-3 test that runs a mutation fails on its assertion and not on a missing name."""
+    """2.4's six mutations, RUN and not reasoned. Each is the deliberately broken twin of the
+    instrument whose red it must redden, and each is exercised BOTH in
+    `tests/test_binding_instrument.py` and in `t080_reds()` below.
+
+      null_resamples   (R1) -- the audio objects drawn i.i.d. WITH REPLACEMENT instead of
+          permuted, so a draw's multiset no longer equals the table's: the null stops being
+          membership-matched while its marginal is unchanged.
+      ignore_margin    (R2) -- the binder's OWN `_recognize` on a shallow twin whose
+          `recog_margin` is lowered below every reachable coincidence, so nothing is ever
+          refused and a sub-margin pair reads bound.
+      window_first_lag (R3) -- the first lag tested is returned whatever its rate, so the
+          window is read off the arm ORDER instead of off the margin.
+      g0_always_met    (R4) -- the per-seed (g0) difference is a constant +1.0, a positive
+          control that cannot refuse an independent stream.
+      blind_scorer     (R5) -- (b1)'s two sides swapped, so the reading is compared to itself
+          from the wrong direction and the dissociation is lost.
+      band_unbounded   (R6) -- (b2)'s band is [0, 1], which no in-vivo fraction can leave."""
 
     def null_resamples(recs, seed, n_draws=T080_N_DRAWS):
-        return t080_null(recs, seed, n_draws)
+        return t080_null(recs, seed, n_draws, resample=True)
 
     def ignore_margin(binder):
-        return lambda code, modality: (None, 0.0)
+        twin = copy.copy(binder)  # shares `objects` and `_proj`; only the margin is rebound
+        twin.recog_margin = -2.0  # below the centred coincidence's own floor of -1.0
+        return twin._recognize
 
     def window_first_lag(lag_rates, q95):
-        return t080_window(lag_rates, q95)
+        return int(min(lag_rates))
 
     def g0_always_met(entry):
-        return 0.0
+        return 1.0
 
     def blind_scorer(entry, which):
-        return 0.0
+        return _t080_score(entry, "null" if which == "within" else "within")
 
-    def band_unbounded():
-        return T080_BAND
+    def band_unbounded(entry):
+        return 0.0, 1.0
 
     return {
         "null_resamples": null_resamples,
@@ -280,6 +509,100 @@ def _t080_mutated_scorer(kind):
         "blind_scorer": blind_scorer,
         "band_unbounded": band_unbounded,
     }[kind]
+
+
+def t080_reds(n_draws=T080_REDS_N_DRAWS):
+    """2.4's six reds as ONE self-check line (each is ALSO a test in
+    `tests/test_binding_instrument.py`; this is the in-command control 2.4 requires, so a
+    gate run that never executes pytest still runs every one on the SAME constructed input).
+    Each value is True iff the red holds on its input AND its mutated scorer REDDENS it IN
+    FACT -- every `not (...)` clause below is a broken twin having been RUN."""
+    out = {}
+
+    # R1 -- the null is MEMBERSHIP-MATCHED. The mutation resamples with replacement.
+    recs = t080_constructed_recs(seed=3)
+    null = t080_null(recs, 3, n_draws=n_draws)
+    m1 = _t080_mutated_scorer("null_resamples")(recs, 3, n_draws)
+    out["R1"] = bool(
+        null["n"] == T080_R1_TICKS
+        and null["n_draws"] == n_draws
+        and null["multiset_ok"]
+        and null["draws_sd"] > 0.0
+        and abs(null["mean"] - null["expected"]) <= 3.0 * null["draws_sd"]
+        and null["q005"] <= null["q95"] <= null["q995"]
+        and not m1["multiset_ok"]
+    )
+
+    # R2 -- the decomposition IS the binder. The mutation drops `recog_margin`.
+    binder, protos = t080_constructed_binder(seed=0)
+    rows = t080_constructed_pairs(binder, protos, seed=1)
+    got2 = t080_recognitions(rows, binder)
+    m2 = t080_recognitions(rows, binder, recognize=_t080_mutated_scorer("ignore_margin")(binder))
+    bound2 = sum(1 for r in got2["recs"] if r["bound"])
+    sub2 = sum(
+        1 for r in got2["recs"] if r["s_v"] < binder.recog_margin or r["s_a"] < binder.recog_margin
+    )
+    out["R2"] = bool(
+        got2["n"] == T080_R2_PROBES
+        and 0 < bound2 < T080_R2_PROBES
+        and sub2 > 0
+        and got2["agree"] == 0
+        and m2["agree"] > 0
+    )
+
+    # R3 -- the window reader. The mutation returns the first lag tested.
+    out["R3"] = bool(
+        t080_window(T080_R3_LAG_RATES, T080_R3_Q95) == T080_R3_WINDOW
+        and t080_window(T080_R3_ALL_ABOVE, T080_R3_Q95) == "none"
+        and t080_window(T080_R3_FIRST_BELOW, T080_R3_Q95) == 1
+        and _t080_mutated_scorer("window_first_lag")(T080_R3_LAG_RATES, T080_R3_Q95)
+        != T080_R3_WINDOW
+    )
+
+    # R4 -- the positive control refuses an independent stream. The mutation always meets it.
+    indep = t080_constructed_seeds("independent", seed=4)
+    c_ind = t080_contrasts(indep)
+    c_ali = t080_contrasts(t080_constructed_seeds("aligned", seed=4))
+    m4 = t080_contrasts(indep, g0=_t080_mutated_scorer("g0_always_met"))
+    out["R4"] = bool(
+        c_ind["n_seeds"] == len(T080_SEEDS)
+        and not c_ind["g0"].met
+        and t080_verdict(c_ind, []) == "REFUSED"
+        and c_ali["g0"].met
+        and c_ali["g0"].t > T080_BAR
+        and m4["g0"].met
+    )
+
+    # R5 -- the dissociation on a constructed report. The mutation swaps within and null.
+    at_margin = t080_contrasts(t080_constructed_seeds("at_margin", seed=5))
+    above = t080_constructed_seeds("above", seed=5)
+    c_above = t080_contrasts(above)
+    m5 = t080_contrasts(above, score=_t080_mutated_scorer("blind_scorer"))
+    out["R5"] = bool(
+        at_margin["b1"].degenerate
+        and not at_margin["b1"].met
+        and t080_verdict(at_margin, []) == "NOT MET"
+        and c_above["b1"].met
+        and c_above["b1"].t > T080_BAR
+        and t080_verdict(c_above, []) == "PASS"
+        and not m5["b1"].met
+    )
+
+    # R6 -- the agreement band. The mutation widens it to [0, 1].
+    outside = t080_constructed_seeds("band_outside", seed=6)
+    c_out = t080_contrasts(outside)
+    c_in = t080_contrasts(t080_constructed_seeds("band_inside", seed=6))
+    m6 = t080_contrasts(outside, band=_t080_mutated_scorer("band_unbounded"))
+    out["R6"] = bool(
+        c_out["b2"]["n_seeds"] == len(T080_SEEDS)
+        and not c_out["b2"]["met"]
+        and bool(c_out["b2"]["outside"])
+        and t080_verdict(c_out, []) == "REFUSED"
+        and c_in["b2"]["met"]
+        and c_in["b2"]["inside"] == len(T080_SEEDS)
+        and m6["b2"]["met"]
+    )
+    return out
 
 
 # =============================================================================
@@ -462,8 +785,8 @@ def main(argv=None):
     _t080_reds_line(reds)
     if not all(reds.values()):
         print(
-            f"T080 SELF-CHECK RED: {sum(reds.values())}/{len(reds)} reds fire -- the "
-            f"instruments are STUBS (2.9 step 2); step 4 greens them"
+            f"T080 SELF-CHECK RED: only {sum(reds.values())}/{len(reds)} of 2.4's reds fire "
+            f"on their constructed inputs -- {reds}"
         )
         return 1
     print(

@@ -50,6 +50,11 @@ from snn_data_lake.thalamus.binding_instrument import (
     T080_BAR,
     T080_R1_TICKS,
     T080_R2_PROBES,
+    T080_R3_ALL_ABOVE,
+    T080_R3_FIRST_BELOW,
+    T080_R3_LAG_RATES,
+    T080_R3_Q95,
+    T080_R3_WINDOW,
     T080_REDS_N_DRAWS,
     T080_SEEDS,
     _t080_mutated_scorer,
@@ -149,23 +154,22 @@ def test_r2_the_decomposition_is_the_binder(reds):
 # R3 -- THE WINDOW READER
 # ---------------------------------------------------------------------------------------
 def test_r3_the_window_reader(reds):
-    q95 = 0.10
-    rates = {1: 0.31, 2: 0.24, 3: 0.18, 4: 0.09, 5: 0.05}
+    q95, rates = T080_R3_Q95, T080_R3_LAG_RATES
 
-    assert t080_window(rates, q95) == 4, (
+    assert t080_window(rates, q95) == T080_R3_WINDOW, (
         f"the window is the SMALLEST lag at or below the derived margin "
         f"(read {t080_window(rates, q95)!r} on {rates} at q95 {q95})"
     )
-    assert t080_window({1: 0.31, 2: 0.24, 3: 0.18}, q95) == "none", (
+    assert t080_window(T080_R3_ALL_ABOVE, q95) == "none", (
         "every lag above the margin reads 'none', never a lag"
     )
-    assert t080_window({1: 0.05, 2: 0.31}, q95) == 1, (
+    assert t080_window(T080_R3_FIRST_BELOW, q95) == 1, (
         "a first lag already at or below the margin reads 1"
     )
 
     # THE MUTATION, RUN: the first lag tested, whatever its rate.
     mut = _t080_mutated_scorer("window_first_lag")
-    assert mut(rates, q95) != 4, (
+    assert mut(rates, q95) != T080_R3_WINDOW, (
         f"a reader that returns the FIRST lag must disagree with the window "
         f"(it read {mut(rates, q95)!r})"
     )
