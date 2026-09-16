@@ -21,6 +21,17 @@ ticks. DISPOSITION: P3 exempt-awaiting-sufficient-per-channel-experience. It bec
 on a long-running daemon, and it starts working with no code change -- what it needs is uptime and a
 body whose effectors can actually fail.
 
+DISPOSITION SUPERSEDED 2026-09-15 (specs/022 T079, evidence/t079-agency.md 2.6 and 3.4; pin
+tools/t079_agency.json): the feed above is RETIRED -- the monitor is now fed the per-joint efference
+copy on every envelope passage from `AutonomousArm.apply_observed` (command = the action token's
+intended delta per joint, feedback = the achieved delta; one feed, P2) -- and the in-vivo dissociation
+read NOT MET: a 12-deg external force on one joint collapses that joint's coupling on 8/8 seeds
+((a1) t +13.9998) but two unshoved joints drop by more than the machine's own 0.20 dead-band
+((a2) shoulder_lift t +0.8723, wrist_roll t +1.3668) and 4 other
+(joint, arm, seed) read 'lost'. P3 disposition: EXEMPT with that record as its reason -- consumed by no
+one, measured unable to separate the perturbed channel from the rest on this body; `route_around`
+stays unwired; nothing deleted (R1-R6 fire).
+
 Sense-of-agency / per-channel CONTROLLABILITY monitor -- the learned-helplessness
 substrate. Asks, for every action channel the brain drives: "do MY commands still
 cause their expected sensory change?" and flags the SUSTAINED loss of that

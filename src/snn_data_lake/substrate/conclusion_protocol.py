@@ -135,9 +135,12 @@ CONCLUSION: dict[str, tuple] = {
         "the system separates outcomes it caused from outcomes it observed, above a cause-blind twin's rate",
         "this licenses no claim of felt authorship, ownership of action, or free will",
         "identical outcomes with the causal link removed must collapse the separation",
-        None,
+        None,  # T079 read NOT MET 2026-09-15 ((a2)/(a3) failed; tools/t079_agency.json): no reading
         "2026-09-06",
-        (),  # T079 unbuilt
+        # T079 (2026-09-15, evidence/t079-agency.md 3.4): the row the cockpit WOULD print on a PASS, printed
+        # nowhere today (the reading is None and the licensed sentence is NOT written); named so the arming arm
+        # sees a symbol for a task marked complete and refusal 3 polices it if it ever appears (T077's shape).
+        ("agency_controllability",),
     ),
     "temporal_binding": (
         "features inside one window are bound into one reported object more often than features across windows",
