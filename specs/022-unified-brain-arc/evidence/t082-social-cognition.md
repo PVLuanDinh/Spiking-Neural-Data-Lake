@@ -326,3 +326,155 @@ spurious `['user->brain']` clears). NO barred conjunct was read (one seed carrie
 **(f) CLOCK.** The commit stamps are the times; the two dry-run windows are shell-printed clocks (the orchestrator's
 `date` calls) bounded by the artifacts' mtimes; the executor's run carries none and is dated by its commit and its
 `dirty` field. Nothing above 2.10 was edited.
+
+## 3. Results (written 2026-09-16 after the campaign and the surfaces; nothing above this line was edited after 2.10)
+
+### 3.0 The apparatus, measured before the campaign (2.9 step 5, the dry run; 2.10)
+
+2.10 (a)-(f) carry the apparatus: the (g0) census on the pure script (23 of 213 unwitnessed episodes coincided with the
+believed location before the correction; 0 after, every unwitnessed count unchanged); the executor's dry run (head
+`07c0a59`, DIRTY True, 103 s, on the pre-correction script) and the orchestrator's (head `76cdb4b`, DIRTY True, 95 s,
+shell clock 11:09:30-11:11:07 local, on the corrected script: BELIEF 1.0000 / WORLD 0.5833 / CONTROL 0.5833, +0.4167,
+(g0) True, (s2) True); the live merge smoke; the circadian-gating probe at 1 / 3 / 5 ticks; the charge A/B on the
+committed 12-frame stream (diverged, 12 reads, specificity holds) and on the dry run's own 60 frames (diverged, 60
+reads). The census script read every gate rc 0 after every build commit and no P6 ceiling was raised. CLOCK: every
+time in this section is a commit stamp, a printed shell clock, or a file mtime, named as such.
+
+### 3.1 The build, red-first, and the commits
+
+Pre-registration `e65ed43` (this file 1-2.9 + C-R11). An Opus executor built 2.9 steps 2-5 (brief
+`scratchpad/t082/builder_brief.md`): the declared belief wire + stubs `af07f81` (`tools/wiring_manifest.nir` regenerated:
+38 ports, 20 edges); R1-R6 committed RED `6e58afb`; green with the six mutations reddening in the test and in
+`t082_reds()` and THE MERGE (one tracker fed symmetrically; the two narrower feeds, the birth-time constant,
+`tom_false_belief`, `SecondOrderToM` retired; R5 against the live class first, 1,200/1,200 and 600/600) `07c0a59`;
+recorder, dry run, charge evidence, campaign flag and pin writer `76cdb4b`. The orchestrator's pre-campaign commits:
+the believed-location exclusion `da80dcd`; 2.10 `6d4a65f` (dated BEFORE the campaign, 11:12:40). Every builder number
+was re-run by the orchestrator before it was written (2.10).
+
+### 3.2 The campaign (`tools/t082_social_cognition.json`)
+
+Launched DETACHED on `6d4a65f` at 11:12:47 local (`scratchpad/t082/launch_campaign.ps1`; log `campaign.log`, empty
+`campaign.err`); the pin's own stamp: head `6d4a65f`, DIRTY False; written in 252 s (the log's line; `elapsed_s` 252.3;
+the waiter read it at 11:17:18); committed ONCE as `c263d90` (11:17:33). Per seed 60 scripted statements
+through `Brain.respond` with 3 ticks between, 336-625 ms per episode (seed 2 at 625 under the daemon's load; the rest
+336-466), `respond()` 170-185 ms per turn on the mean with a ~3 s first turn, 20-39 s per seed. THE PIN CARRIES PER-SEED
+SUMMARIES (the accuracies, the counts, the per-episode `respond_ms` and social-risk lists) AND NO PER-EPISODE ROWS,
+and NO per-seed charge A/B (2.3's reported A/B is carried by the dry run and by the committed constructed stream in
+`tools/region_charge_evidence.json`, re-measured by the self-check and the test) -- disclosed (3.5 item 3). The
+orchestrator re-derived every barred number from the pin with no brain (`scratchpad/t082/verify_t082_pin.py`,
+`verify_out.txt`): (g0), (s2) and (r) per seed from the counts, (s1) through `paired_contrast.contrast` (diffs, t, FPR,
+met identical to the pin), the 2.6 reading, the verdict through the module's own rule (PASS); seed 0 equals the
+orchestrator's dry run on n, parsed, unwitnessed, look-differs, the three accuracies, ctrl-equals-world, spurious and
+risk max.
+
+### 3.3 The readings, conjunct by conjunct (every number from the pin; the bar 1.895 over 8 seeds; FPR = the sign-flip rate)
+
+(p)  DETERMINISM: two recordings of seed 0 at 20 episodes identical on every field but `t_respond_ms` (excluded by
+     name, 2.10 (d)(5)): MET.
+(r)  READABLE: every statement parses on every seed (60/60 x 8) and every episode's three predictions are non-None
+     after the first witnessed statement (predictions_none 0 x 8); no refusal: MET.
+(g0) THE SCRIPT IS A FALSE-BELIEVING AGENT: unwitnessed 0.350-0.533 per seed (floor 0.3) and the agent's look differs
+     from the world on EVERY unwitnessed episode (25/25, 29/29, 26/26, 21/21, 26/26, 31/31, 23/23, 32/32 -- 213/213 on
+     the corrected script): MET.
+(s1) THE BELIEF MODEL BEATS THE EQUAL-CAPACITY WORLD MODEL: acc_belief 1.0000 on every seed; acc_ctrl 0.5833 / 0.5167 /
+     0.5667 / 0.6500 / 0.5667 / 0.4833 / 0.6167 / 0.4667; diffs +0.4167 / +0.4833 / +0.4333 / +0.3500 / +0.4333 / +0.5167 /
+     +0.3833 / +0.5333; t **+19.7401**, FPR 0.0352, positive on 8 of 8: **MET**. Each diff equals its seed's
+     unwitnessed fraction to 4 decimals -- the identity 2.10 (b) wrote down before the campaign.
+(s2) THE CONTROL IS A WORLD MODEL: the control's prediction equals the world content on 60/60 episodes on every seed
+     and acc_ctrl == acc_world exactly on every seed: MET.
+VERDICT: **PASS**.
+
+pin head `6d4a65f` dirty False; seeds [0, 1, 2, 3, 4, 5, 6, 7]; elapsed 252.3 s; verdict **PASS**; refusals none
+(p) determinism: {'seed': 0, 'identical': True, 'first_diff': None, 'rows': 20, 'twin_rows': 20, 'n_ep': 20, 'excluded_fields': ['t_respond_ms']}
+
+| seed | episodes | parsed | offset | unwitnessed (frac) | look differs | unwitnessed look differs | BELIEF acc | WORLD acc | CONTROL acc | belief - ctrl | ctrl == world | spurious nested | risk max | respond ms (mean) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 60 | 60 | 0 | 25 (0.417) | 25 | 25 | 1.0000 | 0.5833 | 0.5833 | +0.4167 | 60/60 | 0 | 0.68 | 179.2 |
+| 1 | 60 | 60 | 150 | 29 (0.483) | 29 | 29 | 1.0000 | 0.5167 | 0.5167 | +0.4833 | 60/60 | 0 | 0.68 | 184.4 |
+| 2 | 60 | 60 | 44 | 26 (0.433) | 26 | 26 | 1.0000 | 0.5667 | 0.5667 | +0.4333 | 60/60 | 0 | 0.68 | 170.0 |
+| 3 | 60 | 60 | 194 | 21 (0.350) | 21 | 21 | 1.0000 | 0.6500 | 0.6500 | +0.3500 | 60/60 | 0 | 0.68 | 170.5 |
+| 4 | 60 | 60 | 88 | 26 (0.433) | 26 | 26 | 1.0000 | 0.5667 | 0.5667 | +0.4333 | 60/60 | 0 | 0.68 | 178.7 |
+| 5 | 60 | 60 | 238 | 31 (0.517) | 31 | 31 | 1.0000 | 0.4833 | 0.4833 | +0.5167 | 60/60 | 0 | 0.68 | 180.0 |
+| 6 | 60 | 60 | 132 | 23 (0.383) | 23 | 23 | 1.0000 | 0.6167 | 0.6167 | +0.3833 | 60/60 | 0 | 0.68 | 171.8 |
+| 7 | 60 | 60 | 26 | 32 (0.533) | 32 | 32 | 1.0000 | 0.4667 | 0.4667 | +0.5333 | 60/60 | 0 | 0.68 | 176.9 |
+
+- **(g0)**: {'met': True, 'failures': []}
+- **(s1)**: {'name': '(s1) the belief model beats the equal-capacity world model', 'diffs': [0.41666666666666663, 0.4833333333333333, 0.43333333333333335, 0.35, 0.43333333333333335, 0.5166666666666666, 0.3833333333333333, 0.5333333333333333], 't': 19.74012139370062, 'fpr': 0.03515625, 'degenerate': False, 'met': True}
+- **(s2)**: {'met': True, 'failures': []}
+- risk trajectories (first 12) per seed: [(0, [0.0, 0.0, 0.0, 0.68, 0.68, 0.68, 0.68, 0.612, 0.4461, 0.3252, 0.2371, 0.1921]), (1, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.68, 0.68, 0.68, 0.4957, 0.4957, 0.4957]), (2, [0.0, 0.68, 0.5508, 0.5508, 0.5508, 0.5508, 0.5508, 0.4015, 0.2927, 0.2134, 0.68, 0.68]), (3, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.68, 0.4957, 0.3614, 0.3614, 0.3614, 0.3614]), (4, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.68, 0.68, 0.4957, 0.4957, 0.4957, 0.4957]), (5, [None, 0.68, 0.4957, 0.3614, 0.68, 0.612, 0.612, 0.612, 0.612, 0.5508, 0.4015, 0.2927]), (6, [0.0, 0.0, 0.68, 0.68, 0.68, 0.68, 0.68, 0.68, 0.4957, 0.3614, 0.2634, 0.68]), (7, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.68, 0.68, 0.68, 0.68, 0.68, 0.68])]
+- timings per seed: [{'build_s': 0.83, 'record_s': 22.896, 'total_s': 23.932, 'ms_per_episode': 381.6}, {'build_s': 0.899, 'record_s': 22.133, 'total_s': 23.478, 'ms_per_episode': 368.8833333333333}, {'build_s': 0.992, 'record_s': 37.488, 'total_s': 38.807, 'ms_per_episode': 624.8}, {'build_s': 0.936, 'record_s': 27.933, 'total_s': 32.129, 'ms_per_episode': 465.55}, {'build_s': 0.824, 'record_s': 22.272, 'total_s': 23.462, 'ms_per_episode': 371.2}, {'build_s': 0.96, 'record_s': 20.166, 'total_s': 21.134, 'ms_per_episode': 336.1}, {'build_s': 0.858, 'record_s': 20.525, 'total_s': 21.528, 'ms_per_episode': 342.0833333333333}, {'build_s': 0.991, 'record_s': 21.963, 'total_s': 23.382, 'ms_per_episode': 366.05}]
+- ms per episode per seed: [381.6, 368.9, 624.8, 465.6, 371.2, 336.1, 342.1, 366.1]
+- charge: null
+- reds at campaign time: {'R1': True, 'R2': True, 'R3': True, 'R4': True, 'R5': True, 'R6': True}
+- constants: {'n_episodes': 60, 'ticks_between': 3, 'p_unwitnessed': 0.5, 'objects': ['marble', 'key', 'coin', 'ring', 'cup'], 'locations': ['basket', 'box', 'drawer', 'shelf'], 'stream_offset': 150, 'stream_positions': 256, 'seeds': [0, 1, 2, 3, 4, 5, 6, 7], 'min_unwitnessed': 0.3, 'rng_base': 4000, 'protect_gain': 0.34, 'protect_decay': 0.9, 'bar': 1.895, 'agents': ['user', 'brain'], 'warmup_ticks': 5, 'determinism_episodes': 20, 'trajectory_ticks': [1, 3, 5], 'trajectory_episodes': 20, 'offset_labels': 50, 'pinned_belief': [0.0, 0.0], 'r4_frames': 12, 'r5_scripts': 200, 'belief_edge': ['recursive_tom', 'belief_out', 'brain', 'social_risk_in']}
+- 2.6 reading: mean over seeds of (acc_belief - acc_ctrl) = 0.4437
+
+REPORTED: the spurious nested-divergence count on witnessed, no-false-belief episodes is 0 on every seed (fact 4's
+old subject-only feed read 5 of 12 on the territory probe); the social-risk trajectory rises to 0.68 on the first
+unwitnessed statement that lands on awake ticks and decays at 0.9 per awake tick (max 0.68 on every seed; the
+circadian gating of 2.10 (c) visible as leading zeros on seeds 1, 3, 5, 7); the parse grammar's two accepted forms
+carried every statement (hand-specified, 2.7); the second-order line read no spurious divergence.
+
+### 3.4 The disposition applied (2.6, the PASS branch)
+
+On this composite the composed tracker's prediction of a scripted other agent beats an equal-capacity model of the
+world alone at the bar over 8 seeds, and the replacement removes the gain exactly -- read with 2.10 (b) beside it:
+acc_belief is 1.0 by construction on a losslessly fed tracker, so what PASS licenses is that the LIVE composed path
+(the parse through `Brain.respond`, the symmetric feed, the recursive tracker, the report) implements the witness
+rule losslessly on the live dialogue path while the equal-capacity control cannot, and that the tracker's output
+charges the arm's caution. CHARGED (`4fcf711`): `CONCLUSION["social_cognition"].reading` = **0.4437** (the mean
+over seeds of acc_belief - acc_ctrl, tied to the pin at the module's self-check by `t082_pin_reading()` with a mutated
+derivation shown to refuse -- T081's fold shape carried from the start), `surface_symbols` =
+("recursive_tom_false_beliefs",) -- the LIVE key `Brain.state()` already published (the list of tracked agents holding
+a divergent belief: [] with no dialogue; [] after ONE unwitnessed FIRST turn, because a first turn carrying an absence marker parses WITNESSED when no world exists yet (the PROVENANCE says so); ['user', 'user->brain'] after a witnessed then an unwitnessed statement; [] after the next witnessed one -- re-run by the orchestrator through Brain.respond on a scratch brain); `brain_telemetry.PROVENANCE["recursive_tom_false_beliefs"]` carries both C5
+sentences, "representation-level", the pin, the scripted agent, the charge evidence, the (s1) t and the 2.10 (b)
+disclosure; the cockpit row `social false beliefs` is appended after the report-order row with both sentences and
+"representation-level" in its comment -- and, like its two siblings (T080 record 3.5 item 11; T081 3.5 item 21), it is
+CLIPPED out of the ACCESS plate's 110 px box as rendered, so 2.6's "in the same view" conjunct is NOT MET AS RENDERED,
+disclosed here and on the surfaces (`cc1b223`); the arming arm of `conclusion_protocol.main()` and
+`tests/test_ratified_row_gates.py` is rewritten to a constructed row (no symbol-less C4 row remains -- this was the last);
+`conclusion_protocol --assert` rc 0; tasks.md T082 -> [X] PASS. THE MERGE, THE WIRE AND THE CHARGE EVIDENCE landed in
+the build on every branch (3.1). The declared-anatomy twin tests for `belief_out` (the build's own opening) landed
+(`2094232`).
+
+### 3.5 Deviations from 2.1-2.10, each with its number (dated 2026-09-16)
+
+1. THE APPARATUS CORRECTION BEFORE THE CAMPAIGN (2.10 (a), `da80dcd`): the scripted agent's unwitnessed move never
+   lands on its own believed location. As pre-registered (g0)'s second half REFUSED on all 8 seeds from the pure script
+   (23 of 213); the honesty lens adjudicates the pre-campaign correction against the alternative of a known uniform
+   refusal followed by a post-number amendment.
+2. THE ENTAILMENT, MEASURED (2.10 (b)): every (s1) diff equals its seed's unwitnessed fraction to 4 decimals; acc_belief
+   is 1.0000 on every seed; the t of +19.74 is the t of the unwitnessed fractions against zero, a property of the
+   script's RNG, not of the tracker's power. The licensed sentence is read as 2.10 (b) reads it.
+3. THE PIN CARRIES NO PER-EPISODE ROWS AND NO PER-SEED CHARGE A/B (2.2 listed the row's fields; the pin writer summarised
+   per seed; the A/B lives in the dry run and the committed constructed stream). Every barred number re-derives from
+   the summaries and seed 0 reproduces the dry run; an episode-level re-read needs the recorder (opening 4). The pin
+   is not rewritten.
+4. Cost: 336-625 ms per episode (2.8 carried ~120 ms respond + 3 x ~55 ms ticks ~ 285 ms; the mean respond 170-185 ms
+   with a ~3 s first turn; seed 2 at 625 ms under the daemon's load); 20-39 s per seed against 2.8's ~17; 252 s for 8
+   seeds against 2.8's ~2.5 min; the refusal bound (30 min) far off.
+5. The circadian gating of the reported caution trajectory (2.10 (c)).
+6. The build's deviations (2.10 (d)); the step-7 executor's, verbatim: (a) tasks.md T082 -> [X] PASS landed in commit A, not B: tests/test_ratified_row_gates.py refuses a reading whose C4 task is still [ ] and row_findings refuses a complete task whose row declares no symbol, so the flip and the charge are bound in both orders (T081 f67328d did the same); (b) _task_done("T082") is True asserted in A; (c) the arming arm's constructed row uses a non-INSTRUMENTS name ("widget") with its own one-name instrument tuple in conclusion_protocol.main() and the test, plus two controls (an unarmed id; the same row with a symbol) -- fully independent of the live registry (attention_schema is still symbol-less, T078 [ ]); (d) the (row, pin, reducer) merge of the three pin readers NOT taken -- an OPENING in t082_pin_reading's docstring (a P2 merge across three modules); (e) the graphify duplicate-capability guard blocked the first write of t082_pin_reading; five overlapping sites read and declared distinct; (f) test_declared_anatomy_matches_the_live_shape holds the declaration against the payload's ARITY, not a vocabulary length (belief_out is a literal 2, 2.10 (d)(2)), measured on a tracker carrying a real false belief (payload [1, 1]); test_committed_manifest_carries_the_belief_wire additionally asserts producer/consumer anatomy agreement (2.10 (d)(1)); (g) commits B and C touch no src/, the census re-run on the final head; (h) the docs patched by a Write-tool script with single-occurrence anchors, preserving each file's own line terminators (CODEBASE_DIGEST LF; the others CRLF).
+7. The record's tables are generated from the pin (`scratchpad/t082/record_gen.py` -> `record_tables.md`), never
+   typed.
+
+### 3.6 What this row does NOT claim, and the openings it leaves
+
+No understanding of another mind, no mind (the refused sentence, printed beside the symbol on every surface that
+prints it and in the chat reply); the other agent is a SCRIPT whose look is its last witnessed location, and the
+tracker's model of an agent IS that rule -- so the row's positive result is the identity 2.10 (b) states, and the
+discriminating power of the row lives in (r) (a parse miss refuses), R1 / R5 / R6 (a parse that guesses, a lossy feed,
+the subject-only feed each redden), (s2) (a control that honours absence reddens R2) and the charge A/B (R4). Openings:
+(1) a scripted agent that departs from the witness rule (updates on an unwitnessed move with probability q; looks
+elsewhere with probability q) would make acc_belief a measurement of the tracker's model against an agent it does not
+define -- a re-registration, not an arm; (2) the cockpit row is clipped as rendered (3.4) -- the ACCESS plate's layout
+is owed its own row, now shared by four rows (PCI, integration, T080, T081, T082); (3) the live daemon's
+`recursive_tom_false_beliefs` reads a list from the chat's own statements -- a measured quantity, its scope quoted in
+the PROVENANCE; whether any dialogue on the daemon ever carries an unwitnessed statement is unmeasured; (4) the pin
+without rows (3.5 item 3); (5) the (row, pin, reducer) merge across `t080_pin_reading`, `t081_pin_reading` and
+`t082_pin_reading` -- three bodies, one job, P2's next lift; (6) the caution trajectory is circadian-gated (2.10 (c)): a
+re-registered fold-charge reading counts awake ticks, not statements; (7) the parse grammar is two hand-specified
+forms; a statement outside them is refused, never guessed -- the live daemon's users do not speak in them; (8)
+`TheoryOfMind` stays as pragmatics' engine; its liveness there is the pragmatics row's, not this one's; (9) the stale
+citations of the deleted `SecondOrderToM` in `docs/coverage/Social.md` and `docs/CODEBASE_DIGEST.md` are annotated,
+never rewritten (`cc1b223`).
