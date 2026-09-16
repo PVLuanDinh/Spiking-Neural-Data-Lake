@@ -19,6 +19,8 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 **Mean over the nine rows = 270/9 = 30.0.** Before the adversarial pass recorded below it was
 286/9 = 31.8; one row fell, 61 -> 45, and nothing else moved.
 
+*DATED NOTE 2026-09-16 (specs/022 T082): the `tom_second_order` row's citation above is STALE and is left standing rather than rewritten -- the class it names was RETIRED at T082 (2026-09-16) under P2, after R5 measured the surviving recursive tracker reproducing its `predict_second_order` readings on 200 constructed witness scripts (1,200 of 1,200 ordered pairs). The second-order capability is not lost: it is read from `cortex/recursive_tom.py`'s `predict_nested` on the same dialogue path, and the merged feed is symmetric, so the spurious nested divergence this row's faculty could not see is gone (0 of 60 episodes per seed against 5 of 12 on the retired feed; `evidence/t082-social-cognition.md`).*
+
 ---
 
 ## Adversarial pass: the one band-41+ claim fell, 61 -> 45, and the category went 31.8 -> 30.0
@@ -258,6 +260,8 @@ expect ME to think it is at 'basket')."* Scored below first-order because its re
 inside the `bel != wor` branch of `_tom_report`, so it is strictly narrower than the faculty it hangs
 off, and because `predict_second_order` is only ever asked one fixed pair, `("user", "brain")`.
 
+*DATED NOTE 2026-09-16 (specs/022 T082): RETIRED at T082 (2026-09-16) -- the class this paragraph describes no longer exists, and the paragraph is kept verbatim as the record of what was measured when it did. P2's condition was met first: R5 fed 200 constructed witness scripts (3 agents, 4 locations, 12 events each) through both mechanisms and read `predict_nested(x, y)` equal to the retired `predict_second_order(x, y)` on 1,200 of 1,200 ordered pairs, with the comparison run against the LIVE class before its deletion. The narrow readout this row scored below first-order -- one fixed pair, fired only inside one branch of the report -- is what the merge removes: the surviving tracker is N-agent and depth-k, its output is a declared port with measured charge into the arm's caution, and its live list is published on `Brain.state()` (`evidence/t082-social-cognition.md` 2.1).*
+
 **tom_recursive_depth_k (30).** `recursive_tom.RecursiveToM` is constructed at `brain.py:767` and
 charged: it produces `_false_beliefs`, which reaches the reply at `brain.py:3127` (verified:
 *"(theory of mind: I'm tracking a divergent belief for user ...)"*) and the arm via note 2. But the
@@ -338,6 +342,8 @@ Format: **file** -- unique capability -- live?
   readout; the Sally-Anne substrate -- live on the chat path, plus a birth-frozen flag.
 - **`cortex/affect_core.py` (`SecondOrderToM`)** -- nested "A believes B believes" over the same
   belief population -- live on the chat path, one fixed agent pair.
+
+  *DATED NOTE 2026-09-16 (specs/022 T082): RETIRED at T082 (2026-09-16) -- this bullet's class was deleted under P2 once R5 showed `cortex/recursive_tom.py` reproducing its readings on 1,200 of 1,200 ordered pairs over 200 constructed witness scripts; the chat path's nested belief now comes from that ONE tracker. The bullet above it is also narrowed rather than wrong: `cortex/theory_of_mind.py` STAYS (`reasoning/pragmatics.py`'s implicature engine runs its own instance) but its LIVE CHAT FEED and the birth-frozen flag that bullet names are both gone with the same merge (`evidence/t082-social-cognition.md` 2.1).*
 - **`cortex/affect_core.py` (`empathize`)** -- affective contagion as a convex pull of own
   valence/arousal toward another's -- live on the chat path, 9 cue phrases.
 - **`cortex/recursive_tom.py`** -- N agents, depth-k holder paths, VSA role-filler propositions

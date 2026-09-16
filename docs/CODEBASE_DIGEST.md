@@ -794,6 +794,8 @@ The slice is four strata stacked on one primitive.
 
 **affect_core.py** (574) — Russell-circumplex categorical emotion via spiking WTA over 8 LIF prototype units, affective contagion (`empathize`), and `SecondOrderToM` (nested belief populations). `Brain` uses `recognize()` per tick (`brain.py:3246`), `empathize()` only inside `respond()` (`:3739`), `_tom2.observe/predict_second_order` in the ToM dialogue path. The module's own P6 block records the honest null: own affect is a live constant.
 
+*DATED NOTE 2026-09-16 (specs/022 T082): RETIRED at T082 (2026-09-16) -- the `SecondOrderToM` class and the `_tom2.observe` / `predict_second_order` dialogue path this entry describes were deleted under P2 after R5 measured `cortex/recursive_tom.py`'s `predict_nested` reproducing them on 1,200 of 1,200 ordered pairs over 200 constructed witness scripts (the comparison run against the live class before its deletion). The entry is left standing rather than rewritten. What remains live in this module is unchanged: `recognize()` per tick and `empathize()` inside the reply path (`evidence/t082-social-cognition.md` 2.1).*
+
 **agency_monitor.py** (512) — per-channel controllability = streaming |Pearson(cmd, feedback)| over five EMAs, plus a two-counter `ok`/`lost` state machine with hysteresis. `AgencyMonitor.observe()` is fed every tick from `AutonomousArm.step`; `agency()`/`controllability()`/`status()` have zero readers. `warmup` is derived from `alpha` (`2.4/alpha`) — a genuine P1 conversion.
 
 **alif_neuron.py** (176) — Bellec LSNN adaptive-threshold LIF (`V_th_eff = v_threshold + beta·a`), reduces exactly to `LIFNeuron` at `beta=0` (asserted). The neuron model the repo's e-prop learns on. Only consumer: `neuron_zoo.py:55`.

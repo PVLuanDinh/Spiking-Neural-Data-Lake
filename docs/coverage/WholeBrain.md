@@ -350,6 +350,34 @@ below the ACCESS plate's 110 px visible box, so its two sentences reach the DOM 
 PROVENANCE line is where a reader actually sees them. Retired with this row, on T034's condition rather than on the verdict:
 `reasoning/consciousness_probe.py`, whose 20-seed PCI marker sweep is ported into `cortex/integration_measure`.*
 
+*DATED NOTE 2026-09-16 (specs/022 T082; `evidence/t082-social-cognition.md` section 2 and its 2.10 amendment; pin
+`tools/t082_social_cognition.json`, head `6d4a65f`, `dirty` False): the brain's DIALOGUE path now feeds ONE belief tracker,
+and that tracker's output reaches a muscle. Three trackers of one event used to be fed by the same chat statement --
+`cortex/theory_of_mind.py`'s first-order population, a nested second-order tracker in `cortex/affect_core.py`, and
+`cortex/recursive_tom.py`'s N-agent recursive one -- and they disagreed on one dialogue: the first said "no divergence right
+now" while the recursive one read a persistent nested false belief that was an artefact of its own subject-asymmetric feed.
+P2's merge kept the recursive tracker, deleted the other two live feeds and the birth-time Sally-Anne constant that was True
+on every brain, and replaced the single-subject call with a SYMMETRIC event (each present agent fed as a subject in turn),
+which is what R5 proved lossless against both retired trackers on 200 constructed witness scripts and what R6 shows kills the
+spurious divergence. On scratch brains driven through the live `Brain.respond` path (seeds 0-7 x 60 scripted episodes) the
+composed tracker predicted a scripted other agent's look on 1.0000 of episodes while an equal-capacity model of the WORLD
+predicted it on 0.4667-0.6500 -- (s1) t = 19.7401 against the 1.895 bar, (s2) the control equal to the world content on 60 of
+60 episodes on every seed. Three things this says about the WHOLE brain rather than the row. First, the gain is a property of
+the SCRIPT and not a demonstration of power: acc_belief is 1.0000 BY CONSTRUCTION because the scripted agent's look IS its
+last witnessed location and a losslessly fed tracker's prediction IS that same quantity, so what is actually shown is that
+the live composed path -- parse, symmetric feed, tracker, report -- implements the witness rule without loss, which any parse
+miss or stale path would have broken. Second, the tracker is no longer a readout that drove nothing: `recursive_tom.belief_out`
+is a declared port on the typed bus whose charge into the arm's caution term is MEASURED, not asserted (diverged, 12 reads,
+the caution trajectory [1, 0.0] to [12, 0.68] against a pinned [0, 0] payload, specificity control holding). Third, what the
+cockpit prints from it is the LENGTH of a live list of agent names, not the row's reading 0.4437 -- two different quantities
+that share one row, which is exactly the confusion the PROVENANCE line exists to prevent. The row's C5 reading is 0.4437;
+this licenses no claim that the system understands another mind, or that it has one. The clipped-row clause the T080 and T081
+notes carry applies here unchanged: the cockpit's `social false beliefs` row is appended below the ACCESS plate's 110 px
+visible box, so its two sentences reach the DOM and not the viewer, and /api/state's PROVENANCE line is where a reader
+actually sees them. Retired with this row, on P2 rather than on the verdict: the second-order tracker in
+`cortex/affect_core.py`, the first-order tracker's live chat feed (the class itself STAYS -- `reasoning/pragmatics.py` runs
+its own instance), and the birth-time false-belief flag.*
+
 ## A lead that was wrong, and the correction is the point
 
 I nearly filed `theta_gamma_code` as a dormant oscillatory-coordination faculty on the strength of a
