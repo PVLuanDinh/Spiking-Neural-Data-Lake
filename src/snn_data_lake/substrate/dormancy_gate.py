@@ -869,6 +869,25 @@ EXEMPT = {
         "into a live path would be the dead consumer P3's own honesty guard forbids -- it OBSERVES "
         "the two curiosity chains and must not perturb them",
     ),
+    "everyday_battery": (
+        "wire",
+        "specs/022 Phase 4 row C0, DATED 2026-09-17: the L12 audit's 20-item everyday battery as a "
+        "governed SCORER -- the frozen answer key, 2.3's ordered classifier and 2.5's five "
+        "constructed reds. A CI/run_selfchecks MEASUREMENT INSTRUMENT: its bare invocation touches "
+        "no brain, no lake and no network, and its only brain-touching path (`run_seed`, reached "
+        "from `--c0-campaign` alone) constructs its own scratch brains -- make_brain(persist=False) "
+        "under throwaway_home -- and is never constructed BY one. That is the attention_schema / "
+        "report_order_probe / prior_drift_harness shape exactly. "
+        "IT CANNOT BE WIRED TO A TICK, and the reason is P4b, not convenience: the answer path it "
+        "scores is `Brain.respond(q, human=True)`, the chat lane, which INGESTS every question into "
+        "the one durable lake. Twenty-four synthetic questions per run written into brain_lake.bin "
+        "would be the instrument contaminating the thing it measures (C0 pre-registration fact 4), "
+        "so its number reaches a surface only as a PINNED campaign reading that says so. "
+        "THE RETIREMENT CONDITION, and it is a wire rather than a permanent BECAUSE one exists "
+        "(2.6): the plan's C-R2 is the named consumer -- this scorer is what makes that red "
+        "reachable at all, C-R2 CONSUMES it, and THIS EXEMPTION RETIRES THE DAY C2 LANDS. A scorer "
+        "whose only caller is its own self-check past that day is exactly the dormancy P3 names",
+    ),
 }
 
 

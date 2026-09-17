@@ -134,6 +134,7 @@ CORE = [
     "cortex.learned_attention",  # C1 batch-3: learned spiking reticular attention gate
     "cortex.attention_schema",  # specs/022 T078 Part I: G3/G4's six reds on constructed streams (no brain, no lake); the campaign is --t078-campaign only
     "cortex.report_order_probe",  # specs/022 T081 [US4]: 2.4's six reds on constructed workspaces (no brain, no lake); the campaign is --t081-campaign only
+    "cortex.everyday_battery",  # specs/022 Phase 4 C0: 2.5's five constructed reds + (k)/(s)/(p)'s constructed arms (no brain, no lake); the campaign is --c0-campaign only
     "cortex.learned_evc",  # C1 batch-4: learned expected-value-of-control (dopamine-gated cost/value)
     "cortex.second_order_access",  # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
     "cortex.heterogeneous_microcircuit",  # Brain-Cog-adopted: LIF+Izhikevich+AdEx composed live under a local rule
