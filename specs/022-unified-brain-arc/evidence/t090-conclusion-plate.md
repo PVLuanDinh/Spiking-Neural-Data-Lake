@@ -610,3 +610,83 @@ instrument by the one check whose removal R6a needs. R6b is unchanged: the shipp
 measurement run itself, `rowsInPlateOnly - rowsInView > 0` on HARDWARE TARGET. The reported "column read twice one
 second apart" is two calls of the entry point (the builder's disclosed substitute; the entry point is synchronous).
 Nothing else in 3.2 moves.
+
+### 3.4 The SECOND rendered reading (orchestrator, 2026-09-17 00:08 local, clock read at write time; head `fab9889`, the layout change at `cccbc8e` / `df35374` / `9688929`, its ratchet `48cf3ff`)
+
+Apparatus: the committed instrument's bytes (`fff1a57`, unchanged since 3.3) loaded by a script element, a FRESH load
+per viewport, both viewports emulated, the daemon read AFTER its post-commit restart. Disclosed: the first 1420 x 1321
+run of this reading turned out to precede the daemon's (late) restart -- the page it served was the same HTML (the
+commit between touched only this record); it was RE-TAKEN after the restart and every reported number matched. The full
+output kept for 1420 x 1321 is the earlier run's (`measure_second_1420x1321.json`), the re-take's summary is in the
+session transcript; 1920 x 1080's full output is post-restart (`measure_second_1920x1080.json`). Both preconditions
+green at both widths: every scroll offset 0 (the plate, `#widgets`, `body`, the scrolling element), `<details>` open 0.
+The builder's lines for the four layout commits were reproduced first (30 tests passed; `--assert` rc 0, surface debt 1;
+the served page carries the scroll rule and seven `flex:0 0 auto` plates).
+
+| viewport | plate box (px) | plate content (px) | charged row | live value in strict box | licensed in strict box | refused in strict box | lines | min clearance to the strict box (px) |
+|---|---|---|---|---|---|---|---|---|
+| 1420x1321 | 405 x 339 | 337 | temporal_binding T080 | yes | 102 / 102 | 97 / 97 | 2 + 2 | 12 |
+| 1420x1321 | 405 x 339 | 337 | report_order T081 | yes | 105 / 105 | 77 / 77 | 2 + 2 | 12 |
+| 1420x1321 | 405 x 339 | 337 | social_cognition T082 | yes | 105 / 105 | 84 / 84 | 2 + 2 | 12 |
+| 1920x1080 | 445 x 326 | 324 | temporal_binding T080 | yes | 102 / 102 | 97 / 97 | 2 + 2 | 12 |
+| 1920x1080 | 445 x 326 | 324 | report_order T081 | yes | 105 / 105 | 77 / 77 | 2 + 2 | 12 |
+| 1920x1080 | 445 x 326 | 324 | social_cognition T082 | yes | 105 / 105 | 84 / 84 | 2 + 2 | 12 |
+
+Strict = plate-only on every sentence (divergence 0 on 12 of 12); totals 570 of 570 sentence characters and 3 of 3 live
+values at BOTH widths; 6 of 6 row x width cells complete; `clipped: false` on all seven plates; every `.c5` block's
+computed `white-space` `normal`, no inline overflow; verdict words on the plate 0; served rows 3 = charged rows 3.
+
+THE EXTENSION'S REDS AFTER THE CHANGE (3.2.2, as amended by 3.2.8), at 1920 x 1080:
+- R6b THE ANCESTOR TERM, ISOLATING, on the measurement run itself: HARDWARE TARGET has 18 rows inside its own plate box
+  and 5 inside the strict box at scrollTop 0 (13 > 0) at both widths -- rows inside their plate and inside the viewport
+  and outside the column's clip. The ancestor term fires alone.
+- R7 ON THE COLUMN: `#widgets.scrollTop = 400` read back 400 (the column scrolls now; at the unchanged head it clamped
+  to 0); the shipped instrument returned `refused: "scrolled: #widgets (top 400, left 0)"` and no census.
+- R6a THROUGH THE MUTANT `trust_the_scroll` on that same scrolled page: strict 0 of 570 sentence characters and 0 of 3
+  live values; plate-only 570 of 570 and 3 of 3 (the plate box had moved to y -356..-30, its strict box empty). Restored
+  to scrollTop 0 the shipped instrument re-read 570 of 570 with no refusal.
+
+Conjuncts, each quoted and marked (second reading):
+- (p) SERVED (as narrowed by 2.10 (a)): HOLDS -- `/api/all` carries the three charged rows on the live daemon.
+- (r) READABLE AS RENDERED: HOLDS -- the plate is outside `#bottom`, `.c5` computed `white-space` `normal`, 3 of 3
+  charged rows found.
+- (v1) IN VIEW: **MET** -- for every charged row, at both widths, every character of the licensed and of the refused
+  sentence and the live value lie inside the strict visible box (the plate's box intersected with every clipping
+  ancestor's client box and the viewport), `<details>` collapsed, the page as loaded.
+- (v2) THE REFUSAL HOLDS: HOLDS -- no None row on the plate, verdict words 0.
+- (g) THE GATE: HOLDS -- `conclusion_protocol --assert` rc 0, surface debt 1 at its baseline (integration's PCI row),
+  the mechanism clause green on the live registry and red on its constructed blank (R4, in the 30 passing tests).
+
+THE VERDICT LINE, in 3.2.6's pre-registered shape:
+  "FIRST READING (3.1, head `51e8031`): (v1) NOT MET - 304 of 570 sentence characters at 1420 x 1321 and 261 of 570 at
+   1920 x 1080, 2 of 6 row x width cells complete, the cause being a fixed-height `#widgets` column with
+   `overflow:hidden` in which every plate was clipped and nothing scrolled. SECOND READING (3.4, head `fab9889`): (v1)
+   MET - 570 of 570 sentence characters and 3 of 3 live values inside the strict visible box at 1420 x 1321 and at
+   1920 x 1080, 6 of 6 row x width cells complete, both preconditions green. WHAT CHANGED: the ARTIFACT (the column
+   scrolls, each plate is its own content's height, the plate owns the scroll origin) and the INSTRUMENT (strictly
+   harder: the strict visible box, two preconditions that refuse, and invisible text no longer counted as in view). THE
+   CRITERION DID NOT CHANGE - (v1) is quoted verbatim at 3.2.0 and the committed sub-measurement reproduced 3.1's 304
+   and 261 bit-exact at the unchanged page before anything was built."
+**T090: MET ON THE SECOND READING.**
+
+REPORTED, never barred:
+- THE AT-A-GLANCE LEDGER, BOTH HALVES, by the same script before (3.3) and after:
+  1420x1321: CONSCIOUSNESS 2->3 of 3 rows in view (box 174->339 px, visible 174->339 px, clipped True->False); ARM 2->2 of 2 rows in view (box 76->107 px, visible 76->107 px, clipped True->False); MOTOR MIX 3->4 of 4 rows in view (box 108->147 px, visible 108->147 px, clipped True->False); BEHAVIOR & EMOTION 4->5 of 5 rows in view (box 141->182 px, visible 141->182 px, clipped True->False); HARDWARE TARGET — NO 7->5 of 18 rows in view (box 174->537 px, visible 174->126 px, clipped True->False); NEUROMODULATORS 2->0 of 6 rows in view (box 108->252 px, visible 108->0 px, clipped True->False); WORLD MODEL 4->0 of 9 rows in view (box 108->205 px, visible 108->0 px, clipped True->False) -- rows in view at scrollTop 0: 24 -> 19 of 47; rows REACHABLE (in view, or scrollable into view): 24 -> 47; column client 405 x 925, scrollHeight 1806 (read twice one second apart: equal), gutter 15 px.
+  1920x1080: CONSCIOUSNESS 2->3 of 3 rows in view (box 171->326 px, visible 171->326 px, clipped True->False); ARM 2->2 of 2 rows in view (box 74->107 px, visible 74->107 px, clipped True->False); MOTOR MIX 3->4 of 4 rows in view (box 106->147 px, visible 106->147 px, clipped True->False); BEHAVIOR & EMOTION 4->5 of 5 rows in view (box 139->182 px, visible 139->182 px, clipped True->False); HARDWARE TARGET — NO 7->5 of 18 rows in view (box 171->522 px, visible 171->124 px, clipped True->False); NEUROMODULATORS 2->0 of 6 rows in view (box 106->252 px, visible 106->0 px, clipped True->False); WORLD MODEL 4->0 of 9 rows in view (box 106->205 px, visible 106->0 px, clipped True->False) -- rows in view at scrollTop 0: 24 -> 19 of 47; rows REACHABLE (in view, or scrollable into view): 24 -> 47; column client 445 x 910, scrollHeight 1778 (read twice one second apart: equal), gutter 15 px.
+  So FIVE FEWER rows are in view at load (24 -> 19 of 47) while every one of the 47 is reachable for the first time
+  (24 -> 47): CONSCIOUSNESS, ARM, MOTOR MIX and BEHAVIOR & EMOTION are complete with no interaction; HARDWARE TARGET
+  shows 5 of 18 rows; NEUROMODULATORS (6 rows) and WORLD MODEL (9 rows, the page's own not-computed / not-applied
+  ledger) are below the fold. This is the NAMED OPENING 3.2.6 pre-declared, in measured rows rather than predicted px.
+- RESIDUALS AGAINST 3.2.4's PREDICTIONS. 1920 x 1080: plate 326 px (predicted 326), column scrollHeight 1778 (predicted
+  1777), offsets as predicted to the pixel (ARM at 332, HARDWARE TARGET at 786). 1420 x 1321: plate 339 px (predicted
+  326) and HARDWARE TARGET 537 (predicted 522), column scrollHeight 1806 (predicted 1777): at the 405 px column the
+  plate's own heading wraps to a second line and HARDWARE TARGET's content wraps further -- the model assumed one
+  heading line at both widths. The barred inequality holds with margin 586 px (339 <= 925) and 584 px (326 <= 910);
+  the growth arithmetic of 3.2.4 is 13 px optimistic at the narrow layout and is corrected here, not there.
+- The scrollbar gutter, measured: 15 px at both widths (column client width 405 and 445); every sentence still wraps to
+  2 lines; the measured advance is 6.06 px.
+- The ACCESS census on `visiblePlateOnly` (3.3's like-with-like): 4 rows, 1 in view, at both widths -- unchanged; the
+  strict read of `ignitions` at 1920 x 1080 is the sub-pixel conservatism 3.3 disclosed.
+- STILL OPEN, as 3.2.5 item 7 named: the `<details>` provenance is rewritten closed once a second by the 1 Hz repaint,
+  so the provenance text on this plate cannot be held open by a person; pre-existing, not made worse, its fix is a JS
+  change outside a layout arc (re-apply `open` by row key after the repaint).
