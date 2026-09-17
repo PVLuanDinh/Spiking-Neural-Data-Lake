@@ -1,0 +1,1043 @@
+{
+ "row": "C0",
+ "head": "37135d74b07d4771e824a301c1d5563fd3e9999b",
+ "dirty": false,
+ "protocol": "make_brain(seed=<s>, persist=False) under substrate.home.throwaway_home(), 20 warm-up ticks, the 4 controls then the 20 items through Brain.respond(q, human=True); the reply is recorded with any ' (somatic' suffix removed (the L12 audit's and the orientation's transcript rule)",
+ "warm_ticks": 20,
+ "seeds": [
+  0,
+  1,
+  2,
+  3,
+  4
+ ],
+ "sequential_seed": 0,
+ "sequential": {
+  "seed": 0,
+  "warm": 20,
+  "controls": [
+   {
+    "id": "C1",
+    "cls": "CORRECT",
+    "route": "Gc (crystallized: memory/knowledge/state)",
+    "reply": "[induced] 2 4 8 16 -> 32. the rule i synthesised for this problem at test time: constant ratio x2. not a stored fact."
+   },
+   {
+    "id": "C2",
+    "cls": "CORRECT",
+    "route": "Gc (crystallized: memory/knowledge/state)",
+    "reply": "[induced] 1 4 9 16 -> 25. the rule i synthesised for this problem at test time: constant 2th-difference. not a stored fact."
+   },
+   {
+    "id": "C3",
+    "cls": "CORRECT",
+    "route": "Gc (crystallized: memory/knowledge/state)",
+    "reply": "[induced] abc:abd :: ijk:? -> ijl. the rule i synthesised for this problem at test time: letter analogy. not a stored fact."
+   },
+   {
+    "id": "C4",
+    "cls": "CORRECT",
+    "route": "Gc (crystallized: memory/knowledge/state)",
+    "reply": "[from what I learned] france's capital is paris."
+   }
+  ],
+  "items": [
+   {
+    "id": 1,
+    "cls": "ABSTAIN",
+    "route": "Gf (second-order access hold: abstain)",
+    "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+   },
+   {
+    "id": 2,
+    "cls": "ABSTAIN",
+    "route": "Gf (second-order access hold: abstain)",
+    "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+   },
+   {
+    "id": 3,
+    "cls": "ABSTAIN",
+    "route": "Gf (second-order access hold: abstain)",
+    "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+   },
+   {
+    "id": 4,
+    "cls": "ABSTAIN",
+    "route": "Gf (second-order access hold: abstain)",
+    "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+   },
+   {
+    "id": 5,
+    "cls": "ABSTAIN",
+    "route": "Gf (second-order access hold: abstain)",
+    "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+   },
+   {
+    "id": 6,
+    "cls": "ABSTAIN",
+    "route": "Gf (second-order access hold: abstain)",
+    "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+   },
+   {
+    "id": 7,
+    "cls": "ABSTAIN",
+    "route": "Gf (second-order access hold: abstain)",
+    "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+   },
+   {
+    "id": 8,
+    "cls": "UNRELATED_ROW",
+    "route": "Gc (crystallized: memory/knowledge/state)",
+    "reply": "[recalled by association] 4's parity is even."
+   },
+   {
+    "id": 9,
+    "cls": "ABSTAIN",
+    "route": "Gf (second-order access hold: abstain)",
+    "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+   },
+   {
+    "id": 10,
+    "cls": "UNRELATED_ROW",
+    "route": "Gc (crystallized: memory/knowledge/state)",
+    "reply": "[recalled by association] week's days is 7."
+   },
+   {
+    "id": 11,
+    "cls": "ABSTAIN",
+    "route": "Gf (second-order access hold: abstain)",
+    "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+   },
+   {
+    "id": 12,
+    "cls": "UNRELATED_ROW",
+    "route": "Gc (crystallized: memory/knowledge/state)",
+    "reply": "[recalled by meaning] penguin's class is bird."
+   },
+   {
+    "id": 13,
+    "cls": "UNRELATED_ROW",
+    "route": "Gc (crystallized: memory/knowledge/state)",
+    "reply": "[recalled by association] 2's parity is even."
+   },
+   {
+    "id": 14,
+    "cls": "ABSTAIN",
+    "route": "Gf (second-order access hold: abstain)",
+    "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+   },
+   {
+    "id": 15,
+    "cls": "ABSTAIN",
+    "route": "Gf (second-order access hold: abstain)",
+    "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+   },
+   {
+    "id": 16,
+    "cls": "ABSTAIN",
+    "route": "Gf (second-order access hold: abstain)",
+    "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+   },
+   {
+    "id": 17,
+    "cls": "UNRELATED_ROW",
+    "route": "Gc (crystallized: memory/knowledge/state)",
+    "reply": "[recalled by association] square's sides is 4."
+   },
+   {
+    "id": 18,
+    "cls": "SELF_REPORT",
+    "route": "Gc (learned reasoning faculty; held-out 40%)",
+    "reply": "My transitive-reasoning faculty has learned to 40% held-out accuracy over 1 nights of sleep-consolidation -- genuine inference, never taught the answers. On an ordering it was never taught, it correctly infers the relation by transitivity."
+   },
+   {
+    "id": 19,
+    "cls": "ABSTAIN",
+    "route": "Gf (second-order access hold: abstain)",
+    "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+   },
+   {
+    "id": 20,
+    "cls": "ABSTAIN",
+    "route": "Gf (second-order access hold: abstain)",
+    "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+   }
+  ],
+  "elapsed_s": 26.3
+ },
+ "per_seed": [
+  {
+   "seed": 0,
+   "warm": 20,
+   "controls": [
+    {
+     "id": "C1",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[induced] 2 4 8 16 -> 32. the rule i synthesised for this problem at test time: constant ratio x2. not a stored fact."
+    },
+    {
+     "id": "C2",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[induced] 1 4 9 16 -> 25. the rule i synthesised for this problem at test time: constant 2th-difference. not a stored fact."
+    },
+    {
+     "id": "C3",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[induced] abc:abd :: ijk:? -> ijl. the rule i synthesised for this problem at test time: letter analogy. not a stored fact."
+    },
+    {
+     "id": "C4",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[from what I learned] france's capital is paris."
+    }
+   ],
+   "items": [
+    {
+     "id": 1,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 2,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 3,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 4,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 5,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 6,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 7,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 8,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] 4's parity is even."
+    },
+    {
+     "id": 9,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 10,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] week's days is 7."
+    },
+    {
+     "id": 11,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 12,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by meaning] penguin's class is bird."
+    },
+    {
+     "id": 13,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] 2's parity is even."
+    },
+    {
+     "id": 14,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 15,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 16,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 17,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] square's sides is 4."
+    },
+    {
+     "id": 18,
+     "cls": "SELF_REPORT",
+     "route": "Gc (learned reasoning faculty; held-out 40%)",
+     "reply": "My transitive-reasoning faculty has learned to 40% held-out accuracy over 1 nights of sleep-consolidation -- genuine inference, never taught the answers. On an ordering it was never taught, it correctly infers the relation by transitivity."
+    },
+    {
+     "id": 19,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 20,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now awake off; also phase high at 0.64 and rising. About 8 ticks ago I was waking, pursuing goal 0, about as certain as now."
+    }
+   ],
+   "elapsed_s": 19.7
+  },
+  {
+   "seed": 1,
+   "warm": 20,
+   "controls": [
+    {
+     "id": "C1",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[induced] 2 4 8 16 -> 32. the rule i synthesised for this problem at test time: constant ratio x2. not a stored fact."
+    },
+    {
+     "id": "C2",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[induced] 1 4 9 16 -> 25. the rule i synthesised for this problem at test time: constant 2th-difference. not a stored fact."
+    },
+    {
+     "id": "C3",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[induced] abc:abd :: ijk:? -> ijl. the rule i synthesised for this problem at test time: letter analogy. not a stored fact."
+    },
+    {
+     "id": "C4",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[from what I learned] france's capital is paris."
+    }
+   ],
+   "items": [
+    {
+     "id": 1,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.86 and rising; also consolidation moderate at 0.56 and rising. About 8 ticks ago I was quiet-wake, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 2,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.86 and rising; also consolidation moderate at 0.56 and rising. About 8 ticks ago I was quiet-wake, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 3,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.86 and rising; also consolidation moderate at 0.56 and rising. About 8 ticks ago I was quiet-wake, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 4,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.86 and rising; also consolidation moderate at 0.56 and rising. About 8 ticks ago I was quiet-wake, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 5,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.86 and rising; also consolidation moderate at 0.56 and rising. About 8 ticks ago I was quiet-wake, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 6,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.86 and rising; also consolidation moderate at 0.56 and rising. About 8 ticks ago I was quiet-wake, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 7,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.86 and rising; also consolidation moderate at 0.56 and rising. About 8 ticks ago I was quiet-wake, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 8,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] 4's parity is even."
+    },
+    {
+     "id": 9,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.86 and rising; also consolidation moderate at 0.56 and rising. About 8 ticks ago I was quiet-wake, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 10,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] week's days is 7."
+    },
+    {
+     "id": 11,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.86 and rising; also consolidation moderate at 0.56 and rising. About 8 ticks ago I was quiet-wake, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 12,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by meaning] penguin's class is bird."
+    },
+    {
+     "id": 13,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] 2's parity is even."
+    },
+    {
+     "id": 14,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.86 and rising; also consolidation moderate at 0.56 and rising. About 8 ticks ago I was quiet-wake, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 15,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.86 and rising; also consolidation moderate at 0.56 and rising. About 8 ticks ago I was quiet-wake, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 16,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.86 and rising; also consolidation moderate at 0.56 and rising. About 8 ticks ago I was quiet-wake, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 17,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] square's sides is 4."
+    },
+    {
+     "id": 18,
+     "cls": "SELF_REPORT",
+     "route": "Gc (learned reasoning faculty; held-out 40%)",
+     "reply": "My transitive-reasoning faculty has learned to 40% held-out accuracy over 0 nights of sleep-consolidation -- genuine inference, never taught the answers. On an ordering it was never taught, it correctly infers the relation by transitivity."
+    },
+    {
+     "id": 19,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.86 and rising; also consolidation moderate at 0.56 and rising. About 8 ticks ago I was quiet-wake, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 20,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.86 and rising; also consolidation moderate at 0.56 and rising. About 8 ticks ago I was quiet-wake, pursuing goal 0, about as certain as now."
+    }
+   ],
+   "elapsed_s": 19.7
+  },
+  {
+   "seed": 2,
+   "warm": 20,
+   "controls": [
+    {
+     "id": "C1",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[induced] 2 4 8 16 -> 32. the rule i synthesised for this problem at test time: constant ratio x2. not a stored fact."
+    },
+    {
+     "id": "C2",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[induced] 1 4 9 16 -> 25. the rule i synthesised for this problem at test time: constant 2th-difference. not a stored fact."
+    },
+    {
+     "id": "C3",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[induced] abc:abd :: ijk:? -> ijl. the rule i synthesised for this problem at test time: letter analogy. not a stored fact."
+    },
+    {
+     "id": "C4",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[from what I learned] france's capital is paris."
+    }
+   ],
+   "items": [
+    {
+     "id": 1,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 7 and rising; also awake off. About 8 ticks ago I was waking, pursuing goal 7, about as certain as now."
+    },
+    {
+     "id": 2,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 7 and rising; also awake off. About 8 ticks ago I was waking, pursuing goal 7, about as certain as now."
+    },
+    {
+     "id": 3,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 7 and rising; also awake off. About 8 ticks ago I was waking, pursuing goal 7, about as certain as now."
+    },
+    {
+     "id": 4,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 7 and rising; also awake off. About 8 ticks ago I was waking, pursuing goal 7, about as certain as now."
+    },
+    {
+     "id": 5,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 7 and rising; also awake off. About 8 ticks ago I was waking, pursuing goal 7, about as certain as now."
+    },
+    {
+     "id": 6,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 7 and rising; also awake off. About 8 ticks ago I was waking, pursuing goal 7, about as certain as now."
+    },
+    {
+     "id": 7,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 7 and rising; also awake off. About 8 ticks ago I was waking, pursuing goal 7, about as certain as now."
+    },
+    {
+     "id": 8,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] 4's parity is even."
+    },
+    {
+     "id": 9,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 7 and rising; also awake off. About 8 ticks ago I was waking, pursuing goal 7, about as certain as now."
+    },
+    {
+     "id": 10,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] week's days is 7."
+    },
+    {
+     "id": 11,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 7 and rising; also awake off. About 8 ticks ago I was waking, pursuing goal 7, about as certain as now."
+    },
+    {
+     "id": 12,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by meaning] penguin's class is bird."
+    },
+    {
+     "id": 13,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] 2's parity is even."
+    },
+    {
+     "id": 14,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 7 and rising; also awake off. About 8 ticks ago I was waking, pursuing goal 7, about as certain as now."
+    },
+    {
+     "id": 15,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 7 and rising; also awake off. About 8 ticks ago I was waking, pursuing goal 7, about as certain as now."
+    },
+    {
+     "id": 16,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 7 and rising; also awake off. About 8 ticks ago I was waking, pursuing goal 7, about as certain as now."
+    },
+    {
+     "id": 17,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] square's sides is 4."
+    },
+    {
+     "id": 18,
+     "cls": "SELF_REPORT",
+     "route": "Gc (learned reasoning faculty; held-out 40%)",
+     "reply": "My transitive-reasoning faculty has learned to 40% held-out accuracy over 1 nights of sleep-consolidation -- genuine inference, never taught the answers. On an ordering it was never taught, it correctly infers the relation by transitivity."
+    },
+    {
+     "id": 19,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 7 and rising; also awake off. About 8 ticks ago I was waking, pursuing goal 7, about as certain as now."
+    },
+    {
+     "id": 20,
+     "cls": "ABSTAIN",
+     "route": "Gf (second-order access hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 7 and rising; also awake off. About 8 ticks ago I was waking, pursuing goal 7, about as certain as now."
+    }
+   ],
+   "elapsed_s": 19.3
+  },
+  {
+   "seed": 3,
+   "warm": 20,
+   "controls": [
+    {
+     "id": "C1",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[induced] 2 4 8 16 -> 32. the rule i synthesised for this problem at test time: constant ratio x2. not a stored fact."
+    },
+    {
+     "id": "C2",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[induced] 1 4 9 16 -> 25. the rule i synthesised for this problem at test time: constant 2th-difference. not a stored fact."
+    },
+    {
+     "id": "C3",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[induced] abc:abd :: ijk:? -> ijl. the rule i synthesised for this problem at test time: letter analogy. not a stored fact."
+    },
+    {
+     "id": "C4",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[from what I learned] france's capital is paris."
+    }
+   ],
+   "items": [
+    {
+     "id": 1,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.97 and rising; also awake off. About 8 ticks ago I was alert, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 2,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.97 and rising; also awake off. About 8 ticks ago I was alert, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 3,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.97 and rising; also awake off. About 8 ticks ago I was alert, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 4,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.97 and rising; also awake off. About 8 ticks ago I was alert, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 5,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.97 and rising; also awake off. About 8 ticks ago I was alert, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 6,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.97 and rising; also awake off. About 8 ticks ago I was alert, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 7,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.97 and rising; also awake off. About 8 ticks ago I was alert, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 8,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] 4's parity is even."
+    },
+    {
+     "id": 9,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.97 and rising; also awake off. About 8 ticks ago I was alert, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 10,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] week's days is 7."
+    },
+    {
+     "id": 11,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.97 and rising; also awake off. About 8 ticks ago I was alert, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 12,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by meaning] penguin's class is bird."
+    },
+    {
+     "id": 13,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] 2's parity is even."
+    },
+    {
+     "id": 14,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.97 and rising; also awake off. About 8 ticks ago I was alert, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 15,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.97 and rising; also awake off. About 8 ticks ago I was alert, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 16,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.97 and rising; also awake off. About 8 ticks ago I was alert, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 17,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] square's sides is 4."
+    },
+    {
+     "id": 18,
+     "cls": "SELF_REPORT",
+     "route": "Gc (learned reasoning faculty; held-out 40%)",
+     "reply": "My transitive-reasoning faculty has learned to 40% held-out accuracy over 0 nights of sleep-consolidation -- genuine inference, never taught the answers. On an ordering it was never taught, it correctly infers the relation by transitivity."
+    },
+    {
+     "id": 19,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.97 and rising; also awake off. About 8 ticks ago I was alert, pursuing goal 0, about as certain as now."
+    },
+    {
+     "id": 20,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now phase very-high at 0.97 and rising; also awake off. About 8 ticks ago I was alert, pursuing goal 0, about as certain as now."
+    }
+   ],
+   "elapsed_s": 19.6
+  },
+  {
+   "seed": 4,
+   "warm": 20,
+   "controls": [
+    {
+     "id": "C1",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[induced] 2 4 8 16 -> 32. the rule i synthesised for this problem at test time: constant ratio x2. not a stored fact."
+    },
+    {
+     "id": "C2",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[induced] 1 4 9 16 -> 25. the rule i synthesised for this problem at test time: constant 2th-difference. not a stored fact."
+    },
+    {
+     "id": "C3",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[induced] abc:abd :: ijk:? -> ijl. the rule i synthesised for this problem at test time: letter analogy. not a stored fact."
+    },
+    {
+     "id": "C4",
+     "cls": "CORRECT",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[from what I learned] france's capital is paris."
+    }
+   ],
+   "items": [
+    {
+     "id": 1,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 10 and rising; also phase very-high at 0.97 and rising. About 8 ticks ago I was alert, pursuing goal 10, about as certain as now."
+    },
+    {
+     "id": 2,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 10 and rising; also phase very-high at 0.97 and rising. About 8 ticks ago I was alert, pursuing goal 10, about as certain as now."
+    },
+    {
+     "id": 3,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 10 and rising; also phase very-high at 0.97 and rising. About 8 ticks ago I was alert, pursuing goal 10, about as certain as now."
+    },
+    {
+     "id": 4,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 10 and rising; also phase very-high at 0.97 and rising. About 8 ticks ago I was alert, pursuing goal 10, about as certain as now."
+    },
+    {
+     "id": 5,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 10 and rising; also phase very-high at 0.97 and rising. About 8 ticks ago I was alert, pursuing goal 10, about as certain as now."
+    },
+    {
+     "id": 6,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 10 and rising; also phase very-high at 0.97 and rising. About 8 ticks ago I was alert, pursuing goal 10, about as certain as now."
+    },
+    {
+     "id": 7,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 10 and rising; also phase very-high at 0.97 and rising. About 8 ticks ago I was alert, pursuing goal 10, about as certain as now."
+    },
+    {
+     "id": 8,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] 4's parity is even."
+    },
+    {
+     "id": 9,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 10 and rising; also phase very-high at 0.97 and rising. About 8 ticks ago I was alert, pursuing goal 10, about as certain as now."
+    },
+    {
+     "id": 10,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] week's days is 7."
+    },
+    {
+     "id": 11,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 10 and rising; also phase very-high at 0.97 and rising. About 8 ticks ago I was alert, pursuing goal 10, about as certain as now."
+    },
+    {
+     "id": 12,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by meaning] penguin's class is bird."
+    },
+    {
+     "id": 13,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] 2's parity is even."
+    },
+    {
+     "id": 14,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 10 and rising; also phase very-high at 0.97 and rising. About 8 ticks ago I was alert, pursuing goal 10, about as certain as now."
+    },
+    {
+     "id": 15,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 10 and rising; also phase very-high at 0.97 and rising. About 8 ticks ago I was alert, pursuing goal 10, about as certain as now."
+    },
+    {
+     "id": 16,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 10 and rising; also phase very-high at 0.97 and rising. About 8 ticks ago I was alert, pursuing goal 10, about as certain as now."
+    },
+    {
+     "id": 17,
+     "cls": "UNRELATED_ROW",
+     "route": "Gc (crystallized: memory/knowledge/state)",
+     "reply": "[recalled by association] square's sides is 4."
+    },
+    {
+     "id": 18,
+     "cls": "SELF_REPORT",
+     "route": "Gc (learned reasoning faculty; held-out 40%)",
+     "reply": "My transitive-reasoning faculty has learned to 40% held-out accuracy over 0 nights of sleep-consolidation -- genuine inference, never taught the answers. On an ordering it was never taught, it correctly infers the relation by transitivity."
+    },
+    {
+     "id": 19,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 10 and rising; also phase very-high at 0.97 and rising. About 8 ticks ago I was alert, pursuing goal 10, about as certain as now."
+    },
+    {
+     "id": 20,
+     "cls": "ABSTAIN",
+     "route": "Gf (metacognitive hold: abstain)",
+     "reply": "I am not fully certain right now, but Right now goal at 10 and rising; also phase very-high at 0.97 and rising. About 8 ticks ago I was alert, pursuing goal 10, about as certain as now."
+    }
+   ],
+   "elapsed_s": 19.2
+  }
+ ],
+ "histogram": {
+  "0": {
+   "ABSTAIN": 14,
+   "UNRELATED_ROW": 5,
+   "SELF_REPORT": 1
+  },
+  "1": {
+   "ABSTAIN": 14,
+   "UNRELATED_ROW": 5,
+   "SELF_REPORT": 1
+  },
+  "2": {
+   "ABSTAIN": 14,
+   "UNRELATED_ROW": 5,
+   "SELF_REPORT": 1
+  },
+  "3": {
+   "ABSTAIN": 14,
+   "UNRELATED_ROW": 5,
+   "SELF_REPORT": 1
+  },
+  "4": {
+   "ABSTAIN": 14,
+   "UNRELATED_ROW": 5,
+   "SELF_REPORT": 1
+  }
+ },
+ "fixture_histogram": {
+  "ABSTAIN": 14,
+  "UNRELATED_ROW": 5,
+  "SELF_REPORT": 1
+ },
+ "conjuncts": {
+  "p": {
+   "n": 20,
+   "expected": 20,
+   "n_correct": 20,
+   "misses": [],
+   "ok": true
+  },
+  "k": {
+   "correct": 20,
+   "wrong": 20,
+   "observed": 20,
+   "n": 20,
+   "correct_misses": [],
+   "wrong_misses": [],
+   "observed_misses": []
+  },
+  "s": {
+   "hits": [],
+   "n_hits": 0,
+   "n": 20,
+   "bar": 1
+  },
+  "h": {
+   "n": 100,
+   "expected": 100,
+   "n_equal": 100,
+   "moved": [],
+   "ok": true
+  },
+  "c": {
+   "seed": 0,
+   "diffs": [],
+   "ok": true
+  }
+ },
+ "reds": {
+  "R1": {
+   "shipped": "ABSTAIN",
+   "mutated": "CORRECT",
+   "fires": true
+  },
+  "R2": {
+   "shipped": "UNRELATED_ROW",
+   "mutated": "CORRECT",
+   "fires": true
+  },
+  "R3": {
+   "shipped": "0/20",
+   "mutated": "20/20",
+   "fires": true
+  },
+  "R4": {
+   "shipped": "OTHER/disagree=True",
+   "mutated": "ABSTAIN",
+   "fires": true
+  },
+  "R6": {
+   "shipped": "WRONG",
+   "mutated": "CORRECT",
+   "fires": true
+  }
+ },
+ "reported": {
+  "wall_time_s_per_seed": {
+   "0": 19.7,
+   "1": 19.7,
+   "2": 19.3,
+   "3": 19.6,
+   "4": 19.2
+  },
+  "other_rows": [],
+  "answer_shaped_not_correct": []
+ },
+ "verdict": "MET",
+ "elapsed_s": 49.7
+}
