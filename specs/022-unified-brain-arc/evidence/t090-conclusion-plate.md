@@ -171,3 +171,65 @@ flex 5 of 25 in a column of viewport height minus 170 px; the load-bearing assum
 11 px). The layout is NOT adjusted before the measurement: 2.6's NOT MET branch applies as written if the prediction
 holds; any layout change is a stacked commit AFTER section 3 records the first reading, and its re-measurement is a
 disclosed SECOND reading, never the first.
+
+## 3. The record
+
+### 3.1 The FIRST rendered reading (orchestrator, 2026-09-16 22:40 local, clock read at write time; head `51e8031`, the daemon read AFTER its post-commit restart)
+
+Apparatus as run, with its one deviation disclosed: the built-in browser pane was HIDDEN at read time (`innerWidth` 0),
+so the "pane's own" width of 2.2 / 2.8 did not exist; BOTH viewports were emulated (`resize_window`): 1420 x 1321 (fact
+2's pane size) and 1920 x 1080. The script is the committed `tests/instruments/t090_measure_plate.js`, pasted verbatim
+into the page; its two outputs are kept beside the arc's scratch as `measure_first_1420x1321.json` and
+`measure_first_1920x1080.json` (extracted byte-exact from the session transcript, never retyped).
+
+| viewport | plate box (px) | plate content height (px) | charged row | live value in box | licensed chars in box | refused chars in box | `.c5` computed white-space | `<details>` |
+|---|---|---|---|---|---|---|---|---|
+| 1420x1321 | 420 x 174 | 324 | temporal_binding T080 | yes | 102 / 102 | 97 / 97 | normal | collapsed |
+| 1420x1321 | 420 x 174 | 324 | report_order T081 | yes | 105 / 105 | 0 / 77 | normal | collapsed |
+| 1420x1321 | 420 x 174 | 324 | social_cognition T082 | NO | 0 / 105 | 0 / 84 | normal | collapsed |
+| 1920x1080 | 460 x 171 | 324 | temporal_binding T080 | yes | 102 / 102 | 97 / 97 | normal | collapsed |
+| 1920x1080 | 460 x 171 | 324 | report_order T081 | yes | 62 / 105 | 0 / 77 | normal | collapsed |
+| 1920x1080 | 460 x 171 | 324 | social_cognition T082 | NO | 0 / 105 | 0 / 84 | normal | collapsed |
+
+Sentence characters inside the plate's visible box, all charged rows: 304 of 570 at 1420 x 1321;
+261 of 570 at 1920 x 1080. Row x width cells with EVERY character and the live value in the
+box: 2 of 6 (temporal_binding at both widths). Live values at read time (the daemon's, not campaign readings):
+crossmodal bound rate 0.258 / 0.170, report-order margin 0.000 / 0.074, false beliefs 0 / 0.
+
+Conjuncts, each quoted and marked:
+- (p) SERVED (as narrowed by 2.10 (a)): HOLDS -- `/api/all` carries `conclusion` with the three charged rows in registry
+  order on the live daemon; identity with `conclusion_rows(cognition)` by construction, pinned by the scratch-brain test
+  (`tests/test_conclusion_plate.py`, 7 passed, reproduced by the orchestrator with the coverage gate off).
+- (r) READABLE AS RENDERED: HOLDS -- the plate is on the page outside `#bottom` (`insideBottom` false at both widths),
+  every `.c5` block's COMPUTED `white-space` is `normal`, the script found 3 of 3 charged rows.
+- (v1) IN VIEW: **NOT MET** -- at 1420 x 1321 report_order's refused sentence (0 of 77) and all of social_cognition
+  (value, 0 of 105, 0 of 84) lie outside the box; at 1920 x 1080 report_order's licensed sentence is cut at character 62
+  of 105, its refused sentence is out (0 of 77), and all of social_cognition is out. One clipped character is NOT MET;
+  here 266 and 309 are.
+- (v2) THE REFUSAL HOLDS: HOLDS -- served rows 3 = charged rows 3 (no None row on the plate), verdict words found: 0.
+- (g) THE GATE: HOLDS -- `conclusion_protocol --assert` rc 0, surface debt 1 at its baseline (integration's PCI row,
+  T070's), the mechanism clause 0 findings on the live registry and 1 on its constructed blank (R4).
+
+**VERDICT OF THE FIRST READING: NOT MET** ((v1) fails at both widths; (p) and (r) hold, so it is a NOT MET and not a
+REFUSED). The builder's arithmetic (2.10 (c)) predicted this before the number was read: plate content 324 px measured
+(predicted about 325) against 174 px and 171 px available (predicted about 223 and 175 -- the 1420-wide page has a fourth
+grid row, the 220 px chat strip of the `max-width:1500px` rule, which the prediction did not count).
+
+R1's turn, read by the same instrument: BEFORE (fact 2, `633dad1`) 0 visible sentence characters on every charged row at
+both widths; AFTER, first reading: 304 and 261 of 570. The red turned for ONE row of three.
+
+REPORTED, never barred:
+- The cause is the column, not the plate. `#widgets` is a fixed-height flex column with `overflow:hidden`, and EVERY
+  plate in it is clipped at both widths (content height against box height, px, at 1920 x 1080 / 1420 x 1321):
+  ARM 105 vs 74 / 76; MOTOR MIX 145 vs 106 / 108; BEHAVIOR & EMOTION 180 vs 139 / 141; CONSCIOUSNESS 324 vs 171 / 174;
+  HARDWARE TARGET 520 vs 171 / 174; NEUROMODULATORS 250 vs 106 / 108; WORLD MODEL 203 vs 106 / 108. Clipped content is
+  unreachable: the column does not scroll.
+- THIS ARC'S OWN COST on the six other plates: the new plate raised the column's flex total from 20 to 25, so every
+  other plate lost about a fifth of its height at `59141bf` (no rendered BEFORE of those six exists; the figure is
+  the flex arithmetic, 910 px column less gaps, disclosed as arithmetic).
+- The ACCESS plate after the three C5 rows left it: 4 rows, 1 in view (`ignitions`); `percept holds bus`, `PCI`,
+  `integration` out of view at both widths (fact 1's debt, unchanged in kind).
+- `<details>` collapsed on every row at both widths (2.5's control: nothing was expanded to read the sentences).
+
+2.6's NOT MET branch applies to this reading as written: T090 stays [ ]; nothing on T080's, T081's or T082's notes
+changes. What follows (3.2) is a change to the ARTIFACT under an UNCHANGED (v1), pre-registered before it is built.
