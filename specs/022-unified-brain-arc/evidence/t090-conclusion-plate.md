@@ -521,3 +521,20 @@ THE VERDICT LINE WILL CARRY BOTH READINGS AND WHAT CHANGED BETWEEN THEM, in this
    (v1) is quoted verbatim at 3.2.0 and the committed sub-measurement reproduced 3.1's 304 and 261
    bit-exact at the unchanged page before anything was built."
 In every branch the chat's reply is untouched, and no instrument, reading, symbol or pin moves.
+
+#### 3.2.7 Amendment (2026-09-16 23:38 local, clock read at write time; BEFORE any red of 3.2.2 is run; on the instrument builder's report at `fff1a57`)
+
+R7'S SCROLLER AT THE UNCHANGED HEAD IS THE PLATE, NOT THE COLUMN. 3.2.2 wrote R7 as `#widgets.scrollTop = 400`. At the
+unchanged head `#widgets` does not overflow -- its seven flex children fill it exactly and each clips its own overflow
+-- so its scrollHeight equals its clientHeight and an assigned scrollTop CLAMPS TO 0: the precondition would not fire
+and R7 would read green for the wrong reason (the builder's flag; a silently clamped red is the claim "the instrument
+can fail" failing quietly). The CONSCIOUSNESS plate itself overflows (content 324 px in a 171 / 174 px box), is
+`overflow:hidden` (scrollable by script) and is a member of the clip chain. So at this head R7 sets THE PLATE's
+scrollTop to 150 and reads the refusal; the orchestrator first reads back the assigned scrollTop on BOTH nodes and
+records which one took the offset (the clamp on `#widgets` is recorded as data, not assumed). After the layout change
+the column is the scroller and R6a / R7 are re-run on `#widgets` as 3.2.2 wrote them. R7b and R7c are each run as ONE
+synchronous expression (the 1 Hz repaint rewrites `#wC5` and would undo a constructed mutation between two calls).
+R7c's "committed census" arm is the first reading's script (`59141bf`'s bytes), byte-preserved and wrapped as a
+callable so both censuses read the SAME mutated page in the same expression. The mutants `trust_the_scroll` and
+`details_reported_not_refused` are scratch copies of the committed script with ONE anchored replacement each (the
+builder's `make_mutants.py`, each anchor matched exactly once); they are never committed. Nothing else in 3.2 moves.
