@@ -192,3 +192,29 @@ condition) -> 3. the campaign entry + `c0_pin_check()` + R5's test -> 4. the orc
 committed once -> 5. section 3 the record -> 6. on MET: the `CAPABILITY_BAR` row with the registry-count tests moved
 -> 7. the surfaces per 2.6 -> panel (3 lenses + refuters judging CLAIM and FIX) -> fold -> stacked with T090 for ONE
 battery (the Codex closing report when the cap lifts, 2.0).
+
+### 2.10 Amendments (dated, appended; nothing above is edited in place)
+
+2026-09-17 02:27 local (clock read at write time), on the builder's report at `181ec3e` (module `2a13221`, campaign entry
+`181ec3e`), BEFORE the campaign is run:
+
+(a) FACT 2 IS WRONG ABOUT TEXT, AND ABOUT THE ROUTE LABEL. It says "Class AND text are identical across the five
+seeds". The CLASS is (100 of 100 item x seed cells, controls 20 of 20). The TEXT is identical on only the 5 recalled rows
+(items 8, 10, 12, 13, 17) and the 4 controls: 15, 14, 15 and 15 of 20 replies differ from seed 0's on seeds 1-4, because
+the hold's reply narrates the brain's state and the state differs by seed. The orchestrator's orientation script
+compared text only for recalled and answer-shaped rows -- a blind spot in MY instrument, caught by the builder running
+the comparison on every row. Re-checking after that report found a second half the builder's report missed (it says the
+routes agree): the 14 abstains arrive through TWO DIFFERENT HOLDS -- route `Gf (second-order access hold: abstain)` on
+seeds 0-2 and `Gf (metacognitive hold: abstain)` on seeds 3-4. Both labels carry the word rule 1 reads, so the class is
+the same; the finding is C2's (two holds pre-empt the answer path, by seed), not this instrument's. No conjunct compares
+text or route ACROSS seeds: (h) is over classes, and (c) compares seed 0 with itself (sequential vs concurrent), where
+text IS deterministic (the builder's dry run: equal on class, route and reply).
+(b) 2.8's COST ESTIMATE was about six times high: measured 16.7 to 17.8 s per seed, about 36 s for the campaign.
+(c) TWO READINGS OF THE RECORD the module makes, accepted: the ` (somatic` suffix is removed when the reply is RECORDED
+(`run_seed`), as the audit's and the orientation's transcripts did, not inside `classify` (2.3 never mentions it; a
+suffix carrying digits would otherwise reach a numeric key); and `FALLBACK` ports the scratch battery's three
+substrings (2.3 rule 3's "two strings" named its two classes).
+(d) DISCLOSED: the builder's DRY RUN (2.9 step 3, a scratch pin on a dirty tree at `2a13221`) read MET with the
+histogram of fact 2 on every seed, so the campaign's outcome was seen in dry-run form before the pinned run. The pinned
+run on a clean tree is the record; the dry pin is scratch and is not cited for any number.
+Nothing here moves a conjunct, a red, the key or the verdict rule.
