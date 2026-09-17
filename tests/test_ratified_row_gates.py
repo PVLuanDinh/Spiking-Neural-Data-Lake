@@ -33,9 +33,38 @@ def test_the_capability_bar_catches_a_claim_without_its_measurement():
     )
 
 
-def test_the_capability_registry_is_empty_and_clean_today():
-    assert capability_bar._registry_from_source() == {}
+#: The one row the registry carries today. Pinned here as a literal, never read from the module,
+#: so a renamed or dropped key is a red rather than a silently-agreeing tautology.
+C0_TASK = "everyday reasoning, 20 items (C0)"
+
+
+def test_the_capability_registry_holds_only_the_c0_row_and_is_clean_today():
+    # Was `test_the_capability_registry_is_empty_and_clean_today`, asserting `== {}`. The registry
+    # stopped being empty in this commit (specs/022 C0, evidence/c0-everyday-battery.md 2.6 MET), so
+    # the count pin MOVES WITH the row rather than being deleted (obs #2200).
+    assert set(capability_bar._registry_from_source()) == {C0_TASK}
     assert capability_bar.findings() == []
+
+
+def test_the_c0_row_carries_its_number_and_refuses_the_human_side():
+    reg = capability_bar._registry_from_source()
+    protocol, human, human_prov, brain, brain_prov, date, verdict = reg[C0_TASK]
+    # Nothing in the registry's own findings names this row: it is written the way the contract
+    # requires a row whose human number cannot be obtained to be written.
+    assert [f for f in capability_bar.findings() if C0_TASK in f] == []
+    assert human is None and verdict.startswith("REFUSED"), (human, verdict)
+    assert brain == 0.0 and date == "2026-09-17"
+    assert "Brain.respond(q, human=True)" in protocol and "throwaway_home()" in protocol
+    assert "tools/c0_everyday_battery.json" in brain_prov and "37135d7" in brain_prov
+    assert "none is claimed" in human_prov
+    # The registry's own RED, on THIS row: a comparison word beside this task name on a surface a
+    # reader sees is a finding, and it says REFUSED rather than "incomplete".
+    red = capability_bar.findings(reg, {"docs/PITCH.md": f"the brain is superhuman on {C0_TASK}"})
+    assert any(C0_TASK in x and "REFUSED" in x for x in red), red
+    # ...and the same line without the comparison word is not.
+    assert (
+        capability_bar.findings(reg, {"docs/PITCH.md": f"the brain was scored on {C0_TASK}"}) == []
+    )
 
 
 def test_the_retention_label_is_consistent_and_every_reclaimer_is_accounted_for():

@@ -67,7 +67,8 @@ TRACKED_SURFACES = (
     "README.md",
 )
 
-#: task -> row. EMPTY TODAY, and that is the honest state: no capability claim has been earned.
+#: task -> row. ONE ROW TODAY, and it is a REFUSED one: a measured number with the protocol it was
+#: measured under, and no human number, so no capability claim has been earned by it either.
 #: Row shape: (protocol, human, human_provenance, brain, brain_provenance, date, verdict)
 #:   protocol           what was run, exactly, on both sides -- the same words for both, or it is not a comparison
 #:   human              the human number, or None when none could be obtained under a matching protocol
@@ -75,7 +76,31 @@ TRACKED_SURFACES = (
 #:   brain              this brain's number, or None before it is measured
 #:   brain_provenance   the evidence file and commit the number came from
 #:   verdict            "REFUSED: ..." when human is None; else a comparison word or "below"
-CAPABILITY_BAR: dict[str, tuple] = {}
+#
+# 2026-09-17, C0 (specs/022, evidence/c0-everyday-battery.md 2.6, MET branch) -- the first row, and it is
+# THE SESSION'S CALL under the owner's 2026-09-05 authorization ("every open owner call is the session's,
+# disclosed per row"). This module's own text says a TARGET is a row the owner writes: this row sets NO
+# target and states no relation between the two sides. It records one measured number with the protocol it
+# was measured under, and writes the human side as None with the REFUSED verdict -- so from today the
+# registry's own surface check refuses any of COMPARISON_WORDS standing beside this task name anywhere a
+# reader can see. That refusal is the point of the row; the number is only what was measured.
+CAPABILITY_BAR: dict[str, tuple] = {
+    "everyday reasoning, 20 items (C0)": (
+        "make_brain(seed=<s>, persist=False) under substrate.home.throwaway_home(), 20 warm-up ticks, "
+        "the 4 controls then the 20 items through Brain.respond(q, human=True); the reply is recorded "
+        "with any ' (somatic' suffix removed (the L12 audit's and the orientation's transcript rule)",
+        None,
+        "no human number exists under this protocol and none is claimed: 20 questions put through one "
+        "chat lane and scored by a frozen regex table is not a thing any person has been measured on, "
+        "here or in any source this project can cite.",
+        0.0,
+        "tools/c0_everyday_battery.json, campaign head 37135d7 (the pin committed at b167118), "
+        "2026-09-17: 0 of 20 CORRECT on each of seeds 0-4; controls 20 of 20; "
+        "14 ABSTAIN / 5 UNRELATED_ROW / 1 SELF_REPORT",
+        "2026-09-17",
+        "REFUSED: no human number under a matching protocol",
+    )
+}
 
 _MIN_PROV = 24  # a provenance shorter than this is a label, not a provenance (CHOSEN, disclosed)
 _QUOTE = chr(34)
