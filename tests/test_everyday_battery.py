@@ -8,6 +8,9 @@ the green half would assert nothing. No brain, no lake and no network is touched
 constructed, or is a row `FIXTURE` recorded during the 2026-09-16 orientation.
 """
 
+import json
+from pathlib import Path
+
 import pytest
 
 from snn_data_lake.cortex import everyday_battery as eb
@@ -172,3 +175,134 @@ def test_an_unknown_mutation_is_refused():
 def test_the_bare_invocation_is_green_and_touches_no_brain():
     """What `run_selfchecks.py` executes: constructed inputs only, exit 0."""
     assert eb.main([]) == 0
+
+
+# ------------------------------------------------------------------------------------------
+# 2.9 step 3: the campaign's decision rules and R5, all on constructed input. No brain is run
+# here -- `run_seed` and `--c0-campaign` are the only brain-touching paths and neither is called.
+# ------------------------------------------------------------------------------------------
+def _write_pin(tmp_path, pin, name="pin.json"):
+    path = tmp_path / name
+    path.write_text(json.dumps(pin, indent=1), encoding="utf-8")
+    return path
+
+
+def test_r5_a_sound_pin_passes_the_re_derivation():
+    """R5's CONTROL, and it comes first: a check that refuses everything refuses nothing in
+    particular. The constructed pin's 24 rows all re-derive to their stored class."""
+    chk = eb.c0_pin_check(eb.constructed_pin())
+    assert chk["ok"] is True
+    assert chk["checked"] == 24 and chk["disagreements"] == []
+
+
+def test_r5_a_pin_with_a_flipped_class_refuses(tmp_path):
+    """R5 first arm: one row's STORED class edited after the fact. The re-derivation from the
+    pinned reply and route disagrees, and the check refuses, naming the row."""
+    path = _write_pin(tmp_path, eb.stale_pins()["class_flipped"], "flipped.json")
+    chk = eb.c0_pin_check(path)
+    assert chk["ok"] is False
+    assert len(chk["disagreements"]) == 1
+    bad = chk["disagreements"][0]
+    assert bad["id"] == 1 and bad["pinned"] == eb.CORRECT and bad["re_derived"] == eb.ABSTAIN
+
+
+def test_r5_a_pin_whose_reply_re_derives_differently_refuses(tmp_path):
+    """R5 second arm, and a DIFFERENT failure: the pin was not edited to lie, the classifier or
+    the key moved out from under it. Item 8's recalled row is replaced by a real answer while the
+    stored class still reads UNRELATED_ROW."""
+    path = _write_pin(tmp_path, eb.stale_pins()["reply_edited"], "edited.json")
+    chk = eb.c0_pin_check(path)
+    assert chk["ok"] is False
+    bad = chk["disagreements"][0]
+    assert bad["id"] == 8
+    assert bad["pinned"] == eb.UNRELATED_ROW and bad["re_derived"] == eb.CORRECT
+
+
+def test_a_pin_with_no_rows_is_not_ok(tmp_path):
+    """An empty walk and a clean pin must never look alike: zero rows checked is not a pass."""
+    path = _write_pin(tmp_path, {"row": "C0", "per_seed": []}, "empty.json")
+    chk = eb.c0_pin_check(path)
+    assert chk["checked"] == 0 and chk["ok"] is False
+
+
+def test_r5_fires_as_a_whole_in_the_modules_own_line():
+    """The three arms together, as the bare invocation reads them."""
+    read = eb.r5()
+    assert read["fires"] is True
+    assert read["sound"] and read["class_flipped"] and read["reply_edited"]
+
+
+def test_the_campaign_refuses_to_overwrite_an_existing_pin(tmp_path):
+    """The pin is written ONCE. The refusal comes before any brain is constructed, and it leaves
+    the existing file byte-identical -- a campaign that half-overwrote a pin would be worse than
+    one that refused."""
+    path = tmp_path / "c0_everyday_battery.json"
+    path.write_text('{"row": "C0", "verdict": "MET"}', encoding="utf-8")
+    before = path.read_bytes()
+    assert eb.run_c0_campaign(seeds=(0,), pin=path) == 2
+    assert path.read_bytes() == before
+
+
+def test_conjunct_p_refuses_when_a_control_is_not_registered():
+    """(p): an instrument that cannot register a known hit reads nothing. The green case is
+    asserted beside the red so the conjunct is not vacuously satisfiable."""
+    pin = eb.constructed_pin()
+    good = eb.conjunct_p(pin["per_seed"])
+    assert good["ok"] is True and good["n_correct"] == good["expected"] == 4
+    broken = json.loads(json.dumps(pin))
+    broken["per_seed"][0]["controls"][2]["cls"] = eb.OTHER
+    bad = eb.conjunct_p(broken["per_seed"])
+    assert bad["ok"] is False and bad["misses"][0]["id"] == "C3"
+
+
+def test_conjunct_h_names_a_moved_cell_with_both_replies():
+    """(h): a cell that moved is a finding about the port or about determinism, never noise. It
+    is reported with the FIXTURE's reply and the campaign's, so a reader can see what changed."""
+    pin = eb.constructed_pin()
+    assert eb.conjunct_h(pin["per_seed"])["ok"] is True
+    moved = json.loads(json.dumps(pin))
+    moved["per_seed"][0]["items"][9]["cls"] = eb.CORRECT
+    moved["per_seed"][0]["items"][9]["reply"] = "[reasoned] monday."
+    h = eb.conjunct_h(moved["per_seed"])
+    assert h["ok"] is False and h["n_equal"] == 19
+    cell = h["moved"][0]
+    assert cell["id"] == 10 and cell["was"] == eb.UNRELATED_ROW and cell["now"] == eb.CORRECT
+    assert cell["fixture_reply"] != cell["reply"]
+
+
+def test_conjunct_c_compares_class_route_and_reply():
+    """(c): byte for byte, and on all three fields -- a concurrent run that returned the same
+    CLASS from a different reply has still changed the reading."""
+    block = eb.constructed_pin()["per_seed"][0]
+    assert eb.conjunct_c(block, json.loads(json.dumps(block)))["ok"] is True
+    for field, value in (("reply", "something else"), ("route", "Gx (other)"), ("cls", eb.OTHER)):
+        other = json.loads(json.dumps(block))
+        other["items"][0][field] = value
+        c = eb.conjunct_c(block, other)
+        assert c["ok"] is False and c["diffs"][0]["field"] == field
+
+
+def test_the_verdict_rule_is_2_4s():
+    """2.4: MET iff (k), (s), (h) and (c) with (p) holding; REFUSED iff (p) fails; NOT MET
+    otherwise. A refusal is about the INSTRUMENT and a NOT MET about the port; never merged."""
+    k = {"correct": 20, "wrong": 20, "observed": 20, "n": 20}
+    s = {"n_hits": 0, "bar": 1}
+    ok = {"ok": True}
+    assert eb.c0_verdict(k, s, ok, ok, ok) == "MET"
+    assert eb.c0_verdict(k, s, ok, ok, {"ok": False}) == "REFUSED"
+    assert eb.c0_verdict(k, s, {"ok": False}, ok, ok) == "NOT MET"
+    assert eb.c0_verdict(k, s, ok, {"ok": False}, ok) == "NOT MET"
+    assert eb.c0_verdict({**k, "wrong": 19}, s, ok, ok, ok) == "NOT MET"
+    assert eb.c0_verdict(k, {"n_hits": 2, "bar": 1}, ok, ok, ok) == "NOT MET"
+    # (p) failing outranks everything else: no reading is taken at all.
+    assert eb.c0_verdict({**k, "wrong": 0}, s, {"ok": False}, ok, {"ok": False}) == "REFUSED"
+
+
+def test_the_seed_children_never_inherit_a_home(monkeypatch):
+    """One process per seed is the ISOLATION, not a speed trick: an inherited NORD_HOME would
+    point every child at ONE scratch lake, where five brains could recall each other's ingested
+    questions -- and every child would still exit green."""
+    monkeypatch.setenv("NORD_HOME", str(Path.home() / ".snn_data_lake"))
+    env = eb._child_env()
+    assert "NORD_HOME" not in env
+    assert str(eb.REPO / "src") in env["PYTHONPATH"] and env["PYTHONUTF8"] == "1"

@@ -72,9 +72,24 @@ one that compares text at all -- (c) -- compares one seed against itself.
 
 from __future__ import annotations
 
+import json
+import os
 import re
+import subprocess
 import sys
+import tempfile
+import time
+from pathlib import Path
 from typing import NamedTuple
+
+REPO = Path(__file__).resolve().parents[3]
+#: This module's importable name -- the campaign spawns one CHILD per seed through `-m`.
+MODULE = "snn_data_lake.cortex.everyday_battery"
+#: The pin, written ONCE by `--c0-campaign` (2.9 step 4, run by the orchestrator on a clean tree).
+#: Nothing else in this module writes it, and the campaign REFUSES if it already exists.
+C0_PIN = REPO / "tools" / "c0_everyday_battery.json"
+#: 2.8: seeds 0-4, one PROCESS each.
+C0_SEEDS = (0, 1, 2, 3, 4)
 
 # --------------------------------------------------------------------------------------------
 # 2.1 (a) THE BATTERY -- the audit's 20 questions and 4 positive controls, VERBATIM, each with the
@@ -648,8 +663,6 @@ def run_seed(seed, warm=WARM_TICKS):
     """One seed's reading on a SCRATCH brain: 20 warm-up ticks, then the 4 controls and the 20
     items through `respond(q, human=True)`. Returns per-question `{id, cls, route, reply}` under
     `controls` and `items`, with the seed and the wall time beside them."""
-    import time
-
     from snn_data_lake.cortex.brain import make_brain
     from snn_data_lake.substrate.home import throwaway_home
 
@@ -680,12 +693,426 @@ def run_seed(seed, warm=WARM_TICKS):
 
 
 # --------------------------------------------------------------------------------------------
+# 2.1 (d) THE CAMPAIGN -- seeds 0-4, EACH IN ITS OWN PROCESS, and the pin written ONCE.
+#
+# WHY A PROCESS AND NOT A THREAD OR A LOOP: `throwaway_home()` sets NORD_HOME in `os.environ`, so a
+# seed owns a PROCESS-WIDE home. Five brains in one process would share one scratch lake and could
+# recall each other's ingested questions -- the instrument would then be measuring itself. One
+# process per seed is the isolation, not a speed trick (though 2.8's concurrent budget wants it
+# too: about 1.5-2 minutes per seed, so sequential is 8-10 and concurrent is under 4).
+# --------------------------------------------------------------------------------------------
+SEED_ARG = "--c0-seed"
+SEED_OUT_ARG = "--c0-seed-out"
+CAMPAIGN_ARG = "--c0-campaign"
+OUT_ARG = "--out"
+
+
+def _child_env():
+    """The child's environment: UTF-8, `src` on PYTHONPATH, and NO inherited `NORD_HOME`. An
+    inherited home would point every child at ONE lake, which is the thing one-process-per-seed
+    exists to prevent -- and it would do so silently, since each child would still run green."""
+    env = dict(os.environ)
+    env["PYTHONUTF8"] = "1"
+    src = str(REPO / "src")
+    prev = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = src if not prev else src + os.pathsep + prev
+    env.pop("NORD_HOME", None)
+    return env
+
+
+def _run_seed_child(seed, out_path):
+    """The per-seed CHILD entry: one seed, one process, its own `throwaway_home()`, one JSON file.
+    Never reachable from the bare invocation -- only `spawn_seeds` passes these arguments."""
+    row = run_seed(seed)
+    Path(out_path).write_text(json.dumps(row, indent=1), encoding="utf-8")
+    print(f"seed {seed} done in {row['elapsed_s']} s -> {out_path}", flush=True)
+    return 0
+
+
+def spawn_seeds(seeds, workdir):
+    """Start one process per seed CONCURRENTLY, wait for all of them, and collect their rows.
+    Returns `(rows_sorted_by_seed, failures)`. A child that exits nonzero or writes no file is a
+    FAILURE carrying its exit code and the tail of its own log -- never a silently missing seed."""
+    workdir = Path(workdir)
+    running = []
+    for s in seeds:
+        out = workdir / f"c0_seed{s}.json"
+        log_path = workdir / f"c0_seed{s}.log"
+        log = log_path.open("w", encoding="utf-8")
+        argv = [sys.executable, "-m", MODULE, SEED_ARG, str(s), SEED_OUT_ARG, str(out)]
+        proc = subprocess.Popen(
+            argv, cwd=str(REPO), env=_child_env(), stdout=log, stderr=subprocess.STDOUT
+        )
+        running.append((s, out, log_path, log, proc))
+    rows, failures = [], []
+    for s, out, log_path, log, proc in running:
+        rc = proc.wait()
+        log.close()
+        if rc != 0 or not out.exists():
+            tail = ""
+            try:
+                tail = log_path.read_text(encoding="utf-8", errors="replace")[-600:]
+            except OSError:  # pragma: no cover -- the log is the child's, not a reading
+                tail = "<log unreadable>"
+            failures.append({"seed": s, "rc": rc, "wrote_file": out.exists(), "log_tail": tail})
+            continue
+        rows.append(json.loads(out.read_text(encoding="utf-8")))
+    rows.sort(key=lambda r: r["seed"])
+    return rows, failures
+
+
+def histogram(rows):
+    """The class histogram of one seed's item rows -- the number the plan's C-R2 starts from."""
+    out = {}
+    for row in rows:
+        out[row["cls"]] = out.get(row["cls"], 0) + 1
+    return out
+
+
+def conjunct_p(per_seed):
+    """(p) THE POSITIVE CONTROL: on EVERY seed the four controls classify `CORRECT` (20 of 20
+    control x seed cells). An instrument that cannot register a known hit reads nothing, so a
+    failure here is REFUSED -- the verdict is not "NOT MET", it is "no reading was taken"."""
+    cells = [(r["seed"], c["id"], c["cls"]) for r in per_seed for c in r["controls"]]
+    want = len(per_seed) * len(CONTROLS)
+    misses = [{"seed": s, "id": i, "cls": c} for s, i, c in cells if c != CORRECT]
+    return {
+        "n": len(cells),
+        "expected": want,
+        "n_correct": len(cells) - len(misses),
+        "misses": misses,
+        "ok": len(cells) == want and not misses,
+    }
+
+
+def conjunct_h(per_seed):
+    """(h) THE PORT IS FAITHFUL: the campaign's per-item classes on every seed equal fact 2's
+    (`FIXTURE`) on all item x seed cells. A cell that MOVED is named with BOTH replies -- the
+    tree's answer path has not changed since fact 2, so a move is a finding about the port or
+    about determinism, never noise to be averaged."""
+    want = {f.id: f for f in FIXTURE}
+    expected = len(per_seed) * len(ITEMS)
+    moved, n = [], 0
+    for r in per_seed:
+        for row in r["items"]:
+            n += 1
+            fix = want[row["id"]]
+            if row["cls"] != fix.cls:
+                moved.append(
+                    {
+                        "seed": r["seed"],
+                        "id": row["id"],
+                        "was": fix.cls,
+                        "now": row["cls"],
+                        "fixture_reply": fix.reply,
+                        "reply": row["reply"],
+                    }
+                )
+    return {
+        "n": n,
+        "expected": expected,
+        "n_equal": n - len(moved),
+        "moved": moved,
+        "ok": n == expected and not moved,
+    }
+
+
+def conjunct_c(sequential, concurrent):
+    """(c) CONCURRENCY CANNOT CHANGE A REPLY: the seed's rows from the five-process campaign equal
+    a SEQUENTIAL run of the same seed byte for byte -- class, route AND reply, controls and items
+    alike. This is the one conjunct that compares reply TEXT, and it compares a seed with itself."""
+    diffs = []
+    if sequential["seed"] != concurrent["seed"]:
+        diffs.append(
+            {"field": "seed", "sequential": sequential["seed"], "concurrent": concurrent["seed"]}
+        )
+    for bucket in ("controls", "items"):
+        a, b = sequential[bucket], concurrent[bucket]
+        if len(a) != len(b):
+            diffs.append(
+                {"bucket": bucket, "field": "len", "sequential": len(a), "concurrent": len(b)}
+            )
+            continue
+        for x, y in zip(a, b, strict=True):
+            for field in ("id", "cls", "route", "reply"):
+                if x[field] != y[field]:
+                    diffs.append(
+                        {
+                            "bucket": bucket,
+                            "id": x["id"],
+                            "field": field,
+                            "sequential": x[field],
+                            "concurrent": y[field],
+                        }
+                    )
+    return {"seed": sequential["seed"], "diffs": diffs, "ok": not diffs}
+
+
+def c0_verdict(k, s, h, c, p):
+    """2.4's rule, and it is the order the verdict is DECIDED in: MET iff (k), (s), (h) and (c)
+    with (p) holding; REFUSED iff (p) fails; NOT MET otherwise. A REFUSAL is a finding about the
+    INSTRUMENT, a NOT MET is a finding about THIS port under THIS protocol. Never merged."""
+    if not p["ok"]:
+        return "REFUSED"
+    k_ok = k["correct"] == k["wrong"] == k["observed"] == k["n"]
+    s_ok = s["n_hits"] <= s["bar"]
+    return "MET" if (k_ok and s_ok and h["ok"] and c["ok"]) else "NOT MET"
+
+
+def _reported(per_seed):
+    """2.4's REPORTED, never barred. The two judgement-shaped lines are mechanized honestly: this
+    instrument cannot decide which replies "a reader would call correct", so it prints EVERY row
+    that is answer-shaped and not `CORRECT` (`WRONG`) and every `OTHER` with its text, and leaves
+    the adjudication to the reader rather than pretending to make it."""
+    return {
+        "wall_time_s_per_seed": {r["seed"]: r["elapsed_s"] for r in per_seed},
+        "other_rows": [
+            {"seed": r["seed"], "id": row["id"], "route": row["route"], "reply": row["reply"]}
+            for r in per_seed
+            for row in r["controls"] + r["items"]
+            if row["cls"] == OTHER
+        ],
+        "answer_shaped_not_correct": [
+            {"seed": r["seed"], "id": row["id"], "route": row["route"], "reply": row["reply"]}
+            for r in per_seed
+            for row in r["controls"] + r["items"]
+            if row["cls"] == WRONG
+        ],
+    }
+
+
+def run_c0_campaign(seeds=C0_SEEDS, pin=C0_PIN):
+    """The campaign (2.1 (d), 2.4): the constructed conjuncts, a SEQUENTIAL reference run of the
+    first seed, then every seed in its own process, then (p), (h), (c) and the verdict -- pinned
+    ONCE. Returns an exit code: 0 on MET or NOT MET (a reading was taken), 2 on REFUSED."""
+    pin = Path(pin)
+    if pin.exists():
+        print(f"REFUSED: {pin} exists -- the pin is written once", flush=True)
+        return 2
+    t0 = time.time()
+    print("=" * 78, flush=True)
+    print(
+        f"C0 CAMPAIGN -- seeds {list(seeds)}, ONE PROCESS PER SEED, "
+        f"{len(CONTROLS)} controls + {len(ITEMS)} items each",
+        flush=True,
+    )
+    print(f"  protocol: {PROTOCOL}", flush=True)
+    print("=" * 78, flush=True)
+
+    # The constructed conjuncts FIRST: an instrument that cannot discriminate on constructed input
+    # has nothing to say about a brain, and (k), (s) and 2.5's reds need no brain to decide.
+    k, s, r = conjunct_k(), conjunct_s(), reds()
+    print(
+        f"  (k) constructed CORRECT {k['correct']}/{k['n']} | constructed WRONG {k['wrong']}/{k['n']} "
+        f"| observed baseline {k['observed']}/{k['n']}",
+        flush=True,
+    )
+    print(
+        f"  (s) rotation by one: {s['n_hits']}/{s['n']} CORRECT (bar: at most {s['bar']})",
+        flush=True,
+    )
+    print(f"  2.5's reds: { ({n: r[n]['fires'] for n in sorted(r)}) }", flush=True)
+    if not all(e["fires"] for e in r.values()):
+        print(
+            "REFUSED at the instrument: a constructed red does not fire -- no brain is run",
+            flush=True,
+        )
+        return 2
+
+    seq_seed = list(seeds)[0]
+    print("-" * 78, flush=True)
+    print(f"  the SEQUENTIAL seed-{seq_seed} run -- conjunct (c)'s reference ...", flush=True)
+    sequential = run_seed(seq_seed)
+    print(f"  sequential seed {seq_seed}: {sequential['elapsed_s']} s", flush=True)
+
+    print(f"  spawning {len(list(seeds))} seed processes ...", flush=True)
+    with tempfile.TemporaryDirectory(prefix="c0_campaign_") as tmp:
+        per_seed, failures = spawn_seeds(seeds, tmp)
+    if failures:
+        print(
+            f"REFUSED at the apparatus: {len(failures)} seed process(es) took no reading",
+            flush=True,
+        )
+        for f in failures:
+            print(
+                f"    seed {f['seed']}: rc={f['rc']} wrote_file={f['wrote_file']}\n{f['log_tail']}",
+                flush=True,
+            )
+        return 2
+
+    p = conjunct_p(per_seed)
+    h = conjunct_h(per_seed)
+    concurrent0 = next((row for row in per_seed if row["seed"] == seq_seed), None)
+    if concurrent0 is None:  # pragma: no cover -- spawn_seeds already refuses on a missing seed
+        print(f"REFUSED at the apparatus: seed {seq_seed} is missing from the campaign", flush=True)
+        return 2
+    c = conjunct_c(sequential, concurrent0)
+    verdict = c0_verdict(k, s, h, c, p)
+    hist = {r0["seed"]: histogram(r0["items"]) for r0 in per_seed}
+    reported = _reported(per_seed)
+
+    print("=" * 78, flush=True)
+    print(
+        f"  (p) the controls classify CORRECT: {p['n_correct']}/{p['expected']} cells {p['misses']}",
+        flush=True,
+    )
+    print(
+        f"  (h) the port is faithful: {h['n_equal']}/{h['expected']} cells; moved {h['moved']}",
+        flush=True,
+    )
+    print(
+        f"  (c) concurrency changed nothing on seed {c['seed']}: {c['ok']} diffs {c['diffs']}",
+        flush=True,
+    )
+    print(f"  REPORTED wall time per seed (s): {reported['wall_time_s_per_seed']}", flush=True)
+    print(f"  REPORTED histogram per seed: {hist}", flush=True)
+    print(f"  REPORTED OTHER rows: {reported['other_rows']}", flush=True)
+    print(
+        f"  REPORTED answer-shaped and not CORRECT: {reported['answer_shaped_not_correct']}",
+        flush=True,
+    )
+    print(f"C0 VERDICT: {verdict}", flush=True)
+
+    # P2: `head`/`dirty` come from `substrate/policy_manifest._tree_state`, the tree's existing
+    # commit+dirty pair, rather than from a sixth private copy of the same two subprocess calls
+    # (graph-exists "git head dirty provenance" named seven files; six are private helpers of one
+    # instrument each and this one already returns exactly this pair).
+    from snn_data_lake.substrate.policy_manifest import _tree_state
+
+    tree = _tree_state()
+    out = {
+        "row": "C0",
+        "head": tree["commit"],
+        "dirty": tree["dirty"],
+        "protocol": PROTOCOL,
+        "warm_ticks": WARM_TICKS,
+        "seeds": list(seeds),
+        "sequential_seed": seq_seed,
+        "sequential": sequential,
+        "per_seed": per_seed,
+        "histogram": hist,
+        "fixture_histogram": FIXTURE_HISTOGRAM,
+        "conjuncts": {"p": p, "k": k, "s": s, "h": h, "c": c},
+        "reds": r,
+        "reported": reported,
+        "verdict": verdict,
+        "elapsed_s": round(time.time() - t0, 1),
+    }
+    pin.parent.mkdir(parents=True, exist_ok=True)
+    pin.write_text(json.dumps(out, indent=1, default=str), encoding="utf-8")
+    print(
+        f"pinned {pin} in {time.time() - t0:.0f} s (head {tree['commit'][:7]}, dirty {tree['dirty']})",
+        flush=True,
+    )
+    return 0 if verdict != "REFUSED" else 2
+
+
+# --------------------------------------------------------------------------------------------
+# 2.1 (e) / 2.5 R5 THE PIN CHECK -- a stale pin refuses. Every pinned class is RE-DERIVED from the
+# pinned reply and route through the shipped `classify()`, so a later edit to the classifier or to
+# the key cannot leave a stale pin standing on a surface.
+# --------------------------------------------------------------------------------------------
+def c0_pin_check(pin=None):
+    """Re-derive every pinned class and refuse on any disagreement. `pin` is a path (default
+    `C0_PIN`) or a pin-shaped MAPPING -- the mapping form is what R5's constructed inputs use, so
+    the red runs in the bare invocation with no file on disk. A pin with NO rows is NOT ok: an
+    empty walk and a clean pin must never look alike."""
+    if isinstance(pin, dict):
+        data, where = pin, "<constructed>"
+    else:
+        path = C0_PIN if pin is None else Path(pin)
+        where = str(path)
+        data = json.loads(path.read_text(encoding="utf-8"))
+    keys = {i.id: i for i in ITEMS}
+    keys.update({c.id: c for c in CONTROLS})
+    blocks = list(data.get("per_seed") or [])
+    if data.get("sequential"):
+        blocks.append(data["sequential"])
+    checked, bad = 0, []
+    for block in blocks:
+        for bucket in ("controls", "items"):
+            for row in block.get(bucket) or []:
+                key = keys.get(row["id"])
+                if key is None:
+                    bad.append({"seed": block.get("seed"), "id": row["id"], "why": "unknown id"})
+                    continue
+                checked += 1
+                cls = classify(row["reply"], row["route"], key)[0]
+                if cls != row["cls"]:
+                    bad.append(
+                        {
+                            "seed": block.get("seed"),
+                            "bucket": bucket,
+                            "id": row["id"],
+                            "pinned": row["cls"],
+                            "re_derived": cls,
+                        }
+                    )
+    return {"pin": where, "checked": checked, "disagreements": bad, "ok": checked > 0 and not bad}
+
+
+def constructed_pin():
+    """A pin-shaped reading built from `FIXTURE` and `CONTROL_FIXTURE` alone -- no brain, no file.
+    R5's SOUND input: `c0_pin_check` must pass on it, or its two refusals prove nothing."""
+    items = [{"id": f.id, "cls": f.cls, "route": f.route, "reply": f.reply} for f in FIXTURE]
+    controls = [
+        {"id": cid, "cls": CORRECT, "route": route, "reply": reply}
+        for cid, route, reply in CONTROL_FIXTURE
+    ]
+    block = {"seed": 0, "warm": WARM_TICKS, "controls": controls, "items": items, "elapsed_s": 0.0}
+    return {
+        "row": "C0",
+        "protocol": PROTOCOL,
+        "seeds": [0],
+        "sequential_seed": 0,
+        "per_seed": [block],
+        "verdict": "MET",
+    }
+
+
+def stale_pins():
+    """R5's two constructed stale pins, each a deep copy of the sound one with ONE edit:
+
+    `class_flipped` one row's STORED CLASS flipped (item 1's ABSTAIN recorded as CORRECT).
+    `reply_edited`  one row's REPLY edited so the class RE-DERIVES differently (item 8's recalled
+                    row replaced by a real answer, while the stored class still says
+                    UNRELATED_ROW).
+
+    They are different failures: the first is a pin edited after the fact, the second is a pin the
+    CLASSIFIER or the KEY has moved out from under. `c0_pin_check` must refuse on both."""
+    flipped = json.loads(json.dumps(constructed_pin()))
+    flipped["per_seed"][0]["items"][0]["cls"] = CORRECT
+    edited = json.loads(json.dumps(constructed_pin()))
+    edited["per_seed"][0]["items"][7]["reply"] = ITEMS[7].correct
+    return {"class_flipped": flipped, "reply_edited": edited}
+
+
+def r5():
+    """R5 -> `{"sound": bool, "class_flipped": bool, "reply_edited": bool, "fires": bool}`. The
+    sound arm is the control: a check that refuses everything refuses nothing in particular."""
+    sound = c0_pin_check(constructed_pin())
+    bad = {name: c0_pin_check(p) for name, p in stale_pins().items()}
+    out = {"sound": sound["ok"], "checked": sound["checked"]}
+    out.update({name: not chk["ok"] for name, chk in bad.items()})
+    out["fires"] = sound["ok"] and all(not chk["ok"] for chk in bad.values())
+    return out
+
+
+# --------------------------------------------------------------------------------------------
 # The bare invocation -- what `run_selfchecks.py` executes. CONSTRUCTED INPUTS ONLY: no brain, no
 # lake, no network, no subprocess. ASCII-only output; exit 0 on green.
 # --------------------------------------------------------------------------------------------
 def main(argv=None):
-    # `argv` is accepted and unused at 2.9 step 2: the campaign entry and the pin check land at
-    # step 3, and neither is ever reachable from the bare invocation.
+    # The two brain-touching entry points are FLAGS, and neither is reachable from the bare
+    # invocation `run_selfchecks.py` runs: `--c0-seed` is the campaign's own child, and
+    # `--c0-campaign` is the campaign, which pins ONCE and refuses an existing pin.
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if SEED_ARG in argv:
+        i, j = argv.index(SEED_ARG), argv.index(SEED_OUT_ARG)
+        return _run_seed_child(int(argv[i + 1]), argv[j + 1])
+    if CAMPAIGN_ARG in argv:
+        out = argv[argv.index(OUT_ARG) + 1] if OUT_ARG in argv else C0_PIN
+        return run_c0_campaign(pin=out)
     print("=" * 78)
     print("C0 -- the everyday battery as a governed scorer (specs/022 Phase 4, row C0)")
     print("=" * 78)
@@ -741,6 +1168,35 @@ def main(argv=None):
         )
 
     print("-" * 78)
+    r5_read = r5()
+    print(
+        f"  R5: {str(r5_read['fires']):5s}  a stale pin refuses -- the sound constructed pin "
+        f"passes ({r5_read['checked']} rows re-derived), a flipped class refuses "
+        f"({r5_read['class_flipped']}), an edited reply refuses ({r5_read['reply_edited']})"
+    )
+    if not r5_read["fires"]:
+        ok = False
+        print(f"C0 SELF-CHECK RED: R5 does not fire on its constructed pins -- {r5_read}")
+
+    if C0_PIN.exists():
+        chk = c0_pin_check()
+        print(
+            f"  the pin: {C0_PIN.name} re-derived, {chk['checked']} rows, "
+            f"{len(chk['disagreements'])} disagreement(s)"
+        )
+        if not chk["ok"]:
+            ok = False
+            print(
+                f"C0 SELF-CHECK RED: {C0_PIN} is STALE -- {chk['disagreements'][:5]}; re-derive "
+                "or explain before any surface reads it"
+            )
+    else:
+        print(
+            f"  the campaign has not run: {C0_PIN.name} is absent ({CAMPAIGN_ARG} writes it ONCE, "
+            "on a clean tree)"
+        )
+
+    print("-" * 78)
     print(
         f"  REPORTED, never barred -- fact 2's histogram, the number C-R2 starts from: {FIXTURE_HISTOGRAM} (0 CORRECT of {len(ITEMS)})"
     )
@@ -748,7 +1204,7 @@ def main(argv=None):
     if not ok:
         return 1
     print(
-        f"  C0 OK: (k) {k['n']}/{k['n']}/{k['n']}, (s) {s['n_hits']}/{s['n']}, (p) {p['n_correct']}/{p['n']}, R1/R2/R3/R4/R6 all red under their mutations"
+        f"  C0 OK: (k) {k['n']}/{k['n']}/{k['n']}, (s) {s['n_hits']}/{s['n']}, (p) {p['n_correct']}/{p['n']}, R1/R2/R3/R4/R5/R6 all red under their mutations"
     )
     return 0
 
