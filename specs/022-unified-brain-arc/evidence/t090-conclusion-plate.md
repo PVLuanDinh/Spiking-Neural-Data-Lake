@@ -595,3 +595,18 @@ REPORTED, never barred:
   1920x1080: ARM 2 of 2 rows (74 px box, 105 px content); MOTOR MIX 3 of 4 rows (106 px box, 145 px content); BEHAVIOR & EMOTION 4 of 5 rows (139 px box, 180 px content); CONSCIOUSNESS 2 of 3 rows (171 px box, 324 px content); HARDWARE TARGET — NO 7 of 18 rows (171 px box, 520 px content); NEUROMODULATORS 2 of 6 rows (106 px box, 250 px content); WORLD MODEL 4 of 9 rows (106 px box, 203 px content) -- 24 of 47 rows in view.
 - The clip chain actually walked: the plate (`overflow:hidden`), `#widgets` (`hidden`), `body` (`hidden`); all
   scroll offsets 0; `<details>` open 0.
+
+#### 3.2.8 Amendment (2026-09-17 00:05 local, clock read at write time; BEFORE the second reading, R6a or R6b is run; head `48cf3ff`, the layout change landed as `cccbc8e`, `df35374`, `9688929`, `48cf3ff`)
+
+R6a CANNOT BE READ WITH THE SHIPPED INSTRUMENT, AND 3.2.2 DID NOT SAY SO. R6a asks for the STRICT census on a page whose
+column is scrolled to 400 (0 of 570 strict, 570 plate-only). E2 makes the shipped instrument REFUSE any page with a
+non-zero scroll offset and return no numbers -- the two clauses were written side by side and contradict each other.
+Resolution, fixed before anything is run: on the scrolled column (a) the SHIPPED instrument must REFUSE, naming
+`#widgets` -- that is R7 re-run on the column as 3.2.7 promised; (b) R6a's census is read through the scratch mutant
+`trust_the_scroll` (the shipped bytes with ONLY the scroll precondition deleted, function-scoped as in 3.3): its strict
+count must read 0 of 570 sentence characters and 0 of 3 live values while its plate-only count reads 570 and 3. The
+mutant is the only apparatus that can expose the ancestor term on a scrolled page, and it differs from the shipped
+instrument by the one check whose removal R6a needs. R6b is unchanged: the shipped instrument, scrollTop 0, the
+measurement run itself, `rowsInPlateOnly - rowsInView > 0` on HARDWARE TARGET. The reported "column read twice one
+second apart" is two calls of the entry point (the builder's disclosed substitute; the entry point is synchronous).
+Nothing else in 3.2 moves.
