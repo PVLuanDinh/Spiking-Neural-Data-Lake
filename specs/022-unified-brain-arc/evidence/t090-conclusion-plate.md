@@ -538,3 +538,60 @@ R7c's "committed census" arm is the first reading's script (`59141bf`'s bytes), 
 callable so both censuses read the SAME mutated page in the same expression. The mutants `trust_the_scroll` and
 `details_reported_not_refused` are scratch copies of the committed script with ONE anchored replacement each (the
 builder's `make_mutants.py`, each anchor matched exactly once); they are never committed. Nothing else in 3.2 moves.
+
+### 3.3 The extended instrument at the UNCHANGED page: the continuity control R8 and the reds R7, R7b, R7c (orchestrator, 2026-09-16 23:43 local, clock read at write time)
+
+Head `9fda216` (the instrument landed at `fff1a57`; every commit since `59141bf` touched only the instrument and this
+record, so the served page is the first reading's page). The committed script's BYTES were loaded into the page by a
+script element from a local read-only static server over a scratch copy checked byte-identical to the tree's
+(`sha256 8d2db41e57cae6dd...`), fresh load per viewport, both viewports emulated as in 3.1. Outputs kept as
+`measure_r8_1420x1321.json` and `measure_r8_1920x1080.json` (extracted byte-exact from the session transcript).
+
+| viewport | `insideCharsPlate` (the committed predicate) | `insideChars` (strict) | sentences with a divergence | live values in the strict box | measured advance (px) | lines per sentence | column client box |
+|---|---|---|---|---|---|---|---|
+| 1420x1321 | 304 of 570 | 304 of 570 | 0 | 2 of 3 | 6.06 | [2] | 420 x 925 (scrollH 925, overflow-y hidden) |
+| 1920x1080 | 261 of 570 | 261 of 570 | 0 | 2 of 3 | 6.06 | [2] | 460 x 910 (scrollH 910, overflow-y hidden) |
+
+- R8 THE CONTINUITY CONTROL: **HOLDS.** The committed predicate reproduces 3.1 bit-exact (304 and 261 of 570). The
+  strict count is equal on every sentence (divergence 0 on 12 of 12 sentence x width cells), so `insideChars <=
+  insideCharsPlate` holds with nothing to attribute. The refuter's near-edge case is real and did not cut:
+  report_order's licensed sentence at 1420 x 1321 clears the strict box by 0.69 px (`minMargin`).
+- The 2.10 (c) assumption, measured for the first time: the monospace advance at 11 px is 6.06 px (assumed 6.05); every
+  sentence wraps to 2 lines at both widths.
+- R7 THE SCROLL PRECONDITION (3.2.7's form): the column's assigned scrollTop 400 read back 0 (scrollHeight 910 =
+  clientHeight 910: it cannot scroll at this head -- recorded, as 3.2.7 required); the plate's read back 150. The
+  instrument returned `refused: "scrolled: div.plate (top 150, left 0)"` with keys `version, refused, scroll,
+  detailsOpen, viewport` and NO census. Mutant `trust_the_scroll` on the same scrolled page: a full census, 309 of 570
+  -- a number from a scrolled page with nothing refusing it (the unscrolled truth is 261): RED.
+- R7b THE `<details>` PRECONDITION: one `<details>` opened and the entry point called in one synchronous expression:
+  `refused: "details open: 1 -- 2.5 makes the collapsed state a control"`, no census. Mutant
+  `details_reported_not_refused`: a full census, 199 of 570, with `detailsOpen: 1` carried as a field: RED.
+- R7c THE INVISIBLE-TEXT RED: the first `.c5` block set `visibility:hidden`, both censuses read in the same
+  expression. The FIRST reading's script (`59141bf`'s bytes, wrapped as a callable): licensed 102 of 102 and refused
+  97 of 97, `allInside: true` -- it counts a sentence nobody can see as fully in view. The extended instrument: both
+  sentences `hidden: true`, 0 inside (`why: visibility hidden opacity 1 font-size 11px`), totals 62 of 570. The hole was
+  real in the instrument that took 3.1, and 3.1's NOT MET did not pass through it (nothing on that page was hidden).
+- After every red the page was restored and the instrument re-read 261 of 570 with no refusal.
+
+MY OWN APPARATUS DEFECT, caught by its own check and disclosed. On the first attempt the two mutants were loaded as
+plain scripts after the instrument; each declares the same top-level `const`, so the second and third scripts never
+evaluated (a redeclaration error; the load event still fires) and all three handles pointed at the UNMUTATED
+instrument -- both "mutant" arms then returned the shipped refusal, which would have read as "the mutants are also
+green". The loader's own `distinct` check read `false`, so nothing was credited. Fixed by serving each mutant inside a
+function scope under its own global (`wrap_mutants.py`, inner text byte-preserved; `distinct: true`, sources differ),
+fresh page, arms re-run: the numbers above are from that run. R7, R7b and R7c on the shipped instrument were valid on
+the first attempt (the instrument itself had loaded) and were reproduced on the second.
+
+REPORTED, never barred:
+- THE STRICT BOX IS CONSERVATIVE BY UNDER ONE PIXEL ON A FRACTIONAL-WIDTH CLIPPER. `clientWidth` / `clientHeight` are
+  integers; the ACCESS plate at 1920 x 1080 is 232.25 px wide, so the strict right edge reads 1194 where the true
+  padding edge is 1194.25, and the `ignitions` row (right edge 1194.25) reads `visible: false` strict while
+  `visiblePlateOnly: true` (at 1420 x 1321 the plate is 170 px and both read true). The error can only make the
+  instrument read FEWER things in view, never more; the barred plate's box is integer-wide at both widths and its text
+  sits 12 px inside it. The ACCESS continuity control (3.2.3 item 4) is therefore read on `visiblePlateOnly`, like with
+  like against 3.1: 4 rows, 1 in view, at both widths -- unchanged.
+- THE SIX-PLATE LEDGER, BEFORE (rows fully inside the strict box, by the same script that will read the AFTER):
+  1420x1321: ARM 2 of 2 rows (76 px box, 105 px content); MOTOR MIX 3 of 4 rows (108 px box, 145 px content); BEHAVIOR & EMOTION 4 of 5 rows (141 px box, 180 px content); CONSCIOUSNESS 2 of 3 rows (174 px box, 324 px content); HARDWARE TARGET — NO 7 of 18 rows (174 px box, 520 px content); NEUROMODULATORS 2 of 6 rows (108 px box, 250 px content); WORLD MODEL 4 of 9 rows (108 px box, 203 px content) -- 24 of 47 rows in view.
+  1920x1080: ARM 2 of 2 rows (74 px box, 105 px content); MOTOR MIX 3 of 4 rows (106 px box, 145 px content); BEHAVIOR & EMOTION 4 of 5 rows (139 px box, 180 px content); CONSCIOUSNESS 2 of 3 rows (171 px box, 324 px content); HARDWARE TARGET — NO 7 of 18 rows (171 px box, 520 px content); NEUROMODULATORS 2 of 6 rows (106 px box, 250 px content); WORLD MODEL 4 of 9 rows (106 px box, 203 px content) -- 24 of 47 rows in view.
+- The clip chain actually walked: the plate (`overflow:hidden`), `#widgets` (`hidden`), `body` (`hidden`); all
+  scroll offsets 0; `<details>` open 0.
