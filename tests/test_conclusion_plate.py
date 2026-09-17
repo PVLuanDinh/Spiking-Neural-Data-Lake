@@ -5,6 +5,8 @@ RENDERED measurement in a browser and is not a test; everything here is brain-fr
 case that needs a snapshot, and that one runs on a SCRATCH brain under a throwaway home.
 """
 
+import re
+
 import pytest
 
 from snn_data_lake.substrate import brain_telemetry, conclusion_protocol
@@ -153,3 +155,26 @@ def test_the_consciousness_plate_ships_outside_the_fixed_height_strip_and_wraps(
         assert f"'{sym}'" not in html, f"{sym} is still passed to a row() call"
     # and the plate reads the SERVED section rather than re-deriving anything from cognition
     assert "d.conclusion" in html
+
+
+def test_the_widgets_column_scrolls_and_every_plate_is_its_own_content_height():
+    """A SECOND RATCHET OF SOURCE TEXT beside R5, and never the rendered red (obs #2195).
+
+    R5 proves the plate ships outside `#bottom` and wraps. This proves the COLUMN it ships in can
+    be scrolled, that no plate in it can be squeezed below its own content, and that the plate
+    carrying the in-view criterion is the column's FIRST child -- the three source facts the second
+    reading's geometry rests on. Whether a character lands inside the visible box is still the
+    rendered measurement at two widths (tests/instruments/t090_measure_plate.js). Mutations, each
+    red: `no_scroll`, `no_gutter`, `shrinkable`, `reorder`.
+    """
+    from snn_data_lake.substrate import cockpit
+
+    html = cockpit.COCKPIT_HTML
+    rule = html.partition("#widgets{")[2].partition("}")[0]
+    assert "overflow-y:auto" in rule and "overflow-x:hidden" in rule, rule
+    assert "scrollbar-gutter:stable" in rule, rule
+    block = html.partition('<div id="widgets">')[2].partition('<div id="chat"')[0]
+    ids = re.findall(r'id="(w[A-Za-z0-9]+)"', block)
+    assert len(ids) == 7 and ids[0] == "wC5", ids
+    flexes = [f.strip() for f in re.findall(r'style="flex:([^"]*)"', block)]
+    assert len(flexes) == 7 and set(flexes) == {"0 0 auto"}, flexes
