@@ -639,10 +639,10 @@ canvas{display:block}
  </div>
 
  <div id="widgets">
+   <div class="plate" style="flex:0 0 auto"><h2>CONSCIOUSNESS -- what is measured, what it licenses</h2><div id="wC5"></div></div>
    <div class="plate" style="flex:0 0 auto"><h2>ARM</h2><div id="wArm"></div></div>
 <div class="plate" style="flex:0 0 auto"><h2>MOTOR MIX</h2><div id="wMotor"></div></div>
    <div class="plate" style="flex:0 0 auto"><h2>BEHAVIOR &amp; EMOTION</h2><div id="wBeh"></div></div>
-   <div class="plate" style="flex:0 0 auto"><h2>CONSCIOUSNESS -- what is measured, what it licenses</h2><div id="wC5"></div></div>
    <div class="plate" style="flex:0 0 auto"><h2>HARDWARE TARGET &mdash; NOT BUILT</h2><div id="wHw"></div></div>
    <div class="plate" style="flex:0 0 auto"><h2>NEUROMODULATORS</h2><div id="wNm"></div></div>
    <div class="plate" style="flex:0 0 auto"><h2>WORLD MODEL</h2><div id="wWm"></div></div>
