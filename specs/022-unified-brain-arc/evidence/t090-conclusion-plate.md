@@ -690,3 +690,103 @@ REPORTED, never barred:
 - STILL OPEN, as 3.2.5 item 7 named: the `<details>` provenance is rewritten closed once a second by the 1 Hz repaint,
   so the provenance text on this plate cannot be held open by a person; pre-existing, not made worse, its fix is a JS
   change outside a layout arc (re-apply `open` by row key after the repaint).
+
+### 3.5 The panel and its fold (2026-09-17 00:48 local, clock read at write time; the panel ran on the frozen head `0cab69f`)
+
+THREE LENSES (the instrument and its numbers; pre-registration honesty; the disposition and the tree), every finding
+attacked by a refuter judging the CLAIM and the FIX separately; 18 Opus agents, no browser (the rendered measurement is
+the orchestrator's single-tab instrument), Node DOM stubs and the saved outputs only. **15 filed, 6 stand, all MINOR
+after refutation, 9 refuted or dropped; ALL SIX standing findings carried a WRONG proposed fix** (three proposed code
+changes that reproduced the defect they named -- reusing `clipChain`, which keeps only clippers, as "the ancestor
+chain" -- or that changed the measuring function after the numbers; three proposed in-place edits of landed dated
+text). The fold adopts the REFUTERS' minimal fixes, every one a dated appended amendment; the orchestrator reproduced
+each number below with its own probe first (`scratchpad/t090-panel/fold_verify.py`, and the panel's
+`disposition-tree/stub_opacity.js` re-run against the committed bytes). **No code changed in this fold, so no rendered
+reading is re-taken and no number in 3.1, 3.3 or 3.4 moves. The fold is text only and is itself un-panelled: it is
+verified by the arc's battery and by the doc gates, and says so.**
+
+WHAT THE PANEL VERIFIED (its own words, checked): every number in 3.1, 3.3 and 3.4 re-derives from the saved outputs;
+the denominator 570 is the registry's six sentences (564 characters) plus the one leading space each; each mutant
+differs from the committed bytes by exactly its one check, and the v1 wrapper holds `59141bf`'s bytes verbatim; R6b is
+isolating on this geometry; `insideChars <= insideCharsPlate` is structural; every amendment (2.10, 3.2.7, 3.2.8) is
+committed BEFORE the artifact carrying the number it touches, on the commit clock and independently on the scratch
+files' modification times; the record is append-only end to end (zero deleted lines `3ad5ee7..0cab69f`). THE CENTRAL
+QUESTION, judged by the honesty lens: a legitimate red -> fix -> re-measure, NOT a re-run until green -- the licence for
+a second reading is 2.10 (c), committed before the first number existed; (v1) at 3.2.0 is 2.3's text word for word; the
+"moved the plate to the top to make it pass" charge fails on the second reading's own heights (at its pre-registered
+fourth position the plate would span column offsets 454..793 of 925 and 454..780 of 910 -- in view at both widths).
+
+THE PANEL'S CAVEAT, adopted verbatim in substance because it is true: **the MET was determined before it was taken.**
+3.2.4 predicted 570 of 570 with a margin of about 585 px and the reading came in there. The second reading VERIFIED A
+FIX; it did not test a hypothesis. (v1) keeps a reachable red historically (it fired on the real page at 3.1) and
+through declared page mutations (R6a and R7 read 0 of 570 and a refusal on a scrolled column); on the page as shipped
+it can fail again only when a later arc lengthens a sentence, charges more rows than the column holds, or changes the
+layout -- which is what the instrument is for.
+
+THE SIX DATED AMENDMENTS (each reproduced; nothing above is edited in place):
+
+1. E4's SCOPE, NAMED (findings 1 and 4, filed by two lenses independently). "Invisible text is no longer in view" is a
+   PARENT-scoped check: the census reads the computed style of the text node's parent and walks no further. Of its
+   properties, `visibility` INHERITS (a hidden ancestor is carried to the parent: the panel's control reads licensed 0,
+   refused 0, `hidden: true` with the red on the `.plate`), `display:none` anywhere above gives zero-area rects and is
+   caught by the whitespace-only zero-rect branch, `font-size` is correctly read at the parent -- and `opacity` does NOT
+   inherit, so `opacity:0` on `#wC5`, on the `.plate` or on `#widgets` is NOT detected: the census reads exactly as on
+   a visible plate (reproduced: totals unchanged, `hidden: false`). Also outside E4: `clip-path`, a colour equal to the
+   background, and occlusion by another painted element (`elementFromPoint` is never called). 3.2.2's E4 heading and the
+   verdict line's clause "invisible text no longer counted as in view" are broader than this enumeration; THE
+   ENUMERATION GOVERNS. NOT REACHABLE on the page this row measures: `cockpit.py` declares `opacity` once
+   (`#cs:disabled`, .45, on a disabled control and on no ancestor of the plate), no `clip-path`, no `visibility`; the
+   gap can only fail to LOWER a count, never raise one. OPENING, with its fix: refuse a sentence when ANY ancestor to the
+   root computes `opacity` 0, walking EVERY ancestor from the text node -- explicitly not `clipChain`'s filtered list --
+   landed by the arc that first ships an ancestor opacity, a clip-path or an overlay over the column; that arc has a
+   real red, and the rendered reading is re-taken with it.
+2. THE STRICT BOX'S RESIDUAL IS +/- 0.5 px, NOT ONE-DIRECTIONAL (finding 2). 3.3 said the integer client box "can only
+   make the instrument read FEWER things in view, never more". `clientWidth` / `clientHeight` round to NEAREST, so on a
+   fractional clipper the computed edge can land up to half a pixel OUTSIDE the true padding edge as well as inside it;
+   3.3's 232.25 px instance is the round-down half. Second, an environment assumption the instrument did not state:
+   `clientBox()` anchors on the computed border widths, which equals the CSSOM `clientLeft` / `clientTop` only when the
+   scrollbar gutter is on the right / bottom -- MEASURED right-hand at both widths (`#widgets` rect 990..1410 against
+   client 990..1395, and 1084..1544 against 1084..1529: 15 px on the right), with no `direction` declaration and no
+   `dir` attribute in the served page. Neither residual can move a barred number: every sentence clears the strict box
+   by 12 px at both widths with divergence 0, the strict box remains a subset of the plate's rect by construction, and
+   the ACCESS continuity control is read on `visiblePlateOnly`. OPENING: anchor the client box on `el.clientLeft` /
+   `el.clientTop` (one clause, no direction sniffing); if taken, the rendered reading is re-taken at both widths before
+   its numbers are quoted, because 3.4's counts belong to `t090-measure-2`'s committed bytes.
+3. `insideCharsPlate` IS THE COMMITTED BOX, NOT THE COMMITTED CODE PATH (finding 3). 3.2.3 item 1's parenthetical
+   ("the committed predicate, code path unchanged") is over-broad. Unchanged: the BOX -- both counts test against
+   `plate.getBoundingClientRect()`, as `59141bf` did. Changed: E4's two clauses flow into `insideCharsPlate` too (the
+   zero-rect branch counts only whitespace; a sentence whose parent is hidden returns 0), where `59141bf` counted every
+   zero-area character and had no visibility check. Both clauses are strictly subtractive, and NEITHER FIRED on any page
+   this arc measured: `hidden` is absent from every sentence of all four saved outputs, and `insideCharsPlate` read 304
+   and 261 against the REAL first-reading script's rendered 304 and 261 on the identical page. R8's numeric bar --
+   reproduce 3.1 exactly -- was met; its stated basis is corrected here.
+4. "ALL 47 REACHABLE" IS TWO KINDS OF EVIDENCE (finding 5). MEASURED, second reading, both widths: `rowsTotal` 47 and
+   `rowsInPlateOnly` 47 with `clipped` false on 7 of 7 plates (24 and 24 at the unchanged head, column `overflow-y`
+   hidden, scrollHeight = clientHeight), and the loss: `rowsInView` 19 with 0 px visible of NEUROMODULATORS and WORLD
+   MODEL. DERIVED, one step, on fields the record prints: every plate's extent lies inside the column's measured scroll
+   range (`topInCol + box height <= scrollHeight`; tightest WORLD MODEL, the last child: slack 0 px at 1420 x 1321 and
+   1 px at 1920 x 1080 -- an identity, the column's scrollHeight being its last child's extent). Its MECHANISM was
+   rendered in the same reading, not assumed: R7 read `#widgets.scrollTop` back as 400 and the plate's box moved to
+   y -356..-30, a 1:1 translation of its box at scrollTop 0 (44..370). NOT READ: the bottom-of-scroll state and its
+   ledger. "Reachable" in 3.4 and on the surfaces means the derived predicate, not a read state; that is the opening.
+5. THE STAMP'S KIND (finding 6). The dated MET-AS-RENDERED lines on T080, T081 and T082 (tasks.md) and in
+   WholeBrain.md cite `a431e67`. That is the commit that LANDED section 3.4, not the head the reading ran at: the
+   second reading ran at head `fab9889` (3.4's apparatus line; the T090 task line, spec.md SC-009 and PLAN-FINAL say
+   so). `fab9889..0cab69f` touches markdown only, so the page at `a431e67` is byte-identical to the measured one and the
+   sentence is true as written; only its stamp's kind was unstated. THE RECORD'S CONVENTION, stated once: a section's
+   head stamp names the head it was written AT; its landing commit is the next one (3.2.8 stamps `48cf3ff` and landed as
+   `fab9889`; 3.4 stamps `fab9889` and landed as `a431e67`).
+6. THE NINE REFUTED OR DROPPED, named so a reader can see what was tried: the preconditions' scope (a `<details>`
+   elsewhere on the page); the 1420 x 1321 full output being the pre-restart run (3.4's apparatus paragraph already says
+   so, verbatim); the strict box reducing to the plate's padding box on the barred plate (pre-registered and quantified);
+   "2.6's NOT MET branch was not applied" (it was, to the first reading, in the past tense the record uses); 3.2.8's
+   timing (the read-time stamps and the commit clock agree); two commits anchoring one claim (3.2.6 pre-registered two
+   distinct slots); `SURFACE_BASELINE` pooling two clauses (the constructed case is asserted BEFORE the baseline
+   comparison: the probe never ran that branch); the grow-factor comment on a 4K display; text selection under the
+   1 Hz repaint (3.2.5 item 7's mechanism, restated).
+
+OPENINGS CARRIED OUT OF THIS ARC (each with its fix named above or in 3.2.5): the ancestor-opacity / clip-path /
+occlusion class (item 1); the `clientLeft` anchor (item 2); the bottom-of-scroll ledger (item 4); the at-a-glance loss
+on three plates (3.4); the 1 Hz repaint closing `<details>` (3.2.5 item 7); `overflow-wrap:anywhere` for an unbreakable
+token (3.2.5 item 6); the ACCESS plate's three clipped rows (fact 1). The Codex closing report is owed when the cap
+lifts (2.0).
