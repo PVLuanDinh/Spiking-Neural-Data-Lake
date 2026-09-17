@@ -233,3 +233,291 @@ REPORTED, never barred:
 
 2.6's NOT MET branch applies to this reading as written: T090 stays [ ]; nothing on T080's, T081's or T082's notes
 changes. What follows (3.2) is a change to the ARTIFACT under an UNCHANGED (v1), pre-registered before it is built.
+
+### 3.2 PRE-REGISTRATION OF THE SECOND READING (2026-09-16 23:18 local, clock read at write time), frozen BEFORE anything is built
+
+PROVENANCE AND NUMBERING OF THIS SECTION, disclosed. The text below is the synthesis of a design panel run by the
+orchestrator after 3.1 (three independent Opus designers -- column-scroll, plate-priority, relocate -- each attacked
+by two refuters, one on the claim and one on the instrument, then one synthesis; 10 agents, read-only on the tree).
+All six refuter verdicts came back `survives: false` as filed; the synthesis adopts the column-scroll mechanism WITH
+its refuters' minimal fixes grafted (scores 8 and 7.5 against 4 / 4 and 6 / 5) and rejects the other two on measured
+facts. Its numbers are DATA: the orchestrator re-checked the source cites it rests on against the tree at `d6008d2`
+(`body{overflow:hidden}`; the `#widgets` and `#widgets>div` rules; the seven inline `flex:N` plates in DOM order ARM,
+MOTOR MIX, BEHAVIOR & EMOTION, CONSCIOUSNESS, HARDWARE TARGET, NEUROMODULATORS, WORLD MODEL; the `#wC5` fill assigned
+inside `paint(d)` under `setInterval(loop,1000)`), and every PREDICTED figure below is a prediction the two rendered
+runs either reproduce or contradict. The subsections 3.2.0-3.2.6 are this pre-registration's own; the RESULTS land
+after it as 3.3 (the extended instrument's continuity run and its reds R7, R7b, R7c, R8 at the UNCHANGED page) and 3.4
+(the second rendered reading with R6a and R6b). APPARATUS NOTE: where the first reading PASTED the committed script
+into the page, the extended script is loaded as its committed BYTES (a script element pointing at a local read-only
+static file server over `tests/instruments/`, the entry point then called from the pane); the page gains one script
+node in `head`, layout-neutral, and the pasted form stays the fallback -- disclosed whichever is used.
+
+The FIRST reading (3.1) read (v1) NOT MET at both widths and 2.6's NOT MET branch applied as written:
+T090 stays `[ ]`, nothing moved on T080's, T081's or T082's notes. 3.1 also named the cause and it is
+not the plate: `#widgets` is a fixed-height flex column with `overflow:hidden`, EVERY plate in it is
+clipped, and the column does not scroll, so 868 px (1920 x 1080) / 852 px (1420 x 1321) of rendered
+content is unreachable. What follows is a change to the ARTIFACT under an UNCHANGED criterion,
+pre-registered before it is built, and read as a disclosed SECOND reading per 2.10 (c) - never as a
+re-take of the first.
+
+#### 3.2.0 THE CRITERION IS (v1), UNCHANGED, QUOTED FROM 2.3
+
+> (v1) IN VIEW: for EVERY charged row, at BOTH widths, every character of the licensed sentence and
+> of the refused sentence lies inside the plate's visible box, and the row's live value lies in that
+> same box -- a count over rows x widths, all of them; one clipped character is NOT MET.
+
+2.5's control stands with it: the `<details>` stays COLLAPSED - the sentences must be in view WITHOUT
+expanding anything. Not one word of (v1) is amended, narrowed or supplemented. Nothing below weakens
+it; everything below either tightens the INSTRUMENT that reads it or REPORTS a quantity beside it.
+
+#### 3.2.1 THE CHANGE (one mechanism, P2; no flag, no second plate, no second layout)
+
+`#widgets` becomes a scroll container (`overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable`);
+every plate's inline `flex:N` becomes `flex:0 0 auto`, so a plate's height is its own content's
+height and no plate can be squeezed below it; and the CONSCIOUSNESS plate moves to be the FIRST child
+of the column. The third part is what makes the geometry follow from the content rather than from the
+page: at the scroll origin the plate's top offset is 0 by construction, so its visible box is
+intersect([0, H_c5], [0, H_column]) and (v1) reduces to ONE inequality over ONE plate's own content,
+H_c5 <= H_column, with no term contributed by any other plate's content, wrap or number. No number is
+tuned: the grow factors are REMOVED rather than repurposed (grow can only fire on a viewport of
+1947 px / 2173 px and therefore never fires here, and a factor that never fires is a number a later
+reader would tune to no effect), and the one environment-dependent quantity, the scrollbar gutter, is
+shown below to be one the criterion is insensitive to across 0-46 px and is MEASURED and printed
+rather than assumed. Zero JS changes: the fill at cockpit.py:884 and the comment block at :855-881
+are untouched, so the surface gate's text credit and `SURFACE_BASELINE` = 1 are untouched by
+construction. The `@media(max-width:1500px)` rule is untouched; one mechanism serves both layouts.
+
+#### 3.2.2 THE INSTRUMENT EXTENSION - STRICTLY HARDER, NEVER DIFFERENT
+
+The committed `tests/instruments/t090_measure_plate.js` tests each character against
+`plate.getBoundingClientRect()` alone. Five extensions, each making it harder to read a character as
+IN VIEW, each owing its own red:
+
+(E1) THE STRICT VISIBLE BOX. The census runs against intersect(the plate's border rect, the CLIENT
+(padding) box of EVERY ancestor to the root whose computed `overflow-x` or `overflow-y` is not
+`visible`, the viewport). Client boxes, not border boxes: a box with overflow != visible clips at its
+padding edge, and its scrollbar gutter lies outside that edge. The chain actually walked is printed
+by selector with each member's rect and computed overflow - data, not an enumeration assumed in
+advance. Because it starts from the border rect and only intersects, the strict box is a SUBSET of
+the committed box by construction.
+   TWO HONEST NOTES, stated rather than claimed. `#app` sets no overflow and is not a clipper. `body`
+   (cockpit.py:512) has COMPUTED overflow `hidden` but its USED value is `visible` - the root
+   propagates body's overflow to the viewport - so including it costs nothing here, its client box
+   coinciding with the viewport; it is kept because a future non-100vh layout is the case it guards.
+   And the VIEWPORT term can never fire alone on this page (44+910 = 954 < 1080; 44+925 = 969 < 1321,
+   and a short viewport shrinks the 1fr column before it can clip it). It is kept because it costs
+   nothing and it is explicitly NOT presented as a conjunct with a red of its own.
+
+(E2) SCROLL IS A PRECONDITION, NOT AN ASSUMPTION. Before measuring, the scrollTop/scrollLeft of every
+chain member and of `document.scrollingElement` are read; any non-zero value REFUSES the reading with
+no numbers. Browsers restore a scroll container's offset across reloads, and a silent wrong number
+here would have been indistinguishable from a pass.
+
+(E3) THE COLLAPSED `<details>` IS A PRECONDITION TOO. 2.5 gives the collapsed state the same standing
+as the second width; it now gets the same refusal. An open `<details>` on the plate REFUSES with no
+numbers, where the committed script reported it as a field.
+
+(E4) INVISIBLE TEXT IS NO LONGER IN VIEW. The committed census counts a zero-area character as
+visible ("a collapsed space") WITHOUT checking that it is whitespace, so every character of a
+`display:none` sentence counts as in view; and `visibility:hidden` preserves layout, so its rects are
+real, correctly positioned, and pass even the intersected test. The barred quantity was satisfiable
+by text nobody can see. The zero-rect branch is restricted to actual whitespace, and the census
+REFUSES a sentence whose parent's computed `visibility` is not `visible`, whose `opacity` parses to
+0, or whose `font-size` parses to 0.
+
+(E5) ONE BOX FOR ONE CRITERION. `valueInside` is routed through the SAME strict box as the sentences.
+(v1) bars both in the same box; after the change the plate's box IS its content, so the committed
+plate-only test for the value becomes unconditionally true, and today it could not produce a false
+MET only because `row()` happens to render the value ABOVE its own sentences - an accident of row
+order, not a property of the design.
+
+THE EXTENSION'S OWN RENDERED REDS:
+  R6a THE ANCESTOR TERM, TOTAL (after the change; a disclosed page mutation, never folded into a
+      measurement run). Set `#widgets.scrollTop = 400`. The plate spans column offsets 0..326, so it
+      is entirely above the clip: the STRICT census must read 0 of 570 sentence characters and 0 of 3
+      live values, while `insideCharsPlate` still reads 570 - the plate's own rect scrolls with its
+      content. Restore scrollTop 0.
+  R6b THE ANCESTOR TERM, ISOLATING, AT scrollTop 0, ON THE MEASUREMENT RUN ITSELF, WITH NO MUTATION.
+      R6a is not an attribution: at scrollTop 400 the plate is outside the clip AND outside the
+      viewport, so two terms fire together. HARDWARE TARGET spans column offsets 786..1308 against a
+      column clip bottom of 910 (viewport y 954) and a viewport bottom of 1080, so its rows between
+      y 954 and 1080 are inside their own plate's box AND inside the viewport AND outside the
+      ancestor clip. `rowsInPlateOnly - rowsInView > 0` on that plate is the ancestor term firing
+      ALONE. If it reads 0, the extension is not measuring the ancestor clip and the reading is void.
+      DISCLOSED: this red is reachable only AFTER the change - today every plate box lies inside the
+      column, so the ancestor clip cannot cut what the plate box does not already cut.
+  R7  THE SCROLL PRECONDITION'S RED (reachable at the UNCHANGED head): run the entry point at
+      `#widgets.scrollTop = 400` -> `{refused:'scrolled: ...'}` and no numbers. Mutation
+      `trust_the_scroll` (the check deleted): numbers printed from a scrolled page: RED.
+  R7b THE `<details>` PRECONDITION'S RED (unchanged head): in one synchronous expression set a
+      `#wC5 details.open = true` then call the entry point -> refused. Disclosed as a constructed
+      mutation; the 1 Hz rewrite closes it on the next tick. Mutation
+      `details_reported_not_refused`: RED.
+  R7c THE INVISIBLE-TEXT RED (unchanged head): set one `.c5` block's inline `visibility:hidden` and
+      re-run. The COMMITTED plate-only census reports all its characters INSIDE; the repaired census
+      REFUSES that sentence with 0 inside. Restore. This is the red the instrument that took the
+      FIRST reading could not turn, and it is why this extension is stricter rather than merely
+      different.
+  R7, R7b and R7c all run at the UNCHANGED page, BEFORE cockpit.py is touched. That is this arc's
+  red-first: the instrument is proved able to fail before the artifact is changed.
+  R9 `no_scroll`, R10 `no_gutter`, R11 `shrinkable`, R12 `reorder` are SOURCE ratchets in
+  tests/test_conclusion_plate.py, declared ratchets of text exactly as R5 is, never rendered reds.
+  R1-R5 are unchanged and still required. R5 is untouched and still passes: the plate stays outside
+  `#bottom`, `.c5{white-space:normal` stays, the three symbols stay out of `row()` calls,
+  `d.conclusion` stays.
+
+#### 3.2.3 THE CONTROLS THAT ARE NOT THE METHOD
+
+1. R8 THE CONTINUITY CONTROL, DIRECTIONAL AND ATTRIBUTED. The extended script is run FIRST against
+   the unchanged page (the head that lands the instrument touches only .js and .md, so the page is
+   byte-identical to `51e8031`'s). `insideCharsPlate` - the committed predicate, code path unchanged -
+   must reproduce 3.1 EXACTLY: 304 of 570 at 1420 x 1321 and 261 of 570 at 1920 x 1080. `insideChars`
+   must satisfy insideChars <= insideCharsPlate on EVERY sentence, and every non-zero difference must
+   be itemised and attributed to a NAMED box term (the plate's border-vs-padding edge, an ancestor
+   clip, the viewport). A stricter instrument is entitled to read lower; it is not entitled to read
+   lower for an unnamed reason, and it may never read HIGHER. This control is written in this form
+   ON PURPOSE: the extension tightens the plate's own edge by 1 px per side, `report_order`'s
+   licensed line 2 at 1420 x 1321 sits within about 1 px of that edge, and 105 of the recorded 304
+   hang on it - an exact-reproduction bar would have failed on the extension working correctly.
+2. THE SECOND WIDTH, as 2.5 wrote it: a plate that fits one width and not the other is NOT MET.
+3. THE `<details>` COLLAPSED STATE - now a CHECKED precondition (E3) with its own red, rather than a
+   reported field.
+4. THE ACCESS CENSUS, byte-identical in shape, at both widths, before and after. Its debt (4 rows,
+   1 in view) is fact 1's and is unchanged in kind; if it MOVES, something touched `#bottom` that
+   should not have and the reading is void.
+5. THE SIX OTHER PLATES, measured by the SAME script at both heads and both widths - the P3/P4c
+   ledger below is a count, not arithmetic.
+6. THE GATE re-run after the change: `conclusion_protocol --assert` rc 0 with surface debt at or
+   under its baseline of 1. cockpit.py is a TRACKED_SURFACE and the gate reads SOURCE TEXT, so the
+   new comment is a gate input: it names no registry symbol in prose, including the three-character
+   substring in `integration`'s symbol tuple, and no VERDICT_WORD. The gate is RUN, not reasoned
+   about; a rise above 1 is a RED that blocks the commit, not a warning.
+7. THE PREDICTED GEOMETRY BELOW IS WRITTEN BEFORE THE READING, as 2.10 (c) did, so a wrong model
+   shows up as a residual rather than as a story.
+
+#### 3.2.4 PREDICTED GEOMETRY (arithmetic on a validated model, disclosed as arithmetic)
+
+The flex model reproduces ALL FOURTEEN measured box heights to the pixel (base = padding-bottom 8 +
+2 x 1 px border = 10 under `*{box-sizing:border-box}`; free = column - 36 gaps - 70; share = free/25;
+at 910: 74.32/106.48/138.64/170.80/170.80/106.48/106.48 = 874.0; at 925:
+75.52/108.28/141.04/173.80/173.80/108.28/108.28 = 889.0). The line-box model reproduces the measured
+scrollHeight 324 to 0.1 px (`.row` 12 x 1.4 + 2 = 18.8; `.c5` = 2 + n x 14.85 + 1 + 13.5 + 2; h2 26;
+plate padding 8 -> 3 x 96.7 + 34 = 324.1). Everything below rides those two.
+
+Content border boxes: C5 326, ARM 107, MOTOR 147, BEHAVIOR 182, HARDWARE 522, NEUROMOD 252,
+WORLD MODEL 205 = 1741 + 36 gaps = 1777 px against a 910 / 925 px column: the column scrolls and no
+plate grows or shrinks. Offsets after the move: C5 0..326, ARM 332..439, MOTOR 445..592,
+BEHAVIOR 598..780, HARDWARE 786..1308, NEUROMOD 1314..1566, WORLD MODEL 1572..1777.
+THE BARRED INEQUALITY: 326 <= 910 (margin 584) and 326 <= 925 (margin 599); the plate occupies
+viewport y 44..370 at both widths, inside 1080 and 1321. PREDICTED (v1): 570 of 570 sentence
+characters and 3 of 3 live values in view at both widths, 6 of 6 row x width cells complete.
+
+GROWTH, as an inequality rather than a hope. H_c5 = 26 + n x entry + 8 (+2 borders):
+n=4 -> 422.8; n=5 -> 519.5; n=7, the full registry and the design's real ceiling -> 712.9, margin
+197 / 212. REACHABLE PESSIMISTIC (word-boundary wrap adding one line to every sentence,
+111.55 px/row): n=7 -> 816.85, margin 93 / 108 - PASSES at both widths. The all-three-line case
+(126.4 px/row -> 920.8, which would fail at 910) is NOT REACHABLE with the measured registry: three
+lines need a rendered line over 125.2 chars at 1420 and over 138.6 at 1920 (at a 15 px gutter), and
+the MEASURED maximum over all seven rows, charged and not, is 120 characters. The residual is a
+future arc writing a longer sentence, and the instrument prints H_c5, the column height and the
+per-sentence LINE COUNTS every reading, so the margin shrinks visibly before it fails.
+
+THE GUTTER IS MEASURED, NOT ASSUMED. Text width = plate - 2 border - 24 padding. At a 15 px gutter:
+419 px (1920) and 379 px (1420), i.e. 69.3 and 62.6 characters at 6.05 px. The longest line rendered
+today is 115 characters; two lines need >= 57.5 chars/line = 348 px of text width, i.e. a gutter
+<= 46 px at the 420 column. Every realistic gutter (10-17 px) clears that by 29-36 px, so the gutter
+cannot flip the verdict - but the record PRINTS the column's measured clientWidth and each plate's
+measured width at both viewports instead of inheriting this assumption, and prints the measured
+character advance instead of 2.10 (c)'s never-measured 6.05.
+
+#### 3.2.5 REPORTED, NEVER BARRED
+
+1. EVERY PLATE'S CONTENT-VS-BOX, BEFORE AND AFTER, at both widths, read by the SAME extended script.
+   BEFORE (3.1's figures, re-read at the instrument's head): box / scrollHeight / clipped-away px,
+   all seven; total clipped 868 px at 1920 x 1080 and 852 px at 1420 x 1321, unreachable because the
+   column does not scroll. AFTER: box, scrollHeight, clientHeight, `clipped` (which must read false
+   on all seven), top offset in the column, visible px at scrollTop 0, and rowsTotal / rowsInView /
+   rowsInPlateOnly.
+2. THE AT-A-GLANCE LEDGER, BOTH HALVES, IN NUMBERS (P3/P4c: the brief forbids making any other
+   plate's content less reachable without saying so and measuring it). REACHABILITY RISES FOR ALL
+   SEVEN: 859 of 1727 content px reachable at 1920 and 875 of 1727 at 1420 today, 1727 of 1727 at
+   both widths after, and four plates complete with no interaction where none was complete before.
+   VISIBILITY AT scrollTop 0 IS A MIXED LEDGER AND THE LOSSES ARE REAL (box px, 1920 / 1420):
+   CONSCIOUSNESS 171->326 / 174->326 (complete), ARM 74->107 / 76->107 (complete), MOTOR MIX
+   106->147 / 108->147 (complete), BEHAVIOR & EMOTION 139->182 / 141->182 (complete), HARDWARE
+   TARGET 171->124 / 174->139 (124 and 139 of 522), NEUROMODULATORS 106->0 / 108->0 (below the
+   fold), WORLD MODEL 106->0 / 108->0 (below the fold). Column total visible 873->886 (1920) and
+   889->901 (1420): essentially unchanged, redistributed. THREE PLATES LOSE AT-A-GLANCE VISIBILITY
+   and two of them lose it entirely, in exchange for being fully reachable for the first time. Named
+   in particular because it is the page's own honesty ledger: WORLD MODEL is where the
+   not-computed / not-applied readouts render, so the surface's report of what it does NOT compute
+   is the first thing to leave view at scrollTop 0.
+3. THE SCROLL POSITION. `scrollTop` and `scrollLeft` of every clipping ancestor and of
+   `document.scrollingElement`, printed at every reading even when green - the precondition's
+   evidence, not its assumption. Both must be 0 at both widths or the reading is REFUSED.
+4. THE COLUMN: clientHeight, clientWidth (the measured scrollbar gutter), scrollHeight, computed
+   overflow-x/overflow-y, read twice one second apart. Under `flex:0 0 auto` the column's
+   scrollHeight now VARIES at 1 Hz where the flex arithmetic used to pin it: `#wWm` ends with a map
+   over the gated readouts (a variable row count), `#wHw` renders filtered torque rows and sliced
+   recipes and is EMPTY until the first snapshot carrying joints (then jumps about 520 px). This
+   cannot move the barred plate - nothing is above it - but it is a new behaviour of a daily page
+   and it is measured, not narrated.
+5. WRAP, MEASURED: the line count of every sentence at both widths, and the measured character
+   advance. The predicted "no re-wrap" is a prediction; the record carries the reading.
+6. THE INLINE AXIS, MEASURED AND NOT FIXED: every `.c5` block's scrollWidth vs clientWidth. The
+   block-axis claim "the box is its content" does not extend to the inline axis - the plate's width
+   is fixed by the column and it keeps `overflow:hidden`, so an unbreakable token longer than the
+   measure would be clipped horizontally. Unreachable with today's prose (longest word about 12
+   characters against a 62-character measure) and caught loudly by (v1) if it ever happens, so it is
+   MEASURED now rather than fixed by a declaration that can never fire. OPENING, with its fix:
+   `overflow-wrap:anywhere` on the `.c5` rule, to be landed by the arc that first writes a sentence
+   carrying such a token - that arc has a real red.
+7. THE PROVENANCE COLUMN IS STILL UNREACHABLE, AND "100% REACHABLE" MEANS PLATE-SCROLL CONTENT ONLY.
+   `$('wC5').innerHTML` is assigned unconditionally inside `paint(d)`, which runs under
+   `setInterval(loop,1000)`, so every `<details>` is destroyed and recreated CLOSED once a second and
+   its 1,806 / 3,352 / 4,316 characters cannot be held open or scrolled by a human. This is
+   pre-existing, is not made worse by this arc, and is NOT counted in the reachability figures above.
+   It is entered here as the one C5 reading that is rendered and unreachable, and named as an
+   OPENING with its fix (re-apply `open` by row key after the innerHTML assignment) - a JS change to
+   a different function, deliberately not smuggled into a layout arc. It also makes 2.3's REPORTED
+   item, the `<details>` expanded geometry, unmeasurable without a declared mutation, and that is
+   said here rather than quietly dropped.
+8. The `<details>` collapsed on every row at both widths (now the precondition's output, not a
+   reported field), and the ACCESS census unchanged.
+
+#### 3.2.6 DISPOSITION (fixed in advance)
+
+MET requires ALL of: the orchestrator's RENDERED measurement, at BOTH widths, on a FRESH load, with
+both preconditions green (every scrollTop 0, no `<details>` open), reading `insideChars` = chars on
+EVERY licensed and EVERY refused sentence of EVERY charged row (570 of 570 at each width),
+`valueInside` true on all three rows at both widths, 6 of 6 row x width cells complete, AND (v2) and
+(g) re-read and holding ((v2): served rows = charged rows, verdict words 0; (g): `--assert` rc 0 with
+surface debt at or under 1 and the mechanism clause green on the live registry and red on its
+constructed blank), with (p) and (r) holding. A source ratchet, a flex prediction, an arithmetic
+margin and a green pytest are NOT the measurement and cannot substitute for it.
+- MET: `tasks.md` T090 -> `[X]` with BOTH widths' numbers AND the first reading's numbers beside
+  them; the dated line on T080's, T081's and T082's surface notes (tasks.md, spec.md SC-009,
+  PLAN-FINAL, WholeBrain.md): "the same-view conjunct MET AS RENDERED at <commit> (T090, second
+  reading)"; `SURFACE_BASELINE` unchanged; the ACCESS plate's other clipped rows stay a REPORTED
+  debt; and the three plates that lost at-a-glance visibility go on the record as a NAMED OPENING in
+  the numbers of 3.2.5 item 2, never softened into "everything is now reachable".
+- NOT MET: the record names the WIDTH, the ROW and the CHARACTER INDEX, and the layout change is
+  REVERTED IN FULL (one revert commit backing out the CSS, the two HTML commits and the ratchet).
+  T090 stays `[ ]`; nothing on the three rows' notes changes. The reachability gain measured in
+  3.2.5 item 2 does NOT buy the change a reprieve: it is a different claim, and if it is worth
+  keeping it returns as its own arc with its own pre-registered criterion. A null deletes the
+  change; that is the licence working.
+- REFUSED: if either precondition fires, or (p) or (r) fails, the reading is REFUSED, NO numbers are
+  reported, and the run is re-taken on a fresh load. A refusal is never a NOT MET and never a MET,
+  and a reading is never re-run until it comes out green - the refusal names its fault first.
+THE VERDICT LINE WILL CARRY BOTH READINGS AND WHAT CHANGED BETWEEN THEM, in this shape:
+  "FIRST READING (3.1, head `51e8031`): (v1) NOT MET - 304 of 570 sentence characters at
+   1420 x 1321 and 261 of 570 at 1920 x 1080, 2 of 6 row x width cells complete, the cause being a
+   fixed-height `#widgets` column with `overflow:hidden` in which every plate was clipped and
+   nothing scrolled. SECOND READING (3.4, head `<commit>`): (v1) <MET|NOT MET> - <numbers>. WHAT
+   CHANGED: the ARTIFACT (the column scrolls, each plate is its own content's height, the plate owns
+   the scroll origin) and the INSTRUMENT (strictly harder: the strict visible box, two preconditions
+   that refuse, and invisible text no longer counted as in view). THE CRITERION DID NOT CHANGE -
+   (v1) is quoted verbatim at 3.2.0 and the committed sub-measurement reproduced 3.1's 304 and 261
+   bit-exact at the unchanged page before anything was built."
+In every branch the chat's reply is untouched, and no instrument, reading, symbol or pin moves.
