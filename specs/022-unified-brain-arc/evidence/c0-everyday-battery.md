@@ -218,3 +218,94 @@ substrings (2.3 rule 3's "two strings" named its two classes).
 histogram of fact 2 on every seed, so the campaign's outcome was seen in dry-run form before the pinned run. The pinned
 run on a clean tree is the record; the dry pin is scratch and is not cited for any number.
 Nothing here moves a conjunct, a red, the key or the verdict rule.
+
+## 3. The record
+
+### 3.0 Apparatus as run (2026-09-17 02:35 local, clock read at write time)
+
+The Opus builder landed 2.9 steps 2 and 3 as `2a13221` (the module, its reds, its tests, its registration) and `181ec3e`
+(the campaign entry, one process per seed, and the pin check). The orchestrator reproduced its lines (29 tests passed;
+the bare invocation rc 0), wrote the dated amendment 2.10 (`37135d7`) BEFORE the campaign, then ran the campaign itself
+on the clean tree: `python -m snn_data_lake.cortex.everyday_battery --c0-campaign`, 50 s, the pin written once at head
+`37135d7` with `dirty: false` and committed as `b167118`. INDEPENDENT VERIFICATION
+(`scratchpad/c0/verify_pin.py`): a classifier parsed from THIS record's frozen key table (2.2) and implementing 2.3 on
+its own -- it shares no code with the module -- re-derives all 120 pinned classes (5 seeds x 24 questions) with 0
+disagreements, (p) 20 of 20, every seed's histogram, and (c) on (id, class, route, reply). The module's own
+`c0_pin_check` re-derives 144 rows (the 120 plus the sequential seed-0 run's 24) with 0 disagreements. The live brain
+was not running (the owner stopped the daemon at 01:12 for unrelated reasons); the instrument never touches it anyway.
+
+### 3.1 The build
+
+`cortex/everyday_battery.py`: `ITEMS` (the archive's 20 questions verbatim, asserted equal to the fixture's at import),
+`CONTROLS`, the frozen key, `classify` by 2.3's ordered rule, `FIXTURE` (the orientation's seed-0 replies and routes),
+`run_seed`, the campaign, `c0_pin_check`. Registered in `__init__.py` REGIONS and `run_selfchecks.py` (360 of 360
+self-checks; the census gates rc 0 after both commits) and entered in `dormancy_gate.EXEMPT` as `wire` with its
+retirement condition (C2's red C-R2 consumes it; it can never be wired to a tick because the chat lane ingests -- fact
+4). For the pin's `head` / `dirty` the campaign IMPORTS `substrate/policy_manifest._tree_state` rather than writing a
+seventh private copy (graph-exists listed six; P2). A RED THAT COULD NOT FIRE, found by the builder running it: the
+mutation `accept_only` was declared and never implemented, so R6 first read `WRONG | mutated WRONG` and the bare
+invocation went rc 1; fixed before the step-2 commit (the mutated classifier got its own rule-4 predicate).
+
+### 3.2 The campaign (pin `tools/c0_everyday_battery.json`)
+
+| seed | controls CORRECT | ABSTAIN | UNRELATED_ROW | SELF_REPORT | CORRECT | WRONG | OTHER / FALLBACK | the hold that abstained | wall time (s) |
+|---|---|---|---|---|---|---|---|---|---|
+| 0 | 4 of 4 | 14 | 5 | 1 | 0 | 0 | 0 | Gf (second-order access hold: abstain) | 19.7 |
+| 1 | 4 of 4 | 14 | 5 | 1 | 0 | 0 | 0 | Gf (second-order access hold: abstain) | 19.7 |
+| 2 | 4 of 4 | 14 | 5 | 1 | 0 | 0 | 0 | Gf (second-order access hold: abstain) | 19.3 |
+| 3 | 4 of 4 | 14 | 5 | 1 | 0 | 0 | 0 | Gf (metacognitive hold: abstain) | 19.6 |
+| 4 | 4 of 4 | 14 | 5 | 1 | 0 | 0 | 0 | Gf (metacognitive hold: abstain) | 19.2 |
+
+### 3.3 The conjuncts, each quoted and marked
+
+- (p) THE POSITIVE CONTROL: **HOLDS** -- 20 of 20 control x seed cells classify `CORRECT`.
+- (k) THE KEY DISCRIMINATES: **MET** -- constructed CORRECT 20 of 20, constructed WRONG 20 of 20,
+  the observed baseline 20 of 20.
+- (s) THE SCRAMBLED-KEY CONTROL: **MET** -- rotation by one scores 0 of 20 (bar: at most 1).
+- (h) THE PORT IS FAITHFUL: **MET** -- 100 of 100 item x seed cells equal fact 2's classes; moved: none.
+- (c) CONCURRENCY CANNOT CHANGE A REPLY: **MET** -- seed 0's five-process rows equal the sequential run's on class, route
+  and reply; diffs: none.
+- The reds R1, R2, R3, R4, R6 fire under their mutations in the campaign's own preamble and in `tests/`; R5 (a stale pin
+  refuses: a flipped class, an edited reply) in the bare invocation and in `tests/` (29 tests).
+**VERDICT: MET.** What it licenses, quoted from 2.4: "the battery is a governed instrument that reproduces the audit's
+reading and can score a correct answer". It licenses NO statement about the brain's reasoning beyond the histogram,
+which is the audit's and is unchanged: **0 of 20 correct on every seed; 14 abstain, 5 recalled rows spoken in place of
+an answer, 1 content-blind self-report; the four controls answered.**
+
+### 3.4 Disposition (2.6, MET branch)
+
+The pin is committed once (`b167118`). `CAPABILITY_BAR` gains its first row at `8f5f032`: the task's protocol, the
+brain number 0.0 with its provenance, `human=None` with the refused verdict -- so no comparison word may stand beside
+this task on any surface (the session's call under the owner's 2026-09-05 authorization; the row sets no target). The
+module is registered and exempted with its retirement condition (3.1). Dated notes: the plan's C0 row and C-R2
+("reachable: `cortex/everyday_battery.py`, pin at `b167118`").
+
+### 3.5 Deviations and disclosures
+
+1. FACT 2's "text identical" was WRONG (2.10 (a)): my orientation script compared text only on recalled rows. The
+   builder's every-row comparison found 14 to 15 of 20 replies differ per seed; my re-check then found what the builder's
+   report had missed -- the route label differs too (second-order access hold on seeds 0-2, metacognitive hold on seeds
+   3-4). The pin reproduces both. No conjunct compared text or route across seeds.
+2. THE OUTCOME WAS SEEN BEFORE THE PINNED RUN (2.10 (d)): the builder's dry run to a scratch path read MET. With a
+   deterministic instrument and a port-fidelity bar, the pinned run could only confirm it; said plainly.
+3. 2.8's cost estimate was six times high (about 17 to 20 s per seed; the campaign 50 s).
+4. COMMIT ORDER: 2.9 puts this section (step 5) before the registry row (step 6); the row's builder ran while this
+   section was written, and index discipline (never commit beside a running builder) landed the row first.
+5. THE BUILDER'S ACCEPTED READINGS (2.10 (c)) and additions: the somatic suffix is stripped in the transcript, not in
+   `classify` (a test pins both halves: a bare-digit key is satisfiable by "valence 0.3" on an un-stripped reply);
+   `FALLBACK` ports three substrings; `c0_pin_check` accepts a path or a mapping (so R5 runs in the bare invocation); a
+   pin with zero rows reads `ok: False` (an empty walk and a clean pin must not look alike); R2's and R3's mutations were
+   made genuinely distinct (`any_tag_is_correct` vs `shape_only`).
+6. NOT PANELLED YET at the time of writing; the panel and its fold follow as 3.7.
+
+### 3.6 Openings
+
+1. TWO HOLDS PRE-EMPT THE ANSWER PATH, BY SEED (C2's territory): the second-order access hold on seeds 0-2, the
+   metacognitive hold on seeds 3-4, 14 abstains each. C2's pre-registration should read which hold fires and why before
+   it routes on `{known, coverage}`.
+2. THE KEY IS A FLOOR (2.2): it will miss a correct answer phrased outside its patterns; the campaign reports every
+   answer-shaped non-CORRECT row with its text (none today) so a miss is visible the day the brain starts answering.
+3. A FOURTH PIN-TIE FUNCTION: `c0_pin_check` joins `t080_pin_reading`, `t081_pin_reading`, `t082_pin_reading` -- four
+   copies of (pin, re-derive, refuse on disagreement). The P2 merge the route ledger already carries now has four
+   members; this arc does not perform it (one change per arc) and names it.
+4. THE 20 ITEMS ARE THE AUDIT'S, not a representative sample of everyday reasoning (2.7); SC-013 owns the criterion.
