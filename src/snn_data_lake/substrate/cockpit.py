@@ -548,7 +548,22 @@ h2{font:600 13px/1 ui-monospace,Consolas,monospace;letter-spacing:.06em;color:rg
 #mmAnat{overflow:hidden;border-radius:6px}
 .mini canvas{width:100%;height:100%;display:block;border-radius:6px}
 .mini .lbl{position:absolute;left:8px;top:6px;font-size:11px;letter-spacing:.10em;z-index:1}
-#widgets{grid-area:widgets;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+/* THE COLUMN SCROLLS AND ITS FIRST PLATE OWNS THE SCROLL ORIGIN.
+   Every plate here used to be a SHARE of a fixed-height column (flex:N -- grow N, shrink 1,
+   basis 0) inside overflow:hidden, so a plate's height followed the OTHER plates' numbers
+   rather than its own text, every plate was cut, and what was cut could not be reached at
+   all. Now each plate is exactly its own content's height (flex:0 0 auto -- no grow factor,
+   because grow can only fire on a viewport far taller than this page is ever opened at, and
+   a factor that never fires is a number someone will one day tune to no effect) and the
+   column itself scrolls, so nothing rendered is out of reach. The FIRST plate's top offset
+   is 0 by construction: its in-view budget is the whole column, and no other plate's
+   content, wrap or number can move it -- which is why the plate that owes an in-view
+   criterion sits at the top of this column rather than fourth down it. scrollbar-gutter:
+   stable holds the text measure constant whether or not the column currently overflows (it
+   does not, for the first second after a reload, before the first /api/all answers), so a
+   wrapped sentence's height does not depend on how tall some other plate happens to be. */
+#widgets{grid-area:widgets;display:flex;flex-direction:column;gap:6px;
+ overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable}
 #widgets>div{padding-bottom:8px;overflow:hidden}
 #chat{grid-area:chat;display:flex;flex-direction:column;overflow:hidden}
 #log{flex:1;overflow-y:auto;padding:4px 12px;display:flex;flex-direction:column;gap:8px}
