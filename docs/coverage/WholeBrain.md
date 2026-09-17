@@ -378,6 +378,8 @@ actually sees them. Retired with this row, on P2 rather than on the verdict: the
 `cortex/affect_core.py`, the first-order tracker's live chat feed (the class itself STAYS -- `reasoning/pragmatics.py` runs
 its own instance), and the birth-time false-belief flag.*
 
+*DATED NOTE 2026-09-17 (specs/022 T090; `evidence/t090-conclusion-plate.md` 3.1-3.4): the "same view" conjunct carried NOT MET AS RENDERED on the three notes above (T080, T081, T082) is MET AS RENDERED at `a431e67` (T090, second reading): each row's licensed and refused sentences and its live value sit fully inside the strict visible box of the cockpit's CONSCIOUSNESS plate at 1420 x 1321 and at 1920 x 1080 (570 of 570 sentence characters, 3 of 3 live values), `<details>` collapsed, the page as loaded. The first reading was NOT MET (304 / 261 of 570: a fixed-height column, every plate clipped); the artifact and the instrument changed, the criterion did not. Opening, measured: five fewer rows are in view at load (24 -> 19 of 47) while all 47 are reachable for the first time.*
+
 ## A lead that was wrong, and the correction is the point
 
 I nearly filed `theta_gamma_code` as a dormant oscillatory-coordination faculty on the strength of a
