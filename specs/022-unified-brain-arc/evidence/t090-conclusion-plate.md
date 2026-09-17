@@ -144,3 +144,30 @@ and their comments moved out of ACCESS; R5's test; `tests/instruments/t090_measu
 orchestrator's rendered measurement at both widths (R1's BEFORE is fact 2; the AFTER is 3.x) -> 6. the surfaces per 2.6
 -> 7. section 3 the record -> panel (3 lenses + refuters judging CLAIM and FIX) -> fold -> stacked with C0 for ONE
 battery (the Codex closing report when the cap lifts, 2.0).
+
+### 2.10 Amendments (dated, appended; nothing above is edited in place)
+
+2026-09-16 22:33 local (clock read at write time), on the builder's report at `59141bf`, BEFORE the rendered measurement (2.9
+step 5) is run:
+
+(a) (p) NARROWED to `/api/all`. 2.1(a) and 2.3(p) wrote "`/api/state` and `/api/all`". The territory: `/api/state`
+serves `snap["cognition"]` only -- the flat `Brain.state()` map policed by `DASHBOARD_KEYS` / `verify_contract` -- so a
+list-valued `conclusion` there would put a non-cognition value inside the cognition contract; `/api/all` is what the
+page reads at 1 Hz and what the plate reads. (p) now reads: `/api/all` carries `conclusion` equal to
+`conclusion_rows(cognition)` on the same snapshot (identity by construction in `snapshot()`, pinned by
+`test_a_scratch_brains_snapshot_serves_todays_three_charged_rows` and the contract test); `/api/state` carries no
+`conclusion`. Measured on the live daemon at `59141bf` by the orchestrator: `/api/all` sections
+`arm_view, body, cognition, conclusion, derived, device, gated, hardware, provenance, spikes, t`, 3 rows
+(temporal_binding 0.2309, report_order 1.0, social_cognition 0.4437, registry order); `/api/state` no `conclusion`.
+Not a relaxation of the verdict: (p) still REFUSES on a missing or unequal section.
+
+(b) The contract entry lives in `verify_contract` as a required top-level key, not in `DASHBOARD_SECTION_KEYS` (which
+lists dict-valued sections; `conclusion` is a list). The no-orphan test covers it (`..._is_a_contract_key_whose_absence_
+is_a_finding`).
+
+(c) DISCLOSED BEFORE THE NUMBER: the builder's arithmetic on the committed text PREDICTS (v1) NOT MET at both widths
+(plate content about 325 px against about 223 px available at 1420 x 1321 and about 175 px at 1920 x 1080; the plate is
+flex 5 of 25 in a column of viewport height minus 170 px; the load-bearing assumption is a 6.05 px monospace advance at
+11 px). The layout is NOT adjusted before the measurement: 2.6's NOT MET branch applies as written if the prediction
+holds; any layout change is a stacked commit AFTER section 3 records the first reading, and its re-measurement is a
+disclosed SECOND reading, never the first.
