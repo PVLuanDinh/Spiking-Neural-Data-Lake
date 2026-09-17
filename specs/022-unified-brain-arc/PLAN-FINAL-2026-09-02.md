@@ -870,7 +870,13 @@ future evidence record; all T096-T100 checkboxes remain OPEN until their own del
 May run in parallel with Phase 3 (O5(b)); MUST precede Phase 5.
 
 - **C0 — promote the 20-item everyday battery** (it exists only in session scratchpads) into `src` as a
-  scorer instrument with a self-check and PROVENANCE; without it C-R2 is unreachable.
+  scorer instrument with a self-check and PROVENANCE; without it C-R2 is unreachable. *DATED NOTE 2026-09-16 (C0 pre-registered,
+  `evidence/c0-everyday-battery.md` 1-2.9): the battery's only copy was a 2026-09-01 session scratchpad (found and
+  archived); it carries NO answer key (the audit's "0 correct" was a human read). Reproduced on today's tree, seeds
+  0-4 identical: controls 4 of 4, battery 14 abstain / 5 recalled rows / 1 self-report / 0 correct. The arc lands
+  `cortex/everyday_battery.py` (the 20 questions verbatim, a frozen answer key, an ordered classifier that decides
+  abstention by route AND preamble before any key is tested), a five-seed campaign on scratch brains (the chat lane
+  ingests, so the live brain is never scored) pinned once, and on MET one `CAPABILITY_BAR` row with `human=None`.*
 - **C1a — instantiate 17 of the 19 declared edges** in `make_brain()` as `(SignalRing, JoinConsumer)` pairs.
   Nine modules already carry a factory (A.5) covering nine edges; the remaining direct-call edges (about ten
   — re-count from `wiring_manifest.rebuild_from_registrants()` at C1a's pre-registration) get new ones;
