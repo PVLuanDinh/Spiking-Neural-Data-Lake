@@ -1,236 +1,261 @@
 # Spiking Neural Data Lake
 
-[![CI](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/actions/workflows/ci.yml/badge.svg)](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/tag/Aighluvsekks/Spiking-Neural-Data-Lake?label=release)](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases)
-[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.14t](https://img.shields.io/badge/python-3.14t-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A Python toolkit for event-driven (spiking) computation, in three parts:
+**A research platform for locally adaptive spiking agents, persistent event memory, and robot control.**
 
-- **A neuromorphic primitive library:** 376 modules under `src/snn_data_lake/`, 202 of them mapped
-  into the brain atlas across 17 regions
-  (cortex, hippocampus, basal_ganglia, amygdala, cerebellum, brainstem, thalamus, hypothalamus,
-  midbrain, pons, medulla, epithalamus, olfactory, claustrum, neuromodulation, plasticity, and a
-  non-anatomical substrate tier), wired by an explicit
-  `connectome`. Integrate-and-fire and
-  adaptive-threshold neurons, STDP/BCM/e-prop/ReSuMe plasticity, WTA and reservoir networks, spike
-  encoders/decoders, and streaming sketches. Each module is importable as
-  `snn_data_lake.<region>.<module>` (the legacy `snn_data_lake.<module>` path still works) and
-  carries its own deterministic self-check. See `snn_data_lake.brain_atlas` for the region map.
-- **A spike-native data lakehouse:** sparse `.spk` event storage with windowed queries, an
-  in-storage coincidence/temporal-order query engine (Paradigm B), a VSA/hyperdimensional
-  relational-reasoning layer (Paradigm C), and a Bronze→Silver→Gold Medallion pipeline.
-- **A 6-DOF SO-101 robot-arm control loop (MuJoCo body, real serial path):** gesture recognition →
-  command → reward learning, with a reflex, a population-coded PID, and neuromodulation, where every
-  motor command passes the `So101Arm.apply()` safety gate
-  (`src/snn_data_lake/brainstem/so101_arm.py`, `class So101Arm` / `def apply`) and the real serial
-  path is disabled until explicitly calibrated (`serial_arm.assert_calibrated`).
+Spiking Neural Data Lake (SNDL) explores a practical question: can an agent learn from local
+experience, retain what it learns, and add useful capacity while staying within an affordable
+computer's memory, latency, and energy budgets?
 
-  *(Corrected 2026-08-04: this line said "simulated 2-DOF" and named the gate `ArmSim.apply()` — a
-  class absent from `src/` entirely, and a DOF count belonging to the retired `arm_sim.py`. The
-  envelope code is unchanged; only its description was wrong, which is its own hazard: this is the
-  README's one sentence telling a reader which code gates every motor command, and it named a file
-  that does not exist. `SECURITY.md`'s table and `docs/POLICIES.md` already had the live five.)*
+The repository combines spiking computation, a durable data lake, growth and learning mechanisms,
+and a MuJoCo SO-101 robot-arm body. A local daemon and cockpit expose the running system. The
+long-term ambition is a brain that develops on its owner's machine; the current implementation
+is an experimental platform for testing parts of that ambition.
 
-`torch`, `numpy` and `mujoco==3.11.0` are the core dependencies — **three, not two** (`pyproject.toml`
-`dependencies`; mujoco is exact-pinned because the solver version IS the physics). The former
-zero-dependency-core contract was removed project-wide on 2026-07-20, and its last mechanism, the
-`NORD_TORCH=0` off-switch, was removed on 2026-07-29. There is no torch-free mode: if torch is
-missing the install is broken, and the brain's stdlib fallback exists to keep that survivable rather
-than to make it a supported configuration. Per **P7** (`docs/POLICIES.md`) any dependency that helps
-this become a phenomenal brain is accepted, and "it would be another dependency" is not a valid
-reason to reject one. Optional integrations (real
-hardware, Parquet/Delta, GPU training, on-device LLM) live behind extras. Every efficiency figure
-below is measured against a dense baseline and reproduced by running the referenced module.
+**Status, assessed 2026-09-20 at local commit `0fd6db5`:** runnable components and substantial
+evaluation infrastructure exist. End-to-end energy savings, useful autonomous growth on inexpensive
+edge hardware, and broad reasoning ability have not been established. The
+[current-state assessment](docs/RESEARCH_ASSESSMENT.md) records publication validation and
+distinguishes fresh checks from historical results; the
+[research and presentation plan](docs/ACADEMIC_RESEARCH_PLAN.md) defines the next study.
 
-## Install
+## Why combine spikes, memory, and growth?
+
+Many deployed models have a fixed architecture and rely on a separate training workflow when their
+environment changes. SNDL investigates three complementary mechanisms:
+
+- **Sparse activity:** represent events as spikes and exploit their timing or inactivity where the
+  implementation and hardware can benefit.
+- **Persistent experience:** keep observations and learned state in a local lake, with indexed
+  reads, replay, recovery, and explicit retention rules.
+- **Adaptive capacity:** add or change capacity in response to learning evidence, while measuring
+  whether the change improves held-out behavior.
+
+These are research mechanisms, not automatic efficiency guarantees. A spike count is not a power
+measurement, a larger network is not necessarily a better learner, and a growing disk store does
+not demonstrate bounded whole-system RAM use.
+
+## What is implemented
+
+| Area | Current implementation | Main entry points |
+|---|---|---|
+| Spiking computation and learning | Neuron models, encoders, plasticity rules, recurrent and reservoir components, and task-specific learners | [Package and region registry](src/snn_data_lake/__init__.py), [brain](src/snn_data_lake/cortex/brain.py) |
+| Persistent memory | Sparse event storage, windowed queries, append logs, sealed segments, replay and migration mechanisms | [Streaming hub](src/snn_data_lake/substrate/streaming_hub.py), [lake engine](src/snn_data_lake/substrate/lake_engine.py), [persistence paths](src/snn_data_lake/substrate/home.py) |
+| Temporal queries | Coincidence and ordered-sequence matching over stored spikes | [Query engine](src/snn_data_lake/cortex/paradigm_b_engine.py) |
+| Growth | Neurogenesis, local growth-program infrastructure, function-preserving widening, and stopping gates tied to learning evidence | [Neurogenesis](src/snn_data_lake/cortex/neurogenesis_engine.py), [growth program](src/snn_data_lake/cortex/growth_program.py), [growth stop](src/snn_data_lake/cortex/growth_stop.py) |
+| Robotics | Six-DOF SO-101 simulation, gesture-to-command examples, reflexes, and a calibration-gated serial path | [SO-101 body](src/snn_data_lake/brainstem/so101_arm.py), [demo](src/snn_data_lake/substrate/demo.py), [safety documentation](SECURITY.md) |
+| Local runtime | Daemon, cockpit, telemetry, and provenance-aware capability reporting | [Daemon](src/snn_data_lake/substrate/learn_daemon.py), [cockpit](src/snn_data_lake/substrate/cockpit.py) |
+| Evaluation | Deterministic self-checks, pytest, fault controls, policy gates, replay checks, and recorded experiments | [Self-check runner](run_selfchecks.py), [tests](tests/), [experiment records](specs/022-unified-brain-arc/evidence/) |
+
+The system uses a mixture of spiking, tensor, symbolic, and conventional Python components. Brain
+region names organize the implementation; they do not establish biological equivalence. Software
+in `research/`, `integrations/`, and other tiers remains part of the project, with gaps in governance
+treated as engineering debt under [the development policies](docs/POLICIES.md).
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Inputs[Local sensors and task inputs] --> Encode[Event and feature encoding]
+    Encode --> Agent[Spiking and cognitive modules]
+    Agent <--> Lake[Persistent local lake]
+    Agent --> Action[Action selection]
+    Action --> Gate[SO-101 safety gate]
+    Gate --> Body[MuJoCo body or calibrated hardware]
+    Body --> Inputs
+    Agent --> Evidence[Learning and growth evidence]
+    Evidence --> Adapt[Learning updates and gated growth]
+    Adapt --> Agent
+    Agent --> Cockpit[Local cockpit and telemetry]
+    Lake --> Cockpit
+```
+
+This is a conceptual map of existing subsystems, not a claim that every path has demonstrated a
+task-level benefit. The [connectome](src/snn_data_lake/connectome.py) and the
+[unified-brain development plan](specs/022-unified-brain-arc/PLAN-FINAL-2026-09-02.md) describe the
+implementation and its outstanding work.
+
+## Install from source
+
+The current tree requires **free-threaded CPython 3.14 (`3.14t`)**. Packaging declares Python
+`>=3.14`; the runtime additionally checks the free-threaded build. Ordinary GIL-enabled Python
+3.14 is not the supported daemon runtime. This differs from older releases and older installation
+notes.
+
+Use your installed **3.14t** interpreter as `python` below, then create a virtual environment:
 
 ```bash
 git clone https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake
 cd Spiking-Neural-Data-Lake
-pip install -e .            # core (pulls torch + numpy)
-pip install -e ".[all]"     # + optional extras (arm, lake, gpu, nmnist, llm, ...)
+python -c "import sys, sysconfig; print(sys.version); assert sysconfig.get_config_var('Py_GIL_DISABLED'), 'Use CPython 3.14t'"
+python -m venv .venv
 ```
 
-Python 3.12+ (`pyproject.toml` `requires-python`; raised from 3.11 on 2026-08-05 — the reason and the
-cost are in the comment beside that field). Full guide, including per-extra notes, in
-[docs/INSTALL.md](docs/INSTALL.md).
-GPU / accelerator notes (opt-in CUDA for training) in [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
-Train on a GPU and export weights back to the core: [docs/TRAINING.md](docs/TRAINING.md).
-
-## Quickstart
+Activate it with `.venv\Scripts\Activate.ps1` in Windows PowerShell, or
+`source .venv/bin/activate` on Linux/macOS. Then install:
 
 ```bash
-snn-demo     # the whole neuromorphic loop in one runnable file
-snn-arm      # live gesture -> arm loop (add --serial/--actuate for real hardware)
-snn-loop     # full closed loop: gesture -> command -> reward -> learn
-
-python learn_daemon.py      # the always-on brain; serves the cockpit -- the ONE frontend --
-                            # at http://127.0.0.1:8137/ (live brain, arm, hardware target, chat)
-
-python run_selfchecks.py    # run every registered module's self-check; the runner is the one
-                            # source of truth for the list (no count is quoted here -- it went
-                            # stale at "277" and five documents had copied it)
+python -m pip install -e .
 ```
 
-## Results (measured)
+The five core dependencies in [pyproject.toml](pyproject.toml) are `torch`, `numpy`, `pyarrow`,
+`mujoco==3.11.0`, and `snntorch==1.0.0`. There is no supported torch-free mode. CPU execution is
+part of the CI configuration; CUDA is useful for selected workloads, not a requirement for the
+basic demo. Edge-device wheel availability must be checked before choosing deployment hardware.
 
-All figures are reproduced by running the referenced module. Compute = synaptic operations
-(SynOps); storage = bytes. These three tables run in CI on the `self-checks` matrix job
-(`{ubuntu, windows} x {3.12, 3.13}`, full dependency set — the 3.11 leg was removed on 2026-08-05
-with the `requires-python` floor raise).
-
-*(Corrected 2026-08-04: this said "the torch-free matrix job (numpy only)". That job was DELETED on
-2026-07-29 — see the comment at the top of `.github/workflows/ci.yml` — because it asserted the
-brain still works without one of its hard dependencies, a contract the project no longer has. The
-matrix it carried moved into `self-checks`.)*
-
-**Data lake: store, search, reason**
-
-| Component | Task | Metric | Result |
-|-----------|------|--------|--------|
-| Associative memory | recall from 40%-corrupted cue | capacity / robustness | 80 patterns @ 99.6%, holds through 60% corruption |
-| Associative memory | memory footprint | factored vs dense | 874x smaller (600 B vs 512 KB; O(P·k), not N²) |
-| Telemetry hub (Paradigm A) | sparse `.spk` store | size / query I/O | 61x smaller than a dense raster; windowed query reads 2% of the file |
-| In-storage query (Paradigm B) | coincidence + temporal order | host transfer | 162x less data to host; order-discriminating (FAR→NEAR ≠ NEAR→FAR) |
-| Relational KG (Paradigm C) | link prediction | Hits@1 | 50% TransE / 100% RotatE (cyclic relations; relation algebra verified) |
-| Reasoning (Paradigm C, VSA) | bind/bundle/permute | compositional query | context-steered arm command + role-filler recall |
-| Sequence model (LSM) | temporal-pattern classification | accuracy | 96% (chance 33%), event-driven |
-
-**Compute efficiency**
-
-| Component | Task | Metric | Result |
-|-----------|------|--------|--------|
-| Supervised spiking classifier | 4-shape recognition | accuracy / compute | 100%, 3.6x fewer ops (113.8k SynOps vs 409.6k dense MACs) |
-| Temporal (TTFS) coding | latency inference + early exit | SynOps vs rate | 83.5x fewer (5.3k vs 442.8k), 100% accuracy |
-| Spike-driven MoE | firing-rate routing | router params / compute | 0 learned router params (8 biases vs 512), 4x compute cut (top-2 of 8) |
-
-**Robot-arm neuromorphic loop (real captured sensor data)**
-
-| Component | Task | Metric | Result |
-|-----------|------|--------|--------|
-| Gesture recognition (order-aware Paradigm B) | reference ESP32 captures | accuracy | 95% (APPROACH 98% · RETREAT 85% · IDLE 100%), up from 63% with a direction-blind matcher |
-| Closed control loop | gesture → command → reward → learn | behavior | rewarded gesture's value rises; collision → EMERGENCY_STOP + cortisol-sharpened reflex |
-
-**Requires torch/GPU, own venv, not in CI** (recorded in [CHANGELOG.md](CHANGELOG.md) for the stated config):
-spiking model-based RL (surrogate-gradient policy 0.319→0.053 m; Dreamer 2.695→0.116 m; 6-DOF
-Dreamer-lite 1.03→0.48 m), and MNIST (unsupervised STDP 82.3% CPU; conductance Diehl & Cook 90.0%
-@1600n on an RTX 5070).
-
-> The two "95%"s differ. The robot-arm gesture 95% is *achieved* on real captured data. The
-> MNIST conductance Diehl & Cook 95% is the *literature target*; best measured here is 90.0%.
-
-## Repository layout
-
-```
-src/snn_data_lake/   376 modules; 202 of them mapped into the brain atlas across 17 regions (cortex,
-                     hippocampus, basal_ganglia, amygdala, cerebellum, brainstem, thalamus,
-                     neuromodulation, plasticity, substrate, ...) + brain_atlas.py (region->module
-                     map) + connectome.py (region->region wiring) + lakehouse/ (Medallion
-                     Bronze→Gold) + reasoning/ (161 modules; still outside the three P3 gates,
-                     ruff and the coverage denominator -- P4c debt, target zero, being promoted)
-research/            benchmarks and experiments (ruff-excluded) -- P4c debt on the same terms
-tests/               pytest suite (>=70% coverage)
-integrations/        packaging/ (daemon + cockpit -> standalone Windows .exe, PyInstaller + Inno Setup),
-                     local_llm/ (optional on-device NL interface, AirLLM backend, [llm] extra, no cloud),
-                     deploy/ (ESP32 actuator firmware, fail-safe, echo-only by default), robot arm/
-docs/                install, hardware setup, storage formats, architecture notes
-tools/               gates run by CI's lint job (citation_guard, red_reachability, dependency_ledger)
-                     + built-but-unregistered gates (doc_command_guard -- P4c debt) + measurement
-                     harnesses (charge_probe, p6_gate)
-run_selfchecks.py    canonical self-check runner (single source of truth for the module list)
-```
-
-**P4c: there is no "outside the brain" in this tree.** `research/`, `reasoning/`, `integrations/`
-and `tools/` are ruff- or gate-excluded *tiers*, which is a fact about the build config, never a
-disposition. Every file here is part of the brain or retired — "it is only a benchmark / only the
-launcher" is not a third category. The exclusions above are recorded **debt**, not design.
-*(Corrected 2026-08-04: this block described `research/` as "not the product", the exact framing
-P4c abolishes.)*
-
-Safety-critical arm code (`brainstem/reflex.py`, `brainstem/serial_arm.py`, `brainstem/so101_arm.py`,
-`brainstem/arm_config.py`, `brainstem/interpreter.py`) is documented in [SECURITY.md](SECURITY.md).
-
-## Testing & CI
+Install only the extras needed for your work:
 
 ```bash
-python run_selfchecks.py                     # every registered module's self-check (deterministic, assert-based)
-pytest                                       # unit suite, >=70% line coverage gate (the gate is the number; CI prints the rest)
-python -m ruff check .                       # lint (E, F, I, UP, B)
-python -m ruff format --check src tests tools   # formatting (CI checks THIS scope exactly)
+python -m pip install -e ".[dev,nir]"  # tests, lint, and manifest/NIR checks
+python -m pip install -e ".[arm]"      # serial hardware interface
+python -m pip install -e ".[lake]"     # Polars and Delta Lake integration
 ```
 
-CI (`.github/workflows/ci.yml`) runs four jobs, not four commands:
+Other extras are declared in `pyproject.toml`. The `all` extra is a selected bundle and does not
+include every optional integration. Historical release binaries are separate artifacts; this
+README describes the assessed source tree.
 
-- **`self-checks`** — `{ubuntu, windows} × {3.12, 3.13}`, full dependency set, `MUJOCO_GL=disable`.
-- **`wheel`** — asserts the vendored SO-101 model (`scene.xml` + 13 STL meshes) is inside the built wheel.
-- **`lint`** — `ruff check` + `ruff format --check src tests tools`, then four repo/policy gates:
-  `tools/citation_guard.py` (a tracked file may not cite an untracked `.py` as runnable),
-  `tools/red_reachability.py --assert` (**P8** — a success criterion with no reachable red is deleted,
-  not weakened), `tools/dependency_ledger.py --assert` (**P7** — every import declared, every
-  declaration used) and `tools/dependency_ledger.py --self-check` (**P8** applied to the ledger's own
-  criteria — each is mutated against a string copy of `pyproject.toml` and must fire).
-- **`test`** — pytest + coverage.
+## Run a first experiment
 
-`tools/doc_command_guard.py` (a documented `python -m` command must be runnable) is **built, clean
-and NOT in CI** — run it by hand. Registering it is open P4c work.
+Start with the deterministic simulation demo:
 
-*(Corrected 2026-08-04: this section said "Four gates, all green on every push" and listed the format
-scope as `src tests`. CI's scope is `src tests tools`; the `--check` would pass locally and fail in CI.
-It also quoted `277` self-checks and `90.19%` coverage — both stale, and both the kind of number that
-goes stale on any promotion, so they now point at the gate instead of restating its output.
-**Corrected again 2026-08-05:** the same pass then listed `doc_command_guard` as a fourth lint gate.
-Measured against `.github/workflows/ci.yml`, the lint job had five checking steps — `ruff check`,
-`ruff format --check`, `citation_guard`, `red_reachability --assert`, `dependency_ledger` — and
-`doc_command_guard` appears in no workflow, in `run_selfchecks.py`, in `.pre-commit-config.yaml` or
-in `pyproject.toml`. Counting a gate CI does not run is the same error as the "277" it replaced.
-**Corrected a third time, later on 2026-08-05, and this one was self-inflicted:** the
-`requires-python` floor-raise pass edited the `lint` job in the same commit — adding `--assert` to
-the ledger step and registering `dependency_ledger.py --self-check` as a new one — and left both the
-bullet above ("three repo/policy gates", `dependency_ledger` "report-only") and this enumeration
-standing. RE-DERIVED by parsing the YAML rather than reading it: the `lint` job now has **9 steps**,
-of which **6 are checking steps** — `ruff check .`, `ruff format --check src tests tools`,
-`citation_guard`, `red_reachability --assert`, `dependency_ledger --assert`,
-`dependency_ledger --self-check` — the other three being `checkout`, `setup-python` and
-`pip install -e ".[dev]"`. A count of CI steps written in a pass that edits CI is stale before the
-pass ends, which is the same shape recorded against `specs/001/plan.md` under P7's residue list.)*
+```bash
+snn-demo
+```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) to add a module.
+It recognizes an approaching or retreating hand from example sensor windows, maps the result to
+an arm command, and demonstrates an emergency stop on contact. It uses a throwaway persistence
+directory. This demonstrates the component path, not learned real-world manipulation.
 
-## Limitations & open problems
+Inspect the storage and efficiency examples:
 
-- **~95% MNIST is a target, not achieved.** Best measured is 90.0% (1600 neurons, scale-tuned);
-  the 6400-neuron run needs the full recipe, multiple epochs, and a GPU — not a code gap.
-- **The 6-DOF Dreamer's world model is a plain MLP.** A fully-spiking world model failed to
-  regress 6-joint FK; the actor and critic are spiking, the world model is not. The arm is planar.
-- **Real-arm "learning" is partly simulated.** Reward/success uses an `--assume-success`
-  placeholder and IR sensor fusion is off (`arm_config.IR_PRESENT = None`) until a calibration
-  capture and a real success signal land; distance alone decides presence.
-- **N-MNIST 71% is a plumbing demo, not a benchmark:** real DVS data, nearest-prototype, no
-  learning (SOTA ~99.3%); off-theme vs the storage/robotics work.
-- **The query path requires determinism:** Poisson re-encoding yields different spike trains, so
-  stochastic encoding cannot be used for matching.
-- **Neuromodulators are abstractions**, not biophysics (single global scalars for
-  dopamine/cortisol). Paradigm B's real efficiency win needs neuromorphic silicon; the GeNN GPU
-  ports are drop-in accelerators, not independently re-validated.
+```bash
+python -m snn_data_lake.substrate.spike_telemetry_hub
+python -m snn_data_lake.cortex.paradigm_b_engine
+python -m snn_data_lake.substrate.energy
+```
 
-Numbers are fixed-seed; rerun to reproduce.
+To run the persistent local system from the source checkout:
 
-## Download (Windows, no Python needed)
+```bash
+python learn_daemon.py
+```
 
-A standalone executable is published on the
-[v3.27 release](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/tag/v3.27): unzip
-and run `snn-ui.exe`, which starts the brain daemon and opens the cockpit in your browser (verify
-headlessly with `snn-ui.exe --smoke`). A full-source zip is also attached there for a source install
-via `install.bat` / `install.sh`. **That "3.11+" was left standing here and is now scoped rather than
-edited into a falsehood:** it describes the source zip attached to the **v3.27** release, whose
-`requires-python` genuinely was `">=3.11"`. The CURRENT tree requires **3.12+** (floor raised
-2026-08-05), so a source install from `main` needs 3.12; the v3.27 artifact is unchanged and still
-installs on 3.11.
+The cockpit is served at `http://127.0.0.1:8137/`. Persistent data defaults to
+`~/.snn_data_lake`; set `NORD_HOME` to choose a different directory before launching. The daemon
+changes persistent state. Source self-modification is separately opt-in through `NORD_SELFMOD`
+and is disabled by default. Use isolated state for experiments and retain the exact configuration.
 
-## Provenance & license
+Real-arm operation requires calibration and the procedures in [SECURITY.md](SECURITY.md) and
+[hardware setup](docs/HARDWARE_SETUP.md). Every arm command passes through `So101Arm.apply()`;
+the serial path refuses uncalibrated operation. Simulation results do not certify physical safety
+or real-arm learning.
 
-Designs come from two SNN data-storage research briefs (in [`research/`](research/)) plus an
-external architectural assessment that mapped the concept to the three paradigms; the spike-driven
-MoE is a port of Project Nord's `SpikeDrivenMoE`. Every version is a git tag and GitHub release
-([CHANGELOG.md](CHANGELOG.md)). License: [MIT](LICENSE).
+## Evidence and its limits
+
+The following component examples were rerun during the 2026-09-20 assessment. They are fixed
+workloads, not an edge-device benchmark suite.
+
+| Experiment | Observed result | What it supports |
+|---|---|---|
+| Sparse telemetry storage | 103,723 events: 417,976 B versus a 3,200,000 B bit raster or 25,600,000 B byte raster | About 7.7x or 61x less storage, depending on the dense representation |
+| Windowed telemetry query | 8,492 B read, about 2.0% of that sparse file | Indexed partial reading for the specified channels and time window |
+| Temporal query engine | Ordered motif: 41 forward matches versus 4 reverse matches; 1.3% of the file read for that query | Order-sensitive matching and partial reads on a constructed workload |
+| Gesture-to-arm demo | HOLD, ENGAGE, RELEASE, then EMERGENCY_STOP on contact | Runnable simulation integration and a demonstrated reflex path |
+
+**The efficiency baseline matters.** The [energy example](src/snn_data_lake/substrate/energy.py)
+counts 113,676 SynOps. A dense comparison repeated over 20 time steps costs 409,600 MACs, producing
+the older 3.6x reduction headline. A single dense pass over the static input costs 20,480 MACs:
+the spiking example then uses about **5.6x more operations**. SynOps and MACs also have different
+costs. With its modeled memory-access costs and INT8 baseline, this example estimates 740.4 nJ for
+the SNN versus 107.1 nJ for the ANN. These are **analytical energy estimates**, not measured joules
+on a CPU, GPU, robot, or neuromorphic chip.
+
+Recorded development results further constrain the claims:
+
+- **Width helped one prediction task, within important limits.** The corrected SC-012a experiment
+  reported a 15.1 percentage-point mean next-category accuracy gain for the wider arm over one
+  unit across eight seeds. The wider arm realized 9-14 units; it did not beat the incumbent's own
+  admission policy or the simple previous-category baseline. Review also found its shuffled-label
+  veto could not discriminate failure. This is bounded task evidence, not an edge-efficiency result.
+  See sections 7-8 of the [corrected reading and review](specs/022-unified-brain-arc/evidence/sc-012a-width.md).
+
+- **Neuron paging did not meet its full criterion.** The recorded experiment reduced memory but
+  reported a median raw tick-time ratio of 35.2x against a 3.0x bound. The paging layer was deleted
+  under the predefined failure rule. Durable event storage remains a separate capability.
+  See the [paging record](specs/022-unified-brain-arc/evidence/s5-paging-null.md) and
+  [exit assessment](specs/022-unified-brain-arc/evidence/s2-exit.md).
+- **Everyday reasoning remains limited.** The pinned C0 campaign records 0/20 correct on each of
+  five seeds: 14 abstentions, five unrelated retrieved rows, and one self-report per seed. Its
+  `MET` verdict certifies the scoring instrument and its controls, not reasoning success. The
+  assessment re-derived all 144 recorded classifications without disagreement; it did not rerun
+  that campaign. See the [protocol](specs/022-unified-brain-arc/evidence/c0-everyday-battery.md) and
+  [pinned data](tools/c0_everyday_battery.json).
+
+## Research direction: affordable local adaptation
+
+The proposed study asks whether **budgeted growth plus persistent experience improves the
+quality-cost tradeoff of an adaptive robot controller** against strong fixed-size alternatives
+on the same machine.
+
+The next evidence should include:
+
+1. A bounded continual-control task with held-out goals and reproducible environment changes.
+2. Fixed-size spiking, compact dense, and classical-control baselines, with matched inputs,
+   training opportunities, and tuning budgets.
+3. Growth and memory ablations to identify which mechanism causes any improvement.
+4. Whole-process peak RAM, p50/p95 latency, measured energy, disk growth, adaptation time, and
+   retained task performance, including preprocessing and learning costs.
+5. A reproducible CPU-only run on a modest local machine before any inexpensive-edge claim.
+
+The [academic research plan](docs/ACADEMIC_RESEARCH_PLAN.md) contains a 15-minute professor pitch,
+proposed hypotheses, experiment design, an eight-week sequence, and a paper outline. The plan is
+a proposal; its targets are not achieved results. It adopts the distinction between algorithm
+metrics and system measurements used by [NeuroBench](https://www.nature.com/articles/s41467-025-56739-4).
+
+## Validation and contributing
+
+Use the free-threaded environment with the development and NIR extras:
+
+```bash
+python run_selfchecks.py
+python -m pytest
+python -m ruff check .
+python -m ruff format --check src tests tools
+python tools/citation_guard.py
+python tools/red_reachability.py --assert
+python tools/dependency_ledger.py --assert
+python tools/doc_command_guard.py --assert
+```
+
+[The workflow](.github/workflows/ci.yml) defines the CI configuration. **The GitHub workflow was
+manually disabled when checked on 2026-09-20; a push alone does not run these jobs.** Local
+validation is recorded in the assessment and does not establish a fresh cross-platform CI pass.
+The configuration includes self-checks on
+Windows and Ubuntu with Python 3.14t, wheel-content checks, lint and policy gates, and pytest with
+a 70% coverage floor. Coverage excludes the reasoning and training tiers; that floor is not
+whole-repository coverage. Additional checks cover replay, determinism, manifests, growth, and
+policy reporting. The certification job is advisory (`continue-on-error`); performance reporting
+in shared CI is also non-asserting. The documentation-command guard is currently a manual check.
+
+Passing software checks does not establish a scientific result. Every result needs its task,
+baseline, hardware, seed protocol, raw observations, and limitations. Follow
+[CONTRIBUTING.md](CONTRIBUTING.md) and [the governing policies](docs/POLICIES.md) when changing code.
+
+## Repository map
+
+| Path | Contents |
+|---|---|
+| `src/snn_data_lake/` | Brain modules, storage, learning, control, runtime, and instrumentation |
+| `tests/` | Automated regression tests |
+| `specs/022-unified-brain-arc/` | Current development plan, task records, and experiment evidence |
+| `research/` and `training/` | Experimental methods and training work |
+| `integrations/` | Hardware, packaging, desktop, and optional local-model integrations |
+| `docs/` | Architecture, operation, research assessment, and presentation plan |
+| `tools/` | Repository checks and recorded measurements |
+
+Some older documents describe superseded runtimes or experiments. For this assessment, executable
+configuration and dated evidence take precedence over historical summaries. Consult
+[CHANGELOG.md](CHANGELOG.md) for development history and [LICENSE](LICENSE) for the MIT license.
