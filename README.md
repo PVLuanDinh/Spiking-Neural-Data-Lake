@@ -210,11 +210,6 @@ The next evidence should include:
    retained task performance, including preprocessing and learning costs.
 5. A reproducible CPU-only run on a modest local machine before any inexpensive-edge claim.
 
-The [academic research plan](docs/ACADEMIC_RESEARCH_PLAN.md) contains a 15-minute professor pitch,
-proposed hypotheses, experiment design, an eight-week sequence, and a paper outline. The plan is
-a proposal; its targets are not achieved results. It adopts the distinction between algorithm
-metrics and system measurements used by [NeuroBench](https://www.nature.com/articles/s41467-025-56739-4).
-
 ## Validation and contributing
 
 Use the free-threaded environment with the development and NIR extras:
