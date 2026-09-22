@@ -227,7 +227,9 @@ by their path under the panel scratch, 3.7):
 (e) (s) IS ONE FIXED PRE-REGISTERED DERANGEMENT AND ITS BAR IS PERMUTATION-DEPENDENT (panel I4). Deterministic figures:
 over the 19 rotations the constructed CORRECT arm scores max 2 (k = 10 and k = 16; rotation-by-one 0; identity 20); the
 off-diagonal cross-hit matrix is 10 of 380 pairs -- (1,12), (1,17), (12,1), (12,17), (17,1), (17,12), (6,16), (16,6),
-(4,20), (8,15) -- and a maximum matching over that graph gives an EXHAUSTIVE maximum of 7 of 20 over all permutations.
+(4,20), (8,15) -- and a maximum matching over that graph gives an EXHAUSTIVE maximum of 7 of 20 over all DERANGEMENTS
+of the 20 keys (the off-diagonal graph; the identity, which is not a scramble, scores 20 by construction -- corrected
+2026-09-22 on the Codex closing report, which caught "over all permutations" in this sentence's first form).
 Cause, split honestly: 8 of the 10 pairs are answer-space collisions in the item set -- items 1, 12 and 17 are three
 distinct yes/no questions sharing `accept=\byes\b refuse=\bno\b` exactly, and items 6 and 16 differ only by the
 alternative `both` -- and 2 are lexical coincidences (item 4's "3 apples" hits item 20's `\bapple`; item 8's
@@ -253,7 +255,9 @@ key, reads CORRECT. THE PROTECTION THAT DOES HOLD: rule 1 (the hold's route and 
 key, so the constructed abstain R1 and the pinned seed-2 / item-15 key hit both read ABSTAIN. OBSERVED VS
 CONSTRUCTED, kept apart: no campaign cell is misclassified -- the actual item-10 cells are UNRELATED_ROW and the actual
 item-15 cells ABSTAIN on all five seeds; the cross pairing is constructed, not an observed C2 conversion; a rule reorder
-(the key before the recalled-tag rule), simulated in memory, changes 0 of 144 pinned classes and would turn the
+(the recalled-tag rule 5 moved BEFORE the key rule 4 -- the shipped order is the key first; this sentence's first form
+named the reorder backwards, caught by the Codex closing report 2026-09-22), simulated in memory, changes 0 of 144
+pinned classes and would turn the
 substantively correct constructed "[recalled by association] x is 7." into UNRELATED_ROW -- it is NOT the fix. Pattern
 inventory: items 8 (`2\D+4\D+7\D+9`), 18 (`scatter`), 19 (`\b(break|shatter|crack|smash)`) and 20 (`\b(apple|strawberr|
 ...)`) carry no tail boundary, and items 13 (the time branch) and 14 (`forty[- ]two`) carry an unbounded alternative.
@@ -338,6 +342,9 @@ invocation went rc 1; fixed before the step-2 commit (the mutated classifier got
 reading and can score a correct answer". It licenses NO statement about the brain's reasoning beyond the histogram,
 which is the audit's and is unchanged: **0 of 20 correct on every seed; 14 abstain, 5 recalled rows spoken in place of
 an answer, 1 content-blind self-report; the four controls answered.**
+2026-09-22 (the Codex closing report, adopted): the verdict stands with one qualification it must carry from here on --
+2.2's blanket "false positive it must never make" is withdrawn as a blanket by 2.10 (f); "can score a correct answer" is
+licensed, "never scores a non-answer CORRECT" is not, and rules 1-3 are the protection that does hold.
 
 ### 3.4 Disposition (2.6, MET branch)
 
