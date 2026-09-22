@@ -1,5 +1,12 @@
 # SNDL — THE FINALIZED DEVELOPMENT PLAN AND SESSION GUIDE (2026-09-02)
 
+**Combined amendment, 2026-09-22:** this remains the plan of record. The B/R/A workstreams
+below combine the owner's Brian2 migration, durable pattern recall/reinforcement/earned growth,
+and simulated-annealing request with the existing N workstream (Navier-Stokes + LSM). Start at
+"Combined architecture and execution order" in Part D. FR-037-FR-040, SC-015-SC-018 and
+T101-T107 track the additions; T096-T100 retain their identities. These additions are planned
+acceptance/implementation work, not evidence that the complete architecture already operates.
+
 **This file lives at `specs/022-unified-brain-arc/PLAN-FINAL-2026-09-02.md`. Read all of it before doing
 anything. It is written so that a fresh session of Claude Fable 5.1 or Claude Opus 5 with no memory of the
 project can pick the work up at any phase and carry it correctly.** It consolidates the trajectory audit's
@@ -739,6 +746,203 @@ clause protects it.
   holds and the floor pin is unchanged; all three named items therefore read NEGATIVE; the
   gate-by-existence is undisturbed.*
 
+### Combined architecture and execution order - Brian2, durable learning, fluid LSM and annealing
+
+**ADDED 2026-09-22.** One brain, one durable lake, one ordered program. Preserve every earlier
+measured null, retirement and outstanding exit; adding a framework or optimizer closes none of
+them. The owner's shared review points to THIS plan, not a separate replacement architecture.
+
+```text
+observations / interactions / outcomes
+    -> versioned records in brain_lake.bin
+    -> verified recall + bounded sleep replay
+    -> incumbent local synaptic learning -> held-out earned growth
+    -> persisted learned state -> fresh-process continuation
+
+Brian2 equation/event contract -> spiking substrate -> learned spiking readout
+                                     ^       |
+                                     |       v
+                              bounded delayed NS feedback (N, experimental)
+
+measured lake workload -> offline annealing -> validated derived cache/index plan
+                                         -> guarded activation or keep incumbent
+```
+
+The lake is memory, not itself a learner. Retrieval provides evidence or a replayable example;
+the existing neural learner changes weights. New units must earn retention on untouched data,
+not on a replayed training example. Fluid state supplies candidate temporal features, not an
+answer oracle. Annealing searches storage/access configurations, not truth, labels or safety rules.
+
+**Current boundary, inspected 2026-09-22 (not a new performance claim):**
+`substrate/home.py` writes tagged records through `BinLog` to `brain_lake.bin`; its state,
+episode and growth APIs remain authoritative. Segment and derived-index mechanisms exist, but
+their existence does not establish that the main writer uses them. `Brain.recall_episode_durable`
+already has attractor, recent-window indexed recall and an exact sub-cue whole-lake fallback;
+do not delete that fallback or claim old episodes are categorically unreachable. The deep path
+is a scan, not evidence of bounded-cost retrieval. `Brain._sleep_tick` separately replays the
+episodic attractor and the interaction learner; the latter's ring is process-local and is not
+hydrated on restart. `Brain._wake_tick` feeds the grower live percept/category observations.
+None of these facts proves a single durable replay-to-growth learning loop; T093's reopened
+continuity work remains open.
+
+**Execution order (the task numbers are identifiers, not a new numerical schedule):**
+
+1. B1/T101 establishes and accepts the Brian2 runtime contract. R1/T102 audits the incumbent
+   retrieval path and preregisters its bounded-cost successor; it may run alongside B1.
+2. R2/T103 adds restart-safe, typed sleep replay; R3/T104 evaluates its contribution to the
+   incumbent learner and grower. Coordinate their state inventory with T093/L4, not a second
+   persistence subsystem. No claim of end-to-end continuity precedes both sets of restart proofs.
+3. N1-N5/T096-T100 keep their Phase 2 exit and Phase 4 consumer prerequisites. B1 precedes N2;
+   when N4 selects durable recall/replay as its task, R1-R3 must first supply that accepted path.
+4. A1/T105 records the workload and feasible search space after R1; A2/T106 can evaluate copies
+   offline. A3/T107 activates only a proven candidate after affected R2/R3 continuation tests.
+   Neither A nor N bypasses T073/T074, Phase 4's exit or FR-025/OD-2 for autonomous promotion.
+
+### B workstream - Brian2 is the framework, not a new learning rule (T101)
+
+**B1 / T101; FR-037, SC-015.** Brian2 replaces SNNTorch as the equation/event reference and
+framework target. The current migration supplies a Torch `BrianLIF` execution bridge checked
+against a real Brian2 `NeuronGroup` in a child process; it replaces former SNNTorch call sites,
+not every custom neuron or live kernel. Torch remains the tensor engine. Surrogate-gradient
+compatibility in training experiments is not authorization to replace governed local/e-prop
+learning with BPTT. Preserve the applicable gradient-claim/transport gates.
+
+Pin threshold equality, reset timing/modes, dt/units, membrane/spike schedule, synaptic delays,
+refractory behavior where used, precision, local updates and RNG ownership before converting any
+additional model. Inventory the custom kernels and declare their boundary rather than silently
+relabeling them Brian2. Accept each migrated model only with executable Brian2 parity and its
+behavioral controls, plus fresh-process checkpoint continuation and measured host cost.
+Unsupported semantics must refuse explicitly; never silently substitute a different neuron.
+
+The pinned Brian2 2.10.1 import enables the GIL in the measured cp314t environment. Keep actual
+Brian2 imports in an isolated simulation/reference worker while the long-lived brain stays
+free-threaded; count worker startup, IPC, peak memory and checkpoint work in comparisons. No
+whole-program standalone rewrite is implied. A worker-backed live model must prove bounded
+timeouts, deterministic state transfer and failure handling before deployment. The existing
+bridge is an implementation starting point, not proof that this broader acceptance is complete.
+Official [Brian2 runtime/standalone documentation](https://brian2.readthedocs.io/en/stable/user/computation.html)
+describes the execution choices; the free-threading disposition here comes from this host's test.
+
+B-R1 must fail on altered threshold/reset/schedule and on a parent GIL regression; correct
+Brian2 traces and unchanged local learning are the controls. Missing required checkpoint state,
+silent unsupported-mode fallback and a resource-overrun candidate must also be refused.
+
+### R workstream - durable recall becomes retained learning (T102-T104)
+
+**R1 / T102; FR-038, SC-016.** Preserve the three recall tiers and verified slot matching while
+measuring their coverage, false matches, abstention, latency and memory at a fixed lake watermark.
+Include episodes older than the resident capacity, ambiguous and absent cues, duplicate events,
+corrupt/stale derived indexes, and a new-process restart. A replayable bounded-memory scan or
+derived historical index may replace the costly scan only after reproducing its exact-match
+guarantee. An approximate index may propose candidates, never supply unverified confidence.
+Use incumbent `lake_index`/`lake_recall` mechanisms where suitable, with a measured disposition
+if they do not fit; no parallel source of truth. Delete/rebuild derived data from the lake and
+prove identical logical contents. A corrupt index falls back safely or refuses visibly; it must
+not make durable records disappear. Freeze workload splits and accuracy/cost limits before tuning.
+
+**R2 / T103; FR-038, SC-016.** Hydrate bounded sleep replay from the same lake through the
+incumbent interaction learner and plasticity stack. First inventory the actual learner inputs.
+Persist stable event identity, stream/session identity, sequence/timestamp, schema/encoder version,
+input or resolvable source reference, target/outcome when observed, provenance and validity mask.
+An autobiographical `who/what/where/when/affect` record is NOT automatically a numerical
+percept-target pair; legacy records missing required fields are explicitly ineligible for that
+learner, not padded with fabricated features, rewards or labels. Genuine repeated events remain
+distinct; idempotent hydration must not insert the same source event twice into the active queue.
+
+Replay only training-eligible records, maintain within-sequence order and boundaries, and never
+join the end of one episode to another as a true temporal transition. Persist sampling RNG,
+watermark/cursor, replay counts and learner continuation state at the declared boundary, with
+record migration/upcaster/retention dispositions. Replaying an event again in a later bounded
+training pass is allowed and counted; it is not new evidence or a new external observation.
+Use a baseline uniform/recency policy before any adaptive prioritization. Surprise/salience
+scores may prioritize eligible examples but are not rewards. A recalled episode cannot validate
+its own claim or trigger hardware action; replay has no motor side effects.
+
+R-R1 proves old-record retrieval, false-match refusal and rebuild equality. R-R2 kills/restarts a
+scratch brain with NO new user turns and requires the next eligible sleep replay, weight updates
+and cursor advancement to match its uninterrupted twin. Its reds omit a meaningful state carrier,
+duplicate queue hydration, reorder a sequence, inject a held-out item and remove a required field.
+The no-replay and valid-restart controls run through the actual consumer, not a mocked counter.
+
+**R3 / T104; FR-039, SC-017.** Compose replay with `NeurogenesisSelfImprove` and the incumbent
+local-learning/growth gate; do not add a competing neurogenesis engine. Its temporal contract
+must distinguish offline training sequences from new wake observations: replay does not advance
+the live chronology, feed live accuracy estimates as fresh evidence or inflate growth triggers.
+Candidate growth is considered only under the preregistered residual/capacity rule, and retained
+only for prospective held-out improvement at the existing resource limits. The earlier L2 null
+stands; this is a separately tested replay contribution, not a relabeling of that failed trigger.
+
+Compare equal-compute no replay, uniform replay and ordered/selected replay with growth OFF/ON;
+report retention and interference on old tasks as well as acquisition on new tasks. Split by
+source episode/session BEFORE indexing, replay selection or tuning, and pin evaluator inputs
+against contamination. Apply Part F's paired-seed rule, prospective effect-size/regression limits,
+and silence newly admitted units against an equal-count pre-sized control. A gain from extra
+updates alone is not a growth gain. R-R3 fails if replay gives no registered benefit, if new
+units do not causally earn retention, if forgetting exceeds the limit, or if the gain disappears
+after a fresh-process restore. Persist accepted weights/topology/optimizer-local state and
+lineage in the one lake; reject the losing candidate without losing source memories. T093 still
+owns the broader continuity census; passing this workstream does not close its other carriers.
+
+### A workstream - simulated annealing for lake access, not memory deletion (T105-T107)
+
+**A1 / T105; FR-040, SC-018.** Pre-register an offline/sleep-time discrete search over bounded
+derived-cache membership and index/access configuration on a frozen, representative query trace.
+Co-recall grouping may reorder DERIVED lookup structures, never the canonical event sequence.
+Keep replay selection fixed in the first experiment to isolate storage effects. Record warm and
+cold cache runs, rare/old queries, access drift, p50/p95 latency, peak resident bytes, physical
+reads, write amplification, checkpoint/rebuild/restart cost and total optimizer amortization.
+Use chronological train/validation/test query splits; no held-out query informs the search.
+
+For feasible configuration x, preregister normalized scales and nonnegative weights in:
+
+```text
+J(x) = wL * p95_latency/L0 + wM * peak_bytes/M0
+     + wI * physical_reads/I0 + wW * write_bytes/W0 + wC * rebuild_cost/C0
+accept worsening proposal with probability exp(-(J(new)-J(current))/temperature)
+```
+
+Every denominator is positive and fixed from the baseline, never the candidate. Feasibility is
+checked BEFORE scoring/acceptance: exact retrieval/retention/rebuild correctness, bounded staleness,
+memory/latency/append limits and source-event order are hard constraints, not cheap penalty terms.
+No temperature can accept an infeasible candidate. Pin neighborhood moves, initial temperature,
+cooling/reheat policy, seeded RNG, evaluation budget and stopping rule on training/validation;
+keep the best feasible configuration separately because the last accepted state may be worse.
+
+**A2 / T106.** Reuse incumbent storage/measurement primitives. Compare annealing with unchanged
+configuration, measured LRU/recency cache policy, greedy search and equal-budget random search.
+Score all candidates on identical trace/seed pairs and actual end-to-end costs, including search
+and build cost over a declared deployment horizon. Require a prospective held-out primary benefit
+over the incumbent AND simpler search controls without violating any secondary bound. A-R1
+rejects invalid candidates and bad acceptance/schedule/RNG behavior using constructed controls;
+A-R2 fails on no benefit, hidden search cost, trace leakage or a regression after workload drift.
+An optimizer returning a lower training objective is not a demonstrated lake improvement.
+
+**A3 / T107.** Write candidates only to disposable derived state against a recorded lake
+watermark. Validate logical equality, source digests and continuation before an atomic manifest
+switch at a safe boundary; concurrent appends require watermark reconciliation or a retry, never
+a stale switch. Keep the prior derived configuration recoverable and refuse corrupt/incompatible
+candidates. Persist accepted config, workload/evaluator hashes, RNG/search state, costs and lineage
+in the existing lake state/retention system; a missing cache is rebuildable, not amnesia.
+Fault-inject interrupted builds and switches and demonstrate recovery with an unchanged canonical
+lake. A-R3 also refuses wake-path optimization, unbounded search and self-reported candidate scores.
+Autonomous later promotion needs T073/T074 and FR-025/OD-2; no new approval for protected surfaces
+is implied here. A failed candidate leaves the incumbent running and its failure evidence visible.
+
+This first search cannot delete or downgrade IMMORTAL records, rewrite facts/labels, change
+durability/fsync policy, mutate canonical segments, alter compaction retention, resurrect the
+retired neuron pager, or create a second learned-memory store. Physical re-layout/compaction or
+adaptive replay optimization would need a separately preregistered extension with its own
+migration and learning-attribution proof. Simulated annealing is a search heuristic, not a claim
+that stored data becomes intrinsically more intelligent. Earlier
+[annealed data-placement research](https://research.ibm.com/publications/improving-server-performance-on-transaction-processing-workloads-by-enhanced-data-placement)
+motivates a comparison, not a performance prediction for this brain.
+
+All B/R/A behavioral and promotion instruments above are planned, not asserted to exist in CI.
+Keep the gate-before-rule discipline: implement each instrument and demonstrate its constructed
+failure before enforcing it. Register modules, routes, provenance and invention attribution as
+required by FR-030/FR-031. No production lake writes or safety-envelope changes are part of this
+plan-consolidation amendment.
+
 ### N workstream - Navier-Stokes coupled to a liquid state machine (T096-T100)
 
 **ADDED 2026-09-14** (owner request 2026-09-13, retried 2026-09-14): planned experimental
@@ -747,6 +951,12 @@ criterion; this section owns its design and order. It starts after Phase 2's exi
 alongside Phases 3/4. Its live deployment waits for its own gates and the relevant Phase 4
 wake/recall consumers; its self-improvement registration also waits for Phase 5's existing gates.
 It discharges none of the older learning, persistence, cognition or integration deficits.
+
+**Combined 2026-09-22:** N2 uses B1's accepted Brian2 neuron/event contract, with the real
+simulator isolated from the free-threaded parent. N3 composes R2/T093's state inventory and lake
+continuation protocol rather than adding a parallel checkpoint store. N4's memory arm, if selected,
+uses the accepted R1-R3 path and frozen replay policy. A-workstream cache optimization is held
+fixed across N arms so a storage change cannot masquerade as a fluid-computation gain.
 
 **N1 / T096 - formulation and pre-registration.** Combine an ARTIFICIAL fluid reservoir with
 the existing spiking substrate and learned readout. The fluid supplies recurrent temporal state;
@@ -972,6 +1182,13 @@ L2, T066, T073, T077, T078).
 
 ## PART E — SEQUENCING, DEPENDENCIES, WHAT IS DROPPED
 
+**Combined 2026-09-22:** Part D's "Combined architecture and execution order" adds B1/T101,
+R1-R3/T102-T104 and A1-A3/T105-T107 to this historical critical path, without withdrawing its
+existing exits. In particular B1 gates N2, an N4 recall/replay arm gates on R1-R3, R1 gates A1/A2,
+and A3 waits for affected continuation proofs. T093 still owns the broader restart census.
+N/A autonomous promotion requires T073/T074 and Phase 5's standing prerequisites. Current
+statuses come from the task/evidence records, not the older "next" annotations below.
+
 **Critical path (commits), with the earliest start of each parallel arm marked:**
 W3 → ~~W1 (+T076's red)~~ RETIRED 2026-09-04 → ~~W2 (no widening)~~ REFUSED ON MEASUREMENT 2026-09-05 → [the JEPA-collapse arc — SHIPPED at `dbcf153` (record `evidence/jepa-collapse.md`): red (a) cleared brain-free 3/3 and in-brain 3/3 by direction; the in-brain `latent_std` floor (b) met 1/3, then RETIRED-AND-REPLACED by measurement in `evidence/jepa-live-floor.md` (2026-09-05: the consecutive-window gauge reads the stimulus; the replacement criterion met by construction on the calibration seeds, read evidentially on seeds 3–4 — MET on seed 4 (×0.133), NOT MET on seed 3 (×0.062 against the ablation's ×0.056): (b) under the replacement is RED on 1 of 5 seeds and OPEN; a reservoir batch that fixed the repeated-world red did NOT land — it loses the planted order read — and stands as a strict-xfail red in `tests/test_jepa_collapse.py`)] → L1b → L1c → L2 → L4 (with its ceiling) → T069 → S1 → S2 → S3 →
 S4 → S5 → S6 → T062 → T063 → T071 → T072 → T073 → T074 → T075/T076 → T083 → H1 → T084–T087.
@@ -1028,6 +1245,13 @@ no majority-of-seeds rule anywhere.
 
 | id | red (what makes it fail) | control (not the method) | lives in |
 |---|---|---|---|
+| B-R1 | migrated semantics differ from Brian2, required state is lost, unsupported behavior silently falls back, parent GIL enables or resource limits fail | correct real Brian2 trace, supported-mode/local-learning and uninterrupted twins | B1 / T101, broader acceptance PLANNED |
+| R-R1 | nonresident exact match is lost, a false match is trusted, corrupt/stale index hides records, rebuild differs or cost bound fails | canonical exact scan, absent/ambiguous cues and valid rebuilt index at the same watermark | R1 / T102, PLANNED |
+| R-R2 | fresh-process/no-new-turn replay differs, required state omission is missed, hydration duplicates events, sequences mix, fabricated fields or held-out items enter training | uninterrupted replay and no-replay controls through the actual learner | R2 / T103, PLANNED |
+| R-R3 | replay or admitted units lack attributed held-out benefit, old-task interference exceeds its bound, or retained gain fails after restart | equal-compute no/uniform replay, growth OFF, equal-count unit silencing and uninterrupted twin | R3 / T104, PLANNED |
+| A-R1 | infeasible state passes, acceptance/RNG/schedule is wrong, or best feasible state is lost | deterministic constructed objective/constraints, no-op and valid feasible proposals | A1/A2 / T105-T106, PLANNED |
+| A-R2 | no held-out net benefit over simpler controls, leakage/hidden search cost or drift regression | unchanged, LRU/recency, greedy and equal-budget random search on paired traces | A2 / T106, PLANNED |
+| A-R3 | invalid/stale/corrupt promotion passes, a crash loses canonical records/continuation, or optimization enters the wake path without bounds | valid atomic activation, recoverable incumbent and interrupted-build/switch controls | A3 / T107, PLANNED |
 | N-R1 | analytic decay/convergence, finite/divergence or forced-energy tolerance fails; a constructed projection/advection/timestep fault is missed | correct Taylor-Green and forced reference runs, refinement | N2 / T097, PLANNED |
 | N-R2 | initial-state dependence survives the registered washout, or ordered temporal information is no better than its shuffle | same-input distinct-state twins and learnable temporal positive control | N2 / T097, PLANNED |
 | N-R3 | fresh-process spikes/decisions/updates differ, a meaningful omitted/corrupt carrier is missed, or migration loses state | uninterrupted twin, valid versioned round-trip and corruption refusal | N3 / T098, PLANNED |

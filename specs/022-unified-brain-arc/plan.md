@@ -6,13 +6,20 @@
 
 ## Summary
 
+**Current execution authority (combined 2026-09-22):** follow
+[the finalized plan](PLAN-FINAL-2026-09-02.md), particularly its combined B/R/A architecture,
+N workstream and Parts E/F. This older four-stage summary is historical where later measured
+dispositions supersede it (including the retired paging layer); it is not a parallel roadmap.
+Brian2 acceptance, durable recall/replay/earned growth and offline derived-lake annealing are
+FR-037-FR-040 / SC-015-SC-018 / T101-T107; NS/LSM keeps FR-036 / SC-014 / T096-T100.
+
 Build, in four staged slices (S0–S3), the substrate in which the brain constructs itself from a single-neuron seed over a pinned multi-region growable set, lives in the ONE durable lake (indexed delta engine; activation-driven paging past a derived binding width), learns by a composed palette of local rules with per-rule neuter attribution, improves itself through an owner-gated proposer/evaluator loop, and carries a consciousness-instrument battery whose every mechanism has a dissociation with a reachable red. Technical approach per layer is the SYNTHESIS adoption register; where no method exists, the eight registered P8 inventions apply with full debt. Everything lands in governed `src/snn_data_lake/` registration-complete per commit; every commit reaches `main` full-gate green; the safety envelope is untouched.
 
 ## Technical Context
 
 **Language/Version**: Python 3.14.6 free-threaded (cp314t, `Py_GIL_DISABLED=1`; startup hard-asserts the GIL is off — FR-006). Gate env `.venv-lake`.
 
-**Primary Dependencies**: torch 2.11.0+cu128 / numpy (core, P7-unconditional); pyarrow (Arrow IPC file segments — already declared in `[lake]`); an embedded key-value index engine chosen by measured write shape at S0 (LMDB-class MVCC vs LSM — research.md D3); nir (`[nir]` extra) for the wiring-manifest serialization; mujoco 3.11.0 (exact-pinned, envelope). NO nengo, NO whole-program codegen (rejections recorded in research.md).
+**Primary Dependencies**: torch 2.11.0+cu128 / numpy; brian2 2.10.1 (replaces SNNTorch as equation/event reference, isolated worker plus Torch execution bridge; final-plan B1 governs acceptance); pyarrow (core, Arrow IPC segments); sqlite (stdlib, derived index selected at S0); nir (`[nir]` extra) for wiring-manifest serialization; mujoco 3.11.0 (exact-pinned, envelope). No whole-program codegen rewrite is implied; governed local learning and the free-threaded parent remain required.
 
 **Storage**: `brain_lake.bin` remains the ONE durable store (P4b) — upgraded in place to sealed Arrow-IPC segments + CRC framing + watermark commit, with derived (provably rebuildable) indexes beside it. Per-record-tag migration dispositions with round-trip reds over live records (§3.5 of SYNTHESIS.md).
 
