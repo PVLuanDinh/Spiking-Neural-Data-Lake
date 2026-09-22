@@ -790,3 +790,20 @@ occlusion class (item 1); the `clientLeft` anchor (item 2); the bottom-of-scroll
 on three plates (3.4); the 1 Hz repaint closing `<details>` (3.2.5 item 7); `overflow-wrap:anywhere` for an unbreakable
 token (3.2.5 item 6); the ACCESS plate's three clipped rows (fact 1). The Codex closing report is owed when the cap
 lifts (2.0).
+
+2026-09-22, THE CODEX CLOSING REPORT (protocol section 7; `gpt-6-astra`, read-only, on the committed bytes at
+`678a26a`; reply and disposition logged beside the C0 panel scratch, `closing/codex_t090_closing_report.md`), received
+and reproduced by the orchestrator against the instrument's bytes; appended, nothing above edited. Three openings it adds,
+attributed "Codex (closing report)": (1) THE SHIPPED INSTRUMENT'S POST-FIX NOT MET PATH WAS NEVER EXERCISED ON THE FIXED
+LAYOUT -- the post-fix reds are REFUSED (R7, the scrolled column, 3.2.8 and 3.4) and the 0-of-570 reading came from a
+mutant with that precondition removed; the reachable NOT MET red is the historical first reading (3.1); an independent
+control that makes the SHIPPED instrument read NOT MET on the fixed layout (a constructed clip of the plate under the
+committed bytes, no mutant) is owed by the next arc that touches the plate or the instrument. (2) THE SETTLING
+MEASUREMENT FOR THE EMULATED-VIEWPORT DISCLOSURE (3.4): a matched, VISIBLE, non-emulated browser A/B at both client sizes,
+identical content, frozen instrument bytes, an independent screenshot census of every sentence and value, with the
+original layout as the negative control -- the same class as the opening already carried, now with its measurement named.
+(3) LIVE-VALUE VISIBILITY IS RECTANGLE CONTAINMENT ONLY: `t090_measure_plate.js::valueInside` tests the value's rect
+against the strict box without E4's parent-style guard that `censusOf` applies to sentences (`visibility`, `opacity`,
+`font-size` at the parent); an apparatus limitation, and no recorded reading moves, because each value's licensed
+sentence beside it is censused with E4. Not re-opened: the `<details>` precondition counting only inside `#wC5` (item 6
+above tried and dropped it). The Codex closing report is no longer owed (2.0).
