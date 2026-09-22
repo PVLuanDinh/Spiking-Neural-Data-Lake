@@ -31,7 +31,10 @@ TWO INSTRUMENTS MUST AGREE ON ABSTENTION (2.3 rule 1, fact 5). The hold's reply 
 ("About 8 ticks ago ... goal 0 ... 0.64"), so a key such as `3` or `7` tested against the whole
 reply can be satisfied by the narration. Abstention is therefore decided BEFORE any key is tested,
 and by the ROUTE LABEL and the REPLY's PREAMBLE together. Exactly one of them is a DISAGREEMENT:
-reported as `OTHER` with `disagree`, never resolved by picking one.
+reported as `OTHER` with `disagree`, never resolved by picking one. At 678a26a the built-in hold
+branch of `Brain.respond` emits both markers together; they are two consistency readings of a
+common producer, not independent evidence of abstention. R4 is a constructed classifier regression
+test. Scratch C0 runs on seeds 0 and 3 produced no disagreements (2026-09-22 panel).
 
 THREE DECISIONS THIS MODULE TOOK THAT THE FROZEN RECORD DID NOT SPELL OUT (disclosed, not hidden):
   1. THE SOMATIC SUFFIX BELONGS TO THE TRANSCRIPT, NOT TO THE CLASSIFIER. The L12 audit's `cls()`
@@ -45,17 +48,19 @@ THREE DECISIONS THIS MODULE TOOK THAT THE FROZEN RECORD DID NOT SPELL OUT (discl
      `not a general chatbot` (three substrings across its two classes). 2.3 rule 3 says "the scratch
      battery's two strings", which names its two CLASSES; porting the predicate they were decided by
      is the faithful read, and it is strictly wider, never narrower.
-  3. `ITEMS`' question text is asserted equal to `FIXTURE`'s at import. The archive lives outside
-     the repo, so the module cannot read it; the orientation that produced `FIXTURE` asserted its
-     questions equal the archive's, and this assert carries that chain into the tree.
+  3. The import-time asserts check that `ITEMS`' and `FIXTURE`'s id lists line up as 1..20 and
+     that `CONTROLS` and `CONTROL_FIXTURE` both have arity 4. NO in-tree artifact carries the
+     archive's question TEXT; the archive is outside the repo. The verbatim chain is the
+     2026-09-16 orientation's, an UNVERIFIABLE-IN-TREE PREMISE.
 
 A MEASURED CORRECTION TO SECTION 1 FACT 2, kept here because a record is frozen and a reading is
-not: fact 2 says "Class AND text are identical across the five seeds". The CLASS and the ROUTE are
--- all 100 item x seed cells and all 20 control cells agree -- and the TEXT is not: the hold's
-state narration differs per seed (15 of 20 seed-1 replies and 14 of 20 seed-2 replies differ from
-seed 0's byte for byte, the 5 `[recalled ...]` rows being the stable ones). Conjunct (h) is written
-over CLASSES (2.4) and is unaffected; no conjunct here compares reply text ACROSS seeds, and the
-one that compares text at all -- (c) -- compares one seed against itself.
+not: no conjunct here compares reply text or route ACROSS seeds. Conjunct (h) (`conjunct_h`) is
+over CLASSES (2.4) and is unaffected; (c) (`conjunct_c`) compares seed 0 with itself. What varies
+across the five seeds -- reply TEXT and the abstain ROUTE LABEL -- is measured and dated in the
+record's 2.10(a) and 3.5.1; read it there, and do not restate its numbers here.
+2026-09-22 (panel fold): this paragraph previously asserted the ROUTE agrees on all 100 item x
+seed cells; refuted by the pin (28 of 100 differ) and by 2.10(a) at 37135d7, written one commit
+after this module at 2a13221.
 
 # distinct-from: cortex/attention_schema.py, cortex/report_order_probe.py,
 #   cortex/prior_drift_harness.py, thalamus/binding_instrument.py -- the same INSTRUMENT SHAPE this
@@ -405,8 +410,9 @@ CONTROL_FIXTURE = (
 #: instruments, which is what a constructed answer-shaped reply is.
 CONSTRUCTED_ROUTE = _FX_GC_ROUTE
 
-# Decision 3: the archive is outside the repo, so this assert carries the orientation's own
-# "question text differs from the archive's" check into the tree.
+# Decision 3: ITEMS and FIXTURE have ids 1..20; CONTROLS and CONTROL_FIXTURE both have arity 4.
+# NO in-tree artifact carries the archive's question TEXT; the archive is outside the repo.
+# The verbatim chain is the 2026-09-16 orientation's: an UNVERIFIABLE-IN-TREE PREMISE.
 assert [i.id for i in ITEMS] == [f.id for f in FIXTURE] == list(range(1, 21))
 assert len(CONTROLS) == len(CONTROL_FIXTURE) == 4
 
@@ -708,9 +714,14 @@ OUT_ARG = "--out"
 
 
 def _child_env():
-    """The child's environment: UTF-8, `src` on PYTHONPATH, and NO inherited `NORD_HOME`. An
-    inherited home would point every child at ONE lake, which is the thing one-process-per-seed
-    exists to prevent -- and it would do so silently, since each child would still run green."""
+    """The child's environment: UTF-8, `src` on PYTHONPATH, and NO inherited `NORD_HOME`.
+    Defence in depth. `throwaway_home()` overwrites NORD_HOME on entry and `run_seed` enters it
+    before any brain exists, so an inherited home cannot reach a child's brain today (measured
+    2026-09-21: a child run with NORD_HOME inherited leaves that directory empty, and the only two
+    home() resolutions in a seed run both land in the throwaway dir). The pop protects the two
+    windows the context does not cover -- a home resolved BEFORE it is entered, and one resolved
+    AFTER it exits, since `throwaway_home` RESTORES the prior value on the way out. Both are empty
+    today; the pop keeps the child's environment from depending on the parent's."""
     env = dict(os.environ)
     env["PYTHONUTF8"] = "1"
     src = str(REPO / "src")
@@ -1016,7 +1027,9 @@ def c0_pin_check(pin=None):
     """Re-derive every pinned class and refuse on any disagreement. `pin` is a path (default
     `C0_PIN`) or a pin-shaped MAPPING -- the mapping form is what R5's constructed inputs use, so
     the red runs in the bare invocation with no file on disk. A pin with NO rows is NOT ok: an
-    empty walk and a clean pin must never look alike."""
+    empty walk and a clean pin must never look alike. It re-derives classes and nothing else: row
+    count, seed set, histogram, conjuncts, reds, verdict, head and dirty are not checked here (see
+    the record's 3.6)."""
     if isinstance(pin, dict):
         data, where = pin, "<constructed>"
     else:
