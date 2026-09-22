@@ -219,6 +219,66 @@ histogram of fact 2 on every seed, so the campaign's outcome was seen in dry-run
 run on a clean tree is the record; the dry pin is scratch and is not cited for any number.
 Nothing here moves a conjunct, a red, the key or the verdict rule.
 
+2026-09-22 (the panel's fold, 3.7; appended AFTER the campaign -- nothing below re-runs the campaign, rewrites the pin
+`tools/c0_everyday_battery.json`, or moves a conjunct, a red, the key, the rule order or the verdict; every figure below
+was re-run by the orchestrator on 2026-09-22 with the refuter's own script before it was written; the scripts are named
+by their path under the panel scratch, 3.7):
+
+(e) (s) IS ONE FIXED PRE-REGISTERED DERANGEMENT AND ITS BAR IS PERMUTATION-DEPENDENT (panel I4). Deterministic figures:
+over the 19 rotations the constructed CORRECT arm scores max 2 (k = 10 and k = 16; rotation-by-one 0; identity 20); the
+off-diagonal cross-hit matrix is 10 of 380 pairs -- (1,12), (1,17), (12,1), (12,17), (17,1), (17,12), (6,16), (16,6),
+(4,20), (8,15) -- and a maximum matching over that graph gives an EXHAUSTIVE maximum of 7 of 20 over all permutations.
+Cause, split honestly: 8 of the 10 pairs are answer-space collisions in the item set -- items 1, 12 and 17 are three
+distinct yes/no questions sharing `accept=\byes\b refuse=\bno\b` exactly, and items 6 and 16 differ only by the
+alternative `both` -- and 2 are lexical coincidences (item 4's "3 apples" hits item 20's `\bapple`; item 8's
+"2, 4, 7, 9." hits item 15's `\b(7|seven)\b`). This is the mirror of 2.2's declared floor (a key tested on the answer span
+cannot tell three "yes" answers apart without reading the question), not a construction error, and it is the half 3.6
+opening 2 does not name. Sampled derangement fractions are reported only with their n and RNG seed and are
+sample-dependent: 8 of 200 over the bar at seed 0 (the lens); 44 of 500 at seed 12345 (the refuter; re-run: {0: 298,
+1: 158, 2: 39, 3: 4, 4: 1}). The verdict and the licensed sentence are unchanged: (s) as pre-registered reads 0 <= 1, and
+R3 separates at every permutation (`shape_only` 20 of 20 against a shipped ceiling of 7 of 20), so shape alone still
+cannot score. The pinned OBSERVED seed-0 arm, for contrast: identity 0, max 1 over the 19 rotations (k = 5), 1 of 380
+cross-hits, exhaustive maximum 1. Scripts: `refute/I4/scramble_refute.py` (sections 1-5; its section 6 raises on
+`Control.correct` after the figures print) and `instrument/key_attack.py`.
+
+(f) THE KEY CAN MAKE THE FALSE POSITIVE 2.2 SAYS IT NEVER MAKES, AND SIX PATTERNS ACCEPT AT THEIR TAIL (panel I6 and
+I9). 2.2's sentence "the false positive it must never make is a reply that declines to answer scoring CORRECT" is a
+blanket guarantee the instrument does not deliver; 2.2 is not edited, and its guarantee is WITHDRAWN as a blanket and
+replaced by the measured scope here. Measured on CONSTRUCTED inputs: 25 declining or non-answer replies x 20 keys give
+24 CORRECT cells (`instrument/key_attack.py`), among them "[reasoned] I had breakfast this morning." -> item 19 via
+`break`, "[reasoned] that is a crackpot question." -> item 19 via `crack`, "[reasoned] my thoughts are scattered." ->
+item 18 via `scatter`, "[reasoned] applejack." -> item 20, "[reasoned] 12, 4, 7, 90." -> item 8, "[reasoned] 5pmish." ->
+item 13, "[reasoned] forty-twosome." -> item 14; and the pinned item-10 recalled reply, cross-scored against item 15's
+key, reads CORRECT. THE PROTECTION THAT DOES HOLD: rule 1 (the hold's route and preamble) and rules 2-3 precede the
+key, so the constructed abstain R1 and the pinned seed-2 / item-15 key hit both read ABSTAIN. OBSERVED VS
+CONSTRUCTED, kept apart: no campaign cell is misclassified -- the actual item-10 cells are UNRELATED_ROW and the actual
+item-15 cells ABSTAIN on all five seeds; the cross pairing is constructed, not an observed C2 conversion; a rule reorder
+(the key before the recalled-tag rule), simulated in memory, changes 0 of 144 pinned classes and would turn the
+substantively correct constructed "[recalled by association] x is 7." into UNRELATED_ROW -- it is NOT the fix. Pattern
+inventory: items 8 (`2\D+4\D+7\D+9`), 18 (`scatter`), 19 (`\b(break|shatter|crack|smash)`) and 20 (`\b(apple|strawberr|
+...)`) carry no tail boundary, and items 13 (the time branch) and 14 (`forty[- ]two`) carry an unbounded alternative.
+Item 18's own constructed CORRECT reply relies on matching "scatters" and item 20's on "strawberry": a four-key
+tail-boundary mutant rejects those two pre-registered positives while moving 0 of 144 pinned classes, so anchoring is a
+KEY change with its own arc, not a fold; no author intent is inferred. Carried forward: C2's report must expose the
+already-recorded replies beside any CORRECT it interprets and disclose token matches that do not answer the question;
+C-R2's criterion (unrelated rows and self-reports vanish with abstains rising, the controls 4 of 4) is unchanged and is
+NOT a conversion criterion. Scripts: `instrument/key_attack.py`, `refute/I6/refute_i6.py`, `refute/I9/prefix_probe.py`.
+
+(g) RULE 1'S TWO INSTRUMENTS ARE ONE BRANCH'S TWO OUTPUTS AT 678a26a (panel I8): `Brain.respond` sets the abstention
+preamble and both abstain route labels in the same hold branch, and every later change to `reply` in that function
+appends (nine append-only updates; nine route assignments, two carrying "abstain"). The two readings are consistency
+checks on a common producer, not independent evidence of abstention; R4 is a constructed classifier regression test,
+reachable on constructed input and unreached from the live answer path as measured (scratch runs on seeds 0 and 3, 24
+rows each, 0 marker mismatches; the seed-0 hold is the second-order access hold, the seed-3 hold the metacognitive
+one). Rule 1 and R4 stand unchanged. Script: `refute/I8/probe_i8.py`.
+
+(h) DISCLOSURE ON (c) (panel I5, refuted): (c) measures same-seed concurrency invariance, as 2.4 defines it, and has
+executable constructed reds (a mutated reply, route or class each reads ok=False). A shared-home construction -- two
+sequential `persist=False` brains under one scratch home, seed 1 then seed 0 -- gave 0 row-field diffs against isolated
+runs, with the seed-sensitivity control at 15 diffs (seed 0 against seed 1): that is the construction's null, not
+evidence that process isolation is unnecessary, and the contamination rationale stays unverified by this experiment.
+Script: `refute/I5/probe_i5.py`.
+
 ## 3. The record
 
 ### 3.0 Apparatus as run (2026-09-17 02:35 local, clock read at write time)
@@ -236,7 +296,8 @@ was not running (the owner stopped the daemon at 01:12 for unrelated reasons); t
 
 ### 3.1 The build
 
-`cortex/everyday_battery.py`: `ITEMS` (the archive's 20 questions verbatim, asserted equal to the fixture's at import),
+`cortex/everyday_battery.py`: `ITEMS` (the archive's 20 questions verbatim; ids and arity asserted at import; the TEXT
+chain is the 2026-09-16 orientation's and is not verifiable in-tree -- corrected in place and marked 2026-09-22, panel D1),
 `CONTROLS`, the frozen key, `classify` by 2.3's ordered rule, `FIXTURE` (the orientation's seed-0 replies and routes),
 `run_seed`, the campaign, `c0_pin_check`. Registered in `__init__.py` REGIONS and `run_selfchecks.py` (360 of 360
 self-checks; the census gates rc 0 after both commits) and entered in `dormancy_gate.EXEMPT` as `wire` with its
@@ -267,6 +328,12 @@ invocation went rc 1; fixed before the step-2 commit (the mutated classifier got
   and reply; diffs: none.
 - The reds R1, R2, R3, R4, R6 fire under their mutations in the campaign's own preamble and in `tests/`; R5 (a stale pin
   refuses: a flipped class, an edited reply) in the bare invocation and in `tests/` (29 tests).
+- 2026-09-22 PANEL DISCLOSURE (I7), appended beside the reds: seed 2's pinned item 15 abstain reply contains "goal at 7"
+  and "pursuing goal 7", satisfying its key `\b(7|seven)\b`; moving rule 4 before rule 1 while retaining rule 1 (R1's
+  `key_before_route` counterfactual) changes exactly this one of 100 campaign item x seed cells from ABSTAIN to CORRECT,
+  giving seed 2 a counterfactual histogram of 13 ABSTAIN / 1 CORRECT / 5 UNRELATED_ROW / 1 SELF_REPORT; removing rule 1
+  outright changes 70 of 100. The shipped classifier scores the cell ABSTAIN; no code, key, campaign or pin change.
+  Scripts: `instrument/narration_hazard.py`, `refute/I7/check_pinned_overlap.py`.
 **VERDICT: MET.** What it licenses, quoted from 2.4: "the battery is a governed instrument that reproduces the audit's
 reading and can score a correct answer". It licenses NO statement about the brain's reasoning beyond the histogram,
 which is the audit's and is unchanged: **0 of 20 correct on every seed; 14 abstain, 5 recalled rows spoken in place of
@@ -297,6 +364,41 @@ module is registered and exempted with its retirement condition (3.1). Dated not
    pin with zero rows reads `ok: False` (an empty walk and a clean pin must not look alike); R2's and R3's mutations were
    made genuinely distinct (`any_tag_is_correct` vs `shape_only`).
 6. NOT PANELLED YET at the time of writing; the panel and its fold follow as 3.7.
+7. (2026-09-22, panel PH1) THE SURFACE CHECK'S MEASURED SCOPE: it fires when the registry key and one of
+   `COMPARISON_WORDS` occur on ONE LINE of one of the five `TRACKED_SURFACES`; the key is present in 0 of the 5 today,
+   so the guard is latent rather than live coverage; its reachable red on the real key, with its negative control, is
+   shipped at `tests/test_ratified_row_gates.py::test_the_c0_row_carries_its_number_and_refuses_the_human_side`; the key
+   and a comparison word on ADJACENT lines are not seen. The rule the row imposes on authors (2.6, 3.4) is unchanged and
+   is review-enforced, which is what its deontic wording says. (Re-run 2026-09-22: `findings()` = [], 0 comparison-word
+   lines on each tracked surface.)
+8. (2026-09-22, panel D1) FOUR SURFACES SAID THE QUESTION TEXT WAS ASSERTED EQUAL TO THE ARCHIVE'S; none does. The
+   module's two import-time asserts check that the id lists line up as 1..20 and that both arities are 4; the pin
+   carries no question text; nothing reads the module docstring at runtime. The four surfaces (the module docstring's
+   decision 3, the comment above the asserts, the port test's docstring, this record's 3.1) now say so; 3.1 is corrected
+   in place and marked. The archive's text is an unverifiable-in-tree premise, named as such (3.6 item 8). Measured
+   (re-run 2026-09-22): the orchestrator's own AST diff of the archive against the tree reads 20 of 20 items and 4 of 4
+   controls identical, with a one-character mutation as the differ's positive control (1 differing).
+9. (2026-09-22, panel D2, refuted -- with a correction of my own) THE INDEPENDENT VERIFIER OF 3.0 IS A SESSION SCRATCHPAD
+   FILE (`scratchpad/c0/verify_pin.py` of the 2026-09-17 session), still on disk under that session's directory. It
+   parses the key from this record with the row regex `^\| \d+ \| `, which since 3.2 landed (02:35, seven minutes after
+   the verifier ran at 02:28) ALSO matches the five campaign rows, so keys 1-4 are overwritten by seed rows and a 21st key
+   appears: the unmodified script refuses at its own `assert len(keys) == 20` today. The D2 refuter found the same cause
+   on 2026-09-21 (25 row matches, folded to 21 by the id-keyed dict) and re-ran a copy whose parse is SCOPED to section
+   2.2 by one added line, `classify()` byte-identical (`refute/D2/d2_verify_pin_scoped.py`); the orchestrator re-ran that
+   scoped copy on 2026-09-22 against the fold head: disagreements 0 over 120 re-derived rows, (p) 20 of 20, every seed's
+   histogram 14 / 5 / 1, (h) True, (c) True on 24 rows -- 3.0's number reproduces. A verifier that goes stale when the
+   record it reads grows is the shape of obs #2105; the scoped copy is the fix, and the original is kept as it ran.
+10. (2026-09-22, panel D5) WHAT THE FOLD'S NEW TEST PINS: the campaign's cross-module import of
+    `substrate/policy_manifest._tree_state` (3.1) had no executor -- the bare invocation never reaches that line and the
+    pin-refusal test returns first -- so a rename of the private helper was silent through pytest, run_selfchecks and
+    ruff alike; the added test asserts the consumer's import line and resolves it (re-run 2026-09-22: rc 0 with the
+    attribute present, rc 1 with it deleted). Sharpening: the ImportError would land AFTER the campaign has run and
+    BEFORE the pin is written.
+11. (2026-09-22, panel I11, refuted) RAW REPLIES AND STORED TRANSCRIPTS ARE DISTINCT OBJECTS: the transcript rule (module
+    decision 1, 2.10 (c), item 5 above) truncates at the first " (somatic", which also removes every note
+    `Brain.respond` appends after the somatic note; 0 of 144 stored transcripts carry the marker (positive control 1),
+    which proves absence in the STORED transcripts only, not in raw replies; a constructed raw reply whose refusal sits
+    after the marker classifies WRONG raw and CORRECT truncated. C0 scores the disclosed transcript; no change.
 
 ### 3.6 Openings
 
@@ -305,7 +407,88 @@ module is registered and exempted with its retirement condition (3.1). Dated not
    it routes on `{known, coverage}`.
 2. THE KEY IS A FLOOR (2.2): it will miss a correct answer phrased outside its patterns; the campaign reports every
    answer-shaped non-CORRECT row with its text (none today) so a miss is visible the day the brain starts answering.
+   2026-09-22 QUALIFICATION (panel I6): the floor has a false-POSITIVE face too -- a non-answer that carries the key's
+   token scores CORRECT unless rules 1-3 catch it first; 2.10 (f) measures it and names what C2's report owes.
 3. A FOURTH PIN-TIE FUNCTION: `c0_pin_check` joins `t080_pin_reading`, `t081_pin_reading`, `t082_pin_reading` -- four
    copies of (pin, re-derive, refuse on disagreement). The P2 merge the route ledger already carries now has four
    members; this arc does not perform it (one change per arc) and names it.
 4. THE 20 ITEMS ARE THE AUDIT'S, not a representative sample of everyday reasoning (2.7); SC-013 owns the criterion.
+5. WHAT `c0_pin_check` COVERS (2026-09-22, panel I3): per-row class re-derivation only (every row in `per_seed` and
+   `sequential`, through the shipped `classify()`), plus the zero-row refusal. It does NOT check row count, seed set,
+   histogram, fixture histogram, conjuncts, reds, verdict, protocol, warm_ticks, head or dirty: a panel probe mutated a
+   copy of the pin those ways and the check passed each (re-run 2026-09-22: 5 missed shapes, 2 caught, the zero-row
+   refusal caught). Those shapes are covered OFF this function -- the pin is git-tracked, so each is a working-tree diff
+   caught by the clean-tree rule and by `policy_manifest.certify`'s dirty flag, and the campaign refuses to overwrite an
+   existing pin. Widening the check belongs with opening 3 and is its own arc, because a new refusal criterion added to
+   a governed instrument after its campaign owes a reachable red and a control. The registry half: `CAPABILITY_BAR`'s
+   brain 0.0 is a source literal tied to the pin by the provenance string and a tracked file, by the registry's stated
+   literal-over-derivation convention; re-deriving it would make the gate agree with itself.
+6. THE SCRAMBLED-KEY CONTROL IS ONE PERMUTATION (2026-09-22, panel I4), and its bar would be exceeded by some others
+   (2.10 (e)); a successor battery whose items do not share an answer token retires it.
+7. `TRACKED_SURFACES` OMITS `docs/RESEARCH_ASSESSMENT.md` AND `docs/ACADEMIC_RESEARCH_PLAN.md` (2026-09-22, panel PH1),
+   which discuss C0. Measured 2026-09-21 at 678a26a: neither violates the rule -- 0 same-line hits tree-wide over 5
+   distinctive C0 terms, and the one nearby comparison word (`ACADEMIC_RESEARCH_PLAN.md`, its "Do not claim ...
+   human-level reasoning" line) is the prohibition itself. Widening the matcher and/or the tracked set is a NEW ARC with
+   its own pre-registered reds, because the term set is a choice with a measured false-positive cost ({everyday
+   reasoning}: 0 false positives, 3 of 4 phrasings caught; a +/-2-line window: 0, 4 of 4; the bare term "reasoning" reds
+   the prohibition line).
+8. THE ARCHIVE'S QUESTION TEXT IS AN UNVERIFIABLE-IN-TREE PREMISE (2026-09-22, panel D1): no in-tree artifact carries
+   it. If a mechanical guard is ever wanted it is new code under `src/` and its own arc, named a DRIFT RATCHET over
+   `ITEMS` (it detects a later edit of the in-tree strings), never the provenance chain.
+9. THE `_tree_state` IMPORT COULD BE HOISTED TO MODULE TOP (2026-09-22, panel D5): `policy_manifest` imports stdlib only,
+   so a rename would then fail at module import (pytest collection, run_selfchecks, any import) instead of after the
+   campaign; it is a `src/` edit whose effect on the p6 gate's declared-route diff, the wiring manifest and the dormancy
+   gates was not run, so it is filed with opening 3, not folded.
+10. RULE 3 (`FALLBACK`) HAD NO TEST UNTIL THIS FOLD (2026-09-22, panel I10): its three substrings were accepted before
+    the campaign (2.10 (c), 3.5 item 5) and rule 3 sits above the key by 2.3, so a reply that answers correctly and also
+    carries a mark scores FALLBACK -- the accepted conservative behaviour, now pinned by two tests (each bare mark ->
+    FALLBACK; a mark beside a key hit -> FALLBACK, the unmarked reply CORRECT); with rule 3 deleted in memory the 29
+    pre-existing tests all still pass and the six new assertions fail (re-run 2026-09-22). The emitters of those strings
+    exist in `cortex/recognizer_bank.py` and `cortex/live_brain.py`; their reachability through `Brain.respond` today is
+    not established, and no pinned cell is FALLBACK.
+
+### 3.7 The panel (lenses 2026-09-21, refuters 2026-09-21/22) and its fold (2026-09-22)
+
+SHAPE. SNDL-PROTOCOL section 6, by the `Agent` fan-out fallback (the Workflow tool refused the 22,630-character panel
+script): three Opus lenses on the frozen head `678a26a` (tree clean) -- pre-registration-honesty (5 filed: 2 MAJOR, 3
+MINOR), disposition (5 filed: 4 MAJOR, 1 MINOR), instrument (12 filed: 6 MAJOR, 6 MINOR); 22 filed, two duplicates (D3 =
+PH1, I2 = D1) -> 20 distinct claims. One refuter per claim, judging the CLAIM and the proposed FIX as two separate claims
+(obs #2146): wave 1 (PH1-PH5, D1-D5, I1, I3, I4) Opus, 2026-09-21/22; wave 2a (I5-I7) Codex `gpt-6-astra` / reasoning
+`high` through omnigent's Polly profile, 2026-09-22 00:xx CDT; wave 2b (I8-I12) Codex `gpt-6-astra` / `high` through the
+`codex` MCP tool on the native Windows path, 2026-09-22 10:29-10:55 CDT, each in a scratch cwd with writes confined
+there (owner routing 2026-09-22: Claude orchestrates, Codex executes). Every verdict was read from
+`refute/<tag>/verdict.json`; the panel scratch is WSL `~/sndl-scratch/c0-panel/` mirrored at the 2026-09-22 session
+scratchpad (`c0-panel/`; `panel_ledger.md` carries the per-tag rows and the reproduction column).
+
+VERDICTS. STAND, 12: PH1 MINOR (narrowed), D1 MAJOR, D4 MINOR, D5 MINOR (fix CORRECT with one added clause), I1 MAJOR,
+I3 MINOR, I4 MINOR, I6 MAJOR, I7 MINOR, I8 MINOR, I9 MINOR, I10 MINOR (fix CORRECT). REFUTED / DROP, 8: PH2 (PROVENANCE
+indexes the telemetry surface -- 39 of 40 snapshot keys plus the `pci` tombstone -- and the battery publishes no such
+key by construction, fact 4), PH3 (2.10 (a) is exact on its across-seeds predicate; the recalled-row intersection is
+{8, 10, 12, 13, 17}), PH4 (3.3's verdict carries its qualifier), PH5 (the two-hold split was in L12), D2 (3.5 item 9),
+I5 (2.10 (h)), I11 (3.5 item 11), I12 (a suppressed-positive scorer reads (k)'s constructed-CORRECT arm 0 of 20 while the
+WRONG and observed arms stay 20 of 20, and the `any_tag_is_correct` scorer mutation reads (h) 15 of 20 on a fresh seed-0
+run whose raw replies and routes are unchanged, items 8, 10, 12, 13 and 17 moved -- exactly the port defect (h) exists to
+detect; re-run 2026-09-22). Of the 12 standing claims, 10 proposed lens fixes were WRONG and 2 CORRECT: the fold adopts
+the REFUTERS' minimal fixes throughout (obs #2146).
+
+REPRODUCTION. Every number written into 2.10 (e)-(h), 3.3, 3.5 items 7-11 and 3.6 items 5-10 was re-run by the
+orchestrator on this host on 2026-09-22 with the named script before it was written, including the D2 refuter's scoped
+copy of the 2026-09-17 independent verifier against the fold head (3.5 item 9: 0 disagreements over 120 rows). Two
+refuter scripts misbehaved after their figures printed and are noted where their figures are used (I4's section 6; the
+unmodified D2 verifier).
+
+THE FOLD (branch `c0-panel-fold`, a clean worktree at `678a26a`; stacked, one change each; BATTERY-VERIFIED ONLY, not
+re-panelled -- section 11's granted deferral, stated in each commit): `a0f6a83` the module docstrings (D1, I1, D4, I3,
+I8; the executable AST byte-identical to `678a26a`, verified); `adf8929` the tests (D1, D4 docstrings; D5's coupling
+test; I10's two rule-3 tests; 32 pass, ruff and format clean, the bare invocation `C0 OK`); this commit, the record
+(2.10 (e)-(h); 3.1's marked correction; the 3.3 line; 3.5 items 7-11; 3.6 items 2 (qualification) and 5-10; this
+section). The Codex executor applied the two code-side commits' edits under a bounded brief (`fold_brief.md`); the
+orchestrator reviewed the diff, re-ran the gates and committed. No `classify` rule, key, bar, pin, campaign or registry
+change anywhere: every refuter confirmed that no pinned class moves. Why a branch: the main checkout carried the owner's
+uncommitted Brian2 work (46 files, none of them C0's) and the daemon exits and relaunches on any HEAD change, so the
+fold is stacked on a worktree and fast-forwarded onto `main` after the owner disposes that work.
+
+OPENINGS FILED HERE, beyond 3.6: the panel's two duplicates (D3, I2) were merged rather than assigned; the wave-2
+refuters' `graphify explain` failed under the Codex sandbox (its Python launcher could not load codecs), so they read the
+saved graph and report directly; the C0 closing report to Codex (protocol section 7) follows this fold and precedes the
+battery.
