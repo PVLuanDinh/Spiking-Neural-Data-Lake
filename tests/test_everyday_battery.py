@@ -74,6 +74,25 @@ def test_r6_a_yes_that_is_also_a_no():
     assert mutated(eb.R6_REPLY, eb.CONSTRUCTED_ROUTE, eb.R6_ITEM)[0] == eb.CORRECT
 
 
+def test_rule_3_each_bare_fallback_marker_is_fallback():
+    """2.3 rule 3: each bare fallback marker classifies FALLBACK against item 4's key.
+    Remove rule 3 and each bare marker classifies OTHER: red."""
+    item = eb.ITEMS[3]
+    for mark in eb.FALLBACK_MARKS:
+        assert eb.classify(mark, eb.CONSTRUCTED_ROUTE, item)[0] == eb.FALLBACK
+
+
+def test_rule_3_fallback_precedes_a_correct_key():
+    """2.3 rule 3 precedes rule 4: a fallback marker wins even when the reply satisfies the key.
+    Remove rule 3 and marker-plus-key classifies CORRECT: red. The unmarked reply is the control."""
+    item = eb.ITEMS[3]
+    assert eb.classify(item.correct, eb.CONSTRUCTED_ROUTE, item)[0] == eb.CORRECT
+    for mark in eb.FALLBACK_MARKS:
+        reply = item.correct + " " + mark
+        assert eb.key_hit(eb.answer_span(reply), item)
+        assert eb.classify(reply, eb.CONSTRUCTED_ROUTE, item)[0] == eb.FALLBACK
+
+
 def test_conjunct_k_the_key_discriminates_on_all_three_arms():
     """(k): every item's constructed CORRECT reply reads CORRECT, every constructed WRONG reply
     reads WRONG, and every OBSERVED seed-0 reply reads the class fact 2 recorded. 20 / 20 / 20."""
@@ -128,8 +147,10 @@ def test_the_fixture_reproduces_fact_2s_histogram():
 
 
 def test_the_battery_is_the_audits_twenty_questions_and_four_controls():
-    """The port is VERBATIM: 20 items with ids 1-20, 4 controls, and every item's question equal
-    to the orientation fixture's (which the orientation asserted equal to the archive's)."""
+    """ITEMS and FIXTURE have ids 1..20; CONTROLS and CONTROL_FIXTURE both have arity 4, and
+    the questions are ASCII. These assertions do not check text equality: NO in-tree artifact
+    carries the archive's question TEXT, and the archive is outside the repo. The verbatim text
+    chain is the 2026-09-16 orientation's, an UNVERIFIABLE-IN-TREE PREMISE."""
     assert [i.id for i in eb.ITEMS] == list(range(1, 21))
     assert [f.id for f in eb.FIXTURE] == list(range(1, 21))
     assert len(eb.CONTROLS) == len(eb.CONTROL_FIXTURE) == 4
@@ -299,10 +320,25 @@ def test_the_verdict_rule_is_2_4s():
 
 
 def test_the_seed_children_never_inherit_a_home(monkeypatch):
-    """One process per seed is the ISOLATION, not a speed trick: an inherited NORD_HOME would
-    point every child at ONE scratch lake, where five brains could recall each other's ingested
-    questions -- and every child would still exit green."""
+    """One process per seed is the ISOLATION, not a speed trick: five brains co-resident in ONE
+    process share one process-wide NORD_HOME and could recall each other's ingested questions.
+    The pop is defence in depth on top of that -- measured 2026-09-21, a child with NORD_HOME
+    inherited still gets its own `throwaway_home()`, so this test pins the child's environment,
+    not a reachable failure."""
     monkeypatch.setenv("NORD_HOME", str(Path.home() / ".snn_data_lake"))
     env = eb._child_env()
     assert "NORD_HOME" not in env
     assert str(eb.REPO / "src") in env["PYTHONPATH"] and env["PYTHONUTF8"] == "1"
+
+
+def test_the_campaigns_tree_state_import_is_pinned_at_the_consumer():
+    """cortex/everyday_battery.py::run_c0_campaign reaches across modules for the pin's
+    head/dirty (record 3.1, P2). Nothing else executes that line: the bare invocation never
+    reaches it and the pin-refusal test returns first, so a rename of the private helper is
+    otherwise silent through pytest, run_selfchecks and ruff alike."""
+    line = "from snn_data_lake.substrate.policy_manifest import _tree_state"
+    assert line in Path(eb.__file__).read_text(encoding="utf-8")
+    from snn_data_lake.substrate.policy_manifest import _tree_state
+
+    t = _tree_state()
+    assert set(t) >= {"commit", "dirty"} and isinstance(t["dirty"], bool)
