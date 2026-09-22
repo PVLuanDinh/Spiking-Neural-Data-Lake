@@ -77,7 +77,7 @@ from snn_data_lake.substrate.device import enable, resolve_device
 from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 
-import snntorch as snn
+from snn_data_lake.substrate.brian2_backend import BrianLIF
 
 
 def _envi(k, d):
@@ -110,7 +110,7 @@ class GrowableSTDP:
         self.birth = torch.zeros(
             0, device=device
         )  # cycle each neuron was recruited (newborn-protection critical period)
-        self.lif = snn.Leaky(beta=BETA, threshold=1e9, reset_mechanism="none")
+        self.lif = BrianLIF(beta=BETA, threshold=1e9, reset_mechanism="none")
         self.pre_decay = torch.exp(torch.tensor(-1.0 / TAU_PRE))
 
     def match(self, image):

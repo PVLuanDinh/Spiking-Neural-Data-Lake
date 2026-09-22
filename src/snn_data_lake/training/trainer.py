@@ -1,4 +1,4 @@
-"""Surrogate-gradient spiking classifier (torch + snnTorch) for the GPU tier.
+"""Surrogate-gradient spiking classifier (Torch + Brian2 equation) for the GPU tier.
 
 Targets the EXACT task the zero-dep core defines. The data + task are REUSED from
 ``snn_data_lake.cortex.snn_classifier`` (they are zero-dep, so importing them is free):
@@ -6,17 +6,17 @@ Targets the EXACT task the zero-dep core defines. The data + task are REUSED fro
 timesteps (ON_RATE=0.9 lit / OFF_RATE=0.05 dark per step).
 
 Model: a SINGLE spiking linear readout -- ``nn.Linear(N, C, bias=False)`` feeding
-``snntorch.Leaky`` membranes, unrolled over STEPS timesteps on rate-coded input
+``BrianLIF`` membranes, unrolled over STEPS timesteps on rate-coded input
 spikes. The class score is the summed output spikes. Because the readout is a
 single input->class linear map, ``fc.weight`` has shape [C][N] and maps 1:1 onto
 the core's ``W[c][i]`` matrix -- that is what makes ``export_to_core`` a faithful
 bridge back into the zero-dep install.
 
-Training is surrogate-gradient (snnTorch fast_sigmoid) BPTT with Adam. Seeding is
+Training uses the Brian2-backed fast-sigmoid surrogate bridge with BPTT and Adam. Seeding is
 deterministic: ``torch.manual_seed`` plus a device-bound ``torch.Generator`` for
 the stochastic rate coding.
 
-torch/snntorch are imported at module top HERE on purpose: this module is only
+Torch/Brian2 are imported at module top HERE on purpose: this module is only
 ever imported when actually training (from cli.main() behind an import guard, or
 from offload.py), never at package import time.
 """
@@ -24,8 +24,7 @@ import random
 
 import torch
 import torch.nn as nn
-import snntorch as snn
-from snntorch import surrogate
+from snn_data_lake.substrate.brian2_backend import BrianLIF, fast_sigmoid
 
 from snn_data_lake.cortex.snn_classifier import (
     templates,
@@ -56,7 +55,7 @@ class SpikingReadout(nn.Module):
     def __init__(self, n_inputs=N, n_classes=4, beta=DEFAULT_BETA):
         super().__init__()
         self.fc = nn.Linear(n_inputs, n_classes, bias=False)
-        self.lif = snn.Leaky(beta=beta, spike_grad=surrogate.fast_sigmoid())
+        self.lif = BrianLIF(beta=beta, spike_grad=fast_sigmoid())
 
     def forward(self, spikes):
         """spikes: [STEPS, batch, N] binary. Returns [batch, C] summed output spikes."""

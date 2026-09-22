@@ -1,4 +1,5 @@
-# Installable src/ package (snn_data_lake). torch + numpy + mujoco + pyarrow are UNCONDITIONAL core dependencies, so
+# Installable src/ package (snn_data_lake). torch + numpy + mujoco + pyarrow + Brian2 are
+# UNCONDITIONAL core dependencies, so
 # `pip install .` gives the full brain tier out of the box. `pip install ".[all]"` adds every addon
 # (arm+lake+gpu+nmnist+train); training is a first-class GPU tier (.[train] -> snn-train).
 #
@@ -29,7 +30,9 @@
 # this architecture. Adoption still ships with the measurement of what it bought, and a dependency
 # may never become a second durable store (P4b) nor carry its own BPTT trainer into a learning path.
 #
-# snntorch PROMOTED TO CORE 2026-08-06 (P7), AND THIS IS WHAT IT BOUGHT -- MEASURED, NOT ASSERTED.
+# HISTORICAL: snntorch was promoted to core on 2026-08-06 and was replaced by Brian2 on
+# 2026-09-22. The measurements below explain the retired decision; they no longer describe the
+# installed framework.
 # It was declared TWICE in the extras (`[gpu]` pinned `snntorch==1.0.0`, `[train]` floored
 # `snntorch>=0.9`) while four GOVERNED modules import it UNGUARDED at module top --
 # training/{trainer,offload,mnist,spiking_lm}.py -- and `snn-train` is a declared console script.
@@ -76,10 +79,18 @@
 # torch 2.11.0+cu128 with the default-index CPU build -- silently removing the GPU from the one
 # environment P5 names. It stays in [gpu]/[train], where installing it is a deliberate act.
 #
-# NOT RELAXED BY THIS ADOPTION -- the e-prop invariant. snntorch's LAYERS are adopted, never its
+# NOT RELAXED BY THAT ADOPTION -- the e-prop invariant. snntorch's LAYERS were adopted, never its
 # BPTT trainer. Recorded because it cuts against this very change: all four modules unblocked here
 # carry `surrogate` + `loss.backward()`, so importability is NOT promotability. Each still owes
 # cosine > 0.5 against an independent gradient before it can be anything but EXEMPT.
+#
+# BRIAN2 REPLACES SNNTORCH 2026-09-22. Brian2 is the canonical equation/event simulator;
+# substrate/brian2_backend.py keeps the existing Torch autograd paths through a small differentiable
+# bridge and proves that bridge against a real Brian2 NeuronGroup. Brian2 2.10.1 is exact-pinned:
+# it publishes a cp314t Windows wheel and its numerical/code-generation behavior is part of the
+# simulator contract. Its CPython 3.14t extension currently enables the GIL on import, so the real
+# Brian2 reference runs in an isolated subprocess and the parent brain remains free-threaded. Torch
+# remains core because it is still the tensor/autograd engine.
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -87,7 +98,7 @@ build-backend = "hatchling.build"
 [project]
 name = "spiking-neural-data-lake"
 version = "4.80.0"
-description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. torch, numpy and mujoco are core dependencies. snntorch joined them on 2026-08-06; pyarrow on 2026-08-19 (sealed lake segments, specs/022)."
+description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. torch, numpy, pyarrow, mujoco, and Brian2 are core dependencies."
 readme = "README.md"
 # FLOOR RAISED 3.12 -> 3.14, 2026-08-05 (owner decision), and this floor is NOT the whole
 # requirement. The project requires the FREE-THREADED (PEP 703) build, and `requires-python` cannot
@@ -169,17 +180,11 @@ dependencies = [
     # so a floor would resolve to the newest release in a fresh env and reappear as a mystery
     # failure. Verified: wheels exist for {ubuntu, windows} x {cp311, cp312, cp313}.
     "mujoco==3.11.0",
-    # THE SPIKING LAYERS. Promoted from [gpu]/[train] 2026-08-06 -- the measurement, the benefit
-    # and the rejected torchvision companion are all in the header block above.
-    # EXACT PIN, carried over rather than invented: `[gpu]` already pinned `==1.0.0` and `[train]`
-    # floored `>=0.9`, and the two RESOLVE IDENTICALLY today (measured: `snntorch>=0.9` -> "Would
-    # install snntorch-1.0.0"). Taking the tighter of two existing specs loses nothing and leaves
-    # one authority instead of two. The pin earns itself on this file's own recorded precedent --
-    # mujoco because the solver version IS the physics, ruff because a formatter's version is part
-    # of the format: here the `snn.Leaky` membrane dynamics ARE the numerics that the STDP
-    # self-checks assert accuracy floors against, so a floor would resolve to a future release in a
-    # fresh env and reappear as a mystery numeric failure.
-    "snntorch==1.0.0",
+    # THE SPIKING SIMULATOR. Brian2 is the equation/event authority; an isolated reference process
+    # verifies the free-threaded Torch bridge in substrate/brian2_backend.py. Exact-pinned because
+    # simulator and code-generation behavior are part of the numerical contract, just as MuJoCo's
+    # solver version is the physics.
+    "brian2==2.10.1",
 ]   # TORCH TIER ON BY DEFAULT (user policy, 2026-07-18)
 
 # TORCH TIER = ON BY DEFAULT (user policy, 2026-07-18). torch is now a HARD default dependency: a plain
@@ -192,17 +197,14 @@ dependencies = [
 # off-switch left: torch is required, not preferred. If it is missing the install is broken, and the
 # brain's stdlib fallback exists to make that survivable rather than to make it a mode. numpy is
 # likewise imported unguarded at module top level across cortex/, hippocampus/, thalamus/ and
-# substrate/. snntorch joined them as a core dependency on 2026-08-06 for the same reason -- it is
-# imported unguarded at module top by the governed training/ tier. The [gpu]/[train] extras below
-# pin the remaining GPU/training wheels (torchvision/tonic) on top of the default torch; this
-# sentence named snntorch among them until that promotion, which would have been an install
-# instruction that no longer described the install.
+# substrate/. Brian2 is core because substrate/brian2_backend.py imports it unguarded and every
+# migrated LIF path imports that backend. The [gpu]/[train] extras below pin the remaining
+# GPU/training wheels (torchvision/tonic) on top of the default torch.
 [project.optional-dependencies]
 arm = ["pyserial"]                                                       # live_arm --serial / --actuate
 lake = ["polars", "deltalake"]  # lakehouse/medallion + delta_demo (pyarrow PROMOTED to core, 022 T005)
-# snntorch REMOVED from both extras 2026-08-06: it is a CORE dependency now (see the header block).
-# It was declared here twice with DIFFERENT specs (`==1.0.0` here, `>=0.9` in [train]); keeping
-# either beside the core declaration is P2's additive failure, so both are retired, not softened.
+# snntorch was removed from both extras when promoted in 2026 and retired entirely when Brian2
+# replaced it on 2026-09-22. Brian2 has one authority in the core dependency list above.
 # bindsnet REMOVED from [gpu] 2026-08-07 with its sole importer (reasoning/eth_mnist_bindsnet.py,
 # RETIRE-classified 2026-08-06; the NO-GO was exactly this co-edit). A declared distribution whose
 # only importer is retired is not a capability (P7's own honesty guard names the shape).
@@ -214,8 +216,8 @@ train = ["torch", "torchvision", "numpy", "scikit-learn"]              # GPU tra
 # produced a tree where `import snn_data_lake.reasoning.ensemble_rbf` raised ModuleNotFoundError.
 # CI never caught it: ci.yml installs only `-e .` and `-e ".[dev]"`, and the module gate scopes
 # `reasoning/` out entirely. Placed in the EXTRAS rather than core deliberately: those four modules
-# already sit beside snntorch/torchvision imports, so an extra matches the tier they actually live
-# in, and core placement would not have made them importable anyway (they fail earlier on snntorch).
+# historically sat beside snntorch/torchvision imports, so an extra matched the tier they lived in.
+# The snntorch half of that record was retired by the Brian2 migration; torchvision remains extra.
 # Per P7 this needs no justification beyond what it buys: SVC/StandardScaler for the SVM readouts.
 # 2026-08-12 status of those four sites: deep_stdp_2stage_svm RETIRED (2026-08-07);
 # ensemble_rbf settled as tests/instruments/ensemble_rbf_ab.py; lake99 + ng_snn/validate_uci

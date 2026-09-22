@@ -51,7 +51,7 @@ Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reaso
 Knobs: NORD_CYCLES(18) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(400) NORD_KREPLAY(150)
        NORD_RFF(2000) NORD_GROW_RFF(200) NORD_GAMMA(0.04) NORD_SHRINK(0.1) NORD_MAINTAIN(20)
        NORD_TRAIN(12000) NORD_TEST(2000) NORD_REFLECT_THR(0.55)
-Deps: numpy torch torchvision snntorch scikit-learn
+Deps: numpy torch torchvision brian2 scikit-learn
 """
 
 from snn_data_lake.substrate.device import resolve_device

@@ -15,7 +15,7 @@ v0.57 was deterministic 2-DOF. This adds the three pieces that make it a real wo
                        learned transition, bootstrap returns with a learned critic V(z), train the
                        actor to maximize those returns (analytic gradients).
 
-The **actor and critic are spiking** (snnTorch surrogate gradients) — the RL controller is the
+The **actor and critic are spiking** (Brian2 equation + Torch surrogate gradients) — the RL controller is the
 neuromorphic part. The **world model (encoder/transition/decoder) is a plain MLP**: a small
 spiking net cannot regress the 6-joint kinematics precisely enough, and a wrong world model
 gives the actor wrong imagined gradients (measured: spiking-WM recon ~0.9 m, agent fails to
@@ -29,8 +29,7 @@ Run (own venv):  .venv-arm/Scripts/python snn_dreamer_6dof.py
 
 import torch
 import torch.nn as nn
-import snntorch as snn
-from snntorch import surrogate
+from snn_data_lake.substrate.brian2_backend import BrianLIF, fast_sigmoid
 from snn_data_lake.substrate.device import resolve_device, enable
 
 # MODULE SCOPE: resolve only. `enable()` calls `torch.set_default_device()`, which is
@@ -59,11 +58,11 @@ class SNet(nn.Module):
     def __init__(self, in_dim, out_dim, scale=1.0, hidden=HID):
         super().__init__()
         self.scale = scale
-        sg = surrogate.fast_sigmoid()
+        sg = fast_sigmoid()
         self.fc1 = nn.Linear(in_dim, hidden)
-        self.lif1 = snn.Leaky(beta=0.9, spike_grad=sg)
+        self.lif1 = BrianLIF(beta=0.9, spike_grad=sg)
         self.fc2 = nn.Linear(hidden, out_dim)
-        self.lif2 = snn.Leaky(beta=0.9, spike_grad=sg, reset_mechanism="none")
+        self.lif2 = BrianLIF(beta=0.9, spike_grad=sg, reset_mechanism="none")
 
     def forward(self, x):
         m1, m2 = self.lif1.init_leaky(), self.lif2.init_leaky()
@@ -256,7 +255,7 @@ def main():
     print("=" * 66)
     print("DREAMER-LITE 6-DOF — spiking world-model agent (stochastic latent + value)")
     print("=" * 66)
-    print(f"backend         : torch {torch.__version__}, snntorch (surrogate)")
+    print(f"backend         : torch {torch.__version__}, Brian2 equation (surrogate bridge)")
     print(
         f"arm             : {NJ}-joint planar redundant arm (6 actuators -> 2D tip); latent ZD={ZD}"
     )
@@ -266,7 +265,7 @@ def main():
     print("=" * 66)
 
     # ---- self-checks --------------------------------------------------------
-    # bound tolerant to snntorch-version init variance (0.26 on the pinned 1.0.0, ~0.34 on newer);
+    # Bound retained across the Brian2 migration; it covers initialization variance.
     # still >3x below the untrained recon (~1.33) -> the latent is grounded either way.
     assert recon_err < 0.40, f"latent world model never grounded to EE: recon {recon_err:.3f} m"
     assert final < 0.7 * noop, (

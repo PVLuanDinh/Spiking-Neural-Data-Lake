@@ -19,7 +19,7 @@ Feature learning stays UNSUPERVISED (frozen conv1); only the SLDA readout is sup
 Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.developmental_loop_slda
 Knobs: NORD_CYCLES(15) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(400) NORD_RFF(2000)
        NORD_GAMMA(0.02) NORD_SHRINK(0.1) NORD_TRAIN(12000) NORD_TEST(2000)
-Deps: numpy torch torchvision snntorch
+Deps: numpy torch torchvision brian2
 """
 
 import os

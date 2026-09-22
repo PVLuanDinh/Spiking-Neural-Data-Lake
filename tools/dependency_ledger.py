@@ -27,9 +27,9 @@ can tell you a framework was refused for a bad reason.
 
                  THE STRICTER CHECK IS NOT BUILT, and the reason is its COUNTED output, per this
                  project's own bar of counting a proposed gate before adopting it. "Unguarded under
-                 src/ and declared only in an extra" emits 10 rows on this tree -- arcengine,
-                 bindsnet, deltalake, ml-genn, nengo, polars, scikit-learn, snntorch, tonic,
-                 torchvision -- and 9 of them are the intended optional-tier shape, i.e. an
+                 src/ and declared only in an extra" emits 9 rows on this tree -- arcengine,
+                 bindsnet, deltalake, ml-genn, nengo, polars, scikit-learn, tonic,
+                 torchvision -- and 8 of them are the intended optional-tier shape, i.e. an
                  allowlist-shaped gate that trains a reader to ignore it (the same failure
                  `_is_sibling` was added to avoid). The ONE row that is not that shape is
                  arcengine, whose marker is False on the declared floor; it is recorded in
@@ -327,7 +327,7 @@ def _declared():
 
 
 def _dist_of(spec):
-    """'snntorch>=0.9' -> 'snntorch'; 'pkg[extra]==1.0' -> 'pkg'. Self-referential extras dropped."""
+    """'brian2>=2.10' -> 'brian2'; 'pkg[extra]==1.0' -> 'pkg'. Self-referential extras dropped."""
     s = spec.strip()
     for sep in ("[", ">", "<", "=", "!", "~", ";", " "):
         s = s.split(sep)[0]

@@ -3,7 +3,7 @@
 The repo ships a **from-scratch all-spiking language model** (SpikeGPT / SpikingBERT lineage): a
 transformer whose neurons are LIF spiking units. Two halves:
 
-- **Trainer** — `src/snn_data_lake/training/spiking_lm.py` (torch/snnTorch, GPU, the `[gpu]` extra).
+- **Trainer** — `src/snn_data_lake/training/spiking_lm.py` (Brian2 equation/Torch bridge, GPU, the `[gpu]` extra).
   Char-level, embedding → spiking blocks (LIF + an RWKV-style spiking token-mixer that approximates
   linear attention) → spike-driven readout, trained with surrogate-gradient BPTT.
 - **Serve** — `src/snn_data_lake/spiking_lm_serve.py` (**zero-dependency**). Loads the trainer's
@@ -11,7 +11,7 @@ transformer whose neurons are LIF spiking units. Two halves:
   install generates text from a trained spiking LM with **no torch**.
 
 ```bash
-pip install ".[gpu]"                                    # torch + snntorch
+pip install ".[gpu]"                                    # core Torch + Brian2, plus GPU extras
 snn-train --lm --corpus mytext.txt --gpu --export-lm lm.json
 ```
 ```python

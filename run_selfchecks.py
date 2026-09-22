@@ -318,6 +318,7 @@ CORE = [
     "substrate.chat_memory",
     "substrate.signal_calibrator",
     "substrate.device",
+    "substrate.brian2_backend",  # Brian2 reference dynamics == differentiable Torch bridge
     # PROMOTED from RESEARCH 2026-08-04. Infra, not a brain region: subprocesses + tree copies +
     # crc32, no weight anywhere. Owns _PROTECTED (the 9-file firewall) and the anchored _repo_root().
     "substrate.self_mod_harness",

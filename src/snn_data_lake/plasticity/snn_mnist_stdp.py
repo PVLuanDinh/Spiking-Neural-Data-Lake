@@ -1,9 +1,9 @@
 """
-Unsupervised STDP MNIST classifier  (real MNIST + snnTorch) — Diehl & Cook 2015
+Unsupervised STDP MNIST classifier (real MNIST + Brian2 LIF equation) — Diehl & Cook 2015
 style, the recipe the research docs describe ("Two-Layer MNIST STDP, Brian2").
 
 Combines the two requested directions:
-  (1) real MNIST data + snnTorch LIF neurons
+  (1) real MNIST data + Brian2-equation LIF neurons
   (3) TRUE unsupervised STDP: no labels and no backprop during training. Input->
       excitatory weights are written purely by spike-timing correlation; a
       winner-take-all competition forces each excitatory neuron to specialise on
@@ -27,16 +27,12 @@ to the cu128 torch, which is how the module IS importable here; the module's own
 adjudication below still stands for pyproject/CI), skipped-with-notice elsewhere. Its 14
 reasoning-tier importers repointed at the move; snn_mnist_stdp_fast (the oracle's fast kernel)
 stays in reasoning/ as its own later rung.
-Deps, and the two tiers are NOT the same (corrected 2026-08-06 -- this line read
-"numpy torch torchvision snntorch" flat, which hid which one actually blocks the module):
-  CORE, always installed : numpy, torch, snntorch  (snntorch promoted to core 2026-08-06 under P7;
-    it is a 133 KB pure-Python `py2.py3-none-any` wheel with zero transitive deps, so the module-top
-    import at the `import snntorch as snn` line below is unguarded ON PURPOSE -- guarding an
-    unconditional core dependency is the additive shape P2 forbids, exactly as for torch above it.)
+Deps, and the two tiers are NOT the same:
+  CORE, always installed : numpy, torch, brian2. Brian2 is reached through the governed
+    ``substrate.brian2_backend`` and its LIF equation is checked against the Torch bridge.
   EXTRA `[gpu]`/`[train]` : torchvision -- and THIS is what keeps this module unimportable.
 MEASURED 2026-08-06 by importing all 152 `reasoning/` modules in isolated subprocesses: this file
-is a HUB. 17 other modules fail to import solely because they import it, and after snntorch went
-core their blocker RE-LABELLED from snntorch to torchvision rather than clearing. torchvision was
+is a HUB. Its remaining optional dependency boundary is torchvision. torchvision was
 adjudicated and REJECTED for core on a structural argument, not on dependency count (P7 forbids
 that reason): `pip install torchvision` on cp314t resolves torchvision-0.28.0, which pins
 `torch==2.13.0` and would replace the gate env's torch 2.11.0+cu128 with the default-index CPU
@@ -56,10 +52,10 @@ the paper's 95% (which needs the full machinery + all 60k images).
 
 import os
 
-import snntorch as snn
 import torch
 from torchvision import datasets, transforms
 
+from snn_data_lake.substrate.brian2_backend import BrianLIF
 from snn_data_lake.substrate.device import enable, resolve_device
 
 #: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
@@ -97,7 +93,7 @@ def _envf(key, default):  # float knobs (thresholds, learning rates)
 M = _env("NORD_M", 100)  # excitatory neurons (= number of learned prototypes)
 T = 30  # timesteps per image
 MAX_RATE = 0.35  # Poisson spike prob for a fully-lit pixel, per step
-BETA = 0.92  # LIF membrane decay (snnTorch Leaky)
+BETA = 0.92  # Brian2 LIF membrane decay
 TRAIN_N = _env("NORD_TRAIN", 3000)  # training images (unsupervised)
 TEST_N = _env("NORD_TEST", 1500)  # test images
 LR = 0.012  # STDP learning rate
@@ -129,15 +125,15 @@ def load_mnist(n_train, n_test):
 
 
 class StdpNetwork:
-    """Input(784 Poisson) -> Excitatory(M, snnTorch LIF) with STDP + hard k-WTA."""
+    """Input(784 Poisson) -> Excitatory(M, Brian2-equation LIF) with STDP + hard k-WTA."""
 
     def __init__(self):
         # weights init: small random positive, then normalised
         self.W = torch.rand(M, N_IN) * 0.3
         self._normalise()
-        # snn.Leaky with an unreachable threshold: we use it purely for the leaky
+        # BrianLIF with an unreachable threshold: we use it purely for the leaky
         # membrane integration, then apply our own adaptive-threshold + WTA.
-        self.lif = snn.Leaky(beta=BETA, threshold=1e9, reset_mechanism="none")
+        self.lif = BrianLIF(beta=BETA, threshold=1e9, reset_mechanism="none")
         self.pre_decay = torch.exp(torch.tensor(-1.0 / TAU_PRE))
         self.theta = torch.zeros(M)  # per-neuron adaptive threshold (homeostasis)
 
@@ -162,7 +158,7 @@ class StdpNetwork:
             x_pre = x_pre * self.pre_decay + s_in  # pre-synaptic trace
             cur = self.W @ s_in  # sparse: drives exc
             synops += int(s_in.sum().item()) * M
-            _, mem = self.lif(cur, mem)  # snnTorch leaky integration
+            _, mem = self.lif(cur, mem)  # Brian2-equation leaky integration
             eff = mem - self.theta  # drive minus adaptive threshold
             # k-WTA graded inhibition: the (up to KWTA) strongest neurons that
             # clear the base threshold co-fire; the rest are inhibited (reset).
@@ -218,7 +214,7 @@ def main():
     torch.manual_seed(0)  # deterministic run + self-check (script path only, never at import)
     enable(resolve_device())
     print("=" * 58)
-    print("UNSUPERVISED STDP MNIST  (snnTorch, Diehl&Cook style)")
+    print("UNSUPERVISED STDP MNIST  (Brian2 equation, Diehl&Cook style)")
     print("=" * 58)
     print("loading MNIST...")
     Xtr, Ytr, Xte, Yte = load_mnist(TRAIN_N, TEST_N)

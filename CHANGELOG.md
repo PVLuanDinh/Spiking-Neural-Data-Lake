@@ -9,6 +9,15 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- Brian2 framework migration (2026-09-22)
+
+- Replaced the `snntorch==1.0.0` core dependency with `brian2==2.10.1`.
+- Added one governed Brian2 LIF backend whose real `NeuronGroup` reference runs in an isolated
+  subprocess and is checked against the free-threaded differentiable Torch bridge for subtract,
+  zero, and no-reset dynamics.
+- Migrated all live SNNTorch importers and the CI framework smoke test; Torch remains the
+  tensor/autograd engine for existing surrogate-gradient trainers.
+
 ## [Unreleased] -- specs/013: the e-prop kernel MERGE, one engine and one perception tier (2026-08-13)
 
 Five commits, `47555a74..4ef52107`, each independently gate-green. P2 asks that exactly ONE

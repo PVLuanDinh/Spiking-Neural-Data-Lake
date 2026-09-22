@@ -81,7 +81,7 @@ Scale knobs : NORD_C1 NORD_C2 NORD_M NORD_TRAIN NORD_TEST NORD_T NORD_GPU
 Stage knobs : NORD_L1_EPOCHS NORD_L2_EPOCHS NORD_POOL1
 Stage-2 calibration (optional): NORD_K2 NORD_CTHRESH2 NORD_KWINNER2 NORD_RINH2
                                 NORD_APLUS2 NORD_AMINUS2
-Deps: numpy torch torchvision snntorch   ([train]/[gpu] extras. NOT "outside the core": this module lives in src/snn_data_lake/reasoning/
+Deps: numpy torch torchvision brian2   ([train]/[gpu] extras. NOT "outside the core": this module lives in src/snn_data_lake/reasoning/
          and imports from the package -- P4c, every build is part of the brain.)
 """
 

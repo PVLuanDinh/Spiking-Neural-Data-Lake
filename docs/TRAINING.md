@@ -57,12 +57,13 @@ of these states it measured in — see [`COVERAGE_BASELINE.md`](COVERAGE_BASELIN
 ## Install the training tier
 
 ```bash
-pip install ".[train]"      # torch, snntorch, numpy
+pip install ".[train]"      # core Torch + Brian2, plus torchvision/scikit-learn
 ```
 
 ## Train on GPU, deploy zero-dep
 
-`snn-train` trains a surrogate-gradient spiking classifier (snnTorch, BPTT) on the same 8×8
+`snn-train` trains a surrogate-gradient spiking classifier (Brian2 LIF equation with a
+differentiable Torch bridge, BPTT) on the same 8×8
 4-shape task as the core `snn_classifier`, then exports the learned weights in the core's `W[c][i]`
 layout:
 
@@ -113,7 +114,7 @@ lakehouse, matcher, and arm loop can all call it:
 snn-train --mnist --gpu --epochs 20 --hidden 256 --export-brain brain.json
 ```
 
-The MNIST trainer (`snn_data_lake.training.mnist`) is a surrogate-gradient snnTorch net
+The MNIST trainer (`snn_data_lake.training.mnist`) is a surrogate-gradient Brian2-equation net
 (784 → hidden LIF → 10, mixed-precision, checkpointed) that **matches the core's serving semantics
 exactly** — so unlike the 8×8 classifier bridge above, the exported weights transfer *faithfully*
 (the trainer re-runs its export through the zero-dep core and reports the core-served accuracy next
@@ -133,11 +134,11 @@ calls `trained_brain.predict`/`accuracy`, no GPU or torch at serve time.
 ### Faster training on GeNN (optional, best-effort)
 
 `snn-train --mnist --genn` trains the same brain on GeNN's code-generated CUDA backend (often faster
-than snnTorch for SNNs), exporting to the same `trained_brain` format. Needs the `[genn]` extra
+than a Python/Torch bridge for SNNs), exporting to the same `trained_brain` format. Needs the `[genn]` extra
 (`pip install ".[genn]"`, plus a C++ compiler + CUDA). **Caveat:** `training/mnist_genn.py` is a
 best-effort scaffold written against the ml_genn 2.x API and **not verified against a live GeNN
 install** — version-sensitive spots are flagged `# VERIFY(ml_genn):`, and GeNN's LIF dynamics only
-*approximate* the core's, so weights transfer more loosely than the snnTorch path (`verify_transfer`
+*approximate* the core's, so weights transfer more loosely than the Brian2/Torch path (`verify_transfer`
 reports the gap). Treat it as a starting point to iterate on your GPU, not a finished trainer.
 
 ## The AR spiking char-LM artifact carries its own provenance
@@ -226,7 +227,7 @@ is a poor fit for AirLLM specifically — the default backend is a deterministic
 |------------|-----------------|----------|
 | Clone-and-run inference | `snn-demo`, `import snn_data_lake` | nothing (stdlib) |
 | Real event-vision/audio on the live tick | `training/make_packs.py` → `models/*_pack.npz` | `.[nmnist]` (tonic); downloads N-MNIST + SHD |
-| GPU training → export to core | `snn-train --gpu --export-core` | `.[train]` (torch, snntorch), a CUDA GPU |
+| GPU training → export to core | `snn-train --gpu --export-core` | core Torch + Brian2 and `.[train]`; a CUDA GPU |
 | GPU MNIST brain → serve zero-dep | `snn-train --mnist --export-brain`; `trained_brain.predict` | `.[train]` to train; nothing to serve |
 | Train larger than VRAM | `snn-train --offload` | `.[train]`, + `accelerate`/DeepSpeed for scale |
 | GeNN-backend GPU training | `snn-train --mnist --genn` | `.[genn]` (pygenn+ml_genn, compiler+CUDA); best-effort scaffold |

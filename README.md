@@ -101,7 +101,10 @@ python -m pip install -e .
 ```
 
 The five core dependencies in [pyproject.toml](pyproject.toml) are `torch`, `numpy`, `pyarrow`,
-`mujoco==3.11.0`, and `snntorch==1.0.0`. There is no supported torch-free mode. CPU execution is
+`mujoco==3.11.0`, and `brian2==2.10.1`. Brian2 is the canonical spiking simulator; Torch remains
+the tensor/autograd engine. Brian2 reference simulations run in an isolated subprocess because its
+CPython 3.14t extension enables the GIL; the long-lived brain process stays free-threaded and uses
+the parity-checked Torch bridge. There is no supported torch-free mode. CPU execution is
 part of the CI configuration; CUDA is useful for selected workloads, not a requirement for the
 basic demo. Edge-device wheel availability must be checked before choosing deployment hardware.
 

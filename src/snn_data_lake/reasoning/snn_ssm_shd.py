@@ -1,7 +1,7 @@
 """
 Spiking State-Space Model (deep, trained) — the SOTA-track companion to the CI-able LSM.
 
-RESEARCH TRACK — needs torch+snntorch (SHD path also needs tonic); runs in its own venv, NOT in CI.
+RESEARCH TRACK — needs core Torch+Brian2 (SHD path also needs tonic); runs in its own venv, NOT in CI.
 Validated on CPU: the synthetic long-range task reaches 100%; real SHD via Tonic reaches 32% (20-class,
 chance 5%) on a capped 500-sample / 12-epoch run — full-SHD SOTA needs a GPU box with uncapped,
 longer training. The CI-covered mechanism is spiking_ssm.py.
@@ -10,7 +10,7 @@ Deep spiking SSMs are the current best for long event sequences (SpikingSSMs, AA
 ICLR 2025; FLAMES, arXiv:2504.01257): a linear state-space recurrence h_t = A*h_{t-1} + B*x_t (A applied
 elementwise) carries long-range memory cheaply, a LIF spiking nonlinearity on C*h_t keeps activations
 sparse/binary, and the
-whole stack is trained by BPTT with snnTorch's surrogate gradient. This file trains a small stacked
+whole stack is trained by BPTT with the Brian2/Torch bridge's surrogate gradient. This file trains a small stacked
 spiking-SSM classifier and reports accuracy + spike SPARSITY + SynOps (piped through energy.py).
 
 Data: a synthetic long-range temporal task by default (delayed-cue classification — memory must span the
@@ -32,8 +32,7 @@ import sys
 import torch
 import torch.nn as nn
 import torch.nn.functional as F  # noqa: N812
-import snntorch as snn
-from snntorch import surrogate
+from snn_data_lake.substrate.brian2_backend import BrianLIF, fast_sigmoid
 from snn_data_lake.substrate.device import resolve_device, enable
 
 # MODULE SCOPE: resolve only. `enable()` calls `torch.set_default_device()`, which is
@@ -65,7 +64,7 @@ class SpikingSSMBlock(nn.Module):
         self.log_a = nn.Parameter(torch.rand(dim) * 2 - 1)
         self.B = nn.Linear(dim, dim)
         self.C = nn.Linear(dim, dim)
-        self.lif = snn.Leaky(beta=0.9, spike_grad=spike_grad)
+        self.lif = BrianLIF(beta=0.9, spike_grad=spike_grad)
 
     def forward(self, x):  # x: [batch, steps, dim] -> spikes [batch, steps, dim]
         a = torch.exp(-F.softplus(self.log_a))  # diagonal decay in (0,1)
@@ -83,7 +82,7 @@ class SpikingSSMBlock(nn.Module):
 class SpikingSSM(nn.Module):
     def __init__(self, in_dim, n_classes, dim=DIM, layers=LAYERS):
         super().__init__()
-        spike_grad = surrogate.fast_sigmoid()
+        spike_grad = fast_sigmoid()
         self.embed = nn.Linear(in_dim, dim)
         self.blocks = nn.ModuleList([SpikingSSMBlock(dim, spike_grad) for _ in range(layers)])
         self.readout = nn.Linear(dim, n_classes)

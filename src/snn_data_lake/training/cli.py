@@ -26,7 +26,8 @@ def main(argv=None):
                              "with no torch (use with --export-brain)")
     parser.add_argument("--genn", action="store_true",
                         help="with --mnist, train on the GeNN CUDA backend (code-generated, faster "
-                             'for SNNs) instead of snnTorch; needs the GeNN extra (pip install ".[genn]"). '
+                             'for SNNs) instead of the Brian2/Torch bridge; needs the GeNN extra '
+                             '(pip install ".[genn]"). '
                              "GeNN dynamics only approximate the core, so transfer is approximate.")
     parser.add_argument("--epochs", type=int, default=50,
                         help="training epochs (default 50; a few suffice for --mnist)")
@@ -78,10 +79,10 @@ def main(argv=None):
         try:
             from snn_data_lake.training import spiking_lm as lmmod
         except ImportError:
-            print('snn-train --lm needs torch + snntorch: pip install ".[gpu]"')
+            print('snn-train --lm needs Torch + Brian2: pip install ".[gpu]"')
             sys.exit(1)
         if lmmod._TORCH_IMPORT_ERROR is not None:
-            print('snn-train --lm needs torch + snntorch: pip install ".[gpu]"')
+            print('snn-train --lm needs Torch + Brian2: pip install ".[gpu]"')
             sys.exit(1)
         from snn_data_lake.reasoning import torch_device as lm_devmod
         dev = lm_devmod.resolve_device("cuda" if args.gpu else None)
@@ -134,7 +135,7 @@ def main(argv=None):
             print("  " + repr(sample))
         return 0
 
-    # Lazy, guarded import: torch/snntorch (and the torch-based training modules) are
+    # Lazy, guarded import: Torch/Brian2 (and the Torch-based training modules) are
     # only touched here. A missing extra -> one clean line, not an ImportError trace.
     try:
         import torch  # noqa: F401
@@ -177,7 +178,7 @@ def main(argv=None):
                     meta={"epochs": args.epochs, "device": str(dev), "backend": "genn"})
                 print(f"exported brain: {args.export_brain}")
                 # honesty win: score the export through the ZERO-DEP core. GeNN dynamics only
-                # approximate trained_brain, so expect a wider gap than the snnTorch path.
+                # approximate trained_brain, so expect a wider gap than the Brian2/Torch path.
                 core_acc = gennmod.verify_transfer(brain, n=200)
                 gt = metrics.get("test_acc")
                 gt_str = f"{gt:.4f}" if isinstance(gt, float) else str(gt)

@@ -48,7 +48,7 @@ within GPU conv float noise, < 1e-4) to `torch.stack([conv.features(x) for x in 
 Run the correctness + speed self-check:
     NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.fast_features
 Knobs: NORD_C NORD_T NORD_TRAIN NORD_CORRECT NORD_SPEED NORD_BATCH NORD_GPU
-Deps: numpy torch torchvision snntorch   (GPU tier)
+Deps: numpy torch torchvision brian2   (GPU tier)
 """
 
 import os

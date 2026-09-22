@@ -404,6 +404,7 @@ REGIONS = {
         # PROMOTED 2026-08-04: P2 merge of training/device.py (GPU-first, measured) with the
         # retired reasoning/torch_device.py (had the users + enable()). Infra, not a brain region.
         "device",
+        "brian2_backend",  # Brian2 LIF authority + differentiable Torch bridge
         # Promoted from reasoning/ 2026-08-04. SUBSTRATE, not basal_ganglia (an earlier plan said
         # basal_ganglia): this module spawns subprocesses, copies a directory tree and checksums
         # files. It contains no neuron, no weight and no learning rule -- its own docstring says it

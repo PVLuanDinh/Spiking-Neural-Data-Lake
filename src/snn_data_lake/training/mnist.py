@@ -1,4 +1,4 @@
-"""Fast surrogate-gradient MNIST brain trainer (torch + snnTorch) for the GPU tier.
+"""Fast surrogate-gradient MNIST brain trainer (Torch + Brian2 equation) for the GPU tier.
 
 Trains a 784 -> H -> 10 spiking network whose forward dynamics match
 ``snn_data_lake.cortex.trained_brain`` EXACTLY, then exports a zero-dep JSON "brain" the
@@ -11,7 +11,7 @@ both the torch test accuracy AND the core-served accuracy are reported).
 Dynamics matched to trained_brain (beta = DEFAULT_BETA = 0.9, threshold = DEFAULT_THRESHOLD = 1.0):
   * input pixels in [0, 1] are RATE-CODED over STEPS: pixel i spikes with prob x_i each step.
   * HIDDEN layer is leaky integrate-and-fire: m = m*beta + W1 . spikes_in each step; it emits a
-    spike and RESETS TO ZERO when m >= threshold (snnTorch Leaky, reset_mechanism="zero").
+    spike and RESETS TO ZERO when m >= threshold (BrianLIF, reset_mechanism="zero").
   * OUTPUT layer ACCUMULATES weighted hidden-spike currents over all steps (no leak, no
     threshold): out[c] = sum_t sum_h W2[c][h] * hidden_spike_h(t); prediction = argmax(out).
 
@@ -23,7 +23,7 @@ transpose; the shapes are asserted before saving.
 SPEED: mixed precision (``torch.amp`` autocast + GradScaler -> fp16 tensor cores on the
 5070), Adam, and a minibatched DataLoader. This trains in MINUTES on a 5070, not days.
 
-torch / snntorch / torchvision are imported at module top HERE on purpose: this module is
+Torch / Brian2 / torchvision are imported at module top HERE on purpose: this module is
 only ever imported when actually training (from cli.main() behind an import guard), never at
 package import time -- so ``import snn_data_lake`` in a plain zero-dep install stays clean.
 """
@@ -31,8 +31,7 @@ import os
 
 import torch
 import torch.nn as nn
-import snntorch as snn
-from snntorch import surrogate
+from snn_data_lake.substrate.brian2_backend import BrianLIF, fast_sigmoid
 from torchvision import datasets, transforms
 
 from snn_data_lake.cortex.trained_brain import (
@@ -66,11 +65,11 @@ class MnistBrain(nn.Module):
         self.fc1 = nn.Linear(IN_FEATURES, hidden, bias=False)
         # hidden LIF: leaky integrate, spike + reset-to-zero at threshold -- exactly the
         # core's `m = m*beta + cur; if m >= thr: fire; m = 0`.
-        self.lif = snn.Leaky(
+        self.lif = BrianLIF(
             beta=beta,
             threshold=threshold,
             reset_mechanism="zero",
-            spike_grad=surrogate.fast_sigmoid(),
+            spike_grad=fast_sigmoid(),
         )
         self.fc2 = nn.Linear(hidden, OUT_CLASSES, bias=False)
 

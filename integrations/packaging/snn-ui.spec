@@ -30,7 +30,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=["torch", "torchvision", "snntorch", "bindsnet",             # optional-dep addons:
+    excludes=["torch", "torchvision", "brian2", "bindsnet",                # simulation/training addons:
               "polars", "pyarrow", "deltalake", "serial", "airllm",       # never part of the app
               "transformers", "tonic", "pytest",
               "snn_data_lake.hippocampus.ng_snn"],                        # torch-gated core module

@@ -1,6 +1,6 @@
 """GPU training tier for the Spiking Neural Data Lake.
 
-The GPU training tier. It depends on torch + snntorch (the ``[train]`` extra) to
+The GPU training tier. It depends on core Torch + Brian2 and the ``[train]`` extra to
 train a surrogate-gradient spiking classifier, then EXPORTS the learned weights as
 a plain JSON file the core loads and serves.
 
@@ -10,7 +10,7 @@ the project's zero-dependency rule is deliberately loosened", exporting weights
 torch present". There is no zero-dep core to export into -- torch and numpy became
 unconditional core dependencies on 2026-07-20. The weight export is still real and
 still useful, because a JSON weight file is smaller and faster to load than a torch
-checkpoint and needs no snntorch; that is a serving-format argument, which is what
+checkpoint and needs no Brian2 runtime; that is a serving-format argument, which is what
 this always was. Backlog M56.)
 
 The trainer targets the exact task the core ``snn_data_lake.cortex.snn_classifier``
@@ -23,7 +23,7 @@ weight has shape [C][N]. That maps 1:1 onto the core's ``W[c][i]`` matrix, so
 Modules:
   - device.py   : opt-in CUDA device selection (NORD_GPU=1 / NORD_DEVICE=cuda),
                   CPU fallback. Mirrors research/torch_device.py.
-  - trainer.py  : the snnTorch surrogate-gradient model, train/eval, checkpoint,
+  - trainer.py  : the Brian2-equation surrogate-gradient model, train/eval, checkpoint,
                   and the export_to_core weight bridge.
   - offload.py  : CPU/disk-offload training (gradient checkpointing + CPU
                   optimizer state) for models larger than VRAM.

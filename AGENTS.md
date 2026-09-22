@@ -1,7 +1,10 @@
 # Agents — Spiking Neural Data Lake
 
-**Core dependencies:** `torch`, `numpy` and `mujoco==3.11.0` — three, not two (`pyproject.toml`,
-the `dependencies = [...]` array; mujoco is exact-pinned because the solver version IS the physics).
+**Core dependencies:** `torch`, `numpy`, `pyarrow`, `mujoco==3.11.0`, and `brian2==2.10.1`
+(`pyproject.toml`). MuJoCo and Brian2 are pinned for reproducible physics/neural semantics.
+Brian2 is the equation/event reference; Torch executes the parity-checked
+`substrate/brian2_backend.py` bridge. Custom kernels remain. Brian2 2.10.1 enables the GIL under
+CPython 3.14t: real reference simulations run in isolated subprocesses; the parent stays free-threaded.
 The zero-dependency-core contract was removed project-wide on 2026-07-20. **There is no torch-free
 mode: the `NORD_TORCH=0` off-switch was REMOVED on 2026-07-29** together with the CI matrix job that
 exercised it — if torch is absent the install is broken, not degraded. **Per P7 (2026-08-04) any

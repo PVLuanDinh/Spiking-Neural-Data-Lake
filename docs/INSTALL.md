@@ -46,7 +46,7 @@ compiler-gated dependency can never break the base install:
 | `nmnist` | tonic | real N-MNIST event-camera data |
 | `llm` | airllm | on-device natural-language command backend |
 | `exe` | pyinstaller | rebuild the standalone Windows `.exe` yourself |
-| `gpu` | torch, snntorch, bindsnet, numpy | the `research/` GPU experiments (~2 GB; CPU-only torch works anywhere, CUDA is used if present) |
+| `gpu` | torchvision, scikit-learn (on core Torch + Brian2) | the `research/` GPU experiments (~2 GB; CPU-only torch works anywhere, CUDA is used if present) |
 | `genn` | pygenn | the GeNN GPU port — **needs a C++ compiler + CUDA**; expected to be absent on most machines |
 
 ### Honest ceilings ("no matter what" has two real limits)

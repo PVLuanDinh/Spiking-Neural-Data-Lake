@@ -5,14 +5,14 @@ SpikeGPT lineage). It exports a plain-JSON "snn_lm" weight file; THIS module loa
 same spiking forward in pure Python, so a clone-and-run install can GENERATE text from a trained
 spiking LM with no torch -- the language-model analogue of `trained_brain` serving the classifier.
 
-Forward (matches the trainer's snnTorch `Leaky` block exactly, so weights transfer faithfully):
+Forward (matches the trainer's BrianLIF block exactly, so weights transfer faithfully):
   * `embed[id]` is the per-token input CURRENT for block 0.
   * each block, per position t: LIF(cur) -> input spikes; `state = a*state + key@spk_in`
     (a = sigmoid(log_decay), the causal RWKV-style linear-attention approximation); `mix = value@state`;
     LIF(mix) -> block spikes; `out_t = ffn@spk_out + ffn_b + cur` (graded residual).
   * readout: LIF(residual) -> head spikes; `logits = readout@spk + readout_b`; next char = argmax
     (greedy) or a temperature sample from a seeded stdlib RNG.
-LIF here is snnTorch's default SUBTRACT reset: `mem = mem*beta + cur; if mem >= threshold: spike, mem -= threshold`.
+LIF here uses the Brian2 bridge's SUBTRACT reset: `mem = mem*beta + cur; if mem >= threshold: spike, mem -= threshold`.
 
 HONEST CAVEAT: the pure-Python forward below is verified in isolation (self-check on a hand-built LM),
 but the trainer that produces real weights is torch/GPU and UNVERIFIED against a live run here, so the
@@ -40,7 +40,7 @@ def _matvec(w, x):
 
 
 def _lif(mem, cur, beta, thr):
-    """One snnTorch-Leaky step (SUBTRACT reset): returns (spikes, new_mem), both length len(cur)."""
+    """One BrianLIF step (SUBTRACT reset): returns (spikes, new_mem), both length len(cur)."""
     spk = [0] * len(cur)
     m = [0.0] * len(cur)
     for i in range(len(cur)):

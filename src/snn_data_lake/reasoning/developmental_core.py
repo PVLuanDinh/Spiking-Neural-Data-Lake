@@ -25,7 +25,7 @@ TORCH TIER: this module imports torch at module load, so it is imported LAZILY b
 .venv-lake while the perceptual develop runs under .venv-cu128 against the SAME SSD home.
 
   Standalone: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.autonomous_brain_recovered
-Deps: numpy torch torchvision snntorch scikit-learn
+Deps: numpy torch torchvision brian2 scikit-learn
 """
 
 import os

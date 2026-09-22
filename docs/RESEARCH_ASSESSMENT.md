@@ -48,7 +48,7 @@ were not treated as a request to resume the earlier development campaign.
 ### 1. The old README describes a superseded runtime
 
 [pyproject.toml](../pyproject.toml) declares Python `>=3.14` and five core dependencies: `torch`,
-`numpy`, `pyarrow`, `mujoco==3.11.0`, and `snntorch==1.0.0`. The
+`numpy`, `pyarrow`, `mujoco==3.11.0`, and `brian2==2.10.1`. The
 [package guard](../src/snn_data_lake/__init__.py) checks free-threading, and the
 [daemon](../src/snn_data_lake/substrate/learn_daemon.py) makes that requirement strict at boot.
 [CI](../.github/workflows/ci.yml) uses Python `3.14t`.
@@ -176,7 +176,8 @@ novelty or efficacy.
 ## Fresh verification in this documentation task
 
 The existing local `.venv-lake` reported CPython 3.14.6 free-threaded, PyTorch 2.11.0+cu128,
-NumPy 2.5.1, PyArrow 25.0.1, MuJoCo 3.11.0, and snnTorch 1.0.0; CUDA was available. This is
+NumPy 2.5.1, PyArrow 25.0.1, MuJoCo 3.11.0, and Brian2 2.10.1 after the framework migration;
+CUDA was available. This is
 environment provenance, not an inexpensive-device result or a fresh clean installation.
 
 | Check | Outcome and scope |

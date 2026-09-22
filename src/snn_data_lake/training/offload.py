@@ -25,15 +25,14 @@ disk streaming, sharded optimizer state), use the purpose-built libraries instea
   * DeepSpeed ZeRO-Offload / ZeRO-Infinity for optimizer+parameter offload to CPU
     and NVMe.
 
-torch/snntorch are imported at module top on purpose: this module is only imported
+Torch/Brian2 are imported at module top on purpose: this module is only imported
 when actually training (from cli.main() behind an import guard).
 """
 import random
 
 import torch
 import torch.nn as nn
-import snntorch as snn
-from snntorch import surrogate
+from snn_data_lake.substrate.brian2_backend import BrianLIF, fast_sigmoid
 from torch.utils.checkpoint import checkpoint
 
 from snn_data_lake.cortex.snn_classifier import (
@@ -79,7 +78,7 @@ def train_with_offload(epochs=DEFAULT_EPOCHS, compute_device="cpu", seed=0,
 
     # Master weight lives on CPU -> Adam moment buffers allocate on CPU (offloaded).
     weight_cpu = torch.zeros(n_classes, N, requires_grad=True, device="cpu")
-    lif = snn.Leaky(beta=beta, spike_grad=surrogate.fast_sigmoid()).to(compute_device)
+    lif = BrianLIF(beta=beta, spike_grad=fast_sigmoid()).to(compute_device)
     opt = torch.optim.Adam([weight_cpu], lr=lr)
     loss_fn = nn.CrossEntropyLoss()
 

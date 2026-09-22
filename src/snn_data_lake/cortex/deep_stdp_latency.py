@@ -85,7 +85,7 @@ Run (defaults finish a smoke run in a few minutes on GPU):
 Scale knobs: NORD_C NORD_M NORD_TRAIN NORD_TEST NORD_GPU NORD_T
 Calibration knobs (optional): NORD_L1_EPOCHS NORD_CTHRESH NORD_KWINNER NORD_RINH
                               NORD_APLUS NORD_AMINUS
-Deps: numpy torch torchvision snntorch   ([train]/[gpu] extras. NOT "outside the core": this module lives in src/snn_data_lake/reasoning/
+Deps: numpy torch torchvision brian2   ([train]/[gpu] extras. NOT "outside the core": this module lives in src/snn_data_lake/reasoning/
          and imports from the package -- P4c, every build is part of the brain.)
 """
 

@@ -1,5 +1,5 @@
 """
-Deep vs single-layer UNSUPERVISED STDP on MNIST  (torch/GPU tier, snnTorch).
+Deep vs single-layer UNSUPERVISED STDP on MNIST (Torch/GPU tier, Brian2 LIF equation).
 
 The honest question: does a DEEP unsupervised spiking feature hierarchy
 (conv-STDP -> pool -> prototype-STDP) beat a SINGLE unsupervised prototype
@@ -59,13 +59,12 @@ Run (defaults finish a smoke run in a few minutes on GPU):
     (command corrected 2026-08-11 at promotion: it named the retired .venv-cu128 env and the
     pre-promotion path)
 Scale knobs: NORD_C NORD_M NORD_TRAIN NORD_TEST NORD_GPU NORD_CTHRESH
-Deps: numpy torch torchvision snntorch   ([train]/[gpu] extras. NOT "outside the core": this module lives in src/snn_data_lake/reasoning/
+Deps: numpy torch torchvision brian2   ([train]/[gpu] extras. NOT "outside the core": this module lives in src/snn_data_lake/reasoning/
          and imports from the package -- P4c, every build is part of the brain.)
 """
 
 import os
 
-import snntorch as snn
 import torch
 import torch.nn.functional as F
 
@@ -83,6 +82,7 @@ from snn_data_lake.plasticity.snn_mnist_stdp import (
     T,
     load_mnist,
 )
+from snn_data_lake.substrate.brian2_backend import BrianLIF
 from snn_data_lake.substrate.device import enable, resolve_device
 
 K = 5  # conv kernel size (single input channel, valid conv, stride 1)
@@ -127,16 +127,16 @@ GRADIENT_CLAIM = {
 class FcStdp:
     """Fully-connected STDP prototype layer (mirrors snn_mnist_stdp.StdpNetwork,
     parameterised by input dim so the SAME mechanics serve pixels or features).
-    Input(n_in Poisson) -> Prototypes(m, snnTorch LIF) with STDP + hard k-WTA=1."""
+    Input(n_in Poisson) -> Prototypes(m, Brian2-equation LIF) with STDP + hard k-WTA=1."""
 
     def __init__(self, n_in, m):
         self.n_in = n_in
         self.m = m
         self.W = torch.rand(m, n_in) * 0.3  # lands on default device (GPU-safe)
         self._normalise()
-        # snn.Leaky with unreachable threshold: pure leaky integration, then our
+        # BrianLIF with unreachable threshold: pure leaky integration, then our
         # own adaptive-threshold + WTA (same trick as snn_mnist_stdp).
-        self.lif = snn.Leaky(beta=BETA, threshold=1e9, reset_mechanism="none")
+        self.lif = BrianLIF(beta=BETA, threshold=1e9, reset_mechanism="none")
         self.pre_decay = torch.exp(torch.tensor(-1.0 / TAU_PRE))
         self.theta = torch.zeros(m)  # per-neuron adaptive threshold
 
@@ -189,7 +189,7 @@ class ConvStdp:
         self.cwnorm = W_NORM * (k * k) / N_IN
         self.Wc = torch.rand(C, k * k) * 0.3  # shared kernels, one row per map
         self._normalise()
-        self.lif = snn.Leaky(beta=BETA, threshold=1e9, reset_mechanism="none")
+        self.lif = BrianLIF(beta=BETA, threshold=1e9, reset_mechanism="none")
         self.pre_decay = torch.exp(torch.tensor(-1.0 / TAU_PRE))
         self.theta = torch.zeros(C)  # per-map adaptive threshold
         self.pool = max(1, self.hout // 6)  # max-pool to ~6x6 (keeps layer-2
@@ -358,7 +358,7 @@ def main():
     CTHRESH = _envf("NORD_CTHRESH", THRESH)
 
     print("=" * 62)
-    print("DEEP vs SINGLE-LAYER UNSUPERVISED STDP  (MNIST, snnTorch)")
+    print("DEEP vs SINGLE-LAYER UNSUPERVISED STDP  (MNIST, Brian2 equation)")
     print("=" * 62)
     print(f"C={C}  M={M}  T={T}  k={K}  train={TRAIN_N}  test={TEST_N}")
     print(f"conv-thresh={CTHRESH}  (NO labels, NO backprop; labels only in vote)\n")

@@ -22,7 +22,7 @@ the 98.2% static ceiling. Feature learning stays unsupervised; only the readouts
 Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.developmental_loop_lake99
 Knobs: NORD_CYCLES(15) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(300) NORD_REPLAY(300)
        NORD_KREPLAY(100) NORD_SGD(300) NORD_KEYDIM(48) NORD_TRAIN(12000) NORD_TEST(2000)
-Deps: numpy torch torchvision snntorch scikit-learn
+Deps: numpy torch torchvision brian2 scikit-learn
 """
 
 import os

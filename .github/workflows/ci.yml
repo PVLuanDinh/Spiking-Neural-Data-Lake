@@ -60,53 +60,13 @@ jobs:
         run: |
           python -c "import sys,sysconfig; ft=sysconfig.get_config_var('Py_GIL_DISABLED'); print(sys.version); print('Py_GIL_DISABLED=',ft,'gil_enabled=',sys._is_gil_enabled()); raise SystemExit(0 if ft else 1)"
       - run: python -m pip install -e ".[nir]"    # torch + numpy are DEFAULT deps -> the full tier runs; [nir] because manifest_gate READS the NIR-HDF5 artifact (needs h5py) -- found by the first local act run, 2026-08-20
-      # snntorch became a CORE dependency 2026-08-06 (P7), and this step exists because NOTHING
-      # ELSE IN CI WOULD EVER IMPORT IT. MEASURED DIRECTLY rather than argued from the module list:
-      # every one of the 280 names `run_selfchecks.py --list` prints was imported in its OWN
-      # subprocess and `'snntorch' in sys.modules` checked afterwards -- 0 of 280 reach it, and
-      # 0 of 280 reach torchvision. (The probe reports True for a positive control, so the null is
-      # a real null.) This paragraph first justified the same conclusion by saying run_selfchecks
-      # "names no `training.*` module and `reasoning/` is outside REGIONS/TORCH_TIER"; the first
-      # half is true, the second was WRONG TWICE -- the list names 74 `reasoning.*` modules, and
-      # the identifiers are `CORE`/`TORCH_GATED`/`NENGO_GATED` (`REGIONS` lives in `__init__.py`,
-      # `TORCH_TIER` nowhere). A right conclusion resting on a wrong citation is the shape this
-      # tree keeps finding, so the citation was replaced with the measurement. That is precisely P7's
-      # honesty guard -- "a declared-but-never-imported dependency is not a capability" -- and it
-      # is the state `pillow` and `pyarrow` are already in. The dependency ledger cannot cover this
-      # gap: it proves pyproject NAMES what src/ imports, never that the wheel still resolves and
-      # loads on the interpreter CI actually runs.
-      #
-      # WHAT IT ASSERTS, and it is deliberately the LAYER and not the trainer: snntorch imports,
-      # and `snn.Leaky` integrates one CPU step with the membrane actually moving. P7 admits the
-      # library's layers and forbids its BPTT training rule, so this criterion calls no optimizer
-      # and no `.backward()` -- asserting on the trainer would be adopting the thing the e-prop
-      # invariant rejects. CPU IS THE POINT: this runner has no card, and snntorch ships no CUDA
-      # component of its own, so a green here is the "runnable with no GPU" constraint measured
-      # rather than assumed. It runs on both matrix cells (ubuntu + windows, free-threaded cp314t).
-      #
-      # REACHABLE RED, CONSTRUCTED AND RUN 2026-08-06 in .venv-lake rather than argued, and RE-RUN
-      # by an adversarial pass that read this command back out of this file instead of retyping it:
-      # deny snntorch at `sys.meta_path` and this exact command exits 1 on ModuleNotFoundError.
-      # A second red was run against the ASSERT itself -- beta=0.0, and separately `torch.zeros(4)`
-      # for the input current, each leave the membrane constant and exit 1 with "membrane did not
-      # integrate" -- so the criterion is not merely reporting that an import succeeded.
-      #
-      # NOT TUNED, and swept rather than asserted: beta was stepped 0.00..1.00 at 0.01 and the
-      # membrane criterion holds at every value except the degenerate beta=0.00; the input current
-      # was stepped 0.00..2.00 at 0.05 with the same single failure at 0.00; widths 1..16 never
-      # fail. beta=0.9 sits 90 resolution steps from the only cliff, i.e. on a plateau.
-      # DETERMINISM: 20 fresh processes, CRC32 over the packed FLOAT BYTES of both membrane
-      # vectors -> ONE distinct value (4266020653); perturbing one input float moves the CRC, so
-      # the hash reads the floats rather than a fixed string.
-      # HONEST LIMIT of the `m1.device.type == 'cpu'` assert: its red needs a CUDA box
-      # (`torch.set_default_device('cuda')` makes it fire -- constructed and run). On THIS runner,
-      # which has no card, it cannot fire and is documentation in assert form. The load-bearing
-      # measurement of "runnable with no GPU" is the whole step exiting 0 on a card-less runner;
-      # the device line is kept as a cheap tripwire for a future CUDA-defaulting install, not
-      # counted as the thing that measures the constraint.
-      - name: Core snntorch layer loads and integrates on CPU (no GPU on this runner)
-        run: |
-          python -c "import torch, snntorch as snn; lif = snn.Leaky(beta=0.9); mem = lif.init_leaky(); cur = torch.ones(4); _, m1 = lif(cur, mem); _, m2 = lif(cur, m1); assert m1.device.type == 'cpu', m1.device; assert not torch.equal(m1, m2), 'membrane did not integrate'; print('snntorch', snn.__version__, 'Leaky CPU step OK', m1.tolist(), m2.tolist())"
+      # Brian2 is the canonical equation/event simulator. This self-check runs a real Brian2
+      # NeuronGroup in an isolated CPU subprocess (its cp314t extension enables the GIL), compares it
+      # with the free-threaded differentiable Torch bridge for all three reset modes, and proves the
+      # surrogate path still carries finite gradients. Denying `brian2` at import is the reachable
+      # dependency red; changing either equation is the parity red.
+      - name: Brian2 reference simulator agrees with the Torch training bridge
+        run: python -m snn_data_lake.substrate.brian2_backend
       - name: Run every self-check with the full dependency set
         run: python run_selfchecks.py       # canonical module list lives in run_selfchecks.py
       # specs/022 T001: PERMANENTLY report-only on CI ("CI never hosts performance claims",

@@ -2,8 +2,8 @@
 
 =======================  HONEST FRAMING -- READ THIS FIRST  =======================
 This is the torch TRAINING tier of the spiking LM: a char-level transformer whose
-neurons are LIF spiking units (snnTorch `Leaky` + `surrogate.fast_sigmoid()`
-gradients), trained from scratch by surrogate-gradient BPTT. It is in the SpikeGPT /
+neurons use the Brian2 LIF equation through a differentiable fast-sigmoid Torch bridge,
+trained from scratch by surrogate-gradient BPTT. It is in the SpikeGPT /
 SpikingBERT lineage (a transformer BUILT OUT OF spiking neurons), NOT a large trained
 LLM. Its EXPORT BRIDGE (`export_lm` below) writes a plain-JSON ``snn_lm/1`` weight
 file that the ZERO-DEP core module ``snn_data_lake.cortex.spiking_lm_serve`` loads and
@@ -15,11 +15,9 @@ streaming its layers off disk; this module is the OPPOSITE -- a small transforme
 made of spiking neurons and trained from scratch. They share nothing but the phrase
 "language model".
 
-torch and snntorch are NOT installed on this box and there is no GPU, so NONE of the
-torch paths below have been run here -- this is an UNVERIFIED SCAFFOLD, architecture-
-correct BY BEST EFFORT only. There are NO measured numbers in this file: no loss, no
-perplexity, no sample text is claimed. The torch code ONLY runs when torch is present
-(on the user's machine), where the numbers it prints are REAL, never fabricated here.
+The Brian2/Torch LIF parity is verified by ``substrate.brian2_backend``. Large-scale language
+training remains an UNVERIFIED SCAFFOLD: there are no claimed loss, perplexity, or sample-text
+numbers in this file. The training command prints only values measured by that run.
 
 What it provides: the spiking-LM ARCHITECTURE (embedding -> spiking blocks ->
 spike-driven readout, unrolled in time, surrogate-grad trained) plus the GROWTH
@@ -30,8 +28,8 @@ needs large-scale training this scaffold does not do -- see the `# NOTE:` on
 `SpikingLMConfig` for the honest scale ceiling. Treat every `# NOTE:` / `# VERIFY:`
 as a research choice a real build would ablate and tune.
 
-Run (needs torch + snntorch):
-    pip install ".[gpu]"                          # torch + snntorch
+Run (needs core Torch + Brian2):
+    pip install ".[gpu]"                          # core deps + GPU training extras
     snn-train --lm --corpus my.txt --steps 500 --checkpoint lm.pt --export-lm my_lm.json
     python -m snn_data_lake.training.spiking_lm   # shape demo + a tiny REAL train
 
@@ -43,7 +41,7 @@ import math
 import sys
 from dataclasses import dataclass
 
-# torch + snntorch imported at module top, but GUARDED: this box has no torch, and the
+# Torch + Brian2 imported at module top, but GUARDED so this module can report a clean error, and the
 # module must still IMPORT and run `main()` (which prints a clean note). When torch is
 # absent, `nn` is None and the model classes below fall back to an `object` base so their
 # BODIES still define -- they are only ever INSTANTIATED on the torch path, guarded in main().
@@ -51,15 +49,14 @@ try:
     import torch
     import torch.nn as nn
     import torch.nn.functional as F  # noqa: N812
-    import snntorch as snn
-    from snntorch import surrogate
+    from snn_data_lake.substrate.brian2_backend import BrianLIF, fast_sigmoid
     _TORCH_IMPORT_ERROR = None
-except ImportError as _exc:  # torch / snntorch absent -> keep module importable
+except ImportError as _exc:  # Torch / Brian2 absent -> keep module importable
     torch = None
     nn = None
     F = None  # noqa: N812
-    snn = None
-    surrogate = None
+    BrianLIF = None
+    fast_sigmoid = None
     _TORCH_IMPORT_ERROR = _exc
 
 # nn.Module when torch is present, else plain `object` so `class ...(_Module)` still defines.
@@ -122,7 +119,7 @@ class SpikingLMConfig:
     d_model: int = 96      # NOTE: 64-128 is the intended small range; 96 is a middle pick.
     n_blocks: int = 2      # NOTE: 2 spiking blocks -- depth is a tuning knob.
     seq_len: int = 64      # NOTE: unroll/context length; BPTT cost grows with this.
-    beta: float = 0.9      # LIF membrane decay (snnTorch `Leaky` beta). VERIFY: not tuned here.
+    beta: float = 0.9      # LIF membrane decay (BrianLIF beta). VERIFY: not tuned here.
 
 
 def analytic_param_count(cfg):
@@ -160,13 +157,13 @@ class SpikingBlock(_Module):
 
     def __init__(self, d_model, beta):
         super().__init__()
-        spike_grad = surrogate.fast_sigmoid()          # surrogate gradient (called at build time, torch path only)
-        self.lif_in = snn.Leaky(beta=beta, spike_grad=spike_grad)     # current -> input spikes (binary)
+        spike_grad = fast_sigmoid()                    # surrogate gradient (called at build time, torch path only)
+        self.lif_in = BrianLIF(beta=beta, spike_grad=spike_grad)      # current -> input spikes (binary)
         self.key = nn.Linear(d_model, d_model, bias=False)           # spike -> mixer key
         self.value = nn.Linear(d_model, d_model, bias=False)         # state -> mixed current
         # per-channel decay of the running state; sigmoid keeps it in (0,1). VERIFY: init at 0 -> a=0.5.
         self.log_decay = nn.Parameter(torch.zeros(d_model))
-        self.lif_out = snn.Leaky(beta=beta, spike_grad=spike_grad)   # mixed current -> block spikes
+        self.lif_out = BrianLIF(beta=beta, spike_grad=spike_grad)    # mixed current -> block spikes
         self.ffn = nn.Linear(d_model, d_model)                       # spike-driven feed-forward projection
 
     def forward(self, x):
@@ -207,7 +204,7 @@ class SpikingLM(_Module):
         self.blocks = nn.ModuleList(
             [SpikingBlock(cfg.d_model, cfg.beta) for _ in range(cfg.n_blocks)]
         )
-        self.lif_head = snn.Leaky(beta=cfg.beta, spike_grad=surrogate.fast_sigmoid())
+        self.lif_head = BrianLIF(beta=cfg.beta, spike_grad=fast_sigmoid())
         self.readout = nn.Linear(cfg.d_model, cfg.vocab_size)        # head spikes -> per-position logits
 
     def forward(self, idx):
@@ -350,8 +347,8 @@ def export_lm(model, tok, path, cfg, meta=None):
     """Export the trained spiking LM as a zero-dep ``snn_lm/1`` JSON at `path`.
 
     ``snn_data_lake.cortex.spiking_lm_serve.load_lm`` loads it and ``generate`` runs the SAME
-    spiking forward in pure Python. The serve's LIF is snnTorch's DEFAULT subtract-reset at
-    threshold 1.0 -- exactly what this trainer's ``snn.Leaky(beta=...)`` layers use -- so the
+    spiking forward in pure Python. The serve's LIF is BrianLIF's subtract-reset at threshold
+    1.0 -- exactly what this trainer's ``BrianLIF(beta=...)`` layers use -- so the
     dynamics match and the learned weights transfer faithfully. ``nn.Linear.weight`` is
     [out][in], so every matrix below maps 1:1 into the serve layout with NO transpose:
       embed [V][D], per block key/value/ffn_w [D][D] + log_decay/ffn_b [D],
@@ -386,7 +383,7 @@ def export_lm(model, tok, path, cfg, meta=None):
     if meta:
         m.update(meta)
     lm = {"format": "snn_lm/1", "vocab": v, "d_model": d, "n_blocks": nb,
-          "beta": cfg.beta, "threshold": 1.0,            # snnTorch Leaky default: subtract-reset at 1.0
+          "beta": cfg.beta, "threshold": 1.0,            # BrianLIF: subtract-reset at 1.0
           "seq_len": cfg.seq_len, "stoi": dict(tok.stoi), "itos": itos,
           "embed": embed, "blocks": blocks, "readout": readout, "readout_b": readout_b,
           "meta": m}
@@ -431,7 +428,7 @@ def main():
           .format(n=cfg.n_blocks))
     print("  block      : LIF(in) -> causal exp-decay spike token-mixer (RWKV/linear-attn approx)")
     print("               -> LIF(out) -> spike-driven feed-forward + graded residual")
-    print("  neurons    : snntorch.Leaky, surrogate.fast_sigmoid() gradient, unrolled BPTT")
+    print("  neurons    : Brian2 LIF equation, fast-sigmoid Torch bridge, unrolled BPTT")
     print("-" * 68)
     print("vocab size   : {v} chars".format(v=cfg.vocab_size))
     print("d_model      : {d}".format(d=cfg.d_model))
@@ -444,7 +441,7 @@ def main():
     print('training + export need torch: run them via `snn-train --lm` (pip install ".[gpu]").')
 
     if _TORCH_IMPORT_ERROR is not None:
-        print('needs torch: pip install ".[gpu]"  (installs torch + snntorch), then run:')
+        print('needs Torch + Brian2: pip install ".[gpu]", then run:')
         print("  snn-train --lm --export-lm my_lm.json         # train + zero-dep export via the CLI")
         print("  python -m snn_data_lake.training.spiking_lm   # this shape demo + a tiny real train")
         print("=" * 68)

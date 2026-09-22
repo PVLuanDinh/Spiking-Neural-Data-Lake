@@ -47,7 +47,7 @@ def test_import_name_table_maps_to_real_distribution_names():
 
 def test_dist_of_strips_specifiers_and_extras():
     d = dependency_ledger._dist_of
-    assert d("snntorch>=0.9") == "snntorch"
+    assert d("brian2>=2.10") == "brian2"
     assert d("mujoco==3.11.0") == "mujoco"
     assert d("spiking-neural-data-lake[arm,lake]") == "spiking-neural-data-lake"
     assert d("scikit_learn") == "scikit-learn", "normalization must fold _ to -"

@@ -14,7 +14,7 @@ This closes them into ONE loop, the Dreamer / model-based-RL pattern:
   Repeat — both nets improve together. The policy never sees real dynamics directly; it learns
   to control through what the world model has learned. That is the "joint world-model" claim.
 
-Both nets are spiking (snnTorch surrogate gradients). Scope: 2-DOF, short horizon, analytic
+Both nets are spiking (Brian2 equation + Torch surrogate gradients). Scope: 2-DOF, short horizon, analytic
 gradients (the reliable regime for a small smooth problem). True high-dim model-based RL
 (stochastic latents, value learning, 6-DOF) stays out of scope.
 
@@ -23,8 +23,7 @@ Run (own venv):  .venv-arm/Scripts/python snn_world_model_rl.py
 
 import torch
 import torch.nn as nn
-import snntorch as snn
-from snntorch import surrogate
+from snn_data_lake.substrate.brian2_backend import BrianLIF, fast_sigmoid
 
 from snn_data_lake.reasoning.snn_motor_control import (
     fk,
@@ -49,11 +48,11 @@ class _SpikingNet(nn.Module):
     def __init__(self, in_dim, out_dim, scale, hidden=64):
         super().__init__()
         self.scale = scale
-        sg = surrogate.fast_sigmoid()
+        sg = fast_sigmoid()
         self.fc1 = nn.Linear(in_dim, hidden)
-        self.lif1 = snn.Leaky(beta=0.9, spike_grad=sg)
+        self.lif1 = BrianLIF(beta=0.9, spike_grad=sg)
         self.fc2 = nn.Linear(hidden, out_dim)
-        self.lif2 = snn.Leaky(beta=0.9, spike_grad=sg, reset_mechanism="none")
+        self.lif2 = BrianLIF(beta=0.9, spike_grad=sg, reset_mechanism="none")
 
     def forward(self, x):
         m1, m2 = self.lif1.init_leaky(), self.lif2.init_leaky()
@@ -142,7 +141,7 @@ def main():
     print("JOINT WORLD-MODEL RL — spiking policy learns THROUGH a learned spiking model")
     print("=" * 64)
     print(
-        f"backend         : torch {torch.__version__}, snntorch (surrogate, analytic-gradient MBRL)"
+        f"backend         : torch {torch.__version__}, Brian2 equation (surrogate, analytic-gradient MBRL)"
     )
     print(f"dynamics        : theta' = theta + [1.0,0.5]*tanh(delta)  (nonlinear, per-joint gain)")
     print(f"horizon / steps : H={H} rollout, {STEPS} LIF steps/net")

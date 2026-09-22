@@ -12,7 +12,7 @@ flagged inline with a ``# VERIFY(ml_genn):`` comment. Do NOT treat any accuracy 
 this module as a real result until it has run end-to-end on a live GeNN install.
 
 WHY GeNN: GeNN code-generates C++/CUDA for the whole spiking network, so the O(STEPS)
-Python loop the snnTorch trainer (mnist.py) runs collapses into one compiled CUDA kernel
+Python loop the Brian2/Torch trainer (mnist.py) runs collapses into one compiled CUDA kernel
 sequence -- materially faster for SNNs on the GPU. This module is the GeNN sibling of
 ``snn_data_lake.training.mnist``; it trains the SAME 784 -> H -> 10 rate-coded spiking
 classifier and exports to the SAME zero-dep ``trained_brain`` JSON format, so a torch-free
@@ -244,7 +244,7 @@ def train_model(epochs=DEFAULT_EPOCHS, hidden=DEFAULT_HIDDEN, steps=DEFAULT_STEP
                 tau_syn=DEFAULT_TAU_SYN, train_limit=None, test_limit=None):
     """Train the 784 -> H -> 10 spiking brain on GeNN (EventProp + Adam), return (GennBrain, metrics).
 
-    ``device`` is accepted for parity with the snnTorch trainer and only affects logging: GeNN
+    ``device`` is accepted for parity with the Brian2/Torch trainer and only affects logging: GeNN
     picks the CUDA backend automatically when CUDA + a compiler are present (there is no
     ``.to(device)`` to thread). Deterministic-ish for a given seed (input coding + weight init
     are seeded; GeNN's own kernels are deterministic for a fixed build).
@@ -389,7 +389,7 @@ def verify_transfer(brain, n=200, root=None, download=True):
     """Prove how well the GeNN export transfers into the core: score ``n`` held-out MNIST test
     images through the ZERO-DEP ``trained_brain.accuracy`` and return that core-served accuracy.
 
-    Compare it to the GeNN test accuracy (metrics['test_acc']). Unlike the snnTorch trainer --
+    Compare it to the GeNN test accuracy (metrics['test_acc']). Unlike the Brian2/Torch trainer --
     whose forward is IDENTICAL to the core so the two match closely -- GeNN's continuous-time
     dynamics only APPROXIMATE trained_brain's discrete accumulate, so expect a larger gap here.
     A big drop means the neuron model needs matching more tightly or a short core-side fine-tune.

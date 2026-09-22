@@ -49,7 +49,7 @@ anatomical module names is not itself a novel result.
 
 Do not claim a proven low-power brain, unbounded growth on finite hardware, human-level reasoning,
 consciousness, an all-spiking system, or MCU deployment. The current runtime includes CPython
-3.14t, PyTorch, NumPy, PyArrow, MuJoCo, and snnTorch. A small model does not erase that footprint.
+3.14t, PyTorch, NumPy, PyArrow, MuJoCo, and Brian2. A small model does not erase that footprint.
 Keeping a fact on disk also does not prove that a learned skill remains usable.
 
 ## 3. Choose one first-paper question

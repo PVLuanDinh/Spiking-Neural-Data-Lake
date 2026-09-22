@@ -1,9 +1,9 @@
 """
 v0.54 — surrogate-gradient SNN motor control (Gemini brief: continuous actuation via
-surrogate gradients). RESEARCH TRACK — needs torch+snntorch, runs in its own venv, NOT in CI.
+surrogate gradients). RESEARCH TRACK — needs core Torch+Brian2, runs in its own venv, NOT in CI.
 
 A spike is non-differentiable (Dirac delta), so plain BPTT can't train a spiking controller.
-snnTorch's surrogate gradient swaps a smooth function in on the BACKWARD pass only — the
+The Torch bridge's surrogate gradient swaps a smooth function in on the BACKWARD pass only — the
 forward pass stays binary spikes. We use it to train a **Policy Network**: given the arm's
 current joint angles + a target end-effector position, output the joint deltas that move the
 2-link arm's tip to the target. Trained end-to-end through a differentiable forward-kinematics
@@ -19,8 +19,7 @@ Run (own venv):
 
 import torch
 import torch.nn as nn
-import snntorch as snn
-from snntorch import surrogate
+from snn_data_lake.substrate.brian2_backend import BrianLIF, fast_sigmoid
 from snn_data_lake.substrate.device import resolve_device, enable
 
 # MODULE SCOPE: resolve only. `enable()` calls `torch.set_default_device()`, which is
@@ -53,12 +52,12 @@ class SpikingNet(nn.Module):
         super().__init__()
         self.steps = steps
         self.scale = scale
-        spike_grad = surrogate.fast_sigmoid()  # the surrogate gradient
+        spike_grad = fast_sigmoid()  # the surrogate gradient
         self.fc1 = nn.Linear(in_dim, hidden)
-        self.lif1 = snn.Leaky(beta=beta, spike_grad=spike_grad)
+        self.lif1 = BrianLIF(beta=beta, spike_grad=spike_grad)
         self.fc2 = nn.Linear(hidden, out_dim)
         # output layer integrates with no reset -> its membrane is the analog control signal
-        self.lif2 = snn.Leaky(beta=beta, spike_grad=spike_grad, reset_mechanism="none")
+        self.lif2 = BrianLIF(beta=beta, spike_grad=spike_grad, reset_mechanism="none")
 
     def forward(self, x):
         mem1, mem2 = self.lif1.init_leaky(), self.lif2.init_leaky()
@@ -165,7 +164,7 @@ def main():
     print("=" * 62)
     print("SNN MOTOR CONTROL — surrogate-gradient spiking control (2-DOF reach)")
     print("=" * 62)
-    print(f"backend        : torch {torch.__version__}, snntorch (surrogate=fast_sigmoid)")
+    print(f"backend        : torch {torch.__version__}, Brian2 equation (fast-sigmoid bridge)")
     print("[Policy Network — reactive]")
     print(
         f"  train loss   : {first_loss:.4f} -> {final_loss:.4f}  ({first_loss / max(1e-9, final_loss):.1f}x lower)"
