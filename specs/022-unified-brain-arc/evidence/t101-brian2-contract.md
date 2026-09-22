@@ -174,7 +174,28 @@ stacked head, the closing execution-record commit LAST, the push, the daemon pol
 
 ### 2.8 Amendments (dated, appended; nothing above is edited in place)
 
-(none yet)
+2026-09-22 15:0x CDT (clock read at write time), on the Codex executor's first build report, BEFORE any conjunct is re-run
+and before section 3 exists:
+
+(a) THE (p) MEMBRANE BAR WAS AN APPARATUS CLAIM ABOUT float32, AND ARITHMETIC SAYS IT IS FALSE. 2.2 (p) pre-registered
+`max |v_bridge - v_reference| <= 1e-6` over T = 32 steps; the first run read spike mismatches 0 on all 27 arms and a
+maximum membrane difference of 4.194e-6. The 1e-6 was carried from the migration's 3-step test without measuring
+accumulation: the bridge computes in the caller's dtype (float32 for every migrated call site), one float32 rounding per
+step is up to `2^-23 * |v|`, and it compounds over T steps; for the `none` reset at beta 0.95 the membrane reaches ~10, so a
+worst-case bound is `32 * 2^-23 * 10 ~= 3.8e-5` and the measured 4.19e-6 sits well inside it. The reference is Brian2's own
+float64 code and is not edited. Under 2.4 the letter of the disposition is "the bridge is corrected"; the bridge's
+SEMANTICS are not at fault (spikes exact on all 27 arms, and (c) byte-equal in float32), the CRITERION's precision clause
+was. The correction, dated here before the re-run and applied to CONTRACT["precision"] in the same commit as the delta:
+(p) SPLITS INTO TWO ARMS run on the same 27 (reset, beta, theta) cells and the same seeded traces -- (p32) the bridge in
+float32, spikes exact, and per arm `max |dv| <= T * 2^-23 * max(1, max |v_reference|)` (a bound derived from the declared
+precision and the reference's own trace, never from the bridge); (p64) the bridge in float64 (the layer accepts the
+caller's dtype), spikes exact, `max |dv| <= 1e-9` -- the arm that shows the EQUATION is the reference's and that the
+float32 residual is rounding, not semantics. Both maxima are REPORTED per arm. The reds' own comparator (R1-R3, a 4-step
+trace) uses the same derived rule. What this does NOT do: move a red, change the bridge's dtype or equation, or accept a
+spike mismatch anywhere. Re-run ONCE after the delta lands, as 2.4 provides.
+
+(b) THE CUSTOM-KERNEL COUNT IN 1.3 IS TWENTY CLASSES, NOT NINETEEN: the list itself was complete; the count beside it was
+wrong (caught by the executor while writing `CUSTOM_KERNELS`, which carries all twenty plus `KernelTick`, 21 entries).
 
 ## 3. The record
 
