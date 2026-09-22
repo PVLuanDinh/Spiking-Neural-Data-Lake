@@ -214,4 +214,113 @@ pre-registration, not an amendment.
 
 ## 3. The record
 
-(written after the reds run; nothing here is written before 2.7 step 4 lands)
+### 3.0 Apparatus as run (2026-09-22 15:0x-15:4x CDT, clock read at write time)
+
+The Codex executor (`gpt-6-astra`, reasoning `high`, the `codex` MCP tool, cwd = the main checkout, writes confined to the
+two named files) built the contract from the brief in three passes: the build (2.1-2.3 as written), the delta for 2.8 (a),
+the delta for 2.8 (c). Each pass ran the bare invocation, the test file, ruff check and ruff format. The orchestrator then
+RE-RAN everything on this host (Windows 11, cp314t 3.14.6 `.venv-lake`, torch 2.11+cu128 on the CPU path, brian2 2.10.1,
+the daemon RUNNING throughout): the bare invocation `python -B -m snn_data_lake.substrate.brian2_backend` -> rc 0 in 77 s
+(the executor: 75 s); `pytest tests/test_brian2_backend.py` -> 23 passed in 80 s; ruff check and format clean; the working
+tree's porcelain count unchanged at 48 (the owner's migration + the two built files) -- no other file touched. Every number
+below is the orchestrator's run; the executor's agree to the printed digits.
+
+### 3.1 The build
+
+`substrate/brian2_backend.py` 273 -> 884 lines; `tests/test_brian2_backend.py` 49 -> 158 lines (3 original + 20 new tests).
+What landed, by 2.1: `CONTRACT` (12 keys, frozen `MappingProxyType`); the four `NotImplementedError` refusals naming the
+contract entry and a `TypeError` for any other keyword; `brian_reference_trace(timeout_s=120.0)` with
+`MAX_REFERENCE_CELLS = 2_000_000` refused before launch, `TimeoutError` on the bound, the launch counter
+`_REFERENCE_LAUNCHES`, and `_assert_free_threaded()` after every reference call; `checkpoint()` / `restore()` with
+`KeyError` per missing key and `ValueError` on an unknown reset; `MIGRATED_CALL_SITES` (11) and `CUSTOM_KERNELS` (21, the
+twenty classes of 1.3 plus `substrate/kernel_tick.py::KernelTick`) with `conjunct_i` parsing import statements by AST; the
+parity arms of 2.8 (a)/(c) sharing ONE reference call at the bridge's float32-representable parameters; `conjunct_m` on
+`training/trainer.py::SpikingReadout(beta=0.9)` with the per-step currents captured by a forward hook; `conjunct_c` as three
+interpreters (`--continuation A|B|C`) exchanging JSON; `conjunct_g` with its positive-control child; `conjunct_r`;
+`cost_report()` (five-call medians, the child's `peak_wset` via psutil 7.2.2); seven mutants as separate classes or
+functions (`_MutantThreshold`, `_MutantLateReset`, `_MutantZeroReset`, `_MutantSchedule`, `_MutantMissingMem`,
+`_MutantSilentFallback`, the constructed in-process brian2 child, the `sleep_s` test-only payload flag). The shipped
+`BrianLIF` equation, threshold test, reset modes and schedule are byte-for-byte the owner's; the child's Brian2 model is
+unchanged except the test-only `sleep_s` delay before it builds.
+
+### 3.2 The conjuncts, each quoted and marked
+
+- (p32) PARITY, float32 (2.8 (a)/(c)): **HOLDS** -- 27 arms, spike mismatches 0 of 13,824 cells; max membrane difference
+  2.887e-6 against the derived bound 5.579e-5 (the worst arm `none` / beta 0.95 / theta 1.0, reference membrane up to 14.61,
+  bound `32 * 2^-23 * 14.61`); the reference at `beta_ref = float(np.float32(beta))`.
+- (p64) PARITY, float64 (2.8 (a)/(c)): **HOLDS** -- 27 arms, spike mismatches 0; max membrane difference 0.0 (bar 1e-9): the
+  bridge's equation IS the reference's at identical parameters; the float32 residual above is rounding.
+- (m) MIGRATED-MODEL PARITY: **HOLDS** -- `SpikingReadout(beta=0.9)`, batch 8, 25 steps: 0 spike mismatches against the
+  reference of the model's own recorded currents; the summed outputs equal the reference's sums.
+- (c) FRESH-PROCESS CONTINUATION = THE UNINTERRUPTED TWIN: **HOLDS** -- 3 processes, B's 20 continued steps equal C's on
+  spikes and membranes byte for byte (`array_equal` on float32).
+- (g) THE PARENT STAYS FREE-THREADED: **HOLDS** -- parent `_is_gil_enabled()` False after every reference call; the positive
+  control (a child importing brian2 in-process) prints True.
+- (r) REFUSALS: **HOLDS** -- `refractory`, `delay`, `dt`, `adaptive_threshold` each `NotImplementedError` naming the contract
+  entry; an unknown keyword `TypeError`; a checkpoint missing `beta` / `threshold` / `reset_mechanism` / `mem` `KeyError`
+  naming it; an unknown reset `ValueError`; the oversize request refused with 0 worker launches; the constructed slow child
+  under `timeout_s = 0.5` raised `TimeoutError` in 0.52 s.
+- (i) THE INVENTORY RATCHET: **HOLDS** -- 11 modules import the bridge (exactly `MIGRATED_CALL_SITES`, none unexpected, none
+  missing), 0 import snntorch, 21 of 21 custom kernels resolve to classes.
+- (k) COST, reported never barred: one reference call at (32, 16) = 2.94 s wall, 2,794-byte payload, child peak working set
+  635 MB; at (1, 1) = 1.92 s, 102 bytes, 635 MB (five-call medians). The startup floor is Brian2's import (~1.9 s) and its
+  working set (~635 MB) -- the child is not cheap, which is what a reference is allowed to be and a live path is not (3.6).
+
+### 3.3 The reds (B-R1), each shown red under its mutation
+
+| red | mutation | shipped | mutated | fires |
+|---|---|---|---|---|
+| R1 threshold altered | `v > theta` | 0 mismatches, in bound | 2 spike mismatches on 4 steps | YES |
+| R2 reset altered | reset one step LATE; subtract swapped for zero | in bound | late: second-step membrane off by 0.2; zero: off | YES |
+| R3 schedule altered | threshold on `v[t-1]` before integration | in bound | mismatches | YES |
+| R4 GIL regression | a child imports brian2 in-process then calls the guard | parent False | rc 1, `RuntimeError ... enabled the GIL` | YES |
+| R5 state omitted | `mem` deleted from the checkpoint; a mutant restore that fills it with zeros | `KeyError('mem')` | (c) RED: B-omit diverges from C | YES |
+| R6 silent fallback | a mutant constructor swallowing `refractory=2` | `NotImplementedError` | no refusal -> caught | YES |
+| R7 resource overrun | `MAX_REFERENCE_CELLS + 1` cells; a 10 s child under `timeout_s = 0.5` | refused, 0 launches; `TimeoutError` in 0.51 s | -- | YES |
+
+**VERDICT (2.2): ACCEPTED.** (p32), (p64), (m), (c), (g), (r) and (i) hold and R1-R7 fire. What it licenses: "the Torch bridge
+implements the reference's equation, threshold and reset at the parameters it holds, refuses what it does not implement,
+survives a process boundary, and keeps the brain free-threaded" -- the B1 contract of FR-037 / SC-015 for the LAYER the
+eleven call sites share. It licenses nothing about those modules' training rules (2.5) and nothing about the twenty-one
+custom kernels.
+
+### 3.4 Disposition (2.4, ACCEPTED branch)
+
+The plan amendment and the migration are committed on `main` as the owner's work, verbatim, after this record's
+pre-registration and amendments (2.7's order, the bridge module before the modules that import it so no intermediate commit
+is import-broken); T101 is marked `[X] ACCEPTED (B1 contract)` in tasks.md with 2.5's scope beside it; the C0 fold branch is
+rebased on top and ONE battery runs on the stacked head.
+
+### 3.5 Deviations and disclosures
+
+1. THE CRITERION'S APPARATUS WAS CORRECTED TWICE BEFORE THE ACCEPTED RUN (2.8 (a), (c)), each dated before its re-run and
+   each about precision, never about a bar being missed by the bridge: the 1e-6 bar ignored float32 accumulation; the float64
+   arm compared unlike parameters. 2.4's letter ("the bridge is corrected") was not followed because the bridge's semantics
+   were never at fault (spikes exact on every run, (p64) exact at identical parameters); said plainly. The first run's numbers
+   (max 4.194e-6 against 1e-6) and the second's (p64 1.92e-6 against 1e-9) are kept in 2.8.
+2. THE MIGRATION WAS BUILT BEFORE THIS PRE-REGISTRATION, by the owner through Codex; the record's section 1 is the measured
+   starting point and the reds and conjuncts are the arc's own, first run after the record's commit.
+3. THE EXECUTOR WAS CODEX (owner routing 2026-09-22), the first arc built that way; three bounded passes, every number
+   re-run by the orchestrator, no git command by the executor; pytest under the executor hit a temporary-directory
+   permission error twice and was retried with `--basetemp` (an environment quirk of this host's `%TEMP%`, not a test).
+4. NOT PANELLED YET at the time of writing; the panel and its fold follow as 3.7.
+
+### 3.6 Openings
+
+1. THE REFERENCE CHILD IS HEAVY: ~1.9 s startup and ~635 MB peak per call (3.2 (k)). It is a REFERENCE, never a live path;
+   any future worker-backed LIVE model (the plan's own caveat) owes bounded timeouts, deterministic state transfer and failure
+   handling proven at its own scale before deployment -- this contract's `timeout_s` and size bound are the floor, not that
+   proof.
+2. `MAX_REFERENCE_CELLS = 2,000,000` and `timeout_s = 120` are CHOSEN bounds, not measured ones; the (32, 16) trace costs
+   2.94 s and 2.8 KB, so the ceiling sits far above any use in this tree.
+3. TEN OF THE ELEVEN CALL SITES ARE ACCEPTED BY THE LAYER ONLY (2.5): their forwards are not reference-checked; `SpikingReadout`
+   is. A module whose forward composes the layer differently (recurrent, multi-layer) owes its own (m) before it is claimed.
+4. THE MIGRATED TRAINERS REMAIN BPTT EXPERIMENTS (`training/trainer.py`'s `loss.backward()` and the like), as they were under
+   snntorch; the gradient-claim census, not this record, says which owe what; the bridge itself never steps an optimizer.
+5. THE `none` RESET AT beta 0.95 REACHES MEMBRANES OF ~14.6 in 32 steps and dominates the float32 residual (2.887e-6); a caller
+   holding a `none`-reset membrane for hundreds of steps in float32 should expect drift of order `T * 2^-23 * |v|` -- the
+   contract states the bound, it does not promise it small.
+6. `@pytest.mark.slow` is used by the new tests and is not registered in `pyproject.toml` (pytest warns, does not fail); the
+   executor reported it registered -- an instrument disagreement, the pyproject grep is the orchestrator's; register or drop.
+7. THE INVENTORY RATCHET IS STATIC: it proves who imports the bridge and that no one imports snntorch; it does not prove any
+   call site's forward matches the reference (opening 3).
