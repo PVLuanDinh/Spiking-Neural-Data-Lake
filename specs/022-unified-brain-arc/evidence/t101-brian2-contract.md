@@ -197,6 +197,21 @@ spike mismatch anywhere. Re-run ONCE after the delta lands, as 2.4 provides.
 (b) THE CUSTOM-KERNEL COUNT IN 1.3 IS TWENTY CLASSES, NOT NINETEEN: the list itself was complete; the count beside it was
 wrong (caught by the executor while writing `CUSTOM_KERNELS`, which carries all twenty plus `KernelTick`, 21 entries).
 
+2026-09-22 15:2x CDT (clock read at write time), on the delta's first re-run, BEFORE the next re-run:
+
+(c) (a)'s FLOAT64 ARM COMPARED UNLIKE PARAMETERS -- THE SECOND CORRECTION OF THIS CRITERION'S APPARATUS, disclosed as such.
+The delta's re-run read (p32) inside its derived bound (4.194e-6 against 5.58e-5, spikes exact) and (p64) at 1.92e-6 against
+its 1e-9 bar. Cause: the bridge holds `beta` and `theta` as float32 buffers by construction (0.95 is stored as
+0.949999988...), and (a) handed the REFERENCE the exact float64 0.95, so the float64 arm ran the equation at two different
+parameters; a cast cannot recover what float32 never held. The like-with-like construction, which is also the contract's
+own reading ("the bridge computes in the caller's dtype" -- and its PARAMETERS are float32): the reference receives the
+float32-representable parameters the bridge holds, `beta_ref = float(numpy.float32(beta))`, `theta_ref =
+float(numpy.float32(theta))`, in BOTH arms and in the reds' comparator; (p64) then tests the equation at identical
+parameters with the bar unchanged at 1e-9, and (p32)'s residual becomes pure accumulation under the unchanged derived
+bound. No bar moves, no red moves, the bridge is unchanged, no spike mismatch is accepted anywhere. Both maxima are still
+reported per arm. Re-run ONCE after this delta lands; a further apparatus correction of (p) after that is a NEW
+pre-registration, not an amendment.
+
 ## 3. The record
 
 (written after the reds run; nothing here is written before 2.7 step 4 lands)
