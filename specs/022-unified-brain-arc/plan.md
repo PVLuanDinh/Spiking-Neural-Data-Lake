@@ -11,7 +11,8 @@
 N workstream and Parts E/F. This older four-stage summary is historical where later measured
 dispositions supersede it (including the retired paging layer); it is not a parallel roadmap.
 Brian2 acceptance, durable recall/replay/earned growth and offline derived-lake annealing are
-FR-037-FR-040 / SC-015-SC-018 / T101-T107; NS/LSM keeps FR-036 / SC-014 / T096-T100.
+FR-037-FR-040 / SC-015-SC-018 / T101-T107; NS/LSM keeps FR-036 / SC-014 / T096-T100. The G workstream
+(owner amendment 2026-09-23) adds FR-041 / SC-019 / T108-T114.
 
 Build, in four staged slices (S0–S3), the substrate in which the brain constructs itself from a single-neuron seed over a pinned multi-region growable set, lives in the ONE durable lake (indexed delta engine; activation-driven paging past a derived binding width), learns by a composed palette of local rules with per-rule neuter attribution, improves itself through an owner-gated proposer/evaluator loop, and carries a consciousness-instrument battery whose every mechanism has a dissociation with a reachable red. Technical approach per layer is the SYNTHESIS adoption register; where no method exists, the eight registered P8 inventions apply with full debt. Everything lands in governed `src/snn_data_lake/` registration-complete per commit; every commit reaches `main` full-gate green; the safety envelope is untouched.
 

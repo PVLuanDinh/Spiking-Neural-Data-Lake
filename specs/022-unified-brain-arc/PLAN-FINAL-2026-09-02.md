@@ -1005,7 +1005,8 @@ eight paired seeds and uncertainty rule, adding prospective effect-size threshol
 do not select a threshold after seeing a result. A larger grid needs a measured benefit and a new
 budgeted comparison before adoption.
 
-**N2 / T097 - solver and causal coupling.** Start with a periodic Fourier projection solver:
+**N2 / T097 - solver and causal coupling.** *(Added 2026-09-23: if N2 selects G1(b)'s pool as its
+spiking substrate, T109 precedes T097.)* Start with a periodic Fourier projection solver:
 project initial velocity and every forcing/update, keep the velocity zero mode fixed at zero,
 solve pressure on nonzero modes with its zero mode fixed, and use 2/3 dealiasing of nonlinear
 advection. Pin the integrator and an explicit stability/error rule for dt/substeps against grid
@@ -1170,9 +1171,7 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   Arms:
   - (a) the incumbent;
   - (b) ONE recurrent pool promoted from the four research-tier reservoirs under P2, carrying state.
-    It is the referent for N4/T099's "equally tuned spiking-only LSM" arm only if N2 builds its
-    hybrid on this pool. The 2026-09-16 evaluation's rule is that the arm is the hybrid's own
-    substrate with the coupling removed;
+    If N2 selects this pool for its hybrid, T109 precedes T097 (N2);
   - (c) the same pool reset each percept;
   - (d) readout self-feedback (version 2) as a detached-input path, and (d0) its disconnected twin;
   - (e1) sensory history, and (e2) category history;
@@ -1441,8 +1440,8 @@ Parallel arms: L1a ∥ L3 ∥ the oracle may start at W3 (they do not wait for P
   mutation registration waits for T073/T074 and Phase 5's standing prerequisites. A failed
   hybrid does not delay unrelated work; it receives the recorded null/loss disposition above.
 - **ADDED 2026-09-23:** G0 -> G1 (alongside G0) -> G2 -> G3 -> {G4, G5} -> G6 (T108-T114) is a
-  planned arm. G6 waits for R2/R3 (T103/T104). If N2 builds its hybrid on G1's pool, that pool is
-  N4/T099's spiking-only LSM control arm and G1 precedes N4. None bypasses T073/T074, Phase 4's
+  planned arm. G6 waits for R2/R3 (T103/T104). If N2 selects G1(b)'s pool for its hybrid,
+  T109 precedes T097 (N2); N4's arms stay as T096 freezes them. None bypasses T073/T074, Phase 4's
   exit or FR-025/OD-2. The owner sets
   its priority against the in-flight rows; a failed G row does not delay unrelated work.
 
