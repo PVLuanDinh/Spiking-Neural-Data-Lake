@@ -1182,10 +1182,11 @@ cross-critique, with every tree citation reproduced by the orchestrator.
   - (i) A delayed-cue 2x2 (needs state × needs capacity). Its explicit-history control is proven
     on the generator before the freeze.
   - (ii) An inseparable mapping IN THE LEARNER'S REAL CODE: "cat dog sun sky"/A, "cat dog sky
-    sun"/B, "dog cat sun sky"/B, "dog cat sky sun"/A. The four texts occupy distinct buckets (28,
-    41, 31 and 51 of 52) and satisfy phi00 + phi11 = phi01 + phi10 to 1.1e-16 in the learner's
-    PSP-of-rank code, so no linear readout classifies all four (reproduced 2026-09-23). Its
-    controls are a separable twin and a PRESIZED nonlinear hidden layer.
+    sun"/B, "dog cat sun sky"/B, "dog cat sky sun"/A. The four WORDS hash to distinct buckets (cat
+    28, dog 41, sun 31, sky 51 of 52), so the texts differ only in word order. They satisfy
+    phi00 + phi11 = phi01 + phi10 to 1.1e-16 in the learner's PSP-of-rank code, so no linear
+    readout classifies all four (reproduced 2026-09-23). Its controls are a separable twin and a
+    PRESIZED nonlinear hidden layer.
 
   G-R2.
 - **G3 / T111 — growth where G2's capacity cell licenses it (the owner's #1).**
