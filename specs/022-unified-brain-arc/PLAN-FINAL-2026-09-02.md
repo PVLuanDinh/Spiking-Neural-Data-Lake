@@ -1114,8 +1114,11 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
 
 **What the tree already has.** Static reads at `a9b5340`; charge is UNVERIFIED unless stated.
 - **The grower is cascade-correlation-shaped and stateless.** `NeurogenesisSelfImprove` with
-  `NGSNN.fit` draws a multi-scale random candidate pool and admits by residual reduction; Eq. 7's
-  consistency is a "preference tiebreak"; every candidate is the same LIF. It is STATELESS per
+  `NGSNN.fit` draws a multi-scale random candidate pool, adds a 1e12 bonus to Eq. 7-passing
+  candidates before top-k selection, and keeps a selected candidate with positive residual reduction
+  or passing consistency, subject to the zero-variance restriction; every candidate is the same LIF.
+  In float32 that bonus leaves a spacing of 65,536, so passing candidates whose reductions differ by
+  less tie (found 2026-09-23; the grower's own arc owes it). It is STATELESS per
   percept: `NGSNN._rates` starts at V = 0 and has no recurrent weight. The persistence-informed
   oracle beats LIVE 8 of 8 (t 2.97, `evidence/l-parallel-arms.md`).
 - **Unread anatomy.** `cortex/placement.py` gives every grown unit a fractional cortical DEPTH, a
@@ -1123,8 +1126,9 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   has no reader").
 - **A driverless wiring table.** `cortex/cortical_microcircuit.py` holds the measured
   Potjans-Diesmann `CONN_PROB` (fixed in-degree); its dormancy row says "NOTHING DRIVES IT".
-- **Measured positions.** `data/h01/h01_c3_graph.npz` holds `xyz_nm` for 14,215 signed somata and
-  70,001 aggregated connected pairs.
+- **Measured positions.** The gitignored `data/h01/h01_c3_graph.npz` holds `xyz_nm` for 14,215 signed
+  somata and 70,001 aggregated connected pairs; the tracked `tools/h01_c3_graph_pin.json` carries both
+  counts.
 - **Four idle reservoirs.** `reasoning/spiking_ssm.py`, `reservoir_eprop.py`, `sorn.py` and
   `random_boolean_network.py` have no importer outside `reasoning/`.
 - **A live but self-supervised chat learner.** `cortex/interaction_learning.py::SpikingInteractionLearner`
@@ -1140,7 +1144,7 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
 
 **Rows.** Each row is its own arc under A.4, with its red in Part F.
 
-- **G0 / T108 — repair the channel that carries external problems (FIRST).**
+- **G0 / T108 — repair the chat channel (FIRST within G).**
   - (a) An external correction path into `learn_turn(feedback=...)`, with provenance: an
     authoritative correction vs a superseded self-label.
   - (b) The learned route consumed by the reply, charged by a neuter-A/B (P3).
@@ -1229,8 +1233,9 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
 - **G5 / T113 — readout variants (the owner's #3).**
   - The next-category alignment is kept.
   - A trace-delta challenger runs against `hippocampus/online_readout.py::OnlineReadout`.
-  - "Relational" becomes two separately ablated readings: anatomical (read the L5e/L6e units) and
-    categorical (lateral coupling learned from the confusion matrix).
+  - "Relational" becomes two separately ablated readings: anatomical (read grown units placed in
+    Layer 5 or Layer 6 with sign +1) and categorical (lateral coupling learned from the confusion
+    matrix).
   - Unsupervised STDP is allowed only with L1b's co-adaptation controls.
 
   G-R5.
@@ -1256,10 +1261,11 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
 - **Order:** G0; G1 alongside it (the session's call on "R0 first", since G1 needs no chat repair);
   then G2; then G3; then G4 and G5; then G6, after R2/R3. G3 waits for G2's capacity cell.
 - **No bypass:** nothing here bypasses the phase exits, T073/T074 or FR-025/OD-2.
-- **Register rows:** an INVENTION_REGISTER row lands in each implementing row's own commit (the
-  T096 precedent).
+- **Register rows:** an INVENTION_REGISTER row lands in each implementing row's own commit
+  (FR-031's register practice).
 - **Not claimed: reasoning or fluid intelligence.** A liquid plus a readout is temporal memory and
-  discrimination; the refuted-list LSM entry stands.
+  discrimination; the operator's refuted-list LSM entry stands (off-tree; `docs/AGENT_COLD_START.md`
+  §10 carries it).
 - **Not claimed: a sleep-pruning benefit.** None is demonstrated on record. The v3.46-v3.48 MNIST
   pruning arms lost to no pruning in that regime (CHANGELOG). The live `AttractorNet`
   downscale-and-prune cannot be told from its neutered twin (t(9) −0.572 and −1.032).

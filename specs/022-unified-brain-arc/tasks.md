@@ -240,7 +240,7 @@ instrument is claimed built or registered in CI.
 - [ ] T110 [G2] Deliver the delayed-cue 2x2 and the real-code inseparable intent mapping as taught exchanges through T108's channel, with the separable twin, the presized nonlinear positive control and the explicit-history control proven on the generator (G-R2).
 - [ ] T111 [G3] Grow under an encoding contract and a multiclass inseparability certificate, through the one incumbent grower (its equivalence for the percept consumer shown first; an NG-SNN replacement kept as a benchmark), in a matched-schedule A-then-B curriculum against presized frozen and selected features, random growth and a sham expansion (G-R3). It does NOT discharge L2's §6.5 debt: L2's null stands.
 - [ ] T112 [G4] Fit H01's observed connection probability (global vs pooled-pathway vs distance-free, with held-out neurons or regions) and read placement through `CONN_PROB`; test downstream against degree- and pathway-preserving distance shuffles (G-R4).
-- [ ] T113 [G5] Readout variants against `OnlineReadout`: a trace-delta rule; anatomical (L5e/L6e) and categorical coupling, separately ablated; unsupervised STDP only with co-adaptation controls (G-R5).
+- [ ] T113 [G5] Readout variants against `OnlineReadout`: a trace-delta rule; anatomical (grown units placed in Layer 5 or 6, sign +1) and categorical coupling, separately ablated; unsupervised STDP only with co-adaptation controls (G-R5).
 - [ ] T114 [G6] After T103/T104: measure the incumbent sleep pruners; neuron-mask annealing by joint-mask validation against no-prune, incumbent, greedy and random search at equal budget; budget-matched sleep-pressure rescheduling; tags, retention labels and exact-resume reds for every new carrier (G-R6).
 
 ## Dependencies
