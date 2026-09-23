@@ -96,4 +96,5 @@ fails CI otherwise.
 
 **Determinism:** `random.Random(seed)`, `zlib.crc32()` for persisted hashes, ASCII-only output.
 
-See `CLAUDE.md` for full onboarding details, layout, and optional extras.
+See `CLAUDE.md` (local-only, gitignored) for full onboarding details, layout, and optional extras. A clone
+has none: start at `docs/AGENT_COLD_START.md`.
