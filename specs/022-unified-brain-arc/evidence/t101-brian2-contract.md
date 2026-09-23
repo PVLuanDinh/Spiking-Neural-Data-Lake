@@ -278,7 +278,10 @@ unchanged except the test-only `sleep_s` delay before it builds.
 | R6 silent fallback | a mutant constructor swallowing `refractory=2` | `NotImplementedError` | no refusal -> caught | YES |
 | R7 resource overrun | `MAX_REFERENCE_CELLS + 1` cells; a 10 s child under `timeout_s = 0.5` | refused, 0 launches; `TimeoutError` in 0.51 s | -- | YES |
 
-**VERDICT (2.2): ACCEPTED.** (p32), (p64), (m), (c), (g), (r) and (i) hold and R1-R7 fire. What it licenses: "the Torch bridge
+**VERDICT (2.2 as amended by 2.8 (a) and (c)): ACCEPTED FOR THE AMENDED CONTRACT; the original experiment was NOT
+ACCEPTED on (p)** (float32 4.194e-6 against the frozen 1e-6; float64 1.92e-6 against 1e-9 at unlike parameters -- both kept
+in 2.8; replaced at the fold, 3.7 PH1). Under the amendments (p32), (p64), (m), (c), (g), (r) and (i) hold and R1-R7 fire
+(R7 as scoped in 3.7 I3). What it licenses: "the Torch bridge
 implements the reference's equation, threshold and reset at the parameters it holds, refuses what it does not implement,
 survives a process boundary, and keeps the brain free-threaded" -- the B1 contract of FR-037 / SC-015 for the LAYER the
 eleven call sites share. It licenses nothing about those modules' training rules (2.5) and nothing about the twenty-one
@@ -287,23 +290,32 @@ custom kernels.
 ### 3.4 Disposition (2.4, ACCEPTED branch)
 
 The plan amendment and the migration are committed on `main` as the owner's work, verbatim, after this record's
-pre-registration and amendments (2.7's order, the bridge module before the modules that import it so no intermediate commit
-is import-broken); T101 is marked `[X] ACCEPTED (B1 contract)` in tasks.md with 2.5's scope beside it; the C0 fold branch is
-rebased on top and ONE battery runs on the stacked head.
+pre-registration and amendments -- NOT in 2.7's order: 2.7 froze the migration (step 3) before the contract (step 4), and
+the bridge + contract landed first (`2e76bcd`) so no intermediate commit is import-broken (a deviation, 3.5 item 5; corrected
+at the fold, 3.7 PH4); T101 is marked `[X] ACCEPTED UNDER THE AMENDED CONTRACT` in tasks.md with 2.5's scope beside it; the
+C0 fold branch is rebased on top and ONE battery runs on the stacked head.
 
 ### 3.5 Deviations and disclosures
 
-1. THE CRITERION'S APPARATUS WAS CORRECTED TWICE BEFORE THE ACCEPTED RUN (2.8 (a), (c)), each dated before its re-run and
-   each about precision, never about a bar being missed by the bridge: the 1e-6 bar ignored float32 accumulation; the float64
-   arm compared unlike parameters. 2.4's letter ("the bridge is corrected") was not followed because the bridge's semantics
-   were never at fault (spikes exact on every run, (p64) exact at identical parameters); said plainly. The first run's numbers
-   (max 4.194e-6 against 1e-6) and the second's (p64 1.92e-6 against 1e-9) are kept in 2.8.
+1. THE ORIGINAL EXPERIMENT WAS NOT ACCEPTED ON (p): the float32 bridge missed the pre-registered membrane bar (max 4.194e-6
+   against 1e-6 -- a bar frozen 2.1 wrote FOR the float32 bridge). Amendment 2.8 (a), selected AFTER that result, revised the
+   float32 tolerance on an arithmetic rationale and added a float64 arm; 2.8 (c) then gave the reference the bridge's stored
+   float32 parameter values without raising the float64 bar (1.92e-6 against 1e-9 before it). Each was committed before its
+   re-run; neither shows that the original criterion passed. This departs from 2.4's disposition ("the bridge is corrected",
+   T101 OPEN) and is disclosed as such: the acceptance is for the AMENDED experiment, under the project's dated-amendment
+   practice (T062 section 2.9, `cd29a1b`). The matched-parameter float64 arm supports equation agreement; it does not negate
+   either recorded failure, both kept in 2.8. (Replaced at the fold: this item said the corrections were "never about a bar
+   being missed by the bridge", which is literally false -- 3.7 PH1.)
 2. THE MIGRATION WAS BUILT BEFORE THIS PRE-REGISTRATION, by the owner through Codex; the record's section 1 is the measured
    starting point and the reds and conjuncts are the arc's own, first run after the record's commit.
 3. THE EXECUTOR WAS CODEX (owner routing 2026-09-22), the first arc built that way; three bounded passes, every number
    re-run by the orchestrator, no git command by the executor; pytest under the executor hit a temporary-directory
    permission error twice and was retried with `--basetemp` (an environment quirk of this host's `%TEMP%`, not a test).
-4. NOT PANELLED YET at the time of writing; the panel and its fold follow as 3.7.
+4. NOT PANELLED at `89b5e26`; the panel and its fold are 3.7.
+5. THE LANDED ORDER REVERSED FROZEN 2.7 STEPS 3 AND 4: `2e76bcd` introduced the bridge and the contract before `045e78e`
+   introduced the importing migration, for the import-dependency reason 3.4 gives; the original bridge and its test first
+   entered git together with the contract in `2e76bcd` (2.7 did not require a separate original-bridge commit). Added at the
+   fold (3.7 PH4).
 
 ### 3.6 Openings
 
@@ -324,3 +336,66 @@ rebased on top and ONE battery runs on the stacked head.
    executor reported it registered -- an instrument disagreement, the pyproject grep is the orchestrator's; register or drop.
 7. THE INVENTORY RATCHET IS STATIC: it proves who imports the bridge and that no one imports snntorch; it does not prove any
    call site's forward matches the reference (opening 3).
+
+### 3.7 The panel and its fold (2026-09-22; panelled head `89b5e26`; fold `1cea2f1`..`29fb33d`)
+
+APPARATUS. Three lenses (instrument, pre-registration honesty, integration) and one refuter per filed finding, all Codex
+(`gpt-6-astra`, reasoning `high`, the `codex` MCP tool, read-only on the frozen head); each refuter judged the CLAIM and the
+proposed FIX as two separate claims. Every number below that a lens or refuter reported was re-run by the orchestrator
+before it was written. The fold's code edits were applied by the Codex executor (`gpt-6-astra`, reasoning `low`, exact
+briefs; owner 2026-09-22: "Codex is executor, use appropriate models ... to save usage credits"); the orchestrator reviewed
+every diff, re-ran every check, wrote this record and made the commits. THE FOLD WAS NOT RE-PANELLED (the owner's credit
+instruction): it is reviewed by the Codex closing report and verified by the arc's battery only -- said plainly per the
+rhythm.
+
+LEDGER: 12 filed -- STAND 4 (I1, PH3, G1, G2), QUALIFIED 7 (I2, I3, PH1, PH2, PH4, PH5, G3), REFUTED 1 (PH6); fix verdicts
+ADOPT 2 (I1, PH5), AMEND 9, REJECT 1 (PH6). Severity after refutation: BLOCKER 1 (G1), MAJOR 3 (I1, PH2, PH3), MINOR 7,
+NONE 1. The fold adopts each REFUTER's minimal fix, never the lens's.
+
+| id | finding | claim | fold |
+|---|---|---|---|
+| G1 | `tools/dependency_ledger.py --assert` exit 1: `psutil` imported (guarded) by the reference child, declared nowhere, installed only as pygenn's transitive dependency; exit 0 at `a0f0314`, 1 from `2e76bcd` | STANDS, BLOCKER | `1cea2f1`: psutil in core + both prose sites the MISDESCRIBED check reads; Linux peak RSS via stdlib `resource`. `--assert` exit 0 (UNDECLARED 0, UNUSED 0, MISDESCRIBED 0); `cost_report` on Windows 631,771,136 B |
+| PH3 / I1 | `CONTRACT["precision"]` declared exact spikes and the float32 bound universally; `beta = float32(0.8)`, `v0 = 0.5`, `theta = 1`, current `nextafter(float32(0.6), 0)` = 0.5999999642: the float64 sum is 0.9999999702, float32 rounds it to 1.0, the bridge spikes, the reference does not, error 0.99999997 against a bound of 1.19e-7 (current 0.5 control: 2.98e-8, in bound; float64 bridge exact in both); inside the registered value ranges of 2.2 (p) and reachable through the shipped `SpikingReadout`. A cancellation case (currents -8e6, `v0` 1e7, theta 2e7; OUTSIDE the registered domain) errs 0.1192 against 1.19e-7 with no spike mismatch | STAND (MAJOR) | `7b88be5`: the declaration restricted to the registered seeded parity traces, named as acceptance tolerances, not universal guarantees; `test_threshold_rounding_limit` pins the falsifier and its control; the contract test asserts the restriction |
+| PH2 | 2.6 registered seeds 0..4 for (p); the bare invocation and the test ran seed 0 only | QUALIFIED (2.6 said "seed 0 reported"; executable coverage was the gap) | `6a8fbc0`: `test_conjunct_p` parametrized over 0..4; the bare invocation (a CORE self-check) keeps seed 0 by design. All five seeds pass: 27 arms each, 0 spike mismatches, float64 0.0, float32 maxima 2.887e-6, 2.220e-6, 4.391e-6, 3.255e-6, 3.154e-6 |
+| G2 | a checkpoint from the pre-migration saver (snntorch 1.0.0) fails the strict load on `lif.graded_spikes_factor` / `lif.reset_mechanism_val`; dropping them silently LOADS and changes outputs (the former layer reset one step later) | STANDS | `ae95632`: a named `ValueError` on either key; strict otherwise; `tests/test_trainer_checkpoint.py`; positive control: the actual former saver's checkpoint gets the named refusal, the current saver's loads. No converter (opening 8) |
+| PH1 | 2.8 (a) revised a failed bar after its result; 3.5's "never about a bar being missed by the bridge" was literally false | QUALIFIED (the refuter REJECTED the lens's demand for a new arc: the T062 precedent accepts an amended experiment in-arc) | this commit: the VERDICT line, 3.5 item 1 and tasks.md T101 now read ACCEPTED FOR / UNDER THE AMENDED CONTRACT, with the original experiment NOT ACCEPTED on (p) |
+| I1 | the float32 formula is not a general recurrence bound | STANDS | as PH3, plus: the formula in 2.8 (a), 2.8 (c), 3.2 (p32) and 3.6 item 5 is an ACCEPTANCE TOLERANCE for the measured registered traces; 3.6 item 5's long-trace drift extrapolation is WITHDRAWN |
+| I2 | a float32-only +1e-7 input mutation passes all 27 arms with float64 exact, so (p64) does not by itself attribute the float32 residual to rounding | QUALIFIED (the bridge has one dtype-agnostic code path; the injected branch is not in it) | record: 2.8 (a)'s "rounding, not semantics", 2.8 (c)'s "pure accumulation" and 3.2 (p64)'s "the float32 residual above is rounding" read as: agreement at matched parameters SUPPORTS a finite-precision explanation on the tested traces; it does not establish rounding as the exclusive cause |
+| I3 | R7's 0.5 s deadline fires before the child reaches its injected sleep: `TimeoutError` at 0.508 / 0.510 / 0.513 s with `sleep_s` None / 0 / 10; a child with `sleep_s = 0` needs 1.94 s just to return | QUALIFIED (frozen R7 registers the timeout OUTCOME, which holds) | record: R7 is an oversized-request refusal plus a STARTUP-INCLUSIVE process-deadline refusal; `sleep_s = 10` was requested but its execution before the deadline was not shown. Supplemental: `sleep_s = 30` under `timeout_s = 6` raises `TimeoutError` at 6.01 s, so the deadline also holds once the sleep is reached |
+| PH4 | 3.4 called the landed order "2.7's order"; it reversed steps 3 and 4 | QUALIFIED | this commit: 3.4 corrected, 3.5 item 5 added |
+| PH5 | the stamps "clock read at write time" (the header 15:00, 2.8 (a)-(b) 15:0x, 2.8 (c) 15:2x, 3.0 15:0x-15:4x CDT) sit after the commits that carry them (`a0f0314` 14:41:41, `b2fd79c` 14:52:46, `43c13d7` 14:59:38, `89b5e26` 15:11:08 CDT, author = committer time) | QUALIFIED ("0x" disclosed approximation) | RETRACTED here: those stamps are not clock readings; git's timestamps are metadata, not execution times; commit ancestry is the evidence for order |
+| G3 | the four migrated trainers (`training/trainer.py::train_model`, `offload.py::train_with_offload`, `mnist.py::train_model`, `spiking_lm.py::train`) step optimizers by backprop, sit inside the e-prop invariant's explicit entrypoint closure ("There is NO train-tier exemption"), and read `MISSING_DECLARATION`, `governed=False` in the census | QUALIFIED (inherited, already disclosed in 2.5 and 3.6 item 4; the callers already selected `fast_sigmoid()`; no new rule, no bridge census row) | record: `governed=False` limits the census ASSERTION, not the policy; T101 supplies no learning-rule disposition for these trainers; their obligations stay OPEN (opening 9) |
+| PH6 | three commit messages say "verified by the arc's battery" with no witness at `89b5e26` | REFUTED: that sentence is the rhythm's REQUIRED form | none |
+
+FOUND WHILE FOLDING, NOT BY THE PANEL (no lens ran either command):
+- `tools/dependency_ledger.py --self-check` (a CI lint step) had been RED since `045e78e`: its CORE-PROSE and CORE-ONLY
+  mutations replaced a description string that commit removed, so both printed BROKEN. `395bb99` re-anchors them on the
+  `description = "` key: "OK: 5/5 criteria proven falsifiable".
+- `ruff format --check .` reported 17 files, all touched by `045e78e`. Their COMMITTED blobs are LF and format-clean; the
+  working copies carried mixed line endings from in-place editing. Running the formatter normalized them and `git add` found
+  nothing to commit; the tree now reads "612 files already formatted". A battery in this checkout would have red on the
+  format stage with no defect in any commit -- the checkout is part of the instrument (obs #2222).
+- `tests/test_gradient_claim_gate.py` carried `f"src\snn_data_lake\{env}"` (invalid escapes, a SyntaxWarning on every
+  compile, present since `fafea2f`); `29fb33d` writes it `rf"..."`, AST identical.
+
+VERIFIED AFTER THE FOLD (orchestrator): the three new tests and the contract test pass (9 selected); `test_conjunct_p` x5 and
+`tests/test_gradient_claim_gate.py` pass (25 in 354 s); `ruff check .` passes; the ledger's `--assert` and `--self-check` exit
+0; the full suite, run_selfchecks and the gates run in the arc's battery.
+
+OPENINGS ADDED BY THE PANEL (continuing 3.6):
+8. LEGACY `SpikingReadout` CHECKPOINT COMPATIBILITY IS OPEN. The refusal contains it; it does not port the retired
+   layer's persisted state, so P2's port-first obligation is not met by it. A validated conversion (reset timing included)
+   owes its own evidence-gated arc if a legacy checkpoint or a compatibility requirement turns up; none was found among the
+   accessible candidates, and machine-wide absence is unproven.
+9. THE FOUR MIGRATED TRAINERS' E-PROP OBLIGATIONS (G3) are open for adjudication through the existing acceptance process and
+   truthful `GRADIENT_CLAIM` declarations; not a T101 prerequisite.
+10. A UNIVERSAL PRECISION GUARANTEE (threshold edges, cancellation, explicit input/threshold margins) is not claimed; if ever
+    wanted it owes its own pre-registered arc, keeping `test_threshold_rounding_limit` as its regression.
+11. THE LINUX PEAK-RSS BRANCH has run only under WSL Ubuntu's python3 (the stdlib call), never on a Linux CI runner.
+12. R7 HAS NO ACKNOWLEDGED BLOCKING-CHILD CONTROL: the registered outcome stands; attributing the timeout to the injected
+    sleep would need a child that proves entry into the delay before the deadline counts.
+13. THE INVENTORY SCANNER READS IMPORT STATEMENTS ONLY: `importlib.import_module("...")` / `__import__("...")` string forms
+    escape it (instrument lens; no such use in the tree today). The launch counter's before/after delta is not per-request
+    under concurrent callers (instrument lens).
+14. THE PANEL'S LENSES RAN NEITHER `--self-check` NOR `ruff format --check`: two reds on this head were found by the fold,
+    not the panel. A lens brief names every battery stage the arc can move, or states which it skipped.
