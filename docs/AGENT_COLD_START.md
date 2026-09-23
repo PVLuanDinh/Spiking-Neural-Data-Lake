@@ -17,7 +17,7 @@ Two words used throughout: the **owner** is the human who directs the project an
 
 | | |
 |---|---|
-| written | 2026-09-22, by the operator's orchestrating session; verified against the tree at the commit that last changed this file (`git log -1 --format="%h %cs" -- docs/AGENT_COLD_START.md`) |
+| written | 2026-09-22, by the operator's orchestrating session; repivoted 2026-09-23 (§1). Verified against the tree at the commit that last changed this file (`git log -1 --format="%h %cs" -- docs/AGENT_COLD_START.md`) |
 | rendered from | `docs/POLICIES.md`; `specs/022-unified-brain-arc/PLAN-FINAL-2026-09-02.md`; `SECURITY.md`; the operator's local reload protocol and dated lessons; the six reasoning procedures the operator re-arms at every session start |
 | adds | no project rule. Most of §4 applies existing rules to an environment that cannot run the battery; the rest are this file's conventions for this account, marked as such |
 | carries | no project state, except two open defects a fresh clone meets first (§3), each with the check that tells you whether it is still open. §5 derives everything else |
@@ -62,7 +62,7 @@ Two words used throughout: the **owner** is the human who directs the project an
    Then read `SECURITY.md`: how the envelope is changed, how issues are reported privately, and the
    standing conditions for a third-party agent on this tree.
 4. **Read the plan of record**, `specs/022-unified-brain-arc/PLAN-FINAL-2026-09-02.md`: Part A in full
-   (A.1 to A.6), Part D's "Combined architecture and execution order", Part E (the critical path), Part F
+   (A.1 to A.6), Part D's "Combined architecture and execution order" and "G workstream", Part E (the critical path), Part F
    (the reds register), Part H (the owner's decisions) and Part I (resume). Several of Part A's and Part
    I's steps name tools that exist only on the operator's machine; §3 maps each one.
 5. **Report the state in five lines**, then wait for the owner's assignment (§4 rule 1):
@@ -112,6 +112,19 @@ them.
 - The core dependencies are listed in `pyproject.toml`. P7 accepts any dependency that measurably helps.
 - Brian2 is the equation/event reference, and the Torch bridge `substrate/brian2_backend.py` executes it.
 - Real Brian2 runs only in a subprocess, because importing it re-enables the GIL.
+
+**The design under test** (owner amendment 2026-09-23; plan Part D "G workstream", T108 to T114, reds G-R0 to
+G-R6). The owner's architecture entered the plan as gated rows, not as a mandate (P2's corollary; P0 and P8): grow
+neurons when the weights cannot solve a problem, grow them INTO one recurrent liquid read out by a decoder, then
+replay and prune in sleep, with memory in the one lake. Re-derivable facts it rests on:
+- the grower is stateless per percept (`NGSNN._rates` starts at V = 0 and has no recurrent weight);
+- `cortex/placement.py`'s depth, layer and Dale sign have no reader, and `cortical_microcircuit.CONN_PROB` has no
+  driver;
+- no reservoir is imported outside `reasoning/`;
+- the chat intent learner (`cortex/interaction_learning.py`) is the one live path where an outside problem reaches
+  synaptic weights, but `Brain.respond` gives it no correction, discards its prediction and persists nothing.
+
+G0 repairs that channel first.
 
 **Where it stands** is a measurement, not a sentence in this file. Read plan Part B (dated), then §5.
 
@@ -684,6 +697,10 @@ about to do.
   claim over files, use `git grep` or a filesystem walk, with a positive control.
 - `git check-ignore` on a tracked path prints nothing; use `--no-index`. A directory pattern (`.venv/`)
   only matches a child path, so probe `<dir>/x`, never the bare name.
+- A top-N listing hides rank N+1; read the total before calling a miss.
+- A call can run through a name you did not search for: chat reaches the intent learner via `learn_turn`. Trace
+  from the entry point (`Brain.respond`).
+- A fix tuned on your own queries overfits them. Freeze a held-out set first.
 
 **Controls**
 - A control must run in the mechanism's own regime and on its own substrate. A brain-free control with no
@@ -820,6 +837,11 @@ its record names as missing. Paths under `evidence/` are in `specs/022-unified-b
 | reporting a grown-unit count as growth | refused in headlines and in PROVENANCE until the count changes a measured outcome | plan Part E table; `tests/test_units_admitted_wording.py` |
 | wiring a faculty into the one action gate to satisfy P6 | that is the defect P6 names, not a fix for it | POLICIES.md P6 |
 | `torchvision` in core; `spikingjelly` or `cupy` for the kernel | rejected on structural or measured arguments | `pyproject.toml` comments; `docs/POLICIES_EVIDENCE.md` |
+| copying the brain's weights into a separate reservoir | refused: duplicate learned state (P2), a second store (P4b); experience moves by replay (R2) | plan Part D, "G workstream" |
+| a grown neuron "reinterpreted as a readout" | tested only as readout self-feedback against its disconnected twin (G1) | plan Part D, "G workstream" |
+| growth because "the weights cannot solve it" | only on a multiclass inseparability certificate in the learner's real code, under a frozen encoding contract, beating presized and random growth (G2, G3); L2's debt stays open | plan G2/G3; `evidence/l2-grow-on-plateau.md` |
+| simulated annealing to prune neurons | outside A1 to A3 (lake access only); only G6's joint-mask validation, after R2/R3; no pruning benefit is on record | plan G6; `CHANGELOG.md` v3.46 to v3.48 |
+| a hand-picked Gaussian wiring width | the placement is 1-D depth; fit the width from H01's measured positions against distance-shuffled wiring | plan G4 |
 
 ## 11. The handoff you leave
 
