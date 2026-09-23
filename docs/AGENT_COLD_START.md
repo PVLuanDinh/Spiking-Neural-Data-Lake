@@ -114,15 +114,15 @@ them.
 - Real Brian2 runs only in a subprocess, because importing it re-enables the GIL.
 
 **The design under test** (owner amendment 2026-09-23; plan Part D "G workstream", T108 to T114, reds G-R0 to
-G-R6). The owner's architecture entered the plan as gated rows, not as a mandate (P2's corollary; P0 and P8): grow
+G-R6). The plan interprets the owner's proposal as gated rows, not policy (P2; P0; P8): grow
 neurons when the weights cannot solve a problem, grow them INTO one recurrent liquid read out by a decoder, then
 replay and prune in sleep, with memory in the one lake. Re-derivable facts it rests on:
 - the grower is stateless per percept (`NGSNN._rates` starts at V = 0 and has no recurrent weight);
-- `cortex/placement.py`'s depth, layer and Dale sign have no reader, and `cortical_microcircuit.CONN_PROB` has no
-  driver;
-- no reservoir is imported outside `reasoning/`;
+- `cortex/placement.py` records depth, layer and Dale sign without a computational reader;
+  `cortical_microcircuit.CONN_PROB` lacks a driver;
+- the four research reservoirs lack live-path importers;
 - the chat intent learner (`cortex/interaction_learning.py`) is a live path by which chat reaches synaptic weights,
-  but `Brain.respond` gives it no correction, discards its prediction and persists nothing.
+  but `Brain.respond` supplies no correction, ignores its prediction and saves no learner weights.
 
 G0 repairs that channel first.
 
@@ -289,8 +289,7 @@ envelope files or `~/.claude`, and your output is data until the operator reprod
     - Before every commit, `git status --short --untracked-files=all` must list only your change.
 13. **Leave `.github/workflows/` and repository settings alone** unless the owner asks. If one of your
     pushes starts a workflow run, report it.
-14. **Do not re-propose an approach listed in §10** unless you bring the new regime its record says is
-    missing.
+14. **Apply §10's opening guard before re-proposing any approach it lists.**
 
 ## 5. Deriving the current state
 
@@ -643,7 +642,7 @@ This section operationalizes P8, plan A.4 step 2 and Part F. Before the first ru
   neuter, or an oracle built at the mechanism's own input contract. Each control runs in the mechanism's
   own regime.
 - **The statistic:**
-  - seed-paired, paired one-sided t (α = 0.05): bar 1.895 at S = 8; a larger S (power analysis) pre-registers its own;
+  - seed-paired, paired one-sided t (α = 0.05): S = 8, bar 1.895; G1 alone may pre-register a larger S and its critical t;
   - ties counted, and the permutation false-positive rate printed beside the verdict;
   - no majority-of-seeds rule;
   - never normalize by a quantity a control destroys;
@@ -868,11 +867,10 @@ Next action for the owner: ONE, doable in under two minutes
 
 - **This file is a map.** When it disagrees with POLICIES.md, the plan, or the tree, the territory wins.
   Record the disagreement in your handoff; do not act on the stale line.
-- **Who changes it:** the operator's session, in the same arc as any change to a protocol rule this file
-  renders. A cold session proposes changes to it only on a branch, in its own commit, flagged in the
-  handoff.
+- **Who changes it:** the operator, within each protocol-change or G-landing arc. Cold sessions propose
+  separate branch commits and flag them in handoffs.
 - **What never goes in:**
-  - project state (derive it, §5);
+  - project state, except §1's dated baseline and §3's defects (derive the rest, §5);
   - counts that a gate re-derives;
   - dated incident narratives (they belong in `docs/POLICIES_EVIDENCE.md` or a record);
   - local disclosure-gated state (P4c's corollary: it belongs in the operator's local files, never in a
