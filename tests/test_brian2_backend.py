@@ -81,13 +81,54 @@ def test_contract_is_frozen_and_complete():
         CONTRACT["delays"] = "supported"
 
 
-def test_precision_contract_names_the_derived_bound():
-    assert "2^-23" in CONTRACT["precision"]
+def test_precision_contract_is_restricted_to_the_registered_traces():
+    precision = CONTRACT["precision"]
+    assert "2^-23" in precision
+    assert "registered seeded parity traces only" in precision
+    assert "not universal guarantees" in precision
 
 
 def test_reference_runs_at_the_bridges_float32_parameters():
     arm = _parity_arm((0, "subtract", 0.95, 0.7))
     assert arm["beta_ref"] == float(np.float32(arm["beta"]))
+
+
+@pytest.mark.parametrize(
+    "current, expected_spike",
+    [
+        (float(np.nextafter(np.float32(0.6), np.float32(0))), 1.0),
+        (0.5, 0.0),
+    ],
+)
+def test_threshold_rounding_limit(current, expected_spike):
+    # T101 panel PH3/I1: the float32 bridge's sum rounds to the threshold and spikes while the
+    # float64 reference stays below it -- the falsifier of any universal exact-spike claim, pinned.
+    beta = float(np.float32(0.8))
+    reference_s, reference_v, _ = brian_reference_trace(
+        [[current]], [0.5], beta=beta, threshold=1.0
+    )
+    spike, membrane = BrianLIF(0.8)(
+        torch.tensor([current], dtype=torch.float32),
+        torch.tensor([0.5], dtype=torch.float32),
+    )
+    np.testing.assert_array_equal(reference_s, [[0.0]])
+    assert reference_v[0, 0] == beta * 0.5 + current
+    assert spike.item() == expected_spike
+    bound = 2**-23 * max(1.0, float(np.max(np.abs(reference_v))))
+    error = abs(membrane.item() - reference_v[0, 0])
+    if expected_spike:
+        assert membrane.item() == 0.0
+        assert error > bound
+    else:
+        assert error <= bound
+    spike64, membrane64 = BrianLIF(0.8)(
+        torch.tensor([current], dtype=torch.float64),
+        torch.tensor([0.5], dtype=torch.float64),
+    )
+    np.testing.assert_array_equal(spike64.detach().numpy(), reference_s[0])
+    np.testing.assert_array_equal(membrane64.detach().numpy(), reference_v[0])
+    assert "brian2" not in sys.modules
+    assert not sys._is_gil_enabled()
 
 
 def test_checkpoint_json_preserves_float32_state_and_parameters():

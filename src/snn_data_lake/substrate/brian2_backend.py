@@ -47,9 +47,13 @@ CONTRACT = MappingProxyType(
         "delays": "none",
         "refractory": "none",
         "adaptive_threshold": "none",
-        "precision": "bridge computes in the caller's dtype (float32 at every migrated call site), "
-        "reference float64; spikes exact; membranes within T * 2^-23 * max(1, max|v_reference|) "
-        "for a float32 trace of T steps, and within 1e-9 for a float64 trace, T <= 64",
+        "precision": "bridge computes in the caller's dtype (float32 at every migrated call site); "
+        "beta and theta are stored float32 and the float64 reference is given those stored values; "
+        "on the registered seeded parity traces only (T <= 64): spikes exact, membranes within "
+        "T * 2^-23 * max(1, max|v_reference|) for float32 and within 1e-9 for float64 -- acceptance "
+        "tolerances for the measured traces, not universal guarantees: threshold-adjacent rounding "
+        "can flip a spike and its reset (tests/test_brian2_backend.py::test_threshold_rounding_limit) "
+        "and cancellation can exceed the float32 tolerance",
         "learning": "the bridge is a LAYER: it computes a surrogate derivative only when "
         "a caller runs autograd and never steps an optimizer; governed learning rules are untouched",
         "rng": "none owned; deterministic given inputs",
