@@ -399,3 +399,19 @@ OPENINGS ADDED BY THE PANEL (continuing 3.6):
     under concurrent callers (instrument lens).
 14. THE PANEL'S LENSES RAN NEITHER `--self-check` NOR `ruff format --check`: two reds on this head were found by the fold,
     not the panel. A lens brief names every battery stage the arc can move, or states which it skipped.
+15. THE MIGRATION ITSELF HAS NO P2 BEFORE-DELETION A/B AND NO P7 MEASUREMENT OF WHAT IT BOUGHT (Codex closing report (b)).
+    T101 accepts the bridge against the Brian2 REFERENCE; it never compared the bridge with the retired snntorch layer on a
+    real trainer workload (2.5 lists that comparison as unmeasured), and the reset timing changed by design (same step vs
+    next step), so behaviour-equivalence to the retired layer is not even the claim. The settling measurement the report
+    names: a pre-registered, held-out task-retention delta, snntorch vs the bridge, identical weights and inputs, a frozen
+    non-inferiority bar. It owes its own arc; escalated to the owner, whose migration this is.
+
+### 3.8 The Codex closing report on the folded head (`5a76d1e`, `gpt-6-astra` / `high`, read-only)
+
+Logged verbatim beside the arc. (a) "acceptance obtained by narrowing the measuring contract after observing failures" --
+the reading 3.5 item 1 and the VERDICT line now state as fact; its settling measurement is opening 15's red. (b) the P2/P7
+gap -> opening 15; the report found "no concrete new defect" in the Linux branch, the boundary test or the named refusal,
+and passed the five checkpoint tests in memory. (c) REPRODUCED and CORRECTED: `395bb99`'s commit message says "appending or
+reordering core packages cannot orphan them"; with mujoco moved last in the description the CORE-PROSE mutation changes
+nothing (today it does). The code comment claims only appending, which holds; "or reordering" is withdrawn here, and a
+reorder would print BROKEN under the self-check's vacuous-red guard rather than pass silently.
