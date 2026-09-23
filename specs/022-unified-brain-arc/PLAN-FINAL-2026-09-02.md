@@ -1087,6 +1087,10 @@ proposed innovation"; after the judgment: "Add to plan, R0 first", R0 being this
 workstream, **OPEN / UNBUILT**. FR-041 and SC-019 own the requirement and composite criterion;
 this section owns design and order.
 
+**Row ids.** G0-G6 name this workstream's rows only. They are not `contracts/gates.md`'s G5 (the
+replay gate), T078's gates (G3 stop, G4 void), or `docs/PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md`'s
+gates G1 (saturation) and G2 (generator assertions) that C3 measures.
+
 **The proposal as written:**
 - a recurrent SNN solves a problem with its synaptic weights, and grows neurons when they cannot;
 - the neuron goes to a liquid-state-machine reservoir and is "reinterpreted to become a readout
@@ -1293,7 +1297,8 @@ May run in parallel with Phase 3 (O5(b)); MUST precede Phase 5.
   correct winner, scored on which workspace's ignited content matches. This is a build the standing
   adjudication requires before either workspace can be retired ("until that exists, both stay").
 - **C1c — resolve the two workspace edges on C1b's result** (FR-016; T030's declared composite is the
-  incumbent), then **C3 = rank 6**: G1 and G2 as pure measurement on the built `EpisodeDriver` through the
+  incumbent), then **C3 = rank 6**: the consciousness doc's gates G1 (saturation) and G2 (generator
+  assertions) as pure measurement on the built `EpisodeDriver` through the
   T032 actuator over S seeds; replace `charge_probe`'s undirected ignition arm with a non-degenerate neuter.
 - **C2 = rank 5 — the answer path on the substrate.** `Brain.respond` routes on the `{known, coverage}`
   the lake already returns and on the grown readout; `reason_out` (the fixed self-report that pre-empts

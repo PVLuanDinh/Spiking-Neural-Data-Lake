@@ -233,7 +233,8 @@ is OPEN; no new behavioral/promotion instrument is claimed already built or regi
 ## G workstream (added 2026-09-23)
 
 The final plan's "G workstream" section owns design, controls and order. All rows are OPEN; no
-instrument is claimed built or registered in CI.
+instrument is claimed built or registered in CI. Row ids G0-G6 are this workstream's; they are not the
+gate ids G1-G5 (T017's G5 is the replay gate).
 
 - [ ] T108 [G0] Repair the chat intent channel (FR-041/SC-019), each part its own arc: external corrections into `learn_turn(feedback=...)` with provenance; the learned route consumed by the reply, with a neuter-A/B; the learner's state persisted (a 0x07 checkpoint or T064's 0x09 writer) and teaching episodes typed in 0x04, with a fresh-process red (G-R0).
 - [ ] T109 [G1] Freeze the causal information-and-feedback contract, then run the memory-mechanism diagnostic on the live percept stream: the incumbent; one promoted recurrent pool, carried vs reset (the PRIMARY endpoint); readout self-feedback vs its disconnected twin; sensory and category history; the persistence oracle. S = 8 unless the power analysis requires more (a larger S states its critical t before any run); repeated-pack and unseen-order results reported separately (G-R1). The pool is N4/T099's LSM control arm only if N2 builds its hybrid on it.
