@@ -176,6 +176,13 @@ def save_checkpoint(model, path):
 def load_checkpoint(path, beta=DEFAULT_BETA):
     """Rebuild a SpikingReadout from a checkpoint written by save_checkpoint."""
     ckpt = torch.load(path, map_location="cpu")
+    legacy_keys = {"lif.graded_spikes_factor", "lif.reset_mechanism_val"}
+    if legacy_keys.intersection(ckpt["state_dict"]):
+        raise ValueError(
+            "Legacy snntorch SpikingReadout checkpoint is unsupported: BrianLIF uses same-step "
+            "reset; the former trainer used delayed reset. Dropping legacy state keys is not a "
+            "validated conversion (T101 panel G2)."
+        )
     model = SpikingReadout(ckpt["n_inputs"], ckpt["n_classes"], beta=beta)
     model.load_state_dict(ckpt["state_dict"])
     return model
