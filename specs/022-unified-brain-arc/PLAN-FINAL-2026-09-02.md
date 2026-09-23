@@ -1122,8 +1122,8 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   `NGSNN.fit` draws a multi-scale random candidate pool, adds a 1e12 bonus to Eq. 7-passing
   candidates before top-k selection, and keeps a selected candidate with positive residual reduction
   or passing consistency, subject to the zero-variance restriction; every candidate is the same LIF.
-  In float32 that bonus leaves a spacing of 65,536, so passing candidates whose reductions differ by
-  less tie (found 2026-09-23; the grower's own arc owes it). It is STATELESS per
+  In float32 that bonus leaves a spacing of 65,536, so passing candidates can tie and lose their
+  residual-reduction order (found 2026-09-23; the grower's own arc owes it). It is STATELESS per
   percept: `NGSNN._rates` starts at V = 0 and has no recurrent weight. The persistence-informed
   oracle beats LIVE 8 of 8 (t 2.97, `evidence/l-parallel-arms.md`).
 - **Unread anatomy.** `cortex/placement.py` gives every grown unit a fractional cortical DEPTH, a
