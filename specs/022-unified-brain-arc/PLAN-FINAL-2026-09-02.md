@@ -8,8 +8,8 @@ T101-T107 track the additions; T096-T100 retain their identities. These addition
 acceptance/implementation work, not evidence that the complete architecture already operates.
 
 **Owner amendment, 2026-09-23:** the G workstream (Part D, "G workstream") enters the owner's
-grow-into-the-liquid proposal as gated experimental rows, G0 (the chat-channel repair) first.
-FR-041, SC-019 and T108-T114 track it; like B/R/A/N it is planned work, not evidence that any of
+grow-into-the-liquid proposal as gated experimental rows, G0 (the chat-channel repair) first within G,
+G1 alongside it; program priority stays the owner's. FR-041, SC-019 and T108-T114 track it; like B/R/A/N it is planned work, not evidence that any of
 it operates, and it is not a policy (POLICIES.md P2's corollary).
 
 **This file lives at `specs/022-unified-brain-arc/PLAN-FINAL-2026-09-02.md`. Read all of it before doing
@@ -1083,7 +1083,7 @@ future evidence record; all T096-T100 checkboxes remain OPEN until their own del
 ### G workstream - grow into the liquid: the owner's 2026-09-22 proposal as gated rows (T108-T114)
 
 **ADDED 2026-09-23** (owner, 2026-09-22 CDT: "Every part of the project now need to follow this
-proposed innovation"; after the judgment: "Add to plan, R0 first"). Planned experimental
+proposed innovation"; after the judgment: "Add to plan, R0 first", R0 being this plan's G0). Planned experimental
 workstream, **OPEN / UNBUILT**. FR-041 and SC-019 own the requirement and composite criterion;
 this section owns design and order.
 
@@ -1099,12 +1099,15 @@ Its four questions are neuron design (#1), brain-to-reservoir distribution (#2),
 optimization (#3), and sleep plus durable memory (#4).
 
 **Disposition.** Judged 2026-09-23 under this plan and POLICIES.md by a six-round Claude/Codex
-cross-critique, with every tree citation reproduced by the orchestrator.
-- **Not a mandate.** POLICIES.md P2's corollary says "a research direction is not a policy";
-  P0 and P8 credit only at measurement. The 2026-09-14 precedent applies instead: a design with
-  falsifiable gates, no implementation claimed.
-- **The coherent reading** is the owner's own choice in the originating chat: grow INTO one
-  recurrent substrate, with the readout a distinct decoder role.
+cross-critique. Later reviews corrected several of its tree readings (`d18a3be`, `b2f9da7` and the
+2026-09-23 panel fold).
+- **Not a policy.** POLICIES.md P2's corollary puts an architecture direction in a design note, not in
+  POLICIES.md. It is pursued as gated rows on the owner's "Add to plan, R0 first"; P0 and P8 give
+  credit only at measurement. The 2026-09-14 precedent applies: a design with falsifiable gates, no
+  implementation claimed.
+- **The plan's reading** is growth INTO one recurrent substrate, with the readout a distinct decoder
+  role. The proposal as written also describes a separate reservoir fed the brain's weights, which
+  P2 and P4b refuse (below).
 - **"Reinterpreted as a readout"** is tested separately, as readout self-feedback (version 2).
 - **No weights are copied into a second structure** (P2, P4b). Learned content moves by replayed
   experience (R2).
@@ -1250,8 +1253,8 @@ cross-critique, with every tree citation reproduced by the orchestrator.
   G-R6.
 
 **Order and limits.**
-- **Order:** G0; G1 alongside it; then G2; then G3; then G4 and G5; then G6, after R2/R3. G1
-  needs no chat repair. G3 waits for G2's capacity cell.
+- **Order:** G0; G1 alongside it (the session's call on "R0 first", since G1 needs no chat repair);
+  then G2; then G3; then G4 and G5; then G6, after R2/R3. G3 waits for G2's capacity cell.
 - **No bypass:** nothing here bypasses the phase exits, T073/T074 or FR-025/OD-2.
 - **Register rows:** an INVENTION_REGISTER row lands in each implementing row's own commit (the
   T096 precedent).
@@ -1577,7 +1580,8 @@ self-modification/safety approval boundaries retain their authority.
 
 **OWNER AMENDMENT 2026-09-23:** "For SNDL, I propose a new approach into the entire working
 codebase. Every part of the project now need to follow this proposed innovation" (2026-09-22
-CDT). It was judged the same night and entered on the owner's "Add to plan, R0 first". This adds
+CDT). It was recorded as judged on 2026-09-23 and entered on the owner's "Add to plan, R0 first"
+(R0 is this plan's G0). This adds
 the G workstream, FR-041, SC-019 and T108-T114 as planned experimental work. The amendment records
 a design and falsifiable gates. It does not record implementation or a passing measurement, and it
 does not make the design a policy (P2's corollary). Existing phase exits, lake retention and

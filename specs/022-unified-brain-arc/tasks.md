@@ -12,7 +12,8 @@ T096-T100 N workstream. New rows remain open; the current Brian2 bridge is parti
 evidence, not completion of the combined program. Preserve existing measured dispositions.
 
 **Owner amendment 2026-09-23:** the final plan's G workstream adds T108-T114, the owner's
-grow-into-the-liquid proposal as gated rows, with G0 = T108 first. All open; nothing built.
+grow-into-the-liquid proposal as gated rows, with G0 = T108 first within G (T109 may run alongside;
+program priority is the owner's). All open; nothing built.
 
 ---
 
