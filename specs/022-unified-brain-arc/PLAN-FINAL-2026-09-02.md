@@ -1126,7 +1126,8 @@ cross-critique, with every tree citation reproduced by the orchestrator.
   `random_boolean_network.py` have no importer outside `reasoning/`.
 - **A live but self-supervised chat learner.** `cortex/interaction_learning.py::SpikingInteractionLearner`
   (R-STDP, one neuron per intent) IS live: `Brain.respond` → `LiveBrain.chat` → `learn_turn`. But:
-  - it is SELF-LABELLED from the keyword firewall (`feedback` is never passed);
+  - it is SELF-LABELLED from the keyword firewall: `LiveBrain.chat` forwards `feedback`, but
+    `Brain.respond`, the canonical entrypoint, never supplies one;
   - the reply discards its prediction;
   - its weights are unpersisted (`delta_sink` is None; T064);
   - the sleep tick overwrites those weights (rewire, relax) and replays its ring.
@@ -1154,7 +1155,9 @@ cross-critique, with every tree citation reproduced by the orchestrator.
   Arms:
   - (a) the incumbent;
   - (b) ONE recurrent pool promoted from the four research-tier reservoirs under P2, carrying state.
-    It defines N4/T099's "equally tuned spiking-only LSM" arm;
+    It is the referent for N4/T099's "equally tuned spiking-only LSM" arm only if N2 builds its
+    hybrid on this pool. The 2026-09-16 evaluation's rule is that the arm is the hybrid's own
+    substrate with the coupling removed;
   - (c) the same pool reset each percept;
   - (d) readout self-feedback (version 2) as a detached-input path, and (d0) its disconnected twin;
   - (e1) sensory history, and (e2) category history;
@@ -1166,7 +1169,8 @@ cross-critique, with every tree citation reproduced by the orchestrator.
 
   Pre-register:
   - the effect threshold, and whether the estimate or its confidence bound must clear it;
-  - a power analysis before fixing S (never below Part F's 8);
+  - S = 8 per Part F, unless the pre-registered power analysis requires more. A larger S states its
+    one-sided critical t (Part F's rule at S − 1 d.f.) in the pre-registration, before any run;
   - chronological, prospective scoring;
   - repeated-pack and unseen-order results reported separately (the packs are 256-periodic);
   - the incremental benefit under a within-block time shuffle;
@@ -1201,8 +1205,10 @@ cross-critique, with every tree citation reproduced by the orchestrator.
   - **Arms.** The incumbent; presized frozen features; presized features SELECTED at the same
     search budget; targeted growth; random growth; a sham expansion (identical bookkeeping, zero
     contribution).
-  - **L2's re-proposal debt** (its §6.5) is discharged only by G2's stream, a stated attribution
-    statistic and an outcome effect size.
+  - **G3 does NOT discharge L2's re-proposal debt** (its §6.5). G2 shows growth is NECESSARY where
+    the code cannot represent a mapping. L2 asked for something different: a stream where growth
+    SUBSTITUTES for learning that would have sufficed, and a trigger that prevents it. L2's null
+    stands, as R3/T104 keeps it.
 
   G-R3.
 - **G4 / T112 — the wiring prior (the owner's Gaussian).**
@@ -1233,8 +1239,8 @@ cross-critique, with every tree citation reproduced by the orchestrator.
     - judge the frozen winner once, on untouched future and rare-task tests;
     - charge search and restart costs.
 
-    It runs against no-prune (the record's ~88% bar), the incumbent, greedy and equal-budget random
-    search. A1-A3 cover lake access only and are not this row.
+    It runs against no-prune, the incumbent, greedy and equal-budget random search. A1-A3 cover lake
+    access only and are not this row.
   - (c) Learning-load sleep PRESSURE beside the circadian clock, tested by budget-matched
     rescheduling with a shuffled-pressure arm and a width- and rate-normalized load.
   - (d) Every new carrier gets a lake tag and a retention label at introduction. Continuation state
@@ -1250,7 +1256,9 @@ cross-critique, with every tree citation reproduced by the orchestrator.
   T096 precedent).
 - **Not claimed: reasoning or fluid intelligence.** A liquid plus a readout is temporal memory and
   discrimination; the refuted-list LSM entry stands.
-- **Not claimed: a sleep-pruning benefit.** Every pruning strategy on record lost to no pruning.
+- **Not claimed: a sleep-pruning benefit.** None is demonstrated on record. The v3.46-v3.48 MNIST
+  pruning arms lost to no pruning in that regime (CHANGELOG). The live `AttractorNet`
+  downscale-and-prune cannot be told from its neutered twin (t(9) −0.572 and −1.032).
 - **Not claimed: growth from a unit count.** No unit count is growth until it changes a measured
   outcome (P0).
 
@@ -1402,8 +1410,9 @@ Parallel arms: L1a ∥ L3 ∥ the oracle may start at W3 (they do not wait for P
   mutation registration waits for T073/T074 and Phase 5's standing prerequisites. A failed
   hybrid does not delay unrelated work; it receives the recorded null/loss disposition above.
 - **ADDED 2026-09-23:** G0 -> G1 (alongside G0) -> G2 -> G3 -> {G4, G5} -> G6 (T108-T114) is a
-  planned arm. G6 waits for R2/R3 (T103/T104). G1's pool is N4/T099's spiking-only LSM control
-  arm, so G1 precedes N4. None bypasses T073/T074, Phase 4's exit or FR-025/OD-2. The owner sets
+  planned arm. G6 waits for R2/R3 (T103/T104). If N2 builds its hybrid on G1's pool, that pool is
+  N4/T099's spiking-only LSM control arm and G1 precedes N4. None bypasses T073/T074, Phase 4's
+  exit or FR-025/OD-2. The owner sets
   its priority against the in-flight rows; a failed G row does not delay unrelated work.
 
 | dropped / refused / deferred | disposition | measurement |
