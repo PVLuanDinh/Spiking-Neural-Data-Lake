@@ -7,6 +7,11 @@ and simulated-annealing request with the existing N workstream (Navier-Stokes + 
 T101-T107 track the additions; T096-T100 retain their identities. These additions are planned
 acceptance/implementation work, not evidence that the complete architecture already operates.
 
+**Owner amendment, 2026-09-23:** the G workstream (Part D, "G workstream") enters the owner's
+grow-into-the-liquid proposal as gated experimental rows, G0 (the chat-channel repair) first.
+FR-041, SC-019 and T108-T114 track it; like B/R/A/N it is planned work, not evidence that any of
+it operates, and it is not a policy (POLICIES.md P2's corollary).
+
 **This file lives at `specs/022-unified-brain-arc/PLAN-FINAL-2026-09-02.md`. Read all of it before doing
 anything. It is written so that a fresh session of Claude Fable 5.1 or Claude Opus 5 with no memory of the
 project can pick the work up at any phase and carry it correctly.** It consolidates the trajectory audit's
@@ -1075,6 +1080,180 @@ and resource overruns. All six instruments and their registration are PLANNED, n
 Exit: a recorded SC-014 verdict, measured controls/costs and live disposition in this workstream's
 future evidence record; all T096-T100 checkboxes remain OPEN until their own deliverables exist.
 
+### G workstream - grow into the liquid: the owner's 2026-09-22 proposal as gated rows (T108-T114)
+
+**ADDED 2026-09-23** (owner, 2026-09-22 CDT: "Every part of the project now need to follow this
+proposed innovation"; after the judgment: "Add to plan, R0 first"). Planned experimental
+workstream, **OPEN / UNBUILT**. FR-041 and SC-019 own the requirement and composite criterion;
+this section owns design and order.
+
+**The proposal as written:**
+- a recurrent SNN solves a problem with its synaptic weights, and grows neurons when they cannot;
+- the neuron goes to a liquid-state-machine reservoir and is "reinterpreted to become a readout
+  neuron", tuned by STDP and "Topographical Clustering: Gaussian Spatial distribution";
+- the reservoir is enriched with the brain's weights;
+- after each problem, sleep prunes with STDP and simulated annealing while keeping capacity;
+- memory lives in the durable lake.
+
+Its four questions are neuron design (#1), brain-to-reservoir distribution (#2), readout
+optimization (#3), and sleep plus durable memory (#4).
+
+**Disposition.** Judged 2026-09-23 under this plan and POLICIES.md by a six-round Claude/Codex
+cross-critique, with every tree citation reproduced by the orchestrator.
+- **Not a mandate.** POLICIES.md P2's corollary says "a research direction is not a policy";
+  P0 and P8 credit only at measurement. The 2026-09-14 precedent applies instead: a design with
+  falsifiable gates, no implementation claimed.
+- **The coherent reading** is the owner's own choice in the originating chat: grow INTO one
+  recurrent substrate, with the readout a distinct decoder role.
+- **"Reinterpreted as a readout"** is tested separately, as readout self-feedback (version 2).
+- **No weights are copied into a second structure** (P2, P4b). Learned content moves by replayed
+  experience (R2).
+
+**What the tree already has.** Static reads at `a9b5340`; charge is UNVERIFIED unless stated.
+- **The grower is cascade-correlation-shaped and stateless.** `NeurogenesisSelfImprove` with
+  `NGSNN.fit` draws a multi-scale random candidate pool and admits by residual reduction; Eq. 7's
+  consistency is a "preference tiebreak"; every candidate is the same LIF. It is STATELESS per
+  percept: `NGSNN._rates` starts at V = 0 and has no recurrent weight. The persistence-informed
+  oracle beats LIVE 8 of 8 (t 2.97, `evidence/l-parallel-arms.md`).
+- **Unread anatomy.** `cortex/placement.py` gives every grown unit a fractional cortical DEPTH, a
+  layer and an immutable Dale sign, persisted, with no computational reader (Part E: "placement
+  has no reader").
+- **A driverless wiring table.** `cortex/cortical_microcircuit.py` holds the measured
+  Potjans-Diesmann `CONN_PROB` (fixed in-degree); its dormancy row says "NOTHING DRIVES IT".
+- **Measured positions.** `data/h01/h01_c3_graph.npz` holds `xyz_nm` for 14,215 signed somata and
+  70,001 aggregated connected pairs.
+- **Four idle reservoirs.** `reasoning/spiking_ssm.py`, `reservoir_eprop.py`, `sorn.py` and
+  `random_boolean_network.py` have no importer outside `reasoning/`.
+- **A live but self-supervised chat learner.** `cortex/interaction_learning.py::SpikingInteractionLearner`
+  (R-STDP, one neuron per intent) IS live: `Brain.respond` → `LiveBrain.chat` → `learn_turn`. But:
+  - it is SELF-LABELLED from the keyword firewall (`feedback` is never passed);
+  - the reply discards its prediction;
+  - its weights are unpersisted (`delta_sink` is None; T064);
+  - the sleep tick overwrites those weights (rewire, relax) and replays its ring.
+- **Sleep already prunes.** The sleep tick runs R-STDP replay, `StructuralRewiring.rewire`, the
+  Benna-Fusi relax, `AttractorNet` downscale-and-prune (measured 2026-08-05: real removal, no
+  demonstrated benefit) and the earn-your-place prune. No simulated annealing exists in the tree.
+
+**Rows.** Each row is its own arc under A.4, with its red in Part F.
+
+- **G0 / T108 — repair the channel that carries external problems (FIRST).**
+  - (a) An external correction path into `learn_turn(feedback=...)`, with provenance: an
+    authoritative correction vs a superseded self-label.
+  - (b) The learned route consumed by the reply, charged by a neuter-A/B (P3).
+  - (c) The learner's state persisted, with a fresh-process red (P4b). The current checkpoint goes
+    to `_T_STATE` (0x07, superseded-frame exemption) or to T064's 0x09 writer; teaching episodes
+    are typed in `_T_EPISODE` (0x04).
+
+  The repaired learner is the incumbent every later G row must beat. G-R0.
+- **G1 / T109 — the memory-mechanism diagnostic on the live percept stream.**
+
+  FIRST freeze a causal information-and-feedback contract. It states when each observation,
+  own-category, prediction and update becomes available; predictions are cached before their
+  targets; feature width is matched across arms.
+
+  Arms:
+  - (a) the incumbent;
+  - (b) ONE recurrent pool promoted from the four research-tier reservoirs under P2, carrying state.
+    It defines N4/T099's "equally tuned spiking-only LSM" arm;
+  - (c) the same pool reset each percept;
+  - (d) readout self-feedback (version 2) as a detached-input path, and (d0) its disconnected twin;
+  - (e1) sensory history, and (e2) category history;
+  - (f) the persistence oracle: the positive control, with its category advantage disclosed.
+
+  The PRIMARY endpoint is (b) vs (c); it licenses only "carried state helps". The utility
+  contrasts are secondary. Adopting either version is a later confirmatory family, with its
+  corrected bar stated first.
+
+  Pre-register:
+  - the effect threshold, and whether the estimate or its confidence bound must clear it;
+  - a power analysis before fixing S (never below Part F's 8);
+  - chronological, prospective scoring;
+  - repeated-pack and unseen-order results reported separately (the packs are 256-periodic);
+  - the incremental benefit under a within-block time shuffle;
+  - accuracy reported beside prediction entropy.
+
+  G-R1.
+- **G2 / T110 — problems the current weights provably cannot solve.** Delivered as TAUGHT
+  exchanges through G0's repaired channel.
+  - (i) A delayed-cue 2x2 (needs state × needs capacity). Its explicit-history control is proven
+    on the generator before the freeze.
+  - (ii) An inseparable mapping IN THE LEARNER'S REAL CODE: "cat dog sun sky"/A, "cat dog sky
+    sun"/B, "dog cat sun sky"/B, "dog cat sky sun"/A. The four texts occupy distinct buckets (28,
+    41, 31 and 51 of 52) and satisfy phi00 + phi11 = phi01 + phi10 to 1.1e-16 in the learner's
+    PSP-of-rank code, so no linear readout classifies all four (reproduced 2026-09-23). Its
+    controls are a separable twin and a PRESIZED nonlinear hidden layer.
+
+  G-R2.
+- **G3 / T111 — growth where G2's capacity cell licenses it (the owner's #1).**
+  - **Encoding contract first.** The original encoder and spike times are frozen, and added
+    features get a separate latency mapping: widening `n_in` rehashes words and re-ranks the code.
+  - **Trigger.** A MULTICLASS inseparability certificate matched to the learner's argmax: k = 0 on
+    clean data, with an independently checked witness. Contradictory labels are a data diagnosis,
+    not growth.
+  - **ONE grower.** `NeurogenesisSelfImprove`'s candidate lifecycle serves the chat learner as a
+    second consumer only after its equivalence for the percept consumer is shown (R3/T104; no
+    competing engine). Replacing the chat learner with an NG-SNN stays a benchmark.
+  - **Candidates follow the diagnosis.** A state deficit gets memory kinds from
+    `cortex/neuron_zoo.py`. A capacity deficit gets rows trained on the multiclass residual with
+    eligibility traces: train, select on validation, judge on future data.
+  - **Curriculum.** A sequential A-then-B curriculum with matched replay, sleep, modulation and
+    exposure, and learning OFF during evaluation.
+  - **Arms.** The incumbent; presized frozen features; presized features SELECTED at the same
+    search budget; targeted growth; random growth; a sham expansion (identical bookkeeping, zero
+    contribution).
+  - **L2's re-proposal debt** (its §6.5) is discharged only by G2's stream, a stated attribution
+    statistic and an outcome effect size.
+
+  G-R3.
+- **G4 / T112 — the wiring prior (the owner's Gaussian).**
+  - Observed connection probability is fitted from H01 by ELIGIBLE pair counts over distance. A
+    global width (the baseline) is compared with partially pooled pathway widths and a
+    distance-free model, holding out neurons or regions.
+  - The `CONN_PROB` layer × sign prior is read through placement, as its first reader. The L2/3
+    aggregation and L1's inhibitory-only disposition are made explicit.
+  - Downstream, it is tested against degree- and pathway-preserving distance shuffles, measuring
+    silence, saturation, temporal discrimination and cost.
+  - `beta` stays a decoder, never a Dale efferent.
+
+  G-R4.
+- **G5 / T113 — readout variants (the owner's #3).**
+  - The next-category alignment is kept.
+  - A trace-delta challenger runs against `hippocampus/online_readout.py::OnlineReadout`.
+  - "Relational" becomes two separately ablated readings: anatomical (read the L5e/L6e units) and
+    categorical (lateral coupling learned from the confusion matrix).
+  - Unsupervised STDP is allowed only with L1b's co-adaptation controls.
+
+  G-R5.
+- **G6 / T114 — sleep and durable memory (the owner's #4), after R2/R3.**
+  - (a) Measure the incumbent sleep pruners first.
+  - (b) Neuron-mask annealing by JOINT-MASK VALIDATION:
+    - fit and replay on training episodes;
+    - score masks with the readout refit on training data only;
+    - select on validation constraints;
+    - judge the frozen winner once, on untouched future and rare-task tests;
+    - charge search and restart costs.
+
+    It runs against no-prune (the record's ~88% bar), the incumbent, greedy and equal-budget random
+    search. A1-A3 cover lake access only and are not this row.
+  - (c) Learning-load sleep PRESSURE beside the circadian clock, tested by budget-matched
+    rescheduling with a shuffled-pressure arm and a width- and rate-normalized load.
+  - (d) Every new carrier gets a lake tag and a retention label at introduction. Continuation state
+    (carried liquid state, cached feedback) resumes exactly under N3/R-R2's contracts.
+
+  G-R6.
+
+**Order and limits.**
+- **Order:** G0; G1 alongside it; then G2; then G3; then G4 and G5; then G6, after R2/R3. G1
+  needs no chat repair. G3 waits for G2's capacity cell.
+- **No bypass:** nothing here bypasses the phase exits, T073/T074 or FR-025/OD-2.
+- **Register rows:** an INVENTION_REGISTER row lands in each implementing row's own commit (the
+  T096 precedent).
+- **Not claimed: reasoning or fluid intelligence.** A liquid plus a readout is temporal memory and
+  discrimination; the refuted-list LSM entry stands.
+- **Not claimed: a sleep-pruning benefit.** Every pruning strategy on record lost to no pruning.
+- **Not claimed: growth from a unit count.** No unit count is growth until it changes a measured
+  outcome (P0).
+
 ### Phase 4 — Cognition on the substrate (so growth matters) — ranks 3, 5, 6 + US4's instruments
 
 May run in parallel with Phase 3 (O5(b)); MUST precede Phase 5.
@@ -1222,6 +1401,10 @@ Parallel arms: L1a ∥ L3 ∥ the oracle may start at W3 (they do not wait for P
   N5's live wire waits for SC-014's numerical/behavioral/persistence/resource evidence; its
   mutation registration waits for T073/T074 and Phase 5's standing prerequisites. A failed
   hybrid does not delay unrelated work; it receives the recorded null/loss disposition above.
+- **ADDED 2026-09-23:** G0 -> G1 (alongside G0) -> G2 -> G3 -> {G4, G5} -> G6 (T108-T114) is a
+  planned arm. G6 waits for R2/R3 (T103/T104). G1's pool is N4/T099's spiking-only LSM control
+  arm, so G1 precedes N4. None bypasses T073/T074, Phase 4's exit or FR-025/OD-2. The owner sets
+  its priority against the in-flight rows; a failed G row does not delay unrelated work.
 
 | dropped / refused / deferred | disposition | measurement |
 |---|---|---|
@@ -1258,6 +1441,13 @@ no majority-of-seeds rule anywhere.
 | N-R4 | full NS fails the prospective benefit over either equally tuned LSM or diffusion-only control, or regresses past a registered tolerance | both cheaper controls under paired protocol and measured budgets | N4 / T099, PLANNED |
 | N-R5 | disconnecting/shuffling feedback or silencing relevant grown units does not reduce attributed useful task gain | intact feedback and equal-count pre-sized-unit silence | N4 / T099, PLANNED |
 | N-R6 | live path bypasses a gate, resources exceed budget, or an invalid candidate/premature promotion is admitted | compliant live candidate, measured cost control and refused invalid diff | N5 / T100, PLANNED |
+| G-R0 | a corrected misrouted prompt does not improve later routing, neutering the learned router leaves replies unchanged, a fresh process does not reproduce taught routing and the next learning/replay step, or a self-label overwrites an authoritative correction | the uncorrected (self-labelled) incumbent, the neutered router, the uninterrupted twin | G0 / T108, PLANNED |
+| G-R1 | the carried-state pool does not beat its own reset twin at the pre-registered bar, or its advantage survives a within-block time shuffle; REFUSED (blind harness) if the persistence oracle does not beat the incumbent | the reset twin, the shuffled stream, the oracle | G1 / T109, PLANNED |
+| G-R2 | the single-layer incumbent classifies the constructed inseparable set perfectly (the construction is wrong), its separable twin is not learned, the presized nonlinear positive control fails, or the delayed-cue explicit-history control fails on the generator | separable twin, presized nonlinear layer, explicit-history control | G2 / T110, PLANNED |
+| G-R3 | targeted growth does not beat presized-selected features and random growth on the new mapping prospectively, the old mapping regresses past its bound, the gain survives silencing the new units, old codes change, shuffled rewards admit comparably, or the certificate fires on the separable twin | presized frozen and selected features, random growth, sham expansion, shuffled rewards, separable twin | G3 / T111, PLANNED |
+| G-R4 | the fitted spatial model fails held-out neurons or regions, anatomical wiring shows no downstream benefit over its degree- and pathway-preserving shuffle, or the pool goes silent or saturated | the distance-free model, degree-matched shuffles | G4 / T112, PLANNED |
+| G-R5 | the challenger loses to the delta readout, or its gain survives a shuffled teaching signal or neutered coupling | `OnlineReadout` (delta), a shuffled teaching signal, neutered coupling | G5 / T113, PLANNED |
+| G-R6 | the annealed mask breaks a retention bound on untouched tests, its savings vanish after costs, it does not beat greedy or random search at equal budget, pressure gives no budget-matched pressure-specific retention gain, or a restart loses a lesson or diverges | no-prune, incumbent, greedy and random search; clock-only and shuffled-pressure schedules; the uninterrupted twin | G6 / T114, PLANNED |
 | W-R1 | mean `curiosity_mag` (last 200 wake rows, 3000 and 6000 ticks) under W1+W2 does not exceed the time-shuffled-context world, per seed | the same world, context order shuffled | W3 |
 | W-R2 | category entropy not above the W3 baseline **at a NAMED window, PER SEED**, or live next-category accuracy not above its marginal-preserving shuffle (floors reported within-arm). **AMENDED 2026-09-03 on W3's measurement:** entropy is NOT a stable property of a run -- the same three seeds on one world moved in OPPOSITE directions between the first-1000 and last-1000 wake-row windows, spanning 0.0 to 2.6 bits -- so a bar that does not name its window and apply per seed is measuring the window. Pre-registered window = the FIRST 1000 wake rows; the 6000-tick column is the clean one (at 3000 the two windows overlap by ~517 rows). `evidence/w3-world-baselines.md` §4 | the shuffle | W3 |
 | W-R3 (T076) | **the CURRICULUM'S OWN PROPOSED GOAL** unchanged with `coverage_reward` neutered, OR changed when an unrelated scalar of comparable magnitude is neutered. **AMENDED 2026-09-03 before the build:** the original row -- "goal selection unchanged" -- is VACUOUS, measured: on the incumbent path with no W1 at all, neutering `coverage_reward` already changes 18/60 actions and takes `_z_goal` 60/60 -> 0/60. A red satisfiable without the mechanism it tests is not a red for that mechanism (P8 clause 1). The observable is therefore `propose()`'s returned goal cell, which the incumbent cannot produce, and the row now carries the SPECIFICITY control the original lacked | the un-neutered run, AND an unrelated-scalar neuter that must NOT move it | W1 |
@@ -1374,6 +1564,14 @@ FR-036, SC-014 and T096-T100 as planned experimental work. The amendment records
 falsifiable gates; it does not record implementation, a passing measurement, or a consciousness
 finding. Custom architecture is acceptable. Existing phase exits, lake retention and protected
 self-modification/safety approval boundaries retain their authority.
+
+**OWNER AMENDMENT 2026-09-23:** "For SNDL, I propose a new approach into the entire working
+codebase. Every part of the project now need to follow this proposed innovation" (2026-09-22
+CDT). It was judged the same night and entered on the owner's "Add to plan, R0 first". This adds
+the G workstream, FR-041, SC-019 and T108-T114 as planned experimental work. The amendment records
+a design and falsifiable gates. It does not record implementation or a passing measurement, and it
+does not make the design a policy (P2's corollary). Existing phase exits, lake retention and
+protected self-modification/safety approval boundaries retain their authority.
 
 ## PART I — HOW TO RESUME THIS PLAN IN A NEW SESSION
 

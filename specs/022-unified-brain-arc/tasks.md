@@ -11,6 +11,9 @@
 T096-T100 N workstream. New rows remain open; the current Brian2 bridge is partial implementation
 evidence, not completion of the combined program. Preserve existing measured dispositions.
 
+**Owner amendment 2026-09-23:** the final plan's G workstream adds T108-T114, the owner's
+grow-into-the-liquid proposal as gated rows, with G0 = T108 first. All open; nothing built.
+
 ---
 
 ## Phase 1: Setup
@@ -225,6 +228,19 @@ is OPEN; no new behavioral/promotion instrument is claimed already built or regi
 - [ ] T105 [A1] Pre-register the non-destructive annealing workload, hard feasibility constraints, normalized objective, finite seeded search/cooling/neighborhood schedule and amortization horizon (FR-040/SC-018); train/validation/test query traces include cold/warm, rare/old and drift cases. Initial search changes only derived cache/index/access configuration; replay policy and canonical records remain fixed.
 - [ ] T106 [A2] Implement and measure offline annealing against unchanged, LRU/recency, greedy and equal-budget random controls using incumbent lake primitives (FR-040/SC-018); preserve best feasible candidate, reject invalid proposals before stochastic acceptance, and demonstrate constructed acceptance/RNG/constraint faults (A-R1). A-R2 held-out benefit includes search/build cost and all correctness/regression bounds; record a null honestly, never weaken the criterion.
 - [ ] T107 [A3] Validate/promote only earned derived configurations at a reconciled lake watermark (FR-040/SC-018): logical/source-digest equality, restart and interrupted-build/switch tests, atomic recoverable activation, bounded sleep-only execution, persisted lineage/search state and provenance (A-R3). Retain incumbent on failure. Autonomous promotion additionally requires T073/T074, Phase 4's exit and FR-025/OD-2; no canonical deletion, fsync reduction, protected-surface change or neuron-pager revival.
+
+## G workstream (added 2026-09-23)
+
+The final plan's "G workstream" section owns design, controls and order. All rows are OPEN; no
+instrument is claimed built or registered in CI.
+
+- [ ] T108 [G0] Repair the chat intent channel (FR-041/SC-019), each part its own arc: external corrections into `learn_turn(feedback=...)` with provenance; the learned route consumed by the reply, with a neuter-A/B; the learner's state persisted (a 0x07 checkpoint or T064's 0x09 writer) and teaching episodes typed in 0x04, with a fresh-process red (G-R0).
+- [ ] T109 [G1] Freeze the causal information-and-feedback contract, then run the memory-mechanism diagnostic on the live percept stream: the incumbent; one promoted recurrent pool, carried vs reset (the PRIMARY endpoint); readout self-feedback vs its disconnected twin; sensory and category history; the persistence oracle. Power analysis before fixing S; repeated-pack and unseen-order results reported separately (G-R1). The pool is N4/T099's LSM control arm.
+- [ ] T110 [G2] Deliver the delayed-cue 2x2 and the real-code inseparable intent mapping as taught exchanges through T108's channel, with the separable twin, the presized nonlinear positive control and the explicit-history control proven on the generator (G-R2).
+- [ ] T111 [G3] Grow under an encoding contract and a multiclass inseparability certificate, through the one incumbent grower (its equivalence for the percept consumer shown first; an NG-SNN replacement kept as a benchmark), in a matched-schedule A-then-B curriculum against presized frozen and selected features, random growth and a sham expansion (G-R3). This discharges L2's §6.5 debt only with G2's stream.
+- [ ] T112 [G4] Fit H01's observed connection probability (global vs pooled-pathway vs distance-free, with held-out neurons or regions) and read placement through `CONN_PROB`; test downstream against degree- and pathway-preserving distance shuffles (G-R4).
+- [ ] T113 [G5] Readout variants against `OnlineReadout`: a trace-delta rule; anatomical (L5e/L6e) and categorical coupling, separately ablated; unsupervised STDP only with co-adaptation controls (G-R5).
+- [ ] T114 [G6] After T103/T104: measure the incumbent sleep pruners; neuron-mask annealing by joint-mask validation against no-prune, incumbent, greedy and random search at equal budget; budget-matched sleep-pressure rescheduling; tags, retention labels and exact-resume reds for every new carrier (G-R6).
 
 ## Dependencies
 
