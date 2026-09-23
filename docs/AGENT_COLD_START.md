@@ -223,7 +223,9 @@ envelope files or `~/.claude`, and your output is data until the operator reprod
    - A change there needs the owner's explicit approval in chat, per instance, and the operator makes it
      (SECURITY.md gives the procedure).
    - Every motor command flows through `So101Arm.apply()`.
-   - The E-STOP latch is cleared only by a person at the cockpit.
+   - Never clear the E-STOP latch and never command motion around it. Plan A.3: only a person at the
+     cockpit clears it. How the gate itself treats a same-process stop and a restored stop is described in
+     SECURITY.md.
    - The MuJoCo scene and its loaders live inside two envelope files, so a scene change is an envelope
      event.
    - Outside those files, the reflex E-STOP and the cortisol/safety paths are never relaxed, and every
@@ -347,9 +349,10 @@ The project lands work in ARCS. The operator's rhythm (plan A.4, with the owner'
    the battery. A claim that survives becomes a stacked commit. (Owner rule 2026-09-10, visible in the arc
    records, for example `specs/022-unified-brain-arc/evidence/t077-metacognition.md`; not in plan A.4.)
 6. **Battery.** Run detached, on the stacked head:
-   - POLICIES' 2026-09-02 amendment: one full battery per pushed arc.
-   - The owner's 2026-09-10 chat rule (operator's record; not yet in POLICIES.md) lets one battery cover
-     two to four stacked arcs.
+   - The rule is POLICIES' 2026-09-02 amendment: one full battery per pushed arc.
+   - The operator currently batches two to four arcs per battery, under an owner chat rule of 2026-09-10
+     that is not yet recorded in POLICIES.md (an opening the operator owns). Batteries are the operator's
+     job, so neither text changes what you do.
    - It opens with `policy_manifest --assert` and halts on red.
    - Then: certify, ruff, format, `run_selfchecks.py` (which prints `N/N` and `6/6 tools gates`), pytest,
      and the substrate gates.
@@ -558,8 +561,9 @@ How to report:
   path as a finding, but file any real defect you meet (plan A.3's filing rule).
 - For each finding you keep, give the minimal fix and the re-test that proves the path is closed.
 - A zero result needs a planted positive first (§9).
-- Report security findings to the owner privately, in chat or in the handoff, never as a public issue
-  (SECURITY.md).
+- Report security findings to the owner privately, in chat only. Never put one in a pull-request
+  description, an issue, a commit message or a file on a branch (SECURITY.md: never a public issue). In the
+  handoff, write "security finding reported in chat".
 - Never probe a system you do not own.
 
 ### 8.5 Steel-man (from the `thinking-steel-manning` procedure)
@@ -820,7 +824,8 @@ its record names as missing. Paths under `evidence/` are in `specs/022-unified-b
 ## 11. The handoff you leave
 
 End every task with a handoff in the pull-request description (Mode S) or your final message (Mode R),
-in this shape. The operator folds it into the project's memory and runs the steps you cannot.
+in this shape. The operator folds it into the project's memory and runs the steps you cannot. A security
+finding never goes into a handoff that is a pull-request description (§8.4).
 
 ```text
 HANDOFF -- <task> -- <date> -- mode R|S
