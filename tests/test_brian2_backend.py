@@ -145,8 +145,9 @@ def test_checkpoint_json_preserves_float32_state_and_parameters():
 
 
 @pytest.mark.slow
-def test_conjunct_p():
-    result = conjunct_p(seed=0)
+@pytest.mark.parametrize("seed", range(5))
+def test_conjunct_p(seed):
+    result = conjunct_p(seed=seed)
     assert len(result["arms"]) == 27
     for arm in result["arms"]:
         assert arm["spike_mismatches_f32"] == arm["spike_mismatches_f64"] == 0
