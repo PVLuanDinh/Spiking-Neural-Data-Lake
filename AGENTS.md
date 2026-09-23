@@ -1,5 +1,8 @@
 # Agents — Spiking Neural Data Lake
 
+**A clone has no `CLAUDE.md` (it is gitignored): read `docs/AGENT_COLD_START.md` before running anything
+below.**
+
 **Core dependencies:** `torch`, `numpy`, `pyarrow`, `mujoco==3.11.0`, and `brian2==2.10.1`
 (`pyproject.toml`). MuJoCo and Brian2 are pinned for reproducible physics/neural semantics.
 Brian2 is the equation/event reference; Torch executes the parity-checked
@@ -69,11 +72,8 @@ describing a count silently changed it.) **A correction that fell out of re-runn
 gives the clean-clone figure as *54 / 50*; the command count is right and the document count is off
 by one, because **`CLAUDE.md` is in that same `SCOPE` tuple and is likewise gitignored and
 untracked** (0 counted commands). The clean-clone figure is **53 / 50**.
-The ignore rule is now removed. **What that does and does not do, exactly:** it
-makes the file *addable*; it does not track it. Until someone runs `git add AGENTS.md` this page is
-still absent from every clone and still invisible to `citation_guard`, so nothing above may be read
-as gate-verified yet. *(`CLAUDE.md` is the identical defect and is still ignored — escalated, not
-fixed here.)*
+The ignore rule is now removed, and this page has been tracked since `bcad89e` (2026-08-05).
+*(`CLAUDE.md` stays gitignored by owner decision: P4c's one named exception.)*
 
 ## Safety envelope (modify with care + re-test)
 
@@ -96,5 +96,4 @@ fails CI otherwise.
 
 **Determinism:** `random.Random(seed)`, `zlib.crc32()` for persisted hashes, ASCII-only output.
 
-See `CLAUDE.md` (local-only, gitignored) for full onboarding details, layout, and optional extras. A clone
-has none: start at `docs/AGENT_COLD_START.md`.
+See `CLAUDE.md` (local-only, gitignored) for full onboarding details, layout, and optional extras.
