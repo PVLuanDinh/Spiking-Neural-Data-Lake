@@ -1186,7 +1186,8 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   Pre-register:
   - the effect threshold, and whether the estimate or its confidence bound must clear it;
   - S = 8 per Part F, unless the pre-registered power analysis requires more. A larger S states its
-    one-sided critical t (Part F's rule at S − 1 d.f.) in the pre-registration, before any run;
+    one-sided critical t (Part F's 2026-09-23 amendment: α = 0.05 at S − 1 d.f.) in the
+    pre-registration, before any run;
   - chronological, prospective scoring;
   - repeated-pack and unseen-order results reported separately (the packs are 256-periodic);
   - the incremental benefit under a within-block time shuffle;
@@ -1212,8 +1213,9 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     clean data, with an independently checked witness. Contradictory labels are a data diagnosis,
     not growth.
   - **ONE grower.** `NeurogenesisSelfImprove`'s candidate lifecycle serves the chat learner as a
-    second consumer only after its equivalence for the percept consumer is shown (R3/T104; no
-    competing engine). Replacing the chat learner with an NG-SNN stays a benchmark.
+    second consumer only after G3/T111 itself demonstrates the shared lifecycle's equivalence for
+    the percept consumer (no competing engine). Replacing the chat learner with an NG-SNN stays a
+    benchmark.
   - **Candidates follow the diagnosis.** A state deficit gets memory kinds from
     `cortex/neuron_zoo.py`. A capacity deficit gets rows trained on the multiclass residual with
     eligibility traces and no weight transport: train, select on validation, judge on future data.
@@ -1462,7 +1464,9 @@ Parallel arms: L1a ∥ L3 ∥ the oracle may start at W3 (they do not wait for P
 
 Every seed-paired red: S = 8, paired one-sided t > 1.895 (7 d.f., α = 0.05), ties counted, permutation
 false-positive rate printed beside the verdict; no statistic normalized by a quantity a control destroys;
-no majority-of-seeds rule anywhere.
+no majority-of-seeds rule anywhere. *Amended 2026-09-23 (G1): G1 alone may pre-register S > 8 from a
+power analysis, using the one-sided α = 0.05 critical t at S − 1 d.f.; every other seed-paired red stays
+at S = 8.*
 
 | id | red (what makes it fail) | control (not the method) | lives in |
 |---|---|---|---|
