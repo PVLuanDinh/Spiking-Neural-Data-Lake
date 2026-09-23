@@ -384,6 +384,11 @@ def _run_reference_child(payload) -> dict:
         peak_working_set = "ABSENT"
     else:
         peak_working_set = getattr(psutil.Process().memory_info(), "peak_wset", "ABSENT")
+    if sys.platform == "linux":
+        import resource
+
+        # psutil exposes peak_wset on Windows only; Linux reports this child's peak RSS (KiB -> bytes).
+        peak_working_set = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
     return {
         "spikes": np.asarray(spike_trace).tolist(),
         "membranes": np.asarray(membrane_trace).tolist(),
