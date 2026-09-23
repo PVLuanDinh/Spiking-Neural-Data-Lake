@@ -1622,8 +1622,8 @@ protected self-modification/safety approval boundaries retain their authority.
    `thinking-steel-manning`, `thinking-map-territory` — owner 2026-09-03, capability over reload cost); read
    `docs/POLICIES.md`'s binding sections.
 2. Read this file (`specs/022-unified-brain-arc/PLAN-FINAL-2026-09-02.md`). Find the first task whose exit
-   artifact (`evidence/<phase>-exit.md` or the task's evidence file) does not exist on `main`; today that is
-   W3. O4 and O5 are ratified (2026-09-02), so W1 onward needs no further RATIFICATION gate; every task
+   artifact (`evidence/<phase>-exit.md` or the task's evidence file) does not exist on `main`. O4 and O5
+   are ratified (2026-09-02), so W1 onward needs no further RATIFICATION gate; every task
    keeps its own reds, a scene or loader change stays an envelope-approval event, and C2's `reason_out`
    deletion is asked when C2 lands.
 3. Read that phase's incumbents in A.5 and its reds in Part F; run `graph-exists.js` on the capability
