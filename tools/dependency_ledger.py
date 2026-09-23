@@ -521,10 +521,11 @@ _REDS = [
     (
         "CORE-PROSE",
         "drop mujoco from project.description (P7's literally cited defect)",
-        lambda t: t.replace(
-            "torch, numpy and mujoco are core dependencies.",
-            "torch and numpy are core dependencies.",
-        ),
+        # ANCHOR REWRITTEN 2026-09-22 (T101 fold): 045e78e rewrote project.description and the
+        # literal anchor ("torch, numpy and mujoco are core dependencies.") stopped matching, so
+        # --self-check printed BROKEN for this criterion and for CORE-ONLY -- a red in CI lint since
+        # that commit. Anchored now on the description KEY, so appending core packages cannot orphan it.
+        lambda t: re.sub(r'(description = "[^"\n]*?)\bmujoco, ', r"\1", t, count=1),
     ),
     (
         "CORE-PROSE",
@@ -540,9 +541,11 @@ _REDS = [
     (
         "CORE-ONLY",
         "description promotes an extra-only package (pyserial) to core prose",
-        lambda t: t.replace(
-            "torch, numpy and mujoco are core dependencies.",
-            "torch, numpy, mujoco and pyserial are core dependencies.",
+        lambda t: re.sub(
+            r'(description = "[^"\n]*?) are core dependencies\.',
+            r"\1, pyserial are core dependencies.",
+            t,
+            count=1,
         ),
     ),
     (
