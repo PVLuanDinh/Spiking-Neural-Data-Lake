@@ -1153,15 +1153,19 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     authoritative correction vs a superseded self-label.
   - (b) The learned route consumed by the reply, charged by a neuter-A/B (P3).
   - (c) The learner's state persisted, with a fresh-process red (P4b). The current checkpoint goes
-    to `_T_STATE` (0x07, superseded-frame exemption) or to T064's 0x09 writer; teaching episodes
-    are typed in `_T_EPISODE` (0x04).
+    to `_T_STATE` (0x07, superseded-frame exemption). If the 0x09 route is chosen instead, G0
+    completes T064's surviving 0x09 live-writer and restore work, not T064's void unit-block
+    deliverable. Teaching episodes are typed in `_T_EPISODE` (0x04).
 
   The repaired learner is the incumbent every later G row must beat. G-R0.
 - **G1 / T109 — the memory-mechanism diagnostic on the live percept stream.**
 
   FIRST freeze a causal information-and-feedback contract. It states when each observation,
   own-category, prediction and update becomes available; predictions are cached before their
-  targets; feature width is matched across arms.
+  targets; feature width is matched across arms. Before (b) runs, G1 builds and pre-registers a
+  pool-selection benchmark on prospective live-percept prediction, with matched information, tuning
+  budgets and resource bounds; the chosen pool demonstrates the determinism contract and its
+  constructed red.
 
   Arms:
   - (a) the incumbent;
@@ -1176,7 +1180,8 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
 
   The PRIMARY endpoint is (b) vs (c); it licenses only "carried state helps". The utility
   contrasts are secondary. Adopting either version is a later confirmatory family, with its
-  corrected bar stated first.
+  corrected bar stated first. On a null the pool is not adopted, and G4's downstream pool experiment
+  waits for an accepted substrate (G4's data fitting does not).
 
   Pre-register:
   - the effect threshold, and whether the estimate or its confidence bound must clear it;
@@ -1211,7 +1216,7 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     competing engine). Replacing the chat learner with an NG-SNN stays a benchmark.
   - **Candidates follow the diagnosis.** A state deficit gets memory kinds from
     `cortex/neuron_zoo.py`. A capacity deficit gets rows trained on the multiclass residual with
-    eligibility traces: train, select on validation, judge on future data.
+    eligibility traces and no weight transport: train, select on validation, judge on future data.
   - **Curriculum.** A sequential A-then-B curriculum with matched replay, sleep, modulation and
     exposure, and learning OFF during evaluation.
   - **Arms.** The incumbent; presized frozen features; presized features SELECTED at the same
@@ -1230,7 +1235,9 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   - The `CONN_PROB` layer × sign prior is read through placement, as its first reader. The L2/3
     aggregation and L1's inhibitory-only disposition are made explicit.
   - Downstream, it is tested against degree- and pathway-preserving distance shuffles, measuring
-    silence, saturation, temporal discrimination and cost.
+    silence, saturation, temporal discrimination and cost. The layer × sign prior is tested against
+    a degree-, distance- and source-sign-matched twin with the layer and target-sign preferences
+    removed. The downstream pool experiment needs an accepted G1 pool; the data fitting does not.
   - `beta` stays a decoder, never a Dale efferent.
 
   G-R4.
@@ -1240,11 +1247,13 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   - "Relational" becomes two separately ablated readings: anatomical (read grown units placed in
     Layer 5 or Layer 6 with sign +1) and categorical (lateral coupling learned from the confusion
     matrix).
-  - Unsupervised STDP is allowed only with L1b's co-adaptation controls.
+  - Unsupervised STDP is allowed only with L1b's co-adaptation controls: its
+    re-solve-beta-on-every-refit control runs, and its μ-derivation debt (P1) stays open until paid.
 
   G-R5.
 - **G6 / T114 — sleep and durable memory (the owner's #4), after R2/R3.**
-  - (a) Measure the incumbent sleep pruners first.
+  - (a) Measure the incumbent sleep pruners first. Each owes a pre-registered neuter-A/B bar; a
+    miss retires it or requires a justified P3 exemption.
   - (b) Neuron-mask annealing by JOINT-MASK VALIDATION:
     - fit and replay on training episodes;
     - score masks with the readout refit on training data only;
@@ -1255,9 +1264,8 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     It runs against no-prune, the incumbent, greedy and equal-budget random search. A1-A3 cover lake
     access only and are not this row.
   - (c) Learning-load sleep PRESSURE beside the circadian clock, tested by budget-matched
-    rescheduling with a shuffled-pressure arm and a width- and rate-normalized load.
-  - (d) Every new carrier gets a lake tag and a retention label at introduction. Continuation state
-    (carried liquid state, cached feedback) resumes exactly under N3/R-R2's contracts.
+    rescheduling with a shuffled-pressure arm and a width- and rate-normalized load. The pressure
+    trigger is relative to a persisted running baseline, or a P1 exception is shown.
 
   G-R6.
 
@@ -1265,6 +1273,12 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
 - **Order:** G0; G1 alongside it (the session's call on "R0 first", since G1 needs no chat repair);
   then G2; then G3; then G4 and G5; then G6, after R2/R3. G3 waits for G2's capacity cell.
 - **No bypass:** nothing here bypasses the phase exits, T073/T074 or FR-025/OD-2.
+- **Carriers at introduction:** each row lands its own carriers' lake tag, retention label and
+  fresh-process red. Continuation state (carried liquid state, cached feedback) resumes exactly under
+  N3/R-R2's contracts.
+- **P2 on a win:** a confirmed replacement retires the mechanism it supersedes only after P2's
+  equivalence and capability-porting checks; any remaining distinct mechanism gets an explicit
+  disposition.
 - **Register rows:** an INVENTION_REGISTER row lands in each implementing row's own commit
   (FR-031's register practice).
 - **Not claimed: reasoning or fluid intelligence.** A liquid plus a readout is temporal memory and
@@ -1466,12 +1480,12 @@ no majority-of-seeds rule anywhere.
 | N-R5 | disconnecting/shuffling feedback or silencing relevant grown units does not reduce attributed useful task gain | intact feedback and equal-count pre-sized-unit silence | N4 / T099, PLANNED |
 | N-R6 | live path bypasses a gate, resources exceed budget, or an invalid candidate/premature promotion is admitted | compliant live candidate, measured cost control and refused invalid diff | N5 / T100, PLANNED |
 | G-R0 | a corrected misrouted prompt does not improve later routing, neutering the learned router leaves replies unchanged, a fresh process does not reproduce taught routing and the next learning/replay step, or a self-label overwrites an authoritative correction | the uncorrected (self-labelled) incumbent, the neutered router, the uninterrupted twin | G0 / T108, PLANNED |
-| G-R1 | the carried-state pool does not beat its own reset twin at the pre-registered bar, or its advantage survives a within-block time shuffle; REFUSED (blind harness) if the persistence oracle does not beat the incumbent | the reset twin, the shuffled stream, the oracle | G1 / T109, PLANNED |
+| G-R1 | the carried-state pool does not beat its own reset twin at the pre-registered bar, or its advantage survives a within-block time shuffle; REFUSED (blind harness) if the persistence oracle does not beat the incumbent; on a null the pool is not adopted | the reset twin, the shuffled stream, the oracle | G1 / T109, PLANNED |
 | G-R2 | the single-layer incumbent classifies the constructed inseparable set perfectly (the construction is wrong), its separable twin is not learned, the presized nonlinear positive control fails, or the delayed-cue explicit-history control fails on the generator | separable twin, presized nonlinear layer, explicit-history control | G2 / T110, PLANNED |
 | G-R3 | targeted growth does not beat presized-selected features and random growth on the new mapping prospectively, the old mapping regresses past its bound, the gain survives silencing the new units, old codes change, shuffled rewards admit comparably, or the certificate fires on the separable twin | presized frozen and selected features, random growth, sham expansion, shuffled rewards, separable twin | G3 / T111, PLANNED |
-| G-R4 | the fitted spatial model fails held-out neurons or regions, anatomical wiring shows no downstream benefit over its degree- and pathway-preserving shuffle, or the pool goes silent or saturated | the distance-free model, degree-matched shuffles | G4 / T112, PLANNED |
+| G-R4 | the fitted spatial model fails held-out neurons or regions, anatomical wiring shows no downstream benefit over its degree- and pathway-preserving shuffle, the layer × sign prior gives no benefit over its degree-, distance- and source-sign-matched twin with layer and target-sign preferences removed, or the pool goes silent or saturated | the distance-free model, degree-matched shuffles, the layer/sign-removed twin | G4 / T112, PLANNED |
 | G-R5 | the challenger loses to the delta readout, or its gain survives a shuffled teaching signal or neutered coupling | `OnlineReadout` (delta), a shuffled teaching signal, neutered coupling | G5 / T113, PLANNED |
-| G-R6 | the annealed mask breaks a retention bound on untouched tests, its savings vanish after costs, it does not beat greedy or random search at equal budget, pressure gives no budget-matched pressure-specific retention gain, or a restart loses a lesson or diverges | no-prune, incumbent, greedy and random search; clock-only and shuffled-pressure schedules; the uninterrupted twin | G6 / T114, PLANNED |
+| G-R6 | (a) an incumbent pruner misses its pre-registered neuter-A/B bar (it is then retired or given a justified P3 exemption); the annealed mask breaks a retention bound on untouched tests, its savings vanish after costs, it does not beat greedy or random search at equal budget, pressure gives no budget-matched pressure-specific retention gain, or a restart loses a lesson or diverges | no-prune, incumbent, greedy and random search; clock-only and shuffled-pressure schedules; the uninterrupted twin; each incumbent pruner's neutered twin | G6 / T114, PLANNED |
 | W-R1 | mean `curiosity_mag` (last 200 wake rows, 3000 and 6000 ticks) under W1+W2 does not exceed the time-shuffled-context world, per seed | the same world, context order shuffled | W3 |
 | W-R2 | category entropy not above the W3 baseline **at a NAMED window, PER SEED**, or live next-category accuracy not above its marginal-preserving shuffle (floors reported within-arm). **AMENDED 2026-09-03 on W3's measurement:** entropy is NOT a stable property of a run -- the same three seeds on one world moved in OPPOSITE directions between the first-1000 and last-1000 wake-row windows, spanning 0.0 to 2.6 bits -- so a bar that does not name its window and apply per seed is measuring the window. Pre-registered window = the FIRST 1000 wake rows; the 6000-tick column is the clean one (at 3000 the two windows overlap by ~517 rows). `evidence/w3-world-baselines.md` §4 | the shuffle | W3 |
 | W-R3 (T076) | **the CURRICULUM'S OWN PROPOSED GOAL** unchanged with `coverage_reward` neutered, OR changed when an unrelated scalar of comparable magnitude is neutered. **AMENDED 2026-09-03 before the build:** the original row -- "goal selection unchanged" -- is VACUOUS, measured: on the incumbent path with no W1 at all, neutering `coverage_reward` already changes 18/60 actions and takes `_z_goal` 60/60 -> 0/60. A red satisfiable without the mechanism it tests is not a red for that mechanism (P8 clause 1). The observable is therefore `propose()`'s returned goal cell, which the incumbent cannot produce, and the row now carries the SPECIFICITY control the original lacked | the un-neutered run, AND an unrelated-scalar neuter that must NOT move it | W1 |
