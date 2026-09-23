@@ -20,7 +20,7 @@ Two words used throughout: the **owner** is the human who directs the project an
 | written | 2026-09-22, by the operator's orchestrating session; repivoted 2026-09-23 (§1). Verified against the tree at the commit that last changed this file (`git log -1 --format="%h %cs" -- docs/AGENT_COLD_START.md`) |
 | rendered from | `docs/POLICIES.md`; `specs/022-unified-brain-arc/PLAN-FINAL-2026-09-02.md`; `SECURITY.md`; the operator's local reload protocol and dated lessons; the six reasoning procedures the operator re-arms at every session start |
 | adds | no project rule. Most of §4 applies existing rules to an environment that cannot run the battery; the rest are this file's conventions for this account, marked as such |
-| carries | no project state, except two open defects a fresh clone meets first (§3), each with the check that tells you whether it is still open. §5 derives everything else |
+| carries | no project state, except two open defects a fresh clone meets first (§3, each with its check) and §1's dated, re-derivable design baseline. §5 derives everything else |
 | on disagreement | a tracked authority (§2) wins, and this file owes a fix (§12) |
 
 ## Contents
@@ -121,8 +121,8 @@ replay and prune in sleep, with memory in the one lake. Re-derivable facts it re
 - `cortex/placement.py`'s depth, layer and Dale sign have no reader, and `cortical_microcircuit.CONN_PROB` has no
   driver;
 - no reservoir is imported outside `reasoning/`;
-- the chat intent learner (`cortex/interaction_learning.py`) is the one live path where an outside problem reaches
-  synaptic weights, but `Brain.respond` gives it no correction, discards its prediction and persists nothing.
+- the chat intent learner (`cortex/interaction_learning.py`) is a live path by which chat reaches synaptic weights,
+  but `Brain.respond` gives it no correction, discards its prediction and persists nothing.
 
 G0 repairs that channel first.
 
@@ -643,7 +643,7 @@ This section operationalizes P8, plan A.4 step 2 and Part F. Before the first ru
   neuter, or an oracle built at the mechanism's own input contract. Each control runs in the mechanism's
   own regime.
 - **The statistic:**
-  - seed-paired, S = 8, paired one-sided t with a bar of 1.895 (7 d.f., α = 0.05);
+  - seed-paired, paired one-sided t (α = 0.05): bar 1.895 at S = 8; a larger S (power analysis) pre-registers its own;
   - ties counted, and the permutation false-positive rate printed beside the verdict;
   - no majority-of-seeds rule;
   - never normalize by a quantity a control destroys;
@@ -808,7 +808,8 @@ about to do.
 ## 10. The re-proposal guard
 
 A negative result leaves no artifact, so the next session re-proposes it. Each row below was built or
-probed, measured, and refused, deleted or declined. Re-proposing one needs the new regime or instrument
+probed, measured, and refused, deleted or declined; the last five are design-review refusals, not measurements;
+running a G row is not a re-proposal. Re-proposing one needs the new regime or instrument
 its record names as missing. Paths under `evidence/` are in `specs/022-unified-brain-arc/evidence/`.
 
 | proposal | what was measured | record |
@@ -837,11 +838,11 @@ its record names as missing. Paths under `evidence/` are in `specs/022-unified-b
 | reporting a grown-unit count as growth | refused in headlines and in PROVENANCE until the count changes a measured outcome | plan Part E table; `tests/test_units_admitted_wording.py` |
 | wiring a faculty into the one action gate to satisfy P6 | that is the defect P6 names, not a fix for it | POLICIES.md P6 |
 | `torchvision` in core; `spikingjelly` or `cupy` for the kernel | rejected on structural or measured arguments | `pyproject.toml` comments; `docs/POLICIES_EVIDENCE.md` |
-| copying the brain's weights into a separate reservoir | refused: duplicate learned state (P2), a second store (P4b); experience moves by replay (R2) | plan Part D, "G workstream" |
-| a grown neuron "reinterpreted as a readout" | tested only as readout self-feedback against its disconnected twin (G1) | plan Part D, "G workstream" |
-| growth because "the weights cannot solve it" | only on a multiclass inseparability certificate in the learner's real code, under a frozen encoding contract, beating presized and random growth (G2, G3); L2's debt stays open | plan G2/G3; `evidence/l2-grow-on-plateau.md` |
-| simulated annealing to prune neurons | outside A1 to A3 (lake access only); only G6's joint-mask validation, after R2/R3; no pruning benefit is on record | plan G6; `CHANGELOG.md` v3.46 to v3.48 |
-| a hand-picked Gaussian wiring width | the placement is 1-D depth; fit the width from H01's measured positions against distance-shuffled wiring | plan G4 |
+| copying the brain's weights into a separate reservoir | duplicate learned state (P2), a second store (P4b); experience moves by replay (R2) | plan G workstream |
+| a grown neuron "reinterpreted as a readout" | tested only as readout self-feedback against its disconnected twin | plan G1 |
+| growth because "the weights cannot solve it" | only on a multiclass inseparability certificate in the learner's real code, under a frozen encoding contract, beating presized and random growth; L2's debt stays open | plan G2/G3; `evidence/l2-grow-on-plateau.md` |
+| simulated annealing to prune neurons | outside A1 to A3 (lake access only); only G6's joint-mask validation, after R2/R3; no pruning benefit on record | plan G6; `CHANGELOG.md` v3.46 to v3.48 |
+| a hand-picked Gaussian wiring width | placement is 1-D depth; fit the width to H01's measured positions against distance-shuffled wiring | plan G4 |
 
 ## 11. The handoff you leave
 
