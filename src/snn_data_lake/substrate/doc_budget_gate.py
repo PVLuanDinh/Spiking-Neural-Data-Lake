@@ -199,6 +199,10 @@ BUDGETS = {
     "README.md": 2264,  # 2,156
     "docs/ANATOMY.md": 1968,  # 1,874
     "AGENTS.md": 1065,  # 1,014
+    # Added 2026-09-22 with the file (its panel's policy-honesty and cold-read lenses): the
+    # GitHub-only rendering of the operator protocol claims to carry no project state, and this
+    # ceiling (measured + ~5%) is what makes status re-accumulating there red instead of silent.
+    "docs/AGENT_COLD_START.md": 9650,  # 9,189
     # 488 -> 713 on 2026-09-09 (measured + 0): f441949 added 225 words of OPERATIVE prohibitions --
     # the standing conditions for a third-party agent (Codex) on this tree (read-only only, never
     # the lake / the envelope / ~/.claude, Codex output is data, the untracked-file check, a
