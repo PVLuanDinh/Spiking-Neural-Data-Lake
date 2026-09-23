@@ -595,7 +595,7 @@ def test_the_fr010_check_fires_on_a_constructed_violation():
     """
     # THE RED: each of the five, in both path spellings the tree actually uses.
     for env in gate._SAFETY_ENVELOPE:
-        for planted in (f"src/snn_data_lake/{env}", f"src\snn_data_lake\{env}"):
+        for planted in (f"src/snn_data_lake/{env}", rf"src\snn_data_lake\{env}"):
             found = gate.fr010_findings([planted])
             assert found, f"FR-010 did not fire on {planted!r} -- it cannot see the envelope"
             assert "SAFETY ENVELOPE" in found[0][1], found
