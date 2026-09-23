@@ -3,7 +3,8 @@
 Prepared 2026-09-20 for a professor in AI and robotics; revised 2026-09-22 so the study treats SNDL
 as a general-purpose learner rather than a robot controller. Robotics remains one task family among
 several. Assumes a 15-minute presentation. This is a research proposal, not a report of completed
-experiments. See the [assessment](RESEARCH_ASSESSMENT.md) for the evidence available today.
+experiments. See the [assessment](RESEARCH_ASSESSMENT.md) for the evidence available today, and
+section 10 for the project's plan of record as of 2026-09-22.
 
 ## 1. The proposition to take into the meeting
 
@@ -373,7 +374,8 @@ this study sets out to change.
 ## 6. Eight-week sequence
 
 This schedule assumes access to a compatible machine and working task adapters. It is an estimate,
-not a commitment that an accepted paper will result in eight weeks.
+not a commitment that an accepted paper will result in eight weeks. Week 4's restart arm depends on
+plan rows R1-R2 (section 10); if they have not landed, the restart claim is scoped out.
 
 | Week | Work | Concrete exit artifact |
 |---|---|---|
@@ -463,3 +465,110 @@ satisfied.
 Bring the README, the current-state assessment, the rehearsed component demos, and this plan. The
 immediate next step is to freeze the first experiment with the professor, not to promise a
 general-purpose brain before measuring one.
+
+## 10. The project's plan of record (recorded 2026-09-22)
+
+This study sits inside one ordered program, the
+[plan of record](../specs/022-unified-brain-arc/PLAN-FINAL-2026-09-02.md): ratified 2026-09-02 and
+extended by a combined amendment on 2026-09-22. This section records that plan as it stands at
+commit `9976af7`, so the whole program and the paper's place in it can be discussed together. The
+plan owns order, gates, and pre-registered failure conditions; [`tasks.md`](../specs/022-unified-brain-arc/tasks.md)
+owns task status. Where either disagrees with this section, they win.
+
+### How work lands
+
+Every plan row follows the same rhythm, and the study's own experiment inherits it:
+
+1. Pre-register the protocol and a reachable red, an input that must make the success criterion fail,
+   before the first run.
+2. Build, then measure in isolated processes, with a control that is not the method itself.
+3. Review with a three-lens adversarial panel; refuters judge each finding and its proposed fix
+   separately.
+4. Send a closing report to an independent reviewer for refutation.
+5. Run one full test battery on the stacked commits, record its result as the last commit, and push.
+
+A null result is applied rather than defended, and a mechanism that measures nothing is deleted. Of
+the plan's first two completed phases, more mechanism was removed than kept.
+
+### The architecture today (measured at `9976af7`)
+
+| Layer | What exists | Measured size or status |
+|---|---|---|
+| Anatomy | Modules grouped by brain region, joined by a typed, signed, delayed connectome | 409 source modules, 283 registered across 18 regions; 43 connectome nodes, 91 edges, 14 named loops |
+| Spiking substrate | LIF, ALIF, AdEx, Izhikevich, SRM, and dendritic neuron models; a partitioned kernel tick; an e-prop kernel | Spike trains byte-identical across thread counts at a fixed partition count, checked by the determinism gate |
+| Framework contract | Brian2 2.10.1 as the equation and event reference; a Torch bridge executes it while the long-lived process stays free-threaded | Accepted for its amended contract on 27 parameter arms and five seeds (plan row B1 below) |
+| Learning | Local rules only on the live path: e-prop encoders for event vision and audio, an online readout rule, local plasticity | Gradient-claim and weight-transport gates check part of the rule; backpropagation stays in training experiments |
+| Memory | One append-only lake, `brain_lake.bin`, with tagged record classes and an immortal class that no eviction path may remove | 10 record tags; growth state survives a restart; the interaction replay ring does not yet (rows R2 and T093) |
+| Drive and surface | An always-on daemon running the wake/sleep cycle, and one cockpit for chat, state, arm controls, and the E-STOP | The daemon relaunches on each new commit |
+| Safety envelope | Five `brainstem/` files; every motor command passes one gate | Hash-checked on every battery; changed only with the owner's approval |
+| Instruments | Policy gates, module self-checks, and unit tests, run as one battery per pushed change set | Last battery (2026-09-22): 361 of 361 self-checks, 1,450 tests passed, 88.48% coverage, all 16 substrate gates green. GitHub CI has not run since 2026-08-20, so that local battery is the only full gate |
+
+### The planned data flow (combined amendment, 2026-09-22)
+
+```text
+observations / interactions / outcomes
+    -> versioned records in brain_lake.bin
+    -> verified recall + bounded sleep replay
+    -> incumbent local synaptic learning -> held-out earned growth
+    -> persisted learned state -> fresh-process continuation
+
+Brian2 equation/event contract -> spiking substrate -> learned spiking readout
+                                     ^       |
+                                     |       v
+                              bounded delayed NS feedback (N, experimental)
+
+measured lake workload -> offline annealing -> validated derived cache/index plan
+                                         -> guarded activation or keep incumbent
+```
+
+The lake is memory, not a learner: retrieval supplies evidence or a replayable example, and the
+neural learner changes weights. A new unit must earn retention on untouched data, never on a
+replayed training example. The fluid reservoir supplies candidate temporal features, not answers.
+Annealing searches storage and access configurations, never truth, labels, or safety rules.
+
+### Program status at `9976af7`
+
+| Part | Goal | Status |
+|---|---|---|
+| Phase 0 | Owner unblocks | Done 2026-09-02 |
+| Phase 1: the world | Show that the brain's stimulus carries learnable structure before wiring anything to it | Closed 2026-09-05 ([exit](../specs/022-unified-brain-arc/evidence/w-exit.md)): the world-red instrument landed; a goal curriculum was retired on its own measurement; context latents were refused on measurement |
+| Phase 2: learning in the substrate | Synaptic learning first, growth only on plateau | Closed 2026-09-07 ([exit](../specs/022-unified-brain-arc/evidence/l-exit.md)): seven rows landed, two were deleted on their nulls, one was refused on measurement. The surviving learning mechanism is an online readout rule; nothing at any width reaches the persistence floor |
+| Phase 3: a substrate that scales | Lake-resident sparse units, the H01 connectome prior, paging | Exit certified 2026-09-10 ([exit](../specs/022-unified-brain-arc/evidence/s2-exit.md)) with all three named items negative: no prior separation, paging deleted after missing its latency bound, region charge at 8 of 16. Unit blocks (T064) and the width derivation (T065) remain open |
+| Phase 4: cognition on the substrate | A reasoning battery and consciousness-science instruments, each with a dissociation control | Open. Landed: the everyday battery (0 of 20), metacognition, agency, temporal-binding, report-order, and social-cognition instruments, and the conclusion protocol that fixes what each instrument may and may not claim. Remaining: the attention schema (T078) and the phase exit |
+| Phase 5: self-improvement | An internal proposer, an evaluator cascade, and an archive of variants | Open and waiting on Phase 4 (T072-T076, T083); the self-build route fires and has kept zero modifications |
+| Phase 6: polish | Cockpit sweep, human-scale derivation, consistency sweep, final run-through | Open (T084-T087) |
+| Scope rows (2026-09-06) | X1 capability target, L5 immortal class, C5 conclusion protocol | C5 done; X1 (T088) and L5 (T089) open, with their gates already in the battery |
+| B: Brian2 framework (T101) | Brian2 as the equation and event reference | Accepted 2026-09-22 for the amended contract; the original experiment missed its precision bar, and the precision guarantee covers the registered traces only. The migration has no before-deletion comparison against the retired snntorch layer (an open item) |
+| R: durable recall becomes retained learning (T102-T104) | Bounded-cost recall, restart-safe typed replay, replay composed with earned growth | Planned, open |
+| A: lake-access annealing (T105-T107) | Offline search over derived cache and index configurations, never canonical records | Planned, open |
+| N: Navier-Stokes coupled to a liquid state machine (T096-T100) | An experimental fluid reservoir feeding spiking readouts | Planned, unbuilt |
+
+### Execution order
+
+1. B1 accepts the Brian2 contract (done); R1 audits and bounds historical recall and may run alongside it.
+2. R2 adds restart-safe typed sleep replay; R3 tests its contribution to the incumbent learner and
+   grower. No end-to-end continuity claim precedes both restart proofs.
+3. N1-N5 keep their Phase 2 and Phase 4 prerequisites; B1 precedes N2, and an N4 recall arm waits
+   for R1-R3.
+4. A1 follows R1; A2 evaluates copies offline; A3 activates only a proven candidate after the
+   affected R2/R3 continuation tests.
+
+The historical critical path continues through Phase 4's reasoning chain (next: C1a), then Phase 5,
+then polish. None of the new workstreams bypasses Phase 4's exit or the evaluator gates for
+autonomous promotion.
+
+### Where this study sits in the plan
+
+| What the study needs | Plan rows it depends on | Status |
+|---|---|---|
+| A local spiking learner with a pinned neuron contract | B1 (T101) | Accepted for the amended contract |
+| Earned growth (H1, H3) | Phase 2's growth gate; R3 (T104) composes replay with earned growth | The gate exists; R3 is open. Phase 2 found width nearly exhausted where the brain currently sits |
+| Durable replay and the restart arm (H4) | R1-R2 (T102-T103); the continuity census (T093) | Open. Until they land, run the in-process replay arm and scope the restart claim out (section 4) |
+| Human comparisons | X1 (T088), the capability registry | Gate exists; registry row open |
+| The meaning of "never forgets" | L5 (T089), the immortal class | Gate exists; row open |
+| The reasoning probe | C0, the everyday battery | Landed; 0 of 20 on five seeds |
+| Task adapters, splits, floors, dense baselines, and the comparison harness | None yet | New work: it becomes its own pre-registered plan row, lands inside the governed tree like any other build, and keeps its backpropagation baselines unreachable from the live path |
+
+The study is therefore a new row in this program rather than a separate project: it inherits the
+rhythm above, adds the benchmark harness the plan does not yet have, and depends on the R workstream
+for its restart and durable-replay claims.
