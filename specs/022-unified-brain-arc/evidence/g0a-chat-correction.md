@@ -120,6 +120,9 @@ The command: `python -m snn_data_lake.cortex.interaction_learning --g0-campaign 
 repo). Both runs: a clean tree, one common head, 40 of 40 runs valid, about 6-7 minutes. A second instrument
 recomputed M1 from the raw R4 routes, the teaching labels, the ring audits and R-a1's statistics without
 `g0_verdict`, and agreed with it on every number; the re-run at `38d9db7` reproduced the first run exactly.
+Both runs' 40 per-run JSON files and verdicts, and that second instrument (`recheck.py <run-dir>`), are archived
+outside the repository under the memory store, `memory/archive/g0a-2026-09-24/`; re-scoring both archived runs
+there reproduced every number above (Codex closing report, 2026-09-24).
 
 **Deviations from section 2, folded from the G0(a) panel (`38d9db7`) and disclosed here.**
 - The authority map has NO bound: section 2.1's "bounded map" let a self-label override a correction after 4096
