@@ -148,3 +148,11 @@ CONSEQUENCE of a single-category window, not independent corroboration of one. N
 criteria stop being reachable under mutation is deleted, not weakened (P8 clause 5) -- the W1/W2 revert
 below is the EXPERIMENT's null, not this invention's. If no channel separates W1 from its time-shuffled
 control, W-R1 fails and W1/W2 revert.
+
+## 10. Authoritative-label provenance for the chat intent learner (G0(a), T108)
+Adopted parts: the incumbent R-STDP learner and its sleep-replay ring (`SpikingInteractionLearner`). INVENTED: a
+person's correction is AUTHORITATIVE for its normalized utterance; a later self-label on it is SUPERSEDED, and the
+ring's older entries for it are REWRITTEN. RED: each part's neutered twin (B1: 192 post-correction wake self-labels;
+B2: 295 post-correction replayed ones). CONTROL: the uncorrected incumbent (C) and a one-shot correction (B0).
+ATTRIBUTION: supersession carries routing (B1 0.750 vs A 1.0); the rewrite guards only the teaching record (B2 routes
+1.0). NULL: a part whose red stops being reachable is deleted. `evidence/g0a-chat-correction.md`.
