@@ -177,3 +177,14 @@ from an uninterrupted twin on the tree, routes, post-step weights or replay draw
 stale ring after a post-checkpoint correction. CONTROL: no restore (N), one omission per carrier, and a skipped
 reconciliation (O_rec). SCOPE: this corpus, seeds 0-7, a same-code restart. PASS 2026-09-24.
 `evidence/g0c-learner-persists.md`, section 3.
+
+## 13. The live grower replayed from one recording, its gate fed a causally lagged signal (G1(a), T109)
+Adopted parts: the grower (`NeurogenesisSelfImprove`), its growth gate (`GrowthStop`, now fed through one shared
+function) and the L-rows' feed idiom. INVENTED: record the live stream once (acquisition attempts, the gate's |LP| at
+every delivery and sleep tick, per-refit fingerprints) and replay arms offline through channel-restricted feature maps;
+the gate reads the |LP| recorded at the last delivery, because the live value after a delivery carries the next
+frame's surprise; one decision per event, cached before its target. RED: a replay that differs from the in-brain
+grower event for event; a suffix mutation that changes a prediction at or before its cut; a missing or disconnected
+|LP| read that is not refused. CONTROL: the in-brain run itself, a leaking predictor, a forbidden-channel map, an
+unseeded-noise arm. SCOPE: pilot seeds 100-103, 2,400 ticks. PASS (harness validation) 2026-09-24.
+`evidence/g1a-causal-contract.md`, section 3.
