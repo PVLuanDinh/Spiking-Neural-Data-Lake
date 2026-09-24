@@ -2,7 +2,7 @@
 
 Row: plan Part D "G workstream", G0 (b); red G-R0's router clause, "neutering the learned router leaves replies
 unchanged" (Part F); FR-041, SC-019. Part (a) is `g0a-chat-correction.md`; part (c), the persisted learner, follows.
-Status: PRE-REGISTERED. Section 2 is frozen at the commit that lands this file; section 3 will record the runs and
+Status: RESULTS RECORDED (2026-09-24). Section 2 is frozen at the commit that landed this file; section 3 records the runs and
 every deviation from section 2.
 
 ## 1. Territory, read at HEAD `a9bf9fe` before the design
@@ -211,3 +211,52 @@ contamination). A run where one does is INVALID.
   "what is two plus two", "recommend a good book", "describe the color blue".
 - FAMILIAR (8): "what can you do", "is that right", "what is that", "can you tell me", "what is there",
   "are you there", "you are right", "that is real".
+
+## 3. Results (2026-09-24, at `2316a64`)
+
+The command: `python -m snn_data_lake.cortex.interaction_learning --g0b-campaign <out-dir>` (out-dir outside the
+repo). 40 of 40 runs valid, on a clean tree and one head, in about 6 minutes. A second instrument, written from this
+file's tables rather than the module's code, recomputed every score, statistic and bar from the raw reply texts and
+agreed with `g0b_verdict` on every verdict. Both are archived outside the repository under the memory store,
+`memory/archive/g0b-2026-09-24/` (`campaign-1-2316a64/`, `recheck_b.py`).
+
+**Verdict: PASS.**
+
+| arm | USEFUL of 20, per seed 0-7 | MISFIRE, per seed |
+|---|---|---|
+| A (method) | 10, 12, 9, 10, 11, 10, 10, 9 | 0 on every seed |
+| N (incumbent) | 1 on every seed (the greeting line) | 0 on every seed |
+| S (neutered router) | 3, 2, 2, 1, 3, 1, 1, 3 | 0 on every seed |
+| D (discarded) | 1 on every seed | 0 on every seed |
+| U (direct answer) | 10, 9, 9, 9, 11, 10, 10, 10 | 3, 4, 3, 2, 3, 1, 2, 3 |
+
+- **R-b1a, A against S: PASS.** d = 0.35, 0.5, 0.35, 0.45, 0.4, 0.45, 0.45, 0.3; mean 0.406, sd 0.068, t 16.9;
+  sign-flip p = 1/256. The conditional rejection fraction is 11/256 = 0.043.
+- **R-b1b, A against N: PASS.** d = 0.45, 0.55, 0.4, 0.45, 0.5, 0.45, 0.45, 0.4; mean 0.456, sd 0.050, t 26.0;
+  sign-flip p = 1/256. The conditional rejection fraction is 9/256 = 0.035.
+- **R-b2: PASS.** D against N reads RED (every d = 0), and D against S reads RED (mean d -0.05). D's reply texts
+  equal N's on every turn of every seed.
+- **R-b3: PASS.** The pytest file (`tests/test_g0b_route_consumption.py`) passes at `2316a64`.
+- **R-b4: PASS.** A's misfires exceed N's on no seed. U exceeds them on every seed, by 1 to 4, which is its
+  reachable red. Over all 8 seeds U misfired 21 times: 11 on NOVEL lines, 8 on FAMILIAR lines, and 2 on held-out
+  lines it answered with the wrong intent.
+
+**Reported, not barred.**
+- **Unnecessary questions (A).** A asked on 1 or 2 of the 10 NOVEL lines per seed and on 0 to 2 of the 8 FAMILIAR
+  lines; every one was declined. It asked the wrong topic on 3 in-scope lines over all 8 seeds. The shuffled router
+  S asked the wrong topic on 2 to 6 in-scope lines per seed.
+- **USEFUL by subset (A).** 4 or 5 of the 6 consumable CORRECTED lines; 3 to 6 of the 6 consumable HELD-OUT lines;
+  the greeting line on every seed. The 4 ARM lines are never consumable, so they score 0 in every arm.
+- **Route drift inside the pass.** On 21 of the 96 consumable in-scope line-turns in A, the route named the true
+  intent before the pass but not at the line's own turn. Each earlier unclaimed line in the pass is self-labelled
+  GREET by the incumbent teaching, which G0(a)'s authority does not prevent for paraphrases. The same pressure
+  explains why A asked far fewer out-of-scope questions than the static probes of section 1.4 predicted.
+- **Teaching.** A logged 49 to 51 wake teaching events in the dialogue against N's 38; the difference is the person's
+  yes and no turns, each self-labelled GREET.
+- **The second instrument.** Every confirmed route was a USEFUL answer. The one USEFUL line per seed without a
+  confirmation is the greeting line, which the incumbent answers at turn 1.
+
+**Deviations from section 2.** None in the protocol. One point of implementation is disclosed:
+- A line counts as reaching the fallback, for the N validity check, when turn 1's route is HOLD or fluid ("Gf"). The
+  builder's first version asked `converse` a second time for this, which ran the reasoning bridge twice per line;
+  the orchestrator removed that before the commit.
