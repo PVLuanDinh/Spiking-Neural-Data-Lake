@@ -903,6 +903,14 @@ def _conversation_generalization_selfcheck():
 
 
 def main():
+    # The self-check's LiveBrains carry workspace-enabled arms, which journal IMMORTAL coalition
+    # records into the lake `home()` resolves -- the LIVE lake for a bare `python -m` run. The same
+    # guard as brainstem/autonomous_loop.py::main (T031): setdefault keeps run_selfchecks.py's
+    # isolated NORD_HOME and sandboxes only a bare invocation; inside main() on purpose.
+    import os as _os
+    import tempfile as _tempfile
+
+    _os.environ.setdefault("NORD_HOME", _tempfile.mkdtemp(prefix="ixn_selfcheck_"))
     acc_chance, acc_learned, acc_control = _spiking_task_selfcheck()
     acc_before, acc_after = _live_brain_demo()
     base_fw_acc, gen_before, gen_ss, gen_fb, gen_ctl, blind_ss, blind_fb = (
