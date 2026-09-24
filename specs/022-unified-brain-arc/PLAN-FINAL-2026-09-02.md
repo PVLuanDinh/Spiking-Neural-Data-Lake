@@ -75,10 +75,12 @@ retired, and every claim ships with a control and a red that can fail.
   validation; one writer at a time; envelope work never delegated) and writes the read-only closing report:
   `gpt-6-luna` for mechanical edits and checks, `gpt-6-sol` for builds and folds, `gpt-6-astra` for design
   reads, lenses, refuters, debates and closing reports. A spawned Claude worker passes **`model: 'opus'`**
-  explicitly (omitting `model:` inherits). Measured 2026-09-24: this host's Codex login (a ChatGPT account)
-  rejects `gpt-6-sol` and `gpt-6-luna` (HTTP 400), so every Codex call runs `gpt-6-astra` at the lowest
-  practical effort (low for mechanical edits, medium for builds, lenses and closing reports, high for a design
-  read); re-probe with a one-line `codex exec --model gpt-6-sol` before assuming that changed.
+  explicitly (omitting `model:` inherits). Codex runs on the Codex desktop app's engine, on the ChatGPT
+  subscription only (owner 2026-09-24: "Use octopus to use the codex app on my desktop with the monthly
+  subscription only"), dispatched through claude-octopus. Measured 2026-09-24 on one account within one
+  minute: that engine runs all three GPT-6 models on the subscription, while the older npm Codex CLI returned
+  HTTP 400 for Sol and Luna -- the gate is the client version, not the account. The machine-local launchers
+  are named in the operator's protocol.
 - **One change per commit; one full battery per pushed ARC, on its stacked head** (owner rule 2026-09-02,
   POLICIES' "Gated + reversible" amendment). Every commit names the battery that verified the head it was
   pushed under; a red on the head is attributed per stage per commit, never by whole re-runs.
