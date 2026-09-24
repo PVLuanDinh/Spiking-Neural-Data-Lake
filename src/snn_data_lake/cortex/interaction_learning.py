@@ -126,12 +126,22 @@ def _encode_state(obj):
     raise ValueError(f"unsupported checkpoint value: {cls.__module__}.{cls.__qualname__}")
 
 
+#: G0(c): the two classes the plasticity stack builds LAZILY, with the attribute sets their constructors assign.
+#: Explicit rather than parsed from source at restore, so a frozen build (which ships no source) still restores;
+#: tests/test_g0c_learner_persists.py pins each set to the constructor's own assignments, so a class change reds.
+_G0C_LAZY_ATTRS = {
+    "snn_data_lake.plasticity.bcm_plasticity.BCMNeuron": frozenset(
+        {"lr", "tau_theta", "theta", "w"}
+    ),
+    "snn_data_lake.plasticity.benna_fusi.BennaFusiSynapse": frozenset(
+        {"c", "dt", "g", "n", "u", "w_max"}
+    ),
+}
+
+
 def _merge_state(target, saved):
     """Validate and stage the entire tree before mutating any existing instance."""
-    import ast
     import importlib
-    import inspect
-    import textwrap
 
     pending, seen = [], {}
 
@@ -159,31 +169,11 @@ def _merge_state(target, saved):
                 raise ValueError("malformed checkpoint class or attributes")
             if fresh is None:
                 # The only absent instances in this protocol are lazy BCM/cascade cells.
-                allowed = {
-                    "snn_data_lake.plasticity.bcm_plasticity.BCMNeuron",
-                    "snn_data_lake.plasticity.benna_fusi.BennaFusiSynapse",
-                }
-                if name not in allowed:
+                if name not in _G0C_LAZY_ATTRS:
                     raise ValueError("unknown lazy checkpoint class")
                 module, _, qualname = name.rpartition(".")
                 cls = getattr(importlib.import_module(module), qualname)
-                try:
-                    source = ast.parse(textwrap.dedent(inspect.getsource(cls.__init__)))
-                except (
-                    OSError,
-                    TypeError,
-                ) as exc:  # a frozen build ships no source: refuse visibly
-                    raise ValueError(
-                        f"cannot verify lazy checkpoint class {name}: no source"
-                    ) from exc
-                expected = {
-                    n.attr
-                    for n in ast.walk(source)
-                    if isinstance(n, ast.Attribute)
-                    and isinstance(n.ctx, ast.Store)
-                    and isinstance(n.value, ast.Name)
-                    and n.value.id == "self"
-                }
+                expected = set(_G0C_LAZY_ATTRS[name])
                 fresh = cls.__new__(cls)
                 old = {}
             else:

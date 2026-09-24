@@ -334,23 +334,58 @@ def test_teaching_sessions_count_up_per_restart_without_the_wall_clock():
     assert sessions == ["1", "2"]
 
 
-def test_lazy_class_without_source_is_a_visible_refusal(monkeypatch):
+def test_lazy_classes_restore_without_source(monkeypatch):
     import inspect
 
     trained = learner()
     for _ in range(3):
         trained.learn_turn("what is your goal", None, feedback="GOAL")
     saved = trained.state_dict()
-    fresh = learner()
-    before = fresh.state_dict()
 
     def no_source(obj):
         raise OSError("no source in a frozen build")
 
     monkeypatch.setattr(inspect, "getsource", no_source)
-    with pytest.raises(ValueError, match="no source"):
-        fresh.load_state_dict(saved)
-    assert fresh.state_dict() == before
+    fresh = learner()
+    fresh.load_state_dict(saved)
+    assert fresh.state_dict() == saved
+
+
+def test_lazy_schema_matches_the_constructors():
+    import ast
+    import importlib
+    import inspect
+    import textwrap
+
+    for name, attrs in ixn._G0C_LAZY_ATTRS.items():
+        module, _, qualname = name.rpartition(".")
+        cls = getattr(importlib.import_module(module), qualname)
+        tree = ast.parse(textwrap.dedent(inspect.getsource(cls.__init__)))
+        assigned = {
+            n.attr
+            for n in ast.walk(tree)
+            if isinstance(n, ast.Attribute)
+            and isinstance(n.ctx, ast.Store)
+            and isinstance(n.value, ast.Name)
+            and n.value.id == "self"
+        }
+        assert assigned == set(attrs), name
+
+
+def test_checkpoint_read_failure_leaves_a_working_brain(monkeypatch, capsys):
+    import snn_data_lake.substrate.home as home_mod
+
+    real = home_mod.load_state
+
+    def failing(name, default=None):
+        if name == "interaction_learner.json":
+            raise OSError("constructed checkpoint read failure")
+        return real(name, default)
+
+    monkeypatch.setattr(home_mod, "load_state", failing)
+    with brain() as b:
+        assert b.brain.route("what is your goal") in _IXN_INTENTS
+    assert "OSError: constructed checkpoint read failure" in capsys.readouterr().err
 
 
 def test_teaching_event_write_failure_does_not_break_a_correction(monkeypatch, capsys):

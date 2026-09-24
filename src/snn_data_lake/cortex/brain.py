@@ -340,12 +340,12 @@ class Brain:
 
                 # A brain that cannot read its past must still start: ANY failure below leaves the learner
                 # fresh (or the authority empty) and says so, never an exception out of construction.
-                checkpoint = load_state("interaction_learner.json")
-                if checkpoint is not None:
-                    try:
+                try:  # the read is inside the handler too: a failing lake read is a refusal, not a crash
+                    checkpoint = load_state("interaction_learner.json")
+                    if checkpoint is not None:
                         self.brain._ixn.load_state_dict(checkpoint)
-                    except Exception as exc:  # noqa: BLE001 - reported, and the learner stays fresh
-                        self._report_ixn_refusal("restore refused; learner stays fresh", exc)
+                except Exception as exc:  # noqa: BLE001 - reported, and the learner stays fresh
+                    self._report_ixn_refusal("restore refused; learner stays fresh", exc)
                 try:
                     events = load_episodes(kinds=("teach",))
                     self._teach_session = str(
