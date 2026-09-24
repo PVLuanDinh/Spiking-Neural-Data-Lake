@@ -256,6 +256,16 @@ agreed with `g0b_verdict` on every verdict. Both are archived outside the reposi
 - **The second instrument.** Every confirmed route was a USEFUL answer. The one USEFUL line per seed without a
   confirmation is the greeting line, which the incumbent answers at turn 1.
 
+**Correction to section 2.2's wording on S (G0(b) panel, policy lens).** Section 2.2 says S leaves "the
+distribution of proposals" unchanged. It does not, exactly. S reads each partner's route live from S's own learner,
+and that learner's state drifts away from A's, because the two arms send different yes and no turns. Measured:
+A asked 11 to 13 clarifications per seed (mean 11.75); S asked 6 to 14 (mean 10.25), and fewer on 7 of 8 seeds.
+So R-b1a shows that pairing each line with its own learned route beats pairing it with another line's route, in a
+learner running the same machinery. It is not a comparison at a fixed proposal rate. The size of the gap: S earned
+0 to 0.18 USEFUL answers per question it asked (mean 0.09). At that rate, asking as often as A would add at most 0.83
+of an answer on any seed (seed 2), a shift in d of 0.042, against that seed's d of 0.35 and a smallest d of 0.30. The
+verdict stands; the stronger, fixed-rate isolation is not claimed.
+
 **Deviations from section 2.** None in the protocol. One point of implementation is disclosed:
 - A line counts as reaching the fallback, for the N validity check, when turn 1's route is HOLD or fluid ("Gf"). The
   builder's first version asked `converse` a second time for this, which ran the reasoning bridge twice per line;
