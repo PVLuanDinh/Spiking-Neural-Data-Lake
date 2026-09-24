@@ -2,9 +2,9 @@
 
 Row: plan Part D "G workstream", G1 / T109 ("FIRST freeze a causal information-and-feedback contract"); red G-R1
 (Part F); FR-041, SC-019. Part (b), the pool-selection benchmark, and part (c), the confirmatory diagnostic, are later
-arcs with their own pre-registrations. Status: PRE-REGISTERED. Two Codex design reads (23 and 10 findings) were
-folded before the freeze (section 2.10). Section 2 is frozen at the commit that lands this file; section 3 will record the runs and
-every deviation from section 2.
+arcs with their own pre-registrations. Status: RESULTS RECORDED (2026-09-24). Two Codex design reads (23 and
+10 findings) were folded before the freeze (section 2.10). Section 2 is frozen at the commit that landed this file
+(`51b2b98`); section 3 records the runs and every deviation from section 2.
 
 ## 1. Territory, read at HEAD `71e2e4c` before the design
 
@@ -277,3 +277,84 @@ rule, the `consume_surprise` site). All 10 are folded: S1 -> 2.2's keyword const
 per-refit fingerprints; S5 -> 2.4's ledger count and its two reds; S6 -> R-a1's witnessed reds; S7 -> R-a3's fixture
 and its per-segment disclosure; S8 -> 1.3 and 2.3's record-derived segments; S9 -> R-a1b and 2.9; S10 -> 1.3. The
 second review is archived as `archive/g1a-2026-09-24/design_read2.txt`.
+
+## 3. Results (2026-09-24, every artifact at head `520eff9`, `dirty` False)
+
+### 3.1 The build and its verification
+
+- **Built** by Codex `gpt-6-sol` through claude-octopus on the desktop app's engine, from a bounded brief. The first
+  dispatch wrote nothing: octopus's default curated persona is read-only and its injected tool policy forbade edits
+  inside a `workspace-write` sandbox. The launcher now drops that text for writing tasks. Commits: `516ad40` (the shared
+  gate verdict), `f29f9f5` (`predict_next`), `8fa5b0d` (the harness), `520eff9` (the campaign fix below).
+- **The orchestrator's review fixed three deviations before the pilot:** segments now come from the frames' pointer
+  passes, as section 2.3 says (the build counted deliveries, and a reflex tick acquires without delivering); the
+  CAUSAL |LP| before the first delivery is a recorded None, as section 2.1 implies (the build treated it as missing);
+  and campaign children now run the module by its own name (the first pilot's 8 recordings died in 2 s on
+  `python -m __main__`).
+- **R-a0 PASS.** `probe_prepost.py` on seeds 900 and 901 printed JSON byte-identical to the references taken at
+  `71e2e4c`. The pinning test (the shared function against the old inline loop on a poisoned row, with a dropped row
+  caught), 16 fast tests, ruff and the module's self-check are green.
+
+### 3.2 The pilot (seeds 100-103, 2,400 ticks each)
+
+- **Campaign.** 160 of 160 jobs OK in 453 s: 4 incumbent recordings, 4 in-brain (f64) recordings and 152 replays. The
+  checks took 126 s. Each seed gave 1,183-1,190 wake percepts, 60 completed refits and 4-7 categories (`onehot_32`
+  never refused). The segments, derived from the acquisition records, are warm-up 256, repeated-canonical 463,
+  unseen-order 256 and repeated-permuted 207-214 on every seed. Every delivery after x_1 came from a successful
+  acquisition of both modalities.
+- **Checks, on every seed:**
+  - R-a1 PASS: the per-event predictions (1,183-1,190), the 60 per-refit fingerprints, the gate verdicts, the counters
+    and the trajectory were identical. Both reds diverged: the count-preserving category change, and the LP-sensitive
+    fixture, which flipped a verdict.
+  - R-a1b PASS: the in-brain (f64) run's complete event sequence equals the incumbent recording, and its predictions
+    and per-refit fingerprints equal the LIVE replay of (f64). Its reds fired.
+  - R-a2 PASS: every scored arm's predictions up to each of the three cuts were unchanged by the suffix mutation, and
+    (leak) changed at every cut.
+  - R-a2b PASS: (forbidden) raised.
+  - R-a3 PASS: the planted predictors scored exactly, and every scored segment had transitions.
+  - R-a4 PASS: fresh-process twins on seed 100 were identical in phi, learner fingerprints and predictions (seeds
+    101-103 were also checked with in-process twins), and (noise) differed in phi.
+- **The second instrument.** A re-scorer written from sections 2.3 and 2.5, not from the module
+  (`archive/g1a-2026-09-24/pilot/recheck_g1a.py`), reproduced the segments and every n, accuracy and persistence
+  value: 0 disagreements over 4 seeds x 8 arms x 3 segments. It also reproduced R-a1's raw equality.
+
+### 3.3 Pilot readings (exploratory; they license no claim)
+
+Accuracy on repeated-canonical / unseen-order / repeated-permuted:
+
+| arm | seed 100 | seed 101 | seed 102 | seed 103 |
+|---|---|---|---|---|
+| (a) | .970 / .977 / .967 | .778 / .926 / .519 | .903 / .934 / .884 | .890 / .965 / .919 |
+| (f64) | .983 / .980 / .986 | .987 / .957 / .822 | .970 / .949 / .942 | .898 / .984 / .962 |
+| (d) | .965 / .945 / .976 | .924 / .820 / .584 | .652 / .855 / .821 | .879 / .965 / .962 |
+| (d0) | .909 / .734 / .766 | .940 / .910 / .519 | .758 / .922 / .923 | .927 / .961 / .962 |
+| (e1) | .903 / .863 / .957 | .890 / .754 / .776 | .933 / .906 / .768 | .898 / .957 / .856 |
+| (e1-0) | .976 / .980 / .976 | .596 / .703 / .491 | .937 / .934 / .928 | .937 / .969 / .933 |
+| (e2) | .888 / .727 / .976 | .948 / .641 / .598 | .890 / .945 / .884 | .918 / .973 / .962 |
+| (e2-0) | .894 / .828 / .986 | .857 / .957 / .808 | .940 / .941 / .913 | .879 / .973 / .967 |
+| persistence | .987 / .984 / .986 | .996 / .973 / .907 | .974 / .969 / .961 | .970 / .984 / .981 |
+
+- **The oracle (f64) exceeds the incumbent (a) in 12 of 12 seed x segment cells.** G-R1's early REFUSED indication
+  does not fire on the pilot streams.
+- **Coverage** is 1.000 for every arm and segment. The prior-fallback rate reaches 0.43 for (e1-0) and 0.34 for (a),
+  and is 0 for (f64). Mean prediction entropy is 1.17-1.29 bits, against 1.26 for the true categories.
+- **Observed for G1(b) and G1(c)'s design (not findings):**
+  - no arm reaches persistence consistently;
+  - the learner's seed-to-seed variance is large: (a) reads 0.519 against a persistence of 0.907 in one of seed
+    101's segments;
+  - zero padding alone moves the learner: (a) 0.778 against (e1-0) 0.596 on seed 101, so every contrast needs its
+    width-matched control, as pre-registered;
+  - the history arms against their null controls are mixed in sign across seeds.
+
+### 3.4 Deviations from section 2
+
+1. R-a2 ran on all four pilot seeds. Section 2.6 names every scored arm; section 2.7's matrix named seed 100 only.
+   A superset.
+2. R-a4's fresh-process twins ran on seed 100, as registered; seeds 101-103 were additionally checked in-process.
+3. R-a3's off-by-one red is built as persistence-shifted predictions under the correct scorer, on the fixture, which
+   is equivalent to shifting the scorer by one. R-a0's red is a dropped-row input in the pinning test; a function that
+   dropped a row would fail the same equality.
+4. Section 3.1's three orchestrator fixes. Two implement sections 2.3 and 2.1 as written; the third was a bug that
+   blocked the campaign.
+5. Disposition: every check passed, so G1(b), the pool-selection benchmark, is next. The pilot recordings validate the
+   harness; they are neither selection data nor confirmatory data.
