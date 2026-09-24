@@ -86,6 +86,10 @@ PROTOTYPES_STATE = "growing_learners.json"
 
 #: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
+    "Brain._flush_interaction_learner": (
+        "NOT_A_RULE",
+        "Serializes existing continuation state into the lake; computes no learning update.",
+    ),
     "Brain._tom_update": (
         "NOT_A_RULE",
         "updates the user-BELIEF model from this turn statement. It maintains a symbolic model of "
@@ -235,6 +239,10 @@ class Brain:
         self.refit_every = int(refit_every)
         self._self_history_path = self_history_path
         self._closed = False
+        # G0(c) teaching-event session: a per-lake counter set at restore (one past the highest session in the
+        # lake's teaching events), never the wall clock -- this module promises no wall-clock input.
+        self._teach_session = "0"
+        self._teach_seq = 0
         # ---- DURABLE PERSISTENCE (default ON): a plain Brain() remembers across reboots via the shared
         # home (KnowledgeLog + JSON state blobs). NORD_PERSIST=0 is the OFF-SWITCH (the gates run it so
         # selfchecks/pytest stay byte-identical + hermetic); an explicit persist=False also forces off.
@@ -327,6 +335,34 @@ class Brain:
             )
             if self._plasticity is not None:
                 self.brain._ixn.stack = self._plasticity
+            if self._persist:
+                from snn_data_lake.substrate.home import load_episodes, load_state
+
+                # A brain that cannot read its past must still start: ANY failure below leaves the learner
+                # fresh (or the authority empty) and says so, never an exception out of construction.
+                checkpoint = load_state("interaction_learner.json")
+                if checkpoint is not None:
+                    try:
+                        self.brain._ixn.load_state_dict(checkpoint)
+                    except Exception as exc:  # noqa: BLE001 - reported, and the learner stays fresh
+                        self._report_ixn_refusal("restore refused; learner stays fresh", exc)
+                try:
+                    events = load_episodes(kinds=("teach",))
+                    self._teach_session = str(
+                        1
+                        + max(
+                            (
+                                int(e["session"])
+                                for e in events
+                                if str(e.get("session", "")).isdigit()
+                            ),
+                            default=0,
+                        )
+                    )
+                    self.brain._ixn.rebuild_authority(events)
+                except Exception as exc:  # noqa: BLE001 - reported; the authority stays as built
+                    self._report_ixn_refusal("authority rebuild refused", exc)
+                self.brain._ixn.teach_sink = self._record_teaching
 
         # ---- the evolving SELF-MODEL + introspective narrator (pure stdlib) ----
         # The brain tracks its OWN signals over time and describes itself FRESHLY (no fixed template).
@@ -3846,6 +3882,7 @@ class Brain:
         # auto-apply). No-op by default; arm-safety firewalled; guarded so it never breaks the wake path.
         if self._nights % SELFBUILD_EVERY == 0:
             self._maybe_autonomous_self_build()
+        self._flush_interaction_learner()
 
     # ---- public API ----------------------------------------------------------------------------
     def tick(self):
@@ -5148,6 +5185,55 @@ class Brain:
         except Exception:
             return False
 
+    def _record_teaching(self, key, intent):
+        """Append authoritative teaching immediately, independently of the checkpoint."""
+        if not self._persist:
+            return False
+        from snn_data_lake.substrate.home import save_episode
+
+        self._teach_seq += 1
+        event = {
+            "kind": "teach",
+            "event_id": f"{self._teach_session}-{self._teach_seq}",
+            "stream": "chat",
+            "session": self._teach_session,
+            "seq": str(self._teach_seq),
+            "source": key,
+            "target": intent,
+            "provenance": "authoritative",
+            "encoder": "text_features n_in=52",
+            "schema": "g0c.v1",
+            "valid": "1",
+        }
+        try:
+            return save_episode(event)
+        except Exception as exc:  # noqa: BLE001 - a lake write failure must not break a correction
+            self._report_ixn_refusal("teaching event not written", exc)
+            return False
+
+    def _flush_interaction_learner(self):
+        """Save exact continuation at close and at the end of a completed night."""
+        if not self._persist or getattr(self.brain, "_ixn", None) is None:
+            return False
+        from snn_data_lake.substrate.home import save_state
+
+        try:
+            return bool(save_state("interaction_learner.json", self.brain._ixn.state_dict()))
+        except Exception as exc:  # noqa: BLE001 - reported; the previous checkpoint stands
+            self._report_ixn_refusal("save refused", exc)
+            return False
+
+    @staticmethod
+    def _report_ixn_refusal(what, exc):
+        import sys
+
+        print(
+            f"interaction learner {what}: {type(exc).__name__}: {exc}".encode(
+                "ascii", "backslashreplace"
+            ).decode("ascii"),
+            file=sys.stderr,
+        )
+
     def close(self):
         """Release the brain's lake working memory, durably save the acquired language organ, flush
         the grown substrate, and release the self-model handle. Idempotent guard."""
@@ -5169,6 +5255,7 @@ class Brain:
         self._flush_growth()
         self._flush_prototypes()  # rank 2b
         self._flush_coverage()  # T038
+        self._flush_interaction_learner()
         try:
             wm = self.brain.arm.lake_wm
             if wm is not None:

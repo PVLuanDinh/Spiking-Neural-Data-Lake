@@ -66,12 +66,186 @@ t_post < n_in, a spike-TIMING knob, so the membrane read keys on shared words, n
 
 import math
 import random
+import threading
 import zlib
+from collections import deque
 
 from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
 from snn_data_lake.cortex.rank_order_coding import rank_code
 
 _REPLAY_CAP = 64  # sleep-replay ring size (T058): a memory bound, not a behaviour threshold
+
+
+def _state_attrs(obj):
+    """Declared runtime wiring stays owned by the freshly constructed instance."""
+    excluded = set()
+    if type(obj).__name__ == "SpikingInteractionLearner":
+        excluded = {"_authority", "teach_sink"}
+    elif type(obj).__name__ == "RuleComposer":
+        excluded = {"_specs", "_names"}
+    return {
+        k: v
+        for k, v in vars(obj).items()
+        if k not in excluded
+        and not isinstance(v, (type(threading.Lock()), type(threading.RLock())))
+    }
+
+
+def _encode_state(obj):
+    """G0(c) instance state, with exact floats and no undeclared silent omissions."""
+    if obj is None or type(obj) in (bool, int, str):
+        return obj
+    if type(obj) is float:
+        if not math.isfinite(obj):
+            raise ValueError("non-finite checkpoint float")
+        return obj
+    if type(obj) is list:
+        return [_encode_state(v) for v in obj]
+    if type(obj) is dict:
+        if any(type(k) is not str for k in obj):
+            raise ValueError("checkpoint dict keys must be strings")
+        return {"__kind__": "dict", "items": {k: _encode_state(v) for k, v in obj.items()}}
+    if type(obj) in (tuple, set, deque):
+        values = [_encode_state(v) for v in obj]
+        if type(obj) is set:
+            import json
+
+            values.sort(key=lambda v: json.dumps(v, sort_keys=True))
+        result = {"__kind__": type(obj).__name__, "items": values}
+        if type(obj) is deque:
+            result["maxlen"] = obj.maxlen
+        return result
+    if type(obj) is random.Random:
+        return {"__kind__": "random", "state": _encode_state(obj.getstate())}
+    cls = type(obj)
+    if cls.__module__.startswith("snn_data_lake.") and hasattr(obj, "__dict__"):
+        return {
+            "__cls__": f"{cls.__module__}.{cls.__qualname__}",
+            "attrs": {k: _encode_state(v) for k, v in _state_attrs(obj).items()},
+        }
+    raise ValueError(f"unsupported checkpoint value: {cls.__module__}.{cls.__qualname__}")
+
+
+def _merge_state(target, saved):
+    """Validate and stage the entire tree before mutating any existing instance."""
+    import ast
+    import importlib
+    import inspect
+    import textwrap
+
+    pending, seen = [], {}
+
+    def stage(fresh, value):
+        if value is None or type(value) in (bool, int, str, float):
+            if type(value) is float and not math.isfinite(value):
+                raise ValueError("non-finite checkpoint float")
+            if fresh is not None and value is not None and type(fresh) is not type(value):
+                raise ValueError("checkpoint value type mismatch")
+            if value is None and fresh is not None and hasattr(fresh, "__dict__"):
+                raise ValueError("checkpoint object replaced by null")
+            return value
+        if type(value) is list:
+            if fresh is not None and type(fresh) is not list:
+                raise ValueError("checkpoint list type mismatch")
+            old = fresh or []
+            return [stage(old[i] if i < len(old) else None, v) for i, v in enumerate(value)]
+        if type(value) is not dict:
+            raise ValueError("malformed checkpoint node")
+        if "__cls__" in value:
+            if set(value) != {"__cls__", "attrs"} or type(value["attrs"]) is not dict:
+                raise ValueError("malformed checkpoint object")
+            name, attrs = value["__cls__"], value["attrs"]
+            if type(name) is not str or any(type(k) is not str for k in attrs):
+                raise ValueError("malformed checkpoint class or attributes")
+            if fresh is None:
+                # The only absent instances in this protocol are lazy BCM/cascade cells.
+                allowed = {
+                    "snn_data_lake.plasticity.bcm_plasticity.BCMNeuron",
+                    "snn_data_lake.plasticity.benna_fusi.BennaFusiSynapse",
+                }
+                if name not in allowed:
+                    raise ValueError("unknown lazy checkpoint class")
+                module, _, qualname = name.rpartition(".")
+                cls = getattr(importlib.import_module(module), qualname)
+                try:
+                    source = ast.parse(textwrap.dedent(inspect.getsource(cls.__init__)))
+                except (
+                    OSError,
+                    TypeError,
+                ) as exc:  # a frozen build ships no source: refuse visibly
+                    raise ValueError(
+                        f"cannot verify lazy checkpoint class {name}: no source"
+                    ) from exc
+                expected = {
+                    n.attr
+                    for n in ast.walk(source)
+                    if isinstance(n, ast.Attribute)
+                    and isinstance(n.ctx, ast.Store)
+                    and isinstance(n.value, ast.Name)
+                    and n.value.id == "self"
+                }
+                fresh = cls.__new__(cls)
+                old = {}
+            else:
+                cls = type(fresh)
+                if name != f"{cls.__module__}.{cls.__qualname__}":
+                    raise ValueError("checkpoint class mismatch")
+                old = _state_attrs(fresh)
+                expected = set(old)
+            if set(attrs) != expected:
+                raise ValueError(f"checkpoint attribute mismatch: {name}")
+            if id(fresh) in seen:
+                if seen[id(fresh)] != value:
+                    raise ValueError("conflicting checkpoint shared reference")
+                return fresh
+            seen[id(fresh)] = value
+            new = {k: stage(old.get(k), v) for k, v in attrs.items()}
+            pending.append((fresh, new))
+            return fresh
+        kind = value.get("__kind__")
+        if type(kind) is not str:
+            raise ValueError("malformed checkpoint container kind")
+        fields = {"__kind__", "state"} if kind == "random" else {"__kind__", "items"}
+        if kind == "deque":
+            fields.add("maxlen")
+        if set(value) != fields:
+            raise ValueError("malformed checkpoint container")
+        if kind == "random":
+            if fresh is not None and type(fresh) is not random.Random:
+                raise ValueError("checkpoint random type mismatch")
+            state = stage(None, value["state"])
+            probe = random.Random(0)
+            try:
+                probe.setstate(state)
+            except (TypeError, ValueError, IndexError, OverflowError) as exc:
+                raise ValueError("invalid checkpoint RNG state") from exc
+            result = fresh if fresh is not None else probe
+            pending.append((result, state))
+            return result
+        types = {"dict": dict, "tuple": tuple, "set": set, "deque": deque}
+        if kind not in types or (fresh is not None and type(fresh) is not types[kind]):
+            raise ValueError("checkpoint container type mismatch")
+        values = value["items"]
+        if kind == "dict":
+            if type(values) is not dict or any(type(k) is not str for k in values):
+                raise ValueError("checkpoint dict keys must be strings")
+            return {k: stage((fresh or {}).get(k), v) for k, v in values.items()}
+        if type(values) is not list:
+            raise ValueError("checkpoint sequence must be a list")
+        old = list(fresh) if fresh is not None and kind != "set" else []
+        items = [stage(old[i] if i < len(old) else None, v) for i, v in enumerate(values)]
+        try:
+            return deque(items, maxlen=value["maxlen"]) if kind == "deque" else types[kind](items)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("invalid checkpoint sequence") from exc
+
+    result = stage(target, saved)
+    for obj, attrs in pending:
+        if type(obj) is random.Random:
+            obj.setstate(attrs)
+        else:
+            obj.__dict__.update(attrs)
+    return result
 
 
 def _utterance_key(utterance):
@@ -169,6 +343,7 @@ class SpikingInteractionLearner:
         # retained for the process lifetime. A later self-label on the same utterance is superseded
         # by it, and its older ring entries are rewritten to it.
         self._authority = {}
+        self.teach_sink = None
         # Instrument/test handles for G0(a)'s neutered twins; both default ON.
         self.provenance_supersede = True
         self.provenance_rewrite = True
@@ -418,6 +593,8 @@ class SpikingInteractionLearner:
             if feedback not in self.responses:
                 raise ValueError(f"unknown response label: {feedback!r}")
             self._authority[key] = feedback
+            if self.teach_sink is not None:
+                self.teach_sink(key, feedback)
             if self.provenance_rewrite:
                 self._replay[:] = [
                     (code, feedback if old_key == key else label, old_key)
@@ -437,6 +614,35 @@ class SpikingInteractionLearner:
     def provenance(self, utterance):
         """Read the utterance's teaching provenance without learning or changing it."""
         return "authoritative" if _utterance_key(utterance) in self._authority else "self"
+
+    def state_dict(self):
+        """Continuation only: authoritative teaching has its own lake event source."""
+        return {"schema": "g0c.v1", "tree": _encode_state(self)}
+
+    def load_state_dict(self, d):
+        """A refused checkpoint leaves every live object untouched."""
+        if type(d) is not dict or set(d) != {"schema", "tree"} or d["schema"] != "g0c.v1":
+            raise ValueError("unsupported interaction learner checkpoint schema")
+        if type(d["tree"]) is not dict or "__cls__" not in d["tree"]:
+            raise ValueError("missing interaction learner checkpoint tree")
+        _merge_state(self, d["tree"])
+
+    def rebuild_authority(self, events):
+        """Latest teaching per session/sequence wins; reconcile without drawing RNG."""
+        latest = {}
+        for event in events:
+            if event.get("kind") != "teach" or event.get("valid") != "1":
+                continue
+            key, intent = event["source"], event["target"]
+            if intent not in self.responses:
+                raise ValueError("unknown authoritative response label")
+            order = (int(event["session"]), int(event["seq"]))
+            if key not in latest or order >= latest[key][0]:
+                latest[key] = (order, intent)
+        self._authority = {key: row[1] for key, row in latest.items()}
+        self._replay[:] = [
+            (code, self._authority.get(key, label), key) for code, label, key in self._replay
+        ]
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1648,6 +1854,389 @@ def g0b_campaign(out_dir, workers=4):
     return verdict
 
 
+G0C_ROLES = (
+    "P1",
+    "P1n",
+    "P1x",
+    "T",
+    "Tn",
+    "A",
+    "N",
+    "O_w",
+    "O_stack",
+    "O_rng",
+    "O_ring",
+    "O_auth",
+    "A_night",
+    "A_x",
+    "O_rec",
+)
+_G0C_RECORDS = ("tree_before", "routes_before", "weights_after", "draws", "routes_after")
+
+
+def _g0c_walk(value):
+    """Independent live-object audit; deliberately does not call the checkpoint codec."""
+    if value is None or type(value) in (str, bool, int, float):
+        return value
+    if isinstance(value, random.Random):
+        return {"random_state": _g0c_walk(value.getstate())}
+    if isinstance(value, dict):
+        return {k: _g0c_walk(v) for k, v in sorted(value.items())}
+    if isinstance(value, (list, tuple, set, deque)):
+        rows = [_g0c_walk(v) for v in value]
+        if isinstance(value, set):
+            import json
+
+            rows.sort(key=lambda v: json.dumps(v, sort_keys=True))
+        return {
+            "sequence": type(value).__name__,
+            "values": rows,
+            "maxlen": value.maxlen if isinstance(value, deque) else None,
+        }
+    if hasattr(value, "__dict__") and type(value).__module__.startswith("snn_data_lake."):
+        fields = {}
+        for name, child in vars(value).items():
+            if isinstance(child, (type(threading.Lock()), type(threading.RLock()))):
+                continue
+            if type(value).__name__ == "RuleComposer" and name in ("_specs", "_names"):
+                continue
+            if type(value).__name__ == "SpikingInteractionLearner" and name in ("teach_sink",):
+                continue
+            fields[name] = _g0c_walk(child)
+        return {"class": f"{type(value).__module__}.{type(value).__qualname__}", "fields": fields}
+    raise ValueError(f"instrument cannot walk {type(value).__name__}")
+
+
+def _g0c_schedule(brain, seed):
+    """The frozen G0(a) arm-A schedule, leaving both older instruments unchanged."""
+    from snn_data_lake.cortex.live_brain import _reply_to_intent
+
+    rng = random.Random(seed)
+    order = _conv_flat(_CONV_TRAIN)
+    for _ in range(G0_WARMUP_PASSES):
+        rng.shuffle(order)
+        for utterance, _ in order:
+            brain.respond(utterance, human=False)
+    firewall = {u: _reply_to_intent(brain.brain.converse(u, human=False)) for u in G0_FROZEN_FW}
+    if firewall != G0_FROZEN_FW:
+        raise ValueError("firewall differs from frozen G0 schedule")
+    for utterance, _ in G0_CORRECTED:
+        brain.respond(utterance, human=False)
+    for utterance, intent in G0_CORRECTED:
+        brain.correct(utterance, intent)
+    for _ in range(G0_ROUNDS):
+        for utterance, _ in G0_CORRECTED:
+            brain.respond(utterance, human=False)
+        for _ in range(G0_TICKS_PER_ROUND):
+            brain.tick()
+
+
+def _g0c_process(role, seed, home, out):
+    """One isolated process. Faults exist here only, never as production switches."""
+    import copy
+    import json
+    import os
+    import subprocess
+    import time
+    from pathlib import Path
+    from unittest.mock import patch
+
+    from snn_data_lake.cortex.brain import Brain, make_brain
+    from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner as Learner
+    from snn_data_lake.substrate.home import load_state
+
+    if role not in G0C_ROLES or Path(os.environ["NORD_HOME"]).resolve() != Path(home).resolve():
+        raise ValueError("G0(c) requires an isolated process home and a known role")
+    root = Path(__file__).resolve().parents[3]
+    result = {"seed": seed, "role": role, "invalid_reasons": []}
+    result["head"] = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=root, text=True
+    ).strip()
+    result["dirty"] = bool(
+        subprocess.check_output(["git", "status", "--porcelain"], cwd=root, text=True).strip()
+    )
+    restore, rebuild = Learner.load_state_dict, Learner.rebuild_authority
+
+    def omitted_restore(learner, state):
+        if role == "N":
+            return
+        state = copy.deepcopy(state)
+        attrs = state["tree"]["attrs"]
+        fresh = learner.state_dict()["tree"]["attrs"]
+        carrier = {"O_stack": "stack", "O_rng": "rng", "O_ring": "_replay"}.get(role)
+        if carrier:
+            attrs[carrier] = fresh[carrier]
+        if role == "O_w":
+            for neuron, cold in zip(attrs["neurons"], fresh["neurons"], strict=True):
+                neuron["attrs"]["w"] = cold["attrs"]["w"]
+        restore(learner, state)
+
+    def omitted_authority(learner, events):
+        if role in ("N", "O_auth"):
+            return
+        ring = list(learner._replay)
+        rebuild(learner, events)
+        if role == "O_rec":
+            learner._replay[:] = ring
+
+    saves = []
+    flush = Brain._flush_interaction_learner
+
+    def timed_flush(brain):
+        # P1 isolates the close hook: the frozen schedule itself includes nights,
+        # whose earlier identical checkpoint would otherwise mask a missing close save.
+        if role == "P1" and not brain._closed:
+            return False
+        start = time.perf_counter()
+        written = flush(brain)
+        saves.append(
+            {
+                "seconds": time.perf_counter() - start,
+                "written": written,
+                "boundary": "close" if brain._closed else "night",
+            }
+        )
+        return written
+
+    def write_result():
+        state = load_state("interaction_learner.json")
+        result["checkpoint_bytes"] = (
+            len(json.dumps(state, ensure_ascii=True, sort_keys=True).encode("ascii"))
+            if state
+            else 0
+        )
+        result["saves"] = saves
+        result["append_floods"] = getattr(brain, "_append_floods", None)
+        if role.startswith("P1"):
+            boundary = "close" if role == "P1" else "night"
+            if not saves or not saves[-1]["written"] or saves[-1]["boundary"] != boundary:
+                result["invalid_reasons"].append(f"no checkpoint written by the {boundary} hook")
+        if result["dirty"]:
+            result["invalid_reasons"].append("dirty working tree")
+        result["valid"] = not result["invalid_reasons"]
+        Path(out).write_text(
+            json.dumps(result, ensure_ascii=True, allow_nan=False), encoding="utf-8"
+        )
+
+    with (
+        patch.object(Learner, "load_state_dict", omitted_restore),
+        patch.object(Learner, "rebuild_authority", omitted_authority),
+        patch.object(Brain, "_flush_interaction_learner", timed_flush),
+    ):
+        brain = make_brain(seed=seed, persist=role not in ("T", "Tn"))
+        try:
+            learner = brain.brain._ixn
+            if role in ("P1", "P1n", "P1x", "T", "Tn"):
+                _g0c_schedule(brain, seed)
+            if role in ("P1n", "P1x", "Tn"):
+                nights = brain._nights
+                ticks = 0
+                while brain._nights == nights:
+                    brain.tick()
+                    ticks += 1
+                    if ticks > 4 * brain.day_period:
+                        raise ValueError("no completed night within four periods")
+                result["night_ticks"] = ticks
+            if role == "P1x":
+                key = _utterance_key(G0_CORRECTED[1][0])
+                result["checkpoint_ring_labels"] = [
+                    label for _, label, k in learner._replay if k == key
+                ]
+                if not result["checkpoint_ring_labels"]:
+                    result["invalid_reasons"].append("checkpoint ring lacks re-corrected utterance")
+                brain.correct(G0_CORRECTED[1][0], "MEMORY")
+            if role.startswith("P1"):
+                if role == "P1":
+                    brain.close()
+                write_result()
+                if role != "P1":
+                    os._exit(0)
+                return
+            result["tree_before"] = _g0c_walk(learner)
+            result["routes_before"] = [learner.route_text(u) for u, _ in _conv_flat(_CONV_TEST)]
+            key = _utterance_key(G0_CORRECTED[1][0])
+            result["recorrection"] = {
+                "key": key,
+                "intent": "MEMORY",
+                "authority": learner._authority.get(key),
+                "ring": [label for _, label, k in learner._replay if k == key],
+            }
+            learner.learn_turn(G0_CORRECTED[0][0], "GREET")
+            draws = []
+            original = learner.interact
+
+            def observe(stimulus, feedback, _record=True, _key=None):
+                if not _record:
+                    draws.append([_key, feedback])
+                return original(stimulus, feedback, _record=_record, _key=_key)
+
+            with patch.object(learner, "interact", observe):
+                learner.replay(k=8)
+            result["weights_after"] = learner.weights()
+            result["draws"] = draws
+            result["routes_after"] = [learner.route_text(u) for u, _ in _conv_flat(_CONV_TEST)]
+            write_result()
+        finally:
+            brain.close()
+
+
+def _g0c_comparisons(arms):
+    """Exact five-record comparisons and the separate post-checkpoint correction rule."""
+    comparisons = {}
+    for arm in ("A", "A_night", "N", "O_w", "O_stack", "O_rng", "O_ring", "O_auth"):
+        twin = "Tn" if arm == "A_night" else "T"
+        parts = {
+            name: name in arms.get(arm, {})
+            and name in arms.get(twin, {})
+            and arms[arm][name] == arms[twin][name]
+            for name in _G0C_RECORDS
+        }
+        comparisons[arm] = {"parts": parts, "R-c1": all(parts.values())}
+    for arm in ("A_x", "O_rec"):
+        rec = arms.get(arm, {}).get("recorrection", {})
+        reachable = bool(arms.get("P1x", {}).get("checkpoint_ring_labels"))
+        parts = {
+            "authority": bool(rec) and rec["authority"] == rec["intent"],
+            "ring": bool(rec.get("ring")) and all(v == rec["intent"] for v in rec["ring"]),
+            "draws": "draws" in arms.get(arm, {})
+            and all(
+                label == rec.get("intent")
+                for key, label in arms[arm]["draws"]
+                if key == rec.get("key")
+            ),
+        }
+        comparisons[arm] = {
+            "parts": parts,
+            "reachable": reachable,
+            "R-c1x": reachable and all(parts.values()),
+        }
+    return comparisons
+
+
+def g0c_run(seed):
+    """One whole protocol seed, fifteen processes; every restoring arm gets its own copy."""
+    import json
+    import os
+    import shutil
+    import subprocess
+    import sys
+    import tempfile
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[3]
+    arms = {}
+    with tempfile.TemporaryDirectory(prefix=f"g0c-{seed}-") as scratch:
+        scratch = Path(scratch)
+        for role in G0C_ROLES:
+            home = scratch / role
+            if role not in ("P1", "P1n", "P1x", "T", "Tn"):
+                parent = "P1n" if role == "A_night" else "P1x" if role in ("A_x", "O_rec") else "P1"
+                shutil.copytree(scratch / parent, home)
+            else:
+                home.mkdir()
+            out = scratch / f"{role}.json"
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "snn_data_lake.cortex.interaction_learning",
+                    "--g0c-proc",
+                    role,
+                    str(seed),
+                    str(home),
+                    str(out),
+                ],
+                cwd=root,
+                env=dict(
+                    os.environ, NORD_HOME=str(home), PYTHONPATH=str(root / "src"), PYTHONUTF8="1"
+                ),
+                capture_output=True,
+                text=True,
+            )
+            if proc.returncode or not out.exists():
+                arms[role] = {
+                    "seed": seed,
+                    "role": role,
+                    "valid": False,
+                    "invalid_reasons": [f"subprocess exit {proc.returncode}", proc.stderr[-4000:]],
+                }
+            else:
+                arms[role] = json.loads(out.read_text(encoding="utf-8"))
+            print(f"G0(c) seed {seed} role {role}: valid={arms[role]['valid']}", flush=True)
+    return {"seed": seed, "arms": arms, "comparisons": _g0c_comparisons(arms)}
+
+
+def g0c_verdict(results):
+    """Campaign bars need every registered seed, one head, clean trees and reachable reds."""
+    seeds = [r["seed"] for r in results]
+    runs = [arm for r in results for arm in r["arms"].values()]
+    heads = sorted({r.get("head") for r in runs}, key=str)
+    valid = (
+        sorted(seeds) == list(G0_SEEDS)
+        and len(heads) == 1
+        and heads[0] is not None
+        and all(set(r["arms"]) == set(G0C_ROLES) for r in results)
+        and all(r.get("valid") and not r.get("dirty", True) for r in runs)
+    )
+    per_seed = {r["seed"]: _g0c_comparisons(r["arms"]) for r in results}
+    valid = valid and all(c["A_x"]["reachable"] for c in per_seed.values())
+    c1 = valid and all(c[a]["R-c1"] for c in per_seed.values() for a in ("A", "A_night"))
+    c1x = valid and all(c["A_x"]["R-c1x"] for c in per_seed.values())
+    c2 = (
+        valid
+        and all(not c["N"]["R-c1"] for c in per_seed.values())
+        and any(not c["O_rec"]["R-c1x"] for c in per_seed.values())
+    )
+    attribution = {
+        arm: {
+            part: sum(not c[arm]["parts"][part] for c in per_seed.values()) for part in _G0C_RECORDS
+        }
+        for arm in ("O_w", "O_stack", "O_rng", "O_ring", "O_auth")
+    }
+    return {
+        "valid": valid,
+        "heads": heads,
+        "per_seed": per_seed,
+        "attribution": attribution,
+        "next_step_unexercised": [
+            arm
+            for arm, counts in attribution.items()
+            if counts["tree_before"]
+            and not any(count for part, count in counts.items() if part != "tree_before")
+        ],
+        "R-c1": "PASS" if c1 else "RED",
+        "R-c1x": "PASS" if c1x else "RED",
+        "R-c2": "PASS" if c2 else "RED",
+        "verdict": "PASS" if c1 and c1x and c2 else "RED",
+        "scope": "Same-code learner continuation only; R-c3 and R-c4 are checked in pytest.",
+    }
+
+
+def g0c_campaign(out_dir, workers=4):
+    """Four seed workers, each serially orchestrating its isolated role processes."""
+    import json
+    from concurrent.futures import ThreadPoolExecutor
+    from pathlib import Path
+
+    out_dir = Path(out_dir).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    with (out_dir / "campaign.log").open("w", encoding="ascii") as log:
+        results = []
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for result in pool.map(g0c_run, G0_SEEDS):
+                results.append(result)
+                (out_dir / f"g0c-{result['seed']}.json").write_text(
+                    json.dumps(result, ensure_ascii=True, allow_nan=False), encoding="utf-8"
+                )
+                log.write(f"seed {result['seed']}: {result['comparisons']}\n")
+                log.flush()
+        verdict = g0c_verdict(results)
+        (out_dir / "verdict.json").write_text(json.dumps(verdict, indent=2), encoding="utf-8")
+        log.write(f"G0(c): {verdict['verdict']}\n")
+        print(f"G0(c): {verdict['verdict']}")
+    return verdict
+
+
 def _conversation_generalization_selfcheck():
     """Cores 1-5, on the REAL brain: (1) the fixed converse() keyword router does NOT improve through
     conversation and MISSES the novel paraphrases; (2) a SPIKING router taught from the firewall's own
@@ -1814,6 +2403,19 @@ def main():
     import sys
     from pathlib import Path
 
+    if sys.argv[1:2] == ["--g0c-proc"]:
+        _g0c_process(sys.argv[2], int(sys.argv[3]), sys.argv[4], sys.argv[5])
+        return
+    if sys.argv[1:2] == ["--g0c"]:
+        result = g0c_run(int(sys.argv[2]))
+        Path(sys.argv[3]).write_text(
+            json.dumps(result, ensure_ascii=True, allow_nan=False), encoding="utf-8"
+        )
+        print(json.dumps(result["comparisons"], indent=2))
+        return
+    if sys.argv[1:2] == ["--g0c-campaign"]:
+        g0c_campaign(sys.argv[2])
+        return
     if sys.argv[1:2] == ["--g0b"]:
         result = g0b_run(int(sys.argv[2]), sys.argv[3])
         Path(sys.argv[4]).write_text(

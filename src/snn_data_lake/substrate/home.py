@@ -1055,8 +1055,8 @@ def save_episode(episode, path=None):
     return _w
 
 
-def load_episodes(path=None, limit=None):
-    """Every episode in the lake, oldest first. The durable half of episodic memory.
+def load_episodes(path=None, limit=None, kinds=None):
+    """Autobiographical episodes by default, or explicitly selected kinds, oldest first.
 
     Foreign record types are skipped, exactly as KnowledgeLog skips non-FACT records -- one lake,
     several tenants, each reading only its own.
@@ -1065,7 +1065,10 @@ def load_episodes(path=None, limit=None):
     for payload in _log(path).replay():
         if payload[:1] == _T_EPISODE:
             try:
-                out.append(unpack_episode(payload[1:]))
+                episode = unpack_episode(payload[1:])
+                kind = episode.get("kind")
+                if (kind != "teach") if kinds is None else (kind in kinds):
+                    out.append(episode)
             except Exception:
                 continue  # a record we cannot read must not stop the ones after it
     return out[-limit:] if limit else out
