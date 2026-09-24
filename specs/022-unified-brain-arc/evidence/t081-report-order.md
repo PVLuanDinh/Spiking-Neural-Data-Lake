@@ -639,3 +639,13 @@ THE MARGIN, for the record: `_t081_top_margin` is (g_top - g_second) / g_top ove
 are the ADMISSION rank, the live value is negative on about a quarter of ticks (3.5 item 7 (a)); the panel's refuter read
 the absolute g_top - g_second on its own seed-0 recording at mean 0.033 over [-0.053, 0.156] and the orchestrator's
 re-run at mean 0.038 over [-0.053, 0.156] -- the same quantity, unclamped.
+
+## Closing report (Codex, gpt-6-astra, 2026-09-24; owed since the 2026-09-17 weekly cap)
+
+- (a) The reporter-family non-identifiability is the one section 3.7 recorded; the licensed conclusion stays narrow.
+- (b) Section 2.6 put `report_order_margin` on the consciousness surface, but the experiment never validated that
+  quantity: every flip dose was 1.0 by construction (section 3.6, opening 4). `Brain.state` publishing it is a
+  consumer, not P3's charge, and P8 lets the brain report only what it measures. Filed as an opening: remove it from
+  the surface or mark it unvalidated there.
+- (c) Stale: section 3.6's clipped cockpit row is superseded by T090's CONSCIOUSNESS plate (`t090-conclusion-plate.md`
+  section 3.4 records it visible at both tested sizes).

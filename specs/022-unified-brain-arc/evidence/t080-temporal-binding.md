@@ -704,3 +704,17 @@ pinned family-wise clause refuses this seed; then the 200,000-draw band under th
 Seeds on which the pinned 2,000-draw clause refuses for some null RNG seed: 1 of 8 (seed 3, 37 of 200). (b1) re-read
 at 200,000 draws: t +13.4164, FPR 0.0469, MET (pinned +13.5395). Nothing here is pinned; the pin stands as written
 (2.10 (h)); 2.12 (b) carries the reading and the rule.
+
+## Closing report (Codex, gpt-6-astra, 2026-09-24; owed since the 2026-09-17 weekly cap)
+
+- (a) The recorded result establishes paired recognition above the membership-matched null (zero decomposition
+  disagreements, section 3.3), not temporal integration beyond that: the binder's handle is the vision name when
+  the two recognitions agree.
+- (b) Two narrowings. First, section 3.4's "CHARGED" credits a conclusion reading and telemetry, not a behavioural
+  charge (P3's "proven to change an outcome"); that remains owed, filed as an opening. Second, and more serious:
+  the PASS holds only under section 2.11's amendment of (b2), made AFTER run 1's numbers (seed 3 was outside the
+  per-seed band). The plan's Part F row C-R9 was never amended and still states the per-seed band, so under the
+  frozen text run 1 reads REFUSED. The amendment's arithmetic (a family-wise band over eight seeds) is recorded in
+  2.11; this note makes the dependency explicit, and the plan's C-R9 row now carries it.
+- (c) Stale: sections 3.5(11) and 3.6(11)'s clipped ACCESS row "owed" a cockpit fix; T090 moved the readings into
+  the CONSCIOUSNESS plate (`59141bf`). Source only; not a rendered measurement.

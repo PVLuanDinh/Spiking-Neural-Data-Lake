@@ -734,3 +734,13 @@ crossings); no conjunct re-adjudicated; no code numerics changed. THE FOLD IS IT
 not re-panelled; it is battery-verified only -- the arc's battery, named in the closing record commit of this push, is
 its review. The verdict NOT MET, the pin, 2.6's NOT MET branch and the openings stand as recorded; the fold added
 openings (8)-(9), moved no bar, dropped no conjunct.
+
+## Closing report (Codex, gpt-6-astra, 2026-09-24; owed since the 2026-09-17 weekly cap)
+
+- (a) The decisive control for the policy-saturation reading (replay the shoved arm's exact command sequence on an
+  unshoved twin) is still unperformed; it is already this record's opening 3.6(2). NOT MET stands.
+- (b) The EXEMPT disposition keeps a faculty the live loop still feeds (`brainstem/autonomous_loop.py::
+  AutonomousArm.apply_observed` updates it) while nothing consumes it. P3's exemption is for work legitimately off
+  the live tick, so this disposition is owed a decision: charge the monitor or stop feeding it. Filed as an opening.
+- (c) Stale: section 3.5(11)'s fixture "points at `temporal_binding` (T080, unbuilt, symbol-less)" is historical;
+  T080 was built (`49288cd`) and `4fcf711` replaced the fixture hand-offs with a constructed row.

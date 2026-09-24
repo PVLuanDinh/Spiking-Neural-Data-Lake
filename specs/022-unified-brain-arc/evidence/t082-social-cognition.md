@@ -590,3 +590,13 @@ through `Brain.respond` is fed losslessly and an equal-capacity world model cann
 half is a theorem about the generator (item 10); the VSA / LIF substrate carries none of the charge (item 12); the
 pre-campaign correction's footprint is 38 of 480 statements (item 9). The licensed sentence stands at that width and
 no wider; the refused sentence stands as written.
+
+## Closing report (Codex, gpt-6-astra, 2026-09-24; owed since the 2026-09-17 weekly cap)
+
+- (a) Substrate attribution is the one section 3.5(12) recorded: a dictionary read reproduces all 480 rows. The PASS
+  measures the scripted witness rule on this workload.
+- (b) Section 3.5(10) admits (g0)'s second half is guaranteed by the corrected generator, yet
+  `cortex/recursive_tom.py::t082_contrast` still enforces it. P8 says such a criterion is "deleted, not weakened"; it
+  cannot change any recorded verdict (it is always true), so its deletion is owed as its own small change. Filed as
+  an opening, with the VSA/LIF substrate's P3 debt.
+- (c) Stale: section 3.7's cockpit remedy "stays owed" is superseded by `59141bf` (the conclusion plate).

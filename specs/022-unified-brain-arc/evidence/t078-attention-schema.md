@@ -894,3 +894,15 @@ THE FOLD IS ITSELF UNREVIEWED CODE (obs #35): it was not re-panelled; it is batt
 battery, named in the closing record commit of this push, is its review. The verdict G3 STOP x G4 PASS, the pin, 2.6's
 STOP branch and the openings stand as recorded; the fold added openings (7)-(12), moved no bar, and dropped no
 conjunct.
+
+## Closing report (Codex, gpt-6-astra, 2026-09-24; owed since the 2026-09-17 weekly cap)
+
+- (a) The strongest apparatus reading, decoder undertraining behind G4's content-blindness, is the one section
+  3.5(13) already measured (the same pinned rows at 2,000 steps move (g4a) from t = 1.4903 to 2.7125). No new
+  measurement is owed for it here.
+- (b) Section 2.7's sentence "a PASS says the action path consumes the attention state ... a STOP says it does not"
+  claims more than lagged mutual information can show. The recorded STOP is a measured absence of lagged MI in the
+  focus band. It does not show that the action path does not consume the attention state; that would need a
+  neuter-A/B (P3). The recorded verdict stands with that narrower reading.
+- (c) Stale: section 3.5(23)'s "the lift is the successor's, into `_mathutils`" was done in `ed91ce9`
+  (`cortex/attention_schema.py::_q95` now aliases `substrate/_mathutils.py::q95`).
