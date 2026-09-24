@@ -121,10 +121,10 @@ replay and prune in sleep, with memory in the one lake. Re-derivable facts it re
 - `cortex/placement.py` records depth, layer and Dale sign without a computational reader;
   `cortical_microcircuit.CONN_PROB` lacks a driver;
 - the four research reservoirs lack live-path importers;
-- the chat intent learner (`cortex/interaction_learning.py`) is a live path by which chat reaches synaptic weights,
-  but `Brain.respond` supplies no correction, ignores its prediction and saves no learner weights.
+- the chat intent learner (`cortex/interaction_learning.py`) is a live path by which chat reaches synaptic weights;
+  until G0 (2026-09-24) `Brain.respond` supplied no correction, ignored its prediction and saved no learner weights.
 
-G0 repairs that channel first.
+G0 repaired that channel first (parts (a)-(c), 2026-09-24).
 
 **Where it stands** is a measurement, not a sentence in this file. Read plan Part B (dated), then §5.
 

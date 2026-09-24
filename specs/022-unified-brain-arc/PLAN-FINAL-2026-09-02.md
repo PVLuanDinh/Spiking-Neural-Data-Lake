@@ -1085,8 +1085,8 @@ future evidence record; all T096-T100 checkboxes remain OPEN until their own del
 
 **ADDED 2026-09-23** (owner, 2026-09-22 CDT: "Every part of the project now need to follow this
 proposed innovation"; after the judgment: "Add to plan, R0 first", R0 being this plan's G0). Planned experimental
-workstream, **OPEN**: G0 parts (a) and (b) landed 2026-09-24 (`evidence/g0a-chat-correction.md`,
-`evidence/g0b-reply-consumes-route.md`); every other part is unbuilt. FR-041 and SC-019 own the requirement and composite criterion; this section owns design and order.
+workstream, **OPEN**: G0 parts (a), (b) and (c) landed 2026-09-24 (`evidence/g0a-chat-correction.md`,
+`evidence/g0b-reply-consumes-route.md`, `evidence/g0c-learner-persists.md`); every other part is unbuilt. FR-041 and SC-019 own the requirement and composite criterion; this section owns design and order.
 
 **Row ids.** G0-G6 name this workstream's rows only. They are not `contracts/gates.md`'s G5 (the
 replay gate), T078's gates (G3 stop, G4 void), or `docs/PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md`'s
@@ -1162,7 +1162,10 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   *DATED 2026-09-24: part (a) landed and read PASS on its pre-registered clauses (R-a1, R-a2, R-a3), with both
   provenance parts' reds reached by their neutered twins (`evidence/g0a-chat-correction.md`). Part (b) landed
   the same day and read PASS on R-b1a, R-b1b, R-b2, R-b3 and R-b4: the reply asks about the learned route's
-  reading and answers only after the person's yes (`evidence/g0b-reply-consumes-route.md`). Part (c) is open.*
+  reading and answers only after the person's yes (`evidence/g0b-reply-consumes-route.md`). Part (c) landed the
+  same day and read PASS on R-c1, R-c1x, R-c2, R-c3 and R-c4: a restart reproduces the learner through both production
+  hooks, with the authority rebuilt from typed teaching events (`evidence/g0c-learner-persists.md`). All four G-R0
+  clauses now have a PASS on their pre-registered corpus and seeds; T108's checkbox waits for the stack's battery.*
 - **G1 / T109 — the memory-mechanism diagnostic on the live percept stream.**
 
   FIRST freeze a causal information-and-feedback contract. It states when each observation,

@@ -234,6 +234,18 @@ reads.
 - **The crash path.** P1n needed 2 to 24 ticks after the schedule to complete a night; P1x's checkpointed ring held 5
   entries for the re-corrected utterance on every seed, so R-c1x was reachable everywhere.
 
+**The panel and its fold.** Three Codex (gpt-6-astra) lenses read the arc at `e45ba7b`. The instrument lens found
+none. Two MAJOR findings were reproduced from the code and folded in `4146f18`, each with a test that fails without it:
+- this section's "any restore failure leaves a working brain" was not yet true: the checkpoint READ sat outside the
+  restore handler, so a failing lake read escaped construction. It is inside the handler now.
+- a frozen build (no source) refused every trained checkpoint, because lazily built objects were validated by
+  parsing their constructors' source at restore. The two classes now carry an explicit attribute schema, pinned to
+  the constructors by a test, and a no-source round trip restores exactly.
+The campaign re-ran at `4146f18` (`campaign-2-4146f18/`): PASS, all 120 processes valid, and every recorded value of
+every role identical to the first run. That fold is code, read by the closing report, not re-panelled. The
+integration lens's MINOR (the plan, tasks and cold-start doc still called part (c) open) is folded in the same
+commit as this paragraph.
+
 **Deviations from section 2.** None in the protocol. Implementation points, disclosed:
 - P1's night saves were suppressed by the instrument, so that its checkpoint could only come from `close`, which is
   what section 2.2 requires P1 to prove.
