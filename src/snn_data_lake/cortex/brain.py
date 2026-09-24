@@ -5175,6 +5175,18 @@ class Brain:
                 wm.close(remove=True)
         except Exception:
             pass
+        try:  # the reasoning bridge's LakeChat: close its temp lake now and drop its atexit hook, whose
+            # closure (lc.brain is the LiveBrain) otherwise kept this closed brain alive until exit
+            closer = getattr(self.brain, "_lakechat_close", None)
+            if closer is not None:
+                import atexit
+
+                atexit.unregister(closer)
+                self.brain._lakechat_close = None
+                self.brain._lakechat = None
+                closer()
+        except Exception:
+            pass
         try:  # final durable save (never-forget on shutdown)
             if self._persist and getattr(self, "_acq_lm", None) is not None:
                 from snn_data_lake.substrate.home import state_path

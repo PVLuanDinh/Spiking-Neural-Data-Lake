@@ -900,9 +900,11 @@ class LiveBrain:
                 boot(
                     lc, wordnet=False
                 )  # replay durable log (never-forget) + re-seed world-KB (not re-persisted)
-                atexit.register(
-                    lambda: lc.lake.close(remove=True)
-                )  # don't leak the per-brain temp .spkl
+                # don't leak the per-brain temp .spkl. Kept on self so Brain.close() can run it early and
+                # UNREGISTER it: the closure holds lc and lc.brain is this LiveBrain, so a registered hook
+                # kept a closed brain alive until process exit (the amdahl census counted five of them).
+                self._lakechat_close = lambda: lc.lake.close(remove=True)
+                atexit.register(self._lakechat_close)
                 self._lakechat = lc
             out = self._lakechat.converse(text)
             if out.get("known") or out.get("source") in (
