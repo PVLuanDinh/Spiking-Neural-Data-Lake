@@ -37,6 +37,23 @@ _IXN_INTENTS = (
 )
 
 
+_ROUTE_CUES = {
+    "GOAL": ("what is your goal", "goal"),
+    "MEMORY": ("what do you remember", "memory"),
+    "ATTENTION": ("what are you attending to", "attention"),
+    "SAFETY": ("are you safe", "safety"),
+    "CONSCIOUS": ("are you conscious", "consciousness"),
+    "INTEROCEPT": ("how is your body feeling", "body state"),
+    "EXPLORE": ("how much have you explored", "exploration"),
+}
+_AFFIRM = frozenset({"yes", "yeah", "yep", "sure", "correct"})
+_NEGATE = frozenset({"no", "nope"})
+
+
+def _route_tokens(text):
+    return set(str(text).lower().translate(str.maketrans("?!.,", "    ")).split())
+
+
 def _reply_to_intent(reply):
     """Map the live brain's OWN grounded converse() reply back to one of _IXN_INTENTS -- the
     SELF-SUPERVISED teaching label chat() uses (the brain teaches its spiking router from its own

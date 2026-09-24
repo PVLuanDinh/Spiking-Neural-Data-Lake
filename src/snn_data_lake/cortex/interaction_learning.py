@@ -935,6 +935,52 @@ def g0_run(seed, arm):
             brain.close()
 
 
+def _paired_summary(values):
+    import statistics
+
+    return {
+        "mean": statistics.mean(values) if values else None,
+        "sd": statistics.stdev(values) if len(values) > 1 else 0.0,
+    }
+
+
+def _paired_statistics(values):
+    import itertools
+
+    stats = _paired_summary(values)
+    mean, sd = stats["mean"], stats["sd"]
+    t = mean / (sd / math.sqrt(len(values))) if values and sd else None
+    degenerate = bool(values) and sd == 0.0
+    p = (
+        sum(
+            sum(sign * d for sign, d in zip(signs, values, strict=True)) >= sum(values)
+            for signs in itertools.product((-1, 1), repeat=len(values))
+        )
+        / (2 ** len(values))
+        if values
+        else None
+    )
+    t_pass = mean > 0 if degenerate else t is not None and t > 1.895
+    return stats, t, degenerate, p, t_pass
+
+
+def _paired_rejection_fraction(values):
+    """Conditional on observed magnitudes, count sign vectors passing both tests."""
+    import itertools
+
+    return (
+        sum(
+            (lambda result: result[4] and result[3] <= 0.05)(
+                _paired_statistics([sign * d for sign, d in zip(signs, values, strict=True)])
+            )
+            for signs in itertools.product((-1, 1), repeat=len(values))
+        )
+        / (2 ** len(values))
+        if values
+        else None
+    )
+
+
 def g0_verdict(results):
     """Score recorded G0 runs without constructing a brain or changing the inputs.
 
@@ -942,9 +988,6 @@ def g0_verdict(results):
     included. A missing run counts against its arm's valid-seed budget, as does a dirty run.
     R-a2 reads labels, never routing accuracy. Reachability is read before claiming a PASS.
     """
-    import itertools
-    import statistics
-
     valid = {arm: {} for arm in G0_ARMS}
     invalid = []
     for arm in G0_ARMS:
@@ -977,48 +1020,15 @@ def g0_verdict(results):
     if not common_head:
         validity_reasons.append(f"runs have mixed heads: {heads}")
 
-    def summary(values):
-        return {
-            "mean": statistics.mean(values) if values else None,
-            "sd": statistics.stdev(values) if len(values) > 1 else 0.0,
-        }
-
-    def a1_statistics(values):
-        stats = summary(values)
-        mean, sd = stats["mean"], stats["sd"]
-        t = mean / (sd / math.sqrt(len(values))) if values and sd else None
-        degenerate = bool(values) and sd == 0.0
-        p = (
-            sum(
-                sum(sign * d for sign, d in zip(signs, values, strict=True)) >= sum(values)
-                for signs in itertools.product((-1, 1), repeat=len(values))
-            )
-            / (2 ** len(values))
-            if values
-            else None
-        )
-        t_pass = mean > 0 if degenerate else t is not None and t > 1.895
-        return stats, t, degenerate, p, t_pass
-
     values = list(deltas.values())
-    stats, t, degenerate, p, t_pass = a1_statistics(values)
+    stats, t, degenerate, p, t_pass = _paired_statistics(values)
     note = (
         "All d are equal: t is undefined; all d > 0 passes the t rule, all d <= 0 reds it."
         if degenerate
         else None
     )
     # Conditional on the observed magnitudes: fraction of sign vectors that pass both R-a1 tests.
-    conditional_rejection_fraction = (
-        sum(
-            (lambda result: result[4] and result[3] <= 0.05)(
-                a1_statistics([sign * d for sign, d in zip(signs, values, strict=True)])
-            )
-            for signs in itertools.product((-1, 1), repeat=len(values))
-        )
-        / (2 ** len(values))
-        if values
-        else None
-    )
+    conditional_rejection_fraction = _paired_rejection_fraction(values)
     a1 = {
         "d": deltas,
         **stats,
@@ -1067,7 +1077,7 @@ def g0_verdict(results):
         secondary[arm] = {
             metric: {
                 "per_seed": {seed: run[metric] for seed, run in runs.items()},
-                **summary([run[metric] for run in runs.values()]),
+                **_paired_summary([run[metric] for run in runs.values()]),
             }
             for metric in ("M1", "M2", "M3")
         }
@@ -1075,7 +1085,7 @@ def g0_verdict(results):
     m3_delta = {seed: valid["A"][seed]["M3"] - valid["C"][seed]["M3"] for seed in paired}
     secondary["M3_A_minus_C"] = {
         "per_seed": m3_delta,
-        **summary(list(m3_delta.values())),
+        **_paired_summary(list(m3_delta.values())),
         "drops": {seed: -delta for seed, delta in m3_delta.items() if delta < 0},
     }
     return {
@@ -1150,6 +1160,491 @@ def g0_campaign(out_dir, workers=4):
         f"{verdict['R-a1']['conditional_rejection_fraction']}; "
         f"R-a2 {verdict['R-a2']['verdict']}; invalid runs {len(verdict['invalid_runs'])}"
     )
+    return verdict
+
+
+G0B_ARMS = ("A", "N", "S", "D", "U")
+G0B_NOVEL = (
+    "tell me a joke about cats",
+    "what is the capital of france",
+    "how tall is the eiffel tower",
+    "please sing me a song",
+    "what time is it in tokyo",
+    "who wrote that old novel",
+    "can you do my homework",
+    "what is two plus two",
+    "recommend a good book",
+    "describe the color blue",
+)
+G0B_FAMILIAR = (
+    "what can you do",
+    "is that right",
+    "what is that",
+    "can you tell me",
+    "what is there",
+    "are you there",
+    "you are right",
+    "that is real",
+)
+G0B_KEY = {
+    "GREET": ("hello. i am the live brain",),
+    "GOAL": ("my standing goal is to keep improving myself",),
+    "MEMORY": ("my working memory lives in the data lake", "my memory is the data lake"),
+    "ATTENTION": ("right now my global workspace is",),
+    "SAFETY": ("safety is enforced by a reflex e-stop",),
+    "CONSCIOUS": ("i neither claim it nor deny it",),
+    "INTEROCEPT": (
+        "i cannot read my interoceptive state",
+        "i have not built an interoceptive baseline",
+        "from its own running baseline, over the last",
+    ),
+    "EXPLORE": ("distinct cells of my workspace", "i cannot read my body's coverage"),
+    "ARM": (
+        "is an arm command; the arm takes those only from a human",
+        "the arm is frozen (e-stop holds)",
+        "done: '",
+    ),
+}
+
+
+def _g0b_score(true_intent, turns):
+    """The frozen text key, independent of routes and the firewall's teaching labels."""
+    matches = [
+        {intent for intent, phrases in G0B_KEY.items() if any(p in text.lower() for p in phrases)}
+        for text, _ in turns
+    ]
+    clarify = ["did you mean to ask about my" in text.lower() for text, _ in turns]
+    decline = ["understood -- i will not guess" in text.lower() for text, _ in turns]
+    useful = (
+        bool(turns)
+        and true_intent is not None
+        and (
+            (not clarify[0] and true_intent in matches[0])
+            or (
+                clarify[0] and turns[0][1] == "yes" and len(turns) > 1 and true_intent in matches[1]
+            )
+        )
+    )
+    misfire = any(
+        bool(found - {true_intent}) or (bool(found) and (question or declined))
+        for found, question, declined in zip(matches, clarify, decline, strict=True)
+    )
+    return {"useful": useful, "misfire": misfire}
+
+
+def g0b_run(seed, arm):
+    """Frozen G0(b) dialogue instrument; one scratch brain per process."""
+    import re
+    import subprocess
+    from pathlib import Path
+    from unittest.mock import Mock, patch
+
+    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.cortex.live_brain import _ROUTE_CUES, _reply_to_intent
+    from snn_data_lake.substrate.home import throwaway_home
+
+    if not isinstance(seed, int) or seed < 0 or arm not in G0B_ARMS:
+        raise ValueError("G0(b) requires a nonnegative integer seed and a registered arm")
+    root = Path(__file__).resolve().parents[3]
+    head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+    dirty = bool(
+        subprocess.check_output(["git", "status", "--porcelain"], cwd=root, text=True).strip()
+    )
+    reasons = ["dirty working tree"] if dirty else []
+    evaluation = _conv_flat(_CONV_TEST) + [(u, None) for u in G0B_NOVEL + G0B_FAMILIAR]
+    events, lines = [], []
+    rng = random.Random(seed)
+    with throwaway_home():
+        brain = make_brain(seed=seed, persist=False)
+        try:
+            learner = brain.brain._ixn
+            original_interact = learner.interact
+            phase = "schedule"
+
+            def observed(stimulus, feedback, _record=True, _key=None):
+                result = original_interact(stimulus, feedback, _record=_record, _key=_key)
+                events.append(
+                    {"key": _key, "label": feedback, "phase": phase, "replay": not _record}
+                )
+                return result
+
+            learner.interact = observed
+            # Kept separate so G0(a)'s recorded instrument is unchanged: its arm-A schedule.
+            order = _conv_flat(_CONV_TRAIN)
+            for _ in range(G0_WARMUP_PASSES):
+                rng.shuffle(order)
+                for u, _intent in order:
+                    brain.respond(u, human=False)
+            firewall = {
+                u: _reply_to_intent(brain.brain.converse(u, human=False)) for u in G0_FROZEN_FW
+            }
+            if firewall != G0_FROZEN_FW:
+                reasons.append("firewall labels differ from the frozen design-time labels")
+            for u, _ in G0_CORRECTED:
+                brain.respond(u, human=False)
+            learner.provenance_supersede = True
+            learner.provenance_rewrite = True
+            for u, intent in G0_CORRECTED:
+                brain.correct(u, intent)
+            for _ in range(G0_ROUNDS):
+                for u, _ in G0_CORRECTED:
+                    brain.respond(u, human=False)
+                for _ in range(G0_TICKS_PER_ROUND):
+                    brain.tick()
+
+            brain.route_consumption = arm != "N"
+            route_before = {u: brain.brain.route(u) for u, _ in evaluation}
+            original_read = brain._learned_route
+            original_turn = brain._route_turn
+            partners = [u for u, _ in evaluation]
+            random.Random(seed + 2000).shuffle(partners)
+            partner = dict(zip(partners, partners[1:] + partners[:1], strict=True))
+            reads = []
+
+            def read(message, human):
+                if arm == "S" and message in partner and human and brain.route_consumption:
+                    try:
+                        result = brain.brain.route(partner[message])
+                    except Exception:
+                        result = None
+                else:
+                    result = original_read(message, human)
+                reads.append(result)
+                return result
+
+            def route_turn(message, human, pending, learned):
+                result = original_turn(message, human, pending, learned)
+                if arm == "D":
+                    brain._route_pending = None
+                    return None
+                if arm == "U" and result and result[1].startswith("learned route: clarify"):
+                    intent = brain._route_pending
+                    brain._route_pending = None
+                    return (
+                        brain.brain.converse(_ROUTE_CUES[intent][0], human=False),
+                        f"learned route: direct ({intent})",
+                    )
+                return result
+
+            brain._learned_route = read
+            brain._route_turn = route_turn
+            random.Random(seed + 1000).shuffle(evaluation)
+            topics = {topic: intent for intent, (_, topic) in _ROUTE_CUES.items()}
+            corrected, held_out = dict(G0_CORRECTED), dict(G0_HELD_OUT)
+            phase = "dialogue"
+            apply = Mock(wraps=brain.brain.arm.arm.apply)
+            observed_apply = Mock(wraps=brain.brain.arm.apply_observed)
+            with (
+                patch.object(brain.brain.arm.arm, "apply", apply),
+                patch.object(brain.brain.arm, "apply_observed", observed_apply),
+            ):
+                for text, truth in evaluation:
+                    first = brain.respond(text, human=True)
+                    # A fallback line is one Brain.respond spoke through HOLD or fluid ("Gf"); read off turn 1,
+                    # never by an extra converse call, which would run the reasoning bridge twice per line.
+                    fallback = first["route"].startswith("Gf")
+                    turns = [
+                        {
+                            "reply": first["reply"],
+                            "route": first["route"],
+                            "learned_route": reads[-1],
+                            "person_answer": None,
+                        }
+                    ]
+                    clarified = "did you mean to ask about my" in first["reply"].lower()
+                    match = re.search(
+                        r"did you mean to ask about my (.+?)\?", first["reply"].lower()
+                    )
+                    clarified_intent = topics.get(match[1]) if match else None
+                    if clarified:
+                        answer = "yes" if clarified_intent == truth and truth is not None else "no"
+                        turns[0]["person_answer"] = answer
+                        second = brain.respond(answer, human=True)
+                        turns.append(
+                            {
+                                "reply": second["reply"],
+                                "route": second["route"],
+                                "learned_route": reads[-1],
+                                "person_answer": None,
+                            }
+                        )
+                    score = _g0b_score(truth, [(t["reply"], t["person_answer"]) for t in turns])
+                    if (
+                        arm == "N"
+                        and fallback
+                        and _g0b_score(None, [(first["reply"], None)])["misfire"]
+                    ):
+                        reasons.append(f"N fallback contains a KEY phrase: {text}")
+                    subset = (
+                        "corrected"
+                        if text in corrected
+                        else "held-out"
+                        if text in held_out
+                        else "novel"
+                        if text in G0B_NOVEL
+                        else "familiar"
+                        if text in G0B_FAMILIAR
+                        else "other"
+                    )
+                    lines.append(
+                        {
+                            "text": text,
+                            "true_intent": truth,
+                            "subset": subset,
+                            "route_before": route_before[text],
+                            "turns": turns,
+                            **score,
+                            "clarified": clarified,
+                            "clarified_intent": clarified_intent,
+                        }
+                    )
+            arm_calls = {"apply": apply.call_count, "apply_observed": observed_apply.call_count}
+            if any(arm_calls.values()):
+                reasons.append(f"dialogue reached the arm: {arm_calls}")
+            return {
+                "seed": seed,
+                "arm": arm,
+                "head": head,
+                "dirty": dirty,
+                "valid": not reasons,
+                "invalid_reasons": reasons,
+                "lines": lines,
+                "firewall_labels": firewall,
+                "arm_calls": arm_calls,
+                "teaching_events": events,
+            }
+        finally:
+            brain.close()
+
+
+def _g0b_report(run):
+    """Report full-text scores, questions, and the independent route-label instrument."""
+    subsets = ("corrected", "held-out", "other", "novel", "familiar")
+    counts = {subset: {"useful": 0, "misfire": 0} for subset in subsets}
+    questions = {"novel": 0, "familiar": 0, "wrong_topic": 0}
+    confirmed, useful, routes = [], [], []
+    for line in run["lines"]:
+        score = _g0b_score(
+            line["true_intent"], [(t["reply"], t["person_answer"]) for t in line["turns"]]
+        )
+        for metric in ("useful", "misfire"):
+            counts[line["subset"]][metric] += score[metric]
+        if line["clarified"]:
+            if line["subset"] in ("novel", "familiar"):
+                questions[line["subset"]] += 1
+            elif line["clarified_intent"] != line["true_intent"]:
+                questions["wrong_topic"] += 1
+        if score["useful"]:
+            useful.append(line["text"])
+        if any(t["route"].startswith("learned route: confirmed") for t in line["turns"]):
+            confirmed.append(line["text"])
+        routes.append(
+            {
+                "text": line["text"],
+                "route_before": line["route_before"],
+                "turns": [
+                    {"route": t["route"], "learned_route": t["learned_route"]}
+                    for t in line["turns"]
+                ],
+            }
+        )
+    return {
+        "by_subset": counts,
+        "useful": sum(c["useful"] for c in counts.values()),
+        "misfire": sum(c["misfire"] for c in counts.values()),
+        "clarifications": questions,
+        "routes": routes,
+        "teaching_events": run["teaching_events"],
+        "second_instrument": {
+            "confirmed": confirmed,
+            "key_useful": useful,
+            "confirmed_not_useful": sorted(set(confirmed) - set(useful)),
+            "useful_not_confirmed": sorted(set(useful) - set(confirmed)),
+            "explanation": "The KEY also credits incumbent grounded turn-1 answers; confirmed labels count only turn 2. Any confirmed_not_useful line is a disagreement to inspect in the full text.",
+        },
+    }
+
+
+def g0b_verdict(results):
+    """Frozen paired rules and reachable faults; no brain construction or metadata scoring."""
+    valid = {arm: {} for arm in G0B_ARMS}
+    invalid = []
+    for arm in G0B_ARMS:
+        for seed in G0_SEEDS:
+            matches = [r for r in results if r["arm"] == arm and r["seed"] == seed]
+            if len(matches) != 1:
+                invalid.append(
+                    {"seed": seed, "arm": arm, "invalid_reasons": ["missing or duplicate run"]}
+                )
+            elif not matches[0]["valid"] or matches[0]["dirty"]:
+                invalid.append(matches[0])
+            else:
+                valid[arm][seed] = matches[0]
+    extra = [r for r in results if r["seed"] not in G0_SEEDS or r["arm"] not in G0B_ARMS]
+    invalid.extend({**r, "invalid_reasons": ["unregistered seed or arm"]} for r in extra)
+    enough = all(len(runs) == len(G0_SEEDS) for runs in valid.values()) and not extra
+    heads = sorted({r.get("head") for r in results}, key=str)
+    common_head = len(heads) == 1
+    reasons = [
+        f"{arm} has {len(runs)} of {len(G0_SEEDS)} valid registered seeds"
+        for arm, runs in valid.items()
+        if len(runs) != len(G0_SEEDS)
+    ]
+    if extra:
+        reasons.append("unregistered seed or arm")
+    if not common_head:
+        reasons.append(f"runs have mixed heads: {heads}")
+    reports = {
+        arm: {seed: _g0b_report(run) for seed, run in runs.items()} for arm, runs in valid.items()
+    }
+
+    def paired(left, right):
+        seeds = sorted(valid[left].keys() & valid[right].keys())
+        deltas = {
+            s: reports[left][s]["useful"] / 20 - reports[right][s]["useful"] / 20 for s in seeds
+        }
+        values = list(deltas.values())
+        stats, t, degenerate, p, t_pass = _paired_statistics(values)
+        return {
+            "d": deltas,
+            **stats,
+            "t": t,
+            "degenerate_t": "All d are equal: t is undefined; all d > 0 passes the t rule, all d <= 0 reds it."
+            if degenerate
+            else None,
+            "sign_flip_p": p,
+            "conditional_rejection_fraction": _paired_rejection_fraction(values),
+            "n": len(values),
+            "verdict": "PASS" if enough and len(seeds) == 8 and t_pass and p <= 0.05 else "RED",
+        }
+
+    b1a, b1b = paired("A", "S"), paired("A", "N")
+    dn, ds = paired("D", "N"), paired("D", "S")
+
+    def texts(run):
+        return [(line["text"], [turn["reply"] for turn in line["turns"]]) for line in run["lines"]]
+
+    same = {
+        s: texts(valid["D"][s]) == texts(valid["N"][s])
+        for s in sorted(valid["D"].keys() & valid["N"].keys())
+    }
+    b2 = {
+        "D_vs_N": dn,
+        "D_vs_S": ds,
+        "texts_equal": same,
+        "verdict": "PASS"
+        if enough and dn["verdict"] == ds["verdict"] == "RED" and all(same.values())
+        else "RED",
+    }
+    deltas = {
+        s: reports["A"][s]["misfire"] - reports["N"][s]["misfire"]
+        for s in sorted(valid["A"].keys() & valid["N"].keys())
+    }
+    u_deltas = {
+        s: reports["U"][s]["misfire"] - reports["N"][s]["misfire"]
+        for s in sorted(valid["U"].keys() & valid["N"].keys())
+    }
+    b4 = {
+        "A_minus_N": deltas,
+        "U_minus_N": u_deltas,
+        "U_verdict": "RED" if any(d > 0 for d in u_deltas.values()) else "PASS",
+        "verdict": "PASS"
+        if enough and all(d <= 0 for d in deltas.values()) and any(d > 0 for d in u_deltas.values())
+        else "RED",
+    }
+    return {
+        "R-b1a": b1a,
+        "R-b1b": b1b,
+        "R-b1": {"verdict": "PASS" if b1a["verdict"] == b1b["verdict"] == "PASS" else "RED"},
+        "R-b2": b2,
+        "R-b4": b4,
+        "reported": reports,
+        "invalid_runs": invalid,
+        "enough_valid_seeds": enough,
+        "heads": heads,
+        "common_head": common_head,
+        "validity_reasons": reasons,
+        "verdict": "PASS"
+        if common_head and all(r["verdict"] == "PASS" for r in (b1a, b1b, b2, b4))
+        else "RED",
+        "scope": "This corpus, seeds 0-7, this schedule, and a cooperative truthful person only; R-b3 is in pytest.",
+    }
+
+
+def g0b_campaign(out_dir, workers=4):
+    """One subprocess per registered seed/arm; retain each run and a text verdict log."""
+    import json
+    import os
+    import subprocess
+    import sys
+    from concurrent.futures import ThreadPoolExecutor
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[3]
+    out_dir = Path(out_dir).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    env = dict(os.environ, PYTHONPATH=str(root / "src"), PYTHONUTF8="1")
+
+    def run(pair):
+        seed, arm = pair
+        path = out_dir / f"g0b-{seed}-{arm}.json"
+        proc = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "snn_data_lake.cortex.interaction_learning",
+                "--g0b",
+                str(seed),
+                arm,
+                str(path),
+            ],
+            cwd=root,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if proc.returncode:
+            return {
+                "seed": seed,
+                "arm": arm,
+                "valid": False,
+                "dirty": False,
+                "invalid_reasons": [f"subprocess exit {proc.returncode}", proc.stderr[-4000:]],
+            }
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    with (out_dir / "campaign.log").open("w", encoding="utf-8") as log:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            results = []
+            for result in pool.map(run, ((s, a) for s in G0_SEEDS for a in G0B_ARMS)):
+                results.append(result)
+                counts = _g0b_report(result) if "lines" in result else {}
+                line = (
+                    f"G0(b) seed {result['seed']} arm {result['arm']}: valid={result['valid']} "
+                    f"useful={counts.get('useful')} misfire={counts.get('misfire')}"
+                )
+                print(line, flush=True)
+                log.write(line + "\n")
+                log.flush()
+        verdict = g0b_verdict(results)
+        (out_dir / "verdict.json").write_text(
+            json.dumps(verdict, indent=2, ensure_ascii=True, allow_nan=False), encoding="utf-8"
+        )
+        for name, rule in (
+            ("R-b1a", verdict["R-b1a"]),
+            ("R-b1b", verdict["R-b1b"]),
+            ("D/N", verdict["R-b2"]["D_vs_N"]),
+            ("D/S", verdict["R-b2"]["D_vs_S"]),
+        ):
+            line = (
+                f"{name}: {rule['verdict']}; sign-flip p {rule['sign_flip_p']}; "
+                f"conditional rejection fraction {rule['conditional_rejection_fraction']}"
+            )
+            print(line)
+            log.write(line + "\n")
+        line = f"G0(b): {verdict['verdict']}; R-b2 {verdict['R-b2']['verdict']}; R-b4 {verdict['R-b4']['verdict']}; invalid runs {len(verdict['invalid_runs'])}"
+        print(line)
+        log.write(line + "\n")
     return verdict
 
 
@@ -1319,6 +1814,19 @@ def main():
     import sys
     from pathlib import Path
 
+    if sys.argv[1:2] == ["--g0b"]:
+        result = g0b_run(int(sys.argv[2]), sys.argv[3])
+        Path(sys.argv[4]).write_text(
+            json.dumps(result, indent=2, ensure_ascii=True, allow_nan=False), encoding="utf-8"
+        )
+        report = _g0b_report(result)
+        print(
+            f"G0(b) seed {result['seed']} arm {result['arm']}: useful={report['useful']} misfire={report['misfire']}; valid={result['valid']}; reasons={result['invalid_reasons']}"
+        )
+        return
+    if sys.argv[1:2] == ["--g0b-campaign"]:
+        g0b_campaign(sys.argv[2])
+        return
     if sys.argv[1:2] == ["--g0"]:
         result = g0_run(int(sys.argv[2]), sys.argv[3])
         Path(sys.argv[4]).write_text(

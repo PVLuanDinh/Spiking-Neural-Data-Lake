@@ -47,7 +47,14 @@ import re
 
 from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.cortex.access_consciousness import AccessConsciousness
-from snn_data_lake.cortex.live_brain import _IXN_INTENTS, LiveBrain
+from snn_data_lake.cortex.live_brain import (
+    _AFFIRM,
+    _IXN_INTENTS,
+    _NEGATE,
+    _ROUTE_CUES,
+    LiveBrain,
+    _route_tokens,
+)
 from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor
 from snn_data_lake.cortex.reasoning_curriculum import ReasoningEnv, ReasoningLearner
 
@@ -216,6 +223,8 @@ class Brain:
         persist=None,
     ):
         self._seed = int(seed)
+        self.route_consumption = True
+        self._route_pending = None
         self._lake_path = lake_path  # API parity; LiveBrain owns its WM lake
         self.day_period = int(day_period)
         self.refit_every = int(refit_every)
@@ -4291,6 +4300,41 @@ class Brain:
         """The correction vocabulary, copied for callers such as the cockpit."""
         return list(_IXN_INTENTS)
 
+    def _learned_route(self, message, human):
+        """Read before teaching; a failed inference must never prevent the stop path."""
+        try:
+            if human and self.route_consumption and getattr(self.brain, "_ixn", None) is not None:
+                return self.brain.route(message)
+        except Exception:
+            pass
+        return None
+
+    def _route_turn(self, message, human, pending, learned):
+        """Consume one proposed interpretation only with the person's confirmation."""
+        if not human or not self.route_consumption or getattr(self.brain, "_ixn", None) is None:
+            return None
+        tokens = _route_tokens(message)
+        if pending and tokens and tokens <= _AFFIRM:
+            cue, _ = _ROUTE_CUES[pending]
+            return self.brain.converse(cue, human=False), f"learned route: confirmed ({pending})"
+        if pending and tokens and tokens <= _NEGATE:
+            return (
+                "Understood -- I will not guess. Tell me more, or correct me on the chat page.",
+                f"learned route: declined ({pending})",
+            )
+        if tokens and tokens <= (_AFFIRM | _NEGATE):
+            return None
+        if learned in _ROUTE_CUES:
+            # distinct-from: reasoning/spike_chat_lake.py::LakeChat._pending_gf -- a number series awaiting
+            # the user's term; this is one pending interpretation of a chat turn.
+            self._route_pending = learned
+            _, topic = _ROUTE_CUES[learned]
+            return (
+                f"Did you mean to ask about my {topic}? Say yes and I will answer.",
+                f"learned route: clarify ({learned})",
+            )
+        return None
+
     def respond(self, message, *, human=False):
         """Reply as the whole brain, SPEAKING FROM THE SELF-MODEL (no fixed status template).
 
@@ -4306,6 +4350,8 @@ class Brain:
             unavailable the reply is the narrator's own state-varying sentence (never a canned string).
         SAFETY: arm/lake commands take the deterministic gated path; the LM's text is display-only
         and is NEVER parsed as a motor command. No torch/weights -> narrator fallback."""
+        pending, self._route_pending = self._route_pending, None
+        learned = self._learned_route(message, human)
         # SECOND-ORDER ACCESS: read whether the current content reliably reached global availability
         # through the spiking second-order monitor, and cache its hold. Consumes the workspace's
         # de-saturated signals (availability / graded access strength / ignition success), so it
@@ -4421,6 +4467,8 @@ class Brain:
             # metacog hold so uncertainty only hedges OPEN conversation, not remembered facts.
             core = conv
             route = "Gc (crystallized: memory/knowledge/state)"
+        elif (turn := self._route_turn(message, human, pending, learned)) is not None:
+            core, route = turn
         elif self._metacog_hold or self._second_order_hold:  # HOLD (low reliability OR the
             # second-order monitor says the content did not reliably reach access) -> abstain/hedge
             intro = self.narrator.introspect(self.self_model, message=message)
