@@ -47,7 +47,7 @@ import re
 
 from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.cortex.access_consciousness import AccessConsciousness
-from snn_data_lake.cortex.live_brain import LiveBrain
+from snn_data_lake.cortex.live_brain import _IXN_INTENTS, LiveBrain
 from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor
 from snn_data_lake.cortex.reasoning_curriculum import ReasoningEnv, ReasoningLearner
 
@@ -4275,6 +4275,21 @@ class Brain:
         "malicious",
         "intent",
     )
+
+    # distinct-from: LiveBrain.correct -- this is the canonical composition's entry;
+    #   the live learner owns the correction and its provenance.
+    def correct(self, message, intent):
+        """Teach intent recognition directly, without replying or dispatching a command."""
+        was = self.brain.correct(message, intent)
+        return {
+            "intent": intent,
+            "was": was,
+            "provenance": self.brain._ixn.provenance(message),
+        }
+
+    def correction_intents(self):
+        """The correction vocabulary, copied for callers such as the cockpit."""
+        return list(_IXN_INTENTS)
 
     def respond(self, message, *, human=False):
         """Reply as the whole brain, SPEAKING FROM THE SELF-MODEL (no fixed status template).

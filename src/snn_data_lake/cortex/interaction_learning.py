@@ -72,6 +72,12 @@ from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
 from snn_data_lake.cortex.rank_order_coding import rank_code
 
 _REPLAY_CAP = 64  # sleep-replay ring size (T058): a memory bound, not a behaviour threshold
+_AUTHORITY_CAP = 4096  # a memory bound on the authoritative-label map, not a behaviour threshold
+
+
+def _utterance_key(utterance):
+    return " ".join(str(utterance).lower().split())
+
 
 #: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
@@ -160,6 +166,13 @@ class SpikingInteractionLearner:
         # which is what makes the consolidation cascade actually reachable on sleep ticks).
         # A bounded ring, a memory bound rather than a behaviour-arbitrating threshold.
         self._replay = []
+        # G0(a) provenance: normalized utterance -> AUTHORITATIVE label (a person's correction),
+        # insertion-ordered and FIFO-evicted past _AUTHORITY_CAP. A later self-label on the same
+        # utterance is superseded by it, and its older ring entries are rewritten to it.
+        self._authority = {}
+        # Instrument/test handles for G0(a)'s neutered twins; both default ON.
+        self.provenance_supersede = True
+        self.provenance_rewrite = True
         # OPT-IN neuromodulation (NACABroadcast, duck-typed): a diffuse global gate that reshapes the LOCAL
         # R-STDP delta ADDITIVELY. None -> the local rule is untouched (byte-identical). It modulates
         # plasticity only; it adds NO actuator route (this router stays intent-recognition only).
@@ -324,7 +337,7 @@ class SpikingInteractionLearner:
     # distinct-from: plasticity/benna_fusi.py, plasticity/inhibitory_stdp.py etc. -- their
     #   step/reward methods are the RULES; this is the incumbent learner entry being edited
     #   in place (the T058 replay-record flag added to the existing method). Sites read.
-    def interact(self, stimulus, feedback, _record=True):
+    def interact(self, stimulus, feedback, _record=True, _key=None):
         """One interaction / learning step, purely via reward-modulated spike-timing plasticity.
 
         `feedback` teaches the learner in one of two ways (both R-STDP, never a gradient):
@@ -335,7 +348,7 @@ class SpikingInteractionLearner:
         sleep-replay path: same learning, no re-recording (a replay that re-recorded itself would
         feed its own buffer forever)."""
         if _record:
-            self._replay.append((list(stimulus), feedback))
+            self._replay.append((list(stimulus), feedback, _key))
             del self._replay[:-_REPLAY_CAP]
         code = self.encode(stimulus)
         pred = self._argmax_label(code)  # the learner's own current answer (the action taken)
@@ -369,8 +382,8 @@ class SpikingInteractionLearner:
             return 0
         n = 0
         for _ in range(int(k)):
-            code, fb = self._replay[self.rng.randrange(len(self._replay))]
-            self.interact(list(code), fb, _record=False)
+            code, fb, key = self._replay[self.rng.randrange(len(self._replay))]
+            self.interact(list(code), fb, _record=False, _key=key)
             n += 1
         return n
 
@@ -397,11 +410,37 @@ class SpikingInteractionLearner:
         featurizer); the label is `firewall_intent` -- the fixed keyword router's OWN grounded routing
         for this line, read back as an intent -- so the brain SELF-SUPERVISES from its own firewall
         with no human labels (distillation). An OPTIONAL explicit `feedback` intent (what the human
-        actually meant) OVERRIDES it as a stronger correction, for lines the firewall itself gets
-        wrong. Returns the router's pre-update answer. SAFETY: intent recognition only -- it adds no
+        actually meant) is AUTHORITATIVE: later self-labels for the same normalized utterance are
+        superseded, and its older replay-ring labels are rewritten. Returns the router's pre-update
+        answer. SAFETY: intent recognition only -- it adds no
         actuator route (the encoder maps text -> a spike train -> an intent label, never a command)."""
-        label = feedback if feedback is not None else firewall_intent
-        return self.interact(text_features(utterance, self.n_in), label)
+        key = _utterance_key(utterance)
+        if feedback is not None:
+            if feedback not in self.responses:
+                raise ValueError(f"unknown response label: {feedback!r}")
+            self._authority.pop(key, None)
+            self._authority[key] = feedback
+            if len(self._authority) > _AUTHORITY_CAP:
+                del self._authority[next(iter(self._authority))]
+            if self.provenance_rewrite:
+                self._replay[:] = [
+                    (code, feedback if old_key == key else label, old_key)
+                    for code, label, old_key in self._replay
+                ]
+            label = feedback
+        else:
+            if firewall_intent is None:
+                raise ValueError("a firewall intent or authoritative feedback is required")
+            label = (
+                self._authority.get(key, firewall_intent)
+                if self.provenance_supersede
+                else firewall_intent
+            )
+        return self.interact(text_features(utterance, self.n_in), label, _key=key)
+
+    def provenance(self, utterance):
+        """Read the utterance's teaching provenance without learning or changing its FIFO age."""
+        return "authoritative" if _utterance_key(utterance) in self._authority else "self"
 
 
 # --------------------------------------------------------------------------------------------------
@@ -741,6 +780,311 @@ def _conv_flat(d):
     return [(u, intent) for intent, us in d.items() for u in us]
 
 
+G0_SEEDS = tuple(range(8))
+G0_ARMS = ("A", "B0", "B1", "B2", "C")
+G0_WARMUP_PASSES = 2
+G0_ROUNDS = 3
+G0_TICKS_PER_ROUND = 25
+G0_CORRECTED = tuple(
+    (u, intent) for intent in ("GOAL", "MEMORY", "CONSCIOUS", "ARM") for u in _CONV_TEST[intent][:2]
+)
+G0_HELD_OUT = tuple((u, intent) for intent, lines in _CONV_TEST.items() for u in lines[2:])
+G0_FROZEN_FW = {u: "GREET" for u, _ in _conv_flat(_CONV_TEST)}
+
+
+def g0_run(seed, arm):
+    """G0(a): one seed/arm in its own process, on a scratch canonical brain only.
+
+    Schedule and labels are frozen in evidence/g0a-chat-correction.md, section 2.2.
+    The instance spy observes teaching labels; it changes neither the labels nor the deposits.
+    """
+    import subprocess
+    from pathlib import Path
+
+    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.cortex.live_brain import _reply_to_intent
+    from snn_data_lake.substrate.home import throwaway_home
+
+    if seed not in G0_SEEDS or arm not in G0_ARMS:
+        raise ValueError("G0 requires a registered seed and arm")
+    root = Path(__file__).resolve().parents[3]
+    head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+    dirty = bool(
+        subprocess.check_output(["git", "status", "--porcelain"], cwd=root, text=True).strip()
+    )
+    reasons = ["dirty working tree"] if dirty else []
+    events, replay_counts = [], []
+    routes = {u: {} for u, _ in G0_CORRECTED}
+    corrected = set()
+    by_key = {_utterance_key(u): u for u, _ in G0_CORRECTED}
+    rng = random.Random(seed)
+    with throwaway_home():
+        brain = make_brain(seed=seed, persist=False)
+        try:
+            learner = brain.brain._ixn
+            original = learner.interact
+            replay_total = 0
+
+            def observed(stimulus, feedback, _record=True, _key=None):
+                nonlocal replay_total
+                if not _record:
+                    replay_total += 1
+                if _key in by_key:
+                    events.append(
+                        {
+                            "utterance": by_key[_key],
+                            "label": feedback,
+                            "phase": "wake" if _record else "replay",
+                            "after_correction": _key in corrected,
+                        }
+                    )
+                return original(stimulus, feedback, _record=_record, _key=_key)
+
+            learner.interact = observed
+
+            def snapshot(name):
+                for u, _ in G0_CORRECTED:
+                    routes[u][name] = brain.brain.route(u)
+
+            def accuracy(pairs):
+                return sum(brain.brain.route(u) == intent for u, intent in pairs) / len(pairs)
+
+            order = _conv_flat(_CONV_TRAIN)
+            for _ in range(G0_WARMUP_PASSES):
+                rng.shuffle(order)
+                for u, _intent in order:
+                    brain.respond(u, human=False)
+            firewall = {
+                u: _reply_to_intent(brain.brain.converse(u, human=False)) for u in G0_FROZEN_FW
+            }
+            if firewall != G0_FROZEN_FW:
+                reasons.append("firewall labels differ from the frozen design-time labels")
+            for u, _ in G0_CORRECTED:
+                brain.respond(u, human=False)
+            snapshot("R0")
+            learner.provenance_supersede = arm not in ("B0", "B1")
+            learner.provenance_rewrite = arm not in ("B0", "B2")
+            if arm != "C":
+                for u, intent in G0_CORRECTED:
+                    brain.correct(u, intent)
+                    corrected.add(_utterance_key(u))
+            snapshot("R1")
+            for round_index in range(G0_ROUNDS):
+                for u, _ in G0_CORRECTED:
+                    brain.respond(u, human=False)
+                before = replay_total
+                for _ in range(G0_TICKS_PER_ROUND):
+                    brain.tick()
+                count = replay_total - before
+                replay_counts.append(count)
+                if count == 0:
+                    reasons.append(f"round {round_index + 1} has no replay events")
+                snapshot(f"R{round_index + 2}")
+            return {
+                "seed": seed,
+                "arm": arm,
+                "head": head,
+                "dirty": dirty,
+                "valid": not reasons,
+                "invalid_reasons": reasons,
+                "firewall_labels": firewall,
+                "routes": routes,
+                "M1": accuracy(G0_CORRECTED),
+                "M2": accuracy(G0_HELD_OUT),
+                "M3": accuracy(_conv_flat(_CONV_TRAIN)),
+                "teaching_events": events,
+                "replay_events_per_round": replay_counts,
+                "ring_audit": {
+                    u: [label for _, label, key in learner._replay if key == _utterance_key(u)]
+                    for u, _ in G0_CORRECTED
+                },
+            }
+        finally:
+            brain.close()
+
+
+def g0_verdict(results):
+    """Score recorded G0 runs without constructing a brain or changing the inputs.
+
+    R-a1 uses the frozen paired t threshold AND the exact one-sided sign-flip test, ties
+    included. A missing run counts against its arm's valid-seed budget, as does a dirty run.
+    R-a2 reads labels, never routing accuracy. Reachability is read before claiming a PASS.
+    """
+    import itertools
+    import statistics
+
+    valid = {arm: {} for arm in G0_ARMS}
+    invalid = []
+    for arm in G0_ARMS:
+        for seed in G0_SEEDS:
+            matches = [r for r in results if r["arm"] == arm and r["seed"] == seed]
+            if len(matches) != 1:
+                invalid.append(
+                    {"seed": seed, "arm": arm, "invalid_reasons": ["missing or duplicate run"]}
+                )
+                continue
+            run = matches[0]
+            if not run["valid"] or run["dirty"]:
+                invalid.append(run)
+            else:
+                valid[arm][seed] = run
+    enough = all(len(runs) >= len(G0_SEEDS) - 2 for runs in valid.values())
+    paired = sorted(valid["A"].keys() & valid["C"].keys())
+    deltas = {seed: valid["A"][seed]["M1"] - valid["C"][seed]["M1"] for seed in paired}
+
+    def summary(values):
+        return {
+            "mean": statistics.mean(values) if values else None,
+            "sd": statistics.stdev(values) if len(values) > 1 else 0.0,
+        }
+
+    values = list(deltas.values())
+    stats = summary(values)
+    mean, sd = stats["mean"], stats["sd"]
+    t = mean / (sd / math.sqrt(len(values))) if values and sd else None
+    degenerate = bool(values) and sd == 0.0
+    note = (
+        "All d are equal: t is undefined; all d > 0 passes the t rule, all d <= 0 reds it."
+        if degenerate
+        else None
+    )
+    p = (
+        sum(
+            sum(sign * d for sign, d in zip(signs, values, strict=True)) >= sum(values)
+            for signs in itertools.product((-1, 1), repeat=len(values))
+        )
+        / (2 ** len(values))
+        if values
+        else None
+    )
+    t_pass = mean > 0 if degenerate else t is not None and t > 1.895
+    a1 = {
+        "d": deltas,
+        **stats,
+        "t": t,
+        "degenerate_t": note,
+        "sign_flip_p": p,
+        "n": len(values),
+        "verdict": "PASS"
+        if enough and len(paired) >= len(G0_SEEDS) - 2 and t_pass and p <= 0.05
+        else "RED",
+    }
+    truth = dict(G0_CORRECTED)
+
+    def wrong_events(arm, phase=None):
+        return [
+            {"seed": seed, **event}
+            for seed, run in valid[arm].items()
+            for event in run["teaching_events"]
+            if event["utterance"] in truth
+            and event["after_correction"]
+            and event["label"] != truth[event["utterance"]]
+            and (phase is None or event["phase"] == phase)
+        ]
+
+    mismatches = [
+        {"seed": seed, "utterance": u, "label": label}
+        for seed, run in valid["A"].items()
+        for u, labels in run["ring_audit"].items()
+        if u in truth
+        for label in labels
+        if label != truth[u]
+    ]
+    bad_events = wrong_events("A")
+    a2 = {
+        "events": bad_events,
+        "ring_mismatches": mismatches,
+        "verdict": "RED" if bad_events or mismatches or not enough else "PASS",
+    }
+    reachability = {}
+    for arm, phase in (("B1", "wake"), ("B2", "replay")):
+        witnesses = wrong_events(arm, phase)
+        reachability[arm] = {"reached": bool(witnesses), "events": witnesses}
+    secondary = {}
+    for arm, runs in valid.items():
+        secondary[arm] = {
+            metric: {
+                "per_seed": {seed: run[metric] for seed, run in runs.items()},
+                **summary([run[metric] for run in runs.values()]),
+            }
+            for metric in ("M1", "M2", "M3")
+        }
+        secondary[arm]["routes"] = {seed: run["routes"] for seed, run in runs.items()}
+    m3_delta = {seed: valid["A"][seed]["M3"] - valid["C"][seed]["M3"] for seed in paired}
+    secondary["M3_A_minus_C"] = {
+        "per_seed": m3_delta,
+        **summary(list(m3_delta.values())),
+        "drops": {seed: -delta for seed, delta in m3_delta.items() if delta < 0},
+    }
+    return {
+        "R-a1": a1,
+        "R-a2": a2,
+        "reachability": reachability,
+        "secondary": secondary,
+        "invalid_runs": invalid,
+        "enough_valid_seeds": enough,
+        "verdict": "PASS"
+        if a1["verdict"] == a2["verdict"] == "PASS"
+        and all(r["reached"] for r in reachability.values())
+        else "RED",
+        "scope": "This corpus, these eight seeds and this schedule only; R-a3 is a unit test.",
+    }
+
+
+def g0_campaign(out_dir, workers=4):
+    """Run each seed/arm in its OWN subprocess, then write the label and routing verdict."""
+    import json
+    import os
+    import subprocess
+    import sys
+    from concurrent.futures import ThreadPoolExecutor
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[3]
+    out_dir = Path(out_dir).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    env = dict(os.environ, PYTHONPATH=str(root / "src"), PYTHONUTF8="1")
+
+    def run(pair):
+        seed, arm = pair
+        path = out_dir / f"g0-{seed}-{arm}.json"
+        proc = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "snn_data_lake.cortex.interaction_learning",
+                "--g0",
+                str(seed),
+                arm,
+                str(path),
+            ],
+            cwd=root,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if proc.returncode:
+            return {
+                "seed": seed,
+                "arm": arm,
+                "valid": False,
+                "invalid_reasons": [f"subprocess exit {proc.returncode}", proc.stderr[-4000:]],
+            }
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        results = list(pool.map(run, ((seed, arm) for seed in G0_SEEDS for arm in G0_ARMS)))
+    verdict = g0_verdict(results)
+    (out_dir / "verdict.json").write_text(
+        json.dumps(verdict, indent=2, ensure_ascii=True, allow_nan=False), encoding="utf-8"
+    )
+    print(
+        f"G0(a): {verdict['verdict']}; R-a1 {verdict['R-a1']['verdict']}; "
+        f"R-a2 {verdict['R-a2']['verdict']}; invalid runs {len(verdict['invalid_runs'])}"
+    )
+    return verdict
+
+
 def _conversation_generalization_selfcheck():
     """Cores 1-5, on the REAL brain: (1) the fixed converse() keyword router does NOT improve through
     conversation and MISSES the novel paraphrases; (2) a SPIKING router taught from the firewall's own
@@ -903,6 +1247,19 @@ def _conversation_generalization_selfcheck():
 
 
 def main():
+    import json
+    import sys
+    from pathlib import Path
+
+    if sys.argv[1:2] == ["--g0"]:
+        result = g0_run(int(sys.argv[2]), sys.argv[3])
+        Path(sys.argv[4]).write_text(
+            json.dumps(result, indent=2, ensure_ascii=True, allow_nan=False), encoding="utf-8"
+        )
+        return
+    if sys.argv[1:2] == ["--g0-campaign"]:
+        g0_campaign(sys.argv[2])
+        return
     # The self-check's LiveBrains carry workspace-enabled arms, which journal IMMORTAL coalition
     # records into the lake `home()` resolves -- the LIVE lake for a bare `python -m` run. The same
     # guard as brainstem/autonomous_loop.py::main (T031): setdefault keeps run_selfchecks.py's

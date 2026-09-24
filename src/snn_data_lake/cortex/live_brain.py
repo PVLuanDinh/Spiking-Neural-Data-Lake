@@ -915,6 +915,20 @@ class LiveBrain:
             )
         return self._ixn.interact(text_features(text, self._ixn.n_in), intent)
 
+    def correct(self, text, intent):
+        """A person's AUTHORITATIVE correction, learning intent recognition only.
+
+        Never calls converse, the NL firewall's command path, the arm or the reflex/E-STOP.
+        Returns the learner's pre-update answer.
+        """
+        if self._ixn is None:
+            raise RuntimeError(
+                "interaction learning is off; build LiveBrain(interaction_learning=True)"
+            )
+        if intent not in _IXN_INTENTS:
+            raise ValueError(f"unknown correction intent: {intent!r}")
+        return self._ixn.learn_turn(text, None, feedback=intent)
+
     def route(self, text):
         """The brain's LEARNED intent for a line of text, read out by spike timing from the interaction
         learner (improves as you teach() it). Requires interaction_learning=True; pure inference."""

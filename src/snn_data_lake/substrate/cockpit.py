@@ -191,16 +191,33 @@ class Turns:
         self._q = queue.Queue()
         self._done = {}
         self._order = []
+        self._texts = {}
         self._lock = threading.Lock()
         self._n = 0
 
     def submit(self, text):
         """Queue a turn. Returns its ticket id."""
+        text = str(text)[:_MAX_CHAT_CHARS]
         with self._lock:
             self._n += 1
             tid = self._n
-        self._q.put((tid, str(text)[:_MAX_CHAT_CHARS]))
+            self._texts[tid] = text
+            while len(self._texts) > _REPLY_KEEP:
+                del self._texts[next(iter(self._texts))]
+            self._q.put(("say", tid, text))
         return tid
+
+    def submit_correction(self, tid, intent):
+        """Queue recognition-only feedback for a kept text; returns (ticket, refusal reason)."""
+        with self._lock:
+            if type(tid) is not int or tid not in self._texts:
+                return None, "unknown or expired chat ticket"
+            if not isinstance(intent, str) or not intent.strip() or len(intent) > 32:
+                return None, "intent must be a non-empty string of at most 32 characters"
+            self._n += 1
+            cid = self._n
+            self._q.put(("correct", cid, self._texts[tid], intent))
+        return cid, None
 
     def result(self, tid):
         """The finished reply dict for a ticket, or None while it is still queued."""
@@ -219,17 +236,26 @@ class Turns:
         n = 0
         while n < budget:
             try:
-                tid, text = self._q.get_nowait()
+                kind, tid, text, *feedback = self._q.get_nowait()
             except queue.Empty:
                 break
             try:
-                out = brain.respond(text, human=True)  # T037a: a person typed this
-                rec = {
-                    "reply": out.get("reply", ""),
-                    "route": out.get("route", ""),
-                    "somatic_recall": out.get("somatic_recall"),
-                    "t": time.time(),
-                }
+                if kind == "correct":
+                    out = brain.correct(text, feedback[0])
+                    rec = {
+                        "corrected": feedback[0],
+                        "was": out["was"],
+                        "provenance": out["provenance"],
+                        "t": time.time(),
+                    }
+                else:
+                    out = brain.respond(text, human=True)  # T037a: a person typed this
+                    rec = {
+                        "reply": out.get("reply", ""),
+                        "route": out.get("route", ""),
+                        "somatic_recall": out.get("somatic_recall"),
+                        "t": time.time(),
+                    }
             except Exception as e:
                 rec = {
                     "reply": "",
@@ -298,7 +324,7 @@ def _snapshot(brain):
     return snap
 
 
-def _handler(get_snap, turns, get_view=None, acts=None):
+def _handler(get_snap, turns, get_view=None, acts=None, intents=()):
     class H(BaseHTTPRequestHandler):
         def _send(self, code, body, ctype="application/json"):
             data = body if isinstance(body, bytes) else body.encode("utf-8")
@@ -316,6 +342,8 @@ def _handler(get_snap, turns, get_view=None, acts=None):
                     return self._send(200, COCKPIT_HTML, "text/html; charset=utf-8")
                 if path == "/api/geom":
                     return self._send(200, json.dumps(_geometry()))
+                if path == "/api/intents":
+                    return self._send(200, json.dumps(intents))
                 if path == "/api/arm.png":
                     # Requesting is all this thread does. Drawing happens on the tick thread --
                     # see substrate/arm_view.py -- so a browser poll only registers interest and
@@ -427,6 +455,11 @@ def _handler(get_snap, turns, get_view=None, acts=None):
                 # Loopback-only binding makes this low-risk, not no-risk -- anything local can POST.
                 n = min(int(self.headers.get("Content-Length") or 0), _MAX_CHAT_CHARS * 4)
                 body = json.loads(self.rfile.read(n) or b"{}")
+                if "correct" in body:
+                    tid, why = turns.submit_correction(body["correct"], body.get("intent"))
+                    if tid is None:
+                        return self._send(400, json.dumps({"error": why}))
+                    return self._send(200, json.dumps({"id": tid, "queued": True}))
                 text = (body.get("text") or "").strip()
                 if not text:
                     return self._send(400, json.dumps({"error": "empty message"}))
@@ -481,7 +514,11 @@ def serve(brain, port=8137, turns=None, block=True, acts=None):
     # package under P4c. Naming the symbol instead, per the lesson `self_mod_harness.py` records.
     # (The stale number is deliberately not repeated here: a corrected cite that still contains a
     # resolvable-looking `file.py:NNN` token re-arms every scanner that looks for one.)
-    srv = _Server(("127.0.0.1", int(port)), _handler(lambda: _snapshot(brain), turns, _view, acts))
+    intents = brain.correction_intents()
+    srv = _Server(
+        ("127.0.0.1", int(port)),
+        _handler(lambda: _snapshot(brain), turns, _view, acts, intents),
+    )
     srv.turns = turns
     # the BOUND port, not the requested one: port=0 means "OS, pick one", and printing the request
     # would tell the reader to open http://127.0.0.1:0/
@@ -1024,10 +1061,48 @@ function paint(d){
 }
 
 /* ---------- chat: post a ticket, poll for the reply ---------- */
+function chatEscape(text){
+ return String(text).replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;',
+  '"':'&quot;',"'":'&#39;'}[c]));
+}
+const CHAT_INTENTS=fetch('/api/intents').then(r=>r.json());
+async function correctionControl(reply,id){
+ try{
+  const intents=await CHAT_INTENTS, row=document.createElement('div'); row.className='rt';
+  const select=document.createElement('select'), button=document.createElement('button');
+  for(const intent of intents){
+   const option=document.createElement('option'); option.value=intent; option.textContent=intent;
+   select.appendChild(option);
+  }
+  button.textContent='correct'; row.append(select,button); reply.appendChild(row);
+  button.onclick=async function(){
+   button.disabled=true;
+   const status=document.createElement('span'); row.appendChild(status);
+   try{
+    const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({correct:id,intent:select.value})});
+    const queued=await r.json();
+    if(queued.error||!queued.id)throw new Error(queued.error||'not queued');
+    for(let i=0;i<600;i++){
+     await new Promise(r=>setTimeout(r,500));
+     const q=await (await fetch('/api/chat?id='+queued.id)).json();
+     if(q.pending)continue;
+     if(q.error)throw new Error(q.error);
+     status.textContent='corrected: '+q.corrected+' (was '+q.was+')'; return;
+    }
+    status.textContent='no reply within 5 min - is the daemon pumping turns?';
+   }catch(e){status.textContent=String(e);}
+   finally{button.disabled=false;}
+  };
+ }catch(e){
+  const status=document.createElement('div'); status.textContent='corrections unavailable: '+e;
+  reply.appendChild(status);
+ }
+}
 function say(cls,who,text,route){
  const d=document.createElement('div'); d.className='m '+cls;
- d.innerHTML=`<b>${who}</b> ${text.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}`
-  +(route?`<div class="rt">${route}</div>`:'');
+ d.innerHTML=`<b>${chatEscape(who)}</b> ${chatEscape(text)}`
+  +(route?`<div class="rt">${chatEscape(route)}</div>`:'');
  $('log').appendChild(d); $('log').scrollTop=$('log').scrollHeight; return d;
 }
 async function send(){
@@ -1039,18 +1114,19 @@ async function send(){
   const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({text:t})});
   const {id,error}=await r.json();
-  if(error||!id){wait.innerHTML='<b>brain</b> <span class="er">'+(error||'not queued')+'</span>';return;}
+  if(error||!id){wait.innerHTML='<b>brain</b> <span class="er">'+chatEscape(error||'not queued')+'</span>';return;}
   for(let i=0;i<600;i++){
    await new Promise(r=>setTimeout(r,500));
    const q=await (await fetch('/api/chat?id='+id)).json();
    if(q.pending)continue;
-   if(q.error){wait.innerHTML='<b>brain</b> <span class="er">'+q.error+'</span>';return;}
-   wait.innerHTML=`<b>brain</b> ${(q.reply||'').replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}`
-     +(q.route?`<div class="rt">${q.route}</div>`:'');
+   if(q.error){wait.innerHTML='<b>brain</b> <span class="er">'+chatEscape(q.error)+'</span>';return;}
+   wait.innerHTML=`<b>brain</b> ${chatEscape(q.reply||'')}`
+     +(q.route?`<div class="rt">${chatEscape(q.route)}</div>`:'');
+   correctionControl(wait,id);
    $('log').scrollTop=$('log').scrollHeight; return;
   }
   wait.innerHTML='<b>brain</b> <span class="er">no reply within 5 min &mdash; is the daemon pumping turns?</span>';
- }catch(e){wait.innerHTML='<b>brain</b> <span class="er">'+e+'</span>';}
+ }catch(e){wait.innerHTML='<b>brain</b> <span class="er">'+chatEscape(e)+'</span>';}
  finally{$('cs').disabled=false;$('ci').focus();}
 }
 $('cs').onclick=send;
