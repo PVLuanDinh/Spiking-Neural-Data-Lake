@@ -249,6 +249,7 @@ class NeurogenesisSelfImprove:
         self._n_units = 0
         self._acc = 0.0  # no measurement until the first fit -- never a chance guess
         self._model = None  # the retained grown NG-SNN; None until the first successful refit
+        self._pending_prediction = None
         #: [(tick, majority_acc, persistence_acc)] per refit, on the SAME held-out slice as the
         #: accuracy: what "predict the next category" scores by always answering the training
         #: majority, and by answering "the same as the last one". On a bursty real stream the
@@ -274,6 +275,21 @@ class NeurogenesisSelfImprove:
     #   distinct-from: substrate/signal_calibrator.py, cortex/percept_surprise.py -- observe()
     #   there records a scalar distribution / an Oja residual. This one BUFFERS a (percept ->
     #   next own-category) transition for the sleep refit. All sites read.
+    def predict_next(self):
+        """Predict the pending category from the last percept, once per event."""
+        model = self._model
+        if self._prev is None or model is None or model.W is None or model.beta is None:
+            return None
+        cached = self._pending_prediction
+        if cached is not None and cached[0] is model and cached[1] is self._prev:
+            return cached[3]
+        xp = torch.tensor([self._prev], dtype=torch.float32)
+        rates = model._rates(xp, model.W, model.b)
+        decision = int(model.decide(rates)[0])
+        fallback = bool(model.last_abstentions_)
+        self._pending_prediction = (model, self._prev, rates[0], decision, fallback)
+        return decision
+
     def observe(self, features, category):
         """WAKE: one percept the brain just had, with the brain's own category of it. Records the
         transition (previous percept -> this category): the engine's task is to predict, from
@@ -308,8 +324,8 @@ class NeurogenesisSelfImprove:
                 and self._model.beta is not None
             ):
                 m = self._model
-                xp = torch.tensor([self._prev], dtype=torch.float32)
-                S = m._rates(xp, m.W, m.b)  # the previous percept's unit rates (1, L)
+                pred = self.predict_next()
+                S = self._pending_prediction[2].unsqueeze(0)
                 # P2, 2026-09-07 (the arc's own panel found this): this was a THIRD copy of the
                 # decision rule -- `int((S @ m.beta).argmax(dim=1)[0])` -- and its comment claimed
                 # "== m.predict(xp)", which was true until `predict` began routing through `decide`
@@ -317,13 +333,13 @@ class NeurogenesisSelfImprove:
                 # column 0, a class the stream never emits as a target, and that answer went
                 # straight into `live_correct`. The consolidation the fix commit CLAIMED (two
                 # mechanisms into one) is only true with this line included; it is now.
-                pred = int(m.decide(S)[0])
                 self.live_n += 1
                 self.live_correct += int(pred == cat)
                 self.live_persist += int(self._prev_cat == cat)
                 if self.online_readout is not None:  # L1c: learn from the pair just scored
                     self._readout_charge += self.online_readout.learn(m, S[0], cat)
         self._prev = feats
+        self._pending_prediction = None
         self._prev_cat = cat
         self._categories.add(cat)
         self.observed += 1
