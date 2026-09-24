@@ -112,6 +112,17 @@ GRADIENT_CLAIM = {
 }
 
 
+def feed_and_decide(stop, trajectory, region="cortex"):
+    """Feed unseen refit rows, counting poisoned rows, then ask the gate."""
+    refused = 0
+    for _tick, units, accuracy in list(trajectory)[stop.observed(region) :]:
+        try:
+            stop.observe_refit(region, int(units), float(accuracy))
+        except (ValueError, TypeError):
+            refused += 1
+    return stop.should_grow(region), refused
+
+
 class GrowthStop:
     """Per-region growth gate. Feed observe_refit() per refit; ask should_grow(region).
 

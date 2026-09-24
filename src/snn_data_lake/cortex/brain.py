@@ -1437,13 +1437,11 @@ class Brain:
                     return facade.lp(region)
 
             self._growth_stop = GrowthStop(lp_reader=_LPRoute())
-        gate = self._growth_stop
-        for _t, u, a in list(trajectory)[gate.observed("cortex") :]:
-            try:
-                gate.observe_refit("cortex", int(u), float(a))
-            except (ValueError, TypeError):
-                self._growth_feed_refusals += 1
-        return gate.should_grow("cortex")
+        from snn_data_lake.cortex.growth_stop import feed_and_decide
+
+        verdict, refused = feed_and_decide(self._growth_stop, trajectory)
+        self._growth_feed_refusals += refused
+        return verdict
 
     def _make_neuro(self, seed, device):
         """Lazily build the torch neurogenesis engine from THIS cortex package. torch is a core
