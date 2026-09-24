@@ -147,12 +147,14 @@ BUDGETS = {
     # RETIRED 2026-08-16 anchor; the governing practice since T046 is MINIMUM-VIABLE raises
     # (measured + 0, stated per raise), so 0.0%-headroom rows are deliberate and the
     # TIGHTENABLE report is structurally quiet for them.
+    # RAISED 1783 -> 1919 on 2026-09-24: G0(b)'s row 11, the confirmed-clarification rule its pre-registration
+    # promised (FR-031; T108) -- measured 1783 -> 1919, +136 words (str.split); measured + 0, the minimum-viable raise.
     # RAISED 1680 -> 1783 on 2026-09-24: G0(a)'s row 10, the provenance rule its pre-registration promised (FR-031;
     # T108) -- measured 1680 -> 1783, +103 words (str.split, this gate's own count); measured + 0, the minimum-viable
     # raise.
     # RAISED 1644 -> 1680 on 2026-09-16: T080's MECHANIZED line under 6 (measured 1644 -> 1680, +36 words;
     # measured + 0, the minimum-viable raise, the same rule as the 2026-09-15 raise below).
-    "docs/INVENTION_REGISTER.md": 1783,  # RAISED 1618 -> 1644 on 2026-09-15: T079's MECHANIZED line under 6
+    "docs/INVENTION_REGISTER.md": 1919,  # RAISED 1618 -> 1644 on 2026-09-15: T079's MECHANIZED line under 6
     # (measured 1618 -> 1644, +26 words; measured + 0, the minimum-viable raise). EARLIER:
     # RAISED 1595 -> 1618 on 2026-09-15: T077's MECHANIZED line under
     # S6 (FR-031 requires a register row per landed P8 invention; the row is two lines, condensed twice

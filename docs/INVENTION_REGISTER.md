@@ -156,3 +156,14 @@ ring's older entries for it are REWRITTEN. RED: each part's neutered twin (B1: 1
 B2: 295 post-correction replayed ones). CONTROL: the uncorrected incumbent (C) and a one-shot correction (B0).
 ATTRIBUTION: supersession carries routing (B1 0.750 vs A 1.0); the rewrite guards only the teaching record (B2 routes
 1.0). NULL: a part whose red stops being reachable is deleted. `evidence/g0a-chat-correction.md`.
+
+## 11. The learned route consumed as a confirmed clarification (G0(b), T108)
+Adopted parts: the corrected spiking intent learner and incumbent grounded replies. INVENTED: read the learned
+route before teaching, propose one interpretation, and answer only after the person's next-turn confirmation.
+RED: no paired useful-answer gain against either the incumbent or shuffled proposals; any seed with excess
+misfires. CONTROL: consumption off (N), deranged routes (S), discarded branch (D), and direct answers (U).
+ATTRIBUTION: full reply text scored against the frozen key, alongside confirmed-route labels; unnecessary
+questions reported separately. NULL: any campaign RED deletes the branch, never weakens the bar. SCOPE: the
+frozen corpus, seeds 0-7, the no-background-chat schedule, and a cooperative truthful person only. Confirmation
+does not teach authoritatively. PASS 2026-09-24: A beat S (t 16.9) and N (t 26.0), no excess misfires.
+`evidence/g0b-reply-consumes-route.md`, section 3.
