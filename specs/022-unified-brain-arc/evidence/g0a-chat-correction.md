@@ -113,6 +113,41 @@ unit test.
 - The design was read by Codex before this freeze; its points (the neutered arms, the pre-seed, label-level R-a2,
   R-a3, the sign-flip p, the territory corrections) are folded above.
 
-## 3. Results
+## 3. Results (campaign at `b6cd92c`, clean tree, 40 of 40 runs valid, about 7 minutes)
 
-Not run yet.
+The command: `python -m snn_data_lake.cortex.interaction_learning --g0-campaign <out-dir>` (out-dir outside the
+repo). A second instrument recomputed M1 from the raw R4 routes, the teaching labels, the ring audits and R-a1's
+statistics without `g0_verdict`, and agreed with it on every number.
+
+**2.4 first -- the reds are reachable.** B1 (supersession neutered) logged 192 post-correction WAKE teaching events
+carrying the firewall's self-label. B2 (ring rewrite neutered) logged 295 post-correction REPLAY events carrying a
+pre-seeded self-label. Both parts' reds fire, so both parts stay.
+
+| arm | M1 per seed (8) | M1 mean | R4 routed back to GREET | post-correction wrong labels (wake / replay) | ring mismatches | M2 | M3 |
+|---|---|---|---|---|---|---|---|
+| A | 1.0 on every seed | 1.000 | 0 | 0 / 0 | 0 | 0.875 | 0.969 |
+| B0 | .25 .5 .625 .375 .625 .625 .75 .5 | 0.531 | 22 | 192 / 897 | 256 | 0.525 | 0.887 |
+| B1 | .625 .75 .75 .375 .75 .875 .875 1.0 | 0.750 | 13 | 192 / 602 | 192 | 0.600 | 0.900 |
+| B2 | 1.0 on every seed | 1.000 | 0 | 0 / 295 | 64 | 0.888 | 0.969 |
+| C | .375 .5 .5 .5 .375 0 .625 .625 | 0.438 | 26 | -- (no correction) | 256 | 0.512 | 0.894 |
+
+Every run's minimum replay count per round was 96 (never zero). R4 = routing after the third challenge round.
+
+- **R-a1: PASS.** d = M1(A) - M1(C) per seed = 0.625, 0.5, 0.5, 0.5, 0.625, 1.0, 0.375, 0.375; mean 0.562, sd
+  0.200, t = 7.94 (bar 1.895), exact one-sided sign-flip p = 1/256 = 0.0039.
+- **R-a2: PASS.** Arm A: no post-correction teaching event with a non-authoritative label, wake or replay, and no
+  end-of-run ring entry for a corrected utterance with another label, on any seed.
+- **R-a3: PASS** in pytest (`tests/test_g0_correction.py`): a correction on "stop" and on an arm command reaches no
+  `respond`, `chat`, `converse`, `So101Arm.apply` or E-STOP latch.
+- **Secondary.** M2 (held-out paraphrases) 0.512 -> 0.875, A vs C: corrections generalize. M3 (the training lines)
+  0.894 -> 0.969, with no seed dropping.
+
+**Attribution, stated plainly.** Supersession carries the routing effect: without it (B1), 13 corrected routes fall
+back to GREET; a one-shot correction (B0) loses 22 of 64. The ring rewrite protects the teaching RECORD, not the
+routing on this schedule: without it (B2), 295 replays re-teach the stale self-label, yet routing stays at 1.0 on every
+seed, because supersession and the correction's own dose outweigh them. It stays under 2.4's rule (its red is reachable),
+and its routing effect here is zero.
+
+**Disposition.** G0(a) meets its pre-registered criteria; G-R0's correction clauses read PASS on this corpus, these 8
+seeds and this schedule only. G-R0's routing-consumption and fresh-process clauses belong to G0(b) and G0(c). The
+executor's rewrite of the module's own self-check was not taken (`4474ada` guards the bare run instead).
