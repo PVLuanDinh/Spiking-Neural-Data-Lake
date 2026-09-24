@@ -167,3 +167,13 @@ questions reported separately. NULL: any campaign RED deletes the branch, never 
 frozen corpus, seeds 0-7, the no-background-chat schedule, and a cooperative truthful person only. Confirmation
 does not teach authoritatively. PASS 2026-09-24: A beat S (t 16.9) and N (t 26.0), no excess misfires.
 `evidence/g0b-reply-consumes-route.md`, section 3.
+
+## 12. The chat learner's restart: a validated whole-tree checkpoint and lake-sourced authority (G0(c), T108)
+Adopted parts: the incumbent named-state record (`_T_STATE`), the episode tag (`_T_EPISODE`) and G0(a)'s ring rewrite.
+INVENTED: one codec for the learner's whole object tree that validates class and attribute sets and stages everything
+before it writes; a checkpoint at the end of each night and on close; authoritative labels appended at once as typed
+teaching events, with the authority rebuilt from them and the restored ring reconciled. RED: a restart that differs
+from an uninterrupted twin on the tree, routes, post-step weights or replay draws, through either production hook; a
+stale ring after a post-checkpoint correction. CONTROL: no restore (N), one omission per carrier, and a skipped
+reconciliation (O_rec). SCOPE: this corpus, seeds 0-7, a same-code restart. PASS 2026-09-24.
+`evidence/g0c-learner-persists.md`, section 3.
