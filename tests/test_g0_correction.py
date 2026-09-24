@@ -69,13 +69,19 @@ def test_missing_label_rejected():
         learner().learn_turn("a goal", None)
 
 
-def test_authority_fifo_refresh(monkeypatch):
-    monkeypatch.setattr(ixn, "_AUTHORITY_CAP", 2)
+def test_authority_survives_many_later_corrections():
     lrn = learner()
-    for text in ("one", "two", "ONE", "three"):
-        lrn.learn_turn(text, None, feedback="GOAL")
-    assert list(lrn._authority) == ["one", "three"]
-    assert lrn.provenance("two") == "self"
+    lrn.learn_turn("kept", None, feedback="GOAL")
+    for index in range(5000):
+        lrn.learn_turn(f"other {index}", None, feedback="GOAL")
+    assert lrn.provenance("kept") == "authoritative"
+    assert lrn._authority["kept"] == "GOAL"
+
+
+def test_authoritative_learn_turn_keys_the_ring_entry():
+    lrn = learner()
+    lrn.learn_turn(" A  Goal ", None, feedback="GOAL")
+    assert lrn._replay[-1][1:] == ("GOAL", "a goal")
 
 
 def constructed_results(a=1.0, c=0.0):
@@ -127,6 +133,7 @@ def test_verdict_positive_degenerate_and_reachability():
     assert result["R-a1"]["t"] is None
     assert "undefined" in result["R-a1"]["degenerate_t"]
     assert result["R-a1"]["sign_flip_p"] == 1 / 256
+    assert 0 <= result["R-a1"]["conditional_rejection_fraction"] <= 1
     assert result["reachability"]["B1"]["reached"]
     assert result["reachability"]["B2"]["reached"]
     assert result["verdict"] == "PASS"
@@ -160,6 +167,56 @@ def test_verdict_too_many_invalid_seeds_is_red():
     assert result["R-a1"]["verdict"] == "RED"
     assert len(result["invalid_runs"]) == 3
     assert not result["enough_valid_seeds"]
+
+
+def test_verdict_seven_valid_seeds_in_one_arm_is_red_with_reason():
+    runs = constructed_results()
+    run = next(run for run in runs if run["arm"] == "B0" and run["seed"] == ixn.G0_SEEDS[0])
+    run["valid"] = False
+    run["invalid_reasons"] = ["constructed failure"]
+    result = ixn.g0_verdict(runs)
+    assert result["verdict"] == "RED"
+    assert not result["enough_valid_seeds"]
+    assert any("B0 has 7 of 8" in reason for reason in result["validity_reasons"])
+
+
+def test_verdict_mixed_heads_is_red_with_heads_listed():
+    runs = constructed_results()
+    runs[0]["head"] = "other"
+    result = ixn.g0_verdict(runs)
+    assert result["verdict"] == "RED"
+    assert not result["common_head"]
+    assert result["heads"] == ["constructed", "other"]
+
+
+def test_g0_spy_records_failure_after_original_raises():
+    reasons = []
+    events = []
+    replay_count = 0
+
+    def raises(*args, **kwargs):
+        raise LookupError("constructed")
+
+    def count_replay():
+        nonlocal replay_count
+        replay_count += 1
+
+    with pytest.raises(LookupError, match="constructed"):
+        ixn._g0_observe_interaction(
+            raises,
+            object(),
+            "GOAL",
+            _record=False,
+            _key="a goal",
+            by_key={"a goal": "a goal"},
+            corrected={"a goal"},
+            events=events,
+            reasons=reasons,
+            count_replay=count_replay,
+        )
+    assert reasons == ["replay interaction raised LookupError"]
+    assert replay_count == 0
+    assert events == []
 
 
 def test_verdict_missing_reachability_is_red():

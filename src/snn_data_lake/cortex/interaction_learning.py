@@ -72,7 +72,6 @@ from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
 from snn_data_lake.cortex.rank_order_coding import rank_code
 
 _REPLAY_CAP = 64  # sleep-replay ring size (T058): a memory bound, not a behaviour threshold
-_AUTHORITY_CAP = 4096  # a memory bound on the authoritative-label map, not a behaviour threshold
 
 
 def _utterance_key(utterance):
@@ -167,8 +166,8 @@ class SpikingInteractionLearner:
         # A bounded ring, a memory bound rather than a behaviour-arbitrating threshold.
         self._replay = []
         # G0(a) provenance: normalized utterance -> AUTHORITATIVE label (a person's correction),
-        # insertion-ordered and FIFO-evicted past _AUTHORITY_CAP. A later self-label on the same
-        # utterance is superseded by it, and its older ring entries are rewritten to it.
+        # retained for the process lifetime. A later self-label on the same utterance is superseded
+        # by it, and its older ring entries are rewritten to it.
         self._authority = {}
         # Instrument/test handles for G0(a)'s neutered twins; both default ON.
         self.provenance_supersede = True
@@ -418,10 +417,7 @@ class SpikingInteractionLearner:
         if feedback is not None:
             if feedback not in self.responses:
                 raise ValueError(f"unknown response label: {feedback!r}")
-            self._authority.pop(key, None)
             self._authority[key] = feedback
-            if len(self._authority) > _AUTHORITY_CAP:
-                del self._authority[next(iter(self._authority))]
             if self.provenance_rewrite:
                 self._replay[:] = [
                     (code, feedback if old_key == key else label, old_key)
@@ -439,7 +435,7 @@ class SpikingInteractionLearner:
         return self.interact(text_features(utterance, self.n_in), label, _key=key)
 
     def provenance(self, utterance):
-        """Read the utterance's teaching provenance without learning or changing its FIFO age."""
+        """Read the utterance's teaching provenance without learning or changing it."""
         return "authoritative" if _utterance_key(utterance) in self._authority else "self"
 
 
@@ -792,6 +788,39 @@ G0_HELD_OUT = tuple((u, intent) for intent, lines in _CONV_TEST.items() for u in
 G0_FROZEN_FW = {u: "GREET" for u, _ in _conv_flat(_CONV_TEST)}
 
 
+def _g0_observe_interaction(
+    original,
+    stimulus,
+    feedback,
+    *,
+    _record,
+    _key,
+    by_key,
+    corrected,
+    events,
+    reasons,
+    count_replay,
+):
+    phase = "wake" if _record else "replay"
+    try:
+        answer = original(stimulus, feedback, _record=_record, _key=_key)
+    except Exception as exc:
+        reasons.append(f"{phase} interaction raised {type(exc).__name__}")
+        raise
+    if not _record:
+        count_replay()
+    if _key in by_key:
+        events.append(
+            {
+                "utterance": by_key[_key],
+                "label": feedback,
+                "phase": phase,
+                "after_correction": _key in corrected,
+            }
+        )
+    return answer
+
+
 def g0_run(seed, arm):
     """G0(a): one seed/arm in its own process, on a scratch canonical brain only.
 
@@ -825,20 +854,23 @@ def g0_run(seed, arm):
             original = learner.interact
             replay_total = 0
 
-            def observed(stimulus, feedback, _record=True, _key=None):
+            def count_replay():
                 nonlocal replay_total
-                if not _record:
-                    replay_total += 1
-                if _key in by_key:
-                    events.append(
-                        {
-                            "utterance": by_key[_key],
-                            "label": feedback,
-                            "phase": "wake" if _record else "replay",
-                            "after_correction": _key in corrected,
-                        }
-                    )
-                return original(stimulus, feedback, _record=_record, _key=_key)
+                replay_total += 1
+
+            def observed(stimulus, feedback, _record=True, _key=None):
+                return _g0_observe_interaction(
+                    original,
+                    stimulus,
+                    feedback,
+                    _record=_record,
+                    _key=_key,
+                    by_key=by_key,
+                    corrected=corrected,
+                    events=events,
+                    reasons=reasons,
+                    count_replay=count_replay,
+                )
 
             learner.interact = observed
 
@@ -928,9 +960,22 @@ def g0_verdict(results):
                 invalid.append(run)
             else:
                 valid[arm][seed] = run
-    enough = all(len(runs) >= len(G0_SEEDS) - 2 for runs in valid.values())
+    enough = all(len(runs) == len(G0_SEEDS) for runs in valid.values())
     paired = sorted(valid["A"].keys() & valid["C"].keys())
     deltas = {seed: valid["A"][seed]["M1"] - valid["C"][seed]["M1"] for seed in paired}
+    heads = sorted({run.get("head") for run in results}, key=lambda head: str(head))
+    common_head = len(heads) == 1
+    validity_reasons = [
+        f"{arm} has {len(runs)} of {len(G0_SEEDS)} valid registered seeds"
+        for arm, runs in valid.items()
+        if len(runs) != len(G0_SEEDS)
+    ]
+    if len(paired) != len(G0_SEEDS):
+        validity_reasons.append(
+            f"A/C has {len(paired)} of {len(G0_SEEDS)} valid paired registered seeds"
+        )
+    if not common_head:
+        validity_reasons.append(f"runs have mixed heads: {heads}")
 
     def summary(values):
         return {
@@ -938,35 +983,52 @@ def g0_verdict(results):
             "sd": statistics.stdev(values) if len(values) > 1 else 0.0,
         }
 
+    def a1_statistics(values):
+        stats = summary(values)
+        mean, sd = stats["mean"], stats["sd"]
+        t = mean / (sd / math.sqrt(len(values))) if values and sd else None
+        degenerate = bool(values) and sd == 0.0
+        p = (
+            sum(
+                sum(sign * d for sign, d in zip(signs, values, strict=True)) >= sum(values)
+                for signs in itertools.product((-1, 1), repeat=len(values))
+            )
+            / (2 ** len(values))
+            if values
+            else None
+        )
+        t_pass = mean > 0 if degenerate else t is not None and t > 1.895
+        return stats, t, degenerate, p, t_pass
+
     values = list(deltas.values())
-    stats = summary(values)
-    mean, sd = stats["mean"], stats["sd"]
-    t = mean / (sd / math.sqrt(len(values))) if values and sd else None
-    degenerate = bool(values) and sd == 0.0
+    stats, t, degenerate, p, t_pass = a1_statistics(values)
     note = (
         "All d are equal: t is undefined; all d > 0 passes the t rule, all d <= 0 reds it."
         if degenerate
         else None
     )
-    p = (
+    # Conditional on the observed magnitudes: fraction of sign vectors that pass both R-a1 tests.
+    conditional_rejection_fraction = (
         sum(
-            sum(sign * d for sign, d in zip(signs, values, strict=True)) >= sum(values)
+            (lambda result: result[4] and result[3] <= 0.05)(
+                a1_statistics([sign * d for sign, d in zip(signs, values, strict=True)])
+            )
             for signs in itertools.product((-1, 1), repeat=len(values))
         )
         / (2 ** len(values))
         if values
         else None
     )
-    t_pass = mean > 0 if degenerate else t is not None and t > 1.895
     a1 = {
         "d": deltas,
         **stats,
         "t": t,
         "degenerate_t": note,
         "sign_flip_p": p,
+        "conditional_rejection_fraction": conditional_rejection_fraction,
         "n": len(values),
         "verdict": "PASS"
-        if enough and len(paired) >= len(G0_SEEDS) - 2 and t_pass and p <= 0.05
+        if enough and len(paired) == len(G0_SEEDS) and t_pass and p <= 0.05
         else "RED",
     }
     truth = dict(G0_CORRECTED)
@@ -1023,9 +1085,13 @@ def g0_verdict(results):
         "secondary": secondary,
         "invalid_runs": invalid,
         "enough_valid_seeds": enough,
+        "heads": heads,
+        "common_head": common_head,
+        "validity_reasons": validity_reasons,
         "verdict": "PASS"
         if a1["verdict"] == a2["verdict"] == "PASS"
         and all(r["reached"] for r in reachability.values())
+        and common_head
         else "RED",
         "scope": "This corpus, these eight seeds and this schedule only; R-a3 is a unit test.",
     }
@@ -1080,6 +1146,8 @@ def g0_campaign(out_dir, workers=4):
     )
     print(
         f"G0(a): {verdict['verdict']}; R-a1 {verdict['R-a1']['verdict']}; "
+        f"sign-flip p {verdict['R-a1']['sign_flip_p']}; conditional rejection fraction "
+        f"{verdict['R-a1']['conditional_rejection_fraction']}; "
         f"R-a2 {verdict['R-a2']['verdict']}; invalid runs {len(verdict['invalid_runs'])}"
     )
     return verdict

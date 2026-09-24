@@ -906,14 +906,17 @@ class LiveBrain:
         """IMPROVE the brain by TALKING to it: spike-encode `text` (rank-order latency code) and teach the
         spiking interaction learner -- via reward-modulated spike-timing plasticity (R-STDP), NOT a gradient
         -- that this text carries `intent` (one of _IXN_INTENTS). Repeated exchanges sharpen the mapping, so
-        the brain gets better at recognising what it is being told. Returns the learner's pre-update answer.
-        Requires interaction_learning=True. SAFETY: this learns INTENT RECOGNITION only; it drives no motion
-        and adds no actuator route -- arm COMMANDS still flow through the NL firewall + gated arm in converse()."""
+        the brain gets better at recognising what it is being told. G0(a): the label is AUTHORITATIVE, the
+        same kind as correct() -- it goes through learn_turn(feedback=...), so it is keyed, a later self-label
+        on the same text cannot overwrite it, and its older ring entries are rewritten. Returns the learner's
+        pre-update answer. Requires interaction_learning=True. SAFETY: this learns INTENT RECOGNITION only; it
+        drives no motion and adds no actuator route -- arm COMMANDS still flow through the NL firewall + gated
+        arm in converse()."""
         if self._ixn is None:
             raise RuntimeError(
                 "interaction learning is off; build LiveBrain(interaction_learning=True)"
             )
-        return self._ixn.interact(text_features(text, self._ixn.n_in), intent)
+        return self._ixn.learn_turn(text, None, feedback=intent)
 
     def correct(self, text, intent):
         """A person's AUTHORITATIVE correction, learning intent recognition only.
