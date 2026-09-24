@@ -2,7 +2,8 @@
 
 Row: plan Part D "G workstream", G0 (a); red G-R0's correction clauses (Part F); FR-041, SC-019. T108 lands its three
 parts as three arcs: (a) this file, (b) the reply consuming the learned route, (c) the learner's persisted state.
-Status: PRE-REGISTERED. Nothing below section 2 has been run on the arms; section 3 is written after the runs.
+Status: RESULTS RECORDED (2026-09-24). Section 2 is the frozen pre-registration; section 3 records the runs and every
+deviation from section 2.
 
 ## 1. Territory, read at HEAD `09f4028` before the design
 
@@ -113,11 +114,21 @@ unit test.
 - The design was read by Codex before this freeze; its points (the neutered arms, the pre-seed, label-level R-a2,
   R-a3, the sign-flip p, the territory corrections) are folded above.
 
-## 3. Results (campaign at `b6cd92c`, clean tree, 40 of 40 runs valid, about 7 minutes)
+## 3. Results (re-established at `38d9db7` after the panel fold; first run at `b6cd92c`; identical numbers)
 
 The command: `python -m snn_data_lake.cortex.interaction_learning --g0-campaign <out-dir>` (out-dir outside the
-repo). A second instrument recomputed M1 from the raw R4 routes, the teaching labels, the ring audits and R-a1's
-statistics without `g0_verdict`, and agreed with it on every number.
+repo). Both runs: a clean tree, one common head, 40 of 40 runs valid, about 6-7 minutes. A second instrument
+recomputed M1 from the raw R4 routes, the teaching labels, the ring audits and R-a1's statistics without
+`g0_verdict`, and agreed with it on every number; the re-run at `38d9db7` reproduced the first run exactly.
+
+**Deviations from section 2, folded from the G0(a) panel (`38d9db7`) and disclosed here.**
+- The authority map has NO bound: section 2.1's "bounded map" let a self-label override a correction after 4096
+  others (a behaviour-arbitrating eviction, P1). The map lives for the process; G0(c) persists it.
+- The scorer requires all 8 registered seeds valid in every arm and one common head. The first scorer allowed 6
+  seeds, against section 2.3's "7 d.f." and "256 flips"; no run was invalid, so no reported number changed.
+- The spy counts and logs a teaching call only after it completes; a raising call makes the run invalid.
+- `LiveBrain.teach` now goes through `learn_turn(feedback=...)`, keyed and authoritative like `Brain.correct`.
+- Part F's permutation false-positive rate is now printed (below), beside the observed sign-flip p.
 
 **2.4 first -- the reds are reachable.** B1 (supersession neutered) logged 192 post-correction WAKE teaching events
 carrying the firewall's self-label. B2 (ring rewrite neutered) logged 295 post-correction REPLAY events carrying a
@@ -134,7 +145,9 @@ pre-seeded self-label. Both parts' reds fire, so both parts stay.
 Every run's minimum replay count per round was 96 (never zero). R4 = routing after the third challenge round.
 
 - **R-a1: PASS.** d = M1(A) - M1(C) per seed = 0.625, 0.5, 0.5, 0.5, 0.625, 1.0, 0.375, 0.375; mean 0.562, sd
-  0.200, t = 7.94 (bar 1.895), exact one-sided sign-flip p = 1/256 = 0.0039.
+  0.200, t = 7.94 (bar 1.895), exact one-sided sign-flip p = 1/256 = 0.0039. Part F's permutation false-positive
+  rate, conditional on the observed magnitudes (the complete R-a1 rule re-run on every one of the 256 sign flips of
+  the observed d): 9/256 = 0.035.
 - **R-a2: PASS.** Arm A: no post-correction teaching event with a non-authoritative label, wake or replay, and no
   end-of-run ring entry for a corrected utterance with another label, on any seed.
 - **R-a3: PASS** in pytest (`tests/test_g0_correction.py`): a correction on "stop" and on an arm command reaches no
