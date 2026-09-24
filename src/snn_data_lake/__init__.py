@@ -135,6 +135,7 @@ REGIONS = {
         "prior_drift_harness",  # specs/022 T063: the three-arm seeded/random/wrong drift harness with SC-006's two reds, PLANTED and FROZEN; bare == the offline self-check
         "placement",  # every grown unit gets a cortical depth, a layer and an immutable Dale sign
         "growth_stop",  # specs/022 T047: |LP|+charge growth gates, executive-independent (P8 #4)
+        "memory_diagnostic",  # G1 causal contract diagnostic harness
         "lca_sparse_coding",
         "predictive_coding",
         "is_snn_forward",

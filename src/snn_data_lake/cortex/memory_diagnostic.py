@@ -1,0 +1,995 @@
+"""G1(a) causal stream recorder and replay harness.
+
+Recordings are experiment artifacts; no brain or replay state is persisted to the lake.
+"""
+
+import argparse
+import copy
+import gzip
+import hashlib
+import json
+import math
+import os
+import platform
+import subprocess
+import sys
+import zlib
+from collections import Counter
+from pathlib import Path
+
+import numpy as np
+import torch
+
+from snn_data_lake.cortex.growth_stop import GrowthStop, feed_and_decide
+from snn_data_lake.cortex.neurogenesis_engine import NeurogenesisSelfImprove
+
+ASSETS = {
+    "nmnist_pack.npz": "9863a50ead6190ae",
+    "shd_pack.npz": "295eef1755e2993a",
+    "eprop_nmnist.pt": "9b471619e39acfa0",
+    "eprop_shd.pt": "6b32f9eb38beeca3",
+}
+
+
+def _crc(value):
+    if value is None:
+        return None
+    if isinstance(value, torch.Tensor):
+        value = value.detach().cpu().contiguous().numpy()
+    return zlib.crc32(np.asarray(value).tobytes())
+
+
+def _fingerprint(engine):
+    model = engine._model
+    return {
+        "W": _crc(getattr(model, "W", None)),
+        "b": _crc(getattr(model, "b", None)),
+        "beta": _crc(getattr(model, "beta", None)),
+        "prior": _crc(None if model is None else model.prior_class_),
+        "batch_beta": _crc(engine._batch_beta),
+    }
+
+
+def _read_lp(brain):
+    facade = getattr(brain, "_lp", None)
+    if facade is None:
+        return None
+    try:
+        value = float(facade.lp("cortex"))
+    except Exception:
+        return None
+    return value if math.isfinite(value) else None
+
+
+def _policy():
+    return {
+        "NORD_DEVICE": os.environ.get("NORD_DEVICE"),
+        "NORD_GPU": os.environ.get("NORD_GPU"),
+        "torch": torch.__version__,
+        "numpy": np.__version__,
+        "python": platform.python_version(),
+        "platform": platform.platform(),
+        "threads": torch.get_num_threads(),
+        "device": "cpu",
+    }
+
+
+def _revision():
+    head = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True)
+    status = subprocess.run(
+        ["git", "status", "--porcelain", "--untracked-files=all"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    dirty = bool(status.stdout.strip())
+    return head.stdout.strip(), dirty
+
+
+def _assets():
+    root = Path(__file__).resolve().parents[3] / "models"
+    found = {}
+    for name, expected in ASSETS.items():
+        path = root / name
+        if not path.is_file():
+            raise ValueError(f"REFUSED: missing asset {name}")
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        if not digest.startswith(expected):
+            raise ValueError(f"REFUSED: asset hash {name}: {digest}")
+        found[name] = digest
+    return found
+
+
+def onehot_32(category):
+    category = int(category)
+    if not 0 <= category < 32:
+        raise ValueError(f"category outside onehot_32: {category}")
+    row = [0.0] * 32
+    row[category] = 1.0
+    return row
+
+
+class _View:
+    def __init__(self, channels, values):
+        self.channels = frozenset(channels)
+        self.values = values
+
+    def get(self, channel):
+        if channel not in self.channels:
+            raise ValueError(f"forbidden feature channel: {channel}")
+        return self.values[channel]
+
+
+def _feature(arm, view):
+    if arm == "a":
+        return list(view.get("x"))
+    if arm == "leak":
+        return list(view.get("x"))
+    if arm == "f64":
+        return onehot_32(view.get("c")) + [0.0] * 32
+    if arm == "d":
+        pred = view.get("own_predictions")
+        return list(view.get("x")) + (onehot_32(pred) if pred is not None else [0.0] * 32)
+    if arm == "d0":
+        return list(view.get("x")) + [0.0] * 32
+    if arm == "e1":
+        return list(view.get("x")) + sum(view.get("x_history"), [])
+    if arm == "e1-0":
+        return list(view.get("x")) + [0.0] * 192
+    if arm == "e2":
+        return list(view.get("x")) + sum(
+            (onehot_32(c) if c is not None else [0.0] * 32 for c in view.get("c_history")),
+            [],
+        )
+    if arm == "e2-0":
+        return list(view.get("x")) + onehot_32(view.get("c")) + [0.0] * 96
+    if arm == "forbidden":
+        return list(view.get("x")) + onehot_32(view.get("c"))
+    if arm == "noise":
+        row = list(view.get("x"))
+        return [v + int.from_bytes(os.urandom(4), "little") / 2**32 for v in row]
+    raise ValueError(f"unknown arm {arm}")
+
+
+ARMS = {
+    "a": (64, ("x",)),
+    "f64": (64, ("c",)),
+    "d": (96, ("x", "own_predictions")),
+    "d0": (96, ("x",)),
+    "e1": (256, ("x", "x_history")),
+    "e1-0": (256, ("x",)),
+    "e2": (192, ("x", "c_history")),
+    "e2-0": (192, ("x", "c")),
+    "forbidden": (96, ("x",)),
+    "noise": (64, ("x",)),
+    "leak": (64, ("x",)),
+}
+SCORED_ARMS = tuple(ARMS)[:8]
+
+
+def _segments(events, acquisitions, n_frames):
+    """Section 2.3's segments from the ACQUISITION records: the pass of x_t's vision frame through its order.
+    A reflex tick acquires without delivering, so counting deliveries would drift from the frame passes."""
+    first_permuted = next(
+        (a["vision"]["pointer"] for a in acquisitions if a["vision"]["order"] == "permuted"), None
+    )
+    for event in events:
+        source = event.get("source")
+        if source is None:
+            event["segment"] = None
+        elif source["vision"]["order"] == "permuted":
+            passed = source["vision"]["pointer"] - first_permuted
+            event["segment"] = "unseen-order" if passed < n_frames else "repeated-permuted"
+        else:
+            passed = source["vision"]["pointer"]
+            event["segment"] = "warm-up" if passed < n_frames else "repeated-canonical"
+
+
+def record_stream(seed, ticks=2400, *, arm_feed=None):
+    """Record delivery, acquisition, sleep, and refit events from an isolated brain."""
+    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.substrate.home import throwaway_home
+
+    torch.set_num_threads(1)
+    assets = _assets()
+    with throwaway_home():
+        brain = make_brain(seed=seed, persist=False)
+        if brain.neuro is None or not brain._perceiving_real or not brain._perceiving_audio:
+            raise ValueError("REFUSED: live packs or grower unavailable")
+        brain.neuro.device = "cpu"
+        engine = brain.neuro
+        stream = {
+            "seed": seed,
+            "config": {
+                "seed": engine.seed,
+                "refit_every": engine.refit_every,
+                "buffer_cap": engine.buffer_cap,
+                "l_max": engine._l_max,
+                "eps_tol": engine._eps_tol,
+                "T": engine._T,
+            },
+            "policy": _policy(),
+            "assets": assets,
+            "events": [],
+            "sleep": [],
+            "acquisitions": [],
+            "gate_verdicts": [],
+            "refits": [],
+        }
+        inverse = {
+            "vision": list(range(len(brain._real_frames))),
+            "audio": list(range(len(brain._audio_frames))),
+        }
+        order = "canonical"
+        pending = None
+
+        def acquisition(modality, original, pointer_name, frames_name):
+            def wrapped():
+                pointer = getattr(brain, pointer_name)
+                frames = getattr(brain, frames_name)
+                slot = pointer % len(frames)
+                result = original()
+                row = {
+                    "modality": modality,
+                    "pointer": pointer,
+                    "success": result is not None,
+                    "index": inverse[modality][slot],
+                    "order": order,
+                }
+                if pending is not None:
+                    pending[modality] = row
+                return result
+
+            return wrapped
+
+        brain._perceive_real = acquisition(
+            "vision", brain._perceive_real, "_real_ptr", "_real_frames"
+        )
+        brain._perceive_audio = acquisition(
+            "audio", brain._perceive_audio, "_audio_ptr", "_audio_frames"
+        )
+        original_observe = engine.observe
+
+        def observe(features, category):
+            index = len(stream["events"]) + 1
+            source = stream["acquisitions"][-1] if stream["acquisitions"] else None
+            if index > 1 and (
+                source is None or not all(source[m]["success"] for m in ("vision", "audio"))
+            ):
+                raise ValueError(f"REFUSED: fallback context at delivery {index}")
+            prediction = engine.predict_next()
+            fallback = bool(engine._pending_prediction[4]) if engine._pending_prediction else False
+            row = {
+                "t": index,
+                "tick": brain._step,
+                "x": list(map(float, features)),
+                "c": int(category),
+                "source": copy.deepcopy(source),
+                "causal_lp": _read_lp(brain),
+                "prediction": prediction,
+                "fallback": fallback,
+            }
+            stream["events"].append(row)
+            if arm_feed is None:
+                result = original_observe(features, category)
+            else:
+                view = _View(
+                    ARMS[arm_feed][1],
+                    {
+                        "x": row["x"],
+                        "c": row["c"],
+                        "own_predictions": prediction,
+                        "x_history": [[0.0] * 64] * 3,
+                        "c_history": [row["c"], None, None, None],
+                    },
+                )
+                result = original_observe(_feature(arm_feed, view), category)
+            if index == 720:
+                nonlocal order
+                rng = np.random.default_rng(seed * 7919 + 1)
+                for modality, frame_attr, label_attr in (
+                    ("vision", "_real_frames", "_real_labels"),
+                    ("audio", "_audio_frames", "_audio_labels"),
+                ):
+                    permutation = rng.permutation(len(getattr(brain, frame_attr)))
+                    setattr(brain, frame_attr, getattr(brain, frame_attr)[permutation])
+                    setattr(brain, label_attr, getattr(brain, label_attr)[permutation])
+                    inverse[modality] = permutation.tolist()
+                order = "permuted"
+            return result
+
+        engine.observe = observe
+        original_tick = engine.tick
+
+        def sleep_tick():
+            row = {
+                "tick": engine.ticks + 1,
+                "brain_tick": brain._step,
+                "event": len(stream["events"]),
+                "live_lp": _read_lp(brain),
+            }
+            before = len(engine.trajectory)
+            result = original_tick()
+            row["refit"] = _fingerprint(engine) if len(engine.trajectory) > before else None
+            if (engine.ticks % engine.refit_every) == 0:
+                stream["refits"].append(row)
+            stream["sleep"].append(row)
+            return result
+
+        engine.tick = sleep_tick
+        original_gate = engine._growth_gate
+
+        def gate(trajectory):
+            verdict = original_gate(trajectory)
+            stream["gate_verdicts"].append(
+                {"tick": engine.ticks, "event": len(stream["events"]), "verdict": verdict}
+            )
+            return verdict
+
+        engine._growth_gate = gate
+        for _ in range(ticks):
+            pending = {}
+            phase = brain.tick()
+            if phase == "awake":
+                if set(pending) != {"vision", "audio"} or not all(
+                    v["success"] for v in pending.values()
+                ):
+                    raise ValueError("REFUSED: unsuccessful acquisition")
+                stream["acquisitions"].append(pending)
+        if brain._neuro_feed_refusals or brain._growth_feed_refusals:
+            raise ValueError("REFUSED: grower or growth-gate feed refusal")
+        stream["pack_lengths"] = {modality: len(order) for modality, order in inverse.items()}
+        _segments(stream["events"], stream["acquisitions"], stream["pack_lengths"]["vision"])
+        head, dirty = _revision()
+        stream["final"] = {
+            "live_n": engine.live_n,
+            "live_correct": engine.live_correct,
+            "live_persist": engine.live_persist,
+            "ticks": engine.ticks,
+            "observed": engine.observed,
+            "trajectory": engine.trajectory,
+            "baselines": engine.baselines,
+            "gate_verdicts": stream["gate_verdicts"],
+            "fingerprint": _fingerprint(engine),
+            "head": head,
+            "dirty": dirty,
+        }
+        return stream
+
+
+def replay(stream, arm, mode="causal", *, mutate=None):
+    """Replay the recorded event schedule, rejecting missing gate evidence."""
+    if arm not in ARMS or mode not in ("causal", "live"):
+        raise ValueError("unknown arm or mode")
+    torch.set_num_threads(1)
+    if stream.get("policy", {}).get("threads") != 1:
+        raise ValueError("REFUSED: recording policy")
+    if stream["policy"]["NORD_DEVICE"] != os.environ.get("NORD_DEVICE") or stream["policy"][
+        "NORD_GPU"
+    ] != os.environ.get("NORD_GPU"):
+        raise ValueError("REFUSED: device environment changed")
+    if any(
+        stream["policy"][key] != _policy()[key]
+        for key in ("torch", "numpy", "python", "platform", "threads", "device")
+    ):
+        raise ValueError("REFUSED: library policy changed")
+    rows = mutate if mutate is not None else stream
+    ledger = []
+    state = {"tick": 0, "event": 0, "value": None, "exists": False}
+
+    class Reader:
+        def lp(self, region):
+            ledger.append(
+                {
+                    "tick": state["tick"],
+                    "event": state["event"],
+                    "mode": mode,
+                    "value": state["value"],
+                    "exists": state["exists"],
+                }
+            )
+            if not state["exists"]:
+                raise KeyError(region)
+            if state["value"] is None:
+                raise KeyError(region)
+            return state["value"]
+
+    stop = GrowthStop(lp_reader=None if rows.get("_no_lp_reader") else Reader())
+    verdicts = []
+
+    def gate(trajectory):
+        verdict, refused = feed_and_decide(stop, trajectory)
+        if refused:
+            raise ValueError("REFUSED: poisoned trajectory")
+        verdicts.append({"tick": engine.ticks, "event": state["event"], "verdict": verdict})
+        return verdict
+
+    engine = NeurogenesisSelfImprove(
+        **stream["config"], device="cpu", growth_gate=gate, online_readout="delta"
+    )
+    predictions, fallbacks, phi, refits = [], [], [], []
+    history_x, history_c = [], []
+    events = rows["events"]
+    sleep = rows["sleep"]
+    event_i = sleep_i = 0
+    if any("brain_tick" not in s for s in sleep):
+        raise ValueError("REFUSED: sleep timeline absent")
+    timeline = sorted(
+        [(e["tick"], 0, e) for e in events] + [(s["brain_tick"], 1, s) for s in sleep]
+    )
+    for _global_tick, kind, item in timeline:
+        if kind == 0:
+            prediction = engine.predict_next()
+            fallback = bool(engine._pending_prediction[4]) if engine._pending_prediction else False
+            if arm == "leak":
+                prediction = item["c"]
+                fallback = False
+            predictions.append(prediction)
+            fallbacks.append(fallback)
+            x, c = item["x"], item["c"]
+            values = {
+                "x": x,
+                "c": c,
+                "own_predictions": prediction,
+                "x_history": [
+                    history_x[-i] if len(history_x) >= i else [0.0] * 64 for i in range(1, 4)
+                ],
+                "c_history": [c]
+                + [history_c[-i] if len(history_c) >= i else None for i in range(1, 4)],
+            }
+            features = _feature(arm, _View(ARMS[arm][1], values))
+            if len(features) != ARMS[arm][0]:
+                raise ValueError("REFUSED: feature width")
+            phi.append(_crc(np.asarray(features, dtype=np.float32)))
+            engine.observe(features, c)
+            history_x.append(x)
+            history_c.append(c)
+            state["event"] += 1
+            event_i += 1
+        else:
+            state["tick"] = engine.ticks + 1
+            field = "live_lp" if mode == "live" else "causal_lp"
+            source = (
+                item if mode == "live" else events[state["event"] - 1] if state["event"] else None
+            )
+            if mode == "causal" and source is None:
+                # before the first delivery nothing has been acquired, so the facade is unfed: a recorded
+                # None (section 2.1's CAUSAL value at "the delivery of x_0"), not a missing record
+                state["exists"], state["value"] = True, None
+            else:
+                state["exists"] = source is not None and field in source
+                state["value"] = source.get(field) if source is not None else None
+            before = len(engine.trajectory)
+            engine.tick()
+            if len(engine.trajectory) > before:
+                refits.append(
+                    {
+                        "tick": engine.ticks,
+                        "event": state["event"],
+                        "fingerprint": _fingerprint(engine),
+                    }
+                )
+            sleep_i += 1
+    if event_i != len(events) or sleep_i != len(sleep):
+        raise ValueError("REFUSED: event count")
+    if any(not entry["exists"] for entry in ledger) or len(ledger) != stop.observed("cortex"):
+        raise ValueError("REFUSED: missing or disconnected LP ledger")
+    return {
+        "predictions": predictions,
+        "fallbacks": fallbacks,
+        "phi": phi,
+        "refits": refits,
+        "fingerprint": _fingerprint(engine),
+        "live_n": engine.live_n,
+        "live_correct": engine.live_correct,
+        "live_persist": engine.live_persist,
+        "ticks": engine.ticks,
+        "observed": engine.observed,
+        "trajectory": engine.trajectory,
+        "baselines": engine.baselines,
+        "gate_verdicts": verdicts,
+        "ledger": ledger,
+    }
+
+
+def _entropy(values):
+    if not values:
+        return None
+    counts = Counter(values)
+    return -sum((n / len(values)) * math.log2(n / len(values)) for n in counts.values())
+
+
+def score(stream, predictions, fallbacks):
+    if len(predictions) != len(stream["events"]) or len(fallbacks) != len(predictions):
+        raise ValueError("prediction count differs from stream")
+    output = {}
+    for segment in ("warm-up", "repeated-canonical", "unseen-order", "repeated-permuted"):
+        indices = [i for i, e in enumerate(stream["events"]) if e.get("segment") == segment]
+        if segment == "warm-up":
+            output[segment] = {"n": len(indices), "available": False}
+            continue
+        if not indices:
+            output[segment] = {"n": 0, "available": False}
+            continue
+        truth = [stream["events"][i]["c"] for i in indices]
+        pred = [predictions[i] for i in indices]
+        floor = [stream["events"][i - 1]["c"] if i else None for i in indices]
+        majority = []
+        for i in indices:
+            seen = [e["c"] for e in stream["events"][:i]]
+            majority.append(min(seen, key=lambda c: (-seen.count(c), c)) if seen else None)
+        n = len(indices)
+        output[segment] = {
+            "n": n,
+            "available": True,
+            "accuracy": sum(p == c for p, c in zip(pred, truth, strict=True)) / n,
+            "coverage": sum(p is not None for p in pred) / n,
+            "prediction_entropy": _entropy([p for p in pred if p is not None]),
+            "truth_entropy": _entropy(truth),
+            "prior_fallback": sum(fallbacks[i] for i in indices) / n,
+            "persistence": sum(p == c for p, c in zip(floor, truth, strict=True)) / n,
+            "causal_majority": sum(p == c for p, c in zip(majority, truth, strict=True)) / n,
+            "transitions": sum(p != c for p, c in zip(floor, truth, strict=True)),
+        }
+    return output
+
+
+def mutate_suffix(stream, t_star, seed):
+    changed = copy.deepcopy(stream)
+    rng = np.random.default_rng(seed)
+    categories = sorted({e["c"] for e in stream["events"]})
+    if len(categories) < 2:
+        raise ValueError("suffix mutation requires two categories")
+    for index, event in enumerate(changed["events"], 1):
+        if index < t_star:
+            continue
+        event["x"] = rng.random(len(event["x"])).tolist()
+        event["c"] = (
+            next(c for c in categories if c != event["c"])
+            if index == t_star
+            else int(rng.choice(categories))
+        )
+        event["causal_lp"] = float(rng.random())
+    return changed
+
+
+def _lp_sensitive_red():
+    """One changed recorded LP value flips a gate and the next learner refit."""
+    fingerprints = []
+    verdicts = []
+    trajectory = [(i, i, 0.5) for i in range(15)]
+    for last in (0.0, 10.0):
+        engine = NeurogenesisSelfImprove(
+            seed=17, refit_every=4, device="cpu", online_readout="delta"
+        )
+        for i in range(40):
+            row = [0.0] * 64
+            row[(i % 3) * 8] = 1.0
+            engine.observe(row, (i // 3) % 3)
+            engine.tick()
+        if engine._model is None:
+            return False
+        values = iter([0.0] * 12 + [10.0, 10.0, last])
+        stop = GrowthStop(
+            lp_reader=type("Reader", (), {"lp": lambda self, region, source=values: next(source)})()
+        )
+
+        def gate(_trajectory, target=stop):
+            verdict, refused = feed_and_decide(target, trajectory)
+            assert refused == 0
+            verdicts.append(verdict)
+            return verdict
+
+        engine._growth_gate = gate
+        for i in range(40, 44):
+            row = [0.0] * 64
+            row[(i % 3) * 8] = 1.0
+            engine.observe(row, (i // 3) % 3)
+            engine.tick()
+        fingerprints.append(_fingerprint(engine))
+    return verdicts == [False, True] and fingerprints[0] != fingerprints[1]
+
+
+def check_r_a1(stream, live=None):
+    live = live if live is not None else replay(stream, "a", "live")
+    expected = stream["final"]
+    eligible = bool(
+        any(
+            e.get("segment") in ("repeated-canonical", "unseen-order", "repeated-permuted")
+            for e in stream["events"]
+        )
+        and live["refits"]
+    )
+    ok = live["predictions"] == [e["prediction"] for e in stream["events"]]
+    ok &= live["gate_verdicts"] == expected["gate_verdicts"]
+    ok &= json.dumps(live["trajectory"]) == json.dumps(expected["trajectory"])
+    ok &= all(
+        live[k] == expected[k]
+        for k in ("live_n", "live_correct", "live_persist", "ticks", "observed")
+    )
+    ok &= live["fingerprint"] == expected["fingerprint"]
+    ok &= [r["fingerprint"] for r in live["refits"]] == [
+        r["refit"] for r in stream["refits"] if r["refit"]
+    ]
+    changed = copy.deepcopy(stream)
+    first = live["refits"][0]["event"] if live["refits"] else 0
+    cats = sorted({e["c"] for e in changed["events"]})
+    count_red = False
+    if first > 1 and len(cats) > 1:
+        row = changed["events"][1]
+        row["c"] = next(c for c in cats if c != row["c"])
+        altered = replay(changed, "a", "live")
+        count_red = (
+            altered["fingerprint"] != live["fingerprint"]
+            or altered["predictions"] != live["predictions"]
+        )
+    lp_red = _lp_sensitive_red()
+    red = bool(count_red and lp_red)
+    numbers = {
+        "events": len(live["predictions"]),
+        "refits": len(live["refits"]),
+        "equivalent": bool(ok),
+        "eligible": eligible,
+    }
+    return {
+        "verdict": bool(ok and red and eligible),
+        "numbers": numbers,
+        "red": {"count_preserving": bool(count_red), "lp_sensitive": bool(lp_red)},
+    }
+
+
+def check_r_a1b(stream, oracle, replayed=None):
+    replayed = replayed if replayed is not None else replay(oracle, "f64", "live")
+    fields = ("x", "c", "tick", "causal_lp", "source")
+    same = len(stream["events"]) == len(oracle["events"]) and all(
+        all(a[key] == b[key] for key in fields)
+        for a, b in zip(stream["events"], oracle["events"], strict=True)
+    )
+    same &= stream["acquisitions"] == oracle["acquisitions"]
+    same &= [(r["tick"], r["brain_tick"], r["live_lp"]) for r in stream["sleep"]] == [
+        (r["tick"], r["brain_tick"], r["live_lp"]) for r in oracle["sleep"]
+    ]
+    same &= replayed["predictions"] == [e["prediction"] for e in oracle["events"]]
+    same &= [r["fingerprint"] for r in replayed["refits"]] == [
+        r["refit"] for r in oracle["refits"] if r["refit"]
+    ]
+    red = all(check_r_a1(oracle)["red"].values())
+    return {"verdict": bool(same and red), "numbers": {"events": len(oracle["events"])}, "red": red}
+
+
+def check_r_a2(stream, runs=None):
+    results = {}
+    for arm in SCORED_ARMS:
+        base = _load(runs[arm]["base"]) if runs else replay(stream, arm)
+        cuts = []
+        for cut in (
+            len(stream["events"]) // 4,
+            len(stream["events"]) // 2,
+            3 * len(stream["events"]) // 4,
+        ):
+            changed = mutate_suffix(stream, max(1, cut), stream["seed"] + cut)
+            other = _load(runs[arm][cut]) if runs else replay(changed, arm, mutate=changed)
+            cuts.append(base["predictions"][:cut] == other["predictions"][:cut])
+        results[arm] = cuts
+    leak = replay(stream, "leak")
+    red = True
+    for cut in (
+        len(stream["events"]) // 4,
+        len(stream["events"]) // 2,
+        3 * len(stream["events"]) // 4,
+    ):
+        changed = mutate_suffix(stream, max(1, cut), stream["seed"] + cut)
+        altered = replay(changed, "leak", mutate=changed)
+        red &= leak["predictions"][:cut] != altered["predictions"][:cut]
+    return {
+        "verdict": all(all(v) for v in results.values()) and red,
+        "numbers": results,
+        "red": red,
+    }
+
+
+def check_r_a2b(stream):
+    red = False
+    try:
+        _feature("forbidden", _View(ARMS["forbidden"][1], {"x": [0.0] * 64, "c": 0}))
+    except ValueError:
+        red = True
+    return {"verdict": red, "numbers": {"arms": len(SCORED_ARMS)}, "red": red}
+
+
+def check_r_a3(stream):
+    cats = [e["c"] for e in stream["events"]]
+    persistence = [None] + cats[:-1]
+    known = score(stream, persistence, [False] * len(cats))
+    oracle = score(stream, cats, [False] * len(cats))
+    constant = [cats[0]] * len(cats)
+    constant_scores = score(stream, constant, [False] * len(cats))
+    valid = True
+    red = False
+    for segment, row in known.items():
+        if not row["available"]:
+            continue
+        valid &= row["accuracy"] == row["persistence"] and oracle[segment]["accuracy"] == 1
+        indices = [i for i, e in enumerate(stream["events"]) if e.get("segment") == segment]
+        valid &= constant_scores[segment]["accuracy"] == sum(
+            cats[i] == cats[0] for i in indices
+        ) / len(indices)
+        red |= any(cats[i] != cats[i - 1] for i in indices if i)
+    return {"verdict": bool(valid and red), "numbers": known, "red": red}
+
+
+def check_r_a4(stream, runs=None):
+    equal = {}
+    for arm in SCORED_ARMS:
+        a, b = (
+            tuple(_load(path) for path in runs[arm])
+            if runs
+            else (replay(stream, arm), replay(stream, arm))
+        )
+        equal[arm] = all(
+            a[key] == b[key] for key in ("phi", "refits", "predictions", "fingerprint")
+        )
+    red = replay(stream, "noise")["phi"] != replay(stream, "noise")["phi"]
+    return {"verdict": all(equal.values()) and red, "numbers": equal, "red": red}
+
+
+def _load(path):
+    opener = gzip.open if str(path).endswith(".gz") else open
+    with opener(path, "rt", encoding="utf-8") as file:
+        return json.load(file)
+
+
+def _save(path, value):
+    opener = gzip.open if str(path).endswith(".gz") else open
+    with opener(path, "wt", encoding="utf-8") as file:
+        json.dump(value, file, allow_nan=False)
+
+
+def _synthetic_stream():
+    """A hand-built event schedule; the self-check never constructs a brain."""
+    torch.set_num_threads(1)
+    events, sleep = [], []
+    for i in range(48):
+        category = (i // 3) % 3
+        features = [0.0] * 64
+        features[(i % 3) * 8] = 1.0
+        events.append(
+            {
+                "t": i + 1,
+                "tick": i * 2 + 1,
+                "x": features,
+                "c": category,
+                "causal_lp": 0.0,
+                "segment": "warm-up" if i < 24 else "unseen-order",
+            }
+        )
+        sleep.append({"tick": i + 1, "brain_tick": i * 2 + 2, "event": i + 1, "live_lp": 0.0})
+    return {
+        "seed": 17,
+        "config": {
+            "seed": 17,
+            "refit_every": 4,
+            "buffer_cap": 1000,
+            "l_max": None,
+            "eps_tol": 0.28,
+            "T": 15,
+        },
+        "policy": _policy(),
+        "events": events,
+        "sleep": sleep,
+    }
+
+
+def _child(args, out):
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", __name__, *args], capture_output=True, text=True, timeout=900
+        )
+        if result.returncode:
+            status = {"status": "FAIL", "path": str(out), "stderr": result.stderr[-1000:]}
+        else:
+            status = {"status": "OK", "path": str(out)}
+    except subprocess.TimeoutExpired:
+        status = {"status": "TIMEOUT", "path": str(out)}
+    _save(str(out) + ".status.json", status)
+    return status
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--record", nargs=2, metavar=("SEED", "OUT"))
+    group.add_argument("--inbrain-oracle", nargs=2, metavar=("SEED", "OUT"))
+    group.add_argument("--replay", nargs=4, metavar=("STREAM", "ARM", "MODE", "OUT"))
+    group.add_argument("--pilot")
+    group.add_argument("--check")
+    args = parser.parse_args()
+    if args.record:
+        _save(args.record[1], record_stream(int(args.record[0])))
+    elif args.inbrain_oracle:
+        _save(args.inbrain_oracle[1], record_stream(int(args.inbrain_oracle[0]), arm_feed="f64"))
+    elif args.replay:
+        source, arm, mode, out = args.replay
+        _save(out, replay(_load(source), arm, mode))
+    elif args.pilot:
+        from concurrent.futures import ThreadPoolExecutor
+
+        directory = Path(args.pilot)
+        directory.mkdir(parents=True, exist_ok=True)
+        jobs = []
+        for seed in range(100, 104):
+            for flag, suffix in (("--record", "stream"), ("--inbrain-oracle", "oracle")):
+                out = directory / f"{seed}-{suffix}.json.gz"
+                jobs.append((flag, [str(seed), str(out)], out))
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            statuses = list(pool.map(lambda job: _child([job[0], *job[1]], job[2]), jobs))
+        if any(row["status"] != "OK" for row in statuses):
+            _save(directory / "summary.json", statuses)
+            return
+        replay_jobs = []
+        for seed in range(100, 104):
+            source = directory / f"{seed}-stream.json.gz"
+            for arm in SCORED_ARMS:
+                replay_jobs.append(
+                    (
+                        [
+                            "--replay",
+                            str(source),
+                            arm,
+                            "causal",
+                            str(directory / f"{seed}-{arm}-causal.json"),
+                        ],
+                        directory / f"{seed}-{arm}-causal.json",
+                    )
+                )
+            for arm in ("a", "f64"):
+                live_source = directory / f"{seed}-oracle.json.gz" if arm == "f64" else source
+                replay_jobs.append(
+                    (
+                        [
+                            "--replay",
+                            str(live_source),
+                            arm,
+                            "live",
+                            str(directory / f"{seed}-{arm}-live.json"),
+                        ],
+                        directory / f"{seed}-{arm}-live.json",
+                    )
+                )
+            stream = _load(source)
+            cuts = (
+                len(stream["events"]) // 4,
+                len(stream["events"]) // 2,
+                3 * len(stream["events"]) // 4,
+            )
+            for cut in cuts:
+                changed = directory / f"{seed}-cut-{cut}.json.gz"
+                _save(changed, mutate_suffix(stream, cut, seed + cut))
+                for arm in SCORED_ARMS:
+                    out = directory / f"{seed}-{arm}-cut-{cut}.json"
+                    replay_jobs.append((["--replay", str(changed), arm, "causal", str(out)], out))
+            if seed == 100:
+                for arm in SCORED_ARMS:
+                    for twin in (1, 2):
+                        out = directory / f"100-{arm}-twin-{twin}.json"
+                        replay_jobs.append(
+                            (["--replay", str(source), arm, "causal", str(out)], out)
+                        )
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            statuses += list(pool.map(lambda job: _child(*job), replay_jobs))
+        _save(directory / "summary.json", statuses)
+    elif args.check:
+        directory = Path(args.check)
+        report = {}
+        for seed in range(100, 104):
+            stream = _load(directory / f"{seed}-stream.json.gz")
+            oracle = _load(directory / f"{seed}-oracle.json.gz")
+            cuts = (
+                len(stream["events"]) // 4,
+                len(stream["events"]) // 2,
+                3 * len(stream["events"]) // 4,
+            )
+            a2_runs = {
+                arm: {
+                    "base": directory / f"{seed}-{arm}-causal.json",
+                    **{cut: directory / f"{seed}-{arm}-cut-{cut}.json" for cut in cuts},
+                }
+                for arm in SCORED_ARMS
+            }
+            a4_runs = (
+                {
+                    arm: (
+                        directory / f"100-{arm}-twin-1.json",
+                        directory / f"100-{arm}-twin-2.json",
+                    )
+                    for arm in SCORED_ARMS
+                }
+                if seed == 100
+                else None
+            )
+            report[str(seed)] = {
+                "R-a1": check_r_a1(stream, _load(directory / f"{seed}-a-live.json")),
+                "R-a1b": check_r_a1b(stream, oracle, _load(directory / f"{seed}-f64-live.json")),
+                "R-a2": check_r_a2(stream, a2_runs),
+                "R-a2b": check_r_a2b(stream),
+                "R-a3": check_r_a3(stream),
+                "R-a4": check_r_a4(stream, a4_runs),
+                "contrast_f64_a": {
+                    arm: score(stream, result["predictions"], result["fallbacks"])
+                    for arm, result in (
+                        ("a", _load(directory / f"{seed}-a-causal.json")),
+                        ("f64", _load(directory / f"{seed}-f64-causal.json")),
+                    )
+                },
+            }
+        _save(directory / "checks.json", report)
+    else:
+        fixture = _synthetic_stream()
+        live = replay(fixture, "a", "live")
+        fixture["final"] = {
+            key: live[key]
+            for key in (
+                "live_n",
+                "live_correct",
+                "live_persist",
+                "ticks",
+                "observed",
+                "trajectory",
+                "fingerprint",
+            )
+        }
+        fixture["final"]["gate_verdicts"] = live["gate_verdicts"]
+        fixture["refits"] = [{"refit": row["fingerprint"]} for row in live["refits"]]
+        for event, prediction in zip(fixture["events"], live["predictions"], strict=True):
+            event["prediction"] = prediction
+        assert check_r_a1(fixture)["verdict"]
+        assert check_r_a2b(fixture)["red"]
+        assert check_r_a3(fixture)["red"]
+        assert check_r_a2(fixture)["verdict"]
+        assert check_r_a4(fixture)["verdict"]
+        categories = [event["c"] for event in fixture["events"]]
+        assert (
+            score(fixture, categories, [False] * len(categories))["unseen-order"]["accuracy"] == 1
+        )
+        assert (
+            score(fixture, [None, *categories[:-1]], [False] * len(categories))["unseen-order"][
+                "accuracy"
+            ]
+            < 1
+        )
+        missing = copy.deepcopy(fixture)
+        del missing["events"][15]["causal_lp"]
+        try:
+            replay(fixture, "a", mutate=missing)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("deleted LP record accepted")
+        disconnected = copy.deepcopy(fixture)
+        disconnected["_no_lp_reader"] = True
+        try:
+            replay(fixture, "a", mutate=disconnected)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("disconnected LP reader accepted")
+        rows = [(i, i, 0.5) for i in range(15)]
+        still = GrowthStop(lp_reader=type("Reader", (), {"lp": lambda self, region: 0.0})())
+        values = iter([0.0] * 12 + [10.0] * 3)
+        moving = GrowthStop(
+            lp_reader=type("Reader", (), {"lp": lambda self, region: next(values)})()
+        )
+        assert feed_and_decide(still, rows)[0] is False
+        assert feed_and_decide(moving, rows)[0] is True
+        assert onehot_32(31)[31] == 1
+        try:
+            onehot_32(32)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("onehot_32 accepted 32")
+        print("memory_diagnostic self-check OK")
+
+
+if __name__ == "__main__":
+    main()

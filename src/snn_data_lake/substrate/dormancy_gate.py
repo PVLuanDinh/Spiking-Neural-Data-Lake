@@ -121,6 +121,10 @@ _S6_PANEL_CORRECTION = (
 # ------------------------------------------------------------------------------------------------
 # key = module basename (unique across REGIONS per brain_atlas); value = (disposition, reason).
 EXEMPT = {
+    "memory_diagnostic": (
+        "permanent",
+        "G1's diagnostic harness (a governed benchmark); consumers: its CLI campaign and tests/test_memory_diagnostic.py",
+    ),
     # so101_arm's "wire" exemption is GONE, as its own text predicted it should be: the gate is
     # on the live tick now (autonomous_loop, serial_arm's mirror, live_arm, cpg_oscillator,
     # spiking_pid, ring_attractor and the planner all drive it), so it is reachable and needs no

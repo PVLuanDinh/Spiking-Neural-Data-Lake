@@ -76,6 +76,7 @@ CORE = [
     "cortex.prior_drift_harness",  # 022 T063: both reds, the PLANTED positive control, the WRONG validity precondition and every nuisance refusal, on a 64-unit synthetic population
     "cortex.placement",  # grown units ordered into cortical layers by measured H01 occupancy
     "cortex.growth_stop",  # T047: overgrowth red + four regimes + |LP| veto + measured null clause
+    "cortex.memory_diagnostic",  # G1 causal contract synthetic reds
     "cortex.lca_sparse_coding",
     "cortex.predictive_coding",
     "cortex.pc_cortex_serve",
