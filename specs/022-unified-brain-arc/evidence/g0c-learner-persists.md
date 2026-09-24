@@ -3,8 +3,8 @@
 Row: plan Part D "G workstream", G0 (c); red G-R0's persistence clause, "a fresh process does not reproduce taught
 routing and the next learning/replay step" (Part F); FR-041, SC-019; P4b. Parts (a) and (b) are
 `g0a-chat-correction.md` and `g0b-reply-consumes-route.md`. This arc is the interaction learner's slice of R2/T103
-(durable, restart-safe replay); section 2.6 states the boundary. Status: PRE-REGISTERED. Section 2 is frozen at the
-commit that lands this file; section 3 will record the runs and every deviation from section 2.
+(durable, restart-safe replay); section 2.6 states the boundary. Status: RESULTS RECORDED (2026-09-24). Section 2 is frozen at the
+commit that landed this file; section 3 records the runs and every deviation from section 2.
 
 ## 1. Territory, read at HEAD `a36cd34` before the design
 
@@ -189,3 +189,54 @@ and its teaching events carry R2's event fields. R2 remains open for:
 - event identity for self-labelled turns;
 - a watermark or cursor;
 - the other learners' replay.
+
+## 3. Results (2026-09-24, at `cb64431`)
+
+The command: `python -m snn_data_lake.cortex.interaction_learning --g0c-campaign <out-dir>` (out-dir outside the
+repo). 8 seeds x 15 roles = 120 processes, every one valid, on a clean tree and one head. A second instrument,
+written from section 2.3 rather than the module's code, recomputed every comparison and rule from the raw per-role
+records and agreed with `g0c_verdict`. Both are archived outside the repository under the memory store,
+`memory/archive/g0c-2026-09-24/` (`campaign-1-cb64431/`, `recheck_c.py`). The live lake was untouched
+(3,318,586,733 bytes, unchanged since 01:28:37 CDT).
+
+**Verdict: PASS.**
+
+- **R-c1: PASS.** A equals its twin T, and A_night equals Tn, on all five records on every seed: the dumped tree
+  before the next step, the routes before it, and after it the weights, the replay's draws and the routes.
+- **R-c1x: PASS.** In A_x on every seed the rebuilt authority holds the re-correction's intent, all five checkpointed
+  ring entries for that utterance carry it, and every replay draw for it carries it.
+- **R-c2: PASS.** N fails R-c1 on every seed, on all five records. O_rec fails R-c1x on every seed: its ring keeps the
+  stale intent on every seed (the authority is right), and its replay drew that stale entry on some seeds.
+- **R-c3 and R-c4: PASS.** The pytest file (`tests/test_g0c_learner_persists.py`) passes at `cb64431`.
+
+**Per-carrier attribution (reported).** Every omission arm failed on every seed, each on the records its carrier
+drives:
+
+| arm | differ from T on every seed | differ on some seeds only |
+|---|---|---|
+| O_w (neuron weights) | tree, routes before, weights after, routes after | none |
+| O_stack (the stack) | tree, weights after | routes after (routing before a deposit is unchanged) |
+| O_rng (the RNG) | tree, weights after, draws | routes after |
+| O_ring (the replay ring) | tree, weights after, draws | routes after |
+| O_auth (the authority rebuild) | tree, weights after, routes after | none |
+
+No carrier was unexercised by this next step, and the tree comparison added coverage for any state no observable
+reads.
+
+**Reported, not barred.**
+- **The checkpoint.** 172,802 to 234,353 bytes by seed (its size grows with the lazily built cascades); the last save
+  took 7 to 20 ms. P1 saved exactly once, through `close` (its night saves were suppressed so that only the close hook
+  could produce its checkpoint). P1n and P1x saved four times each, the last at the end-of-night boundary.
+- **The append budget.** The brain's flood detector recorded 2 or 3 floods in every P1n and P1x run, against 1 in P1,
+  whose night saves were suppressed. So a night's checkpoint write trips the 0x07 flood detector on some nights. This
+  is a measured cost, carried as an opening (the write cadence, or the 0x07 baseline) for its own arc. A save in
+  `close` is outside the budget (section 1 item 3).
+- **The crash path.** P1n needed 2 to 24 ticks after the schedule to complete a night; P1x's checkpointed ring held 5
+  entries for the re-corrected utterance on every seed, so R-c1x was reachable everywhere.
+
+**Deviations from section 2.** None in the protocol. Implementation points, disclosed:
+- P1's night saves were suppressed by the instrument, so that its checkpoint could only come from `close`, which is
+  what section 2.2 requires P1 to prove.
+- Four orchestrator fixes landed with the mechanism (`cb64431`), each with a test that fails without it: any restore
+  failure leaves a working brain; the teaching session is a per-lake counter, not the wall clock; a lazy class with no
+  source is a visible refusal; a failed teaching-event write does not break the correction.
