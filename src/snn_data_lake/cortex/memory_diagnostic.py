@@ -783,7 +783,12 @@ def _synthetic_stream():
 def _child(args, out):
     try:
         result = subprocess.run(
-            [sys.executable, "-m", __name__, *args], capture_output=True, text=True, timeout=900
+            # the module's own name, never __name__: under `python -m` that is "__main__", and a child started
+            # as `-m __main__` dies before running (measured: the first pilot's 8 recordings, 2 s)
+            [sys.executable, "-m", "snn_data_lake.cortex.memory_diagnostic", *args],
+            capture_output=True,
+            text=True,
+            timeout=900,
         )
         if result.returncode:
             status = {"status": "FAIL", "path": str(out), "stderr": result.stderr[-1000:]}
