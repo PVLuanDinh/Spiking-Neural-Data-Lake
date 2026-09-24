@@ -241,10 +241,26 @@ none. Two MAJOR findings were reproduced from the code and folded in `4146f18`, 
 - a frozen build (no source) refused every trained checkpoint, because lazily built objects were validated by
   parsing their constructors' source at restore. The two classes now carry an explicit attribute schema, pinned to
   the constructors by a test, and a no-source round trip restores exactly.
-The campaign re-ran at `4146f18` (`campaign-2-4146f18/`): PASS, all 120 processes valid, and every recorded value of
-every role identical to the first run. That fold is code, read by the closing report, not re-panelled. The
+The campaign re-ran at `4146f18` (`campaign-2-4146f18/`): PASS, all 120 processes valid, and for every role the five
+compared records, the re-correction record and the checkpoint size identical to the first run (the head and the
+save times differ by nature and were not compared). That fold is code, read by the closing report, not re-panelled. The
 integration lens's MINOR (the plan, tasks and cold-start doc still called part (c) open) is folded in the same
 commit as this paragraph.
+
+**The closing report (Codex, gpt-6-astra) and its fold.**
+- (a) What the PASS covers: the declared boundaries, the end of a night and `close`. A crash in the middle of a night
+  loses that night's replays since the last end-of-night checkpoint, by design; the authority and the ring still
+  reconcile from the lake's teaching events. Arbitrary-crash recovery is not claimed.
+- (b) The append-budget floods were reported and not settled. Now measured (`probes/probe_floods.py`, seed 100, a
+  persisting scratch brain, 30 nights of daily chat): with the checkpoint, the flood detector fired ONCE, on the
+  first night ("0x07 appended 108048 B this tick > 8.0x a window 27/32 seeded"), and on none of the next 29; without
+  it, never. So a nightly checkpoint trips the detector once per process, while the budget's running window warms,
+  and not thereafter. The campaign's 2 or 3 floods per crash-path run fall inside that warm-up (four nights right
+  after a heavy schedule). The opening is narrowed to that one-per-start transient.
+- (c) The fold's first wording, "every recorded value of every role identical", overstated what was compared; the
+  paragraph above now names the fields. The message of `0a9e120` carries the same overstatement and cannot be
+  amended; this note is its correction. The "verified by the arc's battery" line in every commit is the protocol's
+  forward reference to the battery that follows, not a claim already met.
 
 **Deviations from section 2.** None in the protocol. Implementation points, disclosed:
 - P1's night saves were suppressed by the instrument, so that its checkpoint could only come from `close`, which is
