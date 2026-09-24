@@ -43,7 +43,7 @@ def test_pending_stop_matches_incumbent(message, human, raises):
                 brain.brain.arm.apply_observed = observed
                 reply = brain.respond(message, human=human)
                 assert brain.brain.arm.arm.state()["stopped"]
-                assert brain._route_pending is None
+                assert brain._route_pending == (None if human else pending)
                 assert "EMERGENCY STOP engaged" in reply["reply"]
                 observations.append(
                     (reply["reply"], reply["route"], apply.call_args_list, observed.call_args_list)
@@ -90,8 +90,20 @@ def test_nonhuman_never_clarifies_or_confirms(brain, message, pending):
     brain.brain.route = Mock(return_value="GOAL")
     reply = brain.respond(message, human=False)
     assert not reply["route"].startswith("learned route:")
-    assert brain._route_pending is None
+    assert brain._route_pending == pending
     brain.brain.route.assert_not_called()
+
+
+def test_ingest_between_clarification_and_yes_keeps_pending(brain):
+    brain.brain.route = Mock(return_value="GOAL")
+    asked = brain.respond("what are you pursuing right now", human=True)
+    assert asked["route"] == "learned route: clarify (GOAL)"
+    brain.respond("the train was late again this morning", human=False)
+    assert brain._route_pending == "GOAL"
+    confirmed = brain.respond("yes", human=True)
+    assert confirmed["route"] == "learned route: confirmed (GOAL)"
+    assert "my standing goal is to keep improving myself" in confirmed["reply"].lower()
+    assert brain._route_pending is None
 
 
 def test_other_branch_consumes_pending(brain):
@@ -111,6 +123,19 @@ def test_commands_and_grounded_lines_never_enter_branch(brain, message):
     # Nonhuman motor command still takes the firewall refusal, without moving an arm.
     brain.respond(message, human=False)
     brain._route_turn.assert_not_called()
+    assert (
+        brain._route_pending == "GOAL"
+    )  # ingest neither consumes nor clears a person's pending reading
+
+
+def test_human_grounded_line_never_enters_branch_and_clears_pending(brain):
+    brain._route_pending = "GOAL"
+    brain._route_turn = Mock(
+        side_effect=AssertionError("higher priority turn reached route branch")
+    )
+    reply = brain.respond("what is your goal", human=True)
+    brain._route_turn.assert_not_called()
+    assert "my standing goal is to keep improving myself" in reply["reply"].lower()
     assert brain._route_pending is None
 
 

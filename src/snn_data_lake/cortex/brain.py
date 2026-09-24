@@ -4350,7 +4350,11 @@ class Brain:
             unavailable the reply is the narrator's own state-varying sentence (never a canned string).
         SAFETY: arm/lake commands take the deterministic gated path; the LM's text is display-only
         and is NEVER parsed as a motor command. No torch/weights -> narrator fallback."""
-        pending, self._route_pending = self._route_pending, None
+        # G0(b) closing-report fold: only a person's turn consumes or clears the pending interpretation, so the
+        # daemon's human=False ingest between a clarification and the person's yes cannot erase it.
+        pending = None
+        if human:
+            pending, self._route_pending = self._route_pending, None
         learned = self._learned_route(message, human)
         # SECOND-ORDER ACCESS: read whether the current content reliably reached global availability
         # through the spiking second-order monitor, and cache its hold. Consumes the workspace's
