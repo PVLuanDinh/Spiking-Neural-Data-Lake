@@ -101,6 +101,11 @@ GRADIENT_CLAIM = {
         "feeds self-model reliability signals into the metacognitive monitor so confidence can gate. "
         "Signal routing between two components",
     ),
+    "Brain._learned_route": (
+        "NOT_A_RULE",
+        "G0(b): READS the interaction learner's current intent label (LiveBrain.route, pure inference) "
+        "before chat() teaches the turn. Nothing is updated; the learning stays in learn_turn's R-STDP",
+    ),
 }
 
 SAFE_DISTANCE = CONTACT * 3.0  # perception-only distance band; never in a reflex/danger zone
