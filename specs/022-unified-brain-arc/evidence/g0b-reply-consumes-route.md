@@ -270,3 +270,20 @@ verdict stands; the stronger, fixed-rate isolation is not claimed.
 - A line counts as reaching the fallback, for the N validity check, when turn 1's route is HOLD or fluid ("Gf"). The
   builder's first version asked `converse` a second time for this, which ran the reasoning bridge twice per line;
   the orchestrator removed that before the commit.
+
+**The closing report (Codex, gpt-6-astra) and the fold.**
+- **(b) The pending question could be erased on the live path.** `Brain.respond` took the pending interpretation
+  into a local on every call, and the daemon's transcript ingest also calls `respond` (`human=False`). An ingest
+  turn between the brain's question and the person's yes would erase the question, and the yes would fall to the
+  hedge. `c802671` changes this: only a human turn takes and clears it. That departs from section 2.1's "Every turn
+  takes the pending interpretation into a local", and it is disclosed here. The campaign's dialogue is human turns
+  only, so no recorded number can depend on the change. The re-run at `c802671` gave every number of the first run, and all 40 runs' reply texts were byte-identical to it (archived as `campaign-2-c802671/`).
+- **(c) The S bound above is an extrapolation.** The 0.042 figure assumes S's per-question rate would hold if S asked
+  more. It is an estimate at the observed rate, not a measured bound, and the message of `24f8425` ("the size is
+  measured, not assumed") overstates it.
+- **(a) What the PASS does not isolate.** A and S run different learner states, because their yes and no turns
+  differ. A comparison with matched learner states, proposal counts and teaching histories was not run, and that
+  stronger isolation is not claimed.
+- **The live cockpit path is UNCERTAIN.** The branch is wired into the cockpit's `human=True` turns, but its charge
+  under daemon scheduling was never measured: the daemon is stopped for good (owner, 2026-09-24). The fold removes the
+  one known way that path could drop a question.
