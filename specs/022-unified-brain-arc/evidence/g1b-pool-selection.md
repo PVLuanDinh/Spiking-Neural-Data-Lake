@@ -713,3 +713,39 @@ instrument 20 s, screen 1.5 min, threads 3.4 min, sigma 38 s, tune 40.1 min, che
   migration gate (host `KernelTick`) before G1(c)'s confirmatory run. The losing ports (g2, g3, g4) are deleted from the
   pool module after this record; `f27ae70` is the commit that holds them. The four research sources are untouched;
   each one's P2 disposition is a separate row, filed as an opening.
+
+### 3.5 The losing ports deleted (section 2.9)
+
+Commit `440a6a5`, by a Claude Opus builder from a bounded brief (Codex held by the owner). `f27ae70` is the commit that
+holds the deleted ports g2 (ESN-LSM), g3 (SORN) and g4 (RBN), and campaign 2 selected among all four at it (section
+3.4). The four research sources under `reasoning/` (`spiking_ssm.py`, `reservoir_eprop.py`, `sorn.py` and
+`random_boolean_network.py`) are untouched; each one's P2 row stays an opening.
+- **What was removed.**
+  - `cortex/recurrent_pool.py`, 1,636 lines to 868 (822 removed, 54 added): the three pool classes with their draws,
+    grids, constants and witnesses; the R-b0 legs of g2, g3 and g4, with `_esn_torch_leg` and its `GRADIENT_CLAIM`
+    entry (the dict's only entry, so the dict went too); the faults only they used (`_asynchronous`,
+    `_plastic_forever`) and the branches only they used (the in-window plasticity hook, and the list-to-tuple read of
+    SORN's plasticity). `CANDIDATES` is `("lsm",)`. g1 keeps index 1, so its realization seeds and draw order are the
+    campaign's.
+  - `cortex/pool_selection.py`, 1,579 lines to 1,562: `SELECTABLE` is `("lsm",)` (the dated amendment's set was
+    `("lsm", "esn")`), and the SORN and RBN rules leave `input_response` and `mechanism_checks`. No campaign rule
+    changed. `cortex/memory_diagnostic.py` was already g1-only and is unchanged.
+  - Tests, 128 collected to 93. `tests/test_recurrent_pool.py` falls from 61 to 26 (554 lines to 355); the other two
+    files keep their counts. Every removed red exercised a deleted port, and g1's own red of R-b0, R-b3, R-b4 and
+    R-b5 (i) and (ii) stays. The startup diagnostic's hand fixture, R-b7's cells and the mechanism step's taxonomy
+    moved onto g1.
+- **Coverage lost.** R-b0's float32 torch leg belonged to g2 alone. R-b5 (iii)'s pre-registered red was SORN's
+  plasticity left on after the window, and g1 has no plasticity. Commit `96b5a10` gives g1's freeze check a planted
+  red in its place: one weight of the Carried form's pool moves by one ulp right after the boundary fingerprint, and
+  the check must fail on that form alone while its unfaulted twin holds. It runs in the module self-check and the
+  tests, not in the campaign's mechanism step.
+- **Nothing moved for g1.** A probe of every g1 observable is byte-identical at `0bd1de7` and at `440a6a5`: phi, the
+  per-step activity, the state chain, the boundary and the lesion, the startup transients, the R-b0, R-b3 and R-b5
+  numbers, the harness's pool-arm replay, `input_response` and R-b7's reds. Its positive control (g1's threshold
+  nudged from 1.0 to 0.9999) changes 196 of its lines.
+- **Gates.** `eprop_transport_gate`'s exemptions fall from 2 to 1, and `gradient_claim_gate`'s governed rules seen
+  fall from 177 to 176 (the `_esn_torch_leg` row). `reservoir_eprop.py`, `sorn.py` and `random_boolean_network.py`
+  no longer have a governed importer (`import_manifest`'s `reasoning` call sites, 7 to 4). In the builder's worktree,
+  these are green: the three module self-checks, the three test files (92 passed; 1 skipped, as at the base),
+  `dormancy_gate`, `method_dormancy_gate`, `dependency_ledger` (`threadpoolctl` still used), ruff and the format
+  check. The arc's battery is the verification of record.
