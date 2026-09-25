@@ -98,20 +98,29 @@ The owner then answered four questions (2026-09-25). Each answer was the brief's
    learned deltas, the transport record and the neurons fed into it are lake records, and a restart rebuilds it
    exactly. The drawn ellipse is the NETWORK boundary, not the durability boundary.
 
-## 4. Session calls, disclosed (no owner objection; the owner's 2026-09-05 authorization)
+## 4. Session calls under the owner's 2026-09-05 authorization
+
+The owner saw three calls the same turn and did not object: recording the engine in POLICIES.md as the PROVISIONAL
+directive P4d, the e-prop invariant unchanged, and a POLICIES.md ceiling raise of about +900 words. Nothing else below
+was shown to the owner.
 
 - The engine is recorded in `docs/POLICIES.md` as a dated PROVISIONAL directive, P4d, a sub-clause of P4, with a
-  dated owner exception appended to P2's corollary ("a research direction is not a policy").
+  dated exception appended to P2's corollary ("a research direction is not a policy").
 - The e-prop invariant is UNCHANGED. The engine's transport feeds a reservoir's activations, never a weight update;
   a transposed forward weight feeding a weight update stays forbidden, including through a transported copy.
 - Doc-budget ceilings are raised by the measured word delta of each amendment, each raise commented with its date
-  and reason. The owner lowered the POLICIES.md ceiling on 2026-08-30.
+  and reason. The owner lowered the POLICIES.md ceiling on 2026-08-30. The owner saw ~+900 for POLICIES.md; the
+  landed +1,106 there and the +164 on `docs/AGENT_COLD_START.md` were not shown (section 5).
 - The constitution's cap of three provisional principles counts owner directives adopted with a specified gate
   separately. The audit offered this or dropping the constitution's PROVISIONAL marker on P7 and P8.
 - *(Added in the 2026-09-25 panel fold.)* The null rule, one sentence written verbatim into POLICIES P4d and its
   e-prop pointer, FR-041's and SC-019's notes, the plan's glossary and G9, and T117: an owner-drawn or owner-chosen
   part goes to the owner on a measured null, and only transport lapses on its own. For decision C's parts it departs
   from the decision brief's "The four tests below then delete any part of it that does not pay" (section 5).
+- *(Added in the 2026-09-25 panel fold.)* The label vocabulary is all sixteen `REGION_COORDS` names: only the ten
+  growable names are admitted, and the SCAFFOLD names, neuromodulation and positions the map cannot tell apart from
+  theirs are refused (`evidence/g7-organizing-unit.md` section 3). The arc had labeled the ten-name vocabulary "owner
+  decision C"; the owner chose C, not its vocabulary.
 
 ## 5. Where this lands, and what stays open
 
@@ -120,16 +129,22 @@ rules, the P0 avenue table, the enforcement table) and its incident block in `do
 FR-041, SC-019 and their dated notes; plan rows G0-G9 with reds G-R7 to G-R9 and the G7 decision record
 (`evidence/g7-organizing-unit.md`); tasks T115-T117; the cold-start protocol doc; constitution 1.2.0.
 
-Open for the owner, carried from the audit and not decided by any session call:
-- whether the transport permission may ever reach credit assignment (P4d says it does not);
-- whether P1 admits a value fitted once from measured external data (an H01 kernel width), or G4 keeps the fitted
-  width running-baseline-relative;
+Open for the owner, the owner's to settle (a session call holds a provisional answer where noted):
+- whether the transport permission may ever reach credit assignment (a session call in P4d: it does not);
+- the P1 form of the wiring constants: whether P1 admits a value fitted once from measured external data (an H01
+  kernel width), or G4 keeps the fitted width running-baseline-relative; the same question for the decay per mm, the
+  shared-partner bonus, the `CONN_PROB` layer targets and the column batch size;
 - a growth target INSIDE the reservoir (a fed neuron becoming a reservoir unit, one of G3's arms);
 - the reorganization's package layout, each path-keyed gate's disposition, and any envelope-file move (G8);
 - whether a G-R9 null on an owner-drawn part changes the directive (POLICIES P4d's null rule sends such a null to the
   owner; the question is asked when one lands);
 - whether the decision brief's "delete any part of it that does not pay" stands for decision C's four tests, which
-  P4d's null rule (a session call of the 2026-09-25 panel fold) routes to the owner instead.
+  P4d's null rule (a session call of the 2026-09-25 panel fold) routes to the owner instead;
+- re-ratifying the 2026-08-19 ten-region pin as C's label vocabulary, and the session call that widened the
+  vocabulary to all sixteen `REGION_COORDS` names with its refusals (section 4; at today's grain it cannot tell the
+  'sp' and 'r1' neuromeres from refused territory, `evidence/g7-organizing-unit.md` section 3);
+- the landed doc-budget raises: POLICIES.md +1,106 against the ~+900 shown, AGENT_COLD_START.md +164, and the panel
+  fold's, each named in its commit and in `substrate/doc_budget_gate.py`.
 
 ## 6. Sources
 

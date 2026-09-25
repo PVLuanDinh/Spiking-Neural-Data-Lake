@@ -61,12 +61,21 @@ A grown neuron is placed where error builds up, in a column-sized batch, and get
 and a Dale sign; its region label is read off the map from its position, never assigned by a code package. The
 connection probability to a candidate partner is layer target x distance kernel x shared-partner bonus. The starting
 kernel is a Gaussian of about 85-114 µm locally, falling off about 4.6 per mm through grey matter (the brief's
-literature values), refitted on H01 by T3 before any arm uses a fitted width. The ten owner-ratified region names
-(2026-08-19; `cortex/growth_program.py::GROWABLE`) are the label vocabulary; the SCAFFOLD set stays refused.
+literature values), refitted on H01 by T3 before any arm uses a fitted width.
+
+The label vocabulary is all sixteen `cortex/growth_program.py::REGION_COORDS` names, a session call under the owner's
+2026-09-05 authorization (dated 2026-09-25, the panel fold; open for the owner together with re-ratifying the
+2026-08-19 pin of the ten growable names): only the ten `GROWABLE` names are admitted, and the five `SCAFFOLD` names
+(brainstem, insula, medulla, olfactory, pons), neuromodulation and any position the map cannot tell apart from their
+territory are refused. The ten names alone could not make the scaffold refusal fire: a label drawn only from
+`GROWABLE` is never in `SCAFFOLD`. At today's grain only the neuromere is load-bearing
+(`cortex/placement.py::region_prior`), so the 'sp' neuromere (six growable names with insula and olfactory) and 'r1'
+(cerebellum with neuromodulation) cannot yet be told apart from refused territory; until the map resolves positions
+finer, `cortex/placement.py::place_grown`'s name-based SCAFFOLD refusal stays the working guard.
 
 Whether a width fitted once from H01 may then stay fixed is a P1 question the owner has not ruled on
-(`engine-structure-2026-09-25.md` section 5). Until then G4 keeps the fitted width running-baseline-relative or
-refits it per campaign, and says which.
+(`engine-structure-2026-09-25.md` section 5). Until then G4 keeps the fitted width running-baseline-relative (a refit
+per campaign on the pinned H01 data would return the fitted-once value).
 
 ## 4. What C means for the engine's other connections
 
@@ -119,8 +128,9 @@ is open for the owner (`engine-structure-2026-09-25.md` section 5).
 ## 7. The red (G-R7, plan Part F)
 
 G-R7 fires if a grown neuron can be admitted without its unit label (position, layer, Dale sign, region label, the
-problem that grew it) and no gate refuses it, or if the tests above name no falsifiable comparison. The control is a
-constructed grown neuron with no label, which the gate must refuse; the gate lands with the first code that admits
+problem that grew it) and no gate refuses it, if a neuron whose position reads a refused label is admitted (section
+3), or if the tests above name no falsifiable comparison. The controls are a constructed grown neuron with no label and
+a neuron placed in refused territory (insula), each of which the gate must refuse; the gate lands with the first code that admits
 labeled grown neurons (G3's attachment arms at the latest), and T115 closes only then.
 
 ## 8. Sources

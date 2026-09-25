@@ -1411,7 +1411,7 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     recorded H01's "beatable prior" NOT MET beyond its marginals on its own task (Part F H-R1), under a null that
     kept degrees, signs and magnitudes and so never tested position; T2 cites it and does not reuse its pin. Whether
     a width fitted once from H01 may then stay fixed is the owner's P1 call; until it is made, the width stays
-    running-baseline-relative or is refitted per campaign, and the pre-registration says which.
+    running-baseline-relative (refitting per campaign on the pinned H01 data would return the fitted-once value).
 
   G-R4.
 - **G5 / T113 — readout variants (the owner's #3).**
@@ -1481,8 +1481,9 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   (`cortex/placement.py`'s persisted label EXTENDED with position, region label and problem id -- no second label
   store; `cortex/arealization.py::emit_regions`; `cortical_microcircuit.CONN_PROB`; the H01 statistics; the one
   grower), and the four deciding tests mapped to the rows that run them: T1 -> G3's growth-unit arms and G9; T2 and
-  T3 -> G4; T4 -> G4 (wiring) and G9 (task score). FR-021's ten pinned region names are the label vocabulary,
-  emitted from position (FR-021's dated note). Still owed: the label gate (an unlabeled grown neuron is refused,
+  T3 -> G4; T4 -> G4 (wiring) and G9 (task score). The label vocabulary is FR-021's dated note: all sixteen
+  `REGION_COORDS` names, read from position, only the ten pinned growable names admitted (a session call under the
+  2026-09-05 authorization, open for the owner with the 2026-08-19 pin). Still owed: the label gate (an unlabeled grown neuron is refused,
   with its constructed red), landing with the first code that admits labeled grown neurons, G3's attachment arms at
   the latest; T115 closes then.
 
@@ -1491,9 +1492,10 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   the new structure as well").** *(Added 2026-09-25.)* Packages follow the engine's components (the brain and its
   grower, reservoir, readout, sleep, lake, infrastructure), never brain anatomy; the brain's regions or columns live
   on grown neurons (G7).
-  - Slot: right after G1(b)'s selection record, never inside a single-head campaign (G1(b)'s or G1(c)'s). G1B
-    section 2.9 deletes the losing ports first, and G1(c) then records at the new head; a move inside a campaign
-    forces a re-record, because G1(a)'s revision binding refuses a replay at a different head.
+  - Slot (the session's call under the 2026-09-05 authorization): right after G1(b)'s selection record, never
+    inside a single-head campaign (G1(b)'s or G1(c)'s). G1B section 2.9 deletes the losing ports first, and G1(c)
+    then records at the new head; a move inside a campaign forces a re-record, because G1(a)'s revision binding
+    refuses a replay at a different head.
   - Each move carries its registrations in the same commit: `REGIONS`, `run_selfchecks.py`, the dormancy and method
     EXEMPT rows, the wiring manifest, the back-compat alias layer, the p4c ratchet zones and every path-keyed POLICIES
     entry (POLICIES P4d: a reorganization re-points every path-keyed rule in the same commit, and a baseline is
@@ -1774,7 +1776,7 @@ this fixed decoder", never an incumbent-grower benefit or adoption.*
 | G-R4 | the fitted spatial model fails held-out neurons or regions, anatomical wiring shows no downstream benefit over its degree- and pathway-preserving shuffle, the layer × sign prior gives no benefit over its degree-, distance- and source-sign-matched twin with layer and target-sign preferences removed, or the pool goes silent or saturated *(DATED 2026-09-25: the wired grown population, not a pool)*; *(added 2026-09-25, G7's tests)* T2: growth with the H01 prior does not beat the same prior with positions shuffled (the H01 prior is then reverted and the map part of C goes to the owner, POLICIES P4d's null rule); T3: the Gaussian loses to the exponential or the flat model on held-out neurons, REFUSED if the planted sigma = 100 µm is not first recovered within 10%; T4's wiring half: rule-grown wiring's modularity is no higher than random attachment's | the distance-free model, degree-matched shuffles, the layer/sign-removed twin; *(2026-09-25)* shuffled-position H01, the planted-sigma recovery, random attachment, imposed columns | G4 / T112, PLANNED |
 | G-R5 | the challenger loses to the delta readout, or its gain survives a shuffled teaching signal or neutered coupling; *(added 2026-09-25, the engine)* neutering the brain's tuning port leaves the readout unchanged, or neutering the return path leaves the brain's own next answer and attempt unchanged against its time-shuffled twin | `OnlineReadout` (delta), a shuffled teaching signal, neutered coupling; *(2026-09-25)* the neutered tuning port, the time-shuffled return, the zero-width neighbourhood | G5 / T113, PLANNED |
 | G-R6 | (a) an incumbent pruner misses its pre-registered neuter-A/B bar (it is then retired or given a justified P3 exemption); the annealed mask breaks a retention bound on untouched tests, its savings vanish after costs, it does not beat greedy or random search at equal budget, pressure gives no budget-matched pressure-specific retention gain, or a restart loses a lesson or diverges; *(added 2026-09-25, the engine)* a mask that unsolves the problem is accepted, or a fresh process does not re-solve a saved problem without regrowth or new teaching | no-prune, incumbent, greedy and random search; clock-only and shuffled-pressure schedules; the uninterrupted twin; each incumbent pruner's neutered twin; *(2026-09-25)* the solved-predicate constraint, the fresh process | G6 / T114, PLANNED |
-| G-R7 | *(added 2026-09-25, owner decision C)* a grown neuron can be admitted without its unit label (position, layer, Dale sign, region label, the problem that grew it) and no gate refuses it; or the G7 record's tests name no falsifiable comparison | a constructed grown neuron with no label, which the gate must refuse; each test's own control (`evidence/g7-organizing-unit.md` section 6) | G7 / T115, PLANNED |
+| G-R7 | *(added 2026-09-25, owner decision C)* a grown neuron can be admitted without its unit label (position, layer, Dale sign, region label, the problem that grew it) and no gate refuses it; or the G7 record's tests name no falsifiable comparison; *(2026-09-25, the panel fold)* or a neuron whose position reads a refused label (FR-021's note) is admitted | a constructed grown neuron with no label, which the gate must refuse; *(2026-09-25, the panel fold)* a neuron placed in refused territory (insula), which the gate must refuse; each test's own control (`evidence/g7-organizing-unit.md` section 6) | G7 / T115, PLANNED |
 | G-R8 | *(added 2026-09-25)* a gate's output changes by more than the move's declared delta, an import path or back-compat alias breaks, an envelope hash changes, a live-lake checkpoint no longer restores, or G1B's R-b0 source-parity check cannot find its sources | the pre-move tree's gate outputs, re-derived; the pre-move checkpoint restore | G8 / T116, PLANNED |
 | G-R9 | *(added 2026-09-25, the owner's condition)* any one of: (i) the engine does not prospectively solve, at the bar, a problem its presized growth-OFF twin fails; (ii) its solve survives removing the reservoir, neutering the feed, neutering the transport or neutering the return path (each attributed separately); (iii) the loop reports solved on a constructed unsolvable problem, or does not pause at its budget; (iv) a fresh process does not re-solve the saved problem without regrowth or teaching; (v) an earlier solved problem regresses past its bound; (vi) the reservoir rebuilt from lake records after a restart does not reproduce the pre-restart answers on the saved problems; *(added 2026-09-25, the panel fold)* (vii) G7's T4 task-score half: rule-grown wiring scores below imposed columns (a decision-C red, under POLICIES P4d's null rule) | the presized growth-OFF twin, random growth, reservoir-removed, feed-neutered, transport-neutered, return-path-neutered, the constructed unsolvable problem, the uninterrupted twin; *(2026-09-25, the panel fold)* imposed columns, random attachment, single-neuron growth (G7's T1 at engine level, a replication reported beside G-R3's T1 red) | G9 / T117, PLANNED |
 | W-R1 | mean `curiosity_mag` (last 200 wake rows, 3000 and 6000 ticks) under W1+W2 does not exceed the time-shuffled-context world, per seed | the same world, context order shuffled | W3 |
@@ -1916,13 +1918,18 @@ four decisions, each the recommended option: the organizing unit is C, "grown co
 "Spiking only can win"; unsolved problems "Pause at a budget"; the reservoir's state "In the lake, rebuilt at start".
 This amendment adds G7-G9, T115-T117 and G-R7-G-R9, and amends FR-041 and SC-019 by dated notes. It records a design
 and gates, not an implementation; transport stands on G-R9 (i) and its own neuter (POLICIES P4d's null rule).
-Session calls, disclosed (no owner objection; the 2026-09-05 authorization): POLICIES.md records the engine as the
-PROVISIONAL directive P4d, the e-prop invariant is UNCHANGED, and doc-budget ceilings rise by their measured deltas.
-Still the owner's: whether the transport permission may ever reach credit assignment; a P1 case for a width fitted
-once from H01; a growth target inside the reservoir; G8's package layout, gate dispositions and any envelope-file move;
-whether a G-R9 null on an owner-drawn part changes the directive (asked when one lands); and whether the decision
-brief's "delete any part of it that does not pay" stands for decision C's tests, which POLICIES P4d's null rule (a
-session call of the 2026-09-25 panel fold) routes to the owner instead.
+Session calls disclosed the same turn (no owner objection; the 2026-09-05 authorization): POLICIES.md records the
+engine as the PROVISIONAL directive P4d, the e-prop invariant is UNCHANGED, and the POLICIES.md ceiling rises by P4d's
+need (shown to the owner as ~+900). Still the owner's (`evidence/engine-structure-2026-09-25.md` section 5 is the
+list): whether the transport permission may ever reach credit assignment; the P1 form of the wiring constants (a
+width fitted once from H01, the decay per mm, the shared-partner bonus, the `CONN_PROB` layer targets, the batch
+size); a growth target inside the reservoir; G8's package layout, gate dispositions and any envelope-file move;
+whether a G-R9 null on an owner-drawn part changes the directive (asked when one lands); whether the decision brief's
+"delete any part of it that does not pay" stands for decision C's tests, which POLICIES P4d's null rule (a session
+call of the 2026-09-25 panel fold) routes to the owner instead; re-ratifying the 2026-08-19 ten-region pin as C's
+label vocabulary, with the session call that widened the vocabulary to all sixteen `REGION_COORDS` names and its
+refusals; and the landed doc-budget raises (POLICIES.md +1,106 against the ~+900 shown, AGENT_COLD_START.md +164,
+and the panel fold's, each in its commit and in `substrate/doc_budget_gate.py`).
 
 ## PART I — HOW TO RESUME THIS PLAN IN A NEW SESSION
 

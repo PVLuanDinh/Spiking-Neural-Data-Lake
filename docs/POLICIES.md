@@ -47,7 +47,7 @@ compressed clause.
 | *(not a policy — repo hygiene)* standing docs keep their word ceilings | `substrate/doc_budget_gate.py` (bare = assert, in run_selfchecks) | — |
 | *(not a policy — repo hygiene)* outside data passes license + injection gates before the brain keeps it | `substrate/ingest_guard.py` (bare = assert, in run_selfchecks) | — |
 | *(not a policy — repo hygiene)* citations resolve | `tools/citation_guard.py` (step in the `lint` CI job) | — |
-| *(not a policy — a spec instrument, invention register row 7)* growth coverage counted before any rule lands. *DATED 2026-09-25 (P4d, owner decision C):* the growable partition's ten owner-ratified region names (2026-08-19) are the LABEL vocabulary of the anatomical map, emitted from a grown neuron's position; growth INTO the reservoir awaits an owner-ratified target | `substrate/growth_coverage_gate.py` (`--assert` + `--self-check`, `lint` CI job). The coverage red is REPORTED every run; asserted: the identity-pinned ratchet, scaffold/undeclared refusals, unresolved-site reds. Green never means coverage is adequate | — |
+| *(not a policy — a spec instrument, invention register row 7)* growth coverage counted before any rule lands. *DATED 2026-09-25 (P4d, owner decision C; the vocabulary a session call under the 2026-09-05 authorization):* all sixteen `REGION_COORDS` names are the LABEL vocabulary of the anatomical map, read from a grown neuron's position; only the ten owner-ratified growable names (2026-08-19) are admitted, and a SCAFFOLD name, neuromodulation, or a position the map cannot tell apart from theirs is refused; growth INTO the reservoir awaits an owner-ratified target | `substrate/growth_coverage_gate.py` (`--assert` + `--self-check`, `lint` CI job). The coverage red is REPORTED every run; asserted: the identity-pinned ratchet, scaffold/undeclared refusals, unresolved-site reds. Green never means coverage is adequate | — |
 | *(not a policy — repo hygiene)* documented `python -m` commands run | `tools/doc_command_guard.py --assert` — in `run_selfchecks`'s tools stage and the `lint` CI job; `policy_manifest`'s census counts both | — |
 | *(not a policy — P0's honesty guard, owner-adopted 2026-09-02, specs/022 OD-5)* a unit COUNT is reported as **admitted**, never as growth, until SC-012a fires ("provisional" = time-bound) | `tests/test_units_admitted_wording.py` (every battery): label bound to the value, PROVENANCE key on the row; red counted pre-change (3 of 3) | — |
 
@@ -223,7 +223,8 @@ had to be fixed before any A/B could be fair) is in `docs/POLICIES_EVIDENCE.md`.
 policies govern *how*. Proposals of that shape belong in a design note, not in this file. The test:
 if removing every proper noun from a proposal leaves nothing, it was a research direction. (P8 clears
 this bar deliberately: it names no architecture, grants latitude, and fixes what an invented method
-owes — that is a *how*.) **Owner exception, 2026-09-25 (P4d; its wording a disclosed session call).**
+owes — that is a *how*.) **Exception, 2026-09-25, under the owner's instruction that this file follow the
+engine (P4d; a disclosed session call).**
 An architecture the owner orders the project to follow is recorded here as a dated directive, as P4,
 P4b and P4c record what the brain IS. The test above still sorts it: what survives removing the proper
 nouns is the directive; the proper nouns stay research directions.
@@ -503,7 +504,8 @@ control, so the check can distinguish a real merge from a grep that would match 
 **Owner directive, 2026-09-25: the owner's diagram SNDL-Engine.drawio (labels verbatim in
 `specs/022-unified-brain-arc/evidence/engine-structure-2026-09-25.md`) and the owner's answers and
 four decisions that day. Review-enforced, PROVISIONAL until its gate (below) is built and counted,
-which retires the marker in the same commit; its placement here is a disclosed session call.** Source
+which retires the marker in the same commit; its placement, and its wording beyond the source lines and
+the (owner decision) tags, are disclosed session calls.** Source
 lines: *"Audit any part of the project including POLICIES.md and CLAUDE.md to follow this new
 structure"*; *"Weights transport is allowed as long as the engine can work ... 2 networks are allowed
 as long as it fits the new engine structure"*; *"The brain regions should be neurons and not coded like
@@ -548,7 +550,7 @@ clustering, predictive coding, simulated annealing) are examples, chosen by a be
   transport, permitted "as long as the engine can work", lapses only on its own measured failure, the
   whole engine failing G-R9 (i) or G-R9 (ii)'s transport neuter changing nothing.
 - **Reservoir state in the lake, rebuilt at start (owner decision):** `make_brain()` builds the
-  reservoir, the one drive ticks it, and it is gated like any build. No separate store: its seed,
+  reservoir, the one drive ticks it, and it is gated like any build (P4). No separate store: its seed,
   learned deltas, transport record and fed-in neurons are lake records, and a restart rebuilds it
   exactly. The drawn ellipse is the NETWORK boundary, not the durability boundary.
 - **Wired and charged:** each drawn connection is a typed wiring-manifest port with a measured charge;
@@ -1011,7 +1013,8 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
   inference, with the weight update itself a local rule — not a violation, however symmetric the
   read. This test decides every verdict below.
 
-  **THE ENGINE'S TRANSPORT IS NOT THIS INVARIANT'S TRANSPORT (owner permission 2026-09-25, P4d).**
+  **THE ENGINE'S TRANSPORT IS NOT THIS INVARIANT'S TRANSPORT (owner permission 2026-09-25, P4d; the
+  distinction a disclosed session call).**
   Copying the brain's weight values into the reservoir, or driving it with the brain's activity, feeds
   an ACTIVATION and is permitted. A measured null never deletes an owner-drawn or owner-chosen part (the
   two networks, the reservoir, the return path, decision C's parts): its implementation is reverted, it
