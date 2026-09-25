@@ -137,6 +137,7 @@ REGIONS = {
         "growth_stop",  # specs/022 T047: |LP|+charge growth gates, executive-independent (P8 #4)
         "memory_diagnostic",  # G1 causal contract diagnostic harness
         "recurrent_pool",  # G1(b) pool-selection benchmark: four reservoirs as streaming pools
+        "pool_selection",  # G1(b) pool-selection campaign: section 2's steps, ordering and taxonomy
         "lca_sparse_coding",
         "predictive_coding",
         "is_snn_forward",
