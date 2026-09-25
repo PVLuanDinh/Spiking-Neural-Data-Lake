@@ -1520,6 +1520,11 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     imports them; (4) region-keyed gates read a FROZEN pre-G8 label table (`LEGACY_*`), and re-targeting them to
     grown-neuron labels is later G7/G4 work. These settle what this row had left to the owner: the package layout,
     each path-keyed gate's disposition (FR-012, FR-015 and FR-032's dated notes) and any envelope-file move.
+  - *DATED 2026-09-25, the design read's F10 (session call under the 2026-09-05 authorization):* a runnable
+    command inside a frozen document (the specs/005 quickstart's `git diff --quiet` paths, `POLICIES_EVIDENCE.md`'s
+    two `python -m` commands) is rewritten at its stage, the historical path kept in a dated note beside it,
+    because a stale path makes `git diff --quiet` pass vacuously and `doc_command_guard` resolves `-m` by file; all
+    other frozen text keeps its historical paths.
 
   G-R8.
 - **G9 / T117 — the engine, end to end (the owner's condition, "as long as the engine can work").** *(Added
