@@ -117,9 +117,7 @@ was shown to the owner.
   where the two disagree, so the constitution drops those two marks and counts P6, P4c's amendment and P4d: three,
   at the cap.)*
 - *(Added in the 2026-09-25 panel fold.)* The null rule, one sentence written verbatim into POLICIES P4d and its
-  e-prop pointer, FR-041's and SC-019's notes, the plan's glossary and G9, and T117: an owner-drawn or owner-chosen
-  part goes to the owner on a measured null, and only transport lapses on its own. For decision C's parts it departs
-  from the decision brief's "The four tests below then delete any part of it that does not pay" (section 5).
+  e-prop pointer, FR-041's and SC-019's notes, the plan's glossary and G9, and T117: an owner-drawn part goes to the owner on a measured null; a part of decision C whose deciding test reds is deleted and the owner told, as the decision brief the owner chose C from states ("The four tests below then delete any part of it that does not pay"); only transport lapses on its own condition. *(Corrected 2026-09-25 by the orchestrator: the panel fold had routed decision C's nulls to the owner, against the brief the owner accepted C with.)*
 - *(Added in the 2026-09-25 panel fold.)* The label vocabulary is all sixteen `REGION_COORDS` names: only the ten
   growable names are admitted, and the SCAFFOLD names, neuromodulation and positions the map cannot tell apart from
   theirs are refused (`evidence/g7-organizing-unit.md` section 3). The arc had labeled the ten-name vocabulary "owner
@@ -142,8 +140,6 @@ Open for the owner, the owner's to settle (a session call holds a provisional an
   path-keyed gate's disposition, and any envelope-file move (G8);
 - whether a G-R9 null on an owner-drawn part changes the directive (POLICIES P4d's null rule sends such a null to the
   owner; the question is asked when one lands);
-- whether the decision brief's "delete any part of it that does not pay" stands for decision C's four tests, which
-  P4d's null rule (a session call of the 2026-09-25 panel fold) routes to the owner instead;
 - re-ratifying the 2026-08-19 ten-region pin as C's label vocabulary, and the session call that widened the
   vocabulary to all sixteen `REGION_COORDS` names with its refusals (section 4; at today's grain it cannot tell the
   'sp' and 'r1' neuromeres from refused territory, `evidence/g7-organizing-unit.md` section 3);

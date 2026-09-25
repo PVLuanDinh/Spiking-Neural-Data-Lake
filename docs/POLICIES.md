@@ -548,9 +548,7 @@ clustering, predictive coding, simulated annealing) are examples, chosen by a be
 - **"The engine can work" is a P8 criterion,** pre-registered: a reachable red (on a problem the current
   network provably cannot solve, the engine with its reservoir removed, or its feed, transport or return
   path neutered, must lose), a control that is not the engine (a presized growth-OFF twin at the same
-  neuron budget; random growth), and per-part neuter attribution. A measured null never deletes an
-  owner-drawn or owner-chosen part (the two networks, the reservoir, the return path, decision C's
-  parts): its implementation is reverted, it is not claimed, and the owner decides on the evidence;
+  neuron budget; random growth), and per-part neuter attribution. A measured null never deletes an owner-drawn part (the two networks, the reservoir, the return path): its implementation is reverted, it is not claimed, and the owner decides on the evidence; a part of decision C whose deciding test reds (plan G7: T1-T4) is deleted and the owner told, as the brief the owner chose C from states;
   transport, permitted "as long as the engine can work", lapses only on its own measured failure, the
   whole engine failing G-R9 (i) or G-R9 (ii)'s transport neuter changing nothing.
 - **Reservoir state in the lake, rebuilt at start (owner decision):** `make_brain()` builds the
@@ -1021,9 +1019,7 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
   **THE ENGINE'S TRANSPORT IS NOT THIS INVARIANT'S TRANSPORT (owner permission 2026-09-25, P4d; the
   distinction a disclosed session call).**
   Copying the brain's weight values into the reservoir, or driving it with the brain's activity, feeds
-  an ACTIVATION and is permitted. A measured null never deletes an owner-drawn or owner-chosen part (the
-  two networks, the reservoir, the return path, decision C's parts): its implementation is reverted, it
-  is not claimed, and the owner decides on the evidence; transport, permitted "as long as the engine
+  an ACTIVATION and is permitted. A measured null never deletes an owner-drawn part (the two networks, the reservoir, the return path): its implementation is reverted, it is not claimed, and the owner decides on the evidence; a part of decision C whose deciding test reds (plan G7: T1-T4) is deleted and the owner told, as the brief the owner chose C from states; transport, permitted "as long as the engine
   can work", lapses only on its own measured failure, the whole engine failing G-R9 (i) or G-R9 (ii)'s
   transport neuter changing nothing. A transposed forward weight
   feeding a WEIGHT UPDATE stays forbidden, including through a transported copy; extending the

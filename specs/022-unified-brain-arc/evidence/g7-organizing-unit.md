@@ -116,15 +116,14 @@ Each is pre-registered in its row's evidence file before its first run, with its
 | test | what it compares | red | runs in |
 |---|---|---|---|
 | T1, the growth-unit race | a column-sized batch vs single neurons grown next to the worst readouts vs a presized network of the final size vs random attachment, on the same problems at the same neuron budget | columns need 20% or more extra neurons than single-neuron growth at equal accuracy, or forget more; a presized network matching both means growth itself earns nothing | G3's growth-unit arms; G9 at engine level |
-| T2, anatomy vs shuffled anatomy | growth with the H01 prior (position, layer, sign, distance rule) vs the same prior with positions shuffled vs a generic template | H01 does not beat shuffled H01; the H01 prior is then reverted, and the map part of C goes to the owner | G4 |
+| T2, anatomy vs shuffled anatomy | growth with the H01 prior (position, layer, sign, distance rule) vs the same prior with positions shuffled vs a generic template | H01 does not beat shuffled H01; the H01 prior is then reverted and the map part of C deleted, the owner told | G4 |
 | T3, does H01 favour a Gaussian | connection probability against distance on H01: Gaussian, exponential, both, or flat, scored on held-out neurons | the Gaussian loses to the exponential or the flat model; REFUSED (a blind fit) if a planted Gaussian (sigma = 100 µm) is not first recovered within 10% | G4 |
 | T4, emergent vs imposed organization | rule-grown wiring (distance x shared partners, with a wiring cost) vs imposed columns vs random attachment, scored on modularity and task score | modularity no higher than random attachment, or a task score below imposed columns | G4 (wiring); G9 (task score in the engine) |
 
-*Dispositions (dated 2026-09-25, the panel fold; a session call under the owner's 2026-09-05 authorization):* a red
-on any test reverts the implementation it tests, and the part of C it tests is not claimed and goes to the owner under
-POLICIES P4d's null rule. The decision brief the owner chose C from said "The four tests below then delete any part
-of it that does not pay" (T2: "the map part of C is deleted"); whether that deletion stands without a further ruling
-is open for the owner (`engine-structure-2026-09-25.md` section 5).
+*Dispositions (dated 2026-09-25):* a red on any test reverts the implementation it tests and deletes the part of
+C it tests, and the owner is told: the decision brief the owner chose C from said "The four tests below then
+delete any part of it that does not pay" (T2: "the map part of C is deleted"), and the owner accepted C on that
+condition. *(Corrected by the orchestrator the same day: the panel fold had routed these nulls to the owner.)*
 
 ## 7. The red (G-R7, plan Part F)
 
