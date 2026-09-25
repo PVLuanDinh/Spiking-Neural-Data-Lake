@@ -79,7 +79,8 @@ registered by region in `REGIONS` (`src/snn_data_lake/__init__.py`).
 - The regions are the keys of `REGIONS`. Among them: `cortex/`, `hippocampus/`, `basal_ganglia/`,
   `amygdala/`, `cerebellum/`, `thalamus/`, `neuromodulation/`, `plasticity/`, `brainstem/`, `pons/`,
   `medulla/`, `hypothalamus/` and `substrate/`. `reasoning/` and `training/` are not among them. These are
-  CODE packages, not the brain's anatomy: under P4d the brain's regions are labels on grown neurons.
+  CODE packages, not the brain's anatomy: under P4d the brain's regions are labels on grown neurons; G8
+  reorganizes them (owner, 2026-09-25).
 - The wiring between regions is `connectome.py`; the region map is `brain_atlas.py`.
 - Its ONE durable memory is an append-only lake of tagged records, `brain_lake.bin`.
 - Its drive is an always-on daemon, `substrate/learn_daemon.py`. The daemon's cockpit,
@@ -117,7 +118,7 @@ them.
 **The design under test** (the owner's engine, 2026-09-25: POLICIES P4d, PROVISIONAL; plan Part D "G
 workstream", T108 to T117, reds G-R0 to G-R9). A two-network engine. The brain grows neurons when its weights
 cannot solve a problem, in column-sized batches on an anatomical map ("grown columns on an anatomical map"; a
-region is a label on grown neurons), and feeds them into a SEPARATE liquid reservoir, into which it also transports
+region is a label on grown neurons), and feeds them into a SEPARATE spiking liquid reservoir, into which it also transports
 weights. It tunes readout neurons (STDP, topographical clustering, predictive coding) that read the reservoir and
 connect back into the brain. It grows again until the problem is solved or its budget pauses it (UNSOLVED, kept
 open), then sleeps to prune and save the new neurons and the problem's data in the one lake, where the

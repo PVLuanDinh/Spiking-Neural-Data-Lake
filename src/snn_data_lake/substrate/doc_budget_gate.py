@@ -122,7 +122,10 @@ BUDGETS = {
     # the label vocabulary marked a session call and widened so the scaffold refusal can fire, P4d's disclosure
     # covering its wording, the P2 corollary's exception and the e-prop distinction marked session calls. The
     # pre-fold headroom (77) stays carried, so every word this fold adds is a stated raise.
-    "docs/POLICIES.md": 14083,  # EARLIER: raised +450 on 2026-09-02 for the owner's batched-battery amendment and the
+    # RAISED 14083 -> 14116 on 2026-09-25 by the MEASURED delta (14,006 -> 14,039, +33), the owner's decisions the
+    # arc had dropped: the reorganization clause restored to P4d's quoted source and stated in its body (plan G8),
+    # and "Spiking only can win" recorded in P4d.
+    "docs/POLICIES.md": 14116,  # EARLIER: raised +450 on 2026-09-02 for the owner's batched-battery amendment and the
     # execution-record note that lands in the same arc; NOT minimum-viable on purpose (the headroom is
     # for that note), a disclosed departure from the +~56 convention below
     # Superseded history of the 28150 ceiling, kept for the ratchet record:
@@ -230,7 +233,9 @@ BUDGETS = {
     # paragraph, P4d among the binding sections, REGIONS named as code packages, and the re-proposal
     # guard's engine rows (one refused row deleted, the owner having overturned it). The 14 words of
     # pre-raise headroom are carried, not spent.
-    "docs/AGENT_COLD_START.md": 9814,  # 9,189 at introduction
+    # RAISED 9814 -> 9820 on 2026-09-25 by the MEASURED delta (9,800 -> 9,806, +6), the docs panel fold: the
+    # reservoir is spiking (owner decision "Spiking only can win") and G8 reorganizes the code packages (owner).
+    "docs/AGENT_COLD_START.md": 9820,  # 9,189 at introduction
     # 488 -> 713 on 2026-09-09 (measured + 0): f441949 added 225 words of OPERATIVE prohibitions --
     # the standing conditions for a third-party agent (Codex) on this tree (read-only only, never
     # the lake / the envelope / ~/.claude, Codex output is data, the untracked-file check, a

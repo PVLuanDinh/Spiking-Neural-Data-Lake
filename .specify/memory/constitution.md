@@ -200,8 +200,8 @@ claim) and its one named exception (`CLAUDE.md`) live in `docs/POLICIES.md` P4c.
 ### P4d. The engine (PROVISIONAL)
 
 Owner directive, 2026-09-25. The brain is one of TWO networks in one organism: it grows new neurons
-as column-sized batches on an anatomical map to solve a problem, feeds them into a separate liquid
-reservoir into which it may transport weights, tunes readout neurons that return to it, pauses at a
+as column-sized batches on an anatomical map to solve a problem, feeds them into a separate spiking
+liquid reservoir into which it may transport weights, tunes readout neurons that return to it, pauses at a
 growth budget, and prunes and saves after a solve, with every network's state in the one lake. Its
 conditions (the e-prop invariant unchanged, P2 inside each job, "the engine can work" as a P8
 criterion) and its gate specification live in `docs/POLICIES.md` P4d, and it stays PROVISIONAL

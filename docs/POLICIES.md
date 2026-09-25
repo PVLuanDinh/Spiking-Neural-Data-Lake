@@ -507,8 +507,8 @@ four decisions that day. Review-enforced, PROVISIONAL until its gate (below) is 
 which retires the marker in the same commit; its placement, and its wording beyond the source lines and
 the (owner decision) tags, are disclosed session calls.** Source
 lines: *"Audit any part of the project including POLICIES.md and CLAUDE.md to follow this new
-structure"*; *"Weights transport is allowed as long as the engine can work ... 2 networks are allowed
-as long as it fits the new engine structure"*; *"The brain regions should be neurons and not coded like
+structure"*; *"Weights transport is allowed as long as the engine can work, the repo should be reorganized to
+fit the new structure as well. 2 networks are allowed as long as it fits the new engine structure"*; *"The brain regions should be neurons and not coded like
 the current work tree structure on github"*. Its incidents are in `docs/POLICIES_EVIDENCE.md`.
 
 **The engine.** The BRAIN, one network inside the one lake, grows NEW NEURONS to solve a problem and
@@ -521,12 +521,14 @@ column-sized batches where error builds up; every grown neuron carries a positio
 region label and the problem that grew it, in the lake; wiring follows rules (layer target × distance
 kernel × shared-partner bonus), not a copied diagram. A region is a LABEL read off the map and
 measured, never a code package; anatomical data is a fitted prior that must beat a shuffled copy; each
-part stands on its deciding test (plan G7: T1-T4); a
-reorganization moves code and re-points every path-keyed rule in the same commit.
+part stands on its deciding test (plan G7: T1-T4); the
+repository is reorganized to the engine's components (plan G8); each move re-points every path-keyed rule in the
+same commit.
 
 **The rules are the directive;** its named mechanisms (liquid state machine, STDP, topographical
 clustering, predictive coding, simulated annealing) are examples, chosen by a benchmark that exists
-(P2) and credited at measurement (P8).
+(P2) and credited at measurement (P8). The reservoir is spiking: only spiking candidates are selectable
+(owner decision "Spiking only can win").
 - Grow only while a problem is certified unsolved; stop, attempt, repeat. A contradictory problem is
   a data diagnosis, not a trigger; "solved" is scored on data the growth did not fit.
 - **Pause at a budget (owner decision):** each problem's growth spends a budget relative to a

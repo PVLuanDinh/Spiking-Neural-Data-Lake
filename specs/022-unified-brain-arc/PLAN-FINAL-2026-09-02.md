@@ -1325,6 +1325,9 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     winner runs at the reorganized head.*
 
   *Fed-neuron input belongs to G3 and G9.*
+  *DATED 2026-09-25 (G1(b)'s result, `evidence/g1b-pool-selection.md` section 3.4): selection record 0bd1de7:
+  winner g1 LSM {k 8, w 0.25, lambda 0.9, g 4, T_in 1}; live D near -0.006 for every candidate, inside band_D;
+  G1(c) next (S 31), with G8 landing before it (the order below).*
 - **G2 / T110 — problems the current weights provably cannot solve.** Delivered as TAUGHT
   exchanges through G0's repaired channel.
   - (i) A delayed-cue 2x2 (needs state × needs capacity). Its explicit-history control is proven
@@ -1506,8 +1509,15 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     the plasticity stack or `rule_composer` needs a checkpoint converter before the move.
   - The five `brainstem/` envelope files and `tools/envelope_hashes.json` are not moved without the owner's explicit
     approval. Frozen evidence keeps its historical paths; A.5 gains an old-to-new path map.
-  - The owner's to decide: the package layout, each path-keyed gate's disposition (FR-012, FR-015 and FR-032's dated
-    notes), and any envelope-file move.
+  - *DATED 2026-09-25, the owner's decisions (after the G8 design draft; each the recommended option):* (1) the
+    proposed package names are kept: engine, growth, reservoir, readout, plasticity (kept), sleep, substrate (kept,
+    the lake), sensorimotor, infra, gates, instruments, faculties; (2) the hand-coded region faculties move to ONE
+    flat `faculties/`, none retired, each later getting its own P2 row, their old region kept as data in
+    `LEGACY_REGIONS`; (3) `brainstem/` is UNTOUCHED: the five envelope files and the SO-101 assets stay
+    byte-identical, and `substrate/home.py` and `substrate/arm_view.py` stay where they are because the E-STOP latch
+    imports them; (4) region-keyed gates read a FROZEN pre-G8 label table (`LEGACY_*`), and re-targeting them to
+    grown-neuron labels is later G7/G4 work. These settle what this row had left to the owner: the package layout,
+    each path-keyed gate's disposition (FR-012, FR-015 and FR-032's dated notes) and any envelope-file move.
 
   G-R8.
 - **G9 / T117 — the engine, end to end (the owner's condition, "as long as the engine can work").** *(Added
@@ -1923,13 +1933,14 @@ engine as the PROVISIONAL directive P4d, the e-prop invariant is UNCHANGED, and 
 need (shown to the owner as ~+900). Still the owner's (`evidence/engine-structure-2026-09-25.md` section 5 is the
 list): whether the transport permission may ever reach credit assignment; the P1 form of the wiring constants (a
 width fitted once from H01, the decay per mm, the shared-partner bonus, the `CONN_PROB` layer targets, the batch
-size); a growth target inside the reservoir; G8's package layout, gate dispositions and any envelope-file move;
-whether a G-R9 null on an owner-drawn part changes the directive (asked when one lands); whether the decision brief's
-"delete any part of it that does not pay" stands for decision C's tests, which POLICIES P4d's null rule (a session
-call of the 2026-09-25 panel fold) routes to the owner instead; re-ratifying the 2026-08-19 ten-region pin as C's
-label vocabulary, with the session call that widened the vocabulary to all sixteen `REGION_COORDS` names and its
-refusals; and the landed doc-budget raises (POLICIES.md +1,106 against the ~+900 shown, AGENT_COLD_START.md +164,
-and the panel fold's, each in its commit and in `substrate/doc_budget_gate.py`).
+size); a growth target inside the reservoir; whether a G-R9 null on an owner-drawn part changes the directive (asked
+when one lands); whether the decision brief's "delete any part of it that does not pay" stands for decision C's
+tests, which POLICIES P4d's null rule (a session call of the 2026-09-25 panel fold) routes to the owner instead;
+re-ratifying the 2026-08-19 ten-region pin as C's label vocabulary, with the session call that widened the vocabulary
+to all sixteen `REGION_COORDS` names and its refusals; and the landed doc-budget raises (POLICIES.md +1,106 against
+the ~+900 shown, AGENT_COLD_START.md +164, and the panel fold's, each in its commit and in
+`substrate/doc_budget_gate.py`). G8's package layout, gate dispositions and envelope question, once on this list, were
+decided by the owner the same day (the G8 row).
 
 ## PART I — HOW TO RESUME THIS PLAN IN A NEW SESSION
 

@@ -135,7 +135,8 @@ Open for the owner, the owner's to settle (a session call holds a provisional an
   kernel width), or G4 keeps the fitted width running-baseline-relative; the same question for the decay per mm, the
   shared-partner bonus, the `CONN_PROB` layer targets and the column batch size;
 - a growth target INSIDE the reservoir (a fed neuron becoming a reservoir unit, one of G3's arms);
-- the reorganization's package layout, each path-keyed gate's disposition, and any envelope-file move (G8);
+- *(decided by the owner 2026-09-25, recorded in plan G8 and T116)* the reorganization's package layout, each
+  path-keyed gate's disposition, and any envelope-file move (G8);
 - whether a G-R9 null on an owner-drawn part changes the directive (POLICIES P4d's null rule sends such a null to the
   owner; the question is asked when one lands);
 - whether the decision brief's "delete any part of it that does not pay" stands for decision C's four tests, which
