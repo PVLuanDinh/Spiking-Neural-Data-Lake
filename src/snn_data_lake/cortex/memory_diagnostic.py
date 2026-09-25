@@ -29,6 +29,12 @@ ASSETS = {
     "eprop_nmnist.pt": "9b471619e39acfa0",
     "eprop_shd.pt": "6b32f9eb38beeca3",
 }
+ASSET_ENV = (
+    "SNN_EPROP_CKPT",
+    "SNN_PERCEPTION_PACK",
+    "SNN_EPROP_AUDIO_CKPT",
+    "SNN_SHD_PACK",
+)
 
 
 def _crc(value):
@@ -65,6 +71,7 @@ def _policy():
     return {
         "NORD_DEVICE": os.environ.get("NORD_DEVICE"),
         "NORD_GPU": os.environ.get("NORD_GPU"),
+        **{name: os.environ.get(name) for name in ASSET_ENV},
         "torch": torch.__version__,
         "numpy": np.__version__,
         "python": platform.python_version(),
@@ -112,7 +119,7 @@ def onehot_32(category):
 class _View:
     def __init__(self, channels, values):
         self.channels = frozenset(channels)
-        self.values = values
+        self.values = {key: values[key] for key in self.channels if key in values}
 
     def get(self, channel):
         if channel not in self.channels:
@@ -191,6 +198,8 @@ def record_stream(seed, ticks=2400, *, arm_feed=None):
     from snn_data_lake.substrate.home import throwaway_home
 
     torch.set_num_threads(1)
+    if any(os.environ.get(name) is not None for name in ASSET_ENV):
+        raise ValueError("REFUSED: asset environment override")
     assets = _assets()
     with throwaway_home():
         brain = make_brain(seed=seed, persist=False)
@@ -222,6 +231,16 @@ def record_stream(seed, ticks=2400, *, arm_feed=None):
         }
         order = "canonical"
         pending = None
+        attended = {}
+        original_attend = brain._attend_real_stream
+
+        def attend(latent, gain):
+            modality = "vision" if latent is brain._real_percept else "audio"
+            result = original_attend(latent, gain)
+            attended[modality] = result is not None
+            return result
+
+        brain._attend_real_stream = attend
 
         def acquisition(modality, original, pointer_name, frames_name):
             def wrapped():
@@ -257,6 +276,8 @@ def record_stream(seed, ticks=2400, *, arm_feed=None):
                 source is None or not all(source[m]["success"] for m in ("vision", "audio"))
             ):
                 raise ValueError(f"REFUSED: fallback context at delivery {index}")
+            if index > 1 and not all(attended.get(m, False) for m in ("vision", "audio")):
+                raise ValueError(f"REFUSED: fallback context at delivery {index}")
             prediction = engine.predict_next()
             fallback = bool(engine._pending_prediction[4]) if engine._pending_prediction else False
             row = {
@@ -265,6 +286,7 @@ def record_stream(seed, ticks=2400, *, arm_feed=None):
                 "x": list(map(float, features)),
                 "c": int(category),
                 "source": copy.deepcopy(source),
+                "attended": {m: attended.get(m, False) for m in ("vision", "audio")},
                 "causal_lp": _read_lp(brain),
                 "prediction": prediction,
                 "fallback": fallback,
@@ -329,6 +351,7 @@ def record_stream(seed, ticks=2400, *, arm_feed=None):
         engine._growth_gate = gate
         for _ in range(ticks):
             pending = {}
+            attended = {}
             phase = brain.tick()
             if phase == "awake":
                 if set(pending) != {"vision", "audio"} or not all(
@@ -357,6 +380,11 @@ def record_stream(seed, ticks=2400, *, arm_feed=None):
         return stream
 
 
+def _source_digest(stream):
+    payload = {key: stream[key] for key in ("events", "sleep")}
+    return zlib.crc32(json.dumps(payload, sort_keys=True).encode("utf-8"))
+
+
 def replay(stream, arm, mode="causal", *, mutate=None):
     """Replay the recorded event schedule, rejecting missing gate evidence."""
     if arm not in ARMS or mode not in ("causal", "live"):
@@ -374,6 +402,7 @@ def replay(stream, arm, mode="causal", *, mutate=None):
     ):
         raise ValueError("REFUSED: library policy changed")
     rows = mutate if mutate is not None else stream
+    source_digest = _source_digest(rows)
     ledger = []
     state = {"tick": 0, "event": 0, "value": None, "exists": False}
 
@@ -475,6 +504,9 @@ def replay(stream, arm, mode="causal", *, mutate=None):
     if any(not entry["exists"] for entry in ledger) or len(ledger) != stop.observed("cortex"):
         raise ValueError("REFUSED: missing or disconnected LP ledger")
     return {
+        "arm": arm,
+        "mode": mode,
+        "source_digest": source_digest,
         "predictions": predictions,
         "fallbacks": fallbacks,
         "phi": phi,
@@ -553,45 +585,34 @@ def mutate_suffix(stream, t_star, seed):
     return changed
 
 
-def _lp_sensitive_red():
-    """One changed recorded LP value flips a gate and the next learner refit."""
-    fingerprints = []
-    verdicts = []
-    trajectory = [(i, i, 0.5) for i in range(15)]
-    for last in (0.0, 10.0):
-        engine = NeurogenesisSelfImprove(
-            seed=17, refit_every=4, device="cpu", online_readout="delta"
-        )
-        for i in range(40):
-            row = [0.0] * 64
-            row[(i % 3) * 8] = 1.0
-            engine.observe(row, (i // 3) % 3)
-            engine.tick()
-        if engine._model is None:
-            return False
-        values = iter([0.0] * 12 + [10.0, 10.0, last])
-        stop = GrowthStop(
-            lp_reader=type("Reader", (), {"lp": lambda self, region, source=values: next(source)})()
-        )
-
-        def gate(_trajectory, target=stop):
-            verdict, refused = feed_and_decide(target, trajectory)
-            assert refused == 0
-            verdicts.append(verdict)
-            return verdict
-
-        engine._growth_gate = gate
-        for i in range(40, 44):
-            row = [0.0] * 64
-            row[(i % 3) * 8] = 1.0
-            engine.observe(row, (i // 3) % 3)
-            engine.tick()
-        fingerprints.append(_fingerprint(engine))
-    return verdicts == [False, True] and fingerprints[0] != fingerprints[1]
+def _lp_sensitive_red(arm="a"):
+    """A single recorded causal LP change must alter replay's gate and learner."""
+    stream = _synthetic_stream()
+    stream["events"] = [
+        dict(event, t=i + 1, tick=i * 2 + 1) for i, event in enumerate(stream["events"] * 3)
+    ]
+    stream["sleep"] = [
+        dict(row, tick=i + 1, brain_tick=i * 2 + 2, event=i + 1)
+        for i, row in enumerate(stream["sleep"] * 3)
+    ]
+    target = 92 if arm == "f64" else 80
+    for event_index in (target - 8, target - 4):
+        stream["events"][event_index - 1]["causal_lp"] = 10.0
+    base = replay(stream, arm)
+    changed = copy.deepcopy(stream)
+    changed["events"][target - 1]["causal_lp"] = 10.0
+    altered = replay(changed, arm)
+    return any(
+        a["verdict"] != b["verdict"]
+        for a, b in zip(base["gate_verdicts"], altered["gate_verdicts"], strict=True)
+    ) and (
+        base["fingerprint"] != altered["fingerprint"]
+        or base["predictions"] != altered["predictions"]
+    )
 
 
-def check_r_a1(stream, live=None):
-    live = live if live is not None else replay(stream, "a", "live")
+def check_r_a1(stream, live=None, arm="a"):
+    live = live if live is not None else replay(stream, arm, "live")
     expected = stream["final"]
     eligible = bool(
         any(
@@ -618,12 +639,12 @@ def check_r_a1(stream, live=None):
     if first > 1 and len(cats) > 1:
         row = changed["events"][1]
         row["c"] = next(c for c in cats if c != row["c"])
-        altered = replay(changed, "a", "live")
+        altered = replay(changed, arm, "live")
         count_red = (
             altered["fingerprint"] != live["fingerprint"]
             or altered["predictions"] != live["predictions"]
         )
-    lp_red = _lp_sensitive_red()
+    lp_red = _lp_sensitive_red(arm)
     red = bool(count_red and lp_red)
     numbers = {
         "events": len(live["predictions"]),
@@ -640,7 +661,7 @@ def check_r_a1(stream, live=None):
 
 def check_r_a1b(stream, oracle, replayed=None):
     replayed = replayed if replayed is not None else replay(oracle, "f64", "live")
-    fields = ("x", "c", "tick", "causal_lp", "source")
+    fields = ("x", "c", "tick", "causal_lp", "source", "attended")
     same = len(stream["events"]) == len(oracle["events"]) and all(
         all(a[key] == b[key] for key in fields)
         for a, b in zip(stream["events"], oracle["events"], strict=True)
@@ -653,14 +674,17 @@ def check_r_a1b(stream, oracle, replayed=None):
     same &= [r["fingerprint"] for r in replayed["refits"]] == [
         r["refit"] for r in oracle["refits"] if r["refit"]
     ]
-    red = all(check_r_a1(oracle)["red"].values())
+    red = all(check_r_a1(oracle, arm="f64")["red"].values())
     return {"verdict": bool(same and red), "numbers": {"events": len(oracle["events"])}, "red": red}
 
 
 def check_r_a2(stream, runs=None):
     results = {}
+    base_digest = _source_digest(stream)
     for arm in SCORED_ARMS:
         base = _load(runs[arm]["base"]) if runs else replay(stream, arm)
+        if not _causal_identity(base, arm, base_digest):
+            raise ValueError(f"REFUSED: replay identity {arm} base")
         cuts = []
         for cut in (
             len(stream["events"]) // 4,
@@ -669,6 +693,8 @@ def check_r_a2(stream, runs=None):
         ):
             changed = mutate_suffix(stream, max(1, cut), stream["seed"] + cut)
             other = _load(runs[arm][cut]) if runs else replay(changed, arm, mutate=changed)
+            if not _causal_identity(other, arm, _source_digest(changed)):
+                raise ValueError(f"REFUSED: replay identity {arm} cut {cut}")
             cuts.append(base["predictions"][:cut] == other["predictions"][:cut])
         results[arm] = cuts
     leak = replay(stream, "leak")
@@ -688,6 +714,15 @@ def check_r_a2(stream, runs=None):
     }
 
 
+def _causal_identity(run, arm, digest):
+    return (
+        run.get("mode") == "causal"
+        and run.get("arm") == arm
+        and run.get("source_digest") == digest
+        and all(entry.get("mode") == "causal" for entry in run.get("ledger", ()))
+    )
+
+
 def check_r_a2b(stream):
     red = False
     try:
@@ -699,23 +734,46 @@ def check_r_a2b(stream):
 
 def check_r_a3(stream):
     cats = [e["c"] for e in stream["events"]]
-    persistence = [None] + cats[:-1]
+    persistence = [None, *cats[:-1]]
     known = score(stream, persistence, [False] * len(cats))
     oracle = score(stream, cats, [False] * len(cats))
     constant = [cats[0]] * len(cats)
     constant_scores = score(stream, constant, [False] * len(cats))
     valid = True
-    red = False
+    discrimination = {}
     for segment, row in known.items():
-        if not row["available"]:
+        if segment == "warm-up":
             continue
-        valid &= row["accuracy"] == row["persistence"] and oracle[segment]["accuracy"] == 1
+        if not row["available"]:
+            discrimination[segment] = {"transitions": 0, "discriminating": False}
+            continue
         indices = [i for i, e in enumerate(stream["events"]) if e.get("segment") == segment]
+        numerator = sum(i > 0 and cats[i] == cats[i - 1] for i in indices)
+        expected = numerator / len(indices)
+        transitions = len(indices) - numerator
+        discrimination[segment] = {
+            "transitions": transitions,
+            "discriminating": transitions > 0,
+        }
+        valid &= (
+            row["accuracy"] == expected
+            and row["persistence"] == expected
+            and oracle[segment]["accuracy"] == 1
+        )
         valid &= constant_scores[segment]["accuracy"] == sum(
             cats[i] == cats[0] for i in indices
         ) / len(indices)
-        red |= any(cats[i] != cats[i - 1] for i in indices if i)
-    return {"verdict": bool(valid and red), "numbers": known, "red": red}
+    fixture = {"events": [{"c": c, "segment": "unseen-order"} for c in (0, 0, 1, 1, 0, 1)]}
+    truth = [event["c"] for event in fixture["events"]]
+    correct = score(fixture, truth, [False] * len(truth))
+    shifted = score(fixture, [None, *truth[:-1]], [False] * len(truth))
+    red = correct["unseen-order"]["accuracy"] == 1 and shifted["unseen-order"]["accuracy"] < 1
+    return {
+        "verdict": bool(valid and red),
+        "numbers": known,
+        "discrimination": discrimination,
+        "red": red,
+    }
 
 
 def check_r_a4(stream, runs=None):
@@ -830,7 +888,7 @@ def main():
             statuses = list(pool.map(lambda job: _child([job[0], *job[1]], job[2]), jobs))
         if any(row["status"] != "OK" for row in statuses):
             _save(directory / "summary.json", statuses)
-            return
+            raise SystemExit(1)
         replay_jobs = []
         for seed in range(100, 104):
             source = directory / f"{seed}-stream.json.gz"
@@ -883,6 +941,8 @@ def main():
         with ThreadPoolExecutor(max_workers=4) as pool:
             statuses += list(pool.map(lambda job: _child(*job), replay_jobs))
         _save(directory / "summary.json", statuses)
+        if any(row["status"] != "OK" for row in statuses):
+            raise SystemExit(1)
     elif args.check:
         directory = Path(args.check)
         report = {}
@@ -919,13 +979,18 @@ def main():
                 "R-a2b": check_r_a2b(stream),
                 "R-a3": check_r_a3(stream),
                 "R-a4": check_r_a4(stream, a4_runs),
-                "contrast_f64_a": {
-                    arm: score(stream, result["predictions"], result["fallbacks"])
-                    for arm, result in (
-                        ("a", _load(directory / f"{seed}-a-causal.json")),
-                        ("f64", _load(directory / f"{seed}-f64-causal.json")),
-                    )
-                },
+            }
+        if any(not result["verdict"] for checks in report.values() for result in checks.values()):
+            _save(directory / "checks.json", report)
+            raise SystemExit(1)
+        for seed in range(100, 104):
+            stream = _load(directory / f"{seed}-stream.json.gz")
+            report[str(seed)]["contrast_f64_a"] = {
+                arm: score(stream, result["predictions"], result["fallbacks"])
+                for arm, result in (
+                    ("a", _load(directory / f"{seed}-a-causal.json")),
+                    ("f64", _load(directory / f"{seed}-f64-causal.json")),
+                )
             }
         _save(directory / "checks.json", report)
     else:
@@ -978,14 +1043,21 @@ def main():
             pass
         else:
             raise AssertionError("disconnected LP reader accepted")
-        rows = [(i, i, 0.5) for i in range(15)]
-        still = GrowthStop(lp_reader=type("Reader", (), {"lp": lambda self, region: 0.0})())
-        values = iter([0.0] * 12 + [10.0] * 3)
-        moving = GrowthStop(
-            lp_reader=type("Reader", (), {"lp": lambda self, region: next(values)})()
-        )
-        assert feed_and_decide(still, rows)[0] is False
-        assert feed_and_decide(moving, rows)[0] is True
+        trajectory = [(1, 1, 0.5), (2, 2, float("nan")), (3, 3, 0.6)]
+        old = GrowthStop()
+        refusals = 0
+        for _, units, accuracy in trajectory[old.observed("cortex") :]:
+            try:
+                old.observe_refit("cortex", int(units), float(accuracy))
+            except (ValueError, TypeError):
+                refusals += 1
+        expected = (old.should_grow("cortex"), refusals, old.observed("cortex"))
+        shared = GrowthStop()
+        verdict, actual_refusals = feed_and_decide(shared, trajectory)
+        assert (verdict, actual_refusals, shared.observed("cortex")) == expected
+        dropped = GrowthStop()
+        feed_and_decide(dropped, trajectory[:-1])
+        assert dropped.observed("cortex") != shared.observed("cortex")
         assert onehot_32(31)[31] == 1
         try:
             onehot_32(32)

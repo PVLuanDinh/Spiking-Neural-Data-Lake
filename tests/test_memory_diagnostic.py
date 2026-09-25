@@ -1,6 +1,7 @@
 """Fast synthetic reds for the G1(a) causal contract."""
 
 import copy
+from pathlib import Path
 
 import pytest
 import torch
@@ -8,8 +9,11 @@ import torch
 from snn_data_lake.cortex.growth_stop import GrowthStop, feed_and_decide
 from snn_data_lake.cortex.memory_diagnostic import (
     ARMS,
+    ASSET_ENV,
+    ASSETS,
     _feature,
     _lp_sensitive_red,
+    _policy,
     _synthetic_stream,
     _View,
     check_r_a1,
@@ -147,13 +151,64 @@ def test_lp_sensitive_gate_fixture_flips_verdict():
     assert feed_and_decide(no_motion, rows)[0] is False
     assert feed_and_decide(motion, rows)[0] is True
     assert _lp_sensitive_red()
+    assert _lp_sensitive_red("f64")
 
 
 @pytest.mark.slow
 def test_real_120_tick_recording_r_a1():
     from snn_data_lake.cortex.memory_diagnostic import check_r_a1
 
+    models = Path(__file__).resolve().parents[1] / "models"
+    if any(not (models / name).is_file() for name in ASSETS):
+        pytest.skip("real perception assets are absent")
     stream = record_stream(900, ticks=120)
     result = check_r_a1(copy.deepcopy(stream))
     assert result["numbers"]["equivalent"] and result["numbers"]["refits"] > 0
     assert not result["numbers"]["eligible"]
+
+
+def test_view_hides_undeclared_category():
+    view = _View(ARMS["a"][1], {"x": [0.0] * 64, "c": 7})
+    assert "c" not in view.values
+    assert not hasattr(view, "c")
+    with pytest.raises(ValueError, match="forbidden"):
+        view.get("c")
+
+
+def test_loaded_live_run_is_refused_by_causal_check(tmp_path):
+    import json
+
+    stream = _synthetic_stream()
+    paths = {}
+    for arm in tuple(ARMS)[:8]:
+        result = replay(stream, arm, "live" if arm == "a" else "causal")
+        path = tmp_path / f"{arm}.json"
+        path.write_text(json.dumps(result), encoding="utf-8")
+        paths[arm] = {"base": path}
+    with pytest.raises(ValueError, match="replay identity"):
+        check_r_a2(stream, paths)
+
+
+def test_policy_records_asset_environment(monkeypatch):
+    for name in ASSET_ENV:
+        monkeypatch.setenv(name, "override")
+    policy = _policy()
+    assert all(policy[name] == "override" for name in ASSET_ENV)
+    with pytest.raises(ValueError, match="asset environment override"):
+        record_stream(900, ticks=1)
+
+
+def test_calibration_red_survives_transition_free_real_segment():
+    stream = {
+        "events": [
+            {"c": 1, "segment": "warm-up"},
+            {"c": 1, "segment": "unseen-order"},
+            {"c": 1, "segment": "unseen-order"},
+        ]
+    }
+    result = check_r_a3(stream)
+    assert result["verdict"] and result["red"]
+    assert result["discrimination"]["unseen-order"] == {
+        "transitions": 0,
+        "discriminating": False,
+    }
