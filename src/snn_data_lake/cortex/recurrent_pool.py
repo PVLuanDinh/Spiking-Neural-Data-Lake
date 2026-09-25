@@ -69,6 +69,20 @@ CANDIDATES = ("lsm", "esn", "sorn", "rbn")
 INDEX = {name: i + 1 for i, name in enumerate(CANDIDATES)}
 LABEL = {"lsm": "g1", "esn": "g2", "sorn": "g3", "rbn": "g4"}
 
+#: Read statically (`ast.literal_eval`, so every entry is a literal) by
+#: `substrate/gradient_claim_gate.py` and `substrate/eprop_transport_gate.py`; never imported by them.
+GRADIENT_CLAIM = {
+    "_esn_torch_leg": (
+        "NOT_A_RULE",
+        "R-b0's ESN port-parity probe; eprop_transport_gate exemption, a session call 2026-09-25 "
+        "under the owner's 2026-09-05 authorization. `w32.T` is a LAYOUT transpose (EpropLIFBase "
+        "stores W_rec as [pre, post], the port as [post, pre]) into a requires_grad=False Parameter "
+        "that only EpropLIFBase.forward's activation matmul reads; the probe has no weight update "
+        "and no learning signal, so by the invariant's test (what the transpose FEEDS) it is not a "
+        "transport",
+    ),
+}
+
 # Section 2.3's grids, factor order and levels exactly as written (the last factor varies fastest).
 GRIDS = {
     "lsm": (
@@ -999,20 +1013,20 @@ def _esn_torch_leg(recording_seed=DEV_SEED, rho=0.9, g=4, hold=8, percepts=4, re
         EpropLIFBase,
     )
 
+    # distinct-from: reasoning/reservoir_eprop.py -- `_run` is the ported source's own forward plus
+    #   e-prop; this runs EpropLIFBase.forward on the PORT's weights to check parity. The hook's
+    #   other matches (report_order_probe, godel_machine, eprop_transport_gate) share only "probe".
     class _Probe(EpropLIFBase):
-        """EpropLIFBase's own forward on the port's weights; forward only, readout inert."""
+        """EpropLIFBase's own forward on the port's weights; forward only, readout inert. The
+        caller sets W_rec, so the layout transpose sits in `_esn_torch_leg` (GRADIENT_CLAIM)."""
 
-        def __init__(self, w_rec):
+        def __init__(self, n):
             super().__init__()
-            n = w_rec.shape[0]
             self.n_in = self.hidden = n
             self.num_classes = 1
             self.alpha, self.v_th = ESN_ALPHA, ESN_V_TH
             self.gamma, self.damp, self.kappa = DEFAULT_GAMMA, DEFAULT_DAMP, DEFAULT_KAPPA
             self.W_in = torch.nn.Parameter(torch.eye(n), requires_grad=False)
-            self.W_rec = torch.nn.Parameter(
-                torch.from_numpy(np.ascontiguousarray(w_rec.T)), requires_grad=False
-            )
             self.W_out = torch.nn.Parameter(torch.zeros(1, n), requires_grad=False)
             self.b_out = torch.nn.Parameter(torch.zeros(1), requires_grad=False)
 
@@ -1021,7 +1035,10 @@ def _esn_torch_leg(recording_seed=DEV_SEED, rho=0.9, g=4, hold=8, percepts=4, re
     us = []
     for x in fixture_percepts()[:percepts]:
         us.extend([(g * drive(encoder, x)).astype(np.float32)] * hold)
-    net = _Probe(w32)
+    net = _Probe(w32.shape[0])
+    net.W_rec = torch.nn.Parameter(
+        torch.from_numpy(np.ascontiguousarray(w32.T)), requires_grad=False
+    )
     x = torch.from_numpy(np.stack(us)[None])
     _, frames = _trace_locals(
         lambda: net(x), inspect.unwrap(EpropLIFBase.forward).__code__, "z", ("v", "z")
