@@ -1303,8 +1303,7 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   is "Settled": reset, then settled on the current percept. G-R1 is amended to match.*
   *DATED 2026-09-25 (the engine): G1(b)'s frozen selection stands unchanged as the benchmark for the reservoir's
   dynamics, with one owner decision landed before the campaign's first step: "Spiking only can win"
-  (`evidence/g1b-pool-selection.md` section 2.1, `cortex/pool_selection.py::SELECTABLE`, `4b237c6`). Only g1 (LSM) and
-  g2 (ESN-LSM) can be selected; g3 (SORN) and g4 (RBN) are reference points. That resolves the audit's question
+  (`evidence/g1b-pool-selection.md` section 2.1, `cortex/pool_selection.py::SELECTABLE`, `4b237c6`). Only g1 (LSM) and g2 (ESN-LSM) could be selected; g3 (SORN) and g4 (RBN) were reference points (after the selection record the losing ports were deleted at `440a6a5`, and `SELECTABLE` is now `("lsm",)`). That resolves the audit's question
   whether the engine's Liquid Reservoir may be a non-spiking reservoir. G1(c)'s pre-registration adds, before any
   G1(c) data exists:*
   - *(1) a transport family: the selected pool driven through declared brain weights copied at the
@@ -1326,7 +1325,7 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   *Fed-neuron input belongs to G3 and G9.*
   *DATED 2026-09-25 (G1(b)'s result, `evidence/g1b-pool-selection.md` section 3.4): selection record 0bd1de7:
   winner g1 LSM {k 8, w 0.25, lambda 0.9, g 4, T_in 1}; live D near -0.006 for every candidate, inside band_D;
-  G1(c) next (S 31), with G8 landing before it (the order below).*
+  the losing ports g2-g4 deleted at `440a6a5` (section 3.5); the G1(b) panel's fold (section 3.6) records the tuning's timing-dependent tie-break and a learner-side term inside D; G1(c) next (S 31), with G8 landing before it (the order below).*
 - **G2 / T110 — problems the current weights provably cannot solve.** Delivered as TAUGHT
   exchanges through G0's repaired channel.
   - (i) A delayed-cue 2x2 (needs state × needs capacity). Its explicit-history control is proven
