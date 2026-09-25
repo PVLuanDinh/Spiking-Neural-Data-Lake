@@ -89,7 +89,10 @@ EXIT_OK, EXIT_ABORT, EXIT_HALT, EXIT_REFUSED = 0, 1, 2, 3
 FIT_FORMS = ("carried", "settled")  # the forms D, D_task and eligibility read
 # Section 2.1: the candidates the selection may name -- the four research-tier reservoirs. ONE
 # constant, so that a dated pre-data amendment to the eligible winners edits one line.
-SELECTABLE = rp.CANDIDATES
+# Dated amendment 2026-09-25, pre-data (evidence section 2.1): the owner's engine names its reservoir
+# a liquid state machine, and the owner chose "Spiking only can win". g3 (SORN) and g4 (RBN) still run
+# every step as frozen, as REFERENCE points: ranked beside the winners, never selected.
+SELECTABLE = ("lsm", "esn")
 
 
 class Halt(Exception):
@@ -196,6 +199,17 @@ def ordering(entries, band):
         ranked.append(head)
         rest = [entry for entry in rest if entry is not head]
     return ranked
+
+
+# distinct-from: cortex/access_consciousness.py -- `focused()` reads whether a workspace content is the
+#   arbiter's head; this filters benchmark entries to the selectable set before section 2.5's ordering.
+def rank_selection(entries, band):
+    """(ranked, reference): the ordering over the eligible SELECTABLE entries, whose head is the
+    winner, and the same ordering over every eligible entry, reported so a reference candidate that
+    would have led is visible (dated amendment 2026-09-25). A reference never becomes the winner."""
+    eligible = [e for e in entries if e["eligible"]]
+    ranked = ordering([e for e in eligible if e["candidate"] in SELECTABLE], band)
+    return ranked, ordering(eligible, band)
 
 
 # ---- section 2.6: G1(c)'s power rule -------------------------------------------------------------
@@ -1323,7 +1337,7 @@ def step_select(out):
     tuned = {
         c: row["tuned"]
         for c, row in tune["candidates"].items()
-        if row["tuned"] and c not in refused and c in SELECTABLE
+        if row["tuned"] and c not in refused
     }
     standing = {c: [(t["index"], t["config"])] for c, t in tuned.items()}
     table = _phase_table(
@@ -1345,13 +1359,14 @@ def step_select(out):
             forms=rp.FORMS,
         )
         entry["eligible"], entry["reasons"] = eligibility(entry, references["e1-0"]["mean"])
+        entry["selectable"] = c in SELECTABLE
         entry["input_response"] = {
             str(seed): input_response(c, t["config"], streams[seed])
             for seed in SELECT_SEEDS
             if seed in streams
         }
         entries.append(entry)
-    ranked = ordering([e for e in entries if e["eligible"]], band)
+    ranked, reference = rank_selection(entries, band)
     winner = None
     if ranked:
         head = ranked[0]
@@ -1362,6 +1377,7 @@ def step_select(out):
         "references": references,
         "entries": entries,
         "ranking": [e["candidate"] for e in ranked],
+        "reference_ranking": [e["candidate"] for e in reference],
         "winner": winner,
         # section 2.8: selection outcomes are inspected once any selection replay is written
         "inspected": True,

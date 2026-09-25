@@ -412,9 +412,22 @@ def test_record_halts_on_a_recording_without_scored_segments(tmp_path, monkeypat
     assert summary(tmp_path / "bad", "record")["check"] == "scored segments"
 
 
-def test_the_selectable_set_is_one_constant_holding_section_2_1s_four():
-    # the frozen text selects among all four; an amendment to the eligible winners edits one line
-    assert ps.SELECTABLE == rp.CANDIDATES == ("lsm", "esn", "sorn", "rbn")
+def test_the_selectable_set_is_section_2_1s_dated_amendment():
+    # 2026-09-25, pre-data: only the spiking candidates can win; SORN and RBN are references
+    assert ps.SELECTABLE == ("lsm", "esn") and set(ps.SELECTABLE) < set(rp.CANDIDATES)
+
+
+def test_a_reference_that_would_lead_is_ranked_but_never_selected():
+    def cell(candidate, order, d, eligible=True):
+        return {**entry(order, d, 0.1, 1.0), "candidate": candidate, "eligible": eligible}
+
+    sorn, esn, lsm = cell("sorn", 3, 0.050), cell("esn", 2, 0.020), cell("lsm", 1, 0.010)
+    ranked, reference = ps.rank_selection([lsm, sorn, esn], 0.005)
+    assert [e["candidate"] for e in reference] == ["sorn", "esn", "lsm"]
+    assert [e["candidate"] for e in ranked] == ["esn", "lsm"]  # the winner is esn, not sorn
+    # neither spiking candidate eligible: nothing is selected even though sorn is
+    ranked, reference = ps.rank_selection([sorn, cell("esn", 2, 0.02, eligible=False)], 0.005)
+    assert ranked == [] and [e["candidate"] for e in reference] == ["sorn"]
 
 
 def test_self_check_runs():

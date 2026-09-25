@@ -114,6 +114,19 @@ store. Every number below is printed by one of them: `selfcheck_*.log`, `selfche
   candidate unless its job is this one: a stimulus-driven pool carrying state from percept to percept. None of
   section 1.2's is. CriticalityRegulator monitors a regime; the microcircuit's streaming and vector input are its own
   open work (specs/019 [B2.08]); EpropLIFBase is the equation owner that candidate g2 follows; the others do other jobs.
+- **DATED AMENDMENT 2026-09-25, pre-data (no campaign step has run; head `92aa264`): only the spiking candidates can
+  win.** The owner's engine diagram (SNDL-Engine.drawio, 2026-09-25) names its reservoir "Liquid Reservoir (Liquid
+  State Machine)". Asked whether it must be a spiking liquid state machine, the owner chose "Spiking only can win",
+  whose option read: run all four as built, only the two spiking reservoirs (LSM, ESN-LSM) can be selected, and SORN
+  and RBN results are kept as reference points. So:
+  - g3 (SORN) and g4 (RBN) run every step exactly as frozen. They are REFERENCE POINTS: ranked by section 2.5's
+    ordering in a separate reference ranking, never selected.
+  - The winner is the head of section 2.5's ordering over the eligible g1 and g2 entries only
+    (`pool_selection.SELECTABLE`, `rank_selection`).
+  - If neither g1 nor g2 is eligible, nothing is selected, even when a reference candidate is eligible. The selection
+    record names the reference that would have led, and G1(c) waits for the owner.
+  - Nothing else changes: band_D and sigma_dev are still taken over every candidate standing, and section 2.9's
+    deletions still follow the selection record.
 - **What is ranked** is a complete pipeline: the shared encoder, each candidate's input rule, and its recurrent pool.
   Differences between candidates are not attributed to recurrent dynamics alone. The forms of one candidate share one
   encoder, so G1(c)'s contrast is within one pipeline.
@@ -283,7 +296,8 @@ below unless stated. Each item gives the drawing, the per-step update, the reset
   The ranking is descriptive: no inferential tie or equivalence is claimed.
 - **Tuning** applies the ordering, per candidate, to its eligible configurations on 200-203 (with D_task on 5001-5004).
 - **Selection** applies it to the tuned candidates on 204-207 (with D_task on 5005-5008). A candidate with no
-  eligible configuration is refused, and if none is eligible nothing is selected.
+  eligible configuration is refused, and if none is eligible nothing is selected. *(Dated 2026-09-25, pre-data,
+  section 2.1: the winner comes from g1 and g2 only; g3 and g4 are measured and ranked as references.)*
 - **Reported beside D, never used to select:**
   - Carried, Reset, Settled and Front-end accuracy per seed and segment, through both learners;
   - the grower's D and D_task;
