@@ -1336,3 +1336,10 @@ The instrument half of the claim stands; the line does not.)*
 (History: a coverage-audit once flagged PFC / amygdala / cortical-column / synfire as dormant;
 every one was REFUTED on runtime A/B. Static grep proves import-absence, not behavioural
 inertness -- mark unproven cases UNCERTAIN, not dormant.)
+
+## P4d source incidents (owner directive 2026-09-25; written with the directive, not relocated)
+
+A brain that grew and exited kept 0 of 2 units until `Brain._flush_growth` (P4b; the P0 status
+block above). Until 2026-09-24 the live chat learner received no correction and its reply discarded
+its prediction (specs/022 G0(a), G0(b)), so no problem could be reported unsolved. The grower is
+stateless per percept (`NGSNN._rates` starts at V = 0), so it carries no problem state.

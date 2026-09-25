@@ -108,7 +108,14 @@ BUDGETS = {
     # -- rule text, not status; measured 12,294 after restoration plus a final timelessness
     # pass (flat status assertions converted to conditional/derivable forms), ceiling =
     # measured + ~56, minimum-viable.
-    "docs/POLICIES.md": 12800,  # raised +450 on 2026-09-02 for the owner's batched-battery amendment and the
+    # RAISED 12800 -> 13906 on 2026-09-25 by the MEASURED delta (12,723 -> 13,829 words, +1,106, this
+    # gate's own count): the owner's engine directive P4d (recorded PROVISIONAL as a disclosed session
+    # call; specs/022 evidence/engine-structure-2026-09-25.md) and its pointers -- the P2 corollary's
+    # owner exception, the e-prop transport distinction, P3's ANATOMY IS DATA, two P0 avenue rows and
+    # two enforcement-table rows. The 77 words of pre-raise headroom are carried, not spent. Stated
+    # because it is owner-visible: the owner LOWERED this ceiling on 2026-08-30, and this raise is about
+    # 2.5x the largest precedent (+450 below).
+    "docs/POLICIES.md": 13906,  # EARLIER: raised +450 on 2026-09-02 for the owner's batched-battery amendment and the
     # execution-record note that lands in the same arc; NOT minimum-viable on purpose (the headroom is
     # for that note), a disclosed departure from the +~56 convention below
     # Superseded history of the 28150 ceiling, kept for the ratchet record:

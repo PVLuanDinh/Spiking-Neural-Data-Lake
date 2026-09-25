@@ -37,7 +37,7 @@ compressed clause.
 | P1 no-hardcode | — | yes |
 | P2 adopt-or-merge | — | yes |
 | P3 no dormancy | `substrate/dormancy_gate.py` (per-MODULE), `substrate/method_dormancy_gate.py` (per-METHOD), `substrate/import_manifest.py` (cross-tier) | the charge tier |
-| P4 one brain (+ P4b partial) | `substrate/replication_guard.py`; `substrate/lake_rebuild_gate.py` mechanizes P4b's index-is-derived clause (delete → rebuild from a lake scan → logical-dump equality, planted-divergence red + lake-tracking control) | P4b's remaining prose (one-lake, restart-is-not-amnesia) |
+| P4 one brain (+ P4b partial; P4d provisional) | `substrate/replication_guard.py`; `substrate/lake_rebuild_gate.py` mechanizes P4b's index-is-derived clause (delete → rebuild from a lake scan → logical-dump equality, planted-divergence red + lake-tracking control) | P4b's remaining prose (one-lake, restart-is-not-amnesia) |
 | P5 use the GPU where it helps | — | yes |
 | **P6 mutual reach + use** | **BUILT AND ASSERTING** — `tools/p6_gate.py --assert` and `--self-check` (lint CI job; the connectome-diff half is built). Ships as a **RATCHET**: baselines assert the structure never gets WORSE. Re-derive every count from the gate; never edit this row from memory | yes (provisional; a ratchet says the count did not worsen, never that P6 is satisfied) |
 | **P7 any dependency that helps** | **BUILT AND ASSERTING** — `tools/dependency_ledger.py --assert` and `--self-check` (lint CI job) | yes (the judgement half; see P7 guard (b)) |
@@ -47,7 +47,7 @@ compressed clause.
 | *(not a policy — repo hygiene)* standing docs keep their word ceilings | `substrate/doc_budget_gate.py` (bare = assert, in run_selfchecks) | — |
 | *(not a policy — repo hygiene)* outside data passes license + injection gates before the brain keeps it | `substrate/ingest_guard.py` (bare = assert, in run_selfchecks) | — |
 | *(not a policy — repo hygiene)* citations resolve | `tools/citation_guard.py` (step in the `lint` CI job) | — |
-| *(not a policy — a spec instrument, invention register row 7)* growth coverage counted before any rule lands | `substrate/growth_coverage_gate.py` (`--assert` + `--self-check`, `lint` CI job). The coverage red is REPORTED every run; asserted: the identity-pinned ratchet, scaffold/undeclared refusals, unresolved-site reds. Green never means coverage is adequate | — |
+| *(not a policy — a spec instrument, invention register row 7)* growth coverage counted before any rule lands. *DATED 2026-09-25 (P4d, owner decision C):* the growable partition's ten owner-ratified region names (2026-08-19) are the LABEL vocabulary of the anatomical map, emitted from a grown neuron's position; growth INTO the reservoir awaits an owner-ratified target | `substrate/growth_coverage_gate.py` (`--assert` + `--self-check`, `lint` CI job). The coverage red is REPORTED every run; asserted: the identity-pinned ratchet, scaffold/undeclared refusals, unresolved-site reds. Green never means coverage is adequate | — |
 | *(not a policy — repo hygiene)* documented `python -m` commands run | `tools/doc_command_guard.py --assert` — in `run_selfchecks`'s tools stage and the `lint` CI job; `policy_manifest`'s census counts both | — |
 | *(not a policy — P0's honesty guard, owner-adopted 2026-09-02, specs/022 OD-5)* a unit COUNT is reported as **admitted**, never as growth, until SC-012a fires ("provisional" = time-bound) | `tests/test_units_admitted_wording.py` (every battery): label bound to the value, PROVENANCE key on the row; red counted pre-change (3 of 3) | — |
 
@@ -90,8 +90,8 @@ used to carry is in `docs/POLICIES_EVIDENCE.md`:
 |---|---|
 | **self-building code** | `cortex/brain.py::Brain._maybe_autonomous_self_build` → `basal_ganglia/self_build_loop.SelfBuildLoop.run`, night-cadenced under `NORD_SELFMOD=1`; pinned by `tests/test_selfbuild_route.py` (route + opt-in gate as its control). Probe with `Brain._selfbuild_last` on a scratch `NORD_HOME` — a run that appends to the live lake is the probe contaminating the subject |
 | **knowledge acquisition** | chat ingest → the one durable lake (`substrate/chat_memory.py`), `substrate/web_ingest.py`, reasoning-curriculum growth during sleep |
-| **neural growth** | sleep-tick growth with retention: `cortex/neurogenesis_engine.py` (earn-your-place prune, `growth_state_bytes`/`restore_growth_state`/`substrate_is_retained`), persisted into the ONE lake on two live paths (sleep tick and construction; `Brain._flush_growth` — ONE mechanism, TWO callers). Restart-with-grown-substrate is pinned by `tests/test_brain_growth_restart.py`, whose immediate-exit case carries the reachable red |
-| **cortical column construction** | `cortex/cortical_microcircuit.py::thalamic_drive` IS the input port (anatomically targeted, L4/L6 only; exactly 0.0 at 0 Hz; refuses a negative rate). Wiring a live caller is the open work; a spatial-PATTERN input (the port carries a scalar rate) is the genuinely absent half |
+| **neural growth** | problem-driven growth (P4d): grow column-sized batches on the anatomical map while a problem is certified unsolved, attempt, repeat, and pause at a budget (UNSOLVED, kept open); sleep prunes and saves after the solve. ONE grower (P2) — the incumbent is sleep-tick growth with retention: `cortex/neurogenesis_engine.py` (earn-your-place prune, `growth_state_bytes`/`restore_growth_state`/`substrate_is_retained`), persisted into the ONE lake on two live paths (sleep tick and construction; `Brain._flush_growth` — ONE mechanism, TWO callers), which the problem-driven loop merges with or replaces. Restart-with-grown-substrate is pinned by `tests/test_brain_growth_restart.py`, whose immediate-exit case carries the reachable red |
+| **cortical column construction** | under P4d (owner decision 2026-09-25) a column is the GROWTH STEP, a small layered batch placed on the anatomical map where error builds up; this microcircuit is a candidate source of its layer targets. `cortex/cortical_microcircuit.py::thalamic_drive` IS the input port (anatomically targeted, L4/L6 only; exactly 0.0 at 0 Hz; refuses a negative rate). Wiring a live caller is the open work; a spatial-PATTERN input (the port carries a scalar rate) is the genuinely absent half |
 | **self-recalibration** | `substrate/signal_calibrator.py`, running-baseline forms per P1 |
 | **future avenues** | open by construction — a newly identified channel joins this list and is built, on the same terms: named blocker, then channel, then fill, then measurement. Treating the list as complete is the failure this row exists to prevent |
 
@@ -223,7 +223,10 @@ had to be fixed before any A/B could be fair) is in `docs/POLICIES_EVIDENCE.md`.
 policies govern *how*. Proposals of that shape belong in a design note, not in this file. The test:
 if removing every proper noun from a proposal leaves nothing, it was a research direction. (P8 clears
 this bar deliberately: it names no architecture, grants latitude, and fixes what an invented method
-owes — that is a *how*.)
+owes — that is a *how*.) **Owner exception, 2026-09-25 (P4d; its wording a disclosed session call).**
+An architecture the owner orders the project to follow is recorded here as a dated directive, as P4,
+P4b and P4c record what the brain IS. The test above still sorts it: what survives removing the proper
+nouns is the directive; the proper nouns stay research directions.
 
 ## P3 — No dormancy
 
@@ -258,6 +261,12 @@ phantom or a stale exemption reds the build; the recorded day-one rows may only 
 added to (the ratchet). Distinct from the region-charge rule the way P3 is distinct from P6: charge
 asks whether a wired edge measurably participates; this asks whether the declared anatomy is even
 named — the necessary condition below it.
+
+**ANATOMY IS DATA (owner, 2026-09-25, P4d).** The two rules above key on CODE regions; the brain's
+regions and columns are labeled grown-neuron populations on the anatomical map (the unit the owner
+chose). Both rules stay code hygiene until specs/022's G7 and G8 re-key them: "named" becomes
+"populated by labeled grown neurons", "charged" becomes "neutering the population changes a measured
+outcome", each counted before it asserts.
 
 **Mechanized:** `substrate/dormancy_gate.py` (in `run_selfchecks` CORE) builds the static import graph
 and asserts every REGIONS/TORCH_TIER module is **reachable from a live root/entrypoint OR in the EXEMPT
@@ -488,6 +497,71 @@ mechanized**; if it reports a rubber-stamp-sized list, that result kills the gat
 as P4b's *"'it persists' is a claim about a NEW process"*. Prove it by reading the artifact back out
 of `origin/main` after the merge, not by inspecting the branch you merged from — with a negative
 control, so the check can distinguish a real merge from a grep that would match anything.
+
+### P4d — THE ENGINE: TWO NETWORKS THAT GROW TO SOLVE, INSIDE THE ONE LAKE
+
+**Owner directive, 2026-09-25: the owner's diagram SNDL-Engine.drawio (labels verbatim in
+`specs/022-unified-brain-arc/evidence/engine-structure-2026-09-25.md`) and the owner's answers and
+four decisions that day. Review-enforced, PROVISIONAL until its gate (below) is built and counted,
+which retires the marker in the same commit; its placement here is a disclosed session call.** Source
+lines: *"Audit any part of the project including POLICIES.md and CLAUDE.md to follow this new
+structure"*; *"Weights transport is allowed as long as the engine can work ... 2 networks are allowed
+as long as it fits the new engine structure"*; *"The brain regions should be neurons and not coded like
+the current work tree structure on github"*. Its incidents are in `docs/POLICIES_EVIDENCE.md`.
+
+**The engine.** The BRAIN, one network inside the one lake, grows NEW NEURONS to solve a problem and
+feeds them into the LIQUID RESERVOIR, a second network into which it also transports weights. READOUT
+NEURONS, driven by the reservoir and tuned by the brain through a learning rule, return to the brain,
+which recalls anything in the lake because it lives there.
+
+**Organizing unit: grown columns on an anatomical map (owner decision).** Growth adds small
+column-sized batches where error builds up; every grown neuron carries a position, layer, Dale sign,
+region label and the problem that grew it, in the lake; wiring follows rules (layer target × distance
+kernel × shared-partner bonus), not a copied diagram. A region is a LABEL read off the map and
+measured, never a code package; anatomical data is a fitted prior that must beat a shuffled copy; a
+reorganization moves code and re-points every path-keyed rule in the same commit.
+
+**The rules are the directive;** its named mechanisms (liquid state machine, STDP, topographical
+clustering, predictive coding, simulated annealing) are examples, chosen by a benchmark that exists
+(P2) and credited at measurement (P8).
+- Grow only while a problem is certified unsolved; stop, attempt, repeat. A contradictory problem is
+  a data diagnosis, not a trigger; "solved" is scored on data the growth did not fit.
+- **Pause at a budget (owner decision):** each problem's growth spends a budget relative to a
+  persisted running baseline (P1); at the limit the brain reports UNSOLVED, stops growing, and keeps
+  the problem OPEN to retry after sleep or new teaching.
+- After a solve, sleep prunes and saves the new neurons and the problem's data; the solve requests
+  sleep from the daemon's one scheduler (P2). Units are journaled into the lake when grown; a prune
+  removes a unit from the active network, never its lake record.
+
+**Permitted, on conditions this file keeps.**
+- **Two networks:** two jobs, not P2's additive failure; inside each job exactly one survives (one
+  reservoir, one grower, one rule per readout population).
+- **Weight transport into the reservoir** (copied values or driving activity) feeds its activations;
+  the e-prop invariant's transport stays forbidden.
+- **"The engine can work" is a P8 criterion,** pre-registered: a reachable red (on a problem the current
+  network provably cannot solve, the engine with its transport permuted, its reservoir reset or its
+  readout return cut must lose), a control that is not the engine (the brain alone; a presized network
+  at the same neuron budget), per-part neuter attribution, and deletion on a null: the permission
+  lapses for a part whose neuter changes nothing.
+- **Reservoir state in the lake, rebuilt at start (owner decision):** `make_brain()` builds the
+  reservoir, the one drive ticks it, and it is gated like any build. No separate store: its seed,
+  learned deltas, transport record and fed-in neurons are lake records, and a restart rebuilds it
+  exactly. The drawn ellipse is the NETWORK boundary, not the durability boundary.
+- **Wired and charged:** each drawn connection is a typed wiring-manifest port with a measured charge;
+  named brain neurons consume the readout's return, and their own output changes when it is neutered.
+  A connection that charges nothing is reverted, reported, and stays build work (P0), never kept
+  because the drawing has it.
+- **Unchanged:** the envelope (the five `brainstem/` files move or change only with explicit owner
+  approval; no growth into a scaffold region), determinism for every network's tick, the retention
+  rule, e-prop.
+
+**Gate specification:** an engine-works red composed from its rows under the plan's paired-seed rule;
+a reservoir rebuild check in the `lake_rebuild_gate` pattern with a planted-divergence red; a
+provenance check (every grown-unit record carries its position, layer, sign, label, the problem that
+licensed it and the sleep that kept or pruned it; an unlabeled unit is refused); the drawn connections
+as manifest ports with port charges. Count each before promoting; a rubber-stamp-sized output kills
+that gate, not the directive. **Not claimed:** fluid intelligence from a liquid plus a readout, a
+sleep-pruning benefit, growth from a unit count.
 
 ## P5 — Use the GPU for everything it actually speeds up
 
@@ -932,6 +1006,12 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
   forbids. A transposed weight feeding an **activation** (settling a transient latent state) is
   inference, with the weight update itself a local rule — not a violation, however symmetric the
   read. This test decides every verdict below.
+
+  **THE ENGINE'S TRANSPORT IS NOT THIS INVARIANT'S TRANSPORT (owner permission 2026-09-25, P4d).**
+  Copying the brain's weight values into the reservoir, or driving it with the brain's activity, feeds
+  an ACTIVATION and is permitted while the engine measurably works. A transposed forward weight
+  feeding a WEIGHT UPDATE stays forbidden, including through a transported copy; extending the
+  permission to credit assignment would narrow this invariant, which is the owner's call in words.
 
   **THE STANDING VERDICT REGISTER** — decided sites; the full adjudication narratives are relocated
   byte-exact to `docs/POLICIES_EVIDENCE.md`. A verdict that enumerates is read as a verdict that
