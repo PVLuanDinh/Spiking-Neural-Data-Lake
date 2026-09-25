@@ -1453,21 +1453,26 @@ def check_r_b3_red(candidate, recording_seed=DEV_SEED, *, percepts=R_B3_PERCEPTS
 
 def pool_noise_red(candidate, config, recording_seed=DEV_SEED, *, window=WINDOW, after=16):
     """`perturb()` before every post-window percept of one of two otherwise identical Carried runs:
-    the continuation state and the phi sequence must both change."""
+    the continuation-state CHAIN (`fingerprint()` at every percept boundary) and the phi sequence
+    must both change. Amended 2026-09-25: the final state alone is one sample, and a pool that forgets
+    a kick within one percept (g3 under strong drive, campaign 1 on seed 203) can leave it unchanged."""
     seq = cycled_fixture(window + after)
     plain = make_pool(candidate, config, recording_seed, "carried", window=window)
     noisy = make_pool(candidate, config, recording_seed, "carried", window=window)
-    phi_plain = phi_noisy = 0
+    phi_plain = phi_noisy = chain_plain = chain_noisy = 0
     for i, x in enumerate(seq):
         if i >= window:
             noisy.perturb()
         phi_plain = zlib.crc32(plain.percept(x).tobytes(), phi_plain)
         phi_noisy = zlib.crc32(noisy.percept(x).tobytes(), phi_noisy)
-    state = plain.fingerprint() != noisy.fingerprint()
+        chain_plain = zlib.crc32(plain.fingerprint().to_bytes(4, "little"), chain_plain)
+        chain_noisy = zlib.crc32(noisy.fingerprint().to_bytes(4, "little"), chain_noisy)
+    state = chain_plain != chain_noisy
     phi = phi_plain != phi_noisy
+    final = plain.fingerprint() != noisy.fingerprint()
     return {
         "verdict": bool(state and phi),
-        "numbers": {"kicks": after, "state": bool(state), "phi": bool(phi)},
+        "numbers": {"kicks": after, "state": bool(state), "phi": bool(phi), "final": bool(final)},
     }
 
 

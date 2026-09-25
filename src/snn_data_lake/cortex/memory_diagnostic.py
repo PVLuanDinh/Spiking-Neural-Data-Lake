@@ -755,6 +755,7 @@ class _PoolArm:
         self.movement = None
         self.rows = []
         self.kicks = 0
+        self.chain = 0  # R-b4's per-percept state chain (amended 2026-09-25, section 2.7)
         self.seconds = 0.0
         self.binding = {
             "candidate": self.candidate,
@@ -780,6 +781,7 @@ class _PoolArm:
         features = _feature("pool", view, pool)
         if pool.count > pool.window:
             self.seconds += time.perf_counter() - started
+        self.chain = zlib.crc32(pool.fingerprint().to_bytes(4, "little"), self.chain)
         if pool.count == pool.window and self.form != "front_end":
             self.movement = _movement(self.start, pool.params())
         return features
@@ -799,6 +801,7 @@ class _PoolArm:
             "boundary": pool.boundary,
             "frozen": pool.frozen(),
             "state": pool.fingerprint(),
+            "state_chain": self.chain,
             "lesion": pool.lesion_record,
             "percepts": pool.count,
             "kicks": self.kicks,

@@ -430,5 +430,21 @@ def test_a_reference_that_would_lead_is_ranked_but_never_selected():
     assert ranked == [] and [e["candidate"] for e in reference] == ["sorn"]
 
 
+def test_the_noise_red_reads_the_state_chain_not_one_final_sample():
+    # campaign 1's g3 shape on seed 203: the final state converged, the chain and phi did not
+    def run(state, chain, phi):
+        return {"pool": {"state": state, "state_chain": chain}, "phi": phi}
+
+    plain, kicked = run(7, 100, 1), run(7, 200, 2)
+    assert plain["pool"]["state"] == kicked["pool"]["state"]  # the pre-amendment red was blind here
+    assert ps.noise_red_fires(plain, kicked)
+    assert not ps.noise_red_fires(plain, run(9, 100, 2))  # chain unchanged: the red does not fire
+    assert not ps.noise_red_fires(plain, run(7, 200, 1))  # phi unchanged: the red does not fire
+    # the twins' comparison sees a chain-only difference as a pool difference
+    twin = {**run(7, 101, 1), "predictions": [], "fallbacks": [], "fingerprint": 0, "refits": []}
+    base = {**plain, "predictions": [], "fallbacks": [], "fingerprint": 0, "refits": []}
+    assert ps._twins_differ({**base, "readout": None}, {**twin, "readout": None})[0]
+
+
 def test_self_check_runs():
     assert ps.main([]) == ps.EXIT_OK

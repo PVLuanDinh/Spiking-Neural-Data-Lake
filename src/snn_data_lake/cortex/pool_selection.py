@@ -1208,11 +1208,26 @@ def step_tune(out):
     return {"band_D": band, "reference": reference, "candidates": candidates, "refused": refused}
 
 
+# distinct-from: cortex/recurrent_pool.py -- check_r_b3_red is R-b3's thread-order witness red, not
+#   R-b4's replay noise red; prior_drift_harness.red1 and growing_learner.load_state_dict share only words.
+def noise_red_fires(plain, noisy):
+    """R-b4's (pool-noise) red, section 2.7 as amended 2026-09-25: the kicks must change the
+    continuation-state CHAIN (the pool's fingerprint at every percept boundary) AND the phi
+    fingerprints. The final state alone is one sample: in campaign 1, g3 forgot every kick by the
+    last percept of seed 203 while its phi changed, so a final-state red was blind."""
+    chains = plain["pool"]["state_chain"] != noisy["pool"]["state_chain"]
+    return chains and plain["phi"] != noisy["phi"]
+
+
 def _twins_differ(first, second):
-    """R-b4's comparison of two fresh-process replays: (phi or pool state differ, a learner differs)."""
-    pool = first["phi"] != second["phi"] or (first["pool"] or {}).get("state") != (
-        second["pool"] or {}
-    ).get("state")
+    """R-b4's comparison of two fresh-process replays: (phi or pool state differ, a learner differs).
+    Pool state is the final fingerprint and, amended 2026-09-25, the per-percept state chain."""
+    a, b = first["pool"] or {}, second["pool"] or {}
+    pool = (
+        first["phi"] != second["phi"]
+        or a.get("state") != b.get("state")
+        or a.get("state_chain") != b.get("state_chain")
+    )
     learner = not _same(first, second, ("predictions", "fallbacks", "fingerprint", "refits")) or (
         (first["readout"] or {}).get("predictions") != (second["readout"] or {}).get("predictions")
         or (first["readout"] or {}).get("fingerprint")
@@ -1286,10 +1301,7 @@ def step_check203(out):
         first, second, noisy = (
             load(f"R-b4 {c} {t}", filed=f"R-b4 {c} {t}") for t in ("1", "2", "noise")
         )
-        # the red must change the continuation state AND the phi fingerprints (section 2.7)
-        noise_red[c] = (
-            first["pool"]["state"] != noisy["pool"]["state"] and first["phi"] != noisy["phi"]
-        )
+        noise_red[c] = noise_red_fires(first, noisy)  # section 2.7, amended 2026-09-25
         pool_differs, learner_differs = _twins_differ(first, second)
         r_b4[c] = {
             "pool_differs": pool_differs,

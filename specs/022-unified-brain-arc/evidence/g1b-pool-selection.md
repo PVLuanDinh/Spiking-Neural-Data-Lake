@@ -377,6 +377,13 @@ apply, BEFORE any tuning. Every red asserts its specified observable divergence.
   - the winner's Carried and Settled forms, on all four selection recordings, after selection.
   Red: (pool-noise), which adds unseeded `os.urandom` noise to one float membrane (g1, g2) or flips one bit chosen by
   `os.urandom` (g3, g4). It must change the continuation state AND the phi fingerprints.
+  *DATED AMENDMENT 2026-09-25, after campaign 1 halted on this red and before any selection replay existed (section
+  3.3):* "the continuation state" is read as the CHAIN of the pool's complete continuation-state fingerprint at every
+  percept boundary, not the final state alone (`pool_selection.noise_red_fires`, `recurrent_pool.pool_noise_red`), and
+  the twins compare that chain beside the final state. The final state is one sample: g3 forgot every kick by seed
+  203's last percept while its phi changed, so the final-state red was blind. The final state is the chain's last
+  link, so the chain is strictly more sensitive: the red fires wherever it fired before, and the twins' green is
+  stricter, not weaker.
 - **R-b5, the forms do what they claim.**
   - (i) History erasure: after the window, two different random prefixes followed by the same Reset or Settled and the
     same percept give identical phi and continuation state. Red: a reset that skips one carrier must fail.
@@ -632,3 +639,37 @@ through scikit-learn.
     sigma_dev and R-b3 before the resource screen, but both need its survivors ("first surviving manifest
     configurations", "every manifest configuration"). The campaign therefore runs the screen, then R-b3's equality,
     then sigma_dev, all before any tuning, as section 2.7 requires.
+
+### 3.2 The build, part B: the readout, the pool arms and the campaign driver (`7e21517`, `92aa264`)
+
+Built by a Claude Opus builder from a bounded brief (Codex held by the owner); the builder was stopped once by an
+account usage limit and resumed with its context. `cortex/memory_diagnostic.py` gained the reference readout (R-b0x
+fixtures; on seed 4242 it reproduces the design probe exactly: e1 0.871822033898305, e1-0 0.7478813559322034), the
+pool arm with R-b7's binding, the BLAS pin, and the R-b6 family. `cortex/pool_selection.py` (1,551 lines) runs the ten
+steps. Verified by the orchestrator: the self-checks, 126 tests, ruff, format, the dormancy gates, the ledger,
+`gradient_claim_gate` and `eprop_transport_gate`. The builder found `eprop_transport_gate --assert` red on part A's
+`_esn_torch_leg` (a layout transpose read as an update); it is declared NOT_A_RULE and moved out of the nested class
+(`594cbd5`). Section 2.1's dated amendment (only g1 and g2 can win) landed at `4b237c6`, before any campaign step.
+
+### 3.3 Campaign 1 at `4b237c6`: HALTED at check203 (a red that did not fire)
+
+Run detached on 2026-09-25 from 03:22 to 04:24 CDT, clean at `4b237c6`, OUT outside the repo (archived in the memory
+store, `archive/g1b-2026-09-25/campaign1_4b237c6.tar.gz`).
+- record 10.5 min (12 recordings, all OK); mechanism 7 s; instrument 22 s; screen 1.7 min (manifest crc32
+  1596141941, the no-drops value); threads 3.7 min; sigma 43 s (sigma_dev 0.0174, g4's readout sd; band_D 0.0174;
+  S 31, since sigma_plan 0.0436 exceeds it); tune 43.8 min. All COMPLETED.
+- **check203 HALTED, "a red that does not fire".** R-b1's (leak) red fired at all three cuts (296, 593, 890). R-b4's
+  (pool-noise) red fired for g1, g2 and g4 and did not fire for g3: over 931 kicks g3's phi changed, but its final
+  continuation state equalled the unkicked twin's. After the window g3's parameters are frozen, and at its tuned
+  configuration (plasticity 0.004/0.001, H_IP 0.2, g 4, T_in 1) the state after a percept is set by that percept, so
+  the last kick washed out. On the module fixture (seed 100, 200 kicks) the same configuration's final state does
+  change: the final-state conjunct is a one-sample event.
+- **Classification and repair (section 2.8).** A red that does not fire is a shared-instrument failure: selection
+  halts with nothing selected, the defect is fixed, and every recording and replay re-runs at the new head. No
+  selection replay (204-207, 5005-5008) had been written, so nothing was inspected and the selection seeds stand. The
+  repair is section 2.7's dated amendment (the per-percept state chain), landed in one commit with this section.
+- **What the orchestrator read of campaign 1 before the repair:** `campaign.log`, the step summaries' status lines,
+  `check203.summary.json`, `sigma.summary.json`, and the four candidates' R-b4 replays (twin 1 and the noise replay:
+  final state and phi only, for the diagnosis). Not the tuning rankings.
+- **A reproducibility witness for campaign 2:** the pool, readout and recorder code is unchanged by the repair, so
+  campaign 2's recordings, screen manifest and sigma table must reproduce campaign 1's; a difference is a defect.
