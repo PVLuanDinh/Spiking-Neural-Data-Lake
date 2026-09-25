@@ -12,6 +12,15 @@ grow-into-the-liquid proposal as gated experimental rows, G0 (the chat-channel r
 G1 alongside it; program priority stays the owner's. FR-041, SC-019 and T108-T114 track it; like B/R/A/N it is planned work, not evidence that any of
 it operates, and it is not a policy (POLICIES.md P2's corollary).
 
+**Owner amendment, 2026-09-25 (supersedes the paragraph above where they conflict):** the owner's SNDL-Engine
+structure (`evidence/engine-structure-2026-09-25.md`) replaces the 2026-09-23 reading. The G workstream is now the
+engine: two networks (the brain and a separate liquid reservoir), brain-to-reservoir weight transport while the
+engine measurably works, brain-tuned readout neurons with a return path, grow-attempt-repeat paused at a budget,
+solve-then-sleep prune and save, the reservoir's state in the lake and rebuilt at start, and the organizing unit
+"grown columns on an anatomical map". POLICIES.md records it as the PROVISIONAL directive P4d (a disclosed session
+call). Rows G0-G9, FR-041's and SC-019's dated notes and T108-T117 track it; it is still planned work, not evidence
+that any of it operates.
+
 **This file lives at `specs/022-unified-brain-arc/PLAN-FINAL-2026-09-02.md`. Read all of it before doing
 anything. It is written so that a fresh session of Claude Fable 5.1 or Claude Opus 5 with no memory of the
 project can pick the work up at any phase and carry it correctly.** It consolidates the trajectory audit's
@@ -41,7 +50,10 @@ drive is an always-on daemon (`substrate/learn_daemon.py`, cockpit at http://127
 goal is a brain that builds itself from one neuron toward and beyond human scale, with general intelligence
 as the target and sentience pursued without being claimed. Growth is EARNED (a unit stays only if it lowers
 held-out error), learning must be local (e-prop, not backprop), every mechanism must charge behaviour or be
-retired, and every claim ships with a control and a red that can fail.
+retired, and every claim ships with a control and a red that can fail. *DATED 2026-09-25 (owner; POLICIES P4d):
+the anatomy-named packages above are CODE layout, not the brain's anatomy. The brain's regions or columns are labels
+on its grown neurons, placed on an anatomical map (G7), and G8 reorganizes the packages to the engine's components
+(growth, reservoir, readout, sleep, lake).*
 
 ### A.2 The governing text, in precedence order
 
@@ -199,7 +211,10 @@ its licence to delete. **Tenant / tag**: a record class in the one lake (`_T_GRO
 `_T_GOAL`, …). **Floor**: majority or persistence accuracy on the SAME held-out slice — an accuracy under
 its persistence floor learned nothing the stream's inertia did not supply. **Chain A / Chain B**: the
 curiosity producer over the arm's context vs the percept-surprise |LP| facade the growth stop reads.
-**Wake rows**: `Brain.state()` sampled after a `tick()` that returned `"awake"`.
+**Wake rows**: `Brain.state()` sampled after a `tick()` that returned `"awake"`. **Transport (brain-to-reservoir,
+added 2026-09-25)**: a copy of brain weight values into the engine's liquid reservoir, or the brain's activity
+driving it; permitted while G-R9 holds (owner 2026-09-25; POLICIES P4d). Never the e-prop invariant's sense, a
+transposed forward weight feeding a weight update, which stays forbidden.
 
 ---
 
@@ -782,6 +797,19 @@ measured lake workload -> offline annealing -> validated derived cache/index pla
                                          -> guarded activation or keep incumbent
 ```
 
+*DATED 2026-09-25 (owner; POLICIES P4d; `evidence/engine-structure-2026-09-25.md`): one brain now holds TWO networks,
+the brain and its liquid reservoir, both built only through `make_brain()` (P4); still one durable lake and one
+ordered program. The diagram above shows one substrate and one readout; the engine's loop, which the G workstream
+builds and G9 tests end to end:*
+
+```text
+problem (G2, taught via G0) -> brain (grown neurons on the anatomical map; G7) -> attempt -> solved?
+brain -grows-> new neurons -fed-> liquid reservoir (G1) <-weights transported- brain
+reservoir -> readout neurons (brain-tuned: STDP / topographic / predictive coding; G5) -return path-> brain
+unsolved -> grow again (G3), paused at the budget (UNSOLVED, kept open)
+solved -> sleep: prune + save neurons and problem data (G6) -> lake -> recall (R1/R2)
+```
+
 The lake is memory, not itself a learner. Retrieval provides evidence or a replayable example;
 the existing neural learner changes weights. New units must earn retention on untouched data,
 not on a replayed training example. Fluid state supplies candidate temporal features, not an
@@ -973,7 +1001,8 @@ uses the accepted R1-R3 path and frozen replay policy. A-workstream cache optimi
 fixed across N arms so a storage change cannot masquerade as a fluid-computation gain.
 
 **N1 / T096 - formulation and pre-registration.** Combine an ARTIFICIAL fluid reservoir with
-the existing spiking substrate and learned readout. The fluid supplies recurrent temporal state;
+the existing spiking substrate and learned readout. *(DATED 2026-09-25, the engine: the spiking substrate here is the
+engine's liquid reservoir, G1's selected pool, and the readout is its readout neurons, G5; FR-036's note.)* The fluid supplies recurrent temporal state;
 spikes drive it and receive its feedback. This is a new engineering hypothesis, not a derivation
 of neurons from a fluid. The [liquid state machine framework](https://pubmed.ncbi.nlm.nih.gov/12433288/)
 supports recurrent spiking computation with a readout; it does not validate this particular hybrid.
@@ -1057,7 +1086,8 @@ corrupt records and incompatible versions must fail or be explicitly refused, ne
 restart from zero. Run the migration round-trip and measure checkpoint bytes/growth, append cost
 and restart latency; the hybrid cannot claim durable continuity while any required carrier is absent.
 
-**N4 / T099 - behavior and cost, conjunctively.** Compare (a) an equally tuned spiking-only LSM,
+**N4 / T099 - behavior and cost, conjunctively.** Compare (a) an equally tuned spiking-only LSM
+*(DATED 2026-09-25: the engine's spiking-only liquid reservoir, equally tuned)*,
 (b) the same hybrid with advection removed (diffusion-only), and (c) full Navier-Stokes feedback.
 Use paired frozen inputs/seeds, identical readout training and parameter-search effort, and the
 same measured compute, peak memory and latency ceilings, including solver and checkpoint work.
@@ -1090,14 +1120,16 @@ and resource overruns. All six instruments and their registration are PLANNED, n
 Exit: a recorded SC-014 verdict, measured controls/costs and live disposition in this workstream's
 future evidence record; all T096-T100 checkboxes remain OPEN until their own deliverables exist.
 
-### G workstream - grow into the liquid: the owner's 2026-09-22 proposal as gated rows (T108-T114)
+### G workstream - the SNDL engine: the owner's 2026-09-22 proposal and 2026-09-25 structure as gated rows (T108-T117)
 
 **ADDED 2026-09-23** (owner, 2026-09-22 CDT: "Every part of the project now need to follow this
 proposed innovation"; after the judgment: "Add to plan, R0 first", R0 being this plan's G0). Planned experimental
 workstream, **OPEN**: G0 parts (a), (b) and (c) landed 2026-09-24 (`evidence/g0a-chat-correction.md`,
 `evidence/g0b-reply-consumes-route.md`, `evidence/g0c-learner-persists.md`); every other part is unbuilt. FR-041 and SC-019 own the requirement and composite criterion; this section owns design and order.
+*DATED 2026-09-25: titled "grow into the liquid ... (T108-T114)" until the owner's engine structure below; rows G7-G9
+(T115-T117) added the same day.*
 
-**Row ids.** G0-G6 name this workstream's rows only. They are not `contracts/gates.md`'s G5 (the
+**Row ids.** G0-G9 name this workstream's rows only (G0-G6 until 2026-09-25). They are not `contracts/gates.md`'s G5 (the
 replay gate), T078's gates (G3 stop, G4 void), or `docs/PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md`'s
 gates G1 (saturation) and G2 (generator assertions) that C3 measures.
 
@@ -1112,19 +1144,66 @@ gates G1 (saturation) and G2 (generator assertions) that C3 measures.
 Its four questions are neuron design (#1), brain-to-reservoir distribution (#2), readout
 optimization (#3), and sleep plus durable memory (#4).
 
+**The owner's structure (2026-09-25, SNDL-Engine.drawio; it replaces the proposal where they differ).** The labels,
+verbatim (`evidence/engine-structure-2026-09-25.md` carries them with the geometry):
+- Components: "Brain (split either by cortical columns or brain regions)", inside "DURABLE DATA LAKE THAT THE BRAIN
+  LIVES INSIDE"; "New neuron(s) to solve a problem"; "Liquid Reservoir (Liquid State Machine)", drawn outside the
+  lake ellipse; "Readout neurons (Contain relational properties to connect to the brain, tuned by the brain)".
+- Connections: (1) brain -> new neurons; (2) new neurons -> reservoir, "Neurons is fed into the Reservoir"; (3) brain
+  -> reservoir, "WEIGHTS TRANSPORTED BY THE BRAIN"; (4) reservoir -> readout neurons; (5) brain -> readout neurons,
+  "THE BRAIN TUNES NEURONS VIA A LEARNING RULE (e.g.: STDP, Topographical Clustering, Predictive coding)"; (6)
+  readout neurons -> brain, "THE NEURONS GAIN RELATIONAL PROPERTIES AND INFORMATION TO CONNECT TO THE BRAIN".
+- Callouts: "AFTER GAINING NEW NEURONS, THE BRAIN STOP GENERATING NEW NEURONS AND ATTEMPTS TO SOLVE THE PROBLEM. IF
+  THE PROBLEM DOES NOT GET SOLVED, THE BRAIN REPEATS TO GENERATE MORE NEURONS UNTIL PROBLEM IS FULLY RESOLVED."; "AFTER
+  PROBLEM IS SOLVED, THE BRAIN RUNS A SLEEP CYCLE TO PRUNE AND SAVE THESE NEW NEURONS AND DATA OF THE PROBLEM. THE
+  BRAIN DO SO USING A METHOD (Either Simulated Annealing or something different)"; "THE BRAIN CAN RECALL ANY
+  INFORMATION WITHIN THE SAME DURABLE DATA LAKE ENVIRONMENT BECAUSE IT LIVES INSIDE THE SAME ENVIRONMENT".
+- The owner's answers: "Weights transport is allowed as long as the engine can work, the repo should be reorganized
+  to fit the new structure as well. 2 networks are allowed as long as it fits the new engine structure"; and "The
+  brain regions should be neurons and not coded like the current work tree structure on github, the engine grows the
+  neurons and attaching them over time, it could be either cortical columns or anatomically accurate brain, I don't
+  know which structure to consider since we need to do more research on the brain design philosophy through web
+  grab".
+- The owner's four decisions after the research brief (each its recommended option): the organizing unit is C,
+  "grown columns on an anatomical map" (G7); G1(b) "Spiking only can win" (G1); unsolved problems "Pause at a
+  budget" (G3); the reservoir's state "In the lake, rebuilt at start" (the carriers rule below).
+
 **Disposition.** Judged 2026-09-23 under this plan and POLICIES.md by a six-round Claude/Codex
 cross-critique. Later reviews corrected several of its tree readings (`d18a3be`, `b2f9da7` and the
 2026-09-23 panel fold).
 - **Not a policy.** POLICIES.md P2's corollary puts an architecture direction in a design note, not in
   POLICIES.md. It is pursued as gated rows on the owner's "Add to plan, R0 first"; P0 and P8 give
   credit only at measurement. The 2026-09-14 precedent applies: a design with falsifiable gates, no
-  implementation claimed.
+  implementation claimed. *DATED 2026-09-25: SUPERSEDED where it conflicts. The owner ordered POLICIES.md itself to
+  follow the engine; it is recorded there as the PROVISIONAL directive P4d under P2's dated owner exception (a
+  disclosed session call). The rows stay gated, and P0 and P8 still credit only at measurement.*
 - **The plan's reading** is growth INTO one recurrent substrate, with the readout a distinct decoder
   role. The proposal as written also describes a separate reservoir fed the brain's weights, which
-  P2 and P4b refuse (below).
+  P2 and P4b refuse (below). *DATED 2026-09-25: SUPERSEDED by the owner's answer and structure; two networks and
+  brain-to-reservoir weight transport are permitted under POLICIES P4d's conditions (the next three bullets).*
 - **"Reinterpreted as a readout"** is tested separately, as readout self-feedback (version 2).
+  *DATED 2026-09-25: SUPERSEDED; the return path is a full connection (below).*
 - **No weights are copied into a second structure** (P2, P4b). Learned content moves by replayed
-  experience (R2).
+  experience (R2). *DATED 2026-09-25: SUPERSEDED by the owner's "Weights transport is allowed as long as the engine
+  can work" (the transport bullet below).*
+- **The plan's reading (owner 2026-09-25; replaces the 2026-09-23 reading).** A two-network engine inside one brain
+  (P4; POLICIES P4d). (1) The brain grows new neurons for a problem it cannot solve, in column-sized batches placed on
+  an anatomical map; its regions or columns are labels on those grown neurons (G7). (2) The new neurons are fed into
+  a separate liquid reservoir (G1's selection), and the brain also transports weights into it. (3) The reservoir
+  drives readout neurons, which the brain tunes by a learning rule and which connect back into the brain (G5). (4)
+  Growth alternates with attempts until the problem's solved predicate holds, paused at a budget (G3). (5) After a
+  solve, sleep prunes and saves the new neurons and the problem's data in the one lake (G6), and the brain recalls
+  from there (R1/R2). Each connection is credited only at its own red, and the whole engine only at G-R9 (G9).
+- **Brain-to-reservoir weight transport is PERMITTED on a measured condition** (owner 2026-09-25: "Weights transport
+  is allowed as long as the engine can work"). Two forms run as arms: a value copy of declared brain weights into the
+  reservoir at a recorded boundary, and the brain's activity driving the reservoir. The condition is G-R9 (G9); after
+  G9, P2 keeps one form and retires the other. The copy is not a second durable store (P4b): the reservoir's state
+  lives in the one lake with lineage to the source weights' digest and boundary (the carriers rule below). It is not
+  the transport the e-prop invariant forbids (a transposed forward weight feeding a weight update); that rule is
+  unchanged. Experience still moves by replay (R2).
+- **The readout return path** (connection 6: "THE NEURONS GAIN RELATIONAL PROPERTIES AND INFORMATION TO CONNECT TO THE
+  BRAIN") is a full connection: G5 owns it and G9 charges it. G1's (d)/(d0) readout self-feedback stays only as its
+  diagnostic precursor.
 
 **What the tree already has.** Static reads at `a9b5340`; charge is UNVERIFIED unless stated.
 - **The grower is cascade-correlation-shaped and stateless.** `NeurogenesisSelfImprove` with
@@ -1175,7 +1254,8 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   same day and read PASS on R-c1, R-c1x, R-c2, R-c3 and R-c4: a restart reproduces the learner through both production
   hooks, with the authority rebuilt from typed teaching events (`evidence/g0c-learner-persists.md`). All four G-R0
   clauses now have a PASS on their pre-registered corpus and seeds; T108's checkbox waits for the stack's battery.*
-- **G1 / T109 — the memory-mechanism diagnostic on the live percept stream.**
+- **G1 / T109 — select and attribute the engine's liquid reservoir (the memory-mechanism diagnostic on the live
+  percept stream; retitled 2026-09-25).**
 
   FIRST freeze a causal information-and-feedback contract. It states when each observation,
   own-category, prediction and update becomes available; predictions are cached before their
@@ -1196,7 +1276,10 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   The PRIMARY endpoint is (b) vs (c); it licenses only "carried state helps". The utility
   contrasts are secondary. Adopting either version is a later confirmatory family, with its
   corrected bar stated first. On a null the pool is not adopted, and G4's downstream pool experiment
-  waits for an accepted substrate (G4's data fitting does not).
+  waits for an accepted substrate (G4's data fitting does not). *DATED 2026-09-25: SUPERSEDED (the engine). On a
+  null, "carried state helps" is refused on this stream and the pool is not adopted ON THAT GROUND; the engine's
+  reservoir is adopted or deleted only by G-R9, where the reservoir-removed engine is the control and P8's deletion
+  applies. G4 no longer depends on a pool (G4 below).*
 
   Pre-register:
   - the effect threshold, and whether the estimate or its confidence bound must clear it;
@@ -1215,6 +1298,29 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   In that protocol the incumbent grower did not extract history that a fixed ridge decoder extracted on every seed.
   So G1(b) and G1(c) read their contrasts through that decoder, with the grower reported beside it, and the reset twin
   is "Settled": reset, then settled on the current percept. G-R1 is amended to match.*
+  *DATED 2026-09-25 (the engine): G1(b)'s frozen selection stands unchanged as the benchmark for the reservoir's
+  dynamics, with one owner decision landed before the campaign's first step: "Spiking only can win"
+  (`evidence/g1b-pool-selection.md` section 2.1, `cortex/pool_selection.py::SELECTABLE`, `4b237c6`). Only g1 (LSM) and
+  g2 (ESN-LSM) can be selected; g3 (SORN) and g4 (RBN) are reference points. That resolves the audit's question
+  whether the engine's Liquid Reservoir may be a non-spiking reservoir. G1(c)'s pre-registration adds, before any
+  G1(c) data exists:*
+  - *(1) a transport family: the selected pool driven through declared brain weights copied at the
+    adaptation-window boundary, and separately by the brain's own per-percept output, each compared against G1(b)'s
+    random-encoder form and read Carried vs Settled through the same fixed decoder. It is secondary, with its bar
+    frozen first. The grower held only 2-4 units at the end of every pilot replay (G1B section 1 item 9), so the
+    source and its width are declared and any padding from the random draw is disclosed;*
+  - *(2) a DECLARED channel for each transport arm, G1A staying frozen: `w@b`, the brain weights at boundary b,
+    learned only from pairs delivered before b and copied once at b; the pool's view may read `w@b` and x and nothing
+    else, and a transport that reads any pair at or after b must raise (built like R-a2b's forbidden map). The
+    activity-drive arm declares its channel as the brain's per-percept output, computed before c_t is delivered (G1A
+    section 2.1's prediction-then-update order);*
+  - *(3) a separation reading: the selected pool's decoder accuracy on G2(ii)'s inseparable set against its
+    separable twin, reported for G9;*
+  - *(4) the scoped null above;*
+  - *(5) no reorganization inside G1(c)'s campaign; if G8 has landed, G1B section 2.9's migration gate for an LIF
+    winner runs at the reorganized head.*
+
+  *Fed-neuron input belongs to G3 and G9.*
 - **G2 / T110 — problems the current weights provably cannot solve.** Delivered as TAUGHT
   exchanges through G0's repaired channel.
   - (i) A delayed-cue 2x2 (needs state × needs capacity). Its explicit-history control is proven
@@ -1225,6 +1331,9 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     phi00 + phi11 = phi01 + phi10 to 1.1e-16 in the learner's PSP-of-rank code, so no linear
     readout classifies all four (reproduced 2026-09-23). Its controls are a separable twin and a
     PRESIZED nonlinear hidden layer.
+  - *(Added 2026-09-25, the engine.)* Each problem pre-registers its SOLVED predicate and its growth budget before
+    any run. For (ii): all four mappings answered correctly on every held-out presentation of its validation
+    episodes. G3, G6 and G9 read the predicate.
 
   G-R2.
 - **G3 / T111 — growth where G2's capacity cell licenses it (the owner's #1).**
@@ -1239,7 +1348,9 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     benchmark.
   - **Candidates follow the diagnosis.** A state deficit gets memory kinds from
     `cortex/neuron_zoo.py`. A capacity deficit gets rows trained on the multiclass residual with
-    eligibility traces and no weight transport: train, select on validation, judge on future data.
+    eligibility traces and no weight transport *(DATED 2026-09-25: no BACKPROP weight transport, the e-prop sense,
+    `substrate/eprop_transport_gate.py`; brain-to-reservoir transport is a different operation and is permitted)*:
+    train, select on validation, judge on future data.
   - **Curriculum.** A sequential A-then-B curriculum with matched replay, sleep, modulation and
     exposure, and learning OFF during evaluation.
   - **Arms.** The incumbent; presized frozen features; presized features SELECTED at the same
@@ -1249,9 +1360,29 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     the code cannot represent a mapping. L2 asked for something different: a stream where growth
     SUBSTITUTES for learning that would have sufficed, and a trigger that prevents it. L2's null
     stands, as R3/T104 keeps it.
+  - **The loop (owner 2026-09-25).** Grow a batch, freeze growth, attempt with learning ON, then test the solved
+    predicate on validation; if unsolved, grow again. **Pause at a budget (owner decision):** each problem's growth
+    spends a pre-registered budget relative to a persisted running baseline (P1); at the limit the brain reports
+    UNSOLVED, stops growing, and keeps the problem OPEN to retry after sleep or new teaching -- never reported solved,
+    never grown without bound. Arms: the literal loop (grow after every unsolved attempt, the owner's rule) and a
+    certificate-gated loop (grow only while the certificate still fires on the augmented code, otherwise attempt
+    again), each against the presized and random arms at matched final size. L2's grow-on-plateau null is disclosed:
+    a literal-loop gain that the presized twin matches is L2's null again, not a growth gain.
+  - **The growth unit (G7's T1).** Growth adds column-sized batches placed on the anatomical map where error builds
+    up; every neuron carries its position, layer, Dale sign, region label and the problem that grew it, and G7's
+    label gate refuses an unlabeled one. T1's arms run here: a column-sized batch vs single neurons grown next to the
+    worst readouts vs a presized network of the final size vs random attachment, at the same neuron budget; the batch
+    size is an arm.
+  - **Feed (connection 2).** Every admitted new neuron keeps its identity and its lineage to its problem, and projects
+    into the G1 reservoir through declared input synapses, so its spikes drive the reservoir. Arms: fed; the same
+    neurons read directly by the readout (no reservoir); a feed from norm-matched random units. A separate arm lets a
+    fed neuron also become a reservoir unit, so the reservoir grows past G1's N = 256; that arm re-runs the pool's
+    determinism red at the new N and waits for the owner to ratify a growth target inside the reservoir (POLICIES
+    P4d; the enforcement table's growth-coverage row).
 
   G-R3.
-- **G4 / T112 — the wiring prior (the owner's Gaussian).**
+- **G4 / T112 — the anatomical wiring prior for grown neurons' attachment (G7's T2, T3 and the wiring half of T4;
+  titled "the wiring prior (the owner's Gaussian)" until 2026-09-25).**
   - Observed connection probability is fitted from H01 by ELIGIBLE pair counts over distance. A
     global width (the baseline) is compared with partially pooled pathway widths and a
     distance-free model, holding out neurons or regions.
@@ -1261,7 +1392,21 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     silence, saturation, temporal discrimination and cost. The layer × sign prior is tested against
     a degree-, distance- and source-sign-matched twin with the layer and target-sign preferences
     removed. The downstream pool experiment needs an accepted G1 pool; the data fitting does not.
+    *DATED 2026-09-25: SUPERSEDED (G7, owner decision C). Downstream, the fitted prior wires the attachment of G3's
+    grown neurons on the anatomical map; that arm needs G3's grown populations, and the data fitting needs nothing.*
   - `beta` stays a decoder, never a Dale efferent.
+  - **G7's deciding tests (owner decision C, 2026-09-25; `evidence/g7-organizing-unit.md` section 6).** T3 first,
+    on data only: connection probability against distance on H01 (Gaussian, exponential, both, or flat) scored on
+    held-out neurons, after a planted Gaussian (sigma = 100 µm) is recovered within 10%, else REFUSED as a blind
+    fit; red: the Gaussian loses to the exponential or the flat model. T2: growth with the H01 prior (position, layer,
+    sign, distance rule) vs the same prior with positions shuffled vs a generic template; red: H01 does not beat
+    shuffled H01, and the map part of C is then deleted (P8 clause 5). T4's wiring half: rule-grown wiring (distance
+    x shared partners, with a wiring cost) vs imposed columns vs random attachment, scored on modularity; red:
+    modularity no higher than random attachment (its task-score half runs in G9). Disclosed prior negative: T063
+    recorded H01's "beatable prior" NOT MET beyond its marginals on its own task (Part F H-R1), under a null that
+    kept degrees, signs and magnitudes and so never tested position; T2 cites it and does not reuse its pin. Whether
+    a width fitted once from H01 may then stay fixed is the owner's P1 call; until it is made, the width stays
+    running-baseline-relative or is refitted per campaign, and the pre-registration says which.
 
   G-R4.
 - **G5 / T113 — readout variants (the owner's #3).**
@@ -1272,6 +1417,25 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     matrix).
   - Unsupervised STDP is allowed only with L1b's co-adaptation controls: its
     re-solve-beta-on-every-refit control runs, and its μ-derivation debt (P1) stays open until paid.
+  - **Readout neurons (connections 4-5; added 2026-09-25).** Spiking readout neurons read the G1 reservoir and answer
+    the posed problem. Each tuning rule's teaching or modulatory signal is a declared brain output (a TypedPort), and
+    a neuter-A/B on that port shows the brain's tuning charges the readout (P3). Each rule is an arm against
+    `OnlineReadout` (delta): STDP, with L1b's co-adaptation controls, as above; predictive coding, by ADOPTING
+    `cortex/predictive_coding.py` (P2), citing its 2026-08-14 adjudication and its open exact-symmetry scope, with
+    `eprop_transport_gate` green and the new site judged at its own readout by the distinguishing test (POLICIES'
+    e-prop register: the 2026-08-14 verdict covers only that module's inference/Hebbian split); topographical
+    clustering (next bullet).
+  - **Topographical clustering (the owner's Gaussian; added 2026-09-25).** A topographic map over the readout neurons
+    with a Gaussian neighbourhood, organized by the brain's activity. Before building anything, adopt or merge the
+    incumbent `reasoning/spiking_som.py` (its docstring: "G x G competitive map; BMU (WTA winner) + decaying
+    Gaussian-neighbourhood update"), promoting it out of `reasoning/` (P2, P4c). Control: the same rule with the
+    neighbourhood width at zero.
+  - **The return path (connection 6; added 2026-09-25).** Readout neurons project into the brain partition that posed
+    the problem -- by G7's label, the labeled grown-neuron population -- through a declared port (FR-012) with
+    plastic synapses, never into the action gate (the defect P6 names). Charge it with P6's test: neuter the return
+    path, and the brain's own next answer and next attempt must change, measured against a time-shuffled return. The
+    anatomical and categorical relational readings become properties OF this projection (which labels and layers it
+    reaches; which readouts couple), each ablated separately.
 
   G-R5.
 - **G6 / T114 — sleep and durable memory (the owner's #4), after R2/R3.**
@@ -1286,19 +1450,100 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
 
     It runs against no-prune, the incumbent, greedy and equal-budget random search. A1-A3 cover lake
     access only and are not this row.
+    *(Added 2026-09-25, the engine.)* The mask ranges over the solved problem's new neurons and their feed, readout
+    and return synapses. The solved predicate on untouched validation is a HARD constraint: a mask that unsolves the
+    problem is infeasible, not merely penalized.
   - (c) Learning-load sleep PRESSURE beside the circadian clock, tested by budget-matched
     rescheduling with a shuffled-pressure arm and a width- and rate-normalized load. The pressure
     trigger is relative to a persisted running baseline, or a P1 exception is shown.
+    *(Added 2026-09-25.)* A trigger arm: sleep on "solved" (the owner's rule) against clock-only and learning-load
+    pressure, budget-matched. The solve REQUESTS sleep from the daemon's one scheduler (POLICIES P4d: one scheduler,
+    two inputs), never a second scheduler beside the circadian clock.
+  - (d) **Save** *(added 2026-09-25, the owner's callout)*. After a solve, the sleep cycle writes to the one lake,
+    under a declared problem tag and retention label (FR-003: reconstructible deltas): the surviving new neurons (unit
+    rows with their G7 labels, feed synapses, readout and return weights, lineage to the problem id) and the
+    problem's data (its typed teaching episodes in `_T_EPISODE`, its solved predicate, its validation record). A prune
+    removes a unit from the active network, never its lake record (the retention rule). A problem paused UNSOLVED at
+    its budget is saved too, marked OPEN with its budget ledger (G3). Red: a fresh process cannot re-solve a saved
+    problem without regrowth or new teaching.
 
   G-R6.
+- **G7 / T115 — the organizing unit (owner decision 2026-09-25: C).** *(Added 2026-09-25. The audit drafted this as a
+  research row; the owner decided after the research brief, so it is the decision record, not research.)*
+  Deliverable `evidence/g7-organizing-unit.md`, written 2026-09-25: the decision as recorded ("grown columns on an
+  anatomical map"), the three options and their evidence in brief, the attachment rule (layer target x distance
+  kernel x shared-partner bonus), what C means for the reservoir feed and the return path, the incumbents it adopts
+  (`cortex/placement.py`'s persisted label EXTENDED with position, region label and problem id -- no second label
+  store; `cortex/arealization.py::emit_regions`; `cortical_microcircuit.CONN_PROB`; the H01 statistics; the one
+  grower), and the four deciding tests mapped to the rows that run them: T1 -> G3's growth-unit arms and G9; T2 and
+  T3 -> G4; T4 -> G4 (wiring) and G9 (task score). FR-021's ten pinned region names are the label vocabulary,
+  emitted from position (FR-021's dated note). Still owed: the label gate (an unlabeled grown neuron is refused,
+  with its constructed red), landing with the first code that admits labeled grown neurons, G3's attachment arms at
+  the latest; T115 closes then.
+
+  G-R7.
+- **G8 / T116 — reorganize the repository to the engine (owner 2026-09-25: "the repo should be reorganized to fit
+  the new structure as well").** *(Added 2026-09-25.)* Packages follow the engine's components (the brain and its
+  grower, reservoir, readout, sleep, lake, infrastructure), never brain anatomy; the brain's regions or columns live
+  on grown neurons (G7).
+  - Slot: right after G1(b)'s selection record, never inside a single-head campaign (G1(b)'s or G1(c)'s). G1B
+    section 2.9 deletes the losing ports first, and G1(c) then records at the new head; a move inside a campaign
+    forces a re-record, because G1(a)'s revision binding refuses a replay at a different head.
+  - Each move carries its registrations in the same commit: `REGIONS`, `run_selfchecks.py`, the dormancy and method
+    EXEMPT rows, the wiring manifest, the back-compat alias layer, the p4c ratchet zones and every path-keyed POLICIES
+    entry (POLICIES P4d: a reorganization re-points every path-keyed rule in the same commit, and a baseline is
+    re-recorded only by that re-point, never to absorb a rise). Moving a hazard-holding `reasoning/` or `training/`
+    module into the governed tree is a PROMOTION under the e-prop block.
+  - Class names stored in the live lake come first: the G0(c) learner checkpoint stores each object's module path
+    and refuses a changed one on restore ("checkpoint class mismatch"), so moving `interaction_learning`, `r_stdp`,
+    the plasticity stack or `rule_composer` needs a checkpoint converter before the move.
+  - The five `brainstem/` envelope files and `tools/envelope_hashes.json` are not moved without the owner's explicit
+    approval. Frozen evidence keeps its historical paths; A.5 gains an old-to-new path map.
+  - The owner's to decide: the package layout, each path-keyed gate's disposition (FR-012, FR-015 and FR-032's dated
+    notes), and any envelope-file move.
+
+  G-R8.
+- **G9 / T117 — the engine, end to end (the owner's condition, "as long as the engine can work").** *(Added
+  2026-09-25.)* Run in scratch brains (throwaway homes, never the live lake) on G2's problems, taught through G0's
+  channel. The brain attempts with its weights. On failure, G3's loop grows column-sized batches on the map and feeds
+  them into the reservoir, and the brain transports weights (both forms as arms). G5's readout neurons answer and feed
+  back. The loop repeats until the solved predicate holds or the problem pauses at its budget (UNSOLVED, kept open).
+  Sleep prunes and saves (G6). A FRESH PROCESS then rebuilds the reservoir from lake records, recalls the problem and
+  answers it with no regrowth and no new teaching. Arms:
+  - the engine;
+  - the reservoir removed (new neurons read directly);
+  - the transport neutered (a norm-matched random matrix for the copy form; the brain's drive time-shuffled for the
+    activity form);
+  - the return path neutered;
+  - growth OFF at the engine's final size (presized, with SC-012b's equal-count silencing control);
+  - random growth;
+  - G7's T1 at engine level (column batches vs single neurons) and T4's task-score half (rule-grown wiring vs
+    imposed columns vs random attachment).
+
+  S = 8 under Part F's rule. P2 keeps one transport form. A connection whose ablation costs nothing is removed from
+  the claimed architecture, and its permission lapses (P8; POLICIES P4d). G9 runs last, after G1(c), G3, G5 and G6.
+
+  G-R9.
 
 **Order and limits.**
 - **Order:** G0; G1 alongside it (the session's call on "R0 first", since G1 needs no chat repair);
   then G2; then G3; then G4 and G5; then G6, after R2/R3. G3 waits for G2's capacity cell.
+  *DATED 2026-09-25 (the engine; SUPERSEDES the order above):* G0 (landed); G1(a) (landed locally); G1(b)'s campaign
+  on one frozen head, with G7's decision record written alongside (2026-09-25, no code); G8 right after G1(b)'s
+  selection record, never inside a single-head campaign; G1(c); G2; G3 (the loop, the growth unit and the feed; G7's
+  label gate lands with it at the latest); G5; G4 (its data fitting, T3, needs no row before it); G6, after R2/R3; G9
+  last, after G1(c), G3, G5 and G6. G3 still waits for G2's capacity cell.
 - **No bypass:** nothing here bypasses the phase exits, T073/T074 or FR-025/OD-2.
 - **Carriers at introduction:** each row lands its own carriers' lake tag, retention label and
   fresh-process red. Continuation state (carried liquid state, cached feedback) resumes exactly under
-  N3/R-R2's contracts.
+  N3/R-R2's contracts. *DATED 2026-09-25 (owner decision "In the lake, rebuilt at start"):* the owner's drawing places
+  the liquid reservoir outside the lake ellipse, and that ellipse is the NETWORK boundary, not the durability
+  boundary. The reservoir keeps no separate store and holds no source of truth: its seeded construction record, its
+  plastic deltas since then, the transport's lineage (the source weights' digest, the boundary, the form) and the
+  saved new neurons' feed synapses (G6(d)) are lake records, and a restart rebuilds it exactly from them -- for the
+  value-copy form by re-copying from lake-held brain weights at the recorded boundary, for the activity-drive form
+  from its seed and deltas. Its transient liquid state is COMPACTABLE continuation state under N3/R-R2. Red (G-R9
+  (vi)): after a restart, the rebuilt reservoir does not reproduce the pre-restart answers on the saved problems.
 - **P2 on a win:** a confirmed replacement retires the mechanism it supersedes only after P2's
   equivalence and capability-porting checks; any remaining distinct mechanism gets an explicit
   disposition.
@@ -1466,6 +1711,9 @@ Parallel arms: L1a ∥ L3 ∥ the oracle may start at W3 (they do not wait for P
   T109 precedes T097 (N2); N4's arms stay as T096 freezes them. None bypasses T073/T074, Phase 4's
   exit or FR-025/OD-2. The owner sets
   its priority against the in-flight rows; a failed G row does not delay unrelated work.
+  *DATED 2026-09-25 (the engine; SUPERSEDES the chain above):* G0 -> G1(a) -> G1(b) (G7's decision record alongside)
+  -> G8 (after G1(b)'s selection record) -> G1(c) -> G2 -> G3 -> G5 -> G4 -> G6 -> G9 (T108-T117). G6 waits for R2/R3
+  (T103/T104); G8 lands outside any single-head campaign; G9 is last. The rest of the paragraph above stands.
 
 | dropped / refused / deferred | disposition | measurement |
 |---|---|---|
@@ -1510,12 +1758,15 @@ this fixed decoder", never an incumbent-grower benefit or adoption.*
 | N-R5 | disconnecting/shuffling feedback or silencing relevant grown units does not reduce attributed useful task gain | intact feedback and equal-count pre-sized-unit silence | N4 / T099, PLANNED |
 | N-R6 | live path bypasses a gate, resources exceed budget, or an invalid candidate/premature promotion is admitted | compliant live candidate, measured cost control and refused invalid diff | N5 / T100, PLANNED |
 | G-R0 | a corrected misrouted prompt does not improve later routing, neutering the learned router leaves replies unchanged, a fresh process does not reproduce taught routing and the next learning/replay step, or a self-label overwrites an authoritative correction | the uncorrected (self-labelled) incumbent, the neutered router, the uninterrupted twin | G0 / T108, PLANNED |
-| G-R1 | the carried-state pool does not beat its own reset twin at the pre-registered bar, or its advantage survives a within-block time shuffle; REFUSED (blind harness) if the persistence oracle does not beat the incumbent; on a null the pool is not adopted (amended 2026-09-25: the decoder, the Settled twin and the history positive control, above) | the reset twin, the shuffled stream, the oracle | G1 / T109, PLANNED |
+| G-R1 | the carried-state pool does not beat its own reset twin at the pre-registered bar, or its advantage survives a within-block time shuffle; REFUSED (blind harness) if the persistence oracle does not beat the incumbent; on a null the pool is not adopted (amended 2026-09-25: the decoder, the Settled twin and the history positive control, above) *(DATED 2026-09-25, the engine: on a null, "carried state helps" is refused; the reservoir's adoption is decided by G-R9)* | the reset twin, the shuffled stream, the oracle | G1 / T109, PLANNED |
 | G-R2 | the single-layer incumbent classifies the constructed inseparable set perfectly (the construction is wrong), its separable twin is not learned, the presized nonlinear positive control fails, or the delayed-cue explicit-history control fails on the generator | separable twin, presized nonlinear layer, explicit-history control | G2 / T110, PLANNED |
-| G-R3 | targeted growth does not beat presized-selected features and random growth on the new mapping prospectively, the old mapping regresses past its bound, the gain survives silencing the new units, old codes change, shuffled rewards admit comparably, or the certificate fires on the separable twin | presized frozen and selected features, random growth, sham expansion, shuffled rewards, separable twin | G3 / T111, PLANNED |
-| G-R4 | the fitted spatial model fails held-out neurons or regions, anatomical wiring shows no downstream benefit over its degree- and pathway-preserving shuffle, the layer × sign prior gives no benefit over its degree-, distance- and source-sign-matched twin with layer and target-sign preferences removed, or the pool goes silent or saturated | the distance-free model, degree-matched shuffles, the layer/sign-removed twin | G4 / T112, PLANNED |
-| G-R5 | the challenger loses to the delta readout, or its gain survives a shuffled teaching signal or neutered coupling | `OnlineReadout` (delta), a shuffled teaching signal, neutered coupling | G5 / T113, PLANNED |
-| G-R6 | (a) an incumbent pruner misses its pre-registered neuter-A/B bar (it is then retired or given a justified P3 exemption); the annealed mask breaks a retention bound on untouched tests, its savings vanish after costs, it does not beat greedy or random search at equal budget, pressure gives no budget-matched pressure-specific retention gain, or a restart loses a lesson or diverges | no-prune, incumbent, greedy and random search; clock-only and shuffled-pressure schedules; the uninterrupted twin; each incumbent pruner's neutered twin | G6 / T114, PLANNED |
+| G-R3 | targeted growth does not beat presized-selected features and random growth on the new mapping prospectively, the old mapping regresses past its bound, the gain survives silencing the new units, old codes change, shuffled rewards admit comparably, or the certificate fires on the separable twin; *(added 2026-09-25, the engine)* the loop reports solved on a constructed unsolvable problem or does not pause at its budget (report UNSOLVED, stop growing, keep the problem open); or, G7's T1, the column-sized batch needs 20% or more extra neurons than single-neuron growth at equal accuracy or forgets more (a presized network matching both means growth earns nothing) | presized frozen and selected features, random growth, sham expansion, shuffled rewards, separable twin; *(2026-09-25)* the constructed unsolvable problem, the single-neuron and presized arms | G3 / T111, PLANNED |
+| G-R4 | the fitted spatial model fails held-out neurons or regions, anatomical wiring shows no downstream benefit over its degree- and pathway-preserving shuffle, the layer × sign prior gives no benefit over its degree-, distance- and source-sign-matched twin with layer and target-sign preferences removed, or the pool goes silent or saturated *(DATED 2026-09-25: the wired grown population, not a pool)*; *(added 2026-09-25, G7's tests)* T2: growth with the H01 prior does not beat the same prior with positions shuffled (the map part of C is then deleted); T3: the Gaussian loses to the exponential or the flat model on held-out neurons, REFUSED if the planted sigma = 100 µm is not first recovered within 10%; T4's wiring half: rule-grown wiring's modularity is no higher than random attachment's | the distance-free model, degree-matched shuffles, the layer/sign-removed twin; *(2026-09-25)* shuffled-position H01, the planted-sigma recovery, random attachment, imposed columns | G4 / T112, PLANNED |
+| G-R5 | the challenger loses to the delta readout, or its gain survives a shuffled teaching signal or neutered coupling; *(added 2026-09-25, the engine)* neutering the brain's tuning port leaves the readout unchanged, or neutering the return path leaves the brain's own next answer and attempt unchanged against its time-shuffled twin | `OnlineReadout` (delta), a shuffled teaching signal, neutered coupling; *(2026-09-25)* the neutered tuning port, the time-shuffled return, the zero-width neighbourhood | G5 / T113, PLANNED |
+| G-R6 | (a) an incumbent pruner misses its pre-registered neuter-A/B bar (it is then retired or given a justified P3 exemption); the annealed mask breaks a retention bound on untouched tests, its savings vanish after costs, it does not beat greedy or random search at equal budget, pressure gives no budget-matched pressure-specific retention gain, or a restart loses a lesson or diverges; *(added 2026-09-25, the engine)* a mask that unsolves the problem is accepted, or a fresh process does not re-solve a saved problem without regrowth or new teaching | no-prune, incumbent, greedy and random search; clock-only and shuffled-pressure schedules; the uninterrupted twin; each incumbent pruner's neutered twin; *(2026-09-25)* the solved-predicate constraint, the fresh process | G6 / T114, PLANNED |
+| G-R7 | *(added 2026-09-25, owner decision C)* a grown neuron can be admitted without its unit label (position, layer, Dale sign, region label, the problem that grew it) and no gate refuses it; or the G7 record's tests name no falsifiable comparison | a constructed grown neuron with no label, which the gate must refuse; each test's own control (`evidence/g7-organizing-unit.md` section 6) | G7 / T115, PLANNED |
+| G-R8 | *(added 2026-09-25)* a gate's output changes by more than the move's declared delta, an import path or back-compat alias breaks, an envelope hash changes, a live-lake checkpoint no longer restores, or G1B's R-b0 source-parity check cannot find its sources | the pre-move tree's gate outputs, re-derived; the pre-move checkpoint restore | G8 / T116, PLANNED |
+| G-R9 | *(added 2026-09-25, the owner's condition)* any one of: (i) the engine does not prospectively solve, at the bar, a problem its presized growth-OFF twin fails; (ii) its solve survives removing the reservoir, neutering the transport or neutering the return path (each attributed separately); (iii) the loop reports solved on a constructed unsolvable problem, or does not pause at its budget; (iv) a fresh process does not re-solve the saved problem without regrowth or teaching; (v) an earlier solved problem regresses past its bound; (vi) the reservoir rebuilt from lake records after a restart does not reproduce the pre-restart answers on the saved problems | the presized growth-OFF twin, random growth, reservoir-removed, transport-neutered, return-path-neutered, the constructed unsolvable problem, the uninterrupted twin | G9 / T117, PLANNED |
 | W-R1 | mean `curiosity_mag` (last 200 wake rows, 3000 and 6000 ticks) under W1+W2 does not exceed the time-shuffled-context world, per seed | the same world, context order shuffled | W3 |
 | W-R2 | category entropy not above the W3 baseline **at a NAMED window, PER SEED**, or live next-category accuracy not above its marginal-preserving shuffle (floors reported within-arm). **AMENDED 2026-09-03 on W3's measurement:** entropy is NOT a stable property of a run -- the same three seeds on one world moved in OPPOSITE directions between the first-1000 and last-1000 wake-row windows, spanning 0.0 to 2.6 bits -- so a bar that does not name its window and apply per seed is measuring the window. Pre-registered window = the FIRST 1000 wake rows; the 6000-tick column is the clean one (at 3000 the two windows overlap by ~517 rows). `evidence/w3-world-baselines.md` §4 | the shuffle | W3 |
 | W-R3 (T076) | **the CURRICULUM'S OWN PROPOSED GOAL** unchanged with `coverage_reward` neutered, OR changed when an unrelated scalar of comparable magnitude is neutered. **AMENDED 2026-09-03 before the build:** the original row -- "goal selection unchanged" -- is VACUOUS, measured: on the incumbent path with no W1 at all, neutering `coverage_reward` already changes 18/60 actions and takes `_z_goal` 60/60 -> 0/60. A red satisfiable without the mechanism it tests is not a red for that mechanism (P8 clause 1). The observable is therefore `propose()`'s returned goal cell, which the incumbent cannot produce, and the row now carries the SPECIFICITY control the original lacked | the un-neutered run, AND an unrelated-scalar neuter that must NOT move it | W1 |
@@ -1640,7 +1891,25 @@ CDT). It was recorded as judged on 2026-09-23 and entered on the owner's "Add to
 the G workstream, FR-041, SC-019 and T108-T114 as planned experimental work. The amendment records
 a design and falsifiable gates. It does not record implementation or a passing measurement, and it
 does not make the design a policy (P2's corollary). Existing phase exits, lake retention and
-protected self-modification/safety approval boundaries retain their authority.
+protected self-modification/safety approval boundaries retain their authority. *(Superseded 2026-09-25 where it
+conflicts: the next amendment.)*
+
+**OWNER AMENDMENT 2026-09-25:** the SNDL-Engine structure (the G workstream's structure block;
+`evidence/engine-structure-2026-09-25.md`) and the instruction "Audit any part of the project including POLICIES.md
+and CLAUDE.md to follow this new structure". Answers: "Weights transport is allowed as long as the engine can work,
+the repo should be reorganized to fit the new structure as well. 2 networks are allowed as long as it fits the new
+engine structure"; and "The brain regions should be neurons and not coded like the current work tree structure on
+github, the engine grows the neurons and attaching them over time, it could be either cortical columns or
+anatomically accurate brain, I don't know which structure to consider since we need to do more research on the brain
+design philosophy through web grab". After the research brief (https://claude.ai/artifact/4S9PP8fP7PhgBU1c72Tkyn),
+four decisions, each the recommended option: the organizing unit is C, "grown columns on an anatomical map"; G1(b)
+"Spiking only can win"; unsolved problems "Pause at a budget"; the reservoir's state "In the lake, rebuilt at start".
+This amendment adds G7-G9, T115-T117 and G-R7-G-R9, and amends FR-041 and SC-019 by dated notes. It records a design
+and gates, not an implementation; transport stands on G-R9. Session calls, disclosed (no owner objection; the
+2026-09-05 authorization): POLICIES.md records the engine as the PROVISIONAL directive P4d, the e-prop invariant is
+UNCHANGED, and doc-budget ceilings rise by their measured deltas. Still the owner's: whether the transport
+permission may ever reach credit assignment, a P1 case for a width fitted once from H01, a growth target inside the
+reservoir, and G8's package layout, gate dispositions and any envelope-file move.
 
 ## PART I — HOW TO RESUME THIS PLAN IN A NEW SESSION
 
