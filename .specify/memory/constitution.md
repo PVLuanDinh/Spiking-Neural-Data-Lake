@@ -28,10 +28,12 @@ Sections amended:
                  counts what POLICIES.md marks PROVISIONAL (P6, P4c's amendment, P4d: three, at the
                  cap), the audit's second option; the first draft's carve-out for owner directives
                  adopted with a specified gate was withdrawn in the docs panel's fold; the Constitution
-                 Check names the P4 sub-clauses
+                 Check names the P4 sub-clauses and P5a
 
 Synced in the same arc: docs/POLICIES.md (P4d and its pointers), docs/AGENT_COLD_START.md (its design
-paragraph and binding sections), AGENTS.md (the entry count, recounted: thirteen).
+paragraph and binding sections), AGENTS.md (the entry count, recounted: thirteen, amendments uncounted).
+P5a (owner directive 2026-08-05) is not restated; docs/POLICIES.md P5a is authoritative, and the
+Constitution Check names it (added in the docs panel's fold).
 
 Templates: .specify/templates/plan-template.md OK (its Constitution Check points to docs/POLICIES.md
 and the manifest and restates no principle); spec-template.md, tasks-template.md and the speckit-*
@@ -408,7 +410,7 @@ Versioning: MAJOR for a backward-incompatible principle removal or redefinition,
 or materially expanded principle, PATCH for clarification.
 
 Compliance: every plan produced under Spec Kit MUST pass a Constitution Check against **P0–P8**
-(P4's sub-clauses P4b, P4c and P4d included) and the Standing Invariants before implementation. Complexity MUST be justified against P2 and
+(P4's sub-clauses P4b, P4c and P4d, and P5's P5a, included) and the Standing Invariants before implementation. Complexity MUST be justified against P2 and
 the rule that the best code is the code never written. Note for plan authors: a Constitution
 Check certifying "no new dependency" is **no longer evidence of anything** under P7 — a plan
 should state what a dependency would BUY, or say nothing. `CLAUDE.md` and `docs/POLICIES.md` are

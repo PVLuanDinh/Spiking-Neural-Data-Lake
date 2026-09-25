@@ -61,7 +61,8 @@ A grown neuron is placed where error builds up, in a column-sized batch, and get
 and a Dale sign; its region label is read off the map from its position, never assigned by a code package. The
 connection probability to a candidate partner is layer target x distance kernel x shared-partner bonus. The starting
 kernel is a Gaussian of about 85-114 µm locally, falling off about 4.6 per mm through grey matter (the brief's
-literature values), refitted on H01 by T3 before any arm uses a fitted width.
+literature values), refitted on H01 by T3 before any arm uses a distance kernel (the plan's order puts T3 before
+G3's attachment arms; a hand-picked width is refused).
 
 The label vocabulary is all sixteen `cortex/growth_program.py::REGION_COORDS` names, a session call under the owner's
 2026-09-05 authorization (dated 2026-09-25, the panel fold; open for the owner together with re-ratifying the
@@ -139,8 +140,8 @@ labeled grown neurons (G3's attachment arms at the latest), and T115 closes only
 ## 8. Sources
 
 The decision brief (https://claude.ai/artifact/4S9PP8fP7PhgBU1c72Tkyn) lists all 36 sources with DOIs; its four
-research reports and the raw captures are in the memory store's `archive/engine-research-audit-2026-09-25/`. The
-references cited above, as the brief gives them: Mountcastle 1997 (10.1093/brain/120.4.701); Rakic 1995
+research reports and the raw captures are in the memory store's `archive/engine-research-audit-2026-09-25/`.
+References, as the brief gives them: Mountcastle 1997 (10.1093/brain/120.4.701); Rakic 1995
 (10.1016/0166-2236(95)93934-P); Gao 2014 (10.1016/j.cell.2014.10.027); Maass, Natschlaeger & Markram 2002
 (10.1162/089976602760407955); Lappalainen 2024 (10.1038/s41586-024-07939-3); Horton & Adams 2005
 (10.1098/rstb.2005.1623); Ohki 2005 (10.1038/nature03274); Hawkins, Ahmad & Cui 2017 (10.3389/fncir.2017.00081);

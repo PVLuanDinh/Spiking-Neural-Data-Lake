@@ -1133,8 +1133,9 @@ workstream, **OPEN**: G0 parts (a), (b) and (c) landed 2026-09-24 (`evidence/g0a
 (T115-T117) added the same day.*
 
 **Row ids.** G0-G9 name this workstream's rows only (G0-G6 until 2026-09-25). They are not `contracts/gates.md`'s G5 (the
-replay gate), T078's gates (G3 stop, G4 void), or `docs/PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md`'s
-gates G1 (saturation) and G2 (generator assertions) that C3 measures.
+replay gate), T078's gates (G3 stop, G4 void), `docs/PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md`'s
+gates G1 (saturation) and G2 (generator assertions) that C3 measures, or `docs/GF_PERCEPTION_INDUCTION_RESEARCH.md`'s
+perception primitives G1-G13.
 
 **The proposal as written:**
 - a recurrent SNN solves a problem with its synaptic weights, and grows neurons when they cannot;
@@ -1318,11 +1319,11 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     else, and a transport that reads any pair at or after b must raise (built like R-a2b's forbidden map). The
     activity-drive arm declares its channel as the brain's per-percept output, computed before c_t is delivered (G1A
     section 2.1's prediction-then-update order);*
-  - *(3) a separation reading: the selected pool's decoder accuracy on G2(ii)'s inseparable set against its
-    separable twin, reported for G9;*
+  - *(3) a separation reading: the selected pool's decoder accuracy on G2(ii)'s inseparable set as constructed in
+    the G2 row, G-R2's construction check run first on the generator, against its separable twin, reported for G9;*
   - *(4) the scoped null above;*
-  - *(5) no reorganization inside G1(c)'s campaign; if G8 has landed, G1B section 2.9's migration gate for an LIF
-    winner runs at the reorganized head.*
+  - *(5) no reorganization inside G1(c)'s campaign; G8 lands first, and G1B section 2.9's migration gate for the
+    LIF winner runs at the reorganized head.*
 
   *Fed-neuron input belongs to G3 and G9.*
   *DATED 2026-09-25 (G1(b)'s result, `evidence/g1b-pool-selection.md` section 3.4): selection record 0bd1de7:
@@ -1506,8 +1507,8 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     refuses a replay at a different head.
   - Each move carries its registrations in the same commit: `REGIONS`, `run_selfchecks.py`, the dormancy and method
     EXEMPT rows, the wiring manifest, the back-compat alias layer, the p4c ratchet zones and every path-keyed POLICIES
-    entry (POLICIES P4d: a reorganization re-points every path-keyed rule in the same commit, and a baseline is
-    re-recorded only by that re-point, never to absorb a rise). Moving a hazard-holding `reasoning/` or `training/`
+    entry (POLICIES P4d: each move re-points every path-keyed rule in the same commit; this plan adds that a
+    baseline is re-recorded only by that re-point, never to absorb a rise). Moving a hazard-holding `reasoning/` or `training/`
     module into the governed tree is a PROMOTION under the e-prop block.
   - Class names stored in the live lake come first: the G0(c) learner checkpoint stores each object's module path
     and refuses a changed one on restore ("checkpoint class mismatch"), so moving `interaction_learning`, `r_stdp`,
@@ -1558,8 +1559,9 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   *DATED 2026-09-25 (the engine; SUPERSEDES the order above):* G0 (landed); G1(a) (landed locally); G1(b)'s campaign
   on one frozen head, with G7's decision record written alongside (2026-09-25, no code); G8 right after G1(b)'s
   selection record, never inside a single-head campaign; G1(c); G2; G3 (the loop, the growth unit and the feed; G7's
-  label gate lands with it at the latest); G5; G4 (its data fitting, T3, needs no row before it); G6, after R2/R3; G9
-  last, after G1(c), G3, G5 and G6. G3 still waits for G2's capacity cell.
+  label gate lands with it at the latest); G5; G4 (its data fitting, T3, needs no row before it and runs before G3's
+  attachment arms use a distance kernel); G6, after R2/R3; G9 last, after G1(c), G3, G5 and G6. G3 still waits for
+  G2's capacity cell.
 - **No bypass:** nothing here bypasses the phase exits, T073/T074 or FR-025/OD-2.
 - **Carriers at introduction:** each row lands its own carriers' lake tag, retention label and
   fresh-process red. Continuation state (carried liquid state, cached feedback) resumes exactly under

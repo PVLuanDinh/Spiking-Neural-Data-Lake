@@ -231,7 +231,9 @@ BUDGETS = {
     # = measured + ~106 so a ninth invention forces a deliberate ceiling raise with its reason here.
     "README.md": 2264,  # 2,156
     "docs/ANATOMY.md": 1968,  # 1,874
-    "AGENTS.md": 1065,  # 1,014
+    # RAISED 1065 -> 1067 on 2026-09-25 by the MEASURED delta (1,046 -> 1,048, +2), the docs panel fold: the
+    # entry count states its rule ("amendments uncounted"), which the policy manifest's sub-clause census needs.
+    "AGENTS.md": 1067,  # 1,014
     # Added 2026-09-22 with the file (its panel's policy-honesty and cold-read lenses): the
     # GitHub-only rendering of the operator protocol claims to carry no project state, and this
     # ceiling (measured + ~5%) is what makes status re-accumulating there red instead of silent.
