@@ -37,7 +37,7 @@ compressed clause.
 | P1 no-hardcode | — | yes |
 | P2 adopt-or-merge | — | yes |
 | P3 no dormancy | `substrate/dormancy_gate.py` (per-MODULE), `substrate/method_dormancy_gate.py` (per-METHOD), `substrate/import_manifest.py` (cross-tier) | the charge tier |
-| P4 one brain (+ P4b partial; P4d provisional) | `substrate/replication_guard.py`; `substrate/lake_rebuild_gate.py` mechanizes P4b's index-is-derived clause (delete → rebuild from a lake scan → logical-dump equality, planted-divergence red + lake-tracking control) | P4b's remaining prose (one-lake, restart-is-not-amnesia) |
+| P4 one brain (+ P4b partial; P4d provisional) | `substrate/replication_guard.py`; `substrate/lake_rebuild_gate.py` mechanizes P4b's index-is-derived clause (delete → rebuild from a lake scan → logical-dump equality, planted-divergence red + lake-tracking control) | P4b's remaining prose (one-lake, restart-is-not-amnesia); P4d in full (provisional; its gate is specified in P4d) |
 | P5 use the GPU where it helps | — | yes |
 | **P6 mutual reach + use** | **BUILT AND ASSERTING** — `tools/p6_gate.py --assert` and `--self-check` (lint CI job; the connectome-diff half is built). Ships as a **RATCHET**: baselines assert the structure never gets WORSE. Re-derive every count from the gate; never edit this row from memory | yes (provisional; a ratchet says the count did not worsen, never that P6 is satisfied) |
 | **P7 any dependency that helps** | **BUILT AND ASSERTING** — `tools/dependency_ledger.py --assert` and `--self-check` (lint CI job) | yes (the judgement half; see P7 guard (b)) |
@@ -90,7 +90,7 @@ used to carry is in `docs/POLICIES_EVIDENCE.md`:
 |---|---|
 | **self-building code** | `cortex/brain.py::Brain._maybe_autonomous_self_build` → `basal_ganglia/self_build_loop.SelfBuildLoop.run`, night-cadenced under `NORD_SELFMOD=1`; pinned by `tests/test_selfbuild_route.py` (route + opt-in gate as its control). Probe with `Brain._selfbuild_last` on a scratch `NORD_HOME` — a run that appends to the live lake is the probe contaminating the subject |
 | **knowledge acquisition** | chat ingest → the one durable lake (`substrate/chat_memory.py`), `substrate/web_ingest.py`, reasoning-curriculum growth during sleep |
-| **neural growth** | problem-driven growth (P4d): grow column-sized batches on the anatomical map while a problem is certified unsolved, attempt, repeat, and pause at a budget (UNSOLVED, kept open); sleep prunes and saves after the solve. ONE grower (P2) — the incumbent is sleep-tick growth with retention: `cortex/neurogenesis_engine.py` (earn-your-place prune, `growth_state_bytes`/`restore_growth_state`/`substrate_is_retained`), persisted into the ONE lake on two live paths (sleep tick and construction; `Brain._flush_growth` — ONE mechanism, TWO callers), which the problem-driven loop merges with or replaces. Restart-with-grown-substrate is pinned by `tests/test_brain_growth_restart.py`, whose immediate-exit case carries the reachable red |
+| **neural growth** | problem-driven growth (P4d): grow column-sized batches on the anatomical map while a problem's solved predicate fails, attempt, repeat, and pause at a budget (UNSOLVED, kept open); sleep prunes and saves after the solve. ONE grower (P2) — the incumbent is sleep-tick growth with retention: `cortex/neurogenesis_engine.py` (earn-your-place prune, `growth_state_bytes`/`restore_growth_state`/`substrate_is_retained`), persisted into the ONE lake on two live paths (sleep tick and construction; `Brain._flush_growth` — ONE mechanism, TWO callers), which the problem-driven loop merges with or replaces; ONE stop rule likewise, the incumbent `cortex/growth_stop.py` (FR-023). Restart-with-grown-substrate is pinned by `tests/test_brain_growth_restart.py`, whose immediate-exit case carries the reachable red |
 | **cortical column construction** | under P4d (owner decision 2026-09-25) a column is the GROWTH STEP, a small layered batch placed on the anatomical map where error builds up; this microcircuit is a candidate source of its layer targets. `cortex/cortical_microcircuit.py::thalamic_drive` IS the input port (anatomically targeted, L4/L6 only; exactly 0.0 at 0 Hz; refuses a negative rate). Wiring a live caller is the open work; a spatial-PATTERN input (the port carries a scalar rate) is the genuinely absent half |
 | **self-recalibration** | `substrate/signal_calibrator.py`, running-baseline forms per P1 |
 | **future avenues** | open by construction — a newly identified channel joins this list and is built, on the same terms: named blocker, then channel, then fill, then measurement. Treating the list as complete is the failure this row exists to prevent |
@@ -507,11 +507,12 @@ four decisions that day. Review-enforced, PROVISIONAL until its gate (below) is 
 which retires the marker in the same commit; its placement, and its wording beyond the source lines and
 the (owner decision) tags, are disclosed session calls.** Source
 lines: *"Audit any part of the project including POLICIES.md and CLAUDE.md to follow this new
-structure"*; *"Weights transport is allowed as long as the engine can work, the repo should be reorganized to
-fit the new structure as well. 2 networks are allowed as long as it fits the new engine structure"*; *"The brain regions should be neurons and not coded like
-the current work tree structure on github"*. Its incidents are in `docs/POLICIES_EVIDENCE.md`.
+structure"*; *"Weights transport is allowed as long as the engine can work, the repo should be
+reorganized to fit the new structure as well. 2 networks are allowed as long as it fits the new engine
+structure"*; *"The brain regions should be neurons and not coded like the current work tree structure
+on github"*. Its incidents are in `docs/POLICIES_EVIDENCE.md`.
 
-**The engine.** The BRAIN, one network inside the one lake, grows NEW NEURONS to solve a problem and
+**The engine (a directive; specs/022's G rows build it).** The BRAIN, one network inside the one lake, grows NEW NEURONS to solve a problem and
 feeds them into the LIQUID RESERVOIR, a second network into which it also transports weights. READOUT
 NEURONS, driven by the reservoir and tuned by the brain through a learning rule, return to the brain,
 which recalls anything in the lake because it lives there.
@@ -529,8 +530,9 @@ same commit.
 clustering, predictive coding, simulated annealing) are examples, chosen by a benchmark that exists
 (P2) and credited at measurement (P8). The reservoir is spiking: only spiking candidates are selectable
 (owner decision "Spiking only can win").
-- Grow only while a problem is certified unsolved; stop, attempt, repeat. A contradictory problem is
-  a data diagnosis, not a trigger; "solved" is scored on data the growth did not fit.
+- Grow only while a problem's solved predicate fails; stop, attempt, repeat. A contradictory problem is
+  a data diagnosis, not a trigger; "solved" is a predicate on a normalized held-out score (P1 case
+  (a)), fixed when the problem is posed and scored on data the growth did not fit.
 - **Pause at a budget (owner decision):** each problem's growth spends a budget relative to a
   persisted running baseline (P1); at the limit the brain reports UNSOLVED, stops growing, and keeps
   the problem OPEN to retry after sleep or new teaching.
@@ -540,7 +542,7 @@ clustering, predictive coding, simulated annealing) are examples, chosen by a be
 
 **Permitted, on conditions this file keeps.**
 - **Two networks:** two jobs, not P2's additive failure; inside each job exactly one survives (one
-  reservoir, one grower, one rule per readout population).
+  reservoir, one grower, one stop rule, one tuning rule per readout job).
 - **Weight transport into the reservoir** (copied values or driving activity) feeds its activations;
   the e-prop invariant's transport stays forbidden.
 - **"The engine can work" is a P8 criterion,** pre-registered: a reachable red (on a problem the current
@@ -565,10 +567,11 @@ clustering, predictive coding, simulated annealing) are examples, chosen by a be
 
 **Gate specification:** an engine-works red composed from its rows under the plan's paired-seed rule;
 a reservoir rebuild check in the `lake_rebuild_gate` pattern with a planted-divergence red; a
-provenance check (every grown-unit record carries its position, layer, sign, label, the problem that
-licensed it and the sleep that kept or pruned it; an unlabeled unit is refused); the drawn connections
-as manifest ports with port charges. Count each before promoting; a rubber-stamp-sized output kills
-that gate, not the directive. **Not claimed:** fluid intelligence from a liquid plus a readout, a
+provenance check (every grown-unit record carries its position, layer, sign, label and the problem that
+licensed it, and a saved record the sleep that kept or pruned it; an unlabeled unit is refused); the
+drawn connections as manifest ports with port charges. Count each before promoting; a rubber-stamp-sized
+output kills that gate, not the directive. The engine-works red is a campaign: counted once, by G9, then
+review-enforced. **Not claimed:** fluid intelligence from a liquid plus a readout, a
 sleep-pruning benefit, growth from a unit count.
 
 ## P5 — Use the GPU for everything it actually speeds up

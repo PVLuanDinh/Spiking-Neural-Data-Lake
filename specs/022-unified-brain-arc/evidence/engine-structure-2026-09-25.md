@@ -112,7 +112,10 @@ was shown to the owner.
   and reason. The owner lowered the POLICIES.md ceiling on 2026-08-30. The owner saw ~+900 for POLICIES.md; the
   landed +1,106 there and the +164 on `docs/AGENT_COLD_START.md` were not shown (section 5).
 - The constitution's cap of three provisional principles counts owner directives adopted with a specified gate
-  separately. The audit offered this or dropping the constitution's PROVISIONAL marker on P7 and P8.
+  separately. The audit offered this or dropping the constitution's PROVISIONAL marker on P7 and P8. *(Withdrawn
+  in the 2026-09-25 panel fold: POLICIES.md marks P7 and P8 BUILT AND ASSERTING with no provisional mark and wins
+  where the two disagree, so the constitution drops those two marks and counts P6, P4c's amendment and P4d: three,
+  at the cap.)*
 - *(Added in the 2026-09-25 panel fold.)* The null rule, one sentence written verbatim into POLICIES P4d and its
   e-prop pointer, FR-041's and SC-019's notes, the plan's glossary and G9, and T117: an owner-drawn or owner-chosen
   part goes to the owner on a measured null, and only transport lapses on its own. For decision C's parts it departs

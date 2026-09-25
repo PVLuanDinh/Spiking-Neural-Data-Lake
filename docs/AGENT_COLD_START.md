@@ -119,7 +119,7 @@ them.
 workstream", T108 to T117, reds G-R0 to G-R9). A two-network engine. The brain grows neurons when its weights
 cannot solve a problem, in column-sized batches on an anatomical map ("grown columns on an anatomical map"; a
 region is a label on grown neurons), and feeds them into a SEPARATE spiking liquid reservoir, into which it also transports
-weights. It tunes readout neurons (STDP, topographical clustering, predictive coding) that read the reservoir and
+weights. It tunes readout neurons (e.g. STDP, topographical clustering, predictive coding) that read the reservoir and
 connect back into the brain. It grows again until the problem is solved or its budget pauses it (UNSOLVED, kept
 open), then sleeps to prune and save the new neurons and the problem's data in the one lake, where the
 reservoir's state also lives, rebuilt at start. The rows test it under their reds; the 2026-09-23 reading (growth

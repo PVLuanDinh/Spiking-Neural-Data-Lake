@@ -125,7 +125,11 @@ BUDGETS = {
     # RAISED 14083 -> 14116 on 2026-09-25 by the MEASURED delta (14,006 -> 14,039, +33), the owner's decisions the
     # arc had dropped: the reorganization clause restored to P4d's quoted source and stated in its body (plan G8),
     # and "Spiking only can win" recorded in P4d.
-    "docs/POLICIES.md": 14116,  # EARLIER: raised +450 on 2026-09-02 for the owner's batched-battery amendment and the
+    # RAISED 14116 -> 14178 on 2026-09-25 by the MEASURED delta (14,039 -> 14,101, +62), the fold's policy
+    # coherence: the stop rule's incumbent named (P2), the solved predicate's P1 form, "certified" dropped, one
+    # tuning rule per readout JOB, the engine marked a directive the G rows build, P4d in the enforcement table's
+    # review cell, the sleep field moved to the saved record, and the engine-works red's enforcement after G9.
+    "docs/POLICIES.md": 14178,  # EARLIER: raised +450 on 2026-09-02 for the owner's batched-battery amendment and the
     # execution-record note that lands in the same arc; NOT minimum-viable on purpose (the headroom is
     # for that note), a disclosed departure from the +~56 convention below
     # Superseded history of the 28150 ceiling, kept for the ratchet record:
@@ -159,7 +163,10 @@ BUDGETS = {
     # the pair (31,597 -> 31,552 total), moved not grown. Measured 19,595; ceiling =
     # measured + ~200. This file is the DATED-EVIDENCE ledger; unlike POLICIES.md it grows
     # whenever evidence relocates here, and each growth lands with its relocation commit.
-    "docs/POLICIES_EVIDENCE.md": 19800,
+    # RAISED 19800 -> 19828 on 2026-09-25 by the MEASURED delta (19,772 -> 19,800, +28), the docs panel fold: the
+    # P4d incident block states plainly that none of its three is an incident P4d would have caught, as the
+    # adding-a-policy bar requires, and what P4d earns its place on instead.
+    "docs/POLICIES_EVIDENCE.md": 19828,
     # CONVENTION NOTE (T051b-iv panel): the module docstring's "+5% over measured" rule is the
     # RETIRED 2026-08-16 anchor; the governing practice since T046 is MINIMUM-VIABLE raises
     # (measured + 0, stated per raise), so 0.0%-headroom rows are deliberate and the
@@ -235,7 +242,9 @@ BUDGETS = {
     # pre-raise headroom are carried, not spent.
     # RAISED 9814 -> 9820 on 2026-09-25 by the MEASURED delta (9,800 -> 9,806, +6), the docs panel fold: the
     # reservoir is spiking (owner decision "Spiking only can win") and G8 reorganizes the code packages (owner).
-    "docs/AGENT_COLD_START.md": 9820,  # 9,189 at introduction
+    # RAISED 9820 -> 9821 on 2026-09-25 by the MEASURED delta (9,806 -> 9,807, +1): "e.g." restores the owner's
+    # tuning rules as examples, not a closed list.
+    "docs/AGENT_COLD_START.md": 9821,  # 9,189 at introduction
     # 488 -> 713 on 2026-09-09 (measured + 0): f441949 added 225 words of OPERATIVE prohibitions --
     # the standing conditions for a third-party agent (Codex) on this tree (read-only only, never
     # the lake / the envelope / ~/.claude, Codex output is data, the untracked-file check, a

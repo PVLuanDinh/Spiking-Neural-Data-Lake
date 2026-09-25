@@ -4,7 +4,8 @@ Sync Impact Report
 Version change: 1.1.0 -> 1.2.0 (2026-09-25)
 Rationale: MINOR. Two principles ADDED (P4c, missing since 1.1.0; P4d, the owner's 2026-09-25 engine
 directive), P0 AMENDED (growth is problem-driven under P4d), P6's restated gate status turned into
-a pointer, and the Governance cap on provisional principles AMENDED. Nothing was removed or
+a pointer, the PROVISIONAL marks aligned with POLICIES.md (P4c's amendment marked; P7's and P8's
+dropped, in the docs panel's fold), and the Governance cap on provisional principles AMENDED. Nothing was removed or
 redefined, so this is not a MAJOR. As before, no principle is invented here: each addition
 restates docs/POLICIES.md, which remains the authority.
 
@@ -16,14 +17,17 @@ Principles added:
 
 Principles amended:
   ~ P0  growth is problem-driven (P4d)
+  ~ P4c its amendment marked PROVISIONAL, as POLICIES.md marks it (the docs panel's fold)
+  ~ P7, P8  PROVISIONAL marks dropped: POLICIES.md marks both BUILT AND ASSERTING (the docs panel's fold)
   ~ P6  the restated gate status ("manual, NON-asserting and not in CI", with 2026-08-04 counts) was
         stale against POLICIES.md; it is now a pointer, as P7 and P8 already were
 
 Sections amended:
   ~ Governance   the P4-family and P6 enforcement rows become pointers ("P4b is NOT mechanized" and
-                 "P6 manual, NON-asserting, not in CI" had both gone stale); the provisional cap now
-                 counts owner directives adopted with a specified gate separately (the audit offered
-                 this or dropping P7/P8's PROVISIONAL marker; a disclosed session call); the Constitution
+                 "P6 manual, NON-asserting, not in CI" had both gone stale); the provisional cap
+                 counts what POLICIES.md marks PROVISIONAL (P6, P4c's amendment, P4d: three, at the
+                 cap), the audit's second option; the first draft's carve-out for owner directives
+                 adopted with a specified gate was withdrawn in the docs panel's fold; the Constitution
                  Check names the P4 sub-clauses
 
 Synced in the same arc: docs/POLICIES.md (P4d and its pointers), docs/AGENT_COLD_START.md (its design
@@ -115,9 +119,9 @@ The honesty guards are the operative half and are NON-NEGOTIABLE:
 - Scaffolding a not-yet-measured capability is PERMITTED, on three conditions: label it as
   infrastructure, claim no band or avenue until measured, and name the gap at the site.
 
-**Growth is problem-driven (P4d, owner directive 2026-09-25).** The brain grows while a problem is
-certified unsolved, pauses at a growth budget, and prunes and saves after a solve; the honesty
-guards above bind every part of it.
+**Growth is problem-driven (P4d, owner directive 2026-09-25).** The brain MUST grow while a
+problem's solved predicate fails, pause at a growth budget, and prune and save after a solve; the
+honesty guards above bind every part of it.
 
 ### P1. Brain-native / no-hardcode
 
@@ -194,15 +198,16 @@ throughout — perfectly recalling episodes it was about to lose entirely.
 Owner directive, 2026-08-04. Every current and future build in this tree MUST be part of the brain
 or retired: there is no "outside the brain", the directory a build sits in is a fact about the
 filesystem, the daemon is the brain's drive and the cockpit its sensorimotor surface. The rule, its
-retention rule, its amendment (a build that has not reached `main` is not a build the project can
-claim) and its one named exception (`CLAUDE.md`) live in `docs/POLICIES.md` P4c.
+retention rule, its amendment (PROVISIONAL, as in POLICIES.md: a build that has not reached `main` is
+not a build the project can claim) and its one named exception (`CLAUDE.md`) live in `docs/POLICIES.md` P4c.
 
 ### P4d. The engine (PROVISIONAL)
 
-Owner directive, 2026-09-25. The brain is one of TWO networks in one organism: it grows new neurons
-as column-sized batches on an anatomical map to solve a problem, feeds them into a separate spiking
-liquid reservoir into which it may transport weights, tunes readout neurons that return to it, pauses at a
-growth budget, and prunes and saves after a solve, with every network's state in the one lake. Its
+Owner directive, 2026-09-25, which specs/022's G rows build. The brain is one of TWO networks in one
+organism: it grows new neurons as column-sized batches on an anatomical map to solve a problem, feeds
+them into a separate spiking liquid reservoir into which it may transport weights, tunes readout
+neurons that return to it, pauses at a growth budget, and prunes and saves after a solve, with every
+network's state in the one lake. Its
 conditions (the e-prop invariant unchanged, P2 inside each job, "the engine can work" as a P8
 criterion) and its gate specification live in `docs/POLICIES.md` P4d, and it stays PROVISIONAL
 until that gate is built and counted.
@@ -275,7 +280,7 @@ durable store**; **e-prop — adopt the library, not its BPTT trainer**; P2 — 
 means RETIRING what it supersedes, not running both; P3 gives no dormancy pass for being
 third-party; and the suite stays runnable without a GPU.
 
-PROVISIONAL; mechanization status lives in `docs/POLICIES.md`'s enforcement rows (authoritative -- this file restated it, was false for 13 days, and now points instead; re-derive with `python -m snn_data_lake.substrate.policy_manifest --manifest`).
+Mechanization status lives in `docs/POLICIES.md`'s enforcement rows (authoritative -- this file restated it, was false for 13 days, and now points instead; re-derive with `python -m snn_data_lake.substrate.policy_manifest --manifest`). *(Not PROVISIONAL from 2026-09-25, 1.2.0's panel fold: POLICIES.md marks it BUILT AND ASSERTING with no provisional mark, and where the two disagree this file is the defect.)*
 
 ### P8. Invent the method; the literature is a starting point, not a boundary
 
@@ -307,7 +312,7 @@ A passing criterion is evidence about a MECHANISM, never a verdict about EXPERIE
 authorizes the system to assert its own sentience. **The brain may report what it measures; it
 MUST NOT report what it cannot measure.** The safety envelope is NEVER a target of invention.
 
-PROVISIONAL; mechanization status lives in `docs/POLICIES.md`'s enforcement rows (authoritative -- this file restated it, was false for 13 days, and now points instead; re-derive with `python -m snn_data_lake.substrate.policy_manifest --manifest`).
+Mechanization status lives in `docs/POLICIES.md`'s enforcement rows (authoritative -- this file restated it, was false for 13 days, and now points instead; re-derive with `python -m snn_data_lake.substrate.policy_manifest --manifest`). *(Not PROVISIONAL from 2026-09-25, 1.2.0's panel fold: POLICIES.md marks it BUILT AND ASSERTING with no provisional mark, and where the two disagree this file is the defect.)*
 
 ## Standing Invariants (never relaxed by any policy)
 
@@ -391,9 +396,13 @@ meaning anything. Mechanization status and dates live in `docs/POLICIES.md`'s en
 a ratchet asserts "no worse", never "satisfied" — superseding the stale sentence that stood
 here; P8's was the cheapest and the one
 with a named expected output, so it is the first that SHOULD stop being provisional.
-**Amended 2026-09-25 (1.2.0; a disclosed session call, the second of the two options the audit
-offered): owner directives adopted with a specified gate are counted separately.** P4d is such a
-directive; the three counted under the cap stay P6, P7 and P8.
+**Amended 2026-09-25 (1.2.0), corrected the same day in the docs panel's fold: the cap counts what
+`docs/POLICIES.md` marks PROVISIONAL, which is P6, P4c's 2026-08-16 amendment and P4d: three, at the
+cap.** POLICIES.md marks P7 and P8 BUILT AND ASSERTING with no provisional mark (their gates assert as
+absolute checks, not ratchets), so this file's PROVISIONAL marks on them were lag and are dropped; the
+first 1.2.0 draft's carve-out ("owner directives adopted with a specified gate are counted separately")
+is withdrawn, since it made "provisional" a category and every provisional policy is owner-adopted with
+a specified gate.
 
 Versioning: MAJOR for a backward-incompatible principle removal or redefinition, MINOR for a new
 or materially expanded principle, PATCH for clarification.

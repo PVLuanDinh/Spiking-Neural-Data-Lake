@@ -130,7 +130,10 @@ is open for the owner (`engine-structure-2026-09-25.md` section 5).
 G-R7 fires if a grown neuron can be admitted without its unit label (position, layer, Dale sign, region label, the
 problem that grew it) and no gate refuses it, if a neuron whose position reads a refused label is admitted (section
 3), or if the tests above name no falsifiable comparison. The controls are a constructed grown neuron with no label and
-a neuron placed in refused territory (insula), each of which the gate must refuse; the gate lands with the first code that admits
+a neuron placed in refused territory (insula), each of which the gate must refuse; five constructed grown neurons,
+each missing ONE field and each refused (per-field attribution); and one fully labeled neuron, which the gate must
+admit, so a gate that refuses everything reds (specificity, added 2026-09-25 in the docs panel's fold). The sleep
+that kept or pruned a unit is a field of its SAVED record (G6(d), G-R6), not of its admission; the gate lands with the first code that admits
 labeled grown neurons (G3's attachment arms at the latest), and T115 closes only then.
 
 ## 8. Sources

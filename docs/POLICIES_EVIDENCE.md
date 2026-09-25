@@ -1342,4 +1342,6 @@ inertness -- mark unproven cases UNCERTAIN, not dormant.)
 A brain that grew and exited kept 0 of 2 units until `Brain._flush_growth` (P4b; the P0 status
 block above). Until 2026-09-24 the live chat learner received no correction and its reply discarded
 its prediction (specs/022 G0(a), G0(b)), so no problem could be reported unsolved. The grower is
-stateless per percept (`NGSNN._rates` starts at V = 0), so it carries no problem state.
+stateless per percept (`NGSNN._rates` starts at V = 0), so it carries no problem state. None is an
+incident P4d would have caught that P4b or G0 did not; P4d earns its place on the owner's 2026-09-25
+directive. Re-verified against the tree 2026-09-25.
