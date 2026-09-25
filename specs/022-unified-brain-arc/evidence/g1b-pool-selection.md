@@ -6,7 +6,9 @@ demonstrates the determinism contract and its constructed red." Arm (b) is "ONE 
 research-tier reservoirs under P2, carrying state"; arm (c) is "the same pool reset each percept". FR-041: the pool
 "MUST be attributed by carried-versus-reset state under a frozen causal information contract". G-R1 (Part F, amended
 2026-09-25 with this file) is G1(c)'s red; this arc selects the pool G1(c) tests. The harness is G1(a)'s
-(`evidence/g1a-causal-contract.md`, `cortex/memory_diagnostic.py`). Status: PRE-REGISTERED. Two Codex design reads and one
+(`evidence/g1a-causal-contract.md`, `cortex/memory_diagnostic.py`). Status: SELECTION RECORDED (2026-09-25; section 3.4:
+winner g1 LSM; 3.5: the losing ports deleted; 3.6: the panel and its fold; section 2 stays the frozen pre-registration
+with its two dated amendments). Two Codex design reads and one
 Claude Opus read are folded (section 2.12); the owner paused Codex on 2026-09-25. Section 2 is frozen at the commit
 that lands this file. Section 3 records the build, the runs and every deviation from section 2.
 
@@ -377,8 +379,8 @@ apply, BEFORE any tuning. Every red asserts its specified observable divergence.
   - the winner's Carried and Settled forms, on all four selection recordings, after selection.
   Red: (pool-noise), which adds unseeded `os.urandom` noise to one float membrane (g1, g2) or flips one bit chosen by
   `os.urandom` (g3, g4). It must change the continuation state AND the phi fingerprints.
-  *DATED AMENDMENT 2026-09-25, after campaign 1 halted on this red and before any selection replay existed (section
-  3.3):* "the continuation state" is read as the CHAIN of the pool's complete continuation-state fingerprint at every
+  *DATED AMENDMENT 2026-09-25 (a session call under the owner's 2026-09-05 authorization), after campaign 1 halted on
+  this red and before any selection replay existed (section 3.3):* "the continuation state" is read as the CHAIN of the pool's complete continuation-state fingerprint at every
   percept boundary, not the final state alone (`pool_selection.noise_red_fires`, `recurrent_pool.pool_noise_red`), and
   the twins compare that chain beside the final state. The final state is one sample: g3 forgot every kick by seed
   203's last percept while its phi changed, so the final-state red was blind. The final state is the chain's last
@@ -649,7 +651,9 @@ pool arm with R-b7's binding, the BLAS pin, and the R-b6 family. `cortex/pool_se
 steps. Verified by the orchestrator: the self-checks, 126 tests, ruff, format, the dormancy gates, the ledger,
 `gradient_claim_gate` and `eprop_transport_gate`. The builder found `eprop_transport_gate --assert` red on part A's
 `_esn_torch_leg` (a layout transpose read as an update); it is declared NOT_A_RULE and moved out of the nested class
-(`594cbd5`). Section 2.1's dated amendment (only g1 and g2 can win) landed at `4b237c6`, before any campaign step.
+(`594cbd5`). *(The G1(b) panel, lens P F6: that entry and its commit message gave the two layouts backwards;
+EpropLIFBase stores W_rec as [post, pre] and the port as [pre, post]. The finding stands; the entry left with g2,
+section 3.5.)* Section 2.1's dated amendment (only g1 and g2 can win) landed at `4b237c6`, before any campaign step.
 
 ### 3.3 Campaign 1 at `4b237c6`: HALTED at check203 (a red that did not fire)
 
@@ -660,10 +664,14 @@ store, `archive/g1b-2026-09-25/campaign1_4b237c6.tar.gz`).
   S 31, since sigma_plan 0.0436 exceeds it); tune 43.8 min. All COMPLETED.
 - **check203 HALTED, "a red that does not fire".** R-b1's (leak) red fired at all three cuts (296, 593, 890). R-b4's
   (pool-noise) red fired for g1, g2 and g4 and did not fire for g3: over 931 kicks g3's phi changed, but its final
-  continuation state equalled the unkicked twin's. After the window g3's parameters are frozen, and at its tuned
-  configuration (plasticity 0.004/0.001, H_IP 0.2, g 4, T_in 1) the state after a percept is set by that percept, so
-  the last kick washed out. On the module fixture (seed 100, 200 kicks) the same configuration's final state does
-  change: the final-state conjunct is a one-sample event.
+  continuation state equalled the unkicked twin's. g3's tuned configuration was index 6 {plasticity off, H_IP 0.2, g 8,
+  T_in 1}: a pool without plasticity whose state after a percept is set by that percept, so a kick reaches the end
+  only if the last kicks propagate. At that configuration the final-state witness is unreliable: the final state was
+  unchanged in campaign 1 on seed 203 and on the module fixture (seed 100, 200 kicks), and changed in campaign 2 on
+  seed 203, while the chain and phi changed in all three. *Corrected 2026-09-25 by the G1(b) panel fold (lens P F1,
+  lens I F6): this bullet first named the sigma step's configuration (index 0: plasticity 0.004/0.001, g 4), read from
+  the wrong step's summary, and called the failure a one-sample event on THAT configuration's fixture run, whose final
+  state does change; `f27ae70`'s commit message repeats the error. The repair stands on the corrected reading.*
 - **Classification and repair (section 2.8).** A red that does not fire is a shared-instrument failure: selection
   halts with nothing selected, the defect is fixed, and every recording and replay re-runs at the new head. No
   selection replay (204-207, 5005-5008) had been written, so nothing was inspected and the selection seeds stand. The
@@ -680,9 +688,20 @@ Run detached on 2026-09-25 from 07:41 to 08:39 CDT, clean at `f27ae70`; all ten 
 memory store, `archive/g1b-2026-09-25/campaign2_f27ae70.tar.gz`). Step times: record 8.7 min, mechanism 6 s,
 instrument 20 s, screen 1.5 min, threads 3.4 min, sigma 38 s, tune 40.1 min, check203 54 s, select 1.9 min, winner
 17 s.
-- **The reproducibility witness held.** The twelve recordings match campaign 1's in every summary field except
-  `recorded_at`; the screen manifest is again crc32 1596141941 (no drops); the sigma table is identical (sigma_dev
-  0.01741, g4's readout sd; band_D 0.01741; S 31, since sigma_plan 0.0436 exceeds sigma_dev).
+- **The reproducibility witness held for what it named** (section 3.3). The twelve recordings match campaign 1's in
+  every summary field except `recorded_at`; the screen manifest is again crc32 1596141941 (no drops); the sigma table is
+  identical (sigma_dev 0.01741, g4's readout sd; band_D 0.01741; S 31, since sigma_plan 0.0436 exceeds sigma_dev).
+- **The tuning did not fully reproduce** (the G1(b) panel, lens I F1 and lens P F4, each reproduced by the
+  orchestrator). D, D_task and eligibility are identical in both campaigns for all 128 tuning entries; only the
+  timings differ, and section 2.5's cost step (read in the code as "within 10% of the lowest cost") is decided by
+  timing noise between jobs larger than that band. g4's tuned configuration differs: index 28 {K 3, tau 0.1} in
+  campaign 1, index 3 {K 2, tau 0} in campaign 2. g1's tuned index 2 heads the same 8-way D_task tie in both
+  campaigns (indices 1, 2, 6, 7, 8, 10, 30, 31): it beat index 8 {k 8, w 0.5, lambda 0.9, g 8, T_in 1} on manifest
+  order in campaign 1 (both costs 0.0498) and on cost in campaign 2 (0.0401 against 0.0459), although index 8 has the
+  higher D_task (0.1337 against 0.1314) and D (-0.0027 against -0.0066). The winner (g1 over g2) and g1's configuration
+  are the same under both campaigns' costs; g4's reference row, and the reference ranking's g1-before-g4 order, are
+  timing draws. Filed as an opening: a later rule that relies on the cost step needs a structural operation count or a
+  noise band measured on configurations doing identical work.
 - **check203.** R-b1's (leak) red fired at all three cuts (296, 593, 890). R-b4's (pool-noise) red, as amended, fired
   for all four candidates. Every candidate's fresh-process twins on 203 matched: no pool difference, no learner
   difference. Nothing was refused.
@@ -703,12 +722,23 @@ instrument 20 s, screen 1.5 min, threads 3.4 min, sigma 38 s, tune 40.1 min, che
 - **The winner's R-b4 (step 9)** on 204-207, Carried and Settled, fresh-process twins: no pool or learner difference
   on any of the eight. Verdict HELD.
 - **Reported beside D, never used to select:** the grower's D is -0.0050 (g1), -0.0195 (g2), +0.0011 (g3) and -0.0372
-  (g4), and its D_task is 0.008, -0.055, 0.073 and 0.161: noisy, and small against the decoder's D_task (section 1.9's
-  finding stands). Per-seed D for g1: -0.0063, +0.0082, +0.0007, -0.0276; per-seed D_task: 0.129, 0.130, 0.110, 0.137.
-- **What this licenses (descriptive only, section 2.9).** Through the fixed decoder, carried state adds nothing
-  measurable on the live stream for any candidate (every D near -0.006, inside band_D), as section 1.10 predicted; on
-  the synthetic history family it helps every candidate by about 0.12. No claim that carried state helps is licensed
-  here; that is G1(c)'s primary endpoint (S 31, seeds from 300), unchanged by these numbers.
+  (g4), and its D_task is 0.008, -0.055, 0.073 and 0.161: noisy; below the decoder's D_task for g1, g2 and g3, above it
+  for g4 (0.161 against 0.1245). Campaign 2 did not measure the grower's size, which section 1.9's finding is about.
+  Per-seed D for g1: -0.0063, +0.0082, +0.0007, -0.0276; per-seed D_task: 0.129, 0.130, 0.110, 0.137.
+- **The startup flag, reported beside D as section 2.2 asks.** On the four selection recordings the Carried form's
+  startup diagnostic flags g1 on 4 of 4 (transient at S 64: 0.160-0.192), g2 on 4 of 4 (0.051-0.058), g4 on 2 of 4 and
+  g3 on 0 of 4. g1's and g4's flags are section 3.1 item 9's T_in 1 case (a binary phi cannot equal a fractional
+  long-run mean).
+- **A learner-side term inside D** (the panel's lens I F5; reproduced by the orchestrator with the lens's independent
+  g1 pool and readout). Section 2.2's shared window leaves the Settled readout 256 training pairs from the carried
+  regime. Re-read with Settled from the first percept, the window term averages -0.00906 on the 12 live recordings
+  (all already exposed; sd 0.01569, paired t -2.00 at 11 d.f.; -0.0415 on seed 101, -0.0386 on seed 207) and +0.00103
+  on 32 unregistered synthetic seeds (t +0.50). On live data it pushes D toward the null. Filed as an opening for
+  G1(c)'s pre-registration: a Settled-from-the-first-percept readout control reported beside D.
+- **What this licenses (section 2.9: nothing confirmatory).** D (Carried minus Settled) is near -0.006 for every
+  candidate, inside band_D, as section 1.10 predicted the live values would tie, and D_task is about +0.12. Under
+  section 2.2 neither licenses a statement about cross-percept information before G1(c)'s within-block time shuffle;
+  G1(c)'s primary endpoint (S 31, seeds from 300) is unchanged by these numbers.
 - **Dispositions (section 2.9).** g1 LSM at its tuned configuration is G1(c)'s pool. As an LIF winner it passes the
   migration gate (host `KernelTick`) before G1(c)'s confirmatory run. The losing ports (g2, g3, g4) are deleted from the
   pool module after this record; `f27ae70` is the commit that holds them. The four research sources are untouched;
@@ -749,3 +779,25 @@ holds the deleted ports g2 (ESN-LSM), g3 (SORN) and g4 (RBN), and campaign 2 sel
   these are green: the three module self-checks, the three test files (92 passed; 1 skipped, as at the base),
   `dormancy_gate`, `method_dormancy_gate`, `dependency_ledger` (`threadpoolctl` still used), ruff and the format
   check. The arc's battery is the verification of record.
+
+### 3.6 The G1(b) panel and its fold
+
+Three Claude Opus lenses on the frozen arc at `8252a72` (Codex held by the owner): I (instrument), P (policy and
+pre-registration honesty) and G (integration). They filed 18 findings (I 6, P 8, G 4): 0 BLOCKER, 5 MAJOR, 13 MINOR;
+three are the same finding from two lenses (I F1 = P F4, I F6 = P F1, G F1 = P F5), so 15 are distinct. The
+orchestrator reproduced every claim before folding it (one probe first ran blind, before torch had loaded its OpenMP
+runtime, and was re-run with it loaded). Lens I's second instrument, written from section 2 with no repo imports,
+reproduced the manifest, sigma_dev, the tuning heads, every selection number and the winner with zero disagreements,
+and its independent g1 pool and readout matched the harness on 19,096 events.
+- **Folded into this record:** P F1 = I F6 (section 3.3's configuration and diagnosis), P F2 (the grower sentence),
+  P F3 (what this licenses), P F4 = I F1 (the tuning's reproducibility), P F6 (the layouts in 3.2), P F7 (the
+  amendment's attribution), P F8 (the status line), I F4 (the startup flag), I F5 (the learner-side window term).
+- **Folded into code:** I F2 (`e2f9873`: the BLAS limiter no longer caps torch's OpenMP, and R-b3's verdict requires
+  the torch setting that ran; in both campaigns R-b3's "torch 4" settings ran at the BLAS count, and no pool uses
+  torch, so its passes stand); I F3 (`e2f9873`: R-b4's twins must be two processes, compared by pid, now in step 9 as
+  well; every real twin pair in both campaigns ran in distinct processes); P F5 = G F1 (`2f13391`: the EXEMPT reasons).
+- **Folded into the plan and tasks:** G F2 (the G1 row and T109 record the deletion; `SELECTABLE` is `("lsm",)`).
+- **Openings, not folded:** G F3 (the orientation graph still lists the deleted ports: `graphify update .` at
+  close-out); G F4 (`dormancy_gate` ignores an EXEMPT row that names no module; before G8's moves); the cost step's
+  noise (from I F1); G1(c)'s Settled-from-the-first-percept control (from I F5).
+- The fold is battery-verified only; it was not re-panelled.
