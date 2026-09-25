@@ -673,3 +673,43 @@ store, `archive/g1b-2026-09-25/campaign1_4b237c6.tar.gz`).
   final state and phi only, for the diagnosis). Not the tuning rankings.
 - **A reproducibility witness for campaign 2:** the pool, readout and recorder code is unchanged by the repair, so
   campaign 2's recordings, screen manifest and sigma table must reproduce campaign 1's; a difference is a defect.
+
+### 3.4 Campaign 2 at `f27ae70`: the selection record
+
+Run detached on 2026-09-25 from 07:41 to 08:39 CDT, clean at `f27ae70`; all ten steps COMPLETED (archived in the
+memory store, `archive/g1b-2026-09-25/campaign2_f27ae70.tar.gz`). Step times: record 8.7 min, mechanism 6 s,
+instrument 20 s, screen 1.5 min, threads 3.4 min, sigma 38 s, tune 40.1 min, check203 54 s, select 1.9 min, winner
+17 s.
+- **The reproducibility witness held.** The twelve recordings match campaign 1's in every summary field except
+  `recorded_at`; the screen manifest is again crc32 1596141941 (no drops); the sigma table is identical (sigma_dev
+  0.01741, g4's readout sd; band_D 0.01741; S 31, since sigma_plan 0.0436 exceeds sigma_dev).
+- **check203.** R-b1's (leak) red fired at all three cuts (296, 593, 890). R-b4's (pool-noise) red, as amended, fired
+  for all four candidates. Every candidate's fresh-process twins on 203 matched: no pool difference, no learner
+  difference. Nothing was refused.
+- **Selection** on 204-207 (live) and 5005-5008 (synthetic), through the reference readout. The non-inferiority bar is
+  (e1-0) 0.9079 - 0.05 = 0.8579 on the Carried live mean.
+
+  | candidate | tuned configuration | D | D_task | cost (ms per percept) | Carried live mean | eligible | selectable |
+  |---|---|---|---|---|---|---|---|
+  | g1 LSM | k 8, w 0.25, lambda 0.9, g 4, T_in 1 | -0.0063 | 0.1266 | 0.040 | 0.884 | yes | yes |
+  | g2 ESN-LSM | rho 0.5, g 4, T_in 2 | -0.0055 | 0.1242 | 0.166 | 0.878 | yes | yes |
+  | g3 SORN | plasticity off, H_IP 0.2, g 8, T_in 1 | -0.0061 | 0.1231 | 0.081 | 0.888 | yes | reference |
+  | g4 RBN | K 2, p 0.7, f 0.25, clamp, tau 0, T_in 1 | -0.0058 | 0.1245 | 0.042 | 0.880 | yes | reference |
+
+  Every D lies within band_D of the best, so the ordering went to D_task: g1 and g2 are within 0.005, then cost, where
+  g1 is under a quarter of g2's. **Ranking g1, g2; winner g1 LSM.** The reference ranking over all four (g1, g4, g3,
+  g2) also puts g1 first, so section 2.1's amendment did not change the winner. No candidate's Carried phi was
+  degenerate on any live recording.
+- **The winner's R-b4 (step 9)** on 204-207, Carried and Settled, fresh-process twins: no pool or learner difference
+  on any of the eight. Verdict HELD.
+- **Reported beside D, never used to select:** the grower's D is -0.0050 (g1), -0.0195 (g2), +0.0011 (g3) and -0.0372
+  (g4), and its D_task is 0.008, -0.055, 0.073 and 0.161: noisy, and small against the decoder's D_task (section 1.9's
+  finding stands). Per-seed D for g1: -0.0063, +0.0082, +0.0007, -0.0276; per-seed D_task: 0.129, 0.130, 0.110, 0.137.
+- **What this licenses (descriptive only, section 2.9).** Through the fixed decoder, carried state adds nothing
+  measurable on the live stream for any candidate (every D near -0.006, inside band_D), as section 1.10 predicted; on
+  the synthetic history family it helps every candidate by about 0.12. No claim that carried state helps is licensed
+  here; that is G1(c)'s primary endpoint (S 31, seeds from 300), unchanged by these numbers.
+- **Dispositions (section 2.9).** g1 LSM at its tuned configuration is G1(c)'s pool. As an LIF winner it passes the
+  migration gate (host `KernelTick`) before G1(c)'s confirmatory run. The losing ports (g2, g3, g4) are deleted from the
+  pool module after this record; `f27ae70` is the commit that holds them. The four research sources are untouched;
+  each one's P2 disposition is a separate row, filed as an opening.
