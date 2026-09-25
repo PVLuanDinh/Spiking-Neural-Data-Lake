@@ -139,10 +139,58 @@ _G0C_LAZY_ATTRS = {
 }
 
 
+# distinct-from: substrate/home.py, thalamus/reentrant_workspace.py -- phrase overlap only, as
+#   with cortex/prior_drift_harness.py, neuromodulation/intrinsic_motivation.py and
+#   neuromodulation/raphe_serotonin.py (an append observer, a theta authority, a least-squares
+#   readout, a learning-progress read, a port declaration); all five sites read. The legacy-name
+#   incumbent is the alias layer in snn_data_lake/__init__.py (`_MOVED`), whose S1b `_LEGACY`
+#   table this provider then returns.
+def _g0c_legacy_modules():
+    """G8 (specs/022, stage S0): THE one provider of the checkpoint class-path translation map,
+    {legacy module: current module}, both relative to the package ("cortex.lif_neuron") -- the form
+    the G8 pre-registration (evidence/g8-reorganization.md 2.5) gives the alias layer's `_LEGACY`.
+    EMPTY at S0: no module has moved, so every stored class path translates to itself, and only
+    tests/test_g8_checkpoint_translation.py injects a map. RE-POINTED at G8's S1b to return the
+    alias layer's own `snn_data_lake._LEGACY` table -- the one legacy table, beside the flat
+    `_MOVED` aliases of `snn_data_lake/__init__.py` -- never a second table (P2)."""
+    return {}
+
+
+# distinct-from: cerebellum/jepa_world_model.py, cortex/attention_schema.py -- phrase overlap only,
+#   as with cortex/brain.py (`_learned_route`), cortex/h01_ingest.py and cortex/paradigm_b_matcher.py
+#   (a band centroid, a stub brain, a route read, a pin key, a query runner); all five sites read.
+#   This is the codec's own read-side class-path step; the one map it reads is the provider above.
+def _g0c_translate(name, legacy):
+    """A stored `__cls__` path through the legacy map, on the read side only (G8 S0): the longest
+    legacy module that prefixes the name followed by "." is replaced by its current module, and the
+    qualname -- which may itself be dotted -- is kept whole; identity when no legacy module matches.
+    A translated name must RESOLVE (its module imports and holds that class) or the restore is
+    refused: the stored checkpoint is never rewritten, and nothing is guessed."""
+    import importlib
+
+    pkg = "snn_data_lake."
+    rest = name[len(pkg) :] if name.startswith(pkg) else ""
+    hits = [old for old in legacy if rest.startswith(old + ".")]
+    if not hits:
+        return name
+    old = max(hits, key=len)
+    module, qualname = pkg + legacy[old], rest[len(old) + 1 :]
+    try:
+        target = importlib.import_module(module)
+    except ImportError as exc:
+        raise ValueError(f"checkpoint class translation refused: {module} does not import") from exc
+    for part in qualname.split("."):
+        target = getattr(target, part, None)
+    if not isinstance(target, type):
+        raise ValueError(f"checkpoint class translation refused: {module} has no class {qualname}")
+    return f"{module}.{qualname}"
+
+
 def _merge_state(target, saved):
     """Validate and stage the entire tree before mutating any existing instance."""
     import importlib
 
+    legacy = _g0c_legacy_modules()
     pending, seen = [], {}
 
     def stage(fresh, value):
@@ -167,6 +215,7 @@ def _merge_state(target, saved):
             name, attrs = value["__cls__"], value["attrs"]
             if type(name) is not str or any(type(k) is not str for k in attrs):
                 raise ValueError("malformed checkpoint class or attributes")
+            name = _g0c_translate(name, legacy)  # G8 S0: before the lazy lookup AND the compare
             if fresh is None:
                 # The only absent instances in this protocol are lazy BCM/cascade cells.
                 if name not in _G0C_LAZY_ATTRS:

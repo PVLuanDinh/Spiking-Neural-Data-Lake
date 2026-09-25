@@ -1401,4 +1401,62 @@ comparison and the tripwire instead.
 
 ## 3. Results
 
-Empty. The results begin at S0.
+### 3.1 S0 -- checkpoint class paths translated at restore (read side, fails closed)
+
+Measured 2026-09-25 on the S0 tree (base `36cfc7a` plus this commit), `.venv-lake` (3.14.6 free-threaded).
+
+**What landed** (`cortex/interaction_learning.py`). `_g0c_legacy_modules()` is the ONE provider of the map,
+`{legacy module: current module}`, package-relative (2.5's `_LEGACY` form); it returns `{}` at S0 and is re-pointed at
+S1b to return the alias layer's `snn_data_lake._LEGACY`, never a second table. `_g0c_translate(name, legacy)` replaces
+the longest legacy module that prefixes the stored name followed by "." with its current module, keeps the qualname
+whole, is the identity when none matches, and refuses (`ValueError`) a mapped name that does not resolve: a module that
+does not import, or one without that class. `_merge_state` reads the provider once per restore and translates each
+stored `__cls__` before the `_G0C_LAZY_ATTRS` lookup and before the class comparison. Unchanged: `_encode_state` (a
+save writes the current path), the schema `g0c.v1`, every existing refusal text, the lake. P2: `graph-exists.js
+"legacy module map"` names the incumbent, the back-compat alias layer in `snn_data_lake/__init__.py` (`_AliasLoader`,
+`_MOVED`); the provider becomes that layer's consumer at S1b. The Write/Edit duplicate hook flagged ten term-overlap
+sites across two edits; all ten were read, none is a second mechanism, and the clearance is the two `# distinct-from:`
+markers in the diff. Declared delta (2.6) "S0: none": the dormancy gate's and the method-dormancy gate's full outputs
+are byte-identical to the base head's (the latter run over a `git archive` export of `36cfc7a`), and citation_guard's
+STRICT (0, 1 exemption) and report-only BROAD (1,075 across 239 files) equal the export's; only its scanned-file and
+citation counts rise, by this commit's own tracked test file and its 16 citations, all resolving. Equality was read with
+`cmp`, whose positive control fires: a `diff` wrapper in this environment printed "identical" for two files that differ.
+
+**R-L0** (`tests/test_g8_checkpoint_translation.py`, 9 tests; the readings are the module's own printed readings).
+
+| reading | value |
+|---|---|
+| writer: `make_brain(seed=100, persist=True)`, the frozen `_g0c_schedule`, flushed | the lake's newest `interaction_learner.json` equals the live learner's `state_dict()`, read back. The explicit flush returned False, meaning unchanged: the schedule's last completed night had already saved this state (`save_named_state`'s contract). The test's first draft asserted True; that was a test defect, corrected before the green run |
+| `_g0c_walk` digest (sha256 of its sorted-key JSON) | taught `fcb5badee9fd9cb7480008bf40a8ac2fa45a7df628bfe28b852eab58bb699d65`; the same brain before teaching `cc6837ef364389001cf4dd7151aa8898e065aa54de9230fe2e7a8f8f72981a39`; both identical in two independent runs |
+| checkpoint census | 17 classes, 472 objects (1.7 reproduced): `SpikingInteractionLearner` 1, `RSTDPNeuron` 9, `LIFNeuron` 9 |
+| the plant | all 19 rewritten to `snn_data_lake.r_l0_legacy.<pkg>.<mod>.<qualname>`, none of the three current names left, saved back with the real `save_state` (written, read back equal, schema `g0c.v1`) |
+| PASS arm: the planted map (3 rows), `_report_ixn_refusal` raising | no refusal; the digest equals the writer's; the 20 answers on the frozen G0 probe set (`_conv_flat(_CONV_TEST)`, 5 distinct intents) equal |
+| read side, the same arm | the stored checkpoint unchanged by the restore; after the arm's close, the lake's newest checkpoint has schema `g0c.v1` and exactly the writer's class census, current paths |
+| control: an EMPTY map | `restore refused; learner stays fresh: ValueError: checkpoint class mismatch` |
+| control: an unmapped unknown class (the planted map without `LIFNeuron`'s row) | `restore refused; learner stays fresh: ValueError: checkpoint class mismatch` |
+| control: a name mapped to a missing target (`LIFNeuron`'s row to `r_l0_missing.lif_neuron`) | `restore refused; learner stays fresh: ValueError: checkpoint class translation refused: snn_data_lake.r_l0_missing.lif_neuron does not import` |
+
+The two row controls differ from the PASS arm's map in `LIFNeuron`'s row only, so each refusal is attributed to that
+row (the PASS arm shows the other two rows translate). **The reachable red, shown before the wiring** (the test first;
+the provider present, `_merge_state` not yet reading it): the PASS arm refused `checkpoint class mismatch` and the
+missing-target arm refused with that text instead of its own; after the one-line wiring, 9 of 9 pass. The module's
+in-process rules: the identity for an empty map, for a key that is a string prefix of the module but not followed by
+"." and for a name outside the package; the longest legacy module wins over a shorter one mapped to a missing target;
+a dotted qualname kept whole (a planted nested class resolves); a missing class and a module that does not import each
+refuse. Every arm ran in its own fresh process over a fresh copy of the written home, `home()` asserted equal to that
+copy before any construction.
+
+**Wall time:** the module 23.5 s (pytest 23.26 s, of which the fixture's six processes 22.62 s), `--no-cov`.
+
+**C2(a)'s baseline at S0's tree** (F13): one fresh interpreter per module over every `.py` in `git ls-files
+src/snn_data_lake` except package `__init__` files, each with its cwd and `NORD_HOME` in a scratch directory and
+bytecode writes off, 12 workers, 16.1 s wall. **414 attempted, 13 failed**; 0 files written; `git status` identical
+before and after. The full failure list, every one a `ModuleNotFoundError`:
+
+- `lakehouse` (2): `delta_demo`, `medallion` (`polars`).
+- `reasoning` (11): `arc_agi.brain_player`, `arc_agi.rule_inducer`, `arc_agi.run_arc` (`env`); `arc_agi.play`,
+  `arc_agi.play_brain` (`arcengine`); `ng_snn.data` (`tonic`); `ng_snn.extend_3conv`, `ng_snn.nmnist_pipeline`,
+  `ng_snn.nmnist_spatiotemporal`, `ng_snn.nmnist_spatiotemporal_3conv`, `ng_snn.train_softhebb` (`softhebb_mnist`).
+
+None is in a moving package (`lakehouse/` and `reasoning/` stay, 2.2). This is the importable set C2(a) compares
+against.
