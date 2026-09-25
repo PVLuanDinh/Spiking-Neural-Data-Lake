@@ -1290,7 +1290,9 @@ def step_check203(out):
         r_b4[c] = {
             "pool_differs": pool_differs,
             "learner_differs": learner_differs,
-            "executions": first["execution_id"] != second["execution_id"],
+            # two PROCESSES (the ids' pid parts; whole ids differ even in one process: G1(b) panel)
+            "executions": first["execution_id"].split("-")[0]
+            != second["execution_id"].split("-")[0],
         }
     if not all(red.values()) or not all(noise_red.values()):
         raise Halt("a red that does not fire", {"R-b1 leak": red, "R-b4 pool noise": noise_red})
@@ -1307,7 +1309,7 @@ def step_check203(out):
         raise Halt("R-b1", r_b1)
     for c, row in r_b4.items():
         if not row["executions"]:
-            raise Halt("R-b4", f"{c}: the twins are one execution")
+            raise Halt("R-b4", f"{c}: the twins are one process")
         if row["pool_differs"]:
             refused[c] = ["R-b4: phi or pool state differ between fresh-process twins on 203"]
         elif row["learner_differs"]:
@@ -1411,6 +1413,8 @@ def step_winner(out):
                 _checked(jobs[f"{form} {seed} {twin}"], stream, cell=_bound(seed, spec))
                 for twin in ("1", "2")
             )
+            if first["execution_id"].split("-")[0] == second["execution_id"].split("-")[0]:
+                raise Halt("R-b4", f"{form} {seed}: the twins are one process")
             pool_diff, learner_diff = _twins_differ(first, second)
             rows[f"{form} {seed}"] = {"pool_differs": pool_diff, "learner_differs": learner_diff}
             if not pool_diff and learner_diff:

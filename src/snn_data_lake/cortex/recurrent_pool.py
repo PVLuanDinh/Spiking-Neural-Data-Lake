@@ -205,11 +205,14 @@ def _lsm_draw(seed, n, k, w):
 
 
 # distinct-from: cortex/everyday_battery.py -- sites read (a NamedTuple, prior_drift_harness's host recorder, episodic_recall's unbind); none limits BLAS threads
+# distinct-from: cortex/memory_diagnostic.py -- its L102 reports the loaded pools (threadpool_info), never limits them; pool_selection.py L684 CALLS this limiter
 def _blas_threads(limit):
-    """threadpoolctl's limit on every loaded BLAS: R-b3, the cost and the harness's one-thread pin."""
+    """threadpoolctl's limit on every loaded BLAS: R-b3, the cost and the harness's one-thread pin.
+    BLAS only (G1(b) panel, 2026-09-25): an unscoped limit also caps torch's OpenMP runtime, so R-b3's
+    torch-at-4 setting silently ran at the BLAS count once torch had loaded OpenMP."""
     from threadpoolctl import threadpool_limits
 
-    return threadpool_limits(limits=limit)
+    return threadpool_limits(limits=limit, user_api="blas")
 
 
 # ---- the pools (section 2.2's contract, section 2.3's rules) -------------------------------------
@@ -686,9 +689,11 @@ def check_r_b3(
             json.dumps(run, sort_keys=True) for key, run in runs.items() if key.endswith("/" + form)
         }
         equal[form] = len(seen) == 1
+    # every requested torch setting must be the one that ran (it silently was not before 2026-09-25)
+    applied = all(s["torch_effective"] == s["torch"] for s in settings)
     return {
-        "verdict": all(equal.values()),
-        "numbers": {"equal": equal, "settings": settings, "runs": runs},
+        "verdict": all(equal.values()) and applied,
+        "numbers": {"equal": equal, "applied": applied, "settings": settings, "runs": runs},
     }
 
 
