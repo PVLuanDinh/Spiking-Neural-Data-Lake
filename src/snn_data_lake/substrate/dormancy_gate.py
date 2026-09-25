@@ -127,11 +127,11 @@ EXEMPT = {
     ),
     "recurrent_pool": (
         "permanent",
-        "G1's pool-selection benchmark component (governed); consumers: cortex/memory_diagnostic.py's pool arms and campaign, and tests/test_recurrent_pool.py",
+        "G1(b)'s selected pool, g1 LSM, a governed benchmark component until G1(c)'s disposition (g1b section 2.9); consumers: cortex/memory_diagnostic.py's pool arm, cortex/pool_selection.py's campaign, tests/test_recurrent_pool.py",
     ),
     "pool_selection": (
         "permanent",
-        "G1(b)'s selection campaign (a governed benchmark); consumers: its CLI and tests/test_pool_selection.py",
+        "G1(b)'s selection campaign (a governed benchmark; its record is g1b section 3.4) until G1(c)'s disposition; consumers: its CLI and tests/test_pool_selection.py",
     ),
     # so101_arm's "wire" exemption is GONE, as its own text predicted it should be: the gate is
     # on the live tick now (autonomous_loop, serial_arm's mirror, live_arm, cpg_oscillator,
