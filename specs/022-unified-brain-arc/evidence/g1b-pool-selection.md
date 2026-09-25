@@ -566,4 +566,55 @@ live-stream observation of section 1.10 as G1(c)'s design input; and the four so
 
 ## 3. Results
 
-(to be written)
+### 3.1 The build, part A: the pool module (`fd953ec`)
+
+`cortex/recurrent_pool.py` (1,614 lines, over the 800-line soft ceiling; its docstring gives the reason: one cohesive
+component) and `tests/test_recurrent_pool.py` (61 tests). Built by a Claude Opus builder from a bounded brief (the owner
+paused Codex); verified by the orchestrator: the self-check (5.9 s), the 61 tests, ruff, format, both dormancy gates
+and the dependency ledger, plus a read of the four step rules, the forms and the window against section 2.3 and the
+sources. `threadpoolctl` became a declared core dependency: the ledger reddened, because it had been installed only
+through scikit-learn.
+- **R-b0 at build time:**
+  - g1, g3 and g4 are bit for bit. SORN's states over 240 steps match, and so do its weights and thresholds after
+    13,404 STDP events.
+  - g2 matches the numpy source with a weight gap of 0.0, a membrane gap of 1.8e-15 and identical spikes.
+  - g2's float32 port is spike-identical to `EpropLIFBase.forward` with a 4.4e-4 margin.
+- **The draw orders' crc32s:** lsm 1691104335, esn 176457545, sorn 489683113, rbn 959998414. The grid sizes are 288, 48,
+  240 and 432.
+
+**Deviations and declarations (section 2 left each open, or the source overrode its words):**
+1. **SORN's row normalization is CPython's builtin `sum()`**, which has been compensated (Neumaier) since 3.12. It is
+   not the "sequential sum" section 2.3 wrote. A plain running sum differs on about half of the rows and breaks R-b0,
+   so the port reproduces `sum()` exactly, and a test pins it. The orchestrator confirmed: `sum([0.1] * 10 + [1e16,
+   1.0, -1e16])` gives 2.0, where the running sum gives 0.0.
+2. **Silent terms.** g1 and g3 add +0.0 where the sources skip, and g2 sums only the spiking rows. Neither changes a
+   partial sum.
+3. **Draws the spec left open:**
+   - g4's input-node permutation is `random.Random(realization_seed + 1000).sample(range(256), 256)`.
+   - SORN's reset state draws `rng.random() < H_IP` per unit, E units first; RBN's draws `randrange(2)` per node.
+4. **g4's Front-end:** every node holds its state, then its input bits act by the configured mode.
+5. **What is fingerprinted.** The boundary fingerprint covers every parameter, a superset of the learned ones.
+   Front-end's lesion fingerprint and the parameters it changed are recorded apart from freeze violations. The
+   continuation fingerprint includes the percept count.
+6. **How R-b0's g2 leg reads the sources.** It reads their per-step v and z by `sys.settrace`; the sources are not
+   edited. Its float32 fixture was declared from a scan of 18 choices (all spike-identical; 15 met the 1e-4 margin):
+   g 4, the first 4 fixture percepts each held 8 steps, rho 0.9, seed 100.
+7. **Witnesses the spec named only by mechanism.**
+   - R-b3, g3: {plasticity (0.004, 0.01), H_IP 0.1, g 2, T_in 1}.
+   - R-b3, g4: {K 2, p 0.5, f 0.25, xor, tau 0, T_in 1}.
+   - Both use an os.urandom-ordered in-place update, counted by reads of neighbors already changed that step.
+   - The R-b5 (iii) freeze red uses g3's R-b3 witness.
+   - The erasure prefixes are `default_rng(1)` and `default_rng(2)`, 8 percepts each. The check reports whether the two
+     branches diverged, so a vacuous pass is visible.
+8. **R-b5 (i)'s red fires for every carrier but one.** The exception is SORN's x_i in the Reset form at T_in 1: the old
+   x_i is overwritten before it is read, so skipping its reset changes nothing. That is correct, not blindness. The red
+   is witnessed on SORN's x_E.
+9. **The startup diagnostic** runs on copies of the pool with plasticity off. On the g1 persistence witness it flags
+   transient(64) = 0.170: at T_in 1, a binary phi cannot equal a fractional long-run mean. Configurations with T_in 1
+   and binary states will be flagged, which is reported and not refused (section 2.2).
+10. **The self-check uses reduced sizes** for R-b3 and R-b5 (64 percepts, window 32) to stay under 20 s; the tests use
+    section 2's sizes. tau keeps the grid's literal `0`, an int, which the crc32s include.
+11. **Campaign order** (a deviation in the orchestrator's brief for part B, recorded here). Section 2.10's order lists
+    sigma_dev and R-b3 before the resource screen, but both need its survivors ("first surviving manifest
+    configurations", "every manifest configuration"). The campaign therefore runs the screen, then R-b3's equality,
+    then sigma_dev, all before any tuning, as section 2.7 requires.
