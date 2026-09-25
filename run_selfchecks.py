@@ -77,6 +77,7 @@ CORE = [
     "cortex.placement",  # grown units ordered into cortical layers by measured H01 occupancy
     "cortex.growth_stop",  # T047: overgrowth red + four regimes + |LP| veto + measured null clause
     "cortex.memory_diagnostic",  # G1 causal contract synthetic reds
+    "cortex.recurrent_pool",  # G1(b): R-b0 parity, R-b3, R-b4 pool noise, R-b5 and every red
     "cortex.lca_sparse_coding",
     "cortex.predictive_coding",
     "cortex.pc_cortex_serve",

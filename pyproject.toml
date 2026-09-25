@@ -1,5 +1,5 @@
-# Installable src/ package (snn_data_lake). torch + numpy + mujoco + pyarrow + Brian2 + psutil are
-# UNCONDITIONAL core dependencies, so
+# Installable src/ package (snn_data_lake). torch + numpy + mujoco + pyarrow + Brian2 + psutil +
+# threadpoolctl are UNCONDITIONAL core dependencies, so
 # `pip install .` gives the full brain tier out of the box. `pip install ".[all]"` adds every addon
 # (arm+lake+gpu+nmnist+train); training is a first-class GPU tier (.[train] -> snn-train).
 #
@@ -98,7 +98,7 @@ build-backend = "hatchling.build"
 [project]
 name = "spiking-neural-data-lake"
 version = "4.80.0"
-description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. torch, numpy, pyarrow, mujoco, Brian2, and psutil are core dependencies."
+description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. torch, numpy, pyarrow, mujoco, Brian2, psutil, and threadpoolctl are core dependencies."
 readme = "README.md"
 # FLOOR RAISED 3.12 -> 3.14, 2026-08-05 (owner decision), and this floor is NOT the whole
 # requirement. The project requires the FREE-THREADED (PEP 703) build, and `requires-python` cannot
@@ -190,6 +190,12 @@ dependencies = [
     # (T101 panel G1, 2026-09-22: it was installed only as pygenn's transitive dependency, so the
     # ledger reddened). Unpinned: a measurement library, not part of the numerical contract.
     "psutil",
+    # THE THREAD-POLICY INSTRUMENT. cortex/recurrent_pool.py pins BLAS to one thread for the
+    # construction-time eigvals of G1(b)'s ESN-LSM and drives its R-b3 determinism check at 1 and 24
+    # BLAS threads, recording the loaded backend (evidence/g1b-pool-selection.md sections 2.2 and
+    # 2.7). Installed only as scikit-learn's transitive dependency until 2026-09-25, so the ledger
+    # reddened. Unpinned: a measurement library, not part of the numerical contract.
+    "threadpoolctl",
 ]   # TORCH TIER ON BY DEFAULT (user policy, 2026-07-18)
 
 # TORCH TIER = ON BY DEFAULT (user policy, 2026-07-18). torch is now a HARD default dependency: a plain
