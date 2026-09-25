@@ -11,13 +11,17 @@ attaching them over time, it could be either cortical columns or anatomically ac
 structure to consider since we need to do more research on the brain design philosophy through web grab". The owner's
 four G8 decisions are quoted in section 2.1.
 
-Status: **PRE-REGISTERED -- DRAFT for the design read, not frozen.** Nothing of G8 has been built or run. Section 2
-freezes at the commit that lands the design read's fold, before S0's first gate run; section 3 then records every stage.
+Status: **PRE-REGISTERED -- FROZEN 2026-09-25 at the design read's fold (the commit that lands this text); dated
+amendments only after this line.** Nothing of G8 has been built or run. Section 2 is frozen from that commit, before
+S0's first gate run; section 3 records every stage.
 
 Source: the G8 design draft, a read-only Claude Opus design measured at `4b237c6` (archived verbatim in the memory
 store, `archive/engine-research-audit-2026-09-25/g8_design_draft.md`). This file re-derives every count and hazard the
 draft relies on at HEAD `68db184` (section 1), states what did not survive the re-derivation (section 1.11) and carries
-the design forward with those corrections (section 2). Codex was not used (the owner's hold of 2026-09-25). The slot is
+the design forward with those corrections (section 2). The design read of this pre-registration (18 findings, F1-F18;
+the orchestrator reproduced every claim at `f416296`, whose `src/` equals `68db184`'s, and judged each fix separately
+from its claim) is folded into sections 1 and 2 and ledgered in section 2.13, with the orchestrator's rulings at the
+fold. Codex was not used (the owner's hold of 2026-09-25). The slot is
 a session call under the 2026-09-05 authorization: after G1(b)'s selection record, its losing-port deletion and the
 G1(a)+G1(b)+docs stack's battery and push (done: `68db184`), before G1(c).
 
@@ -59,6 +63,10 @@ no daemon.
 - The moves empty 15 package directories: the 14 anatomy packages and the already empty `olfactory`. **All 14 anatomy
   packages empty only at M11**, because each holds at least one faculty. All 23 subpackage `__init__.py` files are
   docstring-only, so nothing is re-exported through them.
+- **An emptied directory is not empty on disk** (the design read, F4, at `f416296`): 21 package directories hold an
+  ignored `__pycache__/` (`.gitignore:2`), so removing a package's tracked files leaves a directory behind.
+  `claustrum/` holds `__pycache__/`, `claustrum.py` and `__init__.py`; the already empty `olfactory/` holds
+  `__init__.py` and `__pycache__/`.
 
 ### 1.3 The live column (unchanged)
 
@@ -76,7 +84,7 @@ dormant 0, no stale exemption and 7 open (non-permanent) dispositions. Two gover
 | `dormancy_gate._LIVE_ROOTS` | 4: `cortex.brain`, `cortex.live_brain`, `brainstem.autonomous_loop` (engine); `thalamus.reentrant_workspace` (faculties) | M10, M11 |
 | `dormancy_gate._ENTRYPOINTS` | 8: `live_arm`, `closed_loop`, `web_ingest` (M3); `demo`, `cockpit`, `nengo_bridge`, `region_wiring` (M4); `training.cli` stays | M3, M4 |
 | `method_dormancy_gate.EXEMPT_METHOD` | 13 keys, 8 path-keyed, 7 re-keyed (M6 1, M7 1, M11 5); `plasticity.espp_rule._SpyESPP.train_step` stays | M6, M7, M11 |
-| `import_manifest.GOVERNED` | 16 names; lacks `insula` and `pons` (and `olfactory`, which holds no module); **also carries `lakehouse`, which `REGIONS` does not govern** | every stage; the scan delta declared at M11 |
+| `import_manifest.GOVERNED` | 16 names; lacks `insula` and `pons` (and `olfactory`, which holds no module); **also carries `lakehouse`, which `REGIONS` does not govern**; a listed name with no directory is skipped without a word (`import_manifest.py:173`; the design read, F15) | each stage that creates or deletes a package (2.5 item 6); the scan delta declared at M11b |
 | `replication_guard.CANON` | 3, all to `engine` | M10 |
 | `manifest_gate.REGISTRANTS` | 22 dotted: M3 2 (the afferent and efferent boundaries), M5 2, M7 1 (`r_stdp`), M10 3, M11 14 | per stage |
 | `run_selfchecks.py` quoted `<pkg>.<mod>` names | 366 (364 distinct; 3 are comment mentions); 254 name moved modules (M1 23, M2 23, M3 31, M4 14, M5 26, M6 7, M7 13, M8 11, M9 6, M10 7, M11 93), one of them a comment, so **253 runner strings** | per stage |
@@ -93,6 +101,11 @@ dormant 0, no stale exemption and 7 open (non-permanent) dispositions. Two gover
 | `tools/p4c_ungoverned_baseline.json` | total 202; the `tools` zone 30 | none (governed moves only) |
 | `tools/envelope_hashes.json`, `safety_envelope.ENVELOPE`, `self_mod_harness._PROTECTED`, `godel_machine._SAFETY_KERNEL` | unchanged; the harness's and the proposer's own entries are derived from `__file__` | none |
 | string constants naming a moved module, live `.py` | 343 in 22 files | per stage (C2(d)) |
+| `tools/rule_census.json` + `rule_composer._CENSUS_ADJUDICATED` (the design read, F6, at `f416296`) | 104 rows under `rules`, keyed `<pkg>/<mod>.py::<qualname>`; 18 adjudicated entries, keyed by path; the regen refuses an adjudicated entry that matches no live row; B1 classes the JSON as frozen text | each stage that moves a rule-bearing module (2.5 item 6) |
+
+The fold splits S1 into S1a-S1c and M11 into M11a-M11e (section 2.4 distributes this table's S1 and M11 items). The
+further path-keyed code sites the design read found (F1, F5, F7, F16, F17) are ledgered with their reproductions in
+section 2.13.
 
 No new package name matches a `.gitignore` rule (`git check-ignore`; positive control: `__pycache__/` is reported
 ignored). The registry's direct readers are `brain_atlas`, `dormancy_gate`, `region_charge_gate`, `atlas_node_gate`,
@@ -167,6 +180,8 @@ durable E-STOP latch) imports `substrate.home.home`; `So101Arm.view` imports `su
 `signal_loop` only through the flat alias. Their other imports are `snn_data_lake.brainstem.*`, which stays.
 `python -m snn_data_lake.substrate.envelope_hash_gate --assert` prints "OK: all 5 envelope files match their approved
 hashes"; `git ls-files --eol` shows `serial_arm.py` and `so101_arm.py` LF in the working tree, `reflex.py` CRLF.
+The envelope's comments cite moving modules on 8 lines of `so101_arm.py` (241, 243, 602-607; the design read, F11);
+they stay byte-identical, and section 2.6 names them.
 
 ### 1.9 G1(b)'s R-b0 after the losing ports' deletion
 
@@ -190,7 +205,9 @@ its scope:
   their stage they would run only through the alias's `get_code`.
 - **A templated battery command**: PLAN A.4's battery line runs `-m snn_data_lake.substrate.$m` over the 16 gate names
   (plus two literal `policy_manifest` calls). The pair map cannot see the template, and `specs/` is outside
-  doc_command_guard's SCOPE, so nothing asserts it.
+  doc_command_guard's SCOPE, so nothing asserts it. The same line lives in two copies outside the repo (the design
+  read, F12): the memory store's `archive/t062-t063-2026-09-09/t066_battery_v2.sh` and
+  `D:\AI-project\omnigent-sndl\SNDL-PROTOCOL.md` section 5.
 - **Path-form literals**: `brain_native_selfbuild`'s firewall self-check lists `src/snn_data_lake/substrate/
   self_mod_harness.py` as "the harness at its REAL path"; after M4 it is silently a not-at-that-path entry (the check
   stays green through basename widening and stops exercising the real path).
@@ -198,7 +215,12 @@ its scope:
   Reproduce/Usage heading): `specs/005-language-organ/quickstart.md` lines 75-76 (`cortex/language_acquisition.py`,
   `cortex/spiking_lm_serve.py`, `cortex/brain.py`) and `specs/022-unified-brain-arc/evidence/t081-report-order.md` line
   272 (`cortex/report_order_probe.py`, `thalamus/ignition_instrument.py`). Left as frozen history, these 5 citations
-  stop resolving at M2, M3, M10 and M11, and `tools/citation_guard.py` goes red (lint CI and the battery).
+  stop resolving at M2, M3, M10 and M11, and `tools/citation_guard.py` goes red (lint CI and the battery). The design
+  read (F10) told them apart: t081's line 272 is prose that the `reproduc` heading rule catches (a false positive, not
+  a command); the quickstart's lines 75-77 are one `git diff --quiet HEAD -- <paths>` command, which a stale path
+  passes vacuously. Beside them, `docs/POLICIES_EVIDENCE.md` lines 410 and 476 are `python -m` commands naming
+  `substrate.import_manifest` and `substrate.method_dormancy_gate`, in doc_command_guard's SCOPE, which resolves `-m`
+  by file and rejects a flat alias.
 
 ### 1.11 What moved since `4b237c6`, and what the draft got wrong
 
@@ -550,7 +572,7 @@ EOF
 PYTHONPATH=src python -m snn_data_lake.lif_neuron; echo "exit $?"   # AttributeError ... 'get_code', exit 1
 ```
 
-## 2. Pre-registration (DRAFT for the design read; freezes at the fold's commit, before S0's first gate run)
+## 2. Pre-registration (PRE-REGISTERED -- FROZEN 2026-09-25 at the design read's fold, the commit that lands this text; dated amendments only after this line)
 
 ### 2.1 The owner's four decisions, verbatim as decided
 
@@ -579,7 +601,7 @@ All packages sit one level under `src/snn_data_lake/`. Counts are section 2.12's
 | `substrate/` (kept = the lake) | the durable lake the brain lives inside: store (home, binlog, segments, index, engine, working memory, sketches) and recall (lake recall, proximity index and replay, content signature, paradigm-B query) | 31 | 6 |
 | `sensorimotor/` | encoders, ingest, the afferent and efferent boundaries, and the non-envelope arm I/O | 31 | 31 |
 | `infra/` | the cockpit, telemetry and geometry, device routing, the daemon's wiring registry, the self-modification harness and self-build loop, shared helpers, export and launch entrypoints | 14 | 14 |
-| `gates/` | every policy and correctness gate the battery or CI runs with `--assert`, plus G8's `move_gate` (new at S1) | 23 (+1) | 23 |
+| `gates/` | every policy and correctness gate the battery or CI runs with `--assert`, plus G8's `move_gate` (new at S1a) | 23 (+1) | 23 |
 | `instruments/` | governed measurement harnesses, probes, benchmarks and offline trainers | 23 | 23 |
 | `faculties/` | the hand-coded region faculties, all live dependencies, moved not retired, flat, each pending its own P2 row | 92 | 92 |
 | `brainstem/` (untouched) | the safety envelope only: `reflex`, `serial_arm`, `so101_arm`, `arm_config`, `interpreter` + the `so101/` assets | 5 | 0 |
@@ -614,21 +636,38 @@ head. No stage is built before the previous stage's cheap half is green.
 |---|---|---|---|
 | **S0** | Checkpoint class-path translation at restore: in `interaction_learning._merge_state`, before the class comparison and before the lazy lookup, the stored module is mapped through the legacy table (identity when not legacy); the `_G0C_LAZY_ATTRS` lookup runs on the translated name; unknown names still refuse (fails closed); the lake is never rewritten and the schema stays `g0c.v1`. At S0 only its test injects a planted map. Red: R-L0 (2.7). | none | R-L0's empty-map control |
 | **S0b** | The dormancy gate's phantom-EXEMPT fix: `coverage()` reports `phantom_exempt` (EXEMPT keys absent from `_CANON`), `main()` fails on a non-empty list, and the gate's self-check plants a row naming a module that does not exist, which must red. Counted first: 0 phantom rows at `68db184` (1.4), so it lands green with its red shown. | none | the planted phantom row |
-| **S1** | `LEGACY_REGIONS`, `LEGACY_TORCH_TIER`, `LEGACY_TRAIN_TIER` as byte-identical frozen copies; `package_of()`/`module_path()`; the extended alias layer (identity-mapped, so inert until M1; section 2.5); the label consumers switched to `LEGACY_*` (`brain_atlas.region_of`, `region_charge_gate`, `atlas_node_gate`, `brain_geometry`, `region_wiring`); the G-R8 instrument `move_gate` in a new `gates/` package (registered, a runner name, a permanent dormancy EXEMPT row); the R-L1 baseline written at this head. | `import_manifest.GOVERNED` gains `gates` | an EXEMPT-row deletion (C1); a synthetic legacy package and the `claustrum` collision built in a temp copy (C2(b)), so those reds are reachable before M11 |
-| **M1** | `gates/` <- 23 substrate gates | ci.yml's 15 gate calls; PLAN A.4's battery line (the templated `-m snn_data_lake.substrate.$m` and its two literal `policy_manifest` calls); 7 SCOPE commands; `selfcheck_cache`'s `substrate.dormancy_gate` subject; POLICIES.md gate paths (24) with `policy_manifest.json` regenerated | `selfcheck_cache`'s subject (C2(d); the cache falls back silently) |
-| **M2** | `instruments/` <- 23 | the G1(a)/G1(b) harness paths in the live plan text (frozen evidence keeps them); `brian2_backend.MIGRATED_CALL_SITES` (2); the self-launch strings of `memory_diagnostic`, `pool_selection`, `everyday_battery`; t081-report-order.md line 272's runnable command (2.5) | `MIGRATED_CALL_SITES`' `plasticity.deep_stdp` (C2(d)) |
-| **M3** | `sensorimotor/` <- 31, including the five non-envelope `brainstem/` modules | pyproject `snn-arm`, `snn-loop`, `snn-fetch-corpus`; `_ENTRYPOINTS` `live_arm`, `closed_loop`, `web_ingest`; REGISTRANTS (2); 17 SCOPE commands; `tests/pin/capture.py`; the specs/005 quickstart's `spiking_lm_serve` command | `_ENTRYPOINTS`' `brainstem.live_arm` (C1) |
-| **M4** | `infra/` <- 14 | pyproject `snn-demo`, `snn-nengo-launch`; `_ENTRYPOINTS` `demo`, `cockpit`, `nengo_bridge`, `region_wiring`; `snn_ui_main.py`; `brain_native_selfbuild`'s REAL-path firewall literal | `snn_ui_main.py`'s import (C9) |
-| **M5** | `growth/` <- 26 | `snn-ui.spec`'s exclude; the e-prop register site `hippocampus/ng_snn.py::fit`; ci.yml's `brian2_backend` call; `brian2_backend.MODULE_NAME` and 13 `CUSTOM_KERNELS`; REGISTRANTS `growth_stop`, `learning_progress`; `growth_coverage_gate._PLACEMENT_MODULES`; `neurogenesis_engine`'s self-launch string. **R-L1's first decisive stage** (`LIFNeuron`; the zoo classes) | `snn-ui.spec`'s exclude (C9; PyInstaller itself says nothing) |
-| **M6** | `reservoir/` <- 7 | `EXEMPT_METHOD` `spontaneous_activity`; `CUSTOM_KERNELS` `kernel_tick`; the G1(c) migration-host text | the `EXEMPT_METHOD` key (C2(d)) |
-| **M7** | `plasticity/` <- 4 tuning rules (`r_stdp`, `valence_stdp`, `eprop_kernel`, `naca`); `readout/` <- 9 (including `interaction_learning`) | the e-prop register site `cortex/predictive_coding.py`; `EXEMPT_METHOD` `predictive_coding`; REGISTRANTS `r_stdp`; `CUSTOM_KERNELS` `eprop_kernel`, `r_stdp`; `interaction_learning`'s three self-launch strings. **R-L1's second decisive stage** | the POLICIES.md register site (C7) |
-| **M8** | `sleep/` <- 11 | none beyond the defaults | one runner name (C8) |
+| **S1a** | The G-R8 instrument `move_gate` in a new `gates/` package (registered: a `gates` key, a runner name, a permanent dormancy EXEMPT row), together with what keeps the label consumers off that key: `LEGACY_REGIONS`, `LEGACY_TORCH_TIER`, `LEGACY_TRAIN_TIER` as byte-identical frozen copies of the S0-head tables, placed after the live tables; `package_of()`/`module_path()`; the label consumers switched to `LEGACY_*` (`brain_atlas.region_of`, `region_charge_gate`, `atlas_node_gate`, `brain_geometry`, `region_wiring`), taking LABELS and MEMBERSHIP from `LEGACY_*` and module PATHS from `module_path()`, with `brain_atlas._region_files` iterating `module_path()` files, never `dirname(pkg.__file__)` (F5); `selfcheck_cache`'s roster anchor becomes the regex `(?m)^REGIONS = \{` (F17). The pre-S1a census: 2.6. | `import_manifest.GOVERNED` gains `gates` (F15) | an EXEMPT-row deletion (C1); F5's join red: in a temporary copy, one module moved with the joins in place leaves both region censuses unchanged, and the same move with the path taken from `LEGACY_*` (the draft's form) reds (reachability lost) |
+| **S1b** | The extended alias layer (2.5): `_LEGACY` specs carrying the target's `origin` and `has_location=True`, their `get_code` delegating under the target's name, the flat alias unchanged (F2); `_LEGACY_PKGS` computed from the tables (F4); the `SNN_ALIAS_STRICT=1` tripwire (F3(c)); in `move_gate`, C8 and C9 resolving by file (F3(a)) and C1 comparing NAME-valued registries raw (F3(b)); the R-L1 baseline written at this head (2.7). Its C1 diff must be EMPTY: the positive null (2.11 Q2). | none | a synthetic legacy package and the `claustrum` collision built in a temporary copy (C2(b)), so those reds are reachable before M11a; a planted legacy import raises under strict (F3(c)'s positive control); a legacy `-m` of a gate that reads `__file__` at import, that gate moved in a temporary copy, exits exactly as the real path does, the flat alias's `AttributeError` and the `get_code`-only `TypeError` its controls (F2) |
+| **S1c** | POLICIES.md P3 "ANATOMY IS DATA" reads "...until specs/022's G7 and G4 re-key them; G8 freezes both on the pre-G8 `LEGACY_*` table (owner decision, 2026-09-25)" or an equivalent wording (F9). The owner's decision in chat outranks POLICIES; this is POLICIES owing the fix. | `tools/policy_manifest.json` regenerated; the word delta measured against `doc_budget_gate` and declared before the gate runs (33 words of headroom at `f416296`; reworded to net zero if short) | an undeclared extra word in POLICIES.md (C1's doc-budget diff) |
+| **M1** | `gates/` <- 23 substrate gates; `policy_manifest.token_to_argv` and `cross_check` derive from the registry: a `<pkg>/<mod>.py` token naming a governed module becomes `-m snn_data_lake.<pkg>.<mod>` and `in_selfchecks = stem in mods`, `tools/` tokens unchanged (F1) | ci.yml's 15 gate calls; PLAN A.4's battery line (the templated `-m snn_data_lake.substrate.$m` and its two literal `policy_manifest` calls), the commit message naming its two out-of-repo copies (F12); 7 SCOPE commands, among them `POLICIES_EVIDENCE.md` lines 410 and 476, each with its historical path in a dated note beside it (F10; the notes' word delta declared against `doc_budget_gate`, 28 words of headroom at `f416296`, reworded to net zero if short); `selfcheck_cache`'s `substrate.dormancy_gate` subject; POLICIES.md gate paths (24) with `policy_manifest.json` regenerated | `selfcheck_cache`'s subject (C1, C2(d); the cache falls back silently); F1's: a `gates/` token must be in_ci and PASS under `policy_manifest --audit`, and the pre-fix code reds on it in a temporary copy |
+| **M2** | `instruments/` <- 23 | the G1(a)/G1(b) harness paths in the live plan text (frozen evidence keeps them); `brian2_backend.MIGRATED_CALL_SITES` (2); the self-launch strings of `memory_diagnostic`, `pool_selection`, `everyday_battery`; a line-keyed citation_guard EXEMPT row for `t081-report-order.md` line 272, which is prose and stays unrewritten (F10; not earlier: a stale exemption reds); `GOVERNED` + `instruments` | `MIGRATED_CALL_SITES`' `plasticity.deep_stdp` (C1, C2(d)) |
+| **M3** | `sensorimotor/` <- 31, including the five non-envelope `brainstem/` modules | pyproject `snn-arm`, `snn-loop`, `snn-fetch-corpus`; `_ENTRYPOINTS` `live_arm`, `closed_loop`, `web_ingest`; REGISTRANTS (2); 17 SCOPE commands; `tests/pin/capture.py`; the specs/005 quickstart's line 76 path `spiking_lm_serve`, its historical path in a dated note (F10); `GOVERNED` + `sensorimotor` | `_ENTRYPOINTS`' `brainstem.live_arm` (C1) |
+| **M4** | `infra/` <- 14 | pyproject `snn-demo`, `snn-nengo-launch`; `_ENTRYPOINTS` `demo`, `cockpit`, `nengo_bridge`, `region_wiring`; `snn_ui_main.py`; `brain_native_selfbuild`'s REAL-path firewall literal; `GOVERNED` + `infra` | `snn_ui_main.py`'s import (C9, by file) |
+| **M5** | `growth/` <- 26 | `snn-ui.spec`'s exclude; the e-prop register site `hippocampus/ng_snn.py::fit`; ci.yml's `brian2_backend` call; `brian2_backend.MODULE_NAME` and 13 `CUSTOM_KERNELS`; REGISTRANTS `growth_stop`, `learning_progress`; `growth_coverage_gate._PLACEMENT_MODULES`; `growth_coverage_gate.py:188`'s `endswith("cortex")`, which becomes the package of `module_path("placement")` (F7); `neurogenesis_engine`'s self-launch string; `GOVERNED` + `growth`. **R-L1's first decisive stage** (`LIFNeuron`; the zoo classes) | `snn-ui.spec`'s exclude (C9, by file; PyInstaller itself says nothing) |
+| **M6** | `reservoir/` <- 7 | `EXEMPT_METHOD` `spontaneous_activity`; `CUSTOM_KERNELS` `kernel_tick`; the G1(c) migration-host text; `GOVERNED` + `reservoir` | the `EXEMPT_METHOD` key (C1, C2(d)) |
+| **M7** | `plasticity/` <- 4 tuning rules (`r_stdp`, `valence_stdp`, `eprop_kernel`, `naca`); `readout/` <- 9 (including `interaction_learning`) | the e-prop register site `cortex/predictive_coding.py`; `EXEMPT_METHOD` `predictive_coding`; REGISTRANTS `r_stdp`; `CUSTOM_KERNELS` `eprop_kernel`, `r_stdp`; `interaction_learning`'s three self-launch strings; `GOVERNED` + `readout`. **R-L1's second decisive stage** | the POLICIES.md register site (C7) |
+| **M8** | `sleep/` <- 11 | `GOVERNED` + `sleep`; nothing else beyond the defaults | one runner name (C1, C8) |
 | **M9** | lake recall into `substrate/` <- 6 | none (`proximity_replay` launches `-m type(self).__module__`) | one live-doc citation of `hippocampus/lake_recall.py` (C7) |
-| **M10** | `engine/` <- 7 | `replication_guard.CANON` (3); `_LIVE_ROOTS` (3); the root `learn_daemon.py` shim; POLICIES.md P4's `cortex.brain.Brain`/`make_brain()` names with `policy_manifest.json`; REGISTRANTS `brain`, `autonomous_loop`, `report_channel`; `selfcheck_cache`'s `substrate.signal_ring` subject; the specs/005 quickstart's `brain.py` command | `CANON`'s `Brain` (C8) |
-| **M11** | `faculties/` <- 92; deletes the 15 emptied package directories | `_LIVE_ROOTS` `reentrant_workspace`; `EXEMPT_METHOD` (5); e-prop register sites `jepa_world_model`, `mlp_q`; REGISTRANTS (14); `CUSTOM_KERNELS` `spiking_pid`, `gwt_deep`; `schema_induction`'s `_KB` neuter key and `reasoning_cortex`'s three asserts; the specs/005 quickstart's `language_acquisition` command | `schema_induction`'s `_KB` (C2(d); its own confidence-gate red must still fire) |
+| **M10** | `engine/` <- 7 | `replication_guard.CANON` (3); `_LIVE_ROOTS` (3); the root `learn_daemon.py` shim; POLICIES.md P4's `cortex.brain.Brain`/`make_brain()` names with `policy_manifest.json`; REGISTRANTS `brain`, `autonomous_loop`, `report_channel`; `selfcheck_cache`'s `substrate.signal_ring` subject; the specs/005 quickstart's line 76 path `brain.py`, its historical path in a dated note (F10); `tools/p6_gate.py:1733,1811`'s `os.path.join(source_dir(root), "cortex", ...)`, re-pointed through `module_path()` (F7); `GOVERNED` + `engine` | `CANON`'s `Brain` (C8, by file) |
+| **M11a** | `faculties/` <- 1: `claustrum` alone (the module named like its package, 1.2); deletes `claustrum/` with its `__pycache__/` | `GOVERNED` + `faculties`, - `claustrum` (F15); `_LEGACY_PKGS` gains `claustrum`, which rule (c) keeps out of `_MOVED` (2.5) | `claustrum` put back in `_MOVED` (C2(b)); `claustrum/` left holding only its `__pycache__/` (C6, the namespace shadow) |
+| **M11b** | `faculties/` <- 12 from nine packages: `amygdala` 2, `hypothalamus` 2, `medulla` 2, `brainstem` 1 (`cpg_oscillator`), `epithalamus` 1, `insula` 1, `plasticity` 1 (`wm_capacity`), `pons` 1, `substrate` 1 (`region_coherence`); deletes `amygdala/`, `epithalamus/`, `hypothalamus/`, `insula/`, `medulla/`, `pons/` and the already empty `olfactory/` with its `REGIONS` key, each with its `__pycache__/` | REGISTRANTS (4: `interoceptive_arousal`, `homeostatic_drives`, `interoceptive_integration`, `region_coherence`); `GOVERNED` - `amygdala`, `epithalamus`, `hypothalamus`, `medulla` (F15) | the REGISTRANTS row `snn_data_lake.insula.interoceptive_integration` (C8: no file at that path; the alias raises under strict) |
+| **M11c** | `faculties/` <- 22: `neuromodulation` 12, `hippocampus` 10; deletes both directories | `EXEMPT_METHOD` `neuromodulation.developmental_envelope.DevelopmentalEnvelope.update`; REGISTRANTS (2: `raphe_serotonin`, `astrocyte_modulation`); 1 SCOPE command (`docs/RUNNING.md`, `spiking_storage_prototype`); `GOVERNED` - both (F15) | the `EXEMPT_METHOD` key (C1, C2(d)) |
+| **M11d** | `faculties/` <- 24: `cerebellum` 9, `thalamus` 6, `basal_ganglia` 5, `midbrain` 4; deletes the four directories | `_LIVE_ROOTS` `reentrant_workspace`; `EXEMPT_METHOD` (4: `spiking_jepa`'s two `train_step` keys, `latent_q`'s two `update` keys); POLICIES.md's 5 citations, among them the e-prop register sites `jepa_world_model` and `mlp_q`, with `policy_manifest.json` regenerated; REGISTRANTS (5: `evidence_accumulation`, `interoceptive_relay`, `dopamine_nuclei`, `global_workspace`, `reentrant_workspace`); `CUSTOM_KERNELS` `spiking_pid`, `gwt_deep`; 2 SCOPE commands (`docs/GAP_CLOSURE.md`, `docs/JEPA.md`); `atlas_node_gate.py:165` (`SRC / "thalamus"`) and `:199-203` (`REGIONS.get("cerebellum")`, `SRC / "cerebellum"`), its self-check corpus built from `module_path()` and asserting at least 1 file scanned (F7); `thalamus/global_workspace.py`'s own local `REGIONS` tuple left alone (2.5 item 2); `GOVERNED` - the four (F15) | `_LIVE_ROOTS`' `thalamus.reentrant_workspace` (C1) |
+| **M11e** | `faculties/` <- 33: `cortex` whole, the one sub-stage above 25 (a partial package is never moved); deletes `cortex/` | `reasoning_cortex`'s three `sys.modules` keys derived with `module_path("kb_ranking")`, and `schema_induction`'s `_KB` neuter key (F16); the specs/005 quickstart's line 75 path `language_acquisition`, its historical path in a dated note (F10); REGISTRANTS (3: `percept_surprise`, `task_set`, `recursive_tom`); 1 SCOPE command (`docs/coverage/Language.md`, `rose_language`); `GOVERNED` - `cortex` (F15) | `schema_induction`'s `_KB` (C2(d)); its own confidence-gate red and `reasoning_cortex`'s asserts must still fire in this sub-stage's cheap half (F16) |
 | **D1** | The A.5 old-to-new map (253 rows, generated from `LEGACY_*`); the content rewrites of the index documents (ANATOMY, OVERVIEW, CODEBASE_DIGEST, README "Architecture", AGENT_COLD_START section 1 under its SYNC DUTY); POLICIES.md's `REGIONS` wording if not already landed | `policy_manifest.json` regenerated; the doc-budget word counts declared before the gate runs | a planted dangling live citation (C7) |
 
-Stage sizes at `68db184` (B1):
+**The M11 split** (the design read, F4; 2.11 Q3). Generated from section 2.12's table with B1's row parser: the 92
+`faculties` moves come from 17 source packages. `claustrum` is M11a alone. The other 16, in descending order of their
+faculty-bound modules (ties by name), are cut into consecutive groups of at most 25 modules, and the groups run smallest
+first: M11b 12, M11c 22, M11d 24, M11e 33. A sub-stage holds whole source packages only and deletes every directory it
+empties. `cortex` holds 33 faculty-bound modules in one package, so M11e is the one sub-stage above 25 (the
+orchestrator's ruling at the fold: cortex stays whole). The already empty `olfactory/` goes at M11b with its `REGIONS`
+key. The table above distributes M11's path-keyed items and planted reds to the sub-stages that hold them. The stages
+are 21 commits: S0, S0b, S1a, S1b, S1c, M1-M10, M11a-M11e, D1.
+
+Stage sizes at `68db184` (B1). The M11a-M11e rows are B1's own instruments with the `faculties` destination keyed by
+source package through the grouping above; they sum to the M11 row, which is their positive control, and M1-M10
+reproduce unchanged:
 
 | stage | moves | import statements (files) | live-doc citations | frozen-doc citations | `.py` path citations | runner names | SCOPE commands |
 |---|---|---|---|---|---|---|---|
@@ -642,8 +681,17 @@ Stage sizes at `68db184` (B1):
 | M8 sleep | 11 | 35 (20) | 28 | 23 | 25 | 11 | 0 |
 | M9 lake recall | 6 | 20 (15) | 10 | 9 | 8 | 6 | 2 |
 | M10 engine | 7 | 196 (95) | 361 | 319 | 274 | 7 | 1 |
-| M11 faculties | 92 | 282 (120) | 399 | 321 | 405 | 93 | 4 |
+| M11a faculties (`claustrum`) | 1 | 2 (2) | 2 | 1 | 1 | 1 | 0 |
+| M11b faculties (nine packages) | 12 | 35 (16) | 36 | 25 | 22 | 12 | 0 |
+| M11c faculties (`neuromodulation`, `hippocampus`) | 22 | 65 (36) | 55 | 33 | 43 | 22 | 1 |
+| M11d faculties (`cerebellum`, `thalamus`, `basal_ganglia`, `midbrain`) | 24 | 66 (46) | 110 | 98 | 153 | 25 | 2 |
+| M11e faculties (`cortex`) | 33 | 114 (66) | 196 | 164 | 186 | 33 | 1 |
+| M11 faculties, the five together | 92 | 282 (120) | 399 | 321 | 405 | 93 | 4 |
 | **total** | **253** | **1,123 (369)** | **1,278** | **1,573** | **1,468** | **254** | **35** |
+
+M11d's 25 runner names include the one comment mention (1.4). No import statement names modules of two M11
+sub-stages. `tools/rule_census.json` is counted in the frozen column here (B1's class); from S1a it is a live,
+regenerated registry (F6), and section 3 re-derives both columns per stage.
 
 ### 2.5 What every move commit carries
 
@@ -653,37 +701,61 @@ Stage sizes at `68db184` (B1):
    top-level `research/` (10) and the repo-root `training/`. The rewrite is a map lookup on exact `(old package,
    module)` pairs, never a bare-word substitution (`thalamus/global_workspace.py` has its own local `REGIONS` tuple).
 3. **Beyond the pair map, named per stage in 2.4:** templated forms (A.4's `snn_data_lake.substrate.$m`),
-   `sys.modules` keys and `__name__` comparisons, subprocess `-m` self-launch strings (rewritten, or derived from the
-   module's own `__spec__.name`) and path-form literals.
-4. `REGIONS`/`TORCH_TIER`/`TRAIN_TIER` re-keyed for the stage; `LEGACY_*` never edited after S1.
-5. The runner's names in `run_selfchecks.py` (253 strings, 1 comment; section 1.4); a stale name reds loudly under
-   `runpy`.
-6. The stage's path-keyed registries (2.4).
-7. Live documents: every citation of the stage's modules, and every `python -m` command in doc_command_guard's SCOPE,
-   rewritten even inside frozen documents such as `docs/POLICIES_EVIDENCE.md` (a command is an instruction to run).
-   **The same rule covers citation_guard's runnable lines** (1.10): the specs/005 quickstart's and t081's runnable
-   citations are rewritten at their stages, and the historical path is noted in prose outside the runnable lines (a
-   `.py` path on a runnable line must resolve). Other frozen text keeps its historical paths, resolved through the A.5
-   map.
+   `sys.modules` keys and `__name__` comparisons (derived with `module_path()` where one module keys another, F16),
+   subprocess `-m` self-launch strings (rewritten, or derived from the module's own `__spec__.name`), path-form
+   literals, and split path parts and package-name tests (`os.path.join` and `Path /` operands, `endswith`/`startswith`,
+   `REGIONS.get("<pkg>")`), re-pointed through `module_path()` (F7).
+4. `REGIONS`/`TORCH_TIER`/`TRAIN_TIER` re-keyed for the stage; `LEGACY_*` never edited after S1a.
+5. The runner's names in `run_selfchecks.py` (253 strings, 1 comment; section 1.4). A stale name no longer fails under
+   `runpy` once S1b lets a `_LEGACY` name run (F2): it is caught by C1's raw comparison of the runner's name set
+   (F3(b)), and it raises under `SNN_ALIAS_STRICT=1` (F3(c)).
+6. The stage's path-keyed registries (2.4). `import_manifest.GOVERNED` gains each new package in the stage that
+   creates it (S1a `gates`, M2 `instruments`, M3 `sensorimotor`, M4 `infra`, M5 `growth`, M6 `reservoir`, M7 `readout`,
+   M8 `sleep`, M10 `engine`, M11a `faculties`), keeps `lakehouse`, and loses each emptied package in the M11 sub-stage
+   that deletes its directory, because `import_manifest.py:173` skips a listed name with no directory without a word
+   (F15). **The rule census (F6):** in each stage that moves a rule-bearing module, the pair map is applied to
+   `rule_composer._CENSUS_ADJUDICATED` first, then `python -m snn_data_lake.plasticity.rule_composer --regen-census`
+   runs in the same commit (the regen refuses an adjudicated entry that matches no live row); `tools/rule_census.json`
+   is a live registry, not frozen text, and the mover re-derives each stage's moving-row count into section 3.
+7. Live documents: every citation of the stage's modules, and every `python -m` command in doc_command_guard's SCOPE.
+   **A runnable command inside a frozen document is rewritten at its stage, its historical path kept in a dated note
+   beside it** (the plan's G8 row, dated amendment of 2026-09-25; F10), outside the runnable lines (a `.py` path on a
+   runnable line must resolve): `docs/POLICIES_EVIDENCE.md` lines 410 and 476 at M1 (doc_command_guard resolves `-m`
+   by file and rejects a flat alias), and the specs/005 quickstart's `git diff --quiet` paths, line 75 at M11e and line
+   76 at M3 and M10 (a stale path passes vacuously). A note's words in a budgeted document are declared against
+   `doc_budget_gate` before the gate runs, reworded to net zero if the headroom is short. `t081-report-order.md` line
+   272 is prose that citation_guard's `reproduc` heading rule catches: it is not rewritten, and a line-keyed
+   citation_guard EXEMPT row lands in M2's commit (not earlier: a stale exemption reds). All other frozen text keeps its
+   historical paths, resolved through the A.5 map.
 8. `ruff check --fix --select I` and `ruff format` on the touched files (longer package names re-sort and re-wrap).
 9. Line endings preserved per file; the envelope files are never opened for writing.
-10. Any package directory the stage empties is deleted in the same commit (all at M11).
+10. Any package directory the stage empties is deleted in the same commit, with its ignored `__pycache__/` (F4): all at
+    M11a-M11e, and the already empty `olfactory/` at M11b. `_LEGACY_PKGS` is computed from the tables, never from the
+    filesystem, so a directory left behind is C6's red, not a silent shadow.
 11. The stage's G-R8 census JSON is recorded in section 3, beside its declared delta (2.6).
 
-The mover is a deterministic script driven by the frozen map; its hash is recorded in section 3. It is not committed
-to `tools/` (a new `tools/*.py` would raise the p4c `tools` zone, baseline 30, and red the ratchet); `move_gate` is its
+The mover is a deterministic script driven by the frozen map. Its source is archived verbatim with the arc (the memory
+store's `archive/g8-2026-09-25/`), beside its hash in section 3, so any stage can be rebuilt for attribution (2.8;
+F18). Its P4c disposition: an out-of-tree operator artifact like the battery script of record, never committed to
+`tools/` (a new `tools/*.py` would raise the p4c `tools` zone, baseline 30, and red the ratchet); `move_gate` is its
 governed checker.
 
-**The extended alias layer (S1).** `_LEGACY` maps each old `pkg.mod` to the current `pkg.mod`, derived from `LEGACY_*`
-and the live registry, holding only the pairs that differ (empty at S1, growing by itself). `_LEGACY_PKGS` is the set
-of legacy package names with no directory on disk (empty until M11). `find_spec` order: (a) a name in `_LEGACY_PKGS`
-gets a synthetic package spec (`is_package=True`, empty `submodule_search_locations`, a docstring naming G8); (b) a
-`_LEGACY` path gets `_AliasLoader(target)`, an identity alias; (c) flat names as today, with every `_LEGACY_PKGS` name
-removed from `_MOVED` (`claustrum`). `_AliasLoader.get_code` delegates to the target's real loader **with the target's
-name** (1.6). The finder stays appended, so a real file always wins (C6 asserts no `.py` at a legacy path). Identity is
-the contract: `sys.modules[legacy] is sys.modules[new]`. It gives one object two names, so it is not a second
-mechanism (P2); live code may not use legacy names (C2(d)); it serves the lake's old class strings, frozen evidence and
-callers outside the repo.
+**The extended alias layer (S1b).** `_LEGACY` maps each old `pkg.mod` to the current `pkg.mod`, derived from `LEGACY_*`
+and the live registry, holding only the pairs that differ (empty at S1b, growing by itself). `_LEGACY_PKGS` is every
+`LEGACY_*` package key minus every live package key of the three tiers, computed from the tables and never from the
+filesystem (empty until M11a; F4). `find_spec` order: (a) a name in `_LEGACY_PKGS` gets a synthetic package spec
+(`is_package=True`, empty `submodule_search_locations`, a docstring naming G8); (b) a `_LEGACY` path gets an identity
+alias whose spec carries the target's `origin` and `has_location=True`, with a loader whose `get_code(fullname)`
+delegates to the target's real loader **under the target's name** (1.6; `runpy` sets `__file__` from `spec.origin`,
+F2); (c) flat names exactly as today, with every `_LEGACY_PKGS` name removed from `_MOVED` (`claustrum`). The flat
+alias serves imports only and is never run with `-m`: `doc_command_guard`'s premise that a flat alias cannot run under
+`-m` stays true, and nothing in G8 needs one (F2). **The tripwire (F3(c)):** with `SNN_ALIAS_STRICT=1` the finder raises
+on any `_LEGACY` or synthetic-package resolution and never on a flat alias, which the envelope's own self-check uses
+(`interpreter.py` imports `snn_data_lake.signal_loop` inside it); 2.8 names the checks that run with it on. The finder
+stays appended, so a real file always wins (C6 asserts no `.py` at a legacy path and no legacy package directory).
+Identity is the contract: `sys.modules[legacy] is sys.modules[new]`. It gives one object two names, so it is not a
+second mechanism (P2); live code may not use legacy names (C1, C2(d)); it serves the lake's old class strings, frozen
+evidence and callers outside the repo.
 
 ### 2.6 G-R8 and its controls
 
@@ -693,39 +765,59 @@ live-lake checkpoint no longer restores, or G1B's R-b0 source-parity check canno
 move. Control: the pre-move tree's gate outputs, re-derived; the pre-move checkpoint restore; a planted un-re-pointed
 path-keyed entry, which must red.
 
-**The instrument** is `gates/move_gate` (governed, landing at S1): `--census <out.json>`; `--diff <pre.json>
-<post.json> --declared <delta>`; and `--self-check`, which builds every red below in a temporary copy of the tree,
-never in the checkout. Census paths are mapped through `LEGACY_*` before comparison, so a pure move has an empty delta.
+**The instrument** is `gates/move_gate` (governed, landing at S1a; F3's parts at S1b): `--census <out.json>`; `--diff
+<pre.json> <post.json> --declared <delta>`; and `--self-check`, which builds every red below in a temporary copy of the
+tree, never in the checkout. OUTCOME sets (reachable sets, verdicts, counts) are mapped through `LEGACY_*` before
+comparison; NAME-valued registries are compared RAW against the post-stage set generated from the 2.12 table (F3(b),
+C1). A pure move therefore has an empty delta, and a stale name is a red even where the alias would import it.
+
+**The pre-S1a census.** `move_gate` does not exist before S1a, so S1a's own `move_gate` takes the pre-stage census by
+running over an export (`git archive`) of the S0b head; this is how S1a's delta is still declared before the first gate
+run. Wherever `move_gate` itself changes (S1b), the parent's census is re-taken the same way, so both sides of every
+diff come from one instrument.
 
 **The declared deltas, pre-registered here (before S0's first gate run):**
 - S0: none.
 - S0b: the dormancy report gains `phantom_exempt`, empty.
-- S1: `move_gate`'s own registration and nothing else: dormancy total 297 -> 298 and exempt 59 -> 60 (reachable 238
+- S1a: `move_gate`'s own registration and nothing else: dormancy total 297 -> 298 and exempt 59 -> 60 (reachable 238
   unchanged), `REGIONS` keys 18 -> 19 (`gates`), one more runner name, one more atlas module, `import_manifest.
   GOVERNED` + `gates`. The region-charge and atlas-node censuses are unchanged (they read `LEGACY_*` from this commit).
   This replaces the draft's "the S0 -> S1 diff must be EMPTY", which S1's own content makes impossible (1.11 item 3).
+  The label consumers switch in this same commit because a `gates` key they still read from the live table adds a
+  `gates: UNREACHABLE` row to the region-charge census (16 -> 17 rows, reproduced; 2.13, the S1 re-cut).
+- S1b: EMPTY, the positive null (2.11 Q2): the alias layer, the tripwire, `_LEGACY_PKGS` and the R-L1 baseline change
+  no census.
+- S1c: POLICIES.md's word delta as declared before the gate runs, and nothing else.
 - M1-M10: none, except that the live key sets of `REGIONS`, `TORCH_TIER` and `TRAIN_TIER` become exactly those the
   section 2.12 table implies after the stage (generated from the table, never hand-written; for `REGIONS` the new keys
   are M2 instruments, M3 sensorimotor, M4 infra, M5 growth, M6 reservoir, M7 readout, M8 sleep and M10 engine, while
-  M1 and M9 add none), and citation_guard's report-only BROAD count may rise by at most the stage's frozen-document
-  citations (2.4); the BROAD count in LIVE documents may not rise.
-- M11: the same key-set rule, under which `REGIONS` gains `faculties` and loses the 14 anatomy keys and `olfactory` (13
-  keys remain); `import_manifest`'s scanned set gains `insula/interoceptive_integration` and `pons/mossy_relay` (the
-  pre-existing gap, closed as a declared delta).
+  M1 and M9 add none), `GOVERNED` gains the stage's new package (2.5 item 6), and citation_guard's report-only BROAD
+  count may rise by at most the stage's frozen-document citations (2.4). The BROAD count in LIVE files may not rise,
+  except by the envelope carve-out below.
+- **The envelope carve-out (F11).** `so101_arm.py` is never opened for writing, so its comment citations of moving
+  modules dangle from their stages on: citation_guard's BROAD count in live files may rise by exactly these lines and
+  by nothing else, M1 2 (604, 605), M5 1 (243), M9 1 (241), M11d 3 (602, 603, 607) and M11e 1 (606). The owner is
+  told: a comment-only envelope edit is theirs to approve.
+- M11a-M11e: the same key-set rule. `REGIONS` gains `faculties` at M11a and loses each anatomy key in the sub-stage
+  that empties its package: M11a `claustrum`; M11b `amygdala`, `epithalamus`, `hypothalamus`, `insula`, `medulla`,
+  `pons` and the already empty `olfactory`; M11c `hippocampus`, `neuromodulation`; M11d `basal_ganglia`, `cerebellum`,
+  `midbrain`, `thalamus`; M11e `cortex` (13 keys remain after M11e). `GOVERNED` follows 2.5 item 6. `import_manifest`'s
+  scanned set gains `insula/interoceptive_integration` and `pons/mossy_relay` at M11b (the pre-existing gap, closed as
+  a declared delta).
 - D1: documents only; the doc-budget word counts are declared in section 3 before the gate runs.
-- Every stage: R-L1's readings identical (no delta is ever declared for the lake).
+- Every stage from S1b's baseline on: R-L1's readings identical (no delta is ever declared for the lake).
 
 | control | asserts | the constructed red |
 |---|---|---|
-| **C1 gate census diff** | Structured outputs per gate, timings stripped, paths mapped through `LEGACY_*`: the dormancy reachable set and EXEMPT verdicts; the method-dormancy lists; import_manifest targets and broken list; replication sites; the region-charge census; atlas phantoms and exemptions; the manifest rebuild equal to the committed NIR bytes; envelope findings; the gradient-claim and transport censuses; growth coverage; p4c zone counts; p6 counts; citation STRICT and BROAD; doc_command; brain_atlas; the runner's name set; the exit codes of determinism, replay, capability, immortal, conclusion and policy_manifest. The diff must equal the declared delta. | Each stage's planted un-re-pointed entry (2.4) applied in a temporary copy must red; a planted EXEMPT-row deletion must red at S1 while the real diff equals the declared delta. |
-| **C2 import and alias** | (a) a fresh-process import of all 414 modules by their current path, torch- and train-tier gated as in `brain_atlas`; (b) every `_LEGACY` path, synthetic package and flat alias `is` the current module; (c) `python -m <legacy gate> --assert` exits as the new path does, for the 16 battery gates and `brian2_backend`; (d) zero live in-tree imports or strings naming a legacy path, statically, in every live `.py` of every tier (governed and ungoverned, tests, tools, integrations, research, root scripts), dotted and path forms, plus the templated forms; (e) the frozen `docs/coverage/artifacts/*.py` import through the alias. | Drop one `_LEGACY` entry: (b) reds. Leave one test importing `snn_data_lake.cortex.brain`: (d) reds. Put `claustrum` back in `_MOVED`: (b) reds (built at S1 in a temporary copy, again at M11 for real). |
+| **C1 gate census diff** | Two classes, taken with `SNN_ALIAS_STRICT=1` (F3(c)). OUTCOME sets, timings stripped and paths mapped through `LEGACY_*`: the dormancy reachable set and EXEMPT verdicts; the method-dormancy lists; import_manifest targets and broken list; replication sites; the region-charge census; atlas phantoms and exemptions; the manifest rebuild equal to the committed NIR bytes; envelope findings; the gradient-claim and transport censuses; growth coverage; p4c zone counts; p6 counts; citation STRICT and BROAD; doc_command; the doc-budget word counts; brain_atlas; the rule census's dispositions, old keys mapped to new (F6); `policy_manifest --audit`'s per-command verdicts (F1); the exit codes of determinism, replay, capability, immortal, conclusion and policy_manifest. NAME-valued registries, read RAW and never through `LEGACY_*`, against the post-stage set generated from the 2.12 table (F3(b)): the dormancy `EXEMPT` keys, `_LIVE_ROOTS`, `_ENTRYPOINTS`, `EXEMPT_METHOD`, `import_manifest.GOVERNED` (2.5 item 6), `replication_guard.CANON`, `REGISTRANTS`, the runner's name set, `MIGRATED_CALL_SITES`, `CUSTOM_KERNELS`, `MODULE_NAME`, the `selfcheck_cache` subjects, `_PLACEMENT_MODULES`, `tests/pin/capture.py`'s pin key, the pyproject script targets, ci.yml's `-m` targets, `snn-ui.spec`'s hidden imports and excludes, `snn_ui_main.py`'s and the root shim's imports, the envelope-name registries (`envelope_hashes.json`, `ENVELOPE`, `_PROTECTED`, `_SAFETY_KERNEL`) and `tools/rule_census.json`'s keys (F6); documents stay C7's. The diff must equal the declared delta. | Each stage's planted un-re-pointed entry (2.4) applied in a temporary copy must red; a planted EXEMPT-row deletion must red at S1a while the real diff equals the declared delta. |
+| **C2 import and alias** | (a) the importable set is unchanged: a fresh-process import of all 414 modules by their current path, in a scratch `NORD_HOME`; the baseline at `f416296` is 414 attempted and 13 failing (lakehouse 2, reasoning 11; none in a moving package), the full list re-recorded at S0's head in section 3 (F13); (b) every `_LEGACY` path, synthetic package and flat alias `is` the current module, run on the real checkout as well as in the temporary copy, because an ignored `__pycache__/` exists only there (F4); (c) `python -m <legacy gate> --assert` exits as the new path does, for the 16 battery gates and `brian2_backend`, through a `_LEGACY` name (the flat alias is never run with `-m`; F2); (d) zero live in-tree imports or strings naming a legacy path, statically, in every live `.py` of every tier (governed and ungoverned, tests, tools, integrations, research, root scripts), dotted and path forms, plus the templated forms, plus split path parts (string operands of `os.path.join` and `Path /`), `endswith`/`startswith` package tests and package-prefix strings, AST-scoped to code (F7); (e) the frozen `docs/coverage/artifacts/*.py` import through the alias. (b), (c) and (e) run with `SNN_ALIAS_STRICT` off. | Drop one `_LEGACY` entry: (b) reds. Leave one test importing `snn_data_lake.cortex.brain`: (d) reds. Put `claustrum` back in `_MOVED`: (b) reds (built at S1b in a temporary copy, again at M11a for real). (d)'s positive control: run with the complete map over the `f416296` tree, it must find F7's six known sites (`p6_gate.py:1733` and `:1811`; `growth_coverage_gate.py:188`; `atlas_node_gate.py:165`; `:199-203`'s `REGIONS.get("cerebellum")` and `SRC / "cerebellum"`) before its zero is believed. |
 | **C3 envelope** | `envelope_hash_gate --assert` green; `git diff --stat` empty for the five files and `tools/envelope_hashes.json`; the `safety_envelope` document check green; in a fresh process `so101_arm._latch_path()` resolves through the real `substrate.home` with a file loader, not an alias. | The gate's own self-check (its positive control and three reds); a planted `git mv` of `brainstem/reflex.py` in a temporary worktree gives "envelope file MISSING on disk". EOL caution: a fresh worktree checks `serial_arm.py` and `so101_arm.py` out CRLF and reds with no change; the documented `git -c core.autocrlf=false checkout --` remedy comes first. |
 | **C4 R-b0 source parity** | `recurrent_pool.check_r_b0()` (one check, `check_r_b0_lsm`, one source, 1.9) at the pre and post heads: identical verdict and numbers. | Its own `red_leak`; or `reasoning/spiking_ssm.py` renamed in a temporary copy with no alias: ModuleNotFoundError. |
 | **C5 lake continuity** | R-L1 (2.7). | The translation disabled; `lif_neuron` or `r_stdp` moved without the map. |
-| **C6 static invariants** | Depth unchanged for every module; basenames unique; no `.py` at any legacy path; `LEGACY_*` AST-equal to the S0 head's tables; no governed module in an ungoverned package; the three registry tables still AST literals (p4c's `_governed` depends on it). | A planted `growth/models/lif_neuron` module: the depth red. A planted `cortex/brain` stub: the shadow red. |
-| **C7 documents** | `doc_command_guard --assert` and `citation_guard` (STRICT) green; zero new BROAD dangling citations in LIVE documents after mapping; the frozen rise within its declared bound. | Skip rewriting one live document; leave one runnable frozen citation unrewritten: STRICT reds. |
-| **C8 registry parity** | brain_atlas map equal to the filesystem; the runner's tiers agree with the registry; `CANON` resolves; the wiring manifest byte-identical; p4c zone counts identical. | A stale `REGISTRANTS` row: ImportError. |
-| **C9 packaging and CI** | Every pyproject script target imports; every `snn-ui.spec` hidden import and exclude names an existing module; every ci.yml `-m` target exists and has a `__main__`. | `snn_data_lake.hippocampus.ng_snn` left in the spec's excludes. |
+| **C6 static invariants** | Depth unchanged for every module; basenames unique; no `.py` at any legacy path; no directory for any `_LEGACY_PKGS` name on the REAL checkout, ignored files included (F4); `LEGACY_*` AST-equal to the S0 head's tables; no governed module in an ungoverned package; the three registry tables still AST literals (p4c's `_governed` depends on it). | A planted `growth/models/lif_neuron` module: the depth red. A planted `cortex/brain` stub: the shadow red. `claustrum/` left holding only its `__pycache__/` after M11a's move, in a temporary copy: the namespace-shadow red. |
+| **C7 documents** | `doc_command_guard --assert` and `citation_guard` (STRICT) green; zero new BROAD dangling citations in LIVE files after mapping, except the envelope carve-out's named lines (F11); the frozen rise within its declared bound; the frozen runnable commands rewritten with their dated notes (F10). | Skip rewriting one live document; leave one runnable frozen citation unrewritten: STRICT reds. |
+| **C8 registry parity** | Every name resolved by FILE, never through an alias: it must map to an existing `src/snn_data_lake/<pkg>/<mod>.py`, and an alias spec counts as red (F3(a)); brain_atlas map equal to the filesystem; the runner's tiers agree with the registry; `CANON` resolves; the wiring manifest byte-identical; p4c zone counts identical. Run with `SNN_ALIAS_STRICT=1`. | A stale `REGISTRANTS` row: no file at its path, and the alias raises under strict. |
+| **C9 packaging and CI** | Resolved by FILE as in C8 (F3(a)): every pyproject script target, every `snn-ui.spec` hidden import and exclude and every ci.yml `-m` target maps to an existing module file, and each `-m` target has a `__main__`. Run with `SNN_ALIAS_STRICT=1`. | `snn_data_lake.hippocampus.ng_snn` left in the spec's excludes. |
 
 ### 2.7 The lake reds, re-designed to the measured checkpoint
 
@@ -737,19 +829,23 @@ never in the checkout. Census paths are mapped through `LEGACY_*` before compari
   refusal is reported. Controls: the same checkpoint with an EMPTY map must refuse "checkpoint class mismatch" (shown at
   design time for `LIFNeuron` alone, 1.7); an unmapped unknown class must refuse; a name mapped to a missing target must
   refuse.
-- **R-L1 (the baseline at S1's head, then at every M head).** Arm (i), default: checkpoint home H written by a brain at
-  S1's head (`persist=True`, a temporary home, the frozen schedule); at each M head a fresh process constructs the brain
-  over a fresh COPY of H. Arm (ii), zoo: a learner-level checkpoint (`readout_zoo=True`, the six fixed turns of B2)
-  written at S1's head; at each M head a fresh process restores it into a zoo learner that has built its pools with one
-  `respond()` on a fixed input, the only target that restores it today (1.7). Check (iii), `delta_sink`: not a restore
-  arm; its `state_dict()` refusal is re-asserted at every head. PASS iff (a) no refusal (the probe patches
-  `_report_ixn_refusal` to raise, so the swallow cannot hide one), (b) the restored walk digest equals the pre-move
-  digest once class strings are mapped through `LEGACY_*`, and (c) the probe answers are identical.
+- **R-L1 (the baseline at S1b's head, then at S1c's and every M head).** Arm (i), default: checkpoint home H written by
+  a brain at S1b's head (`persist=True`, a temporary home, the frozen schedule); at each later head a fresh process
+  constructs the brain over a fresh COPY of H. Arm (ii), zoo: a learner-level checkpoint (`readout_zoo=True`, the six
+  fixed turns of B2) written at S1b's head; at each later head a fresh process restores it into a zoo learner that has
+  built its pools with one `respond()` on a fixed input, the only target that restores it today (1.7). Check (iii),
+  `delta_sink`: not a restore arm; its `state_dict()` refusal is re-asserted at every head. PASS iff (a) no refusal (the
+  probe patches `_report_ixn_refusal` to raise, so the swallow cannot hide one), (b) the restored walk equals the
+  pre-move walk: the S1b walk JSON is stored beside H and its class strings are mapped old->new through `LEGACY_*`
+  before comparison (a digest cannot be mapped, and `_g0c_walk` carries `"<module>.<qualname>"` class strings; F14),
+  and (c) the probe answers are identical.
   - Reachable red: with the translation disabled, arm (i) refuses at M5 (`LIFNeuron`) and again at M7; arm (ii) refuses
     at M5. A planted stage moving `lif_neuron` without the map refuses.
 - **Hygiene.** One subprocess per arm (`throwaway_home` sets the process-global `NORD_HOME`); `home()` asserted under
   the temporary directory before any construction; H copied, never reused (a restore followed by a flush writes to
-  it); the live lake is never opened. The probe leaves a lake file in its home even when nothing persists (1.7).
+  it); the live lake is never opened. The probe leaves a lake file in its home even when nothing persists (1.7). R-L1's
+  probe asserts that the restore did not refuse BEFORE any flush can run: a refused restore is swallowed and the flush
+  then saves the fresh learner over the taught one (F8; 2.10).
 - **A second lake string, no action:** `learning_progress.GoalStore` rows store an `achievement_function_ref` dotted
   string (`snn_data_lake.cortex.brain.predict_accuracy` in its self-check), stored and never resolved; a future
   resolver must translate it through `LEGACY_*`.
@@ -757,14 +853,19 @@ never in the checkout. Census paths are mapped through `LEGACY_*` before compari
 ### 2.8 The per-commit cheap half, and ONE battery on the stacked head
 
 - **Per commit, before the next stage is built:** C1 (census and diff against the declared delta), C2 (a)-(e), C3, C4,
-  C5 (R-L1's arms), C6, C7, C8, C9 and the stage's planted red; `ruff check` and `ruff format --check` on the touched
-  files. A stage whose cheap half is not green is not built upon.
+  C5 (R-L1's arms, from S1b's baseline on), C6, C7, C8, C9, `policy_manifest --audit` (it executes the gate commands;
+  F1) and the stage's planted red; `ruff check` and `ruff format --check` on the touched files. C1, C8, C9 and the
+  stage's gate runs execute with `SNN_ALIAS_STRICT=1`; C2 (b), (c) and (e) with it off (F3(c)). M11e's cheap half also
+  runs `reasoning_cortex`'s and `schema_induction`'s own self-checks, whose neutered reds must still fire (F16). A
+  stage whose cheap half is not green is not built upon.
 - **ONE battery** (PLAN A.4's literal block, opening with the record assert that halts on red) on the stacked G8 head,
   after the three-lens panel and its fold, per the owner's rule of 2026-09-02. Every commit message names that battery
-  ("verified by the arc's battery, named in the closing record commit"). A red on the head is attributed by re-running
-  the failing stage per commit in a throwaway worktree (after the EOL remedy and the ignored-assets junctions of the
-  protocol's 2026-09-22 note); an unattributable red does not push. A full battery per commit (about 14 x 80 min) is
-  not run.
+  ("verified by the arc's battery, named in the closing record commit"). The record states which form of A.4's
+  templated gate line the battery ran, and the orchestrator updates its two out-of-repo copies to `gates.$m` at the
+  push (SYNC DUTY; M1's commit message names them; F12). A red on the head is attributed by re-running the failing
+  stage per commit in a throwaway worktree with the archived mover (2.5; F18), after the EOL remedy and the
+  ignored-assets junctions of the protocol's 2026-09-22 note; an unattributable red does not push. A full battery per
+  commit (about 21 x 80 min) is not run.
 
 ### 2.9 The daemon, the cost, the slot
 
@@ -772,11 +873,11 @@ never in the checkout. Census paths are mapped through `LEGACY_*` before compari
   1.7). It relaunches itself on new commits when running (protocol section 4), so a restart during G8 would run each
   stage's moved code against the live lake. Its start or stop is the owner's word only.
 - **The cost is measured on ONE stage before the rest.** Known unit costs: B1 4 s, B2 16 s per process. Before M1 is
-  built, the full cheap half runs once at S1's head and its wall time is recorded in section 3; M1's build and cheap
-  half are timed before M2 is built; the per-stage estimate is re-stated from those two readings before M2. If the
-  projection exceeds two working sessions, the plan is re-cut before M2 (for example splitting M11, 2.11). The draft's
-  estimates stand until then: 15-30 min of build and review per stage, 10-15 min per cheap half, one battery of 65-95
-  min, a panel of about 25 min.
+  built, the full cheap half's wall time at S1c's head is recorded in section 3; M1's build and cheap half are timed
+  before M2 is built; the per-stage estimate is re-stated from those two readings before M2. If the projection exceeds
+  two working sessions, the plan is re-cut before M2 by a dated amendment. The draft's unit estimates stand until then,
+  re-stated for the 21 commits (S0, S0b, S1a-S1c, M1-M10, M11a-M11e, D1): 15-30 min of build and review and 10-15 min
+  of cheap half per commit, about 9-16 h in all, plus one battery of 65-95 min and a panel of about 25 min.
 - **The slot:** after G1(b)'s selection record, its losing-port deletion and the stack's battery and push (done at
   `68db184`), before G1(c) pre-registers; never inside a single-head campaign (a move inside one forces a re-record,
   because G1(a)'s revision binding refuses a replay at a different head).
@@ -791,30 +892,39 @@ never in the checkout. Census paths are mapped through `LEGACY_*` before compari
 - **A C3 red:** G8 halts; the envelope is never edited to make it green; the owner is told.
 - **A C4 red:** the stage is reverted.
 - **A battery red on the stacked head:** attributed per stage per commit; an unattributable red does not push.
+- **After the push (F8):** no stage that moved a checkpoint class is reverted, and no pre-G8 build runs against a
+  post-G8 lake, unless a reverse map lands first; the daemon stays stopped until the owner decides. The underlying P4b
+  defect -- a refused restore erases the taught learner within one night (reproduced) -- is filed as its own arc
+  (carried openings, 2026-09-25). The reverts in the first bullet are pre-push.
+- **Another checkout (F4, disclosed):** a checkout that pulls G8 keeps its ignored `__pycache__/` directories and gets
+  the namespace shadow; C6 is that checkout's detector. This machine has one checkout; the WSL path is the same
+  directory.
 - **Never done in G8:** a module retired, renamed, merged or re-governed; `brainstem/` or `tools/envelope_hashes.json`
   touched; the live lake opened or a stored checkpoint rewritten; a new `tools/*.py`; the daemon started. Moving an
   ungoverned module is out of scope (a promotion). No G8 result is a claim about the engine: G8 moves code; the engine's
   claims are G9's.
 
-### 2.11 Open for the design read
+### 2.11 Answered by the design read (2026-09-25)
 
-1. **The live checkpoint's contents.** B2's census is a scratch brain taught with the frozen schedule. The translation
-   maps any class of a moved module, but R-L1's arms should match what the live lake's newest `interaction_learner.json`
-   holds. Does the design read require a read-only census of that record (by the owner, or on a copy) before M5?
-2. **S1's positive null.** The declared-delta form in 2.6, or a separate commit landing `move_gate` first so that the
-   next commit (the `LEGACY_*` tables, the alias layer, the label consumers) diffs to EMPTY?
-3. **The riskiest alias paths are first live at M11.** All 14 anatomy packages empty only there, so the synthetic
-   legacy packages and the `claustrum` collision first matter in the largest stage (92 modules, 282 import statements,
-   399 live and 321 frozen citations). Is S1's temporary-copy red enough, or should M11 be split (the directories
-   deleted in its last part)?
-4. **C2(d) as a static scan.** Does zero legacy strings suffice, or must the stages that hold neuter-style reds (M11's
-   `schema_induction`) re-run those modules' own self-checks to show the red still fires?
-5. **Frozen runnable citations.** Rewriting five runnable lines inside frozen documents (2.5 item 7) against a
-   line-keyed citation_guard EXEMPT row per line: which one?
-6. **The judgment calls.** 75 rows, 69 of them moves (section 2.12); the largest groups are the kernel (reservoir or
-   engine), the recognizers (sensorimotor or readout) and the gate-like instruments (gates or instruments).
-7. **`import_manifest.GOVERNED`** after G8: the new package list plus `lakehouse`, which it scans today without
-   `REGIONS` governing it.
+1. **The live checkpoint's contents** (was: a read-only census of the live `interaction_learner.json` before M5?). No
+   live-lake census before M5: S0's translation maps by MODULE over every `LEGACY_*` pair, so it does not depend on
+   which classes the live record holds, and `_G0C_LAZY_ATTRS` names only classes that stay. If the owner asks for one,
+   it is taken frame by frame, read-only, on a COPY of the lake, never through `BinLog`, whose torn-tail repair can
+   truncate a lake (the comment at `substrate/home.py::_T_CALIB`).
+2. **S1's positive null** (was: the declared-delta form, or `move_gate` first so the next commit diffs to EMPTY?). S1
+   splits in three (2.4): `move_gate` lands first, in S1a, with `LEGACY_*` and the label consumers' switch that keep its
+   `gates` key out of the region censuses (the S1 re-cut, 2.13); S1b must diff to EMPTY; S1c carries F9.
+3. **The riskiest alias paths first live at M11** (was: is S1's temporary-copy red enough, or should M11 be split?).
+   M11 splits by whole source packages, `claustrum` alone first (M11a-M11e, 2.4; F4).
+4. **C2(d) as a static scan** (was: does zero legacy strings suffice?). No: F3's file resolution, raw registry
+   comparison and strict tripwire, and F16's self-check re-runs in M11e.
+5. **Frozen runnable citations** (was: rewrite five runnable lines, or a line-keyed EXEMPT row per line?). F10: the
+   EXEMPT row for t081's prose line 272 at M2; the quickstart's and `POLICIES_EVIDENCE.md`'s commands rewritten at
+   their stages with dated notes, under the plan's dated amendment (2.5 item 7).
+6. **The judgment calls** (75 rows, 69 of them moves, section 2.12). Unchanged: the design read reproduced no defect in
+   them.
+7. **`import_manifest.GOVERNED` after G8.** F15: each new package added in the stage that creates it, `lakehouse`
+   kept, each emptied package dropped in the sub-stage that deletes it (2.5 item 6).
 
 ### 2.12 Every module's destination (414 rows, re-verified at `68db184`)
 
@@ -1240,8 +1350,55 @@ only from the eight `_ENTRYPOINTS`, `-` neither (EXEMPT, reached only from an ou
 | 413 | `brain_atlas.py` | = (stays) | research tier (ungoverned) | U | L |  |
 | 414 | `connectome.py` | = (stays) | research tier (ungoverned) | U | L |  |
 
+### 2.13 The design read and its fold
+
+The design read of this pre-registration filed 18 findings: 3 BLOCKER, 6 MAJOR, 9 MINOR. The orchestrator reproduced
+every claim at `f416296` (whose `src/` equals `68db184`'s) and judged each fix separately from its claim; the
+reproduction column is that record and is not re-run here. The fix column carries the orchestrator's adoption: adopted,
+adopted NARROWED, or adopted in another form, with the reason.
+
+| F | severity | the claim | the reproduction (the orchestrator, at `f416296`) | the fix adopted, and why | landed in |
+|---|---|---|---|---|---|
+| F1 | BLOCKER | `policy_manifest` derives a gate's `-m` command and its CI standing only for tokens under `substrate/`: after M1 a `gates/<gate>.py` token becomes a file-path command and is looked up among the `tools/` scripts, so the moved gates lose their manifest standing. | Code read: `policy_manifest.token_to_argv` and `cross_check` branch on the literal prefix `substrate/`; `policy_manifest --audit` exists (`run_audit`). | Adopted: both derive from the registry (a `<pkg>/<mod>.py` token naming a governed module becomes `-m snn_data_lake.<pkg>.<mod>`, `in_selfchecks = stem in mods`; `tools/` tokens unchanged). M1's planted red: a `gates/` token is in_ci and PASSes, and the pre-fix code reds on it in a temporary copy. The cheap half gains `policy_manifest --audit`. | 2.4 M1; 2.6 C1; 2.8 |
+| F2 | BLOCKER | A legacy name cannot run under `python -m`: the alias loader has no `get_code`, and a `get_code` delegation alone still fails, because `runpy` sets `__file__` from `spec.origin`, which an alias spec leaves `None`; C2(c) could not pass as drafted. | Runtime: `python -m snn_data_lake.envelope_hash_gate --assert` (today's flat alias) -> `AttributeError: '_AliasLoader' object has no attribute 'get_code'`; with `get_code` delegation only -> `TypeError ... not 'NoneType'`; with `origin=<target origin>` and `has_location=True` -> "OK: all 5 envelope files match", exit 0. | Adopted NARROWED: only the `_LEGACY` specs carry the target's origin and `has_location=True`, with `get_code(fullname)` delegating to the target's loader under the target's name. The flat alias stays exactly as today, because it serves imports only, `doc_command_guard`'s premise that a flat alias cannot run under `-m` stays true, and nothing in G8 needs a flat `-m`. Planted red: a legacy `-m` of a gate that reads `__file__` at import exits exactly as the real path does, the three readings its positive and negative controls. | 2.4 S1b; 2.5 (the alias layer); 2.6 C2(c) |
+| F3 | BLOCKER | An identity alias makes a stale name import, so a registry entry, runner name or packaging target left on a legacy name keeps working, and every check that resolves names by import (C1 after mapping, C8, C9) stays green on an un-re-pointed entry; a static scan (2.11 Q4) does not close that. | Runtime: `import snn_data_lake.r_stdp` succeeds as `snn_data_lake.basal_ganglia.r_stdp` while `src/snn_data_lake/r_stdp.py` does not exist. | Adopted, three parts, at S1b: (a) C8 and C9 resolve every name by FILE, an alias spec counting as red; (b) C1 compares every NAME-valued registry of 1.4 RAW against the post-stage set generated from the 2.12 table, only OUTCOME sets mapped through `LEGACY_*`; (c) the `SNN_ALIAS_STRICT=1` tripwire, never on the flat alias (the envelope's own self-check reaches `signal_loop` through one), ON for C1, C8, C9 and the stage's gate runs, OFF for C2 (b), (c) and (e), a planted legacy import its positive control. | 2.4 S1b; 2.5; 2.6 (the instrument, C1, C2, C8, C9); 2.8; 2.11 Q4 |
+| F4 | MAJOR | An emptied package directory is not empty on disk: removing its tracked files leaves the ignored `__pycache__/`, a directory Python imports as a namespace package ahead of the appended alias finder, so a `_LEGACY_PKGS` defined as "no directory on disk" never fires and the synthetic package is shadowed. | 21 package directories hold an ignored `__pycache__/` (`.gitignore:2`); `claustrum/` holds `__pycache__`, `claustrum.py`, `__init__.py`. | Adopted, plus a disclosure: `_LEGACY_PKGS` = every `LEGACY_*` package key minus every live one (three tiers), from the tables; the mover deletes each emptied directory with its `__pycache__/` in the stage that empties it; C6 asserts no legacy package directory on the REAL checkout, and C2(b) runs there too; M11 splits by whole source packages, `claustrum` alone first. Disclosure: another checkout that pulls G8 keeps its `__pycache__/` and gets the shadow; C6 is its detector (one checkout here; the WSL path is the same directory). | 1.2; 2.4 M11a-M11e; 2.5 item 10 and the alias layer; 2.6 C2(b), C6; 2.10 |
+| F5 | MAJOR | The label consumers use the region table for both the label and the import path, so a consumer switched to `LEGACY_*` (the draft's S1) builds a moved module's old path and loses its reachability. | Code read: `region_charge_gate.py:83`, `atlas_node_gate.py:128`, `brain_atlas.py:37-38` use the region table for both the label and the import path. | Adopted: labels and membership from `LEGACY_*`, module paths from `module_path()`; `brain_atlas._region_files` iterates `module_path()` files, never `dirname(pkg.__file__)`. Planted red: in a temporary copy one module moved with the joins in place leaves both region censuses unchanged, and the same move with the path taken from `LEGACY_*` reds. Landed at S1a, not S1b (the S1 re-cut, below). | 2.4 S1a; 2.6 (S1a's delta) |
+| F6 | MAJOR | `tools/rule_census.json` (rows keyed `<pkg>/<mod>.py::<qualname>`) and `rule_composer._CENSUS_ADJUDICATED` (entries keyed by path) sit outside the draft's registry census, and B1 classes the JSON as frozen text: a move leaves them stale, and the regen then refuses on an adjudicated entry that matches no live row. | `tools/rule_census.json` holds 104 rows under `rules`; `_CENSUS_ADJUDICATED` holds 18 entries; the regen refuses ("REFUSED: ADJUDICATED entries matching zero live rows"). | Adopted: the census joins 1.4's registries and leaves the frozen class; in each stage that moves a rule-bearing module the pair map is applied to `_CENSUS_ADJUDICATED` first, then `--regen-census` runs in the same commit; C1 maps old keys to new and requires identical dispositions. The per-stage moving-row counts are re-derived by the mover into section 3, not written here, because they were not reproduced. | 1.4; 2.4 (the stage-size note); 2.5 item 6; 2.6 C1 |
+| F7 | MAJOR | Six code sites build a package path from parts or test a package name, which neither the pair map nor C2(d)'s dotted scan sees: after their stage each quietly reads a directory that no longer holds its modules. | Code read: `tools/p6_gate.py:1733,1811` (`os.path.join(source_dir(root), "cortex", ...)`), `growth_coverage_gate.py:188` (`endswith("cortex")`), `atlas_node_gate.py:165` (`SRC / "thalamus"`), `:199-203` (`REGIONS.get("cerebellum")`, `SRC / "cerebellum"`). | Adopted: re-pointed at M10 (`p6_gate`, through `module_path()`), M5 (`growth_coverage_gate`, the package of `module_path("placement")`) and M11d, the sub-stage that empties `thalamus` and `cerebellum` (`atlas_node_gate`, its self-check corpus built from `module_path()`, asserting at least 1 file scanned). C2(d) is extended to split path parts, package tests and package-prefix strings, AST-scoped to code, these six sites its positive control. | 2.4 M5, M10, M11d; 2.5 item 3; 2.6 C2(d) |
+| F8 | MAJOR | A refused restore erases the taught learner within one night: `Brain` swallows the refusal and `_flush_interaction_learner` then saves the fresh learner over the checkpoint, so reverting a checkpoint-moving stage after the push, or running a pre-G8 build against a post-G8 lake, destroys what the chat learner was taught. | Runtime, a throwaway lake, the real `save_state`/`consolidate`: taught flags `[True, False]` -> `[False]`; code read: `brain.py`'s restore swallows the refusal ("restore refused; learner stays fresh"), `_flush_interaction_learner` has no refusal guard. | Adopted as a disposition; the defect is NOT fixed in G8, because it is P4b's own arc: after the push no checkpoint-moving stage is reverted and no pre-G8 build runs against a post-G8 lake unless a reverse map lands first; the daemon stays stopped until the owner decides; the defect is filed in the carried openings (2026-09-25); R-L1's probe asserts no refusal before any flush can run. | 2.7; 2.10 |
+| F9 | MAJOR | POLICIES P3 "ANATOMY IS DATA" says the region rules stay code hygiene "until specs/022's G7 and G8 re-key them", while the owner's decision (4) freezes them on `LEGACY_*` in G8 and leaves the re-keying to G7/G4. | `docs/POLICIES.md` P3, "ANATOMY IS DATA": "Both rules stay code hygiene until specs/022's G7 and G8 re-key them". | Adopted, as its own stage S1c: "...until specs/022's G7 and G4 re-key them; G8 freezes both on the pre-G8 `LEGACY_*` table (owner decision, 2026-09-25)" or an equivalent wording; `policy_manifest.json` regenerated; the word delta declared against `doc_budget_gate` before the gate runs, net zero if the headroom is short. The owner's decision in chat outranks POLICIES; this is POLICIES owing the fix. | 2.4 S1c; 2.6 (S1c's delta) |
+| F10 | MINOR | The draft's one rule for frozen runnable text (2.5 item 7) treats three unlike cases alike and outruns the plan's "frozen evidence keeps its historical paths": `t081-report-order.md:272` is prose that citation_guard's `reproduc` heading rule catches, not a command; the specs/005 quickstart's lines are one `git diff --quiet` command that a stale path passes vacuously; and `POLICIES_EVIDENCE.md`'s two frozen `python -m` commands cannot ride the alias, because `doc_command_guard` resolves `-m` by file and rejects a flat alias. | `specs/005-language-organ/quickstart.md:75-77` is a `git diff --quiet HEAD -- <paths>` command (a stale path exits 0); `docs/POLICIES_EVIDENCE.md:410,476` are `python -m snn_data_lake.substrate.{import_manifest, method_dormancy_gate}`; `tools/doc_command_guard.py` resolves `-m` by FILE (`_module_file`) and rejects flat aliases. | Adopted with a plan amendment (the commit before this one): a line-keyed citation_guard EXEMPT row for t081's line 272 lands in M2's commit (not earlier: a stale exemption reds); the quickstart's line 75 (M11e) and line 76 (M3, M10) and `POLICIES_EVIDENCE.md`'s lines 410 and 476 (M1) are rewritten at their stages, the historical path in a dated note beside each. | 1.10; 2.4 M1, M2, M3, M10, M11e; 2.5 item 7; the plan's G8 row |
+| F11 | MINOR | `so101_arm.py`, never opened for writing, cites moving modules in 8 comment lines; each dangles from its stage on and raises citation_guard's BROAD count in live files, which 2.6 forbade. | Code read: comment citations at `so101_arm.py` lines 241, 243, 602, 603, 604, 605, 606, 607. | Adopted: a named envelope carve-out in 2.6, the BROAD count in live files rising by exactly these lines at their stages (M1 604, 605; M5 243; M9 241; M11d 602, 603, 607; M11e 606) and by nothing else; the owner is told (a comment-only envelope edit is theirs to approve). | 1.8; 2.6 (the carve-out, C7) |
+| F12 | MINOR | The templated battery line also lives in two copies outside the repo, which no in-repo rewrite and no gate reaches. | The memory store's `archive/t062-t063-2026-09-09/t066_battery_v2.sh` and `D:\AI-project\omnigent-sndl\SNDL-PROTOCOL.md` section 5 carry `-m snn_data_lake.substrate.$m`. | Adopted: M1's commit message and the closing record name both copies; the orchestrator updates them to `gates.$m` at the push (SYNC DUTY); the record states which form the battery ran. | 1.10; 2.4 M1; 2.8 |
+| F13 | MINOR | C2(a) ("import all 414 modules") cannot pass as drafted: 13 fail today, none in a moving package. | Runtime, a scratch `NORD_HOME`, 0 files written: 414 attempted, 13 failed (lakehouse 2, reasoning 11). | Adopted: C2(a) asserts that the importable set is unchanged, this reading its baseline; the full list is re-recorded at S0's head in section 3. | 2.6 C2(a) |
+| F14 | MINOR | R-L1 (b) compared walk DIGESTS "once class strings are mapped", but a digest cannot be mapped: the walk carries `"<module>.<qualname>"` class strings, so every move changes it. | Code read: `interaction_learning._g0c_walk` returns `{"class": "<module>.<qualname>", ...}`. | Adopted: the S1b walk JSON is stored beside H and its class strings are mapped old->new through `LEGACY_*` before comparison. | 2.7 |
+| F15 | MINOR | `import_manifest` skips a listed name with no directory without a word, so a new package missing from `GOVERNED` goes unscanned silently, and a name listed without its directory scans nothing. | Code read: `import_manifest.py:173` skips a missing directory silently. | Adopted: `GOVERNED += <new package>` in the stage that creates it (S1a `gates`, M2 `instruments`, M3 `sensorimotor`, M4 `infra`, M5 `growth`, M6 `reservoir`, M7 `readout`, M8 `sleep`, M10 `engine`, M11a `faculties`), `lakehouse` kept (Q7). Ruled at the fold: each emptied package leaves `GOVERNED` in the M11 sub-stage that deletes its directory. | 1.4; 2.4; 2.5 item 6; 2.6 C1; 2.11 Q7 |
+| F16 | MINOR | `reasoning_cortex`'s three `sys.modules` asserts on the `kb_ranking` key pass vacuously once the key is stale, and no static scan shows that `schema_induction`'s neutered red still fires. | Code read: `reasoning/reasoning_cortex.py:1157,1177,1185` assert `"snn_data_lake.cortex.kb_ranking" not in sys.modules`. | Adopted: in M11e, the sub-stage that moves `kb_ranking`, the three keys are derived with `module_path("kb_ranking")`, and `reasoning_cortex`'s and `schema_induction`'s self-checks run in its cheap half (their neutered reds must still fire). | 2.4 M11e; 2.5 item 3; 2.8; 2.11 Q4 |
+| F17 | MINOR | `selfcheck_cache` finds the roster with `init_text.index("REGIONS = {")`, a substring that `LEGACY_REGIONS = {` also contains. | Code read: `selfcheck_cache.py:899-901` anchors with `init_text.index("REGIONS = {")`. | Adopted NARROWED to one fix: the anchor becomes the line-anchored regex `(?m)^REGIONS = \{` in the commit that introduces `LEGACY_REGIONS` (S1a after the re-cut); the table placement is unchanged (`LEGACY_*` after the live tables). | 2.4 S1a |
+| F18 | MINOR | 2.5 kept the mover out of the tree with only its hash recorded, while 2.8 attributes a battery red by rebuilding a stage per commit, which needs the mover's source. | Section 2.5's last paragraph against 2.8's attribution. | Adopted: the mover's source is archived verbatim with the arc (the memory store's `archive/g8-2026-09-25/`), beside its hash in section 3; its P4c disposition is an out-of-tree operator artifact like the battery script of record, never committed to `tools/` (which would raise the p4c `tools` zone, baseline 30). | 2.5; 2.8 |
+
+**The S1 re-cut (the orchestrator's ruling at the fold, option δ).** The design read answered Q2 with `move_gate`
+landing first so the next commit diffs to EMPTY, and the fold's first cut put `LEGACY_*`, F5's consumer switch and
+F17's anchor in that second commit (S1b). That order cannot hold: S1a's `gates` key would reach the label consumers
+while they still read the live table. Reproduced in-process at `f416296` with the key planted, by the writer and again
+by the orchestrator: the region-charge census went from 16 to 17 rows, a `gates: UNREACHABLE` row added (control: the
+key removed, the census equal again). That is a change outside S1a's declared delta, and S1b's switch to the pre-G8
+`LEGACY_*` would reverse it, so S1b could not diff to EMPTY; `brain_geometry` and `region_wiring` read the live table
+the same way (code read). Adopted: S1a lands `move_gate` together with `LEGACY_*`, `package_of()`/`module_path()`, F5's
+switch and joins and F17's anchor, under the draft's S1 delta word for word; S1b lands the alias layer (F2), F3's three
+parts, F4's `_LEGACY_PKGS` and the R-L1 baseline, and must diff to EMPTY; S1c lands F9. Rejected: declaring the rows at
+S1a and their reversal at S1b (it loses the positive null); excluding `gates` inside three consumers at S1a (code that
+goes dead after S1b); copying `LEGACY_*` at S1a's head (a G8 package in the pre-G8 table, against the owner's decision
+4). The pre-S1a census is taken by S1a's own `move_gate` over a `git archive` export of the S0b head (2.6).
+
+**The fold's other rulings (the orchestrator, 2026-09-25).** `cortex` stays whole at 33 modules in M11e (a partial
+package is never moved); emptied package names leave `GOVERNED` at the sub-stage that deletes their directory (F15);
+F10's dated notes and F9's rewording carry a declared word delta against the measured headroom (`POLICIES_EVIDENCE.md`
+28 words and `POLICIES.md` 33 at `f416296`), reworded to net zero if short; `olfactory/` goes at M11b with its `REGIONS`
+key; 2.5 item 5 no longer relies on `runpy` failing on a stale runner name (F2 lets it run) and names C1's raw
+comparison and the tripwire instead.
+
 ## 3. Results
 
-Empty. Nothing of G8 has been built or run. Section 3 will record the design read and its fold, the frozen hash of
-section 2, each stage's census, declared delta, planted red and cheap-half reading, the mover's hash, the cost readings
-of section 2.9, the panel, the battery and every deviation from section 2.
+Empty. The results begin at S0.
