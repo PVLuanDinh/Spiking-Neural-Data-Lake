@@ -1,6 +1,43 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.1.0 -> 1.2.0 (2026-09-25)
+Rationale: MINOR. Two principles ADDED (P4c, missing since 1.1.0; P4d, the owner's 2026-09-25 engine
+directive), P0 AMENDED (growth is problem-driven under P4d), P6's restated gate status turned into
+a pointer, and the Governance cap on provisional principles AMENDED. Nothing was removed or
+redefined, so this is not a MAJOR. As before, no principle is invented here: each addition
+restates docs/POLICIES.md, which remains the authority.
+
+Principles added:
+  + P4c Every build is part of the brain   (owner directive, 2026-08-04)
+  + P4d The engine                         (owner directive, 2026-09-25; PROVISIONAL, recorded as a
+                                            disclosed session call; source: specs/022-unified-brain-arc/
+                                            evidence/engine-structure-2026-09-25.md)
+
+Principles amended:
+  ~ P0  growth is problem-driven (P4d)
+  ~ P6  the restated gate status ("manual, NON-asserting and not in CI", with 2026-08-04 counts) was
+        stale against POLICIES.md; it is now a pointer, as P7 and P8 already were
+
+Sections amended:
+  ~ Governance   the P4-family and P6 enforcement rows become pointers ("P4b is NOT mechanized" and
+                 "P6 manual, NON-asserting, not in CI" had both gone stale); the provisional cap now
+                 counts owner directives adopted with a specified gate separately (the audit offered
+                 this or dropping P7/P8's PROVISIONAL marker; a disclosed session call); the Constitution
+                 Check names the P4 sub-clauses
+
+Synced in the same arc: docs/POLICIES.md (P4d and its pointers), docs/AGENT_COLD_START.md (its design
+paragraph and binding sections), AGENTS.md (the entry count, recounted: thirteen).
+
+Templates: .specify/templates/plan-template.md OK (its Constitution Check points to docs/POLICIES.md
+and the manifest and restates no principle); spec-template.md, tasks-template.md and the speckit-*
+skills OK (no principle enumeration; checked by grep, whose positive control found "constitution" in
+ten skills).
+
+Deferred TODOs: none. RATIFICATION_DATE unchanged (2026-07-24); LAST_AMENDED_DATE 2026-09-25.
+
+Previous report (1.0.0 -> 1.1.0, 2026-08-04), kept for the record
+==================================================================
 Version change: 1.0.0 -> 1.1.0
 Rationale: MINOR. Three principles ADDED (P4b, P7, P8), three AMENDED (P0, P1, P5), and the
 Governance compliance clause re-scoped from P0-P6 to P0-P8. Nothing was removed or redefined,
@@ -78,6 +115,10 @@ The honesty guards are the operative half and are NON-NEGOTIABLE:
 - Scaffolding a not-yet-measured capability is PERMITTED, on three conditions: label it as
   infrastructure, claim no band or avenue until measured, and name the gap at the site.
 
+**Growth is problem-driven (P4d, owner directive 2026-09-25).** The brain grows while a problem is
+certified unsolved, pauses at a growth budget, and prunes and saves after a solve; the honesty
+guards above bind every part of it.
+
 ### P1. Brain-native / no-hardcode
 
 Behaviour-arbitrating values MUST be learned weights or running-baseline-relative forms. A magic
@@ -148,6 +189,24 @@ measurement: `hippocampus/episode_consolidation` stored 59 episodes over 600 tic
 `persist=True` and added **0** records to the lake, while `retained()` reported **1.000**
 throughout — perfectly recalling episodes it was about to lose entirely.
 
+### P4c. Every build is part of the brain
+
+Owner directive, 2026-08-04. Every current and future build in this tree MUST be part of the brain
+or retired: there is no "outside the brain", the directory a build sits in is a fact about the
+filesystem, the daemon is the brain's drive and the cockpit its sensorimotor surface. The rule, its
+retention rule, its amendment (a build that has not reached `main` is not a build the project can
+claim) and its one named exception (`CLAUDE.md`) live in `docs/POLICIES.md` P4c.
+
+### P4d. The engine (PROVISIONAL)
+
+Owner directive, 2026-09-25. The brain is one of TWO networks in one organism: it grows new neurons
+as column-sized batches on an anatomical map to solve a problem, feeds them into a separate liquid
+reservoir into which it may transport weights, tunes readout neurons that return to it, pauses at a
+growth budget, and prunes and saves after a solve, with every network's state in the one lake. Its
+conditions (the e-prop invariant unchanged, P2 inside each job, "the engine can work" as a P8
+criterion) and its gate specification live in `docs/POLICIES.md` P4d, and it stays PROVISIONAL
+until that gate is built and counted.
+
 ### P5. Use the GPU for everything it actually speeds up
 
 "Actually" is decided by MEASUREMENT, not expectation, and the measurement depends on WIDTH.
@@ -192,11 +251,12 @@ FACULTY.** Wiring a faculty into the single action gate is the DEFECT P6 names, 
 satisfy it. Honesty guard: a route is not a conversation — neuter faculty A and show faculty B's
 own output changes; adding a reader that stores a value is not consumption.
 
-PROVISIONAL and review-enforced. Gate status corrected 2026-08-04: `tools/p6_gate.py` **exists**,
-runs clean and self-checks, but is manual, NON-asserting and not in CI; the connectome-diff half is
-unbuilt. Its measured reading is **0 faculty-to-faculty reads** and **11 PRIVATE, mutually invisible
-workspace instances across 8 modules** — which refutes the "just add readers" remedy, because there
-is no shared object to read.
+PROVISIONAL; mechanization status lives in `docs/POLICIES.md`'s enforcement rows (authoritative;
+re-derive with `python -m snn_data_lake.substrate.policy_manifest --manifest`). The governing
+finding stays: each writer holds a PRIVATE workspace instance, so adding readers is not a remedy
+(POLICIES.md P6). *(Converted to a pointer 2026-09-25, 1.2.0: this paragraph restated the gate as
+"manual, NON-asserting and not in CI" with 2026-08-04 counts, and POLICIES.md records it BUILT AND
+ASSERTING.)*
 
 ### P7. Any dependency that helps this become a phenomenal brain is accepted
 
@@ -312,14 +372,16 @@ amendment in `docs/POLICIES.md`, with the measurement or worked case that motiva
 Enforcement surface, stated plainly because it is easy to assume a gate exists:
 
 <!-- Every row below is a SUMMARY that can lag; docs/POLICIES.md is authoritative for each
-     (this file's own header: where the two disagree, this file is the defect). Only the
-     e-prop row has been converted to a pure pointer so far. -->
+     (this file's own header: where the two disagree, this file is the defect). The e-prop, P7
+     and P8 rows were pointers already; the P4-family and P6 rows became pointers on 2026-09-25
+     (1.2.0), after "P4b is NOT mechanized" and "P6 HALF: manual, NON-asserting, not in CI" had
+     both lagged POLICIES.md. -->
 | principle | mechanized in CI | review-enforced |
 |---|---|---|
 | P0, P1, P2, P5 | — | yes |
 | P3 | `dormancy_gate.py`, `method_dormancy_gate.py`, `import_manifest.py` | the charge tier |
-| P4 / P4b | `replication_guard.py` (P4 only; **P4b is NOT mechanized**) | P4b |
-| P6 | **HALF** — `tools/p6_gate.py` (topology; manual, NON-asserting, not in CI) | yes, PROVISIONAL; connectome-diff half unbuilt |
+| P4, P4b, P4c, P4d | see `docs/POLICIES.md`'s enforcement rows (authoritative; this table deliberately does not restate them, including the CI column) | see POLICIES (P4d is PROVISIONAL and review-enforced) |
+| P6 | see `docs/POLICIES.md`'s enforcement row (authoritative; not restated here) | see POLICIES (PROVISIONAL: a ratchet asserts "no worse", never "satisfied") |
 | P7, P8 | see `docs/POLICIES.md`'s enforcement rows (authoritative; this table deliberately does not restate them, including the CI column) | see POLICIES |
 | e-prop not backprop | see `docs/POLICIES.md`'s enforcement row (authoritative; this table deliberately does not restate it, including the CI column) | see POLICIES |
 
@@ -329,15 +391,18 @@ meaning anything. Mechanization status and dates live in `docs/POLICIES.md`'s en
 a ratchet asserts "no worse", never "satisfied" — superseding the stale sentence that stood
 here; P8's was the cheapest and the one
 with a named expected output, so it is the first that SHOULD stop being provisional.
+**Amended 2026-09-25 (1.2.0; a disclosed session call, the second of the two options the audit
+offered): owner directives adopted with a specified gate are counted separately.** P4d is such a
+directive; the three counted under the cap stay P6, P7 and P8.
 
 Versioning: MAJOR for a backward-incompatible principle removal or redefinition, MINOR for a new
 or materially expanded principle, PATCH for clarification.
 
 Compliance: every plan produced under Spec Kit MUST pass a Constitution Check against **P0–P8**
-and the Standing Invariants before implementation. Complexity MUST be justified against P2 and
+(P4's sub-clauses P4b, P4c and P4d included) and the Standing Invariants before implementation. Complexity MUST be justified against P2 and
 the rule that the best code is the code never written. Note for plan authors: a Constitution
 Check certifying "no new dependency" is **no longer evidence of anything** under P7 — a plan
 should state what a dependency would BUY, or say nothing. `CLAUDE.md` and `docs/POLICIES.md` are
 the runtime guidance files.
 
-**Version**: 1.1.0 | **Ratified**: 2026-07-24 | **Last Amended**: 2026-08-04
+**Version**: 1.2.0 | **Ratified**: 2026-07-24 | **Last Amended**: 2026-09-25

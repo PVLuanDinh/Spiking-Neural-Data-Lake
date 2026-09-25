@@ -16,12 +16,14 @@ dependency" is not a valid reason to reject anything.**
 *(Corrected 2026-08-04: this said `NORD_TORCH=0` "gives a torch-free brain". It gives an
 `ImportError`. Grep says so — `cortex/brain.py` carries the removal note at two sites.)*
 
-**Governing policies:** `docs/POLICIES.md` — **P0 through P8: nine numbered policies, eleven entries**
-(P4b *and* P4c are sub-clauses of P4), not P0–P5. P0 is autonomous self-improvement and outranks the
+**Governing policies:** `docs/POLICIES.md` — **P0 through P8: nine numbered policies, thirteen entries**
+(P4b, P4c *and* P4d are sub-clauses of P4, P5a of P5), not P0–P5. P0 is autonomous self-improvement and outranks the
 rest; **P4b** the durable lake is part of the brain; **P4c** EVERY build is part of the brain — there
 is no "outside the brain", and "it is only a helper / only the UI / only a benchmark" is not a
-disposition; P7 is the dependency policy above; P8 is invent any method, but a success criterion with
+disposition; **P4d** (PROVISIONAL) the engine, two networks that grow to solve inside the one lake;
+P7 is the dependency policy above; P8 is invent any method, but a success criterion with
 no reachable RED is deleted, not weakened.
+*(Recounted 2026-09-25: "eleven" was right when written and missed P5a, which landed after it.)*
 *(Corrected 2026-08-04: this line said "P4b is a sub-clause" and omitted **P4c** entirely — the
 policy under which the daemon and the cockpit are parts of the brain, and the one most likely to be
 missed by an agent reading only this page.)*
