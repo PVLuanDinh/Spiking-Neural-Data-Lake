@@ -1460,3 +1460,43 @@ before and after. The full failure list, every one a `ModuleNotFoundError`:
 
 None is in a moving package (`lakehouse/` and `reasoning/` stay, 2.2). This is the importable set C2(a) compares
 against.
+
+### 3.2 S0b -- the dormancy gate reds a phantom EXEMPT row
+
+Measured 2026-09-25 at the S0 head `393411b` (before) and on the S0b tree (after), `.venv-lake`.
+
+**Counted first**, before any edit, at the base head `36cfc7a` and again at `393411b`: 59 EXEMPT rows, **0** absent
+from `_CANON` (the counter's positive control, one planted key, counted 1). So S0b lands green with its red shown.
+
+**What landed** (`substrate/dormancy_gate.py`). `_phantom_rows(exempt)` returns the EXEMPT keys absent from `_CANON`;
+`coverage()` reports them as `phantom_exempt`; `main()` asserts the list empty with a message naming the rows, then runs
+`_phantom_selfcheck()`, which plants `g8_s0b_planted_phantom` in a COPY of EXEMPT (never the real table), asserts that
+the same verdict path reds and names the row, and asserts the unplanted table green. The gate has no separate
+`--self-check` flag: its `main()` is what `--assert` and `run_selfchecks.py` both run, so the self-check rides there. P2:
+`graph-exists.js` found no lexical match; re-queried in the tree's vocabulary, the nearest sibling is
+`eprop_transport_gate.stale_exemptions()`, which checks that gate's own transport registry against gradient findings,
+not this table's keys. The duplicate hook's five term-overlap sites were read and cleared with a `# distinct-from:`
+marker.
+
+**The defect, before the fix** (the test first, at `393411b`): `main()` with a phantom row planted in `EXEMPT` did not
+raise (`DID NOT RAISE AssertionError`); the gate was blind to it.
+
+**The planted red firing** (after), one row `g8_s0b_no_such_module`:
+
+1. through the verdict helpers `main()` uses: `Policy 3: 1 phantom EXEMPT row(s) name no brain module (absent from
+   REGIONS and the torch/train tiers) -- a key that exempts nothing hides the module it once named; re-key the row or
+   retire it: ['g8_s0b_no_such_module']`;
+2. `main()` itself, the row planted in the module's `EXEMPT`: the same text;
+3. the self-check's own red, the detector blinded (`_phantom_rows` returning `[]`): `dormancy self-check: a planted
+   phantom EXEMPT row did not red`.
+
+The real table stays untouched (59 rows) and the unplanted self-check is green. Pinned by
+`tests/test_dormancy_phantom_exempt.py` (4 tests); `tests/test_eprop_train_tier_unreachable.py`, the gate's existing
+stale-exempt red, stays green.
+
+**The declared delta** (2.6: the dormancy report gains `phantom_exempt`, empty). `coverage()` held 7 keys before and 8
+after; the added key is `phantom_exempt: []`; the other 7 values are equal (the comparator sees a planted change). The
+gate's full printed output (`--assert`, exit 0 on both sides) is byte-identical before and after by `cmp`: the diff is
+EMPTY, because the check prints nothing while green. The method-dormancy gate's output is byte-identical to S0's, and
+citation_guard's STRICT (0, 1 exemption) and BROAD (1,075 across 239 files) are unchanged; its scanned-file and
+citation counts rise by this commit's own tracked test file and its 8 citations, all resolving.

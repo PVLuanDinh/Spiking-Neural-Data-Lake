@@ -1070,6 +1070,40 @@ def conditional_import_count():
     return n
 
 
+# distinct-from: brain_atlas.py, substrate/selfcheck_cache.py -- phrase overlap only, as with
+#   brainstem/arm_hardware.py, cortex/everyday_battery.py and hippocampus/ng_snn.py (a region file
+#   list, a keying word, a torque, a concurrency conjunct, a unit prune); all five read. The nearest
+#   real sibling, substrate/eprop_transport_gate.py's stale_exemptions(), checks THAT gate's transport
+#   registry against gradient findings; this checks THIS table's keys against _CANON.
+# G8 S0b (specs/022 evidence g8-reorganization.md 2.4): `coverage()` reads only the EXEMPT keys that
+# resolve (`m in _CANON`), so a key naming NO brain module -- a rename, a retirement, a typo --
+# exempts nothing and was invisible. That is the phantom row, and main() asserts it.
+def _phantom_rows(exempt):
+    """EXEMPT keys absent from `_CANON`: rows that name no brain module at all."""
+    return sorted(m for m in exempt if m not in _CANON)
+
+
+def _assert_no_phantom(rows):
+    assert not rows, (
+        f"Policy 3: {len(rows)} phantom EXEMPT row(s) name no brain module (absent from REGIONS "
+        f"and the torch/train tiers) -- a key that exempts nothing hides the module it once named; "
+        f"re-key the row or retire it: {rows}"
+    )
+
+
+def _phantom_selfcheck():
+    """The phantom assert's reachable red: a row naming a module that does not exist, planted in a
+    COPY of EXEMPT (never the real table), must red the gate; the unplanted table must stay green."""
+    planted = {**EXEMPT, "g8_s0b_planted_phantom": ("permanent", "planted; names no module")}
+    try:
+        _assert_no_phantom(_phantom_rows(planted))
+    except AssertionError as exc:
+        assert "g8_s0b_planted_phantom" in str(exc), f"the planted red names no row: {exc}"
+    else:
+        raise AssertionError("dormancy self-check: a planted phantom EXEMPT row did not red")
+    _assert_no_phantom(_phantom_rows(EXEMPT))
+
+
 def coverage():
     reach = reachable()
     exempt = {_CANON[m] for m in EXEMPT if m in _CANON}
@@ -1083,6 +1117,7 @@ def coverage():
         "exempt": len(exempt),
         "dormant": [d.replace(_PKG + ".", "") for d in dormant],
         "stale_exempt": stale,
+        "phantom_exempt": _phantom_rows(EXEMPT),  # G8 S0b: asserted in main()
         "conditional_imports": conditional_import_count(),
         # US1 audit B3: the module gate's STANDING-TODO arm, the method gate's shape. A
         # non-permanent row is open work; seven of them carried a bound ("S0 exit (T039),
@@ -1141,6 +1176,8 @@ def main():
         f"reachable. Check the reason before deleting it: an exemption may be the only record of a "
         f"waived invariant. {cov['stale_exempt']}"
     )
+    _assert_no_phantom(cov["phantom_exempt"])  # G8 S0b, with its own planted red next
+    _phantom_selfcheck()
     if cov["open_dispositions"]:
         print(
             f"STANDING TODO -- {len(cov['open_dispositions'])} non-permanent exemption(s) still "
