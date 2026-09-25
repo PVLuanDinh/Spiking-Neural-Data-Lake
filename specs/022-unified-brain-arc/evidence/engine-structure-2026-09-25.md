@@ -108,6 +108,10 @@ The owner then answered four questions (2026-09-25). Each answer was the brief's
   and reason. The owner lowered the POLICIES.md ceiling on 2026-08-30.
 - The constitution's cap of three provisional principles counts owner directives adopted with a specified gate
   separately. The audit offered this or dropping the constitution's PROVISIONAL marker on P7 and P8.
+- *(Added in the 2026-09-25 panel fold.)* The null rule, one sentence written verbatim into POLICIES P4d and its
+  e-prop pointer, FR-041's and SC-019's notes, the plan's glossary and G9, and T117: an owner-drawn or owner-chosen
+  part goes to the owner on a measured null, and only transport lapses on its own. For decision C's parts it departs
+  from the decision brief's "The four tests below then delete any part of it that does not pay" (section 5).
 
 ## 5. Where this lands, and what stays open
 
@@ -121,7 +125,11 @@ Open for the owner, carried from the audit and not decided by any session call:
 - whether P1 admits a value fitted once from measured external data (an H01 kernel width), or G4 keeps the fitted
   width running-baseline-relative;
 - a growth target INSIDE the reservoir (a fed neuron becoming a reservoir unit, one of G3's arms);
-- the reorganization's package layout, each path-keyed gate's disposition, and any envelope-file move (G8).
+- the reorganization's package layout, each path-keyed gate's disposition, and any envelope-file move (G8);
+- whether a G-R9 null on an owner-drawn part changes the directive (POLICIES P4d's null rule sends such a null to the
+  owner; the question is asked when one lands);
+- whether the decision brief's "delete any part of it that does not pay" stands for decision C's four tests, which
+  P4d's null rule (a session call of the 2026-09-25 panel fold) routes to the owner instead.
 
 ## 6. Sources
 

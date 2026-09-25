@@ -514,11 +514,12 @@ feeds them into the LIQUID RESERVOIR, a second network into which it also transp
 NEURONS, driven by the reservoir and tuned by the brain through a learning rule, return to the brain,
 which recalls anything in the lake because it lives there.
 
-**Organizing unit: grown columns on an anatomical map (owner decision).** Growth adds small
+**Organizing unit: grown columns on an anatomical map (owner decision C).** Growth adds small
 column-sized batches where error builds up; every grown neuron carries a position, layer, Dale sign,
 region label and the problem that grew it, in the lake; wiring follows rules (layer target × distance
 kernel × shared-partner bonus), not a copied diagram. A region is a LABEL read off the map and
-measured, never a code package; anatomical data is a fitted prior that must beat a shuffled copy; a
+measured, never a code package; anatomical data is a fitted prior that must beat a shuffled copy; each
+part stands on its deciding test (plan G7: T1-T4); a
 reorganization moves code and re-points every path-keyed rule in the same commit.
 
 **The rules are the directive;** its named mechanisms (liquid state machine, STDP, topographical
@@ -539,10 +540,13 @@ clustering, predictive coding, simulated annealing) are examples, chosen by a be
 - **Weight transport into the reservoir** (copied values or driving activity) feeds its activations;
   the e-prop invariant's transport stays forbidden.
 - **"The engine can work" is a P8 criterion,** pre-registered: a reachable red (on a problem the current
-  network provably cannot solve, the engine with its transport permuted, its reservoir reset or its
-  readout return cut must lose), a control that is not the engine (the brain alone; a presized network
-  at the same neuron budget), per-part neuter attribution, and deletion on a null: the permission
-  lapses for a part whose neuter changes nothing.
+  network provably cannot solve, the engine with its reservoir removed, or its feed, transport or return
+  path neutered, must lose), a control that is not the engine (a presized growth-OFF twin at the same
+  neuron budget; random growth), and per-part neuter attribution. A measured null never deletes an
+  owner-drawn or owner-chosen part (the two networks, the reservoir, the return path, decision C's
+  parts): its implementation is reverted, it is not claimed, and the owner decides on the evidence;
+  transport, permitted "as long as the engine can work", lapses only on its own measured failure, the
+  whole engine failing G-R9 (i) or G-R9 (ii)'s transport neuter changing nothing.
 - **Reservoir state in the lake, rebuilt at start (owner decision):** `make_brain()` builds the
   reservoir, the one drive ticks it, and it is gated like any build. No separate store: its seed,
   learned deltas, transport record and fed-in neurons are lake records, and a restart rebuilds it
@@ -1009,7 +1013,11 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
 
   **THE ENGINE'S TRANSPORT IS NOT THIS INVARIANT'S TRANSPORT (owner permission 2026-09-25, P4d).**
   Copying the brain's weight values into the reservoir, or driving it with the brain's activity, feeds
-  an ACTIVATION and is permitted while the engine measurably works. A transposed forward weight
+  an ACTIVATION and is permitted. A measured null never deletes an owner-drawn or owner-chosen part (the
+  two networks, the reservoir, the return path, decision C's parts): its implementation is reverted, it
+  is not claimed, and the owner decides on the evidence; transport, permitted "as long as the engine
+  can work", lapses only on its own measured failure, the whole engine failing G-R9 (i) or G-R9 (ii)'s
+  transport neuter changing nothing. A transposed forward weight
   feeding a WEIGHT UPDATE stays forbidden, including through a transported copy; extending the
   permission to credit assignment would narrow this invariant, which is the owner's call in words.
 

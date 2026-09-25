@@ -115,7 +115,10 @@ BUDGETS = {
     # two enforcement-table rows. The 77 words of pre-raise headroom are carried, not spent. Stated
     # because it is owner-visible: the owner LOWERED this ceiling on 2026-08-30, and this raise is about
     # 2.5x the largest precedent (+450 below).
-    "docs/POLICIES.md": 13906,  # EARLIER: raised +450 on 2026-09-02 for the owner's batched-battery amendment and the
+    # RAISED 13906 -> 14028 on 2026-09-25 by the MEASURED delta (13,829 -> 13,951, +122), the docs panel fold's
+    # null rule: one sentence, verbatim in P4d and in the e-prop invariant's engine pointer, replacing four
+    # disagreeing lapse wordings, with P4d's red arms matched to the plan's G-R9. Owner-visible.
+    "docs/POLICIES.md": 14028,  # EARLIER: raised +450 on 2026-09-02 for the owner's batched-battery amendment and the
     # execution-record note that lands in the same arc; NOT minimum-viable on purpose (the headroom is
     # for that note), a disclosed departure from the +~56 convention below
     # Superseded history of the 28150 ceiling, kept for the ratchet record:

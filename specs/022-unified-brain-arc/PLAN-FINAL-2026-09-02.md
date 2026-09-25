@@ -14,8 +14,8 @@ it operates, and it is not a policy (POLICIES.md P2's corollary).
 
 **Owner amendment, 2026-09-25 (supersedes the paragraph above where they conflict):** the owner's SNDL-Engine
 structure (`evidence/engine-structure-2026-09-25.md`) replaces the 2026-09-23 reading. The G workstream is now the
-engine: two networks (the brain and a separate liquid reservoir), brain-to-reservoir weight transport while the
-engine measurably works, brain-tuned readout neurons with a return path, grow-attempt-repeat paused at a budget,
+engine: two networks (the brain and a separate liquid reservoir), brain-to-reservoir weight transport until its own
+measured failure (POLICIES P4d's null rule), brain-tuned readout neurons with a return path, grow-attempt-repeat paused at a budget,
 solve-then-sleep prune and save, the reservoir's state in the lake and rebuilt at start, and the organizing unit
 "grown columns on an anatomical map". POLICIES.md records it as the PROVISIONAL directive P4d (a disclosed session
 call). Rows G0-G9, FR-041's and SC-019's dated notes and T108-T117 track it; it is still planned work, not evidence
@@ -213,8 +213,11 @@ its persistence floor learned nothing the stream's inertia did not supply. **Cha
 curiosity producer over the arm's context vs the percept-surprise |LP| facade the growth stop reads.
 **Wake rows**: `Brain.state()` sampled after a `tick()` that returned `"awake"`. **Transport (brain-to-reservoir,
 added 2026-09-25)**: a copy of brain weight values into the engine's liquid reservoir, or the brain's activity
-driving it; permitted while G-R9 holds (owner 2026-09-25; POLICIES P4d). Never the e-prop invariant's sense, a
-transposed forward weight feeding a weight update, which stays forbidden.
+driving it; permitted (owner 2026-09-25; POLICIES P4d). A measured null never deletes an owner-drawn or owner-chosen
+part (the two networks, the reservoir, the return path, decision C's parts): its implementation is reverted, it is not
+claimed, and the owner decides on the evidence; transport, permitted "as long as the engine can work", lapses only on
+its own measured failure, the whole engine failing G-R9 (i) or G-R9 (ii)'s transport neuter changing nothing. Never the
+e-prop invariant's sense, a transposed forward weight feeding a weight update, which stays forbidden.
 
 ---
 
@@ -1196,8 +1199,9 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   from there (R1/R2). Each connection is credited only at its own red, and the whole engine only at G-R9 (G9).
 - **Brain-to-reservoir weight transport is PERMITTED on a measured condition** (owner 2026-09-25: "Weights transport
   is allowed as long as the engine can work"). Two forms run as arms: a value copy of declared brain weights into the
-  reservoir at a recorded boundary, and the brain's activity driving the reservoir. The condition is G-R9 (G9); after
-  G9, P2 keeps one form and retires the other. The copy is not a second durable store (P4b): the reservoir's state
+  reservoir at a recorded boundary, and the brain's activity driving the reservoir. The condition is measured in G9,
+  by G-R9 (i) and G-R9 (ii)'s transport neuter (POLICIES P4d's null rule); after G9, P2 keeps one form and retires
+  the other. The copy is not a second durable store (P4b): the reservoir's state
   lives in the one lake with lineage to the source weights' digest and boundary (the carriers rule below). It is not
   the transport the e-prop invariant forbids (a transposed forward weight feeding a weight update); that rule is
   unchanged. Experience still moves by replay (R2).
@@ -1278,8 +1282,8 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   corrected bar stated first. On a null the pool is not adopted, and G4's downstream pool experiment
   waits for an accepted substrate (G4's data fitting does not). *DATED 2026-09-25: SUPERSEDED (the engine). On a
   null, "carried state helps" is refused on this stream and the pool is not adopted ON THAT GROUND; the engine's
-  reservoir is adopted or deleted only by G-R9, where the reservoir-removed engine is the control and P8's deletion
-  applies. G4 no longer depends on a pool (G4 below).*
+  reservoir is claimed only by G-R9, where the reservoir-removed engine is the control, and a null there falls under
+  POLICIES P4d's null rule (the owner decides). G4 no longer depends on a pool (G4 below).*
 
   Pre-register:
   - the effect threshold, and whether the estimate or its confidence bound must clear it;
@@ -1400,7 +1404,8 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     held-out neurons, after a planted Gaussian (sigma = 100 µm) is recovered within 10%, else REFUSED as a blind
     fit; red: the Gaussian loses to the exponential or the flat model. T2: growth with the H01 prior (position, layer,
     sign, distance rule) vs the same prior with positions shuffled vs a generic template; red: H01 does not beat
-    shuffled H01, and the map part of C is then deleted (P8 clause 5). T4's wiring half: rule-grown wiring (distance
+    shuffled H01; the H01 prior is then reverted and the map part of C goes to the owner under POLICIES P4d's null
+    rule (the decision brief said it "is deleted"; open for the owner). T4's wiring half: rule-grown wiring (distance
     x shared partners, with a wiring cost) vs imposed columns vs random attachment, scored on modularity; red:
     modularity no higher than random attachment (its task-score half runs in G9). Disclosed prior negative: T063
     recorded H01's "beatable prior" NOT MET beyond its marginals on its own task (Part F H-R1), under a null that
@@ -1512,6 +1517,8 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   answers it with no regrowth and no new teaching. Arms:
   - the engine;
   - the reservoir removed (new neurons read directly);
+  - the feed neutered (the reservoir kept, driven instead by norm-matched random units, G3's feed control), so the
+    reservoir-removed arm is not the only cut of connection 2 *(added 2026-09-25, the panel fold)*;
   - the transport neutered (a norm-matched random matrix for the copy form; the brain's drive time-shuffled for the
     activity form);
   - the return path neutered;
@@ -1520,8 +1527,11 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   - G7's T1 at engine level (column batches vs single neurons) and T4's task-score half (rule-grown wiring vs
     imposed columns vs random attachment).
 
-  S = 8 under Part F's rule. P2 keeps one transport form. A connection whose ablation costs nothing is removed from
-  the claimed architecture, and its permission lapses (P8; POLICIES P4d). G9 runs last, after G1(c), G3, G5 and G6.
+  S = 8 under Part F's rule. P2 keeps one transport form. A connection whose ablation costs nothing is not claimed.
+  A measured null never deletes an owner-drawn or owner-chosen part (the two networks, the reservoir, the return
+  path, decision C's parts): its implementation is reverted, it is not claimed, and the owner decides on the
+  evidence; transport, permitted "as long as the engine can work", lapses only on its own measured failure, the whole
+  engine failing G-R9 (i) or G-R9 (ii)'s transport neuter changing nothing. G9 runs last, after G1(c), G3, G5 and G6.
 
   G-R9.
 
@@ -1758,15 +1768,15 @@ this fixed decoder", never an incumbent-grower benefit or adoption.*
 | N-R5 | disconnecting/shuffling feedback or silencing relevant grown units does not reduce attributed useful task gain | intact feedback and equal-count pre-sized-unit silence | N4 / T099, PLANNED |
 | N-R6 | live path bypasses a gate, resources exceed budget, or an invalid candidate/premature promotion is admitted | compliant live candidate, measured cost control and refused invalid diff | N5 / T100, PLANNED |
 | G-R0 | a corrected misrouted prompt does not improve later routing, neutering the learned router leaves replies unchanged, a fresh process does not reproduce taught routing and the next learning/replay step, or a self-label overwrites an authoritative correction | the uncorrected (self-labelled) incumbent, the neutered router, the uninterrupted twin | G0 / T108, PLANNED |
-| G-R1 | the carried-state pool does not beat its own reset twin at the pre-registered bar, or its advantage survives a within-block time shuffle; REFUSED (blind harness) if the persistence oracle does not beat the incumbent; on a null the pool is not adopted (amended 2026-09-25: the decoder, the Settled twin and the history positive control, above) *(DATED 2026-09-25, the engine: on a null, "carried state helps" is refused; the reservoir's adoption is decided by G-R9)* | the reset twin, the shuffled stream, the oracle | G1 / T109, PLANNED |
+| G-R1 | the carried-state pool does not beat its own reset twin at the pre-registered bar, or its advantage survives a within-block time shuffle; REFUSED (blind harness) if the persistence oracle does not beat the incumbent; on a null the pool is not adopted (amended 2026-09-25: the decoder, the Settled twin and the history positive control, above) *(DATED 2026-09-25, the engine: on a null, "carried state helps" is refused; the reservoir is claimed only by G-R9)* | the reset twin, the shuffled stream, the oracle | G1 / T109, PLANNED |
 | G-R2 | the single-layer incumbent classifies the constructed inseparable set perfectly (the construction is wrong), its separable twin is not learned, the presized nonlinear positive control fails, or the delayed-cue explicit-history control fails on the generator | separable twin, presized nonlinear layer, explicit-history control | G2 / T110, PLANNED |
-| G-R3 | targeted growth does not beat presized-selected features and random growth on the new mapping prospectively, the old mapping regresses past its bound, the gain survives silencing the new units, old codes change, shuffled rewards admit comparably, or the certificate fires on the separable twin; *(added 2026-09-25, the engine)* the loop reports solved on a constructed unsolvable problem or does not pause at its budget (report UNSOLVED, stop growing, keep the problem open); or, G7's T1, the column-sized batch needs 20% or more extra neurons than single-neuron growth at equal accuracy or forgets more (a presized network matching both means growth earns nothing) | presized frozen and selected features, random growth, sham expansion, shuffled rewards, separable twin; *(2026-09-25)* the constructed unsolvable problem, the single-neuron and presized arms | G3 / T111, PLANNED |
-| G-R4 | the fitted spatial model fails held-out neurons or regions, anatomical wiring shows no downstream benefit over its degree- and pathway-preserving shuffle, the layer × sign prior gives no benefit over its degree-, distance- and source-sign-matched twin with layer and target-sign preferences removed, or the pool goes silent or saturated *(DATED 2026-09-25: the wired grown population, not a pool)*; *(added 2026-09-25, G7's tests)* T2: growth with the H01 prior does not beat the same prior with positions shuffled (the map part of C is then deleted); T3: the Gaussian loses to the exponential or the flat model on held-out neurons, REFUSED if the planted sigma = 100 µm is not first recovered within 10%; T4's wiring half: rule-grown wiring's modularity is no higher than random attachment's | the distance-free model, degree-matched shuffles, the layer/sign-removed twin; *(2026-09-25)* shuffled-position H01, the planted-sigma recovery, random attachment, imposed columns | G4 / T112, PLANNED |
+| G-R3 | targeted growth does not beat presized-selected features and random growth on the new mapping prospectively, the old mapping regresses past its bound, the gain survives silencing the new units, old codes change, shuffled rewards admit comparably, or the certificate fires on the separable twin; *(added 2026-09-25, the engine)* the loop reports solved on a constructed unsolvable problem or does not pause at its budget (report UNSOLVED, stop growing, keep the problem open); or, G7's T1, the column-sized batch needs 20% or more extra neurons than single-neuron growth at equal accuracy or forgets more (a presized network matching both means growth earns nothing); *(added 2026-09-25, the panel fold)* or the fed arm (connection 2) does not beat the same neurons read directly and a norm-matched random feed | presized frozen and selected features, random growth, sham expansion, shuffled rewards, separable twin; *(2026-09-25)* the constructed unsolvable problem, the single-neuron and presized arms, the direct-read and random-feed arms | G3 / T111, PLANNED |
+| G-R4 | the fitted spatial model fails held-out neurons or regions, anatomical wiring shows no downstream benefit over its degree- and pathway-preserving shuffle, the layer × sign prior gives no benefit over its degree-, distance- and source-sign-matched twin with layer and target-sign preferences removed, or the pool goes silent or saturated *(DATED 2026-09-25: the wired grown population, not a pool)*; *(added 2026-09-25, G7's tests)* T2: growth with the H01 prior does not beat the same prior with positions shuffled (the H01 prior is then reverted and the map part of C goes to the owner, POLICIES P4d's null rule); T3: the Gaussian loses to the exponential or the flat model on held-out neurons, REFUSED if the planted sigma = 100 µm is not first recovered within 10%; T4's wiring half: rule-grown wiring's modularity is no higher than random attachment's | the distance-free model, degree-matched shuffles, the layer/sign-removed twin; *(2026-09-25)* shuffled-position H01, the planted-sigma recovery, random attachment, imposed columns | G4 / T112, PLANNED |
 | G-R5 | the challenger loses to the delta readout, or its gain survives a shuffled teaching signal or neutered coupling; *(added 2026-09-25, the engine)* neutering the brain's tuning port leaves the readout unchanged, or neutering the return path leaves the brain's own next answer and attempt unchanged against its time-shuffled twin | `OnlineReadout` (delta), a shuffled teaching signal, neutered coupling; *(2026-09-25)* the neutered tuning port, the time-shuffled return, the zero-width neighbourhood | G5 / T113, PLANNED |
 | G-R6 | (a) an incumbent pruner misses its pre-registered neuter-A/B bar (it is then retired or given a justified P3 exemption); the annealed mask breaks a retention bound on untouched tests, its savings vanish after costs, it does not beat greedy or random search at equal budget, pressure gives no budget-matched pressure-specific retention gain, or a restart loses a lesson or diverges; *(added 2026-09-25, the engine)* a mask that unsolves the problem is accepted, or a fresh process does not re-solve a saved problem without regrowth or new teaching | no-prune, incumbent, greedy and random search; clock-only and shuffled-pressure schedules; the uninterrupted twin; each incumbent pruner's neutered twin; *(2026-09-25)* the solved-predicate constraint, the fresh process | G6 / T114, PLANNED |
 | G-R7 | *(added 2026-09-25, owner decision C)* a grown neuron can be admitted without its unit label (position, layer, Dale sign, region label, the problem that grew it) and no gate refuses it; or the G7 record's tests name no falsifiable comparison | a constructed grown neuron with no label, which the gate must refuse; each test's own control (`evidence/g7-organizing-unit.md` section 6) | G7 / T115, PLANNED |
 | G-R8 | *(added 2026-09-25)* a gate's output changes by more than the move's declared delta, an import path or back-compat alias breaks, an envelope hash changes, a live-lake checkpoint no longer restores, or G1B's R-b0 source-parity check cannot find its sources | the pre-move tree's gate outputs, re-derived; the pre-move checkpoint restore | G8 / T116, PLANNED |
-| G-R9 | *(added 2026-09-25, the owner's condition)* any one of: (i) the engine does not prospectively solve, at the bar, a problem its presized growth-OFF twin fails; (ii) its solve survives removing the reservoir, neutering the transport or neutering the return path (each attributed separately); (iii) the loop reports solved on a constructed unsolvable problem, or does not pause at its budget; (iv) a fresh process does not re-solve the saved problem without regrowth or teaching; (v) an earlier solved problem regresses past its bound; (vi) the reservoir rebuilt from lake records after a restart does not reproduce the pre-restart answers on the saved problems | the presized growth-OFF twin, random growth, reservoir-removed, transport-neutered, return-path-neutered, the constructed unsolvable problem, the uninterrupted twin | G9 / T117, PLANNED |
+| G-R9 | *(added 2026-09-25, the owner's condition)* any one of: (i) the engine does not prospectively solve, at the bar, a problem its presized growth-OFF twin fails; (ii) its solve survives removing the reservoir, neutering the feed, neutering the transport or neutering the return path (each attributed separately); (iii) the loop reports solved on a constructed unsolvable problem, or does not pause at its budget; (iv) a fresh process does not re-solve the saved problem without regrowth or teaching; (v) an earlier solved problem regresses past its bound; (vi) the reservoir rebuilt from lake records after a restart does not reproduce the pre-restart answers on the saved problems; *(added 2026-09-25, the panel fold)* (vii) G7's T4 task-score half: rule-grown wiring scores below imposed columns (a decision-C red, under POLICIES P4d's null rule) | the presized growth-OFF twin, random growth, reservoir-removed, feed-neutered, transport-neutered, return-path-neutered, the constructed unsolvable problem, the uninterrupted twin; *(2026-09-25, the panel fold)* imposed columns, random attachment, single-neuron growth (G7's T1 at engine level, a replication reported beside G-R3's T1 red) | G9 / T117, PLANNED |
 | W-R1 | mean `curiosity_mag` (last 200 wake rows, 3000 and 6000 ticks) under W1+W2 does not exceed the time-shuffled-context world, per seed | the same world, context order shuffled | W3 |
 | W-R2 | category entropy not above the W3 baseline **at a NAMED window, PER SEED**, or live next-category accuracy not above its marginal-preserving shuffle (floors reported within-arm). **AMENDED 2026-09-03 on W3's measurement:** entropy is NOT a stable property of a run -- the same three seeds on one world moved in OPPOSITE directions between the first-1000 and last-1000 wake-row windows, spanning 0.0 to 2.6 bits -- so a bar that does not name its window and apply per seed is measuring the window. Pre-registered window = the FIRST 1000 wake rows; the 6000-tick column is the clean one (at 3000 the two windows overlap by ~517 rows). `evidence/w3-world-baselines.md` §4 | the shuffle | W3 |
 | W-R3 (T076) | **the CURRICULUM'S OWN PROPOSED GOAL** unchanged with `coverage_reward` neutered, OR changed when an unrelated scalar of comparable magnitude is neutered. **AMENDED 2026-09-03 before the build:** the original row -- "goal selection unchanged" -- is VACUOUS, measured: on the incumbent path with no W1 at all, neutering `coverage_reward` already changes 18/60 actions and takes `_z_goal` 60/60 -> 0/60. A red satisfiable without the mechanism it tests is not a red for that mechanism (P8 clause 1). The observable is therefore `propose()`'s returned goal cell, which the incumbent cannot produce, and the row now carries the SPECIFICITY control the original lacked | the un-neutered run, AND an unrelated-scalar neuter that must NOT move it | W1 |
@@ -1905,11 +1915,14 @@ design philosophy through web grab". After the research brief (https://claude.ai
 four decisions, each the recommended option: the organizing unit is C, "grown columns on an anatomical map"; G1(b)
 "Spiking only can win"; unsolved problems "Pause at a budget"; the reservoir's state "In the lake, rebuilt at start".
 This amendment adds G7-G9, T115-T117 and G-R7-G-R9, and amends FR-041 and SC-019 by dated notes. It records a design
-and gates, not an implementation; transport stands on G-R9. Session calls, disclosed (no owner objection; the
-2026-09-05 authorization): POLICIES.md records the engine as the PROVISIONAL directive P4d, the e-prop invariant is
-UNCHANGED, and doc-budget ceilings rise by their measured deltas. Still the owner's: whether the transport
-permission may ever reach credit assignment, a P1 case for a width fitted once from H01, a growth target inside the
-reservoir, and G8's package layout, gate dispositions and any envelope-file move.
+and gates, not an implementation; transport stands on G-R9 (i) and its own neuter (POLICIES P4d's null rule).
+Session calls, disclosed (no owner objection; the 2026-09-05 authorization): POLICIES.md records the engine as the
+PROVISIONAL directive P4d, the e-prop invariant is UNCHANGED, and doc-budget ceilings rise by their measured deltas.
+Still the owner's: whether the transport permission may ever reach credit assignment; a P1 case for a width fitted
+once from H01; a growth target inside the reservoir; G8's package layout, gate dispositions and any envelope-file move;
+whether a G-R9 null on an owner-drawn part changes the directive (asked when one lands); and whether the decision
+brief's "delete any part of it that does not pay" stands for decision C's tests, which POLICIES P4d's null rule (a
+session call of the 2026-09-25 panel fold) routes to the owner instead.
 
 ## PART I — HOW TO RESUME THIS PLAN IN A NEW SESSION
 
