@@ -58,8 +58,9 @@ def test_costs_within_ten_percent_are_tied_and_order_decides():
 def test_exact_ties_go_to_manifest_order_or_the_lower_index():
     tied = [entry(i, 0.01, 0.1, 2.0) for i in (7, 2, 4)]
     assert [e["order"] for e in ps.ordering(tied, 0.005)] == [2, 4, 7]
-    selection = [entry(rp.INDEX[c], 0.01, 0.1, 2.0) for c in ("rbn", "esn", "sorn")]
-    assert ps.ordering(selection, 0.005)[0]["order"] == rp.INDEX["esn"]
+    # selection's order is section 2.3's candidate index (hand-built here: g4, g2, g3 were 4, 2, 3)
+    selection = [entry(i, 0.01, 0.1, 2.0) for i in (4, 2, 3)]
+    assert ps.ordering(selection, 0.005)[0]["order"] == 2
     assert ps.ordering([], 0.005) == []
 
 
@@ -146,13 +147,13 @@ def test_t_quantiles_match_the_printed_tables():
 
 
 def pool_cell(seed, *, bound=None, status="OK"):
-    config = rp.grid("esn")[0]
-    filed = ps._bound(seed, ps._spec("esn", config, "carried"))
+    config = rp.grid("lsm")[0]
+    filed = ps._bound(seed, ps._spec("lsm", config, "carried"))
     binding = {
-        "candidate": "esn",
+        "candidate": "lsm",
         "form": "carried",
         "config_crc32": rp.crc_json(bound or config),
-        "realization_seed": rp.realization_seed("esn", seed),
+        "realization_seed": rp.realization_seed("lsm", seed),
         "window": rp.WINDOW,
         "noise": False,
         "w_in": ps._w_in_crc(seed),
@@ -174,7 +175,7 @@ def test_r_b7_refuses_its_three_reds_and_passes_the_well_formed_table():
 def test_build_table_refusals():
     assert len(ps.build_table([pool_cell(seed) for seed in ps.TUNE_SEEDS], ps.TUNE_SEEDS)) == 4
     with pytest.raises(ps.Halt, match="R-b7") as wrong:
-        ps.build_table([pool_cell(200, bound=rp.grid("esn")[1])], ps.TUNE_SEEDS)
+        ps.build_table([pool_cell(200, bound=rp.grid("lsm")[1])], ps.TUNE_SEEDS)
     assert "config_crc32" in wrong.value.detail
     with pytest.raises(ps.Halt, match="R-b7") as duplicate:
         ps.build_table([pool_cell(200), pool_cell(200)], ps.TUNE_SEEDS)
@@ -214,10 +215,10 @@ def test_tabulate_binds_real_replays_run_in_process(tmp_path):
     stream["final"] = dict(zip(("head", "dirty"), md._revision(), strict=True))
     path = tmp_path / "17-stream.json.gz"
     md._save(path, stream)
-    config = rp.R_B3_WITNESS["rbn"]
+    config = rp.R_B3_WITNESS["lsm"]
     cells = [
         ps._cell(
-            path, tmp_path / f"{form}.json.gz", 17, index=0, spec=ps._spec("rbn", config, form)
+            path, tmp_path / f"{form}.json.gz", 17, index=0, spec=ps._spec("lsm", config, form)
         )
         for form in ps.FIT_FORMS
     ]
@@ -228,7 +229,7 @@ def test_tabulate_binds_real_replays_run_in_process(tmp_path):
         return {"status": "OK", "path": spec["out"]}
 
     table = ps._tabulate(cells, (17,), {17: md._load(path)}, runner)
-    carried = table[("pool", "rbn", rp.crc_json(rp.canonical("rbn", config)), "carried", 17, False)]
+    carried = table[("pool", "lsm", rp.crc_json(rp.canonical("lsm", config)), "carried", 17, False)]
     assert carried["digest"]["pool"]["window"] == rp.WINDOW
     assert carried["digest"]["readout"]["unseen-order"]["n"] == 24
     report = ps._report(carried)
@@ -236,15 +237,10 @@ def test_tabulate_binds_real_replays_run_in_process(tmp_path):
     assert table[("e1-0", None, None, None, 17, False)]["digest"]["pool"] is None
 
 
-def test_input_response_masks_follow_each_input_rule():
+def test_input_response_mask_is_every_unit_for_g1():
     stream = md._synthetic_stream()
     lsm = ps.input_response("lsm", rp.R_B5_PERSISTENCE_WITNESS, stream)
-    sorn = ps.input_response("sorn", rp.R_B5_FREEZE_WITNESS, stream)
-    rbn = ps.input_response("rbn", rp.R_B3_WITNESS["rbn"], stream)
-    assert (lsm["driven"], sorn["driven"], rbn["driven"]) == (256, 213, 64)
-    nodes = rp._rbn_input_nodes(rp.realization_seed("rbn", 17), rp.N, 0.25)
-    assert rbn["mask"] == sorted(nodes.tolist()) and sorn["mask"] == list(range(213))
-    assert 0.0 <= rbn["mean"] <= 1.0 and lsm["sd"] > 0.0
+    assert lsm["driven"] == 256 and lsm["mask"] == list(range(256)) and lsm["sd"] > 0.0
 
 
 def test_twins_differ_separates_the_pool_from_the_learners():
@@ -352,7 +348,7 @@ def test_main_refuses_without_writing_a_summary(tmp_path):
     assert not list(tmp_path.glob("*.summary.json"))
 
 
-def mechanism_runner(*, red=True, green=True, refuse="esn", timeout=None):
+def mechanism_runner(*, red=True, green=True, refuse="lsm", timeout=None):
     """Stand-in children for the mechanism step: one candidate's red or green made to fail."""
 
     def runner(spec):
@@ -372,21 +368,24 @@ def mechanism_runner(*, red=True, green=True, refuse="esn", timeout=None):
 
 
 def test_mechanism_refuses_a_failed_green_and_halts_on_a_silent_red(tmp_path, monkeypatch):
-    first, second = tmp_path / "first", tmp_path / "second"
+    first, second, third = tmp_path / "first", tmp_path / "second", tmp_path / "third"
     write_summary(first, "record")
-    monkeypatch.setattr(ps, "_child", mechanism_runner(green=False, timeout="rbn"))
+    monkeypatch.setattr(ps, "_child", mechanism_runner(green=False))
     assert ps.run_step("mechanism", first, revision=clean) == ps.EXIT_OK
     completed = summary(first, "mechanism")
-    assert completed["refused"] == {
-        "esn": ["R-b0"],
-        "rbn": ["TIMEOUT: its mechanism checks did not finish"],
-    }
+    assert completed["refused"] == {"lsm": ["R-b0"]}
     assert completed["readout_r_b0x"]["verdict"]
     write_summary(second, "record")
+    monkeypatch.setattr(ps, "_child", mechanism_runner(timeout="lsm"))
+    assert ps.run_step("mechanism", second, revision=clean) == ps.EXIT_OK
+    assert summary(second, "mechanism")["refused"] == {
+        "lsm": ["TIMEOUT: its mechanism checks did not finish"]
+    }
+    write_summary(third, "record")
     monkeypatch.setattr(ps, "_child", mechanism_runner(red=False))
-    assert ps.run_step("mechanism", second, revision=clean) == ps.EXIT_HALT
-    halted = summary(second, "mechanism")
-    assert (halted["check"], halted["detail"]) == ("a red that does not fire", ["esn R-b0"])
+    assert ps.run_step("mechanism", third, revision=clean) == ps.EXIT_HALT
+    halted = summary(third, "mechanism")
+    assert (halted["check"], halted["detail"]) == ("a red that does not fire", ["lsm R-b0"])
 
 
 def test_record_halts_on_a_recording_without_scored_segments(tmp_path, monkeypatch):
@@ -412,22 +411,24 @@ def test_record_halts_on_a_recording_without_scored_segments(tmp_path, monkeypat
     assert summary(tmp_path / "bad", "record")["check"] == "scored segments"
 
 
-def test_the_selectable_set_is_section_2_1s_dated_amendment():
-    # 2026-09-25, pre-data: only the spiking candidates can win; SORN and RBN are references
-    assert ps.SELECTABLE == ("lsm", "esn") and set(ps.SELECTABLE) < set(rp.CANDIDATES)
+def test_the_selectable_set_is_g1_after_section_2_9():
+    # section 2.1's dated amendment (2026-09-25, pre-data) set ("lsm", "esn"); its campaign is the
+    # record at f27ae70 / 0bd1de7, and section 2.9 then deleted the losing ports
+    assert ps.SELECTABLE == ("lsm",) and set(ps.SELECTABLE) <= set(rp.CANDIDATES)
 
 
 def test_a_reference_that_would_lead_is_ranked_but_never_selected():
     def cell(candidate, order, d, eligible=True):
         return {**entry(order, d, 0.1, 1.0), "candidate": candidate, "eligible": eligible}
 
+    # hand-built entries: sorn and esn stand in for references (neither is selectable now)
     sorn, esn, lsm = cell("sorn", 3, 0.050), cell("esn", 2, 0.020), cell("lsm", 1, 0.010)
     ranked, reference = ps.rank_selection([lsm, sorn, esn], 0.005)
     assert [e["candidate"] for e in reference] == ["sorn", "esn", "lsm"]
-    assert [e["candidate"] for e in ranked] == ["esn", "lsm"]  # the winner is esn, not sorn
-    # neither spiking candidate eligible: nothing is selected even though sorn is
-    ranked, reference = ps.rank_selection([sorn, cell("esn", 2, 0.02, eligible=False)], 0.005)
-    assert ranked == [] and [e["candidate"] for e in reference] == ["sorn"]
+    assert [e["candidate"] for e in ranked] == ["lsm"]  # the winner is lsm, not sorn or esn
+    # g1 not eligible: nothing is selected even though the references are
+    ranked, reference = ps.rank_selection([sorn, esn, cell("lsm", 1, 0.01, eligible=False)], 0.005)
+    assert ranked == [] and [e["candidate"] for e in reference] == ["sorn", "esn"]
 
 
 def test_the_noise_red_reads_the_state_chain_not_one_final_sample():

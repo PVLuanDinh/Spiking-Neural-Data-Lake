@@ -136,7 +136,7 @@ REGIONS = {
         "placement",  # every grown unit gets a cortical depth, a layer and an immutable Dale sign
         "growth_stop",  # specs/022 T047: |LP|+charge growth gates, executive-independent (P8 #4)
         "memory_diagnostic",  # G1 causal contract diagnostic harness
-        "recurrent_pool",  # G1(b) pool-selection benchmark: four reservoirs as streaming pools
+        "recurrent_pool",  # G1(b) pool-selection benchmark: the winner, g1 LSM, as a streaming pool
         "pool_selection",  # G1(b) pool-selection campaign: section 2's steps, ordering and taxonomy
         "lca_sparse_coding",
         "predictive_coding",

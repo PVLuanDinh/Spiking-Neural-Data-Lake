@@ -6,8 +6,8 @@ previous step's summary exists, COMPLETED, and was written at the same clean hea
 _revision), and it writes OUT/<step>.summary.json with `head` and `dirty`:
 
   record      seeds 100-103 and 200-207 through memory_diagnostic.record_stream (the pilot's workers)
-  mechanism   R-b0x's readout fixtures; per candidate R-b0, R-b3's red, R-b5 (i)-(iii) with their
-              reds, R-b4's pool-noise red (the pool module's checks at the full window)
+  mechanism   R-b0x's readout fixtures; per candidate R-b0, R-b3's red, R-b5 (i)-(iii) with the
+              reds of (i) and (ii), R-b4's pool-noise red (the pool module's checks, full window)
   instrument  R-b2, R-b7's reds, R-b6 on 4242 with its history-free red, R-b8's two halves with reds
   screen      recurrent_pool.cost on seed 200 through recurrent_pool.screen, then the manifest
   threads     R-b3's equality, with R-b5 (i)-(iii), on every manifest configuration
@@ -87,12 +87,14 @@ POWER_FLOOR = 8
 POWER_CAP = 64
 EXIT_OK, EXIT_ABORT, EXIT_HALT, EXIT_REFUSED = 0, 1, 2, 3
 FIT_FORMS = ("carried", "settled")  # the forms D, D_task and eligibility read
-# Section 2.1: the candidates the selection may name -- the four research-tier reservoirs. ONE
-# constant, so that a dated pre-data amendment to the eligible winners edits one line.
-# Dated amendment 2026-09-25, pre-data (evidence section 2.1): the owner's engine names its reservoir
-# a liquid state machine, and the owner chose "Spiking only can win". g3 (SORN) and g4 (RBN) still run
-# every step as frozen, as REFERENCE points: ranked beside the winners, never selected.
-SELECTABLE = ("lsm", "esn")
+# Section 2.1: the candidates the selection may name. ONE constant, so that a dated pre-data
+# amendment to the eligible winners edits one line. It must stay a subset of
+# recurrent_pool.CANDIDATES. The dated amendment of 2026-09-25 (pre-data, evidence section 2.1: the
+# owner's engine names its reservoir a liquid state machine, and the owner chose "Spiking only can
+# win") set it to ("lsm", "esn"), with g3 (SORN) and g4 (RBN) run as reference points. That campaign
+# is held by the record: campaign 2 ran at f27ae70 and 0bd1de7 records its selection (winner g1
+# LSM). Section 2.9 then deleted the losing ports, so g1 is the one candidate left to name.
+SELECTABLE = ("lsm",)
 
 
 class Halt(Exception):
@@ -588,23 +590,15 @@ def _reference(table, arm, seeds):
 #   percepts; this READS the drive each candidate's input rule applies, over a recording (reported)
 def input_response(candidate, config, stream):
     """Section 2.5's reported input-response statistics on one recording: the driven-unit mask, and
-    the mean and sd of the per-unit drive over the driven units and the recording's percepts (g1-g3
-    the signed drive g u, SORN's on its E units; g4 its input bits [u > tau] on its input nodes)."""
+    the mean and sd of the per-unit drive over the driven units and the recording's percepts (g1:
+    the signed drive g u, on every unit)."""
     config = rp.canonical(candidate, config)
     encoder = rp.w_in(stream["seed"])
     mask = np.ones(rp.N, dtype=bool)
-    if candidate == "sorn":
-        mask = np.arange(rp.N) < rp.SORN_N_E
-    elif candidate == "rbn":
-        mask = np.zeros(rp.N, dtype=bool)
-        seed = rp.realization_seed(candidate, stream["seed"])
-        mask[rp._rbn_input_nodes(seed, rp.N, config["f"])] = True
     rows = []
     for event in stream["events"]:
         u = rp.drive(encoder, event["x"])
-        rows.append(
-            (u > config["tau"]).astype(np.float64) if candidate == "rbn" else config["g"] * u
-        )
+        rows.append(config["g"] * u)
     driven = np.asarray(rows)[:, mask]
     return {
         "driven": int(np.count_nonzero(mask)),
@@ -620,15 +614,11 @@ def input_response(candidate, config, stream):
 def mechanism_checks(candidate):
     """Section 2.7's mechanism checks for one candidate at the full window on the development
     fixtures, each green beside its red: R-b0; R-b3's order red on the declared witness; R-b5 (i)
-    after Reset and Settled with the skip-a-carrier red; R-b5 (iii) (with SORN's plasticity-left-on
-    red); R-b5 (ii) and its reset-every-percept red on g1's fixture; R-b4's pool-noise red."""
+    after Reset and Settled with the skip-a-carrier red; R-b5 (iii) (green only: its one red was
+    SORN's plasticity left on, deleted with g3 in section 2.9); R-b5 (ii) and its reset-every-percept
+    red on g1's fixture; R-b4's pool-noise red."""
     config, _ = rp.R_B5_ERASURE_WITNESS[candidate]
-    source = {
-        "lsm": rp.check_r_b0_lsm,
-        "esn": rp.check_r_b0_esn,
-        "sorn": rp.check_r_b0_sorn,
-        "rbn": rp.check_r_b0_rbn,
-    }
+    source = {"lsm": rp.check_r_b0_lsm}
     numbers, greens, reds = {}, {}, {}
     numbers["R-b0"] = source[candidate]()
     greens["R-b0"], reds["R-b0"] = numbers["R-b0"]["verdict"], numbers["R-b0"]["red"]
@@ -648,13 +638,6 @@ def mechanism_checks(candidate):
         numbers["R-b5 persistence red"] = rp.check_r_b5_persistence(carried_form="reset")
         greens["R-b5 persistence"] = numbers["R-b5 persistence"]["verdict"]
         reds["R-b5 persistence"] = not numbers["R-b5 persistence red"]["verdict"]
-    if candidate == "sorn":
-        numbers["R-b5 freeze witness"] = rp.check_r_b5_freeze("sorn", rp.R_B5_FREEZE_WITNESS)
-        numbers["R-b5 freeze red"] = rp.check_r_b5_freeze(
-            "sorn", rp.R_B5_FREEZE_WITNESS, plastic_forever=True
-        )
-        greens["R-b5 freeze witness"] = numbers["R-b5 freeze witness"]["verdict"]
-        reds["R-b5 freeze"] = not numbers["R-b5 freeze red"]["verdict"]
     return {"candidate": candidate, "greens": greens, "reds": reds, "numbers": numbers}
 
 
@@ -1518,11 +1501,11 @@ def self_check():
     # 48-event fixture ONLY, and R-b7 refuses that binding in any campaign table
     fixture = md._synthetic_stream()
     fixture["final"] = dict(zip(("head", "dirty"), md._revision(), strict=True))
-    spec = {"candidate": "rbn", "config": rp.R_B3_WITNESS["rbn"], "form": "settled", "window": 16}
+    spec = {"candidate": "lsm", "config": rp.R_B3_WITNESS["lsm"], "form": "settled", "window": 16}
     run = md.replay(fixture, "pool", pool=spec)
     md._validate_run(run, fixture, fixture, "pool", "causal")
     assert run["pool"]["frozen"] and run["pool"]["boundary"] is not None
-    filed = _bound(fixture["seed"], _spec("rbn", spec["config"], "settled"))
+    filed = _bound(fixture["seed"], _spec("lsm", spec["config"], "settled"))
     assert binding_problems(dict(filed, digest=digest(run, fixture))) == ["window"]
     print(
         "pool_selection self-check OK: ordering, eligibility, power, R-b7 reds, step order, exit codes, pool arm"
