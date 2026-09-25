@@ -1209,6 +1209,12 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   - accuracy reported beside prediction entropy.
 
   G-R1.
+  *DATED 2026-09-25: part (a) closed locally: the causal contract, the recorded-stream harness and the no-pool arms,
+  with every check PASS on the pilot (`evidence/g1a-causal-contract.md`; battery owed with the stack). Part (b)'s
+  design (`evidence/g1b-pool-selection.md`) proved a history positive control on its generator before the freeze.
+  In that protocol the incumbent grower did not extract history that a fixed ridge decoder extracted on every seed.
+  So G1(b) and G1(c) read their contrasts through that decoder, with the grower reported beside it, and the reset twin
+  is "Settled": reset, then settled on the current percept. G-R1 is amended to match.*
 - **G2 / T110 — problems the current weights provably cannot solve.** Delivered as TAUGHT
   exchanges through G0's repaired channel.
   - (i) A delayed-cue 2x2 (needs state × needs capacity). Its explicit-history control is proven
@@ -1481,7 +1487,12 @@ Every seed-paired red: S = 8, paired one-sided t > 1.895 (7 d.f., α = 0.05), ti
 false-positive rate printed beside the verdict; no statistic normalized by a quantity a control destroys;
 no majority-of-seeds rule anywhere. *Amended 2026-09-23 (G1): G1 alone may pre-register S > 8 from a
 power analysis, using the one-sided α = 0.05 critical t at S − 1 d.f.; every other seed-paired red stays
-at S = 8.*
+at S = 8.* *Amended 2026-09-25 (G1(b) design, `evidence/g1b-pool-selection.md` sections 1.8, 2.1 and 2.6): G-R1
+reads its contrasts through that file's fixed reference ridge decoder, with the incumbent grower's reading secondary,
+and its reset twin is Settled (reset, then 64 uncounted steps on the current percept). Its REFUSED (blind harness)
+clause fires if the decoder fails the history positive control (R-b6) or the persistence oracle does not beat the
+incumbent arm (a) through the decoder. A PASS licenses only "carried state improves prospective prediction through
+this fixed decoder", never an incumbent-grower benefit or adoption.*
 
 | id | red (what makes it fail) | control (not the method) | lives in |
 |---|---|---|---|
@@ -1499,7 +1510,7 @@ at S = 8.*
 | N-R5 | disconnecting/shuffling feedback or silencing relevant grown units does not reduce attributed useful task gain | intact feedback and equal-count pre-sized-unit silence | N4 / T099, PLANNED |
 | N-R6 | live path bypasses a gate, resources exceed budget, or an invalid candidate/premature promotion is admitted | compliant live candidate, measured cost control and refused invalid diff | N5 / T100, PLANNED |
 | G-R0 | a corrected misrouted prompt does not improve later routing, neutering the learned router leaves replies unchanged, a fresh process does not reproduce taught routing and the next learning/replay step, or a self-label overwrites an authoritative correction | the uncorrected (self-labelled) incumbent, the neutered router, the uninterrupted twin | G0 / T108, PLANNED |
-| G-R1 | the carried-state pool does not beat its own reset twin at the pre-registered bar, or its advantage survives a within-block time shuffle; REFUSED (blind harness) if the persistence oracle does not beat the incumbent; on a null the pool is not adopted | the reset twin, the shuffled stream, the oracle | G1 / T109, PLANNED |
+| G-R1 | the carried-state pool does not beat its own reset twin at the pre-registered bar, or its advantage survives a within-block time shuffle; REFUSED (blind harness) if the persistence oracle does not beat the incumbent; on a null the pool is not adopted (amended 2026-09-25: the decoder, the Settled twin and the history positive control, above) | the reset twin, the shuffled stream, the oracle | G1 / T109, PLANNED |
 | G-R2 | the single-layer incumbent classifies the constructed inseparable set perfectly (the construction is wrong), its separable twin is not learned, the presized nonlinear positive control fails, or the delayed-cue explicit-history control fails on the generator | separable twin, presized nonlinear layer, explicit-history control | G2 / T110, PLANNED |
 | G-R3 | targeted growth does not beat presized-selected features and random growth on the new mapping prospectively, the old mapping regresses past its bound, the gain survives silencing the new units, old codes change, shuffled rewards admit comparably, or the certificate fires on the separable twin | presized frozen and selected features, random growth, sham expansion, shuffled rewards, separable twin | G3 / T111, PLANNED |
 | G-R4 | the fitted spatial model fails held-out neurons or regions, anatomical wiring shows no downstream benefit over its degree- and pathway-preserving shuffle, the layer × sign prior gives no benefit over its degree-, distance- and source-sign-matched twin with layer and target-sign preferences removed, or the pool goes silent or saturated | the distance-free model, degree-matched shuffles, the layer/sign-removed twin | G4 / T112, PLANNED |
