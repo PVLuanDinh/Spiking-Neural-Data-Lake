@@ -358,3 +358,44 @@ Accuracy on repeated-canonical / unseen-order / repeated-permuted:
    blocked the campaign.
 5. Disposition: every check passed, so G1(b), the pool-selection benchmark, is next. The pilot recordings validate the
    harness; they are neither selection data nor confirmatory data.
+
+### 3.5 The panel and its fold
+
+Three lenses (instrument, policy-honesty, integration; `gpt-6-astra` via claude-octopus, read-only) read the stacked
+head `460b5a5` and returned 14 findings. Two process defects in the panel's own apparatus are disclosed: the launcher
+at first reported two lenses as TIMEOUT and FAILED within a minute while they were still running (it had matched a
+status line that octopus pastes into prompts from earlier runs; fixed), and a scratch step overwrote the two rerun
+lenses' prompt files with the first runs' outputs, so their prompts embedded those result files. Their findings still
+address the arc's code. Dispositions:
+
+- **Refuted (1):** "no closing battery record supports the verification claims". The owner's batched-battery rule puts
+  the record at the end of the stack; every commit names "the arc's battery, named in the closing record commit".
+- **Fixed outside the tree (1):** the archive kept 4 of 160 pilot outputs; `pilot_full.tar.gz` now holds all of them
+  with a manifest.
+- **Accepted and folded (12 findings as 10 changes: two lenses found the exit status, and R-a3's two findings share
+  one change)**, commit `e12a6ba` (Codex `gpt-6-sol` from a bounded brief; verified by the orchestrator):
+  1. the recorder records each modality's ATTENDED result, not only the acquisition: `_safe_ctx` silently substitutes
+     the synthetic band when `_attend_real_stream` returns None, which a successful acquisition does not rule out;
+     such a delivery is refused;
+  2. asset environment overrides (`SNN_EPROP_CKPT`, `SNN_PERCEPTION_PACK`, `SNN_EPROP_AUDIO_CKPT`, `SNN_SHD_PACK`)
+     are refused and recorded;
+  3. a feature view holds only its declared channels (a sensory arm could read `values["c"]` before);
+  4. replays carry arm, mode and a source digest, and R-a2 refuses a run whose identity or ledger mode is not the
+     causal replay it claims (a LIVE replay could pass R-a2 before);
+  5. the LP-sensitive red now changes one recorded |LP| and replays it (it bypassed `replay()` before);
+  6. R-a1b's reds run on (f64) (they ran on (a) before);
+  7. R-a3 computes its persistence expectation outside the scorer, runs its off-by-one red on a fixed fixture, and
+     reports each segment's discrimination (a transition-free segment is non-discriminating, not a failure);
+  8. failed checks or campaign jobs exit 1, and a failed check suppresses the arm contrasts;
+  9. the module self-check constructs R-a0's red;
+  10. the slow recording test skips without the gitignored assets (a clean clone's CI would have failed).
+
+### 3.6 The pilot re-run on the folded head
+
+The recorder changed and a fold is itself unreviewed code, so the whole pilot was re-run at `e12a6ba` (`dirty`
+False): 160 of 160 jobs OK in 453 s; the checks took 145 s. R-a1, R-a1b, R-a2, R-a2b, R-a3 and R-a4 PASS on every seed
+with every red firing, now under the stricter checks. **Zero deliveries after x_1 used a fallback context on any
+seed**, so section 3.2's "successful acquisition" now also reads "attended". Every scored segment discriminates
+(2-20 transitions). The four recordings and all 32 arm prediction sequences are identical to the first pilot's, so
+section 3.3's table stands unchanged, and the second instrument agrees again (0 disagreements). Archived as
+`pilot2_full.tar.gz`.
