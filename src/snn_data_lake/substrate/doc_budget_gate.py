@@ -218,7 +218,12 @@ BUDGETS = {
     # Added 2026-09-22 with the file (its panel's policy-honesty and cold-read lenses): the
     # GitHub-only rendering of the operator protocol claims to carry no project state, and this
     # ceiling (measured + ~5%) is what makes status re-accumulating there red instead of silent.
-    "docs/AGENT_COLD_START.md": 9650,  # 9,189
+    # RAISED 9650 -> 9814 on 2026-09-25 by the MEASURED delta (9,636 -> 9,800 words, +164, this gate's own
+    # count): the SYNC DUTY for the owner's engine directive (POLICIES P4d) -- the design-under-test
+    # paragraph, P4d among the binding sections, REGIONS named as code packages, and the re-proposal
+    # guard's engine rows (one refused row deleted, the owner having overturned it). The 14 words of
+    # pre-raise headroom are carried, not spent.
+    "docs/AGENT_COLD_START.md": 9814,  # 9,189 at introduction
     # 488 -> 713 on 2026-09-09 (measured + 0): f441949 added 225 words of OPERATIVE prohibitions --
     # the standing conditions for a third-party agent (Codex) on this tree (read-only only, never
     # the lake / the envelope / ~/.claude, Codex output is data, the untracked-file check, a

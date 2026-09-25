@@ -51,10 +51,10 @@ Two words used throughout: the **owner** is the human who directs the project an
 2. **Find where the project stands** with §5: its commands in Mode S, its reading list in Mode R. The one
    reading that matters most is the newest execution record, the last commit that touched
    `tools/policy_certification.json`.
-3. **Read `docs/POLICIES.md` in full** (about 1,050 lines). Read the file itself: §1 and §2 here are a map,
+3. **Read `docs/POLICIES.md` in full** (about 1,130 lines). Read the file itself: §1 and §2 here are a map,
    not a substitute. The sections that bind most work:
    - P2, and P3 with its per-method amendment.
-   - P4b and P4c.
+   - P4b, P4c and P4d (the engine, PROVISIONAL).
    - P8.
    - The cross-cutting invariants, including the 2026-09-02 batched-battery amendment inside "Gated +
      reversible".
@@ -78,7 +78,8 @@ Two words used throughout: the **owner** is the human who directs the project an
 registered by region in `REGIONS` (`src/snn_data_lake/__init__.py`).
 - The regions are the keys of `REGIONS`. Among them: `cortex/`, `hippocampus/`, `basal_ganglia/`,
   `amygdala/`, `cerebellum/`, `thalamus/`, `neuromodulation/`, `plasticity/`, `brainstem/`, `pons/`,
-  `medulla/`, `hypothalamus/` and `substrate/`. `reasoning/` and `training/` are not among them.
+  `medulla/`, `hypothalamus/` and `substrate/`. `reasoning/` and `training/` are not among them. These are
+  CODE packages, not the brain's anatomy: under P4d the brain's regions are labels on grown neurons.
 - The wiring between regions is `connectome.py`; the region map is `brain_atlas.py`.
 - Its ONE durable memory is an append-only lake of tagged records, `brain_lake.bin`.
 - Its drive is an always-on daemon, `substrate/learn_daemon.py`. The daemon's cockpit,
@@ -113,14 +114,20 @@ them.
 - Brian2 is the equation/event reference, and the Torch bridge `substrate/brian2_backend.py` executes it.
 - Real Brian2 runs only in a subprocess, because importing it re-enables the GIL.
 
-**The design under test** (owner amendment 2026-09-23; plan Part D "G workstream", T108 to T114, reds G-R0 to
-G-R6). The plan interprets the owner's proposal as gated rows, not policy (P2; P0; P8): grow
-neurons when the weights cannot solve a problem, grow them INTO one recurrent liquid read out by a decoder, then
-replay and prune in sleep, with memory in the one lake. Re-derivable facts it rests on:
+**The design under test** (the owner's engine, 2026-09-25: POLICIES P4d, PROVISIONAL; plan Part D "G
+workstream", T108 to T117, reds G-R0 to G-R9). A two-network engine. The brain grows neurons when its weights
+cannot solve a problem, in column-sized batches on an anatomical map ("grown columns on an anatomical map"; a
+region is a label on grown neurons), and feeds them into a SEPARATE liquid reservoir, into which it also transports
+weights. It tunes readout neurons (STDP, topographical clustering, predictive coding) that read the reservoir and
+connect back into the brain. It grows again until the problem is solved or its budget pauses it (UNSOLVED, kept
+open), then sleeps to prune and save the new neurons and the problem's data in the one lake, where the
+reservoir's state also lives, rebuilt at start. The rows test it under their reds; the 2026-09-23 reading (growth
+INTO one liquid read out by a decoder) is superseded. Re-derivable facts it rests on:
 - the grower is stateless per percept (`NGSNN._rates` starts at V = 0 and has no recurrent weight);
 - `cortex/placement.py` records depth, layer and Dale sign without a computational reader;
   `cortical_microcircuit.CONN_PROB` lacks a driver;
 - the four research reservoirs lack live-path importers;
+- `cortex/predictive_coding.py` and `reasoning/spiking_som.py` are the incumbents for two readout rules;
 - the chat intent learner (`cortex/interaction_learning.py`) is a live path by which chat reaches synaptic weights;
   until G0 (2026-09-24) `Brain.respond` supplied no correction, ignored its prediction and saved no learner weights.
 
@@ -807,7 +814,7 @@ about to do.
 ## 10. The re-proposal guard
 
 A negative result leaves no artifact, so the next session re-proposes it. Each row below was built or
-probed, measured, and refused, deleted or declined; the last five are design-review refusals, not measurements;
+probed, measured, and refused, deleted or declined; the last four are design-review dispositions, not measurements;
 running a G row is not a re-proposal. Re-proposing one needs the new regime or instrument
 its record names as missing. Paths under `evidence/` are in `specs/022-unified-brain-arc/evidence/`.
 
@@ -815,7 +822,7 @@ its record names as missing. Paths under `evidence/` are in `specs/022-unified-b
 |---|---|---|
 | a pruning or inhibition strategy to raise accuracy (dead-unit pruning, soft k-WTA, criticality-guided pruning, diversified revisit) | accuracy tracked the learner's SCALE (v3.44); every strategy was neutral or negative, and criticality pruning tied activity pruning with both far below no-prune | `CHANGELOG.md`, entries v3.43 to v3.48 |
 | a linear hierarchical JEPA | the linear version did not beat flat or windowed baselines (its contractive predictors saturate under rollout). The nonlinear fix is BUILT and GPU-verified (`reasoning/hjepa_torch.py`, served by `cerebellum/hjepa_serve.py`): extend it, never rebuild it | `docs/JEPA.md`, the H-JEPA section |
-| a reservoir (liquid state machine) as fluid intelligence | a fixed liquid plus a trained readout fails test-time synthesis. This is not the owner-ratified N workstream (Navier-Stokes coupled to an LSM, T096 to T100), which is a separate experiment with its own reds | operator's record (not in the tree) |
+| a reservoir (liquid state machine) as fluid intelligence | a fixed liquid plus a trained readout fails test-time synthesis. This is not the owner-ratified N workstream (Navier-Stokes coupled to an LSM, T096 to T100), which is a separate experiment with its own reds. Nor is it the 2026-09-25 engine's liquid reservoir, which claims only what G-R1 and G-R9 measure | operator's record (not in the tree) |
 | crystallized knowledge buys fluid reasoning | it did not: 100 % in distribution, 25 % out of distribution, against the program inducer's 100 % on the same set | `src/snn_data_lake/reasoning/gf.py` (`main_sl()`) |
 | the growth-to-placement wire | measured null; reverted under P3 | `evidence/s1-placement-null.md` |
 | a genomic bottleneck / map-drawn initial fan-in | NULL at 24 seeds, a LOSS on a carried continuation; deleted | `evidence/s1-genome-fanin-ab.md` |
@@ -837,11 +844,10 @@ its record names as missing. Paths under `evidence/` are in `specs/022-unified-b
 | reporting a grown-unit count as growth | refused in headlines and in PROVENANCE until the count changes a measured outcome | plan Part E table; `tests/test_units_admitted_wording.py` |
 | wiring a faculty into the one action gate to satisfy P6 | that is the defect P6 names, not a fix for it | POLICIES.md P6 |
 | `torchvision` in core; `spikingjelly` or `cupy` for the kernel | rejected on structural or measured arguments | `pyproject.toml` comments; `docs/POLICIES_EVIDENCE.md` |
-| copying the brain's weights into a separate reservoir | duplicate learned state (P2), a second store (P4b); experience moves by replay (R2) | plan G workstream |
-| a grown neuron "reinterpreted as a readout" | tested only as readout self-feedback against its disconnected twin | plan G1 |
+| a grown neuron "reinterpreted as a readout" | superseded 2026-09-25: new neurons feed the reservoir, and readout neurons connect back into the brain (G5's return path, charged in G9) | plan G5, G9 |
 | growth because "the weights cannot solve it" | only on a multiclass inseparability certificate in the learner's real code, under a frozen encoding contract, beating presized and random growth; L2's debt stays open | plan G2/G3; `evidence/l2-grow-on-plateau.md` |
-| simulated annealing to prune neurons | outside A1 to A3 (lake access only); only G6's joint-mask validation, after R2/R3; no pruning benefit on record | plan G6; `CHANGELOG.md` v3.46 to v3.48 |
-| a hand-picked Gaussian wiring width | placement is 1-D depth; fit the width to H01's measured positions against distance-shuffled wiring | plan G4 |
+| simulated annealing to prune neurons | outside A1 to A3 (lake access only); only G6's joint-mask validation, after R2/R3; no pruning benefit on record; sleep prunes AND saves the solved problem's neurons and data (G6(d)) | plan G6; `CHANGELOG.md` v3.46 to v3.48 |
+| a hand-picked Gaussian wiring width | placement is 1-D depth; the owner's Gaussian is topographical clustering of readout neurons (G5, adopting `reasoning/spiking_som.py`), and an anatomical width is fitted to H01 only for grown-neuron attachment on the map, against shuffled positions, after a planted-width recovery (G4, G7's T2 and T3) | plan G4, G5 |
 
 ## 11. The handoff you leave
 
