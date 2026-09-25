@@ -127,12 +127,32 @@ def test_replay_equivalence_mutations_and_ledger_reds():
         )
     }
     stream["final"]["gate_verdicts"] = live["gate_verdicts"]
-    stream["refits"] = [{"refit": row["fingerprint"]} for row in live["refits"]]
+    stream["final"].update(live["revision"])
+    completed = {(r["tick"], r["event"]): r["fingerprint"] for r in live["refits"]}
+    stream["refits"] = [
+        dict(row, refit=completed.get((row["tick"], row["event"])))
+        for row in stream["sleep"]
+        if row["tick"] % stream["config"]["refit_every"] == 0
+    ]
     for event, prediction in zip(stream["events"], live["predictions"], strict=True):
         event["prediction"] = prediction
     assert check_r_a1(stream)["verdict"]
     assert check_r_a2(stream)["verdict"]
     assert check_r_a4(stream)["verdict"]
+    checked = replay(stream, "a", "live")
+    assert checked["config_digest"] and checked["revision"] and checked["execution_id"]
+    assert checked["execution_id"] != live["execution_id"]
+    incomplete = copy.deepcopy(checked)
+    incomplete["predictions"] = []
+    with pytest.raises(ValueError, match="incomplete replay events"):
+        check_r_a1(stream, incomplete)
+    wrong_revision = copy.deepcopy(checked)
+    wrong_revision["revision"]["head"] = "other"
+    with pytest.raises(ValueError, match="replay provenance"):
+        check_r_a1(stream, wrong_revision)
+    shifted_refit = copy.deepcopy(stream)
+    shifted_refit["refits"][0]["event"] += 1
+    assert not check_r_a1(shifted_refit, checked)["numbers"]["equivalent"]
     deleted = copy.deepcopy(stream)
     del deleted["events"][15]["causal_lp"]
     with pytest.raises(ValueError, match="LP ledger"):
@@ -152,6 +172,8 @@ def test_lp_sensitive_gate_fixture_flips_verdict():
     assert feed_and_decide(motion, rows)[0] is True
     assert _lp_sensitive_red()
     assert _lp_sensitive_red("f64")
+    assert _lp_sensitive_red("a", "causal")
+    assert _lp_sensitive_red("f64", "causal")
 
 
 @pytest.mark.slow
@@ -189,6 +211,25 @@ def test_loaded_live_run_is_refused_by_causal_check(tmp_path):
         check_r_a2(stream, paths)
 
 
+def test_loaded_causal_runs_require_complete_rows_and_distinct_executions(tmp_path, monkeypatch):
+    import json
+
+    import snn_data_lake.cortex.memory_diagnostic as diagnostic
+
+    monkeypatch.setattr(diagnostic, "SCORED_ARMS", ("a",))
+    stream = _synthetic_stream()
+    result = replay(stream, "a")
+    stream["final"] = result["revision"]
+    path = tmp_path / "run.json"
+    missing = dict(result, predictions=[])
+    path.write_text(json.dumps(missing), encoding="utf-8")
+    with pytest.raises(ValueError, match="incomplete replay events"):
+        check_r_a2(stream, {"a": {"base": path}})
+    path.write_text(json.dumps(result), encoding="utf-8")
+    with pytest.raises(ValueError, match="duplicate replay execution"):
+        check_r_a4(stream, {"a": (path, path)})
+
+
 def test_policy_records_asset_environment(monkeypatch):
     for name in ASSET_ENV:
         monkeypatch.setenv(name, "override")
@@ -196,6 +237,11 @@ def test_policy_records_asset_environment(monkeypatch):
     assert all(policy[name] == "override" for name in ASSET_ENV)
     with pytest.raises(ValueError, match="asset environment override"):
         record_stream(900, ticks=1)
+
+
+def test_record_stream_refuses_history_feed_before_assets():
+    with pytest.raises(ValueError, match="unsupported in-brain feed"):
+        record_stream(900, ticks=1, arm_feed="d")
 
 
 def test_calibration_red_survives_transition_free_real_segment():

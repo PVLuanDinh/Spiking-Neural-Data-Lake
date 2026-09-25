@@ -7,12 +7,14 @@ import argparse
 import copy
 import gzip
 import hashlib
+import itertools
 import json
 import math
 import os
 import platform
 import subprocess
 import sys
+import time
 import zlib
 from collections import Counter
 from pathlib import Path
@@ -35,6 +37,7 @@ ASSET_ENV = (
     "SNN_EPROP_AUDIO_CKPT",
     "SNN_SHD_PACK",
 )
+_EXECUTIONS = itertools.count()
 
 
 def _crc(value):
@@ -194,6 +197,8 @@ def _segments(events, acquisitions, n_frames):
 
 def record_stream(seed, ticks=2400, *, arm_feed=None):
     """Record delivery, acquisition, sleep, and refit events from an isolated brain."""
+    if arm_feed not in (None, "f64"):
+        raise ValueError("REFUSED: unsupported in-brain feed")
     from snn_data_lake.cortex.brain import make_brain
     from snn_data_lake.substrate.home import throwaway_home
 
@@ -385,6 +390,12 @@ def _source_digest(stream):
     return zlib.crc32(json.dumps(payload, sort_keys=True).encode("utf-8"))
 
 
+def _config_digest(stream):
+    return zlib.crc32(
+        json.dumps(stream["config"], sort_keys=True, separators=(",", ":")).encode("utf-8")
+    )
+
+
 def replay(stream, arm, mode="causal", *, mutate=None):
     """Replay the recorded event schedule, rejecting missing gate evidence."""
     if arm not in ARMS or mode not in ("causal", "live"):
@@ -507,6 +518,9 @@ def replay(stream, arm, mode="causal", *, mutate=None):
         "arm": arm,
         "mode": mode,
         "source_digest": source_digest,
+        "config_digest": _config_digest(stream),
+        "revision": dict(zip(("head", "dirty"), _revision(), strict=True)),
+        "execution_id": f"{os.getpid()}-{time.monotonic_ns()}-{next(_EXECUTIONS)}",
         "predictions": predictions,
         "fallbacks": fallbacks,
         "phi": phi,
@@ -585,8 +599,10 @@ def mutate_suffix(stream, t_star, seed):
     return changed
 
 
-def _lp_sensitive_red(arm="a"):
-    """A single recorded causal LP change must alter replay's gate and learner."""
+def _lp_sensitive_red(arm="a", mode="live"):
+    """A single recorded LP change must alter replay's gate and learner."""
+    if mode not in ("live", "causal"):
+        raise ValueError("unknown replay mode")
     stream = _synthetic_stream()
     stream["events"] = [
         dict(event, t=i + 1, tick=i * 2 + 1) for i, event in enumerate(stream["events"] * 3)
@@ -596,12 +612,15 @@ def _lp_sensitive_red(arm="a"):
         for i, row in enumerate(stream["sleep"] * 3)
     ]
     target = 92 if arm == "f64" else 80
+    rows = stream["sleep"] if mode == "live" else stream["events"]
+    field = "live_lp" if mode == "live" else "causal_lp"
     for event_index in (target - 8, target - 4):
-        stream["events"][event_index - 1]["causal_lp"] = 10.0
-    base = replay(stream, arm)
+        rows[event_index - 1][field] = 10.0
+    base = replay(stream, arm, mode)
     changed = copy.deepcopy(stream)
-    changed["events"][target - 1]["causal_lp"] = 10.0
-    altered = replay(changed, arm)
+    changed_rows = changed["sleep"] if mode == "live" else changed["events"]
+    changed_rows[target - 1][field] = 10.0
+    altered = replay(changed, arm, mode)
     return any(
         a["verdict"] != b["verdict"]
         for a, b in zip(base["gate_verdicts"], altered["gate_verdicts"], strict=True)
@@ -611,8 +630,58 @@ def _lp_sensitive_red(arm="a"):
     )
 
 
+def _validate_run(run, stream, source, arm, mode):
+    if (
+        run.get("arm") != arm
+        or run.get("mode") != mode
+        or run.get("source_digest") != _source_digest(source)
+        or any(entry.get("mode") != mode for entry in run.get("ledger", ()))
+    ):
+        raise ValueError(f"REFUSED: replay identity {arm} {mode}")
+    final = stream.get("final", {})
+    if (
+        run.get("config_digest") != _config_digest(stream)
+        or run.get("revision") != {"head": final.get("head"), "dirty": final.get("dirty")}
+        or not isinstance(run.get("execution_id"), str)
+        or not run["execution_id"]
+    ):
+        raise ValueError(f"REFUSED: replay provenance {arm} {mode}")
+    count = len(source["events"])
+    if any(len(run.get(key, ())) != count for key in ("predictions", "fallbacks", "phi")):
+        raise ValueError(f"REFUSED: incomplete replay events {arm} {mode}")
+    ledger_count = len(run.get("ledger", ()))
+    trajectory_count = len(run.get("trajectory", ()))
+    if (
+        ledger_count != len(run.get("gate_verdicts", ()))
+        or ledger_count != max(0, trajectory_count - 1)
+        or (run.get("refits") and not ledger_count)
+    ):
+        raise ValueError(f"REFUSED: incomplete LP ledger {arm} {mode}")
+
+
+def _refit_positions(rows, *, recorded):
+    if recorded:
+        completed = [(r["tick"], r["event"], r["refit"]) for r in rows if r["refit"]]
+        skipped = [(r["tick"], r["event"]) for r in rows if not r["refit"]]
+    else:
+        completed = [(r["tick"], r["event"], r["fingerprint"]) for r in rows]
+        skipped = []
+    return completed, skipped
+
+
+def _replay_skipped(stream, run):
+    completed = {(r["tick"], r["event"]) for r in run["refits"]}
+    candidates = [
+        (r["tick"], r["event"])
+        for r in stream["sleep"]
+        if r["tick"] % stream["config"]["refit_every"] == 0
+    ]
+    return [position for position in candidates if position not in completed]
+
+
 def check_r_a1(stream, live=None, arm="a"):
     live = live if live is not None else replay(stream, arm, "live")
+    _validate_run(live, stream, stream, arm, "live")
     expected = stream["final"]
     eligible = bool(
         any(
@@ -629,9 +698,10 @@ def check_r_a1(stream, live=None, arm="a"):
         for k in ("live_n", "live_correct", "live_persist", "ticks", "observed")
     )
     ok &= live["fingerprint"] == expected["fingerprint"]
-    ok &= [r["fingerprint"] for r in live["refits"]] == [
-        r["refit"] for r in stream["refits"] if r["refit"]
-    ]
+    expected_refits, expected_skips = _refit_positions(stream["refits"], recorded=True)
+    actual_refits, _ = _refit_positions(live["refits"], recorded=False)
+    ok &= actual_refits == expected_refits
+    ok &= _replay_skipped(stream, live) == expected_skips
     changed = copy.deepcopy(stream)
     first = live["refits"][0]["event"] if live["refits"] else 0
     cats = sorted({e["c"] for e in changed["events"]})
@@ -661,6 +731,7 @@ def check_r_a1(stream, live=None, arm="a"):
 
 def check_r_a1b(stream, oracle, replayed=None):
     replayed = replayed if replayed is not None else replay(oracle, "f64", "live")
+    _validate_run(replayed, oracle, oracle, "f64", "live")
     fields = ("x", "c", "tick", "causal_lp", "source", "attended")
     same = len(stream["events"]) == len(oracle["events"]) and all(
         all(a[key] == b[key] for key in fields)
@@ -671,20 +742,19 @@ def check_r_a1b(stream, oracle, replayed=None):
         (r["tick"], r["brain_tick"], r["live_lp"]) for r in oracle["sleep"]
     ]
     same &= replayed["predictions"] == [e["prediction"] for e in oracle["events"]]
-    same &= [r["fingerprint"] for r in replayed["refits"]] == [
-        r["refit"] for r in oracle["refits"] if r["refit"]
-    ]
+    expected_refits, expected_skips = _refit_positions(oracle["refits"], recorded=True)
+    actual_refits, _ = _refit_positions(replayed["refits"], recorded=False)
+    same &= actual_refits == expected_refits
+    same &= _replay_skipped(oracle, replayed) == expected_skips
     red = all(check_r_a1(oracle, arm="f64")["red"].values())
     return {"verdict": bool(same and red), "numbers": {"events": len(oracle["events"])}, "red": red}
 
 
 def check_r_a2(stream, runs=None):
     results = {}
-    base_digest = _source_digest(stream)
     for arm in SCORED_ARMS:
         base = _load(runs[arm]["base"]) if runs else replay(stream, arm)
-        if not _causal_identity(base, arm, base_digest):
-            raise ValueError(f"REFUSED: replay identity {arm} base")
+        _validate_run(base, stream, stream, arm, "causal")
         cuts = []
         for cut in (
             len(stream["events"]) // 4,
@@ -693,8 +763,7 @@ def check_r_a2(stream, runs=None):
         ):
             changed = mutate_suffix(stream, max(1, cut), stream["seed"] + cut)
             other = _load(runs[arm][cut]) if runs else replay(changed, arm, mutate=changed)
-            if not _causal_identity(other, arm, _source_digest(changed)):
-                raise ValueError(f"REFUSED: replay identity {arm} cut {cut}")
+            _validate_run(other, stream, changed, arm, "causal")
             cuts.append(base["predictions"][:cut] == other["predictions"][:cut])
         results[arm] = cuts
     leak = replay(stream, "leak")
@@ -712,15 +781,6 @@ def check_r_a2(stream, runs=None):
         "numbers": results,
         "red": red,
     }
-
-
-def _causal_identity(run, arm, digest):
-    return (
-        run.get("mode") == "causal"
-        and run.get("arm") == arm
-        and run.get("source_digest") == digest
-        and all(entry.get("mode") == "causal" for entry in run.get("ledger", ()))
-    )
 
 
 def check_r_a2b(stream):
@@ -784,6 +844,10 @@ def check_r_a4(stream, runs=None):
             if runs
             else (replay(stream, arm), replay(stream, arm))
         )
+        _validate_run(a, stream, stream, arm, "causal")
+        _validate_run(b, stream, stream, arm, "causal")
+        if a["execution_id"] == b["execution_id"]:
+            raise ValueError(f"REFUSED: duplicate replay execution {arm}")
         equal[arm] = all(
             a[key] == b[key] for key in ("phi", "refits", "predictions", "fingerprint")
         )
@@ -1009,7 +1073,13 @@ def main():
             )
         }
         fixture["final"]["gate_verdicts"] = live["gate_verdicts"]
-        fixture["refits"] = [{"refit": row["fingerprint"]} for row in live["refits"]]
+        fixture["final"].update(live["revision"])
+        completed = {(r["tick"], r["event"]): r["fingerprint"] for r in live["refits"]}
+        fixture["refits"] = [
+            dict(row, refit=completed.get((row["tick"], row["event"])))
+            for row in fixture["sleep"]
+            if row["tick"] % fixture["config"]["refit_every"] == 0
+        ]
         for event, prediction in zip(fixture["events"], live["predictions"], strict=True):
             event["prediction"] = prediction
         assert check_r_a1(fixture)["verdict"]
@@ -1017,6 +1087,7 @@ def main():
         assert check_r_a3(fixture)["red"]
         assert check_r_a2(fixture)["verdict"]
         assert check_r_a4(fixture)["verdict"]
+        assert _lp_sensitive_red("a", "causal")
         categories = [event["c"] for event in fixture["events"]]
         assert (
             score(fixture, categories, [False] * len(categories))["unseen-order"]["accuracy"] == 1
