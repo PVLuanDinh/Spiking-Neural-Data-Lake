@@ -353,3 +353,14 @@ def test_r_b5_persistence_on_its_witness_and_the_reset_every_percept_red():
 def test_r_b5_freeze_across_all_four_forms(candidate):
     result = rp.check_r_b5_freeze(candidate, CONFIG[candidate])
     assert result["verdict"], result["numbers"]
+
+
+def test_r_b5_freeze_red_a_weight_written_after_the_boundary():
+    # g1 learns nothing, so (iii)'s red is planted: one weight of the Carried form's pool moves by
+    # one ulp right after its boundary fingerprint. A freeze check blind to that write fails here.
+    result = rp.check_r_b5_freeze_red("lsm", CONFIG["lsm"])
+    assert result["verdict"], result["numbers"]
+    frozen = {"carried": True, "reset": True, "settled": True, "front_end": True}
+    assert result["numbers"]["twin_frozen"] == frozen
+    assert result["numbers"]["faulted_frozen"] == dict(frozen, carried=False)
+    assert result["numbers"]["boundary_agree"]  # the write came after the fingerprint

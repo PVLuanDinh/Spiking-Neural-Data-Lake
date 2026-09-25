@@ -569,6 +569,26 @@ def _skip_carrier(pool, carrier):
     return _fault(pool, f"skip_{carrier}", reset_carriers=reset_carriers)
 
 
+# The fault below writes a weight only so R-b5 (iii) can be seen to fail (sites read; none is a
+# planted fault or a freeze red):
+# distinct-from: cortex/predictive_coding.py -- learn_step is a real local weight update
+# distinct-from: cortex/h01_ingest.py -- decode_shard counts a shard's joins in one pass
+# distinct-from: cortex/vsa_reasoning.py -- coincidence_many counts spike coincidences
+# distinct-from: neuromodulation/naca.py -- its reversal check is a real R-STDP experiment
+# distinct-from: reasoning/spike_chat_lake.py -- _kb_reply retrieves stored triples
+def _write_after_boundary(pool):
+    """R-b5 (iii)'s red: one weight moved by one ulp right after the boundary fingerprint."""
+    base = type(pool)
+
+    def _at_boundary(self):
+        base._at_boundary(self)
+        w = self.w.copy()
+        w[0, 0] = np.nextafter(w[0, 0], np.inf)
+        self.w = w
+
+    return _fault(pool, "write_after_boundary", _at_boundary=_at_boundary)
+
+
 def _count_multi(pool):
     """Count unit-steps whose recurrent sum has three or more spiking presynaptic terms (the only
     sums whose association can change the float result). The arithmetic is untouched."""
@@ -795,12 +815,17 @@ def check_r_b5_persistence(
     }
 
 
-def check_r_b5_freeze(candidate, config, recording_seed=DEV_SEED, *, window=WINDOW, after=16):
+def check_r_b5_freeze(
+    candidate, config, recording_seed=DEV_SEED, *, window=WINDOW, after=16, write=None
+):
     """(iii) All four forms reach the same boundary fingerprint and every parameter still equals
-    it at the end (Front-end: its recorded lesion)."""
+    it at the end (Front-end: its recorded lesion). `write` names the form whose pool has one weight
+    written after its boundary fingerprint: the red."""
     boundary, frozen, lesions = {}, {}, {}
     for form in FORMS:
         pool = make_pool(candidate, config, recording_seed, form, window=window)
+        if form == write:
+            pool = _write_after_boundary(pool)
         for x in cycled_fixture(window + after):
             pool.percept(x)
         boundary[form], frozen[form] = pool.boundary, bool(pool.frozen())
@@ -812,6 +837,37 @@ def check_r_b5_freeze(candidate, config, recording_seed=DEV_SEED, *, window=WIND
             "boundary_agree": agree,
             "frozen": frozen,
             "front_end_changed": lesions["front_end"],
+        },
+    }
+
+
+# Sites read; none checks a pool's parameters against a boundary fingerprint:
+# distinct-from: cortex/recursive_tom.py -- _t082_s2 checks one seed of a theory-of-mind control
+# distinct-from: plasticity/deep_stdp.py -- _mechanics_check asserts an STDP library's mechanics
+# distinct-from: plasticity/inhibitory_stdp.py -- istdp_synapse_rule authors a synapse rule
+# distinct-from: substrate/amdahl_gate.py -- within_noise_of_zero is a sham timing criterion
+def check_r_b5_freeze_red(candidate, config, recording_seed=DEV_SEED, *, window=WINDOW, after=16):
+    """(iii)'s red on g1, which learns nothing (the pre-registered red, SORN's plasticity left on,
+    went with g3): the Carried form's pool has one weight written after its boundary fingerprint.
+    Its freeze must fail on that form alone while the unfaulted twin holds on all four."""
+    twin = check_r_b5_freeze(candidate, config, recording_seed, window=window, after=after)
+    red = check_r_b5_freeze(
+        candidate, config, recording_seed, window=window, after=after, write="carried"
+    )
+    fired = sorted(form for form, ok in red["numbers"]["frozen"].items() if not ok)
+    return {
+        "verdict": bool(
+            twin["verdict"]
+            and not red["verdict"]
+            and fired == ["carried"]
+            and red["numbers"]["boundary_agree"]
+        ),
+        "numbers": {
+            "config": config,
+            "twin_frozen": twin["numbers"]["frozen"],
+            "faulted_frozen": red["numbers"]["frozen"],
+            "fired": fired,
+            "boundary_agree": red["numbers"]["boundary_agree"],
         },
     }
 
@@ -847,9 +903,12 @@ def main():
             red = check_r_b5_erasure_red(candidate, form, window=32)
             assert red["verdict"], (candidate, form, red["numbers"])
         assert check_r_b5_freeze(candidate, config, window=32, after=4)["verdict"], candidate
+        red = check_r_b5_freeze_red(candidate, config, window=32, after=4)
+        assert red["verdict"], (candidate, red["numbers"])
         assert pool_noise_red(candidate, config, window=32)["verdict"], candidate
         print(
-            f"R-b5 {LABEL[candidate]}: erasure, skip-a-carrier red, freeze; R-b4 pool-noise red OK"
+            f"R-b5 {LABEL[candidate]}: erasure, skip-a-carrier red, freeze, write-after-boundary red "
+            f"(fired on {red['numbers']['fired']}); R-b4 pool-noise red OK"
         )
     assert check_r_b5_persistence(window=32)["verdict"]
     assert not check_r_b5_persistence(window=32, carried_form="reset")["verdict"]

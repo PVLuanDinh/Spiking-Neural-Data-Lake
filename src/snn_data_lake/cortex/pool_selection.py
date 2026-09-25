@@ -614,9 +614,10 @@ def input_response(candidate, config, stream):
 def mechanism_checks(candidate):
     """Section 2.7's mechanism checks for one candidate at the full window on the development
     fixtures, each green beside its red: R-b0; R-b3's order red on the declared witness; R-b5 (i)
-    after Reset and Settled with the skip-a-carrier red; R-b5 (iii) (green only: its one red was
-    SORN's plasticity left on, deleted with g3 in section 2.9); R-b5 (ii) and its reset-every-percept
-    red on g1's fixture; R-b4's pool-noise red."""
+    after Reset and Settled with the skip-a-carrier red; R-b5 (iii) (green only in this step: its
+    pre-registered red, SORN's plasticity left on, went with g3 in section 2.9, and g1's
+    write-after-boundary red runs in recurrent_pool's self-check and tests); R-b5 (ii) and its
+    reset-every-percept red on g1's fixture; R-b4's pool-noise red."""
     config, _ = rp.R_B5_ERASURE_WITNESS[candidate]
     source = {"lsm": rp.check_r_b0_lsm}
     numbers, greens, reds = {}, {}, {}
