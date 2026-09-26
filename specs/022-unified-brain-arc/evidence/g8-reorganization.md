@@ -1500,3 +1500,125 @@ gate's full printed output (`--assert`, exit 0 on both sides) is byte-identical 
 EMPTY, because the check prints nothing while green. The method-dormancy gate's output is byte-identical to S0's, and
 citation_guard's STRICT (0, 1 exemption) and BROAD (1,075 across 239 files) are unchanged; its scanned-file and
 citation counts rise by this commit's own tracked test file and its 8 citations, all resolving.
+
+### 3.3 S1a -- move_gate and the frozen pre-G8 label tables
+
+Measured 2026-09-25 on the S1a tree (base `81e90f0` plus this commit), `.venv-lake` (3.14.6 free-threaded).
+
+**Disclosed first: one frozen sentence, read two ways.** 2.4 makes `LEGACY_*` "byte-identical frozen copies of the
+S0-head tables". Built first as a copy of the tables' source text, comments included, the post census diff went red
+OUTSIDE the declared delta: citation_guard's report-only BROAD rose 1,075 -> 1,080, all five new rows in the root
+`__init__.py`, the copied provenance comments citing five retired files (`training/device`, `training/eprop_nmnist`,
+`training/eprop_shd`, `reasoning/torch_device`, `reasoning/snn_moe_classifier`, each as a `.py` path). C7 allows no
+BROAD rise in a live file beyond the envelope carve-out, and 2.10 fixes the build, never the delta: the tables were
+rebuilt with every key and member string byte-identical and in the S0-head order, the comments left with the live
+tables (AST-equal, C6; the sha256 of their sorted-key JSON, `4e3ab7cd...82394`, equals the S0 head's tables'), and the
+same declared delta then held. The comment-inclusive run is kept (artifacts below). **The orchestrator owes the
+reading**: "byte-identical" as the tables' data (what landed) or as their source text (unbuildable beside C7 without
+an amendment).
+
+**What landed.** `gates/` (a governed package, docstring-only `__init__.py`) with `gates/move_gate.py`:
+`--census OUT [--root TREE]` runs every C1 gate as a subprocess against TREE (`PYTHONPATH=<TREE>/src`, cwd TREE, one
+fresh temporary `NORD_HOME` per run, sequential) and keeps each gate's exit code and printed lines with durations and
+line numbers stripped, seven probes that read the outcome sets the gates compute but do not print through the gates'
+own functions (the dormancy reachable set and EXEMPT verdicts, the import-manifest targets and broken list,
+replication sites, the region-charge and atlas-node censuses, `policy_manifest.run_audit`'s per-command verdicts, C4's
+`check_r_b0`), 30 NAME-valued registries read by AST, and C6's static invariants; every gate is found by its basename
+in the tree's own live tables. `--diff PRE POST --declared DELTA [--observed OUT]` maps each side's module references
+through `LEGACY_*` and exits 0 iff the difference equals the delta change for change; C6 (LEGACY_* equal to PRE's,
+depth unchanged, every violation list empty) is never declarable. `--self-check --mover MOVER` builds this stage's two
+reds in temporary copies and REFUSES (exit 2) without the mover; `--export REV|WORKTREE DIR` makes a census-ready tree;
+bare runs the diff engine's constructed reds (run_selfchecks, pytest). Stdlib only: it imports nothing of the package it
+measures, so it censuses a tree from before it existed. The NAME class is compared after the `LEGACY_*` mapping at this
+stage (the draft form of C1; identity while nothing moves); F3(b)'s raw comparison against a post-stage expected set
+lands at S1b. Registered: `REGIONS["gates"]`, the runner's `gates.move_gate`, a permanent dormancy EXEMPT row, the atlas
+(by `REGIONS`), `import_manifest.GOVERNED` + `gates`. Beside it: `LEGACY_REGIONS`, `LEGACY_TORCH_TIER`,
+`LEGACY_TRAIN_TIER` after the live tables, and `package_of()`/`module_path()`. The label consumers:
+`brain_atlas.region_of` answers the LEGACY label (its `main()`'s torch- and train-tier checks read `package_of`, the
+live layout) and `_region_files` lists the directories `module_path()` names; `region_charge_gate` (`regions`,
+`reachable_regions`), `atlas_node_gate.node_references`, `brain_geometry` (`_region_modules`, `_connectome_pairs`,
+`main`'s census) and `region_wiring.coverage` take labels and membership from `LEGACY_*` and paths from
+`module_path()`; `atlas_node_gate`'s F7 sites are M11d's and stay. `selfcheck_cache`: the roster anchor is
+`(?m)^REGIONS = \{` (F17), and `_EXPECTED_ROSTERS["root"]` gains the three `LEGACY_*` names -- a consequence 2.4 did not
+name: the cache's own self-check refuses a newly blanked roster literal until it is adjudicated there.
+`tests/test_g8_move_gate.py` (8 tests) pins the tables' digest, the join, the F17 anchor, the diff engine and the
+registration.
+
+**P2.** `graph-exists.js "gate census diff against a declared delta across a module move"`: no lexical match;
+re-queried in the tree's vocabulary ("census", "declared delta": none; "selfcheck census diff":
+`home._arm_selfcheck_guard_census`, unrelated). move_gate REUSES the gates' own functions through its probes rather than
+re-deriving any census. `"module basename to current package import path resolver"`: `method_dormancy_gate._imports`,
+a per-file import list; the real near-sibling of `module_path()` is `dormancy_gate._CANON` (the same basename -> dotted
+map, frozen at that gate's import, for `BRAIN_MODULES`), named at the definition and not merged here (an opening
+below). The duplicate hook flagged term-overlap sites at nine edits, seven of them refused until a marker named a
+flagged site; every site was read and each clearance is a `# distinct-from:` marker in the diff.
+
+**The pre-S1a census (2.6)** ran over `move_gate --export 81e90f0`: `git archive` with this checkout's line endings
+(the envelope hashes are of those bytes) and an index-only `git init`, so the git-listing gates see the tree and the
+policy manifest reports its freshness conjunct "NOT checked -- no ref resolved (disclosed)" on both sides. Controls:
+byte for byte against the checkout, the export differs in content in exactly the ten files this commit edits (each
+reported) and in line endings only in the 16 files the checkout holds with mixed endings; the census taken twice is
+byte-identical (`cmp` exit 0; a differing pair exits 1). The post census ran over `--export WORKTREE` (HEAD's archive
+with the working tree's changes laid over it): content-equal to the checkout, the same 16 EOL-only files. 112-132 s per
+census.
+
+**The declared delta, and the diff.** Declared before the first gate run on the S1a tree (19:02 local), 2.6's words
+rendered into census fields, every expected line derived from the pre census's own line: dormancy 297 -> 298 and exempt
+59 -> 60 (the count line; probe total, exempt, `move_gate=permanent`; EXEMPT + `move_gate`), reachable 238 unchanged;
+`REGIONS` keys + `gates` and members + `gates.move_gate`; the runner + `gates.move_gate`; the atlas's `gates` row, TOTAL
+298 across 19 (287 core) and 286 flat legacy paths (move_gate's own flat alias: every `REGIONS` module not named like its
+package gets one); `GOVERNED` + `gates`; move_gate's own files raising the `src` denominators 438 -> 440
+(gradient_claim's files parsed, eprop_transport twice, p6) and p4c's excluded `__init__` count 29 -> 30 and tests 145 ->
+146; `module_depth` + `move_gate=1`. Measured: "move_gate OK: the diff equals the declared delta (23 declared
+change(s))", exit 0. Unchanged, as declared: the region-charge census (8 of 16 CHARGED) and the atlas-node census (21 of
+41 resolved, 20 recorded phantoms); C4's R-b0 (verdict True, red True, parity True, SynOps [950, 1011, 661, 946, 962,
+685]); C6 (`LEGACY_*` AST-equal to the pre tree's tables, every violation list empty).
+
+**The planted reds** (`--self-check --mover`, 39 s):
+1. C1, a planted EXEMPT-row deletion (the `move_gate` row, in a temporary copy): the unplanted re-census diffs EMPTY;
+   planted, the diff reds with 8 undeclared changes, the first `gates|dormancy_gate||+: observed ['   gates.move_gate',
+   '--- DORMANT (unreached AND unexempted) ---', 'brain modules 298  reachable 238  exempt 59  dormant 1']`, and the
+   gate's exit code 0 -> 1.
+2. F5's join red: in a second copy the mover moved `insula/interoceptive_integration` to `faculties` (its 2.12 row;
+   7 imports and 3 strings rewritten in 10 files, the emptied `insula` package deleted). With the joins in place both
+   region censuses stayed identical; with `module_path()` replaced by the LEGACY label (the draft's form):
+   `region_charge.rows.insula` CHARGED -> UNREACHABLE, `charged_count` 8 -> 7, `atlas_node.census.phantoms` + `insula`,
+   `references.insula` emptied.
+Without `--mover`: "move_gate --self-check REFUSED: F5's red needs the out-of-tree mover", exit 2. The bare reds, each
+blinded in-process: the comparison blinded leaves 3 reds unfired, C6 blinded 2, the LEGACY map blinded fails the
+pure-move control.
+
+**C2-C9 as applicable before any move.** C2(a): 415 attempted (414 + move_gate), 13 failed, exactly 3.1's list, 0 files
+written, 17.4 s. C2(b): every flat alias is its module (the atlas: 286). C2(c): not applicable (`_LEGACY` lands at S1b).
+C2(d): not applicable (no legacy path exists before a move; its scanner and F7 positive control are owed before M1).
+C2(e): the 16 frozen artifacts name 12 package modules, every one resolving directly (SourceFileLoader). C3: the gate
+green in the census, its self-check (positive control and three reds) OK, the `safety_envelope` document check OK,
+`git diff --stat` of the five files and `tools/envelope_hashes.json` empty, and in a fresh process with a temporary home
+`so101_arm._latch_path()` resolves under it through the real `substrate.home` (SourceFileLoader), writing nothing. C4 and
+C6: above. C7: doc_command_guard 65 runnable, 0 unrunnable; STRICT 0 (1 exemption); BROAD 1,075 across 239 files. C8/C9
+by FILE (a scratch reader here; F3(a) moves it into move_gate at S1b): 570 registry names, 0 without a module file,
+every ci.yml `-m` target with a `__main__`; control: a planted stale name resolves to nothing. `policy_manifest --audit`:
+exit 0, 38 s, every machine row PASS, UNCLAIMED_GATE none, NOT_IN_CI none. `ruff check` and `ruff format --check` on the
+13 touched files: clean. Tests: 38 passed in 30.8 s (`test_g8_move_gate`, `test_arm_vocabulary`,
+`test_dormancy_phantom_exempt`, `test_eprop_train_tier_unreachable`, `test_wiring_manifest`,
+`test_run_selfchecks_tools_stage`); the touched modules' in-process self-checks, 12 passed in 47.0 s.
+
+**The mover** (2.5), written at this stage out of tree (the scratch folder's `g8_mover`, sha256
+`b49e982a891af74a938426fd0dfdafdb39ff1d8a3545b0f5a8698fe048a746eb`), driven only by the frozen 2.12 table: its stage
+derivation reproduces 2.4's sizes (M1 23, M2 23, M3 31, M4 14, M5 26, M6 7, M7 13, M8 11, M9 6, M10 7, M11a-e 1, 12, 22,
+24, 33; 253 in all) and asserts the M11 split before any use; it refuses a tree without move_gate's temporary-copy
+marker. It moves files, re-keys the live tables surgically, deletes an emptied package with its `__pycache__/`, and
+rewrites exact-pair imports and non-docstring strings; the per-stage items of 2.4 stay the stage builder's.
+
+**Artifacts** (the scratch folder's `g8\census`, archived by the orchestrator), sha256: `pre_S1a_81e90f0.json`
+`6201657b...1f001` (its rerun identical); `declared_S1a.json` `9393397a...f8b82`; `post_S1a.json` `22d65494...78b02`;
+`observed_S1a.json` `b08e83c6...28b65`; the comment-inclusive run `post_S1a_run1_commentcopy.json` `0ef3836b...b6ea6`
+with its observed diff `bae87c29...9948`; `selfcheck_S1a.txt` `d215caef...bdd2a`; C2(a)'s `c2a_S1a.json`
+`65edc223...ea579`.
+
+**Openings, filed for the orchestrator.** (1) The reading of "byte-identical" above. (2) move_gate is gate-named;
+`policy_manifest`'s unclaimed-gate census reads only `"substrate.*"` runner names today (F1's prefix), so move_gate
+enters it at M1's fix and POLICIES.md must then name it. (3) C2(d)'s scanner and its F7 positive control are owed before
+M1. (4) The F5 red's planted move names `insula/interoceptive_integration` by its current path; M11b moves it, so the
+red needs a new pair by then. (5) `dormancy_gate._CANON` and `module_path()` hold the same map: a P2 merge candidate.
+(6) `gates/move_gate.py` is past the 800-line soft ceiling by design (one registered module; its docstring says why).

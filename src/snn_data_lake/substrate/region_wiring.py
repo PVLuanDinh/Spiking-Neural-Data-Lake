@@ -529,9 +529,11 @@ def coverage():
     transitively). It surfaces the visible wiring gap so progress toward 'every faculty' is measurable."""
     regions_total = []
     try:
-        from snn_data_lake import REGIONS  # the anatomical region -> module map (__init__.py)
+        # the anatomical region -> module map: the FROZEN pre-G8 labels since G8 S1a (F5), so
+        # G8's engine-function packages never count as unwired regions
+        from snn_data_lake import LEGACY_REGIONS
 
-        regions_total = sorted(REGIONS)
+        regions_total = sorted(LEGACY_REGIONS)
     except Exception:
         regions_total = []
     counts = {}

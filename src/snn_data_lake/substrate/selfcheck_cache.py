@@ -164,7 +164,16 @@ _FAIL_CLOSED_DIRS = ("tools", "models")  # unreferenced artifacts here stay GLOB
 # The roster literals the splitter is EXPECTED to blank; a new one must be adjudicated here,
 # never inherited (the self-check pins both tuples).
 _EXPECTED_ROSTERS = {
-    "root": ("REGIONS", "TORCH_TIER", "TRAIN_TIER"),
+    # G8 S1a adjudicated the three LEGACY_* tables (the frozen pre-G8 labels, byte-identical
+    # copies of the S0-head tables): string rosters by construction, blanked like their originals
+    "root": (
+        "REGIONS",
+        "TORCH_TIER",
+        "TRAIN_TIER",
+        "LEGACY_REGIONS",
+        "LEGACY_TORCH_TIER",
+        "LEGACY_TRAIN_TIER",
+    ),
     "runner": ("CORE", "RESEARCH", "TORCH_GATED", "NENGO_GATED", "TRAIN_GATED", "ARTIFACT_GATED"),
 }
 _FACTS_MEMO = {}  # (path, size, mtime_ns, markers) -> facts; shared across instances
@@ -896,9 +905,11 @@ def _self_check(store):
     # importer -- a flat-alias importer that names no roster included -- and leaves the
     # plain probe alone; any non-roster edit flips everything
     init_text = base._read_text(base._root_init)
-    if "REGIONS = {" not in init_text:
+    # line-anchored (G8 F17): `LEGACY_REGIONS = {` also contains the bare substring
+    anchor = re.search(r"(?m)^REGIONS = \{", init_text)
+    if anchor is None:
         return fail("the REGIONS anchor for the roster reds is missing")
-    i = init_text.index("[", init_text.index("REGIONS = {")) + 1
+    i = init_text.index("[", anchor.start()) + 1
     row_fork = make(
         file_text_overrides={base._root_init: init_text[:i] + '"zzz_probe_v3", ' + init_text[i:]}
     )

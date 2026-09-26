@@ -115,9 +115,15 @@ def references(node: str, text: str) -> bool:
     )  # prose with an uppercase letter (CeA); bare lowercase is English or a variable
 
 
+# distinct-from: brain_atlas.py -- _region_files lists a package's files for the atlas's
+#   filesystem parity; this gate's own census, edited in place (G8 F5), reads each member's TEXT for
+#   node ids. Also read: cortex/interaction_learning.py (g0_campaign), cortex/arealization.py
+#   (emit_regions), cortex/h01_ingest.py (build_arrays), cortex/autapse_neuron.py -- none a census.
 def node_references() -> dict:
-    """node_id -> [module files in its region referencing it]. The census."""
-    from snn_data_lake import REGIONS
+    """node_id -> [module files in its region referencing it]. The census. The region's LABEL and
+    MEMBERSHIP come from the frozen LEGACY_REGIONS, each member's FILE from module_path() (G8 S1a,
+    F5): `SRC / region` stops holding a module once G8 moves it into an engine-function package."""
+    from snn_data_lake import LEGACY_REGIONS, module_path, package_of
     from snn_data_lake.connectome import NODES
 
     out = {}
@@ -125,8 +131,10 @@ def node_references() -> dict:
         if region is None:
             continue  # effectors: outside every region by design (the safety property)
         hits = []
-        for mod in REGIONS.get(region, ()):
-            f = SRC / region / f"{mod}.py"
+        for mod in LEGACY_REGIONS.get(region, ()):
+            if package_of(mod) is None:
+                continue
+            f = SRC.joinpath(*module_path(mod).split(".")[1:]).with_suffix(".py")
             if f.exists() and references(node, f.read_text(encoding="utf-8", errors="replace")):
                 hits.append(f"{region}/{mod}")
         out[node] = hits

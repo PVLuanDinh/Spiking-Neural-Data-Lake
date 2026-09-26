@@ -49,6 +49,10 @@ DETERMINISM (the draw order is load-bearing)
     renaming or removing a module -- reshuffles every position drawn after it. That is by design (the
     layout is procedural, not stored), but it means coordinates are stable only for a fixed census.
     `main()` pins the first draw against a recorded constant so a silent seed/order change fails loudly.
+    Since G8 S1a (evidence g8-reorganization.md 2.4, F5) the regions, their membership and that order
+    come from the FROZEN pre-G8 LEGACY_* tables, byte-identical to the S0-head REGIONS/TORCH_TIER/
+    TRAIN_TIER: G8's engine-function packages are code layout, not anatomy, so the drawn brain and
+    every coordinate stay exactly as they were while modules move between packages.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.brain_geometry
 """
@@ -195,11 +199,14 @@ def _reasoning_modules():
 
 def _region_modules():
     """region -> [modules], covering the FULL package: REGIONS + the torch tier + the reasoning tier.
-    The ITERATION ORDER of the returned dict is the RNG draw order -- do not sort or restructure it."""
-    from snn_data_lake import REGIONS, TORCH_TIER, TRAIN_TIER  # lazy: keeps this cycle-free
+    The ITERATION ORDER of the returned dict is the RNG draw order -- do not sort or restructure it.
+    Read from the frozen LEGACY_* label tables since G8 S1a (the module docstring says why)."""
+    # lazy: keeps this cycle-free
+    from snn_data_lake import LEGACY_REGIONS, LEGACY_TORCH_TIER, LEGACY_TRAIN_TIER
 
-    rm = {r: list(mods) for r, mods in REGIONS.items()}
-    for tier in (TORCH_TIER, TRAIN_TIER):  # gated organs append to their own region's list
+    rm = {r: list(mods) for r, mods in LEGACY_REGIONS.items()}
+    # gated organs append to their own region's list
+    for tier in (LEGACY_TORCH_TIER, LEGACY_TRAIN_TIER):
         for r, mods in tier.items():
             rm.setdefault(r, []).extend(mods)
     rm["reasoning"] = _reasoning_modules()
@@ -291,9 +298,9 @@ def _connectome_pairs():
     dropped. The curated infra edges are deliberately NOT mixed in here -- `layout()` unions them in
     separately so the two provenances stay countable. Raises if the connectome is unreadable; there is
     no invented fallback tract set (see the honesty contract)."""
-    from snn_data_lake import REGIONS, connectome
+    from snn_data_lake import LEGACY_REGIONS, connectome
 
-    regset = set(REGIONS)  # the anatomical regions; 'reasoning' has no connectome node
+    regset = set(LEGACY_REGIONS)  # the anatomical regions; 'reasoning' has no connectome node
     pairs = set()
     for e in connectome.EDGES:
         rs = connectome.NODES[e["source"]][0]
@@ -416,13 +423,14 @@ def main():
     lay = layout()
     mods, regions, edges = lay["modules"], lay["regions"], lay["edges"]
 
-    # (a) the census must cover EVERY module: REGIONS + both annex tiers + the reasoning tier.
-    from snn_data_lake import REGIONS, TORCH_TIER, TRAIN_TIER
+    # (a) the census must cover EVERY module: REGIONS + both annex tiers + the reasoning tier
+    # (the frozen LEGACY_* label tables since G8 S1a -- the same tables the layout draws from).
+    from snn_data_lake import LEGACY_REGIONS, LEGACY_TORCH_TIER, LEGACY_TRAIN_TIER
 
     expected = (
-        sum(len(m) for m in REGIONS.values())
-        + sum(len(m) for m in TORCH_TIER.values())
-        + sum(len(m) for m in TRAIN_TIER.values())
+        sum(len(m) for m in LEGACY_REGIONS.values())
+        + sum(len(m) for m in LEGACY_TORCH_TIER.values())
+        + sum(len(m) for m in LEGACY_TRAIN_TIER.values())
         + len(_reasoning_modules())
     )
     assert len(mods) == expected, f"layout must place every module ({len(mods)} != {expected})"

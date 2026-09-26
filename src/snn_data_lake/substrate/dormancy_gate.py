@@ -900,6 +900,15 @@ EXEMPT = {
         "reachable at all, C-R2 CONSUMES it, and THIS EXEMPTION RETIRES THE DAY C2 LANDS. A scorer "
         "whose only caller is its own self-check past that day is exactly the dormancy P3 names",
     ),
+    "move_gate": (
+        "permanent",
+        "specs/022 G8's G-R8 instrument (evidence g8-reorganization.md 2.6, landed at S1a): the gate "
+        "census of a tree, its diff against a stage's pre-registered delta, and the planted reds "
+        "that prove it can see. A CI/run_selfchecks instrument run once per G8 stage, never on a "
+        "tick and never constructed by one: it is stdlib-only and imports nothing of the package "
+        "it measures, because the tree it censuses is an export, not the running brain -- the "
+        "policy_manifest disposition",
+    ),
 }
 
 

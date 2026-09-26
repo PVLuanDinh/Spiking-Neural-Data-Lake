@@ -13,7 +13,9 @@ THE TWO CONJUNCTS, both required (contracts/manifest.md 'Region charge gate'):
 
 THE DENOMINATOR is the anatomical inventory (SYNTHESIS: REGIONS - {substrate, plasticity},
 insula included) -- infra and distributed-synaptic tiers are not anatomy and are excluded BY
-THE DENOMINATOR, never by exemption rows.
+THE DENOMINATOR, never by exemption rows. Since G8 S1a (evidence g8-reorganization.md 2.4, F5)
+the regions and their membership are the FROZEN pre-G8 LEGACY_REGIONS, and each member's path
+is module_path(): G8's engine-function packages are code layout, not anatomy.
 
 EXEMPT rows carry {region, reason, owner, date, expiry}, and their COUNT is a ratchet with
 the ceiling recorded in-module: adding an exemption above the ceiling REFUSES, and raising
@@ -65,22 +67,28 @@ EXEMPT_CEILING = 0
 
 
 def regions() -> list[str]:
-    from snn_data_lake import REGIONS
+    from snn_data_lake import LEGACY_REGIONS
 
-    return sorted(r for r in REGIONS if r not in NON_ANATOMY)
+    return sorted(r for r in LEGACY_REGIONS if r not in NON_ANATOMY)
 
 
+# distinct-from: brain_atlas.py -- region_of answers one module's frozen label; this gate's own
+#   conjunct (a), edited in place (G8 F5), joins LEGACY membership to module_path(). Also read:
+#   cortex/autapse_neuron.py, cortex/placement.py, cortex/snn_moe_classifier.py,
+#   reasoning/arc_residual.py -- a trial stream, a GRN arm, an RNG hinge, an ARC alphabet.
 def reachable_regions() -> set[str]:
-    """Conjunct (a): regions owning >=1 module on the ONE reachability walk."""
-    from snn_data_lake import REGIONS
+    """Conjunct (a): regions owning >=1 module on the ONE reachability walk. The region LABEL and
+    its MEMBERSHIP come from the frozen LEGACY_REGIONS, each member's PATH from module_path() (G8
+    F5): built from the label, a moved module's path would name its old package and lose it."""
+    from snn_data_lake import LEGACY_REGIONS, module_path, package_of
     from snn_data_lake.substrate.dormancy_gate import reachable
 
-    live = reachable()  # fully-dotted module paths: "snn_data_lake.<region>.<module>"
+    live = reachable()  # fully-dotted module paths: "snn_data_lake.<package>.<module>"
     out = set()
-    for region, mods in REGIONS.items():
+    for region, mods in LEGACY_REGIONS.items():
         if region in NON_ANATOMY:
             continue
-        if any(f"snn_data_lake.{region}.{m}" in live for m in mods):
+        if any(module_path(m) in live for m in mods if package_of(m) is not None):
             out.add(region)
     return out
 

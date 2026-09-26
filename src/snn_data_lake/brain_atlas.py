@@ -6,20 +6,39 @@ renders that map and VERIFIES the pre-3.0 back-compat layer: every legacy flat i
 path (`snn_data_lake.<region>.<module>`), so old code keeps working after the move.
 
   python -m snn_data_lake.brain_atlas        # (also run by run_selfchecks.py)
+
+G8 (specs/022 evidence g8-reorganization.md 2.4 S1a, F5): `region_of` answers the FROZEN pre-G8
+label (LEGACY_*), which region-keyed consumers such as the wiring manifest's region check keep
+reading while G8 moves code into engine-function packages; the map this module renders and checks
+against the filesystem is the LIVE code layout (REGIONS), and every file is located through
+module_path(), never through a label.
 """
 
 import importlib
 import os
 
-from snn_data_lake import _MOVED, REGIONS, TORCH_TIER, TRAIN_TIER
+from snn_data_lake import (
+    _MOVED,
+    LEGACY_REGIONS,
+    LEGACY_TORCH_TIER,
+    LEGACY_TRAIN_TIER,
+    REGIONS,
+    TORCH_TIER,
+    TRAIN_TIER,
+    module_path,
+    package_of,
+)
+
+_PKG_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 # distinct-from: brain_geometry.py -- not a new region resolver; this module's OWN region_of
 # gaining the TRAIN_TIER annex (2026-08-11), same shape as when TORCH_TIER was added.
 def region_of(module):
-    """Return the brain region a module belongs to, or None if unknown (checks the core REGIONS map
-    and the TORCH_TIER / TRAIN_TIER annexes)."""
-    for tier in (REGIONS, TORCH_TIER, TRAIN_TIER):
+    """Return the brain region a module belongs to, or None if unknown: the FROZEN pre-G8 label
+    from LEGACY_REGIONS and its LEGACY_TORCH_TIER / LEGACY_TRAIN_TIER annexes (G8 S1a; owner
+    decision 4 -- region-keyed rules read the pre-G8 table until G7/G4 re-target them)."""
+    for tier in (LEGACY_REGIONS, LEGACY_TORCH_TIER, LEGACY_TRAIN_TIER):
         for region, mods in tier.items():
             if module in mods:
                 return region
@@ -32,11 +51,24 @@ def atlas():
     return REGIONS
 
 
+# distinct-from: substrate/atlas_node_gate.py -- node_references reads module TEXT for node ids;
+#   this is brain_atlas's own existing file listing, edited in place (F5), not a second one.
+#   Also read: substrate/brain_geometry.py (_region_modules, the membership for placement).
 def _region_files(region):
-    """The set of module names (files) actually present in a region subpackage (excludes __init__)."""
-    pkg = importlib.import_module(f"snn_data_lake.{region}")
-    d = os.path.dirname(pkg.__file__)
-    return {f[:-3] for f in os.listdir(d) if f.endswith(".py") and f != "__init__.py"}
+    """The module names (files) present on disk beside `region`'s registered modules (excludes
+    __init__). Every directory listed is the one module_path() names for a registered module --
+    never dirname(pkg.__file__) of the region name (G8 F5: once a module moves, a label is not a
+    directory). A region with no registered module names no directory and contributes no file."""
+    mods = set(REGIONS.get(region, ())) | set(TORCH_TIER.get(region, ()))
+    mods |= set(TRAIN_TIER.get(region, ()))
+    dirs = {os.path.join(_PKG_DIR, *module_path(m).split(".")[1:-1]) for m in mods}
+    return {
+        f[:-3]
+        for d in dirs
+        if os.path.isdir(d)
+        for f in os.listdir(d)
+        if f.endswith(".py") and f != "__init__.py"
+    }
 
 
 def main():
@@ -110,7 +142,8 @@ def main():
         _torch = False
     for region, mods in TORCH_TIER.items():
         for m in mods:
-            assert region_of(m) == region, f"torch-tier {m} must region-resolve to {region}"
+            # the LIVE layout (package_of), not the frozen label region_of answers since G8 S1a
+            assert package_of(m) == region, f"torch-tier {m} must package-resolve to {region}"
             if _torch:
                 importlib.import_module(f"snn_data_lake.{region}.{m}")
             else:
@@ -129,7 +162,7 @@ def main():
         _train = False
     for region, mods in TRAIN_TIER.items():
         for m in mods:
-            assert region_of(m) == region, f"train-tier {m} must region-resolve to {region}"
+            assert package_of(m) == region, f"train-tier {m} must package-resolve to {region}"
             if _train:
                 importlib.import_module(f"snn_data_lake.{region}.{m}")
             else:
