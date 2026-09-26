@@ -1,8 +1,10 @@
 """G8 S1a and S1b (specs/022 evidence g8-reorganization.md 2.4-2.6): the frozen LEGACY_* label
 tables, the package_of()/module_path() join the region-keyed gates read through, move_gate's diff
 engine and its registration (S1a); the legacy alias layer, its strict tripwire, the re-pointed
-checkpoint provider and C8/C9 by file (S1b). The tree-level reds (C1, F5, C2(b), F3(c), F2, C5) run
-through `python -m snn_data_lake.gates.move_gate --self-check --mover MOVER`, per stage.
+checkpoint provider and C8/C9 by file (S1b); C2(d)'s scanner, the census mode and the reds'
+basename-only names (S1d). The tree-level reds (C1, F5, C2(b), F3(c), F2, C2(c), C5 and C2(d)'s
+positive control) run through `python -m snn_data_lake.gates.move_gate --self-check --mover MOVER`,
+per stage.
 """
 
 import ast
@@ -164,3 +166,62 @@ def test_registry_names_resolve_by_file_and_a_stale_one_reds():
     stale = "snn_data_lake.insula.gone"
     names["manifest_gate.REGISTRANTS"] = [*names["manifest_gate.REGISTRANTS"], stale]
     assert mg.by_file(mg.REPO, names) == [f"manifest_gate.REGISTRANTS: {stale}"]
+
+
+# ---- S1d ----------------------------------------------------------------------------------------
+def test_c2d_scanner_reds_when_a_detector_is_blinded(monkeypatch):
+    """The bare self-check's C2(d) red: the constructed source names every form; blind one
+    detector and the self-check reds."""
+    assert mg.constructed_reds() == []
+    monkeypatch.setattr(mg, "_split_hits", lambda operands, pairs, pkgs: [])
+    assert any(f.startswith("C2(d)") for f in mg.constructed_reds())
+
+
+def test_c2d_reads_the_trees_own_legacy_names_and_finds_none_in_live_code():
+    """The AST twin of the running alias layer: the tree's legacy pairs and packages equal
+    `_LEGACY` and `_LEGACY_PKGS`, and no live `.py` spells one of them."""
+    tabs = mg.tables(mg.REPO)
+    running = {tuple(k.split(".")): v.split(".")[0] for k, v in S._LEGACY.items()}
+    assert mg.legacy_pairs(tabs) == running
+    assert mg.legacy_pkgs(tabs) == set(S._LEGACY_PKGS)
+    found, n, unparsed = mg.c2d(mg.REPO)
+    assert n > 500 and unparsed == [] and found == []
+
+
+def test_diff_refuses_two_censuses_of_different_modes(tmp_path, capsys):
+    """A checkout census and an export census differ in `root` and the manifest's freshness line
+    (measured at 09b68a4): `--diff` refuses a mixed pair, and a census with no mode."""
+    files = {}
+    for name, payload in (("declared", {}), ("expected", {"modules": {}})):
+        files[name] = tmp_path / f"{name}.json"
+        files[name].write_text(json.dumps(payload), encoding="utf-8")
+    for pre_mode, post_mode, rc in (
+        ("export", "export", 0),
+        ("export", "checkout", 2),
+        (None, "export", 2),
+    ):
+        for side, mode in (("pre", pre_mode), ("post", post_mode)):
+            c = mg._mini()
+            if mode:
+                c["mode"] = mode
+            files[side] = tmp_path / f"{side}.json"
+            files[side].write_text(json.dumps(c), encoding="utf-8")
+        argv = [
+            "--diff",
+            str(files["pre"]),
+            str(files["post"]),
+            "--declared",
+            str(files["declared"]),
+        ]
+        assert mg.main([*argv, "--expected", str(files["expected"])]) == rc
+    assert "REFUSED" in capsys.readouterr().out
+
+
+def test_the_reds_name_modules_by_basename_through_the_tables():
+    """S1d: each module a tree red plants is a registered basename whose package the red reads
+    from the copy's tables, so no stage re-points a red."""
+    for base in (mg.F5_BASE, mg.F2_BASE, mg.C2B_BASE, mg.C5_BASE, mg.FLAT_BASE, *mg.REPOINT):
+        assert "." not in base and "/" not in base
+        assert S.module_path(base).endswith("." + base)
+    for base in mg.C2C_TARGETS:
+        assert S.module_path(base)  # every C2(c) target is a registered module

@@ -1805,3 +1805,107 @@ not its cost.
 the run's summary `full_cheap_half_S1c.json` `6140f8cd...68f4` and log `full_cheap_half_S1c.log` `f61b9d36...b443`.
 
 **Openings.** None new; 3.3's and 3.4's stand.
+
+### 3.6 S1d -- `move_gate`'s legacy `-m` runner, static legacy scanner and census-mode guard
+
+Measured 2026-09-25 on the S1d tree (base `013c76c` plus this commit), `.venv-lake` (3.14.6 free-threaded).
+
+**What landed** (`gates/move_gate.py` and its test file; nothing else). **C2(c)** (`--c2c [--root TREE]`): each of
+A.4's 16 battery gates and `brian2_backend` that has a legacy name runs `python -m <legacy> --assert` beside `python -m
+<current> --assert`, strict off, and must exit with one code and print one stdout (the per-run home, the interpreter,
+durations and line numbers normalized exactly as the census does, by its own `_norm`); a gate with no legacy name is
+counted, never run. **C2(d)** (`--c2d [--root TREE]`): every live `.py` the tree lists (every tier, tests, tools,
+integrations, research, root scripts; never `docs/coverage/artifacts/`) read by AST, code only, for the tree's own
+legacy names in seven forms: imports, dotted and path forms in string constants, f-string templates, split path parts
+(string operands of `os.path.join` and of `/`), `endswith`/`startswith` package tests, live-table keys (`REGIONS.get`,
+`REGIONS[...]`) and package-prefix strings; a file that does not parse is reported, never counted as a zero. The legacy
+names are `legacy_pairs()` and `legacy_pkgs()`, the AST twins of the running `_LEGACY` and `_LEGACY_PKGS` (the new test
+asserts them equal at this head), and the diff's `pairmap` and C6's `legacy_py_paths`/`legacy_pkg_dirs` now read the
+same two functions: one map, two readings. **The mode**: a census records `export` (an index-only git), `checkout` (a
+HEAD resolves) or `copy` (no git of its own), and `--diff` REFUSES (exit 2) two censuses of different modes or one that
+records none. **The reds' names**: every module a tree red plants is a basename (`F5_BASE`, `F2_BASE`, `C2B_BASE`,
+`C5_BASE`, `FLAT_BASE`, `REPOINT`), its frozen label and current package read from the copy's own tables (`_dotted`,
+module_path()'s stdlib twin) or, inside a probe, through `S.module_path()`; `_plant_move` moves a module "as its stage
+will" only while the copy still holds it at its label, and otherwise uses the stage's real move, so no later stage
+re-points a red. C5, once `lif_neuron` has moved, needs the stage's pre-move R-L1 baseline (`--self-check ... --rl1
+DIR`), and the self-check REFUSES without it. The constructed censuses now name synthetic packages (`oldpkg`, `newpkg`,
+`mod`): a real pair in them would become a legacy name at its own stage, rewritten by the mover and flagged by C2(d)
+inside this instrument. `move_gate.py` is 2,076 lines (the 800-line ceiling's disclosed exception, 3.3 opening (6)).
+
+**P2.** `graph-exists.js`: "run a gate through its legacy module name and compare exit code and stdout" names
+`move_gate.census` (REUSED: `c2c` runs through its `_run`, `_subs` and `_norm`), `h01_ingest`, `gradient_claim_gate`'s
+`--measure` and `pool_selection` (their own gates, unrelated); "static scan of live code for legacy module paths", "census
+mode checkout versus git archive export", "split path parts os.path.join package name test" and three re-queries in the
+tree's vocabulary: no lexical match, and the source inspection found no legacy-name scan (`method_dormancy_gate`'s
+per-file imports, `import_manifest._targets`, this module's own `_imports_of`). The Write/Edit duplicate hook flagged
+term-overlap sites at five edits and refused three until a marker named a flagged site; every site was read (among them
+`agency_monitor._t079_head`, a HEAD pin of the running repo; `interaction_learning._g0c_translate`, a class path on
+restore; `package_of`), and each clearance is a `# distinct-from:` marker in the diff.
+
+**The parent census, re-taken (2.6).** `move_gate` changed, so the parent census was taken with S1d's `move_gate` over
+`--export 013c76c`: mode `export`, every gate exit 0, every invariant list empty, 113.2 s. Read against S1c's recorded
+post census with the diff engine's own `observed()`: `{}`, 0 changes (only the new `mode` field differs; the comparator's
+positive control, S1b's post census against S1c's, reads 2 changes, the doc-budget row).
+
+**The declared delta, and the diff.** EMPTY, the amendment's own, written to `declared_S1d.json` before the first C1
+census of the S1d tree (the self-check had run on copies of it during the build; the C1 census had not). The post census
+over `--export WORKTREE` (113.9 s): "move_gate OK: the diff equals the declared delta (0 declared change(s))", exit 0.
+**The mode red on real censuses:** the same parent against S1c's post census, which records no mode: "move_gate --diff
+REFUSED: a census records no mode (taken before S1d): re-take it with this move_gate", exit 2. The mixed-mode and
+no-mode refusals are also constructed reds (the bare self-check and the new test).
+
+**C2(c) and its red.** At this head 0 of 17 gates have a legacy name: nothing to run (0.0 s). The red, in F2's copy
+(the mover moved `region_charge_gate` as M1 will): the legacy run is green (exit 0 both ways, 18 identical lines); with
+the copy's root `__init__` popping the gate's `_LEGACY` entry, "C2(c) -m snn_data_lake.substrate.region_charge_gate:
+exit 1 vs 0; stdout 0 vs 18 lines; stderr [...No module named snn_data_lake.substrate.region_charge_gate]".
+
+**C2(d) and its positive control.** At this head 0 legacy pairs and 0 legacy packages: 659 live `.py` files, 0 unparsed,
+0 findings, 3.7 s -- vacuous until something moves. The positive control (in `--self-check`, and alone as `--c2d
+--complete MOVER`, 9.9 s) exports `09b68a4` (the S1c head) and scans it with the complete G8 map (253 pairs: every
+module's final package from the mover's M11e map, read against LEGACY_*) and the post-G8 legacy package set (15:
+`amygdala`, `basal_ganglia`, `cerebellum`, `claustrum`, `cortex`, `epithalamus`, `hippocampus`, `hypothalamus`,
+`insula`, `medulla`, `midbrain`, `neuromodulation`, `olfactory`, `pons`, `thalamus`): 1,967 findings, among them F7's
+six sites -- `tools/p6_gate.py` lines 1733 and 1811 (split part `cortex`), `growth_coverage_gate` line 188 (`endswith`
+`cortex`), `atlas_node_gate` line 173 (`SRC / "thalamus"`), line 207 (`REGIONS.get("cerebellum")`) and lines 208 and 211
+(`SRC / "cerebellum"`). The atlas sites sit 8 lines below the frozen text's 165 and 199-203, which were read at
+`f416296`, before S1a's edits to that file. Its red: the split-part detector blinded, the control fails on three sites
+(p6's two, atlas's thalamus and cerebellum splits). The bare self-check's constructed source reads exactly its 15 hits
+at their lines and flags nothing in its docstring, its comment, a `LEGACY_REGIONS.get(...)` or a current name; with no
+legacy names it scans zero, and an unparsable text is reported.
+
+**The self-check** (`--self-check --mover`, 95.7 s): C1, F5, C2(b)'s three reds, F3(c), F2, C2(c), C5 and C2(d)'s
+control all fire; S1a's and S1b's readings unchanged. **No stage re-points a red, tested:** a simulated later tree (an
+export of the S1d working tree in which the mover moved `region_charge_gate`, `claustrum`, `interoceptive_integration`
+and `lif_neuron`; `--self-check --mover --root SIM --rl1` the S1b baseline, 65 s) took every red down its as-is branch
+("the copy already holds its stage's move") and every one fired: F5, C2(b)'s three, F3(c), F2, C2(c), C5 (restored
+through `_LEGACY` from the S1b baseline, refused without the translation) and the six F7 sites. Its one failure was C1's
+control, which read the simulation's own stale ci.yml target (`ci.m_targets: snn_data_lake.substrate.region_charge_gate`,
+a C6 violation on both sides): a mover-only tree is not a stage, and M1 re-points ci.yml.
+
+**C2-C9 at this head.** C2(a): 415 attempted, 13 failed (3.1's set exactly), 0 files written, 17.2 s. C2(b) on the real
+checkout, strict off: 0 pairs, 0 packages, 286 flat aliases each its module, 3.2 s; its control (a flat alias
+re-pointed through `module_path()`) reds. C2(e): 16 artifacts, 12 names, each a SourceFileLoader. C3: the gate's
+self-check OK (positive control and three reds), the `safety_envelope` document check OK, `git diff --stat` of the five
+files and `tools/envelope_hashes.json` empty, `so101_arm._latch_path()` under a temporary home through the real
+`substrate.home`; the envelope's own self-check under `SNN_ALIAS_STRICT=1` OK. C4 and C6-C9: census readings, unchanged
+(R-b0 True/True/True; LEGACY_* equal, every violation list empty; STRICT 0, BROAD 1,075 across 239; doc_command 65
+runnable; 0 of 570 registry names without a file). C5: R-L1 against 3.4's baseline, both arms PASS, 2.8 s.
+`policy_manifest --audit` under strict: exit 0, 39.0 s, every machine row PASS, UNCLAIMED_GATE none, NOT_IN_CI none.
+`ruff check` and `ruff format --check` on the 2 touched files: clean. Tests: `test_g8_move_gate` 16 passed (4 new) in
+6.9 s; `test_selfchecks -k move_gate` 1 passed.
+
+**The cheap half, timed (2.9): 292.3 s**, green, sequential, each item its own process: the post export 6.2 s and census
+113.9 s, the diff and the mode red 0.2 s, the self-check 95.7 s, C2(a) 17.2 s, C2(b) 3.2 s, C2(c) 0.1 s, C2(d) 3.8 s,
+C2(e) 0.2 s, C3 0.4 s, the strict envelope self-check 0.1 s, R-L1 2.8 s, the audit 39.0 s, ruff 0.2 s, the tests 9.6 s.
+Not in it: the parent census (about 120 s with its export) and the simulated as-is run (65 s).
+
+**Artifacts** (the scratch folder's `g8\census`), sha256: `pre_S1d_013c76c.json` `a36b6cb4...feee731`;
+`declared_S1d.json` `c9471ac8...af40c`; `expected_S1d.json` `6910612f...4b814a` (the mover's frozen stage order predates
+S1d, so its S1c identity map, which S1d leaves unchanged, is the stage's); `post_S1d.json` `79f6f2e2...c7d2c`;
+`observed_S1d.json` `e3566b3a...1dc2f` (`{}`); `selfcheck_S1d.txt` `5260654b...b9987`; the simulated as-is run
+`selfcheck_S1d_asis_sim.txt` `34723aff...6cdae`; `c2a_S1d.json` `7df9db3f...fb699`; `c2c_S1d.txt` `2eac1f21...96b03`;
+`c2d_S1d.txt` `ff2bdb0d...6a0`; the run's summary `cheap_half_S1d.json` `cfd9975b...969d8` and log `cheap_half_S1d.log`
+`a9104b8f...e1126`. The mover is unchanged (`b49e982a...a746eb`).
+
+**Openings.** 3.3's (3) (C2(d)'s scanner and its F7 control) and 3.4's (2) (C2(c)'s runner) close here; 3.4's (3)
+closes with the basename-only reds. 3.3's (5) (`_CANON` beside `module_path()`) is S1e's.

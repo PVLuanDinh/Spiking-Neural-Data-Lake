@@ -35,10 +35,13 @@ declared change that did not happen are both red (rc 1). C6's invariants are nev
 POST's LEGACY_* must equal PRE's (PRE's live tables when PRE predates them), no module's depth
 changes, and every static violation list stays empty.
 
-THE REDS (`--self-check --mover MOVER`), each built in a temporary copy of the tree, never the
-checkout: (1) C1's planted EXEMPT-row deletion reds the diff, beside the control that an unplanted
-re-census diffs EMPTY; (2) F5's join red: MOVER (2.5's out-of-tree operator artifact) moves one
-module in the copy, `insula/interoceptive_integration` to its frozen 2.12 destination, and both
+THE REDS (`--self-check --mover MOVER [--rl1 DIR]`), each built in a temporary copy of the tree,
+never the checkout. Every module a red names is a BASENAME: its frozen label and its current
+package come from the copy's own tables (`_dotted`, module_path()'s stdlib twin), and a red that
+plants a move "as stage X will" finds X's real move already in the copy once X has landed, so no
+later stage re-points a red (S1d). (1) C1's planted EXEMPT-row deletion reds the diff, beside the
+control that an unplanted re-census diffs EMPTY; (2) F5's join red: MOVER (2.5's out-of-tree
+operator artifact) moves `interoceptive_integration` to its frozen 2.12 destination, and both
 region censuses stay identical with the label/path joins in place, while the same move with the
 path taken from LEGACY_* (the draft's form: module_path() replaced by the label) loses
 reachability; (3) C2(b), the synthetic legacy package and the `claustrum` collision (MOVER moves
@@ -48,11 +51,38 @@ targets are read from REGIONS, never from `_MOVED`); (4) F3(c): under SNN_ALIAS_
 path and a synthetic package raise while a flat alias still resolves; (5) F2: with
 `region_charge_gate` (which reads __file__ at import) moved as M1 will, `python -m` through its
 legacy name exits exactly as its real path does, while the flat alias fails for want of get_code
-and a legacy spec without the target's origin fails with a TypeError; (6) C5: with `lif_neuron`
-moved as M5 will, R-L1 restores a baseline written before the move, and refuses it with the
-translation disabled. Without MOVER the
-self-check REFUSES (exit 2) rather than skip. The BARE invocation (run_selfchecks, pytest) builds
-the diff engine's own reds over constructed censuses: no subprocess and no copy.
+and a legacy spec without the target's origin fails with a TypeError; (6) C2(c) in F2's copy: that
+gate's legacy run is green, and reds once its `_LEGACY` entry is dropped from the copy's root
+`__init__`; (7) C5: with `lif_neuron` moved as M5 will, R-L1 restores a baseline written before the
+move, and refuses it with the translation disabled (once M5 has landed, the pre-move side is the
+stage's own baseline, `--rl1 DIR`); (8) C2(d)'s positive control: the scanner, given the complete
+G8 map and the post-G8 legacy package set (MOVER's M11e map read against LEGACY_*), must find F7's
+six sites in the S1c tree (`F7_REV`, exported) before any zero it reports is believed. Without
+MOVER the self-check REFUSES (exit 2) rather than skip. The BARE invocation (run_selfchecks,
+pytest) builds the diff engine's and the scanner's own reds over constructed censuses and sources:
+no subprocess and no copy.
+
+C2(c) (`--c2c [--root TREE]`, from S1d): each of A.4's 16 battery gates and `brian2_backend` that
+has a legacy name runs `python -m <legacy path> --assert` beside `python -m <current path>
+--assert`, strict off (2.8); both must exit with one code and print one stdout (the per-run home,
+the interpreter, durations and line numbers normalized as in the census). A gate with no legacy
+name has nothing to run and is counted, never skipped silently.
+
+C2(d) (`--c2d [--root TREE]`, from S1d): every live `.py` (governed and ungoverned tiers, tests,
+tools, integrations, research, root scripts; never the frozen coverage artifacts) is read by AST,
+code only -- a docstring or a comment is not code -- for the tree's legacy names: import
+statements, dotted and path forms in string constants, templated forms (f-strings), split path
+parts (string operands of `os.path.join` and of `/`), `endswith`/`startswith` package tests,
+live-table keys (`REGIONS.get(...)`, `REGIONS[...]`) and package-prefix strings (F7). The legacy
+names are the tree's own: each (frozen label, module) pair whose module now lives elsewhere, and
+each LEGACY_* package no live table keeps. Zero findings passes; `--complete MOVER` runs the
+positive control instead.
+
+THE MODE (from S1d). A census records its tree's mode: `export` (an index-only git, as `--export`
+makes), `checkout` (a git whose HEAD resolves) or `copy` (no git of its own: a self-check copy).
+The orchestrator measured at 09b68a4 that a checkout census and an export census of one tree differ
+in `root` and in the policy manifest's freshness line, so `--diff` REFUSES (exit 2) two censuses of
+different modes, or one that records none (taken before S1d); every stage census is an export's.
 
 R-L1 (C5, 2.7): `--rl1-write DIR` writes the lake-continuity baseline at a head: the home H of a
 brain taught with the frozen G0(c) schedule, its walk and probe answers, a zoo learner's checkpoint
@@ -71,7 +101,9 @@ instrument, and a second module would widen S1a's declared delta; hence its leng
   python -m snn_data_lake.gates.move_gate                    # bare: the diff engine's reds
   python -m snn_data_lake.gates.move_gate --census OUT [--root TREE]
   python -m snn_data_lake.gates.move_gate --diff PRE POST --declared DELTA --expected NAMES [--observed OUT]
-  python -m snn_data_lake.gates.move_gate --self-check --mover MOVER [--root TREE]
+  python -m snn_data_lake.gates.move_gate --self-check --mover MOVER [--rl1 DIR] [--root TREE]
+  python -m snn_data_lake.gates.move_gate --c2c [--root TREE]
+  python -m snn_data_lake.gates.move_gate --c2d [--complete MOVER] [--root TREE]
   python -m snn_data_lake.gates.move_gate --export REV|WORKTREE DIR [--root REPO]
   python -m snn_data_lake.gates.move_gate --rl1-write DIR | --rl1-check DIR [--root TREE]
 """
@@ -109,7 +141,47 @@ TABLES = ("REGIONS", "TORCH_TIER", "TRAIN_TIER")
 UNGOVERNED = ("reasoning", "training", "lakehouse")
 PROBE_TAG = "G8PROBE "
 DOC = "specs/022-unified-brain-arc/evidence/g8-reorganization.md"
-F5_MODULE = "insula/interoceptive_integration.py"  # F5's planted move (row 265: faculties)
+#: The reds' planted modules, by BASENAME only (S1d): a red reads each one's frozen label and current
+#: package from the copy's own tables, so a module's own stage never re-points a red.
+F5_BASE = "interoceptive_integration"  # F5's planted move (row 265: faculties, M11b)
+F2_BASE = "region_charge_gate"  # F2 and C2(c): reads __file__ at import (row 173: gates, M1)
+C2B_BASE = "claustrum"  # C2(b) and F3(c): the module named like its package (M11a)
+C5_BASE = "lif_neuron"  # C5: a checkpoint class (row 21: growth, M5)
+FLAT_BASE = "signal_loop"  # F3(c): the flat alias the envelope's own self-check imports
+REPOINT = ("lif_neuron", "grid_cells")  # C2(b)'s re-point: one flat alias onto another module
+#: PLAN A.4's battery gates, the `snn_data_lake.<pkg>.$m` loop; C2(c) adds ci.yml's brian2_backend.
+BATTERY_GATES = (
+    "dormancy_gate",
+    "method_dormancy_gate",
+    "region_charge_gate",
+    "growth_coverage_gate",
+    "manifest_gate",
+    "determinism_gate",
+    "replay_gate",
+    "envelope_hash_gate",
+    "policy_manifest",
+    "gradient_claim_gate",
+    "eprop_transport_gate",
+    "import_manifest",
+    "replication_guard",
+    "capability_bar",
+    "immortal_retention",
+    "conclusion_protocol",
+)
+C2C_TARGETS = (*BATTERY_GATES, "brian2_backend")
+#: C2(d)'s positive control runs over the S1c tree (the dated amendment after S1c): its head.
+F7_REV = "09b68a4"
+#: F7's six known sites (2.13 F7; 2.6 C2(d)), each (file by module basename or tools path, kind,
+#: legacy package, distinct lines it must hold at least): p6_gate's two `os.path.join` parts,
+#: growth_coverage_gate's `endswith`, atlas_node_gate's `SRC / "thalamus"`, its
+#: `REGIONS.get("cerebellum")` and its `SRC / "cerebellum"`.
+F7_SITES = (
+    ("tools/p6_gate.py", "split", "cortex", 2),
+    ("growth_coverage_gate", "package-test", "cortex", 1),
+    ("atlas_node_gate", "split", "thalamus", 1),
+    ("atlas_node_gate", "table-key", "cerebellum", 1),
+    ("atlas_node_gate", "split", "cerebellum", 1),
+)
 
 #: C1's gate runs: (key, gate basename or tools/ script, arguments). A basename is resolved in the
 #: TREE's live tables at census time (the join), a top-level module at the package root.
@@ -244,6 +316,36 @@ def _file_of(root: Path, tabs: dict, base: str) -> Path:
     return Path(root, "src", *_dotted(root, tabs, base).split(".")).with_suffix(".py")
 
 
+def _label_of(tabs: dict, base: str) -> str | None:
+    """`base`'s frozen pre-G8 label (LEGACY_*; the live tables where a tree predates them)."""
+    return _pkg_of(tabs["legacy"] or tabs["live"], base)
+
+
+# distinct-from: __init__.py -- its _LEGACY and _LEGACY_PKGS are the RUNNING package's alias maps,
+#   built at import; these read any TREE's tables by AST (the census never imports what it
+#   measures) for C2(d) and the diff's pairmap. Also read: cortex/interaction_learning.py
+#   (_g0c_legacy_modules returns the running _LEGACY), brain_atlas.py (region_of).
+def legacy_pairs(tabs: dict) -> dict:
+    """(frozen label, module) -> current package, for each module whose package differs from its
+    LEGACY_* label: the tree's `_LEGACY`, read by AST (empty while nothing has moved)."""
+    label = {
+        m: k for t in (tabs["legacy"] or tabs["live"]).values() for k, ms in t.items() for m in ms
+    }
+    return {
+        (label[m], m): k
+        for t in tabs["live"].values()
+        for k, ms in t.items()
+        for m in ms
+        if m in label and label[m] != k
+    }
+
+
+def legacy_pkgs(tabs: dict) -> set:
+    """Every LEGACY_* package key that no live table keeps: the tree's `_LEGACY_PKGS`."""
+    live = {k for t in tabs["live"].values() for k in t}
+    return {k for t in (tabs["legacy"] or {}).values() for k in t} - live
+
+
 # ---- running a gate ----------------------------------------------------------------------------
 def _run(argv: list, root: Path, home: Path, strict: bool = True) -> tuple:
     home.mkdir(parents=True, exist_ok=True)
@@ -314,6 +416,37 @@ def _git_status(root: Path) -> bytes | None:
     return p.stdout if p.returncode == 0 else None
 
 
+# distinct-from: cortex/agency_monitor.py -- _t079_head pins the RUNNING repo's HEAD sha into a
+#   record; census_mode classifies a CENSUSED tree (export, checkout or copy) so --diff can refuse
+#   a mixed pair. Also read: gradient_claim_gate.py (claim classifier), home.py (record parse),
+#   __init__.py (the GIL guard), cortical_prior.py (dataset lookup) -- term overlaps only.
+def census_mode(root: Path) -> str:
+    """The tree's MODE (the module docstring): `export` for a git of its own whose HEAD does not
+    resolve (an index-only export), `checkout` for one whose HEAD does, `copy` for no git of its
+    own (a self-check copy, or a directory inside some other repository)."""
+    root = Path(root).resolve()
+    top = _git(["rev-parse", "--show-toplevel"], root)
+    here = os.path.normcase(os.path.realpath(root))
+    mine = (
+        top.returncode == 0
+        and os.path.normcase(os.path.realpath(top.stdout.decode("utf-8").strip())) == here
+    )
+    if not mine:
+        return "copy"
+    head = _git(["rev-parse", "--verify", "-q", "HEAD"], root)
+    return "checkout" if head.returncode == 0 else "export"
+
+
+def mode_problem(pre: dict, post: dict) -> str | None:
+    """Why two censuses may not be diffed, or None: both must record one MODE (S1d)."""
+    a, b = pre.get("mode"), post.get("mode")
+    if a is None or b is None:
+        return "a census records no mode (taken before S1d): re-take it with this move_gate"
+    if a != b:
+        return f"the censuses were taken in different modes ({a} vs {b}): take both over exports"
+    return None
+
+
 def census(root: Path, only=None, draft: bool = False, log=print) -> dict:
     """The census of one tree (see the module docstring). `only` limits the gate runs and probes
     (the self-check's partial censuses); names and static are always read (cheap, no subprocess)."""
@@ -321,7 +454,13 @@ def census(root: Path, only=None, draft: bool = False, log=print) -> dict:
     tabs = tables(root)
     stamp, status = _live_home_stamp(), _git_status(root)
     homes = Path(tempfile.mkdtemp(prefix="g8census_"))
-    out = {"schema": SCHEMA, "root": str(root), "gates": {}, "probes": {}}
+    out = {
+        "schema": SCHEMA,
+        "root": str(root),
+        "mode": census_mode(root),
+        "gates": {},
+        "probes": {},
+    }
     try:
         for key, target, args in GATE_RUNS:
             if only is not None and key not in only:
@@ -571,6 +710,275 @@ def by_file(root: Path, names_: dict) -> list:
     return sorted(out)
 
 
+# ---- C2(c): the battery gates through their legacy names (F2; from S1d) ------------------------
+# distinct-from: gates/move_gate.py -- census() runs each gate once, strict, by its CURRENT name
+#   for C1; c2c runs a MOVED gate by its LEGACY name beside its current one, strict off, and
+#   compares the two runs' exit code and stdout, reusing census()'s _run, _subs and _norm.
+def c2c(root: Path, bases=C2C_TARGETS, log=print) -> tuple:
+    """C2(c) over `root` (the module docstring): (the failures, how many gates had a legacy name)."""
+    root = Path(root).resolve()
+    tabs = tables(root)
+    homes = Path(tempfile.mkdtemp(prefix="g8c2c_"))
+    fails, ran = [], 0
+    try:
+        for base in bases:
+            label, cur = _label_of(tabs, base), _dotted(root, tabs, base)
+            old = f"{PKG}.{label}.{base}"
+            if label is None or old == cur:
+                continue  # no legacy name at this head: nothing to run (counted by the caller)
+            ran += 1
+            got = {}
+            for side, name in (("legacy", old), ("current", cur)):
+                home = homes / f"{base}_{side}"
+                t0 = time.perf_counter()
+                rc, so, se = _run(
+                    [sys.executable, "-m", name, "--assert"], root, home, strict=False
+                )
+                subs = _subs(root, home)
+                lines = [x for x in (_norm(v, subs) for v in so.splitlines()) if x.strip()]
+                got[side] = (rc, lines, se.strip().splitlines()[-1:])
+                log(f"  C2(c) {base:<22} {side:<7} rc={rc} [{time.perf_counter() - t0:.1f}s]")
+            (lr, ll, lerr), (cr, cl, _) = got["legacy"], got["current"]
+            if (lr, ll) != (cr, cl):
+                first = next(
+                    (f"{x!r} != {y!r}" for x, y in zip(ll, cl) if x != y),
+                    f"{len(ll)} vs {len(cl)} lines",
+                )
+                fails.append(f"C2(c) -m {old}: exit {lr} vs {cr}; stdout {first}; stderr {lerr}")
+    finally:
+        shutil.rmtree(homes, ignore_errors=True)
+    return fails, ran
+
+
+# ---- C2(d): the tree's legacy names in live code, statically (F7; from S1d) --------------------
+# distinct-from: substrate/method_dormancy_gate.py -- its _imports lists one file's in-package
+#   imports for its own call-site scan; c2d_source reads every live file of a TREE, code only, for
+#   that tree's LEGACY names in seven forms (imports, strings, templates, split path parts,
+#   package tests, table keys, package prefixes). Also read: this module's _imports_of and
+#   _code_strings (the NAME registries' readers), substrate/import_manifest.py (lazy-import
+#   targets), substrate/growth_coverage_gate.py (placement imports) -- none a legacy-name scan.
+#: C2(d)'s surface (2.6): every tier, tests, tools, integrations, research, root scripts.
+_LIVE_PY_DIRS = ("src/", "tests/", "tools/", "integrations/", "research/", "training/")
+_FROZEN_PY = ("docs/coverage/artifacts/",)
+_ID = r"[a-z_][a-z0-9_]*"
+_C2D_DOTTED = re.compile(rf"(?<![\w.])(?:{PKG}\.)?({_ID})\.({_ID})")
+_C2D_PATH = re.compile(rf"(?<![\w.])({_ID})[/\\]({_ID})\.py\b")
+_C2D_PKG = (
+    re.compile(rf"(?<![\w.]){PKG}\.({_ID})(?!\w)"),  # snn_data_lake.<pkg>, qualified
+    re.compile(rf"(?<![\w.])({_ID})[/\\]"),  # <pkg>/ or <pkg>\, a path prefix
+    re.compile(rf"(?<![\w.])({_ID})\.(?![\w.])"),  # <pkg>., a trailing-dot prefix
+)
+
+
+def live_py(root: Path) -> list:
+    """C2(d)'s files: every live `.py` the tree lists, never the frozen coverage artifacts."""
+    return sorted(
+        f
+        for f in _worktree_files(Path(root))
+        if f.endswith(".py")
+        and not f.startswith(_FROZEN_PY)
+        and (f.startswith(_LIVE_PY_DIRS) or "/" not in f)
+    )
+
+
+def _docstring_ids(tree) -> set:
+    out = set()
+    for n in ast.walk(tree):
+        if isinstance(n, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            b = n.body
+            if b and isinstance(b[0], ast.Expr) and isinstance(b[0].value, ast.Constant):
+                if isinstance(b[0].value.value, str):
+                    out.add(id(b[0].value))
+    return out
+
+
+def _string_hits(s: str, pairs, pkgs) -> list:
+    """The legacy names one code string spells: an exact (label, module) pair in dotted or path
+    form, and a legacy package qualified, as a path prefix or as a trailing-dot prefix."""
+    out = []
+    for m in _C2D_DOTTED.finditer(s):
+        if (m[1], m[2]) in pairs:
+            out.append(f"{m[1]}.{m[2]}")
+        elif m[1] in pkgs:
+            out.append(m[1])
+    out += [f"{m[1]}/{m[2]}" for m in _C2D_PATH.finditer(s) if (m[1], m[2]) in pairs]
+    for rx in _C2D_PKG:
+        out += [m[1] for m in rx.finditer(s) if m[1] in pkgs]
+    return out
+
+
+def _module_hits(parts: list, pairs, pkgs) -> list:
+    """A dotted module name's legacy names: `snn_data_lake.<label>.<module>` or a legacy package."""
+    if len(parts) < 2 or parts[0] != PKG:
+        return []
+    if len(parts) >= 3 and (parts[1], parts[2]) in pairs:
+        return [f"{parts[1]}.{parts[2]}"]
+    return [parts[1]] if parts[1] in pkgs else []
+
+
+def _split_hits(operands: list, pairs, pkgs) -> list:
+    """String operands of a path join (`os.path.join` args, a `/` chain): a legacy package part,
+    or a (package, module) pair split over two consecutive parts."""
+    parts = [
+        o.value if isinstance(o, ast.Constant) and isinstance(o.value, str) else None
+        for o in operands
+    ]
+    out = [p for p in parts if p in pkgs]
+    for a, b in zip(parts, parts[1:]):
+        if a and b and (a, b.removesuffix(".py")) in pairs:
+            out.append(f"{a}/{b.removesuffix('.py')}")
+    return out
+
+
+def _div_chain(node) -> list:
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
+        return _div_chain(node.left) + [node.right]
+    return [node]
+
+
+def _attr_or_name(node) -> str:
+    return node.attr if isinstance(node, ast.Attribute) else getattr(node, "id", "")
+
+
+def c2d_source(text: str, pairs, pkgs) -> list:
+    """C2(d) over one source text, code only: sorted unique (line, kind, legacy name); None when
+    the text does not parse (the caller reports it -- a file the scan cannot read is a blind spot,
+    never a zero)."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return None
+    docs = _docstring_ids(tree)
+    pieces = {id(v) for n in ast.walk(tree) if isinstance(n, ast.JoinedStr) for v in n.values}
+    hits = set()
+
+    def add(node, kind, names):
+        hits.update((node.lineno, kind, x) for x in names)
+
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Import):
+            for a in n.names:
+                add(n, "import", _module_hits(a.name.split("."), pairs, pkgs))
+        elif isinstance(n, ast.ImportFrom) and not n.level and n.module:
+            p = n.module.split(".")
+            add(n, "import", _module_hits(p, pairs, pkgs))
+            for a in n.names if p[0] == PKG and len(p) <= 2 else ():
+                add(
+                    n,
+                    "import",
+                    _module_hits([*p, a.name] if len(p) == 2 else [PKG, a.name], pairs, pkgs),
+                )
+        elif isinstance(n, ast.Constant) and isinstance(n.value, str):
+            if id(n) not in docs and id(n) not in pieces:
+                add(n, "string", _string_hits(n.value, pairs, pkgs))
+        elif isinstance(n, ast.JoinedStr):  # `f"{_PKG}.<pkg>.<mod>"`: a value then a dot qualifies
+            s = "".join(v.value if isinstance(v, ast.Constant) else "\x00" for v in n.values)
+            add(n, "template", _string_hits(s.replace("\x00.", f"{PKG}."), pairs, pkgs))
+        elif isinstance(n, ast.Call):
+            fn = _attr_or_name(n.func)
+            if fn == "join":
+                add(n, "split", _split_hits(n.args, pairs, pkgs))
+            elif fn in ("endswith", "startswith") and n.args:
+                a0 = n.args[0]
+                vals = [a0] if isinstance(a0, ast.Constant) else list(getattr(a0, "elts", ()))
+                names = [
+                    v.value.strip("/\\.")
+                    for v in vals
+                    if isinstance(v, ast.Constant) and isinstance(v.value, str)
+                ]
+                add(n, "package-test", [x for x in names if x in pkgs])
+            elif fn == "get" and isinstance(n.func, ast.Attribute) and n.args:
+                a0 = n.args[0]
+                if _attr_or_name(n.func.value) in TABLES and isinstance(a0, ast.Constant):
+                    add(n, "table-key", [a0.value] if a0.value in pkgs else [])
+        elif isinstance(n, ast.BinOp) and isinstance(n.op, ast.Div):
+            add(n, "split", _split_hits(_div_chain(n), pairs, pkgs))
+        elif isinstance(n, ast.Subscript) and _attr_or_name(n.value) in TABLES:
+            if isinstance(n.slice, ast.Constant) and n.slice.value in pkgs:
+                add(n, "table-key", [n.slice.value])
+    return sorted(hits)
+
+
+def c2d(root: Path, pairs=None, pkgs=None) -> tuple:
+    """C2(d) over the tree's live `.py` files: ([(file, line, kind, name)], files scanned, files
+    that do not parse). Without pairs/pkgs, the tree's own legacy names (its tables)."""
+    root = Path(root).resolve()
+    if pairs is None or pkgs is None:
+        tabs = tables(root)
+        pairs, pkgs = legacy_pairs(tabs), legacy_pkgs(tabs)
+    files, found, unparsed = live_py(root), [], []
+    for f in files:
+        try:
+            got = c2d_source((root / f).read_text(encoding="utf-8"), pairs, pkgs)
+        except (OSError, UnicodeDecodeError):
+            got = None
+        if got is None:
+            unparsed.append(f)
+        else:
+            found += [(f, *h) for h in got]
+    return found, len(files), unparsed
+
+
+def complete_map(mover: Path, doc: Path, tabs: dict) -> tuple:
+    """C2(d)'s positive-control inputs: the complete G8 map ((frozen label, module) -> final
+    package, every module's final place read from MOVER's M11e map) and the post-G8 legacy package
+    set (each LEGACY_* key that no final package keeps)."""
+    tmp = Path(tempfile.mkdtemp(prefix="g8c2dmap_"))
+    try:
+        out = tmp / "expected_M11e.json"
+        p = subprocess.run(
+            [sys.executable, str(mover), "expected", str(doc), "M11e", str(out)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if p.returncode != 0:
+            raise SystemExit(
+                f"move_gate: the mover's M11e map failed: {(p.stdout + p.stderr)[-800:]}"
+            )
+        final = json.loads(out.read_text(encoding="utf-8"))["modules"]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    where = {d.split(".")[2]: d.split(".")[1] for d in final.values() if d.count(".") == 2}
+    legacy = tabs["legacy"] or tabs["live"]
+    label = {m: k for t in legacy.values() for k, ms in t.items() for m in ms}
+    pairs = {(label[m], m): where[m] for m in label if m in where and where[m] != label[m]}
+    pkgs = {k for t in legacy.values() for k in t} - set(where.values())
+    return pairs, pkgs
+
+
+def c2d_control(mover: Path, repo: Path = REPO, log=print) -> list:
+    """C2(d)'s positive control (the dated amendment after S1c): the complete G8 map and the
+    post-G8 legacy package set, over an export of the S1c tree (F7_REV), must find F7's six sites
+    before any zero the scan reports is believed. Returns the failures."""
+    tmp = Path(tempfile.mkdtemp(prefix="g8c2dctl_"))
+    try:
+        tree = export(F7_REV, tmp / "tree", Path(repo))
+        tabs = tables(tree)
+        pairs, pkgs = complete_map(mover, tree / DOC, tabs)
+        found, n, unparsed = c2d(tree, pairs, pkgs)
+        log(
+            f"  C2(d) control over {F7_REV}: {len(pairs)} pairs, {len(pkgs)} legacy packages "
+            f"{sorted(pkgs)}; {n} files, {len(unparsed)} unparsed, {len(found)} findings"
+        )
+        fails = []
+        for where, kind, pkg, need in F7_SITES:
+            rel = (
+                where if "/" in where else _file_of(tree, tabs, where).relative_to(tree).as_posix()
+            )
+            lines = sorted(
+                {ln for f, ln, k, name in found if f == rel and k == kind and name == pkg}
+            )
+            if len(lines) < need:
+                fails.append(f"C2(d) control: {rel} {kind} {pkg!r} on lines {lines}, needs {need}")
+            else:
+                log(f"  C2(d) F7 site found: {rel} lines {lines} {kind} {pkg!r}")
+        return fails
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 # ---- C6's static invariants --------------------------------------------------------------------
 def static(root: Path, tabs: dict) -> dict:
     src = Path(root) / "src" / PKG
@@ -580,11 +988,8 @@ def static(root: Path, tabs: dict) -> dict:
         if p.name != "__init__.py" and "__pycache__" not in p.parts
     )
     bases = Counter(f.rsplit("/", 1)[-1][:-3] for f in files)
-    live, legacy = tabs["live"], tabs["legacy"] or tabs["live"]
+    live = tabs["live"]
     governed = {m: pkg for t in live.values() for pkg, ms in t.items() for m in ms}
-    label = {m: pkg for t in legacy.values() for pkg, ms in t.items() for m in ms}
-    live_keys = {k for t in live.values() for k in t}
-    moved_away = [m for m, p in governed.items() if m in label and label[m] != p]
     inv = {
         "basename_collisions": sorted(b for b, c in bases.items() if c > 1),
         "governed_without_file": sorted(
@@ -594,11 +999,9 @@ def static(root: Path, tabs: dict) -> dict:
             f"{p}.{m}" for m, p in governed.items() if p in UNGOVERNED
         ),
         "legacy_py_paths": sorted(
-            f"{label[m]}/{m}.py" for m in moved_away if (src / label[m] / f"{m}.py").exists()
+            f"{lab}/{m}.py" for lab, m in legacy_pairs(tabs) if (src / lab / f"{m}.py").exists()
         ),
-        "legacy_pkg_dirs": sorted(
-            {k for t in legacy.values() for k in t if k not in live_keys and (src / k).exists()}
-        ),
+        "legacy_pkg_dirs": sorted(k for k in legacy_pkgs(tabs) if (src / k).exists()),
         "tables_not_literal": sorted(t for t in TABLES if t not in live),
     }
     try:
@@ -619,18 +1022,14 @@ def static(root: Path, tabs: dict) -> dict:
 
 
 # ---- the diff ----------------------------------------------------------------------------------
+# distinct-from: __init__.py -- package_of answers one basename's live package in the RUNNING
+#   package; pairmap inverts legacy_pairs over a CENSUS's recorded tables (one map, two readings).
+#   Also read: basal_ganglia/self_build_loop.py (_restore_firewalled restores files, maps nothing).
 def pairmap(c: dict) -> dict:
     """(live package, module) -> frozen label, for every module whose package differs from it."""
     st = c["static"]
-    legacy = st["legacy_tables"] or st["live_tables"]
-    label = {m: k for t in legacy.values() for k, ms in t.items() for m in ms}
-    return {
-        (k, m): label[m]
-        for t in st["live_tables"].values()
-        for k, ms in t.items()
-        for m in ms
-        if m in label and label[m] != k
-    }
+    tabs = {"live": st["live_tables"], "legacy": st["legacy_tables"]}
+    return {(k, m): lab for (lab, m), k in legacy_pairs(tabs).items()}
 
 
 def map_text(s: str, pm: dict) -> str:
@@ -1100,15 +1499,18 @@ def rl1_check(base: Path, root: Path = REPO, arms=("brain", "zoo"), translation=
 
 
 # ---- the reds ----------------------------------------------------------------------------------
+# The constructed censuses name SYNTHETIC packages and modules (`oldpkg`, `newpkg`, `mod`), never a
+# real one: a real pair would become a legacy name at its own stage, which the mover would rewrite
+# and C2(d) would flag inside this instrument (S1d; no stage re-points a red).
 def _mini(lines=("x 1",), live=None, legacy=None, depth=None, inv=None) -> dict:
     return {
         "gates": {"g": {"rc": 0, "lines": list(lines)}},
         "probes": {},
         "names": {},
         "static": {
-            "live_tables": live or {"REGIONS": {"cortex": ["lif_neuron"]}},
+            "live_tables": live or {"REGIONS": {"oldpkg": ["mod"]}},
             "legacy_tables": legacy or {},
-            "module_depth": depth or {"lif_neuron": 1},
+            "module_depth": depth or {"mod": 1},
             "rule_dispositions": {},
             "invariants": inv or {},
         },
@@ -1126,7 +1528,7 @@ def constructed_reds() -> list:
 
     expect(_norm("wall-clock : 2.252s", []) == "wall-clock : <t>", "a duration was not stripped")
     expect(
-        _norm("<- cortex/brain.py:3688", []) == "<- cortex/brain.py",
+        _norm("<- oldpkg/mod.PY:3688", []) == "<- oldpkg/mod.PY",
         "a line number was not stripped",
     )
     expect(
@@ -1142,34 +1544,90 @@ def constructed_reds() -> list:
     c = _mini()
     c["gates"]["g"]["rc"] = 1
     expect(bool(diff(a, c, {})[1]), "red: an exit-code change did not red")
-    frozen = {"REGIONS": {"cortex": ["lif_neuron"]}}
-    pre = _mini(("reached snn_data_lake.cortex.lif_neuron",), legacy=frozen)
+    frozen = {"REGIONS": {"oldpkg": ["mod"]}}
+    pre = _mini(("reached snn_data_lake.oldpkg.mod",), legacy=frozen)
     post = _mini(
-        ("reached snn_data_lake.growth.lif_neuron",),
-        live={"REGIONS": {"growth": ["lif_neuron"]}},
+        ("reached snn_data_lake.newpkg.mod",),
+        live={"REGIONS": {"newpkg": ["mod"]}},
         legacy=frozen,
     )
     expect(
         diff(pre, post, {})[1] == [], "control: a pure move did not read identical through LEGACY_*"
     )
-    edited = _mini(legacy={"REGIONS": {"cortex": ["lif_neuron", "planted"]}})
+    edited = _mini(legacy={"REGIONS": {"oldpkg": ["mod", "planted"]}})
     probs = diff(pre, edited, observed(pre, edited))[1]
     expect(any(p.startswith("C6") for p in probs), "red: an edited LEGACY_* table did not red (C6)")
     probs = diff(a, _mini(inv={"basename_collisions": ["x"]}), {})[1]
     expect(any(p.startswith("C6") for p in probs), "red: a static violation did not red (C6)")
-    probs = diff(a, _mini(depth={"lif_neuron": 2}), {})[1]
+    probs = diff(a, _mini(depth={"mod": 2}), {})[1]
     expect(any("depth" in p for p in probs), "red: a depth change did not red (C6)")
     # F3(b): a NAME left on its old path reds against the carried-forward expected set; the same
     # registry re-pointed is green
-    moves = {"modules": {"snn_data_lake.cortex.lif_neuron": "snn_data_lake.growth.lif_neuron"}}
-    pre["names"] = {"reg": ["snn_data_lake.cortex.lif_neuron"]}
-    stale, pointed = dict(post, names={"reg": ["snn_data_lake.cortex.lif_neuron"]}), dict(post)
-    pointed["names"] = {"reg": ["snn_data_lake.growth.lif_neuron"]}
+    moves = {"modules": {"snn_data_lake.oldpkg.mod": "snn_data_lake.newpkg.mod"}}
+    pre["names"] = {"reg": ["snn_data_lake.oldpkg.mod"]}
+    stale, pointed = dict(post, names={"reg": ["snn_data_lake.oldpkg.mod"]}), dict(post)
+    pointed["names"] = {"reg": ["snn_data_lake.newpkg.mod"]}
     expect(bool(diff(pre, stale, {}, moves)[1]), "red: a stale registry name did not red (F3(b))")
     expect(
         diff(pre, pointed, {}, moves)[1] == [], "control: a re-pointed registry name was not green"
     )
+    # C2(d)'s scanner (S1d): every form at its line, nothing from a docstring, a comment, LEGACY_*
+    # or a current name; no legacy names scan zero; a text that does not parse is reported
+    sample = _C2D_SAMPLE.replace(".PY", ".py")
+    got = set(c2d_source(sample, {("oldpkg", "mod"): "newpkg"}, {"gonepkg"}))
+    expect(got == _C2D_EXPECT, f"C2(d): the scanner read {sorted(got ^ _C2D_EXPECT)} wrong")
+    expect(c2d_source(sample, {}, set()) == [], "C2(d) control: no legacy names did not scan zero")
+    expect(c2d_source("def (:", {}, set()) is None, "C2(d): an unparsable text was not reported")
+    # the census mode (S1d): two censuses of different modes, or one with none, are refused
+    expect(
+        mode_problem({"mode": "export"}, {"mode": "export"}) is None, "control: one mode refused"
+    )
+    expect(bool(mode_problem({"mode": "export"}, {"mode": "checkout"})), "red: mixed modes diffed")
+    expect(bool(mode_problem({}, {"mode": "export"})), "red: a census with no mode was diffed")
     return fails
+
+
+#: C2(d)'s constructed source (the bare self-check): each form the scan reads, and a docstring, a
+#: comment, a LEGACY_* read and a current name it must not flag. `.PY` becomes `.py` at use, so this
+#: text holds no path citation (citation_guard reads every tracked .py line).
+_C2D_SAMPLE = '''"""Docstring naming snn_data_lake.oldpkg.mod and oldpkg/mod.PY: not code."""
+# a comment naming oldpkg.mod: not code
+import os
+import snn_data_lake.oldpkg.mod
+from snn_data_lake.oldpkg import mod
+from snn_data_lake.oldpkg.mod import Thing
+from snn_data_lake import gonepkg
+A = "oldpkg.mod"
+B = "python -m snn_data_lake.oldpkg.mod --assert"
+C = "src/snn_data_lake/oldpkg/mod.PY"
+D = f"{_PKG}.oldpkg.mod"
+E = os.path.join(root, "oldpkg", "mod.PY")
+F = SRC / "gonepkg"
+G = name.endswith("gonepkg")
+H = REGIONS.get("gonepkg", ())
+I = REGIONS["gonepkg"]
+J = "snn_data_lake.gonepkg."
+K = f"snn_data_lake.gonepkg.{m}"
+L = "newpkg.mod"
+M = LEGACY_REGIONS.get("gonepkg")
+'''
+_C2D_EXPECT = {
+    (4, "import", "oldpkg.mod"),
+    (5, "import", "oldpkg.mod"),
+    (6, "import", "oldpkg.mod"),
+    (7, "import", "gonepkg"),
+    (8, "string", "oldpkg.mod"),
+    (9, "string", "oldpkg.mod"),
+    (10, "string", "oldpkg/mod"),
+    (11, "template", "oldpkg.mod"),
+    (12, "split", "oldpkg/mod"),
+    (13, "split", "gonepkg"),
+    (14, "package-test", "gonepkg"),
+    (15, "table-key", "gonepkg"),
+    (16, "table-key", "gonepkg"),
+    (17, "string", "gonepkg"),
+    (18, "template", "gonepkg"),
+}
 
 
 def _delete_exempt_row(root: Path, key: str) -> None:
@@ -1208,21 +1666,7 @@ def tree_reds(root: Path, mover: Path, log=print) -> list:
         t2 = copy_tree(root, work / "f5", marker=True)
         keys = {"region_charge", "atlas_node"}
         before = census(t2, only=keys, log=log)["probes"]
-        p = subprocess.run(
-            [sys.executable, str(mover), "move", str(t2 / DOC), str(t2), F5_MODULE],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-        src = t2 / "src" / PKG
-        moved = (
-            not (src / F5_MODULE).exists() and (src / "faculties" / Path(F5_MODULE).name).exists()
-        )
-        if p.returncode != 0 or not moved:
-            tail = (p.stdout + p.stderr)[-800:]
-            return fails + [f"F5: the mover did not move {F5_MODULE}: rc={p.returncode} {tail}"]
-        log(f"  mover: {p.stdout.strip()[:300]}")
+        log(f"  mover: {_plant_move(mover, t2, F5_BASE)[:300]}")
         joined = census(t2, only=keys, log=log)["probes"]
         draft = census(t2, only=keys, draft=True, log=log)["probes"]
         if joined != before:
@@ -1285,7 +1729,6 @@ for flat, p in sorted(flats.items()):
         bad.append(f"flat {flat} is not {p}.{flat}")
 print("G8PROBE " + json.dumps({"pairs": sorted(pairs), "pkgs": sorted(pkgs), "flat": len(S._MOVED), "bad": bad}))
 """
-_STRICT_NAMES = ("claustrum.claustrum", "claustrum", "signal_loop")
 _STRICT_PROBE = r"""
 import importlib, json
 out = {}
@@ -1297,13 +1740,14 @@ for n in __NAMES__:
         out[n] = "raised: " + str(exc)
 print("G8PROBE " + json.dumps(out))
 """
-#: F2's second control: a legacy spec WITHOUT the target's origin -- runpy then sets __file__ to None.
+#: F2's second control: a legacy spec WITHOUT the target's origin -- runpy then sets __file__ to
+#: None. `__BASE__` and `__LEGACY__` are the gate's basename and its legacy dotted name.
 _NO_ORIGIN = r"""
 import importlib.machinery, runpy, sys
 import snn_data_lake as S
 S._legacy_spec = lambda fullname, target: importlib.machinery.ModuleSpec(fullname, S._LegacyLoader(target))
-sys.argv = ["region_charge_gate", "--assert"]
-runpy.run_module("snn_data_lake.substrate.region_charge_gate", run_name="__main__", alter_sys=True)
+sys.argv = ["__BASE__", "--assert"]
+runpy.run_module("__LEGACY__", run_name="__main__", alter_sys=True)
 """
 
 
@@ -1328,25 +1772,76 @@ def _move(mover: Path, tree: Path, spec: str) -> str:
     return p.stdout.strip()
 
 
-def tree_reds_s1b(root: Path, mover: Path, log=print) -> list:
-    """S1b's reds (2.4) and C5's, each in a fresh temporary copy of `root` (never the checkout)."""
+# distinct-from: __init__.py -- package_of answers the RUNNING package's live table; _plant_move
+#   reads a temporary COPY's tables to decide whether a red's module still needs its planted move.
+#   Also read: cortex/interaction_learning.py (_g0c_translate maps a stored class path on restore),
+#   substrate/selfcheck_cache.py (tree derivation), cerebellum/spiking_jepa.py (a modulator), and --
+#   read only -- brainstem/so101_arm.py (droop): none plants a move or edits a copy.
+def _plant_move(mover: Path, tree: Path, base: str) -> str:
+    """Move `base` in the temporary copy `tree` as its own stage will, through MOVER (2.5), unless
+    the copy already holds that stage's real move. The frozen label and the current package are
+    read from the copy's tables, never spelled here (S1d), so the red needs no re-pointing."""
+    tabs = tables(tree)
+    label, cur = _label_of(tabs, base), _pkg_of(tabs["live"], base)
+    if label is None or cur is None:
+        raise SystemExit(f"move_gate: {base} is in no table of {tree}")
+    if cur != label:
+        return f"{base}: the copy already holds its stage's move ({label} -> {cur})"
+    report = _move(mover, tree, f"{label}/{base}.py")
+    new, src = _pkg_of(tables(tree)["live"], base), Path(tree) / "src" / PKG
+    if new in (None, label) or (src / label / f"{base}.py").exists():
+        raise SystemExit(
+            f"move_gate: the mover did not move {base} out of {label}: {report[-300:]}"
+        )
+    if not (src / new / f"{base}.py").is_file():
+        raise SystemExit(f"move_gate: {base} is keyed to {new} with no file there: {report[-300:]}")
+    return report
+
+
+def _drop_legacy_entry(tree: Path, legacy: str) -> None:
+    """C2(c)'s plant, in a temporary copy only: the copy's root `__init__` pops `legacy` from
+    `_LEGACY` right after the alias map is built, so the legacy path no longer resolves."""
+    init = Path(tree) / "src" / PKG / "__init__.py"
+    raw = init.read_bytes()
+    eol = b"\r\n" if b"\r\n" in raw else b"\n"
+    anchor = b"_LEGACY_PKGS = frozenset("
+    if raw.count(anchor) != 1 or not (Path(tree) / MARKER).is_file():
+        raise SystemExit(f"move_gate: cannot plant a _LEGACY drop in {tree}")
+    plant = f"_LEGACY.pop({legacy!r}, None)  # move_gate C2(c) plant".encode() + eol
+    init.write_bytes(raw.replace(anchor, plant + anchor))
+
+
+# distinct-from: substrate/selfcheck_cache.py -- self_check fires the CACHE's own P8 reds; this
+#   builds G8's alias, legacy-run and continuity reds in temporary copies of a tree. Also read:
+#   cortex/attention_schema.py (main, 2.4's six reds of its own instrument) -- not a tree red.
+def tree_reds_s1b(root: Path, mover: Path, rl1_base: Path | None = None, log=print) -> list:
+    """S1b's reds (2.4), C2(c)'s and C5's, each in a fresh temporary copy of `root` (never the
+    checkout). Every module is a basename resolved through the copy's own tables (S1d)."""
     fails = []
     work = Path(tempfile.mkdtemp(prefix="g8selfcheck_s1b_"))
     try:
         # C2(b): claustrum moved as M11a will -- its package empties into a synthetic one
         t = copy_tree(root, work / "c2b", marker=True)
-        log(f"  mover: {_move(mover, t, 'claustrum/claustrum.py')[:200]}")
+        log(f"  mover: {_plant_move(mover, t, C2B_BASE)[:200]}")
+        tabs = tables(t)
+        lab = _label_of(tabs, C2B_BASE)
+        pairs = sorted(f"{a}.{m}" for a, m in legacy_pairs(tabs))
+        pkgs = sorted(legacy_pkgs(tabs))
         clean = _probe(t, _C2B.replace("__PLANT__", ""), work / "h1", strict=False)
         if (
             clean["bad"]
-            or clean["pairs"] != ["claustrum.claustrum"]
-            or clean["pkgs"] != ["claustrum"]
+            or clean["pairs"] != pairs
+            or clean["pkgs"] != pkgs
+            or f"{lab}.{C2B_BASE}" not in pairs
+            or lab not in pkgs
         ):
             fails.append(f"C2(b) control: the built alias layer is not green: {clean}")
+        now = "S.module_path({!r})[len(S.__name__) + 1 :]"
+        flat, other = REPOINT
         for plant, what in (
-            ("S._LEGACY.pop('claustrum.claustrum', None)", "one _LEGACY entry dropped"),
-            ("S._MOVED['claustrum'] = 'faculties.claustrum'", "claustrum put back in _MOVED"),
-            ("S._MOVED['lif_neuron'] = 'hippocampus.grid_cells'", "a flat alias re-pointed"),
+            (f"S._LEGACY.pop({lab + '.' + C2B_BASE!r}, None)", "one _LEGACY entry dropped"),
+            (f"S._MOVED[{C2B_BASE!r}] = " + now.format(C2B_BASE), "claustrum put back in _MOVED"),
+            (f"S._MOVED[{flat!r}] = " + now.format(other), "a flat alias re-pointed"),
         ):
             red = _probe(t, _C2B.replace("__PLANT__", plant), work / "h2", strict=False)
             if not red["bad"]:
@@ -1354,29 +1849,31 @@ def tree_reds_s1b(root: Path, mover: Path, log=print) -> list:
             else:
                 log(f"  RED C2(b) fired ({what}): {red['bad'][:2]}")
         # F3(c): the tripwire raises on a legacy path and a synthetic package, never on a flat alias
-        code = _STRICT_PROBE.replace("__NAMES__", repr(_STRICT_NAMES))
+        names = (f"{lab}.{C2B_BASE}", lab, FLAT_BASE)
+        code = _STRICT_PROBE.replace("__NAMES__", repr(names))
         on, of = (_probe(t, code, work / "h3", strict=s) for s in (True, False))
-        raised = [n for n in _STRICT_NAMES if on[n].startswith("raised: SNN_ALIAS_STRICT")]
+        raised = [n for n in names if on[n].startswith("raised: SNN_ALIAS_STRICT")]
         if (
-            raised != list(_STRICT_NAMES[:2])
-            or on["signal_loop"] != "resolved"
+            raised != list(names[:2])
+            or on[FLAT_BASE] != "resolved"
             or set(of.values()) != {"resolved"}
         ):
             fails.append(f"F3(c): strict {on}, not strict {of}")
         else:
-            log(
-                f"  RED F3(c) fired: {on['claustrum.claustrum'][:120]}; the flat alias still resolves"
-            )
+            log(f"  RED F3(c) fired: {on[names[0]][:120]}; the flat alias still resolves")
         # F2: region_charge_gate (reads __file__ at import) moved as M1 will; -m through its legacy name
         t = copy_tree(root, work / "f2", marker=True)
-        _move(mover, t, "substrate/region_charge_gate.py")
+        log(f"  mover: {_plant_move(mover, t, F2_BASE)[:200]}")
+        tabs = tables(t)
+        old, new = f"{PKG}.{_label_of(tabs, F2_BASE)}.{F2_BASE}", _dotted(t, tabs, F2_BASE)
+        no_origin = _NO_ORIGIN.replace("__BASE__", F2_BASE).replace("__LEGACY__", old)
         runs = {
             name: _run([sys.executable, *argv], t, work / f"h_{name}", strict=False)
             for name, argv in (
-                ("real", ["-m", f"{PKG}.gates.region_charge_gate", "--assert"]),
-                ("legacy", ["-m", f"{PKG}.substrate.region_charge_gate", "--assert"]),
-                ("flat", ["-m", f"{PKG}.region_charge_gate", "--assert"]),
-                ("no_origin", ["-c", _NO_ORIGIN]),
+                ("real", ["-m", new, "--assert"]),
+                ("legacy", ["-m", old, "--assert"]),
+                ("flat", ["-m", f"{PKG}.{F2_BASE}", "--assert"]),
+                ("no_origin", ["-c", no_origin]),
             )
         }
         real, legacy, flat, bare = runs["real"], runs["legacy"], runs["flat"], runs["no_origin"]
@@ -1394,13 +1891,35 @@ def tree_reds_s1b(root: Path, mover: Path, log=print) -> list:
                 f"alias exit {flat[0]} ({flat[2].strip().splitlines()[-1][:90]}); without origin exit "
                 f"{bare[0]} ({bare[2].strip().splitlines()[-1][:90]})"
             )
-        # C5: lif_neuron moved as M5 will; the baseline written before the move, in a copy too
-        t0 = copy_tree(root, work / "c5pre", marker=True)
+        # C2(c), in F2's copy: the moved gate's legacy run is green; with its _LEGACY entry dropped
+        # from the copy's root __init__, the legacy run no longer exits as the current path does
+        ok, ran = c2c(t, (F2_BASE,), log=log)
+        if ok or ran != 1:
+            fails.append(
+                f"C2(c) control: the moved gate's legacy run is not green ({ran} ran): {ok}"
+            )
+        _drop_legacy_entry(t, old[len(PKG) + 1 :])
+        red, ran = c2c(t, (F2_BASE,), log=log)
+        if not red or ran != 1:
+            fails.append("C2(c) red: a moved gate with no _LEGACY entry did not red")
+        else:
+            log(f"  RED C2(c) fired: {red[0][:240]}")
+        # C5: lif_neuron moved as M5 will; the baseline written before the move, in a copy too.
+        # Once M5 has landed the copy already holds the move, and the pre-move side is the stage's
+        # own R-L1 baseline (main() refuses the self-check without it).
+        tabs = tables(root)
+        landed = _label_of(tabs, C5_BASE) != _pkg_of(tabs["live"], C5_BASE)
         t = copy_tree(root, work / "c5", marker=True)
-        _move(mover, t, "cortex/lif_neuron.py")
-        rl1_write(work / "rl1", t0, arms=("brain",), log=log)
-        kept = rl1_check(work / "rl1", t, arms=("brain",), log=log)
-        lost = rl1_check(work / "rl1", t, arms=("brain",), translation=False, log=log)
+        if landed:
+            base = Path(rl1_base)
+            log(f"  C5: {C5_BASE} has moved at this head; the pre-move side is {base}")
+        else:
+            t0 = copy_tree(root, work / "c5pre", marker=True)
+            log(f"  mover: {_plant_move(mover, t, C5_BASE)[:200]}")
+            base = work / "rl1"
+            rl1_write(base, t0, arms=("brain",), log=log)
+        kept = rl1_check(base, t, arms=("brain",), log=log)
+        lost = rl1_check(base, t, arms=("brain",), translation=False, log=log)
         if kept or not lost or "checkpoint class mismatch" not in lost[0]:
             fails.append(f"C5: with the map {kept}; without it {lost}")
         else:
@@ -1425,7 +1944,47 @@ def main(argv=None) -> int:
     ap.add_argument("--export", nargs=2, metavar=("REV", "DIR"))
     ap.add_argument("--rl1-write", dest="rl1_write", metavar="DIR")
     ap.add_argument("--rl1-check", dest="rl1_check", metavar="DIR")
+    ap.add_argument("--rl1", metavar="DIR")
+    ap.add_argument("--c2c", action="store_true")
+    ap.add_argument("--c2d", action="store_true")
+    ap.add_argument("--complete", metavar="MOVER")
     a = ap.parse_args(argv)
+    if a.c2c:
+        t0 = time.perf_counter()
+        fails, ran = c2c(Path(a.root))
+        print(
+            f"C2(c): {ran} of {len(C2C_TARGETS)} gates have a legacy name at this head, "
+            f"{len(fails)} differ [{time.perf_counter() - t0:.1f}s]"
+        )
+        for f in fails:
+            print("  " + f)
+        return 1 if fails else 0
+    if a.c2d:
+        t0 = time.perf_counter()
+        if a.complete:
+            fails = c2d_control(Path(a.complete))
+            print(
+                f"C2(d) positive control over {F7_REV}: "
+                + ("F7's six sites found" if not fails else "RED")
+                + f" [{time.perf_counter() - t0:.1f}s]"
+            )
+            for f in fails:
+                print("  " + f)
+            return 1 if fails else 0
+        tabs = tables(Path(a.root))
+        pairs, pkgs = legacy_pairs(tabs), legacy_pkgs(tabs)
+        found, n, unparsed = c2d(Path(a.root))
+        vacuous = (
+            "" if pairs or pkgs else " (vacuous: nothing has moved; the control is --complete)"
+        )
+        print(
+            f"C2(d): {len(pairs)} legacy pair(s), {len(pkgs)} legacy package(s){vacuous}; {n} live "
+            f".py files scanned, {len(unparsed)} unparsed {unparsed}; {len(found)} finding(s) "
+            f"[{time.perf_counter() - t0:.1f}s]"
+        )
+        for f, line, kind, name in found:
+            print(f"  {f}:{line} {kind} {name}")
+        return 1 if found else 0
     if a.rl1_write:
         ref = rl1_write(Path(a.rl1_write), Path(a.root))
         print(f"R-L1 baseline written at {ref['head'][:8]} (dirty={ref['dirty']}) -> {a.rl1_write}")
@@ -1455,7 +2014,12 @@ def main(argv=None) -> int:
         def load(p):
             return json.loads(Path(p).read_text(encoding="utf-8"))
 
-        obs, probs = diff(load(a.diff[0]), load(a.diff[1]), load(a.declared), load(a.expected))
+        pre, post = load(a.diff[0]), load(a.diff[1])
+        why = mode_problem(pre, post)
+        if why:
+            print(f"move_gate --diff REFUSED: {why}")
+            return 2
+        obs, probs = diff(pre, post, load(a.declared), load(a.expected))
         if a.observed:
             Path(a.observed).write_text(
                 json.dumps(obs, indent=1, sort_keys=True) + "\n", encoding="utf-8"
@@ -1485,17 +2049,27 @@ def main(argv=None) -> int:
                 "mover (--mover MOVER); a red that cannot be built is refused, never skipped"
             )
             return 2
+        tabs = tables(Path(a.root))
+        if _label_of(tabs, C5_BASE) != _pkg_of(tabs["live"], C5_BASE) and not a.rl1:
+            print(
+                f"move_gate --self-check REFUSED: {C5_BASE} has moved at this head, so C5's red "
+                "needs the pre-move R-L1 baseline (--rl1 DIR); a red that cannot be built is "
+                "refused, never skipped"
+            )
+            return 2
         fails += tree_reds(Path(a.root), Path(a.mover))
-        fails += tree_reds_s1b(Path(a.root), Path(a.mover))
+        fails += tree_reds_s1b(Path(a.root), Path(a.mover), a.rl1 and Path(a.rl1))
+        fails += c2d_control(Path(a.mover))
     if fails:
         print("move_gate self-check FAILED:")
         for f in fails:
             print("  " + f)
         return 1
     scope = (
-        "C1, F5, C2(b), F3(c), F2 and C5 fired in temporary copies"
+        "C1, F5, C2(b), F3(c), F2, C2(c) and C5 fired in temporary copies; C2(d)'s positive "
+        "control found F7's six sites"
         if a.self_check
-        else "bare: the diff engine's reds; --self-check --mover builds the tree reds"
+        else "bare: the diff engine's and the scanner's reds; --self-check --mover builds the tree reds"
     )
     print(f"move_gate self-check OK: every constructed red fired and every control held ({scope})")
     return 0
