@@ -265,9 +265,10 @@ named — the necessary condition below it.
 
 **ANATOMY IS DATA (owner, 2026-09-25, P4d).** The two rules above key on CODE regions; the brain's
 regions and columns are labeled grown-neuron populations on the anatomical map (the unit the owner
-chose). Both rules stay code hygiene until specs/022's G7 and G8 re-key them: "named" becomes
-"populated by labeled grown neurons", "charged" becomes "neutering the population changes a measured
-outcome", each counted before it asserts.
+chose). Both rules stay code hygiene until specs/022's G7 and G4 re-key them; G8 freezes both on the
+pre-G8 `LEGACY_*` table (owner decision, 2026-09-25). Re-keyed, "named" becomes "populated by labeled
+grown neurons", "charged" becomes "neutering the population changes a measured outcome", each counted
+before it asserts.
 
 **Mechanized:** `substrate/dormancy_gate.py` (in `run_selfchecks` CORE) builds the static import graph
 and asserts every REGIONS/TORCH_TIER module is **reachable from a live root/entrypoint OR in the EXEMPT

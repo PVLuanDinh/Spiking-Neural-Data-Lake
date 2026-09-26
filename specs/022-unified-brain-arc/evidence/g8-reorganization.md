@@ -1737,3 +1737,49 @@ red run `post_S1b_run1_citedoc.json` `1288cace...1c1759` with its observed diff 
 `brian2_backend` through their legacy names) is owed at M1, beside C2(d)'s scanner. (3) The S1b reds plant moves by
 current path and need re-pointing at the stage that moves each: F2's `region_charge_gate` (M1), C5's `lif_neuron`
 (M5), C2(b) and F3(c)'s `claustrum` (M11a).
+
+### 3.5 S1c -- POLICIES P3: G8 freezes the region rules on `LEGACY_*`
+
+Measured 2026-09-25 on the S1c tree (base `897f4b5` plus this commit), `.venv-lake` (3.14.6 free-threaded).
+
+**The word delta, declared before any gate ran on this tree** (2.4, 2.6). P3's ANATOMY IS DATA paragraph now reads
+"...until specs/022's G7 and G4 re-key them; G8 freezes both on the pre-G8 `LEGACY_*` table (owner decision,
+2026-09-25). Re-keyed, ..." -- the frozen wording, plus "Re-keyed," to carry the sentence it splits. Measured with
+`doc_budget_gate`'s own counter (`count_words`, whitespace tokens) on the committed and the edited text, the gate
+itself not run: 14,145 -> 14,157 words, **+12**, under the 14,178 ceiling (33 words of headroom before, 21 after), so
+no rewording to net zero was needed. The declared delta, written at 20:14 local before the first gate run: the
+doc-budget row for `docs/POLICIES.md` changes from "14145 / 14178, 0.2%" to "14157 / 14178, 0.1%" (the removed line
+taken verbatim from the parent census, the added line rendered with the gate's own row format), and nothing else.
+
+**The diff.** The parent census is the S1b head's (`--export 897f4b5`, byte-identical to 3.4's recorded post census;
+`move_gate` is unchanged at S1c, so no re-take). The post census over `--export WORKTREE`: "move_gate OK: the diff
+equals the declared delta (2 declared change(s))", exit 0 -- the row's two lines and nothing else.
+`tools/policy_manifest.json` regenerated (`--manifest --write`): byte-identical to the committed file, since the
+paragraph carries no manifest field (title, kind, commands), so the commit holds no change to it.
+
+**The planted red** (2.4): one undeclared word ("then,") added to the same paragraph in an export of this tree, its
+census diffed against the same parent and delta: "MOVE GATE RED: 1 difference(s) between the diff and the declared
+delta: gates|doc_budget_gate||+: observed ['ok 14158 / 14178 0.1% docs/POLICIES.md'] != declared ['ok 14157 / 14178
+0.1% docs/POLICIES.md']" (column spacing condensed here), exit 1.
+
+**The full cheap half at this tree, run once and timed (2.9): 425.5 s**, green, sequential, every item its own
+process: the post census 114.0 s and its export 6.4 s; the diff 0.1 s; the planted red's export, census and diff
+119.3 s; `move_gate --self-check --mover` 80.7 s (S1a's and S1b's reds all fire, unchanged); C2(a) 16.0 s (415
+attempted, the same 13 failed, 0 files written); C2(b) on the real checkout 3.1 s (0 pairs, 0 packages, 286 flat
+aliases, its re-point control red); C2(e) 0.1 s (12 of 12 resolve); C3 0.4 s (the gate's self-check, the document
+check, the envelope diff empty, the latch path) and the envelope's own self-check under `SNN_ALIAS_STRICT=1`; C5,
+R-L1 against 3.4's baseline, both arms PASS, 2.7 s; `policy_manifest --audit` under strict 38.1 s (every machine row
+PASS, UNCLAIMED_GATE none, NOT_IN_CI none); the touched tests (`test_policy_manifest`, `test_g8_move_gate`) 33 passed,
+41.8 s; the touched gates' in-process self-checks 3 passed, 2.6 s. C4, C6-C9 are census readings, unchanged by the
+empty remainder of the diff. Not in the 425.5 s: the parent census (112.5 s, reused from S1b's close) and `ruff`,
+which has no Python file to check at this stage. For 2.9's projection: an M stage adds its own planted red's copy
+and the C2(c) and C2(d) runs, which do not exist yet (3.4's openings), so this reading is a floor for a move stage,
+not its cost.
+
+**Artifacts** (the scratch folder's `g8\census`), sha256: `declared_S1c.json` `1afa8aee...af2b85`;
+`expected_S1c.json` `6910612f...4b814a` (the same 415-module identity map as S1b's); `post_S1c.json`
+`b715fb9a...798fb`; `observed_S1c.json` `9d9741d6...0e0ec5`; `planted_S1c.json` `ef5788fc...a47f1` with its red
+`diff_planted_S1c.txt` `c3caca61...cba9`; `selfcheck_S1c.txt` `961be6cc...07d72`; `c2a_S1c.json` `6cbfc4df...7f049`;
+the run's summary `full_cheap_half_S1c.json` `6140f8cd...68f4` and log `full_cheap_half_S1c.log` `f61b9d36...b443`.
+
+**Openings.** None new; 3.3's and 3.4's stand.
