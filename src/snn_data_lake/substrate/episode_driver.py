@@ -129,13 +129,13 @@ class EpisodeDriver:
         self.trials_run = 0
 
     # -- G5 ---------------------------------------------------------------------------------------
-    # distinct-from: substrate/replay_gate.py -- capture/restore live THERE; these two
+    # distinct-from: gates/replay_gate.py -- capture/restore live THERE; these two
     #   methods only hand it this driver's named stream and seat what it returns. Read.
     def rng_streams(self):
         """The named streams for replay_gate.capture -- position-snapshotted, never re-seeded."""
         return {"episode_driver": self._gen}
 
-    # distinct-from: substrate/replay_gate.py -- restore() rebuilds and VERIFIES the
+    # distinct-from: gates/replay_gate.py -- restore() rebuilds and VERIFIES the
     #   streams; this method only SEATS what it returned, plus the trial counter. Read.
     def adopt_streams(self, streams, trials_run):
         """Seat the generators replay_gate.restore returns (rebuilt AT the captured
@@ -261,7 +261,7 @@ class EpisodeDriver:
 
 
 def main():
-    from snn_data_lake.substrate import replay_gate
+    from snn_data_lake.gates import replay_gate
 
     print("=" * 74)
     print("EPISODE DRIVER -- trials (fixation/stimulus/delay/probe/saccade) over the kernel")

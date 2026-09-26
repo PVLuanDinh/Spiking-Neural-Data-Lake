@@ -1,6 +1,6 @@
 # [CHECKLIST TYPE] Checklist: [FEATURE NAME]
 
-> Policy authority: `docs/POLICIES.md` (run `python -m snn_data_lake.substrate.policy_manifest --audit` for the enforcement manifest).
+> Policy authority: `docs/POLICIES.md` (run `python -m snn_data_lake.gates.policy_manifest --audit` for the enforcement manifest).
 
 **Purpose**: [Brief description of what this checklist covers]
 **Created**: [DATE]

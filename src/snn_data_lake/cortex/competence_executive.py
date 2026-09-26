@@ -20,8 +20,8 @@ runnable without a card).
 
 BASENAME COLLISION -- WHY THIS FILE IS NAMED WHAT IT IS (resolved at the 2026-08-12 promotion,
 #10 lane 4f, promoted+renamed from `reasoning/brain_adapters/executive_control.py`).
-  `substrate/dormancy_gate.py:43-50` builds `_CANON` keyed by module BASENAME, and
-  `substrate/dormancy_gate.py:79` keys `EXEMPT` the same way; `__init__.py:428` builds the flat
+  `gates/dormancy_gate.py:43-50` builds `_CANON` keyed by module BASENAME, and
+  `gates/dormancy_gate.py:79` keys `EXEMPT` the same way; `__init__.py:428` builds the flat
   back-compat alias map `_MOVED` by basename too. `executive_control` was ALREADY registered as
   `cortex.executive_control` (`__init__.py:142`, `run_selfchecks.py:110`) -- a completely different
   faculty (ACC conflict monitoring + EVC + a sequence/tree planner). Promoting this file under

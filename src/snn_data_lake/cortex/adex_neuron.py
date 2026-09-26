@@ -34,7 +34,7 @@ was removed is the BOAST, not the design.
 
 import math
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "AdEx.step": (
         "NOT_A_RULE",

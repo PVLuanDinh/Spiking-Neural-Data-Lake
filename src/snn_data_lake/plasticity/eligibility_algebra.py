@@ -79,7 +79,7 @@ import zlib
 #   manifest-resolvable producer reference yet -- FR-019's "declared producers"
 #   lands at T051 by composing WITH the manifest, not by a third silo growing its
 #   own port model. Site read.
-# distinct-from: substrate/gradient_claim_gate.py -- the tree's OTHER declaration
+# distinct-from: gates/gradient_claim_gate.py -- the tree's OTHER declaration
 #   system (per-SYMBOL gradient claims, prose): different grain (per-TERM structure
 #   inside one rule vs one claim per symbol); this module carries its own
 #   GRADIENT_CLAIM below like every rule module, and the composer will hold BOTH
@@ -89,7 +89,7 @@ import zlib
 # distinct-from: substrate/signal_ring.py -- the silent-sum JOIN defect at the port
 #   grain; the matcher fired on shared declared/refuse words. Site read.
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 #: VOLUNTARY here (the gate's verb heuristics do not reach `evaluate`); keyed to the
 #: class that actually owns the method -- the first draft keyed a class with no such
 #: method and the gate censused the phantom green (filed as its own gate chip).

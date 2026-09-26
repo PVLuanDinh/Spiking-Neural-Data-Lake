@@ -36,9 +36,9 @@ list. The count is deliberately NOT written here: this sentence said FIVE while 
 seven, because a ceiling is added without the prose being reread. A literal that must be kept in
 step with a table it sits above will drift again; the table is the count.
 
-  python -m snn_data_lake.substrate.doc_budget_gate            # BARE = ASSERT: exit 1 on findings
-  python -m snn_data_lake.substrate.doc_budget_gate --assert   # same (kept for CI-spelling parity)
-  python -m snn_data_lake.substrate.doc_budget_gate --self-check
+  python -m snn_data_lake.gates.doc_budget_gate            # BARE = ASSERT: exit 1 on findings
+  python -m snn_data_lake.gates.doc_budget_gate --assert   # same (kept for CI-spelling parity)
+  python -m snn_data_lake.gates.doc_budget_gate --self-check
 
 BARE = ASSERT since the US1 policy audit (B7, 2026-08-25). The bare form -- the ONLY form
 anything automated ran (run_selfchecks registers modules with no argv) -- printed `gate FAIL`
@@ -136,7 +136,7 @@ BUDGETS = {
     # RAISED 28083 -> 28150 on 2026-08-26 (specs/022 T046), in the
     # SAME commit as the growth: the policy_manifest's unclaimed-gate ratchet (baseline EMPTY,
     # may never grow) requires every runnable gate NAMED in this file, and T046 lands
-    # substrate/growth_coverage_gate.py -- one enforcement-table hygiene row (measured 68
+    # gates/growth_coverage_gate.py -- one enforcement-table hygiene row (measured 68
     # words by this gate's counter -- the draft comment guessed ~45 -- at 8 words of
     # pre-edit headroom). The enforcement table grows one row per gate BY DESIGN; this
     # ceiling polices PROSE, and prose relocation stays the remedy for prose growth. NOTE

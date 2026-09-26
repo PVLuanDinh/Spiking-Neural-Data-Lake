@@ -49,7 +49,7 @@ ASSET_ENV = (
 )
 _EXECUTIONS = itertools.count()
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it. `_refit_positions`
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it. `_refit_positions`
 #: (G1(a), 829fb40) carries the learn verb "fit" and left the gate's governed UNDETERMINABLE ratchet
 #: at 1 against a baseline of 0; it is bookkeeping, and says so here.
 GRADIENT_CLAIM = {

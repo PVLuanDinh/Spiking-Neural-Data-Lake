@@ -108,10 +108,10 @@ instrument, and a second module would widen S1a's declared delta; hence its leng
   python -m snn_data_lake.gates.move_gate --rl1-write DIR | --rl1-check DIR [--root TREE]
 """
 
-# distinct-from: substrate/method_dormancy_gate.py -- its _imports() lists one file's in-package
+# distinct-from: gates/method_dormancy_gate.py -- its _imports() lists one file's in-package
 #   imports for its own scan inside the RUNNING package; this module never imports the package it
 #   measures (the census tree is an export, not the running package) and reads trees by AST.
-#   Also read: substrate/dormancy_gate.py (reachable), substrate/atlas_node_gate.py
+#   Also read: gates/dormancy_gate.py (reachable), gates/atlas_node_gate.py
 #   (node_references) -- both REUSED here through probes, never re-derived; __init__.py
 #   (_AliasLoader); reasoning/self_improve.py (_self_pkg_relpath) -- neither is a gate census.
 
@@ -647,11 +647,11 @@ def names(root: Path, tabs: dict) -> dict:
 
 
 # ---- C8/C9 by FILE (F3(a), since S1b) ----------------------------------------------------------
-# distinct-from: substrate/selfcheck_cache.py -- its _module_file maps one dotted in-package name to
+# distinct-from: gates/selfcheck_cache.py -- its _module_file maps one dotted in-package name to
 #   a path under the RUNNING repo for closure hashing, a path whether or not a file is there; this
 #   resolves every registry spelling (dotted, path, module:attr, Name=path) inside the CENSUSED tree
 #   and answers None when no file backs the name (an alias never does). Also read: brain_atlas.py
-#   (_region_files), substrate/import_manifest.py (_targets), basal_ganglia/self_build_loop.py
+#   (_region_files), gates/import_manifest.py (_targets), basal_ganglia/self_build_loop.py
 #   (_firewalled_bytes), hippocampus/spiking_storage_prototype.py (check_reds): none resolves names.
 #: the NAME registries whose every entry must be backed by a module FILE -- an alias never is.
 _BY_FILE = (
@@ -755,12 +755,12 @@ def c2c(root: Path, bases=C2C_TARGETS, log=print) -> tuple:
 
 
 # ---- C2(d): the tree's legacy names in live code, statically (F7; from S1d) --------------------
-# distinct-from: substrate/method_dormancy_gate.py -- its _imports lists one file's in-package
+# distinct-from: gates/method_dormancy_gate.py -- its _imports lists one file's in-package
 #   imports for its own call-site scan; c2d_source reads every live file of a TREE, code only, for
 #   that tree's LEGACY names in seven forms (imports, strings, templates, split path parts,
 #   package tests, table keys, package prefixes). Also read: this module's _imports_of and
-#   _code_strings (the NAME registries' readers), substrate/import_manifest.py (lazy-import
-#   targets), substrate/growth_coverage_gate.py (placement imports) -- none a legacy-name scan.
+#   _code_strings (the NAME registries' readers), gates/import_manifest.py (lazy-import
+#   targets), gates/growth_coverage_gate.py (placement imports) -- none a legacy-name scan.
 #: C2(d)'s surface (2.6): every tier, tests, tools, integrations, research, root scripts.
 _LIVE_PY_DIRS = ("src/", "tests/", "tools/", "integrations/", "research/", "training/")
 _FROZEN_PY = ("docs/coverage/artifacts/",)
@@ -1086,7 +1086,7 @@ def _section(a: dict, b: dict, pa: dict, pb: dict) -> dict:
 
 # distinct-from: __init__.py -- package_of reads the running package's live tables; forward reads a
 #   stage's post-stage map out of the mover's expected file. Also read: substrate/brain_geometry.py
-#   (_reasoning_modules), substrate/selfcheck_cache.py (split_rosters), neuromodulation/empowerment.py
+#   (_reasoning_modules), gates/selfcheck_cache.py (split_rosters), neuromodulation/empowerment.py
 #   (_roll), plasticity/plasticity_rule_stack.py (_retention_selfcheck) -- none maps a stage's names.
 def forward(expected: dict | None) -> dict:
     """(old package, module) -> new package for every module the stage moves, from the mover's
@@ -1208,7 +1208,7 @@ def diff(pre: dict, post: dict, declared: dict, expected: dict | None = None) ->
 #   from a snapshot; nothing here restores. The nearest tree copy, self_mod_harness's inline
 #   copytree, copies the repo minus an ignore-pattern list for a sandboxed edit; this copies exactly
 #   the git-visible tree (ls-files -co --exclude-standard) so a copy's census equals an export's.
-#   Also read: substrate/selfcheck_cache.py (self_check), cortex/attention_schema.py (main),
+#   Also read: gates/selfcheck_cache.py (self_check), cortex/attention_schema.py (main),
 #   cortex/eprop_kernel.py (_TinyNet), cortex/language_readout_slda.py (predict) -- each its own
 #   module's self-check or readout, none a gate census, diff or tree export.
 # ---- trees: a census-ready export, a self-check copy ------------------------------------------
@@ -1699,7 +1699,7 @@ def tree_reds(root: Path, mover: Path, log=print) -> list:
     return fails
 
 
-# distinct-from: substrate/selfcheck_cache.py -- self_check fires the CACHE's own P8 reds; these are
+# distinct-from: gates/selfcheck_cache.py -- self_check fires the CACHE's own P8 reds; these are
 #   G8's S1b and C5 reds over the alias layer and the checkpoint, built in copies. Also read:
 #   cortex/attention_schema.py (main), cortex/memory_diagnostic.py (_movement),
 #   cortex/report_order_probe.py (t081_lesion), reasoning/godel_machine.py (_probe_source).
@@ -1789,7 +1789,7 @@ def _move(mover: Path, tree: Path, spec: str) -> str:
 # distinct-from: __init__.py -- package_of answers the RUNNING package's live table; _plant_move
 #   reads a temporary COPY's tables to decide whether a red's module still needs its planted move.
 #   Also read: cortex/interaction_learning.py (_g0c_translate maps a stored class path on restore),
-#   substrate/selfcheck_cache.py (tree derivation), cerebellum/spiking_jepa.py (a modulator), and --
+#   gates/selfcheck_cache.py (tree derivation), cerebellum/spiking_jepa.py (a modulator), and --
 #   read only -- brainstem/so101_arm.py (droop): none plants a move or edits a copy.
 def _plant_move(mover: Path, tree: Path, base: str) -> str:
     """Move `base` in the temporary copy `tree` as its own stage will, through MOVER (2.5), unless
@@ -1825,7 +1825,7 @@ def _drop_legacy_entry(tree: Path, legacy: str) -> None:
     init.write_bytes(raw.replace(anchor, plant + anchor))
 
 
-# distinct-from: substrate/selfcheck_cache.py -- self_check fires the CACHE's own P8 reds; this
+# distinct-from: gates/selfcheck_cache.py -- self_check fires the CACHE's own P8 reds; this
 #   builds G8's alias, legacy-run and continuity reds in temporary copies of a tree. Also read:
 #   cortex/attention_schema.py (main, 2.4's six reds of its own instrument) -- not a tree red.
 def tree_reds_s1b(root: Path, mover: Path, rl1_base: Path | None = None, log=print) -> list:

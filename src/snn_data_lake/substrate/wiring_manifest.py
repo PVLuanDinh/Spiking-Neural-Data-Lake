@@ -4,7 +4,7 @@
 WHAT THIS IS: the declared anatomy. A faculty exposes typed ports; edges are 4-tuples
 (src_faculty, src_port, dst_faculty, dst_port), port-to-port; and the five checks
 (validate_structure / infer_types / check_types / region_check / join_check) run at CI over
-the committed artifact via `substrate/manifest_gate.py` (T019, same commit). The ported
+the committed artifact via `gates/manifest_gate.py` (T019, same commit). The ported
 `p6_gate` (T023, same commit) and the region charge gate (T022) read the SAME manifest --
 one anatomy, several instruments.
 
@@ -613,7 +613,7 @@ def main() -> int:
     )
 
     # The declared-anatomy census, reported from the ONE declaration path (REGISTRANTS).
-    from snn_data_lake.substrate.manifest_gate import rebuild_from_registrants
+    from snn_data_lake.gates.manifest_gate import rebuild_from_registrants
 
     live = rebuild_from_registrants()
     n_ports, n_edges = len(live.ports), len(live.edges)

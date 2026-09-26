@@ -42,7 +42,7 @@ Refs: Zhang, Zeng et al., Sci. Adv. 2023 (adi2947); Izhikevich 2007 (the R-STDP 
 import math
 import random
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "_deposit": (
         "LOCAL",

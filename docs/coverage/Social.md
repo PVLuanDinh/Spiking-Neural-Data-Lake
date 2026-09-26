@@ -321,7 +321,7 @@ inside a module that IS live -- the `Pragmatics` organ is constructed on the bra
 `spike_chat_lake.py:224` and confirmed present at runtime. Neither is ever called. The same
 instrumented run that counted 5 `implicature` calls counted **0 `act` calls**, and `implicature` does
 not call `act` internally. This is method-level dormancy inside a reachable module, which
-`substrate/dormancy_gate.py` cannot see by construction -- and I state it from the runtime counter,
+`gates/dormancy_gate.py` cannot see by construction -- and I state it from the runtime counter,
 not from the grep, because `COVERAGE_RUBRIC.md:65-68` records that this repo's static dormancy claims
 have been wrong in both directions.
 

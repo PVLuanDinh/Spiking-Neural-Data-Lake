@@ -24,7 +24,7 @@ content:
   below) or the operator's own memory outside the repo — never this file, never public docs.
 
 The enforcement is the doc-budget ceiling: this file's ceiling was LOWERED to its
-post-split size (`substrate/doc_budget_gate.py`), so status re-accumulating here reds the build
+post-split size (`gates/doc_budget_gate.py`), so status re-accumulating here reds the build
 instead of rotting quietly. The evidence that used to interleave these sections is in
 `docs/POLICIES_EVIDENCE.md` under "POLICIES.md constitution split"; git history holds every
 compressed clause.
@@ -36,18 +36,18 @@ compressed clause.
 | **P0 autonomous self-improvement** | — | yes (its guards are P2/P3/verify-first) |
 | P1 no-hardcode | — | yes |
 | P2 adopt-or-merge | — | yes |
-| P3 no dormancy | `substrate/dormancy_gate.py` (per-MODULE), `substrate/method_dormancy_gate.py` (per-METHOD), `substrate/import_manifest.py` (cross-tier) | the charge tier |
-| P4 one brain (+ P4b partial; P4d provisional) | `substrate/replication_guard.py`; `substrate/lake_rebuild_gate.py` mechanizes P4b's index-is-derived clause (delete → rebuild from a lake scan → logical-dump equality, planted-divergence red + lake-tracking control) | P4b's remaining prose (one-lake, restart-is-not-amnesia); P4d in full (provisional; its gate is specified in P4d) |
+| P3 no dormancy | `gates/dormancy_gate.py` (per-MODULE), `gates/method_dormancy_gate.py` (per-METHOD), `gates/import_manifest.py` (cross-tier) | the charge tier |
+| P4 one brain (+ P4b partial; P4d provisional) | `gates/replication_guard.py`; `gates/lake_rebuild_gate.py` mechanizes P4b's index-is-derived clause (delete → rebuild from a lake scan → logical-dump equality, planted-divergence red + lake-tracking control) | P4b's remaining prose (one-lake, restart-is-not-amnesia); P4d in full (provisional; its gate is specified in P4d) |
 | P5 use the GPU where it helps | — | yes |
 | **P6 mutual reach + use** | **BUILT AND ASSERTING** — `tools/p6_gate.py --assert` and `--self-check` (lint CI job; the connectome-diff half is built). Ships as a **RATCHET**: baselines assert the structure never gets WORSE. Re-derive every count from the gate; never edit this row from memory | yes (provisional; a ratchet says the count did not worsen, never that P6 is satisfied) |
 | **P7 any dependency that helps** | **BUILT AND ASSERTING** — `tools/dependency_ledger.py --assert` and `--self-check` (lint CI job) | yes (the judgement half; see P7 guard (b)) |
 | **P8 invent the method** | **BUILT AND ASSERTING** — `tools/red_reachability.py --assert` (lint CI job) | yes (whether a criterion measures the RIGHT thing; no instrument can replace it) |
-| e-prop not backprop | **PARTIALLY — TWO gates: `substrate/eprop_transport_gate.py`** (CORE) asserts no GOVERNED module reads a weight transposed into a weight update, and reports the ungoverned tier without asserting on it — it is NOT a `.backward()` tripwire, and `mlp_q`'s single-row-indexing spelling evades both its rules, printed on every run; **and `substrate/gradient_claim_gate.py`** (scope/census) asserts every governed learning rule is classified as owing a cosine or not, ratcheting MISSING_DECLARATION and UNDETERMINABLE, plus the ALL-scope PHANTOM_DECLARATION bound (`--assert` + `--self-check`, lint CI job) | yes (everything the static rule cannot reach: whether a second matrix is transported or independently maintained is semantic, and the cosine bar itself) |
-| *(not a policy — the safety envelope's own gate)* ONE envelope definition, five brainstem files | `substrate/safety_envelope.py` (bare = assert, in run_selfchecks; envelope EDITS stay approval-gated) | — |
-| *(not a policy — repo hygiene)* standing docs keep their word ceilings | `substrate/doc_budget_gate.py` (bare = assert, in run_selfchecks) | — |
+| e-prop not backprop | **PARTIALLY — TWO gates: `gates/eprop_transport_gate.py`** (CORE) asserts no GOVERNED module reads a weight transposed into a weight update, and reports the ungoverned tier without asserting on it — it is NOT a `.backward()` tripwire, and `mlp_q`'s single-row-indexing spelling evades both its rules, printed on every run; **and `gates/gradient_claim_gate.py`** (scope/census) asserts every governed learning rule is classified as owing a cosine or not, ratcheting MISSING_DECLARATION and UNDETERMINABLE, plus the ALL-scope PHANTOM_DECLARATION bound (`--assert` + `--self-check`, lint CI job) | yes (everything the static rule cannot reach: whether a second matrix is transported or independently maintained is semantic, and the cosine bar itself) |
+| *(not a policy — the safety envelope's own gate)* ONE envelope definition, five brainstem files | `gates/safety_envelope.py` (bare = assert, in run_selfchecks; envelope EDITS stay approval-gated) | — |
+| *(not a policy — repo hygiene)* standing docs keep their word ceilings | `gates/doc_budget_gate.py` (bare = assert, in run_selfchecks) | — |
 | *(not a policy — repo hygiene)* outside data passes license + injection gates before the brain keeps it | `substrate/ingest_guard.py` (bare = assert, in run_selfchecks) | — |
 | *(not a policy — repo hygiene)* citations resolve | `tools/citation_guard.py` (step in the `lint` CI job) | — |
-| *(not a policy — a spec instrument, invention register row 7)* growth coverage counted before any rule lands. *DATED 2026-09-25 (P4d, owner decision C; the vocabulary a session call under the 2026-09-05 authorization):* all sixteen `REGION_COORDS` names are the LABEL vocabulary of the anatomical map, read from a grown neuron's position; only the ten owner-ratified growable names (2026-08-19) are admitted, and a SCAFFOLD name, neuromodulation, or a position the map cannot tell apart from theirs is refused; growth INTO the reservoir awaits an owner-ratified target | `substrate/growth_coverage_gate.py` (`--assert` + `--self-check`, `lint` CI job). The coverage red is REPORTED every run; asserted: the identity-pinned ratchet, scaffold/undeclared refusals, unresolved-site reds. Green never means coverage is adequate | — |
+| *(not a policy — a spec instrument, invention register row 7)* growth coverage counted before any rule lands. *DATED 2026-09-25 (P4d, owner decision C; the vocabulary a session call under the 2026-09-05 authorization):* all sixteen `REGION_COORDS` names are the LABEL vocabulary of the anatomical map, read from a grown neuron's position; only the ten owner-ratified growable names (2026-08-19) are admitted, and a SCAFFOLD name, neuromodulation, or a position the map cannot tell apart from theirs is refused; growth INTO the reservoir awaits an owner-ratified target | `gates/growth_coverage_gate.py` (`--assert` + `--self-check`, `lint` CI job). The coverage red is REPORTED every run; asserted: the identity-pinned ratchet, scaffold/undeclared refusals, unresolved-site reds. Green never means coverage is adequate | — |
 | *(not a policy — repo hygiene)* documented `python -m` commands run | `tools/doc_command_guard.py --assert` — in `run_selfchecks`'s tools stage and the `lint` CI job; `policy_manifest`'s census counts both | — |
 | *(not a policy — P0's honesty guard, owner-adopted 2026-09-02, specs/022 OD-5)* a unit COUNT is reported as **admitted**, never as growth, until SC-012a fires ("provisional" = time-bound) | `tests/test_units_admitted_wording.py` (every battery): label bound to the value, PROVENANCE key on the row; red counted pre-change (3 of 3) | — |
 
@@ -198,7 +198,7 @@ benchmark in this repo, the swap is not P2-eligible and the answer is *build the
 *pick the more fashionable one*. An external framework being newer, more elegant, or better publicised
 is not evidence. This guard is what stops P2 from becoming a fashion treadmill.
 
-For a *delivery-path* swap the benchmark this guard demands is `substrate/amdahl_gate.py` (Gate Zero,
+For a *delivery-path* swap the benchmark this guard demands is `gates/amdahl_gate.py` (Gate Zero,
 specs/008): it neuters the incumbent path on the live tick and reports the ceiling any replacement
 could reach, with a padded-share positive control, a repeatability pair and a zero-share sham. It
 measures; it never decides — the verdict word is a report line and the exit code carries only the
@@ -246,7 +246,7 @@ REACHABLE (the dormancy gate's one walk, reused — never re-derived) AND ≥1 w
 port edge touching the region carrying a MEASURED charge attribution (a replay-twice
 divergence from `substrate/port_charge_probe`, recorded in
 `tools/region_charge_evidence.json` — never a declaration). **Registration alone never
-greens a region.** Gate: `substrate/region_charge_gate.py --assert`, with the integer floor in
+greens a region.** Gate: `gates/region_charge_gate.py --assert`, with the integer floor in
 `tools/region_charge_floor.json` (identity-pinned: `named_and_NOT_charged` must stay empty);
 exemption rows carry {region, reason, owner, date, expiry} with a ratcheting count ceiling
 (0 at introduction; raising it is an owner-visible admission). The rule's whole message: **a tree can be almost fully
@@ -257,7 +257,7 @@ the landing censuses are in `docs/POLICIES_EVIDENCE.md`.
 sits NAMING: every `connectome.NODES` id must be named by ≥1 module in its own region
 (quoted id or anatomical prose — the reference rule and its two observed false-positive
 shapes are documented in the gate) or carry a dated EXEMPT row. A connectome node no code
-names is anatomy on paper only. Gate: `substrate/atlas_node_gate.py`, BINDING from day one: a NEW
+names is anatomy on paper only. Gate: `gates/atlas_node_gate.py`, BINDING from day one: a NEW
 phantom or a stale exemption reds the build; the recorded day-one rows may only be deleted, never
 added to (the ratchet). Distinct from the region-charge rule the way P3 is distinct from P6: charge
 asks whether a wired edge measurably participates; this asks whether the declared anatomy is even
@@ -270,17 +270,17 @@ pre-G8 `LEGACY_*` table (owner decision, 2026-09-25). Re-keyed, "named" becomes 
 grown neurons", "charged" becomes "neutering the population changes a measured outcome", each counted
 before it asserts.
 
-**Mechanized:** `substrate/dormancy_gate.py` (in `run_selfchecks` CORE) builds the static import graph
+**Mechanized:** `gates/dormancy_gate.py` (in `run_selfchecks` CORE) builds the static import graph
 and asserts every REGIONS/TORCH_TIER module is **reachable from a live root/entrypoint OR in the EXEMPT
 allowlist** — a new build that no live path imports and that is not exempted FAILS CI.
 
-**Also mechanized: the CROSS-TIER edge, `substrate/import_manifest.py`.** The governed tiers reach
+**Also mechanized: the CROSS-TIER edge, `gates/import_manifest.py`.** The governed tiers reach
 into ruff-excluded `reasoning/`/`training/` through lazy imports inside bare `except Exception:`
 swallows — delete or break one of those targets and every gate stays green while the brain sets the
 faculty to `None` and ticks on without it. The canary derives the manifest by AST walk (never
 hand-maintained) and asserts each target still imports. It proves import-ability, not charge —
 deliberately, because import-ability is precisely what a deletion breaks and what the swallows hide.
-Re-derive the census with `python -m snn_data_lake.substrate.import_manifest`; the counted history
+Re-derive the census with `python -m snn_data_lake.gates.import_manifest`; the counted history
 (and the drift it kept catching) is in `docs/POLICIES_EVIDENCE.md`.
 
 **Honesty guard (the crux):** reachability proves a module is *imported*, NOT that its output changes
@@ -327,9 +327,9 @@ construction never changed) passed the module gate clean for the life of the fea
 record and the 2026-07-31 runtime re-adjudication of seventeen learning-verb methods are in
 `docs/POLICIES_EVIDENCE.md`.
 
-**Mechanization: BUILT — `substrate/method_dormancy_gate.py`, in `run_selfchecks` CORE.** A pure
+**Mechanization: BUILT — `gates/method_dormancy_gate.py`, in `run_selfchecks` CORE.** A pure
 static AST pass. Re-derive the census with
-`python -m snn_data_lake.substrate.method_dormancy_gate` rather than quoting a count from anywhere.
+`python -m snn_data_lake.gates.method_dormancy_gate` rather than quoting a count from anywhere.
 Its three load-bearing design details (import-scoped resolution; same-module callers count except
 under a `__main__` guard *and the functions that guard calls*; a function used as a VALUE is used)
 were each found by implementing the naive version first and watching it fail — the record is in
@@ -355,7 +355,7 @@ the *correct* design — it delegates, it does not re-implement. The bloat P4 ta
 definition of a stack class (a parallel "brain"), a consumer standing up its **own** brain + drive-loop
 + reply engine, or duplicate world-model / Q-learner families.
 
-**Mechanized:** `substrate/replication_guard.py` (in `run_selfchecks` CORE) asserts each canonical stack
+**Mechanized:** `gates/replication_guard.py` (in `run_selfchecks` CORE) asserts each canonical stack
 class (`Brain` / `LiveBrain` / `AutonomousArm`) is defined **exactly once**, in its canonical module,
 unless a known duplicate is on the `PENDING_RETIREMENT` allowlist (with a reason). The single sanctioned
 construction path is **`cortex.brain.make_brain()`** — consumers obtain the brain through it rather than
@@ -664,7 +664,7 @@ One-way is allowed — brains are full of one-way projections — but *zero*-way
 condition (a) demands has a machine-checked home: `substrate/wiring_manifest.py` (TypedPort —
 join_policy mandatory on IN ports, delivery_policy on OUT, REF flagged and audited — plus the
 4-tuple port-to-port edge manifest, NIR-HDF5 serialized to the tracked artifact
-`tools/wiring_manifest.nir`), and `substrate/manifest_gate.py --assert` in CI runs the five
+`tools/wiring_manifest.nir`), and `gates/manifest_gate.py --assert` in CI runs the five
 contract checks (structure / type-inference / type-check / region / join) plus the
 committed-vs-registrant-rebuild DIVERGENCE red. `tools/p6_gate.py` carries the manifest-sourced
 walk REPORT-ONLY beside its AST walk with a parity table; the AST walk retires only after the
@@ -923,16 +923,16 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
   (order-invariant outright; fractional bits MEASURED against an FP64 reference, never picked
   — `tools/determinism_baseline.json`, with neighbouring bit-widths proven to diverge and the
   sweep's own red at 1 bit), and spike trains byte-identical across thread counts at fixed P with
-  end-run membranes byte-equal beside them. Gate: `substrate/determinism_gate.py --assert` (CI) —
+  end-run membranes byte-equal beside them. Gate: `gates/determinism_gate.py --assert` (CI) —
   its sweep runs at a CONSTRUCTED fixed P because the lineage's measured P
   (`tools/kernel_partition_baseline.json`) makes the thread-invariance red unreachable, and the
   float-accumulation broken arm runs IN THE SAME COMMAND (f32 order arms must diverge, int64 arms
   must agree) so the gate is never trusted on a red nobody has seen fire. G5 replay is the companion
-  gate (`substrate/replay_gate.py --assert` in CI): snapshots capture per-instance RNG stream
+  gate (`gates/replay_gate.py --assert` in CI): snapshots capture per-instance RNG stream
   POSITIONS (a seed names a stream, a position names a point on it), restore asserts position
   equality and refuses a positionless or parameter-mismatched snapshot, and the continuation is
   byte-identical — with a re-seeded divergence control proving the equality is not vacuous.
-- **Safety envelope untouched — and MECHANIZED:** `substrate/envelope_hash_gate.py --assert` (CI)
+- **Safety envelope untouched — and MECHANIZED:** `gates/envelope_hash_gate.py --assert` (CI)
   holds the five files' sha256 against the approved baseline `tools/envelope_hashes.json`; an
   envelope byte change without its same-commit baseline update (the owner-approval act, reviewable
   in the diff) reds the build, with no bypass flag on purpose. The gate reads and compares — the
@@ -954,7 +954,7 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
   **SCOPE — a PIVOT rule, not a census (amended 2026-08-18, specs/020, owner-directed; it NARROWS
   what this invariant asserts, which this file reserves to the owner).** This clause governs work
   that was about to use backprop. It is NOT a requirement that every learning rule carry a gradient
-  cosine. The census that decides who owes what is `substrate/gradient_claim_gate.py` — **re-derive
+  cosine. The census that decides who owes what is `gates/gradient_claim_gate.py` — **re-derive
   with the gate before relying on any figure**; read as a blanket rule the clause would demand a
   gradient comparison from most rules that have no gradient to compare against (the majority are
   local, controls, or direct solves). The one `EXACT_GRADIENT` REFERENCE
@@ -974,7 +974,7 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
   UNJUDGED claimant owes an owner adjudication here — a state, not an exit. For a
   frozen-feedback alignment arm the non-discrimination argument (the statistic reduces to
   `cos(W2[a], B[a])`, near zero BY CONSTRUCTION) stands unamended. **It never disposes of WEIGHT
-  TRANSPORT**, which is adjudicated separately by `substrate/eprop_transport_gate.py` — two rules
+  TRANSPORT**, which is adjudicated separately by `gates/eprop_transport_gate.py` — two rules
   (explicit-transpose, index-swap), each with a constructed red, asserting ZERO governed findings
   (no ratchet, no baseline);
   its green never means "compliant" and it prints the spelling it cannot see (of the two violations

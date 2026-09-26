@@ -32,7 +32,7 @@ from typing import Protocol, runtime_checkable
 
 import numpy as np
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "Connection.update": (
         "NOT_A_RULE",

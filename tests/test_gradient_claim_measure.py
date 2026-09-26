@@ -19,7 +19,7 @@ import re
 import subprocess
 import sys
 
-gate = importlib.import_module("snn_data_lake.substrate.gradient_claim_gate")
+gate = importlib.import_module("snn_data_lake.gates.gradient_claim_gate")
 
 BAR = 0.5
 
@@ -149,7 +149,7 @@ def test_instrument_falsified_is_reachable_and_rule_judged_is_too():
 def test_the_gate_imports_no_rule_module_in_any_mode():
     """FR-013b / SC-023. The boundary 89 src modules already assert, turned into an assertion.
 
-    Each of those modules carries `Read statically by substrate/gradient_claim_gate.py; never
+    Each of those modules carries `Read statically by gates/gradient_claim_gate.py; never
     imported by it.` That sentence is a claim about this gate, and until now nothing checked it.
     Both CI modes are covered: CI runs the gate TWICE, and a test exercising only `--assert` would
     leave `--self-check` free to import anything.
@@ -159,7 +159,7 @@ def test_the_gate_imports_no_rule_module_in_any_mode():
     """
     probe = (
         "import sys;"
-        "from snn_data_lake.substrate.gradient_claim_gate import main;"
+        "from snn_data_lake.gates.gradient_claim_gate import main;"
         "main([{mode}]);"
         "print('TORCH', 'torch' in sys.modules)"
     )

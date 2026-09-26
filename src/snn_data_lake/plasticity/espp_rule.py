@@ -99,7 +99,7 @@ The charge claim stays exactly where it was: nowhere, until T052-ii measures.
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.plasticity.espp_rule
 """
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "espp_modulator_core": (
         "LOCAL",
@@ -754,7 +754,7 @@ def main():
 
     import numpy as _np
 
-    from snn_data_lake.substrate.gradient_claim_gate import _repo_root as _rr8
+    from snn_data_lake.gates.gradient_claim_gate import _repo_root as _rr8
 
     _pack_path = _pl8.Path(_rr8()) / "models" / "nmnist_pack.npz"
     assert _pack_path.exists(), (

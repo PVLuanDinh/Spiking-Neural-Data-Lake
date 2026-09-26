@@ -384,7 +384,7 @@ def main():
     #   2026-08-05, which is why this one matches its discipline. Not imported: a CORE
     #   self-check must not depend on an unregistered module, and that module's own check
     #   performs a ~15MB network fetch this offline suite forbids.
-    # distinct-from: substrate/selfcheck_cache.py::consult -- a cache lookup keyed on a
+    # distinct-from: gates/selfcheck_cache.py::consult -- a cache lookup keyed on a
     #   closure hash; nothing to do with URL hosts. Sites read.
     _ORIGIN, _TARGET = "http://1.1.1.1/book", "http://8.8.8.8/exfil"
     _origin_host = urlparse(_ORIGIN).hostname

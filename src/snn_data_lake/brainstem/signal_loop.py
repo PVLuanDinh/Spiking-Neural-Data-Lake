@@ -92,7 +92,7 @@ from snn_data_lake.neuromodulation.cortisol import (
     Cortisol,  # slow tonic stress (leaf: only os/math)
 )
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "build_learned_matcher": (
         "NOT_A_RULE",

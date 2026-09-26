@@ -47,7 +47,7 @@ def _settled(n=300, v=QUIET):
 # ======================================================================================
 @pytest.fixture(scope="module")
 def manifest():
-    from snn_data_lake.substrate.manifest_gate import rebuild_from_registrants
+    from snn_data_lake.gates.manifest_gate import rebuild_from_registrants
 
     return rebuild_from_registrants()
 

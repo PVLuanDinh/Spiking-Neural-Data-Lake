@@ -48,7 +48,7 @@ from snn_data_lake.plasticity.homeostatic_scaling import HomeostaticNeuron
 from snn_data_lake.plasticity.intrinsic_plasticity import IntrinsicPlasticity
 from snn_data_lake.plasticity.short_term_plasticity import DynamicSynapse
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "HomeostaticPlasticityStack.learning_step": (
         "LOCAL",

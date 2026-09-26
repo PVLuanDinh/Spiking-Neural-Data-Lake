@@ -33,6 +33,9 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from snn_data_lake import package_of
+from snn_data_lake.brain_atlas import region_of
+
 REPO = Path(__file__).resolve().parents[3]
 POLICIES = REPO / "docs" / "POLICIES.md"
 
@@ -49,10 +52,12 @@ TABLE_ONLY_IDS = frozenset({"e-prop"})
 PARENT_RE = re.compile(r"^## (P\d)\s*[-—]\s*(.+)$", re.M)
 SUBCLAUSE_RE = re.compile(r"^### (P\d(?:[a-z]+)?(?: amendment)?)\s*[-—]\s*(.+)$", re.M)
 
-# A backticked token is a command IFF it matches this. Everything else in a table
-# cell -- `main()`, `.backward()`, `mlp_q`, line-cites like `dormancy_gate.py:71`
-# -- is a citation, not a command.
-CMD_RE = re.compile(r"^(tools|substrate)/[a-z0-9_]+\.py( --[a-z-]+)*$")
+# A backticked token is a command IFF it matches this AND is a `tools/` script or names a governed
+# module where the live registry places it (`governed_module`; G8 F1: the registry decides a gate's
+# package, never a spelled prefix, so a gate that moves keeps its command). Everything else in a
+# table cell -- `main()`, `.backward()`, `mlp_q`, line-cites like `dormancy_gate.py:71` -- is a
+# citation, not a command.
+CMD_RE = re.compile(r"^([a-z_]+)/([a-z0-9_]+)\.py( --[a-z-]+)*$")
 BACKTICK_RE = re.compile(r"`([^`]+)`")
 
 
@@ -85,11 +90,25 @@ class DerivationError(RuntimeError):
     pass
 
 
+# distinct-from: eprop_transport_gate.py -- its EXEMPT lookup string keys a finding by module path
+#   plus function; governed_module asks the live registry (package_of, REUSED -- the one mapping)
+#   whether a POLICIES.md token names a governed module. Also read: __init__.py (the GIL guard),
+#   gates/move_gate.py (_assign), dormancy_gate.py (the phantom red), brain_geometry.py (the
+#   placement map) -- term overlaps only.
+def governed_module(path: str) -> str | None:
+    """`snn_data_lake.<pkg>.<mod>` for a `<pkg>/<mod>.py` path naming a governed module where the
+    live registry places it (G8 F1); None for a `tools/` script or any other path."""
+    m = CMD_RE.match(path)
+    if m is None or m.group(1) == "tools" or package_of(m.group(2)) != m.group(1):
+        return None
+    return f"snn_data_lake.{m.group(1)}.{m.group(2)}"
+
+
 def token_to_argv(token: str) -> list[str]:
     parts = token.split()
     path, flags = parts[0], parts[1:]
-    if path.startswith("substrate/"):
-        mod = "snn_data_lake.substrate." + path.split("/", 1)[1].removesuffix(".py")
+    mod = governed_module(path)
+    if mod is not None:
         return [sys.executable, "-m", mod, *flags]
     return [sys.executable, path, *flags]
 
@@ -97,7 +116,8 @@ def token_to_argv(token: str) -> list[str]:
 def extract_commands(text: str) -> list[GateCommand]:
     out = []
     for tok in BACKTICK_RE.findall(text):
-        if CMD_RE.match(tok):
+        path = tok.split()[0]
+        if CMD_RE.match(tok) and (path.startswith("tools/") or governed_module(path)):
             out.append(GateCommand(argv=token_to_argv(tok), source_token=tok))
     return out
 
@@ -284,10 +304,18 @@ SELF_DISPOSITION = (
 )
 
 
+# distinct-from: self_mod_harness.py -- it RUNS the suite in a sandbox; this reads the runner's
+#   quoted names through the live registry (package_of, reused). Also read: selfcheck_cache.py
+#   (one MODULES entry's carry key), neuron_zoo.py (the suite's executor), and this module's
+#   cross_check (the consumer) -- none reads runner names through the registry.
 def _selfcheck_modules() -> set[str]:
+    """Basenames of the governed modules run_selfchecks registers: a quoted `<pkg>.<mod>` runner
+    name counts where the live registry places <mod> in <pkg> (G8 F1; no package prefix spelled,
+    so a gate that moves stays registered)."""
     if not RUN_SELFCHECKS.exists():
         return set()
-    return set(re.findall(r'"substrate\.([a-z0-9_]+)"', RUN_SELFCHECKS.read_text(encoding="utf-8")))
+    names = re.findall(r'"([a-z_]+)\.([a-z0-9_]+)"', RUN_SELFCHECKS.read_text(encoding="utf-8"))
+    return {m for p, m in names if package_of(m) == p}
 
 
 def _selfcheck_tools() -> set[str]:
@@ -368,7 +396,7 @@ def cross_check(policies: list[Policy]) -> list[Policy]:
     for p in policies:
         for c in p.commands:
             path = c.source_token.split()[0]
-            if path.startswith("substrate/"):
+            if governed_module(path) is not None:  # G8 F1: the registry, never a prefix
                 stem = Path(path).stem
                 c.in_selfchecks = stem in mods
                 c.in_ci = stem in ci or c.in_selfchecks
@@ -384,7 +412,13 @@ def census(policies: list[Policy]) -> dict:
     semantics) and NOT_IN_CI (a claimed mechanized command nothing in CI runs)."""
     text = POLICIES.read_text(encoding="utf-8")
     ci = _enabled_ci_text(CI_YML.read_text(encoding="utf-8")) if CI_YML.exists() else ""
-    runnable = {m for m in _selfcheck_modules() if GATE_NAME_RE.search(m)}
+    # The census's surface is unchanged by G8's moves: the gate-named modules run_selfchecks
+    # registers whose frozen pre-G8 label is `substrate` (region_of), wherever they now live -- the
+    # set its `"substrate.*"` runner-name read gave before M1, equal at that head. A G8 addition
+    # (gates.move_gate) has no pre-G8 label and stays outside it (evidence 3.3, opening (2)).
+    runnable = {
+        m for m in _selfcheck_modules() if GATE_NAME_RE.search(m) and region_of(m) == "substrate"
+    }
     for line in ci.splitlines():
         if "--assert" in line:
             runnable.update(Path(t).stem for t in re.findall(r"tools/[a-z0-9_]+\.py", line))
@@ -441,7 +475,7 @@ def committed_payload(policies: list[Policy], drift: dict) -> str:
     return (
         json.dumps(
             {
-                "_derived_from": "docs/POLICIES.md -- regenerate with: python -m snn_data_lake.substrate.policy_manifest --manifest --write",
+                "_derived_from": "docs/POLICIES.md -- regenerate with: python -m snn_data_lake.gates.policy_manifest --manifest --write",
                 "policies": json.loads(to_json(policies)),
                 "drift": drift,
             },

@@ -156,8 +156,8 @@ Every module MUST be wired-and-charged, retired, or EXEMPT with a reason. Dorman
 not per-module: if a live module computes a learning signal, the rule consuming it MUST also be
 called from a live path.
 
-**Mechanized by THREE gates**: `substrate/dormancy_gate.py` (per-MODULE, CORE),
-`substrate/method_dormancy_gate.py` (per-METHOD, CORE), and `substrate/import_manifest.py`
+**Mechanized by THREE gates**: `gates/dormancy_gate.py` (per-MODULE, CORE),
+`gates/method_dormancy_gate.py` (per-METHOD, CORE), and `gates/import_manifest.py`
 (cross-tier — the governed tiers reach into ruff-excluded `reasoning/` and `training/` through
 bare `except Exception:` swallows that hide a deletion).
 
@@ -170,7 +170,7 @@ force-wire. A wire that does not charge is reverted and retired or exempted, nev
 ### P4. One brain / no replication
 
 Use the canonical `Brain -> LiveBrain -> AutonomousArm` composition; never re-implement it.
-Construct only via `cortex.brain.make_brain()`. Mechanized by `substrate/replication_guard.py`.
+Construct only via `cortex.brain.make_brain()`. Mechanized by `gates/replication_guard.py`.
 
 ### P4b. The durable lake is part of the brain
 
@@ -259,7 +259,7 @@ satisfy it. Honesty guard: a route is not a conversation — neuter faculty A an
 own output changes; adding a reader that stores a value is not consumption.
 
 PROVISIONAL; mechanization status lives in `docs/POLICIES.md`'s enforcement rows (authoritative;
-re-derive with `python -m snn_data_lake.substrate.policy_manifest --manifest`). The governing
+re-derive with `python -m snn_data_lake.gates.policy_manifest --manifest`). The governing
 finding stays: each writer holds a PRIVATE workspace instance, so adding readers is not a remedy
 (POLICIES.md P6). *(Converted to a pointer 2026-09-25, 1.2.0: this paragraph restated the gate as
 "manual, NON-asserting and not in CI" with 2026-08-04 counts, and POLICIES.md records it BUILT AND
@@ -282,7 +282,7 @@ durable store**; **e-prop — adopt the library, not its BPTT trainer**; P2 — 
 means RETIRING what it supersedes, not running both; P3 gives no dormancy pass for being
 third-party; and the suite stays runnable without a GPU.
 
-Mechanization status lives in `docs/POLICIES.md`'s enforcement rows (authoritative -- this file restated it, was false for 13 days, and now points instead; re-derive with `python -m snn_data_lake.substrate.policy_manifest --manifest`). *(Not PROVISIONAL from 2026-09-25, 1.2.0's panel fold: POLICIES.md marks it BUILT AND ASSERTING with no provisional mark, and where the two disagree this file is the defect.)*
+Mechanization status lives in `docs/POLICIES.md`'s enforcement rows (authoritative -- this file restated it, was false for 13 days, and now points instead; re-derive with `python -m snn_data_lake.gates.policy_manifest --manifest`). *(Not PROVISIONAL from 2026-09-25, 1.2.0's panel fold: POLICIES.md marks it BUILT AND ASSERTING with no provisional mark, and where the two disagree this file is the defect.)*
 
 ### P8. Invent the method; the literature is a starting point, not a boundary
 
@@ -314,7 +314,7 @@ A passing criterion is evidence about a MECHANISM, never a verdict about EXPERIE
 authorizes the system to assert its own sentience. **The brain may report what it measures; it
 MUST NOT report what it cannot measure.** The safety envelope is NEVER a target of invention.
 
-Mechanization status lives in `docs/POLICIES.md`'s enforcement rows (authoritative -- this file restated it, was false for 13 days, and now points instead; re-derive with `python -m snn_data_lake.substrate.policy_manifest --manifest`). *(Not PROVISIONAL from 2026-09-25, 1.2.0's panel fold: POLICIES.md marks it BUILT AND ASSERTING with no provisional mark, and where the two disagree this file is the defect.)*
+Mechanization status lives in `docs/POLICIES.md`'s enforcement rows (authoritative -- this file restated it, was false for 13 days, and now points instead; re-derive with `python -m snn_data_lake.gates.policy_manifest --manifest`). *(Not PROVISIONAL from 2026-09-25, 1.2.0's panel fold: POLICIES.md marks it BUILT AND ASSERTING with no provisional mark, and where the two disagree this file is the defect.)*
 
 ## Standing Invariants (never relaxed by any policy)
 

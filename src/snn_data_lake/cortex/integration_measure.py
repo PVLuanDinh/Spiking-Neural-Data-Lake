@@ -426,8 +426,8 @@ INTEGRATION_SEEDS = tuple(range(20))
 # per-seed PRESENT/ABSENT distribution of a four-clause PCI ordering over this module's own three
 # reference networks. No t, no bar, no seed pairing: the fraction IS the reported quantity, and its
 # two-sided assert is about the marker's discrimination, not about a hypothesis. Also read before
-# writing this and likewise distinct: substrate/chat_memory.py (a lake view), substrate/dormancy_gate.py
-# (the P3 reachability census), substrate/amdahl_gate.py::_probe_install (a patch-install counter) and
+# writing this and likewise distinct: substrate/chat_memory.py (a lake view), gates/dormancy_gate.py
+# (the P3 reachability census), gates/amdahl_gate.py::_probe_install (a patch-install counter) and
 # substrate/kernel_tick.py::_bench_kernel (a ticks/s host benchmark) -- none of the five sweeps a
 # marker over seeds, and none of them is a second implementation of this job.
 def pci_marker_sweep(seeds=INTEGRATION_SEEDS, trials=8):

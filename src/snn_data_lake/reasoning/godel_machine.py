@@ -56,7 +56,7 @@ import tempfile
 
 # THE safety envelope, imported rather than retyped -- see `_SAFETY_KERNEL` below. Aliased on import
 # so the kernel's construction reads as "the envelope, plus the verifier" at its own definition.
-from snn_data_lake.substrate.safety_envelope import repo_relative as _envelope_repo_relative
+from snn_data_lake.gates.safety_envelope import repo_relative as _envelope_repo_relative
 
 _GIT_ID = ["-c", "user.email=godel@sndl.local", "-c", "user.name=godel-machine"]
 # no .pyc in worktrees -- else `git add -A` commits __pycache__ and the merge collides with main's
@@ -161,7 +161,7 @@ class GodelMachine:
 # the safety envelope cannot be co-rewritten out of existence).
 #
 # The envelope half is IMPORTED, not retyped (P2, 2026-08-18). It was one of three hand-maintained
-# copies in src/, in two spellings; `substrate/safety_envelope` is now the one definition and this
+# copies in src/, in two spellings; `gates/safety_envelope` is now the one definition and this
 # kernel adds only what is genuinely its own -- the two VERIFIER files. That addition is the unique
 # capability of this list and is why the list still exists after the consolidation.
 _SAFETY_KERNEL = (

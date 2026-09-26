@@ -90,7 +90,7 @@ WHY THIS EXISTS. Three times now, a tracked file has pointed at a script that do
 
   1. `docs/POLICIES.md` cited `scratchpad/smoke_drive_charge.py` as the neuter-A/B probe. That file does
      not exist at all. `tools/charge_probe.py` is tracked ON PURPOSE because of it.
-  2. `substrate/dormancy_gate.py` and the repo's CLAUDE.md carried the same dead citation.
+  2. `gates/dormancy_gate.py` and the repo's CLAUDE.md carried the same dead citation.
   3. `docs/DEPTH_CEILINGS.md`'s AR appendix cites nine `scratchpad/ar_lm_*.py` scripts as the evidence
      for its BLiMP numbers -- added HOURS AFTER (1) and (2) were corrected, in the same session.
 
@@ -127,7 +127,7 @@ _CITE = re.compile(r"(?<![\w./-])((?:[\w.-]+/)+[\w.-]+\.py)(?::\d+)?")
 _EXEMPT_FILES = {".gitignore", "tools/citation_guard.py"}
 
 # STRICT-scope survivors: "path:line" -> why this citation legitimately stays. The pattern is
-# substrate/dormancy_gate.EXEMPT's -- every survivor named with its reason IN THE SOURCE, so an
+# gates/dormancy_gate.EXEMPT's -- every survivor named with its reason IN THE SOURCE, so an
 # exemption is something a reader can audit rather than a count quietly tolerated.
 #
 # Line-keyed exemptions go stale when a document is edited, and a stale exemption that silently blesses

@@ -32,7 +32,7 @@ Determinism (CLAUDE.md): pure function; no random, no wall-clock, no hash(); ASC
 
 import zlib
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "LakeConsolidation.consolidate": (
         "NOT_A_RULE",

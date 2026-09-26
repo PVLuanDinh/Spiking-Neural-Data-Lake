@@ -51,7 +51,7 @@ files in `research/`, `tools/`, `docs/`, `integrations/`, repo-root `training/` 
 GOVERNED is DERIVED, never hand-listed: the REGIONS + TORCH_TIER tables in
 `src/snn_data_lake/__init__.py` are read by `ast.literal_eval` (no import -- see DETERMINISM) and
 turned into `src/snn_data_lake/<region>/<module>.py`. Verified equivalent to the live
-`substrate/dormancy_gate.py::BRAIN_MODULES`: 205 entries, exact set match, 2026-08-06. Registration
+`gates/dormancy_gate.py::BRAIN_MODULES`: 205 entries, exact set match, 2026-08-06. Registration
 is the test, not location -- a file dropped into `cortex/` without a REGIONS entry is invisible to
 all three P3 gates, so this gate counts it as ungoverned no matter where it sits.
 
@@ -180,7 +180,7 @@ def _corpus(root=None):
 def _governed(root=None):
     """Governed paths, DERIVED from REGIONS + TORCH_TIER by AST -- no import of the package.
 
-    Verified set-equal to `substrate/dormancy_gate.py::BRAIN_MODULES` (205 entries) on 2026-08-06.
+    Verified set-equal to `gates/dormancy_gate.py::BRAIN_MODULES` (205 entries) on 2026-08-06.
     """
     root = ROOT if root is None else root
     init = (root / PKG / "__init__.py").read_text(encoding="utf-8", errors="replace")

@@ -91,7 +91,7 @@ def declare_ports(manifest):
     )
 
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "_train_values": (
         "LOCAL",

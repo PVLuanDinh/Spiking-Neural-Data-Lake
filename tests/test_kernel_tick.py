@@ -4,7 +4,7 @@ integer order-invariance, and the P-vs-growth imbalance metric.
 The delay contract is EXACT: a spike at tick t through an edge of delay d moves the post
 membrane at tick t+d -- the first draft delivered at t+d+1 and the self-check's arrival arm
 caught it. Thread equality here is the smoke form; the T∈{1..16} gate with its broken-control
-arm is T015's (`substrate/determinism_gate.py`), which must run at a constructed fixed P>1
+arm is T015's (`gates/determinism_gate.py`), which must run at a constructed fixed P>1
 because the MEASURED lineage P is 1 (tools/kernel_partition_baseline.json: P1/T1 = 784 ticks/s,
 every parallel cell 40-60% slower at 4,096 units) and thread-invariance at P=1 has no
 reachable red.
@@ -111,7 +111,7 @@ def test_the_kernel_round_trips_through_capture_and_restore():
     controlled, deliberately -- it is the only round-trip pin `capture` and `restore` have in the
     suite, so deleting it with the refusal would have removed live coverage of a surviving
     mechanism."""
-    from snn_data_lake.substrate.replay_gate import capture, restore
+    from snn_data_lake.gates.replay_gate import capture, restore
 
     n = 4
     plain = _plain_kernel(n)

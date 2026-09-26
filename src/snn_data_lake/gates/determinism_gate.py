@@ -32,9 +32,9 @@ placeholder inside kernel_tick defers to it once recorded.
 """
 
 # distinct-from: substrate/kernel_tick.py -- the MECHANISM this gate exercises; the gate owns
-#   the criterion, the kernel owns the tick. distinct-from: substrate/eprop_transport_gate.py
-#   and substrate/gradient_claim_gate.py -- learning-rule transport criteria, not tick
-#   determinism. distinct-from: substrate/replication_guard.py -- class-uniqueness census.
+#   the criterion, the kernel owns the tick. distinct-from: gates/eprop_transport_gate.py
+#   and gates/gradient_claim_gate.py -- learning-rule transport criteria, not tick
+#   determinism. distinct-from: gates/replication_guard.py -- class-uniqueness census.
 # All sites read.
 
 from __future__ import annotations

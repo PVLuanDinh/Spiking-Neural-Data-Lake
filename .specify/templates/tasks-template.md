@@ -5,7 +5,7 @@ description: "Task list template for feature implementation"
 
 # Tasks: [FEATURE NAME]
 
-> Policy authority: `docs/POLICIES.md` (run `python -m snn_data_lake.substrate.policy_manifest --audit` for the enforcement manifest).
+> Policy authority: `docs/POLICIES.md` (run `python -m snn_data_lake.gates.policy_manifest --audit` for the enforcement manifest).
 
 **Input**: Design documents from `/specs/[###-feature-name]/`
 

@@ -1,7 +1,7 @@
 """The self-modification safety kernel is a list of FILE PATHS, and paths go stale silently.
 
 Several modules name the files the brain may not rewrite. Since 2026-08-18 they all derive from ONE
-definition, `substrate/safety_envelope.ENVELOPE`, and each adds only what is genuinely its own:
+definition, `gates/safety_envelope.ENVELOPE`, and each adds only what is genuinely its own:
 
   * `safety_envelope.ENVELOPE`     -- THE five brainstem files, package-relative. One definition.
   * `godel_machine._SAFETY_KERNEL` -- + run_selfchecks.py + itself, repo-relative (the verifier).
@@ -31,10 +31,10 @@ does-it-exist-on-disk half is unchanged and is what neither construction nor imp
 
 import pathlib
 
+from snn_data_lake.gates import safety_envelope
+from snn_data_lake.gates.gradient_claim_gate import _SAFETY_ENVELOPE
 from snn_data_lake.reasoning.godel_machine import _SAFETY_KERNEL
 from snn_data_lake.reasoning.self_improve import PROTECTED
-from snn_data_lake.substrate import safety_envelope
-from snn_data_lake.substrate.gradient_claim_gate import _SAFETY_ENVELOPE
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 PKG_ROOT = REPO_ROOT / "src" / "snn_data_lake"
@@ -91,7 +91,7 @@ def test_the_document_and_the_code_agree_about_the_envelope():
     """SECURITY.md's table is the authority; the code must match it.
 
     The reds for this comparison are proven by
-    `python -m snn_data_lake.substrate.safety_envelope --self-check`, which plants six mismatches
+    `python -m snn_data_lake.gates.safety_envelope --self-check`, which plants six mismatches
     against the live document. This test asserts the live tree is on the green side of it.
     """
     findings, path = safety_envelope.check_document(root=str(REPO_ROOT))

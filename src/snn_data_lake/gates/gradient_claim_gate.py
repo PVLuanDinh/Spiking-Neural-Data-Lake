@@ -6,13 +6,13 @@ every learning rule -- roughly 22 local rules ship here (R-STDP, BCM, Oja/Sanger
 Benna-Fusi, ReSuMe, tempotron, ...) and none carries a gradient cosine. None is in violation. Until
 this module existed, nobody could answer "does this rule owe a cosine?" without re-reading the module.
 
-# distinct-from: substrate/eprop_transport_gate.py (merge: it ADOPTS this module's registry).
+# distinct-from: gates/eprop_transport_gate.py (merge: it ADOPTS this module's registry).
 #   Same TECHNIQUE (an AST pass over src/), different QUESTION -- it asks "is there a rule NOBODY
 #   CHECKED?" (a transposed weight reaching a weight update). This asks "does this rule OWE a
 #   cosine?". The tree already accepted that test for its own siblings at eprop_transport_gate.py:63-77.
-# distinct-from: substrate/dormancy_gate.py -- asks "is this MODULE reachable from a live path?".
+# distinct-from: gates/dormancy_gate.py -- asks "is this MODULE reachable from a live path?".
 #   Reachability is not a claim about learning; a fully reachable module may owe nothing.
-# distinct-from: substrate/method_dormancy_gate.py -- asks "does this learning METHOD have a live
+# distinct-from: gates/method_dormancy_gate.py -- asks "does this learning METHOD have a live
 #   call site?". A method can be called every tick and still make no gradient claim.
 
 TWO HALVES, SPLIT BY COST.
@@ -68,10 +68,10 @@ had lost `cortex/eprop_kernel.py` entirely, all 17 of its defs invisible -- not 
 regressed. That reason is in the file today.
 
 Run:
-    python -m snn_data_lake.substrate.gradient_claim_gate                  # report + ASSERT (the run_selfchecks path)
-    python -m snn_data_lake.substrate.gradient_claim_gate --assert         # the CI gate
-    python -m snn_data_lake.substrate.gradient_claim_gate --self-check     # verify the verifier
-    python -m snn_data_lake.substrate.gradient_claim_gate --update-baseline
+    python -m snn_data_lake.gates.gradient_claim_gate                  # report + ASSERT (the run_selfchecks path)
+    python -m snn_data_lake.gates.gradient_claim_gate --assert         # the CI gate
+    python -m snn_data_lake.gates.gradient_claim_gate --self-check     # verify the verifier
+    python -m snn_data_lake.gates.gradient_claim_gate --update-baseline
 """
 
 import ast
@@ -83,7 +83,7 @@ import sys
 import time
 
 # THE safety envelope. Imported rather than retyped -- see the `_SAFETY_ENVELOPE` note below.
-from snn_data_lake.substrate.safety_envelope import ENVELOPE as _SAFETY_ENVELOPE
+from snn_data_lake.gates.safety_envelope import ENVELOPE as _SAFETY_ENVELOPE
 
 _HERE = os.path.abspath(__file__)
 _PKG_DIR = os.path.dirname(_HERE)
@@ -233,7 +233,7 @@ _DECLARED_STATES = frozenset(_STATE_OF.values()) | {
 #: IMPORTED at the top of this module, not retyped here (P2, 2026-08-18) -- this was the THIRD
 #: hand-maintained copy, and the P2 NOTE further down recorded it as latent debt this feature's own
 #: FR-010 made it the wrong lane to fix. The name is kept as an alias of
-#: `substrate/safety_envelope.ENVELOPE`, so both use sites here and the two tests naming it are
+#: `gates/safety_envelope.ENVELOPE`, so both use sites here and the two tests naming it are
 #: unchanged. This gate adds NOTHING to the envelope: it protects the five and only the five.
 
 
@@ -291,7 +291,7 @@ def _rule_verbs():
     including `brainstem/reflex.py::Reflex.step`.
     """
     try:
-        from snn_data_lake.substrate.method_dormancy_gate import LEARN_VERBS
+        from snn_data_lake.gates.method_dormancy_gate import LEARN_VERBS
 
         base = tuple(LEARN_VERBS)
     except Exception:  # pragma: no cover - the gate must still report without the sibling
@@ -549,7 +549,7 @@ def resolve(declared_disp, inferred):  # FR-002a: TWO signals -- declaration + i
     return UNDETERMINABLE  # classified, NOT decided (FR-016)
 
 
-# distinct-from: substrate/selfcheck_cache.py -- its AST walk HASHES module structure for
+# distinct-from: gates/selfcheck_cache.py -- its AST walk HASHES module structure for
 #   carry-forward verification; this one collects a NAME set for existence checks. Read.
 # distinct-from: substrate/home.py (sidecar census) -- a census of MODULES that can write
 #   the T037a sidecar; unrelated to symbol names. Read.
@@ -619,7 +619,7 @@ def census(root=None, overlay=None, brain_modules=None):
     """
     if brain_modules is None:
         try:
-            from snn_data_lake.substrate.dormancy_gate import BRAIN_MODULES
+            from snn_data_lake.gates.dormancy_gate import BRAIN_MODULES
 
             brain_modules = BRAIN_MODULES
         except Exception:  # pragma: no cover - the gate must still report without the package
@@ -1097,7 +1097,7 @@ def _refuses_rise(c, baseline):
 # test, it is a verdict with a number attached.
 #
 # FR-013b -- THIS MODULE IMPORTS NO RULE-CARRYING MODULE, IN ANY MODE. Not a preference: 89 src
-# modules carry `Read statically by substrate/gradient_claim_gate.py; never imported by it.`, and
+# modules carry `Read statically by gates/gradient_claim_gate.py; never imported by it.`, and
 # an in-process measure would make that sentence false on the seven it touches. Gradients come
 # from SUBPROCESSES, which also makes UNAVAILABLE a natural outcome rather than a special case --
 # a fixture whose subprocess cannot import is exactly what "unavailable" means.
@@ -1569,7 +1569,7 @@ def _write_measure_artifact(results, root=None):
         return None
     path = os.path.join(root, MEASURE_ARTIFACT)
     payload = {
-        "_generated_by": "python -m snn_data_lake.substrate.gradient_claim_gate --measure",
+        "_generated_by": "python -m snn_data_lake.gates.gradient_claim_gate --measure",
         "_staleness": (
             "Compare tree_digest with a fresh run. A MISMATCH means this file predates the current "
             "declarations and its verdicts describe a tree that no longer exists."
@@ -1624,7 +1624,7 @@ FR010_ALLOWED_RULE_EDITS = (
 # three agreed when measured, so this was a latent defect rather than an active one. The note said
 # consolidating it here would be the wrong lane, because this feature's FR-010 forbids touching the
 # envelope; that reasoning stands and is why it was done separately instead of not at all. There is
-# now ONE definition, `substrate/safety_envelope.ENVELOPE`, which all three import, and it carries a
+# now ONE definition, `gates/safety_envelope.ENVELOPE`, which all three import, and it carries a
 # self-check asserting the list still matches SECURITY.md's table -- so code cannot drift from the
 # document that authorises it either. Nothing in the envelope itself was touched.
 
@@ -1665,7 +1665,7 @@ def fr010_approved(changed_paths):
     norm = {p.replace("\\", "/").lstrip("./") for p in changed_paths}
     if "tools/envelope_hashes.json" not in norm:
         return set()
-    from snn_data_lake.substrate import envelope_hash_gate
+    from snn_data_lake.gates import envelope_hash_gate
 
     ok, _findings = envelope_hash_gate.check()
     if not ok:
@@ -1851,7 +1851,7 @@ def main(argv=None):
             return 1
 
         payload = {
-            "_generated_by": "python -m snn_data_lake.substrate.gradient_claim_gate --update-baseline",
+            "_generated_by": "python -m snn_data_lake.gates.gradient_claim_gate --update-baseline",
             "_contract": "counts may only go DOWN; rules_seen_floor is a LIVENESS bound, not a target",
             "counts": {k: gov[k] for k in (MISSING_DECLARATION, UNDETERMINABLE)},
             "rules_seen_floor": gov["rules_seen"],
@@ -1883,7 +1883,7 @@ def main(argv=None):
         if baseline is None:
             print(f"GATE FAIL: no baseline at {BASELINE_NAME}.")
             print(
-                "Generate it with: python -m snn_data_lake.substrate.gradient_claim_gate --update-baseline"
+                "Generate it with: python -m snn_data_lake.gates.gradient_claim_gate --update-baseline"
             )
             return 1
         findings = evaluate(gov, baseline, n_found, c_all=counts(rules, governed_only=False))

@@ -1,7 +1,7 @@
 """
 charge_probe -- Policy 3's SECOND TIER, the one the module gate cannot reach.
 
-`substrate/dormancy_gate.py` proves a module is IMPORTED. It does not prove the module's output changes
+`gates/dormancy_gate.py` proves a module is IMPORTED. It does not prove the module's output changes
 behaviour, and docs/POLICIES.md is explicit that those are different claims: "reachability proves a
 module is imported, NOT that its output changes behaviour". The difference is settled by neutering the
 signal on a live brain and watching what changes. That is what this does.

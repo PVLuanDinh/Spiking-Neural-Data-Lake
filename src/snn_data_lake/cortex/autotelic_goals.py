@@ -66,7 +66,7 @@ from snn_data_lake.neuromodulation.drive_reduction import REWARD_SCALE
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
 from snn_data_lake.substrate._mathutils import mean
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "GoalConditionedReadout.train": (
         "LOCAL",

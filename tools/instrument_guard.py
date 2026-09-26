@@ -82,7 +82,7 @@ THE FIVE RULES, and each one is a defect this tree actually produced:
      class; the one sanctioned path is `cortex.brain.make_brain()`. `tools/charge_probe.py` records fixing exactly this in
      itself -- *"the instrument that enforced P3 was quietly violating P4"* -- and
      `tools/arc_baseline.py` was still doing it on 2026-08-04, in the tool that produces the
-     published ARC "before" number. `substrate/replication_guard.py` cannot see this: it asserts
+     published ARC "before" number. `gates/replication_guard.py` cannot see this: it asserts
      the CLASS is defined once, never that a consumer stopped calling it.
      **BOTH SPELLINGS, since 2026-08-05.** The first version matched only a bare `ast.Name`, so
      `from snn_data_lake.cortex import brain` + `brain.Brain()` -- the most natural way to write the

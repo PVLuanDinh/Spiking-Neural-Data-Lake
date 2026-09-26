@@ -2,7 +2,7 @@
 ONE object, read against its own features RE-PAIRED across windows at matched K.
 
 THE ROW. tasks.md T080 [US4]; the C5 row `temporal_binding` in
-`substrate/conclusion_protocol.py`; FR-028's binding item; register #6's binding line;
+`gates/conclusion_protocol.py`; FR-028's binding item; register #6's binding line;
 PLAN-FINAL Part F row C-R9. Pre-registration:
 `specs/022-unified-brain-arc/evidence/t080-temporal-binding.md`, frozen at the commit that
 landed it (sections 1-2.9). Nothing here may be read outside those sections' words.
@@ -398,8 +398,8 @@ def _t080_float_or_none(x):
 # distinct-from: cortex/agency_monitor.py::_t079_arm_extras -- the per-arm REPORTED
 #   quantities of a DIFFERENT instrument (an action histogram and two Pearsons over joint
 #   channels). Same word "arm", different recording, different quantity. Read.
-# distinct-from: substrate/amdahl_gate.py::red_sham_neuter and
-#   substrate/immortal_retention.py::unlisted_reclaimers -- a sham-path timing control and a
+# distinct-from: gates/amdahl_gate.py::red_sham_neuter and
+#   gates/immortal_retention.py::unlisted_reclaimers -- a sham-path timing control and a
 #   reclaimer census. Term overlap ("arm", "reads") only; neither touches a classifier. Read.
 def _t080_acc_counters(b):
     """The brain's OWN classifier hit/seen counters. `_perception_acc` and `_audio_acc` are
@@ -656,7 +656,7 @@ def t080_verdict(got, refusals):
     return "PASS" if got["b1"].met else "NOT MET"
 
 
-# distinct-from: substrate/eprop_transport_gate.py, substrate/gradient_claim_gate.py --
+# distinct-from: gates/eprop_transport_gate.py, gates/gradient_claim_gate.py --
 #   census gates that CLASSIFY existing code. Every entry below is a deliberately broken twin
 #   of THIS module's own instrument, constructed so a red can be shown to fire rather than
 #   argued to (P8 clause 1). Read; nothing here inspects or rewrites any other module.
@@ -1683,7 +1683,7 @@ def _t080_reds_line(reds, out=print):
 #   each module's own `__main__` block, which is this tree's convention (run_selfchecks.py
 #   executes exactly that block per module and scores the exit status), not a second
 #   dispatcher. Read; nothing here runs another module's self-check.
-# distinct-from: substrate/selfcheck_cache.py::closure_key and brain_atlas.py::region_of --
+# distinct-from: gates/selfcheck_cache.py::closure_key and brain_atlas.py::region_of --
 #   a cache key over the MODULES table and a module -> region lookup. Term overlap ("module",
 #   "main") only; neither runs anything. Read.
 def main(argv=None):
@@ -1756,7 +1756,7 @@ def t080_pin_reading(pin=None):
     committed pin; the C5 row's stored value; and the same formula with the null's q95 in place
     of its mean (the MUTATED derivation, which must NOT equal the recorded reading -- the clause
     is shown reachable on every run, never assumed). Raises when the pin is absent."""
-    from snn_data_lake.substrate.conclusion_protocol import CONCLUSION
+    from snn_data_lake.gates.conclusion_protocol import CONCLUSION
 
     pin = T080_PIN if pin is None else Path(pin)
     assert pin.exists(), (

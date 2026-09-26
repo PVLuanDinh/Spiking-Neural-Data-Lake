@@ -1,7 +1,7 @@
 """Report-order probe (specs/022 T081 [US4]) -- the LIVE arm's report channel read against a
 LESIONED CLONE of the workspace state that produced it.
 
-THE ROW. tasks.md T081 [US4]; the C5 row `report_order` in `substrate/conclusion_protocol.py`;
+THE ROW. tasks.md T081 [US4]; the C5 row `report_order` in `gates/conclusion_protocol.py`;
 spec.md US4 scenario 3 and FR-028's report-order item; PLAN-FINAL Part F row C-R10; T034's
 deferred retirement of `reasoning/consciousness_probe.py`. Pre-registration:
 `specs/022-unified-brain-arc/evidence/t081-report-order.md`, frozen at the commit that landed it
@@ -1081,7 +1081,7 @@ def _t081_head():
         return f"unavailable ({type(e).__name__})"
 
 
-# distinct-from: substrate/policy_manifest.py::_tree_state -- the same `git status --porcelain`
+# distinct-from: gates/policy_manifest.py::_tree_state -- the same `git status --porcelain`
 #   read, kept beside `_t081_head`'s bare-sha pin field (the t079/t080/pin convention) rather than
 #   replacing it; added at T081's panel fold (2026-09-16) because the executor's dry run carried the
 #   LAST COMMIT's sha while running on an uncommitted step-5 tree (record 3.5 item 12).
@@ -1381,7 +1381,7 @@ def t081_pin_reading(pin=None):
     """(derived, recorded, mutated): 2.6's reading -- the mean over seeds of f_named(1.0) -
     f_scr(1.0) -- re-derived from the committed pin, beside the CONCLUSION row's recorded value and
     a mutated derivation (the sides swapped) that would refuse."""
-    from snn_data_lake.substrate.conclusion_protocol import CONCLUSION
+    from snn_data_lake.gates.conclusion_protocol import CONCLUSION
 
     pin = T081_PIN if pin is None else Path(pin)
     assert pin.exists(), (

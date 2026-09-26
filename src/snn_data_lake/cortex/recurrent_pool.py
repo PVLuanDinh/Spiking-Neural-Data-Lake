@@ -41,7 +41,7 @@ that contract.
 #   check; no recurrent pool
 # distinct-from: src/snn_data_lake/reasoning/jepa_scaffold_torch.py -- a JEPA export->core bridge
 #   check; no recurrent pool
-# distinct-from: src/snn_data_lake/substrate/eprop_transport_gate.py -- AmbiguousDisposition is a
+# distinct-from: src/snn_data_lake/gates/eprop_transport_gate.py -- AmbiguousDisposition is a
 #   gate's refusal type; nothing here steps a network
 
 import copy
@@ -850,7 +850,7 @@ def check_r_b5_freeze(
 # distinct-from: cortex/recursive_tom.py -- _t082_s2 checks one seed of a theory-of-mind control
 # distinct-from: plasticity/deep_stdp.py -- _mechanics_check asserts an STDP library's mechanics
 # distinct-from: plasticity/inhibitory_stdp.py -- istdp_synapse_rule authors a synapse rule
-# distinct-from: substrate/amdahl_gate.py -- within_noise_of_zero is a sham timing criterion
+# distinct-from: gates/amdahl_gate.py -- within_noise_of_zero is a sham timing criterion
 def check_r_b5_freeze_red(candidate, config, recording_seed=DEV_SEED, *, window=WINDOW, after=16):
     """(iii)'s red on g1, which learns nothing (the pre-registered red, SORN's plasticity left on,
     went with g3): the Carried form's pool has one weight written after its boundary fingerprint.

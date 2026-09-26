@@ -93,7 +93,7 @@ from snn_data_lake.cortex.snn_classifier import (
 )
 from snn_data_lake.substrate._mathutils import softmax
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "train": (
         "LOCAL",

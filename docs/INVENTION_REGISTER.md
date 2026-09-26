@@ -31,7 +31,7 @@ RED: undeclared-join manifest red; a registered-but-uncharged region counts UNWI
 CONTROL: the charge probe's own constructed positive. ATTRIBUTION: per-port. DISCLOSURE:
 registration is never charge. NULL: a port no consumer's output depends on is retired.
 LANDED (declaration + enforcement halves): T018/T019 2026-08-20 — the undeclared-join red
-fires in `substrate/wiring_manifest.join_check` and `substrate/manifest_gate`; T020
+fires in `substrate/wiring_manifest.join_check` and `gates/manifest_gate`; T020
 2026-08-20 — enforcement in `substrate/signal_ring.JoinConsumer` (all five joins; arbitrate
 carries the {winner, margin_to_runner_up} cleanup record; a policy-stripped port REFUSES via
 `UndeclaredJoin`) and `DeliveringProducer` (graded REFUSES unbound via `GradedUnbound`;
@@ -108,7 +108,7 @@ stage-1 region emission at birth, stage-2 cell-type deferred; sharp compartments
 hindbrain/cerebellum vs graded-then-postmitotic for cortex (importing one regime into the
 other is a published category error). RED: region-coverage over the pinned growable set reads
 below floor TODAY (cortex-only placement); boundary-width vs a gradient-only control in the
-same command. MECHANIZED: substrate/growth_coverage_gate.py (T046, 2026-08-26). CONTROLS: scrambled-field spatial null; adjusted-Rand vs an out-of-model
+same command. MECHANIZED: gates/growth_coverage_gate.py (T046, 2026-08-26). CONTROLS: scrambled-field spatial null; adjusted-Rand vs an out-of-model
 partition (Allen / published prosomeric map). ATTRIBUTION: per-region emission counts.
 DISCLOSURE: no computational multi-region growth policy exists to adopt — three searches, none
 found. NULL: if the GRN readout never beats gradient-only labels, the composition is deleted.

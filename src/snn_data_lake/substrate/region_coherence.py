@@ -53,7 +53,7 @@ import numpy as np
 
 from snn_data_lake.cortex.integration_measure import normalized_lz
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "RegionCoherence.update": (
         "NOT_A_RULE",

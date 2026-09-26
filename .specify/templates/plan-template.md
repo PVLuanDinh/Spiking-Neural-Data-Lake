@@ -44,7 +44,7 @@
 manifest before evaluating gates -- pointer + command only, nothing restated here:
 
 ```bash
-python -m snn_data_lake.substrate.policy_manifest --audit
+python -m snn_data_lake.gates.policy_manifest --audit
 ```
 
 [Gates determined based on constitution file]

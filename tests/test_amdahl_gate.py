@@ -1,6 +1,6 @@
 """The reds for Gate Zero -- specs/022 S6 (evidence/s6-kernel-wire.md) x specs/008 plan.md.
 
-WRITTEN AND COMMITTED **RED**, before `substrate/amdahl_gate.py` exists, per the pre-registration's
+WRITTEN AND COMMITTED **RED**, before `gates/amdahl_gate.py` exists, per the pre-registration's
 commit order (s6-kernel-wire.md 2.8 item 2). The import below is the red: collection fails until the
 instrument lands. A red nobody has seen fire is a red nobody can trust, and an instrument whose
 criteria first appear beside its implementation has no evidence its criteria could ever have failed.
@@ -28,7 +28,7 @@ own same-substrate control (the sham arm on the brain) for that.
 
 import pytest
 
-from snn_data_lake.substrate import amdahl_gate
+from snn_data_lake.gates import amdahl_gate
 
 
 def test_a_padded_object_path_reads_a_large_ceiling():

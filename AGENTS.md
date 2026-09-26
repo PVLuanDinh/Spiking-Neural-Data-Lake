@@ -93,7 +93,7 @@ The ignore rule is now removed, and this page has been tracked since `bcad89e` (
 ## Adding a module
 
 Register it in **both** `src/snn_data_lake/__init__.py` `REGIONS` and `run_selfchecks.py`, then make it
-reachable from a live path or add it to `substrate/dormancy_gate.py` `EXEMPT` with a reason — Policy 3
+reachable from a live path or add it to `gates/dormancy_gate.py` `EXEMPT` with a reason — Policy 3
 fails CI otherwise.
 
 **Determinism:** `random.Random(seed)`, `zlib.crc32()` for persisted hashes, ASCII-only output.

@@ -47,7 +47,7 @@ import math
 import random
 import zlib
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "AffectiveEpisodicStore.consolidate": (
         "NOT_A_RULE",

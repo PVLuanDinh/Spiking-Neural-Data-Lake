@@ -8,7 +8,7 @@ extracted here VERBATIM so two callers share ONE source of truth:
     runs the same banner + the same regression asserts: online > 90%, sleep-refit > 90%).
   * ~~reasoning/brain_loop.py~~ -- **RETIRED and absent from the tree.** It was the second caller,
     injecting its OWN durable lake + reflector and receiving each newly-learned concept through
-    `emit`. `substrate/replication_guard.py` records why it went (P4: its capabilities were verified
+    `emit`. `gates/replication_guard.py` records why it went (P4: its capabilities were verified
     canonical in `cortex.brain.Brain`). Stated plainly rather than deleted, because the consequence
     is a live P3 finding: `develop_cycles`'s `lake=`, `reflector=` and `emit=` parameters now have
     ZERO in-tree callers, so the only exercised path is the standalone `lake=None` branch. Re-homing

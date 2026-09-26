@@ -6,7 +6,7 @@ the LiveBrain), so every such brain stayed reachable after close() until the pro
 """
 
 from snn_data_lake.cortex.brain import make_brain
-from snn_data_lake.substrate.amdahl_gate import _count_lif_process
+from snn_data_lake.gates.amdahl_gate import _count_lif_process
 from snn_data_lake.substrate.home import throwaway_home
 
 

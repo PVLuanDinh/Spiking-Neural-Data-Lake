@@ -183,7 +183,7 @@ second-model review, the battery cadence), §6 says so.
 **Two open defects a fresh clone meets first.** Each looks exactly like a regression. Check whether each
 is still open before you rely on this paragraph.
 
-1. **`substrate/envelope_hash_gate.py` hashes raw working-tree bytes.**
+1. **`gates/envelope_hash_gate.py` hashes raw working-tree bytes.**
    - All five envelope files are stored LF. The approved baseline, `tools/envelope_hashes.json`, holds
      `reflex.py`, `arm_config.py` and `interpreter.py` as CRLF bytes and `serial_arm.py` and
      `so101_arm.py` as LF, which is how they sat on the operator's Windows checkout.
@@ -419,7 +419,7 @@ its rule name, not its paper name, and was nearly built a second time.
   Commit the pre-registration ALONE, before any red runs.
 - **Build** to registration-readiness, in ONE commit:
   - register a new module in `REGIONS` (`src/snn_data_lake/__init__.py`) and in `run_selfchecks.py`;
-  - make it reachable from a live path, or add it to `EXEMPT` in `substrate/dormancy_gate.py` with a
+  - make it reachable from a live path, or add it to `EXEMPT` in `gates/dormancy_gate.py` with a
     reason;
   - give a new learning-verb method a live-path caller, or an `EXEMPT_METHOD` entry with a disposition;
   - keep determinism: `random.Random(seed)` per instance, `zlib.crc32` for persisted hashes (never the
@@ -462,8 +462,8 @@ python tools/red_reachability.py --assert
 python tools/dependency_ledger.py --assert
 python tools/citation_guard.py
 python tools/doc_command_guard.py --assert
-timeout 600 python -m snn_data_lake.substrate.dormancy_gate
-timeout 600 python -m snn_data_lake.substrate.method_dormancy_gate
+timeout 600 python -m snn_data_lake.gates.dormancy_gate
+timeout 600 python -m snn_data_lake.gates.method_dormancy_gate
 timeout 900 python -m pytest -p no:cacheprovider --no-cov -x tests/<the test files you touched>
 ```
 
@@ -478,7 +478,7 @@ Notes on these checks:
 - **`run_selfchecks.py` runs every self-check** and takes about forty minutes on the operator's host. On a
   fresh clone some checks depend on gitignored assets, and the envelope gate reds as §3 describes. Run it
   only if your session can hold it: in the background, with a log, and reading each red first against §3.
-- **Never run `python -m snn_data_lake.substrate.policy_manifest --certify`.** It rewrites the record.
+- **Never run `python -m snn_data_lake.gates.policy_manifest --certify`.** It rewrites the record.
   `--assert` is read-only and may be run.
 
 ## 7. Writing to the owner
@@ -883,7 +883,7 @@ Next action for the owner: ONE, doable in under two minutes
   - local disclosure-gated state (P4c's corollary: it belongs in the operator's local files, never in a
     tracked doc).
 
-  A word ceiling in `substrate/doc_budget_gate.py` keeps status from piling up here. Raising the ceiling
+  A word ceiling in `gates/doc_budget_gate.py` keeps status from piling up here. Raising the ceiling
   needs its reason in the same change.
 - **Its anchor is its own history.** The commit that last changed this file is the tree it was verified
   against, and §5's check lists what has moved since. A rewrite re-runs that verification before it

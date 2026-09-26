@@ -56,7 +56,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 #: Which symbols here OWE a gradient cosine, read statically by
-#: `substrate/gradient_claim_gate.py` (never imported by it). Per-SYMBOL rather than per-module
+#: `gates/gradient_claim_gate.py` (never imported by it). Per-SYMBOL rather than per-module
 #: because this one file holds the e-prop rule, its independent BPTT reference, a surrogate
 #: autograd.Function and a diagnostic -- four different answers that a per-module verdict cannot give.
 #:

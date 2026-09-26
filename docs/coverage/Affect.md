@@ -198,7 +198,7 @@ about the code, not about this table.
 - **`Cortisol.reflex_threshold_scale()` has zero live callers** -- 0 calls in 60 instrumented wake
   ticks. Cortisol's documented hypervigilance arm is dormant; only its caution and learning-rate arms
   run. Not scored as a separate row (it would be a padding row at 0-20 and it is a *method*-level
-  dormancy case, which `substrate/method_dormancy_gate.py` is the right home for), but it is a real
+  dormancy case, which `gates/method_dormancy_gate.py` is the right home for), but it is a real
   P3 item.
 
 ## Capability inventory (Policy 2: what provides what, before anything is retired)

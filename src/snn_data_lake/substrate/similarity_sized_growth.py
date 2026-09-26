@@ -60,7 +60,7 @@ import numpy as np
 # REUSE the developmental match we already compute (ART cosine to nearest prototype) + its kernel.
 from snn_data_lake.hippocampus.growing_learner import GrowingLearner, _cosine
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "FrozenExpert.learn": (
         "LOCAL",

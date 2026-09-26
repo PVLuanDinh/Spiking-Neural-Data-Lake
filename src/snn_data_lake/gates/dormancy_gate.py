@@ -28,7 +28,7 @@ by a console script, or a faculty awaiting a prerequisite such as a real sensor)
 brain module is neither reachable nor exempt; it also reports (soft) any EXEMPT entry that has since
 become reachable (retire the exemption) so the list shrinks honestly as waves land.
 
-  python -m snn_data_lake.substrate.dormancy_gate   # (also run by run_selfchecks.py)
+  python -m snn_data_lake.gates.dormancy_gate   # (also run by run_selfchecks.py)
 """
 
 import ast
@@ -985,7 +985,7 @@ def _graph():
     return g
 
 
-# distinct-from: substrate/method_dormancy_gate.py -- its per-file import list serves the
+# distinct-from: gates/method_dormancy_gate.py -- its per-file import list serves the
 #   METHOD gate's own narrow scan; this exposes the whole-package graph _graph() already
 #   builds. Alias, not a second walk. Read.
 def import_graph():
@@ -1077,10 +1077,10 @@ def conditional_import_count():
     return n
 
 
-# distinct-from: brain_atlas.py, substrate/selfcheck_cache.py -- phrase overlap only, as with
+# distinct-from: brain_atlas.py, gates/selfcheck_cache.py -- phrase overlap only, as with
 #   brainstem/arm_hardware.py, cortex/everyday_battery.py and hippocampus/ng_snn.py (a region file
 #   list, a keying word, a torque, a concurrency conjunct, a unit prune); all five read. The nearest
-#   real sibling, substrate/eprop_transport_gate.py's stale_exemptions(), checks THAT gate's transport
+#   real sibling, gates/eprop_transport_gate.py's stale_exemptions(), checks THAT gate's transport
 #   registry against gradient findings; this checks THIS table's keys against _CANON.
 # G8 S0b (specs/022 evidence g8-reorganization.md 2.4): `coverage()` reads only the EXEMPT keys that
 # resolve (`m in _CANON`), so a key naming NO brain module -- a rename, a retirement, a typo --

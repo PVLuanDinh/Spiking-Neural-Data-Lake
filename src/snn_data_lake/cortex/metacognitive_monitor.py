@@ -161,7 +161,7 @@ from snn_data_lake.substrate._mathutils import clamp01, sigmoid
 from snn_data_lake.substrate.paired_contrast import T_BAR
 from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "MetacognitiveMonitor.learn_gate": (
         "NOT_A_RULE",
@@ -811,7 +811,7 @@ def _p6_experiment(seed=0, n=180):
 # does NOT avoid the T070 trap (t077-metacognition.md 2.10; t070-integration-kernel.md 3.5).
 # consolidates: cortex/second_order_access.py::SecondOrderAccess.calibration -- a thresholded call's running
 #   accuracy; superseded by the rank-based scorer below and re-pointed to it (2.9 step 3).
-# distinct-from: substrate/replay_gate.py -- the kernel's snapshot/restore chain; `replay_reliability` below
+# distinct-from: gates/replay_gate.py -- the kernel's snapshot/restore chain; `replay_reliability` below
 #   replays THIS pool on its recorded keyword inputs, no kernel, no snapshot.
 # distinct-from: substrate/paired_contrast.py::contrast -- the paired t over seeds, REUSED, not rewritten;
 #   cortex/prior_drift_harness.py re-exports it, so its own call sites still resolve.
@@ -957,7 +957,7 @@ def replay_reliability(stream, seed, base=0.4, expect=None, neuter=None):
 # distinct-from: cortex/prior_drift_harness.py::run_campaign -- that harness ticks a KernelState population from the
 #   H01 artifact; this ticks make_brain() and reads its own monitor; the paired t (`contrast`) is REUSED from
 #   substrate/paired_contrast.py, lazily.
-# distinct-from: substrate/amdahl_gate.py::live_reading -- a timing ceiling over three brains; this records a
+# distinct-from: gates/amdahl_gate.py::live_reading -- a timing ceiling over three brains; this records a
 #   read/outcome stream and scores it; no timing, no neuter of a code path.
 T077_N_TICKS = 600
 T077_SEEDS = tuple(range(8))

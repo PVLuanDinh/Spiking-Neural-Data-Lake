@@ -91,7 +91,7 @@ K = 5  # conv kernel size (single input channel, valid conv, stride 1)
 # promotion (the P2-shape duplication its ledger row flagged); imported from the one home now.
 from snn_data_lake.plasticity.snn_mnist_stdp import _env, _envf  # noqa: E402
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "ConvStdp.train_image": (
         "LOCAL",

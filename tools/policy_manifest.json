@@ -1,5 +1,5 @@
 {
-  "_derived_from": "docs/POLICIES.md -- regenerate with: python -m snn_data_lake.substrate.policy_manifest --manifest --write",
+  "_derived_from": "docs/POLICIES.md -- regenerate with: python -m snn_data_lake.gates.policy_manifest --manifest --write",
   "drift": {
     "not_in_ci": [],
     "self_disposition": "self-disposition: policy_manifest (this instrument) is EXCLUDED from its own unclaimed-gate census -- it is the census taker, not a policy gate; its liveness is asserted by the CI step and run_selfchecks entry that run it. Printed on every report so the exclusion is never silent.",
@@ -35,23 +35,23 @@
         {
           "argv": [
             "-m",
-            "snn_data_lake.substrate.dormancy_gate"
+            "snn_data_lake.gates.dormancy_gate"
           ],
-          "source": "substrate/dormancy_gate.py"
+          "source": "gates/dormancy_gate.py"
         },
         {
           "argv": [
             "-m",
-            "snn_data_lake.substrate.method_dormancy_gate"
+            "snn_data_lake.gates.method_dormancy_gate"
           ],
-          "source": "substrate/method_dormancy_gate.py"
+          "source": "gates/method_dormancy_gate.py"
         },
         {
           "argv": [
             "-m",
-            "snn_data_lake.substrate.import_manifest"
+            "snn_data_lake.gates.import_manifest"
           ],
-          "source": "substrate/import_manifest.py"
+          "source": "gates/import_manifest.py"
         }
       ],
       "id": "P3",
@@ -65,16 +65,16 @@
         {
           "argv": [
             "-m",
-            "snn_data_lake.substrate.replication_guard"
+            "snn_data_lake.gates.replication_guard"
           ],
-          "source": "substrate/replication_guard.py"
+          "source": "gates/replication_guard.py"
         },
         {
           "argv": [
             "-m",
-            "snn_data_lake.substrate.lake_rebuild_gate"
+            "snn_data_lake.gates.lake_rebuild_gate"
           ],
-          "source": "substrate/lake_rebuild_gate.py"
+          "source": "gates/lake_rebuild_gate.py"
         }
       ],
       "id": "P4",
@@ -144,16 +144,16 @@
         {
           "argv": [
             "-m",
-            "snn_data_lake.substrate.eprop_transport_gate"
+            "snn_data_lake.gates.eprop_transport_gate"
           ],
-          "source": "substrate/eprop_transport_gate.py"
+          "source": "gates/eprop_transport_gate.py"
         },
         {
           "argv": [
             "-m",
-            "snn_data_lake.substrate.gradient_claim_gate"
+            "snn_data_lake.gates.gradient_claim_gate"
           ],
-          "source": "substrate/gradient_claim_gate.py"
+          "source": "gates/gradient_claim_gate.py"
         }
       ],
       "id": "e-prop",

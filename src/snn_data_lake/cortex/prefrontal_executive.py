@@ -128,7 +128,7 @@ import random
 from snn_data_lake.plasticity.short_term_plasticity import DynamicSynapse
 from snn_data_lake.plasticity.wm_capacity import CapacityRefusal, derive_capacity, seed_viability
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "PrefrontalExecutive.top_down_bias": (
         "NOT_A_RULE",

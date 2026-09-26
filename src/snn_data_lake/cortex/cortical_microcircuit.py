@@ -40,7 +40,7 @@ asynchronous-irregular, superficial-low / L5-elevated) are what this scaled twin
 THE INPUT PORT (added 2026-08-04, closing P0's clearest open avenue). Until now this circuit took no
 signal from anywhere: `__init__` configured it and `.simulate(t_ms)` ran it, so no faculty could drive
 the column and nothing could read a response to anything -- which is exactly why
-`substrate/dormancy_gate.py` exempts it permanently with the reason *"it has no input port"*.
+`gates/dormancy_gate.py` exempts it permanently with the reason *"it has no input port"*.
 `simulate(..., thalamic_hz=)` is that port: the paper's own thalamo-cortical projection (N_TH = 902
 relay cells onto L4e/L4i/L6e/L6i with the Table-5 probabilities; L2/3 and L5 receive NO direct
 thalamic afferent), folded into the same diffusion approximation the background bank uses. Driving it
@@ -83,7 +83,7 @@ K_EXT = [1600, 1500, 2100, 1900, 2000, 1900, 2900, 2100]
 
 # --- THE THALAMIC INPUT PORT (Potjans-Diesmann 2014, thalamic column of Table 5) ------------------
 # WHY THIS EXISTS. `docs/POLICIES.md` P0 lists "cortical column construction" as its clearest OPEN
-# avenue, and `substrate/dormancy_gate.py` exempts this module permanently with the reason *it has no
+# avenue, and `gates/dormancy_gate.py` exempts this module permanently with the reason *it has no
 # input port*: `__init__(scale, seed, g, bg_rate, v_op, noise_gain)` and `.simulate(t_ms)` took no
 # signal from anywhere, so no faculty could drive the column and nothing could read a response to
 # anything. A column that cannot be driven is not a faculty; it is a screensaver. This is that port.
@@ -521,7 +521,7 @@ def main():
 
     # ================= (4) THE INPUT PORT: the column can be DRIVEN, and it answers ==================
     # P0's clearest open avenue (docs/POLICIES.md): this circuit was EXEMPT-permanent in
-    # substrate/dormancy_gate.py because "it has no input port". It has one now, and the claim is not
+    # gates/dormancy_gate.py because "it has no input port". It has one now, and the claim is not
     # that the port exists -- it is that driving it changes the column in the LAYER-SPECIFIC way the
     # thalamic projection predicts.
     port = {hz: _port_rates(hz) for hz in PORT_RATES}

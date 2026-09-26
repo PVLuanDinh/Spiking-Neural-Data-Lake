@@ -24,7 +24,7 @@ import importlib
 
 import pytest
 
-gate = importlib.import_module("snn_data_lake.substrate.method_dormancy_gate")
+gate = importlib.import_module("snn_data_lake.gates.method_dormancy_gate")
 
 
 def _def_line(module_rel, cls_name, meth):
@@ -162,7 +162,7 @@ def test_parse_all_still_returns_modules():
     trees = gate._parse_all()
     assert trees, "no modules parsed"
     assert all(isinstance(t, ast.Module) for t in trees.values())
-    assert "substrate.method_dormancy_gate" in trees
+    assert "gates.method_dormancy_gate" in trees
 
 
 def test_uncertain_is_reported_not_asserted():

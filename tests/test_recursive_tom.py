@@ -405,8 +405,8 @@ def test_the_live_false_belief_list_reaches_state_with_both_c5_sentences_beside_
     tracked agent on the world, so the list empties; the unwitnessed statement that follows moves
     the world with the user absent, so the user's first-order belief and the user's nested model of
     the brain both go stale."""
+    from snn_data_lake.gates.conclusion_protocol import CONCLUSION
     from snn_data_lake.substrate import brain_telemetry
-    from snn_data_lake.substrate.conclusion_protocol import CONCLUSION
 
     # The two sentences are read OFF THE ROW, never retyped here: a provenance line that
     # paraphrases them is a second copy that can drift.
@@ -472,7 +472,7 @@ def test_committed_manifest_carries_the_belief_wire():
     """The TRACKED artifact must hold the declared edge (regenerated in the same commit), and the
     consumer's subscription must state the same anatomy as the producer's payload -- a wire whose
     two ends disagreed would typecheck at neither end."""
-    from snn_data_lake.substrate.manifest_gate import rebuild_from_registrants
+    from snn_data_lake.gates.manifest_gate import rebuild_from_registrants
 
     m = rebuild_from_registrants()
     assert ("recursive_tom", "belief_out") in m.ports

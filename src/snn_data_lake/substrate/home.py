@@ -49,7 +49,7 @@ from snn_data_lake.substrate.binlog import (
     unpack_fact,
 )
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "KnowledgeLog.consolidate": (
         "NOT_A_RULE",

@@ -75,9 +75,9 @@ module-attribute spellings are counted only when the alias is import-tracked;
 `from ... import *` is invisible. Undercount reds LOUDLY (a missed region keeps the
 coverage red redder); the fabrication direction is what the <unresolved> red closes.
 
-  python -m snn_data_lake.substrate.growth_coverage_gate            # report (bare == assert)
-  python -m snn_data_lake.substrate.growth_coverage_gate --assert   # CI form
-  python -m snn_data_lake.substrate.growth_coverage_gate --self-check
+  python -m snn_data_lake.gates.growth_coverage_gate            # report (bare == assert)
+  python -m snn_data_lake.gates.growth_coverage_gate --assert   # CI form
+  python -m snn_data_lake.gates.growth_coverage_gate --self-check
 """
 
 import ast
@@ -484,10 +484,10 @@ def report(do_assert=False):
     return 0
 
 
-# distinct-from: substrate/manifest_gate.py -- its self-check fires reds through its own
+# distinct-from: gates/manifest_gate.py -- its self-check fires reds through its own
 #   verdict path; the SAME pattern is followed here, no code shared. Site read.
-# distinct-from: substrate/selfcheck_cache.py -- P8 reds for the cache's keys; unrelated. Read.
-# distinct-from: substrate/doc_budget_gate.py -- reds for budget statuses; unrelated. Read.
+# distinct-from: gates/selfcheck_cache.py -- P8 reds for the cache's keys; unrelated. Read.
+# distinct-from: gates/doc_budget_gate.py -- reds for budget statuses; unrelated. Read.
 # distinct-from: thalamus/global_workspace.py -- a slot-load site; unrelated. Read.
 # distinct-from: cortex/self_improvement_suite.py -- the rung census; unrelated. Read.
 def _report_rc(mod):
@@ -504,7 +504,7 @@ def self_check():
     module object is patched AND executed -- under `-m` the running copy is __main__ and
     `import` yields a second copy, so patching one while running the other reads green
     forever (this exact trap fired on the first run of this self-check)."""
-    import snn_data_lake.substrate.growth_coverage_gate as G
+    import snn_data_lake.gates.growth_coverage_gate as G
 
     print("GROWTH COVERAGE GATE self-check")
     rc0, out0 = _report_rc(G)

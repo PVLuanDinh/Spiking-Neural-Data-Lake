@@ -83,7 +83,7 @@ def q95(draws):
     restatement of `cortex/metacognitive_monitor`'s `track_error` convention. Moved rather
     than copied for a MEASURED reason: `agency_monitor` is a LIVE module (autonomous_loop
     imports it) and attention_schema is an EXEMPT instrument, so a live module importing it
-    -- even lazily, inside a function -- makes `substrate/dormancy_gate` name that exemption
+    -- even lazily, inside a function -- makes `gates/dormancy_gate` name that exemption
     stale and the gate exits 1 (run 2026-09-15: "1 EXEMPT entries are now reachable
     (retire them): ['attention_schema']"). The statistic therefore lives where any module
     may import it, and the instruments keep their exemptions -- the same argument, and the

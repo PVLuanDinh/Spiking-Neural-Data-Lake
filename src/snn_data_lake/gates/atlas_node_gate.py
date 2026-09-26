@@ -39,10 +39,10 @@ rest listed in the EXEMPT table below -- each a node declared before any module 
 region said its name. Every row carries the task that retires it or the reason it stays.
 """
 
-# distinct-from: substrate/region_charge_gate.py -- CHARGE at region granularity (measured
+# distinct-from: gates/region_charge_gate.py -- CHARGE at region granularity (measured
 #   attribution); this polices node-id NAMING, the necessary condition below it.
 # distinct-from: snn_data_lake/connectome.py -- declares the nodes; this asks whether the
-#   tree knows them. distinct-from: substrate/manifest_gate.py -- port contract checks.
+#   tree knows them. distinct-from: gates/manifest_gate.py -- port contract checks.
 # All sites read.
 
 from __future__ import annotations

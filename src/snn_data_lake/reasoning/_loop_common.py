@@ -22,7 +22,7 @@ from snn_data_lake.substrate.device import resolve_device
 from snn_data_lake.reasoning.fast_features import batched_features
 
 #: Which symbols here OWE a gradient cosine, read statically by
-#: `substrate/gradient_claim_gate.py`; never imported by it.
+#: `gates/gradient_claim_gate.py`; never imported by it.
 #:
 #: ADDED 2026-08-18 by the specs/020 audit, which (see census-baseline.md) had found this symbol
 #: named in governing text as "declared APPROXIMATES_GRADIENT" while carrying no declaration

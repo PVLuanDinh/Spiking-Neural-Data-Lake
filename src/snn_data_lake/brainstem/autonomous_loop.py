@@ -60,7 +60,7 @@ from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
 from snn_data_lake.substrate.signal_ring import LakeJournaller, SignalRing
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "AutonomousArm._adapt_actuation": (
         "NOT_A_RULE",
@@ -1402,7 +1402,7 @@ class AutonomousArm:
         #
         # Correct disposition is EXEMPT-with-reason, not wiring: the WM attractor is real and is
         # exercised by the offline loops that have actual delay periods; it is the live arm loop that
-        # has nothing for it to do. That belongs in substrate/dormancy_gate.EXEMPT (owned elsewhere
+        # has nothing for it to do. That belongs in gates/dormancy_gate.EXEMPT (owned elsewhere
         # this pass, so reported rather than edited). Do not re-wire this without first giving the
         # loop a genuine input-free interval.
         gain = self.pfc_gain
@@ -1820,7 +1820,7 @@ class AutonomousArm:
     #   one envelope passage inside it. Sites read; term overlap is the spec citation.
     # distinct-from: substrate/efferent_boundary.py -- declare_ports registers the lane's ports;
     #   this is the loop's passage that feeds it. Read.
-    # distinct-from: substrate/envelope_hash_gate.py, substrate/lake_rebuild_gate.py -- gates
+    # distinct-from: gates/envelope_hash_gate.py, gates/lake_rebuild_gate.py -- gates
     #   over bytes and the index; phrase overlap only. Read.
     # distinct-from: thalamus/reentrant_workspace.py -- the theta authority door; phrase
     #   overlap only ("the ONE statement"). Read.

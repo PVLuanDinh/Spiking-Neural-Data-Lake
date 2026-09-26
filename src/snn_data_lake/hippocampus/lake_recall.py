@@ -153,7 +153,7 @@ class LakeRecall:
         self._attached = list(episodes)
         return self.refresh()
 
-    # distinct-from: substrate/lake_rebuild_gate.py -- rebuilds the durable POINTER index
+    # distinct-from: gates/lake_rebuild_gate.py -- rebuilds the durable POINTER index
     #   from the lake (a gate over LakeIndex); this fingerprints an in-RAM window to decide
     #   a cache rebuild. Site read.
     @staticmethod

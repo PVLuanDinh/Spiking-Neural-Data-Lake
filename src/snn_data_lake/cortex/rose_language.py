@@ -86,7 +86,7 @@ import numpy as np
 from snn_data_lake.cortex.vsa_reasoning import D, bind, bundle, cleanup, hv, permute
 from snn_data_lake.cortex.world_kb_stream import load_kb
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "RoseLanguage.nightly_refit": (
         "LOCAL",

@@ -79,7 +79,7 @@ WHAT AN INVENTED METHOD OWES (P8), all in main():
 import math
 import random as _random
 
-# distinct-from: substrate/growth_coverage_gate.py -- CENSUSES which regions have a live
+# distinct-from: gates/growth_coverage_gate.py -- CENSUSES which regions have a live
 #   growth call site (a repo instrument); this gate DECIDES whether a censused site may
 #   keep growing (a brain faculty). Site read.
 # distinct-from: cortex/neurogenesis_engine.py -- the GROWER this gate stops; its

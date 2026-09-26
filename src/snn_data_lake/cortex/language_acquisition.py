@@ -39,7 +39,7 @@ import numpy as np
 
 from snn_data_lake.cortex.predictive_coding import PredictiveCodingNetwork
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "LanguageAcquisition._learn_step": (
         "LOCAL",

@@ -5,7 +5,7 @@ through __main__; these survive a refactor that moves them).
 
 import pytest
 
-from snn_data_lake.substrate.manifest_gate import run as gate_run
+from snn_data_lake.gates.manifest_gate import run as gate_run
 from snn_data_lake.substrate.wiring_manifest import (
     ARTIFACT,
     Port,

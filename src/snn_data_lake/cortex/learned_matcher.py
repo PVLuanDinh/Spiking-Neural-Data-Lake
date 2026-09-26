@@ -21,7 +21,7 @@ from snn_data_lake import snn_classifier as C  # train/forward/softmax + globals
 from snn_data_lake.brainstem.signal_loop import build_default_library
 from snn_data_lake.cortex.spike_preprocessing import encode_latency, van_rossum_distance
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "train_learned": (
         "LOCAL",

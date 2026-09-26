@@ -71,7 +71,7 @@ import bisect as _bisect
 import math
 import random
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "TimeCellClock.learn_interval": (
         "LOCAL",

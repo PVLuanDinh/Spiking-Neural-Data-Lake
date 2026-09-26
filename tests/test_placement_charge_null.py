@@ -18,7 +18,7 @@ of `hippocampus/growing_learner` a placement) was BUILT and MEASURED the same wa
 keys beyond the nondeterminism baseline, i.e. it charged nothing, so P3 ("a wire that does not
 charge is reverted") reverted it. The record is `specs/022-unified-brain-arc/evidence/
 s1-placement-null.md`. The day this test goes RED -- placement has gained a live reader -- retire
-the DISCLOSURE line in `substrate/growth_coverage_gate.report` and reopen the wire with evidence.
+the DISCLOSURE line in `gates/growth_coverage_gate.report` and reopen the wire with evidence.
 
 The nondeterminism baseline is measured in the same run (two live brains) and pinned by IDENTITY
 (`snap.t`, the wall clock), never by a count.
@@ -144,7 +144,7 @@ def test_placement_is_write_only_on_the_live_path():
     inert = _diff(live_a, neutered, baseline)
     assert inert == [], (
         "PLACEMENT HAS GAINED A LIVE READER: these keys now depend on it -> "
-        f"{inert}. Retire the DISCLOSURE line in substrate/growth_coverage_gate.report, reopen "
+        f"{inert}. Retire the DISCLOSURE line in gates/growth_coverage_gate.report, reopen "
         "the growth->placement wire (evidence/s1-placement-null.md) and move the growth-coverage "
         "pin with a measured charge beside it."
     )

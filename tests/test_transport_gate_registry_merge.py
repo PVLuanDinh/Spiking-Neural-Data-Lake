@@ -17,8 +17,8 @@ those disagree about the disposition -- `latent_q` (LOCAL vs CONTROL) and `reaso
 
 import importlib
 
-etg = importlib.import_module("snn_data_lake.substrate.eprop_transport_gate")
-gate = importlib.import_module("snn_data_lake.substrate.gradient_claim_gate")
+etg = importlib.import_module("snn_data_lake.gates.eprop_transport_gate")
+gate = importlib.import_module("snn_data_lake.gates.gradient_claim_gate")
 
 
 def test_the_owner_adjudication_resolves_through_the_registry():

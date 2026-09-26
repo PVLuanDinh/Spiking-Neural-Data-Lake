@@ -39,7 +39,7 @@ were exempted by their own low score, which is a selection effect, not a clean b
 | path | what it actually measures |
 |---|---|
 | `pyproject.toml:101` `--cov-fail-under=70` | pytest **line** coverage |
-| `substrate/dormancy_gate.py:346-361` `coverage()` | module **reachability** — `{total, reachable, exempt, dormant}` |
+| `gates/dormancy_gate.py:346-361` `coverage()` | module **reachability** — `{total, reachable, exempt, dormant}` |
 | `substrate/region_wiring.py:67-88` `coverage()` | registered **charge adapters** — currently **0**; the live daemon logs `adapters=0` |
 
 None of them is the faculty percentage. This is precisely the failure `COVERAGE_RUBRIC.md:8-9` was

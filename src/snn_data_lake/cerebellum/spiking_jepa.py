@@ -107,7 +107,7 @@ from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.plasticity.espp_rule import espp_modulator_core
 from snn_data_lake.substrate._mathutils import dot, mean
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "SpikingJEPA._readout_grad": (
         "APPROXIMATES_GRADIENT",

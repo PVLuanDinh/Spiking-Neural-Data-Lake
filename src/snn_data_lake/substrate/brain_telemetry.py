@@ -428,7 +428,7 @@ def _coverage_census():
     return _COVERAGE
 
 
-# distinct-from: substrate/conclusion_protocol.py -- that module GATES the registry (findings a gate
+# distinct-from: gates/conclusion_protocol.py -- that module GATES the registry (findings a gate
 #   asserts on); this one SERVES it to the page. One registry, two consumers. Site read.
 # distinct-from: cortex/recursive_tom.py::t082_read and cortex/report_order_probe.py::t081_read --
 #   per-seed readings of a CAMPAIGN's recording rows, producing the numbers a C5 row is charged
@@ -458,7 +458,7 @@ def conclusion_rows(cognition, registry=None):
     """
     # LAZY, and it has to be: conclusion_protocol's mechanism clause imports THIS module back
     # (T090 2.9 step 3), so a module-level pair in both directions would be an import cycle.
-    from snn_data_lake.substrate import conclusion_protocol as _cp
+    from snn_data_lake.gates import conclusion_protocol as _cp
 
     reg = _cp.CONCLUSION if registry is None else registry
     live = cognition or {}

@@ -329,7 +329,7 @@ CORE = [
     "substrate.binlog",
     "substrate.growable",
     "substrate.spontaneous_activity",  # T045: OU stationarity + same-path A/B + nulls + refusals
-    "substrate.growth_coverage_gate",  # T046: coverage ratchet + refusals + sharpness + nulls + Allen
+    "gates.growth_coverage_gate",  # T046: coverage ratchet + refusals + sharpness + nulls + Allen
     "substrate.region_wiring",  # the always-on daemon's faculty-wiring registry -> charge_all + honest coverage report
     "substrate.arm_view",  # stdlib PNG encoder + demand-gated offscreen arm frames
     "substrate.brain_telemetry",  # snapshot contract + recorder + /api/state (no-orphan-panel gate)
@@ -338,43 +338,43 @@ CORE = [
     # P4c 2026-08-04: the brain's DRIVE, promoted from the repo root where no gate reached it. Its
     # __main__ is a self-check that never starts the loop (--serve does that), so this entry is safe.
     "substrate.learn_daemon",
-    "substrate.dormancy_gate",  # Policy 3: assert every brain module is reachable from a live path or EXEMPT
-    "substrate.replication_guard",  # Policy 4: assert one canonical Brain/LiveBrain/AutonomousArm (no replica)
-    "substrate.import_manifest",  # Policy 3: assert every reasoning/ module the live brain lazily imports still imports
-    "substrate.method_dormancy_gate",  # Policy 3 amendment: assert no update rule on a live module lacks a live caller
-    "substrate.eprop_transport_gate",  # e-prop invariant: assert no governed module transposes a weight into a weight update
-    "substrate.doc_budget_gate",  # word ceilings on the standing docs: a document may not grow unnoticed
-    "substrate.gradient_claim_gate",  # e-prop SCOPE: assert every governed learning rule is classified as owing a cosine or not
-    "substrate.policy_manifest",
-    "substrate.capability_bar",  # X1: 4 constructed reds + the REFUSED arm + the surface check
-    "substrate.immortal_retention",  # L5: label reds, the reclaimer scan, the cross-process round trip
-    "substrate.conclusion_protocol",  # C5: row reds, the verdict/aggregate refusals, the prose control  # POLICIES.md manifest: derivation reconciles, committed copy in sync, drift never worsens
-    "substrate.perf_baseline",  # 022 T001 wiring check: baseline parses + scorer discriminates (cheap; never measures)
-    "substrate.amdahl_gate",  # specs/008 Gate Zero / 022 S6: the three reds, then the neuter-and-measure ceiling reading
+    "gates.dormancy_gate",  # Policy 3: assert every brain module is reachable from a live path or EXEMPT
+    "gates.replication_guard",  # Policy 4: assert one canonical Brain/LiveBrain/AutonomousArm (no replica)
+    "gates.import_manifest",  # Policy 3: assert every reasoning/ module the live brain lazily imports still imports
+    "gates.method_dormancy_gate",  # Policy 3 amendment: assert no update rule on a live module lacks a live caller
+    "gates.eprop_transport_gate",  # e-prop invariant: assert no governed module transposes a weight into a weight update
+    "gates.doc_budget_gate",  # word ceilings on the standing docs: a document may not grow unnoticed
+    "gates.gradient_claim_gate",  # e-prop SCOPE: assert every governed learning rule is classified as owing a cosine or not
+    "gates.policy_manifest",
+    "gates.capability_bar",  # X1: 4 constructed reds + the REFUSED arm + the surface check
+    "gates.immortal_retention",  # L5: label reds, the reclaimer scan, the cross-process round trip
+    "gates.conclusion_protocol",  # C5: row reds, the verdict/aggregate refusals, the prose control  # POLICIES.md manifest: derivation reconciles, committed copy in sync, drift never worsens
+    "gates.perf_baseline",  # 022 T001 wiring check: baseline parses + scorer discriminates (cheap; never measures)
+    "gates.amdahl_gate",  # specs/008 Gate Zero / 022 S6: the three reds, then the neuter-and-measure ceiling reading
     "substrate.lake_bridge",  # 022 T005b: bridge round-trip red on a constructed temp lake (never the real home)
     "substrate.lake_segments",  # 022 T005: seal round-trip + CRC red on a constructed temp store (never the real home)
     "substrate.lake_index",  # 022 T007: pointer-index round-trip + watermark persistence + divergence red (temp db)
-    "substrate.lake_rebuild_gate",  # 022 T008: rebuild equality + planted-divergence red + lake-tracking control (temp)
+    "gates.lake_rebuild_gate",  # 022 T008: rebuild equality + planted-divergence red + lake-tracking control (temp)
     "substrate.lake_migrate",  # 022 T009: per-tag identity migration + unknown-tag red (constructed multi-tag lake)
     "substrate.lake_engine",  # 022 T010-i: retention/disposition registries agree + constructed flood red
     "substrate.signal_ring",  # 022 T011: journaller replay A/B + loud-loss overrun red on scratch rings
     "substrate.kernel_state",  # 022 T013: SoA alignment/contiguity + scratch-lake round-trip + refusal reds
     "substrate.kernel_tick",  # 022 T014: delay-ring arrival + T=1==T=4 train equality + imbalance + refusals
-    "substrate.determinism_gate",  # 022 T015: f32-diverges/int64-agrees control arms + a thread pair (full sweep in CI --assert)
-    "substrate.replay_gate",  # 022 T017: G5 resume byte-identical + omit-positions/mismatch refusals + re-seed divergence control
+    "gates.determinism_gate",  # 022 T015: f32-diverges/int64-agrees control arms + a thread pair (full sweep in CI --assert)
+    "gates.replay_gate",  # 022 T017: G5 resume byte-identical + omit-positions/mismatch refusals + re-seed divergence control
     "substrate.wiring_manifest",  # 022 T018: five checks + constructed reds + NIR-HDF5 round-trip on a scratch manifest
-    "substrate.manifest_gate",  # 022 T019: committed-artifact checks + divergence/join/region reds through the gate's verdict path
+    "gates.manifest_gate",  # 022 T019: committed-artifact checks + divergence/join/region reds through the gate's verdict path
     "substrate.report_channel",  # 022 T034: dark-record honesty + moving strength + release + determinism
     "substrate.episode_driver",  # 022 T035: port drives + trial structure/oracle + G5 restore + refusals
     "substrate.afferent_boundary",  # 022 T036: sentinel->MISSING + 014-normalizer reuse + proprio neuter A/B
     "substrate.efferent_boundary",  # 022 T037: passage counting + paired copy-cut charge + missing-body honesty
     "substrate.port_charge_probe",  # 022 T021: sensitivity flip + specificity hold + margin varied-vs-frozen separation
     "insula.interoceptive_integration",  # 022 T021a: deviation-from-self salience + frozen-baseline red + habituation
-    "substrate.envelope_hash_gate",  # 022 T021b: live five-file control + tamper/stale-approval/unbaselined reds
-    "substrate.region_charge_gate",  # 022 T022: registration-never-greens + constructed attribution + non-diverged-charges-nothing
-    "substrate.atlas_node_gate",  # 022 T024: constructed-phantom red + 7 reference-rule probes incl. both landing false-positives
-    "substrate.selfcheck_cache",  # carry-forward cache (envelope v3): dependency-flip + poison-refusal + envelope + FAIL-never-carries reds, plus the roster-split / data-input / named-env / tree-scanner precision reds and their key-invariance controls
-    "substrate.safety_envelope",  # THE five approval-gated brainstem files: assert code and SECURITY.md still name the same five
+    "gates.envelope_hash_gate",  # 022 T021b: live five-file control + tamper/stale-approval/unbaselined reds
+    "gates.region_charge_gate",  # 022 T022: registration-never-greens + constructed attribution + non-diverged-charges-nothing
+    "gates.atlas_node_gate",  # 022 T024: constructed-phantom red + 7 reference-rule probes incl. both landing false-positives
+    "gates.selfcheck_cache",  # carry-forward cache (envelope v3): dependency-flip + poison-refusal + envelope + FAIL-never-carries reds, plus the roster-split / data-input / named-env / tree-scanner precision reds and their key-invariance controls
+    "gates.safety_envelope",  # THE five approval-gated brainstem files: assert code and SECURITY.md still name the same five
     "substrate.ingest_guard",  # outside-data content boundary: licence deny-by-default + injection flagging
     "substrate.hf_stream",  # streamed HF datasets -> features; offline self-check (no network, no datasets dep)
     "substrate.region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> ignition bias
@@ -768,12 +768,12 @@ def run_all(carry=False):
     # green on this host is CARRIED -- a hash verification, never a skip. LOCAL batteries only: nothing
     # in .github/ passes --carry, and exit-certification batteries must not either. Any
     # FAIL in a carrying run is re-run FULL before diagnosis (the cache's own banner and
-    # substrate/selfcheck_cache.py's docstring carry the full blind-spot disclosure).
+    # gates/selfcheck_cache.py's docstring carry the full blind-spot disclosure).
     cache = None
     carried = []
     sys.path.insert(0, "src")
     if carry:
-        from snn_data_lake.substrate.selfcheck_cache import SelfcheckCache
+        from snn_data_lake.gates.selfcheck_cache import SelfcheckCache
 
         cache = SelfcheckCache()
         print(cache.banner())

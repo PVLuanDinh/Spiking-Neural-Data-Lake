@@ -17,7 +17,7 @@ be introduced silently. The allowlist shrinks to empty as the consolidation wave
 The companion to this guard is cortex.brain.make_brain(): the single sanctioned CONSTRUCTION path.
 Consumers obtain the brain through make_brain() rather than calling Brain(...) directly.
 
-  python -m snn_data_lake.substrate.replication_guard   # (also run by run_selfchecks.py)
+  python -m snn_data_lake.gates.replication_guard   # (also run by run_selfchecks.py)
 """
 
 import ast

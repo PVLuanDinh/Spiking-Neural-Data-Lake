@@ -22,7 +22,7 @@ capability; the word "superhuman" outside a registry row is exactly what this ca
 WHAT IT DOES NOT DO. It does not measure the brain, choose the task, or set the percentage: X1 does that, with the
 pre-sized twin as its control. This is the bookkeeping that makes X1's claim checkable.
 
-Bare invocation (`python -m snn_data_lake.substrate.capability_bar`, also run by run_selfchecks): the four
+Bare invocation (`python -m snn_data_lake.gates.capability_bar`, also run by run_selfchecks): the four
 constructed reds, their positive control, and the count of today's registry.
 """
 

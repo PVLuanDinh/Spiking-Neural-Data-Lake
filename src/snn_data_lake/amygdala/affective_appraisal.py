@@ -54,7 +54,7 @@ import random
 
 from snn_data_lake.cortex.spike_preprocessing import T, encode_latency
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "AffectiveAppraisal.learn": (
         "LOCAL",

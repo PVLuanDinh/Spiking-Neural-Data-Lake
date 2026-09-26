@@ -2,7 +2,7 @@
 safety-envelope files' BYTES may change only through an owner-approved baseline update.
 
 THE MECHANISM: sha256 over each of the five `brainstem/` envelope files (the path list is
-REUSED from `substrate/safety_envelope.ENVELOPE` -- the ONE definition; this module polices
+REUSED from `gates/safety_envelope.ENVELOPE` -- the ONE definition; this module polices
 the BYTES where that one polices the DOCUMENT), asserted against the committed baseline
 `tools/envelope_hashes.json`. A byte change without a matching baseline update REDS the
 build, and updating the baseline is itself the owner-approval act: it lands in the same
@@ -20,7 +20,7 @@ missing envelope file, and a baseline entry for a path the envelope no longer na
 stale approval is a claim outliving what it described).
 """
 
-# distinct-from: substrate/safety_envelope.py -- the ONE path list + the SECURITY.md document
+# distinct-from: gates/safety_envelope.py -- the ONE path list + the SECURITY.md document
 #   parity gate; this consumes its ENVELOPE tuple and polices file BYTES. distinct-from:
 #   basal_ganglia/self_build_loop.py -- _firewalled_bytes snapshots envelope bytes for
 #   RESTORE inside the self-mod sandbox; this ASSERTS them at CI. distinct-from:
@@ -33,7 +33,7 @@ import json
 import sys
 from pathlib import Path
 
-from snn_data_lake.substrate.safety_envelope import ENVELOPE, repo_relative
+from snn_data_lake.gates.safety_envelope import ENVELOPE, repo_relative
 
 REPO = Path(__file__).resolve().parents[3]
 BASELINE = REPO / "tools" / "envelope_hashes.json"

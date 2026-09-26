@@ -107,7 +107,7 @@ from snn_data_lake.substrate.paired_contrast import (  # noqa: F401  (re-exporte
     permutation_fpr,
 )
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 #:
 GRADIENT_CLAIM = {
     "fit_readout": (
@@ -244,10 +244,10 @@ class DriftRecord(NamedTuple):
 # distinct-from: substrate/kernel_plasticity.py::KernelPlasticity.diagnostics -- returned a LIVE
 #   learner's four counters as it accumulated them; this is the immutable per-arm record a scored
 #   run returns, and after 2026-09-09 there is no learner to accumulate anything.
-# distinct-from: substrate/amdahl_gate.py::red_repeatability_broken_arm -- a deliberately PADDED
+# distinct-from: gates/amdahl_gate.py::red_repeatability_broken_arm -- a deliberately PADDED
 #   second timing reading, built to reach a criterion that had no failing arm; "arm" there is a
 #   reading of one timed pair, not a wiring of a population.
-# distinct-from: substrate/replay_gate.py::run_gate -- returns four arms' outcomes where arms 2-4
+# distinct-from: gates/replay_gate.py::run_gate -- returns four arms' outcomes where arms 2-4
 #   are arm 1's reds; the arms differ by an INJECTED DEFECT, not by a table under comparison.
 # distinct-from: brainstem/arm_bridge.py::send_outcome and brainstem/so101_arm.py::collision -- the
 #   ROBOT arm's UDP reward datagram and its contact authority; "arm" there is hardware.
@@ -374,7 +374,7 @@ def red1(result):
     )
 
 
-# distinct-from: substrate/amdahl_gate.py::red_sham_neuter -- RED (c), a stand-in on a ZERO-share
+# distinct-from: gates/amdahl_gate.py::red_sham_neuter -- RED (c), a stand-in on a ZERO-share
 #   path whose bar is "within noise of zero" over a resampled band; that is a magnitude criterion
 #   on a TIMING, judged against a reported band. This is an EXACT-zero predicate over six recorded
 #   quantities of one arm and admits no band at all.
@@ -484,7 +484,7 @@ def arm_seeded(art):
 #   sites); this returns an ARTIFACT dict for `population()` to compile, the units untouched.
 # distinct-from: cortex/h01_ingest.py::build_arrays -- builds the node and edge arrays FROM the
 #   release's cells; this drops the edges of an artifact already built.
-# distinct-from: substrate/determinism_gate.py::_bench_net -- a disclosed synthetic bench with
+# distinct-from: gates/determinism_gate.py::_bench_net -- a disclosed synthetic bench with
 #   random edges; nothing is cut. distinct-from: substrate/brain_geometry.py::_connectome_pairs --
 #   region->region tracts of the connectome, not a unit population. All four sites read 2026-09-10.
 def arm_no_edges(art):
@@ -1717,7 +1717,7 @@ def _bare():
 # =============================================================================================
 # distinct-from: cortex/h01_ingest.py::_lif_defaults -- imports the LIF constants from their
 #   equation owner; no host, no process, no port.
-# distinct-from: substrate/doc_budget_gate.py::_selfcheck,
+# distinct-from: gates/doc_budget_gate.py::_selfcheck,
 #   hippocampus/spiking_storage_prototype.py::run, hypothalamus/__init__ -- a gate's constructed
 #   reds, a prototype's returned criteria numbers and a region docstring; none reads a PROCESS.
 #   All five read 2026-09-09.

@@ -3,7 +3,7 @@ evidence/gates-for-the-ratified-rows.md). Brain-free: each gate's constructed re
 positive control must pass, and the count each produces on today's tree is asserted, so a silent
 change is caught."""
 
-from snn_data_lake.substrate import capability_bar, conclusion_protocol, immortal_retention
+from snn_data_lake.gates import capability_bar, conclusion_protocol, immortal_retention
 
 
 def test_the_capability_bar_catches_a_claim_without_its_measurement():

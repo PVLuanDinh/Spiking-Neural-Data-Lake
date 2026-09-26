@@ -8,7 +8,7 @@ python run_selfchecks.py
 pytest
 python -m ruff check .
 python -m ruff format --check src tests tools
-python -m snn_data_lake.substrate.policy_manifest --audit
+python -m snn_data_lake.gates.policy_manifest --audit
 ```
 Green battery + push to main. Performance ratchets compare against the pinned-host baseline recorded at S0 (never CI runners).
 

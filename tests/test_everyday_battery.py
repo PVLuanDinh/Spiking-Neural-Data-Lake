@@ -336,9 +336,9 @@ def test_the_campaigns_tree_state_import_is_pinned_at_the_consumer():
     head/dirty (record 3.1, P2). Nothing else executes that line: the bare invocation never
     reaches it and the pin-refusal test returns first, so a rename of the private helper is
     otherwise silent through pytest, run_selfchecks and ruff alike."""
-    line = "from snn_data_lake.substrate.policy_manifest import _tree_state"
+    line = "from snn_data_lake.gates.policy_manifest import _tree_state"
     assert line in Path(eb.__file__).read_text(encoding="utf-8")
-    from snn_data_lake.substrate.policy_manifest import _tree_state
+    from snn_data_lake.gates.policy_manifest import _tree_state
 
     t = _tree_state()
     assert set(t) >= {"commit", "dirty"} and isinstance(t["dirty"], bool)

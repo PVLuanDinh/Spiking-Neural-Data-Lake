@@ -95,7 +95,7 @@ node contract, each piece named at its owner.
 # distinct-from: hippocampus/function_preserving_growth.py + substrate/growable.py --
 #   Net2Net widening mechanics for live nets; no per-node program, no locality mask,
 #   no region proposals. Read.
-# distinct-from: substrate/safety_envelope.py -- that gate hashes the five envelope
+# distinct-from: gates/safety_envelope.py -- that gate hashes the five envelope
 #   FILES; this refusal polices growth PROPOSALS by region name. Different layer,
 #   deliberately redundant in the brainstem direction. Read.
 # distinct-from: basal_ganglia/action_gating.py + cortex/snn_moe_classifier.py +

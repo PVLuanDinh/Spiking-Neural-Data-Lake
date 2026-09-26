@@ -34,7 +34,7 @@ Neurobiol 2006; encode/retrieve scheduling, J Neurosci 33:8689, 2013).
 import math
 import random
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "RecurrentStore.encode": (
         "LOCAL",

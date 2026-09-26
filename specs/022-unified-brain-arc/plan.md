@@ -43,7 +43,7 @@ Build, in four staged slices (S0–S3), the substrate in which the brain constru
 `docs/POLICIES.md` is the authoritative policy text. Audit run this session (2026-08-19, HEAD green):
 
 ```bash
-python -m snn_data_lake.substrate.policy_manifest --audit
+python -m snn_data_lake.gates.policy_manifest --audit
 ```
 
 Result: P3/P4/P6/P7/P8/e-prop all PASS; UNCLAIMED_GATE none; NOT_IN_CI none.

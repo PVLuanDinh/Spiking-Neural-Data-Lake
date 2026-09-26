@@ -81,7 +81,7 @@ REFERENCE DATA and are untouched. The reading is BOUNDED and this bound is 2.2's
 (K = 8 drive classes decoded from a 4-dimensional projection) at the ONE capacity the guard
 selected, and the null RETAINS H01's degrees, signs and weight magnitudes, so it cannot separate
 "H01 contributes nothing" from "H01's useful information is exactly what both arms share".
-Registration of record: `substrate/dormancy_gate`'s h01_ingest row (371d607); evidence 3.4(4).
+Registration of record: `gates/dormancy_gate`'s h01_ingest row (371d607); evidence 3.4(4).
 Not touched by any of it: `kernel_state`'s and `kernel_tick`'s wire rows (T063 2.8).
 
 AND THE FIXTURE READING'S WARRANT IS AN OPENING, not a settled result: (c), the control that
@@ -101,7 +101,7 @@ population's prior role, the learner, T071's "prior separation") is treated as s
 #   assignment for GROWN units; its layer_of is imported and its agreement figure is the
 #   validator here. distinct-from: substrate/data_quality.py::gate -- a Bronze->Gold row-level
 #   quality gate over lake records; nothing to do with an external release's bytes.
-#   distinct-from: substrate/manifest_gate.py -- asserts the wiring manifest's port declarations;
+#   distinct-from: gates/manifest_gate.py -- asserts the wiring manifest's port declarations;
 #   "manifest" there is faculty ports, here it is a bucket listing. All sites read 2026-09-09.
 
 from __future__ import annotations
@@ -127,7 +127,7 @@ from snn_data_lake.cortex.placement import (
     layer_of,
 )
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "drive_train": (
         "NOT_A_RULE",
@@ -247,9 +247,9 @@ def _lif_defaults():
 LIF_DEFAULTS = _lif_defaults()
 
 
-# distinct-from: substrate/gradient_claim_gate.py::_further_nulls -- publishes three nulls nothing
+# distinct-from: gates/gradient_claim_gate.py::_further_nulls -- publishes three nulls nothing
 #   asserts on, inside its own verdict; it is a REPORTING FUNCTION of one gate, not a refusal type
-#   carried across gates. distinct-from: substrate/amdahl_gate.py::red_repeatability -- a
+#   carried across gates. distinct-from: gates/amdahl_gate.py::red_repeatability -- a
 #   band-overlap red for a timing rig. distinct-from:
 #   basal_ganglia/brain_native_selfbuild.py::ThresholdRecalibrationSource -- a self-build source
 #   that emits a source patch. distinct-from: reasoning/ar_spiking_lm_serve.py::
@@ -856,7 +856,7 @@ def sign_report(agree, total):
     return f"sign: {agree}/{total} agree (rate {rate:.4f}), {total - agree} disagree"
 
 
-# distinct-from: substrate/amdahl_gate.py::red_repeatability -- judges two neutered readings of a
+# distinct-from: gates/amdahl_gate.py::red_repeatability -- judges two neutered readings of a
 #   TIMING rig by overlapping bootstrap bands over its own resamples; the band below is a
 #   PERMUTATION null over an external file's segment labels, and the two rigs share no input.
 # distinct-from: brainstem/autonomous_loop.py::coverage_scale_cells -- a lattice-point count that
@@ -901,7 +901,7 @@ def _pearson(x, y):
     return float((xc * yc).sum() / den) if den > 0 else float("nan")
 
 
-# distinct-from: substrate/gradient_claim_gate.py -- a permutation null over a LEARNED gradient's
+# distinct-from: gates/gradient_claim_gate.py -- a permutation null over a LEARNED gradient's
 #   alignment; that one shuffles a signal this brain produced, this one shuffles the segment
 #   labels of an external release file and decides nothing about learning. Read 2026-09-09.
 def ei_correlation(post_frac, csv_frac, trials=EI_PERMUTATIONS, seed=EI_SEED, pct=EI_PERCENTILE):
@@ -1441,7 +1441,7 @@ def population(artifact=None, p_parts=None, frac_bits=None, zero_weights=False, 
     """
     import numpy as np
 
-    from snn_data_lake.substrate.determinism_gate import binding_frac_bits
+    from snn_data_lake.gates.determinism_gate import binding_frac_bits
     from snn_data_lake.substrate.kernel_state import KernelState
     from snn_data_lake.substrate.kernel_tick import KernelTick, Synapses
 
@@ -1561,9 +1561,9 @@ _SELF_SYNAPSES_CORE = [
 ]
 
 
-# distinct-from: substrate/doc_budget_gate.py::_selfcheck -- builds constructed manifests to make
+# distinct-from: gates/doc_budget_gate.py::_selfcheck -- builds constructed manifests to make
 #   a DOC gate's statuses reachable; nothing about synapses, cells or a correlation.
-# distinct-from: substrate/amdahl_gate.py::red_repeatability -- constructs a red for a TIMING
+# distinct-from: gates/amdahl_gate.py::red_repeatability -- constructs a red for a TIMING
 #   rig's own resamples. distinct-from: cortex/theta_gamma_code.py::_decode_cycle -- decodes item
 #   order from live SPIKE PHASE in this brain. distinct-from:
 #   cerebellum/forward_model.py::predict -- an efference-copy sensory prediction.

@@ -10,7 +10,7 @@ asserts that the gate reds. Counted first: 0 phantom rows at the base head, so i
 
 import pytest
 
-from snn_data_lake.substrate import dormancy_gate as dg
+from snn_data_lake.gates import dormancy_gate as dg
 
 _PLANT = "g8_s0b_no_such_module"
 

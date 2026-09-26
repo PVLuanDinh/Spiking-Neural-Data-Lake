@@ -62,7 +62,7 @@ import collections
 import math
 import random
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "_fit": (
         "NOT_A_RULE",

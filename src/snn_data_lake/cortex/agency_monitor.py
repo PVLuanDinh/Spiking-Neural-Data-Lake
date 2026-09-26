@@ -359,7 +359,7 @@ class AgencyMonitor:
 #   "reading" is a host-settling measurement with its subject PID beside it. Different
 #   subject, different quantity; its paired statistic is the one this module IMPORTS from
 #   `substrate/paired_contrast` rather than re-spelling. Read.
-# distinct-from: substrate/amdahl_gate.py -- a live/neuter/sham paired reading over tick
+# distinct-from: gates/amdahl_gate.py -- a live/neuter/sham paired reading over tick
 #   COST on three scratch brains. This pairs INTACT against SHOVED on the per-joint
 #   command-to-outcome coupling; no timing quantity is read at all. Read.
 # distinct-from: cortex/h01_ingest.py -- an Avro OCF record reader over a connectome
@@ -828,7 +828,7 @@ def t079_contrasts(intact, shoved, deadband=T079_DEADBAND, score=_t079_score, ba
     }
 
 
-# distinct-from: substrate/eprop_transport_gate.py, substrate/gradient_claim_gate.py --
+# distinct-from: gates/eprop_transport_gate.py, gates/gradient_claim_gate.py --
 #   census gates that CLASSIFY existing code. Every entry below is a deliberately broken
 #   twin of THIS module's own instrument, constructed so a red can be shown to fire rather
 #   than argued to (P8 clause 1). Read; nothing here inspects or rewrites any other module.

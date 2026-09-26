@@ -36,9 +36,9 @@ alone stays high; that gap IS the message: a tree can be almost fully reachable 
 charged, which is why registration never greens.
 """
 
-# distinct-from: substrate/dormancy_gate.py -- module-level reachability, REUSED here as
+# distinct-from: gates/dormancy_gate.py -- module-level reachability, REUSED here as
 #   conjunct (a); this gate adds the per-REGION port-charge conjunct it cannot express.
-# distinct-from: substrate/manifest_gate.py -- static contract checks over the manifest;
+# distinct-from: gates/manifest_gate.py -- static contract checks over the manifest;
 #   this consumes the manifest's edges and demands MEASURED charge on them.
 # distinct-from: substrate/port_charge_probe.py -- produces the evidence; this gate consumes
 #   it. distinct-from: substrate/region_wiring.py -- live traffic census, not a verdict.
@@ -81,7 +81,7 @@ def reachable_regions() -> set[str]:
     its MEMBERSHIP come from the frozen LEGACY_REGIONS, each member's PATH from module_path() (G8
     F5): built from the label, a moved module's path would name its old package and lose it."""
     from snn_data_lake import LEGACY_REGIONS, module_path, package_of
-    from snn_data_lake.substrate.dormancy_gate import reachable
+    from snn_data_lake.gates.dormancy_gate import reachable
 
     live = reachable()  # fully-dotted module paths: "snn_data_lake.<package>.<module>"
     out = set()

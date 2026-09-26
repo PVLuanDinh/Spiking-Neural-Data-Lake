@@ -66,7 +66,7 @@ import math
 
 import numpy as np
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "LaminarLocalReadout.train_step": (
         "LOCAL",

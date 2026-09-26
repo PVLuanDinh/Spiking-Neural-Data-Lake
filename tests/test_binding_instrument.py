@@ -275,8 +275,8 @@ def test_the_live_bound_rate_reaches_state_with_both_c5_sentences_beside_it():
     the last 200 awake ticks with ONE reported object for that tick's two latents, and its
     provenance carries the licensed and the refused sentence and says the daemon's own rate is a
     chance rate."""
+    from snn_data_lake.gates.conclusion_protocol import CONCLUSION
     from snn_data_lake.substrate import brain_telemetry
-    from snn_data_lake.substrate.conclusion_protocol import CONCLUSION
     from snn_data_lake.substrate.home import throwaway_home
 
     licensed, refused, _dis, reading, _date, symbols = CONCLUSION["temporal_binding"]

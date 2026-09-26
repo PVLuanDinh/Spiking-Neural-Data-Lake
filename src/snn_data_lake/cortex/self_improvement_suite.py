@@ -83,7 +83,7 @@ from snn_data_lake.neuromodulation.generalizing_novelty import GeneralizingNovel
 from snn_data_lake.plasticity.benna_fusi import BennaFusiLearner
 from snn_data_lake.plasticity.meta_plasticity import MetaPlasticLearner
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "_rung_metaplast": (
         "NOT_A_RULE",

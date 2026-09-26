@@ -821,7 +821,7 @@ def _t082_head():
         return f"unavailable ({type(e).__name__})"
 
 
-# distinct-from: cortex/report_order_probe.py::_t081_dirty and substrate/policy_manifest.py::
+# distinct-from: cortex/report_order_probe.py::_t081_dirty and gates/policy_manifest.py::
 #   _tree_state -- the same `git status --porcelain` read, kept beside THIS row's `_t082_head`
 #   rather than imported across modules, because T081's panel found an executor stamping the LAST
 #   COMMIT's sha onto an artifact produced by an uncommitted tree (record 3.5 item 12). Read.
@@ -1651,7 +1651,7 @@ def t082_pin_reading(pin=None):
     not equal the recorded reading, so the refusal clause is shown reachable on every run rather
     than assumed. A missing pin is a RED, never a skip: the pin is tracked, so absence means
     deletion or a broken path."""
-    from snn_data_lake.substrate.conclusion_protocol import CONCLUSION
+    from snn_data_lake.gates.conclusion_protocol import CONCLUSION
 
     pin = T082_PIN if pin is None else Path(pin)
     assert pin.exists(), (
@@ -1673,7 +1673,7 @@ def t082_pin_reading(pin=None):
 #   executes exactly that block per module and scores the exit status), not a second dispatcher.
 #   Read both: the two flags here only ADD this row's brain-touching entry points to a self-check
 #   that already existed for `RecursiveToM`, and nothing here runs another module's self-check.
-# distinct-from: cortex/nef_compute.py::L151 and substrate/selfcheck_cache.py::L495 -- a derived
+# distinct-from: cortex/nef_compute.py::L151 and gates/selfcheck_cache.py::L495 -- a derived
 #   COMMAND STRING for a module's self-check and a cache key over the MODULES table. Term overlap
 #   ("self-check", "derived") only; neither dispatches anything. Read.
 # distinct-from: reasoning/spike_chat_lake.py::L2390 -- an interactive-REPL-vs-self-check branch

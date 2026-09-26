@@ -61,7 +61,7 @@ from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.cortex.resonate_and_fire import ResonateFire
 from snn_data_lake.cortex.srm_neuron import SRMNeuron
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "_train": (
         "NOT_A_RULE",

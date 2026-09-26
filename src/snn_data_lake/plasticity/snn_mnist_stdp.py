@@ -58,7 +58,7 @@ from torchvision import datasets, transforms
 from snn_data_lake.substrate.brian2_backend import BrianLIF
 from snn_data_lake.substrate.device import enable, resolve_device
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "StdpNetwork.run": (
         "LOCAL",

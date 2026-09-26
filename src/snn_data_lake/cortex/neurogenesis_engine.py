@@ -61,7 +61,7 @@ from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
 from snn_data_lake.hippocampus.ng_snn import NGSNN
 from snn_data_lake.substrate.device import crossover, decisions, select
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "NeurogenesisSelfImprove._refit": (
         "DIRECT_SOLVE",
@@ -1040,7 +1040,7 @@ def _cross_process_restart(seed, cfg, ticks=140):
 #   distinct-from: cortex/heterogeneous_microcircuit.py -- drives a circuit for spike counts.
 #   distinct-from: cortex/reasoning_curriculum.py -- runs the curriculum's own night loop.
 #   distinct-from: substrate/neuro_chip_stream.py -- an out-of-core AER event loop.
-#   distinct-from: substrate/replay_gate.py -- an RNG-driven stimulus for the resume proof.
+#   distinct-from: gates/replay_gate.py -- an RNG-driven stimulus for the resume proof.
 #   Phrase overlap on 'drive for n ticks' only; this hands the harness stream to drive(). Sites read.
 def _run(engine, n_ticks, stream):
     """Drive `engine` through n_ticks of the harness stimulus (observe + sleep tick each)."""

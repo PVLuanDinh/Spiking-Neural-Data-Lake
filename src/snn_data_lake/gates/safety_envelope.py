@@ -6,7 +6,7 @@ r"""THE SAFETY ENVELOPE -- one definition of the five approval-gated `brainstem/
 # consolidates: src/snn_data_lake/reasoning/self_improve.py -- `PROTECTED`'s five entries
 #   (package-relative, a function local), retyped there; it now imports them and adds only its own
 #   proposer.
-# consolidates: src/snn_data_lake/substrate/gradient_claim_gate.py -- `_SAFETY_ENVELOPE`, the third
+# consolidates: src/snn_data_lake/gates/gradient_claim_gate.py -- `_SAFETY_ENVELOPE`, the third
 #   copy; the name survives as an alias of this constant, so its two use sites are unchanged.
 
 `SECURITY.md` is the human-facing authority on what the envelope IS; this module is the ONE place
@@ -45,8 +45,8 @@ red (P8: a criterion with no reachable red is deleted, not trusted).
 Deps: stdlib only, and deliberately NO intra-package import -- `godel_machine` is imported BY
 `substrate/self_mod_harness`, so any import back into the package from here would close a cycle.
 
-  PYTHONPATH=src python -m snn_data_lake.substrate.safety_envelope               # assert
-  PYTHONPATH=src python -m snn_data_lake.substrate.safety_envelope --self-check  # prove the reds
+  PYTHONPATH=src python -m snn_data_lake.gates.safety_envelope               # assert
+  PYTHONPATH=src python -m snn_data_lake.gates.safety_envelope --self-check  # prove the reds
 """
 
 import os

@@ -49,7 +49,7 @@ stdlib core never imports this.
 
 import torch
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "NGSNN.fit": (
         "DIRECT_SOLVE",
@@ -656,7 +656,7 @@ class NGSNN:
     #   skill's trained brain; it implements no decision of its own. distinct-from:
     #   neuromodulation/locus_coeruleus.py::_population_spikes -- integrates an LC pool to a spike
     #   COUNT, no classes. distinct-from: reasoning/rpm_solver.py::_induce_attr -- induces a
-    #   Raven's-matrix rule for one attribute. distinct-from: substrate/gradient_claim_gate.py's
+    #   Raven's-matrix rule for one attribute. distinct-from: gates/gradient_claim_gate.py's
     #   ClassificationState -- a policy-census declaration. distinct-from:
     #   cerebellum/jepa_world_model.py's invariance loss -- a scalar loss, not a class decision.
     #   All five read 2026-09-07; none decides a class over an NG-SNN rate matrix. This method

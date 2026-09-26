@@ -76,7 +76,7 @@ from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCurriculum
 from snn_data_lake.substrate._mathutils import sigmoid
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "ReasoningLearner._train_units": (
         "LOCAL",

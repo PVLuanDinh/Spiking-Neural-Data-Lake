@@ -984,11 +984,11 @@ def run_c0_campaign(seeds=C0_SEEDS, pin=C0_PIN):
     )
     print(f"C0 VERDICT: {verdict}", flush=True)
 
-    # P2: `head`/`dirty` come from `substrate/policy_manifest._tree_state`, the tree's existing
+    # P2: `head`/`dirty` come from `gates/policy_manifest._tree_state`, the tree's existing
     # commit+dirty pair, rather than from a sixth private copy of the same two subprocess calls
     # (graph-exists "git head dirty provenance" named seven files; six are private helpers of one
     # instrument each and this one already returns exactly this pair).
-    from snn_data_lake.substrate.policy_manifest import _tree_state
+    from snn_data_lake.gates.policy_manifest import _tree_state
 
     tree = _tree_state()
     out = {

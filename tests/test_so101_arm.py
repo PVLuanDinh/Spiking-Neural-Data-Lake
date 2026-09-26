@@ -374,7 +374,7 @@ def test_the_live_gate_is_in_both_safety_kernels():
 
     Its original reason was that `tests/test_self_mod_safety.py` asserted only that the two kernels
     agreed with EACH OTHER, so "neither was updated" passed there silently. Since 2026-08-18 both
-    kernels derive from ONE definition, `substrate/safety_envelope.ENVELOPE`, which closes that hole
+    kernels derive from ONE definition, `gates/safety_envelope.ENVELOPE`, which closes that hole
     structurally rather than by comparison. This test is KEPT anyway, and the reason is the point:
     it names the live arm gate as a LITERAL, so it is an anchor that does not depend on the
     consolidation being right. If the one definition ever loses `so101_arm`, every derived list

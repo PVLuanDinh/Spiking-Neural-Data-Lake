@@ -20,7 +20,7 @@ detachable: `cortex/eprop_nmnist.py::_ng_snn_dir` (governed since 2026-08-12; th
 both locate THIS FILE by walking up from their own `__file__`, and those two modules are the vision
 encoders `cortex/brain.py` loads on the live construction path (`SNN_EPROP_CKPT` first,
 `SNN_PERCEPTION_CKPT` as the fallback). Deleting or renaming this file breaks the brain's perception
-tier, and no gate would say so -- `substrate/import_manifest.py`, the cross-tier canary built for
+tier, and no gate would say so -- `gates/import_manifest.py`, the cross-tier canary built for
 exactly that failure, does not see `training.*` at all (it matches `snn_data_lake.<ungoverned>` and
 these are bare `training.` imports).
 

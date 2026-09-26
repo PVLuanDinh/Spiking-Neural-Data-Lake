@@ -37,7 +37,7 @@ def _scan_fixture(tmp_path, monkeypatch, source, name="probe.py", tier="tools"):
 # --------------------------------------------------------------------------- each rule goes RED
 def test_P4_construction_fires_on_a_direct_Brain_call(tmp_path, monkeypatch):
     """The real incident: `tools/arc_baseline.py` called `Brain()` inside `live_brain_solver()`
-    while producing the published ARC "before" number. `substrate/replication_guard.py` cannot see
+    while producing the published ARC "before" number. `gates/replication_guard.py` cannot see
     this -- it asserts the class is DEFINED once, never that a consumer stopped calling it."""
     viol = _scan_fixture(
         tmp_path,

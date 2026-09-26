@@ -76,7 +76,7 @@ irreconcilable counts the re-derivation above replaces.)
 The manifest is DERIVED by AST walk, never hand-maintained -- the lesson from
 dormancy_gate._external_roots(): a hand-written list cannot see a wire nobody wrote down.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.import_manifest
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.gates.import_manifest
 """
 
 import ast

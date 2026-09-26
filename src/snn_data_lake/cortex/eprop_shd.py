@@ -97,7 +97,7 @@ from snn_data_lake.cortex.eprop_kernel import (  # the ONE e-prop engine (specs/
     evaluate,
 )
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "eprop_grads": (
         "APPROXIMATES_GRADIENT",

@@ -25,7 +25,7 @@ from a snapshot rather than re-running from t=0, so replay-equality -- not just 
 invariance -- is the determinism claim the tree actually leans on.
 """
 
-# distinct-from: substrate/determinism_gate.py -- thread-count invariance at fixed P; this is
+# distinct-from: gates/determinism_gate.py -- thread-count invariance at fixed P; this is
 #   trajectory-resume equality (the two are the two halves of D6).
 # distinct-from: substrate/kernel_state.py -- the state FRAME this snapshot embeds whole.
 # distinct-from: cortex/neurogenesis_engine.py growth blobs and substrate/home.py chain --

@@ -73,7 +73,7 @@ and an instrument is part of the brain (P4c). Same deviation port_charge_probe a
 perf_baseline recorded before it.
 """
 
-# distinct-from: substrate/perf_baseline.py -- measures the tick's COST (wake/sleep p50/p95,
+# distinct-from: gates/perf_baseline.py -- measures the tick's COST (wake/sleep p50/p95,
 #   disk IOPS) and ratchets it; this measures what the tick's telemetry CARRIES. Neither
 #   subsumes the other: a tick can get faster while its signals go flat.
 # distinct-from: substrate/port_charge_probe.py -- it too has a did-it-move criterion

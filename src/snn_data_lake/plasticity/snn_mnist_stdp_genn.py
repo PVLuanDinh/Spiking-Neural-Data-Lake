@@ -65,7 +65,7 @@ import os
 import time
 from types import SimpleNamespace
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "run_mnist": (
         "LOCAL",

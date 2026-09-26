@@ -1736,7 +1736,7 @@ dependency in pyproject.toml regardless.
 
 import numpy as np
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it. UNGOVERNED tier, so
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it. UNGOVERNED tier, so
 #: these are REPORTED and asserted on nothing.
 #:
 #: Three symbols here are NOT_A_RULE. They grow a SYMBOLIC GRAMMAR or search over one; none updates a
@@ -1822,7 +1822,7 @@ class MLP:
     worse, not because learning is not synthesis -- which converts the measurement into a
     contaminated control and voids the Gc-vs-Gf claim this self-check exists to make.
 
-    EXEMPTION GRANTED 2026-08-15 by the owner: `substrate/eprop_transport_gate.EXEMPT` carries
+    EXEMPTION GRANTED 2026-08-15 by the owner: `gates/eprop_transport_gate.EXEMPT` carries
     `reasoning.gf.train` with this verdict as its reason, so promoting `gf.py` no longer reds that
     gate. The entry is asserted to keep matching a real finding -- if this transport is ever removed
     or re-spelled, the exemption stops blessing anything and the gate FAILS on the stale row rather

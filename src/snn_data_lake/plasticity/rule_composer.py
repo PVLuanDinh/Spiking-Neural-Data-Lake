@@ -113,7 +113,7 @@ from snn_data_lake.plasticity.eligibility_algebra import AuthoredRule
 # distinct-from: substrate/wiring_manifest.py -- ports/edges between faculties;
 #   RuleSpec's reads/writes are per-RULE factor/target sets. Producer references
 #   composed with the manifest landed at T051b-iii (check_producers). Site read.
-# distinct-from: substrate/gradient_claim_gate.py -- the per-SYMBOL claim system;
+# distinct-from: gates/gradient_claim_gate.py -- the per-SYMBOL claim system;
 #   RuleSpec.claim_key is the SLOT binding a rule to its claim, and the
 #   cross-check holding both declarations to each other LANDED at T051c
 #   (check_claim + the rule_census ratchet). Site read.
@@ -121,7 +121,7 @@ from snn_data_lake.plasticity.eligibility_algebra import AuthoredRule
 #   (encoder -> neuron -> connection -> one rule), not N rules on one substrate;
 #   named here because the sibling module's convention names it. Site read.
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "RuleComposer.step": (
         "NOT_A_RULE",
@@ -413,7 +413,7 @@ class RuleComposer:
 # distinct-from: substrate/signal_ring.py -- JoinConsumer ENFORCES join/delivery policies on
 #   live traffic between faculties; check_producers only RESOLVES a rule's declared factor
 #   references against the manifest (a static census check, no traffic touched). Site read.
-# distinct-from: substrate/manifest_gate.py -- that gate checks the MANIFEST's own coherence;
+# distinct-from: gates/manifest_gate.py -- that gate checks the MANIFEST's own coherence;
 #   this checks one RuleSpec AGAINST the manifest it produces. Consumes, never re-models. Site read.
 def check_producers(spec, manifest, consumer=None):
     """FR-019 / T051b-iii: resolve one RuleSpec's declared factor producers against
@@ -636,7 +636,7 @@ def rule_charge(composer, w0, bindings_seq):
     }
 
 
-# distinct-from: substrate/gradient_claim_gate.py -- the gate CENSUSES declarations
+# distinct-from: gates/gradient_claim_gate.py -- the gate CENSUSES declarations
 #   tree-wide and asserts ratchet bounds; check_claim holds ONE RuleSpec's claim_key
 #   to that census (a consumer of the gate's own walker, never a second census). Site read.
 def check_claim(spec, declared_keys):
@@ -853,7 +853,7 @@ def regen_rule_census():
     fallback on marker-less layouts)."""
     import json
 
-    from snn_data_lake.substrate.gradient_claim_gate import PHANTOM_DECLARATION, _repo_root, census
+    from snn_data_lake.gates.gradient_claim_gate import PHANTOM_DECLARATION, _repo_root, census
 
     rules, failures, _n = census()
     if failures:
@@ -1272,7 +1272,7 @@ def main():
     #     READER -- tick-live since T053-ii (the stack replays its controllers'
     #     RECORDED production bindings; this harness's readings are constructed).
     from snn_data_lake.cerebellum.spiking_jepa import SpikingJEPA
-    from snn_data_lake.substrate.manifest_gate import rebuild_from_registrants
+    from snn_data_lake.gates.manifest_gate import rebuild_from_registrants
 
     _mani = rebuild_from_registrants()
     # the ENUMERATED half: jepa's production declaration, factors iterated;
@@ -1844,10 +1844,10 @@ def main():
     #     with a non-terminating fallback -- panel-constructed).
     import json as _json
 
-    from snn_data_lake.substrate.gradient_claim_gate import (
+    from snn_data_lake.gates.gradient_claim_gate import (
         _repo_root as _gc_root,
     )
-    from snn_data_lake.substrate.gradient_claim_gate import (
+    from snn_data_lake.gates.gradient_claim_gate import (
         census as _gc_census,
     )
 

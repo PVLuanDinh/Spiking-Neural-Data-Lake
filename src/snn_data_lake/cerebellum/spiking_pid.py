@@ -40,7 +40,7 @@ from snn_data_lake.brainstem import arm_config
 from snn_data_lake.brainstem.so101_arm import So101Arm
 from snn_data_lake.cortex.population_encoding import PopulationEncoder
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "SpikingPID._calibrate": (
         "NOT_A_RULE",

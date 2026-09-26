@@ -61,7 +61,7 @@ from snn_data_lake.plasticity.benna_fusi import BennaFusiSynapse
 from snn_data_lake.plasticity.homeostatic_plasticity_stack import HomeostaticPlasticityStack
 from snn_data_lake.plasticity.inhibitory_stdp import InhibitorySTDP
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "PlasticityRuleStack.learning_step": (
         "LOCAL",

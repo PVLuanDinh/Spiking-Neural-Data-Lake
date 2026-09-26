@@ -65,7 +65,7 @@ from snn_data_lake.cortex.spike_preprocessing import N as N_FEATURES
 from snn_data_lake.hypothalamus.set_points import Homeostat
 from snn_data_lake.substrate._mathutils import mean
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "DriveReductionLearner.train_step": (
         "LOCAL",

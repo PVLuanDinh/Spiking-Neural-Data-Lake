@@ -84,7 +84,7 @@ from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack
 #: the ONE named-state record for the brain's prototype learners (rank 2b, 2026-09-02)
 PROTOTYPES_STATE = "growing_learners.json"
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "Brain._flush_interaction_learner": (
         "NOT_A_RULE",
@@ -5336,7 +5336,7 @@ def make_brain(**kwargs):
     brain; a build must UTILIZE it, never replicate it). Every consumer -- the always-on daemon, the
     chat servers, demos, the nengo bridge -- obtains the brain through here instead of calling
     ``Brain(...)`` directly, so there is exactly one construction path to evolve and the replication
-    guard (substrate/replication_guard.py) can enforce that no second brain stack is stood up.
+    guard (gates/replication_guard.py) can enforce that no second brain stack is stood up.
 
     Pass-through to ``Brain.__init__`` (seed, lake_path, day_period, refit_every, device,
     self_history_path, persist). Returns a fresh Brain -- "one brain" means one canonical CLASS +

@@ -124,13 +124,13 @@ act containers and exit-certification batteries run FULL -- --carry is opt-in an
 in .github/ passes it), and ANY FAIL in a carrying battery is re-run FULL before it is
 diagnosed -- a carried-run red is not evidence until the full run confirms it.
 
-  python -m snn_data_lake.substrate.selfcheck_cache   # self-check (the P8 reds)
+  python -m snn_data_lake.gates.selfcheck_cache   # self-check (the P8 reds)
 """
 
-# distinct-from: substrate/dormancy_gate.py -- owns THE import graph; this REUSES it via
+# distinct-from: gates/dormancy_gate.py -- owns THE import graph; this REUSES it via
 #   import_graph() to hash closures, never re-deriving reachability.
 # distinct-from: tools/p4c_ratchet.py -- counts modules per zone; this hashes them.
-# distinct-from: substrate/policy_manifest.py -- certifies POLICY text; this caches
+# distinct-from: gates/policy_manifest.py -- certifies POLICY text; this caches
 #   self-check verdicts. All sites read.
 
 from __future__ import annotations
@@ -469,7 +469,7 @@ class SelfcheckCache:
         }
         return [p for p in out if p not in always_global]
 
-    # distinct-from: substrate/envelope_hash_gate.py -- that gate VERIFIES the five
+    # distinct-from: gates/envelope_hash_gate.py -- that gate VERIFIES the five
     #   brainstem files against an approved baseline; this merely lists governance-surface
     #   paths (reusing safety_envelope.repo_relative(), the ONE path list) so a change to
     #   any of them invalidates the whole cache. Consumer of the list, not a second
@@ -480,7 +480,7 @@ class SelfcheckCache:
         no closure) and the tools/ + models/ artifacts no module names (fail-closed)."""
         root = _repo_root()
         out = [os.path.join(root, "SECURITY.md"), os.path.join(root, "docs", "POLICIES.md")]
-        from snn_data_lake.substrate.safety_envelope import repo_relative
+        from snn_data_lake.gates.safety_envelope import repo_relative
 
         out += [os.path.join(root, p) for p in repo_relative()]
         pkg = os.path.join(root, "src", _PKG)
@@ -527,7 +527,7 @@ class SelfcheckCache:
 
     def _import_graph(self):
         if self._graph is None:
-            from snn_data_lake.substrate.dormancy_gate import import_graph
+            from snn_data_lake.gates.dormancy_gate import import_graph
 
             self._graph = import_graph()
         return self._graph
@@ -893,7 +893,7 @@ def _self_check(store):
 
     # (e) THE SAFETY-SURFACE RED: a brainstem envelope file -- data the envelope_hash_gate
     # reads, invisible to every import closure -- must flip the ENVELOPE and every key
-    from snn_data_lake.substrate.safety_envelope import repo_relative
+    from snn_data_lake.gates.safety_envelope import repo_relative
 
     brainstem_file = os.path.join(root, sorted(repo_relative())[0])
     tampered = make(file_hash_overrides={brainstem_file: "f" * 64})
@@ -987,7 +987,7 @@ def _self_check(store):
         return r
 
     # (i) TREE SCANNER: a tracked file NO closure names flips a scanner and not the probe
-    scanner = "substrate.dormancy_gate" if "substrate.dormancy_gate" in scanners else scanners[0]
+    scanner = "gates.dormancy_gate" if "gates.dormancy_gate" in scanners else scanners[0]
     base.closure_key(scanner)
     surface = base.tree_surface
     if surface > 0:

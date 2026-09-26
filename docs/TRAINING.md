@@ -207,7 +207,7 @@ gradients larger than VRAM). AirLLM has no backward pass, so it is not a trainer
 
 > **Corrected 2026-07-28.** This section used to document `brain_reasoning.BrainReasoner` with a
 > runnable import and two calls. **That module does not exist** — it was retired in the Policy-2/3
-> wave and is recorded as such at `substrate/dormancy_gate.py:74`. The example would have raised
+> wave and is recorded as such at `gates/dormancy_gate.py:74`. The example would have raised
 > `ModuleNotFoundError` for anyone who tried it. What follows is the path that actually exists.
 
 The brain's language layer is `reasoning/spike_chat_lake.py::LakeChat`, reached live from

@@ -19,7 +19,7 @@ Two defects found during implementation motivated half of this file, both measur
 import importlib
 import json
 
-gate = importlib.import_module("snn_data_lake.substrate.gradient_claim_gate")
+gate = importlib.import_module("snn_data_lake.gates.gradient_claim_gate")
 
 _PROBE = "cortex/zz_probe_rule.py"
 
@@ -603,7 +603,7 @@ def test_the_fr010_check_fires_on_a_constructed_violation():
     # THE GREEN CONTROL: ordinary paths, including this feature's own edits, must NOT fire. Without
     # it, a check that flagged everything would pass every assertion above.
     clean = [
-        "src/snn_data_lake/substrate/gradient_claim_gate.py",
+        "src/snn_data_lake/gates/gradient_claim_gate.py",
         "src/snn_data_lake/cortex/eprop_kernel.py",
         "tests/test_gradient_claim_measure.py",
         "specs/020-eprop-cosine-scope/spec.md",
@@ -653,7 +653,7 @@ def test_the_fr010_approval_path_has_its_own_reds(monkeypatch):
     notion of an APPROVED change. Approval is the project's own mechanized act (T021b): the baseline
     `tools/envelope_hashes.json` in the SAME change set AND `envelope_hash_gate.check()` green on
     the bytes on disk. Each half is a red on its own."""
-    from snn_data_lake.substrate import envelope_hash_gate as ehg
+    from snn_data_lake.gates import envelope_hash_gate as ehg
 
     env = next(iter(gate._SAFETY_ENVELOPE))
     planted = f"src/snn_data_lake/{env}"

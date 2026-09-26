@@ -43,7 +43,7 @@ python -m ruff format --check src tests   # formatting -- this exact scope is wh
    (the `CORE` list for a product module, `RESEARCH` for a `snn_data_lake.reasoning.*` build).
    `brain_atlas` asserts filesystem↔map parity for every `REGIONS` directory, so an unregistered
    module there fails the gate.
-3. Make it reachable from a live path, or add it to `substrate/dormancy_gate.py` `EXEMPT` with a
+3. Make it reachable from a live path, or add it to `gates/dormancy_gate.py` `EXEMPT` with a
    reason — Policy 3 fails CI otherwise.
 4. Run the four gates.
 

@@ -74,7 +74,7 @@ from snn_data_lake.thalamus.reentrant_workspace import ReentrantWorkspace
 
 _BASELINE = Path(__file__).resolve().parents[3] / "tools" / "ignition_baseline.json"
 
-# FR-002c gradient-claim declaration (substrate/gradient_claim_gate reads this without
+# FR-002c gradient-claim declaration (gates/gradient_claim_gate reads this without
 # importing): the one fit in this module is an ANALYSIS fit, not a learning rule.
 GRADIENT_CLAIM = {
     "_logistic_fit": (

@@ -268,7 +268,7 @@ def layer_histogram(placed):
 #   threshold; nothing here thresholds activity. Site read; the shared word is "midpoint".
 # distinct-from: brainstem/arm_hardware.py -- its configurations are servo-rating arithmetic for
 #   the physical arm; unrelated job. Site read; the shared word is "combinations".
-# distinct-from: substrate/gradient_claim_gate.py -- its "placement" is where a statistical bar
+# distinct-from: gates/gradient_claim_gate.py -- its "placement" is where a statistical bar
 #   sits relative to a null; this places NEURONS. Site read; the shared word is "placement".
 # distinct-from: cortex/cortical_prior.py -- REUSED, not duplicated: it is this module's existing
 #   import for the measured H01 fractions; nothing re-derives them here.

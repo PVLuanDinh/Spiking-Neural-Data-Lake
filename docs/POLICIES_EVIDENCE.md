@@ -407,7 +407,7 @@ brain sets the faculty to `None` and ticks on without it — including `self_bui
 `self_mod_harness`, which *are* P0's self-building-code avenue, and `rose_language`, which is language.
 The canary derives the manifest by AST walk (never hand-maintained — the `_external_roots()` lesson) and
 asserts each target still imports. Re-derive the census with
-`python -m snn_data_lake.substrate.import_manifest` rather than quoting it from here — this sentence
+`python -m snn_data_lake.gates.import_manifest` (historical path, dated 2026-09-25 at G8 M1: `snn_data_lake.substrate.import_manifest`) rather than quoting it from here — this sentence
 carried "15 modules / 17 call sites" while the gate printed 7 / 9 (US1 audit, M7). It proves
 import-ability, not charge; that is deliberate, because
 import-ability is precisely what a deletion breaks and what the swallows hide.
@@ -473,7 +473,7 @@ predictive-coding fix — treat it as a starting list to verify, not a verdict.
 
 **Mechanization: BUILT — `substrate/method_dormancy_gate.py`, in `run_selfchecks` CORE.** A pure
 static AST pass (~1 s, no runtime cost). Re-derive the census with
-`python -m snn_data_lake.substrate.method_dormancy_gate` rather than quoting a count from here —
+`python -m snn_data_lake.gates.method_dormancy_gate` (historical path, dated 2026-09-25 at G8 M1: `snn_data_lake.substrate.method_dormancy_gate`) rather than quoting a count from here —
 this paragraph carried "56 scanned / 16 UNCERTAIN / 5 exemptions, one standing TODO" for weeks
 while the gate printed 66 / 20 / 9 with three standing TODOs (US1 audit, M7). What made it
 adoptable is the SHAPE, which is stable: dormant asserts at 0, an earlier draft produced

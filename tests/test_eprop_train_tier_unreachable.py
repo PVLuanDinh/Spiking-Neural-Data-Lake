@@ -46,7 +46,7 @@ import pathlib
 
 import pytest
 
-dormancy_gate = pytest.importorskip("snn_data_lake.substrate.dormancy_gate")
+dormancy_gate = pytest.importorskip("snn_data_lake.gates.dormancy_gate")
 
 _SRC = pathlib.Path(dormancy_gate.__file__).resolve().parents[1]
 _PKG = dormancy_gate._PKG

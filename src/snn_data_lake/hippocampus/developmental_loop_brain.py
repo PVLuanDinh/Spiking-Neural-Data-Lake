@@ -58,7 +58,7 @@ module, not merely relocated it.
 E-PROP ADJUDICATION, carried forward verbatim from specs/010 (its premise re-verified at
 promotion): the readout trains by Adam + .backward() and the dopamine multiplier SCALES
 that path -- permitted because "That path is TRAIN-TIER OFFLINE, not a live learning path
-... no _LIVE_ROOT or _ENTRYPOINT in substrate/dormancy_gate.py reaches it" (re-measured:
+... no _LIVE_ROOT or _ENTRYPOINT in gates/dormancy_gate.py reaches it" (re-measured:
 dlb's whole import closure sits outside reachable()). BINDING CONSTRAINT: this module must
 never be wired to a live LEARNING consumer; if it ever is, that consumer takes the
 governed `lr_scale` three-factor parameter (basal_ganglia/valence_stdp.py,
@@ -117,7 +117,7 @@ from snn_data_lake.neuromodulation.spiking_curiosity import (
 from snn_data_lake.plasticity.snn_mnist_stdp import load_mnist
 from snn_data_lake.substrate.device import enable, resolve_device
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "_LinearReadout.train_step": (
         "APPROXIMATES_GRADIENT",

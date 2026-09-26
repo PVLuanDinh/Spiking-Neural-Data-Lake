@@ -71,7 +71,7 @@ import random
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "AttractorNet.store": (
         "LOCAL",

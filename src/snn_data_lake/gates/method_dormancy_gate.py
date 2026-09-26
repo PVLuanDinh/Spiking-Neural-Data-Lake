@@ -1,7 +1,7 @@
 """
 method_dormancy_gate -- Policy 3, per-METHOD. The amendment's mechanization, finally built.
 
-WHY THE MODULE GATE IS NOT ENOUGH. substrate/dormancy_gate.py keys on the module basename, so a module
+WHY THE MODULE GATE IS NOT ENOUGH. gates/dormancy_gate.py keys on the module basename, so a module
 passes P3 clean with half its capability dead. The worked case: cortex/predictive_coding.py settled its
 3-level Rao-Ballard net on every wake tick with the error-neuron architecture implemented faithfully,
 while PredictiveCodingNetwork.learn() had exactly ONE call site in the tree -- inside the module's own
@@ -35,7 +35,7 @@ HONESTY GUARDS, inherited from P3 and not negotiable:
   (c) EXEMPT_METHOD entries carry a disposition and a reason, and `wire` entries that outlive their
       wave are reported as a standing TODO -- so exempting everything stays visible rather than silent.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.method_dormancy_gate
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.gates.method_dormancy_gate
 """
 
 import ast
@@ -265,7 +265,7 @@ def audit():
     # REACHABLE module" -- and applies both halves:
     #   (1) the defining module must be reachable from a live root (same set dormancy_gate asserts on)
     #   (2) the def must be a METHOD (inside a class), not a module-level self-check helper
-    from snn_data_lake.substrate import dormancy_gate
+    from snn_data_lake.gates import dormancy_gate
 
     live = {m.split("snn_data_lake.")[-1] for m in dormancy_gate.reachable()}
 

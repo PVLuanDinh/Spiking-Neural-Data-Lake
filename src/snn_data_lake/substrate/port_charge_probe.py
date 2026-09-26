@@ -34,7 +34,7 @@ tools/, and an instrument is part of the brain (P4c). Deviation recorded, not sm
 #   remains the module-level incumbent, cited not merged (different denominators would make a
 #   merged census lie in both directions).
 # distinct-from: substrate/signal_ring.py -- the delivery mechanism these instruments wrap.
-# distinct-from: substrate/manifest_gate.py -- static contract checks; this is the LIVE half
+# distinct-from: gates/manifest_gate.py -- static contract checks; this is the LIVE half
 #   its own docstring defers to. All sites read.
 
 from __future__ import annotations

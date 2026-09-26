@@ -336,8 +336,8 @@ def test_the_live_report_order_margin_reaches_state_with_both_c5_sentences_besid
     A SCRATCH brain, never the live lake: `make_brain(seed=0, persist=False)` under
     `throwaway_home()`.
     """
+    from snn_data_lake.gates.conclusion_protocol import CONCLUSION
     from snn_data_lake.substrate import brain_telemetry
-    from snn_data_lake.substrate.conclusion_protocol import CONCLUSION
     from snn_data_lake.substrate.home import throwaway_home
 
     # The two sentences are read OFF THE ROW, never retyped here -- C5 writes them before C4

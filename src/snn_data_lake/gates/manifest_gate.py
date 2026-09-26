@@ -27,8 +27,8 @@ Red (3), neuter-insensitivity, is charge measurement and belongs to the charge p
 
 # distinct-from: substrate/wiring_manifest.py -- the MECHANISM this gate runs; the gate owns
 #   the CI verdict and the divergence criterion, the manifest owns the checks.
-# distinct-from: substrate/policy_manifest.py -- POLICIES.md rows vs ci.yml census, a
-#   different manifest entirely. distinct-from: substrate/import_manifest.py -- lazy-import
+# distinct-from: gates/policy_manifest.py -- POLICIES.md rows vs ci.yml census, a
+#   different manifest entirely. distinct-from: gates/import_manifest.py -- lazy-import
 #   reachability of ruff-excluded tiers. All sites read.
 
 from __future__ import annotations

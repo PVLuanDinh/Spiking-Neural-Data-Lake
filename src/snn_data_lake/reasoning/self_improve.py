@@ -44,11 +44,11 @@ import json
 import os
 import sys
 
-from snn_data_lake.substrate.safety_envelope import ENVELOPE as _ENVELOPE
+from snn_data_lake.gates.safety_envelope import ENVELOPE as _ENVELOPE
 
 #: Files this self-improver refuses to touch. The five-file safety envelope is IMPORTED, not retyped
 #: (P2, 2026-08-18) -- it was one of three hand-maintained copies in src/, in two spellings, and
-#: `substrate/safety_envelope` is now the one definition. What this set adds is its own: THIS
+#: `gates/safety_envelope` is now the one definition. What this set adds is its own: THIS
 #: module, the proposer, so the brain cannot rewrite the thing that decides what it may rewrite.
 #:
 #: MOVED TO MODULE SCOPE in the same change, and that is not cosmetic. It was a local inside main(),

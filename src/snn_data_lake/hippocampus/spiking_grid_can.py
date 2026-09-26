@@ -112,7 +112,7 @@ import math
 
 import numpy as np
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "SpikingGridCAN._calibrate": (
         "NOT_A_RULE",

@@ -63,16 +63,16 @@ Modes
                  perturbation, and only the padded-share red is built from it
   --seed N       read at seed N (default 0);  --ticks N  paired wake ticks per arm (default 150)
 
-  python -m snn_data_lake.substrate.amdahl_gate --self-check
+  python -m snn_data_lake.gates.amdahl_gate --self-check
 """
 
-# distinct-from: substrate/perf_baseline.py -- the pinned-host RATCHET, which asks whether the tick
+# distinct-from: gates/perf_baseline.py -- the pinned-host RATCHET, which asks whether the tick
 #   got SLOWER than a recorded baseline. This gate asks how much of the tick a delivery-path
 #   conversion could remove at all, and it REUSES perf_baseline's _ref_ms and TOLERANCE rather than
 #   re-implementing either: one reference sample and one tolerance survive in the tree (P2).
 # distinct-from: tools/charge_probe.py -- the neuter-A/B for CHARGE (does a wire change an OUTCOME).
 #   This one neuters for COST; its verdict is a ceiling and never a charge claim.
-# distinct-from: substrate/determinism_gate.py and substrate/replay_gate.py -- criteria over
+# distinct-from: gates/determinism_gate.py and gates/replay_gate.py -- criteria over
 #   kernel_tick's mechanism; this gate never constructs a KernelTick and makes no kernel claim.
 # distinct-from: cortex/live_brain.py::LiveBrain.run, cortex/heterogeneous_microcircuit.py::run_circuit
 #   and cortex/brain.py::Brain._perceive_real -- the three graph-exists near-matches. Each DRIVES a
@@ -88,8 +88,8 @@ import time
 import types
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.gates.perf_baseline import TOLERANCE, _ref_ms
 from snn_data_lake.substrate.basic_components import Connection
-from snn_data_lake.substrate.perf_baseline import TOLERANCE, _ref_ms
 
 #: the pre-registered reading (s6-kernel-wire.md 2.4): W warm wake ticks per arm, after a warm-up
 W_TICKS = 150
@@ -509,13 +509,13 @@ def red_sham_neuter(ticks=RED_TICKS, resamples=RED_RESAMPLES, seed=0):
     )
 
 
-# distinct-from: substrate/selfcheck_cache.py::self_check -- fires P8 reds over CACHE KEY invariance
+# distinct-from: gates/selfcheck_cache.py::self_check -- fires P8 reds over CACHE KEY invariance
 #   (a dependency hash must flip the keys that can see it). No timing, no bootstrap band, no
 #   perturbed measurement arm; its "control" is a second key derivation. Site read.
 # distinct-from: reasoning/pc_cortex_torch.py::verify_export_fidelity -- asserts an exported
 #   artifact's float64 settling causes EQUAL the trainer's. An equality check on an artifact, not a
 #   criterion re-run with a perturbation. Site read.
-# distinct-from: substrate/conclusion_protocol.py::surface_findings -- scans tracked prose surfaces
+# distinct-from: gates/conclusion_protocol.py::surface_findings -- scans tracked prose surfaces
 #   for unlicensed sentences. Text, not a measurement. Site read.
 # distinct-from: cortex/theta_gamma_code.py, substrate/learn_daemon.py::self_check,
 #   substrate/home.py's census rule and brainstem/arm_config.py -- matched on generic docstring words

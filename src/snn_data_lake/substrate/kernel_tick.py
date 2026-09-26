@@ -10,7 +10,7 @@ ring into its own accumulators -- single-writer per accumulator, so threads neve
 the accumulator is INTEGER (fixed-point weights at `frac_bits`), so the sum is order-invariant
 outright. The membrane update is elementwise float32 (no cross-unit reduction), deterministic
 at any thread count by construction. Byte-identical trains across T in {1..16} at fixed P is
-T015's gate (`substrate/determinism_gate.py`); this module carries the mechanism.
+T015's gate (`gates/determinism_gate.py`); this module carries the mechanism.
 
 P-VS-GROWTH RULE (SYNTHESIS L1, verbatim intent): P is FIXED for the life of a lineage.
 Grown units are assigned to existing partitions by the same index rule; the resulting
@@ -313,7 +313,7 @@ def _bench_kernel(n_units, fan_out, p_parts, threads, n_ticks, seed=7):
     fraction fires per tick (activity, not silence, is what delivery costs)."""
     import numpy as np
 
-    from snn_data_lake.substrate.determinism_gate import binding_frac_bits
+    from snn_data_lake.gates.determinism_gate import binding_frac_bits
     from snn_data_lake.substrate.kernel_state import KernelState
 
     nprng = np.random.default_rng(seed)

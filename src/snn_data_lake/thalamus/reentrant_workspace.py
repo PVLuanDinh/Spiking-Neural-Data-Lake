@@ -81,7 +81,7 @@ consciousness is an OPEN question this project builds toward -- neither denied n
 
 import random
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "ReentrantWorkspace._hebb_update": (
         "LOCAL",
@@ -194,7 +194,7 @@ class ReentrantWorkspace:
     # distinct-from: thalamus/global_workspace.py -- the shared bus's rheobase is fixed at
     #   construction and nobody rewrites it; THIS class is the one workspace whose theta is
     #   moved live (cortex.brain's coherence bias), which is why the actuator lives here. Read.
-    # distinct-from: substrate/perf_baseline.py -- performance ratchet, no rheobase.
+    # distinct-from: gates/perf_baseline.py -- performance ratchet, no rheobase.
     # distinct-from: substrate/lake_migrate.py -- tag dispositions, no rheobase.
     # distinct-from: cortex/theta_gamma_code.py -- theta the OSCILLATION, not the rheobase.
     # distinct-from: cortex/cortical_prior.py -- anatomy fractions, no rheobase.

@@ -4,7 +4,7 @@ G8's engine-function package for gates (evidence g8-reorganization.md 2.2). It o
 `move_gate`, G8's own G-R8 instrument; the 23 substrate gates join it at M1.
 """
 
-# distinct-from: substrate/envelope_hash_gate.py -- a docstring-only package marker, like every
-#   other subpackage __init__; the hook matched the word "gate". Also read: substrate/policy_manifest.py
-#   (certification_fresh), substrate/lake_rebuild_gate.py, cortex/h01_ingest.py (_selfcheck),
+# distinct-from: gates/envelope_hash_gate.py -- a docstring-only package marker, like every
+#   other subpackage __init__; the hook matched the word "gate". Also read: gates/policy_manifest.py
+#   (certification_fresh), gates/lake_rebuild_gate.py, cortex/h01_ingest.py (_selfcheck),
 #   cortex/prior_drift_harness.py (arm_no_edges) -- none is a package or a second mechanism.

@@ -69,7 +69,7 @@ from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner
 from snn_data_lake.hippocampus.proximity_replay import LakeMemory
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "_train_eval": (
         "LOCAL",

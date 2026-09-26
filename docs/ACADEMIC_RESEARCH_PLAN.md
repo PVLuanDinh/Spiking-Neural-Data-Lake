@@ -37,7 +37,7 @@ why, is part of the result. Growth without improved held-out behavior is allocat
 demonstrated intelligence, and breadth of scope is not evidence of general intelligence. Any
 comparison with human performance needs a human number collected under the same protocol; without
 one the comparison is refused, as the project's
-[capability bar](../src/snn_data_lake/substrate/capability_bar.py) already requires.
+[capability bar](../src/snn_data_lake/gates/capability_bar.py) already requires.
 
 The current project supplies an apparatus: spiking modules with local (e-prop) learning, growth
 machinery whose units must earn their place on held-out data, one append-only durable lake, input
@@ -83,7 +83,7 @@ current runtime includes CPython 3.14t, PyTorch, NumPy, PyArrow, MuJoCo, and Bri
 the equation reference while a Torch bridge executes it. A small model does not erase that
 footprint. Keeping a fact on disk does not prove that a learned skill remains usable. "Never
 forgets" means in this project only that a declared
-[immortal record class](../src/snn_data_lake/substrate/immortal_retention.py) is never evicted, not
+[immortal record class](../src/snn_data_lake/gates/immortal_retention.py) is never evicted, not
 that every observation is kept or every skill retained.
 
 ## 3. Choose one first-paper question
@@ -190,8 +190,8 @@ outside the "local" cost.
 
 **Learning-rule boundary.** The SNDL arms use the project's local rules: e-prop and local
 plasticity, with no backpropagation through time on the brain's live path. The
-[gradient-claim](../src/snn_data_lake/substrate/gradient_claim_gate.py) and
-[weight-transport](../src/snn_data_lake/substrate/eprop_transport_gate.py) gates check part of that
+[gradient-claim](../src/snn_data_lake/gates/gradient_claim_gate.py) and
+[weight-transport](../src/snn_data_lake/gates/eprop_transport_gate.py) gates check part of that
 rule. Conventional baselines may use backpropagation: they are comparators, not the proposed
 method, and need not be restricted to the SNN's rule. Keep them in an evaluation harness that the
 brain's live path cannot reach; otherwise the project's e-prop policy brings them into scope. The

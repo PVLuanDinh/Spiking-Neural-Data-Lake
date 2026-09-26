@@ -801,7 +801,7 @@ class Coalition:
         return hash(self.as_tuple())
 
     # distinct-from: substrate/wiring_manifest.py -- hdf5 artifact codec, not this record.
-    # distinct-from: substrate/envelope_hash_gate.py -- envelope baseline writer.
+    # distinct-from: gates/envelope_hash_gate.py -- envelope baseline writer.
     # distinct-from: cortex/neurogenesis_engine.py -- growth-state npz restore.
     # distinct-from: basal_ganglia/self_build_loop.py -- firewalled-file byte restore.
     # distinct-from: cortex/trained_brain.py -- crc32 seed derivation. Serializer-phrase

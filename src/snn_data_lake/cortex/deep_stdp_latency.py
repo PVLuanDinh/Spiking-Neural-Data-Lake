@@ -105,7 +105,7 @@ from snn_data_lake.plasticity.deep_stdp import (
 from snn_data_lake.plasticity.snn_mnist_stdp import load_mnist
 from snn_data_lake.substrate.device import enable, resolve_device
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "ConvLatencyStdp.train_image": (
         "LOCAL",

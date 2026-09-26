@@ -50,7 +50,7 @@ module; touches no core or safety-envelope file.
 import math
 import random
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it. This module is
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it. This module is
 #: UNGOVERNED (reasoning/), so the census REPORTS these and asserts nothing on them -- declaring them
 #: anyway is what makes the report meaningful rather than a wall of UNDETERMINABLE.
 #:

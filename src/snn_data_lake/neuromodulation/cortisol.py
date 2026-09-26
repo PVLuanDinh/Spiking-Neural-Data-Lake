@@ -19,7 +19,7 @@ the fast/slow neuromodulator pair the brain actually uses.
 
 import math
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "Cortisol.learn_rate_scale": (
         "NOT_A_RULE",

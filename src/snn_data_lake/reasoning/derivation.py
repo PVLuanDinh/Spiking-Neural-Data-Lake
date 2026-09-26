@@ -2,7 +2,7 @@
 
 This module lifts the proven BFS transitive-closure deduction out of
 ``reasoning/brain_loop.py`` -- **a file that no longer exists**; `brain_loop.Brain` was RETIRED once
-every capability it held was verified canonical (see ``substrate/replication_guard.py``), and this
+every capability it held was verified canonical (see ``gates/replication_guard.py``), and this
 module is one of the ports that made the retirement safe. Every ``brain_loop`` reference below is
 therefore PROVENANCE, not a pointer to code you can open. Its ``_relation_graph`` / ``_derive`` /
 ``_reason_question`` methods became the stateless FREE FUNCTIONS here, which operate on a

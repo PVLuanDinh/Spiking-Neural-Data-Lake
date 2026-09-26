@@ -304,7 +304,7 @@ def _normalized(metrics: dict, baseline: dict) -> tuple[float, float, float, flo
     return (cur["p50_ms"], cur["p95_ms"], base["p50_ms"], base["p95_ms"], "raw")
 
 
-# distinct-from: substrate/gradient_claim_gate.py -- its reported_nulls publishes statistical
+# distinct-from: gates/gradient_claim_gate.py -- its reported_nulls publishes statistical
 #   nulls asserted on by nothing; same reported-not-asserted PATTERN, different instrument and
 #   different quantity. Site read; the pattern reuse is deliberate and named.
 def _score(metrics: dict, baseline: dict) -> tuple[bool, str]:

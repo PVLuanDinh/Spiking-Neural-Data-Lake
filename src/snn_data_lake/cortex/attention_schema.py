@@ -116,7 +116,7 @@ from snn_data_lake.substrate.report_channel import snapshot as _report_snapshot
 #   information" and which carries no null. This estimates MI on an OBSERVED recording, with a
 #   permutation FLOOR and an explicit refusal, and constructs no world model at all.
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it. `_fit_and_score`
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it. `_fit_and_score`
 #: is inferred CLAIM by the census (it calls `torch.autograd.grad`), so it owes a declaration --
 #: the gate reported MISSING_DECLARATION on the commit that added it, which is the registration
 #: working, not the gate misfiring.
@@ -245,15 +245,15 @@ assert not (set(U_FIELDS) & set(U_FORBIDDEN)), (
 #   `decode_heldout` trains on the FIRST half in tick order, scores the held-out SECOND, and takes
 #   the `_q95` order statistic of label-permuted TRAIN-half decoders scored on the TRUE test labels.
 #   In-sample refit vs prequential halves, exceedance vs a q95 band: different null, different
-#   criterion. The tree's other permutation nulls -- substrate/growth_coverage_gate.py's permuted-
-#   FIELD and ARI nulls and substrate/gradient_claim_gate.py's within_matrix_permutation -- were
+#   criterion. The tree's other permutation nulls -- gates/growth_coverage_gate.py's permuted-
+#   FIELD and ARI nulls and gates/gradient_claim_gate.py's within_matrix_permutation -- were
 #   read too; none scores a held-out decode.
-# distinct-from: substrate/determinism_gate.py::measure_frac_bits -- a sweep for the smallest
+# distinct-from: gates/determinism_gate.py::measure_frac_bits -- a sweep for the smallest
 #   fractional-bit width whose spike trains equal an FP64 reference. A search over widths, not a
 #   percentile of a null. Read; unrelated.
 # distinct-from: cortex/executive_control.py::search -- beam/tree search over action SEQUENCES.
 #   Read; shares only the word "score". distinct-from: cortex/neuron_zoo.py::_worker_ladder (a
-#   thread-count race) and substrate/selfcheck_cache.py::_refresh_derived (a roster recompute) --
+#   thread-count race) and gates/selfcheck_cache.py::_refresh_derived (a roster recompute) --
 #   both read, neither computes a percentile, a null or an information quantity.
 #: MERGED 2026-09-15 (specs/022 T079) into `substrate/_mathutils.q95`. The body moved there
 #: VERBATIM -- the order statistic at round(0.95 * (len - 1)), EXACTLY as `track_error` takes
@@ -262,7 +262,7 @@ assert not (set(U_FIELDS) & set(U_FORBIDDEN)), (
 #: every floor and every band here, and now one IMPLEMENTATION of it. Why it moved rather
 #: than being imported from here: T079's `cortex/agency_monitor` is LIVE (autonomous_loop
 #: imports it) and this module is dormancy-EXEMPT, so a live importer of this file makes
-#: `substrate/dormancy_gate` name the exemption stale and exit 1 (measured 2026-09-15). The
+#: `gates/dormancy_gate` name the exemption stale and exit 1 (measured 2026-09-15). The
 #: MECHANISM is singular; only the door moved.
 _q95 = q95
 
@@ -552,7 +552,7 @@ def g4_rule(u_reads, c_reads):
 #   monitor's five inputs and its unrounded read, and carries a LESIONED arm. This records the
 #   ATTENTION control state, the committed action and the frame label, and Part I has NO lesion
 #   and NO second arm at all: one recording, two gates read off it.
-# distinct-from: substrate/amdahl_gate.py::live_reading -- a TIMING ceiling over three brains with
+# distinct-from: gates/amdahl_gate.py::live_reading -- a TIMING ceiling over three brains with
 #   a neutered code path. No timing is read here and no code path is neutered.
 def t078_record_brain(seed, n_ticks=T078_N_TICKS):
     """Tick a SCRATCH brain `n_ticks` times and return the per-tick rows of 2.1.
@@ -840,7 +840,7 @@ def t078_determinism(seed, n_ticks=DETERMINISM_TICKS):
 # distinct-from: cortex/self_model.py::SelfModel.observe -- folds one tick of REAL brain signals
 #   into an EMA-tracked model. Read: `control_state` keeps no state, folds nothing and returns a
 #   pure function of the fields it is handed on that tick.
-# distinct-from: substrate/amdahl_gate.py::_count_lif_in -- a bounded attribute walk counting
+# distinct-from: gates/amdahl_gate.py::_count_lif_in -- a bounded attribute walk counting
 #   LIFNeurons reachable from one brain. Read: shares only the phrase "one brain"; no census here.
 # distinct-from: cortex/snn_moe_classifier.py::_new_rng -- derives a numpy Generator's seed from
 #   the module-global `random` stream to keep a consumer's determinism contract. Read: every RNG
@@ -1193,9 +1193,9 @@ def _reported_mi(name, key, seeds, ss):
 #   floor and a decoder band, and decides a STOP/VOID gate. Different instrument, different
 #   conjuncts, different pin; the `contrast` they share is IMPORTED from substrate/paired_contrast
 #   by both, which is the single mechanism.
-# distinct-from: substrate/policy_manifest.py::execute -- runs a gate SUBPROCESS and maps its exit
+# distinct-from: gates/policy_manifest.py::execute -- runs a gate SUBPROCESS and maps its exit
 #   code to CANNOT_RUN / FAIL. Read: no subprocess here, and a REFUSED is decided from a reading,
-#   not from an exit code. distinct-from: substrate/gradient_claim_gate.py::_write_measure_artifact
+#   not from an exit code. distinct-from: gates/gradient_claim_gate.py::_write_measure_artifact
 #   -- writes a staleness-checkable measurement artifact. Read: the shared idea is "pin the run",
 #   and this pin is written ONCE and refuses to overwrite, which that one deliberately does not do.
 # distinct-from: substrate/signal_ring.py::publish (a single-writer ring append) and
@@ -1422,7 +1422,7 @@ RED_LINES = {
 # distinct-from: substrate/paired_contrast.py::main -- the reds of the STATISTIC (it must be able
 #   to say NOT MET, its FPR must be exact). Read; that module is IMPORTED here, never re-checked.
 # distinct-from: thalamus/gwt_deep.py::_reds -- constructs the input that makes each BINDING
-#   criterion fail. distinct-from: substrate/selfcheck_cache.py::self_check -- cache key-invariance
+#   criterion fail. distinct-from: gates/selfcheck_cache.py::self_check -- cache key-invariance
 #   reds. distinct-from: substrate/learn_daemon.py::_selfcheck -- the daemon's non-driving checks.
 #   All three read; each fires its own module's reds, and none touches a permutation floor, a
 #   decoder band or a control state.

@@ -1639,7 +1639,7 @@ class LakeChat:
         # (b) THE CONCLUSION PROTOCOL's rows that CARRY A READING, each with both C5 sentences. A
         # row whose reading is None is not mentioned: naming an unmeasured row here would read as a
         # row that passed, which is the exact shape the "N of 4" tally was deleted for.
-        from snn_data_lake.substrate.conclusion_protocol import CONCLUSION, REPO
+        from snn_data_lake.gates.conclusion_protocol import CONCLUSION, REPO
 
         charged = []
         for name, row in CONCLUSION.items():

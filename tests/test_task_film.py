@@ -51,7 +51,7 @@ def test_declared_anatomy_matches_the_live_shape():
 
 def test_committed_manifest_carries_the_film_wire():
     # the tracked artifact must hold the declared edge (regenerated in the same commit)
-    from snn_data_lake.substrate.manifest_gate import rebuild_from_registrants
+    from snn_data_lake.gates.manifest_gate import rebuild_from_registrants
 
     m = rebuild_from_registrants()
     assert ("task_set", "film_out") in m.ports and ("brain", "task_film_in") in m.ports

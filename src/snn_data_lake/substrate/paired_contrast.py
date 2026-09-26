@@ -5,7 +5,7 @@ LIFTED 2026-09-15 (specs/022 T077, evidence/t077-metacognition.md 2.10) from `co
 where it was written for T063 (its 2.6) and reused by T070, VERBATIM -- the harness now imports these names
 from here and re-exports them, so `prior_drift_harness.contrast` still resolves. Why it moved: the harness is
 an EXEMPT instrument (a scratch-population harness, never on the live tick), and a LIVE module that imports
-it -- even lazily, inside a function -- reads as "reachable from a live root" to `substrate/dormancy_gate`,
+it -- even lazily, inside a function -- reads as "reachable from a live root" to `gates/dormancy_gate`,
 which then names five EXEMPT rows stale (determinism_gate, h01_ingest, kernel_state, kernel_tick,
 prior_drift_harness; measured on T077's first campaign commit). Retiring those rows to green the gate would
 be the lie T070's record refused (t070-integration-kernel.md 3.5); duplicating the statistic would be the P2

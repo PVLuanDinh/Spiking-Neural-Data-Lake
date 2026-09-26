@@ -41,7 +41,7 @@ import sysconfig
 
 # distinct-from: cerebellum/wavefront_planner.py, cortex/quality_diversity.py,
 #   hippocampus/sleep_replay.py, hypothalamus/circadian_clock.py,
-#   substrate/gradient_claim_gate.py -- the hook matched shared verbs (run/refuse/free);
+#   gates/gradient_claim_gate.py -- the hook matched shared verbs (run/refuse/free);
 #   none guards the interpreter. This EDIT EXTENDS the incumbent guard in place (one
 #   mechanism, two tiers) -- it does not add a sibling. All sites read.
 def require_free_threaded(where="import", strict=False):
@@ -452,7 +452,6 @@ REGIONS = {
         "binlog",
         "growable",
         "spontaneous_activity",  # specs/022 T045: learnable OU bootstrap through the SAME plasticity path (FR-033)
-        "growth_coverage_gate",  # specs/022 T046: register row 7's instruments, counted (coverage red 1 of 10)
         "region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> GWT ignition bias
         "region_wiring",  # the always-on daemon's faculty-wiring registry -> charge_all + honest coverage report
         "brain_telemetry",  # the ONE snapshot contract + JSONL recorder + provenance table
@@ -464,42 +463,20 @@ REGIONS = {
         # now a thin shim so the documented command still works. Its __main__ is a self-check, NOT
         # the drive loop -- run_selfchecks executes __main__ and a forever-loop would hang the gate.
         "learn_daemon",
-        "dormancy_gate",  # Policy 3: the no-silent-dormancy CI gate (reachable-or-EXEMPT over REGIONS)
-        "replication_guard",  # Policy 4: the one-brain guard (canonical stack classes defined once)
-        "import_manifest",  # Policy 3: the cross-tier canary (governed -> ungoverned lazy imports)
-        "method_dormancy_gate",  # Policy 3 amendment: per-METHOD dormancy (update rules with no live caller)
-        "eprop_transport_gate",  # e-prop invariant: a transposed weight may not reach a weight update
-        "doc_budget_gate",  # word ceilings on the standing documents: prose growth stays visible
-        "amdahl_gate",  # specs/008 Gate Zero / 022 S6: the Amdahl ceiling of a delivery-path conversion
-        "gradient_claim_gate",  # e-prop SCOPE: which rules OWE a cosine at all (census asserts on the governed tier)
-        "policy_manifest",
-        "capability_bar",  # specs/022 X1 (T088): a capability claim carries its protocol and provenance
-        "immortal_retention",  # specs/022 L5 (T089): what the lake never evicts, and the proof
-        "conclusion_protocol",  # specs/022 C5 (T090): what a consciousness instrument may conclude  # POLICIES.md manifest + release audit: derive rows, audit gates, certify (bare == --assert)
-        "perf_baseline",  # specs/022 T001: pinned-host perf ratchet; bare == cheap wiring check, never a measurement
         "lake_bridge",  # specs/022 T005b: read-old/write-new format bridge; bare == constructed round-trip red
         "lake_segments",  # specs/022 T005: WAL(BinLog) + sealed Arrow IPC segments; bare == round-trip + CRC red
         "lake_index",  # specs/022 T007: derived pointer index (sqlite WAL); bare == round-trip + divergence red
-        "lake_rebuild_gate",  # specs/022 T008: delete->rebuild->logical-equality from the lake alone; bare == self-check
         "lake_migrate",  # specs/022 T009: per-tag dispositions + identity migration; bare == identity + unknown-tag red
         "lake_engine",  # specs/022 T010-i: retention registry + IMMORTAL append budget; bare == consistency + flood red
         "signal_ring",  # specs/022 T011: ONE-writer multicast ring + lake journaller; bare == replay A/B + overrun red
         "kernel_state",  # specs/022 T013: SoA substrate state, 128B-aligned, lake-backed; bare == alignment + round-trip + refusal reds
         "kernel_tick",  # specs/022 T014: two-phase deterministic tick (P fixed, integer delivery); bare == delay + thread-equality reds
-        "determinism_gate",  # specs/022 T015: T=1..16 byte-equal trains + measured frac_bits; bare == control arms + thread pair
-        "replay_gate",  # specs/022 T017: G5 snapshot/restore with RNG stream positions; bare == all four arms, reduced ticks
         "wiring_manifest",  # specs/022 T018: TypedPort + WiringManifest (declared anatomy); bare == five checks + five reds + NIR round-trip
-        "manifest_gate",  # specs/022 T019: the five contract checks + divergence red over the committed artifact; bare == assert + reds
         "port_charge_probe",  # specs/022 T021: pinned-payload neuter + margin surveillance + replay-twice A/B; bare == both controls
-        "envelope_hash_gate",  # specs/022 T021b: five envelope files' bytes vs approved baseline; bare == positive control + 3 reds
-        "region_charge_gate",  # specs/022 T022: reachable AND port-charged per region (BINDING at the T039 floor since 2026-08-22); bare == census + reds
-        "atlas_node_gate",  # specs/022 T024: every connectome node id named by its region or dated-EXEMPT; bare == census + probe reds
-        "selfcheck_cache",  # battery carry-forward: closure-hash-verified PASS carries; bare == dependency/poison/envelope/FAIL reds
         "report_channel",  # 022 T034: typed workspace-report snapshot; the broadcast's declared consumer
         "episode_driver",  # 022 T035: stimulus port + trial schedule (fixation/saccade) + G5-replayable trials
         "afferent_boundary",  # 022 T036: transduction-in; idle sentinel handled at the door; proprio lane
         "efferent_boundary",  # 022 T037: efference copy around the envelope; cerebellar forward-model charge
-        "safety_envelope",  # THE five approval-gated brainstem files, one definition + a SECURITY.md agreement check
         "ingest_guard",  # content boundary for outside data: licence deny-by-default + injection flagging
         "hf_stream",  # streamed HF datasets -> brain-consumable features (licence-gated, bounded)
         "basic_components",  # Brain-Cog-adopted composition interface: node + local-rule + connection palette
@@ -511,6 +488,29 @@ REGIONS = {
     # gates join it at M1.
     "gates": [
         "move_gate",  # G8 G-R8: the gate census, its diff against a declared delta, and its reds
+        "amdahl_gate",
+        "atlas_node_gate",
+        "capability_bar",
+        "conclusion_protocol",
+        "determinism_gate",
+        "doc_budget_gate",
+        "dormancy_gate",
+        "envelope_hash_gate",
+        "eprop_transport_gate",
+        "gradient_claim_gate",
+        "growth_coverage_gate",
+        "immortal_retention",
+        "import_manifest",
+        "lake_rebuild_gate",
+        "manifest_gate",
+        "method_dormancy_gate",
+        "perf_baseline",
+        "policy_manifest",
+        "region_charge_gate",
+        "replay_gate",
+        "replication_guard",
+        "safety_envelope",
+        "selfcheck_cache",
     ],
 }
 
@@ -900,7 +900,7 @@ LEGACY_TRAIN_TIER = {
 
 
 # The package's ONE basename-to-path mapping (G8 S1a): the call-time accessors the region-keyed
-#   gates join on (F5), and since G8 S1e the source of substrate/dormancy_gate.py's _CANON, which
+#   gates join on (F5), and since G8 S1e the source of gates/dormancy_gate.py's _CANON, which
 #   used to compute the same map itself (P2). brain_atlas.region_of answers the frozen LABEL.
 def package_of(module):
     """The package that holds `module` (a basename) NOW, read from the three live tables; None

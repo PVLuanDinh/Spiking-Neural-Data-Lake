@@ -96,7 +96,7 @@ import torch.nn.functional as F
 
 from snn_data_lake.substrate.device import resolve_device
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "GrowableReadout.train_step": (
         "APPROXIMATES_GRADIENT",

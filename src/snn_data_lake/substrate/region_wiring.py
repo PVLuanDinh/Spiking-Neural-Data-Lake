@@ -549,14 +549,14 @@ def coverage():
 
 
 def live_coverage():
-    """The AUTHORITATIVE wiring coverage (Policy 3), delegating to substrate.dormancy_gate: how many
+    """The AUTHORITATIVE wiring coverage (Policy 3), delegating to gates.dormancy_gate: how many
     brain modules are REACHABLE from a live path/entrypoint, how many are EXEMPT (with a reason), and
     how many are (silently) DORMANT -- which is 0 unless the dormancy gate is failing. This is distinct
     from coverage() above, which counts only the EXPLICIT per-cycle charge adapters registered here (an
     optional mechanism for genuinely-periodic faculties -- NOT a way to fake liveness for a dormant
     module; the honest way to make a faculty live is to WIRE it into the tick so it charges behaviour).
     Returns {total, reachable, exempt, dormant}."""
-    from snn_data_lake.substrate import dormancy_gate
+    from snn_data_lake.gates import dormancy_gate
 
     c = dormancy_gate.coverage()
     return {

@@ -24,7 +24,7 @@ shown to change the OUTCOME here -- only the state the outcome is read from.
 
 import snn_data_lake.cortex.snn_classifier as C
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "HomeostaticNeuron.hebb": (
         "LOCAL",

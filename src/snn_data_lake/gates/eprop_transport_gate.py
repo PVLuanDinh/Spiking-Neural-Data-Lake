@@ -56,8 +56,8 @@ ONE. It is regression protection against the common spelling; it is not a proof 
 it says so on every run.
 
 Reproduce:
-    python -m snn_data_lake.substrate.eprop_transport_gate            # report, exit 0
-    python -m snn_data_lake.substrate.eprop_transport_gate --assert   # exit 1 on a governed finding
+    python -m snn_data_lake.gates.eprop_transport_gate            # report, exit 0
+    python -m snn_data_lake.gates.eprop_transport_gate --assert   # exit 1 on a governed finding
 """
 
 # distinct-from: cortex/eprop_kernel.py -- that is a RUNTIME NUMERIC check on ONE network
@@ -66,7 +66,7 @@ Reproduce:
 #   is local; it cannot see a module nobody handed it. This is a STATIC scan over every module in
 #   the tree. The two are complements, not duplicates -- eprop_kernel answers "is this rule local?",
 #   this answers "is there a rule nobody checked?" -- and neither substitutes for the other.
-# distinct-from: substrate/method_dormancy_gate.py -- same TECHNIQUE (an AST pass over src/),
+# distinct-from: gates/method_dormancy_gate.py -- same TECHNIQUE (an AST pass over src/),
 #   different QUESTION: it asks whether a learning-verb METHOD has a live call site, which is
 #   dormancy. It says nothing about what the method computes, so a transported weight inside a
 #   method that IS called passes it clean -- exactly how mlp_q sat in run_selfchecks passing.
@@ -168,7 +168,7 @@ def _module_declarations(rel):
     gate does not get a second one (P2). Imported lazily: the transport walk runs in the stdlib tier
     and must not pay for the census on every scan.
     """
-    from snn_data_lake.substrate import gradient_claim_gate as gcg
+    from snn_data_lake.gates import gradient_claim_gate as gcg
 
     root = gcg._repo_root()
     if root is None:
@@ -224,7 +224,7 @@ def stale_exemptions(violations, extra=None):
     claim so the property has a REACHABLE RED -- without it, an implementation returning `[]`
     unconditionally would satisfy every "nothing is stale" assertion ever written against it.
     """
-    from snn_data_lake.substrate import gradient_claim_gate as gcg
+    from snn_data_lake.gates import gradient_claim_gate as gcg
 
     seen = {_exempt_key(v[0], v[1]) for v in violations}
     claimed = {}
@@ -381,7 +381,7 @@ def scan(brain_modules=None):
     the package rather than by a second traversal.
     """
     if brain_modules is None:
-        from snn_data_lake.substrate.dormancy_gate import BRAIN_MODULES
+        from snn_data_lake.gates.dormancy_gate import BRAIN_MODULES
 
         brain_modules = BRAIN_MODULES
     violations, census, swaps = [], 0, []

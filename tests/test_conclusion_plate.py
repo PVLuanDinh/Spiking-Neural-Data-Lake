@@ -9,7 +9,8 @@ import re
 
 import pytest
 
-from snn_data_lake.substrate import brain_telemetry, conclusion_protocol
+from snn_data_lake.gates import conclusion_protocol
+from snn_data_lake.substrate import brain_telemetry
 
 # A row shaped like a live one: two sentences, a dissociation input, a reading, a surface symbol.
 CHARGED = (

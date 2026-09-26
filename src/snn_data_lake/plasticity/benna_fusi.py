@@ -69,7 +69,7 @@ import zlib
 from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
 from snn_data_lake.substrate._mathutils import mean
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "BennaFusiLearner.train_tick": (
         "LOCAL",

@@ -2054,3 +2054,137 @@ state on both sides.
 of `M1_build.patch` `1da3817b...02541`. The mover is unchanged (`b49e982a...a746eb`).
 
 **Openings.** None new.
+
+### 3.9 M1 -- the 23 policy and correctness gates to `gates/`
+
+Measured 2026-09-25 local (02:31-04:11 UTC on the 26th), `.venv-lake` (3.14.6 free-threaded): built and run twice on
+`1fe3611`, halted, ruled on (`b55073d`), rebuilt on the S1f head `e8091b5` without S1f's part, run a third time: green.
+
+**What was built.** The mover (`b49e982a...a746eb`, unchanged) ran `move DOC TREE M1` in a MARKED temporary copy of the
+working tree (it refuses any tree without move_gate's marker, and the real checkout never carries it): 23 moves, 55
+imports and 39 strings rewritten in 45 files, 1 docstring left, the copy's envelope files unchanged; transferred to the
+checkout byte for byte (`git mv` each moved file, then the 38 rewritten files), the checkout then content-equal to the
+copy, 4.7 s. The stage builder's exact-pair rewrite (the 23 `(substrate, <gate>)` pairs in dotted and path form, in
+every LIVE text file by B1's classifier and every live `.py`; never the five envelope files, a frozen document, this
+evidence file or `tools/policy_manifest.json`) re-pointed 416 references in 203 files (docstrings, comments, documents,
+strings holding a pair inside longer text) and left 326 in 74 frozen, evidence and envelope files. An independent rebuild
+(an export of `1fe3611`, the mover, the rewrite) gave identical output; the checkout differed from it in exactly the
+hand-built items below and ruff's 6 import re-sorts (2.5 item 8). By hand: F1 in `gates/policy_manifest.py`;
+`test_g8_move_gate` (the legacy-layer test asserts `_LEGACY` holds exactly the moved modules, `REGIONS["gates"]` contains
+`move_gate`); `test_policy_manifest` (2 new tests: a gate token is the registry's call, never a prefix; the unclaimed
+census keeps its pre-G8 surface); `tools/policy_manifest.json` regenerated (its 7 commands and its regenerate line; the
+generator writes LF, and the checkout's CRLF working copy was restored, the committed copy verified in sync); and one
+ruff overreach undone (`ruff format` on explicit paths reformatted the ruff-excluded `research/ng_snn/data.py`, 38/17
+lines; restored and rewritten again, 1 line; every later ruff run passes `--force-exclude`).
+
+**Each item of 2.4 and 2.5**, read statically before any gate ran: ci.yml's 15 gate calls (only `brian2_backend` left,
+M5's); PLAN A.4's battery line (`-m snn_data_lake.gates.$m` and its two literal `policy_manifest` calls); the 7 SCOPE
+commands (AGENT_COLD_START 3, POLICIES 2, POLICIES_EVIDENCE 2), POLICIES_EVIDENCE.md lines 410 and 476 each followed by
+"(historical path, dated 2026-09-25 at G8 M1: `snn_data_lake.substrate.<gate>`)", with no `python -m` and no `.py` path in
+the note (+16 words, 12 of headroom left); `selfcheck_cache`'s subject; POLICIES.md's 24 gate paths and 2 dotted
+citations, 0 left. No rule-bearing module moves (no `tools/rule_census.json` key names an M1 module), so no census regen;
+`import_manifest.GOVERNED` unchanged (S1a added `gates`). so101_arm.py lines 604 and 605 are counted, never opened for
+writing (`git diff --quiet` on the five envelope files and `tools/envelope_hashes.json`: rc 0; the control, signal_loop,
+rc 1). F12: the templated battery line's two out-of-repo copies (the memory store's `t066_battery_v2.sh` and
+`SNDL-PROTOCOL.md` section 5) are named in the commit message, not edited.
+
+**F1.** `CMD_RE` accepts `<pkg>/<mod>.py`; `governed_module()` answers `snn_data_lake.<pkg>.<mod>` only where
+`package_of(<mod>) == <pkg>` (the registry, reused); `token_to_argv`, `extract_commands` and `cross_check` use it; `tools/`
+tokens are unchanged; `_selfcheck_modules()` reads every quoted `<pkg>.<mod>` runner name the registry confirms. At the
+pre tree the registry-derived extraction gives the identical 11 commands. The unclaimed-gate census's surface was the
+runner's `"substrate.*"` names; a registry-wide surface would admit `move_gate`, `developmental_envelope` and
+`reticular_gate`, none named in POLICIES.md, and red `--assert`, so it is the gate-named runner modules whose frozen
+label is `substrate` (`brain_atlas.region_of`), equal to the old set at the pre tree (87 modules, 20 gate-named) and
+unchanged by any move. The ruling at M1's halt keeps that scope; `move_gate`'s printed disposition is owed in G8-1's
+fold. **F1's red** (55.2 s): on this tree the 7 `gates/` tokens map to `-m snn_data_lake.gates.*`, in_ci and
+in_selfchecks True, `--audit` exit 0, NOT_IN_CI none; in a temporary copy with the parent's `token_to_argv` and
+`cross_check` (read by AST from `git show`), "P3 FAIL ... gates/dormancy_gate.py -- exit 2" and "NOT_IN_CI:
+gates/dormancy_gate.py, gates/eprop_transport_gate.py, ... gates/replication_guard.py", `--audit` exit 1.
+
+**Run 1, red: an instrument defect.** Its post census held all 23 old gate files beside the new ones (p4c's new zone
+"src/snn_data_lake/substrate 23 > baseline 0", 463 files parsed instead of 440, `brain_atlas` exit 1, BROAD 1,106): the
+WORKTREE export never gave a rename's source the working tree's state. Fixed, with its reachable red and a regression
+test, and at the orchestrator's ruling moved OUT of M1 into its own commit, S1f (3.8). Run 1's census-side items are
+void; its checkout-side items were green (C2(c) 16 of 17, 0 differ; F1's red; 305 tests).
+
+**Run 2, red: the atlas rows.** With the export fixed, the parent re-taken and the declaration unchanged (declared
+before run 1 from an export of `1fe3611`: BROAD `1075 across 239` -> `1275 across 259`, the POLICIES_EVIDENCE.md row
+`19800` -> `19816`, and nothing else, with the atlas rows written beside it as PREDICTED, NOT DECLARABLE under 2.6's M1
+sentence), the diff read "MOVE GATE RED: 2 difference(s) ... gates|brain_atlas||+: observed ['gates            24 modules',
+'substrate        64 modules'] ... -: observed ['gates             1 modules', 'substrate        87 modules']"; every other
+field sat inside the delta. `brain_atlas` prints one row per LIVE `REGIONS` key with its module count, which 2.6's
+M-stage rule (the key SETS only) did not name. Per 2.10 and the brief the stage halted uncommitted, the build saved as
+`M1_build.patch` (verified to apply onto `1fe3611` and reproduce the M1 tree), and the checkout restored.
+
+**The rulings at M1's halt** (the dated block under 2.4, `b55073d`): every M stage's declared delta carries the per-key
+atlas counts GENERATED from the 2.12 table; S1f lands the export fix before M1; G8 is re-cut into three pushed arcs.
+**Disclosed: for M1 the atlas rule was written AFTER M1's first diff, which red on exactly these two rows, so M1's green
+stands under a post-diff amendment of the declaration rule; for M2 onward it is a pre-registration.**
+
+**The rebuild.** `M1_build.patch` split by hunk into `S1f.patch` (the export fix and its test: S1f, 3.8) and
+`M1_rest.patch` (everything else), the latter applied through the index onto `e8091b5` (0 s): the rebuilt tree equals the
+saved M1 tree in all 1,254 files but this evidence file (the amendment and 3.8), 23 renames staged, the envelope files
+untouched, no mixed line endings among the 222 changed files. The parent census over `--export e8091b5` (126 s): 0
+changes against S1f's post census. No gate ran on the rebuilt tree before the declaration.
+
+**The declared delta** (run 3; written 03:49:39 UTC, before the first gate run of the rebuild, by `m1_declare.py` from the
+export of `e8091b5` and the build's rules: citation_guard's own scan and resolver over the modeled post tree,
+doc_budget_gate's own counter and row format, and `brain_atlas`'s row formats over the live tables after the mover's M1
+map, generated from 2.12, the renderer first reproducing all 21 of the parent's table lines): BROAD `1075 across 239` ->
+`1275 across 259` (+200: 198 citations of the moved gates left in frozen documents and this evidence file, 2 envelope
+carve-out lines, 20 new files; the modeled count and the rule's own count agree); `19800` -> `19816` for
+POLICIES_EVIDENCE.md; `gates 1 -> 24` and `substrate 87 -> 64` in the atlas. Nothing else.
+
+**Run 3, the diff:** "move_gate OK: the diff equals the declared delta (6 declared change(s))", exit 0 -- exactly the
+declared delta. Every NAME registry read RAW equals the parent's carried forward through the mover's M1 map; every
+OUTCOME set mapped through LEGACY_* is unchanged; C6: LEGACY_* equal, depth unchanged, every violation list empty (0
+registry names without a file). Run 3's post census, observed diff and planted census are byte-identical to run 2's
+(`c0802c0b...a2b54`, `181a5a90...e128e`, `c2fbaa05...cd58a`): the rebuilt tree censuses exactly as the saved build did.
+
+**The planted red** (2.4 M1: `selfcheck_cache`'s subject left on its old path, in an export of the stage's tree): "MOVE
+GATE RED: 3 difference(s) ... C6: POST registry_names_without_file = ['selfcheck_cache.subjects: substrate.dormancy_gate'];
+names|selfcheck_cache.subjects||+: observed ['substrate.dormancy_gate'] ... -: observed ['gates.dormancy_gate']", exit 1;
+C2(d), "gates/selfcheck_cache.py:990 string substrate.dormancy_gate", exit 1. Compared with the NAME class mapped
+through LEGACY_* instead (S1a's form), the same pair reads 0 changes: the F3(b) blindness the raw comparison closes.
+
+**C2-C9.** C2(a): 415 attempted, 13 failed (3.1's set), 0 files written, 18.8 s. C2(b) on the real checkout: 23 legacy
+pairs (the moved gates), 0 packages, 286 flat aliases each its module, the control red. **C2(c), its first real run:** 16
+of 17 gates have a legacy name (brian2_backend moves at M5); each `python -m snn_data_lake.substrate.<gate> --assert`
+exits with its current path's code and prints its normalized stdout, 0 differ, 104.3 s. **C2(d):** 23 legacy pairs, 0
+packages, 659 files, 0 findings, 3.7 s; the zero is believed on a positive control: the same 23 pairs over the pre-move
+tree read 104 findings (59 imports, 45 strings) in 46 files. C2(e): 12 of 12 SourceFileLoader. C3 (every module named
+through `module_path()`): the gate's self-check OK from `gates.envelope_hash_gate`, the document check OK, the envelope
+diff empty, the latch through the real `substrate.home`; the envelope's own self-check under strict OK. C4: R-b0
+unchanged. C5: R-L1 both arms PASS, 3.3 s. `policy_manifest --audit` under strict, from its new path: exit 0, 40.2 s,
+every machine row PASS, UNCLAIMED_GATE none, NOT_IN_CI none. The self-check (100.2 s): every red fires; F2 takes its
+as-is branch ("the copy already holds its stage's move (substrate -> gates)"). The mode red on real censuses: REFUSED,
+exit 2. ruff check and format --check with `--force-exclude` on the 191 touched `.py`: clean. Tests: the touched tests
+306 passed in 527.6 s; the moved gates' in-process self-checks (`test_selfchecks -k gates`) 24 passed in 149.5 s.
+
+**The cost readings (2.9).** Before the halt: the build 328 s of execution (02:31:27-02:36:55 UTC, scripted), after
+about 15 min of authoring the reusable scripts while S1e's cheap halves ran, plus about 7 min for run 1's export defect;
+cheap halves 1,305.5 s (run 1) and 1,310.4 s (run 2). The rebuild: the patch split and apply in seconds, the tree check
+under a minute, the parent census 126 s, the declaration 3 s. **Run 3, green: 1,267.2 s**, sequential: post export and
+census 125.5 s; the diff and the mode red 0.2 s; the self-check 100.2 s; C2(a) 19.0 s; C2(b) 4.4 s; C2(c) 104.4 s; C2(d)
+3.8 s; C2(e) and C3 0.6 s; R-L1 3.3 s; the audit 40.2 s; the planted export and census 126.1 s, its diffs 4.1 s; F1's red
+55.2 s; ruff 0.2 s; the touched tests 528.3 s; the moved gates' self-checks 150.3 s.
+
+**Artifacts** (the scratch folder's `g8\census` and `g8\m1`), sha256: the parent `pre_M1_e8091b5.json`
+`3903f82f...305e1`; `declared_M1.json` `5d485854...8d4f2f` (runs 1-2's, `run1_declared_M1.json` `5dc80554...f6b63`);
+`expected_M1.json` `ed0c13c0...88074`; `post_M1.json` `c0802c0b...a2b54`; `observed_M1.json` `181a5a90...e128e`;
+`diff_M1.txt` `79700e30...a8e0a`; `planted_M1.json` `c2fbaa05...cd58a` with `diff_planted_M1.txt` `69949fb6...5f886`,
+`c2d_planted_M1.txt` `f9607236...afb7` and `planted_vs_post_M1.txt` `33dddade...3960e`; `f1_red_M1.txt`
+`fd64bc16...4cd13`; `selfcheck_M1.txt` `41369a42...73bea`; `c2a_M1.json` `1fb93901...e1fd5`; `c2c_M1.txt`
+`3004e58d...309a1`; `c2d_M1.txt` `51e60f6a...43d22`; `cheap_half_M1.json` `6d06ad67...2386f` and `.log`
+`cfb1864f...fd6ae`; run 1: `run1_observed_M1.json` `b41139a9...5aef` and `run1_cheap_half_M1.log` `3638fc6b...03173`;
+run 2's parent `pre_M1_1fe3611_v2.json` `9fc9d0c9...7aec6`. Disclosed: run 2's own log, diff text and self-check output
+were overwritten by run 3 (a rename step that did not fire); their hashes were recorded before the halt (the log
+`fbe55b3d...d96ad`, the diff `065247d3...1367f`), and run 3 reproduces its censuses byte for byte. The build:
+`mover_M1.json` `7144d3fe...aa36`, `rewrite_M1.json` `78eba847...ec39`, `M1_build.patch` `1da3817b...02541`, its
+remainder `M1_rest.patch` `27f34561...555b`, the tree manifest `M1_tree_manifest.json` `454125f7...f774`. The mover is
+unchanged (`b49e982a...a746eb`).
+
+**Openings.** (1) `move_gate`'s printed disposition in the unclaimed-gate census: owed in G8-1's fold (the ruling).
+(2) The atlas rows are generated by the out-of-tree declaration script (`m1_declare.py`, archived with the census
+artifacts); M2 is the first stage that adds a `REGIONS` key, so its generator must render a new row, with the
+reproduction of the parent's rows as its control.

@@ -117,8 +117,8 @@ P8 debts.
 #   different mechanism, different question. Read.
 # distinct-from: reasoning/test_prototype.py + cerebellum/spiking_pid.py +
 #   cortex/autapse_neuron.py + plasticity/intrinsic_plasticity.py +
-#   substrate/gradient_claim_gate.py + substrate/lake_bridge.py +
-#   substrate/perf_baseline.py -- recall controls, LIF populations, delayed-match
+#   gates/gradient_claim_gate.py + substrate/lake_bridge.py +
+#   gates/perf_baseline.py -- recall controls, LIF populations, delayed-match
 #   trials, drive shaping, gradient nulls, a storage iterator, and the
 #   reported-not-asserted idiom's precedent; none is a gene-network mechanism. Read.
 """
@@ -413,7 +413,7 @@ _GRADED_NEUROMERES = frozenset({"sp"})
 #: prosomeres are forebrain; m1 is midbrain; isthmus + rhombomeres are hindbrain; sc is
 #: spinal cord (no REGION_COORDS entry maps there). Declared here BESIDE the axis it grains
 #: (the T046 panel: a second neuromere table living in a gate drifts from the first);
-#: consumed by substrate/growth_coverage_gate's Allen external control.
+#: consumed by gates/growth_coverage_gate's Allen external control.
 MACRO_OF_NEUROMERE = {
     "sp": "forebrain",
     "p3": "forebrain",

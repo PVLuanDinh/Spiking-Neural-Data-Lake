@@ -66,7 +66,7 @@ def test_region_of_answers_the_frozen_label():
 def test_label_consumers_take_paths_from_module_path(monkeypatch):
     """F5 at unit grain: the file and the reachability of a labelled module come from
     module_path(); point it at a package that holds nothing and both censuses lose `insula`."""
-    from snn_data_lake.substrate import atlas_node_gate, region_charge_gate
+    from snn_data_lake.gates import atlas_node_gate, region_charge_gate
 
     assert atlas_node_gate.node_references()["insula"]
     assert "insula" in region_charge_gate.reachable_regions()
@@ -81,7 +81,7 @@ def test_selfcheck_cache_anchor_is_line_anchored():
     naive = text.index("REGIONS = {")
     anchored = re.search(r"(?m)^REGIONS = \{", text).start()
     assert naive < text.index("\nREGIONS") < anchored  # the substring lands inside LEGACY_*
-    from snn_data_lake.substrate import selfcheck_cache
+    from snn_data_lake.gates import selfcheck_cache
 
     assert selfcheck_cache._EXPECTED_ROSTERS["root"][3:] == tuple("LEGACY_" + t for t in mg.TABLES)
 
@@ -101,9 +101,9 @@ def test_move_gate_diff_is_exact_both_ways():
 
 
 def test_move_gate_is_registered_and_imports_nothing_it_measures():
-    from snn_data_lake.substrate import dormancy_gate, import_manifest
+    from snn_data_lake.gates import dormancy_gate, import_manifest
 
-    assert S.REGIONS["gates"] == ["move_gate"]
+    assert "move_gate" in S.REGIONS["gates"]  # beside the gates M1 moved in
     assert dormancy_gate.EXEMPT["move_gate"][0] == "permanent"
     assert "gates" in import_manifest.GOVERNED
     spec = importlib.util.find_spec("snn_data_lake.gates.move_gate")
@@ -116,10 +116,23 @@ def test_move_gate_is_registered_and_imports_nothing_it_measures():
 
 
 # ---- S1b ----------------------------------------------------------------------------------------
-def test_legacy_layer_is_empty_before_any_move_and_the_provider_returns_it():
+def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_it():
+    """Each `_LEGACY` pair is a module whose live package differs from its frozen label (none
+    before the first move, every moved module after); `_LEGACY_PKGS` stays empty until a package
+    empties (M11a)."""
     from snn_data_lake.cortex import interaction_learning as ixn
 
-    assert S._LEGACY == {} and S._LEGACY_PKGS == frozenset()
+    label = {
+        m: k
+        for t in (S.LEGACY_REGIONS, S.LEGACY_TORCH_TIER, S.LEGACY_TRAIN_TIER)
+        for k, ms in t.items()
+        for m in ms
+    }
+    moved = {m for m in label if S.package_of(m) not in (None, label[m])}
+    assert S._LEGACY == {
+        f"{label[m]}.{m}": S.module_path(m)[len("snn_data_lake.") :] for m in moved
+    }
+    assert S._LEGACY_PKGS == frozenset()
     assert ixn._g0c_legacy_modules() is S._LEGACY  # the ONE table, read at call time (P2)
     assert len(S._MOVED) == 286 and "claustrum" not in S._MOVED
 
@@ -129,7 +142,7 @@ def planted_legacy(monkeypatch):
     """A legacy package and path planted in-process: `g8probe` stands for an emptied package whose
     module `region_charge_gate` now lives in `substrate` (nothing on disk changes)."""
     monkeypatch.setattr(S, "_LEGACY_PKGS", S._LEGACY_PKGS | {"g8probe"})
-    monkeypatch.setitem(S._LEGACY, "g8probe.region_charge_gate", "substrate.region_charge_gate")
+    monkeypatch.setitem(S._LEGACY, "g8probe.region_charge_gate", "gates.region_charge_gate")
     yield
     for name in ("snn_data_lake.g8probe.region_charge_gate", "snn_data_lake.g8probe"):
         sys.modules.pop(name, None)
@@ -142,7 +155,7 @@ def test_legacy_path_is_the_module_and_the_package_is_synthetic(planted_legacy, 
     pkg = importlib.import_module("snn_data_lake.g8probe")
     assert list(pkg.__path__) == [] and "G8" in pkg.__doc__
     old = importlib.import_module("snn_data_lake.g8probe.region_charge_gate")
-    new = importlib.import_module("snn_data_lake.substrate.region_charge_gate")
+    new = importlib.import_module("snn_data_lake.gates.region_charge_gate")
     assert old is new  # identity is the contract: one object, two names
     spec = S._AliasFinder().find_spec("snn_data_lake.g8probe.region_charge_gate")
     assert spec.has_location and spec.origin == new.__spec__.origin  # runpy sets __file__ from it

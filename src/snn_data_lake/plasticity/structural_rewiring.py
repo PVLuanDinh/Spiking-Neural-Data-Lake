@@ -148,7 +148,7 @@ import random as _random
 #   module's prune trigger is IDENTITY VIOLATION (sign flip) with a conserved budget.
 #   Site read.
 
-#: Read statically by `substrate/gradient_claim_gate.py`; never imported by it.
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "StructuralRewiring.rewire": (
         "LOCAL",

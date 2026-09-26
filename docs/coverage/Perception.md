@@ -36,7 +36,7 @@ instrument could record for Perception measured a brain whose perception tier wa
 | covert_attention_trn_gain | 21 | src/snn_data_lake/brainstem/autonomous_loop.py:971#_attend; src/snn_data_lake/brainstem/autonomous_loop.py:1557#step | - | opus-5 neuter-A/B 0 of 40 on unit action threat pos | 2026-07-30 |
 | latency_spike_coding | 21 | src/snn_data_lake/cortex/spike_preprocessing.py:39#encode_latency; src/snn_data_lake/amygdala/fear_conditioning.py:143; src/snn_data_lake/brainstem/autonomous_loop.py:1597#step | - | opus-5 live-brain census, threat 0.0 on 40 of 40 | 2026-07-30 |
 | generative_pc_perception_tier | 10 | src/snn_data_lake/cortex/brain.py:988#__init__; src/snn_data_lake/cortex/brain.py:1962#propose_improvements | - | opus-5 static call-site census, no live-tick caller | 2026-07-30 |
-| hardware_sensor_transduction | 10 | src/snn_data_lake/substrate/esp32_encoder_path.py:125#spikes_for; src/snn_data_lake/substrate/dormancy_gate.py:255#module | - | opus-5 read of dormancy_gate EXEMPT, static only | 2026-07-30 |
+| hardware_sensor_transduction | 10 | src/snn_data_lake/substrate/esp32_encoder_path.py:125#spikes_for; src/snn_data_lake/gates/dormancy_gate.py:255#module | - | opus-5 read of dormancy_gate EXEMPT, static only | 2026-07-30 |
 | attention_goal_modulation | 0 | src/snn_data_lake/cortex/learned_attention.py:92#_goal_gain; src/snn_data_lake/cortex/brain.py:1289#_attend_real_stream | - | opus-5 re-check of the v4.79 finding, rule 4 | 2026-07-30 |
 | claustral_assembly_binding | 0 | src/snn_data_lake/brainstem/autonomous_loop.py:1009#_energy; src/snn_data_lake/cortex/brain.py:3438#state | - | opus-5 live-brain census, bound_modalities 0 | 2026-07-30 |
 

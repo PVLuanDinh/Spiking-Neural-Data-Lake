@@ -1,4 +1,4 @@
-"""Tests for substrate/policy_manifest.py — parsers, reconciliation, manifest.
+"""Tests for gates/policy_manifest.py — parsers, reconciliation, manifest.
 
 Every negative here is CONSTRUCTED and demonstrated (SI 5): the reconciliation
 red, the double-count red, the empty-walk red and the junk-token control each
@@ -9,7 +9,7 @@ import re
 
 import pytest
 
-from snn_data_lake.substrate import policy_manifest as pm
+from snn_data_lake.gates import policy_manifest as pm
 
 REAL = pm.POLICIES.read_text(encoding="utf-8")
 
@@ -67,9 +67,41 @@ def test_junk_tokens_are_citations_not_commands():
     assert good[0].argv[1:] == ["tools/p6_gate.py", "--assert"]
 
 
-def test_substrate_tokens_map_to_module_invocations():
-    (cmd,) = pm.extract_commands("`substrate/dormancy_gate.py`")
-    assert cmd.argv[1:] == ["-m", "snn_data_lake.substrate.dormancy_gate"]
+def test_governed_tokens_map_to_module_invocations():
+    (cmd,) = pm.extract_commands("`gates/dormancy_gate.py`")
+    assert cmd.argv[1:] == ["-m", "snn_data_lake.gates.dormancy_gate"]
+
+
+def test_a_gate_token_is_the_registrys_call_never_a_package_prefix():
+    """G8 F1: `<pkg>/<mod>.py` is a gate command where the live registry places <mod> in <pkg>,
+    with its CI standing read from the runner's registry-resolved names; the same module under a
+    package it does not live in is a citation, and `tools/` scripts are unchanged."""
+    from snn_data_lake import package_of
+
+    pkg = package_of("dormancy_gate")
+    (cmd,) = pm.extract_commands(f"`{pkg}/dormancy_gate.py --assert`")
+    assert cmd.argv[1:] == ["-m", f"snn_data_lake.{pkg}.dormancy_gate", "--assert"]
+    for elsewhere in ("substrate", "gates", "cortex"):
+        if elsewhere != pkg:
+            assert pm.extract_commands(f"`{elsewhere}/dormancy_gate.py`") == []
+    (tool,) = pm.extract_commands("`tools/p6_gate.py`")
+    assert tool.argv[1:] == ["tools/p6_gate.py"]
+    (checked,) = pm.cross_check([pm.Policy("PX", "t", "absolute", [cmd])])[0].commands
+    assert checked.in_selfchecks and checked.in_ci
+
+
+def test_the_unclaimed_census_keeps_its_pre_g8_surface(monkeypatch, tmp_path):
+    """G8 F1 at M1: the census still covers every gate-named module the runner registers from the
+    pre-G8 `substrate` label, wherever it now lives: strip a moved gate's name from a copy of
+    POLICIES.md and it re-surfaces; a G8 addition (move_gate) has no pre-G8 label, stays out."""
+    stripped = "\n".join(ln for ln in REAL.splitlines() if "gradient_claim_gate" not in ln)
+    assert stripped != REAL, "fixture stripped nothing"
+    fake = tmp_path / "POLICIES.md"
+    fake.write_text(stripped, encoding="utf-8")
+    monkeypatch.setattr(pm, "POLICIES", fake)
+    drift = pm.census([])
+    assert "gradient_claim_gate" in drift["unclaimed_gates"]
+    assert "move_gate" not in drift["unclaimed_gates"]
 
 
 # ---------------------------------------------------------- T011: manifest rows
@@ -87,8 +119,8 @@ def test_kind_derivation_on_the_real_tree():
     # e-prop: PARTIAL split, never averaged, with both gates attached:
     assert by_id["e-prop"].kind == "partial"
     assert {c.source_token for c in by_id["e-prop"].commands} == {
-        "substrate/eprop_transport_gate.py",
-        "substrate/gradient_claim_gate.py",
+        "gates/eprop_transport_gate.py",
+        "gates/gradient_claim_gate.py",
     }
 
 
@@ -299,7 +331,7 @@ def test_audit_json_mode_mirrors_the_schema():
     import sys as _sys
 
     proc = _sp.run(
-        [_sys.executable, "-m", "snn_data_lake.substrate.policy_manifest", "--audit", "--json"],
+        [_sys.executable, "-m", "snn_data_lake.gates.policy_manifest", "--audit", "--json"],
         capture_output=True,
         text=True,
         cwd=str(pm.REPO),

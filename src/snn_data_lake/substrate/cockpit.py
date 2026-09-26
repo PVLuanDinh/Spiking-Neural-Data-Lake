@@ -905,7 +905,7 @@ function paint(d){
   +`<div class="note">wake drive is two-valued by construction (explore / fidget).</div>`;
 
  /* CONSCIOUSNESS -- the whole C5 registry, served at d.conclusion by
-    brain_telemetry.conclusion_rows() over substrate/conclusion_protocol. THREE THINGS THIS PLATE
+    brain_telemetry.conclusion_rows() over gates/conclusion_protocol. THREE THINGS THIS PLATE
     DOES THAT A ROW IN THE FIXED-HEIGHT BOTTOM STRIP STRUCTURALLY COULD NOT:
       - the licensed AND the refused sentence render in the SAME VIEW, wrapped -- refusal 3 as a
         rendering rather than as a sentence in a policy file;
