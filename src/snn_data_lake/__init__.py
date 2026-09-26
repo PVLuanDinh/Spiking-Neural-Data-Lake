@@ -899,9 +899,9 @@ LEGACY_TRAIN_TIER = {
 }
 
 
-# distinct-from: substrate/dormancy_gate.py -- its _CANON maps the same basenames to dotted paths
-#   for BRAIN_MODULES, frozen at that gate's import; these are the call-time accessors the
-#   region-keyed gates join on (F5). brain_atlas.region_of answers the frozen LABEL, not the path.
+# The package's ONE basename-to-path mapping (G8 S1a): the call-time accessors the region-keyed
+#   gates join on (F5), and since G8 S1e the source of substrate/dormancy_gate.py's _CANON, which
+#   used to compute the same map itself (P2). brain_atlas.region_of answers the frozen LABEL.
 def package_of(module):
     """The package that holds `module` (a basename) NOW, read from the three live tables; None
     when no live table lists it. The live half of G8's join -- LEGACY_* holds the label half."""

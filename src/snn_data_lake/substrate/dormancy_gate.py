@@ -34,20 +34,18 @@ become reachable (retire the exemption) so the list shrinks honestly as waves la
 import ast
 import os
 
-from snn_data_lake import REGIONS, TORCH_TIER, TRAIN_TIER
+from snn_data_lake import REGIONS, TORCH_TIER, TRAIN_TIER, module_path
 
 _PKG = "snn_data_lake"
 _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../snn_data_lake
 
-# canonical path per REGIONS/torch basename (the module shares its region name only for hippocampus)
-_CANON = {}
-for _region, _mods in REGIONS.items():
-    for _m in _mods:
-        _CANON[_m] = f"{_PKG}.{_region}.{_m}" if _m != _region else f"{_PKG}.{_region}.{_region}"
-for _tier in (TORCH_TIER, TRAIN_TIER):  # both annexes are brain modules (2026-08-11: +TRAIN_TIER)
-    for _region, _mods in _tier.items():
-        for _m in _mods:
-            _CANON[_m] = f"{_PKG}.{_region}.{_m}"
+# canonical path per governed basename, over all three live tables (both annexes are brain modules,
+# 2026-08-11: +TRAIN_TIER). G8 S1e (P2): derived from module_path(), the package's ONE
+# basename-to-path mapping, which this gate used to compute a second time; basenames are unique
+# (G8 invariant 3), so the two agreed entry for entry and one survives.
+_CANON = {
+    m: module_path(m) for t in (REGIONS, TORCH_TIER, TRAIN_TIER) for ms in t.values() for m in ms
+}
 BRAIN_MODULES = set(_CANON.values())
 
 # The live-behaviour roots (the autonomous brain) + the shipped console-script entrypoints. A brain

@@ -251,12 +251,16 @@ PROBES = {
     "r_b0": ("recurrent_pool", _P + "o = g.check_r_b0()\n"),
 }
 _EMIT = 'print("' + PROBE_TAG + '" + json.dumps(o, sort_keys=True, default=repr))\n'
-#: F5's draft form: module_path() replaced by the frozen label (the path taken from LEGACY_*).
+#: F5's draft form: module_path() replaced by the frozen label (the path taken from LEGACY_*) for
+#: every LABELLED module. A module with no label (a G8 addition such as move_gate) keeps its real
+#: path: the draft never knew it, and since S1e dormancy_gate's _CANON reads module_path() for every
+#: governed module at import, so a label-only lookup would crash that import instead of red a census.
 DRAFT_FORM = (
     "import snn_data_lake as _S\n"
     "_lab = {m: k for t in (_S.LEGACY_REGIONS, _S.LEGACY_TORCH_TIER, _S.LEGACY_TRAIN_TIER)"
     " for k, ms in t.items() for m in ms}\n"
-    '_S.module_path = lambda m: f"snn_data_lake.{_lab[m]}.{m}"\n'
+    "_real = _S.module_path\n"
+    '_S.module_path = lambda m: f"snn_data_lake.{_lab[m]}.{m}" if m in _lab else _real(m)\n'
 )
 
 _TIME = re.compile(r"\b\d+(?:\.\d+)?\s?(?:ms|s|sec|secs|seconds)\b")

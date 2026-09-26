@@ -1909,3 +1909,68 @@ S1d, so its S1c identity map, which S1d leaves unchanged, is the stage's); `post
 
 **Openings.** 3.3's (3) (C2(d)'s scanner and its F7 control) and 3.4's (2) (C2(c)'s runner) close here; 3.4's (3)
 closes with the basename-only reds. 3.3's (5) (`_CANON` beside `module_path()`) is S1e's.
+
+### 3.7 S1e -- `dormancy_gate._CANON` derives from `module_path()` (P2)
+
+Measured 2026-09-25 on the S1e tree (base `c153d26` plus this commit), `.venv-lake` (3.14.6 free-threaded).
+
+**What landed.** `dormancy_gate._CANON` is one comprehension over the three live tables, each basename mapped by
+`module_path()`; the gate's own two loops, which computed the same map a second time, are gone (the leaked module
+globals `_region`, `_mods`, `_m` and `_tier` with them; nothing else read them). The root `__init__`'s note above
+`package_of()` no longer calls the two "distinct": it names `module_path()` as the one mapping and the gate as its
+consumer. And one instrument change the cheap half forced (below): `move_gate`'s F5 draft form keeps the real
+`module_path()` for a module that has no pre-G8 label.
+
+**P2, the equivalence before the deletion.** The retired loop's map, recomputed from the live tables, equals the
+derived `_CANON` entry for entry and in the same order (298 entries). The gate's output at the S1d head and at this
+tree, each in a fresh process with a temporary home: the plain run and the `--assert` run (914 bytes each) and the full
+state (`_CANON`, `BRAIN_MODULES`, `coverage()`, `reachable()` as sorted JSON, 41,509 bytes, strict on) are
+byte-identical, `cmp` exit 0 on all three and Python's byte comparison equal; the comparators' control, the same file
+one byte longer, reads `cmp` exit 1 and Python "DIFFER". Re-proven after `ruff format` re-wrapped the comprehension (the
+same three `cmp` exits 0). S0b's phantom-row red still fires through the derived map (`test_dormancy_phantom_exempt`, 4
+passed; the gate's own `_phantom_selfcheck` inside `--assert`, green).
+
+**The first run, red, and the rebuild (2.10).** The first cheap half at this tree went RED on two items and was not
+built on: the self-check, "KeyError: 'move_gate'" inside F5's draft-form census probe, and `ruff format --check` (the
+comprehension exceeded the line width). The cause of the first: F5's draft form replaces `module_path()` with a label
+lookup for every module, and since S1e `dormancy_gate` calls `module_path()` for every governed module at import, so
+under the draft form its import raised for `move_gate`, which has no pre-G8 label; before S1e only the label consumers
+called it, and only for labelled modules. The fix is in the instrument, not the stage: the draft form now takes the
+path from LEGACY_* for every LABELLED module and keeps the real path for the others (the draft never knew a G8
+addition). `move_gate` changed, so the parent census was re-taken over `--export c153d26` with this `move_gate`: 0
+changes against the first parent (the draft form is used by F5's probe only). The first run's log and self-check output
+are kept (artifacts). The second run: green.
+
+**The declared delta, and the diff.** EMPTY, the amendment's own, written before the first C1 census of this tree. The
+post census over `--export WORKTREE` (113.6 s): "move_gate OK: the diff equals the declared delta (0 declared
+change(s))". The mode red (the parent against S1c's census, which records no mode): REFUSED, exit 2.
+
+**The self-check** (96.0 s): every red fires, with S1d's readings: C1 (8 undeclared changes on the planted EXEMPT
+deletion); F5 (`region_charge.rows.insula` CHARGED -> UNREACHABLE, `charged_count` 8 -> 7, `atlas_node.census.phantoms`
++ `insula`); C2(b)'s three; F3(c); F2; C2(c) (exit 1 vs 0, "No module named snn_data_lake.substrate.region_charge_gate");
+C5 (restores through `_LEGACY`, refuses without it); C2(d)'s six F7 sites over `09b68a4`.
+
+**C2-C9 at this head.** C2(a): 415 attempted, 13 failed (3.1's set), 0 files written, 17.1 s. C2(b) on the real
+checkout: 0 pairs, 0 packages, 286 flat aliases, the control red. C2(c): 0 of 17 have a legacy name. C2(d): 0 findings
+in 659 files (vacuous). C2(e): 12 of 12 SourceFileLoader. C3: the gate's self-check, the document check, the envelope
+diff empty, the latch path through the real `substrate.home`; the envelope's own self-check under strict. C4, C6-C9:
+census readings unchanged. C5: R-L1 both arms PASS, 2.8 s. `policy_manifest --audit` under strict: exit 0, 38.4 s,
+every machine row PASS, UNCLAIMED_GATE none, NOT_IN_CI none. `ruff check` and `ruff format --check` on the 3 touched
+files: clean. Tests: 25 passed in 31.8 s (`test_dormancy_phantom_exempt`, `test_eprop_train_tier_unreachable`,
+`test_g8_move_gate`); `test_selfchecks -k "dormancy_gate or move_gate"` 3 passed, 10.5 s.
+
+**The cheap half, timed (2.9): 325.7 s**, green (the second run): the post export 6.1 s and census 113.6 s, the diff and
+the mode red 0.2 s, the self-check 96.0 s, C2(a) 17.1 s, C2(b) 3.2 s, C2(c) and C2(d) 3.9 s, C2(e) and C3 0.7 s, the
+strict envelope self-check 0.1 s, R-L1 2.8 s, the audit 38.4 s, ruff 0.2 s, the tests 43.2 s. Not in it: the first,
+red run (260.5 s) and the two parent censuses (about 120 s each).
+
+**Artifacts** (the scratch folder's `g8\census` and `g8\work`), sha256: the parent `pre_S1e_c153d26.json`
+`832d4a3c...556017` and its re-take with this `move_gate`, `pre_S1e_c153d26_v2.json` `59f00d00...f08ea8` (0 changes
+between them); `declared_S1e.json` `d6289209...c9275`; `expected_S1e.json` `6910612f...4b814a` (S1c's identity map);
+`post_S1e.json` `03e27fc6...9110b`; `observed_S1e.json` `e3566b3a...1dc2f` (`{}`); `selfcheck_S1e.txt`
+`190d2d99...ccbd1`; the first run `run1_red_cheap_half_S1e.log` `1ee17adb...0f80b3` and `run1_red_selfcheck_S1e.txt`
+`f3472e2a...e0f4f3`; `c2a_S1e.json` `45b14dc6...78b55`; `cheap_half_S1e.json` `eb230482...adcd9` and
+`cheap_half_S1e.log` `2f61e341...d01a9`; the dormancy outputs, plain and `--assert`, before and after, all four
+`0ac2031d...2043b2`, and the state before and after `717ca575...20fe5`. The mover is unchanged (`b49e982a...a746eb`).
+
+**Openings.** 3.3's (5) closes: one module-to-path mapping survives.
