@@ -144,16 +144,17 @@ _G0C_LAZY_ATTRS = {
 #   neuromodulation/raphe_serotonin.py (an append observer, a theta authority, a least-squares
 #   readout, a learning-progress read, a port declaration); all five sites read. The legacy-name
 #   incumbent is the alias layer in snn_data_lake/__init__.py (`_MOVED`), whose S1b `_LEGACY`
-#   table this provider then returns.
+#   table this provider now returns. Re-read at S1b with substrate/afferent_boundary.py and
+#   substrate/kernel_tick.py ("THE ONE" transduction lane and bundle compiler): phrase overlap only.
 def _g0c_legacy_modules():
     """G8 (specs/022, stage S0): THE one provider of the checkpoint class-path translation map,
     {legacy module: current module}, both relative to the package ("cortex.lif_neuron") -- the form
     the G8 pre-registration (evidence/g8-reorganization.md 2.5) gives the alias layer's `_LEGACY`.
-    EMPTY at S0: no module has moved, so every stored class path translates to itself, and only
-    tests/test_g8_checkpoint_translation.py injects a map. RE-POINTED at G8's S1b to return the
-    alias layer's own `snn_data_lake._LEGACY` table -- the one legacy table, beside the flat
-    `_MOVED` aliases of `snn_data_lake/__init__.py` -- never a second table (P2)."""
-    return {}
+    It was EMPTY at S0 (only tests/test_g8_checkpoint_translation.py injected a map). RE-POINTED at
+    G8's S1b: it returns the alias layer's own `snn_data_lake._LEGACY` table, read at call time --
+    the one legacy table, beside the flat `_MOVED` aliases of `snn_data_lake/__init__.py`, never a
+    second table (P2). Empty until a module moves; every move then extends it by itself."""
+    return __import__("snn_data_lake")._LEGACY
 
 
 # distinct-from: cerebellum/jepa_world_model.py, cortex/attention_schema.py -- phrase overlap only,

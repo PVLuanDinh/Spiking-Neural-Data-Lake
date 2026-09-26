@@ -33,6 +33,7 @@ snn_data_lake.brain_atlas for the rendered map and a back-compat self-check.
 import importlib
 import importlib.abc
 import importlib.machinery
+import importlib.util
 import os
 import sys
 import sysconfig
@@ -921,10 +922,36 @@ def module_path(module):
     return f"{__name__}.{package}.{module}"
 
 
+# G8 S1b (evidence g8-reorganization.md 2.5, "The extended alias layer"). `_LEGACY` maps each old
+# `pkg.mod` to its current `pkg.mod`, derived from LEGACY_* and the live tables and holding only the
+# pairs that differ: EMPTY until a module moves, then growing by itself with every re-keyed table.
+# `_LEGACY_PKGS` is every LEGACY_* package key minus every live package key, from the tables and
+# never from the filesystem (F4): a directory left behind is C6's red, not a silent shadow.
+_LABEL = {
+    m: p
+    for t in (LEGACY_REGIONS, LEGACY_TORCH_TIER, LEGACY_TRAIN_TIER)
+    for p, ms in t.items()
+    for m in ms
+}
+_LEGACY = {
+    f"{_LABEL[m]}.{m}": f"{p}.{m}"
+    for t in (REGIONS, TORCH_TIER, TRAIN_TIER)
+    for p, ms in t.items()
+    for m in ms
+    if m in _LABEL and _LABEL[m] != p
+}
+_LEGACY_PKGS = frozenset(
+    k for t in (LEGACY_REGIONS, LEGACY_TORCH_TIER, LEGACY_TRAIN_TIER) for k in t
+) - frozenset(k for t in (REGIONS, TORCH_TIER, TRAIN_TIER) for k in t)
+
 # old flat name -> "region.module". The `m != r` guard used to exempt the same-named hippocampus module
 # (region name == module name); that module was retired in the Policy-3 wave, so no such collision
-# remains today -- the guard is kept because it is what makes a future same-named module safe.
-_MOVED = {m: f"{r}.{m}" for r, mods in REGIONS.items() for m in mods if m != r}
+# remains today -- the guard is kept because it is what makes a future same-named module safe. G8
+# S1b: a `_LEGACY_PKGS` name never becomes a flat alias (`claustrum` once its package empties), or it
+# would shadow the synthetic legacy package of the same name.
+_MOVED = {
+    m: f"{r}.{m}" for r, mods in REGIONS.items() for m in mods if m != r and m not in _LEGACY_PKGS
+}
 
 
 class _AliasLoader(importlib.abc.Loader):
@@ -952,14 +979,71 @@ class _AliasLoader(importlib.abc.Loader):
             module.__loader__ = self._real_spec.loader
 
 
+# distinct-from: cortex/eprop_shd.py -- _self_ref derives one module's own identity; these extend
+#   this file's own alias layer in place (one layer: the flat alias plus G8's legacy paths). Also
+#   read: cerebellum/spiking_jepa.py (target_encode), cortex/vsa_reasoning.py (coincidence),
+#   hippocampus/grid_place_map.py (_pearson), hippocampus/lake_recall.py (_find_cell_collision).
+class _LegacyLoader(_AliasLoader):
+    """G8 S1b: a legacy two-level path's alias -- the same identity as the flat alias, plus
+    `get_code` delegating to the target's real loader UNDER THE TARGET'S NAME (a SourceFileLoader
+    refuses any other name, 1.6), so `python -m <legacy path>` runs the real module; its spec carries
+    the target's origin, from which runpy sets __file__ (F2). The flat alias keeps no get_code: it
+    serves imports only, and doc_command_guard's premise that it cannot run under -m stays true."""
+
+    def get_code(self, fullname):
+        return importlib.util.find_spec(self._target).loader.get_code(self._target)
+
+
+class _LegacyPackageLoader(importlib.abc.Loader):
+    """G8 S1b: the synthetic package standing where an emptied legacy package was (F4)."""
+
+    def create_module(self, spec):
+        return None
+
+    def exec_module(self, module):
+        module.__doc__ = (
+            f"{module.__name__} -- a SYNTHETIC legacy package (specs/022 G8): every module it held "
+            "moved to an engine-function package; its old two-level paths resolve through _LEGACY"
+        )
+
+
+def _strict(fullname, what):
+    """The G8 tripwire (F3(c)): with SNN_ALIAS_STRICT=1 a legacy path or a synthetic package never
+    resolves -- live code may not use legacy names -- while a flat alias always does (the envelope's
+    own self-check imports `snn_data_lake.signal_loop` through one)."""
+    if os.environ.get("SNN_ALIAS_STRICT") == "1":
+        raise ImportError(
+            f"SNN_ALIAS_STRICT: {fullname} resolves only through G8's legacy alias ({what})"
+        )
+
+
+def _legacy_spec(fullname, target):
+    spec = importlib.machinery.ModuleSpec(
+        fullname, _LegacyLoader(target), origin=importlib.util.find_spec(target).origin
+    )
+    spec.has_location = True
+    return spec
+
+
 class _AliasFinder(importlib.abc.MetaPathFinder):
-    """Resolves legacy `snn_data_lake.<flat>` imports to their new regional location."""
+    """Resolves legacy `snn_data_lake.<flat>` imports to their new regional location, and since G8
+    S1b, in this order: (a) a `_LEGACY_PKGS` name to a synthetic package (is_package, no search
+    locations); (b) a `_LEGACY` two-level path to an identity alias carrying the target's origin;
+    (c) a flat name exactly as before. It stays LAST on sys.meta_path, so a real file always wins."""
 
     def find_spec(self, fullname, path=None, target=None):
         prefix = __name__ + "."
         if not fullname.startswith(prefix):
             return None
         tail = fullname[len(prefix) :]
+        if tail in _LEGACY_PKGS:
+            _strict(fullname, "a synthetic legacy package")
+            spec = importlib.machinery.ModuleSpec(fullname, _LegacyPackageLoader(), is_package=True)
+            spec.submodule_search_locations = []
+            return spec
+        if tail in _LEGACY:
+            _strict(fullname, f"now {__name__}.{_LEGACY[tail]}")
+            return _legacy_spec(fullname, f"{__name__}.{_LEGACY[tail]}")
         if "." in tail or tail not in _MOVED:
             return None
         return importlib.machinery.ModuleSpec(fullname, _AliasLoader(f"{__name__}.{_MOVED[tail]}"))

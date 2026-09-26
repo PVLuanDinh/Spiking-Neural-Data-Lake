@@ -1622,3 +1622,118 @@ enters it at M1's fix and POLICIES.md must then name it. (3) C2(d)'s scanner and
 M1. (4) The F5 red's planted move names `insula/interoceptive_integration` by its current path; M11b moves it, so the
 red needs a new pair by then. (5) `dormancy_gate._CANON` and `module_path()` hold the same map: a P2 merge candidate.
 (6) `gates/move_gate.py` is past the 800-line soft ceiling by design (one registered module; its docstring says why).
+
+### 3.4 S1b -- the legacy alias layer, its strict tripwire and the R-L1 baseline
+
+Measured 2026-09-25 on the S1b tree (base `f9b4368` plus this commit), `.venv-lake` (3.14.6 free-threaded).
+
+**What landed.** The root `__init__.py`'s alias layer, extended in place (one finder, one loader family): `_LEGACY`
+(each old `pkg.mod` -> its current `pkg.mod`, derived from `LEGACY_*` and the live tables, only the pairs that differ:
+EMPTY at this head) and `_LEGACY_PKGS` (every `LEGACY_*` package key minus every live key of the three tiers, from the
+tables and never the filesystem: empty until M11a); `_MOVED` drops every `_LEGACY_PKGS` name (rule (c)). `find_spec`
+order: (a) a `_LEGACY_PKGS` name -> a synthetic package (`is_package`, empty search locations, a docstring naming G8);
+(b) a `_LEGACY` path -> an identity alias whose spec carries the target's `origin` with `has_location=True`, its loader
+(`_LegacyLoader`, a subclass of the flat alias's) delegating `get_code` to the target's own loader under the target's
+name; (c) the flat alias unchanged, still without `get_code`. The finder stays appended. The tripwire (F3(c)): with
+`SNN_ALIAS_STRICT=1`, (a) and (b) raise `ImportError` naming G8's legacy alias, (c) never. The S0 provider
+`interaction_learning._g0c_legacy_modules()` is one `return` of `snn_data_lake._LEGACY`, read at call time (its
+docstring says so). In `move_gate`: every census gate and probe runs with `SNN_ALIAS_STRICT=1`; C8/C9 by FILE (F3(a):
+17 registries, 570 names, each mapped to an existing module file under the census root and never imported, each of
+the 16 ci.yml `-m` targets holding a `__main__`; a violation is a C6 list, never declarable); the NAME class compared
+RAW against PRE carried forward through `--expected NAMES`, now required with `--diff` (F3(b)); `--rl1-write` and
+`--rl1-check` (2.7); the S1b and C5 reds in `--self-check`. `tests/test_g8_move_gate.py` holds 12 tests (4 new: the
+empty layer and the provider's identity with it; a planted legacy path is its module, its spec's origin and `get_code`
+under the target's name, the synthetic package, the flat alias without `get_code`; strict raises on (a) and (b) and
+never on a flat alias; a stale registry name reds by file).
+
+**P2.** The incumbent is the alias layer itself, extended rather than joined by a second mechanism, and its one map is
+what the S0 provider now returns. `graph-exists.js` in the tree's vocabulary: `find_spec` finds only the root
+`__init__.py`; `_g0c_walk` only `interaction_learning`, which R-L1 REUSES with `_g0c_schedule` and `_conv_flat`;
+"resolve a dotted module name to its source file" finds `selfcheck_cache._module_file`, named at `module_file`'s
+definition and not merged (it builds a path under the running checkout without checking it exists; move_gate's
+answers None over a census root it never imports); "back-compat alias" finds two unrelated compatibility spellings
+(`brian2_backend`, `streaming_hub`). Disclosed: these queries ran after the build; before each edit the Write/Edit
+duplicate hook ran the same term check, flagging term-overlap sites at six edits, all read, cleared by five new
+`# distinct-from:` markers and one extended one.
+
+**The parent census, re-taken (2.6).** `move_gate` changed at this stage, so the S1a head's census was re-taken with
+S1b's `move_gate` over `--export f9b4368`, and taken again after this stage's last `move_gate` edit: byte-identical
+(`cmp`; the pre/post pair differs, the control). The post census ran over `--export WORKTREE`. 111-113 s per census.
+
+**The declared delta, and the diff.** Declared before the first gate run on the S1b tree: EMPTY, 2.6's positive null,
+with the NAME set the mover generated from 2.12 (415 modules, identity: nothing moves at S1b). The first post census
+went RED OUTSIDE the delta: citation_guard's report-only BROAD 1,075 -> 1,076 (239 -> 240 files), the new row
+`move_gate`'s own `module_file` docstring, which spelled its path-form example as a two-part `.py` path that resolves
+nowhere. Per 2.10 the build was fixed (the docstring reworded), never the delta; both censuses re-taken: "move_gate OK:
+the diff equals the declared delta (0 declared change(s))", exit 0. The positive null holds. Unchanged within it: the
+region-charge census (8 of 16 CHARGED), the atlas-node census (21 of 41 resolved, 20 phantoms), C4's R-b0 (verdict
+True, red True, parity True, SynOps [950, 1011, 661, 946, 962, 685]), and C6: `LEGACY_*` equal to the pre tree's and
+all seven violation lists empty (among them C8/C9's `registry_names_without_file`, and no legacy `.py` path or legacy
+package directory on the real checkout).
+
+**The planted reds** (`--self-check --mover`, 81.8 s, each in a temporary copy):
+1. C1 and F5 (S1a's) fire as recorded in 3.3, unchanged.
+2. C2(b): the mover moved `claustrum` as M11a will (2 imports and 5 strings in 4 files; `claustrum/` deleted). Control
+   green: the legacy pairs exactly [`claustrum.claustrum`], the synthetic packages exactly [`claustrum`], every
+   alias its module. Reds: one `_LEGACY` entry dropped -- "claustrum.claustrum: ModuleNotFoundError: No module named
+   'snn_data_lake.claustrum.claustrum'"; `claustrum` put back in `_MOVED` -- "flat set: missing [], extra
+   ['claustrum']"; a flat alias re-pointed (`lif_neuron` onto `hippocampus.grid_cells`) -- "flat lif_neuron is not
+   cortex.lif_neuron".
+3. F3(c): under `SNN_ALIAS_STRICT=1`, `claustrum.claustrum` and `claustrum` raise ("SNN_ALIAS_STRICT:
+   snn_data_lake.claustrum resolves only through G8's legacy alias (a synthetic legacy package)") while `signal_loop`,
+   the flat alias the envelope's own self-check imports, resolves; with it off all three resolve.
+4. F2: `region_charge_gate` (it reads `__file__` at import) moved as M1 will: `-m` through its legacy name exits 0 with
+   stdout identical to the real path's. Controls: the flat alias exits 1 ("AttributeError: '_AliasLoader' object has no
+   attribute 'get_code'"); a legacy spec without the target's origin exits 1 (a `TypeError`, `__file__` None).
+5. C5: R-L1's brain arm written in a copy, then `lif_neuron` moved as M5 will: the check passes through `_LEGACY` (no
+   refusal, walk and answers equal) and, the translation disabled, refuses: "restore refused; learner stays fresh:
+   ValueError: checkpoint class mismatch".
+The bare reds add F3(b): a registry name left on its old path reds against the carried-forward NAME set, the same
+name re-pointed stays green. **Disclosed: the C2(b) flat check first read each flat target from `_MOVED` itself**, so
+a flat alias re-pointed inside `_MOVED` could not red it (run on the real checkout: a planted re-point returned no
+finding). It now reads each target from `REGIONS`; the re-point is the third C2(b) red above, and the first self-check
+(the same reds without it) is kept (artifacts).
+
+**C2-C9 as applicable before any move.** C2(a): 415 attempted, 13 failed, the same 13 as 3.1 and 3.3, 0 files written,
+14.8 s. C2(b) on the real checkout, strict off: 0 legacy pairs, 0 synthetic packages, 286 flat aliases each the
+module `REGIONS` places it in, 3.2 s; the flat re-point planted in-process reds it there too. C2(c): no `_LEGACY` name
+exists at this head to run; F2's red runs it in a copy for `region_charge_gate`. C2(d): not applicable (no legacy
+path exists). C2(e): the 16 frozen artifacts name 12 modules, each resolving directly (SourceFileLoader). C3: the gate
+green in the census, its self-check OK, the `safety_envelope` document check OK, `git diff --stat` of the five files
+and `tools/envelope_hashes.json` empty, `so101_arm._latch_path()` under a temporary home through the real
+`substrate.home` (SourceFileLoader); and the envelope's own self-check (`brainstem.interpreter`, which imports
+`signal_loop` through the flat alias) passes under `SNN_ALIAS_STRICT=1`. C4, C6: above. C5: below. C7:
+doc_command_guard 65 runnable, 0 unrunnable, 1 exempt; STRICT 0 (1 exemption); BROAD 1,075 across 239 files. C8/C9:
+above, 0 of 570 without a file; the red is the stale-name test above plus the alias raising under strict (F3(c)).
+`policy_manifest --audit` under strict: exit 0, 38.1 s, every machine row PASS, UNCLAIMED_GATE none, NOT_IN_CI none.
+`ruff check` and `ruff format --check` on the 4 touched files: clean. Tests: 160 passed in 125.1 s
+(`test_g8_move_gate`, `test_g8_checkpoint_translation`, `test_g0c_learner_persists`, `test_g0_correction`,
+`test_g0b_route_consumption`, `test_arm_vocabulary`, `test_wiring_manifest`, `test_connectome_router`,
+`test_dormancy_phantom_exempt`, `test_run_selfchecks_tools_stage`); the touched modules' in-process self-checks, 3
+passed in 9.4 s.
+
+**The R-L1 baseline (2.7).** Written by `--rl1-write` on the S1b working tree before this commit: its record reads
+head `f9b4368`, dirty True, and the tree then differed from this commit only in `move_gate`'s self-check probe and
+docstring and in this section, none of which an arm runs. Arm (i): `make_brain(seed=100, persist=True)` in a
+temporary home, `home()` asserted equal to it before construction, the frozen `_g0c_schedule`, flushed (the explicit
+flush returned False: the last night had saved, as in 3.1); H copied out, 9 files, 17,135,571 bytes. Its walk JSON's
+sha256 is `fcb5badee9fd...bb699d65`, the digest 3.1 recorded for S0's taught brain. The 20 probe answers: GREET 3,
+MEMORY 1, GOAL 3, MEMORY 5, CONSCIOUS 4, ARM 4. Arm (ii): the zoo learner's six fixed turns, a 208,376-byte
+checkpoint and its walk, 20 answers. Check (iii): `delta_sink`'s `state_dict()` refuses ("unsupported checkpoint value:
+builtins.function"). Write 18.2 s (brain 17.7 s, zoo 0.3 s). The check at this tree: both arms PASS (no refusal, walk
+equal, answers identical), 2.8 s; the live home's top-level files unchanged across the write and the check (names,
+sizes, write times). Its reachable red is C5 above.
+
+**Artifacts** (the scratch folder's `g8\census` and `g8\rl1\S1b`), sha256: `pre_S1b_f9b43681.json`
+`5d427474...5f529` (its re-take identical); `declared_S1b.json` `71ba8623...9562f`; `expected_S1b.json`
+`d247ebd5...6ae42`; `post_S1b.json` `10c3c1b2...cfb7b`; `observed_S1b.json` `e3566b3a...1dc2f` (`{}`); the first,
+red run `post_S1b_run1_citedoc.json` `1288cace...1c1759` with its observed diff `5171ce98...37365`;
+`selfcheck_S1b.txt` `a0979c31...c3160` and the first self-check `selfcheck_S1b_run1_prefix.txt` `380725d1...923b8`;
+`c2a_S1b.json` `18b1a04c...2d51a`; the R-L1 baseline's `baseline.json` `5739781b...3e640a`, `walk_brain.json`
+`fcb5bade...99d65`, `walk_zoo.json` `631f1902...b55bc71`, `zoo_checkpoint.json` `332e9918...b0ef4`, and H as a tree
+(sorted `path sha256` lines) `37ef6d8f...b70721`. The mover is unchanged (`b49e982a...a746eb`).
+
+**Openings, filed for the orchestrator.** (1) 3.3's openings stand. (2) C2(c)'s runner (the 16 battery gates and
+`brian2_backend` through their legacy names) is owed at M1, beside C2(d)'s scanner. (3) The S1b reds plant moves by
+current path and need re-pointing at the stage that moves each: F2's `region_charge_gate` (M1), C5's `lif_neuron`
+(M5), C2(b) and F3(c)'s `claustrum` (M11a).

@@ -20,21 +20,46 @@ Every gate is located by its BASENAME in the tree's own live tables, so a gate t
 the gate that runs; this module imports nothing of the package it measures (stdlib only), so it
 censuses any tree, one from before it existed included (the pre-S1a census, 2.6).
 
-THE DIFF (`--diff PRE POST --declared DELTA`). Each side's module references are mapped through
-LEGACY_* (its live package -> the frozen pre-G8 label), so a pure move reads identical, and the
+Since S1b (F3) the census runs every gate and probe with SNN_ALIAS_STRICT=1, so a gate that still
+reaches a legacy path raises instead of riding the alias (F3(c)), and C8/C9 resolve every
+registry name by FILE, never through an alias: a name that no module file backs is a static
+violation (F3(a)).
+
+THE DIFF (`--diff PRE POST --declared DELTA --expected NAMES`). OUTCOME references on each side are
+mapped through LEGACY_* (its live package -> the frozen pre-G8 label), so a pure move reads
+identical. NAME-valued registries are compared RAW (F3(b)): POST's names against PRE's carried
+forward through NAMES, the post-stage module map the mover generates from the frozen 2.12 table
+(identity while nothing moves), so a stale name is red even where the alias would import it. The
 remaining difference must EQUAL the declared delta change for change: an undeclared change and a
 declared change that did not happen are both red (rc 1). C6's invariants are never declarable:
 POST's LEGACY_* must equal PRE's (PRE's live tables when PRE predates them), no module's depth
 changes, and every static violation list stays empty.
 
-THE REDS (`--self-check --mover MOVER`), built in a temporary copy of the tree, never the checkout:
-(1) C1's planted EXEMPT-row deletion reds the diff, beside the control that an unplanted re-census
-diffs EMPTY; (2) F5's join red: MOVER (2.5's out-of-tree operator artifact) moves one module in the
-copy, `insula/interoceptive_integration` to its frozen 2.12 destination, and both region censuses
-stay identical with the label/path joins in place, while the same move with the path taken from
-LEGACY_* (the draft's form: module_path() replaced by the label) loses reachability. Without MOVER
-the self-check REFUSES (exit 2) rather than skip. The BARE invocation (run_selfchecks, pytest)
-builds the diff engine's own reds over constructed censuses: no subprocess and no copy.
+THE REDS (`--self-check --mover MOVER`), each built in a temporary copy of the tree, never the
+checkout: (1) C1's planted EXEMPT-row deletion reds the diff, beside the control that an unplanted
+re-census diffs EMPTY; (2) F5's join red: MOVER (2.5's out-of-tree operator artifact) moves one
+module in the copy, `insula/interoceptive_integration` to its frozen 2.12 destination, and both
+region censuses stay identical with the label/path joins in place, while the same move with the
+path taken from LEGACY_* (the draft's form: module_path() replaced by the label) loses
+reachability; (3) C2(b), the synthetic legacy package and the `claustrum` collision (MOVER moves
+`claustrum` as M11a will): green as built, red with one `_LEGACY` entry dropped, with `claustrum`
+put back among the flat aliases, and with one flat alias re-pointed at another module (the flat
+targets are read from REGIONS, never from `_MOVED`); (4) F3(c): under SNN_ALIAS_STRICT=1 a legacy
+path and a synthetic package raise while a flat alias still resolves; (5) F2: with
+`region_charge_gate` (which reads __file__ at import) moved as M1 will, `python -m` through its
+legacy name exits exactly as its real path does, while the flat alias fails for want of get_code
+and a legacy spec without the target's origin fails with a TypeError; (6) C5: with `lif_neuron`
+moved as M5 will, R-L1 restores a baseline written before the move, and refuses it with the
+translation disabled. Without MOVER the
+self-check REFUSES (exit 2) rather than skip. The BARE invocation (run_selfchecks, pytest) builds
+the diff engine's own reds over constructed censuses: no subprocess and no copy.
+
+R-L1 (C5, 2.7): `--rl1-write DIR` writes the lake-continuity baseline at a head: the home H of a
+brain taught with the frozen G0(c) schedule, its walk and probe answers, a zoo learner's checkpoint
+with its walk and answers, and the delta_sink refusal. `--rl1-check DIR [--root TREE]` restores both
+in fresh processes (H copied, never reused; `_report_ixn_refusal` made to raise, so a refused restore
+is seen before any flush) and passes iff nothing refuses, each walk equals the stored one with its
+class strings mapped old -> new through `_LEGACY` (F14), and the answers are identical.
 
 `--export REV|WORKTREE DIR` makes a census-ready tree: `git archive REV` (WORKTREE: HEAD's archive
 with the working tree's changes laid over it) with each file's line endings as this checkout holds
@@ -45,9 +70,10 @@ instrument, and a second module would widen S1a's declared delta; hence its leng
 
   python -m snn_data_lake.gates.move_gate                    # bare: the diff engine's reds
   python -m snn_data_lake.gates.move_gate --census OUT [--root TREE]
-  python -m snn_data_lake.gates.move_gate --diff PRE POST --declared DELTA [--observed OUT]
+  python -m snn_data_lake.gates.move_gate --diff PRE POST --declared DELTA --expected NAMES [--observed OUT]
   python -m snn_data_lake.gates.move_gate --self-check --mover MOVER [--root TREE]
   python -m snn_data_lake.gates.move_gate --export REV|WORKTREE DIR [--root REPO]
+  python -m snn_data_lake.gates.move_gate --rl1-write DIR | --rl1-check DIR [--root TREE]
 """
 
 # distinct-from: substrate/method_dormancy_gate.py -- its _imports() lists one file's in-package
@@ -219,7 +245,7 @@ def _file_of(root: Path, tabs: dict, base: str) -> Path:
 
 
 # ---- running a gate ----------------------------------------------------------------------------
-def _run(argv: list, root: Path, home: Path) -> tuple:
+def _run(argv: list, root: Path, home: Path, strict: bool = True) -> tuple:
     home.mkdir(parents=True, exist_ok=True)
     env = dict(
         os.environ,
@@ -229,6 +255,9 @@ def _run(argv: list, root: Path, home: Path) -> tuple:
         NORD_HOME=str(home),
         PYTHONDONTWRITEBYTECODE="1",
     )
+    env.pop("SNN_ALIAS_STRICT", None)
+    if strict:
+        env["SNN_ALIAS_STRICT"] = "1"  # F3(c): C1, C8, C9 and the stage's gate runs
     try:
         p = subprocess.run(
             argv,
@@ -330,6 +359,7 @@ def census(root: Path, only=None, draft: bool = False, log=print) -> dict:
         shutil.rmtree(homes, ignore_errors=True)
     out["names"] = names(root, tabs)
     out["static"] = static(root, tabs)
+    out["static"]["invariants"]["registry_names_without_file"] = by_file(root, out["names"])
     if _live_home_stamp() != stamp:
         raise SystemExit(
             "move_gate: the DEFAULT home changed during the census -- a gate wrote the live lake"
@@ -473,6 +503,74 @@ def names(root: Path, tabs: dict) -> dict:
     return out
 
 
+# ---- C8/C9 by FILE (F3(a), since S1b) ----------------------------------------------------------
+# distinct-from: substrate/selfcheck_cache.py -- its _module_file maps one dotted in-package name to
+#   a path under the RUNNING repo for closure hashing, a path whether or not a file is there; this
+#   resolves every registry spelling (dotted, path, module:attr, Name=path) inside the CENSUSED tree
+#   and answers None when no file backs the name (an alias never does). Also read: brain_atlas.py
+#   (_region_files), substrate/import_manifest.py (_targets), basal_ganglia/self_build_loop.py
+#   (_firewalled_bytes), hippocampus/spiking_storage_prototype.py (check_reds): none resolves names.
+#: the NAME registries whose every entry must be backed by a module FILE -- an alias never is.
+_BY_FILE = (
+    "dormancy._LIVE_ROOTS",
+    "dormancy._ENTRYPOINTS",
+    "replication.CANON",
+    "manifest_gate.REGISTRANTS",
+    "run_selfchecks",
+    "brian2.MIGRATED_CALL_SITES",
+    "brian2.CUSTOM_KERNELS",
+    "brian2.MODULE_NAME",
+    "selfcheck_cache.subjects",
+    "growth_coverage._PLACEMENT_MODULES",
+    "pin.capture",
+    "pyproject.scripts",
+    "ci.m_targets",
+    "snn_ui_spec",
+    "snn_ui_main.imports",
+    "learn_daemon_shim.imports",
+    "rule_census.keys",
+)
+
+
+def module_file(src: Path, name: str) -> Path | None:
+    """The module FILE a registry name spells, or None: dotted (`pkg.mod`, `snn_data_lake.pkg.mod`
+    with any attribute tail), a package-relative file path with an optional `::qualname`, or
+    `module:attr` (the attribute itself a module when it is one)."""
+    n = name.split("=", 1)[-1].split("::")[0]
+    if n.endswith(".py"):
+        p = src.parents[1] / n if n.startswith("src/") else src / n
+        return p if p.is_file() else None
+    n, _, attr = n.partition(":")
+    parts = [p for p in n.split(".") if p]
+    if parts and parts[0] == PKG:
+        parts = parts[1:]
+    if attr and src.joinpath(*parts, attr).with_suffix(".py").is_file():
+        return src.joinpath(*parts, attr).with_suffix(".py")
+    for k in range(len(parts), 0, -1):
+        f = src.joinpath(*parts[:k]).with_suffix(".py")
+        if f.is_file():
+            return f
+    pkg = src.joinpath(*parts, "__init__.py") if parts else None
+    return pkg if pkg is not None and pkg.is_file() else None
+
+
+def by_file(root: Path, names_: dict) -> list:
+    """C8/C9: every entry of the _BY_FILE registries resolved to a module file, never imported;
+    each ci.yml `-m` target's file must also run as a program (a `__main__` block)."""
+    src = Path(root) / "src" / PKG
+    out = []
+    for reg in _BY_FILE:
+        for name in names_.get(reg, []):
+            if reg == "growth_coverage._PLACEMENT_MODULES" and "." not in name:
+                continue  # the bare-basename entry is a match key, not a path (evidence 1.4)
+            f = module_file(src, name)
+            if f is None:
+                out.append(f"{reg}: {name}")
+            elif reg == "ci.m_targets" and "__main__" not in f.read_text(encoding="utf-8"):
+                out.append(f"{reg}: {name} has no __main__")
+    return sorted(out)
+
+
 # ---- C6's static invariants --------------------------------------------------------------------
 def static(root: Path, tabs: dict) -> dict:
     src = Path(root) / "src" / PKG
@@ -583,10 +681,34 @@ def _section(a: dict, b: dict, pa: dict, pb: dict) -> dict:
     return out
 
 
-def observed(pre: dict, post: dict) -> dict:
-    """The difference between two censuses, module references mapped through LEGACY_* (S1a: both
-    classes, the draft form of C1; F3(b) makes the NAME class raw-against-expected at S1b)."""
+# distinct-from: __init__.py -- package_of reads the running package's live tables; forward reads a
+#   stage's post-stage map out of the mover's expected file. Also read: substrate/brain_geometry.py
+#   (_reasoning_modules), substrate/selfcheck_cache.py (split_rosters), neuromodulation/empowerment.py
+#   (_roll), plasticity/plasticity_rule_stack.py (_retention_selfcheck) -- none maps a stage's names.
+def forward(expected: dict | None) -> dict:
+    """(old package, module) -> new package for every module the stage moves, from the mover's
+    post-stage expected map (F3(b)); empty while nothing moves."""
+    out = {}
+    for old, new in ((expected or {}).get("modules") or {}).items():
+        o, n = old.split("."), new.split(".")
+        if old != new and len(o) == len(n) == 3:
+            out[(o[1], o[2])] = n[1]
+    return out
+
+
+def observed(pre: dict, post: dict, expected: dict | None = None) -> dict:
+    """The difference between two censuses. OUTCOME references are mapped through LEGACY_*; with
+    `expected` (F3(b), the stage form since S1b) the NAME class is compared RAW -- POST's names
+    against PRE's carried forward through the post-stage map -- so a name left on its old path is
+    a difference even where the alias would import it. Without it (S1a's form, and the constructed
+    reds) the NAME class is mapped through LEGACY_* like the rest."""
     pa, pb = pairmap(pre), pairmap(post)
+    if expected is not None:
+        fw = forward(expected)
+        carried = {k: [map_text(x, fw) for x in v] for k, v in pre["names"].items()}
+        name_changes = _section(carried, post["names"], {}, {})
+    else:
+        name_changes = _section(pre["names"], post["names"], pa, pb)
     gates = {}
     for key in sorted(set(pre["gates"]) | set(post["gates"])):
         a = pre["gates"].get(key, {"rc": None, "lines": []})
@@ -628,12 +750,7 @@ def observed(pre: dict, post: dict) -> dict:
         pa,
         pb,
     )
-    out = {
-        "gates": gates,
-        "probes": probes,
-        "names": _section(pre["names"], post["names"], pa, pb),
-        "static": static,
-    }
+    out = {"gates": gates, "probes": probes, "names": name_changes, "static": static}
     return {k: v for k, v in out.items() if v}
 
 
@@ -679,8 +796,8 @@ def compare(obs: dict, declared: dict) -> list:
     return probs
 
 
-def diff(pre: dict, post: dict, declared: dict) -> tuple:
-    obs = observed(pre, post)
+def diff(pre: dict, post: dict, declared: dict, expected: dict | None = None) -> tuple:
+    obs = observed(pre, post, expected)
     return obs, invariant_problems(pre, post) + compare(obs, declared)
 
 
@@ -763,6 +880,225 @@ def export(rev: str, dest: Path, repo: Path) -> Path:
     return dest
 
 
+# ---- R-L1, lake continuity (C5, 2.7; from S1b) -------------------------------------------------
+# distinct-from: cortex/interaction_learning.py -- g0_campaign runs G0's seed/arm processes inside
+#   the running package; R-L1 runs 2.7's continuity arms over a TREE's code from outside it, and its
+#   probes REUSE that module's own _g0c_schedule, _g0c_walk and _conv_flat rather than restate them.
+#   Also read: cortex/brain.py (_flush_coverage), brainstem/arm_bridge.py (send_outcome), and --
+#   read only, never opened for writing -- brainstem/arm_config.py and brainstem/so101_arm.py.
+_RL1_TAG = "G8RL1 "
+#: Every R-L1 process opens by proving it can only touch its own temporary home, then reaches every
+#: module through module_path() -- the probes name no package path, so they survive every move.
+_RL1_GUARD = r'''
+import contextlib, importlib, json, os, sys
+home = os.path.realpath(sys.argv[1])
+if os.path.realpath(os.environ.get("NORD_HOME", "")) != home:
+    raise SystemExit("NORD_HOME is not this arm's temporary home")
+import snn_data_lake as S
+M = lambda name: importlib.import_module(S.module_path(name))
+if os.path.realpath(M("home").home()) != home:
+    raise SystemExit("home() resolves outside this arm's temporary home")
+ixn = M("interaction_learning")
+mode, base = sys.argv[2], sys.argv[3]
+res = {"mode": mode, "refused": None}
+off = contextlib.nullcontext()
+if mode == "check-no-translation":  # C5's red: the translation disabled, the map made empty
+    from unittest.mock import patch
+
+    off = patch.object(ixn, "_g0c_legacy_modules", lambda: {})
+
+
+def carried(node):
+    """The stored walk with its class strings mapped old -> new through _LEGACY (F14)."""
+    if isinstance(node, dict):
+        out = {k: carried(v) for k, v in node.items()}
+        c = out.get("class")
+        if isinstance(c, str) and c.startswith("snn_data_lake."):
+            rest = c[len("snn_data_lake."):]
+            hits = [k for k in S._LEGACY if rest.startswith(k + ".")]
+            if hits:
+                k = max(hits, key=len)
+                out["class"] = "snn_data_lake." + S._LEGACY[k] + rest[len(k):]
+        return out
+    if isinstance(node, list):
+        return [carried(v) for v in node]
+    return node
+
+
+def same_walk(stored, now):
+    return json.dumps(carried(stored), sort_keys=True) == json.dumps(now, sort_keys=True)
+
+
+def answers(learner):
+    return [learner.route_text(u) for u, _ in ixn._conv_flat(ixn._CONV_TEST)]
+'''
+#: Arm (i): the brain, over H (written by the frozen G0(c) schedule, restored by construction).
+_RL1_BRAIN = (
+    _RL1_GUARD
+    + r"""
+from unittest.mock import patch
+
+B = M("brain")
+
+
+class Refused(Exception):
+    pass
+
+
+def refuse(what, exc):  # the swallow made loud: a refused restore is seen before any flush (F8)
+    raise Refused(f"{what}: {type(exc).__name__}: {exc}") from exc
+
+
+with off, patch.object(B.Brain, "_report_ixn_refusal", staticmethod(refuse)):
+    try:
+        brain = B.make_brain(seed=100, persist=True)
+    except Refused as exc:
+        res["refused"] = str(exc)
+    else:
+        try:
+            learner = brain.brain._ixn
+            walk_file = os.path.join(base, "walk_brain.json")
+            if mode == "write":
+                ixn._g0c_schedule(brain, 100)
+                res["flushed"] = bool(brain._flush_interaction_learner())
+                with open(walk_file, "w", encoding="utf-8") as f:
+                    json.dump(ixn._g0c_walk(learner), f, sort_keys=True)
+            else:
+                with open(walk_file, encoding="utf-8") as f:
+                    res["walk_equal"] = same_walk(json.load(f), ixn._g0c_walk(learner))
+            res["answers"] = answers(learner)
+        finally:
+            brain.close()
+print("G8RL1 " + json.dumps(res, sort_keys=True), flush=True)
+"""
+)
+#: Arm (ii): the zoo learner (B2's six fixed turns), restored into a zoo learner whose pools exist
+#: after one respond() -- the only target that restores it (1.7); check (iii): the delta_sink refusal.
+_RL1_ZOO = (
+    _RL1_GUARD
+    + r"""
+LB, PS = M("live_brain"), M("plasticity_rule_stack")
+
+
+def fresh(**kw):
+    n = len(LB._IXN_INTENTS)
+    stack = PS.PlasticityRuleStack(n, seed=100)
+    return ixn.SpikingInteractionLearner(list(LB._IXN_INTENTS), 52, seed=100, t_post=6, stack=stack, **kw)
+
+
+sink = fresh()
+sink.delta_sink = lambda payload, grouped: None
+try:
+    sink.state_dict()
+    res["sink"] = "state_dict() SUCCEEDED"
+except ValueError as exc:
+    res["sink"] = "REFUSED: " + str(exc)
+ck, walk_file = os.path.join(base, "zoo_checkpoint.json"), os.path.join(base, "walk_zoo.json")
+z = fresh(readout_zoo=True)
+if mode == "write":
+    for i in range(6):
+        z.learn_turn(f"probe utterance {i}", LB._IXN_INTENTS[i % len(LB._IXN_INTENTS)])
+    with open(ck, "w", encoding="utf-8") as f:
+        json.dump(json.loads(json.dumps(z.state_dict(), allow_nan=False)), f, sort_keys=True)
+    with open(walk_file, "w", encoding="utf-8") as f:
+        json.dump(ixn._g0c_walk(z), f, sort_keys=True)
+    res["answers"] = answers(z)
+else:
+    z.respond([0.1] * 52)
+    with open(ck, encoding="utf-8") as f:
+        state = json.load(f)
+    with off:
+        try:
+            z.load_state_dict(state)
+        except ValueError as exc:
+            res["refused"] = str(exc)
+    if res["refused"] is None:
+        with open(walk_file, encoding="utf-8") as f:
+            res["walk_equal"] = same_walk(json.load(f), ixn._g0c_walk(z))
+        res["answers"] = answers(z)
+print("G8RL1 " + json.dumps(res, sort_keys=True), flush=True)
+"""
+)
+_RL1_ARMS = {"brain": _RL1_BRAIN, "zoo": _RL1_ZOO}
+
+
+def _rl1_run(root: Path, arm: str, home: Path, mode: str, base: Path) -> dict:
+    """One R-L1 arm in its own fresh process: NORD_HOME and cwd both the arm's temporary home."""
+    argv = [sys.executable, "-c", _RL1_ARMS[arm], str(home), mode, str(base)]
+    env = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8", PYTHONDONTWRITEBYTECODE="1")
+    env.update(PYTHONPATH=str(Path(root) / "src"), NORD_HOME=str(home))
+    env.pop("SNN_ALIAS_STRICT", None)
+    p = subprocess.run(
+        argv, cwd=home, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace"
+    )
+    tagged = [x for x in p.stdout.splitlines() if x.startswith(_RL1_TAG)]
+    if p.returncode != 0 or len(tagged) != 1:
+        tail = (p.stdout + p.stderr)[-1500:]
+        raise SystemExit(f"move_gate: R-L1 {arm} {mode} failed rc={p.returncode}: {tail}")
+    return json.loads(tagged[0][len(_RL1_TAG) :])
+
+
+def rl1_write(out: Path, root: Path = REPO, arms=("brain", "zoo"), log=print) -> dict:
+    """The R-L1 baseline (2.7) into `out`: H (the brain's home, copied out), each arm's walk and
+    probe answers, the zoo checkpoint and the delta_sink refusal, with the head that wrote them."""
+    out = Path(out)
+    if out.exists():
+        raise SystemExit(f"move_gate: {out} exists -- a baseline is written once, never over")
+    out.mkdir(parents=True)
+    work = Path(tempfile.mkdtemp(prefix="g8rl1w_"))
+    ref = {"schema": "g8.rl1.v1"}
+    try:
+        for arm in arms:
+            (work / arm).mkdir()
+            t0 = time.perf_counter()
+            ref[arm] = _rl1_run(root, arm, work / arm, "write", out)
+            if arm == "brain":
+                shutil.copytree(work / arm, out / "H")
+            log(
+                f"  R-L1 write {arm}: refused={ref[arm]['refused']} [{time.perf_counter() - t0:.1f}s]"
+            )
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    ref["head"] = _git(["rev-parse", "HEAD"], root).stdout.decode().strip()
+    ref["dirty"] = bool(_git(["status", "--porcelain"], root).stdout.strip())
+    (out / "baseline.json").write_text(
+        json.dumps(ref, indent=1, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    return ref
+
+
+def rl1_check(base: Path, root: Path = REPO, arms=("brain", "zoo"), translation=True, log=print):
+    """C5: each arm restored from the baseline over `root`'s code, in a fresh process over a fresh
+    COPY of H (a restore then a flush writes to it). The failures; empty is PASS."""
+    base = Path(base)
+    ref = json.loads((base / "baseline.json").read_text(encoding="utf-8"))
+    mode = "check" if translation else "check-no-translation"
+    fails = []
+    work = Path(tempfile.mkdtemp(prefix="g8rl1c_"))
+    try:
+        for arm in arms:
+            if arm == "brain":
+                shutil.copytree(base / "H", work / arm)
+            else:
+                (work / arm).mkdir()
+            t0 = time.perf_counter()
+            r = _rl1_run(root, arm, work / arm, mode, base)
+            ok = r["refused"] is None and r.get("walk_equal") is True
+            ok = ok and r.get("answers") == ref[arm]["answers"]
+            if arm == "zoo":
+                ok = ok and r.get("sink") == ref["zoo"]["sink"] and r["sink"].startswith("REFUSED")
+            log(
+                f"  R-L1 {arm} [{mode}] {'PASS' if ok else 'FAIL'}: refused={r['refused']} "
+                f"walk_equal={r.get('walk_equal')} answers_equal={r.get('answers') == ref[arm]['answers']}"
+                f" [{time.perf_counter() - t0:.1f}s]"
+            )
+            if not ok:
+                fails.append(f"R-L1 {arm} [{mode}]: {json.dumps(r, sort_keys=True)[:600]}")
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    return fails
+
+
 # ---- the reds ----------------------------------------------------------------------------------
 def _mini(lines=("x 1",), live=None, legacy=None, depth=None, inv=None) -> dict:
     return {
@@ -823,6 +1159,16 @@ def constructed_reds() -> list:
     expect(any(p.startswith("C6") for p in probs), "red: a static violation did not red (C6)")
     probs = diff(a, _mini(depth={"lif_neuron": 2}), {})[1]
     expect(any("depth" in p for p in probs), "red: a depth change did not red (C6)")
+    # F3(b): a NAME left on its old path reds against the carried-forward expected set; the same
+    # registry re-pointed is green
+    moves = {"modules": {"snn_data_lake.cortex.lif_neuron": "snn_data_lake.growth.lif_neuron"}}
+    pre["names"] = {"reg": ["snn_data_lake.cortex.lif_neuron"]}
+    stale, pointed = dict(post, names={"reg": ["snn_data_lake.cortex.lif_neuron"]}), dict(post)
+    pointed["names"] = {"reg": ["snn_data_lake.growth.lif_neuron"]}
+    expect(bool(diff(pre, stale, {}, moves)[1]), "red: a stale registry name did not red (F3(b))")
+    expect(
+        diff(pre, pointed, {}, moves)[1] == [], "control: a re-pointed registry name was not green"
+    )
     return fails
 
 
@@ -895,6 +1241,177 @@ def tree_reds(root: Path, mover: Path, log=print) -> list:
     return fails
 
 
+# distinct-from: substrate/selfcheck_cache.py -- self_check fires the CACHE's own P8 reds; these are
+#   G8's S1b and C5 reds over the alias layer and the checkpoint, built in copies. Also read:
+#   cortex/attention_schema.py (main), cortex/memory_diagnostic.py (_movement),
+#   cortex/report_order_probe.py (t081_lesion), reasoning/godel_machine.py (_probe_source).
+#: C2(b)'s identity check, derived from the TABLES (never from `_LEGACY` or `_MOVED` themselves, so a
+#: dropped or re-pointed entry reds): every legacy path `is` its module, every LEGACY-only package is
+#: the synthetic package, and every flat alias `is` the module REGIONS places it in. `__PLANT__` is a
+#: red's in-process plant (empty for the check).
+_C2B = r"""
+import importlib, json
+import snn_data_lake as S
+__PLANT__
+lab = {m: p for t in (S.LEGACY_REGIONS, S.LEGACY_TORCH_TIER, S.LEGACY_TRAIN_TIER) for p, ms in t.items() for m in ms}
+live = {m: p for t in (S.REGIONS, S.TORCH_TIER, S.TRAIN_TIER) for p, ms in t.items() for m in ms}
+pairs = {f"{lab[m]}.{m}": f"{live[m]}.{m}" for m in live if m in lab and lab[m] != live[m]}
+pkgs = {k for t in (S.LEGACY_REGIONS, S.LEGACY_TORCH_TIER, S.LEGACY_TRAIN_TIER) for k in t}
+pkgs -= {k for t in (S.REGIONS, S.TORCH_TIER, S.TRAIN_TIER) for k in t}
+bad = []
+
+
+def imp(name):
+    try:
+        return importlib.import_module("snn_data_lake." + name)
+    except Exception as exc:
+        bad.append(f"{name}: {type(exc).__name__}: {exc}")
+
+
+for old, new in sorted(pairs.items()):
+    a, b = imp(old), imp(new)
+    if a is not None and b is not None and a is not b:
+        bad.append(f"legacy {old} is not {new}")
+for p in sorted(pkgs):
+    m = imp(p)
+    if m is not None and (list(getattr(m, "__path__", ["-"])) != [] or "G8" not in (m.__doc__ or "")):
+        bad.append(f"{p} is not the synthetic legacy package")
+flats = {m: p for p, ms in S.REGIONS.items() for m in ms if m != p and m not in pkgs}
+if set(S._MOVED) != set(flats):
+    bad.append(f"flat set: missing {sorted(set(flats) - set(S._MOVED))}, extra {sorted(set(S._MOVED) - set(flats))}")
+for flat, p in sorted(flats.items()):
+    a, b = imp(flat), imp(f"{p}.{flat}")
+    if a is not None and b is not None and a is not b:
+        bad.append(f"flat {flat} is not {p}.{flat}")
+print("G8PROBE " + json.dumps({"pairs": sorted(pairs), "pkgs": sorted(pkgs), "flat": len(S._MOVED), "bad": bad}))
+"""
+_STRICT_NAMES = ("claustrum.claustrum", "claustrum", "signal_loop")
+_STRICT_PROBE = r"""
+import importlib, json
+out = {}
+for n in __NAMES__:
+    try:
+        importlib.import_module("snn_data_lake." + n)
+        out[n] = "resolved"
+    except ImportError as exc:
+        out[n] = "raised: " + str(exc)
+print("G8PROBE " + json.dumps(out))
+"""
+#: F2's second control: a legacy spec WITHOUT the target's origin -- runpy then sets __file__ to None.
+_NO_ORIGIN = r"""
+import importlib.machinery, runpy, sys
+import snn_data_lake as S
+S._legacy_spec = lambda fullname, target: importlib.machinery.ModuleSpec(fullname, S._LegacyLoader(target))
+sys.argv = ["region_charge_gate", "--assert"]
+runpy.run_module("snn_data_lake.substrate.region_charge_gate", run_name="__main__", alter_sys=True)
+"""
+
+
+def _probe(root: Path, code: str, home: Path, strict: bool) -> dict:
+    rc, so, se = _run([sys.executable, "-c", code], root, home, strict=strict)
+    tagged = [x for x in so.splitlines() if x.startswith(PROBE_TAG)]
+    if len(tagged) != 1:
+        raise SystemExit(f"move_gate: probe failed rc={rc}: {(so + se)[-1500:]}")
+    return json.loads(tagged[0][len(PROBE_TAG) :])
+
+
+def _move(mover: Path, tree: Path, spec: str) -> str:
+    p = subprocess.run(
+        [sys.executable, str(mover), "move", str(tree / DOC), str(tree), spec],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if p.returncode != 0:
+        raise SystemExit(f"move_gate: the mover failed on {spec}: {(p.stdout + p.stderr)[-800:]}")
+    return p.stdout.strip()
+
+
+def tree_reds_s1b(root: Path, mover: Path, log=print) -> list:
+    """S1b's reds (2.4) and C5's, each in a fresh temporary copy of `root` (never the checkout)."""
+    fails = []
+    work = Path(tempfile.mkdtemp(prefix="g8selfcheck_s1b_"))
+    try:
+        # C2(b): claustrum moved as M11a will -- its package empties into a synthetic one
+        t = copy_tree(root, work / "c2b", marker=True)
+        log(f"  mover: {_move(mover, t, 'claustrum/claustrum.py')[:200]}")
+        clean = _probe(t, _C2B.replace("__PLANT__", ""), work / "h1", strict=False)
+        if (
+            clean["bad"]
+            or clean["pairs"] != ["claustrum.claustrum"]
+            or clean["pkgs"] != ["claustrum"]
+        ):
+            fails.append(f"C2(b) control: the built alias layer is not green: {clean}")
+        for plant, what in (
+            ("S._LEGACY.pop('claustrum.claustrum', None)", "one _LEGACY entry dropped"),
+            ("S._MOVED['claustrum'] = 'faculties.claustrum'", "claustrum put back in _MOVED"),
+            ("S._MOVED['lif_neuron'] = 'hippocampus.grid_cells'", "a flat alias re-pointed"),
+        ):
+            red = _probe(t, _C2B.replace("__PLANT__", plant), work / "h2", strict=False)
+            if not red["bad"]:
+                fails.append(f"C2(b) red: {what} did not red")
+            else:
+                log(f"  RED C2(b) fired ({what}): {red['bad'][:2]}")
+        # F3(c): the tripwire raises on a legacy path and a synthetic package, never on a flat alias
+        code = _STRICT_PROBE.replace("__NAMES__", repr(_STRICT_NAMES))
+        on, of = (_probe(t, code, work / "h3", strict=s) for s in (True, False))
+        raised = [n for n in _STRICT_NAMES if on[n].startswith("raised: SNN_ALIAS_STRICT")]
+        if (
+            raised != list(_STRICT_NAMES[:2])
+            or on["signal_loop"] != "resolved"
+            or set(of.values()) != {"resolved"}
+        ):
+            fails.append(f"F3(c): strict {on}, not strict {of}")
+        else:
+            log(
+                f"  RED F3(c) fired: {on['claustrum.claustrum'][:120]}; the flat alias still resolves"
+            )
+        # F2: region_charge_gate (reads __file__ at import) moved as M1 will; -m through its legacy name
+        t = copy_tree(root, work / "f2", marker=True)
+        _move(mover, t, "substrate/region_charge_gate.py")
+        runs = {
+            name: _run([sys.executable, *argv], t, work / f"h_{name}", strict=False)
+            for name, argv in (
+                ("real", ["-m", f"{PKG}.gates.region_charge_gate", "--assert"]),
+                ("legacy", ["-m", f"{PKG}.substrate.region_charge_gate", "--assert"]),
+                ("flat", ["-m", f"{PKG}.region_charge_gate", "--assert"]),
+                ("no_origin", ["-c", _NO_ORIGIN]),
+            )
+        }
+        real, legacy, flat, bare = runs["real"], runs["legacy"], runs["flat"], runs["no_origin"]
+        if (legacy[0], legacy[1]) != (real[0], real[1]) or real[0] != 0:
+            fails.append(
+                f"F2: the legacy -m did not exit as the real path: {legacy[0]} vs {real[0]}"
+            )
+        elif (
+            flat[0] == 0 or "get_code" not in flat[2] or bare[0] == 0 or "TypeError" not in bare[2]
+        ):
+            fails.append(f"F2 controls: flat rc={flat[0]}, no-origin rc={bare[0]} {bare[2][-300:]}")
+        else:
+            log(
+                f"  RED F2 fired: legacy -m == real path (exit {real[0]}, identical stdout); flat "
+                f"alias exit {flat[0]} ({flat[2].strip().splitlines()[-1][:90]}); without origin exit "
+                f"{bare[0]} ({bare[2].strip().splitlines()[-1][:90]})"
+            )
+        # C5: lif_neuron moved as M5 will; the baseline written before the move, in a copy too
+        t0 = copy_tree(root, work / "c5pre", marker=True)
+        t = copy_tree(root, work / "c5", marker=True)
+        _move(mover, t, "cortex/lif_neuron.py")
+        rl1_write(work / "rl1", t0, arms=("brain",), log=log)
+        kept = rl1_check(work / "rl1", t, arms=("brain",), log=log)
+        lost = rl1_check(work / "rl1", t, arms=("brain",), translation=False, log=log)
+        if kept or not lost or "checkpoint class mismatch" not in lost[0]:
+            fails.append(f"C5: with the map {kept}; without it {lost}")
+        else:
+            log(
+                "  RED C5 fired: the moved checkpoint restores through _LEGACY and refuses without it"
+            )
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    return fails
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="move_gate", description="G8's G-R8 census, diff and reds")
     ap.add_argument("--census", metavar="OUT")
@@ -902,10 +1419,23 @@ def main(argv=None) -> int:
     ap.add_argument("--diff", nargs=2, metavar=("PRE", "POST"))
     ap.add_argument("--declared", metavar="DELTA")
     ap.add_argument("--observed", metavar="OUT")
+    ap.add_argument("--expected", metavar="NAMES")
     ap.add_argument("--self-check", dest="self_check", action="store_true")
     ap.add_argument("--mover", metavar="MOVER")
     ap.add_argument("--export", nargs=2, metavar=("REV", "DIR"))
+    ap.add_argument("--rl1-write", dest="rl1_write", metavar="DIR")
+    ap.add_argument("--rl1-check", dest="rl1_check", metavar="DIR")
     a = ap.parse_args(argv)
+    if a.rl1_write:
+        ref = rl1_write(Path(a.rl1_write), Path(a.root))
+        print(f"R-L1 baseline written at {ref['head'][:8]} (dirty={ref['dirty']}) -> {a.rl1_write}")
+        return 0 if all(ref[arm]["refused"] is None for arm in ("brain", "zoo")) else 1
+    if a.rl1_check:
+        fails = rl1_check(Path(a.rl1_check), Path(a.root))
+        print("R-L1 PASS: no refusal, walks equal, answers identical" if not fails else "R-L1 RED:")
+        for f in fails:
+            print("  " + f)
+        return 1 if fails else 0
     if a.census:
         t0 = time.perf_counter()
         c = census(Path(a.root))
@@ -916,13 +1446,16 @@ def main(argv=None) -> int:
         )
         return 0
     if a.diff:
-        if not a.declared:
-            ap.error("--diff needs --declared DELTA (an empty delta is the file {})")
+        if not a.declared or not a.expected:
+            ap.error(
+                "--diff needs --declared DELTA (an empty delta is the file {}) and --expected NAMES "
+                "(the mover's post-stage map; F3(b) compares the NAME registries raw against it)"
+            )
 
         def load(p):
             return json.loads(Path(p).read_text(encoding="utf-8"))
 
-        obs, probs = diff(load(a.diff[0]), load(a.diff[1]), load(a.declared))
+        obs, probs = diff(load(a.diff[0]), load(a.diff[1]), load(a.declared), load(a.expected))
         if a.observed:
             Path(a.observed).write_text(
                 json.dumps(obs, indent=1, sort_keys=True) + "\n", encoding="utf-8"
@@ -948,18 +1481,19 @@ def main(argv=None) -> int:
     if a.self_check:
         if not a.mover:
             print(
-                "move_gate --self-check REFUSED: F5's red needs the out-of-tree mover (--mover MOVER); "
-                "a red that cannot be built is refused, never skipped"
+                "move_gate --self-check REFUSED: the tree reds move modules with the out-of-tree "
+                "mover (--mover MOVER); a red that cannot be built is refused, never skipped"
             )
             return 2
         fails += tree_reds(Path(a.root), Path(a.mover))
+        fails += tree_reds_s1b(Path(a.root), Path(a.mover))
     if fails:
         print("move_gate self-check FAILED:")
         for f in fails:
             print("  " + f)
         return 1
     scope = (
-        "C1's planted EXEMPT-row deletion and F5's join red fired in temporary copies"
+        "C1, F5, C2(b), F3(c), F2 and C5 fired in temporary copies"
         if a.self_check
         else "bare: the diff engine's reds; --self-check --mover builds the tree reds"
     )
