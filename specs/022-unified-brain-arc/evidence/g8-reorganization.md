@@ -656,6 +656,28 @@ head. No stage is built before the previous stage's cheap half is green.
 | **M11e** | `faculties/` <- 33: `cortex` whole, the one sub-stage above 25 (a partial package is never moved); deletes `cortex/` | `reasoning_cortex`'s three `sys.modules` keys derived with `module_path("kb_ranking")`, and `schema_induction`'s `_KB` neuter key (F16); the specs/005 quickstart's line 75 path `language_acquisition`, its historical path in a dated note (F10); REGISTRANTS (3: `percept_surprise`, `task_set`, `recursive_tom`); 1 SCOPE command (`docs/coverage/Language.md`, `rose_language`); `GOVERNED` - `cortex` (F15) | `schema_induction`'s `_KB` (C2(d)); its own confidence-gate red and `reasoning_cortex`'s asserts must still fire in this sub-stage's cheap half (F16) |
 | **D1** | The A.5 old-to-new map (253 rows, generated from `LEGACY_*`); the content rewrites of the index documents (ANATOMY, OVERVIEW, CODEBASE_DIGEST, README "Architecture", AGENT_COLD_START section 1 under its SYNC DUTY); POLICIES.md's `REGIONS` wording if not already landed | `policy_manifest.json` regenerated; the doc-budget word counts declared before the gate runs | a planted dangling live citation (C7) |
 
+**DATED 2026-09-25, after S1c (the orchestrator's rulings; session calls under the 2026-09-05 authorization).** The
+stage list becomes 23 commits: S1d and S1e land before M1.
+- *The `LEGACY_*` reading (section 3.3's disclosure).* S1a's "byte-identical frozen copies" means the tables' DATA:
+  every key and member string byte-identical and in the S0-head order, checked by C6's AST equality. The source text
+  with its provenance comments is not copied: built that way first, it added five BROAD dangling citations of retired
+  files to a live file (1,075 -> 1,080, measured), which C7 forbids; the comments stay with the live tables.
+- *S1d: `move_gate`'s C2(c), C2(d) and census mode.* The S1 stages built C2 (a), (b) and (e); (c) and (d) have no
+  legacy name to test before a move. S1d lands them: C2(c) runs `python -m <legacy path> --assert` for the 16 battery
+  gates and `brian2_backend` and requires the current path's exit code and stdout (its red: a gate moved in a temporary
+  copy with no `_LEGACY` entry); C2(d) scans every live `.py` (governed and ungoverned tiers, tests, tools,
+  integrations, research, root scripts) statically for legacy dotted names, path forms, templated forms, split path
+  parts, `endswith`/`startswith` package tests and package-prefix strings (F7), and its positive control runs it with
+  the post-G8 legacy package set over the S1c tree, where it must find the six F7 sites before its zero is believed.
+  `move_gate`'s self-check derives every module it names through `module_path()`, so no later stage re-points it. And
+  the census is MODE-dependent (measured by the orchestrator at `09b68a4`: a census over the real checkout and one over
+  a `git archive` export differ in `root` and in `policy_manifest`'s freshness line, "certified at a18bb369" against
+  "no ref resolved"; every other field equal): `--diff` refuses two censuses of different modes, and every census is
+  taken over an export. Declared delta: EMPTY (the parent census re-taken with S1d's `move_gate`, as at S1b).
+- *S1e: one module-to-path mapping (P2).* S1a's `module_path()` computes what `dormancy_gate._CANON` already computed
+  (a basename to `snn_data_lake.<package>.<module>` over the three live tables; basenames are unique, invariant 3), so
+  S1a left two mechanisms for one job. `_CANON` is derived from `module_path()` and one survives. Declared delta: EMPTY.
+
 **The M11 split** (the design read, F4; 2.11 Q3). Generated from section 2.12's table with B1's row parser: the 92
 `faculties` moves come from 17 source packages. `claustrum` is M11a alone. The other 16, in descending order of their
 faculty-bound modules (ties by name), are cut into consecutive groups of at most 25 modules, and the groups run smallest
