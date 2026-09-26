@@ -678,6 +678,28 @@ stage list becomes 23 commits: S1d and S1e land before M1.
   (a basename to `snn_data_lake.<package>.<module>` over the three live tables; basenames are unique, invariant 3), so
   S1a left two mechanisms for one job. `_CANON` is derived from `module_path()` and one survives. Declared delta: EMPTY.
 
+**DATED 2026-09-25, at M1's halt (the orchestrator's rulings; session calls under the 2026-09-05 authorization).** The
+stage list becomes 24 commits (S1f added) in three pushed arcs.
+- *The atlas count rows.* `brain_atlas` prints a module count per live key, so every move changes its source and
+  destination counts; 2.6's M-stage rule named the key SETS only. From here every M stage's declared delta also carries
+  the per-key atlas counts GENERATED from the 2.12 table (never hand-written), the same generation as the key sets. For
+  M1 this rule is written AFTER M1's first diff, which red on exactly these two rows (`gates 1 -> 24`, `substrate 87 ->
+  64`; the orchestrator reproduced 1 and 87 at `1fe3611`, and the frozen M1 row moves 23) with every other field inside
+  the delta: M1's green stands under a post-diff amendment of the declaration rule, disclosed; for M2 onward it is a
+  pre-registration.
+- *S1f before M1: `move_gate --export WORKTREE` follows renames.* Found at M1's first run (the export kept every renamed
+  file at its old path); the fix and its regression test land as their own instrument commit (declared delta EMPTY,
+  the parent census re-taken), and M1 is rebuilt from the saved build (sha256 `1da3817b...`) without the fix and
+  re-checked.
+- *The re-cut (2.9).* M1's cost reading (its builder's measurement: build 328 s, cheap half 1,310.4 s) projects M2-D1
+  at about 18 h (range 12-24 h), above two working sessions. G8 is re-cut into THREE pushed arcs, each with its own
+  three-lens panel, fold, ONE battery, closing record and push: G8-1 = S0 through M5, G8-2 = M6 through M10, G8-3 =
+  M11a through D1. Every stage, check and delta stays as frozen; only arc boundaries are added. Each stacked head is a
+  fully consistent tree (2.4), the old paths keep resolving through the alias layer, and the A.5 map and the index
+  documents land at G8-3's D1: origin carries a partly reorganized tree between arcs, disclosed in each record.
+- *F1's unclaimed-gate census* keeps its pre-G8 `substrate` scope through the `LEGACY_*` labels (owner decision 4),
+  which leaves `move_gate` (no pre-G8 label) outside it; its printed disposition is owed in G8-1's fold.
+
 **The M11 split** (the design read, F4; 2.11 Q3). Generated from section 2.12's table with B1's row parser: the 92
 `faculties` moves come from 17 source packages. `claustrum` is M11a alone. The other 16, in descending order of their
 faculty-bound modules (ties by name), are cut into consecutive groups of at most 25 modules, and the groups run smallest
