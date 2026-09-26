@@ -1253,7 +1253,10 @@ def export(rev: str, dest: Path, repo: Path) -> Path:
     endings (`git ls-files --eol`: i/lf w/crlf files are re-ended CRLF), then an index-only git.
     WORKTREE is HEAD's export with the working tree's changes (git status) laid over it byte for
     byte, so both sides of a stage's diff come from ONE export procedure and differ only in the
-    files the stage touched (a mixed-EOL file the checkout holds reads the same on both sides)."""
+    files the stage touched (a mixed-EOL file the checkout holds reads the same on both sides). A
+    rename's SOURCE takes the working tree's state too -- absent -- and a directory the removals
+    empty is removed (M1, the first stage that renames: before, every moved module stayed in the
+    export at its old path beside its new one)."""
     dest, repo = Path(dest), Path(repo)
     if dest.exists() and any(dest.iterdir()):
         raise SystemExit(f"move_gate: {dest} is not empty")
@@ -1262,18 +1265,25 @@ def export(rev: str, dest: Path, repo: Path) -> Path:
     if rev == "WORKTREE":
         recs = _git(["status", "--porcelain", "-z", "--untracked-files=all"], repo).stdout
         recs = recs.decode("utf-8").split("\0")
+        paths = []
         while recs:
             rec = recs.pop(0)
             if not rec:
                 continue
-            if rec[0] in "RC":
-                recs.pop(0)  # a rename's second record is the old path
-            src, dst = repo / rec[3:], dest / rec[3:]
+            paths.append(rec[3:])
+            if rec[0] in "RC":  # a rename's or copy's second record is its SOURCE path, which
+                paths.append(recs.pop(0))  # must take the working tree's state too (M1's moves)
+        for path in paths:  # each path as the working tree holds it: its bytes, or its absence
+            src, dst = repo / path, dest / path
             if src.is_file():
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(src, dst)
             elif dst.exists():
                 dst.unlink()
+                parent = dst.parent
+                while parent != dest and parent.is_dir() and not any(parent.iterdir()):
+                    parent.rmdir()  # a directory the working tree emptied (an emptied package, F4)
+                    parent = parent.parent
     for args in (["init", "-q"], ["add", "-A", "-f"]):
         p = _git(args, dest)
         if p.returncode != 0:

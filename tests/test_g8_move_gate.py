@@ -168,6 +168,29 @@ def test_registry_names_resolve_by_file_and_a_stale_one_reds():
     assert mg.by_file(mg.REPO, names) == [f"manifest_gate.REGISTRANTS: {stale}"]
 
 
+def test_worktree_export_drops_a_renamed_source_and_the_directory_it_empties(tmp_path):
+    """A `git mv` leaves no file at its source: the WORKTREE export must not either (M1, the
+    first stage that renames, found the export keeping every moved module at its old path), and a
+    directory the move empties is gone (the F4 shadow). The unrenamed file is the control."""
+    import subprocess
+
+    repo = tmp_path / "repo"
+    (repo / "old").mkdir(parents=True)
+    (repo / "old" / "mod.txt").write_text("m\n", encoding="utf-8")
+    (repo / "keep.txt").write_text("k\n", encoding="utf-8")
+    ident = ["-c", "user.email=g8@example.invalid", "-c", "user.name=g8"]
+    for args in (["init", "-q"], ["add", "-A"], [*ident, "commit", "-q", "-m", "base"]):
+        subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
+    (repo / "new").mkdir()
+    subprocess.run(
+        ["git", "mv", "old/mod.txt", "new/mod.txt"], cwd=repo, check=True, capture_output=True
+    )
+    dest = mg.export("WORKTREE", tmp_path / "export", repo)
+    assert (dest / "new" / "mod.txt").is_file() and (dest / "keep.txt").is_file()
+    assert not (dest / "old" / "mod.txt").exists(), "the rename's source survived the export"
+    assert not (dest / "old").exists(), "the directory the rename emptied survived the export"
+
+
 # ---- S1d ----------------------------------------------------------------------------------------
 def test_c2d_scanner_reds_when_a_detector_is_blinded(monkeypatch):
     """The bare self-check's C2(d) red: the constructed source names every form; blind one

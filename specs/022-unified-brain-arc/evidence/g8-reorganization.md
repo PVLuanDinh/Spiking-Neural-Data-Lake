@@ -1996,3 +1996,61 @@ between them); `declared_S1e.json` `d6289209...c9275`; `expected_S1e.json` `6910
 `0ac2031d...2043b2`, and the state before and after `717ca575...20fe5`. The mover is unchanged (`b49e982a...a746eb`).
 
 **Openings.** 3.3's (5) closes: one module-to-path mapping survives.
+
+### 3.8 S1f -- `move_gate --export WORKTREE` follows renames
+
+Measured 2026-09-25 on the S1f tree (base `b55073d` plus this commit), `.venv-lake` (3.14.6 free-threaded). The
+orchestrator's ruling at M1's halt (the dated block under 2.4) puts this fix before M1 as its own instrument commit.
+
+**The defect** (found by M1's first census, recorded in 3.9). `export("WORKTREE")` lays `git status` over HEAD's archive;
+for a rename (`R`) or copy (`C`) record it popped the second record, the SOURCE path, and never gave that path the
+working tree's state, so every moved module stayed in the export at its old path beside its new one. S1a-S1e renamed
+nothing, so no census before M1 could see it; at M1 the export held all 23 old gate files (p4c read a new zone
+"src/snn_data_lake/substrate 23 > baseline 0", the scanners parsed 463 files instead of 440, `brain_atlas` exited 1).
+
+**What landed.** In `export()` every record's path, the rename's or copy's source included, takes the working tree's
+state -- its bytes, or its absence -- and a directory the removals empty is removed (an emptied package, F4); the
+docstring says so. `test_worktree_export_drops_a_renamed_source_and_the_directory_it_empties` builds a throwaway repo,
+stages a `git mv`, and asserts the export holds the new file and the control file, no old file and no emptied old
+directory. The hunks are M1's saved build's own, taken out of it (`M1_build.patch` split into `S1f.patch` and
+`M1_rest.patch`, each hunk classified by what it touches), applied through the index onto `b55073d`.
+
+**The reachable red** (`s1f_red.py`, 2.2 s): the same test in a temporary copy whose `move_gate` is the parent's fails,
+"assert not (dest / "old" / "mod.txt").exists(), the rename's source survived the export"; on this tree it passes (the
+control). M1's own record carries the first observation: the pre-fix overlay, replayed on a staged `git mv`, keeps the
+source.
+
+**The declared delta, and the diff.** EMPTY, written before the first C1 census of this tree. The parent census over
+`--export b55073d` with this `move_gate` (126.9 s): 0 changes against S1e's post census (the amendment commit adds prose
+only). The post census over `--export WORKTREE` (119.3 s): "move_gate OK: the diff equals the declared delta (0 declared
+change(s))". The mode red on real censuses: REFUSED, exit 2.
+
+**The self-check** (102.4 s): every red fires, with S1e's readings (C1, F5, C2(b)'s three, F3(c), F2, C2(c), C5 and
+C2(d)'s six F7 sites over `09b68a4`).
+
+**C2-C9 at this head.** C2(a): 415 attempted, 13 failed (3.1's set), 0 files written, 19.3 s. C2(b) on the real
+checkout: 0 pairs, 0 packages, 286 flat aliases, the control red. C2(c): 0 of 17 have a legacy name. C2(d): 0 findings
+in 659 files (vacuous). C2(e): 12 of 12 SourceFileLoader. C3: green; the envelope's own self-check under strict green. C4,
+C6-C9: census readings unchanged. C5: R-L1 both arms PASS, 3.3 s. `policy_manifest --audit` under strict: exit 0,
+40.5 s, every machine row PASS, UNCLAIMED_GATE none, NOT_IN_CI none. `ruff check` and `ruff format --check` on the 2
+touched files: clean. Tests: `test_g8_move_gate` 17 passed (1 new) in 7.9 s; `test_selfchecks -k move_gate` 1 passed.
+
+**The cheap half, timed (2.9): 313.7 s**, green: the post export 6.4 s and census 119.3 s, the diff and the mode red 0.2 s,
+the self-check 102.4 s, C2(a) 19.3 s, C2(b) 4.3 s, C2(c) and C2(d) 3.9 s, C2(e) and C3 0.6 s, the strict envelope
+self-check 0.1 s, R-L1 3.3 s, the audit 40.5 s, the red 2.2 s, ruff 0.4 s, the tests 10.7 s. Not in it: the parent
+census (126.9 s with its export).
+
+**Disclosed.** The `git reset --hard` that restored `1fe3611` after M1's halt re-checked out the 222 files M1 had
+touched, so their working copies now carry this checkout's CRLF, `docs/TRAINING.md` among them (it was mixed); every
+index blob is unchanged and `git status` was empty. No gate hashes those files' bytes (the envelope hash gate hashes the
+five envelope files, which M1 never touched and the reset never rewrote), and every census from S1f on sees the new
+state on both sides.
+
+**Artifacts** (the scratch folder's `g8\census` and `g8\m1\split`), sha256: `pre_S1f_b55073d.json` `8abf8915...49c53`;
+`declared_S1f.json` `883b5f14...1cba50`; `expected_S1f.json` `6910612f...4b814a` (S1c's identity map); `post_S1f.json`
+`1e18237e...7c296`; `observed_S1f.json` `e3566b3a...1dc2f` (`{}`); `selfcheck_S1f.txt` `bcc36a3f...4ab1`;
+`s1f_red_S1f.txt` `30484a23...e602f`; `c2a_S1f.json` `448f5b94...dff8`; `cheap_half_S1f.json` `7c7af984...79a3` and
+`cheap_half_S1f.log` `47249895...ac1cd`; the split `S1f.patch` `6493e023...c4055` and `M1_rest.patch` `27f34561...555b`
+of `M1_build.patch` `1da3817b...02541`. The mover is unchanged (`b49e982a...a746eb`).
+
+**Openings.** None new.
