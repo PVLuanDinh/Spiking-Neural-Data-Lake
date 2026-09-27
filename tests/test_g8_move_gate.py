@@ -224,6 +224,35 @@ def test_c2d_reads_the_trees_own_legacy_names_and_finds_none_in_live_code():
     assert n > 500 and unparsed == [] and found == []
 
 
+def test_c2d_resolves_relative_imports_from_the_source_package(tmp_path, monkeypatch):
+    source = tmp_path / "src" / "snn_data_lake" / "cortex" / "probe.py"
+    source.parent.mkdir(parents=True)
+    monkeypatch.setattr(mg, "live_py", lambda root: ["src/snn_data_lake/cortex/probe.py"])
+    old_pkg, old_mod = "plasticity", "deep_stdp"
+    pairs = {(old_pkg, old_mod): "growth"}
+    source.write_text(f"from ..{old_pkg}.{old_mod} import main\n", encoding="utf-8")
+    found, n, unparsed = mg.c2d(tmp_path, pairs, set())
+    assert (n, unparsed) == (1, [])
+    assert found == [("src/snn_data_lake/cortex/probe.py", 1, "import", f"{old_pkg}.{old_mod}")]
+
+    source.write_text(f"from ..{old_pkg} import {old_mod}\n", encoding="utf-8")
+    assert mg.c2d(tmp_path, pairs, set())[0] == found
+
+    source.write_text(f"from ..growth import {old_mod}\n", encoding="utf-8")
+    assert mg.c2d(tmp_path, pairs, set())[0] == []
+
+
+def test_c2d_unparsed_file_is_a_cli_failure(tmp_path, monkeypatch):
+    source = tmp_path / "broken.py"
+    source.write_text("def broken(:\n", encoding="utf-8")
+    monkeypatch.setattr(mg, "live_py", lambda root: ["broken.py"])
+    assert mg.c2d(tmp_path, {}, set()) == ([], 1, ["broken.py"])
+    monkeypatch.setattr(mg, "tables", lambda root: {})
+    monkeypatch.setattr(mg, "legacy_pairs", lambda tabs: {})
+    monkeypatch.setattr(mg, "legacy_pkgs", lambda tabs: set())
+    assert mg.main(["--c2d", "--root", str(tmp_path)]) == 1
+
+
 def test_diff_refuses_two_censuses_of_different_modes(tmp_path, capsys):
     """A checkout census and an export census differ in `root` and the manifest's freshness line
     (measured at 09b68a4): `--diff` refuses a mixed pair, and a census with no mode."""

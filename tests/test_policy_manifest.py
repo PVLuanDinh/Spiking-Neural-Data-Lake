@@ -193,6 +193,7 @@ def test_the_unclaimed_detector_is_still_live_after_the_flip(monkeypatch, tmp_pa
     assert pm.SELF_NAME not in drift["unclaimed_gates"]
     assert "policy_manifest" in drift["self_disposition"]
     assert "EXCLUDED" in drift["self_disposition"]
+    assert pm.MOVE_GATE_DISPOSITION in pm.render_audit([], drift)
 
 
 def test_not_in_ci_fires_on_a_constructed_orphan_command():

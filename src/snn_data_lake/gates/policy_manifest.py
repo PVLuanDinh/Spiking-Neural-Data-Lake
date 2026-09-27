@@ -302,6 +302,11 @@ SELF_DISPOSITION = (
     "liveness is asserted by the CI step and run_selfchecks entry that run it. "
     "Printed on every report so the exclusion is never silent."
 )
+MOVE_GATE_DISPOSITION = (
+    "scope-disposition: move_gate is EXCLUDED from the unclaimed-gate census: "
+    "the census uses frozen pre-G8 substrate membership, and move_gate was added during G8 "
+    "without a pre-G8 label. Its own self-check and CI registration are checked separately."
+)
 
 
 # distinct-from: self_mod_harness.py -- it RUNS the suite in a sandbox; this reads the runner's
@@ -581,6 +586,7 @@ def render_audit(results: list[AuditResult], drift: dict) -> str:
     lines.append(f"UNCLAIMED_GATE: {', '.join(drift['unclaimed_gates']) or 'none'}")
     lines.append(f"NOT_IN_CI:      {', '.join(drift['not_in_ci']) or 'none'}")
     lines.append(drift["self_disposition"])
+    lines.append(MOVE_GATE_DISPOSITION)
     return "\n".join(lines)
 
 
@@ -715,6 +721,7 @@ def run_assert() -> int:
         f"unclaimed {len(drift['unclaimed_gates'])} (baseline {len(BASELINE_UNCLAIMED)}, may shrink never grow)"
     )
     print(drift["self_disposition"])
+    print(MOVE_GATE_DISPOSITION)
     return 0
 
 
@@ -848,6 +855,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"UNCLAIMED_GATE: {', '.join(drift['unclaimed_gates']) or 'none'}")
             print(f"NOT_IN_CI:      {', '.join(drift['not_in_ci']) or 'none'}")
             print(drift["self_disposition"])
+            print(MOVE_GATE_DISPOSITION)
         return 0
 
     if args.audit or args.certify:

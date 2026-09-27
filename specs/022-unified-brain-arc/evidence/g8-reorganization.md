@@ -2520,3 +2520,36 @@ declaration `5d990a6016c98895`. The final evidence paragraph itself adds
 no path citation or command and does not alter the measured source tree.
 M5 is verified by the cheap half only; G8-1's panel, fold and full battery
 remain owed.
+
+### 3.17 G8-1 three-lens panel and fold (Codex, 2026-09-27)
+
+The frozen M5 head was `f670826f`. Three separate read-only lenses examined
+the instrument, policy honesty and integration. The ledger records each
+finding as filed, then independently tests its claim and proposed fix. The
+fold below is a further stacked change; M5's section 3.16 census does not
+certify it. A full battery on the folded head is still owed.
+
+| Lens / severity | Filed claim and reproduction | Claim disposition | Proposed fix disposition |
+| --- | --- | --- | --- |
+| Integration / BLOCKER | `tests/test_g8_checkpoint_translation.py::test_the_provider_is_empty_at_s0` fails: it expects an empty provider at M5, which has 117 real aliases. Run `pytest --no-cov -p no:cacheprovider -x tests/test_g8_checkpoint_translation.py::test_the_provider_is_empty_at_s0` on `f670826f`. | **Stood.** The provider's S1b contract reads the package alias map at call time; M1 first made the S0-only assertion stale. | **Stood, narrowed.** Replace the obsolete assertion with identity to the live `_LEGACY` object, a planted replacement-map control and a planted broken-provider red. Keep checkpoint refusal tests. Never empty production aliases. |
+| Instrument / MAJOR | C2(d) reports one unparsed source but CLI returns 0. In a scratch tree, feed `def broken(:` to `c2d`, then call `main(["--c2d", "--root", scratch])`. | **Stood.** Its own docstring says unreadable source is a blind spot, never zero. | **Stood.** Return failure when either findings or unparsed files exist; a regression plants syntax damage and checks both detector result and CLI status. |
+| Instrument / MAJOR | C2(d) misses `from ..plasticity.deep_stdp import main` in a `snn_data_lake.cortex` file, while the equivalent absolute import is found. Run `c2d` over a scratch `src/snn_data_lake/cortex/probe.py` with the frozen `plasticity/deep_stdp` pair. | **Stood.** The AST branch excluded all imports with `level > 0`. No live stale relative import was found. | **Stood, narrowed.** Resolve relative imports from each scanned source package and reuse `_module_hits`; the regression checks a qualified form, a package-member form and an unrelated current-package control. |
+| Policy honesty / MINOR | The policy report excludes `move_gate` from `UNCLAIMED_GATE` with only a source comment explaining why. Run the M5 `policy_manifest --assert`; it prints self-disposition but no `move_gate` disposition. | **Stood.** The frozen pre-G8 substrate membership is intentional, but the visible report owed the exclusion reason. | **Stood.** Print the frozen-scope disposition in assert, audit and regular reports; retain the existing census and baseline. |
+
+The policy lens also inspected the M5 protected-arm incident in section 3.16:
+that temporary candidate was red and restored before the M5 commit. The
+current protected-file diff against `origin/main` is empty, so no current
+envelope finding stood. The integration lens found no other registration or
+file-resolution defect. Its seven-file read-only run had 71 passes and the
+one stale checkpoint assertion failure; full collection succeeded. The
+ignored-asset binder timeout is an existing battery-preparation obligation,
+not a new move defect.
+
+Fold verification so far: the five focused regression tests pass, C2(d)
+scans 664 live Python files with 117 legacy pairs, zero unparsed and zero
+findings; policy `--assert` and the full policy audit are green and print the
+new disposition. The complete move-gate, checkpoint-translation and
+policy-manifest test files pass; whole-tree Ruff check and its CI format
+scope pass. The independent closing report and full battery remain owed.
+This fold has not been independently re-panelled; its outcome will be
+claimed only after the battery on the stacked head.

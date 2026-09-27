@@ -4,7 +4,7 @@ specs/022-unified-brain-arc/evidence/g8-reorganization.md, 2.4 (S0) and 2.7 (R-L
 codec stores each package object's class as "<module>.<qualname>" (`_encode_state`), and G8 moves
 modules, so a checkpoint written before a move names its classes by their OLD module.
 `interaction_learning._merge_state` maps a stored class path's MODULE through the one legacy map,
-`_g0c_legacy_modules()` (empty until G8's S1b re-points it at the alias layer's table), before the
+`_g0c_legacy_modules()` (empty at S0, then re-pointed at S1b to the alias layer's table), before the
 lazy-class lookup and before the class comparison. Read side only: the lake is never rewritten, the
 schema stays g0c.v1, a save writes the CURRENT path, and a name the map cannot resolve refuses.
 
@@ -297,8 +297,16 @@ class _Nested:
     """Planted as a nested class for the dotted-qualname case; src/ holds none today."""
 
 
-def test_the_provider_is_empty_at_s0():
-    assert ixn._g0c_legacy_modules() == {}
+def test_the_provider_reads_the_live_legacy_map_at_call_time(monkeypatch):
+    import snn_data_lake as package
+
+    assert ixn._g0c_legacy_modules() is package._LEGACY
+    planted = {"old.module": "new.module"}
+    monkeypatch.setattr(package, "_LEGACY", planted)
+    assert ixn._g0c_legacy_modules() is planted
+    monkeypatch.setattr(ixn, "_g0c_legacy_modules", lambda: {})
+    with pytest.raises(AssertionError):
+        assert ixn._g0c_legacy_modules() is planted  # planted broken provider must fail
 
 
 def test_translation_maps_the_longest_legacy_module_and_keeps_a_dotted_qualname(monkeypatch):

@@ -860,7 +860,7 @@ def _attr_or_name(node) -> str:
     return node.attr if isinstance(node, ast.Attribute) else getattr(node, "id", "")
 
 
-def c2d_source(text: str, pairs, pkgs) -> list:
+def c2d_source(text: str, pairs, pkgs, source_package: str | None = None) -> list:
     """C2(d) over one source text, code only: sorted unique (line, kind, legacy name); None when
     the text does not parse (the caller reports it -- a file the scan cannot read is a blind spot,
     never a zero)."""
@@ -879,8 +879,18 @@ def c2d_source(text: str, pairs, pkgs) -> list:
         if isinstance(n, ast.Import):
             for a in n.names:
                 add(n, "import", _module_hits(a.name.split("."), pairs, pkgs))
-        elif isinstance(n, ast.ImportFrom) and not n.level and n.module:
-            p = n.module.split(".")
+        elif isinstance(n, ast.ImportFrom):
+            if n.level:
+                if not source_package:
+                    continue
+                base = source_package.split(".")
+                if n.level > len(base):
+                    continue
+                p = base[: len(base) - n.level + 1] + (n.module.split(".") if n.module else [])
+            elif n.module:
+                p = n.module.split(".")
+            else:
+                continue
             add(n, "import", _module_hits(p, pairs, pkgs))
             for a in n.names if p[0] == PKG and len(p) <= 2 else ():
                 add(
@@ -928,8 +938,10 @@ def c2d(root: Path, pairs=None, pkgs=None) -> tuple:
         pairs, pkgs = legacy_pairs(tabs), legacy_pkgs(tabs)
     files, found, unparsed = live_py(root), [], []
     for f in files:
+        parts = f.split("/")
+        source_package = ".".join(parts[1:-1]) if parts[:2] == ["src", PKG] else None
         try:
-            got = c2d_source((root / f).read_text(encoding="utf-8"), pairs, pkgs)
+            got = c2d_source((root / f).read_text(encoding="utf-8"), pairs, pkgs, source_package)
         except (OSError, UnicodeDecodeError):
             got = None
         if got is None:
@@ -2048,7 +2060,7 @@ def main(argv=None) -> int:
         )
         for f, line, kind, name in found:
             print(f"  {f}:{line} {kind} {name}")
-        return 1 if found else 0
+        return 1 if found or unparsed else 0
     if a.rl1_write:
         ref = rl1_write(Path(a.rl1_write), Path(a.root))
         print(f"R-L1 baseline written at {ref['head'][:8]} (dirty={ref['dirty']}) -> {a.rl1_write}")
