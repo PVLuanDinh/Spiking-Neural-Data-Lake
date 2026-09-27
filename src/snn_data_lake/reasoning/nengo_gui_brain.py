@@ -54,7 +54,7 @@ two static criteria in main() -- which are the only ones checkable without the o
 import ast
 
 from snn_data_lake.cortex.brain import make_brain
-from snn_data_lake.substrate.nengo_bridge import brain_signals
+from snn_data_lake.infra.nengo_bridge import brain_signals
 
 # a curated, readable subset so the GUI graph stays legible (falls back to the first 12 signals). The
 # GROWTH signals lead: grown_units (torch neurogenesis) + reasoning_units climb during the sleep phases.

@@ -50,7 +50,7 @@ Imports math + json + the shared _mathutils dot/mean/unit. ASCII-only prints, de
 import json
 import math
 
-from snn_data_lake.substrate._mathutils import dot, mean, unit
+from snn_data_lake.infra._mathutils import dot, mean, unit
 
 HJEPA_FORMAT = "snn_hjepa/1"
 

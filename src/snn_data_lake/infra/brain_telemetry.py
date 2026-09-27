@@ -2,7 +2,7 @@
 
     This is the DATA layer only. It used to carry a second HTTP server and a second dashboard of its
     own, on the same default port as the cockpit -- two frontends racing for :8137, and a docstring in
-    substrate/cockpit.py that called this one "retired" while it was still live. `substrate/cockpit.py`
+    infra/cockpit.py that called this one "retired" while it was still live. `infra/cockpit.py`
     is the single frontend; everything here is what that frontend is allowed to read.
 
 WHY THIS EXISTS
@@ -420,7 +420,7 @@ def _coverage_census():
     global _COVERAGE
     if _COVERAGE is None:
         try:
-            from snn_data_lake.substrate import region_wiring
+            from snn_data_lake.infra import region_wiring
 
             _COVERAGE = {f"coverage_{k}": v for k, v in region_wiring.live_coverage().items()}
         except Exception:
@@ -1094,7 +1094,7 @@ def _main():
         if os.path.exists(p):
             os.remove(p)
 
-    # No HTTP here any more -- serving is substrate/cockpit.py's job, and it self-checks its own
+    # No HTTP here any more -- serving is infra/cockpit.py's job, and it self-checks its own
     # endpoints. This module is the data layer; a second server on the same default port was the
     # duplication that made "which dashboard am I looking at?" a real question.
 

@@ -72,9 +72,9 @@ import zlib
 from snn_data_lake.basal_ganglia.evidence_accumulation import DriftDiffusion
 from snn_data_lake.cortex.vsa_reasoning import cleanup, hv
 from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
+from snn_data_lake.infra._mathutils import sigmoid
 from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCurriculum
-from snn_data_lake.substrate._mathutils import sigmoid
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

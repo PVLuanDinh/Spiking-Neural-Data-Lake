@@ -69,7 +69,7 @@ Verified in this repo:
   where a computed value belongs. The whole core program — the
   robot-arm control loop (`reflex`, E-STOP, collision-gated `arm_sim`/`serial_arm`,
   `interpreter`, `autonomous_loop`, `closed_loop`), the spiking lakehouse
-  (`spike_telemetry_hub`, `streaming_hub`), and the cockpit (`substrate/cockpit`, the ONE
+  (`spike_telemetry_hub`, `streaming_hub`), and the cockpit (`infra/cockpit`, the ONE
   frontend, shipped as a Windows .exe) — is in the CORE list and runs without AirLLM.
 - `local_llm/airllm_backend.py` is **not** in the self-check gate, and CI never
   installs the `[llm]` extra (verified: no `airllm`/`[llm]` reference in

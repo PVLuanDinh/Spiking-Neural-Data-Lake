@@ -57,7 +57,7 @@ INSTRUMENTS = (
 
 #: Surfaces a reader sees. A reading printed here needs its licensed sentence in the same view.
 TRACKED_SURFACES = (
-    "src/snn_data_lake/substrate/cockpit.py",
+    "src/snn_data_lake/infra/cockpit.py",
     "docs/OVERVIEW.md",
     "docs/PITCH.md",
     "README.md",
@@ -343,7 +343,7 @@ def mechanism_findings(registry=None) -> list[str]:
     # LAZY: brain_telemetry imports this module back inside conclusion_rows, so a module-level
     # pair in both directions would be an import cycle. This is also the one clause in this file
     # that IMPORTS rather than parses -- the point is to exercise the served path, not to read it.
-    from snn_data_lake.substrate import brain_telemetry
+    from snn_data_lake.infra import brain_telemetry
 
     out: list[str] = []
     for name, row in reg.items():

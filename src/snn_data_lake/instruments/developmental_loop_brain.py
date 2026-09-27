@@ -108,6 +108,7 @@ import torch.nn.functional as F
 from snn_data_lake.basal_ganglia.brain_decision import BrainDecision
 from snn_data_lake.hippocampus.growable_readout import GrowableReadout, LaminarColumns
 from snn_data_lake.hippocampus.hippocampal_memory import HippocampalMemory
+from snn_data_lake.infra.device import enable, resolve_device
 from snn_data_lake.instruments.deep_stdp_latency import ConvLatencyStdp
 from snn_data_lake.instruments.snn_mnist_stdp import load_mnist
 from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
@@ -115,7 +116,6 @@ from snn_data_lake.neuromodulation.spiking_curiosity import (
     SpikingCuriosityDrive,
     SpikingCurriculum,
 )
-from snn_data_lake.substrate.device import enable, resolve_device
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

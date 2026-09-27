@@ -15,7 +15,7 @@ WHY THIS EXISTS. docs/COVERAGE_RUBRIC.md:8-9 says "a percentage nobody can re-de
 measurement" -- and then the baseline it governs was assembled entirely by hand. No .py file in the
 tree reads either document, and the three code paths named "coverage" measure pytest LINE coverage
 (pyproject.toml:101), module REACHABILITY (gates/dormancy_gate.py:346) and registered CHARGE
-ADAPTERS (substrate/region_wiring.py:67, currently 0). None of them is the faculty percentage. The
+ADAPTERS (infra/region_wiring.py:67, currently 0). None of them is the faculty percentage. The
 rubric ended the problem for the standard and left it open for the score.
 
 IT DOES NOT SCORE ANYTHING. It has no opinion about what band a faculty deserves; an auditor writes

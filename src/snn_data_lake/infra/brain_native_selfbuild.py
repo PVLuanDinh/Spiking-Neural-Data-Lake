@@ -6,7 +6,7 @@ WHAT THIS IS (honest framing -- read before believing any "self-improvement" cla
   SelfBuildSource plugins compete in a reward-modulated competitive bandit that reuses the BRAIN'S OWN
   three-factor rule (basal_ganglia/r_stdp.RSTDPNeuron: w[k] += lr*reward*(elig_k - mean_elig)) to learn
   WHICH candidate to sandbox-test next -- behind the existing byte-exact-rollback + protected-crc firewall
-  (basal_ganglia/self_build_loop + substrate/self_mod_harness, UNCHANGED -- both paths corrected
+  (infra/self_build_loop + infra/self_mod_harness, UNCHANGED -- both paths corrected
   2026-08-04, they read `reasoning/...` here after the region-reorganisation wave moved the files and
   nothing re-read the sentence). It replaces (retires) the old
   reasoning/improvement_proposer, a fixed-heuristic NUMERIC-CONSTANT TUNER whose own docstring admitted
@@ -66,8 +66,8 @@ import re
 import zlib
 
 from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
+from snn_data_lake.infra.self_mod_harness import _PROTECTED
 from snn_data_lake.substrate.home import load_selfbuild, save_selfbuild
-from snn_data_lake.substrate.self_mod_harness import _PROTECTED
 
 # This module's own dotted name -- correct both when imported and when run as `python -m ...` (runpy
 # sets __spec__ to the real name even though __name__ becomes "__main__"). The self-check's toy patches
@@ -87,7 +87,7 @@ def _repo_root():
 
 # SELF-PATH, DERIVED -- never a literal. The firewall entry that stops the learner from editing THIS
 # file used to be the hardcoded string "src/snn_data_lake/reasoning/brain_native_selfbuild.py".
-# MEASURED before this change: _forbidden("src/snn_data_lake/basal_ganglia/brain_native_selfbuild.py")
+# MEASURED before this change: _forbidden("src/snn_data_lake/infra/brain_native_selfbuild.py")
 # returned False, so relocating this file would have made the proposer a legal target of its own
 # self-build -- while the G5 self-check went on asserting the OLD string and passing GREEN. A safety
 # firewall that goes stale on a file move and still reports success is what this derivation removes.
@@ -451,7 +451,7 @@ DEHARDCODE_TRANSFORMS = (
             ),
             (
                 "import\\ math\\\r\\\n\\\r\\\n",
-                "import math\r\n\r\nfrom snn_data_lake.basal_ganglia.brain_native_selfbuild import RunningBaseline\r\n",
+                "import math\r\n\r\nfrom snn_data_lake.infra.brain_native_selfbuild import RunningBaseline\r\n",
                 1,
             ),
             ("\\ \\ \\ \\ \\ \\ \\ \\ r_explore=0\\.30,\\\r\\\n", "", 1),
@@ -900,7 +900,7 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
         # ---- drive promote() directly (propose -> apply-to-real-toy -> gate_fn -> keep/rollback ->
         # observe): the harness sandbox pre-verify (SelfBuildLoop.run) needs a real run_selfchecks in the
         # tree, which it has its own self-check for; here we exercise the PROPOSER + promote + learning. ----
-        from snn_data_lake.basal_ganglia.self_build_loop import SelfBuildLoop
+        from snn_data_lake.infra.self_build_loop import SelfBuildLoop
 
         os.environ["NORD_SELFMOD"] = "1"
         w_trajectory = []
@@ -1002,7 +1002,7 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
             "src/snn_data_lake/brainstem/reflex.py",
             "src/snn_data_lake/reasoning/brain_native_selfbuild.py",  # this file, NOT-AT-THAT-PATH
             "src/snn_data_lake/cortex/self_build_loop.py",  # accept path, NOT-AT-THAT-PATH
-            "src/snn_data_lake/substrate/self_mod_harness.py",  # the harness at its REAL path
+            "src/snn_data_lake/infra/self_mod_harness.py",  # the harness at its REAL path
         )
         rejected = 0
         for bad_target in bad_targets:

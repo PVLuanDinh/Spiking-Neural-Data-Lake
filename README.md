@@ -45,8 +45,8 @@ not demonstrate bounded whole-system RAM use.
 | Persistent memory | Sparse event storage, windowed queries, append logs, sealed segments, replay and migration mechanisms | [Streaming hub](src/snn_data_lake/substrate/streaming_hub.py), [lake engine](src/snn_data_lake/substrate/lake_engine.py), [persistence paths](src/snn_data_lake/substrate/home.py) |
 | Temporal queries | Coincidence and ordered-sequence matching over stored spikes | [Query engine](src/snn_data_lake/cortex/paradigm_b_engine.py) |
 | Growth | Neurogenesis, local growth-program infrastructure, function-preserving widening, and stopping gates tied to learning evidence | [Neurogenesis](src/snn_data_lake/cortex/neurogenesis_engine.py), [growth program](src/snn_data_lake/cortex/growth_program.py), [growth stop](src/snn_data_lake/cortex/growth_stop.py) |
-| Robotics | Six-DOF SO-101 simulation, gesture-to-command examples, reflexes, and a calibration-gated serial path | [SO-101 body](src/snn_data_lake/brainstem/so101_arm.py), [demo](src/snn_data_lake/substrate/demo.py), [safety documentation](SECURITY.md) |
-| Local runtime | Daemon, cockpit, telemetry, and provenance-aware capability reporting | [Daemon](src/snn_data_lake/substrate/learn_daemon.py), [cockpit](src/snn_data_lake/substrate/cockpit.py) |
+| Robotics | Six-DOF SO-101 simulation, gesture-to-command examples, reflexes, and a calibration-gated serial path | [SO-101 body](src/snn_data_lake/brainstem/so101_arm.py), [demo](src/snn_data_lake/infra/demo.py), [safety documentation](SECURITY.md) |
+| Local runtime | Daemon, cockpit, telemetry, and provenance-aware capability reporting | [Daemon](src/snn_data_lake/substrate/learn_daemon.py), [cockpit](src/snn_data_lake/infra/cockpit.py) |
 | Evaluation | Deterministic self-checks, pytest, fault controls, policy gates, replay checks, and recorded experiments | [Self-check runner](run_selfchecks.py), [tests](tests/), [experiment records](specs/022-unified-brain-arc/evidence/) |
 
 The system uses a mixture of spiking, tensor, symbolic, and conventional Python components. Brain

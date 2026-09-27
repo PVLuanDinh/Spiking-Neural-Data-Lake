@@ -1,7 +1,7 @@
 """
 demo.py -- Spiking Neural Data Lake -> robot arm, the whole loop in ONE runnable file.
 
-    PYTHONPATH=src python -m snn_data_lake.substrate.demo
+    PYTHONPATH=src python -m snn_data_lake.infra.demo
 
 It walks the full reaction loop on embedded sample sensor data (an ultrasonic-distance +
 IR-temperature rig, the reference format):
@@ -25,7 +25,7 @@ other files, no hardware", and named `arm_sim` as one of the modules it mirrors:
     E-STOP implementation (POLICIES.md P7, incident 1).
 
 Optional live hardware (needs `pip install pyserial`):
-    python -m snn_data_lake.substrate.demo --serial COM8
+    python -m snn_data_lake.infra.demo --serial COM8
 """
 
 import sys

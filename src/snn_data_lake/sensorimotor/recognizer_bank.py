@@ -38,7 +38,7 @@ import io
 import random
 import zlib
 
-from snn_data_lake.substrate._mathutils import clamp01
+from snn_data_lake.infra._mathutils import clamp01
 
 FEATURES = 64  # feature-vector length (== spike_preprocessing.N == snn_classifier.N)
 _EPS = 1e-9
@@ -94,9 +94,9 @@ class LearnedMatcherRecognizer:
     gatekeeper = True  # calibrated Van Rossum OOD gate
 
     def __init__(self, library, seed=0):
+        from snn_data_lake.infra._mathutils import softmax
         from snn_data_lake.sensorimotor import learned_matcher as L
         from snn_data_lake.sensorimotor.spike_preprocessing import encode_latency
-        from snn_data_lake.substrate._mathutils import softmax
 
         self._L, self._softmax = L, softmax
         self.labels = list(library)

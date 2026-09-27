@@ -28,7 +28,7 @@ SAME readout back to chance -- the delay memory is load-bearing. This is the pap
 "delayed self-memory = per-neuron capacity" -- one neuron holds temporal state a memoryless unit
 cannot.
 
-Reuses cortex.lif_neuron (base LIF) and substrate._mathutils (sigmoid/dot). A drop-in denser
+Reuses cortex.lif_neuron (base LIF) and infra._mathutils (sigmoid/dot). A drop-in denser
 spiking unit for the neurogenesis / reasoning learners: more temporal capacity per neuron via
 delayed self-feedback rather than more neurons. HONEST scope: this reproduces the temporal-MEMORY /
 reservoir-readout regime (a linear head over the unfolded node states). It does NOT reproduce the
@@ -43,7 +43,7 @@ deeper than the delay range / weight scale sustain (the paper's space-time trade
 import random
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
-from snn_data_lake.substrate._mathutils import dot, sigmoid
+from snn_data_lake.infra._mathutils import dot, sigmoid
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

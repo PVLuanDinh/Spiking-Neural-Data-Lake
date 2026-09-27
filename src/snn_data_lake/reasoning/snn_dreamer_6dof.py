@@ -30,7 +30,7 @@ Run (own venv):  .venv-arm/Scripts/python snn_dreamer_6dof.py
 import torch
 import torch.nn as nn
 from snn_data_lake.substrate.brian2_backend import BrianLIF, fast_sigmoid
-from snn_data_lake.substrate.device import resolve_device, enable
+from snn_data_lake.infra.device import resolve_device, enable
 
 # MODULE SCOPE: resolve only. `enable()` calls `torch.set_default_device()`, which is
 # PROCESS-GLOBAL -- calling it here meant merely IMPORTING this module re-routed every tensor

@@ -88,7 +88,7 @@ import json
 import math
 import random
 
-from snn_data_lake.substrate._mathutils import dot, mean, unit
+from snn_data_lake.infra._mathutils import dot, mean, unit
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

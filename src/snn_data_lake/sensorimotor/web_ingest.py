@@ -138,7 +138,7 @@ class _ValidatingRedirectHandler(urllib.request.HTTPRedirectHandler):
 #   `web_ingest_gate`'s own check performs a ~15 MB network fetch, so the swap could be written but
 #   not RUN in an offline arc -- and an unverified refactor of a security boundary is worse than a
 #   named debt. The retirement is one call site plus its provenance log line.
-# distinct-from: substrate/self_mod_harness.py::_run_selfchecks -- runs run_selfchecks.py in a
+# distinct-from: infra/self_mod_harness.py::_run_selfchecks -- runs run_selfchecks.py in a
 #   subprocess inside a sandbox; no URL, no socket. distinct-from: cortex/live_brain.py::tick --
 #   one brain tick over a context dict. distinct-from: cortex/metacognitive_monitor.py::_experiment
 #   -- a gated/lesioned/plain comparison harness. distinct-from: reasoning/arc_solver.py::solve --
@@ -368,7 +368,7 @@ def main():
     #   CORE self-check must not depend on an unregistered module to prove a security
     #   property. The stub below stands for ANY caller check; what this module owns is that
     #   the plumbing CALLS it, which is what is asserted. Site read.
-    # distinct-from: basal_ganglia/brain_native_selfbuild.py::_forbidden (legality of a
+    # distinct-from: infra/brain_native_selfbuild.py::_forbidden (legality of a
     #   self-build FILE target) and basal_ganglia/latent_q.py::update (a Q-learning scalar
     #   `target`). Neither concerns redirect targets. Sites read.
     # THE FIXTURE HAS TO DISCRIMINATE, and the first version of this arm did not. It sent

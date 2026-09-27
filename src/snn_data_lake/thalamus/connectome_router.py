@@ -179,7 +179,7 @@ class ConnectomeRouter:
         nt = 1
         est = self.v.size * self._lif_per_elem_s
         if n >= 2 and self._lif_per_elem_s > 0.0:
-            from snn_data_lake.substrate import region_wiring as _rw
+            from snn_data_lake.infra import region_wiring as _rw
 
             nt = min(_rw.pick_thread_count(est, mode="threads", efficiency=self._lif_par_eff), n)
         if nt < 2:
@@ -196,7 +196,7 @@ class ConnectomeRouter:
             )
             return v, rate
 
-        from snn_data_lake.substrate import region_wiring as _rw
+        from snn_data_lake.infra import region_wiring as _rw
 
         t0 = time.perf_counter()
         out_v = np.empty_like(self.v)
@@ -342,7 +342,7 @@ def main():
     # ---------- (e) the ROW-PARTITIONED LIF update is BYTE-IDENTICAL to the whole-array form
     # Forced both ways rather than left to the measured gate, so the comparison happens on every run
     # at a width where the gate itself would (correctly) choose serial.
-    from snn_data_lake.substrate import region_wiring as _rw
+    from snn_data_lake.infra import region_wiring as _rw
 
     # The drive is deliberately WEAK (0.2, not 1.0). At saturating drive every neuron in a pool
     # clears every threshold, the per-neuron threshold spread stops mattering, and a comparison of

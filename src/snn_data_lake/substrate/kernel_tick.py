@@ -83,7 +83,7 @@ IMBALANCE_PROVENANCE = (
 # distinct-from: substrate/basic_components.py::Connections.update -- an in-place bounded weight
 #   CHANGE (add dw, mask, clip) on a dense matrix; this quantizes a static edge list ONCE into
 #   routing bundles and never moves a weight.
-# distinct-from: substrate/brain_bundle.py::BrainBundle.predict -- "bundle" there is a named
+# distinct-from: infra/brain_bundle.py::BrainBundle.predict -- "bundle" there is a named
 #   collection of trained brains being routed to; here a bundle is (pre, partition, delay) ->
 #   posts/qweights inside one kernel.
 # distinct-from: hippocampus/ng_snn.py::decide -- the ONE argmax decision rule over an NG-SNN rate
@@ -248,7 +248,7 @@ class KernelTick:
     #   variance statistic. distinct-from: reasoning/rsnn_delays_torch.py -- verify_transfer
     #   bridges a torch export into the zero-dep core. distinct-from:
     #   reasoning/train_of_thought.py -- summon() ignites a workspace slot. distinct-from:
-    #   substrate/cockpit.py -- Acts queues arm HTTP commands for the tick-owning thread.
+    #   infra/cockpit.py -- Acts queues arm HTTP commands for the tick-owning thread.
     #   distinct-from: cortex/brain.py -- _route_percept_to_action is W5 top-down drive.
     #   Vocabulary overlap only; none drains a delay-ring slot. All sites read.
     def _deliver_and_rotate(self, p):

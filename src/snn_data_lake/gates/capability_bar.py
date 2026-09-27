@@ -60,7 +60,7 @@ COMPARISON_WORDS = (
 
 #: Surfaces a reader sees. A comparison word beside a registry task name here needs a complete row.
 TRACKED_SURFACES = (
-    "src/snn_data_lake/substrate/cockpit.py",
+    "src/snn_data_lake/infra/cockpit.py",
     "docs/PERFORMANCE.md",
     "docs/OVERVIEW.md",
     "docs/PITCH.md",

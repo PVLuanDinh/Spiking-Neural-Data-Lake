@@ -12,7 +12,7 @@ Linear=(weight), LIF=(tau,r,v_leak,v_threshold), Delay=(delay)); `to_nir_graph()
 real `nir` dataclasses (needs nir+numpy) for `nir.write` -> canonical HDF5. Refs: NIR, Nat. Commun. 15
 (2024) s41467-024-52259-9 / arXiv:2311.14641; SpiNNaker2 DVS-NIR arXiv:2504.06748.
 
-  python -m snn_data_lake.substrate.nir_export        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.infra.nir_export        # (also run by run_selfchecks.py)
 """
 
 import json

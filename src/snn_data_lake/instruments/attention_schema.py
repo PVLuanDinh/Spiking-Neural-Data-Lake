@@ -93,8 +93,8 @@ import zlib
 from collections import Counter
 from pathlib import Path
 
+from snn_data_lake.infra._mathutils import q95
 from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
-from snn_data_lake.substrate._mathutils import q95
 from snn_data_lake.substrate.report_channel import snapshot as _report_snapshot
 
 # distinct-from: cortex/metacognitive_monitor.py::track_error -- a TYPE-2 AUROC over one
@@ -228,7 +228,7 @@ assert not (set(U_FIELDS) & set(U_FORBIDDEN)), (
 #   changes EXECUTABLE code in two shipped instruments outside this row's brief and is a row of its
 #   own, NOT that T077's file was untouchable (5b020cf edited `metacognitive_monitor` in this same
 #   push -- one file, 5/3, comment-only, and a T077-arc commit four commits after this disclosure
-#   was written). If a successor takes the lift, the home is `substrate/_mathutils` -- the tree's
+#   was written). If a successor takes the lift, the home is `infra/_mathutils` -- the tree's
 #   DECLARED home for byte-equivalent duplicated helpers, whose own docstring states the doctrine
 #   and which `metacognitive_monitor` already imports -- and not `paired_contrast`, which is the
 #   seed-paired statistic plus `T_BAR` and would become a second home for shared helpers. Two

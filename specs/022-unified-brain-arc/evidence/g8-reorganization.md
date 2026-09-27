@@ -2368,3 +2368,66 @@ STRICT citation (zero unexempted, two live exemptions), the declared BROAD count
 constructed reds and controls passed on the real worktree. A bounded run of 15
 touched test files passed: 171 passed, one skipped, one expected failure.
 No battery, push or daemon start is claimed for M3.
+
+### 3.15 M4 predeclared infrastructure move -- 2026-09-27
+
+The M4 parent is committed M3 `5e723c8`. Its clean export completed the
+24-gate, seven-probe census with zero nonzero exits. The frozen 2.12 map moves
+14 core modules into `infra/`, including the two self-build modules and the
+cockpit, demo and Nengo bridge. The two project scripts, four entrypoint names,
+packaging import, real-path firewall literal, live citations and GOVERNED are
+re-pointed. No safety-envelope file is moved or written.
+
+Before any M4 post-move gate run, the predicted C1 delta was written to session
+scratch `g8-m4/declared_M4.json` (SHA-256 `C03BD0BDEC280B48...`); the frozen-map
+expected names are `expected_M4.json` (`CC4456E4D4ECF5DB...`), and the parent
+census is `pre_M4.json` (`9CDD3B4854525384...`). The predicted delta covers
+brain-atlas region rows, one new initializer in three file counters, the P4c
+scaffold count, two registry-key additions and citation broad-count growth.
+Citation's static resolver forecast reproduced the parent's 1,489/263 and
+predicts 1,602/271 after the move; the two existing STRICT exemptions remain.
+An unlisted post-run difference halts M4 and requires a dated amendment.
+
+**Dated amendment, after the first M4 census (2026-09-27).** All 24 gates and
+seven probes exited green, but C1 halted on two undeclared raw-name changes.
+The packaging shim's explicit `snn_ui_main.imports` registry changed from
+`snn_data_lake.substrate:cockpit` to `snn_data_lake.infra:cockpit`. Section 2.4
+names this shim as an M4 path-keyed item; C1 intentionally compares it raw and
+does not map a package-plus-colon import through the dotted-module move map.
+Both exact values are now declared in `declared_M4.json` (amended SHA-256
+`DFE549023A5B27B7...`). The first C1 red is retained. A fresh staged-worktree
+census must match this amendment; no other difference is waived.
+
+**Dated self-check repair before the final M4 census.** The moved
+`brain_geometry` self-check exposed a latent M3 text rewrite: its seed pin had
+been re-pointed to the module's physical `sensorimotor` path, while its draw
+order intentionally reads frozen `LEGACY_*` anatomical labels. The actual first
+key remained `cortex/rank_order_coding`; the pinned XYZ was unchanged. M4
+restores only that frozen-label key and adds a regression test asserting that
+the current module path and the anatomical pin differ deliberately. All 13
+focused infra self-checks then passed. C2(d) remained zero, and citation's
+declared counts stayed unchanged. This correction changes no C1 gate output
+and is included in the fresh staged-worktree comparison.
+
+The final staged-worktree export then completed 24 gates and seven probes,
+all rc 0, and C1 equaled the amended declaration with exactly 16 changes.
+Its census is `g8-m4/post_M4_final.json` (SHA-256 `CAA0A19C6DDDD6BA...`);
+the observed delta is `observed_M4_final.json` (`45369F9C0E728A75...`).
+Planting the old packaging import in the post census made C1 red with the two
+explicit before/after differences; the unplanted import resolves by file.
+
+C2(a) attempted 415 imports on both sides with the same 13 known failures
+and zero scratch-home files. C2(b) checked 91 legacy pairs and 286 flat
+aliases with no bad identity. C2(c) compared 16 of 17 legacy gate runs,
+zero differences. C2(d) scanned 663 live source files, zero unparsed and
+zero stale references; its F7 positive control found all six sites. C2(e)'s
+16 frozen artifacts resolved 12 modules by file. C3's envelope hash and
+document self-checks passed and the protected diff was empty. C4's R-b0
+probe was identical, C5's brain and zoo R-L1 restores both passed, and
+C6-C9 were green in the census. P6's six constructed reds fired and four
+green controls held. The move gate's constructed reds and controls passed
+on the real worktree. A bounded touched suite passed 150 tests with the
+known asset-dependent binder case deselected; all 13 focused infra
+self-checks and the frozen-label regression test passed. Ruff, citation
+and document command guards passed. No battery, push or daemon start is
+claimed for M4.

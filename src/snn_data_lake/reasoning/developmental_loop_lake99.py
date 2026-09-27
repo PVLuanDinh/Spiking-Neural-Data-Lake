@@ -42,7 +42,7 @@ LINEAR_LAKE_REF = 0.902
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
-from snn_data_lake.substrate.device import resolve_device, enable
+from snn_data_lake.infra.device import resolve_device, enable
 from snn_data_lake.instruments.snn_mnist_stdp import load_mnist
 from snn_data_lake.instruments.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.hippocampus.proximity_replay import LakeMemory

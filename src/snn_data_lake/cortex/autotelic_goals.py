@@ -62,9 +62,9 @@ from collections import deque
 
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 from snn_data_lake.cortex.tempotron import Tempotron
+from snn_data_lake.infra._mathutils import mean
 from snn_data_lake.neuromodulation.drive_reduction import REWARD_SCALE
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
-from snn_data_lake.substrate._mathutils import mean
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

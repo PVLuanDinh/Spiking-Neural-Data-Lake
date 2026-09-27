@@ -54,7 +54,7 @@ Controls exposed for an un-riggable comparison:
   * ZERO the inter-beaker diffusion (g0=0.0)   -- the cascade-OFF control (same fast lr).
 
 Reuses (does NOT reimplement): basal_ganglia.r_stdp.RSTDPNeuron (the spiking reward-gated
-weight update the cascade attaches to) and substrate._mathutils.mean. The diffusion is exact,
+weight update the cascade attaches to) and infra._mathutils.mean. The diffusion is exact,
 deterministic float arithmetic; per-instance random.Random(seed); zlib.crc32 for sub-seeds
 (never hash()); no wall-clock, no global RNG. ASCII-only output.
 
@@ -67,7 +67,7 @@ import random
 import zlib
 
 from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
-from snn_data_lake.substrate._mathutils import mean
+from snn_data_lake.infra._mathutils import mean
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

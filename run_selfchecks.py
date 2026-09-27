@@ -192,8 +192,8 @@ CORE = [
     # PROMOTED from RESEARCH 2026-08-04. Reward-modulated action selection over its own candidate
     # set: the three-factor RSTDP weights are driven by the GATE verdict (kept +1 / rolled_back -1).
     # Reachable on the live sleep path but only under NORD_SELFMOD=1, so charge is UNMEASURED here.
-    "basal_ganglia.self_build_loop",
-    "basal_ganglia.brain_native_selfbuild",
+    "infra.self_build_loop",
+    "infra.brain_native_selfbuild",
     # amygdala â€” aversive/threat learning (CS-US fear conditioning)
     "amygdala.fear_conditioning",
     "amygdala.affective_appraisal",  # C1: learned multi-dim affective appraisal (three-factor)
@@ -290,7 +290,7 @@ CORE = [
     "plasticity.plasticity_rule_stack",
     "instruments.snn_mnist_stdp_genn",  # specs/012 GeNN port: codegen-integrity check every box; GPU train is GENN_RUN-gated
     # substrate â€” the spiking data-lake, telemetry, and infra (not a brain region)
-    "substrate._mathutils",
+    "infra._mathutils",
     "instruments.paired_contrast",  # T077 2.10: the seed-paired t + exact FPR, lifted from the T063 harness
     "substrate.spike_stream_sketch",
     "substrate.spike_cardinality",
@@ -305,36 +305,36 @@ CORE = [
     "substrate.proximity_index",
     "instruments.energy",
     "substrate.data_quality",
-    "substrate.drift_monitor",
+    "infra.drift_monitor",
     "substrate.spike_telemetry_hub",
     "substrate.streaming_hub",
     "instruments.neuro_chip",
     "instruments.neuro_chip_stream",
-    "substrate.nir_export",
+    "infra.nir_export",
     "sensorimotor.sensor_csv_ingest",
     "sensorimotor.esp32_encoder_path",
     "sensorimotor.make_sensor_dataset",
-    "substrate.demo",
-    "substrate.brain_bundle",
+    "infra.demo",
+    "infra.brain_bundle",
     "sensorimotor.web_ingest",
     "substrate.lake_working_memory",
     "substrate.chat_memory",
     "substrate.signal_calibrator",
-    "substrate.device",
+    "infra.device",
     "substrate.brian2_backend",  # Brian2 reference dynamics == differentiable Torch bridge
     # PROMOTED from RESEARCH 2026-08-04. Infra, not a brain region: subprocesses + tree copies +
     # crc32, no weight anywhere. Owns _PROTECTED (the 9-file firewall) and the anchored _repo_root().
-    "substrate.self_mod_harness",
+    "infra.self_mod_harness",
     "substrate.home",
     "substrate.binlog",
     "substrate.growable",
     "substrate.spontaneous_activity",  # T045: OU stationarity + same-path A/B + nulls + refusals
     "gates.growth_coverage_gate",  # T046: coverage ratchet + refusals + sharpness + nulls + Allen
-    "substrate.region_wiring",  # the always-on daemon's faculty-wiring registry -> charge_all + honest coverage report
+    "infra.region_wiring",  # the always-on daemon's faculty-wiring registry -> charge_all + honest coverage report
     "substrate.arm_view",  # stdlib PNG encoder + demand-gated offscreen arm frames
-    "substrate.brain_telemetry",  # snapshot contract + recorder + /api/state (no-orphan-panel gate)
-    "substrate.brain_geometry",  # anatomical layout (hand-authored coords, REAL connectome tracts)
-    "substrate.cockpit",  # THE one frontend: page + contract gate + queued-not-raced chat turn
+    "infra.brain_telemetry",  # snapshot contract + recorder + /api/state (no-orphan-panel gate)
+    "infra.brain_geometry",  # anatomical layout (hand-authored coords, REAL connectome tracts)
+    "infra.cockpit",  # THE one frontend: page + contract gate + queued-not-raced chat turn
     # P4c 2026-08-04: the brain's DRIVE, promoted from the repo root where no gate reached it. Its
     # __main__ is a self-check that never starts the loop (--serve does that), so this entry is safe.
     "substrate.learn_daemon",
@@ -483,10 +483,10 @@ TORCH_GATED = [
     "cortex.eprop_kernel",  # NEW 2026-08-13 (specs/013 C4): the ONE e-prop engine both encoders import; two demonstrated reds
     "reasoning.schema_induction",
 ]
-# NENGO-GATED -- the Nengo bridge (substrate.nengo_bridge) exposes the NEF/LIF/spiking substrate to
+# NENGO-GATED -- the Nengo bridge (infra.nengo_bridge) exposes the NEF/LIF/spiking substrate to
 # Nengo (sim + NengoLoihi deploy target); it imports `nengo` (optional). Run only where nengo is
 # importable, SKIPPED-with-notice otherwise (its own __main__ also self-SKIPs). Zero-dep core unaffected.
-NENGO_GATED = ["substrate.nengo_bridge"]
+NENGO_GATED = ["infra.nengo_bridge"]
 
 # [train]-extra modules (torchvision at module top, the recorded P7 adjudication: torchvision is
 # REJECTED for core because a bare pip resolve replaces the cu128 torch with the CPU build -- see
@@ -587,7 +587,7 @@ def _assert_tiers_agree_with_regions():
 
     Reachable red: move any REGIONS entry into RESEARCH, or delete a governed module's tier entry.
     Both raise here. (The census that produced this first reported a SECOND finding,
-    `substrate.nengo_bridge` "registered nowhere" -- a FALSE POSITIVE from its own incomplete tier
+    `infra.nengo_bridge` "registered nowhere" -- a FALSE POSITIVE from its own incomplete tier
     list, which did not know NENGO_GATED existed. Hence `_ALL_TIERS` below is built from every tier,
     not an enumerated guess: a checker with an incomplete denominator manufactures findings.)
     """

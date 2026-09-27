@@ -803,7 +803,7 @@ class Coalition:
     # distinct-from: substrate/wiring_manifest.py -- hdf5 artifact codec, not this record.
     # distinct-from: gates/envelope_hash_gate.py -- envelope baseline writer.
     # distinct-from: cortex/neurogenesis_engine.py -- growth-state npz restore.
-    # distinct-from: basal_ganglia/self_build_loop.py -- firewalled-file byte restore.
+    # distinct-from: infra/self_build_loop.py -- firewalled-file byte restore.
     # distinct-from: sensorimotor/trained_brain.py -- crc32 seed derivation. Serializer-phrase
     #   overlap only; THIS pair is the _T_COALITION lake payload codec and nothing else
     #   encodes that record. All sites read.
@@ -1758,7 +1758,7 @@ class GlobalWorkspace:
         if n == 0:
             return {}, {}
 
-        from snn_data_lake.substrate import region_wiring as _rw
+        from snn_data_lake.infra import region_wiring as _rw
 
         nt = 1
         if n >= 2 and self._sim_per_pool_s > 0.0:
@@ -3268,7 +3268,7 @@ def main():
     p_ws._sim_per_pool_s = 0.0  # cold EMA -> the gate must refuse to guess and run SERIAL
     ser_tot, ser_late = p_ws._simulate(p_drives)
     assert p_ws._sim_per_pool_s > 0.0, "a serial settle must record its own per-pool cost (P1)"
-    from snn_data_lake.substrate import region_wiring as _rw
+    from snn_data_lake.infra import region_wiring as _rw
 
     assert _rw.pick_thread_count(0.0, mode="threads") == 1, (
         "with no measured cost the gate must return 1 (serial), never a guess"

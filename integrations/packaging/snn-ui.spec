@@ -4,7 +4,7 @@
 #   python integrations/packaging/build_exe.py     # or: pyinstaller integrations/packaging/snn-ui.spec
 #
 # Produces dist/snn-ui.exe (onefile, console). The .exe runs the always-on learning daemon and
-# opens the cockpit (substrate/cockpit.py -- a stdlib http.server page) in the default browser.
+# opens the cockpit (infra/cockpit.py -- a stdlib http.server page) in the default browser.
 # The bundle carries Python + numpy; torch and the other optional-dep addons are excluded below
 # and never shipped; the brain reaches its stdlib tier by catching the failed torch import.
 import os

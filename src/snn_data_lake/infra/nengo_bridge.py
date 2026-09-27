@@ -28,7 +28,7 @@ GATED TIER (like the repo's torch tier): `import nengo` is guarded in try/except
 with nengo absent -- the bridge functions then raise a clear RuntimeError and the self-check prints SKIP and
 exits 0. The CORE never imports this module.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.nengo_bridge   # self-check (needs nengo)
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.infra.nengo_bridge   # self-check (needs nengo)
 """
 
 import math

@@ -28,7 +28,7 @@ from snn_data_lake.substrate.brian2_backend import BrianLIF, fast_sigmoid
 from snn_data_lake.reasoning.snn_motor_control import (
     fk,
 )  # differentiable 2-link forward kinematics (reuse)
-from snn_data_lake.substrate.device import resolve_device, enable
+from snn_data_lake.infra.device import resolve_device, enable
 
 _DEVICE = enable(resolve_device())
 

@@ -1,6 +1,6 @@
 # Build the desktop app as a Windows `.exe` (installable)
 
-The product ships the **cockpit** (`snn_data_lake.substrate.cockpit`) — the ONE frontend, a
+The product ships the **cockpit** (`snn_data_lake.infra.cockpit`) — the ONE frontend, a
 single page served over the live brain by a `http.server` from the standard library. The `.exe`
 is therefore not a GUI shell: it *is* the always-on learning daemon. It runs
 `learn_daemon.main()`, which builds the one brain and serves the cockpit, then opens the page in
@@ -58,7 +58,7 @@ The `.exe` above is already double-click-runnable. To produce a proper `setup.ex
   It used to pin `NORD_TORCH=0` to force that; the flag was removed on 2026-07-29 and pinning it
   became a no-op, so the pin went too. `numpy` is a declared core dependency and **is** bundled.
 - **No data files.** The cockpit's page is a module constant and its anatomical layout is
-  computed at request time (`substrate/brain_geometry.py`), so the spec ships no `datas`.
+  computed at request time (`infra/brain_geometry.py`), so the spec ships no `datas`.
 - **Safety envelope unchanged.** The arm is the internal simulator and every command still
   routes through the safety-gated `So101Arm.apply()` — packaging changes nothing about the
   control path, and the cockpit binds loopback only.

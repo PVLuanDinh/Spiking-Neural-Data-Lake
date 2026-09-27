@@ -22,9 +22,9 @@ stale approval is a claim outliving what it described).
 
 # distinct-from: gates/safety_envelope.py -- the ONE path list + the SECURITY.md document
 #   parity gate; this consumes its ENVELOPE tuple and polices file BYTES. distinct-from:
-#   basal_ganglia/self_build_loop.py -- _firewalled_bytes snapshots envelope bytes for
+#   infra/self_build_loop.py -- _firewalled_bytes snapshots envelope bytes for
 #   RESTORE inside the self-mod sandbox; this ASSERTS them at CI. distinct-from:
-#   substrate/self_mod_harness.py -- the sandbox those snapshots serve. All sites read.
+#   infra/self_mod_harness.py -- the sandbox those snapshots serve. All sites read.
 
 from __future__ import annotations
 

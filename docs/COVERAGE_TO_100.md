@@ -40,7 +40,7 @@ were exempted by their own low score, which is a selection effect, not a clean b
 |---|---|
 | `pyproject.toml:101` `--cov-fail-under=70` | pytest **line** coverage |
 | `gates/dormancy_gate.py:346-361` `coverage()` | module **reachability** — `{total, reachable, exempt, dormant}` |
-| `substrate/region_wiring.py:67-88` `coverage()` | registered **charge adapters** — currently **0**; the live daemon logs `adapters=0` |
+| `infra/region_wiring.py:67-88` `coverage()` | registered **charge adapters** — currently **0**; the live daemon logs `adapters=0` |
 
 None of them is the faculty percentage. This is precisely the failure `COVERAGE_RUBRIC.md:8-9` was
 written to end: *"A percentage nobody can re-derive is not a measurement."* The rubric ended the
@@ -85,7 +85,7 @@ names. Three claims were checked and were false:
 
 - **`godel_machine` was listed among the self-build modules that "fire every 8 nights."** Its
   `reasoning/godel_machine.py::attempt_on_repo` has **zero call sites** tree-wide. **CORRECTED 2026-08-14: the "only reference outside itself is its filename as a string" clause was FALSE in three ways, and this paragraph's 2026-08-13 pass replaced a rotted line cite with a path that does not contain what it named.**
-  (a) The filename-as-a-string lives in `reasoning/godel_machine.py`'s OWN `_SAFETY_KERNEL` -- i.e. INSIDE itself, not outside. (b) The consuming protected-paths list is `_PROTECTED` in `substrate/self_mod_harness.py`, a DIFFERENT file from the `basal_ganglia/brain_native_selfbuild.py` this paragraph cited; that file mentions `godel_machine` exactly once, in a comment. (c) References outside itself DO exist: a live import in `substrate/self_mod_harness.py` and a gate registration in `run_selfchecks.py`. `docs/POLICIES.md`'s P0 row already recorded that this clause does not hold, and `CLAUDE.md` recorded it before this branch -- a claim living in three places with two corrected.
+  (a) The filename-as-a-string lives in `reasoning/godel_machine.py`'s OWN `_SAFETY_KERNEL` -- i.e. INSIDE itself, not outside. (b) The consuming protected-paths list is `_PROTECTED` in `infra/self_mod_harness.py`, a DIFFERENT file from the `infra/brain_native_selfbuild.py` this paragraph cited; that file mentions `godel_machine` exactly once, in a comment. (c) References outside itself DO exist: a live import in `infra/self_mod_harness.py` and a gate registration in `run_selfchecks.py`. `docs/POLICIES.md`'s P0 row already recorded that this clause does not hold, and `CLAUDE.md` recorded it before this branch -- a claim living in three places with two corrected.
   What does fire, CORRECTED 2026-08-13: the `self_build_loop` route reaches its recorder but is MEASURED EMPTY -- 190 ticks under `NORD_SELFMOD=1` (with `NORD_HOME` isolated) leave `Brain._selfbuild_last == {'night': 8, 'proposed': 0, 'kept': 0}`, so `self_mod_harness` is NEVER CONSTRUCTED. The claim that it is `reached via Brain.self_improve`
   is FALSE: that method has ZERO call sites tree-wide (its def is `Brain.self_improve`, and `docs/POLICIES.md`'s own P0 row records the same). CITED BY SYMBOL because all five line numbers in this paragraph were re-derived 2026-08-13 and every one had rotted -- `godel_machine.py:159` lands on a path string (the def is `attempt_on_repo`), `brain.py:1708` on an R-STDP comment, `:2520` on a table row, `:3485` on `"kill",`, and `brain_native_selfbuild.py:73` on a `__spec__` comment. The route is `cortex/brain.py::Brain._enter_wake` -> `Brain._maybe_autonomous_self_build` -> `basal_ganglia/self_build_loop.SelfBuildLoop.run`. Wiring the Godel-machine adapter is open P0 work, and so is FILLING THE PROPOSER: a call-site wire into a loop that proposes nothing satisfies a grep and changes no outcome.
 - **"67 such swallows in `cortex/brain.py` alone"** did not reproduce, and neither did the audit's
@@ -135,7 +135,7 @@ machinery consisted of:
 - ~~`src/snn_data_lake/training/__init__.py:3-7` still describes exporting weights "back into the
   zero-dep core"~~ — reframed as the serving-format argument it always was
 - plus the flag itself at `cortex/brain.py` (two sites), `brain_atlas.py`, `run_selfchecks.py`,
-  `substrate/cockpit.py`, `substrate/brain_telemetry.py`, and the frozen-exe entry point
+  `infra/cockpit.py`, `infra/brain_telemetry.py`, and the frozen-exe entry point
 
 `run_selfchecks.py`'s `TORCH_GATED` / `NENGO_GATED` lists are **kept**: they are still hand-maintained,
 but they now mean "this module needs an optional extra", which is a real distinction, not a
@@ -290,7 +290,7 @@ accumulation, and a prune rule designed against a substrate that resets daily wo
   graph against `connectome.py`'s declared edges) is specified but NOT built, and this file's own bar says
   that matters.
 - **A route is not a conversation.** The failure P6 attracts is a telemetry bus — wire every faculty into
-  a shared dict, watch `adapters` climb from 0, and call it harmony. `substrate/region_wiring.py`'s own
+  a shared dict, watch `adapters` climb from 0, and call it harmony. `infra/region_wiring.py`'s own
   source warns that registering telemetry adapters would fake liveness. A P6 claim needs P3's evidence
   aimed one level over: neuter faculty A, show faculty B's own output changes. Adding a reader that
   stores a value is not consumption.

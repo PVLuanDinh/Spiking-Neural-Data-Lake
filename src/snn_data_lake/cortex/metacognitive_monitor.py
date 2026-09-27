@@ -157,8 +157,8 @@ from pathlib import Path
 
 from snn_data_lake.cortex.executive_control import ExecutiveControl
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.infra._mathutils import clamp01, sigmoid
 from snn_data_lake.instruments.paired_contrast import T_BAR
-from snn_data_lake.substrate._mathutils import clamp01, sigmoid
 from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.

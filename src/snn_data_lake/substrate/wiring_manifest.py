@@ -40,9 +40,9 @@ lives with the artifact and manifest_gate.REGISTRANTS, and main() reports it fro
 # distinct-from: snn_data_lake/connectome.py -- region->region ANATOMICAL wiring (typed,
 #   signed loops between brain regions); this is faculty PORT-level signal wiring with
 #   policies, the machine-checked layer the connectome does not carry.
-# distinct-from: substrate/region_wiring.py -- measures LIVE cross-module traffic; this
+# distinct-from: infra/region_wiring.py -- measures LIVE cross-module traffic; this
 #   DECLARES intended wiring (p6 compares the two at T023+).
-# distinct-from: substrate/nir_export.py -- exports the NEURON substrate to NIR for
+# distinct-from: infra/nir_export.py -- exports the NEURON substrate to NIR for
 #   neuromorphic backends; this serializes the PORT manifest (same container format on
 #   purpose, different graph). All sites read.
 

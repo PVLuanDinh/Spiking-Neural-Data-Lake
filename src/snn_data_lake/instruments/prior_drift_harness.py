@@ -98,6 +98,7 @@ import time
 from pathlib import Path
 from typing import NamedTuple
 
+from snn_data_lake.infra.drift_monitor import psi
 from snn_data_lake.instruments.paired_contrast import (  # noqa: F401  (re-exported: LIFTED 2026-09-15, T077 2.10)
     T_BAR,
     Contrast,
@@ -105,7 +106,6 @@ from snn_data_lake.instruments.paired_contrast import (  # noqa: F401  (re-expor
     paired_t,
     permutation_fpr,
 )
-from snn_data_lake.substrate.drift_monitor import psi
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 #:
@@ -422,7 +422,7 @@ def no_learner_holds(result):
 #: the rule, that docstring cites it, and it reads the fixture and the campaign alike.
 # distinct-from: instruments/nef_compute.py::_run_hint -- DERIVES A COMMAND STRING from `__spec__.name` so a self-check hint cannot go stale when the file moves; it reads no number and has no criterion.
 # distinct-from: reasoning/self_improve.py::_self_pkg_relpath -- DERIVES THIS MODULE'S OWN PATH from `__file__` so a PROTECTED-set assert has an independent second side; a filesystem walk, not a statistic.
-# distinct-from: substrate/self_mod_harness.py::_repo_root -- WALKS UP TO THE REPO ROOT by marker files; an anchored directory search, with no accuracy, no chance level and no bar.
+# distinct-from: infra/self_mod_harness.py::_repo_root -- WALKS UP TO THE REPO ROOT by marker files; an anchored directory search, with no accuracy, no chance level and no bar.
 #   All three sites read 2026-09-10 before this marker was written. What follows derives an arm's
 #   distance from the 1/K chance floor and reads it with the row's own paired t and its own bar.
 def above_chance(accs, k, bar=T_BAR):
@@ -485,7 +485,7 @@ def arm_seeded(art):
 # distinct-from: cortex/h01_ingest.py::build_arrays -- builds the node and edge arrays FROM the
 #   release's cells; this drops the edges of an artifact already built.
 # distinct-from: gates/determinism_gate.py::_bench_net -- a disclosed synthetic bench with
-#   random edges; nothing is cut. distinct-from: substrate/brain_geometry.py::_connectome_pairs --
+#   random edges; nothing is cut. distinct-from: infra/brain_geometry.py::_connectome_pairs --
 #   region->region tracts of the connectome, not a unit population. All four sites read 2026-09-10.
 def arm_no_edges(art):
     """The population with EVERY edge cut -- T003's drive-only twin, and (specs/022 T070) the

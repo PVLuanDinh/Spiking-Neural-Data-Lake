@@ -18,8 +18,8 @@ path. On-thesis with sparse_distributed_memory / fly_hash / rank_order_coding.
 
 import random
 
+from snn_data_lake.infra._mathutils import dot
 from snn_data_lake.sensorimotor.signal_loop import build_default_library
-from snn_data_lake.substrate._mathutils import dot
 
 
 def _soft(x, lam):

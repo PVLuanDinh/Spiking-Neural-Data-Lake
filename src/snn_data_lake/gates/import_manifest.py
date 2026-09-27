@@ -53,8 +53,8 @@ Delete or break one of those targets and:
 
 ...while the brain silently loses the faculty. `Brain.__init__` sets the attribute to None, every tick
 after that runs without it, and a static reader still credits the faculty as wired. Three of the
-targets (`reasoning.godel_machine` and `reasoning.self_improve`, both from `substrate/self_mod_harness`,
-plus `reasoning.impact_analysis` from `basal_ganglia/brain_native_selfbuild`) ARE Policy 0's
+targets (`reasoning.godel_machine` and `reasoning.self_improve`, both from `infra/self_mod_harness`,
+plus `reasoning.impact_analysis` from `infra/brain_native_selfbuild`) ARE Policy 0's
 self-building-code avenue, so the whole avenue can be deleted with every gate green. (THREE were the
 perception tier via `UNGOVERNED_ROOT` until specs/013 on 2026-08-13 promoted or retired all of them;
 that tuple is empty now and the perception tier no longer appears in this manifest at all.)
@@ -106,6 +106,7 @@ GOVERNED = (
     "gates",  # G8 S1a (evidence g8-reorganization.md 2.5 item 6, F15): the package it creates
     "instruments",  # G8 M2: the package created by the instrument move
     "sensorimotor",  # G8 M3: the package created by the sensorimotor move
+    "infra",  # G8 M4: the package created by the infrastructure move
 )
 
 # The tiers no gate covers. A governed -> ungoverned edge is what this module protects.

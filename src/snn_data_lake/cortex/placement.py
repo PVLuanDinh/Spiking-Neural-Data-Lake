@@ -446,7 +446,7 @@ def place_grown(grower, n_units, seed=0):
 #   current-difference eps-invariant on a standalone layer; the self-check here demonstrates
 #   gradmax insertion THROUGH the coordinator with placements. Site read; different check.
 # distinct-from: reasoning/reasoning_compose.py -- routes reasoning sub-steps; unrelated. Read.
-# distinct-from: substrate/cockpit.py -- drives a GET through the HTTP handler; unrelated. Read.
+# distinct-from: infra/cockpit.py -- drives a GET through the HTTP handler; unrelated. Read.
 def compose_growers(base_seed=0):
     """The registered growers composed through the 007 interface: one GrowthCoordinator with a
     seam per grower -- the first `register_seam` caller outside growable.py's own self-check

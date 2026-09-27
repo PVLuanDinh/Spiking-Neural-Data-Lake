@@ -20,7 +20,7 @@ and no label on the page may say grow/growth at all.
 
 import re
 
-from snn_data_lake.substrate import brain_telemetry, cockpit
+from snn_data_lake.infra import brain_telemetry, cockpit
 
 # row('<label>', s.grown_units[, <decimals>[, '<provenance key>']])
 ROW_CALL = re.compile(r"row\('([^']*)',\s*s\.grown_units(?:,\s*([^,)]+))?(?:,\s*'([^']*)')?\)")

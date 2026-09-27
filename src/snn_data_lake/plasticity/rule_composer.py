@@ -833,7 +833,7 @@ _CENSUS_ADJUDICATED = (
 #: no GRADIENT_CLAIM and is therefore INVISIBLE to the declared surface this census
 #: binds -- recorded so "3 expressible" is never read as the whole T050 list.
 _CENSUS_INVISIBLE = (
-    "basal_ganglia/brain_native_selfbuild.py (T050: expressible; no GRADIENT_CLAIM declared)",
+    "infra/brain_native_selfbuild.py (T050: expressible; no GRADIENT_CLAIM declared)",
 )
 
 

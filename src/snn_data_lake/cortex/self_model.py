@@ -45,7 +45,7 @@ import random
 import tempfile
 from types import SimpleNamespace
 
-from snn_data_lake.substrate._mathutils import clamp01
+from snn_data_lake.infra._mathutils import clamp01
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.

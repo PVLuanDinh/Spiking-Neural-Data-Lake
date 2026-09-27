@@ -10,7 +10,7 @@ while `run_selfchecks.MODULES` is `CORE + TORCH_GATED + NENGO_GATED + RESEARCH`,
 modules' self-checks — including `cortex.brain`, `hippocampus.ng_snn` and
 `cortex.neurogenesis_engine` — were imported but never RUN in-process. Their `main()` bodies
 measured 0/126, 0/55 and 0/57. The whole torch growth tier was therefore reached only as a
-side effect of `substrate.brain_telemetry`'s self-check, whose tick budget is data-dependent:
+side effect of `infra.brain_telemetry`'s self-check, whose tick budget is data-dependent:
 it landed on either side of the engine's `refit_every=20` from run to run, covering 0, 5 or
 115 statements by accident and swinging the reported total 0.32 points on byte-identical
 source. Running these on purpose is the fix; the incidental path stops being the only driver.

@@ -88,9 +88,9 @@ import random
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
+from snn_data_lake.infra._mathutils import mean
 from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.sensorimotor.population_encoding import PopulationEncoder
-from snn_data_lake.substrate._mathutils import mean
 
 # ---- toy sandbox geometry (kept small so the whole self-check runs in a few seconds) ----
 # The behavior descriptor is the SETTLING POINT of a closed-loop spiking controller in an abstract 2-D

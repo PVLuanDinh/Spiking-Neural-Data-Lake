@@ -53,7 +53,7 @@ def atlas():
 
 # distinct-from: gates/atlas_node_gate.py -- node_references reads module TEXT for node ids;
 #   this is brain_atlas's own existing file listing, edited in place (F5), not a second one.
-#   Also read: substrate/brain_geometry.py (_region_modules, the membership for placement).
+#   Also read: infra/brain_geometry.py (_region_modules, the membership for placement).
 def _region_files(region):
     """The module names (files) present on disk beside `region`'s registered modules (excludes
     __init__). Every directory listed is the one module_path() names for a registered module --

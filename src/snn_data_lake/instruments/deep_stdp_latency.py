@@ -94,6 +94,7 @@ import os
 import torch
 import torch.nn.functional as F
 
+from snn_data_lake.infra.device import enable, resolve_device
 from snn_data_lake.instruments.deep_stdp import (
     OneLayerNet,
     assign_labels,
@@ -103,7 +104,6 @@ from snn_data_lake.instruments.deep_stdp import (
     TwoLayerNet as _DeepTwoLayerNet,  # merged 2026-08-16; aliased at the old name below
 )
 from snn_data_lake.instruments.snn_mnist_stdp import load_mnist
-from snn_data_lake.substrate.device import enable, resolve_device
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

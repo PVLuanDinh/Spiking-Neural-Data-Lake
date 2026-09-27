@@ -170,7 +170,7 @@ class VolumeTransmitter:
         self.window = window  # LIF integration window per delivered gain frame
 
     # distinct-from: sensorimotor/closed_loop.py -- the arm's signal->command loop; and
-    # distinct-from: substrate/cockpit.py -- an HTTP handler test shim. Neither scales a
+    # distinct-from: infra/cockpit.py -- an HTTP handler test shim. Neither scales a
     #   synaptic current by a received glial gain; phrase overlap only. Read.
     def transmit(self, gain_vec):
         """Scale the fixed presynaptic current through modulated_transmission() using this

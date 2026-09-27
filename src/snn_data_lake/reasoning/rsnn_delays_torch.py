@@ -392,7 +392,7 @@ def load_dataset(name, T, n_train, n_test, data_dir, seed=0):
         common = dict(batch_size=128, num_workers=0, drop_last=False)
         # DataLoader(shuffle=True)'s RandomSampler calls torch.randperm(generator=...); under
         # set_default_device(cuda) that generator must be on cuda too (the documented device trap).
-        from snn_data_lake.substrate.device import resolve_device as _rdev
+        from snn_data_lake.infra.device import resolve_device as _rdev
 
         gen = torch.Generator(device=_rdev())
         tr = DataLoader(tr_ds, shuffle=True, generator=gen, **common)
@@ -646,7 +646,7 @@ def main():
         return 0
 
     import tempfile
-    from snn_data_lake.substrate.device import resolve_device, enable
+    from snn_data_lake.infra.device import resolve_device, enable
 
     smoke = os.environ.get("NORD_SMOKE") == "1"
     device = enable(resolve_device())

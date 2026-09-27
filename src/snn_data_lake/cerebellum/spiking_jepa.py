@@ -104,8 +104,8 @@ import zlib
 from snn_data_lake.cerebellum.jepa_world_model import bound_rows
 from snn_data_lake.cortex.is_snn_forward import SPARSITY, STABLE_GAIN
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.infra._mathutils import dot, mean
 from snn_data_lake.plasticity.espp_rule import espp_modulator_core
-from snn_data_lake.substrate._mathutils import dot, mean
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

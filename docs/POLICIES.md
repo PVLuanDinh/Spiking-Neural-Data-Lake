@@ -313,7 +313,7 @@ the original worked-example table with its per-incident record is in `docs/POLIC
 **The transferable rule:** *presence is not participation.* Being imported, being called, being in the
 snapshot, and having a value are four different things, and none of them is *changing an outcome*. When
 auditing a faculty, name which of the four you verified — and shapes 5 and 6 are why
-`substrate/brain_telemetry.py::PROVENANCE` exists: a signal that cannot vary must say so beside its own
+`infra/brain_telemetry.py::PROVENANCE` exists: a signal that cannot vary must say so beside its own
 number, or a dashboard turns it into a claim.
 
 ### P3 amendment — dormancy is per-METHOD, not per-module
@@ -428,7 +428,7 @@ of *everything else*, and names the two parts that made the gap visible:
 
 - **The daemon is the brain's DRIVE.** `learn_daemon.py` owns the wake/sleep cycle, the tick loop and
   the continuity of the whole thing. Killing the daemon does not stop a service. It stops the brain.
-- **The cockpit is the brain's SENSORIMOTOR SURFACE.** `substrate/cockpit.py` is where the brain
+- **The cockpit is the brain's SENSORIMOTOR SURFACE.** `infra/cockpit.py` is where the brain
   meets the world: chat and controls in are AFFERENT, the arm buttons and the E-STOP out are
   EFFERENT, and the page is the brain's own report of its state. It is the boundary of the organism.
 
@@ -585,15 +585,15 @@ standing configuration for the whole project, not a per-module choice:
   GIL serializing it. Required, not optional: see `requires-python` and
   `snn_data_lake/__init__.py::_require_free_threaded`.
 - **CUDA takes the DENSE-THROUGHPUT axis, ABOVE A MEASURED WIDTH.** Below the crossover it LOSES.
-  The crossover is measured per process by `substrate/device.py::crossover()`; re-derive for the
-  whole environment with `python -m snn_data_lake.substrate.device` — **"the crossover is
+  The crossover is measured per process by `infra/device.py::crossover()`; re-derive for the
+  whole environment with `python -m snn_data_lake.infra.device` — **"the crossover is
   a number, not a doctrine"; re-derive, never cite.** Two stale figures have already been quoted as
   current here; the measurement history is in `docs/POLICIES_EVIDENCE.md`.
 - **Neither covers the other's regime.** Threads do not help a dense matmul that one kernel does
   better; a GPU does not help hundreds of independent scalar updates whose dispatch cost exceeds
   their work. A design that picks one and calls it done is leaving the other axis unexploited.
 
-**THE ROUTING MUST BE MEASURED, NOT ASSUMED.** `substrate/device.py` provides the mechanism:
+**THE ROUTING MUST BE MEASURED, NOT ASSUMED.** `infra/device.py` provides the mechanism:
 `crossover()` MEASURES the width above which CUDA beats numpy on THIS machine, once per process, and
 `select()` routes on it. **A caller that routes on AVAILABILITY ("cuda if present") instead of the
 measured width is the defect this policy names** — it sends narrow work to the card, precisely the
@@ -629,7 +629,7 @@ a statement about widths, not a prohibition — the moment a live population cro
 threshold, this policy says put it on the GPU. The width inventories, the 66x CPU-side
 GEMV fusion that refuted the widening plan, the profiler lessons behind them, and the
 numba/spikingjelly/cupy verdicts are relocated to `docs/POLICIES_EVIDENCE.md`; their standing
-conclusions bind unchanged (re-derive any figure with `substrate/device.py::crossover()`).
+conclusions bind unchanged (re-derive any figure with `infra/device.py::crossover()`).
 
 **Two environment gotchas that stay operational (full record in `docs/POLICIES_EVIDENCE.md`):**
 `nengo` ships a pytest plugin that aborts collection under pytest 9 — `-p no:nengo` stays in
@@ -690,7 +690,7 @@ gate is the DEFECT P6 names, not a way to satisfy it — a brain whose faculties
 action gate and never to each other is precisely what the rubric's pre-declared ceiling exists for.
 
 **Source lines it derives from, quoted so it is not a good-practice rule in a costume.** P3's own
-transferable rule: *"presence is not participation."* And `substrate/region_wiring.py`, whose
+transferable rule: *"presence is not participation."* And `infra/region_wiring.py`, whose
 docstring asserted a registration mechanism that had never had a plug — the plug point P6 names.
 The real-past-incidents table (eight rows, including one retraction kept struck-through) is in
 `docs/POLICIES_EVIDENCE.md`.

@@ -71,7 +71,7 @@ monitors ACCESS reliability). Deterministic, ASCII-only, per-instance RNG.
 import random
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
-from snn_data_lake.substrate._mathutils import clamp01
+from snn_data_lake.infra._mathutils import clamp01
 
 # phenomenal vocabulary that MUST NEVER appear in the functional readout (claim 5).
 _BANNED = ("conscious", "sentient", "phenomenal", "subjective", "aware", "feels", "qualia")

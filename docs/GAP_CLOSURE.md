@@ -827,8 +827,8 @@ test hook, which returns to step 4.
   stay identical to baseline.
 - **Falsifier for item 4:** 10,000 HTTP perturbation posts against a live daemon under MuJoCo
   validation; zero `mjData` corruption and zero garbage render frames.
-- **Files, if it proceeds:** `substrate/cockpit.py`, `learn_daemon.py`, `brainstem/so101_arm.py`,
-  `cortex/brain.py`, `cortex/live_brain.py`, `substrate/brain_telemetry.py`,
+- **Files, if it proceeds:** `infra/cockpit.py`, `learn_daemon.py`, `brainstem/so101_arm.py`,
+  `cortex/brain.py`, `cortex/live_brain.py`, `infra/brain_telemetry.py`,
   `brainstem/arm_config.py`, `sensorimotor/nl_interface.py`, `tests/test_so101_arm.py`.
 
 ---

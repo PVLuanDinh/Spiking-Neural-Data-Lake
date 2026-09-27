@@ -286,3 +286,11 @@ def test_unordered_gate_report_rows_keep_every_element_visible():
     assert mg._gate_lines("method_dormancy_gate", [method_a], {}) != mg._gate_lines(
         "method_dormancy_gate", [method_b.replace("c.z", "c.q")], {}
     )
+
+
+def test_geometry_seed_pin_stays_on_frozen_label_after_move():
+    from snn_data_lake.infra import brain_geometry
+
+    assert S.module_path("rank_order_coding") == "snn_data_lake.sensorimotor.rank_order_coding"
+    assert brain_geometry._SEED_PIN_KEY == "cortex/rank_order_coding"
+    assert brain_geometry.layout()["modules"][0]["key"] == brain_geometry._SEED_PIN_KEY

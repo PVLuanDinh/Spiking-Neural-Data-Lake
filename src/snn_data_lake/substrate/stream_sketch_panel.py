@@ -44,8 +44,8 @@ it can never introduce motion, and the brainstem reflex / E-STOP remains the dom
 
 from collections import deque
 
-from snn_data_lake.substrate._mathutils import clamp01
-from snn_data_lake.substrate.drift_monitor import DriftMonitor
+from snn_data_lake.infra._mathutils import clamp01
+from snn_data_lake.infra.drift_monitor import DriftMonitor
 from snn_data_lake.substrate.frequency_moment import AMSSketch, exact_f2
 from snn_data_lake.substrate.minhash import MinHash
 from snn_data_lake.substrate.morris_counter import MorrisCounter

@@ -251,7 +251,7 @@ LIF_DEFAULTS = _lif_defaults()
 #   asserts on, inside its own verdict; it is a REPORTING FUNCTION of one gate, not a refusal type
 #   carried across gates. distinct-from: gates/amdahl_gate.py::red_repeatability -- a
 #   band-overlap red for a timing rig. distinct-from:
-#   basal_ganglia/brain_native_selfbuild.py::ThresholdRecalibrationSource -- a self-build source
+#   infra/brain_native_selfbuild.py::ThresholdRecalibrationSource -- a self-build source
 #   that emits a source patch. distinct-from: reasoning/ar_spiking_lm_serve.py::
 #   build_random_artifact and reasoning/eprop_lm_serve.py::build_random_artifact -- random-init
 #   demo artifacts labelled trained=False. None of the five is an exception type, and none carries

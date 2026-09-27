@@ -43,7 +43,7 @@ the wrong number of joints. `document_findings()` compares this constant against
 red (P8: a criterion with no reachable red is deleted, not trusted).
 
 Deps: stdlib only, and deliberately NO intra-package import -- `godel_machine` is imported BY
-`substrate/self_mod_harness`, so any import back into the package from here would close a cycle.
+`infra/self_mod_harness`, so any import back into the package from here would close a cycle.
 
   PYTHONPATH=src python -m snn_data_lake.gates.safety_envelope               # assert
   PYTHONPATH=src python -m snn_data_lake.gates.safety_envelope --self-check  # prove the reds
@@ -95,7 +95,7 @@ def normalize(path):
     traded away once -- so the prefix is STRIPPED and the remainder compared whole. A path outside
     the package normalizes to itself and simply fails to match, rather than matching by accident.
 
-    # distinct-from: src/snn_data_lake/substrate/self_mod_harness.py::_rel_to_repo -- that resolves
+    # distinct-from: src/snn_data_lake/infra/self_mod_harness.py::_rel_to_repo -- that resolves
     #   a REAL filesystem path against the repo root via os.path.relpath, so it needs the file to be
     #   locatable on disk and cannot be reused here: this one normalizes a STRING SPELLING, and the
     #   strings it is handed come out of a markdown document and routinely name a file that has been

@@ -6,7 +6,7 @@ from unittest.mock import Mock
 import pytest
 
 from snn_data_lake.cortex import interaction_learning as ixn
-from snn_data_lake.substrate.cockpit import _REPLY_KEEP, Turns, _handler
+from snn_data_lake.infra.cockpit import _REPLY_KEEP, Turns, _handler
 
 
 def learner():

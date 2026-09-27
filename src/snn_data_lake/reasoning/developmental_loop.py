@@ -72,7 +72,7 @@ from snn_data_lake.instruments.snn_mnist_stdp import (
     WMAX,
     load_mnist,
 )
-from snn_data_lake.substrate.device import enable, resolve_device
+from snn_data_lake.infra.device import enable, resolve_device
 
 from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum

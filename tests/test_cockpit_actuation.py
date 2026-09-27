@@ -29,7 +29,7 @@ import urllib.request
 import pytest
 
 from snn_data_lake.cortex.brain import make_brain
-from snn_data_lake.substrate.cockpit import Acts, serve
+from snn_data_lake.infra.cockpit import Acts, serve
 
 #: Strings that must never reach the arm. `HOME; EMERGENCY_STOP` is a concatenation attempt and
 #: `JOINT_GRIPPER_ROTATE(+30deg)` is the token so101_arm's own history records as once accepted by
@@ -167,7 +167,7 @@ def test_a_restored_latch_is_disclosed_and_only_the_cockpit_reset_clears_it():
     try:
         st = b.brain.arm.arm.state()
         assert st["stopped"] is True and st["latch_source"] == "restored", st
-        from snn_data_lake.substrate.brain_telemetry import snapshot, verify_contract
+        from snn_data_lake.infra.brain_telemetry import snapshot, verify_contract
 
         snap = snapshot(b)
         assert snap["body"]["latch_source"] == "restored", "the cockpit's row reads body.*"

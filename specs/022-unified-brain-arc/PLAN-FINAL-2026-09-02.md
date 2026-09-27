@@ -198,7 +198,7 @@ commit paid the full ≈ 2 hours, which is what the owner's 2026-09-02 amendment
 | the substrate tick | `substrate/kernel_tick.py` (`KernelTick._deliver_and_rotate`), `substrate/kernel_state.py` (SoA, T013), dormancy-exempt `wire` today; `gates/perf_baseline.py` (`--record/--assert`; T065's `tools/perf_baseline.py` path is stale — the p4c ratchet refused `tools/` at T001) |
 | anatomy | `connectome.py`, `substrate/wiring_manifest.py` (36 ports, 19 edges declared), `substrate/signal_ring.py` (`SignalRing`, `JoinConsumer`); nine modules carry a `_*_consumer_factory` (`evidence_accumulation`, `r_stdp`, `interoceptive_relay`, `interoceptive_integration`, `region_coherence`, `astrocyte_modulation`, `percept_surprise`, `task_set`, `reentrant_workspace`) |
 | perception | `sensorimotor/eprop_nmnist.py` (frozen encoder; `models/eprop_nmnist.pt` is gitignored), `models/nmnist_pack.npz` (tracked 256 frames), `data/nmnist_cache/*_T15/*.hdf5` (local, 10k test / 60k train), `cortex/percept_surprise.py`, `sensorimotor/afferent_boundary.py` |
-| instruments and gates | `substrate/*_gate.py`, `tools/*.py`, `tools/charge_probe.py`, `substrate/brain_telemetry.py` (`PROVENANCE`), `substrate/cockpit.py` (`/api/state`, `/api/chat`, `/api/all`); `REGIONS` in `snn_data_lake/__init__.py` |
+| instruments and gates | `substrate/*_gate.py`, `tools/*.py`, `tools/charge_probe.py`, `infra/brain_telemetry.py` (`PROVENANCE`), `infra/cockpit.py` (`/api/state`, `/api/chat`, `/api/all`); `REGIONS` in `snn_data_lake/__init__.py` |
 | evidence and records | `specs/022-unified-brain-arc/evidence/*.md`; panel reports, harnesses and per-arm JSON archived under the memory store's `archive/audit-2026-09-01/` |
 
 ### A.6 Vocabulary
@@ -662,7 +662,7 @@ clause protects it.
 - **S6 — wire the sparse kernel onto the live tick.** `KernelTick` is dormancy-exempt `wire` today; S6 makes
   the flat (post, weight) scatter in `KernelTick._deliver_and_rotate` the live tick's delivery (FR-035 is
   already met by `substrate/kernel_state.py`, T013, SoA), specs/008 gets a `tasks.md`, then the
-  resident-CUDA arm gated on `substrate/device.py::select` with a new workload name (`"substrate_tick"`,
+  resident-CUDA arm gated on `infra/device.py::select` with a new workload name (`"substrate_tick"`,
   introduced by S6) at the crossover re-derived on this host. Red: tick time at the measured width; a neuter
   of the kernel changes the tick's output. **AMENDED 2026-09-08 (T066's fold, panel finding C12 — a visible
   dated addition, not a rewrite):** S6's scope ALSO carries the paging wire the T066 `wire` exemption is

@@ -74,8 +74,8 @@ from pathlib import Path
 
 import numpy as np
 
+from snn_data_lake.infra._mathutils import q95 as _q95
 from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
-from snn_data_lake.substrate._mathutils import q95 as _q95
 
 # =============================================================================
 # 2.8's DECLARED CONSTANTS. Every one is either the pack's own shape, the plan's width, or a
@@ -547,7 +547,7 @@ def t080_null(recs, seed, n_draws=T080_N_DRAWS, resample=False):
     }
 
 
-# distinct-from: substrate/_mathutils.py::q95 -- the same round(q * (len - 1)) convention at a
+# distinct-from: infra/_mathutils.py::q95 -- the same round(q * (len - 1)) convention at a
 #   PARAMETERISED q over an ALREADY-SORTED sample (q95 sorts and is pinned at 0.95). Four bodies of
 #   this convention are live in src/ (T080 panel, 2026-09-16: _mathutils, here, metacognitive_monitor,
 #   lake_engine); the lift to one `order_stat(sorted_draws, q)` is deferred to T081, the second
@@ -1679,7 +1679,7 @@ def _t080_reds_line(reds, out=print):
 # distinct-from: reasoning/spike_chat_lake.py::_wants_repl -- decides whether `__main__` is an
 #   interactive REPL or the self-check for THAT module. This one has no REPL and always runs
 #   its reds; the two flags below only ADD the brain-touching entry points. Read.
-# distinct-from: substrate/brain_telemetry.py::_main and substrate/home.py's self-check --
+# distinct-from: infra/brain_telemetry.py::_main and substrate/home.py's self-check --
 #   each module's own `__main__` block, which is this tree's convention (run_selfchecks.py
 #   executes exactly that block per module and scores the exit status), not a second
 #   dispatcher. Read; nothing here runs another module's self-check.

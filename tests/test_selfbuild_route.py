@@ -60,7 +60,7 @@ location, so a miss was read as an absence. Recorded because it shipped inside t
 import hashlib
 import os
 
-import snn_data_lake.basal_ganglia.self_build_loop as _sbl
+import snn_data_lake.infra.self_build_loop as _sbl
 from snn_data_lake.cortex.brain import SELFBUILD_EVERY, make_brain
 
 # Every file the one authored transform can reach. Digested before and after the run: this is what
@@ -90,7 +90,7 @@ def test_selfbuild_route_fires(monkeypatch, tmp_path):
     # module attribute at call time and patching here reaches it. The root is empty, so `promote()`
     # refuses every target as missing BEFORE it writes -- the live tree is unreachable by
     # construction rather than by the payload happening to be empty.
-    from snn_data_lake.substrate.self_mod_harness import _repo_root
+    from snn_data_lake.infra.self_mod_harness import _repo_root
 
     live_root = _repo_root()
     real_loop = _sbl.SelfBuildLoop

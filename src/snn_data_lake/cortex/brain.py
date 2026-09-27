@@ -256,7 +256,7 @@ class Brain:
         # put NORD_PERSIST=0 in the environment -- no error, no warning, memories formed and
         # dropped. It is how `tests/test_episode_durability.py` failed in the full suite while
         # passing in isolation: the brain formed 39 episodes and the lake took 8 bytes (header
-        # only). The leak is unscoped and permanent -- `substrate/cockpit.py:1000` does
+        # only). The leak is unscoped and permanent -- `infra/cockpit.py:1000` does
         # `os.environ.setdefault("NORD_PERSIST", "0")` inside a self-check and never restores it,
         # so one self-check disables durability for every consumer in the process afterwards.
         #
@@ -1214,7 +1214,7 @@ class Brain:
         # This comment used to say the brain "can OFFLOAD any vector computation to a Nengo NEF
         # ensemble" and that this was "the generic vector/spike <-> ensemble bridge every built module
         # routes through". Both claims were false: the method they described (nengo_compute) had zero
-        # callers and was retired in v4.78. What is real: substrate/nengo_bridge runs the whole brain
+        # callers and was retired in v4.78. What is real: infra/nengo_bridge runs the whole brain
         # under nengo.Simulator via the `snn-nengo-launch` entrypoint, and this flag reports whether
         # that path is available. nengo-GATED: "nengo" when importable, else "stdlib". Read by
         # reasoning/nengo_gui_brain.py:47 via state()["nengo_tier"].
@@ -2412,7 +2412,7 @@ class Brain:
         (reasoning/improvement_proposer): the self-build is now brain-native (learned, not hardcoded)."""
         try:
             if self._selfbuild_proposer is None:
-                from snn_data_lake.basal_ganglia.brain_native_selfbuild import (
+                from snn_data_lake.infra.brain_native_selfbuild import (
                     BrainNativeSelfBuildProposer,
                 )
 
@@ -2439,7 +2439,7 @@ class Brain:
     # substrate ANY brain module can offload a vector computation to", and the comment above the tier
     # probe claimed it was "the generic bridge every built module routes through". Nothing routed
     # through it, ever. `_nengo_tier` is KEPT: reasoning/nengo_gui_brain.py:47 genuinely reads
-    # state()["nengo_tier"], and substrate/nengo_bridge.py remains the real Nengo path.
+    # state()["nengo_tier"], and infra/nengo_bridge.py remains the real Nengo path.
 
     # ---- the two tick kinds --------------------------------------------------------------------
     def _wake_tick(self):
@@ -3835,7 +3835,7 @@ class Brain:
             import subprocess as _sp
             import sys as _sys
 
-            from snn_data_lake.basal_ganglia.self_build_loop import SelfBuildLoop
+            from snn_data_lake.infra.self_build_loop import SelfBuildLoop
 
             def _gate():
                 # CRITICAL: run the correctness gate with NORD_SELFMOD UNSET, so the gate's own in-process
@@ -4292,14 +4292,14 @@ class Brain:
             # zero bar", cockpit.py `fmt`), so removing it degrades to "no reading", whereas a
             # retained 0.0 would have drawn as a real low integration score. Two consumers outside
             # this file still refer to it and are NOT this pass's to edit: the `PCI` row in
-            # substrate/cockpit.py and the "pci" entry in substrate/brain_telemetry.py PROVENANCE
+            # infra/cockpit.py and the "pci" entry in infra/brain_telemetry.py PROVENANCE
             # (whose self-check asserts that entry is present -- it asserts on PROVENANCE, not on
             # state(), so it still passes). Neither breaks: `brain_telemetry.snapshot()` copies
             # PROVENANCE wholesale (`out["provenance"] = dict(PROVENANCE)`) and never cross-checks it
             # against `state()`, and `verify_contract` only looks up DASHBOARD_KEYS, which has never
             # contained "pci". VERIFIED BY RUNNING both, 2026-08-05, not by reading:
-            # `python -m snn_data_lake.substrate.brain_telemetry` -> "contract clean", exit 0, and
-            # `python -m snn_data_lake.substrate.cockpit` -> "contract clean", exit 0. Both are now
+            # `python -m snn_data_lake.infra.brain_telemetry` -> "contract clean", exit 0, and
+            # `python -m snn_data_lake.infra.cockpit` -> "contract clean", exit 0. Both are now
             # stale and want removing -- the PROVENANCE tag in particular still promises a reading
             # "sleep-only, refreshes every 4th night" beside a row that can now only be an em-dash.
             # T082 (2026-09-16, 2.1): `tom_false_belief` DELETED -- it published `_tom_ok`, a
@@ -5085,7 +5085,7 @@ class Brain:
         an accepted proposal remains a separate, human-gated step. HONEST: a verifier-gated proposer, not
         an autonomous intelligence explosion; it can only ever tighten non-safety reasoning code."""
         try:
-            from snn_data_lake.substrate.self_mod_harness import SelfModHarness
+            from snn_data_lake.infra.self_mod_harness import SelfModHarness
 
             h = SelfModHarness(
                 enable=True, seed=self._seed, require_improvement=True, require_ruff=True
@@ -5131,7 +5131,7 @@ class Brain:
             return False
 
     # distinct-from: brainstem/autonomous_loop.py -- the tapped envelope passage (motion, T037).
-    #   distinct-from: basal_ganglia/brain_native_selfbuild.py -- ranks self-build candidates.
+    #   distinct-from: infra/brain_native_selfbuild.py -- ranks self-build candidates.
     #   distinct-from: cortex/percept_surprise.py, midbrain/dopamine_nuclei.py -- manifest port
     #   registrants. distinct-from: substrate/lake_segments.py -- the lake engine's segment
     #   writer. Phrase overlap on 'specs/022'/'write' only; this persists prototypes. Sites read.

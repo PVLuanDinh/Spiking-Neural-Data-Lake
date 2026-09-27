@@ -50,7 +50,7 @@ Refs: Ito (1982); Miles & Lisberger (1981); Boyden, Katoh & Raymond (2004).
 
 import random
 
-from snn_data_lake.substrate._mathutils import mean
+from snn_data_lake.infra._mathutils import mean
 
 
 class GainAdapter:

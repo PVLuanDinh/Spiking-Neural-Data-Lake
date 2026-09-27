@@ -201,7 +201,7 @@ _T_STATE = b"\x07"
 # the chain is verified link by link on replay -- a tampered or missing link REFUSES (the reader holds
 # the last verified state) rather than reconstructing a substrate nobody wrote.
 #
-# distinct-from: basal_ganglia/self_build_loop.py -- its _firewalled_bytes snapshots the safety
+# distinct-from: infra/self_build_loop.py -- its _firewalled_bytes snapshots the safety
 #   envelope's FILES for byte-exact restore; no record framing, no chain. distinct-from:
 #   sensorimotor/arm_bridge.py -- parses UDP reward packets. distinct-from: substrate/lake_engine.py --
 #   AppendBudget counts bytes/tick; it labels this class, it does not encode it. All sites read.

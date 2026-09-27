@@ -170,7 +170,7 @@ def registry_consistent() -> tuple[bool, str]:
 #   grown-substrate blob; this diffs individual synapses inside a weight matrix, keyed by spikes.
 # distinct-from: claustrum/claustrum.py -- detects cross-area spike coincidence windows.
 # distinct-from: thalamus/global_workspace.py -- formats an ASCII trace of one tick.
-# distinct-from: basal_ganglia/self_build_loop.py -- snapshots safety-envelope FILES for restore.
+# distinct-from: infra/self_build_loop.py -- snapshots safety-envelope FILES for restore.
 # All sites read.
 class SynapseDelta:
     """Spike-derived synapse-weight delta records (specs/022 T010a) -- tag 0x09.

@@ -19,8 +19,8 @@ from pathlib import Path
 import numpy as np
 
 from snn_data_lake.cortex.crossmodal_binder import CrossModalBinder
+from snn_data_lake.infra._mathutils import q95
 from snn_data_lake.instruments.paired_contrast import contrast
-from snn_data_lake.substrate._mathutils import q95
 
 REPO = Path(__file__).resolve().parents[2]
 PIN = REPO / "tools" / "t080_temporal_binding.json"

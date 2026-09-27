@@ -109,7 +109,7 @@ operations than dense-ANN equivalents across the classifier/temporal-coding prot
 | Arm loop + safety envelope | `reflex`, `serial_arm`, `so101_arm`, `arm_config`, `interpreter`, `closed_loop`, `autonomous_loop`, `live_arm`, `arm_bridge`, `spiking_pid`, `cpg_oscillator` | ~12-15 |
 | Sensor/data ingest | `esp32_encoder_path`, `sensor_csv_ingest`, `make_sensor_dataset`, `sensor_demo` | ~4 |
 | Classifier / recognition | `snn_classifier`, `learned_matcher`, `gesture_recognition`, `tempotron`, `nir_export` | ~5 |
-| UI / demo / entrypoints | `demo.py` (`snn-demo`), `substrate/cockpit.py` (the ONE frontend, served by the daemon) | 2 |
+| UI / demo / entrypoints | `demo.py` (`snn-demo`), `infra/cockpit.py` (the ONE frontend, served by the daemon) | 2 |
 | **Core total** | `src/snn_data_lake/**/*.py` | **~91** |
 | **Research (quarantined)** | `research/**/*.py` (MNIST STDP/D&C, spiking-MBRL/Dreamer, KG embeddings, compression, associative memory) | **~45** |
 
@@ -206,7 +206,7 @@ not "cognition." Specific ceilings called out in the project's own voice:
 - **`python run_selfchecks.py`** — the fastest way to confirm the whole core
   works on your machine; it is exactly what CI runs, module by module.
 - **`python learn_daemon.py`** — the always-on brain, which serves the **cockpit** (the ONE
-  frontend, `substrate/cockpit.py`) at `http://127.0.0.1:8137/`: one page carrying the live
+  frontend, `infra/cockpit.py`) at `http://127.0.0.1:8137/`: one page carrying the live
   anatomical brain view over the real connectome, the simulated 2-link arm and its workspace,
   a 6-DOF hardware torque-budget target (a plan from the build notes, labelled NOT BUILT),
   the live telemetry strip, and chat. Loopback only. The cockpit is not a separate launcher:

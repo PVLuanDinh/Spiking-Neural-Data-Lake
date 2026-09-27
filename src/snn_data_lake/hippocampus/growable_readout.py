@@ -40,7 +40,7 @@ function-preserving growth the core module also ships as `add_unit_gradmax`. So 
 guarantee here is EXACT to floating point (< 1e-6 in practice, asserted < 1e-4) AND the
 capacity is real -- both, honestly, rather than a halve that looks tidy but adds nothing.
 
-Torch/GPU tier. Built on `resolve_device()` (`snn_data_lake.substrate.device`) with an
+Torch/GPU tier. Built on `resolve_device()` (`snn_data_lake.infra.device`) with an
 explicit `.to(device)` on every parameter -- it does NOT rely on set_default_device
 (that quirk lands `torch.normal` / freshly-wrapped `nn.Parameter` on CPU even under a
 cuda default). Deterministic from PER-INSTANCE generators alone. ASCII-only prints.
@@ -94,7 +94,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from snn_data_lake.substrate.device import resolve_device
+from snn_data_lake.infra.device import resolve_device
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

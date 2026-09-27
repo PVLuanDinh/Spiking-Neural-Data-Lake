@@ -41,7 +41,7 @@ charged, which is why registration never greens.
 # distinct-from: gates/manifest_gate.py -- static contract checks over the manifest;
 #   this consumes the manifest's edges and demands MEASURED charge on them.
 # distinct-from: instruments/port_charge_probe.py -- produces the evidence; this gate consumes
-#   it. distinct-from: substrate/region_wiring.py -- live traffic census, not a verdict.
+#   it. distinct-from: infra/region_wiring.py -- live traffic census, not a verdict.
 # All sites read.
 
 from __future__ import annotations

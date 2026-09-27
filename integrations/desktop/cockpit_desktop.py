@@ -1,6 +1,6 @@
 """SNDL desktop app: the cockpit in a native window, rendered on the GPU.
 
-WHAT THIS IS. `substrate/cockpit.py` is the ONE frontend -- a stdlib HTTP page the always-on daemon
+WHAT THIS IS. `infra/cockpit.py` is the ONE frontend -- a stdlib HTTP page the always-on daemon
 serves over the live brain. Until now the only ways to see it were a browser tab or the frozen
 `snn-ui.exe`, which also just opens a browser (`integrations/packaging/snn_ui_main.py`). This gives it
 a real desktop window.

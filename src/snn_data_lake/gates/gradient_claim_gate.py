@@ -111,7 +111,7 @@ def _repo_root():
     which callers MUST treat as "no repo" rather than as a path.
     """
     try:
-        from snn_data_lake.substrate.self_mod_harness import _repo_root as _shared
+        from snn_data_lake.infra.self_mod_harness import _repo_root as _shared
 
         root = _shared()
     except Exception:
@@ -694,7 +694,7 @@ def _baseline_path(root=None):
     """Absolute path of the ratchet baseline file, or None when there is no repo to write into.
 
     # distinct-from: cortex/neurogenesis_engine.py::growth_state_bytes -- returns a GROWTH BLOB.
-    # distinct-from: substrate/device.py::crossover -- returns a CUDA crossover WIDTH.
+    # distinct-from: infra/device.py::crossover -- returns a CUDA crossover WIDTH.
     # distinct-from: thalamus/global_workspace.py::_band_ratio -- returns a RATIO in [0,1].
     # All three were flagged on the shared docstring phrase "or None when there is no ...", not on the
     # capability; each was READ before this marker was added, and none of the three calls os.path.join
@@ -1528,13 +1528,13 @@ def measure_all(root=None, draws=MEASURE_DRAWS, seed=MEASURE_SEED):
 
 MEASURE_ARTIFACT = os.path.join("tools", "gradient_claim_measure.json")
 
-# distinct-from: basal_ganglia/self_build_loop.py -- `_crc_map` is the closest thing in the tree and
+# distinct-from: infra/self_build_loop.py -- `_crc_map` is the closest thing in the tree and
 #   is NOT the same mechanism: it crc32s the BYTES of each safety-envelope file, one entry per file,
 #   so a self-modification can be detected and rolled back. `tree_digest` below crc32s the PARSED
 #   DECLARATIONS (qualname=disposition), one digest for the whole census, to answer whether a
 #   recorded measurement still describes the current tree. Different input, different granularity,
 #   different question -- and neither can serve the other's purpose.
-# distinct-from: substrate/self_mod_harness.py (runs selfchecks in a sandbox),
+# distinct-from: infra/self_mod_harness.py (runs selfchecks in a sandbox),
 #   reasoning/make_results_plot.py (writes an SVG), cortex/time_cells.py (returns a max),
 #   cortex/quality_diversity.py, reasoning/godel_machine.py -- matched on "returns/records"; none
 #   computes a fingerprint of anything.

@@ -78,10 +78,10 @@ import random
 import zlib
 
 from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor
+from snn_data_lake.infra._mathutils import clamp01, mean
 from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.plasticity.criticality_regulator import CriticalityRegulator
 from snn_data_lake.plasticity.lifelong_consolidation import LifelongConsolidator
-from snn_data_lake.substrate._mathutils import clamp01, mean
 
 # --- task / stream geometry (disjoint separable classes, each with a frequent PRIMARY +
 #     a rare, prune-able SECONDARY mode, interleaved with an unlearnable noise phase) ----

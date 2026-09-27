@@ -62,8 +62,8 @@ import random
 from snn_data_lake.basal_ganglia.valence_stdp import ValenceLearner
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.hypothalamus.set_points import Homeostat
+from snn_data_lake.infra._mathutils import mean
 from snn_data_lake.sensorimotor.spike_preprocessing import N as N_FEATURES
-from snn_data_lake.substrate._mathutils import mean
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

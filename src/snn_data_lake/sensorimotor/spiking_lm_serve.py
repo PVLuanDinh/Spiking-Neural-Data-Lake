@@ -25,7 +25,7 @@ inference, not a large LLM.
 import json
 import math
 
-from snn_data_lake.substrate._mathutils import Rng
+from snn_data_lake.infra._mathutils import Rng
 
 LM_FORMAT = "snn_lm/1"
 

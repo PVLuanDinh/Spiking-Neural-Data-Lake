@@ -38,10 +38,10 @@ import time
 
 from snn_data_lake import require_free_threaded
 from snn_data_lake.cortex.brain import make_brain
-from snn_data_lake.substrate.brain_telemetry import Recorder
+from snn_data_lake.infra.brain_telemetry import Recorder
+from snn_data_lake.infra.cockpit import Acts, Turns, serve
+from snn_data_lake.infra.self_mod_harness import _repo_root
 from snn_data_lake.substrate.chat_memory import DurableChatMemory
-from snn_data_lake.substrate.cockpit import Acts, Turns, serve
-from snn_data_lake.substrate.self_mod_harness import _repo_root
 
 # PROMOTED into the governed package 2026-08-04 under P4c (the daemon is the brain's DRIVE, not a
 # launcher beside it). It lived at the repo root as `learn_daemon.py`, outside every P3/P4 gate, with
@@ -458,14 +458,14 @@ def main():
             os._exit(
                 0
             )  # the launcher's restart loop relaunches with the new code; learning reloads from disk
-        # (4) OPTIONAL per-cycle charge adapters (substrate.region_wiring): an explicit plug-point for
+        # (4) OPTIONAL per-cycle charge adapters (infra.region_wiring): an explicit plug-point for
         #     genuinely-PERIODIC faculties. Empty by default -> a cheap no-op. NOTE (Policy 3): this is NOT
         #     how a dormant faculty is made live -- pinging a faculty here without routing its output into
         #     behaviour is theater. The honest path is to WIRE the faculty into the tick (so it charges
         #     behaviour) and let gates.dormancy_gate enforce no-silent-dormancy. Authoritative coverage
         #     = region_wiring.live_coverage() (delegates to the gate), logged below.
         try:
-            from snn_data_lake.substrate import region_wiring
+            from snn_data_lake.infra import region_wiring
 
             region_wiring.charge_all(b, {"cycle": n})
         except Exception as e:
@@ -477,7 +477,7 @@ def main():
             # message-less `except: pass` -- the Policy-3 coverage number would simply stop appearing,
             # with nothing in the log saying why. That is the exact silent-degradation shape this
             # project keeps burning on: a stage fails, swallows it, and the absence looks like calm.
-            from snn_data_lake.substrate import region_wiring as _rw
+            from snn_data_lake.infra import region_wiring as _rw
 
             try:
                 st = b.state()

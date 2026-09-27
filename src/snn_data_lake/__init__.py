@@ -137,9 +137,9 @@ REGIONS = {
         "snn_classifier",
         # PROMOTED 2026-08-13 (was reasoning/snn_moe_classifier.py): firing-rate ROUTED
         # mixture-of-experts over snn_classifier's spiking experts. CORE, not TORCH_TIER -- it
-        # imports only math/random/numpy plus cortex.snn_classifier and substrate._mathutils.
+        # imports only math/random/numpy plus cortex.snn_classifier and infra._mathutils.
         # Reached from sensorimotor/recognizer_bank.py. Its blocker was an UNRESTORED process-global
-        # `random.seed(0)`, fixed with substrate/brain_bundle.py's snapshot-seed-restore pattern.
+        # `random.seed(0)`, fixed with infra/brain_bundle.py's snapshot-seed-restore pattern.
         "snn_moe_classifier",
         "tempotron",
         "paradigm_b_matcher",
@@ -252,8 +252,6 @@ REGIONS = {
         # of this promotion (P4b) -- they were in <repo>/data/selfbuild_state.json, a second durable
         # store. Cross-process round-trip proven: writer pid wrote w=0.77/0.11, a separate reader
         # process read them back after the writer exited.
-        "self_build_loop",
-        "brain_native_selfbuild",
     ],
     "amygdala": ["fear_conditioning", "affective_appraisal"],
     "cerebellum": [
@@ -374,7 +372,6 @@ REGIONS = {
     "substrate": [
         # PROMOTED 2026-08-04: P2 merge of training/device.py (GPU-first, measured) with the
         # retired reasoning/torch_device.py (had the users + enable()). Infra, not a brain region.
-        "device",
         "brian2_backend",  # Brian2 LIF authority + differentiable Torch bridge
         # Promoted from reasoning/ 2026-08-04. SUBSTRATE, not basal_ganglia (an earlier plan said
         # basal_ganglia): this module spawns subprocesses, copies a directory tree and checksums
@@ -382,8 +379,6 @@ REGIONS = {
         # "gates source edits, it does not update a weight" -- so it is infra by the same test that
         # puts `device` here. It also owns _PROTECTED, the 9-file firewall the self-build path
         # enforces, and _repo_root(), which three other modules import.
-        "self_mod_harness",
-        "_mathutils",
         "arm_view",
         "spike_stream_sketch",
         "spike_cardinality",
@@ -397,25 +392,16 @@ REGIONS = {
         "morris_counter",
         "proximity_index",
         "data_quality",
-        "drift_monitor",
         "spike_telemetry_hub",
         "streaming_hub",
-        "nir_export",
-        "demo",
-        "brain_bundle",
         "lake_working_memory",
         "chat_memory",  # durable content-addressable chat memory on the spike lake (noise-filtered)
         "signal_calibrator",  # durable running-quantile of a live signal (Step-0 of data self-recalibration)
-        "nengo_bridge",
         "home",
         "binlog",
         "growable",
         "spontaneous_activity",  # specs/022 T045: learnable OU bootstrap through the SAME plasticity path (FR-033)
         "region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> GWT ignition bias
-        "region_wiring",  # the always-on daemon's faculty-wiring registry -> charge_all + honest coverage report
-        "brain_telemetry",  # the ONE snapshot contract + JSONL recorder + provenance table
-        "brain_geometry",  # hand-authored anatomical layout + the REAL connectome tracts (stdlib)
-        "cockpit",  # THE one frontend: live brain + arm + hardware target + chat, one page
         # PROMOTED from the repo root 2026-08-04 under P4c: the daemon is the brain's DRIVE (wake/
         # sleep cycle, tick loop, continuity), not a launcher beside it. It was 370 lines outside the
         # package in no gate, with no self-check and not one assert. `learn_daemon.py` at the root is
@@ -515,6 +501,22 @@ REGIONS = {
         "wavefront_planner",
         "web_ingest",
         "world_kb_stream",
+    ],
+    "infra": [
+        "_mathutils",
+        "brain_bundle",
+        "brain_geometry",
+        "brain_native_selfbuild",
+        "brain_telemetry",
+        "cockpit",
+        "demo",
+        "device",
+        "drift_monitor",
+        "nengo_bridge",
+        "nir_export",
+        "region_wiring",
+        "self_build_loop",
+        "self_mod_harness",
     ],
 }
 

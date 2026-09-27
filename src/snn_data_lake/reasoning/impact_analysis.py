@@ -27,7 +27,7 @@ import ast
 import json
 import os
 
-from snn_data_lake.substrate.self_mod_harness import _repo_root
+from snn_data_lake.infra.self_mod_harness import _repo_root
 
 # graphify link relations that mean "the source depends on the target" (an incoming edge = a referrer).
 _DEP_RELATIONS = frozenset(

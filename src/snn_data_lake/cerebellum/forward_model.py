@@ -45,7 +45,7 @@ Refs: von Holst & Mittelstaedt (1950); Wolpert, Ghahramani & Jordan, Science 269
 
 import random
 
-from snn_data_lake.substrate._mathutils import mean
+from snn_data_lake.infra._mathutils import mean
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

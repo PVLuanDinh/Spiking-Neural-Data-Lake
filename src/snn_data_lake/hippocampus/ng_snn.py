@@ -652,7 +652,7 @@ class NGSNN:
         self.W, self.b, self.beta = W, b, beta
         return self
 
-    # distinct-from: substrate/brain_bundle.py::predict -- a ROUTER that delegates to a named
+    # distinct-from: infra/brain_bundle.py::predict -- a ROUTER that delegates to a named
     #   skill's trained brain; it implements no decision of its own. distinct-from:
     #   neuromodulation/locus_coeruleus.py::_population_spikes -- integrates an LC pool to a spike
     #   COUNT, no classes. distinct-from: reasoning/rpm_solver.py::_induce_attr -- induces a

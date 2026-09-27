@@ -52,7 +52,7 @@ def _run(arm):
     layer census."""
     import snn_data_lake.cortex.placement as placement
     from snn_data_lake.cortex.brain import make_brain
-    from snn_data_lake.substrate import brain_telemetry
+    from snn_data_lake.infra import brain_telemetry
 
     real_place = placement.place
     try:

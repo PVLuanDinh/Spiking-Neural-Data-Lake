@@ -57,7 +57,7 @@ reactive — a top-down *preference* that still yields to caution and the reflex
 `cortex/live_brain` runs the whole stack together as one self-driving loop: the brain is **live**,
 centred on reasoning, acting only through the gate.
 
-The running brain is watchable and drivable interactively — `substrate/cockpit` (the ONE frontend,
+The running brain is watchable and drivable interactively — `infra/cockpit` (the ONE frontend,
 served by the always-on daemon at `http://127.0.0.1:8137/`) surfaces the functional signatures (the
 Global Workspace broadcast, the held goal, threat / interoceptive caution), the gated arm, and chat,
 presented as *functional correlates* and explicitly **not** a claim of consciousness. Its working

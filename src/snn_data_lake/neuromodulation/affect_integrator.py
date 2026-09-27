@@ -52,8 +52,8 @@ import zlib
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.hippocampus.growing_learner import GrowingLearner
+from snn_data_lake.infra._mathutils import clamp01
 from snn_data_lake.sensorimotor.population_encoding import PopulationEncoder
-from snn_data_lake.substrate._mathutils import clamp01
 
 
 def _clamp(x, lo, hi):

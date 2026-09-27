@@ -57,14 +57,14 @@ _LIVE_ROOTS = (
     f"{_PKG}.thalamus.reentrant_workspace",
 )
 _ENTRYPOINTS = (  # pyproject [project.scripts] + the always-on daemon's in-package deps
-    f"{_PKG}.substrate.demo",
+    f"{_PKG}.infra.demo",
     f"{_PKG}.sensorimotor.live_arm",
     f"{_PKG}.sensorimotor.closed_loop",
-    f"{_PKG}.substrate.cockpit",  # THE frontend (served by the daemon); replaced control_panel
+    f"{_PKG}.infra.cockpit",  # THE frontend (served by the daemon); replaced control_panel
     f"{_PKG}.training.cli",
     f"{_PKG}.sensorimotor.web_ingest",
-    f"{_PKG}.substrate.nengo_bridge",
-    f"{_PKG}.substrate.region_wiring",  # the daemon charges faculties through this registry
+    f"{_PKG}.infra.nengo_bridge",
+    f"{_PKG}.infra.region_wiring",  # the daemon charges faculties through this registry
 )
 
 # The S6 panel's dated correction, appended VERBATIM to both kernel `wire` rows. It is a SUCCESSION,

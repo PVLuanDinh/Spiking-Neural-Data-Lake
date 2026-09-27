@@ -18,7 +18,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from snn_data_lake.substrate.device import resolve_device
+from snn_data_lake.infra.device import resolve_device
 from snn_data_lake.reasoning.fast_features import batched_features
 
 #: Which symbols here OWE a gradient cosine, read statically by

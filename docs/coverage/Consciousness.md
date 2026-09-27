@@ -335,7 +335,7 @@ The original spiking GWT (`thalamus/global_workspace.py`) is live inside the arm
 `live_brain.py:92` passes `workspace=True`, so `_workspace_broadcast` steps it on every tick. Its own
 docstring calls it a "READ-ONLY annotation". Measured: the broadcast content took **2 distinct values
 over 240 ticks** (`0` on 237, `None` on 3), and `_ignitions` -- the only quantity that escapes, via
-`substrate/brain_telemetry.py:267` -- reached **1**. The broadcast content itself is returned as
+`infra/brain_telemetry.py:267` -- reached **1**. The broadcast content itself is returned as
 `res["workspace"]` and **grep finds no reader for that key anywhere in `src/`**. Band 21, the floor of
 "live, not consumed", because it is below even the telemetry case the band describes: the content has
 no reader, and the one derived number that does reach telemetry moved once in 240 ticks.

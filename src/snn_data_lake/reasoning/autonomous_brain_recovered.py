@@ -54,7 +54,7 @@ Knobs: NORD_CYCLES(18) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(400) NO
 Deps: numpy torch torchvision brian2 scikit-learn
 """
 
-from snn_data_lake.substrate.device import resolve_device
+from snn_data_lake.infra.device import resolve_device
 from snn_data_lake.reasoning.developmental_core import cfg_from_env, develop_cycles
 
 

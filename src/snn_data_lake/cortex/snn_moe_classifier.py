@@ -91,7 +91,7 @@ from snn_data_lake.cortex.snn_classifier import (
     dataset,
     templates,
 )
-from snn_data_lake.substrate._mathutils import softmax
+from snn_data_lake.infra._mathutils import softmax
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
@@ -295,14 +295,14 @@ def main():
     # SAVE/RESTORE THE PROCESS-GLOBAL RNG around this self-check. `random.seed(0)` below is not a
     # local act: it clobbers whatever stream the importer was using, and `run_selfchecks.py` runs
     # every module in ONE process, so a later module's "deterministic" run would silently inherit
-    # this one's seed. MEASURED before the fix, with substrate/brain_bundle.py's own probe: after
+    # this one's seed. MEASURED before the fix, with infra/brain_bundle.py's own probe: after
     # `random.seed(4242)` + two draws the next three values are [0.028451, 0.390264, 0.320989];
     # running this module in between made them [0.022726, 0.733753, 0.019201]. LEAKED.
     #
     # The seed is NOT deleted, and that was measured too: without it the self-check's `acc >= 0.85`
     # becomes a stochastic gate (four trials, four distinct outcomes). This module genuinely uses the
     # global `random` API, which the note at the top of the file already recorded. So the fix is the
-    # one substrate/brain_bundle.py established -- snapshot, seed, restore -- not deletion.
+    # one infra/brain_bundle.py established -- snapshot, seed, restore -- not deletion.
     #
     # try/finally, not a trailing restore: the two asserts below can raise, and a self-check that
     # FAILS must still leave the process RNG as it found it. A leak on the failure path is the same

@@ -1,6 +1,6 @@
 """PyInstaller entry point: run the always-on daemon and open the cockpit in a browser.
 
-The frozen app has no window of its own. The ONE frontend is `substrate/cockpit.py` -- a stdlib
+The frozen app has no window of its own. The ONE frontend is `infra/cockpit.py` -- a stdlib
 HTTP server that the LEARNING DAEMON stands up over the live brain (learn_daemon.py calls
 `cockpit.serve(brain, port=NORD_TELEMETRY_PORT, ...)`). So the .exe IS the daemon: it runs
 `learn_daemon.main()` on the MAIN thread -- the thread that owns the tick loop and is the only
@@ -71,7 +71,7 @@ def main():
         # cockpit.main() serves the page, checks the telemetry contract against the live brain,
         # and round-trips a chat turn through the queue. No display, and NORD_PERSIST=0 so a
         # verification run can never write the durable lake.
-        from snn_data_lake.substrate import cockpit
+        from snn_data_lake.infra import cockpit
 
         cockpit.main()
         return

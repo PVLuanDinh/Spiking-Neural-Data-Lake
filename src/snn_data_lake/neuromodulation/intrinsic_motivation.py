@@ -52,14 +52,14 @@ approaches" (2007); Schmidhuber, "Formal Theory of Creativity, Fun, and Intrinsi
 Motivation" (2010); Pathak, Agrawal, Efros & Darrell, "Curiosity-driven Exploration by
 Self-supervised Prediction" (ICM, 2017).
 
-Deps: random, substrate._mathutils.mean (numpy/torch allowed project-wide); ASCII-only prints, deterministic.
+Deps: random, infra._mathutils.mean (numpy/torch allowed project-wide); ASCII-only prints, deterministic.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.intrinsic_motivation
 """
 
 import random
 
-from snn_data_lake.substrate._mathutils import mean
+from snn_data_lake.infra._mathutils import mean
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

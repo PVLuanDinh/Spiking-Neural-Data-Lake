@@ -46,6 +46,7 @@ from snn_data_lake.hippocampus.allocentric_map import AllocentricMap
 from snn_data_lake.hippocampus.contrastive_episode_analysis import ContrastiveEpisodeAnalyzer
 from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
 from snn_data_lake.hippocampus.growing_learner import GrowingLearner
+from snn_data_lake.infra.brain_bundle import BrainBundle, load_bundle
 from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
 from snn_data_lake.neuromodulation.cortisol import Cortisol
 from snn_data_lake.neuromodulation.developmental_envelope import DevelopmentalEnvelope
@@ -54,7 +55,6 @@ from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.neuromodulation.naca import NACABroadcast
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 from snn_data_lake.sensorimotor.multimodal_encoder import encode_multimodal
-from snn_data_lake.substrate.brain_bundle import BrainBundle, load_bundle
 from snn_data_lake.substrate.home import _T_COALITION, _log
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
 from snn_data_lake.substrate.signal_ring import LakeJournaller, SignalRing
@@ -1724,7 +1724,7 @@ class AutonomousArm:
         # ahead of that wrapper's retirement -- the one expression the wrapper added over the bus:
         # did THIS loop's own percept submission seize the slot this tick. Distinct from
         # `_ignitions` below, which counts content CHANGES across ticks. Consumed by
-        # substrate/brain_telemetry ("ws_percept_ignited"), the same surface that reads `_ignitions`.
+        # infra/brain_telemetry ("ws_percept_ignited"), the same surface that reads `_ignitions`.
         self._ws_percept_ignited = percept is not None and content == percept
         # Purely observational: count a change of broadcast content. This used to be tallied by the
         # tkinter live-brain tab, which meant the number only existed while a window was open and

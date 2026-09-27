@@ -1830,7 +1830,7 @@ def demo():
 
     # distinct-from: cortex/live_brain.py::workspace and cortex/brain.py::reentrant -- accessors that
     #   ADOPT the composite's real bus; this is a hermetic stand-in built so ONE input can be moved
-    #   with nothing else alive. distinct-from: substrate/brain_telemetry.py::_main and
+    #   with nothing else alive. distinct-from: infra/brain_telemetry.py::_main and
     #   instruments/report_order_probe.py::main -- those self-checks build a REAL brain (make_brain);
     #   this one must not, because P4 forbids a second composite inside a chat self-check and a real
     #   workspace here would add a PRIVATE instance to tools/p6_gate.py's census. The one site that

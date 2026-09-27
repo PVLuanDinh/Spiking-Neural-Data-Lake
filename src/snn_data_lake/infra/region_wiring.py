@@ -58,7 +58,7 @@ faked.
 Determinism / robustness (CLAUDE.md): charge_all() guards each faculty in its own try/except so one bad
 faculty never stops the loop or blocks the others; pure registry, no wall-clock / no hash; ASCII-only.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.region_wiring
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.infra.region_wiring
 """
 
 import os

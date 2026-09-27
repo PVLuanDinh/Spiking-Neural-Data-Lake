@@ -36,7 +36,7 @@ small so the exact Boltzmann distribution can be enumerated (2^N states) for the
 import math
 import random
 
-from snn_data_lake.substrate._mathutils import sigmoid
+from snn_data_lake.infra._mathutils import sigmoid
 
 
 class BoltzmannSampler:

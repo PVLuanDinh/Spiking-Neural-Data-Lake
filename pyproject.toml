@@ -235,7 +235,7 @@ train = ["torch", "torchvision", "numpy", "scikit-learn"]              # GPU tra
 # ensemble_rbf settled as tests/instruments/ensemble_rbf_ab.py; lake99 + ng_snn/validate_uci
 # remain reasoning-tier. The gate env carries scikit-learn 1.9.0 (cp314t wheel, measured).
 nmnist = ["tonic"]                                                       # research/nmnist_ingest real data
-nengo = ["nengo"]                                                       # substrate/nengo_bridge: run the brain's NEF/LIF substrate on Nengo (sim + NengoLoihi deploy); nengo-gated, the default install never imports it
+nengo = ["nengo"]                                                       # infra/nengo_bridge: run the brain's NEF/LIF substrate on Nengo (sim + NengoLoihi deploy); nengo-gated, the default install never imports it
 nir = ["nir", "h5py", "numpy"]                                           # substrate/nir_export.to_nir_graph -> canonical NIR HDF5 for Loihi 2 / SpiNNaker 2 / Speck / Xylo. ADDED 2026-08-04 (specs/010, P7): the import at nir_export.py:121 is lazy and raises a helpful ImportError, but it was declared NOWHERE, so `pip install ".[all]"` could not produce a tree where the export path runs. Distribution name confirmed from the module's own install hint ("pip install nir numpy"), not guessed. h5py ADDED 2026-08-20 (specs/022 T018): substrate/wiring_manifest.py imports it DIRECTLY (the manifest artifact's JSON attr rides in the same HDF5 file nir writes), and a directly-imported transitive gets DECLARED, not assumed -- the pillow precedent; the dependency ledger caught the omission on landing day.
 arc = ["arcengine"]                                                      # src/snn_data_lake/reasoning/arc_agi/{play,play_brain}.py: the ARC-AGI-3 arcade bridge. ADDED 2026-08-05 (P7 ledger): `from arcengine import GameAction, GameState` is UNGUARDED at module top in BOTH, and both SHIP IN THE WHEEL (`[tool.hatch.build.targets.wheel] packages = ["src/snn_data_lake"]`), so `pip install .` produced a tree where `import snn_data_lake.reasoning.arc_agi.play` raised ModuleNotFoundError -- RE-RUN 2026-08-05 in .venv-lake, it does. DECLARED rather than guarded/retired: under P4c `reasoning/` is part of the brain and not a parking lot, so the honest fix for an unguarded import of a real distribution is to declare it; under P7 "it would be another dependency" is not a reason to reject one. Distribution name read from the INSTALLED metadata (.venv-arc/Lib/site-packages/arcengine-0.9.3.dist-info/METADATA -> `Name: arcengine`, `Author: arcprizefoundation`, INSTALLER `pip`, no direct_url.json so it came from an index, not a local path), NOT from play.py's docstring, which names the SIBLING `arc-agi` distribution (`Name: arc-agi` 0.9.9, `Requires-Dist: arcengine>=0.9.3`) that merely depends on it -- declaring on the docstring's word would have manufactured the false entry this file's ledger warns about.
 # THE MARKER IS GONE, 2026-08-05, AND THE COMMENT THAT JUSTIFIED IT WAS REWRITTEN RATHER THAN LEFT
@@ -270,7 +270,7 @@ exe = ["pyinstaller"]                                                   # build 
 hf = ["datasets", "huggingface-hub", "pillow"]                            # sensorimotor/hf_stream.py: streamed licensed datasets -> features
 desktop = ["pywebview"]                                                 # integrations/desktop/cockpit_desktop.py: the cockpit in a native GPU-composited window
 # [viz] RETIRED with the matplotlib/netplotbrain frontends (brain_activity_3d, brain_netplot,
-# spiking_chat). The one frontend is substrate/cockpit.py, which draws the anatomical brain, the
+# spiking_chat). The one frontend is infra/cockpit.py, which draws the anatomical brain, the
 # region rates and the arm in browser Canvas 2D from stdlib -- no matplotlib, no netplotbrain, and
 # no TemplateFlow download on first render. Nothing in the tree imports those six packages now.
 dev = ["pytest>=7.0", "pytest-cov", "pytest-xdist", "ruff==0.15.20", "pre-commit"]       # tests + lint/format (NOT runtime; ruff PINNED, not floored -- see below; xdist = the battery-pilot parallel runner, owner-approved 2026-08-20)
@@ -292,17 +292,17 @@ all = ["spiking-neural-data-lake[arm,lake,gpu,nir,nmnist,train]"]        # every
 # The default install never needs any of this -- it runs on CPU, anywhere (see docs/PERFORMANCE.md).
 
 [project.scripts]
-snn-demo = "snn_data_lake.substrate.demo:main"         # one-file demo loop
+snn-demo = "snn_data_lake.infra.demo:main"         # one-file demo loop
 snn-arm  = "snn_data_lake.sensorimotor.live_arm:main"     # live gesture -> arm (add --serial/--actuate for hardware)
 snn-loop = "snn_data_lake.sensorimotor.closed_loop:main"  # full closed loop: gesture -> command -> reward -> learn
-# snn-ui RETIRED: the tkinter control panel is gone. The ONE frontend is substrate/cockpit.py, served
+# snn-ui RETIRED: the tkinter control panel is gone. The ONE frontend is infra/cockpit.py, served
 # by the always-on daemon (`python learn_daemon.py` -> http://127.0.0.1:8137/). It is deliberately NOT
 # a console script: the cockpit never constructs a Brain (Policy 4), so a standalone launcher would
 # either stand up a second brain against the same durable lake or duplicate the daemon's drive loop.
 # One brain, one loop, one frontend.
 snn-train = "snn_data_lake.training.cli:main"  # [train] extra: surrogate-gradient GPU trainer -> exports weights to the core
 snn-fetch-corpus = "snn_data_lake.sensorimotor.web_ingest:cli"  # firewalled web -> training-corpus fetch (stdlib urllib)
-snn-nengo-launch = "snn_data_lake.substrate.nengo_bridge:launch"  # [nengo] extra: run the whole brain LIVE under nengo.Simulator (per-tick trace; NengoLoihi-deployable, observation-only)
+snn-nengo-launch = "snn_data_lake.infra.nengo_bridge:launch"  # [nengo] extra: run the whole brain LIVE under nengo.Simulator (per-tick trace; NengoLoihi-deployable, observation-only)
 
 [project.urls]
 Homepage = "https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake"

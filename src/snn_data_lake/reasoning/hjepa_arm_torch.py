@@ -666,7 +666,7 @@ def main():
         print("Exiting cleanly (0).")
         return 0
 
-    from snn_data_lake.substrate.device import (
+    from snn_data_lake.infra.device import (
         enable,
         resolve_device,
     )  # shared cpu/cuda selector

@@ -90,7 +90,7 @@ HONEST ABOUT WHAT THIS BUYS TODAY: NOTHING VISIBLE, AND THAT IS THE CORRECT RESU
     force-wire the paragraph above refuses: in a `make_brain()` process the dict is NON-EMPTY from
     tick 40 onward (`neurogenesis_refit`, via `_refit`'s `select()` call), and over 1,200 ticks
     sampled every 20 it takes 30 distinct widths and 30 distinct reasons. So there is something
-    real to read. `substrate/cockpit.py` reads it and draws the DEVICE ROUTING plate.
+    real to read. `infra/cockpit.py` reads it and draws the DEVICE ROUTING plate.
     **That is a REPORT, not a P6 faculty-to-faculty charge** -- no faculty's output changes because
     a page renders this -- and it is not counted as one.
 
@@ -247,7 +247,7 @@ def decisions():
         and false as it was read (nothing at all reads it). It is why retiring this function was
         REFUSED: deleting it deletes a criterion that has a reachable red, and P8 deletes criteria
         that have NO red, never ones that do.
-      * A REPORT reads it, as of 2026-08-06. `substrate/cockpit.py` serves it as the `device`
+      * A REPORT reads it, as of 2026-08-06. `infra/cockpit.py` serves it as the `device`
         section and draws the DEVICE ROUTING plate. A page rendering a number is not a faculty
         consuming a signal, so this is NOT a P6 read and no count is raised by it.
 
@@ -290,7 +290,7 @@ def decisions():
 # already FALSE when written: `cortex/neurogenesis_engine.py:51` imports all three, added in
 # 6b33a45d. Re-derived 2026-08-06 -- the governed importers of those three are
 # `cortex/neurogenesis_engine.py` and, since the DEVICE ROUTING plate landed,
-# `substrate/cockpit.py`.) The figure recorded one day earlier
+# `infra/cockpit.py`.) The figure recorded one day earlier
 # was "41 / 40" and it was already one short -- `reasoning/rsnn_delays_torch.py` carries TWO such
 # imports, and a per-module count and a per-statement count are not the same number. Re-derive with
 # the walk above rather than inheriting this; the repoint sweep was still landing when it was taken.

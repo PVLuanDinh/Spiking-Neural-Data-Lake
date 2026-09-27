@@ -33,7 +33,7 @@ noise at a few units. No learning-speed assertion is made anywhere.
 
 Reuses (does NOT reimplement):
   * cortex.lif_neuron.LIFNeuron      -- the canonical spiking unit + its membrane state
-  * substrate._mathutils.dot, unit   -- incoming current; heuristic-seed normalization
+  * infra._mathutils.dot, unit   -- incoming current; heuristic-seed normalization
 
 Deterministic (per-instance random.Random, no global RNG / no wall-clock). Pure
 standard library. ASCII-only output.
@@ -45,7 +45,7 @@ import math
 import random
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
-from snn_data_lake.substrate._mathutils import dot, unit
+from snn_data_lake.infra._mathutils import dot, unit
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

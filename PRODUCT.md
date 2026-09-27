@@ -23,7 +23,7 @@ merely non-breakage.
 
 ## Product Purpose
 
-`substrate/cockpit.py` is the ONE frontend for the spiking-neural-data-lake brain — a single page
+`infra/cockpit.py` is the ONE frontend for the spiking-neural-data-lake brain — a single page
 carrying live brain state, the live arm, the hardware target, and chat.
 
 Under `docs/POLICIES.md` P4c it is not a dashboard beside the system. It is **the brain's

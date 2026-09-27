@@ -25,7 +25,7 @@ generalisation of that readout to arbitrary input/output sizes and optional hidd
 import json
 import zlib
 
-from snn_data_lake.substrate._mathutils import Rng
+from snn_data_lake.infra._mathutils import Rng
 
 BRAIN_FORMAT = "snn_brain/1"
 DEFAULT_BETA = 0.9

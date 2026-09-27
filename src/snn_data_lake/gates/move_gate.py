@@ -651,7 +651,7 @@ def names(root: Path, tabs: dict) -> dict:
 #   a path under the RUNNING repo for closure hashing, a path whether or not a file is there; this
 #   resolves every registry spelling (dotted, path, module:attr, Name=path) inside the CENSUSED tree
 #   and answers None when no file backs the name (an alias never does). Also read: brain_atlas.py
-#   (_region_files), gates/import_manifest.py (_targets), basal_ganglia/self_build_loop.py
+#   (_region_files), gates/import_manifest.py (_targets), infra/self_build_loop.py
 #   (_firewalled_bytes), hippocampus/spiking_storage_prototype.py (check_reds): none resolves names.
 #: the NAME registries whose every entry must be backed by a module FILE -- an alias never is.
 _BY_FILE = (
@@ -1028,7 +1028,7 @@ def static(root: Path, tabs: dict) -> dict:
 # ---- the diff ----------------------------------------------------------------------------------
 # distinct-from: __init__.py -- package_of answers one basename's live package in the RUNNING
 #   package; pairmap inverts legacy_pairs over a CENSUS's recorded tables (one map, two readings).
-#   Also read: basal_ganglia/self_build_loop.py (_restore_firewalled restores files, maps nothing).
+#   Also read: infra/self_build_loop.py (_restore_firewalled restores files, maps nothing).
 def pairmap(c: dict) -> dict:
     """(live package, module) -> frozen label, for every module whose package differs from it."""
     st = c["static"]
@@ -1119,7 +1119,7 @@ def _gate_lines(key: str, lines: list[str], pairs: dict) -> Counter:
 
 
 # distinct-from: __init__.py -- package_of reads the running package's live tables; forward reads a
-#   stage's post-stage map out of the mover's expected file. Also read: substrate/brain_geometry.py
+#   stage's post-stage map out of the mover's expected file. Also read: infra/brain_geometry.py
 #   (_reasoning_modules), gates/selfcheck_cache.py (split_rosters), neuromodulation/empowerment.py
 #   (_roll), plasticity/plasticity_rule_stack.py (_retention_selfcheck) -- none maps a stage's names.
 def forward(expected: dict | None) -> dict:
@@ -1238,7 +1238,7 @@ def diff(pre: dict, post: dict, declared: dict, expected: dict | None = None) ->
     return obs, invariant_problems(pre, post) + compare(obs, declared)
 
 
-# distinct-from: basal_ganglia/self_build_loop.py -- _restore_firewalled puts firewalled bytes back
+# distinct-from: infra/self_build_loop.py -- _restore_firewalled puts firewalled bytes back
 #   from a snapshot; nothing here restores. The nearest tree copy, self_mod_harness's inline
 #   copytree, copies the repo minus an ignore-pattern list for a sandboxed edit; this copies exactly
 #   the git-visible tree (ls-files -co --exclude-standard) so a copy's census equals an export's.

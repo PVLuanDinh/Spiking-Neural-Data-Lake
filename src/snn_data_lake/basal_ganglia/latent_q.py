@@ -39,7 +39,7 @@ DECISION-by-integration model (evidence_accumulation.py). It is the drop-in repl
 scalar q the reward-learning side already keeps; values(z) returns a dict keyed by action name with
 the same shape as the old q[unit] row, so it wires in without changing the selection stage.
 
-stdlib + numpy/torch allowed project-wide (uses random; dot/unit reused from substrate._mathutils), ASCII-only prints, deterministic
+stdlib + numpy/torch allowed project-wide (uses random; dot/unit reused from infra._mathutils), ASCII-only prints, deterministic
 (random.Random(seed) per instance -- identical seed => byte-identical weights).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.basal_ganglia.latent_q
@@ -47,7 +47,7 @@ stdlib + numpy/torch allowed project-wide (uses random; dot/unit reused from sub
 
 import random
 
-from snn_data_lake.substrate._mathutils import dot, unit
+from snn_data_lake.infra._mathutils import dot, unit
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

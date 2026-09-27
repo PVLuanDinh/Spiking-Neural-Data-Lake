@@ -84,7 +84,7 @@ registered by region in `REGIONS` (`src/snn_data_lake/__init__.py`).
 - The wiring between regions is `connectome.py`; the region map is `brain_atlas.py`.
 - Its ONE durable memory is an append-only lake of tagged records, `brain_lake.bin`.
 - Its drive is an always-on daemon, `substrate/learn_daemon.py`. The daemon's cockpit,
-  `substrate/cockpit.py`, is the brain's sensorimotor surface.
+  `infra/cockpit.py`, is the brain's sensorimotor surface.
 - Its body is an SO-101 arm simulated in MuJoCo. The real-servo path is held shut by a calibration gate.
 - The canonical composition is `Brain` → `LiveBrain` → `AutonomousArm`, built only through
   `cortex.brain.make_brain()`.

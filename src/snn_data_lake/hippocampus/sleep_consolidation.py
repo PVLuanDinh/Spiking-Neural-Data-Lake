@@ -67,8 +67,8 @@ from snn_data_lake.hippocampus.sleep_replay import (
     K,
     _overlap,
 )
+from snn_data_lake.infra._mathutils import mean
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
-from snn_data_lake.substrate._mathutils import mean
 
 # ---- the two skills = the proven overlapping assemblies from sleep_replay (B overwrites A) ----
 SKILL_A = [P_A0, P_A1]  # learned first

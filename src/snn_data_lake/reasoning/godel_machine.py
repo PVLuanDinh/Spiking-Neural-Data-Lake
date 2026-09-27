@@ -40,7 +40,7 @@ full worktree protocol on it (fast, touches nothing real); `attempt_on_repo` is 
 OPEN P0 WORK, recorded here rather than only in docs/POLICIES.md so it is visible at the site:
 `attempt_on_repo` (the real-repo adapter below) has ZERO call sites tree-wide -- re-verified
 2026-08-04 across src/, tests/, tools/ and run_selfchecks.py, including importlib / __import__ /
-getattr and string-name dispatch. The MODULE is imported live (substrate/self_mod_harness.py) and
+getattr and string-name dispatch. The MODULE is imported live (infra/self_mod_harness.py) and
 registered in run_selfchecks, so this is P3 shape 1 -- imported but never invoked -- not absence.
 P0 lists self-building code as an avenue and the avenue list is a BUILD LIST: the protocol below is
 proven on a hermetic repo by main(), and wiring it to the real repo is scheduled work, not a

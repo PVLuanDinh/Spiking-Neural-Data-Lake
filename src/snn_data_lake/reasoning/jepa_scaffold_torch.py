@@ -442,7 +442,7 @@ def main():
     import os
     import tempfile
 
-    from snn_data_lake.substrate.device import (
+    from snn_data_lake.infra.device import (
         enable,
         resolve_device,
     )  # reuse the shared cpu/cuda selector

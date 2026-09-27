@@ -45,7 +45,7 @@ P2 -- what already exists, checked before proposing promotion rather than after:
     owed was ported FIRST: the ignition VERDICT lives on
     `brainstem/autonomous_loop._workspace_broadcast` as `_ws_percept_ignited` (asserted in that
     module's own self-check -- safe-tick True / reflex-tick False, both halves reddenable --
-    exported by `substrate/brain_telemetry` and rendered by the cockpit beside `ignitions`); the
+    exported by `infra/brain_telemetry` and rendered by the cockpit beside `ignitions`); the
     tenant contract
     was fixed at 4b24c1da (submit-and-read -- a tenant of the one bus must not drive its clock;
     the measured 20/20 (content, hold) divergence, the sub-threshold 3/20, and the criterion's

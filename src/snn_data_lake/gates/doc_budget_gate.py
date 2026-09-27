@@ -54,7 +54,7 @@ import sys
 
 # distinct-from: reasoning/arc_diagnostic.py -- its "node budget" bounds how many GRAPH NODES a
 #   synthesis search may reach at a depth; this bounds WORDS in a document. distinct-from:
-#   basal_ganglia/r_stdp.py and substrate/region_wiring.py -- those count CPU WORKERS/THREADS to
+#   basal_ganglia/r_stdp.py and infra/region_wiring.py -- those count CPU WORKERS/THREADS to
 #   size parallelism. distinct-from: hippocampus/sleep_replay.py -- returns an experiment's measured
 #   numbers. distinct-from: cortex/laminar_local_readout.py -- constructs REDs for its OWN claims.
 #   All five were read; none measures documentation, and there is nothing to reuse either way.

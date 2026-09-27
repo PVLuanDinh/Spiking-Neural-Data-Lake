@@ -60,8 +60,8 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from snn_data_lake.brainstem.serial_arm import is_valid_command
-from snn_data_lake.substrate.brain_telemetry import snapshot, verify_contract
-from snn_data_lake.substrate.device import decisions
+from snn_data_lake.infra.brain_telemetry import snapshot, verify_contract
+from snn_data_lake.infra.device import decisions
 
 # The longest an allow-listed command token can be. Not a policy choice -- the allow-list itself is
 # the policy, and this only stops an unbounded string from being copied before it is rejected.
@@ -274,7 +274,7 @@ class Turns:
 
 def _geometry():
     """The anatomical layout, computed once. Hand-authored coordinates; REAL connectome edges."""
-    from snn_data_lake.substrate import brain_geometry
+    from snn_data_lake.infra import brain_geometry
 
     return brain_geometry.layout()
 
@@ -1416,7 +1416,7 @@ def main():
     # and record the SAME reason, so a probe built on width alone would compare two identical
     # values on CI and pass while proving nothing. The override path differs on every machine, so
     # the second probe pins `explicit=` instead.
-    from snn_data_lake.substrate.device import cuda_available, select
+    from snn_data_lake.infra.device import cuda_available, select
 
     def _served():
         _c, _b = _http_get(brain, "/api/all")

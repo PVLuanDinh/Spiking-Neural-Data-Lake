@@ -165,7 +165,7 @@ Refs: Oudeyer & Kaplan, "What is intrinsic motivation? A typology of computation
 "Learning and development in neural networks: the importance of starting small" (Cognition, 1993).
 
 Deps: math, random, cortex.lif_neuron.LIFNeuron,
-substrate._mathutils.mean (numpy/torch allowed project-wide); ASCII-only prints, deterministic (per-instance random.Random(seed);
+infra._mathutils.mean (numpy/torch allowed project-wide); ASCII-only prints, deterministic (per-instance random.Random(seed);
 LIF dynamics are deterministic; spike counts are integers).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.spiking_curiosity
@@ -175,7 +175,7 @@ import math
 import random
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
-from snn_data_lake.substrate._mathutils import mean
+from snn_data_lake.infra._mathutils import mean
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

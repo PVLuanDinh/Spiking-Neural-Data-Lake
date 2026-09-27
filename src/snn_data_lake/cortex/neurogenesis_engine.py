@@ -58,8 +58,8 @@ import torch
 
 from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.hippocampus.ng_snn import NGSNN
+from snn_data_lake.infra.device import crossover, decisions, select
 from snn_data_lake.sensorimotor.multimodal_encoder import encode_multimodal
-from snn_data_lake.substrate.device import crossover, decisions, select
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
@@ -160,7 +160,7 @@ class SyntheticPerceptStream:
         return feats, mode
 
     # distinct-from: cortex/brain.py -- Brain.tick() is the circadian iteration. distinct-from:
-    #   basal_ganglia/brain_native_selfbuild.py -- a one-time sidecar import. distinct-from:
+    #   infra/brain_native_selfbuild.py -- a one-time sidecar import. distinct-from:
     #   sensorimotor/arm_bridge.py -- reads a reward packet. distinct-from: brainstem/
     #   autonomous_loop.py -- step() is the arm's tick. distinct-from: sensorimotor/closed_loop.py
     #   -- drives raw signal lines through the stack. Phrase overlap only. All sites read.
@@ -444,7 +444,7 @@ class NeurogenesisSelfImprove:
         # "cuda if a card exists" -- decided by `torch.cuda.is_available()` at construction, before
         # anything knows how big the work is. This refit's element count is not a guess: it is
         # exactly `x_tr.numel()` (rows in the buffer x the 64-wide multimodal feature), so it is
-        # handed to `substrate.device.select`, which routes on the crossover THIS machine measured
+        # handed to `infra.device.select`, which routes on the crossover THIS machine measured
         # rather than on the card being plugged in.
         #
         # HONEST ABOUT TODAY'S EFFECT: with buffer_cap=1000 and 64 features the widest refit this
@@ -535,7 +535,7 @@ class NeurogenesisSelfImprove:
     # distinct-from: brainstem/autonomous_loop.py and cortex/brain.py -- their "grown units" are the
     #   arm's PROTOTYPE recruits (context->action, a Q-table over them), a different growth mechanism
     #   entirely; these are NG-SNN hidden units. Worth naming: the phrase means two things in this
-    #   tree. distinct-from: substrate/brain_geometry.py -- places this package's MODULES in 3D.
+    #   tree. distinct-from: infra/brain_geometry.py -- places this package's MODULES in 3D.
     #   distinct-from: substrate/home.py -- drops superseded lake records. All sites read.
     @property
     def placement(self):
@@ -812,7 +812,7 @@ class NeurogenesisSelfImprove:
 
     # distinct-from: reasoning/self_improve.py -- self_map() counts the brain's OWN graph nodes.
     #   distinct-from: cortex/growth_stop.py -- observed() is the gate's feed cursor.
-    #   distinct-from: basal_ganglia/brain_native_selfbuild.py -- ledger() counts de-hardcoded
+    #   distinct-from: infra/brain_native_selfbuild.py -- ledger() counts de-hardcoded
     #   constants. distinct-from: brainstem/autonomous_loop.py -- _pfc_bias() is a top-down
     #   action bias. distinct-from: brainstem/so101_arm.py -- trajectory_breach() is a droop
     #   check. Phrase overlap on 'how many' only; this counts the categories shown. Sites read.
@@ -1235,9 +1235,7 @@ def main():
     _feat = len(_mode_features(0, scfg["k_modes"]))
     _expect_n = (_route_rows - min(60, _route_rows // 3)) * _feat
     _rt = _route
-    assert _rt is not None, (
-        "the refit must route through substrate.device.select(); nothing recorded"
-    )
+    assert _rt is not None, "the refit must route through infra.device.select(); nothing recorded"
     assert _rt["n"] == _expect_n, (
         f"the routed width must be the fit tensor's own element count {_expect_n}, got {_rt['n']} -- "
         "a router given the wrong n decides the wrong thing while looking perfectly healthy"
@@ -1248,7 +1246,7 @@ def main():
         "that is availability routing wearing the router's clothes"
     )
     # That the answer FLIPS above the crossover is asserted where its red lives, in
-    # substrate/device.py's own self-check; repeating it here would be a second copy of one
+    # infra/device.py's own self-check; repeating it here would be a second copy of one
     # criterion, and the copy in the module that cannot break it is the one with no reachable red.
     print(
         f"routing: refit n={_rt['n']} -> {_rt['device']} ({_rt['why']}); crossover {_xo}. "

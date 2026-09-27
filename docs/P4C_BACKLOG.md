@@ -300,7 +300,7 @@ a dedicated criterion at `:1384`. Same for `train_of_thought` (4), `rpm_solver` 
 `spike_chat_lake` (1), `developmental_loop_brain` (1 -- key now `instruments/developmental_loop_brain.py`, co-edited at its 2026-08-12 promotion), and `KNOWN_READERS` for two of them. **Deleting
 one of those files without editing `p6_gate.py` in the same commit reds the build.**
 
-Also non-obvious, and each has actually fired: `substrate/brain_geometry.py:170-179` globs
+Also non-obvious, and each has actually fired: `infra/brain_geometry.py:170-179` globs
 `reasoning/*.py` into an RNG draw order (a deletion shifts module coordinates in the cockpit's 3D map);
 `tools/doc_command_guard.py` reddens if a documented `python -m` command names a deleted module;
 `tools/dependency_ledger.py` reddens if a deletion strands the last importer of a declared

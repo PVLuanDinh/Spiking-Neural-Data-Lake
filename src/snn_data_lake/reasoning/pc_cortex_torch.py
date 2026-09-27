@@ -57,7 +57,7 @@ import time
 
 import torch
 
-from snn_data_lake.substrate.device import enable, resolve_device  # noqa: E402
+from snn_data_lake.infra.device import enable, resolve_device  # noqa: E402
 
 THETA = 0.5
 LEAK = 0.02

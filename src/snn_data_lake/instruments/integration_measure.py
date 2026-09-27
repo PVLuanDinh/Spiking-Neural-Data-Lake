@@ -123,7 +123,7 @@ def _longest_previous_factor(s):
     """LPF[p] for every position p of `s`: the length of the longest prefix of s[p:] that also
     starts at some q < p (the occurrence may overlap p). Three passes, each linear or near-linear:
     the suffix array by prefix doubling -- the sort rounds are torch ops on the device
-    `substrate.device.select` routes a width-len(s) workload to (CUDA above the machine's measured
+    `infra.device.select` routes a width-len(s) workload to (CUDA above the machine's measured
     crossover, CPU below it or without a card; the array is the same on either, because every
     suffix of a string is distinct so its suffix array is unique); the LCP of each adjacent pair by
     binary lifting over the doubling ranks (two suffixes share rank_k iff their first 2^k
@@ -132,7 +132,7 @@ def _longest_previous_factor(s):
     import numpy as np
     import torch
 
-    from snn_data_lake.substrate.device import select
+    from snn_data_lake.infra.device import select
 
     n = len(s)
     dev = select("lz76", n)

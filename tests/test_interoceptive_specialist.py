@@ -274,7 +274,7 @@ def test_the_telemetry_poll_does_not_charge_the_listener_term():
     only 'consumer' on every sleep tick. Polled and unpolled runs must now be byte-equal in both
     the listener-use dict and the salience trace, warm-up window included."""
     from snn_data_lake.cortex.brain import make_brain
-    from snn_data_lake.substrate.brain_telemetry import snapshot
+    from snn_data_lake.infra.brain_telemetry import snapshot
 
     def run(poll):
         b = make_brain(seed=0, persist=False)

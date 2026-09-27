@@ -165,7 +165,7 @@ circuit (action_gating.py's Go/NoGo) nor the DECISION-by-integration model (evid
 values(z) returns a dict keyed by action name, the same shape as the tabular q[unit] row and LatentQ's
 values(z), so it wires in without touching the selection stage.
 
-stdlib + numpy/torch allowed project-wide (uses random; math.sqrt for the fan-in init; dot reused from substrate._mathutils), ASCII-only
+stdlib + numpy/torch allowed project-wide (uses random; math.sqrt for the fan-in init; dot reused from infra._mathutils), ASCII-only
 prints, deterministic (random.Random(seed) per instance -- identical seed => byte-identical weights).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.basal_ganglia.mlp_q
@@ -174,7 +174,7 @@ prints, deterministic (random.Random(seed) per instance -- identical seed => byt
 import math
 import random
 
-from snn_data_lake.substrate._mathutils import dot
+from snn_data_lake.infra._mathutils import dot
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
@@ -344,7 +344,7 @@ def _make_contexts(n, latent_dim, rule, seed):
     for _ in range(n):
         v = [rng.gauss(0.0, 1.0) for _ in range(latent_dim)]
         nrm = math.sqrt(sum(c * c for c in v)) or 1.0
-        z = [c / nrm for c in v]  # L2-normalize -> unit vector (like substrate._mathutils.unit)
+        z = [c / nrm for c in v]  # L2-normalize -> unit vector (like infra._mathutils.unit)
         out.append((z, rule(z)))
     return out
 

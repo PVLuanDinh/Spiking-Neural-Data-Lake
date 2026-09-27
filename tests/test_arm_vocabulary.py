@@ -179,7 +179,7 @@ def test_the_retired_demo_arm_cannot_be_constructed():
     """demo.py kept a private 2-link arm with its own E-STOP. Constructing it must fail loudly."""
     import pytest as _pytest
 
-    from snn_data_lake.substrate import demo
+    from snn_data_lake.infra import demo
 
     assert not hasattr(demo, "Arm"), "the private demo arm is back under its old name"
     with _pytest.raises(RuntimeError, match="exactly one arm"):

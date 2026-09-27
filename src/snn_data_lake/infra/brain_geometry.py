@@ -54,7 +54,7 @@ DETERMINISM (the draw order is load-bearing)
     TRAIN_TIER: G8's engine-function packages are code layout, not anatomy, so the drawn brain and
     every coordinate stay exactly as they were while modules move between packages.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.brain_geometry
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.infra.brain_geometry
 """
 
 import glob
@@ -415,7 +415,8 @@ def layout():
 # ================================================================================================
 # The first module drawn, pinned. This is the SEED CONTRACT: it fails if the seed, the placement
 # rules, or the head of the module census changes -- any of which silently moves every coordinate.
-_SEED_PIN_KEY = "sensorimotor/rank_order_coding"
+# G8 M4: this is a frozen anatomical label, not the module's current file path.
+_SEED_PIN_KEY = "cortex/rank_order_coding"
 _SEED_PIN_XYZ = (0.2656447451741262, 0.44153862227162194, 0.5522876185510223)
 
 

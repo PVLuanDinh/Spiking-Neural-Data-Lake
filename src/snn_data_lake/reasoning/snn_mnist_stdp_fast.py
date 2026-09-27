@@ -37,7 +37,7 @@ from snn_data_lake.instruments.snn_mnist_stdp import (
     THETA_PLUS,
     THETA_DECAY,
 )
-from snn_data_lake.substrate.device import resolve_device, enable
+from snn_data_lake.infra.device import resolve_device, enable
 
 # Determinism: `torch.manual_seed(0)` used to run HERE, at MODULE SCOPE, so importing this module
 # (`snn_mnist_stdp_genn.py` imports its FAST_* constants) re-seeded the process-global torch RNG.

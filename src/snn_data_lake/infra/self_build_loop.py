@@ -34,15 +34,15 @@ NORD_SELFMOD=0 so the gate cannot recurse into another self-build -- NOT pytest 
 check, whichever an earlier version of this docstring claimed. The self-check passes a fast
 deterministic fake, so promote / rollback / firewall logic is fully testable without a long gate.
 
-Reuses substrate/self_mod_harness (sandbox pre-verify + the _PROTECTED set). Proposals come from
-basal_ganglia/brain_native_selfbuild (BrainNativeSelfBuildProposer.propose, reached through
+Reuses infra/self_mod_harness (sandbox pre-verify + the _PROTECTED set). Proposals come from
+infra/brain_native_selfbuild (BrainNativeSelfBuildProposer.propose, reached through
 Brain.propose_improvements) as {target, edit_fn, id, param, rationale}; reasoning/improvement_proposer,
 which this docstring used to name as the supplier, is RETIRED and supplies nothing.
 
 (Module paths corrected 2026-08-04: this docstring said `reasoning/self_mod_harness` and
 `reasoning/brain_native_selfbuild` in four places. Neither file exists at those paths -- the harness
-is `substrate/self_mod_harness.py` (which is what line 55 below actually imports) and the proposer is
-`basal_ganglia/brain_native_selfbuild.py`. The paths went stale on the region-reorganisation wave and
+is `infra/self_mod_harness.py` (which is what line 55 below actually imports) and the proposer is
+`infra/brain_native_selfbuild.py`. The paths went stale on the region-reorganisation wave and
 nothing re-read them, which is the exact hazard the DERIVED `SELF_BUILD_LOOP_REL` above exists to
 prevent in CODE -- and prose gets no such derivation, so it has to be re-checked by hand.)
 
@@ -59,7 +59,7 @@ cannot leave a real self-build armed for the rest of the process.
 import os
 import zlib
 
-from snn_data_lake.substrate.self_mod_harness import _PROTECTED, SelfModHarness, _repo_root
+from snn_data_lake.infra.self_mod_harness import _PROTECTED, SelfModHarness, _repo_root
 
 # Repo root comes from the sibling's ANCHORED derivation, not a local depth count.
 #

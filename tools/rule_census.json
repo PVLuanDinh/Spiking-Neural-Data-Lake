@@ -2,7 +2,7 @@
  "_meta": {
   "generated_by": "PYTHONPATH=src python -m snn_data_lake.plasticity.rule_composer --regen-census",
   "invisible_to_surface": [
-   "basal_ganglia/brain_native_selfbuild.py (T050: expressible; no GRADIENT_CLAIM declared)"
+   "infra/brain_native_selfbuild.py (T050: expressible; no GRADIENT_CLAIM declared)"
   ],
   "note": "dispositions per T050's expressibility categories; UNDISPOSITIONED is the honest day-one state for unadjudicated LOCAL rules -- the WAVE (T051c-wave) fills rows; regen_rule_census enforces per-row monotonicity through the sanctioned edit path, rule_composer 1e polices membership vs the live census, and the ADVANCE direction (whether a disposition's text is honest) is review-grade, said plainly",
   "ratchet_baseline": {

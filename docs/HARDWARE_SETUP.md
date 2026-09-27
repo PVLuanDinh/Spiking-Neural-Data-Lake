@@ -108,7 +108,7 @@ void loop(){
 git clone https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake.git
 cd Spiking-Neural-Data-Lake
 pip install -e ".[arm]"                            # package + pyserial for the live path
-python -m snn_data_lake.substrate.demo                       # sanity: must print the loop (Python 3.11+)
+python -m snn_data_lake.infra.demo                       # sanity: must print the loop (Python 3.11+)
 [System.IO.Ports.SerialPort]::getportnames()       # find your ESP32 port, e.g. COM8
 ```
 

@@ -32,7 +32,7 @@ Determinism & style invariants (per CLAUDE.md):
   * per-instance random.Random(seed); the projection is frozen at __init__ (no import-time
     or global RNG, no wall-clock).
   * bucket id via zlib.crc32 of the sign-code bytes -- NEVER the builtin hash().
-  * imports math, random, zlib, substrate._mathutils.dot (numpy/torch allowed project-wide); ASCII-only prints.
+  * imports math, random, zlib, infra._mathutils.dot (numpy/torch allowed project-wide); ASCII-only prints.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.generalizing_novelty
 """
@@ -41,7 +41,7 @@ import math
 import random
 import zlib
 
-from snn_data_lake.substrate._mathutils import dot
+from snn_data_lake.infra._mathutils import dot
 
 
 class GeneralizingNovelty:

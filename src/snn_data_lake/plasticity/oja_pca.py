@@ -18,7 +18,7 @@ import random
 
 import numpy as np
 
-from snn_data_lake.substrate._mathutils import dot, unit
+from snn_data_lake.infra._mathutils import dot, unit
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

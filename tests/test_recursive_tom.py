@@ -406,7 +406,7 @@ def test_the_live_false_belief_list_reaches_state_with_both_c5_sentences_beside_
     the world with the user absent, so the user's first-order belief and the user's nested model of
     the brain both go stale."""
     from snn_data_lake.gates.conclusion_protocol import CONCLUSION
-    from snn_data_lake.substrate import brain_telemetry
+    from snn_data_lake.infra import brain_telemetry
 
     # The two sentences are read OFF THE ROW, never retyped here: a provenance line that
     # paraphrases them is a second copy that can drift.

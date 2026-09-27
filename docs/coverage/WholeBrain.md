@@ -24,7 +24,7 @@ coordination, homeostasis, self-improvement. The roster below is grouped in that
 | gated_self_modification | 10 | src/snn_data_lake/cortex/brain.py:3141#_reason_chunk_mastered; src/snn_data_lake/cortex/brain.py:3190#_gate | - | opus-5 WholeBrain auditor / live run, _selfbuild_last after 2 nights | 2026-07-30 |
 | knowledge_acquisition_web_ingest | 12 | src/snn_data_lake/reasoning/autonomous_enrich.py:41#module; src/snn_data_lake/reasoning/spike_chat_lake.py:2259#boot | - | opus-5 WholeBrain auditor / caller grep over brain.py + cockpit.py | 2026-07-30 |
 | brain_native_selfbuild_proposer | 5 | src/snn_data_lake/cortex/brain.py:1958#propose_improvements | - | opus-5 WholeBrain auditor / live run, propose_improvements(budget=6) | 2026-07-30 |
-| region_faculty_charge_registry | 0 | src/snn_data_lake/substrate/region_wiring.py:77#module; src/snn_data_lake/substrate/region_wiring.py:457#charge_all | - | opus-5 WholeBrain auditor / live run, region_wiring.wired()/coverage() | 2026-07-30 |
+| region_faculty_charge_registry | 0 | src/snn_data_lake/infra/region_wiring.py:77#module; src/snn_data_lake/infra/region_wiring.py:457#charge_all | - | opus-5 WholeBrain auditor / live run, region_wiring.wired()/coverage() | 2026-07-30 |
 | godel_machine_selfbuild | 0 | src/snn_data_lake/reasoning/godel_machine.py:172#attempt_on_repo | - | opus-5 WholeBrain auditor / repo-wide call-site search | 2026-07-30 |
 
 **Mean over the 17 rows: 374 / 17 = 22.0.** **Zero faculties above 40.** Zero UNSCORED.
@@ -289,7 +289,7 @@ matches, and no caller persists `grown_units` either. Growth is real and does no
 
 `knowledge_acquisition_web_ingest` is **12**. P0 names knowledge acquisition as a self-improvement
 avenue, so omitting it would understate the category, but it is not on the brain's path: neither
-`cortex/brain.py` nor `substrate/cockpit.py` references `spike_chat_lake` or the ingest gate at all.
+`cortex/brain.py` nor `infra/cockpit.py` references `spike_chat_lake` or the ingest gate at all.
 Its live entrypoints are separate processes (`autonomous_enrich.py --forever`) and offline corpus
 trainers. The sleep tick does write durable knowledge (schema induction, `brain.py:2420-2448`), but
 that is internal consolidation of episodes the brain already had, not acquisition, and it belongs to
@@ -395,7 +395,7 @@ the tool that produced the wrong answer was a shell grep whose output was being 
 
 ## Capability inventory (Policy 2)
 
-- `substrate/region_wiring.py` -- the per-cycle charge-adapter registry. Unique capability: a plug
+- `infra/region_wiring.py` -- the per-cycle charge-adapter registry. Unique capability: a plug
   point that adds a faculty to the daemon loop without editing the daemon. Currently zero registrations.
 - `thalamus/connectome_router.py` -- signed, delayed LIF spike propagation over the `connectome.py`
   schematic; reverberation over signed loops. The only module that makes the wiring graph dynamic.

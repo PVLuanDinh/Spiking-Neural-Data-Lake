@@ -10,7 +10,7 @@ import re
 import pytest
 
 from snn_data_lake.gates import conclusion_protocol
-from snn_data_lake.substrate import brain_telemetry
+from snn_data_lake.infra import brain_telemetry
 
 # A row shaped like a live one: two sentences, a dissociation input, a reading, a surface symbol.
 CHARGED = (
@@ -143,7 +143,7 @@ def test_the_consciousness_plate_ships_outside_the_fixed_height_strip_and_wraps(
     source string and a laid-out character are different claims, and this file can only make the
     first one. Mutation `nowrap` (`.c5{white-space:nowrap`): red.
     """
-    from snn_data_lake.substrate import cockpit
+    from snn_data_lake.infra import cockpit
 
     html = cockpit.COCKPIT_HTML
     assert ".c5{white-space:normal" in html
@@ -168,7 +168,7 @@ def test_the_widgets_column_scrolls_and_every_plate_is_its_own_content_height():
     rendered measurement at two widths (tests/instruments/t090_measure_plate.js). Mutations, each
     red: `no_scroll`, `no_gutter`, `shrinkable`, `reorder`.
     """
-    from snn_data_lake.substrate import cockpit
+    from snn_data_lake.infra import cockpit
 
     html = cockpit.COCKPIT_HTML
     rule = html.partition("#widgets{")[2].partition("}")[0]

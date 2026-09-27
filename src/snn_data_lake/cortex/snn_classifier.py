@@ -23,7 +23,7 @@ bit-flip noise. Synthetic + self-contained so it trains offline in seconds.
 
 import random
 
-from snn_data_lake.substrate._mathutils import softmax
+from snn_data_lake.infra._mathutils import softmax
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

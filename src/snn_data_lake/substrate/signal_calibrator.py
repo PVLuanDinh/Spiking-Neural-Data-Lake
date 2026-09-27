@@ -49,7 +49,7 @@ for the next person: every one of the three consumer sites sits inside a bare `e
 ERROR -- it silently stops persisting, `n` resets to 0 every boot, the live `r["n"] >= 50` guard then
 holds `self._lc.salience_th` at the frozen module default, and every dashboard reads healthy. The five
 files move together or not at all: this one, `cortex/brain.py` (load at construction, consume on the
-wake tick, save in `close()`), `basal_ganglia/brain_native_selfbuild.py`
+wake tick, save in `close()`), `infra/brain_native_selfbuild.py`
 (`ThresholdRecalibrationSource`), `cortex/metacognitive_monitor.py` (constructor only, no persistence)
 and `tests/test_signal_calibrator_lake.py`, which did not exist before this change and is what makes the
 silence audible.

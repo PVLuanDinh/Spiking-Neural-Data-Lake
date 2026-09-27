@@ -35,8 +35,8 @@ import pytest
 
 np = pytest.importorskip("numpy")
 
+from snn_data_lake.infra import drift_monitor as DM  # noqa: E402
 from snn_data_lake.instruments import prior_drift_harness as H  # noqa: E402
-from snn_data_lake.substrate import drift_monitor as DM  # noqa: E402
 
 
 # ---- P2: the PSI formula lives ONCE ---------------------------------------------------------

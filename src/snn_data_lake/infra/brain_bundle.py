@@ -21,7 +21,7 @@ Format (a JSON dict tagged "snn_brain_bundle/1"):
 
 Per-skill spiking inference is DELEGATED to snn_data_lake.sensorimotor.trained_brain -- never reimplemented here.
 
-  python -m snn_data_lake.substrate.brain_bundle        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.infra.brain_bundle        # (also run by run_selfchecks.py)
 """
 
 import json

@@ -115,6 +115,7 @@ import zlib
 from pathlib import Path
 
 from snn_data_lake.brainstem import arm_config
+from snn_data_lake.infra._mathutils import clamp01, pearson, q95
 from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
 from snn_data_lake.sensorimotor.afferent_boundary import proprioception_delta
 from snn_data_lake.sensorimotor.efferent_boundary import (
@@ -122,7 +123,6 @@ from snn_data_lake.sensorimotor.efferent_boundary import (
     intended_deltas,
     proprioception_deltas,
 )
-from snn_data_lake.substrate._mathutils import clamp01, pearson, q95
 
 __version__ = "0.1.0"
 
@@ -352,7 +352,7 @@ class AgencyMonitor:
 # meaningless action/qmax/reward triple), a cause-blind twin to read the coupling against,
 # and the in-vivo dissociation.
 #
-# distinct-from: substrate/brain_telemetry.py -- the ONE telemetry CONTRACT, a live
+# distinct-from: infra/brain_telemetry.py -- the ONE telemetry CONTRACT, a live
 #   per-panel view of the brain's own keys. These functions read a finished RECORDING of
 #   envelope passages offline and publish nothing. Read.
 # distinct-from: instruments/prior_drift_harness.py -- a scratch-POPULATION drift harness whose
