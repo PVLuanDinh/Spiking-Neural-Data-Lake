@@ -1526,7 +1526,7 @@ def _measure_reroute_charge(frames=None, ignite_at=None):
                   ("graded", "reentrant_workspace.association_level") delivery policy DECLARES.
     A run that ignites but never grades is refused -- that is the association pinned, and the
     record would then certify the base gain rather than the learned support."""
-    from snn_data_lake.substrate.port_charge_probe import replay_twice
+    from snn_data_lake.instruments.port_charge_probe import replay_twice
 
     if frames is None:
         frames, ignite_at = _reroute_frames()
@@ -1545,7 +1545,7 @@ def _measure_reroute_charge(frames=None, ignite_at=None):
 def record_charge():
     """Measure the A/B and record the attribution via THE one writer. REFUSES a non-diverged,
     non-responding or non-GRADED run -- evidence is a measurement, never a declaration."""
-    from snn_data_lake.substrate.port_charge_probe import record_attribution
+    from snn_data_lake.instruments.port_charge_probe import record_attribution
 
     live, pinned_out, reads, responded, graded = _measure_reroute_charge()
     if live == pinned_out or not responded or not graded:

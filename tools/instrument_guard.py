@@ -40,7 +40,7 @@ The counted run over `src/`, before any of it landed:
     CWD-DEPENDENT PATH     0
     MODULE-SCOPE CHDIR     0
     MODULE-SCOPE SEED      1  -> reasoning/arc_agi/play.py, `random.seed(0)` under `__main__`
-    CONSTRUCTOR SEED       3  -> cortex/recognizer_bank.py, hippocampus/developmental_loop_brain.py,
+    CONSTRUCTOR SEED       3  -> cortex/recognizer_bank.py, instruments/developmental_loop_brain.py,
                                  reasoning/_loop_common.py
 
 The 6 are why `src/` could not simply be appended to `TIERS`: `make_brain()` lives in the module that

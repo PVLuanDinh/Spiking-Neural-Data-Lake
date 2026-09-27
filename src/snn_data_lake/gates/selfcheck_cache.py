@@ -775,7 +775,7 @@ def self_check() -> int:
     # distinct-from: reasoning/analogy_bench.py -- its controls() are NEGATIVE ANALOGY
     #   cases a structure mapper must fail to recover; these are cache-KEY invariance
     #   checks (a key that must not move). Read.
-    # distinct-from: substrate/port_charge_probe.py -- margin_frozen() is the charge
+    # distinct-from: instruments/port_charge_probe.py -- margin_frozen() is the charge
     #   probe's not-consuming tell over arbitrate margins; no relation to hash keys. Read.
     import shutil
     import tempfile

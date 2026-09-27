@@ -77,7 +77,7 @@ workload; it is not a learned robotics benchmark.
 
 ### 3. The existing efficiency headline is baseline-sensitive
 
-The [energy module](../src/snn_data_lake/substrate/energy.py) explicitly reports both comparisons:
+The [energy module](../src/snn_data_lake/instruments/energy.py) explicitly reports both comparisons:
 
 | Comparison | Counts or modeled energy | Interpretation |
 |---|---|---|

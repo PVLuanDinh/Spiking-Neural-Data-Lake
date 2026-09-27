@@ -165,7 +165,7 @@ def _measure_edge_charge(vary):
     (port_charge_probe.interoceptive_challenge_frames) -- importing the producers from
     here put two undeclared region pairs on the import graph and the p6 ratchet went red;
     the declared tract relays through thalamus, and code was not allowed to shortcut it."""
-    from snn_data_lake.substrate.port_charge_probe import (
+    from snn_data_lake.instruments.port_charge_probe import (
         interoceptive_challenge_frames,
         replay_twice,
     )
@@ -376,7 +376,7 @@ def main() -> int:
         )
         return 1
     # ---- THE BODY WIRE IS CHARGED, per edge, measured (specs/022 T026) -----------------
-    from snn_data_lake.substrate.port_charge_probe import read_attribution
+    from snn_data_lake.instruments.port_charge_probe import read_attribution
 
     for edge, vary in ((RELAY_EDGE, "arousal"), (DRIVES_EDGE, "drives")):
         live, pinned_out, reads, responded = _measure_edge_charge(vary)
@@ -428,7 +428,7 @@ def main() -> int:
 def record_charge():
     """Measure both per-edge A/Bs and record their attributions via THE one writer
     (port_charge_probe.record_attribution). REFUSES a non-diverged or non-responding run."""
-    from snn_data_lake.substrate.port_charge_probe import record_attribution
+    from snn_data_lake.instruments.port_charge_probe import record_attribution
 
     for edge, vary in ((RELAY_EDGE, "arousal"), (DRIVES_EDGE, "drives")):
         live, pinned_out, reads, responded = _measure_edge_charge(vary)

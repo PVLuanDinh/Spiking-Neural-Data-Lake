@@ -75,7 +75,7 @@ answered -- a module that rewrites its own premise destroys the record of what i
 T063 LANDED AND ITS ANSWER WAS NO. The campaign read the PLANTED control MET at t = +9.2601, so
 the instrument is not blind and the verdict is read; conjunct (b) then read NOT MET at
 t = -0.2277. Under 2.9's clause for that combination, `population()` LOSES its "prior" role and
-is retained ONLY as `cortex/prior_drift_harness`'s FIXTURE -- the population an instrument
+is retained ONLY as `instruments/prior_drift_harness`'s FIXTURE -- the population an instrument
 constructs and scores -- while the eight gates, the artifact and `cortical_prior` remain
 REFERENCE DATA and are untouched. The reading is BOUNDED and this bound is 2.2's own: ONE task
 (K = 8 drive classes decoded from a 4-dimensional projection) at the ONE capacity the guard
@@ -1012,7 +1012,7 @@ def _disclose(edges, sign_of, soma_to_soma, pre_hits, pre_non_neuronal):
 # =============================================================================================
 # The ingest
 # =============================================================================================
-# distinct-from: substrate/neuro_chip_stream.py::NeuroChipStream.add_core -- its "shard" is a
+# distinct-from: instruments/neuro_chip_stream.py::NeuroChipStream.add_core -- its "shard" is a
 #   neuromorphic CORE's LIF state written to disk by this brain; this one is a read-only tally of
 #   one Avro object from an external release, and nothing here is written or persisted. Site read
 #   2026-09-09; the guard matched on the word "shard".
@@ -2142,7 +2142,7 @@ def _run_ingest(argv):
     return 0
 
 
-# distinct-from: substrate/port_charge_probe.py::record_attribution -- THE one writer for
+# distinct-from: instruments/port_charge_probe.py::record_attribution -- THE one writer for
 #   tools/region_charge_evidence.json, and the CLOSEST relative here: same read-modify-write
 #   discipline, for the same reason ("one registrant's regeneration can never delete another's").
 #   Not reusable: it is hard-wired to that path and to an (edge, diverged, measured, provenance)

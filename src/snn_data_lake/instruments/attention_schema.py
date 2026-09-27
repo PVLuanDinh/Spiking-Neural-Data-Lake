@@ -30,9 +30,9 @@ ACS", and SYNTHESIS.md :65 keeps G3/G4's stop/void wording intact.
       reading is VOID, not weakened.
 
 WHAT THIS MODULE REUSES rather than rebuilds (P2; checked with graph-exists 2026-09-15):
-  * `substrate/paired_contrast` -- `contrast` and `T_BAR = 1.895`, THE seed-paired statistic with
+  * `instruments/paired_contrast` -- `contrast` and `T_BAR = 1.895`, THE seed-paired statistic with
     its exact sign-flip FPR. Imported AT MODULE LEVEL and never through
-    `cortex/prior_drift_harness`: the harness is an EXEMPT instrument and a live import of it
+    `instruments/prior_drift_harness`: the harness is an EXEMPT instrument and a live import of it
     stales five dormancy rows (T077 2.10, which is why the statistic was lifted in the first place).
   * `cortex/metacognitive_monitor` -- the SHAPE of `t077_record_brain` (a scratch brain under
     `throwaway_home()`, per-tick rows, an INSTANCE's method wrapped to capture what it is fed and
@@ -78,8 +78,8 @@ INSIDE the call, so importing this module costs no torch; the decode itself is i
 CUDA by seed and the tests run it on CPU. ASCII-only prints (Windows cp1252). Deterministic:
 `random.Random(seed)` per call, `zlib.crc32` for persisted seeds, never the builtin `hash()`.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.attention_schema
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.attention_schema --t078-campaign
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.attention_schema
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.attention_schema --t078-campaign
 """
 
 import hashlib
@@ -93,8 +93,8 @@ import zlib
 from collections import Counter
 from pathlib import Path
 
+from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
 from snn_data_lake.substrate._mathutils import q95
-from snn_data_lake.substrate.paired_contrast import T_BAR, contrast
 from snn_data_lake.substrate.report_channel import snapshot as _report_snapshot
 
 # distinct-from: cortex/metacognitive_monitor.py::track_error -- a TYPE-2 AUROC over one
@@ -102,12 +102,12 @@ from snn_data_lake.substrate.report_channel import snapshot as _report_snapshot
 #   INFORMATION of TWO discrete streams against a permutation floor: a different statistic
 #   answering a different question (does the attention state predict the next action, not does
 #   confidence track error). Its q95 CONVENTION is reused verbatim; its scorer is not.
-# distinct-from: cortex/integration_measure.py::source_entropy -- the Shannon entropy of ONE
+# distinct-from: instruments/integration_measure.py::source_entropy -- the Shannon entropy of ONE
 #   binary stream, taking a binary STRING; `mi_bits` estimates a JOINT quantity over two discrete
 #   streams. CORRECTED 2026-09-15 (the panel fold): this block used to assert "the binary entropy
 #   itself is IMPORTED from there rather than re-derived (P2)", and the module docstring listed
 #   `source_entropy` under WHAT THIS MODULE REUSES. Neither was true. This module's only non-stdlib
-#   imports are `substrate/paired_contrast` and `substrate/report_channel`, and it computes NO
+#   imports are `instruments/paired_contrast` and `substrate/report_channel`, and it computes NO
 #   entropy term at all -- `mi_bits` hands Counters straight to `_mi_from_counts`, whose whole body
 #   is the joint-over-marginals log2 sum. So nothing is duplicated and P2 owes no merge here; the
 #   reuse was declared and never performed, which the fold records as a deviation from 1.6.
@@ -237,7 +237,7 @@ assert not (set(U_FIELDS) & set(U_FORBIDDEN)), (
 #   moves a pinned T077 number; and `_p95_of` must keep its `sorted(xs)` copy, because an
 #   in-place-sorting helper would reorder the list `AppendBudget._recent` holds as a rolling window,
 #   which `bar()` passes directly and `end_tick` appends to and trims BY POSITION.
-# distinct-from: thalamus/ignition_instrument.py::_permutation_null -- the NEAREST relative of
+# distinct-from: instruments/ignition_instrument.py::_permutation_null -- the NEAREST relative of
 #   `decode_heldout`'s band, and named here because the line above used to claim h01_ingest was the
 #   tree's only other permutation bar. READ: it REFITS the logistic from scratch on every shuffle
 #   and reads per-point logloss on the SAME points (in-sample), against a strict-exceedance
@@ -1146,7 +1146,7 @@ def _line(c):
     return f"{c.name}: {verdict}{deg} t={c.t:.4f} FPR={c.fpr}"
 
 
-# distinct-from: substrate/paired_contrast.py::contrast -- decides MET/degenerate over a list of
+# distinct-from: instruments/paired_contrast.py::contrast -- decides MET/degenerate over a list of
 #   differences it is HANDED, and is the function this one calls. It has no notion of a reading, a
 #   readability or a refusal, and cannot: by the time diffs reach it the fabrication has happened.
 #   This is the guard in front of it -- whether a contrast may be BUILT at all. Read, imported,
@@ -1191,7 +1191,7 @@ def _reported_mi(name, key, seeds, ss):
 #   monitor's five inputs over an intact and a LESIONED arm plus a chat arm, and scores a type-2
 #   AUROC. This one records the ATTENTION state over ONE arm (Part I has no lesion), scores an MI
 #   floor and a decoder band, and decides a STOP/VOID gate. Different instrument, different
-#   conjuncts, different pin; the `contrast` they share is IMPORTED from substrate/paired_contrast
+#   conjuncts, different pin; the `contrast` they share is IMPORTED from instruments/paired_contrast
 #   by both, which is the single mechanism.
 # distinct-from: gates/policy_manifest.py::execute -- runs a gate SUBPROCESS and maps its exit
 #   code to CANNOT_RUN / FAIL. Read: no subprocess here, and a REFUSED is decided from a reading,
@@ -1419,7 +1419,7 @@ RED_LINES = {
 #   over an MI floor, a decoder band and a control vector. Same shape, different instrument,
 #   different reds, no shared state -- one self-check per module is the tree's own convention, not
 #   a second mechanism.
-# distinct-from: substrate/paired_contrast.py::main -- the reds of the STATISTIC (it must be able
+# distinct-from: instruments/paired_contrast.py::main -- the reds of the STATISTIC (it must be able
 #   to say NOT MET, its FPR must be exact). Read; that module is IMPORTED here, never re-checked.
 # distinct-from: thalamus/gwt_deep.py::_reds -- constructs the input that makes each BINDING
 #   criterion fail. distinct-from: gates/selfcheck_cache.py::self_check -- cache key-invariance

@@ -81,7 +81,7 @@ sane baseline on a small subset -- the mechanisms, not paper-scale numbers, are
 the deliverable.
 
 Run (defaults finish a smoke run in a few minutes on GPU):
-    NORD_GPU=1 PYTHONPATH=src ../.venv-cu128/Scripts/python -m snn_data_lake.cortex.deep_stdp_latency
+    NORD_GPU=1 PYTHONPATH=src ../.venv-cu128/Scripts/python -m snn_data_lake.instruments.deep_stdp_latency
 Scale knobs: NORD_C NORD_M NORD_TRAIN NORD_TEST NORD_GPU NORD_T
 Calibration knobs (optional): NORD_L1_EPOCHS NORD_CTHRESH NORD_KWINNER NORD_RINH
                               NORD_APLUS NORD_AMINUS
@@ -94,15 +94,15 @@ import os
 import torch
 import torch.nn.functional as F
 
-from snn_data_lake.plasticity.deep_stdp import (
+from snn_data_lake.instruments.deep_stdp import (
     OneLayerNet,
     assign_labels,
     evaluate,
 )
-from snn_data_lake.plasticity.deep_stdp import (
+from snn_data_lake.instruments.deep_stdp import (
     TwoLayerNet as _DeepTwoLayerNet,  # merged 2026-08-16; aliased at the old name below
 )
-from snn_data_lake.plasticity.snn_mnist_stdp import load_mnist
+from snn_data_lake.instruments.snn_mnist_stdp import load_mnist
 from snn_data_lake.substrate.device import enable, resolve_device
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.

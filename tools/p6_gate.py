@@ -291,7 +291,7 @@ KNOWN_WRITERS = {
     # relpath co-edited 2026-08-12 with the module's promotion (#10 lane 4e) -- the key is a
     # POSIX relpath under src/snn_data_lake/, so the move alone would have made `missing` fire
     # with "known writer module(s) produced ZERO writes".
-    "hippocampus/developmental_loop_brain.py": 1,
+    "instruments/developmental_loop_brain.py": 1,
 }
 KNOWN_READERS = {
     "thalamus/global_workspace.py": 3,
@@ -338,7 +338,7 @@ BASELINE = {
     # is NOT evidence for this ratchet; corrected at the same day's review pass).
     #
     # RAISED 6 -> 7 on 2026-09-16 (specs/022 T081), and per this gate's own rule a raise is an
-    # ADMISSION, so here it is: cortex/report_order_probe.py constructs a private GlobalWorkspace
+    # ADMISSION, so here it is: instruments/report_order_probe.py constructs a private GlobalWorkspace
     # SUBJECT (`t081_constructed_workspace`) for its reds R1-R6 -- the pre-registration
     # (evidence/t081-report-order.md 2.4, 2.9 step 4) requires the reds to run on a constructed
     # workspace IN-FILE, and nothing else reads that subject BY DESIGN: it is a measurement
@@ -350,7 +350,7 @@ BASELINE = {
     # private instance: a real faculty holding its own bus lands on 8 and reddens.
     "private_instance_modules": 7,
     # RAISED 6 -> 7 on 2026-08-21 (specs/022 T033), and per this gate's own rule a raise is
-    # an ADMISSION, so here it is: thalamus/ignition_instrument.py constructs private
+    # an ADMISSION, so here it is: instruments/ignition_instrument.py constructs private
     # ReentrantWorkspace SUBJECTS inside its sweep and ablation protocols and nothing else
     # reads them -- BY DESIGN: it is a measurement instrument (dormancy_gate EXEMPT as
     # such), and an instrument whose subjects were shared would be measuring traffic it
@@ -370,7 +370,7 @@ BASELINE = {
     # stayed exit 0.
     #
     # RAISED 6 -> 7 on 2026-09-16 (specs/022 T081): the same admission as private_instance_modules
-    # above -- cortex/report_order_probe.py SUBMITS pools into its constructed GlobalWorkspace
+    # above -- instruments/report_order_probe.py SUBMITS pools into its constructed GlobalWorkspace
     # subject (2.4's six pools over 20 ticks) and nobody else reads that instance, by design. The
     # ceiling sits ON the measurement (7 = 7), so the self-check's one-mutant regression still
     # crosses it; a real faculty writing into a bus nobody reads lands on 8 and reddens.

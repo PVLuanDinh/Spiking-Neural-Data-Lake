@@ -10,7 +10,7 @@ DELETED -- the RETIREMENT RECORD below is the durable account):
   * CompetenceDynamics + goal_value -- the competence-domain forward model and objective, PUBLIC
     since the retirement: they are the unique substance the retired ExecutivePlanner wrapper
     injected into cortex.prefrontal_executive.PrefrontalExecutive.plan, and consumers now inject
-    them into plan() themselves (hippocampus/developmental_loop_brain composes them directly,
+    them into plan() themselves (instruments/developmental_loop_brain composes them directly,
     write=False; a live consumer can hand CompetenceDynamics to
     cortex/live_brain.deliberate_ahead as its `predictor` the same way).
 
@@ -50,7 +50,7 @@ P2 -- what already exists, checked before proposing promotion rather than after:
     was fixed at 4b24c1da (submit-and-read -- a tenant of the one bus must not drive its clock;
     the measured 20/20 (content, hold) divergence, the sub-threshold 3/20, and the criterion's
     own 4/20 reachable red are all recorded in that commit and CHANGELOG 2026-08-12h);
-    `hippocampus/developmental_loop_brain` now constructs `GlobalWorkspace` directly as the OWNER
+    `instruments/developmental_loop_brain` now constructs `GlobalWorkspace` directly as the OWNER
     of its private offline bus (submit + step + verdict inline, legitimate owner semantics). The
     2026-08-06 live-bus CHARGE measurement (the ignition verdict flips at the rheobase when the
     arm's producer is neutered; harness and neuter-sensitivity control in the 4b24c1da history)
@@ -405,7 +405,7 @@ def main():
         per call (n_options must equal len(cands); autonomous_loop pins its own executive to
         len(ACTIONS)), the public domain objects injected, write=False -- a planning QUERY never
         writes the executive's working-memory goal. Returns (chosen_digit, mean_rt). The one
-        production consumer (hippocampus/developmental_loop_brain) composes the same call at its
+        production consumer (instruments/developmental_loop_brain) composes the same call at its
         own site; this helper exists so every criterion below exercises the composition shape."""
         ex = PrefrontalExecutive(n_options=len(cands), seed=seed)
         idx, rt = ex.plan(

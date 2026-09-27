@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from snn_data_lake.cortex import everyday_battery as eb
+from snn_data_lake.instruments import everyday_battery as eb
 
 
 def test_r1_a_narrated_number_is_not_an_answer():
@@ -332,7 +332,7 @@ def test_the_seed_children_never_inherit_a_home(monkeypatch):
 
 
 def test_the_campaigns_tree_state_import_is_pinned_at_the_consumer():
-    """cortex/everyday_battery.py::run_c0_campaign reaches across modules for the pin's
+    """instruments/everyday_battery.py::run_c0_campaign reaches across modules for the pin's
     head/dirty (record 3.1, P2). Nothing else executes that line: the bare invocation never
     reaches it and the pin-refusal test returns first, so a rename of the private helper is
     otherwise silent through pytest, run_selfchecks and ruff alike."""

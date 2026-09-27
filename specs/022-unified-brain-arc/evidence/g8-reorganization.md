@@ -2244,3 +2244,74 @@ instrument repair's zero-delta control. The focused test in
 and a synthetic import of the moved target through its current package. The original
 M2 patch is reapplied to the clean M1 head with this repair; 3.10's declaration still
 governs the new post-move census. No baseline is widened to make the move pass.
+
+### 3.12 Dated amendment 2026-09-26 -- M2's first rebuilt C1 diff
+
+The first M2 census after the P6 repair had 24 green gates and seven green probes, but
+C1 still reddened. That run is not a passing M2 result. Its ten diff entries reduced to
+four causes: the new package initializer increased source-file and package-scaffold
+counts by one; the required M2 citation exemption increased the printed exemption count
+by one; a new test's synthetic path added one BROAD citation and one `tests/**` file; and
+P6's report reordered and padded moved file paths, even though its five asserting
+metrics were unchanged.
+
+The synthetic citation is removed by constructing the test-only path at runtime. The
+test now runs on the pre-M2 tree too, using an overlay that moves one module without
+writing it; it belongs to the P6 instrument repair, so `tests/**` is equal on both sides
+of the next M2 census. `move_gate` now maps P6's file paths to frozen labels and compares
+its printed lines independent of column padding and list order. It retains every line
+and count, so a changed P6 metric still reds. Its focused regression test covers this
+presentation-only case. The P6 ceiling and result remain 19.
+
+Before the next post-move census, the M2 machine declaration is extended by the exact
+one-file changes in `eprop_transport_gate`, `gradient_claim_gate`, `p4c_ratchet` and P6,
+and by the STRICT exemption count that M2's frozen row already requires. These changes
+are derived from adding one package initializer and one line-keyed exemption, and are
+recorded separately from the first red; they do not excuse any new anatomy pair,
+missing import, or live citation. The amended declaration is checked against a fresh
+parent and a fresh M2 export. Section 2 remains frozen.
+
+### 3.13 M2 rebuilt, pre-commit reading -- 2026-09-27
+
+The fresh repaired-parent and M2 exports each completed 24 gate runs and seven probes
+with zero nonzero exits. C1 compared them against `declared_M2_v2.json` and the mover's
+expected map: **OK, exactly 16 declared changes**. P6's asserting anatomy reading is
+19 unimplemented declared pairs against its unchanged ceiling 19; the 11 undeclared
+import pairs also remain at their unchanged ceiling. The prior failed censuses in 3.10
+and 3.12 remain part of this record; only this rebuilt comparison passes.
+
+The per-stage checks: C2(a) imported 415 modules, with the same 13 failures as M1's
+recorded set (all in the unchanged lakehouse and reasoning tiers), and wrote zero files.
+C2(b) checked 46 legacy pairs and 286 flat aliases with no bad identity; its planted
+flat re-point red fired. C2(c) compared 16 legacy gate runs with current runs, zero
+differences. C2(d) scanned 661 live files, zero unparsed and zero stale references.
+C2(e)'s 16 frozen artifacts resolved all 12 referenced modules with SourceFileLoader.
+C3's envelope gate and self-check passed, its protected diff was empty, and the latch
+resolved through the real home module. C4's R-b0 probe is identical in the C1 censuses.
+C5's two R-L1 restore arms passed with equal walks and answers and no refusal. C6's
+static invariants and C8/C9's 570 file-resolved registry names had no finding. C7's
+STRICT citation count is zero unexempted with two live exemptions; BROAD is the
+declared 1,367 across 261 files. The document command guard and policy audit passed
+(including P6); no unclaimed or missing-CI policy gate was reported. The move gate's
+constructed reds all fired, and P6's own six constructed reds and four green controls
+passed. Ruff check and format check passed.
+
+M2's planted stale Brian2 call-site produced one C2(d) finding and a C1 red with three
+differences, including the missing-file invariant; the unplanted stage stays green.
+The bounded run over 15 touched test files exited zero with one skip. Its single
+excluded test, `test_a_faulted_binder_is_counted_and_never_a_bound_tick`, is the
+gitignored-perception-asset hang documented in `docs/AGENT_COLD_START.md` section 4
+rule 9: isolated pre-M2 and M2 exports both timed out on it. This does not claim a
+whole-suite battery or a passing result for that test.
+
+The census and red artifacts are in the session's `g8-m2` scratch folder:
+`pre_m2_amended_final.json` (sha256 `31870231762E8681...`),
+`post_m2_amended.json` (`FF201676A1C4ED27...`),
+`declared_M2_v2.json` (`7240DE0E09F5FE1A...`),
+`expected_M2.json` (`A6247E942B298C75...`),
+`observed_M2_amended.json` (`A51FE8377EC5236E...`),
+`planted_m2_stale.json` (`67A0F3E98344E2F4...`),
+`diff_planted_m2.txt` (`2B36BD6E2FDE801A...`) and
+`c2a_M2.json` (`BEF7702364545E63...`). At this pre-commit reading, no M2
+commit, push, battery or daemon start is claimed; the stage is a reviewable patch
+on the committed P6 repair parent `ea0c1ed`.

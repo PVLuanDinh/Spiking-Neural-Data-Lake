@@ -108,16 +108,6 @@
    "governed": true,
    "kind": "LOCAL"
   },
-  "cortex/deep_stdp_latency.py::ConvLatencyStdp.train_image": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cortex/deep_stdp_latency.py::_train": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
   "cortex/eprop_kernel.py::_TinyNet.eprop_grads": {
    "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
    "governed": true,
@@ -218,11 +208,6 @@
    "governed": true,
    "kind": "LOCAL"
   },
-  "cortex/prior_drift_harness.py::fit_readout": {
-   "disposition": "direct-solve -- no dw stream to compose (T050 census category)",
-   "governed": true,
-   "kind": "DIRECT_SOLVE"
-  },
   "cortex/reasoning_curriculum.py::ReasoningLearner._train_units": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
@@ -262,11 +247,6 @@
    "disposition": "UNDISPOSITIONED",
    "governed": true,
    "kind": "LOCAL"
-  },
-  "hippocampus/developmental_loop_brain.py::_LinearReadout.train_step": {
-   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
-   "governed": true,
-   "kind": "APPROXIMATES_GRADIENT"
   },
   "hippocampus/episode_consolidation.py::EpisodeConsolidator.replay": {
    "disposition": "UNDISPOSITIONED",
@@ -328,6 +308,71 @@
    "governed": true,
    "kind": "LOCAL"
   },
+  "instruments/deep_stdp.py::ConvStdp.train_image": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "instruments/deep_stdp.py::FcStdp._normalise": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "instruments/deep_stdp.py::FcStdp.run": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "instruments/deep_stdp.py::OneLayerNet.train_image": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "instruments/deep_stdp.py::TwoLayerNet.train_image": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "instruments/deep_stdp.py::_train": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "instruments/deep_stdp_latency.py::ConvLatencyStdp.train_image": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "instruments/deep_stdp_latency.py::_train": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "instruments/developmental_loop_brain.py::_LinearReadout.train_step": {
+   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
+   "governed": true,
+   "kind": "APPROXIMATES_GRADIENT"
+  },
+  "instruments/prior_drift_harness.py::fit_readout": {
+   "disposition": "direct-solve -- no dw stream to compose (T050 census category)",
+   "governed": true,
+   "kind": "DIRECT_SOLVE"
+  },
+  "instruments/snn_mnist_stdp.py::StdpNetwork._normalise": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "instruments/snn_mnist_stdp.py::StdpNetwork.run": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "instruments/snn_mnist_stdp_genn.py::run_mnist": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
   "midbrain/dopamine_nuclei.py::_train": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
@@ -374,36 +419,6 @@
    "kind": "LOCAL"
   },
   "plasticity/competitive_learning.py::train": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "plasticity/deep_stdp.py::ConvStdp.train_image": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "plasticity/deep_stdp.py::FcStdp._normalise": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "plasticity/deep_stdp.py::FcStdp.run": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "plasticity/deep_stdp.py::OneLayerNet.train_image": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "plasticity/deep_stdp.py::TwoLayerNet.train_image": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "plasticity/deep_stdp.py::_train": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
    "kind": "LOCAL"
@@ -475,21 +490,6 @@
   },
   "plasticity/plasticity_rule_stack.py::_BennaFusiConsolidation.consolidate": {
    "disposition": "remainder -- DISCLOSED at T051b-iv (E/I + Benna-Fusi + rate + theta undriven; ii's component grain models the bare cascade; the tissue wire is T054's)",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "plasticity/snn_mnist_stdp.py::StdpNetwork._normalise": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "plasticity/snn_mnist_stdp.py::StdpNetwork.run": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "plasticity/snn_mnist_stdp_genn.py::run_mnist": {
-   "disposition": "UNDISPOSITIONED",
    "governed": true,
    "kind": "LOCAL"
   },

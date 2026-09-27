@@ -17,7 +17,7 @@ How it embodies the project's storage method:
     only when an input pixel fires. Reported against the dense same-architecture
     cost (T * 784 * M), which the sparse version beats by ~1/spike_rate.
 
-Run (after deps):  .venv-lake/Scripts/python -m snn_data_lake.plasticity.snn_mnist_stdp
+Run (after deps):  .venv-lake/Scripts/python -m snn_data_lake.instruments.snn_mnist_stdp
 
 PROMOTED reasoning/ -> plasticity/ 2026-08-11 (#10 lane 2a; measured row in docs/P4C_BACKLOG.md):
 the rule-family hub (its constants are the GeNN port's oracle source of truth via

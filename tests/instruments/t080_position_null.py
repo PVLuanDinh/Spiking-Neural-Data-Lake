@@ -19,7 +19,7 @@ from pathlib import Path
 
 import numpy as np
 
-from snn_data_lake.thalamus.binding_instrument import T080_BAND_FW, T080_PIN, _t080_order_stat
+from snn_data_lake.instruments.binding_instrument import T080_BAND_FW, T080_PIN, _t080_order_stat
 
 N_POS = 256
 N_DRAWS = 4000

@@ -46,7 +46,7 @@ from pathlib import Path
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.cortex.population_encoding import PopulationEncoder
 from snn_data_lake.cortex.vsa_reasoning import bind, bundle, coincidence, hv
-from snn_data_lake.substrate.paired_contrast import T_BAR, contrast
+from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
 
 # spiking winner-take-all readout constants (shared with theory_of_mind.BeliefPopulation)
 _WINDOW = 20  # steps each content bin's LIF neuron is driven
@@ -821,7 +821,7 @@ def _t082_head():
         return f"unavailable ({type(e).__name__})"
 
 
-# distinct-from: cortex/report_order_probe.py::_t081_dirty and gates/policy_manifest.py::
+# distinct-from: instruments/report_order_probe.py::_t081_dirty and gates/policy_manifest.py::
 #   _tree_state -- the same `git status --porcelain` read, kept beside THIS row's `_t082_head`
 #   rather than imported across modules, because T081's panel found an executor stamping the LAST
 #   COMMIT's sha onto an artifact produced by an uncommitted tree (record 3.5 item 12). Read.
@@ -1050,11 +1050,11 @@ def run_t082_dry_run(out_path=T082_DRY_RUN_OUT, seed=0):
     return 0
 
 
-# distinct-from: cortex/report_order_probe.py::run_t081_campaign, thalamus/binding_instrument.py::
+# distinct-from: instruments/report_order_probe.py::run_t081_campaign, instruments/binding_instrument.py::
 #   run_t080_campaign and cortex/agency_monitor.py::run_t079_campaign -- the PATTERN this follows
 #   (record, read, contrast, pin ONCE) over a different instrument, different arms and a different
 #   pin. Each row's campaign is its own instrument's; a shared runner would be a fifth mechanism,
-#   not one. Read; nothing is shared beyond `substrate/paired_contrast`.
+#   not one. Read; nothing is shared beyond `instruments/paired_contrast`.
 def run_t082_campaign(seeds=T082_SEEDS, pin=T082_PIN, n_ep=T082_N_EPISODES):
     """The campaign (2.2-2.3): record, read, contrast, pin ONCE. Returns an exit code.
 
@@ -1232,7 +1232,7 @@ def _t082_s2(entry):
 
 
 def t082_contrasts(per_seed, score=None, ctrl=None, bar=T082_BAR):
-    """2.3's conjuncts over the per-seed readings, through `substrate.paired_contrast.contrast`.
+    """2.3's conjuncts over the per-seed readings, through `instruments.paired_contrast.contrast`.
 
     (g0) the script IS a false-believing agent; (s1) the licensed sentence, a paired one-sided t
     against the bar; (s2) the dissociation input, an exact per-seed count. The verdict is 2.3's:
@@ -1334,7 +1334,7 @@ def _measure_belief_charge(frames=None, consume=None):
     specificity_holds). The pinned payload is `[0, 0]`: no false belief, no divergence -- the
     honest neuter for a COUNT port, where a "plausible constant" would be a claim about a rate
     this wire does not have."""
-    from snn_data_lake.substrate.port_charge_probe import replay_twice
+    from snn_data_lake.instruments.port_charge_probe import replay_twice
 
     frames = _t082_belief_frames() if frames is None else frames
     consume = _t082_consume_caution if consume is None else consume
@@ -1357,7 +1357,7 @@ def record_charge():
     (`port_charge_probe.record_attribution`). REFUSES a non-diverged run -- evidence is a
     measurement, never a declaration. `tests/test_recursive_tom.py` re-measures and requires the
     recorded numbers to reproduce, so this record cannot outlive the wire it describes."""
-    from snn_data_lake.substrate.port_charge_probe import record_attribution
+    from snn_data_lake.instruments.port_charge_probe import record_attribution
 
     live, pinned_out, reads, spec_holds = _measure_belief_charge()
     if live == pinned_out or not spec_holds:
@@ -1592,7 +1592,7 @@ def _t082_reds_line(reds, out=print):
         out(f"  {name}: {str(reds[name]):5s}  {T082_RED_LINES[name]}")
 
 
-# distinct-from: cortex/report_order_probe.py::t081_pin_reading and thalamus/binding_instrument.py
+# distinct-from: instruments/report_order_probe.py::t081_pin_reading and instruments/binding_instrument.py
 #   ::t080_pin_reading -- BOTH re-derive their row's C5 READING from their own campaign PIN and
 #   compare it with `conclusion_protocol.CONCLUSION`. This re-derives a CHARGE A/B against
 #   `tools/region_charge_evidence.json` (FR-034's evidence file, a different artifact, a different
@@ -1606,7 +1606,7 @@ def t082_charge_reading(edge=BELIEF_EDGE):
     against the COMMITTED row in `tools/region_charge_evidence.json`, beside a mutated
     derivation (the payload-ignoring fold) that would refuse. 2.1: the self-check re-measures
     and requires the committed numbers to reproduce, so the record cannot outlive the wire."""
-    from snn_data_lake.substrate.port_charge_probe import read_attribution
+    from snn_data_lake.instruments.port_charge_probe import read_attribution
 
     rec = read_attribution(edge)
     live, pinned_out, reads, spec = _measure_belief_charge()
@@ -1668,12 +1668,12 @@ def t082_pin_reading(pin=None):
     return derived, CONCLUSION["social_cognition"][3], mutated
 
 
-# distinct-from: thalamus/binding_instrument.py::main and cortex/report_order_probe.py::main --
+# distinct-from: instruments/binding_instrument.py::main and instruments/report_order_probe.py::main --
 #   each module's own `__main__` block, which is this tree's convention (run_selfchecks.py
 #   executes exactly that block per module and scores the exit status), not a second dispatcher.
 #   Read both: the two flags here only ADD this row's brain-touching entry points to a self-check
 #   that already existed for `RecursiveToM`, and nothing here runs another module's self-check.
-# distinct-from: cortex/nef_compute.py::L151 and gates/selfcheck_cache.py::L495 -- a derived
+# distinct-from: instruments/nef_compute.py::L151 and gates/selfcheck_cache.py::L495 -- a derived
 #   COMMAND STRING for a module's self-check and a cache key over the MODULES table. Term overlap
 #   ("self-check", "derived") only; neither dispatches anything. Read.
 # distinct-from: reasoning/spike_chat_lake.py::L2390 -- an interactive-REPL-vs-self-check branch

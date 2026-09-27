@@ -137,7 +137,7 @@ Inspect the storage and efficiency examples:
 ```bash
 python -m snn_data_lake.substrate.spike_telemetry_hub
 python -m snn_data_lake.cortex.paradigm_b_engine
-python -m snn_data_lake.substrate.energy
+python -m snn_data_lake.instruments.energy
 ```
 
 To run the persistent local system from the source checkout:
@@ -168,7 +168,7 @@ workloads, not an edge-device benchmark suite.
 | Temporal query engine | Ordered motif: 41 forward matches versus 4 reverse matches; 1.3% of the file read for that query | Order-sensitive matching and partial reads on a constructed workload |
 | Gesture-to-arm demo | HOLD, ENGAGE, RELEASE, then EMERGENCY_STOP on contact | Runnable simulation integration and a demonstrated reflex path |
 
-**The efficiency baseline matters.** The [energy example](src/snn_data_lake/substrate/energy.py)
+**The efficiency baseline matters.** The [energy example](src/snn_data_lake/instruments/energy.py)
 counts 113,676 SynOps. A dense comparison repeated over 20 time steps costs 409,600 MACs, producing
 the older 3.6x reduction headline. A single dense pass over the static input costs 20,480 MACs:
 the spiking example then uses about **5.6x more operations**. SynOps and MACs also have different

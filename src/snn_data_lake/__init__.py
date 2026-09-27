@@ -127,18 +127,14 @@ REGIONS = {
         # percept readout (feedback alignment + fixed-random L6, no weight transport) --
         # cortex/brain.py constructs it lazily on every real percept; numpy-only, CORE tier.
         "laminar_local_readout",
-        "neuronal_avalanches",
         "cortical_microcircuit",
         "cortical_prior",  # H01 HUMAN cortex reference data: value + units + provenance + bound
         "h01_ingest",  # specs/022 T062: the H01 c3 SYNAPSE graph, 8 gates, a seeded population
         "arealization",  # specs/022 T040: organizer fields + repression-GRN region emission (P8 #7)
         "growth_program",  # specs/022 T042: one-shared-program locality + scaffold refusal (P8 #7)
-        "prior_drift_harness",  # specs/022 T063: the three-arm seeded/random/wrong drift harness with SC-006's two reds, PLANTED and FROZEN; bare == the offline self-check
         "placement",  # every grown unit gets a cortical depth, a layer and an immutable Dale sign
         "growth_stop",  # specs/022 T047: |LP|+charge growth gates, executive-independent (P8 #4)
-        "memory_diagnostic",  # G1 causal contract diagnostic harness
         "recurrent_pool",  # G1(b) pool-selection benchmark: the winner, g1 LSM, as a streaming pool
-        "pool_selection",  # G1(b) pool-selection campaign: section 2's steps, ordering and taxonomy
         "lca_sparse_coding",
         "predictive_coding",
         "is_snn_forward",
@@ -180,7 +176,6 @@ REGIONS = {
         "adex_neuron",
         "resonate_and_fire",
         "srm_neuron",
-        "integration_measure",
         "agency_monitor",
         "affect_core",
         "crossmodal_binder",
@@ -191,9 +186,6 @@ REGIONS = {
         "recursive_tom",
         "counterfactual_sim",  # C1 batch-2: N-agent recursive ToM / counterfactual do()-operator simulation
         "learned_attention",  # C1 batch-3: learned spiking reticular attention gate (local plasticity)
-        "attention_schema",  # specs/022 T078 Part I: the G3 task-binding (MI vs a permutation floor) and G4 content-leakage (held-out decode vs a shuffle band) instrument over the live loop's own attention state; no ACS, no wire to brain.py
-        "report_order_probe",  # specs/022 T081 [US4]: the C5 report_order instrument -- the live arm's report channel read against LESIONED CLONES of the workspace state that produced it (named pool vs a scrambled one); the lesion never touches the live brain
-        "everyday_battery",  # specs/022 Phase 4 C0: the L12 audit's 20-item everyday battery as a GOVERNED SCORER -- the frozen answer key, 2.3's ordered classifier (abstention decided by route AND preamble before any key is tested) and the five-seed campaign on scratch brains; never the live lake
         "learned_evc",  # C1 batch-4: learned expected-value-of-control (dopamine-gated cost/value)
         "second_order_access",  # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
         "heterogeneous_microcircuit",  # Brain-Cog-adopted: LIF+Izhikevich+AdEx worked EXAMPLE of the basic_components palette (not on the live tick)
@@ -205,7 +197,6 @@ REGIONS = {
         "language_readout_slda",  # PROMOTED 2026-08-11 (#10 family C5): SLDA-RFF competence head; absorbed fair_compare's equal-budget bar
         "nightly_skills",  # PROMOTED 2026-08-11 (#10 family C9a): the ONE standing skills loop (absorbed meta_skill_loop + open_meta_loop)
         "competence_executive",  # PROMOTED+RENAMED 2026-08-12 (#10 lane 4f, was reasoning/brain_adapters/executive_control -- the LAST brain_adapters module): dopamine-RPE lr gate + the PUBLIC CompetenceDynamics/goal_value planning objects (the WorkspaceBroadcast/ExecutivePlanner wrappers RETIRED later the same day -- retirement record in-file); renamed because the basename is taken by cortex/executive_control (brain_atlas.py:81 asserts uniqueness)
-        "nef_compute",  # PROMOTED 2026-08-12 (PROMOTE lane): the NEF (Eliasmith & Anderson) reference implementation -- REFERENCE IMPLEMENTATION / cross-engine ground truth for the gated [nengo] tier (substrate/nengo_bridge:471 reaches it only when nengo is installed, which no gate env carries); its only gate-executed path is its own __main__ self-check. Reachable via nengo_bridge (dormancy green, no EXEMPT); recorded per the polychronization-entry pattern so "reachable" is not read as "charged".
         "vsa_structure_mapping",  # PROMOTED 2026-08-12 (PROMOTE lane): Gentner relational structure-mapping over VSA spike codes; LIVE via reasoning_cortex's structure-map solver (reached from brain.py's lazy :924 -- the lane's own I001 sort moved it from :928 -- + reasoning_cortex:705). P3 debt carried visibly, NOT fixed here: brain.py:967's `_structure_mapper` attribute is write-only (AUDIT_BACKLOG M11) -- retire-or-read is its own commit. P2 direction recorded in-file: the dim-parameterised _cleanup_project is THE mechanism; reasoning/resonator_network's hardcoded copy (measured 300/300 bit-identical at dim=512) delegates or retires when its lane arrives.
         "rose_language",  # PROMOTED 2026-08-12 (PROMOTE lane): the ROSE fluent-language pipeline (VSA constituency parse + KB-grounded comprehend + SLDA competence), LIVE via brain._rose_serve's lazy reach. P3/P4b debt carried visibly, NOT discharged by the move (AUDIT_BACKLOG H7, runtime-reproduced at the promotion audit): nightly_refit moves the SLDA sufficient statistics while competence() returns the build-time cached acc byte-identical; the refit filter accepts a novel HEAD coded OOV-zero; _readout is per-Brain RAM reaching brain_lake.bin nowhere. P2 direction recorded: rose's derived parameterisation (rff from in_dim, ctx from data, relations from the KB ratio) is THE mechanism; cortex/world_kb_stream main()'s four-literal demo copy consumes it or retires at the family's next lane.
         # torch-trained tiers with a zero-dep serve/integration path (import cleanly without torch)
@@ -319,8 +310,6 @@ REGIONS = {
         "reentrant_workspace",
         "connectome_router",
         "gwt_deep",
-        "ignition_instrument",
-        "binding_instrument",
         "interoceptive_relay",
     ],
     "hypothalamus": ["circadian_clock", "set_points", "homeostatic_drives"],
@@ -398,7 +387,6 @@ REGIONS = {
         # burst+x_tar rule as GeNN C++. Governance lands BEFORE the finish so the port's
         # completion happens inside the gates; dormancy disposition = EXEMPT (opt-in GPU
         # training harness, see dormancy_gate).
-        "snn_mnist_stdp_genn",
         # snn_mnist_stdp + deep_stdp (lane 2a/2b promotions) moved to the TRAIN_TIER annex
         # below on 2026-08-11 -- their module-top torchvision imports fail the alias-layer
         # round-trip wherever the [train] extra is absent (the first post-promotion CI run
@@ -429,13 +417,10 @@ REGIONS = {
         "minhash",
         "morris_counter",
         "proximity_index",
-        "energy",
         "data_quality",
         "drift_monitor",
         "spike_telemetry_hub",
         "streaming_hub",
-        "neuro_chip",
-        "neuro_chip_stream",
         "nir_export",
         "sensor_csv_ingest",
         "esp32_encoder_path",
@@ -445,7 +430,6 @@ REGIONS = {
         "web_ingest",
         "lake_working_memory",
         "chat_memory",  # durable content-addressable chat memory on the spike lake (noise-filtered)
-        "paired_contrast",  # the plan's seed-paired t + exact sign-flip FPR (lifted from the T063 harness, T077 2.10)
         "signal_calibrator",  # durable running-quantile of a live signal (Step-0 of data self-recalibration)
         "nengo_bridge",
         "home",
@@ -472,16 +456,13 @@ REGIONS = {
         "kernel_state",  # specs/022 T013: SoA substrate state, 128B-aligned, lake-backed; bare == alignment + round-trip + refusal reds
         "kernel_tick",  # specs/022 T014: two-phase deterministic tick (P fixed, integer delivery); bare == delay + thread-equality reds
         "wiring_manifest",  # specs/022 T018: TypedPort + WiringManifest (declared anatomy); bare == five checks + five reds + NIR round-trip
-        "port_charge_probe",  # specs/022 T021: pinned-payload neuter + margin surveillance + replay-twice A/B; bare == both controls
         "report_channel",  # 022 T034: typed workspace-report snapshot; the broadcast's declared consumer
-        "episode_driver",  # 022 T035: stimulus port + trial schedule (fixation/saccade) + G5-replayable trials
         "afferent_boundary",  # 022 T036: transduction-in; idle sentinel handled at the door; proprio lane
         "efferent_boundary",  # 022 T037: efference copy around the envelope; cerebellar forward-model charge
         "ingest_guard",  # content boundary for outside data: licence deny-by-default + injection flagging
         "hf_stream",  # streamed HF datasets -> brain-consumable features (licence-gated, bounded)
         "basic_components",  # Brain-Cog-adopted composition interface: node + local-rule + connection palette
         "similarity_sized_growth",  # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
-        "world_red_probe",  # specs/022 W3: the world-red instrument -- two-chain liveness at 4dp, category entropy, the derived refit gap (P8 #9)
     ],
     # G8 (specs/022 evidence g8-reorganization.md 2.2, stage S1a): the engine-function package of
     # every policy and correctness gate. It opens with G8's own G-R8 instrument; the substrate
@@ -511,6 +492,27 @@ REGIONS = {
         "replication_guard",
         "safety_envelope",
         "selfcheck_cache",
+    ],
+    "instruments": [
+        "attention_schema",
+        "binding_instrument",
+        "energy",
+        "episode_driver",
+        "everyday_battery",
+        "ignition_instrument",
+        "integration_measure",
+        "memory_diagnostic",
+        "nef_compute",
+        "neuro_chip",
+        "neuro_chip_stream",
+        "neuronal_avalanches",
+        "paired_contrast",
+        "pool_selection",
+        "port_charge_probe",
+        "prior_drift_harness",
+        "report_order_probe",
+        "snn_mnist_stdp_genn",
+        "world_red_probe",
     ],
 }
 
@@ -555,12 +557,15 @@ TORCH_TIER = {
 # The first CI run after these modules entered REGIONS failed exactly as the hub's own
 # docstring predicted -- the alias round-trip imported them on a box with no torchvision.
 TRAIN_TIER = {
-    "plasticity": ["snn_mnist_stdp", "deep_stdp"],
-    "cortex": ["deep_stdp_latency"],
     # PROMOTED 2026-08-12 (#10 lane 4e): the brain-integrated developmental loop -- continual
     # learning via balanced hippocampal replay (its identity mechanism). torchvision at module
     # load via the load_mnist hub import, hence this annex and not REGIONS.
-    "hippocampus": ["developmental_loop_brain"],
+    "instruments": [
+        "deep_stdp",
+        "deep_stdp_latency",
+        "developmental_loop_brain",
+        "snn_mnist_stdp",
+    ],
 }
 
 # G8 (specs/022 evidence g8-reorganization.md 2.1 decision 4; 2.4 S1a): the FROZEN pre-G8 label

@@ -440,7 +440,7 @@ whole thing (F3). One line per file -- capability, then whether it is live.
 * `cortex/self_model.py` -- signal store, the confidence product, narrator introspection. LIVE.
 * `cortex/generative_self_model.py` -- learned (e-prop) forward model of the brain's own state, which is
   what supplies a real self-surprise. LIVE.
-* `cortex/integration_measure.py` -- perturbational complexity / normalized LZ. LIVE on sleep, every 4th
+* `instruments/integration_measure.py` -- perturbational complexity / normalized LZ. LIVE on sleep, every 4th
   night.
 * `thalamus/reentrant_workspace.py::expect` -- re-entrant predictive completion + the no-hallucination
   guard. Ported here 2026-08-06 from `reasoning/gwt_reentry.py`, which is DELETED (P2). Live on the

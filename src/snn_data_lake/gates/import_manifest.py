@@ -104,6 +104,7 @@ GOVERNED = (
     "claustrum",
     "lakehouse",
     "gates",  # G8 S1a (evidence g8-reorganization.md 2.5 item 6, F15): the package it creates
+    "instruments",  # G8 M2: the package created by the instrument move
 )
 
 # The tiers no gate covers. A governed -> ungoverned edge is what this module protects.

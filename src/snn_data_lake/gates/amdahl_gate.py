@@ -398,7 +398,7 @@ def red_repeatability(ticks=RED_TICKS, resamples=RED_RESAMPLES, seed=0):
 
 # distinct-from: reasoning/free_energy_control.py::fe_step -- a DEADBAND on a scalar prediction error
 #   that silences a spike; no bootstrap band, no timing ceiling, no control on a reading.
-# distinct-from: cortex/deep_stdp_latency.py::_stdp -- a soft-bound weight update; no criterion at all.
+# distinct-from: instruments/deep_stdp_latency.py::_stdp -- a soft-bound weight update; no criterion at all.
 #   (prior_drift_harness::arm_random, home::_binlog, spiking_jepa::_feedback_gz matched on words only;
 #   all five read 2026-09-15 before this helper was written.)
 # distinct-from: prior_drift_harness.py -- arm_random (L500) is a degree-preserving edge rewire on a

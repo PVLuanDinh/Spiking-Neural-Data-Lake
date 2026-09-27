@@ -20,7 +20,7 @@ Config via env: NORD_M / NORD_TRAIN / NORD_TEST (shared with snn_mnist_stdp),
 import os
 import time
 import torch
-from snn_data_lake.plasticity.snn_mnist_stdp import (
+from snn_data_lake.instruments.snn_mnist_stdp import (
     load_mnist,
     StdpNetwork,
     assign_labels,

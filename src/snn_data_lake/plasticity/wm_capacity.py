@@ -107,7 +107,7 @@ class CapacityRefusal(ValueError):
     """The mechanism cannot support a capacity derivation; no K is emitted (guard 3)."""
 
 
-# distinct-from: thalamus/ignition_instrument.py -- GWT ignition (workspace broadcast
+# distinct-from: instruments/ignition_instrument.py -- GWT ignition (workspace broadcast
 #   threshold sweep over ensembles); this is the WM rehearsal pool's facilitation floor,
 #   measured through _RehearsalFrame.ignites. Different substrate, same word. Site read.
 # distinct-from: cortex/access_consciousness.py -- workspace ignition competition, not a

@@ -2,8 +2,8 @@ r"""The readout-ensemble A/B (2026-08-12, #10 ensemble_rbf settlement): the harn
 produced the tree's 98.2% Kheradpisheh-class headline, settled as an INSTRUMENT over
 governed subjects (the jepa_highdim_probe pattern -- it holds no mechanism of its own).
 
-Every subject is governed: `plasticity.snn_mnist_stdp.load_mnist`,
-`cortex.deep_stdp_latency.ConvLatencyStdp/_train` (the unsupervised conv1 perception),
+Every subject is governed: `instruments.snn_mnist_stdp.load_mnist`,
+`instruments.deep_stdp_latency.ConvLatencyStdp/_train` (the unsupervised conv1 perception),
 `hippocampus.growable_readout.LaminarColumns` (governed at the 2026-08-12 laminar merge),
 `substrate.device`. The linear member is stock nn.Linear+Adam, the RBF member is stock
 sklearn SVC, the fusion is an unweighted probability average -- measurements, not
@@ -45,9 +45,9 @@ import torch.nn.functional as F
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
-from snn_data_lake.cortex.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.hippocampus.growable_readout import LaminarColumns
-from snn_data_lake.plasticity.snn_mnist_stdp import _env, load_mnist
+from snn_data_lake.instruments.deep_stdp_latency import ConvLatencyStdp, _train
+from snn_data_lake.instruments.snn_mnist_stdp import _env, load_mnist
 from snn_data_lake.substrate.device import enable, resolve_device
 
 

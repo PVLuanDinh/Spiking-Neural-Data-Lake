@@ -15,7 +15,7 @@ HONEST framing (read this first):
     bit-equality (the Nengo sim is numpy/float, seeded for reproducibility, not deterministic to the bit).
 
 Ground truth it MATCHES (reused, not re-implemented):
-  * cortex/nef_compute.py     -- the in-tree NEF (represent x, transform x -> x^2; promoted 2026-08-12,
+  * instruments/nef_compute.py     -- the in-tree NEF (represent x, transform x -> x^2; promoted 2026-08-12,
     was reasoning/ and before that research/). Nengo is configured
     with the SAME LIF constants (tau_rc=0.02, tau_ref=0.002), intercepts and max-rates so the Nengo decode
     is COMPARABLE to the zero-dep decode: same framework, different engine.
@@ -52,7 +52,7 @@ except ImportError as _e:  # gated: import stays clean when the neuromorphic sta
     _NENGO_OK = False
     _IMPORT_ERR = _e
 
-# Nengo's LIF defaults ARE the project's NEF constants (cortex/nef_compute: TAU_RC, T_REF).
+# Nengo's LIF defaults ARE the project's NEF constants (instruments/nef_compute: TAU_RC, T_REF).
 TAU_RC = 0.02  # membrane time constant (s)   -- Nengo default == nef_compute.TAU_RC
 TAU_REF = 0.002  # refractory period (s)        -- Nengo default == nef_compute.T_REF
 
@@ -82,7 +82,7 @@ class NengoNEF:
         transform(func)         principle 2: store the decoded function f(x) the output connection computes
         run(vec, func, t)       run the spiking Nengo sim and return the decoded result (f(x))
 
-    Configured to MATCH cortex/nef_compute (same LIF tau_rc/tau_ref, intercepts in [-0.95, 0.95],
+    Configured to MATCH instruments/nef_compute (same LIF tau_rc/tau_ref, intercepts in [-0.95, 0.95],
     max-rates in [100, 300] Hz, radius) so the Nengo decode error is COMPARABLE to the zero-dep NEF's own.
     """
 
@@ -468,7 +468,7 @@ def main():
     # naming a directory being deleted is exactly how a safe deletion gets mistaken for a breaking
     # one, and vice versa.
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-    import snn_data_lake.cortex.nef_compute as nef  # the NEF ground truth (PROMOTED to cortex/ 2026-08-12)
+    import snn_data_lake.instruments.nef_compute as nef  # the NEF ground truth (PROMOTED to cortex/ 2026-08-12)
     from snn_data_lake.cortex.lif_neuron import LIFNeuron  # the discrete brain LIF
 
     print("=" * 72)

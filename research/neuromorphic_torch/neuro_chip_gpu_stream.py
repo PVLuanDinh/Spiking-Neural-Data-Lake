@@ -20,7 +20,7 @@ streaming changes only WHERE the weights live, never the computation.
 
 Concept credit: AirLLM (weight/layer streaming); Loihi/Akida AER routing architecture;
 energy constants IMPORTED from neuro_chip_gpu, which imports them from
-snn_data_lake.substrate.energy (Horowitz 2014, arXiv:2210.13107) -- one definition, not three;
+snn_data_lake.instruments.energy (Horowitz 2014, arXiv:2210.13107) -- one definition, not three;
 LIF dynamics match neuro_chip_gpu.NeuroChipGPU exactly, vectorized as tensor ops.
 
 CEILING (honest): same functional/architectural ceiling as neuro_chip_gpu -- NOT
@@ -67,7 +67,7 @@ except ImportError:
 
 
 # Energy constants: ONE definition, taken from the module this file exists to reproduce
-# bit-for-bit. neuro_chip_gpu imports them from snn_data_lake.substrate.energy; both files used to
+# bit-for-bit. neuro_chip_gpu imports them from snn_data_lake.instruments.energy; both files used to
 # carry their own literal copy under the comment "hardcoded to keep zero-dep on the core", which
 # P7's abolition of the zero-dependency rule (2026-07-20) voided and P2 forbids -- three live
 # definitions of two numbers, in a file whose entire claim is byte-for-byte agreement with one of

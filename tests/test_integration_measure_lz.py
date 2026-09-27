@@ -25,7 +25,7 @@ import random
 import threading
 import time
 
-from snn_data_lake.cortex import integration_measure as IM
+from snn_data_lake.instruments import integration_measure as IM
 
 COST_CHARS = 200_000
 COST_DENSITY = 0.02

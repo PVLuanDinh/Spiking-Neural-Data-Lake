@@ -27,7 +27,7 @@ region whose charter (action selection, reward learning) is this module's identi
 verified at promotion: LatentQ and MetacognitiveMonitor are composed, never
 re-implemented (no delta rule, no Q table, no reliability computation is redefined
 here). Registered in REGIONS + run_selfchecks CORE; dormancy EXEMPT-permanent -- the consumer
-(`hippocampus/developmental_loop_brain.py`, promoted the same arc) is itself
+(`instruments/developmental_loop_brain.py`, promoted the same arc) is itself
 EXEMPT-permanent train-tier, and the old "converts to reachable when the consumer
 promotes" clause was MEASURED FALSE at that promotion (reachable() seeds only from live
 roots; see the dormancy_gate entry).

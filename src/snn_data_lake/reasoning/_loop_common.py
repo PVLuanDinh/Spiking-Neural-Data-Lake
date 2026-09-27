@@ -34,7 +34,7 @@ GRADIENT_CLAIM = {
         "APPROXIMATES_GRADIENT",
         "explicit autograd: `F.cross_entropy(self.clf(X), y).backward()` then `self.opt.step()` on "
         "an Adam optimizer. The M21 duplicate of "
-        "`hippocampus/developmental_loop_brain::_LinearReadout.train_step` and carries the SAME "
+        "`instruments/developmental_loop_brain::_LinearReadout.train_step` and carries the SAME "
         "disposition by the same criterion -- LIVE-PATH REACHABILITY, per the e-prop invariant's "
         "scope clause. PROVISIONAL and deliberately OVER-flagged: it is train-tier offline code no "
         "live path reaches today, which is what permits the Adam path, but nothing in the tree "

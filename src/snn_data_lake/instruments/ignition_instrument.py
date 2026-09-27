@@ -57,12 +57,12 @@ experience. No phenomenal claim is made or implied.
 # distinct-from: thalamus/reentrant_workspace.py -- the SUBJECT under measurement; the
 #   scorer drives it through its public API and re-reads its rasters, it re-implements
 #   nothing of it. distinct-from: thalamus/gwt_deep.py -- an EXEMPT phase-binding
-#   benchmark, no scoring. distinct-from: substrate/port_charge_probe.py -- charge A/B
+#   benchmark, no scoring. distinct-from: instruments/port_charge_probe.py -- charge A/B
 #   over recorded frames; this scores a dynamical transition. distinct-from:
 #   cortex/access_consciousness.py -- claims over the LIVE bus; this is an offline
 #   instrument on scratch subjects. All sites read.
 
-  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.thalamus.ignition_instrument
+  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.instruments.ignition_instrument
 """
 
 import json

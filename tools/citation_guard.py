@@ -134,6 +134,10 @@ _EXEMPT_FILES = {".gitignore", "tools/citation_guard.py"}
 # nothing is worse than none: it reads like coverage. So main() also asserts that every key here still
 # matches a real strict violation. An exemption must keep earning its place or the gate says so.
 EXEMPT = {
+    "specs/022-unified-brain-arc/evidence/t081-report-order.md:272": (
+        "Historical prose under a reproduction heading cites the pre-G8 instrument path. "
+        "It is not a runnable command; G8 M2 retains that recorded path and exempts only this line."
+    ),
     # RETIRED 2026-08-02, on the terms the entry set for itself: specs/003 landed, so
     # tools/timing_heldout.py exists, runs, and measures something. The two quickstart citations
     # now resolve on their own and need no exemption. Recorded as a comment rather than deleted

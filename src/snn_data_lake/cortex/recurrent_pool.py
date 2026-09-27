@@ -6,7 +6,7 @@ window, the four forms, the startup diagnostic), section 2.3's g1 LSM with its s
 the manifest and cost of section 2.4, and the machinery of R-b0 (parity with its source), R-b3
 (determinism by construction), R-b4's pool-noise red and R-b5 (the forms do what they claim). Every
 red is constructed by `main()`. The reference readout, the harness arms and the campaign are
-cortex/memory_diagnostic.py's. Nothing here builds a brain or touches the lake.
+instruments/memory_diagnostic.py's. Nothing here builds a brain or touches the lake.
 
 The selection record (section 3.4, commit 0bd1de7) named g1 the winner, and section 2.9 then deleted
 the losing ports g2 (ESN-LSM), g3 (SORN) and g4 (RBN) from this module. Commit f27ae70 holds them,
@@ -31,7 +31,7 @@ that contract.
 #   NO external input (section 1.2 names that a different job); no stimulus drive, no forms
 # distinct-from: src/snn_data_lake/cortex/recursive_tom.py -- a theory-of-mind reading over recorded
 #   rows; no recurrent state at all
-# distinct-from: src/snn_data_lake/cortex/report_order_probe.py -- a report-order probe reading over
+# distinct-from: src/snn_data_lake/instruments/report_order_probe.py -- a report-order probe reading over
 #   constructed rows; no recurrent state at all
 # distinct-from: src/snn_data_lake/reasoning/cellular_neural_network.py -- a 3x3 cellular-network
 #   convolution on a grid; no streaming pool, no percept drive
@@ -204,8 +204,8 @@ def _lsm_draw(seed, n, k, w):
     return consumed, pre, weights
 
 
-# distinct-from: cortex/everyday_battery.py -- sites read (a NamedTuple, prior_drift_harness's host recorder, episodic_recall's unbind); none limits BLAS threads
-# distinct-from: cortex/memory_diagnostic.py -- its L102 reports the loaded pools (threadpool_info), never limits them; pool_selection.py L684 CALLS this limiter
+# distinct-from: instruments/everyday_battery.py -- sites read (a NamedTuple, prior_drift_harness's host recorder, episodic_recall's unbind); none limits BLAS threads
+# distinct-from: instruments/memory_diagnostic.py -- its L102 reports the loaded pools (threadpool_info), never limits them; pool_selection.py L684 CALLS this limiter
 def _blas_threads(limit):
     """threadpoolctl's limit on every loaded BLAS: R-b3, the cost and the harness's one-thread pin.
     BLAS only (G1(b) panel, 2026-09-25): an unscoped limit also caps torch's OpenMP runtime, so R-b3's
@@ -848,7 +848,7 @@ def check_r_b5_freeze(
 
 # Sites read; none checks a pool's parameters against a boundary fingerprint:
 # distinct-from: cortex/recursive_tom.py -- _t082_s2 checks one seed of a theory-of-mind control
-# distinct-from: plasticity/deep_stdp.py -- _mechanics_check asserts an STDP library's mechanics
+# distinct-from: instruments/deep_stdp.py -- _mechanics_check asserts an STDP library's mechanics
 # distinct-from: plasticity/inhibitory_stdp.py -- istdp_synapse_rule authors a synapse rule
 # distinct-from: gates/amdahl_gate.py -- within_noise_of_zero is a sham timing criterion
 def check_r_b5_freeze_red(candidate, config, recording_seed=DEV_SEED, *, window=WINDOW, after=16):

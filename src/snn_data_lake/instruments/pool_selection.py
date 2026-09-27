@@ -46,8 +46,8 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from snn_data_lake.cortex import memory_diagnostic as md
 from snn_data_lake.cortex import recurrent_pool as rp
+from snn_data_lake.instruments import memory_diagnostic as md
 
 STEPS = (
     "record",
@@ -217,7 +217,7 @@ def rank_selection(entries, band):
 # ---- section 2.6: G1(c)'s power rule -------------------------------------------------------------
 
 
-# distinct-from: substrate/paired_contrast.py -- `paired_t` and its fixed T_BAR (7 d.f.) READ a paired
+# distinct-from: instruments/paired_contrast.py -- `paired_t` and its fixed T_BAR (7 d.f.) READ a paired
 #   t; section 2.6's rule needs t quantiles at 0.95 and 0.80 for every d.f. from 7 to 63. scipy is
 #   installed but undeclared, and pyproject is outside this build's files: the quantiles below are
 #   exact for an integer d.f. (Abramowitz and Stegun 26.7.3-26.7.4) and pinned by 2.6's own table.
@@ -422,11 +422,11 @@ def _replay_job(stream, arm, out, *, pool=None, readout=True, fault=None):
 
 
 # The cell helpers below file replays for R-b7 (sites read, none files a replay under a binding):
-# distinct-from: cortex/memory_diagnostic.py -- replay() RUNS the pool arm from a spec; these name one
+# distinct-from: instruments/memory_diagnostic.py -- replay() RUNS the pool arm from a spec; these name one
 # distinct-from: cortex/time_cells.py -- tick advances a ramp and latches crossed cells
 # distinct-from: neuromodulation/drive_reduction.py -- NeedPool is a drive's LIF population
 # distinct-from: reasoning/rpm_solver.py -- _induce_attr predicts a missing matrix cell
-# distinct-from: thalamus/binding_instrument.py -- _t080_sparse_latent draws a sparse latent
+# distinct-from: instruments/binding_instrument.py -- _t080_sparse_latent draws a sparse latent
 def _spec(candidate, config, form, noise=False):
     """A pool arm's spec for memory_diagnostic.replay (R-b4's red when `noise`)."""
     spec = {"candidate": candidate, "config": config, "form": form}
@@ -698,7 +698,7 @@ def _child(spec):
     md._save(job, _plain(spec))
     try:
         result = subprocess.run(
-            [sys.executable, "-m", "snn_data_lake.cortex.pool_selection", "job", job],
+            [sys.executable, "-m", "snn_data_lake.instruments.pool_selection", "job", job],
             capture_output=True,
             text=True,
             timeout=JOB_TIMEOUT_S,

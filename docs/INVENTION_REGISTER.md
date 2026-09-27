@@ -78,7 +78,7 @@ envelope bytes are hash-pinned outside the mutation surface; touching them route
 (OD-2). NULL: if archived proposals never beat their parents, the loop reports it and halts.
 
 ## 6. Consciousness dissociation battery (L7, T033 + T077-T081)
-MECHANIZED (first instrument): `thalamus/ignition_instrument.py` (T033, 2026-08-21) — the
+MECHANIZED (first instrument): `instruments/ignition_instrument.py` (T033, 2026-08-21) — the
 ignition scorer, dual-derived (last-spike-trough window re-derived from rasters; antimode +
 logistic-inflection routes must agree at instrument resolution), driven through the T032
 actuator under sweep hold, with the shuffled-label + recurrence-ablation controls run in the
@@ -97,7 +97,7 @@ MECHANIZED (second, T077, 2026-09-15): `metacognitive_monitor.track_error` (auro
 the in-vivo dissociation; reds R0-R5 fired first) READ NOT MET -- `evidence/t077-metacognition.md` 3.3-3.4; nothing deleted.
 MECHANIZED (third, T079, 2026-09-15): `agency_monitor` per-joint efference copy + cause-blind twin + in-vivo dissociation
 (reds R1-R6 fired first) READ NOT MET -- `evidence/t079-agency.md` 3.3-3.4; nothing deleted.
-MECHANIZED (fourth, T080, 2026-09-16): `thalamus/binding_instrument` reads the live cross-modal binder against a
+MECHANIZED (fourth, T080, 2026-09-16): `instruments/binding_instrument` reads the live cross-modal binder against a
 membership-matched null at matched K (reds R1-R6 fired first) READ PASS, t +13.54 -- `evidence/t080-temporal-binding.md`
 3.3-3.4; the C5 row charged at 0.2309; nothing deleted.
 

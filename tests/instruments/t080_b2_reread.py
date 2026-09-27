@@ -17,14 +17,14 @@ from pathlib import Path
 
 import numpy as np
 
-from snn_data_lake.substrate.paired_contrast import contrast
-from snn_data_lake.thalamus.binding_instrument import (
+from snn_data_lake.instruments.binding_instrument import (
     T080_BAND_FW,
     T080_N_DRAWS,
     T080_NULL_RNG_BASE,
     T080_PIN,
     _t080_order_stat,
 )
+from snn_data_lake.instruments.paired_contrast import contrast
 
 REREAD_DRAWS = 200_000
 NULL_SEEDS = 200

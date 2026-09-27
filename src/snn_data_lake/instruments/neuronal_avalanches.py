@@ -39,7 +39,7 @@ criticality, not spiking biophysics. Small enough scale (modest N and avalanche 
 fixed-seed statistics are reproducible; a runaway size cutoff terminates supercritical cascades. Not
 cognition.
 
-  python -m snn_data_lake.cortex.neuronal_avalanches        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.instruments.neuronal_avalanches        # (also run by run_selfchecks.py)
 """
 
 import math

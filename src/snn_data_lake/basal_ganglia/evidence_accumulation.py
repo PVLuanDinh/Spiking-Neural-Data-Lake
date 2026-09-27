@@ -515,8 +515,8 @@ def _measure_patience_charge():
     """The replay-twice A/B over recorded 5-HT frames: (live_out, pinned_out, reads,
     specificity_holds). Frames sweep the raphe's own LEVELS so the wire's two ends are the
     real modules, not stand-ins."""
+    from snn_data_lake.instruments.port_charge_probe import replay_twice
     from snn_data_lake.neuromodulation.raphe_serotonin import LEVELS
-    from snn_data_lake.substrate.port_charge_probe import replay_twice
 
     frames = [(t + 1, "raphe_serotonin", [lvl]) for t, lvl in enumerate(LEVELS)]
     pinned = [0.5]  # the mid setpoint: a plausible constant, not a degenerate zero
@@ -545,7 +545,7 @@ def _assert_recorded_evidence_live(live, reads):
     count, same RT endpoints, exactly (the measurement is deterministic). (Read-only: the
     writer is --record-charge, never the self-check -- a battery run must not republish a
     tracked artifact.)"""
-    from snn_data_lake.substrate.port_charge_probe import read_attribution
+    from snn_data_lake.instruments.port_charge_probe import read_attribution
 
     rec = read_attribution(PATIENCE_EDGE)
     assert rec is not None and rec.get("diverged") is True, (
@@ -564,7 +564,7 @@ def record_charge():
     (port_charge_probe.record_attribution -- T026 consolidated the T025 inline writer into
     it). REFUSES to record a non-diverged run -- evidence is a measurement, never a
     declaration."""
-    from snn_data_lake.substrate.port_charge_probe import record_attribution
+    from snn_data_lake.instruments.port_charge_probe import record_attribution
 
     live, pinned_out, reads, spec_holds = _measure_patience_charge()
     if live == pinned_out or not spec_holds:

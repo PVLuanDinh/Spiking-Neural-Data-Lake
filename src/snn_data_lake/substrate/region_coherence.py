@@ -20,7 +20,7 @@ signal over the brain's per-region spike activity each tick. It combines two com
   * INTEGRATION / DIFFERENTIATION -- a lightweight perturb-free proxy: the normalized entropy of the spatial
     CO-ACTIVATION patterns across regions over the window (how many distinct region-coalitions the tick
     visits), cross-checked with the Casali normalized Lempel-Ziv complexity of the binarized co-activation
-    raster (the primitive reused from cortex.integration_measure). This rewards a rich, differentiated
+    raster (the primitive reused from instruments.integration_measure). This rewards a rich, differentiated
     coalition structure, not a single frozen pattern.
 
 The scalar `coherence` = a phase-weighted blend of the two (synchrony dominates; the complexity term
@@ -51,7 +51,7 @@ import zlib
 
 import numpy as np
 
-from snn_data_lake.cortex.integration_measure import normalized_lz
+from snn_data_lake.instruments.integration_measure import normalized_lz
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
@@ -231,7 +231,7 @@ class RegionCoherence:
         Binarize each region over time (active iff above its own window mean); read the spatial pattern
         across regions at each timestep. Return (entropy, lz): the normalized Shannon entropy of the
         distinct spatial co-activation patterns, and the Casali normalized-LZ of the time-major binarized
-        raster (reused from cortex.integration_measure) as a compression cross-check. Both in [0,1]."""
+        raster (reused from instruments.integration_measure) as a compression cross-check. Both in [0,1]."""
         usable = [w for w in windows if len(w) >= 2]
         if len(usable) < 2:
             return 0.0, 0.0
@@ -423,7 +423,7 @@ def _measure_edge_charge():
     """The replay-twice A/B for `interoception_out -> interoception_in` -> (live, pinned, reads,
     responded). `responded` = the threshold FELL at the challenge, which is the direction the
     producer's own docstring claims (a body far from baseline finds it EASIER to ignite)."""
-    from snn_data_lake.substrate.port_charge_probe import (
+    from snn_data_lake.instruments.port_charge_probe import (
         interoception_challenge_frames,
         replay_twice,
     )
@@ -439,7 +439,7 @@ def _measure_edge_charge():
 
 def record_charge():
     """Measure the A/B and record its attribution via THE one writer."""
-    from snn_data_lake.substrate.port_charge_probe import record_attribution
+    from snn_data_lake.instruments.port_charge_probe import record_attribution
 
     live, pinned_out, reads, responded = _measure_edge_charge()
     if live == pinned_out or not responded:
@@ -609,7 +609,7 @@ def main():
     # the consumer end. A declared edge that carries nothing is the defect the disposition was
     # honest about, so the edge asserts its own attribution here rather than being taken on the
     # declaration.
-    from snn_data_lake.substrate.port_charge_probe import read_attribution
+    from snn_data_lake.instruments.port_charge_probe import read_attribution
 
     live, pinned_out, reads, responded = _measure_edge_charge()
     assert reads == len(live), f"{reads} reads != {len(live)} frames"

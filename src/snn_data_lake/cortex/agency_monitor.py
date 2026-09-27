@@ -115,6 +115,7 @@ import zlib
 from pathlib import Path
 
 from snn_data_lake.brainstem import arm_config
+from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
 from snn_data_lake.substrate._mathutils import clamp01, pearson, q95
 from snn_data_lake.substrate.afferent_boundary import proprioception_delta
 from snn_data_lake.substrate.efferent_boundary import (
@@ -122,7 +123,6 @@ from snn_data_lake.substrate.efferent_boundary import (
     intended_deltas,
     proprioception_deltas,
 )
-from snn_data_lake.substrate.paired_contrast import T_BAR, contrast
 
 __version__ = "0.1.0"
 
@@ -355,10 +355,10 @@ class AgencyMonitor:
 # distinct-from: substrate/brain_telemetry.py -- the ONE telemetry CONTRACT, a live
 #   per-panel view of the brain's own keys. These functions read a finished RECORDING of
 #   envelope passages offline and publish nothing. Read.
-# distinct-from: cortex/prior_drift_harness.py -- a scratch-POPULATION drift harness whose
+# distinct-from: instruments/prior_drift_harness.py -- a scratch-POPULATION drift harness whose
 #   "reading" is a host-settling measurement with its subject PID beside it. Different
 #   subject, different quantity; its paired statistic is the one this module IMPORTS from
-#   `substrate/paired_contrast` rather than re-spelling. Read.
+#   `instruments/paired_contrast` rather than re-spelling. Read.
 # distinct-from: gates/amdahl_gate.py -- a live/neuter/sham paired reading over tick
 #   COST on three scratch brains. This pairs INTACT against SHOVED on the per-joint
 #   command-to-outcome coupling; no timing quantity is read at all. Read.
@@ -832,7 +832,7 @@ def t079_contrasts(intact, shoved, deadband=T079_DEADBAND, score=_t079_score, ba
 #   census gates that CLASSIFY existing code. Every entry below is a deliberately broken
 #   twin of THIS module's own instrument, constructed so a red can be shown to fire rather
 #   than argued to (P8 clause 1). Read; nothing here inspects or rewrites any other module.
-# distinct-from: cortex/attention_schema.py::_t078_mutated_scorer and
+# distinct-from: instruments/attention_schema.py::_t078_mutated_scorer and
 #   cortex/metacognitive_monitor.py's equivalent -- the PATTERN this follows (2.1 names them
 #   as the thing to reuse) over DIFFERENT instruments: an MI floor and a decoder band there,
 #   a permutation floor over an EMA correlation and a token parser here. One catalog per
@@ -1377,10 +1377,10 @@ def _t079_refusals(read, seed, arm):
     return out
 
 
-# distinct-from: cortex/attention_schema.py::run_t078_campaign and
+# distinct-from: instruments/attention_schema.py::run_t078_campaign and
 #   cortex/metacognitive_monitor.py's campaign -- the PATTERN this follows (2.1 names them as
 #   the thing to reuse), over a different instrument, different arms and a different pin.
-#   Read; no state, no pin and no statistic is shared beyond `substrate/paired_contrast`,
+#   Read; no state, no pin and no statistic is shared beyond `instruments/paired_contrast`,
 #   which all three IMPORT.
 def run_t079_campaign(seeds=T079_SEEDS, n_ticks=T079_N_TICKS, pin=T079_PIN):
     """The campaign (2.2-2.3): record, read, floor, contrast, pin ONCE. Returns an exit code.

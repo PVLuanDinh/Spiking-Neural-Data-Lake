@@ -67,18 +67,18 @@ CORE = [
     "cortex.hodgkin_huxley",
     "cortex.alif_neuron",
     "cortex.divisive_normalization",
-    "cortex.neuronal_avalanches",
+    "instruments.neuronal_avalanches",
     "cortex.cortical_microcircuit",
     "cortex.cortical_prior",  # H01 human reference data: every entry carries its four attributes
     "cortex.h01_ingest",  # T062: the c3 synapse graph -- 8 gates, each with its red, offline
     "cortex.arealization",  # T040+T041: exhaustive GRN censuses + prosomeric grid + graded arm
     "cortex.growth_program",  # T042: sealed view, shared-program counter, dilution, refusal reds
-    "cortex.prior_drift_harness",  # 022 T063: both reds, the PLANTED positive control, the WRONG validity precondition and every nuisance refusal, on a 64-unit synthetic population
+    "instruments.prior_drift_harness",  # 022 T063: both reds, the PLANTED positive control, the WRONG validity precondition and every nuisance refusal, on a 64-unit synthetic population
     "cortex.placement",  # grown units ordered into cortical layers by measured H01 occupancy
     "cortex.growth_stop",  # T047: overgrowth red + four regimes + |LP| veto + measured null clause
-    "cortex.memory_diagnostic",  # G1 causal contract synthetic reds
+    "instruments.memory_diagnostic",  # G1 causal contract synthetic reds
     "cortex.recurrent_pool",  # G1(b): R-b0 parity, R-b3, R-b4 pool noise, R-b5 and every red
-    "cortex.pool_selection",  # G1(b) campaign: ordering, power, R-b7 reds, step order, exit codes
+    "instruments.pool_selection",  # G1(b) campaign: ordering, power, R-b7 reds, step order, exit codes
     "cortex.lca_sparse_coding",
     "cortex.predictive_coding",
     "cortex.pc_cortex_serve",
@@ -105,7 +105,7 @@ CORE = [
     "cortex.recognizer_bank",
     "cortex.neuron_zoo",
     "cortex.access_consciousness",
-    "cortex.integration_measure",
+    "instruments.integration_measure",
     "cortex.self_model",
     "cortex.reasoning_curriculum",
     "cortex.autapse_neuron",
@@ -126,7 +126,7 @@ CORE = [
     "cortex.crossmodal_binder",  # W6: categorical emotion + 2nd-order ToM; cross-modal super-additive binding
     "cortex.executive_control",  # W8: ACC conflict + EVC + tree/sequence planning
     "cortex.competence_executive",  # PROMOTED+RENAMED 2026-08-12 (#10 lane 4f): dopamine-RPE lr gate + public competence-planning objects (wrappers retired same day); stdlib-only, ~1s
-    "cortex.nef_compute",  # PROMOTED 2026-08-12 (PROMOTE lane): NEF reference implementation / nengo_bridge ground truth; numpy-only, ~0.2s
+    "instruments.nef_compute",  # PROMOTED 2026-08-12 (PROMOTE lane): NEF reference implementation / nengo_bridge ground truth; numpy-only, ~0.2s
     "cortex.vsa_structure_mapping",  # PROMOTED 2026-08-12 (PROMOTE lane): Gentner structure-mapping analogy (VSA/resonator); stdlib, ~0.1s
     "cortex.rose_language",  # PROMOTED 2026-08-12 (PROMOTE lane): ROSE fluent-language pipeline (VSA constituency + grounded semantics + SLDA competence); ~0.5s
     "cortex.time_cells",
@@ -135,9 +135,9 @@ CORE = [
     "cortex.recursive_tom",
     "cortex.counterfactual_sim",  # C1 batch-2: N-agent recursive ToM / counterfactual do()-operator
     "cortex.learned_attention",  # C1 batch-3: learned spiking reticular attention gate
-    "cortex.attention_schema",  # specs/022 T078 Part I: G3/G4's six reds on constructed streams (no brain, no lake); the campaign is --t078-campaign only
-    "cortex.report_order_probe",  # specs/022 T081 [US4]: 2.4's six reds on constructed workspaces (no brain, no lake); the campaign is --t081-campaign only
-    "cortex.everyday_battery",  # specs/022 Phase 4 C0: 2.5's five constructed reds + (k)/(s)/(p)'s constructed arms (no brain, no lake); the campaign is --c0-campaign only
+    "instruments.attention_schema",  # specs/022 T078 Part I: G3/G4's six reds on constructed streams (no brain, no lake); the campaign is --t078-campaign only
+    "instruments.report_order_probe",  # specs/022 T081 [US4]: 2.4's six reds on constructed workspaces (no brain, no lake); the campaign is --t081-campaign only
+    "instruments.everyday_battery",  # specs/022 Phase 4 C0: 2.5's five constructed reds + (k)/(s)/(p)'s constructed arms (no brain, no lake); the campaign is --c0-campaign only
     "cortex.learned_evc",  # C1 batch-4: learned expected-value-of-control (dopamine-gated cost/value)
     "cortex.second_order_access",  # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
     "cortex.heterogeneous_microcircuit",  # Brain-Cog-adopted: LIF+Izhikevich+AdEx composed live under a local rule
@@ -234,8 +234,8 @@ CORE = [
     "thalamus.connectome_router",  # C1 batch-3: live signed/delayed spike propagation over the connectome graph
     "thalamus.gwt_deep",  # phase-binding demonstration (spiking-vs-rate control); promoted 2026-08-11
     "thalamus.interoceptive_relay",  # T039j: thal_relay -- the declared tract hop that had no module
-    "thalamus.ignition_instrument",  # T033: dual-derived ignition scorer over the re-entry stage
-    "thalamus.binding_instrument",  # T080: the live cross-modal binder's report vs its own re-paired features
+    "instruments.ignition_instrument",  # T033: dual-derived ignition scorer over the re-entry stage
+    "instruments.binding_instrument",  # T080: the live cross-modal binder's report vs its own re-paired features
     # hypothalamus â€” homeostatic timing (the SCN circadian clock)
     "hypothalamus.circadian_clock",
     "hypothalamus.set_points",
@@ -288,10 +288,10 @@ CORE = [
     "plasticity.benna_fusi",
     "plasticity.homeostatic_plasticity_stack",
     "plasticity.plasticity_rule_stack",
-    "plasticity.snn_mnist_stdp_genn",  # specs/012 GeNN port: codegen-integrity check every box; GPU train is GENN_RUN-gated
+    "instruments.snn_mnist_stdp_genn",  # specs/012 GeNN port: codegen-integrity check every box; GPU train is GENN_RUN-gated
     # substrate â€” the spiking data-lake, telemetry, and infra (not a brain region)
     "substrate._mathutils",
-    "substrate.paired_contrast",  # T077 2.10: the seed-paired t + exact FPR, lifted from the T063 harness
+    "instruments.paired_contrast",  # T077 2.10: the seed-paired t + exact FPR, lifted from the T063 harness
     "substrate.spike_stream_sketch",
     "substrate.spike_cardinality",
     "substrate.reservoir_sampling",
@@ -303,13 +303,13 @@ CORE = [
     "substrate.minhash",
     "substrate.morris_counter",
     "substrate.proximity_index",
-    "substrate.energy",
+    "instruments.energy",
     "substrate.data_quality",
     "substrate.drift_monitor",
     "substrate.spike_telemetry_hub",
     "substrate.streaming_hub",
-    "substrate.neuro_chip",
-    "substrate.neuro_chip_stream",
+    "instruments.neuro_chip",
+    "instruments.neuro_chip_stream",
     "substrate.nir_export",
     "substrate.sensor_csv_ingest",
     "substrate.esp32_encoder_path",
@@ -365,10 +365,10 @@ CORE = [
     "substrate.wiring_manifest",  # 022 T018: five checks + constructed reds + NIR-HDF5 round-trip on a scratch manifest
     "gates.manifest_gate",  # 022 T019: committed-artifact checks + divergence/join/region reds through the gate's verdict path
     "substrate.report_channel",  # 022 T034: dark-record honesty + moving strength + release + determinism
-    "substrate.episode_driver",  # 022 T035: port drives + trial structure/oracle + G5 restore + refusals
+    "instruments.episode_driver",  # 022 T035: port drives + trial structure/oracle + G5 restore + refusals
     "substrate.afferent_boundary",  # 022 T036: sentinel->MISSING + 014-normalizer reuse + proprio neuter A/B
     "substrate.efferent_boundary",  # 022 T037: passage counting + paired copy-cut charge + missing-body honesty
-    "substrate.port_charge_probe",  # 022 T021: sensitivity flip + specificity hold + margin varied-vs-frozen separation
+    "instruments.port_charge_probe",  # 022 T021: sensitivity flip + specificity hold + margin varied-vs-frozen separation
     "insula.interoceptive_integration",  # 022 T021a: deviation-from-self salience + frozen-baseline red + habituation
     "gates.envelope_hash_gate",  # 022 T021b: live five-file control + tamper/stale-approval/unbaselined reds
     "gates.region_charge_gate",  # 022 T022: registration-never-greens + constructed attribution + non-diverged-charges-nothing
@@ -380,7 +380,7 @@ CORE = [
     "substrate.region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> ignition bias
     "substrate.basic_components",  # Brain-Cog-adopted composition interface (node + local-rule + connection palette)
     "substrate.similarity_sized_growth",  # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
-    "substrate.world_red_probe",  # specs/022 W3: 7 wiring reds (pinned constant dead, absent != zero, 4dp decisive, refit gap arithmetic)
+    "instruments.world_red_probe",  # specs/022 W3: 7 wiring reds (pinned constant dead, absent != zero, 4dp decisive, refit gap arithmetic)
     "gates.move_gate",  # specs/022 G8 G-R8: the diff engine's constructed reds (bare); the tree reds run per stage with --self-check --mover
 ]
 # RESEARCH â€” benchmarks / storage / KG demos (research/), run with root on PYTHONPATH.
@@ -490,15 +490,15 @@ NENGO_GATED = ["substrate.nengo_bridge"]
 
 # [train]-extra modules (torchvision at module top, the recorded P7 adjudication: torchvision is
 # REJECTED for core because a bare pip resolve replaces the cu128 torch with the CPU build -- see
-# plasticity/snn_mnist_stdp.py's docstring). Run only where torchvision is importable (the gate
+# instruments/snn_mnist_stdp.py's docstring). Run only where torchvision is importable (the gate
 # env carries torchvision+cu128), SKIPPED-with-notice otherwise (CI's torch-tier job installs no
 # extras, so these skip there -- same contract as NENGO_GATED). Added 2026-08-11 with the
 # deep_stdp-lineage promotions (#10 lane 2).
 TRAIN_GATED = [
-    "plasticity.snn_mnist_stdp",  # PROMOTED 2026-08-11 (lane 2a): the Diehl-Cook rule hub (full real train, GPU, 58.8s)
-    "plasticity.deep_stdp",  # PROMOTED 2026-08-11 (lane 2b): library mechanics check; DEEPSTDP_RUN=1 = the full 8-min benchmark
-    "cortex.deep_stdp_latency",  # PROMOTED 2026-08-11 (lane 2c): latency machinery mechanics; DSLATENCY_RUN=1 = the full 6.6-min benchmark
-    "hippocampus.developmental_loop_brain",  # PROMOTED 2026-08-12 (lane 4e): wiring mechanics (~5s); DLB_RUN=1 = the full 5.8-min measurement
+    "instruments.snn_mnist_stdp",  # PROMOTED 2026-08-11 (lane 2a): the Diehl-Cook rule hub (full real train, GPU, 58.8s)
+    "instruments.deep_stdp",  # PROMOTED 2026-08-11 (lane 2b): library mechanics check; DEEPSTDP_RUN=1 = the full 8-min benchmark
+    "instruments.deep_stdp_latency",  # PROMOTED 2026-08-11 (lane 2c): latency machinery mechanics; DSLATENCY_RUN=1 = the full 6.6-min benchmark
+    "instruments.developmental_loop_brain",  # PROMOTED 2026-08-12 (lane 4e): wiring mechanics (~5s); DLB_RUN=1 = the full 5.8-min measurement
 ]
 
 # The repo root, for resolving ARTIFACT_GATED paths regardless of the cwd the runner was invoked from.

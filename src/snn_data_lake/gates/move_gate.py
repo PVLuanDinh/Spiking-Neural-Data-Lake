@@ -1222,7 +1222,7 @@ def diff(pre: dict, post: dict, declared: dict, expected: dict | None = None) ->
 #   from a snapshot; nothing here restores. The nearest tree copy, self_mod_harness's inline
 #   copytree, copies the repo minus an ignore-pattern list for a sandboxed edit; this copies exactly
 #   the git-visible tree (ls-files -co --exclude-standard) so a copy's census equals an export's.
-#   Also read: gates/selfcheck_cache.py (self_check), cortex/attention_schema.py (main),
+#   Also read: gates/selfcheck_cache.py (self_check), instruments/attention_schema.py (main),
 #   cortex/eprop_kernel.py (_TinyNet), cortex/language_readout_slda.py (predict) -- each its own
 #   module's self-check or readout, none a gate census, diff or tree export.
 # ---- trees: a census-ready export, a self-check copy ------------------------------------------
@@ -1715,8 +1715,8 @@ def tree_reds(root: Path, mover: Path, log=print) -> list:
 
 # distinct-from: gates/selfcheck_cache.py -- self_check fires the CACHE's own P8 reds; these are
 #   G8's S1b and C5 reds over the alias layer and the checkpoint, built in copies. Also read:
-#   cortex/attention_schema.py (main), cortex/memory_diagnostic.py (_movement),
-#   cortex/report_order_probe.py (t081_lesion), reasoning/godel_machine.py (_probe_source).
+#   instruments/attention_schema.py (main), instruments/memory_diagnostic.py (_movement),
+#   instruments/report_order_probe.py (t081_lesion), reasoning/godel_machine.py (_probe_source).
 #: C2(b)'s identity check, derived from the TABLES (never from `_LEGACY` or `_MOVED` themselves, so a
 #: dropped or re-pointed entry reds): every legacy path `is` its module, every LEGACY-only package is
 #: the synthetic package, and every flat alias `is` the module REGIONS places it in. `__PLANT__` is a
@@ -1841,7 +1841,7 @@ def _drop_legacy_entry(tree: Path, legacy: str) -> None:
 
 # distinct-from: gates/selfcheck_cache.py -- self_check fires the CACHE's own P8 reds; this
 #   builds G8's alias, legacy-run and continuity reds in temporary copies of a tree. Also read:
-#   cortex/attention_schema.py (main, 2.4's six reds of its own instrument) -- not a tree red.
+#   instruments/attention_schema.py (main, 2.4's six reds of its own instrument) -- not a tree red.
 def tree_reds_s1b(root: Path, mover: Path, rl1_base: Path | None = None, log=print) -> list:
     """S1b's reds (2.4), C2(c)'s and C5's, each in a fresh temporary copy of `root` (never the
     checkout). Every module is a basename resolved through the copy's own tables (S1d)."""

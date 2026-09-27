@@ -42,7 +42,7 @@ mechanism beside the percept packs, which P2 forbids); no aggregate consciousnes
 about the chat reply's contamination clause, which stays. A green reading here is evidence about
 a MECHANISM, never a verdict about experience.
 
-# distinct-from: thalamus/ignition_instrument.py -- an EXEMPT scorer whose subjects are
+# distinct-from: instruments/ignition_instrument.py -- an EXEMPT scorer whose subjects are
 #   CONSTRUCTED ReentrantWorkspaces on a scratch bench, scoring an all-or-none DRIVE transition
 #   with reds built as impostor SUBCLASSES of the subject. This module lesions CLONES of the
 #   LIVE arm's GlobalWorkspace and reads the REPORT CHANNEL's record off them; its reds are
@@ -54,12 +54,12 @@ a MECHANISM, never a verdict about experience.
 #   are the surfaces commit's own step. Read.
 # distinct-from: substrate/report_channel.py -- the MECHANISM UNDER TEST. This module changes
 #   nothing in it: it calls the public `snapshot` and re-implements no part of the record. Read.
-# distinct-from: thalamus/binding_instrument.py -- T080's instrument over the CrossModalBinder's
+# distinct-from: instruments/binding_instrument.py -- T080's instrument over the CrossModalBinder's
 #   report, membership-matched permutation, its own pin. The campaign/dry-run/pin PATTERN is the
-#   thing reused; no state, no pin and no statistic is shared beyond `substrate/paired_contrast`,
+#   thing reused; no state, no pin and no statistic is shared beyond `instruments/paired_contrast`,
 #   which both IMPORT. Read.
 
-  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.cortex.report_order_probe
+  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.instruments.report_order_probe
 """
 
 import copy
@@ -70,7 +70,7 @@ import sys
 import time
 from pathlib import Path
 
-from snn_data_lake.substrate.paired_contrast import T_BAR, contrast
+from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
 from snn_data_lake.substrate.report_channel import snapshot
 
 # =============================================================================
@@ -448,7 +448,7 @@ def t081_read(rows):
     return out
 
 
-# distinct-from: substrate/paired_contrast.py::contrast -- THE statistic, imported and called
+# distinct-from: instruments/paired_contrast.py::contrast -- THE statistic, imported and called
 #   here, never re-spelled. The three readers below compute a per-seed NUMBER for it to test (or,
 #   for (g0) and (c2), a per-seed COUNT that 2.3 bars exactly and hands to no test at all). Read.
 def _t081_c1(entry):
@@ -521,7 +521,7 @@ def t081_contrasts(per_seed, score=None, c2=None, bar=T081_BAR):
          NAMED. Never a bar to raise.
 
     DISCLOSED READING of the builder brief, which paraphrased all three as going "through
-    `substrate.paired_contrast.contrast`": 2.3, which is frozen and outranks the paraphrase,
+    `instruments.paired_contrast.contrast`": 2.3, which is frozen and outranks the paraphrase,
     makes only (c1) a t -- (g0) is "on every seed at least 2 distinct reported contents" and (c2)
     is "a count, exact". They are implemented as 2.3 words them.
 
@@ -574,8 +574,8 @@ def t081_verdict(got, refusals):
     return "PASS" if (got["c1"].met and got["c2"]["met"]) else "NOT MET"
 
 
-# distinct-from: thalamus/binding_instrument.py::_t080_mutated_scorer and
-#   cortex/agency_monitor.py::_t079_mutated_scorer and cortex/attention_schema.py's -- the same
+# distinct-from: instruments/binding_instrument.py::_t080_mutated_scorer and
+#   cortex/agency_monitor.py::_t079_mutated_scorer and instruments/attention_schema.py's -- the same
 #   one-catalog-per-module CONVENTION over DIFFERENT instruments (a membership-matched
 #   permutation there, a lesioned clone of a workspace here). Every entry below is a deliberately
 #   broken twin of THIS module's own instrument, constructed so a red can be SHOWN to fire rather
@@ -651,7 +651,7 @@ def t081_constructed_workspace(seed=0):
     construction puts this module into `tools/p6_gate.py`'s private-instance and unread-writer
     censuses, both of which are ratchets at 6 with ZERO slack, so both read 7 with this module
     present. It is the same shape the gate already records an ADMISSION for at
-    `thalamus/ignition_instrument.py` (T033, 6 -> 7): a measurement instrument's throwaway
+    `instruments/ignition_instrument.py` (T033, 6 -> 7): a measurement instrument's throwaway
     subjects are not more private buses, which is the gate's own stated reason for rejecting the
     private-instance SITE count. The disposition is the arc's, not this module's, and nothing
     here is shaped to avoid the walk."""
@@ -1099,8 +1099,8 @@ def _t081_dirty():
         return f"unavailable ({type(e).__name__})"
 
 
-# distinct-from: thalamus/binding_instrument.py::_t080_seed_block and
-#   cortex/agency_monitor.py / cortex/attention_schema.py's per-seed printers -- the same
+# distinct-from: instruments/binding_instrument.py::_t080_seed_block and
+#   cortex/agency_monitor.py / instruments/attention_schema.py's per-seed printers -- the same
 #   one-printer-per-instrument CONVENTION over a DIFFERENT reading (a bound fraction against a
 #   permutation null there, a per-dose report-change fraction here). It exists so the dry run and
 #   the campaign cannot drift into two report formats. Read.
@@ -1260,11 +1260,11 @@ def run_t081_dry_run(out_path=T081_DRY_RUN_OUT, seed=0):
     return 0
 
 
-# distinct-from: thalamus/binding_instrument.py::run_t080_campaign and
-#   cortex/agency_monitor.py::run_t079_campaign and cortex/attention_schema.py's -- the PATTERN
+# distinct-from: instruments/binding_instrument.py::run_t080_campaign and
+#   cortex/agency_monitor.py::run_t079_campaign and instruments/attention_schema.py's -- the PATTERN
 #   this follows (record, read, contrast, pin ONCE) over a different instrument, different arms
 #   and a different pin. Each row's campaign is its own instrument's; a shared runner would be a
-#   fifth mechanism, not one. Read; nothing is shared beyond `substrate/paired_contrast`.
+#   fifth mechanism, not one. Read; nothing is shared beyond `instruments/paired_contrast`.
 def run_t081_campaign(seeds=T081_SEEDS, pin=T081_PIN):
     """The campaign (2.2-2.3): record, read, contrast, pin ONCE. Returns an exit code.
 
@@ -1367,11 +1367,11 @@ def _t081_reds_line(reds, out=print):
         out(f"  {name}: {str(reds[name]):5s}  {T081_RED_LINES[name]}")
 
 
-# distinct-from: thalamus/binding_instrument.py::main and cortex/attention_schema.py's -- each
+# distinct-from: instruments/binding_instrument.py::main and instruments/attention_schema.py's -- each
 #   module's own `__main__` block, which is this tree's convention (run_selfchecks.py executes
 #   exactly that block per module and scores the exit status), not a second dispatcher. Nothing
 #   here runs another module's self-check. Read.
-# distinct-from: thalamus/binding_instrument.py::t080_pin_reading -- the same job (the C5 row's
+# distinct-from: instruments/binding_instrument.py::t080_pin_reading -- the same job (the C5 row's
 #   reading re-derived from its pin at self-check, with a mutated derivation shown to refuse) over a
 #   DIFFERENT pin schema (per-seed f_named / f_scr by dose, keyed by JSON strings) and a different
 #   mutated derivation (the sides swapped, R2's blind scorer). Added at T081's panel fold (2026-09-16,

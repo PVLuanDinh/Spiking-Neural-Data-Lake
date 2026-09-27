@@ -1039,7 +1039,7 @@ def _cross_process_restart(seed, cfg, ticks=140):
 # distinct-from: cortex/brain.py -- _drive() there ticks a BRAIN with a forced clock phase.
 #   distinct-from: cortex/heterogeneous_microcircuit.py -- drives a circuit for spike counts.
 #   distinct-from: cortex/reasoning_curriculum.py -- runs the curriculum's own night loop.
-#   distinct-from: substrate/neuro_chip_stream.py -- an out-of-core AER event loop.
+#   distinct-from: instruments/neuro_chip_stream.py -- an out-of-core AER event loop.
 #   distinct-from: gates/replay_gate.py -- an RNG-driven stimulus for the resume proof.
 #   Phrase overlap on 'drive for n ticks' only; this hands the harness stream to drive(). Sites read.
 def _run(engine, n_ticks, stream):

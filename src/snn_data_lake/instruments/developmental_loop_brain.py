@@ -2,7 +2,7 @@ r"""
 BRAIN-INTEGRATED DEVELOPMENTAL LOOP (Slice 1) -- the deep developmental loop (v3.54) with its
 hand-rolled parts replaced by the brain's REAL subsystems, wired through thin adapters.
 
-  perception    : conv1 latency-STDP (unsupervised, frozen)          [cortex/deep_stdp_latency, promoted 2026-08-11]
+  perception    : conv1 latency-STDP (unsupervised, frozen)          [instruments/deep_stdp_latency, promoted 2026-08-11]
   memory        : HippocampalMemory  = real ReplayBuffer + SleepConsolidator   [hippocampus/, promoted 2026-08-11]
   readout       : GrowableReadout    = MLP grown function-preservingly (Net2Net) [hippocampus/, promoted 2026-08-11]
   decision      : SpikingCuriosity + SpikingCurriculum + BrainDecision (LatentQ value + Metacog; trains and
@@ -90,7 +90,7 @@ accuracy claims live with the scale that earns them). DLB_RUN=1 = the full 5.8-m
 measurement with both accuracy asserts intact.
 
 Run (from repo root; GPU strongly recommended):
-    DLB_RUN=1 NORD_GPU=1 PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.hippocampus.developmental_loop_brain
+    DLB_RUN=1 NORD_GPU=1 PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.instruments.developmental_loop_brain
 Scale knobs: NORD_CYCLES(15) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(300) NORD_REPLAY(200)
              NORD_SGD(300) NORD_CAP(1) NORD_TRAIN(10000) NORD_TEST(2000) NORD_HIDDEN(64) NORD_GROW_K(4)
              NORD_HIDDEN_CAP(160) NORD_GPU
@@ -106,15 +106,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from snn_data_lake.basal_ganglia.brain_decision import BrainDecision
-from snn_data_lake.cortex.deep_stdp_latency import ConvLatencyStdp
 from snn_data_lake.hippocampus.growable_readout import GrowableReadout, LaminarColumns
 from snn_data_lake.hippocampus.hippocampal_memory import HippocampalMemory
+from snn_data_lake.instruments.deep_stdp_latency import ConvLatencyStdp
+from snn_data_lake.instruments.snn_mnist_stdp import load_mnist
 from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
 from snn_data_lake.neuromodulation.spiking_curiosity import (
     SpikingCuriosityDrive,
     SpikingCurriculum,
 )
-from snn_data_lake.plasticity.snn_mnist_stdp import load_mnist
 from snn_data_lake.substrate.device import enable, resolve_device
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
@@ -250,7 +250,7 @@ def _accuracy(readout, feats, labels, idx):
         return (pred == labels[idx]).float().mean().item()
 
 
-# distinct-from: plasticity/deep_stdp.py, cortex/deep_stdp_latency.py -- the SAME settled
+# distinct-from: instruments/deep_stdp.py, instruments/deep_stdp_latency.py -- the SAME settled
 # gate-tier PATTERN (bare __main__ = bounded integrity check, env flag = the full
 # measurement), deliberately followed, but each _mechanics_check asserts ITS OWN module's
 # wiring (this one: replay store/sample, planner-vs-fused selection, the LC*DA lr fold,

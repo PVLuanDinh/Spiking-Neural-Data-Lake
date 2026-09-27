@@ -1,7 +1,7 @@
 r"""The plan's seed-paired statistic, in ONE place: a paired one-sided t over the S seeds against the bar,
 with its exact sign-flip false-positive rate printed beside every contrast (PLAN-FINAL Part F preamble).
 
-LIFTED 2026-09-15 (specs/022 T077, evidence/t077-metacognition.md 2.10) from `cortex/prior_drift_harness.py`,
+LIFTED 2026-09-15 (specs/022 T077, evidence/t077-metacognition.md 2.10) from `instruments/prior_drift_harness.py`,
 where it was written for T063 (its 2.6) and reused by T070, VERBATIM -- the harness now imports these names
 from here and re-exports them, so `prior_drift_harness.contrast` still resolves. Why it moved: the harness is
 an EXEMPT instrument (a scratch-population harness, never on the live tick), and a LIVE module that imports
@@ -19,13 +19,13 @@ defect. So the statistic lives where any module may import it, and the instrumen
 
 Pure standard library; deterministic; ASCII-only prints.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.paired_contrast
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.paired_contrast
 """
 
 import math
 from typing import NamedTuple
 
-# consolidates: cortex/prior_drift_harness.py (merge)
+# consolidates: instruments/prior_drift_harness.py (merge)
 #   -- T_BAR, Contrast, paired_t, permutation_fpr and contrast moved here verbatim; the harness imports and
 #   re-exports them (one implementation survives; the harness keeps every other symbol).
 T_BAR = 1.895  # paired one-sided t, 7 d.f., alpha = 0.05 (PLAN-FINAL Part F preamble)

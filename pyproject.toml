@@ -191,7 +191,7 @@ dependencies = [
     # ledger reddened). Unpinned: a measurement library, not part of the numerical contract.
     "psutil",
     # THE THREAD-POLICY INSTRUMENT. cortex/recurrent_pool.py pins BLAS to one thread for its cost
-    # timing and drives its R-b3 determinism check at 1 and 24 BLAS threads; cortex/memory_diagnostic.py
+    # timing and drives its R-b3 determinism check at 1 and 24 BLAS threads; instruments/memory_diagnostic.py
     # runs every replay's readout at one BLAS thread and records the loaded backend
     # (evidence/g1b-pool-selection.md sections 2.2 and 2.7; the ESN-LSM eigvals it was first declared
     # for left with g2, section 3.5). Installed only as scikit-learn's transitive dependency until
@@ -265,7 +265,7 @@ arc = ["arcengine"]                                                      # src/s
 # files this commit does not touch. Declaring the dependency closes the P7 ledger's UNDECLARED
 # finding -- a finding about pyproject naming its imports -- and that is the whole of what it closes.
 llm = ["airllm", "torch"]                                               # local_llm/ on-device NL interface (AirLLM layer-by-layer local inference â€” no cloud)
-genn = ["pygenn @ https://github.com/genn-team/genn/archive/refs/tags/5.4.0.zip", "ml_genn @ https://github.com/genn-team/ml_genn/archive/refs/tags/ml_genn_2_4_0.zip#subdirectory=ml_genn"]  # NEITHER is on PyPI (measured 2026-08-07: /pypi/pygenn/json -> 404, ml-genn "from versions: none"; GitHub releases carry no wheels) -- both install from source per GeNN's own docs, needs a C++ compiler + CUDA. Consumers: plasticity/snn_mnist_stdp_genn + reasoning/paradigm_b_genn + training/mnist_genn
+genn = ["pygenn @ https://github.com/genn-team/genn/archive/refs/tags/5.4.0.zip", "ml_genn @ https://github.com/genn-team/ml_genn/archive/refs/tags/ml_genn_2_4_0.zip#subdirectory=ml_genn"]  # NEITHER is on PyPI (measured 2026-08-07: /pypi/pygenn/json -> 404, ml-genn "from versions: none"; GitHub releases carry no wheels) -- both install from source per GeNN's own docs, needs a C++ compiler + CUDA. Consumers: instruments/snn_mnist_stdp_genn + reasoning/paradigm_b_genn + training/mnist_genn
 exe = ["pyinstaller"]                                                   # build a standalone Windows .exe (build-time only)
 hf = ["datasets", "huggingface-hub", "pillow"]                            # substrate/hf_stream.py: streamed licensed datasets -> features
 desktop = ["pywebview"]                                                 # integrations/desktop/cockpit_desktop.py: the cockpit in a native GPU-composited window

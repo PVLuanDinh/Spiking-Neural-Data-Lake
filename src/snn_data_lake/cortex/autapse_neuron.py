@@ -52,7 +52,7 @@ GRADIENT_CLAIM = {
         "single-layer logistic delta rule: g = sigmoid(w.x + b) - y, then w[k] -= lr * g * x[k]. No "
         "hidden layer, so no backward pass exists to have a gradient propagated through; this module "
         "imports no torch at all. It shares the NAME _LinearReadout with the autograd readouts in "
-        "hippocampus/developmental_loop_brain and reasoning/_loop_common and nothing else -- a name "
+        "instruments/developmental_loop_brain and reasoning/_loop_common and nothing else -- a name "
         "collision that was briefly mistaken for a third copy of them (spec FR-002h records the "
         "correction). Unlike those two this module IS reachable from a live path, which is exactly "
         "why classifying it correctly matters",

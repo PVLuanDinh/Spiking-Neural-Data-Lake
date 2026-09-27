@@ -375,7 +375,7 @@ EDGES = [
     _e("bla", "ca1", "amygdala -> hippocampus (emotional memory modulation)", "exc", "relay"),
     # hippocampus -> ventral striatum (subiculum -> nucleus accumbens): memory/context state
     # informs value-based selection. DECLARED 2026-08-12 when the promoted
-    # hippocampus/developmental_loop_brain realized the route in code (its main path feeds
+    # instruments/developmental_loop_brain realized the route in code (its main path feeds
     # competence state into basal_ganglia/brain_decision's LatentQ every cycle) -- the p6
     # gate's undeclared-pair detector caught the missing declaration, which is the detector
     # working: the import existed, the connectome had not recorded it.
@@ -386,7 +386,7 @@ EDGES = [
         "exc",
         "relay",
     ),
-    # hippocampus -> thalamic broadcast hub: hippocampus/developmental_loop_brain constructs and
+    # hippocampus -> thalamic broadcast hub: instruments/developmental_loop_brain constructs and
     # drives an instance of the thalamic GWT hub CLASS (GlobalWorkspace) for its offline
     # developmental loop -- two lazy imports (main() / _mechanics_check()), the tree's only
     # hippocampus->thalamus reach. DECLARED 2026-08-12 when the WorkspaceBroadcast retirement made

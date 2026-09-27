@@ -57,7 +57,7 @@ import time
 
 import torch
 
-from snn_data_lake.plasticity.snn_mnist_stdp import (
+from snn_data_lake.instruments.snn_mnist_stdp import (
     BETA,
     KWTA,
     LR,

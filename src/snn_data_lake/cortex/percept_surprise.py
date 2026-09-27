@@ -224,7 +224,7 @@ def _measure_surprise_charge():
     """The replay-twice A/B: live surprise stream vs a pinned zero-surprise payload.
     -> (live, pinned_out, reads, responded): `responded` = the orienting drive rises at
     the off-manifold jump (the predictor port, not the schedule, moved the competition)."""
-    from snn_data_lake.substrate.port_charge_probe import replay_twice
+    from snn_data_lake.instruments.port_charge_probe import replay_twice
 
     frames, offmanifold_at = _surprise_frames()
     live, pinned_out, reads = replay_twice(
@@ -243,7 +243,7 @@ def _measure_surprise_charge():
 def record_charge():
     """Measure the A/B and record the attribution via THE one writer. REFUSES a
     non-diverged or non-responding run -- evidence is a measurement, never a declaration."""
-    from snn_data_lake.substrate.port_charge_probe import record_attribution
+    from snn_data_lake.instruments.port_charge_probe import record_attribution
 
     live, pinned_out, reads, responded = _measure_surprise_charge()
     if live == pinned_out or not responded:
@@ -412,7 +412,7 @@ def main():
     assert deterministic, "two identical runs must produce identical surprise series"
 
     # ---- THE PREDICTOR PORT IS CHARGED, measured (specs/022 T028) ----------------------
-    from snn_data_lake.substrate.port_charge_probe import read_attribution
+    from snn_data_lake.instruments.port_charge_probe import read_attribution
 
     live, pinned_out, reads, responded = _measure_surprise_charge()
     assert reads == len(live), f"the neuter must be READ every frame ({reads} vs {len(live)})"

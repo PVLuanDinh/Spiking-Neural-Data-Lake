@@ -5,7 +5,7 @@ tools/t080_temporal_binding.json and tools/t080_latents.npz; constructs NO brain
 the decomposition of the companion's latents through a fresh CrossModalBinder taught the pinned
 prototypes must equal the pinned recs and the recorded handles; (2) the bound / congruent
 fractions from the recs; (3) the offline membership-matched null with an INDEPENDENT permutation
-loop (not t080_null), its q95 / band; (4) the contrasts through substrate.paired_contrast; (5) the
+loop (not t080_null), its q95 / band; (4) the contrasts through instruments.paired_contrast; (5) the
 window. Prints every disagreement with the pin beyond 1e-9 and exits 1 on any.
 
   PYTHONUTF8=1 PYTHONPATH=src python tests/instruments/t080_verify_pin.py
@@ -19,8 +19,8 @@ from pathlib import Path
 import numpy as np
 
 from snn_data_lake.cortex.crossmodal_binder import CrossModalBinder
+from snn_data_lake.instruments.paired_contrast import contrast
 from snn_data_lake.substrate._mathutils import q95
-from snn_data_lake.substrate.paired_contrast import contrast
 
 REPO = Path(__file__).resolve().parents[2]
 PIN = REPO / "tools" / "t080_temporal_binding.json"

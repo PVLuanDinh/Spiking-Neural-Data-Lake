@@ -153,7 +153,7 @@ def test_a_constructor_may_not_reseed_the_process(tmp_path, monkeypatch):
     HAND on 2026-08-04 -- no gate could see it, because a constructor body is not import time.
 
     MEASURED when this rule landed: three more live instances of the same shape were sitting in
-    `src/` (`hippocampus/developmental_loop_brain.py`, `reasoning/_loop_common.py`, plus the
+    `src/` (`instruments/developmental_loop_brain.py`, `reasoning/_loop_common.py`, plus the
     already-bracketed `cortex/recognizer_bank.py`). The defect recurred and nothing caught it.
     """
     viol = _scan_fixture(

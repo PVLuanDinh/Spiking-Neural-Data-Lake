@@ -125,7 +125,7 @@ EXEMPT = {
     ),
     "recurrent_pool": (
         "permanent",
-        "G1(b)'s selected pool, g1 LSM, a governed benchmark component until G1(c)'s disposition (g1b section 2.9); consumers: cortex/memory_diagnostic.py's pool arm, cortex/pool_selection.py's campaign, tests/test_recurrent_pool.py",
+        "G1(b)'s selected pool, g1 LSM, a governed benchmark component until G1(c)'s disposition (g1b section 2.9); consumers: instruments/memory_diagnostic.py's pool arm, instruments/pool_selection.py's campaign, tests/test_recurrent_pool.py",
     ),
     "pool_selection": (
         "permanent",
@@ -255,7 +255,7 @@ EXEMPT = {
         "SELECTION-turned-CONTROL stage over basal_ganglia/latent_q's value table (promoted "
         "2026-08-12, #10 lane 4d): fuses value + metacognition on the loop's curiosity; "
         "composition-only. The EXEC-bypass P2 this entry used to record was ADJUDICATED "
-        "2026-08-12: the consumer (hippocampus/developmental_loop_brain) deleted NORD_EXEC "
+        "2026-08-12: the consumer (instruments/developmental_loop_brain) deleted NORD_EXEC "
         "and the fused choose() branch on a measured tie plus this module's recorded fusion "
         "null -- choose() keeps exactly ONE external call site, the consumer's "
         "mechanics-check split criterion, executed by gate command #1. On that consumer's "
@@ -269,7 +269,7 @@ EXEMPT = {
         "permanent",
         "ADAPTER over this region's own governed mechanisms (promoted 2026-08-11, #10 lane 4a): "
         "per-digit ReplayBuffers + a SleepConsolidator pass for the developmental training loop. "
-        "Its ONE consumer (hippocampus/developmental_loop_brain, all three methods on its main "
+        "Its ONE consumer (instruments/developmental_loop_brain, all three methods on its main "
         "path) promoted 2026-08-12 -- and the 'converts to reachable the commit that loop "
         "promotes' clause this entry used to carry was MEASURED FALSE at that commit: "
         "reachable() seeds only from _LIVE_ROOTS/_ENTRYPOINTS/_external_roots, and the "
@@ -297,7 +297,7 @@ EXEMPT = {
         "uniqueness). Three stdlib wrappers over governed mechanisms: dopamine RPE -> "
         "bounded lr multiplier (midbrain/dopamine_nuclei), objective broadcast "
         "(thalamus/global_workspace), competence planning (cortex/prefrontal_executive). "
-        "Its ONE consumer is hippocampus/developmental_loop_brain, lazily inside main() "
+        "Its ONE consumer is instruments/developmental_loop_brain, lazily inside main() "
         "and _mechanics_check(), and that consumer is itself EXEMPT-permanent TRAIN-TIER "
         "and offline. NO CONVERSION CLAUSE IS WRITTEN HERE, and that is a measurement, "
         "not caution: reachable() seeds only from _LIVE_ROOTS/_ENTRYPOINTS/_external_roots, "
@@ -765,7 +765,7 @@ EXEMPT = {
         "a tick -- the artifact is read ONCE at construction of a population and nothing on a live "
         "path reads it again, which is the specs/011 data-model.md 3 rule that makes a seeded "
         "value MOVABLE rather than pinned. THE NAMED CONSUMER IS T063, the three-arm "
-        "seeded/random/wrong drift harness (cortex/prior_drift_harness.py), which is the row that "
+        "seeded/random/wrong drift harness (instruments/prior_drift_harness.py), which is the row that "
         "turns this population into a beatable prior; this exemption retires the day T063 lands. "
         "Stated as a wire and not as 'permanent' deliberately: an ingest whose output nothing ever "
         "consumes is exactly the dormancy P3 names, and cortical_prior's own exemption is the "
@@ -785,7 +785,7 @@ EXEMPT = {
         "untouched; and THE SEEDED POPULATION CONSTRUCTOR `h01_ingest.population()` LOSES ITS "
         "PRIOR ROLE. What the sentence above calls 'the row that turns this population into a "
         "beatable prior' is the row that measured it is not one. THE CONSUMER IS UNCHANGED AND "
-        "THE ROLE IS NOT: `cortex/prior_drift_harness` still reaches this module, now as the "
+        "THE ROLE IS NOT: `instruments/prior_drift_harness` still reaches this module, now as the "
         "harness's FIXTURE -- the population an instrument constructs and scores -- and no longer "
         "as a prior anything is seeded from. This exemption therefore does NOT retire the day "
         "T063 lands, as the text above promised: T063 landed, and what it changed is the role, "
@@ -1078,7 +1078,7 @@ def conditional_import_count():
 
 
 # distinct-from: brain_atlas.py, gates/selfcheck_cache.py -- phrase overlap only, as with
-#   brainstem/arm_hardware.py, cortex/everyday_battery.py and hippocampus/ng_snn.py (a region file
+#   brainstem/arm_hardware.py, instruments/everyday_battery.py and hippocampus/ng_snn.py (a region file
 #   list, a keying word, a torque, a concurrency conjunct, a unit prune); all five read. The nearest
 #   real sibling, gates/eprop_transport_gate.py's stale_exemptions(), checks THAT gate's transport
 #   registry against gradient findings; this checks THIS table's keys against _CANON.

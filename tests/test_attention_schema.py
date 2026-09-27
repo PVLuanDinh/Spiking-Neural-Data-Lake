@@ -55,7 +55,7 @@ R4 asserts on them.
 
 import random
 
-from snn_data_lake.cortex.attention_schema import (
+from snn_data_lake.instruments.attention_schema import (
     ESTOP_LABEL,
     LATENT_DIM,
     N_MIN_PER_CELL,
@@ -86,7 +86,7 @@ from snn_data_lake.cortex.attention_schema import (
     t078_reds,
     t078_stub_brain,
 )
-from snn_data_lake.substrate.paired_contrast import contrast
+from snn_data_lake.instruments.paired_contrast import contrast
 
 TEST_SEEDS = tuple(range(8))
 ACTION_N = 2000

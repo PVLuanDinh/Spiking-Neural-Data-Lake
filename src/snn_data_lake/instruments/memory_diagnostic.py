@@ -6,7 +6,7 @@ G1(b) extends it (specs/022-unified-brain-arc/evidence/g1b-pool-selection.md sec
 23c7e97) without altering G1(a)'s arms: the reference readout (section 2.2) runs beside the grower in
 every replay, the pool arm feeds x alone into cortex/recurrent_pool.py's pools, every replay runs at
 one BLAS thread, and R-b6's synthetic stream family (section 2.7) lives here. The campaign that runs
-them is cortex/pool_selection.py.
+them is instruments/pool_selection.py.
 """
 
 import argparse
@@ -1008,7 +1008,7 @@ def _entropy(values):
 # distinct-from: substrate/ingest_guard.py -- license_ok refuses a non-permissive licence id
 # distinct-from: cortex/cortical_prior.py -- validate lists reference data missing an attribute
 # distinct-from: cortex/counterfactual_sim.py -- counterfactual scores imagined rollouts by value_fn
-# distinct-from: cortex/prior_drift_harness.py -- arm_wrong builds a band-permuted target table
+# distinct-from: instruments/prior_drift_harness.py -- arm_wrong builds a band-permuted target table
 # distinct-from: cortex/wholistic_loop.py -- _perceive degrades an input by substrate fidelity
 def score(stream, predictions, fallbacks, *, floors=True):
     """Per segment: accuracy (None is a miss), coverage, entropies, the prior-fallback rate and the
@@ -1462,7 +1462,7 @@ def _child(args, out):
         result = subprocess.run(
             # the module's own name, never __name__: under `python -m` that is "__main__", and a child started
             # as `-m __main__` dies before running (measured: the first pilot's 8 recordings, 2 s)
-            [sys.executable, "-m", "snn_data_lake.cortex.memory_diagnostic", *args],
+            [sys.executable, "-m", "snn_data_lake.instruments.memory_diagnostic", *args],
             capture_output=True,
             text=True,
             timeout=900,

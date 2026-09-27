@@ -17,7 +17,7 @@ Canonical sources:
               the second -- merged 2026-08-15, both originals now import it)
   q95      <- attention_schema._q95            (the 95th-percentile ORDER STATISTIC; lifted
               2026-09-15 so a LIVE module can import it without making that EXEMPT instrument
-              reachable -- the dormancy-gate argument `substrate/paired_contrast` records too)
+              reachable -- the dormancy-gate argument `instruments/paired_contrast` records too)
 
 Copies whose formula DIFFERS were deliberately left in place (not merged):
   - adaptive_spiking keeps the public name `correlation` (thin wrapper here).
@@ -72,7 +72,7 @@ def unit(v):
     return [c / n for c in v]
 
 
-# consolidates: src/snn_data_lake/cortex/attention_schema.py (merge) -- its `_q95` becomes an
+# consolidates: src/snn_data_lake/instruments/attention_schema.py (merge) -- its `_q95` becomes an
 #   alias of this one in the same change, exactly as `clamp01` below did for eight copies.
 def q95(draws):
     """The 95th percentile of `draws` as an ORDER STATISTIC, never an interpolation: the
@@ -87,7 +87,7 @@ def q95(draws):
     stale and the gate exits 1 (run 2026-09-15: "1 EXEMPT entries are now reachable
     (retire them): ['attention_schema']"). The statistic therefore lives where any module
     may import it, and the instruments keep their exemptions -- the same argument, and the
-    same fix, as `substrate/paired_contrast`'s own lift.
+    same fix, as `instruments/paired_contrast`'s own lift.
 
     ONE convention for every floor and every band that uses it; the formula is reproduced
     exactly, so no consumer's number moves."""

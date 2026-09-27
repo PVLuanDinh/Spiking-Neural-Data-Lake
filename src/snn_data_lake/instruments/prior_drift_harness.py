@@ -86,9 +86,9 @@ subgraph T062 measured; nothing about R-STDP being the brain's learner; nothing 
 placement-side statistics (layer occupancy, layer geometry, the excitatory CELL fraction), which
 are a pinned null on the object brain and which the graph-weight statistics below do not measure.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.prior_drift_harness
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.prior_drift_harness --pilot
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.prior_drift_harness --campaign
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.prior_drift_harness
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.prior_drift_harness --pilot
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.prior_drift_harness --campaign
 """
 
 import hashlib
@@ -98,14 +98,14 @@ import time
 from pathlib import Path
 from typing import NamedTuple
 
-from snn_data_lake.substrate.drift_monitor import psi
-from snn_data_lake.substrate.paired_contrast import (  # noqa: F401  (re-exported: LIFTED 2026-09-15, T077 2.10)
+from snn_data_lake.instruments.paired_contrast import (  # noqa: F401  (re-exported: LIFTED 2026-09-15, T077 2.10)
     T_BAR,
     Contrast,
     contrast,
     paired_t,
     permutation_fpr,
 )
+from snn_data_lake.substrate.drift_monitor import psi
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 #:
@@ -206,7 +206,7 @@ HOST_NOTE = (
 
 S_SEEDS = 8
 # T_BAR, Contrast, paired_t, permutation_fpr and contrast were LIFTED 2026-09-15 (specs/022 T077 2.10) into
-# substrate/paired_contrast.py, verbatim, and are imported at the top of this module so every name still
+# instruments/paired_contrast.py, verbatim, and are imported at the top of this module so every name still
 # resolves here; the reason is in that module's docstring (a live module importing this EXEMPT instrument
 # stales five dormancy rows). Nothing else in this file changed.
 STATISTICS = ("band_pair_weight_share", "band_fanin_e_fraction")
@@ -274,7 +274,7 @@ class ArmResult(NamedTuple):
     feature_dim: int = 0
 
 
-# (`Contrast` lives in substrate/paired_contrast.py since 2026-09-15; imported above.)
+# (`Contrast` lives in instruments/paired_contrast.py since 2026-09-15; imported above.)
 
 
 # =============================================================================================
@@ -410,7 +410,7 @@ def no_learner_holds(result):
 
 # =============================================================================================
 # The statistic over the seeds (2.6) -- `paired_t`, `permutation_fpr`, `contrast`: LIFTED 2026-09-15 into
-# substrate/paired_contrast.py (T077 2.10), verbatim; imported at the top of this module.
+# instruments/paired_contrast.py (T077 2.10), verbatim; imported at the top of this module.
 # =============================================================================================
 
 
@@ -420,7 +420,7 @@ def no_learner_holds(result):
 #: where it governed the FIXTURE only, and the same docstring told the reader it "changes nothing
 #: about the campaign's population". The campaign was never exempt from it. ONE function now states
 #: the rule, that docstring cites it, and it reads the fixture and the campaign alike.
-# distinct-from: cortex/nef_compute.py::_run_hint -- DERIVES A COMMAND STRING from `__spec__.name` so a self-check hint cannot go stale when the file moves; it reads no number and has no criterion.
+# distinct-from: instruments/nef_compute.py::_run_hint -- DERIVES A COMMAND STRING from `__spec__.name` so a self-check hint cannot go stale when the file moves; it reads no number and has no criterion.
 # distinct-from: reasoning/self_improve.py::_self_pkg_relpath -- DERIVES THIS MODULE'S OWN PATH from `__file__` so a PROTECTED-set assert has an independent second side; a filesystem walk, not a statistic.
 # distinct-from: substrate/self_mod_harness.py::_repo_root -- WALKS UP TO THE REPO ROOT by marker files; an anchored directory search, with no accuracy, no chance level and no bar.
 #   All three sites read 2026-09-10 before this marker was written. What follows derives an arm's

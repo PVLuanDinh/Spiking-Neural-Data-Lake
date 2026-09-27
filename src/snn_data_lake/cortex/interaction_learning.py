@@ -140,7 +140,7 @@ _G0C_LAZY_ATTRS = {
 
 
 # distinct-from: substrate/home.py, thalamus/reentrant_workspace.py -- phrase overlap only, as
-#   with cortex/prior_drift_harness.py, neuromodulation/intrinsic_motivation.py and
+#   with instruments/prior_drift_harness.py, neuromodulation/intrinsic_motivation.py and
 #   neuromodulation/raphe_serotonin.py (an append observer, a theta authority, a least-squares
 #   readout, a learning-progress read, a port declaration); all five sites read. The legacy-name
 #   incumbent is the alias layer in snn_data_lake/__init__.py (`_MOVED`), whose S1b `_LEGACY`
@@ -157,7 +157,7 @@ def _g0c_legacy_modules():
     return __import__("snn_data_lake")._LEGACY
 
 
-# distinct-from: cerebellum/jepa_world_model.py, cortex/attention_schema.py -- phrase overlap only,
+# distinct-from: cerebellum/jepa_world_model.py, instruments/attention_schema.py -- phrase overlap only,
 #   as with cortex/brain.py (`_learned_route`), cortex/h01_ingest.py and cortex/paradigm_b_matcher.py
 #   (a band centroid, a stub brain, a route read, a pin key, a query runner); all five sites read.
 #   This is the codec's own read-side class-path step; the one map it reads is the provider above.

@@ -224,7 +224,7 @@ def _measure_glia_charge():
     -> (live, pinned_out, reads, responded): `responded` = spikes in the settled tail
     exceed the pre-engagement baseline (the glial field, not the schedule, moved
     transmission)."""
-    from snn_data_lake.substrate.port_charge_probe import replay_twice
+    from snn_data_lake.instruments.port_charge_probe import replay_twice
 
     frames, engage_at = _gain_frames()
     n = frames[-1][0]
@@ -239,7 +239,7 @@ def _measure_glia_charge():
 def record_charge():
     """Measure the A/B and record the attribution via THE one writer. REFUSES a
     non-diverged or non-responding run -- evidence is a measurement, never a declaration."""
-    from snn_data_lake.substrate.port_charge_probe import record_attribution
+    from snn_data_lake.instruments.port_charge_probe import record_attribution
 
     live, pinned_out, reads, responded = _measure_glia_charge()
     if live == pinned_out or not responded:
@@ -357,7 +357,7 @@ def main():
     # 5. determinism
     assert tr1 == tr2, "same seed/inputs must give identical Ca/gain traces"
     # ---- THE DIFFUSE CHANNEL IS CHARGED, measured (specs/022 T027) ---------------------
-    from snn_data_lake.substrate.port_charge_probe import read_attribution
+    from snn_data_lake.instruments.port_charge_probe import read_attribution
 
     live, pinned_out, reads, responded = _measure_glia_charge()
     assert reads == len(live), f"the neuter must be READ every frame ({reads} vs {len(live)})"

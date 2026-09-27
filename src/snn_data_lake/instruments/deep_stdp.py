@@ -55,7 +55,7 @@ scaffold for that future work. The developmental loop keeps its single-layer
 STDP learner (accuracy lever = neuron SCALE, ~88% -> ~95% at 6400).
 
 Run (defaults finish a smoke run in a few minutes on GPU):
-    NORD_GPU=1 PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.plasticity.deep_stdp
+    NORD_GPU=1 PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.instruments.deep_stdp
     (command corrected 2026-08-11 at promotion: it named the retired .venv-cu128 env and the
     pre-promotion path)
 Scale knobs: NORD_C NORD_M NORD_TRAIN NORD_TEST NORD_GPU NORD_CTHRESH
@@ -68,7 +68,7 @@ import os
 import torch
 import torch.nn.functional as F
 
-from snn_data_lake.plasticity.snn_mnist_stdp import (
+from snn_data_lake.instruments.snn_mnist_stdp import (
     BETA,
     LR,
     MAX_RATE,
@@ -89,7 +89,7 @@ K = 5  # conv kernel size (single input channel, valid conv, stride 1)
 
 # _env/_envf were a line-for-line second copy of the hub's own helpers until the 2026-08-11
 # promotion (the P2-shape duplication its ledger row flagged); imported from the one home now.
-from snn_data_lake.plasticity.snn_mnist_stdp import _env, _envf  # noqa: E402
+from snn_data_lake.instruments.snn_mnist_stdp import _env, _envf  # noqa: E402
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

@@ -45,7 +45,7 @@ DERIVED is everything the kernel owns: quantization uses the kernel's OWN frac_b
 #   port and nothing here re-implements propagation. distinct-from: substrate/
 #   replay_gate.py -- the G5 capture/restore this joins via rng_streams() (and its
 #   _driven_run is a raw STREAM, not trials). distinct-from:
-#   thalamus/ignition_instrument.py -- an L7 scorer over the RE-ENTRY workspace with its
+#   instruments/ignition_instrument.py -- an L7 scorer over the RE-ENTRY workspace with its
 #   own drive sweep; this drives the KERNEL and owns trials, not verdicts. distinct-from:
 #   substrate/afferent_boundary.py (T036) -- the declared modality boundary that will
 #   FEED this port. distinct-from: midbrain/sc_deep_layers.py and midbrain/
@@ -56,7 +56,7 @@ DERIVED is everything the kernel owns: quantization uses the kernel's OWN frac_b
 #   autaptic LIF with a recalled-bit label; different subject class, different label,
 #   disclosed rather than merged. All sites read.
 
-  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.substrate.episode_driver
+  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.instruments.episode_driver
 """
 
 import numpy as np

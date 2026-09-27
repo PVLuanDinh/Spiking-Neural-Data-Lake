@@ -481,7 +481,7 @@ def check_producers(spec, manifest, consumer=None):
 #   the probe neuters drive sources on a live brain; this neuters RULES on a caller-built
 #   composed trajectory. The probe stays the brain-grain surface (cross-referenced there);
 #   one pattern, two grains, neither re-implements the other. Site read.
-# distinct-from: thalamus/ignition_instrument.py -- that sweep drives a THALAMIC actuator
+# distinct-from: instruments/ignition_instrument.py -- that sweep drives a THALAMIC actuator
 #   ensemble; this drives a caller-built RULE composition's A/B arms. Site read.
 def rule_charge(composer, w0, bindings_seq):
     """The attribution instrument's READER (T051b-iii) -- per-rule charge A/B at

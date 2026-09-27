@@ -90,7 +90,7 @@ def _cosine_modes(dim, k):
     return B / np.linalg.norm(B, axis=0, keepdims=True)
 
 
-# distinct-from: substrate/episode_driver.py -- its tick() is a faithful TRANSDUCER of caller
+# distinct-from: instruments/episode_driver.py -- its tick() is a faithful TRANSDUCER of caller
 #   stimuli onto the kernel's fixed-point grid (episode replay); this GENERATES stimuli from
 #   an OU process for a plasticity rule. Site read; the shared word is "stimulus".
 # distinct-from: hippocampus/episode_consolidation.py -- kWTA activity budget; unrelated. Read.

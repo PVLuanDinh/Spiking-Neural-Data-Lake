@@ -76,7 +76,7 @@ perf_baseline recorded before it.
 # distinct-from: gates/perf_baseline.py -- measures the tick's COST (wake/sleep p50/p95,
 #   disk IOPS) and ratchets it; this measures what the tick's telemetry CARRIES. Neither
 #   subsumes the other: a tick can get faster while its signals go flat.
-# distinct-from: substrate/port_charge_probe.py -- it too has a did-it-move criterion
+# distinct-from: instruments/port_charge_probe.py -- it too has a did-it-move criterion
 #   (margin_frozen: an arbitrate-join margin whose range never exceeds tol), so "this one asks
 #   whether the signal varies" is NOT the distinction and the panel was right to say so. The real
 #   one is subject and statistic: margin_frozen is a boolean over ONE manifest-declared port's

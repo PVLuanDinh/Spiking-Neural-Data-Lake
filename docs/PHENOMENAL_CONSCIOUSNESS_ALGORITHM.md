@@ -39,7 +39,7 @@ whether the framing is doing honest work: **remove it and the build still pays f
   their list a rubric of candidacy. Graziano's own answer is "yes and no." Lamme identifies
   phenomenality with a state that by construction produces no report.
 - **It does not compute Phi and must never be described as approximating one.**
-  `cortex/integration_measure.py` computes a perturbational complexity index. PCI has never been
+  `instruments/integration_measure.py` computes a perturbational complexity index. PCI has never been
   compared against Phi on any object, because Phi has never been computed for any system large
   enough to have a PCI. No ordering of PCI values licenses a Phi claim in any direction.
 - **It does not satisfy IIT, and cannot.** Under IIT as written, the units actually doing the
@@ -85,9 +85,9 @@ read.
 | The attention gate is computed FROM the content | VERIFIED | `cortex/learned_attention.py:126-140` -- `sal` is per-band mean absolute feature magnitude; gate = learned synapse * salience * goal * surprise |
 | `attention_focus` is exported and unconsumed | VERIFIED | `cortex/brain.py:2865` |
 | **`state()['pci']` is a synthetic surrogate, stale 3 nights in 4** | VERIFIED | `cortex/brain.py:2405-2419`: fresh `PerturbationalComplexity(n=10, coupling=cpl, noise=0.45)` under `if self._nights % 4 == 0`, inside `try:` with bare `except: pass` at `:2419`. Surfaced at `:2916`. |
-| **`PerturbationalComplexity` is a closed toy with no `system` port** | VERIFIED | `cortex/integration_measure.py:199-231` -- `_run` builds its own `LIFNeuron` list from its own `self.w` and pre-draws its own noise. No injection point exists. |
-| `lz76_complexity` is a pure-Python nested scan | VERIFIED | `cortex/integration_measure.py:82-113` |
-| The regime factories are a `weight_mode` switch | VERIFIED | `cortex/integration_measure.py:296-316` |
+| **`PerturbationalComplexity` is a closed toy with no `system` port** | VERIFIED | `instruments/integration_measure.py:199-231` -- `_run` builds its own `LIFNeuron` list from its own `self.w` and pre-draws its own noise. No injection point exists. |
+| `lz76_complexity` is a pure-Python nested scan | VERIFIED | `instruments/integration_measure.py:82-113` |
+| The regime factories are a `weight_mode` switch | VERIFIED | `instruments/integration_measure.py:296-316` |
 | `push_subgoal()` has callers only in its own self-check | VERIFIED | def `cortex/prefrontal_executive.py:299`; callers `:469`, `:630` only |
 | `maintain()` has SIX call sites across four modules, all offline | VERIFIED | `cortex/autotelic_goals.py:315`, `reasoning/autonomous_brain.py:122`, `reasoning/developmental_core.py:153`, `reasoning/developmental_loop_wm.py:56/:65/:128`. Plus self-checks at `prefrontal_executive.py:383/389/475/574` and `autonomous_loop.py:2092`. The enumeration at `brainstem/autonomous_loop.py:970-974` is correct and is the authority. |
 | **`_new_frame` stores an integer, not a proposition** | VERIFIED | `cortex/prefrontal_executive.py:311-313` returns `[index, 1.0, [0.0] * self._n_wm]` |
@@ -1253,7 +1253,7 @@ three times inside one feature on 2026-08-02 -- a success criterion that cannot 
 here as the central method rather than as an oversight.
 
 **It requires Phi.** This project computes a perturbational complexity index in
-`cortex/integration_measure.py` and forbids calling it Phi. Phi is not tractable for a system of any
+`instruments/integration_measure.py` and forbids calling it Phi. Phi is not tractable for a system of any
 size, and the paper does not address tractability while making Phi an optimisation target.
 
 **It requires gradient descent on SNN weights.** Standing rule here is e-prop over backprop: local

@@ -157,8 +157,8 @@ from pathlib import Path
 
 from snn_data_lake.cortex.executive_control import ExecutiveControl
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.instruments.paired_contrast import T_BAR
 from snn_data_lake.substrate._mathutils import clamp01, sigmoid
-from snn_data_lake.substrate.paired_contrast import T_BAR
 from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
@@ -805,7 +805,7 @@ def _p6_experiment(seed=0, n=180):
 # rate on held-out items better than a fixed prior does? ONE scorer for that question, here, in the incumbent
 # it extends (P2: no third monitor; the row's other incumbent, second_order_access.calibration(), is re-pointed
 # to this scorer in the next commit). The paired t over seeds is `substrate/paired_contrast.contrast`, imported
-# lazily by the campaign. It was LIFTED there from cortex/prior_drift_harness.py by T077 2.10 because the dormancy
+# lazily by the campaign. It was LIFTED there from instruments/prior_drift_harness.py by T077 2.10 because the dormancy
 # gate counts an import at ANY depth -- the lazy import of the EXEMPT harness from this live CORE module read five
 # EXEMPT rows stale (determinism_gate, h01_ingest, kernel_state, kernel_tick, prior_drift_harness); a lazy import
 # does NOT avoid the T070 trap (t077-metacognition.md 2.10; t070-integration-kernel.md 3.5).
@@ -813,9 +813,9 @@ def _p6_experiment(seed=0, n=180):
 #   accuracy; superseded by the rank-based scorer below and re-pointed to it (2.9 step 3).
 # distinct-from: gates/replay_gate.py -- the kernel's snapshot/restore chain; `replay_reliability` below
 #   replays THIS pool on its recorded keyword inputs, no kernel, no snapshot.
-# distinct-from: substrate/paired_contrast.py::contrast -- the paired t over seeds, REUSED, not rewritten;
-#   cortex/prior_drift_harness.py re-exports it, so its own call sites still resolve.
-# T_BAR is imported at the top from substrate/paired_contrast (T077 2.10: the restatement is replaced by the import;
+# distinct-from: instruments/paired_contrast.py::contrast -- the paired t over seeds, REUSED, not rewritten;
+#   instruments/prior_drift_harness.py re-exports it, so its own call sites still resolve.
+# T_BAR is imported at the top from instruments/paired_contrast (T077 2.10: the restatement is replaced by the import;
 # landed 2026-09-15 in the panel fold -- the literal had survived 14807ef, evidence 3.5). The T077 reds assert it.
 #: READABILITY (2.3 (a), fixed after the design read): a stream is readable iff both outcome classes are present
 #: AND the permutation null of auroc2 for THAT stream (ties at 1/2, N_PERM_FLOOR shuffles of the pairing) has its
@@ -879,7 +879,7 @@ def track_error(conf, correct, n_perm=N_PERM_FLOOR, seed=0):
     (disclosed 2026-09-15 after the panel, evidence 3.5). Otherwise `refusal` names why."""
     import random
 
-    from snn_data_lake.cortex.integration_measure import (
+    from snn_data_lake.instruments.integration_measure import (
         source_entropy,
     )  # P2: the tree's binary entropy
 
@@ -954,9 +954,9 @@ def replay_reliability(stream, seed, base=0.4, expect=None, neuter=None):
 # outcome / persistence hit from the engine's live counters (neurogenesis_engine.py:321-323), the vision hit from
 # `_perc_hits`. The LESIONED arm removes the second-order READ in vivo (gates off, reliability() replaced by the
 # first-order input). Arm D repeats the chat probe. The pin is written ONCE. Seeds run sequentially in one process.
-# distinct-from: cortex/prior_drift_harness.py::run_campaign -- that harness ticks a KernelState population from the
+# distinct-from: instruments/prior_drift_harness.py::run_campaign -- that harness ticks a KernelState population from the
 #   H01 artifact; this ticks make_brain() and reads its own monitor; the paired t (`contrast`) is REUSED from
-#   substrate/paired_contrast.py, lazily.
+#   instruments/paired_contrast.py, lazily.
 # distinct-from: gates/amdahl_gate.py::live_reading -- a timing ceiling over three brains; this records a
 #   read/outcome stream and scores it; no timing, no neuter of a code path.
 T077_N_TICKS = 600
@@ -1018,7 +1018,7 @@ def t077_relay_contrasts(scorer=track_error, seeds=T077_SEEDS, n=120, n_perm=200
     first-order input, so (b3o)'s per-seed diffs are exactly 0.0 -- degenerate, NOT MET. CONTROL: a second-order
     read that is a stronger tracker than the first-order input on the same outcomes reads MET. Returns
     (relay, control)."""
-    from snn_data_lake.substrate.paired_contrast import contrast
+    from snn_data_lake.instruments.paired_contrast import contrast
 
     relay, control = [], []
     for s in seeds:
@@ -1035,7 +1035,7 @@ def t077_lesion_contrasts(scorer=track_error, seeds=T077_SEEDS, n=120, n_perm=20
     auroc2 over the seeds. NO-COLLAPSE twin: the lesioned read EQUALS the intact read -- every diff exactly 0.0,
     degenerate, NOT MET (the in-vivo half of the dissociation can fail, and fails exactly). COLLAPSING twin: the
     lesioned read is noise on the same outcomes -- MET. Returns (no_collapse, collapsing)."""
-    from snn_data_lake.substrate.paired_contrast import contrast
+    from snn_data_lake.instruments.paired_contrast import contrast
 
     same, collapsed = [], []
     for s in seeds:
@@ -1248,7 +1248,7 @@ def t077_arm_d(seed):
 
 def run_t077_campaign(seeds=T077_SEEDS, n_ticks=T077_N_TICKS, pin=T077_PIN):
     """The T077 campaign (2.2-2.3): records, scores, contrasts, pins ONCE. Returns an exit code."""
-    from snn_data_lake.substrate.paired_contrast import (
+    from snn_data_lake.instruments.paired_contrast import (
         contrast,
     )  # the ONE paired t (lifted, T077 2.10)
 

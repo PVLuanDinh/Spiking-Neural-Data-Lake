@@ -1,6 +1,6 @@
 """The e-prop BINDING CONSTRAINT, mechanized: a backprop trainer may not become reachable.
 
-WHAT IS BEING HELD. `hippocampus/developmental_loop_brain.py` and `hippocampus/growable_readout.py`
+WHAT IS BEING HELD. `instruments/developmental_loop_brain.py` and `hippocampus/growable_readout.py`
 train by `loss.backward()` + Adam. The cross-cutting invariant forbids that -- *"e-prop, not
 backprop ... no BPTT, no weight transport"* -- and both are permitted anyway, on ONE stated ground:
 they are TRAIN-TIER OFFLINE and no live root reaches them. Their own words:
@@ -157,7 +157,7 @@ def test_the_constraint_goes_RED_on_one_live_import(monkeypatch):
     single wire converts BOTH Adam modules at once.
     """
     real_graph = dormancy_gate._graph
-    target = f"{_PKG}.hippocampus.developmental_loop_brain"
+    target = f"{_PKG}.instruments.developmental_loop_brain"
 
     def wired():
         g = {k: set(v) for k, v in real_graph().items()}
@@ -184,7 +184,7 @@ def test_a_stale_exemption_fails_the_dormancy_gate(monkeypatch):
     def wired():
         g = {k: set(v) for k, v in real_graph().items()}
         g.setdefault(dormancy_gate._LIVE_ROOTS[0], set()).add(
-            f"{_PKG}.hippocampus.developmental_loop_brain"
+            f"{_PKG}.instruments.developmental_loop_brain"
         )
         return g
 

@@ -3,7 +3,7 @@ Batched conv1 feature extractor -- a drop-in, numerically-equivalent, far faster
 replacement for the per-image `torch.stack([conv.features(img) for img in X])`
 loop that dominates the SNDL developmental-loop runtime.  (torch/GPU tier; this
 file is ADDITIVE and imports the frozen `ConvLatencyStdp` from
-`snn_data_lake/cortex/deep_stdp_latency.py (promoted 2026-08-11)`, editing nothing.)
+`snn_data_lake/instruments/deep_stdp_latency.py (promoted 2026-08-11)`, editing nothing.)
 ("ruff-excluded" was removed 2026-08-04: reasoning/ has been linted since
 2026-07-28 -- see the per-file-ignores in pyproject.toml.)
 
@@ -58,8 +58,8 @@ import torch
 import torch.nn.functional as F
 
 from snn_data_lake.substrate.device import resolve_device, enable
-from snn_data_lake.plasticity.snn_mnist_stdp import load_mnist
-from snn_data_lake.cortex.deep_stdp_latency import ConvLatencyStdp, DOG_SIZE, DOG_THRESH
+from snn_data_lake.instruments.snn_mnist_stdp import load_mnist
+from snn_data_lake.instruments.deep_stdp_latency import ConvLatencyStdp, DOG_SIZE, DOG_THRESH
 
 
 def _env(key, default):

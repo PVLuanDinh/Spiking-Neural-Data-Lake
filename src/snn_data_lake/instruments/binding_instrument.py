@@ -53,14 +53,14 @@ about a MECHANISM, never a verdict about experience.
 #   nothing in it: it calls its public `bind` and its own `_project` / `_recognize` and
 #   re-implements neither. The margin (0.15) and the cue strength (0.055) are READ off the
 #   shipped binder, never re-declared. Read.
-# distinct-from: thalamus/ignition_instrument.py -- an EXEMPT scorer over scratch
+# distinct-from: instruments/ignition_instrument.py -- an EXEMPT scorer over scratch
 #   ReentrantWorkspace subjects, scoring an all-or-none DRIVE transition. Different subject,
 #   different quantity; the EXEMPT-instrument shape is the thing reused. Read.
 # distinct-from: cortex/agency_monitor.py's T079 functions -- the same campaign/dry-run/pin
 #   PATTERN over a different instrument, different arms and a different pin. No state, no pin
-#   and no statistic is shared beyond `substrate/paired_contrast`, which both IMPORT. Read.
+#   and no statistic is shared beyond `instruments/paired_contrast`, which both IMPORT. Read.
 
-  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.thalamus.binding_instrument
+  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.instruments.binding_instrument
 """
 
 import copy
@@ -74,8 +74,8 @@ from pathlib import Path
 
 import numpy as np
 
+from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
 from snn_data_lake.substrate._mathutils import q95 as _q95
-from snn_data_lake.substrate.paired_contrast import T_BAR, contrast
 
 # =============================================================================
 # 2.8's DECLARED CONSTANTS. Every one is either the pack's own shape, the plan's width, or a
@@ -391,7 +391,7 @@ def _t080_float_or_none(x):
     return None if x is None else float(x)
 
 
-# distinct-from: cortex/prior_drift_harness.py::above_chance -- reads an arm's accuracy
+# distinct-from: instruments/prior_drift_harness.py::above_chance -- reads an arm's accuracy
 #   against the 1/K chance floor with a paired t and a bar. The two below compute NO
 #   statistic, take NO bar and decide nothing: they difference the brain's own cumulative
 #   hit/seen counters so a per-ARM accuracy exists to report at all. Read.
@@ -661,7 +661,7 @@ def t080_verdict(got, refusals):
 #   of THIS module's own instrument, constructed so a red can be shown to fire rather than
 #   argued to (P8 clause 1). Read; nothing here inspects or rewrites any other module.
 # distinct-from: cortex/agency_monitor.py::_t079_mutated_scorer and
-#   cortex/attention_schema.py::_t078_mutated_scorer -- the PATTERN this follows over
+#   instruments/attention_schema.py::_t078_mutated_scorer -- the PATTERN this follows over
 #   DIFFERENT instruments (a permutation floor over an EMA correlation there, a
 #   membership-matched permutation over a recognition pair here). One catalog per module is
 #   this tree's convention, not a second mechanism. Read.
@@ -1253,7 +1253,7 @@ def _t080_head():
         return f"unavailable ({type(e).__name__})"
 
 
-# distinct-from: cortex/attention_schema.py -- its `g4_rule` is a BRANCH RULE over per-seed
+# distinct-from: instruments/attention_schema.py -- its `g4_rule` is a BRANCH RULE over per-seed
 #   decodes; this computes nothing at all. Read.
 # distinct-from: cortex/metacognitive_monitor.py -- `_experiment` RUNS a three-condition
 #   comparison; this formats one already-computed arm. Read.
@@ -1517,9 +1517,9 @@ def _t080_constants():
 
 
 # distinct-from: cortex/agency_monitor.py::run_t079_campaign and
-#   cortex/attention_schema.py::run_t078_campaign -- the PATTERN this follows (record, read,
+#   instruments/attention_schema.py::run_t078_campaign -- the PATTERN this follows (record, read,
 #   contrast, pin ONCE) over a different instrument, different arms and a different pin.
-#   Read; no state, no pin and no statistic is shared beyond `substrate/paired_contrast`.
+#   Read; no state, no pin and no statistic is shared beyond `instruments/paired_contrast`.
 # distinct-from: agency_monitor.py -- run_t079_campaign is T079's campaign over its own efference feed and pin; read 2026-09-16.
 # distinct-from: attention_schema.py -- run_t078_campaign is T078's over the attention gates and its pin; read 2026-09-16.
 # distinct-from: metacognitive_monitor.py -- run_t077_campaign is T077's over the metacognition scorer; read 2026-09-16.

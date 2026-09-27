@@ -103,7 +103,7 @@ adapters and the complete comparison harness are work to build, not a finished b
 | Event audio | SHD spoken digits (0-9 in English and German, 20 classes), English then German as a natural domain shift | [e-prop SHD encoder](../src/snn_data_lake/cortex/eprop_shd.py) | The official test split holds out two of twelve speakers but also contains seen speakers, so report unseen speakers separately; SHD is hard at the current small scale |
 | Symbol sequences | Next-character prediction on a public-domain corpus, plus a planted-grammar stream with known structure | [online language learner](../src/snn_data_lake/cortex/language_acquisition.py) (local delta rule) | Task adapter; bits-per-character scoring against n-gram floors |
 | Sensorimotor control | Continual reaching in the SO-101 MuJoCo body under changed goal regions and simulated payload or friction | [SO-101 body](../src/snn_data_lake/brainstem/so101_arm.py), used through its existing gate | Observation/action adapter, success rule, classical controller baseline |
-| Reasoning probe (diagnostic only) | The 20-item everyday battery | [C0 scorer](../src/snn_data_lake/cortex/everyday_battery.py) | None to start; always reported, never an endpoint |
+| Reasoning probe (diagnostic only) | The 20-item everyday battery | [C0 scorer](../src/snn_data_lake/instruments/everyday_battery.py) | None to start; always reported, never an endpoint |
 
 Recommended first paper: event vision, event audio, and symbol sequences. Their encoders or
 learners already exist and their datasets are public. Add sensorimotor control once its adapter

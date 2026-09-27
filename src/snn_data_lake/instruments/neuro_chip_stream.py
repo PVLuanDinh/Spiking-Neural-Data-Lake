@@ -23,7 +23,7 @@ no analog dynamics, no place-and-route, synthetic spiking workload. Streaming tr
 I/O (a shard load+save per core per tick -> slower per step), buying the ability to emulate chips far
 larger than RAM; it adds no new physical fidelity.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.neuro_chip_stream
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.neuro_chip_stream
 """
 
 # additive/opt-in out-of-core wrapper over neuro_chip; changes no existing behaviour and
@@ -36,8 +36,8 @@ import tempfile
 from array import array
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
-from snn_data_lake.substrate import energy
-from snn_data_lake.substrate.neuro_chip import NeuroChip
+from snn_data_lake.instruments import energy
+from snn_data_lake.instruments.neuro_chip import NeuroChip
 
 _MAGIC = b"NCS1"
 _HDR = struct.Struct("<4sIII")  # magic, core_id, n_neurons, n_edges

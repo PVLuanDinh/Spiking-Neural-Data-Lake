@@ -348,7 +348,7 @@ def _measure_film_charge():
     """The replay-twice A/B over recorded film frames: (live, pinned_out, reads,
     specificity_holds). Pinned payload = a plausible constant film (confidence 0.5, zero
     preference) -- not a degenerate all-zeros gain."""
-    from snn_data_lake.substrate.port_charge_probe import replay_twice
+    from snn_data_lake.instruments.port_charge_probe import replay_twice
 
     frames = _film_frames()
     pinned = [0.5, 0.0] * 13
@@ -369,7 +369,7 @@ def record_charge():
     (port_charge_probe.record_attribution). REFUSES a non-diverged run -- evidence is a
     measurement, never a declaration. The self-check re-measures and requires the recorded
     numbers to reproduce, so this record cannot outlive the wire it describes."""
-    from snn_data_lake.substrate.port_charge_probe import record_attribution
+    from snn_data_lake.instruments.port_charge_probe import record_attribution
 
     live, pinned_out, reads, spec_holds = _measure_film_charge()
     if live == pinned_out or not spec_holds:
@@ -540,7 +540,7 @@ def main():
     )
     assert reads == len(_film_frames()), "every recorded frame must be read under the pin"
     assert spec_holds, "specificity: a payload-ignoring consumer must NOT flip under the pin"
-    from snn_data_lake.substrate.port_charge_probe import read_attribution
+    from snn_data_lake.instruments.port_charge_probe import read_attribution
 
     rec = read_attribution(FILM_EDGE)
     assert rec is not None and rec.get("diverged") is True, (

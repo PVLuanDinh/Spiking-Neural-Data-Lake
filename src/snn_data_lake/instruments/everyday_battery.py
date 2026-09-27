@@ -62,8 +62,8 @@ record's 2.10(a) and 3.5.1; read it there, and do not restate its numbers here.
 seed cells; refuted by the pin (28 of 100 differ) and by 2.10(a) at 37135d7, written one commit
 after this module at 2a13221.
 
-# distinct-from: cortex/attention_schema.py, cortex/report_order_probe.py,
-#   cortex/prior_drift_harness.py, thalamus/binding_instrument.py -- the same INSTRUMENT SHAPE this
+# distinct-from: instruments/attention_schema.py, instruments/report_order_probe.py,
+#   instruments/prior_drift_harness.py, instruments/binding_instrument.py -- the same INSTRUMENT SHAPE this
 #   tree uses (a CI/run_selfchecks module whose bare invocation runs constructed reds and whose
 #   campaign is a flag, on a scratch brain under throwaway_home), over a different measurement:
 #   those read the workspace, the report channel, a drift harness and binding; this scores CHAT
@@ -89,7 +89,7 @@ from typing import NamedTuple
 
 REPO = Path(__file__).resolve().parents[3]
 #: This module's importable name -- the campaign spawns one CHILD per seed through `-m`.
-MODULE = "snn_data_lake.cortex.everyday_battery"
+MODULE = "snn_data_lake.instruments.everyday_battery"
 #: The pin, written ONCE by `--c0-campaign` (2.9 step 4, run by the orchestrator on a clean tree).
 #: Nothing else in this module writes it, and the campaign REFUSES if it already exists.
 C0_PIN = REPO / "tools" / "c0_everyday_battery.json"

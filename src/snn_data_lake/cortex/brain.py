@@ -3469,7 +3469,7 @@ class Brain:
         #     of this as VERIFIED ("a synthetic surrogate, stale 3 nights in 4"; "a closed toy with no
         #     `system` port") -- the finding was adjudicated and the code outlived it.
         #
-        # `cortex/integration_measure.py` itself is KEPT and is not the defect. Its own self-check is
+        # `instruments/integration_measure.py` itself is KEPT and is not the defect. Its own self-check is
         # built on WITHIN-SYSTEM CONTRASTS with controls (integrated vs independent-noise vs
         # synchronous vs silent, plus a firing-rate control proving the gap is integration and not
         # activity), which is the honest shape; it stays reachable through `substrate/region_coherence.py`
@@ -3925,7 +3925,7 @@ class Brain:
     #   overlap on 'state' only; this is the ONE /api/state telemetry build. Sites read.
     def state(self):
         """Telemetry for /api/state. Adds a COMPACT self_state view of the evolving self-model."""
-        from snn_data_lake.cortex.report_order_probe import _t081_top_margin
+        from snn_data_lake.instruments.report_order_probe import _t081_top_margin
         from snn_data_lake.substrate.report_channel import snapshot as _report_snapshot
 
         # T081 (2026-09-16, evidence/t081-report-order.md 2.6 PASS): the ARM's bus, bound ONCE so

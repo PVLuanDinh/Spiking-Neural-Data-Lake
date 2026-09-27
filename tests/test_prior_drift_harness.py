@@ -5,7 +5,7 @@ task, the distance, the width and the null's design open; specs/022 SC-006 asks 
 beat BOTH comparators. The pre-registration `specs/022-unified-brain-arc/evidence/
 t063-prior-drift-harness.md` closes those, and this file is the reds and controls it names.
 
-Committed RED, before `cortex/prior_drift_harness.py` exists.
+Committed RED, before `instruments/prior_drift_harness.py` exists.
 
 AMENDMENT 2.12 (2026-09-09), committed RED a second time before the amended instrument exists: the
 pilot's K rule selected NO K (the task saturated at 1.0000 for every wiring) and the reversed
@@ -35,7 +35,7 @@ import pytest
 
 np = pytest.importorskip("numpy")
 
-from snn_data_lake.cortex import prior_drift_harness as H  # noqa: E402
+from snn_data_lake.instruments import prior_drift_harness as H  # noqa: E402
 from snn_data_lake.substrate import drift_monitor as DM  # noqa: E402
 
 

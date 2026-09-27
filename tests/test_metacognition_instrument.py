@@ -178,7 +178,7 @@ def test_r4_the_synthetic_world_is_not_relay_proof_by_construction():
 
 
 def test_the_bar_is_the_plan_s_bar():
-    from snn_data_lake.cortex.prior_drift_harness import T_BAR as harness_bar
+    from snn_data_lake.instruments.prior_drift_harness import T_BAR as harness_bar
 
     assert T_BAR == 1.895
     assert T_BAR == harness_bar, (

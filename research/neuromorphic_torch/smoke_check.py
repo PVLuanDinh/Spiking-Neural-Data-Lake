@@ -50,7 +50,7 @@ def main():
     # "reuses stdlib core" until 2026-08-04 -- the word "stdlib" was retired-rule residue (P7).
     # The reuse itself is the point and is real (P2: one definition).
     print("reuses the core: van_rossum/encode_latency (spike_preprocessing), population_encoding,")
-    print("                 energy constants (substrate.energy -> neuro_chip_gpu*)")
+    print("                 energy constants (instruments.energy -> neuro_chip_gpu*)")
     print("=" * 66)
     if torch is None or sj is None:
         print("NOTE: install requirements.txt into .venv-neuro to run the phase modules.")

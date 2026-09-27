@@ -430,7 +430,7 @@ def _coverage_census():
 
 # distinct-from: gates/conclusion_protocol.py -- that module GATES the registry (findings a gate
 #   asserts on); this one SERVES it to the page. One registry, two consumers. Site read.
-# distinct-from: cortex/recursive_tom.py::t082_read and cortex/report_order_probe.py::t081_read --
+# distinct-from: cortex/recursive_tom.py::t082_read and instruments/report_order_probe.py::t081_read --
 #   per-seed readings of a CAMPAIGN's recording rows, producing the numbers a C5 row is charged
 #   with; this function never measures anything, it hands an already-charged row to a surface.
 #   Site read.

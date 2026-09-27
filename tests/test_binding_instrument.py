@@ -46,7 +46,7 @@ scratch brain, seeds 0-7, six arms) is NOT here -- the pin is written once by
 
 import pytest
 
-from snn_data_lake.thalamus.binding_instrument import (
+from snn_data_lake.instruments.binding_instrument import (
     T080_BAR,
     T080_R1_TICKS,
     T080_R2_PROBES,
@@ -299,7 +299,7 @@ def test_the_charged_reading_re_derives_from_the_pin_and_a_mutated_derivation_do
     """The T080 panel fold (2026-09-16): the C5 row's reading is tied to the committed pin on
     every gate run -- re-derived as the mean over seeds of (within - the null's mean) -- and
     the clause is reachable: the same formula with the null's q95 reads a different number."""
-    from snn_data_lake.thalamus.binding_instrument import T080_PIN, t080_pin_reading
+    from snn_data_lake.instruments.binding_instrument import T080_PIN, t080_pin_reading
 
     assert T080_PIN.exists(), T080_PIN
     derived, recorded, mutated = t080_pin_reading()

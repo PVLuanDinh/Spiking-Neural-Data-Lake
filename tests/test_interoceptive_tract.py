@@ -85,7 +85,7 @@ def test_every_edge_on_the_tract_carries_a_measured_charge():
     """A declared edge that carries nothing is the defect the edge-less disposition was honest
     about. Each of the three is asserted from the COMMITTED attribution, so a route that stopped
     carrying would fail here rather than pass on its declaration."""
-    from snn_data_lake.substrate.port_charge_probe import read_attribution
+    from snn_data_lake.instruments.port_charge_probe import read_attribution
 
     for edge in (VISCERAL_EDGE, RELAY_EDGE, INTEROCEPTION_EDGE):
         rec = read_attribution(edge)

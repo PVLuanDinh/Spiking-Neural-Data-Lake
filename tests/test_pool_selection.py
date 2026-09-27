@@ -1,4 +1,4 @@
-"""G1(b)'s campaign (cortex/pool_selection.py): section 2.5's ordering and eligibility on
+"""G1(b)'s campaign (instruments/pool_selection.py): section 2.5's ordering and eligibility on
 hand-built tables, section 2.6's power rule, R-b7's refusals, the step-order refusal and section
 2.8's taxonomy and exit codes (g1b-pool-selection.md, frozen at 23c7e97).
 
@@ -7,9 +7,9 @@ through stand-in runners (or one in-process replay of the 48-event fixture)."""
 
 import pytest
 
-from snn_data_lake.cortex import memory_diagnostic as md
-from snn_data_lake.cortex import pool_selection as ps
 from snn_data_lake.cortex import recurrent_pool as rp
+from snn_data_lake.instruments import memory_diagnostic as md
+from snn_data_lake.instruments import pool_selection as ps
 
 
 def entry(order, d, d_task, cost):

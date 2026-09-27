@@ -373,8 +373,8 @@ def _measure_da_charge():
     rpe=0 broadcast -- a dopamine system that never signals an error). -> (live,
     pinned_out, reads, responded): `responded` = the TD-extinction signature INSIDE the
     live arm (see the in-body comment; the criterion earned this shape by failing)."""
+    from snn_data_lake.instruments.port_charge_probe import replay_twice
     from snn_data_lake.midbrain.dopamine_nuclei import DopamineNuclei
-    from snn_data_lake.substrate.port_charge_probe import replay_twice
 
     # WITHIN-LIVE-ARM structural predicate (review BLOCKER: the first form compared
     # against the pin's arithmetically-zero movement, collapsing to `moved > 0` -- a
@@ -403,7 +403,7 @@ def _measure_da_charge():
 def record_charge():
     """Measure the A/B and record the attribution via THE one writer. REFUSES a
     non-diverged or non-responding run -- evidence is a measurement, never a declaration."""
-    from snn_data_lake.substrate.port_charge_probe import record_attribution
+    from snn_data_lake.instruments.port_charge_probe import record_attribution
 
     live, pinned_out, reads, responded = _measure_da_charge()
     if live == pinned_out or not responded:
@@ -1179,7 +1179,7 @@ def main():
     )
 
     # ---- THE THIRD-FACTOR PORT IS CHARGED, measured (specs/022 T029) -------------------
-    from snn_data_lake.substrate.port_charge_probe import read_attribution
+    from snn_data_lake.instruments.port_charge_probe import read_attribution
 
     live, pinned_out, reads, responded = _measure_da_charge()
     assert reads == len(live), f"the neuter must be READ every frame ({reads} vs {len(live)})"

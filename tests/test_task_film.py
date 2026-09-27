@@ -60,7 +60,7 @@ def test_committed_manifest_carries_the_film_wire():
 
 def test_charge_evidence_is_committed_and_reproduces():
     from snn_data_lake.cortex.task_set import _measure_film_charge
-    from snn_data_lake.substrate.port_charge_probe import read_attribution
+    from snn_data_lake.instruments.port_charge_probe import read_attribution
 
     rec = read_attribution(FILM_EDGE)
     assert rec is not None and rec.get("diverged") is True

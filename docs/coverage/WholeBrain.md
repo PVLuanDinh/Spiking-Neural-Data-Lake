@@ -348,7 +348,7 @@ live charge margin of that bus, which read NEGATIVE on 24 of 100 ticks because `
 1.0. The clipped-row clause the T080 note carries applies here unchanged: the cockpit's `report-order margin` row is appended
 below the ACCESS plate's 110 px visible box, so its two sentences reach the DOM and not the viewer, and /api/state's
 PROVENANCE line is where a reader actually sees them. Retired with this row, on T034's condition rather than on the verdict:
-`reasoning/consciousness_probe.py`, whose 20-seed PCI marker sweep is ported into `cortex/integration_measure`.*
+`reasoning/consciousness_probe.py`, whose 20-seed PCI marker sweep is ported into `instruments/integration_measure`.*
 
 *DATED NOTE 2026-09-16 (specs/022 T082; `evidence/t082-social-cognition.md` section 2 and its 2.10 amendment; pin
 `tools/t082_social_cognition.json`, head `6d4a65f`, `dirty` False): the brain's DIALOGUE path now feeds ONE belief tracker,
@@ -407,7 +407,7 @@ the tool that produced the wrong answer was a shell grep whose output was being 
 - `brainstem/cpg_oscillator.py` -- Matsuoka CPG; the only rhythm generator with a path into the
   action-preference vector.
 - `plasticity/criticality_regulator.py` -- the only closed-loop branching-ratio regulator (reuses
-  `cortex/neuronal_avalanches` for the measurement).
+  `instruments/neuronal_avalanches` for the measurement).
 - `hypothalamus/homeostatic_drives.py` + `medulla/interoceptive_arousal.py` -- the two homeostasis
   signals with proven or measured paths into selection.
 - `plasticity/plasticity_rule_stack.py` (over `homeostatic_plasticity_stack.py`) -- composes seven

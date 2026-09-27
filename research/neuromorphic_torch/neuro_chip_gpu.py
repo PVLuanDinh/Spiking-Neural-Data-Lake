@@ -1,7 +1,7 @@
 """
 NeuroChip GPU — torch/GPU-accelerated vectorized twin of neuro_chip.py
 
-This is the torch-vectorized, GPU-scalable sibling of src/snn_data_lake/substrate/neuro_chip.py.
+This is the torch-vectorized, GPU-scalable sibling of src/snn_data_lake/instruments/neuro_chip.py.
 (Path corrected 2026-08-04: it read src/snn_data_lake/neuro_chip.py, which the v3.78 region reorg
 moved under substrate/. The import name still resolves through the back-compat alias layer, so
 nothing broke -- but a reader following the cited PATH finds no file.)
@@ -17,7 +17,7 @@ neurons and running inference fast. The ceiling is the same: functional/architec
 physics-level fidelity.
 
 Credit: Loihi/Akida AER routing architecture; energy constants LOADED from
-snn_data_lake.substrate.energy (Horowitz 2014, arXiv:2210.13107) rather than copied -- see
+snn_data_lake.instruments.energy (Horowitz 2014, arXiv:2210.13107) rather than copied -- see
 `_load_energy` below for why that changed and why it loads by FILE PATH rather than by putting the
 package on sys.path; LIF dynamics match lif_neuron.LIFNeuron exactly, vectorized as tensor ops.
 
@@ -47,7 +47,7 @@ except ImportError:
 
 
 def _energy_py():
-    """<repo>/src/snn_data_lake/substrate/energy.py, located by walking UP to the repo marker.
+    """<repo>/src/snn_data_lake/instruments/energy.py, located by walking UP to the repo marker.
 
     Same reasoning as cortex/eprop_nmnist._ng_snn_dir: a fixed `..` count encodes this file's own
     directory depth and retargets silently if the file moves, and a `sys.path.insert` of a path that
@@ -55,7 +55,7 @@ def _energy_py():
     """
     d = os.path.dirname(os.path.abspath(__file__))
     while True:
-        cand = os.path.join(d, "src", "snn_data_lake", "substrate", "energy.py")
+        cand = os.path.join(d, "src", "snn_data_lake", "instruments", "energy.py")
         if os.path.isfile(os.path.join(d, "pyproject.toml")) and os.path.isfile(cand):
             return cand
         parent = os.path.dirname(d)
@@ -63,14 +63,14 @@ def _energy_py():
             raise RuntimeError(
                 f"repo root not found above {os.path.abspath(__file__)} "
                 f"(looked for a directory holding both pyproject.toml and "
-                f"src/snn_data_lake/substrate/energy.py)")
+                f"src/snn_data_lake/instruments/energy.py)")
         d = parent
 
 
 def _load_energy():
     """Load energy.py BY FILE PATH, under a private module name, touching nothing global.
 
-    WHY NOT `sys.path.insert(...)` + `from snn_data_lake.substrate.energy import ...`: that is a
+    WHY NOT `sys.path.insert(...)` + `from snn_data_lake.instruments.energy import ...`: that is a
     MODULE-SCOPE SIDE EFFECT, and this repo names it as a defect class in three places -- P4c's
     record of the daemon promotion (`os.chdir`, `sys.path.insert`,
     `os.environ.setdefault("NORD_GPU","1")` all at column 0), the sibling
@@ -86,7 +86,7 @@ def _load_energy():
 
     P2/P7, unchanged by this edit: ONE definition. Both constants were LITERAL COPIES here and in
     neuro_chip_gpu_stream.py under the comment "hardcoded to keep zero-dep on the core" -- a THIRD
-    copy of `substrate/energy.py`'s `E_AC_FP32_45NM` / `E_SYNOP_LOIHI` (lines 46-47, re-resolved
+    copy of `instruments/energy.py`'s `E_AC_FP32_45NM` / `E_SYNOP_LOIHI` (lines 46-47, re-resolved
     2026-08-05). P7 abolished the zero-dependency rule on 2026-07-20, so the stated reason describes
     nothing. MEASURED 2026-08-05: the retired literals `0.9e-12` / `23.6e-12` compare `==` to the
     core's values, so no number moves -- what is removed is the way they could stop matching without

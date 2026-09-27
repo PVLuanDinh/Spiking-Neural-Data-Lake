@@ -372,7 +372,7 @@ def test_charge_evidence_is_committed_and_reproduces():
     cannot outlive the wire it describes (`tests/test_task_film.py`'s shape for the FiLM wire).
     The committed row is the CONSTRUCTED stream's A/B, which is why it reproduces at unit grain
     without building a brain; the live 60-episode recording's A/B is reported by the dry run."""
-    from snn_data_lake.substrate.port_charge_probe import read_attribution
+    from snn_data_lake.instruments.port_charge_probe import read_attribution
 
     rec = read_attribution(recursive_tom.BELIEF_EDGE)
     assert rec is not None and rec.get("diverged") is True

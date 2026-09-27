@@ -73,7 +73,7 @@ dormancy-covered per SYNTHESIS section 6's dated dispositions.
 #   simulated GESTURE dataset generator; a data tool, not a boundary. distinct-from:
 #   brainstem/signal_loop.py -- the reflex/serial event loop; its simulated_stream is a
 #   feed this boundary can sit in front of, not a transduction contract. distinct-from:
-#   substrate/episode_driver.py -- the TRIAL apparatus behind this boundary; it takes
+#   instruments/episode_driver.py -- the TRIAL apparatus behind this boundary; it takes
 #   already-transduced stimuli. distinct-from: insula/interoceptive_integration.py --
 #   the interoceptive tract terminus; see the inventory above. All sites read.
 
@@ -166,7 +166,7 @@ def proprioception(theta_deg):
 #   `efferent_boundary.intended_deltas` in the same change, so it is one mechanism too.
 # distinct-from: basal_ganglia/r_stdp.py, plasticity/plasticity_rule_stack.py -- per-SYNAPSE
 #   weight deltas from a reward-gated eligibility trace. distinct-from: substrate/home.py
-#   -- a BinLog rebuild. distinct-from: cortex/prior_drift_harness.py -- per-seed drive-class
+#   -- a BinLog rebuild. distinct-from: instruments/prior_drift_harness.py -- per-seed drive-class
 #   subsets. All four read; the word "delta"/"per-" is the only overlap and none folds an
 #   angle.
 def proprioception_deltas(theta_before, theta_after):

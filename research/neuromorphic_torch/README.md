@@ -38,7 +38,7 @@ The encoders and metrics already in the core are **reused**, not reimplemented i
 - Population coding (RBF receptive fields) → `snn_data_lake.population_encoding`
 - Spike-native in-storage query engine → `snn_data_lake.paradigm_b_engine`
 - Victor-Purpura distance (tunable `q`) + hierarchical proximity index → core `snn_data_lake` (Phase 1)
-- **Energy constants** (`E_AC_FP32_45NM`, `E_SYNOP_LOIHI`) → `snn_data_lake.substrate.energy`.
+- **Energy constants** (`E_AC_FP32_45NM`, `E_SYNOP_LOIHI`) → `snn_data_lake.instruments.energy`.
   Added to this list 2026-08-04: `neuro_chip_gpu.py` and `neuro_chip_gpu_stream.py` each carried
   their own literal copy, under the comment *"hardcoded to keep zero-dep on the core"* — three live
   definitions of two numbers, in files whose whole claim is that their energy accounting is the

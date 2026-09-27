@@ -24,8 +24,8 @@ Deps: numpy torch torchvision brian2
 import torch
 
 from snn_data_lake.substrate.device import resolve_device, enable
-from snn_data_lake.plasticity.snn_mnist_stdp import load_mnist
-from snn_data_lake.cortex.deep_stdp_latency import ConvLatencyStdp, _train
+from snn_data_lake.instruments.snn_mnist_stdp import load_mnist
+from snn_data_lake.instruments.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus

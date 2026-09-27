@@ -10,10 +10,11 @@ import numpy as np
 import pytest
 import torch
 
-from snn_data_lake.cortex import memory_diagnostic as md
 from snn_data_lake.cortex import recurrent_pool as rp
 from snn_data_lake.cortex.growth_stop import GrowthStop, feed_and_decide
-from snn_data_lake.cortex.memory_diagnostic import (
+from snn_data_lake.cortex.neurogenesis_engine import NeurogenesisSelfImprove
+from snn_data_lake.instruments import memory_diagnostic as md
+from snn_data_lake.instruments.memory_diagnostic import (
     ARMS,
     ASSET_ENV,
     ASSETS,
@@ -37,7 +38,6 @@ from snn_data_lake.cortex.memory_diagnostic import (
     replay,
     score,
 )
-from snn_data_lake.cortex.neurogenesis_engine import NeurogenesisSelfImprove
 
 
 def test_onehot_and_forbidden_channel():
@@ -191,7 +191,7 @@ def test_lp_sensitive_gate_fixture_flips_verdict():
 
 @pytest.mark.slow
 def test_real_120_tick_recording_r_a1():
-    from snn_data_lake.cortex.memory_diagnostic import check_r_a1
+    from snn_data_lake.instruments.memory_diagnostic import check_r_a1
 
     models = Path(__file__).resolve().parents[1] / "models"
     if any(not (models / name).is_file() for name in ASSETS):
@@ -227,7 +227,7 @@ def test_loaded_live_run_is_refused_by_causal_check(tmp_path):
 def test_loaded_causal_runs_require_complete_rows_and_distinct_executions(tmp_path, monkeypatch):
     import json
 
-    import snn_data_lake.cortex.memory_diagnostic as diagnostic
+    import snn_data_lake.instruments.memory_diagnostic as diagnostic
 
     monkeypatch.setattr(diagnostic, "SCORED_ARMS", ("a",))
     stream = _synthetic_stream()

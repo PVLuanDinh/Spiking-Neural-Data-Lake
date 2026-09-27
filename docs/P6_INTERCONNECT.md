@@ -37,7 +37,7 @@ instantiation sites: 26 across 10 modules; 11 of 26 outside the bus self-checks,
 | cortex/access_consciousness.py | FACULTY | 1 | 0 | 1 |
 | reasoning/rpm_solver.py | FACULTY | 1 | 0 | 0 |
 | reasoning/spike_chat_lake.py | FACULTY | 1 | 0 | 0 |
-| hippocampus/developmental_loop_brain.py (reasoning/ until 2026-08-12) | FACULTY | 1 | 0 | 0 |
+| instruments/developmental_loop_brain.py (reasoning/ until 2026-08-12) | FACULTY | 1 | 0 | 0 |
 | cortex/live_brain.py | ACTION | 0 | 1 | 0 |
 
 ### How this differs from the 2026-07-31 reading, and why

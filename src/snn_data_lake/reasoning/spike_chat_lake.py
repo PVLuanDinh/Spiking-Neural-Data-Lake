@@ -1026,7 +1026,7 @@ class LakeChat:
         mechanical: the resolver walks one hop through `self.<attr> = SomeClass(...)`, and
         `self.brain` is assigned `None` here (a slot a host fills, by design), so it falls back to
         matching the bare token `workspace` -- which `brainstem/autonomous_loop.py` and
-        `hippocampus/developmental_loop_brain.py` (reasoning/ until 2026-08-12) BOTH bind,
+        `instruments/developmental_loop_brain.py` (reasoning/ until 2026-08-12) BOTH bind,
         leaving it ambiguous and unattributed. At
         RUNTIME the object is provably the arm's (`brain.workspace is live_brain.workspace is
         arm.workspace` -> True, asserted by identity and by `id()`), so the read is cross-module in
@@ -1104,7 +1104,7 @@ class LakeChat:
             "workspace rather than inferred from this turn."
         )
 
-    # distinct-from: substrate/port_charge_probe.py -- its replay_twice drives FRAMES
+    # distinct-from: instruments/port_charge_probe.py -- its replay_twice drives FRAMES
     #   through consumers; this is the chat arena's ignition-current accessor. Phrase
     #   overlap only. Read.
     @property
@@ -1831,7 +1831,7 @@ def demo():
     # distinct-from: cortex/live_brain.py::workspace and cortex/brain.py::reentrant -- accessors that
     #   ADOPT the composite's real bus; this is a hermetic stand-in built so ONE input can be moved
     #   with nothing else alive. distinct-from: substrate/brain_telemetry.py::_main and
-    #   cortex/report_order_probe.py::main -- those self-checks build a REAL brain (make_brain);
+    #   instruments/report_order_probe.py::main -- those self-checks build a REAL brain (make_brain);
     #   this one must not, because P4 forbids a second composite inside a chat self-check and a real
     #   workspace here would add a PRIVATE instance to tools/p6_gate.py's census. The one site that
     #   WAS a second mechanism for this job, reasoning/consciousness_probe.py::_MinimalBrain, is

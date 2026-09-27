@@ -148,7 +148,7 @@ def _measure_edge_charge():
     """The per-edge replay-twice A/B for `arousal_out -> visceral_in` -> (live, pinned, reads,
     responded). `responded` = the relayed pair rose at the challenge, so the medullary payload
     did not merely diverge, it MOVED this hop in the direction the tract claims."""
-    from snn_data_lake.substrate.port_charge_probe import replay_twice, visceral_challenge_frames
+    from snn_data_lake.instruments.port_charge_probe import replay_twice, visceral_challenge_frames
 
     frames, spike_at = visceral_challenge_frames()
     live, pinned_out, reads = replay_twice(
@@ -165,7 +165,7 @@ def _measure_edge_charge():
 def record_charge():
     """Measure the ascending A/B and record its attribution via THE one writer. REFUSES a
     non-diverged or non-responding run."""
-    from snn_data_lake.substrate.port_charge_probe import record_attribution
+    from snn_data_lake.instruments.port_charge_probe import record_attribution
 
     live, pinned_out, reads, responded = _measure_edge_charge()
     if live == pinned_out or not responded:
@@ -382,7 +382,7 @@ def main() -> int:
         return 1
 
     # (8) THE EDGE IS CHARGED, measured, and the committed attribution must reproduce.
-    from snn_data_lake.substrate.port_charge_probe import read_attribution
+    from snn_data_lake.instruments.port_charge_probe import read_attribution
 
     live, pinned_out, reads, responded = _measure_edge_charge()
     if reads != len(live):

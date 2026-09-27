@@ -318,7 +318,7 @@ def aggregate_findings(root: Path | None = None) -> list[str]:
     return out
 
 
-# distinct-from: cortex/report_order_probe.py::t081_seed and cortex/prior_drift_harness.py::
+# distinct-from: instruments/report_order_probe.py::t081_seed and instruments/prior_drift_harness.py::
 #   settling_report -- both PRODUCE a reading from a campaign recording (and name that campaign's
 #   own refusals); this clause produces no reading at all, it asks whether an already-charged row
 #   can be SERVED with both of its sentences. Site read.

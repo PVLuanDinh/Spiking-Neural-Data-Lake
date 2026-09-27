@@ -51,7 +51,7 @@ import random
 import zlib
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
-from snn_data_lake.cortex.neuronal_avalanches import BranchingNetwork
+from snn_data_lake.instruments.neuronal_avalanches import BranchingNetwork
 
 
 def _child_seed(base, tag):

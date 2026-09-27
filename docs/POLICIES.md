@@ -244,7 +244,7 @@ utilized appropriately.** A faculty is not "done" until it is one of three dispo
 gate-before-rule invariant).** At REGION granularity, "charged" is a conjunction:
 REACHABLE (the dormancy gate's one walk, reused — never re-derived) AND ≥1 wiring-manifest
 port edge touching the region carrying a MEASURED charge attribution (a replay-twice
-divergence from `substrate/port_charge_probe`, recorded in
+divergence from `instruments/port_charge_probe`, recorded in
 `tools/region_charge_evidence.json` — never a declaration). **Registration alone never
 greens a region.** Gate: `gates/region_charge_gate.py --assert`, with the integer floor in
 `tools/region_charge_floor.json` (identity-pinned: `named_and_NOT_charged` must stay empty);

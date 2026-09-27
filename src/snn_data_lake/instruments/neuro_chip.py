@@ -17,14 +17,14 @@ synthetic spiking net. It reproduces the ARCHITECTURE (cores, AER routing, SynOp
 accounting), not the physics. Every synapse is a fixed 1-tick router hop (same for intra- and
 inter-core), which is exactly what makes the mapped computation invariant to core placement.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.neuro_chip
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.neuro_chip
 """
 
 # additive/opt-in emulator, changes no existing behaviour; reuses LIFNeuron + energy.py.
 # Ceiling: functional/architectural twin (AER-routed, time-stepped), NOT cycle-accurate silicon --
 # no analog dynamics, no place-and-route, synthetic workload; software side of the nir_export target.
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
-from snn_data_lake.substrate import energy
+from snn_data_lake.instruments import energy
 
 
 class Core:

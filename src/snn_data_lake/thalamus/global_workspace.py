@@ -3807,7 +3807,7 @@ def main():
     # ---- T031 COALITION RECORDS: the record layer over the untouched kernel --------------------
     # distinct-from: thalamus/reentrant_workspace.py -- its step() groups submissions into
     #   coalitions for the RE-ENTRY kernel; this block is a SELF-CHECK harness driving THIS
-    #   module's record layer end-to-end. distinct-from: substrate/port_charge_probe.py -- the
+    #   module's record layer end-to-end. distinct-from: instruments/port_charge_probe.py -- the
     #   replay-twice charge A/B instrument; nothing here measures charge. distinct-from:
     #   cortex/pc_cortex_serve.py -- its settle is the predictive-coding hierarchy relaxation.
     #   distinct-from: cerebellum/spiking_jepa.py and reasoning/arc_agi/brain_player.py --

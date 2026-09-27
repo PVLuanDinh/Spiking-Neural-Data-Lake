@@ -92,7 +92,7 @@ perturbational signature; it does not regulate it.
 Per-instance random.Random(seed); zlib.crc32 for child seeds (never
 hash()); zlib for the gzip cross-check compressor; deterministic; ASCII-only output.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.integration_measure   # (run_selfchecks.py)
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.integration_measure   # (run_selfchecks.py)
 """
 
 import math
@@ -421,7 +421,7 @@ def silent_network(seed=0):
 INTEGRATION_SEEDS = tuple(range(20))
 
 
-# distinct-from: substrate/paired_contrast.py -- that module decides ONE pre-registered conjunct from
+# distinct-from: instruments/paired_contrast.py -- that module decides ONE pre-registered conjunct from
 # a seed-paired difference sample (paired t, sign-flip FPR, the degenerate rule); this returns a
 # per-seed PRESENT/ABSENT distribution of a four-clause PCI ordering over this module's own three
 # reference networks. No t, no bar, no seed pairing: the fraction IS the reported quantity, and its

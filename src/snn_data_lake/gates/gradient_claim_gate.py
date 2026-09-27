@@ -1611,7 +1611,7 @@ FR010_ALLOWED_RULE_EDITS = (
     "src/snn_data_lake/basal_ganglia/mlp_q.py",  # the SECOND copy of the share figure only
 )
 
-# distinct-from: src/snn_data_lake/cortex/integration_measure.py -- its `_run` executes one
+# distinct-from: src/snn_data_lake/instruments/integration_measure.py -- its `_run` executes one
 #   perturbed subnet simulation against a pre-drawn noise realization. It inspects no change set,
 #   reads no path, and has nothing to do with which files a diff touched.
 # distinct-from: src/snn_data_lake/substrate/learn_daemon.py -- its `_self_check` asserts the
