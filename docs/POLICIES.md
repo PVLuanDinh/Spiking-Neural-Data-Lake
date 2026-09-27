@@ -537,9 +537,11 @@ clustering, predictive coding, simulated annealing) are examples, chosen by a be
 - **Pause at a budget (owner decision):** each problem's growth spends a budget relative to a
   persisted running baseline (P1); at the limit the brain reports UNSOLVED, stops growing, and keeps
   the problem OPEN to retry after sleep or new teaching.
-- After a solve, sleep prunes and saves the new neurons and the problem's data; the solve requests
-  sleep from the daemon's one scheduler (P2). Units are journaled into the lake when grown; a prune
-  removes a unit from the active network, never its lake record.
+- **Owner clarification 2026-09-27:** sleep is an extended, resumable capability-improvement process
+  over eligible learned circuits, with selective synaptic and structural plasticity judged by held-out
+  retention and cost. After a solve, the daemon's one scheduler requests sleep, which prunes and saves
+  new neurons and problem data. Units are journaled when grown; pruning removes active units, never
+  lake records.
 
 **Permitted, on conditions this file keeps.**
 - **Two networks:** two jobs, not P2's additive failure; inside each job exactly one survives (one
