@@ -38,18 +38,18 @@ import os
 
 import numpy as np
 
-from snn_data_lake.cortex.corpus_stream import (
-    ARPABET,
-    load_cmudict,
-    load_text,
-    phoneme_stream,
-    word_stream,
-)
 from snn_data_lake.cortex.language_self_build import (
     _bigram_baseline,
     _frequent,
     _positional_code,
     _unigram_baseline,
+)
+from snn_data_lake.sensorimotor.corpus_stream import (
+    ARPABET,
+    load_cmudict,
+    load_text,
+    phoneme_stream,
+    word_stream,
 )
 
 

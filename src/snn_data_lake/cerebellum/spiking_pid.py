@@ -38,7 +38,7 @@ import random
 
 from snn_data_lake.brainstem import arm_config
 from snn_data_lake.brainstem.so101_arm import So101Arm
-from snn_data_lake.cortex.population_encoding import PopulationEncoder
+from snn_data_lake.sensorimotor.population_encoding import PopulationEncoder
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

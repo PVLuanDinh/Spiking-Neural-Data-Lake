@@ -254,7 +254,7 @@ class ReentrantWorkspace:
         if hold_bias:
             self._theta_hold = True  # sticky: only release_theta_hold clears (see docstring)
 
-    # distinct-from: brainstem/live_arm.py -- HOLD the motor action, not this sweep hold.
+    # distinct-from: sensorimotor/live_arm.py -- HOLD the motor action, not this sweep hold.
     # distinct-from: amygdala/fear_conditioning.py -- THETA_CEA threat threshold. Read.
     def release_theta_hold(self, provenance):
         """THE one release door for the sweep hold (a re-command with default hold_bias

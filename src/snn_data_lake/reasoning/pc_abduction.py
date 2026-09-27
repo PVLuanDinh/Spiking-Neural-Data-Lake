@@ -3,7 +3,7 @@ PC ABDUCTION -- spiking ABDUCTION (inference to the best explanation) + Pearl CO
 lake's spiking predictive-coding generative model. The live
 reasoning path only had transitive-isa DEDUCTION (reasoning/derivation.py BFS) and single-hop link
 prediction; it had NO abduction and NO causal/counterfactual reasoning. This module adds both, built
-DIRECTLY on the repo's spiking generative model (cortex/pc_cortex_serve.py::PcCortexServe -- a served
+DIRECTLY on the repo's spiking generative model (sensorimotor/pc_cortex_serve.py::PcCortexServe -- a served
 deep spiking Rao-Ballard coder whose weights come from spiking training, NOT a rate-ANN backprop head).
 Representation / cognition ONLY: no actuator route, never imports brainstem.
 
@@ -365,7 +365,7 @@ def _build_ortho_pc(n):
     (cause k drives its own observation pair). Returns (pc, basis) where basis[k] is the one-hot top-cause
     latent for cause k, so generate(basis[k]) are pairwise orthogonal -> clean free-energy separation.
     Constructed via the public keyword __init__ (already-validated components) -- no JSON round-trip."""
-    from snn_data_lake.cortex.pc_cortex_serve import PcCortexServe
+    from snn_data_lake.sensorimotor.pc_cortex_serve import PcCortexServe
 
     dims = [2 * n, n, n]
     w1 = [[0.0] * n for _ in range(2 * n)]  # 2n x n, orthogonal columns

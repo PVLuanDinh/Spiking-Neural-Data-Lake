@@ -48,7 +48,7 @@ SSRF firewall (the security boundary):
   fetching public corpora, not for a hostile-controlled URL set. Upgrade path: pin the checked IP
   and connect to it directly.
 
-  python -m snn_data_lake.substrate.web_ingest        # offline self-check (no network)
+  python -m snn_data_lake.sensorimotor.web_ingest        # offline self-check (no network)
 """
 
 import argparse
@@ -240,7 +240,7 @@ def fetch_corpus(
 ):
     """Fetch url, optionally strip HTML, write text to out_path. Returns (out_path, n_chars, flags).
 
-    `license_id` is REQUIRED and deny-by-default (substrate/ingest_guard). This is a deliberate
+    `license_id` is REQUIRED and deny-by-default (sensorimotor/ingest_guard). This is a deliberate
     behaviour change: the tool downloads other people's text to train on, and it used to do that
     without ever asking under what terms. Stating the licence is now the caller's job, because it is
     the caller who knows -- and "no licence stated" must not be the silent default when the answer
@@ -251,7 +251,7 @@ def fetch_corpus(
     a string handed to anything that acts, so the boundary is structural. The flags exist so a corpus
     that is full of prompt-injection reads as suspicious instead of arriving silently.
     """
-    from snn_data_lake.substrate.ingest_guard import guard
+    from snn_data_lake.sensorimotor.ingest_guard import guard
 
     text = fetch_text(url, max_bytes=max_bytes, timeout=timeout)
     if strip_html is None:

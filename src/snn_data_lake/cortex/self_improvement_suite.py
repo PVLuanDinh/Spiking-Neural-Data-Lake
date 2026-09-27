@@ -62,7 +62,6 @@ from snn_data_lake.cortex.autotelic_goals import (
     collect_labels,
 )
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
-from snn_data_lake.cortex.population_encoding import PopulationEncoder
 from snn_data_lake.cortex.quality_diversity import (
     DPOS,
     K_NEURONS,
@@ -82,6 +81,7 @@ from snn_data_lake.neuromodulation.drive_reduction import (
 from snn_data_lake.neuromodulation.generalizing_novelty import GeneralizingNovelty
 from snn_data_lake.plasticity.benna_fusi import BennaFusiLearner
 from snn_data_lake.plasticity.meta_plasticity import MetaPlasticLearner
+from snn_data_lake.sensorimotor.population_encoding import PopulationEncoder
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

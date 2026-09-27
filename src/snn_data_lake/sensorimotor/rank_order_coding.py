@@ -11,13 +11,13 @@ module is that gain-robust matcher, enrolled on the same command library, and it
 beating the template matcher under a contrast change on the real library. Refs: Thorpe, Delorme &
 VanRullen, Neural Networks 14 (2001).
 
-  python -m snn_data_lake.cortex.rank_order_coding        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.sensorimotor.rank_order_coding        # (also run by run_selfchecks.py)
 """
 
 import random
 
-from snn_data_lake.brainstem.signal_loop import build_default_library
-from snn_data_lake.cortex.spike_preprocessing import encode_latency, van_rossum_distance
+from snn_data_lake.sensorimotor.signal_loop import build_default_library
+from snn_data_lake.sensorimotor.spike_preprocessing import encode_latency, van_rossum_distance
 
 
 def rank_code(x):

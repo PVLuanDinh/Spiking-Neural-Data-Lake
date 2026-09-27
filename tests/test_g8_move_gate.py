@@ -261,3 +261,28 @@ def test_the_reds_name_modules_by_basename_through_the_tables():
         assert S.module_path(base).endswith("." + base)
     for base in mg.C2C_TARGETS:
         assert S.module_path(base)  # every C2(c) target is a registered module
+
+
+def test_unordered_gate_report_rows_keep_every_element_visible():
+    immortal_a = (
+        "excluded, scratch-home deletions (cannot reach the durable lake): 2 "
+        "[('a/x', 'f'), ('b/y', 'g')]"
+    )
+    immortal_b = (
+        "excluded, scratch-home deletions (cannot reach the durable lake): 2 "
+        "[('b/y', 'g'), ('a/x', 'f')]"
+    )
+    assert mg._gate_lines("immortal_retention", [immortal_a], {}) == mg._gate_lines(
+        "immortal_retention", [immortal_b], {}
+    )
+    assert mg._gate_lines("immortal_retention", [immortal_a], {}) != mg._gate_lines(
+        "immortal_retention", [immortal_b.replace("b/y", "b/z")], {}
+    )
+    method_a = "  UNCERTAIN x [name-matched in: a.x, b.y, c.z]"
+    method_b = "  UNCERTAIN x [name-matched in: c.z, a.x, b.y]"
+    assert mg._gate_lines("method_dormancy_gate", [method_a], {}) == mg._gate_lines(
+        "method_dormancy_gate", [method_b], {}
+    )
+    assert mg._gate_lines("method_dormancy_gate", [method_a], {}) != mg._gate_lines(
+        "method_dormancy_gate", [method_b.replace("c.z", "c.q")], {}
+    )

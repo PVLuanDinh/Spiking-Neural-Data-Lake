@@ -144,7 +144,7 @@ class GrowthStop:
     # distinct-from: basal_ganglia/learning_progress.py -- its observe() feeds ERROR levels
     #   into the |LP| EMAs; this feeds REFIT OUTCOMES (units, acc) into the charge history.
     #   Different stream, and this gate READS that module's output, never re-derives it.
-    # distinct-from: basal_ganglia/r_stdp.py, brain_atlas.py, brainstem/signal_loop.py --
+    # distinct-from: basal_ganglia/r_stdp.py, brain_atlas.py, sensorimotor/signal_loop.py --
     #   eligibility measurement, region lookup, unknowns store; the matcher fired on
     #   generic feed/observe verbs. Sites read.
     def observe_refit(self, region, n_units, heldout_acc):

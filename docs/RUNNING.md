@@ -89,11 +89,11 @@ python -m snn_data_lake.substrate.spike_telemetry_hub --query data.spk --window 
 Encode → data lake → match → command → reward → learn (with reflex + RPE dopamine + cortisol +
 the Interpreter), on `main`:
 ```bash
-python -m snn_data_lake.brainstem.closed_loop   # full stack end-to-end: gesture -> command, collision -> STOP
-python -m snn_data_lake.brainstem.signal_loop   # the loop alone (hybrid matcher) + self-check
+python -m snn_data_lake.sensorimotor.closed_loop   # full stack end-to-end: gesture -> command, collision -> STOP
+python -m snn_data_lake.sensorimotor.signal_loop   # the loop alone (hybrid matcher) + self-check
 python -m snn_data_lake.brainstem.interpreter   # matched label -> robot command + self-check
 # drive it with no hardware (outcomes back via OUTCOME lines):
-cat windows.csv | python -m snn_data_lake.brainstem.signal_loop --stdin --feedback --reflex
+cat windows.csv | python -m snn_data_lake.sensorimotor.signal_loop --stdin --feedback --reflex
 ```
 
 ### 3. The Medallion lakehouse PoC (needs polars)

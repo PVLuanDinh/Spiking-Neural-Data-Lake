@@ -645,7 +645,7 @@ class Brain:
         # a motor command; arm commands stay on the NL firewall + gated-arm path in respond().
 
         # ---- PERCEPTION TIER (optional torch): the e-prop-trained deep SNN on N-MNIST
-        # (cortex/eprop_nmnist.py, TORCH_TIER) exposed as an OPTIONAL high-fidelity perception
+        # (sensorimotor/eprop_nmnist.py, TORCH_TIER) exposed as an OPTIONAL high-fidelity perception
         # encoder. torch- AND weights-GATED: if torch + a checkpoint are present it loads; else
         # the brain degrades to its stdlib perception. The live circadian loop is UNCHANGED either way
         # (the toy safe-stimuli are not event frames). ONE-DIRECTIONAL: the zero-dep core never imports
@@ -729,7 +729,7 @@ class Brain:
                 # Honest cost: a machine holding only the surrogate checkpoint now gets NO encoder
                 # rather than a working one, and the tier falls to stdlib.
                 if os.path.exists(_eprop):
-                    from snn_data_lake.cortex.eprop_nmnist import EpropEncoder
+                    from snn_data_lake.sensorimotor.eprop_nmnist import EpropEncoder
 
                     self._perception_enc = _load_enc(EpropEncoder.load, _eprop)
                     self._perception_tier = "eprop-snn"
@@ -761,7 +761,7 @@ class Brain:
                 if os.path.exists(
                     _audio
                 ):  # AUDITORY tier (brain-native): e-prop SHD encoder, parallel to vision
-                    from snn_data_lake.cortex.eprop_shd import EpropAudioEncoder
+                    from snn_data_lake.sensorimotor.eprop_shd import EpropAudioEncoder
 
                     self._audio_enc = _load_enc(EpropAudioEncoder.load, _audio)
                     import numpy as _np2
@@ -1186,7 +1186,7 @@ class Brain:
 
         # ---- PC-CORTEX PERCEPTION TIER (TORCH-FREE SERVE, checkpoint-gated): the deep spiking
         # predictive-coding
-        # cortex (cortex/pc_cortex_serve, snn_pcnet/1) served as an OPTIONAL generative perception encoder.
+        # cortex (sensorimotor/pc_cortex_serve, snn_pcnet/1) served as an OPTIONAL generative perception encoder.
         # WEIGHTS-GATED only -- no torch needed to SERVE (the settle is numpy, not the training tier;
         # the former "zero-dep / pure stdlib" claim is stale -- that rule was removed project-wide):
         # if a snn_pcnet/1 checkpoint
@@ -1202,7 +1202,7 @@ class Brain:
 
             _pc_ckpt = os.environ.get("SNN_PC_CKPT", "models/pc_cortex_nmnist.json")
             if os.path.exists(_pc_ckpt):
-                from snn_data_lake.cortex.pc_cortex_serve import PcCortexServe
+                from snn_data_lake.sensorimotor.pc_cortex_serve import PcCortexServe
 
                 self._pc_cortex = PcCortexServe.load(_pc_ckpt)
                 self._pc_cortex_tier = "pc-cortex"
@@ -1646,7 +1646,7 @@ class Brain:
             # afferent_boundary.proprioception -- extracted verbatim, one transduction;
             # the declared lane proprio_out -> brain.proprio_in and this call are the
             # same code). None = a body that cannot be read = the modality missing.
-            from snn_data_lake.substrate.afferent_boundary import proprioception
+            from snn_data_lake.sensorimotor.afferent_boundary import proprioception
 
             th = (self.brain.arm.arm.state() or {}).get("theta_deg") or []
             prop = proprioception(th)
@@ -1696,7 +1696,7 @@ class Brain:
             # anatomy (afferent_boundary.vision_out -> brain.vision_in) and the runtime
             # acquisition are one code (the proprioception pattern). Fail-closed = no
             # percept this tick.
-            from snn_data_lake.substrate.afferent_boundary import transduce_vision_events
+            from snn_data_lake.sensorimotor.afferent_boundary import transduce_vision_events
 
             frame, _present = transduce_vision_events(self._real_frames[i])
             if not _present:
@@ -1812,7 +1812,7 @@ class Brain:
             i = self._audio_ptr % len(self._audio_frames)
             self._audio_ptr += 1
             # T052-iii: the audition contract, exactly as vision above.
-            from snn_data_lake.substrate.afferent_boundary import transduce_audition_events
+            from snn_data_lake.sensorimotor.afferent_boundary import transduce_audition_events
 
             frame, _present = transduce_audition_events(self._audio_frames[i])
             if not _present:
@@ -2423,7 +2423,7 @@ class Brain:
 
     def perceive_pc(self, x):
         """OPTIONAL PC-cortex perception: settle the deep spiking predictive-coding cortex (snn_pcnet/1,
-        cortex/pc_cortex_serve) on a length-in_dim input vector x and return the settled TOP-CAUSE latent
+        sensorimotor/pc_cortex_serve) on a length-in_dim input vector x and return the settled TOP-CAUSE latent
         (the generative percept). Returns None when no snn_pcnet/1 checkpoint is loaded -- the stdlib loop
         is unaffected. Value/representation-ONLY: a zero-dep spiking encoder, no actuator route, no safety
         path touched (settling runs only on this call, never in a tick)."""
@@ -5919,7 +5919,7 @@ def declare_ports(manifest):
     # declared route and the runtime call are one code, the proprio pattern above).
     # Shapes IMPORTED from the boundary's pinned constants, never retyped (the honesty
     # panel counted the shape living in three places; this kills the port copy).
-    from snn_data_lake.substrate.afferent_boundary import (
+    from snn_data_lake.sensorimotor.afferent_boundary import (
         AUDITION_FRAME_SHAPE,
         VISION_FRAME_SHAPE,
     )

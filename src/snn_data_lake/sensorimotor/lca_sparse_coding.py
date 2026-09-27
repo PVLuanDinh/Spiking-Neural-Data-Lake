@@ -13,12 +13,12 @@ competition. It is an alternative matcher OPTION (cf. RankOrderMatcher / Tempotr
 enrolled on the same `build_default_library()`; it touches only recognition, never the arm / control / safety
 path. On-thesis with sparse_distributed_memory / fly_hash / rank_order_coding.
 
-  python -m snn_data_lake.cortex.lca_sparse_coding        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.sensorimotor.lca_sparse_coding        # (also run by run_selfchecks.py)
 """
 
 import random
 
-from snn_data_lake.brainstem.signal_loop import build_default_library
+from snn_data_lake.sensorimotor.signal_loop import build_default_library
 from snn_data_lake.substrate._mathutils import dot
 
 

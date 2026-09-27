@@ -10,7 +10,7 @@ audit's drift toward rate-level ANN code (backprop / Widrow-Hoff / EMAs) instead
 WHY THIS IS GENUINELY SPIKING (not rate-level), on both axes the audit flagged:
   (1) The stimulus is a SPIKE TRAIN, not a real-valued activation vector. Each input synapse fires
       exactly ONE spike at a DISCRETE integer time, given by Thorpe rank-order latency coding
-      (REUSED verbatim from cortex.rank_order_coding.rank_code: 0 = fires first = largest value).
+      (REUSED verbatim from sensorimotor.rank_order_coding.rank_code: 0 = fires first = largest value).
       The representation is binary spike EVENTS at discrete times -- self-checked, not just claimed.
   (2) The weight update is REWARD-MODULATED SPIKE-TIMING PLASTICITY (R-STDP), REUSED verbatim from
       basal_ganglia.r_stdp.RSTDPNeuron: pre-before-post spike pairings deposit a per-synapse
@@ -71,7 +71,7 @@ import zlib
 from collections import deque
 
 from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
-from snn_data_lake.cortex.rank_order_coding import rank_code
+from snn_data_lake.sensorimotor.rank_order_coding import rank_code
 
 _REPLAY_CAP = 64  # sleep-replay ring size (T058): a memory bound, not a behaviour threshold
 
@@ -144,7 +144,7 @@ _G0C_LAZY_ATTRS = {
 #   neuromodulation/raphe_serotonin.py (an append observer, a theta authority, a least-squares
 #   readout, a learning-progress read, a port declaration); all five sites read. The legacy-name
 #   incumbent is the alias layer in snn_data_lake/__init__.py (`_MOVED`), whose S1b `_LEGACY`
-#   table this provider now returns. Re-read at S1b with substrate/afferent_boundary.py and
+#   table this provider now returns. Re-read at S1b with sensorimotor/afferent_boundary.py and
 #   substrate/kernel_tick.py ("THE ONE" transduction lane and bundle compiler): phrase overlap only.
 def _g0c_legacy_modules():
     """G8 (specs/022, stage S0): THE one provider of the checkpoint class-path translation map,

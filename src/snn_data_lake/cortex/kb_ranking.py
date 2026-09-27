@@ -69,7 +69,7 @@ def _envf(k, d):
 def _fetch_triples(url, name):
     import tempfile
 
-    from snn_data_lake.substrate.web_ingest import fetch_corpus
+    from snn_data_lake.sensorimotor.web_ingest import fetch_corpus
 
     # tempfile.gettempdir(), not os.environ.get("TEMP", ".") -- the Windows-only TEMP
     # variable is unset on Linux/containers, and the "." fallback wrote 22MB of corpus
@@ -107,7 +107,7 @@ def load_dataset():
             return tr, te, False
     except Exception:
         pass
-    from snn_data_lake.cortex.world_kb_stream import load_kb
+    from snn_data_lake.sensorimotor.world_kb_stream import load_kb
 
     triples, _ = load_kb()
     import random

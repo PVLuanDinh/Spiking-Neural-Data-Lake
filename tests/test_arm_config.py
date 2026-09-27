@@ -143,7 +143,7 @@ def test_home_pose_is_commandable():
 
 def test_arm_hardware_rows_are_derived_from_this_table():
     """arm_hardware.JOINTS must be a view of arm_config.JOINTS, not a second literal."""
-    from snn_data_lake.brainstem import arm_hardware
+    from snn_data_lake.sensorimotor import arm_hardware
 
     assert arm_hardware.JOINTS == tuple((j.alias, j.servo, j.lever_mm) for j in ac.JOINTS), (
         "arm_hardware.JOINTS drifted from arm_config.JOINTS"

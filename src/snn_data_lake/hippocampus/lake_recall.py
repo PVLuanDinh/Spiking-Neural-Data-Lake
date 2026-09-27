@@ -82,7 +82,7 @@ import random
 import statistics
 import zlib
 
-from snn_data_lake.cortex.spike_preprocessing import N, victor_purpura_distance
+from snn_data_lake.sensorimotor.spike_preprocessing import N, victor_purpura_distance
 from snn_data_lake.substrate.home import load_episodes, save_episode
 from snn_data_lake.substrate.proximity_index import ProximityIndex
 

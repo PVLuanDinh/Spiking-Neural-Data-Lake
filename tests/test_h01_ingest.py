@@ -640,7 +640,7 @@ def test_thresholds_and_decay_are_imported_from_the_live_lif_owner():
 # Provenance and licence
 # ---------------------------------------------------------------------------------------------
 def test_the_licence_passes_the_ingest_guard_and_the_attribution_names_fr_007():
-    from snn_data_lake.substrate.ingest_guard import license_ok
+    from snn_data_lake.sensorimotor.ingest_guard import license_ok
 
     assert license_ok(H.LICENSE_ID)
     assert "CC-BY" in H.ATTRIBUTION.upper() or "Creative Commons" in H.ATTRIBUTION

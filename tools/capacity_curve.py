@@ -26,7 +26,7 @@ REPO = "ylecun/mnist"
 
 
 def _load(split, n):
-    from snn_data_lake.substrate.hf_stream import stream_features
+    from snn_data_lake.sensorimotor.hf_stream import stream_features
 
     X, y, _ = stream_features(REPO, split=split, n_rows=n)
     return torch.tensor(X), torch.tensor(y)

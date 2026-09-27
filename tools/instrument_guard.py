@@ -40,7 +40,7 @@ The counted run over `src/`, before any of it landed:
     CWD-DEPENDENT PATH     0
     MODULE-SCOPE CHDIR     0
     MODULE-SCOPE SEED      1  -> reasoning/arc_agi/play.py, `random.seed(0)` under `__main__`
-    CONSTRUCTOR SEED       3  -> cortex/recognizer_bank.py, instruments/developmental_loop_brain.py,
+    CONSTRUCTOR SEED       3  -> sensorimotor/recognizer_bank.py, instruments/developmental_loop_brain.py,
                                  reasoning/_loop_common.py
 
 The 6 are why `src/` could not simply be appended to `TIERS`: `make_brain()` lives in the module that
@@ -127,7 +127,7 @@ THE FIVE RULES, and each one is a defect this tree actually produced:
      the same shape were sitting in `src/` when this rule was counted.
      **A restored seed is not a violation.** A seeder inside `with torch.random.fork_rng(...)`, or
      one bracketed by an explicit save/restore in the same function (`random.getstate` /
-     `random.setstate`), is NOT flagged -- `cortex/recognizer_bank.py` does exactly that because the
+     `random.setstate`), is NOT flagged -- `sensorimotor/recognizer_bank.py` does exactly that because the
      MoE trainer it calls draws from the module-global `random`, and a gate that reddens on its own
      remedy teaches the next reader to stop applying the remedy.
 
@@ -304,7 +304,7 @@ def _constructor_seeds(tree, tbl):
     NOT flagged when the scope puts back what it took: a `with torch.random.fork_rng(...)` block, or
     the seeder's own restorer called in the same function. The exclusion is scoped to the function,
     which is a floor -- it does not prove the restore is on every path -- and it is deliberate:
-    flagging `cortex/recognizer_bank.py`'s getstate/setstate bracket would have been a false finding
+    flagging `sensorimotor/recognizer_bank.py`'s getstate/setstate bracket would have been a false finding
     against correct code, and a gate that reddens on its own remedy teaches the reader to drop it.
     """
     out = []

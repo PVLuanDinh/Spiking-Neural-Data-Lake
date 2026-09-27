@@ -1085,7 +1085,27 @@ def _section(a: dict, b: dict, pa: dict, pb: dict) -> dict:
 
 
 def _gate_lines(key: str, lines: list[str], pairs: dict) -> Counter:
-    """Compare P6's path report by content, independent of layout and path width."""
+    """Compare outcome content while ignoring order in two unordered report lists."""
+    if key == "immortal_retention":
+        canonical = []
+        for line in lines:
+            line = map_text(line, pairs)
+            match = re.fullmatch(r"(excluded, scratch-home deletions .*?: \d+ )(\[.*\])", line)
+            if match:
+                entries = ast.literal_eval(match[2])
+                if isinstance(entries, list) and all(isinstance(item, tuple) for item in entries):
+                    line = match[1] + repr(sorted(entries))
+            canonical.append(line)
+        return Counter(canonical)
+    if key == "method_dormancy_gate":
+        canonical = []
+        for line in lines:
+            line = map_text(line, pairs)
+            if "[name-matched in: " in line and line.endswith("]"):
+                head, tail = line.rsplit("[name-matched in: ", 1)
+                line = head + "[name-matched in: " + ", ".join(sorted(tail[:-1].split(", "))) + "]"
+            canonical.append(line)
+        return Counter(canonical)
     if key != "p6_gate":
         return Counter(map_text(line, pairs) for line in lines)
     canonical = []
@@ -1311,7 +1331,7 @@ def export(rev: str, dest: Path, repo: Path) -> Path:
 # distinct-from: cortex/interaction_learning.py -- g0_campaign runs G0's seed/arm processes inside
 #   the running package; R-L1 runs 2.7's continuity arms over a TREE's code from outside it, and its
 #   probes REUSE that module's own _g0c_schedule, _g0c_walk and _conv_flat rather than restate them.
-#   Also read: cortex/brain.py (_flush_coverage), brainstem/arm_bridge.py (send_outcome), and --
+#   Also read: cortex/brain.py (_flush_coverage), sensorimotor/arm_bridge.py (send_outcome), and --
 #   read only, never opened for writing -- brainstem/arm_config.py and brainstem/so101_arm.py.
 _RL1_TAG = "G8RL1 "
 #: Every R-L1 process opens by proving it can only touch its own temporary home, then reaches every

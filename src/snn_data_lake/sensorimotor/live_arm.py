@@ -34,9 +34,9 @@ from snn_data_lake.brainstem.arm_config import (  # reflex distance + window str
 )
 from snn_data_lake.brainstem.interpreter import Interpreter
 from snn_data_lake.brainstem.so101_arm import So101Arm
-from snn_data_lake.cortex.gesture_recognition import W, classify, load_csv
+from snn_data_lake.sensorimotor.efferent_boundary import intended_deltas
+from snn_data_lake.sensorimotor.gesture_recognition import W, classify, load_csv
 from snn_data_lake.substrate import home
-from snn_data_lake.substrate.efferent_boundary import intended_deltas
 
 SENSOR_COMMANDS = {
     "HAND_APPROACH": "ENGAGE",  # grab the approaching object
@@ -53,7 +53,7 @@ _OBS_JOINT = "shoulder_lift"
 _OBS_INDEX = next(j.qpos_index for j in arm_config.JOINTS if j.name == _OBS_JOINT)
 
 
-# consolidates: substrate/efferent_boundary.py -- the private shoulder_lift regex this
+# consolidates: sensorimotor/efferent_boundary.py -- the private shoulder_lift regex this
 #   function carried is DELETED and the parse is that module's `intended_deltas`, which
 #   parses every rotatable joint. One parser survives (P2, specs/022 T079 2.1).
 # distinct-from: hippocampus/ring_attractor.py::ProprioceptiveEstimator -- the CONSUMER of
@@ -229,10 +229,10 @@ def _main():
     # xy became xyz because the workspace did: three of the arm's joints move the gripper
     # vertically, so a planar target names a line rather than a point.
     if "--plan-xyz" in args or "--plan" in args:
-        from snn_data_lake.cerebellum.wavefront_planner import (
+        from snn_data_lake.sensorimotor.wavefront_planner import (
             JOINTS as PLAN_JOINTS,
         )
-        from snn_data_lake.cerebellum.wavefront_planner import (
+        from snn_data_lake.sensorimotor.wavefront_planner import (
             plan_to_config,
             plan_to_xyz,
         )

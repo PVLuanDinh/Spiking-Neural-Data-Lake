@@ -18,7 +18,7 @@ exactly the `retained() == 1.000` shape P4b was written from. The call sites did
 reconstruct the policy from disk, because "it persists" is a claim about a NEW process.
 
 Run:
-  python -m snn_data_lake.brainstem.closed_loop        # scripted episode + self-check
+  python -m snn_data_lake.sensorimotor.closed_loop        # scripted episode + self-check
 """
 
 from snn_data_lake import arm_bridge as AB
@@ -214,7 +214,7 @@ def main():
         child = (
             f"import sys; sys.path.insert(0, {src_root!r})\n"
             f"import os; os.environ['NORD_HOME'] = {_tmp!r}\n"
-            "from snn_data_lake.brainstem.closed_loop import run_episode\n"
+            "from snn_data_lake.sensorimotor.closed_loop import run_episode\n"
             "from snn_data_lake.substrate import home\n"
             "from snn_data_lake import signal_loop as S\n"
             "w = home.load_state('valence.json')\n"

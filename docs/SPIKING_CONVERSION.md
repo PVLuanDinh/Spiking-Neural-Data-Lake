@@ -11,7 +11,7 @@ After slice 1 (v3.23): **SPIKING 39 | RATE 42 | RATE_BY_DESIGN 22.**
 After slice 2 (v3.24): **SPIKING 44 | RATE 38 | RATE_BY_DESIGN 21.**
 After slice 3 (v3.25): **SPIKING 48 | RATE 36 | RATE_BY_DESIGN 19.**
 After slice 4 (v3.26): **SPIKING 49** (new module `cerebellum/spiking_jepa`; rate `jepa_world_model` kept as the fair baseline).
-After slice 5 (v3.29): **SPIKING 50** (new module `cortex/pc_cortex_serve`, the DEEP spiking predictive-coding cortex server; the 2-level spiking seed `cortex/predictive_coding` kept as the small baseline).
+After slice 5 (v3.29): **SPIKING 50** (new module `sensorimotor/pc_cortex_serve`, the DEEP spiking predictive-coding cortex server; the 2-level spiking seed `cortex/predictive_coding` kept as the small baseline).
 
 ## Converted to spiking (progress)
 
@@ -45,18 +45,18 @@ tally line above is a dated 2026-07-10 snapshot and is left as-is):
 
 | module | spiking conversion |
 |---|---|
-| cortex/population_encoding | RBF units -> LIF/Poisson neurons firing at Gaussian rate; decode from windowed spike counts |
+| sensorimotor/population_encoding | RBF units -> LIF/Poisson neurons firing at Gaussian rate; decode from windowed spike counts |
 | cortex/population_vector | cosine-tuned cells emit spike trains at rate r_i; vector-sum decode from spike counts |
-| cortex/multimodal_encoder | TTFS/latency-encode each band into per-feature spike trains (not a continuous [0,1]^64 vector) |
+| sensorimotor/multimodal_encoder | TTFS/latency-encode each band into per-feature spike trains (not a continuous [0,1]^64 vector) |
 | cortex/spike_pooling | spiking WTA: first-spike-wins lateral inhibition per window |
-| cortex/lca_sparse_coding | each atom a LIF neuron; threshold spikes drive inhibition; coeff = spike rate (S-LCA) |
+| sensorimotor/lca_sparse_coding | each atom a LIF neuron; threshold spikes drive inhibition; coeff = spike rate (S-LCA) |
 | cortex/predictive_coding | causes/errors as LIF populations; error spike-rate carries mismatch; spiking recurrence settles |
 | cortex/restricted_boltzmann | stochastic LIF sampling; event-driven STDP instead of CD gradient (Neftci 2014) |
 | cortex/cue_integration | Poisson population per cue, gain = reliability; sum populations (spiking PPC, Ma 2006) |
 | cortex/snn_classifier | LIF output neurons (membrane/threshold/reset); STDP / surrogate-gradient on spike times |
-| cortex/learned_matcher | tempotron/STDP spike-time classifier instead of the delta-rule rate readout |
-| cortex/gesture_recognition | latency/rank-encode the distance stream; spiking sequence/tempotron detector end-to-end |
-| cortex/nl_interface | rank-order spike-encode words -> R-STDP intent classifier (keep the fixed allow-list) |
+| sensorimotor/learned_matcher | tempotron/STDP spike-time classifier instead of the delta-rule rate readout |
+| sensorimotor/gesture_recognition | latency/rank-encode the distance stream; spiking sequence/tempotron detector end-to-end |
+| sensorimotor/nl_interface | rank-order spike-encode words -> R-STDP intent classifier (keep the fixed allow-list) |
 | cortex/brain_reasoning | read class by spiking WTA over classifier output spikes; confidence from spike-count margin |
 | cortex/vsa_reasoning | phasor/spike-polarity hypervectors; bind = phase-multiply, bundle = spike superposition |
 | hippocampus/hippocampus | DG spiking expansion + lateral-inhibition WTA; CA3 recurrent spiking attractor completion |
@@ -162,7 +162,7 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
   DataLoader + cu128 doc in the torch tiers) -- see CHANGELOG v3.26 + docs/PERFORMANCE.md; core stays zero-dep.
 - **Slice 5 (v3.29) -- deep spiking predictive-coding cortex (NEW module, GPU-verified, honest):** the 2-level seed
   `cortex/predictive_coding` scaled DEEP under the predictive-coding framework (the user directive: use the predictive-
-  coding node to build out the rest of the brain, torch GPU allowed). NEW CORE `cortex/pc_cortex_serve.py` = a zero-dep
+  coding node to build out the rest of the brain, torch GPU allowed). NEW CORE `sensorimotor/pc_cortex_serve.py` = a zero-dep
   forward SERVER for an L-level (default 3) generative spiking hierarchy exported as `snn_pcnet/1` -- signed ON/OFF LIF
   error populations, discrete-spike settling (the seed's exact `_lif` generalized to L levels: `r_j += lr*(W_j^T s_{j-1}
   - s_j)`, top `r_L += lr*(W_L^T s_{L-1})`), an optional linear readout on the settled top cause. Trust-boundary `load()`
@@ -179,7 +179,7 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
   value delivered is a faithful zero-dep spiking GENERATIVE trunk + the honest measurement, not a SOTA number. Rate/2-level
   seed `cortex/predictive_coding` kept as the small baseline (mirrors spiking_jepa keeping jepa_world_model). No live
   wiring this slice (zero safety surface); Slice 6 = opt-in checkpoint-gated perception-tier wiring. Atlas SPIKING 50.
-- **Slice 6 (v3.30) -- PC-cortex perception tier WIRED into the live brain (safety-verified):** `cortex/pc_cortex_serve`
+- **Slice 6 (v3.30) -- PC-cortex perception tier WIRED into the live brain (safety-verified):** `sensorimotor/pc_cortex_serve`
   wired into `cortex/brain.py` as an opt-in, ZERO-DEP, checkpoint-gated perception tier (`SNN_PC_CKPT` ->
   models/pc_cortex_nmnist.json; no torch needed to serve; degrades to stdlib), exposed via `perceive_pc(x)` -> settled
   top-cause latent, reported `state()["pc_cortex_tier"]` ("pc-cortex" | "stdlib"). The live tick is UNCHANGED (settling
@@ -188,7 +188,7 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
   gated-danger freeze verified to hold. No new module -- Atlas SPIKING stays 50. brain.py commit isolated from the
   entangled uncommitted nengo-bridge working-tree changes (left untouched).
 - **Slice 7 (v3.31) -- PC-cortex duck-types into PrefrontalExecutive.plan() (honest negative):** gave
-  `cortex/pc_cortex_serve` the JEPA/HJepaServe planning interface (`encode`/`generate` top-down/`predict`
+  `sensorimotor/pc_cortex_serve` the JEPA/HJepaServe planning interface (`encode`/`generate` top-down/`predict`
   action-AGNOSTIC/`make_goal_value` negative-L1) so a REAL `PrefrontalExecutive.plan()` consumes its top-down
   predictions (self-check: duck-types + deterministic + top-down generate beats a null cause). HONEST NEGATIVE
   asserted structurally: PC has NO action channel, so predict IGNORES command -> plan() TIES across options

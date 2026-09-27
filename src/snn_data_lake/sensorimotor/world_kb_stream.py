@@ -20,7 +20,7 @@ currencies, planet order, class-level properties (for multi-hop), numeric parity
 are added by `_extra_facts()`. `load_kb(url=...)` parses a real "head<TAB>relation<TAB>tail" triples
 file if given, else uses the bundled facts (so the self-check is deterministic offline).
 
-  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.cortex.world_kb_stream
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.sensorimotor.world_kb_stream
 Deps: numpy (+ stdlib) for the masked-slot demo ONLY (imported inside main()). `load_kb` /
 `_bundled` / `_extra_facts` do not import numpy at module scope -- the two-world reasoning bridge imports them without pulling numpy.
 
@@ -709,7 +709,7 @@ def load_kb(url=None, path=None, max_bytes=8_000_000):
     'head<TAB>relation<TAB>tail' file, parse it (the large-KB path); else the bundled REAL facts
     (bounded-tail relations + the broader `_extra_facts`)."""
     if url or path:
-        from snn_data_lake.substrate.web_ingest import fetch_corpus
+        from snn_data_lake.sensorimotor.web_ingest import fetch_corpus
 
         path = path or os.path.join(os.environ.get("TEMP", "."), "sndl_kb.tsv")
         if url and not (os.path.exists(path) and os.path.getsize(path) > 0):

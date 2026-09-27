@@ -364,7 +364,7 @@ category claims and another category may hold them: `cortex/interaction_learning
 plasticity cascade at `brain.py:2303`, but `teach`, `learn_turn` and `respond` have no caller outside
 `live_brain.py`'s own self-check, so nothing ever teaches it and nothing reads its routing. A learner
 whose synapses are consolidated nightly and never written by an interaction is worth someone's row;
-it should not be mine. `cortex/gesture_recognition.py` classifies approach/retreat from arm distance
+it should not be mine. `sensorimotor/gesture_recognition.py` classifies approach/retreat from arm distance
 captures, which is perception of an object's motion rather than a social signal.
 
 ## Gaps, ranked by distance_to_100 x feasibility

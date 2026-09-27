@@ -44,7 +44,7 @@ import tempfile
 import numpy as np
 
 from snn_data_lake.cerebellum.jepa_world_model import JepaWorldModel
-from snn_data_lake.cortex.pc_cortex_serve import PcCortexServe
+from snn_data_lake.sensorimotor.pc_cortex_serve import PcCortexServe
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 
 

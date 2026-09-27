@@ -2315,3 +2315,56 @@ The census and red artifacts are in the session's `g8-m2` scratch folder:
 `c2a_M2.json` (`BEF7702364545E63...`). At this pre-commit reading, no M2
 commit, push, battery or daemon start is claimed; the stage is a reviewable patch
 on the committed P6 repair parent `ea0c1ed`.
+
+### 3.14 M3 predeclared sensorimotor move -- 2026-09-27
+
+The M3 parent is committed M2 `3ef174b`. Its clean export completed the 24-gate,
+seven-probe census with zero nonzero exits. The frozen 2.12 map moves 31 modules
+into `sensorimotor/`: 29 core and two torch-tier. Five source modules come from
+`brainstem/`, but none is in the frozen five-file safety envelope. The three
+entrypoints, two registrants, three project scripts, pin key and documented commands
+are re-pointed in the stage. The historical quickstart citation gets a dated note
+beside its runnable new path. No daemon or live lake is opened.
+
+Before any M3 post-move gate run, the predicted C1 delta was written to session
+scratch `g8-m3/declared_M3.json` (SHA-256 `D1D53484ED3B7148...`); the frozen-map
+expected names are `expected_M3.json` (`6B25585D85D94DD5...`), and the parent
+census is `pre_M3.json` (`A2D7FF9CAB6485AB...`). The predicted delta covers
+brain-atlas region rows, one new initializer in three file counters, the P4c
+scaffold count, three registry-key additions and citation broad-count growth.
+Citation's static resolver forecast reproduced the parent's 1,367/261 and predicts
+1,489/263 after the move; the two existing STRICT exemptions remain. A post-run
+difference from this declaration halts M3 and requires a dated amendment before
+another run.
+
+**Dated amendment, after the first M3 census (2026-09-27).** All 24 gates and
+seven probes exited green, but C1 halted on four undeclared report-line changes:
+`immortal_retention` and `method_dormancy_gate` each printed the same members in
+a different order. The physical move changed traversal order, not the enumerated
+content. The C1 comparator now sorts only those two printed unordered lists,
+preserving each member and count; a focused test proves an altered member still
+reds. The declared gate delta above is unchanged. The failed first comparison is
+retained as evidence; the comparator and focused test are part of M3, and C1 is
+rerun against the same census outputs only after this amendment.
+
+The final staged-worktree export then ran a fresh 24-gate, seven-probe census:
+all rc 0, and C1 equaled the declaration with exactly 15 changes. Its census is
+`g8-m3/post_M3_final.json` (SHA-256 `87999244852E1855...`); the observed delta
+is `observed_M3_final.json` (`2707915C10263D0F...`). The M3 planted stale
+`brainstem.live_arm` entrypoint made C1 red with exactly the two raw-name
+differences. The unplanted entrypoint resolves by file.
+
+C2(a) attempted 415 imports in both parent and staged trees, with the identical
+13 known failures and zero scratch-home files written. C2(b) checked 77 legacy
+pairs and 286 flat aliases with no bad identity. C2(c) compared 16 of 17 legacy
+gate runs with current runs, zero differences. C2(d) scanned 662 live source
+files, zero unparsed and zero stale findings; its historical F7 positive control
+found all six sites. C2(e)'s 16 frozen artifacts name 12 modules, all file-loaded.
+C3's envelope gate and self-check passed and the protected Git diff was empty.
+C4's R-b0 probe was identical across censuses. C5's brain and zoo restores both
+passed with equal walks and answers. C6-C9, policy audit, document command guard,
+STRICT citation (zero unexempted, two live exemptions), the declared BROAD count
+(1,489 across 263 files), Ruff check and format check passed. The move gate's
+constructed reds and controls passed on the real worktree. A bounded run of 15
+touched test files passed: 171 passed, one skipped, one expected failure.
+No battery, push or daemon start is claimed for M3.

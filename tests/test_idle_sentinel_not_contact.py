@@ -1,7 +1,7 @@
 """A negative distance is a MISSING reading, not contact -- it may not bind a fear association.
 
 The ESP32 firmware sends a -1 idle sentinel when nothing is within range
-(`substrate/esp32_encoder_path.py` documents it in `normalize`'s own docstring, where the
+(`sensorimotor/esp32_encoder_path.py` documents it in `normalize`'s own docstring, where the
 TEMPERATURE half of the same sentinel IS handled and the distance half is not).
 `AutonomousArm.step()`'s safety early-return split the breach two ways -- NaN was a fail-closed
 read, anything finite was "real contact" -- and -1.0 is finite and below `CONTACT`, so it fell on

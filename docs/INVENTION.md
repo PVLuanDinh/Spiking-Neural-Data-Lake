@@ -107,7 +107,7 @@ same computation and the headline is non-decreasing by construction.
 **MINT's FlyHash + ART spiking layer. Dead on three independent counts.**
 (a) Zero importers. All hits for `fly_hash` outside its own file are prose:
 `basal_ganglia/action_gating.py:16` and `:77`, `cortex/is_snn_forward.py:77`,
-`cortex/lca_sparse_coding.py:14`, `neuromodulation/generalizing_novelty.py:15`. The claim "live:
+`sensorimotor/lca_sparse_coding.py:14`, `neuromodulation/generalizing_novelty.py:15`. The claim "live:
 action_gating, is_snn_forward, lca_sparse_coding" was made from a name grep.
 (b) Degenerate on the proposed descriptor: `FlyHash(d=32, expansion=7, wta=0.05)` gives m = 224
 units and k = 11 winners (not 12), with `samples` defaulting to 6, so activations over a

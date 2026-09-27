@@ -39,7 +39,7 @@ import sys
 import sysconfig
 
 
-# distinct-from: cerebellum/wavefront_planner.py, cortex/quality_diversity.py,
+# distinct-from: sensorimotor/wavefront_planner.py, cortex/quality_diversity.py,
 #   hippocampus/sleep_replay.py, hypothalamus/circadian_clock.py,
 #   gates/gradient_claim_gate.py -- the hook matched shared verbs (run/refuse/free);
 #   none guards the interpreter. This EDIT EXTENDS the incumbent guard in place (one
@@ -112,10 +112,6 @@ require_free_threaded()
 # region -> modules  (single source of truth for the anatomical layout)
 REGIONS = {
     "cortex": [
-        "rank_order_coding",
-        "population_encoding",
-        "multimodal_encoder",
-        "spike_preprocessing",
         "theta_gamma_code",
         "lif_neuron",
         "dendritic_neuron",
@@ -135,7 +131,6 @@ REGIONS = {
         "placement",  # every grown unit gets a cortical depth, a layer and an immutable Dale sign
         "growth_stop",  # specs/022 T047: |LP|+charge growth gates, executive-independent (P8 #4)
         "recurrent_pool",  # G1(b) pool-selection benchmark: the winner, g1 LSM, as a streaming pool
-        "lca_sparse_coding",
         "predictive_coding",
         "is_snn_forward",
         "neural_sampling",
@@ -143,22 +138,16 @@ REGIONS = {
         # PROMOTED 2026-08-13 (was reasoning/snn_moe_classifier.py): firing-rate ROUTED
         # mixture-of-experts over snn_classifier's spiking experts. CORE, not TORCH_TIER -- it
         # imports only math/random/numpy plus cortex.snn_classifier and substrate._mathutils.
-        # Reached from cortex/recognizer_bank.py. Its blocker was an UNRESTORED process-global
+        # Reached from sensorimotor/recognizer_bank.py. Its blocker was an UNRESTORED process-global
         # `random.seed(0)`, fixed with substrate/brain_bundle.py's snapshot-seed-restore pattern.
         "snn_moe_classifier",
-        "trained_brain",
-        "learned_matcher",
         "tempotron",
         "paradigm_b_matcher",
         "paradigm_b_engine",
-        "gesture_recognition",
-        "nl_interface",
-        "spiking_lm_serve",
         "vsa_reasoning",
         "prefrontal_executive",
         "live_brain",
         "interaction_learning",
-        "recognizer_bank",
         "neuron_zoo",  # merges: recognizer ensemble / encoder bank / neuron population
         # higher cognition / self-model / self-improvement (v3.14+)
         "access_consciousness",
@@ -191,18 +180,14 @@ REGIONS = {
         "heterogeneous_microcircuit",  # Brain-Cog-adopted: LIF+Izhikevich+AdEx worked EXAMPLE of the basic_components palette (not on the live tick)
         "percept_surprise",  # loop C2: online unsupervised Oja-PCA reconstruction-residual surprise (orienting drive)
         "kb_ranking",  # PROMOTED from reasoning/ 2026-08-11 (#10 batch-1): open-vocab DistMult KB completion head
-        "corpus_stream",  # PROMOTED 2026-08-11 (#10 family C2): real-scale corpus/CMUdict ingestion for the language loop
-        "world_kb_stream",  # PROMOTED 2026-08-11 (#10 family C2b): the curated world-KB (605 real triples) + masked-slot adapter
         "language_self_build",  # PROMOTED 2026-08-11 (#10 family C6): autonomous R-STDP language assemblies; LIVE on the sleep tick
         "language_readout_slda",  # PROMOTED 2026-08-11 (#10 family C5): SLDA-RFF competence head; absorbed fair_compare's equal-budget bar
         "nightly_skills",  # PROMOTED 2026-08-11 (#10 family C9a): the ONE standing skills loop (absorbed meta_skill_loop + open_meta_loop)
         "competence_executive",  # PROMOTED+RENAMED 2026-08-12 (#10 lane 4f, was reasoning/brain_adapters/executive_control -- the LAST brain_adapters module): dopamine-RPE lr gate + the PUBLIC CompetenceDynamics/goal_value planning objects (the WorkspaceBroadcast/ExecutivePlanner wrappers RETIRED later the same day -- retirement record in-file); renamed because the basename is taken by cortex/executive_control (brain_atlas.py:81 asserts uniqueness)
         "vsa_structure_mapping",  # PROMOTED 2026-08-12 (PROMOTE lane): Gentner relational structure-mapping over VSA spike codes; LIVE via reasoning_cortex's structure-map solver (reached from brain.py's lazy :924 -- the lane's own I001 sort moved it from :928 -- + reasoning_cortex:705). P3 debt carried visibly, NOT fixed here: brain.py:967's `_structure_mapper` attribute is write-only (AUDIT_BACKLOG M11) -- retire-or-read is its own commit. P2 direction recorded in-file: the dim-parameterised _cleanup_project is THE mechanism; reasoning/resonator_network's hardcoded copy (measured 300/300 bit-identical at dim=512) delegates or retires when its lane arrives.
-        "rose_language",  # PROMOTED 2026-08-12 (PROMOTE lane): the ROSE fluent-language pipeline (VSA constituency parse + KB-grounded comprehend + SLDA competence), LIVE via brain._rose_serve's lazy reach. P3/P4b debt carried visibly, NOT discharged by the move (AUDIT_BACKLOG H7, runtime-reproduced at the promotion audit): nightly_refit moves the SLDA sufficient statistics while competence() returns the build-time cached acc byte-identical; the refit filter accepts a novel HEAD coded OOV-zero; _readout is per-Brain RAM reaching brain_lake.bin nowhere. P2 direction recorded: rose's derived parameterisation (rff from in_dim, ctx from data, relations from the KB ratio) is THE mechanism; cortex/world_kb_stream main()'s four-literal demo copy consumes it or retires at the family's next lane.
+        "rose_language",  # PROMOTED 2026-08-12 (PROMOTE lane): the ROSE fluent-language pipeline (VSA constituency parse + KB-grounded comprehend + SLDA competence), LIVE via brain._rose_serve's lazy reach. P3/P4b debt carried visibly, NOT discharged by the move (AUDIT_BACKLOG H7, runtime-reproduced at the promotion audit): nightly_refit moves the SLDA sufficient statistics while competence() returns the build-time cached acc byte-identical; the refit filter accepts a novel HEAD coded OOV-zero; _readout is per-Brain RAM reaching brain_lake.bin nowhere. P2 direction recorded: rose's derived parameterisation (rff from in_dim, ctx from data, relations from the KB ratio) is THE mechanism; sensorimotor/world_kb_stream main()'s four-literal demo copy consumes it or retires at the family's next lane.
         # torch-trained tiers with a zero-dep serve/integration path (import cleanly without torch)
-        "pc_cortex_serve",
         "brain",
-        "rsnn_encoder",
     ],
     "hippocampus": [
         "grid_cells",
@@ -232,7 +217,7 @@ REGIONS = {
         # Promoted from reasoning/ 2026-08-04 after an in-place P7/P1/P8 redesign. FACTORED
         # k-WTA associative memory: the P sparse patterns ARE the memory (O(P*k)), so there is
         # no N x N weight matrix to store. WIRED AND CHARGED, measured not assumed -- neutering
-        # S.recall to a pass-through costs its live consumer (cortex/recognizer_bank.py:233
+        # S.recall to a pass-through costs its live consumer (sensorimotor/recognizer_bank.py:233
         # StorageRecognizer) 3 of its 64 out-of-distribution rejections, 0.844 -> 0.797. That is
         # P6 one-way as well: a hippocampus faculty whose output moves a cortex faculty's output.
         # Honest qualifier: the bank builds lazily and fires only on an explicit "recognize:"
@@ -275,7 +260,6 @@ REGIONS = {
         "forward_model",
         "spiking_pid",
         "synfire_chain",
-        "wavefront_planner",
         "jepa_world_model",
         "hjepa_serve",
         "spiking_jepa",
@@ -294,14 +278,9 @@ REGIONS = {
         "reflex",
         "serial_arm",
         "so101_arm",  # the MuJoCo SO-101 gate; REPLACED arm_sim (specs/004)
-        "arm_hardware",  # physical-arm build TARGET: spec + static torque budget + the sim-to-real gap
         "arm_config",
         "interpreter",
-        "live_arm",
-        "arm_bridge",
-        "closed_loop",
         "autonomous_loop",
-        "signal_loop",
         "cpg_oscillator",
     ],
     "thalamus": [
@@ -422,12 +401,8 @@ REGIONS = {
         "spike_telemetry_hub",
         "streaming_hub",
         "nir_export",
-        "sensor_csv_ingest",
-        "esp32_encoder_path",
-        "make_sensor_dataset",
         "demo",
         "brain_bundle",
-        "web_ingest",
         "lake_working_memory",
         "chat_memory",  # durable content-addressable chat memory on the spike lake (noise-filtered)
         "signal_calibrator",  # durable running-quantile of a live signal (Step-0 of data self-recalibration)
@@ -457,10 +432,6 @@ REGIONS = {
         "kernel_tick",  # specs/022 T014: two-phase deterministic tick (P fixed, integer delivery); bare == delay + thread-equality reds
         "wiring_manifest",  # specs/022 T018: TypedPort + WiringManifest (declared anatomy); bare == five checks + five reds + NIR round-trip
         "report_channel",  # 022 T034: typed workspace-report snapshot; the broadcast's declared consumer
-        "afferent_boundary",  # 022 T036: transduction-in; idle sentinel handled at the door; proprio lane
-        "efferent_boundary",  # 022 T037: efference copy around the envelope; cerebellar forward-model charge
-        "ingest_guard",  # content boundary for outside data: licence deny-by-default + injection flagging
-        "hf_stream",  # streamed HF datasets -> brain-consumable features (licence-gated, bounded)
         "basic_components",  # Brain-Cog-adopted composition interface: node + local-rule + connection palette
         "similarity_sized_growth",  # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
     ],
@@ -514,6 +485,37 @@ REGIONS = {
         "snn_mnist_stdp_genn",
         "world_red_probe",
     ],
+    "sensorimotor": [
+        "afferent_boundary",
+        "arm_bridge",
+        "arm_hardware",
+        "closed_loop",
+        "corpus_stream",
+        "efferent_boundary",
+        "esp32_encoder_path",
+        "gesture_recognition",
+        "hf_stream",
+        "ingest_guard",
+        "lca_sparse_coding",
+        "learned_matcher",
+        "live_arm",
+        "make_sensor_dataset",
+        "multimodal_encoder",
+        "nl_interface",
+        "pc_cortex_serve",
+        "population_encoding",
+        "rank_order_coding",
+        "recognizer_bank",
+        "rsnn_encoder",
+        "sensor_csv_ingest",
+        "signal_loop",
+        "spike_preprocessing",
+        "spiking_lm_serve",
+        "trained_brain",
+        "wavefront_planner",
+        "web_ingest",
+        "world_kb_stream",
+    ],
 }
 
 # TORCH-TIER ANNEX -- region -> modules that import torch AT MODULE LOAD (so they cannot be imported
@@ -530,7 +532,6 @@ TORCH_TIER = {
         # because torch is imported at module top; reached on Brain's CONSTRUCTION path
         # (brain.py's perception-tier try block). Its e-prop engine lives in `eprop_kernel` below,
         # which it and `eprop_shd` both import.
-        "eprop_nmnist",
         # The ONE e-prop engine (specs/013 C4). Holds the nine definitions that were byte-identical
         # across eprop_nmnist and eprop_shd -- surrogate spike fn, the independent BPTT reference,
         # the cosine comparator, the Adam step, the evaluation loop, and the LIF base. Both
@@ -541,12 +542,15 @@ TORCH_TIER = {
         # PROMOTED 2026-08-13 (specs/013 C3, was training/eprop_shd.py): the brain's SHD audio
         # perception encoder, the auditory twin of eprop_nmnist. TORCH_TIER for the same reason
         # (torch at module top), reached on the same construction path via brain.py's audio try.
-        "eprop_shd",
     ],
     "hippocampus": [
         "ng_snn",
         "online_readout",
     ],  # L1c: the grown readout learns online (torch tier)
+    "sensorimotor": [
+        "eprop_nmnist",
+        "eprop_shd",
+    ],
 }
 
 # TRAIN-TIER ANNEX (added 2026-08-11, #10 lane-2 CI regression fix) -- region -> modules that
@@ -984,7 +988,7 @@ class _AliasLoader(importlib.abc.Loader):
             module.__loader__ = self._real_spec.loader
 
 
-# distinct-from: cortex/eprop_shd.py -- _self_ref derives one module's own identity; these extend
+# distinct-from: sensorimotor/eprop_shd.py -- _self_ref derives one module's own identity; these extend
 #   this file's own alias layer in place (one layer: the flat alias plus G8's legacy paths). Also
 #   read: cerebellum/spiking_jepa.py (target_encode), cortex/vsa_reasoning.py (coincidence),
 #   hippocampus/grid_place_map.py (_pearson), hippocampus/lake_recall.py (_find_cell_collision).

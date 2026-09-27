@@ -19,7 +19,7 @@ this is the fix for the v2.74 caveat where the trainer's dynamics diverged from 
 A single-layer brain (no hidden layers) reduces EXACTLY to snn_classifier.forward -- it is the
 generalisation of that readout to arbitrary input/output sizes and optional hidden layers.
 
-  python -m snn_data_lake.cortex.trained_brain        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.sensorimotor.trained_brain        # (also run by run_selfchecks.py)
 """
 
 import json
@@ -39,7 +39,7 @@ def _seed_of(x):
 
 
 #: Tiny deterministic LCG (self-contained, so encoding never touches random's global state).
-#: MERGED 2026-08-15 into `substrate/_mathutils.Rng` -- this module and `cortex/spiking_lm_serve.py`
+#: MERGED 2026-08-15 into `substrate/_mathutils.Rng` -- this module and `sensorimotor/spiking_lm_serve.py`
 #: held byte-equivalent copies, proven identical over 5 seeds x 500 draws before either was deleted.
 #: The alias keeps the local spelling so no call site changes; the MECHANISM is now singular.
 _Rng = Rng

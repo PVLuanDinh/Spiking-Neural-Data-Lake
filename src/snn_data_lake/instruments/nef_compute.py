@@ -38,7 +38,7 @@ but median-of-15 is not noise at that size, so the honest reading is that the n=
 different machine load and should not be quoted as-is. The correctness numbers all still hold exactly: the
 n=12 control reads 0.0704 and the permutation null 11.57x (recorded as 11.6x).
 
-P2 -- this does NOT duplicate `cortex/population_encoding.py`, despite CHANGELOG v1.5 asserting that it
+P2 -- this does NOT duplicate `sensorimotor/population_encoding.py`, despite CHANGELOG v1.5 asserting that it
 "covers encode/decode". PopulationEncoder tiles a range with fixed Gaussian receptive fields and reads the
 value back as an activation-weighted centroid of the centres: it can represent x and it cannot compute f(x).
 There is no decoder solve, so there is no TRANSFORMATION principle in it -- the whole point of this module.

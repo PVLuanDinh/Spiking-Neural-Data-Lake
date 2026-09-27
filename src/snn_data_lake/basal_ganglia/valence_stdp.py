@@ -27,7 +27,7 @@ neuromodulator pair.
 import math
 import random
 
-from snn_data_lake.cortex.spike_preprocessing import N, encode_latency
+from snn_data_lake.sensorimotor.spike_preprocessing import N, encode_latency
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

@@ -19,11 +19,11 @@ Raw-serial -> normalize -> multimodal-encoder data path. Static normalization
 bands (distance 0-3 m gate, temp 20-40 C). Not a spiking implementation of the sensor,
 not cognition.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.esp32_encoder_path
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sensorimotor.esp32_encoder_path
 """
 
-from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
-from snn_data_lake.cortex.spike_preprocessing import N, encode_latency
+from snn_data_lake.sensorimotor.multimodal_encoder import encode_multimodal
+from snn_data_lake.sensorimotor.spike_preprocessing import N, encode_latency
 
 # Temperature normalization: 20 C (293.15 K) to 40 C (313.15 K).
 T_LO_K = 293.15

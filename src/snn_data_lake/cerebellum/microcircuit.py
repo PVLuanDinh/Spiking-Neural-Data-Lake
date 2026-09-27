@@ -94,7 +94,7 @@ from snn_data_lake.cortex.lif_neuron import LIFNeuron
 #   ANATOMICAL tissue layer those functions may one day live on. Sites read.
 # distinct-from: cerebellum/jepa_world_model.py + spiking_jepa.py -- latent world models
 #   filed in cerebellum; no granule/PF/MLI structure. Sites read.
-# distinct-from: cortex/lca_sparse_coding.py -- lateral-inhibition sparse CODING of
+# distinct-from: sensorimotor/lca_sparse_coding.py -- lateral-inhibition sparse CODING of
 #   analog inputs; the granule stage sparsifies by COINCIDENCE thresholding on an
 #   expansion, no lateral inhibition, no reconstruction objective. Site read.
 

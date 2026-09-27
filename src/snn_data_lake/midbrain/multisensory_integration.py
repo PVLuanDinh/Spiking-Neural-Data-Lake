@@ -58,7 +58,7 @@ DISTINCTNESS (this is single-cell threshold ENHANCEMENT, a different mechanism f
     claim. THIS cell is deliberately NON-linear: a single threshold unit whose combined response
     EXCEEDS the sum, and it reports the sub-additive regime too. The two are the two classic and
     complementary accounts of multisensory integration (optimal-cue-combination vs SC enhancement).
-  * cortex.multimodal_encoder BANDS four modalities into disjoint slots of the N=64 feature vector
+  * sensorimotor.multimodal_encoder BANDS four modalities into disjoint slots of the N=64 feature vector
     (concatenation, no interaction). THIS makes the modalities INTERACT inside one cell.
   * midbrain.superior_colliculus is a WHERE map -- a spiking winner-take-all that SELECTS which of
     many locations to orient to. THIS is a HOW-MUCH cell -- how strongly one location's cross-modal

@@ -128,7 +128,7 @@ SUBSTRATE_NOISE = 0.40  # perception jitter amplitude of a fully-degraded substr
 # share features -> nearest-prototype confuses them) under moderate noise. The strong 0.9/0.1
 # contrast is KEPT so the exact-bucket recognition (familiarity + noise-rejection) stays stable
 # under noise, while classification errors on the overlap put FULL below ceiling. (Honest
-# engineering note in the module: a population-COUNT front-end -- cortex/population_encoding --
+# engineering note in the module: a population-COUNT front-end -- sensorimotor/population_encoding --
 # was tried first but its all-positive codes collapse cosine into a useless 0.69-0.92 band
 # [same-class 0.917 vs diff-class 0.910], so the reused cosine/[0,1] machinery cannot separate
 # classes or reject noise there; the overlap task keeps the same spike-rate substrate instead.)

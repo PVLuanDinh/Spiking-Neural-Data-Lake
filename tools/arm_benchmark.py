@@ -45,7 +45,8 @@ if _ROOT not in sys.path:
 import mujoco  # noqa: E402
 import numpy as np  # noqa: E402
 
-from snn_data_lake.brainstem import arm_config, arm_hardware  # noqa: E402
+from snn_data_lake.brainstem import arm_config  # noqa: E402
+from snn_data_lake.sensorimotor import arm_hardware  # noqa: E402
 
 SCENE = pathlib.Path(arm_config.__file__).parent / "so101" / "scene.xml"
 G = 9.81

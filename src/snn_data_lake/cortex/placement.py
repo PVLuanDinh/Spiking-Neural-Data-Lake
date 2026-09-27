@@ -266,7 +266,7 @@ def layer_histogram(placed):
 # disqualifies a cortex-internal pair, and both modules sit in REGIONS["cortex"].
 # distinct-from: hippocampus/grid_place_map.py -- its `_match_bar` midpoint is a place-cell firing
 #   threshold; nothing here thresholds activity. Site read; the shared word is "midpoint".
-# distinct-from: brainstem/arm_hardware.py -- its configurations are servo-rating arithmetic for
+# distinct-from: sensorimotor/arm_hardware.py -- its configurations are servo-rating arithmetic for
 #   the physical arm; unrelated job. Site read; the shared word is "combinations".
 # distinct-from: gates/gradient_claim_gate.py -- its "placement" is where a statistical bar
 #   sits relative to a null; this places NEURONS. Site read; the shared word is "placement".
@@ -295,7 +295,7 @@ def _ap_node(neuromere):
     return int(discretize_sharp([ap], _GRID_NODES)[0])
 
 
-# distinct-from: brainstem/arm_hardware.py -- servo-rating arithmetic for the physical arm;
+# distinct-from: sensorimotor/arm_hardware.py -- servo-rating arithmetic for the physical arm;
 #   unrelated job, site read (also declared in the T043 header block above).
 # distinct-from: cortex/theta_gamma_code.py -- its _ensemble draws a sparse LIF population per
 #   gamma sub-cycle; nothing here draws populations. Site read; shared word is "which cells".

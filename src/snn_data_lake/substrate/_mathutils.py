@@ -95,7 +95,7 @@ def q95(draws):
     return draws[min(len(draws) - 1, int(round(0.95 * (len(draws) - 1))))]
 
 
-# consolidates: src/snn_data_lake/cortex/self_model.py (merge), src/snn_data_lake/cortex/wholistic_loop.py (merge), src/snn_data_lake/neuromodulation/affect_integrator.py (merge), src/snn_data_lake/cortex/agency_monitor.py (merge), src/snn_data_lake/cortex/metacognitive_monitor.py (merge), src/snn_data_lake/cortex/recognizer_bank.py (merge), src/snn_data_lake/substrate/stream_sketch_panel.py (merge), src/snn_data_lake/cortex/second_order_access.py (merge)
+# consolidates: src/snn_data_lake/cortex/self_model.py (merge), src/snn_data_lake/cortex/wholistic_loop.py (merge), src/snn_data_lake/neuromodulation/affect_integrator.py (merge), src/snn_data_lake/cortex/agency_monitor.py (merge), src/snn_data_lake/cortex/metacognitive_monitor.py (merge), src/snn_data_lake/sensorimotor/recognizer_bank.py (merge), src/snn_data_lake/substrate/stream_sketch_panel.py (merge), src/snn_data_lake/cortex/second_order_access.py (merge)
 def clamp01(x):
     """Clamp a scalar into [0,1], always returning a float.
 
@@ -120,7 +120,7 @@ def clamp01(x):
     return x
 
 
-# consolidates: src/snn_data_lake/cortex/trained_brain.py (merge), src/snn_data_lake/cortex/spiking_lm_serve.py (merge)
+# consolidates: src/snn_data_lake/sensorimotor/trained_brain.py (merge), src/snn_data_lake/sensorimotor/spiking_lm_serve.py (merge)
 # Both originals lose their local `_Rng` in this same change and import this one instead. A merge
 # that leaves both paths reachable is additive with extra steps -- the failure P2 exists to prevent.
 class Rng:

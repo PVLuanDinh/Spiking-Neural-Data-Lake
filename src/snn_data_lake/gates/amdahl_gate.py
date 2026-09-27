@@ -595,8 +595,8 @@ def self_check_reds(pad_iters=PAD_ITERS, quick=False):
 # distinct-from: brainstem/arm_config.py -- ::ground_free_band sweeps a joint's ground-free range.
 # distinct-from: brainstem/cpg_oscillator.py -- ::_reversals counts direction changes in a trace.
 # distinct-from: cortex/theory_of_mind.py -- ::believed_location is a spiking WTA belief readout.
-# distinct-from: brainstem/arm_bridge.py -- ::send_outcome fires one UDP datagram.
-# distinct-from: brainstem/arm_hardware.py -- ::peak_current_amps sums a servo supply budget.
+# distinct-from: sensorimotor/arm_bridge.py -- ::send_outcome fires one UDP datagram.
+# distinct-from: sensorimotor/arm_hardware.py -- ::peak_current_amps sums a servo supply budget.
 # All five matched on the word "one" and all five sites were read; none counts live instances of a
 # class. graph-exists "count live instances of a class by walking the brain object graph" returns
 # NO EXISTING IMPLEMENTATION, so this is the first, not the second.

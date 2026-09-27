@@ -124,7 +124,7 @@ were reclassified OUT of RETIRE 2026-08-07 because their then-claimed supersessi
 (different-question / inferior-imports-superior; rows above stand). These retirements rest on the
 `deep_stdp_2stage_svm` precedent instead: COMPLETED experiments with verdicts durably recorded —
 boost: CHANGELOG (ensemble +0.3, MLP −0.7, readout at ceiling, "next gain is the encoder" — and
-that mandated Tier-3 encoder is BUILT and governed, `cortex/rsnn_encoder.py`); ensemble:
+that mandated Tier-3 encoder is BUILT and governed, `sensorimotor/rsnn_encoder.py`); ensemble:
 CHANGELOG v3.61/v3.62 (ensemble −1.9% vs best single, oracle ceiling 92.2%, "Accuracy
 investigation CLOSED"). Port lists verified empty: boost's MLPHead measured NEGATIVE and its
 `_softmax_scores` was a per-site copy of `language_readout_slda.scores` discriminant math

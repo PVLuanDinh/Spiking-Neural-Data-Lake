@@ -21,7 +21,7 @@ Ground truth it MATCHES (reused, not re-implemented):
     is COMPARABLE to the zero-dep decode: same framework, different engine.
   * cortex/lif_neuron.LIFNeuron -- the canonical discrete-time LIF. `lif_to_nengo` builds a Nengo LIF whose
     firing rate tracks this neuron's rate across an input-current sweep.
-  * cortex/population_encoding, connectome.py -- `to_nengo_network` exports a population front-end (or a
+  * sensorimotor/population_encoding, connectome.py -- `to_nengo_network` exports a population front-end (or a
     recurrent line-attractor loop) as an equivalent nengo.Network that runs and emits spikes.
 
 GATED TIER (like the repo's torch tier): `import nengo` is guarded in try/except so this file still IMPORTS
@@ -250,7 +250,7 @@ def to_nengo_network(
     emits spikes.
 
       default (recurrent=False): a POPULATION FRONT-END -- a spiking population representing a scalar in
-        [lo, hi] (the Nengo analogue of cortex/population_encoding; both encode a scalar robustly across a
+        [lo, hi] (the Nengo analogue of sensorimotor/population_encoding; both encode a scalar robustly across a
         population, though Nengo tiles with LIF tuning curves rather than the RBF Gaussian fields).
       recurrent=True: a NEF line-attractor INTEGRATOR -- the connectome recurrent loop of
         research/nef_integrator (identity feedback) that HOLDS / integrates its state.

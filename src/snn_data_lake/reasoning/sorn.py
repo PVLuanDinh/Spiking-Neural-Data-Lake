@@ -269,7 +269,7 @@ def _solve(a, b):
     P7/P2, 2026-08-04. This WAS a hand-written Gaussian elimination with partial pivoting -- one of
     the three such solvers `docs/POLICIES.md` names under P7 as what the retired zero-dependency
     rule cost this tree (`nef_compute._solve`, `pc_active_inference._solve`, and this function),
-    against `cerebellum/wavefront_planner.py`'s damped-least-squares step doing the same job in one
+    against `sensorimotor/wavefront_planner.py`'s damped-least-squares step doing the same job in one
     numpy line. numpy has been an UNCONDITIONAL core dependency since 2026-07-20, so nothing was
     left to justify a second implementation.
 

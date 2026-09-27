@@ -55,12 +55,12 @@ CORE = [
     "brain_atlas",
     "connectome",
     # cortex â€” sensing/encoding, cortical neuron models, microcircuit dynamics, readout, language
-    "cortex.rank_order_coding",
-    "cortex.population_encoding",
-    "cortex.multimodal_encoder",
-    "cortex.spike_preprocessing",
+    "sensorimotor.rank_order_coding",
+    "sensorimotor.population_encoding",
+    "sensorimotor.multimodal_encoder",
+    "sensorimotor.spike_preprocessing",
     "cortex.theta_gamma_code",
-    "cortex.rsnn_encoder",
+    "sensorimotor.rsnn_encoder",
     "cortex.lif_neuron",
     "cortex.dendritic_neuron",
     "cortex.izhikevich_neuron",
@@ -79,9 +79,9 @@ CORE = [
     "instruments.memory_diagnostic",  # G1 causal contract synthetic reds
     "cortex.recurrent_pool",  # G1(b): R-b0 parity, R-b3, R-b4 pool noise, R-b5 and every red
     "instruments.pool_selection",  # G1(b) campaign: ordering, power, R-b7 reds, step order, exit codes
-    "cortex.lca_sparse_coding",
+    "sensorimotor.lca_sparse_coding",
     "cortex.predictive_coding",
-    "cortex.pc_cortex_serve",
+    "sensorimotor.pc_cortex_serve",
     "cortex.is_snn_forward",
     "cortex.neural_sampling",
     "cortex.snn_classifier",
@@ -90,19 +90,19 @@ CORE = [
     # cortex/ module there would register it without holding it to the CORE bar (in-process under
     # pytest), which is the bar the promotion exists to impose.
     "cortex.snn_moe_classifier",
-    "cortex.trained_brain",
-    "cortex.learned_matcher",
+    "sensorimotor.trained_brain",
+    "sensorimotor.learned_matcher",
     "cortex.tempotron",
     "cortex.paradigm_b_matcher",
     "cortex.paradigm_b_engine",
-    "cortex.gesture_recognition",
-    "cortex.nl_interface",
-    "cortex.spiking_lm_serve",
+    "sensorimotor.gesture_recognition",
+    "sensorimotor.nl_interface",
+    "sensorimotor.spiking_lm_serve",
     "cortex.vsa_reasoning",
     "cortex.prefrontal_executive",
     "cortex.live_brain",
     "cortex.interaction_learning",
-    "cortex.recognizer_bank",
+    "sensorimotor.recognizer_bank",
     "cortex.neuron_zoo",
     "cortex.access_consciousness",
     "instruments.integration_measure",
@@ -143,8 +143,8 @@ CORE = [
     "cortex.heterogeneous_microcircuit",  # Brain-Cog-adopted: LIF+Izhikevich+AdEx composed live under a local rule
     "cortex.percept_surprise",  # loop C2: online unsupervised Oja-PCA reconstruction-residual surprise (orienting drive)
     "cortex.kb_ranking",  # PROMOTED 2026-08-11 (#10 batch-1): DistMult KB completion; offline fallback keeps it deterministic
-    "cortex.corpus_stream",  # PROMOTED 2026-08-11 (#10 family C2): real corpus + CMUdict ingestion; offline fallback deterministic
-    "cortex.world_kb_stream",  # PROMOTED 2026-08-11 (#10 family C2b): masked-slot fact completion vs per-relation baseline (0.4s)
+    "sensorimotor.corpus_stream",  # PROMOTED 2026-08-11 (#10 family C2): real corpus + CMUdict ingestion; offline fallback deterministic
+    "sensorimotor.world_kb_stream",  # PROMOTED 2026-08-11 (#10 family C2b): masked-slot fact completion vs per-relation baseline (0.4s)
     "cortex.language_self_build",  # PROMOTED 2026-08-11 (#10 family C6): real corpus + controls; NORD_EVAL_N bounds only the eval sample
     "cortex.language_readout_slda",  # PROMOTED 2026-08-11 (#10 family C5): equal-budget n-gram bar (fair_compare's port) + full-train bar
     "cortex.nightly_skills",  # PROMOTED 2026-08-11 (#10 family C9a, from the RESEARCH list): the ONE standing skills loop, sleep-tick entry
@@ -201,7 +201,7 @@ CORE = [
     "cerebellum.forward_model",
     "cerebellum.spiking_pid",
     "cerebellum.synfire_chain",
-    "cerebellum.wavefront_planner",
+    "sensorimotor.wavefront_planner",
     "cerebellum.jepa_world_model",
     "cerebellum.hjepa_serve",
     "cerebellum.spiking_jepa",
@@ -218,14 +218,14 @@ CORE = [
     "brainstem.reflex",
     "brainstem.serial_arm",
     "brainstem.so101_arm",
-    "brainstem.arm_hardware",  # torque budget for the arm being built (asserts the shoulder shortfall)
+    "sensorimotor.arm_hardware",  # torque budget for the arm being built (asserts the shoulder shortfall)
     "brainstem.arm_config",
     "brainstem.interpreter",
-    "brainstem.live_arm",
-    "brainstem.arm_bridge",
-    "brainstem.closed_loop",
+    "sensorimotor.live_arm",
+    "sensorimotor.arm_bridge",
+    "sensorimotor.closed_loop",
     "brainstem.autonomous_loop",
-    "brainstem.signal_loop",
+    "sensorimotor.signal_loop",
     "brainstem.cpg_oscillator",
     # thalamus â€” the relay + global-broadcast hub (GWT) + reticular attentional gate
     "thalamus.global_workspace",
@@ -311,12 +311,12 @@ CORE = [
     "instruments.neuro_chip",
     "instruments.neuro_chip_stream",
     "substrate.nir_export",
-    "substrate.sensor_csv_ingest",
-    "substrate.esp32_encoder_path",
-    "substrate.make_sensor_dataset",
+    "sensorimotor.sensor_csv_ingest",
+    "sensorimotor.esp32_encoder_path",
+    "sensorimotor.make_sensor_dataset",
     "substrate.demo",
     "substrate.brain_bundle",
-    "substrate.web_ingest",
+    "sensorimotor.web_ingest",
     "substrate.lake_working_memory",
     "substrate.chat_memory",
     "substrate.signal_calibrator",
@@ -366,8 +366,8 @@ CORE = [
     "gates.manifest_gate",  # 022 T019: committed-artifact checks + divergence/join/region reds through the gate's verdict path
     "substrate.report_channel",  # 022 T034: dark-record honesty + moving strength + release + determinism
     "instruments.episode_driver",  # 022 T035: port drives + trial structure/oracle + G5 restore + refusals
-    "substrate.afferent_boundary",  # 022 T036: sentinel->MISSING + 014-normalizer reuse + proprio neuter A/B
-    "substrate.efferent_boundary",  # 022 T037: passage counting + paired copy-cut charge + missing-body honesty
+    "sensorimotor.afferent_boundary",  # 022 T036: sentinel->MISSING + 014-normalizer reuse + proprio neuter A/B
+    "sensorimotor.efferent_boundary",  # 022 T037: passage counting + paired copy-cut charge + missing-body honesty
     "instruments.port_charge_probe",  # 022 T021: sensitivity flip + specificity hold + margin varied-vs-frozen separation
     "insula.interoceptive_integration",  # 022 T021a: deviation-from-self salience + frozen-baseline red + habituation
     "gates.envelope_hash_gate",  # 022 T021b: live five-file control + tamper/stale-approval/unbaselined reds
@@ -375,8 +375,8 @@ CORE = [
     "gates.atlas_node_gate",  # 022 T024: constructed-phantom red + 7 reference-rule probes incl. both landing false-positives
     "gates.selfcheck_cache",  # carry-forward cache (envelope v3): dependency-flip + poison-refusal + envelope + FAIL-never-carries reds, plus the roster-split / data-input / named-env / tree-scanner precision reds and their key-invariance controls
     "gates.safety_envelope",  # THE five approval-gated brainstem files: assert code and SECURITY.md still name the same five
-    "substrate.ingest_guard",  # outside-data content boundary: licence deny-by-default + injection flagging
-    "substrate.hf_stream",  # streamed HF datasets -> features; offline self-check (no network, no datasets dep)
+    "sensorimotor.ingest_guard",  # outside-data content boundary: licence deny-by-default + injection flagging
+    "sensorimotor.hf_stream",  # streamed HF datasets -> features; offline self-check (no network, no datasets dep)
     "substrate.region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> ignition bias
     "substrate.basic_components",  # Brain-Cog-adopted composition interface (node + local-rule + connection palette)
     "substrate.similarity_sized_growth",  # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
@@ -478,8 +478,8 @@ TORCH_GATED = [
     "cortex.brain",
     "cortex.neurogenesis_engine",
     "cortex.language_acquisition",
-    "cortex.eprop_nmnist",  # PROMOTED 2026-08-12 (PROMOTE lane 4/4): N-MNIST e-prop perception encoder; bare check ~6s CPU incl torch import
-    "cortex.eprop_shd",  # PROMOTED 2026-08-13 (specs/013 C3): SHD e-prop audio perception encoder, the auditory twin
+    "sensorimotor.eprop_nmnist",  # PROMOTED 2026-08-12 (PROMOTE lane 4/4): N-MNIST e-prop perception encoder; bare check ~6s CPU incl torch import
+    "sensorimotor.eprop_shd",  # PROMOTED 2026-08-13 (specs/013 C3): SHD e-prop audio perception encoder, the auditory twin
     "cortex.eprop_kernel",  # NEW 2026-08-13 (specs/013 C4): the ONE e-prop engine both encoders import; two demonstrated reds
     "reasoning.schema_induction",
 ]

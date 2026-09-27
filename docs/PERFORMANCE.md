@@ -48,7 +48,7 @@ the `bindsnet` dependency it was the sole importer of.)
 
 > Three names left this list on 2026-08-06 -- `snn_mnist_dc`, `snn_moe_stdp_mnist` and
 > `snn_storage_core_snntorch` were RETIRED under P2 (superseded respectively by the surviving
-> Diehl & Cook line, by `snn_moe_classifier` which is live via `cortex/recognizer_bank.py`, and by
+> Diehl & Cook line, by `snn_moe_classifier` which is live via `sensorimotor/recognizer_bank.py`, and by
 > `hippocampus/spiking_storage_prototype.py` + `cortex/lif_neuron.py`). The shared-helper coverage
 > they demonstrated is unchanged; only the demonstrating scripts are gone.
 
@@ -73,7 +73,7 @@ How wide the brain grows is set by how much real structure it is given, not by a
 grows a hidden unit only while it still reduces error on rows the solve did not fit to; there is no
 preset ceiling (`l_max=None` derives the hard bound as L <= N).
 
-Streamed by `substrate/hf_stream.py` (`ylecun/mnist`, 8x8 features, `delta=8`), scored on the
+Streamed by `sensorimotor/hf_stream.py` (`ylecun/mnist`, 8x8 features, `delta=8`), scored on the
 dataset's own `test` split -- 2,000 rows the fit never sees, majority-class floor 0.117:
 
 | train rows | grow to the bound | `patience=16` | `patience=48` (default) | fixed cap 200 |

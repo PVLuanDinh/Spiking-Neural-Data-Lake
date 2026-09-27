@@ -21,7 +21,7 @@ LEARNING RULE -- e-prop shape, NOT backprop. Experts learn by a local three-fact
 
 eligibility (pre-synaptic spike count) x broadcast learning signal (target - prob) x the
 routing gate. This module contains no .backward(), no BPTT and no weight transport, which
-matters because it IS on a live learning path: cortex/recognizer_bank.py's MoeRecognizer
+matters because it IS on a live learning path: sensorimotor/recognizer_bank.py's MoeRecognizer
 trains it at construction and calls forward() on every recognition.
 
 Reuses cortex/snn_classifier.py for the data + spike rates (no duplication) and
@@ -61,7 +61,7 @@ Two separate compromises, re-judged on measurement (.venv-lake, this module's ow
 
   CONSUMER DELTA, measured rather than assumed, because a re-seeded spike train moves every
     number downstream and a 4-decimal match would not have been a null. Paired A/B against
-    cortex/recognizer_bank.py with the stdlib build force-loaded, 3 bank seeds x 4 OOD seeds
+    sensorimotor/recognizer_bank.py with the stdlib build force-loaded, 3 bank seeds x 4 OOD seeds
     x 64 uniform-random draws = 768 paired trials:
         OOD rejection   stdlib 673/768 = 0.8763    numpy 660/768 = 0.8594
         paired t over the 12 cells = -0.79 (n.s.); 5 cells up, 6 down, 1 tie

@@ -269,8 +269,8 @@ def _resolves(cited, tracked, suffix_index):
 
     SUFFIX resolution, and it is the difference between a gate and a false-positive machine. The naive
     version -- `cited in tracked` -- reported 1,431 citations as violations on the first run, because
-    this tree cites modules RELATIVELY: `substrate/ingest_guard.py` is really
-    `src/snn_data_lake/substrate/ingest_guard.py`, and `research/fast_features.py` sits under a package
+    this tree cites modules RELATIVELY: `sensorimotor/ingest_guard.py` is really
+    `src/snn_data_lake/sensorimotor/ingest_guard.py`, and `research/fast_features.py` sits under a package
     root too. Every one of those files exists. Counting the naive output first is what caught it -- the
     same lesson `method_dormancy_gate` records, where matching bare call names scored 0 failures and 47
     UNCERTAIN and could not catch its own motivating case.

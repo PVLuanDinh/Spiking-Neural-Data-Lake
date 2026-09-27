@@ -92,9 +92,9 @@ capacity where the base arms are above the floor before any of the three retirem
 population's prior role, the learner, T071's "prior separation") is treated as settled.
 """
 
-# distinct-from: substrate/web_ingest.py -- the network boundary (SSRF firewall, redirect
+# distinct-from: sensorimotor/web_ingest.py -- the network boundary (SSRF firewall, redirect
 #   re-validation, byte cap); this module CALLS it and adds no opener of its own.
-# distinct-from: substrate/ingest_guard.py -- the CONTENT boundary (licence deny-by-default,
+# distinct-from: sensorimotor/ingest_guard.py -- the CONTENT boundary (licence deny-by-default,
 #   injection flagging) over TEXT corpora; called here for the licence, not re-implemented.
 # distinct-from: cortex/cortical_prior.py -- the SOMA/layer/sign reference constants; imported,
 #   never re-derived. distinct-from: cortex/placement.py -- owns the layer rule and the Dale
@@ -607,7 +607,7 @@ def load_cells():
 
 # distinct-from: substrate/lake_engine.py::_iter_segment and substrate/lake_bridge.py's sealed
 #   segment reader -- both read the LAKE's own CRC-framed binary segments; this parses one
-#   external CSV release file. distinct-from: substrate/web_ingest.py::fetch_bytes -- the network
+#   external CSV release file. distinct-from: sensorimotor/web_ingest.py::fetch_bytes -- the network
 #   boundary, which this module CALLS to obtain the file and does not re-implement.
 #   distinct-from: cortex/cortical_prior.py::e_fraction -- a per-LAYER excitatory fraction from a
 #   pinned aggregate; this is a per-SEGMENT synapse count read row by row out of the release.
@@ -648,7 +648,7 @@ def load_ei_counts(rows=None):
 
 def fetch_sources(fetch=None):
     """Fetch the five pinned files into DATA_DIR, refusing any whose sha256 does not match."""
-    from snn_data_lake.substrate.web_ingest import fetch_bytes
+    from snn_data_lake.sensorimotor.web_ingest import fetch_bytes
 
     fetch = fetch or fetch_bytes
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -864,7 +864,7 @@ def sign_report(agree, total):
 # distinct-from: basal_ganglia/r_stdp.py::pre_spike -- pairs a PRE spike against the most recent
 #   POST spike inside a live plasticity rule; "post" there is a spike time in this brain, here it
 #   is the postsynaptic SOMA of a reconstructed human synapse.
-# distinct-from: brainstem/signal_loop.py::stdin_stream and cortex/brain.py::_flush_coverage --
+# distinct-from: sensorimotor/signal_loop.py::stdin_stream and cortex/brain.py::_flush_coverage --
 #   a wire-format reader and a lake write; neither computes a fraction or a null.
 #   All five sites read 2026-09-09; the guard matched on "POST"/"fraction"/"same".
 def post_excitatory_fractions(post_type):
@@ -1130,7 +1130,7 @@ class Graph:
 
 
 def _net_fetch(name, entry, manifest):
-    from snn_data_lake.substrate.web_ingest import fetch_bytes
+    from snn_data_lake.sensorimotor.web_ingest import fetch_bytes
 
     return fetch_bytes(shard_url(name, manifest), max_bytes=int(entry["size"]), timeout=600)
 

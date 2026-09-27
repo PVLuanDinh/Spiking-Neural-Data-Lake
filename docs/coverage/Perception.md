@@ -22,7 +22,7 @@ instrument could record for Perception measured a brain whose perception tier wa
 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
-| multimodal_rate_encoding | 40 | src/snn_data_lake/cortex/multimodal_encoder.py:62#encode_multimodal; src/snn_data_lake/brainstem/autonomous_loop.py:1529#step | - | opus-5 live-brain census, 40 ticks, seed 0 | 2026-07-30 |
+| multimodal_rate_encoding | 40 | src/snn_data_lake/sensorimotor/multimodal_encoder.py:62#encode_multimodal; src/snn_data_lake/brainstem/autonomous_loop.py:1529#step | - | opus-5 live-brain census, 40 ticks, seed 0 | 2026-07-30 |
 | eprop_event_vision_tier | 40 | src/snn_data_lake/cortex/brain.py:623#_load_enc; src/snn_data_lake/cortex/brain.py:1358#_perceive_real | - | opus-5 live-brain census, daemon import shape (lines re-derived 2026-08-12) | 2026-07-30 |
 | eprop_event_audio_tier | 40 | src/snn_data_lake/cortex/brain.py:677#_load_enc; src/snn_data_lake/cortex/brain.py:1432#_perceive_audio | - | opus-5 live-brain census, daemon import shape (lines re-derived 2026-08-12) | 2026-07-30 |
 | learned_attention_real_stream | 40 | src/snn_data_lake/cortex/learned_attention.py:136#attend; src/snn_data_lake/cortex/brain.py:1289#_attend_real_stream; src/snn_data_lake/cortex/brain.py:1300#_attend_real_stream | - | opus-5 neuter-A/B 46 of 60 ticks, NOT recordable | 2026-07-30 |
@@ -34,9 +34,9 @@ instrument could record for Perception measured a brain whose perception tier wa
 | percept_surprise_orienting | 25 | src/snn_data_lake/cortex/percept_surprise.py:125; src/snn_data_lake/cortex/brain.py:1412#_perceive_real; src/snn_data_lake/cortex/brain.py:1592#_route_percept_to_action | surprise_60.txt | opus-5 charge_probe surprise 60 and 120 | 2026-07-30 |
 | percept_to_place_binding | 25 | src/snn_data_lake/hippocampus/grid_place_map.py:163#observe; src/snn_data_lake/cortex/brain.py:1516#_consume_perception | - | opus-5 live-brain census, daemon import shape | 2026-07-30 |
 | covert_attention_trn_gain | 21 | src/snn_data_lake/brainstem/autonomous_loop.py:971#_attend; src/snn_data_lake/brainstem/autonomous_loop.py:1557#step | - | opus-5 neuter-A/B 0 of 40 on unit action threat pos | 2026-07-30 |
-| latency_spike_coding | 21 | src/snn_data_lake/cortex/spike_preprocessing.py:39#encode_latency; src/snn_data_lake/amygdala/fear_conditioning.py:143; src/snn_data_lake/brainstem/autonomous_loop.py:1597#step | - | opus-5 live-brain census, threat 0.0 on 40 of 40 | 2026-07-30 |
+| latency_spike_coding | 21 | src/snn_data_lake/sensorimotor/spike_preprocessing.py:39#encode_latency; src/snn_data_lake/amygdala/fear_conditioning.py:143; src/snn_data_lake/brainstem/autonomous_loop.py:1597#step | - | opus-5 live-brain census, threat 0.0 on 40 of 40 | 2026-07-30 |
 | generative_pc_perception_tier | 10 | src/snn_data_lake/cortex/brain.py:988#__init__; src/snn_data_lake/cortex/brain.py:1962#propose_improvements | - | opus-5 static call-site census, no live-tick caller | 2026-07-30 |
-| hardware_sensor_transduction | 10 | src/snn_data_lake/substrate/esp32_encoder_path.py:125#spikes_for; src/snn_data_lake/gates/dormancy_gate.py:255#module | - | opus-5 read of dormancy_gate EXEMPT, static only | 2026-07-30 |
+| hardware_sensor_transduction | 10 | src/snn_data_lake/sensorimotor/esp32_encoder_path.py:125#spikes_for; src/snn_data_lake/gates/dormancy_gate.py:255#module | - | opus-5 read of dormancy_gate EXEMPT, static only | 2026-07-30 |
 | attention_goal_modulation | 0 | src/snn_data_lake/cortex/learned_attention.py:92#_goal_gain; src/snn_data_lake/cortex/brain.py:1289#_attend_real_stream | - | opus-5 re-check of the v4.79 finding, rule 4 | 2026-07-30 |
 | claustral_assembly_binding | 0 | src/snn_data_lake/brainstem/autonomous_loop.py:1009#_energy; src/snn_data_lake/cortex/brain.py:3438#state | - | opus-5 live-brain census, bound_modalities 0 | 2026-07-30 |
 
@@ -196,13 +196,13 @@ for the same reason as covert attention.
 
 Format: `capability` -- provider -- liveness.
 
-- 4-modality RBF band code -> `[0,1]^64` -- `cortex/multimodal_encoder.py` plus
-  `cortex/population_encoding.py` -- LIVE every tick, and the sole input to the prototype learner.
-- growable-width version of the same code -- `cortex/multimodal_encoder.py:78` `MultiModalEncoder` --
+- 4-modality RBF band code -> `[0,1]^64` -- `sensorimotor/multimodal_encoder.py` plus
+  `sensorimotor/population_encoding.py` -- LIVE every tick, and the sole input to the prototype learner.
+- growable-width version of the same code -- `sensorimotor/multimodal_encoder.py:78` `MultiModalEncoder` --
   no live caller (the fixed `encode_multimodal` is what runs).
 - rate -> time-to-first-spike code, van Rossum / Victor-Purpura distances --
-  `cortex/spike_preprocessing.py` -- called on the live tick through the amygdala only, output constant.
-- real event-vision transduction (e-prop, no backprop) -- `cortex/eprop_nmnist.py` (promoted from training/ 2026-08-12) via `cortex/brain.py:634` --
+  `sensorimotor/spike_preprocessing.py` -- called on the live tick through the amygdala only, output constant.
+- real event-vision transduction (e-prop, no backprop) -- `sensorimotor/eprop_nmnist.py` (promoted from training/ 2026-08-12) via `cortex/brain.py:634` --
   `cortex/brain.py:564` -- daemon shape only.
 - real event-audio transduction (e-prop) -- `training/eprop_shd.py` via `cortex/brain.py:670` --
   daemon shape only.
@@ -211,7 +211,7 @@ Format: `capability` -- provider -- liveness.
   is that a row is not deleted to raise a score; it scores 0 as a retired mechanism, not as an
   unmeasured one. It was never live here in any case -- it was shadowed whenever the e-prop
   checkpoint existed.
-- generative spiking predictive-coding cortex, settle-to-percept -- `cortex/pc_cortex_serve.py` via
+- generative spiking predictive-coding cortex, settle-to-percept -- `sensorimotor/pc_cortex_serve.py` via
   `Brain.perceive_pc` -- checkpoint loads, no live-tick caller.
 - live predictive-coding prediction error over the sensory pattern -- `cortex/predictive_coding.py`
   via `cortex/live_brain.py:169` -- LIVE, nonzero on 57/60 ticks.
@@ -227,10 +227,10 @@ Format: `capability` -- provider -- liveness.
   only, fires on 2/60 ticks.
 - no-backprop laminar readout -> perceptual confidence --
   `cortex/laminar_local_readout.py` (promoted 2026-08-12) -- daemon shape only, range 0.169-1.0.
-- real-sensor (ESP32) transduction adapter -- `substrate/esp32_encoder_path.py` -- EXEMPT, awaiting
+- real-sensor (ESP32) transduction adapter -- `sensorimotor/esp32_encoder_path.py` -- EXEMPT, awaiting
   hardware.
 - orienting/saccade WTA map -- `superior_colliculus` and `sc_deep_layers` -- EXEMPT, no gaze effector.
-- train-tier recurrent spiking encoder -- `cortex/rsnn_encoder.py` -- EXEMPT, served frozen.
+- train-tier recurrent spiking encoder -- `sensorimotor/rsnn_encoder.py` -- EXEMPT, served frozen.
 
 ## Gaps, ranked by distance_to_100 x feasibility
 

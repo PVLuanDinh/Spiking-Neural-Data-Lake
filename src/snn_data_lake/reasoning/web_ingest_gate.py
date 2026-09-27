@@ -6,7 +6,7 @@ The brain converses from its lifelong LAKE (reasoning/spike_chat_lake.py). This 
 that lake from real online knowledge, safely. Every fetch passes THREE checks before a byte is read:
 
   1. HOST ALLOWLIST -- only curated knowledge sources (WordNet/dictionary/corpus mirrors), nothing else.
-  2. SSRF FIREWALL  -- reuses substrate.web_ingest (http/https only; blocks file://, localhost, private
+  2. SSRF FIREWALL  -- reuses sensorimotor.web_ingest (http/https only; blocks file://, localhost, private
      and link-local IPs, redirects to private hosts). No access to the local machine or internal network.
   3. SIZE CAP       -- a hard byte ceiling per fetch; read-only (GET), never posts or sends anything out.
 
@@ -22,7 +22,7 @@ execution. It reads allowlisted static knowledge files and turns them into lake 
 
   PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.web_ingest_gate  # gate + WordNet demo
   Knobs: NORD_WORDNET_URL(jsdelivr data.noun) NORD_WN_LIMIT(4000) NORD_WEB_MAXBYTES(16000000)
-Deps: stdlib (+ numpy via spike_chat_lake). Reuses substrate.web_ingest (SSRF firewall) + spike_chat_lake.
+Deps: stdlib (+ numpy via spike_chat_lake). Reuses sensorimotor.web_ingest (SSRF firewall) + spike_chat_lake.
 """
 
 import json
@@ -30,7 +30,7 @@ import os
 import urllib.request
 from urllib.parse import quote, urlparse
 
-from snn_data_lake.substrate.web_ingest import fetch_text
+from snn_data_lake.sensorimotor.web_ingest import fetch_text
 
 # ---- the GATE's host allowlist: only these knowledge sources may be fetched (on top of the SSRF firewall) ----
 ALLOWLIST = {
@@ -144,7 +144,7 @@ class WebAccessGate:
         log line, not a rewiring of callers."""
         self._require_allowed(url)
         # the SSRF firewall lives in the substrate; reuse it rather than re-implementing it
-        from snn_data_lake.substrate.web_ingest import _ValidatingRedirectHandler, validate_url
+        from snn_data_lake.sensorimotor.web_ingest import _ValidatingRedirectHandler, validate_url
 
         validate_url(url)
         # allowlist on redirects too: a 302 from an allowlisted host cannot walk off the allowlist
@@ -285,7 +285,7 @@ def main():
     assert gate.allowed(DEFAULT_WORDNET_URL), "the WordNet source host must be allowlisted"
     # REDIRECT ALLOWLIST: a 30x from an allowlisted host to an off-allowlist public host must be
     # refused (not just SSRF-checked). The gate passes _require_allowed into the redirect handler.
-    from snn_data_lake.substrate.web_ingest import _ValidatingRedirectHandler
+    from snn_data_lake.sensorimotor.web_ingest import _ValidatingRedirectHandler
 
     gate._require_allowed(DEFAULT_WORDNET_URL)  # an allowlisted target passes
     redirect_refused = False
@@ -314,7 +314,7 @@ def main():
     # (MEASURED: 'evil.example.com' raised ValueError "cannot resolve host" and `_extra_check` was
     # never called, which is why the original author reached for introspection). So the SSRF half is
     # stubbed out for the length of this check and the ALLOWLIST half is driven for real.
-    import snn_data_lake.substrate.web_ingest as _wi
+    import snn_data_lake.sensorimotor.web_ingest as _wi
 
     # `redirect_request` only BUILDS the follow-up Request -- it performs no I/O -- so driving it
     # with a real Request off an allowlisted origin is offline and exercises the whole path.

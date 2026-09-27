@@ -18,7 +18,7 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 | landmark_drift_correction | 21 | src/snn_data_lake/hippocampus/spiking_grid_can.py:250#observe_landmark; src/snn_data_lake/cortex/brain.py:1458#_consume_perception | - | opus-5 auditor / return-value instrumentation, 60 ticks seed 0 | 2026-07-30 |
 | sequence_memory_polychronous | 15 | src/snn_data_lake/cerebellum/polychronization.py:23#module; src/snn_data_lake/cortex/rose_language.py:358#dependency_order_ok | - | opus-5 auditor / static importer trace (STATIC ONLY, not runtime; paths+line re-derived at the 2026-08-12 promotion) | 2026-07-30 |
 | sequence_prediction_sorn | 10 | src/snn_data_lake/reasoning/sorn.py:201#self_organize | - | opus-5 auditor / static importer trace (STATIC ONLY, not runtime) | 2026-07-30 |
-| heading_integration_ring_attractor | 10 | src/snn_data_lake/hippocampus/ring_attractor.py:107#ProprioceptiveEstimator; src/snn_data_lake/brainstem/live_arm.py:67#_make_observer | - | opus-5 auditor / static importer trace (STATIC ONLY, not runtime) | 2026-07-30 |
+| heading_integration_ring_attractor | 10 | src/snn_data_lake/hippocampus/ring_attractor.py:107#ProprioceptiveEstimator; src/snn_data_lake/sensorimotor/live_arm.py:67#_make_observer | - | opus-5 auditor / static importer trace (STATIC ONLY, not runtime) | 2026-07-30 |
 
 ## The one finding that changes how every single-source verdict in this ledger should be read
 
@@ -231,7 +231,7 @@ honest band for a static-only claim is low and saying which evidence it rests on
   reservoir on sequence prediction. No importer anywhere in `src/`; referenced only by
   `run_selfchecks.py:286`. Built, not live: 10.
 - **heading_integration_ring_attractor** -- the repo's 1-D CAN velocity integrator and its
-  `ProprioceptiveEstimator`. Imported only by `brainstem/live_arm.py:57`, inside `_make_observer()`,
+  `ProprioceptiveEstimator`. Imported only by `sensorimotor/live_arm.py:57`, inside `_make_observer()`,
   behind an off-by-default `--proprioception` flag on a separate CLI entrypoint. It is not on the
   `make_brain -> Brain -> LiveBrain -> AutonomousArm` path this category's other faculties run on: 10.
 
@@ -254,7 +254,7 @@ honest band for a static-only claim is low and saying which evidence it rests on
   threshold derived from its own width/window.
 - `reasoning/polychronization.py` -- combinatorial memory keyed on relative spike TIMING.
 - `reasoning/sorn.py` -- plasticity-driven sequence prediction above a static-reservoir control.
-- `cerebellum/wavefront_planner.py` -- configuration-space collision-free route planning. Considered
+- `sensorimotor/wavefront_planner.py` -- configuration-space collision-free route planning. Considered
   and **left out of the table**: spatial route planning is not one of the four sub-areas the rubric
   names for this category (`COVERAGE_RUBRIC.md:32`), and I did not want to widen the roster on my own
   authority. It is imported only by `live_arm.py:194` behind an off-by-default flag, so it would score

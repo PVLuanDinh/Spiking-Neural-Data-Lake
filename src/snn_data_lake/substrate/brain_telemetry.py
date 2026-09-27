@@ -656,7 +656,7 @@ def snapshot(brain):
     # Kept in its own section precisely so it can never be mistaken for body telemetry: `body` above
     # is the live 2-DOF sim, this is the 6-DOF arm that does not exist yet.
     try:
-        from snn_data_lake.brainstem.arm_hardware import state as _hw
+        from snn_data_lake.sensorimotor.arm_hardware import state as _hw
 
         out["hardware"] = _hw()
     except Exception:

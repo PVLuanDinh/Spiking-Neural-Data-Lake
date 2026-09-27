@@ -76,7 +76,7 @@ import sys
 import tempfile
 import zlib
 
-from snn_data_lake.cortex.spike_preprocessing import N, T, encode_latency
+from snn_data_lake.sensorimotor.spike_preprocessing import N, T, encode_latency
 from snn_data_lake.substrate.proximity_index import ProximityIndex
 from snn_data_lake.substrate.streaming_hub import StreamingHub
 

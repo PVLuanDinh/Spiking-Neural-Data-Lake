@@ -161,7 +161,7 @@ def pct_read(bytes_read, total_bytes):
 # inside a tkinter control panel (substrate/control_panel.py) behind an Import button. Moved here
 # when that panel was retired: they build a SpikeTelemetryHub and nothing else, so a GUI was never
 # their home, and a capability reachable only by clicking is a capability most users never find.
-# substrate/sensor_csv_ingest.py is a different thing (timestamped serial CSV -> signal_loop windows).
+# sensorimotor/sensor_csv_ingest.py is a different thing (timestamped serial CSV -> signal_loop windows).
 
 
 def csv_to_hub(path):

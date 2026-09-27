@@ -27,7 +27,7 @@ Phase 2 is turning that from **replay into a real, live loop on your hardware**.
 ### 1. A live run  *(blocking)*
 Everything works on replay; we need one real real-time run. With the ESP32 + arm connected:
 ```bash
-python -m snn_data_lake.brainstem.live_arm --serial COM8      # your port
+python -m snn_data_lake.sensorimotor.live_arm --serial COM8      # your port
 ```
 **Deliver:** confirmation it runs end-to-end, plus the console log (or a short video). If it
 errors, send the error — that's just as useful.

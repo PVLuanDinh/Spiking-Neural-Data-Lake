@@ -17,8 +17,8 @@ the live default. Refs: Gutig & Sompolinsky, Nature Neuroscience 9 (2006).
 import math
 import random
 
-from snn_data_lake.brainstem.signal_loop import build_default_library
-from snn_data_lake.cortex.spike_preprocessing import N, T, encode_latency
+from snn_data_lake.sensorimotor.signal_loop import build_default_library
+from snn_data_lake.sensorimotor.spike_preprocessing import N, T, encode_latency
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

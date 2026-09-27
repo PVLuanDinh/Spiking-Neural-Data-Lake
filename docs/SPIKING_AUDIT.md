@@ -38,7 +38,7 @@ function approximation on it:
 | `neuromodulation/intrinsic_motivation` (v3.15) | EMA of prediction error | no |
 | `neuromodulation/curriculum` (v3.16) | a counter / threshold | not even neural |
 | `cerebellum/hjepa_serve` + torch H-JEPA (v3.13-14) | dense MLPs | no |
-| `cortex/nl_interface` + `LiveBrain.converse` | keyword-set routing | not neural |
+| `sensorimotor/nl_interface` + `LiveBrain.converse` | keyword-set routing | not neural |
 | language backend | a dense transformer -- code admits "NOT a spiking LLM" | no |
 
 Several of these docstrings admit the rate-level nature honestly, but it *is* a drift from

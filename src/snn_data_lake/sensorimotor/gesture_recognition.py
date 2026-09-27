@@ -14,7 +14,7 @@ fallback handles noisy windows that don't cross all three bins cleanly. Idle = n
 
 CI-safe: real CSVs if present, else an inline synthetic 3-gesture set.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.gesture_recognition
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sensorimotor.gesture_recognition
 """
 
 import os

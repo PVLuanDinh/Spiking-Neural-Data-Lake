@@ -52,7 +52,7 @@ random.Random(seed), so two runs with the same seed are identical.
 
 import random
 
-from snn_data_lake.cortex.spike_preprocessing import T, encode_latency
+from snn_data_lake.sensorimotor.spike_preprocessing import T, encode_latency
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

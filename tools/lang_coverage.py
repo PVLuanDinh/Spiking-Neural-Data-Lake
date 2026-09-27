@@ -51,8 +51,8 @@ _ISOLATED_HOME = tempfile.mkdtemp(prefix="lang_coverage_home_")
 os.environ["NORD_HOME"] = _ISOLATED_HOME
 os.environ.setdefault("NORD_PERSIST", "0")
 
-from snn_data_lake.cortex.world_kb_stream import load_kb  # noqa: E402
 from snn_data_lake.reasoning import blimp_bench as BB  # noqa: E402
+from snn_data_lake.sensorimotor.world_kb_stream import load_kb  # noqa: E402
 
 # The floors. Stated in research.md R1 BEFORE the measurement; duplicated here as the enforced form.
 FLOOR_PARADIGMS = 8

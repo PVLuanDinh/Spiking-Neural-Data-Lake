@@ -53,7 +53,7 @@ from snn_data_lake.hippocampus.content_signature import (
 )
 from snn_data_lake.reasoning.lake_reason import Reasoner
 from snn_data_lake.reasoning.train_of_thought import TrainOfThought
-from snn_data_lake.cortex.world_kb_stream import load_kb
+from snn_data_lake.sensorimotor.world_kb_stream import load_kb
 from snn_data_lake.substrate.home import KnowledgeLog, banner, home
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 
@@ -1592,7 +1592,7 @@ class LakeChat:
         THE CONTAMINATION CLAUSE, added 2026-08-05, and it is the one part of this reply that is
         about the reply itself. P8 requires "unprompted disclosure of contamination", and an
         18-axis literature sweep supplied the specific contamination this channel has:
-        `substrate/web_ingest.py` and `substrate/chat_memory.py` put human text into the durable
+        `sensorimotor/web_ingest.py` and `substrate/chat_memory.py` put human text into the durable
         lake, and human text about machine consciousness contains BOTH the denial script and the
         assertion script. So every sentence above -- including the careful agnostic close, which
         reads as the honest answer -- is exactly what a system trained on that corpus would emit

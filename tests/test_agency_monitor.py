@@ -66,7 +66,7 @@ import random
 
 import pytest
 
-from snn_data_lake.brainstem import arm_config, live_arm
+from snn_data_lake.brainstem import arm_config
 from snn_data_lake.cortex.agency_monitor import (
     T079_DEADBAND,
     T079_JOINTS,
@@ -89,8 +89,9 @@ from snn_data_lake.cortex.agency_monitor import (
     t079_read,
     t079_reds,
 )
-from snn_data_lake.substrate.afferent_boundary import proprioception_delta
-from snn_data_lake.substrate.efferent_boundary import intended_deltas, proprioception_deltas
+from snn_data_lake.sensorimotor import live_arm
+from snn_data_lake.sensorimotor.afferent_boundary import proprioception_delta
+from snn_data_lake.sensorimotor.efferent_boundary import intended_deltas, proprioception_deltas
 
 
 @pytest.fixture(scope="module")

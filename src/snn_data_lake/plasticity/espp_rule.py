@@ -737,11 +737,11 @@ def main():
     # this module is a wire exemption with zero live callers, and the exception
     # persists exactly as long as the exemption does (the re-adjudication trigger in
     # dormancy_gate's row).
-    # distinct-from: cortex/eprop_nmnist.py -- the SUPERVISED incumbent this benchmark
+    # distinct-from: sensorimotor/eprop_nmnist.py -- the SUPERVISED incumbent this benchmark
     #   compares AGAINST (torch, e-prop, classifier); this arm is the numpy espp probe
     #   harness, benchmark-local. Site read.
     # distinct-from: cerebellum/spiking_pid.py, basal_ganglia/action_gating.py,
-    #   brainstem/signal_loop.py -- generic run/window vocabulary only (PID drives, race
+    #   sensorimotor/signal_loop.py -- generic run/window vocabulary only (PID drives, race
     #   circuits, min-max normalizers); nothing shared with this probe. Sites read.
     # PACK GATING, the percept_surprise precedent (its :320-348 adjudicated this exact
     # artifact: an unverifiable check must be LOUD, not quiet -- a bare-return SKIP exits

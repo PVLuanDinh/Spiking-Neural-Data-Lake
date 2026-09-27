@@ -26,13 +26,13 @@ Brain-native mechanism (spiking, gradient-free):
     neurogenesis learner (hippocampus.growing_learner.GrowingLearner): recruit a new
     prototype when an affect point matches none well enough, else Hebbian-refine the
     nearest (winner-take-all). The 2-D affect point is spread onto a non-negative
-    population code (cortex.population_encoding.PopulationEncoder) so the learner's cosine
+    population code (sensorimotor.population_encoding.PopulationEncoder) so the learner's cosine
     match behaves as a locality metric. label(v, a) returns the nearest EMERGENT prototype
     id -- never a hand-coded circumplex sector.
 
 Reuses (does NOT reimplement):
   * cortex.lif_neuron.LIFNeuron            -- the spiking arousal + opponent-valence pools
-  * cortex.population_encoding.PopulationEncoder -- (v, a) -> non-negative locality code
+  * sensorimotor.population_encoding.PopulationEncoder -- (v, a) -> non-negative locality code
   * hippocampus.growing_learner.GrowingLearner   -- neurogenesis + Hebbian competitive refine
 
 Self-contained: integrate() takes the four scalar neuromodulator signals directly, so this
@@ -51,8 +51,8 @@ import random
 import zlib
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
-from snn_data_lake.cortex.population_encoding import PopulationEncoder
 from snn_data_lake.hippocampus.growing_learner import GrowingLearner
+from snn_data_lake.sensorimotor.population_encoding import PopulationEncoder
 from snn_data_lake.substrate._mathutils import clamp01
 
 

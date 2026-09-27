@@ -114,7 +114,6 @@ from snn_data_lake.cortex.autotelic_goals import (
     _reach_rate,
     collect_labels,
 )
-from snn_data_lake.cortex.corpus_stream import ARPABET, load_cmudict, load_text, phoneme_stream
 from snn_data_lake.cortex.kb_ranking import DistMult, load_dataset
 from snn_data_lake.cortex.language_readout_slda import SLDA_RFF_np
 from snn_data_lake.cortex.language_self_build import _bigram_baseline, _positional_code
@@ -133,6 +132,12 @@ from snn_data_lake.hippocampus.skill_builder import (
     signature,
 )
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
+from snn_data_lake.sensorimotor.corpus_stream import (
+    ARPABET,
+    load_cmudict,
+    load_text,
+    phoneme_stream,
+)
 from snn_data_lake.substrate.home import home, lake_path, load_state, save_state
 
 _SKILL_IDS = {"language": 0, "math": 1, "physics": 2, "world-kb": 3}

@@ -42,7 +42,7 @@ Linear.weight is [out][in] (no transpose), layers in APPLICATION order -- identi
 
 Pure stdlib (json, math), ASCII-only prints, deterministic. NO torch, NO numpy in this module.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.rsnn_encoder
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sensorimotor.rsnn_encoder
 """
 
 import json

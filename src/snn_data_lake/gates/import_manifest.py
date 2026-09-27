@@ -105,6 +105,7 @@ GOVERNED = (
     "lakehouse",
     "gates",  # G8 S1a (evidence g8-reorganization.md 2.5 item 6, F15): the package it creates
     "instruments",  # G8 M2: the package created by the instrument move
+    "sensorimotor",  # G8 M3: the package created by the sensorimotor move
 )
 
 # The tiers no gate covers. A governed -> ungoverned edge is what this module protects.
@@ -128,7 +129,7 @@ UNGOVERNED = ("reasoning", "training")
 # :18 names -- so it no longer pins interior line numbers it cannot keep current.
 UNGOVERNED_ROOT = ()
 # EMPTIED 2026-08-13 (specs/013 C3): `training.eprop_shd` was the LAST bare-root import from the
-# governed tier, and it became in-package (`snn_data_lake.cortex.eprop_shd`) at that commit. The
+# governed tier, and it became in-package (`snn_data_lake.sensorimotor.eprop_shd`) at that commit. The
 # empty tuple is the pre-authorised terminal state -- see the note at the `unmatched` assert below,
 # which says in so many words that removing the name is the correct edit once `training/` is
 # promoted INTO the package, and must not leave an assert that can never again be satisfied.

@@ -67,22 +67,22 @@ signal_loop's jittered prototypes, both 014 lineage) is the transduction-in incu
 for every modality until real hardware lands; esp32 serial and csv replay remain
 dormancy-covered per SYNTHESIS section 6's dated dispositions.
 
-# distinct-from: substrate/esp32_encoder_path.py -- the 014 normalizer/encoder this
+# distinct-from: sensorimotor/esp32_encoder_path.py -- the 014 normalizer/encoder this
 #   boundary REUSES for temperature and extends for the distance sentinel; hardware
-#   parsing stays there. distinct-from: substrate/make_sensor_dataset.py -- the 014
+#   parsing stays there. distinct-from: sensorimotor/make_sensor_dataset.py -- the 014
 #   simulated GESTURE dataset generator; a data tool, not a boundary. distinct-from:
-#   brainstem/signal_loop.py -- the reflex/serial event loop; its simulated_stream is a
+#   sensorimotor/signal_loop.py -- the reflex/serial event loop; its simulated_stream is a
 #   feed this boundary can sit in front of, not a transduction contract. distinct-from:
 #   instruments/episode_driver.py -- the TRIAL apparatus behind this boundary; it takes
 #   already-transduced stimuli. distinct-from: insula/interoceptive_integration.py --
 #   the interoceptive tract terminus; see the inventory above. All sites read.
 
-  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.substrate.afferent_boundary
+  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.sensorimotor.afferent_boundary
 """
 
 import math
 
-from snn_data_lake.substrate.esp32_encoder_path import normalize as _esp32_normalize
+from snn_data_lake.sensorimotor.esp32_encoder_path import normalize as _esp32_normalize
 
 
 def transduce_distance(distance_m):
@@ -153,14 +153,14 @@ def proprioception(theta_deg):
 #   the absolute fold manufactured 25% phantom half-range commands.
 # distinct-from: reasoning/jepa_scaffold_torch.py -- a latent JEPA trainer; term overlap
 #   only (action-conditioned deltas in LEARNED latent space, not a degree-space fold). Read.
-# consolidates: substrate/efferent_boundary.py -- its 2.9 step-2 `proprioception_deltas`
+# consolidates: sensorimotor/efferent_boundary.py -- its 2.9 step-2 `proprioception_deltas`
 #   STUB is deleted in the same change and becomes an import of the function below, so the
 #   wrap exists in exactly ONE place (P2). The efferent door keeps the NAME (specs/022 T079
 #   2.1 names `efferent_boundary.proprioception_deltas` as the import path every consumer
 #   uses) and the sensory door keeps the FOLD, which is where the wrap already lived; the
 #   alternative -- defining it in the efferent module -- makes afferent import efferent at
 #   module top, and efferent already imports afferent, which is a cycle.
-# distinct-from: brainstem/live_arm.py::_joint_obs_delta -- a COMMANDED delta parsed from an
+# distinct-from: sensorimotor/live_arm.py::_joint_obs_delta -- a COMMANDED delta parsed from an
 #   action TOKEN (one joint, degrees). This is an ACHIEVED delta read off two posture
 #   vectors (every joint, normalised). Read; the token parse is routed through
 #   `efferent_boundary.intended_deltas` in the same change, so it is one mechanism too.
@@ -418,7 +418,7 @@ def _main():
     def temp_trace(neutered, n=40):
         b = make_brain(seed=0)
         if neutered:
-            import snn_data_lake.substrate.afferent_boundary as ab
+            import snn_data_lake.sensorimotor.afferent_boundary as ab
 
             orig = ab.proprioception
             ab.proprioception = lambda theta_deg: None  # the NEUTER: no body reading

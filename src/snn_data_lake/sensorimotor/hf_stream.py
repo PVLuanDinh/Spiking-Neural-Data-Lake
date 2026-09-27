@@ -3,7 +3,7 @@
 WHY THIS EXISTS. The brain's growth is data-limited: NG-SNN grows a unit only while it still reduces
 held-out error, so how wide it gets is set by how much real structure it is fed. Measured on streamed
 MNIST it earns 2,096 units at 10k rows and 4,512 at 24k. This is the supply line for
-that, and it is a DATA-PREP tool: like `substrate/web_ingest.py` it sits outside the control path, is
+that, and it is a DATA-PREP tool: like `sensorimotor/web_ingest.py` it sits outside the control path, is
 never imported by the arm loop or any safety-envelope module, and hands back arrays that a trainer
 consumes. It NEVER constructs a Brain (Policy 4).
 
@@ -15,7 +15,7 @@ with no API or with anti-bot; this is neither (Policy 2: one mechanism for the j
 THE TWO GATES, and the first one is stricter here than a caller-supplied string.
 
   LICENCE. `dataset_license()` reads the licence from the HUB'S OWN metadata and
-  `substrate/ingest_guard` decides on it, deny-by-default. The caller does not get to assert a licence
+  `sensorimotor/ingest_guard` decides on it, deny-by-default. The caller does not get to assert a licence
   for someone else's dataset -- that is exactly the claim that should not be self-certified. A caller
   MAY pass `license_id` to override, but only to be MORE restrictive in practice: it is still run
   through the same allowlist, and it is recorded in the returned meta so a downstream reader can see
@@ -30,13 +30,13 @@ BOUNDED BY CONSTRUCTION. `n_rows` caps the stream, streaming=True means rows arr
 dataset is never materialised, and the loop stops at the cap regardless of dataset size. "Explore all
 of Hugging Face" is not a thing this does or can do.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.hf_stream        # offline self-check
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.hf_stream --live ylecun/mnist
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sensorimotor.hf_stream        # offline self-check
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sensorimotor.hf_stream --live ylecun/mnist
 """
 
 import sys
 
-from snn_data_lake.substrate.ingest_guard import (
+from snn_data_lake.sensorimotor.ingest_guard import (
     LicenseRefused,
     license_ok,
     license_reason,

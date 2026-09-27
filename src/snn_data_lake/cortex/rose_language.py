@@ -84,7 +84,7 @@ import numpy as np
 
 # --- spiking substrate: VSA algebra, world KB (both stdlib by measurement, see the header) ---------
 from snn_data_lake.cortex.vsa_reasoning import D, bind, bundle, cleanup, hv, permute
-from snn_data_lake.cortex.world_kb_stream import load_kb
+from snn_data_lake.sensorimotor.world_kb_stream import load_kb
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

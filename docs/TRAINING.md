@@ -19,8 +19,8 @@ tier an unreproducible claim. Perception needs **two kinds of artifact**, and bo
 **1. The encoder weights** (`.pt`) — what does the perceiving:
 
 ```bash
-PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.cortex.eprop_nmnist --train --save models/eprop_nmnist.pt   # (vision; --save is required for the checkpoint -- the old arrow-comment implied --train alone wrote it, which was never true)
-PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.cortex.eprop_shd --train --save models/eprop_shd.pt   # (audio, SHD; promoted out of training/ 2026-08-13, specs/013)
+PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.sensorimotor.eprop_nmnist --train --save models/eprop_nmnist.pt   # (vision; --save is required for the checkpoint -- the old arrow-comment implied --train alone wrote it, which was never true)
+PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.sensorimotor.eprop_shd --train --save models/eprop_shd.pt   # (audio, SHD; promoted out of training/ 2026-08-13, specs/013)
 ```
 
 **2. The event-frame packs** (`.npz`) — what gets perceived. The encoders alone are not enough:
@@ -216,7 +216,7 @@ answers from the brain's own durable lake — learned facts, not a language mode
 about gaps rather than fabricating: a query with no supporting fact returns `known=False`.
 
 AirLLM's role, if you want it, is unchanged and remains **optional and small**: it backs the
-natural-language *command* front-end (`cortex/nl_interface.py` via `local_llm/airllm_backend.py`,
+natural-language *command* front-end (`sensorimotor/nl_interface.py` via `local_llm/airllm_backend.py`,
 `[llm]` extra), classifying an English phrase into one of ~10 fixed labels. It is not in the
 self-check gate and CI never installs it. See [AIRLLM_ANALYSIS.md](AIRLLM_ANALYSIS.md) for why that
 is a poor fit for AirLLM specifically — the default backend is a deterministic stdlib keyword router.

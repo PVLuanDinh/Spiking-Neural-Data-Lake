@@ -249,7 +249,7 @@ class DriftRecord(NamedTuple):
 #   reading of one timed pair, not a wiring of a population.
 # distinct-from: gates/replay_gate.py::run_gate -- returns four arms' outcomes where arms 2-4
 #   are arm 1's reds; the arms differ by an INJECTED DEFECT, not by a table under comparison.
-# distinct-from: brainstem/arm_bridge.py::send_outcome and brainstem/so101_arm.py::collision -- the
+# distinct-from: sensorimotor/arm_bridge.py::send_outcome and brainstem/so101_arm.py::collision -- the
 #   ROBOT arm's UDP reward datagram and its contact authority; "arm" there is hardware.
 #   All five sites read 2026-09-09 before this note was written.
 class ArmResult(NamedTuple):

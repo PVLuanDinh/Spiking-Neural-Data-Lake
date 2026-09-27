@@ -415,7 +415,7 @@ def layout():
 # ================================================================================================
 # The first module drawn, pinned. This is the SEED CONTRACT: it fails if the seed, the placement
 # rules, or the head of the module census changes -- any of which silently moves every coordinate.
-_SEED_PIN_KEY = "cortex/rank_order_coding"
+_SEED_PIN_KEY = "sensorimotor/rank_order_coding"
 _SEED_PIN_XYZ = (0.2656447451741262, 0.44153862227162194, 0.5522876185510223)
 
 

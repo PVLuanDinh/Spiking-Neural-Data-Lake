@@ -15,7 +15,7 @@ neuromorphic way to feed continuous signals (joint angle, distance, IR) into an 
 Does NOT replace the verified distance-bin path in arm_config /
 gesture_recognition — it's an additional, noise-robust front-end for downstream SNN consumers.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.population_encoding   # self-check
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sensorimotor.population_encoding   # self-check
 """
 
 import math

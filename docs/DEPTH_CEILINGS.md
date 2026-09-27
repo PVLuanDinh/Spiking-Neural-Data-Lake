@@ -188,7 +188,7 @@ sentence tested, including grammatical ones like "the cat sat on the mat". It em
 and cannot separate fluent English from word salad. This is not a failure against its own spec — ROSE is a
 constituency-and-grounding mechanism over a small world KB and says so. But it sharpens the honest claim.
 
-**The core's "spiking LM" is an empty pipe.** `cortex/spiking_lm_serve.py` is registered CORE and its
+**The core's "spiking LM" is an empty pipe.** `sensorimotor/spiking_lm_serve.py` is registered CORE and its
 self-check passes, but there is **no trained weight file anywhere in the repo**: it serves a hand-built
 4-token demo model (`vocab=4, d_model=4, 1 block`) that generates `'abbbbbb'`. `run_selfchecks.py` records
 that SpikeGPT was scrapped in v3.77. There is no trained language model in this project.

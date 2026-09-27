@@ -1028,7 +1028,7 @@ def build_default_cortex(
             AbductionExpert(seed=seed, triples=triples)
         )  # inert on non-causal queries; honest gap on ambiguity
     if enable_recognizer_bank:  # opt-in heterogeneous spiking recognizer ensemble
-        from snn_data_lake.cortex.recognizer_bank import RecognizerBankExpert
+        from snn_data_lake.sensorimotor.recognizer_bank import RecognizerBankExpert
 
         cortex.register(
             RecognizerBankExpert(seed=seed)

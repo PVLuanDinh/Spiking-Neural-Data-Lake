@@ -19,7 +19,7 @@ Format (a JSON dict tagged "snn_brain_bundle/1"):
    "motor":    {"pid": true, "cpg": false},          # hardwired primitives -> config flags, NOT weights
    "meta":     {...}}
 
-Per-skill spiking inference is DELEGATED to snn_data_lake.cortex.trained_brain -- never reimplemented here.
+Per-skill spiking inference is DELEGATED to snn_data_lake.sensorimotor.trained_brain -- never reimplemented here.
 
   python -m snn_data_lake.substrate.brain_bundle        # (also run by run_selfchecks.py)
 """
@@ -27,7 +27,7 @@ Per-skill spiking inference is DELEGATED to snn_data_lake.cortex.trained_brain -
 import json
 import os
 
-from snn_data_lake.cortex import trained_brain
+from snn_data_lake.sensorimotor import trained_brain
 
 BUNDLE_FORMAT = "snn_brain_bundle/1"
 DEFAULT_INSTINCTS = {"reflex": True, "cortisol": True}
@@ -105,7 +105,7 @@ class BrainBundle:
 
     self.skills maps name -> a loaded trained_brain dict (its own learned weights). self.instincts
     and self.motor are booleans for HARDWIRED primitives (reflex/cortisol/pid/cpg) -- never weights.
-    Inference for each skill is delegated to snn_data_lake.cortex.trained_brain, not reimplemented here.
+    Inference for each skill is delegated to snn_data_lake.sensorimotor.trained_brain, not reimplemented here.
     """
 
     def __init__(self, skills, instincts=None, motor=None, meta=None):

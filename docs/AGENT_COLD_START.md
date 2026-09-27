@@ -571,8 +571,8 @@ group).
 ### 8.4 Red-team (from the `thinking-red-team` procedure)
 
 This is security review, and only of surfaces you are authorized to assess. Here, that means:
-- `substrate/web_ingest.py` (its SSRF firewall);
-- `substrate/ingest_guard.py`;
+- `sensorimotor/web_ingest.py` (its SSRF firewall);
+- `sensorimotor/ingest_guard.py`;
 - the cockpit's HTTP surface;
 - anything that parses outside data or executes self-written code (the self-build path).
 

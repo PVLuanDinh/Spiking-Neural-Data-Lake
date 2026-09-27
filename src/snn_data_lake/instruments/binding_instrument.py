@@ -1259,7 +1259,7 @@ def _t080_head():
 #   comparison; this formats one already-computed arm. Read.
 # distinct-from: cortex/autotelic_goals.py -- `_random_reach_rate` is a CHANCE BASELINE under
 #   a random policy; no baseline, no policy and no rng here. Read.
-# distinct-from: substrate/efferent_boundary.py -- `intended_deltas` PARSES an action token
+# distinct-from: sensorimotor/efferent_boundary.py -- `intended_deltas` PARSES an action token
 #   into per-joint degrees; this parses nothing. Read.
 # distinct-from: cortex/agency_monitor.py -- its `_t079_arm_extras` computes an action
 #   histogram and two Pearsons for a DIFFERENT instrument's arms. This is a printf, and it

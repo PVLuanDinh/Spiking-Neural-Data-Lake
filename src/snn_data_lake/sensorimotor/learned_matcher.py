@@ -12,14 +12,14 @@ Honesty: "stronger" is a claim, so this BENCHMARKS both matchers on the SAME
 windows across a rising-noise sweep and reports who wins where. Low noise: a tie
 (both ~100%). The learned model earns its keep as noise grows.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.learned_matcher
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sensorimotor.learned_matcher
 """
 
 import random
 
 from snn_data_lake import snn_classifier as C  # train/forward/softmax + globals N, STEPS, EPOCHS
-from snn_data_lake.brainstem.signal_loop import build_default_library
-from snn_data_lake.cortex.spike_preprocessing import encode_latency, van_rossum_distance
+from snn_data_lake.sensorimotor.signal_loop import build_default_library
+from snn_data_lake.sensorimotor.spike_preprocessing import encode_latency, van_rossum_distance
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

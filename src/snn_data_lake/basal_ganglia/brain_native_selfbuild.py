@@ -30,7 +30,7 @@ WHAT THIS IS NOT (do not overclaim):
     de-hardcodings are exhausted -- and honest-null is the GOAL state (a less-hardcoded brain), REPORTED,
     never faked and never patched over with a smuggled cold-start constant.
   * Learning from raw real-world / internet data is a DESIGNED EXTENSION POINT (DataIngestSource, a
-    documented NotImplemented stub reusing substrate/web_ingest + the chat DurableChatMemory), NOT built
+    documented NotImplemented stub reusing sensorimotor/web_ingest + the chat DurableChatMemory), NOT built
     here. This is an honest, extensible substrate for it -- not "unbounded self-improvement" today.
 
 HONEST EMPIRICAL FINDING (why the de-hardcode source honest-nulls on many seeds): a fixed absolute
@@ -303,7 +303,7 @@ class DataIngestSource(SelfBuildSource):
     """EXTENSION POINT (NOT built): the open-ended direction -- ingest raw data from any source (the real
     world / the internet) and propose a gate-verified LEARNED change (e.g. a consolidated learned-weight
     recalibration of a threshold the DehardcodeSource could not de-hardcode heuristically). It would reuse
-    existing ingestion primitives -- substrate/web_ingest, the chat daemon's substrate/chat_memory
+    existing ingestion primitives -- sensorimotor/web_ingest, the chat daemon's substrate/chat_memory
     DurableChatMemory, sensor/file ingest. Shipped as an honest stub so the framework is provably
     open-ended WITHOUT overclaiming that internet/real-world learning works today."""
 

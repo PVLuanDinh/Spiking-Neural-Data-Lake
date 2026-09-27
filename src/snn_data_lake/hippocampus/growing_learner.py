@@ -32,8 +32,8 @@ GROWS capacity as data arrives; it does not "think".
 
 import math
 
-from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
-from snn_data_lake.cortex.spike_preprocessing import N
+from snn_data_lake.sensorimotor.multimodal_encoder import encode_multimodal
+from snn_data_lake.sensorimotor.spike_preprocessing import N
 from snn_data_lake.substrate.growable import grow_vector
 
 
@@ -109,7 +109,7 @@ class GrowingLearner:
     # SOM and the lifelong consolidator's learner (two more live instances) and the arm's Q-table
     # over these ids do NOT persist yet -- said in Brain._flush_prototypes' docstring too.
     # distinct-from: cortex/neurogenesis_engine.py -- restore_growth_state() rebuilds NG-SNN tensors
-    #   from an npz blob. distinct-from: cerebellum/spiking_jepa.py, cortex/rsnn_encoder.py -- load
+    #   from an npz blob. distinct-from: cerebellum/spiking_jepa.py, sensorimotor/rsnn_encoder.py -- load
     #   weight matrices from tagged JSON. distinct-from: substrate/wiring_manifest.py -- rebuilds
     #   ports from a dict. distinct-from: cortex/reasoning_curriculum.py -- that module's OWN
     #   state_dict (codebook + ranks). Each tenant serialises its own object under the repo's

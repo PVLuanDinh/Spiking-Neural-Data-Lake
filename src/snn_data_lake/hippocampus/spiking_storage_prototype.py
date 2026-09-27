@@ -86,7 +86,7 @@ GRADIENT_CLAIM = {
 
 # ---- self-check fixture dimensions ------------------------------------------
 # P1: these size the DEMONSTRATION only. They arbitrate no live behaviour -- the one
-# live consumer (cortex/recognizer_bank.py::StorageRecognizer) passes its own n, k and
+# live consumer (sensorimotor/recognizer_bank.py::StorageRecognizer) passes its own n, k and
 # steps into recall() and never reads these names. They are the shape of the figure
 # this file prints, not a threshold anything is judged against; every value that IS
 # judged against something is measured from the same run (see `criteria`).

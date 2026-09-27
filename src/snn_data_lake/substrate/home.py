@@ -203,7 +203,7 @@ _T_STATE = b"\x07"
 #
 # distinct-from: basal_ganglia/self_build_loop.py -- its _firewalled_bytes snapshots the safety
 #   envelope's FILES for byte-exact restore; no record framing, no chain. distinct-from:
-#   brainstem/arm_bridge.py -- parses UDP reward packets. distinct-from: substrate/lake_engine.py --
+#   sensorimotor/arm_bridge.py -- parses UDP reward packets. distinct-from: substrate/lake_engine.py --
 #   AppendBudget counts bytes/tick; it labels this class, it does not encode it. All sites read.
 _T_GROWTH_DELTA = b"\x08"
 
@@ -719,7 +719,7 @@ def set_append_observer(fn):
 #   lives here rather than there.
 # distinct-from: substrate/kernel_tick.py::compile_bundles -- "THE ONE" phrasing only; it compiles
 #   delivery bundles from edges and touches no lake record.
-# distinct-from: substrate/afferent_boundary.py -- "the ONE transduction-in boundary": sensor
+# distinct-from: sensorimotor/afferent_boundary.py -- "the ONE transduction-in boundary": sensor
 #   readings into the stimulus contract, no record, no tag, no bytes/tick.
 # distinct-from: neuromodulation/raphe_serotonin.py::declare_ports -- "the FIRST real manifest
 #   registrant": a typed wiring-manifest port declaration, not an append observation.
@@ -948,7 +948,7 @@ def save_state(name, obj):
 
     Every JSON member of that census is closed by this one edit, because the callers name a state
     and this decides where it lives: `cortex/brain.py` (reasoning_curriculum.json),
-    `brainstem/closed_loop.py` (valence.json), `hippocampus/lake_consolidation.py`
+    `sensorimotor/closed_loop.py` (valence.json), `hippocampus/lake_consolidation.py`
     (recall_trace.json), `cortex/time_cells.py` (time_cells.json), `reasoning/gf.py`
     (gf_library.json, active_library.json), `cortex/nightly_skills.py (promoted 2026-08-11)`. Not one of them changed a
     line to move, and none of them can drift back.

@@ -68,8 +68,8 @@ def test_a_local_rule_owes_nothing_and_the_reference_is_not_a_claimant():
 #: every gate stayed green while it was invisible.
 _MUST_BE_ENUMERATED = (
     "cortex/eprop_kernel.py",  # the reference gradient FR-011 reconciles; 17 defs, once all unseen
-    "cortex/eprop_shd.py",  # shipped encoder, guards itself on its own kappa-filtered form
-    "cortex/eprop_nmnist.py",  # shipped encoder
+    "sensorimotor/eprop_shd.py",  # shipped encoder, guards itself on its own kappa-filtered form
+    "sensorimotor/eprop_nmnist.py",  # shipped encoder
     "basal_ganglia/mlp_q.py",  # the feedback-alignment case SC-003 turns on
     "cerebellum/jepa_world_model.py",  # the closed transport violation
     "cortex/predictive_coding.py",  # inference ran every tick while learning never did

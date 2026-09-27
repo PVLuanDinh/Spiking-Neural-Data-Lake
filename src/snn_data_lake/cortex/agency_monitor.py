@@ -116,13 +116,13 @@ from pathlib import Path
 
 from snn_data_lake.brainstem import arm_config
 from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
-from snn_data_lake.substrate._mathutils import clamp01, pearson, q95
-from snn_data_lake.substrate.afferent_boundary import proprioception_delta
-from snn_data_lake.substrate.efferent_boundary import (
+from snn_data_lake.sensorimotor.afferent_boundary import proprioception_delta
+from snn_data_lake.sensorimotor.efferent_boundary import (
     _ROTATE_TOKEN,
     intended_deltas,
     proprioception_deltas,
 )
+from snn_data_lake.substrate._mathutils import clamp01, pearson, q95
 
 __version__ = "0.1.0"
 

@@ -73,7 +73,7 @@ becoming a green light that cannot go red.
 
 ```
 git diff --quiet HEAD -- src/snn_data_lake/cortex/language_acquisition.py \
-    src/snn_data_lake/cortex/spiking_lm_serve.py src/snn_data_lake/cortex/brain.py \
+    src/snn_data_lake/sensorimotor/spiking_lm_serve.py src/snn_data_lake/cortex/brain.py \
     src/snn_data_lake/reasoning/blimp_bench.py tools/
 git rev-parse HEAD
 PY tools/blimp_baseline.py 25
@@ -87,6 +87,12 @@ materially, something changed and that is the finding.
 **Why the abort matters**: `specs/003` records a research pass that measured an uncommitted rewrite and
 labelled it the baseline. HEAD is moving in this repo right now because a second agent is committing, so
 this check is live, not ceremonial.
+
+### G8 M3 path note (2026-09-27)
+
+The original baseline command named
+`src/snn_data_lake/cortex/spiking_lm_serve.py`; its runnable path is now
+`src/snn_data_lake/sensorimotor/spiking_lm_serve.py`.
 
 ---
 

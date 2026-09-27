@@ -28,7 +28,7 @@ DISTINCT from the repo's other free-energy / reward modules (this is NOT a scala
 embodied in a task world -- do not duplicate):
   - reasoning/free_energy_control.py : a single spike fires only if it lowers prediction error
       -- spike-level control, NO embodiment, NO task.
-  - brainstem/closed_loop.py: dopamine/cortisol learning from a graded SCALAR reward.
+  - sensorimotor/closed_loop.py: dopamine/cortisol learning from a graded SCALAR reward.
   - basal_ganglia/r_stdp.py, basal_ganglia/valence_stdp.py: reward-modulated STDP with an explicit
       scalar reward / reward-prediction-error.
     (These three were cited as the FLAT pre-3.0 paths `src/snn_data_lake/{closed_loop,r_stdp,

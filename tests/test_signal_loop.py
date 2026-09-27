@@ -9,7 +9,7 @@ Run: pytest tests/test_signal_loop.py
 """
 
 from snn_data_lake import signal_loop as sl
-from snn_data_lake.cortex.spike_preprocessing import N
+from snn_data_lake.sensorimotor.spike_preprocessing import N
 
 
 def test_normalize_empty_and_constant_windows():

@@ -82,7 +82,7 @@ seeds its own local random.Random, so two runs with the same seed are identical.
 import math
 import random
 
-from snn_data_lake.cortex.spike_preprocessing import N, T, encode_latency
+from snn_data_lake.sensorimotor.spike_preprocessing import N, T, encode_latency
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

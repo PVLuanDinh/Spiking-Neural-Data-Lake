@@ -46,7 +46,7 @@ def _perceiving_brain():
     # must be contract-valid (the stub encoder still ignores its content).
     import numpy as _np
 
-    from snn_data_lake.substrate.afferent_boundary import VISION_FRAME_SHAPE
+    from snn_data_lake.sensorimotor.afferent_boundary import VISION_FRAME_SHAPE
 
     b._real_frames = [_np.zeros(VISION_FRAME_SHAPE, "float32")]
     b._real_labels = [0]

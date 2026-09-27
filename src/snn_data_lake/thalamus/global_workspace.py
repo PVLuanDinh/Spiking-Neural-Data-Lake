@@ -804,7 +804,7 @@ class Coalition:
     # distinct-from: gates/envelope_hash_gate.py -- envelope baseline writer.
     # distinct-from: cortex/neurogenesis_engine.py -- growth-state npz restore.
     # distinct-from: basal_ganglia/self_build_loop.py -- firewalled-file byte restore.
-    # distinct-from: cortex/trained_brain.py -- crc32 seed derivation. Serializer-phrase
+    # distinct-from: sensorimotor/trained_brain.py -- crc32 seed derivation. Serializer-phrase
     #   overlap only; THIS pair is the _T_COALITION lake payload codec and nothing else
     #   encodes that record. All sites read.
     def to_bytes(self):
@@ -3809,7 +3809,7 @@ def main():
     #   coalitions for the RE-ENTRY kernel; this block is a SELF-CHECK harness driving THIS
     #   module's record layer end-to-end. distinct-from: instruments/port_charge_probe.py -- the
     #   replay-twice charge A/B instrument; nothing here measures charge. distinct-from:
-    #   cortex/pc_cortex_serve.py -- its settle is the predictive-coding hierarchy relaxation.
+    #   sensorimotor/pc_cortex_serve.py -- its settle is the predictive-coding hierarchy relaxation.
     #   distinct-from: cerebellum/spiking_jepa.py and reasoning/arc_agi/brain_player.py --
     #   phrase overlap only (their drives run retinas/games, not lake framing). All sites read.
     # Four claims, each with its red reachable IN THIS BLOCK: (a) the record IS the 3-tuple to

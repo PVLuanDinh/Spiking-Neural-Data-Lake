@@ -27,11 +27,11 @@ feed; the banding keeps each modality separable in the 64-feature spike code. In
 are expected already normalized to [0,1] (a real driver scales raw physical units
 first); we clamp defensively. This is a spike ENCODER, not "thinking".
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.multimodal_encoder
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sensorimotor.multimodal_encoder
 """
 
-from snn_data_lake.cortex.population_encoding import PopulationEncoder
-from snn_data_lake.cortex.spike_preprocessing import N, encode_latency, van_rossum_distance
+from snn_data_lake.sensorimotor.population_encoding import PopulationEncoder
+from snn_data_lake.sensorimotor.spike_preprocessing import N, encode_latency, van_rossum_distance
 
 # 4 equal bands tiling the N=64 substrate, one per modality (16 features each).
 _BANDS = (("visual", 0, 16), ("temperature", 16, 32), ("audio", 32, 48), ("distance", 48, 64))

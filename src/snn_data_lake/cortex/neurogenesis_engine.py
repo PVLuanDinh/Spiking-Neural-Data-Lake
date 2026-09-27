@@ -57,8 +57,8 @@ import random
 import torch
 
 from snn_data_lake.brainstem.arm_config import CONTACT
-from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
 from snn_data_lake.hippocampus.ng_snn import NGSNN
+from snn_data_lake.sensorimotor.multimodal_encoder import encode_multimodal
 from snn_data_lake.substrate.device import crossover, decisions, select
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
@@ -114,7 +114,7 @@ def _markov_matrix(k_modes, peak, seed):
 
 # distinct-from: cortex/brain.py -- Brain.tick() is the circadian wake/sleep iteration this
 #   stream's drive() mimics; it perceives, this synthesizes a harness stimulus. Site read.
-# distinct-from: brainstem/arm_bridge.py -- recv_outcome() reads the NEXT reward packet off a
+# distinct-from: sensorimotor/arm_bridge.py -- recv_outcome() reads the NEXT reward packet off a
 #   socket. distinct-from: cerebellum/forward_model.py -- reset() sets a plant state.
 #   distinct-from: cortex/dendritic_neuron.py -- step() advances a compartment. distinct-from:
 #   cortex/generative_self_model.py -- a forward model of the self-signal. Phrase overlap on
@@ -161,8 +161,8 @@ class SyntheticPerceptStream:
 
     # distinct-from: cortex/brain.py -- Brain.tick() is the circadian iteration. distinct-from:
     #   basal_ganglia/brain_native_selfbuild.py -- a one-time sidecar import. distinct-from:
-    #   brainstem/arm_bridge.py -- reads a reward packet. distinct-from: brainstem/
-    #   autonomous_loop.py -- step() is the arm's tick. distinct-from: brainstem/closed_loop.py
+    #   sensorimotor/arm_bridge.py -- reads a reward packet. distinct-from: brainstem/
+    #   autonomous_loop.py -- step() is the arm's tick. distinct-from: sensorimotor/closed_loop.py
     #   -- drives raw signal lines through the stack. Phrase overlap only. All sites read.
     def drive(self, engine, n):
         """Feed `engine` n percepts: observe, then one sleep tick, 1:1. The brain interleaves

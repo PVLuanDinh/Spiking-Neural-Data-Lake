@@ -30,7 +30,7 @@ a restored run continues with byte-identical trials -- proven in the self-check 
 fresh-seed divergence control.
 
 THE STIMULUS PORT'S MANIFEST DISPOSITION, stated (T026 precedent): the per-modality
-afferent TypedPorts are T036's deliverable (`substrate/afferent_boundary.py`, the pinned
+afferent TypedPorts are T036's deliverable (`sensorimotor/afferent_boundary.py`, the pinned
 modality inventory); this module's `tick(stimulus=None)` is the KERNEL-side API those
 ports feed, so no manifest row is declared here -- declaring the boundary twice would be
 the second-mechanism shape P2 forbids.
@@ -47,7 +47,7 @@ DERIVED is everything the kernel owns: quantization uses the kernel's OWN frac_b
 #   _driven_run is a raw STREAM, not trials). distinct-from:
 #   instruments/ignition_instrument.py -- an L7 scorer over the RE-ENTRY workspace with its
 #   own drive sweep; this drives the KERNEL and owns trials, not verdicts. distinct-from:
-#   substrate/afferent_boundary.py (T036) -- the declared modality boundary that will
+#   sensorimotor/afferent_boundary.py (T036) -- the declared modality boundary that will
 #   FEED this port. distinct-from: midbrain/sc_deep_layers.py and midbrain/
 #   superior_colliculus.py -- the tree's GAZE fixation/saccade MECHANICS (omnipause gate,
 #   target selection); this module's 'fixation'/'saccade' are trial-PHASE labels over the

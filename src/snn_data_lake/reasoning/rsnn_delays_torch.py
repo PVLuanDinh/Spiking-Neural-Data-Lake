@@ -1,7 +1,7 @@
 """Tier-3 deeper spiking encoder: DCLS LEARNABLE DELAYS + ADAPTIVE-LIF (PyTorch trainer) -> zero-dep core.
 
 **Runs on the RTX 5070 (NORD_GPU=1 .venv-cu128); CPU-smoke-verified only in the authoring env.** This is
-the torch TRAINING tier for the zero-dep core cortex/rsnn_encoder.py (served-frozen `snn_rsnn/1`). It
+the torch TRAINING tier for the zero-dep core sensorimotor/rsnn_encoder.py (served-frozen `snn_rsnn/1`). It
 trains a recurrent-free feedforward SNN whose per-synapse conduction DELAYS are learned with Dilated
 Convolutions with Learnable Spacings (DCLS) alongside the weights, with adaptive-LIF neurons carrying
 heterogeneous TRAINABLE membrane time constants -- the ICLR-2024 recipe (Hammouamri, Khalfaoui-Hassani &
@@ -595,7 +595,7 @@ def verify_transfer(path, model, n_probe=4, tol=1e-6):
     except ImportError:
         print("verify_transfer: skipped (torch not installed)")
         return None
-    from snn_data_lake.cortex.rsnn_encoder import RsnnEncoder
+    from snn_data_lake.sensorimotor.rsnn_encoder import RsnnEncoder
 
     ref = model.double().to("cpu")
     ref.eval()
@@ -638,7 +638,7 @@ def main():
         print("=" * 74)
         print("RSNN DELAYS TORCH TRAINER (GPU/train tier, not in CI) -- torch is NOT installed")
         print("=" * 74)
-        print("Torch training tier for the served core cortex/rsnn_encoder.py (snn_rsnn/1):")
+        print("Torch training tier for the served core sensorimotor/rsnn_encoder.py (snn_rsnn/1):")
         print("DCLS learnable delays + adaptive-LIF, surrogate-gradient BPTT on SHD/N-MNIST.")
         print("Without torch there is nothing to train; CI covers the served core instead.")
         print("needs torch (+tonic): pip install '.[gpu]'  (and '.[nmnist]' for shd/nmnist)")

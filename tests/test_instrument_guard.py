@@ -154,7 +154,7 @@ def test_a_constructor_may_not_reseed_the_process(tmp_path, monkeypatch):
 
     MEASURED when this rule landed: three more live instances of the same shape were sitting in
     `src/` (`instruments/developmental_loop_brain.py`, `reasoning/_loop_common.py`, plus the
-    already-bracketed `cortex/recognizer_bank.py`). The defect recurred and nothing caught it.
+    already-bracketed `sensorimotor/recognizer_bank.py`). The defect recurred and nothing caught it.
     """
     viol = _scan_fixture(
         tmp_path,
@@ -193,7 +193,7 @@ def test_a_constructor_may_not_reseed_the_process(tmp_path, monkeypatch):
 def test_a_restored_seed_is_not_a_violation(tmp_path, monkeypatch, remedy, source):
     """A gate that reddens on its own remedy teaches the next reader to stop applying it.
 
-    All three are shapes the FIX takes in this tree: `cortex/recognizer_bank.py` brackets with
+    All three are shapes the FIX takes in this tree: `sensorimotor/recognizer_bank.py` brackets with
     getstate/setstate because the MoE trainer it calls draws from the module-global `random`, the
     two `_LinearReadout` copies fork because `nn.Linear` takes no `generator=`, and per-instance is
     what the determinism invariant asks for outright.
@@ -278,7 +278,7 @@ def test_the_live_tier_has_no_violations():
     Covers `src/` since 2026-08-14, so this is 471 modules rather than 97. It was green on the
     working tree the moment the four findings were cleared; the A/B that proves it can still SEE
     them ran the same `scan()` over the pre-fix files at HEAD and returned 3 (the fourth,
-    `cortex/recognizer_bank.py`, was already bracketed and is clean in both arms).
+    `sensorimotor/recognizer_bank.py`, was already bracketed and is clean in both arms).
     """
     viol, _census = instrument_guard.scan()
     unexempt = [v for v in viol if f"{v[0]} -> {v[2]}" not in instrument_guard.EXEMPT]

@@ -49,9 +49,9 @@ DEVICE = "cpu"  # pin on CPU: deterministic across the cuda/no-cuda split, and t
 def _load_shd():
     """Return (module, dotted_name). Governed path first, root path second."""
     try:
-        import snn_data_lake.cortex.eprop_shd as m
+        import snn_data_lake.sensorimotor.eprop_shd as m
 
-        return m, "snn_data_lake.cortex.eprop_shd"
+        return m, "snn_data_lake.sensorimotor.eprop_shd"
     except ImportError:
         import training.eprop_shd as m
 
@@ -121,7 +121,7 @@ def _reshape_defect(net):
 
 
 def capture(tag, perturb=False, reshape=False):
-    import snn_data_lake.cortex.eprop_nmnist as nm
+    import snn_data_lake.sensorimotor.eprop_nmnist as nm
 
     shd, shd_name = _load_shd()
 

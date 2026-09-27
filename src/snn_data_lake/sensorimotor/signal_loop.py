@@ -87,10 +87,10 @@ from snn_data_lake.brainstem.reflex import (  # #2 instinctive fast-path (no cyc
     Reflex,
     reflex_guard,
 )
-from snn_data_lake.cortex.spike_preprocessing import N, encode_latency, van_rossum_distance
 from snn_data_lake.neuromodulation.cortisol import (
     Cortisol,  # slow tonic stress (leaf: only os/math)
 )
+from snn_data_lake.sensorimotor.spike_preprocessing import N, encode_latency, van_rossum_distance
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
@@ -251,7 +251,7 @@ def load_library():
       `--learn` both write a superset of the defaults).
     * IT READS WHATEVER HOME IS SET WHEN IT IS CALLED, and `main()` calls it on its first line --
       BEFORE the default branch scopes an isolated NORD_HOME. So `python -m
-      snn_data_lake.brainstem.signal_loop` with no NORD_HOME set opens the operator's real
+      snn_data_lake.sensorimotor.signal_loop` with no NORD_HOME set opens the operator's real
       `brain_lake.bin` (519,646,815 B on 2026-08-05) and replays it once, which is a quarter to
       four tenths of a second plus the BinLog construction. Not a correctness bug and not a write:
       `run_selfchecks.py` sets NORD_HOME for the whole gate run, and no `<home>/signatures.json`
@@ -428,13 +428,13 @@ def run(source, library, matcher=None, emit=True, on_unknown=None):
     hazard and it is stated rather than removed, because removing it is a TWO-FILE edit and the
     other file is not this one:
 
-        substrate/sensor_csv_ingest.py  `stats, lake = S.run(src, lib, emit=False, on_unknown=...)`
+        sensorimotor/sensor_csv_ingest.py  `stats, lake = S.run(src, lib, emit=False, on_unknown=...)`
 
     is a FOURTH call site outside this module (the other three are `main()`'s `--serial` and
     `--stdin` branches, which discard it, and `_selfcheck`) and it prints `len(lake)`. The
     2026-08-05 P4b change dropped the second return value on the belief that
     `flush_lake` was its only consumer; MEASURED afterwards, `python -m
-    snn_data_lake.substrate.sensor_csv_ingest` exited 1 with `ValueError: too many values to unpack
+    snn_data_lake.sensorimotor.sensor_csv_ingest` exited 1 with `ValueError: too many values to unpack
     (expected 2)`, and that module is a CORE entry in run_selfchecks.py -- so the gate went red. The
     two-value contract is restored here rather than papered over with an empty list, which would
     have made that module print a silently wrong window count.
@@ -745,7 +745,7 @@ def _selfcheck(library, matcher, matcher_name):
     child = (
         f"import sys; sys.path.insert(0, {src_root!r})\n"
         f"import os; os.environ['NORD_HOME'] = {os.environ['NORD_HOME']!r}\n"
-        "from snn_data_lake.brainstem.signal_loop import load_library\n"
+        "from snn_data_lake.sensorimotor.signal_loop import load_library\n"
         "lib = load_library()\n"
         "assert 'DISCOVERED_SELFCHECK' in lib, sorted(lib)\n"
         f"assert lib['DISCOVERED_SELFCHECK'] == {taught['DISCOVERED_SELFCHECK']!r}, 'vector changed'\n"

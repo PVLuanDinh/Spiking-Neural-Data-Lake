@@ -1005,7 +1005,7 @@ def _entropy(values):
 
 # G1(a)'s scorer, extended in place with `floors`; none of the sites below scores a replay's
 # predictions against a recorded category stream (all read):
-# distinct-from: substrate/ingest_guard.py -- license_ok refuses a non-permissive licence id
+# distinct-from: sensorimotor/ingest_guard.py -- license_ok refuses a non-permissive licence id
 # distinct-from: cortex/cortical_prior.py -- validate lists reference data missing an attribute
 # distinct-from: cortex/counterfactual_sim.py -- counterfactual scores imagined rollouts by value_fn
 # distinct-from: instruments/prior_drift_harness.py -- arm_wrong builds a band-permuted target table
@@ -1400,7 +1400,7 @@ RB6_BAR = 0.05  # the readout's (e1) - (e1-0) must reach it on 4242; its red twi
 #   WORD1 when random() < 0.5; this family is section 2.7's, WORDS[random() < 0.5], as a recording
 # distinct-from: reasoning/jepa_scaffold_torch.py -- SyntheticStream renders an action-conditioned
 #   latent; no category stream
-# distinct-from: cortex/corpus_stream.py -- yields (context words, next word) from a text corpus
+# distinct-from: sensorimotor/corpus_stream.py -- yields (context words, next word) from a text corpus
 def rb6_stream(seed, *, history_free=False):
     """R-b6's synthetic stream (section 2.7; the design generator is archive/g1b-2026-09-25/
     probe_rb6_positive_control.py::synthetic_stream). Whole words WORDS[rng.random() < 0.5], rng =

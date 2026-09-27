@@ -39,7 +39,11 @@ import weakref
 from array import array
 from collections import OrderedDict
 
-from snn_data_lake.cortex.spike_preprocessing import N, encode_latency, victor_purpura_distance
+from snn_data_lake.sensorimotor.spike_preprocessing import (
+    N,
+    encode_latency,
+    victor_purpura_distance,
+)
 
 
 def _encode_events(ev):

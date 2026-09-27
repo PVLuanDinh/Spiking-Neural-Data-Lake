@@ -149,7 +149,7 @@ EXEMPT = {
     # violation is deleted, not kept as decoration -- that is this gate's own rule working.
     "pillow": (
         "TRANSITIVE, declared explicitly on purpose. `[hf] = datasets, huggingface-hub, pillow` -- "
-        "`datasets` needs pillow to decode Image features, which substrate/hf_stream.py streams. "
+        "`datasets` needs pillow to decode Image features, which sensorimotor/hf_stream.py streams. "
         "SEPARATELY TRACKED (specs/010 T021): substrate/arm_view.py::encode_png() hand-writes a PNG "
         "encoder while pillow sits declared here, which docs/POLICIES.md names as P7 incident #4 "
         "(the 'hand-written PNG encoder' row of P7's incident table). Adopting pillow there and "
@@ -181,7 +181,7 @@ ALL_EXCLUDES = {
     "genn": "needs a C++ compiler and a CUDA toolchain on the host, so `pip install .[all]` would fail on any machine without them. This is the one exclusion `[all]`'s own comment already named.",
     "llm": "airllm -- the on-device LLM backend, deliberately quarantined (CLAUDE.md layout: `local_llm/ (optional LLM backend, quarantined)`). It is a multi-GB model-serving stack, and the brain's language path is brain-native by design.",
     "desktop": "pywebview -- a native GUI toolkit for the cockpit window. The cockpit is already reachable in any browser at :8137, so this buys a window, not a capability, and it pulls a platform GUI stack.",
-    "hf": "datasets + huggingface-hub -- a network-backed dataset tier. substrate/hf_stream.py's self-check is deliberately OFFLINE and needs none of it (run_selfchecks CORE: 'offline self-check (no network, no datasets dep)'), so `[all]` stays installable with no network stack.",
+    "hf": "datasets + huggingface-hub -- a network-backed dataset tier. sensorimotor/hf_stream.py's self-check is deliberately OFFLINE and needs none of it (run_selfchecks CORE: 'offline self-check (no network, no datasets dep)'), so `[all]` stays installable with no network stack.",
     "nengo": "installing nengo CHANGES THE GATE: run_selfchecks grows NENGO_GATED from skipped to run, and nengo ships a pytest plugin whose hook signature is invalid under pytest 9.1.1 -- survivable only because `-p no:nengo` is in addopts. An aggregate extra must not silently move the gate count. RE-MEASURED 2026-08-05: `run_selfchecks.py --list` prints 280 modules in .venv-lake, where `importlib.util.find_spec('nengo')` is None and no NENGO_GATED entry is listed at all; installing nengo adds it. This entry quoted POLICIES.md P5's `277 -> 278` until today -- stale by the +3 that specs/010's CORE promotions produced, and re-running it is what showed that. The structural claim this exclusion actually rests on is that the count MOVES, which is unchanged; the absolute was decoration, so the new absolute is given only for the half that was measured here.",
     "arc": (
         "ADVERTISES A CAPABILITY THAT DOES NOT RUN. `[all]` is the capability path, and folding "

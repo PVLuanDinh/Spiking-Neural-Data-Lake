@@ -44,9 +44,9 @@ import time
 from pathlib import Path
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
-from snn_data_lake.cortex.population_encoding import PopulationEncoder
 from snn_data_lake.cortex.vsa_reasoning import bind, bundle, coincidence, hv
 from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
+from snn_data_lake.sensorimotor.population_encoding import PopulationEncoder
 
 # spiking winner-take-all readout constants (shared with theory_of_mind.BeliefPopulation)
 _WINDOW = 20  # steps each content bin's LIF neuron is driven

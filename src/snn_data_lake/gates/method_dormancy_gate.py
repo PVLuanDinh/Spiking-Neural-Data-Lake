@@ -133,7 +133,7 @@ EXEMPT_METHOD = {
     # capability before deletion and each still owns one.
     # cerebellum.forward_model.ForwardModel.update: row DISCHARGED at specs/022 T037 (2026-08-21).
     # It read "never called on a live path ... retire after confirming the baseline never needs to
-    # re-fit" -- the efference-copy boundary (substrate/efferent_boundary.py, observe()) now calls
+    # re-fit" -- the efference-copy boundary (sensorimotor/efferent_boundary.py, observe()) now calls
     # update on EVERY envelope passage of the live loop (AutonomousArm.apply_observed), so the
     # method resolves through its live call site and the retire question is answered: the baseline
     # re-fits online. Recorded here so the row is not re-added; the T037 review panel caught the

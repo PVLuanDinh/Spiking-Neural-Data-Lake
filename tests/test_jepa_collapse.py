@@ -46,7 +46,7 @@ import pytest
 
 from snn_data_lake.brainstem.autonomous_loop import ACTIONS
 from snn_data_lake.cerebellum.jepa_world_model import JepaWorldModel
-from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
+from snn_data_lake.sensorimotor.multimodal_encoder import encode_multimodal
 
 CYCLE = 256
 CYCLES = 10

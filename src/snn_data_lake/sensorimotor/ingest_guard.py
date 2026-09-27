@@ -1,6 +1,6 @@
 """ingest_guard -- the two gates every byte of outside data passes before it reaches the brain.
 
-`substrate/web_ingest.py` already carries the NETWORK boundary (SSRF firewall, byte cap, redirect
+`sensorimotor/web_ingest.py` already carries the NETWORK boundary (SSRF firewall, byte cap, redirect
 re-validation): it decides whether a fetch is safe to MAKE. This module is the CONTENT boundary: it
 decides whether what came back is safe to KEEP. They are different questions and the second was
 missing.
@@ -29,7 +29,7 @@ anything else) can be pointed at the brain.
    to a file, never a fact written into the durable knowledge lake, and never a string handed to
    anything that acts. The flags are an observability aid on top of that boundary, not the boundary.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.ingest_guard
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sensorimotor.ingest_guard
 """
 
 import re

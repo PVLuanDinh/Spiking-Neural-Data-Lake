@@ -8,7 +8,7 @@ teaching signal is always the token that actually comes next -- supervision-by-t
     public domain). Yields (previous K phonemes, next phoneme).
   * WORDS: yields (previous K words, next word) for the semantics/syntax levels.
 
-Ingestion goes through `substrate.web_ingest.fetch_corpus` (urllib, SSRF-firewalled) fetches a
+Ingestion goes through `sensorimotor.web_ingest.fetch_corpus` (urllib, SSRF-firewalled) fetches a
 real text corpus and CMUdict once to TEMP, cached. Never fully resident -- the corpus is iterated as
 a token stream. If the network is unavailable (offline CI), it falls back to a small BUNDLED sample
 of real English + real CMUdict pronunciations, so the self-check is deterministic offline while the
@@ -17,7 +17,7 @@ SAME code path scales to millions of tokens when pointed at a real corpus URL.
 This is NOT toy scale: default targets are the full CMUdict and a multi-megabyte plain-text corpus
 (Project Gutenberg / text8-derived). The bundled fallback exists only so the offline self-check runs.
 
-  python -m snn_data_lake.cortex.corpus_stream        # self-check (offline sample or cached real corpus)
+  python -m snn_data_lake.sensorimotor.corpus_stream        # self-check (offline sample or cached real corpus)
 
 PROMOTED reasoning/ -> cortex/ 2026-08-11 (#10 family settlement C2; measured row in
 docs/P4C_BACKLOG.md) -- language-specific sensing/ingestion, cortex's lane. Verified at real
@@ -28,7 +28,7 @@ import os
 import re
 import tempfile
 
-from snn_data_lake.substrate.web_ingest import fetch_corpus
+from snn_data_lake.sensorimotor.web_ingest import fetch_corpus
 
 # Cache directory for the fetched corpus + CMUdict. This was `os.environ.get("TEMP", ".")`, which
 # is a WINDOWS-only variable: on the Linux and macOS CI runners TEMP is unset, so the fallback

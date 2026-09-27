@@ -18,7 +18,7 @@ contract `step(current)->spike, reset()` (we do NOT edit the cell files):
                                             mirrors its per-dt (v,u) dynamics, sub-stepped within a tick
   - cortex/adex_neuron.AdEx               : step(I)->0/1, reset(); sub-stepped within a tick
 
-Population encoding reuses cortex/population_encoding (its RBF receptive fields). Learning reuses the
+Population encoding reuses sensorimotor/population_encoding (its RBF receptive fields). Learning reuses the
 local STDP/covariance rule from substrate/basic_components -- no loss.backward, no autograd, no surrogate
 gradients: the weights autonomously diverge from init under the local rule.
 
@@ -35,7 +35,7 @@ from snn_data_lake.cortex.adex_neuron import AdEx
 from snn_data_lake.cortex.izhikevich_neuron import REGIMES
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.cortex.neuron_zoo import Population
-from snn_data_lake.cortex.population_encoding import PopulationEncoder
+from snn_data_lake.sensorimotor.population_encoding import PopulationEncoder
 from snn_data_lake.substrate.basic_components import (
     Connection,
     STDPRule,

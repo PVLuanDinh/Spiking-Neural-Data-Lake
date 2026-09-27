@@ -19,7 +19,7 @@ Three claims, each a regression pin on the tap around the safety envelope:
      able to perturb it.
 
 The efference-copy CHARGE (cut the copy -> forward-model error rises) lives in
-substrate/efferent_boundary.py's own self-check; this file owns the embodiment contract.
+sensorimotor/efferent_boundary.py's own self-check; this file owns the embodiment contract.
 """
 
 import math

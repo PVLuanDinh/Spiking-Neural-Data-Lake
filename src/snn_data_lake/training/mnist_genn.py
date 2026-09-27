@@ -65,7 +65,7 @@ from ml_genn.serialisers import Numpy
 from ml_genn.synapses import Exponential
 from ml_genn.utils.data import preprocess_spikes
 
-from snn_data_lake.cortex.trained_brain import (
+from snn_data_lake.sensorimotor.trained_brain import (
     DEFAULT_BETA,
     DEFAULT_THRESHOLD,
     accuracy as core_accuracy,

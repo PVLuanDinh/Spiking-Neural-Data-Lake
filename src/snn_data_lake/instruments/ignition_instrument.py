@@ -195,7 +195,7 @@ def sweep(theta, seed=0, subject_cls=ReentrantWorkspace, reentry=True):
     return trials, step
 
 
-# distinct-from: brainstem/signal_loop.py -- its windows are sensor segments, no PSTH.
+# distinct-from: sensorimotor/signal_loop.py -- its windows are sensor segments, no PSTH.
 # distinct-from: brainstem/autonomous_loop.py -- salience deviance, no spike raster. Read.
 def derive_window(trials):
     """Re-derive the late window from the DATA, via the distribution the ignition

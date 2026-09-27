@@ -35,7 +35,7 @@ def _perceiving_brain(n_frames=6):
     # ENCODER still ignores their content -- the pattern's intent is unchanged.
     import numpy as _np
 
-    from snn_data_lake.substrate.afferent_boundary import VISION_FRAME_SHAPE
+    from snn_data_lake.sensorimotor.afferent_boundary import VISION_FRAME_SHAPE
 
     b._real_frames = [_np.zeros(VISION_FRAME_SHAPE, "float32")] * n_frames
     b._real_labels = [0] * n_frames

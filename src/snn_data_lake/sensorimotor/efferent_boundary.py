@@ -45,19 +45,19 @@ advance the envelope.
 #   after. distinct-from: cerebellum/forward_model.py -- the incumbent model this REUSES
 #   (constructs one, calls predict/residual/update; re-implements nothing).
 # distinct-from: cerebellum/jepa_world_model.py -- the latent world model; different
-#   state space, its own reafference. distinct-from: substrate/afferent_boundary.py --
+#   state space, its own reafference. distinct-from: sensorimotor/afferent_boundary.py --
 #   the SENSORY door; this is the MOTOR door, sharing only the fold (on purpose).
 # distinct-from: brainstem/autonomous_loop.py -- the loop that owns the action choice;
 #   this boundary observes the chosen action's envelope passage. All sites read.
 
-  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.substrate.efferent_boundary
+  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.sensorimotor.efferent_boundary
 """
 
 import re
 
 from snn_data_lake.brainstem import arm_config
 from snn_data_lake.cerebellum.forward_model import ForwardModel
-from snn_data_lake.substrate.afferent_boundary import proprioception_delta, proprioception_deltas
+from snn_data_lake.sensorimotor.afferent_boundary import proprioception_delta, proprioception_deltas
 
 # LMS learning rate, derived from the fold's own bounds rather than copied from the
 # incumbent's demo (which runs dt=0.1; this boundary runs dt=1.0, so its 0.05 under-drives
@@ -87,7 +87,7 @@ _ROTATE_TOKEN = re.compile(r"(JOINT_[A-Z_]+_ROTATE)\(([+-]?\d+(?:\.\d+)?)deg\)")
 _ROTATE_PREFIX = {arm_config.token_for(n): n for n in arm_config.ROTATABLE}
 
 
-# distinct-from: brainstem/live_arm.py::_joint_obs_delta -- WAS the one-joint spelling of
+# distinct-from: sensorimotor/live_arm.py::_joint_obs_delta -- WAS the one-joint spelling of
 #   this parse (shoulder_lift only, its own private regex). It is a one-line call into this
 #   function as of specs/022 T079 2.9 step 4, so exactly one parser survives (P2). Read.
 # distinct-from: brainstem/interpreter.py -- VALIDATES a command against the envelope's
@@ -252,7 +252,7 @@ def _main():
     # same drive paying movement took 12 distinct actions with 26 nonzero copies). The
     # known shape "no reward_fn -> no motor actions" strikes again; the reward is part
     # of the instrument here, not part of the claim.
-    # distinct-from: cerebellum/wavefront_planner.py -- that executes a waypoint
+    # distinct-from: sensorimotor/wavefront_planner.py -- that executes a waypoint
     #   trajectory through the gate; this is a self-check REWARD paying any motion. Read.
     def _move(unit, action):
         return 1.0 if action != "HOLD" else -1.0

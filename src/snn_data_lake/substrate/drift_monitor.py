@@ -40,7 +40,7 @@ def _proportions(windows, dim, n_bins):
     return hist
 
 
-# distinct-from: cortex/spike_preprocessing.py::van_rossum_distance -- a metric between two SPIKE
+# distinct-from: sensorimotor/spike_preprocessing.py::van_rossum_distance -- a metric between two SPIKE
 #   TRAINS (L2 between exponentially-filtered waveforms). PSI below is a divergence between two
 #   BINNED PROPORTION VECTORS, it is not symmetric, and it takes no time axis. Read 2026-09-09.
 def psi(actual, reference, eps=_EPS):
@@ -101,7 +101,7 @@ class DriftMonitor:
     # distinct-from: substrate/stream_sketch_panel.py::_recent_resemblance -- a MinHash Jaccard
     #   over a motif VOCABULARY (set overlap), not a binned-histogram divergence; it is this
     #   monitor's own panel and reads this number alongside its own.
-    # distinct-from: cortex/learned_matcher.py::nearest_dist_enc -- nearest Van Rossum distance to
+    # distinct-from: sensorimotor/learned_matcher.py::nearest_dist_enc -- nearest Van Rossum distance to
     #   an enrolled reference TRAIN; "reference" there is a stored exemplar, not a histogram.
     # distinct-from: cortex/cortical_microcircuit.py::firing_rates,
     #   cortex/language_acquisition.py::developmental_curve, cortex/tempotron.py::TempotronMatcher

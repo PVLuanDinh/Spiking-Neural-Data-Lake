@@ -1,6 +1,6 @@
 """eprop_kernel.py -- the ONE e-prop training kernel for this project's torch spiking encoders.
 
-WHAT THIS IS. `cortex/eprop_nmnist.py` (vision, N-MNIST) and `cortex/eprop_shd.py` (audio, SHD) held
+WHAT THIS IS. `sensorimotor/eprop_nmnist.py` (vision, N-MNIST) and `sensorimotor/eprop_shd.py` (audio, SHD) held
 NINE byte-identical definitions between them -- the surrogate spike function, the independent BPTT
 reference, the cosine comparator, the Adam step, the evaluation loop, and four LIF pieces. Two
 copies of one engine is the P2 debt this module discharges: P2 asks that exactly ONE mechanism
@@ -11,9 +11,9 @@ Recorded because a move is not a merge: the 2026-08-13 promotion of eprop_shd in
 twins in the governed tree, which made the duplication VISIBLE but no smaller. This module is what
 actually reduces it.
 
-# consolidates: src/snn_data_lake/cortex/eprop_nmnist.py -- its 9 shared definitions are deleted
+# consolidates: src/snn_data_lake/sensorimotor/eprop_nmnist.py -- its 9 shared definitions are deleted
 #   there and imported from here in the same change (specs/013 C4)
-# consolidates: src/snn_data_lake/cortex/eprop_shd.py -- likewise; it also loses its hand-written
+# consolidates: src/snn_data_lake/sensorimotor/eprop_shd.py -- likewise; it also loses its hand-written
 #   bare 0.5 in favour of EPROP_BPTT_COSINE_FLOOR below
 # distinct-from: src/snn_data_lake/reasoning/eprop.py -- NOT a third copy and deliberately left
 #   alone. That module is a pure-STDLIB e-prop reference (math/zip, no torch, no autograd) whose
@@ -465,7 +465,7 @@ def _self_check():
     # (negating the broadcast learning signal INSIDE eprop_grads) measures cosine 0.6504 and does
     # NOT redden the check at all, because b_out and W_out do not depend on it. (0.5859 before the
     # specs/020 T048 reconciliation; the value ROSE, so the defect is even better hidden now.)
-    # `cortex/eprop_shd.py` had already made this exact correction for this exact defect on
+    # `sensorimotor/eprop_shd.py` had already made this exact correction for this exact defect on
     # 2026-08-05; the kernel now follows the precedent instead of re-introducing what it rejected.
     red_net = _TinyNet(n_in=12, hidden=8, num_classes=3, seed=3)
     red_net.alpha = 0.99

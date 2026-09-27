@@ -2,8 +2,9 @@
 
 `brainstem/autonomous_loop.py::AutonomousArm.step` compares its `distance` argument against
 `arm_config.CONTACT`, which is **0.04 metres** -- a raw physical limit inside the safety envelope,
-fixed by design (POLICIES P1, fourth case). `substrate/esp32_encoder_path.py::normalize` divides the
-same reading by 3.0 to produce the [0,1] feature the multimodal encoder consumes. Two units, one
+fixed by design (POLICIES P1, fourth case).
+`sensorimotor/esp32_encoder_path.py::normalize` divides the same reading by 3.0 to produce
+the [0,1] feature the multimodal encoder consumes. Two units, one
 quantity, and until this file NOTHING asserted which one crosses which boundary -- so a future
 sensor wiring could hand the encoder's output to the safety comparison and every gate would stay
 green.
@@ -25,7 +26,7 @@ Run: pytest tests/test_distance_units_contract.py
 
 from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.brainstem.autonomous_loop import AutonomousArm
-from snn_data_lake.substrate.esp32_encoder_path import normalize
+from snn_data_lake.sensorimotor.esp32_encoder_path import normalize
 
 _VALID_TEMP_K = 300.0  # inside the [20,40] C band, so the temp modality is present, not missing
 _SWEEP = (0.005, 0.02, 0.039, 0.041, 0.05, 0.10, 0.119, 0.121, 0.5, 1.0, 2.0, 2.9)

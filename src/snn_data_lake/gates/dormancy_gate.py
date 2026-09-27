@@ -58,11 +58,11 @@ _LIVE_ROOTS = (
 )
 _ENTRYPOINTS = (  # pyproject [project.scripts] + the always-on daemon's in-package deps
     f"{_PKG}.substrate.demo",
-    f"{_PKG}.brainstem.live_arm",
-    f"{_PKG}.brainstem.closed_loop",
+    f"{_PKG}.sensorimotor.live_arm",
+    f"{_PKG}.sensorimotor.closed_loop",
     f"{_PKG}.substrate.cockpit",  # THE frontend (served by the daemon); replaced control_panel
     f"{_PKG}.training.cli",
-    f"{_PKG}.substrate.web_ingest",
+    f"{_PKG}.sensorimotor.web_ingest",
     f"{_PKG}.substrate.nengo_bridge",
     f"{_PKG}.substrate.region_wiring",  # the daemon charges faculties through this registry
 )
@@ -139,7 +139,7 @@ EXEMPT = {
     # The exemption existed for one reason -- so the deletion would be a decision taken on its merits
     # rather than a side effect of the specs/004 planner rewrite -- and that decision is now taken.
     # What was checked before deleting, because "no consumer" is a claim and not an observation:
-    #   * the only historical consumer, cerebellum/wavefront_planner.py, is now a bidirectional RRT;
+    #   * the only historical consumer, sensorimotor/wavefront_planner.py, is now a bidirectional RRT;
     #     the grid it needed is 36**6 ~ 2.2e9 cells at six joints against 2592 at two, so the wave
     #     cannot run on the arm this repo actually has. Dimension retired it, not preference.
     #   * there is no OTHER 2-D occupancy grid anywhere live. The brain's only spatial surface is the
@@ -1078,7 +1078,7 @@ def conditional_import_count():
 
 
 # distinct-from: brain_atlas.py, gates/selfcheck_cache.py -- phrase overlap only, as with
-#   brainstem/arm_hardware.py, instruments/everyday_battery.py and hippocampus/ng_snn.py (a region file
+#   sensorimotor/arm_hardware.py, instruments/everyday_battery.py and hippocampus/ng_snn.py (a region file
 #   list, a keying word, a torque, a concurrency conjunct, a unit prune); all five read. The nearest
 #   real sibling, gates/eprop_transport_gate.py's stale_exemptions(), checks THAT gate's transport
 #   registry against gradient findings; this checks THIS table's keys against _CANON.

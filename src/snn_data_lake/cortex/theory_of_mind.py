@@ -36,7 +36,7 @@ is near-tabular. Deterministic, ASCII.
 import random
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
-from snn_data_lake.cortex.population_encoding import PopulationEncoder
+from snn_data_lake.sensorimotor.population_encoding import PopulationEncoder
 
 # spiking winner-take-all readout over the belief population
 _WINDOW = 20  # steps each location's LIF neuron is driven

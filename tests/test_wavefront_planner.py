@@ -12,7 +12,7 @@ pytest.importorskip("mujoco")
 
 from snn_data_lake.brainstem import arm_config  # noqa: E402
 from snn_data_lake.brainstem.so101_arm import So101Arm  # noqa: E402
-from snn_data_lake.cerebellum import wavefront_planner as wp  # noqa: E402
+from snn_data_lake.sensorimotor import wavefront_planner as wp  # noqa: E402
 
 HOME = [0.0] * len(wp.JOINTS)
 

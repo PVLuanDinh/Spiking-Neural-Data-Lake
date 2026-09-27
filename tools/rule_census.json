@@ -123,26 +123,6 @@
    "governed": true,
    "kind": "EXACT_GRADIENT"
   },
-  "cortex/eprop_nmnist.py::eprop_grads": {
-   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
-   "governed": true,
-   "kind": "APPROXIMATES_GRADIENT"
-  },
-  "cortex/eprop_nmnist.py::train_and_eval": {
-   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
-   "governed": true,
-   "kind": "APPROXIMATES_GRADIENT"
-  },
-  "cortex/eprop_shd.py::eprop_grads": {
-   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
-   "governed": true,
-   "kind": "APPROXIMATES_GRADIENT"
-  },
-  "cortex/eprop_shd.py::train_and_eval": {
-   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
-   "governed": true,
-   "kind": "APPROXIMATES_GRADIENT"
-  },
   "cortex/interaction_learning.py::SpikingInteractionLearner._deposit": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
@@ -185,11 +165,6 @@
   },
   "cortex/learned_evc.py::LearnedEVC.learn": {
    "disposition": "expressible -- T050 census (value/cost forms)",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cortex/learned_matcher.py::train_learned": {
-   "disposition": "UNDISPOSITIONED",
    "governed": true,
    "kind": "LOCAL"
   },
@@ -517,6 +492,31 @@
    "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
    "governed": false,
    "kind": "APPROXIMATES_GRADIENT"
+  },
+  "sensorimotor/eprop_nmnist.py::eprop_grads": {
+   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
+   "governed": true,
+   "kind": "APPROXIMATES_GRADIENT"
+  },
+  "sensorimotor/eprop_nmnist.py::train_and_eval": {
+   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
+   "governed": true,
+   "kind": "APPROXIMATES_GRADIENT"
+  },
+  "sensorimotor/eprop_shd.py::eprop_grads": {
+   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
+   "governed": true,
+   "kind": "APPROXIMATES_GRADIENT"
+  },
+  "sensorimotor/eprop_shd.py::train_and_eval": {
+   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
+   "governed": true,
+   "kind": "APPROXIMATES_GRADIENT"
+  },
+  "sensorimotor/learned_matcher.py::train_learned": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
   },
   "substrate/similarity_sized_growth.py::FrozenExpert.learn": {
    "disposition": "UNDISPOSITIONED",

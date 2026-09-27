@@ -210,7 +210,7 @@ def _consolidation_reversal_check():
     over P0) on the SAME synapses. PLAIN overwrites task 1 (forgets); NACA gating the conflicting task keeps
     task 1's consolidated weights (sparse change, task 1 retained) at the cost of not learning task 2."""
     from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
-    from snn_data_lake.cortex.rank_order_coding import rank_code
+    from snn_data_lake.sensorimotor.rank_order_coding import rank_code
 
     seed, noise, e1, e2 = 7, 0.05, 60, 60
     proto_rng = random.Random(seed)

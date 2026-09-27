@@ -1,9 +1,9 @@
 r"""
 [GPU-VERIFY]  reasoning/pc_cortex_torch.py -- GPU-batched trainer for a DEEP spiking
-predictive-coding cortex (exports `snn_pcnet/1` for src/.../cortex/pc_cortex_serve.py).
+predictive-coding cortex (exports `snn_pcnet/1` for src/.../sensorimotor/pc_cortex_serve.py).
 
 Honest framing. This is the torch TRAINING side of the deep spiking Rao-Ballard predictive
-coder whose zero-dep forward SERVER is src/snn_data_lake/cortex/pc_cortex_serve.py (and whose
+coder whose zero-dep forward SERVER is src/snn_data_lake/sensorimotor/pc_cortex_serve.py (and whose
 2-level stdlib seed is cortex/predictive_coding.py). It learns an L-level (default L=3)
 generative hierarchy by LOCAL predictive coding -- top-down generative weights W_1..W_L, a
 bottom-up precision-weighted PREDICTION-ERROR carried by SIGNED ON/OFF LIF spike populations,
@@ -332,7 +332,7 @@ def write_artifact(path, dims, gen_weights, prec, steps, lr, classes, readout, d
 def verify_export_fidelity(path, net, X, steps, lr, n=4, tol=1e-4):
     """Load the emitted artifact with the pure-stdlib PcCortexServe and assert its settling top causes
     match this trainer's (both in float64) on n samples -- proves the export serves faithfully."""
-    from snn_data_lake.cortex.pc_cortex_serve import PcCortexServe
+    from snn_data_lake.sensorimotor.pc_cortex_serve import PcCortexServe
 
     srv = PcCortexServe.load(path)  # trust-boundary validation must pass
     # trainer side: settle in float64 on CPU for an apples-to-apples comparison with the server

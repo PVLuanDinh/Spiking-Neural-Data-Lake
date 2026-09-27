@@ -141,7 +141,7 @@ def _distinct_states(rng, nov, count, dim):
 
 
 def main():
-    dim = 64  # matches the LIF raster width (cortex.spike_preprocessing.N)
+    dim = 64  # matches the LIF raster width (sensorimotor.spike_preprocessing.N)
     n_states = 8
     scale = 20  # true revisit counts are multiples of `scale` -> cleanly rank-ordered
 

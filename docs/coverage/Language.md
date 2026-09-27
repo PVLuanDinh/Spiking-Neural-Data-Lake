@@ -14,7 +14,7 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 | nightly_language_skill | 25 | src/snn_data_lake/cortex/nightly_skills.py:579#_ensure_domains; src/snn_data_lake/cortex/brain.py:3070#_enter_sleep | - | opus-5 language-auditor / static read of the sleep-tick consumer, NOT runtime | 2026-07-30 |
 | comprehension_learned_intent_router | 22 | src/snn_data_lake/cortex/live_brain.py:568#chat; src/snn_data_lake/cortex/live_brain.py:551#route | - | opus-5 language-auditor / caller search for the route() readout, static | 2026-07-30 |
 | grammar_competence_blimp | 12 | src/snn_data_lake/reasoning/blimp_bench.py:170#module; src/snn_data_lake/reasoning/ar_spiking_lm_serve.py:356#logprob | lang_blimp_bench_67x25.txt | opus-5 language-auditor / blimp_bench.py self-check, 67x25 pairs | 2026-07-30 |
-| core_spiking_lm_serve | 5 | src/snn_data_lake/cortex/spiking_lm_serve.py:96#generate | - | opus-5 language-auditor / weight-file search + caller search | 2026-07-30 |
+| core_spiking_lm_serve | 5 | src/snn_data_lake/sensorimotor/spiking_lm_serve.py:96#generate | - | opus-5 language-auditor / weight-file search + caller search | 2026-07-30 |
 | rose_grounded_comprehension | 5 | src/snn_data_lake/cortex/rose_language.py:585#comprehend | - | opus-5 language-auditor / live comprehend() on 3 ordinary sentences (path+line re-derived at the 2026-08-12 promotion) | 2026-07-30 |
 | discourse_model | 0 | - | - | opus-5 language-auditor / tree-wide search, nothing implements it | 2026-07-30 |
 
@@ -210,7 +210,7 @@ Format: `file` -- unique capability -- **live consumer**.
   10,339,425-param Spiking-RWKV. **`blimp_bench.py:150` only.**
 - `reasoning/eprop_lm_serve.py`, `reasoning/eprop_lm_alif_serve.py` -- e-prop recurrent-spiking char
   LMs, 112,475 / 812,256 params. **`blimp_bench.py:151-152` only.**
-- `cortex/spiking_lm_serve.py` -- pure-Python `snn_lm/1` forward; the CORE-tier serve. **No live
+- `sensorimotor/spiking_lm_serve.py` -- pure-Python `snn_lm/1` forward; the CORE-tier serve. **No live
   consumer; `src/snn_data_lake/training/spiking_lm.py:407` transfer check and its own self-check.**
 - `reasoning/blimp_bench.py` -- the grammaticality instrument, with four controls that must fail.
   **Research-tier self-check.**
@@ -220,7 +220,7 @@ Format: `file` -- unique capability -- **live consumer**.
   readout unread (R7).**
 
 **Nothing here should be retired on this audit's evidence.** Two notes for whoever does:
-`cortex/spiking_lm_serve.py` is the *only* torch-free `snn_lm/1` reader, so deleting it orphans
+`sensorimotor/spiking_lm_serve.py` is the *only* torch-free `snn_lm/1` reader, so deleting it orphans
 `src/snn_data_lake/training/spiking_lm.py`'s export format; and `models/spikegpt/SpikeGPT-216M.pth` (861,716,013 bytes)
 sits on disk with **no `.py` in the tree referencing it** -- `run_selfchecks.py:343` records SpikeGPT as
 scrapped in v3.77, so that file is 862 MB of dead weight, not a faculty.
@@ -265,7 +265,7 @@ python tools/coverage_score.py --rerun lang_blimp_bench_67x25     # needs data/l
 # the runtime readings above, in order (R1-R7); all read-only, none writes state
 PYTHONPATH=src PYTHONUTF8=1 .venv-lake/Scripts/python.exe -m snn_data_lake.cortex.rose_language
 PYTHONPATH=src PYTHONUTF8=1 .venv-lake/Scripts/python.exe -m snn_data_lake.reasoning.pragmatics
-PYTHONPATH=src PYTHONUTF8=1 .venv-lake/Scripts/python.exe -m snn_data_lake.cortex.spiking_lm_serve
+PYTHONPATH=src PYTHONUTF8=1 .venv-lake/Scripts/python.exe -m snn_data_lake.sensorimotor.spiking_lm_serve
 ```
 
 The route census, the `expose()` weight delta and the `_pragmatics` neuter-A/B were run from a

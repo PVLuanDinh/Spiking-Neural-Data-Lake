@@ -40,7 +40,6 @@ from snn_data_lake.cerebellum.gain_adaptation import GainAdapter
 from snn_data_lake.cerebellum.hjepa_serve import HJepaServe
 from snn_data_lake.cerebellum.jepa_world_model import JepaWorldModel
 from snn_data_lake.cortex.agency_monitor import AgencyMonitor
-from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 from snn_data_lake.hippocampus.affective_memory import AffectiveEpisodicStore
 from snn_data_lake.hippocampus.allocentric_map import AllocentricMap
@@ -54,6 +53,7 @@ from snn_data_lake.neuromodulation.empowerment import Empowerment
 from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.neuromodulation.naca import NACABroadcast
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
+from snn_data_lake.sensorimotor.multimodal_encoder import encode_multimodal
 from snn_data_lake.substrate.brain_bundle import BrainBundle, load_bundle
 from snn_data_lake.substrate.home import _T_COALITION, _log
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
@@ -83,7 +83,7 @@ GRADIENT_CLAIM = {
 _JOINT_STEP_DEG = arm_config.DEFAULT_STEP_DEG
 
 
-# distinct-from: brainstem/live_arm.py -- _joint_obs_delta parses a command STRING for one
+# distinct-from: sensorimotor/live_arm.py -- _joint_obs_delta parses a command STRING for one
 #   observed joint's delta; this converts the WHOLE servo setpoint vector's units. Read.
 def _commanded_deg(arm):
     """The servo setpoint in DEGREES, for the efference copy. So101Arm keeps `_commanded`
@@ -440,7 +440,7 @@ class AutonomousArm:
         self._last_intero = None  # this tick's full sense() reading (T031 coalition channels)
         # T037: the efference-copy boundary -- unconditional (pure observation + one
         # LOCAL model update per envelope passage; it issues nothing and gates nothing).
-        from snn_data_lake.substrate.efferent_boundary import EfferentBoundary
+        from snn_data_lake.sensorimotor.efferent_boundary import EfferentBoundary
 
         self.efferent = EfferentBoundary(seed=seed)
         # opt-in prefrontal executive: the "centre of thoughts" -- it deliberates over the current
@@ -1818,7 +1818,7 @@ class AutonomousArm:
     #   workspace coherence; this is the motor tap pairing one apply() with one
     #   observation. distinct-from: cortex/live_brain.py -- the composed tick; this is
     #   one envelope passage inside it. Sites read; term overlap is the spec citation.
-    # distinct-from: substrate/efferent_boundary.py -- declare_ports registers the lane's ports;
+    # distinct-from: sensorimotor/efferent_boundary.py -- declare_ports registers the lane's ports;
     #   this is the loop's passage that feeds it. Read.
     # distinct-from: gates/envelope_hash_gate.py, gates/lake_rebuild_gate.py -- gates
     #   over bytes and the index; phrase overlap only. Read.
@@ -1930,7 +1930,7 @@ class AutonomousArm:
         if distance is not None and (not math.isfinite(distance) or distance < CONTACT):
             self.cort.step(1.0)  # danger -> stress up (sharpens future response)
             # A NEGATIVE distance is a MISSING reading, not contact. The ESP32 firmware sends a
-            # -1 idle sentinel when nothing is within range (substrate/esp32_encoder_path.py
+            # -1 idle sentinel when nothing is within range (sensorimotor/esp32_encoder_path.py
             # documents it), and -1.0 is finite and below CONTACT -- so before this guard the
             # split below was two-way (NaN = fail-closed, finite = real contact) with no case for
             # a sentinel, and it landed on the wrong side: every idle sample bound a fear
@@ -2646,7 +2646,7 @@ def main():
         return [bot.step(**ctx, reward_fn=reward)["action"] for _ in range(6) for ctx in (a, b, c)]
 
     # 7. BUNDLE: enclose a trained perception skill in the loop (additive; the safety gate is untouched)
-    from snn_data_lake.cortex.trained_brain import make_brain
+    from snn_data_lake.sensorimotor.trained_brain import make_brain
 
     _wp = [[1.0 if i < 32 else 0.0 for i in range(64)], [0.0 if i < 32 else 1.0 for i in range(64)]]
     bundled = AutonomousArm.from_bundle(
@@ -3639,7 +3639,7 @@ def declare_ports(manifest):
     )
     # T037: the efferent lane's producer -- the chosen action token, observed at every
     # envelope passage by the efference-copy boundary (its subscription edge is declared
-    # by the consumer, substrate/efferent_boundary). Symbolic token, EVENT-encoded per
+    # by the consumer, sensorimotor/efferent_boundary). Symbolic token, EVENT-encoded per
     # the TYPE HONESTY discipline; So101Arm.apply() remains the only path to motion.
     manifest.declare_port(
         "autonomous_loop",

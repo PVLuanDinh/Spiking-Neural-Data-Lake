@@ -169,7 +169,7 @@ The discriminator is **not** the word "emergency", as previously reported. It is
 word survives punctuation-stripping as a bare token. Adding an exclamation mark to a working
 phrase breaks it. **That sentence belongs in the commit message.**
 
-**(2) A question moves the arm, today, with no code change.** `cortex/nl_interface.py:104` is
+**(2) A question moves the arm, today, with no code change.** `sensorimotor/nl_interface.py:104` is
 `if any(k in low for k in keys)` -- **substring**, not word, matching. **[measured]** through
 `converse()`:
 
@@ -226,7 +226,7 @@ this is main-agent work and is not delegated.
 
 ### S0.1 -- word-boundary cue matching. Smallest diff, largest effect. DO THIS FIRST.
 
-**File:** `src/snn_data_lake/cortex/nl_interface.py:104`, inside `StubBackend.complete`.
+**File:** `src/snn_data_lake/sensorimotor/nl_interface.py:104`, inside `StubBackend.complete`.
 Replace substring containment with token membership -- the idiom `live_brain.py:400` already uses.
 Multi-word cues keep substring matching; bare cues become tokens.
 
@@ -235,7 +235,7 @@ against a firewall that already does word-boundary matching.
 
 ### S0.2 -- delete the bare `"grip"` cue. A deletion, not a permutation.
 
-**File:** `src/snn_data_lake/cortex/nl_interface.py:59`. Remove `"grip"` from the close row,
+**File:** `src/snn_data_lake/sensorimotor/nl_interface.py:59`. Remove `"grip"` from the close row,
 keeping `close`, `grab`, `grasp`, `pick up`, `clamp`.
 
 **REJECTED: the "ordering only" repair.** The earlier proposal was to move the open row above the
@@ -253,7 +253,7 @@ not the permutation.
 
 ### S0.3 -- an interrogative and negation guard, before cue scanning.
 
-**File:** `src/snn_data_lake/cortex/nl_interface.py`, at the top of `StubBackend.complete`.
+**File:** `src/snn_data_lake/sensorimotor/nl_interface.py`, at the top of `StubBackend.complete`.
 Reject when the utterance is interrogative (leading wh-word or auxiliary, or a trailing `?`) or
 carries a negation (`do not` / `don't` / `never` / `why did` / `what happens`). This is a
 **syntactic** property, not a new word list, which is why it is preferred over extending
@@ -389,7 +389,7 @@ without moving the marker). A structural argument does not depend on which self-
 
 #### GAP 9 -- `spiking_lm_serve`. CLOSE NOW. REPAIR, not retire.
 
-The retire recommendation is wrong on both halves. `cortex/spiking_lm_serve.py` **is**
+The retire recommendation is wrong on both halves. `sensorimotor/spiking_lm_serve.py` **is**
 gate-reachable (`dormancy_gate.reachable()` returns it, via the function-local imports at
 `training/spiking_lm.py:407-408`), and the `snn_lm/1` format **is** producible.
 
@@ -399,7 +399,7 @@ both leave it GREEN, because `_demo_lm()` at `:164-165` sets an all-zero `readou
 verbatim. The argmax is `'b'` regardless of the forward pass. **The only gate on the module proves
 nothing about the forward it exists to run.**
 
-- **Files:** `src/snn_data_lake/cortex/spiking_lm_serve.py`; corrections to
+- **Files:** `src/snn_data_lake/sensorimotor/spiking_lm_serve.py`; corrections to
   `specs/005-language-organ/verdict.md:114-122`, `shared-edits.md:52,60-61`,
   `research.md:493,690`.
 - **Falsifier:** re-run the 3-neuter harness -- it must be **3 of 3**, not 1 of 3. If the repair
@@ -829,7 +829,7 @@ test hook, which returns to step 4.
   validation; zero `mjData` corruption and zero garbage render frames.
 - **Files, if it proceeds:** `substrate/cockpit.py`, `learn_daemon.py`, `brainstem/so101_arm.py`,
   `cortex/brain.py`, `cortex/live_brain.py`, `substrate/brain_telemetry.py`,
-  `brainstem/arm_config.py`, `cortex/nl_interface.py`, `tests/test_so101_arm.py`.
+  `brainstem/arm_config.py`, `sensorimotor/nl_interface.py`, `tests/test_so101_arm.py`.
 
 ---
 

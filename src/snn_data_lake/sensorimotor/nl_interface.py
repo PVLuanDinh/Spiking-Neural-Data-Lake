@@ -33,7 +33,7 @@ Ceiling: fixed intents (no free-form arm parameters; rotations are fixed increme
 Interpreter's), single-label output, English keyword cues only. Additive / opt-in: nothing
 here runs unless you call it; the arm/lake code paths are unchanged.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.nl_interface
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sensorimotor.nl_interface
 """
 
 import re as _re

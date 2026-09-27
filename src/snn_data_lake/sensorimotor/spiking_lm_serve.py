@@ -19,7 +19,7 @@ but the trainer that produces real weights is torch/GPU and UNVERIFIED against a
 end-to-end torch-train -> core-serve transfer should be smoke-tested on a GPU. This module is tiny-LM
 inference, not a large LLM.
 
-  python -m snn_data_lake.cortex.spiking_lm_serve        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.sensorimotor.spiking_lm_serve        # (also run by run_selfchecks.py)
 """
 
 import json
@@ -85,7 +85,7 @@ def _forward_logits(lm, ids):
 
 
 #: Deterministic stdlib LCG for temperature sampling (no global RNG).
-#: MERGED 2026-08-15 into `substrate/_mathutils.Rng` -- this module and `cortex/trained_brain.py`
+#: MERGED 2026-08-15 into `substrate/_mathutils.Rng` -- this module and `sensorimotor/trained_brain.py`
 #: held byte-equivalent copies, proven identical over 5 seeds x 500 draws before either was deleted.
 #: The alias keeps the local spelling so no call site changes; the MECHANISM is now singular.
 _Rng = Rng

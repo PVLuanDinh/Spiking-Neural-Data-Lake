@@ -46,7 +46,7 @@ hand-rolled PURE-PYTHON reference settling -- that reference is intentionally NO
 entire value is being an instrument built out of different arithmetic than the code under test.
 ASCII-only prints, deterministic.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.pc_cortex_serve
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sensorimotor.pc_cortex_serve
 """
 
 import json

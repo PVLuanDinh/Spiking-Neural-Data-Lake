@@ -846,7 +846,7 @@ def t078_determinism(seed, n_ticks=DETERMINISM_TICKS):
 #   the module-global `random` stream to keep a consumer's determinism contract. Read: every RNG
 #   here is a per-call `random.Random(seed)` or a per-call `torch.Generator`, and NOTHING in this
 #   module reads or writes a process-global random stream.
-# distinct-from: cerebellum/wavefront_planner.py::_limits -- per-joint actuator ranges from the
+# distinct-from: sensorimotor/wavefront_planner.py::_limits -- per-joint actuator ranges from the
 #   arm model. Read; unrelated to anything in this file.
 def t078_label_stream(n, k, seed):
     """n i.i.d. labels drawn uniformly from range(k) by a seeded `random.Random`."""

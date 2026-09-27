@@ -124,7 +124,7 @@ TAU_E = 1000.0  # long eligibility time constant -- the distal-reward bridge
 #
 # distinct-from: cortex/neuron_zoo.py::_step_serial -- advances a MEMBRANE one timestep over a
 #   list of neuron objects; no eligibility, no spike-time pairing, no reward. Read 2026-09-09.
-# distinct-from: brainstem/arm_bridge.py::UdpArmBridge.recv_outcome -- reads a reward FLOAT off
+# distinct-from: sensorimotor/arm_bridge.py::UdpArmBridge.recv_outcome -- reads a reward FLOAT off
 #   a UDP socket; it transports the third factor, it never gates one. Read 2026-09-09.
 # distinct-from: cortex/predictive_coding.py::_lif -- a vectorized LIF step over signed ON/OFF
 #   pairs; "pairs" there are two neurons encoding one error component, not a (pre, post) spike
@@ -167,7 +167,7 @@ def accumulate_anticausal(e, pairs, a_minus=A_MINUS, tau_minus=TAU_MINUS):
 #   recurrent LIF backbone, recording per-timestep spikes and PRE-RESET MEMBRANES because its own
 #   eligibility trace needs them. It is a forward pass that PRODUCES the inputs a trace is built
 #   from; this is the one line that ages a trace already built.
-# distinct-from: brainstem/arm_bridge.py::UdpArmBridge.recv_outcome -- reads the next reward float
+# distinct-from: sensorimotor/arm_bridge.py::UdpArmBridge.recv_outcome -- reads the next reward float
 #   off a UDP socket; it transports the third factor and never decays anything.
 #   All five sites read 2026-09-09 before this note was written.
 def decay_eligibility(e, dt_step=1.0, tau_e=TAU_E):
