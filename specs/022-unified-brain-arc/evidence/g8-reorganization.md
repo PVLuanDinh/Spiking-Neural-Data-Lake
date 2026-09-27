@@ -2553,3 +2553,54 @@ policy-manifest test files pass; whole-tree Ruff check and its CI format
 scope pass. The independent closing report and full battery remain owed.
 This fold has not been independently re-panelled; its outcome will be
 claimed only after the battery on the stacked head.
+
+### 3.18 G8-1 closing record (Codex, 2026-09-27)
+
+The independent read-only closing check on folded head `7449f25b` found no
+current BLOCKER or MAJOR; it reproduced the comparator controls. The fold was
+not independently re-panelled. The full battery, not that closing read,
+verified the folded code.
+
+The first battery ran on `7449f25b` from 07:41:07 to 09:19:35 UTC and ended
+RED: 1,691 tests passed, one failed, two xfailed, 87.21% coverage. Its sole
+failure was `test_core_selfcheck_in_process[growth.brian2_backend]`. Pytest
+changed to a temporary working directory before Brian2 launched a child
+Python; the external battery launcher had `PYTHONPATH=src`, so the child
+resolved the shared venv's editable original checkout, which has no moved
+`growth` package. All other preflight stages, 365 module self-checks, six
+tools gates and sixteen post-pytest asserting gates exited zero. This RED is
+retained in `C:\Users\vinhl\AppData\Local\Temp\g8-1-battery-7449f25b`.
+
+The exact failing test passed in 103.06 seconds with an absolute worktree
+`PYTHONPATH`. The corrected external launcher uses `cygpath -w "$PWD/src"`;
+no repository source or test changed for this environment repair. A second
+full battery started on the same clean `7449f25b` at 09:22:11 UTC and ended
+GREEN at 10:54:18 UTC. Its full pytest passed 1,692 tests with two xfails,
+eleven warnings and 87.24% coverage (70% required). The preflight policy
+record assert, certification, Ruff check and format, citation, P8
+reachability, dependency ledger, document-command guard, 365/365 registered
+self-checks and 6/6 tools gates passed. All sixteen final asserting gates
+exited zero. The retained result is
+`C:\Users\vinhl\AppData\Local\Temp\g8-1-battery-7449f25b-fixed`.
+
+After that GREEN battery, the owner requested the Astra architecture advice
+be saved in the active plan and shared memory, then directed Codex to STOP
+after the G8-1 commit and GitHub push. Documentation-only commit `73b1f992`
+adds the dated P4d/G3/R2/R3/G6 clarification and
+`evidence/astra-architecture-2026-09-27.md`; it claims no implemented
+sleep or column benefit. This commit was after the full battery and is
+explicitly NOT VERIFIED BY A BATTERY at its own HEAD. Its focused checks
+passed: document budget (POLICIES 14,168/14,178), citation guard (1,028
+tracked text files, zero unexempted strict violations), document-command
+guard (65/65 runnable), P8 red reachability (22 criteria, zero NO_RED or
+tautological), and `git diff --check`. The policy audit certified the clean
+`73b1f992` head, with no unclaimed gate or CI omission, and
+`policy_manifest --assert` passed. The five protected brainstem files have
+no diff from `origin/main` (`68db184` at this reading); the original owner
+checkout and live lake were not touched. The daemon remains stopped. M6-M11
+and D1 are not started under the owner's stop instruction.
+
+This closing record and `tools/policy_certification.json` are the last
+commit before the G8-1 push. The two external battery-template copies named
+in F12 are synchronized at the push, including their moved policy-manifest
+entry points. No daemon poll is claimed because the owner held it stopped.

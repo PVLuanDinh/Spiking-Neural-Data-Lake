@@ -4,39 +4,39 @@
     {
       "argv": [
         "-m",
-        "snn_data_lake.substrate.dormancy_gate"
+        "snn_data_lake.gates.dormancy_gate"
       ],
-      "seconds": 2.84,
+      "seconds": 2.96,
       "verdict": "PASS"
     },
     {
       "argv": [
         "-m",
-        "snn_data_lake.substrate.method_dormancy_gate"
+        "snn_data_lake.gates.method_dormancy_gate"
       ],
-      "seconds": 5.95,
+      "seconds": 6.07,
       "verdict": "PASS"
     },
     {
       "argv": [
         "-m",
-        "snn_data_lake.substrate.import_manifest"
+        "snn_data_lake.gates.import_manifest"
       ],
-      "seconds": 2.43,
+      "seconds": 2.55,
       "verdict": "PASS"
     },
     {
       "argv": [
         "-m",
-        "snn_data_lake.substrate.replication_guard"
+        "snn_data_lake.gates.replication_guard"
       ],
-      "seconds": 1.38,
+      "seconds": 1.43,
       "verdict": "PASS"
     },
     {
       "argv": [
         "-m",
-        "snn_data_lake.substrate.lake_rebuild_gate"
+        "snn_data_lake.gates.lake_rebuild_gate"
       ],
       "seconds": 0.12,
       "verdict": "PASS"
@@ -46,7 +46,7 @@
         "tools/p6_gate.py",
         "--assert"
       ],
-      "seconds": 5.15,
+      "seconds": 5.34,
       "verdict": "PASS"
     },
     {
@@ -54,7 +54,7 @@
         "tools/dependency_ledger.py",
         "--assert"
       ],
-      "seconds": 5.64,
+      "seconds": 5.66,
       "verdict": "PASS"
     },
     {
@@ -62,23 +62,23 @@
         "tools/red_reachability.py",
         "--assert"
       ],
-      "seconds": 1.65,
+      "seconds": 1.53,
       "verdict": "PASS"
     },
     {
       "argv": [
         "-m",
-        "snn_data_lake.substrate.eprop_transport_gate"
+        "snn_data_lake.gates.eprop_transport_gate"
       ],
-      "seconds": 10.31,
+      "seconds": 10.71,
       "verdict": "PASS"
     },
     {
       "argv": [
         "-m",
-        "snn_data_lake.substrate.gradient_claim_gate"
+        "snn_data_lake.gates.gradient_claim_gate"
       ],
-      "seconds": 2.36,
+      "seconds": 2.41,
       "verdict": "PASS"
     },
     {
@@ -86,7 +86,7 @@
         "tools/p4c_ratchet.py",
         "--assert"
       ],
-      "seconds": 0.07,
+      "seconds": 0.08,
       "verdict": "PASS"
     }
   ],
@@ -186,7 +186,7 @@
     "P5a"
   ],
   "tree": {
-    "commit": "a18bb369238742513001902c29fb8663a0087a24",
+    "commit": "73b1f9927cd718455d2606e1771e554f5ef19aeb",
     "dirty": false
   }
 }
