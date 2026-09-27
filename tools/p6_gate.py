@@ -1054,9 +1054,23 @@ def parse_connectome(root, source=None):
 
 
 def region_imports(root, overlay=None):
-    """Undirected + directed region->region edges implemented by imports under src/snn_data_lake/."""
+    """Region imports, attributed to frozen anatomy labels across G8 package moves."""
     overlay = dict(overlay or {})
     pkg = source_dir(root)
+    with open(os.path.join(pkg, "__init__.py"), encoding="utf-8") as fh:
+        registry = ast.parse(fh.read())
+    labels = {}
+    for statement in registry.body:
+        if not isinstance(statement, ast.Assign):
+            continue
+        names = {target.id for target in statement.targets if isinstance(target, ast.Name)}
+        if not names.intersection({"LEGACY_REGIONS", "LEGACY_TORCH_TIER", "LEGACY_TRAIN_TIER"}):
+            continue
+        for region, modules in ast.literal_eval(statement.value).items():
+            for module in modules:
+                if module in labels and labels[module] != region:
+                    raise AssertionError(f"conflicting frozen labels for {module}")
+                labels[module] = region
     directed = set()
     paths = []
     for dirpath, dirnames, filenames in os.walk(pkg):
@@ -1064,12 +1078,13 @@ def region_imports(root, overlay=None):
         for fn in sorted(filenames):
             if fn.endswith(".py"):
                 paths.append(os.path.relpath(os.path.join(dirpath, fn), pkg).replace(os.sep, "/"))
-    for relpath in sorted(set(paths) | set(overlay)):
-        if relpath in overlay and overlay[relpath] is None:
-            continue
+    live_paths = (set(paths) | set(overlay)) - {
+        relpath for relpath, source in overlay.items() if source is None
+    }
+    for relpath in sorted(live_paths):
         if "/" not in relpath:
             continue  # top-level modules (connectome.py, brain_atlas.py) belong to no region
-        src_region = relpath.split("/")[0]
+        src_region = labels.get(os.path.basename(relpath)[:-3], relpath.split("/")[0])
         if relpath in overlay:
             text = overlay[relpath]
         else:
@@ -1093,7 +1108,8 @@ def region_imports(root, overlay=None):
                 ]
             elif isinstance(node, ast.ImportFrom) and not node.level:
                 if node.module and node.module.split(".")[0] == "snn_data_lake":
-                    targets = [node.module.split(".")[1:]]
+                    base = node.module.split(".")[1:]
+                    targets = [base + [a.name] for a in node.names]
             elif isinstance(node, ast.ImportFrom):
                 # RELATIVE IMPORT. `from ..cerebellum import x` inside amygdala/ reaches cerebellum
                 # just as surely as the absolute spelling, and was INVISIBLE here until 2026-08-06:
@@ -1108,10 +1124,21 @@ def region_imports(root, overlay=None):
                     continue
                 base = here_pkg[: len(here_pkg) - up] if up else list(here_pkg)
                 tail = node.module.split(".") if node.module else []
-                targets = [base + tail] if tail else [base + [a.name] for a in node.names]
+                targets = [base + tail + [a.name] for a in node.names]
             for parts in targets:
-                if parts and parts[0] != src_region:
-                    directed.add((src_region, parts[0]))
+                if not parts:
+                    continue
+                # A moved module keeps its pre-G8 anatomical label. Only use a basename
+                # when the import names a real module at that physical path; otherwise
+                # the final token may be a class, function or attribute.
+                target = parts[0]
+                for index in range(len(parts), 1, -1):
+                    rel_module = "/".join(parts[:index]) + ".py"
+                    if rel_module in live_paths:
+                        target = labels.get(parts[index - 1], target)
+                        break
+                if target != src_region:
+                    directed.add((src_region, target))
     return directed
 
 

@@ -1084,6 +1084,20 @@ def _section(a: dict, b: dict, pa: dict, pb: dict) -> dict:
     return out
 
 
+def _gate_lines(key: str, lines: list[str], pairs: dict) -> Counter:
+    """Compare P6's path report by content, independent of layout and path width."""
+    if key != "p6_gate":
+        return Counter(map_text(line, pairs) for line in lines)
+    canonical = []
+    for line in lines:
+        line = re.sub(r"\s{2,}", " ", map_text(line, pairs)).strip()
+        if "about the tree: " in line:
+            head, paths = line.split("about the tree: ", 1)
+            line = head + "about the tree: " + ", ".join(sorted(paths.split(", ")))
+        canonical.append(line)
+    return Counter(canonical)
+
+
 # distinct-from: __init__.py -- package_of reads the running package's live tables; forward reads a
 #   stage's post-stage map out of the mover's expected file. Also read: substrate/brain_geometry.py
 #   (_reasoning_modules), gates/selfcheck_cache.py (split_rosters), neuromodulation/empowerment.py
@@ -1116,8 +1130,8 @@ def observed(pre: dict, post: dict, expected: dict | None = None) -> dict:
     for key in sorted(set(pre["gates"]) | set(post["gates"])):
         a = pre["gates"].get(key, {"rc": None, "lines": []})
         b = post["gates"].get(key, {"rc": None, "lines": []})
-        la = Counter(map_text(x, pa) for x in a["lines"])
-        lb = Counter(map_text(x, pb) for x in b["lines"])
+        la = _gate_lines(key, a["lines"], pa)
+        lb = _gate_lines(key, b["lines"], pb)
         ch = {"rc": {"from": a["rc"], "to": b["rc"]}} if a["rc"] != b["rc"] else {}
         ch.update(
             {
