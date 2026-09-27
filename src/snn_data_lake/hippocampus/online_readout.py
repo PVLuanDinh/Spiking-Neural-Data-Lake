@@ -170,7 +170,7 @@ def _feed(eng, cats, start=0):
 
 
 def _run(seed, readout, gate=None, n=600, flip_every=100):
-    from snn_data_lake.cortex.neurogenesis_engine import NeurogenesisSelfImprove
+    from snn_data_lake.growth.neurogenesis_engine import NeurogenesisSelfImprove
 
     eng = NeurogenesisSelfImprove(
         seed=seed, device="cpu", refit_every=1, online_readout=readout, growth_gate=gate
@@ -210,7 +210,7 @@ def main():
     assert torch.equal(a._model.beta, b2._model.beta)
     # (6) the record round trip carries the online beta AND the batch instrument as two tensors, and a
     # restored engine's closed-gate trajectory continues identical to a restored batch-only twin's
-    from snn_data_lake.cortex.neurogenesis_engine import NeurogenesisSelfImprove
+    from snn_data_lake.growth.neurogenesis_engine import NeurogenesisSelfImprove
 
     live = _run(6, OnlineReadout("delta"), ClosingGate(3), n=300)
     twin = _run(6, None, ClosingGate(3), n=300)

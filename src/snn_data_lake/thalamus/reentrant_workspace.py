@@ -197,7 +197,7 @@ class ReentrantWorkspace:
     # distinct-from: gates/perf_baseline.py -- performance ratchet, no rheobase.
     # distinct-from: substrate/lake_migrate.py -- tag dispositions, no rheobase.
     # distinct-from: cortex/theta_gamma_code.py -- theta the OSCILLATION, not the rheobase.
-    # distinct-from: cortex/cortical_prior.py -- anatomy fractions, no rheobase.
+    # distinct-from: growth/cortical_prior.py -- anatomy fractions, no rheobase.
     # distinct-from: reasoning/spike_chat_lake.py -- reads a GlobalWorkspace band, writes
     #   nothing. Phrase overlap only; all sites read.
     def set_base_rheobase(self, theta, provenance, hold_bias=False):

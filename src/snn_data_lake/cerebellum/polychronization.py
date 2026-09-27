@@ -37,7 +37,7 @@ from collections import defaultdict
 
 import numpy as np
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 
 
 class DelayNetwork:

@@ -378,7 +378,7 @@ def red1(result):
 #   path whose bar is "within noise of zero" over a resampled band; that is a magnitude criterion
 #   on a TIMING, judged against a reported band. This is an EXACT-zero predicate over six recorded
 #   quantities of one arm and admits no band at all.
-# distinct-from: cortex/h01_ingest.py::_disclose -- prints five ingest numbers and explicitly never
+# distinct-from: growth/h01_ingest.py::_disclose -- prints five ingest numbers and explicitly never
 #   filters on them; it decides nothing. This decides, and its decision gates a conjunct.
 # distinct-from: basal_ganglia/r_stdp.py::Calibration -- a NamedTuple of what a host measured for
 #   the parallel crossover; a record, not a predicate.
@@ -482,7 +482,7 @@ def arm_seeded(art):
 
 # distinct-from: substrate/kernel_tick.py::Synapses.empty -- the empty COMPILED table (zero call
 #   sites); this returns an ARTIFACT dict for `population()` to compile, the units untouched.
-# distinct-from: cortex/h01_ingest.py::build_arrays -- builds the node and edge arrays FROM the
+# distinct-from: growth/h01_ingest.py::build_arrays -- builds the node and edge arrays FROM the
 #   release's cells; this drops the edges of an artifact already built.
 # distinct-from: gates/determinism_gate.py::_bench_net -- a disclosed synthetic bench with
 #   random edges; nothing is cut. distinct-from: infra/brain_geometry.py::_connectome_pairs --
@@ -657,7 +657,7 @@ def band_mass_report(art_seeded, art_wrong):
     that passes owes it too, or the pass is unattributable."""
     import numpy as np
 
-    from snn_data_lake.cortex.h01_ingest import fan_in_shares
+    from snn_data_lake.growth.h01_ingest import fan_in_shares
 
     lay = art_seeded["layer"]
     flat = band_pair_weight_share(
@@ -738,7 +738,7 @@ def check_nuisance(art, base, name, unique_edges=False):
     runs -- a nuisance violation makes the whole contrast uninterpretable, so it is not a warning."""
     import numpy as np
 
-    from snn_data_lake.cortex.h01_ingest import fan_in_shares
+    from snn_data_lake.growth.h01_ingest import fan_in_shares
 
     for key in ("agglo_id", "sign", "layer"):
         if not np.array_equal(art[key], base[key]):
@@ -768,7 +768,7 @@ def wrong_validity(art_wrong, art_random, art_seeded):
     """T004's VALIDITY PRECONDITION, measured on the REALISED tables: the reversed table's
     band-pair weight-share matrix must be farther from SEEDED's, in the same PSI the drift
     statistic uses, than RANDOM's realised matrix is. Returns (valid, d_wrong, d_random)."""
-    from snn_data_lake.cortex.h01_ingest import fan_in_shares
+    from snn_data_lake.growth.h01_ingest import fan_in_shares
 
     lay = art_seeded["layer"]
     s = band_pair_weight_share(
@@ -871,7 +871,7 @@ def trial_drive(classes, cls, seed, trial_id, n_units, t_trial=T_TRIAL):
 #   sampler over a grid population (Bernoulli draws per cell per tick), not a linear map of counts.
 # distinct-from: hippocampus/growable_readout.py::_restore_adam -- optimizer-moment surgery when a
 #   torch readout gains a unit; no projection and no draw.
-# distinct-from: cortex/neurogenesis_engine.py::grown_model, cortex/placement.py::_place_grn -- a
+# distinct-from: growth/neurogenesis_engine.py::grown_model, growth/placement.py::_place_grn -- a
 #   retained-model accessor and a uniform POSITION draw for a non-cortical region. All five read
 #   2026-09-09 before this note was written.
 def random_projection(n_feat, d, seed):
@@ -949,7 +949,7 @@ def predict(coef, feature, k):
 #   as `(pre_local, post, delay) -> f4 weight` at L769. GREPPED 2026-09-09 and it is NOT IN THE
 #   TREE: lake_engine.py is 561 lines and neither `pre_local` nor that docstring exists anywhere in
 #   src. The overlap is with a stale index entry, not with code.
-# distinct-from: cortex/heterogeneous_microcircuit.py::run_circuit -- drives a circuit and returns
+# distinct-from: growth/heterogeneous_microcircuit.py::run_circuit -- drives a circuit and returns
 #   per-neuron SPIKE COUNTS; a dynamics run, not a weight read.
 # distinct-from: cortex/predictive_coding.py::set_state and reasoning/resume_learning.py::_forward
 #   -- force causes / clear error membranes, and integrate a LIF readout for one window. Both are
@@ -1055,8 +1055,8 @@ def run_arm(
     """
     import numpy as np
 
-    from snn_data_lake.cortex.h01_ingest import population
-    from snn_data_lake.hippocampus.ng_snn import marginal_holdout
+    from snn_data_lake.growth.h01_ingest import population
+    from snn_data_lake.growth.ng_snn import marginal_holdout
 
     state, syn, kt = population(art, threads=threads)
     layer = population_layers(art)
@@ -1715,7 +1715,7 @@ def _bare():
 # =============================================================================================
 # The pilot (2.7) and the campaign (2.6)
 # =============================================================================================
-# distinct-from: cortex/h01_ingest.py::_lif_defaults -- imports the LIF constants from their
+# distinct-from: growth/h01_ingest.py::_lif_defaults -- imports the LIF constants from their
 #   equation owner; no host, no process, no port.
 # distinct-from: gates/doc_budget_gate.py::_selfcheck,
 #   hippocampus/spiking_storage_prototype.py::run, hypothalamus/__init__ -- a gate's constructed
@@ -1885,7 +1885,7 @@ def _tick_cost(art, classes, reps=3, trials=4, t_trial=T_TRIAL):
     the activity level the cost depends on is the campaign's, not a 200-tick free run's."""
     import numpy as np
 
-    from snn_data_lake.cortex.h01_ingest import population
+    from snn_data_lake.growth.h01_ingest import population
 
     state, syn, kt = population(art)
     amp_q = int(DRIVE_AMPLITUDE * float(state.arrays["thr"][0]) * (1 << int(syn.frac_bits)))
@@ -1966,7 +1966,7 @@ def run_pilot():
     WRONG arm's validity precondition with the band masses behind it, the tick cost with the
     learner ON, W by the 6-hour rule, and the settling reading beside every timing. APPENDED to
     `tools/t063_pilot.json` as a new stage; the pre-amendment stage is never erased."""
-    from snn_data_lake.cortex.h01_ingest import ARTIFACT, load_artifact
+    from snn_data_lake.growth.h01_ingest import ARTIFACT, load_artifact
 
     host = _host_condition()
     print("=" * 78)
@@ -2156,7 +2156,7 @@ def run_pilot():
 
 def run_campaign():
     """Five tables x 8 seeds at the pilot's W, every number into `tools/t063_campaign.json`."""
-    from snn_data_lake.cortex.h01_ingest import ARTIFACT, load_artifact
+    from snn_data_lake.growth.h01_ingest import ARTIFACT, load_artifact
 
     if not PILOT_PIN.exists():
         print(

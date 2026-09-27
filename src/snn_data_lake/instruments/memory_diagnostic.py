@@ -32,8 +32,8 @@ import torch
 from threadpoolctl import threadpool_info
 
 from snn_data_lake.cortex import recurrent_pool as rp
-from snn_data_lake.cortex.growth_stop import GrowthStop, feed_and_decide
-from snn_data_lake.cortex.neurogenesis_engine import NeurogenesisSelfImprove
+from snn_data_lake.growth.growth_stop import GrowthStop, feed_and_decide
+from snn_data_lake.growth.neurogenesis_engine import NeurogenesisSelfImprove
 
 ASSETS = {
     "nmnist_pack.npz": "9863a50ead6190ae",
@@ -95,7 +95,7 @@ def _read_lp(brain):
 # distinct-from: cortex/recurrent_pool.py -- `_blas_threads` LIMITS the pools (replay() reuses it for
 #   its pin) and check_r_b3 reads the backends inline per thread setting; this is the policy's record
 #   of them. Folding check_r_b3's inline read onto this one is an opening (recurrent_pool.py is
-#   outside this build's files). distinct-from: cortex/neuron_zoo.py -- `_worker_ladder` derives
+#   outside this build's files). distinct-from: growth/neuron_zoo.py -- `_worker_ladder` derives
 #   thread counts to race; distinct-from: substrate/lake_working_memory.py -- `reopen` rebuilds a
 #   cursor from the lake. Neither records a BLAS policy (sites read).
 def _blas():
@@ -1006,7 +1006,7 @@ def _entropy(values):
 # G1(a)'s scorer, extended in place with `floors`; none of the sites below scores a replay's
 # predictions against a recorded category stream (all read):
 # distinct-from: sensorimotor/ingest_guard.py -- license_ok refuses a non-permissive licence id
-# distinct-from: cortex/cortical_prior.py -- validate lists reference data missing an attribute
+# distinct-from: growth/cortical_prior.py -- validate lists reference data missing an attribute
 # distinct-from: cortex/counterfactual_sim.py -- counterfactual scores imagined rollouts by value_fn
 # distinct-from: instruments/prior_drift_harness.py -- arm_wrong builds a band-permuted target table
 # distinct-from: cortex/wholistic_loop.py -- _perceive degrades an input by substrate fidelity
@@ -1394,7 +1394,7 @@ RB6_NORM = 1.73  # the live percepts' L2 norm
 RB6_BAR = 0.05  # the readout's (e1) - (e1-0) must reach it on 4242; its red twin must stay below
 
 
-# distinct-from: cortex/neurogenesis_engine.py -- SyntheticPerceptStream drives K Markov context modes
+# distinct-from: growth/neurogenesis_engine.py -- SyntheticPerceptStream drives K Markov context modes
 #   straight into the engine; this is a recorded stream for replay(), from the SORN words
 # distinct-from: reasoning/sorn.py -- make_stream yields (symbol, noise units) for its own network,
 #   WORD1 when random() < 0.5; this family is section 2.7's, WORDS[random() < 0.5], as a recording

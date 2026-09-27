@@ -193,7 +193,7 @@ class EligibilityAlgebra:
             return dict(self._factors)
 
 
-# distinct-from: substrate/basic_components.py -- its `Rule` is the neuron-protocol
+# distinct-from: growth/basic_components.py -- its `Rule` is the neuron-protocol
 #   plasticity base class; this class is named AuthoredRule to keep the two one
 #   import apart without a name collision (the panel's find). Site read.
 class AuthoredRule:

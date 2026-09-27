@@ -40,7 +40,7 @@ seed; no builtin hash()). Credit Lisman & Idiart 1995 / Lisman & Jensen 2013.
 import math
 import random
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 
 
 def _stable_key(item):

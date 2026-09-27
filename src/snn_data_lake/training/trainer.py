@@ -24,7 +24,7 @@ import random
 
 import torch
 import torch.nn as nn
-from snn_data_lake.substrate.brian2_backend import BrianLIF, fast_sigmoid
+from snn_data_lake.growth.brian2_backend import BrianLIF, fast_sigmoid
 
 from snn_data_lake.cortex.snn_classifier import (
     templates,

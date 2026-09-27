@@ -1,7 +1,7 @@
 """
 Placement -- every grown neuron gets a PLACE, a LAYER and an immutable SIGN, from the H01 human prior.
 
-WHAT THIS DOES. `cortex/neurogenesis_engine.py` grows units on the sleep tick and folds them to the
+WHAT THIS DOES. `growth/neurogenesis_engine.py` grows units on the sleep tick and folds them to the
 one durable lake. Until now a grown unit was a row of weights and nothing else: no position, no
 layer, no sign. This gives each one a coordinate in the H01 cortical geometry, the layer that
 coordinate falls in, and a Dale sign drawn from that layer's measured excitatory fraction.
@@ -59,7 +59,7 @@ specs/022 evidence/s1-placement-null.md, pinned by tests/test_placement_charge_n
 the 007 contract's C1.7 safety refusal AND T042's SCAFFOLD closure enforced as
 one admission rule at the growth call site (`place_grown`).
 
-  python -m snn_data_lake.cortex.placement
+  python -m snn_data_lake.growth.placement
 """
 
 import math
@@ -67,7 +67,7 @@ import random
 import sys
 import zlib
 
-from snn_data_lake.cortex.arealization import (
+from snn_data_lake.growth.arealization import (
     NEUROMERES,
     REGION_COORDS,
     discretize_sharp,
@@ -76,13 +76,13 @@ from snn_data_lake.cortex.arealization import (
     postmitotic_discretize,
     regime_of,
 )
-from snn_data_lake.cortex.cortical_prior import (
+from snn_data_lake.growth.cortical_prior import (
     LAYER_CIRCLES,
     LAYER_E_FRACTION,
     LAYER_OCCUPANCY,
 )
-from snn_data_lake.cortex.growth_program import GROWABLE, SCAFFOLD
-from snn_data_lake.substrate.growable import GrowthCoordinator, is_safety_seam
+from snn_data_lake.growth.growable import GrowthCoordinator, is_safety_seam
+from snn_data_lake.growth.growth_program import GROWABLE, SCAFFOLD
 
 EXCITATORY = 1
 INHIBITORY = -1
@@ -270,9 +270,9 @@ def layer_histogram(placed):
 #   the physical arm; unrelated job. Site read; the shared word is "combinations".
 # distinct-from: gates/gradient_claim_gate.py -- its "placement" is where a statistical bar
 #   sits relative to a null; this places NEURONS. Site read; the shared word is "placement".
-# distinct-from: cortex/cortical_prior.py -- REUSED, not duplicated: it is this module's existing
+# distinct-from: growth/cortical_prior.py -- REUSED, not duplicated: it is this module's existing
 #   import for the measured H01 fractions; nothing re-derives them here.
-# distinct-from: cortex/arealization.py -- REUSED, not duplicated: this section CONSUMES its
+# distinct-from: growth/arealization.py -- REUSED, not duplicated: this section CONSUMES its
 #   emit_regions/graded arm; the zero-repression comparator at its L567 is not re-implemented.
 # ==================================================================================================
 
@@ -280,7 +280,7 @@ def layer_histogram(placed):
 _GRID_NODES = 16
 
 
-# distinct-from: cortex/arealization.py -- NOT distinct but REUSED: the binning below imports
+# distinct-from: growth/arealization.py -- NOT distinct but REUSED: the binning below imports
 #   discretize_sharp (the T043 panel's P2 finding killed the first draft's inline re-derivation).
 # distinct-from: hippocampus/grid_place_map.py -- its midpoint is a place-cell firing bar;
 #   unrelated job, site read; the shared word is "midpoint".
@@ -386,7 +386,7 @@ def _place_grn(n_units, seed, prior):
 #: is driven through it, from this module's own __main__; neurogenesis_engine still calls
 #: place() directly (open composition debt: the composed sleep-tick wire measured a NULL on
 #: 2026-09-02 and was reverted, specs/022 evidence/s1-placement-null.md); ng_snn is registered
-#: only. distinct-from: cortex/growth_program.py::GROWABLE -- that is the owner-ratified
+#: only. distinct-from: growth/growth_program.py::GROWABLE -- that is the owner-ratified
 #: REGION partition (10 regions, pinned by equality in T042's self-check, counted by T046);
 #: this is a 3-entry grower routing table, and the self-check asserts every route lands
 #: INSIDE that partition, so the two are one rule rather than two.
@@ -397,7 +397,7 @@ GROWER_REGIONS = {
 }
 
 
-# distinct-from: cortex/arealization.py -- its L567 comparator is the zero-repression census
+# distinct-from: growth/arealization.py -- its L567 comparator is the zero-repression census
 #   instrument; nothing here compares censuses. Site read; term matcher fired on generic words.
 # distinct-from: hippocampus/hippocampal_memory.py -- a replay buffer over the durable lake;
 #   nothing here buffers replays. Site read; unrelated job.
@@ -439,7 +439,7 @@ def place_grown(grower, n_units, seed=0):
     return place(n_units, seed=seed, region=region)
 
 
-# distinct-from: cortex/growth_program.py -- its shared program decides GROW/QUIESCE proposals
+# distinct-from: growth/growth_program.py -- its shared program decides GROW/QUIESCE proposals
 #   from local fields; this coordinates seam WIDTHS into placements. Site read; adjacent by
 #   design (T042/T043 are sibling tasks), no shared code.
 # distinct-from: cortex/self_improvement_suite.py -- its _rung_growth measures duplicate_unit's
@@ -818,7 +818,7 @@ def _selfcheck():
         raise AssertionError("the 007 interface accepted a safety seam")
     except ValueError:
         pass
-    from snn_data_lake.hippocampus.function_preserving_growth import SpikingGrowthLayer
+    from snn_data_lake.growth.function_preserving_growth import SpikingGrowthLayer
 
     layer = SpikingGrowthLayer(n_in=6, n_hidden=4, n_out=2, seed=2)
     wrng = random.Random(9)

@@ -179,7 +179,7 @@ def test_a_killed_parent_keeps_what_the_night_flushed():
 
 
 def test_a_wrong_width_record_is_refused_whole():
-    from snn_data_lake.hippocampus.growing_learner import GrowingLearner
+    from snn_data_lake.growth.growing_learner import GrowingLearner
 
     g = GrowingLearner(dim=4)
     good = {
@@ -212,7 +212,7 @@ def test_a_width_mismatched_record_never_reaches_a_wake_tick():
     of EVERY wake tick; a wider vision record would be fed forever and learn nothing. Both are
     now refused or dropped, COUNTED and NAMED on state(), and the brain ticks."""
     pytest.importorskip("torch")
-    from snn_data_lake.hippocampus.growing_learner import GrowingLearner
+    from snn_data_lake.growth.growing_learner import GrowingLearner
     from snn_data_lake.substrate.home import throwaway_home
 
     with throwaway_home():

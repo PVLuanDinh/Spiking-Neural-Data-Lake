@@ -31,7 +31,7 @@ Honest scope: "unbounded" here means "no fixed architectural ceiling; grows on d
 identification from finite data -- is untouched by any amount of growth. Growth moves the frontier;
 it never reaches omniscience.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.growable
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.growth.growable
 """
 
 import re

@@ -12,7 +12,7 @@ after its OWN spike (soft reset + refractoriness) instead of zeroing the state. 
 recent temporal context, prevents runaway spike cascades, and yields more diverse, time-coded
 firing — the temporal richness hard-reset IF lacks. stdlib + self-checked.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.srm_neuron
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.growth.srm_neuron
 
 
 P7 NOTE (2026-08-04, on promotion into cortex/; corrected 2026-08-05): the "stdlib" in the line
@@ -21,7 +21,7 @@ quoted their wording, "pure standard library", which does not appear in THIS fil
 described obedience to the zero-dependency rule, abolished 2026-07-20. The stdlib implementation
 is KEPT because it is correct on its merits here, not because a rule requires it: this is a
 SCALAR single-neuron model with a few floats of state, stepped per-neuron, exactly like its now
-sibling `cortex/lif_neuron.py`. numpy pays off on populations, not on one neuron -- vectorizing a
+sibling `growth/lif_neuron.py`. numpy pays off on populations, not on one neuron -- vectorizing a
 scalar step would be slower and would duplicate dynamics P2 says must have one definition. What
 was removed is the BOAST, not the design.
 """

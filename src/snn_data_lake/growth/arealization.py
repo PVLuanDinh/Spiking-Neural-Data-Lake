@@ -103,9 +103,9 @@ P8 debts.
 
 # distinct-from: connectome.py -- that file DECLARES static mesoscale anatomy; this one
 #   GROWS region labels from fields. Read.
-# distinct-from: cortex/cortical_prior.py -- H01 measured reference data (an external
+# distinct-from: growth/cortical_prior.py -- H01 measured reference data (an external
 #   prior); this is the generative mechanism the prior will seed at T043. Read.
-# distinct-from: cortex/placement.py -- placement CONSUMES region labels to order grown
+# distinct-from: growth/placement.py -- placement CONSUMES region labels to order grown
 #   units; this module EMITS the labels. Read.
 # distinct-from: neuromodulation/locus_coeruleus.py -- its _population_spikes integrates
 #   a LIF pool's spike count under a scalar drive (a neuromodulator readout); this file
@@ -116,7 +116,7 @@ P8 debts.
 #   repression-dominant asynchronous semantics. Same broad family (Boolean nets),
 #   different mechanism, different question. Read.
 # distinct-from: reasoning/test_prototype.py + cerebellum/spiking_pid.py +
-#   cortex/autapse_neuron.py + plasticity/intrinsic_plasticity.py +
+#   growth/autapse_neuron.py + plasticity/intrinsic_plasticity.py +
 #   gates/gradient_claim_gate.py + substrate/lake_bridge.py +
 #   gates/perf_baseline.py -- recall controls, LIF populations, delayed-match
 #   trials, drive shaping, gradient nulls, a storage iterator, and the
@@ -361,7 +361,7 @@ def emit_regions(n_nodes=16, wiring=None, basal=None):
 # T040, whose Boolean arm measured non-discrimination). P8 invention #7, register row 7.
 # distinct-from: cortex/second_order_access.py -- its state() is a per-tick functional
 #   snapshot; nothing here snapshots brain state. Read.
-# distinct-from: hippocampus/function_preserving_growth.py -- its run() steps a spiking net
+# distinct-from: growth/function_preserving_growth.py -- its run() steps a spiking net
 #   over an input window; the settle below iterates a gene-network fixed point. Read.
 # ==================================================================================================
 

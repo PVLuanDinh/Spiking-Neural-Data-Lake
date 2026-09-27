@@ -4,12 +4,12 @@ GeNN GPU STDP-MNIST with CUSTOM plasticity — the FINISHED port (specs/012, man
 # distinct-from: reasoning/snn_mnist_stdp_genn.py -- that path IS this module before its
 #   2026-08-07 git mv into plasticity/ (specs/012 US4); the graph lagged the move. One file,
 #   one mechanism, moved then finished.
-# distinct-from: cortex/lif_neuron.py -- that is the composable CPU LIF (Python object, one
+# distinct-from: growth/lif_neuron.py -- that is the composable CPU LIF (Python object, one
 #   neuron, step()). This module code-GENERATES C++ for GeNN's CUDA kernels mirroring the
 #   ORACLE's population semantics (multiplicative beta decay + global hard-WTA + full-pop
 #   reset), which no cortex/ neuron object implements or should: the CPU mechanism for this
 #   job is reasoning/snn_mnist_stdp_fast.FastStdpNetwork, and it stays the oracle.
-# distinct-from: cortex/alif_neuron.py -- same distinction; its adaptive threshold is a
+# distinct-from: growth/alif_neuron.py -- same distinction; its adaptive threshold is a
 #   per-neuron CPU object; the theta here is the oracle's population homeostasis in C++.
 
 The CPU-verified v0.17 rule (burst encoding + x_tar LTP, 79.0% measured on this box at

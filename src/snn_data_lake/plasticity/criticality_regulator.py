@@ -22,7 +22,7 @@ on a self-contained pool, NOT on the Brain's LiveBrain neurons. `cortex/brain.py
 regime, never the brain's. Regulating the brain's own neurons would need an input port this class does not
 have, and building one is open work -- not something the sentence above should be read as claiming.
 
-  1. a recurrent LIF pool (reuses cortex.lif_neuron.LIFNeuron) with sparse random heterogeneous
+  1. a recurrent LIF pool (reuses growth.lif_neuron.LIFNeuron) with sparse random heterogeneous
      excitatory weights and E/I-balanced, activity-proportional global inhibition; seed a cascade, step
      it, record the integer spike raster. The activity-dependent inhibition makes the excitatory->silent
      transition SECOND-ORDER (a smooth, tunable critical region) rather than a bistable all-or-nothing
@@ -50,7 +50,7 @@ hash()); deterministic; ASCII-only output.
 import random
 import zlib
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 from snn_data_lake.instruments.neuronal_avalanches import BranchingNetwork
 
 

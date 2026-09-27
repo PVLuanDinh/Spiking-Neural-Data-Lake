@@ -15,7 +15,7 @@ streaming its layers off disk; this module is the OPPOSITE -- a small transforme
 made of spiking neurons and trained from scratch. They share nothing but the phrase
 "language model".
 
-The Brian2/Torch LIF parity is verified by ``substrate.brian2_backend``. Large-scale language
+The Brian2/Torch LIF parity is verified by ``growth.brian2_backend``. Large-scale language
 training remains an UNVERIFIED SCAFFOLD: there are no claimed loss, perplexity, or sample-text
 numbers in this file. The training command prints only values measured by that run.
 
@@ -49,7 +49,7 @@ try:
     import torch
     import torch.nn as nn
     import torch.nn.functional as F  # noqa: N812
-    from snn_data_lake.substrate.brian2_backend import BrianLIF, fast_sigmoid
+    from snn_data_lake.growth.brian2_backend import BrianLIF, fast_sigmoid
     _TORCH_IMPORT_ERROR = None
 except ImportError as _exc:  # Torch / Brian2 absent -> keep module importable
     torch = None

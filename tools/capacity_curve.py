@@ -20,7 +20,7 @@ import time
 
 import torch
 
-from snn_data_lake.hippocampus.ng_snn import NGSNN
+from snn_data_lake.growth.ng_snn import NGSNN
 
 REPO = "ylecun/mnist"
 

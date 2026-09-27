@@ -188,12 +188,12 @@ commit paid the full ≈ 2 hours, which is what the owner's 2026-09-02 amendment
 |---|---|
 | the brain, the wake/sleep tick, the answer path | `cortex/brain.py` (`Brain`, `_wake_tick`, `_sleep_tick`, `_safe_ctx`, `respond`, `state()`, `_flush_growth`, `_flush_prototypes`, `make_brain`) |
 | the arm loop (perception → prototype category → action; the JEPA world model; curiosity) | `brainstem/autonomous_loop.py` (`AutonomousArm.step`, `_context_pattern`, `learner`, `q`, `coverage_reward`, the arm's own `_autotelic_goal_thresh` latent-goal gate) — not an envelope file |
-| the persisted grower | `cortex/neurogenesis_engine.py` (`NeurogenesisSelfImprove.observe/tick/_refit`, `growth_state_bytes/restore_growth_state`, `baselines`), `hippocampus/ng_snn.py` (`NGSNN.fit`, `prune_unearned`) |
-| the growth stop | `cortex/growth_stop.py` (`GrowthStop.should_grow`, reads the |LP| facade through `_LPRoute`) |
-| the |LP| facade (Chain B) and the curiosity producer (Chain A) | `basal_ganglia/learning_progress.py` (`LearningProgress.lp/lp_all`), `neuromodulation/spiking_curiosity.py` (`SpikingCuriosityDrive.learning_progress`, `SpikingCurriculum`); Chain A's telemetry keys on `Brain.state()`: `curiosity_mag`, `neuromod_acetylcholine`, and `Brain._lp_mean`; Chain B: `state()["learning_progress"]["cortex"]` |
-| prototype learners (ART-style) | `hippocampus/growing_learner.py` (`GrowingLearner.observe/state_dict/load_state_dict`) — seven live construction sites in five modules (`autonomous_loop`, `brain` ×3, `affect_integrator`, `lifelong_consolidation`, `similarity_sized_growth`; the audit counted eight including a comparison harness) |
+| the persisted grower | `growth/neurogenesis_engine.py` (`NeurogenesisSelfImprove.observe/tick/_refit`, `growth_state_bytes/restore_growth_state`, `baselines`), `growth/ng_snn.py` (`NGSNN.fit`, `prune_unearned`) |
+| the growth stop | `growth/growth_stop.py` (`GrowthStop.should_grow`, reads the |LP| facade through `_LPRoute`) |
+| the |LP| facade (Chain B) and the curiosity producer (Chain A) | `growth/learning_progress.py` (`LearningProgress.lp/lp_all`), `neuromodulation/spiking_curiosity.py` (`SpikingCuriosityDrive.learning_progress`, `SpikingCurriculum`); Chain A's telemetry keys on `Brain.state()`: `curiosity_mag`, `neuromod_acetylcholine`, and `Brain._lp_mean`; Chain B: `state()["learning_progress"]["cortex"]` |
+| prototype learners (ART-style) | `growth/growing_learner.py` (`GrowingLearner.observe/state_dict/load_state_dict`) — seven live construction sites in five modules (`autonomous_loop`, `brain` ×3, `affect_integrator`, `lifelong_consolidation`, `similarity_sized_growth`; the audit counted eight including a comparison harness) |
 | goals | `cortex/autotelic_goals.py` (achieved-outcome buffer, HER, competence-progress goal babbling) is reached ONLY from the sleep tick, persist-gated, through `cortex/nightly_skills.py::_autotelic_step`, and runs on the module's own 2-D toy grid — never on the arm; `basal_ganglia/learning_progress.GoalStore` (`_T_GOAL`) has ZERO callers; T076's `basal_ganglia/curriculum.py` does not exist yet |
-| plasticity palette (local rules) | `plasticity/` (Hebbian/STDP, homeostatic, LPL spine, three-factor extensions, `rule_composer`'s production census, `inhibitory_stdp` live on the tick), `cortex/eprop_kernel.py` (surrogate-gradient batch trainer + `bptt_grads` reference — NOT a per-tick rule), online local readouts `cortex/laminar_local_readout.py::observe`, `substrate/similarity_sized_growth.py::FrozenExpert` |
+| plasticity palette (local rules) | `plasticity/` (Hebbian/STDP, homeostatic, LPL spine, three-factor extensions, `rule_composer`'s production census, `inhibitory_stdp` live on the tick), `cortex/eprop_kernel.py` (surrogate-gradient batch trainer + `bptt_grads` reference — NOT a per-tick rule), online local readouts `cortex/laminar_local_readout.py::observe`, `growth/similarity_sized_growth.py::FrozenExpert` |
 | the lake | `substrate/home.py` (`save_state/load_state` `_T_STATE`, `save_growth/load_growth`, `throwaway_home`, `home()` reads `NORD_HOME`), `substrate/binlog.py` (`BinLog`), `substrate/lake_engine.py` (`SynapseDelta`, `AppendBudget` — no live caller yet), `lake_segments.py`, `lake_index.py`, `neuro_chip_stream.py` (shard discipline) |
 | the substrate tick | `substrate/kernel_tick.py` (`KernelTick._deliver_and_rotate`), `substrate/kernel_state.py` (SoA, T013), dormancy-exempt `wire` today; `gates/perf_baseline.py` (`--record/--assert`; T065's `tools/perf_baseline.py` path is stale — the p4c ratchet refused `tools/` at T001) |
 | anatomy | `connectome.py`, `substrate/wiring_manifest.py` (36 ports, 19 edges declared), `substrate/signal_ring.py` (`SignalRing`, `JoinConsumer`); nine modules carry a `_*_consumer_factory` (`evidence_accumulation`, `r_stdp`, `interoceptive_relay`, `interoceptive_integration`, `region_coherence`, `astrocyte_modulation`, `percept_surprise`, `task_set`, `reentrant_workspace`) |
@@ -705,7 +705,7 @@ clause protects it.
   FIRST TICK POPULATION AT OR ABOVE N*, which today only growth can produce. The DECLINE, the bar and the
   disposition stand.*
 - **Then the prior: T062** — the H01 ingest is the c3 SYNAPSE GRAPH only, composed onto
-  `cortex/cortical_prior.py` (which already holds the soma/layer/sign constants; the audit's "what the spec
+  `growth/cortical_prior.py` (which already holds the soma/layer/sign constants; the audit's "what the spec
   gets wrong" item (5)) — the join gate, unit gate, layer computation, CC-BY provenance; and **T063** the
   three-arm drift harness (SC-006, both reds). Moved behind S1–S5 on rank 1's measurement: the prior earns a
   reader when growth places units at scale and paging needs a locality order. *DATED NOTE 2026-09-09 (T068
@@ -1217,7 +1217,7 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   residual-reduction order (found 2026-09-23; the grower's own arc owes it). It is STATELESS per
   percept: `NGSNN._rates` starts at V = 0 and has no recurrent weight. The persistence-informed
   oracle beats LIVE 8 of 8 (t 2.97, `evidence/l-parallel-arms.md`).
-- **Unread anatomy.** `cortex/placement.py` gives every grown unit a fractional cortical DEPTH, a
+- **Unread anatomy.** `growth/placement.py` gives every grown unit a fractional cortical DEPTH, a
   layer and an immutable Dale sign, persisted, with no computational reader (Part E: "placement
   has no reader").
 - **A driverless wiring table.** `cortex/cortical_microcircuit.py` holds the measured
@@ -1352,7 +1352,7 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     the percept consumer (no competing engine). Replacing the chat learner with an NG-SNN stays a
     benchmark.
   - **Candidates follow the diagnosis.** A state deficit gets memory kinds from
-    `cortex/neuron_zoo.py`. A capacity deficit gets rows trained on the multiclass residual with
+    `growth/neuron_zoo.py`. A capacity deficit gets rows trained on the multiclass residual with
     eligibility traces and no weight transport *(DATED 2026-09-25: no BACKPROP weight transport, the e-prop sense,
     `gates/eprop_transport_gate.py`; brain-to-reservoir transport is a different operation and is permitted)*:
     train, select on validation, judge on future data.
@@ -1483,8 +1483,8 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   Deliverable `evidence/g7-organizing-unit.md`, written 2026-09-25: the decision as recorded ("grown columns on an
   anatomical map"), the three options and their evidence in brief, the attachment rule (layer target x distance
   kernel x shared-partner bonus), what C means for the reservoir feed and the return path, the incumbents it adopts
-  (`cortex/placement.py`'s persisted label EXTENDED with position, region label and problem id -- no second label
-  store; `cortex/arealization.py::emit_regions`; `cortical_microcircuit.CONN_PROB`; the H01 statistics; the one
+  (`growth/placement.py`'s persisted label EXTENDED with position, region label and problem id -- no second label
+  store; `growth/arealization.py::emit_regions`; `cortical_microcircuit.CONN_PROB`; the H01 statistics; the one
   grower), and the four deciding tests mapped to the rows that run them: T1 -> G3's growth-unit arms and G9; T2 and
   T3 -> G4; T4 -> G4 (wiring) and G9 (task score). The label vocabulary is FR-021's dated note: all sixteen
   `REGION_COORDS` names, read from position, only the ten pinned growable names admitted (a session call under the

@@ -2431,3 +2431,92 @@ known asset-dependent binder case deselected; all 13 focused infra
 self-checks and the frozen-label regression test passed. Ruff, citation
 and document command guards passed. No battery, push or daemon start is
 claimed for M4.
+
+### 3.16 M5 growth move: pre-declaration (Codex, 2026-09-27)
+
+The M4 head was re-exported as the pre and post M5 sources. The pre-M5
+move-gate census completed 24 gates and seven probes, all green. The frozen
+section 2.12 map moves 26 modules, 24 core and two torch-tier, into growth.
+Before any post-M5 gate invocation, the exact expected output change was
+recorded in the out-of-tree `g8-m5/declared_M5.json`. It adds the growth
+package to REGIONS, TORCH_TIER and GOVERNED, changes only the six declared
+gate report fields, and expects all other gate outcomes to remain identical.
+The citation count was forecast statically from the tracked path set and
+the candidate file texts, using the guard's parser and resolver but not its
+post-tree gate: the same calculation reproduces the pre count 1602/271 and
+predicts 1759/281. The one known envelope comment citation at line 243 is
+the frozen F11 carve-out. The post-M5 census and comparison are still owed.
+
+**First C1 red and dated amendment, 2026-09-27.** The initial post census
+returned 23 green gates, seven green probes and one envelope gate red. The
+generic citation rewrite had changed the protected arm source's comment at
+line 243 from the old neurogenesis location to the new one, despite the
+frozen rule that this file is never opened for a move. Its approved SHA-256
+starts `5c3fa4b0`; the rewritten candidate started `b2760b06`. C1 reported
+exactly the envelope gate's result and rc differences, with no other
+undeclared output changes. The protected file was restored byte-for-byte
+from the M4 export; its old comment is the F11 carve-out. The static broad
+forecast rises by one to 1760/281, and the out-of-tree declaration was
+amended before a second post census. The first red is retained here.
+
+The repaired temporary census passed all 24 gates and seven probes, and
+C1 equaled the amended declaration with 15 changes. The candidate was then
+applied to the isolated worktree with 26 tracked moves and the protected
+arm source byte-identical to M4. C2(a) attempted 415 imports on both sides:
+the same 13 known optional-import failures and zero scratch-home writes.
+C2(b) found 117 legacy pairs, no synthetic packages yet, 286 flat aliases,
+and no identity failure. C2(d) scanned 664 live Python files with zero
+unparsed or stale references, and its historical positive control found
+all six F7 sites. C2(e) imported all 16 frozen artifacts; their 12 distinct
+module imports resolved through file loaders. R-L1 brain and zoo restores
+both passed with equal walks and answers, and no refusal. The planted old
+packaging exclude red C9 by file exactly once.
+
+**C2(c) instrument correction, 2026-09-27.** The first real-worktree run
+passed the 16 already moved battery gates and both forms of the newly moved
+Brian2 backend (rc 0), but compared their printed wall-time numbers as
+semantic output. The two reference runs printed approximately 0.511 and
+0.517 seconds for the same timeout probe, so C2(c) falsely reported one
+difference. The comparison now normalizes only Brian2's named
+`timeout_elapsed_s` field while preserving every other JSON field. A
+regression checks that changed `requested_cells` still differs. The
+corrected backend comparison and the stage's remaining checks are owed.
+
+The second backend-only C2(c) run exposed two more explicitly measured
+fields in the same successful self-check: `wall_s` and
+`peak_working_set_bytes` in its five-call cost report. Both varied between
+the two fresh processes; `calls` and `payload_bytes` did not. The narrow
+normalization now covers all three named measurement fields and leaves
+every result field and return code compared. The regression checks that a
+changed requested-cell count still differs. The backend pair is re-run
+before claiming C2(c) green.
+
+The third backend-only C2(c) run exposed one final run-specific token in
+the same output: Brian2 embeds a randomly named `brian_debug_*.log` file
+in the expected GIL-refusal traceback. The comparison now normalizes only
+that generated basename; it still compares the exception type and text.
+The regression exercises two generated filenames and proves a changed
+exception message remains a difference. The backend pair is again owed.
+
+The final backend-only C2(c) rerun passed: legacy and current forms exited
+0 with equal normalized output, completing 17 of 17 parity pairs (the
+other 16 passed on the first run). The comparison still preserves all
+semantic fields and traceback text. The M5 focused behavior suite passed
+56 tests; all 27 in-process growth self-checks passed. P6's six planted
+failures fired and four valid controls held. The move gate's real-worktree
+self-check fired its C1, F5, C2(b), F3(c), F2, C2(c) and C5 reds in scratch
+copies, and its F7 positive control found all six sites. Ruff check and
+format, the citation and document-command guards, the policy audit, and
+the protected-file diff all passed. The final staged-tree census and
+commit are still owed; no battery or push is claimed at this point.
+
+**Final M5 stage reading.** Fresh exports of the M4 parent and the staged
+M5 worktree were both measured by the corrected instrument. Each completed
+24 gates, seven probes and 30 registries with every gate rc 0. C1 equaled
+the amended declaration with exactly 15 changes; no other result moved.
+The pre census SHA-256 begins `beef5917cb3ebf0b`, post
+`11860ba455eb42bd`, observed delta `30081c2a6ba964d3`, and out-of-tree
+declaration `5d990a6016c98895`. The final evidence paragraph itself adds
+no path citation or command and does not alter the measured source tree.
+M5 is verified by the cheap half only; G8-1's panel, fold and full battery
+remain owed.

@@ -13,7 +13,7 @@ This module is that lever, brain-native.
 
 It BUILDS ON the growth signals we already compute -- it does NOT reinvent them:
   * NOVELTY / SIMILARITY = the ART developmental match we already run. `GrowingLearner._best`
-    (hippocampus.growing_learner) returns (nearest-prototype id, cosine similarity); novelty is
+    (growth.growing_learner) returns (nearest-prototype id, cosine similarity); novelty is
     `1 - similarity`. That is exactly "do I already recognise this?" -- `developmental_loop`
     calls it "the ART / hippocampus.GrowingLearner vigilance rule". We IMPORT it (with its `_cosine`
     kernel) rather than recompute cosine. (For spike-EVENT signatures a caller can swap in
@@ -48,7 +48,7 @@ Honest scope: "sized capacity" bounds HOW MANY units to admit; it does not make 
 compute more. Retention here is the strong, structural kind (frozen experts are untouchable), shown
 on a small synthetic multi-task setup -- not a claim about a real continual-learning benchmark.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.similarity_sized_growth
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.growth.similarity_sized_growth
 """
 
 import math
@@ -58,7 +58,7 @@ from collections import namedtuple
 import numpy as np
 
 # REUSE the developmental match we already compute (ART cosine to nearest prototype) + its kernel.
-from snn_data_lake.hippocampus.growing_learner import GrowingLearner, _cosine
+from snn_data_lake.growth.growing_learner import GrowingLearner, _cosine
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

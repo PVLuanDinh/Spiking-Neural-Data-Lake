@@ -117,7 +117,7 @@ from snn_data_lake.plasticity.eligibility_algebra import AuthoredRule
 #   RuleSpec.claim_key is the SLOT binding a rule to its claim, and the
 #   cross-check holding both declarations to each other LANDED at T051c
 #   (check_claim + the rule_census ratchet). Site read.
-# distinct-from: substrate/basic_components.py -- compose_step is a STAGE pipeline
+# distinct-from: growth/basic_components.py -- compose_step is a STAGE pipeline
 #   (encoder -> neuron -> connection -> one rule), not N rules on one substrate;
 #   named here because the sibling module's convention names it. Site read.
 

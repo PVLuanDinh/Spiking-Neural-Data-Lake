@@ -20,14 +20,14 @@ this repo's drift_monitor / valence machinery, at the single-neuron scale and at
 Pure standard library, deterministic (fixed-step forward Euler, no randomness, no wall-clock). On-thesis
 with lif_neuron / izhikevich_neuron / resonate_and_fire / intrinsic_plasticity.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.adex_neuron        # (also run by run_selfchecks.py)
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.growth.adex_neuron        # (also run by run_selfchecks.py)
 
 
 P7 NOTE (2026-08-04, on promotion into cortex/): the phrase "pure standard library" above
 described obedience to the zero-dependency rule, abolished 2026-07-20. The stdlib implementation
 is KEPT because it is correct on its merits here, not because a rule requires it: this is a
 SCALAR single-neuron model with a few floats of state, stepped per-neuron, exactly like its now
-sibling `cortex/lif_neuron.py`. numpy pays off on populations, not on one neuron -- vectorizing a
+sibling `growth/lif_neuron.py`. numpy pays off on populations, not on one neuron -- vectorizing a
 scalar step would be slower and would duplicate dynamics P2 says must have one definition. What
 was removed is the BOAST, not the design.
 """

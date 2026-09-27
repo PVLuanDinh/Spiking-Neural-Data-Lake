@@ -2,9 +2,9 @@
 FR-035): contiguous within-faculty indices, 128-byte-aligned field blocks, lake-backed.
 
 WHY SoA, stated against the incumbents it will supersede: today every per-unit quantity on a
-hot path lives as a Python attribute on a model object (`cortex/lif_neuron.py`,
-`cortex/alif_neuron.py`, `cortex/adex_neuron.py`, `cortex/izhikevich_neuron.py`,
-`cortex/resonate_and_fire.py`) or inside `cortex/neuron_zoo.py`'s heterogeneous population --
+hot path lives as a Python attribute on a model object (`growth/lif_neuron.py`,
+`growth/alif_neuron.py`, `growth/adex_neuron.py`, `growth/izhikevich_neuron.py`,
+`growth/resonate_and_fire.py`) or inside `growth/neuron_zoo.py`'s heterogeneous population --
 per-object storage that costs an attribute lookup per unit per tick and can never page, vectorize
 or land on a GPU as a block. The scale ceiling is ARCHITECTURAL (~40k units, measured); a
 lake-resident brain needs state that is bytes first.
@@ -19,7 +19,7 @@ vanishes (P2's port-first guard).
 
 THE S0 FIELD SET IS THE EQUATION OWNERS', NOT INVENTED HERE (P1): v (membrane), thr (adaptive
 threshold), refrac (refractory ticks), last_spike (tick index), sign (Dale, immutable at birth --
-`cortex/placement.py` owns the assignment rule) -- exactly what the LIF/ALIF pair needs, cited as
+`growth/placement.py` owns the assignment rule) -- exactly what the LIF/ALIF pair needs, cited as
 the S0 incumbents. A richer model (AdEx's w, Izhikevich's u) adds its field WHEN it adopts the
 kernel, and every layout change is a NEW named frame with its own migration disposition (§3.5;
 the `.v1` in the frame name is that mechanism).
@@ -34,11 +34,11 @@ LAYOUT CONTRACTS, each asserted in main():
     own consolidation, cold start when the name is absent. crc32-for-pinned-values stays the
     project convention (`substrate/home.py` owns it); this module pins nothing itself.
 
-distinct-from: cortex/neuron_zoo.py -- a POPULATION of Python model objects behind one
+distinct-from: growth/neuron_zoo.py -- a POPULATION of Python model objects behind one
   interface; this is the byte layout that will hold such populations' state. distinct-from:
-  cortex/neurogenesis_engine.py -- grows/retains the NGSNN readout substrate (torch tensors,
+  growth/neurogenesis_engine.py -- grows/retains the NGSNN readout substrate (torch tensors,
   its own _T_GROWTH_DELTA chain); different substrate, different persistence class.
-  distinct-from: substrate/growable.py -- growth bookkeeping, not state layout. All sites read.
+  distinct-from: growth/growable.py -- growth bookkeeping, not state layout. All sites read.
 """
 
 from __future__ import annotations

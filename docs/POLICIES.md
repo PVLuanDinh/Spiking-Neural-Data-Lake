@@ -90,7 +90,7 @@ used to carry is in `docs/POLICIES_EVIDENCE.md`:
 |---|---|
 | **self-building code** | `cortex/brain.py::Brain._maybe_autonomous_self_build` → `basal_ganglia/self_build_loop.SelfBuildLoop.run`, night-cadenced under `NORD_SELFMOD=1`; pinned by `tests/test_selfbuild_route.py` (route + opt-in gate as its control). Probe with `Brain._selfbuild_last` on a scratch `NORD_HOME` — a run that appends to the live lake is the probe contaminating the subject |
 | **knowledge acquisition** | chat ingest → the one durable lake (`substrate/chat_memory.py`), `sensorimotor/web_ingest.py`, reasoning-curriculum growth during sleep |
-| **neural growth** | problem-driven growth (P4d): grow column-sized batches on the anatomical map while a problem's solved predicate fails, attempt, repeat, and pause at a budget (UNSOLVED, kept open); sleep prunes and saves after the solve. ONE grower (P2) — the incumbent is sleep-tick growth with retention: `cortex/neurogenesis_engine.py` (earn-your-place prune, `growth_state_bytes`/`restore_growth_state`/`substrate_is_retained`), persisted into the ONE lake on two live paths (sleep tick and construction; `Brain._flush_growth` — ONE mechanism, TWO callers), which the problem-driven loop merges with or replaces; ONE stop rule likewise, the incumbent `cortex/growth_stop.py` (FR-023). Restart-with-grown-substrate is pinned by `tests/test_brain_growth_restart.py`, whose immediate-exit case carries the reachable red |
+| **neural growth** | problem-driven growth (P4d): grow column-sized batches on the anatomical map while a problem's solved predicate fails, attempt, repeat, and pause at a budget (UNSOLVED, kept open); sleep prunes and saves after the solve. ONE grower (P2) — the incumbent is sleep-tick growth with retention: `growth/neurogenesis_engine.py` (earn-your-place prune, `growth_state_bytes`/`restore_growth_state`/`substrate_is_retained`), persisted into the ONE lake on two live paths (sleep tick and construction; `Brain._flush_growth` — ONE mechanism, TWO callers), which the problem-driven loop merges with or replaces; ONE stop rule likewise, the incumbent `growth/growth_stop.py` (FR-023). Restart-with-grown-substrate is pinned by `tests/test_brain_growth_restart.py`, whose immediate-exit case carries the reachable red |
 | **cortical column construction** | under P4d (owner decision 2026-09-25) a column is the GROWTH STEP, a small layered batch placed on the anatomical map where error builds up; this microcircuit is a candidate source of its layer targets. `cortex/cortical_microcircuit.py::thalamic_drive` IS the input port (anatomically targeted, L4/L6 only; exactly 0.0 at 0 Hz; refuses a negative rate). Wiring a live caller is the open work; a spatial-PATTERN input (the port carries a scalar rate) is the genuinely absent half |
 | **self-recalibration** | `substrate/signal_calibrator.py`, running-baseline forms per P1 |
 | **future avenues** | open by construction — a newly identified channel joins this list and is built, on the same terms: named blocker, then channel, then fill, then measurement. Treating the list as complete is the failure this row exists to prevent |
@@ -114,7 +114,7 @@ place in this project to generate theater, and every other policy exists partly 
   loop that reports rising accuracy as units grow is a legitimate thing, but it is an experiment
   ABOUT growth, not the growth itself. The honest possibility stays open: retaining nothing may be
   CORRECT for a measurement loop — then what needs fixing is the claim, not the engine.
-  `hippocampus/ng_snn.py`'s earn-your-place stop (capacity monotone in data) is the template for a
+  `growth/ng_snn.py`'s earn-your-place stop (capacity monotone in data) is the template for a
   grower whose result is worth keeping;
 - a self-written module that duplicates a mechanism is **bloat** (P2), not capability;
 - a "capability" reported without a measurement is a **fake capability** (verify-first), not a gain;
@@ -181,7 +181,7 @@ and they are co-equal — the choice between them is a judgement about the mecha
 What is forbidden is the third option: leaving both live "additively". That dilutes the signal, grows
 bloat, and leaves every later reader guessing which one is authoritative.
 
-**Worked merge:** `cortex/neuron_zoo.py` — one heterogeneous population behind a single contract,
+**Worked merge:** `growth/neuron_zoo.py` — one heterogeneous population behind a single contract,
 earning the name because it *"does NOT re-implement any dynamics -- it IMPORTS the existing neuron
 modules and puts a thin adapter in front of each"*. One surviving interface, zero duplicated dynamics.
 
@@ -621,7 +621,7 @@ degraded one. Named consequence: CI runs a DIFFERENT torch build from the local 
 build-sensitive numeric assert can be green in one and red in the other.
 
 **Where the GPU pays, and should be used without hesitation:** the `[train]`/`[gpu]` tiers —
-surrogate-gradient training, `hippocampus/ng_snn.py`, `cortex/neurogenesis_engine.py`, the promoted
+surrogate-gradient training, `growth/ng_snn.py`, `growth/neurogenesis_engine.py`, the promoted
 readout studies, and any offline sweep over a real dataset. Wide, batched, repeated — the regime the
 crossover favours. **Where it does not pay: any population whose width sits below the measured
 crossover — which has included the whole live wake/sleep tick on every measurement so far.** That is
@@ -1035,7 +1035,7 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
     (feedback alignment) was built first and **REFUTED by its own null** — the entire gain was the
     removal of the transport term. A policy prescribing a fix does not make the fix correct; the
     measurement outranks the prescription.
-  - `hippocampus/ng_snn.py::fit` — **NOT a violation.** A direct solve: no gradient propagated, no
+  - `growth/ng_snn.py::fit` — **NOT a violation.** A direct solve: no gradient propagated, no
     weight transported. It IS non-local — "non-local" and "backprop" are different claims, and only
     the second is forbidden.
   - `basal_ganglia/mlp_q.py::MlpQ.update` — transport **RETIRED 2026-08-14**

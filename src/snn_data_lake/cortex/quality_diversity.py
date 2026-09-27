@@ -86,7 +86,7 @@ Per-instance random.Random(seed), ASCII-only, deterministic.
 import math
 import random
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
 from snn_data_lake.infra._mathutils import mean
 from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive

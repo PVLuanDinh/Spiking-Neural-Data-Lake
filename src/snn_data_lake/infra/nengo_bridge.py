@@ -469,7 +469,7 @@ def main():
     # one, and vice versa.
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
     import snn_data_lake.instruments.nef_compute as nef  # the NEF ground truth (PROMOTED to cortex/ 2026-08-12)
-    from snn_data_lake.cortex.lif_neuron import LIFNeuron  # the discrete brain LIF
+    from snn_data_lake.growth.lif_neuron import LIFNeuron  # the discrete brain LIF
 
     print("=" * 72)
     print("NENGO BRIDGE -- brain NEF / LIF primitives on the Nengo simulator (Loihi-deployable)")

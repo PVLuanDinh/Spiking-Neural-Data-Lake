@@ -57,7 +57,7 @@ additive (a new member of the plasticity family; nothing existing changes).
 import math
 import random
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

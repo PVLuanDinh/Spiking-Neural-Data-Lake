@@ -83,7 +83,7 @@ a synchronous/saturated control (integrated-but-undifferentiated) that also scor
 while the independent-noise bank fires AT LEAST AS MUCH as the integrated network, so a skeptic cannot
 attribute the gap to activity level.
 
-SUBSTRATE. A small recurrent LIF subnet (n=12; reuses cortex.lif_neuron.LIFNeuron, the canonical
+SUBSTRATE. A small recurrent LIF subnet (n=12; reuses growth.lif_neuron.LIFNeuron, the canonical
 spiking primitive). The DYNAMICAL REGIME is set by the recurrent COUPLING and background NOISE; PCI peaks
 near the edge of chaos, the same slightly-subcritical band that plasticity.criticality_regulator holds a
 spiking pool in (branching ratio ~1, maximal stimulus separability). This module measures that band's
@@ -100,7 +100,7 @@ import random
 import time
 import zlib
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 
 
 def _child_seed(base, tag):
@@ -247,7 +247,7 @@ def gzip_complexity(s):
 class PerturbationalComplexity:
     """A small recurrent LIF subnet plus a perturb-and-compress probe (PCI).
 
-    n leaky integrate-and-fire units (reusing cortex.lif_neuron.LIFNeuron). A sparse random weight
+    n leaky integrate-and-fire units (reusing growth.lif_neuron.LIFNeuron). A sparse random weight
     matrix (scaled by `coupling`) wires them recurrently; every unit also receives independent
     background-noise current (scaled by `noise`). `coupling`, `noise` and `weight_mode` select the
     DYNAMICAL REGIME (see the module factories `integrated_network`, `independent_noise`,

@@ -263,6 +263,29 @@ def test_the_reds_name_modules_by_basename_through_the_tables():
         assert S.module_path(base)  # every C2(c) target is a registered module
 
 
+def test_c2c_ignores_brian_measurements_but_keeps_result_differences():
+    first = (
+        'r={"timeout_elapsed_s": 0.511, "wall_s": 3.31, '
+        '"peak_working_set_bytes": 634777600, "requested_cells": 2000001}'
+    )
+    later = (
+        'r={"timeout_elapsed_s": 0.527, "wall_s": 3.54, '
+        '"peak_working_set_bytes": 634818560, "requested_cells": 2000001}'
+    )
+    changed = later.replace('"requested_cells": 2000001', '"requested_cells": 2000002')
+    assert mg._c2c_line("brian2_backend", first, []) == mg._c2c_line("brian2_backend", later, [])
+    assert mg._c2c_line("brian2_backend", first, []) != mg._c2c_line("brian2_backend", changed, [])
+    assert mg._c2c_line("other_gate", first, []) != mg._c2c_line("other_gate", later, [])
+    stderr_a = r'"stderr": "C:\\Temp\\brian_debug_nn_172eo.log\\nRuntimeError: GIL enabled"'
+    stderr_b = r'"stderr": "C:\\Temp\\brian_debug_uv_9f13a.log\\nRuntimeError: GIL enabled"'
+    assert mg._c2c_line("brian2_backend", stderr_a, []) == mg._c2c_line(
+        "brian2_backend", stderr_b, []
+    )
+    assert mg._c2c_line("brian2_backend", stderr_a, []) != mg._c2c_line(
+        "brian2_backend", stderr_b.replace("GIL enabled", "different error"), []
+    )
+
+
 def test_unordered_gate_report_rows_keep_every_element_visible():
     immortal_a = (
         "excluded, scratch-home deletions (cannot reach the durable lake): 2 "

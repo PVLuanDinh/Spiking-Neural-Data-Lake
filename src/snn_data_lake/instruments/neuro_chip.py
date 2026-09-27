@@ -23,7 +23,7 @@ inter-core), which is exactly what makes the mapped computation invariant to cor
 # additive/opt-in emulator, changes no existing behaviour; reuses LIFNeuron + energy.py.
 # Ceiling: functional/architectural twin (AER-routed, time-stepped), NOT cycle-accurate silicon --
 # no analog dynamics, no place-and-route, synthetic workload; software side of the nir_export target.
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 from snn_data_lake.instruments import energy
 
 

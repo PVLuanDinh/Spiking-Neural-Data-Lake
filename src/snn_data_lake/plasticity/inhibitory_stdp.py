@@ -34,7 +34,7 @@ import collections
 import math
 import random
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 
 GRADIENT_CLAIM = {
     "InhibitorySTDP.step": (

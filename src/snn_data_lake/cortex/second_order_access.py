@@ -70,7 +70,7 @@ monitors ACCESS reliability). Deterministic, ASCII-only, per-instance RNG.
 
 import random
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 from snn_data_lake.infra._mathutils import clamp01
 
 # phenomenal vocabulary that MUST NEVER appear in the functional readout (claim 5).

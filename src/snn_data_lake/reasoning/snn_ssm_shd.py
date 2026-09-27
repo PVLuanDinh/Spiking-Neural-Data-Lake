@@ -32,7 +32,7 @@ import sys
 import torch
 import torch.nn as nn
 import torch.nn.functional as F  # noqa: N812
-from snn_data_lake.substrate.brian2_backend import BrianLIF, fast_sigmoid
+from snn_data_lake.growth.brian2_backend import BrianLIF, fast_sigmoid
 from snn_data_lake.infra.device import resolve_device, enable
 
 # MODULE SCOPE: resolve only. `enable()` calls `torch.set_default_device()`, which is

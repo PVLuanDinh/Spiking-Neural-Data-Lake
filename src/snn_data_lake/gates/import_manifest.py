@@ -107,6 +107,7 @@ GOVERNED = (
     "instruments",  # G8 M2: the package created by the instrument move
     "sensorimotor",  # G8 M3: the package created by the sensorimotor move
     "infra",  # G8 M4: the package created by the infrastructure move
+    "growth",  # G8 M5: the package created by the growth move
 )
 
 # The tiers no gate covers. A governed -> ungoverned edge is what this module protects.

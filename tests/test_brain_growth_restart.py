@@ -1,6 +1,6 @@
 """A BRAIN that grows and exits must come back grown -- proven across a real process boundary.
 
-specs/019 [B2.09]. `cortex/neurogenesis_engine` already proves this at ENGINE level: its own
+specs/019 [B2.09]. `growth/neurogenesis_engine` already proves this at ENGINE level: its own
 self-check spawns a subprocess and restores a byte-equal fingerprint. What was never proven is the
 level that matters to a user -- the full `Brain -> LiveBrain` stack. The engine module contains ZERO
 occurrences of `make_brain` or `Brain(`, so nothing connected the two.

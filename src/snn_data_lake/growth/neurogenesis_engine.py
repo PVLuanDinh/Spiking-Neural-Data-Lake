@@ -3,7 +3,7 @@ Neurogenesis-driven self-improvement engine for the chat daemon (torch tier).
 
 The brain improves itself by GROWING neurons to PREDICT ITS OWN NEXT PERCEPTION -- a
 self-supervised forward model over its perceptual substrate. "Growing == improving" is
-made literal and measurable: an NG-SNN (hippocampus/ng_snn.py, contribution-grown LIF
+made literal and measurable: an NG-SNN (growth/ng_snn.py, contribution-grown LIF
 neurogenesis) is refit as experience accumulates; each new "granule cell" is admitted only
 if it functionally reduces the next-perception prediction residual, and self-improvement is
 read off as next-context prediction accuracy rising above chance as the pool grows.
@@ -49,7 +49,7 @@ else cpu", which is exactly what `_refit` used to do -- it sent a ~60,000-elemen
 measured crossover on this machine is 262,144. The refit now hands its real element count to
 `substrate/device.select`, and the env named here was `.venv-cu128`, retired the same day.
 
-  PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python.exe -m snn_data_lake.cortex.neurogenesis_engine
+  PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python.exe -m snn_data_lake.growth.neurogenesis_engine
 """
 
 import random
@@ -57,7 +57,7 @@ import random
 import torch
 
 from snn_data_lake.brainstem.arm_config import CONTACT
-from snn_data_lake.hippocampus.ng_snn import NGSNN
+from snn_data_lake.growth.ng_snn import NGSNN
 from snn_data_lake.infra.device import crossover, decisions, select
 from snn_data_lake.sensorimotor.multimodal_encoder import encode_multimodal
 
@@ -66,7 +66,7 @@ GRADIENT_CLAIM = {
     "NeurogenesisSelfImprove._refit": (
         "DIRECT_SOLVE",
         "grows a fresh NG-SNN on the buffer and measures next-category prediction accuracy. It drives "
-        "hippocampus/ng_snn::fit, whose greedy matching pursuit with an analytical beta per block "
+        "growth/ng_snn::fit, whose greedy matching pursuit with an analytical beta per block "
         "POLICIES.md adjudicates as a DIRECT SOLVE -- non-local, but propagating no gradient and "
         "transporting no weight. It inherits that disposition rather than LOCAL, because LOCAL would "
         "assert a locality the adjudication explicitly denies",
@@ -116,7 +116,7 @@ def _markov_matrix(k_modes, peak, seed):
 #   stream's drive() mimics; it perceives, this synthesizes a harness stimulus. Site read.
 # distinct-from: sensorimotor/arm_bridge.py -- recv_outcome() reads the NEXT reward packet off a
 #   socket. distinct-from: cerebellum/forward_model.py -- reset() sets a plant state.
-#   distinct-from: cortex/dendritic_neuron.py -- step() advances a compartment. distinct-from:
+#   distinct-from: growth/dendritic_neuron.py -- step() advances a compartment. distinct-from:
 #   cortex/generative_self_model.py -- a forward model of the self-signal. Phrase overlap on
 #   'next'/'tick'/'stream' only; none produces a (percept, category) stimulus. All sites read.
 class SyntheticPerceptStream:
@@ -197,7 +197,7 @@ class NeurogenesisSelfImprove:
         T=15,
         seed=7,
         device=None,
-        # T047: the growth stopping criterion (cortex/growth_stop.py) -- a ONE-ARG callable
+        # T047: the growth stopping criterion (growth/growth_stop.py) -- a ONE-ARG callable
         # receiving THIS engine's trajectory (the system under test reaches the criterion
         # through its parameter -- the red_reachability zero-arg red) and returning bool,
         # consulted at each refit. None = ungated (the incumbent fixed schedule, which is
@@ -269,7 +269,7 @@ class NeurogenesisSelfImprove:
         self.trajectory = []  # (tick, n_units, acc) per refit
 
     # ---- the percept stream (WAKE) and the sleep step ----------------------------------------
-    # distinct-from: hippocampus/growing_learner.py -- its observe() RECRUITS/refines prototypes
+    # distinct-from: growth/growing_learner.py -- its observe() RECRUITS/refines prototypes
     #   and is the CATEGORY producer this consumes. distinct-from: basal_ganglia/
     #   learning_progress.py -- its observe() feeds error levels into |LP| EMAs.
     #   distinct-from: substrate/signal_calibrator.py, cortex/percept_surprise.py -- observe()
@@ -384,7 +384,7 @@ class NeurogenesisSelfImprove:
 
     # distinct-from: brainstem/autonomous_loop.py -- _context_pattern() ENCODES the percept this
     #   consumes. distinct-from: cerebellum/spiking_jepa.py -- a collapse measurement on a
-    #   held-out batch. distinct-from: cortex/growth_stop.py -- should_grow() is the VERDICT this
+    #   held-out batch. distinct-from: growth/growth_stop.py -- should_grow() is the VERDICT this
     #   refit consults. distinct-from: cortex/percept_surprise.py -- records an A/B attribution.
     #   distinct-from: hippocampus/growable_readout.py -- re-seeds an optimizer. Phrase overlap
     #   on 'measure'/'held-out'/'fresh' only. All sites read.
@@ -404,7 +404,7 @@ class NeurogenesisSelfImprove:
         # L1a (2026-09-05): the measurement slice COVERS THE CATEGORY MARGINAL (recency-mixed), not the
         # most recent third -- hippocampus/ng_snn.marginal_holdout, the ONE window this engine and NGSNN
         # share; the floors are computed against each held-out row's true stream predecessor.
-        from snn_data_lake.hippocampus.ng_snn import marginal_holdout
+        from snn_data_lake.growth.ng_snn import marginal_holdout
 
         tr_list, va_list = marginal_holdout(self._buf_y, holdout)
         if len(va_list) < 3 or len(tr_list) < n_cat:
@@ -480,11 +480,11 @@ class NeurogenesisSelfImprove:
         # PLACEMENT, part 1 of 2: the units this refit ADDED get a cortical home. `fit(init_W=...)`
         # keeps the inherited units as the LEADING rows, so index identity survives growth and the
         # new units are exactly the tail. Each is born into a layer drawn from H01's measured
-        # occupancy with a Dale sign fixed at birth (cortex/placement).
+        # occupancy with a Dale sign fixed at birth (growth/placement).
         n_before = len(self._placement)
         n_after_fit = int(model.n_units)
         if n_after_fit > n_before:
-            from snn_data_lake.cortex.placement import place
+            from snn_data_lake.growth.placement import place
 
             # seed varies with the engine seed AND how many units already exist, so successive
             # births are not carbon copies of the first batch while staying deterministic
@@ -576,7 +576,7 @@ class NeurogenesisSelfImprove:
     #
     # WHAT IS ACTUALLY GROWN, and it is only three tensors: NGSNN grows `W` (L, d_in) hidden input
     # weights, `b` (L,) biases and `beta` (L, m) analytical output weights, with `d_in`/`m` needed to
-    # interpret them (`hippocampus/ng_snn.py:90-94`). Everything else on that object is construction
+    # interpret them (`growth/ng_snn.py:90-94`). Everything else on that object is construction
     # config or an RNG. So this serialises the substrate, NOT the engine.
     #
     # The ACCURACY TRAVELS WITH THE WEIGHTS, deliberately. A restored model carrying an accuracy
@@ -601,7 +601,7 @@ class NeurogenesisSelfImprove:
     def _traj_tail(trajectory):
         """The persisted-trajectory tail: the growth gate's own evidence window sizes it
         (the gate is the one consumer of restored rows; imported, not re-picked)."""
-        from snn_data_lake.cortex.growth_stop import _WINDOW
+        from snn_data_lake.growth.growth_stop import _WINDOW
 
         return trajectory[-_WINDOW:]
 
@@ -624,7 +624,7 @@ class NeurogenesisSelfImprove:
         # every _T_GROWTH record already in the lake -- 73,490 of them, 508 MB, at the last census.
         # Old blobs therefore still restore (placement is DERIVED on the way in), and an older build
         # reading a new blob simply ignores arrays it does not name. Additive both directions.
-        from snn_data_lake.cortex.placement import LAYER_NAMES
+        from snn_data_lake.growth.placement import LAYER_NAMES
 
         placed = self._placement[: int(self._n_units)]
         buf = io.BytesIO()
@@ -766,7 +766,7 @@ class NeurogenesisSelfImprove:
         # no laminar identity is half-restored, which this method's own docstring refuses to do. The
         # derived placement is deterministic in `seed`, so the same old blob always reconstitutes the
         # same structure -- it is a first assignment, not a guess that drifts per restart.
-        from snn_data_lake.cortex.placement import LAYER_NAMES, place
+        from snn_data_lake.growth.placement import LAYER_NAMES, place
 
         placed = None
         try:
@@ -811,7 +811,7 @@ class NeurogenesisSelfImprove:
         return self._acc
 
     # distinct-from: reasoning/self_improve.py -- self_map() counts the brain's OWN graph nodes.
-    #   distinct-from: cortex/growth_stop.py -- observed() is the gate's feed cursor.
+    #   distinct-from: growth/growth_stop.py -- observed() is the gate's feed cursor.
     #   distinct-from: infra/brain_native_selfbuild.py -- ledger() counts de-hardcoded
     #   constants. distinct-from: brainstem/autonomous_loop.py -- _pfc_bias() is a top-down
     #   action bias. distinct-from: brainstem/so101_arm.py -- trajectory_breach() is a droop
@@ -822,7 +822,7 @@ class NeurogenesisSelfImprove:
         size, and the denominator of chance for the accuracy beside it."""
         return len(self._categories)
 
-    # distinct-from: cortex/growth_stop.py::regions -- lists the regions that gate has decided
+    # distinct-from: growth/growth_stop.py::regions -- lists the regions that gate has decided
     #   for, a key listing with no counts. distinct-from: substrate/signal_ring.py::RingOverrun --
     #   an exception raised when a consumer is lapped. Both read 2026-09-07; the matcher fired on
     #   the generic words "decide"/"state"/"record". Neither captures a scoring fallback's counts.
@@ -987,7 +987,7 @@ def _cross_process_restart(seed, cfg, ticks=140):
         )
         env["NORD_GROWTH_PROBE_CFG"] = json.dumps({"seed": seed, **cfg})
         proc = subprocess.run(
-            [sys.executable, "-m", "snn_data_lake.cortex.neurogenesis_engine", _PROBE_FLAG],
+            [sys.executable, "-m", "snn_data_lake.growth.neurogenesis_engine", _PROBE_FLAG],
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -1037,7 +1037,7 @@ def _cross_process_restart(seed, cfg, ticks=140):
 # __main__ un-riggable self-check: each claim + a CONTROL that MUST fail.
 # -------------------------------------------------------------------------------------------------
 # distinct-from: cortex/brain.py -- _drive() there ticks a BRAIN with a forced clock phase.
-#   distinct-from: cortex/heterogeneous_microcircuit.py -- drives a circuit for spike counts.
+#   distinct-from: growth/heterogeneous_microcircuit.py -- drives a circuit for spike counts.
 #   distinct-from: cortex/reasoning_curriculum.py -- runs the curriculum's own night loop.
 #   distinct-from: instruments/neuro_chip_stream.py -- an out-of-core AER event loop.
 #   distinct-from: gates/replay_gate.py -- an RNG-driven stimulus for the resume proof.

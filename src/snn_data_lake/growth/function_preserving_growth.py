@@ -32,19 +32,19 @@ That seed is an UNPROVEN heuristic: any speed-up is scale-dependent and is pure
 noise at a few units. No learning-speed assertion is made anywhere.
 
 Reuses (does NOT reimplement):
-  * cortex.lif_neuron.LIFNeuron      -- the canonical spiking unit + its membrane state
+  * growth.lif_neuron.LIFNeuron      -- the canonical spiking unit + its membrane state
   * infra._mathutils.dot, unit   -- incoming current; heuristic-seed normalization
 
 Deterministic (per-instance random.Random, no global RNG / no wall-clock). Pure
 standard library. ASCII-only output.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hippocampus.function_preserving_growth
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.growth.function_preserving_growth
 """
 
 import math
 import random
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 from snn_data_lake.infra._mathutils import dot, unit
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.

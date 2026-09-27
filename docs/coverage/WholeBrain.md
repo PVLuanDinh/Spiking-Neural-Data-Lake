@@ -413,7 +413,7 @@ the tool that produced the wrong answer was a shell grep whose output was being 
 - `plasticity/plasticity_rule_stack.py` (over `homeostatic_plasticity_stack.py`) -- composes seven
   plasticity mechanisms behind one `pre_gain`/`stabilize`/`relax` contract. Unique, and currently
   uncharged on the autonomous path.
-- `cortex/neurogenesis_engine.py` -- growth of units that predict the brain's own next perception. No
+- `growth/neurogenesis_engine.py` -- growth of units that predict the brain's own next perception. No
   persistence.
 - `reasoning/self_mod_harness.py` + `self_build_loop.py` + `godel_machine.py` -- sandbox-verify,
   ratchet, byte-exact rollback, and the immutable safety kernel. The safety machinery is the unique

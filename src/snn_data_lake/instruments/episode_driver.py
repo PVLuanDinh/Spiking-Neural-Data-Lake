@@ -51,7 +51,7 @@ DERIVED is everything the kernel owns: quantization uses the kernel's OWN frac_b
 #   FEED this port. distinct-from: midbrain/sc_deep_layers.py and midbrain/
 #   superior_colliculus.py -- the tree's GAZE fixation/saccade MECHANICS (omnipause gate,
 #   target selection); this module's 'fixation'/'saccade' are trial-PHASE labels over the
-#   substrate tick, not eye movements. distinct-from: cortex/autapse_neuron.py -- its
+#   substrate tick, not eye movements. distinct-from: growth/autapse_neuron.py -- its
 #   _delayed_match_stream is the same PARADIGM family (delayed recall) over a single
 #   autaptic LIF with a recalled-bit label; different subject class, different label,
 #   disclosed rather than merged. All sites read.

@@ -76,7 +76,7 @@ def test_constant_stream_reads_exactly_zero(monkeypatch):
 
 def test_neutered_feed_leaves_no_channel(monkeypatch):
     """Charge, not reachability: without the feed the facade holds NO cortex channel."""
-    from snn_data_lake.basal_ganglia import learning_progress as lpmod
+    from snn_data_lake.growth import learning_progress as lpmod
 
     monkeypatch.setattr(lpmod.LearningProgress, "consume_surprise", lambda self, s: 0.0)
     b = _perceiving_brain()

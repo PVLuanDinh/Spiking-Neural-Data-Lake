@@ -152,7 +152,7 @@ _REFRESH_GAIN = 1.1  # rehearsal-channel gain: the ONE chosen operating point (c
 _DERIVED_CAP = {}
 
 
-# distinct-from: cortex/lif_neuron.py / cortex/alif_neuron.py -- per-neuron OBJECTS with their
+# distinct-from: growth/lif_neuron.py / growth/alif_neuron.py -- per-neuron OBJECTS with their
 #   own state; this module has always inlined its pools as raw membrane arrays (the decision
 #   attractor at _decide_spiking and _run_wm_pool both do), and this helper is that existing
 #   inline loop EXTRACTED so maintain() and the capacity probe run one arithmetic, not two.

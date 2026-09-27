@@ -349,7 +349,7 @@ class CorticalMicrocircuit:
         # would also change every number this module produces, and its layer-specificity assert was
         # calibrated over six columns of THIS stream (see PORT_SEEDS), so that is a re-baselining
         # exercise with a fitted criterion attached, not a speedup. Not done, and not smuggled in.
-        # The population update that DID pay is the independent-cell one in cortex/neuron_zoo.py.
+        # The population update that DID pay is the independent-cell one in growth/neuron_zoo.py.
         for step in range(total_steps):
             slot = step % ring
             buf = pending[slot]

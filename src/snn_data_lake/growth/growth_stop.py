@@ -73,7 +73,7 @@ WHAT AN INVENTED METHOD OWES (P8), all in main():
                carry it: their fixed arm is arithmetic on the same ground-truth curve,
                so the comparison is entailed, not measured.
 
-  PYTHONPATH=src python -m snn_data_lake.cortex.growth_stop
+  PYTHONPATH=src python -m snn_data_lake.growth.growth_stop
 """
 
 import math
@@ -82,11 +82,11 @@ import random as _random
 # distinct-from: gates/growth_coverage_gate.py -- CENSUSES which regions have a live
 #   growth call site (a repo instrument); this gate DECIDES whether a censused site may
 #   keep growing (a brain faculty). Site read.
-# distinct-from: cortex/neurogenesis_engine.py -- the GROWER this gate stops; its
+# distinct-from: growth/neurogenesis_engine.py -- the GROWER this gate stops; its
 #   earn-your-place prune is per-UNIT admission, this is per-REGION continuation. Site read.
-# distinct-from: basal_ganglia/learning_progress.py -- the |LP| PRODUCER this gate reads
+# distinct-from: growth/learning_progress.py -- the |LP| PRODUCER this gate reads
 #   through injection; nothing re-derived. Site read (T046a's dated consumer is this file).
-# distinct-from: cortex/growth_program.py -- ADJUDICATED (the panel's P2 find): its
+# distinct-from: growth/growth_program.py -- ADJUDICATED (the panel's P2 find): its
 #   _DIVISION_BUDGET bounds per-NODE embryonic division; this gate polices per-REGION
 #   refit growth on (units, held-out acc) rows the division machinery does not produce.
 #   Different grain, both survive; T042's "superseded by T047" promise was at the wrong
@@ -141,7 +141,7 @@ class GrowthStop:
         self._fed = {}  # region -> MONOTONE fed-row count (the cursor; survives the trim)
 
     # ---- evidence ----------------------------------------------------------------------------
-    # distinct-from: basal_ganglia/learning_progress.py -- its observe() feeds ERROR levels
+    # distinct-from: growth/learning_progress.py -- its observe() feeds ERROR levels
     #   into the |LP| EMAs; this feeds REFIT OUTCOMES (units, acc) into the charge history.
     #   Different stream, and this gate READS that module's output, never re-derives it.
     # distinct-from: basal_ganglia/r_stdp.py, brain_atlas.py, sensorimotor/signal_loop.py --
@@ -722,7 +722,7 @@ def main():
     try:
         import torch  # noqa: F401
 
-        from snn_data_lake.cortex.neurogenesis_engine import (
+        from snn_data_lake.growth.neurogenesis_engine import (
             NeurogenesisSelfImprove,
             SyntheticPerceptStream,
         )

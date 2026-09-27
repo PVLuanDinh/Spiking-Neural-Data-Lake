@@ -34,7 +34,7 @@ Deterministic (per-instance random.Random(seed)); stdlib + the reused LIFNeuron 
 import math
 import random
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 
 # distinct-from: thalamus/interoceptive_relay.py -- thal_relay is the interoceptive
 #   tonic/burst hop into cortex; this is the cortico-CEREBELLAR mossy fan-out. Different

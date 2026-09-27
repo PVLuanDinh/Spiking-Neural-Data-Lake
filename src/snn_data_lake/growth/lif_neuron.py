@@ -7,7 +7,7 @@ reusable class. This is that class: the membrane potential V leaks toward rest e
 with an optional refractory period. Deterministic. The building block reused by
 is_snn_forward, spike_slicer, and lt_gate.
 
-  python -m snn_data_lake.cortex.lif_neuron        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.growth.lif_neuron        # (also run by run_selfchecks.py)
 """
 
 import math

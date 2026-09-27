@@ -20,7 +20,7 @@ import time
 import numpy as np
 import torch
 
-from snn_data_lake.hippocampus.ng_snn import NGSNN
+from snn_data_lake.growth.ng_snn import NGSNN
 
 FDIR = "../../data/ng_snn"
 

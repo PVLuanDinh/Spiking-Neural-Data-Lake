@@ -11,7 +11,7 @@ own gate, recorded here rather than smoothed.
 WHAT IT ASSERTS (--assert == bare), and what it only REPORTS:
 
 1. COVERAGE RED (ratchet, identity-pinned) + THE PARTITION APPLIED. regions-grown-LIVE over
-   the owner-ratified GROWABLE partition (cortex/growth_program.py, 10 regions), measured by
+   the owner-ratified GROWABLE partition (growth/growth_program.py, 10 regions), measured by
    an import-RESOLVED AST census with per-site attribution. DAY-ONE COUNT: 1 of 10 (cortex,
    via neurogenesis_engine) -- BELOW FLOOR, said in bold every run. Asserted three ways:
    (a) ratchet: the identity-pinned baseline set {cortex} must stay contained (the set may
@@ -89,7 +89,7 @@ from pathlib import Path
 
 import numpy as np
 
-from snn_data_lake.cortex.arealization import (
+from snn_data_lake.growth.arealization import (
     MACRO_OF_NEUROMERE,
     NEUROMERES,
     REGION_COORDS,
@@ -98,7 +98,7 @@ from snn_data_lake.cortex.arealization import (
     postmitotic_discretize,
     regime_of,
 )
-from snn_data_lake.cortex.growth_program import GROWABLE, SCAFFOLD
+from snn_data_lake.growth.growth_program import GROWABLE, SCAFFOLD
 
 REPO = Path(__file__).resolve().parent.parent.parent.parent
 
@@ -144,7 +144,7 @@ _HARNESS_FNS = {"main", "_main", "_selfcheck", "self_check", "_self_check"}
 
 #: The census's placement-module spellings: exact, never a bare suffix (the panel constructed
 #: `from mypkg.displacement import place` being COUNTED under endswith("placement")).
-_PLACEMENT_MODULES = {"snn_data_lake.cortex.placement", "cortex.placement", "placement"}
+_PLACEMENT_MODULES = {"snn_data_lake.growth.placement", "growth.placement", "placement"}
 
 UNRESOLVED = "<unresolved>"
 
@@ -160,8 +160,11 @@ def live_growth_census(src_root=None):
     gate) -- the first draft defaulted it to CORTEX, manufacturing the pinned baseline's own
     data point. Scope and blind spots: module docstring."""
     root = Path(src_root) if src_root else REPO / "src"
-    from snn_data_lake.cortex.placement import GROWER_REGIONS
+    from snn_data_lake import module_path
+    from snn_data_lake.growth.placement import GROWER_REGIONS
 
+    placement_package = module_path("placement").rsplit(".", 1)[0]
+    package_names = {placement_package, placement_package.rsplit(".", 1)[-1]}
     sites = {}
 
     def add(region, rel, lineno):
@@ -169,7 +172,7 @@ def live_growth_census(src_root=None):
 
     for py in sorted(root.rglob("*.py")):
         rel = py.relative_to(root).as_posix()
-        if rel.endswith("cortex/placement.py") or "/reasoning/" in f"/{rel}":
+        if rel.endswith("growth/placement.py") or "/reasoning/" in f"/{rel}":
             continue
         try:
             tree = ast.parse(py.read_text(encoding="utf-8"))
@@ -178,14 +181,14 @@ def live_growth_census(src_root=None):
         imported = {}  # local name -> "place" | "place_grown"
         mod_aliases = (
             set()
-        )  # names bound to the placement MODULE (import ... as / from cortex import placement)
+        )  # names bound to the placement MODULE (import ... as / from its current package)
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
                 if _is_placement_module(node.module):
                     for alias in node.names:
                         if alias.name in ("place", "place_grown"):
                             imported[alias.asname or alias.name] = alias.name
-                elif node.module and node.module.endswith("cortex"):
+                elif node.module in package_names:
                     for alias in node.names:
                         if alias.name == "placement":
                             mod_aliases.add(alias.asname or "placement")

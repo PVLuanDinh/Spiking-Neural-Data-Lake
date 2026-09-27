@@ -1,5 +1,5 @@
 """
-src/snn_data_lake/hippocampus/ng_snn.py -- NG-SNN: a neurogenesis-inspired, contribution-grown
+src/snn_data_lake/growth/ng_snn.py -- NG-SNN: a neurogenesis-inspired, contribution-grown
 SPIKING classifier, promoted into the core (torch/GPU).
 
 Anatomy. Adult NEUROGENESIS in mammals is concentrated in the HIPPOCAMPAL DENTATE GYRUS, where new
@@ -9,7 +9,7 @@ a block of) neuron(s) at a time, admitting each new "granule cell" only if it fu
 CONTRIBUTES to reducing the classification residual (contribution criterion, Eq. 6-7), then reads
 the pool out in ONE analytical shot (activity-regularized ridge, Eq. 9-12) -- no backprop. It is the
 spiking, contribution-driven, single-shot successor to the rate/novelty prototype learner in
-`hippocampus/growing_learner.py`, which recruits on INPUT novelty and ignores correctness.
+`growth/growing_learner.py`, which recruits on INPUT novelty and ignores correctness.
 
 TORCH TIER. This core module imports torch and runs in the GPU/training tier (numpy/torch are allowed
 project-wide). It promotes the already-validated research
@@ -44,7 +44,7 @@ Method (faithful to Tang, Li, Zhang, Zeng, "NG-SNN", Neural Networks 199 (2026) 
 Deterministic via torch.Generator(seed). Runs in the torch tier (.venv-cu128); the
 stdlib core never imports this.
 
-  PYTHONUTF8=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.hippocampus.ng_snn
+  PYTHONUTF8=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.growth.ng_snn
 """
 
 import torch
@@ -93,7 +93,7 @@ GRADIENT_CLAIM = {
 # These two functions were the ONE thing the twin had that this module did not, so they are ported
 # before it is deleted. They are not decoration: without them nothing in the governed tree ever
 # builds a (N, T, d) spike SEQUENCE, and `_rates`'s sequence branch (the `einsum` arm) is therefore
-# never executed -- both live consumers (`cortex/neurogenesis_engine.py`, `tools/capacity_curve.py`)
+# never executed -- both live consumers (`growth/neurogenesis_engine.py`, `tools/capacity_curve.py`)
 # pass 2-D features. Claim 5 of the self-check below drives that branch through these encoders, so
 # the port arrives with a consumer instead of becoming the next dormant symbol.
 #
@@ -661,7 +661,7 @@ class NGSNN:
     #   cerebellum/jepa_world_model.py's invariance loss -- a scalar loss, not a class decision.
     #   All five read 2026-09-07; none decides a class over an NG-SNN rate matrix. This method
     #   CONSOLIDATES the two sites that did: this one and the inline argmax in
-    #   cortex/neurogenesis_engine.py::_refit's closed-gate branch, which now calls it.
+    #   growth/neurogenesis_engine.py::_refit's closed-gate branch, which now calls it.
     def decide(self, S, beta=None):
         """THE ONE decision rule over a rate matrix S (N, L): argmax of S @ beta (o_out, Eq. 13),
         EXCEPT that a row carrying no evidence answers the training-majority class.

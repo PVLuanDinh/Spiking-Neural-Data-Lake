@@ -1,6 +1,6 @@
 """Same seed must grow the same brain on any hardware. It did not.
 
-`hippocampus/ng_snn.py` built its generator as `torch.Generator(device=self.device)`, and `NGSNN`
+`growth/ng_snn.py` built its generator as `torch.Generator(device=self.device)`, and `NGSNN`
 defaults to `device="cuda"` wherever a card exists. torch's CPU and CUDA generators produce
 DIFFERENT streams from the same seed -- measured directly, seed 7:
 
@@ -28,7 +28,7 @@ Run: pytest tests/test_growth_rng_is_hardware_independent.py
 
 import torch
 
-from snn_data_lake.hippocampus.ng_snn import NGSNN
+from snn_data_lake.growth.ng_snn import NGSNN
 
 _SEED = 7
 _N_DRAW = 6

@@ -25,7 +25,7 @@ Honesty ceiling: the classic single-compartment space-clamped HH squid-axon ODEs
 integrated -- the biophysical-neuron level. NOT multi-compartment; no temperature / Q10 scaling; no channel
 noise (deterministic); a caricature of one axon patch, not cognition.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.hodgkin_huxley        # (also run by run_selfchecks.py)
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.growth.hodgkin_huxley        # (also run by run_selfchecks.py)
 """
 
 import math

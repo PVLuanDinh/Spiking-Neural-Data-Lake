@@ -41,11 +41,11 @@ from snn_data_lake.cerebellum.hjepa_serve import HJepaServe
 from snn_data_lake.cerebellum.jepa_world_model import JepaWorldModel
 from snn_data_lake.cortex.agency_monitor import AgencyMonitor
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
+from snn_data_lake.growth.growing_learner import GrowingLearner
 from snn_data_lake.hippocampus.affective_memory import AffectiveEpisodicStore
 from snn_data_lake.hippocampus.allocentric_map import AllocentricMap
 from snn_data_lake.hippocampus.contrastive_episode_analysis import ContrastiveEpisodeAnalyzer
 from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
-from snn_data_lake.hippocampus.growing_learner import GrowingLearner
 from snn_data_lake.infra.brain_bundle import BrainBundle, load_bundle
 from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
 from snn_data_lake.neuromodulation.cortisol import Cortisol
@@ -688,7 +688,7 @@ class AutonomousArm:
     #   with a seed/drive lineage; this persists the coverage CELLS with a cell-size/reach
     #   lineage. Same carrier (home.save_state), different state, each refusing its own
     #   mismatch. Read.
-    # distinct-from: cortex/neurogenesis_engine.py -- growth_state_bytes/restore_growth_state is
+    # distinct-from: growth/neurogenesis_engine.py -- growth_state_bytes/restore_growth_state is
     #   the grown SUBSTRATE's own chain-record path. Read.
     def coverage_rate(self, window=None):
         """NEW cells per coverage tick over the last `window` coverage ticks (default: the whole

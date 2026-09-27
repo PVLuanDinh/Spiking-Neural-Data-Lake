@@ -43,8 +43,8 @@ import sys
 import time
 from pathlib import Path
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.cortex.vsa_reasoning import bind, bundle, coincidence, hv
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
 from snn_data_lake.sensorimotor.population_encoding import PopulationEncoder
 

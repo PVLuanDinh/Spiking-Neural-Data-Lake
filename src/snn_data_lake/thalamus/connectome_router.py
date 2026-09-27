@@ -9,7 +9,7 @@ loops REVERBERATE (activity persists after the drive is removed) while feed-forw
 
 Each connectome NODE (a canonical brain sub-structure such as `ec`, `thal_relay`, `ctx_motor`) is
 one small pool of leaky integrate-and-fire neurons -- the same LIF dynamics as
-`cortex/lif_neuron.py` (leak toward rest, integrate current, spike + reset at threshold), here
+`growth/lif_neuron.py` (leak toward rest, integrate current, spike + reset at threshold), here
 numpy-vectorized across the whole connectome. Per-neuron threshold heterogeneity turns a graded
 drive in [0, 1] into a graded pool firing RATE. The wiring is read from `connectome.py`'s public
 `NODES` / `EDGES` (never edited).

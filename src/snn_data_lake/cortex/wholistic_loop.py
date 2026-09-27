@@ -65,8 +65,8 @@ OPT-IN similarity-sized recruitment (default OFF, byte-identical when OFF): pass
 similarity_sized=True to size each task's fresh-unit recruit CAP by how NOVEL its
 perceptual signature is vs tasks already learned, and ROUTE a familiar task to its
 FROZEN prior expert instead of growing. It REUSES the ART developmental match
-(hippocampus.growing_learner._best -- the same cosine match the live tick already runs)
-at the per-task-centroid granularity via substrate.similarity_sized_growth; that advisor
+(growth.growing_learner._best -- the same cosine match the live tick already runs)
+at the per-task-centroid granularity via growth.similarity_sized_growth; that advisor
 is imported LAZILY only when the flag is on, so the default path stays pure stdlib and
 every default run is bit-for-bit unchanged.
 
@@ -356,7 +356,7 @@ class WholisticLoop:
         self.fidelity = self._fidelity(self.sigma)
 
         # ---- OPT-IN similarity-sized recruitment governor (default OFF = byte-identical) --------
-        # When ON, a per-TASK advisor (substrate.similarity_sized_growth) SIZES how many fresh units
+        # When ON, a per-TASK advisor (growth.similarity_sized_growth) SIZES how many fresh units
         # this task may recruit by how NOVEL its perceptual signature is vs tasks already learned, and
         # ROUTES a familiar task to its FROZEN prior expert (recruit cap 0 -> reuse, no new growth).
         # It REUSES the ART developmental match (GrowingLearner._best -- the same cosine match the loop
@@ -367,7 +367,7 @@ class WholisticLoop:
         self._task_recruited = 0  # live-tick recruit events so far this task (vs the cap)
         self.growth_log = []  # per-task {action, novelty, recruit_cap, units_recruited, ...} when ON
         if similarity_sized:
-            from snn_data_lake.substrate.similarity_sized_growth import SimilaritySizedGrowth
+            from snn_data_lake.growth.similarity_sized_growth import SimilaritySizedGrowth
 
             self.advisor = SimilaritySizedGrowth(
                 dim=self._dim, n_classes=N_CLASSES, cap_max=BUDGET, cap_min=1, route_frac=0.5

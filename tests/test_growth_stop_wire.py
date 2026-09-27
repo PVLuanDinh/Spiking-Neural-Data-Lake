@@ -16,7 +16,7 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from snn_data_lake.cortex.neurogenesis_engine import (  # noqa: E402
+from snn_data_lake.growth.neurogenesis_engine import (  # noqa: E402
     NeurogenesisSelfImprove,
     SyntheticPerceptStream,
 )

@@ -36,7 +36,7 @@ Refs: Larkum, "A cellular mechanism for cortical associations" (Trends Neurosci 
 Greedy et al., "Nonlinear Dendritic Coincidence Detection for Supervised Learning" (arXiv:2107.05336);
 apical amplification / isolation / drive regimes (arXiv:2311.06074).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.dendritic_neuron
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.growth.dendritic_neuron
 """
 
 import math

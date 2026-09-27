@@ -1,7 +1,7 @@
 """H01 c3 synapse graph -> a beatable prior (specs/022 T062, FR-022). ONE ingest mechanism.
 
-WHAT THIS ADDS AND WHAT IT REFUSES TO RE-DERIVE. `cortex/cortical_prior.py` already holds the
-soma / layer / sign constants with pinned byte counts and SHA-256s, and `cortex/placement.py`
+WHAT THIS ADDS AND WHAT IT REFUSES TO RE-DERIVE. `growth/cortical_prior.py` already holds the
+soma / layer / sign constants with pinned byte counts and SHA-256s, and `growth/placement.py`
 already implements H01's own `fix_layer_mem` layer rule. The audit's item (5) (a second H01
 ingest mechanism with no P2 adjudication against `cortical_prior`) binds: everything either of
 them holds is IMPORTED here, never recomputed. The genuinely new content is the c3 SYNAPSE
@@ -66,8 +66,8 @@ which is why the independent control is `tests/fixtures/h01_c3_shard0_head.avro`
 bytes whose first record is checked against values read by a different reader entirely (the JSON
 twin: pre 5472528459, post 5414315245, type 2).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.h01_ingest        # offline gate
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.h01_ingest --ingest --shards 0:35
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.growth.h01_ingest        # offline gate
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.growth.h01_ingest --ingest --shards 0:35
 
 APPENDED 2026-09-10 (T063 panel of 2026-09-09), the text above kept VERBATIM (including line 1's
 "a beatable prior" and `_disclose`'s "is the question", which is exactly the question T063
@@ -96,8 +96,8 @@ population's prior role, the learner, T071's "prior separation") is treated as s
 #   re-validation, byte cap); this module CALLS it and adds no opener of its own.
 # distinct-from: sensorimotor/ingest_guard.py -- the CONTENT boundary (licence deny-by-default,
 #   injection flagging) over TEXT corpora; called here for the licence, not re-implemented.
-# distinct-from: cortex/cortical_prior.py -- the SOMA/layer/sign reference constants; imported,
-#   never re-derived. distinct-from: cortex/placement.py -- owns the layer rule and the Dale
+# distinct-from: growth/cortical_prior.py -- the SOMA/layer/sign reference constants; imported,
+#   never re-derived. distinct-from: growth/placement.py -- owns the layer rule and the Dale
 #   assignment for GROWN units; its layer_of is imported and its agreement figure is the
 #   validator here. distinct-from: substrate/data_quality.py::gate -- a Bronze->Gold row-level
 #   quality gate over lake records; nothing to do with an external release's bytes.
@@ -118,8 +118,8 @@ import zipfile
 from collections import Counter
 from pathlib import Path
 
-from snn_data_lake.cortex.cortical_prior import H01_COMMIT, SIGNED_TYPES, SOURCES, UNSIGNED_TYPES
-from snn_data_lake.cortex.placement import (
+from snn_data_lake.growth.cortical_prior import H01_COMMIT, SIGNED_TYPES, SOURCES, UNSIGNED_TYPES
+from snn_data_lake.growth.placement import (
     EXCITATORY,
     INHIBITORY,
     LAYER_NAMES,
@@ -232,7 +232,7 @@ def _lif_defaults():
     """Threshold, decay, reset and refractory BY IMPORT from the live equation owner (P1: cited,
     not invented). `cortex/lif_neuron.LIFNeuron` is the module `substrate/kernel_tick` names as
     the owner of the equation its vectorized step implements."""
-    from snn_data_lake.cortex.lif_neuron import LIFNeuron
+    from snn_data_lake.growth.lif_neuron import LIFNeuron
 
     lif = LIFNeuron()
     return {
@@ -240,7 +240,7 @@ def _lif_defaults():
         "decay": lif.decay,
         "v_reset": lif.v_reset,
         "refrac_ticks": int(lif.refractory),
-        "owner": "cortex/lif_neuron.py::LIFNeuron (tau_m=10.0 -> decay=exp(-1/tau_m))",
+        "owner": "growth/lif_neuron.py::LIFNeuron (tau_m=10.0 -> decay=exp(-1/tau_m))",
     }
 
 
@@ -609,9 +609,9 @@ def load_cells():
 #   segment reader -- both read the LAKE's own CRC-framed binary segments; this parses one
 #   external CSV release file. distinct-from: sensorimotor/web_ingest.py::fetch_bytes -- the network
 #   boundary, which this module CALLS to obtain the file and does not re-implement.
-#   distinct-from: cortex/cortical_prior.py::e_fraction -- a per-LAYER excitatory fraction from a
+#   distinct-from: growth/cortical_prior.py::e_fraction -- a per-LAYER excitatory fraction from a
 #   pinned aggregate; this is a per-SEGMENT synapse count read row by row out of the release.
-#   distinct-from: cortex/placement.py::layer_of -- computes a band from geometry, where
+#   distinct-from: growth/placement.py::layer_of -- computes a band from geometry, where
 #   load_layer_labels below READS the band upstream published, and the whole point of gate (d) is
 #   that the two are different instruments. All five sites read 2026-09-09.
 def _ei_rows():
@@ -709,7 +709,7 @@ def check_join(counts, declared=DECLARED_JOIN):
 
 # distinct-from: basal_ganglia/r_stdp.py::_da_consumer_factory -- builds a ring and a JoinConsumer
 #   over a declared dopamine port; no coordinates and no extent. distinct-from:
-#   cortex/arealization.py::postmitotic_discretize -- an argmax over graded GRN profiles per node.
+#   growth/arealization.py::postmitotic_discretize -- an argmax over graded GRN profiles per node.
 #   distinct-from: cortex/eprop_kernel.py::bptt_grads -- reverse-mode BPTT over an unrolled net.
 #   distinct-from: cortex/theory_of_mind.py::TheoryOfMind -- tracks per-agent beliefs about a world
 #   state. distinct-from: reasoning/reservoir_eprop.py::run -- a full two-arm SHD experiment.
@@ -2067,7 +2067,7 @@ def _run_ingest(argv):
             "fetch_s_total": round(seen["fetch_s"], 2),
             "decode_s_total": round(seen["decode_s"], 2),
             "harness_sha256": {
-                "cortex/h01_ingest.py": _sha256_of(Path(__file__)),
+                "growth/h01_ingest.py": _sha256_of(Path(__file__)),
                 "tools/h01_c3_shards.json": _sha256_of(SHARD_MANIFEST),
                 "tests/fixtures/h01_c3_shard0_head.avro": _sha256_of(REAL_HEAD_FIXTURE),
             },
@@ -2106,7 +2106,7 @@ def _run_ingest(argv):
         "shards": graph.shards,
         "shard_md5_b64": graph.md5s,
         "harness_sha256": {
-            "cortex/h01_ingest.py": _sha256_of(Path(__file__)),
+            "growth/h01_ingest.py": _sha256_of(Path(__file__)),
             "tools/h01_c3_shards.json": _sha256_of(SHARD_MANIFEST),
             "tests/fixtures/h01_c3_shard0_head.avro": _sha256_of(REAL_HEAD_FIXTURE),
         },

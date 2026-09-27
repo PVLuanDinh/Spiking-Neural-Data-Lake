@@ -136,9 +136,9 @@ import random as _random
 # distinct-from: plasticity/developmental_pruning.py -- an OFFLINE benchmark sparsifier
 #   for a linear readout: prune-only, no regeneration, no conserved budget, no live
 #   wire; this module is the LIVE substrate's slow-clock rewiring. Site read.
-# distinct-from: cortex/neurogenesis_engine.py -- grows/prunes UNITS (whole neurons) on
+# distinct-from: growth/neurogenesis_engine.py -- grows/prunes UNITS (whole neurons) on
 #   the refit clock; this rewires CONNECTIONS under a fixed unit set. Site read.
-# distinct-from: cortex/growth_stop.py -- T047 gates whether unit growth CONTINUES;
+# distinct-from: growth/growth_stop.py -- T047 gates whether unit growth CONTINUES;
 #   this module neither grows nor gates units. Site read.
 # distinct-from: plasticity/homeostatic_scaling.py, plasticity/plasticity_rule_stack.py
 #   -- magnitude stabilization on the FAST clock; this module reads the stack's theta

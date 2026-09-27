@@ -32,7 +32,7 @@ import time
 import numpy as np
 import torch
 
-from snn_data_lake.hippocampus.ng_snn import NGSNN
+from snn_data_lake.growth.ng_snn import NGSNN
 
 FDIR = "../../data/ng_snn"
 DEV = "cuda" if torch.cuda.is_available() else "cpu"
@@ -49,7 +49,7 @@ def free():
 def load_norm():
     """Load frozen 3-conv features, per-feature min-max to [0,1] fit on TRAIN (same as
     extend_3conv.py; train_mnist.py used the identical normalisation and was RETIRED 2026-08-06
-    under P2, hippocampus/ng_snn.py carrying the mechanism it drove). Features kept on CPU
+    under P2, growth/ng_snn.py carrying the mechanism it drove). Features kept on CPU
     (float32); _rates streams batches to the GPU."""
     tr = np.load(f"{FDIR}/mnist_feats3_train.npy")
     ytr = np.load(f"{FDIR}/mnist_feats3_train_labels.npy")

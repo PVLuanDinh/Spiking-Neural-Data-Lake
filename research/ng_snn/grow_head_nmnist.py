@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from snn_data_lake.hippocampus.ng_snn import NGSNN
+from snn_data_lake.growth.ng_snn import NGSNN
 
 # `os.environ.setdefault("PYTHONUTF8", "1")` stood here. DELETED 2026-08-04: PYTHONUTF8 is read by
 # the interpreter at STARTUP, so setting it from inside a running process changes nothing at all --

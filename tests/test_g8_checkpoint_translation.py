@@ -35,7 +35,7 @@ import pytest
 
 from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
 from snn_data_lake.cortex import interaction_learning as ixn
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 
 pytestmark = pytest.mark.slow
 

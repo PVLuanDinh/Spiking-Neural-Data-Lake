@@ -140,7 +140,7 @@ for a neighbouring cut. Hence band 21: live, applied, provably inert.
 
 ## The live perception -> action path is a RATE code, not a spike code
 
-`GrowingLearner.observe` (`hippocampus/growing_learner.py:84`) is a cosine vigilance test over the
+`GrowingLearner.observe` (`growth/growing_learner.py:84`) is a cosine vigilance test over the
 `[0,1]^64` float vector, so the code that reaches the action is the RBF population *rate* code from
 `multimodal_encoder`. `encode_latency` -- the time-to-first-spike encoder -- does run on every live
 tick, but only inside `Amygdala.threat` -> `_threat_for` -> `_by_step`

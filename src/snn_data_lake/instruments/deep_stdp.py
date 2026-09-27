@@ -68,6 +68,7 @@ import os
 import torch
 import torch.nn.functional as F
 
+from snn_data_lake.growth.brian2_backend import BrianLIF
 from snn_data_lake.infra.device import enable, resolve_device
 from snn_data_lake.instruments.snn_mnist_stdp import (
     BETA,
@@ -83,7 +84,6 @@ from snn_data_lake.instruments.snn_mnist_stdp import (
     T,
     load_mnist,
 )
-from snn_data_lake.substrate.brian2_backend import BrianLIF
 
 K = 5  # conv kernel size (single input channel, valid conv, stride 1)
 

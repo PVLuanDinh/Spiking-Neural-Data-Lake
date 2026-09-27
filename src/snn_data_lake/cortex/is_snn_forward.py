@@ -18,7 +18,7 @@ to the torch IS-SNN in research/neuromorphic_torch.
 import math
 import random
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 
 STABLE_GAIN = (
     2.5  # excitatory scale = STABLE_GAIN*v_threshold/fan_in_sparse -> rate flat across depth

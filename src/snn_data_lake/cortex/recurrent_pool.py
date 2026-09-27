@@ -25,7 +25,7 @@ that contract.
 # port to its source. The four research sources (spiking_ssm.py, reservoir_eprop.py, sorn.py and
 # random_boolean_network.py) stay untouched in this arc (section 2.9); each one's
 # retire/promote/exempt row is its own P2 opening (section 2.13).
-# distinct-from: src/snn_data_lake/cortex/arealization.py -- a GRN consensus network settled once
+# distinct-from: src/snn_data_lake/growth/arealization.py -- a GRN consensus network settled once
 #   into developmental region labels; nothing is driven by a percept or carried between percepts
 # distinct-from: src/snn_data_lake/cortex/prefrontal_executive.py -- its LIF pool holds a goal with
 #   NO external input (section 1.2 names that a different job); no stimulus drive, no forms
@@ -575,7 +575,7 @@ def _skip_carrier(pool, carrier):
 # The fault below writes a weight only so R-b5 (iii) can be seen to fail (sites read; none is a
 # planted fault or a freeze red):
 # distinct-from: cortex/predictive_coding.py -- learn_step is a real local weight update
-# distinct-from: cortex/h01_ingest.py -- decode_shard counts a shard's joins in one pass
+# distinct-from: growth/h01_ingest.py -- decode_shard counts a shard's joins in one pass
 # distinct-from: cortex/vsa_reasoning.py -- coincidence_many counts spike coincidences
 # distinct-from: neuromodulation/naca.py -- its reversal check is a real R-STDP experiment
 # distinct-from: reasoning/spike_chat_lake.py -- _kb_reply retrieves stored triples

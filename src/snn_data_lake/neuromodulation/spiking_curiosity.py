@@ -164,7 +164,7 @@ Refs: Oudeyer & Kaplan, "What is intrinsic motivation? A typology of computation
 (2007); Schmidhuber, "Formal Theory of Creativity, Fun, and Intrinsic Motivation" (2010); Elman,
 "Learning and development in neural networks: the importance of starting small" (Cognition, 1993).
 
-Deps: math, random, cortex.lif_neuron.LIFNeuron,
+Deps: math, random, growth.lif_neuron.LIFNeuron,
 infra._mathutils.mean (numpy/torch allowed project-wide); ASCII-only prints, deterministic (per-instance random.Random(seed);
 LIF dynamics are deterministic; spike counts are integers).
 
@@ -174,7 +174,7 @@ LIF dynamics are deterministic; spike counts are integers).
 import math
 import random
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 from snn_data_lake.infra._mathutils import mean
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
@@ -389,7 +389,7 @@ class SpikingCuriosityDrive:
     # distinct-from: neuromodulation/intrinsic_motivation.py -- the rate sibling's
     #   max(0, slow_EMA - fast_EMA) in ERROR units; this one runs the SAME estimator pair
     #   over SPIKE-COUNT rates (the duck-typed drop-in, the recorded open P2 debt). Read.
-    # distinct-from: basal_ganglia/learning_progress.py -- the T046a |LP| FACADE, which
+    # distinct-from: growth/learning_progress.py -- the T046a |LP| FACADE, which
     #   READS the adopted rate drive (rectified() delegates); no mechanism there to
     #   duplicate. Site read.
     # distinct-from: plasticity/competitive_learning.py -- its fast/slow ACTIVITY traces

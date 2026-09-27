@@ -14,7 +14,7 @@ Legenstein & Maass, "A solution to the learning dilemma for recurrent networks o
 Nature Communications 11:3625, 2020, DOI 10.1038/s41467-020-17236-y): online eligibility traces + a
 per-layer broadcast learning signal, with NO loss.backward() through time for the hidden weights.
 
-THE ALIF NEURON (matches src/snn_data_lake/cortex/alif_neuron.py's adaptive-threshold mechanism).
+THE ALIF NEURON (matches src/snn_data_lake/growth/alif_neuron.py's adaptive-threshold mechanism).
 Per layer, per neuron j, discrete time (soft-reset LIF membrane -- the form e-prop is derived for, as in
 training/eprop_lm.py -- plus the LSNN's slow adaptive threshold from alif_neuron.py):
     v_j[t]  = ALPHA*v_j[t-1] - V_TH*z_j[t-1] + cur_j[t]        # fast membrane (leak ALPHA), soft reset

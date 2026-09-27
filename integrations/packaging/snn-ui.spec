@@ -33,7 +33,7 @@ a = Analysis(
     excludes=["torch", "torchvision", "brian2", "bindsnet",                # simulation/training addons:
               "polars", "pyarrow", "deltalake", "serial", "airllm",       # never part of the app
               "transformers", "tonic", "pytest",
-              "snn_data_lake.hippocampus.ng_snn"],                        # torch-gated core module
+              "snn_data_lake.growth.ng_snn"],                        # torch-gated core module
     noarchive=False,
 )
 pyz = PYZ(a.pure)

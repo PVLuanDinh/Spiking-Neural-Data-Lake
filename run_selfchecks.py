@@ -61,21 +61,21 @@ CORE = [
     "sensorimotor.spike_preprocessing",
     "cortex.theta_gamma_code",
     "sensorimotor.rsnn_encoder",
-    "cortex.lif_neuron",
-    "cortex.dendritic_neuron",
-    "cortex.izhikevich_neuron",
-    "cortex.hodgkin_huxley",
-    "cortex.alif_neuron",
+    "growth.lif_neuron",
+    "growth.dendritic_neuron",
+    "growth.izhikevich_neuron",
+    "growth.hodgkin_huxley",
+    "growth.alif_neuron",
     "cortex.divisive_normalization",
     "instruments.neuronal_avalanches",
     "cortex.cortical_microcircuit",
-    "cortex.cortical_prior",  # H01 human reference data: every entry carries its four attributes
-    "cortex.h01_ingest",  # T062: the c3 synapse graph -- 8 gates, each with its red, offline
-    "cortex.arealization",  # T040+T041: exhaustive GRN censuses + prosomeric grid + graded arm
-    "cortex.growth_program",  # T042: sealed view, shared-program counter, dilution, refusal reds
+    "growth.cortical_prior",  # H01 human reference data: every entry carries its four attributes
+    "growth.h01_ingest",  # T062: the c3 synapse graph -- 8 gates, each with its red, offline
+    "growth.arealization",  # T040+T041: exhaustive GRN censuses + prosomeric grid + graded arm
+    "growth.growth_program",  # T042: sealed view, shared-program counter, dilution, refusal reds
     "instruments.prior_drift_harness",  # 022 T063: both reds, the PLANTED positive control, the WRONG validity precondition and every nuisance refusal, on a 64-unit synthetic population
-    "cortex.placement",  # grown units ordered into cortical layers by measured H01 occupancy
-    "cortex.growth_stop",  # T047: overgrowth red + four regimes + |LP| veto + measured null clause
+    "growth.placement",  # grown units ordered into cortical layers by measured H01 occupancy
+    "growth.growth_stop",  # T047: overgrowth red + four regimes + |LP| veto + measured null clause
     "instruments.memory_diagnostic",  # G1 causal contract synthetic reds
     "cortex.recurrent_pool",  # G1(b): R-b0 parity, R-b3, R-b4 pool noise, R-b5 and every red
     "instruments.pool_selection",  # G1(b) campaign: ordering, power, R-b7 reds, step order, exit codes
@@ -103,15 +103,15 @@ CORE = [
     "cortex.live_brain",
     "cortex.interaction_learning",
     "sensorimotor.recognizer_bank",
-    "cortex.neuron_zoo",
+    "growth.neuron_zoo",
     "cortex.access_consciousness",
     "instruments.integration_measure",
     "cortex.self_model",
     "cortex.reasoning_curriculum",
-    "cortex.autapse_neuron",
-    "cortex.adex_neuron",
-    "cortex.resonate_and_fire",
-    "cortex.srm_neuron",
+    "growth.autapse_neuron",
+    "growth.adex_neuron",
+    "growth.resonate_and_fire",
+    "growth.srm_neuron",
     "cortex.metacognitive_monitor",
     # PROMOTED from reasoning/brain_adapters/ 2026-08-12 (#10 lane 4c): live-tick percept
     # readout; numpy-only, real cached N-MNIST pack, measured ~2-5s. CORE, not TORCH_GATED.
@@ -140,7 +140,7 @@ CORE = [
     "instruments.everyday_battery",  # specs/022 Phase 4 C0: 2.5's five constructed reds + (k)/(s)/(p)'s constructed arms (no brain, no lake); the campaign is --c0-campaign only
     "cortex.learned_evc",  # C1 batch-4: learned expected-value-of-control (dopamine-gated cost/value)
     "cortex.second_order_access",  # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
-    "cortex.heterogeneous_microcircuit",  # Brain-Cog-adopted: LIF+Izhikevich+AdEx composed live under a local rule
+    "growth.heterogeneous_microcircuit",  # Brain-Cog-adopted: LIF+Izhikevich+AdEx composed live under a local rule
     "cortex.percept_surprise",  # loop C2: online unsupervised Oja-PCA reconstruction-residual surprise (orienting drive)
     "cortex.kb_ranking",  # PROMOTED 2026-08-11 (#10 batch-1): DistMult KB completion; offline fallback keeps it deterministic
     "sensorimotor.corpus_stream",  # PROMOTED 2026-08-11 (#10 family C2): real corpus + CMUdict ingestion; offline fallback deterministic
@@ -160,8 +160,8 @@ CORE = [
     "hippocampus.experience_replay",
     "hippocampus.sleep_replay",
     "hippocampus.ring_attractor",
-    "hippocampus.growing_learner",
-    "hippocampus.function_preserving_growth",
+    "growth.growing_learner",
+    "growth.function_preserving_growth",
     "hippocampus.sleep_consolidation",
     "hippocampus.affective_memory",
     "hippocampus.contrastive_episode_analysis",
@@ -179,7 +179,7 @@ CORE = [
     "hippocampus.spiking_storage_prototype",  # factored associative memory; criteria judged vs a do-nothing cue control + permutation null, each with an executed red
     # basal ganglia â€” action selection, reward-modulated learning, decision, Go/NoGo gating
     "basal_ganglia.evidence_accumulation",
-    "basal_ganglia.learning_progress",  # T046a: |LP| four regimes + discharged consumer + goal-store reds
+    "growth.learning_progress",  # T046a: |LP| four regimes + discharged consumer + goal-store reds
     "basal_ganglia.r_stdp",
     "basal_ganglia.valence_stdp",
     "basal_ganglia.action_gating",
@@ -321,13 +321,13 @@ CORE = [
     "substrate.chat_memory",
     "substrate.signal_calibrator",
     "infra.device",
-    "substrate.brian2_backend",  # Brian2 reference dynamics == differentiable Torch bridge
+    "growth.brian2_backend",  # Brian2 reference dynamics == differentiable Torch bridge
     # PROMOTED from RESEARCH 2026-08-04. Infra, not a brain region: subprocesses + tree copies +
     # crc32, no weight anywhere. Owns _PROTECTED (the 9-file firewall) and the anchored _repo_root().
     "infra.self_mod_harness",
     "substrate.home",
     "substrate.binlog",
-    "substrate.growable",
+    "growth.growable",
     "substrate.spontaneous_activity",  # T045: OU stationarity + same-path A/B + nulls + refusals
     "gates.growth_coverage_gate",  # T046: coverage ratchet + refusals + sharpness + nulls + Allen
     "infra.region_wiring",  # the always-on daemon's faculty-wiring registry -> charge_all + honest coverage report
@@ -378,8 +378,8 @@ CORE = [
     "sensorimotor.ingest_guard",  # outside-data content boundary: licence deny-by-default + injection flagging
     "sensorimotor.hf_stream",  # streamed HF datasets -> features; offline self-check (no network, no datasets dep)
     "substrate.region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> ignition bias
-    "substrate.basic_components",  # Brain-Cog-adopted composition interface (node + local-rule + connection palette)
-    "substrate.similarity_sized_growth",  # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
+    "growth.basic_components",  # Brain-Cog-adopted composition interface (node + local-rule + connection palette)
+    "growth.similarity_sized_growth",  # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
     "instruments.world_red_probe",  # specs/022 W3: 7 wiring reds (pinned constant dead, absent != zero, 4dp decisive, refit gap arithmetic)
     "gates.move_gate",  # specs/022 G8 G-R8: the diff engine's constructed reds (bare); the tree reds run per stage with --self-check --mover
 ]
@@ -465,18 +465,18 @@ RESEARCH = [
 # TORCH/NUMPY-GATED CORE -- modules that import a heavy numeric dep (torch or numpy); run ONLY where
 # it is importable and SKIPPED-with-notice otherwise, so the pure-stdlib CI matrix + the in-process
 # pytest purity asserts (which require NO numpy/torch in sys.modules) stay green. torch is an optional
-# extra ([gpu]/[train]). hippocampus.ng_snn is the original documented exception; the BRAIN TIER
-# (cortex.brain the unified brain + cortex.neurogenesis_engine) is the user-authorized relaxation
+# extra ([gpu]/[train]). growth.ng_snn is the original documented exception; the BRAIN TIER
+# (cortex.brain the unified brain + growth.neurogenesis_engine) is the user-authorized relaxation
 # of the zero-dep-core rule for "the best-performing brain" -- the zero-dep core still runs with no
 # torch (Brain degrades to its deterministic narrator + no growth). SpikeGPT was SCRAPPED (v3.77): no
 # imported language model; conversation is the narrator + the brain-native cortex.language_acquisition
 # (numpy predictive-coding + local plasticity, gated here so it never pollutes the pure in-process test).
 TORCH_GATED = [
-    "hippocampus.ng_snn",
+    "growth.ng_snn",
     "hippocampus.online_readout",  # L1c: delta beats batch-only on a drifting chain, sign flip below, neutered bit-identical
     "hippocampus.growable_readout",  # PROMOTED 2026-08-11 (#10 lane 4b): grow-preservation 1.9e-06, freeze retention delta (8.4s)
     "cortex.brain",
-    "cortex.neurogenesis_engine",
+    "growth.neurogenesis_engine",
     "cortex.language_acquisition",
     "sensorimotor.eprop_nmnist",  # PROMOTED 2026-08-12 (PROMOTE lane 4/4): N-MNIST e-prop perception encoder; bare check ~6s CPU incl torch import
     "sensorimotor.eprop_shd",  # PROMOTED 2026-08-13 (specs/013 C3): SHD e-prop audio perception encoder, the auditory twin

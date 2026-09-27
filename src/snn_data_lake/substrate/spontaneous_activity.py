@@ -177,7 +177,7 @@ class SpontaneousActivity:
             n += 1
         return n
 
-    # distinct-from: cortex/arealization.py -- its L512 graded-arm RMSE is a profile-fit
+    # distinct-from: growth/arealization.py -- its L512 graded-arm RMSE is a profile-fit
     #   instrument; nothing here fits gene profiles. Site read.
     # distinct-from: cortex/learned_evc.py -- control-value readout; unrelated. Read.
     # distinct-from: plasticity/competitive_learning.py -- resets activity traces; the shared

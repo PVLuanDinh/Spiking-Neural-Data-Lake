@@ -18,7 +18,7 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from snn_data_lake.hippocampus.ng_snn import NGSNN, marginal_holdout  # noqa: E402
+from snn_data_lake.growth.ng_snn import NGSNN, marginal_holdout  # noqa: E402
 
 
 def _bursty(seed, n=400, cats=5, p_switch=0.02):

@@ -59,7 +59,7 @@ not the seed-dependent absolute levels.
 
 Seeded per-instance (`random` + `copy`), ASCII output, deterministic
 (no global-RNG side effects, no wall-clock). Reuses the core spiking primitive
-snn_data_lake.cortex.lif_neuron.LIFNeuron for every neuron. Additive core primitive (a reusable
+snn_data_lake.growth.lif_neuron.LIFNeuron for every neuron. Additive core primitive (a reusable
 spiking attractor associative memory with sleep consolidation); touches no safety-envelope file.
 
   Run: python -m snn_data_lake.hippocampus.sleep_replay        # (also run by run_selfchecks.py)
@@ -69,7 +69,7 @@ import copy
 import math
 import random
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

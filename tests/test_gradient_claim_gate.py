@@ -146,13 +146,13 @@ def test_not_a_rule_is_reachable_only_by_declaration():
 def test_ng_snn_fit_is_direct_solve_and_not_lumped_in_as_local():
     """POLICIES.md forbids the lump-in that `LOCAL` would perform here.
 
-    It adjudicates `hippocampus/ng_snn.py::fit` as "not a violation ... a direct solve: no gradient
+    It adjudicates `growth/ng_snn.py::fit` as "not a violation ... a direct solve: no gradient
     is propagated through a network and no weight is transported. It IS non-local, and the policy
     should say so DISTINCTLY rather than lumping it in". `LOCAL` asserts locality, so using it would
     state something the authoritative document explicitly denies.
     """
     rules, _, _ = gate.census()
-    fit = next((r for r in rules if r["qualname"] == "hippocampus/ng_snn.py::NGSNN.fit"), None)
+    fit = next((r for r in rules if r["qualname"] == "growth/ng_snn.py::NGSNN.fit"), None)
     assert fit is not None, "ng_snn::fit is not in the census at all"
     assert fit["state"] == gate.CLASSIFIED_DIRECT_SOLVE, fit["state"]
     assert fit["declared"] == gate.DIRECT_SOLVE, fit["declared"]

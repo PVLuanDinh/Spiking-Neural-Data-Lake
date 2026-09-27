@@ -29,7 +29,7 @@ reasoning-tier importers repointed at the move; snn_mnist_stdp_fast (the oracle'
 stays in reasoning/ as its own later rung.
 Deps, and the two tiers are NOT the same:
   CORE, always installed : numpy, torch, brian2. Brian2 is reached through the governed
-    ``substrate.brian2_backend`` and its LIF equation is checked against the Torch bridge.
+    ``growth.brian2_backend`` and its LIF equation is checked against the Torch bridge.
   EXTRA `[gpu]`/`[train]` : torchvision -- and THIS is what keeps this module unimportable.
 MEASURED 2026-08-06 by importing all 152 `reasoning/` modules in isolated subprocesses: this file
 is a HUB. Its remaining optional dependency boundary is torchvision. torchvision was
@@ -55,8 +55,8 @@ import os
 import torch
 from torchvision import datasets, transforms
 
+from snn_data_lake.growth.brian2_backend import BrianLIF
 from snn_data_lake.infra.device import enable, resolve_device
-from snn_data_lake.substrate.brian2_backend import BrianLIF
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

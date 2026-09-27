@@ -41,7 +41,7 @@ PYTHONPATH=src .venv-lake/Scripts/python research/arc_agi/run_arc.py           #
 - **The NG-SNN MECHANISM copies are settled; the DRIVER duplication remains.** The 2026-08-04
   measurement (7 of 12 files AST-identical between `ng_snn/` here and
   `src/snn_data_lake/reasoning/ng_snn/`) stands, but both of its blockers have since cleared:
-  the governed drivers were repointed to `snn_data_lake.hippocampus.ng_snn` (the ONE surviving
+  the governed drivers were repointed to `snn_data_lake.growth.ng_snn` (the ONE surviving
   mechanism — it carries strictly more than either deleted copy: derived-not-fixed capacity,
   `prune_unearned`, growth-state seeding), `reasoning/ng_snn/model.py` was retired 2026-08-06,
   and **`research/ng_snn/model.py` was retired 2026-08-07** with this directory's seven drivers

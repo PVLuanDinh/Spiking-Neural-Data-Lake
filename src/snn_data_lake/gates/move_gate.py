@@ -386,6 +386,20 @@ def _norm(line: str, subs: list) -> str:
     return _LINENO.sub("", _TIME.sub("<t>", line)).rstrip()
 
 
+_C2C_BRIAN_MEASURED = re.compile(
+    r'("(?:timeout_elapsed_s|wall_s|peak_working_set_bytes)"\s*:\s*)\d+(?:\.\d+)?'
+)
+_C2C_BRIAN_DEBUG_FILE = re.compile(r"brian_debug_[A-Za-z0-9_]+\.log")
+
+
+def _c2c_line(base: str, line: str, subs: list) -> str:
+    line = _norm(line, subs)
+    if base == "brian2_backend":
+        line = _C2C_BRIAN_MEASURED.sub(r"\g<1><measured>", line)
+        line = _C2C_BRIAN_DEBUG_FILE.sub("brian_debug_<temp>.log", line)
+    return line
+
+
 def _subs(root: Path, home: Path) -> list:
     out = []
     for p, tag in ((Path(root).resolve(), "<root>"), (Path(home).resolve(), "<home>")):
@@ -739,7 +753,9 @@ def c2c(root: Path, bases=C2C_TARGETS, log=print) -> tuple:
                     [sys.executable, "-m", name, "--assert"], root, home, strict=False
                 )
                 subs = _subs(root, home)
-                lines = [x for x in (_norm(v, subs) for v in so.splitlines()) if x.strip()]
+                lines = [
+                    x for x in (_c2c_line(base, v, subs) for v in so.splitlines()) if x.strip()
+                ]
                 got[side] = (rc, lines, se.strip().splitlines()[-1:])
                 log(f"  C2(c) {base:<22} {side:<7} rc={rc} [{time.perf_counter() - t0:.1f}s]")
             (lr, ll, lerr), (cr, cl, _) = got["legacy"], got["current"]

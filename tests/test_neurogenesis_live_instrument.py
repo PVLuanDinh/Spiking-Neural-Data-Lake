@@ -8,7 +8,7 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from snn_data_lake.cortex.neurogenesis_engine import NeurogenesisSelfImprove  # noqa: E402
+from snn_data_lake.growth.neurogenesis_engine import NeurogenesisSelfImprove  # noqa: E402
 
 
 def _percept(c, k):

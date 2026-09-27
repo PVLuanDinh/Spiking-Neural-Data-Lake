@@ -23,7 +23,7 @@ adds its learning-progress reward to the striatal RPE; this adds the drive-reduc
 basal_ganglia/valence_stdp value learner, via its three-factor plasticity rule).
 
 Spiking eligibility (a REAL LIF need pool, not scalar differencing). Each drive drives one LIF "NEED"
-pool -- a population of cortex/lif_neuron.py LIFNeuron cells whose firing RATE tracks the drive
+pool -- a population of growth/lif_neuron.py LIFNeuron cells whose firing RATE tracks the drive
 magnitude: a real deficit fires the pool, a satisfied drive falls below threshold and it goes quiet.
 The phasic RATE DROP when an action satisfies a drive is the third factor -- the ELIGIBILITY that gates
 the valence RPE update (passed as the plasticity rule's lr_scale):
@@ -60,7 +60,7 @@ deterministic.
 import random
 
 from snn_data_lake.basal_ganglia.valence_stdp import ValenceLearner
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 from snn_data_lake.hypothalamus.set_points import Homeostat
 from snn_data_lake.infra._mathutils import mean
 from snn_data_lake.sensorimotor.spike_preprocessing import N as N_FEATURES

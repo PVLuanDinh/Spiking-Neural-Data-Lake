@@ -11,7 +11,7 @@ learned function -- accuracy is bit-continuous across the grow, then training
 specialises the new capacity.
 
 The growth principle is REUSED (not reimplemented) from the shipped core module
-`hippocampus/function_preserving_growth.py` (`SpikingGrowthLayer.duplicate_unit`):
+`growth/function_preserving_growth.py` (`SpikingGrowthLayer.duplicate_unit`):
 to widen a layer, DUPLICATE a hidden unit's INCOMING weights and HALVE both copies'
 OUTGOING weights, so the two half-weight fan-outs recombine to the parent's original
 fan-out and the layer's output is UNCHANGED at the instant of growth:

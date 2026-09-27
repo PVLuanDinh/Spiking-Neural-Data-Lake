@@ -10,7 +10,7 @@ adaptation helps; the safety-critical reflex keeps its LIF as the DEFAULT (refle
 Refs: Izhikevich, "Simple model of spiking neurons", IEEE Trans. Neural Networks 14 (2003); "Which
 model to use for cortical spiking neurons?" (2004).
 
-  python -m snn_data_lake.cortex.izhikevich_neuron        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.growth.izhikevich_neuron        # (also run by run_selfchecks.py)
 """
 
 

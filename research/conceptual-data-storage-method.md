@@ -57,7 +57,7 @@ Would you like to dive deeper into configuring local SNN simulation frameworks (
 > caught it and shipped `snn.Leaky(beta=0.9, init_hidden=False)  # doc had True; False to thread mem
 > manually`. That module was RETIRED on 2026-08-06 under P2 — its own docstring disclaimed the
 > capability ("does NOT store/recall data"), and both halves are superseded by
-> `hippocampus/spiking_storage_prototype.py` (the storage demo, CORE) and `cortex/lif_neuron.py` (the
+> `hippocampus/spiking_storage_prototype.py` (the storage demo, CORE) and `growth/lif_neuron.py` (the
 > LIF pass). Its deletion left this file as the only surviving copy of the blueprint, carrying the
 > defect the retired module had fixed.
 >

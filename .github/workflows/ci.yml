@@ -66,7 +66,7 @@ jobs:
       # surrogate path still carries finite gradients. Denying `brian2` at import is the reachable
       # dependency red; changing either equation is the parity red.
       - name: Brian2 reference simulator agrees with the Torch training bridge
-        run: python -m snn_data_lake.substrate.brian2_backend
+        run: python -m snn_data_lake.growth.brian2_backend
       - name: Run every self-check with the full dependency set
         run: python run_selfchecks.py       # canonical module list lives in run_selfchecks.py
       # specs/022 T001: PERMANENTLY report-only on CI ("CI never hosts performance claims",

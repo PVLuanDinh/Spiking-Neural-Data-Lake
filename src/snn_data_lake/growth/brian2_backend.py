@@ -31,7 +31,7 @@ import torch.nn as nn
 
 SpikeGradient = Callable[[torch.Tensor], torch.Tensor]
 RESET_MECHANISMS = {"subtract", "zero", "none"}
-MODULE_NAME = "snn_data_lake.substrate.brian2_backend"
+MODULE_NAME = "snn_data_lake.growth.brian2_backend"
 MAX_REFERENCE_CELLS = 2_000_000
 _REFERENCE_LAUNCHES = 0
 _REFERENCE_LOCK = Lock()
@@ -74,25 +74,25 @@ MIGRATED_CALL_SITES = (
 )
 # Section 1.3 actually enumerates twenty classes, plus KernelTick; retain every name.
 CUSTOM_KERNELS = (
-    "snn_data_lake.cortex.lif_neuron::LIFNeuron",
-    "snn_data_lake.cortex.alif_neuron::ALIFNeuron",
-    "snn_data_lake.cortex.adex_neuron::AdEx",
-    "snn_data_lake.cortex.autapse_neuron::AutapseNeuron",
-    "snn_data_lake.cortex.dendritic_neuron::DendriticNeuron",
-    "snn_data_lake.cortex.srm_neuron::SRMNeuron",
-    "snn_data_lake.cortex.srm_neuron::IFNeuron",
+    "snn_data_lake.growth.lif_neuron::LIFNeuron",
+    "snn_data_lake.growth.alif_neuron::ALIFNeuron",
+    "snn_data_lake.growth.adex_neuron::AdEx",
+    "snn_data_lake.growth.autapse_neuron::AutapseNeuron",
+    "snn_data_lake.growth.dendritic_neuron::DendriticNeuron",
+    "snn_data_lake.growth.srm_neuron::SRMNeuron",
+    "snn_data_lake.growth.srm_neuron::IFNeuron",
     "snn_data_lake.cortex.eprop_kernel::EpropLIFBase",
-    "snn_data_lake.cortex.heterogeneous_microcircuit::_LIFCell",
-    "snn_data_lake.cortex.heterogeneous_microcircuit::_AdExCell",
-    "snn_data_lake.cortex.neuron_zoo::_AdExCell",
-    "snn_data_lake.cortex.neuron_zoo::_IzhikevichCell",
-    "snn_data_lake.cortex.neuron_zoo::NeuronZoo",
+    "snn_data_lake.growth.heterogeneous_microcircuit::_LIFCell",
+    "snn_data_lake.growth.heterogeneous_microcircuit::_AdExCell",
+    "snn_data_lake.growth.neuron_zoo::_AdExCell",
+    "snn_data_lake.growth.neuron_zoo::_IzhikevichCell",
+    "snn_data_lake.growth.neuron_zoo::NeuronZoo",
     "snn_data_lake.cerebellum.spiking_pid::_LIFPopulation",
     "snn_data_lake.basal_ganglia.r_stdp::RSTDPNeuron",
     "snn_data_lake.plasticity.bcm_plasticity::BCMNeuron",
     "snn_data_lake.plasticity.homeostatic_scaling::HomeostaticNeuron",
     "snn_data_lake.plasticity.oja_pca::OjaNeuron",
-    "snn_data_lake.substrate.basic_components::_DemoLIFLayer",
+    "snn_data_lake.growth.basic_components::_DemoLIFLayer",
     "snn_data_lake.thalamus.gwt_deep::LIF",
     "snn_data_lake.substrate.kernel_tick::KernelTick",
 )

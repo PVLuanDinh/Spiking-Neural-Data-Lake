@@ -7,7 +7,7 @@ forgetting mechanism -- a real *bounded* continual-learning increment. It learns
 SEQUENCE of tasks (A, B, C, ...) with disjoint classes and keeps OLD-task accuracy
 alive using three brain-inspired parts the project already owns:
 
-  * GROW   (neurogenesis)  -- hippocampus.growing_learner.GrowingLearner recruits a
+  * GROW   (neurogenesis)  -- growth.growing_learner.GrowingLearner recruits a
                               new prototype unit for a novel pattern, refines the
                               nearest unit on a familiar one.
   * CONSOLIDATE (replay)   -- hippocampus.experience_replay.ReplayBuffer stores task
@@ -48,8 +48,8 @@ ASCII-only output.
 
 import random
 
+from snn_data_lake.growth.growing_learner import GrowingLearner
 from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
-from snn_data_lake.hippocampus.growing_learner import GrowingLearner
 from snn_data_lake.infra._mathutils import mean
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.

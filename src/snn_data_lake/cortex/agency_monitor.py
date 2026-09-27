@@ -362,7 +362,7 @@ class AgencyMonitor:
 # distinct-from: gates/amdahl_gate.py -- a live/neuter/sham paired reading over tick
 #   COST on three scratch brains. This pairs INTACT against SHOVED on the per-joint
 #   command-to-outcome coupling; no timing quantity is read at all. Read.
-# distinct-from: cortex/h01_ingest.py -- an Avro OCF record reader over a connectome
+# distinct-from: growth/h01_ingest.py -- an Avro OCF record reader over a connectome
 #   export. Term overlap ("record", "read") only. Read.
 # distinct-from: brainstem/arm_config.py::joint_limits -- per-joint LIMITS read off the
 #   MuJoCo model (the safety envelope's vocabulary). This reads a per-joint CORRELATION off

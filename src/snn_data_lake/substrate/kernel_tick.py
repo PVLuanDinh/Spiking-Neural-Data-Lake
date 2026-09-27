@@ -26,7 +26,7 @@ prevent (the dead-E-STOP incident's sibling). The metric + its provenance string
 the row lands when the kernel joins the live snapshot.
 
 EQUATION OWNERSHIP (the T013 P2 disposition, honored): the leaky integrate-and-fire step
-below is the VECTORIZED form of `cortex/lif_neuron.py`'s per-instance equation -- that module
+below is the VECTORIZED form of `growth/lif_neuron.py`'s per-instance equation -- that module
 remains the cited equation owner and its scalar form retires at cutover with a parity A/B.
 No constant is picked here: decay, thresholds (state.thr), reset and frac_bits are the
 caller's, and frac_bits' binding value is T015's measurement (D6: fractional bits MEASURED
@@ -49,13 +49,13 @@ remains ONE compiler, used by `Synapses.__init__`.
 #   circuit with its own internal stepping; this is the general SoA substrate tick.
 # distinct-from: substrate/signal_ring.py -- transport of lake-bound RECORDS between faculties;
 #   the delay rings here carry spike BUNDLES inside one kernel.
-# distinct-from: cortex/neuron_zoo.py -- per-object model population (see T013 disposition).
+# distinct-from: growth/neuron_zoo.py -- per-object model population (see T013 disposition).
 # distinct-from: basal_ganglia/r_stdp.py -- its _FanOut/Calibration machinery parallelizes its
 #   OWN plasticity math with a measured serial/parallel crossover; a learning-rule execution
 #   detail, never a substrate tick or delivery transport.
 # distinct-from: cortex/access_consciousness.py -- workspace BROADCAST delivery (_head_only is
 #   that contract's red); content routing between faculties, not spikes between units.
-# distinct-from: substrate/lake_migrate.py, cortex/neurogenesis_engine.py,
+# distinct-from: substrate/lake_migrate.py, growth/neurogenesis_engine.py,
 #   cortex/counterfactual_sim.py -- matched on shared vocabulary (dispositions, crc identity);
 #   none steps a substrate. All sites read.
 
@@ -80,13 +80,13 @@ IMBALANCE_PROVENANCE = (
 # distinct-from: cortex/percept_surprise.py::declare_ports, neuromodulation/raphe_serotonin.py::
 #   declare_ports -- manifest REGISTRANTS: they declare typed faculty ports on the wiring manifest
 #   and compile nothing; no weight, no delay, no ring key.
-# distinct-from: substrate/basic_components.py::Connections.update -- an in-place bounded weight
+# distinct-from: growth/basic_components.py::Connections.update -- an in-place bounded weight
 #   CHANGE (add dw, mask, clip) on a dense matrix; this quantizes a static edge list ONCE into
 #   routing bundles and never moves a weight.
 # distinct-from: infra/brain_bundle.py::BrainBundle.predict -- "bundle" there is a named
 #   collection of trained brains being routed to; here a bundle is (pre, partition, delay) ->
 #   posts/qweights inside one kernel.
-# distinct-from: hippocampus/ng_snn.py::decide -- the ONE argmax decision rule over an NG-SNN rate
+# distinct-from: growth/ng_snn.py::decide -- the ONE argmax decision rule over an NG-SNN rate
 #   matrix; a readout, not a delivery table. All five sites read 2026-09-08.
 def compile_bundles(pre, post, weight, delay, n_units, p_parts, frac_bits, max_delay=None):
     """THE ONE BUNDLE COMPILER (specs/022 T066, P2). Factored out of `Synapses.__init__` so the

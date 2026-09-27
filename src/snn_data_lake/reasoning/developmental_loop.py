@@ -77,7 +77,7 @@ from snn_data_lake.infra.device import enable, resolve_device
 from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 
-from snn_data_lake.substrate.brian2_backend import BrianLIF
+from snn_data_lake.growth.brian2_backend import BrianLIF
 
 
 def _envi(k, d):

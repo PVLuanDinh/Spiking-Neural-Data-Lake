@@ -18,7 +18,7 @@ and the live wire feeds the brain's real per-tick surprise scalar into the corte
 (the ONE live error channel today; other regions' error channels join as their producers
 land, dated to their own tasks, and the REGIONS argument stays honest: lp() reports only
 channels that have actually been fed). The lp_out port was declared EDGE-LESS at T046a
-with its dated consumer named -- DISCHARGED at T047: `cortex/growth_stop.py` consumes
+with its dated consumer named -- DISCHARGED at T047: `growth/growth_stop.py` consumes
 |LP| as the growth gates' veto arm and declares the edge (the T030 broadcast_out
 precedent, resolved the same way).
 
@@ -34,7 +34,7 @@ REFERENCE (a dotted name), deliberately never resolved or executed here: executi
 lake-carried ref is a dispatch surface T047+ must open with its own review, not a side
 effect of storage -- disclosed, not smoothed.
 
-  PYTHONPATH=src python -m snn_data_lake.basal_ganglia.learning_progress
+  PYTHONPATH=src python -m snn_data_lake.growth.learning_progress
 """
 
 import json
@@ -94,7 +94,7 @@ class LearningProgress:
 
     # distinct-from: neuromodulation/intrinsic_motivation.py -- the ADOPTED drive this method
     #   READS (learning_progress_abs); nothing re-derived. Site read (this module's own dep).
-    # distinct-from: cortex/placement.py -- region-keyed PRIORS; unrelated job. Site read.
+    # distinct-from: growth/placement.py -- region-keyed PRIORS; unrelated job. Site read.
     # distinct-from: neuromodulation/locus_coeruleus.py -- LC pool readout window; unrelated.
     #   Site read; the matcher fired on generic words.
     def lp(self, region):
@@ -287,7 +287,7 @@ def declare_ports(manifest):
     T028 dated disposition's discharge, the consumer declaring the edge
     `percept_surprise.surprise_out -> learning_progress.surprise_in`. OUT `lp_out` is the
     |LP| third factor, declared EDGE-LESS at T046a with its dated consumer named: T047's
-    growth stopping criterion (`cortex/growth_stop.py`) -- DISCHARGED at T047, which
+    growth stopping criterion (`growth/growth_stop.py`) -- DISCHARGED at T047, which
     declares the edge `lp_out -> growth_stop.lp_in` (the consumer declares it, the
     T034/M10 convention) -- declaring it earlier would have been anatomy ahead of its
     consumer (the T030 broadcast_out precedent)."""

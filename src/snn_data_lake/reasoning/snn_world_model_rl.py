@@ -23,7 +23,7 @@ Run (own venv):  .venv-arm/Scripts/python snn_world_model_rl.py
 
 import torch
 import torch.nn as nn
-from snn_data_lake.substrate.brian2_backend import BrianLIF, fast_sigmoid
+from snn_data_lake.growth.brian2_backend import BrianLIF, fast_sigmoid
 
 from snn_data_lake.reasoning.snn_motor_control import (
     fk,

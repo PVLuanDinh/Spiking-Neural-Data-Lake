@@ -63,7 +63,7 @@ tally line above is a dated 2026-07-10 snapshot and is left as-is):
 | hippocampus/grid_cells | 3 velocity-controlled spiking oscillators; grid firing from spike-phase interference |
 | hippocampus/frequency_memory | LIF neurons; firing-rate homeostat gates STDP on/off (FIP/FID) to form assemblies |
 | hippocampus/experience_replay | three-factor R-STDP actor; replay = spontaneous spike-sequence reactivation |
-| hippocampus/growing_learner | spiking prototype/RBF units matched by spike coincidence; recruit-on-weak-response; Hebbian |
+| growth/growing_learner | spiking prototype/RBF units matched by spike coincidence; recruit-on-weak-response; Hebbian |
 | hippocampus/legendre_memory | realize the A/B delay state-space in spiking neurons via NEF (spiking LMU) |
 | basal_ganglia/valence_stdp | LIF valence neuron; pre/post spike-timing eligibility gated by dopamine (three-factor) |
 | basal_ganglia/latent_q | spiking linear readout over latent spikes, reward-modulated (three-factor) plasticity |

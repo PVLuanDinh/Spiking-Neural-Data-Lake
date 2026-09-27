@@ -39,7 +39,7 @@ HONEST framing (read before trusting any number below).
   FORM of both the R-STDP rule and the BCM rule is fixed. No rule is invented at runtime.
 
 Reuses (does NOT reimplement): basal_ganglia/r_stdp.py RSTDPNeuron (eligibility + third-factor reward
-gate), cortex/lif_neuron.py LIFNeuron (the spiking unit + the rate the threshold slides with),
+gate), growth/lif_neuron.py LIFNeuron (the spiking unit + the rate the threshold slides with),
 neuromodulation/spiking_curiosity.py SpikingCuriosityDrive (the LP third factor), plasticity/
 bcm_plasticity.py (the sliding-threshold theta_M ~ <y^2> rule), substrate/_mathutils.mean.
 
@@ -53,7 +53,7 @@ import random
 from collections import deque
 
 from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 from snn_data_lake.infra._mathutils import mean
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
 

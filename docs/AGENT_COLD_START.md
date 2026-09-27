@@ -112,7 +112,7 @@ them.
 **The runtime.** CPython 3.14 free-threaded (cp314t), with the GIL genuinely off.
 `src/snn_data_lake/__init__.py` (`require_free_threaded`) refuses a GIL build at import.
 - The core dependencies are listed in `pyproject.toml`. P7 accepts any dependency that measurably helps.
-- Brian2 is the equation/event reference, and the Torch bridge `substrate/brian2_backend.py` executes it.
+- Brian2 is the equation/event reference, and the Torch bridge `growth/brian2_backend.py` executes it.
 - Real Brian2 runs only in a subprocess, because importing it re-enables the GIL.
 
 **The design under test** (the owner's engine, 2026-09-25: POLICIES P4d, PROVISIONAL; plan Part D "G
@@ -125,7 +125,7 @@ open), then sleeps to prune and save the new neurons and the problem's data in t
 reservoir's state also lives, rebuilt at start. The rows test it under their reds; the 2026-09-23 reading (growth
 INTO one liquid read out by a decoder) is superseded. Re-derivable facts it rests on:
 - the grower is stateless per percept (`NGSNN._rates` starts at V = 0 and has no recurrent weight);
-- `cortex/placement.py` records depth, layer and Dale sign without a computational reader;
+- `growth/placement.py` records depth, layer and Dale sign without a computational reader;
   `cortical_microcircuit.CONN_PROB` lacks a driver;
 - the four research reservoirs lack live-path importers;
 - `cortex/predictive_coding.py` and `reasoning/spiking_som.py` are the incumbents for two readout rules;
@@ -457,7 +457,7 @@ Pre-checks. Each is bounded, and each is a pre-check, not the battery:
 export PYTHONUTF8=1
 python -m ruff check .
 python -m ruff format --check .
-timeout 900 python -m snn_data_lake.substrate.brian2_backend
+timeout 900 python -m snn_data_lake.growth.brian2_backend
 python tools/red_reachability.py --assert
 python tools/dependency_ledger.py --assert
 python tools/citation_guard.py

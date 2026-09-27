@@ -49,7 +49,7 @@ the `bindsnet` dependency it was the sole importer of.)
 > Three names left this list on 2026-08-06 -- `snn_mnist_dc`, `snn_moe_stdp_mnist` and
 > `snn_storage_core_snntorch` were RETIRED under P2 (superseded respectively by the surviving
 > Diehl & Cook line, by `snn_moe_classifier` which is live via `sensorimotor/recognizer_bank.py`, and by
-> `hippocampus/spiking_storage_prototype.py` + `cortex/lif_neuron.py`). The shared-helper coverage
+> `hippocampus/spiking_storage_prototype.py` + `growth/lif_neuron.py`). The shared-helper coverage
 > they demonstrated is unchanged; only the demonstrating scripts are gone.
 
 ## The GeNN ports

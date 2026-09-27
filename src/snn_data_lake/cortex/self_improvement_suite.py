@@ -61,17 +61,17 @@ from snn_data_lake.cortex.autotelic_goals import (
     _reach_rate,
     collect_labels,
 )
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.cortex.quality_diversity import (
     DPOS,
     K_NEURONS,
     QualityDiversityArchive,
     behavior_descriptor,
 )
-from snn_data_lake.hippocampus.function_preserving_growth import (
+from snn_data_lake.growth.function_preserving_growth import (
     SpikingGrowthLayer,
     _max_abs_diff,
 )
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 from snn_data_lake.hippocampus.sleep_consolidation import run as sleep_run
 from snn_data_lake.neuromodulation.drive_reduction import (
     DriveReductionLearner,

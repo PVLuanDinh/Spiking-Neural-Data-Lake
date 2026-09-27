@@ -388,7 +388,7 @@ def test_the_synthetic_artifact_is_the_real_format():
     art = _art()
     for k in ("agglo_id", "sign", "layer", "pre_idx", "post_idx", "n_syn"):
         assert k in art
-    from snn_data_lake.cortex import h01_ingest as I
+    from snn_data_lake.growth import h01_ingest as I
 
     w = I.fan_in_shares(art)
     assert w.shape == art["pre_idx"].shape
@@ -687,7 +687,7 @@ def test_the_prior_is_read_once_at_construction():
     """specs/011 data-model: nothing on a tick re-reads the artifact. The arm's table is built from
     the artifact ONCE; mutating the artifact afterwards must not change a running population."""
     art = _art()
-    from snn_data_lake.cortex import h01_ingest as I
+    from snn_data_lake.growth import h01_ingest as I
 
     _state, syn, _kt = I.population(art)
     before = {k: v[1].copy() for k, v in syn.bundles.items()}

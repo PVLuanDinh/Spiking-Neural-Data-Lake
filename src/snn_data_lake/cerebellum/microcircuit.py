@@ -84,7 +84,7 @@ rather than dressing a harness as a wire.
 import math
 import random
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 
 # distinct-from: cortex/cortical_microcircuit.py -- Potjans-Diesmann's 8-population
 #   CORTICAL reference dynamics (permanent reference model); this is CEREBELLAR tissue

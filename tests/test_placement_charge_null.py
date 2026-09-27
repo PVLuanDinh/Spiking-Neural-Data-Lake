@@ -14,7 +14,7 @@ evidence/s1-genome-fanin-ab.md); the growth blob and its restore path are OUT OF
 
 WHY THIS IS PINNED RATHER THAN FIXED. The composed growth->placement wire
 (`cortex/placement.compose_growers` driven from the sleep tick, giving the hippocampal recruits
-of `hippocampus/growing_learner` a placement) was BUILT and MEASURED the same way: 0 differing
+of `growth/growing_learner` a placement) was BUILT and MEASURED the same way: 0 differing
 keys beyond the nondeterminism baseline, i.e. it charged nothing, so P3 ("a wire that does not
 charge is reverted") reverted it. The record is `specs/022-unified-brain-arc/evidence/
 s1-placement-null.md`. The day this test goes RED -- placement has gained a live reader -- retire
@@ -50,7 +50,7 @@ def _run(arm):
     """One brain per arm under a throwaway home (the real lake and the daemon are never
     touched); returns the flattened state()+telemetry view, the engine's unit count and its
     layer census."""
-    import snn_data_lake.cortex.placement as placement
+    import snn_data_lake.growth.placement as placement
     from snn_data_lake.cortex.brain import make_brain
     from snn_data_lake.infra import brain_telemetry
 

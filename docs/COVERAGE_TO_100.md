@@ -199,9 +199,9 @@ Benna-Fusi metaplasticity, and `lake_memory`'s `SALIENT_CAP=128` / `TRACE_HARDCA
 on-disk accumulation. Snapshot the size *and shape* of every persisted weight artifact — `models/*.npz`,
 `brain_data/*.npz`, prototypes, `language_acq.npz`, the skills/curriculum JSON — at successive restarts
 and plot against cumulative nights. Plateau = bounded; monotone = not. Then check whether any weight
-**dimension** grows with no prune counterpart: `cortex/neurogenesis_engine.py`,
-`hippocampus/growing_learner.py`, `hippocampus/function_preserving_growth.py`,
-`substrate/similarity_sized_growth.py`.
+**dimension** grows with no prune counterpart: `growth/neurogenesis_engine.py`,
+`growth/growing_learner.py`, `growth/function_preserving_growth.py`,
+`growth/similarity_sized_growth.py`.
 
 **The template for a principled grower already exists**: NG-SNN's earn-your-place stop, capacity
 monotone in data, 4,512 units at 24,000 rows — and note it only became trustworthy after the instrument
@@ -216,7 +216,7 @@ too early.
 ### The question inverts: growth is not unbounded, it is DISCARDED
 
 Raised by the owner, and verified: **the brain has one durable lake and the grown substrate is not in
-it.** `cortex/neurogenesis_engine.py` has **no `save`, `load`, `persist`, `restore` or `resume` method
+it.** `growth/neurogenesis_engine.py` has **no `save`, `load`, `persist`, `restore` or `resume` method
 and writes no npz/json** — `grown_units` appears once, in a state dict at `:202`. `Brain._make_neuro`
 constructs the engine fresh on every start. So grown units do not survive a restart.
 

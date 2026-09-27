@@ -11,8 +11,8 @@ import pytest
 import torch
 
 from snn_data_lake.cortex import recurrent_pool as rp
-from snn_data_lake.cortex.growth_stop import GrowthStop, feed_and_decide
-from snn_data_lake.cortex.neurogenesis_engine import NeurogenesisSelfImprove
+from snn_data_lake.growth.growth_stop import GrowthStop, feed_and_decide
+from snn_data_lake.growth.neurogenesis_engine import NeurogenesisSelfImprove
 from snn_data_lake.instruments import memory_diagnostic as md
 from snn_data_lake.instruments.memory_diagnostic import (
     ARMS,

@@ -7,7 +7,7 @@ non-attended relay channels while letting the attended channel(s) pass. This is 
 attention implemented as selective gain control -- an attentional GAIN/relay-gating FUNCTION, NOT
 awareness or consciousness.
 
-This is a SPIKING CIRCUIT (leaky integrate-and-fire neurons, reusing cortex.lif_neuron.LIFNeuron), not a
+This is a SPIKING CIRCUIT (leaky integrate-and-fire neurons, reusing growth.lif_neuron.LIFNeuron), not a
 rate equation. Gain control EMERGES from spiking feedback inhibition:
 
   1. One LIF RELAY neuron per channel receives a top-down excitatory drive (attended == full drive, the
@@ -46,7 +46,7 @@ Credit: Crick 1984 (searchlight); Carandini & Heeger 2012 (normalization); McAlo
 
 import random
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 
 
 class ReticularGate:

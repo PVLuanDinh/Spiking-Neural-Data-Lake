@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 import torch
 
-from snn_data_lake.substrate.brian2_backend import (
+from snn_data_lake.growth.brian2_backend import (
     CONTRACT,
     BrianLIF,
     _parity_arm,

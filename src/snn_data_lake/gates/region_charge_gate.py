@@ -74,7 +74,7 @@ def regions() -> list[str]:
 
 # distinct-from: brain_atlas.py -- region_of answers one module's frozen label; this gate's own
 #   conjunct (a), edited in place (G8 F5), joins LEGACY membership to module_path(). Also read:
-#   cortex/autapse_neuron.py, cortex/placement.py, cortex/snn_moe_classifier.py,
+#   growth/autapse_neuron.py, growth/placement.py, cortex/snn_moe_classifier.py,
 #   reasoning/arc_residual.py -- a trial stream, a GRN arm, an RNG hinge, an ARC alphabet.
 def reachable_regions() -> set[str]:
     """Conjunct (a): regions owning >=1 module on the ONE reachability walk. The region LABEL and

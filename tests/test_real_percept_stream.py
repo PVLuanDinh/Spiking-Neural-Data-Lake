@@ -1,6 +1,6 @@
 """specs/022 audit s8 rank 2a: the persisted grower is fed the BRAIN'S OWN percept stream.
 
-Until 2026-09-02 `cortex/neurogenesis_engine` synthesized a 5-mode Markov chain for itself on
+Until 2026-09-02 `growth/neurogenesis_engine` synthesized a 5-mode Markov chain for itself on
 every sleep tick and predicted it at ~0.7 (its own self-check: 0.67-0.71) -- an experiment ABOUT
 growth, never the brain growing on what it perceived (P0's honesty guard). Now `Brain._wake_tick`
 hands the engine every wake percept (`res["percept"]`, the attention-gained context vector the arm's
@@ -25,7 +25,7 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from snn_data_lake.cortex.neurogenesis_engine import (  # noqa: E402
+from snn_data_lake.growth.neurogenesis_engine import (  # noqa: E402
     NeurogenesisSelfImprove,
     SyntheticPerceptStream,
 )
@@ -152,7 +152,7 @@ def _l_cell(args):
 
     with throwaway_home():
         from snn_data_lake.cortex.brain import make_brain
-        from snn_data_lake.cortex.neurogenesis_engine import SyntheticPerceptStream
+        from snn_data_lake.growth.neurogenesis_engine import SyntheticPerceptStream
 
         b = make_brain(seed=seed, persist=False)
         eng = b.neuro

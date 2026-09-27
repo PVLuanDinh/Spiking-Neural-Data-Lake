@@ -31,12 +31,12 @@ citation was wrong, the correction is stated.
    void. Line 37 then zeroes both components on threshold crossing, so the map is not invertible
    either, and the units holding the most content erase first.
 2. *The derived frequency collapses.* `omega_i = -ln(decay_a)` with
-   `decay_a = math.exp(-1.0 / tau_a)` (`cortex/dendritic_neuron.py:65`) equals `1/tau_a`, and
+   `decay_a = math.exp(-1.0 / tau_a)` (`growth/dendritic_neuron.py:65`) equals `1/tau_a`, and
    `tau_a` is ONE scalar. All `d/2` pairs would rotate at the same frequency. The "bank" is one
    2-D subspace replicated, effective capacity 2 rather than `d`.
 3. *It already exists.* `cortex/theta_gamma_code.py` holds multiple items simultaneously in
    phase slots, re-fires them every theta cycle (active maintenance), and reads them back BY
-   SLOT. That is an S-item register with slot-addressed retrieval. `cortex/autapse_neuron.py`
+   SLOT. That is an S-item register with slot-addressed retrieval. `growth/autapse_neuron.py`
    is the delayed-match-across-a-silent-gap harness with an ablation to chance. Building a third
    register is not invention.
 
@@ -808,7 +808,7 @@ practice, the unification is nominal and must be reported as such.
 `substrate/lake_memory.py`.
 
 **Explicitly not built, and why:** any resonator or theta-slot register (already exists in
-`cortex/theta_gamma_code.py` and `cortex/autapse_neuron.py`); any PCI sweep (optimising toward a
+`cortex/theta_gamma_code.py` and `growth/autapse_neuron.py`); any PCI sweep (optimising toward a
 marker, and the harness does not exist); any VSA bus layer (cold-start identity collapse and
 `D = 512` capacity); any FlyHash or ART clustering layer (zero importers, degenerate on the
 descriptor, duplicates `SchemaInducer`, and its null could not fail); any R-STDP credit layer for

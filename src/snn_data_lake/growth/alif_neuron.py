@@ -18,17 +18,17 @@ a(t) is still clearly elevated, a slow trace of recent activity the plain LIF me
 threshold state is the working memory recurrent LSNNs use to bridge long delays, and the neuron model on which
 this repo's e-prop (reasoning/eprop.py) learns.
 
-Distinct from the AdEx neuron (cortex/adex_neuron.py): AdEx adapts a subthreshold + spike-triggered CURRENT w
+Distinct from the AdEx neuron (growth/adex_neuron.py): AdEx adapts a subthreshold + spike-triggered CURRENT w
 that is SUBTRACTED from the membrane; ALIF adapts the THRESHOLD itself. Different mechanism, same headline
 behaviour (fire-fast-then-slow). Reduces EXACTLY to lif_neuron.LIFNeuron when beta = 0.
 Deterministic by construction (no RNG, no wall-clock).
 
-  python -m snn_data_lake.cortex.alif_neuron        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.growth.alif_neuron        # (also run by run_selfchecks.py)
 """
 
 import math
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 
 
 class ALIFNeuron:

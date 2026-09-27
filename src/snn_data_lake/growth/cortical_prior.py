@@ -31,7 +31,7 @@ EVERY FIGURE HERE WAS RE-DERIVED, NOT INHERITED from specs/011's Phase 0 reading
 reading's claims reproduced exactly: 49,377 soma records, 45,994/45,994 = 100% join coverage on
 `agglo_seg`, 7 cortical layer values, 6 layer circles, 11 cell types.
 
-  python -m snn_data_lake.cortex.cortical_prior
+  python -m snn_data_lake.growth.cortical_prior
 """
 
 import sys

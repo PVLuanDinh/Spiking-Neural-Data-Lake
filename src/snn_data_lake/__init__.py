@@ -26,7 +26,7 @@ non-anatomical data-lake / telemetry / infra tier). REGIONS below is the authori
 
 The flat pre-3.0 import paths stay valid: a lazy alias finder + module __getattr__ (installed
 at the bottom) make `import snn_data_lake.lif_neuron` and `from snn_data_lake.lif_neuron import
-LIFNeuron` resolve to the moved module (snn_data_lake.cortex.lif_neuron). See
+LIFNeuron` resolve to the moved module (snn_data_lake.growth.lif_neuron). See
 snn_data_lake.brain_atlas for the rendered map and a back-compat self-check.
 """
 
@@ -113,23 +113,12 @@ require_free_threaded()
 REGIONS = {
     "cortex": [
         "theta_gamma_code",
-        "lif_neuron",
-        "dendritic_neuron",
-        "izhikevich_neuron",
-        "hodgkin_huxley",
-        "alif_neuron",
         "divisive_normalization",
         # PROMOTED from reasoning/brain_adapters/ 2026-08-12 (#10 lane 4c): the ONE live-tick
         # percept readout (feedback alignment + fixed-random L6, no weight transport) --
         # cortex/brain.py constructs it lazily on every real percept; numpy-only, CORE tier.
         "laminar_local_readout",
         "cortical_microcircuit",
-        "cortical_prior",  # H01 HUMAN cortex reference data: value + units + provenance + bound
-        "h01_ingest",  # specs/022 T062: the H01 c3 SYNAPSE graph, 8 gates, a seeded population
-        "arealization",  # specs/022 T040: organizer fields + repression-GRN region emission (P8 #7)
-        "growth_program",  # specs/022 T042: one-shared-program locality + scaffold refusal (P8 #7)
-        "placement",  # every grown unit gets a cortical depth, a layer and an immutable Dale sign
-        "growth_stop",  # specs/022 T047: |LP|+charge growth gates, executive-independent (P8 #4)
         "recurrent_pool",  # G1(b) pool-selection benchmark: the winner, g1 LSM, as a streaming pool
         "predictive_coding",
         "is_snn_forward",
@@ -148,7 +137,6 @@ REGIONS = {
         "prefrontal_executive",
         "live_brain",
         "interaction_learning",
-        "neuron_zoo",  # merges: recognizer ensemble / encoder bank / neuron population
         # higher cognition / self-model / self-improvement (v3.14+)
         "access_consciousness",
         "self_model",
@@ -159,12 +147,8 @@ REGIONS = {
         "quality_diversity",
         "self_improvement_suite",
         "wholistic_loop",
-        "autapse_neuron",
         # PROMOTED from reasoning/ 2026-08-04: the three neuron models `neuron_zoo`
         # composes. They fed a GOVERNED module from outside the gate.
-        "adex_neuron",
-        "resonate_and_fire",
-        "srm_neuron",
         "agency_monitor",
         "affect_core",
         "crossmodal_binder",
@@ -177,7 +161,6 @@ REGIONS = {
         "learned_attention",  # C1 batch-3: learned spiking reticular attention gate (local plasticity)
         "learned_evc",  # C1 batch-4: learned expected-value-of-control (dopamine-gated cost/value)
         "second_order_access",  # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
-        "heterogeneous_microcircuit",  # Brain-Cog-adopted: LIF+Izhikevich+AdEx worked EXAMPLE of the basic_components palette (not on the live tick)
         "percept_surprise",  # loop C2: online unsupervised Oja-PCA reconstruction-residual surprise (orienting drive)
         "kb_ranking",  # PROMOTED from reasoning/ 2026-08-11 (#10 batch-1): open-vocab DistMult KB completion head
         "language_self_build",  # PROMOTED 2026-08-11 (#10 family C6): autonomous R-STDP language assemblies; LIVE on the sleep tick
@@ -194,8 +177,6 @@ REGIONS = {
         "experience_replay",
         "sleep_replay",
         "ring_attractor",
-        "growing_learner",
-        "function_preserving_growth",
         "sleep_consolidation",
         "affective_memory",
         "contrastive_episode_analysis",
@@ -226,7 +207,6 @@ REGIONS = {
     ],
     "basal_ganglia": [
         "evidence_accumulation",
-        "learning_progress",  # specs/022 T046a: |LP| third factor (adopts CuriosityDrive) + the _T_GOAL store
         "r_stdp",
         "valence_stdp",
         "action_gating",
@@ -372,7 +352,6 @@ REGIONS = {
     "substrate": [
         # PROMOTED 2026-08-04: P2 merge of training/device.py (GPU-first, measured) with the
         # retired reasoning/torch_device.py (had the users + enable()). Infra, not a brain region.
-        "brian2_backend",  # Brian2 LIF authority + differentiable Torch bridge
         # Promoted from reasoning/ 2026-08-04. SUBSTRATE, not basal_ganglia (an earlier plan said
         # basal_ganglia): this module spawns subprocesses, copies a directory tree and checksums
         # files. It contains no neuron, no weight and no learning rule -- its own docstring says it
@@ -399,7 +378,6 @@ REGIONS = {
         "signal_calibrator",  # durable running-quantile of a live signal (Step-0 of data self-recalibration)
         "home",
         "binlog",
-        "growable",
         "spontaneous_activity",  # specs/022 T045: learnable OU bootstrap through the SAME plasticity path (FR-033)
         "region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> GWT ignition bias
         # PROMOTED from the repo root 2026-08-04 under P4c: the daemon is the brain's DRIVE (wake/
@@ -418,8 +396,6 @@ REGIONS = {
         "kernel_tick",  # specs/022 T014: two-phase deterministic tick (P fixed, integer delivery); bare == delay + thread-equality reds
         "wiring_manifest",  # specs/022 T018: TypedPort + WiringManifest (declared anatomy); bare == five checks + five reds + NIR round-trip
         "report_channel",  # 022 T034: typed workspace-report snapshot; the broadcast's declared consumer
-        "basic_components",  # Brain-Cog-adopted composition interface: node + local-rule + connection palette
-        "similarity_sized_growth",  # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
     ],
     # G8 (specs/022 evidence g8-reorganization.md 2.2, stage S1a): the engine-function package of
     # every policy and correctness gate. It opens with G8's own G-R8 instrument; the substrate
@@ -518,6 +494,32 @@ REGIONS = {
         "self_build_loop",
         "self_mod_harness",
     ],
+    "growth": [
+        "adex_neuron",
+        "alif_neuron",
+        "arealization",
+        "autapse_neuron",
+        "basic_components",
+        "brian2_backend",
+        "cortical_prior",
+        "dendritic_neuron",
+        "function_preserving_growth",
+        "growable",
+        "growing_learner",
+        "growth_program",
+        "growth_stop",
+        "h01_ingest",
+        "heterogeneous_microcircuit",
+        "hodgkin_huxley",
+        "izhikevich_neuron",
+        "learning_progress",
+        "lif_neuron",
+        "neuron_zoo",
+        "placement",
+        "resonate_and_fire",
+        "similarity_sized_growth",
+        "srm_neuron",
+    ],
 }
 
 # TORCH-TIER ANNEX -- region -> modules that import torch AT MODULE LOAD (so they cannot be imported
@@ -527,7 +529,6 @@ REGIONS = {
 # neurogenesis) imports lazily and lives in REGIONS above. See brain_atlas for the gated verification.
 TORCH_TIER = {
     "cortex": [
-        "neurogenesis_engine",
         "language_acquisition",
         # PROMOTED 2026-08-12 (PROMOTE lane 4/4, was training/eprop_nmnist.py): the brain's
         # N-MNIST perception encoder (e-prop, cosine>0.5 vs BPTT asserted in-check). TORCH_TIER
@@ -546,12 +547,15 @@ TORCH_TIER = {
         # (torch at module top), reached on the same construction path via brain.py's audio try.
     ],
     "hippocampus": [
-        "ng_snn",
         "online_readout",
     ],  # L1c: the grown readout learns online (torch tier)
     "sensorimotor": [
         "eprop_nmnist",
         "eprop_shd",
+    ],
+    "growth": [
+        "neurogenesis_engine",
+        "ng_snn",
     ],
 }
 

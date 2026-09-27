@@ -79,7 +79,7 @@ import collections
 import math
 import random
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 
 # Russell-circumplex prototype anchors as (name, angle_deg). The affect circle is centred on
 # neutral (valence 0, arousal 0.5); an anchor at angle t has valence = cos(t), arousal = 0.5 +

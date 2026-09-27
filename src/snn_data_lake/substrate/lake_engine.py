@@ -164,7 +164,7 @@ def registry_consistent() -> tuple[bool, str]:
     return True, f"{len(ret)} classes labeled, dispositions and retention agree"
 
 
-# distinct-from: substrate/basic_components.py -- its Rule protocol COMPUTES a weight change dw
+# distinct-from: growth/basic_components.py -- its Rule protocol COMPUTES a weight change dw
 #   from local activity; this class PERSISTS already-computed weights as lake records.
 # distinct-from: substrate/home.py -- the _T_GROWTH_DELTA chain diffs whole npz MEMBERS of the
 #   grown-substrate blob; this diffs individual synapses inside a weight matrix, keyed by spikes.

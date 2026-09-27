@@ -47,7 +47,7 @@ All three fall out of ONE leaky integrate-and-fire cell, with NO fitting or trai
     same coincidence detector the leak already implements.
 
 Reuses the repo's canonical spiking primitive (does NOT reimplement a neuron):
-  * cortex.lif_neuron.LIFNeuron -- the leaky integrate-and-fire cell. Each modality contributes an
+  * growth.lif_neuron.LIFNeuron -- the leaky integrate-and-fire cell. Each modality contributes an
     input current; the two currents are SUMMED per timestep and fed to ONE LIFNeuron, so the whole
     phenomenon is genuine spiking membrane dynamics, not an algebraic rule about spike counts.
 
@@ -78,7 +78,7 @@ only for the randomized robustness battery; the enhancement measurements carry n
 
 import random
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 
 
 class MultisensoryCell:

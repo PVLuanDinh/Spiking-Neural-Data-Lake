@@ -18,7 +18,7 @@ What this instrument refuses to do is more important than what it does:
   and it is a valid end state for the whole feature.
 
 Split, ported discipline not position: teach on one portion, judge on a disjoint remainder, refuse
-when either is too small (`hippocampus/ng_snn.py:178-201`, its held-out prune -- this said
+when either is too small (`growth/ng_snn.py:178-201`, its held-out prune -- this said
 `reasoning/ng_snn.py` until 2026-08-04, a path that has not existed since the v3.78 promotion;
 the LINES still resolve, only the tier was wrong). The POSITION does not transfer onto the
 raw interval axis -- MEASURED, a literal trailing-20% split leaves only 4 of 63 gaps able to move

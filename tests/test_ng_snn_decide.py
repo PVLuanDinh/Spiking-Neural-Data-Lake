@@ -29,7 +29,7 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from snn_data_lake.hippocampus.ng_snn import NGSNN  # noqa: E402
+from snn_data_lake.growth.ng_snn import NGSNN  # noqa: E402
 
 
 def _bare_argmax(S, beta):
@@ -108,7 +108,7 @@ def test_the_prior_survives_the_engine_persistence_round_trip():
     restore as None rather than as class 0 -- absence stays a fact, and the red stays reachable."""
     import numpy as np
 
-    from snn_data_lake.cortex.neurogenesis_engine import NeurogenesisSelfImprove
+    from snn_data_lake.growth.neurogenesis_engine import NeurogenesisSelfImprove
 
     src = NeurogenesisSelfImprove(seed=0, refit_every=10, device="cpu")
     m, X, y = _fitted()
@@ -179,7 +179,7 @@ def test_predict_routes_through_decide_and_the_engine_keeps_no_second_argmax():
     # ANCHORED ON __file__, not the cwd: run from anywhere else the old form raised
     # FileNotFoundError, so the pin errored instead of failing and silently stopped being a pin.
     _repo = pathlib.Path(__file__).resolve().parents[1]
-    eng = (_repo / "src/snn_data_lake/cortex/neurogenesis_engine.py").read_text(encoding="utf-8")
+    eng = (_repo / "src/snn_data_lake/growth/neurogenesis_engine.py").read_text(encoding="utf-8")
     assert "m.decide(S_te, beta_inst)" in eng, "the closed-gate branch must use the one rule"
 
     # THE CENSUS, not one literal. The first form of this pin grepped for the single spelling

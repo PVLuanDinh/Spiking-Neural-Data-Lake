@@ -45,8 +45,8 @@ from pathlib import Path
 
 import pytest
 
-from snn_data_lake.cortex import h01_ingest as H
-from snn_data_lake.cortex.placement import LAYER_NAMES, LAYER_RULE_AGREEMENT, WHITE_MATTER
+from snn_data_lake.growth import h01_ingest as H
+from snn_data_lake.growth.placement import LAYER_NAMES, LAYER_RULE_AGREEMENT, WHITE_MATTER
 from snn_data_lake.substrate.home import throwaway_home
 
 FIXTURE = Path(__file__).parent / "fixtures" / "h01_c3_shard0_head.avro"
@@ -628,7 +628,7 @@ def test_population_delay_is_one_tick_everywhere_and_disclosed(tmp_path):
 
 
 def test_thresholds_and_decay_are_imported_from_the_live_lif_owner():
-    from snn_data_lake.cortex.lif_neuron import LIFNeuron
+    from snn_data_lake.growth.lif_neuron import LIFNeuron
 
     lif = LIFNeuron()
     assert H.LIF_DEFAULTS["thr"] == lif.v_threshold

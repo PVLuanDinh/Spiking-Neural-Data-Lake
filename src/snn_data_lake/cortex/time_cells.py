@@ -80,7 +80,7 @@ GRADIENT_CLAIM = {
     ),
 }
 
-# The held-out interval grid, and the split ratio ported from `hippocampus/ng_snn.py`'s
+# The held-out interval grid, and the split ratio ported from `growth/ng_snn.py`'s
 # `NGSNN.prune_unearned` (`n_val = max(8, int(0.2 * N))`) -- the cite read `reasoning/ng_snn.py:178`,
 # a path with no file behind it since the promotion into hippocampus/. The
 # DISCIPLINE transfers (teach on one portion, judge on a disjoint remainder, refuse when either is

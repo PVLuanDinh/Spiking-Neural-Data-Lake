@@ -75,7 +75,7 @@ _ENTRYPOINTS = (  # pyproject [project.scripts] + the always-on daemon's in-pack
 _S6_PANEL_CORRECTION = (
     "CORRECTED 2026-09-09 (PANEL FOLD; everything above is kept VERBATIM). "
     "(1) T062 PLACES NO UNITS. PLAN-FINAL scopes its H01 ingest to the c3 SYNAPSE GRAPH composed "
-    "onto cortex/cortical_prior.py (:649-651), its decision table reads 'placement has no reader' "
+    "onto growth/cortical_prior.py (:649-651), its decision table reads 'placement has no reader' "
     "(:774, :290), and its own same-arc dated note names GROWTH as the placer -- 'T062's OTHER "
     "reader stands unchanged (growth placing units at scale)' (:653-655); ~16k is a measured "
     "INGEST MILESTONE only (~5.0 MB at 302 B/unit, three orders under the 64 MB binding width; "
@@ -349,7 +349,7 @@ EXEMPT = {
         "The REGIONS comment claiming it is 'composed live under a local rule' was FALSE and is corrected",
     ),
     # arealization's "wire" row RETIRED 2026-08-25 by its own stated condition: T043 landed
-    # cortex/placement.py's module-top import, which is what this gate walks (placement is
+    # growth/placement.py's module-top import, which is what this gate walks (placement is
     # itself counted reachable through neurogenesis_engine's function-body imports -- the
     # PERMISSIVE conditional-import walk the banner discloses). Reachability, not charge:
     # region_prior's GRN arm has no live-path caller yet (the sleep-tick grower takes the
@@ -549,7 +549,7 @@ EXEMPT = {
         "tier without asserting on it (1 finding at reasoning/gf.py::train, hand-written backprop "
         "with no .backward() anywhere, which is why promotion_sweep's marker grep cannot see it)",
     ),
-    # placement: EXEMPTION RETIRED 2026-08-16, the wire landed. `cortex/neurogenesis_engine` calls
+    # placement: EXEMPTION RETIRED 2026-08-16, the wire landed. `growth/neurogenesis_engine` calls
     # place() for every unit a refit adds, reindexes by the model's survivor mask after each prune,
     # and persists (depth, layer, sign) with the substrate. It is reachable from a live root and
     # needs no exemption -- which is the disposition P3 actually wants, rather than a standing TODO.
@@ -1078,7 +1078,7 @@ def conditional_import_count():
 
 
 # distinct-from: brain_atlas.py, gates/selfcheck_cache.py -- phrase overlap only, as with
-#   sensorimotor/arm_hardware.py, instruments/everyday_battery.py and hippocampus/ng_snn.py (a region file
+#   sensorimotor/arm_hardware.py, instruments/everyday_battery.py and growth/ng_snn.py (a region file
 #   list, a keying word, a torque, a concurrency conjunct, a unit prune); all five read. The nearest
 #   real sibling, gates/eprop_transport_gate.py's stale_exemptions(), checks THAT gate's transport
 #   registry against gradient findings; this checks THIS table's keys against _CANON.

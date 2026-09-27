@@ -28,7 +28,7 @@ Credit: Carandini & Heeger, "Normalization as a canonical neural computation", N
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.divisive_normalization
 """
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 
 
 class DivisiveNormalization:

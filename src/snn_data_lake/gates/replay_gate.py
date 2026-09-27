@@ -28,7 +28,7 @@ invariance -- is the determinism claim the tree actually leans on.
 # distinct-from: gates/determinism_gate.py -- thread-count invariance at fixed P; this is
 #   trajectory-resume equality (the two are the two halves of D6).
 # distinct-from: substrate/kernel_state.py -- the state FRAME this snapshot embeds whole.
-# distinct-from: cortex/neurogenesis_engine.py growth blobs and substrate/home.py chain --
+# distinct-from: growth/neurogenesis_engine.py growth blobs and substrate/home.py chain --
 #   durable substrate persistence in the lake; a snapshot is a REPLAY instrument.
 # distinct-from: hippocampus/experience_replay.py and sleep_replay.py -- learned-content
 #   replay (memories), not execution-state resume. All sites read.

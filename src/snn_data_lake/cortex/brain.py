@@ -63,8 +63,8 @@ from snn_data_lake.cortex.reasoning_curriculum import ReasoningEnv, ReasoningLea
 # the fold runs on every wake tick; recursive_tom imports nothing from brain at module scope.
 from snn_data_lake.cortex.recursive_tom import T082_PROTECT_DECAY, T082_PROTECT_GAIN
 from snn_data_lake.cortex.self_model import SelfModel, SelfNarrator
+from snn_data_lake.growth.growing_learner import GrowingLearner
 from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
-from snn_data_lake.hippocampus.growing_learner import GrowingLearner
 from snn_data_lake.hippocampus.sleep_replay import AttractorNet
 from snn_data_lake.hippocampus.sleep_replay import K as ATTR_K
 from snn_data_lake.hippocampus.sleep_replay import N as ATTR_N
@@ -1425,7 +1425,7 @@ class Brain:
         CONSTRUCTION as anatomy: a thin reader bound to this brain's lazy |LP| facade,
         raising KeyError while the channel is unfed (absence is a fact, T046a)."""
         if self._growth_stop is None:
-            from snn_data_lake.cortex.growth_stop import GrowthStop
+            from snn_data_lake.growth.growth_stop import GrowthStop
 
             brain = self
 
@@ -1437,7 +1437,7 @@ class Brain:
                     return facade.lp(region)
 
             self._growth_stop = GrowthStop(lp_reader=_LPRoute())
-        from snn_data_lake.cortex.growth_stop import feed_and_decide
+        from snn_data_lake.growth.growth_stop import feed_and_decide
 
         verdict, refused = feed_and_decide(self._growth_stop, trajectory)
         self._growth_feed_refusals += refused
@@ -1454,14 +1454,14 @@ class Brain:
         try:
             import torch
 
-            from snn_data_lake.cortex.neurogenesis_engine import NeurogenesisSelfImprove
+            from snn_data_lake.growth.neurogenesis_engine import NeurogenesisSelfImprove
 
             dev = device
             if dev == "cuda" and not torch.cuda.is_available():
                 dev = "cpu"
             # T047: the growth stopping criterion rides along from birth -- the engine
             # consults it at every refit; the verdict logic lives entirely in
-            # cortex/growth_stop.py (the engine and this brain can consult the guard,
+            # growth/growth_stop.py (the engine and this brain can consult the guard,
             # never constrain it).
             eng = NeurogenesisSelfImprove(
                 seed=seed,
@@ -1787,7 +1787,7 @@ class Brain:
                 # the first draft's clamp converted NaN into a perfect-prediction 0.0 --
                 # the inverse of what a NaN means -- instead of letting observe() refuse.
                 if self._lp is None:
-                    from snn_data_lake.basal_ganglia.learning_progress import (
+                    from snn_data_lake.growth.learning_progress import (
                         LearningProgress,
                     )
 

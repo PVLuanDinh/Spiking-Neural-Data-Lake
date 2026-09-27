@@ -13,7 +13,7 @@ GAP this closes:
 
 Brain-native mechanism (spiking, gradient-free):
   * AROUSAL  -- a locus-coeruleus / noradrenaline (LC-NE) style pool of LIF neurons
-    (cortex.lif_neuron.LIFNeuron) with heterogeneous thresholds, driven by SALIENCE
+    (growth.lif_neuron.LIFNeuron) with heterogeneous thresholds, driven by SALIENCE
     (threat + cortisol dominate, reward adds). Arousal is the pool's spike-rate readout:
     more salience -> more NE firing -> higher arousal. (Aston-Jones & Cohen LC-NE gain.)
   * VALENCE  -- an OPPONENT LIF integrator: an appetitive pool (dopaminergic reward +
@@ -23,7 +23,7 @@ Brain-native mechanism (spiking, gradient-free):
     while a reward spike lifts it at once.
   * EMOTION CATEGORIES -- unsupervised competitive / SOM clustering of the experienced
     (valence, arousal) points into EMERGENT prototypes via the repo's growing
-    neurogenesis learner (hippocampus.growing_learner.GrowingLearner): recruit a new
+    neurogenesis learner (growth.growing_learner.GrowingLearner): recruit a new
     prototype when an affect point matches none well enough, else Hebbian-refine the
     nearest (winner-take-all). The 2-D affect point is spread onto a non-negative
     population code (sensorimotor.population_encoding.PopulationEncoder) so the learner's cosine
@@ -31,9 +31,9 @@ Brain-native mechanism (spiking, gradient-free):
     id -- never a hand-coded circumplex sector.
 
 Reuses (does NOT reimplement):
-  * cortex.lif_neuron.LIFNeuron            -- the spiking arousal + opponent-valence pools
+  * growth.lif_neuron.LIFNeuron            -- the spiking arousal + opponent-valence pools
   * sensorimotor.population_encoding.PopulationEncoder -- (v, a) -> non-negative locality code
-  * hippocampus.growing_learner.GrowingLearner   -- neurogenesis + Hebbian competitive refine
+  * growth.growing_learner.GrowingLearner   -- neurogenesis + Hebbian competitive refine
 
 Self-contained: integrate() takes the four scalar neuromodulator signals directly, so this
 runs without the full brain. REPRESENTATION-ONLY: it computes a felt-affect readout; it holds
@@ -50,8 +50,8 @@ import math
 import random
 import zlib
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
-from snn_data_lake.hippocampus.growing_learner import GrowingLearner
+from snn_data_lake.growth.growing_learner import GrowingLearner
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 from snn_data_lake.infra._mathutils import clamp01
 from snn_data_lake.sensorimotor.population_encoding import PopulationEncoder
 

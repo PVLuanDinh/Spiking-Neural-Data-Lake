@@ -75,7 +75,7 @@ times, by different mechanisms -- which is what makes this architectural rather 
 | 3 | `brainstem/autonomous_loop.py:696` | `[td[i] + ext[i] ...]` -- blind add into a common-mode scalar | the timing term is added to both non-HOLD actions EQUALLY, per the code's own comment |
 | 4 | `brainstem/autonomous_loop.py` `q[unit]` | unit IDENTITY | relabelling unit ids leaves 0 of 300 actions changed, on 10 of 10 seeds |
 | 5 | `cortex/executive_control.py:80-98` `conflict()` | scale AND permutation | documented invariant, with an assert at `:263-266` enforcing it |
-| 6 | `substrate/growable.py` `fill=0.0` | new units emit 0 until trained | the docstring says so; ripple consumer delta measured `0.0` |
+| 6 | `growth/growable.py` `fill=0.0` | new units emit 0 until trained | the docstring says so; ripple consumer delta measured `0.0` |
 
 Sites 1 and 3 are the same defect twice on one path. `basal_ganglia/action_gating.py:114` does
 `range(1, steps+1)` -- a seventh instance of the int-cast form, in a third region.

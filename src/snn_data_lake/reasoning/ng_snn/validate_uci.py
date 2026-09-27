@@ -18,7 +18,7 @@ import torch
 from sklearn.datasets import load_iris, load_wine
 from sklearn.model_selection import train_test_split
 
-from snn_data_lake.hippocampus.ng_snn import NGSNN, current_encode
+from snn_data_lake.growth.ng_snn import NGSNN, current_encode
 
 PAPER = {"Iris": (97.33, 2.5), "Wine": (98.89, 1.4)}
 

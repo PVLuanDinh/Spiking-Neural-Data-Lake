@@ -110,10 +110,10 @@ cheaply beyond RAM. Any renewed paging proposal should address the prior cost ex
 
 ### 5. Growth exists, but useful affordable growth is still a hypothesis
 
-Relevant implementation includes [neurogenesis](../src/snn_data_lake/cortex/neurogenesis_engine.py),
-[growth-program locality](../src/snn_data_lake/cortex/growth_program.py),
-[growth stopping](../src/snn_data_lake/cortex/growth_stop.py), and
-[function-preserving widening](../src/snn_data_lake/hippocampus/function_preserving_growth.py).
+Relevant implementation includes [neurogenesis](../src/snn_data_lake/growth/neurogenesis_engine.py),
+[growth-program locality](../src/snn_data_lake/growth/growth_program.py),
+[growth stopping](../src/snn_data_lake/growth/growth_stop.py), and
+[function-preserving widening](../src/snn_data_lake/growth/function_preserving_growth.py).
 The gate examines learning/accuracy trajectories; function preservation establishes continuity at
 widening, not future learning improvement or energy efficiency.
 

@@ -221,7 +221,7 @@ _T_GROWTH_DELTA = b"\x08"
 _T_COALITION = b"\x0a"
 
 # _T_GOAL added 2026-08-26 (specs/022 T046a): goal event rows -- CREATE (embedding +
-# achievement_function_ref) / LP / OUTCOME -- written by basal_ganglia/learning_progress's
+# achievement_function_ref) / LP / OUTCOME -- written by growth/learning_progress's
 # GoalStore as JSON body rows (the _T_COALITION precedent; pack_fact is the FACT-schema
 # codec and silently drops foreign fields -- the store's round-trip red caught that draft),
 # folded to the materialized view on replay. SYNTHESIS
@@ -1116,10 +1116,10 @@ def load_selfbuild(path=None):
 
 
 # THE one growth loader, edited in place for the chain -- not a second mechanism.
-# distinct-from: cortex/neurogenesis_engine.py -- growth_state_bytes PRODUCES the blob this returns.
+# distinct-from: growth/neurogenesis_engine.py -- growth_state_bytes PRODUCES the blob this returns.
 # distinct-from: substrate/lake_memory.py -- channel-range reads of the .spkl store, a different lake.
 # distinct-from: substrate/lake_working_memory.py -- same .spkl channel reads, in-memory half.
-# distinct-from: substrate/similarity_sized_growth.py -- routes to a frozen expert, no lake records.
+# distinct-from: growth/similarity_sized_growth.py -- routes to a frozen expert, no lake records.
 # distinct-from: substrate/lake_bridge.py -- iter_records yields raw payloads with no tag semantics.
 # All sites read.
 def load_growth(path=None):

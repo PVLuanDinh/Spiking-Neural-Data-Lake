@@ -85,7 +85,7 @@
 # cosine > 0.5 against an independent gradient before it can be anything but EXEMPT.
 #
 # BRIAN2 REPLACES SNNTORCH 2026-09-22. Brian2 is the canonical equation/event simulator;
-# substrate/brian2_backend.py keeps the existing Torch autograd paths through a small differentiable
+# growth/brian2_backend.py keeps the existing Torch autograd paths through a small differentiable
 # bridge and proves that bridge against a real Brian2 NeuronGroup. Brian2 2.10.1 is exact-pinned:
 # it publishes a cp314t Windows wheel and its numerical/code-generation behavior is part of the
 # simulator contract. Its CPython 3.14t extension currently enables the GIL on import, so the real
@@ -181,11 +181,11 @@ dependencies = [
     # failure. Verified: wheels exist for {ubuntu, windows} x {cp311, cp312, cp313}.
     "mujoco==3.11.0",
     # THE SPIKING SIMULATOR. Brian2 is the equation/event authority; an isolated reference process
-    # verifies the free-threaded Torch bridge in substrate/brian2_backend.py. Exact-pinned because
+    # verifies the free-threaded Torch bridge in growth/brian2_backend.py. Exact-pinned because
     # simulator and code-generation behavior are part of the numerical contract, just as MuJoCo's
     # solver version is the physics.
     "brian2==2.10.1",
-    # THE REFERENCE CHILD'S MEMORY PROBE. substrate/brian2_backend.py reads the isolated Brian2
+    # THE REFERENCE CHILD'S MEMORY PROBE. growth/brian2_backend.py reads the isolated Brian2
     # child's peak working set through psutil for the registered backend self-check's cost report
     # (T101 panel G1, 2026-09-22: it was installed only as pygenn's transitive dependency, so the
     # ledger reddened). Unpinned: a measurement library, not part of the numerical contract.
@@ -200,7 +200,7 @@ dependencies = [
 ]   # TORCH TIER ON BY DEFAULT (user policy, 2026-07-18)
 
 # TORCH TIER = ON BY DEFAULT (user policy, 2026-07-18). torch is now a HARD default dependency: a plain
-# `pip install .` pulls torch+numpy and the torch BRAIN TIER runs by default -- hippocampus/ng_snn.py
+# `pip install .` pulls torch+numpy and the torch BRAIN TIER runs by default -- growth/ng_snn.py
 # (NG-SNN classifier) + cortex/{brain,language_acquisition,neurogenesis_engine}.py (the unified Brain,
 # language acquisition, the neurogenesis engine) grow/learn on torch out of the box. Corrected
 # 2026-07-28: this listed `cortex/language_center.py` and "its SpikeGPT language center", and that
@@ -209,7 +209,7 @@ dependencies = [
 # off-switch left: torch is required, not preferred. If it is missing the install is broken, and the
 # brain's stdlib fallback exists to make that survivable rather than to make it a mode. numpy is
 # likewise imported unguarded at module top level across cortex/, hippocampus/, thalamus/ and
-# substrate/. Brian2 is core because substrate/brian2_backend.py imports it unguarded and every
+# substrate/. Brian2 is core because growth/brian2_backend.py imports it unguarded and every
 # migrated LIF path imports that backend. The [gpu]/[train] extras below pin the remaining
 # GPU/training wheels (torchvision/tonic) on top of the default torch.
 [project.optional-dependencies]

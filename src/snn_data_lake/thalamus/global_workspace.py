@@ -802,7 +802,7 @@ class Coalition:
 
     # distinct-from: substrate/wiring_manifest.py -- hdf5 artifact codec, not this record.
     # distinct-from: gates/envelope_hash_gate.py -- envelope baseline writer.
-    # distinct-from: cortex/neurogenesis_engine.py -- growth-state npz restore.
+    # distinct-from: growth/neurogenesis_engine.py -- growth-state npz restore.
     # distinct-from: infra/self_build_loop.py -- firewalled-file byte restore.
     # distinct-from: sensorimotor/trained_brain.py -- crc32 seed derivation. Serializer-phrase
     #   overlap only; THIS pair is the _T_COALITION lake payload codec and nothing else

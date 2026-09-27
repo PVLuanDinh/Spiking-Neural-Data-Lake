@@ -35,7 +35,7 @@ import struct
 import tempfile
 from array import array
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 from snn_data_lake.instruments import energy
 from snn_data_lake.instruments.neuro_chip import NeuroChip
 

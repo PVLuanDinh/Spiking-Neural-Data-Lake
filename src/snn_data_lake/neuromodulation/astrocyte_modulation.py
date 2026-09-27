@@ -39,7 +39,7 @@ astrocyte network, not cognition.
 import math
 import random
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 
 
 class Astrocyte:

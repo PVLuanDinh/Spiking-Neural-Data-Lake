@@ -33,7 +33,7 @@ REUSE, not reinvention (dogfoods the palette):
   * reasoning/eprop.py        -- the local eligibility-trace learning rule + its proven LIF/e-prop
     constants (ALPHA, V_TH, GAMMA, DAMP, KAPPA). The readout is trained by e-prop eligibility, NEVER by
     loss.backward / autograd (there is none here -- pure numpy).
-  * substrate/basic_components.py -- the Connection primitive (propagate + bounded local update +
+  * growth/basic_components.py -- the Connection primitive (propagate + bounded local update +
     divergence). The trained readout IS a Connection: its .W holds the readout weights (the batched
     readout current z @ W is propagate()'s vectorized form), its update() applies the e-prop weight step
     (bounded, mask-respecting), and its divergence() is the "the readout learned" check -- exactly the
@@ -61,7 +61,7 @@ from snn_data_lake.reasoning import (
     eprop,  # local eligibility rule + proven LIF/e-prop constants
     spiking_ssm,  # fixed spiking reservoir (LSM) construction
 )
-from snn_data_lake.substrate.basic_components import (
+from snn_data_lake.growth.basic_components import (
     Connection,
 )  # palette: propagate + bounded update
 

@@ -133,7 +133,7 @@ class _ValidatingRedirectHandler(urllib.request.HTTPRedirectHandler):
 #   in DESTINATION (a file on disk) and TIER (the ruff-excluded, gate-less `reasoning/`). `sink`
 #   below exists so that duplicate can be retired ONTO this function -- the capability is ported
 #   FIRST, which is P2's order. It was NOT retired in this change and that is a disclosure, not an
-#   oversight: `cortex/h01_ingest.py` is a CORE self-check module and this module's own docstring
+#   oversight: `growth/h01_ingest.py` is a CORE self-check module and this module's own docstring
 #   already refuses to let a CORE check depend on the unregistered `reasoning/` tier, and
 #   `web_ingest_gate`'s own check performs a ~15 MB network fetch, so the swap could be written but
 #   not RUN in an offline arc -- and an unverified refactor of a security boundary is worse than a

@@ -27,14 +27,14 @@ deep / gradient learning; cosine is the whole match rule. Deterministic (no RNG 
 learner). The multimodal streams the self-check drives it with are SYNTHETIC. This
 GROWS capacity as data arrives; it does not "think".
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hippocampus.growing_learner
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.growth.growing_learner
 """
 
 import math
 
+from snn_data_lake.growth.growable import grow_vector
 from snn_data_lake.sensorimotor.multimodal_encoder import encode_multimodal
 from snn_data_lake.sensorimotor.spike_preprocessing import N
-from snn_data_lake.substrate.growable import grow_vector
 
 
 def _cosine(a, b):
@@ -108,7 +108,7 @@ class GrowingLearner:
     # persists the arm's context learner and the vision/audio learners; the affect integrator's
     # SOM and the lifelong consolidator's learner (two more live instances) and the arm's Q-table
     # over these ids do NOT persist yet -- said in Brain._flush_prototypes' docstring too.
-    # distinct-from: cortex/neurogenesis_engine.py -- restore_growth_state() rebuilds NG-SNN tensors
+    # distinct-from: growth/neurogenesis_engine.py -- restore_growth_state() rebuilds NG-SNN tensors
     #   from an npz blob. distinct-from: cerebellum/spiking_jepa.py, sensorimotor/rsnn_encoder.py -- load
     #   weight matrices from tagged JSON. distinct-from: substrate/wiring_manifest.py -- rebuilds
     #   ports from a dict. distinct-from: cortex/reasoning_curriculum.py -- that module's OWN
@@ -160,7 +160,7 @@ class GrowingLearner:
 
     def grow_dim(self, new_dim):
         """Widen the feature space this learner lives in, function-preservingly (shared growth
-        primitive substrate.growable.grow_vector). Every existing prototype is zero-extended, so a
+        primitive growth.growable.grow_vector). Every existing prototype is zero-extended, so a
         pattern the learner already knew -- whose NEW dimensions are 0, because that modality was
         absent when it was learned -- still recognises BIT-IDENTICALLY (cosine is unchanged when the
         appended dims are 0 on both sides). Only patterns that actually populate the new dimensions

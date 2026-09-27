@@ -208,7 +208,7 @@ assert not (set(U_FIELDS) & set(U_FORBIDDEN)), (
 )
 
 
-# distinct-from: cortex/h01_ingest.py::ei_correlation / check_ei -- ONE OF the tree's permutation
+# distinct-from: growth/h01_ingest.py::ei_correlation / check_ei -- ONE OF the tree's permutation
 #   bars (the symbol was written `_ei_band` here, which occurs nowhere in src/ outside this comment;
 #   the band is produced by `ei_correlation` and barred by `check_ei` -- corrected 2026-09-15 in the
 #   panel fold, along with the definite article: there are at least three others, and the nearest
@@ -252,7 +252,7 @@ assert not (set(U_FIELDS) & set(U_FORBIDDEN)), (
 #   fractional-bit width whose spike trains equal an FP64 reference. A search over widths, not a
 #   percentile of a null. Read; unrelated.
 # distinct-from: cortex/executive_control.py::search -- beam/tree search over action SEQUENCES.
-#   Read; shares only the word "score". distinct-from: cortex/neuron_zoo.py::_worker_ladder (a
+#   Read; shares only the word "score". distinct-from: growth/neuron_zoo.py::_worker_ladder (a
 #   thread-count race) and gates/selfcheck_cache.py::_refresh_derived (a roster recompute) --
 #   both read, neither computes a percentile, a null or an information quantity.
 #: MERGED 2026-09-15 (specs/022 T079) into `substrate/_mathutils.q95`. The body moved there

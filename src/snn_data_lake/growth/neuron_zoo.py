@@ -15,20 +15,20 @@ one contract:
     Population(cells).step(currents) -> [0/1, ...]           # advance the WHOLE pool one timestep
 
 The zoo REUSES (import + adapt, never rewrite) the repo's own neuron models:
-  * cortex.lif_neuron.LIFNeuron        -- leaky integrate-and-fire      (native step/reset_state)
-  * cortex.alif_neuron.ALIFNeuron      -- adaptive-threshold LIF (LSNN) (native step/reset_state)
-  * cortex.autapse_neuron.AutapseNeuron-- one neuron, delayed self-loops(native step/reset_state)
-  * cortex.dendritic_neuron.DendriticNeuron -- two-compartment BAC cell (2-arg step -> adapter)
-  * cortex.adex_neuron.AdEx            -- adaptive exponential I&F      (units + reset() -> adapter)
-  * cortex.resonate_and_fire.ResonateFire -- frequency-selective        (units + reset() -> adapter)
-  * cortex.srm_neuron.SRMNeuron        -- kernel/soft-reset spike model (event API -> adapter)
+  * growth.lif_neuron.LIFNeuron        -- leaky integrate-and-fire      (native step/reset_state)
+  * growth.alif_neuron.ALIFNeuron      -- adaptive-threshold LIF (LSNN) (native step/reset_state)
+  * growth.autapse_neuron.AutapseNeuron-- one neuron, delayed self-loops(native step/reset_state)
+  * growth.dendritic_neuron.DendriticNeuron -- two-compartment BAC cell (2-arg step -> adapter)
+  * growth.adex_neuron.AdEx            -- adaptive exponential I&F      (units + reset() -> adapter)
+  * growth.resonate_and_fire.ResonateFire -- frequency-selective        (units + reset() -> adapter)
+  * growth.srm_neuron.SRMNeuron        -- kernel/soft-reset spike model (event API -> adapter)
 
 DEFAULT-SAFE population = the six always-finite point/reduced models above (SRM is a
 kernel model included in the safe set). Two BIOPHYSICAL models integrate forward-Euler ODEs that can
 diverge, so they are OPT-IN ONLY and NaN-GUARDED (a non-finite drive or a blown-up state is clamped /
 skipped, never propagated, never raised) and are EXCLUDED from the default population:
-  * cortex.hodgkin_huxley.HodgkinHuxley-- conductance-based biophysical (V trace -> spike + NaN guard)
-  * cortex.izhikevich_neuron           -- 2-var reduced (batch-only module -> stepping wrapper + guard)
+  * growth.hodgkin_huxley.HodgkinHuxley-- conductance-based biophysical (V trace -> spike + NaN guard)
+  * growth.izhikevich_neuron           -- 2-var reduced (batch-only module -> stepping wrapper + guard)
 
 The DEFAULT population kind set is ("lif",) only, so a pool built with the defaults is homogeneous LIF
 and BYTE-IDENTICAL to today's direct LIFNeuron pools -- adopting the zoo changes nothing until a caller
@@ -42,7 +42,7 @@ re-verified by the main agent (see the integration-hook spec returned with this 
 Deterministic: per-instance random.Random(seed); no module-level seeding, no
 wall-clock. ASCII-only output.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.neuron_zoo
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.growth.neuron_zoo
 """
 
 import math
@@ -51,15 +51,15 @@ import random
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from snn_data_lake.cortex.adex_neuron import AdEx
-from snn_data_lake.cortex.alif_neuron import ALIFNeuron
-from snn_data_lake.cortex.autapse_neuron import AutapseNeuron
-from snn_data_lake.cortex.dendritic_neuron import DendriticNeuron
-from snn_data_lake.cortex.hodgkin_huxley import HodgkinHuxley
-from snn_data_lake.cortex.izhikevich_neuron import REGIMES as _IZHI_REGIMES
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
-from snn_data_lake.cortex.resonate_and_fire import ResonateFire
-from snn_data_lake.cortex.srm_neuron import SRMNeuron
+from snn_data_lake.growth.adex_neuron import AdEx
+from snn_data_lake.growth.alif_neuron import ALIFNeuron
+from snn_data_lake.growth.autapse_neuron import AutapseNeuron
+from snn_data_lake.growth.dendritic_neuron import DendriticNeuron
+from snn_data_lake.growth.hodgkin_huxley import HodgkinHuxley
+from snn_data_lake.growth.izhikevich_neuron import REGIMES as _IZHI_REGIMES
+from snn_data_lake.growth.lif_neuron import LIFNeuron
+from snn_data_lake.growth.resonate_and_fire import ResonateFire
+from snn_data_lake.growth.srm_neuron import SRMNeuron
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

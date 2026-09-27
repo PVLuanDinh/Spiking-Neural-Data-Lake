@@ -30,7 +30,7 @@ Genuinely SPIKING identity + NEUROGENESIS. Every item is a spike-polarity hyperv
 (cortex/vsa_reasoning.hv -- a balanced two-line spike code). The learner routes an item to its rank
 unit by spike-COINCIDENCE cleanup over a grown codebook; a code that no unit recognises (novelty)
 RECRUITS a new rank unit -- neurogenesis in the spike-code substrate (mirrors
-hippocampus/growing_learner). So n_units grows as the world grows.
+growth/growing_learner). So n_units grows as the world grows.
 
 The sleep-loop that grows the skill (develop()):
   * WAKE  : sample ADJACENT premises from the currently-active item set and train on them; a

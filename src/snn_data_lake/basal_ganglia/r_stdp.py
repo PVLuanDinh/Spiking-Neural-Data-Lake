@@ -122,7 +122,7 @@ TAU_E = 1000.0  # long eligibility time constant -- the distal-reward bridge
 # per-object neuron always took -- which is why the incumbent's byte-exact trajectory pin at
 # 851b026 is unmoved by this.
 #
-# distinct-from: cortex/neuron_zoo.py::_step_serial -- advances a MEMBRANE one timestep over a
+# distinct-from: growth/neuron_zoo.py::_step_serial -- advances a MEMBRANE one timestep over a
 #   list of neuron objects; no eligibility, no spike-time pairing, no reward. Read 2026-09-09.
 # distinct-from: sensorimotor/arm_bridge.py::UdpArmBridge.recv_outcome -- reads a reward FLOAT off
 #   a UDP socket; it transports the third factor, it never gates one. Read 2026-09-09.
@@ -157,11 +157,11 @@ def accumulate_anticausal(e, pairs, a_minus=A_MINUS, tau_minus=TAU_MINUS):
     return e
 
 
-# distinct-from: cortex/lif_neuron.py::LIFNeuron.step and cortex/alif_neuron.py::ALIFNeuron.step --
+# distinct-from: growth/lif_neuron.py::LIFNeuron.step and growth/alif_neuron.py::ALIFNeuron.step --
 #   advance a MEMBRANE one timestep under an input current and return a 0/1 spike, with a
 #   refractory clamp. A membrane leak is not an eligibility decay: nothing here integrates an
 #   input, nothing fires, and the quantity that decays is a per-synapse trace.
-# distinct-from: cortex/neuron_zoo.py::NeuronZoo.make -- a factory returning objects that expose
+# distinct-from: growth/neuron_zoo.py::NeuronZoo.make -- a factory returning objects that expose
 #   step(current)->0/1; it builds the things above and owns no formula at all.
 # distinct-from: cerebellum/spiking_jepa.py::_forward -- runs an event retina and a 2-layer
 #   recurrent LIF backbone, recording per-timestep spikes and PRE-RESET MEMBRANES because its own
@@ -230,14 +230,14 @@ class RSTDPNeuron:
 
     # `step` below advances an ELIGIBILITY TRACE, never a membrane, which is why none of these
     # is the same job (all five read 2026-09-09 before this note was written):
-    # distinct-from: cortex/lif_neuron.py::LIFNeuron.step and cortex/alif_neuron.py::ALIFNeuron.step
+    # distinct-from: growth/lif_neuron.py::LIFNeuron.step and growth/alif_neuron.py::ALIFNeuron.step
     #   -- integrate a membrane under an input current and return a 0/1 spike; no trace, no reward.
-    # distinct-from: cortex/autapse_neuron.py::AutapseNeuron.step -- the same membrane step with a
+    # distinct-from: growth/autapse_neuron.py::AutapseNeuron.step -- the same membrane step with a
     #   self-current added; it delegates to LIFNeuron.step.
     # distinct-from: plasticity/competitive_learning.py::CompetitiveLearner.step -- advances a
     #   competitive layer and applies prototype-row updates at post spikes; no eligibility trace
     #   and no third factor, so a delayed reward cannot reach it.
-    # distinct-from: hippocampus/function_preserving_growth.py::step -- a forward pass over a
+    # distinct-from: growth/function_preserving_growth.py::step -- a forward pass over a
     #   hidden layer returning currents and spikes; it computes an output, not an update.
     def pre_spike(self, i, t):
         """Input synapse i fires at time t. Pair with the neuron's most recent POST spike:

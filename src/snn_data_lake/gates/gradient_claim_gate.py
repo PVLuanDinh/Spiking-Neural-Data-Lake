@@ -156,7 +156,7 @@ CONTROL = "CONTROL"
 NOT_A_RULE = "NOT_A_RULE"
 
 #: ADDED for a class of ONE, and named with `docs/POLICIES.md`'s own word rather than an invented
-#: synonym. `hippocampus/ng_snn.py::fit` is a GENUINE learning rule that owes no cosine, and `LOCAL`
+#: synonym. `growth/ng_snn.py::fit` is a GENUINE learning rule that owes no cosine, and `LOCAL`
 #: is literally the wrong label for it: POLICIES.md adjudicates it as *"not a violation. Greedy
 #: matching pursuit with an analytical beta per block is a DIRECT SOLVE: no gradient is propagated
 #: through a network and no weight is transported. It IS NON-LOCAL, and the policy should say so
@@ -693,7 +693,7 @@ def counts(rules, governed_only=True):
 def _baseline_path(root=None):
     """Absolute path of the ratchet baseline file, or None when there is no repo to write into.
 
-    # distinct-from: cortex/neurogenesis_engine.py::growth_state_bytes -- returns a GROWTH BLOB.
+    # distinct-from: growth/neurogenesis_engine.py::growth_state_bytes -- returns a GROWTH BLOB.
     # distinct-from: infra/device.py::crossover -- returns a CUDA crossover WIDTH.
     # distinct-from: thalamus/global_workspace.py::_band_ratio -- returns a RATIO in [0,1].
     # All three were flagged on the shared docstring phrase "or None when there is no ...", not on the
@@ -1104,13 +1104,13 @@ def _refuses_rise(c, baseline):
 #
 # P2 -- the cosine here is REUSED, not re-authored. Ten cosine definitions already exist in src/;
 # six sit in rule-carrying modules FR-013b forbids importing, and of the four that remain
-# `cortex/wholistic_loop::_cosine` and `hippocampus/growing_learner::_cosine` both document
+# `cortex/wholistic_loop::_cosine` and `growth/growing_learner::_cosine` both document
 # NON-NEGATIVE inputs ([0,1]^N) and are wrong for a signed gradient. That leaves exactly one.
 #
 # distinct-from: cortex/access_consciousness.py -- its `_coherence_scalar` is mean PAIRWISE
 #   similarity over coalition member codes, a between-vectors quantity. `coherence` here is
 #   |mean|/rms WITHIN one vector, and answers whether a permutation null is a null at all.
-# distinct-from: cortex/neurogenesis_engine.py, cortex/neuron_zoo.py, cortex/rose_language.py,
+# distinct-from: growth/neurogenesis_engine.py, growth/neuron_zoo.py, cortex/rose_language.py,
 #   hippocampus/growable_readout.py -- matched on the words "frozen"/"derived"/"zero"; none
 #   computes a cosine, a null, or a sign-coherence statistic.
 # ---------------------------------------------------------------------------------------------

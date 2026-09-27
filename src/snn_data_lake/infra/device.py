@@ -11,7 +11,7 @@ WHY A ROUTER AT ALL, AND WHY IT DID NOT EXIST
     : opt-in CUDA device selection (NORD_GPU=1 / NORD_DEVICE=cuda), CPU fallback" -- and the file was
     never created. Device choice ended up scattered as ad-hoc `torch.cuda.is_available()` checks:
     `cortex/brain.py`'s `device="cuda"` default (:186) and its `self._perception_device` block
-    (:574-581), `cortex/neurogenesis_engine.py:120`, `hippocampus/ng_snn.py:88`, each with its own
+    (:574-581), `growth/neurogenesis_engine.py:120`, `growth/ng_snn.py:88`, each with its own
     fallback rule and none of them reporting what they chose. A brain that cannot say which device
     its work landed on cannot be asked why the GPU is idle. (The two `brain.py` cites read `:546`
     and `:541` until 2026-08-04; both resolved onto unrelated attribute initialisations. The
@@ -66,7 +66,7 @@ WHAT WAS DORMANT HERE, AND WHAT IS CHARGED NOW (P3 / P5a, 2026-08-05)
         was written to prevent.
     STILL OPEN, stated so it is not read as finished: one width-routed call site is one, not the
     tick path in general. ("nothing CONSUMES `decisions()`" stood here too and was FALSE WHEN
-    WRITTEN -- `cortex/neurogenesis_engine.py:51` has imported it since 6b33a45d, well before this
+    WRITTEN -- `growth/neurogenesis_engine.py:51` has imported it since 6b33a45d, well before this
     paragraph was added. It is the same error as the `decisions()` docstring it cross-referenced,
     and it survived that docstring's correction on 2026-08-06 because only the sentence that was
     looked for got fixed. Corrected here; see `decisions()` for both consumers.)
@@ -287,9 +287,9 @@ def decisions():
 # RE-COUNTED 2026-08-05 by AST over `src/` + `tests/` + `tools/`: **42 import statements across 41
 # modules**, all of them under `reasoning/` or `training/`, import `resolve_device` and/or `enable`
 # from here. ("nothing imports `select`/`crossover`/`decisions`" followed that clause and was
-# already FALSE when written: `cortex/neurogenesis_engine.py:51` imports all three, added in
+# already FALSE when written: `growth/neurogenesis_engine.py:51` imports all three, added in
 # 6b33a45d. Re-derived 2026-08-06 -- the governed importers of those three are
-# `cortex/neurogenesis_engine.py` and, since the DEVICE ROUTING plate landed,
+# `growth/neurogenesis_engine.py` and, since the DEVICE ROUTING plate landed,
 # `infra/cockpit.py`.) The figure recorded one day earlier
 # was "41 / 40" and it was already one short -- `reasoning/rsnn_delays_torch.py` carries TWO such
 # imports, and a per-module count and a per-statement count are not the same number. Re-derive with

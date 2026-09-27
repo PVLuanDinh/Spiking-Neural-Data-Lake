@@ -6,7 +6,7 @@ below.**
 **Core dependencies:** `torch`, `numpy`, `pyarrow`, `mujoco==3.11.0`, and `brian2==2.10.1`
 (`pyproject.toml`). MuJoCo and Brian2 are pinned for reproducible physics/neural semantics.
 Brian2 is the equation/event reference; Torch executes the parity-checked
-`substrate/brian2_backend.py` bridge. Custom kernels remain. Brian2 2.10.1 enables the GIL under
+`growth/brian2_backend.py` bridge. Custom kernels remain. Brian2 2.10.1 enables the GIL under
 CPython 3.14t: real reference simulations run in isolated subprocesses; the parent stays free-threaded.
 The zero-dependency-core contract was removed project-wide on 2026-07-20. **There is no torch-free
 mode: the `NORD_TORCH=0` off-switch was REMOVED on 2026-07-29** together with the CI matrix job that

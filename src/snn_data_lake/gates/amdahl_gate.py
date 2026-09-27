@@ -15,8 +15,8 @@ outright and re-time the tick.
 
 WHAT IT MEASURES, in one command:
   (i)   PROFILE. W warm wake ticks of make_brain(seed, persist=False) in a scratch NORD_HOME, with
-        tottime attributed to the PER-OBJECT NEURON PATH (cortex/lif_neuron.py, cortex/neuron_zoo.py,
-        substrate/basic_components.py -- the set a flat (post, weight) scatter would replace) versus
+        tottime attributed to the PER-OBJECT NEURON PATH (growth/lif_neuron.py, growth/neuron_zoo.py,
+        growth/basic_components.py -- the set a flat (post, weight) scatter would replace) versus
         the rest, and the I/O share reported separately.
   (ii)  NEUTER. LIFNeuron.step is replaced by the cheapest correct-shape stand-in and the wake p50 is
         re-timed over W PAIRED ticks in the SAME command. Ceiling = 1 - p50(neutered)/p50(live), with
@@ -74,7 +74,7 @@ Modes
 #   This one neuters for COST; its verdict is a ceiling and never a charge claim.
 # distinct-from: gates/determinism_gate.py and gates/replay_gate.py -- criteria over
 #   kernel_tick's mechanism; this gate never constructs a KernelTick and makes no kernel claim.
-# distinct-from: cortex/live_brain.py::LiveBrain.run, cortex/heterogeneous_microcircuit.py::run_circuit
+# distinct-from: cortex/live_brain.py::LiveBrain.run, growth/heterogeneous_microcircuit.py::run_circuit
 #   and cortex/brain.py::Brain._perceive_real -- the three graph-exists near-matches. Each DRIVES a
 #   tick; none measures a share, a ceiling or a width trigger. All sites read.
 
@@ -87,9 +87,9 @@ import sys
 import time
 import types
 
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.gates.perf_baseline import TOLERANCE, _ref_ms
-from snn_data_lake.substrate.basic_components import Connection
+from snn_data_lake.growth.basic_components import Connection
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 
 #: the pre-registered reading (s6-kernel-wire.md 2.4): W warm wake ticks per arm, after a warm-up
 W_TICKS = 150
@@ -113,7 +113,7 @@ RED_NAMES = ("padded-share", "repeatability", "sham-neuter")
 #: files whose tottime is charged to the per-object neuron path (2.2 i). basic_components.py is
 #: charged WHOLE rather than Connection-only: cProfile keys carry no class, and the over-attribution
 #: can only INFLATE the ceiling, which is the safe direction for a DECLINE.
-_OBJECT_PATH = ("/cortex/lif_neuron.py", "/cortex/neuron_zoo.py", "/substrate/basic_components.py")
+_OBJECT_PATH = ("/growth/lif_neuron.py", "/growth/neuron_zoo.py", "/growth/basic_components.py")
 _IO_TOKENS = ("fsync", "flush", "nt.write", "nt.read", "nt.open", "nt.close")
 
 _MISSING = object()

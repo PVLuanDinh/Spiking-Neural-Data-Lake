@@ -156,7 +156,7 @@ import time
 from pathlib import Path
 
 from snn_data_lake.cortex.executive_control import ExecutiveControl
-from snn_data_lake.cortex.lif_neuron import LIFNeuron
+from snn_data_lake.growth.lif_neuron import LIFNeuron
 from snn_data_lake.infra._mathutils import clamp01, sigmoid
 from snn_data_lake.instruments.paired_contrast import T_BAR
 from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
@@ -585,7 +585,7 @@ def _heldout_acc(grower, proto_label, seed):
 def _experiment(seed):
     """Run the gated vs lesioned vs plain comparison and the abstain test. Returns a dict
     of pure numbers/bools (so two runs can be compared byte-for-byte for determinism)."""
-    from snn_data_lake.hippocampus.growing_learner import GrowingLearner
+    from snn_data_lake.growth.growing_learner import GrowingLearner
 
     stream = _build_stream(seed)
 

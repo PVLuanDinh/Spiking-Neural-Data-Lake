@@ -2,7 +2,7 @@ r"""Growth-program locality -- ONE shared per-node program, a SEALED local view,
 counters, and the scaffold-region refusal (specs/022 T042, L5).
 
 P8 invention #7's third slice (docs/INVENTION_REGISTER.md row 7; T040/T041 landed the
-fields, the censuses, the prosomeric grid and the two regimes in `cortex/arealization`).
+fields, the censuses, the prosomeric grid and the two regimes in `growth/arealization`).
 ADOPTED part here: CX3D's one-shared-program locality -- every node runs THE SAME
 program, and that program reads ONLY the node's own locals. What this build ships is the
 ENFORCEMENT INFRASTRUCTURE and its reds; the growth-policy CONTENT (what the program
@@ -47,7 +47,7 @@ ratified names -- both sides of the owner's partition are equality-pinned now):
    program has ANY terminating behavior to red-test. SUPERSESSION RE-ADJUDICATED AT
    T047 (the earlier text promised "T047's measured stopping criterion replaces it"
    -- an exemption-that-promises, and the promise was at the WRONG GRAIN): T047's
-   `cortex/growth_stop.py` gates per-REGION refit growth on (units, held-out acc)
+   `growth/growth_stop.py` gates per-REGION refit growth on (units, held-out acc)
    evidence rows; this budget bounds per-NODE embryonic division, which produces NO
    refit rows, so there is nothing for that criterion to read here until the division
    machinery is composed into a live path that measures its outcomes. The budget
@@ -86,13 +86,13 @@ T048's turnover instrument and land there; the contract's "one MLP" half of the 
 program is the LEARNED policy content the later composition supplies. Three tasks, one
 node contract, each piece named at its owner.
 
-# distinct-from: cortex/arealization.py -- that module EMITS region identities from
+# distinct-from: growth/arealization.py -- that module EMITS region identities from
 #   fields; this one polices HOW a per-node program may read them and WHERE growth may
 #   go. arealization is this module's field source, not a duplicate. Read.
-# distinct-from: cortex/neurogenesis_engine.py -- the torch growth ENGINE (fits models,
+# distinct-from: growth/neurogenesis_engine.py -- the torch growth ENGINE (fits models,
 #   keeps substrate); this is the locality/refusal POLICY layer for the seed-grown
 #   micro-brain lane; the 007 interface composes them at T043. Read.
-# distinct-from: hippocampus/function_preserving_growth.py + substrate/growable.py --
+# distinct-from: growth/function_preserving_growth.py + growth/growable.py --
 #   Net2Net widening mechanics for live nets; no per-node program, no locality mask,
 #   no region proposals. Read.
 # distinct-from: gates/safety_envelope.py -- that gate hashes the five envelope
@@ -100,14 +100,14 @@ node contract, each piece named at its owner.
 #   deliberately redundant in the brainstem direction. Read.
 # distinct-from: basal_ganglia/action_gating.py + cortex/snn_moe_classifier.py +
 #   cerebellum/hjepa_serve.py + cortex/interaction_learning.py +
-#   cortex/autapse_neuron.py -- trial builders, expert forwards, action one-hots and
+#   growth/autapse_neuron.py -- trial builders, expert forwards, action one-hots and
 #   delayed-match harnesses; none is a growth program, a locality mask, or a region
 #   gate. Read.
 """
 
 import math
 
-from snn_data_lake.cortex.arealization import (
+from snn_data_lake.growth.arealization import (
     NEUROMERES,
     REGION_COORDS,
     ZONES,

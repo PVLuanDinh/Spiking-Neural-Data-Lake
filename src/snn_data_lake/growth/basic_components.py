@@ -23,7 +23,7 @@ Protocols (duck-typed, documented -- our existing cells satisfy them, some via a
 
 `compose_step(encoder, neuron, connection, rule, x)` runs one tick through the whole contract.
 
-  python -m snn_data_lake.substrate.basic_components        # self-check
+  python -m snn_data_lake.growth.basic_components        # self-check
 """
 
 import math
@@ -194,7 +194,7 @@ def compose_step(encoder, neuron, connection, rule, x):
 
 # --------------------------------------------------------------------------------------------------
 # Minimal demo Encoder + Node so this module self-checks the interface end-to-end on its own (the real
-# heterogeneous cells are composed in cortex/heterogeneous_microcircuit).
+# heterogeneous cells are composed in growth/heterogeneous_microcircuit).
 # --------------------------------------------------------------------------------------------------
 class _DemoEncoder:
     """Tiny Gaussian population rate encoder (a demo Encoder): scalar x in [0,1] -> n-vector of rates."""

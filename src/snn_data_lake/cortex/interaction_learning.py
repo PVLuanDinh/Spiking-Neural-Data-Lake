@@ -148,7 +148,7 @@ _G0C_LAZY_ATTRS = {
 #   substrate/kernel_tick.py ("THE ONE" transduction lane and bundle compiler): phrase overlap only.
 def _g0c_legacy_modules():
     """G8 (specs/022, stage S0): THE one provider of the checkpoint class-path translation map,
-    {legacy module: current module}, both relative to the package ("cortex.lif_neuron") -- the form
+    {legacy module: current module}, both relative to the package ("growth.lif_neuron") -- the form
     the G8 pre-registration (evidence/g8-reorganization.md 2.5) gives the alias layer's `_LEGACY`.
     It was EMPTY at S0 (only tests/test_g8_checkpoint_translation.py injected a map). RE-POINTED at
     G8's S1b: it returns the alias layer's own `snn_data_lake._LEGACY` table, read at call time --
@@ -158,7 +158,7 @@ def _g0c_legacy_modules():
 
 
 # distinct-from: cerebellum/jepa_world_model.py, instruments/attention_schema.py -- phrase overlap only,
-#   as with cortex/brain.py (`_learned_route`), cortex/h01_ingest.py and cortex/paradigm_b_matcher.py
+#   as with cortex/brain.py (`_learned_route`), growth/h01_ingest.py and cortex/paradigm_b_matcher.py
 #   (a band centroid, a stub brain, a route read, a pin key, a query runner); all five sites read.
 #   This is the codec's own read-side class-path step; the one map it reads is the provider above.
 def _g0c_translate(name, legacy):
@@ -429,7 +429,7 @@ class SpikingInteractionLearner:
         # point neurons; the pool's total spike count is the decision variable. Not byte-identical.
         pool = getattr(neuron, "_zoo_pool", None)
         if pool is None:
-            from snn_data_lake.cortex.neuron_zoo import SAFE_KINDS, sample_population
+            from snn_data_lake.growth.neuron_zoo import SAFE_KINDS, sample_population
 
             pool = sample_population(
                 8,
@@ -493,7 +493,7 @@ class SpikingInteractionLearner:
 
     # distinct-from: substrate/home.py::save_growth -- persists the grown-substrate BLOB; this
     #   emits per-synapse deltas of the interaction learner's own weights. distinct-from:
-    #   basal_ganglia/learning_progress.py::GoalStore -- _T_GOAL event rows. Sites read 2026-09-07.
+    #   growth/learning_progress.py::GoalStore -- _T_GOAL event rows. Sites read 2026-09-07.
     def _record_synapse_delta(self, li, code):
         """T064: frame this deposit's synapse deltas as a block-aligned `_T_SYNDELTA` (0x09) payload.
 

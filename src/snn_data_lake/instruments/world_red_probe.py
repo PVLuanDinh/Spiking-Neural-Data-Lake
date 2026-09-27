@@ -84,9 +84,9 @@ perf_baseline recorded before it.
 #   distinct/mean/entropy report over arbitrary Brain.state() telemetry with None handling and no
 #   neuter anywhere. Neither can produce the other's number.
 # distinct-from: tools/charge_probe.py -- the module-level neuter A/B. Same reason.
-# distinct-from: basal_ganglia/learning_progress.py -- the Chain B PRODUCER this reads; it
+# distinct-from: growth/learning_progress.py -- the Chain B PRODUCER this reads; it
 #   computes |LP|, this only observes it.
-# distinct-from: cortex/neuron_zoo.py::_worker_ladder -- flagged by the duplicate-capability
+# distinct-from: growth/neuron_zoo.py::_worker_ladder -- flagged by the duplicate-capability
 #   check against refit_counts on the shared words "counts" and "derived". Read: it builds a
 #   ladder of candidate THREAD counts to race for a performance choice. Nothing in common but
 #   the vocabulary. All sites read.
@@ -188,7 +188,7 @@ def category_entropy(cats):
     }
 
 
-# distinct-from: cortex/neuron_zoo.py::_worker_ladder -- see the header block; that races
+# distinct-from: growth/neuron_zoo.py::_worker_ladder -- see the header block; that races
 #   candidate thread counts, this counts refits of a batch solve.
 def refit_counts(ticks, refit_every, n_trajectory):
     """The two derivations of the refit count, and the gap between them (decision 3).
