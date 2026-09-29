@@ -2689,7 +2689,8 @@ than rewritten:
   and `perf_baseline`, `selfcheck_cache` live in `gates` without a
   gate-shaped name, are named by no policy, and stay outside it -- a disclosed
   carried opening, not this arc.
-- The plan's six "owner clarification 2026-09-27" tags labelled Astra's
+- The plan's seven "owner clarification 2026-09-27" labels (the fold's
+  commit message says six; the Codex report counted seven) marked Astra's
   wording; they now read "Astra, owner-saved", and the plan's scope sentence
   matches P4d.
 - "Six of seven" relaxations: the seventh is the census (F-A). "No external
@@ -2698,3 +2699,14 @@ than rewritten:
 - Declared gate-output delta: `policy_manifest --assert` prints a reworded
   disposition, so G8-2's first parent census differs from M5's post census by
   that output alone.
+
+**Codex closing report (2026-09-29).** `gpt-6-astra`, read-only, on
+`95c07f99` (06:16:45-06:21:51Z): no BLOCKER or MAJOR. Its sandbox blocked
+pytest's temporary storage, so it ran both new test bodies in memory against
+`e92aa319`, `c23c35d3` and the head (FAIL/FAIL, PASS/FAIL, PASS/PASS) and
+re-derived the +98 budget delta, the T058 wiring and both verbatim P4d
+sentences. Two findings, both folded in the next commit, which is itself
+battery-verified only: MINOR -- the no-label arm also counts a NEW brain module
+with a gate-shaped name (fail-closed by design; now stated in the disposition
+and pinned by a test whose remedy is a named exemption); NIT -- the label
+count above.

@@ -307,7 +307,9 @@ MOVE_GATE_DISPOSITION = (
     "move-comparison instrument, which no policy claims; its own self-check and CI registration "
     "are checked separately. The census counts gate-NAMED modules (gate|guard|envelope|manifest) "
     "that live in `gates`, carry the frozen pre-G8 `substrate` label, or have no frozen label (born "
-    "after G8, anywhere); a registered module without such a name is outside it (disclosed)."
+    "after G8, anywhere); a registered module without such a name is outside it (disclosed). "
+    "Fail-closed by design: a NEW gate-named brain module reds --assert until it is claimed in "
+    "POLICIES.md or exempted by name here."
 )
 CENSUS_EXEMPT = frozenset({SELF_NAME, "move_gate"})
 

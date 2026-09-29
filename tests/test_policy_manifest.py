@@ -142,6 +142,22 @@ def test_a_post_g8_gate_outside_gates_reds_the_assert(monkeypatch, tmp_path, cap
     assert "NEW unclaimed gate(s) ['zz_planted_gate']" in capsys.readouterr().out
 
 
+def test_a_new_gate_named_brain_module_is_caught_until_exempted_by_name(monkeypatch):
+    """Codex closing report (evidence 3.19): the no-label arm is fail-closed, so a NEW brain module
+    with a gate-shaped name (not a policy gate) is counted -- the disclosed trade-off -- and a named
+    exemption is the remedy. An existing brain module with a frozen label stays out."""
+    plant = "reticular_gate_v2"
+    real_mods, real_pkg, real_region = pm._selfcheck_modules, pm.package_of, pm.region_of
+    monkeypatch.setattr(pm, "_selfcheck_modules", lambda: real_mods() | {plant})
+    monkeypatch.setattr(pm, "package_of", lambda m: "thalamus" if m == plant else real_pkg(m))
+    monkeypatch.setattr(pm, "region_of", lambda m: None if m == plant else real_region(m))
+    assert plant in pm.census([])["unclaimed_gates"]
+    assert "reticular_gate" not in pm.census([])["unclaimed_gates"]
+    monkeypatch.setattr(pm, "CENSUS_EXEMPT", pm.CENSUS_EXEMPT | {plant})
+    assert plant not in pm.census([])["unclaimed_gates"]
+    assert "Fail-closed by design" in pm.MOVE_GATE_DISPOSITION
+
+
 # ---------------------------------------------------------- T011: manifest rows
 
 
