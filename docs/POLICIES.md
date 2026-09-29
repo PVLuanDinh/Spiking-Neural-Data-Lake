@@ -537,11 +537,17 @@ clustering, predictive coding, simulated annealing) are examples, chosen by a be
 - **Pause at a budget (owner decision):** each problem's growth spends a budget relative to a
   persisted running baseline (P1); at the limit the brain reports UNSOLVED, stops growing, and keeps
   the problem OPEN to retry after sleep or new teaching.
-- **Owner clarification 2026-09-27:** sleep is an extended, resumable capability-improvement process
-  over eligible learned circuits, with selective synaptic and structural plasticity judged by held-out
-  retention and cost. After a solve, the daemon's one scheduler requests sleep, which prunes and saves
-  new neurons and problem data. Units are journaled when grown; pruning removes active units, never
-  lake records.
+- After a solve, sleep prunes and saves the new neurons and the problem's data; the solve requests
+  sleep from the daemon's one scheduler (P2). Units are journaled into the lake when grown; a prune
+  removes a unit from the active network, never its lake record.
+- **Owner, 2026-09-27, verbatim:** *"The brain should still be able to sharpen its understanding while
+  sleeping, using synaptic plasticity, just like how the fly brain is still able to learn new skills while
+  being a frozen snapshot"*; *"The sleep cycle should be similar to actual human sleep and lasts longer to
+  rewire the entire brain to improve capability."* Operational reading, a session call (Astra's
+  recommendation the owner had saved, refined by the owner-ordered 2026-09-29 literature check in
+  `specs/022-unified-brain-arc/evidence/astra-architecture-2026-09-27.md`): an extended, resumable
+  capability-improvement process in which every plastic circuit is eligible, while synapses and structure
+  change selectively by strength, activity and tags, judged by held-out retention and cost.
 
 **Permitted, on conditions this file keeps.**
 - **Two networks:** two jobs, not P2's additive failure; inside each job exactly one survives (one
@@ -573,7 +579,7 @@ licensed it, and a saved record the sleep that kept or pruned it; an unlabeled u
 drawn connections as manifest ports with port charges. Count each before promoting; a rubber-stamp-sized
 output kills that gate, not the directive. The engine-works red is a campaign: counted once, by G9, then
 review-enforced. **Not claimed:** fluid intelligence from a liquid plus a readout, a
-sleep-pruning benefit, growth from a unit count.
+sleep-pruning or sleep-plasticity benefit, growth from a unit count.
 
 ## P5 — Use the GPU for everything it actually speeds up
 
