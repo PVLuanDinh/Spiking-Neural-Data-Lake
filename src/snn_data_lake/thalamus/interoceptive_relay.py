@@ -81,7 +81,7 @@ def declare_ports(manifest):
     The `relay_out -> body_in` edge is declared by the INSULA, keeping this tree's convention that
     the CONSUMER declares the edge (its subscription, its join) -- the same split
     `interoceptive_arousal` documents on its own OUT port."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "interoceptive_relay",
@@ -118,8 +118,8 @@ def _visceral_consumer_factory():
     """Fresh ring + JoinConsumer over the declared `visceral_in` port, one pair per replay arm.
     slots=256 for the same reason the insula uses it: the schedule publishes well under that and
     a silent ring overrun would make a partial record look like a smaller measurement."""
-    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
-    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+    from snn_data_lake.engine.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.engine.wiring_manifest import WiringManifest
 
     m = WiringManifest()
     from snn_data_lake.medulla.interoceptive_arousal import declare_ports as _producer_ports

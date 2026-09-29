@@ -903,7 +903,7 @@ class LakeChat:
           * IT DESTROYS THE PRODUCER'S BROADCAST. The arm's slot measured `(0, 0.476305)` before the
             turns and `(None, 0.0)` after them, against a control that was `(0, 0.476305)` both
             times. `_ignite` is a WRITE-AND-STEP path (3 re-entrant `step()` calls per turn), and
-            `step()` is the tick operation `brainstem/autonomous_loop.py` owns -- a tenant of the one
+            `step()` is the tick operation `engine/autonomous_loop.py` owns -- a tenant of the one
             bus must not drive its clock.
 
         Two further reasons that need no measurement. It would RAISE the write count while
@@ -937,12 +937,12 @@ class LakeChat:
         declared accessors over the single `_slot()` load of the single incumbent -- the workspace's
         own docstring makes that argument at the source. Nothing is constructed here, nothing is
         submitted, and no second route to the content exists: this reads the ONE object
-        `brainstem/autonomous_loop.py` owns, so `tools/p6_gate.py`'s instance census and its WRITE
+        `engine/autonomous_loop.py` owns, so `tools/p6_gate.py`'s instance census and its WRITE
         count are unchanged and only its READ count moves.
 
         WHY THIS RETURNS A PAIR WHILE `GlobalWorkspace.broadcast()` DELIBERATELY DOES NOT. The
         workspace rejected folding (content, hold) into its own return because that would change the
-        return type of the tree's one cross-module read (`cortex/live_brain.py::thought`) and of
+        return type of the tree's one cross-module read (`engine/live_brain.py::thought`) and of
         every `is not None` test written against it. That objection does not transfer: `_attended()`
         is private to this class and has exactly ONE caller (`_attended_clause`), so folding costs no
         consumer and buys the property the workspace asks for by name -- a reader that needs both
@@ -952,8 +952,8 @@ class LakeChat:
         WRITE into a workspace this chat built for ITSELF (`_new_workspace`, a fresh instance per
         turn so `_ignite` runs one clean thought), which is why `tools/p6_gate.py` listed
         `spike_chat_lake` under "writers read by nobody" while it also read nobody: zero-way, the one
-        state P6 forbids. This reads the instance `brainstem/autonomous_loop.py` OWNS and submits
-        perception + salience into on every tick, reached through the accessor `cortex/live_brain.py`
+        state P6 forbids. This reads the instance `engine/autonomous_loop.py` OWNS and submits
+        perception + salience into on every tick, reached through the accessor `engine/live_brain.py`
         exposes. It ADOPTS that object and CONSTRUCTS NOTHING and SUBMITS NOTHING (P2: one mechanism
         survives), so the gate's instance census and its write count are unchanged by this method --
         only its read count moves, which is the direction P6 calls progress.
@@ -1025,7 +1025,7 @@ class LakeChat:
         The half it sees, it buckets as a SELF-read, so FACULTY-to-FACULTY stays 0. The reason is
         mechanical: the resolver walks one hop through `self.<attr> = SomeClass(...)`, and
         `self.brain` is assigned `None` here (a slot a host fills, by design), so it falls back to
-        matching the bare token `workspace` -- which `brainstem/autonomous_loop.py` and
+        matching the bare token `workspace` -- which `engine/autonomous_loop.py` and
         `instruments/developmental_loop_brain.py` (reasoning/ until 2026-08-12) BOTH bind,
         leaving it ambiguous and unattributed. At
         RUNTIME the object is provably the arm's (`brain.workspace is live_brain.workspace is
@@ -1062,11 +1062,11 @@ class LakeChat:
         slot yields hold 0.0, never a subscript on None), it mutates nothing, and it reaches no
         decision -- `known`, `ignited` and `source` are untouched by this method."""
         # T034: the read goes through THE REPORT CHANNEL -- the declared route this
-        # private reach became (substrate/report_channel.snapshot; one mechanism, P2).
+        # private reach became (engine/report_channel.snapshot; one mechanism, P2).
         # Same snapshot discipline, same dark-record honesty; this method is now the
         # channel's chat-side adapter and nothing more. (The two-line shape keeps the
         # bus argument ATTRIBUTABLE to p6_gate's walk, as the old body's was.)
-        from snn_data_lake.substrate.report_channel import snapshot
+        from snn_data_lake.engine.report_channel import snapshot
 
         ws = getattr(self.brain, "workspace", None)
         rec = snapshot(ws)
@@ -1077,7 +1077,7 @@ class LakeChat:
         available.
 
         Empty BY CONSTRUCTION on every unattached chat -- which is every caller in this module's own
-        self-check, in `reasoning/web_ingest_gate.py`, and on the `cortex/live_brain.py` bridge as it
+        self-check, in `reasoning/web_ingest_gate.py`, and on the `engine/live_brain.py` bridge as it
         stands today -- so a chat with no brain keeps the exact reply bytes it had before this
         consumer existed. That is deliberate: it keeps the deterministic gates byte-identical and it
         makes the neuter-A/B one-sided in the right direction (the clause can only ever APPEAR when a
@@ -1620,7 +1620,7 @@ class LakeChat:
         # the attached brain's own bus, adopted and never constructed, read through the declared
         # route rather than reached into. `ws is None` covers three honest situations at once -- no
         # brain, a brain that has no workspace attribute, and a brain whose workspace is not built.
-        from snn_data_lake.substrate.report_channel import snapshot
+        from snn_data_lake.engine.report_channel import snapshot
 
         ws = getattr(self.brain, "workspace", None)
         rec = snapshot(ws) if (self.brain is not None and ws is not None) else None
@@ -1828,7 +1828,7 @@ def demo():
     # is a real read of this instance instead of a permanent UNMEASURED.
     q_conscious = turn("are you conscious")
 
-    # distinct-from: cortex/live_brain.py::workspace and cortex/brain.py::reentrant -- accessors that
+    # distinct-from: engine/live_brain.py::workspace and engine/brain.py::reentrant -- accessors that
     #   ADOPT the composite's real bus; this is a hermetic stand-in built so ONE input can be moved
     #   with nothing else alive. distinct-from: infra/brain_telemetry.py::_main and
     #   instruments/report_order_probe.py::main -- those self-checks build a REAL brain (make_brain);
@@ -1851,7 +1851,7 @@ def demo():
             self._access_ema = ema
 
     # ---- P6: the reply must reflect what the brain is CURRENTLY DOING, not only what it RETRIEVED.
-    # `_attended()` reads the ONE Global Workspace `brainstem/autonomous_loop.py` broadcasts into.
+    # `_attended()` reads the ONE Global Workspace `engine/autonomous_loop.py` broadcasts into.
     # What is asserted here is a NEUTER-A/B on that PRODUCER with BOTH states constructed, because a
     # read that leaves the consumer's output identical is decoration and P6's honesty guard says to
     # delete it rather than count it. HOISTED above the consciousness arms at T081: the report

@@ -18,7 +18,7 @@ Run: pytest tests/test_interoceptive_report.py
 
 import pytest
 
-from snn_data_lake.cortex.live_brain import _IXN_INTENTS, _reply_to_intent
+from snn_data_lake.engine.live_brain import _IXN_INTENTS, _reply_to_intent
 
 ASKS = ("how does your body feel right now?", "what is your interoception?")
 MARK = "from its own running baseline"
@@ -26,7 +26,7 @@ MARK = "from its own running baseline"
 
 @pytest.fixture(scope="module")
 def brain():
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     b = make_brain(seed=0, persist=False)
     for _ in range(60):
@@ -39,7 +39,7 @@ def test_a_fresh_body_refuses_to_call_itself_calm():
     """THE STATE A NUMBER GETS WRONG. Before three readings the insula returns 0.0 by design -- a
     baseline two samples old is not a baseline -- and 0.0 there means UNMEASURED, never calm.
     Reporting it as calm would be the confident-sentence-with-nothing-behind-it failure."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     b = make_brain(seed=0, persist=False)
     try:

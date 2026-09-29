@@ -28,7 +28,7 @@ import random
 import pytest
 
 from snn_data_lake.brainstem.arm_config import CONTACT
-from snn_data_lake.brainstem.autonomous_loop import AutonomousArm
+from snn_data_lake.engine.autonomous_loop import AutonomousArm
 
 SAFE = {"visual": [0.6] * 4, "temperature": [0.2], "audio": [0.2] * 4, "distance": CONTACT * 3.0}
 DANGER = dict(SAFE, distance=0.0)

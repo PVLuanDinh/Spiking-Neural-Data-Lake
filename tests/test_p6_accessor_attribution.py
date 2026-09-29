@@ -3,7 +3,7 @@
 THE DEFECT, measured before the fix through `p6_gate.measure(overlay=...)` -- four arms, one new
 FACULTY module each, nothing written to disk:
 
-    A  self.brain._reentrant.broadcast()    -> 1 site, CROSS, owner cortex/brain.py, fac_cross 0->1
+    A  self.brain._reentrant.broadcast()    -> 1 site, CROSS, owner engine/brain.py, fac_cross 0->1
     B  self.brain.reentrant.broadcast()     -> NO SITE AT ALL
     C  self.brain.reentrant.broadcast_to()  -> NO SITE AT ALL
     D  self.brain._nonesuch.broadcast()     -> NO SITE AT ALL      <- the NEGATIVE CONTROL
@@ -59,7 +59,7 @@ def test_the_private_route_is_attributed(base):
     """The route that ALREADY worked. Pinned so the fix cannot be shown to work by breaking it."""
     m = _measure("    def step(self):\n        return self.brain._reentrant.broadcast()\n")
     assert m["sites"] == 1, m
-    assert len(m["cross"]) == 1 and m["cross"][0][4] == "cortex/brain.py", m["cross"]
+    assert len(m["cross"]) == 1 and m["cross"][0][4] == "engine/brain.py", m["cross"]
     assert m["fac_cross"] == base + 1
 
 
@@ -70,7 +70,7 @@ def test_the_PUBLIC_accessor_route_is_now_attributed_the_same_way(base):
         "reading a workspace through a public accessor still produces no site -- the gate is "
         "blind to the clean route and rewards poking a private attribute"
     )
-    assert len(m["cross"]) == 1 and m["cross"][0][4] == "cortex/brain.py", m["cross"]
+    assert len(m["cross"]) == 1 and m["cross"][0][4] == "engine/brain.py", m["cross"]
     assert m["fac_cross"] == base + 1
 
 
@@ -80,7 +80,7 @@ def test_the_accessor_route_works_for_the_drain_shape_a_specialist_uses(base):
     other is not."""
     m = _measure("    def step(self):\n        return self.brain.reentrant.broadcast_to('x')\n")
     assert m["sites"] == 1, m
-    assert len(m["cross"]) == 1 and m["cross"][0][4] == "cortex/brain.py", m["cross"]
+    assert len(m["cross"]) == 1 and m["cross"][0][4] == "engine/brain.py", m["cross"]
     assert m["fac_cross"] == base + 1
 
 
@@ -139,7 +139,7 @@ def test_an_accessor_defined_in_two_modules_is_ambiguous_not_guessed(base):
 def test_brain_exposes_the_accessor_this_gate_can_now_see():
     """The tree half. A gate able to see accessors buys nothing while the owner exposes none, and
     a reader must not have to reach past it."""
-    from snn_data_lake.cortex.brain import Brain
+    from snn_data_lake.engine.brain import Brain
 
     assert isinstance(Brain.reentrant, property), (
         "Brain.reentrant must be a property so a subscribed specialist can reach the re-entrant "

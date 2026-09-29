@@ -252,7 +252,7 @@ class SpontaneousActivity:
 # distinct-from: reasoning/rpm_solver.py -- NVSA rule induction; unrelated. Read.
 # distinct-from: thalamus/global_workspace.py -- the running-baseline rule; unrelated. Read.
 # distinct-from: insula/interoceptive_integration.py -- per-edge A/B writer; unrelated. Read.
-# distinct-from: cortex/live_brain.py -- integrative-stack presence check; unrelated. Read.
+# distinct-from: engine/live_brain.py -- integrative-stack presence check; unrelated. Read.
 def bootstrap_percept_rule(ps, k=3, seed=0, n_steps=1600, theta=THETA0):
     """THE canonical pre-experience composition -- the one path both the Brain wire and this
     module's own harness take (two compositions would drift apart; this is the P2 posture).

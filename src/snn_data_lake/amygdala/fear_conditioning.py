@@ -4,7 +4,7 @@ Spiking CS-US fear conditioning -- the amygdala as a real learned threat detecto
 LIVE STATUS, MEASURED 2026-07-28 (v4.78): on the running brain `threat()` is called 38 times per 80
 wake ticks and returns EXACTLY 0.0 every time. The amygdala never learns, and three downstream signals
 are constant as a result -- every stored episode's arousal tag, the LC salience quantile, and the
-workspace threat bid (`brainstem/autonomous_loop.AutonomousArm.step`, the `salience = threat ...`
+workspace threat bid (`engine/autonomous_loop.AutonomousArm.step`, the `salience = threat ...`
 broadcast).
 
 The cause is NOT a bug, and the distinction matters because a coverage audit proposed "fixing" it.
@@ -12,13 +12,13 @@ The cause is NOT a bug, and the distinction matters because a coverage audit pro
 (`if distance is not None and (not math.isfinite(distance) or distance < CONTACT)`), so it fires only
 on a real contact event that also trips the reflex E-STOP. That is correct fear-conditioning
 semantics: fear binds to actual aversive events, not to safe exploration. Meanwhile
-`cortex/brain.py::SAFE_DISTANCE` is `CONTACT * 3.0` and feeds all three rotating explore stimuli, and
+`engine/brain.py::SAFE_DISTANCE` is `CONTACT * 3.0` and feeds all three rotating explore stimuli, and
 `brainstem/arm_config.SAFETY_CALIBRATED` is still `False` because the arm has not been physically
 built. So there are no aversive events to condition on, and a threat readout of 0.0 is the HONEST
 output of a brain that has never been hurt.
 
 (All five line citations in the two paragraphs above were re-checked 2026-08-04 and every one had
-drifted: `autonomous_loop.py:1004`/`:1108`/`:1102` landed on comment text, `cortex/brain.py:898` on
+drifted: `autonomous_loop.py:1004`/`:1108`/`:1102` landed on comment text, `engine/brain.py:898` on
 an episode-store sizing comment, and `brainstem/arm_config.py:32` on a BLANK line -- re-resolved
 2026-08-04b; this note said ":32 on a reach comment", which is `:31`, so the correction itself was
 off by one, in the sentence about coordinates being wrong. The FINDINGS were re-verified against the

@@ -42,7 +42,7 @@ def test_P4_construction_fires_on_a_direct_Brain_call(tmp_path, monkeypatch):
     viol = _scan_fixture(
         tmp_path,
         monkeypatch,
-        "from snn_data_lake.cortex.brain import Brain\n\n\ndef solve():\n    return Brain()\n",
+        "from snn_data_lake.engine.brain import Brain\n\n\ndef solve():\n    return Brain()\n",
     )
     assert [v[2] for v in viol] == ["P4-CONSTRUCTION"], viol
     assert "make_brain()" in viol[0][3], "the finding must name the sanctioned path"
@@ -227,13 +227,13 @@ def test_the_defining_module_may_construct_its_own_class(tmp_path, monkeypatch):
 
     THE RED IS THE OTHER HALF, and it is what makes this a scope rather than an allowlist: the same
     call in a module that does NOT define the class still fires. All six `src/` hits on the first
-    counted run were `cortex/brain.py` constructing its own class -- exclude them by file and the
+    counted run were `engine/brain.py` constructing its own class -- exclude them by file and the
     rule becomes an allowlist; exclude them by DEFINITION and it becomes what P4's clause says.
     """
     defining = "class Brain:\n    pass\n\n\ndef make_brain(**kw):\n    return Brain(**kw)\n"
     assert _scan_fixture(tmp_path, monkeypatch, defining, name="brain.py") == []
 
-    consumer = "from snn_data_lake.cortex.brain import Brain\n\n\ndef go():\n    return Brain()\n"
+    consumer = "from snn_data_lake.engine.brain import Brain\n\n\ndef go():\n    return Brain()\n"
     viol = _scan_fixture(tmp_path, monkeypatch, consumer, name="consumer.py")
     assert [v[2] for v in viol] == ["P4-CONSTRUCTION"], viol
 
@@ -258,7 +258,7 @@ def test_the_repaired_shapes_are_not_flagged(tmp_path, monkeypatch):
         "def build():\n"
         "    import os\n"
         "    os.chdir('/tmp')\n"
-        "    from snn_data_lake.cortex.brain import make_brain\n"
+        "    from snn_data_lake.engine.brain import make_brain\n"
         "    return make_brain(seed=0, persist=False)\n",
     )
     assert viol == [], viol

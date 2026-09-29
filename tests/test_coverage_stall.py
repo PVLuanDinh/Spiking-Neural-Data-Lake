@@ -23,8 +23,8 @@ Run: pytest tests/test_coverage_stall.py
 
 import pytest
 
-from snn_data_lake.brainstem import autonomous_loop as al
-from snn_data_lake.brainstem.autonomous_loop import ACTIONS, AutonomousArm, _ee_m
+from snn_data_lake.engine import autonomous_loop as al
+from snn_data_lake.engine.autonomous_loop import ACTIONS, AutonomousArm, _ee_m
 
 CTX = dict(visual=0.55, temperature=24.0, audio=0.3, distance=0.6)
 LIFT_UP = al._A_NEG  # -shoulder_lift raises the gripper from the floor on this body (measured)

@@ -42,12 +42,12 @@ phenomenal claim is made or implied.
 # distinct-from: reasoning/spike_chat_lake.py -- the chat CONSUMER; its _attended now
 #   delegates here (one mechanism, P2). distinct-from: cortex/access_consciousness.py --
 #   CLAIMS/criteria over the bus; this is the typed transport of the report itself.
-# distinct-from: cortex/live_brain.py -- owns the composite and the `thought` accessor;
+# distinct-from: engine/live_brain.py -- owns the composite and the `thought` accessor;
 #   this snapshots through the same public accessors, constructs nothing.
 # distinct-from: reasoning/consciousness_probe.py (RETIRED at T081, 2026-09-16) -- the INCUMBENT this channel half-
 #   replaces at T081; untouched here. All sites read.
 
-  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.substrate.report_channel
+  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.engine.report_channel
 """
 
 
@@ -61,7 +61,7 @@ def declare_ports(manifest):
     content-present -- built by code, asserted in the self-check); the content token
     itself is symbolic and rides the EVENT encoding, same discipline as the coalition
     ports' TYPE HONESTY note."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "report_channel",
@@ -111,7 +111,7 @@ def snapshot(workspace):
     }
 
 
-# distinct-from: substrate/signal_ring.py -- ring transport records; this projects ONE
+# distinct-from: engine/signal_ring.py -- ring transport records; this projects ONE
 #   report dict to the manifest row's numeric vector. distinct-from: thalamus/
 #   reentrant_workspace.py -- a registrant, no projection. Read.
 def as_vector(rec):

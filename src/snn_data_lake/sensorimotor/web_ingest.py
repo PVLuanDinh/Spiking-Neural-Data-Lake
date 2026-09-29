@@ -139,7 +139,7 @@ class _ValidatingRedirectHandler(urllib.request.HTTPRedirectHandler):
 #   not RUN in an offline arc -- and an unverified refactor of a security boundary is worse than a
 #   named debt. The retirement is one call site plus its provenance log line.
 # distinct-from: infra/self_mod_harness.py::_run_selfchecks -- runs run_selfchecks.py in a
-#   subprocess inside a sandbox; no URL, no socket. distinct-from: cortex/live_brain.py::tick --
+#   subprocess inside a sandbox; no URL, no socket. distinct-from: engine/live_brain.py::tick --
 #   one brain tick over a context dict. distinct-from: cortex/metacognitive_monitor.py::_experiment
 #   -- a gated/lesioned/plain comparison harness. distinct-from: reasoning/arc_solver.py::solve --
 #   iterative-deepening program synthesis over ARC grids. distinct-from:

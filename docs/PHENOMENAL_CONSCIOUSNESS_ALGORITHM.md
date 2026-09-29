@@ -19,7 +19,7 @@ plus the ablation protocol that would test whether that model is load-bearing. T
 brain would gain if it were built and if the ablation came back positive:
 
 1. **Endogenous attention control** -- a top-down goal in the attention gate, which
-   `cortex/brain.py:1128` currently passes as `goal=None` with a comment saying the goal vector does
+   `engine/brain.py:1128` currently passes as `goal=None` with a comment saying the goal vector does
    not exist yet.
 2. **Per-step credit assignment on a multi-step plan** -- the capability
    `docs/CONSCIOUSNESS_METHODS.md` queued, which the brain lacks entirely.
@@ -72,29 +72,29 @@ read.
 | `PREC0 = 1.0`, `PREC1 = 1.0` gate the PC error drive | VERIFIED | `readout/predictive_coding.py:88-89`, used `:192-193`, `:237-238` |
 | `THETA = 0.5`, `LEAK = 0.02` set the error-neuron operating point | VERIFIED | `readout/predictive_coding.py:86-87` |
 | `ignition_threshold=0.55` is the default in three constructors | VERIFIED | `thalamus/reentrant_workspace.py:103`, `thalamus/global_workspace.py:93`, `cortex/access_consciousness.py:84` |
-| **`brain.py:2149` is the clobber, not a hook** | VERIFIED | `cortex/brain.py:2143-2150` recomputes `ignition_threshold` from `base_ignition_threshold` every wake tick, inside `try:` / `except Exception: pass` at `:2115`/`:2151`. It also writes `_v_th = thr / _LEAK` at `:2150`. |
+| **`brain.py:2149` is the clobber, not a hook** | VERIFIED | `engine/brain.py:2143-2150` recomputes `ignition_threshold` from `base_ignition_threshold` every wake tick, inside `try:` / `except Exception: pass` at `:2115`/`:2151`. It also writes `_v_th = thr / _LEAK` at `:2150`. |
 | `base_ignition_threshold` is documented immutable | VERIFIED | `thalamus/reentrant_workspace.py:105-109`, "kept immutable ... Read this, never re-type the default" |
 | The gate that decides access reads `self.ignition_threshold` | VERIFIED | `thalamus/reentrant_workspace.py:244` |
 | **The workspace is saturated: 100% ignition at every gain** | VERIFIED | `substrate/region_coherence.py:132-137`. Winning drives span [0.668, 1.000] median 0.815; masked drives span [0.086, 0.500] median 0.121, p75 0.167 (`:115-117`). The interval (0.500, 0.668) has never been observed. |
 | **The graded access readout is calibrated at the shipped theta** | VERIFIED | `thalamus/reentrant_workspace.py:89-101`. `_ACC_N=32`, `_ACC_LO=0.85`, `_ACC_HI=1.90`, band measured over 360 ignited wake ticks *at theta=0.55*; consumed at `:355-374`. |
 | `IGNITION_GAIN = 0.5` scales the coherence discount on the rheobase | VERIFIED | `substrate/region_coherence.py:103`, consumed `:146`, `:298-303` |
-| A hardcoded `"drive": 0.5` is one of six inputs to that coherence | VERIFIED | `cortex/brain.py:2124` |
-| The endogenous attention port exists and is unused | VERIFIED | `cortex/learned_attention.py:88-101 _goal_gain`, `:116 attend(features, goal=None)`; sole live call `cortex/brain.py:1128` passes `goal=None` |
-| **B = 4, not 8** | VERIFIED | `cortex/brain.py:814` -- `LearnedAttention(dim=64, n_bands=4, seed=...)` |
-| **`brain.py:1128`'s documented hole is a FEATURE-SPACE goal** | VERIFIED | `cortex/brain.py:1125-1127`. A band-preference vector takes the *other* `_goal_gain` branch and does not close it. |
+| A hardcoded `"drive": 0.5` is one of six inputs to that coherence | VERIFIED | `engine/brain.py:2124` |
+| The endogenous attention port exists and is unused | VERIFIED | `cortex/learned_attention.py:88-101 _goal_gain`, `:116 attend(features, goal=None)`; sole live call `engine/brain.py:1128` passes `goal=None` |
+| **B = 4, not 8** | VERIFIED | `engine/brain.py:814` -- `LearnedAttention(dim=64, n_bands=4, seed=...)` |
+| **`brain.py:1128`'s documented hole is a FEATURE-SPACE goal** | VERIFIED | `engine/brain.py:1125-1127`. A band-preference vector takes the *other* `_goal_gain` branch and does not close it. |
 | The attention gate is computed FROM the content | VERIFIED | `cortex/learned_attention.py:126-140` -- `sal` is per-band mean absolute feature magnitude; gate = learned synapse * salience * goal * surprise |
-| `attention_focus` is exported and unconsumed | VERIFIED | `cortex/brain.py:2865` |
-| **`state()['pci']` is a synthetic surrogate, stale 3 nights in 4** | VERIFIED | `cortex/brain.py:2405-2419`: fresh `PerturbationalComplexity(n=10, coupling=cpl, noise=0.45)` under `if self._nights % 4 == 0`, inside `try:` with bare `except: pass` at `:2419`. Surfaced at `:2916`. |
+| `attention_focus` is exported and unconsumed | VERIFIED | `engine/brain.py:2865` |
+| **`state()['pci']` is a synthetic surrogate, stale 3 nights in 4** | VERIFIED | `engine/brain.py:2405-2419`: fresh `PerturbationalComplexity(n=10, coupling=cpl, noise=0.45)` under `if self._nights % 4 == 0`, inside `try:` with bare `except: pass` at `:2419`. Surfaced at `:2916`. |
 | **`PerturbationalComplexity` is a closed toy with no `system` port** | VERIFIED | `instruments/integration_measure.py:199-231` -- `_run` builds its own `LIFNeuron` list from its own `self.w` and pre-draws its own noise. No injection point exists. |
 | `lz76_complexity` is a pure-Python nested scan | VERIFIED | `instruments/integration_measure.py:82-113` |
 | The regime factories are a `weight_mode` switch | VERIFIED | `instruments/integration_measure.py:296-316` |
 | `push_subgoal()` has callers only in its own self-check | VERIFIED | def `cortex/prefrontal_executive.py:299`; callers `:469`, `:630` only |
-| `maintain()` has SIX call sites across four modules, all offline | VERIFIED | `cortex/autotelic_goals.py:315`, `reasoning/autonomous_brain.py:122`, `reasoning/developmental_core.py:153`, `reasoning/developmental_loop_wm.py:56/:65/:128`. Plus self-checks at `prefrontal_executive.py:383/389/475/574` and `autonomous_loop.py:2092`. The enumeration at `brainstem/autonomous_loop.py:970-974` is correct and is the authority. |
+| `maintain()` has SIX call sites across four modules, all offline | VERIFIED | `cortex/autotelic_goals.py:315`, `reasoning/autonomous_brain.py:122`, `reasoning/developmental_core.py:153`, `reasoning/developmental_loop_wm.py:56/:65/:128`. Plus self-checks at `prefrontal_executive.py:383/389/475/574` and `autonomous_loop.py:2092`. The enumeration at `engine/autonomous_loop.py:970-974` is correct and is the authority. |
 | **`_new_frame` stores an integer, not a proposition** | VERIFIED | `cortex/prefrontal_executive.py:311-313` returns `[index, 1.0, [0.0] * self._n_wm]` |
 | `deliberate()` exists | VERIFIED -- **the draft said "NOT VERIFIED"** | `cortex/prefrontal_executive.py:230-235` |
 | `recurrence=0.98`, `hold_threshold=0.2`, `max_goals=4`, `commit_races=25` | VERIFIED | `cortex/prefrontal_executive.py:88-96` |
 | `_n_wm = 6`, `_wm_steps = 8` | VERIFIED | `cortex/prefrontal_executive.py:132-133` |
-| **`Brain.tick(self)` takes no arguments** | VERIFIED | `cortex/brain.py:2690`; `_wake_tick(self)` at `:1808` builds its own context |
+| **`Brain.tick(self)` takes no arguments** | VERIFIED | `engine/brain.py:2690`; `_wake_tick(self)` at `:1808` builds its own context |
 | `charge_probe._PinnedWeights` is a **dict subclass** | VERIFIED | `tools/charge_probe.py:54-74`, applied `:106` to `b._drive_w`, a `{source: float}` map |
 | The prior leaky neuter fired on 12/60 ticks | VERIFIED | `tools/charge_probe.py:58-66` |
 | `charge_probe`'s observables are actuator-mediated | VERIFIED | `tools/charge_probe.py:112-113` -- `arm_stopped`, `map_position` |
@@ -195,7 +195,7 @@ red.
 |---|---|---|
 | **G1 -- saturation** | On the task, over `S` seeds: the coalition-drive histogram and the per-tick ignition rate at the shipped `theta = 0.55`. | If ignition does not fail on a non-trivial fraction of ticks -- fraction threshold derived from the measured overlap of the winning [0.668,1.000] and masked [0.086,0.500] drive distributions, **not chosen** -- then **theta is not a controlled variable and DX1, DX3, DX4 are CANCELLED.** `region_coherence.py:132-137` says the current answer is 100% ignition at every gain in [0,1]. Assume the gate fires until measured otherwise. |
 | **G2 -- generator assertions** | Six properties of the episode generator, on the generator alone, before any brain touches it. See section 5.2. | Any one red invalidates the task. Most important: a decoder trained on gap-window input must not recover the target above its own shuffle band. Generators leak. |
-| **G3 -- task binding** | With no ACS at all: mutual information between the held goal at end-of-gap and the committed first action. | At the shuffle floor, **stop**. `brainstem/autonomous_loop.py:986-995` diagnoses the reverted WM wire as "this loop has no gap." Adding a gap does not make the action path *consume* what is held; consumption is a wiring property. Without G3, an all-null ablation matrix gets misread as "the ACS is inert" when the truth is "the task never bound." |
+| **G3 -- task binding** | With no ACS at all: mutual information between the held goal at end-of-gap and the committed first action. | At the shuffle floor, **stop**. `engine/autonomous_loop.py:986-995` diagnoses the reverted WM wire as "this loop has no gap." Adding a gap does not make the action path *consume* what is held; consumption is a wiring property. Without G3, an all-null ablation matrix gets misread as "the ACS is inert" when the truth is "the task never bound." |
 | **G4 -- content leakage** | Train a decoder of target identity from `u_t` alone, held out, with a label-shuffle band. Symmetrically, the direct-content decode at matched capacity. | If `u_t` decodes target identity at accuracy statistically indistinguishable from the direct content decode, **content-blindness is a naming convention, AST's specific commitment is untestable here, and the L3 result is VOID -- not weakened.** |
 | **G5 -- deterministic replay** | Two *unperturbed* runs of the whole brain from the same snapshot with all RNG streams at the same position: assert bit-identical rasters. | If it cannot be made to pass, **B1 (real PCI) is not runnable on this substrate and must be reported as such.** See section 7 block 5 for why the failure inflates PCI rather than obviously breaking. |
 
@@ -259,7 +259,7 @@ Note `drive_margin` and not `access_strength`. See section 7 block 2.
 
 ### 5.2 Step 2 is not "build a task" -- it is a stimulus port
 
-`Brain.tick(self)` takes no arguments (`cortex/brain.py:2690`) and `_wake_tick` builds its own
+`Brain.tick(self)` takes no arguments (`engine/brain.py:2690`) and `_wake_tick` builds its own
 context from `_safe_ctx()`. There is no external stimulus port. The task requires per-tick control
 of percept-band contents, a cue/gap schedule, an injected slip on a designated step, an
 information-only probe action, and a removable report channel. **None of that reaches the brain
@@ -466,7 +466,7 @@ The `n_bands`-length branch at `cortex/learned_attention.py:94-97` is reachable 
 `n_bands=4, dim=64` and needs no signature change. This is the cleanest item in the plan: a wire,
 not a build.
 
-**But it does not close the documented hole.** `cortex/brain.py:1125-1127` refuses a goal because "a
+**But it does not close the documented hole.** `engine/brain.py:1125-1127` refuses a goal because "a
 real goal vector *in feature space* is not available yet." A `B`-length band preference takes the
 *other* `_goal_gain` branch (`:98-101`). The feature-space hole stays open, and the draft's claim
 that A6 closes it is withdrawn.
@@ -643,7 +643,7 @@ the program, and that is the correct behaviour.**
 ---
 
 **Block 1 -- A3 has no durable write target.**
-`cortex/brain.py:2143-2150` recomputes `ignition_threshold` from `base_ignition_threshold` on every
+`engine/brain.py:2143-2150` recomputes `ignition_threshold` from `base_ignition_threshold` on every
 wake tick, and the docstring at `reentrant_workspace.py:105-109` declares the base immutable. A
 theta written to `ignition_threshold` survives zero ticks; the comparison that actually gates access
 (`:244`) never sees it. The block also writes `_v_th = thr / _LEAK`, which the draft never mentioned,
@@ -828,7 +828,7 @@ only to the experimenter.
 
 ### Offenders -- this algorithm is NOT P1-clean
 
-1. **`"drive": 0.5` at `cortex/brain.py:2124`.** A hardcoded literal is one of six inputs to the
+1. **`"drive": 0.5` at `engine/brain.py:2124`.** A hardcoded literal is one of six inputs to the
    cross-region coherence measure; coherence feeds `ignition_bias()`, which modulates the rheobase.
    One sixth of the input to the thing that modulates theta is a constant, and one region is by
    construction never doing anything. **A3's derivation is not meaningful until this is fixed or
@@ -1042,7 +1042,7 @@ Stated plainly, and preregistered as such. If the ACS is pinned and nothing move
 that a content-blind model of the control state is not load-bearing in this system on this task.
 That is publishable, it closes a question, and it costs less than the alternative -- which is to
 retune the mechanism's own constants until a number moves. This repo has the record of doing exactly
-that and reverting it: `brainstem/autonomous_loop.py:976-995`, where wiring PFC working memory made
+that and reverting it: `engine/autonomous_loop.py:976-995`, where wiring PFC working memory made
 `_wm_spikes` go from 0 to 22 distinct values while held goal, selected action, arm act/hold and
 trajectory each changed 0/200. **A mechanism that becomes live and changes nothing is the failure
 mode, and the honest response is a null.**

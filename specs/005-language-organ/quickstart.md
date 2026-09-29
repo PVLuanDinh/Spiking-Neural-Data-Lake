@@ -73,7 +73,7 @@ becoming a green light that cannot go red.
 
 ```
 git diff --quiet HEAD -- src/snn_data_lake/cortex/language_acquisition.py \
-    src/snn_data_lake/sensorimotor/spiking_lm_serve.py src/snn_data_lake/cortex/brain.py \
+    src/snn_data_lake/sensorimotor/spiking_lm_serve.py src/snn_data_lake/engine/brain.py \
     src/snn_data_lake/reasoning/blimp_bench.py tools/
 git rev-parse HEAD
 PY tools/blimp_baseline.py 25
@@ -93,6 +93,12 @@ this check is live, not ceremonial.
 The original baseline command named
 `src/snn_data_lake/cortex/spiking_lm_serve.py`; its runnable path is now
 `src/snn_data_lake/sensorimotor/spiking_lm_serve.py`.
+
+### G8 M10 path note (2026-09-29)
+
+The original baseline command named
+`src/snn_data_lake/cortex/brain.py`; its runnable path is now
+`src/snn_data_lake/engine/brain.py`.
 
 ---
 

@@ -191,7 +191,7 @@ class LakeJournaller:
 
 # ---- T020: JoinPolicy + DeliveryPolicy ENFORCEMENT on the delivery path (P8 invention #2,
 # ---- docs/INVENTION_REGISTER.md row 2 -- the register indexes this, the reds live here) ----
-# distinct-from: substrate/wiring_manifest.py -- DECLARES the policies; this ENFORCES them
+# distinct-from: engine/wiring_manifest.py -- DECLARES the policies; this ENFORCES them
 #   where payloads actually combine. distinct-from: thalamus/global_workspace.py -- workspace
 #   COMPETITION among coalitions; this is typed fan-in combination at a port. All sites read.
 class UndeclaredJoin(RuntimeError):
@@ -226,7 +226,7 @@ class JoinConsumer:
     can arrive through, and this is the door closing."""
 
     def __init__(self, ring, port):
-        from snn_data_lake.substrate.wiring_manifest import JOIN_POLICIES
+        from snn_data_lake.engine.wiring_manifest import JOIN_POLICIES
 
         if (
             getattr(port, "kind", None) != "IN"
@@ -395,7 +395,7 @@ def main() -> int:
     # ---- T020: join enforcement, the silent-sum red, graded-unbound red, margin record ----
     import numpy as np
 
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     def _in_port(policy):
         return Port(

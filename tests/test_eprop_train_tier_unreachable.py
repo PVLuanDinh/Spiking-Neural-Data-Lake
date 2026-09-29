@@ -14,7 +14,7 @@ they are TRAIN-TIER OFFLINE and no live root reaches them. Their own words:
 The constraint is written in THREE places -- the module docstring, the EXEMPT reason, and
 specs/010 -- and was asserted in NONE. "Nothing would announce it" was literally true: `import` it
 from a live root and every gate stays green. MEASURED before this file existed, by adding one edge
-from `cortex.brain` to `developmental_loop_brain` in the reachability graph:
+from `engine.brain` to `developmental_loop_brain` in the reachability graph:
 
     reachable()   199 -> 207   (+8, both Adam modules among them)
     stale_exempt    0 -> 8

@@ -29,7 +29,7 @@ CORRECTNESS, not a capability ceiling. promote() is a no-op unless enable=True A
 (mirrors SelfModHarness). "Disabled by default" is true of a bare run and NOT of the always-on daemon:
 learn_daemon.bat:14 sets NORD_SELFMOD=1, so under the daemon this path is ARMED and fires every 8
 nights. gate_fn is injectable, and the honest description of the live one: the sole live caller
-(cortex/brain.py `_maybe_autonomous_self_build`) passes run_selfchecks.py ALONE, as a subprocess with
+(engine/brain.py `_maybe_autonomous_self_build`) passes run_selfchecks.py ALONE, as a subprocess with
 NORD_SELFMOD=0 so the gate cannot recurse into another self-build -- NOT pytest and NOT an E-STOP
 check, whichever an earlier version of this docstring claimed. The self-check passes a fast
 deterministic fake, so promote / rollback / firewall logic is fully testable without a long gate.

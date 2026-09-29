@@ -1,7 +1,7 @@
 """
 counterfactual_sim -- brain-native counterfactual "what if I did X" simulation (imagination / prospection).
 
-THE GAP THIS FILLS. The brain's existing mental imagery (cortex/brain.py `imagine`) is TOP-DOWN
+THE GAP THIS FILLS. The brain's existing mental imagery (engine/brain.py `imagine`) is TOP-DOWN
 SYNTHESIS: it clamps a random-ish top cause and reconstructs a percept -- a "picture this" mechanism
 with no notion of ACTION and no scoring. There is no prospective simulation that asks "what if I did
 X", rolls the consequence forward, and RANKS candidate actions by their imagined outcome. This module

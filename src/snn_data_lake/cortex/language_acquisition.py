@@ -226,7 +226,7 @@ class LanguageAcquisition:
     #
     # OPEN P4b VIOLATION, AND IT IS LIVE -- NOT "optional", and not unwired (recorded 2026-08-05
     # against a claim that these two methods have "ZERO callers tree-wide", which is false).
-    # Measured call sites in `cortex/brain.py`: `save()` on the sleep-consolidation path and again in
+    # Measured call sites in `engine/brain.py`: `save()` on the sleep-consolidation path and again in
     # the shutdown "final durable save (never-forget)" block, `load()` on the language-organ build
     # path -- all three through `substrate.home.state_path("language_acq.npz")`. On the live operator
     # home the file is 24,700 B and the running daemon had rewritten it within the minute; it is the
@@ -265,7 +265,7 @@ CORPUS = (
 
 
 def load_lm(seed=0, expose_rounds=3, extra_text=None):
-    """Serve entrypoint (the contract cortex/brain.py::_lm_serve wires to): build a LanguageAcquisition
+    """Serve entrypoint (the contract engine/brain.py::_lm_serve wires to): build a LanguageAcquisition
     and let it ACQUIRE language ONLINE from the copyright-safe corpus (predictive coding + local
     plasticity -- no training). Returns the brain-learned model, ready to generate() and to keep
     learning via expose(). Never raises -> returns None on any failure so the brain falls back."""

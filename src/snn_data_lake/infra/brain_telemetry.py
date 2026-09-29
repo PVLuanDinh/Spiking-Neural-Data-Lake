@@ -43,7 +43,7 @@ THE HONESTY CONTRACT (the whole point -- read before adding a panel)
        below (a0d8946, 2026-09-10); `spikes.midbrain` reduces to a constant 0.05 because its
        `novelty` term is written only under a `_salience_on` flag that is never enabled
        (`AutonomousArm.__init__` sets it from the `salience_novelty=False` kwarg at
-       autonomous_loop.py:242, and `cortex/brain.py:241` records deliberately NOT passing it; it is
+       autonomous_loop.py:242, and `engine/brain.py:241` records deliberately NOT passing it; it is
        read at :1170 and :1325 -- the previous note said ":1170" was "the only consumer", which is
        one read short and was corrected 2026-08-05 while re-resolving the rest of this paragraph);
        and `spikes.substrate` is the SAME expression as `spikes.hippocampus`
@@ -205,7 +205,7 @@ PROVENANCE = {
         "track the readout's own error rate better than a fixed prior: paired t +0.50 against the bar 1.895, four of "
         "eight seeds below chance; removing the read in vivo collapses nothing (t +0.37). It decides the chat "
         "abstention route (the monitor's own per-item attribution, 2026-08-05: 3 of 30 sampled replies); it is "
-        "READ by the lifelong learn gate in cortex/brain.py::Brain._enter_sleep -- consumed there, NOT shown "
+        "READ by the lifelong learn gate in engine/brain.py::Brain._enter_sleep -- consumed there, NOT shown "
         "decisive (3.4 i, opening 3; the panel fold 3.5); it is NOT an error-tracking confidence, and no C5 "
         "sentence is licensed for it"
     ),
@@ -668,9 +668,9 @@ def snapshot(brain):
     # (:1751), which are set from the `develop_env` / `gain_adapt` kwargs at :404 and :457.
     #
     # The evidence that Brain never enables them is an ABSENCE, so it is stated as one rather than
-    # cited to a line: re-derived 2026-08-04, `cortex/brain.py` contains NO occurrence of either
+    # cited to a line: re-derived 2026-08-04, `engine/brain.py` contains NO occurrence of either
     # `gain_adapt` or `develop_env`, tree-wide the only `develop_env=True` sites are inside
-    # `cortex/live_brain.py`'s own `main()` (:809, :838), and `gain_adapt` is never passed True
+    # `engine/live_brain.py`'s own `main()` (:809, :838), and `gain_adapt` is never passed True
     # anywhere. (The old cite here, `brain.py:197-209`, points at the NORD_PERSIST block and never
     # mentioned either kwarg -- an absence cannot have a line number, which is presumably how it
     # acquired the wrong one.) So they hold their init 0.0 forever. `computed` records that, because
@@ -949,7 +949,7 @@ def _main():
     """Self-check: the contract holds against a real brain, the recorder round-trips, HTTP answers."""
     import tempfile
 
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     # NORD_TORCH=0 dropped 2026-07-29 with the zero-dependency rule: this self-check now builds the
     # brain in the configuration users actually get.

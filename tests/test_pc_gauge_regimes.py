@@ -11,7 +11,7 @@ input (never adapt the level away), and hit ~0 on a perfectly explained input.
 
 import numpy as np
 
-from snn_data_lake.cortex.live_brain import LiveBrain
+from snn_data_lake.engine.live_brain import LiveBrain
 from snn_data_lake.readout.predictive_coding import PredictiveCodingNetwork
 
 

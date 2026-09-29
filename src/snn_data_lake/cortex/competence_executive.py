@@ -12,7 +12,7 @@ DELETED -- the RETIREMENT RECORD below is the durable account):
     injected into cortex.prefrontal_executive.PrefrontalExecutive.plan, and consumers now inject
     them into plan() themselves (instruments/developmental_loop_brain composes them directly,
     write=False; a live consumer can hand CompetenceDynamics to
-    cortex/live_brain.deliberate_ahead as its `predictor` the same way).
+    engine/live_brain.deliberate_ahead as its `predictor` the same way).
 
 Deterministic (per-instance seeds; each wrapped module is seeded from the same seed). ASCII-only.
 Stdlib only -- no torch, no GPU, so it is REGIONS tier, not TORCH_TIER (P5: the suite stays
@@ -43,7 +43,7 @@ P2 -- what already exists, checked before proposing promotion rather than after:
     plus ONE expression (`ignited = current == content`), and constructing its own workspace made
     it one of the private, mutually invisible instances `tools/p6_gate.py` counts. Everything it
     owed was ported FIRST: the ignition VERDICT lives on
-    `brainstem/autonomous_loop._workspace_broadcast` as `_ws_percept_ignited` (asserted in that
+    `engine/autonomous_loop._workspace_broadcast` as `_ws_percept_ignited` (asserted in that
     module's own self-check -- safe-tick True / reflex-tick False, both halves reddenable --
     exported by `infra/brain_telemetry` and rendered by the cockpit beside `ignitions`); the
     tenant contract
@@ -60,7 +60,7 @@ P2 -- what already exists, checked before proposing promotion rather than after:
     (same-day review pass): the class's own rheobase-boundary asserts and the 4b24c1da clock
     criterion died with their subject -- their licences live in git history, not in a running
     check -- and the ported verdict's criterion now lives in autonomous_loop's self-check.
-  * DopamineModulator is NOT a duplicate, but half of it is. `brainstem/autonomous_loop.py:1807-
+  * DopamineModulator is NOT a duplicate, but half of it is. `engine/autonomous_loop.py:1807-
     1833` (re-cited 2026-08-12: this session's own +7 line insertion above the range shifted it;
     grep `_da_level`) already runs RPE -> `DopamineNuclei.da_level` on the live tick -- and stores the result as
     TELEMETRY (`self._da_level`) while the learning rate is scaled by `cort.learn_rate_scale(r)`
@@ -74,7 +74,7 @@ P2 -- what already exists, checked before proposing promotion rather than after:
     held was the competence-domain forward model + objective, and those are now the PUBLIC
     `CompetenceDynamics` + `goal_value` that consumers inject into plan() directly. The class
     shell carried only a per-instance seed and a `last_rt` attribute. Its write=False
-    stateless-planning capability was ported to `cortex/live_brain.deliberate_ahead(write=)` at
+    stateless-planning capability was ported to `engine/live_brain.deliberate_ahead(write=)` at
     d0984e3b before the deletion, with its own self-check pin.
 
 P7 (dependencies): nothing here was compromised by the retired zero-dependency rule, and the
@@ -212,7 +212,7 @@ class DopamineModulator:
 
     def __init__(self, seed=0, nucleus=None):
         """`nucleus` accepts an ALREADY-LIVE DopamineNuclei (P6: the live tick owns one at
-        `brainstem/autonomous_loop.py:1809`; re-cited 2026-08-12 after this session's +7 shift).
+        `engine/autonomous_loop.py:1809`; re-cited 2026-08-12 after this session's +7 shift).
         Default None keeps the previous private construction, so this is a new port, not a
         behaviour change."""
         self.seed = seed

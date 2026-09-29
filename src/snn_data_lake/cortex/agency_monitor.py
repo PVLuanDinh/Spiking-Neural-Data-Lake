@@ -3,8 +3,8 @@ LIVE STATUS AS MEASURED 2026-07-28 (v4.80), SUPERSEDED 2026-09-15 by the DISPOSI
 T079) -- kept verbatim for the measurement, and FALSE as of that date where it says `observe()` runs every tick
 from `AutonomousArm.step`: the one feed is now per-passage in `AutonomousArm.apply_observed`. As measured then:
 write-only, and NOT a wire candidate. `observe()` runs every
-tick from `brainstem/autonomous_loop.AutonomousArm.step` (guarded by its `agency_monitor=` flag, which
-`cortex/brain.py` sets True), and nothing reads `agency()` / `controllability()` / `status()`. The
+tick from `engine/autonomous_loop.AutonomousArm.step` (guarded by its `agency_monitor=` flag, which
+`engine/brain.py` sets True), and nothing reads `agency()` / `controllability()` / `status()`. The
 line cite this row carried (`autonomous_loop.py:1498`) had drifted onto an unrelated comment about
 delivering a raw magnitude; naming the SYMBOL instead is what stops it drifting again. The
 obvious P3 fix -- consume `route_around` into action selection -- was investigated and REJECTED on the
@@ -1155,7 +1155,7 @@ def t079_record_brain(seed, n_ticks=T079_N_TICKS, shove=None, amp=0.0):
 
     Rows only -- no reading, no floor, no verdict -- and the brain is dropped on return so
     eight seeds never stay alive at once."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
     from snn_data_lake.substrate.home import throwaway_home
 
     rows = []
@@ -1244,7 +1244,7 @@ def t079_stream_labels(seed, n_labels=50, max_ticks=260):
     """The first `n_labels` REAL frame labels seed `s` walks, with 2.2's stream offset
     applied. The offset check is an APPARATUS precondition, so it reads the labels the brain
     actually consumed rather than re-deriving them from the pack by arithmetic."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
     from snn_data_lake.substrate.home import throwaway_home
 
     out = []

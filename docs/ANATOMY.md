@@ -23,7 +23,7 @@ not its cell-level microcircuitry or phenomenology.
 | Olfactory pathway | **ABSENT** | `olfactory/` holds only `__init__.py`; `REGIONS` maps 0 modules to it. `olfactory_bulb` and `piriform_cortex` are NOT implemented (corrected 2026-07-28). `spikes.olfactory` is a constant 0.0 and `PROVENANCE` says so |
 | Claustrum | present | `claustrum/claustrum` — coincidence-gated cortical synchrony / salience hub |
 | Basal forebrain / neuromodulators | present | `neuromodulation/` — ACh, LC-noradrenaline, raphe-serotonin, astrocyte, cortisol; dopamine in `midbrain` |
-| Reticular activating system (ARAS) | **ABSENT** | `pons/reticular_formation` does not exist (corrected 2026-07-28). The wake/sleep switch that DOES run is the circadian clock in `cortex/brain.py`, which is not an ARAS model |
+| Reticular activating system (ARAS) | **ABSENT** | `pons/reticular_formation` does not exist (corrected 2026-07-28). The wake/sleep switch that DOES run is the circadian clock in `engine/brain.py`, which is not an ARAS model |
 | White-matter connectome | present (schematic) | `connectome.py` — typed/directed/signed/loop-aware edge list (37 nodes, 11 closed loops) |
 | Medulla | present | `medulla/` — `vital_nuclei` (pre-Botzinger respiratory CPG + NTS/RVLM baroreflex, homeostatic set-point loops onto the viscera) + `interoceptive_arousal` (visceral error -> bounded caution/gain, wired live) |
 
@@ -44,7 +44,7 @@ ARAS), and the descending corticospinal path. A self-check asserts the arm actua
 **only** through the gated brainstem edge — reinforcing the arm-safety envelope.
 
 The amygdala threat detector, the basal-ganglia Go/NoGo gate, and the interoceptive-arousal drive are
-wired **live** into the running arm loop (`brainstem/autonomous_loop.py`, opt-in): the amygdala learns
+wired **live** into the running arm loop (`engine/autonomous_loop.py`, opt-in): the amygdala learns
 which contexts predict danger, the BG gate selects the released action, and the medullary/hypothalamic
 homeostats turn the body's `homeostatic_load` into a bounded caution (`medulla/interoceptive_arousal`
 via the NTS→LC ascending edge) — all **caution-only**, and the reflex/E-STOP still preempts every
@@ -54,7 +54,7 @@ The **prefrontal executive** (`cortex/prefrontal_executive`) sits at the centre:
 the action-values (reusing the drift-diffusion race), holds a **goal** in working memory, and biases
 selection top-down toward it (`ctx_pfc→ctx_motor`), so the arm is **goal-directed**, not merely
 reactive — a top-down *preference* that still yields to caution and the reflex/E-STOP.
-`cortex/live_brain` runs the whole stack together as one self-driving loop: the brain is **live**,
+`engine/live_brain` runs the whole stack together as one self-driving loop: the brain is **live**,
 centred on reasoning, acting only through the gate.
 
 The running brain is watchable and drivable interactively — `infra/cockpit` (the ONE frontend,
@@ -70,7 +70,7 @@ memory is backed by the **spike data lake**: with
 The Allen top-level ontology is complete **except pons and olfactory, which are empty** (see the
 correction above), the medullary/hypothalamic homeostats are wired live as
 caution-only arousal, and the **prefrontal executive** now runs the whole brain **live** as a
-goal-directed loop (`cortex/live_brain`). The next honest primitives deepen the reasoning centre:
+goal-directed loop (`engine/live_brain`). The next honest primitives deepen the reasoning centre:
 
 1. ~~**Deeper deliberation** — give the executive multi-step / model-based reasoning (planning or
    lookahead over the cerebellar forward model) rather than single-shot evidence commitment, and a

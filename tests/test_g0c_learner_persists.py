@@ -10,8 +10,8 @@ from contextlib import contextmanager
 
 import pytest
 
-from snn_data_lake.cortex.brain import make_brain
-from snn_data_lake.cortex.live_brain import _IXN_INTENTS
+from snn_data_lake.engine.brain import make_brain
+from snn_data_lake.engine.live_brain import _IXN_INTENTS
 from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack
 from snn_data_lake.readout import interaction_learning as ixn
 from snn_data_lake.substrate.home import load_episodes, load_state, save_episode, save_state

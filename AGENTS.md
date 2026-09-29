@@ -14,7 +14,7 @@ exercised it — if torch is absent the install is broken, not degraded. **Per P
 dependency that helps this become a phenomenal brain is accepted, and "it would be another
 dependency" is not a valid reason to reject anything.**
 *(Corrected 2026-08-04: this said `NORD_TORCH=0` "gives a torch-free brain". It gives an
-`ImportError`. Grep says so — `cortex/brain.py` carries the removal note at two sites.)*
+`ImportError`. Grep says so — `engine/brain.py` carries the removal note at two sites.)*
 
 **Governing policies:** `docs/POLICIES.md` — **P0 through P8: nine numbered policies, thirteen entries**
 (P4b, P4c *and* P4d are sub-clauses of P4, P5a of P5; amendments uncounted), not P0–P5. P0 is autonomous self-improvement and outranks the

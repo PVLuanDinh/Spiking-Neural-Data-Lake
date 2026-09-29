@@ -348,7 +348,7 @@ def test_the_live_report_order_margin_reaches_state_with_both_c5_sentences_besid
     assert licensed in prov and refused in prov, "both C5 sentences ride beside the symbol"
     assert "t081_report_order.json" in prov and "BY CONSTRUCTION" in prov
     with throwaway_home():
-        from snn_data_lake.cortex.brain import make_brain
+        from snn_data_lake.engine.brain import make_brain
 
         b = make_brain(seed=0, persist=False)
         for _ in range(30):

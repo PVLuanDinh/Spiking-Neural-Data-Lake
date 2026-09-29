@@ -14,11 +14,11 @@ regions run together as one stateful loop with the executive at the centre; ever
 deterministic self-check, and the arm-safety envelope is UNTOUCHED: an object at the sensor still
 trips the reflex E-STOP before any action, and every motor command flows through the gated arm.
 
-  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.cortex.live_brain
+  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.engine.live_brain
 """
 
-from snn_data_lake.brainstem.autonomous_loop import ACTIONS, AutonomousArm
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
+from snn_data_lake.engine.autonomous_loop import ACTIONS, AutonomousArm
 from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner, text_features
 from snn_data_lake.readout.predictive_coding import PredictiveCodingNetwork
 from snn_data_lake.sensorimotor.nl_interface import NLInterface
@@ -360,17 +360,17 @@ class LiveBrain:
     # distinct-from: thalamus/global_workspace.py -- broadcast() is the bus's own accessor.
     # distinct-from: thalamus/reentrant_workspace.py -- the re-entry stage's occupant read.
     # distinct-from: cortex/access_consciousness.py -- criteria over the bus, not a route.
-    # distinct-from: substrate/report_channel.py -- the ROUTE this accessor now reads
+    # distinct-from: engine/report_channel.py -- the ROUTE this accessor now reads
     #   through (snapshot); this stays the cockpit-facing property name. All sites read.
     def thought(self):
         """The Global Workspace's current broadcast -- what is globally available right now, or None.
 
-        T034: read THROUGH the report channel (substrate/report_channel.snapshot) -- the
+        T034: read THROUGH the report channel (engine/report_channel.snapshot) -- the
         declared route from the composite to every reporter. This accessor was the
         review's named second reporter bypassing the channel; routing it makes ONE
         reporter mechanism (P2) and gives the channel its cockpit-facing consumer (the
         cockpit's thought row reads this property)."""
-        from snn_data_lake.substrate.report_channel import snapshot
+        from snn_data_lake.engine.report_channel import snapshot
 
         return snapshot(self.arm.workspace)["content"]
 
@@ -500,7 +500,7 @@ class LiveBrain:
             # record -- content, availability, strength -- the consumer the review found
             # missing (the first attachment charged nothing a production caller could
             # see; this branch is on the cockpit's live chat path).
-            from snn_data_lake.substrate.report_channel import snapshot
+            from snn_data_lake.engine.report_channel import snapshot
 
             rec = snapshot(self.arm.workspace)
             if rec["availability"] > 0.0:

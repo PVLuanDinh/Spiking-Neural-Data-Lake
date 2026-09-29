@@ -24,7 +24,7 @@ import os
 
 import pytest
 
-from snn_data_lake.brainstem.autonomous_loop import CONTACT, AutonomousArm
+from snn_data_lake.engine.autonomous_loop import CONTACT, AutonomousArm
 
 FAR = CONTACT * 3.0  # comfortably outside contact -- the breach predicate reads clear
 NEAR = CONTACT * 0.5  # inside contact -- the breach predicate trips
@@ -98,7 +98,7 @@ def test_a_trip_clear_loop_is_countable_not_silent():
 
 def test_counter_is_exported_from_brain_state():
     """A count nothing can read is not observability. Exported beside `arm_stopped` on purpose."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     brain = make_brain(seed=0, persist=False)
     try:

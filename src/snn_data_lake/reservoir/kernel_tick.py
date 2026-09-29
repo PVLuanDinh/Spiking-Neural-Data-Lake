@@ -47,7 +47,7 @@ remains ONE compiler, used by `Synapses.__init__`.
 
 # distinct-from: reservoir/cortical_microcircuit.py -- a fixed 8-population Potjans-Diesmann
 #   circuit with its own internal stepping; this is the general SoA substrate tick.
-# distinct-from: substrate/signal_ring.py -- transport of lake-bound RECORDS between faculties;
+# distinct-from: engine/signal_ring.py -- transport of lake-bound RECORDS between faculties;
 #   the delay rings here carry spike BUNDLES inside one kernel.
 # distinct-from: growth/neuron_zoo.py -- per-object model population (see T013 disposition).
 # distinct-from: plasticity/r_stdp.py -- its _FanOut/Calibration machinery parallelizes its
@@ -249,7 +249,7 @@ class KernelTick:
     #   bridges a torch export into the zero-dep core. distinct-from:
     #   reasoning/train_of_thought.py -- summon() ignites a workspace slot. distinct-from:
     #   infra/cockpit.py -- Acts queues arm HTTP commands for the tick-owning thread.
-    #   distinct-from: cortex/brain.py -- _route_percept_to_action is W5 top-down drive.
+    #   distinct-from: engine/brain.py -- _route_percept_to_action is W5 top-down drive.
     #   Vocabulary overlap only; none drains a delay-ring slot. All sites read.
     def _deliver_and_rotate(self, p):
         """Partition p drains ITS OWN slot for the NEXT tick into ITS OWN integer accumulator

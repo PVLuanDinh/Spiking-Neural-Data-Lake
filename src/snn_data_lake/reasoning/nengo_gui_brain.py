@@ -16,7 +16,7 @@ to NengoLoihi. Right-click an ensemble in the GUI for a spike raster / value / f
 FIXED 2026-08-04 -- P4 VIOLATION ON THE CONSTRUCTION PATH, plus an import-time side effect.
 
   * `Brain(seed=0, day_period=15)` was called DIRECTLY at module scope. P4 names exactly one
-    sanctioned construction path, and `cortex.brain.make_brain`'s own docstring names this consumer
+    sanctioned construction path, and `engine.brain.make_brain`'s own docstring names this consumer
     in its list: "Every consumer -- the always-on daemon, the chat servers, demos, THE NENGO BRIDGE
     -- obtains the brain through here instead of calling ``Brain(...)`` directly, so there is
     exactly one construction path to evolve and the replication guard can enforce that no second
@@ -53,7 +53,7 @@ two static criteria in main() -- which are the only ones checkable without the o
 
 import ast
 
-from snn_data_lake.cortex.brain import make_brain
+from snn_data_lake.engine.brain import make_brain
 from snn_data_lake.infra.nengo_bridge import brain_signals
 
 # a curated, readable subset so the GUI graph stays legible (falls back to the first 12 signals). The

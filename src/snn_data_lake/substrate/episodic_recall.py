@@ -160,7 +160,7 @@ class _RowStore:
     first-stored row, exactly as `max()` and a stable sort do over the scalar counter.
 
     It appends rather than rebuilding on purpose. The `when` codebook gains one row per episode
-    (`cortex/brain.Brain._w8_tick` fills that slot with `str(self._wake_ticks)`, always novel), so
+    (`engine/brain.Brain._w8_tick` fills that slot with `str(self._wake_ticks)`, always novel), so
     rebuilding the matrix per write would be O(rows*D) per write -- reintroducing the very per-tick
     cost this replaces. (Cited as `brain.py:1680` until 2026-08-04, which had drifted onto an
     interval-timing comment; named by SYMBOL now.)

@@ -18,7 +18,7 @@ abolished project-wide on 2026-07-20 and P7 replaced it, so "not zero-dep" is no
 anything. (2) The no-importers claim is FALSE and matters, because it is what makes this file look
 detachable: `sensorimotor/eprop_nmnist.py::_ng_snn_dir` (governed since 2026-08-12; the walk survives the move, re-verified 3 hops). The second reacher, `training/surrogate_snn.py::ng_snn_data_file`, was RETIRED 2026-08-13 (specs/013)
 both locate THIS FILE by walking up from their own `__file__`, and those two modules are the vision
-encoders `cortex/brain.py` loads on the live construction path (`SNN_EPROP_CKPT` first,
+encoders `engine/brain.py` loads on the live construction path (`SNN_EPROP_CKPT` first,
 `SNN_PERCEPTION_CKPT` as the fallback). Deleting or renaming this file breaks the brain's perception
 tier, and no gate would say so -- `gates/import_manifest.py`, the cross-tier canary built for
 exactly that failure, does not see `training.*` at all (it matches `snn_data_lake.<ungoverned>` and
@@ -34,6 +34,7 @@ __main__.
 
   PYTHONUTF8=1 .venv-cu128/Scripts/python research/ng_snn/data.py        # disk-streaming smoke
 """
+
 import time
 
 import numpy as np
@@ -42,8 +43,8 @@ import tonic.transforms as TT
 import torch
 from torch.utils.data import DataLoader
 
-SENSOR = tonic.datasets.NMNIST.sensor_size   # (34, 34, 2) -> frames are (T, 2, 34, 34)
-DEFAULT_T = 15                               # PLACEHOLDER time-bin count -- SET FROM THE PAPER (N-MNIST common T ~ 10-25)
+SENSOR = tonic.datasets.NMNIST.sensor_size  # (34, 34, 2) -> frames are (T, 2, 34, 34)
+DEFAULT_T = 15  # PLACEHOLDER time-bin count -- SET FROM THE PAPER (N-MNIST common T ~ 10-25)
 
 
 class ToFloatTensor:
@@ -58,31 +59,45 @@ def _make_dataset(train, save_to, n_time_bins, cache_dir):
     """N-MNIST with event->T-frame binning, wrapped in a DiskCachedDataset (bin once, then stream the
     compact per-sample cache from disk on every later epoch). Separate cache per split + per T."""
     to_frame = TT.ToFrame(sensor_size=SENSOR, n_time_bins=n_time_bins)
-    ds = tonic.datasets.NMNIST(save_to=save_to, train=train,
-                               transform=TT.Compose([to_frame, ToFloatTensor()]))
+    ds = tonic.datasets.NMNIST(
+        save_to=save_to, train=train, transform=TT.Compose([to_frame, ToFloatTensor()])
+    )
     split = "train" if train else "test"
     return tonic.DiskCachedDataset(ds, cache_path=f"{cache_dir}/{split}_T{n_time_bins}")
 
 
-def make_nmnist_loaders(save_to="data", n_time_bins=DEFAULT_T, batch_size=128,
-                        num_workers=4, cache_dir="data/nmnist_cache"):
+def make_nmnist_loaders(
+    save_to="data",
+    n_time_bins=DEFAULT_T,
+    batch_size=128,
+    num_workers=4,
+    cache_dir="data/nmnist_cache",
+):
     """(train_loader, test_loader) that STREAM [B, T, 2, 34, 34] float frames + int labels from disk.
     Disk-cached (bin once, stream after) + pinned memory + worker prefetch for GPU throughput. Set
     n_time_bins from the paper; batch_size / num_workers tune to the RTX 5070."""
     tr = _make_dataset(True, save_to, n_time_bins, cache_dir)
     te = _make_dataset(False, save_to, n_time_bins, cache_dir)
-    common = dict(batch_size=batch_size, num_workers=num_workers, pin_memory=True,
-                  persistent_workers=(num_workers > 0),
-                  prefetch_factor=(4 if num_workers else None))
-    return (DataLoader(tr, shuffle=True, drop_last=True, **common),
-            DataLoader(te, shuffle=False, **common))
+    common = dict(
+        batch_size=batch_size,
+        num_workers=num_workers,
+        pin_memory=True,
+        persistent_workers=(num_workers > 0),
+        prefetch_factor=(4 if num_workers else None),
+    )
+    return (
+        DataLoader(tr, shuffle=True, drop_last=True, **common),
+        DataLoader(te, shuffle=False, **common),
+    )
 
 
 def main():
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     bs = 128
     tr, te = make_nmnist_loaders(n_time_bins=DEFAULT_T, batch_size=bs, num_workers=4)
-    print(f"device={dev}  T={DEFAULT_T}  sensor={SENSOR}  train_batches={len(tr)}  test_batches={len(te)}")
+    print(
+        f"device={dev}  T={DEFAULT_T}  sensor={SENSOR}  train_batches={len(tr)}  test_batches={len(te)}"
+    )
 
     # first pass caches transformed frames to disk; time a handful of STREAMED batches -> GPU.
     t0 = time.perf_counter()
@@ -92,13 +107,19 @@ def main():
         y = y.to(dev, non_blocking=True)
         n += 1
         if n == 1:
-            print(f"batch shape {tuple(x.shape)}  labels {tuple(y.shape)}  dtype {x.dtype}  "
-                  f"nonzero-frac {float((x > 0).float().mean()):.4f}")
+            print(
+                f"batch shape {tuple(x.shape)}  labels {tuple(y.shape)}  dtype {x.dtype}  "
+                f"nonzero-frac {float((x > 0).float().mean()):.4f}"
+            )
         if n >= 20:
             break
     dt = time.perf_counter() - t0
-    print(f"streamed {n} batches ({n * bs} samples) in {dt:.2f}s -> {n * bs / max(dt, 1e-9):.0f} samples/s on {dev}")
-    print("data OK: N-MNIST disk-streaming loader ready (set T from the paper, then build the model)")
+    print(
+        f"streamed {n} batches ({n * bs} samples) in {dt:.2f}s -> {n * bs / max(dt, 1e-9):.0f} samples/s on {dev}"
+    )
+    print(
+        "data OK: N-MNIST disk-streaming loader ready (set T from the paper, then build the model)"
+    )
 
 
 if __name__ == "__main__":

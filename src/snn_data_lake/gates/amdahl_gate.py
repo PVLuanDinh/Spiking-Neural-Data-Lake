@@ -74,8 +74,8 @@ Modes
 #   This one neuters for COST; its verdict is a ceiling and never a charge claim.
 # distinct-from: gates/determinism_gate.py and gates/replay_gate.py -- criteria over
 #   kernel_tick's mechanism; this gate never constructs a KernelTick and makes no kernel claim.
-# distinct-from: cortex/live_brain.py::LiveBrain.run, growth/heterogeneous_microcircuit.py::run_circuit
-#   and cortex/brain.py::Brain._perceive_real -- the three graph-exists near-matches. Each DRIVES a
+# distinct-from: engine/live_brain.py::LiveBrain.run, growth/heterogeneous_microcircuit.py::run_circuit
+#   and engine/brain.py::Brain._perceive_real -- the three graph-exists near-matches. Each DRIVES a
 #   tick; none measures a share, a ceiling or a width trigger. All sites read.
 
 from __future__ import annotations
@@ -517,7 +517,7 @@ def red_sham_neuter(ticks=RED_TICKS, resamples=RED_RESAMPLES, seed=0):
 #   criterion re-run with a perturbation. Site read.
 # distinct-from: gates/conclusion_protocol.py::surface_findings -- scans tracked prose surfaces
 #   for unlicensed sentences. Text, not a measurement. Site read.
-# distinct-from: cortex/theta_gamma_code.py, substrate/learn_daemon.py::self_check,
+# distinct-from: cortex/theta_gamma_code.py, engine/learn_daemon.py::self_check,
 #   substrate/home.py's census rule and brainstem/arm_config.py -- matched on generic docstring words
 #   ("one", "read", "control", "deliberately"); none runs a criterion twice with an arm perturbed.
 #   All sites read. graph-exists returns NO existing broken arm for the repeatability criterion --
@@ -842,7 +842,7 @@ def live_reading(seed=0, wake_ticks=W_TICKS, warmup=WARMUP, resamples=RESAMPLES)
     neuter = NEUTER_PATCH
     sham = SHAM_PATCH
     with throwaway_home() as home:
-        from snn_data_lake.cortex.brain import make_brain  # noqa: PLC0415
+        from snn_data_lake.engine.brain import make_brain  # noqa: PLC0415
 
         t0 = time.perf_counter()
         # A WALL-CLOCK STAMP beside the duration. `elapsed_s` alone cannot locate a reading on the

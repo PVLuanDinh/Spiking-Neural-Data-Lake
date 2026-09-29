@@ -4,7 +4,7 @@ grid games in env.py.
 HONEST FRAMING
 --------------
 This is a REPRESENTATIVE harness, not the official ARC-AGI-3 eval (see env.py). The player below
-drives the brain's real cognitive modules directly -- it does NOT construct `cortex.brain.Brain`
+drives the brain's real cognitive modules directly -- it does NOT construct `engine.brain.Brain`
 (this is not the one brain; per P4 a consumer that stood up its own would be a replica) and imports
 NOTHING from brainstem/ (no arm, no actuator). It is VALUE- and REPRESENTATION-ONLY.
 
@@ -49,17 +49,17 @@ import sys
 import zlib
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_ROOT = os.path.dirname(os.path.dirname(_HERE))          # repo root
+_ROOT = os.path.dirname(os.path.dirname(_HERE))  # repo root
 for _p in (os.path.join(_ROOT, "src"), _ROOT, _HERE):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
+import env as arc_env  # noqa: E402
+
 from snn_data_lake.basal_ganglia.evidence_accumulation import RaceAccumulator  # noqa: E402
 from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive  # noqa: E402
 
-import env as arc_env  # noqa: E402
-
-PALETTE = 16          # fixed color palette for the one-hot spike encoder (all game colors are < 16)
+PALETTE = 16  # fixed color palette for the one-hot spike encoder (all game colors are < 16)
 
 
 class BrainPlayer:
@@ -78,12 +78,12 @@ class BrainPlayer:
         # two real CuriosityDrive instances: one for the Go-Explore frontier, one for transitions.
         self.cur_frontier = CuriosityDrive(seed=seed)
         self.cur_action = CuriosityDrive(seed=seed + 1)
-        self.T = {}                # (sig, action) -> (sig2, reward, done)   the learned world model
-        self.snap = {}             # sig -> env snapshot (Go-Explore return-to-state)
-        self.tried = {}            # sig -> set(actions already taken from this state)
-        self.expandable = set()    # non-terminal sigs still worth returning to
-        self.states = set()        # every sig seen
-        self.Q = {}                # sig -> [value per action]
+        self.T = {}  # (sig, action) -> (sig2, reward, done)   the learned world model
+        self.snap = {}  # sig -> env snapshot (Go-Explore return-to-state)
+        self.tried = {}  # sig -> set(actions already taken from this state)
+        self.expandable = set()  # non-terminal sigs still worth returning to
+        self.states = set()  # every sig seen
+        self.Q = {}  # sig -> [value per action]
 
     # ---- perception: colored grid -> population one-hot spike code (also the state signature) ----
     def perceive(self, grid):
@@ -145,7 +145,7 @@ class BrainPlayer:
             self.T[(s, a)] = (s2, r, done)
             self.tried[s].add(a)
             self._register(s2, game.snapshot(), terminal=done)
-            if len(self.tried[s]) >= self.nA:            # fully expanded -> leaves the frontier
+            if len(self.tried[s]) >= self.nA:  # fully expanded -> leaves the frontier
                 self.expandable.discard(s)
 
     def _plan(self):
@@ -171,7 +171,11 @@ class BrainPlayer:
         actions stay a genuine near-tie the noisy race breaks."""
         mn, mx = min(qvals), max(qvals)
         span = mx - mn
-        drifts = [self.race_scale * (v - mn) / span for v in qvals] if span > 1e-9 else [0.0] * len(qvals)
+        drifts = (
+            [self.race_scale * (v - mn) / span for v in qvals]
+            if span > 1e-9
+            else [0.0] * len(qvals)
+        )
         acc = RaceAccumulator(drifts, bound=1.0, noise=0.3, dt=0.01, seed=seed, max_steps=400)
         winner, _rt = acc.decide()
         return winner
@@ -182,7 +186,7 @@ class BrainPlayer:
         for step in range(game.max_steps):
             qvals = self.Q.get(s)
             if qvals is None or max(qvals) <= 0.0:
-                a = self.rng.randrange(self.nA)             # unseen / unvalued -> fall back
+                a = self.rng.randrange(self.nA)  # unseen / unvalued -> fall back
             else:
                 seed = (zlib.crc32(repr(s).encode()) ^ (step * 2654435761)) & 0xFFFFFFFF
                 a = self._race_action(qvals, seed)

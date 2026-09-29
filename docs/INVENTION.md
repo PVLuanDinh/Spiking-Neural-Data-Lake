@@ -59,7 +59,7 @@ constructs its own internal LIF pool and has no API to accept an external popula
 tens of hours, not "hours". **No PCI value appears anywhere in this design, deliberately.**
 
 **ARREARS's delta. Dead as written -- identically 0.0 on every tick, every seed.**
-Verified: subscribers are exactly `("action", "language")` (`cortex/brain.py:726-727`);
+Verified: subscribers are exactly `("action", "language")` (`engine/brain.py:726-727`);
 submitters are exactly `"percept"`, `"self"`, `"salience"` (`brain.py:1746`, `:1751`, `:1755`);
 `_assoc` is keyed on the SUBMITTER (`reentrant_workspace.py:271`, `:278-280`). The intersection
 is 0 of 2. ARREARS computes `sup.get(k, 0.0) - self._assoc.get((k, winner), 0.0)` over
@@ -396,7 +396,7 @@ design is refuted and the module is deleted, not demoted to a cockpit field.**
    at least 200 ticks x 7 seeds, observables `arm_stopped` and `map_position`. Verdict contract
    preserved: `BEHAVIOURAL CHARGE OK` (exit 0) or `CONSUMED-BUT-NOT-DECISIVE` (exit 1). Exit 1
    means revert -- the same standing rule that reverted the `_wm_spikes` wire at
-   `brainstem/autonomous_loop.py:969`, which took a telemetry field from 1 distinct value to 22,
+   `engine/autonomous_loop.py:969`, which took a telemetry field from 1 distinct value to 22,
    fired on 195 of 200 ticks, and changed 0 of 200 decisions.
 3. **Ordered-pair permutation WITH its invariance companion.** N4's count alone is gameable by a
    fixed random per-faculty map. The pass requires BOTH: on trials where speaker identity IS
@@ -626,7 +626,7 @@ equivalent survives.**
 
 **The trap, named in advance and adopted verbatim in spirit.** The most likely outcome is that
 minted-record counts rise beautifully, admitted selectors rise beautifully, and evaluation stays
-at 18 of 400. That is `brainstem/autonomous_loop.py:969` again. **Mint count, admitted-record
+at 18 of 400. That is `engine/autonomous_loop.py:969` again. **Mint count, admitted-record
 count, and selector-length distribution are TELEMETRY, not outcome, and none may appear in a
 success claim.**
 
@@ -779,7 +779,7 @@ practice, the unification is nominal and must be reported as such.
   deleted; `reached / len(self._subs)` deleted; `step()` records the tally before
   `self._buffer = []`. `submit`, `subscribe`, `broadcast_to`, `association`, `access_strength`
   keep their signatures.
-* `src/snn_data_lake/cortex/brain.py` -- the registered faculties must both `submit()` and
+* `src/snn_data_lake/engine/brain.py` -- the registered faculties must both `submit()` and
   `subscribe()`; `_reentrant_availability` at `:1758` becomes the ledger-derived report-only
   value; the comment at `:713-725` must be UPDATED and must not be made false again -- it is
   currently correct.
@@ -800,7 +800,7 @@ practice, the unification is nominal and must be reported as such.
   parameter.
 * new `tools/residual_census.py` -- step 2's two numbers.
 * new `tests/test_arc_residual.py`.
-* **NOT touched:** `cortex/brain.py:_enter_sleep` -- it is on the tick. The offline pass is a
+* **NOT touched:** `engine/brain.py:_enter_sleep` -- it is on the tick. The offline pass is a
   separate process against a snapshot.
 
 **Reused unchanged:** `reasoning/arc_scene.py`, `reasoning/arc_diagnostic.py`,

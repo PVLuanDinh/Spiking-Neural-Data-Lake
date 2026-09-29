@@ -2,8 +2,8 @@
 
 Policy 4 (user, 2026-07-24): "there is only 1 brain; a build must never replicate brain functionality
 -- utilize the original, not re-implement it, because it causes bloat." The canonical brain is a clean
-3-layer COMPOSITION (verified): cortex.brain.Brain (cognition + circadian clock) composes
-cortex.live_brain.LiveBrain (perception + workspace) composes brainstem.autonomous_loop.AutonomousArm
+3-layer COMPOSITION (verified): engine.brain.Brain (cognition + circadian clock) composes
+engine.live_brain.LiveBrain (perception + workspace) composes engine.autonomous_loop.AutonomousArm
 (action + reward + arm + SAFETY). Composition is fine; RE-DEFINING one of those stack classes a second
 time (a parallel "brain") is the bloat.
 
@@ -14,7 +14,7 @@ scheduled for a Policy-4 consolidation wave, with a reason). A NEW second `class
 LiveBrain` / `class AutonomousArm` that is not allowlisted FAILS run_selfchecks -- so a replica cannot
 be introduced silently. The allowlist shrinks to empty as the consolidation waves retire the replicas.
 
-The companion to this guard is cortex.brain.make_brain(): the single sanctioned CONSTRUCTION path.
+The companion to this guard is engine.brain.make_brain(): the single sanctioned CONSTRUCTION path.
 Consumers obtain the brain through make_brain() rather than calling Brain(...) directly.
 
   python -m snn_data_lake.gates.replication_guard   # (also run by run_selfchecks.py)
@@ -28,9 +28,9 @@ _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../sn
 
 # the canonical single-definition stack classes -> the ONE module each MUST be defined in
 CANON = {
-    "Brain": f"{_PKG}.cortex.brain",
-    "LiveBrain": f"{_PKG}.cortex.live_brain",
-    "AutonomousArm": f"{_PKG}.brainstem.autonomous_loop",
+    "Brain": f"{_PKG}.engine.brain",
+    "LiveBrain": f"{_PKG}.engine.live_brain",
+    "AutonomousArm": f"{_PKG}.engine.autonomous_loop",
 }
 
 # known DUPLICATE definitions still on disk, pending retirement in a Policy-4 consolidation wave.
@@ -104,7 +104,7 @@ def main():
     assert not a["missing"], f"canonical stack class not found where expected: {a['missing']}"
     assert not a["replicas"], (
         f"Policy 4: unsanctioned brain-stack replica(s) -- a second definition of a canonical class "
-        f"that is not on PENDING_RETIREMENT: {a['replicas']}. Utilize the one brain (cortex.brain."
+        f"that is not on PENDING_RETIREMENT: {a['replicas']}. Utilize the one brain (engine.brain."
         f"make_brain / the canonical nesting), do not re-implement it."
     )
     _pend = f" (+ {len(PENDING_RETIREMENT)} allowlisted replica(s))" if PENDING_RETIREMENT else ""

@@ -36,7 +36,7 @@ and torch seeding was uncovered in every tier. Both halves matter: `src/` is gov
 by the three P3 gates and by nothing at all for DETERMINISM, which is the axis these rules measure.
 The counted run over `src/`, before any of it landed:
 
-    P4-CONSTRUCTION        6  -> ALL SIX are `cortex/brain.py` constructing its own class
+    P4-CONSTRUCTION        6  -> ALL SIX are `engine/brain.py` constructing its own class
     CWD-DEPENDENT PATH     0
     MODULE-SCOPE CHDIR     0
     MODULE-SCOPE SEED      1  -> reasoning/arc_agi/play.py, `random.seed(0)` under `__main__`
@@ -79,7 +79,7 @@ path as cwd-dependent and the gate's verdict depended on which CI runner execute
 THE FIVE RULES, and each one is a defect this tree actually produced:
 
   1. P4 CONSTRUCTION. A file in any scanned tier may not call `Brain(...)` unless it DEFINES the
-     class; the one sanctioned path is `cortex.brain.make_brain()`. `tools/charge_probe.py` records fixing exactly this in
+     class; the one sanctioned path is `engine.brain.make_brain()`. `tools/charge_probe.py` records fixing exactly this in
      itself -- *"the instrument that enforced P3 was quietly violating P4"* -- and
      `tools/arc_baseline.py` was still doing it on 2026-08-04, in the tool that produces the
      published ARC "before" number. `gates/replication_guard.py` cannot see this: it asserts
@@ -163,9 +163,9 @@ TIERS = ("tools", "tests", "src")
 #: Stack classes that must be obtained through their sanctioned constructor rather than called.
 #: `AutonomousArm` is deliberately ABSENT: it is the arm, not the brain, and several arm tests
 #: legitimately construct one in isolation to exercise the E-STOP without standing up a cortex.
-#: P4's sanctioned-path clause is about `cortex.brain.make_brain()`, so this rule is scoped to what
+#: P4's sanctioned-path clause is about `engine.brain.make_brain()`, so this rule is scoped to what
 #: that clause actually says.
-CONSTRUCTED_VIA_FACTORY = {"Brain": "cortex.brain.make_brain()"}
+CONSTRUCTED_VIA_FACTORY = {"Brain": "engine.brain.make_brain()"}
 
 #: Module-scope calls that mutate state shared by every module imported after them. Keys are
 #: CANONICAL dotted paths -- call targets are resolved through the module's own import table first,
@@ -398,14 +398,14 @@ def scan():
             # rule 1 -- P4 construction, anywhere in the file, in EITHER spelling: a bare
             # `Brain()` and a qualified `brain.Brain()` are the same violation, and keying on
             # `ast.Name` alone let the second one through (see rule 1 in the docstring). The
-            # dotted form is matched on its LAST component, so `cortex.brain.Brain()` is caught
+            # dotted form is matched on its LAST component, so `engine.brain.Brain()` is caught
             # too. A call on an expression (`factory().Brain()`) still escapes -- `_dotted`
             # needs a Name at the base -- which is a known and deliberate floor, not a claim of
             # completeness.
             # THE DEFINING MODULE IS EXCLUDED (2026-08-14, with `src/` in scope): `make_brain()`
             # lives in the module that defines `Brain` and must call it, or there is no sanctioned
             # path to be the sanctioned path. All SIX `src/` hits on the first counted run were
-            # `cortex/brain.py` constructing its own class. P4's clause is about CONSUMERS, so this
+            # `engine/brain.py` constructing its own class. P4's clause is about CONSUMERS, so this
             # is the rule reading what the policy says -- not an allowlist for one file.
             for node in ast.walk(tree):
                 if not isinstance(node, ast.Call):
@@ -583,7 +583,7 @@ def main(argv=None):
 #: is the claim; a red per tag is not the same thing.
 _RED = {
     "P4-CONSTRUCTION (bare name)": (
-        "from snn_data_lake.cortex.brain import Brain\n_B = Brain()\n",
+        "from snn_data_lake.engine.brain import Brain\n_B = Brain()\n",
         "P4-CONSTRUCTION",
     ),
     "P4-CONSTRUCTION (qualified)": (
@@ -656,7 +656,7 @@ _GREEN = (
     "def build():\n"
     "    import os\n"
     "    os.chdir('/tmp')\n"
-    "    from snn_data_lake.cortex.brain import make_brain\n"
+    "    from snn_data_lake.engine.brain import make_brain\n"
     "    return make_brain(seed=0, persist=False)\n"
     "class Forked:\n"
     "    def __init__(self, seed=0):\n"

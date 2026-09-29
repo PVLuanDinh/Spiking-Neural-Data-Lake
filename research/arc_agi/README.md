@@ -36,7 +36,7 @@ arcade gameplay and don't co-install with `arc-agi`'s numpy>=2.2 — so "all tie
 full COGNITIVE stack above.
 
 > Corrected 2026-08-04: this said *"the brain's torch LANGUAGE (SpikeGPT = conversation)"*. The
-> SpikeGPT-216M organ was **scrapped in v3.77** — `cortex/brain.py` says so at the language-organ
+> SpikeGPT-216M organ was **scrapped in v3.77** — `engine/brain.py` says so at the language-organ
 > block, and conversation now comes from the acquired organ (`cortex/language_acquisition`, built
 > lazily in `_lm_serve`). Naming a deleted component as the reason for a scope limit makes the limit
 > unverifiable. `play_brain.py`'s own docstring carried the same stale name and is corrected too.

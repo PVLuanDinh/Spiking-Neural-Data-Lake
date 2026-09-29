@@ -116,7 +116,7 @@ REGIONS = {
         "divisive_normalization",
         # PROMOTED from reasoning/brain_adapters/ 2026-08-12 (#10 lane 4c): the ONE live-tick
         # percept readout (feedback alignment + fixed-random L6, no weight transport) --
-        # cortex/brain.py constructs it lazily on every real percept; numpy-only, CORE tier.
+        # engine/brain.py constructs it lazily on every real percept; numpy-only, CORE tier.
         "is_snn_forward",
         # PROMOTED 2026-08-13 (was reasoning/snn_moe_classifier.py): firing-rate ROUTED
         # mixture-of-experts over snn_classifier's spiking experts. CORE, not TORCH_TIER -- it
@@ -125,7 +125,6 @@ REGIONS = {
         # `random.seed(0)`, fixed with infra/brain_bundle.py's snapshot-seed-restore pattern.
         "vsa_reasoning",
         "prefrontal_executive",
-        "live_brain",
         # higher cognition / self-model / self-improvement (v3.14+)
         "access_consciousness",
         "self_model",
@@ -157,7 +156,6 @@ REGIONS = {
         "vsa_structure_mapping",  # PROMOTED 2026-08-12 (PROMOTE lane): Gentner relational structure-mapping over VSA spike codes; LIVE via reasoning_cortex's structure-map solver (reached from brain.py's lazy :924 -- the lane's own I001 sort moved it from :928 -- + reasoning_cortex:705). P3 debt carried visibly, NOT fixed here: brain.py:967's `_structure_mapper` attribute is write-only (AUDIT_BACKLOG M11) -- retire-or-read is its own commit. P2 direction recorded in-file: the dim-parameterised _cleanup_project is THE mechanism; reasoning/resonator_network's hardcoded copy (measured 300/300 bit-identical at dim=512) delegates or retires when its lane arrives.
         "rose_language",  # PROMOTED 2026-08-12 (PROMOTE lane): the ROSE fluent-language pipeline (VSA constituency parse + KB-grounded comprehend + SLDA competence), LIVE via brain._rose_serve's lazy reach. P3/P4b debt carried visibly, NOT discharged by the move (AUDIT_BACKLOG H7, runtime-reproduced at the promotion audit): nightly_refit moves the SLDA sufficient statistics while competence() returns the build-time cached acc byte-identical; the refit filter accepts a novel HEAD coded OOV-zero; _readout is per-Brain RAM reaching brain_lake.bin nowhere. P2 direction recorded: rose's derived parameterisation (rff from in_dim, ctx from data, relations from the KB ratio) is THE mechanism; sensorimotor/world_kb_stream main()'s four-literal demo copy consumes it or retires at the family's next lane.
         # torch-trained tiers with a zero-dep serve/integration path (import cleanly without torch)
-        "brain",
     ],
     "hippocampus": [
         "grid_cells",
@@ -232,7 +230,6 @@ REGIONS = {
         "so101_arm",  # the MuJoCo SO-101 gate; REPLACED arm_sim (specs/004)
         "arm_config",
         "interpreter",
-        "autonomous_loop",
         "cpg_oscillator",
     ],
     "thalamus": [
@@ -356,15 +353,11 @@ REGIONS = {
         # package in no gate, with no self-check and not one assert. `learn_daemon.py` at the root is
         # now a thin shim so the documented command still works. Its __main__ is a self-check, NOT
         # the drive loop -- run_selfchecks executes __main__ and a forever-loop would hang the gate.
-        "learn_daemon",
         "lake_bridge",  # specs/022 T005b: read-old/write-new format bridge; bare == constructed round-trip red
         "lake_segments",  # specs/022 T005: WAL(BinLog) + sealed Arrow IPC segments; bare == round-trip + CRC red
         "lake_index",  # specs/022 T007: derived pointer index (sqlite WAL); bare == round-trip + divergence red
         "lake_migrate",  # specs/022 T009: per-tag dispositions + identity migration; bare == identity + unknown-tag red
         "lake_engine",  # specs/022 T010-i: retention registry + IMMORTAL append budget; bare == consistency + flood red
-        "signal_ring",  # specs/022 T011: ONE-writer multicast ring + lake journaller; bare == replay A/B + overrun red
-        "wiring_manifest",  # specs/022 T018: TypedPort + WiringManifest (declared anatomy); bare == five checks + five reds + NIR round-trip
-        "report_channel",  # 022 T034: typed workspace-report snapshot; the broadcast's declared consumer
         "content_signature",
         "episodic_recall",
         "lake_recall",
@@ -526,6 +519,15 @@ REGIONS = {
         "sleep_consolidation",
         "sleep_replay",
         "structural_rewiring",
+    ],
+    "engine": [
+        "autonomous_loop",
+        "brain",
+        "learn_daemon",
+        "live_brain",
+        "report_channel",
+        "signal_ring",
+        "wiring_manifest",
     ],
 }
 

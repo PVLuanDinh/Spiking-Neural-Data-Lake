@@ -78,7 +78,7 @@ Two mechanisms now exist:
    The bare `path:line` form still resolves, so no existing row was invalidated.
 2. **W6** — a WARNING (never fatal) naming every citation that points at a comment or blank line.
 
-**The census was 23 rows across 10 of the 11 categories**, overwhelmingly into `cortex/brain.py`, the
+**The census was 23 rows across 10 of the 11 categories**, overwhelmingly into `engine/brain.py`, the
 most edited file in the tree. **All 23 are now repaired and anchored: the census stands at 1.**
 
 Each re-point was derived by locating the cited line's ORIGINAL text at the baseline commit and finding
@@ -106,7 +106,7 @@ the all-zero sha, which `--repin` correctly refuses to read -- and then counts a
 moves on.
 
 That is the normal state right after a repair. MEASURED: repairing this ledger and then editing
-`cortex/brain.py` in the same session drifted 36 citations, and **84 of 88 rows were unblamable**, so
+`engine/brain.py` in the same session drifted 36 citations, and **84 of 88 rows were unblamable**, so
 `--repin` reached 16 of them and printed a confident summary. A tool that fixes 16 of 36 and says
 nothing about the other 20 is worse than one that refuses.
 
@@ -376,7 +376,7 @@ that resolves to a line saying something else, which no cheap check can catch.
 
 ## What the ceiling looks like, so nobody plans past it
 
-The rubric pre-declares that wiring into `cortex/brain.py::_route_percept_to_action` moves a three-way
+The rubric pre-declares that wiring into `engine/brain.py::_route_percept_to_action` moves a three-way
 arm decision and **cannot** raise Language, Imagination, Gf, Consciousness or WholeBrain. That is
 **five categories excluded — 45% of the weight** at 9.09 points each — which move only on capability.
 

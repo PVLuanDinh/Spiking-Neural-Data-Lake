@@ -33,7 +33,7 @@ CALLER's value, not just its own. Every module after it in the list therefore fe
 `~/.snn_data_lake` and read and WROTE the operator's live brain on every pytest run, while whoever
 launched the run believed they had set an isolated home. Worse, `Brain.__init__` restored the grown
 substrate from that lake unconditionally, so with a daemon appending to it concurrently, two seed=0
-Brains built two seconds apart differed ~42% of the time and `cortex.brain`'s claim 4 ("two seed=0
+Brains built two seconds apart differed ~42% of the time and `engine.brain`'s claim 4 ("two seed=0
 Brains must be byte-identical") failed intermittently -- a real determinism defect that subprocess
 isolation had been under-sampling rather than preventing.
 

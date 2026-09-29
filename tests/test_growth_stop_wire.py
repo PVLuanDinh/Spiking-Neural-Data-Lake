@@ -98,7 +98,7 @@ def test_brain_engine_carries_the_gate_and_surfaces_verdicts():
     callable attached -- the wire exists at birth -- and a verdict reached through the
     brain's own callable lands on state()['growth_gate'] (P4c: the cockpit renders what
     the brain measures)."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     b = make_brain(seed=0)
     if b.neuro is None:

@@ -1,6 +1,6 @@
 """
 eprop_nmnist -- BRAIN-NATIVE (e-prop) spiking N-MNIST classifier / encoder for the Spiking Neural
-Data Lake, and the brain's FIRST-CHOICE vision transducer: `cortex/brain.py` loads `EpropEncoder`
+Data Lake, and the brain's FIRST-CHOICE vision transducer: `engine/brain.py` loads `EpropEncoder`
 from `models/eprop_nmnist.pt` and sets `_perception_tier = "eprop-snn"` when that checkpoint exists
 (measured live 2026-08-04: tier=eprop-snn, encoder loaded, device=cpu). It is the e-prop counterpart
 of the RETIRED training/surrogate_snn.py (deleted 2026-08-13, specs/013 -- this module is now the
@@ -88,7 +88,7 @@ MEASURED value replaced it and the disagreement is recorded rather than quietly 
 DEPENDENCIES (P7, zero-dependency rule abolished 2026-07-20). torch is an unconditional core
 dependency and this module uses it as the core tier, not as an apologetic extra; the previous header
 ("OPTIONAL torch [train]/[gpu] tier", "the zero-dep core NEVER imports this", "Imports NOTHING from
-src/snn_data_lake/") was retired-rule residue and is now also FALSE -- cortex/brain.py imports this
+src/snn_data_lake/") was retired-rule residue and is now also FALSE -- engine/brain.py imports this
 module on the live construction path. Nothing here was hand-rolled to avoid a dependency: the LIF /
 e-prop loop is already vectorized torch over batch and units, and reasoning/eprop.py stays the
 stdlib SCALAR reference it is correct to be (importing it here would buy nothing -- different tier,
@@ -534,7 +534,7 @@ def train_and_eval(args):
         "by e-prop eligibility traces + broadcast error (loss.backward NEVER called for them); readout"
     )
     print(
-        "uses its exact gradient. The checkpoint this writes is what cortex/brain.py loads as its"
+        "uses its exact gradient. The checkpoint this writes is what engine/brain.py loads as its"
     )
     print("first-choice vision tier (perception_tier=eprop-snn).")
     print(f"Encoder latent dim = {args.hidden} (recurrent hidden spike-count activity).")
@@ -640,7 +640,7 @@ def run_smoke(device):
         f"sigma on {x_te.shape[0]} test samples)"
     )
 
-    # ROUND-TRIP through the real load(path) interface -- the exact surface cortex/brain.py consumes.
+    # ROUND-TRIP through the real load(path) interface -- the exact surface engine/brain.py consumes.
     # The criterion is NOT "the shapes look right": nothing reachable can make that fail (a config
     # that loses a SHAPE field is caught earlier and louder by load_state_dict, and int()/[...]
     # cannot return a non-int/non-list). It is "the reloaded encoder IS this net" -- and it takes
@@ -715,7 +715,7 @@ def run_smoke(device):
     )
     assert latent_exact, (
         "checkpoint round-trip must reproduce the source net's latents EXACTLY -- a config()/"
-        "state_dict field that stops persisting changes every latent cortex/brain.py consumes,"
+        "state_dict field that stops persisting changes every latent engine/brain.py consumes,"
         " with the shapes still matching"
     )
     assert logit_exact, (

@@ -318,12 +318,12 @@ def source_dir(root):
 
 
 def rel(path, root):
-    """Repo-relative POSIX path under src/snn_data_lake/, e.g. 'cortex/brain.py'."""
+    """Repo-relative POSIX path under src/snn_data_lake/, e.g. 'engine/brain.py'."""
     return os.path.relpath(path, source_dir(root)).replace(os.sep, "/")
 
 
 def modname(relpath):
-    """'cortex/brain.py' -> 'snn_data_lake.cortex.brain'."""
+    """'engine/brain.py' -> 'snn_data_lake.engine.brain'."""
     return f"{_PKG}." + relpath[: -len(".py")].replace("/", ".")
 
 
@@ -1614,7 +1614,7 @@ FR010_ALLOWED_RULE_EDITS = (
 # distinct-from: src/snn_data_lake/instruments/integration_measure.py -- its `_run` executes one
 #   perturbed subnet simulation against a pre-drawn noise realization. It inspects no change set,
 #   reads no path, and has nothing to do with which files a diff touched.
-# distinct-from: src/snn_data_lake/substrate/learn_daemon.py -- its `_self_check` asserts the
+# distinct-from: src/snn_data_lake/engine/learn_daemon.py -- its `_self_check` asserts the
 #   daemon does not start its drive loop under run_selfchecks. Also a self-check, also returns a
 #   list; it examines the daemon's own behaviour, never a set of changed paths.
 #

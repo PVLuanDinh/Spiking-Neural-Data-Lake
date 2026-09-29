@@ -39,7 +39,7 @@ language organ falls back to the deterministic narrator when unavailable).
 
 Deterministic: per-instance seeding only (no wall-clock, no global RNG). ASCII-only output.
 
-  PYTHONUTF8=1 PYTHONPATH=src .venv-cu128/Scripts/python.exe -m snn_data_lake.cortex.brain
+  PYTHONUTF8=1 PYTHONPATH=src .venv-cu128/Scripts/python.exe -m snn_data_lake.engine.brain
 """
 
 import math
@@ -47,14 +47,6 @@ import re
 
 from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.cortex.access_consciousness import AccessConsciousness
-from snn_data_lake.cortex.live_brain import (
-    _AFFIRM,
-    _IXN_INTENTS,
-    _NEGATE,
-    _ROUTE_CUES,
-    LiveBrain,
-    _route_tokens,
-)
 from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor
 from snn_data_lake.cortex.reasoning_curriculum import ReasoningEnv, ReasoningLearner
 
@@ -63,6 +55,14 @@ from snn_data_lake.cortex.reasoning_curriculum import ReasoningEnv, ReasoningLea
 # the fold runs on every wake tick; recursive_tom imports nothing from brain at module scope.
 from snn_data_lake.cortex.recursive_tom import T082_PROTECT_DECAY, T082_PROTECT_GAIN
 from snn_data_lake.cortex.self_model import SelfModel, SelfNarrator
+from snn_data_lake.engine.live_brain import (
+    _AFFIRM,
+    _IXN_INTENTS,
+    _NEGATE,
+    _ROUTE_CUES,
+    LiveBrain,
+    _route_tokens,
+)
 from snn_data_lake.growth.growing_learner import GrowingLearner
 from snn_data_lake.hypothalamus.set_points import (
     AMBIENT_TEMP,
@@ -977,10 +977,10 @@ class Brain:
         self._grid_can_prev = None
         try:
             from snn_data_lake.amygdala.affective_appraisal import AffectiveAppraisal
-            from snn_data_lake.brainstem.autonomous_loop import ACTIONS as _ACTS
             from snn_data_lake.cortex.generative_self_model import GenerativeSelfModel
             from snn_data_lake.cortex.task_set import TaskSetLayer
             from snn_data_lake.cortex.time_cells import TimeCellClock
+            from snn_data_lake.engine.autonomous_loop import ACTIONS as _ACTS
             from snn_data_lake.hippocampus.spiking_grid_can import SpikingGridCAN
 
             self._time_clock = TimeCellClock(n_cells=64, seed=self._seed)
@@ -1027,7 +1027,7 @@ class Brain:
         # a function of its seed and not of what the daemon left on disk. Its OWN try, like the clock's.
         if self._persist and self._time_cells_restore:
             try:
-                from snn_data_lake.brainstem.autonomous_loop import COVERAGE_STATE as _CS
+                from snn_data_lake.engine.autonomous_loop import COVERAGE_STATE as _CS
                 from snn_data_lake.substrate import home as _home
 
                 self.brain.arm.restore_coverage(_home.load_state(_CS, default=None))
@@ -1087,9 +1087,9 @@ class Brain:
         self._imagined_surprise = 0.0
         self._cf_prev = None
         try:
-            from snn_data_lake.brainstem.autonomous_loop import ACTIONS as _ACTS2
             from snn_data_lake.cortex.counterfactual_sim import CounterfactualSim
             from snn_data_lake.cortex.recursive_tom import RecursiveToM
+            from snn_data_lake.engine.autonomous_loop import ACTIONS as _ACTS2
             from snn_data_lake.neuromodulation.affect_integrator import AffectIntegrator
 
             self._recursive_tom = RecursiveToM(n_agents=3, seed=self._seed)
@@ -1988,7 +1988,7 @@ class Brain:
         The two former absolute thresholds are now RELATIVE to running baselines (neural adaptation
         to the current distribution) rather than magic numbers."""
         try:
-            from snn_data_lake.brainstem.autonomous_loop import ACTIONS, SAFE_ACTION
+            from snn_data_lake.engine.autonomous_loop import ACTIONS, SAFE_ACTION
 
             da = float(
                 getattr(self.brain.arm, "_rpe", 0.0) or 0.0
@@ -2575,7 +2575,7 @@ class Brain:
             # the one line outside cortex/metacognitive_monitor.py that the executive->metacognition
             # edge needs, and without it the consumer's new input would be a parameter nobody fills
             # (P3 shape 1). `_conflict` is cortex/executive_control.ExecutiveControl.conflict(drive)
-            # computed on the live tick at brainstem/autonomous_loop.py; until now its only readers
+            # computed on the live tick at engine/autonomous_loop.py; until now its only readers
             # were the ACTION path (the STN hyperdirect brake) and cortex/learned_evc, so no faculty
             # consumed it as EVIDENCE. The monitor takes it relative to its own running baseline, so
             # a conflict stream that never varies contributes exactly zero -- see that module's
@@ -2703,7 +2703,7 @@ class Brain:
             self._cfsim is not None
         ):  # C1 b2: counterfactual do()-operator over a learned local forward model (annotation only)
             try:
-                from snn_data_lake.brainstem.autonomous_loop import ACTIONS as _A
+                from snn_data_lake.engine.autonomous_loop import ACTIONS as _A
 
                 acts = list(range(len(_A)))
                 ranked = self._cfsim.counterfactual(
@@ -3011,7 +3011,7 @@ class Brain:
         readout; every one was reading a constant. `cortex/access_consciousness.py::content_key` keys
         the pool on the BUNDLE, and the same run now reads 44 of 56, of which 8 of the 12 lapses
         post STRICTLY BELOW the 0.55 rheobase -- the repetition-suppression failure the paragraph
-        below has always claimed, actually happening. `cortex/live_brain.py::thought` is
+        below has always claimed, actually happening. `engine/live_brain.py::thought` is
         BYTE-IDENTICAL across that change (crc 0f0938d6, 4 distinct values, 55 changes, naming the
         submitted percept on 56 of 56); `_access_ema` moves 0.488958 -> 0.287282, and that is the
         fiat leaving, not a signal collapsing.
@@ -3925,8 +3925,8 @@ class Brain:
     #   overlap on 'state' only; this is the ONE /api/state telemetry build. Sites read.
     def state(self):
         """Telemetry for /api/state. Adds a COMPACT self_state view of the evolving self-model."""
+        from snn_data_lake.engine.report_channel import snapshot as _report_snapshot
         from snn_data_lake.instruments.report_order_probe import _t081_top_margin
-        from snn_data_lake.substrate.report_channel import snapshot as _report_snapshot
 
         # T081 (2026-09-16, evidence/t081-report-order.md 2.6 PASS): the ARM's bus, bound ONCE so
         # `workspace_report` and `report_order_margin` below are two readings of the SAME object
@@ -5130,7 +5130,7 @@ class Brain:
         except Exception:
             return False
 
-    # distinct-from: brainstem/autonomous_loop.py -- the tapped envelope passage (motion, T037).
+    # distinct-from: engine/autonomous_loop.py -- the tapped envelope passage (motion, T037).
     #   distinct-from: infra/brain_native_selfbuild.py -- ranks self-build candidates.
     #   distinct-from: cortex/percept_surprise.py, midbrain/dopamine_nuclei.py -- manifest port
     #   registrants. distinct-from: substrate/lake_segments.py -- the lake engine's segment
@@ -5364,7 +5364,7 @@ def _resume_child_source(src_root, seed, ticks):
     return (
         "import json, sys\n"
         f"sys.path.insert(0, {src_root!r})\n"
-        "from snn_data_lake.cortex.brain import make_brain\n"
+        "from snn_data_lake.engine.brain import make_brain\n"
         f"b = make_brain(seed={seed}, persist=True)\n"
         "ign = 0\n"
         f"for _ in range({ticks}):\n"
@@ -5481,7 +5481,7 @@ def main():
 
 
 def _main():
-    from snn_data_lake.brainstem.autonomous_loop import AutonomousArm
+    from snn_data_lake.engine.autonomous_loop import AutonomousArm
 
     rows = []  # (claim#, text, measured, ok)
     notes = []
@@ -5802,7 +5802,7 @@ def declare_ports(manifest):
     receives the predictor port's surprise scalar into the undirected-salience competition
     above (the salience-source dict entry `surprise` -- loop C2's orienting drive). The
     edge is declared by this consumer: its subscription, its join."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "brain",
@@ -5840,7 +5840,7 @@ def declare_ports(manifest):
     # action population, consumed every wake tick into the per-action preference
     # (elig['taskset'] + the directed drive). The consumer declares its subscription and
     # THE edge (the T034/M10 convention).
-    from snn_data_lake.brainstem.autonomous_loop import ACTIONS as _film_acts
+    from snn_data_lake.engine.autonomous_loop import ACTIONS as _film_acts
 
     manifest.declare_port(
         "brain",

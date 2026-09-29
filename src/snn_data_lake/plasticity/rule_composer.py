@@ -110,7 +110,7 @@ from snn_data_lake.plasticity.eligibility_algebra import AuthoredRule
 #   metacognitive spine over tasks); this composes RULES on one substrate. Site read.
 # distinct-from: plasticity/eligibility_algebra.py -- the AUTHORING contract this
 #   kernel consumes; rules arrive as AuthoredRule, never re-parsed. Site read.
-# distinct-from: substrate/wiring_manifest.py -- ports/edges between faculties;
+# distinct-from: engine/wiring_manifest.py -- ports/edges between faculties;
 #   RuleSpec's reads/writes are per-RULE factor/target sets. Producer references
 #   composed with the manifest landed at T051b-iii (check_producers). Site read.
 # distinct-from: gates/gradient_claim_gate.py -- the per-SYMBOL claim system;
@@ -134,7 +134,7 @@ GRADIENT_CLAIM = {
 POLICIES = ("sum", "sequential")
 
 
-# distinct-from: substrate/wiring_manifest.py -- Port declares a FACULTY signal surface;
+# distinct-from: engine/wiring_manifest.py -- Port declares a FACULTY signal surface;
 #   RuleSpec declares one RULE's factor/target sets, and its `producers` entries only
 #   REFERENCE manifest ports (resolved by check_producers), never re-model them. Site read.
 class RuleSpec:
@@ -410,7 +410,7 @@ class RuleComposer:
             return out
 
 
-# distinct-from: substrate/signal_ring.py -- JoinConsumer ENFORCES join/delivery policies on
+# distinct-from: engine/signal_ring.py -- JoinConsumer ENFORCES join/delivery policies on
 #   live traffic between faculties; check_producers only RESOLVES a rule's declared factor
 #   references against the manifest (a static census check, no traffic touched). Site read.
 # distinct-from: gates/manifest_gate.py -- that gate checks the MANIFEST's own coherence;

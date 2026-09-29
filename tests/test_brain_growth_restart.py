@@ -34,7 +34,7 @@ pytestmark = pytest.mark.slow
 _CHILD = r"""
 import json, os, sys
 os.environ["NORD_HOME"] = sys.argv[1]
-from snn_data_lake.cortex.brain import make_brain
+from snn_data_lake.engine.brain import make_brain
 b = make_brain(seed=7, persist=True)
 eng = b.neuro
 out = {
@@ -142,7 +142,7 @@ def _assert_probe_sees(home):
 _GROW_THEN_EXIT = r"""
 import json, os, sys
 os.environ["NORD_HOME"] = sys.argv[1]
-from snn_data_lake.cortex.brain import make_brain
+from snn_data_lake.engine.brain import make_brain
 b = make_brain(seed=7, persist=True)
 start = int(b.neuro.grown_units)
 at = -1
@@ -231,7 +231,7 @@ def test_a_brain_that_grew_comes_back_grown():
     grow = r"""
 import json, os, sys
 os.environ["NORD_HOME"] = sys.argv[1]
-from snn_data_lake.cortex.brain import make_brain
+from snn_data_lake.engine.brain import make_brain
 b = make_brain(seed=7, persist=True)
 for _ in range(int(sys.argv[2])):
     b.tick()

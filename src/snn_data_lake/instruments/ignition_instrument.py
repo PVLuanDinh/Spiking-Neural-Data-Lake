@@ -154,7 +154,7 @@ def _trial(theta, drive, seed, reentry=True, subject_cls=ReentrantWorkspace):
 _ENSEMBLE = 5  # seeds per drive point -- see sweep(); the early mode needs independent mass
 
 
-# distinct-from: cortex/brain.py -- its 'ensemble' is the wake tick's model committee;
+# distinct-from: engine/brain.py -- its 'ensemble' is the wake tick's model committee;
 #   this is a seeded TRIAL ensemble for a measurement sweep. Read.
 def sweep(theta, seed=0, subject_cls=ReentrantWorkspace, reentry=True):
     """The drive sweep at commanded theta: an ENSEMBLE of `_ENSEMBLE` seeded trials per
@@ -196,7 +196,7 @@ def sweep(theta, seed=0, subject_cls=ReentrantWorkspace, reentry=True):
 
 
 # distinct-from: sensorimotor/signal_loop.py -- its windows are sensor segments, no PSTH.
-# distinct-from: brainstem/autonomous_loop.py -- salience deviance, no spike raster. Read.
+# distinct-from: engine/autonomous_loop.py -- salience deviance, no spike raster. Read.
 def derive_window(trials):
     """Re-derive the late window from the DATA, via the distribution the ignition
     signature actually lives in on THIS kernel: LAST-SPIKE TIMES. Under constant drive the

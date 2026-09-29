@@ -95,7 +95,7 @@ class RegionCoherence:
     answer. So the FORM stays fixed (memoryless, bounded, monotone, deterministic) and only the SIZE
     of the discount is calibrated -- against the coherence this brain actually produces.
 
-    MEASURED (throwaway probe: cortex.brain.Brain wake sessions, seeds {0,1,2,3,5} x 120 forced-day
+    MEASURED (throwaway probe: engine.brain.Brain wake sessions, seeds {0,1,2,3,5} x 120 forced-day
     ticks with a varying synthetic percept, n=600 samples of Brain._region_coherence_val):
         min 0.138 | p05 0.259 | p25 0.390 | median 0.500 | mean 0.488 | p75 0.571 | p95 0.697
         | max 0.896 | sd 0.134   -- mass concentrated in [0.3, 0.7]; c=0 and c=1 NEVER occur.
@@ -342,7 +342,7 @@ class RegionCoherence:
         -> lower threshold.
 
         `coherence=None` uses the last measured value, which is every pre-T039f caller unchanged.
-        A caller that has ALREADY GATED coherence passes the gated value explicitly -- cortex.brain
+        A caller that has ALREADY GATED coherence passes the gated value explicitly -- engine.brain
         does, because its synfire binding gate decides whether a coherence volley was reliable
         enough to count, and that decision belongs where the synfire chain is, not here. Passing
         0.0 is how the caller says "coherence contributes nothing this tick", and the
@@ -370,7 +370,7 @@ def declare_ports(manifest):
     downstream receives the threshold, never the salience. join_policy is `max`: a single producer
     today, and if a second interoceptive source is ever declared the strongest body signal should
     set the discount rather than two sources summing past the bound the law depends on."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "region_coherence",
@@ -391,11 +391,11 @@ def declare_ports(manifest):
 
 def _interoception_consumer_factory():
     """Fresh ring + JoinConsumer over `interoception_in`, one pair per replay arm."""
+    from snn_data_lake.engine.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.engine.wiring_manifest import WiringManifest
     from snn_data_lake.insula.interoceptive_integration import (
         declare_ports as _producer_ports,
     )
-    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
-    from snn_data_lake.substrate.wiring_manifest import WiringManifest
 
     m = WiringManifest()
     _producer_ports(m)

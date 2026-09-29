@@ -9,21 +9,21 @@ coordination, homeostasis, self-improvement. The roster below is grouped in that
 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
-| homeostatic_drive_to_action | 40 | src/snn_data_lake/cortex/brain.py:1763#_route_percept_to_action; src/snn_data_lake/cortex/brain.py:1828#_drive_for | wb_drive_60.txt | opus-5 WholeBrain REFUTER (was 65) / rubric ceiling COVERAGE_RUBRIC.md:99-102 + wb_refute_onset_60.txt | 2026-07-30 |
-| circadian_wake_sleep_gate | 35 | src/snn_data_lake/cortex/brain.py:3149#_maybe_autonomous_self_build; src/snn_data_lake/cortex/brain.py:3203#_enter_wake | - | opus-5 WholeBrain REFUTER (was 40) / unrecorded in-process run, recordable and not recorded | 2026-07-30 |
-| cpg_rhythm_to_action_preference | 35 | src/snn_data_lake/brainstem/autonomous_loop.py:760#_cpg_bias; src/snn_data_lake/brainstem/autonomous_loop.py:738#_cpg_bias | - | opus-5 WholeBrain REFUTER (was 40) / unrecorded in-process run, recordable and not recorded | 2026-07-30 |
-| interoceptive_caution_to_selection | 35 | src/snn_data_lake/brainstem/autonomous_loop.py:1039#_interocept; src/snn_data_lake/brainstem/autonomous_loop.py:822#_select; src/snn_data_lake/brainstem/autonomous_loop.py:1621#step | - | opus-5 WholeBrain REFUTER (was 40) / unrecorded in-process run, recordable and not recorded | 2026-07-30 |
-| cross_region_coherence_ignition_gate | 30 | src/snn_data_lake/cortex/brain.py:2334#_c1_tick; src/snn_data_lake/substrate/region_coherence.py:132#RegionCoherence | - | opus-5 WholeBrain REFUTER (was 35) / outcome measured INVARIANT at every gain incl. 0.0 | 2026-07-30 |
-| neurogenesis_growth | 35 | src/snn_data_lake/cortex/brain.py:2720#_update_access; src/snn_data_lake/cortex/brain.py:2759#_sleep_tick | - | opus-5 WholeBrain auditor / live run, 60 ticks (grown_units) | 2026-07-30 |
-| connectome_spike_routing | 30 | src/snn_data_lake/cortex/brain.py:2275#_c1_tick; src/snn_data_lake/cortex/brain.py:3227#state | - | opus-5 WholeBrain auditor / live run, 60 ticks + reader grep | 2026-07-30 |
-| gwt_reentry_to_action_drive | 30 | src/snn_data_lake/cortex/brain.py:1763#_route_percept_to_action; src/snn_data_lake/cortex/brain.py:1562#_route_percept_to_action | wb_reroute_60.txt | opus-5 WholeBrain auditor / tools/charge_probe.py reroute 60 + eligibility measured from inside | 2026-07-30 |
-| criticality_edge_of_chaos_regulation | 30 | src/snn_data_lake/cortex/brain.py:2994#_enter_sleep; src/snn_data_lake/cortex/brain.py:2842#_sleep_tick | - | opus-5 WholeBrain auditor / live run, sigma sampled | 2026-07-30 |
-| wholistic_integration_capstone | 22 | src/snn_data_lake/cortex/brain.py:426#__init__ | - | opus-5 WholeBrain auditor / live run at birth | 2026-07-30 |
-| agency_controllability_monitor | 15 | src/snn_data_lake/brainstem/autonomous_loop.py:1827#apply_observed; src/snn_data_lake/cortex/agency_monitor.py:2#module | - | opus-5 WholeBrain auditor / live run, agency() sampled at 60 ticks | 2026-07-30 |
-| homeostatic_plasticity_stack | 10 | src/snn_data_lake/cortex/brain.py:278#__init__; src/snn_data_lake/readout/interaction_learning.py:200#_deposit; src/snn_data_lake/cortex/brain.py:2745#_sleep_tick | - | opus-5 WholeBrain auditor / live instrumented run, pre_gain/stabilize/relax counted | 2026-07-30 |
-| gated_self_modification | 10 | src/snn_data_lake/cortex/brain.py:3141#_reason_chunk_mastered; src/snn_data_lake/cortex/brain.py:3190#_gate | - | opus-5 WholeBrain auditor / live run, _selfbuild_last after 2 nights | 2026-07-30 |
+| homeostatic_drive_to_action | 40 | src/snn_data_lake/engine/brain.py:1763#_route_percept_to_action; src/snn_data_lake/engine/brain.py:1828#_drive_for | wb_drive_60.txt | opus-5 WholeBrain REFUTER (was 65) / rubric ceiling COVERAGE_RUBRIC.md:99-102 + wb_refute_onset_60.txt | 2026-07-30 |
+| circadian_wake_sleep_gate | 35 | src/snn_data_lake/engine/brain.py:3149#_maybe_autonomous_self_build; src/snn_data_lake/engine/brain.py:3203#_enter_wake | - | opus-5 WholeBrain REFUTER (was 40) / unrecorded in-process run, recordable and not recorded | 2026-07-30 |
+| cpg_rhythm_to_action_preference | 35 | src/snn_data_lake/engine/autonomous_loop.py:760#_cpg_bias; src/snn_data_lake/engine/autonomous_loop.py:738#_cpg_bias | - | opus-5 WholeBrain REFUTER (was 40) / unrecorded in-process run, recordable and not recorded | 2026-07-30 |
+| interoceptive_caution_to_selection | 35 | src/snn_data_lake/engine/autonomous_loop.py:1039#_interocept; src/snn_data_lake/engine/autonomous_loop.py:822#_select; src/snn_data_lake/engine/autonomous_loop.py:1621#step | - | opus-5 WholeBrain REFUTER (was 40) / unrecorded in-process run, recordable and not recorded | 2026-07-30 |
+| cross_region_coherence_ignition_gate | 30 | src/snn_data_lake/engine/brain.py:2334#_c1_tick; src/snn_data_lake/substrate/region_coherence.py:132#RegionCoherence | - | opus-5 WholeBrain REFUTER (was 35) / outcome measured INVARIANT at every gain incl. 0.0 | 2026-07-30 |
+| neurogenesis_growth | 35 | src/snn_data_lake/engine/brain.py:2720#_update_access; src/snn_data_lake/engine/brain.py:2759#_sleep_tick | - | opus-5 WholeBrain auditor / live run, 60 ticks (grown_units) | 2026-07-30 |
+| connectome_spike_routing | 30 | src/snn_data_lake/engine/brain.py:2275#_c1_tick; src/snn_data_lake/engine/brain.py:3227#state | - | opus-5 WholeBrain auditor / live run, 60 ticks + reader grep | 2026-07-30 |
+| gwt_reentry_to_action_drive | 30 | src/snn_data_lake/engine/brain.py:1763#_route_percept_to_action; src/snn_data_lake/engine/brain.py:1562#_route_percept_to_action | wb_reroute_60.txt | opus-5 WholeBrain auditor / tools/charge_probe.py reroute 60 + eligibility measured from inside | 2026-07-30 |
+| criticality_edge_of_chaos_regulation | 30 | src/snn_data_lake/engine/brain.py:2994#_enter_sleep; src/snn_data_lake/engine/brain.py:2842#_sleep_tick | - | opus-5 WholeBrain auditor / live run, sigma sampled | 2026-07-30 |
+| wholistic_integration_capstone | 22 | src/snn_data_lake/engine/brain.py:426#__init__ | - | opus-5 WholeBrain auditor / live run at birth | 2026-07-30 |
+| agency_controllability_monitor | 15 | src/snn_data_lake/engine/autonomous_loop.py:1827#apply_observed; src/snn_data_lake/cortex/agency_monitor.py:2#module | - | opus-5 WholeBrain auditor / live run, agency() sampled at 60 ticks | 2026-07-30 |
+| homeostatic_plasticity_stack | 10 | src/snn_data_lake/engine/brain.py:278#__init__; src/snn_data_lake/readout/interaction_learning.py:200#_deposit; src/snn_data_lake/engine/brain.py:2745#_sleep_tick | - | opus-5 WholeBrain auditor / live instrumented run, pre_gain/stabilize/relax counted | 2026-07-30 |
+| gated_self_modification | 10 | src/snn_data_lake/engine/brain.py:3141#_reason_chunk_mastered; src/snn_data_lake/engine/brain.py:3190#_gate | - | opus-5 WholeBrain auditor / live run, _selfbuild_last after 2 nights | 2026-07-30 |
 | knowledge_acquisition_web_ingest | 12 | src/snn_data_lake/reasoning/autonomous_enrich.py:41#module; src/snn_data_lake/reasoning/spike_chat_lake.py:2259#boot | - | opus-5 WholeBrain auditor / caller grep over brain.py + cockpit.py | 2026-07-30 |
-| brain_native_selfbuild_proposer | 5 | src/snn_data_lake/cortex/brain.py:1958#propose_improvements | - | opus-5 WholeBrain auditor / live run, propose_improvements(budget=6) | 2026-07-30 |
+| brain_native_selfbuild_proposer | 5 | src/snn_data_lake/engine/brain.py:1958#propose_improvements | - | opus-5 WholeBrain auditor / live run, propose_improvements(budget=6) | 2026-07-30 |
 | region_faculty_charge_registry | 0 | src/snn_data_lake/infra/region_wiring.py:77#module; src/snn_data_lake/infra/region_wiring.py:457#charge_all | - | opus-5 WholeBrain auditor / live run, region_wiring.wired()/coverage() | 2026-07-30 |
 | godel_machine_selfbuild | 0 | src/snn_data_lake/reasoning/godel_machine.py:172#attempt_on_repo | - | opus-5 WholeBrain auditor / repo-wide call-site search | 2026-07-30 |
 
@@ -44,7 +44,7 @@ writeback -- and one prior claim the auditor expected to confirm turned out wron
 deleted; every row and both of the auditor's artifacts are still here, plus one new recorded artifact.
 
 **1. The refutation that carries the number: `COVERAGE_RUBRIC.md:99-102` pre-declares that this credit
-cannot be given to this category.** Verbatim: *"Wiring a faculty into `cortex/brain.py::_route_percept_to_action`
+cannot be given to this category.** Verbatim: *"Wiring a faculty into `engine/brain.py::_route_percept_to_action`
 moves a three-way arm decision (ENGAGE / RELEASE / HOLD). It can raise Executive, Affect, SpatialTemporal
 and the action-relevant part of Perception. It **cannot** raise Language, Imagination, Gf, Consciousness
 or WholeBrain -- crediting those to a wiring wave is the theater P0 forbids."* Both of the band-65 row's
@@ -289,7 +289,7 @@ matches, and no caller persists `grown_units` either. Growth is real and does no
 
 `knowledge_acquisition_web_ingest` is **12**. P0 names knowledge acquisition as a self-improvement
 avenue, so omitting it would understate the category, but it is not on the brain's path: neither
-`cortex/brain.py` nor `infra/cockpit.py` references `spike_chat_lake` or the ingest gate at all.
+`engine/brain.py` nor `infra/cockpit.py` references `spike_chat_lake` or the ingest gate at all.
 Its live entrypoints are separate processes (`autonomous_enrich.py --forever`) and offline corpus
 trainers. The sleep tick does write durable knowledge (schema induction, `brain.py:2420-2448`), but
 that is internal consolidation of episodes the brain already had, not acquisition, and it belongs to
@@ -332,7 +332,7 @@ publishes the live fraction with both C5 sentences and that disclosure in its pr
 0.2309. DATED 2026-09-16 (the panel fold; `evidence/t080-temporal-binding.md` 3.5 item 11): the "same view" conjunct is NOT MET AS RENDERED -- the cockpit's `cross-modal bound rate` row is appended below the ACCESS plate's 110 px visible box and its two sentences reach the DOM only in the row's title string, so a viewer sees neither; the row's data and the /api/state PROVENANCE line (both sentences) stand; the clipping is shared with the PCI and integration rows and is owed a cockpit row of its own.*
 
 *DATED NOTE 2026-09-16 (specs/022 T081; `evidence/t081-report-order.md` section 2 and 2.10; pin `tools/t081_report_order.json`,
-head `f5cf8b8`): the ARM's global workspace (`thalamus/global_workspace`, read through `substrate/report_channel`) is now READ
+head `f5cf8b8`): the ARM's global workspace (`thalamus/global_workspace`, read through `engine/report_channel`) is now READ
 by an instrument that perturbs it. On a scratch brain's own stream (seeds 0-7 x 600 ticks, ten clones of the same pre-step
 state per awake tick, the lesion applied only to COPIES so the live bus is never touched) the report channel's record is
 reproduced BIT-FOR-BIT by an unperturbed clone on every awake tick of every seed; it MOVES on 1.0000 of applicable ticks when
@@ -384,7 +384,7 @@ its own instance), and the birth-time false-belief flag.*
 
 I nearly filed `theta_gamma_code` as a dormant oscillatory-coordination faculty on the strength of a
 grep showing its only importer to be `reasoning/rose_language.py` (cortex/ since 2026-08-12), plus a second grep showing
-`rose_language` had no callers. **The second grep was wrong.** `cortex/brain.py:3419` imports
+`rose_language` had no callers. **The second grep was wrong.** `engine/brain.py:3419` imports
 `RoseLanguage`, via `_rose_serve()`, which is called on two live paths: the sleep tick's nightly refit
 (`brain.py:2450`) and `respond()` when a message starts with `parse` or `diagram` (`brain.py:2899`). So
 the module is live-on-demand, not dormant. I then excluded it from this roster on different grounds --

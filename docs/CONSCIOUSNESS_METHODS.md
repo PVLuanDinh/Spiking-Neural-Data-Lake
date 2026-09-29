@@ -117,5 +117,5 @@ computes a perturbational complexity index, that is not Phi, and the two must no
 write-up.
 
 **Order.** Behind specs/005 and specs/006. It touches `cortex/prefrontal_executive.py`,
-`cortex/brain.py` and the Executive coverage rows, and it should not be started while another feature
+`engine/brain.py` and the Executive coverage rows, and it should not be started while another feature
 is mid-flight in those files.

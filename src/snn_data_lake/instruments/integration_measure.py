@@ -45,7 +45,7 @@ built by this module's own factories with fixed seeds, so it is a regression che
 file owns, not a verdict about a system it did not construct. An absolute number is barred as a claim
 ABOUT SOMETHING ELSE. It is fine as a tripwire on your own fixture.
 
-THE WORKED CASE, because it was live in this tree for the life of the feature. `cortex/brain.py` built a
+THE WORKED CASE, because it was live in this tree for the life of the feature. `engine/brain.py` built a
 fresh 10-unit instance of this class every 4th night and published its `pci()` as the brain's own `pci`
 telemetry. Two things were wrong and the second is the general one: (1) the coupling it passed was
 `1.0 + max(0.0, min(0.6, criticality))` where the converged regulator holds `criticality` just under 1.0

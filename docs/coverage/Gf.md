@@ -19,10 +19,10 @@ see "What the refuter found" below.
 | raven_distribution_of_three | 42 | src/snn_data_lake/reasoning/reasoning_cortex.py:174#RavenExpert; src/snn_data_lake/reasoning/spike_chat_lake.py:692#_gf_request | gf_raven_dist3.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py raven_dist3 | 2026-07-30 |
 | example_to_rule_pair_induction | 41 | src/snn_data_lake/reasoning/reasoning_cortex.py:216#PairInductionExpert | gf_pair_induction.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py pair_induction | 2026-07-30 |
 | arc_grid_program_synthesis | 35 | src/snn_data_lake/reasoning/reasoning_cortex.py:292#ArcExpert; src/snn_data_lake/reasoning/reasoning_cortex.py:1016#build_default_cortex | gf_arc_grid_synthesis.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py arc_grid_synthesis | 2026-07-30 |
-| relational_structure_mapping | 32 | src/snn_data_lake/reasoning/reasoning_cortex.py:624#StructureMappingSolver; src/snn_data_lake/cortex/brain.py:926#__init__ | gf_relational_structure_mapping.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py relational_structure_mapping | 2026-07-30 |
+| relational_structure_mapping | 32 | src/snn_data_lake/reasoning/reasoning_cortex.py:624#StructureMappingSolver; src/snn_data_lake/engine/brain.py:926#__init__ | gf_relational_structure_mapping.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py relational_structure_mapping | 2026-07-30 |
 | active_experiment_loop | 30 | src/snn_data_lake/reasoning/spike_chat_lake.py:508#_resume_experiment; src/snn_data_lake/reasoning/spike_chat_lake.py:627#_number_reply | gf_active_experiment_loop.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py active_experiment_loop | 2026-07-30 |
 | rpm_nvsa_matrix_solving | 25 | src/snn_data_lake/reasoning/rpm_solver.py:455#RpmExpert; src/snn_data_lake/reasoning/spike_chat_lake.py:1453#_get_cortex | gf_rpm_nvsa.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py rpm_nvsa | 2026-07-30 |
-| sleep_schema_induction | 45 | src/snn_data_lake/cortex/brain.py:2962#_enter_sleep; src/snn_data_lake/cortex/brain.py:3014#_enter_sleep | gf_sleep_schema_induction.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py sleep_schema_induction | 2026-07-30 |
+| sleep_schema_induction | 45 | src/snn_data_lake/engine/brain.py:2962#_enter_sleep; src/snn_data_lake/engine/brain.py:3014#_enter_sleep | gf_sleep_schema_induction.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py sleep_schema_induction | 2026-07-30 |
 | held_out_novel_problem_solving | 10 | src/snn_data_lake/reasoning/arc_bench.py:86#score; src/snn_data_lake/reasoning/arc_solver.py:862#make_solver | gf_arc_eval_lib_off.txt | opus-5 / tools/arc_score.py evaluation off (400 held-out tasks) | 2026-07-30 |
 | arc_cross_task_library_learning | UNSCORED | src/snn_data_lake/reasoning/arc_solver.py:1007#main | - | opus-5 / P2 retirement guard: the mechanism was deleted, the faculty stays absent | 2026-08-03 |
 | arc_scene_mint_out_of_closure_induction | 0 | src/snn_data_lake/reasoning/arc_mint.py:822#mint_records; src/snn_data_lake/reasoning/arc_mint.py:774#compile_record; src/snn_data_lake/reasoning/arc_scene.py:189#scene | - | opus-5 / static: every `mint(` call site in the tree | 2026-07-30 |
@@ -192,7 +192,7 @@ and the sweep's own evidence directory is currently failing it. Promoting every 
 
 `gf_reply_ab.py` runs two arms of a `make_brain(seed=0)` brain (Policy 4), neuters one faculty's entry
 points **in the module the live route imports them from**, and compares the reply string that
-`Brain.respond` returns -- the method `substrate/learn_daemon.py` pumps cockpit chat into. The rubric puts
+`Brain.respond` returns -- the method `engine/learn_daemon.py` pumps cockpit chat into. The rubric puts
 that at band 41-60: *"changes an internal read -- the output demonstrably alters something the brain
 itself later reads -- a reply, a memory write, a self-model term"* (`COVERAGE_RUBRIC.md:53`).
 
@@ -350,7 +350,7 @@ is not.
 - **Whether anything reads the schema write back.** I proved the durable write differs under neuter; I
   did not trace a later retrieval consuming it. That is the gap between 45 and a 61 claim for that row.
 - **The daemon in situ.** I drove `make_brain` directly. I did not run `learn_daemon.py` and type into
-  the cockpit, so "the daemon pumps this path" is read from `substrate/learn_daemon.py`, statically.
+  the cockpit, so "the daemon pumps this path" is read from `engine/learn_daemon.py`, statically.
 - **Cross-domain transfer.** I found no mechanism that carries an induced rule from one domain's library
   to another, so there was nothing to A/B. Absent rather than dormant; no row, because inventing a 0 row
   for an unimplemented faculty is as arbitrary as omitting one.

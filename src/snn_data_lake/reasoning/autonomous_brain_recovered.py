@@ -33,7 +33,7 @@ THIS FILE IS NOW A THIN WRAPPER: the loop body lives in reasoning/developmental_
 That second caller was `reasoning/brain_loop.py` -- **RETIRED**, and it no longer exists anywhere in
 the tree (`gates/replication_guard.py` records the retirement: "reasoning/brain_loop.Brain was
 retired once every capability was verified canonical"). Its role is the canonical
-`cortex.brain.Brain` composition reached through `make_brain()` (P4). So `develop_cycles`'s `lake=` /
+`engine.brain.Brain` composition reached through `make_brain()` (P4). So `develop_cycles`'s `lake=` /
 `emit=` injection points currently have NO in-tree caller: that is OPEN P3 work, recorded here rather
 than papered over, and it is why the standalone path below is the only one exercised.
 This wrapper runs the loop with its own temp lake and re-runs the SAME regression asserts

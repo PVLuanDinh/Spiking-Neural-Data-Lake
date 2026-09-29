@@ -249,8 +249,8 @@ def test_turns_correction_never_dispatches_command():
 
 def test_canonical_correction_safety_boundary(monkeypatch):
     from snn_data_lake.brainstem.so101_arm import So101Arm
-    from snn_data_lake.cortex.brain import Brain, make_brain
-    from snn_data_lake.cortex.live_brain import LiveBrain
+    from snn_data_lake.engine.brain import Brain, make_brain
+    from snn_data_lake.engine.live_brain import LiveBrain
     from snn_data_lake.substrate.home import throwaway_home
 
     with throwaway_home():

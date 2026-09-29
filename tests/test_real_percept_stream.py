@@ -83,7 +83,7 @@ def test_the_brain_feeds_the_engine_and_the_floors_reach_state():
     from snn_data_lake.substrate.home import throwaway_home
 
     with throwaway_home():
-        from snn_data_lake.cortex.brain import make_brain
+        from snn_data_lake.engine.brain import make_brain
 
         b = make_brain(seed=0, persist=False)
         assert b.neuro is not None
@@ -151,7 +151,7 @@ def _l_cell(args):
     from snn_data_lake.substrate.home import throwaway_home
 
     with throwaway_home():
-        from snn_data_lake.cortex.brain import make_brain
+        from snn_data_lake.engine.brain import make_brain
         from snn_data_lake.growth.neurogenesis_engine import SyntheticPerceptStream
 
         b = make_brain(seed=seed, persist=False)

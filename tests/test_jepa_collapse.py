@@ -44,8 +44,8 @@ import random
 import numpy as np
 import pytest
 
-from snn_data_lake.brainstem.autonomous_loop import ACTIONS
 from snn_data_lake.cerebellum.jepa_world_model import JepaWorldModel
+from snn_data_lake.engine.autonomous_loop import ACTIONS
 from snn_data_lake.sensorimotor.multimodal_encoder import encode_multimodal
 
 CYCLE = 256

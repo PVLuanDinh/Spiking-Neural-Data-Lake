@@ -505,7 +505,7 @@ def serve(brain, port=8137, turns=None, block=True, acts=None):
 
     # `acts` MUST be forwarded: `_handler` 404s /api/act when it is None, so omitting it here made
     # every cockpit arm button -- including EMERGENCY_STOP -- a no-op while the daemon was correctly
-    # passing a queue in (`substrate/learn_daemon.py`, the `serve(...)` call in `main()`). The
+    # passing a queue in (`engine/learn_daemon.py`, the `serve(...)` call in `main()`). The
     # actuation tests all construct Acts() directly and never traverse serve(), so they proved the
     # mechanism and said nothing about production.
     #
@@ -1274,7 +1274,7 @@ def main():
     """Self-check: the page is served, the contract holds, and a chat turn round-trips via the queue."""
     import urllib.request
 
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     # NORD_TORCH=0 dropped 2026-07-29 with the zero-dependency rule: this self-check now builds the
     # brain in the configuration users actually get. NORD_PERSIST stays -- it guards the durable lake,
@@ -1309,7 +1309,7 @@ def main():
             class arm:  # noqa: N801
                 arm = _StubArm
 
-                # distinct-from: brainstem/autonomous_loop.py -- the REAL apply_observed (the
+                # distinct-from: engine/autonomous_loop.py -- the REAL apply_observed (the
                 #   tapped passage); this mirrors its signature for the eviction test only. Read.
                 @staticmethod
                 def apply_observed(

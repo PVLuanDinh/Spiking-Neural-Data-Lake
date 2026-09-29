@@ -13,8 +13,7 @@ import threading
 import numpy as np
 import pytest
 
-from snn_data_lake.substrate.binlog import BinLog
-from snn_data_lake.substrate.signal_ring import (
+from snn_data_lake.engine.signal_ring import (
     DeliveringProducer,
     GradedUnbound,
     JoinConsumer,
@@ -23,7 +22,8 @@ from snn_data_lake.substrate.signal_ring import (
     SignalRing,
     UndeclaredJoin,
 )
-from snn_data_lake.substrate.wiring_manifest import Port
+from snn_data_lake.engine.wiring_manifest import Port
+from snn_data_lake.substrate.binlog import BinLog
 
 
 def _records(n, salt=""):

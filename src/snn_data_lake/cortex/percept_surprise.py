@@ -137,7 +137,7 @@ def declare_ports(manifest):
     evidence/s5-paging-null.md 3.4/3.5). It is CLOSED. A successor paging row that wants a
     surprise-driven prefetch declares the edge itself, with its own consumer and its own red.
     The other dispositions above are untouched."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "percept_surprise",
@@ -161,9 +161,9 @@ SURPRISE_EDGE = ("percept_surprise", "surprise_out", "brain", "salience_surprise
 
 def _surprise_consumer_factory():
     """Fresh ring + JoinConsumer over the declared `salience_surprise_in` port, per arm."""
-    from snn_data_lake.cortex.brain import declare_ports as brain_declare_ports
-    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
-    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+    from snn_data_lake.engine.brain import declare_ports as brain_declare_ports
+    from snn_data_lake.engine.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.engine.wiring_manifest import WiringManifest
 
     m = WiringManifest()
     brain_declare_ports(m)
@@ -183,7 +183,7 @@ def consume_surprise(consumer):
     extracted at T028 so this harness never re-implements it) under equal starting weights
     -- the brain's own no-source-privileged initial condition. Returns
     [(tick, drive), ...]. LOSS IS FATAL (the T026 ring-overrun lesson)."""
-    from snn_data_lake.cortex.brain import undirected_salience
+    from snn_data_lake.engine.brain import undirected_salience
 
     weights = dict.fromkeys([*_CO_SOURCES, "surprise"], 1.0)
     out = []
@@ -341,12 +341,12 @@ def main():
         # RE-VERIFIED 2026-08-04, and the census this comment used to carry was wrong on both of its
         # load-bearing claims -- recorded rather than quietly deleted, because both are the shape of
         # error this project keeps finding in its own notes:
-        #   * "FIVE reader sites ... cortex/brain.py:583+599, reasoning/reservoir_eprop.py" -- the
+        #   * "FIVE reader sites ... engine/brain.py:583+599, reasoning/reservoir_eprop.py" -- the
         #     brain's reader is `brain.py`'s `SNN_PERCEPTION_PACK` default, not either cited line
         #     (:583 is `_load_enc`, :599 is the unrelated `SNN_PERCEPTION_CKPT`), and
         #     `reservoir_eprop.py` reads models/**shd_pack**.npz, a DIFFERENT artifact. Its ":43
         #     calls it 'the committed pack'" quote is about that other pack. Actual nmnist_pack
-        #     readers: THIS module, `cortex/brain.py` (SNN_PERCEPTION_PACK) and
+        #     readers: THIS module, `engine/brain.py` (SNN_PERCEPTION_PACK) and
         #     `readout/laminar_local_readout.py` (_PACK_REL) -- three, not five.
         #   * "NO producer anywhere in the tree" -- `training/make_packs.py` produces BOTH packs
         #     from tonic and is referenced by `run_selfchecks.py` for exactly this check. The claim

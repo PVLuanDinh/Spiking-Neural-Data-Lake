@@ -1,7 +1,7 @@
 """
 v3.77 -- developmental envelope: a competence-gated neonatal->mature handoff.
 
-The lake already MEASURES competence (brainstem/autonomous_loop.py `_competence()` -- the
+The lake already MEASURES competence (engine/autonomous_loop.py `_competence()` -- the
 fraction of a curriculum stage whose greedy learned action already matches the optimal one)
 and STAGES a self-paced curriculum (neuromodulation/curriculum.py). What was missing is the
 consumer: a single scalar "maturity" that reads competence and co-anneals the two knobs a

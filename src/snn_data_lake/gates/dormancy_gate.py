@@ -51,9 +51,9 @@ BRAIN_MODULES = set(_CANON.values())
 # The live-behaviour roots (the autonomous brain) + the shipped console-script entrypoints. A brain
 # module reachable from ANY of these is "wired"; reachable only from tests/__main__ is dormant.
 _LIVE_ROOTS = (
-    f"{_PKG}.cortex.brain",
-    f"{_PKG}.cortex.live_brain",
-    f"{_PKG}.brainstem.autonomous_loop",
+    f"{_PKG}.engine.brain",
+    f"{_PKG}.engine.live_brain",
+    f"{_PKG}.engine.autonomous_loop",
     f"{_PKG}.thalamus.reentrant_workspace",
 )
 _ENTRYPOINTS = (  # pyproject [project.scripts] + the always-on daemon's in-package deps
@@ -174,7 +174,7 @@ EXEMPT = {
         "that the driver drives a kernel the composite does not include, and routing its "
         "trial patterns into the arm's bus would be a second stimulus mechanism beside the "
         "percept packs (P2).' Measured there: the composite the report channel reads has no "
-        "KernelTick and no EpisodeDriver (grep over cortex/brain.py and cortex/live_brain.py "
+        "KernelTick and no EpisodeDriver (grep over engine/brain.py and engine/live_brain.py "
         "found neither). T081 therefore did NOT route this driver, and the forward-client "
         "sentence above -- 'T081's report-order probe windowing over its trials' -- is "
         "SUPERSEDED, not deleted: it stands as the dated expectation this row disposed of in "
@@ -202,7 +202,7 @@ EXEMPT = {
         "part of the observed -- the same reason ignition_instrument is not a tick faculty",
     ),
     # `report_order_probe` RETIRED from EXEMPT 2026-09-16 (T081's PASS surfaces,
-    # evidence/t081-report-order.md 2.6): it is REACHABLE now, because `cortex/brain.py::Brain.state`
+    # evidence/t081-report-order.md 2.6): it is REACHABLE now, because `engine/brain.py::Brain.state`
     # imports `_t081_top_margin` from it to publish `report_order_margin`. The reason is kept here
     # rather than deleted, because the gate's own advice is that an exemption may be the only record
     # of a waived invariant -- VERBATIM: "MEASUREMENT INSTRUMENT (specs/022 T081 [US4], the C5 row
@@ -684,7 +684,7 @@ EXEMPT = {
     # sink that does work -- threshold modulation, the producer's own claim -- and bound its own
     # retirement to "the measurement that shows a consumer's own output changing, and by nothing
     # else". That measurement is tests/test_interoceptive_ignition.py. DISCLOSED because it would
-    # otherwise read as work: the single import in cortex/brain.py flips this region to CHARGED on
+    # otherwise read as work: the single import in engine/brain.py flips this region to CHARGED on
     # its own, consumer or no consumer. The import is the cheap half; the charge is the measured
     # one, and only the second is evidence.
     "replay_gate": (
@@ -1045,7 +1045,7 @@ def conditional_import_count():
     is read with that in mind. `_imports()` walks the AST unconditionally, so an import nested in
     `if <flag>:` confers reachability whether or not the flag is ever true -- and this tree has
     genuinely dead flags: `gain_adapt` is never passed True ANYWHERE, and `develop_env` is only
-    passed True inside `cortex/live_brain.py`'s own `main()`.
+    passed True inside `engine/live_brain.py`'s own `main()`.
 
     Making the walk guard-aware was tried and rejected: naively dropping every conditional import
     moves the count from `reachable 169 / dormant 0` to `reachable 94 / dormant 75`, which is
@@ -1172,7 +1172,7 @@ def main():
     # `developmental_loop_brain` say in so many words that their Adam trainers are permitted "ONLY
     # while no live root reaches" them. Wiring one flips its exemption stale -- and the assert above
     # cannot see it, because becoming reachable makes `dormant` SMALLER, never larger. MEASURED by
-    # adding one edge from cortex.brain to developmental_loop_brain: reachable 199 -> 207,
+    # adding one edge from engine.brain to developmental_loop_brain: reachable 199 -> 207,
     # stale_exempt 0 -> 8, dormant 0 -> 0. The gate was green through all of it.
     # Currently 0, so this is a work list of length zero rather than an allowlist. The reachable red
     # is constructed in tests/test_eprop_train_tier_unreachable.py, which also holds the e-prop half

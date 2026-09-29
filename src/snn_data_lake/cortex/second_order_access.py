@@ -5,7 +5,7 @@ reach my workspace, and how reliable is that read?".
 Honest framing (read this first). The brain already has a FIRST-order access layer:
 thalamus/reentrant_workspace grades how strongly content holds the workspace
 (`access_strength()`), cortex/access_consciousness reports all-or-none ignition +
-global availability, and cortex/brain.py folds both into a self-model access
+global availability, and engine/brain.py folds both into a self-model access
 confidence. What was MISSING is the SECOND order: nothing read the ACCESS STATE
 ITSELF. The brain could be told "content X is available" but had no estimate of how
 trustworthy that report was, so a masked, weakly-sustained, or outright FAILED

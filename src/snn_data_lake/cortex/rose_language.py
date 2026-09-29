@@ -561,7 +561,7 @@ class RoseLanguage:
         }
 
     def nightly_refit(self, examples):
-        """E local refit hook (the seam cortex/brain.py's nightly refit calls): a Forward-Forward /
+        """E local refit hook (the seam engine/brain.py's nightly refit calls): a Forward-Forward /
         CSDP-style update -- POSITIVE pass on true (context->target) pairs and a NEGATIVE pass on
         corrupted pairs, a LOCAL goodness margin, and a forward-only sufficient-statistic fold-in of the
         positives (SLDA.observe). NO backprop. `examples` = [(head, relation, tail), ...]. Returns the

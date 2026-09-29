@@ -24,7 +24,7 @@ measurements; this file pins only the WIRE, deliberately."""
 
 import numpy as np
 
-from snn_data_lake.cortex.brain import make_brain
+from snn_data_lake.engine.brain import make_brain
 from snn_data_lake.reservoir.spontaneous_activity import _cosine_modes, _principal_alignment
 
 

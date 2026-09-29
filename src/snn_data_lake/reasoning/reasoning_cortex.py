@@ -18,7 +18,7 @@ fabricates.
 
 Wired into LakeChat.converse as an additional dispatch on the turns the grounded/retrieval path could
 not answer: ~8 dead reasoning studies now answer real queries live, in the exact return shape
-{reply, known, source, ...} that cortex/live_brain._reasoning_reply consumes (source in the accepted
+{reply, known, source, ...} that engine/live_brain._reasoning_reply consumes (source in the accepted
 set {"gf", "reason", ...}, known=True on a hit). Default-safe: any failure -> honest gap, so the
 existing converse self-check is byte-identical.
 

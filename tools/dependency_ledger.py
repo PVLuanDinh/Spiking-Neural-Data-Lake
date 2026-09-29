@@ -107,7 +107,7 @@ IMPORT_TO_DIST = {
 #: First-party roots -- this repo's own top-level packages/dirs. Not third-party, never reported.
 #: `training`, `research`, `integrations`, `tools` are repo directories imported flat by scripts
 #: that run from the repo root; the naive first run reported `training` as an undeclared PyPI
-#: package because `cortex/brain.py` lazily imports it.
+#: package because `engine/brain.py` lazily imports it.
 FIRST_PARTY = {"snn_data_lake", "training", "research", "integrations", "tools", "gcp", "infra"}
 
 #: THE TWO DIRECTIONS ARE SCOPED ASYMMETRICALLY, ON PURPOSE.

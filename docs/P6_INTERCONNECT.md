@@ -18,8 +18,8 @@ writes  : 42 across 10 modules      reads : 9 across 5 modules
 subscribe registrations: 10         workspace classes tracked: 3
 25 of 42 writes are inside the 2 bus modules' own self-checks -> real broadcast is 17 of 42
 self-reads   : 8 of 9    (a module reading a workspace instance it constructed itself)
-cross-module : 1 of 9    cortex/live_brain.py:287  self.arm.workspace.broadcast()
-                         <- instance owned by brainstem/autonomous_loop.py; reader role = tick driver
+cross-module : 1 of 9    engine/live_brain.py:287  self.arm.workspace.broadcast()
+                         <- instance owned by engine/autonomous_loop.py; reader role = tick driver
 FACULTY-to-FACULTY reads: 0 of 9
 named subscribers: 4 registered, 2 of 4 drained
 writer modules read by nobody: 7 of 10
@@ -31,14 +31,14 @@ instantiation sites: 26 across 10 modules; 11 of 26 outside the bus self-checks,
 | thalamus/global_workspace.py | BUS | 14 | 3 | 4 |
 | thalamus/reentrant_workspace.py | BUS | 11 | 2 | 4 |
 | reasoning/train_of_thought.py | FACULTY | 4 | 2 | 0 |
-| cortex/brain.py | FACULTY | 3 | 1 | 1 |
+| engine/brain.py | FACULTY | 3 | 1 | 1 |
 | cortex/competence_executive.py (reasoning/brain_adapters/executive_control.py until 2026-08-12) | FACULTY | 3 | 0 | 0 |
-| brainstem/autonomous_loop.py | ACTION | 3 | 0 | 0 |
+| engine/autonomous_loop.py | ACTION | 3 | 0 | 0 |
 | cortex/access_consciousness.py | FACULTY | 1 | 0 | 1 |
 | reasoning/rpm_solver.py | FACULTY | 1 | 0 | 0 |
 | reasoning/spike_chat_lake.py | FACULTY | 1 | 0 | 0 |
 | instruments/developmental_loop_brain.py (reasoning/ until 2026-08-12) | FACULTY | 1 | 0 | 0 |
-| cortex/live_brain.py | ACTION | 0 | 1 | 0 |
+| engine/live_brain.py | ACTION | 0 | 1 | 0 |
 
 ### How this differs from the 2026-07-31 reading, and why
 
@@ -46,12 +46,12 @@ The prior reading was **36 writes across 8 modules, 2 reads across 2**. All four
 are **instrument defects, not tree movement** -- `git blame` dates every affected line to
 2026-07-21, ten days before that reading.
 
-1. **`cortex/brain.py` was missing from the writer list entirely.** 3 writes at `:1733`
+1. **`engine/brain.py` was missing from the writer list entirely.** 3 writes at `:1733`
    `:1738` `:1742` (`self._reentrant.submit`). The receiver attribute is named
    `_reentrant`, not `workspace`/`ws`/`_ws`, and the walk keyed off the name. "8 writer
    modules" was really 9 on that same tree. Largest single correction, and the same blind
    spot the current resolver still has (see W0.1).
-2. **`cortex/brain.py:1610` is a real, consuming read.** `self._reentrant.broadcast_to("action")`
+2. **`engine/brain.py:1610` is a real, consuming read.** `self._reentrant.broadcast_to("action")`
    feeds `elig["reroute"]` into the three-factor drive-weight update. "2 reads" was really 3.
 3. **`reasoning/developmental_loop_brain.py:295` is a WRITE, not one of the two reads.**
    The receiver is `WorkspaceBroadcast` (RETIRED 2026-08-12 -- retirement record in
@@ -153,7 +153,7 @@ identity) is untouched by either.
 ### F2 -- `_deliver`'s availability is all-or-none by construction, and a live comment claims otherwise
 
 Same function. `ignited` is loop-invariant, so `reached` is 0 or `len(self._subs)` and
-`availability` is in `{0.0, 1.0}` for **any** subscriber count. `cortex/brain.py:711-712`
+`availability` is in `{0.0, 1.0}` for **any** subscriber count. `engine/brain.py:711-712`
 asserts the opposite in as many words: *"Subscribing also makes `availability` a GRADED
 fraction-of-subscribers-reached rather than a binary, de-saturating global access."* That
 claim is false in current source. A comment asserting a mechanism the code does not
@@ -167,7 +167,7 @@ loop -- and "2 distinct" is the signature of the all-or-none loop, not headroom.
 
 ### F3 -- nine of fifteen candidate wires terminate in the single action gate
 
-`_route_percept_to_action` is `cortex/brain.py:1398`. AST-resolved enclosing function for
+`_route_percept_to_action` is `engine/brain.py:1398`. AST-resolved enclosing function for
 every line below, so this is not eyeballed:
 
 ```
@@ -209,10 +209,10 @@ its two terms pinned off.
 ## 2. The headline metric is replaced
 
 The prior program's target was `FACULTY-to-FACULTY reads: 0 of 9 -> 2 of 11`. **That table
-is withdrawn.** Both wires that moved it read `cortex/brain.py`'s own `_reentrant`, whose
+is withdrawn.** Both wires that moved it read `engine/brain.py`'s own `_reentrant`, whose
 only writer is `brain.py` itself (`:1733` `:1738` `:1742`, all brain.py's own computed
 values). They would have counted as faculty-to-faculty only because the gate's role table
-tags `cortex/brain.py` FACULTY. Substantively: the god object talking to itself through a
+tags `engine/brain.py` FACULTY. Substantively: the god object talking to itself through a
 bus, read by two of its own submodules, delivering a payload F1 proves identical to the one
 already read. Not one of the 7 orphaned writers is connected by either wire.
 
@@ -247,7 +247,7 @@ adversarial passes found more defects in the instruments than wires worth buildi
 an instance bound to that token. A consumer holding an injected `self._ws` matches two
 owners (`access_consciousness.py:92`, `executive_control.py:102`), goes ambiguous, returns
 `None`, and the read is filed as a self-read. This is the same class of blind spot that lost
-`cortex/brain.py` from the 2026-07-31 walk.
+`engine/brain.py` from the 2026-07-31 walk.
 Two rules on the fix. (a) Fix the resolver, not the attribute name: naming an injected
 attribute `_reentrant` because that token resolves uniquely is Goodharting the instrument
 built to catch Goodharting. (b) **Prefer a dynamic resolver** -- wrap the instance and record
@@ -309,7 +309,7 @@ before building anything. It retro-validates the `:969` and Claustrum reverts fo
 proposals (NM1's incumbent `1.0 + thr` is 1 distinct on 120 of 120; NM2's `arousal=threat`
 is 0.0 on 61 of 61; HP3's competitor is 0.0 on 80 of 80). Four downstream repairs were being
 planned around one upstream pin. This repo already fixed the identical pin once, at
-`cortex/brain.py:1059-1069`:
+`engine/brain.py:1059-1069`:
 
 > LC PART 1 -- BROADEN THE DRIVE: LC fires on SALIENT events, but it was fed threat only, and
 > threat ~ 0 in the idle loop, so its level sat at a dead tonic constant. Feed it the real
@@ -374,7 +374,7 @@ be the P1 defect this program audits. Region IDs in one namespace: **CP**=cortex
 - **Producer.** `neuromodulation/affect_integrator.AffectIntegrator.integrate()` arousal,
   26 distinct over 120 ticks.
 - **Consumer.** `hippocampus/affective_memory.AffectiveEpisodicStore.store(fragment,
-  valence, arousal, reward)` at `brainstem/autonomous_loop.py:1647`.
+  valence, arousal, reward)` at `engine/autonomous_loop.py:1647`.
 - **Signal.** Replace `arousal=threat` with the fused core-affect arousal `aa`.
 - **Consumer output that changes.** Which episode `recall_by_emotion(v, a, k=1)` returns --
   measured counterfactual on the live 61-episode store moves top-1 from tick 47 to tick 26.
@@ -552,7 +552,7 @@ be the P1 defect this program audits. Region IDs in one namespace: **CP**=cortex
   better: it is not merely a tick-lagged memory cue, it is an action-gate term.
 - **The prerequisite that is cheaper than the wire.** `recognize()` is called inside
   `def state(self)` (`:2720`), *"Telemetry for /api/state"*, which is also called out of band
-  by `infra/brain_telemetry.py:212`, `substrate/learn_daemon.py` and
+  by `infra/brain_telemetry.py:212`, `engine/learn_daemon.py` and
   `infra/nengo_bridge.py:307`. So the affect-to-memory route executes only because
   something polls, and its lag is a full tick. Move the `recognize()` call into `_c1_tick`
   immediately after `:1981`, one line, and A/B that alone: `_emotion` sequence, `rec["key"]`,
@@ -648,7 +648,7 @@ program's own headline items.
    on at least one tick. Under current source that fails on 300 of 300. Inventing a
    per-subscriber term to fix it would re-create the axis v4.78 removed **because it was
    never learned**.
-2. *The identical experiment is already in the tree, reverted.* `brainstem/autonomous_loop.py:
+2. *The identical experiment is already in the tree, reverted.* `engine/autonomous_loop.py:
    906-917`, a comment headed *"MEASURED DEAD, and left dead deliberately -- do not 'fix' this
    cut without reading this"*: wiring `Claustrum.broadcast()` into `_attn_gain` changed that
    gain on 25 of 200 -- *"but a neuter-A/B moved NOTHING downstream: selected action 0/200,
@@ -833,7 +833,7 @@ exists. **The sufficient evidence is the action-clamped A/B (W0.4): B's output m
 differ when the action sequence is held fixed in both arms.** If it differs only unclamped,
 the edge is routed through the action gate and the wire is a spoke, not a conversation.
 
-A wire that turns key 1 and fails key 2 is `brainstem/autonomous_loop.py:969` again --
+A wire that turns key 1 and fails key 2 is `engine/autonomous_loop.py:969` again --
 `_wm_spikes` 1 distinct to 22 distinct, and held goal / selected action / arm act-hold /
 trajectory each changed 0 of 200. It is reverted, and the faculty is EXEMPTed with a reason,
 exactly as under P3.
@@ -1025,7 +1025,7 @@ MEASURED, 300 brain ticks, instrumenting `submit()` and `step()` per tick:
     distinct (speakers, listeners) per tick: 1 of 146
     speakers = ('percept', 'salience', 'self')   listeners = ('action', 'language')   x146
 
-**Rank 1.** `cortex/brain.py:1741-1757` submits all three sources unconditionally inside one `try`
+**Rank 1.** `engine/brain.py:1741-1757` submits all three sources unconditionally inside one `try`
 block every tick, and the two subscribers are registered once at `:727`. The speaker set and the
 listener set are CONSTANT. An identity channel added to the payload would therefore carry a constant,
 and a receiver that learned to weight speakers would learn one weight vector and never revise it.
@@ -1075,7 +1075,7 @@ constant presence as absent selection is the presence-is-not-participation error
 image -- the usual form mistakes presence for participation; this one mistook constant presence for
 absent participation. Both are the same failure to distinguish the buffer from the outcome.
 
-**The real blocker is one line, and it is a CONSUMER defect.** `cortex/brain.py:1623`:
+**The real blocker is one line, and it is a CONSUMER defect.** `engine/brain.py:1623`:
 
 ```python
 rb = self._reentrant.broadcast_to("action")

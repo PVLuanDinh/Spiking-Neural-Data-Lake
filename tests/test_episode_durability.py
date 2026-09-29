@@ -72,7 +72,7 @@ def test_episodes_reach_the_lake_and_survive_the_writer(tmp_path, monkeypatch):
     from snn_data_lake.substrate import home as H
 
     importlib.reload(H)
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     assert H.load_episodes() == [], "a fresh home must start with no episodes"
     b = make_brain(seed=0, persist=True)
@@ -99,7 +99,7 @@ def test_a_restarted_brain_is_not_amnesic(tmp_path, monkeypatch):
     from snn_data_lake.substrate import home as H
 
     importlib.reload(H)
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     first = make_brain(seed=0, persist=True)
     for _ in range(400):
@@ -124,7 +124,7 @@ def test_recall_reaches_past_working_memory(tmp_path, monkeypatch):
     from snn_data_lake.substrate import home as H
 
     importlib.reload(H)
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     b = make_brain(seed=0, persist=True)
     for _ in range(1600):  # comfortably past the attractor's capacity

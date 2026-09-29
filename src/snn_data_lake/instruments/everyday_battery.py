@@ -14,7 +14,7 @@ shape classes map onto the seven here -- `ABSTAIN (metacog/2nd-order hold)` -> `
 ...` -> `UNRELATED_ROW`) plus the answer key 2.2 freezes, so the instrument can register a correct
 answer at all. Nothing of the scratch battery survives beside this module.
 
-WHAT IT SCORES. `cortex/brain.py::Brain.respond(q, human=True)` -- the chat lane.
+WHAT IT SCORES. `engine/brain.py::Brain.respond(q, human=True)` -- the chat lane.
 
 P4b, AND IT IS THE REASON FOR THE PIN. `respond(..., human=True)` INGESTS the question into the one
 durable lake. Twenty-four synthetic questions per run written into `brain_lake.bin` would be the
@@ -669,7 +669,7 @@ def run_seed(seed, warm=WARM_TICKS):
     """One seed's reading on a SCRATCH brain: 20 warm-up ticks, then the 4 controls and the 20
     items through `respond(q, human=True)`. Returns per-question `{id, cls, route, reply}` under
     `controls` and `items`, with the seed and the wall time beside them."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
     from snn_data_lake.substrate.home import throwaway_home
 
     t0 = time.time()

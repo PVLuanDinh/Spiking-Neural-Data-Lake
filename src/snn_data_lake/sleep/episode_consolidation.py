@@ -4,7 +4,7 @@ sparse attractor memory (numpy; spiking-flavoured, gradient-free).
 
 WHY THIS EXISTS (the honest gap it closes). sleep_replay.AttractorNet demonstrates the
 Golden-et-al. sleep mechanism on ~3-4 HAND-PICKED toy assemblies in 24 LIF neurons: it
-proves the principle but consolidates almost nothing real. The brain's cortex/brain.py
+proves the principle but consolidates almost nothing real. The brain's engine/brain.py
 _w8_tick already MANUFACTURES real autobiographical episodes every few wake ticks
 (who/what/where/when/affect dicts) and hands them to episodic_recall for reconstruction --
 but those recent episodes are NEVER folded into a durable, capacity-scaled associative
@@ -166,7 +166,7 @@ def _canon(episode):
 class EpisodeConsolidator:
     """Durable systems-consolidation memory over real episodes.
 
-    Public interface (what cortex/brain.py would call):
+    Public interface (what engine/brain.py would call):
       encode(episode_dict)      -> binary cell-assembly vector (K-of-dim), content-addressable
       store(pattern)            -> add the assembly to the covariance attractor (ring at capacity)
       replay(steps=100)         -> quiescent noise-driven reactivation + covariance-STDP consolidation
@@ -519,7 +519,7 @@ class EpisodeConsolidator:
 
 
 def _demo_episodes(n):
-    """`n` distinct real-ish autobiographical episodes shaped exactly like the ones cortex/brain.py
+    """`n` distinct real-ish autobiographical episodes shaped exactly like the ones engine/brain.py
     _w8_tick manufactures (who/what/where/when/affect); unique `when` makes all `n` distinct."""
     acts = ["reach", "grasp", "rest", "track", "withdraw", "explore", "hold", "release"]
     places = ["home", "left", "right", "center", "shelf", "bin", "edge", "corner"]

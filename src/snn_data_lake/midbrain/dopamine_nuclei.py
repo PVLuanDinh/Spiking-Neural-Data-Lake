@@ -68,7 +68,7 @@ def declare_ports(manifest):
     dips below), delivered whole each tick -- the diffuse neuromodulatory broadcast. The
     consumer edge is declared by the three-factor learner that gates eligibility with it
     (plasticity/r_stdp -- the CBGTC route the connectome declares)."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "dopamine_nuclei",

@@ -354,7 +354,7 @@ class EpropAudioEncoder(EpropEncoderBase):
     def load(cls, path, device="cpu"):
         # weights_only=True, stated explicitly rather than inherited from the torch default: this
         # path reaches here from the SNN_EPROP_AUDIO_CKPT environment variable on the BRAIN's
-        # construction path (cortex/brain.py, the auditory tier), so a checkpoint is DATA and must
+        # construction path (engine/brain.py, the auditory tier), so a checkpoint is DATA and must
         # never be executable. The sibling sensorimotor/eprop_nmnist.py already pins this and says so;
         # this loader and eprop_nmnist's -- the two the brain prefers FIRST -- did not, which left
         # the hardened path on the fallback and the unhardened one on the default.

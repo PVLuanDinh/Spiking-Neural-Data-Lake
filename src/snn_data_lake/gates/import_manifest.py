@@ -11,7 +11,7 @@ until its 2026-08-12 promotion took it out of the manifest). The ROOT shape is a
 because the root tier is not inside the package at all. `UNGOVERNED_ROOT` below is that second shape.
 
 **HISTORICAL, and the reason the ROOT shape exists at all.** It was added 2026-08-05 because
-`cortex/brain.py::Brain.__init__` built its perception tier from THREE bare-root imports --
+`engine/brain.py::Brain.__init__` built its perception tier from THREE bare-root imports --
 `training.eprop_nmnist`, `training.surrogate_snn`, `training.eprop_shd` -- every one invisible to
 the one gate built for exactly that failure. All three sat in the body of ONE `try` under a single
 `except Exception` with no `as name`, and one shared handler is the worse arrangement, not the
@@ -28,11 +28,11 @@ names -- and it rotted a SECOND time across specs/013, caught only by that lane'
 Name the enclosing SYMBOL and let `ast` find it.
 
 RE-COUNTED 2026-08-04, WITH THE DEFINITION STATED, because the figure here was unreproducible. This
-said "`cortex/brain.py` alone holds 67 such swallows" and a paragraph below said "nine swallows" --
+said "`engine/brain.py` alone holds 67 such swallows" and a paragraph below said "nine swallows" --
 two numbers for one quantity, neither saying what it counted. POLICIES.md records the same figure
 being wrong and re-derived once already. Counted by `ast`: a handler is a SWALLOW when it is
 `except Exception:` with no `as name`; it is IMPORT-WRAPPING when its `try` BODY contains an
-`Import`/`ImportFrom` node. On this tree: `cortex/brain.py` holds **116** swallows, **44** of them
+`Import`/`ImportFrom` node. On this tree: `engine/brain.py` holds **116** swallows, **44** of them
 import-wrapping; across the governed tier, **166** swallows and **58** import-wrapping.
 
 The DENOMINATOR needs the same treatment the numerator just got, and did not get it: this said
@@ -111,6 +111,7 @@ GOVERNED = (
     "reservoir",  # G8 M6: the package created by the reservoir move
     "readout",  # G8 M7: the package created by the readout move
     "sleep",  # G8 M8: the package created by the sleep move
+    "engine",  # G8 M10: the package created by the engine move
 )
 
 # The tiers no gate covers. A governed -> ungoverned edge is what this module protects.
@@ -119,7 +120,7 @@ UNGOVERNED = ("reasoning", "training")
 
 # ROOT shape: tiers that live OUTSIDE the package, so a governed module names them by their BARE
 # top-level name and the prefixed test above can never match. ADDED 2026-08-05 because
-# `cortex/brain.py` built its perception tier from three such imports -- `training.eprop_nmnist`,
+# `engine/brain.py` built its perception tier from three such imports -- `training.eprop_nmnist`,
 # `training.surrogate_snn`, `training.eprop_shd` -- all invisible to the one gate built for exactly
 # that failure. Widening the scan is what made them visible; it did NOT make brain.py's own import
 # CWD-proof (see broken()).
@@ -233,7 +234,7 @@ def broken(man=None):
 
     NOT COVERED -- and this was a real defect in a file this gate does not own, CLOSED 2026-08-13 by
     specs/013 and kept here because the shape recurs. A bare `from training....` import in
-    `cortex/brain.py::Brain.__init__` resolves only if the REPO ROOT is on
+    `engine/brain.py::Brain.__init__` resolves only if the REPO ROOT is on
     sys.path, which `PYTHONPATH=src` alone does not put there -- it arrives as sys.path[0], set from
     the start directory at interpreter start. A brain whose process did not start in the repo root
     therefore dropped its whole perception tier into a shared `except Exception` and ticked on at the

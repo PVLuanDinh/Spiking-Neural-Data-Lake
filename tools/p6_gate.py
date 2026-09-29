@@ -29,7 +29,7 @@ NONE of the asserting criteria is a raw read or write count, for exactly that re
 WHAT WOULD FALSIFY A P6 CLAIM MADE WITH THIS TOOL, stated up front because POLICIES.md requires it.
 This walk is STATIC. It proves a read EXISTS; it cannot prove the read CHANGES the reader's output.
 The failure this repo has already built, measured and reverted -- see the worked example at
-`brainstem/autonomous_loop.py:969` -- is a wire that turns a constant telemetry field into a varying
+`engine/autonomous_loop.py:969` -- is a wire that turns a constant telemetry field into a varying
 one and changes nothing downstream (`_wm_spikes` 1 distinct -> 22 distinct, selected action changed
 0 of 200 ticks). So a green line here is a NECESSARY, not sufficient, condition. The sufficient
 evidence is the neuter-A/B `tools/charge_probe.py` performs, aimed one level over: disable the
@@ -100,7 +100,7 @@ running the OLD and NEW instruments over the SAME tree (4fc5fb1c), varying one c
      is why every assertion below ratchets structure and none of them ratchets a count.
   2. An owner this walk cannot attribute was silently filed as a SELF-read. Five reads were being
      counted as modules talking to themselves when the honest answer was "this walk does not know"
-     (`cortex/brain.py:4320` and `reasoning/spike_chat_lake.py:1058` among them; both go through a
+     (`engine/brain.py:4320` and `reasoning/spike_chat_lake.py:1058` among them; both go through a
      local alias whose token `workspace` is bound in two modules, so the owner is genuinely
      ambiguous to a static walk). They are now reported as UNATTRIBUTABLE. Self-reads 20 -> 15.
   3. Local aliases (`ws = self.arm.workspace` ... `ws.broadcast()`) resolve, and an aliased token is
@@ -115,7 +115,7 @@ running the OLD and NEW instruments over the SAME tree (4fc5fb1c), varying one c
   can redden is a false red waiting to happen, and it was found before the floor was written.
 
 THE FACULTY-TO-FACULTY FILTER WAS ONE-SIDED AND IS NOW BOTH-ENDPOINTS. It checked only the READER's
-role. A new faculty reading the arm's workspace exactly the way `cortex/live_brain.py:313` does --
+role. A new faculty reading the arm's workspace exactly the way `engine/live_brain.py:313` does --
 owner role ACTION -- moved the old number 0 -> 1 while both-endpoints stayed 0. So the reading
 "faculty-to-faculty > 0" was satisfiable by wiring a faculty into the one action gate, which P6
 verbatim calls "the DEFECT P6 names, not a way to satisfy it". Constructed and run before the filter
@@ -132,7 +132,7 @@ worsened `git archive` copy and RUNNING the gate over it, never by reading the s
   4. `unread_writer_modules` was OWNER-centric -- `m not in read_owners`, where read_owners are the
      modules that OWN a cross-read instance. A module writing into a bus it does NOT own could
      therefore never qualify however many faculties read that bus, so a NEW FACULTY SUBMITTING INTO
-     THE ONE SHARED WORKSPACE `cortex/live_brain.py:313` READS went 7 -> 8 AND EXITED 1. The gate
+     THE ONE SHARED WORKSPACE `engine/live_brain.py:313` READS went 7 -> 8 AND EXITED 1. The gate
      reddened the single change P6 exists to encourage. This project rejected the private-instance
      SITE count for precisely that property; the same disqualification applied here and was missed
      because the criterion was never run against a fix, only against regressions. Writes are now
@@ -251,11 +251,11 @@ ROLES = {
         "BUS",
         "defines ReentrantWorkspace; likewise self-check writes",
     ),
-    "cortex/live_brain.py": (
+    "engine/live_brain.py": (
         "ACTION",
         "the tick driver: owns tick() and constructs the AutonomousArm it ticks",
     ),
-    "brainstem/autonomous_loop.py": (
+    "engine/autonomous_loop.py": (
         "ACTION",
         "the arm's wake loop -- step() is the single action gate P6 says faculties all report to",
     ),
@@ -279,8 +279,8 @@ KNOWN_WRITERS = {
     "thalamus/global_workspace.py": 14,
     "thalamus/reentrant_workspace.py": 11,
     "reasoning/train_of_thought.py": 4,
-    "brainstem/autonomous_loop.py": 3,
-    "cortex/brain.py": 3,
+    "engine/autonomous_loop.py": 3,
+    "engine/brain.py": 3,
     # cortex/competence_executive.py LEFT this table 2026-08-12: WorkspaceBroadcast was retired
     # (its retirement record in that module) and the module now performs ZERO workspace writes --
     # a floor of 3 would have fired "produced ZERO writes" on a correct deletion, the exact
@@ -297,17 +297,17 @@ KNOWN_READERS = {
     "thalamus/global_workspace.py": 3,
     "reasoning/train_of_thought.py": 2,
     "thalamus/reentrant_workspace.py": 2,
-    "cortex/brain.py": 1,
+    "engine/brain.py": 1,
     "reasoning/rpm_solver.py": 1,
     # INSTRUMENT CHANGE 2026-08-21 (T034): the counted broadcast() reads of BOTH
     # reasoning/spike_chat_lake.py (its _attended became the channel's adapter) and
-    # cortex/live_brain.py (its `thought` property routes through the channel) MOVED into
-    # substrate/report_channel.py -- the reads did not stop happening, they changed
+    # engine/live_brain.py (its `thought` property routes through the channel) MOVED into
+    # engine/report_channel.py -- the reads did not stop happening, they changed
     # modules onto the ONE declared route. The floor follows the read to its new home;
     # leaving the old rows fired INSTRUMENT DEAD on a correct P2 consolidation, and
     # dropping the floor entirely would blind the walk to a total loss of the tree's
     # cross-module workspace consumption.
-    "substrate/report_channel.py": 1,
+    "engine/report_channel.py": 1,
 }
 
 # --------------------------------------------------------------------------------------------------
@@ -360,7 +360,7 @@ BASELINE = {
     # still traps the NEXT unread writer: a real faculty submitting into a bus nobody
     # reads lands on 8 and reddens.
     #
-    # 7 -> 6 AT T039h, and this is the column P6 actually cares about. `cortex/brain.py` wrote
+    # 7 -> 6 AT T039h, and this is the column P6 actually cares about. `engine/brain.py` wrote
     # into a ReentrantWorkspace that no other module read -- a writer talking to itself. The insula
     # now drains that instance as a subscribed specialist, so brain.py leaves this set. The count
     # had read 7 across ALL SIX commits swept in this file's header, which is what makes the move
@@ -396,7 +396,7 @@ BASELINE = {
     # wires the tract; leaving it at 24 after T039 is a defect, recorded here so the number
     # cannot quietly become the new normal.
     #
-    # 24 -> 23 AT T039f: ONE of those three pairs is now wired. `cortex/brain.py` imports the
+    # 24 -> 23 AT T039f: ONE of those three pairs is now wired. `engine/brain.py` imports the
     # insula terminus to feed it the declared body_in frame, so (cortex, insula) moved from
     # declared-but-unreachable to implemented. TWO REMAIN, and they are named so the remaining
     # debt cannot be read as done: (medulla, thalamus) and (thalamus, insula) -- the tract relays
@@ -491,8 +491,17 @@ def source_dir(root):
     return os.path.join(root, "src", "snn_data_lake")
 
 
+def module_file(root, module):
+    """Path of the module's source file under `root`, its package taken from module_path() (G8 F7:
+    a moved module's package is never spelled here)."""
+    from snn_data_lake import module_path
+
+    parts = module_path(module).split(".")[1:]
+    return os.path.join(source_dir(root), *parts) + ".py"
+
+
 def rel(path, root):
-    """Repo-relative POSIX path under src/snn_data_lake/, e.g. 'cortex/brain.py'."""
+    """Repo-relative POSIX path under src/snn_data_lake/, e.g. 'engine/brain.py'."""
     return os.path.relpath(path, source_dir(root)).replace(os.sep, "/")
 
 
@@ -923,7 +932,7 @@ def resolve_owner(relpath, receiver_text, w):
         from. Without this a behaviour-preserving hoist of a read into an attribute reddened two
         ratchets; see the note in `_BindVisitor._handle`.
       * `self.<attr> = SomeClass(...)` -- `self.arm.workspace` read in live_brain walks
-        `arm` -> AutonomousArm -> brainstem/autonomous_loop.py, and only THEN matches `workspace`
+        `arm` -> AutonomousArm -> engine/autonomous_loop.py, and only THEN matches `workspace`
         against that module's own constructions.
     Token matching alone is ambiguous here -- two modules bind the token `workspace` -- and an
     ambiguous answer to "who is read by nobody" is no answer, so ambiguity returns None and the
@@ -959,7 +968,7 @@ def resolve_owner(relpath, receiver_text, w):
     # PUBLIC ACCESSOR HOP (T039g) -- A FALLBACK, NEVER AN OVERRIDE, and the ordering is the whole
     # correctness argument. The first draft ran this BEFORE the resolution above and hijacked reads
     # that already resolved: `self.arm.workspace` in live_brain moved off its true owner
-    # (brainstem/autonomous_loop.py) onto cortex/access_consciousness.py, which merely exposes an
+    # (engine/autonomous_loop.py) onto cortex/access_consciousness.py, which merely exposes an
     # accessor of the same name -- and fac_cross went 0 -> 3, which read like a discovery. Running
     # it only where the answer was already None means every pre-existing attribution is preserved
     # bit for bit and this can add resolution, never move it.
@@ -1242,7 +1251,7 @@ def measure(root, overlay=None, conn_source=None, api=None):
     # a measured reason. The former test was `m not in read_owners`, where read_owners are the
     # modules that OWN a cross-read instance -- so a module writing into a bus it does NOT own could
     # never qualify, no matter who read that bus. That made the criterion RED on the P6 FIX: a new
-    # faculty submitting into the one shared workspace `cortex/live_brain.py:313` reads was counted
+    # faculty submitting into the one shared workspace `engine/live_brain.py:313` reads was counted
     # as "read by nobody". Constructed and run on a worsened tree copy: `unread_writer_modules`
     # 7 -> 8, exit 1, on the single change P6 exists to encourage. This project rejected the private-
     # instance SITE count for exactly that property, and the same disqualification applies here.
@@ -1597,11 +1606,11 @@ def use(x):
 # --------------------------------------------------------------------------------------------------
 
 # The P6 FIX itself: a new faculty whose output IS consumed, because it submits into the one shared
-# workspace `cortex/live_brain.py:313` reads. Under the former owner-centric `unread_writer_modules`
+# workspace `engine/live_brain.py:313` reads. Under the former owner-centric `unread_writer_modules`
 # this went 7 -> 8 and exited 1 -- the gate reddening the single change P6 exists to encourage.
 _CONTROL_SHARED_BUS = '''"""overlay control -- a new faculty that submits into the SHARED bus live_brain reads."""
 
-from snn_data_lake.brainstem.autonomous_loop import AutonomousArm
+from snn_data_lake.engine.autonomous_loop import AutonomousArm
 
 
 class ControlSharedBusFaculty:
@@ -1757,7 +1766,7 @@ def self_check(root):
     )
 
     # ---- reachable red, one constructed mutation per asserting criterion -------------------------
-    live_src = os.path.join(source_dir(root), "cortex", "live_brain.py")
+    live_src = module_file(root, "live_brain")
     with open(live_src, encoding="utf-8") as fh:
         live_text = fh.read()
     with open(
@@ -1790,7 +1799,7 @@ def self_check(root):
                 # bus arrives by dependency injection -- and was never in the count); the
                 # red needs the count BELOW the floor, so the mutation deletes the two
                 # live_brain reads -- one anchor was enough only while one read was.
-                "cortex/live_brain.py": _mutate_text(
+                "engine/live_brain.py": _mutate_text(
                     _mutate_text(
                         live_text,
                         'return snapshot(self.arm.workspace)["content"]',
@@ -1835,7 +1844,7 @@ def self_check(root):
         ),
     ]
 
-    with open(os.path.join(source_dir(root), "cortex", "brain.py"), encoding="utf-8") as fh:
+    with open(module_file(root, "brain"), encoding="utf-8") as fh:
         brain_text = fh.read()
 
     # Each control must leave EVERY criterion green. A criterion with no green state has no
@@ -1846,7 +1855,7 @@ def self_check(root):
             "same object, same call, same route -- `self._gw = self.arm.workspace` then "
             "`snapshot(self._gw)`",
             {
-                "cortex/live_brain.py": _mutate_text(
+                "engine/live_brain.py": _mutate_text(
                     live_text,
                     'return snapshot(self.arm.workspace)["content"]',
                     'self._gw = self.arm.workspace\n        return snapshot(self._gw)["content"]',
@@ -1865,7 +1874,7 @@ def self_check(root):
             "the site count rose on the two commits that did this project's real P6 work; the "
             "MODULE count is the ratchet precisely so this stays green",
             {
-                "cortex/brain.py": _mutate_text(
+                "engine/brain.py": _mutate_text(
                     brain_text,
                     "            self._reentrant = ReentrantWorkspace(",
                     "            self._p6_control_bus = GlobalWorkspace()\n"
@@ -1880,21 +1889,21 @@ def self_check(root):
             "cross_module_reads 3 -> 1 and unread_writer_modules 6 -> 7 on this exact rename "
             "before the asname bind (US1 audit M18)",
             {
-                "cortex/live_brain.py": _mutate_text(
+                "engine/live_brain.py": _mutate_text(
                     _mutate_text(
                         live_text,
-                        "        from snn_data_lake.substrate.report_channel import snapshot\n"
+                        "        from snn_data_lake.engine.report_channel import snapshot\n"
                         "\n"
                         '        return snapshot(self.arm.workspace)["content"]',
-                        "        from snn_data_lake.substrate.report_channel import snapshot as _p6_renamed\n"
+                        "        from snn_data_lake.engine.report_channel import snapshot as _p6_renamed\n"
                         "\n"
                         '        return _p6_renamed(self.arm.workspace)["content"]',
                         "control: as-rename (thought)",
                     ),
-                    "            from snn_data_lake.substrate.report_channel import snapshot\n"
+                    "            from snn_data_lake.engine.report_channel import snapshot\n"
                     "\n"
                     "            rec = snapshot(self.arm.workspace)",
-                    "            from snn_data_lake.substrate.report_channel import snapshot as _p6_renamed\n"
+                    "            from snn_data_lake.engine.report_channel import snapshot as _p6_renamed\n"
                     "\n"
                     "            rec = _p6_renamed(self.arm.workspace)",
                     "control: as-rename (attending branch)",
@@ -1922,7 +1931,7 @@ def self_check(root):
 # --------------------------------------------------------------------------------------------------
 # ---- T023 (specs/022): the manifest-sourced walk, REPORT-ONLY beside the AST walk ----------
 # distinct-from: the AST walk above -- same QUANTITY class (faculty-to-faculty routes), sourced
-#   from the DECLARED anatomy (substrate/wiring_manifest's committed artifact) instead of parsed
+#   from the DECLARED anatomy (engine/wiring_manifest's committed artifact) instead of parsed
 #   code. Two-step retirement per the task: this lands report-only with a parity table; the AST
 #   walk retires and baselines re-record in a SEPARATE commit only after faculties migrate onto
 #   declared ports and the two views converge. The ratchet verdict below NEVER reads this.
@@ -1930,7 +1939,7 @@ def manifest_parity_lines(res):
     """The parity table: declared (manifest) vs measured (AST/census), day-one divergence
     EXPECTED and recorded as the migration baseline -- never a red."""
     try:
-        from snn_data_lake.substrate.wiring_manifest import ARTIFACT, WiringManifest
+        from snn_data_lake.engine.wiring_manifest import ARTIFACT, WiringManifest
 
         m = WiringManifest.load_artifact(ARTIFACT, strict=False)
     except Exception as exc:  # noqa: BLE001 - availability is the finding, whatever the cause
@@ -1973,7 +1982,7 @@ def main(argv=None):
         # arm; the AST side's movement is the mutation rows below). Report-only, so it joins
         # the liveness print, never the criteria verdict.
         try:
-            from snn_data_lake.substrate.wiring_manifest import WiringManifest
+            from snn_data_lake.engine.wiring_manifest import WiringManifest
 
             probe = WiringManifest()
             n0 = len(probe.edges)

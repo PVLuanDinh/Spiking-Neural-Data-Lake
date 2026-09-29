@@ -79,7 +79,7 @@ def test_brain_wire_charge(tmp_path, monkeypatch):
     # confidence -- the superseded exact-content scan missed any partial dict by
     # construction, so source=="lake" on a partial cue IS the outcome change.
     monkeypatch.setenv("NORD_HOME", str(tmp_path))
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     for e in EPS + [
         {"who": "owner", "what": "tested", "where": "bench", "when": f"t{10 + i}", "affect": "calm"}

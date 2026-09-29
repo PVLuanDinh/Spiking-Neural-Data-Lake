@@ -73,7 +73,7 @@ def declare_ports(manifest):
     OUT the three normalized drive deficits (energy, curiosity, social; each deficit /
     set_point in [0,1] -- unmet need IS the negative-valence body signal), delivered whole
     each tick. The consumer edge is declared by the insula terminus."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "homeostatic_drives",

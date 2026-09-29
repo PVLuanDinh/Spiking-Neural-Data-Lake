@@ -6,8 +6,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from snn_data_lake.cortex.brain import make_brain
-from snn_data_lake.cortex.live_brain import _ROUTE_CUES, _route_tokens
+from snn_data_lake.engine.brain import make_brain
+from snn_data_lake.engine.live_brain import _ROUTE_CUES, _route_tokens
 from snn_data_lake.readout import interaction_learning as ixn
 from snn_data_lake.substrate.home import throwaway_home
 

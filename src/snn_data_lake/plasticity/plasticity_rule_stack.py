@@ -31,7 +31,7 @@ faculties, WITHOUT touching the base sandwich (it subclasses it):
 DROP-IN. Same public contract as the base stack -- .pre_gain(neuron_id) -> scalar and
 .stabilize(neuron_id, weights, activity) -> weights (plus .learning_step for the full-sandwich self-check)
 -- so anywhere a HomeostaticPlasticityStack is attached (web_server's live intent learner;
-cortex.live_brain's SpikingInteractionLearner), a PlasticityRuleStack swaps straight in. With its three
+engine.live_brain's SpikingInteractionLearner), a PlasticityRuleStack swaps straight in. With its three
 extra faculties DISABLED (ei / metaplastic / consolidation = False) it is BYTE-IDENTICAL to the base stack.
 
 REUSE, not reinvention. Every added faculty is a THIN ADAPTER over the real rule module (import + delegate,

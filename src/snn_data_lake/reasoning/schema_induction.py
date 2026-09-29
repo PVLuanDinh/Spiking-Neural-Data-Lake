@@ -54,7 +54,7 @@ DESIGN (spiking-native, bounded, deduped)
    self-check below asserts the two copies have not drifted). Without it this module chained ANY
    relation: `mary has hat` + `john has hat` (parent ("has","hat"), support 2) + `hat has brim`
    derived `mary has brim` / `john has brim` -- MEASURED, 2 false schemas, and the caller
-   (`cortex/brain.py`) appends them to the ONE durable lake with src='schema', which
+   (`engine/brain.py`) appends them to the ONE durable lake with src='schema', which
    `sleep/lake_consolidation.py:17` classifies as genuinely-learned and RETAINS. The DistMult
    gate structurally cannot be this check: it is deliberately NON-transitive (see 5).
 4. DERIVE: for an upper link (b rel c) whose (rel, b) prototype is SUPPORTED (>= min_support members),
@@ -176,7 +176,7 @@ class SchemaInducer:
 
     # ---- P1 (no-hardcode) declaration for every value below that ARBITRATES BEHAVIOUR -------------
     # Carried explicitly across the tier boundary rather than silently, per P1's honesty guard. The
-    # caller (`cortex/brain.py`) constructs a FRESH SchemaInducer every 4th night and persists no
+    # caller (`engine/brain.py`) constructs a FRESH SchemaInducer every 4th night and persists no
     # inducer state, so for ALL of these a running-baseline form is additionally not reproducible from
     # the persisted policy -- P1 exception (b) applies to the whole block, on top of the per-value
     # reason given:
@@ -373,7 +373,7 @@ class SchemaInducer:
         # confident(...)` -- so without the flag a broken gate silently downgrades the firewall chain,
         # passes EVERY candidate, and leaves `rejected` reading a constant 0 with nothing in the
         # result to say so. Callers that write these triples to the durable lake need to tell those
-        # zeros apart (v4.78); `cortex/brain.py` refuses the durable write when this is False.
+        # zeros apart (v4.78); `engine/brain.py` refuses the durable write when this is False.
         # The flag now covers a THIRD state it used to report as healthy: a NaN-diverged scorer.
         # Reachable red for the False branch is constructed in _selfcheck below.
         result = {
@@ -499,7 +499,7 @@ def _selfcheck():
     r_b = SchemaInducer(seed=0).consolidate(taxonomy)
 
     # (4) TRANSITIVITY FIREWALL, with its red constructed rather than assumed. This exact input used
-    #     to derive `mary has brim` + `john has brim` and hand them to cortex/brain.py, which appends
+    #     to derive `mary has brim` + `john has brim` and hand them to engine/brain.py, which appends
     #     them to the ONE durable lake as genuinely-learned knowledge. `has` does not chain.
     non_transitive = [
         ["mary", "has", "hat"],
@@ -593,7 +593,7 @@ def _selfcheck():
     print(
         f"gate-off  : kb_ranking import blocked -> confidence_gate_ran="
         f"{res_off['confidence_gate_ran']} rejected={res_off['rejected']} "
-        f"(cortex/brain.py refuses the durable write on this)"
+        f"(engine/brain.py refuses the durable write on this)"
     )
     print(
         f"gate-nan  : {len(diverging)}-triple store, import intact, DistMult diverged -> "

@@ -1,7 +1,7 @@
 """P4b -- the signal-calibration state goes IN the one lake, and a restart is not amnesia.
 
 This suite exists because the defect it guards against is SILENT by construction. All three consumer
-sites in `cortex/brain.py` sit inside a bare `except Exception`, and the load handler additionally
+sites in `engine/brain.py` sit inside a bare `except Exception`, and the load handler additionally
 NULLS both calibrators. So a persistence path that stops working does not raise, does not log, and
 does not move a dashboard: `n` simply resets to 0 on every boot, the live `r["n"] >= 50` guard in
 `Brain._tick_ensemble` then never fires, and `self._lc.salience_th` is pinned to the LocusCoeruleus
@@ -200,7 +200,7 @@ def test_a_restarted_brain_recovers_its_salience_threshold(tmp_path, monkeypatch
     and no other test moves: that silence is the whole reason this file exists.
     """
     _fresh_home(tmp_path, monkeypatch)
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     first = make_brain(seed=0, persist=True)
     if first._salience_calib is None or first._lc is None:
@@ -243,7 +243,7 @@ def test_a_brain_with_no_stored_state_holds_the_default(tmp_path, monkeypatch):
     the one above fails is the whole failure mode, made visible.
     """
     _fresh_home(tmp_path, monkeypatch)
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     b = make_brain(seed=0, persist=True)
     if b._salience_calib is None or b._lc is None:

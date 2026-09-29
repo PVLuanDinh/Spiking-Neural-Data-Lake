@@ -133,7 +133,7 @@ gradient-checkpointing / offload -- not AirLLM. See `docs/AIRLLM_ANALYSIS.md`.
 PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cerebellum.jepa_world_model
 
 # JEPA wired live into the whole brain (safety + determinism with the flag ON)
-PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.live_brain
+PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.engine.live_brain
 
 # the torch scale scaffold (prints a guidance banner without torch)
 PYTHONPATH=src python -m snn_data_lake.reasoning.jepa_scaffold_torch

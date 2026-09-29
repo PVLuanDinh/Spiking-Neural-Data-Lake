@@ -859,12 +859,12 @@ def sign_report(agree, total):
 # distinct-from: gates/amdahl_gate.py::red_repeatability -- judges two neutered readings of a
 #   TIMING rig by overlapping bootstrap bands over its own resamples; the band below is a
 #   PERMUTATION null over an external file's segment labels, and the two rigs share no input.
-# distinct-from: brainstem/autonomous_loop.py::coverage_scale_cells -- a lattice-point count that
+# distinct-from: engine/autonomous_loop.py::coverage_scale_cells -- a lattice-point count that
 #   derives an arm's workspace scale; no correlation, no null, no external file.
 # distinct-from: plasticity/r_stdp.py::pre_spike -- pairs a PRE spike against the most recent
 #   POST spike inside a live plasticity rule; "post" there is a spike time in this brain, here it
 #   is the postsynaptic SOMA of a reconstructed human synapse.
-# distinct-from: sensorimotor/signal_loop.py::stdin_stream and cortex/brain.py::_flush_coverage --
+# distinct-from: sensorimotor/signal_loop.py::stdin_stream and engine/brain.py::_flush_coverage --
 #   a wire-format reader and a lake write; neither computes a fraction or a null.
 #   All five sites read 2026-09-09; the guard matched on "POST"/"fraction"/"same".
 def post_excitatory_fractions(post_type):
@@ -2148,7 +2148,7 @@ def _run_ingest(argv):
 #   Not reusable: it is hard-wired to that path and to an (edge, diverged, measured, provenance)
 #   row, while a stage pin is keyed by shard range and carries gate readings. What is reused is
 #   the LESSON, cited so the next reader sees it was not reinvented.
-# distinct-from: cortex/brain.py::_flush_growth -- writes GROWN SUBSTRATE into the durable lake
+# distinct-from: engine/brain.py::_flush_growth -- writes GROWN SUBSTRATE into the durable lake
 #   (P4b state, the thing this module must never write). distinct-from:
 #   neuromodulation/intrinsic_motivation.py::observe and neuromodulation/spiking_curiosity.py::
 #   observe -- fold a prediction error into running EMAs. distinct-from:

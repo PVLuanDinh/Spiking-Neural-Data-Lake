@@ -19,7 +19,7 @@ Online prototype-recruitment (growing_learner) + a reward-modulated action-value
 (a contextual bandit over grown units, RPE update) + cortisol neuromodulation, all through the gated
 arm. This is adaptive + GROWING, NOT cognition. The four modality streams here are synthetic.
 
-  python -m snn_data_lake.brainstem.autonomous_loop
+  python -m snn_data_lake.engine.autonomous_loop
 """
 
 import functools as _functools
@@ -41,6 +41,7 @@ from snn_data_lake.cerebellum.hjepa_serve import HJepaServe
 from snn_data_lake.cerebellum.jepa_world_model import JepaWorldModel
 from snn_data_lake.cortex.agency_monitor import AgencyMonitor
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
+from snn_data_lake.engine.signal_ring import LakeJournaller, SignalRing
 from snn_data_lake.growth.growing_learner import GrowingLearner
 from snn_data_lake.hippocampus.affective_memory import AffectiveEpisodicStore
 from snn_data_lake.hippocampus.allocentric_map import AllocentricMap
@@ -57,7 +58,6 @@ from snn_data_lake.sensorimotor.multimodal_encoder import encode_multimodal
 from snn_data_lake.sleep.experience_replay import ReplayBuffer
 from snn_data_lake.substrate.home import _T_COALITION, _log
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
-from snn_data_lake.substrate.signal_ring import LakeJournaller, SignalRing
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
@@ -347,8 +347,8 @@ class AutonomousArm:
         # different failure from never clearing and must not look the same from outside.
         self._estop_clears = 0
         # NORD_ESTOP_SELF_CLEAR=1 enables the owner-authorised self-re-arm. Off by default so the
-        # ten "the E-STOP freeze must hold" assertions across this module, cortex/brain.py and
-        # cortex/live_brain.py keep testing exactly what they always tested.
+        # ten "the E-STOP freeze must hold" assertions across this module, engine/brain.py and
+        # engine/live_brain.py keep testing exactly what they always tested.
         import os as _o  # noqa: PLC0415 -- module-level `os` is imported lazily further down
 
         self._estop_self_clear = _o.environ.get("NORD_ESTOP_SELF_CLEAR") == "1"
@@ -889,7 +889,7 @@ class AutonomousArm:
         #
         # Three independent measurements, all re-run for this deletion:
         #   * LIVE, 3 seeds x 600 ticks with this function as the reward_fn (what
-        #     `cortex/brain.py::Brain._wake_tick` passes on every wake tick), driven by a
+        #     `engine/brain.py::Brain._wake_tick` passes on every wake tick), driven by a
         #     random.Random(seed) visual/temperature/audio/distance stream: 538 blocked states
         #     (0, 263, 275 by seed), ZERO of them collision-free, -0.30 returned 0 times. The
         #     COUNT is protocol-dependent and must not be quoted as if it were not: an
@@ -1295,7 +1295,7 @@ class AutonomousArm:
             # prototype learner's vigilance test.
             #
             # So this path is honestly DORMANT: `_bound_modalities` is 0 forever and is read only by
-            # telemetry (cortex/brain.py:2799), and Claustrum.broadcast() has no live call site at
+            # telemetry (engine/brain.py:2799), and Claustrum.broadcast() has no live call site at
             # all. It belongs in dormancy_gate.EXEMPT with that reason, not in a wiring wave. Leaving
             # the constant-0 in place is the honest report; making it vary without changing an
             # outcome would only make a dead faculty look alive on the cockpit.
@@ -1627,7 +1627,7 @@ class AutonomousArm:
         `hi - lo = 0.20`, and the occupant kept that subsidy even after perception had moved to a
         different percept. With the subsidy scoped to a tenancy the source is still asserting, the
         broadcast follows this signal: measured over 120 live ticks of `make_brain(seed=0,
-        refit_every=10, persist=False)` at `clock.phase = 0.25`, `cortex/live_brain.py::thought`
+        refit_every=10, persist=False)` at `clock.phase = 0.25`, `engine/live_brain.py::thought`
         takes 4 distinct values with 55 changes and NAMES THE PERCEPT SUBMITTED THIS TICK on 56 of
         56 posting ticks (and holds the last one on all 64 ticks where perception is silent, which
         is the hysteresis working rather than failing). The same run on the pre-fix bus: 1 distinct
@@ -1659,7 +1659,7 @@ class AutonomousArm:
         # byte-identical.
         self._sal_base = ws.next_baseline(self._sal_base, dev, self._sal_n)
         # The band map MOVED to `thalamus/global_workspace.py::band_claim` 2026-08-06 and is now
-        # SHARED with cortex/brain.py::_update_access -- not copied, called. This method's arithmetic
+        # SHARED with engine/brain.py::_update_access -- not copied, called. This method's arithmetic
         # is byte-for-byte what it was (same floor, same ceiling, same self-normalising ratio, same
         # hi<=lo guard, same total<=0 guard); what changed is that ONE definition of "a compliant
         # claim" now serves every producer, so two producers are finally competing in the same
@@ -1816,7 +1816,7 @@ class AutonomousArm:
 
     # distinct-from: thalamus/reentrant_workspace.py -- that is the theta AUTHORITY over
     #   workspace coherence; this is the motor tap pairing one apply() with one
-    #   observation. distinct-from: cortex/live_brain.py -- the composed tick; this is
+    #   observation. distinct-from: engine/live_brain.py -- the composed tick; this is
     #   one envelope passage inside it. Sites read; term overlap is the spec citation.
     # distinct-from: sensorimotor/efferent_boundary.py -- declare_ports registers the lane's ports;
     #   this is the loop's passage that feeds it. Read.
@@ -1978,7 +1978,7 @@ class AutonomousArm:
         # neither HOME nor RETRACT_ALL, so nothing on the live path could ever re-arm the arm.
         # OPT-IN, DEFAULT OFF -- and the default was decided by the codebase, not by preference.
         # Wiring this on by default failed EIGHT E-STOP assertions in this module plus one each in
-        # cortex/brain.py and cortex/live_brain.py, all of the form "the E-STOP freeze must hold".
+        # engine/brain.py and engine/live_brain.py, all of the form "the E-STOP freeze must hold".
         # Ten independent checks encode "a latched arm stays latched across later ticks" as a design
         # invariant, and every one of them ticks a SAFE context after the stop -- so they were really
         # asserting that the freeze survives regardless of whether the danger is gone.
@@ -2414,7 +2414,7 @@ class AutonomousArm:
             # 0 channels after 146 awake ticks (T079 1.3, `n_scored` 0, `agency_signal`
             # 0.0). It is REPLACED, not duplicated, by the per-joint efference copy fed from
             # `apply_observed`, where every rotatable joint is observed on every envelope
-            # passage. `_agency_on` still gates it and `cortex/brain.py` still sets it; only
+            # passage. `_agency_on` still gates it and `engine/brain.py` still sets it; only
             # the feed moved, and the monitor's lazy construction moved with it.
             if (
                 self._contrast_on and reward_fn is not None
@@ -3621,7 +3621,7 @@ def declare_ports(manifest):
     (global_workspace). NOTE the safety adjacency, unchanged by declaration: workspace
     output never gates motion directly -- the reflex/E-STOP path preempts before the
     workspace is consulted, and on a reflex tick only the threat bid is submitted."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "autonomous_loop",

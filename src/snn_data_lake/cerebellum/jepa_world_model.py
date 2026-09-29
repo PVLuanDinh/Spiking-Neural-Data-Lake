@@ -503,7 +503,7 @@ class JepaWorldModel:
         WHAT THIS FIXES (the e-prop cross-cutting invariant, closed 2026-08-04). p = (I + Wz)z +
         const, so the exact derivative is dL/dz = gp + Wz^T gp. This method used to compute exactly
         that, and the `Wz^T gp` half read the FORWARD weight matrix transposed to carry error
-        backward -- weight transport, on the live wake tick (`cortex/brain.py:232` builds the brain
+        backward -- weight transport, on the live wake tick (`engine/brain.py:232` builds the brain
         with `jepa=True`, so `train_step` runs every tick through `autonomous_loop`). `docs/POLICIES.md`
         named this site as an open violation with its benchmark specified.
 

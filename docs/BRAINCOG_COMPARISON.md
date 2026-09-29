@@ -71,7 +71,7 @@ Legend: **Have** = shipped in the zero-dep core (or torch tier where noted);
 | **Developmental plasticity** (pruning/neurogenesis) | yes | Have (`developmental_pruning`, `neurogenesis`, `lifelong_consolidation`) |
 | **Evolutionary plasticity** (neuron/architecture evolution across species) | yes | Partial (`quality_diversity` MAP-Elites over policies; no cross-species neuron evolution) |
 | **Self-improvement loop** (curiosity->goals->metacog->criticality->QD, integrated) | Absent (BORN is a roadmap) | **Have (L0-L13 ladder, `wholistic_loop`)** |
-| **Unified always-on organism** (circadian wake/sleep, self-model) | Absent (toolkit of modules) | **Have (`cortex/brain.py`)** |
+| **Unified always-on organism** (circadian wake/sleep, self-model) | Absent (toolkit of modules) | **Have (`engine/brain.py`)** |
 | Sleep-gated neurogenesis + sleep-replay consolidation | absent | **Have** |
 | Metacognitive self-monitoring / confidence-gated abstain | absent | **Have (`metacognitive_monitor`)** |
 | Closed criticality / homeostasis regulator | absent | **Have (`criticality_regulator`)** |
@@ -170,7 +170,7 @@ These are real advantages, not consolation prizes:
   meta-plasticity, closed criticality regulation, sleep consolidation with
   non-regression, quality-diversity repertoire, self-generated drive-grounded
   goals, metacognitive HOLD, and a `wholistic_loop` that measures whole > sum.
-- **A unified, always-on organism.** `cortex/brain.py` runs one brain on a
+- **A unified, always-on organism.** `engine/brain.py` runs one brain on a
   circadian clock: wake ticks (curiosity-driven, safe), sleep ticks (neurogenesis
   gated to sleep + noise-driven replay consolidation), a self-model narrator that
   speaks freshly from real signals, and GNW ignition. BrainCog is a *toolkit* you

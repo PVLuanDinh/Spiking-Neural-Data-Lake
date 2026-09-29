@@ -71,7 +71,7 @@ class RecallTrace:
     uses them to decide which lake records SURVIVE the night -- and they were persisted to
     `<home>/recall_trace.json`, a JSON sidecar beside `brain_lake.bin`, which is what P4b forbids in its
     own words ("not a sidecar file, not a JSON blob"). It was LIVE, not hypothetical:
-    `reasoning/spike_chat_lake` bumps it on the recall path and saves it, and `cortex/brain.py`'s sleep
+    `reasoning/spike_chat_lake` bumps it on the recall path and saves it, and `engine/brain.py`'s sleep
     tick reads it back to rank the survivors.
 
     THE LINES BELOW DID NOT CHANGE. `substrate.home.save_state`/`load_state` did: they now write a

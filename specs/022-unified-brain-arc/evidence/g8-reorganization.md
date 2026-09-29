@@ -3053,3 +3053,117 @@ clock in total, run partly in parallel: post export, census and diff about 125 s
 
 NOT VERIFIED BY A BATTERY. The stage is verified by the cheap half only; nothing is committed or pushed, no daemon
 was started and the live lake was not opened. G8-2's panel, fold and one battery remain owed.
+
+### 3.24 M10 predeclared engine move (Claude, G8-2, 2026-09-29)
+
+The M10 parent is the M9 commit `4b2752b5`. Its clean export completed the 24-gate, seven-probe, 30-registry census with
+every gate rc 0 (pre census SHA-256 begins `EDE01E321D88B97D`, taken with `SNN_ALIAS_STRICT=1`); the frozen 2.12 map,
+read by the frozen mover (sha256 prefix `b49e982a`), moves 7 modules into the NEW `engine/` package: `autonomous_loop`
+from `brainstem`; `brain` and `live_brain` from `cortex`; `learn_daemon`, `report_channel`, `signal_ring` and
+`wiring_manifest` from `substrate`. All 7 are core tier: none is torch-tier, train-tier or in the safety envelope. The
+mover created `engine/__init__.py` (docstring only), added the `engine` key to `REGIONS` (7 members) and re-keyed the
+runner's names, and rewrote 100 files (196 imports, 32 strings; one docstring it declines to touch was re-pointed by the
+rewriter). The rewriter (Codex's, re-targeted to M10 and kept out of tree) rewrote 164 live files, 705 citations. No
+directory is emptied and none is deleted; `brainstem/`, `cortex/` and `substrate/` keep other modules.
+
+Row items, each verified in the diff: `replication_guard.CANON` (3 entries) and `dormancy_gate._LIVE_ROOTS` (3) and the
+root `learn_daemon.py` shim (docstring path and import) and `selfcheck_cache`'s `engine.signal_ring` subject and
+`manifest_gate.REGISTRANTS` (`brain`, `autonomous_loop`, `report_channel`) were re-pointed by the mover and rewriter; the
+generated expected map (`expected_M10.json`, SHA-256 begins `3C2DD50463D3DD84`) confirms each. By hand: `import_manifest.
+GOVERNED` gains `engine`; `tools/p6_gate.py` gets one helper, `module_file(root, module)`, that builds a module's source
+path from `module_path()`, and its two `os.path.join(source_dir(root), "cortex", ...)` reads (now at two call sites near
+lines 1760 and 1838; the row's 1733 and 1811 had moved) call it (F7; the file's CRLF endings kept); the specs/005
+quickstart's line 76 path now reads `engine/brain.py`, with a dated note ("G8 M10 path note (2026-09-29)") beside the M3
+note naming the historical path. POLICIES.md P4's `cortex.brain.Brain` and `make_brain()` names became `engine.brain.
+Brain` and `engine.brain.make_brain()` (6 lines, one token for one token); the word delta is 0 and `doc_budget_gate` reads
+14266 of 14276 before and after (10 words of headroom, unchanged); `python -m snn_data_lake.gates.policy_manifest
+--manifest --write` regenerated `tools/policy_manifest.json` byte-identical (no diff). The rule census regeneration wrote
+`tools/rule_census.json` byte-identical (rows 104, undispositioned 56).
+
+Before any M10 post-move gate run, the C1 delta was written to the out-of-tree `declared_M10.json` (SHA-256 begins
+`C2B0924FAD5B0C90`). It forecasts 14 changes: the brain atlas per-key counts and totals read as AST literals from the
+candidate tree's `REGIONS`/`TORCH_TIER`/`TRAIN_TIER` against the parent export (`cortex` 34 to 32 (+1 torch-tier kept),
+`brainstem` 7 to 6, `substrate` 36 to 32, `engine` new at 7; 298 modules unchanged; regions 26 to 27, in the TOTAL row
+and the self-check row); the one new initializer raising the parsed-file counts of `eprop_transport_gate` (two lines),
+`gradient_claim_gate` and `p6_gate` (447 to 448) and the P4c scaffold count (37 to 38); citation BROAD 1923/292 to
+2182/305, forecast statically with the guard's own parser and resolver over the tracked set (reproducing 1923/292 on the
+parent) and then the candidate; and the names `REGIONS.keys` and `import_manifest.GOVERNED`, each gaining `engine`. Every
+added BROAD violation is in a frozen document (CHANGELOG, specs 001, 003, 014 and the specs/022 evidence, 76 in specs) or
+a frozen coverage artifact (four files under `docs/coverage/artifacts` that cite the retired `brain` path and stay
+unrewritten so they keep importing through the alias), except five pairs in live files that are dangling before and after
+and merely change path at net zero (four in three moved source files and one in `docs/RESEARCH_ASSESSMENT.md`'s
+`../src` citation of the daemon). The declaration's note counts these as "six"; it is five (a wording miss in the note,
+not in the forecast). POLICIES.md, the policy manifest and the other budgeted documents do not move.
+
+**No halt, no amendment.** The post census (over an export of the staged worktree, strict) completed 24 gates and seven
+probes, all rc 0 (post census SHA-256 begins `DB6CBA2DF80DC1FC`, observed delta `1576A190FAE54BCB`), and C1 said the
+diff equals the declared delta (14 declared changes) on the first census. No fresh census was needed.
+
+Items beyond the row, each required by the frozen procedure or by what the checks prove, recorded:
+- **Envelope: no edit, none touched.** The mover and the rewriters changed no line of the five envelope files (sha256
+  of each equal before and after; the blob ids equal the parent's; the protected diff against HEAD is empty). No
+  envelope comment cites a moved module, so the carve-out (F11) adds nothing at M10 and the stage-stop rule for an
+  envelope code edit was not reached.
+- **A second rewriter pass.** The pair-map rewriter leaves a path-form citation followed by a member name
+  (`<pkg>/<module>.<member>`, no `.py`); at M10 the leftover search found 106 such lines in live files (the module
+  names are heavily cited by member). A second pass (`m10_rewrite2.py`, the same script with one added pattern for that
+  form) rewrote 19 of them in 14 live files; the leftover search afterwards returns nothing in any live file (all 294
+  remaining matches are in frozen specs, evidence and the frozen POLICIES evidence, CHANGELOG and JSON).
+- `ruff check --fix --select I` re-sorted imports in 15 places and `ruff format` reformatted 4 files; no
+  line-length finding in the touched files.
+- ONE DEVIATION from the stage brief, ordered by the orchestrator: after the build and before C2(d) and the bounded
+  pytest, `git add -A` staged the tree (staging only; nothing committed, HEAD unchanged at `4b2752b5`, the one
+  pre-existing stash untouched). It shows 228 entries: 7 renames, 1 added (`engine/__init__.py`) and 220 modifications.
+  This record itself was appended afterwards and re-staged.
+- ORDERED HOME RULE: every Python process that could construct a brain or touch a home (the seven module self-checks,
+  pytest, C2(a), C2(b) to C2(e), the censuses, C2(c), R-L1, the move_gate self-check) ran with `NORD_PERSIST=0` and its
+  own fresh scratch `NORD_HOME` under the kit directory (`home_<step>`); the scratch homes of six module self-checks were
+  empty afterwards, and the `autonomous_loop` self-check wrote two files (`brain_lake.bin`, `estop.latch`) inside its
+  own scratch home. The live lake was never named or opened.
+- **A whole-tree lint finding, NOT fixed (needs the orchestrator's call).** `ruff check .` (the CI form) is clean on the
+  parent export and reports 8 `I001` findings at this head, all in untouched frozen artifacts under
+  `docs/coverage/artifacts` (`affect_ab_probe`, `affect_refute_probe`, `consciousness_refute_probe`,
+  `crosscat_jepa_vs_conflict_ab`, `exec_refute_probe`, `executive_ab_probe`, `imagination_ab`,
+  `imagination_refute_ab`). They import the retired `cortex.brain` or `brainstem.autonomous_loop` names through the
+  alias, which C2(e) requires to keep working; with those files gone ruff's import sorter no longer files the two lines
+  with their first-party siblings. The brief's ruff check is on the touched files and passes (`ruff format --check src
+  tests tools`: 618 files formatted; touched `.py` files: 179 formatted). The row names no fix (editing a frozen artifact
+  or the ruff config is not in the row), so none was made: CI's `ruff check .` would red at this head until the
+  orchestrator rules (re-sort the eight artifacts' imports, or an `I001` per-file ignore for that directory).
+- Not touched: the frozen documents and frozen evidence keep their historical paths; the index documents are D1's.
+
+**Cheap half (2.8), counts.** C2(a): 415 imports attempted on the parent export, the staged worktree and the post
+export, the same 13 known optional-import failures on all three, zero scratch-home files. C2(b): 161 legacy pairs (154
+plus the 7 new), no synthetic package, 286 flat aliases, no identity failure, on the real worktree and on the export.
+C2(c): 17 of 17 legacy gate runs equal the current runs, 0 differ (real worktree, strict off; 247.0 s). C2(d): 668 live
+source files (667 plus `engine/__init__.py`), 0 unparsed, 0 findings, on the export and on the staged worktree alike.
+C2(e): 16 frozen artifacts, 12 module names, all file-loaded on both trees. C3: the envelope hash gate and its
+self-check green, the protected diff empty, the latch path resolved through the real home module with a file loader
+under a scratch home. C4: the R-b0 probe identical in the pre and post censuses. C5 (R-L1): `--rl1-check` on the S1b
+baseline home, real worktree: the brain arm PASS (refused None, walk equal, answers equal) and the zoo arm PASS. C6 to
+C9 green inside the census (invariants empty; strict registry parity). Citation STRICT 0 unexempted with its 2
+exemptions; BROAD 2182 across 305 files, equal to the forecast; the document command guard and the document budget
+passed; `policy_manifest --audit` passed with no unclaimed and no out-of-CI gate; `p6_gate` self-check (4 of 4 controls)
+and `move_gate`'s self-check with the mover and the R-L1 baseline (C1, F5, C2(b), F3(c), F2, C2(c) and C5 reds fired in
+copies; C2(d)'s positive control found F7's six sites) passed. The 7 module self-checks ran as `-m` of the new `engine`
+names and each printed its OK line. Bounded pytest: the full set of 56 test files that name a moved module, its runner or the move tables (-o addopts= -p no:cacheprovider -m 'not slow', scratch NORD_HOME) on the staged worktree: 821 passed, 25 deselected, 0 failed (32 min 9 s, the first half sharing the machine with a second run that was stopped); and a 12-file subset (	est_g8_move_gate, 	est_g8_checkpoint_translation, 	est_p6_g8_legacy_labels, 	est_p6_accessor_attribution, 	est_signal_ring, 	est_wiring_manifest, 	est_policy_manifest, 	est_report_order_probe, 	est_g0c_learner_persists, 	est_so101_arm, 	est_lake_recall, 	est_spontaneous_bootstrap) on the post export: 168 passed, 9 deselected, 0 failed (2 min 6 s). The full-set run on the export was not completed (a parallel run stalled under contention and was stopped).
+
+**Planted red (C8, by file).** In an export copy (`planted_tree`, never the worktree) `replication_guard.CANON`'s
+`Brain` entry was put back to the retired `cortex` path. The strict census diff went red with 12 differences, among them
+the C6/C8 line "registry_names_without_file = replication.CANON: Brain=cortex.brain" (no file at that path, and the
+alias raises under strict), the replication guard's own line "Brain defined in 1 site(s)  DUPLICATES", its exit code
+0 to 1, the `replication.CANON` name diff and the policy audit's P4 PASS to FAIL. The real tree is green on the same
+census (diff equals the declared delta). Planted census SHA-256 begins `F2C41CA2E04A6AB1`, its observed delta
+`64CF0316207B85F5`.
+
+**Time.** Pre export and census 119 s. Build (mover, both rewriters, hand edits, ruff, rule-census and policy-manifest
+regeneration, leftover search, forecasts and declaration): 7 min 39 s of wall clock from the first command to the
+declaration being written (pre export and census included). Cheap half: about 79 min 15 s of wall clock in total, run partly in
+parallel: post export, census and diff about 125 s, the planted red 138 s, C2(c) 247 s (background), the `move_gate`
+self-check about 100 s (background, second run: its first run refused for want of the R-L1 baseline argument, a command
+error, not a check), the seven module self-checks 173 s in parallel, the bounded pytest 32 min 9 s on the worktree and 2 min 6 s on the export subset.
+
+NOT VERIFIED BY A BATTERY. The stage is verified by the cheap half only; nothing is committed or pushed, no daemon
+was started and the live lake was not opened. The `slow`-marked tests were deselected from the bounded pytest (they
+spawn interpreters and drive hundreds of ticks; an unbounded first attempt with them included ran past 30 minutes and
+was stopped), so they stay owed to the battery. G8-2's panel, fold and one battery remain owed.

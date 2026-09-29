@@ -110,7 +110,7 @@ class GrowingLearner:
     # over these ids do NOT persist yet -- said in Brain._flush_prototypes' docstring too.
     # distinct-from: growth/neurogenesis_engine.py -- restore_growth_state() rebuilds NG-SNN tensors
     #   from an npz blob. distinct-from: cerebellum/spiking_jepa.py, sensorimotor/rsnn_encoder.py -- load
-    #   weight matrices from tagged JSON. distinct-from: substrate/wiring_manifest.py -- rebuilds
+    #   weight matrices from tagged JSON. distinct-from: engine/wiring_manifest.py -- rebuilds
     #   ports from a dict. distinct-from: cortex/reasoning_curriculum.py -- that module's OWN
     #   state_dict (codebook + ranks). Each tenant serialises its own object under the repo's
     #   state_dict/load_state_dict convention; this one serialises prototypes. All sites read.

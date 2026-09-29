@@ -18,7 +18,7 @@ score is the **evidence-weighted mean over its constituent faculties**, not the 
 Two consequences, both load-bearing:
 
 1. **Wiring cannot get there.** The rubric pre-declares the ceiling: wiring a faculty into
-   `cortex/brain.py::_route_percept_to_action` moves a three-way arm decision and can raise Executive,
+   `engine/brain.py::_route_percept_to_action` moves a three-way arm decision and can raise Executive,
    Affect, SpatialTemporal and action-relevant Perception. It **cannot** raise Language, Imagination,
    Gf, Consciousness or WholeBrain. Crediting those to a wiring wave is the theater P0 forbids.
 2. **Two categories are at measured architectural ceilings.** BLiMP **51.0%** against a 50.0% chance
@@ -57,7 +57,7 @@ sweep and a stale entry inflates the next delta.
 - **"`Pragmatics` has zero callers outside its own module" (gap 3) is stale.**
   `reasoning/spike_chat_lake.py:220-226` constructs `Pragmatics(seed=seed)` and `:997-1003` calls
   `implicature(text)` and emits a reply candidate. The true statement is narrower: it has no caller in
-  `cortex/brain.py` and no A/B — wired to the chat path only.
+  `engine/brain.py` and no A/B — wired to the chat path only.
 - **Citation drift on the attention finding.** The baseline cites `brain.py:1068` for the `goal=None`
   site; `:1068` is inside a docstring and the real call is `brain.py:1080`. The finding itself holds —
   `learned_attention.py:91-92` returns `np.zeros(n_bands)` for `goal=None` and `:139` multiplies by
@@ -87,8 +87,8 @@ names. Three claims were checked and were false:
   `reasoning/godel_machine.py::attempt_on_repo` has **zero call sites** tree-wide. **CORRECTED 2026-08-14: the "only reference outside itself is its filename as a string" clause was FALSE in three ways, and this paragraph's 2026-08-13 pass replaced a rotted line cite with a path that does not contain what it named.**
   (a) The filename-as-a-string lives in `reasoning/godel_machine.py`'s OWN `_SAFETY_KERNEL` -- i.e. INSIDE itself, not outside. (b) The consuming protected-paths list is `_PROTECTED` in `infra/self_mod_harness.py`, a DIFFERENT file from the `infra/brain_native_selfbuild.py` this paragraph cited; that file mentions `godel_machine` exactly once, in a comment. (c) References outside itself DO exist: a live import in `infra/self_mod_harness.py` and a gate registration in `run_selfchecks.py`. `docs/POLICIES.md`'s P0 row already recorded that this clause does not hold, and `CLAUDE.md` recorded it before this branch -- a claim living in three places with two corrected.
   What does fire, CORRECTED 2026-08-13: the `self_build_loop` route reaches its recorder but is MEASURED EMPTY -- 190 ticks under `NORD_SELFMOD=1` (with `NORD_HOME` isolated) leave `Brain._selfbuild_last == {'night': 8, 'proposed': 0, 'kept': 0}`, so `self_mod_harness` is NEVER CONSTRUCTED. The claim that it is `reached via Brain.self_improve`
-  is FALSE: that method has ZERO call sites tree-wide (its def is `Brain.self_improve`, and `docs/POLICIES.md`'s own P0 row records the same). CITED BY SYMBOL because all five line numbers in this paragraph were re-derived 2026-08-13 and every one had rotted -- `godel_machine.py:159` lands on a path string (the def is `attempt_on_repo`), `brain.py:1708` on an R-STDP comment, `:2520` on a table row, `:3485` on `"kill",`, and `brain_native_selfbuild.py:73` on a `__spec__` comment. The route is `cortex/brain.py::Brain._enter_wake` -> `Brain._maybe_autonomous_self_build` -> `basal_ganglia/self_build_loop.SelfBuildLoop.run`. Wiring the Godel-machine adapter is open P0 work, and so is FILLING THE PROPOSER: a call-site wire into a loop that proposes nothing satisfies a grep and changes no outcome.
-- **"67 such swallows in `cortex/brain.py` alone"** did not reproduce, and neither did the audit's
+  is FALSE: that method has ZERO call sites tree-wide (its def is `Brain.self_improve`, and `docs/POLICIES.md`'s own P0 row records the same). CITED BY SYMBOL because all five line numbers in this paragraph were re-derived 2026-08-13 and every one had rotted -- `godel_machine.py:159` lands on a path string (the def is `attempt_on_repo`), `brain.py:1708` on an R-STDP comment, `:2520` on a table row, `:3485` on `"kill",`, and `brain_native_selfbuild.py:73` on a `__spec__` comment. The route is `engine/brain.py::Brain._enter_wake` -> `Brain._maybe_autonomous_self_build` -> `basal_ganglia/self_build_loop.SelfBuildLoop.run`. Wiring the Godel-machine adapter is open P0 work, and so is FILLING THE PROPOSER: a call-site wire into a loop that proposes nothing satisfies a grep and changes no outcome.
+- **"67 such swallows in `engine/brain.py` alone"** did not reproduce, and neither did the audit's
   correction of it ("112 / 203"), because neither said what it counted. Re-counted by `ast` with the
   definition stated: `brain.py` has **111** bare `except Exception:` handlers, **39** of which wrap a
   `try` body containing an import; across 245 governed-tier files, **142** bare / **49** import-wrapping.
@@ -110,12 +110,12 @@ against a benchmark on the real workload.* Not: move a narrow brain and call `cu
 speedup.
 
 Also unresolved and prior to any of this: the live tick is **891 ms** after two unbounded O(n^2) growths
-were removed (from 90,000 ms), and that 891 ms is **unattributed**. `substrate/learn_daemon.py` still claims
+were removed (from 90,000 ms), and that 891 ms is **unattributed**. `engine/learn_daemon.py` still claims
 `~33 ms`. The project's own rule applies — *neuter it and measure the delta; a cProfile ranking once
 sent a whole optimisation plan after the wrong function.*
 
 Structural fact that shapes the design: the live tick's cost centre contains **zero torch and zero
-numpy**. `brainstem/autonomous_loop.py::AutonomousArm.step()` is 480 lines and ~60 narrow subsystem
+numpy**. `engine/autonomous_loop.py::AutonomousArm.step()` is 480 lines and ~60 narrow subsystem
 calls with no array library at all.
 
 ## Dependency policy — the rule was already removed; the machinery was not
@@ -134,7 +134,7 @@ machinery consisted of:
 - ~~`tests/test_counterfactual_sim.py:79-86` is the last executable purity assert~~ — removed
 - ~~`src/snn_data_lake/training/__init__.py:3-7` still describes exporting weights "back into the
   zero-dep core"~~ — reframed as the serving-format argument it always was
-- plus the flag itself at `cortex/brain.py` (two sites), `brain_atlas.py`, `run_selfchecks.py`,
+- plus the flag itself at `engine/brain.py` (two sites), `brain_atlas.py`, `run_selfchecks.py`,
   `infra/cockpit.py`, `infra/brain_telemetry.py`, and the frozen-exe entry point
 
 `run_selfchecks.py`'s `TORCH_GATED` / `NENGO_GATED` lists are **kept**: they are still hand-maintained,
@@ -160,7 +160,7 @@ Each phase ends with a measurement, and a phase that moves nothing is reported a
 |---|---|---|
 | 1 | **Instrument** | `tools/coverage_score.py` re-derives a per-category % from tracked evidence files; refuses band-41+ without an A/B artifact and band-81+ without held-out evidence; the count of currently-unbacked category scores is published |
 | 2 | **Dependency + env** | one environment runs daemon, self-checks, pytest and ruff; zero-dep machinery gone; the added dependency list is recorded with a justification each |
-| 3 | **Attribute the tick** | where the 891 ms goes, by neuter-and-measure, not by profiler ranking; `substrate/learn_daemon.py` made true |
+| 3 | **Attribute the tick** | where the 891 ms goes, by neuter-and-measure, not by profiler ranking; `engine/learn_daemon.py` made true |
 | 4 | ~~**Widen + fuse**~~ **REFUTED, done differently** | The widening premise was wrong and the measurement said so: the whole live brain holds **132** LIF cells, all per-tick neuron state fuses to ~1,700–3,500 elements (*inside* the crossover, not past it), and `AutonomousArm.step()` is **0.00%** of the profile — so fusing neurons would have optimised nothing. The real hot path was `coincidence`, a Python loop run once per stored episode per tick at **74.5%**. Fused bit-exactly via `(D + a·b)/2`: `complete()` 59.9 → 0.9 ms at N=2,000, and linear-in-N → **flat**. Shipped on CPU; this GEMV's measured crossover is ~1,600–2,000 rows, so a captured CUDA graph is a *loss* at our widths, and numba beats one by 16× on fused LIF. See P5. |
 | 5 | **Charge the dormant** — **FIRST PASS DONE 2026-07-31** (`specs/001-charge-the-dormant`) | the open P3 findings resolved as wired-and-charged / retired / exempt-with-reason, each with a neuter-A/B. Never a dead consumer to silence a gate. **Outcome: 9 rules adjudicated at runtime. 2 permanent exemptions (dormant AND correct to be dormant); 4 OPEN exemptions carrying a disposition + port finding; 3 measured called-but-inert. NOTHING was wired or retired — every port check found a live class or an unported capability, and P2 forbids deleting either. No band moved; all five affected rows were already ≤40, so nine inert rules had inflated nothing.** Instrument fixes it forced: class-granular exemption keys (`n_defs` 56→58, two defs had been overwriting each other) and a graded observable in `charge_probe` (the flip counts were argmax tests over eleven sources and reported live faculties as inert). Still open: `IntrinsicPlasticity.adapt` measures 0 invocations at 400 ticks, contradicting an earlier CALLED_BUT_DISCARDED verdict — both readings recorded, neither deleted. |
 | 6 | **Capability** — **SATISFIED AS A NULL, 2026-07-31** | the two ceiling categories attacked where they are actually blocked: a real-scale AR spiking LM for Language, perceptual predicate induction for Gf. Held-out numbers or an honest null. **Both halves were attacked and both returned measured results below the bar, which is what this criterion asks for — it says "held-out numbers OR an honest null", not "a capability".** LANGUAGE: a real 10.3M-parameter AR spiking LM trained on 119.6M chars of WikiText-103, held-out disjointness PROVEN not assumed (`tools/ar_lm_disjoint.py`, 0 of 3350 BLiMP sentences occur in the exposure); BLiMP did not move — every model row sits between the 29.4% length prior and the 53.0% char-level bar, at or below the 50% chance line (`docs/DEPTH_CEILINGS.md`). Gf: the ARC solver on the **evaluation split, 400 held-out tasks, 12/400 = 3.00%** (`gf_arc_eval_lib_off.txt`), and the cross-task library null is stronger than an equal score — `lib=on` solves **the identical twelve task IDs** as `lib=off` (`gf_arc_eval_lib_on.txt`), so the library changes not just how many but *which*, which is nothing. Banded 10 and 0 respectively. **NO CAPABILITY IS CLAIMED BY THIS ROW.** Closing phase 6 means the ceiling was measured, not raised: the honest Gf figure is ~3% held-out and the honest Language figure is chance. What would raise them is a training run measured in GPU-hours, and that is the next arc, not this one. |
@@ -226,7 +226,7 @@ and makes the in-process 8..120 bound real. But it makes the restart finding wor
 bounded live population that is rebuilt from nothing is not a substrate that compounds.
 
 **The daemon's persistence claim is true of what it names and false of what a reader will assume.**
-`substrate/learn_daemon.py` reports "brain durable save + chat lake flushed" and `:20` states that state
+`engine/learn_daemon.py` reports "brain durable save + chat lake flushed" and `:20` states that state
 "survives the restart via persist/reload". That holds for the durable lake, the chat store and the npz
 weights. It does not hold for the grown neural substrate, because the owning engine has nowhere to save
 to. Same shape as every other defect in this document: a claim accurate about its component and wrong
@@ -242,7 +242,7 @@ as-capability failure P0's own honesty guard names, one level deeper than the ce
 
 1. **Enumerate what actually persists** across a restart versus what is rebuilt — the lake, chat, npz
    weights, prototypes, curriculum, *and* the grown units — and write it down. The claim at
-   `substrate/learn_daemon.py` needs to become specific or go.
+   `engine/learn_daemon.py` needs to become specific or go.
 2. **Give the grown substrate a home in the one durable lake.** `_T_FACT` and `_T_SPIKE` already exist in
    the BinLog container (`substrate/home.py:45-46`), `_T_SPIKE` has just been freed by `SpikeLake`'s
    retirement and is kept as a reserved tag, and the format's foreign-tag skip/preserve behaviour is now
@@ -273,7 +273,7 @@ accumulation, and a prune rule designed against a substrate that resets daily wo
   any wave.** Every build must be able to reach every other and actually use it — reachable from another
   *faculty* through a declared route, and consumed by another faculty in a way that changes *that
   consumer's* output. The reason wiring has a ceiling at all is precisely a P6 failure: faculties are
-  wired into the single three-way action gate at `cortex/brain.py::_route_percept_to_action` and not into
+  wired into the single three-way action gate at `engine/brain.py::_route_percept_to_action` and not into
   each other, so a wave can charge the arm decision and still leave Language, Imagination, Gf,
   Consciousness and WholeBrain — **five categories, 45% of the weight** — untouched. Those five are the
   ones that need faculties talking to faculties, which is why the ceiling is structural rather than a

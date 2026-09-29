@@ -847,7 +847,7 @@ def _self_check(store):
             f"readers {len(env_readers)}) -- a cache whose every module is a scanner carries "
             "nothing on a row append"
         )
-    first = "substrate.signal_ring" if "substrate.signal_ring" in plain else plain[0]
+    first = "engine.signal_ring" if "engine.signal_ring" in plain else plain[0]
     for probe in [first] + plain:
         if len(base._closure(probe)) > 1:
             break

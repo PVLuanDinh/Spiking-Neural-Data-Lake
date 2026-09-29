@@ -28,7 +28,7 @@ The guard narrows what is LEARNED, never what STOPS.
 Run: pytest tests/test_idle_sentinel_not_contact.py
 """
 
-from snn_data_lake.brainstem.autonomous_loop import CONTACT, AutonomousArm
+from snn_data_lake.engine.autonomous_loop import CONTACT, AutonomousArm
 
 IDLE = -1.0  # the firmware idle sentinel: finite, below CONTACT, and NOT an object
 NEAR = CONTACT * 0.5  # a real contact

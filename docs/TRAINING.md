@@ -8,7 +8,7 @@ GPU-trained models.
 ## Regenerating the perception weights — read this first on a fresh clone
 
 `models/` is **gitignored** (`.gitignore:76`) and has zero tracked files, because the checkpoints are
-large binaries. A fresh clone therefore has **no real perception**: `cortex/brain.py:545` and `:577`
+large binaries. A fresh clone therefore has **no real perception**: `engine/brain.py:545` and `:577`
 look for `models/eprop_nmnist.pt` and `models/eprop_shd.pt`, and without them the brain falls back to
 `perception_tier=stdlib` with `perceiving_real=False` — a synthetic band instead of event-camera input,
 and `LearnedAttention.attend` never called at all.
@@ -24,7 +24,7 @@ PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.sensorimotor.eprop_shd
 ```
 
 **2. The event-frame packs** (`.npz`) — what gets perceived. The encoders alone are not enough:
-`cortex/brain.py` only sets `perceiving_real` / `perceiving_audio` once it has loaded
+`engine/brain.py` only sets `perceiving_real` / `perceiving_audio` once it has loaded
 `models/nmnist_pack.npz` / `models/shd_pack.npz` (overridable via `SNN_PERCEPTION_PACK` /
 `SNN_SHD_PACK`), and two more readers depend on them — `cortex/percept_surprise.py` rate-codes the
 vision pack, `reasoning/reservoir_eprop.py` re-bins the audio pack. Until 2026-07-29 these two files
@@ -211,7 +211,7 @@ gradients larger than VRAM). AirLLM has no backward pass, so it is not a trainer
 > `ModuleNotFoundError` for anyone who tried it. What follows is the path that actually exists.
 
 The brain's language layer is `reasoning/spike_chat_lake.py::LakeChat`, reached live from
-`cortex/live_brain.py:450`, with `cortex/rose_language.py` (`cortex/brain.py:4077`; promoted from reasoning/ 2026-08-12) behind it. It
+`engine/live_brain.py:450`, with `cortex/rose_language.py` (`engine/brain.py:4077`; promoted from reasoning/ 2026-08-12) behind it. It
 answers from the brain's own durable lake — learned facts, not a language model — and it is honest
 about gaps rather than fabricating: a query with no supporting fact returns `known=False`.
 

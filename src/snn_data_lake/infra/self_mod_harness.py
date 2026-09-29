@@ -10,7 +10,7 @@ WHAT THIS IS (honest framing, read before believing any "self-modifying brain" c
 
 WHERE IT IS WIRED (corrected 2026-08-04. The previous text here read "it is not wired into any
   tick/sleep/loop; it does not auto-run", and that was FALSE -- AUDIT_BACKLOG M44):
-    cortex/brain.py::_enter_wake -> _maybe_autonomous_self_build   (brain.py:2784)
+    engine/brain.py::_enter_wake -> _maybe_autonomous_self_build   (brain.py:2784)
       -> SelfBuildLoop(enable=True, gate_fn=_gate).run(props)      (brain.py:2823)
       -> SelfBuildLoop.harness -> SelfModHarness(enable=True)      (self_build_loop.py, in `harness`)
       -> SelfModHarness.propose(...)                               (self_build_loop.py, in `promote`)

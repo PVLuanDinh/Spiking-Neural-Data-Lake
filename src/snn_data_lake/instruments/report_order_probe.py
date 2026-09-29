@@ -14,10 +14,10 @@ THE C5 SENTENCES, verbatim from the conclusion protocol's own row:
   DISSOCIATION INPUT -- "perturbing a scrambled intermediate must leave the report unchanged".
 
 THE APPARATUS (2.1-2.2). A SCRATCH brain per seed under `substrate.home.throwaway_home()`
-(`cortex.brain.make_brain(seed, persist=False)`; the daemon's brain and the durable lake are
+(`engine.brain.make_brain(seed, persist=False)`; the daemon's brain and the durable lake are
 never touched). The arm's `GlobalWorkspace.step` is wrapped ON THE INSTANCE: before each real
 step a CLONE of the competition state is taken, after it the real report `r0` is read THROUGH
-`substrate.report_channel.snapshot` -- never through `ws.current`. Nine further clones of that
+`engine.report_channel.snapshot` -- never through `ws.current`. Nine further clones of that
 same pre-step state are then stepped: the UNPERTURBED twin (the readability control), the NAMED
 lesion of the reported content's pool(s) at each of `T081_DOSES`, and the SCRAMBLED lesion of
 one pool the report does NOT name, drawn per tick and held across the four doses. The barred
@@ -52,7 +52,7 @@ a MECHANISM, never a verdict about experience.
 #   clause: both replacement halves -- the report channel since T034 and this probe -- must
 #   exist when it dies). UNTOUCHED BY THIS MODULE and by this builder: its port and its deletion
 #   are the surfaces commit's own step. Read.
-# distinct-from: substrate/report_channel.py -- the MECHANISM UNDER TEST. This module changes
+# distinct-from: engine/report_channel.py -- the MECHANISM UNDER TEST. This module changes
 #   nothing in it: it calls the public `snapshot` and re-implements no part of the record. Read.
 # distinct-from: instruments/binding_instrument.py -- T080's instrument over the CrossModalBinder's
 #   report, membership-matched permutation, its own pin. The campaign/dry-run/pin PATTERN is the
@@ -70,8 +70,8 @@ import sys
 import time
 from pathlib import Path
 
+from snn_data_lake.engine.report_channel import snapshot
 from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
-from snn_data_lake.substrate.report_channel import snapshot
 
 # =============================================================================
 # 2.8's DECLARED CONSTANTS. Each is either the plan's width, the composite's own shape, or a
@@ -263,7 +263,7 @@ def t081_lesion(clone, content, dose):
 def _t081_content_of(ws, rec):
     """WHAT THE PROBE COMPARES: the REPORT CHANNEL's record, never the workspace's state.
 
-    This one-line indirection is the whole of R3. `substrate/report_channel.snapshot` is the
+    This one-line indirection is the whole of R3. `engine/report_channel.snapshot` is the
     mechanism under test, so the quantity that must move under the named lesion is the record it
     returns -- not `ws.current`, which is the state the record is generated FROM. The mutation
     `scorer_reads_workspace` swaps this for `ws.current` and reads MET on a reporter that is
@@ -882,7 +882,7 @@ def t081_record_brain(seed, n_ticks=T081_N_TICKS, keep_pre=False):
     `keep_pre` retains each row's pre-step clone for the dry run's scrambled re-draws (2.3's
     REPORTED Monte-Carlo effect of the scrambled pool's random choice). They are dropped by the
     caller as soon as the re-draws are done; the campaign never asks for them."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
     from snn_data_lake.substrate.home import throwaway_home
 
     seed = int(seed)
@@ -989,7 +989,7 @@ def t081_stream_labels(seed, n_labels=T081_OFFSET_LABELS, max_ticks=260):
     """The first `n_labels` REAL frame labels seed `s` walks with 2.1's offset applied. The
     offset check is an APPARATUS precondition, so it reads the labels the brain actually
     CONSUMED rather than re-deriving them from the pack by arithmetic (T080's idiom)."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
     from snn_data_lake.substrate.home import throwaway_home
 
     out = []

@@ -80,7 +80,7 @@ def main():
     # instead of crashing on an absent torch. That flag was removed from the brain 2026-07-29 with
     # the zero-dependency rule, so setting it became a no-op -- a value that looks like a control and
     # is not, which is the exact shape this project keeps finding and calling a defect.
-    # Nothing is lost: cortex/brain.py reaches the stdlib tier by CATCHING the failed torch import
+    # Nothing is lost: engine/brain.py reaches the stdlib tier by CATCHING the failed torch import
     # (_make_neuro returns None on any exception; the perception tier falls through to
     # tier="stdlib"), so torch being absent from the bundle is itself the trigger. The flag only ever
     # mattered when torch was PRESENT and we wanted it off.
@@ -95,7 +95,7 @@ def main():
     #
     # CORRECTED 2026-08-04: this comment also said learn_daemon "chdir's ... at IMPORT time". It no
     # longer does, and had not since the P4c promotion moved the daemon into
-    # src/snn_data_lake/substrate/learn_daemon.py and left a shim here. That move deleted three
+    # src/snn_data_lake/engine/learn_daemon.py and left a shim here. That move deleted three
     # module-scope side effects -- os.chdir, sys.path.insert and
     # os.environ.setdefault("NORD_GPU","1") -- into main(), and the root file is now 33 lines with a
     # single sys.path.insert and no chdir (grep: zero column-0 os.chdir/os.environ in either file).

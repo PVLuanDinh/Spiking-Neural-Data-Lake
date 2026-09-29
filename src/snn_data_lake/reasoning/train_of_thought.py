@@ -91,7 +91,7 @@ class TrainOfThought:
         """`workspace` ADOPTS the one shared GlobalWorkspace instead of building a private one.
 
         Hand it `Brain.workspace` / `LiveBrain.workspace` -- the single instance
-        `brainstem/autonomous_loop.py` constructs -- and this train of thought competes for the
+        `engine/autonomous_loop.py` constructs -- and this train of thought competes for the
         SAME slot the brain's perception and salience channels post into. Passing None keeps the
         private instance this class always built, so every existing caller is byte-identical.
 

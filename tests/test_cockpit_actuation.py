@@ -28,7 +28,7 @@ import urllib.request
 
 import pytest
 
-from snn_data_lake.cortex.brain import make_brain
+from snn_data_lake.engine.brain import make_brain
 from snn_data_lake.infra.cockpit import Acts, serve
 
 #: Strings that must never reach the arm. `HOME; EMERGENCY_STOP` is a concatenation attempt and

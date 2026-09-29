@@ -125,7 +125,7 @@ def report(name, baseline, rows):
 
 
 def _brain_config():
-    """Measure F* at the configuration cortex/brain.py actually constructs.
+    """Measure F* at the configuration engine/brain.py actually constructs.
 
     CAPACITY IS DERIVED FROM THE BRAIN'S OWN SOURCE, not typed here. It was `DIM, CAP = 256, 64
     # brain.py:856` until 2026-08-04, and both halves of that line were wrong by then: `:856` had
@@ -137,7 +137,7 @@ def _brain_config():
     down (a fanout that holds at one capacity destroys memory at a larger one), so importing the
     numbers is not tidiness; it is the same rule applied to the instrument.
     """
-    from snn_data_lake.cortex.brain import EPISODE_RETENTION_DAYS, EPISODES_PER_DAY_AT_BOOT
+    from snn_data_lake.engine.brain import EPISODE_RETENTION_DAYS, EPISODES_PER_DAY_AT_BOOT
     from snn_data_lake.sleep.episode_consolidation import EpisodeConsolidator, capacity_for
 
     CAP = capacity_for(EPISODES_PER_DAY_AT_BOOT, EPISODE_RETENTION_DAYS)
@@ -154,7 +154,7 @@ def _brain_config():
     dim = build(None, 0).dim
     baseline, rows = sweep(build, lambda m: m.retained())
     return report(
-        f"EpisodeConsolidator dim={dim} capacity={CAP} load={CAP} (derived from cortex.brain)",
+        f"EpisodeConsolidator dim={dim} capacity={CAP} load={CAP} (derived from engine.brain)",
         baseline,
         rows,
     )

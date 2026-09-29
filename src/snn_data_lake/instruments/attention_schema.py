@@ -93,9 +93,9 @@ import zlib
 from collections import Counter
 from pathlib import Path
 
+from snn_data_lake.engine.report_channel import snapshot as _report_snapshot
 from snn_data_lake.infra._mathutils import q95
 from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
-from snn_data_lake.substrate.report_channel import snapshot as _report_snapshot
 
 # distinct-from: cortex/metacognitive_monitor.py::track_error -- a TYPE-2 AUROC over one
 #   (confidence, outcome) stream against its own label-permutation null. This is the MUTUAL
@@ -107,7 +107,7 @@ from snn_data_lake.substrate.report_channel import snapshot as _report_snapshot
 #   streams. CORRECTED 2026-09-15 (the panel fold): this block used to assert "the binary entropy
 #   itself is IMPORTED from there rather than re-derived (P2)", and the module docstring listed
 #   `source_entropy` under WHAT THIS MODULE REUSES. Neither was true. This module's only non-stdlib
-#   imports are `instruments/paired_contrast` and `substrate/report_channel`, and it computes NO
+#   imports are `instruments/paired_contrast` and `engine/report_channel`, and it computes NO
 #   entropy term at all -- `mi_bits` hands Counters straight to `_mi_from_counts`, whose whole body
 #   is the joint-over-marginals log2 sum. So nothing is duplicated and P2 owes no merge here; the
 #   reuse was declared and never performed, which the fold records as a deviation from 1.6.
@@ -156,7 +156,7 @@ DECODER_LR = 0.1  # decoder learning rate (2.1)
 DECODER_L2 = 1e-3  # decoder L2 penalty (2.1)
 PROJ_TAG = b"t078-proj"  # crc32(PROJ_TAG) + seed seeds the (64, 15) Gaussian projection (2.1)
 DETERMINISM_TICKS = 100  # the determinism twin's length (2.2); the NAME is the builder's
-#: The committed-action label the E-STOP path returns (brainstem/autonomous_loop.py `step`
+#: The committed-action label the E-STOP path returns (engine/autonomous_loop.py `step`
 #: :1895-1919). 2.2 records that it NEVER occurs under `_safe_ctx`, so a nonzero
 #: `dropped_estop` in any seed is itself a finding and the campaign prints it per seed.
 ESTOP_LABEL = "EMERGENCY_STOP"
@@ -586,7 +586,7 @@ def t078_record_brain(seed, n_ticks=T078_N_TICKS):
     The frame LABEL is recovered as `_real_labels[(_real_ptr - 1) % n]` on the ticks where
     `_real_ptr` ADVANCED (1.2), and is None otherwise -- never carried forward from a past tick.
     Returns rows only; the brain is dropped so eight seeds do not stay alive at once."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     b = make_brain(seed=seed, persist=False)
     la = getattr(b, "_learned_attn", None)
@@ -833,7 +833,7 @@ def t078_determinism(seed, n_ticks=DETERMINISM_TICKS):
 # `t078_reds()` is the in-command control the module's own self-check asserts, and a constructed
 # input that exists only under pytest is unavailable to a gate run -- which is why T077's
 # `t077_tracker_stream` sits in `metacognitive_monitor` for the same reason.
-# distinct-from: cortex/live_brain.py::LiveBrain.run -- drives the REAL brain over a stream of
+# distinct-from: engine/live_brain.py::LiveBrain.run -- drives the REAL brain over a stream of
 #   context dicts and returns live states. Read: these constructors tick nothing and construct no
 #   brain; `t078_stub_brain` is a duck-typed namespace carrying the seven attributes
 #   `control_state` reads, so R5 runs with no Brain, no lake and no torch.
@@ -1151,7 +1151,7 @@ def _line(c):
 #   readability or a refusal, and cannot: by the time diffs reach it the fabrication has happened.
 #   This is the guard in front of it -- whether a contrast may be BUILT at all. Read, imported,
 #   never re-implemented. distinct-from: readout/online_readout.py::ClosingGate (a refit-count
-#   gate that holds beta stale after k refits), substrate/signal_ring.py::publish (a single-writer
+#   gate that holds beta stale after k refits), engine/signal_ring.py::publish (a single-writer
 #   ring append whose "never drops ITS OWN write" is about slot reuse), cerebellum/hjepa_serve.py::
 #   _validate_stack (layer shape chaining, raises) and cerebellum/gain_adaptation.py (online LMS
 #   gain recalibration). All four READ: none decides whether a REPORTED statistic may be computed
@@ -1198,7 +1198,7 @@ def _reported_mi(name, key, seeds, ss):
 #   not from an exit code. distinct-from: gates/gradient_claim_gate.py::_write_measure_artifact
 #   -- writes a staleness-checkable measurement artifact. Read: the shared idea is "pin the run",
 #   and this pin is written ONCE and refuses to overwrite, which that one deliberately does not do.
-# distinct-from: substrate/signal_ring.py::publish (a single-writer ring append) and
+# distinct-from: engine/signal_ring.py::publish (a single-writer ring append) and
 #   substrate/episodic_recall.py::_flip (a spike-code corruption probe). Both read; neither
 #   records a brain, contrasts seeds, or writes a pin.
 def run_t078_campaign(seeds=T078_SEEDS, n_ticks=T078_N_TICKS, pin=T078_PIN, latents=T078_LATENTS):
@@ -1423,7 +1423,7 @@ RED_LINES = {
 #   to say NOT MET, its FPR must be exact). Read; that module is IMPORTED here, never re-checked.
 # distinct-from: thalamus/gwt_deep.py::_reds -- constructs the input that makes each BINDING
 #   criterion fail. distinct-from: gates/selfcheck_cache.py::self_check -- cache key-invariance
-#   reds. distinct-from: substrate/learn_daemon.py::_selfcheck -- the daemon's non-driving checks.
+#   reds. distinct-from: engine/learn_daemon.py::_selfcheck -- the daemon's non-driving checks.
 #   All three read; each fires its own module's reds, and none touches a permutation floor, a
 #   decoder band or a control state.
 def main():

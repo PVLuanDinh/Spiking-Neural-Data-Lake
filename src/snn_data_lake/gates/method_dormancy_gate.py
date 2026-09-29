@@ -115,14 +115,14 @@ EXEMPT_METHOD = {
         "wire",
         "AffectiveEpisodicStore.consolidate (hippocampus/affective_memory.py:173) -- amygdala-weighted "
         "replay sampling whose only callers are inside its own main(). The module IS live, but its one "
-        "cross-module importer (brainstem/autonomous_loop.py:41) calls .store() and never this. Open "
+        "cross-module importer (engine/autonomous_loop.py:41) calls .store() and never this. Open "
         "P3 work: wire it into the sleep replay and prove the charge with a neuter-A/B, or retire it. "
         "Held as an OPEN exemption so this gate reports it as a standing TODO instead of hiding it. "
         "ADJUDICATED 2026-07-31 (runtime, adversarially reviewed): still dead, and the disposition "
         "should become RETIRE rather than wire -- the promised wiring is not a call site but a "
         "three-file redesign of Episode + ReplayBuffer, and the prioritised-replay capability it was "
         "built for has no consumer today. PORT CHECK (Phase D): the CLASS is live -- constructed at "
-        "brainstem/autonomous_loop.py:1548, which calls .store() and never this -- so retiring the "
+        "engine/autonomous_loop.py:1548, which calls .store() and never this -- so retiring the "
         "method does not touch the store. What blocks deletion is P2: amygdala-weighted prioritised "
         "replay is a capability with no home elsewhere, and it must be ported before the method goes",
     ),
@@ -142,7 +142,7 @@ EXEMPT_METHOD = {
         "wire",
         "DevelopmentalEnvelope.update -- dormant twice over: never called on any live path, and "
         "discarded even under its opt-in flag. PORT CHECK: the class IS live, constructed at "
-        "brainstem/autonomous_loop.py:1570, so this is a dead method on a live object rather than a "
+        "engine/autonomous_loop.py:1570, so this is a dead method on a live object rather than a "
         "dead module. The anneal mechanism is real and self-check-proven (monotone, deterministic "
         "RNG), which is why the disposition is wire rather than retire -- but wiring it must be a "
         "real consumer of the envelope, never a call added to satisfy this gate (P3)",
@@ -150,7 +150,7 @@ EXEMPT_METHOD = {
     "basal_ganglia.latent_q.LatentQ.update": (
         "wire",
         "LatentQ.update -- never called on a live path while the module is imported at "
-        "brainstem/autonomous_loop.py:30, the exact shape the per-method amendment was written for. "
+        "engine/autonomous_loop.py:30, the exact shape the per-method amendment was written for. "
         "PORT CHECK surfaces a P2 question rather than a P3 one: basal_ganglia/mlp_q.py documents "
         "itself as the NONLINEAR counterpart 'once described as a strict upgrade that made LatentQ "
         "retirable', and its own docstring walks that claim back. So the honest next step is to settle "
@@ -170,7 +170,7 @@ EXEMPT_METHOD = {
     "readout.predictive_coding.PredictiveCodingNetwork.learn": (
         "permanent",
         "PredictiveCodingNetwork.learn (readout/predictive_coding.py:268) -- the OFFLINE BATCH WRAPPER "
-        "over learn_step(), which IS called every wake tick at cortex/live_brain.py:185. Verified by "
+        "over learn_step(), which IS called every wake tick at engine/live_brain.py:185. Verified by "
         "runtime instrumentation to be never called on a live path, and that is CORRECT: wiring the "
         "batch form would run the same rule twice. P2 already holds -- one rule, one definition. It is "
         "kept rather than retired because predictive_coding.py:353's self-check needs it for the "
@@ -181,7 +181,7 @@ EXEMPT_METHOD = {
 }
 
 # STILL OPEN, and deliberately not exempted: LatentQ.update (basal_ganglia/latent_q.py:102). The module
-# is imported at brainstem/autonomous_loop.py:30 -- so the MODULE gate sees it reachable -- while every
+# is imported at engine/autonomous_loop.py:30 -- so the MODULE gate sees it reachable -- while every
 # method of the class is cold. That is exactly the shape the per-method amendment was written for, and
 # it is real P3 work: wire it and prove the charge, or retire it with its capability ported first.
 # It is NOT exempted here, because an exemption is a disposition and this rule does not have one yet.

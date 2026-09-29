@@ -1727,7 +1727,7 @@ module-global `np`, which did not exist until main_sl() had run, so `gf.MLP(rng)
 Measured before changing it, per P7's requirement that a dependency decision ship a measurement on
 the real workload rather than a preference: bare interpreter 41.1 ms, +import gf 137.8 ms, and
 importing numpy first adds 83.4 ms -- but numpy is ALREADY in sys.modules by the time either
-importer of this module reaches it (verified for `cortex.brain` and for the chat module the comment
+importer of this module reaches it (verified for `engine.brain` and for the chat module the comment
 named). So the laziness bought 0 ms on the workload it cited, and numpy is an unconditional core
 dependency in pyproject.toml regardless.
   PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.gf     # train + contrast + check

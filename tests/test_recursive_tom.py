@@ -138,7 +138,7 @@ def scratch_brain():
     from snn_data_lake.substrate.home import throwaway_home
 
     with throwaway_home():
-        from snn_data_lake.cortex.brain import make_brain
+        from snn_data_lake.engine.brain import make_brain
 
         yield make_brain(seed=0, persist=False)
 
@@ -445,7 +445,7 @@ def test_declared_anatomy_matches_the_live_shape():
     So the live quantity this test holds the declaration against is not a vocabulary length but the
     ARITY OF THE PAYLOAD the faculty emits -- `t082_false_beliefs`'s (first, nested) pair, which is
     what the brain's fold sums and what the charge A/B replays."""
-    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+    from snn_data_lake.engine.wiring_manifest import WiringManifest
 
     m = WiringManifest()
     recursive_tom.declare_ports(m)

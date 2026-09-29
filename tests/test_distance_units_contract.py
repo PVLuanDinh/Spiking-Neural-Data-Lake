@@ -1,6 +1,6 @@
 """The safety path reads RAW METRES; the spike path reads the normalized feats. Nothing pinned it.
 
-`brainstem/autonomous_loop.py::AutonomousArm.step` compares its `distance` argument against
+`engine/autonomous_loop.py::AutonomousArm.step` compares its `distance` argument against
 `arm_config.CONTACT`, which is **0.04 metres** -- a raw physical limit inside the safety envelope,
 fixed by design (POLICIES P1, fourth case).
 `sensorimotor/esp32_encoder_path.py::normalize` divides the same reading by 3.0 to produce
@@ -25,7 +25,7 @@ Run: pytest tests/test_distance_units_contract.py
 """
 
 from snn_data_lake.brainstem.arm_config import CONTACT
-from snn_data_lake.brainstem.autonomous_loop import AutonomousArm
+from snn_data_lake.engine.autonomous_loop import AutonomousArm
 from snn_data_lake.sensorimotor.esp32_encoder_path import normalize
 
 _VALID_TEMP_K = 300.0  # inside the [20,40] C band, so the temp modality is present, not missing

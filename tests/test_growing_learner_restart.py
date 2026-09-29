@@ -38,7 +38,7 @@ pytestmark = pytest.mark.slow
 _PARENT = r"""
 import json, os, sys, zlib
 os.environ["NORD_HOME"] = sys.argv[1]
-from snn_data_lake.cortex.brain import make_brain
+from snn_data_lake.engine.brain import make_brain
 b = make_brain(seed=7, persist=True)
 arm = b.brain.arm.learner
 n = 0
@@ -59,7 +59,7 @@ print("PARENT " + json.dumps(out))
 _PARENT_KILLED = r"""
 import json, os, sys, zlib
 os.environ["NORD_HOME"] = sys.argv[1]
-from snn_data_lake.cortex.brain import make_brain
+from snn_data_lake.engine.brain import make_brain
 b = make_brain(seed=7, persist=True)
 arm = b.brain.arm.learner
 flushed = {"crc": None, "n": 0}
@@ -83,7 +83,7 @@ os._exit(0)  # a KILL: no close(), no atexit, nothing flushes after this line
 _CHILD = r"""
 import json, os, sys, zlib
 os.environ["NORD_HOME"] = sys.argv[1]
-from snn_data_lake.cortex.brain import make_brain
+from snn_data_lake.engine.brain import make_brain
 b = make_brain(seed=7, persist=True)
 arm = b.brain.arm.learner
 def crc(l):
@@ -216,7 +216,7 @@ def test_a_width_mismatched_record_never_reaches_a_wake_tick():
     from snn_data_lake.substrate.home import throwaway_home
 
     with throwaway_home():
-        from snn_data_lake.cortex.brain import PROTOTYPES_STATE, make_brain
+        from snn_data_lake.engine.brain import PROTOTYPES_STATE, make_brain
         from snn_data_lake.substrate.home import save_state
 
         narrow = GrowingLearner(dim=32)

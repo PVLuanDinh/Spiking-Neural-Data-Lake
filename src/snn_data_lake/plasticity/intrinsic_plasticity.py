@@ -12,7 +12,7 @@ Koch, Nat. Neurosci. 2 (1999).
 
 WIRING (corrected 2026-08-04 -- "Additive/opt-in; no existing default changes" was stale). `adapt`
 is the cellular-homeostasis POST phase of `homeostatic_plasticity_stack._IntrinsicPlasticity`,
-which reaches the canonical brain through `plasticity_rule_stack` and `cortex/brain.py:273-278`.
+which reaches the canonical brain through `plasticity_rule_stack` and `engine/brain.py:273-278`.
 Measured charge on that consumer is recorded in `homeostatic_scaling.py`'s wiring note (the two
 phases share the same stack and the same measurement).
 

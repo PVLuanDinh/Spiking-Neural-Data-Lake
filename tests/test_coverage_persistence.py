@@ -19,8 +19,8 @@ import sys
 
 import pytest
 
-from snn_data_lake.brainstem import autonomous_loop as al
-from snn_data_lake.brainstem.autonomous_loop import COVERAGE_STATE, AutonomousArm
+from snn_data_lake.engine import autonomous_loop as al
+from snn_data_lake.engine.autonomous_loop import COVERAGE_STATE, AutonomousArm
 from snn_data_lake.substrate import home
 
 CTX = dict(visual=0.55, temperature=24.0, audio=0.3, distance=0.6)
@@ -33,8 +33,8 @@ _CHILD = r"""
 import json, os, sys
 os.environ["NORD_HOME"] = sys.argv[1]
 os.environ.pop("NORD_TIME_CELLS_RESTORE", None)
-from snn_data_lake.brainstem.autonomous_loop import COVERAGE_STATE
-from snn_data_lake.cortex.brain import make_brain
+from snn_data_lake.engine.autonomous_loop import COVERAGE_STATE
+from snn_data_lake.engine.brain import make_brain
 from snn_data_lake.substrate import home
 b = make_brain(seed=0, persist=True)
 flushed_at = None
@@ -124,7 +124,7 @@ def test_a_lineage_mismatch_is_refused_never_merged():
 def test_the_brain_restores_only_under_the_switch_and_persist_and_flushes_on_close(monkeypatch):
     """The wiring: a brain adopts the ledger ONLY under NORD_TIME_CELLS_RESTORE=1 AND persist=True
     (read and write share one gate), and close() -- the second durable-save point -- flushes."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     seed = _cover(60)
     assert seed.save_coverage()
@@ -193,7 +193,7 @@ def test_the_safety_reply_reports_what_the_latch_measures():
     """The post-T037a poll's revelation: the brain must report what the gate measures -- a
     restored stop, and durability read from the persist-error counter, never asserted."""
     from snn_data_lake.brainstem.so101_arm import ESTOP_LATCH
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     with open(os.path.join(home.home(), ESTOP_LATCH), "w", encoding="utf-8") as f:
         json.dump({"token": "another-process", "pid": 1, "utc": "x", "source": "EMERGENCY_STOP"}, f)

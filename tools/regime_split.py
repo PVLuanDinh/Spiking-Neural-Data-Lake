@@ -27,7 +27,7 @@ if _ROOT not in sys.path:
 
 def measure(seed, ticks):
     """Drive one live brain and count the regime of every clock-advancing tick."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     brain = make_brain(seed=seed, persist=False)
     clock = getattr(brain, "_time_clock", None)

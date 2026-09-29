@@ -62,7 +62,7 @@ def test_a_constructed_overload_trips_the_budget_and_a_calm_tick_does_not(scratc
     p95 rather than from a number chosen here."""
     import json
 
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     p95 = json.loads(APPEND_BASELINE.read_text(encoding="utf-8"))["per_tag_p95_bytes"]["7"]
     b = make_brain(seed=0, persist=True)

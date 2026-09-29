@@ -15,7 +15,7 @@ It is dense-matrix numpy throughout, and that is a MERIT choice carrying a P7 ME
 purity constraint. The LIVE input width is 64 -- not the 2312 an earlier draft of this docstring
 asserted. 2312 is the width of the SELF-CHECK's rate-coded N-MNIST pack (2*34*34); the live
 consumer builds this readout with in_dim=len(percept) over the spiking encoder's dim-64 latent
-(cortex/brain.py, _perceive_real), which a live run confirmed by reading in_dim off the
+(engine/brain.py, _perceive_real), which a live run confirmed by reading in_dim off the
 constructed instance. P7 requires a dependency REJECTION to ship a measurement on the real
 workload rather than a purity argument, so: one observe() (single-sample forward + local update),
 median of 7 repeats x 400 observes against a hand-written torch-CPU twin of the same rule --
@@ -57,7 +57,7 @@ this ports: the variant-B' LaminarLocalReadout (L4 -> L2/3 -> L5 -> L6, local le
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.readout.laminar_local_readout
 
 (PROMOTED 2026-08-12, #10 lane 4c: reasoning/brain_adapters/ -> cortex/, the region whose
-live tick consumes it -- cortex/brain.py constructs it lazily on every real percept and its
+live tick consumes it -- engine/brain.py constructs it lazily on every real percept and its
 confidence gates the percept drive. The command above was rewritten AT the move and verified
 to run at the new path, per this docstring's own earlier warning about pre-naming a path.)
 """
@@ -97,7 +97,7 @@ class LaminarLocalReadout:
         self.use_l6 = bool(use_l6)
         self._seed = int(seed)
         # P1 (was `self._lr = 0.08`, AUDIT_BACKLOG M15): observe() is the LIVE wake-tick path
-        # (cortex/brain.py calls it every real percept) and its confidence GATES the percept
+        # (engine/brain.py calls it every real percept) and its confidence GATES the percept
         # drive, so its step size arbitrates behaviour and may not be a fixed magic number.
         # It is now a RUNNING-BASELINE-RELATIVE form: the absolute rate is derived each
         # observation from an EMA of the module's own L2/3 presynaptic energy ||a4||^2, so the
@@ -117,7 +117,7 @@ class LaminarLocalReadout:
         #               step is normalized-LMS-SHAPED; calling it fully corrective was false.
         #   _base_rate: EMA horizon, reusing the project's `_*_base` running-baseline idiom (a P1
         #               reuse anchor) at the same 0.02 the live anchor uses -- verified against
-        #               cortex/brain.py `_lc_base`, which is `0.98 * base + 0.02 * lvl`.
+        #               engine/brain.py `_lc_base`, which is `0.98 * base + 0.02 * lvl`.
         self._mu = 1.0
         self._base_rate = 0.02
         self._energy_base = None  # EMA of ||[a4, 1]||^2; seeded by the first observation
@@ -218,7 +218,7 @@ class LaminarLocalReadout:
 
         P3 DISCLOSURE (2026-08-04, not a gate failure and deliberately NOT fixed by wiring): this
         method has NO live call site. Its only callers are _run_once() and _red_controls(), both
-        inside this module's self-check. The live consumer (cortex/brain.py, via observe()) never
+        inside this module's self-check. The live consumer (engine/brain.py, via observe()) never
         grows the readout, so after promotion this is a dead method on a live object. It escapes
         method_dormancy_gate because "grow" is not in LEARN_VERBS. Forcing a caller to silence
         that would be exactly the fake-consumer move P3's honesty guard forbids -- it is recorded
@@ -252,7 +252,7 @@ class LaminarLocalReadout:
         whenever the upstream encoder emits no spikes for a frame) returned mu/1e-12 == 1e12 under
         the old form. Measured on that input: ONE observe() drove max|b2| to 9.0e11 and max|b1| to
         2.6e12, and pinned infer()'s confidence -- the value that GATES the percept drive at
-        cortex/brain.py -- at 1.0, i.e. the gate stuck wide open and never recovered (the fixed
+        engine/brain.py -- at 1.0, i.e. the gate stuck wide open and never recovered (the fixed
         lr = 0.08 this replaced gave max|b2| = 0.072 on the identical input). Honest scope: on
         today's live pack that input does NOT occur -- all 256 frames were probed and the smallest
         latent maximum was 15.0 -- so this was a latent hazard, not an observed live failure.

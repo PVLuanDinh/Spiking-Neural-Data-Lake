@@ -32,7 +32,7 @@ import time
 # NORD_HOME added 2026-07-31: an ISOLATED home for the whole gate run. Without it every child
 # inherited the operator's `~/.snn_data_lake` -- the same lake the always-on daemon appends to -- so
 # the gate both wrote into the live brain and read a file that was changing underneath it. That is
-# what made `cortex.brain`'s claim 4 ("two seed=0 Brains must be byte-identical") an intermittent
+# what made `engine.brain`'s claim 4 ("two seed=0 Brains must be byte-identical") an intermittent
 # ~42% failure rather than a stable one; subprocess isolation was UNDER-SAMPLING the race, not
 # preventing it, since a cold subprocess leaves a wider window between the two constructions than a
 # warm in-process build does. NORD_PERSIST is deliberately NOT set to 0: several self-checks exist to
@@ -100,7 +100,7 @@ CORE = [
     "sensorimotor.spiking_lm_serve",
     "cortex.vsa_reasoning",
     "cortex.prefrontal_executive",
-    "cortex.live_brain",
+    "engine.live_brain",
     "readout.interaction_learning",
     "sensorimotor.recognizer_bank",
     "growth.neuron_zoo",
@@ -224,7 +224,7 @@ CORE = [
     "sensorimotor.live_arm",
     "sensorimotor.arm_bridge",
     "sensorimotor.closed_loop",
-    "brainstem.autonomous_loop",
+    "engine.autonomous_loop",
     "sensorimotor.signal_loop",
     "brainstem.cpg_oscillator",
     # thalamus â€” the relay + global-broadcast hub (GWT) + reticular attentional gate
@@ -337,7 +337,7 @@ CORE = [
     "infra.cockpit",  # THE one frontend: page + contract gate + queued-not-raced chat turn
     # P4c 2026-08-04: the brain's DRIVE, promoted from the repo root where no gate reached it. Its
     # __main__ is a self-check that never starts the loop (--serve does that), so this entry is safe.
-    "substrate.learn_daemon",
+    "engine.learn_daemon",
     "gates.dormancy_gate",  # Policy 3: assert every brain module is reachable from a live path or EXEMPT
     "gates.replication_guard",  # Policy 4: assert one canonical Brain/LiveBrain/AutonomousArm (no replica)
     "gates.import_manifest",  # Policy 3: assert every reasoning/ module the live brain lazily imports still imports
@@ -357,14 +357,14 @@ CORE = [
     "gates.lake_rebuild_gate",  # 022 T008: rebuild equality + planted-divergence red + lake-tracking control (temp)
     "substrate.lake_migrate",  # 022 T009: per-tag identity migration + unknown-tag red (constructed multi-tag lake)
     "substrate.lake_engine",  # 022 T010-i: retention/disposition registries agree + constructed flood red
-    "substrate.signal_ring",  # 022 T011: journaller replay A/B + loud-loss overrun red on scratch rings
+    "engine.signal_ring",  # 022 T011: journaller replay A/B + loud-loss overrun red on scratch rings
     "reservoir.kernel_state",  # 022 T013: SoA alignment/contiguity + scratch-lake round-trip + refusal reds
     "reservoir.kernel_tick",  # 022 T014: delay-ring arrival + T=1==T=4 train equality + imbalance + refusals
     "gates.determinism_gate",  # 022 T015: f32-diverges/int64-agrees control arms + a thread pair (full sweep in CI --assert)
     "gates.replay_gate",  # 022 T017: G5 resume byte-identical + omit-positions/mismatch refusals + re-seed divergence control
-    "substrate.wiring_manifest",  # 022 T018: five checks + constructed reds + NIR-HDF5 round-trip on a scratch manifest
+    "engine.wiring_manifest",  # 022 T018: five checks + constructed reds + NIR-HDF5 round-trip on a scratch manifest
     "gates.manifest_gate",  # 022 T019: committed-artifact checks + divergence/join/region reds through the gate's verdict path
-    "substrate.report_channel",  # 022 T034: dark-record honesty + moving strength + release + determinism
+    "engine.report_channel",  # 022 T034: dark-record honesty + moving strength + release + determinism
     "instruments.episode_driver",  # 022 T035: port drives + trial structure/oracle + G5 restore + refusals
     "sensorimotor.afferent_boundary",  # 022 T036: sentinel->MISSING + 014-normalizer reuse + proprio neuter A/B
     "sensorimotor.efferent_boundary",  # 022 T037: passage counting + paired copy-cut charge + missing-body honesty
@@ -466,7 +466,7 @@ RESEARCH = [
 # it is importable and SKIPPED-with-notice otherwise, so the pure-stdlib CI matrix + the in-process
 # pytest purity asserts (which require NO numpy/torch in sys.modules) stay green. torch is an optional
 # extra ([gpu]/[train]). growth.ng_snn is the original documented exception; the BRAIN TIER
-# (cortex.brain the unified brain + growth.neurogenesis_engine) is the user-authorized relaxation
+# (engine.brain the unified brain + growth.neurogenesis_engine) is the user-authorized relaxation
 # of the zero-dep-core rule for "the best-performing brain" -- the zero-dep core still runs with no
 # torch (Brain degrades to its deterministic narrator + no growth). SpikeGPT was SCRAPPED (v3.77): no
 # imported language model; conversation is the narrator + the brain-native cortex.language_acquisition
@@ -475,7 +475,7 @@ TORCH_GATED = [
     "growth.ng_snn",
     "readout.online_readout",  # L1c: delta beats batch-only on a drifting chain, sign flip below, neutered bit-identical
     "readout.growable_readout",  # PROMOTED 2026-08-11 (#10 lane 4b): grow-preservation 1.9e-06, freeze retention delta (8.4s)
-    "cortex.brain",
+    "engine.brain",
     "growth.neurogenesis_engine",
     "cortex.language_acquisition",
     "sensorimotor.eprop_nmnist",  # PROMOTED 2026-08-12 (PROMOTE lane 4/4): N-MNIST e-prop perception encoder; bare check ~6s CPU incl torch import

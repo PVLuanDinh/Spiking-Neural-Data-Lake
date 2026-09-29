@@ -284,7 +284,7 @@ def test_the_live_bound_rate_reaches_state_with_both_c5_sentences_beside_it():
     prov = brain_telemetry.PROVENANCE["crossmodal_bound_rate"]
     assert " ".join(licensed.split()[:6]) in prov and "felt present" in prov and "CHANCE" in prov
     with throwaway_home():
-        from snn_data_lake.cortex.brain import make_brain
+        from snn_data_lake.engine.brain import make_brain
 
         b = make_brain(seed=0, persist=False)
         assert b.state()["crossmodal_bound_rate"] is None, "no awake tick yet -> no rate, never 0.0"
@@ -316,7 +316,7 @@ def test_a_faulted_binder_is_counted_and_never_a_bound_tick():
     from snn_data_lake.substrate.home import throwaway_home
 
     with throwaway_home():
-        from snn_data_lake.cortex.brain import make_brain
+        from snn_data_lake.engine.brain import make_brain
 
         b = make_brain(seed=0, persist=False)
         # reach the first awake tick with both latents and a call into the binder

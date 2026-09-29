@@ -107,7 +107,7 @@ def declare_ports(manifest):
     """Manifest registrant (specs/022 T025, the consumer half): the `patience_in` port and
     THE edge from the raphe's `five_ht_out` -- the subscription and its join live with the
     consumer that chose them. join `sum` over the single declared producer is identity."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "evidence_accumulation",
@@ -132,8 +132,8 @@ PATIENCE_EDGE = ("raphe_serotonin", "five_ht_out", "evidence_accumulation", "pat
 
 def _patience_consumer_factory():
     """Fresh ring + JoinConsumer over the declared IN port, one pair per replay arm."""
-    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
-    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+    from snn_data_lake.engine.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.engine.wiring_manifest import WiringManifest
 
     m = WiringManifest()
     declare_ports(m)

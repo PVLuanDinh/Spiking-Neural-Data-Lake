@@ -16,7 +16,7 @@ THE C5 SENTENCES, verbatim from the conclusion protocol's own row:
               must not reproduce the binding".
 
 THE APPARATUS (2.1-2.2). A SCRATCH brain per seed under `substrate.home.throwaway_home()`
-(`cortex.brain.make_brain(seed, persist=False)`; the daemon's brain and the durable lake are
+(`engine.brain.make_brain(seed, persist=False)`; the daemon's brain and the durable lake are
 never touched). At the STIMULUS -- and nowhere else -- the shipped SHD audio pack is
 re-ordered so that stream position i carries a word whose label mod 10 names the digit of
 vision position i (`t080_aligned_order`). The brain then teaches itself K = 10 cross-modal
@@ -312,7 +312,7 @@ def t080_record_brain(seed, arms=None, n_ticks=None):
     outlives the brain -- `t080_seed` drops it once the seed's analysis is done.
 
     `arms` and `n_ticks` are the twin's hooks ((p) records one ALIGNED arm at 100 ticks)."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
     from snn_data_lake.substrate.home import throwaway_home
 
     seed = int(seed)
@@ -403,7 +403,7 @@ def _t080_float_or_none(x):
 #   reclaimer census. Term overlap ("arm", "reads") only; neither touches a classifier. Read.
 def _t080_acc_counters(b):
     """The brain's OWN classifier hit/seen counters. `_perception_acc` and `_audio_acc` are
-    CUMULATIVE over the brain's whole life (`hits / seen`, `cortex/brain.py::_perceive_audio`),
+    CUMULATIVE over the brain's whole life (`hits / seen`, `engine/brain.py::_perceive_audio`),
     so an arm's accuracy is a DIFFERENCE of these counters, never the published ratio --
     reading the ratio at an arm's end would report the warm-up and every earlier arm too."""
     return {
@@ -1136,7 +1136,7 @@ def t080_stream_labels(seed, n_labels=T080_OFFSET_LABELS, max_ticks=260):
     """The first `n_labels` REAL frame labels seed `s` walks with 2.2's offset applied. The
     offset check is an APPARATUS precondition, so it reads the labels the brain actually
     consumed rather than re-deriving them from the pack by arithmetic."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
     from snn_data_lake.substrate.home import throwaway_home
 
     out = []

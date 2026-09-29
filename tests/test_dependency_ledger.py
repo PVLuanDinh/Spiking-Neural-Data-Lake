@@ -70,7 +70,7 @@ def test_first_party_and_repo_modules_are_never_reported():
     """
     names = dependency_ledger._repo_module_names()
     assert "eprop_lm" in names, "training/eprop_lm.py exists and must resolve as first-party"
-    assert "brain" in names, "src/snn_data_lake/cortex/brain.py exists"
+    assert "brain" in names, "src/snn_data_lake/engine/brain.py exists"
     imported = dependency_ledger._imported(("src",))
     assert "training" not in imported, "the repo's own training/ dir is not a PyPI package"
     assert "snn-data-lake" not in imported and "snn_data_lake" not in imported

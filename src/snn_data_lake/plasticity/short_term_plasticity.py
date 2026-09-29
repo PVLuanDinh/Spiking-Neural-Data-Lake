@@ -12,7 +12,7 @@ Tsodyks, PNAS 95 (1998).
 WIRING (corrected 2026-08-04). "Additive and opt-in: streaming_hub's default store/query path is
 untouched" remains true OF STREAMING_HUB, but it read as "this module is unwired", and that is
 false: `DynamicSynapse` is the PRE phase of `homeostatic_plasticity_stack._ShortTermGain`, which
-reaches the canonical brain through `plasticity_rule_stack` and `cortex/brain.py:273-278`. The
+reaches the canonical brain through `plasticity_rule_stack` and `engine/brain.py:273-278`. The
 precise split is that `novelty_filter` -- the streaming_hub-facing helper -- has no live consumer;
 the CLASS does. Measured charge for the stack path is in `homeostatic_scaling.py`'s wiring note.
 

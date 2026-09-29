@@ -65,7 +65,7 @@ THE LAMINAR MERGE RECORD (2026-08-12), kept here because the retired file carrie
     answers; the record must not die with the file.
   * WHY LaminarReadout could not promote (e-prop): its `loss.backward()` ran the tape
     through a LEARNED L6 feedback matrix -- weight transport three layers deep, on a
-    module whose job the live tick already does locally (`cortex/brain.py` ->
+    module whose job the live tick already does locally (`engine/brain.py` ->
     laminar_local_readout, fixed-random feedback). Its two capabilities are owned better
     elsewhere: L6 gain by the local readout's fixed-random L6, freeze by LaminarColumns.
   * INHERITED E-PROP DEBT, restated not laundered: BOTH classes in this file train by

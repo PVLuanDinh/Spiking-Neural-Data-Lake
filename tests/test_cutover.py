@@ -13,7 +13,7 @@ Three properties, each with its red reachable and its positive control in the sa
 import os
 import struct
 
-from snn_data_lake.substrate import learn_daemon
+from snn_data_lake.engine import learn_daemon
 from snn_data_lake.substrate.binlog import BinLog
 
 

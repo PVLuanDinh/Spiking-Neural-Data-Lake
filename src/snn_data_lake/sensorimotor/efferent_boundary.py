@@ -47,7 +47,7 @@ advance the envelope.
 # distinct-from: cerebellum/jepa_world_model.py -- the latent world model; different
 #   state space, its own reafference. distinct-from: sensorimotor/afferent_boundary.py --
 #   the SENSORY door; this is the MOTOR door, sharing only the fold (on purpose).
-# distinct-from: brainstem/autonomous_loop.py -- the loop that owns the action choice;
+# distinct-from: engine/autonomous_loop.py -- the loop that owns the action choice;
 #   this boundary observes the chosen action's envelope passage. All sites read.
 
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.sensorimotor.efferent_boundary
@@ -203,7 +203,7 @@ def declare_ports(manifest):
     edge. The cerebellar forward model consumes the copy INSIDE the boundary (the model
     instance lives here), so no out-port is declared for it -- a cross-module edge would
     claim an import cerebellum/forward_model does not make."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "efferent_boundary",
@@ -244,7 +244,7 @@ def _main():
     os.environ.setdefault("NORD_HOME", tempfile.mkdtemp(prefix="efferent_ab_"))
     import random
 
-    from snn_data_lake.brainstem.autonomous_loop import AutonomousArm
+    from snn_data_lake.engine.autonomous_loop import AutonomousArm
 
     # The drive PAYS MOTION. A bare loop takes one repeated action, the servo settles on
     # it, u -> 0, and the charge comparison reads 0.0 vs 0.0 -- vacuous (measured on the

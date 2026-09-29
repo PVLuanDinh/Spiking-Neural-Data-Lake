@@ -6,21 +6,21 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
-| episodic_retrieval_to_reply | 40 | src/snn_data_lake/cortex/brain.py:3671#respond; src/snn_data_lake/cortex/brain.py:3686#respond | - | memory-auditor (opus-5) / live respond() instrumentation | 2026-07-30 |
-| swr_value_consolidation | 40 | src/snn_data_lake/cortex/brain.py:2715#_update_access; src/snn_data_lake/cortex/brain.py:2020#_wake_tick | - | memory-auditor (opus-5) / untracked buffer-neuter A/B | 2026-07-30 |
-| affective_somatic_retrieval | 40 | src/snn_data_lake/cortex/brain.py:3838#_somatic_recall; src/snn_data_lake/cortex/brain.py:3627#respond | - | memory-auditor (opus-5) / live respond() instrumentation | 2026-07-30 |
-| episodic_encode | 30 | src/snn_data_lake/cortex/brain.py:1872#_w8_tick | - | memory-auditor (opus-5) / live-tick instrumentation | 2026-07-30 |
-| episodic_retrieval_to_action | 30 | src/snn_data_lake/cortex/brain.py:1562#_route_percept_to_action; src/snn_data_lake/cortex/brain.py:1684#_route_percept_to_action | recall_300.txt | memory-auditor (opus-5) / tools/charge_probe.py recall 300 | 2026-07-30 |
-| working_memory_store | 30 | src/snn_data_lake/brainstem/autonomous_loop.py:1217#_lake_write; src/snn_data_lake/cortex/live_brain.py:238#spike_snapshot | - | memory-auditor (opus-5) / live-tick instrumentation | 2026-07-30 |
-| attractor_sleep_replay | 30 | src/snn_data_lake/cortex/brain.py:2754#_sleep_tick; src/snn_data_lake/cortex/brain.py:2759#_sleep_tick | - | memory-auditor (opus-5) / live-tick instrumentation, 6 nights | 2026-07-30 |
-| durable_episode_consolidation | 25 | src/snn_data_lake/cortex/brain.py:2727#_sleep_tick; src/snn_data_lake/sleep/episode_consolidation.py:469#retained | - | memory-auditor (opus-5) / live-tick instrumentation, 6 nights | 2026-07-30 |
+| episodic_retrieval_to_reply | 40 | src/snn_data_lake/engine/brain.py:3671#respond; src/snn_data_lake/engine/brain.py:3686#respond | - | memory-auditor (opus-5) / live respond() instrumentation | 2026-07-30 |
+| swr_value_consolidation | 40 | src/snn_data_lake/engine/brain.py:2715#_update_access; src/snn_data_lake/engine/brain.py:2020#_wake_tick | - | memory-auditor (opus-5) / untracked buffer-neuter A/B | 2026-07-30 |
+| affective_somatic_retrieval | 40 | src/snn_data_lake/engine/brain.py:3838#_somatic_recall; src/snn_data_lake/engine/brain.py:3627#respond | - | memory-auditor (opus-5) / live respond() instrumentation | 2026-07-30 |
+| episodic_encode | 30 | src/snn_data_lake/engine/brain.py:1872#_w8_tick | - | memory-auditor (opus-5) / live-tick instrumentation | 2026-07-30 |
+| episodic_retrieval_to_action | 30 | src/snn_data_lake/engine/brain.py:1562#_route_percept_to_action; src/snn_data_lake/engine/brain.py:1684#_route_percept_to_action | recall_300.txt | memory-auditor (opus-5) / tools/charge_probe.py recall 300 | 2026-07-30 |
+| working_memory_store | 30 | src/snn_data_lake/engine/autonomous_loop.py:1217#_lake_write; src/snn_data_lake/engine/live_brain.py:238#spike_snapshot | - | memory-auditor (opus-5) / live-tick instrumentation | 2026-07-30 |
+| attractor_sleep_replay | 30 | src/snn_data_lake/engine/brain.py:2754#_sleep_tick; src/snn_data_lake/engine/brain.py:2759#_sleep_tick | - | memory-auditor (opus-5) / live-tick instrumentation, 6 nights | 2026-07-30 |
+| durable_episode_consolidation | 25 | src/snn_data_lake/engine/brain.py:2727#_sleep_tick; src/snn_data_lake/sleep/episode_consolidation.py:469#retained | - | memory-auditor (opus-5) / live-tick instrumentation, 6 nights | 2026-07-30 |
 | semantic_store_durable_lake | 25 | src/snn_data_lake/substrate/home.py:284#KnowledgeLog | - | memory-auditor (opus-5) / static read + read-only record count | 2026-07-30 |
 | chat_memory_store_and_recall | 25 | src/snn_data_lake/substrate/chat_memory.py:216#remember; src/snn_data_lake/reasoning/spike_chat_lake.py:1341#converse | - | memory-auditor (opus-5) / static read (call chain traced) | 2026-07-30 |
-| synaptic_consolidation_benna_fusi | 25 | src/snn_data_lake/cortex/brain.py:2745#_sleep_tick; src/snn_data_lake/plasticity/plasticity_rule_stack.py:217 | - | memory-auditor (opus-5) / live-tick instrumentation, taught vs untaught | 2026-07-30 |
-| use_it_or_lose_it_forgetting | 20 | src/snn_data_lake/reasoning/spike_chat_lake.py:1363#converse; src/snn_data_lake/cortex/brain.py:3057#_enter_sleep | - | memory-auditor (opus-5) / static read + live-tick instrumentation | 2026-07-30 |
-| semantic_schema_induction | 15 | src/snn_data_lake/cortex/brain.py:3014#_enter_sleep | - | memory-auditor (opus-5) / live-tick instrumentation, 6 nights | 2026-07-30 |
+| synaptic_consolidation_benna_fusi | 25 | src/snn_data_lake/engine/brain.py:2745#_sleep_tick; src/snn_data_lake/plasticity/plasticity_rule_stack.py:217 | - | memory-auditor (opus-5) / live-tick instrumentation, taught vs untaught | 2026-07-30 |
+| use_it_or_lose_it_forgetting | 20 | src/snn_data_lake/reasoning/spike_chat_lake.py:1363#converse; src/snn_data_lake/engine/brain.py:3057#_enter_sleep | - | memory-auditor (opus-5) / static read + live-tick instrumentation | 2026-07-30 |
+| semantic_schema_induction | 15 | src/snn_data_lake/engine/brain.py:3014#_enter_sleep | - | memory-auditor (opus-5) / live-tick instrumentation, 6 nights | 2026-07-30 |
 | affective_content_retrieval | 10 | src/snn_data_lake/hippocampus/affective_memory.py:153#recall_similar | - | memory-auditor (opus-5) / whole-tree caller grep | 2026-07-30 |
-| contrastive_episode_analysis | 10 | src/snn_data_lake/brainstem/autonomous_loop.py:1926#step; src/snn_data_lake/cortex/live_brain.py:79#__init__ | - | memory-auditor (opus-5) / live-tick instrumentation | 2026-07-30 |
+| contrastive_episode_analysis | 10 | src/snn_data_lake/engine/autonomous_loop.py:1926#step; src/snn_data_lake/engine/live_brain.py:79#__init__ | - | memory-auditor (opus-5) / live-tick instrumentation | 2026-07-30 |
 | chat_memory_flush_noop | 0 | src/snn_data_lake/substrate/chat_memory.py:247#close | - | memory-auditor (opus-5) / static read | 2026-07-30 |
 
 **Mean over the 16 rows: 24.7.** No faculty is above 40. Sixteen rows, zero UNSCORED.
@@ -184,7 +184,7 @@ not as verified.
   owns that decision, not scored here.
 - `sleep/sleep_consolidation.py` -- `SleepConsolidator` (wake -> quiescent consolidation).
   Imported by `cortex/self_improvement_suite.py`, `reasoning/lake_skill_library.py` and
-  `reasoning/brain_adapters/hippocampal_memory.py`, **not** by `cortex/brain.py`, which reimplements
+  `reasoning/brain_adapters/hippocampal_memory.py`, **not** by `engine/brain.py`, which reimplements
   the wake/sleep consolidation inline. Also a Policy-2 question; not a separate roster row, because
   the *faculty* it provides is already counted by the three consolidation rows.
 - `hippocampus/contrastive_episode_analysis.py` -- success-vs-failure context pooling; not enabled.

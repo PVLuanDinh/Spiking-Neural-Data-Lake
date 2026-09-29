@@ -50,7 +50,7 @@ were not treated as a request to resume the earlier development campaign.
 [pyproject.toml](../pyproject.toml) declares Python `>=3.14` and five core dependencies: `torch`,
 `numpy`, `pyarrow`, `mujoco==3.11.0`, and `brian2==2.10.1`. The
 [package guard](../src/snn_data_lake/__init__.py) checks free-threading, and the
-[daemon](../src/snn_data_lake/substrate/learn_daemon.py) makes that requirement strict at boot.
+[daemon](../src/snn_data_lake/engine/learn_daemon.py) makes that requirement strict at boot.
 [CI](../.github/workflows/ci.yml) uses Python `3.14t`.
 
 The previous README still said Python 3.12+, three core dependencies, and an older CI matrix.

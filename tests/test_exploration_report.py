@@ -15,7 +15,7 @@ Run: pytest tests/test_exploration_report.py
 
 import pytest
 
-from snn_data_lake.cortex.live_brain import _IXN_INTENTS, _reply_to_intent
+from snn_data_lake.engine.live_brain import _IXN_INTENTS, _reply_to_intent
 
 CTX = dict(visual=0.55, temperature=24.0, audio=0.3, distance=0.6)
 ASKS = (
@@ -26,7 +26,7 @@ ASKS = (
 
 
 def _brain(seed=0):
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     return make_brain(seed=seed, persist=False)
 

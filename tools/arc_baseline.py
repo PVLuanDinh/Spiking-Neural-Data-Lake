@@ -89,7 +89,7 @@ def live_brain_solver(train, test_input, attempts=2):
         # tool whose whole job is to produce a number about the brain. `persist=False` is now
         # explicit rather than inherited from the module-scope NORD_PERSIST default above, so the
         # baseline cannot read or write the operator's durable lake even if that env var is set.
-        from snn_data_lake.cortex.brain import make_brain
+        from snn_data_lake.engine.brain import make_brain
 
         _BRAIN = make_brain(seed=0, persist=False)
     reply = _BRAIN.respond(_as_task_text(train, test_input))

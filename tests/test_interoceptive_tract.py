@@ -209,7 +209,7 @@ def test_the_router_propagates_topology_and_carries_no_typed_payload():
 
 def test_the_brain_routes_the_live_body_frame_through_the_hop():
     """Without this the relay is a module with a self-check and no tick."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     b = make_brain(seed=0, persist=False)
     try:

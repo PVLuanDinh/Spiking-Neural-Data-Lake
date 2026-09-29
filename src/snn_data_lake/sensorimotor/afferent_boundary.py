@@ -234,7 +234,7 @@ VISION_FRAME_SHAPE = (15, 2, 34, 34)
 AUDITION_FRAME_SHAPE = (100, 700)
 
 
-# distinct-from: cortex/brain.py (_perceive_real/_perceive_audio) -- the CONSUMERS this
+# distinct-from: engine/brain.py (_perceive_real/_perceive_audio) -- the CONSUMERS this
 #   contract now fronts (they delegate validation here; encoding stays theirs). Read.
 # distinct-from: reservoir/kernel_state.py -- rebuilds KERNEL state from an HDF5 frame;
 #   'frame' vocabulary only. Site read.
@@ -294,11 +294,11 @@ def transduce_audition_events(frame):
 def declare_ports(manifest):
     """Manifest registrant (specs/022 T036): the S0 afferent rows. `proprio_out` carries
     the folded joint scalar; the consumer edge is declared by the consumer
-    (cortex/brain.py's declare_ports: brain.proprio_in -- the temperature band
+    (engine/brain.py's declare_ports: brain.proprio_in -- the temperature band
     Brain._safe_ctx writes every wake tick). Interoception's row is the T026 tract
     (declared there); vision/audition are S1 dispositions; chemosensation out-of-scope
     -- the inventory paragraph in this module's docstring is the pinned record."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "afferent_boundary",
@@ -376,7 +376,7 @@ def _main():
     assert transduce_distance(0.02) == (0.02, True), "a real contact passes in RAW metres, present"
     assert transduce_distance(2.5) == (2.5, True)
 
-    from snn_data_lake.brainstem.autonomous_loop import AutonomousArm
+    from snn_data_lake.engine.autonomous_loop import AutonomousArm
 
     def _reflex_on(dist):
         bot = AutonomousArm(seed=0)
@@ -413,7 +413,7 @@ def _main():
     import tempfile
 
     os.environ.setdefault("NORD_HOME", tempfile.mkdtemp(prefix="afferent_ab_"))
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     def temp_trace(neutered, n=40):
         b = make_brain(seed=0)

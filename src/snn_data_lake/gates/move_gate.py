@@ -529,7 +529,7 @@ def census(root: Path, only=None, draft: bool = False, log=print) -> dict:
 # ---- NAME-valued registries (C1, read RAW from source) ----------------------------------------
 def _strs(node) -> list:
     """Every name an expression spells: string constants, f-string constant joins (the
-    `f"{_PKG}.cortex.brain"` form, read as `cortex.brain`), and any other element as source text."""
+    `f"{_PKG}.engine.brain"` form, read as `engine.brain`), and any other element as source text."""
     if node is None:
         return []
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
@@ -1359,7 +1359,7 @@ def export(rev: str, dest: Path, repo: Path) -> Path:
 # distinct-from: readout/interaction_learning.py -- g0_campaign runs G0's seed/arm processes inside
 #   the running package; R-L1 runs 2.7's continuity arms over a TREE's code from outside it, and its
 #   probes REUSE that module's own _g0c_schedule, _g0c_walk and _conv_flat rather than restate them.
-#   Also read: cortex/brain.py (_flush_coverage), sensorimotor/arm_bridge.py (send_outcome), and --
+#   Also read: engine/brain.py (_flush_coverage), sensorimotor/arm_bridge.py (send_outcome), and --
 #   read only, never opened for writing -- brainstem/arm_config.py and brainstem/so101_arm.py.
 _RL1_TAG = "G8RL1 "
 #: Every R-L1 process opens by proving it can only touch its own temporary home, then reaches every

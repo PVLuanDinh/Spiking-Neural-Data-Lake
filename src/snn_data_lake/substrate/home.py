@@ -179,7 +179,7 @@ _T_CALIB = b"\x06"
 # after the fix, the same input leaves 2 -- one per name -- and `load_named_state` returns the
 # 50th blob, not the 1st. The unchanged-blob skip in `save_named_state` bounds a state that stops
 # moving; it did nothing for one that keeps moving, and the live callers keep moving --
-# `cortex/brain.py` saves a 76 KB `reasoning_curriculum.json` on the sleep tick and
+# `engine/brain.py` saves a 76 KB `reasoning_curriculum.json` on the sleep tick and
 # `RecallTrace.save()` runs beside it. This is the exact shape that made _T_GROWTH 73,490 records /
 # 508,082,042 B, 97.8 percent of the operator's lake.
 #
@@ -392,7 +392,7 @@ def throwaway_home():
     prev = os.environ.get("NORD_HOME")
     # best-effort cleanup: a brain can still hold a lake handle in the temp home when the
     # check returns, and on Windows that makes rmdir raise -- which would turn a passed
-    # self-check into exit 1 (measured on cortex.brain)
+    # self-check into exit 1 (measured on engine.brain)
     tmp = tempfile.TemporaryDirectory(prefix="selfcheck_home_", ignore_cleanup_errors=True)
     os.environ["NORD_HOME"] = tmp.name
     try:
@@ -410,7 +410,7 @@ def state_path(name):
 
     (1) `_migrate_sidecar` reads it, once, to import a pre-2026-08-05 blob into the one lake.
     (2) Binary blobs the JSON facade cannot carry are still written here by their own writers:
-        `cortex/brain.py` -> `language_acq.npz` (numpy) and `sleep/nightly_skills.py (promoted 2026-08-11)`
+        `engine/brain.py` -> `language_acq.npz` (numpy) and `sleep/nightly_skills.py (promoted 2026-08-11)`
         -> `skills*.spkl`. Those are OPEN P4b debt, named in `save_state`'s docstring; the carrier
         they need is `save_named_state`, which takes raw bytes.
 
@@ -541,7 +541,7 @@ class KnowledgeLog:
         THIS METHOD HAS NO LIVE CALLER, and neither does the `BinLog.extend` it forwards to --
         measured the same day: the only `.extend(` on a lake object in `src/`, `tests/` or `tools/`
         is this line and binlog's own self-check. So the fast path is P3 shape 1 (method never
-        called) while the slow one is in use; `cortex/brain.py`'s schema induction is the live loop
+        called) while the slow one is in use; `engine/brain.py`'s schema induction is the live loop
         that would fit it (up to `budget=32` `log.append(...)` calls per fourth night, 21.3x at that
         width). Recorded rather than wired: that edit is in a file this pass does not own."""
         payloads = []
@@ -817,7 +817,7 @@ def _state_index(log):
     at that call for why the invalidation lives in home.py and not in `rewrite()`.
 
     Why it exists at all: one full replay of the operator's live lake (516,810,138 B / 123,120
-    records) measured 349 / 376 / 378 ms on 2026-08-05, and `cortex/brain.py` calls
+    records) measured 349 / 376 / 378 ms on 2026-08-05, and `engine/brain.py` calls
     `self._time_clock.save()` on every tick the clock grows and `trace.save()` on every sleep tick.
     Paying that pass per call would be a third of a second on the tick path."""
     idx = getattr(log, "_snn_state_index", None)
@@ -947,7 +947,7 @@ def save_state(name, obj):
         signal_calib.json    950 B      (+ develop_state.json, prototypes.bin, older/stale)
 
     Every JSON member of that census is closed by this one edit, because the callers name a state
-    and this decides where it lives: `cortex/brain.py` (reasoning_curriculum.json),
+    and this decides where it lives: `engine/brain.py` (reasoning_curriculum.json),
     `sensorimotor/closed_loop.py` (valence.json), `sleep/lake_consolidation.py`
     (recall_trace.json), `cortex/time_cells.py` (time_cells.json), `reasoning/gf.py`
     (gf_library.json, active_library.json), `sleep/nightly_skills.py (promoted 2026-08-11)`. Not one of them changed a
@@ -1512,7 +1512,7 @@ def main():
         # THE RETURN VALUE, and it is a criterion the prune created rather than inherited. `_count`
         # is recomputed as `self._bin.count() - len(foreign)` where `foreign` is the PRUNED list;
         # against the PRE-prune list it would subtract the deleted _T_STATE records from the FACT
-        # tally, and the tuple is what `cortex/brain.py` binds to `self._lake_kept` /
+        # tally, and the tuple is what `engine/brain.py` binds to `self._lake_kept` /
         # `self._lake_pruned` on the sleep tick. RED, constructed and run 2026-08-05: with
         # `len(foreign)` replaced by the pre-prune length, this call returns (-4, 8) -- a NEGATIVE
         # count of surviving facts, and 8 phantom facts dropped where none were -- while every

@@ -20,7 +20,7 @@ serial automatically instead of silently racing.
 Two things are NEVER parallelised, and both are derived from the connectome rather than named by hand:
 the region owning `connectome.GATE_NODE` and any region with a direct edge to `connectome.ACTUATOR`.
 That resolves to `brainstem` -- the arm, the safety envelope and MuJoCo `mjData`, which
-`substrate/learn_daemon.py` already documents as single-threaded (mj_forward racing mj_step on one mjData
+`engine/learn_daemon.py` already documents as single-threaded (mj_forward racing mj_step on one mjData
 is undefined behaviour). The arm is physically sequential; this module must never make it look otherwise.
 
 THE GATE IS MEASURED, NOT HARDCODED (P1). `pick_thread_count(serial_estimate_s)` compares the caller's

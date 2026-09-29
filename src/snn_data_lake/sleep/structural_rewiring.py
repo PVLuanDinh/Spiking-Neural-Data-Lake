@@ -143,7 +143,7 @@ import random as _random
 # distinct-from: plasticity/homeostatic_scaling.py, plasticity/plasticity_rule_stack.py
 #   -- magnitude stabilization on the FAST clock; this module reads the stack's theta
 #   and moves STRUCTURE only. Sites read.
-# distinct-from: cortex/brain.py's attractor sub-eps zeroing -- magnitude hygiene on
+# distinct-from: engine/brain.py's attractor sub-eps zeroing -- magnitude hygiene on
 #   the ATTRACTOR's weights (a different substrate), unbudgeted and unpaired; this
 #   module's prune trigger is IDENTITY VIOLATION (sign flip) with a conserved budget.
 #   Site read.

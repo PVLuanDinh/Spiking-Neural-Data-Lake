@@ -382,7 +382,7 @@ def red1(result):
 #   filters on them; it decides nothing. This decides, and its decision gates a conjunct.
 # distinct-from: plasticity/r_stdp.py::Calibration -- a NamedTuple of what a host measured for
 #   the parallel crossover; a record, not a predicate.
-# distinct-from: substrate/signal_ring.py::attach -- cursors a new consumer at the current head;
+# distinct-from: engine/signal_ring.py::attach -- cursors a new consumer at the current head;
 #   "sees nothing before it attached" is a ring's history rule, not a zero reading.
 # distinct-from: readout/interaction_learning.py::_live_brain_demo -- talks to the live brain and
 #   shows a learner improving; it is a demo of a learner, and its subject is exactly the thing
@@ -1260,7 +1260,7 @@ def _contrasts(cs, pairs, vs_chance):
     }
 
 
-# distinct-from: substrate/wiring_manifest.py::PortManifest.warnings -- reports a DECLARED CONNECTOME PORT that no edge connects (its "two arms" are the IN and OUT directions of that static census); it reads no accuracy, no seed and no bar. Site read 2026-09-10.
+# distinct-from: engine/wiring_manifest.py::PortManifest.warnings -- reports a DECLARED CONNECTOME PORT that no edge connects (its "two arms" are the IN and OUT directions of that static census); it reads no accuracy, no seed and no bar. Site read 2026-09-10.
 def _wiring_contrast(pair, vs_chance):
     """The mark on ONE contrast: a difference between two arms that were both at the floor is a
     difference between two guesses, and it says so and stops there. It decides nothing."""
@@ -1770,7 +1770,7 @@ def settling_report(samples, seconds=SETTLING_SECONDS):
     APPENDED 2026-09-10 (T063 panel of 2026-09-09), the paragraph above kept VERBATIM: "the daemon
     on this host RESTARTS" names the FACT correctly and the arc's record attached a false CAUSE to
     it ("a supervisor cycle of roughly 15 minutes"). There is no timer anywhere. `learn_daemon.bat`
-    relaunches only when the daemon EXITS, 8 s later, and `substrate/learn_daemon.py` has exactly
+    relaunches only when the daemon EXITS, 8 s later, and `engine/learn_daemon.py` has exactly
     one `os._exit(0)`, reachable only from `_head() != start_head` -- so a clean exit is
     DEFINITIONALLY a new commit at HEAD, and a session that commits during a probe restarts the
     subject itself. The guard's logic and its red are UNCHANGED: a probe whose subject changed is

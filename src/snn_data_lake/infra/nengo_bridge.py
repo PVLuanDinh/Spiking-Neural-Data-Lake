@@ -404,7 +404,7 @@ def launch(
             ".venv-cu128) to launch the brain under Nengo; the core is unaffected."
         )
         return 1
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     b = make_brain(seed=0)  # Policy 4: the ONE sanctioned brain-construction path
     net, dec_probes, spk_probes, keys, _ = to_nengo_brain(b, tick=True)
@@ -549,7 +549,7 @@ def main():
     )
 
     # --- (4) WHOLE-BRAIN OBSERVATION: the ENTIRE brain (incl torch tiers via exported signals) under Nengo ---
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     b = make_brain(seed=0)  # Policy 4: the ONE sanctioned brain-construction path
     tier_keys = [k for k in brain_signals(b) if k.endswith("_tier")]  # torch/nengo/pc tier channels

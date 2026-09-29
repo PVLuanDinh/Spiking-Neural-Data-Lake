@@ -34,7 +34,7 @@ def _interpreter_joints():
 
 
 def _autonomous_joints():
-    from snn_data_lake.brainstem import autonomous_loop
+    from snn_data_lake.engine import autonomous_loop
 
     return _joints_in(autonomous_loop.ACTIONS)
 
@@ -86,7 +86,7 @@ def test_every_produced_token_is_accepted_by_parser_and_wire():
 
 
 def _autonomous_joints_tokens():
-    from snn_data_lake.brainstem import autonomous_loop
+    from snn_data_lake.engine import autonomous_loop
 
     return [a for a in autonomous_loop.ACTIONS if _JOINT_TOKEN.search(a)]
 

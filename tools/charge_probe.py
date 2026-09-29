@@ -13,7 +13,7 @@ moving it into the tree:
 
   1. it is now version-controlled, so the evidence standard travels with the repo;
   2. the repo root is derived from __file__ instead of a hardcoded "D:/AI-project/..." absolute path;
-  3. it constructs through `cortex.brain.make_brain()`, the Policy-4 sanctioned construction path. The
+  3. it constructs through `engine.brain.make_brain()`, the Policy-4 sanctioned construction path. The
      original called `Brain(...)` directly -- the instrument that enforced P3 was quietly violating P4.
 
 METHOD. Two runs at the same seed. A = wired. B = the named drive source neutered every tick, so any
@@ -38,7 +38,7 @@ import sys
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(_ROOT, "src"))
 
-from snn_data_lake.cortex.brain import make_brain  # noqa: E402
+from snn_data_lake.engine.brain import make_brain  # noqa: E402
 
 # drive source -> the learned per-(key, action) value table to clear alongside its weight. The
 # undirected sources (novelty, ignition, timing, reroute, surprise) have no table; zeroing the weight

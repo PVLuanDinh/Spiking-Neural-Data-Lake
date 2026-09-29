@@ -42,7 +42,7 @@ Over exchanges, held-out accuracy climbs from chance to high. The un-riggable co
 teaching signal (decorrelate it from the stimulus) and the identical learner stays at chance --
 proving the gain comes from reward-modulated spike TIMING, not from the encoding alone.
 
-The __main__ self-check also drives the real integrated brain (cortex.live_brain.LiveBrain): it TALKS
+The __main__ self-check also drives the real integrated brain (engine.live_brain.LiveBrain): it TALKS
 to the brain with converse()/tick(), reads the brain's own grounded replies as ground truth, and
 shows this spiking learner improving at routing prompts to the brain's actual intents -- a short,
 readable transcript of the exchanges.
@@ -158,7 +158,7 @@ def _g0c_legacy_modules():
 
 
 # distinct-from: cerebellum/jepa_world_model.py, instruments/attention_schema.py -- phrase overlap only,
-#   as with cortex/brain.py (`_learned_route`), growth/h01_ingest.py and substrate/paradigm_b_matcher.py
+#   as with engine/brain.py (`_learned_route`), growth/h01_ingest.py and substrate/paradigm_b_matcher.py
 #   (a band centroid, a stub brain, a route read, a pin key, a query runner); all five sites read.
 #   This is the codec's own read-side class-path step; the one map it reads is the provider above.
 def _g0c_translate(name, legacy):
@@ -867,7 +867,7 @@ def _live_brain_demo():
     """TALK to the real integrated brain and show this spiking learner improving at routing prompts to
     the brain's own intents, learned purely from the exchanges."""
     from snn_data_lake.brainstem.arm_config import CONTACT
-    from snn_data_lake.cortex.live_brain import LiveBrain
+    from snn_data_lake.engine.live_brain import LiveBrain
 
     brain = LiveBrain(seed=3)
     intents = ["GREET", "GOAL", "MEMORY", "CONSCIOUS", "ARM"]
@@ -1076,8 +1076,8 @@ def g0_run(seed, arm):
     import subprocess
     from pathlib import Path
 
-    from snn_data_lake.cortex.brain import make_brain
-    from snn_data_lake.cortex.live_brain import _reply_to_intent
+    from snn_data_lake.engine.brain import make_brain
+    from snn_data_lake.engine.live_brain import _reply_to_intent
     from snn_data_lake.substrate.home import throwaway_home
 
     if seed not in G0_SEEDS or arm not in G0_ARMS:
@@ -1485,8 +1485,8 @@ def g0b_run(seed, arm):
     from pathlib import Path
     from unittest.mock import Mock, patch
 
-    from snn_data_lake.cortex.brain import make_brain
-    from snn_data_lake.cortex.live_brain import _ROUTE_CUES, _reply_to_intent
+    from snn_data_lake.engine.brain import make_brain
+    from snn_data_lake.engine.live_brain import _ROUTE_CUES, _reply_to_intent
     from snn_data_lake.substrate.home import throwaway_home
 
     if not isinstance(seed, int) or seed < 0 or arm not in G0B_ARMS:
@@ -1949,7 +1949,7 @@ def _g0c_walk(value):
 
 def _g0c_schedule(brain, seed):
     """The frozen G0(a) arm-A schedule, leaving both older instruments unchanged."""
-    from snn_data_lake.cortex.live_brain import _reply_to_intent
+    from snn_data_lake.engine.live_brain import _reply_to_intent
 
     rng = random.Random(seed)
     order = _conv_flat(_CONV_TRAIN)
@@ -1981,7 +1981,7 @@ def _g0c_process(role, seed, home, out):
     from pathlib import Path
     from unittest.mock import patch
 
-    from snn_data_lake.cortex.brain import Brain, make_brain
+    from snn_data_lake.engine.brain import Brain, make_brain
     from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner as Learner
     from snn_data_lake.substrate.home import load_state
 
@@ -2285,7 +2285,7 @@ def _conversation_generalization_selfcheck():
     chance; (4) the update is spike-timing reward*eligibility, discrete spike events;
     (5) deterministic. Also reports the honest LIMIT: on the firewall's OWN blind spots (novel lines it
     mislabels) self-supervised distillation inherits the error, and explicit FEEDBACK is what recovers."""
-    from snn_data_lake.cortex.live_brain import LiveBrain
+    from snn_data_lake.engine.live_brain import LiveBrain
 
     brain = LiveBrain(seed=3)
     n_in, lr, tau, t_post, epochs, seed = 52, 0.10, 8.0, 6, 40, 5
@@ -2480,7 +2480,7 @@ def main():
         return
     # The self-check's LiveBrains carry workspace-enabled arms, which journal IMMORTAL coalition
     # records into the lake `home()` resolves -- the LIVE lake for a bare `python -m` run. The same
-    # guard as brainstem/autonomous_loop.py::main (T031): setdefault keeps run_selfchecks.py's
+    # guard as engine/autonomous_loop.py::main (T031): setdefault keeps run_selfchecks.py's
     # isolated NORD_HOME and sandboxes only a bare invocation; inside main() on purpose.
     import os as _os
     import tempfile as _tempfile

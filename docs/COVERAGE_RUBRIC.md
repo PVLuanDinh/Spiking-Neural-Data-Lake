@@ -96,7 +96,7 @@ audit on purpose — the sweep produces the single headline number, so it carrie
 
 ## Known ceilings, stated before scoring so nobody scores around them
 
-- **Wiring a faculty into `cortex/brain.py::_route_percept_to_action` moves a three-way arm decision
+- **Wiring a faculty into `engine/brain.py::_route_percept_to_action` moves a three-way arm decision
   (ENGAGE / RELEASE / HOLD).** It can raise Executive, Affect, SpatialTemporal and the action-relevant
   part of Perception. It **cannot** raise Language, Imagination, Gf, Consciousness or WholeBrain —
   crediting those to a wiring wave is the theater P0 forbids.

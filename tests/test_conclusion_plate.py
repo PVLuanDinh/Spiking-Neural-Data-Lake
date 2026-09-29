@@ -86,7 +86,7 @@ def test_the_served_section_is_a_contract_key_whose_absence_is_a_finding():
 def test_a_scratch_brains_snapshot_serves_todays_three_charged_rows():
     """The section as a browser receives it. Three rows are charged on this tree
     (T080/T081/T082); the other four read None and are absent."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
     from snn_data_lake.substrate.home import throwaway_home
 
     with throwaway_home():  # never the live lake

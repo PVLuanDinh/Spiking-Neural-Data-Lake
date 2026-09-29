@@ -73,7 +73,7 @@ tally line above is a dated 2026-07-10 snapshot and is left as-is):
 | cerebellum/spiking_pid | **named spiking but rate** -> genuine LIF integral/derivative populations |
 | cerebellum/jepa_world_model | spiking JEPA: LIF encoder/predictor (surrogate grad); slow spiking EMA target; homeostatic VICReg |
 | cerebellum/hjepa_serve | serve a spiking feedforward net: LIF layers, rate/first-spike latent readout |
-| brainstem/autonomous_loop | spiking WTA action selection + dopamine-modulated STDP on action-value synapses (SAFETY: mine) |
+| engine/autonomous_loop | spiking WTA action selection + dopamine-modulated STDP on action-value synapses (SAFETY: mine) |
 | thalamus/global_workspace | LIF specialist pools, recurrent self-excitation + global lateral inhibition; ignition = spike threshold |
 | hypothalamus/set_points | comparator as opponent spiking populations; antagonistic effector spike-rate difference drives plant |
 | midbrain/superior_colliculus | LIF per location + lateral inhibition; first-to-spike wins, spike time = latency |
@@ -180,7 +180,7 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
   seed `readout/predictive_coding` kept as the small baseline (mirrors spiking_jepa keeping jepa_world_model). No live
   wiring this slice (zero safety surface); Slice 6 = opt-in checkpoint-gated perception-tier wiring. Atlas SPIKING 50.
 - **Slice 6 (v3.30) -- PC-cortex perception tier WIRED into the live brain (safety-verified):** `sensorimotor/pc_cortex_serve`
-  wired into `cortex/brain.py` as an opt-in, ZERO-DEP, checkpoint-gated perception tier (`SNN_PC_CKPT` ->
+  wired into `engine/brain.py` as an opt-in, ZERO-DEP, checkpoint-gated perception tier (`SNN_PC_CKPT` ->
   models/pc_cortex_nmnist.json; no torch needed to serve; degrades to stdlib), exposed via `perceive_pc(x)` -> settled
   top-cause latent, reported `state()["pc_cortex_tier"]` ("pc-cortex" | "stdlib"). The live tick is UNCHANGED (settling
   runs only on the explicit call, never in a tick); no actuator route. New brain self-check claim 8 (opt-in + right-length

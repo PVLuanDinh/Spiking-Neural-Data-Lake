@@ -235,7 +235,7 @@ def parse(text: str) -> list[Policy]:
     # NOT MACHINE-DECIDED). Excluded from the reconciliation identity above.
     # Commands come from the GATE-OUTPUT TABLE ONLY, never from section bodies:
     # measured on the first live run, body prose file-mentions satisfy CMD_RE
-    # (`infra/cockpit.py`, `substrate/learn_daemon.py` false-attached to P4c)
+    # (`infra/cockpit.py`, `engine/learn_daemon.py` false-attached to P4c)
     # -- prose is citation, not a command source. An argv row attaches to the
     # sub-clause whose lowered id prefixes the gate basename (p4c_ratchet -> P4c);
     # "amendment" rows never attach (p4c_ratchet asserts P4c's count, not the

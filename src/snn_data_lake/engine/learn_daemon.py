@@ -37,7 +37,7 @@ import sys
 import time
 
 from snn_data_lake import require_free_threaded
-from snn_data_lake.cortex.brain import make_brain
+from snn_data_lake.engine.brain import make_brain
 from snn_data_lake.infra.brain_telemetry import Recorder
 from snn_data_lake.infra.cockpit import Acts, Turns, serve
 from snn_data_lake.infra.self_mod_harness import _repo_root
@@ -520,7 +520,7 @@ def _selfcheck():
     probe = (
         "import os,sys,json;"
         "cwd0=os.getcwd();g0=os.environ.get('NORD_GPU');"
-        "import snn_data_lake.substrate.learn_daemon as d;"
+        "import snn_data_lake.engine.learn_daemon as d;"
         "print(json.dumps({'cwd_same':os.getcwd()==cwd0,'gpu_same':os.environ.get('NORD_GPU')==g0}))"
     )
     env = {**os.environ, "PYTHONPATH": os.path.join(root, "src"), "PYTHONUTF8": "1"}

@@ -158,7 +158,7 @@ class RpmSolver:
     def __init__(self, seed=0, workspace=None):
         """`workspace` ADOPTS the one shared GlobalWorkspace instead of building a private one per
         solve. Hand it `Brain.workspace` / `LiveBrain.workspace` -- the single instance
-        `brainstem/autonomous_loop.py` constructs -- and the candidate answers compete for the SAME
+        `engine/autonomous_loop.py` constructs -- and the candidate answers compete for the SAME
         limited-capacity slots the brain's perception and salience channels post into. None keeps
         the per-call private instance this class always built, so every existing caller is
         byte-identical.

@@ -170,7 +170,7 @@ force-wire. A wire that does not charge is reverted and retired or exempted, nev
 ### P4. One brain / no replication
 
 Use the canonical `Brain -> LiveBrain -> AutonomousArm` composition; never re-implement it.
-Construct only via `cortex.brain.make_brain()`. Mechanized by `gates/replication_guard.py`.
+Construct only via `engine.brain.make_brain()`. Mechanized by `gates/replication_guard.py`.
 
 ### P4b. The durable lake is part of the brain
 

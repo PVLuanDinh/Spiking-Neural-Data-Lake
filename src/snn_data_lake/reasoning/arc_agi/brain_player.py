@@ -4,7 +4,7 @@ ARC-AGI-3-STYLE grid games in env.py.
 HONEST FRAMING
 --------------
 This is a REPRESENTATIVE harness, not the official ARC-AGI-3 eval (see env.py). The player below
-uses the brain's cognitive machinery directly -- it does NOT import `cortex.brain.Brain`
+uses the brain's cognitive machinery directly -- it does NOT import `engine.brain.Brain`
 (that needs torch) and imports NOTHING from brainstem/ (no arm, no actuator). It is VALUE- and
 REPRESENTATION-ONLY.
 

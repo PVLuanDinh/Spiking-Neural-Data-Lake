@@ -13,7 +13,7 @@ Bienenstock, Cooper & Munro, J. Neurosci. 2 (1982); Cooper & Bear, Nat. Rev. Neu
 WIRING (corrected 2026-08-04 -- "Additive/opt-in: nothing in the recognition path changes" was
 stale). `BCMNeuron`'s sliding threshold theta is the metaplastic variable of
 `plasticity_rule_stack._BCMMetaGate`, which gates the effective learning rate on the canonical
-brain's interaction learner (`cortex/brain.py:273-278`). The RECOGNITION path is indeed untouched;
+brain's interaction learner (`engine/brain.py:273-278`). The RECOGNITION path is indeed untouched;
 the LEARNING path is not. Measured charge is in `homeostatic_scaling.py`'s wiring note.
 
   python -m snn_data_lake.plasticity.bcm_plasticity        # (also run by run_selfchecks.py)

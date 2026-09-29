@@ -107,7 +107,7 @@ scale — four probe points on one serial chain, scored as four faculties.
 
 
 Cheap wires first. The ceiling applies throughout: wiring a faculty into the three-way arm decision at
-`cortex/brain.py::_route_percept_to_action` can raise **Executive, Affect, SpatialTemporal and
+`engine/brain.py::_route_percept_to_action` can raise **Executive, Affect, SpatialTemporal and
 action-relevant Perception**, and cannot raise Language, Imagination, Gf, Consciousness or WholeBrain.
 
 | # | gap | target |
@@ -126,5 +126,5 @@ trajectory changes, at +8.4% tick cost (49.0 → 53.1 ms). The control that make
 same harness shows the `drive` source flipping 22/60 trajectories, so the observable is not degenerate.
 
 The faculty is inert in fact, not merely unwired. P3 says a wire that does not charge is reverted, so
-it was. The measurement is recorded at `cortex/brain.py:197-215` and in `PROVENANCE`, so the next
+it was. The measurement is recorded at `engine/brain.py:197-215` and in `PROVENANCE`, so the next
 person does not re-run it.

@@ -284,7 +284,7 @@ def run_seed(seed, checkpoints=CHECKPOINTS, window=WINDOW, entropy_wake=ENTROPY_
 
     Caller owns the throwaway home. persist=False: this measures the world, not a restore.
     """
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     _assert_scratch_home()
     b = make_brain(seed=seed, persist=False)
@@ -490,7 +490,7 @@ def _brain_check(ticks):
 
     with throwaway_home():
         _assert_scratch_home()
-        from snn_data_lake.cortex.brain import make_brain
+        from snn_data_lake.engine.brain import make_brain
 
         b = make_brain(seed=0, persist=False)
         try:

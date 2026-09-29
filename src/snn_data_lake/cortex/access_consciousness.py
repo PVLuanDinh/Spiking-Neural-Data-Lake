@@ -57,7 +57,7 @@ two different facts about one workspace and this file reports them as two:
     broadcast to every subscriber. This is Dehaene's global availability and it is what
     `access_index` is gated on.
   * `focused()` / `state()["focused"]` -- FOCUS. My content is the RANKED HEAD: what the brain is
-    currently thinking about, the same quantity `cortex/live_brain.py::thought` reads.
+    currently thinking about, the same quantity `engine/live_brain.py::thought` reads.
 
 UNDER ONE SLOT THEY WERE THE SAME SENTENCE, which is exactly why this file got it wrong. When the
 workspace went multi-slot, `_ignited` kept reading the head and silently stopped meaning access.
@@ -109,11 +109,11 @@ measuring it. A/B'd on the canonical brain against a shim that restores the reti
 (head-only delivery AND `_ignited` reading the head): un-repointed, 120 ticks / 56 awake, `thought`
 names the submitted percept on 56 of 56 and the crc32 of the thought sequence, of the workspace-set
 sequence and of the whole legacy `state()` readout are IDENTICAL between the two contracts -- because
-`cortex/brain.py::_update_access` builds this faculty with no `ws=`, so its bus has ONE submitter and
+`engine/brain.py::_update_access` builds this faculty with no `ws=`, so its bus has ONE submitter and
 the workspace is a 1-tuple on every tick. The 2026-08-06 ARBITER repair is byte-identical there too,
 re-measured in BOTH content-key regimes. So this fix buys nothing measurable on any bus this tree can
 currently build; the REPOINT that would build one is a measured null recorded at
-`cortex/brain.py::_update_access` -- swept across the whole compliant band, this faculty is admitted
+`engine/brain.py::_update_access` -- swept across the whole compliant band, this faculty is admitted
 on 0 of 56 ticks below a 0.6825 ceiling and is the HEAD on every tick it is admitted above it, with a
 co-existence window ONE TICK of 56 wide. Credit is claimed for the criterion, never for a live gain
 that was measured at zero.
@@ -126,7 +126,7 @@ live here. `content_key` keys the pool on the BUNDLE instead. Consequence over 5
 consumers -- to 44 of 56, with 8 of the 12 new lapses posting STRICTLY BELOW the rheobase. `thought`
 is unchanged to the byte. `_access_ema` moves 0.488958 -> 0.287282, which is a fiat leaving rather
 than a signal collapsing, and the per-reader attribution of that move is tabulated at
-`cortex/brain.py::_update_access` (two of the ten readers are inert in BOTH directions; a prior
+`engine/brain.py::_update_access` (two of the ten readers are inert in BOTH directions; a prior
 version of that table said three of eight, and both figures were wrong -- see there).
 
 WHAT THE BRAIN SAYS ABOUT ITSELF MOVED WITH IT, traced end to end rather than assumed:
@@ -141,10 +141,10 @@ is reporting a measurement rather than a verdict, which is the only reason that 
 WHICH BUS THIS RUNS ON (P6), and the MEASURED NULL that goes with it
 ====================================================================
 `__init__` takes `ws=`. Default None -> this faculty builds its own workspace, which is what it
-has always done, what the live path still does (`cortex/brain.py::_update_access` constructs
+has always done, what the live path still does (`engine/brain.py::_update_access` constructs
 `AccessConsciousness(seed=...)` with no `ws`), and what `tools/p6_gate.py` counts as one of the
 PRIVATE, mutually invisible instances P6 names. Passing the shared handle (`Brain.workspace` /
-`LiveBrain.workspace`, the one instance owned by `brainstem/autonomous_loop.py`) puts this
+`LiveBrain.workspace`, the one instance owned by `engine/autonomous_loop.py`) puts this
 faculty's coalition into the SAME limited-capacity competition perception and the amygdala's
 threat channel post into.
 
@@ -194,13 +194,13 @@ are recorded here, because a route that carries nothing is the force-wiring P6 f
 
 Consequence of repointing, RE-MEASURED 2026-08-06 AFTER the rank repair and the content-key
 rotation, because both could have removed it and neither did: this faculty posts a novelty-gated
-0.5207..0.7500 (43 distinct) through `cortex/brain.py::_update_access` and takes the head on 40 of
-56 wake ticks, so `cortex/live_brain.py::thought` carries this faculty's content key on 40 of 56
+0.5207..0.7500 (43 distinct) through `engine/brain.py::_update_access` and takes the head on 40 of
+56 wake ticks, so `engine/live_brain.py::thought` carries this faculty's content key on 40 of 56
 and 28 distinct values where the un-repointed brain names the submitted percept on 56 of 56 with 4.
 The percept co-exists beside it on **1 of 56** ticks. Multi-slot did NOT make the repoint free -- it
 made it survivable in principle (the arbiter measures the percept staying in on 40/40 against a
 faculty pinned at a compliant 0.65) while this faculty's own live claim is high enough in the band
-to push it out anyway. THE FULL BAND SWEEP IS AT `cortex/brain.py::_update_access` and it is a hard
+to push it out anyway. THE FULL BAND SWEEP IS AT `engine/brain.py::_update_access` and it is a hard
 step rather than a gradient: excluded on 0 of 56 up to a 0.6800 ceiling, HEAD on every admitted tick
 from 0.6825. `_max_claim` is what keeps the consequence bounded: a joining faculty may not make
 itself indisplaceable, and with it a 0.95 proximity threat still seizes the top slot where uncapped
@@ -277,7 +277,7 @@ class AccessConsciousness:
 
         `ignition_threshold` is read back OFF the bus once one is injected rather than kept as the
         argument's value: it is the rheobase of the pool this faculty's submissions actually drive,
-        and `cortex/brain.py::_update_access` anchors its salience on `ac.ignition_threshold`
+        and `engine/brain.py::_update_access` anchors its salience on `ac.ignition_threshold`
         precisely to avoid duplicating that constant. Reading it through keeps that binding true on
         a shared bus instead of silently pointing at a number no pool uses."""
         self.seed = seed
@@ -435,14 +435,14 @@ class AccessConsciousness:
         BUS rather than chosen here.
 
         This is the bus's own displaceability invariant and it is not a new number: it is the same
-        derivation `brainstem/autonomous_loop.py::_percept_salience` already applies to perception's
+        derivation `engine/autonomous_loop.py::_percept_salience` already applies to perception's
         claim, from the same two `GlobalWorkspace` attributes (P2 -- one definition of "the loudest
         a specialist may legitimately be", applied by every specialist, not a second policy). Above
         it, the incumbent an ignition creates carries more recurrent defence than the widest claim
         any competitor can make, so it can never be displaced by anything.
 
         MEASURED, which is why this exists at all. Repointed onto the shared bus without it, this
-        faculty posts the salience `cortex/brain.py::_update_access` computes -- 1.0 on the early
+        faculty posts the salience `engine/brain.py::_update_access` computes -- 1.0 on the early
         wake ticks -- and traced over the live bus it seized the single slot on step 2 and held it
         for every step after: perception's broadcast went from the percept id to 'GLOBAL'
         permanently, and a 0.95 proximity threat could no longer take the slot either (drive 1.10
@@ -471,7 +471,7 @@ class AccessConsciousness:
         self._content_hv = bundle(codes)  # spike superposition -> ONE content
         # The coherence/size drive current is the DEFAULT salience only, and it is not a cheap
         # default: `_coherence` is the O(M^2) pairwise table. The live wake tick
-        # (cortex/brain.py::_update_access) always passes an explicit novelty-gated salience, so
+        # (engine/brain.py::_update_access) always passes an explicit novelty-gated salience, so
         # this computed the expensive default on every tick and then discarded it -- a measured
         # 13.1 ms of a 56.6 ms tick. Computing it only when it is the value actually used is
         # bit-exact: `_coherence` is a pure function of `codes` with no other effect.
@@ -533,7 +533,7 @@ class AccessConsciousness:
         brain.workspace` rather than by reaching into `_ws`. Equality is not the question and
         would answer it wrongly: two freshly built `GlobalWorkspace`es with the same seed are
         indistinguishable by value while connecting nothing, which is exactly the private-instance
-        defect P6 counts. `cortex/live_brain.py` and `cortex/brain.py` expose the same handle under
+        defect P6 counts. `engine/live_brain.py` and `engine/brain.py` expose the same handle under
         the same name for the same reason."""
         return self._ws
 
@@ -597,7 +597,7 @@ class AccessConsciousness:
         # its consequence was nowhere: P3 shape 5, a flag that changes no outcome).
         #
         # THE DEFECT THAT MADE IT LOAD-BEARING. Repointed onto the arm's bus, this faculty called
-        # `_ws.step()` here while `brainstem/autonomous_loop.py::_workspace_broadcast` called it too,
+        # `_ws.step()` here while `engine/autonomous_loop.py::_workspace_broadcast` called it too,
         # so ONE brain tick ran TWO competitions. Instrumented over 40 live ticks, competition 1 saw
         # `('perception', 'salience')` and competition 2 saw `('coalition',)` ALONE, on 40 of 40.
         # The two producers never met: each won an uncontested competition and evicted the other's
@@ -660,7 +660,7 @@ class AccessConsciousness:
 
     def focused(self):
         """FOCUS. True iff the content is the RANKED HEAD of the workspace -- what the brain is
-        currently thinking about, the same quantity `cortex/live_brain.py::thought` reads.
+        currently thinking about, the same quantity `engine/live_brain.py::thought` reads.
 
         NOT a second competition and NOT a second quantity (P1/P2): it is one boolean over the
         arbiter's existing head, read from the same `step()` return the workspace already gives
@@ -774,7 +774,7 @@ def _post(ws, posts):
 def _contended_run(n_peers, ws, n=12, shared=True):
     """Replay the LIVE cadence with `n_peers` OTHER faculties competing on ONE bus: every
     submitter -- the peers and this faculty -- posts into the SAME competition, and the owner
-    clocks it ONCE per tick (`cortex/brain.py::_update_access` since the one-clock repoint).
+    clocks it ONCE per tick (`engine/brain.py::_update_access` since the one-clock repoint).
     Returns (own, admitted) -- this faculty's OWN per-tick output tuple, and whether its content
     held a workspace slot on that tick.
 
@@ -1141,7 +1141,7 @@ def main():
     # it used to be implicit inside `inj_a.step()`, which is exactly the double-clocking that made a
     # shared bus behave as two buses taking turns on the live brain.
     cross_tap = bool(inj_b._taps[0]) and inj_a.content_key() in inj_b._taps[0][-1]
-    # the rheobase is read OFF the bus, so the anchor cortex/brain.py uses is the pool's own. RED by
+    # the rheobase is read OFF the bus, so the anchor engine/brain.py uses is the pool's own. RED by
     # construction: the constructor argument says 0.55 and the bus says 0.42.
     odd_ws = _bus(ignition_threshold=0.42)
     odd_ac = AccessConsciousness(seed=0, ignition_threshold=0.55, ws=odd_ws)
@@ -1150,7 +1150,7 @@ def main():
     # ---- (6b) A FACULTY DOES NOT CLOCK A BUS IT DOES NOT OWN. -----------------------------------
     # Sharing the OBJECT is claim (6); this is sharing the CLOCK, and it is a separate failure that
     # claim (6) passes straight through. Measured on the live brain before the fix: repointed onto
-    # the arm's bus, this faculty called `_ws.step()` while `brainstem/autonomous_loop.py` called it
+    # the arm's bus, this faculty called `_ws.step()` while `engine/autonomous_loop.py` called it
     # too, so ONE wake tick ran TWO competitions -- instrumented over 40 ticks, competition 1 saw
     # `('perception','salience')` and competition 2 saw `('coalition',)` ALONE, 40 of 40. Two
     # producers on one object that never meet is not a shared bus; it is two buses taking turns, and

@@ -31,8 +31,8 @@ RED: undeclared-join manifest red; a registered-but-uncharged region counts UNWI
 CONTROL: the charge probe's own constructed positive. ATTRIBUTION: per-port. DISCLOSURE:
 registration is never charge. NULL: a port no consumer's output depends on is retired.
 LANDED (declaration + enforcement halves): T018/T019 2026-08-20 — the undeclared-join red
-fires in `substrate/wiring_manifest.join_check` and `gates/manifest_gate`; T020
-2026-08-20 — enforcement in `substrate/signal_ring.JoinConsumer` (all five joins; arbitrate
+fires in `engine/wiring_manifest.join_check` and `gates/manifest_gate`; T020
+2026-08-20 — enforcement in `engine/signal_ring.JoinConsumer` (all five joins; arbitrate
 carries the {winner, margin_to_runner_up} cleanup record; a policy-stripped port REFUSES via
 `UndeclaredJoin`) and `DeliveringProducer` (graded REFUSES unbound via `GradedUnbound`;
 incumbent source `reentrant_workspace._assoc`, final binding = T030). Charge instruments =

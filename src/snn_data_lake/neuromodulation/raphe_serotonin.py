@@ -47,7 +47,7 @@ def declare_ports(manifest):
     level in [0,1] -- the patience / temporal-discount setpoint -- delivered whole each tick
     (all-or-none: a tonic setpoint has no graded association source; the level IS the
     signal). The consumer edge is declared by the consumer (its subscription, its join)."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "raphe_serotonin",

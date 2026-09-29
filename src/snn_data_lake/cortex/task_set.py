@@ -253,7 +253,7 @@ class TaskSetLayer:
 
 
 #: the declared FiLM edge (T060, FR-034): producer half here, consumer half + THE edge in
-#: cortex/brain.declare_ports (the T034/M10 convention -- the consumer declares its join).
+#: engine/brain.declare_ports (the T034/M10 convention -- the consumer declares its join).
 FILM_EDGE = ("task_set", "film_out", "brain", "task_film_in")
 
 
@@ -269,11 +269,11 @@ def declare_ports(manifest):
     PLACEMENT, recorded not smoothed (the port_charge_probe precedent): the T060 row named
     `cortex/competence_executive.py` wiring, but that module holds the COMPETENCE adapters
     (no task_set reference, no declare_ports, not a registrant) -- the live task-set lane
-    runs in cortex/brain (:926 constructs the layer, the wake tick consumes it), so the
+    runs in engine/brain (:926 constructs the layer, the wake tick consumes it), so the
     wire lands THERE; a parallel lane through competence_executive would have been the
     additive failure P2 names."""
-    from snn_data_lake.brainstem.autonomous_loop import ACTIONS
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.autonomous_loop import ACTIONS
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "task_set",
@@ -295,7 +295,7 @@ def _film_frames(n_ticks=12, seed=0):
     """Recorded frames for the charge A/B: a settling layer's film() payloads over a fixed
     input, with a SHIFT mid-sweep so the payload varies through both of its halves (the
     confidence ramp and the mapping change). Flattened row-major to match the port shape."""
-    from snn_data_lake.brainstem.autonomous_loop import ACTIONS
+    from snn_data_lake.engine.autonomous_loop import ACTIONS
 
     layer = TaskSetLayer(n_sets=3, n_in=4, n_actions=len(ACTIONS), seed=seed)
     feat = [0.8, 0.2, 0.5, 0.1]
@@ -312,9 +312,9 @@ def _film_frames(n_ticks=12, seed=0):
 def _film_consumer_factory():
     """Fresh ring + JoinConsumer over the DECLARED consumer port (brain.task_film_in), one
     pair per replay arm -- the wire's two ends are the real declarations, not stand-ins."""
-    from snn_data_lake.cortex.brain import declare_ports as brain_declare_ports
-    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
-    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+    from snn_data_lake.engine.brain import declare_ports as brain_declare_ports
+    from snn_data_lake.engine.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.engine.wiring_manifest import WiringManifest
 
     m = WiringManifest()
     declare_ports(m)
@@ -330,7 +330,7 @@ def _consume_film(consumer):
     asserts) and reduce it the way brain._route_percept_to_action does: the clamped max
     over non-HOLD actions plus the argmax direction. Deterministic; the replay arms differ
     only through the payload."""
-    from snn_data_lake.brainstem.autonomous_loop import ACTIONS, SAFE_ACTION
+    from snn_data_lake.engine.autonomous_loop import ACTIONS, SAFE_ACTION
 
     hold = ACTIONS.index(SAFE_ACTION)  # exclude by NAME, exactly as brain's fold does --
     # an index literal here silently excluded a motor token if ACTIONS were reordered
@@ -518,7 +518,7 @@ def main():
     # ---- T060 (FR-034): the FiLM surface -- exact decomposition, measured charge, cost ----
     import time as _time
 
-    from snn_data_lake.brainstem.autonomous_loop import ACTIONS as _acts
+    from snn_data_lake.engine.autonomous_loop import ACTIONS as _acts
 
     fl = TaskSetLayer(n_sets=3, n_in=4, n_actions=len(_acts), seed=3)
     feat = [0.7, 0.1, 0.4, 0.9]

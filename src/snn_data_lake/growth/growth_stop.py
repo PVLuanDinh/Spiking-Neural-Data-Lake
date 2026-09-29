@@ -404,7 +404,7 @@ def declare_ports(manifest):
     The gate's verdict itself is an in-process call on the sleep path, not an inter-faculty
     stream, so no OUT port is declared for it -- declaring one would be anatomy ahead of
     any consumer."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "growth_stop",

@@ -199,7 +199,7 @@ def regimes(seeds, ticks):
     Every later claim has to name the regime it was measured in, because the saturated branch of the
     readout is a ceiling rather than an estimate -- an effect measured entirely inside it would be
     an artefact of where the ceiling sits."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     rows = []
     for seed in range(seeds):
@@ -272,7 +272,7 @@ def bounding(ticks, seed=0):
     try:
         os.environ["NORD_HOME"] = work
         os.environ["NORD_TIME_CELLS_GROW"] = "1"
-        from snn_data_lake.cortex.brain import make_brain
+        from snn_data_lake.engine.brain import make_brain
 
         brain = make_brain(seed=seed, persist=True)
         clock = brain._time_clock

@@ -21,7 +21,7 @@ TEACH = [
 
 def _brain(tmp_path, monkeypatch, sub):
     monkeypatch.setenv("NORD_HOME", str(tmp_path / sub))
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     b = make_brain(seed=0)
     assert b._plasticity is not None, "the sleep-ownership arms need the rule stack live"

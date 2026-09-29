@@ -91,11 +91,11 @@ them:
   AND IT REACHES AN OUTPUT, which the block above did not claim and which is the strongest evidence
   for the wire. Sampling `Brain.respond("what should I do next")` every 10 ticks over the same 300
   (natural clock, one arm per process): the LIVE arm takes the `Gf (metacognitive hold: abstain)`
-  route -- the branch `cortex/brain.py` selects on `_metacog_hold` -- on 3 of 30 samples; with the
+  route -- the branch `engine/brain.py` selects on `_metacog_hold` -- on 3 of 30 samples; with the
   NEW EDGE ALONE CUT it takes it 0 times. Route differs 3/30 and reply text 23/30 on that per-item
   attribution. So the charge is not a float that stops at telemetry: it changes which reply the
   brain speaks. What it does NOT do, also measured, is change `_ll_i` / `_ll_retention` /
-  `_ll_units` -- the lifelong-learner branch `learn_gate()` gates at `cortex/brain.py` never fires
+  `_ll_units` -- the lifelong-learner branch `learn_gate()` gates at `engine/brain.py` never fires
   in this configuration, in ANY arm, so `learn_gate` differing on 296/300 ticks charges nothing
   there. That consumer is inert for reasons that predate this wire, and it is recorded rather than
   counted.
@@ -259,7 +259,7 @@ class MetacognitiveMonitor:
         self.hold_p = float(hold_p)
         self._rel_q = SignalCalibrator("metacog_reliability", p=self.hold_p)
         # P6 -- THE FACULTY THIS MONITOR CONSUMES. Until this landed the monitor was a pure
-        # PRODUCER: `cortex/brain.py` read its reliability/hold/explore/learn_gate and
+        # PRODUCER: `engine/brain.py` read its reliability/hold/explore/learn_gate and
         # `cortex/second_order_access.py` read its reliability, while it consumed nothing any other
         # faculty computed (LIFNeuron and SignalCalibrator are primitives, not faculties). It now
         # consumes `cortex/executive_control.ExecutiveControl.conflict()` -- the ACC response
@@ -1106,7 +1106,7 @@ def t077_reds():
 
 def t077_record_brain(seed, n_ticks=T077_N_TICKS, lesion=False):
     """Tick a scratch brain n_ticks times; return (brain, per-tick rows). See the block comment above."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     b = make_brain(seed=seed, persist=False)
     mon = b._metacog
@@ -1199,7 +1199,7 @@ def t077_pairs_perception(rows, key="read"):
 
 def t077_arm_d(seed):
     """Arm D (2.2): SecondOrderAccess on the chat path -- intact counts, the pin-to-mean neuter, the flip neuter."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     def run(pin):
         b = make_brain(seed=seed, persist=False)

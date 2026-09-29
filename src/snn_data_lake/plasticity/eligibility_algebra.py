@@ -74,7 +74,7 @@ import zlib
 # distinct-from: plasticity/eprop_kernel.py -- an eligibility-propagation KERNEL
 #   (executes traces on tissue); this is the AUTHORING contract layer, and its
 #   scalar evaluate cannot express the tensor family (disclosed). Site read.
-# distinct-from: substrate/wiring_manifest.py -- declares PORTS/EDGES between
+# distinct-from: engine/wiring_manifest.py -- declares PORTS/EDGES between
 #   faculties; this declares TERMS inside one rule. A factor here carries NO
 #   manifest-resolvable producer reference yet -- FR-019's "declared producers"
 #   lands at T051 by composing WITH the manifest, not by a third silo growing its
@@ -86,7 +86,7 @@ import zlib
 #   declarations about one rule to each other. Site read.
 # distinct-from: reasoning/triplet_stdp.py -- a RULE (Pfister-Gerstner traces), not
 #   a contract; expressible-or-not is the census's row, not a duplication. Site read.
-# distinct-from: substrate/signal_ring.py -- the silent-sum JOIN defect at the port
+# distinct-from: engine/signal_ring.py -- the silent-sum JOIN defect at the port
 #   grain; the matcher fired on shared declared/refuse words. Site read.
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.

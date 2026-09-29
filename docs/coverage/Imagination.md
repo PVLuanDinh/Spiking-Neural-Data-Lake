@@ -6,14 +6,14 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
-| latent_world_model | 61 | src/snn_data_lake/cortex/brain.py:232#__init__; src/snn_data_lake/brainstem/autonomous_loop.py:1677#step; src/snn_data_lake/brainstem/autonomous_loop.py:1982#step | imag_jepa_action_60.txt | opus-5 REFUTER / docs/coverage/artifacts/imagination_refute_ab.py 60 | 2026-07-30 |
-| counterfactual_do_operator | 40 | src/snn_data_lake/cortex/brain.py:2221#_c1_tick; src/snn_data_lake/cortex/brain.py:2237#_c1_tick; src/snn_data_lake/cortex/brain.py:3772#respond | imag_cf_60.txt | opus-5 / docs/coverage/artifacts/imagination_ab.py counterfactual 60 | 2026-07-30 |
-| model_based_plan_rollout | 35 | src/snn_data_lake/brainstem/autonomous_loop.py:1156#goal_value; src/snn_data_lake/brainstem/autonomous_loop.py:1193#_pfc_bias | imag_plan_60.txt | opus-5 / docs/coverage/artifacts/imagination_ab.py model_based_plan 60 | 2026-07-30 |
-| mental_imagery | 20 | src/snn_data_lake/cortex/brain.py:4132#_finish_sentence; src/snn_data_lake/cortex/brain.py:3540#respond | - | opus-5 REFUTER / band-definition correction on the auditor's own live cue-sensitivity probe | 2026-07-30 |
-| dream_replay | 25 | src/snn_data_lake/cortex/brain.py:2754#_sleep_tick; src/snn_data_lake/sleep/sleep_replay.py:329#sleep | imag_dream_60.txt | opus-5 / docs/coverage/artifacts/imagination_ab.py dream_replay 60 | 2026-07-30 |
+| latent_world_model | 61 | src/snn_data_lake/engine/brain.py:232#__init__; src/snn_data_lake/engine/autonomous_loop.py:1677#step; src/snn_data_lake/engine/autonomous_loop.py:1982#step | imag_jepa_action_60.txt | opus-5 REFUTER / docs/coverage/artifacts/imagination_refute_ab.py 60 | 2026-07-30 |
+| counterfactual_do_operator | 40 | src/snn_data_lake/engine/brain.py:2221#_c1_tick; src/snn_data_lake/engine/brain.py:2237#_c1_tick; src/snn_data_lake/engine/brain.py:3772#respond | imag_cf_60.txt | opus-5 / docs/coverage/artifacts/imagination_ab.py counterfactual 60 | 2026-07-30 |
+| model_based_plan_rollout | 35 | src/snn_data_lake/engine/autonomous_loop.py:1156#goal_value; src/snn_data_lake/engine/autonomous_loop.py:1193#_pfc_bias | imag_plan_60.txt | opus-5 / docs/coverage/artifacts/imagination_ab.py model_based_plan 60 | 2026-07-30 |
+| mental_imagery | 20 | src/snn_data_lake/engine/brain.py:4132#_finish_sentence; src/snn_data_lake/engine/brain.py:3540#respond | - | opus-5 REFUTER / band-definition correction on the auditor's own live cue-sensitivity probe | 2026-07-30 |
+| dream_replay | 25 | src/snn_data_lake/engine/brain.py:2754#_sleep_tick; src/snn_data_lake/sleep/sleep_replay.py:329#sleep | imag_dream_60.txt | opus-5 / docs/coverage/artifacts/imagination_ab.py dream_replay 60 | 2026-07-30 |
 | spiking_world_model | 10 | src/snn_data_lake/gates/dormancy_gate.py:285#module; src/snn_data_lake/cerebellum/spiking_jepa.py:121#SpikingJEPA | - | dormancy_gate EXEMPT permanent + its recorded encode() negative (static) | 2026-07-30 |
-| efference_copy_forward_model | 10 | src/snn_data_lake/cortex/live_brain.py:363#deliberate_ahead; src/snn_data_lake/cerebellum/forward_model.py:81#ForwardModel | - | opus-5 / live_brain._planner is None after 20 ticks, seeds 0 and 3 | 2026-07-30 |
-| hierarchical_abstract_world_model | 0 | src/snn_data_lake/brainstem/autonomous_loop.py:169#__init__; src/snn_data_lake/brainstem/autonomous_loop.py:1120#_pfc_bias; src/snn_data_lake/brainstem/autonomous_loop.py:2695#main | - | opus-5 / arm.hjepa_serve is None on make_brain(seed=0) | 2026-07-30 |
+| efference_copy_forward_model | 10 | src/snn_data_lake/engine/live_brain.py:363#deliberate_ahead; src/snn_data_lake/cerebellum/forward_model.py:81#ForwardModel | - | opus-5 / live_brain._planner is None after 20 ticks, seeds 0 and 3 | 2026-07-30 |
+| hierarchical_abstract_world_model | 0 | src/snn_data_lake/engine/autonomous_loop.py:169#__init__; src/snn_data_lake/engine/autonomous_loop.py:1120#_pfc_bias; src/snn_data_lake/engine/autonomous_loop.py:2695#main | - | opus-5 / arm.hjepa_serve is None on make_brain(seed=0) | 2026-07-30 |
 | generative_recombination | 0 | src/snn_data_lake/cortex/self_improvement_suite.py:216#_rung_qd; src/snn_data_lake/gates/dormancy_gate.py:246#module | - | opus-5 / caller search over src: no live-path generator | 2026-07-30 |
 
 **Mean over the nine faculties: 201/9 = 22.3.** Nine rows, none UNSCORED, one above 40.
@@ -145,9 +145,9 @@ most arguable cell in the file and it is worth 1.1 points of the category.
 
 `tools/charge_probe.py` neuters a key of `Brain._drive_w`. **Not one Imagination signal is in that
 dict.** The eleven drive sources are `novelty / ignition / place / timing / reroute / help / percept /
-recall / surprise / drive / taskset` (`cortex/brain.py:633-648`), and the tempting one is a false
+recall / surprise / drive / taskset` (`engine/brain.py:633-648`), and the tempting one is a false
 friend: `surprise` there is the Oja-PCA reconstruction residual over the percept latent, set in
-`_perceive_real` at `cortex/brain.py:1196-1206`, not a forward-model rollout error. So every band in
+`_perceive_real` at `engine/brain.py:1196-1206`, not a forward-model rollout error. So every band in
 this file would have been capped at 40 by refusal F6 for want of an artifact rather than for want of
 charge -- which is the failure mode the rubric exists to prevent, running in reverse.
 
@@ -445,7 +445,7 @@ P-violation stands as written.
 - `sleep/sleep_replay.py` -- noise-driven offline attractor replay with Hebbian learning and SHY
   downscale-pruning (`:294`, `:151`). Unique capability: offline generative reactivation. Its
   consolidation *purpose* is Memory's faculty; only the dream mechanism is scored here.
-- `cortex/brain.py::imagine` -- top-down generative synthesis through the predictive-coding hierarchy
+- `engine/brain.py::imagine` -- top-down generative synthesis through the predictive-coding hierarchy
   with the live inference state saved and restored. Unique capability: percept synthesis with no input.
 
 ## Gaps, ranked by distance_to_100 x feasibility

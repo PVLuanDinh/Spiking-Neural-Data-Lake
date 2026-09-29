@@ -56,7 +56,7 @@ def declare_ports(manifest):
     OUT [stress, caution] in [0,1] -- the ascending NTS->LC map's bounded outputs, delivered
     whole each tick (tonic modulators, no graded association source). The consumer edge is
     declared by the insula terminus (its subscription, its join)."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "interoceptive_arousal",

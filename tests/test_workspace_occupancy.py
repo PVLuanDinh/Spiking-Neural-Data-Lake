@@ -24,7 +24,7 @@ measurement twin; THIS is the tracked, asserting instrument.
 
 from collections import Counter
 
-from snn_data_lake.cortex.brain import make_brain
+from snn_data_lake.engine.brain import make_brain
 
 N_TICKS = 120
 

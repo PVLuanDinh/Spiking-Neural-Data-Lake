@@ -6,17 +6,17 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
-| access_strength_graded | 42 | src/snn_data_lake/thalamus/reentrant_workspace.py:406#access_strength; src/snn_data_lake/cortex/brain.py:2401#_observe_self_wake; src/snn_data_lake/cortex/brain.py:2094#_update_metacog | cons_refute_strength_iso_120.txt | opus-5 REFUTER / consciousness_refute_probe.py strength_iso 120 (55 REFUTED) | 2026-07-30 |
-| second_order_access | 42 | src/snn_data_lake/cortex/second_order_access.py:176#hold; src/snn_data_lake/cortex/second_order_access.py:142#observe; src/snn_data_lake/cortex/brain.py:3604#respond | consciousness_second_120.txt | opus-5 REFUTER / consciousness_refute_probe.py second_thin,c1,ws,av,st 120 (50 REFUTED) | 2026-07-30 |
-| self_model | 38 | src/snn_data_lake/cortex/self_model.py:274#confidence; src/snn_data_lake/cortex/brain.py:2373#_observe_self_wake | - | opus-5 / scratchpad measure_consciousness2.py + 4.py | 2026-07-30 |
+| access_strength_graded | 42 | src/snn_data_lake/thalamus/reentrant_workspace.py:406#access_strength; src/snn_data_lake/engine/brain.py:2401#_observe_self_wake; src/snn_data_lake/engine/brain.py:2094#_update_metacog | cons_refute_strength_iso_120.txt | opus-5 REFUTER / consciousness_refute_probe.py strength_iso 120 (55 REFUTED) | 2026-07-30 |
+| second_order_access | 42 | src/snn_data_lake/cortex/second_order_access.py:176#hold; src/snn_data_lake/cortex/second_order_access.py:142#observe; src/snn_data_lake/engine/brain.py:3604#respond | consciousness_second_120.txt | opus-5 REFUTER / consciousness_refute_probe.py second_thin,c1,ws,av,st 120 (50 REFUTED) | 2026-07-30 |
+| self_model | 38 | src/snn_data_lake/cortex/self_model.py:274#confidence; src/snn_data_lake/engine/brain.py:2373#_observe_self_wake | - | opus-5 / scratchpad measure_consciousness2.py + 4.py | 2026-07-30 |
 | reentry_sustain | 35 | src/snn_data_lake/thalamus/reentrant_workspace.py:256#step; src/snn_data_lake/thalamus/reentrant_workspace.py:328#step | - | opus-5 / scratchpad measure_consciousness3.py, 62 wake ticks | 2026-07-30 |
-| ignition | 30 | src/snn_data_lake/cortex/brain.py:2468#_update_access; src/snn_data_lake/cortex/brain.py:1574#_route_percept_to_action | ignition_60.txt | opus-5 / tools/charge_probe.py ignition 60 | 2026-07-30 |
-| reentry_reroute | 28 | src/snn_data_lake/thalamus/reentrant_workspace.py:373#_deliver; src/snn_data_lake/cortex/brain.py:1761#_route_percept_to_action | reroute_60.txt | opus-5 / tools/charge_probe.py reroute 60 | 2026-07-30 |
+| ignition | 30 | src/snn_data_lake/engine/brain.py:2468#_update_access; src/snn_data_lake/engine/brain.py:1574#_route_percept_to_action | ignition_60.txt | opus-5 / tools/charge_probe.py ignition 60 | 2026-07-30 |
+| reentry_reroute | 28 | src/snn_data_lake/thalamus/reentrant_workspace.py:373#_deliver; src/snn_data_lake/engine/brain.py:1761#_route_percept_to_action | reroute_60.txt | opus-5 / tools/charge_probe.py reroute 60 | 2026-07-30 |
 | global_availability | 25 | src/snn_data_lake/thalamus/reentrant_workspace.py:387#_deliver; src/snn_data_lake/cortex/access_consciousness.py:541#step | - | opus-5 / scratchpad measure_consciousness3.py, 62 wake ticks | 2026-07-30 |
-| integration_measure_pci | 22 | src/snn_data_lake/cortex/brain.py:2727#_sleep_tick; src/snn_data_lake/cortex/brain.py:3441#state | - | opus-5 / scratchpad measure_consciousness2.py, 200 ticks / 8 nights | 2026-07-30 |
-| arm_workspace_broadcast | 21 | src/snn_data_lake/brainstem/autonomous_loop.py:1374#_workspace_broadcast; src/snn_data_lake/cortex/live_brain.py:92#__init__ | - | opus-5 / scratchpad measure_consciousness4.py, 240 ticks | 2026-07-30 |
+| integration_measure_pci | 22 | src/snn_data_lake/engine/brain.py:2727#_sleep_tick; src/snn_data_lake/engine/brain.py:3441#state | - | opus-5 / scratchpad measure_consciousness2.py, 200 ticks / 8 nights | 2026-07-30 |
+| arm_workspace_broadcast | 21 | src/snn_data_lake/engine/autonomous_loop.py:1374#_workspace_broadcast; src/snn_data_lake/engine/live_brain.py:92#__init__ | - | opus-5 / scratchpad measure_consciousness4.py, 240 ticks | 2026-07-30 |
 | reentrant_predictive_completion | 15 | src/snn_data_lake/thalamus/reentrant_workspace.py:168#expect | - | opus-5 / static reachability + live respond() probe | 2026-07-30 (site repointed 2026-08-06, see below) |
-| reportability_of_access_content | 12 | src/snn_data_lake/cortex/live_brain.py:365; src/snn_data_lake/reasoning/spike_chat_lake.py:1212#converse | - | opus-5 / live respond() on the three consciousness phrases | 2026-07-30 |
+| reportability_of_access_content | 12 | src/snn_data_lake/engine/live_brain.py:365; src/snn_data_lake/reasoning/spike_chat_lake.py:1212#converse | - | opus-5 / live respond() on the three consciousness phrases | 2026-07-30 |
 | binding_of_broadcast_content | UNSCORED | src/snn_data_lake/thalamus/global_workspace.py:1975#module | - | fable-5 / honest Jaccard benchmark 120 trials/K; the `bind_*` family was DELETED 2026-08-07 on that benchmark's pre-registered null (the spiking decoder's Jaccard equalled an all-fired-pairs strawman at every K -- it recovered membership, never pairing), so the capability is ABSENT rather than low-band. Cite is the retirement record, which is the only surviving evidence. Band 10 -> UNSCORED 2026-08-13: the row's own prose already said "honestly ABSENT, not low-band" while the band column still scored it, and UNSCORED counts as 0 per this ledger's own rule. | 2026-07-30 / 2026-08-07 |
 
 **Category score: 26.7** = 320 / 12, **down from the audited 28.4 after an adversarial pass in which
@@ -108,9 +108,9 @@ strong, repeatedly-sampled divergence on the quantity the brain's own confidence
 counterfactual") and the attack lands, for a reason stronger than correlation:
 `_reentrant_strength` has **three** live consumers and the A/B neutered all three at once.
 
-    cortex/brain.py:2137   self-model access_index          <- the row's claimed consumer, getattr default 1.0
-    cortex/brain.py:2040   region-coherence "access" raster <- getattr default 0.0
-    cortex/brain.py:2843   SecondOrderAccess.observe(..., STRENGTH, ...)  <- getattr default 0.0
+    engine/brain.py:2137   self-model access_index          <- the row's claimed consumer, getattr default 1.0
+    engine/brain.py:2040   region-coherence "access" raster <- getattr default 0.0
+    engine/brain.py:2843   SecondOrderAccess.observe(..., STRENGTH, ...)  <- getattr default 0.0
 
 So "1.0 is the value `brain.py:2134-2135` documents as the no-workspace default" is true at **one** of
 the three sites and is the **opposite extreme** at the other two: with no workspace those two read 0.0.

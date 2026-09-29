@@ -9,7 +9,7 @@ moves |LP| while the facade's absence-is-a-fact contract holds for unfed regions
 
 import numpy as np
 
-from snn_data_lake.cortex.brain import make_brain
+from snn_data_lake.engine.brain import make_brain
 
 
 class _StubEnc:

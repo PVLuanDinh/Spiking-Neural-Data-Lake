@@ -476,7 +476,7 @@ def test_the_arm_and_the_brain_charge_each_other():
     """
     import copy
 
-    from snn_data_lake.brainstem.autonomous_loop import AutonomousArm
+    from snn_data_lake.engine.autonomous_loop import AutonomousArm
 
     ticks = 120
     ctx = dict(visual=0.55, temperature=24.0, audio=0.3, distance=0.6)
@@ -516,7 +516,7 @@ def test_the_live_stack_connects_the_arm_objective():
     import ast
     import pathlib
 
-    from snn_data_lake.cortex import brain as brain_mod
+    from snn_data_lake.engine import brain as brain_mod
 
     src = pathlib.Path(brain_mod.__file__).read_text(encoding="utf-8")
     wired = [
@@ -527,7 +527,7 @@ def test_the_live_stack_connects_the_arm_objective():
         and "coverage_reward" in ast.dump(n.value)
     ]
     assert wired, (
-        "no call in cortex/brain.py passes coverage_reward as reward_fn -- the arm's physical "
+        "no call in engine/brain.py passes coverage_reward as reward_fn -- the arm's physical "
         "objective is not connected to the live tick, so the body is along for the ride"
     )
 

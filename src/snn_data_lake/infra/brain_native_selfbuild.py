@@ -107,7 +107,7 @@ _REWARD_ROLLED = -1.0
 # CIRCUIT-BREAKER backstop: after this many consecutive futile cycles (candidates proposed, none kept)
 # on the SAME candidate set, skip the expensive gate until the set changes.
 # P1, STATED PLAINLY RATHER THAN CLAIMED AWAY: this fits NONE of P1's four documented exceptions, and
-# it is live (cortex/brain.py calls should_skip/note_cycle). It is declared here with its reason rather
+# it is live (engine/brain.py calls should_skip/note_cycle). It is declared here with its reason rather
 # than carried silently. Reason: it is a flake-tolerance RETRY BUDGET for an EXTERNAL multi-minute gate
 # (a subprocess run of run_selfchecks.py), not a cognitive threshold -- it arbitrates SCHEDULING only.
 # There is no running baseline to learn it from: on a fixed candidate set a non-flaky gate is
@@ -369,7 +369,7 @@ class ThresholdRecalibrationSource(SelfBuildSource):
     # P4b, 2026-08-05 -- `calib_path` is GONE, and it was a SECOND wrong location, not merely a
     # redundant one. It defaulted to `<repo>/data/signal_calib.json`: REPO-relative (so it ignored
     # NORD_HOME, exactly as `data/selfbuild_state.json` did before `_T_SELFBUILD` closed it) and NOT
-    # the file `cortex/brain.py` wrote, which was `<home>/signal_calib.json`. So this source read a
+    # the file `engine/brain.py` wrote, which was `<home>/signal_calib.json`. So this source read a
     # path the brain never wrote, and the honest-nulls below were honest for the wrong reason.
     # `lake_path=None` now means THE ONE LAKE; a path is an ISOLATED LAKE, which is what the
     # self-check uses so a gate run cannot write probe records into the operator's real lake.

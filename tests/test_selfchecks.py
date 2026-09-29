@@ -7,7 +7,7 @@ run_selfchecks' own lists so they never drift from the canonical runner.
 
 TORCH_GATED added 2026-07-30, and the reason is worth keeping. This file imported CORE alone
 while `run_selfchecks.MODULES` is `CORE + TORCH_GATED + NENGO_GATED + RESEARCH`, so six
-modules' self-checks — including `cortex.brain`, `growth.ng_snn` and
+modules' self-checks — including `engine.brain`, `growth.ng_snn` and
 `growth.neurogenesis_engine` — were imported but never RUN in-process. Their `main()` bodies
 measured 0/126, 0/55 and 0/57. The whole torch growth tier was therefore reached only as a
 side effect of `infra.brain_telemetry`'s self-check, whose tick budget is data-dependent:

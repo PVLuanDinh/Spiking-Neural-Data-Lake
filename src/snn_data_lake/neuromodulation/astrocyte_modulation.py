@@ -118,7 +118,7 @@ def declare_ports(manifest):
     and synapses share the neuropil. Delivery is all-or-none (the whole gain field each
     tick); a distance-graded delivery would need T020's graded association binding, which
     finalizes at T030 -- stated, not smuggled."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "astrocyte_modulation",
@@ -182,8 +182,8 @@ class VolumeTransmitter:
 
 def _glia_consumer_factory():
     """Fresh ring + JoinConsumer over the declared `synaptic_gain_in` port, per replay arm."""
-    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
-    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+    from snn_data_lake.engine.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.engine.wiring_manifest import WiringManifest
 
     m = WiringManifest()
     declare_ports(m)

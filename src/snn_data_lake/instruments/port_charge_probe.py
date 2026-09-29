@@ -33,7 +33,7 @@ tools/, and an instrument is part of the brain (P4c). Deviation recorded, not sm
 #   manifest-declared payloads. Same philosophy, different unit of attribution -- charge_probe
 #   remains the module-level incumbent, cited not merged (different denominators would make a
 #   merged census lie in both directions).
-# distinct-from: substrate/signal_ring.py -- the delivery mechanism these instruments wrap.
+# distinct-from: engine/signal_ring.py -- the delivery mechanism these instruments wrap.
 # distinct-from: gates/manifest_gate.py -- static contract checks; this is the LIVE half
 #   its own docstring defers to. All sites read.
 
@@ -218,7 +218,7 @@ def replay_twice(frames, consumer_factory, consume, pinned):
     `frames` are (tick, producer, vector) triples; `consumer_factory()` builds a fresh ring +
     JoinConsumer pair per arm (state never leaks between arms); `consume(consumer)` runs the
     downstream computation under measurement and returns its output."""
-    from snn_data_lake.substrate.signal_ring import JoinConsumer
+    from snn_data_lake.engine.signal_ring import JoinConsumer
 
     ring_a, cons_a = consumer_factory()
     for tick, producer, vec in frames:
@@ -236,8 +236,8 @@ def replay_twice(frames, consumer_factory, consume, pinned):
 def main() -> int:
     import numpy as np
 
-    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.engine.wiring_manifest import Port
 
     def factory(policy="sum"):
         def build():

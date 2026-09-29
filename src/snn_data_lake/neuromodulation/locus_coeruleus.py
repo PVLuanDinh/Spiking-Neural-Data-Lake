@@ -130,7 +130,7 @@ class LocusCoeruleus:
         measurement says the cause is not here.
 
         (1) THE LC'S LIVE INPUT IS A LITERAL. Captured at the call site over 120 live wake ticks of
-        the canonical brain: the argument `cortex/brain.py` passes -- `max(threat, novelty,
+        the canonical brain: the argument `engine/brain.py` passes -- `max(threat, novelty,
         min(1.0, _pc_surprise_ema))` -- was 0.0 on the first tick and then exactly 1.0 on the other
         119 (distinct=2, n_changes=1). `_pc_surprise_ema` measured 1.019 to 1.046, so the
         `min(1.0, ...)` clamp converts a varying signal into a constant, while `threat` and

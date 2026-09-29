@@ -211,7 +211,7 @@ class BinLog:
         here) and this module's own self-check, and `KnowledgeLog.extend` has no caller either. So
         the batched mechanism is built, is up to 1341x faster, and is P3 shape 1 (method never
         called) while the unbatched path is the one in use. The nearest live N-per-tick append loop
-        is `cortex/brain.py`'s schema induction, which calls `log.append(...)` once per derived
+        is `engine/brain.py`'s schema induction, which calls `log.append(...)` once per derived
         triple under `budget=32` on every fourth night -- N up to 32, measured 21.3x, and it is the
         record set this paragraph's first bullet describes. Changing it is a one-line edit in a file
         this pass does not own; it is reported, not made."""
@@ -314,7 +314,7 @@ class BinLog:
         survivors = [bytes(p) for p in survivors]
         tmp = self.path + ".compact.tmp"
         # UNDER THE SAME LOCK as append()/extend(), added 2026-08-04. This ran unlocked on a SHARED
-        # instance while the sleep tick calls it (cortex/brain.py, `klog.consolidate(survivors)`).
+        # instance while the sleep tick calls it (engine/brain.py, `klog.consolidate(survivors)`).
         # An append that landed between building `tmp` and the os.replace was written to the file
         # this call is about to REPLACE, so the record was durably written and then durably
         # destroyed -- on the one lake, which is the store P4b says is part of the brain. Today

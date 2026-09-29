@@ -614,7 +614,7 @@ def repin(root, evdir, write, from_commit=None):
     it ignores blame entirely and reads every cited line's text at SHA. Use it when the ledger has
     uncommitted edits (blame returns the all-zero sha and every such row is reported `unblamable`,
     so a plain `--repin` silently fixes nothing) and you know a commit at which the citations were
-    correct. MEASURED the first time it was needed: editing `cortex/brain.py` drifted 36 citations
+    correct. MEASURED the first time it was needed: editing `engine/brain.py` drifted 36 citations
     while 84 of 88 rows were unblamable, so `--repin` could only reach 16 of them."""
     hits = {"same": 0, "moved": 0, "absent": 0, "ambiguous": 0, "no_blame": 0}
     edits = []

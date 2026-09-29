@@ -33,7 +33,7 @@ admits on a band whose floor is 0.5505 and `feeling_salience` peaks at 0.2798, s
 interoceptive bid never competes, and pinning the signal to its own live mean left the brain
 byte-identical on 120/120 ticks. That route is REFUSED, not pending. What landed instead is the
 sink this module's own opening paragraph names -- a body far from baseline finding it EASIER TO
-IGNITE, i.e. THRESHOLD MODULATION: `cortex/brain.py` feeds this terminus the declared
+IGNITE, i.e. THRESHOLD MODULATION: `engine/brain.py` feeds this terminus the declared
 `body_in` frame every tick and passes the salience into the ONE ignition law
 (`region_coherence._adjust`, joined by noisy-OR so it adds no constant). The module is now on
 the live-import graph and the region is CHARGED.
@@ -90,7 +90,7 @@ def declare_ports(manifest):
     two interoceptive producers) + both edges, and `interoception_out` -- the interoception
     channel producer the T021a exemption promised (its coalition consumer lands T030/T031,
     so it carries no edge yet; a declared-ahead OUT is the anatomy, not force-wiring)."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "interoceptive_integration",
@@ -129,8 +129,8 @@ def _body_consumer_factory():
     slots=256: the 40-tick schedule publishes 80 frames, and the review's ring-overrun
     finding proved 64 slots silently dropped ticks 1-8 while every counter still agreed --
     capacity is now derived-with-headroom, and consume_body treats ANY loss as fatal."""
-    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
-    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+    from snn_data_lake.engine.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.engine.wiring_manifest import WiringManifest
 
     m = WiringManifest()
     declare_ports(m)
@@ -281,7 +281,7 @@ class InteroceptiveIntegration:
         make the reported number a different measurement from the one the ignition law used."""
         return float(self._last_salience)
 
-    # distinct-from: brainstem/autonomous_loop.py -- _pfc_bias COMPUTES a prefrontal action
+    # distinct-from: engine/autonomous_loop.py -- _pfc_bias COMPUTES a prefrontal action
     #   preference; this returns a cached term and computes nothing. Read.
     # distinct-from: cortex/access_consciousness.py -- workspace exposes an identity handle;
     #   this reports a scalar the last observe() applied. Read.

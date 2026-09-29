@@ -504,7 +504,7 @@ class NightlySkills:
 
         The OSError fallback is a MEASURED live-path fix, not defensive padding. On Windows a second
         NightlySkills over the same home cannot unlink the shared scratch file while the FIRST
-        instance still holds StreamingHub's append handle -- and cortex/brain.py caches its instance
+        instance still holds StreamingHub's append handle -- and engine/brain.py caches its instance
         and never close()s it. The raise landed inside night()'s "study" guard BEFORE out.update(),
         so the whole night's competence was thrown away: REPRODUCED 2026-08-04, three instances over
         one home with none of them closed -- 2 of 3 nights returned
@@ -1274,7 +1274,7 @@ def main():
         os.environ["NORD_NIGHT_OW"] = small["NORD_NIGHT_OW"]
         say("  control : 4 nights with discovery OFF spawned nothing (growth is data-driven)")
 
-        # ---- TWO LIVE INSTANCES OVER ONE HOME: the shape cortex/brain.py builds ------------
+        # ---- TWO LIVE INSTANCES OVER ONE HOME: the shape engine/brain.py builds ------------
         # The fallback + sweep in _ensure_lake changed live behaviour and shipped with no criterion,
         # so here is one. Two boots OVERLAP because the first is never close()d (that consumer has
         # no close() call site), then both processes "exit" -- the hub handle drops, the file is

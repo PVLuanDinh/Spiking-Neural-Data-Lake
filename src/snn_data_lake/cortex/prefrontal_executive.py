@@ -106,7 +106,7 @@ FOLD DISCLOSURES (panel, 2026-09-01), each measured:
   - THE DERIVED-DEFAULT PATH REFUSES A NON-DEFAULT MEMBRANE (leak != 0.2): the derivation
     is validated at md=0.8 only (drift 0 there, ~2 at md=0.9, ~6 at md=0.95).
   - P3, said plainly: the rehearsal channel rides maintain(), whose live-caller census is
-    unchanged by this port -- offline loops and self-checks (brainstem/autonomous_loop's
+    unchanged by this port -- offline loops and self-checks (engine/autonomous_loop's
     comment carries the measured 2026-07 revert of a maintain() wire: 0/200 outcome
     changes). The channel's charge is proven by its own neuter reds, not by a live tick
     consumer; wiring the stack into the live loop remains T060/T061 scope and P3 forbids

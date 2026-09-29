@@ -61,7 +61,7 @@ import hashlib
 import os
 
 import snn_data_lake.infra.self_build_loop as _sbl
-from snn_data_lake.cortex.brain import SELFBUILD_EVERY, make_brain
+from snn_data_lake.engine.brain import SELFBUILD_EVERY, make_brain
 
 # Every file the one authored transform can reach. Digested before and after the run: this is what
 # replaced `proposed == 0` as the safety bound (see the tripwire block below).

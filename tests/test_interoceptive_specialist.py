@@ -1,7 +1,7 @@
 """specs/022 T039h: the insula is a SECOND global-workspace specialist, and SC-001 moves off 0.
 
 Exactly one specialist had ever drained the re-entrant broadcast -- `action`, inside
-cortex/brain.py, a SELF-read of that module's own instance. GWT's claim is that ignited content is
+engine/brain.py, a SELF-read of that module's own instance. GWT's claim is that ignited content is
 available to MANY specialists; this tree had one, in the owning module, which is why
 `p6_gate`'s faculty-to-faculty count sat at 0 through six commits of P6 work.
 
@@ -46,7 +46,7 @@ def test_the_faculty_to_faculty_count_is_no_longer_zero():
     assert fac, "faculty-to-faculty reads is still 0 -- SC-001 is not met"
     mine = [c for c in fac if c[0].endswith("interoceptive_integration.py")]
     assert mine, f"the insula read is not among the faculty-to-faculty reads: {fac}"
-    assert all(c[4] == "cortex/brain.py" for c in mine), (
+    assert all(c[4] == "engine/brain.py" for c in mine), (
         f"the insula read resolved to the wrong owner: {mine}"
     )
 
@@ -54,7 +54,7 @@ def test_the_faculty_to_faculty_count_is_no_longer_zero():
 def test_the_subscription_and_the_drain_use_ONE_name():
     """A subscription nobody drains and a drain nobody registered are the two halves of the same
     dormancy. One constant, read by both sides."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     b = make_brain(seed=0, persist=False)
     try:
@@ -157,7 +157,7 @@ def test_a_negative_or_empty_bias_cannot_lower_salience():
 # The live loop. This is the half that decides whether the wire is a conversation.
 # ================================================================================================
 def _run(detach):
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     b = make_brain(seed=0, persist=False)
     if detach and b._insula is not None:
@@ -232,7 +232,7 @@ def test_the_language_control_is_still_intact():
     """The listener term T039c added is only measurable against a subscriber that keeps the base
     gain. `language` is that control: subscribed, never drained, never reporting. A third
     specialist that DOES report must not have quietly recruited it."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     b = make_brain(seed=0, persist=False)
     try:
@@ -273,7 +273,7 @@ def test_the_telemetry_poll_does_not_charge_the_listener_term():
     single writer of the listener-use term (measured 37-40 of ~60 calls over 40 ticks) and the
     only 'consumer' on every sleep tick. Polled and unpolled runs must now be byte-equal in both
     the listener-use dict and the salience trace, warm-up window included."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
     from snn_data_lake.infra.brain_telemetry import snapshot
 
     def run(poll):

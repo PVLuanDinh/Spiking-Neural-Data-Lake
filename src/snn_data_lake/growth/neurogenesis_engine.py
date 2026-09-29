@@ -112,7 +112,7 @@ def _markov_matrix(k_modes, peak, seed):
     return matrix
 
 
-# distinct-from: cortex/brain.py -- Brain.tick() is the circadian wake/sleep iteration this
+# distinct-from: engine/brain.py -- Brain.tick() is the circadian wake/sleep iteration this
 #   stream's drive() mimics; it perceives, this synthesizes a harness stimulus. Site read.
 # distinct-from: sensorimotor/arm_bridge.py -- recv_outcome() reads the NEXT reward packet off a
 #   socket. distinct-from: cerebellum/forward_model.py -- reset() sets a plant state.
@@ -159,7 +159,7 @@ class SyntheticPerceptStream:
         self.current_mode = self._next_mode(mode)
         return feats, mode
 
-    # distinct-from: cortex/brain.py -- Brain.tick() is the circadian iteration. distinct-from:
+    # distinct-from: engine/brain.py -- Brain.tick() is the circadian iteration. distinct-from:
     #   infra/brain_native_selfbuild.py -- a one-time sidecar import. distinct-from:
     #   sensorimotor/arm_bridge.py -- reads a reward packet. distinct-from: brainstem/
     #   autonomous_loop.py -- step() is the arm's tick. distinct-from: sensorimotor/closed_loop.py
@@ -382,7 +382,7 @@ class NeurogenesisSelfImprove:
         persistence = sum(1 for i in va_idx if i >= 1 and ys[i - 1] == ys[i]) / len(te)
         return majority, persistence
 
-    # distinct-from: brainstem/autonomous_loop.py -- _context_pattern() ENCODES the percept this
+    # distinct-from: engine/autonomous_loop.py -- _context_pattern() ENCODES the percept this
     #   consumes. distinct-from: cerebellum/spiking_jepa.py -- a collapse measurement on a
     #   held-out batch. distinct-from: growth/growth_stop.py -- should_grow() is the VERDICT this
     #   refit consults. distinct-from: cortex/percept_surprise.py -- records an A/B attribution.
@@ -532,7 +532,7 @@ class NeurogenesisSelfImprove:
     # REUSE, not a second mechanism: both accessors return what `cortex/placement.place` produced
     # and this engine maintains. The assignment rule lives there and is imported, never reimplemented.
     #
-    # distinct-from: brainstem/autonomous_loop.py and cortex/brain.py -- their "grown units" are the
+    # distinct-from: engine/autonomous_loop.py and engine/brain.py -- their "grown units" are the
     #   arm's PROTOTYPE recruits (context->action, a Q-table over them), a different growth mechanism
     #   entirely; these are NG-SNN hidden units. Worth naming: the phrase means two things in this
     #   tree. distinct-from: infra/brain_geometry.py -- places this package's MODULES in 3D.
@@ -813,7 +813,7 @@ class NeurogenesisSelfImprove:
     # distinct-from: reasoning/self_improve.py -- self_map() counts the brain's OWN graph nodes.
     #   distinct-from: growth/growth_stop.py -- observed() is the gate's feed cursor.
     #   distinct-from: infra/brain_native_selfbuild.py -- ledger() counts de-hardcoded
-    #   constants. distinct-from: brainstem/autonomous_loop.py -- _pfc_bias() is a top-down
+    #   constants. distinct-from: engine/autonomous_loop.py -- _pfc_bias() is a top-down
     #   action bias. distinct-from: brainstem/so101_arm.py -- trajectory_breach() is a droop
     #   check. Phrase overlap on 'how many' only; this counts the categories shown. Sites read.
     @property
@@ -823,7 +823,7 @@ class NeurogenesisSelfImprove:
         return len(self._categories)
 
     # distinct-from: growth/growth_stop.py::regions -- lists the regions that gate has decided
-    #   for, a key listing with no counts. distinct-from: substrate/signal_ring.py::RingOverrun --
+    #   for, a key listing with no counts. distinct-from: engine/signal_ring.py::RingOverrun --
     #   an exception raised when a consumer is lapped. Both read 2026-09-07; the matcher fired on
     #   the generic words "decide"/"state"/"record". Neither captures a scoring fallback's counts.
     def _record_decide(self, model, n_heldout):
@@ -879,7 +879,7 @@ class NeurogenesisSelfImprove:
 # `growth_state_bytes` / `restore_growth_state` are called on two live paths into the ONE lake under
 # `_T_GROWTH` -- and NO CROSS-PROCESS RESTART HAD EVER BEEN DEMONSTRATED. The existing durability
 # test round-trips a raw `np.zeros(4).tobytes()` blob to prove three lake tenants do not eat each
-# other; it says nothing about a FITTED MODEL. Until now, both call sites lived in `cortex/brain.py`
+# other; it says nothing about a FITTED MODEL. Until now, both call sites lived in `engine/brain.py`
 # and neither serialisation method had a single assertion anywhere in the tree.
 #
 # P4b's honesty guard is explicit about what would settle it: "prove it by reading the lake back from
@@ -1036,7 +1036,7 @@ def _cross_process_restart(seed, cfg, ticks=140):
 # -------------------------------------------------------------------------------------------------
 # __main__ un-riggable self-check: each claim + a CONTROL that MUST fail.
 # -------------------------------------------------------------------------------------------------
-# distinct-from: cortex/brain.py -- _drive() there ticks a BRAIN with a forced clock phase.
+# distinct-from: engine/brain.py -- _drive() there ticks a BRAIN with a forced clock phase.
 #   distinct-from: growth/heterogeneous_microcircuit.py -- drives a circuit for spike counts.
 #   distinct-from: cortex/reasoning_curriculum.py -- runs the curriculum's own night loop.
 #   distinct-from: instruments/neuro_chip_stream.py -- an out-of-core AER event loop.

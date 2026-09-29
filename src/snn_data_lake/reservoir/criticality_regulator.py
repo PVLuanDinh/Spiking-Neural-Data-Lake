@@ -17,7 +17,7 @@ WHOSE RASTER -- read this before quoting the loop as closed (wording corrected 2
 above said "the LIVE raster", which invites exactly one misreading and this tree has already paid for it
 once elsewhere). The raster measured here is THIS OBJECT'S OWN pool, built in __init__ below. The loop is
 genuinely closed -- sigma measured off spikes drives the knob that changes those spikes -- but it is closed
-on a self-contained pool, NOT on the Brain's LiveBrain neurons. `cortex/brain.py` constructs one of these
+on a self-contained pool, NOT on the Brain's LiveBrain neurons. `engine/brain.py` constructs one of these
 (n=64) as a MONITORED SIDE-POOL and reports its sigma as `criticality`; that number describes this pool's
 regime, never the brain's. Regulating the brain's own neurons would need an input port this class does not
 have, and building one is open work -- not something the sentence above should be read as claiming.

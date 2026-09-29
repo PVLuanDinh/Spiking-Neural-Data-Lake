@@ -25,7 +25,7 @@ Red (3), neuter-insensitivity, is charge measurement and belongs to the charge p
 (T022) -- a static gate asserting liveness would be presence-as-participation.
 """
 
-# distinct-from: substrate/wiring_manifest.py -- the MECHANISM this gate runs; the gate owns
+# distinct-from: engine/wiring_manifest.py -- the MECHANISM this gate runs; the gate owns
 #   the CI verdict and the divergence criterion, the manifest owns the checks.
 # distinct-from: gates/policy_manifest.py -- POLICIES.md rows vs ci.yml census, a
 #   different manifest entirely. distinct-from: gates/import_manifest.py -- lazy-import
@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import sys
 
-from snn_data_lake.substrate.wiring_manifest import (
+from snn_data_lake.engine.wiring_manifest import (
     ARTIFACT,
     WiringManifest,
 )
@@ -72,7 +72,7 @@ REGISTRANTS: tuple = (
     ("snn_data_lake.cortex.task_set", "declare_ports"),
     # T082 (FR-034): the recursive belief tracker's divergence wire, producer + THE edge.
     ("snn_data_lake.cortex.recursive_tom", "declare_ports"),
-    ("snn_data_lake.cortex.brain", "declare_ports"),
+    ("snn_data_lake.engine.brain", "declare_ports"),
     # T046a: the |LP| third factor -- the SECOND of percept_surprise's dated forward
     # dispositions discharged (the consumer declares the edge surprise_out -> surprise_in);
     # lp_out was declared EDGE-LESS with T047's growth stopping criterion as the dated
@@ -88,13 +88,13 @@ REGISTRANTS: tuple = (
     ("snn_data_lake.plasticity.r_stdp", "declare_ports"),
     # T030: the workspace composite -- the arm's bus producer, the shared bus, and the
     # re-entry stage (brain's reroute_in consumer edge rides in brain.declare_ports)
-    ("snn_data_lake.brainstem.autonomous_loop", "declare_ports"),
+    ("snn_data_lake.engine.autonomous_loop", "declare_ports"),
     ("snn_data_lake.thalamus.global_workspace", "declare_ports"),
     ("snn_data_lake.thalamus.reentrant_workspace", "declare_ports"),
     # T034: the report channel -- the workspace broadcast's declared consumer (discharges
     # T030's edge-less disposition on broadcast_out) + the typed report_out snapshot
     # consumed by brain.report_in (Brain.state()'s workspace_report, the cockpit field)
-    ("snn_data_lake.substrate.report_channel", "declare_ports"),
+    ("snn_data_lake.engine.report_channel", "declare_ports"),
     # T036: the afferent boundary -- the S0 proprioceptive lane's producer (brain's
     # proprio_in consumer edge rides in brain.declare_ports); interoception's row is the
     # T026 tract, vision/audition are S1 dispositions, chemosensation out-of-scope
@@ -162,7 +162,7 @@ def self_check() -> int:
     import tempfile
     from pathlib import Path
 
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     diverged = WiringManifest()
     diverged.declare_port(

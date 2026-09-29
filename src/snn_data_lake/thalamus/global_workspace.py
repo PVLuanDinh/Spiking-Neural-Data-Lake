@@ -139,7 +139,7 @@ This module was SINGLE-SLOT winner-take-all, and the slot was measurably UNWINNA
 computed the ignited SET (`late[k] > 0`, one flag per pool) and then threw all but one member away
 with an argmax. Meanwhile the one incumbent was granted `self_boost + hysteresis = 0.25` of extra
 drive, while the entire band a compliant specialist may claim -- `[ignition_threshold, 1 -
-(self_boost + hysteresis)]` = [0.55, 0.75], the derivation `brainstem/autonomous_loop.py::
+(self_boost + hysteresis)]` = [0.55, 0.75], the derivation `engine/autonomous_loop.py::
 _percept_salience` and `cortex/access_consciousness.py::_max_claim` both apply -- is 0.20 WIDE.
 THE DEFENCE EXCEEDED THE WHOLE BAND. Measured on the old arbiter, incumbent warmed 5 ticks and
 still posting, challenger swept 0.55..1.00 in steps of 0.002:
@@ -185,7 +185,7 @@ switch count 3 -> 7 while the divided-budget form alone already reached 0.72/0.7
 where one suffices is the additive failure P2 forbids, so the export decoupling is NOT here.
 
 WHAT DID NOT CHANGE, deliberately. `ignition_threshold`, `decay`, `hysteresis` and `self_boost`
-keep their exact defaults. `brainstem/autonomous_loop.py::_percept_salience` and
+keep their exact defaults. `engine/autonomous_loop.py::_percept_salience` and
 `cortex/access_consciousness.py::_max_claim` READ those three attributes off this object at
 runtime and size their own admissible band from them, and `autonomous_loop`'s self-check ASSERTS
 its live saliences land inside it. Moving any of them here would move a producer's range in
@@ -202,7 +202,7 @@ its own salience while the entrenched pool drew `self_boost + hysteresis` and de
 per tick between refreshes. FIRST TENANT, FOREVER.
 
 MEASURED on `make_brain(seed=0, refit_every=10, persist=False)`, `clock.phase = 0.25`, 120 live
-ticks. `cortex/live_brain.py::thought` -- THE TREE'S ONE GENUINE CROSS-MODULE WORKSPACE READ --
+ticks. `engine/live_brain.py::thought` -- THE TREE'S ONE GENUINE CROSS-MODULE WORKSPACE READ --
 carried the int 0 on 120 of 120 ticks while perception submitted FOUR distinct contents at 56
 DISTINCT saliences, and workspace occupancy was 1 of 4 on 120 of 120 with three slots never used.
 The proof that this was ENTRENCHMENT and not a quiet bus is in the final pool state:
@@ -405,7 +405,7 @@ admissible producer. Spied over 60 live ticks, `perception` posts in [0.55, 0.65
 `salience`/threat posts a structural 0.000000 every tick (the amygdala is never paired on the wake
 path; `autonomous_loop` documents and proves that null in both directions). K slots over one
 admissible candidate broadcast one content: `broadcast_all()` returned a 1-tuple on 60 of 60 ticks
-and `cortex/live_brain.py::thought` named the percept on 60 of 60 -- unchanged, which is the
+and `engine/live_brain.py::thought` named the percept on 60 of 60 -- unchanged, which is the
 requirement, not the achievement. THE CAPACITY IS NOT THE BINDING CONSTRAINT ON THAT BUS TODAY;
 THE PRODUCER POPULATION IS, and fixing that is not this module's work.
 
@@ -582,7 +582,7 @@ THE CHANGE IS ONE LINE OF MECHANISM: `_deliver` is handed `broadcast_all()` inst
 and a subscriber never needs to know which arbiter ran. NO second `subscribe` channel exists and
 none may be added (P2): `current` / `broadcast()` / `broadcast_hold` are untouched projections of
 the same `_slot()` load, `broadcast()` is still zero-arg and still returns ONE content, and
-`cortex/live_brain.py::thought` is byte-identical on the live brain. A/B'd against a shim that
+`engine/live_brain.py::thought` is byte-identical on the live brain. A/B'd against a shim that
 restores the retired contract exactly, 120 wake ticks: `thought` names the percept on 120/120 and
 the crc32 of the thought sequence, of the workspace-set sequence and of the consumer's whole legacy
 `state()` readout are the SAME under both contracts (`_access_ema` = 0.488958 in both), because
@@ -595,7 +595,7 @@ bus is shared is doing it in the only window where it is free.
 
 BLAST RADIUS, derived and not estimated: `GlobalWorkspace.subscribe` has FIVE call sites tree-wide
 -- `cortex/access_consciousness.py` and four inside this module's own self-check. ONE production
-consumer. (`cortex/brain.py:799` subscribes to a `ReentrantWorkspace`, a different class.)
+consumer. (`engine/brain.py:799` subscribes to a `ReentrantWorkspace`, a different class.)
 
 DETERMINISM is preserved by construction and re-measured: `broadcast_all()` builds a FRESH tuple of
 immutables from one `_slot()` load, so a subscriber gets no handle on `_slots` and cannot observe a
@@ -629,7 +629,7 @@ monotone across the whole scan, the private-bus arm is a run RED and the null re
 a second, independent channel on that claim should know the old one was spent here.
 
 Verified UNAFFECTED, RE-RUN 2026-08-06 after the delivery change rather than carried over:
-`cortex/live_brain.py`, `cortex/brain.py`, `brainstem/autonomous_loop.py`,
+`engine/live_brain.py`, `engine/brain.py`, `engine/autonomous_loop.py`,
 `thalamus/reentrant_workspace.py`, `cortex/self_model.py`, `cortex/executive_control.py`,
 `reasoning/rpm_solver.py`, `reasoning/spike_chat_lake.py`, `reasoning/consciousness_probe.py` (RETIRED at T081, 2026-09-16),
 `reasoning/train_of_thought.py`, `reasoning/concept_reflection.py`,
@@ -704,7 +704,7 @@ def _fold_parts(parts):
     return sum(itertools.chain.from_iterable(parts))
 
 
-# distinct-from: substrate/signal_ring.py -- the ring frames TRANSPORT records; this is
+# distinct-from: engine/signal_ring.py -- the ring frames TRANSPORT records; this is
 #   the workspace's COMPETITION record (the ring carries its bytes). distinct-from:
 #   cortex/self_model.py -- self-episode history; this is per-tick coalition identity.
 #   distinct-from: reservoir/kernel_tick.py -- the neuron-substrate tick frame. Read.
@@ -800,7 +800,7 @@ class Coalition:
     def __hash__(self):
         return hash(self.as_tuple())
 
-    # distinct-from: substrate/wiring_manifest.py -- hdf5 artifact codec, not this record.
+    # distinct-from: engine/wiring_manifest.py -- hdf5 artifact codec, not this record.
     # distinct-from: gates/envelope_hash_gate.py -- envelope baseline writer.
     # distinct-from: growth/neurogenesis_engine.py -- growth-state npz restore.
     # distinct-from: infra/self_build_loop.py -- firewalled-file byte restore.
@@ -1166,7 +1166,7 @@ class GlobalWorkspace:
             )
         )
 
-    # distinct-from: substrate/signal_ring.py -- the ring/journaller TRANSPORT this attaches;
+    # distinct-from: engine/signal_ring.py -- the ring/journaller TRANSPORT this attaches;
     #   this method only binds the producer side and rebases identity. Read.
     def attach_ring(self, ring, base_ordinal=0):
         """T031: hand this workspace a SignalRing to publish settled Coalition records onto.
@@ -1341,7 +1341,7 @@ class GlobalWorkspace:
         """The top workspace content -- what every module can see right now.
 
         ZERO-ARG AND STAYING THAT WAY. This is the tree's ONE genuine cross-module workspace read
-        (`cortex/live_brain.py::thought` -> `self.arm.workspace.broadcast()`), and `tools/p6_gate.py`
+        (`engine/live_brain.py::thought` -> `self.arm.workspace.broadcast()`), and `tools/p6_gate.py`
         classifies the zero-arg `broadcast` as THE reader. (Until 2026-08-12 the gate also
         classified a 3-arg `broadcast` as a WRITE -- the retired WorkspaceBroadcast's submit
         wearing a reader's name; that arity entry left the gate's API table with the class, so a
@@ -1386,7 +1386,7 @@ class GlobalWorkspace:
 
         MEASURED, and it is why this exists (2026-08-06, 120 live ticks). `brainstem/
         autonomous_loop.py::_percept_salience` mapped deviance through `lo + (hi-lo)*ratio` and
-        occupied [0.568, 0.667]. `cortex/brain.py::_update_access` mapped novelty through
+        occupied [0.568, 0.667]. `engine/brain.py::_update_access` mapped novelty through
         `rheobase + 0.5*(nov - nov_base) + 0.15*real` clamped to [0,1] -- TWO HAND-PICKED GAINS, and
         NOT BOUNDED BY THE BAND AT ALL, so it rode its separate cap. The faculty therefore sat at or
         above perception's maximum on essentially every tick: repointed onto the shared bus it held
@@ -1449,8 +1449,8 @@ class GlobalWorkspace:
         `baseline` DIFFERENTLY THE RATIOS ARE NOT ON ONE SCALE and the shared map inherits the
         difference intact.
 
-        They did. `brainstem/autonomous_loop.py::_percept_salience` used a true running mean
-        (`base += (dev - base)/n`); `cortex/brain.py`'s novelty baseline is an EMA with a fixed
+        They did. `engine/autonomous_loop.py::_percept_salience` used a true running mean
+        (`base += (dev - base)/n`); `engine/brain.py`'s novelty baseline is an EMA with a fixed
         `_base_tau`. AN EMA LAGS A RISING SIGNAL, so its ratio sits persistently ABOVE 0.5; a
         converging running mean sits BELOW 0.5 by whatever the signal's skew is. One producer was
         therefore structurally louder than the other no matter what map they shared.
@@ -1460,7 +1460,7 @@ class GlobalWorkspace:
         arithmetic mean of everything seen, computed incrementally, and its only input is the count.
 
         THIS DOES NOT REPLACE EVERY BASELINE IN THE TREE, and that restraint is deliberate. The
-        novelty EMA at `cortex/brain.py:1777` has a SECOND consumer -- the explore/fidget decision --
+        novelty EMA at `engine/brain.py:1777` has a SECOND consumer -- the explore/fidget decision --
         which asks "is this more novel than RECENTLY?", a question a lagging estimator answers
         correctly. Access asks "is this more novel than TYPICALLY?". Those are different questions
         and they legitimately want different estimators; what is NOT legitimate is answering the
@@ -1556,7 +1556,7 @@ class GlobalWorkspace:
         to WHAT ELSE, and this is the ONLY answer to HOW STRONGLY. Folding them into one return
         value instead -- `broadcast()` yielding a (content, hold) pair -- was rejected because it
         changes the return type of the tree's one cross-module workspace read
-        (`cortex/live_brain.py::thought`) and of every `is not None` test written against it, which
+        (`engine/live_brain.py::thought`) and of every `is not None` test written against it, which
         buys no signal and breaks the consumers this exists to serve.
 
         IT REPORTS THE TOP SLOT, and that is a deliberate narrowing rather than an oversight. A
@@ -1610,7 +1610,7 @@ class GlobalWorkspace:
         there is exactly one delivery, carrying exactly the arbiter's full output. `current` /
         `broadcast()` / `broadcast_hold` are unchanged and remain projections of that same
         `_slot()` load -- `broadcast()` is still the tree's one cross-module read
-        (`cortex/live_brain.py::thought`), still zero-arg, still returning ONE content, and
+        (`engine/live_brain.py::thought`), still zero-arg, still returning ONE content, and
         `tools/p6_gate.py` still classifies it by arity. The head did not lose a route; the
         subscribers gained the rest of the workspace on the route they already had.
 
@@ -1978,7 +1978,7 @@ class GlobalWorkspace:
             pays for a slot rather than an eviction rule.
 
         THE MEASUREMENT THAT FORCED IT, on `make_brain(seed=0, refit_every=10, persist=False)` with
-        `clock.phase = 0.25`, 120 live ticks. `cortex/live_brain.py::thought` -- the tree's ONE
+        `clock.phase = 0.25`, 120 live ticks. `engine/live_brain.py::thought` -- the tree's ONE
         genuine cross-module workspace read -- carried the int 0 on 120 of 120 ticks while
         `perception` submitted FOUR distinct contents at 56 DISTINCT saliences. The final pool state
         is the proof that this was entrenchment and not a quiet bus: `_g[('perception', 3)]` was
@@ -3216,7 +3216,7 @@ def main():
     )
     assert abs(bw.band_bid(1.0, 1.0) - b_lo) < 1e-12, (
         "a bid AT its own baseline must land EXACTLY on the rheobase -- the anchor "
-        "cortex/brain.py::_update_access has always described"
+        "engine/brain.py::_update_access has always described"
     )
     # THE PROPERTY: the bid can lapse, the claim cannot. Below-baseline signal, both maps.
     lapse_bid = bw.band_bid(0.2, 1.0)
@@ -3821,9 +3821,9 @@ def main():
     import tempfile
     from pathlib import Path
 
+    from snn_data_lake.engine.signal_ring import LakeJournaller, SignalRing
     from snn_data_lake.substrate.binlog import BinLog
     from snn_data_lake.substrate.home import _T_COALITION
-    from snn_data_lake.substrate.signal_ring import LakeJournaller, SignalRing
 
     c_rec = Coalition(["perception"], "scene", 0.7, {"salience": 0.7, "arousal": 0.2})
     assert tuple(c_rec) == c_rec.as_tuple() == ("perception", "scene", 0.7) and len(c_rec) == 3, (
@@ -3839,7 +3839,7 @@ def main():
         "typed channels must survive the lake"
     )
 
-    # distinct-from: cortex/access_consciousness.py and cortex/live_brain.py -- their "one
+    # distinct-from: cortex/access_consciousness.py and engine/live_brain.py -- their "one
     #   workspace" is the LIVE composite; this closure is a self-check harness driving a
     #   scratch lake through restarts. Phrase overlap only; sites read.
     def _restart_life(base=None):
@@ -3919,7 +3919,7 @@ def main():
     # precedent; the channel's own self-check covers the record CONTRACT on stubs, and
     # constructing buses there registered a FACULTY holding private buses in the p6
     # census, two ratchets red, measured). ----------------------------------------------
-    from snn_data_lake.substrate.report_channel import snapshot as _rc_snapshot
+    from snn_data_lake.engine.report_channel import snapshot as _rc_snapshot
 
     rc_ws = GlobalWorkspace(seed=0)
     assert _rc_snapshot(rc_ws) == {"content": None, "availability": 0.0, "strength": 0.0}, (
@@ -3945,7 +3945,7 @@ def main():
     )
     print(
         f"report chan  : dark -> live (strength == hold elementwise {rc_strengths}) -> "
-        f"released dark, all through substrate/report_channel.snapshot on the REAL kernel"
+        f"released dark, all through engine/report_channel.snapshot on the REAL kernel"
     )
 
     print(
@@ -3994,7 +3994,7 @@ def declare_ports(manifest):
     broadcast_out's unit is 'workspace_content' -- the winning token, NOT a bid. Stating
     it here keeps the artifact from certifying a description the five checks cannot
     themselves falsify (they compare declarations to declarations, never to runtime)."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "global_workspace",

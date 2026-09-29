@@ -8,7 +8,7 @@ here, in a file edited in the same pass. P7 names a stdlib-scope claim as residu
 WHY THIS EXISTS -- the honest defect it fixes
 ==============================================
 The shipped `thalamus/global_workspace.py` + its live wiring (`cortex/access_consciousness.py`
-driven from `cortex/brain.py::_update_access`) are SATURATED BY CONSTRUCTION: each tick posts a
+driven from `engine/brain.py::_update_access`) are SATURATED BY CONSTRUCTION: each tick posts a
 single coherent coalition, so ignition fires ~every tick, `global_availability == 1.0` always, and
 the all-or-none gate never actually GATES (nothing ever fails to reach access). Two more gaps: the
 GNW RE-ENTRY loop is NOT closed (subscribers only RECORD the broadcast; no top-down current returns
@@ -193,7 +193,7 @@ class ReentrantWorkspace:
 
     # distinct-from: thalamus/global_workspace.py -- the shared bus's rheobase is fixed at
     #   construction and nobody rewrites it; THIS class is the one workspace whose theta is
-    #   moved live (cortex.brain's coherence bias), which is why the actuator lives here. Read.
+    #   moved live (engine.brain's coherence bias), which is why the actuator lives here. Read.
     # distinct-from: gates/perf_baseline.py -- performance ratchet, no rheobase.
     # distinct-from: substrate/lake_migrate.py -- tag dispositions, no rheobase.
     # distinct-from: cortex/theta_gamma_code.py -- theta the OSCILLATION, not the rheobase.
@@ -215,7 +215,7 @@ class ReentrantWorkspace:
              HOLD IS STICKY: a later command with the default `hold_bias=False` KEEPS a
              standing hold (the review demonstrated a mid-sweep re-command silently opening
              the gate); `release_theta_hold` is the ONE release door.
-          3. `coherence_theta()` below -- cortex.brain's per-tick coherence bias. LIVE value
+          3. `coherence_theta()` below -- engine.brain's per-tick coherence bias. LIVE value
              only, NEVER the base; records its own provenance on every write; a no-op
              returning False under the sweep hold.
 
@@ -503,7 +503,7 @@ class ReentrantWorkspace:
         return dict(self._last)
 
     # -- re-entry plumbing ------------------------------------------------------------------------
-    # distinct-from: substrate/signal_ring.py -- GradedUnbound/DeliveringProducer are the
+    # distinct-from: engine/signal_ring.py -- GradedUnbound/DeliveringProducer are the
     #   DELIVERY mechanism that CONSUMES an association source; these two methods are the
     #   incumbent SOURCE those docstrings have named since T020 ('final binding = T030').
     #   Producer of the value, not a second delivery path. Read.
@@ -650,7 +650,7 @@ class ReentrantWorkspace:
         supported. Access still DECAYS as the re-entrant sustain fades under weak/masked input,
         which is the property this measure exists to provide.
 
-        CHARGE, MEASURED (P3: reachability is not charge). Reachable at `cortex/brain.py`
+        CHARGE, MEASURED (P3: reachability is not charge). Reachable at `engine/brain.py`
         `Brain._c1_tick` -> `self._reentrant_strength = round(float(...access_strength()), 3)`,
         consumed by `_self_model` (`access_index` / `confidence`), by the region-coherence readout,
         and by `Brain.state()`. Proven decisive by a NEUTER-A/B: pin this method to the constant
@@ -1259,8 +1259,8 @@ def main():
     # ignition + Hebbian potentiation. Lives HERE, not in signal_ring's self-check: a
     # workspace construction inside a FACULTY-role substrate module would register as a
     # private bus in the p6 census (measured -- it did, 6 -> 7, and this move is the fix).
-    from snn_data_lake.substrate.signal_ring import DeliveringProducer, JoinConsumer, SignalRing
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.signal_ring import DeliveringProducer, JoinConsumer, SignalRing
+    from snn_data_lake.engine.wiring_manifest import Port
 
     _gout = Port(
         name="reroute_out",
@@ -1321,7 +1321,7 @@ def main():
     # ---- T032 IGNITION ACTUATOR: the drive-sweep apparatus + its positive control ----------
     # spec.md acceptance #4: theta commanded across a sweep, read-back asserts EVERY
     # commanded value took effect -- while a live coherence-bias ATTACK runs every tick
-    # (the exact per-tick rewrite cortex.brain performs; the sweep hold must refuse it).
+    # (the exact per-tick rewrite engine.brain performs; the sweep hold must refuse it).
     # Reds run inline: range refusals both sides of the band, and the hold demonstrably
     # gates (the same attack LANDS once the hold is released -- the gate's liveness
     # control, so a permanently-stuck hold cannot read as a working gate).
@@ -1423,7 +1423,7 @@ def declare_ports(manifest):
     T020's GradedUnbound machinery declared and T030 landed; a dark workspace grades to
     zero). The consumer is the brain's eligibility competition (broadcast_to('action')
     read each wake tick); it declares the edge."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "reentrant_workspace",
@@ -1447,9 +1447,9 @@ REROUTE_EDGE = ("reentrant_workspace", "reroute_out", "brain", "reroute_in")
 
 def _reroute_consumer_factory():
     """Fresh ring + JoinConsumer over the declared `reroute_in` port, per arm."""
-    from snn_data_lake.cortex.brain import declare_ports as brain_declare_ports
-    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
-    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+    from snn_data_lake.engine.brain import declare_ports as brain_declare_ports
+    from snn_data_lake.engine.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.engine.wiring_manifest import WiringManifest
 
     m = WiringManifest()
     brain_declare_ports(m)
@@ -1474,7 +1474,7 @@ def consume_reroute(consumer):
     brain's GENUINE undirected-salience competition (brain.undirected_salience, the same function
     the wake tick runs -- this harness never re-implements it) under equal starting weights.
     Returns [(tick, drive), ...]. LOSS IS FATAL (the T026 ring-overrun lesson)."""
-    from snn_data_lake.cortex.brain import undirected_salience
+    from snn_data_lake.engine.brain import undirected_salience
 
     weights = dict.fromkeys([*_REROUTE_CO_SOURCES, "reroute"], 1.0)
     out = []

@@ -106,7 +106,7 @@ _BRAIN = r"""
 import hashlib
 from unittest.mock import patch
 from snn_data_lake.cortex import interaction_learning as ixn
-from snn_data_lake.cortex.brain import Brain, make_brain
+from snn_data_lake.engine.brain import Brain, make_brain
 
 
 class Refused(Exception):

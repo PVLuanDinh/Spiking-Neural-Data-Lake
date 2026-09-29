@@ -229,7 +229,7 @@ T082_SEEDS = tuple(range(8))
 T082_MIN_UNWITNESSED = 0.3
 
 #: THE DECLARED BELIEF WIRE (2.1, FR-034): producer half + THE edge here, consumer half
-#: (`brain.social_risk_in`) in `cortex/brain.declare_ports`.
+#: (`brain.social_risk_in`) in `engine/brain.declare_ports`.
 BELIEF_EDGE = ("recursive_tom", "belief_out", "brain", "social_risk_in")
 
 #: The script's RNG: `random.Random(T082_RNG_BASE + seed)` (2.1, the territory probe's base).
@@ -239,7 +239,7 @@ T082_STREAM_POSITIONS = 256
 #: THE BRAIN'S OWN social-risk fold, READ not chosen (2.8): on the wake tick
 #: `_tom_protect = max(min(1, GAIN * fb), DECAY * prev)` and the arm's caution term is that
 #: value. The pair lives HERE so the charge A/B's consumer and
-#: `cortex/brain._route_percept_to_action` read ONE definition (2.9 step 4 re-points brain).
+#: `engine/brain._route_percept_to_action` read ONE definition (2.9 step 4 re-points brain).
 T082_PROTECT_GAIN = 0.34
 T082_PROTECT_DECAY = 0.9
 #: The one bar (2.3): the paired one-sided t over 8 seeds, 7 d.f., alpha = 0.05.
@@ -288,7 +288,7 @@ def declare_ports(manifest):
     OUT `belief_out` -- (2,) f4 = [first-order false-belief count, nested-divergence count]
     over the tracked agents -- GRADED by `divergence` (the association source: the nested half
     IS `RecursiveToM.divergence` summed over ordered pairs). The consumer half is
-    `brain.social_risk_in`, declared in `cortex/brain.declare_ports` beside `task_film_in`.
+    `brain.social_risk_in`, declared in `engine/brain.declare_ports` beside `task_film_in`.
 
     THE EDGE IS DECLARED HERE, by the PRODUCER, and that is a deviation from the T034/M10
     convention (the consumer declares its subscription) recorded rather than smoothed: the
@@ -300,7 +300,7 @@ def declare_ports(manifest):
     THE WIDTH IS A LITERAL 2 and that is the honest form here, unlike `task_set.film_out`'s
     derived `len(ACTIONS)`: the payload is not a per-item vector but the pair of COUNTS the
     fold reads, and the pair cannot grow with any vocabulary."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "recursive_tom",
@@ -436,7 +436,7 @@ def _t082_parse(message):
     the surface parse cannot leave the constructed inputs testing a second, stale grammar (P2).
     -> (obj, loc, unwitnessed) or None. The import is lazy because brain imports this module at
     module scope for the fold constants."""
-    from snn_data_lake.cortex.brain import _TOM_ABSENT, _TOM_PLACE
+    from snn_data_lake.engine.brain import _TOM_ABSENT, _TOM_PLACE
 
     low = str(message).lower()
     m = _TOM_PLACE.search(low)
@@ -603,7 +603,7 @@ def t082_record_brain(seed, n_ep=T082_N_EPISODES, ticks_between=T082_TICKS_BETWE
     own dissociation input ("a world-state model of equal capacity replacing the belief model").
     Neither tracker is fed on a statement that does not parse, exactly as the live path does not
     feed on a non-parse."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
     from snn_data_lake.substrate.home import throwaway_home
 
     seed, n_ep, ticks_between = int(seed), int(n_ep), int(ticks_between)
@@ -741,7 +741,7 @@ def t082_stream_labels(seed, n_labels=T082_OFFSET_LABELS, max_ticks=260):
     """The first `n_labels` REAL frame labels seed `s` walks with 2.1's offset applied. The
     offset check is an APPARATUS precondition, so it reads the labels the brain actually
     CONSUMED rather than re-deriving them from the pack by arithmetic (T080/T081's idiom)."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
     from snn_data_lake.substrate.home import throwaway_home
 
     out = []
@@ -1302,9 +1302,9 @@ def _t082_belief_frames(witness=T082_R4_WITNESS, ticks=T082_TICKS_BETWEEN):
 def _t082_consumer_factory():
     """Fresh ring + JoinConsumer over the DECLARED consumer port (`brain.social_risk_in`), one
     pair per replay arm -- the wire's two ends are the real declarations, not stand-ins."""
-    from snn_data_lake.cortex.brain import declare_ports as brain_declare_ports
-    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
-    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+    from snn_data_lake.engine.brain import declare_ports as brain_declare_ports
+    from snn_data_lake.engine.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.engine.wiring_manifest import WiringManifest
 
     m = WiringManifest()
     declare_ports(m)

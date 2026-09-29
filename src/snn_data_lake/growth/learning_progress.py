@@ -291,7 +291,7 @@ def declare_ports(manifest):
     declares the edge `lp_out -> growth_stop.lp_in` (the consumer declares it, the
     T034/M10 convention) -- declaring it earlier would have been anatomy ahead of its
     consumer (the T030 broadcast_out precedent)."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "learning_progress",
@@ -447,8 +447,8 @@ def main():
     with tempfile.TemporaryDirectory() as td:
         lake = str(Path(td) / "scratch_goal_lake.bin")
         gs = GoalStore(path=lake)
-        g0 = gs.create([1.0, 0.0, 0.0, 0.0], "snn_data_lake.cortex.brain.predict_accuracy")
-        g1 = gs.create([0.0, 1.0, 0.0, 0.0], "snn_data_lake.cortex.brain.reasoning_accuracy")
+        g0 = gs.create([1.0, 0.0, 0.0, 0.0], "snn_data_lake.engine.brain.predict_accuracy")
+        g1 = gs.create([0.0, 1.0, 0.0, 0.0], "snn_data_lake.engine.brain.reasoning_accuracy")
         gs.record_lp(g0, 0.12)
         gs.record_lp(g0, 0.31)
         gs.record_outcome(g0, "kept")

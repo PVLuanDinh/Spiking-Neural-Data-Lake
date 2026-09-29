@@ -51,8 +51,8 @@ own self-check PRINTS on every run at (2) below -- re-derived by the gate rather
 a frozen copy of that number once sat in this sentence and drifted, so no copy sits here now.)*
 
 P2 STATUS, stated because two mechanisms for one job is the defect P2 names. Both drives are live:
-`brainstem/autonomous_loop.py` selects between them with a `spiking_curiosity` flag and
-`cortex/brain.py` sets it True, so the canonical brain runs this one while the rate original stays
+`engine/autonomous_loop.py` selects between them with a `spiking_curiosity` flag and
+`engine/brain.py` sets it True, so the canonical brain runs this one while the rate original stays
 constructible with its own importers. P2 calls a flag that keeps both paths "additive with extra
 steps". This is NOT resolved here -- the resolution spans a file outside this module, and the
 measurement above does not support retiring EITHER (the spiking one is not better on the behaviour,

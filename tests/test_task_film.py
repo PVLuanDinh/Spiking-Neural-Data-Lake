@@ -9,7 +9,7 @@ from snn_data_lake.cortex.task_set import FILM_EDGE, TaskSetLayer, declare_ports
 
 
 def test_film_decomposes_bias_exactly():
-    from snn_data_lake.brainstem.autonomous_loop import ACTIONS
+    from snn_data_lake.engine.autonomous_loop import ACTIONS
 
     n = len(ACTIONS)
     layer = TaskSetLayer(n_sets=3, n_in=4, n_actions=n, seed=0)
@@ -35,8 +35,8 @@ def test_declared_anatomy_matches_the_live_shape():
     # the declared width must be DERIVED from the live action vocabulary -- the panel
     # measured the literal form staying green while a grown ACTIONS left the tracked
     # anatomy stating a wire the brain no longer carried
-    from snn_data_lake.brainstem.autonomous_loop import ACTIONS
-    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+    from snn_data_lake.engine.autonomous_loop import ACTIONS
+    from snn_data_lake.engine.wiring_manifest import WiringManifest
 
     m = WiringManifest()
     declare_ports(m)

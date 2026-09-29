@@ -89,7 +89,7 @@ def _measure_ticks(n_ticks: int = N_TICKS) -> dict:
     the wake ratios carry the ambient-corrected signal the scorer prefers."""
     scratch = tempfile.mkdtemp(prefix="perf_baseline_")
     os.environ["NORD_HOME"] = scratch  # before any snn_data_lake import
-    from snn_data_lake.cortex.brain import make_brain  # noqa: PLC0415
+    from snn_data_lake.engine.brain import make_brain  # noqa: PLC0415
 
     brain = make_brain(seed=0)
     phases: list[str] = []
@@ -219,7 +219,7 @@ def _measure_state_per_unit(ticks: int = 600, caps: tuple = (1, 2, 4, 8, 16)) ->
 
     scratch = _tf.mkdtemp(prefix="perf_state_per_unit_")
     os.environ["NORD_HOME"] = scratch
-    from snn_data_lake.cortex.brain import make_brain  # noqa: PLC0415
+    from snn_data_lake.engine.brain import make_brain  # noqa: PLC0415
 
     pts = []
     for cap in caps:

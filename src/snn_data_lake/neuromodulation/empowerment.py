@@ -91,7 +91,7 @@ class Empowerment:
         dead ... a retire candidate". The dead half is CONFIRMED: a tree-wide search for `.reward(`
         on an Empowerment instance, including getattr/string-name dispatch, finds ZERO call sites
         outside this module's own `main()`. The live path is `step_reward` alone
-        (`brainstem/autonomous_loop.py:1465`, reached because `cortex/brain.py:237` sets
+        (`engine/autonomous_loop.py:1465`, reached because `engine/brain.py:237` sets
         `empowerment=True`).
 
         It is NOT retired here, and the reason is a correction to the "recomputes rather than

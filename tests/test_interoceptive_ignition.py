@@ -7,7 +7,7 @@ does work -- threshold modulation, which is the producer's own stated claim -- a
 retirement to "the measurement that shows a consumer's own output changing, and by nothing else".
 
 THIS FILE IS THAT MEASUREMENT, and it is deliberately built so the cheap half cannot pass for the
-expensive one. A single import in cortex/brain.py flips insula to CHARGED with or without a
+expensive one. A single import in engine/brain.py flips insula to CHARGED with or without a
 consumer; what follows tests the consumer.
 
 The P8 burden, one test each:
@@ -119,7 +119,7 @@ def test_ignition_bias_default_is_the_pre_T039f_call():
 def _run(neuter):
     """Tick a real brain and record what the ignition path did. `neuter` removes the insula --
     the A/B whose difference IS the attribution."""
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     b = make_brain(seed=0, persist=False)
     if neuter:
@@ -298,7 +298,7 @@ def test_neutering_the_insula_changes_the_brains_own_output(live, neutered):
 
 
 def test_the_declared_channel_layout_is_what_the_brain_feeds():
-    """The frame cortex/brain.py builds must be the concat layout the manifest declares -- if the
+    """The frame engine/brain.py builds must be the concat layout the manifest declares -- if the
     module's BODY_CHANNELS changed and the feed did not, observe() would silently skip channels
     (it ignores unknown keys) and the salience would quietly measure less of the body."""
     assert BODY_CHANNELS == (

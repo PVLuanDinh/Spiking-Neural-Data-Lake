@@ -88,7 +88,7 @@ used to carry is in `docs/POLICIES_EVIDENCE.md`:
 
 | avenue | what it is, and where its state is derived |
 |---|---|
-| **self-building code** | `cortex/brain.py::Brain._maybe_autonomous_self_build` → `basal_ganglia/self_build_loop.SelfBuildLoop.run`, night-cadenced under `NORD_SELFMOD=1`; pinned by `tests/test_selfbuild_route.py` (route + opt-in gate as its control). Probe with `Brain._selfbuild_last` on a scratch `NORD_HOME` — a run that appends to the live lake is the probe contaminating the subject |
+| **self-building code** | `engine/brain.py::Brain._maybe_autonomous_self_build` → `basal_ganglia/self_build_loop.SelfBuildLoop.run`, night-cadenced under `NORD_SELFMOD=1`; pinned by `tests/test_selfbuild_route.py` (route + opt-in gate as its control). Probe with `Brain._selfbuild_last` on a scratch `NORD_HOME` — a run that appends to the live lake is the probe contaminating the subject |
 | **knowledge acquisition** | chat ingest → the one durable lake (`substrate/chat_memory.py`), `sensorimotor/web_ingest.py`, reasoning-curriculum growth during sleep |
 | **neural growth** | problem-driven growth (P4d): grow column-sized batches on the anatomical map while a problem's solved predicate fails, attempt, repeat, and pause at a budget (UNSOLVED, kept open); sleep prunes and saves after the solve. ONE grower (P2) — the incumbent is sleep-tick growth with retention: `growth/neurogenesis_engine.py` (earn-your-place prune, `growth_state_bytes`/`restore_growth_state`/`substrate_is_retained`), persisted into the ONE lake on two live paths (sleep tick and construction; `Brain._flush_growth` — ONE mechanism, TWO callers), which the problem-driven loop merges with or replaces; ONE stop rule likewise, the incumbent `growth/growth_stop.py` (FR-023). Restart-with-grown-substrate is pinned by `tests/test_brain_growth_restart.py`, whose immediate-exit case carries the reachable red |
 | **cortical column construction** | under P4d (owner decision 2026-09-25) a column is the GROWTH STEP, a small layered batch placed on the anatomical map where error builds up; this microcircuit is a candidate source of its layer targets. `reservoir/cortical_microcircuit.py::thalamic_drive` IS the input port (anatomically targeted, L4/L6 only; exactly 0.0 at 0 Hz; refuses a negative rate). Wiring a live caller is the open work; a spatial-PATTERN input (the port carries a scalar rate) is the genuinely absent half |
@@ -151,7 +151,7 @@ cases — (a) it is a fixed point on a **normalized** output (e.g. a threshold o
 the persisted policy** (e.g. a durable-reload contract persists weights but not the running baseline);
 (c) the constant is **inert** (default-off, zero live callers) so a learned form would never charge.
 Reuse anchors: `plasticity/r_stdp.py` (`w += lr*d*e`), `substrate/signal_calibrator.py`, the
-`_*_base` running-EMA idiom, `cortex/brain.py::_drive_w`.
+`_*_base` running-EMA idiom, `engine/brain.py::_drive_w`.
 
 **Fourth case: raw physical limits inside the safety envelope stay fixed, by design.**
 `brainstem/arm_config.py`'s `CONTACT` and `brainstem/reflex.py`'s `DEFAULT_RULES` arbitrate behaviour
@@ -347,8 +347,8 @@ is visible rather than silent.
 
 **There is only 1 brain.** A build must **utilize** the canonical brain functionality, never
 **re-implement** it — that causes bloat. The canonical brain is a clean 3-layer **composition**:
-`cortex.brain.Brain` (cognition + circadian clock) → composes `cortex.live_brain.LiveBrain` (perception
-+ workspace) → composes `brainstem.autonomous_loop.AutonomousArm` (action + reward + arm + SAFETY).
+`engine.brain.Brain` (cognition + circadian clock) → composes `engine.live_brain.LiveBrain` (perception
++ workspace) → composes `engine.autonomous_loop.AutonomousArm` (action + reward + arm + SAFETY).
 
 **Composition is NOT replication** (important): `Brain` owning an inner `LiveBrain` + wake/sleep loop is
 the *correct* design — it delegates, it does not re-implement. The bloat P4 targets is a **second**
@@ -358,7 +358,7 @@ definition of a stack class (a parallel "brain"), a consumer standing up its **o
 **Mechanized:** `gates/replication_guard.py` (in `run_selfchecks` CORE) asserts each canonical stack
 class (`Brain` / `LiveBrain` / `AutonomousArm`) is defined **exactly once**, in its canonical module,
 unless a known duplicate is on the `PENDING_RETIREMENT` allowlist (with a reason). The single sanctioned
-construction path is **`cortex.brain.make_brain()`** — consumers obtain the brain through it rather than
+construction path is **`engine.brain.make_brain()`** — consumers obtain the brain through it rather than
 calling `Brain(...)` directly. "One brain" = one canonical class + one construction path, not a
 process-wide singleton (the daemon, a chat session, and a test each legitimately own an instance).
 
@@ -669,7 +669,7 @@ least one other faculty **consumes its output** in a way that changes that consu
 One-way is allowed — brains are full of one-way projections — but *zero*-way is not.
 
 **THE DECLARED-ANATOMY LAYER (specs/022 T018/T019/T023, 2026-08-20).** The typed route P6's
-condition (a) demands has a machine-checked home: `substrate/wiring_manifest.py` (TypedPort —
+condition (a) demands has a machine-checked home: `engine/wiring_manifest.py` (TypedPort —
 join_policy mandatory on IN ports, delivery_policy on OUT, REF flagged and audited — plus the
 4-tuple port-to-port edge manifest, NIR-HDF5 serialized to the tracked artifact
 `tools/wiring_manifest.nir`), and `gates/manifest_gate.py --assert` in CI runs the five

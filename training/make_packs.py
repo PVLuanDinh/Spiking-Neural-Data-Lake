@@ -3,7 +3,7 @@ training/make_packs.py -- THE PRODUCER for the two perception packs the live bra
 models/nmnist_pack.npz (event VISION) and models/shd_pack.npz (event AUDIO).
 
 WHY THIS EXISTS. Until now these two files had FIVE reader sites and ZERO producers anywhere in src/,
-training/, tools/, integrations/ or research/. `cortex/brain.py` loads them (SNN_PERCEPTION_PACK,
+training/, tools/, integrations/ or research/. `engine/brain.py` loads them (SNN_PERCEPTION_PACK,
 SNN_SHD_PACK) to give the live tick REAL event-camera / cochlear input and to set
 `perceiving_real` / `perceiving_audio`; `cortex/percept_surprise.py` rate-codes the vision pack into
 its Oja-PCA surprise instrument; `reasoning/reservoir_eprop.py` re-bins the audio pack for its
@@ -93,7 +93,7 @@ SPECS = {
         "seed": 0,
         "split_size": 10000,
         "crc32": 0xB1BD2E57,
-        "reader": "cortex/brain.py (SNN_PERCEPTION_PACK), cortex/percept_surprise.py",
+        "reader": "engine/brain.py (SNN_PERCEPTION_PACK), cortex/percept_surprise.py",
     },
     "shd": {
         "filename": "shd_pack.npz",
@@ -106,7 +106,7 @@ SPECS = {
         "seed": 0,
         "split_size": 2264,
         "crc32": 0xACA9F8B2,
-        "reader": "cortex/brain.py (SNN_SHD_PACK), reasoning/reservoir_eprop.py",
+        "reader": "engine/brain.py (SNN_SHD_PACK), reasoning/reservoir_eprop.py",
     },
 }
 
@@ -154,7 +154,7 @@ def check_schema(kind, frames, labels):
     below is guarded on `frames.size` / `labels.size`, so a zero-sample pack skipped all of them and
     this function returned [] -- a clean bill of health earned by measuring nothing. `--n 0` therefore
     built a 510-byte .npz, printed `schema_problems=0`, and run_build WROTE it over
-    models/shd_pack.npz (the default --out) and exited 0. That pack still loads: cortex/brain.py sets
+    models/shd_pack.npz (the default --out) and exited 0. That pack still loads: engine/brain.py sets
     `_perceiving_real`/`_perceiving_audio` True on `np.load` succeeding, so the brain would report it
     perceives real event vision and audio while holding zero frames, and the first index into them
     would land in that loader's blanket `except Exception` and silently drop back to the stdlib tier.
@@ -172,14 +172,22 @@ def check_schema(kind, frames, labels):
         bad.append("frames dtype is %s, must be float32" % frames.dtype.str)
     if labels.dtype != np.int64:
         bad.append("labels dtype is %s, must be int64" % labels.dtype.str)
-    if frames.ndim != 1 + len(spec["frame_shape"]) or tuple(frames.shape[1:]) != spec["frame_shape"]:
+    if (
+        frames.ndim != 1 + len(spec["frame_shape"])
+        or tuple(frames.shape[1:]) != spec["frame_shape"]
+    ):
         bad.append(
-            "frames per-sample shape is %s, must be %s" % (tuple(frames.shape[1:]), spec["frame_shape"])
+            "frames per-sample shape is %s, must be %s"
+            % (tuple(frames.shape[1:]), spec["frame_shape"])
         )
     if labels.ndim != 1 or labels.shape[0] != frames.shape[0]:
-        bad.append("labels shape %s does not match %d frames" % (tuple(labels.shape), frames.shape[0]))
+        bad.append(
+            "labels shape %s does not match %d frames" % (tuple(labels.shape), frames.shape[0])
+        )
     if frames.size and float(frames.min()) < 0.0:
-        bad.append("frames contain negatives (min %.4f); these are event COUNTS" % float(frames.min()))
+        bad.append(
+            "frames contain negatives (min %.4f); these are event COUNTS" % float(frames.min())
+        )
     if frames.size and not bool(np.all(frames == np.round(frames))):
         bad.append("frames are not integral; these are event COUNTS, not a normalized rate")
     if labels.size and (int(labels.min()) < 0 or int(labels.max()) >= spec["n_classes"]):
@@ -266,14 +274,24 @@ def build_pack(kind, data_dir, n_samples=None, seed=None):
     n_total = len(ds)
     print(
         "%s: %s split=%s size=%d  T=%d  taking %d samples with random.Random(%d).sample"
-        % (kind, spec["dataset"], "train" if spec["train"] else "test", n_total, spec["n_time_bins"], n, s)
+        % (
+            kind,
+            spec["dataset"],
+            "train" if spec["train"] else "test",
+            n_total,
+            spec["n_time_bins"],
+            n,
+            s,
+        )
     )
     if n_total != spec["split_size"]:
         print(
             "  [warn] split size %d != the recorded %d -- the dataset on disk is not the one the"
             % (n_total, spec["split_size"])
         )
-        print("         committed pack was drawn from, so the fingerprint gate below will not match")
+        print(
+            "         committed pack was drawn from, so the fingerprint gate below will not match"
+        )
     idx = select_indices(n_total, n, s)
     frames = np.empty((n,) + spec["frame_shape"], dtype=np.float32)
     labels = np.empty((n,), dtype=np.int64)
@@ -318,7 +336,10 @@ def compare_to_existing(kind, frames, labels, ref_path, quiet=False):
         rf, rl = ref["frames"], ref["labels"]
     gen, old = describe(frames, labels), describe(rf, rl)
     if not quiet:
-        print("  %-16s %-28s %s" % ("field", "generated", "existing (" + os.path.basename(ref_path) + ")"))
+        print(
+            "  %-16s %-28s %s"
+            % ("field", "generated", "existing (" + os.path.basename(ref_path) + ")")
+        )
         for key in (
             "shape",
             "dtype",
@@ -392,8 +413,13 @@ def run_build(args):
             )
             if not match:
                 if not args.allow_drift:
-                    print("  REFUSING TO WRITE %s: this is not the pack the readers were measured on." % spec["filename"])
-                    print("  Re-run with --allow-drift only if the change is intended, and record the new")
+                    print(
+                        "  REFUSING TO WRITE %s: this is not the pack the readers were measured on."
+                        % spec["filename"]
+                    )
+                    print(
+                        "  Re-run with --allow-drift only if the change is intended, and record the new"
+                    )
                     print("  fingerprint in SPECS[%r]['crc32']." % kind)
                     failed.append(kind)
                     continue
@@ -406,7 +432,9 @@ def run_build(args):
                 "  fingerprint gate: SKIPPED -- n=%d seed=%d is not the canonical (%d, %d), so the"
                 % (n, seed, spec["n_samples"], spec["seed"])
             )
-            print("  recorded crc32 cannot apply. This pack is NOT the one the readers were measured on.")
+            print(
+                "  recorded crc32 cannot apply. This pack is NOT the one the readers were measured on."
+            )
             caveats.append(
                 "%s was built at n=%d seed=%d, not the canonical (%d, %d): it is a different pack and "
                 "no fingerprint vouches for it" % (kind, n, seed, spec["n_samples"], spec["seed"])
@@ -426,11 +454,15 @@ def run_build(args):
         return False
     if caveats:
         # Never close with "packs OK" over a pack no fingerprint vouches for.
-        print("BUILT WITH CAVEATS -- these are not the packs the repo's perception numbers came from:")
+        print(
+            "BUILT WITH CAVEATS -- these are not the packs the repo's perception numbers came from:"
+        )
         for c in caveats:
             print("  - %s" % c)
         return True
-    print("packs OK. On a fresh clone this plus the two .pt trainers restores the whole perception tier.")
+    print(
+        "packs OK. On a fresh clone this plus the two .pt trainers restores the whole perception tier."
+    )
     return True
 
 
@@ -469,12 +501,17 @@ def run_smoke():
         raise AssertionError("taking more samples than the split holds must raise")
     except ValueError:
         pass
-    print("  selection: reproducible, seed-sensitive, pinned to the packs' own rule (nmnist[:4]=%s)" % a[:4])
+    print(
+        "  selection: reproducible, seed-sensitive, pinned to the packs' own rule (nmnist[:4]=%s)"
+        % a[:4]
+    )
 
     # (2) FINGERPRINT is stable, and sensitive to content, shape and dtype.
     f, lab = _synthetic("nmnist")
     fp = fingerprint(f, lab)
-    assert fp == fingerprint(f.copy(), lab.copy()), "fingerprint must be content-addressed, not identity"
+    assert fp == fingerprint(f.copy(), lab.copy()), (
+        "fingerprint must be content-addressed, not identity"
+    )
     f2 = f.copy()
     f2[0, 0, 0, 0, 0] += 1.0
     assert fingerprint(f2, lab) != fp, "one changed count must change the fingerprint"
@@ -483,7 +520,10 @@ def run_smoke():
     lab2 = lab.copy()
     lab2[0] = (lab2[0] + 1) % 10
     assert fingerprint(f, lab2) != fp, "labels must be folded into the fingerprint"
-    print("  fingerprint: content/shape/dtype/label sensitive; crc32=0x%08x on the synthetic pack" % fp)
+    print(
+        "  fingerprint: content/shape/dtype/label sensitive; crc32=0x%08x on the synthetic pack"
+        % fp
+    )
 
     # (3) SCHEMA CHECK accepts a valid pack and catches every way a wrong one still loads.
     for kind in SPECS:
@@ -503,11 +543,17 @@ def run_smoke():
     bad_lab[0] = 10
     assert check_schema("nmnist", sf, bad_lab), "out-of-range label must be caught"
     n_shd, l_shd = _synthetic("shd")
-    assert check_schema("shd", n_shd.reshape(6, 100, 350, 2), l_shd), "wrong shd channel axis must be caught"
+    assert check_schema("shd", n_shd.reshape(6, 100, 350, 2), l_shd), (
+        "wrong shd channel axis must be caught"
+    )
     # The empty pack: every check above is guarded on non-emptiness, so before 2026-07-30 this one
     # returned [] and `--n 0` wrote a 0-sample pack over models/ and exited 0. See check_schema.
-    assert check_schema("nmnist", sf[:0], sl[:0]), "an EMPTY pack must be caught, not pass vacuously"
-    assert describe(sf[:0], sl[:0])["min"] is None, "describe must survive an empty pack, reporting None"
+    assert check_schema("nmnist", sf[:0], sl[:0]), (
+        "an EMPTY pack must be caught, not pass vacuously"
+    )
+    assert describe(sf[:0], sl[:0])["min"] is None, (
+        "describe must survive an empty pack, reporting None"
+    )
     print("  schema: 9 negative cases all caught (incl. the empty pack), both kinds accepted")
 
     # (4) ROUND-TRIP + COMPARISON on a real .npz in a temp dir: identical packs compare byte-exact,
@@ -520,7 +566,9 @@ def run_smoke():
         assert np.array_equal(rt_frames, sf) and rt_frames.dtype == np.float32, "npz round-trip"
         assert np.array_equal(rt_labels, sl) and rt_labels.dtype == np.int64, "npz round-trip"
         assert fingerprint(rt_frames, rt_labels) == fingerprint(sf, sl), "fingerprint survives npz"
-        assert compare_to_existing("nmnist", sf, sl, p, quiet=True), "identical packs must compare byte-exact"
+        assert compare_to_existing("nmnist", sf, sl, p, quiet=True), (
+            "identical packs must compare byte-exact"
+        )
         perturbed = sf.copy()
         perturbed[2, 3, 1, 5, 5] += 2.0
         assert not compare_to_existing("nmnist", perturbed, sl, p, quiet=True), (
@@ -530,7 +578,9 @@ def run_smoke():
         for fn in os.listdir(tmp):
             os.remove(os.path.join(tmp, fn))
         os.rmdir(tmp)
-    print("  round-trip: npz preserves dtype + fingerprint; comparison separates identical from perturbed")
+    print(
+        "  round-trip: npz preserves dtype + fingerprint; comparison separates identical from perturbed"
+    )
 
     # (5) The recorded fingerprints, checked against the real artifacts IF they are on disk. Reported
     #     either way and never silently skipped: on a fresh clone models/ is empty by design.
@@ -538,39 +588,78 @@ def run_smoke():
     for kind, spec in SPECS.items():
         path = os.path.join(_ROOT, "models", spec["filename"])
         if not os.path.exists(path):
-            print("  recorded crc32 %s: NOT CHECKED (no %s on disk -- expected on a fresh clone)" % (kind, path))
+            print(
+                "  recorded crc32 %s: NOT CHECKED (no %s on disk -- expected on a fresh clone)"
+                % (kind, path)
+            )
             continue
         with np.load(path) as d:
             disk_frames, disk_labels = d["frames"], d["labels"]
         got = fingerprint(disk_frames, disk_labels)
-        assert got == spec["crc32"], "%s on disk is 0x%08x, recorded 0x%08x -- the artifact changed" % (
-            kind,
-            got,
-            spec["crc32"],
+        assert got == spec["crc32"], (
+            "%s on disk is 0x%08x, recorded 0x%08x -- the artifact changed"
+            % (
+                kind,
+                got,
+                spec["crc32"],
+            )
         )
-        assert check_schema(kind, disk_frames, disk_labels) == [], "%s on disk violates the schema" % kind
+        assert check_schema(kind, disk_frames, disk_labels) == [], (
+            "%s on disk violates the schema" % kind
+        )
         checked.append(kind)
-        print("  recorded crc32 %s: MATCHES the pack on disk (0x%08x) and it satisfies the schema" % (kind, got))
-    print("  fingerprint constants verified against %d/%d packs present on this machine" % (len(checked), len(SPECS)))
+        print(
+            "  recorded crc32 %s: MATCHES the pack on disk (0x%08x) and it satisfies the schema"
+            % (kind, got)
+        )
+    print(
+        "  fingerprint constants verified against %d/%d packs present on this machine"
+        % (len(checked), len(SPECS))
+    )
 
-    print("SMOKE OK: selection is pinned to the rule that reproduces both committed packs; the schema")
-    print("check catches 9 ways a wrong pack still loads; the fingerprint gate separates a byte-exact")
+    print(
+        "SMOKE OK: selection is pinned to the rule that reproduces both committed packs; the schema"
+    )
+    print(
+        "check catches 9 ways a wrong pack still loads; the fingerprint gate separates a byte-exact"
+    )
     print("rebuild from a re-binned one. Nothing here touched tonic, a dataset, or the network.")
 
 
 def build_parser():
     p = argparse.ArgumentParser(
         description="Produce models/nmnist_pack.npz and models/shd_pack.npz (the perception packs "
-        "cortex/brain.py, cortex/percept_surprise.py and reasoning/reservoir_eprop.py read)."
+        "engine/brain.py, cortex/percept_surprise.py and reasoning/reservoir_eprop.py read)."
     )
-    p.add_argument("--smoke", action="store_true", help="deterministic self-check (no tonic/dataset/network)")
-    p.add_argument("--which", choices=["both", "nmnist", "shd"], default="both", help="which pack(s) to build")
-    p.add_argument("--out", default=os.path.join(_ROOT, "models"), help="directory to write the pack(s) into")
-    p.add_argument("--data", default=os.path.join(_ROOT, "data"), help="dataset root (downloaded into if absent)")
-    p.add_argument("--compare-to", default=None, dest="compare_to", help="directory holding existing pack(s) to compare against")
-    p.add_argument("--n", type=int, default=None, help="samples per pack (default: the canonical 256)")
-    p.add_argument("--seed", type=int, default=None, help="selection seed (default: the canonical 0)")
-    p.add_argument("--dry-run", action="store_true", dest="dry_run", help="build and compare, write nothing")
+    p.add_argument(
+        "--smoke", action="store_true", help="deterministic self-check (no tonic/dataset/network)"
+    )
+    p.add_argument(
+        "--which", choices=["both", "nmnist", "shd"], default="both", help="which pack(s) to build"
+    )
+    p.add_argument(
+        "--out", default=os.path.join(_ROOT, "models"), help="directory to write the pack(s) into"
+    )
+    p.add_argument(
+        "--data",
+        default=os.path.join(_ROOT, "data"),
+        help="dataset root (downloaded into if absent)",
+    )
+    p.add_argument(
+        "--compare-to",
+        default=None,
+        dest="compare_to",
+        help="directory holding existing pack(s) to compare against",
+    )
+    p.add_argument(
+        "--n", type=int, default=None, help="samples per pack (default: the canonical 256)"
+    )
+    p.add_argument(
+        "--seed", type=int, default=None, help="selection seed (default: the canonical 0)"
+    )
+    p.add_argument(
+        "--dry-run", action="store_true", dest="dry_run", help="build and compare, write nothing"
+    )
     p.add_argument(
         "--allow-drift",
         action="store_true",

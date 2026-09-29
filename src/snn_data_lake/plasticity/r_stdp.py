@@ -280,7 +280,7 @@ def declare_ports(manifest):
     route is the CBGTC dopamine broadcast the connectome declares. The port's meaningful
     delivery window is DERIVED, not picked: tau_e (the module's own distal-reward bridge,
     1000 steps) is how long a delayed burst still finds its eligibility."""
-    from snn_data_lake.substrate.wiring_manifest import Port
+    from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(
         "r_stdp",
@@ -305,8 +305,8 @@ DA_EDGE = ("dopamine_nuclei", "da_out", "r_stdp", "dopamine_in")
 
 def _da_consumer_factory():
     """Fresh ring + JoinConsumer over the declared `dopamine_in` port, one per replay arm."""
-    from snn_data_lake.substrate.signal_ring import JoinConsumer, SignalRing
-    from snn_data_lake.substrate.wiring_manifest import WiringManifest
+    from snn_data_lake.engine.signal_ring import JoinConsumer, SignalRing
+    from snn_data_lake.engine.wiring_manifest import WiringManifest
 
     m = WiringManifest()
     declare_ports(m)

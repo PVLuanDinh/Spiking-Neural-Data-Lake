@@ -96,7 +96,7 @@ def reachable_regions() -> set[str]:
 def charged_regions() -> tuple[set[str], int]:
     """Conjunct (b): regions with >=1 manifest edge carrying a MEASURED attribution record.
     -> (regions, n_evidence_records)."""
-    from snn_data_lake.substrate.wiring_manifest import ARTIFACT, WiringManifest
+    from snn_data_lake.engine.wiring_manifest import ARTIFACT, WiringManifest
 
     if not EVIDENCE.exists():
         return set(), 0
@@ -169,7 +169,7 @@ def self_check() -> int:
         return 1
     # constructed green: a synthetic evidence record + manifest edge must charge its region
     # (exercised through the same code path with constructed inputs)
-    from snn_data_lake.substrate.wiring_manifest import Port, WiringManifest
+    from snn_data_lake.engine.wiring_manifest import Port, WiringManifest
 
     m = WiringManifest()
     m.declare_port(

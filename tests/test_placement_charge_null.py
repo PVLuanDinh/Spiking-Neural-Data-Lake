@@ -51,7 +51,7 @@ def _run(arm):
     touched); returns the flattened state()+telemetry view, the engine's unit count and its
     layer census."""
     import snn_data_lake.growth.placement as placement
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
     from snn_data_lake.infra import brain_telemetry
 
     real_place = placement.place

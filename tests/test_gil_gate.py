@@ -54,7 +54,7 @@ def test_construction_red_under_gil():
     """FR-006 verbatim: brain CONSTRUCTION under a GIL-enabled interpreter fails, before any
     state is touched. The escape is set on purpose -- it must not help construction."""
     proc = _run(
-        "from snn_data_lake.cortex.brain import make_brain;make_brain(seed=0, persist=False)",
+        "from snn_data_lake.engine.brain import make_brain;make_brain(seed=0, persist=False)",
         gil=1,
         allow_escape=True,
     )

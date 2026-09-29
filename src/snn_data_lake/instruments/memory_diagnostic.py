@@ -256,7 +256,7 @@ def record_stream(seed, ticks=2400, *, arm_feed=None):
     """Record delivery, acquisition, sleep, and refit events from an isolated brain."""
     if arm_feed not in (None, "f64"):
         raise ValueError("REFUSED: unsupported in-brain feed")
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
     from snn_data_lake.substrate.home import throwaway_home
 
     torch.set_num_threads(1)

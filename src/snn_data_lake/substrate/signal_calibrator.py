@@ -6,7 +6,7 @@ P2 QUANTILE (substrate/streaming_quantile.P2Quantile -- 5 markers, O(1) memory, 
 observations), persist the full estimator state IN THE ONE LAKE so it RESUMES across restarts (the
 always-on daemon restarts on every new build), and expose the distilled {p, value, n}.
 
-Primary consumer (adopt-better): `cortex/brain.py::Brain._tick_ensemble` reads the distilled quantile and
+Primary consumer (adopt-better): `engine/brain.py::Brain._tick_ensemble` reads the distilled quantile and
 CONSUMES IT LIVE into the LC salience gate every tick (`self._lc.salience_th = float(r["value"])`, when
 the quantile is valid), so the threshold is baseline-relative at runtime rather than a constant kept
 fixed. *(Named `_w8_tick` here until 2026-08-05. `_w8_tick` is the CALLER; the assignment lives one frame
@@ -25,13 +25,13 @@ than inherited: recall_trace, time_cells, valence, gf_library, active_library, r
 nightly_skills. Those seven rode `save_state`, so fixing that ONE function moved all of them and no
 caller changed; this module wrote its own `json.dump`, which is exactly why it did not come along.
 Measured after this change: the only remaining `state_path(...)` WRITER under `src/` is
-`cortex/brain.py`'s `language_acq.npz`, a numpy binary the JSON facade cannot carry and which
+`engine/brain.py`'s `language_acq.npz`, a numpy binary the JSON facade cannot carry and which
 `home.save_state` already names as open debt -- plus `sensorimotor/signal_loop.py`'s `unknowns.jsonl`,
 which is not JSON-facade state and is NOT dispositioned here. Every other `state_path` hit in `src/`
 is a self-check asserting the sidecar is absent.) What it was: `save_all(path, calibrators)` wrote
 `json.dump` to
 `<home>/signal_calib.json`, a SIDECAR beside `brain_lake.bin`, holding LEARNED state that
-`cortex/brain.py` restored at construction and CONSUMED on the live wake tick. P4b names that in its own
+`engine/brain.py` restored at construction and CONSUMED on the live wake tick. P4b names that in its own
 words -- "what the brain learns goes IN the lake under a record tag -- not a sidecar file, not a JSON
 blob" -- and it carried the same two costs `data/selfbuild_state.json` did: a second file, and a store
 `consolidate()` could not see.
@@ -48,7 +48,7 @@ for the next person: every one of the three consumer sites sits inside a bare `e
 `brain.py`'s load handler additionally NULLS both calibrators. A half-applied signature change DOES NOT
 ERROR -- it silently stops persisting, `n` resets to 0 every boot, the live `r["n"] >= 50` guard then
 holds `self._lc.salience_th` at the frozen module default, and every dashboard reads healthy. The five
-files move together or not at all: this one, `cortex/brain.py` (load at construction, consume on the
+files move together or not at all: this one, `engine/brain.py` (load at construction, consume on the
 wake tick, save in `close()`), `infra/brain_native_selfbuild.py`
 (`ThresholdRecalibrationSource`), `cortex/metacognitive_monitor.py` (constructor only, no persistence)
 and `tests/test_signal_calibrator_lake.py`, which did not exist before this change and is what makes the

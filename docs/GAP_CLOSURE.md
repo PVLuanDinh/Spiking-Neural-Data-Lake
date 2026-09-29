@@ -94,7 +94,7 @@ depends on them.
 
 ### C-A. The blocking premise for GAP 4, 5 and 6 is false, and every prior verdict on it is a harness artifact
 
-`src/snn_data_lake/brainstem/autonomous_loop.py:996` states the premise verbatim: `_gate_primary`
+`src/snn_data_lake/engine/autonomous_loop.py:996` states the premise verbatim: `_gate_primary`
 "resets that frame's drive to 1.0 whenever the margin clears, **which live it always does**". That
 sentence is load-bearing for the EXEMPT verdict and it is false -- the margin clears on at most
 200 of 1400 sampled ticks in any configuration, and non-clearing runs of 52 to 199 ticks occur
@@ -149,7 +149,7 @@ the front of the queue.
 | non-command utterances that issue an arm command | **16 of 16** |
 | gripper phrasings routed correctly | **10 of 15** |
 
-**(1) A comma decides whether the arm stops.** `cortex/live_brain.py:405` returns a reassuring
+**(1) A comma decides whether the arm stops.** `engine/live_brain.py:405` returns a reassuring
 sentence for any utterance whose word set intersects `{safe, safety, danger, dangerous, hurt,
 emergency}`, *before* the firewall runs at `:413`. The word set at `:354` is built with
 `t.replace("?"," ").replace("!"," ").replace("."," ").split()` -- commas are **not** stripped.
@@ -286,7 +286,7 @@ the falsifier below says so explicitly rather than scoring them equally.
 
 ### S0.4 -- the literal E-STOP check, at the top of `converse()`. Chat branch stays put.
 
-**File:** `src/snn_data_lake/cortex/live_brain.py`, before the word set is built at `:354`.
+**File:** `src/snn_data_lake/engine/live_brain.py`, before the word set is built at `:354`.
 A backend-independent literal check (`e-stop`, `emergency stop`, `stop now`, `stop the arm`,
 `halt`, `abort`, `freeze`) that calls `self.arm.arm.apply("EMERGENCY_STOP")` and returns.
 
@@ -440,7 +440,7 @@ except Exception:
     pass
 ```
 
-Confirmed verbatim at `cortex/brain.py:1622-1627`.
+Confirmed verbatim at `engine/brain.py:1622-1627`.
 
 **Correction accepted from review, and it matters:** this `try` is currently *unreachable-failing*.
 `:1621` already guards `self._reentrant is not None`, and `broadcast_to` is total (returns `{}` for
@@ -449,7 +449,7 @@ term pinned silently to zero" is wrong -- it is a hazard that GAP 1 would **crea
 the return shape. Narrowing it is still correct and still cheap, but it is defensive work, not a
 live defect, and the commit message must say so.
 
-- **Files:** `src/snn_data_lake/cortex/brain.py:1622-1627`.
+- **Files:** `src/snn_data_lake/engine/brain.py:1622-1627`.
 - **Residual accepted from review:** on a future raise, `self._reroute_bias` retains the previous
   tick's value and telemetry reports it as current. Assign `0.0` before the read, or set both in
   one statement.
@@ -816,7 +816,7 @@ test hook, which returns to step 4.
 | 1 | Exposing `inject_disturbance` over HTTP | Contradicts a written standing decision (`so101_arm.py:201-208`, TEST-ONLY) |
 | 2 | Sourcing `distance` from the scene | `brain.py:1192` is pinned to `SAFE_DISTANCE` on purpose and is the **only** E-STOP channel (`autonomous_loop.py:1260-1261`). Without it **no cockpit perturbation can ever trip the reflex**, so "the reflex preempts" holds only in the weak sense that the latch blocks commands |
 | 3 | The latch-refusal helper | Changes a helper three self-checks use |
-| 4 | **The HTTP-thread / `mjData` race** | `substrate/learn_daemon.py` documents in-code that chat and rendering are drained on the tick thread because "there is no lock anywhere in the brain stack" and rendering from the HTTP thread "does not raise, it returns garbage". `inject_disturbance` writes `data.qpos` and calls `mj_forward`; `mjData` is not thread-safe and `mj_forward` concurrent with `mj_step` on the same `mjData` is undefined behaviour, not merely wrong numbers. **Any route must enqueue from the HTTP thread and execute inside the tick loop, before `b.tick()` at `substrate/learn_daemon.py`** -- a thread constraint, not a sequencing preference |
+| 4 | **The HTTP-thread / `mjData` race** | `engine/learn_daemon.py` documents in-code that chat and rendering are drained on the tick thread because "there is no lock anywhere in the brain stack" and rendering from the HTTP thread "does not raise, it returns garbage". `inject_disturbance` writes `data.qpos` and calls `mj_forward`; `mjData` is not thread-safe and `mj_forward` concurrent with `mj_step` on the same `mjData` is undefined behaviour, not merely wrong numbers. **Any route must enqueue from the HTTP thread and execute inside the tick loop, before `b.tick()` at `engine/learn_daemon.py`** -- a thread constraint, not a sequencing preference |
 | 5 | **`inject_disturbance` beats the E-STOP gate** | **[measured]** on a `So101Arm` with `stopped=True`: a gated `apply(JOINT_SHOULDER_PAN_ROTATE(+6deg))` moves the arm **0.000000 deg**; `inject_disturbance("shoulder_pan", 20.0)` moves it **20.000000 deg** (`deviation = 0.349066 rad`). The test hook is a **stronger actuator than the gated command path**, and it is the only code path in the repo that moves the arm while E-STOPPED. Exposing it is not "contradicting a standing decision", it is **adding the only E-STOP-bypassing actuator in the repo** |
 
 - **Falsifier for 7c, if it proceeds:** after the consumer, a derived-magnitude shove must change
@@ -828,7 +828,7 @@ test hook, which returns to step 4.
 - **Falsifier for item 4:** 10,000 HTTP perturbation posts against a live daemon under MuJoCo
   validation; zero `mjData` corruption and zero garbage render frames.
 - **Files, if it proceeds:** `infra/cockpit.py`, `learn_daemon.py`, `brainstem/so101_arm.py`,
-  `cortex/brain.py`, `cortex/live_brain.py`, `infra/brain_telemetry.py`,
+  `engine/brain.py`, `engine/live_brain.py`, `infra/brain_telemetry.py`,
   `brainstem/arm_config.py`, `sensorimotor/nl_interface.py`, `tests/test_so101_arm.py`.
 
 ---

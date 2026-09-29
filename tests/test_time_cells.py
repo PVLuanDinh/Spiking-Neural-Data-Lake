@@ -440,7 +440,7 @@ def _live_time_cells(tmp_path, monkeypatch, ticks=300, **env):
             monkeypatch.delenv(key, raising=False)
         else:
             monkeypatch.setenv(key, val)
-    from snn_data_lake.cortex.brain import make_brain
+    from snn_data_lake.engine.brain import make_brain
 
     brain = make_brain(seed=0, persist=True)
     try:

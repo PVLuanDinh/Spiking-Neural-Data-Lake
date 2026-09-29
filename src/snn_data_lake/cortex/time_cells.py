@@ -506,7 +506,7 @@ class TimeCellClock:
         later -- cache- and load-dependent, so a quarter to four tenths of a second is the honest
         statement -- against the ~0.1 ms this used to pay for a 2 KB file read.
         `home._state_index` pays it ONCE per BinLog instance, so the growth path here -- which calls
-        `save()` on every tick the clock earns a cell (`cortex/brain.py`, in the wake tick's
+        `save()` on every tick the clock earns a cell (`engine/brain.py`, in the wake tick's
         `grow_if_earned` branch) -- pays it once, not per call.
 
         Overwrite IS the prune policy for the clock's own state, so FR-014 is satisfied without a

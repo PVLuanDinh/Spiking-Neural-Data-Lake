@@ -607,7 +607,7 @@ def test_the_fr010_check_fires_on_a_constructed_violation():
         "src/snn_data_lake/plasticity/eprop_kernel.py",
         "tests/test_gradient_claim_measure.py",
         "specs/020-eprop-cosine-scope/spec.md",
-        "src/snn_data_lake/brainstem/autonomous_loop.py",  # brainstem/, but NOT in the envelope
+        "src/snn_data_lake/engine/autonomous_loop.py",  # brainstem/, but NOT in the envelope
     ]
     assert gate.fr010_findings(clean) == [], gate.fr010_findings(clean)
 
