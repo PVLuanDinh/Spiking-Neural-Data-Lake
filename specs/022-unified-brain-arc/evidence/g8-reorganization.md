@@ -2669,3 +2669,32 @@ one three-lens panel; one battery on the stacked head).**
   `hippocampus/proximity_replay._child_env`, P2); an independent expected set
   for the checkpoint-provider test; the P8 gaps and spec/tasks mirroring of the
   2026-09-27 rows; console-script metadata (needs `hatchling`).
+
+**Panel and fold (2026-09-29).** Three read-only Sonnet lenses read the frozen
+stacked head `c23c35d3`; the orchestrator reproduced each finding it folded.
+No BLOCKER. Corrections to the audit and pre-registration above, kept rather
+than rewritten:
+
+- The structural incumbent is LIVE: `plasticity/structural_rewiring.py` was
+  refused on 2026-08-26 and at T054-ii, then wired at T058 (2026-09-01) and
+  runs default-on (`Brain._sleep_tick`, `_sleep_caps["structural"]`); the
+  audit had read only its refusals. The plan now names it and the other sleep
+  incumbents (`_sleep_caps` replay and benna_fusi, `attractor.sleep`) as the
+  P2 baselines, with the structural OFF arm switching its cap off.
+- The census's `gates` package arm still hid a gate-named module born after
+  G8 elsewhere; the fold adds a fail-closed no-label arm and a test that
+  `--assert` itself reds at its unclaimed-growth check (it fails on the
+  pre-fold predicate). The census remains NAME-keyed: `capability_bar`,
+  `conclusion_protocol` and `immortal_retention` (asserting battery gates)
+  and `perf_baseline`, `selfcheck_cache` live in `gates` without a
+  gate-shaped name, are named by no policy, and stay outside it -- a disclosed
+  carried opening, not this arc.
+- The plan's six "owner clarification 2026-09-27" tags labelled Astra's
+  wording; they now read "Astra, owner-saved", and the plan's scope sentence
+  matches P4d.
+- "Six of seven" relaxations: the seventh is the census (F-A). "No external
+  reference is broken" means no EXECUTABLE reference; the harness fixture
+  paths were test data.
+- Declared gate-output delta: `policy_manifest --assert` prints a reworded
+  disposition, so G8-2's first parent census differs from M5's post census by
+  that output alone.

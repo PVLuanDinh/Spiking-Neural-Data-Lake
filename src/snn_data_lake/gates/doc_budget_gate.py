@@ -129,8 +129,9 @@ BUDGETS = {
     # coherence: the stop rule's incumbent named (P2), the solved predicate's P1 form, "certified" dropped, one
     # tuning rule per readout JOB, the engine marked a directive the G rows build, P4d in the enforcement table's
     # review cell, the sleep field moved to the saved record, and the engine-works red's enforcement after G9.
-    # RAISED 14178 -> 14276 on 2026-09-29 by the MEASURED delta (14,168 -> 14,266, +98), owner-approved ("a small
-    # doc-budget raise"): the 2026-09-29 audit's P4d attribution fix -- the owner's two 2026-09-27 sentences quoted
+    # RAISED 14178 -> 14276 on 2026-09-29 by the MEASURED delta (14,168 -> 14,266, +98), owner-approved: the owner
+    # chose the fix-forward option whose stated scope included a small doc-budget raise (the words are the
+    # session's option text, not the owner's). The raise pays for the 2026-09-29 audit's P4d attribution fix -- the owner's two 2026-09-27 sentences quoted
     # verbatim, the operational reading labelled a session call with its evidence, the (P2)/lake-record sleep
     # bullet 73b1f992 had dropped restored, and "sleep-plasticity" added to Not claimed. The 10 words of
     # pre-raise headroom are carried, not spent.
