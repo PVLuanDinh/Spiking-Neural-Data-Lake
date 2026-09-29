@@ -52,8 +52,8 @@ from snn_data_lake.neuromodulation.cortisol import Cortisol
 from snn_data_lake.neuromodulation.developmental_envelope import DevelopmentalEnvelope
 from snn_data_lake.neuromodulation.empowerment import Empowerment
 from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
-from snn_data_lake.neuromodulation.naca import NACABroadcast
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
+from snn_data_lake.plasticity.naca import NACABroadcast
 from snn_data_lake.sensorimotor.multimodal_encoder import encode_multimodal
 from snn_data_lake.substrate.home import _T_COALITION, _log
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
@@ -2295,9 +2295,9 @@ class AutonomousArm:
             if self._dopa_on:  # DOPAMINERGIC RPE + opponent anti-reward (representation-only)
                 try:
                     if self._valence is None:  # lazy build of the three spiking source nuclei
-                        from snn_data_lake.basal_ganglia.valence_stdp import ValenceLearner
                         from snn_data_lake.epithalamus.habenula import LateralHabenula
                         from snn_data_lake.midbrain.dopamine_nuclei import DopamineNuclei
+                        from snn_data_lake.plasticity.valence_stdp import ValenceLearner
 
                         self._dopa = DopamineNuclei(seed=self._seed)
                         self._lhb = LateralHabenula(seed=self._seed)

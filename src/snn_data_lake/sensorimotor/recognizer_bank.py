@@ -3,11 +3,11 @@ RecognizerBank -- a heterogeneous SPIKING recognizer ENSEMBLE behind one contrac
 
 The lake has SEVEN self-checking-but-dark spiking recognizers, each a different mechanism
 that decides a label for a feature vector on its OWN terms and then goes dark:
-  - cortex/snn_classifier.py         delta-rule spiking readout (MAGNITUDE / class current)
+  - readout/snn_classifier.py         delta-rule spiking readout (MAGNITUDE / class current)
   - sensorimotor/learned_matcher.py        supervised spiking classifier + Van Rossum NOVELTY gate
-  - cortex/tempotron.py              Gutig-Sompolinsky spike-TIMING neuron (one-vs-rest)
+  - readout/tempotron.py              Gutig-Sompolinsky spike-TIMING neuron (one-vs-rest)
   - sensorimotor/lca_sparse_coding.py      LCA sparse coding by lateral INHIBITION (dominant atom)
-  - cortex/snn_moe_classifier.py  firing-rate ROUTED mixture-of-experts (top-k sparse)
+  - readout/snn_moe_classifier.py  firing-rate ROUTED mixture-of-experts (top-k sparse)
   - hippocampus/spiking_storage_prototype.py  FACTORED k-WTA associative-memory recall
   - cortex/paradigm_b_matcher.py     LIF COINCIDENCE detector (spike-stream channel overlap)
 
@@ -126,7 +126,7 @@ class TempotronRecognizer:
     gatekeeper = True  # trained SILENT for non-members -> OOD signal
 
     def __init__(self, library, per_class=6, epochs=8, seed=0):
-        from snn_data_lake.cortex import tempotron as TP
+        from snn_data_lake.readout import tempotron as TP
 
         self._TP = TP
         self.labels = list(library)
@@ -184,7 +184,7 @@ class MoeRecognizer:
     name, module, source, uses = "moe", "snn_moe_classifier", "reason", "stdlib"
 
     def __init__(self, library, seed=0, exemplars=12, train_noise=0.2):
-        from snn_data_lake.cortex import snn_moe_classifier as M
+        from snn_data_lake.readout import snn_moe_classifier as M
         from snn_data_lake.sensorimotor import learned_matcher as L
 
         self._M, self._L = M, L

@@ -744,26 +744,26 @@ def rule_census_check(artifact, rules):
 #: silently cost a disposition and loosened the ratchet).
 _CENSUS_ADJUDICATED = (
     (
-        "hippocampus/online_readout.py",
+        "readout/online_readout.py",
         "OnlineReadout.learn",
         "expressed -- L1c (2026-09-06): a single-sample output-layer delta / error-sign step on beta; "
         "lr = mu / (||s||^2 + 1); no hidden error, no transpose (the module self-check holds the reds)",
     ),
     (
-        "basal_ganglia/r_stdp.py",
+        "plasticity/r_stdp.py",
         "reward",
         "expressible -- PROVEN: T050 equivalence via the exported check; T051b-iv deposit through the kernel",
     ),
     ("cortex/learned_evc.py", None, "expressible -- T050 census (value/cost forms)"),
     ("hypothalamus/homeostatic_drives.py", None, "expressible -- T050 census (drive_reduction)"),
     (
-        "basal_ganglia/valence_stdp.py",
+        "plasticity/valence_stdp.py",
         None,
         "needs-pre-collapse -- T050 census (sign-conditional dispatch)",
     ),
     ("amygdala/fear_conditioning.py", None, "needs-pre-collapse -- T050 census"),
     ("amygdala/affective_appraisal.py", None, "needs-pre-collapse -- T050 census"),
-    ("neuromodulation/naca.py", None, "needs-pre-collapse -- T050 census"),
+    ("plasticity/naca.py", None, "needs-pre-collapse -- T050 census"),
     (
         "cerebellum/spiking_jepa.py",
         None,
@@ -1505,13 +1505,13 @@ def main():
     #     question), theta (BCM state). The multiplicative-to-additive bridge:
     #     g' = g*f becomes dw = g*(f-1) with (f-1) pre-collapsed from the
     #     recorded production value.
-    from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
     from snn_data_lake.plasticity.homeostatic_plasticity_stack import (
         HomeostaticPlasticityStack,
         _drive_code,
         _rstdp_update_fn,
     )
     from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack
+    from snn_data_lake.plasticity.r_stdp import RSTDPNeuron
 
     _alg_g = EligibilityAlgebra(term_budget=1)
     _alg_g.declare_factor("gain", "the composed gain substrate (seeds 1.0 per pre_gain call)")
@@ -1861,7 +1861,7 @@ def main():
         _alg_c.author("claimed", [(-0.1, ("w",))]),
         reads={"w"},
         writes={"w"},
-        claim_key="basal_ganglia/r_stdp.py::RSTDPNeuron.reward",
+        claim_key="plasticity/r_stdp.py::RSTDPNeuron.reward",
     )
     assert check_claim(_spec_ok, _declared_keys) == [], "a real declared claim must resolve green"
     _spec_ph = RuleSpec(
@@ -1869,7 +1869,7 @@ def main():
         _alg_c.author("phantom", [(-0.1, ("w",))]),
         reads={"w"},
         writes={"w"},
-        claim_key="basal_ganglia/r_stdp.py::EligibilityAlgebra.evaluate",
+        claim_key="plasticity/r_stdp.py::EligibilityAlgebra.evaluate",
     )
     _phf = check_claim(_spec_ph, _declared_keys)
     assert any("phantom-qualname" in x for x in _phf), (

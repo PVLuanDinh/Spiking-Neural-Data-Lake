@@ -402,7 +402,7 @@ GROWER_REGIONS = {
 # distinct-from: hippocampus/hippocampal_memory.py -- a replay buffer over the durable lake;
 #   nothing here buffers replays. Site read; unrelated job.
 # distinct-from: insula/interoceptive_integration.py -- a salience accessor; unrelated. Read.
-# distinct-from: basal_ganglia/r_stdp.py -- worker fork/join barriers; unrelated. Read.
+# distinct-from: plasticity/r_stdp.py -- worker fork/join barriers; unrelated. Read.
 # distinct-from: cortex/access_consciousness.py -- a workspace submit site; unrelated. Read.
 def place_grown(grower, n_units, seed=0):
     """Placement for `grower`'s newly grown units -- THE GROWTH CALL SITE, enforcing the 007

@@ -574,10 +574,10 @@ def _skip_carrier(pool, carrier):
 
 # The fault below writes a weight only so R-b5 (iii) can be seen to fail (sites read; none is a
 # planted fault or a freeze red):
-# distinct-from: cortex/predictive_coding.py -- learn_step is a real local weight update
+# distinct-from: readout/predictive_coding.py -- learn_step is a real local weight update
 # distinct-from: growth/h01_ingest.py -- decode_shard counts a shard's joins in one pass
 # distinct-from: cortex/vsa_reasoning.py -- coincidence_many counts spike coincidences
-# distinct-from: neuromodulation/naca.py -- its reversal check is a real R-STDP experiment
+# distinct-from: plasticity/naca.py -- its reversal check is a real R-STDP experiment
 # distinct-from: reasoning/spike_chat_lake.py -- _kb_reply retrieves stored triples
 def _write_after_boundary(pool):
     """R-b5 (iii)'s red: one weight moved by one ulp right after the boundary fingerprint."""

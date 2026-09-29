@@ -150,7 +150,7 @@ cases — (a) it is a fixed point on a **normalized** output (e.g. a threshold o
 [-1,1] is dimensionless, like `p ≥ 0.3`); (b) a running-baseline replacement is **not reproducible from
 the persisted policy** (e.g. a durable-reload contract persists weights but not the running baseline);
 (c) the constant is **inert** (default-off, zero live callers) so a learned form would never charge.
-Reuse anchors: `basal_ganglia/r_stdp.py` (`w += lr*d*e`), `substrate/signal_calibrator.py`, the
+Reuse anchors: `plasticity/r_stdp.py` (`w += lr*d*e`), `substrate/signal_calibrator.py`, the
 `_*_base` running-EMA idiom, `cortex/brain.py::_drive_w`.
 
 **Fourth case: raw physical limits inside the safety envelope stay fixed, by design.**
@@ -966,7 +966,7 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
   with the gate before relying on any figure**; read as a blanket rule the clause would demand a
   gradient comparison from most rules that have no gradient to compare against (the majority are
   local, controls, or direct solves). The one `EXACT_GRADIENT` REFERENCE
-  (`cortex/eprop_kernel.py::bptt_grads`, the TORCH tier's independent gradient the others are
+  (`plasticity/eprop_kernel.py::bptt_grads`, the TORCH tier's independent gradient the others are
   compared *against*) owes no cosine of its own — but that exemption holds ONLY while the symbol
   RETURNS a gradient and never steps an optimizer;
   `tests/test_eprop_train_tier_unreachable.py::_trains_by_backprop` draws that line. **Scope
@@ -1050,7 +1050,7 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
     (specs/015): `dh` reads a separate feedback matrix `B` receiving the same increment as the
     forward read-out (Kolen-Pollack), so `B` TRACKS `W2` without ever reading it. Neither of the two
     resolutions the module had proposed was needed.
-  - `cortex/predictive_coding.py` — **ADJUDICATED 2026-08-14, owner: NOT a violation.** Its
+  - `readout/predictive_coding.py` — **ADJUDICATED 2026-08-14, owner: NOT a violation.** Its
     transpose feeds an ACTIVATION (inference); its weight update is a local Hebbian outer product —
     no transposed weight appears in the learning rule at all. **OPEN SCOPE, distinct and recorded:**
     the transpose IS exact weight symmetry on every wake tick; if this invariant is ever extended

@@ -9,7 +9,7 @@ So this is NOT a corpus-gradient-trained language model. Language is ACQUIRED ON
 own mechanisms:
 
   * PREDICTIVE CODING (perception): every context is encoded by the brain's spiking Rao-Ballard
-    PredictiveCodingNetwork (cortex/predictive_coding.py) -- it SETTLES the causes of the input by
+    PredictiveCodingNetwork (readout/predictive_coding.py) -- it SETTLES the causes of the input by
     minimizing prediction error (infer()), exactly the predictive-processing account of perception.
     We REUSE that network as a fixed spiking cortical encoder (its generative weights are the innate
     substrate; acquisition happens in the readout, like a cortical reservoir + a plastic readout).
@@ -37,7 +37,7 @@ import random
 
 import numpy as np
 
-from snn_data_lake.cortex.predictive_coding import PredictiveCodingNetwork
+from snn_data_lake.readout.predictive_coding import PredictiveCodingNetwork
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

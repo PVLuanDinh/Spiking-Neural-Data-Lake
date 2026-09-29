@@ -13,7 +13,7 @@ still useful, because a JSON weight file is smaller and faster to load than a to
 checkpoint and needs no Brian2 runtime; that is a serving-format argument, which is what
 this always was. Backlog M56.)
 
-The trainer targets the exact task the core ``snn_data_lake.cortex.snn_classifier``
+The trainer targets the exact task the core ``snn_data_lake.readout.snn_classifier``
 defines -- 8x8 binary shapes (GRID=8, N=64 inputs), C=4 classes, STEPS=20 rate-
 coded timesteps -- and uses a single ``nn.Linear(N, C)`` spiking readout whose
 weight has shape [C][N]. That maps 1:1 onto the core's ``W[c][i]`` matrix, so

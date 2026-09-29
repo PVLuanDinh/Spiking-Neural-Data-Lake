@@ -327,7 +327,7 @@ def _label_of(tabs: dict, base: str) -> str | None:
 
 # distinct-from: __init__.py -- its _LEGACY and _LEGACY_PKGS are the RUNNING package's alias maps,
 #   built at import; these read any TREE's tables by AST (the census never imports what it
-#   measures) for C2(d) and the diff's pairmap. Also read: cortex/interaction_learning.py
+#   measures) for C2(d) and the diff's pairmap. Also read: readout/interaction_learning.py
 #   (_g0c_legacy_modules returns the running _LEGACY), brain_atlas.py (region_of).
 def legacy_pairs(tabs: dict) -> dict:
     """(frozen label, module) -> current package, for each module whose package differs from its
@@ -1271,7 +1271,7 @@ def diff(pre: dict, post: dict, declared: dict, expected: dict | None = None) ->
 #   copytree, copies the repo minus an ignore-pattern list for a sandboxed edit; this copies exactly
 #   the git-visible tree (ls-files -co --exclude-standard) so a copy's census equals an export's.
 #   Also read: gates/selfcheck_cache.py (self_check), instruments/attention_schema.py (main),
-#   cortex/eprop_kernel.py (_TinyNet), cortex/language_readout_slda.py (predict) -- each its own
+#   plasticity/eprop_kernel.py (_TinyNet), readout/language_readout_slda.py (predict) -- each its own
 #   module's self-check or readout, none a gate census, diff or tree export.
 # ---- trees: a census-ready export, a self-check copy ------------------------------------------
 def _worktree_files(repo: Path) -> list:
@@ -1295,7 +1295,7 @@ def copy_tree(repo: Path, dest: Path, marker: bool) -> Path:
 
 # distinct-from: cortex/rose_language.py -- _dotted derives one module's own dotted path; this
 #   extracts a whole revision for a census. Also read: __init__.py (require_free_threaded),
-#   cortex/snn_moe_classifier.py (_new_rng), cortex/theta_gamma_code.py (_new_population),
+#   readout/snn_moe_classifier.py (_new_rng), cortex/theta_gamma_code.py (_new_population),
 #   brainstem/so101_arm.py (probe_contact, read only) -- none an export.
 def _archive(rev: str, dest: Path, repo: Path) -> None:
     p = _git(["-c", "core.autocrlf=false", "archive", "--format=tar", rev], repo)
@@ -1356,7 +1356,7 @@ def export(rev: str, dest: Path, repo: Path) -> Path:
 
 
 # ---- R-L1, lake continuity (C5, 2.7; from S1b) -------------------------------------------------
-# distinct-from: cortex/interaction_learning.py -- g0_campaign runs G0's seed/arm processes inside
+# distinct-from: readout/interaction_learning.py -- g0_campaign runs G0's seed/arm processes inside
 #   the running package; R-L1 runs 2.7's continuity arms over a TREE's code from outside it, and its
 #   probes REUSE that module's own _g0c_schedule, _g0c_walk and _conv_flat rather than restate them.
 #   Also read: cortex/brain.py (_flush_coverage), sensorimotor/arm_bridge.py (send_outcome), and --
@@ -1850,7 +1850,7 @@ def _move(mover: Path, tree: Path, spec: str) -> str:
 
 # distinct-from: __init__.py -- package_of answers the RUNNING package's live table; _plant_move
 #   reads a temporary COPY's tables to decide whether a red's module still needs its planted move.
-#   Also read: cortex/interaction_learning.py (_g0c_translate maps a stored class path on restore),
+#   Also read: readout/interaction_learning.py (_g0c_translate maps a stored class path on restore),
 #   gates/selfcheck_cache.py (tree derivation), cerebellum/spiking_jepa.py (a modulator), and --
 #   read only -- brainstem/so101_arm.py (droop): none plants a move or edits a copy.
 def _plant_move(mover: Path, tree: Path, base: str) -> str:

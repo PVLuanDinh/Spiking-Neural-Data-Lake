@@ -61,7 +61,7 @@ that path -- permitted because "That path is TRAIN-TIER OFFLINE, not a live lear
 ... no _LIVE_ROOT or _ENTRYPOINT in gates/dormancy_gate.py reaches it" (re-measured:
 dlb's whole import closure sits outside reachable()). BINDING CONSTRAINT: this module must
 never be wired to a live LEARNING consumer; if it ever is, that consumer takes the
-governed `lr_scale` three-factor parameter (basal_ganglia/valence_stdp.py,
+governed `lr_scale` three-factor parameter (plasticity/valence_stdp.py,
 neuromodulation/cortisol.py), never Adam -- and making this module reachable converts the
 permitted offline trainer into an e-prop violation that nothing would announce.
 
@@ -106,7 +106,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from snn_data_lake.basal_ganglia.brain_decision import BrainDecision
-from snn_data_lake.hippocampus.growable_readout import GrowableReadout, LaminarColumns
 from snn_data_lake.hippocampus.hippocampal_memory import HippocampalMemory
 from snn_data_lake.infra.device import enable, resolve_device
 from snn_data_lake.instruments.deep_stdp_latency import ConvLatencyStdp
@@ -116,6 +115,7 @@ from snn_data_lake.neuromodulation.spiking_curiosity import (
     SpikingCuriosityDrive,
     SpikingCurriculum,
 )
+from snn_data_lake.readout.growable_readout import GrowableReadout, LaminarColumns
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
@@ -490,7 +490,7 @@ def main():
     GROWABLE = _envi("NORD_GROWABLE", 0)
     # NORD_LAMINAR deleted 2026-08-12 at the laminar merge: LaminarReadout was RETIRED with
     # its file (the v3.59 failure mode -- partial L2/3 freeze under a drifting shared L4,
-    # 63.7% -- and an e-prop violator; record kept in hippocampus/growable_readout's merge
+    # 63.7% -- and an e-prop violator; record kept in readout/growable_readout's merge
     # note). LaminarColumns (the fix) stays available below under NORD_COLUMNS.
     COLUMNS = _envi(
         "NORD_COLUMNS", 0

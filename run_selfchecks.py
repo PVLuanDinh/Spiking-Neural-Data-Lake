@@ -80,19 +80,19 @@ CORE = [
     "reservoir.recurrent_pool",  # G1(b): R-b0 parity, R-b3, R-b4 pool noise, R-b5 and every red
     "instruments.pool_selection",  # G1(b) campaign: ordering, power, R-b7 reds, step order, exit codes
     "sensorimotor.lca_sparse_coding",
-    "cortex.predictive_coding",
+    "readout.predictive_coding",
     "sensorimotor.pc_cortex_serve",
     "cortex.is_snn_forward",
     "reservoir.neural_sampling",
-    "cortex.snn_classifier",
+    "readout.snn_classifier",
     # PROMOTED 2026-08-13 from reasoning/ -- and moved RESEARCH -> CORE with it. It had been
     # registered in RESEARCH, which runs out-of-process with root on PYTHONPATH; leaving a governed
     # cortex/ module there would register it without holding it to the CORE bar (in-process under
     # pytest), which is the bar the promotion exists to impose.
-    "cortex.snn_moe_classifier",
+    "readout.snn_moe_classifier",
     "sensorimotor.trained_brain",
     "sensorimotor.learned_matcher",
-    "cortex.tempotron",
+    "readout.tempotron",
     "cortex.paradigm_b_matcher",
     "cortex.paradigm_b_engine",
     "sensorimotor.gesture_recognition",
@@ -101,7 +101,7 @@ CORE = [
     "cortex.vsa_reasoning",
     "cortex.prefrontal_executive",
     "cortex.live_brain",
-    "cortex.interaction_learning",
+    "readout.interaction_learning",
     "sensorimotor.recognizer_bank",
     "growth.neuron_zoo",
     "cortex.access_consciousness",
@@ -115,7 +115,7 @@ CORE = [
     "cortex.metacognitive_monitor",
     # PROMOTED from reasoning/brain_adapters/ 2026-08-12 (#10 lane 4c): live-tick percept
     # readout; numpy-only, real cached N-MNIST pack, measured ~2-5s. CORE, not TORCH_GATED.
-    "cortex.laminar_local_readout",
+    "readout.laminar_local_readout",
     "cortex.wholistic_loop",
     "cortex.autotelic_goals",
     "cortex.quality_diversity",
@@ -146,7 +146,7 @@ CORE = [
     "sensorimotor.corpus_stream",  # PROMOTED 2026-08-11 (#10 family C2): real corpus + CMUdict ingestion; offline fallback deterministic
     "sensorimotor.world_kb_stream",  # PROMOTED 2026-08-11 (#10 family C2b): masked-slot fact completion vs per-relation baseline (0.4s)
     "cortex.language_self_build",  # PROMOTED 2026-08-11 (#10 family C6): real corpus + controls; NORD_EVAL_N bounds only the eval sample
-    "cortex.language_readout_slda",  # PROMOTED 2026-08-11 (#10 family C5): equal-budget n-gram bar (fair_compare's port) + full-train bar
+    "readout.language_readout_slda",  # PROMOTED 2026-08-11 (#10 family C5): equal-budget n-gram bar (fair_compare's port) + full-train bar
     "cortex.nightly_skills",  # PROMOTED 2026-08-11 (#10 family C9a, from the RESEARCH list): the ONE standing skills loop, sleep-tick entry
     # hippocampus â€” memory formation, spatial coding, replay
     "hippocampus.grid_cells",
@@ -180,8 +180,8 @@ CORE = [
     # basal ganglia â€” action selection, reward-modulated learning, decision, Go/NoGo gating
     "basal_ganglia.evidence_accumulation",
     "growth.learning_progress",  # T046a: |LP| four regimes + discharged consumer + goal-store reds
-    "basal_ganglia.r_stdp",
-    "basal_ganglia.valence_stdp",
+    "plasticity.r_stdp",
+    "plasticity.valence_stdp",
     "basal_ganglia.action_gating",
     "basal_ganglia.latent_q",
     "basal_ganglia.mlp_q",
@@ -264,7 +264,7 @@ CORE = [
     "neuromodulation.spiking_curiosity",
     "neuromodulation.generalizing_novelty",
     "neuromodulation.drive_reduction",
-    "neuromodulation.naca",
+    "plasticity.naca",
     "neuromodulation.empowerment",
     "neuromodulation.developmental_envelope",
     "neuromodulation.affect_integrator",  # C1 batch-2: spiking neuromod fusion -> coupled affect + self-organized emotions
@@ -473,14 +473,14 @@ RESEARCH = [
 # (numpy predictive-coding + local plasticity, gated here so it never pollutes the pure in-process test).
 TORCH_GATED = [
     "growth.ng_snn",
-    "hippocampus.online_readout",  # L1c: delta beats batch-only on a drifting chain, sign flip below, neutered bit-identical
-    "hippocampus.growable_readout",  # PROMOTED 2026-08-11 (#10 lane 4b): grow-preservation 1.9e-06, freeze retention delta (8.4s)
+    "readout.online_readout",  # L1c: delta beats batch-only on a drifting chain, sign flip below, neutered bit-identical
+    "readout.growable_readout",  # PROMOTED 2026-08-11 (#10 lane 4b): grow-preservation 1.9e-06, freeze retention delta (8.4s)
     "cortex.brain",
     "growth.neurogenesis_engine",
     "cortex.language_acquisition",
     "sensorimotor.eprop_nmnist",  # PROMOTED 2026-08-12 (PROMOTE lane 4/4): N-MNIST e-prop perception encoder; bare check ~6s CPU incl torch import
     "sensorimotor.eprop_shd",  # PROMOTED 2026-08-13 (specs/013 C3): SHD e-prop audio perception encoder, the auditory twin
-    "cortex.eprop_kernel",  # NEW 2026-08-13 (specs/013 C4): the ONE e-prop engine both encoders import; two demonstrated reds
+    "plasticity.eprop_kernel",  # NEW 2026-08-13 (specs/013 C4): the ONE e-prop engine both encoders import; two demonstrated reds
     "reasoning.schema_induction",
 ]
 # NENGO-GATED -- the Nengo bridge (infra.nengo_bridge) exposes the NEF/LIF/spiking substrate to

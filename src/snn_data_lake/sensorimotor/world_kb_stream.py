@@ -775,8 +775,8 @@ def _most_frequent_tail_baseline(pairs, vocab):
 def main():
     import numpy as np  # demo-only deps, kept out of the import path
 
-    from snn_data_lake.cortex.language_readout_slda import SLDA_RFF_np
     from snn_data_lake.cortex.language_self_build import _positional_code
+    from snn_data_lake.readout.language_readout_slda import SLDA_RFF_np
 
     all_triples, offline = load_kb()  # the FULL broad KB (bounded + extra facts)
     triples = _bundled()  # masked-slot demo: the BOUNDED-tail relations only

@@ -109,6 +109,7 @@ GOVERNED = (
     "infra",  # G8 M4: the package created by the infrastructure move
     "growth",  # G8 M5: the package created by the growth move
     "reservoir",  # G8 M6: the package created by the reservoir move
+    "readout",  # G8 M7: the package created by the readout move
 )
 
 # The tiers no gate covers. A governed -> ungoverned edge is what this module protects.

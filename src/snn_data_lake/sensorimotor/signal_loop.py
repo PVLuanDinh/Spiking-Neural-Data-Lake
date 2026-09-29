@@ -79,9 +79,6 @@ import random
 import sys
 import zlib
 
-from snn_data_lake.basal_ganglia.valence_stdp import (
-    ValenceLearner,  # #3 RPE dopamine (leaf: only imports spike_preprocessing)
-)
 from snn_data_lake.brainstem import arm_config
 from snn_data_lake.brainstem.reflex import (  # #2 instinctive fast-path (no cycle: reflex is leaf)
     Reflex,
@@ -89,6 +86,9 @@ from snn_data_lake.brainstem.reflex import (  # #2 instinctive fast-path (no cyc
 )
 from snn_data_lake.neuromodulation.cortisol import (
     Cortisol,  # slow tonic stress (leaf: only os/math)
+)
+from snn_data_lake.plasticity.valence_stdp import (
+    ValenceLearner,  # #3 RPE dopamine (leaf: only imports spike_preprocessing)
 )
 from snn_data_lake.sensorimotor.spike_preprocessing import N, encode_latency, van_rossum_distance
 

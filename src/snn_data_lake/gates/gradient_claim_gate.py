@@ -64,7 +64,7 @@ turns an invisible act into an attributable one. The reason also SURVIVES later 
 does not evaporate on the next legitimate write.
 
 Exercised once on purpose, 2026-08-17: 41/100 -> 48/102, because the CENSUS WIDENED -- the enumeration
-had lost `cortex/eprop_kernel.py` entirely, all 17 of its defs invisible -- not because the tree
+had lost `plasticity/eprop_kernel.py` entirely, all 17 of its defs invisible -- not because the tree
 regressed. That reason is in the file today.
 
 Run:
@@ -94,7 +94,7 @@ def _repo_root():
     """REUSES `substrate/self_mod_harness._repo_root` -- no fourth resolver is defined here.
 
     This file first hand-rolled a four-level counted climb copied from `doc_budget_gate.py:49-50`.
-    That was the wrong pattern to copy, and `cortex/laminar_local_readout._repo_root` already records
+    That was the wrong pattern to copy, and `readout/laminar_local_readout._repo_root` already records
     why: a counted depth "encodes the module's then-current nesting", so moving the file one level
     silently resolves to the WRONG directory -- there it made a gate go green while testing synthetic
     data instead of the real pack. A gate that stops seeing what it checks and still exits 0 is the
@@ -122,7 +122,7 @@ def _repo_root():
 BASELINE_NAME = os.path.join("tools", "gradient_claim_baseline.json")
 
 #: The declaration a rule module carries. Module-scope, `ast.literal_eval`-able, NEVER imported.
-#: Keyed per QUALIFIED symbol because `cortex/eprop_kernel.py` holds a rule, its BPTT control and a
+#: Keyed per QUALIFIED symbol because `plasticity/eprop_kernel.py` holds a rule, its BPTT control and a
 #: surrogate autograd.Function in ONE file -- a per-module verdict cannot describe it.
 DECL_NAME = "GRADIENT_CLAIM"  # FR-002d: module-scope, not a method, no LEARN_VERBS substring
 
@@ -135,7 +135,7 @@ EXACT_GRADIENT = "EXACT_GRADIENT"
 CONTROL = "CONTROL"
 #: ADDED after the first real declaration pass, because five enumerated symbols could not be
 #: described truthfully by any of the four above -- none of them is a learning rule at all:
-#:   cortex/eprop_kernel::_first_layer_grad   a DIAGNOSTIC returning summed |grad|
+#:   plasticity/eprop_kernel::_first_layer_grad   a DIAGNOSTIC returning summed |grad|
 #:   reasoning/gf::OpenGf.solve_unbounded     iterative-deepening SEARCH
 #:   reasoning/gf::OpenGf._learn              promotes a solved rule to a named primitive
 #:   reasoning/gf::ActiveLearner.learn        grows a SYMBOLIC GRAMMAR; no weight is touched
@@ -164,7 +164,7 @@ NOT_A_RULE = "NOT_A_RULE"
 #: the second is what this rule forbids."* Declaring it LOCAL would lump in exactly the way that
 #: adjudication forbids; leaving it undeclared would report a settled question as unresolved.
 #:
-#: SCOPED DELIBERATELY NARROW. It is NOT a general "non-local" bucket. `cortex/predictive_coding` was
+#: SCOPED DELIBERATELY NARROW. It is NOT a general "non-local" bucket. `readout/predictive_coding` was
 #: checked against this value and stays LOCAL: POLICIES.md:1766-1768 records that its weight update is
 #: *"a local Hebbian outer product ... No transposed weight appears in the learning rule at all"* --
 #: its `w1.T` is INFERENCE settling an activation, not the rule. The "same disposition as ng_snn::fit"
@@ -243,7 +243,7 @@ _DECLARED_STATES = frozenset(_STATE_OF.values()) | {
 #: and return it -- which mutate nothing and carry no learn verb.
 #:
 #: MEASURED, and the measurement is the whole reason this constant exists: dropping `grad` to cure an
-#: over-count made `cortex/eprop_kernel.py` -- the e-prop REFERENCE GRADIENT, the module FR-011
+#: over-count made `plasticity/eprop_kernel.py` -- the e-prop REFERENCE GRADIENT, the module FR-011
 #: reconciles -- vanish from the census entirely. All 17 of its defs failed both signals, because
 #: `bptt_grads` / `_TinyNet.eprop_grads` / `_first_layer_grad` / `_apply_grads` RETURN gradients
 #: rather than augmented-assigning a weight. Cost of restoring it, from the same sweep that condemned
@@ -956,13 +956,13 @@ def _selfcheck():
             if needle in f
         ]
 
-    # (a) GOVERNED phantom: overlay a GOVERNED module's relpath (cortex/tempotron.py is in
+    # (a) GOVERNED phantom: overlay a GOVERNED module's relpath (readout/tempotron.py is in
     # BRAIN_MODULES; a zz_probe filename would be ungoverned by construction).
-    r8a, _, n8a = census(overlay={"cortex/tempotron.py": phantom_src})
+    r8a, _, n8a = census(overlay={"readout/tempotron.py": phantom_src})
     gov_hit = any(
         r["state"] == PHANTOM_DECLARATION and r["governed"]
         for r in r8a
-        if r["module_rel"] == "cortex/tempotron.py"
+        if r["module_rel"] == "readout/tempotron.py"
     )
     gov_reds = _main_composition_reds(r8a, n8a)
     print(
@@ -1111,7 +1111,7 @@ def _refuses_rise(c, baseline):
 #   similarity over coalition member codes, a between-vectors quantity. `coherence` here is
 #   |mean|/rms WITHIN one vector, and answers whether a permutation null is a null at all.
 # distinct-from: growth/neurogenesis_engine.py, growth/neuron_zoo.py, cortex/rose_language.py,
-#   hippocampus/growable_readout.py -- matched on the words "frozen"/"derived"/"zero"; none
+#   readout/growable_readout.py -- matched on the words "frozen"/"derived"/"zero"; none
 #   computes a cosine, a null, or a sign-coherence statistic.
 # ---------------------------------------------------------------------------------------------
 
@@ -1128,7 +1128,7 @@ MEASURE_SEED = 1
 #: The bar lives in exactly ONE place. It is READ STATICALLY rather than imported, because the
 #: module holding it is itself rule-carrying and FR-013b forbids importing those. A second copy
 #: here would be the P2 defect this whole feature exists to police.
-_BAR_MODULE = "cortex/eprop_kernel.py"
+_BAR_MODULE = "plasticity/eprop_kernel.py"
 _BAR_NAME = "EPROP_BPTT_COSINE_FLOOR"
 
 
@@ -1607,7 +1607,7 @@ def _write_measure_artifact(results, root=None):
 #: carrying recorded numbers that the change necessarily moves. Anything else touching a
 #: learning-rule body is out of scope by construction rather than by judgement.
 FR010_ALLOWED_RULE_EDITS = (
-    "src/snn_data_lake/cortex/eprop_kernel.py",  # _TinyNet.eprop_grads + its recorded numbers
+    "src/snn_data_lake/plasticity/eprop_kernel.py",  # _TinyNet.eprop_grads + its recorded numbers
     "src/snn_data_lake/basal_ganglia/mlp_q.py",  # the SECOND copy of the share figure only
 )
 

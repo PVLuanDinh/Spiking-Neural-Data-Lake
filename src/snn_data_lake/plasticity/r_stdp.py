@@ -6,7 +6,7 @@ extra beside another one. (Framing corrected 2026-08-04b: this opened "a new mem
 plasticity family (additive, opt-in; changes no existing behaviour)", which is the disposition P2
 forbids in those exact words -- and it was also no longer true. `docs/POLICIES.md` names this module
 as the REUSE ANCHOR for three-factor plasticity, and it is imported by `brain_native_selfbuild`,
-`cortex/interaction_learning`, `cortex/task_set`, `neuromodulation/naca` and four others. What makes
+`readout/interaction_learning`, `cortex/task_set`, `plasticity/naca` and four others. What makes
 that P2-clean is NOT that it is opt-in; it is the DISTINCTNESS argument three paragraphs below --
 this rule and `valence_stdp` do different jobs on two independent axes, so neither supersedes the
 other and there is nothing to retire.) This is the classic Izhikevich (2007) solution to the
@@ -35,7 +35,7 @@ deep multi-step credit assignment, no hidden layers.
 Refs: Zeng et al., BrainCog, Patterns 2023 (rule #5, R-STDP); Izhikevich, "Solving the distal
 reward problem through STDP and dopamine", Cereb. Cortex 2007.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.basal_ganglia.r_stdp
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.plasticity.r_stdp
 """
 
 import math
@@ -126,7 +126,7 @@ TAU_E = 1000.0  # long eligibility time constant -- the distal-reward bridge
 #   list of neuron objects; no eligibility, no spike-time pairing, no reward. Read 2026-09-09.
 # distinct-from: sensorimotor/arm_bridge.py::UdpArmBridge.recv_outcome -- reads a reward FLOAT off
 #   a UDP socket; it transports the third factor, it never gates one. Read 2026-09-09.
-# distinct-from: cortex/predictive_coding.py::_lif -- a vectorized LIF step over signed ON/OFF
+# distinct-from: readout/predictive_coding.py::_lif -- a vectorized LIF step over signed ON/OFF
 #   pairs; "pairs" there are two neurons encoding one error component, not a (pre, post) spike
 #   ordering. Read 2026-09-09.
 # distinct-from: plasticity/competitive_learning.py::CompetitiveLearner.present -- drives a
@@ -499,8 +499,8 @@ def record_charge():
 #   neither has an opinion about it. Under P4c that makes it a build the gates cannot see, and
 #   the disposition is therefore carried here in prose: it is P3 shape 1 (present, importable,
 #   never invoked) until a population consumer adopts it. The consumers that would are
-#   `cortex/interaction_learning`, `cortex/task_set`, `plasticity/benna_fusi` and
-#   `neuromodulation/naca`, none of which is in this lane's write scope, and none of which has a
+#   `readout/interaction_learning`, `cortex/task_set`, `plasticity/benna_fusi` and
+#   `plasticity/naca`, none of which is in this lane's write scope, and none of which has a
 #   broadcast-to-many shape today anyway -- adopting this is a change to what those modules DO,
 #   not a call site to add.
 # ======================================================================================

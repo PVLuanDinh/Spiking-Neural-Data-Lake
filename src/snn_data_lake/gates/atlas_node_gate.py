@@ -117,7 +117,7 @@ def references(node: str, text: str) -> bool:
 
 # distinct-from: brain_atlas.py -- _region_files lists a package's files for the atlas's
 #   filesystem parity; this gate's own census, edited in place (G8 F5), reads each member's TEXT for
-#   node ids. Also read: cortex/interaction_learning.py (g0_campaign), growth/arealization.py
+#   node ids. Also read: readout/interaction_learning.py (g0_campaign), growth/arealization.py
 #   (emit_regions), growth/h01_ingest.py (build_arrays), growth/autapse_neuron.py -- none a census.
 def node_references() -> dict:
     """node_id -> [module files in its region referencing it]. The census. The region's LABEL and

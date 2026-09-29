@@ -707,10 +707,10 @@ def check_join(counts, declared=DECLARED_JOIN):
     return lines
 
 
-# distinct-from: basal_ganglia/r_stdp.py::_da_consumer_factory -- builds a ring and a JoinConsumer
+# distinct-from: plasticity/r_stdp.py::_da_consumer_factory -- builds a ring and a JoinConsumer
 #   over a declared dopamine port; no coordinates and no extent. distinct-from:
 #   growth/arealization.py::postmitotic_discretize -- an argmax over graded GRN profiles per node.
-#   distinct-from: cortex/eprop_kernel.py::bptt_grads -- reverse-mode BPTT over an unrolled net.
+#   distinct-from: plasticity/eprop_kernel.py::bptt_grads -- reverse-mode BPTT over an unrolled net.
 #   distinct-from: cortex/theory_of_mind.py::TheoryOfMind -- tracks per-agent beliefs about a world
 #   state. distinct-from: reasoning/reservoir_eprop.py::run -- a full two-arm SHD experiment.
 #   None of the five computes a per-axis bounding box, and nothing in the tree computes the extent
@@ -861,7 +861,7 @@ def sign_report(agree, total):
 #   PERMUTATION null over an external file's segment labels, and the two rigs share no input.
 # distinct-from: brainstem/autonomous_loop.py::coverage_scale_cells -- a lattice-point count that
 #   derives an arm's workspace scale; no correlation, no null, no external file.
-# distinct-from: basal_ganglia/r_stdp.py::pre_spike -- pairs a PRE spike against the most recent
+# distinct-from: plasticity/r_stdp.py::pre_spike -- pairs a PRE spike against the most recent
 #   POST spike inside a live plasticity rule; "post" there is a spike time in this brain, here it
 #   is the postsynaptic SOMA of a reconstructed human synapse.
 # distinct-from: sensorimotor/signal_loop.py::stdin_stream and cortex/brain.py::_flush_coverage --

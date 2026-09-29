@@ -15,7 +15,7 @@ ridge were measured beside it and deleted, P2; the archive and commit 7862d44 ke
 
     beta -= lr * s^T (softmax(s @ beta) - onehot(cat)),   lr = MU / (||s||^2 + 1)
 
--- laminar's L5 delta rule (cortex/laminar_local_readout) ported onto NGSNN.beta in the normalized form of its
+-- laminar's L5 delta rule (readout/laminar_local_readout) ported onto NGSNN.beta in the normalized form of its
 `_observe_lr`. MU = 1.0 is laminar's value: laminar claims it under P1 exception (a) and records that its
 "fully corrective" NLMS derivation was DELETED because NLMS convergence does not transfer to a softmax readout;
 the same caveat applies here and the value is load-bearing (the interval-derived 1/20 was inert; the sign-flipped

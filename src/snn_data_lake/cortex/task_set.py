@@ -5,7 +5,7 @@ The prefrontal executive (prefrontal_executive.py) holds a GOAL; this module hol
 task set is a whole input->action MAPPING, not a single option: which set is active decides HOW
 inputs are read out into actions, not just which action wins. The brain-atlas already has goal
 working memory (PFC), a Go/NoGo action-selection circuit (basal_ganglia.action_gating), and
-delayed-reward plasticity (basal_ganglia.r_stdp) -- but nothing that holds an attentional SET and
+delayed-reward plasticity (plasticity.r_stdp) -- but nothing that holds an attentional SET and
 re-maps behaviour once the current set stops working (Wisconsin-Card-Sort-style set-shifting).
 This module is that faculty.
 
@@ -27,7 +27,7 @@ Mechanism (spiking, deterministic, per-instance rng):
      ground truth to score against, so the compression of the mapping's own output is the honest,
      internal proxy for it).
   3. SHIFT TRIGGER = an ACC-style conflict/reward monitor gates a THREE-FACTOR R-STDP vote over
-     which alternate set to shift into, reusing basal_ganglia.r_stdp.RSTDPNeuron directly (one
+     which alternate set to shift into, reusing plasticity.r_stdp.RSTDPNeuron directly (one
      synapse per candidate set, not reimplemented). The set is "failing" on a tick when reward is
      net-negative (reward <= reward_thresh -- the reward SIGN, a scale-natural zero, not a tuned
      knob) AND conflict is high RELATIVE TO a LEARNED baseline: the running mean of the conflict seen
@@ -65,7 +65,7 @@ reward) with a measured switch cost -- not executive control, insight, or task u
 
 import random
 
-from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
+from snn_data_lake.plasticity.r_stdp import RSTDPNeuron
 
 
 class _RunningMean:
@@ -208,7 +208,7 @@ class TaskSetLayer:
         the reward-sign arm alone decides, and during a sustained bad patch the baseline freezes so
         the trigger keeps firing without habituating). While failing, every non-active (candidate)
         set is STDP-paired against the ACC's own error crossing and gated by an RPE-style dopamine
-        magnitude into basal_ganglia.r_stdp.RSTDPNeuron's per-set weight. Once this persists
+        magnitude into plasticity.r_stdp.RSTDPNeuron's per-set weight. Once this persists
         `patience` ticks in a row, the highest-weighted candidate set commits via shift(). Returns
         active_set."""
         self._t += 1

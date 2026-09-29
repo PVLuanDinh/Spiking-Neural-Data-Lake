@@ -9,7 +9,7 @@ import pytest
 torch = pytest.importorskip("torch")
 
 from snn_data_lake.growth.neurogenesis_engine import NeurogenesisSelfImprove  # noqa: E402
-from snn_data_lake.hippocampus.online_readout import (  # noqa: E402
+from snn_data_lake.readout.online_readout import (  # noqa: E402
     ClosingGate,
     OnlineReadout,
     _chain,

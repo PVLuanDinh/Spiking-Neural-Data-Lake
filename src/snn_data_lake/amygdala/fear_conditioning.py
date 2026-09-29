@@ -50,7 +50,7 @@ mirror the amygdala micro-circuit:
       code has never contained; corrected 2026-08-04 to the rule `pair()` actually applies.
       Grading the US is open work -- it is a signature effect of real conditioning and the
       per-category `us_id` channel below already gives it somewhere to live.) Same style as
-      basal_ganglia/valence_stdp.py (three-factor plasticity) but keyed on CS-US COINCIDENCE.
+      plasticity/valence_stdp.py (three-factor plasticity) but keyed on CS-US COINCIDENCE.
 
   CeA (central nucleus) -- a threshold readout. It emits a THREAT signal (scalar in [0, 1];
       >= THETA_CEA == "conditioned response") from the BLA spike response, GATED DOWN by a

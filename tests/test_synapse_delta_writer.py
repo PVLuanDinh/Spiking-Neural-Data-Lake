@@ -26,7 +26,7 @@ import pytest
 
 np = pytest.importorskip("numpy")
 
-from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner  # noqa: E402
+from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner  # noqa: E402
 from snn_data_lake.substrate.lake_engine import SynapseDelta  # noqa: E402
 
 

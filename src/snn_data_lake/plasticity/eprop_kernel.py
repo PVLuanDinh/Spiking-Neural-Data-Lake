@@ -48,7 +48,7 @@ IMPORT CONTRACT. This module imports nothing from `eprop_nmnist` or `eprop_shd` 
 runs consumer -> kernel only, and a back-import would be a cycle. Its self-check builds a minimal
 concrete subclass inline for the same reason.
 
-  Self-check:  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.cortex.eprop_kernel
+  Self-check:  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.plasticity.eprop_kernel
 """
 
 import torch

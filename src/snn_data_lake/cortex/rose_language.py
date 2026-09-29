@@ -22,7 +22,7 @@ refit (no global backprop anywhere). Every stage is an existing module; ROSE is 
      cerebellum/polychronization.py encodes a multi-word DEPENDENCY as a delay-matched polychronous
      group that ignites only for the correct temporal order (rate-blind, timing-selective). ROSE
      ADOPTS that module's own `_build`/`_fire` network (P2) rather than re-wiring a second copy of it.
-  E  ENCODING -- competence. cortex/language_readout_slda.py::SLDA_RFF_np (promoted 2026-08-11) is the frozen, forward-served
+  E  ENCODING -- competence. readout/language_readout_slda.py::SLDA_RFF_np (promoted 2026-08-11) is the frozen, forward-served
      competence head over the ORDER-INVARIANT rank-order/latency context (its sufficient statistics are the
      weights). Its refit is Forward-Forward / CSDP-style -- two forward passes (positive vs corrupted),
      a LOCAL goodness margin, and a forward-only sufficient-statistic update. There is NO backprop, NO
@@ -486,8 +486,8 @@ class RoseLanguage:
             return self._readout
         self._readout = None  # a failed build stays failed; the fit costs ~100 ms (measured)
         try:
-            from snn_data_lake.cortex.language_readout_slda import SLDA_RFF_np
             from snn_data_lake.cortex.language_self_build import _positional_code
+            from snn_data_lake.readout.language_readout_slda import SLDA_RFF_np
 
             relations = self._learnable_relations()
             # sort BEFORE splitting: self._triples is a set -> its iteration order varies per process

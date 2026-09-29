@@ -1,7 +1,7 @@
 r"""
 NumPy forward SERVER (NO torch) for a torch-trained DEEP spiking predictive-coding cortex (`snn_pcnet/1`).
 
-Honest framing (read this first). The 2-level seed cortex/predictive_coding.py is a small Rao-Ballard
+Honest framing (read this first). The 2-level seed readout/predictive_coding.py is a small Rao-Ballard
 SPIKING coder (signed ON/OFF LIF error populations, graded cause readouts, spiking settling, Hebbian-
 on-spikes). This module is the matching NUMPY core SERVER for the DEEP version of that same
 network: an L-level (L >= 2) generative hierarchy TRAINED in the torch tier (research/pc_cortex_torch.py:

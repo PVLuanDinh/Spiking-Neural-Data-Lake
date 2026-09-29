@@ -13,7 +13,7 @@ WHY THIS IS GENUINELY SPIKING (not rate-level), on both axes the audit flagged:
       (REUSED verbatim from sensorimotor.rank_order_coding.rank_code: 0 = fires first = largest value).
       The representation is binary spike EVENTS at discrete times -- self-checked, not just claimed.
   (2) The weight update is REWARD-MODULATED SPIKE-TIMING PLASTICITY (R-STDP), REUSED verbatim from
-      basal_ganglia.r_stdp.RSTDPNeuron: pre-before-post spike pairings deposit a per-synapse
+      plasticity.r_stdp.RSTDPNeuron: pre-before-post spike pairings deposit a per-synapse
       ELIGIBILITY trace e[i] = exp(-(t_post - t_pre_i)/tau) via the STDP window, and a scalar reward
       d in {-1,+1} gates it into the weights:  w[i] += lr * d * e[i]. This is the classic three-factor
       rule (pre x post x neuromodulator). There is NO error gradient, NO least-squares, NO EMA: the
@@ -61,7 +61,7 @@ the human actually meant) is the stronger reward that recovers them -- still pur
 never a gradient. Generalisation needs the readout spike to land on the EARLY (content-word) spikes:
 t_post < n_in, a spike-TIMING knob, so the membrane read keys on shared words, not the empty-bucket tail.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.interaction_learning
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.readout.interaction_learning
 """
 
 import math
@@ -70,7 +70,7 @@ import threading
 import zlib
 from collections import deque
 
-from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
+from snn_data_lake.plasticity.r_stdp import RSTDPNeuron
 from snn_data_lake.sensorimotor.rank_order_coding import rank_code
 
 _REPLAY_CAP = 64  # sleep-replay ring size (T058): a memory bound, not a behaviour threshold
@@ -1374,7 +1374,7 @@ def g0_campaign(out_dir, workers=4):
             [
                 sys.executable,
                 "-m",
-                "snn_data_lake.cortex.interaction_learning",
+                "snn_data_lake.readout.interaction_learning",
                 "--g0",
                 str(seed),
                 arm,
@@ -1838,7 +1838,7 @@ def g0b_campaign(out_dir, workers=4):
             [
                 sys.executable,
                 "-m",
-                "snn_data_lake.cortex.interaction_learning",
+                "snn_data_lake.readout.interaction_learning",
                 "--g0b",
                 str(seed),
                 arm,
@@ -1982,7 +1982,7 @@ def _g0c_process(role, seed, home, out):
     from unittest.mock import patch
 
     from snn_data_lake.cortex.brain import Brain, make_brain
-    from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner as Learner
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner as Learner
     from snn_data_lake.substrate.home import load_state
 
     if role not in G0C_ROLES or Path(os.environ["NORD_HOME"]).resolve() != Path(home).resolve():
@@ -2179,7 +2179,7 @@ def g0c_run(seed):
                 [
                     sys.executable,
                     "-m",
-                    "snn_data_lake.cortex.interaction_learning",
+                    "snn_data_lake.readout.interaction_learning",
                     "--g0c-proc",
                     role,
                     str(seed),

@@ -7,7 +7,7 @@ scalar (threat) to a full (valence, arousal) appraisal of an arbitrary latency-e
 vector (percept + context, concatenated by the caller before it reaches this module). Where
 fear_conditioning binds a CS to one aversive teaching signal (the US) via
 `w_exc[i] += lr * US * cs_active[i] * bound`, this module binds a (percept + context) pattern to a
-TARGET (valence, arousal) via the reward-prediction-error rule basal_ganglia/valence_stdp.py uses
+TARGET (valence, arousal) via the reward-prediction-error rule plasticity/valence_stdp.py uses
 for its scalar valence (`delta = reward - predicted; w += lr * delta * activity`) -- but read out
 through spiking LIF integrate-and-fire pools (fear_conditioning's BLA circuit) instead of one
 linear unit, and with THREE pools instead of one.

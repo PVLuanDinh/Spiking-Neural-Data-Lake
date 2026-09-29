@@ -47,7 +47,7 @@ Several of these docstrings admit the rate-level nature honestly, but it *is* a 
 ## Correcting course (v3.21)
 
 Rather than deepen the drift, new learning added from here should be **spiking**. v3.21 does exactly that:
-`cortex/interaction_learning.py` (`SpikingInteractionLearner`) improves the live brain **by being talked
+`readout/interaction_learning.py` (`SpikingInteractionLearner`) improves the live brain **by being talked
 to** through a genuinely spiking path -- rank-order spike encoding + reward-modulated spike-timing
 plasticity (R-STDP), reusing the real spiking primitives, with a self-check that structurally proves it is
 spike-timing (not a gradient) and a shuffled-teaching control that stays at chance. See `LiveBrain(

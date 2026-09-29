@@ -2,7 +2,7 @@
 method_dormancy_gate -- Policy 3, per-METHOD. The amendment's mechanization, finally built.
 
 WHY THE MODULE GATE IS NOT ENOUGH. gates/dormancy_gate.py keys on the module basename, so a module
-passes P3 clean with half its capability dead. The worked case: cortex/predictive_coding.py settled its
+passes P3 clean with half its capability dead. The worked case: readout/predictive_coding.py settled its
 3-level Rao-Ballard net on every wake tick with the error-neuron architecture implemented faithfully,
 while PredictiveCodingNetwork.learn() had exactly ONE call site in the tree -- inside the module's own
 __main__ self-check. Inference wired, learning never called, weights frozen at their random seed for the
@@ -167,9 +167,9 @@ EXEMPT_METHOD = {
         "at :102, which is GENUINELY dormant open P3 work, and exempting the real finding in order to "
         "excuse the control is the failure this gate exists to prevent",
     ),
-    "cortex.predictive_coding.PredictiveCodingNetwork.learn": (
+    "readout.predictive_coding.PredictiveCodingNetwork.learn": (
         "permanent",
-        "PredictiveCodingNetwork.learn (cortex/predictive_coding.py:268) -- the OFFLINE BATCH WRAPPER "
+        "PredictiveCodingNetwork.learn (readout/predictive_coding.py:268) -- the OFFLINE BATCH WRAPPER "
         "over learn_step(), which IS called every wake tick at cortex/live_brain.py:185. Verified by "
         "runtime instrumentation to be never called on a live path, and that is CORRECT: wiring the "
         "batch form would run the same rule twice. P2 already holds -- one rule, one definition. It is "

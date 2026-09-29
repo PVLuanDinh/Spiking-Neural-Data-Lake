@@ -117,23 +117,17 @@ REGIONS = {
         # PROMOTED from reasoning/brain_adapters/ 2026-08-12 (#10 lane 4c): the ONE live-tick
         # percept readout (feedback alignment + fixed-random L6, no weight transport) --
         # cortex/brain.py constructs it lazily on every real percept; numpy-only, CORE tier.
-        "laminar_local_readout",
-        "predictive_coding",
         "is_snn_forward",
-        "snn_classifier",
         # PROMOTED 2026-08-13 (was reasoning/snn_moe_classifier.py): firing-rate ROUTED
         # mixture-of-experts over snn_classifier's spiking experts. CORE, not TORCH_TIER -- it
-        # imports only math/random/numpy plus cortex.snn_classifier and infra._mathutils.
+        # imports only math/random/numpy plus readout.snn_classifier and infra._mathutils.
         # Reached from sensorimotor/recognizer_bank.py. Its blocker was an UNRESTORED process-global
         # `random.seed(0)`, fixed with infra/brain_bundle.py's snapshot-seed-restore pattern.
-        "snn_moe_classifier",
-        "tempotron",
         "paradigm_b_matcher",
         "paradigm_b_engine",
         "vsa_reasoning",
         "prefrontal_executive",
         "live_brain",
-        "interaction_learning",
         # higher cognition / self-model / self-improvement (v3.14+)
         "access_consciousness",
         "self_model",
@@ -161,7 +155,6 @@ REGIONS = {
         "percept_surprise",  # loop C2: online unsupervised Oja-PCA reconstruction-residual surprise (orienting drive)
         "kb_ranking",  # PROMOTED from reasoning/ 2026-08-11 (#10 batch-1): open-vocab DistMult KB completion head
         "language_self_build",  # PROMOTED 2026-08-11 (#10 family C6): autonomous R-STDP language assemblies; LIVE on the sleep tick
-        "language_readout_slda",  # PROMOTED 2026-08-11 (#10 family C5): SLDA-RFF competence head; absorbed fair_compare's equal-budget bar
         "nightly_skills",  # PROMOTED 2026-08-11 (#10 family C9a): the ONE standing skills loop (absorbed meta_skill_loop + open_meta_loop)
         "competence_executive",  # PROMOTED+RENAMED 2026-08-12 (#10 lane 4f, was reasoning/brain_adapters/executive_control -- the LAST brain_adapters module): dopamine-RPE lr gate + the PUBLIC CompetenceDynamics/goal_value planning objects (the WorkspaceBroadcast/ExecutivePlanner wrappers RETIRED later the same day -- retirement record in-file); renamed because the basename is taken by cortex/executive_control (brain_atlas.py:81 asserts uniqueness)
         "vsa_structure_mapping",  # PROMOTED 2026-08-12 (PROMOTE lane): Gentner relational structure-mapping over VSA spike codes; LIVE via reasoning_cortex's structure-map solver (reached from brain.py's lazy :924 -- the lane's own I001 sort moved it from :928 -- + reasoning_cortex:705). P3 debt carried visibly, NOT fixed here: brain.py:967's `_structure_mapper` attribute is write-only (AUDIT_BACKLOG M11) -- retire-or-read is its own commit. P2 direction recorded in-file: the dim-parameterised _cleanup_project is THE mechanism; reasoning/resonator_network's hardcoded copy (measured 300/300 bit-identical at dim=512) delegates or retires when its lane arrives.
@@ -190,7 +183,6 @@ REGIONS = {
         "skill_builder",  # PROMOTED 2026-08-11 (#10 family C4): domain-agnostic skill formation + SkillRegistry proximity router
         "open_world_loop",  # PROMOTED 2026-08-11 (#10 family C7): DP-means signature discovery (feeds nightly_skills' open frontier)
         "hippocampal_memory",  # PROMOTED 2026-08-11 (#10 lane 4a): the loop's replay adapter over ReplayBuffer + SleepConsolidator
-        "growable_readout",  # PROMOTED 2026-08-11 (#10 lane 4b): function-preserving Net2Net growth + freeze; the specs/007 T022 origin copy
         "lake_consolidation",  # sleep-time prune of the symbolic durable lake (cap re-derivable bulk, keep learned)
         # Promoted from reasoning/ 2026-08-04 after an in-place P7/P1/P8 redesign. FACTORED
         # k-WTA associative memory: the P sparse patterns ARE the memory (O(P*k)), so there is
@@ -204,8 +196,6 @@ REGIONS = {
     ],
     "basal_ganglia": [
         "evidence_accumulation",
-        "r_stdp",
-        "valence_stdp",
         "action_gating",
         "latent_q",
         "mlp_q",
@@ -293,7 +283,6 @@ REGIONS = {
         "spiking_curiosity",
         "generalizing_novelty",
         "drive_reduction",
-        "naca",
         "empowerment",
         "developmental_envelope",
         "affect_integrator",  # C1 batch-2: spiking neuromod fusion -> coupled affect + self-organized emotions
@@ -344,6 +333,9 @@ REGIONS = {
         # below on 2026-08-11 -- their module-top torchvision imports fail the alias-layer
         # round-trip wherever the [train] extra is absent (the first post-promotion CI run
         # proved it), which is exactly what the annex tier exists for.
+        "naca",
+        "r_stdp",
+        "valence_stdp",
     ],
     "substrate": [
         # PROMOTED 2026-08-04: P2 merge of training/device.py (GPU-first, measured) with the
@@ -522,6 +514,16 @@ REGIONS = {
         "recurrent_pool",
         "spontaneous_activity",
     ],
+    "readout": [
+        "growable_readout",
+        "interaction_learning",
+        "laminar_local_readout",
+        "language_readout_slda",
+        "predictive_coding",
+        "snn_classifier",
+        "snn_moe_classifier",
+        "tempotron",
+    ],
 }
 
 # TORCH-TIER ANNEX -- region -> modules that import torch AT MODULE LOAD (so they cannot be imported
@@ -543,14 +545,10 @@ TORCH_TIER = {
         # consumers import from it; neither carries a copy. Verified bit-exact across the merge
         # (12/12 pinned tensors identical, tests/pin/), which is the check that matters here --
         # the cosine assert is measurably blind to the one judgment call it contains.
-        "eprop_kernel",
         # PROMOTED 2026-08-13 (specs/013 C3, was training/eprop_shd.py): the brain's SHD audio
         # perception encoder, the auditory twin of eprop_nmnist. TORCH_TIER for the same reason
         # (torch at module top), reached on the same construction path via brain.py's audio try.
     ],
-    "hippocampus": [
-        "online_readout",
-    ],  # L1c: the grown readout learns online (torch tier)
     "sensorimotor": [
         "eprop_nmnist",
         "eprop_shd",
@@ -558,6 +556,12 @@ TORCH_TIER = {
     "growth": [
         "neurogenesis_engine",
         "ng_snn",
+    ],
+    "plasticity": [
+        "eprop_kernel",
+    ],
+    "readout": [
+        "online_readout",
     ],
 }
 

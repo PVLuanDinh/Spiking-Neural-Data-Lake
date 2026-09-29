@@ -5,7 +5,7 @@ P4c: "research tier" was struck from this line on 2026-08-04. There is no tier o
 a file in this tree is part of the brain or it is retired, and this one is registered in
 run_selfchecks.py and runs on every gate. The words described a directory that no longer exists.
 
-The tempotron (src/snn_data_lake/cortex/tempotron.py, Gutig & Sompolinsky 2006) learns a BINARY
+The tempotron (src/snn_data_lake/readout/tempotron.py, Gutig & Sompolinsky 2006) learns a BINARY
 decision: adjust the weights so the neuron's peak sub-threshold voltage crosses (or does not
 cross) threshold -- fire vs. stay silent for a whole pattern. It says nothing about WHEN the
 spike lands.

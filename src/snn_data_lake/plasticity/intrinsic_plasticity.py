@@ -22,7 +22,7 @@ phases share the same stack and the same measurement).
 import math
 import random
 
-import snn_data_lake.cortex.snn_classifier as C
+import snn_data_lake.readout.snn_classifier as C
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

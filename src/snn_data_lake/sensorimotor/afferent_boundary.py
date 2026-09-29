@@ -164,7 +164,7 @@ def proprioception(theta_deg):
 #   action TOKEN (one joint, degrees). This is an ACHIEVED delta read off two posture
 #   vectors (every joint, normalised). Read; the token parse is routed through
 #   `efferent_boundary.intended_deltas` in the same change, so it is one mechanism too.
-# distinct-from: basal_ganglia/r_stdp.py, plasticity/plasticity_rule_stack.py -- per-SYNAPSE
+# distinct-from: plasticity/r_stdp.py, plasticity/plasticity_rule_stack.py -- per-SYNAPSE
 #   weight deltas from a reward-gated eligibility trace. distinct-from: substrate/home.py
 #   -- a BinLog rebuild. distinct-from: instruments/prior_drift_harness.py -- per-seed drive-class
 #   subsets. All four read; the word "delta"/"per-" is the only overlap and none folds an

@@ -60,7 +60,7 @@ Reproduce:
     python -m snn_data_lake.gates.eprop_transport_gate --assert   # exit 1 on a governed finding
 """
 
-# distinct-from: cortex/eprop_kernel.py -- that is a RUNTIME NUMERIC check on ONE network
+# distinct-from: plasticity/eprop_kernel.py -- that is a RUNTIME NUMERIC check on ONE network
 #   (`bptt_grads` + `_cosine` against `EPROP_BPTT_COSINE_FLOOR = 0.5`): it builds a net, runs it,
 #   and compares an e-prop gradient against an independent BPTT one. It proves a rule it is HANDED
 #   is local; it cannot see a module nobody handed it. This is a STATIC scan over every module in
@@ -310,7 +310,7 @@ def _findings_in(fn):
 
 
 # distinct-from: cerebellum/spiking_jepa.py -- serializes weight VALUES to JSON; this reads a
-#   SOURCE TREE and never touches a live weight. distinct-from: cortex/snn_moe_classifier.py -- its
+#   SOURCE TREE and never touches a live weight. distinct-from: readout/snn_moe_classifier.py -- its
 #   "gate weights" are softmax scores over experts, not a matrix. distinct-from:
 #   plasticity/developmental_pruning.py -- its (class, index) pairs enumerate LIVE synapses; these
 #   are AST index EXPRESSIONS as source text. distinct-from: substrate/signal_calibrator.py --

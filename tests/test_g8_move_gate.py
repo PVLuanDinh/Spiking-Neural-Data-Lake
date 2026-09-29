@@ -120,7 +120,7 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     """Each `_LEGACY` pair is a module whose live package differs from its frozen label (none
     before the first move, every moved module after); `_LEGACY_PKGS` stays empty until a package
     empties (M11a)."""
-    from snn_data_lake.cortex import interaction_learning as ixn
+    from snn_data_lake.readout import interaction_learning as ixn
 
     label = {
         m: k

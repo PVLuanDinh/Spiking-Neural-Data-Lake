@@ -104,7 +104,7 @@ class DriftMonitor:
     # distinct-from: sensorimotor/learned_matcher.py::nearest_dist_enc -- nearest Van Rossum distance to
     #   an enrolled reference TRAIN; "reference" there is a stored exemplar, not a histogram.
     # distinct-from: reservoir/cortical_microcircuit.py::firing_rates,
-    #   cortex/language_acquisition.py::developmental_curve, cortex/tempotron.py::TempotronMatcher
+    #   cortex/language_acquisition.py::developmental_curve, readout/tempotron.py::TempotronMatcher
     #   -- a mean rate, a mean surprise and a one-vs-rest classifier: means over a window, none of
     #   them a distance between two distributions. All five read 2026-09-09.
     def psi(self):

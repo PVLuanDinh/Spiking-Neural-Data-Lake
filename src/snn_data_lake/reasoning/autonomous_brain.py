@@ -47,7 +47,7 @@ from snn_data_lake.instruments.snn_mnist_stdp import load_mnist
 from snn_data_lake.instruments.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.reasoning.fast_features import batched_features_and_keys
 from snn_data_lake.reasoning._loop_common import envi, acc
-from snn_data_lake.hippocampus.growable_readout import GrowableReadout
+from snn_data_lake.readout.growable_readout import GrowableReadout
 from snn_data_lake.hippocampus.proximity_replay import LakeMemory
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor

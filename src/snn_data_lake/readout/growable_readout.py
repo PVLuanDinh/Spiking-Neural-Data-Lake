@@ -77,7 +77,7 @@ THE LAMINAR MERGE RECORD (2026-08-12), kept here because the retired file carrie
     4 -> 2, not 4 -> 1 -- `_extend_zero_fanout` below is THE torch helper (serving
     GrowableReadout at k=1 and LaminarColumns at k=n23; laminar_readout's two sites died
     with the file), and the fourth site is the NUMPY mirror in
-    `cortex/laminar_local_readout.py` (np.hstack on a [n_classes, k] zero block) --
+    `readout/laminar_local_readout.py` (np.hstack on a [n_classes, k] zero block) --
     a torch/numpy shim for a one-liner would be over-engineering.
 
 Determinism (2026-08-04): `torch.manual_seed(seed)` used to run inside `__init__`, which
@@ -87,7 +87,7 @@ reaching outside itself. It was also redundant: every random draw in this class 
 passes `generator=self._init_gen` / `self._grow_gen`. Removed; the self-check output is
 byte-identical before and after (verified by A/B on the full main()).
 
-  PYTHONPATH=src python -m snn_data_lake.hippocampus.growable_readout
+  PYTHONPATH=src python -m snn_data_lake.readout.growable_readout
 """
 
 import torch
@@ -113,7 +113,7 @@ GRADIENT_CLAIM = {
 
 # consolidates: reasoning/brain_adapters/laminar_readout.py (retire)
 # specs/007 T022: the four recorded (1,0)-split sites collapse to this ONE torch helper
-# (+ the numpy mirror in cortex/laminar_local_readout.py, kept -- a torch/numpy shim for
+# (+ the numpy mirror in readout/laminar_local_readout.py, kept -- a torch/numpy shim for
 # a one-liner is over-engineering). laminar_readout.py is DELETED in this same change
 # (its LaminarColumns class ports into this file below; its two split sites die with it),
 # and _grow_one below now calls this helper instead of its inline copy.
@@ -123,7 +123,7 @@ def _extend_zero_fanout(W, k):
     units contribute 0 * h_new == 0 and the grow is function-preserving at the instant it
     happens. Serves GrowableReadout._grow_one (k=1, one hidden unit) and
     LaminarColumns.grow (k=n23, one whole column). The one other (1,0)-split site
-    tree-wide is the NUMPY mirror in cortex/laminar_local_readout.py (np.hstack) --
+    tree-wide is the NUMPY mirror in readout/laminar_local_readout.py (np.hstack) --
     cross-cited there; T022 closes 4 sites -> 2, honestly, not 4 -> 1."""
     zero = torch.zeros(W.shape[0], int(k), device=W.device, dtype=W.dtype)
     return torch.cat([W, zero], dim=1)
@@ -433,7 +433,7 @@ class LaminarColumns(nn.Module):
     single-column variant (LaminarReadout) was RETIRED 2026-08-12: it was the v3.59
     failure mode this class fixes AND its L6 feedback matrix was trained by the backprop
     tape (weight transport); its gain capability is owned by the fixed-random L6 in
-    cortex/laminar_local_readout, its freeze by this class.
+    readout/laminar_local_readout, its freeze by this class.
 
     NEUROGENESIS = grow(freeze_old=True): FREEZE all existing columns entirely (their L4+L2/3
     params: gradient masked to zero every step AND Adam moments zeroed at freeze -- the

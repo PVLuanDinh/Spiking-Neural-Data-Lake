@@ -19,7 +19,7 @@ The torch SLDA_RFF in developmental_loop_slda is hardcoded to 10 classes; langua
 K words, so this ports the identical math to numpy with a general class count (research tier -- numpy
 is allowed; CORE untouched).
 
-  PYTHONPATH=src python -m snn_data_lake.cortex.language_readout_slda
+  PYTHONPATH=src python -m snn_data_lake.readout.language_readout_slda
   Knobs: NORD_CTX(3) NORD_PER(6000) NORD_VOCAB(60) NORD_RFF(1500) NORD_GAMMA(0.15) NORD_SHRINK(0.1)
 Deps: numpy (+ stdlib). Reuses corpus_stream + language_self_build's positional code + baselines.
 

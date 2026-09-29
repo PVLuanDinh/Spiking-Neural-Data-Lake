@@ -207,12 +207,12 @@ class NeurogenesisSelfImprove:
         online_readout=None,
     ):
         self.refit_every = int(refit_every)
-        # L1c (2026-09-06): the online readout rule (hippocampus/online_readout.OnlineReadout) or None
+        # L1c (2026-09-06): the online readout rule (readout/online_readout.OnlineReadout) or None
         # (the incumbent: beta solved only at open-gate sleep refits, stale between them). Moves the
         # RETAINED model's beta in place on every wake transition, from the pair the live instrument
         # just scored; an open-gate refit re-initializes beta from the batch solve (consolidation).
         if isinstance(online_readout, str):  # a kind name: the engine owns the construction
-            from snn_data_lake.hippocampus.online_readout import OnlineReadout
+            from snn_data_lake.readout.online_readout import OnlineReadout
 
             online_readout = OnlineReadout(online_readout)
         self.online_readout = online_readout
@@ -386,7 +386,7 @@ class NeurogenesisSelfImprove:
     #   consumes. distinct-from: cerebellum/spiking_jepa.py -- a collapse measurement on a
     #   held-out batch. distinct-from: growth/growth_stop.py -- should_grow() is the VERDICT this
     #   refit consults. distinct-from: cortex/percept_surprise.py -- records an A/B attribution.
-    #   distinct-from: hippocampus/growable_readout.py -- re-seeds an optimizer. Phrase overlap
+    #   distinct-from: readout/growable_readout.py -- re-seeds an optimizer. Phrase overlap
     #   on 'measure'/'held-out'/'fresh' only. All sites read.
     def _refit(self):
         """Grow a fresh NG-SNN on the buffer (percept_{t-1} -> category_t) and measure next-category

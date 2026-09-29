@@ -11,7 +11,7 @@ peak sub-threshold voltage. `TempotronMatcher` enrolls one tempotron per command
 neuron peaks highest. On-thesis ("compute in spike timing"); a self-contained matcher option, not
 the live default. Refs: Gutig & Sompolinsky, Nature Neuroscience 9 (2006).
 
-  python -m snn_data_lake.cortex.tempotron        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.readout.tempotron        # (also run by run_selfchecks.py)
 """
 
 import math

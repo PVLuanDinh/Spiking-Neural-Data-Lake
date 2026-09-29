@@ -137,7 +137,7 @@ held-out competence the whole way -- **0.33 (plain SSL) -> 0.83 (v3.19) -> 1.00 
 The task-aligned LEARNED substrate now FULLY recovers the rule, matching the purely task-linear pattern substrate
 (v3.17's 1.00) while being a learned representation -- by fixing the encoder exactly as the v3.18 finding predicted.
 
-v3.21 adds **spiking interaction learning** (`cortex/interaction_learning.py`, `SpikingInteractionLearner`), and
+v3.21 adds **spiking interaction learning** (`readout/interaction_learning.py`, `SpikingInteractionLearner`), and
 corrects course after a spiking-purity audit (`docs/SPIKING_AUDIT.md`): the v3.11-v3.20 learning tier above is
 **rate-level** (linear / MLP / EMA over the lake's `[0,1]^64` pattern), a drift from the project's spiking purpose.
 This module improves the live brain **by being talked to**, the spiking way -- rank-order spike encoding + reward-

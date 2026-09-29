@@ -1,6 +1,6 @@
 """The e-prop BINDING CONSTRAINT, mechanized: a backprop trainer may not become reachable.
 
-WHAT IS BEING HELD. `instruments/developmental_loop_brain.py` and `hippocampus/growable_readout.py`
+WHAT IS BEING HELD. `instruments/developmental_loop_brain.py` and `readout/growable_readout.py`
 train by `loss.backward()` + Adam. The cross-cutting invariant forbids that -- *"e-prop, not
 backprop ... no BPTT, no weight transport"* -- and both are permitted anyway, on ONE stated ground:
 they are TRAIN-TIER OFFLINE and no live root reaches them. Their own words:
@@ -22,15 +22,15 @@ from `cortex.brain` to `developmental_loop_brain` in the reachability graph:
 
 THE SET IS DERIVED, NOT TYPED, because a hand-listed pair is a list that rots and the next Adam
 module lands outside it. The derivation is the discriminator `POLICIES.md` itself used to adjudicate
-`cortex/predictive_coding.py` -- *"THE DISTINGUISHING TEST IS WHAT THE TRANSPOSE FEEDS"*: a
+`readout/predictive_coding.py` -- *"THE DISTINGUISHING TEST IS WHAT THE TRANSPOSE FEEDS"*: a
 transposed weight feeding a WEIGHT UPDATE is the violation, one feeding an ACTIVATION is not.
 Applied to autograd: a `.backward()` whose function ALSO STEPS AN OPTIMIZER is a training path; one
 that returns a gradient for comparison is the reference the invariant explicitly requires
 ("verified cosine > 0.5 against an independent reverse-mode BPTT gradient").
 
 THAT DISTINCTION IS LOAD-BEARING AND WAS COUNTED BOTH WAYS. The naive rule -- any `.backward()` in a
-governed module -- scores 3, and the third is `cortex/eprop_kernel.py`, which IS reachable. It would
-have reddened the one instrument in the tree that exists to PROVE the invariant holds, on the
+governed module -- scores 3, and the third is `plasticity/eprop_kernel.py`, which IS reachable. It
+would have reddened the one instrument in the tree that exists to PROVE the invariant holds, on the
 strength of the `_fwd_bwd` reference gradient. The counted split:
 
     rule A  any governed .backward()                       3 modules, 1 REACHABLE (eprop_kernel)
@@ -54,7 +54,7 @@ _PKG = dormancy_gate._PKG
 #: The one module whose `.backward()` is the invariant's own verification control rather than a
 #: trainer. Named here so the discriminator's job is legible, NOT used to filter -- rule B excludes
 #: it structurally, and `test_the_reference_gradient_is_not_a_hazard` asserts that it does.
-_REFERENCE_GRADIENT = f"{_PKG}.cortex.eprop_kernel"
+_REFERENCE_GRADIENT = f"{_PKG}.plasticity.eprop_kernel"
 
 
 def _trains_by_backprop(tree):
@@ -144,7 +144,7 @@ def test_no_backprop_trainer_is_reachable_from_a_live_path():
         "e-prop invariant: these modules train by loss.backward() + optimizer.step() and are "
         f"permitted ONLY while no live root reaches them -- {live} is/are now reachable. Either "
         "revert the wire, or port the consumer to the governed three-factor lr_scale "
-        "(basal_ganglia/valence_stdp.py, neuromodulation/cortisol.py) and retire the Adam path. "
+        "(plasticity/valence_stdp.py, neuromodulation/cortisol.py) and retire the Adam path. "
         "Do not silence this by editing EXEMPT: EXEMPT governs dormancy, not the e-prop invariant"
     )
 

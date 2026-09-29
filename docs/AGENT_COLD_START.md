@@ -128,8 +128,8 @@ INTO one liquid read out by a decoder) is superseded. Re-derivable facts it rest
 - `growth/placement.py` records depth, layer and Dale sign without a computational reader;
   `cortical_microcircuit.CONN_PROB` lacks a driver;
 - the four research reservoirs lack live-path importers;
-- `cortex/predictive_coding.py` and `reasoning/spiking_som.py` are the incumbents for two readout rules;
-- the chat intent learner (`cortex/interaction_learning.py`) is a live path by which chat reaches synaptic weights;
+- `readout/predictive_coding.py` and `reasoning/spiking_som.py` are the incumbents for two readout rules;
+- the chat intent learner (`readout/interaction_learning.py`) is a live path by which chat reaches synaptic weights;
   until G0 (2026-09-24) `Brain.respond` supplied no correction, ignored its prediction and saved no learner weights.
 
 G0 repaired that channel first (parts (a)-(c), 2026-09-24).

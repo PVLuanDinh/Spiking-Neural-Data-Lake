@@ -52,7 +52,7 @@ def test_an_ambiguous_bare_name_is_refused_rather_than_guessed():
 
     # CONTROL: a bare name colliding on several symbols that AGREE is NOT ambiguous -- refusing
     # there would make the resolver useless on the majority case.
-    disp, _ = etg.resolve_disposition("hippocampus.growable_readout", "train_step")
+    disp, _ = etg.resolve_disposition("readout.growable_readout", "train_step")
     assert disp == gate.APPROXIMATES_GRADIENT, disp
 
 

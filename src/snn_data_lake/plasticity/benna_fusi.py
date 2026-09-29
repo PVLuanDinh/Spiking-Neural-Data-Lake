@@ -28,7 +28,7 @@ loop). This is a per-SYNAPSE metaplasticity primitive: no replay, no rehearsal, 
 exemplars -- the resistance is intrinsic to the coupled-beaker dynamics of a single weight.
 
 ATTACHMENT (spiking). The plasticity events are NOT a hand rate rule: they are produced by
-the project's SPIKING reward-modulated STDP (basal_ganglia.r_stdp.RSTDPNeuron). Per training
+the project's SPIKING reward-modulated STDP (plasticity.r_stdp.RSTDPNeuron). Per training
 tick the direction of each synapse's update is set by SPIKE TIMING (causal pre-before-post ->
 potentiate, anti-causal post-before-pre -> depress) and gated by a reward; the resulting
 reward-gated deltas are DEPOSITED into the fast beaker of each synapse's cascade. The cascade
@@ -53,7 +53,7 @@ Controls exposed for an un-riggable comparison:
   * collapse to a SINGLE scalar  (n_levels=1)  -- the plasticity-matched fast synapse.
   * ZERO the inter-beaker diffusion (g0=0.0)   -- the cascade-OFF control (same fast lr).
 
-Reuses (does NOT reimplement): basal_ganglia.r_stdp.RSTDPNeuron (the spiking reward-gated
+Reuses (does NOT reimplement): plasticity.r_stdp.RSTDPNeuron (the spiking reward-gated
 weight update the cascade attaches to) and infra._mathutils.mean. The diffusion is exact,
 deterministic float arithmetic; per-instance random.Random(seed); zlib.crc32 for sub-seeds
 (never hash()); no wall-clock, no global RNG. ASCII-only output.
@@ -66,8 +66,8 @@ Refs: Benna & Fusi, Nat. Neurosci. 2016; Fusi, Drew & Abbott, Neuron 2005 (casca
 import random
 import zlib
 
-from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
 from snn_data_lake.infra._mathutils import mean
+from snn_data_lake.plasticity.r_stdp import RSTDPNeuron
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

@@ -380,11 +380,11 @@ def red1(result):
 #   quantities of one arm and admits no band at all.
 # distinct-from: growth/h01_ingest.py::_disclose -- prints five ingest numbers and explicitly never
 #   filters on them; it decides nothing. This decides, and its decision gates a conjunct.
-# distinct-from: basal_ganglia/r_stdp.py::Calibration -- a NamedTuple of what a host measured for
+# distinct-from: plasticity/r_stdp.py::Calibration -- a NamedTuple of what a host measured for
 #   the parallel crossover; a record, not a predicate.
 # distinct-from: substrate/signal_ring.py::attach -- cursors a new consumer at the current head;
 #   "sees nothing before it attached" is a ring's history rule, not a zero reading.
-# distinct-from: cortex/interaction_learning.py::_live_brain_demo -- talks to the live brain and
+# distinct-from: readout/interaction_learning.py::_live_brain_demo -- talks to the live brain and
 #   shows a learner improving; it is a demo of a learner, and its subject is exactly the thing
 #   this predicate asserts is ABSENT. All five sites read 2026-09-09 before this note was written.
 def no_learner_holds(result):
@@ -869,7 +869,7 @@ def trial_drive(classes, cls, seed, trial_id, n_units, t_trial=T_TRIAL):
 #   DENSE, ORTHONORMAL, FROZEN measurement basis whose only job is to bound the readout's capacity.
 # distinct-from: hippocampus/grid_place_map.py::grid_spikes -- a deterministic rate-to-SPIKE
 #   sampler over a grid population (Bernoulli draws per cell per tick), not a linear map of counts.
-# distinct-from: hippocampus/growable_readout.py::_restore_adam -- optimizer-moment surgery when a
+# distinct-from: readout/growable_readout.py::_restore_adam -- optimizer-moment surgery when a
 #   torch readout gains a unit; no projection and no draw.
 # distinct-from: growth/neurogenesis_engine.py::grown_model, growth/placement.py::_place_grn -- a
 #   retained-model accessor and a uniform POSITION draw for a non-cortical region. All five read
@@ -951,7 +951,7 @@ def predict(coef, feature, k):
 #   src. The overlap is with a stale index entry, not with code.
 # distinct-from: growth/heterogeneous_microcircuit.py::run_circuit -- drives a circuit and returns
 #   per-neuron SPIKE COUNTS; a dynamics run, not a weight read.
-# distinct-from: cortex/predictive_coding.py::set_state and reasoning/resume_learning.py::_forward
+# distinct-from: readout/predictive_coding.py::set_state and reasoning/resume_learning.py::_forward
 #   -- force causes / clear error membranes, and integrate a LIF readout for one window. Both are
 #   MEMBRANE state; a synapse table is neither. All four live sites read 2026-09-09.
 def edge_table(syn):

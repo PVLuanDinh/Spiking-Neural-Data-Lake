@@ -1,6 +1,6 @@
 """The P2 MERGE of R-STDP: ONE authoritative implementation (specs/022 T063 2.1).
 
-`basal_ganglia/r_stdp.py` owned the three-factor rule as per-object list arithmetic inside
+`plasticity/r_stdp.py` owned the three-factor rule as per-object list arithmetic inside
 `RSTDPNeuron`. T063 needed the same rule over a kernel bundle table. P2 forbids a second
 implementation, so the rule's operations were lifted to module-level functions that BOTH forms
 call, and this file was the behavioural verification P2 demands: identical input, identical
@@ -30,7 +30,7 @@ import pytest
 
 pytest.importorskip("numpy")
 
-from snn_data_lake.basal_ganglia import r_stdp  # noqa: E402
+from snn_data_lake.plasticity import r_stdp  # noqa: E402
 
 #: The incumbent's pinned trajectory, measured at 851b026 BEFORE the merge. The merge is only a
 #: merge if the surviving implementation reproduces it exactly -- a "merge" that moves the

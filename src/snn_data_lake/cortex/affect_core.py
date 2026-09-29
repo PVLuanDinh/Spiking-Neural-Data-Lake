@@ -13,7 +13,7 @@ ordered pairs identical to this class, and `recursive_tom.t082_second_order_refe
 survives, as R5's control) identical to it on the same 1200. P2: exactly one mechanism survives.
 
 Where the repo stood (honest baseline this module deepens):
-  * affect was ONE 1-D approach/avoid valence scalar (basal_ganglia/valence_stdp.ValenceLearner,
+  * affect was ONE 1-D approach/avoid valence scalar (plasticity/valence_stdp.ValenceLearner,
     cortex/self_model valence axis) plus an |rpe| / threat arousal PROXY -- no discrete emotions.
   * empathy and emotion-recognition were ABSENT.
 

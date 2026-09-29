@@ -125,7 +125,7 @@ from snn_data_lake.substrate.report_channel import snapshot as _report_snapshot
 #: compute an exact reverse-mode gradient, of an OFFLINE ANALYSIS DECODER's own convex multinomial
 #: logistic loss, over a RECORDING that already exists. No synapse, trace, threshold or weight of
 #: the brain is touched by it; it never runs on a tick; its output is an ACCURACY, read against a
-#: label-shuffle band, and thrown away. The precedent is `cortex/eprop_kernel::_first_layer_grad`,
+#: label-shuffle band, and thrown away. The precedent is `plasticity/eprop_kernel::_first_layer_grad`,
 #: a gradient-computing function declared NOT_A_RULE because it DIAGNOSES rather than learns, and
 #: the sibling is `metacognitive_monitor`'s two NOT_A_RULE rows. EXACT_GRADIENT was considered and
 #: NOT taken: in this tree that value means "the independent BPTT reference the e-prop cosine
@@ -138,7 +138,7 @@ GRADIENT_CLAIM = {
         "already-recorded (rows, labels) table, to read whether the label is decodable above a "
         "label-shuffle band (G4). An estimator, not a learning rule: it trains no part of the "
         "brain, touches no synapse or trace, never runs on a tick, and its weights are discarded "
-        "with the reading. Same disposition and same reason shape as cortex/eprop_kernel::"
+        "with the reading. Same disposition and same reason shape as plasticity/eprop_kernel::"
         "_first_layer_grad -- a gradient that measures instead of learning",
     ),
 }
@@ -842,7 +842,7 @@ def t078_determinism(seed, n_ticks=DETERMINISM_TICKS):
 #   pure function of the fields it is handed on that tick.
 # distinct-from: gates/amdahl_gate.py::_count_lif_in -- a bounded attribute walk counting
 #   LIFNeurons reachable from one brain. Read: shares only the phrase "one brain"; no census here.
-# distinct-from: cortex/snn_moe_classifier.py::_new_rng -- derives a numpy Generator's seed from
+# distinct-from: readout/snn_moe_classifier.py::_new_rng -- derives a numpy Generator's seed from
 #   the module-global `random` stream to keep a consumer's determinism contract. Read: every RNG
 #   here is a per-call `random.Random(seed)` or a per-call `torch.Generator`, and NOTHING in this
 #   module reads or writes a process-global random stream.
@@ -979,7 +979,7 @@ def _t078_mutated_scorer(kind):
     def no_min(x, y, **kw):
         return _mi_read(x, y, n_min_per_cell=0, **kw)
 
-    # distinct-from: cortex/laminar_local_readout.py::observe -- one LOCAL WEIGHT UPDATE on a
+    # distinct-from: readout/laminar_local_readout.py::observe -- one LOCAL WEIGHT UPDATE on a
     #   sample. distinct-from: plasticity/eligibility_algebra.py::canonical -- like-term folding of
     #   a plasticity RULE expression. distinct-from: plasticity/plasticity_rule_stack.py
     #   ::_equivalence_and_determinism_selfcheck -- a stack drop-in equivalence check.
@@ -1150,7 +1150,7 @@ def _line(c):
 #   differences it is HANDED, and is the function this one calls. It has no notion of a reading, a
 #   readability or a refusal, and cannot: by the time diffs reach it the fabrication has happened.
 #   This is the guard in front of it -- whether a contrast may be BUILT at all. Read, imported,
-#   never re-implemented. distinct-from: hippocampus/online_readout.py::ClosingGate (a refit-count
+#   never re-implemented. distinct-from: readout/online_readout.py::ClosingGate (a refit-count
 #   gate that holds beta stale after k refits), substrate/signal_ring.py::publish (a single-writer
 #   ring append whose "never drops ITS OWN write" is about slot reuse), cerebellum/hjepa_serve.py::
 #   _validate_stack (layer shape chaining, raises) and cerebellum/gain_adaptation.py (online LMS

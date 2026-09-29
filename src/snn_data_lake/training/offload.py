@@ -28,35 +28,37 @@ disk streaming, sharded optimizer state), use the purpose-built libraries instea
 Torch/Brian2 are imported at module top on purpose: this module is only imported
 when actually training (from cli.main() behind an import guard).
 """
+
 import random
 
 import torch
 import torch.nn as nn
-from snn_data_lake.growth.brian2_backend import BrianLIF, fast_sigmoid
 from torch.utils.checkpoint import checkpoint
 
-from snn_data_lake.cortex.snn_classifier import (
-    templates,
-    dataset,
-    N,
+from snn_data_lake.growth.brian2_backend import BrianLIF, fast_sigmoid
+from snn_data_lake.readout.snn_classifier import (
     STEPS,
-    TRAIN_PER_CLASS,
     TEST_PER_CLASS,
+    TRAIN_PER_CLASS,
+    N,
+    dataset,
+    templates,
 )
 from snn_data_lake.training.trainer import (
-    SpikingReadout,
-    rate_encode,
-    _to_tensors,
-    _generator,
-    evaluate,
     DEFAULT_BETA,
-    DEFAULT_LR,
     DEFAULT_EPOCHS,
+    DEFAULT_LR,
+    SpikingReadout,
+    _generator,
+    _to_tensors,
+    evaluate,
+    rate_encode,
 )
 
 
-def train_with_offload(epochs=DEFAULT_EPOCHS, compute_device="cpu", seed=0,
-                       lr=DEFAULT_LR, beta=DEFAULT_BETA):
+def train_with_offload(
+    epochs=DEFAULT_EPOCHS, compute_device="cpu", seed=0, lr=DEFAULT_LR, beta=DEFAULT_BETA
+):
     """Train the same single spiking readout as trainer.train_model, but with the
     weights' master copy + optimizer state on CPU and the time-unrolled forward
     gradient-checkpointed on ``compute_device``.
@@ -89,9 +91,9 @@ def train_with_offload(epochs=DEFAULT_EPOCHS, compute_device="cpu", seed=0,
     last_loss = float("nan")
     for _epoch in range(int(epochs)):
         opt.zero_grad()
-        spikes = rate_encode(Xtr, STEPS, gen, compute_device)   # [STEPS, batch, N]
-        w_dev = weight_cpu.to(compute_device)                   # stream params to device
-        w_dev.retain_grad()                                     # non-leaf: keep its grad
+        spikes = rate_encode(Xtr, STEPS, gen, compute_device)  # [STEPS, batch, N]
+        w_dev = weight_cpu.to(compute_device)  # stream params to device
+        w_dev.retain_grad()  # non-leaf: keep its grad
         mem = torch.zeros(batch, n_classes, device=compute_device)
         spk_sum = torch.zeros(batch, n_classes, device=compute_device)
         for t in range(STEPS):

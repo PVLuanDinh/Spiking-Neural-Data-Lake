@@ -58,16 +58,6 @@
    "governed": true,
    "kind": "APPROXIMATES_GRADIENT"
   },
-  "basal_ganglia/r_stdp.py::RSTDPNeuron.reward": {
-   "disposition": "expressible -- PROVEN: T050 equivalence via the exported check; T051b-iv deposit through the kernel",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "basal_ganglia/valence_stdp.py::ValenceLearner.learn": {
-   "disposition": "needs-pre-collapse -- T050 census (sign-conditional dispatch)",
-   "governed": true,
-   "kind": "LOCAL"
-  },
   "cerebellum/forward_model.py::ForwardModel.update": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
@@ -103,45 +93,10 @@
    "governed": true,
    "kind": "LOCAL"
   },
-  "cortex/eprop_kernel.py::_TinyNet.eprop_grads": {
-   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
-   "governed": true,
-   "kind": "APPROXIMATES_GRADIENT"
-  },
-  "cortex/eprop_kernel.py::_apply_grads": {
-   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
-   "governed": true,
-   "kind": "APPROXIMATES_GRADIENT"
-  },
-  "cortex/eprop_kernel.py::bptt_grads": {
-   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
-   "governed": true,
-   "kind": "EXACT_GRADIENT"
-  },
-  "cortex/interaction_learning.py::SpikingInteractionLearner._deposit": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cortex/interaction_learning.py::SpikingInteractionLearner.learn_turn": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cortex/interaction_learning.py::_train": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
   "cortex/kb_ranking.py::DistMult.train_epoch": {
    "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
    "governed": true,
    "kind": "APPROXIMATES_GRADIENT"
-  },
-  "cortex/laminar_local_readout.py::LaminarLocalReadout.train_step": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
   },
   "cortex/language_acquisition.py::LanguageAcquisition._learn_step": {
    "disposition": "UNDISPOSITIONED",
@@ -163,16 +118,6 @@
    "governed": true,
    "kind": "LOCAL"
   },
-  "cortex/predictive_coding.py::PredictiveCodingNetwork.learn": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cortex/predictive_coding.py::PredictiveCodingNetwork.learn_step": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
   "cortex/reasoning_curriculum.py::ReasoningLearner._train_units": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
@@ -189,21 +134,6 @@
    "kind": "LOCAL"
   },
   "cortex/rose_language.py::RoseLanguage.nightly_refit": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cortex/snn_classifier.py::train": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cortex/snn_moe_classifier.py::train": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cortex/tempotron.py::Tempotron.train": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
    "kind": "LOCAL"
@@ -243,23 +173,8 @@
    "governed": true,
    "kind": "LOCAL"
   },
-  "hippocampus/growable_readout.py::GrowableReadout.train_step": {
-   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
-   "governed": true,
-   "kind": "APPROXIMATES_GRADIENT"
-  },
-  "hippocampus/growable_readout.py::LaminarColumns.train_step": {
-   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
-   "governed": true,
-   "kind": "APPROXIMATES_GRADIENT"
-  },
   "hippocampus/hippocampal_memory.py::HippocampalMemory.consolidate": {
    "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "hippocampus/online_readout.py::OnlineReadout.learn": {
-   "disposition": "expressed -- L1c (2026-09-06): a single-sample output-layer delta / error-sign step on beta; lr = mu / (||s||^2 + 1); no hidden error, no transpose (the module self-check holds the reds)",
    "governed": true,
    "kind": "LOCAL"
   },
@@ -373,11 +288,6 @@
    "governed": true,
    "kind": "LOCAL"
   },
-  "neuromodulation/naca.py::_deposit": {
-   "disposition": "needs-pre-collapse -- T050 census",
-   "governed": true,
-   "kind": "LOCAL"
-  },
   "neuromodulation/spiking_curiosity.py::_learner_step": {
    "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
    "governed": true,
@@ -407,6 +317,21 @@
    "disposition": "UNDISPOSITIONED",
    "governed": true,
    "kind": "LOCAL"
+  },
+  "plasticity/eprop_kernel.py::_TinyNet.eprop_grads": {
+   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
+   "governed": true,
+   "kind": "APPROXIMATES_GRADIENT"
+  },
+  "plasticity/eprop_kernel.py::_apply_grads": {
+   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
+   "governed": true,
+   "kind": "APPROXIMATES_GRADIENT"
+  },
+  "plasticity/eprop_kernel.py::bptt_grads": {
+   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
+   "governed": true,
+   "kind": "EXACT_GRADIENT"
   },
   "plasticity/espp_rule.py::espp_modulator_core": {
    "disposition": "expressed -- T052-i: the extracted incumbent math (jepa's rule='espp' branch delegates here); held by the frozen-transcription regression arm (tol=0) and bound to the applied weight through the DELTA arm's declaration",
@@ -458,6 +383,11 @@
    "governed": true,
    "kind": "LOCAL"
   },
+  "plasticity/naca.py::_deposit": {
+   "disposition": "needs-pre-collapse -- T050 census",
+   "governed": true,
+   "kind": "LOCAL"
+  },
   "plasticity/oja_pca.py::OjaNeuron.learn": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
@@ -473,8 +403,78 @@
    "governed": true,
    "kind": "LOCAL"
   },
+  "plasticity/r_stdp.py::RSTDPNeuron.reward": {
+   "disposition": "expressible -- PROVEN: T050 equivalence via the exported check; T051b-iv deposit through the kernel",
+   "governed": true,
+   "kind": "LOCAL"
+  },
   "plasticity/structural_rewiring.py::StructuralRewiring.rewire": {
    "disposition": "expressed (component grain) -- T051b-ii: the prune form vs rewire()",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "plasticity/valence_stdp.py::ValenceLearner.learn": {
+   "disposition": "needs-pre-collapse -- T050 census (sign-conditional dispatch)",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "readout/growable_readout.py::GrowableReadout.train_step": {
+   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
+   "governed": true,
+   "kind": "APPROXIMATES_GRADIENT"
+  },
+  "readout/growable_readout.py::LaminarColumns.train_step": {
+   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
+   "governed": true,
+   "kind": "APPROXIMATES_GRADIENT"
+  },
+  "readout/interaction_learning.py::SpikingInteractionLearner._deposit": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "readout/interaction_learning.py::SpikingInteractionLearner.learn_turn": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "readout/interaction_learning.py::_train": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "readout/laminar_local_readout.py::LaminarLocalReadout.train_step": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "readout/online_readout.py::OnlineReadout.learn": {
+   "disposition": "expressed -- L1c (2026-09-06): a single-sample output-layer delta / error-sign step on beta; lr = mu / (||s||^2 + 1); no hidden error, no transpose (the module self-check holds the reds)",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "readout/predictive_coding.py::PredictiveCodingNetwork.learn": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "readout/predictive_coding.py::PredictiveCodingNetwork.learn_step": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "readout/snn_classifier.py::train": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "readout/snn_moe_classifier.py::train": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "readout/tempotron.py::Tempotron.train": {
+   "disposition": "UNDISPOSITIONED",
    "governed": true,
    "kind": "LOCAL"
   },

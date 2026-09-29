@@ -26,7 +26,7 @@ Mechanism (brain-native, spiking, three-factor local -- NO backprop):
   2. LEARN (dopamine-gated three-factor plasticity). learn(engaged, reward) computes the reward
      PREDICTION ERROR against a running baseline of the DEFAULT (control-withheld) outcome,
          dopamine = reward - expected                    (the RPE, same convention as
-                                                          basal_ganglia/valence_stdp and
+                                                          plasticity/valence_stdp and
                                                           midbrain/dopamine_nuclei)
      and applies a THREE-FACTOR update gated by whether control was actually engaged (the eligibility
      of the control unit -- only an engaged, i.e. FIRING, control unit is eligible to change its

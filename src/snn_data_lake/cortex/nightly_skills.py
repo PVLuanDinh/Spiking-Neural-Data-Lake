@@ -115,7 +115,6 @@ from snn_data_lake.cortex.autotelic_goals import (
     collect_labels,
 )
 from snn_data_lake.cortex.kb_ranking import DistMult, load_dataset
-from snn_data_lake.cortex.language_readout_slda import SLDA_RFF_np
 from snn_data_lake.cortex.language_self_build import _bigram_baseline, _positional_code
 from snn_data_lake.hippocampus.content_signature import SIG as _SIG_DIM
 from snn_data_lake.hippocampus.proximity_replay import LakeMemory
@@ -132,6 +131,7 @@ from snn_data_lake.hippocampus.skill_builder import (
     signature,
 )
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
+from snn_data_lake.readout.language_readout_slda import SLDA_RFF_np
 from snn_data_lake.sensorimotor.corpus_stream import (
     ARPABET,
     load_cmudict,

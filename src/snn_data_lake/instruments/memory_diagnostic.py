@@ -463,7 +463,7 @@ READOUT_LAMBDA = 1.0
 GROWER_KEYS = ("predictions", "fallbacks", "phi", "fingerprint", "refits")
 
 
-# distinct-from: hippocampus/online_readout.py -- OnlineReadout moves the GROWER's beta by a delta rule
+# distinct-from: readout/online_readout.py -- OnlineReadout moves the GROWER's beta by a delta rule
 #   on every wake pair; this reads phi beside the grower and never touches it. distinct-from:
 #   reasoning/sorn.py::train_readout, reasoning/pc_cortex_torch.py::train_ridge_readout,
 #   reasoning/hjepa_torch.py and hjepa_arm_torch.py's ridge readouts -- one-shot batch solves with the

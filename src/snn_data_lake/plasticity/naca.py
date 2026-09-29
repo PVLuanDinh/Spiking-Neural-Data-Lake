@@ -12,7 +12,7 @@ already-consolidated one, it protects the old task -- lower catastrophic interfe
 WHAT IS AND IS NOT HERE (honest):
   * NACABroadcast is a MODULATOR, not a plasticity primitive. It never computes an eligibility trace or
     a weight update of its own. It takes an EXISTING local delta (here, the R-STDP eligibility gate from
-    basal_ganglia.r_stdp.RSTDPNeuron, REUSED verbatim -- no new learning rule is invented) and returns an
+    plasticity.r_stdp.RSTDPNeuron, REUSED verbatim -- no new learning rule is invented) and returns an
     ADDITIVE correction  -eta * f_local(lambda) * delta  to lay ON TOP of it. lambda=0 (or any lambda that
     zeroes the gate) -> the correction is all zeros -> the update reduces EXACTLY to the unmodulated local
     rule. That off path is proven byte-identical in the self-check.
@@ -36,7 +36,7 @@ task 1's margin and task 2's perturbation equally); the gain requires gating the
 which is exactly what an input-type-keyed neuromodulator does.
 Refs: Zhang, Zeng et al., Sci. Adv. 2023 (adi2947); Izhikevich 2007 (the R-STDP eligibility reused here).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.naca
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.plasticity.naca
 """
 
 import math
@@ -186,7 +186,7 @@ def _gate_shape_check():
 def _off_path_byte_identity():
     """Prove the off path: an R-STDP local delta with NACA at lambda=0 reduces EXACTLY to the unmodulated
     local rule. Two identical RSTDPNeurons run the same deposit; one adds the NACA correction at lambda=0."""
-    from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
+    from snn_data_lake.plasticity.r_stdp import RSTDPNeuron
 
     naca = NACABroadcast(n_syn=_N_IN, n_types=2, seed=1)
     code = list(range(_N_IN))  # a fixed rank-order spike train
@@ -209,7 +209,7 @@ def _consolidation_reversal_check():
     task 1 (P0 over P1) at full strength (PLAIN), then train the DIRECTLY CONFLICTING reversal task 2 (P1
     over P0) on the SAME synapses. PLAIN overwrites task 1 (forgets); NACA gating the conflicting task keeps
     task 1's consolidated weights (sparse change, task 1 retained) at the cost of not learning task 2."""
-    from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
+    from snn_data_lake.plasticity.r_stdp import RSTDPNeuron
     from snn_data_lake.sensorimotor.rank_order_coding import rank_code
 
     seed, noise, e1, e2 = 7, 0.05, 60, 60
@@ -267,10 +267,10 @@ def _consolidation_reversal_check():
 
 
 def _wire_engages_check():
-    """The opt-in wire in cortex.interaction_learning: with a NACABroadcast passed, the learner's weights
+    """The opt-in wire in readout.interaction_learning: with a NACABroadcast passed, the learner's weights
     DIFFER from the naca=None run on identical training (the modulation is live). The naca=None OFF path is
     byte-identical -- proven by the existing interaction_learning self-check, which is unchanged."""
-    from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner
 
     responses, n = ["a", "b"], 12
     rng = random.Random(1)
@@ -335,7 +335,7 @@ def main():
     wire_live = _wire_engages_check()
     print("-" * 78)
     print(
-        f"opt-in wire (cortex.interaction_learning): naca set changes the learner's weights: {wire_live}"
+        f"opt-in wire (readout.interaction_learning): naca set changes the learner's weights: {wire_live}"
     )
     print(
         "  (naca=None is byte-identical -- proven by the unchanged interaction_learning self-check)"

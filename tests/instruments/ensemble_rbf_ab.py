@@ -4,7 +4,7 @@ governed subjects (the jepa_highdim_probe pattern -- it holds no mechanism of it
 
 Every subject is governed: `instruments.snn_mnist_stdp.load_mnist`,
 `instruments.deep_stdp_latency.ConvLatencyStdp/_train` (the unsupervised conv1 perception),
-`hippocampus.growable_readout.LaminarColumns` (governed at the 2026-08-12 laminar merge),
+`readout.growable_readout.LaminarColumns` (governed at the 2026-08-12 laminar merge),
 `infra.device`. The linear member is stock nn.Linear+Adam, the RBF member is stock
 sklearn SVC, the fusion is an unweighted probability average -- measurements, not
 mechanisms.
@@ -45,10 +45,10 @@ import torch.nn.functional as F
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
-from snn_data_lake.hippocampus.growable_readout import LaminarColumns
 from snn_data_lake.infra.device import enable, resolve_device
 from snn_data_lake.instruments.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.instruments.snn_mnist_stdp import _env, load_mnist
+from snn_data_lake.readout.growable_readout import LaminarColumns
 
 
 def _cache(conv, X, dev):

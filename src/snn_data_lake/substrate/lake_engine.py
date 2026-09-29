@@ -271,7 +271,7 @@ class SynapseDelta:
         PORTED HERE (P2) 2026-09-09 from `substrate/unit_blocks.py::UnitBlocks.group`, because the
         paging layer that module was built for measured a LOSS and is deleted with it
         (specs/022 evidence/s5-paging-null.md 3.4/3.5). The 0x09 synapse-delta path is NOT part of
-        that layer and is this method's one consumer -- `cortex/interaction_learning.py::
+        that layer and is this method's one consumer -- `readout/interaction_learning.py::
         SpikingInteractionLearner._record_synapse_delta` frames its payload's entries by block --
         so the capability moves to the class that already frames those entries rather than dying
         with the pager it never belonged to. The pager-only half of that module (residency counter,

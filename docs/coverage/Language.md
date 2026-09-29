@@ -216,7 +216,7 @@ Format: `file` -- unique capability -- **live consumer**.
   **Research-tier self-check.**
 - `reasoning/language_readout_slda.py`, `reasoning/language_self_build.py` -- SLDA-RFF and R-STDP
   next-char readouts. **`nightly_skills.py` language Domain, on the sleep tick.**
-- `cortex/interaction_learning.py` -- R-STDP spiking intent router. **`learn_turn` written every turn;
+- `readout/interaction_learning.py` -- R-STDP spiking intent router. **`learn_turn` written every turn;
   readout unread (R7).**
 
 **Nothing here should be retired on this audit's evidence.** Two notes for whoever does:

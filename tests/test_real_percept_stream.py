@@ -199,14 +199,14 @@ def _l_cell(args):
             # the cells in evidence/sc-012a-width.md are the same machine. It cannot move it:
             # the statistic is the refit accuracy, which the decoupled batch instrument keeps
             # identical either way (the reason the incumbent arms above can drop it).
-            from snn_data_lake.hippocampus.online_readout import OnlineReadout
+            from snn_data_lake.readout.online_readout import OnlineReadout
 
             eng.online_readout = OnlineReadout("delta")
         elif arm in (
             "L1C",
             "L1C_CTRL",
         ):  # the online readout (L1c) and its control that is not the method
-            from snn_data_lake.hippocampus.online_readout import OnlineReadout
+            from snn_data_lake.readout.online_readout import OnlineReadout
 
             eng.online_readout = (
                 OnlineReadout("delta") if arm == "L1C" else OnlineReadout("delta", sign=-1.0)

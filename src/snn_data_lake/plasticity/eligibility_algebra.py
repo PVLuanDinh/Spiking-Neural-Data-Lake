@@ -16,7 +16,7 @@ semantics or hardware constant is implemented here, and the budget counts TERMS,
 operands (a one-term product of fifty factors passes budget 1; the operand limit is
 the missing half, disclosed).
 
-THE CHARGE: the incumbent `basal_ganglia/r_stdp.py::RSTDPNeuron.reward` (dw_i =
+THE CHARGE: the incumbent `plasticity/r_stdp.py::RSTDPNeuron.reward` (dw_i =
 lr * d * e_i) is authored as ONE term and proven BIT-equivalent -- struct-compared,
 sign of zero included -- against the incumbent's own production reward() on cases
 sampled from the MEASURED live operating ranges (the panel spied 37,995 live reward
@@ -63,7 +63,7 @@ import math
 import threading
 import zlib
 
-# distinct-from: basal_ganglia/r_stdp.py -- the INCUMBENT rule this contract
+# distinct-from: plasticity/r_stdp.py -- the INCUMBENT rule this contract
 #   EXPRESSES and checks against; the algebra evaluates a declaration, it does not
 #   re-implement the neuron. Site read.
 # distinct-from: cerebellum/spiking_jepa.py -- the LPL modulator (T049's adjudicated
@@ -71,7 +71,7 @@ import zlib
 #   the production path by equivalence; the fifth is the layer-conditional lambda_jepa
 #   addition, not a modulator term) -- the census row moved NOT-EXPRESSIBLE ->
 #   NEEDS-PRE-COLLAPSE (docstring). Site read.
-# distinct-from: cortex/eprop_kernel.py -- an eligibility-propagation KERNEL
+# distinct-from: plasticity/eprop_kernel.py -- an eligibility-propagation KERNEL
 #   (executes traces on tissue); this is the AUTHORING contract layer, and its
 #   scalar evaluate cannot express the tensor family (disclosed). Site read.
 # distinct-from: substrate/wiring_manifest.py -- declares PORTS/EDGES between
@@ -357,7 +357,7 @@ def main():
     #    draft's 0.0 accumulator re-signed). The equivalence holds STRUCTURALLY
     #    (coefficient exactly 1.0, authored multiplication order == the incumbent's);
     #    the sweep is a REGRESSION guard, not statistical proof.
-    from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
+    from snn_data_lake.plasticity.r_stdp import RSTDPNeuron
 
     alg = EligibilityAlgebra(term_budget=4)
     alg.declare_factor("lr", "the neuron's own learning rate (a constant factor)")

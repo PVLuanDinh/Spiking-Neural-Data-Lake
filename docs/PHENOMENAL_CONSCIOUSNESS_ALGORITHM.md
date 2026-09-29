@@ -69,8 +69,8 @@ read.
 
 | Claim | Status | Evidence |
 |---|---|---|
-| `PREC0 = 1.0`, `PREC1 = 1.0` gate the PC error drive | VERIFIED | `cortex/predictive_coding.py:88-89`, used `:192-193`, `:237-238` |
-| `THETA = 0.5`, `LEAK = 0.02` set the error-neuron operating point | VERIFIED | `cortex/predictive_coding.py:86-87` |
+| `PREC0 = 1.0`, `PREC1 = 1.0` gate the PC error drive | VERIFIED | `readout/predictive_coding.py:88-89`, used `:192-193`, `:237-238` |
+| `THETA = 0.5`, `LEAK = 0.02` set the error-neuron operating point | VERIFIED | `readout/predictive_coding.py:86-87` |
 | `ignition_threshold=0.55` is the default in three constructors | VERIFIED | `thalamus/reentrant_workspace.py:103`, `thalamus/global_workspace.py:93`, `cortex/access_consciousness.py:84` |
 | **`brain.py:2149` is the clobber, not a hook** | VERIFIED | `cortex/brain.py:2143-2150` recomputes `ignition_threshold` from `base_ignition_threshold` every wake tick, inside `try:` / `except Exception: pass` at `:2115`/`:2151`. It also writes `_v_th = thr / _LEAK` at `:2150`. |
 | `base_ignition_threshold` is documented immutable | VERIFIED | `thalamus/reentrant_workspace.py:105-109`, "kept immutable ... Read this, never re-type the default" |
@@ -314,7 +314,7 @@ it rather than instrumenting both.
 
 ---
 
-**A1. Emit the first-order error.** Unchanged. `cortex/predictive_coding.py errors()`.
+**A1. Emit the first-order error.** Unchanged. `readout/predictive_coding.py errors()`.
 *O(L d)* per tick.
 
 ---
@@ -354,7 +354,7 @@ Three things the draft got wrong here, all now fixed:
   new literal. **`ticks_at_floor[l]` is a first-class output: a level floored most of the time
   refutes A2 rather than tuning it.**
 
-*Attach:* `cortex/predictive_coding.py:88-89` (delete both), `:192-193`, `:237-238`.
+*Attach:* `readout/predictive_coding.py:88-89` (delete both), `:192-193`, `:237-238`.
 *O(L)* per tick; *O(L tau)* per re-estimate.
 
 ---

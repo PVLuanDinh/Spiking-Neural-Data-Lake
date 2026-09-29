@@ -50,7 +50,7 @@ remains ONE compiler, used by `Synapses.__init__`.
 # distinct-from: substrate/signal_ring.py -- transport of lake-bound RECORDS between faculties;
 #   the delay rings here carry spike BUNDLES inside one kernel.
 # distinct-from: growth/neuron_zoo.py -- per-object model population (see T013 disposition).
-# distinct-from: basal_ganglia/r_stdp.py -- its _FanOut/Calibration machinery parallelizes its
+# distinct-from: plasticity/r_stdp.py -- its _FanOut/Calibration machinery parallelizes its
 #   OWN plasticity math with a measured serial/parallel crossover; a learning-rule execution
 #   detail, never a substrate tick or delivery transport.
 # distinct-from: cortex/access_consciousness.py -- workspace BROADCAST delivery (_head_only is

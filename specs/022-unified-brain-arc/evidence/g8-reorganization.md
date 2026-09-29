@@ -2798,3 +2798,92 @@ clock, of which the checks ran about 13 min (C2(c) 244 s, bounded tests 180 s, p
 
 NOT VERIFIED BY A BATTERY. The stage is verified by the cheap half only; nothing is committed or pushed, no daemon
 was started and the live lake was not opened. G8-2's panel, fold and one battery remain owed.
+
+### 3.21 M7 predeclared plasticity and readout move (Claude, G8-2, 2026-09-29)
+
+The M7 parent is the M6 commit `e89176b4`. Its clean export completed the 24-gate, seven-probe, 30-registry census
+with every gate rc 0 (pre census SHA-256 begins `E2ECBADE96B9EC04`, taken with `SNN_ALIAS_STRICT=1`); the frozen 2.12
+map, read by the frozen mover (sha256 prefix `b49e982a`), moves 13 modules: 4 into `plasticity/` (`r_stdp` and
+`valence_stdp` from `basal_ganglia`, `eprop_kernel` from `cortex`, `naca` from `neuromodulation`) and 9 into the new
+`readout/` (from `cortex`: `interaction_learning`, `laminar_local_readout`, `language_readout_slda`,
+`predictive_coding`, `snn_classifier`, `snn_moe_classifier`, `tempotron`; from `hippocampus`: `growable_readout`,
+`online_readout`). `eprop_kernel` and `online_readout` are torch-tier, the other 11 core; none is in the safety
+envelope. The mover re-keyed `REGIONS`, `TORCH_TIER` and the runner's names and rewrote 56 files (62 imports, 38
+strings), among them the `EXEMPT_METHOD` key of `predictive_coding`, the `REGISTRANTS` row of `r_stdp`, the two
+`CUSTOM_KERNELS` entries (`eprop_kernel`, `r_stdp`) and the three `-m` self-launch strings of `interaction_learning`;
+it left one docstring to the live-citation rewriter. The rewriter (Codex's, re-targeted to M7 and kept out of tree)
+rewrote 83 live files, 191 citations, among them the three POLICIES.md sites (the reuse anchor, the TORCH-tier
+gradient sentence and the e-prop register site of `predictive_coding`).
+
+Before any M7 post-move gate run, the C1 delta was written to the out-of-tree `declared_M7.json` (SHA-256 begins
+`CB653B17503C2983`; the frozen-map names are `expected_M7.json`, `9ADC6F2CCA05ED11`). It forecasts 16 changes: the
+brain atlas per-key counts generated from the mover's tables (`cortex` 44 (+2 torch-tier) to 37 (+1), `hippocampus`
+21 (+1) to 20, `basal_ganglia` 7 to 5, `neuromodulation` 13 to 12, `plasticity` 18 to 21 (+1 torch-tier), `readout`
+new at 8 (+1 torch-tier); 298 modules unchanged; 24 to 25 regions); the new initializer raises the parsed-file counts
+of the e-prop transport, gradient-claim and P6 gates (445 to 446) and the P4c scaffold count (35 to 36); citation
+BROAD moves 1794/285 to 1887/291, forecast statically with the guard's own parser and resolver over the tracked set
+(reproducing 1794/285 on the parent) and then the candidate; the names `REGIONS` keys and `GOVERNED` gain `readout`,
+and `TORCH_TIER` keys lose `hippocampus` (its only torch module moves) and gain `plasticity` and `readout`. Live files
+gain no BROAD citation: six moved-file citations of already-dangling targets re-path and count once each side. No
+envelope comment cites a moved module (the F11 carve-out is not touched by M7).
+
+**No halt, no amendment.** The first post census (over an export of the worktree, strict) completed 24 gates and
+seven probes, all rc 0, and C1 said the diff equals the declared delta (16 declared changes). After the four
+line-length fixes and the training-file revert below, a FRESH export and census were taken (post census SHA-256
+begins `5FB3FBBB276D709D`, observed delta `58D3F616A65AE8BD`, identical to the first observed delta) and C1 said the
+same. The row-named raw registries moved as the map says.
+
+Items beyond the row, each required by the frozen procedure or by what the checks prove, recorded:
+- `GOVERNED` gained `readout` (row item; hand edit, CRLF preserved).
+- The rule census (2.5 item 6): the mover had already pair-mapped `_CENSUS_ADJUDICATED`; the regeneration command
+  re-keyed 36 rows. Rows stay 104, undispositioned 56.
+- `tools/policy_manifest.json` was regenerated and is byte-identical (no register-site path lives in it).
+- POLICIES word delta: 0. `doc_budget_gate` reads 14266 of 14276 before and after (10 words of headroom, unchanged),
+  measured on the parent export and on the candidate before the gate ran; the three POLICIES edits swap one path token
+  for another.
+- Nine live comment citations of the form module-dot-class (`valence_stdp.ValenceLearner`,
+  `online_readout.OnlineReadout`, and similar), one in each of 9 files, were skipped by the rewriter's boundary rule and were
+  re-pointed by hand, as M6 did for one. C2(d) and the citation count did not depend on them.
+- `ruff check --fix --select I` re-sorted imports in the touched files and `ruff format` reformatted 3 files. One of
+  them, the root `training/ar_spiking_lm.py`, is not format-clean at the parent (a 178-line reflow), so it was
+  restored to the parent's bytes with its single citation edit and is excluded from the format check. Four comment or
+  docstring lines in two tests (`test_eprop_train_tier_unreachable`, `test_gradient_claim_gate`) grew past 100
+  columns with the longer package name and were rewrapped by hand, CRLF preserved.
+- Not touched: the frozen documents and frozen evidence keep their historical paths; the index documents (including
+  the two `CODEBASE_DIGEST` rows that still name the old `basal_ganglia` paths) are D1's.
+- The five envelope files and the envelope hash registry: byte-identical (protected diff empty).
+
+**Cheap half (2.8), counts.** C2(a): 415 imports attempted on both trees, the same 13 known optional-import failures,
+zero scratch-home files. C2(b): 137 legacy pairs (124 plus the 13 new), no synthetic package, 286 flat aliases, no
+identity failure, on the real worktree and on the export. C2(c): 17 of 17 legacy gate runs equal the current runs, 0
+differ (real worktree, strict off; 244 s). C2(d): on the export 666 live source files, 0 unparsed, 0 stale; on the
+raw worktree the scan lists the 13 unstaged deletions as unparsed, which is the missing staging, not a finding.
+C2(e): 16 frozen artifacts, 12 module names, all file-loaded. C3: the envelope hash gate and its self-check green, the
+latch path resolved through the real home module with a file loader (resolved under a scratch home, never opened),
+the protected diff empty. C4: the R-b0 probe identical in the pre and post censuses. **C5 (R-L1, decisive stage):**
+`--rl1-check` on the S1b baseline home, real worktree: the brain arm PASS (refused None, walk equal, answers equal)
+and the zoo arm PASS (the same three readings); `SpikingInteractionLearner` and `RSTDPNeuron` restore through the
+translation. C6 to C9 green inside the census (invariants empty; strict registry parity). Citation STRICT 0
+unexempted with its 2 exemptions; BROAD 1887 across 291 files on the export, equal to the forecast; the document
+command guard and the document budget passed, the policy audit passed on the export (on the raw worktree its P4c
+line reds on the unstaged state, as the C2(d) scan does); `p6_gate` self-check (4 of 4 controls) and `move_gate`'s
+self-check with the R-L1 baseline (C1, F5, C2(b), F3(c), F2, C2(c) and C5 reds fired in copies; C2(d)'s positive
+control found F7's six sites) passed. `ruff check` and `ruff format --check` on the 105 touched files passed. The 13
+module self-checks passed (rc 0 each). The bounded run of 15 test files that name a moved module
+(`-o addopts= -p no:cacheprovider`): on the export 202 passed, 4 skipped, 1 failed; on the real worktree 20 passed,
+1 failed. The two failures are tree-mode artifacts and each passes in the other mode: the C2(d) live-tree test fails on
+the unstaged worktree (13 deletions unparsed) and passes on the export, and the envelope change-set test fails on the
+export (its git view is index-only) and passes on the worktree.
+
+**Planted red (C7).** Restoring the old `cortex`-package register-site path of `predictive_coding` in the POLICIES.md text of an
+export copy made C1 red with exactly 1 difference (citation BROAD 1887/291 declared, 1888/292 observed); citation
+STRICT stayed 0 (the site is prose, not a runnable path) and C2(d) stayed 0, so the live-citation count is the red. The
+real tree is green on the same census (diff equals the declared delta).
+
+**Time.** Pre census 121 s. Build (mover, rewriter, hand items, ruff and the rule census, up to the declaration
+inputs) 132 s of wall clock by the stage timer; the forecast, the declaration, the ruff findings and the test-line
+rewraps came after it and were not timed separately; the first post export, census and diff took 119 s. Cheap half about 33.5 min of wall clock, dominated by the bounded test run
+(17.1 min on the export, including the fresh post census and diff) and C2(c) (244 s); the planted red took 154 s.
+
+NOT VERIFIED BY A BATTERY. The stage is verified by the cheap half only; nothing is committed or pushed, no daemon
+was started and the live lake was not opened. G8-2's panel, fold and one battery remain owed.

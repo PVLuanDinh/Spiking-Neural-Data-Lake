@@ -63,7 +63,7 @@ former list-of-lists build. infer_batch() settles B inputs at once -- that batch
 batch=1, is where the vector form actually pays.
 Refs: Rao & Ballard, Nat Neurosci 2:79 (1999); Friston, free-energy view.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.predictive_coding
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.readout.predictive_coding
 """
 
 import random

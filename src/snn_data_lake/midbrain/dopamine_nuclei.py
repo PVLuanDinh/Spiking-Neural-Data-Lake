@@ -5,7 +5,7 @@ reward-prediction-error (RPE) teaching signal.
 This is the SOURCE of dopamine, not a consumer of it. The nucleus keeps its own TD-style
 prediction of upcoming reward (a scalar critic cache V over trial states) and broadcasts the
 prediction ERROR as the firing of a small population of dopamine neurons. Downstream striatal
-plasticity (basal_ganglia/valence_stdp.py) is the CONSUMER: it reads this dopamine level and
+plasticity (plasticity/valence_stdp.py) is the CONSUMER: it reads this dopamine level and
 updates its synaptic weights. This module deliberately does NOT re-implement that striatal
 plasticity -- it holds no per-feature synaptic weight vector and makes no APPROACH/AVOID
 decision. It only computes an RPE and turns it into a dopamine spike rate.
@@ -67,7 +67,7 @@ def declare_ports(manifest):
     the phasic dopamine population rate in [0,1] (tonic baseline at rpe=0; bursts above,
     dips below), delivered whole each tick -- the diffuse neuromodulatory broadcast. The
     consumer edge is declared by the three-factor learner that gates eligibility with it
-    (basal_ganglia/r_stdp -- the CBGTC route the connectome declares)."""
+    (plasticity/r_stdp -- the CBGTC route the connectome declares)."""
     from snn_data_lake.substrate.wiring_manifest import Port
 
     manifest.declare_port(

@@ -41,7 +41,7 @@ category had exactly one such row. Five new recorded artifacts, all reproducing 
 - **Eligibility holds.** The signal reaches 0.34 on 30 of 60 ticks in the wired arm at every seed
   tried and 0.0 in the neutered arm, so a negative here is a real negative and not a dead wire.
 - **The roster is not padded**, and the one omission that would have flattered the mean checks out:
-  `cortex/interaction_learning.py`'s only non-self-check constructors are
+  `readout/interaction_learning.py`'s only non-self-check constructors are
   `cortex/language_self_build.py:83` and `cortex/readout_fair_compare.py:65`, so it is on Language's
   roster rather than this one. The nine-row split really does score lower than a four-row
   per-faculty-maximum roster, as the section below shows.
@@ -358,7 +358,7 @@ Format: **file** -- unique capability -- live?
 - **(nothing)** -- joint / triadic attention -- absent.
 
 Adjacent and deliberately NOT scored here, because they are not one of the four faculties this
-category claims and another category may hold them: `cortex/interaction_learning.py`
+category claims and another category may hold them: `readout/interaction_learning.py`
 (`SpikingInteractionLearner`, R-STDP learning from conversational feedback) is constructed live --
 `brain.py:201` passes `interaction_learning=True` -- and its neurons are consolidated by the sleep
 plasticity cascade at `brain.py:2303`, but `teach`, `learn_turn` and `respond` have no caller outside

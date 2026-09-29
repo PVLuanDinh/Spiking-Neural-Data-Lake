@@ -29,7 +29,7 @@ def _brain(tmp_path, monkeypatch, sub):
 
 
 def _teach(b, reps=3):
-    from snn_data_lake.cortex.interaction_learning import text_features
+    from snn_data_lake.readout.interaction_learning import text_features
 
     for _ in range(reps):
         for text, intent in TEACH:
@@ -229,8 +229,8 @@ def test_production_feed_reaches_consolidation(tmp_path, monkeypatch):
 def test_replay_buffer_and_counter_units():
     # unit grain: the learner records wake interactions, replays without re-recording,
     # and the stack counter differences deposits exactly.
-    from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner
     from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner
 
     ixn = SpikingInteractionLearner(["A", "B"], n_in=8, seed=0)
     ixn.stack = PlasticityRuleStack(n_neurons=2, seed=0)

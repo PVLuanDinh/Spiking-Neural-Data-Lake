@@ -82,7 +82,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from snn_data_lake.cortex.eprop_kernel import (  # the ONE e-prop engine (specs/013 C4)
+from snn_data_lake.plasticity.eprop_kernel import (  # the ONE e-prop engine (specs/013 C4)
     DEFAULT_ALPHA,
     DEFAULT_DAMP,
     DEFAULT_GAMMA,

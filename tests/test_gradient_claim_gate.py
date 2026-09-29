@@ -64,15 +64,15 @@ def test_a_local_rule_owes_nothing_and_the_reference_is_not_a_claimant():
 #: recall" and recorded it as not done; this is that control in mechanical form, restricted to the
 #: cases the feature cannot function without. It exists because tuning PRECISION silently destroyed
 #: RECALL once already: dropping `grad` from the verb list to cure a 242-rule over-count made
-#: `cortex/eprop_kernel.py` -- the e-prop reference gradient itself -- vanish from the census, and
-#: every gate stayed green while it was invisible.
+#: `plasticity/eprop_kernel.py` -- the e-prop reference gradient itself -- vanish from the census,
+#: and every gate stayed green while it was invisible.
 _MUST_BE_ENUMERATED = (
-    "cortex/eprop_kernel.py",  # the reference gradient FR-011 reconciles; 17 defs, once all unseen
+    "plasticity/eprop_kernel.py",  # the reference gradient FR-011 reconciles; 17 defs, all unseen
     "sensorimotor/eprop_shd.py",  # shipped encoder, guards itself on its own kappa-filtered form
     "sensorimotor/eprop_nmnist.py",  # shipped encoder
     "basal_ganglia/mlp_q.py",  # the feedback-alignment case SC-003 turns on
     "cerebellum/jepa_world_model.py",  # the closed transport violation
-    "cortex/predictive_coding.py",  # inference ran every tick while learning never did
+    "readout/predictive_coding.py",  # inference ran every tick while learning never did
     "reasoning/eprop.py",  # hand-rolled BPTT in pure loops; invisible to any .T-based walk
     "reasoning/gf.py",  # the owner-EXEMPT CONTROL that a two-value classifier would condemn
 )
@@ -81,9 +81,9 @@ _MUST_BE_ENUMERATED = (
 def test_every_load_bearing_module_stays_visible_to_the_census():
     """A rule the enumeration cannot see is a rule no bound can ever govern.
 
-    This is the test that was missing when `cortex/eprop_kernel.py` disappeared: the census reported
-    141 governed rules, `--assert` passed, `--self-check` passed, and the module the whole feature
-    exists to measure was not in it. Nothing was red, because nothing was looking.
+    This is the test that was missing when `plasticity/eprop_kernel.py` disappeared: the census
+    reported 141 governed rules, `--assert` passed, `--self-check` passed, and the module the whole
+    feature exists to measure was not in it. Nothing was red, because nothing was looking.
     """
     rules, _, _ = gate.census()
     seen = {r["module_rel"] for r in rules}
@@ -160,7 +160,7 @@ def test_ng_snn_fit_is_direct_solve_and_not_lumped_in_as_local():
     # SCOPE GUARD: DIRECT_SOLVE must not become a general non-local bucket. predictive_coding stays
     # LOCAL -- POLICIES.md records its weight update as "a local Hebbian outer product ... No
     # transposed weight appears in the learning rule at all"; the w1.T is inference, not the rule.
-    pc = [r for r in rules if r["module_rel"] == "cortex/predictive_coding.py"]
+    pc = [r for r in rules if r["module_rel"] == "readout/predictive_coding.py"]
     assert pc, "predictive_coding vanished from the census"
     assert all(r["declared"] == gate.LOCAL for r in pc), [r["declared"] for r in pc]
 
@@ -604,7 +604,7 @@ def test_the_fr010_check_fires_on_a_constructed_violation():
     # it, a check that flagged everything would pass every assertion above.
     clean = [
         "src/snn_data_lake/gates/gradient_claim_gate.py",
-        "src/snn_data_lake/cortex/eprop_kernel.py",
+        "src/snn_data_lake/plasticity/eprop_kernel.py",
         "tests/test_gradient_claim_measure.py",
         "specs/020-eprop-cosine-scope/spec.md",
         "src/snn_data_lake/brainstem/autonomous_loop.py",  # brainstem/, but NOT in the envelope
@@ -727,7 +727,7 @@ def test_a_phantom_declaration_reds_through_the_assert_composition():
         return [f for f in gate.evaluate(gov, None, n, c_all=allc) if gate.PHANTOM_DECLARATION in f]
 
     # governed phantom (a real governed relpath overlaid) and ungoverned phantom both red
-    assert assert_composition("cortex/tempotron.py", phantom), "governed phantom must red"
+    assert assert_composition("readout/tempotron.py", phantom), "governed phantom must red"
     assert assert_composition(_PROBE, phantom), "ungoverned phantom must red (ALL-scope)"
     # the incident shape reds: a local variable is not a provided symbol
     assert assert_composition(_PROBE, incident), "the T050 wrong-class shape must red"

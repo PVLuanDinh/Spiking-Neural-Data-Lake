@@ -58,9 +58,9 @@ import os
 import random
 import tempfile
 
-from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner
 from snn_data_lake.hippocampus.proximity_replay import LakeMemory
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
+from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner
 from snn_data_lake.sensorimotor.corpus_stream import (
     ARPABET,
     load_cmudict,

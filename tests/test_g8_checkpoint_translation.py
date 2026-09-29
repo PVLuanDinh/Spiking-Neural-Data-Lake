@@ -33,9 +33,9 @@ from pathlib import Path
 
 import pytest
 
-from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
-from snn_data_lake.cortex import interaction_learning as ixn
 from snn_data_lake.growth.lif_neuron import LIFNeuron
+from snn_data_lake.plasticity.r_stdp import RSTDPNeuron
+from snn_data_lake.readout import interaction_learning as ixn
 
 pytestmark = pytest.mark.slow
 

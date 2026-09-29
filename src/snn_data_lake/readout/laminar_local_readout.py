@@ -54,7 +54,7 @@ Refs: Lillicrap, Cownden, Tweed & Akerman, "Random synaptic feedback weights sup
 backpropagation for deep learning", Nat. Commun. 7 (2016) (feedback alignment). The mechanism
 this ports: the variant-B' LaminarLocalReadout (L4 -> L2/3 -> L5 -> L6, local learning only).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.laminar_local_readout
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.readout.laminar_local_readout
 
 (PROMOTED 2026-08-12, #10 lane 4c: reasoning/brain_adapters/ -> cortex/, the region whose
 live tick consumes it -- cortex/brain.py constructs it lazily on every real percept and its

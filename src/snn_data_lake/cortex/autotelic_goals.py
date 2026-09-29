@@ -18,7 +18,7 @@ The five pieces (each a REUSE, not a new mechanism):
       `prefrontal_executive.PrefrontalExecutive` working-memory attractor -- the goal keeps SPIKING
       (persistent activity) across the pursuit delay (`maintain()`), exactly the WM the executive already
       provides.
-  (3) GOAL-CONDITIONED SPIKING READOUT. `GoalConditionedReadout` is one reused `cortex.tempotron.Tempotron`
+  (3) GOAL-CONDITIONED SPIKING READOUT. `GoalConditionedReadout` is one reused `readout.tempotron.Tempotron`
       per action (LEFT/STAY/RIGHT), a genuine spike-TIMING classifier. Its input is a population (bump)
       code of the CURRENT STATE *and* the HELD GOAL, so the chosen action depends on both -- the readout
       is literally goal-conditioned. Learned by the tempotron's own spike-timing rule (no rate ANN).
@@ -47,7 +47,7 @@ HONEST framing (read this before believing anything -- this rung is easy to fake
     reaching error instead of world-model error. It is a REUSE (a re-pointing), not a distinct second
     drive; the self-check frames it as such and does not sell it as a new mechanism.
 
-Reuses (does NOT reimplement): cortex/tempotron.Tempotron (the goal-conditioned spike-timing readout),
+Reuses (does NOT reimplement): readout/tempotron.Tempotron (the goal-conditioned spike-timing readout),
 neuromodulation/spiking_curiosity.SpikingCuriosityDrive (SI-1 -- the competence-progress LP kernel),
 cortex/prefrontal_executive.PrefrontalExecutive (the WM attractor that HOLDS a goal),
 neuromodulation/drive_reduction.REWARD_SCALE (SI-2 -- the internal drive-reduction reward channel the
@@ -61,10 +61,10 @@ import random
 from collections import deque
 
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
-from snn_data_lake.cortex.tempotron import Tempotron
 from snn_data_lake.infra._mathutils import mean
 from snn_data_lake.neuromodulation.drive_reduction import REWARD_SCALE
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
+from snn_data_lake.readout.tempotron import Tempotron
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

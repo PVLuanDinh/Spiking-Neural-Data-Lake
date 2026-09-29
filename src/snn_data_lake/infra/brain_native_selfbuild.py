@@ -4,7 +4,7 @@ BRAIN-NATIVE SELF-BUILD -- open-ended, source-pluggable, three-factor-learned, g
 WHAT THIS IS (honest framing -- read before believing any "self-improvement" claim):
   An OPEN-ENDED, SOURCE-PLUGGABLE self-build framework. Candidate self-modifications from one or more
   SelfBuildSource plugins compete in a reward-modulated competitive bandit that reuses the BRAIN'S OWN
-  three-factor rule (basal_ganglia/r_stdp.RSTDPNeuron: w[k] += lr*reward*(elig_k - mean_elig)) to learn
+  three-factor rule (plasticity/r_stdp.RSTDPNeuron: w[k] += lr*reward*(elig_k - mean_elig)) to learn
   WHICH candidate to sandbox-test next -- behind the existing byte-exact-rollback + protected-crc firewall
   (infra/self_build_loop + infra/self_mod_harness, UNCHANGED -- both paths corrected
   2026-08-04, they read `reasoning/...` here after the region-reorganisation wave moved the files and
@@ -65,8 +65,8 @@ import os
 import re
 import zlib
 
-from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
 from snn_data_lake.infra.self_mod_harness import _PROTECTED
+from snn_data_lake.plasticity.r_stdp import RSTDPNeuron
 from snn_data_lake.substrate.home import load_selfbuild, save_selfbuild
 
 # This module's own dotted name -- correct both when imported and when run as `python -m ...` (runpy

@@ -146,7 +146,7 @@ def test_a_class_body_is_import_time(tmp_path, monkeypatch):
 
 # --------------------------------------------------------------------- rule 5: the constructor
 def test_a_constructor_may_not_reseed_the_process(tmp_path, monkeypatch):
-    """THE INCIDENT, reconstructed. `hippocampus/growable_readout.py` ran `torch.manual_seed(seed)`
+    """THE INCIDENT, reconstructed. `readout/growable_readout.py` ran `torch.manual_seed(seed)`
     in `__init__` for the life of that feature: constructing one re-seeded the process-global torch
     RNG for every module built afterwards, and both harnesses run modules in ONE process
     (`tests/test_selfchecks.py` via `runpy.run_module(..., run_name="__main__")`). It was removed by

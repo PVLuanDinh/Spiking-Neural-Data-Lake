@@ -5,7 +5,7 @@ HOW FAST / IN WHICH DIRECTION each synapse learns, without ever changing the FOR
 (they adapt a scalar learning rate and a per-unit sliding threshold -- never "learn to learn"):
 
   (a) THIRD-FACTOR learning-rate gate.  The third factor of the reused R-STDP rule
-      (basal_ganglia/r_stdp.py: w += lr * d * e) is driven by the spiking learning-progress signal
+      (plasticity/r_stdp.py: w += lr * d * e) is driven by the spiking learning-progress signal
       (neuromodulation/spiking_curiosity.py SpikingCuriosityDrive.learning_progress, SI-1). The
       EFFECTIVE learning rate RISES where progress is being made:  lr_eff = base_lr * (1 + g * LP).
       A neuromodulator that opens the plasticity gate when the task is being learned and closes it
@@ -38,7 +38,7 @@ HONEST framing (read before trusting any number below).
   Bounded, not open-ended: (a) adapts one scalar (lr), (b) adapts one per-unit threshold; the FUNCTIONAL
   FORM of both the R-STDP rule and the BCM rule is fixed. No rule is invented at runtime.
 
-Reuses (does NOT reimplement): basal_ganglia/r_stdp.py RSTDPNeuron (eligibility + third-factor reward
+Reuses (does NOT reimplement): plasticity/r_stdp.py RSTDPNeuron (eligibility + third-factor reward
 gate), growth/lif_neuron.py LIFNeuron (the spiking unit + the rate the threshold slides with),
 neuromodulation/spiking_curiosity.py SpikingCuriosityDrive (the LP third factor), plasticity/
 bcm_plasticity.py (the sliding-threshold theta_M ~ <y^2> rule), substrate/_mathutils.mean.
@@ -52,10 +52,10 @@ ASCII-only prints, deterministic
 import random
 from collections import deque
 
-from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
 from snn_data_lake.growth.lif_neuron import LIFNeuron
 from snn_data_lake.infra._mathutils import mean
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
+from snn_data_lake.plasticity.r_stdp import RSTDPNeuron
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

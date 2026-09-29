@@ -203,7 +203,7 @@ commit paid the full ≈ 2 hours, which is what the owner's 2026-09-02 amendment
 | the |LP| facade (Chain B) and the curiosity producer (Chain A) | `growth/learning_progress.py` (`LearningProgress.lp/lp_all`), `neuromodulation/spiking_curiosity.py` (`SpikingCuriosityDrive.learning_progress`, `SpikingCurriculum`); Chain A's telemetry keys on `Brain.state()`: `curiosity_mag`, `neuromod_acetylcholine`, and `Brain._lp_mean`; Chain B: `state()["learning_progress"]["cortex"]` |
 | prototype learners (ART-style) | `growth/growing_learner.py` (`GrowingLearner.observe/state_dict/load_state_dict`) — seven live construction sites in five modules (`autonomous_loop`, `brain` ×3, `affect_integrator`, `lifelong_consolidation`, `similarity_sized_growth`; the audit counted eight including a comparison harness) |
 | goals | `cortex/autotelic_goals.py` (achieved-outcome buffer, HER, competence-progress goal babbling) is reached ONLY from the sleep tick, persist-gated, through `cortex/nightly_skills.py::_autotelic_step`, and runs on the module's own 2-D toy grid — never on the arm; `basal_ganglia/learning_progress.GoalStore` (`_T_GOAL`) has ZERO callers; T076's `basal_ganglia/curriculum.py` does not exist yet |
-| plasticity palette (local rules) | `plasticity/` (Hebbian/STDP, homeostatic, LPL spine, three-factor extensions, `rule_composer`'s production census, `inhibitory_stdp` live on the tick), `cortex/eprop_kernel.py` (surrogate-gradient batch trainer + `bptt_grads` reference — NOT a per-tick rule), online local readouts `cortex/laminar_local_readout.py::observe`, `growth/similarity_sized_growth.py::FrozenExpert` |
+| plasticity palette (local rules) | `plasticity/` (Hebbian/STDP, homeostatic, LPL spine, three-factor extensions, `rule_composer`'s production census, `inhibitory_stdp` live on the tick), `plasticity/eprop_kernel.py` (surrogate-gradient batch trainer + `bptt_grads` reference — NOT a per-tick rule), online local readouts `readout/laminar_local_readout.py::observe`, `growth/similarity_sized_growth.py::FrozenExpert` |
 | the lake | `substrate/home.py` (`save_state/load_state` `_T_STATE`, `save_growth/load_growth`, `throwaway_home`, `home()` reads `NORD_HOME`), `substrate/binlog.py` (`BinLog`), `substrate/lake_engine.py` (`SynapseDelta`, `AppendBudget` — no live caller yet), `lake_segments.py`, `lake_index.py`, `neuro_chip_stream.py` (shard discipline) |
 | the substrate tick | `reservoir/kernel_tick.py` (`KernelTick._deliver_and_rotate`), `reservoir/kernel_state.py` (SoA, T013), dormancy-exempt `wire` today; `gates/perf_baseline.py` (`--record/--assert`; T065's `tools/perf_baseline.py` path is stale — the p4c ratchet refused `tools/` at T001) |
 | anatomy | `connectome.py`, `substrate/wiring_manifest.py` (36 ports, 19 edges declared), `substrate/signal_ring.py` (`SignalRing`, `JoinConsumer`); nine modules carry a `_*_consumer_factory` (`evidence_accumulation`, `r_stdp`, `interoceptive_relay`, `interoceptive_integration`, `region_coherence`, `astrocyte_modulation`, `percept_surprise`, `task_set`, `reentrant_workspace`) |
@@ -490,7 +490,7 @@ that baseline.
   What it points at: the readout must co-adapt first — L1c precedes any second input-weight rule.* The grown units' INPUT weights learn on every wake percept by a local
   rule from the palette (Oja/BCM/competitive-Hebbian with a three-factor gate from the live neuromodulators
   — the candidates are named at pre-registration and picked by the A/B), with the GRADIENT_CLAIM row
-  (FR-018), `rule_composer`'s census and the e-prop transport gate. `cortex/eprop_kernel.py` is a batch
+  (FR-018), `rule_composer`'s census and the e-prop transport gate. `plasticity/eprop_kernel.py` is a batch
   surrogate trainer and is NOT the rule; it stays the cosine reference. Control: the batch solve under L1a's
   window — kept ONLY as a declared control off the live tick (the `gf.py::MLP.train` precedent: its own
   GRADIENT_CLAIM row and a test that it is unreachable from the tick), else deleted. Red: L1b beats the
@@ -1259,7 +1259,7 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   counts.
 - **Four idle reservoirs.** `reasoning/spiking_ssm.py`, `reservoir_eprop.py`, `sorn.py` and
   `random_boolean_network.py` have no importer outside `reasoning/`.
-- **A live but self-supervised chat learner.** `cortex/interaction_learning.py::SpikingInteractionLearner`
+- **A live but self-supervised chat learner.** `readout/interaction_learning.py::SpikingInteractionLearner`
   (R-STDP, one neuron per intent) IS live: `Brain.respond` → `LiveBrain.chat` → `learn_turn`. But:
   - it is SELF-LABELLED from the keyword firewall: `LiveBrain.chat` forwards `feedback`, but
     `Brain.respond`, the canonical entrypoint, never supplies one;
@@ -1464,7 +1464,7 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   G-R4.
 - **G5 / T113 — readout variants (the owner's #3).**
   - The next-category alignment is kept.
-  - A trace-delta challenger runs against `hippocampus/online_readout.py::OnlineReadout`.
+  - A trace-delta challenger runs against `readout/online_readout.py::OnlineReadout`.
   - "Relational" becomes two separately ablated readings: anatomical (read grown units placed in
     Layer 5 or Layer 6 with sign +1) and categorical (lateral coupling learned from the confusion
     matrix).
@@ -1474,7 +1474,7 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     the posed problem. Each tuning rule's teaching or modulatory signal is a declared brain output (a TypedPort), and
     a neuter-A/B on that port shows the brain's tuning charges the readout (P3). Each rule is an arm against
     `OnlineReadout` (delta): STDP, with L1b's co-adaptation controls, as above; predictive coding, by ADOPTING
-    `cortex/predictive_coding.py` (P2), citing its 2026-08-14 adjudication and its open exact-symmetry scope, with
+    `readout/predictive_coding.py` (P2), citing its 2026-08-14 adjudication and its open exact-symmetry scope, with
     `eprop_transport_gate` green and the new site judged at its own readout by the distinguishing test (POLICIES'
     e-prop register: the 2026-08-14 verdict covers only that module's inference/Hebbian split); topographical
     clustering (next bullet).

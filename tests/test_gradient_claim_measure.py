@@ -307,7 +307,7 @@ def test_the_two_factorizations_separate_verdicts_in_the_truncation_regime():
     gradient exact; it is NOT uniformly higher on this metric at every configuration, and claiming
     otherwise would be a claim the sweep refutes.
     """
-    K = importlib.import_module("snn_data_lake.cortex.eprop_kernel")
+    K = importlib.import_module("snn_data_lake.plasticity.eprop_kernel")
     bar = K.EPROP_BPTT_COSINE_FLOOR
 
     net, x, y = _net_at(K, seed=11, g_rec=50, g_in=1.0, T=24)
@@ -341,7 +341,7 @@ def test_the_reconciled_readout_gradient_is_exact_rather_than_merely_close():
     """
     import torch
 
-    K = importlib.import_module("snn_data_lake.cortex.eprop_kernel")
+    K = importlib.import_module("snn_data_lake.plasticity.eprop_kernel")
     net = K._TinyNet(seed=7)
     x = (torch.rand(6, 9, 12, generator=torch.Generator().manual_seed(11)) < 0.3).float()
     y = torch.tensor([0, 1, 2, 0, 1, 2])

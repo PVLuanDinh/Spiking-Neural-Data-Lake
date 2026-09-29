@@ -5,7 +5,7 @@ live R-STDP learning synapses, so the brain's one real learning path stays bound
 WHY THIS EXISTS (a merge, from a study of the brain). The plasticity/ modules (short_term, homeostatic,
 intrinsic, bcm, ...) were STANDALONE studies -- each self-checks in isolation, none touches the live
 brain. The only learning the integrated brain actually runs online is reward-modulated spike-timing
-plasticity (R-STDP: basal_ganglia.r_stdp.RSTDPNeuron, driven by cortex.interaction_learning). Pure
+plasticity (R-STDP: plasticity.r_stdp.RSTDPNeuron, driven by readout.interaction_learning). Pure
 reward-gated potentiation, like pure Hebbian potentiation, is UNSTABLE on its own -- weights and firing
 rate can run away. Real cortex fixes this with HOMEOSTASIS wrapped around the fast learning rule. This
 module composes three of the dead standalone rules into that missing wrap: a FIXED ORDERED SANDWICH run
@@ -169,7 +169,7 @@ class HomeostaticPlasticityStack:
     """A fixed ordered sandwich -- (short-term dynamic gain) -> [live R-STDP update] -> (homeostatic
     scaling + intrinsic plasticity) -- run every learning step to STABILIZE the live R-STDP synapses.
 
-    Wire into cortex.interaction_learning.SpikingInteractionLearner by passing an instance as `stack=`
+    Wire into readout.interaction_learning.SpikingInteractionLearner by passing an instance as `stack=`
     (opt-in; None keeps the learner byte-identical). Each deposit the learner calls, in order:
         d *= stack.pre_gain(neuron_id)        # PRE  short-term dynamic gain
         ... the RSTDPNeuron.reward(d) update happens ...
@@ -292,7 +292,7 @@ def _drive_code(n_in):
 
 def _rstdp_update_fn(neuron, code, t_post):
     """A closure that performs ONE real R-STDP deposit (reward = +1 * gain) on `neuron` and returns its
-    weights -- the LIVE update the sandwich wraps. REUSES basal_ganglia.r_stdp.RSTDPNeuron verbatim."""
+    weights -- the LIVE update the sandwich wraps. REUSES plasticity.r_stdp.RSTDPNeuron verbatim."""
 
     def update(gain, weights):
         neuron.w = list(weights)
@@ -312,7 +312,7 @@ def _run_stream(stabilized, steps, seed, n_in=10):
     """Drive `steps` potentiating R-STDP deposits onto one neuron. With stabilized=True the sandwich
     wraps each update; with False it is the raw unstabilized control. Returns per-step (max|w|, drive,
     rate) plus the final weights (for determinism checks)."""
-    from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
+    from snn_data_lake.plasticity.r_stdp import RSTDPNeuron
 
     code, activity, t_post = _drive_code(n_in)
     neuron = RSTDPNeuron(
@@ -418,7 +418,7 @@ def _learner_off_on_selfcheck():
     degrade. Runs the same task/schedule both ways and prints off-vs-on."""
     import random
 
-    from snn_data_lake.cortex.interaction_learning import (
+    from snn_data_lake.readout.interaction_learning import (
         SpikingInteractionLearner,
         _make_task,
         _spiking_task_selfcheck,

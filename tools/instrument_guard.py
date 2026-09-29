@@ -58,7 +58,7 @@ A seeding rule that fires ANYWHERE in a function body scores **79** across the t
     CLASS-BODY                           0
 
 So the rule is scoped to import-time scope plus CONSTRUCTORS: 4 findings, a work list. The three
-constructor hits are the SAME DEFECT `hippocampus/growable_readout.py`'s Determinism note records
+constructor hits are the SAME DEFECT `readout/growable_readout.py`'s Determinism note records
 being removed by hand on 2026-08-04 -- it recurred three times over and nothing in the tree could
 see it, which is exactly what regression protection is for.
 
@@ -117,7 +117,7 @@ THE FIVE RULES, and each one is a defect this tree actually produced:
      an import style is not a rule*. Nothing in the tree used those spellings, so this closed a
      latent hole rather than a live finding -- measured, not assumed.
 
-  5. GLOBAL SEEDING INSIDE A CONSTRUCTOR. `hippocampus/growable_readout.py` ran
+  5. GLOBAL SEEDING INSIDE A CONSTRUCTOR. `readout/growable_readout.py` ran
      `torch.manual_seed(seed)` inside `__init__`, so CONSTRUCTING one re-seeded the process-global
      torch RNG for every module built after it. Both harnesses that run this tree do so in ONE
      process -- `run_selfchecks.py` for part of the suite, and `tests/test_selfchecks.py` via
@@ -297,7 +297,7 @@ def _constructor_seeds(tree, tbl):
     """(lineno, canonical) for every process-global seeder called inside an `__init__`. Rule 5.
 
     A constructor body is not import time, so rule 4 structurally cannot reach it -- which is how
-    `hippocampus/growable_readout.py` re-seeded the process-global torch RNG from `__init__` for the
+    `readout/growable_readout.py` re-seeded the process-global torch RNG from `__init__` for the
     life of that feature, and how three more instances of the same shape were live in `src/` when
     this rule was counted.
 

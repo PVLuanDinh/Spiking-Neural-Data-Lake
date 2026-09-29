@@ -20,7 +20,7 @@ makes acting always look bad relative to resting, and the policy stops regulatin
 INTRINSIC -- generated inside the agent from its own set-point errors -- and is fed into the SAME
 learned-valence value channel that intrinsic curiosity feeds (neuromodulation/intrinsic_motivation.py
 adds its learning-progress reward to the striatal RPE; this adds the drive-reduction reward to the same
-basal_ganglia/valence_stdp value learner, via its three-factor plasticity rule).
+plasticity/valence_stdp value learner, via its three-factor plasticity rule).
 
 Spiking eligibility (a REAL LIF need pool, not scalar differencing). Each drive drives one LIF "NEED"
 pool -- a population of growth/lif_neuron.py LIFNeuron cells whose firing RATE tracks the drive
@@ -50,7 +50,7 @@ with ZERO external reward, the learning primitive the hand-wired controller can 
 
 Reuses (does not reimplement): cortex/lif_neuron.LIFNeuron (the need pool + the non-spiking membrane
 control), hypothalamus/set_points.Homeostat (the signed set-point error / the honest-negative baseline
-controller), basal_ganglia/valence_stdp.ValenceLearner (the value/RPE channel + three-factor plasticity
+controller), plasticity/valence_stdp.ValenceLearner (the value/RPE channel + three-factor plasticity
 the reward feeds), substrate/_mathutils.mean. Per-instance random.Random(seed), ASCII-only,
 deterministic.
 
@@ -59,10 +59,10 @@ deterministic.
 
 import random
 
-from snn_data_lake.basal_ganglia.valence_stdp import ValenceLearner
 from snn_data_lake.growth.lif_neuron import LIFNeuron
 from snn_data_lake.hypothalamus.set_points import Homeostat
 from snn_data_lake.infra._mathutils import mean
+from snn_data_lake.plasticity.valence_stdp import ValenceLearner
 from snn_data_lake.sensorimotor.spike_preprocessing import N as N_FEATURES
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.

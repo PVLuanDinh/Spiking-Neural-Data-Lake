@@ -30,7 +30,7 @@ instrument could record for Perception measured a brain whose perception tier wa
 | predictive_coding_prediction_error | 40 | src/snn_data_lake/cortex/live_brain.py:169#tick; src/snn_data_lake/cortex/brain.py:2001#_wake_tick; src/snn_data_lake/cortex/brain.py:1874#_w8_tick | - | opus-5 live-brain census, 40 ticks, seed 0 | 2026-07-30 |
 | crossmodal_superadditive_binding | 30 | src/snn_data_lake/cortex/crossmodal_binder.py:153#bind; src/snn_data_lake/cortex/brain.py:1497#_consume_perception; src/snn_data_lake/cortex/brain.py:3318#state | - | opus-5 live-brain census, daemon import shape | 2026-07-30 |
 | percept_class_to_action_drive | 30 | src/snn_data_lake/cortex/brain.py:1648#_route_percept_to_action; src/snn_data_lake/cortex/brain.py:1617#_route_percept_to_action | percept_60.txt | opus-5 charge_probe percept 60 and 120 | 2026-07-30 |
-| perceptual_confidence_gate | 25 | src/snn_data_lake/cortex/laminar_local_readout.py:268#observe; src/snn_data_lake/cortex/brain.py:1358#_perceive_real | - | opus-5 live-brain census, daemon import shape; laminar_local_readout promoted to cortex/ 2026-08-12, repoint runtime-proven at that promotion (_percept_conf moved 40/40 stubbed-encoder ticks) | 2026-08-12 |
+| perceptual_confidence_gate | 25 | src/snn_data_lake/readout/laminar_local_readout.py:268#observe; src/snn_data_lake/cortex/brain.py:1358#_perceive_real | - | opus-5 live-brain census, daemon import shape; laminar_local_readout promoted to cortex/ 2026-08-12, repoint runtime-proven at that promotion (_percept_conf moved 40/40 stubbed-encoder ticks) | 2026-08-12 |
 | percept_surprise_orienting | 25 | src/snn_data_lake/cortex/percept_surprise.py:125; src/snn_data_lake/cortex/brain.py:1412#_perceive_real; src/snn_data_lake/cortex/brain.py:1592#_route_percept_to_action | surprise_60.txt | opus-5 charge_probe surprise 60 and 120 | 2026-07-30 |
 | percept_to_place_binding | 25 | src/snn_data_lake/hippocampus/grid_place_map.py:163#observe; src/snn_data_lake/cortex/brain.py:1516#_consume_perception | - | opus-5 live-brain census, daemon import shape | 2026-07-30 |
 | covert_attention_trn_gain | 21 | src/snn_data_lake/brainstem/autonomous_loop.py:971#_attend; src/snn_data_lake/brainstem/autonomous_loop.py:1557#step | - | opus-5 neuter-A/B 0 of 40 on unit action threat pos | 2026-07-30 |
@@ -213,7 +213,7 @@ Format: `capability` -- provider -- liveness.
   checkpoint existed.
 - generative spiking predictive-coding cortex, settle-to-percept -- `sensorimotor/pc_cortex_serve.py` via
   `Brain.perceive_pc` -- checkpoint loads, no live-tick caller.
-- live predictive-coding prediction error over the sensory pattern -- `cortex/predictive_coding.py`
+- live predictive-coding prediction error over the sensory pattern -- `readout/predictive_coding.py`
   via `cortex/live_brain.py:169` -- LIVE, nonzero on 57/60 ticks.
 - learned spiking reticular gate + three-factor plasticity -- `cortex/learned_attention.py` --
   daemon shape only; its `learn()` call is gated on a real percept (`brain.py:1977`).
@@ -226,7 +226,7 @@ Format: `capability` -- provider -- liveness.
 - online unsupervised percept surprise (Oja/Sanger) -- `cortex/percept_surprise.py` -- daemon shape
   only, fires on 2/60 ticks.
 - no-backprop laminar readout -> perceptual confidence --
-  `cortex/laminar_local_readout.py` (promoted 2026-08-12) -- daemon shape only, range 0.169-1.0.
+  `readout/laminar_local_readout.py` (promoted 2026-08-12) -- daemon shape only, range 0.169-1.0.
 - real-sensor (ESP32) transduction adapter -- `sensorimotor/esp32_encoder_path.py` -- EXEMPT, awaiting
   hardware.
 - orienting/saccade WTA map -- `superior_colliculus` and `sc_deep_layers` -- EXEMPT, no gaze effector.

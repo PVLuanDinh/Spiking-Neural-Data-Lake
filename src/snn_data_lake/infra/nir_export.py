@@ -157,7 +157,7 @@ def _demo_graph():
 
 
 def main():
-    import snn_data_lake.cortex.snn_classifier as C
+    import snn_data_lake.readout.snn_classifier as C
 
     # export the ACTUAL trained gesture/shape recognizer to a NIR graph
     W, _ = C.train(C.dataset(15, C.templates()), 4, quiet=True)

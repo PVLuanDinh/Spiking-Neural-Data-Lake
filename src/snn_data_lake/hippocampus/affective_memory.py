@@ -26,7 +26,7 @@ WIRING (documented only -- this module edits nothing else):
                 the class name was `FearConditioning` here, which is defined nowhere in the tree --
                 corrected 2026-08-04, the class has always been `Amygdala`)
   - valence  <- cortex.self_model.SelfModel valence-axis, or
-                basal_ganglia.valence_stdp.ValenceLearner.valence()      (learned good/bad axis)
+                plasticity.valence_stdp.ValenceLearner.valence()      (learned good/bad axis)
   - reward   <- the same live reward the arm loop already emits
   At store time the caller passes (fragment, valence, arousal, reward). At consolidation the
   caller does:  eps = store.consolidate(budget, seed);  then converts each Episode to the

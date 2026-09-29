@@ -1723,7 +1723,7 @@ class Brain:
             # never raise it or reach the reflex/E-STOP path.
             try:
                 if self._percept_readout is None:
-                    from snn_data_lake.cortex.laminar_local_readout import (
+                    from snn_data_lake.readout.laminar_local_readout import (
                         LaminarLocalReadout,
                     )
 
@@ -1981,7 +1981,7 @@ class Brain:
         (0.15 novelty / 0.05 ignition / 0.25 place / 0.2 timing / 0.15 re-route). Those were policy
         numbers chosen by hand -- the same hardcoding this project's consolidation policy forbids,
         one level up from the mechanisms they gate. They are now SYNAPTIC WEIGHTS learned by the
-        repo's own three-factor idiom (cf. basal_ganglia/r_stdp, plasticity/valence_stdp,
+        repo's own three-factor idiom (cf. plasticity/r_stdp, plasticity/valence_stdp,
         cortex/learned_attention.learn): eligibility = each source's activation this tick, dopamine =
         the arm's RPE, baseline-subtracted so the sources COMPETE for influence. Weights start EQUAL
         so no source is privileged by hand -- the brain learns the ordering from what pays off.

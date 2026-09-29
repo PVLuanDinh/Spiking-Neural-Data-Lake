@@ -11,7 +11,7 @@ After slice 1 (v3.23): **SPIKING 39 | RATE 42 | RATE_BY_DESIGN 22.**
 After slice 2 (v3.24): **SPIKING 44 | RATE 38 | RATE_BY_DESIGN 21.**
 After slice 3 (v3.25): **SPIKING 48 | RATE 36 | RATE_BY_DESIGN 19.**
 After slice 4 (v3.26): **SPIKING 49** (new module `cerebellum/spiking_jepa`; rate `jepa_world_model` kept as the fair baseline).
-After slice 5 (v3.29): **SPIKING 50** (new module `sensorimotor/pc_cortex_serve`, the DEEP spiking predictive-coding cortex server; the 2-level spiking seed `cortex/predictive_coding` kept as the small baseline).
+After slice 5 (v3.29): **SPIKING 50** (new module `sensorimotor/pc_cortex_serve`, the DEEP spiking predictive-coding cortex server; the 2-level spiking seed `readout/predictive_coding` kept as the small baseline).
 
 ## Converted to spiking (progress)
 
@@ -50,10 +50,10 @@ tally line above is a dated 2026-07-10 snapshot and is left as-is):
 | sensorimotor/multimodal_encoder | TTFS/latency-encode each band into per-feature spike trains (not a continuous [0,1]^64 vector) |
 | cortex/spike_pooling | spiking WTA: first-spike-wins lateral inhibition per window |
 | sensorimotor/lca_sparse_coding | each atom a LIF neuron; threshold spikes drive inhibition; coeff = spike rate (S-LCA) |
-| cortex/predictive_coding | causes/errors as LIF populations; error spike-rate carries mismatch; spiking recurrence settles |
+| readout/predictive_coding | causes/errors as LIF populations; error spike-rate carries mismatch; spiking recurrence settles |
 | cortex/restricted_boltzmann | stochastic LIF sampling; event-driven STDP instead of CD gradient (Neftci 2014) |
 | cortex/cue_integration | Poisson population per cue, gain = reliability; sum populations (spiking PPC, Ma 2006) |
-| cortex/snn_classifier | LIF output neurons (membrane/threshold/reset); STDP / surrogate-gradient on spike times |
+| readout/snn_classifier | LIF output neurons (membrane/threshold/reset); STDP / surrogate-gradient on spike times |
 | sensorimotor/learned_matcher | tempotron/STDP spike-time classifier instead of the delta-rule rate readout |
 | sensorimotor/gesture_recognition | latency/rank-encode the distance stream; spiking sequence/tempotron detector end-to-end |
 | sensorimotor/nl_interface | rank-order spike-encode words -> R-STDP intent classifier (keep the fixed allow-list) |
@@ -65,7 +65,7 @@ tally line above is a dated 2026-07-10 snapshot and is left as-is):
 | hippocampus/experience_replay | three-factor R-STDP actor; replay = spontaneous spike-sequence reactivation |
 | growth/growing_learner | spiking prototype/RBF units matched by spike coincidence; recruit-on-weak-response; Hebbian |
 | hippocampus/legendre_memory | realize the A/B delay state-space in spiking neurons via NEF (spiking LMU) |
-| basal_ganglia/valence_stdp | LIF valence neuron; pre/post spike-timing eligibility gated by dopamine (three-factor) |
+| plasticity/valence_stdp | LIF valence neuron; pre/post spike-timing eligibility gated by dopamine (three-factor) |
 | basal_ganglia/latent_q | spiking linear readout over latent spikes, reward-modulated (three-factor) plasticity |
 | basal_ganglia/mlp_q | spiking MLP: LIF hidden units, surrogate-gradient / reward-STDP; first-spike action-value |
 | cerebellum/forward_model | granule->Purkinje spiking forward model; climbing-fiber error drives spike-timing plasticity |
@@ -136,7 +136,7 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
 - **Slice 2 (v3.24) -- the RATIONAL-THINKING core (5 modules):** `cortex/prefrontal_executive` (RATE_BY_DESIGN ->
   spiking: Wang-2002 spiking WTA decision attractor + persistent-activity bistable spiking working memory; the
   flagship rate-by-design redesign; still passes autonomous_loop sec12 + live_brain + E-STOP), `cortex/vsa_reasoning`
-  (spike-polarity hypervectors; bind=spike-XOR, bundle=superposition-WTA, sim=coincidence), `cortex/predictive_coding`
+  (spike-polarity hypervectors; bind=spike-XOR, bundle=superposition-WTA, sim=coincidence), `readout/predictive_coding`
   (signed LIF error populations; inference = spiking settling; Hebbian-on-spikes), `cortex/restricted_boltzmann`
   (stochastic LIF sampling + event-driven CD/STDP), `cortex/brain_reasoning` (LIF WTA decision + spike-margin
   confidence). All API-preserved, un-riggable spiking self-checks. Honest gaps reported (pfc WM metastable/drive-gated
@@ -161,7 +161,7 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
   optimization landed (streaming_hub + proximity_index out-of-core in stdlib core; GPU chip resident-caching + mnist
   DataLoader + cu128 doc in the torch tiers) -- see CHANGELOG v3.26 + docs/PERFORMANCE.md; core stays zero-dep.
 - **Slice 5 (v3.29) -- deep spiking predictive-coding cortex (NEW module, GPU-verified, honest):** the 2-level seed
-  `cortex/predictive_coding` scaled DEEP under the predictive-coding framework (the user directive: use the predictive-
+  `readout/predictive_coding` scaled DEEP under the predictive-coding framework (the user directive: use the predictive-
   coding node to build out the rest of the brain, torch GPU allowed). NEW CORE `sensorimotor/pc_cortex_serve.py` = a zero-dep
   forward SERVER for an L-level (default 3) generative spiking hierarchy exported as `snn_pcnet/1` -- signed ON/OFF LIF
   error populations, discrete-spike settling (the seed's exact `_lif` generalized to L levels: `r_j += lr*(W_j^T s_{j-1}
@@ -177,7 +177,7 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
   + a trained readout at this scale (most of the accuracy is architecture + linear readout, not the local rule); and the
   depth-earns-its-place XOR toy did NOT separate (3-level 0.75 == raw-avg 0.75) -- depth does not yet beat shallow. The
   value delivered is a faithful zero-dep spiking GENERATIVE trunk + the honest measurement, not a SOTA number. Rate/2-level
-  seed `cortex/predictive_coding` kept as the small baseline (mirrors spiking_jepa keeping jepa_world_model). No live
+  seed `readout/predictive_coding` kept as the small baseline (mirrors spiking_jepa keeping jepa_world_model). No live
   wiring this slice (zero safety surface); Slice 6 = opt-in checkpoint-gated perception-tier wiring. Atlas SPIKING 50.
 - **Slice 6 (v3.30) -- PC-cortex perception tier WIRED into the live brain (safety-verified):** `sensorimotor/pc_cortex_serve`
   wired into `cortex/brain.py` as an opt-in, ZERO-DEP, checkpoint-gated perception tier (`SNN_PC_CKPT` ->

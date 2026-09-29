@@ -31,7 +31,7 @@ Neurosci, "What makes us tick? Functional and neural mechanisms of interval timi
 
 learn_interval(target_steps, reward) retunes ONE cell -- the one whose current nominal latency
 (threshold / drive) is nearest target_steps -- toward reproducing that interval. It mirrors
-basal_ganglia/r_stdp.py's reward-modulated STDP exactly: treat the external target_steps as a "post"
+plasticity/r_stdp.py's reward-modulated STDP exactly: treat the external target_steps as a "post"
 (teacher) event and the cell's own nominal latency as its "pre" event, form dt = t_post - t_pre,
 turn that into an STDP eligibility (LTP, e = a_plus*exp(-dt/tau), if the cell fires too EARLY, dt>0;
 LTD, e = -a_minus*exp(dt/tau), if it fires too LATE, dt<0), then gate the eligibility into the cell's
@@ -54,7 +54,7 @@ DISTINCT from existing modules (read them):
 - hippocampus/htm_sequence_memory.py predicts the next discrete SDR from sequence CONTEXT (columns x
   cells, distal segments) -- it is about WHAT comes next. TimeCellClock has no context and predicts
   nothing about content; it only measures WHEN, via one preferred latency per cell.
-- basal_ganglia/r_stdp.py is the general-purpose reward-modulated STDP synapse (arbitrary pre/post
+- plasticity/r_stdp.py is the general-purpose reward-modulated STDP synapse (arbitrary pre/post
   spike trains). learn_interval() here is a direct, narrower APPLICATION of that same eligibility/
   gating math to one specific plastic parameter (a time cell's threshold) so the population can learn
   a target interval, instead of the general many-synapse rule.

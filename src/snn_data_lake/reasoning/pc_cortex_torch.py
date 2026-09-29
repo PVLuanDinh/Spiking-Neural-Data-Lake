@@ -4,7 +4,7 @@ predictive-coding cortex (exports `snn_pcnet/1` for src/.../sensorimotor/pc_cort
 
 Honest framing. This is the torch TRAINING side of the deep spiking Rao-Ballard predictive
 coder whose zero-dep forward SERVER is src/snn_data_lake/sensorimotor/pc_cortex_serve.py (and whose
-2-level stdlib seed is cortex/predictive_coding.py). It learns an L-level (default L=3)
+2-level stdlib seed is readout/predictive_coding.py). It learns an L-level (default L=3)
 generative hierarchy by LOCAL predictive coding -- top-down generative weights W_1..W_L, a
 bottom-up precision-weighted PREDICTION-ERROR carried by SIGNED ON/OFF LIF spike populations,
 and a LOCAL Hebbian-on-spikes weight update per level. There is NO global backprop chained

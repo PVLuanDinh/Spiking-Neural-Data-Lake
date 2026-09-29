@@ -63,7 +63,7 @@ def _snap(v):
 
     `eprop_grads` returns (grads, loss, spikes) and `bptt_grads` returns a DICT keyed W_in/W_rec/
     W_out/b_out -- see `eprop_grads` in each consumer and `bptt_grads` in
-    `snn_data_lake.cortex.eprop_kernel`. Handling both rather than assuming a list is what keeps
+    `snn_data_lake.plasticity.eprop_kernel`. Handling both rather than assuming a list is what keeps
     this harness working across the merge, which is the point of pinning.
 
     Cited by SYMBOL, not by line: this docstring named `eprop_nmnist.py:343` and `:387`, exact when

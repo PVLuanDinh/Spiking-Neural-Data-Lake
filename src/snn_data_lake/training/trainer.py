@@ -1,7 +1,7 @@
 """Surrogate-gradient spiking classifier (Torch + Brian2 equation) for the GPU tier.
 
 Targets the EXACT task the zero-dep core defines. The data + task are REUSED from
-``snn_data_lake.cortex.snn_classifier`` (they are zero-dep, so importing them is free):
+``snn_data_lake.readout.snn_classifier`` (they are zero-dep, so importing them is free):
 8x8 binary shapes, GRID=8 / N=64 inputs, C=4 classes, STEPS=20 rate-coded
 timesteps (ON_RATE=0.9 lit / OFF_RATE=0.05 dark per step).
 
@@ -20,26 +20,27 @@ Torch/Brian2 are imported at module top HERE on purpose: this module is only
 ever imported when actually training (from cli.main() behind an import guard, or
 from offload.py), never at package import time.
 """
+
 import random
 
 import torch
 import torch.nn as nn
-from snn_data_lake.growth.brian2_backend import BrianLIF, fast_sigmoid
 
-from snn_data_lake.cortex.snn_classifier import (
-    templates,
+from snn_data_lake.growth.brian2_backend import BrianLIF, fast_sigmoid
+from snn_data_lake.readout.snn_classifier import (
+    GRID,
+    OFF_RATE,
+    ON_RATE,
+    STEPS,
+    TEST_PER_CLASS,
+    TRAIN_PER_CLASS,
+    N,
     dataset,
     save_weights,
-    GRID,
-    N,
-    STEPS,
-    ON_RATE,
-    OFF_RATE,
-    TRAIN_PER_CLASS,
-    TEST_PER_CLASS,
+    templates,
 )
 
-DEFAULT_BETA = 0.9      # Leaky membrane decay
+DEFAULT_BETA = 0.9  # Leaky membrane decay
 DEFAULT_LR = 0.05
 DEFAULT_EPOCHS = 50
 
@@ -62,7 +63,7 @@ class SpikingReadout(nn.Module):
         mem = None
         spk_sum = None
         for t in range(spikes.shape[0]):
-            cur = self.fc(spikes[t])                 # [batch, C]
+            cur = self.fc(spikes[t])  # [batch, C]
             if mem is None:
                 mem = torch.zeros_like(cur)
             spk, mem = self.lif(cur, mem)
@@ -92,8 +93,8 @@ def rate_encode(X, steps, gen, device):
     the core's encode_step probabilities, so the trained readout sees the same input
     statistics the zero-dep core will serve.
     """
-    prob = X * ON_RATE + (1.0 - X) * OFF_RATE            # [n, N]
-    prob = prob.unsqueeze(0).expand(steps, -1, -1)       # [steps, n, N]
+    prob = X * ON_RATE + (1.0 - X) * OFF_RATE  # [n, N]
+    prob = prob.unsqueeze(0).expand(steps, -1, -1)  # [steps, n, N]
     noise = torch.rand(prob.shape, generator=gen, device=device)
     return (noise < prob).float()
 
@@ -105,7 +106,7 @@ def train_model(epochs=DEFAULT_EPOCHS, device="cpu", seed=0, lr=DEFAULT_LR, beta
     Returns (model, metrics). Deterministic for a given seed/device.
     """
     torch.manual_seed(int(seed))
-    random.seed(int(seed))                                # core dataset() uses the global RNG
+    random.seed(int(seed))  # core dataset() uses the global RNG
 
     temps = templates()
     n_classes = len(temps)
@@ -121,7 +122,7 @@ def train_model(epochs=DEFAULT_EPOCHS, device="cpu", seed=0, lr=DEFAULT_LR, beta
     last_loss = float("nan")
     for _epoch in range(int(epochs)):
         model.train()
-        spikes = rate_encode(Xtr, STEPS, gen, device)    # fresh stochastic spikes / epoch
+        spikes = rate_encode(Xtr, STEPS, gen, device)  # fresh stochastic spikes / epoch
         opt.zero_grad()
         out = model(spikes)
         loss = loss_fn(out, ytr)
@@ -208,7 +209,7 @@ def export_to_core(model, path, meta=None):
     core after export: ``W = snn_classifier.load_weights(path)`` then evaluate with
     ``snn_classifier.forward``/``evaluate``.
     """
-    W = model.fc.weight.detach().cpu().tolist()          # [C][N]
+    W = model.fc.weight.detach().cpu().tolist()  # [C][N]
     n_classes, n_inputs = model.fc.out_features, model.fc.in_features
     assert len(W) == n_classes, f"expected {n_classes} rows, got {len(W)}"
     assert all(len(row) == n_inputs == N for row in W), (

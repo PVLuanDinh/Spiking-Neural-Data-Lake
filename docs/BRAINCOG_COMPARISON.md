@@ -266,7 +266,7 @@ it would replace, and P2 means exactly one survives.
 dynamic, tied to current and past synaptic activity. Reports MNIST 98.6%, FashionMNIST 85.61%,
 CALTECH 99.0% on a single hidden layer.
 
-**Where it belongs**: the plasticity palette, as a competitor to `basal_ganglia/r_stdp.py` and
+**Where it belongs**: the plasticity palette, as a competitor to `plasticity/r_stdp.py` and
 `reasoning/eprop.py`. Coefficients modulated by current versus past synaptic activity is an
 eligibility trace under another name, so this is an ADOPT-OR-RETIRE question about an existing
 mechanism, not a new capability. We already carry BCM, triplet and STP in the palette; a sixth rule

@@ -18,9 +18,9 @@ trips the reflex E-STOP before any action, and every motor command flows through
 """
 
 from snn_data_lake.brainstem.autonomous_loop import ACTIONS, AutonomousArm
-from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner, text_features
-from snn_data_lake.cortex.predictive_coding import PredictiveCodingNetwork
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
+from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner, text_features
+from snn_data_lake.readout.predictive_coding import PredictiveCodingNetwork
 from snn_data_lake.sensorimotor.nl_interface import NLInterface
 
 # the brain's conversational intent families -- the labels its spiking interaction learner routes to.
@@ -162,7 +162,7 @@ class LiveBrain:
             if interaction_learning
             else None
         )
-        # opt-in PREDICTIVE CODING perception front-end (Rao-Ballard spiking, cortex/predictive_coding.py):
+        # opt-in PREDICTIVE CODING perception front-end (Rao-Ballard spiking, readout/predictive_coding.py):
         # each tick SETTLES a 2-level generative model on the perceived [0,1]^N pattern by minimizing
         # prediction error, exposing the inferred percept (top cause r2) and the residual prediction-error
         # energy (SURPRISE) in the tick state -- hypothesis -> predict -> update-on-surprise, on real input.
@@ -1115,8 +1115,8 @@ def _main():
         assert "no interaction learner" in r_none, (
             f"the learnerless refusal must name its own configuration ({r_none})"
         )
-        from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner as _SIL
         from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack as _PRS
+        from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner as _SIL
 
         brain._ixn = _SIL(["a", "b"], n_in=8, seed=0)  # the production shape: Brain attaches both
         r_nostack = brain.converse("what learning rules are active?")

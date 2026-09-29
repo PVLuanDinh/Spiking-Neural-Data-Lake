@@ -3,8 +3,8 @@ PlasticityRuleStack -- a SUPERSET of HomeostaticPlasticityStack that ADDS metapl
 anti-forgetting consolidation around the live R-STDP learning synapses, as a DROP-IN replacement.
 
 WHY THIS EXISTS (a deeper merge, from the same study of the brain). HomeostaticPlasticityStack already
-wraps the one real online learning path (reward-modulated spike-timing plasticity: basal_ganglia.r_stdp,
-driven by cortex.interaction_learning) in a fixed ordered sandwich -- a short-term dynamic gain BEFORE
+wraps the one real online learning path (reward-modulated spike-timing plasticity: plasticity.r_stdp,
+driven by readout.interaction_learning) in a fixed ordered sandwich -- a short-term dynamic gain BEFORE
 the R-STDP deposit, then homeostatic synaptic scaling + intrinsic plasticity AFTER, so the synapses stay
 bounded and rate-homeostatic. That stops runaway, but it does NOTHING about two other failures real
 cortex solves: (a) the learning RATE is fixed regardless of how strongly the neuron has recently been
@@ -414,7 +414,7 @@ def _sign_agree(w, target):
 def _signed_deltas(n_in, target_signs, seed):
     """REUSE RSTDPNeuron to produce the per-synapse signed teaching delta for a target sign pattern
     (causal pre-before-post -> +, anti-causal -> -), exactly the benna_fusi spiking teaching signal."""
-    from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
+    from snn_data_lake.plasticity.r_stdp import RSTDPNeuron
 
     r = RSTDPNeuron(n_in, lr=0.20, seed=seed)
     r.e = [0.0] * r.n
@@ -561,7 +561,7 @@ def _stability_selfcheck():
 
     steps, seed, mu, n_in = 300, 1, 0.15, 10
     code, activity, t_post = HPS._drive_code(n_in)
-    from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
+    from snn_data_lake.plasticity.r_stdp import RSTDPNeuron
 
     neuron = RSTDPNeuron(
         n_in, lr=0.1, a_plus=1.0, a_minus=1.0, tau_plus=8.0, tau_minus=8.0, w0=0.3, seed=seed
@@ -617,7 +617,7 @@ def _equivalence_and_determinism_selfcheck():
 
     steps, seed, n_in = 80, 3, 10
     code, activity, t_post = HPS._drive_code(n_in)
-    from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
+    from snn_data_lake.plasticity.r_stdp import RSTDPNeuron
 
     def _run(stack):
         neuron = RSTDPNeuron(n_in, lr=0.1, w0=0.3, seed=seed)
@@ -690,9 +690,9 @@ def _tick_charge_selfcheck():
     inhibition, asserted; the PR figures are printed so the null stays visible."""
     import random as _r
 
-    from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner
     from snn_data_lake.plasticity.inhibitory_stdp import istdp_synapse_rule
     from snn_data_lake.plasticity.rule_composer import RuleComposer, RuleSpec, rule_charge
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner
 
     def _pr(rows):
         try:

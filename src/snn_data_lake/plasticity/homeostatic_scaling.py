@@ -22,7 +22,7 @@ shown to change the OUTCOME here -- only the state the outcome is read from.
   python -m snn_data_lake.plasticity.homeostatic_scaling        # (also run by run_selfchecks.py)
 """
 
-import snn_data_lake.cortex.snn_classifier as C
+import snn_data_lake.readout.snn_classifier as C
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

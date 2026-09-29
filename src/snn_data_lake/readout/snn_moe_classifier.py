@@ -24,7 +24,7 @@ routing gate. This module contains no .backward(), no BPTT and no weight transpo
 matters because it IS on a live learning path: sensorimotor/recognizer_bank.py's MoeRecognizer
 trains it at construction and calls forward() on every recognition.
 
-Reuses cortex/snn_classifier.py for the data + spike rates (no duplication) and
+Reuses readout/snn_classifier.py for the data + spike rates (no duplication) and
 substrate/_mathutils.softmax (P2: one implementation of a formula, not two).
 
 -----------------------------------------------------------------------------------------
@@ -83,7 +83,8 @@ import random
 
 import numpy as np
 
-from snn_data_lake.cortex.snn_classifier import (
+from snn_data_lake.infra._mathutils import softmax
+from snn_data_lake.readout.snn_classifier import (
     OFF_RATE,
     ON_RATE,
     STEPS,
@@ -91,7 +92,6 @@ from snn_data_lake.cortex.snn_classifier import (
     dataset,
     templates,
 )
-from snn_data_lake.infra._mathutils import softmax
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

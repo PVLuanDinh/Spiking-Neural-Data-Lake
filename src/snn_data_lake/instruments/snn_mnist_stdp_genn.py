@@ -453,7 +453,7 @@ def _run_pass(model, ssa, exc, syn, starts, ends, k_range, m, n_in, steps, learn
 
 
 def _phase_knobs(exc, syn, lr, learn):
-    # distinct-from: cortex/interaction_learning.py -- not a learner: flips the compiled
+    # distinct-from: readout/interaction_learning.py -- not a learner: flips the compiled
     # model's two DYNAMIC params (lr, learnFlag) between the train/assign/eval phases.
     syn.set_dynamic_param_value("lr", lr)
     exc.set_dynamic_param_value("learnFlag", 1.0 if learn else 0.0)
