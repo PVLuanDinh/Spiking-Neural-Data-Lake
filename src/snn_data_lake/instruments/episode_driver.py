@@ -41,7 +41,7 @@ not brain behaviour -- the same class as a trial design in any lab protocol. Wha
 DERIVED is everything the kernel owns: quantization uses the kernel's OWN frac_bits
 (`tick()`'s contract: the caller quantizes -- P1, no second fixed-point convention).
 
-# distinct-from: substrate/kernel_tick.py -- the kernel this drives; tick(ext_q) is its
+# distinct-from: reservoir/kernel_tick.py -- the kernel this drives; tick(ext_q) is its
 #   port and nothing here re-implements propagation. distinct-from: substrate/
 #   replay_gate.py -- the G5 capture/restore this joins via rng_streams() (and its
 #   _driven_run is a raw STREAM, not trials). distinct-from:
@@ -153,7 +153,7 @@ class EpisodeDriver:
         self.trials_run = int(trials_run)
 
     # -- the stimulus port ------------------------------------------------------------------------
-    # distinct-from: substrate/kernel_tick.py -- tick(ext_q) is the KERNEL'S port; this
+    # distinct-from: reservoir/kernel_tick.py -- tick(ext_q) is the KERNEL'S port; this
     #   method only transduces floats onto its grid and forwards. Read.
     def tick(self, kt, stimulus=None):
         """ONE substrate tick through the stimulus port. `stimulus` is a length-n_units

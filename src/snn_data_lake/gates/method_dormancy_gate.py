@@ -62,7 +62,7 @@ LEARN_VERBS = (
 # name -> (disposition, reason). disposition in {"permanent", "wire", "retire"}.
 # "permanent" = legitimately not on the live tick. "wire"/"retire" are open work and are REPORTED.
 EXEMPT_METHOD = {
-    "substrate.spontaneous_activity.SpontaneousActivity.fit_to_traces": (
+    "reservoir.spontaneous_activity.SpontaneousActivity.fit_to_traces": (
         "wire",
         "specs/022 T045: closed-form AR(1) theta fit (DIRECT_SOLVE under the class-qualified "
         "GRADIENT_CLAIM key) -- the LEARNABLE arm of the spontaneous bootstrap. The bootstrap "

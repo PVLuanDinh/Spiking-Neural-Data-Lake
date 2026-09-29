@@ -190,7 +190,7 @@ dependencies = [
     # (T101 panel G1, 2026-09-22: it was installed only as pygenn's transitive dependency, so the
     # ledger reddened). Unpinned: a measurement library, not part of the numerical contract.
     "psutil",
-    # THE THREAD-POLICY INSTRUMENT. cortex/recurrent_pool.py pins BLAS to one thread for its cost
+    # THE THREAD-POLICY INSTRUMENT. reservoir/recurrent_pool.py pins BLAS to one thread for its cost
     # timing and drives its R-b3 determinism check at 1 and 24 BLAS threads; instruments/memory_diagnostic.py
     # runs every replay's readout at one BLAS thread and records the loaded backend
     # (evidence/g1b-pool-selection.md sections 2.2 and 2.7; the ESN-LSM eigvals it was first declared

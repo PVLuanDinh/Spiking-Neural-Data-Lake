@@ -30,7 +30,7 @@ The ceiling is the abstract discrete-time stochastic-binary-neuron neural-sampli
 continuous-time absolute-refractory spiking dynamics; no biophysics, no learning. Networks are kept
 small so the exact Boltzmann distribution can be enumerated (2^N states) for the correctness test.
 
-  python -m snn_data_lake.cortex.neural_sampling        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.reservoir.neural_sampling        # (also run by run_selfchecks.py)
 """
 
 import math

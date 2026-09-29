@@ -273,7 +273,7 @@ P-violation stands as written.
   about what runs, not about the module's quality, and this is the single cheapest capability gap in the
   category (see below).
 - **`generative_recombination`.** The rubric names this as one of the four things Imagination scores, and
-  I could not find a live implementation. What exists: `cortex/neural_sampling.py` is EXEMPT permanent
+  I could not find a live implementation. What exists: `reservoir/neural_sampling.py` is EXEMPT permanent
   because "the live tick has no such [energy] model and no query asking for samples from one"
   (`dormancy_gate.py:107-111`); `cortex/quality_diversity.py`'s archive is constructed only inside
   `self_improvement_suite.py:213`, and the live brain imports only `census` from that module

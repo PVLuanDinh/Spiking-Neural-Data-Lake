@@ -108,6 +108,7 @@ GOVERNED = (
     "sensorimotor",  # G8 M3: the package created by the sensorimotor move
     "infra",  # G8 M4: the package created by the infrastructure move
     "growth",  # G8 M5: the package created by the growth move
+    "reservoir",  # G8 M6: the package created by the reservoir move
 )
 
 # The tiers no gate covers. A governed -> ungoverned edge is what this module protects.

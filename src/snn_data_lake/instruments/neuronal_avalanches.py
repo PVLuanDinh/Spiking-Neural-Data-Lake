@@ -163,7 +163,7 @@ class BranchingNetwork:
         the avalanche"), so the mechanism sentence and the number table came from two different
         harnesses. Under either rule a critical system reports as clearly subcritical by f=0.1.
         NO live caller subsamples -- `BranchingNetwork.run()` records every generation, and
-        `plasticity.criticality_regulator.measure()` counts every neuron in its pool -- so this is a
+        `reservoir.criticality_regulator.measure()` counts every neuron in its pool -- so this is a
         precondition for future callers, not a live defect.
 
         Deliberately NOT an assert: this is a staticmethod over an (ancestors, descendants) trace and

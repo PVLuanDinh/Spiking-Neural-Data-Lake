@@ -86,7 +86,7 @@ import random
 
 from snn_data_lake.growth.lif_neuron import LIFNeuron
 
-# distinct-from: cortex/cortical_microcircuit.py -- Potjans-Diesmann's 8-population
+# distinct-from: reservoir/cortical_microcircuit.py -- Potjans-Diesmann's 8-population
 #   CORTICAL reference dynamics (permanent reference model); this is CEREBELLAR tissue
 #   with the expansion/PF/MLI architecture, built to carry live rules. Site read.
 # distinct-from: cerebellum/forward_model.py + gain_adaptation.py + spiking_pid.py --

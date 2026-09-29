@@ -5,7 +5,7 @@ WHAT THIS IS. Measured values from H01 (Shapson-Coe et al.), a petavoxel reconst
 millimetre of HUMAN temporal cortex. Not a model, not a simulation, not something this brain learned:
 a measurement of a real human brain, carried here with enough provenance that a reader can check it.
 
-WHAT THIS IS NOT, and the distinction decides where it may be used. `cortex/cortical_microcircuit.py`
+WHAT THIS IS NOT, and the distinction decides where it may be used. `reservoir/cortical_microcircuit.py`
 is a Potjans-Diesmann circuit -- an excellent model, built from CAT and MACAQUE anatomy. It is not a
 substitute for this file and this file is not a substitute for it. An earlier pass proposed deriving
 these constants FROM that simulation "to avoid hardcoding"; that would have replaced human

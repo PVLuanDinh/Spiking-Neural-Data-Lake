@@ -707,7 +707,7 @@ def _fold_parts(parts):
 # distinct-from: substrate/signal_ring.py -- the ring frames TRANSPORT records; this is
 #   the workspace's COMPETITION record (the ring carries its bytes). distinct-from:
 #   cortex/self_model.py -- self-episode history; this is per-tick coalition identity.
-#   distinct-from: substrate/kernel_tick.py -- the neuron-substrate tick frame. Read.
+#   distinct-from: reservoir/kernel_tick.py -- the neuron-substrate tick frame. Read.
 class Coalition:
     """The COALITION RECORD (specs/022 T031, data-model 'Episode / Coalition'):
     {coalition_id, tick, proposer_ids[], content_ref, base_level, current, channels{...}}.

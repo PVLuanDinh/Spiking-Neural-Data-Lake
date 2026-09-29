@@ -28,7 +28,7 @@ Lake-committed, versioned, NIR-HDF5-serialized (spec FR-012, contracts/manifest.
 
 ### UnitBlock (IMMORTAL-as-current + delta chain)
 - `unit_id: u64`, `region_label: (neuromere: u8, zone: enum)` (the prosomeric coordinate — distinct from TypedPort's `region: str`, which is the REGIONS-map key), `cell_type`, `position (nm-scale ints, unit-gated)`, `sign (Dale)`, `state fields (SoA layout mirrored)`, `out_edge_ids`, `weights`.
-- Block-aligned: one activation hop = one block read (paging contract). *DATED NOTE 2026-09-09 (T068 LOSS): the paging layer that named this contract is DELETED. The 128-byte block alignment STANDS on its own reason -- contiguous SoA faculty slices and one aligned read per activation hop -- which is what `substrate/kernel_state.py` and `tests/test_kernel_state.py` cite it for, and neither depends on a pager existing.*
+- Block-aligned: one activation hop = one block read (paging contract). *DATED NOTE 2026-09-09 (T068 LOSS): the paging layer that named this contract is DELETED. The 128-byte block alignment STANDS on its own reason -- contiguous SoA faculty slices and one aligned read per activation hop -- which is what `reservoir/kernel_state.py` and `tests/test_kernel_state.py` cite it for, and neither depends on a pager existing.*
 - Validation: region label from the growth program's stage-1 emission; refuses fixed-scaffold regions.
 
 ### SynapseDelta (IMMORTAL as reconstructible)

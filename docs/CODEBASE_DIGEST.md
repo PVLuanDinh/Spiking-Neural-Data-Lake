@@ -279,7 +279,7 @@ claim here. A finding recorded as OPEN may have been fixed since.
 | 15 | **Developmental magnitude pruning** | `plasticity/developmental_pruning` (synapses), `lifelong_consolidation` (units) | Delta-rule training + magnitude cut. |
 | 16 | **Softmax delta rule** | `plasticity/developmental_pruning._train_epoch` | Rate readout, single layer. |
 | 17 | **Bounded metaplasticity** (LP-gated lr + BCM θ) | `plasticity/meta_plasticity` | (a) is proven a global schedule, not local. |
-| 18 | **Criticality homeostat** | `plasticity/criticality_regulator` | σ error → one inhibitory-gain knob. |
+| 18 | **Criticality homeostat** | `reservoir/criticality_regulator` | σ error → one inhibitory-gain knob. |
 | 19 | **Growing/Hebbian competitive (SOM-like)** | `neuromodulation/affect_integrator` (via `GrowingLearner`) | Recruit-or-refine. |
 | 20 | **NACA neuromodulatory credit assignment** | `neuromodulation/naca` | Explicitly gradient-free, no weight transport; a modulator on rule #1. |
 | 21 | **Drive-reduction three-factor** | `neuromodulation/drive_reduction` | Feeds rule #2 with a spiking eligibility as `lr_scale`. |
@@ -502,7 +502,7 @@ claim here. A finding recorded as OPEN may have been fixed since.
 
 **is_snn_forward** — Stacked LIF with intrinsically-stable sparse init (depth-invariant rate, no BatchNorm) + geometric per-layer tau hierarchy. `ISSNNForward{forward,layer_embeddings}`, `_tau_schedule`. Consumed by `spiking_jepa`, `cortical_prior`, `placement`. Gotcha: scalar `tau_m` must stay byte-identical to `[tau]*n`.
 
-**neuronal_avalanches** — Galton-Watson branching cascades with σ as explicit control parameter; `BranchingNetwork{avalanche,run,measured_branching_ratio,powerlaw_slope}`. Consumed by `brain.py` and `plasticity/criticality_regulator`. Gotcha: `measured_branching_ratio` is only unbiased on a **fully observed** trace — subsampling drives a critical system to read subcritical (documented, deliberately not asserted).
+**neuronal_avalanches** — Galton-Watson branching cascades with σ as explicit control parameter; `BranchingNetwork{avalanche,run,measured_branching_ratio,powerlaw_slope}`. Consumed by `brain.py` and `reservoir/criticality_regulator`. Gotcha: `measured_branching_ratio` is only unbiased on a **fully observed** trace — subsampling drives a critical system to read subcritical (documented, deliberately not asserted).
 
 **neural_sampling** — Boltzmann MCMC via single-site Gibbs on stochastic sigmoid neurons; `BoltzmannSampler{step,run,sample,clamp,analytic_distribution}`. **Zero real importers tree-wide** — `dormancy_gate:255` EXEMPT-permanent ("LIBRARY: no live query asks for samples from an energy model"). Gotcha: constructor hard-rejects asymmetric W and nonzero diagonal.
 
@@ -852,7 +852,7 @@ The slice is four strata stacked on one primitive.
 - `cortex/access_consciousness.py::focused` / `state()["focused"]` and `::n_bound` — no consumer outside this module, while `:1886` justifies the key by "the eight live consumers of this dict" and `brain.py:2526` says ten.
 - `cortex/affect_core.py::AffectCore.affect` and `::own_emotion` — zero callers outside `main()`; `own_v`/`own_a` are written only by `empathize()`, whose one live site is inside `respond()`. P3 shape 5 (a constant wearing a signal's clothes). The module says so itself and is correct.
 - `cortex/agency_monitor.py::agency` / `::controllability` / `::status` / `::snapshot` — write-only faculty; `observe()` runs every tick, nothing reads out.
-- `cortex/cortical_microcircuit.py::thalamic_drive` and `::CorticalMicrocircuit` — zero references outside the module. The port is real and measurable; nothing drives it (specs/019 `[B2.08]`).
+- `reservoir/cortical_microcircuit.py::thalamic_drive` and `::CorticalMicrocircuit` — zero references outside the module. The port is real and measurable; nothing drives it (specs/019 `[B2.08]`).
 - `cortex/brain.py::Brain.perceive_pc` — called only inside brain.py's own `main()`. `::recall_episode_durable` — only caller is a test, so the P4b lake-read path never fires in production.
 - `cortex/executive_control.py::ExecutiveControl.drive_entropy` and `cortex/crossmodal_binder.py::recover_complement` / `::superadditivity_index` — self-check only.
 - `cortex/brain.py` write-only state: `_plastic_relaxed`, `_lake_kept`, `_lake_pruned` (set, never read, absent from `state()`).

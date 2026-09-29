@@ -547,7 +547,7 @@ def main():
     # under the competitive protocol no honest subject can win every grid point (drives
     # below the reference lose), so a full sweep of wins is the detector lying.
     # distinct-from: reasoning/free_energy_control.py -- always-act CONTROLLER baseline.
-    # distinct-from: plasticity/criticality_regulator.py -- pool-rate saturation metric.
+    # distinct-from: reservoir/criticality_regulator.py -- pool-rate saturation metric.
     # These are constructed LYING REPORTERS for this scorer's reds; both sites read.
     class _YesReporter(ReentrantWorkspace):
         def step(self):

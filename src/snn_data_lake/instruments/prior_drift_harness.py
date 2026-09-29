@@ -480,7 +480,7 @@ def arm_seeded(art):
     return _copy(art)
 
 
-# distinct-from: substrate/kernel_tick.py::Synapses.empty -- the empty COMPILED table (zero call
+# distinct-from: reservoir/kernel_tick.py::Synapses.empty -- the empty COMPILED table (zero call
 #   sites); this returns an ARTIFACT dict for `population()` to compile, the units untouched.
 # distinct-from: growth/h01_ingest.py::build_arrays -- builds the node and edge arrays FROM the
 #   release's cells; this drops the edges of an artifact already built.

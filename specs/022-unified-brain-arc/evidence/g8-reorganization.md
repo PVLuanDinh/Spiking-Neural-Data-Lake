@@ -2727,3 +2727,74 @@ coverage (70% required), 365/365 self-checks, 6/6 tools gates, all sixteen
 final asserting gates rc 0, retained in `...-9bb36ca0-run2`. This record and
 that battery's own `tools/policy_certification.json` (certified, clean,
 `9bb36ca0`) are the arc's last commit. The daemon stays stopped; no poll.
+
+### 3.20 M6 predeclared reservoir move (Claude, G8-2, 2026-09-29)
+
+The M6 parent is the G8-1 head `3bdc195e` (the audit fix-forward arc's closing record). Its clean export completed
+the 24-gate, seven-probe, 30-registry census with every gate rc 0 (pre census SHA-256 begins `1022AFADD46D0BB4`,
+taken with `SNN_ALIAS_STRICT=1`); the frozen 2.12 map, read by the frozen mover (sha256 prefix `b49e982a`), moves 7
+modules into `reservoir/`, all core tier and none in the safety envelope: `cortical_microcircuit`, `neural_sampling`
+and `recurrent_pool` from `cortex`, `criticality_regulator` from `plasticity`, and `kernel_state`, `kernel_tick` and
+`spontaneous_activity` from `substrate`. The mover re-keyed `REGIONS` and the runner's names and rewrote 17 files
+(23 imports, 9 strings), including the `EXEMPT_METHOD` key of `spontaneous_activity` and the `CUSTOM_KERNELS` entry
+of `kernel_tick`. The live-citation rewriter (Codex's, re-targeted to M6 and kept out of tree) then rewrote 34 live
+files, 47 citations.
+
+Before any M6 post-move gate run, the C1 delta was written to the out-of-tree `declared_M6.json` (SHA-256 begins
+`7823577D9A0A8C3C`; the frozen-map names are `expected_M6.json`, `738B3D7B4C95A6DF`). It forecasts 14 changes: the
+brain atlas gains the `reservoir` row and its per-key counts (`cortex` 47 to 44, `plasticity` 19 to 18, `substrate`
+33 to 30; 23 to 24 regions; 298 modules unchanged); the new initializer raises the parsed-file counts of the e-prop
+transport, gradient-claim and P6 gates (444 to 445) and the P4c scaffold count (34 to 35); citation BROAD moves
+1763/282 to 1794/285; and the names `REGIONS` keys and `GOVERNED` gain `reservoir`. The BROAD figure was forecast
+statically with the guard's own parser and resolver over the parent's tracked set (reproducing 1763/282) and then the
+candidate's texts and path set; all 25 new violations are citations of the seven old paths in frozen documents, and
+the one that leaves the live set reappears under its new path, so live files gain none. No envelope comment cites a
+moved module (the F11 carve-out is not touched by M6).
+
+**No halt, no amendment.** The first post census (over an export of the worktree, strict) completed 24 gates and
+seven probes, all rc 0, and C1 said the diff equals the declared delta (14 declared changes). Post census SHA-256
+begins `B2351B916BE4AA45`, observed delta `B73D1CC74818C7A6`. The two row-named raw registries moved as the map says:
+the `EXEMPT_METHOD` key and the `CUSTOM_KERNELS` entry.
+
+Items beyond the row, each required by the frozen procedure or by what the checks prove, recorded:
+- `GOVERNED` gained `reservoir` (row item; hand edit, line endings preserved).
+- The rule census (2.5 item 6): the one moving row, the `SpontaneousActivity.fit_to_traces` direct-solve row,
+  was re-keyed by the regeneration command; no `_CENSUS_ADJUDICATED` entry names an M6 module, so none was edited.
+  Rows stay 104, undispositioned 56, as before.
+- One live comment in the `wholistic_loop` header named `plasticity/criticality_regulator.CriticalityRegulator`; the
+  rewriter's boundary rule skipped it (a dotted class follows the module) and it was re-pointed by hand. C2(d) and
+  the citation count did not depend on it.
+- `ruff check --fix --select I` re-sorted the imports of 5 touched files and `ruff format` left 40 files unchanged.
+- The "G1(c) migration-host text": the dormancy rows for `recurrent_pool` and `pool_selection` name G1(c)'s
+  disposition and their consumers but hold no moved-module path, and the KernelTick host is named without a path.
+  Nothing in that text needed a path edit beyond what the pair map and the rewriter had already done; if the
+  orchestrator reads a different line as the migration-host text, it is not covered here.
+- Not touched: the frozen documents and frozen evidence keep their historical paths; the index documents are D1's.
+- The five envelope files and the envelope hash registry: byte-identical (protected diff empty).
+
+**Cheap half (2.8), counts.** C2(a): 415 imports attempted on both trees, the same 13 known optional-import
+failures, zero scratch-home files. C2(b): 124 legacy pairs (117 plus the 7 new), no synthetic package yet, 286 flat
+aliases, no identity failure, on the real worktree and on the export. C2(c): 17 of 17 legacy gate runs equal the
+current runs, 0 differ (run on the real worktree, strict off). C2(d): on the export 665 live source files, 0 unparsed,
+0 stale; on the raw worktree the scan lists the 7 unstaged deletions as unparsed, which is the missing staging, not a
+finding. C2(e): 16 frozen artifacts, 12 module names, all file-loaded. C3: the envelope hash gate and its self-check
+green, the safety-envelope document check green, the latch path resolved through the real home module with a file
+loader (the path was resolved, never opened). C4: the R-b0 probe identical in the pre and post censuses. C5: R-L1
+brain and zoo restores PASS (no refusal, equal walks, equal answers) against the S1b baseline. C6 to C9 green inside
+the census (invariants empty; strict registry parity). Citation STRICT 0 unexempted with its 2 exemptions; BROAD
+1794 across 285 files, equal to the forecast; the document command guard, the document budget, the policy audit,
+`p6_gate` self-check (4 of 4 controls) and `move_gate`'s self-check (C1, F5, C2(b), F3(c), F2, C2(c) and C5 reds
+fired in copies; C2(d)'s positive control found F7's six sites) passed. `ruff check` and `ruff format --check` on the
+40 touched files passed. The 7 module self-checks passed. The bounded run of the 7 test files that name a moved
+module (`-o addopts= -p no:cacheprovider`) passed: 114 passed, 1 expected failure.
+
+**Planted red.** Restoring the old `EXEMPT_METHOD` key (`substrate.spontaneous_activity...`) in an export copy made
+C1 red with 9 differences (the raw-name pair, the method-dormancy gate's rc 0 to 1 with a dormant row, and the policy
+audit's P3 verdict PASS to FAIL) and made C2(d) red with exactly one finding; the real tree is green on both.
+
+**Time.** Pre census 130 s; build (mover, rewriter, manual items, ruff, declaration, forecast) about 4.8 min of wall
+clock after the pre census, mover 5 s; post export and census and diff 119 s; the cheap half about 15.5 min of wall
+clock, of which the checks ran about 13 min (C2(c) 244 s, bounded tests 180 s, planted red 125 s, self-check 75 s).
+
+NOT VERIFIED BY A BATTERY. The stage is verified by the cheap half only; nothing is committed or pushed, no daemon
+was started and the live lake was not opened. G8-2's panel, fold and one battery remain owed.

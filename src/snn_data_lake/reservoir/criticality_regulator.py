@@ -44,7 +44,7 @@ not the regime). It regulates the substrate; it does not think.
 Per-instance random.Random(seed); zlib.crc32 for child seeds (never
 hash()); deterministic; ASCII-only output.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.plasticity.criticality_regulator   # (run_selfchecks.py)
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.reservoir.criticality_regulator   # (run_selfchecks.py)
 """
 
 import random

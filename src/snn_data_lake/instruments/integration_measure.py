@@ -85,7 +85,7 @@ attribute the gap to activity level.
 
 SUBSTRATE. A small recurrent LIF subnet (n=12; reuses growth.lif_neuron.LIFNeuron, the canonical
 spiking primitive). The DYNAMICAL REGIME is set by the recurrent COUPLING and background NOISE; PCI peaks
-near the edge of chaos, the same slightly-subcritical band that plasticity.criticality_regulator holds a
+near the edge of chaos, the same slightly-subcritical band that reservoir.criticality_regulator holds a
 spiking pool in (branching ratio ~1, maximal stimulus separability). This module measures that band's
 perturbational signature; it does not regulate it.
 
@@ -428,7 +428,7 @@ INTEGRATION_SEEDS = tuple(range(20))
 # two-sided assert is about the marker's discrimination, not about a hypothesis. Also read before
 # writing this and likewise distinct: substrate/chat_memory.py (a lake view), gates/dormancy_gate.py
 # (the P3 reachability census), gates/amdahl_gate.py::_probe_install (a patch-install counter) and
-# substrate/kernel_tick.py::_bench_kernel (a ticks/s host benchmark) -- none of the five sweeps a
+# reservoir/kernel_tick.py::_bench_kernel (a ticks/s host benchmark) -- none of the five sweeps a
 # marker over seeds, and none of them is a second implementation of this job.
 def pci_marker_sweep(seeds=INTEGRATION_SEEDS, trials=8):
     """THE PCI MARKER as a DISTRIBUTION over `seeds` -- the one capability

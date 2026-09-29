@@ -717,7 +717,7 @@ def set_append_observer(fn):
 # distinct-from: substrate/binlog.py::BinLog.extend -- the bulk WRITE path (one fsync for many
 #   records). It carries opaque payloads by design and knows no tag, which is why the observation
 #   lives here rather than there.
-# distinct-from: substrate/kernel_tick.py::compile_bundles -- "THE ONE" phrasing only; it compiles
+# distinct-from: reservoir/kernel_tick.py::compile_bundles -- "THE ONE" phrasing only; it compiles
 #   delivery bundles from edges and touches no lake record.
 # distinct-from: sensorimotor/afferent_boundary.py -- "the ONE transduction-in boundary": sensor
 #   readings into the stimulus contract, no record, no tag, no bytes/tick.

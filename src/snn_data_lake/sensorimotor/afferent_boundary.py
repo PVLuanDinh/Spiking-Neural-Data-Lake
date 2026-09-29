@@ -236,7 +236,7 @@ AUDITION_FRAME_SHAPE = (100, 700)
 
 # distinct-from: cortex/brain.py (_perceive_real/_perceive_audio) -- the CONSUMERS this
 #   contract now fronts (they delegate validation here; encoding stays theirs). Read.
-# distinct-from: substrate/kernel_state.py -- rebuilds KERNEL state from an HDF5 frame;
+# distinct-from: reservoir/kernel_state.py -- rebuilds KERNEL state from an HDF5 frame;
 #   'frame' vocabulary only. Site read.
 # distinct-from: substrate/arm_view.py -- PNG camera frames for the cockpit; unrelated.
 #   Site read.

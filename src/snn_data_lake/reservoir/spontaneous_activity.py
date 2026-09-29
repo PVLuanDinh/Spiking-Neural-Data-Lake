@@ -64,7 +64,7 @@ temporally-sensitive rules the arc lands next, and deletes per P8 clause 5 if no
 materializes. NULL DISPOSITION (P8 clause 5): if the eventual real-perception A/B shows the
 bootstrap buys the first real percepts nothing, this module is DELETED, not parked.
 
-  PYTHONPATH=src python -m snn_data_lake.substrate.spontaneous_activity
+  PYTHONPATH=src python -m snn_data_lake.reservoir.spontaneous_activity
 """
 
 import math

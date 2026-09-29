@@ -498,6 +498,11 @@
    "governed": false,
    "kind": "APPROXIMATES_GRADIENT"
   },
+  "reservoir/spontaneous_activity.py::SpontaneousActivity.fit_to_traces": {
+   "disposition": "direct-solve -- no dw stream to compose (T050 census category)",
+   "governed": true,
+   "kind": "DIRECT_SOLVE"
+  },
   "sensorimotor/eprop_nmnist.py::eprop_grads": {
    "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
    "governed": true,
@@ -522,11 +527,6 @@
    "disposition": "UNDISPOSITIONED",
    "governed": true,
    "kind": "LOCAL"
-  },
-  "substrate/spontaneous_activity.py::SpontaneousActivity.fit_to_traces": {
-   "disposition": "direct-solve -- no dw stream to compose (T050 census category)",
-   "governed": true,
-   "kind": "DIRECT_SOLVE"
   },
   "thalamus/reentrant_workspace.py::ReentrantWorkspace._hebb_update": {
    "disposition": "UNDISPOSITIONED",

@@ -205,7 +205,7 @@ commit paid the full ≈ 2 hours, which is what the owner's 2026-09-02 amendment
 | goals | `cortex/autotelic_goals.py` (achieved-outcome buffer, HER, competence-progress goal babbling) is reached ONLY from the sleep tick, persist-gated, through `cortex/nightly_skills.py::_autotelic_step`, and runs on the module's own 2-D toy grid — never on the arm; `basal_ganglia/learning_progress.GoalStore` (`_T_GOAL`) has ZERO callers; T076's `basal_ganglia/curriculum.py` does not exist yet |
 | plasticity palette (local rules) | `plasticity/` (Hebbian/STDP, homeostatic, LPL spine, three-factor extensions, `rule_composer`'s production census, `inhibitory_stdp` live on the tick), `cortex/eprop_kernel.py` (surrogate-gradient batch trainer + `bptt_grads` reference — NOT a per-tick rule), online local readouts `cortex/laminar_local_readout.py::observe`, `growth/similarity_sized_growth.py::FrozenExpert` |
 | the lake | `substrate/home.py` (`save_state/load_state` `_T_STATE`, `save_growth/load_growth`, `throwaway_home`, `home()` reads `NORD_HOME`), `substrate/binlog.py` (`BinLog`), `substrate/lake_engine.py` (`SynapseDelta`, `AppendBudget` — no live caller yet), `lake_segments.py`, `lake_index.py`, `neuro_chip_stream.py` (shard discipline) |
-| the substrate tick | `substrate/kernel_tick.py` (`KernelTick._deliver_and_rotate`), `substrate/kernel_state.py` (SoA, T013), dormancy-exempt `wire` today; `gates/perf_baseline.py` (`--record/--assert`; T065's `tools/perf_baseline.py` path is stale — the p4c ratchet refused `tools/` at T001) |
+| the substrate tick | `reservoir/kernel_tick.py` (`KernelTick._deliver_and_rotate`), `reservoir/kernel_state.py` (SoA, T013), dormancy-exempt `wire` today; `gates/perf_baseline.py` (`--record/--assert`; T065's `tools/perf_baseline.py` path is stale — the p4c ratchet refused `tools/` at T001) |
 | anatomy | `connectome.py`, `substrate/wiring_manifest.py` (36 ports, 19 edges declared), `substrate/signal_ring.py` (`SignalRing`, `JoinConsumer`); nine modules carry a `_*_consumer_factory` (`evidence_accumulation`, `r_stdp`, `interoceptive_relay`, `interoceptive_integration`, `region_coherence`, `astrocyte_modulation`, `percept_surprise`, `task_set`, `reentrant_workspace`) |
 | perception | `sensorimotor/eprop_nmnist.py` (frozen encoder; `models/eprop_nmnist.pt` is gitignored), `models/nmnist_pack.npz` (tracked 256 frames), `data/nmnist_cache/*_T15/*.hdf5` (local, 10k test / 60k train), `cortex/percept_surprise.py`, `sensorimotor/afferent_boundary.py` |
 | instruments and gates | `substrate/*_gate.py`, `tools/*.py`, `tools/charge_probe.py`, `infra/brain_telemetry.py` (`PROVENANCE`), `infra/cockpit.py` (`/api/state`, `/api/chat`, `/api/all`); `REGIONS` in `snn_data_lake/__init__.py` |
@@ -671,7 +671,7 @@ clause protects it.
   residency — WIN keep, LOSS delete the layer; gated on T061 (closed) only. *RESOLVED 2026-09-09: LOSS. The layer is DELETED and the deletion recorded (`evidence/s5-paging-null.md` §3.4/§3.5/§4), which is the branch SC-007 names. This row is CLOSED.*
 - **S6 — wire the sparse kernel onto the live tick.** `KernelTick` is dormancy-exempt `wire` today; S6 makes
   the flat (post, weight) scatter in `KernelTick._deliver_and_rotate` the live tick's delivery (FR-035 is
-  already met by `substrate/kernel_state.py`, T013, SoA), specs/008 gets a `tasks.md`, then the
+  already met by `reservoir/kernel_state.py`, T013, SoA), specs/008 gets a `tasks.md`, then the
   resident-CUDA arm gated on `infra/device.py::select` with a new workload name (`"substrate_tick"`,
   introduced by S6) at the crossover re-derived on this host. Red: tick time at the measured width; a neuter
   of the kernel changes the tick's output. **AMENDED 2026-09-08 (T066's fold, panel finding C12 — a visible
@@ -1252,7 +1252,7 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
 - **Unread anatomy.** `growth/placement.py` gives every grown unit a fractional cortical DEPTH, a
   layer and an immutable Dale sign, persisted, with no computational reader (Part E: "placement
   has no reader").
-- **A driverless wiring table.** `cortex/cortical_microcircuit.py` holds the measured
+- **A driverless wiring table.** `reservoir/cortical_microcircuit.py` holds the measured
   Potjans-Diesmann `CONN_PROB` (fixed in-degree); its dormancy row says "NOTHING DRIVES IT".
 - **Measured positions.** The gitignored `data/h01/h01_c3_graph.npz` holds `xyz_nm` for 14,215 signed
   somata and 70,001 aggregated connected pairs; the tracked `tools/h01_c3_graph_pin.json` carries both

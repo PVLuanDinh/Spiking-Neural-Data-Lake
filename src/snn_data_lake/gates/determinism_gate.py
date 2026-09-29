@@ -31,7 +31,7 @@ proving the sweep can fail). `binding_frac_bits()` is the read path for callers;
 placeholder inside kernel_tick defers to it once recorded.
 """
 
-# distinct-from: substrate/kernel_tick.py -- the MECHANISM this gate exercises; the gate owns
+# distinct-from: reservoir/kernel_tick.py -- the MECHANISM this gate exercises; the gate owns
 #   the criterion, the kernel owns the tick. distinct-from: gates/eprop_transport_gate.py
 #   and gates/gradient_claim_gate.py -- learning-rule transport criteria, not tick
 #   determinism. distinct-from: gates/replication_guard.py -- class-uniqueness census.
@@ -78,8 +78,8 @@ def _run_kernel(net, threads, frac_bits, ticks=40):
     """One bench run -> (train_bytes, final_v copy, total_spikes)."""
     import numpy as np
 
-    from snn_data_lake.substrate.kernel_state import KernelState
-    from snn_data_lake.substrate.kernel_tick import KernelTick, Synapses
+    from snn_data_lake.reservoir.kernel_state import KernelState
+    from snn_data_lake.reservoir.kernel_tick import KernelTick, Synapses
 
     state = KernelState([("bench", net["n"])])
     state.arrays["thr"][:] = 1.0

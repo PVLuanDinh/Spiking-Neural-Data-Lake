@@ -50,7 +50,7 @@ Composed primitives (READ + REUSED, not reimplemented):
   * plasticity/lifelong_consolidation.LifelongConsolidator -- its parts drive GROW
     (hippocampus/growing_learner.GrowingLearner), PRUNE-to-budget, and CONSOLIDATE via
     interleaved replay (hippocampus/experience_replay.ReplayBuffer).
-  * plasticity/criticality_regulator.CriticalityRegulator  -- slow substrate health.
+  * reservoir/criticality_regulator.CriticalityRegulator  -- slow substrate health.
   * substrate/_mathutils.mean                              -- aggregation.
 
 Each spine component (metacog / consolidation / criticality) can be DISABLED
@@ -80,8 +80,8 @@ import zlib
 from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor
 from snn_data_lake.infra._mathutils import clamp01, mean
 from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
-from snn_data_lake.plasticity.criticality_regulator import CriticalityRegulator
 from snn_data_lake.plasticity.lifelong_consolidation import LifelongConsolidator
+from snn_data_lake.reservoir.criticality_regulator import CriticalityRegulator
 
 # --- task / stream geometry (disjoint separable classes, each with a frequent PRIMARY +
 #     a rare, prune-able SECONDARY mode, interleaved with an unlearnable noise phase) ----

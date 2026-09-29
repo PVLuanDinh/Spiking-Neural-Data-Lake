@@ -25,7 +25,7 @@ measurements; this file pins only the WIRE, deliberately."""
 import numpy as np
 
 from snn_data_lake.cortex.brain import make_brain
-from snn_data_lake.substrate.spontaneous_activity import _cosine_modes, _principal_alignment
+from snn_data_lake.reservoir.spontaneous_activity import _cosine_modes, _principal_alignment
 
 
 class _StubEnc:
@@ -90,7 +90,7 @@ def test_neutered_bootstrap_leaves_the_cold_seed(monkeypatch):
     b1._perceive_real()
     w_boot = np.asarray([n.w for n in b1._percept_surprise._neurons])
 
-    from snn_data_lake.substrate import spontaneous_activity as sa
+    from snn_data_lake.reservoir import spontaneous_activity as sa
 
     monkeypatch.setattr(sa, "bootstrap_percept_rule", lambda ps, **kw: 0)
     b2 = _perceiving_brain()

@@ -1600,7 +1600,7 @@ def _write_measure_artifact(results, root=None):
     return path
 
 
-# distinct-from: plasticity/criticality_regulator.py -- its `sigma`/`measure` run a live measurement
+# distinct-from: reservoir/criticality_regulator.py -- its `sigma`/`measure` run a live measurement
 #   battery on a spiking pool to estimate a branching ratio. This reads a RECORDED FILE and compares
 #   a content digest. Nothing is measured here and no pool is involved; the shared word is "measure".
 #: FR-010's SINGLE named exception: the one rule body this feature may change, plus the two files

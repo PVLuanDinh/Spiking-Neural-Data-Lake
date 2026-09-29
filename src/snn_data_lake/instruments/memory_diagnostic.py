@@ -4,7 +4,7 @@ Recordings are experiment artifacts; no brain or replay state is persisted to th
 
 G1(b) extends it (specs/022-unified-brain-arc/evidence/g1b-pool-selection.md section 2, frozen at
 23c7e97) without altering G1(a)'s arms: the reference readout (section 2.2) runs beside the grower in
-every replay, the pool arm feeds x alone into cortex/recurrent_pool.py's pools, every replay runs at
+every replay, the pool arm feeds x alone into reservoir/recurrent_pool.py's pools, every replay runs at
 one BLAS thread, and R-b6's synthetic stream family (section 2.7) lives here. The campaign that runs
 them is instruments/pool_selection.py.
 """
@@ -31,9 +31,9 @@ import numpy as np
 import torch
 from threadpoolctl import threadpool_info
 
-from snn_data_lake.cortex import recurrent_pool as rp
 from snn_data_lake.growth.growth_stop import GrowthStop, feed_and_decide
 from snn_data_lake.growth.neurogenesis_engine import NeurogenesisSelfImprove
+from snn_data_lake.reservoir import recurrent_pool as rp
 
 ASSETS = {
     "nmnist_pack.npz": "9863a50ead6190ae",
@@ -92,7 +92,7 @@ def _read_lp(brain):
     return value if math.isfinite(value) else None
 
 
-# distinct-from: cortex/recurrent_pool.py -- `_blas_threads` LIMITS the pools (replay() reuses it for
+# distinct-from: reservoir/recurrent_pool.py -- `_blas_threads` LIMITS the pools (replay() reuses it for
 #   its pin) and check_r_b3 reads the backends inline per thread setting; this is the policy's record
 #   of them. Folding check_r_b3's inline read onto this one is an opening (recurrent_pool.py is
 #   outside this build's files). distinct-from: growth/neuron_zoo.py -- `_worker_ladder` derives

@@ -12,7 +12,7 @@ import zlib
 import numpy as np
 import pytest
 
-from snn_data_lake.cortex import recurrent_pool as rp
+from snn_data_lake.reservoir import recurrent_pool as rp
 
 # g1's draw order (section 2.4), pinned: crc32 of json.dumps(order, sort_keys, compact). The deleted
 # ports' crc32s are section 3.1's record.

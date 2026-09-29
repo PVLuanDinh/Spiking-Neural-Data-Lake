@@ -9,7 +9,7 @@ parser cannot fully account for.
 import numpy as np
 import pytest
 
-from snn_data_lake.substrate.kernel_state import _ALIGN, _FRAME, FIELDS, KernelState
+from snn_data_lake.reservoir.kernel_state import _ALIGN, _FRAME, FIELDS, KernelState
 
 
 def _ks():

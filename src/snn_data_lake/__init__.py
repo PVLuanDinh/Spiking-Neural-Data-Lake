@@ -118,11 +118,8 @@ REGIONS = {
         # percept readout (feedback alignment + fixed-random L6, no weight transport) --
         # cortex/brain.py constructs it lazily on every real percept; numpy-only, CORE tier.
         "laminar_local_readout",
-        "cortical_microcircuit",
-        "recurrent_pool",  # G1(b) pool-selection benchmark: the winner, g1 LSM, as a streaming pool
         "predictive_coding",
         "is_snn_forward",
-        "neural_sampling",
         "snn_classifier",
         # PROMOTED 2026-08-13 (was reasoning/snn_moe_classifier.py): firing-rate ROUTED
         # mixture-of-experts over snn_classifier's spiking experts. CORE, not TORCH_TIER -- it
@@ -333,7 +330,6 @@ REGIONS = {
         "rule_composer",  # specs/022 T051a: typed sets + naive-sum red + causal attribution (P8 #3 core)
         "espp_rule",  # specs/022 T052-i: the extracted ESPP palette element (jepa's espp branch delegates)
         "competitive_learning",
-        "criticality_regulator",
         "meta_plasticity",
         "benna_fusi",
         "lifelong_consolidation",
@@ -378,7 +374,6 @@ REGIONS = {
         "signal_calibrator",  # durable running-quantile of a live signal (Step-0 of data self-recalibration)
         "home",
         "binlog",
-        "spontaneous_activity",  # specs/022 T045: learnable OU bootstrap through the SAME plasticity path (FR-033)
         "region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> GWT ignition bias
         # PROMOTED from the repo root 2026-08-04 under P4c: the daemon is the brain's DRIVE (wake/
         # sleep cycle, tick loop, continuity), not a launcher beside it. It was 370 lines outside the
@@ -392,8 +387,6 @@ REGIONS = {
         "lake_migrate",  # specs/022 T009: per-tag dispositions + identity migration; bare == identity + unknown-tag red
         "lake_engine",  # specs/022 T010-i: retention registry + IMMORTAL append budget; bare == consistency + flood red
         "signal_ring",  # specs/022 T011: ONE-writer multicast ring + lake journaller; bare == replay A/B + overrun red
-        "kernel_state",  # specs/022 T013: SoA substrate state, 128B-aligned, lake-backed; bare == alignment + round-trip + refusal reds
-        "kernel_tick",  # specs/022 T014: two-phase deterministic tick (P fixed, integer delivery); bare == delay + thread-equality reds
         "wiring_manifest",  # specs/022 T018: TypedPort + WiringManifest (declared anatomy); bare == five checks + five reds + NIR round-trip
         "report_channel",  # 022 T034: typed workspace-report snapshot; the broadcast's declared consumer
     ],
@@ -519,6 +512,15 @@ REGIONS = {
         "resonate_and_fire",
         "similarity_sized_growth",
         "srm_neuron",
+    ],
+    "reservoir": [
+        "cortical_microcircuit",
+        "criticality_regulator",
+        "kernel_state",
+        "kernel_tick",
+        "neural_sampling",
+        "recurrent_pool",
+        "spontaneous_activity",
     ],
 }
 

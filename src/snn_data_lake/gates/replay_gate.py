@@ -27,7 +27,7 @@ invariance -- is the determinism claim the tree actually leans on.
 
 # distinct-from: gates/determinism_gate.py -- thread-count invariance at fixed P; this is
 #   trajectory-resume equality (the two are the two halves of D6).
-# distinct-from: substrate/kernel_state.py -- the state FRAME this snapshot embeds whole.
+# distinct-from: reservoir/kernel_state.py -- the state FRAME this snapshot embeds whole.
 # distinct-from: growth/neurogenesis_engine.py growth blobs and substrate/home.py chain --
 #   durable substrate persistence in the lake; a snapshot is a REPLAY instrument.
 # distinct-from: hippocampus/experience_replay.py and sleep_replay.py -- learned-content
@@ -107,7 +107,7 @@ def restore(blob, kt):
     REFUSES -- stream-position equality is checked, never assumed."""
     import numpy as np
 
-    from snn_data_lake.substrate.kernel_state import KernelState
+    from snn_data_lake.reservoir.kernel_state import KernelState
 
     try:
         with np.load(io.BytesIO(blob), allow_pickle=False) as z:
@@ -188,8 +188,8 @@ def _driven_run(kt, rng, n_ticks, n_units, frac_bits):
 def _build(seed=23, n=48, edges=384, p_parts=4, frac_bits=12):
     import numpy as np
 
-    from snn_data_lake.substrate.kernel_state import KernelState
-    from snn_data_lake.substrate.kernel_tick import KernelTick, Synapses
+    from snn_data_lake.reservoir.kernel_state import KernelState
+    from snn_data_lake.reservoir.kernel_tick import KernelTick, Synapses
 
     top = np.random.default_rng(seed)
     state = KernelState([("net", n)])
@@ -210,7 +210,7 @@ def run_gate(pre_ticks=15, post_ticks=25):
     """-> dict of the four arms' outcomes. The criterion is arm 1; arms 2-4 are its reds."""
     import numpy as np
 
-    from snn_data_lake.substrate.kernel_tick import KernelTick
+    from snn_data_lake.reservoir.kernel_tick import KernelTick
 
     n, frac_bits = 48, 12
     _state, syn, kt = _build()

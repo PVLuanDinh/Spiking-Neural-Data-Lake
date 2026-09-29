@@ -7,9 +7,9 @@ through stand-in runners (or one in-process replay of the 48-event fixture)."""
 
 import pytest
 
-from snn_data_lake.cortex import recurrent_pool as rp
 from snn_data_lake.instruments import memory_diagnostic as md
 from snn_data_lake.instruments import pool_selection as ps
+from snn_data_lake.reservoir import recurrent_pool as rp
 
 
 def entry(order, d, d_task, cost):

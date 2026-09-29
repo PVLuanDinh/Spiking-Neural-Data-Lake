@@ -68,7 +68,7 @@ CORE = [
     "growth.alif_neuron",
     "cortex.divisive_normalization",
     "instruments.neuronal_avalanches",
-    "cortex.cortical_microcircuit",
+    "reservoir.cortical_microcircuit",
     "growth.cortical_prior",  # H01 human reference data: every entry carries its four attributes
     "growth.h01_ingest",  # T062: the c3 synapse graph -- 8 gates, each with its red, offline
     "growth.arealization",  # T040+T041: exhaustive GRN censuses + prosomeric grid + graded arm
@@ -77,13 +77,13 @@ CORE = [
     "growth.placement",  # grown units ordered into cortical layers by measured H01 occupancy
     "growth.growth_stop",  # T047: overgrowth red + four regimes + |LP| veto + measured null clause
     "instruments.memory_diagnostic",  # G1 causal contract synthetic reds
-    "cortex.recurrent_pool",  # G1(b): R-b0 parity, R-b3, R-b4 pool noise, R-b5 and every red
+    "reservoir.recurrent_pool",  # G1(b): R-b0 parity, R-b3, R-b4 pool noise, R-b5 and every red
     "instruments.pool_selection",  # G1(b) campaign: ordering, power, R-b7 reds, step order, exit codes
     "sensorimotor.lca_sparse_coding",
     "cortex.predictive_coding",
     "sensorimotor.pc_cortex_serve",
     "cortex.is_snn_forward",
-    "cortex.neural_sampling",
+    "reservoir.neural_sampling",
     "cortex.snn_classifier",
     # PROMOTED 2026-08-13 from reasoning/ -- and moved RESEARCH -> CORE with it. It had been
     # registered in RESEARCH, which runs out-of-process with root on PYTHONPATH; leaving a governed
@@ -283,7 +283,7 @@ CORE = [
     "plasticity.espp_rule",  # T052-i: delegation-live + BIT/FULL/DELTA equivalence + coefficient pins
     "plasticity.competitive_learning",
     "plasticity.lifelong_consolidation",
-    "plasticity.criticality_regulator",
+    "reservoir.criticality_regulator",
     "plasticity.meta_plasticity",
     "plasticity.benna_fusi",
     "plasticity.homeostatic_plasticity_stack",
@@ -328,7 +328,7 @@ CORE = [
     "substrate.home",
     "substrate.binlog",
     "growth.growable",
-    "substrate.spontaneous_activity",  # T045: OU stationarity + same-path A/B + nulls + refusals
+    "reservoir.spontaneous_activity",  # T045: OU stationarity + same-path A/B + nulls + refusals
     "gates.growth_coverage_gate",  # T046: coverage ratchet + refusals + sharpness + nulls + Allen
     "infra.region_wiring",  # the always-on daemon's faculty-wiring registry -> charge_all + honest coverage report
     "substrate.arm_view",  # stdlib PNG encoder + demand-gated offscreen arm frames
@@ -358,8 +358,8 @@ CORE = [
     "substrate.lake_migrate",  # 022 T009: per-tag identity migration + unknown-tag red (constructed multi-tag lake)
     "substrate.lake_engine",  # 022 T010-i: retention/disposition registries agree + constructed flood red
     "substrate.signal_ring",  # 022 T011: journaller replay A/B + loud-loss overrun red on scratch rings
-    "substrate.kernel_state",  # 022 T013: SoA alignment/contiguity + scratch-lake round-trip + refusal reds
-    "substrate.kernel_tick",  # 022 T014: delay-ring arrival + T=1==T=4 train equality + imbalance + refusals
+    "reservoir.kernel_state",  # 022 T013: SoA alignment/contiguity + scratch-lake round-trip + refusal reds
+    "reservoir.kernel_tick",  # 022 T014: delay-ring arrival + T=1==T=4 train equality + imbalance + refusals
     "gates.determinism_gate",  # 022 T015: f32-diverges/int64-agrees control arms + a thread pair (full sweep in CI --assert)
     "gates.replay_gate",  # 022 T017: G5 resume byte-identical + omit-positions/mismatch refusals + re-seed divergence control
     "substrate.wiring_manifest",  # 022 T018: five checks + constructed reds + NIR-HDF5 round-trip on a scratch manifest

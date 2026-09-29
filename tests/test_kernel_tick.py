@@ -13,8 +13,8 @@ reachable red.
 import numpy as np
 import pytest
 
-from snn_data_lake.substrate.kernel_state import KernelState
-from snn_data_lake.substrate.kernel_tick import KernelTick, Synapses
+from snn_data_lake.reservoir.kernel_state import KernelState
+from snn_data_lake.reservoir.kernel_tick import KernelTick, Synapses
 
 FRAC = 16
 

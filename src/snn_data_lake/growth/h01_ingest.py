@@ -230,7 +230,7 @@ NEURONAL_TYPES = frozenset({*_EXCITATORY_TYPES, *_INHIBITORY_TYPES, "unclassifie
 
 def _lif_defaults():
     """Threshold, decay, reset and refractory BY IMPORT from the live equation owner (P1: cited,
-    not invented). `cortex/lif_neuron.LIFNeuron` is the module `substrate/kernel_tick` names as
+    not invented). `cortex/lif_neuron.LIFNeuron` is the module `reservoir/kernel_tick` names as
     the owner of the equation its vectorized step implements."""
     from snn_data_lake.growth.lif_neuron import LIFNeuron
 
@@ -1442,8 +1442,8 @@ def population(artifact=None, p_parts=None, frac_bits=None, zero_weights=False, 
     import numpy as np
 
     from snn_data_lake.gates.determinism_gate import binding_frac_bits
-    from snn_data_lake.substrate.kernel_state import KernelState
-    from snn_data_lake.substrate.kernel_tick import KernelTick, Synapses
+    from snn_data_lake.reservoir.kernel_state import KernelState
+    from snn_data_lake.reservoir.kernel_tick import KernelTick, Synapses
 
     art = artifact if isinstance(artifact, dict) else load_artifact(artifact)
     if p_parts is None:

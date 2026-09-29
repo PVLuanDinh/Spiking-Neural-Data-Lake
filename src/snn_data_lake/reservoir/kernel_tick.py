@@ -45,7 +45,7 @@ path, byte for byte, which is what `resident=None` always ran. `compile_bundles`
 remains ONE compiler, used by `Synapses.__init__`.
 """
 
-# distinct-from: cortex/cortical_microcircuit.py -- a fixed 8-population Potjans-Diesmann
+# distinct-from: reservoir/cortical_microcircuit.py -- a fixed 8-population Potjans-Diesmann
 #   circuit with its own internal stepping; this is the general SoA substrate tick.
 # distinct-from: substrate/signal_ring.py -- transport of lake-bound RECORDS between faculties;
 #   the delay rings here carry spike BUNDLES inside one kernel.
@@ -314,7 +314,7 @@ def _bench_kernel(n_units, fan_out, p_parts, threads, n_ticks, seed=7):
     import numpy as np
 
     from snn_data_lake.gates.determinism_gate import binding_frac_bits
-    from snn_data_lake.substrate.kernel_state import KernelState
+    from snn_data_lake.reservoir.kernel_state import KernelState
 
     nprng = np.random.default_rng(seed)
     pre = nprng.integers(0, n_units, size=n_units * fan_out)
@@ -379,7 +379,7 @@ def main(argv=None) -> int:
     # arrival, thread-count train equality, imbalance metric, refusals.
     import numpy as np
 
-    from snn_data_lake.substrate.kernel_state import KernelState
+    from snn_data_lake.reservoir.kernel_state import KernelState
 
     def build(threads):
         state = KernelState([("a", 6), ("b", 6)])

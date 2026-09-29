@@ -181,7 +181,7 @@ Existing SNDL knowledge graph found at `D:\AI-project\spiking-neural-data-lake\g
 
 ### Recorded negatives / no-action (4)
 
-`cortex/live_brain.py:1` — cortex-rest coverage statement (7 of 61 files read in full; 54 structural). `plasticity/criticality_regulator.py:64` — auditable P5/e-prop negative for the subcortex shard. `substrate/learn_daemon.py` — `charge_all()` iterates an empty registry, correctly caveated at `:284-289`; non-finding. `substrate/learn_daemon.py` — P4 clean across the whole harness shard.
+`cortex/live_brain.py:1` — cortex-rest coverage statement (7 of 61 files read in full; 54 structural). `reservoir/criticality_regulator.py:64` — auditable P5/e-prop negative for the subcortex shard. `substrate/learn_daemon.py` — `charge_all()` iterates an empty registry, correctly caveated at `:284-289`; non-finding. `substrate/learn_daemon.py` — P4 clean across the whole harness shard.
 
 **Dedup applied:** `brain.py:2010`/`:2000` connectome_router (brain-core + regions) → M5. `brain.py:2596` ACh citation (brain-core + subcortex) → L17, with the subcortex shard's `brain.py:225-226` half folded in. `gf.py:46` + `self_improve.py:35` stale-`research/` sweeps (reasoning-b + reasoning-c) → M46. `laminar_readout.py:194` filed twice (reasoning-a + reasoning-b) — both **refuted**, not in the table.
 

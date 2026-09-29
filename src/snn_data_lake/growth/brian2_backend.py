@@ -94,7 +94,7 @@ CUSTOM_KERNELS = (
     "snn_data_lake.plasticity.oja_pca::OjaNeuron",
     "snn_data_lake.growth.basic_components::_DemoLIFLayer",
     "snn_data_lake.thalamus.gwt_deep::LIF",
-    "snn_data_lake.substrate.kernel_tick::KernelTick",
+    "snn_data_lake.reservoir.kernel_tick::KernelTick",
 )
 
 

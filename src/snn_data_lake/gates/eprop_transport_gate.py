@@ -343,7 +343,7 @@ def index_swaps_in(tree):
     THE FORWARD ORDER IS THE ONE THE MODULE ASSIGNS TO, which is what makes this narrow enough to
     adopt. A weight's storage layout is whatever `self.W[j][k] -= ...` uses; a READ in the reversed
     order is then a transpose. A module that only ever COMPARES the two orders establishes no
-    forward order and cannot fire -- so `cortex/neural_sampling.py`, which raises unless
+    forward order and cannot fire -- so `reservoir/neural_sampling.py`, which raises unless
     `weights[i][j] == weights[j][i]` to ENFORCE symmetric coupling, drops out by construction
     rather than by an allowlist entry. An earlier draft keyed on "both orders appear anywhere" and
     scored 2, with that validator as the false positive.
@@ -593,7 +593,7 @@ def _selfcheck():
         "        s = self.Wrec[k][j] * dv[k]\n"
         "        return s\n"
     )
-    _swap_green = (  # cortex/neural_sampling.py's symmetry VALIDATOR, reconstructed
+    _swap_green = (  # reservoir/neural_sampling.py's symmetry VALIDATOR, reconstructed
         "def check(weights, n):\n"
         "    for i in range(n):\n"
         "        for j in range(i + 1, n):\n"

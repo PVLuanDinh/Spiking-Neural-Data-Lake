@@ -145,7 +145,7 @@ _G0C_LAZY_ATTRS = {
 #   readout, a learning-progress read, a port declaration); all five sites read. The legacy-name
 #   incumbent is the alias layer in snn_data_lake/__init__.py (`_MOVED`), whose S1b `_LEGACY`
 #   table this provider now returns. Re-read at S1b with sensorimotor/afferent_boundary.py and
-#   substrate/kernel_tick.py ("THE ONE" transduction lane and bundle compiler): phrase overlap only.
+#   reservoir/kernel_tick.py ("THE ONE" transduction lane and bundle compiler): phrase overlap only.
 def _g0c_legacy_modules():
     """G8 (specs/022, stage S0): THE one provider of the checkpoint class-path translation map,
     {legacy module: current module}, both relative to the package ("growth.lif_neuron") -- the form

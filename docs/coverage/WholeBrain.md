@@ -406,7 +406,7 @@ the tool that produced the wrong answer was a shell grep whose output was being 
 - `hypothalamus/circadian_clock.py` -- the only oscillator that gates which tick body runs.
 - `brainstem/cpg_oscillator.py` -- Matsuoka CPG; the only rhythm generator with a path into the
   action-preference vector.
-- `plasticity/criticality_regulator.py` -- the only closed-loop branching-ratio regulator (reuses
+- `reservoir/criticality_regulator.py` -- the only closed-loop branching-ratio regulator (reuses
   `instruments/neuronal_avalanches` for the measurement).
 - `hypothalamus/homeostatic_drives.py` + `medulla/interoceptive_arousal.py` -- the two homeostasis
   signals with proven or measured paths into selection.

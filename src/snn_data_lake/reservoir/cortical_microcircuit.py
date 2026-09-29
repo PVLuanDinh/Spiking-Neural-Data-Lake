@@ -52,7 +52,7 @@ mean and the variance, so the pre-port trajectory is unchanged.
 Per-instance random.Random(seed);
 ASCII-only output.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.cortical_microcircuit
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.reservoir.cortical_microcircuit
   (back-compat alias also resolves:  python -m snn_data_lake.cortical_microcircuit)
 """
 

@@ -46,8 +46,8 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from snn_data_lake.cortex import recurrent_pool as rp
 from snn_data_lake.instruments import memory_diagnostic as md
+from snn_data_lake.reservoir import recurrent_pool as rp
 
 STEPS = (
     "record",
@@ -586,7 +586,7 @@ def _reference(table, arm, seeds):
     }
 
 
-# distinct-from: cortex/recurrent_pool.py -- `drive` is the encoder itself and `_percept` builds fixture
+# distinct-from: reservoir/recurrent_pool.py -- `drive` is the encoder itself and `_percept` builds fixture
 #   percepts; this READS the drive each candidate's input rule applies, over a recording (reported)
 def input_response(candidate, config, stream):
     """Section 2.5's reported input-response statistics on one recording: the driven-unit mask, and
@@ -1192,7 +1192,7 @@ def step_tune(out):
     return {"band_D": band, "reference": reference, "candidates": candidates, "refused": refused}
 
 
-# distinct-from: cortex/recurrent_pool.py -- check_r_b3_red is R-b3's thread-order witness red, not
+# distinct-from: reservoir/recurrent_pool.py -- check_r_b3_red is R-b3's thread-order witness red, not
 #   R-b4's replay noise red; prior_drift_harness.red1 and growing_learner.load_state_dict share only words.
 def noise_red_fires(plain, noisy):
     """R-b4's (pool-noise) red, section 2.7 as amended 2026-09-25: the kicks must change the

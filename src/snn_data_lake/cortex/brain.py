@@ -487,7 +487,7 @@ class Brain:
         # retired/exempted, never faked with a dead consumer" -- quoted exactly; the "/exempted" was
         # dropped when this was first written, and it is the half naming the disposition taken here).
         try:
-            from snn_data_lake.plasticity.criticality_regulator import CriticalityRegulator
+            from snn_data_lake.reservoir.criticality_regulator import CriticalityRegulator
 
             self._critic = CriticalityRegulator(n=64, seed=self._seed)
             self._critic.run(epochs=15, regulate=True)  # converge toward the critical band at birth
@@ -1771,7 +1771,7 @@ class Brain:
                     # RECORDED so the enclosing except cannot make a swallowed failure read
                     # as a completed bootstrap -- tests/test_spontaneous_bootstrap.py
                     # asserts the attribute AND the installed alignment.
-                    from snn_data_lake.substrate.spontaneous_activity import (
+                    from snn_data_lake.reservoir.spontaneous_activity import (
                         bootstrap_percept_rule,
                     )
 
