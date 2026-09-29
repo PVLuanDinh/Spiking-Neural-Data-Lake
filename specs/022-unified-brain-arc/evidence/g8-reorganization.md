@@ -3172,9 +3172,9 @@ was stopped), so they stay owed to the battery. G8-2's panel, fold and one batte
 
 Stages M6-M10 were built by Sonnet builders from one brief and committed by the orchestrator only after it re-took
 each stage's post census itself (every one equal to its declaration: 14, 16, 14, 4, 14 changes). Three read-only
-Sonnet lenses read the frozen head `62a7cdf3`. No BLOCKER; every stage did exactly its 2.4 row; the daemon chain,
+Sonnet lenses read the frozen head `62a7cdf3`. No BLOCKER; every stage's committed tree does exactly its 2.4 row (M9's rewriter did touch an envelope comment before its byte-for-byte restore, a procedural exception to 2.5 recorded in 3.23); the daemon chain,
 the 18 console/CI targets and 85 moved-package modules resolve under `SNN_ALIAS_STRICT=1`; dormancy, P6, replication
-and manifest gates rc 0; P6 reds on a planted drift. Folded in `66c2cd53` (battery-verified only):
+and manifest gates rc 0; P6 reds on a planted drift. Folded in `66c2cd53` (not re-panelled; its verification is the G8-2 battery, still owed at this writing):
 
 - The whole-tree `ruff check .` was RED at `62a7cdf3` (8 I001 in frozen `docs/coverage/artifacts/` probes: they
   import moved modules by legacy names, which ruff re-sections once the old file is gone). The orchestrator's first
@@ -3195,3 +3195,5 @@ the atlas counts are. Fifteen frozen probes under `docs/coverage/artifacts/` imp
 `brainstem.autonomous_loop` through the alias: they fail under `SNN_ALIAS_STRICT=1`, a blocker for any strict flip.
 `so101_arm.py`'s comment citing `hippocampus/proximity_replay.py` (M9) stays for the owner's envelope decision, beside
 M5's F11 carve-out. `docs/CODEBASE_DIGEST.md` path rows are D1's (G8-3).
+
+Codex closing report (`gpt-6-astra`, read-only, on `5c9f98fd`): no BLOCKER or MAJOR; 44 moves, 91/91 imports under `SNN_ALIAS_STRICT=1`, 0 stale callers, P6 6/6 mutations fired, whole-tree ruff clean, every named gate rc 0, envelope unchanged. Its two MINOR wording findings are folded into this section.
