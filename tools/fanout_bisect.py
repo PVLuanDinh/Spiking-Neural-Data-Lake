@@ -138,7 +138,7 @@ def _brain_config():
     numbers is not tidiness; it is the same rule applied to the instrument.
     """
     from snn_data_lake.cortex.brain import EPISODE_RETENTION_DAYS, EPISODES_PER_DAY_AT_BOOT
-    from snn_data_lake.hippocampus.episode_consolidation import EpisodeConsolidator, capacity_for
+    from snn_data_lake.sleep.episode_consolidation import EpisodeConsolidator, capacity_for
 
     CAP = capacity_for(EPISODES_PER_DAY_AT_BOOT, EPISODE_RETENTION_DAYS)
 

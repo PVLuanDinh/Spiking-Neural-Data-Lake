@@ -1,5 +1,5 @@
 """
-snn_data_lake/hippocampus/hippocampal_memory.py
+snn_data_lake/sleep/hippocampal_memory.py
 (PROMOTED reasoning/brain_adapters/ -> hippocampus/ 2026-08-11, #10 lane 4a; measured row in
 docs/P4C_BACKLOG.md -- the adapter composes its own region's governed mechanisms, the intended
 direction, so it lives beside them.)
@@ -11,9 +11,9 @@ it periodically rehearses a balanced mix of previously-seen exemplars. Today the
 that rehearsal pool in ad-hoc python lists/dicts. This adapter hands that job to the real
 spiking-lake hippocampus instead, WITHOUT reimplementing any of its mechanics:
 
-  * snn_data_lake.hippocampus.experience_replay.ReplayBuffer  -- the fixed-capacity ring of
+  * snn_data_lake.sleep.experience_replay.ReplayBuffer  -- the fixed-capacity ring of
     (unit, action, reward) transitions + SWR sampling. We use it to HOLD exemplar identities.
-  * snn_data_lake.hippocampus.sleep_consolidation.SleepConsolidator -- the wake -> quiescent
+  * snn_data_lake.sleep.sleep_consolidation.SleepConsolidator -- the wake -> quiescent
     (sleep) consolidation lifecycle. We use it for the periodic "sleep" pass.
 
 The loop OWNS the big feature tensors. This adapter stores only INDICES (ints into that frozen
@@ -49,7 +49,7 @@ CONSOLIDATE -- how the sleep pass rides SleepConsolidator:
   retention level (the module itself flags that as seed-dependent).
 --------------------------------------------------------------------------------------------
 
-  PYTHONPATH=src python -m snn_data_lake.hippocampus.hippocampal_memory
+  PYTHONPATH=src python -m snn_data_lake.sleep.hippocampal_memory
 
 (the path the module is at TODAY; the previous command named `research/brain_adapters/...`,
 which has not existed since v3.78 -- a documented command that cannot run is the same
@@ -58,15 +58,15 @@ fail-green shape as a stale citation.)
 
 import random
 
-from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
-from snn_data_lake.hippocampus.sleep_consolidation import SleepConsolidator
-from snn_data_lake.hippocampus.sleep_replay import (
+from snn_data_lake.sleep.experience_replay import ReplayBuffer
+from snn_data_lake.sleep.sleep_consolidation import SleepConsolidator
+from snn_data_lake.sleep.sleep_replay import (
     STORE_REPS_A,  # storage repetitions per assembly during wake
 )
-from snn_data_lake.hippocampus.sleep_replay import (
+from snn_data_lake.sleep.sleep_replay import (
     K as ASSEMBLY_SIZE,  # neurons per stored cell assembly (K=6)
 )
-from snn_data_lake.hippocampus.sleep_replay import (
+from snn_data_lake.sleep.sleep_replay import (
     N as ATTRACTOR_UNITS,  # attractor-net size (N=24)
 )
 

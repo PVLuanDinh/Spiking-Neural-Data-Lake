@@ -359,7 +359,7 @@ class NeurogenesisSelfImprove:
     #   head on language items. distinct-from: cortex/metacognitive_monitor.py, cortex/
     #   wholistic_loop.py -- held-out accuracy of a prototype/two-mode classifier on fresh
     #   samples. distinct-from: cortex/reasoning_curriculum.py -- the curriculum's nightly
-    #   held-out accuracy. distinct-from: hippocampus/sleep_consolidation.py -- pattern-completion
+    #   held-out accuracy. distinct-from: sleep/sleep_consolidation.py -- pattern-completion
     #   retention. None computes the persistence floor of a TEMPORAL category stream, which is
     #   the number this exists for; the majority floor is two lines and rides beside it so the
     #   two floors are read off the SAME slice as the accuracy. All sites read.

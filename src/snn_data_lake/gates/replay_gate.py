@@ -30,7 +30,7 @@ invariance -- is the determinism claim the tree actually leans on.
 # distinct-from: reservoir/kernel_state.py -- the state FRAME this snapshot embeds whole.
 # distinct-from: growth/neurogenesis_engine.py growth blobs and substrate/home.py chain --
 #   durable substrate persistence in the lake; a snapshot is a REPLAY instrument.
-# distinct-from: hippocampus/experience_replay.py and sleep_replay.py -- learned-content
+# distinct-from: sleep/experience_replay.py and sleep_replay.py -- learned-content
 #   replay (memories), not execution-state resume. All sites read.
 
 from __future__ import annotations

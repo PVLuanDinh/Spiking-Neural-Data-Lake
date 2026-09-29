@@ -38,7 +38,7 @@ REUSED, NOT REIMPLEMENTED (imported as libraries; none of them edited):
     (write -> append; recall/most_recent -> query_window; n_events; resume for restart recovery).
   * substrate/reservoir_sampling.Reservoir        -- Algorithm-R one-pass uniform sample that BOUNDS
     the retained handful of the unbounded stream (the idle firehose cannot grow the store).
-  * hippocampus/experience_replay.ReplayBuffer    -- the SWR forward+reverse replay used at
+  * sleep/experience_replay.ReplayBuffer    -- the SWR forward+reverse replay used at
     consolidation to reinforce the significant traces (importance-weighted by multiplicity).
   * plasticity/benna_fusi.BennaFusiSynapse        -- each importance trace is a multi-timescale
     beaker cascade: a salient, replayed memory seeps into the slow deep beakers and survives the
@@ -71,8 +71,8 @@ import random
 import tempfile
 import zlib
 
-from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
 from snn_data_lake.plasticity.benna_fusi import BennaFusiSynapse
+from snn_data_lake.sleep.experience_replay import ReplayBuffer
 from snn_data_lake.substrate.reservoir_sampling import Reservoir
 from snn_data_lake.substrate.streaming_hub import StreamingHub
 

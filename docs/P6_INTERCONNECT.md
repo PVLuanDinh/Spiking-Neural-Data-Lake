@@ -893,7 +893,7 @@ mechanisms exist and **neither is an input-free interval**:
   predicate behind `reward_fn is not None`. Input still arrives, the percept is still
   delivered, `_gate_primary` still re-commits. Calling this the precondition would be a false
   equivalence.
-- `hippocampus/sleep_consolidation.SleepConsolidator.quiescent()` (`:182`) -- the right
+- `sleep/sleep_consolidation.SleepConsolidator.quiescent()` (`:182`) -- the right
   **shape** (a phase, not a tick predicate), and `reasoning/lake_skill_library.py:251` records
   outright that *"quiescent() is never called."* Its only callers are its own demo and the
   offline adapter `hippocampal_memory.py:133`.

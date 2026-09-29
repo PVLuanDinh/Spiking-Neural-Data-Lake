@@ -338,9 +338,9 @@ class PlasticityRuleStack(HomeostaticPlasticityStack):
     # distinct-from: plasticity/meta_plasticity.py -- ITS theta is a standalone unit's; this
     #   is the PUBLIC read of THIS stack's _BCMMetaGate thetas (the route structural_rewiring's
     #   record says lands WITH the sleep wire). Site read.
-    # distinct-from: plasticity/structural_rewiring.py -- the rewirer; adopt_structural below
+    # distinct-from: sleep/structural_rewiring.py -- the rewirer; adopt_structural below
     #   is the CASCADE side of its measured two-writer conflict, not a second rewirer. Site read.
-    # distinct-from: hippocampus/lake_consolidation.py, plasticity/benna_fusi.py -- lake-record
+    # distinct-from: sleep/lake_consolidation.py, plasticity/benna_fusi.py -- lake-record
     #   pruning and the synapse model itself; nothing here re-implements either. Sites read.
     def consolidation_calls(self):
         """Lifetime count of Benna-Fusi consolidate() passes -- the T058 evidence counter.

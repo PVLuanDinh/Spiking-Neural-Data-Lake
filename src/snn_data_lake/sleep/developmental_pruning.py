@@ -30,7 +30,7 @@ Note: BrainCog's DPAP also regrows a few dead synapses each round. We omit
 regrowth deliberately so both strategies stay at EXACTLY matched sparsity -- the
 core magnitude-vs-random comparison is what must stay honest.
 
-  python -m snn_data_lake.plasticity.developmental_pruning
+  python -m snn_data_lake.sleep.developmental_pruning
 """
 
 import math

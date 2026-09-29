@@ -62,7 +62,7 @@ Seeded per-instance (`random` + `copy`), ASCII output, deterministic
 snn_data_lake.growth.lif_neuron.LIFNeuron for every neuron. Additive core primitive (a reusable
 spiking attractor associative memory with sleep consolidation); touches no safety-envelope file.
 
-  Run: python -m snn_data_lake.hippocampus.sleep_replay        # (also run by run_selfchecks.py)
+  Run: python -m snn_data_lake.sleep.sleep_replay        # (also run by run_selfchecks.py)
 """
 
 import copy

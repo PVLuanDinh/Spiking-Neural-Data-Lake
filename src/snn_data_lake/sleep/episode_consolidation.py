@@ -71,7 +71,7 @@ Determinism: np.random.default_rng(seed) for replay noise + per-content random.R
 for encode/cue; no global seeding, no wall-clock. ASCII-only output. numpy is a core dependency
 (zero-dep rule retired 2026-07-20); there are no purity assertions.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hippocampus.episode_consolidation
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sleep.episode_consolidation
 """
 
 import random

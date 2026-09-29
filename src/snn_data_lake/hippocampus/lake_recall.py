@@ -89,7 +89,7 @@ from snn_data_lake.substrate.proximity_index import ProximityIndex
 # distinct-from: hippocampus/episodic_recall.py -- RECONSTRUCTIVE pattern completion over
 #   in-RAM VSA traces (returns rebuilt slot fillers + gist); this RETRIEVES stored episodes
 #   with verified content, reconstructing nothing. Site read.
-# distinct-from: hippocampus/episode_consolidation.py -- the bounded in-memory attractor
+# distinct-from: sleep/episode_consolidation.py -- the bounded in-memory attractor
 #   (working-memory tier); this is the durable tier's cue semantics beneath it. Site read.
 # distinct-from: hippocampus/proximity_replay.py -- ProximityIndex over SPIKE PATTERNS for
 #   replay sampling (float feature vectors via encode_latency); this indexes EPISODE DICTS

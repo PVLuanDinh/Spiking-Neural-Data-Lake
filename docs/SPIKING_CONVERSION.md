@@ -62,7 +62,7 @@ tally line above is a dated 2026-07-10 snapshot and is left as-is):
 | hippocampus/hippocampus | DG spiking expansion + lateral-inhibition WTA; CA3 recurrent spiking attractor completion |
 | hippocampus/grid_cells | 3 velocity-controlled spiking oscillators; grid firing from spike-phase interference |
 | hippocampus/frequency_memory | LIF neurons; firing-rate homeostat gates STDP on/off (FIP/FID) to form assemblies |
-| hippocampus/experience_replay | three-factor R-STDP actor; replay = spontaneous spike-sequence reactivation |
+| sleep/experience_replay | three-factor R-STDP actor; replay = spontaneous spike-sequence reactivation |
 | growth/growing_learner | spiking prototype/RBF units matched by spike coincidence; recruit-on-weak-response; Hebbian |
 | hippocampus/legendre_memory | realize the A/B delay state-space in spiking neurons via NEF (spiking LMU) |
 | plasticity/valence_stdp | LIF valence neuron; pre/post spike-timing eligibility gated by dopamine (three-factor) |
@@ -90,7 +90,7 @@ tally line above is a dated 2026-07-10 snapshot and is left as-is):
 | plasticity/bcm_plasticity | spiking triplet-STDP (Pfister-Gerstner); sliding threshold tracks postsynaptic spike rate |
 | plasticity/homeostatic_scaling | wrap a LIF neuron; windowed spike count scales weights toward target spike-rate |
 | plasticity/intrinsic_plasticity | adapt a spiking neuron's threshold/gain from its spike-rate distribution toward the target |
-| plasticity/developmental_pruning | LIF readout over input spikes; surrogate-gradient; prune synapses by weight magnitude |
+| sleep/developmental_pruning | LIF readout over input spikes; surrogate-gradient; prune synapses by weight magnitude |
 
 ## Rational-thinking focus (slice 2+) + the "rate-by-design is convertible" method
 

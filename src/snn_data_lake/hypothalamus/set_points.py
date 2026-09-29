@@ -46,7 +46,7 @@ Credit: Cannon 1929 (homeostasis); Pittendrigh & Daan 1976 (SCN pacing of diurna
 import math
 import random
 
-from snn_data_lake.hypothalamus.circadian_clock import CircadianClock
+from snn_data_lake.sleep.circadian_clock import CircadianClock
 
 # ---- temperature set-point constants (reduced core-body-temperature model) ---
 SET_POINT_TEMP = 37.0  # mean core body temperature set-point in C

@@ -55,7 +55,7 @@ DESIGN (spiking-native, bounded, deduped)
    relation: `mary has hat` + `john has hat` (parent ("has","hat"), support 2) + `hat has brim`
    derived `mary has brim` / `john has brim` -- MEASURED, 2 false schemas, and the caller
    (`cortex/brain.py`) appends them to the ONE durable lake with src='schema', which
-   `hippocampus/lake_consolidation.py:17` classifies as genuinely-learned and RETAINS. The DistMult
+   `sleep/lake_consolidation.py:17` classifies as genuinely-learned and RETAINS. The DistMult
    gate structurally cannot be this check: it is deliberately NON-transitive (see 5).
 4. DERIVE: for an upper link (b rel c) whose (rel, b) prototype is SUPPORTED (>= min_support members),
    emit for each member a the transitive schema triple (a rel c) -- e.g. dog isa mammal + cat isa

@@ -312,7 +312,7 @@ def _findings_in(fn):
 # distinct-from: cerebellum/spiking_jepa.py -- serializes weight VALUES to JSON; this reads a
 #   SOURCE TREE and never touches a live weight. distinct-from: readout/snn_moe_classifier.py -- its
 #   "gate weights" are softmax scores over experts, not a matrix. distinct-from:
-#   plasticity/developmental_pruning.py -- its (class, index) pairs enumerate LIVE synapses; these
+#   sleep/developmental_pruning.py -- its (class, index) pairs enumerate LIVE synapses; these
 #   are AST index EXPRESSIONS as source text. distinct-from: substrate/signal_calibrator.py --
 #   reads persisted calibration records. All four were read; none extracts subscript index order or
 #   detects a transpose, and there is nothing to reuse in either direction.

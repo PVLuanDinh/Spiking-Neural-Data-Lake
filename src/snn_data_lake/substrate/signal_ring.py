@@ -154,7 +154,7 @@ class LakeJournaller:
     # the whole batch -- the existing bulk-ingest mechanism), never a per-record append loop.
     # distinct-from: substrate/binlog.py and substrate/home.py -- they ARE the append mechanisms
     #   this consumer calls; this class only decides WHAT reaches them and refuses holes.
-    # distinct-from: hippocampus/lake_consolidation.py -- prunes fact history, no transport.
+    # distinct-from: sleep/lake_consolidation.py -- prunes fact history, no transport.
     def drain(self, max_n=None):
         """Append pending records to the lake, oldest first. Returns how many were appended.
 

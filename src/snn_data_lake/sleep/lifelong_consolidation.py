@@ -10,14 +10,14 @@ alive using three brain-inspired parts the project already owns:
   * GROW   (neurogenesis)  -- growth.growing_learner.GrowingLearner recruits a
                               new prototype unit for a novel pattern, refines the
                               nearest unit on a familiar one.
-  * CONSOLIDATE (replay)   -- hippocampus.experience_replay.ReplayBuffer stores task
+  * CONSOLIDATE (replay)   -- sleep.experience_replay.ReplayBuffer stores task
                               exemplars; during a NEW task we INTERLEAVE replay of
                               OLD-task exemplars with new learning. Re-firing old
                               units refreshes their utility and keeps their prototypes
                               sharp. This interleaved rehearsal IS the non-regression
                               mechanism.
   * PRUNE  (developmental) -- under a fixed capacity BUDGET we drop the LOWEST-utility
-                              units, faithful to plasticity.developmental_pruning
+                              units, faithful to sleep.developmental_pruning
                               (keep-strong beats random at matched sparsity). Utility
                               is a use-decayed activity trace ("use it or lose it").
 
@@ -43,14 +43,14 @@ prunes over synapses), same "drop the smallest score" rule.
 Determinism: per-instance random.Random(seed); no global RNG, no wall-clock, no hash().
 ASCII-only output.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.plasticity.lifelong_consolidation
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sleep.lifelong_consolidation
 """
 
 import random
 
 from snn_data_lake.growth.growing_learner import GrowingLearner
-from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
 from snn_data_lake.infra._mathutils import mean
+from snn_data_lake.sleep.experience_replay import ReplayBuffer
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

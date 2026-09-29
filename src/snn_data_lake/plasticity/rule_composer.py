@@ -823,7 +823,7 @@ _CENSUS_ADJUDICATED = (
         "expressed (component grain) -- T051b-ii: the anchor-drag form vs diffuse()",
     ),
     (
-        "plasticity/structural_rewiring.py",
+        "sleep/structural_rewiring.py",
         None,
         "expressed (component grain) -- T051b-ii: the prune form vs rewire()",
     ),
@@ -1032,7 +1032,7 @@ def main():
     #     panel measured it indistinguishable from the shipped construction --
     #     deleted, not weakened. No live stack behavior changes here.
     from snn_data_lake.plasticity.benna_fusi import BennaFusiSynapse
-    from snn_data_lake.plasticity.structural_rewiring import StructuralRewiring
+    from snn_data_lake.sleep.structural_rewiring import StructuralRewiring
 
     bf = BennaFusiSynapse()
     k_drag = bf.dt * bf.g[0] / bf.c[0]  # instance-read, never retyped (T050 discipline)

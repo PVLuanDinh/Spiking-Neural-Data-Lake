@@ -163,36 +163,6 @@
    "governed": true,
    "kind": "LOCAL"
   },
-  "hippocampus/episode_consolidation.py::EpisodeConsolidator.replay": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "hippocampus/episode_consolidation.py::EpisodeConsolidator.store": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "hippocampus/hippocampal_memory.py::HippocampalMemory.consolidate": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "hippocampus/sleep_replay.py::AttractorNet._normalize": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "hippocampus/sleep_replay.py::AttractorNet.sleep": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "hippocampus/sleep_replay.py::AttractorNet.store": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
   "hippocampus/spiking_storage_prototype.py::train": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
@@ -313,11 +283,6 @@
    "governed": true,
    "kind": "LOCAL"
   },
-  "plasticity/developmental_pruning.py::_train_epoch": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
   "plasticity/eprop_kernel.py::_TinyNet.eprop_grads": {
    "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
    "governed": true,
@@ -373,11 +338,6 @@
    "governed": true,
    "kind": "LOCAL"
   },
-  "plasticity/lifelong_consolidation.py::LifelongConsolidator.learn_task": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
   "plasticity/meta_plasticity.py::_Unit.learn": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
@@ -405,11 +365,6 @@
   },
   "plasticity/r_stdp.py::RSTDPNeuron.reward": {
    "disposition": "expressible -- PROVEN: T050 equivalence via the exported check; T051b-iv deposit through the kernel",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "plasticity/structural_rewiring.py::StructuralRewiring.rewire": {
-   "disposition": "expressed (component grain) -- T051b-ii: the prune form vs rewire()",
    "governed": true,
    "kind": "LOCAL"
   },
@@ -525,6 +480,51 @@
   },
   "sensorimotor/learned_matcher.py::train_learned": {
    "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "sleep/developmental_pruning.py::_train_epoch": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "sleep/episode_consolidation.py::EpisodeConsolidator.replay": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "sleep/episode_consolidation.py::EpisodeConsolidator.store": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "sleep/hippocampal_memory.py::HippocampalMemory.consolidate": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "sleep/lifelong_consolidation.py::LifelongConsolidator.learn_task": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "sleep/sleep_replay.py::AttractorNet._normalize": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "sleep/sleep_replay.py::AttractorNet.sleep": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "sleep/sleep_replay.py::AttractorNet.store": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "sleep/structural_rewiring.py::StructuralRewiring.rewire": {
+   "disposition": "expressed (component grain) -- T051b-ii: the prune form vs rewire()",
    "governed": true,
    "kind": "LOCAL"
   },

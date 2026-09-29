@@ -626,7 +626,7 @@ EXEMPT = {
     # ---- FOUR `wire` ROWS RETIRED 2026-09-06 by the stale-exemption arm (specs/022 L6, T091) --------
     # lake_engine, lake_migrate, lake_bridge and lake_segments all went reachable in one commit, and the
     # gate refused their rows the same run. What made it happen: L6 put `lake_engine.retention_of` on the
-    # SLEEP TICK -- `hippocampus/lake_consolidation.consolidate` and `substrate/home.KnowledgeLog.consolidate`
+    # SLEEP TICK -- `sleep/lake_consolidation.consolidate` and `substrate/home.KnowledgeLog.consolidate`
     # both read the retention label before any record is dropped -- and `lake_engine` imports
     # `lake_migrate.TAG_DISPOSITIONS` at module top, which carries the other three in behind it.
     #

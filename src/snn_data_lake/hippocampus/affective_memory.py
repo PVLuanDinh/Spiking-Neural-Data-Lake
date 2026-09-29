@@ -11,7 +11,7 @@ used to retrieve "when was I last this afraid?" independently of episode content
 (c) preferentially REPLAYED during offline consolidation. Emotion does not just colour
 memory -- it decides which memories survive and which get rehearsed.
 
-This is the missing prioritization layer over `hippocampus.experience_replay.ReplayBuffer`,
+This is the missing prioritization layer over `sleep.experience_replay.ReplayBuffer`,
 whose ceiling is explicitly "uniform-sampled tabular replay ... no prioritization". That
 buffer samples EVERY stored transition with equal probability (`rng.sample`). Real
 hippocampal replay is biased by amygdala arousal toward the emotionally significant.

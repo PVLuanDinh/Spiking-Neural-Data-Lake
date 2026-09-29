@@ -10,7 +10,7 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 | counterfactual_do_operator | 40 | src/snn_data_lake/cortex/brain.py:2221#_c1_tick; src/snn_data_lake/cortex/brain.py:2237#_c1_tick; src/snn_data_lake/cortex/brain.py:3772#respond | imag_cf_60.txt | opus-5 / docs/coverage/artifacts/imagination_ab.py counterfactual 60 | 2026-07-30 |
 | model_based_plan_rollout | 35 | src/snn_data_lake/brainstem/autonomous_loop.py:1156#goal_value; src/snn_data_lake/brainstem/autonomous_loop.py:1193#_pfc_bias | imag_plan_60.txt | opus-5 / docs/coverage/artifacts/imagination_ab.py model_based_plan 60 | 2026-07-30 |
 | mental_imagery | 20 | src/snn_data_lake/cortex/brain.py:4132#_finish_sentence; src/snn_data_lake/cortex/brain.py:3540#respond | - | opus-5 REFUTER / band-definition correction on the auditor's own live cue-sensitivity probe | 2026-07-30 |
-| dream_replay | 25 | src/snn_data_lake/cortex/brain.py:2754#_sleep_tick; src/snn_data_lake/hippocampus/sleep_replay.py:329#sleep | imag_dream_60.txt | opus-5 / docs/coverage/artifacts/imagination_ab.py dream_replay 60 | 2026-07-30 |
+| dream_replay | 25 | src/snn_data_lake/cortex/brain.py:2754#_sleep_tick; src/snn_data_lake/sleep/sleep_replay.py:329#sleep | imag_dream_60.txt | opus-5 / docs/coverage/artifacts/imagination_ab.py dream_replay 60 | 2026-07-30 |
 | spiking_world_model | 10 | src/snn_data_lake/gates/dormancy_gate.py:285#module; src/snn_data_lake/cerebellum/spiking_jepa.py:121#SpikingJEPA | - | dormancy_gate EXEMPT permanent + its recorded encode() negative (static) | 2026-07-30 |
 | efference_copy_forward_model | 10 | src/snn_data_lake/cortex/live_brain.py:363#deliberate_ahead; src/snn_data_lake/cerebellum/forward_model.py:81#ForwardModel | - | opus-5 / live_brain._planner is None after 20 ticks, seeds 0 and 3 | 2026-07-30 |
 | hierarchical_abstract_world_model | 0 | src/snn_data_lake/brainstem/autonomous_loop.py:169#__init__; src/snn_data_lake/brainstem/autonomous_loop.py:1120#_pfc_bias; src/snn_data_lake/brainstem/autonomous_loop.py:2695#main | - | opus-5 / arm.hjepa_serve is None on make_brain(seed=0) | 2026-07-30 |
@@ -442,7 +442,7 @@ P-violation stands as written.
 - `cortex/executive_control.py::plan_sequence` (via `autonomous_loop.py:981`) -- multi-step beam search
   over a transition function. Unique capability: rollout depth. Overlaps Executive's planning faculty by
   construction; the *rollout* is scored here, the deliberation there.
-- `hippocampus/sleep_replay.py` -- noise-driven offline attractor replay with Hebbian learning and SHY
+- `sleep/sleep_replay.py` -- noise-driven offline attractor replay with Hebbian learning and SHY
   downscale-pruning (`:294`, `:151`). Unique capability: offline generative reactivation. Its
   consolidation *purpose* is Memory's faculty; only the dream mechanism is scored here.
 - `cortex/brain.py::imagine` -- top-down generative synthesis through the predictive-coding hierarchy

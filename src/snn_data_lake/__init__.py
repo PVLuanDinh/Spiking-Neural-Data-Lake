@@ -40,7 +40,7 @@ import sysconfig
 
 
 # distinct-from: sensorimotor/wavefront_planner.py, cortex/quality_diversity.py,
-#   hippocampus/sleep_replay.py, hypothalamus/circadian_clock.py,
+#   sleep/sleep_replay.py, sleep/circadian_clock.py,
 #   gates/gradient_claim_gate.py -- the hook matched shared verbs (run/refuse/free);
 #   none guards the interpreter. This EDIT EXTENDS the incumbent guard in place (one
 #   mechanism, two tiers) -- it does not add a sibling. All sites read.
@@ -155,7 +155,6 @@ REGIONS = {
         "percept_surprise",  # loop C2: online unsupervised Oja-PCA reconstruction-residual surprise (orienting drive)
         "kb_ranking",  # PROMOTED from reasoning/ 2026-08-11 (#10 batch-1): open-vocab DistMult KB completion head
         "language_self_build",  # PROMOTED 2026-08-11 (#10 family C6): autonomous R-STDP language assemblies; LIVE on the sleep tick
-        "nightly_skills",  # PROMOTED 2026-08-11 (#10 family C9a): the ONE standing skills loop (absorbed meta_skill_loop + open_meta_loop)
         "competence_executive",  # PROMOTED+RENAMED 2026-08-12 (#10 lane 4f, was reasoning/brain_adapters/executive_control -- the LAST brain_adapters module): dopamine-RPE lr gate + the PUBLIC CompetenceDynamics/goal_value planning objects (the WorkspaceBroadcast/ExecutivePlanner wrappers RETIRED later the same day -- retirement record in-file); renamed because the basename is taken by cortex/executive_control (brain_atlas.py:81 asserts uniqueness)
         "vsa_structure_mapping",  # PROMOTED 2026-08-12 (PROMOTE lane): Gentner relational structure-mapping over VSA spike codes; LIVE via reasoning_cortex's structure-map solver (reached from brain.py's lazy :924 -- the lane's own I001 sort moved it from :928 -- + reasoning_cortex:705). P3 debt carried visibly, NOT fixed here: brain.py:967's `_structure_mapper` attribute is write-only (AUDIT_BACKLOG M11) -- retire-or-read is its own commit. P2 direction recorded in-file: the dim-parameterised _cleanup_project is THE mechanism; reasoning/resonator_network's hardcoded copy (measured 300/300 bit-identical at dim=512) delegates or retires when its lane arrives.
         "rose_language",  # PROMOTED 2026-08-12 (PROMOTE lane): the ROSE fluent-language pipeline (VSA constituency parse + KB-grounded comprehend + SLDA competence), LIVE via brain._rose_serve's lazy reach. P3/P4b debt carried visibly, NOT discharged by the move (AUDIT_BACKLOG H7, runtime-reproduced at the promotion audit): nightly_refit moves the SLDA sufficient statistics while competence() returns the build-time cached acc byte-identical; the refit filter accepts a novel HEAD coded OOV-zero; _readout is per-Brain RAM reaching brain_lake.bin nowhere. P2 direction recorded: rose's derived parameterisation (rff from in_dim, ctx from data, relations from the KB ratio) is THE mechanism; sensorimotor/world_kb_stream main()'s four-literal demo copy consumes it or retires at the family's next lane.
@@ -164,10 +163,7 @@ REGIONS = {
     ],
     "hippocampus": [
         "grid_cells",
-        "experience_replay",
-        "sleep_replay",
         "ring_attractor",
-        "sleep_consolidation",
         "affective_memory",
         "contrastive_episode_analysis",
         "allocentric_map",
@@ -177,13 +173,10 @@ REGIONS = {
         # records (LAESA/proximity_index composed; margin vs a measured scrambled-cue null)
         "lake_recall",
         "spiking_grid_can",  # C1: continuous-attractor SPIKING grid network (bump path integration)
-        "episode_consolidation",  # C1 batch-4: systems-consolidation of real episodes (sparse attractor + sleep replay)
         "content_signature",  # PROMOTED 2026-08-11 (#10 family C1): the 64-dim crc32 content key for lake/skill routing
         "proximity_replay",  # PROMOTED+RENAMED 2026-08-11 (#10 family C3, was reasoning lake_memory): durable proximity-addressable replay
         "skill_builder",  # PROMOTED 2026-08-11 (#10 family C4): domain-agnostic skill formation + SkillRegistry proximity router
         "open_world_loop",  # PROMOTED 2026-08-11 (#10 family C7): DP-means signature discovery (feeds nightly_skills' open frontier)
-        "hippocampal_memory",  # PROMOTED 2026-08-11 (#10 lane 4a): the loop's replay adapter over ReplayBuffer + SleepConsolidator
-        "lake_consolidation",  # sleep-time prune of the symbolic durable lake (cap re-derivable bulk, keep learned)
         # Promoted from reasoning/ 2026-08-04 after an in-place P7/P1/P8 redesign. FACTORED
         # k-WTA associative memory: the P sparse patterns ARE the memory (O(P*k)), so there is
         # no N x N weight matrix to store. WIRED AND CHARGED, measured not assumed -- neutering
@@ -256,7 +249,7 @@ REGIONS = {
         "gwt_deep",
         "interoceptive_relay",
     ],
-    "hypothalamus": ["circadian_clock", "set_points", "homeostatic_drives"],
+    "hypothalamus": ["set_points", "homeostatic_drives"],
     "midbrain": [
         "dopamine_nuclei",
         "superior_colliculus",
@@ -313,15 +306,12 @@ REGIONS = {
         # executive's own synaptic constants + the five FR-020 guards (wm_attractor,
         # T055's standalone store, was ported into prefrontal_executive and DELETED)
         "wm_capacity",
-        "developmental_pruning",
-        "structural_rewiring",  # specs/022 T048: DEEP-R budget + MSP sign steering, slow clock
         "eligibility_algebra",  # specs/022 T050: sum-of-products authoring contract (three-factor rules)
         "rule_composer",  # specs/022 T051a: typed sets + naive-sum red + causal attribution (P8 #3 core)
         "espp_rule",  # specs/022 T052-i: the extracted ESPP palette element (jepa's espp branch delegates)
         "competitive_learning",
         "meta_plasticity",
         "benna_fusi",
-        "lifelong_consolidation",
         "homeostatic_plasticity_stack",
         "plasticity_rule_stack",
         # PROMOTED from reasoning/ 2026-08-07 as specs/012's MANDATED BUILD (owner call: finish
@@ -523,6 +513,19 @@ REGIONS = {
         "snn_classifier",
         "snn_moe_classifier",
         "tempotron",
+    ],
+    "sleep": [
+        "circadian_clock",
+        "developmental_pruning",
+        "episode_consolidation",
+        "experience_replay",
+        "hippocampal_memory",
+        "lake_consolidation",
+        "lifelong_consolidation",
+        "nightly_skills",
+        "sleep_consolidation",
+        "sleep_replay",
+        "structural_rewiring",
     ],
 }
 

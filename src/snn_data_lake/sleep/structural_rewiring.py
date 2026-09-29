@@ -127,13 +127,13 @@ duty cycle, not a mechanism):
                them -- HONORED at T058: Brain._sleep_tick catches ValueError into
                _structural_refusals (surfaced in state()) before its generic guard.
 
-  PYTHONPATH=src python -m snn_data_lake.plasticity.structural_rewiring
+  PYTHONPATH=src python -m snn_data_lake.sleep.structural_rewiring
 """
 
 import math
 import random as _random
 
-# distinct-from: plasticity/developmental_pruning.py -- an OFFLINE benchmark sparsifier
+# distinct-from: sleep/developmental_pruning.py -- an OFFLINE benchmark sparsifier
 #   for a linear readout: prune-only, no regeneration, no conserved budget, no live
 #   wire; this module is the LIVE substrate's slow-clock rewiring. Site read.
 # distinct-from: growth/neurogenesis_engine.py -- grows/prunes UNITS (whole neurons) on

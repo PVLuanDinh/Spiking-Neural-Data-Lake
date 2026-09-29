@@ -13,7 +13,7 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 | episodic_retrieval_to_action | 30 | src/snn_data_lake/cortex/brain.py:1562#_route_percept_to_action; src/snn_data_lake/cortex/brain.py:1684#_route_percept_to_action | recall_300.txt | memory-auditor (opus-5) / tools/charge_probe.py recall 300 | 2026-07-30 |
 | working_memory_store | 30 | src/snn_data_lake/brainstem/autonomous_loop.py:1217#_lake_write; src/snn_data_lake/cortex/live_brain.py:238#spike_snapshot | - | memory-auditor (opus-5) / live-tick instrumentation | 2026-07-30 |
 | attractor_sleep_replay | 30 | src/snn_data_lake/cortex/brain.py:2754#_sleep_tick; src/snn_data_lake/cortex/brain.py:2759#_sleep_tick | - | memory-auditor (opus-5) / live-tick instrumentation, 6 nights | 2026-07-30 |
-| durable_episode_consolidation | 25 | src/snn_data_lake/cortex/brain.py:2727#_sleep_tick; src/snn_data_lake/hippocampus/episode_consolidation.py:469#retained | - | memory-auditor (opus-5) / live-tick instrumentation, 6 nights | 2026-07-30 |
+| durable_episode_consolidation | 25 | src/snn_data_lake/cortex/brain.py:2727#_sleep_tick; src/snn_data_lake/sleep/episode_consolidation.py:469#retained | - | memory-auditor (opus-5) / live-tick instrumentation, 6 nights | 2026-07-30 |
 | semantic_store_durable_lake | 25 | src/snn_data_lake/substrate/home.py:284#KnowledgeLog | - | memory-auditor (opus-5) / static read + read-only record count | 2026-07-30 |
 | chat_memory_store_and_recall | 25 | src/snn_data_lake/substrate/chat_memory.py:216#remember; src/snn_data_lake/reasoning/spike_chat_lake.py:1341#converse | - | memory-auditor (opus-5) / static read (call chain traced) | 2026-07-30 |
 | synaptic_consolidation_benna_fusi | 25 | src/snn_data_lake/cortex/brain.py:2745#_sleep_tick; src/snn_data_lake/plasticity/plasticity_rule_stack.py:217 | - | memory-auditor (opus-5) / live-tick instrumentation, taught vs untaught | 2026-07-30 |
@@ -164,17 +164,17 @@ not as verified.
 
 - `hippocampus/episodic_recall.py` -- reconstructive episodic store; `encode` + cue-addressed
   `complete`. Sole provider of pattern-completed episodic recall on the tick. 48 episodes / 6 days.
-- `hippocampus/episode_consolidation.py` -- the *durable* sparse-attractor episode store with
+- `sleep/episode_consolidation.py` -- the *durable* sparse-attractor episode store with
   covariance Hebbian storage, nightly `replay`, `retained`, and `recall_episode` (readable episode
   dict). Overlaps `episodic_recall` in role but not in mechanism; both are live and consumed.
-- `hippocampus/experience_replay.py` -- SWR forward+reverse value consolidation into `arm.q`. Sole
-  provider of memory-to-learning-update. Also imported by `plasticity/lifelong_consolidation.py`,
+- `sleep/experience_replay.py` -- SWR forward+reverse value consolidation into `arm.q`. Sole
+  provider of memory-to-learning-update. Also imported by `sleep/lifelong_consolidation.py`,
   `substrate/lake_memory.py`, `cortex/quality_diversity.py`, `cortex/reasoning_curriculum.py`.
 - `hippocampus/affective_memory.py` -- affect-tagged episodic retention; `recall_by_emotion`
   (charged) and `recall_similar` (dormant). Sole provider of somatic-marker retrieval.
-- `hippocampus/lake_consolidation.py` -- `RecallTrace` use-decayed utility + prune policy for the
+- `sleep/lake_consolidation.py` -- `RecallTrace` use-decayed utility + prune policy for the
   symbolic lake. Sole provider of retrieval-driven forgetting.
-- `hippocampus/sleep_replay.py` -- `AttractorNet` noise-driven assembly consolidation + SHY pruning.
+- `sleep/sleep_replay.py` -- `AttractorNet` noise-driven assembly consolidation + SHY pruning.
 - `substrate/home.py` -- `KnowledgeLog`, the ONE durable semantic store (`brain_lake.bin`, `_T_FACT`).
 - `substrate/chat_memory.py` -- noise-filtered content-addressable view over that same lake.
 - `substrate/lake_working_memory.py` -- the working-memory ring in the spike lake (`arm.lake_wm`).
@@ -182,7 +182,7 @@ not as verified.
   consolidate. **EXEMPT "permanent"** in `dormancy_gate` as a reasoning-tool primitive, while the
   module it was built to replace is the one on the tick. Flagged as a Policy-2 question for whoever
   owns that decision, not scored here.
-- `hippocampus/sleep_consolidation.py` -- `SleepConsolidator` (wake -> quiescent consolidation).
+- `sleep/sleep_consolidation.py` -- `SleepConsolidator` (wake -> quiescent consolidation).
   Imported by `cortex/self_improvement_suite.py`, `reasoning/lake_skill_library.py` and
   `reasoning/brain_adapters/hippocampal_memory.py`, **not** by `cortex/brain.py`, which reimplements
   the wake/sleep consolidation inline. Also a Policy-2 question; not a separate roster row, because

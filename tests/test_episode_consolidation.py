@@ -1,4 +1,4 @@
-"""Tests for hippocampus.episode_consolidation.EpisodeConsolidator.
+"""Tests for sleep.episode_consolidation.EpisodeConsolidator.
 
 Covers the public API (encode/store/replay/recall/recall_episode/retained), non-catastrophic
 forgetting at capacity, deterministic replay, capacity-ring eviction, the episode read-out
@@ -9,7 +9,7 @@ what preserves memory.
 
 import numpy as np
 
-from snn_data_lake.hippocampus.episode_consolidation import (
+from snn_data_lake.sleep.episode_consolidation import (
     MIN_EPISODE_CONF,
     EpisodeConsolidator,
     _demo_episodes,

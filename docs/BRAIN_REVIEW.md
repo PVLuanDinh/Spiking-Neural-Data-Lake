@@ -55,9 +55,9 @@ sink). But there is real CONCEPTUAL duplication across the two layers:
    claiming to be THE composition layer.
 
 2. Consolidation appears FOUR times across four distinct modules:
-   - LIVE: `hippocampus/sleep_replay.py` (AttractorNet, in `_sleep_tick`)
-   - LIVE: `plasticity/lifelong_consolidation.py` (L6+L11, in `_enter_sleep`)
-   - CENSUS: `hippocampus/sleep_consolidation.py` (L11 sleep-retention gap)
+   - LIVE: `sleep/sleep_replay.py` (AttractorNet, in `_sleep_tick`)
+   - LIVE: `sleep/lifelong_consolidation.py` (L6+L11, in `_enter_sleep`)
+   - CENSUS: `sleep/sleep_consolidation.py` (L11 sleep-retention gap)
    - CENSUS: `plasticity/benna_fusi.py` (L11 cascade retention)
    The census versions are birth snapshots of a capability the live loop already
    exercises -- they demonstrate consolidation in parallel rather than as part of

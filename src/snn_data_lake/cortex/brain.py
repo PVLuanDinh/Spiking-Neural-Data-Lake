@@ -64,11 +64,6 @@ from snn_data_lake.cortex.reasoning_curriculum import ReasoningEnv, ReasoningLea
 from snn_data_lake.cortex.recursive_tom import T082_PROTECT_DECAY, T082_PROTECT_GAIN
 from snn_data_lake.cortex.self_model import SelfModel, SelfNarrator
 from snn_data_lake.growth.growing_learner import GrowingLearner
-from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
-from snn_data_lake.hippocampus.sleep_replay import AttractorNet
-from snn_data_lake.hippocampus.sleep_replay import K as ATTR_K
-from snn_data_lake.hippocampus.sleep_replay import N as ATTR_N
-from snn_data_lake.hypothalamus.circadian_clock import CircadianClock, light_cycle
 from snn_data_lake.hypothalamus.set_points import (
     AMBIENT_TEMP,
     SET_POINT_TEMP,
@@ -80,6 +75,11 @@ from snn_data_lake.neuromodulation.astrocyte_modulation import Astrocyte
 from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
 from snn_data_lake.neuromodulation.raphe_serotonin import DorsalRaphe
 from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack
+from snn_data_lake.sleep.circadian_clock import CircadianClock, light_cycle
+from snn_data_lake.sleep.experience_replay import ReplayBuffer
+from snn_data_lake.sleep.sleep_replay import AttractorNet
+from snn_data_lake.sleep.sleep_replay import K as ATTR_K
+from snn_data_lake.sleep.sleep_replay import N as ATTR_N
 
 #: the ONE named-state record for the brain's prototype learners (rank 2b, 2026-09-02)
 PROTOTYPES_STATE = "growing_learners.json"
@@ -429,8 +429,8 @@ class Brain:
         # budget (grow<->prune) so it never bloats. Cognition only; guarded. Realizes the continual-
         # learning core of arxiv 2504.20109 from the project's own parts (bounded L6+L11, NOT AGI).
         # lazy import (keeps the top-level import block simple); names ordered for isort
-        from snn_data_lake.plasticity.lifelong_consolidation import D as _LL_DIM
-        from snn_data_lake.plasticity.lifelong_consolidation import (
+        from snn_data_lake.sleep.lifelong_consolidation import D as _LL_DIM
+        from snn_data_lake.sleep.lifelong_consolidation import (
             LifelongConsolidator,
             _make_tasks,
         )
@@ -1138,7 +1138,7 @@ class Brain:
         try:
             from snn_data_lake.cortex.learned_evc import LearnedEVC
             from snn_data_lake.cortex.vsa_structure_mapping import StructureMapper
-            from snn_data_lake.hippocampus.episode_consolidation import (
+            from snn_data_lake.sleep.episode_consolidation import (
                 EpisodeConsolidator,
                 capacity_for,
             )
@@ -3315,7 +3315,7 @@ class Brain:
                     # A structural write must also reach the cascade -- adopt_structural
                     # re-anchors changed slots, else the next relax() would silently erase
                     # the edit (the T051b-ii measured conflict).
-                    from snn_data_lake.plasticity.structural_rewiring import (
+                    from snn_data_lake.sleep.structural_rewiring import (
                         StructuralRewiring,
                     )
 
@@ -3424,7 +3424,7 @@ class Brain:
             #     nothing above excludes it. Raising the power is cheap and unattempted: average
             #     `_consolidation_acc` across all ~37 nights instead of reading only the last one.
             #
-            # This is a P3 finding, not a resolution. It is NOT deleted here: hippocampus/sleep_replay.py
+            # This is a P3 finding, not a resolution. It is NOT deleted here: sleep/sleep_replay.py
             # is outside this pass's write scope, and an n=10 null is not on its own a deletion
             # warrant. Escalated: the `downscale_prune` docstring in that file still asserts the SHY
             # framing and calls the hard-prune "the load-bearing, energy-saving effect".
@@ -3727,7 +3727,7 @@ class Brain:
         ):  # SLEEP CONSOLIDATION of the symbolic durable lake:
             try:  # the PRUNE half -- cap re-derivable dictionary bulk (WordNet/ConceptNet re-derive at boot)
                 #     + keep genuinely-learned, so a never-off brain's lake stays LIVE + BOUNDED, not ballooning.
-                from snn_data_lake.hippocampus.lake_consolidation import (
+                from snn_data_lake.sleep.lake_consolidation import (
                     LakeConsolidation,
                     RecallTrace,
                 )
@@ -3763,7 +3763,7 @@ class Brain:
         if self._persist:  # NIGHTLY SKILL FORMATION (bounded): one small env-budgeted
             try:  # slice/night into persistent per-domain readouts across
                 if self._skills is None:  # language/math/physics/world-kb (+open-world discovery +
-                    from snn_data_lake.cortex.nightly_skills import (
+                    from snn_data_lake.sleep.nightly_skills import (
                         NightlySkills,  # autotelic goal-babbling).
                     )
 

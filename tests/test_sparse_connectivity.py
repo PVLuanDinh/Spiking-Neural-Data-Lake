@@ -14,7 +14,7 @@ Run: pytest tests/test_sparse_connectivity.py
 import numpy as np
 import pytest
 
-from snn_data_lake.hippocampus.episode_consolidation import EpisodeConsolidator
+from snn_data_lake.sleep.episode_consolidation import EpisodeConsolidator
 
 #: Pre-registered in specs/009 research.md BEFORE the sweep that measured the knee.
 TOLERANCE = 0.02

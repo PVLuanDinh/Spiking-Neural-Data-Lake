@@ -191,7 +191,7 @@ store still works right up until the process exits.
 
 Honesty guard: **"it persists" is a claim about a NEW process**, not about the object in front of
 you. Prove it by reading the lake back from disk after the writer is gone. The motivating
-measurement: `hippocampus/episode_consolidation` stored 59 episodes over 600 ticks with
+measurement: `sleep/episode_consolidation` stored 59 episodes over 600 ticks with
 `persist=True` and added **0** records to the lake, while `retained()` reported **1.000**
 throughout — perfectly recalling episodes it was about to lose entirely.
 

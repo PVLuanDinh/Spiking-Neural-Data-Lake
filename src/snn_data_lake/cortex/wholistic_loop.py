@@ -47,9 +47,9 @@ UNLEARNABLE noise phase interleaved, old tasks NEVER re-shown live):
 Composed primitives (READ + REUSED, not reimplemented):
   * neuromodulation/intrinsic_motivation.CuriosityDrive   -- learning-progress / novelty.
   * cortex/metacognitive_monitor.MetacognitiveMonitor      -- the arbitration spine.
-  * plasticity/lifelong_consolidation.LifelongConsolidator -- its parts drive GROW
+  * sleep/lifelong_consolidation.LifelongConsolidator -- its parts drive GROW
     (hippocampus/growing_learner.GrowingLearner), PRUNE-to-budget, and CONSOLIDATE via
-    interleaved replay (hippocampus/experience_replay.ReplayBuffer).
+    interleaved replay (sleep/experience_replay.ReplayBuffer).
   * reservoir/criticality_regulator.CriticalityRegulator  -- slow substrate health.
   * substrate/_mathutils.mean                              -- aggregation.
 
@@ -80,12 +80,12 @@ import zlib
 from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor
 from snn_data_lake.infra._mathutils import clamp01, mean
 from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
-from snn_data_lake.plasticity.lifelong_consolidation import LifelongConsolidator
 from snn_data_lake.reservoir.criticality_regulator import CriticalityRegulator
+from snn_data_lake.sleep.lifelong_consolidation import LifelongConsolidator
 
 # --- task / stream geometry (disjoint separable classes, each with a frequent PRIMARY +
 #     a rare, prune-able SECONDARY mode, interleaved with an unlearnable noise phase) ----
-# Geometry mirrors plasticity/lifelong_consolidation: a class's two modes are 4-dim HIGH
+# Geometry mirrors sleep/lifelong_consolidation: a class's two modes are 4-dim HIGH
 # windows overlapping by 3 (cross-mode cosine ~0.8 < vigilance -> recruit separate units;
 # cross-class ~0.28 -> a pruned secondary's samples still fall on the surviving primary).
 DIM = 36  # feature-space dimensionality (6 classes x BLK)

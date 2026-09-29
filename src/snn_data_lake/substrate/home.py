@@ -96,7 +96,7 @@ _T_SPIKE = b"\x02"
 # see that function and the _T_STATE comment for why growth history is kept and state history is not.)
 _T_GROWTH = b"\x03"
 # _T_EPISODE added 2026-08-04. Autobiographical episodes were being stored ONLY in
-# hippocampus/episode_consolidation's in-memory attractor: measured, 59 episodes stored over 600
+# sleep/episode_consolidation's in-memory attractor: measured, 59 episodes stored over 600
 # ticks with persist=True added 0 records to the lake, and 149 episodes over 1,500 ticks were
 # recalled 0 times. So the brain was forming memories into a second store that nothing read and
 # nothing persisted, and every one died with the process. Episodes now land in THE ONE LAKE, where
@@ -410,7 +410,7 @@ def state_path(name):
 
     (1) `_migrate_sidecar` reads it, once, to import a pre-2026-08-05 blob into the one lake.
     (2) Binary blobs the JSON facade cannot carry are still written here by their own writers:
-        `cortex/brain.py` -> `language_acq.npz` (numpy) and `cortex/nightly_skills.py (promoted 2026-08-11)`
+        `cortex/brain.py` -> `language_acq.npz` (numpy) and `sleep/nightly_skills.py (promoted 2026-08-11)`
         -> `skills*.spkl`. Those are OPEN P4b debt, named in `save_state`'s docstring; the carrier
         they need is `save_named_state`, which takes raw bytes.
 
@@ -591,7 +591,7 @@ class KnowledgeLog:
         their learning moved at all -- that is an owner call about what the brain keeps, not a
         property of the record layout, and it is why this is a per-tag prune and not a general one.
         """
-        from snn_data_lake.hippocampus.lake_consolidation import _src_class, record_key
+        from snn_data_lake.sleep.lake_consolidation import _src_class, record_key
         from snn_data_lake.substrate.lake_engine import retention_of
 
         # THE LABEL IS LOAD-BEARING HERE, not merely declared elsewhere. _T_FACT is IMMORTAL with
@@ -948,9 +948,9 @@ def save_state(name, obj):
 
     Every JSON member of that census is closed by this one edit, because the callers name a state
     and this decides where it lives: `cortex/brain.py` (reasoning_curriculum.json),
-    `sensorimotor/closed_loop.py` (valence.json), `hippocampus/lake_consolidation.py`
+    `sensorimotor/closed_loop.py` (valence.json), `sleep/lake_consolidation.py`
     (recall_trace.json), `cortex/time_cells.py` (time_cells.json), `reasoning/gf.py`
-    (gf_library.json, active_library.json), `cortex/nightly_skills.py (promoted 2026-08-11)`. Not one of them changed a
+    (gf_library.json, active_library.json), `sleep/nightly_skills.py (promoted 2026-08-11)`. Not one of them changed a
     line to move, and none of them can drift back.
 
     STILL OPEN, and named so it stays countable: `language_acq.npz` and the `skills*.spkl` blobs do

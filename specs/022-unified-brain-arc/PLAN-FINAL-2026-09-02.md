@@ -202,7 +202,7 @@ commit paid the full ≈ 2 hours, which is what the owner's 2026-09-02 amendment
 | the growth stop | `growth/growth_stop.py` (`GrowthStop.should_grow`, reads the |LP| facade through `_LPRoute`) |
 | the |LP| facade (Chain B) and the curiosity producer (Chain A) | `growth/learning_progress.py` (`LearningProgress.lp/lp_all`), `neuromodulation/spiking_curiosity.py` (`SpikingCuriosityDrive.learning_progress`, `SpikingCurriculum`); Chain A's telemetry keys on `Brain.state()`: `curiosity_mag`, `neuromod_acetylcholine`, and `Brain._lp_mean`; Chain B: `state()["learning_progress"]["cortex"]` |
 | prototype learners (ART-style) | `growth/growing_learner.py` (`GrowingLearner.observe/state_dict/load_state_dict`) — seven live construction sites in five modules (`autonomous_loop`, `brain` ×3, `affect_integrator`, `lifelong_consolidation`, `similarity_sized_growth`; the audit counted eight including a comparison harness) |
-| goals | `cortex/autotelic_goals.py` (achieved-outcome buffer, HER, competence-progress goal babbling) is reached ONLY from the sleep tick, persist-gated, through `cortex/nightly_skills.py::_autotelic_step`, and runs on the module's own 2-D toy grid — never on the arm; `basal_ganglia/learning_progress.GoalStore` (`_T_GOAL`) has ZERO callers; T076's `basal_ganglia/curriculum.py` does not exist yet |
+| goals | `cortex/autotelic_goals.py` (achieved-outcome buffer, HER, competence-progress goal babbling) is reached ONLY from the sleep tick, persist-gated, through `sleep/nightly_skills.py::_autotelic_step`, and runs on the module's own 2-D toy grid — never on the arm; `basal_ganglia/learning_progress.GoalStore` (`_T_GOAL`) has ZERO callers; T076's `basal_ganglia/curriculum.py` does not exist yet |
 | plasticity palette (local rules) | `plasticity/` (Hebbian/STDP, homeostatic, LPL spine, three-factor extensions, `rule_composer`'s production census, `inhibitory_stdp` live on the tick), `plasticity/eprop_kernel.py` (surrogate-gradient batch trainer + `bptt_grads` reference — NOT a per-tick rule), online local readouts `readout/laminar_local_readout.py::observe`, `growth/similarity_sized_growth.py::FrozenExpert` |
 | the lake | `substrate/home.py` (`save_state/load_state` `_T_STATE`, `save_growth/load_growth`, `throwaway_home`, `home()` reads `NORD_HOME`), `substrate/binlog.py` (`BinLog`), `substrate/lake_engine.py` (`SynapseDelta`, `AppendBudget` — no live caller yet), `lake_segments.py`, `lake_index.py`, `neuro_chip_stream.py` (shard discipline) |
 | the substrate tick | `reservoir/kernel_tick.py` (`KernelTick._deliver_and_rotate`), `reservoir/kernel_state.py` (SoA, T013), dormancy-exempt `wire` today; `gates/perf_baseline.py` (`--record/--assert`; T065's `tools/perf_baseline.py` path is stale — the p4c ratchet refused `tools/` at T001) |
@@ -947,7 +947,7 @@ owns the broader continuity census; passing this workstream does not close its o
 *DATED 2026-09-27 (sleep plasticity):* compare fixed-topology plasticity ON/OFF, then eligible
 structural plasticity ON/OFF, with replay and compute matched; each arm beats or retires its live
 incumbent in `Brain._sleep_tick` (P2): the `_sleep_caps` switches (replay, benna_fusi, structural) and
-`attractor.sleep`. The structural incumbent, `plasticity/structural_rewiring.py`, was refused on
+`attractor.sleep`. The structural incumbent, `sleep/structural_rewiring.py`, was refused on
 2026-08-26 and at T054-ii, then wired at T058 (2026-09-01) and runs default-on; its OFF arm switches that
 cap off, and no structural verdict is read unless measured turnover exceeds zero (its live turnover is ~0
 by design). Compare staged versus flat replay
@@ -1534,7 +1534,7 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     stage, cursor, RNG, traces and pending candidates for an equivalent fresh-process continuation. From the same
     pre-sleep state compare no replay, uniform and staged replay at equal compute; weight plasticity ON/OFF with
     topology fixed; then structural plasticity ON/OFF with replay and compute matched, beside the live incumbent
-    `plasticity/structural_rewiring.py` (refused 2026-08-26 and at T054-ii, wired at T058, default-on; its OFF arm
+    `sleep/structural_rewiring.py` (refused 2026-08-26 and at T054-ii, wired at T058, default-on; its OFF arm
     switches `_sleep_caps["structural"]` off), and no structural verdict unless measured turnover exceeds zero;
     shuffle stage order if its
     order is credited. Development validation selects candidates, while a separate untouched final test with

@@ -27,7 +27,7 @@ learned cap) stop the monotonic growth + the WordNet balloon a never-off brain o
 
 Determinism (CLAUDE.md): pure function; no random, no wall-clock, no hash(); ASCII-only prints.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hippocampus.lake_consolidation
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sleep.lake_consolidation
 """
 
 import zlib
@@ -348,7 +348,7 @@ def main():
         child = (
             f"import sys; sys.path.insert(0, {src_root!r})\n"
             f"import os; os.environ['NORD_HOME'] = {work!r}\n"
-            "from snn_data_lake.hippocampus.lake_consolidation import RecallTrace\n"
+            "from snn_data_lake.sleep.lake_consolidation import RecallTrace\n"
             "from snn_data_lake.substrate.home import KnowledgeLog\n"
             f"rec = {rec!r}\n"
             "t = RecallTrace()\n"

@@ -40,7 +40,7 @@ It models the TIMING function -- free-run, entrainment range, phase resetting --
 transcription-translation loop, and nothing here is awake, asleep, or aware. Additive/opt-in.
 Credit: Pittendrigh & Daan 1976 (free-run + PRC entrainment); Czeisler et al. 1999 (human tau ~24.2).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hypothalamus.circadian_clock
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sleep.circadian_clock
 """
 
 import math

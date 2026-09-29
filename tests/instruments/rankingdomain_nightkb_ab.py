@@ -25,7 +25,7 @@ import sys
 import numpy as np
 
 from snn_data_lake.cortex.kb_ranking import DistMult, load_dataset
-from snn_data_lake.cortex.nightly_skills import _NightKB
+from snn_data_lake.sleep.nightly_skills import _NightKB
 
 
 def _hits10(model, te, known, rng, eval_n=250):

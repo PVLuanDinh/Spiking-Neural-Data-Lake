@@ -15,7 +15,7 @@ Each stage is a REAL brain mechanism, composed (not faked):
   3. SELF-IMPROVEMENT +      the BRAIN grows its OWN neurons (neurogenesis) -- the ART / hippocampus.
      NEUROGENESIS            GrowingLearner vigilance rule recruits a neuron ONLY on a learnable-NOVEL pattern
      (+ PRUNE, + LC)         no existing prototype matches (self-limiting, need-sized -- NOT a fixed grow(GROW)
-                             schedule), and PRUNES dead never-winning neurons (plasticity/developmental_pruning:
+                             schedule), and PRUNES dead never-winning neurons (sleep/developmental_pruning:
                              the brain grows AND prunes). The locus-coeruleus (neuromodulation) boosts the STDP
                              learning gain 1x-3x on a salient/novel objective (attend harder to the unknown).
                              It self-evaluates competence by neuron-label voting (labels only read out competence).
@@ -145,7 +145,7 @@ class GrowableSTDP:
         return False
 
     def prune_dead(self, activity, min_spikes=1, cycle=0, grace=1, criticality=None):
-        """Developmental PRUNING (the brain grows AND prunes -- plasticity/developmental_pruning +
+        """Developmental PRUNING (the brain grows AND prunes -- sleep/developmental_pruning +
         lifelong_consolidation). NEWBORN PROTECTION: a neuron recruited within the last `grace` cycles is
         never pruned (a developmental critical period) -- otherwise pruning kills freshly-recruited neurons
         before they have had a cycle to win, fighting neurogenesis. Returns the number pruned (keeps >=1).
@@ -400,7 +400,7 @@ def main():
             f"exemplars, no labels ({dt:.0f}s)"
         )
 
-        # ---- 3b/PRUNE (opt-in, NORD_PRUNE=1): the brain grows AND prunes (plasticity/developmental_pruning) --
+        # ---- 3b/PRUNE (opt-in, NORD_PRUNE=1): the brain grows AND prunes (sleep/developmental_pruning) --
         #      drop neurons dead over the training distribution, with a NEWBORN-GRACE critical period (a neuron
         #      recruited this cycle is never pruned). HONEST, MEASURED: the grace gate stops the pruning COLLAPSE
         #      (soft-kWTA inh=5 + naive prune died to 52 neurons / 29.8%; + grace stabilises ~150-260 neurons /

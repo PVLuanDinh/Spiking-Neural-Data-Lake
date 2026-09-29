@@ -403,7 +403,7 @@ the tool that produced the wrong answer was a shell grep whose output was being 
   per-region activity; the only cross-region synchrony measure with an ignition-gating output.
 - `cerebellum/synfire_chain.py` -- feedforward synchrony survival; supplies the all-or-none threshold
   that turns continuous coherence into a binding event.
-- `hypothalamus/circadian_clock.py` -- the only oscillator that gates which tick body runs.
+- `sleep/circadian_clock.py` -- the only oscillator that gates which tick body runs.
 - `brainstem/cpg_oscillator.py` -- Matsuoka CPG; the only rhythm generator with a path into the
   action-preference vector.
 - `reservoir/criticality_regulator.py` -- the only closed-loop branching-ratio regulator (reuses

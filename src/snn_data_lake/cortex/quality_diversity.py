@@ -24,7 +24,7 @@ to nudge the position. The behavior DESCRIPTOR is where that spike-driven trajec
 -- read from the rollout's POPULATION CODE, NOT from the genome parameters. The box position
 is a pure latent used only to define the behavior (no actuator). Elites are CONSOLIDATED into
 a per-niche value memory with sharp-wave-ripple replay
-(hippocampus/experience_replay.ReplayBuffer), value-only.
+(sleep/experience_replay.ReplayBuffer), value-only.
 
 Why a closed loop and not a static readout: the behavior comes from where a spike-driven
 trajectory ENDS -- which the genome's summary statistics CANNOT see -- so behavior-keying
@@ -87,10 +87,10 @@ import math
 import random
 
 from snn_data_lake.growth.lif_neuron import LIFNeuron
-from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
 from snn_data_lake.infra._mathutils import mean
 from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.sensorimotor.population_encoding import PopulationEncoder
+from snn_data_lake.sleep.experience_replay import ReplayBuffer
 
 # ---- toy sandbox geometry (kept small so the whole self-check runs in a few seconds) ----
 # The behavior descriptor is the SETTLING POINT of a closed-loop spiking controller in an abstract 2-D

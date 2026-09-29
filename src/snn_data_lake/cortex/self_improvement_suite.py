@@ -72,7 +72,6 @@ from snn_data_lake.growth.function_preserving_growth import (
     _max_abs_diff,
 )
 from snn_data_lake.growth.lif_neuron import LIFNeuron
-from snn_data_lake.hippocampus.sleep_consolidation import run as sleep_run
 from snn_data_lake.neuromodulation.drive_reduction import (
     DriveReductionLearner,
     NeedPool,
@@ -82,6 +81,7 @@ from snn_data_lake.neuromodulation.generalizing_novelty import GeneralizingNovel
 from snn_data_lake.plasticity.benna_fusi import BennaFusiLearner
 from snn_data_lake.plasticity.meta_plasticity import MetaPlasticLearner
 from snn_data_lake.sensorimotor.population_encoding import PopulationEncoder
+from snn_data_lake.sleep.sleep_consolidation import run as sleep_run
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

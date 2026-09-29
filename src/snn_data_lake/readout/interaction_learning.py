@@ -578,8 +578,8 @@ class SpikingInteractionLearner:
             self._deposit(pred, code, float(feedback))
         return given
 
-    # distinct-from: hippocampus/experience_replay.py -- SWR-style replay of (s, a, r)
-    #   transitions into a q-table; hippocampus/episode_consolidation.py::replay -- noise-
+    # distinct-from: sleep/experience_replay.py -- SWR-style replay of (s, a, r)
+    #   transitions into a q-table; sleep/episode_consolidation.py::replay -- noise-
     #   driven attractor reactivation + covariance STDP; substrate/home.py::replay /
     #   substrate/binlog.py::replay -- durable-record iteration. Same word, four different
     #   jobs; THIS one re-drives recorded R-STDP teaching interactions through the live

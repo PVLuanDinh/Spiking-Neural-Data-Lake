@@ -578,7 +578,7 @@ def main():
     # a reporter whose winner verdict flips at 0.30 while the spiking physics keep the
     # real competition point -- the logistic route follows the lying labels, the antimode
     # route follows the rasters, and the dual gate must refuse.
-    # distinct-from: cortex/nightly_skills.py -- its label pools are dataset curation;
+    # distinct-from: sleep/nightly_skills.py -- its label pools are dataset curation;
     #   this is a constructed lying reporter for the dual gate's red. Read.
     class _SkewedReporter(ReentrantWorkspace):
         def step(self):

@@ -25,7 +25,7 @@ planning / a world model. Ceiling: uniform-sampled tabular replay over discrete 
 units (no prioritization, no model, no generative rollouts); the streams are synthetic.
 Additive / opt-in: nothing replays unless you build a buffer and call replay().
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hippocampus.experience_replay
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sleep.experience_replay
 """
 
 import random

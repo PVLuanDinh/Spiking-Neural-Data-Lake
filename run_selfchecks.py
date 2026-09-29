@@ -147,7 +147,7 @@ CORE = [
     "sensorimotor.world_kb_stream",  # PROMOTED 2026-08-11 (#10 family C2b): masked-slot fact completion vs per-relation baseline (0.4s)
     "cortex.language_self_build",  # PROMOTED 2026-08-11 (#10 family C6): real corpus + controls; NORD_EVAL_N bounds only the eval sample
     "readout.language_readout_slda",  # PROMOTED 2026-08-11 (#10 family C5): equal-budget n-gram bar (fair_compare's port) + full-train bar
-    "cortex.nightly_skills",  # PROMOTED 2026-08-11 (#10 family C9a, from the RESEARCH list): the ONE standing skills loop, sleep-tick entry
+    "sleep.nightly_skills",  # PROMOTED 2026-08-11 (#10 family C9a, from the RESEARCH list): the ONE standing skills loop, sleep-tick entry
     # hippocampus â€” memory formation, spatial coding, replay
     "hippocampus.grid_cells",
     # MOVED RESEARCH -> CORE 2026-08-13. It was PROMOTED into hippocampus/ on 2026-08-11 (#10 family
@@ -157,12 +157,12 @@ CORE = [
     # been fixed for snn_moe_classifier by accident, so the class got mechanized (see the note at
     # RESEARCH's head). Runs in 2.84 s, in line with its CORE neighbours.
     "hippocampus.open_world_loop",
-    "hippocampus.experience_replay",
-    "hippocampus.sleep_replay",
+    "sleep.experience_replay",
+    "sleep.sleep_replay",
     "hippocampus.ring_attractor",
     "growth.growing_learner",
     "growth.function_preserving_growth",
-    "hippocampus.sleep_consolidation",
+    "sleep.sleep_consolidation",
     "hippocampus.affective_memory",
     "hippocampus.contrastive_episode_analysis",
     "hippocampus.allocentric_map",
@@ -173,9 +173,9 @@ CORE = [
     "hippocampus.content_signature",  # PROMOTED 2026-08-11 (#10 family C1): moved here from the RESEARCH list
     "hippocampus.proximity_replay",  # PROMOTED+RENAMED 2026-08-11 (#10 family C3): P4b cross-process readback + 2 constructed reds (0.5s)
     "hippocampus.skill_builder",  # PROMOTED 2026-08-11 (#10 family C4): 2 domains, competence >= baseline, router 99% vs 50% chance (11.6s)
-    "hippocampus.hippocampal_memory",  # PROMOTED 2026-08-11 (#10 lane 4a): balance/no-leak/consolidate/determinism asserts (seconds)
-    "hippocampus.episode_consolidation",  # C1 batch-4: systems-consolidation of real episodes (sparse attractor + sleep replay)
-    "hippocampus.lake_consolidation",  # sleep-time PRUNE of the symbolic durable lake (cap re-derivable bulk, keep learned) -> live + bounded
+    "sleep.hippocampal_memory",  # PROMOTED 2026-08-11 (#10 lane 4a): balance/no-leak/consolidate/determinism asserts (seconds)
+    "sleep.episode_consolidation",  # C1 batch-4: systems-consolidation of real episodes (sparse attractor + sleep replay)
+    "sleep.lake_consolidation",  # sleep-time PRUNE of the symbolic durable lake (cap re-derivable bulk, keep learned) -> live + bounded
     "hippocampus.spiking_storage_prototype",  # factored associative memory; criteria judged vs a do-nothing cue control + permutation null, each with an executed red
     # basal ganglia â€” action selection, reward-modulated learning, decision, Go/NoGo gating
     "basal_ganglia.evidence_accumulation",
@@ -237,7 +237,7 @@ CORE = [
     "instruments.ignition_instrument",  # T033: dual-derived ignition scorer over the re-entry stage
     "instruments.binding_instrument",  # T080: the live cross-modal binder's report vs its own re-paired features
     # hypothalamus â€” homeostatic timing (the SCN circadian clock)
-    "hypothalamus.circadian_clock",
+    "sleep.circadian_clock",
     "hypothalamus.set_points",
     "hypothalamus.homeostatic_drives",  # W8: drives as percepts
     # midbrain â€” dopamine source nuclei (VTA/SNc RPE) + superior-colliculus orienting + deep gaze layers
@@ -276,13 +276,13 @@ CORE = [
     "plasticity.intrinsic_plasticity",
     "plasticity.short_term_plasticity",
     "plasticity.wm_capacity",  # T056: K = T_max/t_s derived + five guards (wm_attractor retired)
-    "plasticity.developmental_pruning",
-    "plasticity.structural_rewiring",  # T048: A/A + budget-conservation + MSP sign arms
+    "sleep.developmental_pruning",
+    "sleep.structural_rewiring",  # T048: A/A + budget-conservation + MSP sign arms
     "plasticity.eligibility_algebra",  # T050: incumbent bit-equivalence + mis-declaration red
     "plasticity.rule_composer",  # T051a: naive-sum red + causal/measured LOO + refusals by message
     "plasticity.espp_rule",  # T052-i: delegation-live + BIT/FULL/DELTA equivalence + coefficient pins
     "plasticity.competitive_learning",
-    "plasticity.lifelong_consolidation",
+    "sleep.lifelong_consolidation",
     "reservoir.criticality_regulator",
     "plasticity.meta_plasticity",
     "plasticity.benna_fusi",

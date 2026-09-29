@@ -1,7 +1,7 @@
 r"""
 L11 / SI-6 -- WIRE the proven-but-dead spiking SLEEP-REPLAY into a LIVE quiescent-tick phase.
 
-WHAT THIS IS. hippocampus/sleep_replay.py already PROVES that a "sleep" phase (noise-driven
+WHAT THIS IS. sleep/sleep_replay.py already PROVES that a "sleep" phase (noise-driven
 attractor reactivation + covariance-STDP) restores a spiking memory that a later, interfering
 skill would otherwise overwrite -- but nothing in the live loop ever CALLS it: it is dead code.
 This module promotes it to live use. A WAKE phase learns skills (stores overlapping cell
@@ -47,14 +47,16 @@ HONEST FRAMING -- THIS RUNG IS FRAGILE; the claims are scoped hard:
 Seeded via random + zlib.crc32 for skill-buffer seeds (no wall-clock, no global RNG),
 ASCII-only output, deterministic. Additive core primitive; touches no safety-envelope file.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hippocampus.sleep_consolidation
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sleep.sleep_consolidation
 """
 
 import random
 import zlib
 
-from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
-from snn_data_lake.hippocampus.sleep_replay import (
+from snn_data_lake.infra._mathutils import mean
+from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
+from snn_data_lake.sleep.experience_replay import ReplayBuffer
+from snn_data_lake.sleep.sleep_replay import (
     CUE_FRAC,
     P_A0,
     P_A1,
@@ -67,8 +69,6 @@ from snn_data_lake.hippocampus.sleep_replay import (
     K,
     _overlap,
 )
-from snn_data_lake.infra._mathutils import mean
-from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
 
 # ---- the two skills = the proven overlapping assemblies from sleep_replay (B overwrites A) ----
 SKILL_A = [P_A0, P_A1]  # learned first

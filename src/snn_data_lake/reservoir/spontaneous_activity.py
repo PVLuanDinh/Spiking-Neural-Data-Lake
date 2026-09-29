@@ -93,8 +93,8 @@ def _cosine_modes(dim, k):
 # distinct-from: instruments/episode_driver.py -- its tick() is a faithful TRANSDUCER of caller
 #   stimuli onto the kernel's fixed-point grid (episode replay); this GENERATES stimuli from
 #   an OU process for a plasticity rule. Site read; the shared word is "stimulus".
-# distinct-from: hippocampus/episode_consolidation.py -- kWTA activity budget; unrelated. Read.
-# distinct-from: hippocampus/sleep_replay.py -- the nearest FUNCTIONAL neighbour (T045 panel):
+# distinct-from: sleep/episode_consolidation.py -- kWTA activity budget; unrelated. Read.
+# distinct-from: sleep/sleep_replay.py -- the nearest FUNCTIONAL neighbour (T045 panel):
 #   noise-driven spontaneous REACTIVATION of STORED assemblies feeding consolidation, i.e.
 #   post-experience replay of learned content; this is pre-experience bootstrap of an EMPTY
 #   rule. Site read; different phase of life, no shared code.

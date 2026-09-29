@@ -315,7 +315,7 @@ class LakeChat:
                 from snn_data_lake.substrate.chat_memory import DurableChatMemory
 
                 self._chat_mem = DurableChatMemory(log=self.log)
-                from snn_data_lake.hippocampus.lake_consolidation import RecallTrace
+                from snn_data_lake.sleep.lake_consolidation import RecallTrace
 
                 self._recall_trace = RecallTrace()
             except Exception:

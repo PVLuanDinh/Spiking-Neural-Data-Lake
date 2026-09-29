@@ -45,7 +45,6 @@ from snn_data_lake.growth.growing_learner import GrowingLearner
 from snn_data_lake.hippocampus.affective_memory import AffectiveEpisodicStore
 from snn_data_lake.hippocampus.allocentric_map import AllocentricMap
 from snn_data_lake.hippocampus.contrastive_episode_analysis import ContrastiveEpisodeAnalyzer
-from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
 from snn_data_lake.infra.brain_bundle import BrainBundle, load_bundle
 from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
 from snn_data_lake.neuromodulation.cortisol import Cortisol
@@ -55,6 +54,7 @@ from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 from snn_data_lake.plasticity.naca import NACABroadcast
 from snn_data_lake.sensorimotor.multimodal_encoder import encode_multimodal
+from snn_data_lake.sleep.experience_replay import ReplayBuffer
 from snn_data_lake.substrate.home import _T_COALITION, _log
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
 from snn_data_lake.substrate.signal_ring import LakeJournaller, SignalRing

@@ -55,7 +55,7 @@ def _hermetic_home(tmp_path, monkeypatch):
 
     NORD_HOME only -- deliberately NOT NORD_PERSIST=0. Isolation is what this defect needs, and
     turning persistence off would break the self-checks that exist to PROVE persistence
-    (`cortex.nightly_skills` asserts a reload restores competence exactly). Pointed at a private
+    (`sleep.nightly_skills` asserts a reload restores competence exactly). Pointed at a private
     directory those still pass, and still cannot reach the operator's lake."""
     monkeypatch.setenv("NORD_HOME", str(tmp_path / "nord_home"))
     os.makedirs(tmp_path / "nord_home", exist_ok=True)
