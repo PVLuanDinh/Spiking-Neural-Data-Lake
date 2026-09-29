@@ -305,8 +305,9 @@ SELF_DISPOSITION = (
 MOVE_GATE_DISPOSITION = (
     "scope-disposition: move_gate is EXCLUDED from the unclaimed-gate census BY NAME -- G8's "
     "move-comparison instrument, which no policy claims; its own self-check and CI registration "
-    "are checked separately. Every other gate-named module in `gates`, or with a frozen pre-G8 "
-    "`substrate` label, is counted."
+    "are checked separately. The census counts gate-NAMED modules (gate|guard|envelope|manifest) "
+    "that live in `gates`, carry the frozen pre-G8 `substrate` label, or have no frozen label (born "
+    "after G8, anywhere); a registered module without such a name is outside it (disclosed)."
 )
 CENSUS_EXEMPT = frozenset({SELF_NAME, "move_gate"})
 
@@ -421,13 +422,15 @@ def census(policies: list[Policy]) -> dict:
     ci = _enabled_ci_text(CI_YML.read_text(encoding="utf-8")) if CI_YML.exists() else ""
     # The census's surface: the gate-named modules run_selfchecks registers whose frozen pre-G8
     # label is `substrate` (region_of; the set its `"substrate.*"` runner-name read gave before
-    # M1, wherever they now live) OR whose live package is `gates`. The frozen label alone made
-    # every gate born after G8 invisible (2026-09-29 audit, evidence 3.19); move_gate is exempt by
-    # NAME (CENSUS_EXEMPT, MOVE_GATE_DISPOSITION), never by a label rule.
+    # M1, wherever they now live), that have NO frozen label (born after G8, in any package --
+    # fail-closed), or whose live package is `gates`. The frozen label alone made every gate born
+    # after G8 invisible (2026-09-29 audit, evidence 3.19); move_gate is exempt by NAME
+    # (CENSUS_EXEMPT, MOVE_GATE_DISPOSITION), never by a label rule.
     runnable = {
         m
         for m in _selfcheck_modules()
-        if GATE_NAME_RE.search(m) and (region_of(m) == "substrate" or package_of(m) == "gates")
+        if GATE_NAME_RE.search(m)
+        and (region_of(m) in (None, "substrate") or package_of(m) == "gates")
     }
     for line in ci.splitlines():
         if "--assert" in line:

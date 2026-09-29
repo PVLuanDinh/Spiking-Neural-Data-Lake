@@ -118,10 +118,28 @@ def test_a_gate_born_in_gates_after_g8_is_counted(monkeypatch, tmp_path):
     assert plant in drift["unclaimed_gates"]
     assert "move_gate" not in drift["unclaimed_gates"]
     assert "reticular_gate" not in drift["unclaimed_gates"]
+    assert "developmental_envelope" not in drift["unclaimed_gates"]
     claimed = tmp_path / "POLICIES.md"
     claimed.write_text(REAL + f"\n`{plant}`\n", encoding="utf-8")
     monkeypatch.setattr(pm, "POLICIES", claimed)
     assert plant not in pm.census([])["unclaimed_gates"]
+
+
+def test_a_post_g8_gate_outside_gates_reds_the_assert(monkeypatch, tmp_path, capsys):
+    """Panel fold (evidence 3.19): a gate-named module born after G8 OUTSIDE `gates` (no frozen
+    label) is counted too -- fail-closed -- and reds `--assert` at its unclaimed-growth check. The
+    committed manifest is re-derived to include the plant so the sync check cannot decide first."""
+    plant = "zz_planted_gate"
+    real_mods, real_pkg, real_region = pm._selfcheck_modules, pm.package_of, pm.region_of
+    monkeypatch.setattr(pm, "_selfcheck_modules", lambda: real_mods() | {plant})
+    monkeypatch.setattr(pm, "package_of", lambda m: "instruments" if m == plant else real_pkg(m))
+    monkeypatch.setattr(pm, "region_of", lambda m: None if m == plant else real_region(m))
+    policies = pm.cross_check(pm.derive())
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(pm.committed_payload(policies, pm.census(policies)), encoding="utf-8")
+    monkeypatch.setattr(pm, "MANIFEST_JSON", manifest)
+    assert pm.run_assert() == 1
+    assert "NEW unclaimed gate(s) ['zz_planted_gate']" in capsys.readouterr().out
 
 
 # ---------------------------------------------------------- T011: manifest rows
