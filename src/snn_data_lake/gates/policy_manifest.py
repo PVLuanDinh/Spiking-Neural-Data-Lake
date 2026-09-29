@@ -303,10 +303,12 @@ SELF_DISPOSITION = (
     "Printed on every report so the exclusion is never silent."
 )
 MOVE_GATE_DISPOSITION = (
-    "scope-disposition: move_gate is EXCLUDED from the unclaimed-gate census: "
-    "the census uses frozen pre-G8 substrate membership, and move_gate was added during G8 "
-    "without a pre-G8 label. Its own self-check and CI registration are checked separately."
+    "scope-disposition: move_gate is EXCLUDED from the unclaimed-gate census BY NAME -- G8's "
+    "move-comparison instrument, which no policy claims; its own self-check and CI registration "
+    "are checked separately. Every other gate-named module in `gates`, or with a frozen pre-G8 "
+    "`substrate` label, is counted."
 )
+CENSUS_EXEMPT = frozenset({SELF_NAME, "move_gate"})
 
 
 # distinct-from: self_mod_harness.py -- it RUNS the suite in a sandbox; this reads the runner's
@@ -417,17 +419,20 @@ def census(policies: list[Policy]) -> dict:
     semantics) and NOT_IN_CI (a claimed mechanized command nothing in CI runs)."""
     text = POLICIES.read_text(encoding="utf-8")
     ci = _enabled_ci_text(CI_YML.read_text(encoding="utf-8")) if CI_YML.exists() else ""
-    # The census's surface is unchanged by G8's moves: the gate-named modules run_selfchecks
-    # registers whose frozen pre-G8 label is `substrate` (region_of), wherever they now live -- the
-    # set its `"substrate.*"` runner-name read gave before M1, equal at that head. A G8 addition
-    # (gates.move_gate) has no pre-G8 label and stays outside it (evidence 3.3, opening (2)).
+    # The census's surface: the gate-named modules run_selfchecks registers whose frozen pre-G8
+    # label is `substrate` (region_of; the set its `"substrate.*"` runner-name read gave before
+    # M1, wherever they now live) OR whose live package is `gates`. The frozen label alone made
+    # every gate born after G8 invisible (2026-09-29 audit, evidence 3.19); move_gate is exempt by
+    # NAME (CENSUS_EXEMPT, MOVE_GATE_DISPOSITION), never by a label rule.
     runnable = {
-        m for m in _selfcheck_modules() if GATE_NAME_RE.search(m) and region_of(m) == "substrate"
+        m
+        for m in _selfcheck_modules()
+        if GATE_NAME_RE.search(m) and (region_of(m) == "substrate" or package_of(m) == "gates")
     }
     for line in ci.splitlines():
         if "--assert" in line:
             runnable.update(Path(t).stem for t in re.findall(r"tools/[a-z0-9_]+\.py", line))
-    unclaimed = sorted(g for g in runnable if g != SELF_NAME and g not in text)
+    unclaimed = sorted(g for g in runnable if g not in CENSUS_EXEMPT and g not in text)
     not_in_ci = sorted(
         c.source_token
         for p in policies
@@ -808,6 +813,20 @@ def self_check() -> int:
     finally:
         CI_YML = saved
 
+    # 2026-09-29 audit red (evidence 3.19): a gate born in `gates` after G8 has no frozen label,
+    # and the census must still count it. Planted in the registry reads only; nothing on disk.
+    g = globals()
+    registry = {k: g[k] for k in ("_selfcheck_modules", "package_of", "region_of")}
+    plant = "zz_planted_gate"
+    try:
+        g["_selfcheck_modules"] = lambda: registry["_selfcheck_modules"]() | {plant}
+        g["package_of"] = lambda m: "gates" if m == plant else registry["package_of"](m)
+        g["region_of"] = lambda m: None if m == plant else registry["region_of"](m)
+        if plant not in census([])["unclaimed_gates"]:
+            failures.append("a planted post-G8 gate in `gates` is invisible to the census")
+    finally:
+        g.update(registry)
+
     if failures:
         print("SELF-CHECK FAILED -- unreachable red(s):")
         for f in failures:
@@ -815,7 +834,7 @@ def self_check() -> int:
         return 1
     print(
         "policy_manifest self-check OK -- FAIL, CANNOT_RUN, NO_GATE, empty-walk, "
-        "reconciliation and certify reds all reachable"
+        "reconciliation, certify and post-G8 census reds all reachable"
     )
     return 0
 

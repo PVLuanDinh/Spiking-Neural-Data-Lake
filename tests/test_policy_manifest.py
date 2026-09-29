@@ -93,7 +93,7 @@ def test_a_gate_token_is_the_registrys_call_never_a_package_prefix():
 def test_the_unclaimed_census_keeps_its_pre_g8_surface(monkeypatch, tmp_path):
     """G8 F1 at M1: the census still covers every gate-named module the runner registers from the
     pre-G8 `substrate` label, wherever it now lives: strip a moved gate's name from a copy of
-    POLICIES.md and it re-surfaces; a G8 addition (move_gate) has no pre-G8 label, stays out."""
+    POLICIES.md and it re-surfaces; move_gate stays out BY NAME (MOVE_GATE_DISPOSITION)."""
     stripped = "\n".join(ln for ln in REAL.splitlines() if "gradient_claim_gate" not in ln)
     assert stripped != REAL, "fixture stripped nothing"
     fake = tmp_path / "POLICIES.md"
@@ -102,6 +102,26 @@ def test_the_unclaimed_census_keeps_its_pre_g8_surface(monkeypatch, tmp_path):
     drift = pm.census([])
     assert "gradient_claim_gate" in drift["unclaimed_gates"]
     assert "move_gate" not in drift["unclaimed_gates"]
+
+
+def test_a_gate_born_in_gates_after_g8_is_counted(monkeypatch, tmp_path):
+    """2026-09-29 audit (evidence 3.19): keyed on the frozen label alone, the census could not see
+    any gate added after G8. A planted unclaimed gate the live registry places in `gates` must
+    surface; the same gate named in POLICIES.md is claimed; move_gate stays exempt by name; a
+    gate-named brain module outside `gates` with a non-`substrate` label stays out."""
+    plant = "zz_planted_gate"
+    real_mods, real_pkg, real_region = pm._selfcheck_modules, pm.package_of, pm.region_of
+    monkeypatch.setattr(pm, "_selfcheck_modules", lambda: real_mods() | {plant})
+    monkeypatch.setattr(pm, "package_of", lambda m: "gates" if m == plant else real_pkg(m))
+    monkeypatch.setattr(pm, "region_of", lambda m: None if m == plant else real_region(m))
+    drift = pm.census([])
+    assert plant in drift["unclaimed_gates"]
+    assert "move_gate" not in drift["unclaimed_gates"]
+    assert "reticular_gate" not in drift["unclaimed_gates"]
+    claimed = tmp_path / "POLICIES.md"
+    claimed.write_text(REAL + f"\n`{plant}`\n", encoding="utf-8")
+    monkeypatch.setattr(pm, "POLICIES", claimed)
+    assert plant not in pm.census([])["unclaimed_gates"]
 
 
 # ---------------------------------------------------------- T011: manifest rows
