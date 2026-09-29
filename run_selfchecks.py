@@ -93,8 +93,8 @@ CORE = [
     "sensorimotor.trained_brain",
     "sensorimotor.learned_matcher",
     "readout.tempotron",
-    "cortex.paradigm_b_matcher",
-    "cortex.paradigm_b_engine",
+    "substrate.paradigm_b_matcher",
+    "substrate.paradigm_b_engine",
     "sensorimotor.gesture_recognition",
     "sensorimotor.nl_interface",
     "sensorimotor.spiking_lm_serve",
@@ -167,11 +167,11 @@ CORE = [
     "hippocampus.contrastive_episode_analysis",
     "hippocampus.allocentric_map",
     "hippocampus.grid_place_map",  # W6: live grid + place cells binding a percept to an allocentric location
-    "hippocampus.episodic_recall",  # W8: reconstructive pattern-completion autobiographical recall
-    "hippocampus.lake_recall",  # T057: recall(cue) -> k episodes with margins from the lake (FR-017)
+    "substrate.episodic_recall",  # W8: reconstructive pattern-completion autobiographical recall
+    "substrate.lake_recall",  # T057: recall(cue) -> k episodes with margins from the lake (FR-017)
     "hippocampus.spiking_grid_can",  # C1: continuous-attractor SPIKING grid network (bump path integration)
-    "hippocampus.content_signature",  # PROMOTED 2026-08-11 (#10 family C1): moved here from the RESEARCH list
-    "hippocampus.proximity_replay",  # PROMOTED+RENAMED 2026-08-11 (#10 family C3): P4b cross-process readback + 2 constructed reds (0.5s)
+    "substrate.content_signature",  # PROMOTED 2026-08-11 (#10 family C1): moved here from the RESEARCH list
+    "substrate.proximity_replay",  # PROMOTED+RENAMED 2026-08-11 (#10 family C3): P4b cross-process readback + 2 constructed reds (0.5s)
     "hippocampus.skill_builder",  # PROMOTED 2026-08-11 (#10 family C4): 2 domains, competence >= baseline, router 99% vs 50% chance (11.6s)
     "sleep.hippocampal_memory",  # PROMOTED 2026-08-11 (#10 lane 4a): balance/no-leak/consolidate/determinism asserts (seconds)
     "sleep.episode_consolidation",  # C1 batch-4: systems-consolidation of real episodes (sparse attractor + sleep replay)

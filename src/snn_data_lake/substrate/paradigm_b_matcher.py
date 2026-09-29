@@ -20,7 +20,7 @@ Two savings, both the point of Paradigm B:
 The GPU-accelerated version of this exact detector (PyGeNN, for an RTX 5070 box) is
 in paradigm_b_genn.py — it can't run on this CPU/no-compiler machine.
 
-Run:  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.paradigm_b_matcher   (builds telemetry via the v0.12 hub first)
+Run:  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.paradigm_b_matcher   (builds telemetry via the v0.12 hub first)
 """
 
 import os

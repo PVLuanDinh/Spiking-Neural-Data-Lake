@@ -47,8 +47,8 @@ import subprocess
 import sys
 import tempfile
 
-from snn_data_lake.hippocampus.proximity_replay import LakeMemory
-from snn_data_lake.hippocampus.content_signature import (
+from snn_data_lake.substrate.proximity_replay import LakeMemory
+from snn_data_lake.substrate.content_signature import (
     signature,  # 64-wide crc32 bag-of-tokens; stdlib on the merits (see the P7 note above)
 )
 from snn_data_lake.reasoning.lake_reason import Reasoner

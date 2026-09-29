@@ -226,7 +226,7 @@ def synth(n_channels, duration, rate, burst_channels, burst_win, seed=0):
     `sample(range(100000), 3)` calls give [[50494, 99346, 55125], [5306, 33936, 67013]] either way.
     Every store this builds, and every self-check assertion over it, is unchanged; what changed is
     only that the process-wide stream is no longer touched. The four external callers
-    (`cortex/paradigm_b_engine`, `cortex/paradigm_b_matcher`, `lakehouse/medallion`,
+    (`substrate/paradigm_b_engine`, `substrate/paradigm_b_matcher`, `lakehouse/medallion`,
     `reasoning/paradigm_b_genn`) pass no seed and so get the same default-0 stream they used to
     inherit -- all four self-checks re-run green."""
     rng = random.Random(seed)

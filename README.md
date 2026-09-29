@@ -43,7 +43,7 @@ not demonstrate bounded whole-system RAM use.
 |---|---|---|
 | Spiking computation and learning | Neuron models, encoders, plasticity rules, recurrent and reservoir components, and task-specific learners | [Package and region registry](src/snn_data_lake/__init__.py), [brain](src/snn_data_lake/cortex/brain.py) |
 | Persistent memory | Sparse event storage, windowed queries, append logs, sealed segments, replay and migration mechanisms | [Streaming hub](src/snn_data_lake/substrate/streaming_hub.py), [lake engine](src/snn_data_lake/substrate/lake_engine.py), [persistence paths](src/snn_data_lake/substrate/home.py) |
-| Temporal queries | Coincidence and ordered-sequence matching over stored spikes | [Query engine](src/snn_data_lake/cortex/paradigm_b_engine.py) |
+| Temporal queries | Coincidence and ordered-sequence matching over stored spikes | [Query engine](src/snn_data_lake/substrate/paradigm_b_engine.py) |
 | Growth | Neurogenesis, local growth-program infrastructure, function-preserving widening, and stopping gates tied to learning evidence | [Neurogenesis](src/snn_data_lake/growth/neurogenesis_engine.py), [growth program](src/snn_data_lake/growth/growth_program.py), [growth stop](src/snn_data_lake/growth/growth_stop.py) |
 | Robotics | Six-DOF SO-101 simulation, gesture-to-command examples, reflexes, and a calibration-gated serial path | [SO-101 body](src/snn_data_lake/brainstem/so101_arm.py), [demo](src/snn_data_lake/infra/demo.py), [safety documentation](SECURITY.md) |
 | Local runtime | Daemon, cockpit, telemetry, and provenance-aware capability reporting | [Daemon](src/snn_data_lake/substrate/learn_daemon.py), [cockpit](src/snn_data_lake/infra/cockpit.py) |
@@ -136,7 +136,7 @@ Inspect the storage and efficiency examples:
 
 ```bash
 python -m snn_data_lake.substrate.spike_telemetry_hub
-python -m snn_data_lake.cortex.paradigm_b_engine
+python -m snn_data_lake.substrate.paradigm_b_engine
 python -m snn_data_lake.instruments.energy
 ```
 

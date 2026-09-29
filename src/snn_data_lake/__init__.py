@@ -123,8 +123,6 @@ REGIONS = {
         # imports only math/random/numpy plus readout.snn_classifier and infra._mathutils.
         # Reached from sensorimotor/recognizer_bank.py. Its blocker was an UNRESTORED process-global
         # `random.seed(0)`, fixed with infra/brain_bundle.py's snapshot-seed-restore pattern.
-        "paradigm_b_matcher",
-        "paradigm_b_engine",
         "vsa_reasoning",
         "prefrontal_executive",
         "live_brain",
@@ -168,13 +166,9 @@ REGIONS = {
         "contrastive_episode_analysis",
         "allocentric_map",
         "grid_place_map",
-        "episodic_recall",
         # specs/022 T057: recall(cue) -> k episodes with margins over THE ONE LAKE's episode
         # records (LAESA/proximity_index composed; margin vs a measured scrambled-cue null)
-        "lake_recall",
         "spiking_grid_can",  # C1: continuous-attractor SPIKING grid network (bump path integration)
-        "content_signature",  # PROMOTED 2026-08-11 (#10 family C1): the 64-dim crc32 content key for lake/skill routing
-        "proximity_replay",  # PROMOTED+RENAMED 2026-08-11 (#10 family C3, was reasoning lake_memory): durable proximity-addressable replay
         "skill_builder",  # PROMOTED 2026-08-11 (#10 family C4): domain-agnostic skill formation + SkillRegistry proximity router
         "open_world_loop",  # PROMOTED 2026-08-11 (#10 family C7): DP-means signature discovery (feeds nightly_skills' open frontier)
         # Promoted from reasoning/ 2026-08-04 after an in-place P7/P1/P8 redesign. FACTORED
@@ -371,6 +365,12 @@ REGIONS = {
         "signal_ring",  # specs/022 T011: ONE-writer multicast ring + lake journaller; bare == replay A/B + overrun red
         "wiring_manifest",  # specs/022 T018: TypedPort + WiringManifest (declared anatomy); bare == five checks + five reds + NIR round-trip
         "report_channel",  # 022 T034: typed workspace-report snapshot; the broadcast's declared consumer
+        "content_signature",
+        "episodic_recall",
+        "lake_recall",
+        "paradigm_b_engine",
+        "paradigm_b_matcher",
+        "proximity_replay",
     ],
     # G8 (specs/022 evidence g8-reorganization.md 2.2, stage S1a): the engine-function package of
     # every policy and correctness gate. It opens with G8's own G-R8 instrument; the substrate
@@ -1006,7 +1006,7 @@ class _AliasLoader(importlib.abc.Loader):
 # distinct-from: sensorimotor/eprop_shd.py -- _self_ref derives one module's own identity; these extend
 #   this file's own alias layer in place (one layer: the flat alias plus G8's legacy paths). Also
 #   read: cerebellum/spiking_jepa.py (target_encode), cortex/vsa_reasoning.py (coincidence),
-#   hippocampus/grid_place_map.py (_pearson), hippocampus/lake_recall.py (_find_cell_collision).
+#   hippocampus/grid_place_map.py (_pearson), substrate/lake_recall.py (_find_cell_collision).
 class _LegacyLoader(_AliasLoader):
     """G8 S1b: a legacy two-level path's alias -- the same identity as the flat alias, plus
     `get_code` delegating to the target's real loader UNDER THE TARGET'S NAME (a SourceFileLoader

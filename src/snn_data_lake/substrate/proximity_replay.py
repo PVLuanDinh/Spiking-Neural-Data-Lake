@@ -56,9 +56,9 @@ is the direction P4b's guard is about. Two reachable REDs ship with it and both 
 self-check: a TRUNCATED copy of the lake, and one exemplar in `_patterns` that never reached the
 hub -- P4b's own motivating shape.
 
-Run:  PYTHONPATH=src python -m snn_data_lake.hippocampus.proximity_replay
+Run:  PYTHONPATH=src python -m snn_data_lake.substrate.proximity_replay
 
-PROMOTED reasoning/brain_adapters/lake_memory.py -> hippocampus/proximity_replay.py 2026-08-11
+PROMOTED reasoning/brain_adapters/lake_memory.py -> substrate/proximity_replay.py 2026-08-11
 (#10 family settlement C3; measured row in docs/P4C_BACKLOG.md). RENAMED at the move because
 brain_atlas asserts basename uniqueness across REGIONS and `substrate/lake_memory.py` (SHY
 prune-and-reconstruct -- a different question, see the ledger's STRUCK list) already holds the

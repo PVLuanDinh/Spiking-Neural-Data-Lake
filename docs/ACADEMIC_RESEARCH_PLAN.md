@@ -344,7 +344,7 @@ expensive learning between decisions.
 | 10. The collaboration request | 1:00 | Three decisions requested from the professor | "Help choose the task suite, the budget, and the strongest comparison." |
 
 For slide 4, rehearse the [telemetry storage example](../src/snn_data_lake/substrate/spike_telemetry_hub.py),
-the [temporal query example](../src/snn_data_lake/cortex/paradigm_b_engine.py), and one e-prop encoder
+the [temporal query example](../src/snn_data_lake/substrate/paradigm_b_engine.py), and one e-prop encoder
 self-check in an isolated environment. Prepare a short screen recording or saved terminal output as
 a fallback. `snn-demo` can illustrate the control family. Label all of these as component demos; do
 not stage a live multi-task learning result that has not been reproduced, and do not demonstrate on

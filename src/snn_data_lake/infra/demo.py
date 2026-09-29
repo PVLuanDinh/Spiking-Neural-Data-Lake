@@ -11,7 +11,7 @@ IR-temperature rig, the reference format):
         ->  contact reflex (object at the sensor -> EMERGENCY_STOP)
 
 The RECOGNITION half is a self-contained mirror of the real modules (sensorimotor/signal_loop,
-sensorimotor/gesture_recognition, cortex/paradigm_b_engine, brainstem/interpreter); the ARM half is not a
+sensorimotor/gesture_recognition, substrate/paradigm_b_engine, brainstem/interpreter); the ARM half is not a
 mirror at all -- it drives the ONE real arm, `brainstem/so101_arm.So101Arm`.
 
 CORRECTED 2026-08-04. This header opened "Download this single file and run it. No dependencies, no

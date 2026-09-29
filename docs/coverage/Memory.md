@@ -162,7 +162,7 @@ not as verified.
 
 ## Capability inventory (Policy 2: what provides what)
 
-- `hippocampus/episodic_recall.py` -- reconstructive episodic store; `encode` + cue-addressed
+- `substrate/episodic_recall.py` -- reconstructive episodic store; `encode` + cue-addressed
   `complete`. Sole provider of pattern-completed episodic recall on the tick. 48 episodes / 6 days.
 - `sleep/episode_consolidation.py` -- the *durable* sparse-attractor episode store with
   covariance Hebbian storage, nightly `replay`, `retained`, and `recall_episode` (readable episode

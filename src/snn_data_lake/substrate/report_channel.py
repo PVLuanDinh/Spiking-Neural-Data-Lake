@@ -129,7 +129,7 @@ def as_vector(rec):
 
 # distinct-from: thalamus/global_workspace.py -- the REAL bus; this stub only answers the
 #   two accessor names so the record contract is testable without constructing a bus.
-# distinct-from: hippocampus/episodic_recall.py -- phrase overlap only. Both read.
+# distinct-from: substrate/episodic_recall.py -- phrase overlap only. Both read.
 class _StubBus:
     """A minimal broadcast()/broadcast_hold stand-in for the arms below. A STUB, not a
     GlobalWorkspace, deliberately: the first draft's self-check constructed real buses

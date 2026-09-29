@@ -8,8 +8,8 @@ the superseded exact-content scan missed by construction (its own docstring said
 
 import os
 
-from snn_data_lake.hippocampus.lake_recall import LakeRecall, encode_episode
 from snn_data_lake.substrate.home import save_episode
+from snn_data_lake.substrate.lake_recall import LakeRecall, encode_episode
 
 EPS = [
     {"who": "arm", "what": "moved", "where": "bench", "when": "t0", "affect": "calm"},

@@ -5,5 +5,5 @@ all already live AND charged elsewhere -- completion-from-partial-cue as Episodi
 nearest-stored-item as GrowingLearner, sparse generalizing hashing as GeneralizingNovelty, and the
 attractor store as sleep_replay.AttractorNet. Its own self-check measured exact parity (1.000 vs 1.000)
 against the live path, i.e. zero gain. The region keeps its live members -- import them directly, e.g.
-`from snn_data_lake.hippocampus.episodic_recall import EpisodicRecall`.
+`from snn_data_lake.substrate.episodic_recall import EpisodicRecall`.
 """

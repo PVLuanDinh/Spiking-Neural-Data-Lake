@@ -16,13 +16,13 @@ emitting ONLY matches to the host:
                                   This is what distinguishes Paradigm B from a coincidence
                                   filter: [5->17->42] matches, [42->17->5] does not.
 
-Run:  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.paradigm_b_engine
+Run:  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.paradigm_b_engine
 """
 
 import os
 import random
 
-from snn_data_lake.cortex.paradigm_b_matcher import (
+from snn_data_lake.substrate.paradigm_b_matcher import (
     subdetector_match,  # verified distinct-channel coincidence
 )
 from snn_data_lake.substrate.spike_telemetry_hub import disk_query, synth

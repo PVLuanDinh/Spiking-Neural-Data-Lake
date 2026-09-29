@@ -131,7 +131,7 @@ regardless. The derivation makes the ceiling visible; it does not raise it.
 Determinism: crc32-seeded atomic spike codes (never builtin hash); per-instance random.Random(seed)
 for the noise/self-check only; ASCII-only output.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hippocampus.episodic_recall
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.episodic_recall
 """
 
 import math

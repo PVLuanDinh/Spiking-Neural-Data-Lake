@@ -158,7 +158,7 @@ def _g0c_legacy_modules():
 
 
 # distinct-from: cerebellum/jepa_world_model.py, instruments/attention_schema.py -- phrase overlap only,
-#   as with cortex/brain.py (`_learned_route`), growth/h01_ingest.py and cortex/paradigm_b_matcher.py
+#   as with cortex/brain.py (`_learned_route`), growth/h01_ingest.py and substrate/paradigm_b_matcher.py
 #   (a band centroid, a stub brain, a route read, a pin key, a query runner); all five sites read.
 #   This is the codec's own read-side class-path step; the one map it reads is the provider above.
 def _g0c_translate(name, legacy):

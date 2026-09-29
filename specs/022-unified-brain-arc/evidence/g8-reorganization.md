@@ -2970,3 +2970,86 @@ the planted red 118 s, the move_gate self-check 87 s, the bounded pytest 61 s.
 
 NOT VERIFIED BY A BATTERY. The stage is verified by the cheap half only; nothing is committed or pushed, no daemon
 was started and the live lake was not opened. G8-2's panel, fold and one battery remain owed.
+
+### 3.23 M9 predeclared lake-recall move (Claude, G8-2, 2026-09-29)
+
+The M9 parent is the M8 commit `a6a7f583`. Its clean export completed the 24-gate, seven-probe, 30-registry census with
+every gate rc 0 (pre census SHA-256 begins `3719BF71CFC4F615`, taken with `SNN_ALIAS_STRICT=1`); the frozen 2.12 map,
+read by the frozen mover (sha256 prefix `b49e982a`), moves 6 modules into the EXISTING `substrate/`: `paradigm_b_engine`
+and `paradigm_b_matcher` from `cortex`; `content_signature`, `episodic_recall`, `lake_recall` and `proximity_replay`
+from `hippocampus`. All 6 are core tier: none is torch-tier, train-tier or in the safety envelope. The mover re-keyed
+`REGIONS` and the runner's names and rewrote 16 files (20 imports, 6 strings). The rewriter (Codex's, re-targeted to M9
+and kept out of tree) rewrote 27 live files, 36 citations. No package is created and none is emptied, so `GOVERNED`
+gains nothing (`substrate` is listed), no initializer is added and no directory is deleted. The row names no path-keyed
+item (`proximity_replay` launches `-m type(self).__module__`, which follows the move; its self-check ran green from the
+new path).
+
+Before any M9 post-move gate run, the C1 delta was written to the out-of-tree `declared_M9.json` (SHA-256 begins
+`BF89FB529A4E91AC`; the frozen-map names are `expected_M9.json`, `2FDDCEFD031B1CA2`). It forecasts 4 changes: the brain
+atlas per-key counts read as AST literals from the candidate tree's `REGIONS`/`TORCH_TIER`/`TRAIN_TIER` against the
+parent export (`cortex` 36 to 34 (+1 torch-tier kept), `hippocampus` 14 to 10, `substrate` 30 to 36; 298 modules and 26
+regions unchanged), and citation BROAD 1912/292 to 1923/292, forecast statically with the guard's own parser and
+resolver over the tracked set (reproducing 1912/292 on the parent) and then the candidate. Parsed-file counts and the
+P4c scaffold count do not move (no new file). The names sets do not move. POLICIES.md, the policy manifest and the other
+budgeted documents are unchanged.
+
+**No halt, no amendment.** The post census (over an export of the worktree, strict) completed 24 gates and seven
+probes, all rc 0 (post census SHA-256 begins `2C53887DC8DC4011`, observed delta `DE35009FC3D64AEB`), and C1 said the
+diff equals the declared delta (4 declared changes) on the first census. No fresh census was needed.
+
+Items beyond the row, each required by the frozen procedure or by what the checks prove, recorded:
+- **An envelope file was touched by the rewriter and restored.** The live-citation rewriter re-pointed one comment in
+  the envelope file `so101_arm.py` (a distinct-from note naming the retired `hippocampus` path of `proximity_replay`).
+  The file was restored byte for byte from the pre export the moment the rewriter finished (sha256 prefix
+  `5C3FA4B0665BCD4D`; the blob id equals the parent's `0222078b`; protected diff against HEAD empty). The comment
+  therefore still cites the retired path: one dangling BROAD citation in a live file, declared in the forecast (it is in
+  the 1923). STRICT is unaffected. The comment can only be re-pointed with the owner's approval of an envelope edit;
+  none was sought or made.
+- The rule census (2.5 item 6): the mover pair-mapped `_CENSUS_ADJUDICATED` (no row of a moved module) and the
+  regeneration command rewrote `tools/rule_census.json` byte-identical (no diff). Rows stay 104, undispositioned 56.
+- `tools/policy_manifest.json` needed no regeneration. POLICIES word delta: 0; `doc_budget_gate` reads 14266 of 14276
+  before and after (10 words of headroom, unchanged). No line of POLICIES.md changed, and no ceiling was touched.
+- No path-form citation followed by a member name was left in a live file (the leftover search returned only the
+  envelope comment above), so there were no hand re-points.
+- `ruff check --fix --select I` re-sorted imports in 7 places; `ruff format` changed nothing. No line-length finding.
+- ONE DEVIATION from the stage brief, ordered by the orchestrator: after the build and before C2(d) and the bounded
+  pytest, `git add -A` staged the tree (staging only; nothing committed, HEAD unchanged at `a6a7f583`, the one
+  pre-existing stash untouched). It shows 38 entries: 6 renames and 32 modifications.
+- ORDERED HOME RULE: every Python process that could construct a brain or touch a home (the module self-checks, pytest,
+  C2(a), the censuses, C2(c), the self-check) ran with `NORD_PERSIST=0` and its own fresh scratch `NORD_HOME` under the
+  kit directory (`home_<step>`); the scratch homes of the six module self-checks were empty afterwards.
+- Not touched: the frozen documents and frozen evidence keep their historical paths; the index documents are D1's.
+
+**Cheap half (2.8), counts.** C2(a): 415 imports attempted on the parent export, the staged worktree and the post
+export, the same 13 known optional-import failures on all three, zero scratch-home files. C2(b): 154 legacy pairs (148
+plus the 6 new), no synthetic package, 286 flat aliases, no identity failure, on the real worktree and on the export.
+C2(c): 17 of 17 legacy gate runs equal the current runs, 0 differ (real worktree, strict off; 247 s). C2(d): 667 live
+source files, 0 unparsed, 0 findings, on the export and on the staged worktree alike. C2(e): 16 frozen artifacts, 12
+module names, all file-loaded on both trees. C3: the envelope files byte-identical, the protected diff empty, the latch
+path resolved through the real home module with a file loader under a scratch home. C4: the R-b0 probe identical in the
+pre and post censuses. C5 (R-L1): `--rl1-check` on the S1b baseline home, real worktree: the brain arm PASS (refused
+None, walk equal, answers equal) and the zoo arm PASS. C6 to C9 green inside the census (invariants empty; strict
+registry parity). Citation STRICT 0 unexempted with its 2 exemptions; BROAD 1923 across 292 files, equal to the
+forecast; the document command guard and the document budget passed; `policy_manifest --audit` passed with no unclaimed
+and no out-of-CI gate; `p6_gate` self-check (4 of 4 controls) and `move_gate`'s self-check with the mover and the R-L1
+baseline (C1, F5, C2(b), F3(c), F2, C2(c) and C5 reds fired in copies; C2(d)'s positive control found F7's six sites)
+passed. `ruff check` and `ruff format --check` on the 30 touched `.py` files passed. The 6 module self-checks ran as
+`-m` of the new `substrate` names (rc 0 each). The bounded run of 6 test files that name a moved module or the move
+tables (`test_episode_consolidation`, `test_episodic_recall`, `test_g0c_learner_persists`, `test_lake_recall`,
+`test_g8_move_gate`, `test_g8_checkpoint_translation`; `-o addopts= -p no:cacheprovider`, scratch `NORD_HOME`): 117
+passed on the staged worktree and 117 passed on the export.
+
+**Planted red (C7).** In an export copy (`planted_tree`, never the worktree) one live-document sentence citing the
+retired `hippocampus` path of `lake_recall` was appended to `docs/CODEBASE_DIGEST.md`. The strict census diff went red
+with exactly 1 difference: the citation BROAD line observed at 1924 against the declared 1923. The real tree is green on
+the same census (diff equals the declared delta). Planted census SHA-256 begins `2ECAC3228B9E1B53`. Disclosure: the red
+is carried by the BROAD count line of the census diff, since STRICT exempts nothing new here; the stage row names C7 and
+that is the check whose count moved.
+
+**Time.** Pre export and census 119 s. Build (mover, rewriter, ruff, rule-census regeneration, leftover search, forecast
+and declaration) about 98 s of tool wall clock from the mover to the declaration being ready. Cheap half 668 s of wall
+clock in total, run partly in parallel: post export, census and diff about 125 s, the planted red 125 s, C2(c) 247 s
+(background), the `move_gate` self-check about 90 s (background), the bounded pytest 61 s and 57 s.
+
+NOT VERIFIED BY A BATTERY. The stage is verified by the cheap half only; nothing is committed or pushed, no daemon
+was started and the live lake was not opened. G8-2's panel, fold and one battery remain owed.

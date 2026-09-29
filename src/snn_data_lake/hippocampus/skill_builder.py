@@ -43,10 +43,6 @@ import random
 import tempfile
 
 from snn_data_lake.cortex.language_self_build import _bigram_baseline
-from snn_data_lake.hippocampus.content_signature import (
-    signature,
-)  # extracted to a stdlib module; re-exported for back-compat
-from snn_data_lake.hippocampus.proximity_replay import LakeMemory
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
 from snn_data_lake.readout.language_readout_slda import _slda_acc
 from snn_data_lake.sensorimotor.corpus_stream import (
@@ -55,6 +51,10 @@ from snn_data_lake.sensorimotor.corpus_stream import (
     load_text,
     phoneme_stream,
 )
+from snn_data_lake.substrate.content_signature import (
+    signature,
+)  # extracted to a stdlib module; re-exported for back-compat
+from snn_data_lake.substrate.proximity_replay import LakeMemory
 
 MATH_VOCAB = list("0123456789+-*= ")  # the arithmetic domain's token inventory
 

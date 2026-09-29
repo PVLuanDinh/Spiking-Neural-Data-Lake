@@ -218,7 +218,7 @@ def test_r_c4_episodes_filtered_before_limit():
     assert load_episodes(limit=1) == autobiographical[-1:]
     assert load_episodes(kinds=("teach",), limit=1) == [event(seq=1)]
     assert load_episodes(kinds=()) == []
-    from snn_data_lake.hippocampus.lake_recall import LakeRecall
+    from snn_data_lake.substrate.lake_recall import LakeRecall
 
     recall = LakeRecall()
     assert recall.refresh() == len(autobiographical)

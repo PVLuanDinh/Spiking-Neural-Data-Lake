@@ -891,8 +891,8 @@ class Brain:
             None  # C2 #11: the drive-vocabulary activity actually performed this tick
         )
         try:
-            from snn_data_lake.hippocampus.episodic_recall import EpisodicRecall
             from snn_data_lake.hypothalamus.homeostatic_drives import HomeostaticDrives
+            from snn_data_lake.substrate.episodic_recall import EpisodicRecall
             from snn_data_lake.thalamus.reentrant_workspace import ReentrantWorkspace
 
             self._reentrant = ReentrantWorkspace(seed=self._seed)
@@ -3529,7 +3529,7 @@ class Brain:
         working memory is not an answer yet: it means "not resident", and the durable store still
         has to be asked before the brain says it does not remember.
 
-        The lake half is `hippocampus/lake_recall` (specs/022 T057): LAESA retrieval over
+        The lake half is `substrate/lake_recall` (specs/022 T057): LAESA retrieval over
         lake-derived episodes, VERIFIED in slot space. The exact-content scan that stood here
         is SUPERSEDED (P2), and its guarantee is carried by the VERIFICATION stage rather than
         by distance: `confidence` is the fraction of the cue's slots the returned episode
@@ -3559,7 +3559,7 @@ class Brain:
         try:
             if isinstance(cue, dict) and cue and self._episode_window:
                 if self._lake_recall is None:
-                    from snn_data_lake.hippocampus.lake_recall import LakeRecall
+                    from snn_data_lake.substrate.lake_recall import LakeRecall
 
                     self._lake_recall = LakeRecall(episodes=self._episode_window, seed=self._seed)
                 else:

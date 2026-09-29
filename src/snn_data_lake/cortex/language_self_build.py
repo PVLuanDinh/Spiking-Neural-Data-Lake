@@ -50,7 +50,7 @@ UNCHANGED and real-scale; the only bound added at promotion is NORD_EVAL_N (defa
 the HELD-OUT EVAL SAMPLE -- the 324 s pre-promotion runtime was ~1.1M spiking respond() calls
 across six full-tail (~91k-pair) evaluations whose asserts' margins are decided at n=2000
 within ~±1% binomial noise. NORD_EVAL_N=0 restores the full tail.
-Deps: reuses src/ spiking primitives + hippocampus/proximity_replay (was
+Deps: reuses src/ spiking primitives + substrate/proximity_replay (was
 reasoning/brain_adapters/lake_memory until its 2026-08-11 promotion+rename).
 """
 
@@ -58,7 +58,6 @@ import os
 import random
 import tempfile
 
-from snn_data_lake.hippocampus.proximity_replay import LakeMemory
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner
 from snn_data_lake.sensorimotor.corpus_stream import (
@@ -68,6 +67,7 @@ from snn_data_lake.sensorimotor.corpus_stream import (
     phoneme_stream,
     word_stream,
 )
+from snn_data_lake.substrate.proximity_replay import LakeMemory
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {

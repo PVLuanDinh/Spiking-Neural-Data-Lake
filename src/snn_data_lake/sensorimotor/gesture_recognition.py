@@ -28,7 +28,7 @@ from snn_data_lake.brainstem.arm_config import (  # calibration lives in arm_con
     dbin,
     present,
 )
-from snn_data_lake.cortex.paradigm_b_engine import match_sequence
+from snn_data_lake.substrate.paradigm_b_engine import match_sequence
 
 DIR = "robot arm"
 GESTURES = ["IDLE", "HAND_APPROACH", "HAND_RETREAT"]

@@ -115,7 +115,7 @@ def coincidence_many(q, mat):
     ties too.)
 
     Reason it exists: `coincidence` was measured at 74.5% of the live wake tick (py-spy on the
-    daemon), entered through hippocampus.episodic_recall, because it is a Python loop run once per
+    daemon), entered through substrate.episodic_recall, because it is a Python loop run once per
     stored episode per tick. Same precedent as AttractorNet.accuracy folding 36 recall trials into
     one array pass for 6.93x, bit-exact.
     """
@@ -240,7 +240,7 @@ def main():
         "winning command must beat the runner-up on coincidence"
     )
     # (a2) the BATCHED counter is the same primitive, not an approximation of it. This is the gate
-    # that lets hippocampus.episodic_recall rank a whole episode store with one GEMV instead of one
+    # that lets substrate.episodic_recall rank a whole episode store with one GEMV instead of one
     # Python loop per stored episode per wake tick (measured 74.5% of the live tick).
     assert batched_exact, "coincidence_many disagrees with the scalar coincidence counter"
     lo_m, _ = mean_std(cap[4])

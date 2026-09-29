@@ -1,4 +1,4 @@
-"""Tests for hippocampus.episodic_recall.EpisodicRecall.
+"""Tests for substrate.episodic_recall.EpisodicRecall.
 
 Covers the pre-existing public API (encode/complete/gist/narrate) and the v3.79 GENERALIZATION
 addition (apply_schema): schema-driven transfer to situations that were NEVER stored, plus the
@@ -10,7 +10,7 @@ fabricate a winner, so it is asserted explicitly.
 
 import zlib
 
-from snn_data_lake.hippocampus.episodic_recall import (
+from snn_data_lake.substrate.episodic_recall import (
     DEFAULT_SLOTS,
     EpisodicRecall,
     _generalization_check,

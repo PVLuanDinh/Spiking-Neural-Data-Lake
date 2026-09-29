@@ -75,7 +75,7 @@ self-check asserts the honest property (every returned completion matches the wh
 cue) rather than a specific winner. (3) Standalone refresh replays the lake per
 staleness check -- O(lake); the brain avoids it by attaching (above).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hippocampus.lake_recall  # (run by run_selfchecks.py)
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.lake_recall  # (run by run_selfchecks.py)
 """
 
 import random
@@ -86,12 +86,12 @@ from snn_data_lake.sensorimotor.spike_preprocessing import N, victor_purpura_dis
 from snn_data_lake.substrate.home import load_episodes, save_episode
 from snn_data_lake.substrate.proximity_index import ProximityIndex
 
-# distinct-from: hippocampus/episodic_recall.py -- RECONSTRUCTIVE pattern completion over
+# distinct-from: substrate/episodic_recall.py -- RECONSTRUCTIVE pattern completion over
 #   in-RAM VSA traces (returns rebuilt slot fillers + gist); this RETRIEVES stored episodes
 #   with verified content, reconstructing nothing. Site read.
 # distinct-from: sleep/episode_consolidation.py -- the bounded in-memory attractor
 #   (working-memory tier); this is the durable tier's cue semantics beneath it. Site read.
-# distinct-from: hippocampus/proximity_replay.py -- ProximityIndex over SPIKE PATTERNS for
+# distinct-from: substrate/proximity_replay.py -- ProximityIndex over SPIKE PATTERNS for
 #   replay sampling (float feature vectors via encode_latency); this indexes EPISODE DICTS
 #   by token code and verifies in slot space. Same engine, different records. Site read.
 # distinct-from: substrate/lake_index.py -- exact (tag, key) pointer lookup; its own note
@@ -308,7 +308,7 @@ def main():
 
     line = "=" * 92
     print(line)
-    print("hippocampus/lake_recall -- T057: recall(cue) -> k episodes with margins, from the lake")
+    print("substrate/lake_recall -- T057: recall(cue) -> k episodes with margins, from the lake")
     print(line)
 
     lake = os.path.join(tempfile.mkdtemp(prefix="snn_lake_recall_"), "lake.bin")

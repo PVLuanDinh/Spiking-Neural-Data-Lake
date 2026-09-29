@@ -1199,7 +1199,7 @@ def _reported_mi(name, key, seeds, ss):
 #   -- writes a staleness-checkable measurement artifact. Read: the shared idea is "pin the run",
 #   and this pin is written ONCE and refuses to overwrite, which that one deliberately does not do.
 # distinct-from: substrate/signal_ring.py::publish (a single-writer ring append) and
-#   hippocampus/episodic_recall.py::_flip (a spike-code corruption probe). Both read; neither
+#   substrate/episodic_recall.py::_flip (a spike-code corruption probe). Both read; neither
 #   records a brain, contrasts seeds, or writes a pin.
 def run_t078_campaign(seeds=T078_SEEDS, n_ticks=T078_N_TICKS, pin=T078_PIN, latents=T078_LATENTS):
     """Part I's campaign (2.2-2.3): record, read, contrast, pin ONCE. Returns an exit code.

@@ -70,7 +70,7 @@ Use both dense representations when presenting this result. It demonstrates stor
 partial I/O for this event distribution. It does not compare against every compressed time-series
 format or prove that the whole learning system fits in the same number of bytes.
 
-The [temporal query example](../src/snn_data_lake/cortex/paradigm_b_engine.py) also passed: it found
+The [temporal query example](../src/snn_data_lake/substrate/paradigm_b_engine.py) also passed: it found
 41 forward-order matches versus four reverse-order matches, with 40 versus three in the motif
 window, and read 1.3% of the file for the sequence query. This is a constructed order-sensitive
 workload; it is not a learned robotics benchmark.

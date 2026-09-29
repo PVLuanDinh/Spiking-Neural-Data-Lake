@@ -9,7 +9,7 @@ that decides a label for a feature vector on its OWN terms and then goes dark:
   - sensorimotor/lca_sparse_coding.py      LCA sparse coding by lateral INHIBITION (dominant atom)
   - readout/snn_moe_classifier.py  firing-rate ROUTED mixture-of-experts (top-k sparse)
   - hippocampus/spiking_storage_prototype.py  FACTORED k-WTA associative-memory recall
-  - cortex/paradigm_b_matcher.py     LIF COINCIDENCE detector (spike-stream channel overlap)
+  - substrate/paradigm_b_matcher.py     LIF COINCIDENCE detector (spike-stream channel overlap)
 
 This module is the MERGE: one ensemble, one contract -- recognize(features) -> (label, confidence,
 known). Each recognizer is a THIN ADAPTER over ONE existing module's real callable (it imports +
@@ -259,8 +259,8 @@ class ParadigmBRecognizer:
     name, module, source, uses = "paradigm-b", "paradigm_b_matcher", "reason", "stdlib"
 
     def __init__(self, library, thr=0.5, window=None):
-        from snn_data_lake.cortex import paradigm_b_matcher as PB
         from snn_data_lake.sensorimotor.spike_preprocessing import T
+        from snn_data_lake.substrate import paradigm_b_matcher as PB
 
         self._PB = PB
         self.labels = list(library)

@@ -77,7 +77,7 @@ GRADIENT_CLAIM = {
 # this module's own self-check, zero samples in 45 s of live-daemon profiling, and its only designed
 # consumer (then reasoning/brain_adapters/lake_memory.py's `durable=`) a reasoning/ orphan off the
 # live path. CLOSED 2026-08-11: that orphan parameter and its rebuild_from_durable() were DELETED
-# when the module promoted to hippocampus/proximity_replay.py -- the retirement this comment
+# when the module promoted to substrate/proximity_replay.py -- the retirement this comment
 # started is complete, no consumer of the retired writer shape remains.
 # Backlog H4/#10 named the missing prerequisite: a live producer of AER exemplars worth keeping across a
 # restart. Until one exists there is nothing to store, so the dead write path is retired instead of kept
