@@ -943,7 +943,9 @@ lineage in the one lake; reject the losing candidate without losing source memor
 owns the broader continuity census; passing this workstream does not close its other carriers.
 
 *DATED 2026-09-27 (sleep plasticity):* compare fixed-topology plasticity ON/OFF, then eligible
-structural plasticity ON/OFF, with replay and compute matched. Compare staged versus flat replay
+structural plasticity ON/OFF, with replay and compute matched; the structural arms carry the
+twice-refused incumbent `plasticity/structural_rewiring.py` (2026-08-26; T054-ii, 2026-08-31) as a
+control and read no verdict unless measured turnover exceeds zero. Compare staged versus flat replay
 and short/medium/extended budgets; stage-order shuffling is a control if order is credited.
 Interleave recent and older experience, report generalization, old/rare-task retention and cost,
 and disable learning during evaluation. Development validation may choose candidates; an
@@ -1526,7 +1528,9 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     Pause on registered budget, sustained validation plateau, interference limit or wake request, and persist the
     stage, cursor, RNG, traces and pending candidates for an equivalent fresh-process continuation. From the same
     pre-sleep state compare no replay, uniform and staged replay at equal compute; weight plasticity ON/OFF with
-    topology fixed; then structural plasticity ON/OFF with replay and compute matched; shuffle stage order if its
+    topology fixed; then structural plasticity ON/OFF with replay and compute matched, beside the refused incumbent
+    `plasticity/structural_rewiring.py` (2026-08-26; T054-ii, 2026-08-31) as a control arm, and no structural
+    verdict unless measured turnover exceeds zero; shuffle stage order if its
     order is credited. Development validation selects candidates, while a separate untouched final test with
     learning OFF judges new-task generalization, old/rare-task retention, stability and cost after restore.
     A longer bout earns its place only by prospective capability improvement that survives these controls.
