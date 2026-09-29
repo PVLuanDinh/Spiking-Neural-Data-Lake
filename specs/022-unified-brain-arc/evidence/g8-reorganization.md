@@ -3197,3 +3197,7 @@ the atlas counts are. Fifteen frozen probes under `docs/coverage/artifacts/` imp
 M5's F11 carve-out. `docs/CODEBASE_DIGEST.md` path rows are D1's (G8-3).
 
 Codex closing report (`gpt-6-astra`, read-only, on `5c9f98fd`): no BLOCKER or MAJOR; 44 moves, 91/91 imports under `SNN_ALIAS_STRICT=1`, 0 stale callers, P6 6/6 mutations fired, whole-tree ruff clean, every named gate rc 0, envelope unchanged. Its two MINOR wording findings are folded into this section.
+
+### 3.26 G8-2 closing record (Claude, 2026-09-29)
+
+One battery on the stacked head `cb6e2fb4` (20:58:09-22:29:37Z, launched detached with the G8-1 corrected launcher: absolute `PYTHONPATH`, isolated `NORD_HOME`) ended GREEN on its first run: 1,695 passed, two xfailed, 87.23% coverage (70% required), 365/365 self-checks, 6/6 tools gates, all sixteen final asserting gates rc 0, record assert and certify first. The slow-marked tests the stages deselected ran here. Retained in `C:\Users\vinhl\AppData\Local\Temp\g8-2-battery-cb6e2fb4`. This record and that battery's own `tools/policy_certification.json` (certified, clean, `cb6e2fb4`) are the arc's last commit. G8-2 moved 44 modules (M6-M10); G8-3 (M11a-M11e, D1) is unstarted. The daemon stays stopped; no poll.
