@@ -2604,3 +2604,68 @@ This closing record and `tools/policy_certification.json` are the last
 commit before the G8-1 push. The two external battery-template copies named
 in F12 are synchronized at the push, including their moved policy-manifest
 entry points. No daemon poll is claimed because the owner held it stopped.
+
+### 3.19 Post-push audit of G8-1 and the fix-forward arc (Claude, 2026-09-29)
+
+**Audit.** The owner (2026-09-28): "check Codex work before starting any work".
+Three read-only Sonnet 5.5 lenses (policy-honesty, instrument, integration)
+read the pushed head `e92aa319`; the orchestrator re-ran every load-bearing
+claim. HELD: both battery directories match 3.18 exactly; the five protected
+files have no diff from `68db184`; `policy_manifest --assert` passes at
+`e92aa319`; six of seven comparator relaxations still red on planted
+differences (57/57 focused tests); all 117 moved names resolve through the
+legacy loader and refuse under `SNN_ALIAS_STRICT=1`; no external reference is
+broken. Findings, each reproduced:
+
+- MAJOR: P4d's "Owner clarification 2026-09-27" quotes none of the owner's
+  words (zero hits for either 2026-09-27 owner sentence in docs or specs) and
+  narrows "rewire the entire brain" to "eligible ... selective".
+- MAJOR: the new structural-sleep arms omit the incumbent
+  `plasticity/structural_rewiring.py`, whose sleep wire was measured and
+  refused on 2026-08-26 and again at T054-ii on 2026-08-31.
+- MAJOR: `policy_manifest.census()` counts only modules whose frozen label is
+  `substrate` (introduced by `363525bf`, this arc's M1 stage, and missed by the
+  G8-1 panel). A planted unclaimed gate labelled `gates` gave
+  `unclaimed_gates: []`; the same plant labelled `substrate` was caught. Every
+  gate born after G8 is invisible; the fold's disclosure named only
+  `move_gate`.
+- MAJOR, outside the repository: twelve harness recall-fixture paths moved;
+  re-pointed 2026-09-29 (recall back to 11/15 and 5/8, the floors).
+- MINOR, disclosed here: the committed certification is the standalone
+  `--certify` on `73b1f992`, not the battery's own record.
+
+**Corrections to 3.18.** The owner's save and STOP directions arrived during
+the FIRST battery (08:45:38Z and 08:49:59Z in the Codex session log), not after
+the GREEN one. For the documentation commit, `red_reachability` and
+`doc_command_guard` could not see a docs-only change (their outputs equal the
+`7449f25b` preflight); only the document budget and the citation guard
+responded. No documentation panel ran on `73b1f992`.
+
+**Fix-forward protocol (pre-registered before any edit; one change per commit;
+one three-lens panel; one battery on the stacked head).**
+
+- F-A, census: a gate-named registered module counts when its frozen label is
+  `substrate` OR its live package is `gates`; `move_gate` stays exempt by name
+  with its printed disposition. RED (must fire): a planted unclaimed gate in
+  `gates` makes `unclaimed_gates` non-empty and `--assert` fail. CONTROLS: the
+  same plant named in POLICIES.md is claimed; `developmental_envelope` and
+  `reticular_gate` (brain modules outside `gates`) stay out; today's census
+  stays empty.
+- F-D, P4d: quote the owner's two 2026-09-27 sentences verbatim as source
+  lines; label the operational reading a session call with its evidence (a
+  webgrab investigation the owner ordered on 2026-09-29); restore "(P2)" and
+  "into the lake". The document budget is raised by only the words this needs
+  (owner-approved 2026-09-29). RED: the verbatim sentences are grep-checked;
+  the budget gate fails at the old ceiling.
+- F-E, plan: the structural-sleep arms name the refused incumbent as a control
+  arm and require measured turnover > 0 before any verdict.
+- F-S, sync: plan A.3 carries the owner's 2026-09-28 Sonnet rule; plan A.4's
+  literal battery line exports an absolute `PYTHONPATH` (the first G8-1
+  battery's RED cause).
+- Outside the battery's tree, for the record: battery templates (absolute
+  `PYTHONPATH`; `census_gates.sh` to `gates.*`), omnigent protocol copies, the
+  SessionStart hook's `policy_manifest` path, and one skill's module path.
+- Deferred as carried openings: pinning the Brian2 child's import root (reuse
+  `hippocampus/proximity_replay._child_env`, P2); an independent expected set
+  for the checkpoint-provider test; the P8 gaps and spec/tasks mirroring of the
+  2026-09-27 rows; console-script metadata (needs `hatchling`).
