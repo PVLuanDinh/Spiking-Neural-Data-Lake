@@ -105,7 +105,7 @@ def emit(result):
 _BRAIN = r"""
 import hashlib
 from unittest.mock import patch
-from snn_data_lake.cortex import interaction_learning as ixn
+from snn_data_lake.readout import interaction_learning as ixn
 from snn_data_lake.engine.brain import Brain, make_brain
 
 

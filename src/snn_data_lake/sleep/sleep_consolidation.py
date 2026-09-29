@@ -12,12 +12,12 @@ turns the quiescent phase OFF -- that is the no-sleep control. SI-1 spiking lear
 (spiking_curiosity.SpikingCuriosityDrive) prioritizes the rate spaced-practice replay.
 
 REUSED, NOT REIMPLEMENTED:
-  * hippocampus/sleep_replay.AttractorNet  -- the proven noise-driven spiking replay + covariance
+  * sleep/sleep_replay.AttractorNet  -- the proven noise-driven spiking replay + covariance
     STDP (store / sleep / recall / accuracy). THIS is the dead code being promoted; every spiking
     weight change happens inside its unmodified methods, so the retention numbers are byte-identical
     to sleep_replay's own SLEEP vs NO-SLEEP conditions (same store order, same sleep seeds, same
     held-out accuracy seed_base).
-  * hippocampus/experience_replay.ReplayBuffer -- the rate SWR value replay, ADDED ALONGSIDE (one
+  * sleep/experience_replay.ReplayBuffer -- the rate SWR value replay, ADDED ALONGSIDE (one
     per skill), never ripped out.
   * neuromodulation/spiking_curiosity.SpikingCuriosityDrive -- SI-1 spiking learning-progress, used
     only to PRIORITIZE the rate replay budget.

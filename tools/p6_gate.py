@@ -492,12 +492,18 @@ def source_dir(root):
 
 
 def module_file(root, module):
-    """Path of the module's source file under `root`, its package taken from module_path() (G8 F7:
-    a moved module's package is never spelled here)."""
-    from snn_data_lake import module_path
-
-    parts = module_path(module).split(".")[1:]
-    return os.path.join(source_dir(root), *parts) + ".py"
+    """Path of the module's source file under `root`, found by its basename in `root`'s own package
+    tree (G8 F7: a move never renames, so the basename is unique and no package is spelled here).
+    The imported snn_data_lake is never consulted -- it may be another checkout (G8-2 panel)."""
+    src = source_dir(root)
+    hits = [
+        os.path.join(src, d, module + ".py")
+        for d in sorted(os.listdir(src))
+        if os.path.isfile(os.path.join(src, d, module + ".py"))
+    ]
+    if len(hits) != 1:
+        raise FileNotFoundError(f"{module}.py: {len(hits)} candidate(s) under {src}")
+    return hits[0]
 
 
 def rel(path, root):
