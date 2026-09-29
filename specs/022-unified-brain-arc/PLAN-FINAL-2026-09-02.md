@@ -94,8 +94,9 @@ on its grown neurons, placed on an anatomical map (G7), and G8 reorganizes the p
   since Claude cannot flip its own main model mid-session. Codex executes a bounded brief (files, acceptance,
   validation; one writer at a time; envelope work never delegated) and writes the read-only closing report:
   `gpt-6-luna` for mechanical edits and checks, `gpt-6-sol` for builds and folds, `gpt-6-astra` for design
-  reads, lenses, refuters, debates and closing reports. A spawned Claude worker passes **`model: 'opus'`**
-  explicitly (omitting `model:` inherits). Codex runs on the Codex desktop app's engine, on the ChatGPT
+  reads, lenses, refuters, debates and closing reports. A spawned Claude worker passes **`model: 'sonnet'`**
+  where Sonnet is adequate (owner 2026-09-28: "Use Sonnet 5.5 for appropriate work to save on tokens") and
+  `'opus'` only for judgment reads (omitting `model:` inherits). Codex runs on the Codex desktop app's engine, on the ChatGPT
   subscription only (owner 2026-09-24: "Use octopus to use the codex app on my desktop with the monthly
   subscription only"), dispatched through claude-octopus. Measured 2026-09-24 on one account within one
   minute: that engine runs all three GPT-6 models on the subscription, while the older npm Codex CLI returned
