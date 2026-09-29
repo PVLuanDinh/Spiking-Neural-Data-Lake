@@ -2710,3 +2710,20 @@ battery-verified only: MINOR -- the no-label arm also counts a NEW brain module
 with a gate-shaped name (fail-closed by design; now stated in the disposition
 and pinned by a test whose remedy is a named exemption); NIT -- the label
 count above.
+
+**Closing record (2026-09-29).** Battery 1 on `9bb36ca0` (06:24:11-08:19:46Z)
+ended RED: 1,695 passed, one failed, one xfailed, 87.23% coverage; every
+other stage and gate exited zero. The sole failure was the strict xfail
+`test_the_persistence_oracle_clears_its_own_floor_under_the_admission_window`
+(raises=AssertionError): MuJoCo reported the SO-101 mesh files "empty" and
+raised ValueError before the test's standing assertion. The meshes are intact
+and unchanged since 2026-09-26, so the read was transient. Attributed by the
+resource rule: alone the test XFAILs (rc 0, 126 s); its file as a stage passes
+7 and xfails 1 (rc 0). That RED is retained in
+`C:\Users\vinhl\AppData\Local\Temp\g8-1-audit-fold-battery-9bb36ca0`; its
+certification output was restored to HEAD. Battery 2 on the same clean
+`9bb36ca0` (08:44:19-10:13:56Z) ended GREEN: 1,695 passed, two xfailed, 87.23%
+coverage (70% required), 365/365 self-checks, 6/6 tools gates, all sixteen
+final asserting gates rc 0, retained in `...-9bb36ca0-run2`. This record and
+that battery's own `tools/policy_certification.json` (certified, clean,
+`9bb36ca0`) are the arc's last commit. The daemon stays stopped; no poll.
