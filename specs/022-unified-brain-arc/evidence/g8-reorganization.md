@@ -3167,3 +3167,31 @@ NOT VERIFIED BY A BATTERY. The stage is verified by the cheap half only; nothing
 was started and the live lake was not opened. The `slow`-marked tests were deselected from the bounded pytest (they
 spawn interpreters and drive hundreds of ticks; an unbounded first attempt with them included ran past 30 minutes and
 was stopped), so they stay owed to the battery. G8-2's panel, fold and one battery remain owed.
+
+### 3.25 G8-2 panel and fold (Claude, 2026-09-29)
+
+Stages M6-M10 were built by Sonnet builders from one brief and committed by the orchestrator only after it re-took
+each stage's post census itself (every one equal to its declaration: 14, 16, 14, 4, 14 changes). Three read-only
+Sonnet lenses read the frozen head `62a7cdf3`. No BLOCKER; every stage did exactly its 2.4 row; the daemon chain,
+the 18 console/CI targets and 85 moved-package modules resolve under `SNN_ALIAS_STRICT=1`; dormancy, P6, replication
+and manifest gates rc 0; P6 reds on a planted drift. Folded in `66c2cd53` (battery-verified only):
+
+- The whole-tree `ruff check .` was RED at `62a7cdf3` (8 I001 in frozen `docs/coverage/artifacts/` probes: they
+  import moved modules by legacy names, which ruff re-sections once the old file is gone). The orchestrator's first
+  green reading came from ruff's cache. I001 is now ignored for those frozen probes only; they are not re-sorted.
+- `tools/p6_gate.py::module_file` resolved packages through whichever `snn_data_lake` was imported; it now finds the
+  basename under `root` and raises unless exactly one file matches.
+- A subprocess test string imported `interaction_learning` by its legacy `cortex` name (alias-only; C2(d) does not
+  scan string literals); two `sleep_consolidation` comment paths re-pointed.
+
+Corrections and disclosures to 3.20-3.24, kept rather than rewritten: M6 changed one POLICIES.md citation (word
+delta 0, measured 14,266 at both ends); M8 and M10 each changed one path in `.specify/memory/constitution.md`; M10
+re-pointed two live citations in `specs/BACKLOG_RANKED.md` (a live backlog, not a frozen record) and ruff-formatted
+`training/make_packs.py`, `research/arc_agi/play_brain.py`, `research/ng_snn/data.py` and
+`research/arc_agi/brain_player.py` (format only; not reverted); M7's rule-census count is 18 rows, not 36; 3.24's
+test names carry corrupted escapes (read `tests/test_g8_move_gate.py` etc.). The BROAD citation forecasts (M9, M10)
+reuse citation_guard's own resolver, so their agreement with the observed count is not an independent instrument;
+the atlas counts are. Fifteen frozen probes under `docs/coverage/artifacts/` import `cortex.brain` or
+`brainstem.autonomous_loop` through the alias: they fail under `SNN_ALIAS_STRICT=1`, a blocker for any strict flip.
+`so101_arm.py`'s comment citing `hippocampus/proximity_replay.py` (M9) stays for the owner's envelope decision, beside
+M5's F11 carve-out. `docs/CODEBASE_DIGEST.md` path rows are D1's (G8-3).
