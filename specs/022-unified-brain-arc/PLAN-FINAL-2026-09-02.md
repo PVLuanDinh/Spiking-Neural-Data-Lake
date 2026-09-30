@@ -1076,13 +1076,16 @@ eight paired seeds and uncertainty rule, adding prospective effect-size threshol
 do not select a threshold after seeing a result. A larger grid needs a measured benefit and a new
 budgeted comparison before adoption.
 
-*DATED 2026-09-30, T096 pre-registration amendments (owner: "N1 pre-registration").* The 2026-09-16 evaluation's
+*DATED 2026-09-30, T096 pre-registration amendments (owner in chat, Claude session cf7ee8c1, 2026-09-30: "N1
+pre-registration"; folded after a three-lens Codex gpt-6.1-sol panel the same day).* The 2026-09-16 evaluation's
 nine blockers (three lenses, 36 findings filed, 9 stood after refutation) and the 2026-09-15 notes, restated
 against the tree after the 2026-09-25 engine and G1(b). They bind before T096 freezes; each changes the protocol,
 none is a result.
 1. **N-R4 owes a positive control.** Add a PLANTED arm (a constructed arm carrying a known temporal advantage, in the
    form of Part F's H-R1 PLANTED control), scored by N-R4's own scorers on the same eight seeds, protocol and budget;
-   it must clear t > 1.895 or the harness is BLIND and any N-R4 null is unreadable.
+   it must clear t > 1.895 or the harness is BLIND and any N-R4 null is unreadable. Its fixture must give per-seed
+   differences that are not all equal (`paired_contrast` reads an all-equal set as degenerate, t = 0), or the
+   degenerate case is read under that function's own rule, declared before the run.
 2. **N-R2 is differential.** At g = 0 the spike filter is itself a fading memory, so N-R2's conjuncts hold for the
    substrate alone. Restate it against the equally tuned spiking-only arm, and report the returned current's effective
    rank beside the verdict (a near-rank-1 common drive with one step of delay is the dead reservoir this section names).
@@ -1093,22 +1096,31 @@ none is a result.
    deletes an owner-drawn part protects the reservoir, not this fluid coupling, which the engine drawing does not show.
 5. **Backward passes are scoped by what the tape touches.** No adjoint or backward-in-time tuning of the brain's learned
    weights (2026-09-15 note 1). An adjoint solve is allowed only as an offline design instrument whose tape is confined
-   to fluid state with r[k] exogenous; a tape that reaches any LIF or spike variable is forbidden. It lands as a
-   declared `EXACT_GRADIENT` row in `gates/gradient_claim_gate.py` with a red that fires when the tape reaches a spike
-   variable.
+   to fluid state, with the filtered activity r[k] exogenous; a tape that reaches any membrane, spike or filtered-
+   activity variable is forbidden. The adjoint module declares its symbol `EXACT_GRADIENT` in its own `GRADIENT_CLAIM`
+   (the form `gates/gradient_claim_gate.py` reads), and that holds only while the symbol RETURNS a gradient and never
+   steps an optimizer, and only under POLICIES' live-path reachability scope, not because it is called offline. Its
+   reds are separate constructed tapes that reach a membrane, a spike and a filtered-activity variable, each of which
+   must be refused, beside an accepted fluid-only tape; the declaration alone proves nothing (review-only, POLICIES).
 6. **The fluid step is bit-reproducible by mechanism:** fixed backend, FFT plan and shapes, single-threaded, declared
-   reduction order; its red is attached to N-R1 (the determinism contract's thread-invariance arm otherwise has nothing
-   to hold the FFT to).
-7. **P2 on a pass.** Since G1(b) there is one reservoir. On an SC-014 pass the coupled hybrid REPLACES the g1 reservoir's
-   live path; on anything else the coupling is deleted (item 4). Two live reservoirs never coexist.
+   reduction order, and the exact contract governs: fluid, filter, delay-buffer and membrane state are compared
+   byte-for-byte in N-R1's determinism arm and in N-R3's continuation, which REPLACES N3's "explicitly justified
+   numerical tolerances for continuous state" for these carriers. Its red is a constructed broken arm (a changed FFT
+   plan or reduction order) run in the same command beside the correct one, which must diverge (the determinism
+   contract's own pattern).
+7. **P2 on a pass.** G1(b) selected g1 as the one selectable pool, a benchmark verdict that licenses no adoption; the
+   four research sources' own P2 dispositions stay open (g1b record section 2.9). On an SC-014 pass the hybrid is
+   adjudicated against the g1 pool and each incumbent the measurement touched, naming its unique capability or its
+   retirement before anything is removed; on anything else the coupling is deleted (item 4). The coupling never adds
+   a second live reservoir.
 8. **Dormancy:** ONE `dormancy_gate.EXEMPT` row tagged `wire` (not `permanent`) for the modules built before N5 wires,
    expiring on both branches; no `EXEMPT_METHOD` rows.
 9. **Invention register:** its row lands in T096's own commit (`docs/INVENTION_REGISTER.md`), with a budget raise
    measured in that commit if one is needed.
 - **Criticality is not the target; task gain is** (2026-09-15 note 2). Lyapunov, branching or "neural Reynolds"
   numbers are reported beside readings, never barred, and carry no derivation claim.
-- **What Navier-Stokes is here** (owner question 2026-09-30, "can we use the Navier-Stokes equation to predict the
-  weights we can send to it"): an ARTIFICIAL fluid coupled to the spiking reservoir as extra recurrent state. It does not
+- **What Navier-Stokes is here** (owner question in chat, Claude session cf7ee8c1, 2026-09-30: "can we use the
+  Navier-Stokes equation to predict the weights we can send to it"; the answer below is the session's reading): an ARTIFICIAL fluid coupled to the spiking reservoir as extra recurrent state. It does not
   model the reservoir, whose "liquid" is Maass's metaphor for fading perturbations, and it predicts no transported
   weights; those are read from the reservoir's own measured dynamics (P4d, G9).
 Full evaluation: the operator's memory store, `archive/n-eval-2026-09-16/` (assessment, digest, notes).
