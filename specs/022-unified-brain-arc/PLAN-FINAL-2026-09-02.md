@@ -1076,6 +1076,43 @@ eight paired seeds and uncertainty rule, adding prospective effect-size threshol
 do not select a threshold after seeing a result. A larger grid needs a measured benefit and a new
 budgeted comparison before adoption.
 
+*DATED 2026-09-30, T096 pre-registration amendments (owner: "N1 pre-registration").* The 2026-09-16 evaluation's
+nine blockers (three lenses, 36 findings filed, 9 stood after refutation) and the 2026-09-15 notes, restated
+against the tree after the 2026-09-25 engine and G1(b). They bind before T096 freezes; each changes the protocol,
+none is a result.
+1. **N-R4 owes a positive control.** Add a PLANTED arm (a constructed arm carrying a known temporal advantage, in the
+   form of Part F's H-R1 PLANTED control), scored by N-R4's own scorers on the same eight seeds, protocol and budget;
+   it must clear t > 1.895 or the harness is BLIND and any N-R4 null is unreadable.
+2. **N-R2 is differential.** At g = 0 the spike filter is itself a fading memory, so N-R2's conjuncts hold for the
+   substrate alone. Restate it against the equally tuned spiking-only arm, and report the returned current's effective
+   rank beside the verdict (a near-rank-1 common drive with one step of delay is the dead reservoir this section names).
+3. **Control (a) is the hybrid's own substrate with the coupling removed (g = 0),** never a substrate swap. Since
+   2026-09-25 that substrate is G1(b)'s selected g1 LSM (`reservoir/recurrent_pool.py`, `instruments/pool_selection.py::SELECTABLE`).
+4. **Null disposition by charge.** Any SC-014 branch that does not wire the coupling to a live consumer under N5
+   DELETES the solver and coupling modules in that fold (the re-landable hash is kept). P4d's rule that a null never
+   deletes an owner-drawn part protects the reservoir, not this fluid coupling, which the engine drawing does not show.
+5. **Backward passes are scoped by what the tape touches.** No adjoint or backward-in-time tuning of the brain's learned
+   weights (2026-09-15 note 1). An adjoint solve is allowed only as an offline design instrument whose tape is confined
+   to fluid state with r[k] exogenous; a tape that reaches any LIF or spike variable is forbidden. It lands as a
+   declared `EXACT_GRADIENT` row in `gates/gradient_claim_gate.py` with a red that fires when the tape reaches a spike
+   variable.
+6. **The fluid step is bit-reproducible by mechanism:** fixed backend, FFT plan and shapes, single-threaded, declared
+   reduction order; its red is attached to N-R1 (the determinism contract's thread-invariance arm otherwise has nothing
+   to hold the FFT to).
+7. **P2 on a pass.** Since G1(b) there is one reservoir. On an SC-014 pass the coupled hybrid REPLACES the g1 reservoir's
+   live path; on anything else the coupling is deleted (item 4). Two live reservoirs never coexist.
+8. **Dormancy:** ONE `dormancy_gate.EXEMPT` row tagged `wire` (not `permanent`) for the modules built before N5 wires,
+   expiring on both branches; no `EXEMPT_METHOD` rows.
+9. **Invention register:** its row lands in T096's own commit (`docs/INVENTION_REGISTER.md`), with a budget raise
+   measured in that commit if one is needed.
+- **Criticality is not the target; task gain is** (2026-09-15 note 2). Lyapunov, branching or "neural Reynolds"
+  numbers are reported beside readings, never barred, and carry no derivation claim.
+- **What Navier-Stokes is here** (owner question 2026-09-30, "can we use the Navier-Stokes equation to predict the
+  weights we can send to it"): an ARTIFICIAL fluid coupled to the spiking reservoir as extra recurrent state. It does not
+  model the reservoir, whose "liquid" is Maass's metaphor for fading perturbations, and it predicts no transported
+  weights; those are read from the reservoir's own measured dynamics (P4d, G9).
+Full evaluation: the operator's memory store, `archive/n-eval-2026-09-16/` (assessment, digest, notes).
+
 **N2 / T097 - solver and causal coupling.** *(Added 2026-09-23: if N2 selects G1(b)'s pool as its
 spiking substrate, T109 precedes T097.)* Start with a periodic Fourier projection solver:
 project initial velocity and every forcing/update, keep the velocity zero mode fixed at zero,
@@ -1846,9 +1883,9 @@ this fixed decoder", never an incumbent-grower benefit or adoption.*
 | A-R2 | no held-out net benefit over simpler controls, leakage/hidden search cost or drift regression | unchanged, LRU/recency, greedy and equal-budget random search on paired traces | A2 / T106, PLANNED |
 | A-R3 | invalid/stale/corrupt promotion passes, a crash loses canonical records/continuation, or optimization enters the wake path without bounds | valid atomic activation, recoverable incumbent and interrupted-build/switch controls | A3 / T107, PLANNED |
 | N-R1 | analytic decay/convergence, finite/divergence or forced-energy tolerance fails; a constructed projection/advection/timestep fault is missed | correct Taylor-Green and forced reference runs, refinement | N2 / T097, PLANNED |
-| N-R2 | initial-state dependence survives the registered washout, or ordered temporal information is no better than its shuffle | same-input distinct-state twins and learnable temporal positive control | N2 / T097, PLANNED |
+| N-R2 | initial-state dependence survives the registered washout, or ordered temporal information is no better than its shuffle | same-input distinct-state twins and learnable temporal positive control; *DATED 2026-09-30:* read DIFFERENTIALLY against the g = 0 substrate, with the returned current's effective rank reported (N section, T096 amendment 2) | N2 / T097, PLANNED |
 | N-R3 | fresh-process spikes/decisions/updates differ, a meaningful omitted/corrupt carrier is missed, or migration loses state | uninterrupted twin, valid versioned round-trip and corruption refusal | N3 / T098, PLANNED |
-| N-R4 | full NS fails the prospective benefit over either equally tuned LSM or diffusion-only control, or regresses past a registered tolerance | both cheaper controls under paired protocol and measured budgets | N4 / T099, PLANNED |
+| N-R4 | full NS fails the prospective benefit over either equally tuned LSM or diffusion-only control, or regresses past a registered tolerance | both cheaper controls under paired protocol and measured budgets; *DATED 2026-09-30:* plus a PLANTED positive control (N section, T096 amendment 1) | N4 / T099, PLANNED |
 | N-R5 | disconnecting/shuffling feedback or silencing relevant grown units does not reduce attributed useful task gain | intact feedback and equal-count pre-sized-unit silence | N4 / T099, PLANNED |
 | N-R6 | live path bypasses a gate, resources exceed budget, or an invalid candidate/premature promotion is admitted | compliant live candidate, measured cost control and refused invalid diff | N5 / T100, PLANNED |
 | G-R0 | a corrected misrouted prompt does not improve later routing, neutering the learned router leaves replies unchanged, a fresh process does not reproduce taught routing and the next learning/replay step, or a self-label overwrites an authoritative correction | the uncorrected (self-labelled) incumbent, the neutered router, the uninterrupted twin | G0 / T108, PLANNED |
