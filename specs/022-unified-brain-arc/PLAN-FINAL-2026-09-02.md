@@ -1089,6 +1089,9 @@ none is a result.
 2. **N-R2 is differential.** At g = 0 the spike filter is itself a fading memory, so N-R2's conjuncts hold for the
    substrate alone. Restate it against the equally tuned spiking-only arm, and report the returned current's effective
    rank beside the verdict (a near-rank-1 common drive with one step of delay is the dead reservoir this section names).
+   T096's frozen protocol names the observable (the memory/separation statistic N-R2 reads) and the margin by which the
+   coupled system must beat the g = 0 substrate, registered once before any run; a difference with no margin is not a
+   criterion (closing report, 2026-09-30).
 3. **Control (a) is the hybrid's own substrate with the coupling removed (g = 0),** never a substrate swap. Since
    2026-09-25 that substrate is G1(b)'s selected g1 LSM (`reservoir/recurrent_pool.py`, `instruments/pool_selection.py::SELECTABLE`).
 4. **Null disposition by charge.** Any SC-014 branch that does not wire the coupling to a live consumer under N5
