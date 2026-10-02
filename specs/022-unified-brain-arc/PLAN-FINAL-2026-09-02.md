@@ -109,7 +109,8 @@ on its grown neurons, placed on an anatomical map (G7), and G8 reorganizes the p
   when present, the orchestrator consults it after orienting and before declaring done, reproduces any number
   it reports before acting on it, and never lets it stand in for the panel, the closing report or the battery.
   Before telling the owner a change works, the operator runs the machine-local verify skill
-  (`.claude/skills/verify/`, git-ignored): a brain on a throwaway `NORD_HOME`, `/api/state` and one chat turn,
+  (`.claude/skills/verify/`, git-ignored, so outside every P4c gate -- tracking or governing it is the
+  owner's open call): a brain on a throwaway `NORD_HOME`, `/api/state` and one chat turn,
   a stop, then proof that neither the live home nor the checkout was written (its first run found the daemon
   writing telemetry into the checkout, fixed in `79bd75c9`, recorded at `4e696357`); for a docs change, the four fast doc gates. A
   verify red is attributed, never re-run until green; verify never replaces the battery and is never named as
