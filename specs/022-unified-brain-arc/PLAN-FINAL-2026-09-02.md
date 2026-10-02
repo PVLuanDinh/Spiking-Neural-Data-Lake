@@ -193,6 +193,21 @@ on its grown neurons, placed on an anatomical map (G7), and G8 reorganizes the p
    regenerated `tools/policy_certification.json` is committed as the arc's last commit ("execution record:
    battery #N on <head>") and the arc is pushed. A red in any stage stops the push; a red you cannot
    attribute to one commit (re-run that STAGE per commit in a worktree) is a finding.
+
+   *(2026-10-02, owner: "add the docs-only battery rule"; POLICIES' "Gated + reversible" amendment of that
+   date; evidence `evidence/docs-only-battery.md`.)* Two changes to this step:
+   - **(a) Every full battery runs its pytest under the reader instrument and builds the map.**
+     - Before pytest, run `$PY -m snn_data_lake.gates.docs_only_battery --install-hook`.
+     - Export `SNDL_DOC_AUDIT` (an `audit` dir under `$B`) and `SNDL_DOC_AUDIT_ROOT` (the repo) for the pytest
+       stage only.
+     - After pytest, run `--build-map` on that dir as a stage of its own. A stale installed hook reds it.
+     - The record commit carries `tools/policy_certification.json` and `tools/doc_reader_map.json` together.
+     - A battery run without the instrument leaves the map stale. Every later docs-only run then refuses until a
+       full battery rebuilds the map.
+   - **(b) The docs-only battery.** An arc whose diff against `origin/main` touches only `*.md` may instead run
+     `$PY -m snn_data_lake.gates.docs_only_battery --run "$B"` and push on its green.
+     - It takes about 50 min instead of about 2 h 15 min.
+     - It runs the whole pytest when a changed file is read at collection, as `docs/POLICIES.md` is.
 6. **Commit** (one change per commit, stacked within the arc), **push the arc**, then **poll the daemon**: it
    exits on a new commit and its supervisor relaunches it on the new build (`chat_learn.log` prints
    `head=<hash>`); `GET /api/state`; one chat via `/api/chat`. Record the observed drop or gain; never
