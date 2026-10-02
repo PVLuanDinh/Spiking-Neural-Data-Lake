@@ -464,6 +464,7 @@ python tools/red_reachability.py --assert
 python tools/dependency_ledger.py --assert
 python tools/citation_guard.py
 python tools/doc_command_guard.py --assert
+python -m snn_data_lake.gates.doc_budget_gate --assert
 timeout 600 python -m snn_data_lake.gates.dormancy_gate
 timeout 600 python -m snn_data_lake.gates.method_dormancy_gate
 timeout 900 python -m pytest -p no:cacheprovider --no-cov -x tests/<the test files you touched>

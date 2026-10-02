@@ -111,7 +111,7 @@ on its grown neurons, placed on an anatomical map (G7), and G8 reorganizes the p
   Before telling the owner a change works, the operator runs the machine-local verify skill
   (`.claude/skills/verify/`, git-ignored): a brain on a throwaway `NORD_HOME`, `/api/state` and one chat turn,
   a stop, then proof that neither the live home nor the checkout was written (its first run found the daemon
-  writing telemetry into the checkout, fixed at `4e696357`); for a docs change, the four fast doc gates. A
+  writing telemetry into the checkout, fixed in `79bd75c9`, recorded at `4e696357`); for a docs change, the four fast doc gates. A
   verify red is attributed, never re-run until green; verify never replaces the battery and is never named as
   a commit's verification.
 - **One change per commit; one full battery per pushed ARC, on its stacked head** (owner rule 2026-09-02,
