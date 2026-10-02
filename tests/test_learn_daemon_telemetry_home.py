@@ -61,11 +61,16 @@ def test_the_drive_loop_builds_its_recorder_only_through_make_recorder():
         if isinstance(node, ast.Call) and getattr(node.func, "id", None) == "Recorder"
     ]
     assert direct == [], f"Recorder constructed outside _make_recorder at lines {direct}"
-    main_calls = {
-        getattr(node.func, "id", None)
-        for fn in ast.walk(tree)
-        if isinstance(fn, ast.FunctionDef) and fn.name == "main"
-        for node in ast.walk(fn)
-        if isinstance(node, ast.Call)
-    }
-    assert "_make_recorder" in main_calls
+    # the assignment must sit directly in main()'s body, so a guarded or dead call cannot satisfy it
+    main = next(
+        fn for fn in ast.walk(tree) if isinstance(fn, ast.FunctionDef) and fn.name == "main"
+    )
+    assigned = [
+        stmt
+        for stmt in main.body
+        if isinstance(stmt, ast.Assign)
+        and isinstance(stmt.value, ast.Call)
+        and getattr(stmt.value.func, "id", None) == "_make_recorder"
+        and [getattr(t, "id", None) for t in stmt.targets] == ["rec"]
+    ]
+    assert len(assigned) == 1, "main() must assign rec = _make_recorder() unconditionally"

@@ -165,8 +165,8 @@ def _telemetry_path():
 
     P4c reading (a session call, open to the owner): P4c forbids the daemon keeping "its own durable
     state alongside brain_lake.bin". This JSONL is a diagnostic trace that nothing restores the brain
-    from and no in-tree code reads back, like the watermark and the lock already in the home; it is
-    not learned state, so it is not a second lake."""
+    from (only the Recorder's own rotation and compaction read it), like the watermark and the lock
+    already in the home; it is not learned state, so it is not a second lake."""
     from snn_data_lake.substrate.home import home  # noqa: PLC0415
 
     return os.path.join(home(), "telemetry.jsonl")
