@@ -181,3 +181,15 @@ Every claim was reproduced by its command before the fold (`700cea8f`), and each
   fingerprint, which includes `NORD_*`: a docs-only run under different `NORD_*` refuses (R2).
 
 The fold is battery-verified only; the closing report reviews the whole arc.
+
+### 2.7 The first reader map, built by the arc battery on `64fac65c` (pushed `d7690bb0`)
+
+- Test files that READ Markdown: 5 (unchanged from M0); 38 test files carry any record. One collection-time read:
+  `docs/POLICIES.md`.
+- CV, at full-suite scale: 321 process starts, 312 python spawns seen by their parents, **30 without a child start**,
+  all from `tests/test_brian2_backend.py`'s Brian2 reference-trace child (`-m snn_data_lake.growth.brian2_backend
+  --reference-trace`). That is a NAMED blind spot: its reads are unknown. By the fail-closed race rule (2.6, F5),
+  every python spawner in the pytest root is BLIND: **15 test files are always selected.** Why that child
+  carries no hook is not yet diagnosed (an opening). Until it is, every docs-only run pays for those 15 files.
+- R4 runs on THIS change (the first docs-only push): its verdict, timing and selection are in this push's
+  execution record (`tools/policy_certification.json`, `battery` block), never back-filled here.
