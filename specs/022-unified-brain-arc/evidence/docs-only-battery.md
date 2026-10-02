@@ -148,3 +148,31 @@ recorded with its record.
   - gates, about 5 min;
   - the selected pytest, at least the 17 min that `test_selfchecks.py` needs;
   - total about 50 min, against about 2 h 15 min. A POLICIES edit or a collection-time reader runs the full pytest.
+
+### 2.6 Panel (Codex gpt-6.1-sol, 3 lenses, on `88c63cbe`): 5 claims filed, 5 stood (1 BLOCKER, 4 MAJOR)
+
+Every claim was reproduced by its command before the fold (`700cea8f`), and each fix was judged apart from its claim.
+
+- **F1 (BLOCKER), claim stood.** An empty capture built a map that selects nothing (`select` returned `(False, [])`).
+  - Fix as filed was "require completion, hook identity, fail closed". Folded as:
+    - the pytest root must start AND end (an `atexit` end record);
+    - every start record must carry the current hook id;
+    - hookless children make their test file BLIND, and a blind file is always selected.
+  - Live red: an empty capture is REFUSED.
+- **F2 (MAJOR), claim stood.** A `git grep` reader was not selected on a modify. Scanners are now selected on any
+  change; a collection-time scan forces the full pytest.
+- **F3 (MAJOR), claim stood.** Ignored assets and the runtime sat outside R2. A runtime fingerprint now covers the
+  interpreter, the distributions, the `NORD_*` env and the ignored-file NAMES, and costs about 1 s. Content changes
+  of ignored files under the same name are disclosed as unseen.
+- **F4 (MAJOR), claim stood, and it is wider than this arc.** `run()` skipped both ruff stages and forced
+  `NORD_PERSIST=0`. `tests/conftest.py` and `run_selfchecks.py` deliberately do not set it, and neither does the
+  battery script of record (`t066_battery_v2.sh`).
+  - The session's machine-local battery script copied that override, and so did the batteries run from it: on
+    `537d9534` (N1), `36747c8e` (telemetry) and `ea1fe0d4` (doc-sync). Those batteries ran with persistence off.
+  - Filed as a carried opening for the owner, not re-run here.
+  - `run()` and the map battery now mirror t066.
+- **F5 (MAJOR), claim stood for ATTRIBUTION only.** With `env=None`, concurrent spawns can share a token. The count
+  of unpaired spawns is preserved; which spawn gets named may be wrong. The audit hook cannot give each spawn its own
+  environment, so this is disclosed in the hook, not fixed.
+
+The fold is battery-verified only; the closing report reviews the whole arc.
