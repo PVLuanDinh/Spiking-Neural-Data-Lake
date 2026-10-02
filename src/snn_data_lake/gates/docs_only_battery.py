@@ -113,6 +113,8 @@ def _sndl_doc_audit():
     tl = threading.local()
     lock = threading.Lock()
     magic = set("*?[")
+    import itertools
+    spawn_no = itertools.count(1)
 
     def test_id():
         t = os.environ.get("SNDL_DOC_AUDIT_TEST") or os.environ.get("PYTEST_CURRENT_TEST") or ""
@@ -204,20 +206,29 @@ def _sndl_doc_audit():
             # module-level dict such as run_selfchecks._ENV: re-stamp the CURRENT test on every spawn,
             # or the first test file to spawn through it would own every later spawn's reads. A dict
             # naming a DIFFERENT audit dir is a nested instrument run: leave it alone.
+            # A per-spawn token pairs this spawn with the child's `start` record: on Windows the venv's
+            # python.exe is a launcher, so the child's ppid names the launcher, not this process.
+            tok = "%d.%d" % (os.getpid(), next(spawn_no))
             if isinstance(env, dict) and env.get("SNDL_DOC_AUDIT") in (None, out_dir):
                 env["SNDL_DOC_AUDIT"] = out_dir
                 env["SNDL_DOC_AUDIT_ROOT"] = root
+                env["SNDL_DOC_AUDIT_TOK"] = tok
                 if t:
                     env["SNDL_DOC_AUDIT_TEST"] = t
                 else:
                     env.pop("SNDL_DOC_AUDIT_TEST", None)
+            elif env is None:
+                os.environ["SNDL_DOC_AUDIT_TOK"] = tok  # the child inherits this process's environment
+            else:
+                tok = None  # a nested instrument run's own dict: not this audit's child
             if isinstance(argv, (list, tuple)):
                 a = [os.fsdecode(x) if isinstance(x, (str, bytes, os.PathLike)) else str(x) for x in argv]
             else:
                 a = [str(argv)]
-            emit({"k": "spawn", "a": a, "t": test_id()})
+            emit({"k": "spawn", "a": a, "t": test_id(), "tok": tok})
 
-    emit({"k": "start", "argv": list(sys.orig_argv), "ppid": os.getppid(), "t": test_id()})
+    emit({"k": "start", "argv": list(sys.orig_argv), "ppid": os.getppid(), "t": test_id(),
+          "tok": os.environ.get("SNDL_DOC_AUDIT_TOK")})
     sys.addaudithook(hook)
 
 
@@ -315,16 +326,24 @@ def build_map(records: list[dict], head: str, chash: str) -> dict:
     pytest_all: dict[str, set] = {"read": set(), "list": set(), "listr": set()}
     starts = spawns_py = dropped = 0
     is_pytest: dict[str, bool] = {}
+    started_toks = set()
+    unpaired: list[str] = []
     for rec in records:
         if rec.get("k") == "start":
             starts += 1
             is_pytest[rec["_pid"]] = "pytest" in " ".join(rec.get("argv", []))
+            if rec.get("tok"):
+                started_toks.add(rec["tok"])
     for rec in records:
         k = rec.get("k")
         t = rec.get("t") or ""
         if k == "spawn":
             if _is_python(rec.get("a", [])):
                 spawns_py += 1
+                if rec.get("tok") and rec["tok"] not in started_toks:
+                    unpaired.append(
+                        " ".join(_tokens(rec.get("a", []))[1:4]) + f"  [{t or 'no test'}]"
+                    )
             if t and _is_git_scan(rec.get("a", [])):
                 tests.setdefault(t, _empty())["git_scan"] = True
             continue
@@ -346,6 +365,8 @@ def build_map(records: list[dict], head: str, chash: str) -> dict:
             "process_starts": starts,
             "python_spawns_seen_by_parents": spawns_py,
             "listings_dropped_as_infrastructure": dropped,
+            # each a python child whose hook never started: a NAMED blind spot (no hook = no reads seen)
+            "python_spawns_without_child_start": sorted(unpaired),
         },
         "pytest_all": {k: sorted(v) for k, v in pytest_all.items()},
         "tests": {
@@ -647,6 +668,18 @@ def _selfcheck_instrument() -> None:
         assert mp["tests"]["tests/test_k.py"]["read"] == ["docs/k.md"], mp
         cov = mp["coverage"]
         assert (cov["process_starts"], cov["python_spawns_seen_by_parents"]) == (2, 1), mp
+        assert cov["python_spawns_without_child_start"] == [], mp  # the token paired the spawn
+        # CV red: a python child started WITHOUT the hook (-S -I: no site, no .pth, no explicit hook)
+        # leaves its parent's spawn unpaired, and the map names it.
+        for f in logs.iterdir():
+            f.unlink()
+        blind = HOOK_SOURCE + (
+            "\nimport subprocess, sys\n"
+            "subprocess.run([sys.executable, '-S', '-I', '-c', 'pass'], check=True)\n"
+        )
+        _child(blind, on)
+        cov = build_map(load_records(logs), "h", "c")["coverage"]
+        assert len(cov["python_spawns_without_child_start"]) == 1, cov
         # SHARED DICT (advisor, 2026-10-02): one module-level env dict, two spawns under two test ids --
         # each child logs under its OWN test file (setdefault pinned the first id; reachable red).
         for f in logs.iterdir():
@@ -728,10 +761,14 @@ def main(argv: list[str] | None = None) -> int:
         )
         cov = m["coverage"]
         print(
-            f"map: {len(m['tests'])} test files read Markdown; collection-time reads "
+            f"map: {sum(1 for e in m['tests'].values() if e['read'])} test files READ Markdown, "
+            f"{len(m['tests'])} with any record (reads, listings, git scans); collection-time reads "
             f"{len(m['pytest_all']['read'])}; process starts {cov['process_starts']}, python "
-            f"spawns seen by parents {cov['python_spawns_seen_by_parents']}"
+            f"spawns seen by parents {cov['python_spawns_seen_by_parents']}, of them without a child "
+            f"start {len(cov['python_spawns_without_child_start'])}"
         )
+        for line in cov["python_spawns_without_child_start"][:20]:
+            print(f"  BLIND (no hook in the child): {line}")
         return 0
     if cmd == "--select":
         m = json.loads(MAP_PATH.read_text(encoding="utf-8"))
